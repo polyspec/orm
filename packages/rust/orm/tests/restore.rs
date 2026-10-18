@@ -1,7 +1,7 @@
-//! soft delete한 행의 restore (docs/usage.md, "Writes"): primary key나 unique key 하나의 set 값으로 지운 행을
-//! 찾아 soft delete column을 NULL로 쓰는 update를 하고 되돌린 행을 돌려준다. SQLite, MySQL, PostgreSQL에서
-//! database마다 자기만의 case database(polyspec-orm-case-database)로 실행하며 ORM_TEST_MYSQL_DSN이나
-//! ORM_TEST_POSTGRES_DSN이 없으면 실패한다.
+//! Restore of a soft-deleted row (docs/usage.md, "Writes"): finds a deleted row by the set values of one primary key or unique key,
+//! writes an update that sets the soft delete column to NULL, and returns the restored row. On SQLite, MySQL, and PostgreSQL,
+//! each database runs in its own case database (polyspec-orm-case-database), and it fails if ORM_TEST_MYSQL_DSN or
+//! ORM_TEST_POSTGRES_DSN is missing.
 
 #[path = "common/restore_rows.rs"]
 mod restore_rows;

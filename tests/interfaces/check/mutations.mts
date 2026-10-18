@@ -1,5 +1,5 @@
-// --self-test의 source mutation이다. 고친 실제 source file을 추출기로 읽는다. 이미 추출한 JSON map을 고치면 비교만
-// 시험하므로 선언을 놓치는 추출기를 숨길 수 있다.
+// Source mutations for --self-test. It reads the actual modified source files with the extractor. Modifying an already-extracted JSON map only tests the comparison, so
+// it can hide an extractor that misses declarations.
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -123,8 +123,8 @@ class Query:
 };
 
 /**
- * parserMutations는 lang 추출기가 fixture source의 mutation마다 다른 선언을 읽는지, 더한 field가 공통 owner contract에
- * 걸리는지, 공개 multi_statement와 그 호출이 거부되는지 확인한다.
+ * parserMutations checks whether each lang extractor reads different declarations for each mutation of the fixture source, whether an added field trips the common owner contract,
+ * and whether a public multi_statement and its call are rejected.
  */
 export async function parserMutations(signal: AbortSignal | undefined, toolRoot: string, lang: string, tools: Tools): Promise<void> {
   const f = FIXTURES[lang];

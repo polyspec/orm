@@ -18,8 +18,8 @@ use sqlx::{AssertSqlSafe, Row, SqlSafeStr, TypeInfo, ValueRef};
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
-/// tests/dbspec/ddl.json 형식의 step 하나: `query`와 `want`, 실패해야 하는 `sql`,
-/// 또는 실행할 `sql`. `dialects`가 있으면 그 database에서만 실행한다.
+/// One step in the tests/dbspec/ddl.json format: `query` and `want`, the `sql` that must fail,
+/// or the `sql` to run. If `dialects` is given, it runs only on those databases.
 struct Step {
     sql: Option<String>,
     fails: bool,
@@ -43,8 +43,8 @@ fn steps(value: &Value) -> Vec<Step> {
         .collect()
 }
 
-/// `query`의 첫 행 첫 값을 Go probe의 `Value`처럼 text로 읽는다: SQL NULL은
-/// `NULL`이고 정수, decimal, text가 아닌 type은 error다.
+/// Reads the first value of the first row of `query` as text, like Go probe's `Value`: SQL NULL
+/// is `NULL`, and a type that is not an integer, decimal, or text is an error.
 async fn value(conn: &mut Conn, query: &str) -> Result<String, String> {
     let sql = || AssertSqlSafe(query.to_owned()).into_sql_str();
     let result = match conn {
@@ -55,7 +55,7 @@ async fn value(conn: &mut Conn, query: &str) -> Result<String, String> {
     result.map_err(|e| format!("{query}: {e}"))
 }
 
-/// 한 행의 첫 값을 text로 쓴다. 정수와 text가 아닌 type은 `other`가 읽는다.
+/// Writes the first value of a row as text. Integer and non-text types are read by `other`.
 fn text_value<R: Row>(row: &R, other: impl Fn(&R, &str) -> Result<String, sqlx::Error>) -> Result<String, String>
 where
     usize: sqlx::ColumnIndex<R>,
@@ -79,7 +79,7 @@ fn no_text_form(name: &str) -> sqlx::Error {
     sqlx::Error::Decode(format!("a value of type {name} has no text form here").into())
 }
 
-/// MySQL의 decimal과 binary collation 문자열. 문자열은 UTF-8 text다.
+/// MySQL decimal and binary collation strings. The strings are UTF-8 text.
 fn mysql_other(row: &sqlx::mysql::MySqlRow, name: &str) -> Result<String, sqlx::Error> {
     match name {
         "DECIMAL" => row.try_get::<rust_decimal::Decimal, _>(0).map(|v| v.to_string()),
@@ -102,7 +102,7 @@ fn sqlite_other(_: &sqlx::sqlite::SqliteRow, name: &str) -> Result<String, sqlx:
     Err(no_text_form(name))
 }
 
-/// 이름이 dbspec$로 시작하는 table과 column의 수를 읽는 query.
+/// The query that reads the number of tables and columns whose names start with dbspec$.
 fn hidden_left(db: &str) -> &'static str {
     match db {
         "mysql" => "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME LIKE 'dbspec$%' OR COLUMN_NAME LIKE 'dbspec$%')",
@@ -111,7 +111,7 @@ fn hidden_left(db: &str) -> &'static str {
     }
 }
 
-/// SQLite에서 foreign key를 어기는 row가 없는지 확인한다.
+/// Checks on SQLite that no row violates a foreign key.
 async fn foreign_key_check(conn: &mut Conn, db: &str) -> Result<(), String> {
     if db != "sqlite" {
         return Ok(());
@@ -123,7 +123,7 @@ async fn foreign_key_check(conn: &mut Conn, db: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// introspect한 schema text가 `want`(빈 database이면 빈 문자열)인지 확인한다.
+/// Checks that the introspected schema text is `want` (an empty string if the database is empty).
 async fn schema_is(conn: &mut Conn, what: &str, want: &str) -> Result<(), String> {
     let (introspection, _) = conn.introspect().await.map_err(|e| format!("{what}: introspect: {e}"))?;
     if !introspection.unsupported.is_empty() {
@@ -198,7 +198,7 @@ async fn plan_apply() {
                         .take_while(|s| !s.finalize)
                         .map(|s| if s.restore.is_empty() { s.statement.clone() } else { s.restore.clone() })
                         .collect();
-                    // 끝까지 되돌리는 rollback은 옛 table을 숨긴 더한 column과 함께 다시 만든다.
+                    // A rollback that reverts all the way recreates the old table, along with the added columns that hid it.
                     let back: Vec<String> = steps_of
                         .iter()
                         .rev()
@@ -209,7 +209,7 @@ async fn plan_apply() {
                     conn.exec_all(&connection_rules(db).iter().map(|s| (*s).to_owned()).collect::<Vec<_>>()).await?;
                     conn.exec_all(&setup).await?;
                     run_steps(conn, db, &before).await?;
-                    // SQLite는 table을 다시 만드는 동안 foreign key를 끄고, 끝난 뒤 검사한다.
+                    // SQLite turns off foreign keys while it rebuilds the table, and checks them afterwards.
                     if db == "sqlite" {
                         conn.exec("PRAGMA foreign_keys = OFF").await?;
                         conn.exec("PRAGMA legacy_alter_table = OFF").await?;
@@ -229,7 +229,7 @@ async fn plan_apply() {
                         conn.exec("PRAGMA foreign_keys = ON").await?;
                     }
                     run_steps(conn, db, &after).await?;
-                    // finalize도 apply처럼 SQLite foreign key를 끄고 실행한다.
+                    // Finalize also runs with SQLite foreign keys turned off, as apply does.
                     if db == "sqlite" {
                         conn.exec("PRAGMA foreign_keys = OFF").await?;
                     }
@@ -254,7 +254,7 @@ async fn plan_apply() {
     servers.close().await;
     assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
     assert_eq!(runs, cases.len() * DIALECTS.len(), "plan runs");
-    // 세 database의 plan 적용은 개발 machine에서 몇 초 걸린다(T27 측정 8 s, build 포함). 5분이 지나면 멈춘 것이다.
+    // Applying plans to three databases takes a few seconds on the development machine (8 s measured in T27, including build). Five minutes means it has stalled.
     if started.elapsed() >= Duration::from_secs(300) {
         polyspec_orm_testcase::warning(format_args!("plan apply exceeded 300s"));
     }

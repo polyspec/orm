@@ -1,12 +1,12 @@
 import { present } from '../present.js';
-// 검증된 check의 정규 텍스트(DbspecCheck.expression)를 술어 트리로 읽는다.
-// 모델은 정규 텍스트만 보관하므로, 렌더러는 이 트리에서 피연산자와 열을 찾는다.
-// 정규 텍스트가 아닌 입력은 위치를 담은 Error로 거부한다.
+// Reads the canonical text of a verified check (DbspecCheck.expression) as a predicate tree.
+// The model keeps only the canonical text, so the renderer finds the operands and columns from this tree.
+// Input that is not canonical text is rejected with an Error that holds the position.
 
 type CheckLiteral = { readonly kind: 'literal'; readonly text: string };
 export type CheckOperand = { readonly kind: 'column'; readonly name: string } | CheckLiteral;
 
-// 트리는 괄호를 두지 않는다. 출력은 and 안의 or에만 괄호를 쓴다.
+// The tree has no parentheses. The output writes parentheses only for an or inside an and.
 export type CheckExpr =
   | { readonly kind: 'logical'; readonly op: 'and' | 'or'; readonly left: CheckExpr; readonly right: CheckExpr }
   | { readonly kind: 'compare'; readonly op: string; readonly left: CheckOperand; readonly right: CheckOperand }

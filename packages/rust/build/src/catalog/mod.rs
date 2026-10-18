@@ -124,7 +124,7 @@ impl CatalogConnection {
             Pool::MySql(pool) => pool.close().await,
             Pool::Postgres(pool) => pool.close().await,
             Pool::Sqlite(pool) => pool.close().await,
-            // connect는 markdown DSN을 거절하므로 catalog 연결은 markdown pool을 갖지 않는다.
+            // connect rejects a markdown DSN, so the catalog connection has no markdown pool.
             Pool::Markdown(_) => unreachable!("a catalog connection holds a SQL pool"),
         }
     }

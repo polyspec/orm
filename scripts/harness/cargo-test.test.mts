@@ -1,5 +1,5 @@
-// tests/cargo-test.mts의 인자 해석 test다. cargo test option과 test 이름 filter, binary 인자를 나누고, cargo의
-// JSON message에서 test binary와 그 package directory만 읽는다.
+// Tests the argument parsing of tests/cargo-test.mts: it splits cargo test options, the test name filter and the binary arguments, and reads cargo's
+// JSON messages, reading only the test binary and its package directory.
 import assert from 'node:assert/strict';
 import { executables, programEnvironment, programs, split } from '../../tests/cargo-test.mts';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -43,8 +43,8 @@ caseTest('cargo-test reads the package programs and names their variables', COMP
     { ORM_PROGRAM_NATIVE: '/r/programs/native', ORM_PROGRAM_DRIVER_COMPARE: '/r/programs/driver-compare' });
 });
 
-// 실패 뒤 계속 case(G5.38-3)는 가짜 cargo와 lease로 cargo-test.mts를 실행한다. cargo는 test binary 셋을 알리고,
-// 둘째 binary가 실패해도 셋째가 실행되며, 끝에 실패한 binary와 그 종료 코드를 적고 그 코드로 끝난다.
+// The case that keeps going after a failure (G5.38-3) runs cargo-test.mts with a fake cargo and a lease. cargo reports three test binaries,
+// the second binary fails but the third still runs; at the end it reports the failed binary and its exit code, and exits with that code.
 caseTest('cargo-test runs every test binary after a failed one and names the failures', PROCESS, () => {
   const base = realpathSync(mkdtempSync(join(tmpdir(), 'cargo-test-')));
   try {
@@ -52,13 +52,13 @@ caseTest('cargo-test runs every test binary after a failed one and names the fai
     mkdirSync(join(base, 'bin'));
     const messages = ['one', 'two', 'three'].map(name => {
       const executable = join(base, `${name}-test`);
-      // --list는 그 binary의 test 하나를 libtest 형식으로 적는다.
+      // --list writes one test of that binary in libtest format.
       writeFileSync(executable, `#!/bin/sh\nif [ "$1" = --list ]; then echo '${name}_case: test'; exit 0; fi\necho ${name} >> ${log}\n${name === 'two' ? "echo 'FAIL two_case: expected 1, actual 2'; exit 4" : 'exit 0'}\n`, { mode: 0o755 });
       return JSON.stringify({ reason: 'compiler-artifact', profile: { test: true }, executable, manifest_path: join(base, 'Cargo.toml'), target: { name } });
     });
     writeFileSync(join(base, 'messages.json'), `${messages.join('\n')}\n`);
     writeFileSync(join(base, 'bin/cargo'), `#!/bin/sh\ncat ${join(base, 'messages.json')}\n`, { mode: 0o755 });
-    // 가짜 lease는 `--` 뒤의 명령을 그대로 실행한다.
+    // The fake lease runs the command after `--` as it is.
     writeFileSync(join(base, 'lease'), '#!/bin/sh\nwhile [ "$1" != -- ]; do shift; done\nshift\nexec "$@"\n', { mode: 0o755 });
     const result = spawnSync(process.execPath, [fileURLToPath(new URL('../../tests/cargo-test.mts', import.meta.url)), 'stub', '--', 'cargo', 'test'],
       { encoding: 'utf8', env: isolatedEnvironment({ PATH: `${join(base, 'bin')}:${process.env.PATH}`, LEASE: join(base, 'lease'), CARGO_LEASES: join(base, 'leases') }) });
@@ -70,10 +70,10 @@ caseTest('cargo-test runs every test binary after a failed one and names the fai
   }
 });
 
-// 공유 target case(G5.46)는 cargo가 artifact의 freshness를 source의 mtime으로만 판단하고 어느 checkout이 build했는지
-// 기록하지 않는다는 것을 실제 cargo로 보인다. checkout a가 build한 target에 a보다 오래된 mtime의 다른 source를 가진
-// checkout b를 build하면 cargo는 a의 binary를 fresh로 보고 b에서도 a의 code("from a")를 실행한다. b가 자기 target
-// directory에 build하면 b의 code("from b")를 실행한다. 그래서 각 checkout은 자기 target directory에 build한다.
+// The shared-target case (G5.46) shows with real cargo that cargo judges an artifact's freshness only by the source mtime, and does not record which checkout
+// built it: when checkout b is built into a target that a built, and b's sources have older mtimes than a's,
+// cargo sees a's binary as fresh and runs a's code ("from a") in b too. When b builds into its own target
+// directory, it runs b's code ("from b"). So each checkout builds into its own target directory.
 caseTest('cargo reuses what another checkout built into a shared target, and a target of its own builds this checkout', PROCESS, () => {
   const base = realpathSync(mkdtempSync(join(tmpdir(), 'cargo-target-')));
   try {
@@ -84,7 +84,7 @@ caseTest('cargo reuses what another checkout built into a shared target, and a t
       writeFileSync(join(base, name, 'src/main.rs'), `fn main() { println!("${text}"); }\n`);
       for (const file of ['Cargo.toml', 'src/main.rs']) utimesSync(join(base, name, file), old, old);
     };
-    // cargo는 case가 주는 toolchain(rust-toolchain.toml의 channel)과 offline 설정만 받는다.
+    // cargo receives only the toolchain the case gives (the channel in rust-toolchain.toml) and the offline setting.
     const channel = /^channel = "(.*)"$/m.exec(readFileSync(new URL('../../rust-toolchain.toml', import.meta.url), 'utf8'))?.[1];
     assert.ok(channel, 'rust-toolchain.toml declares a channel');
     const toolchain = channel;
@@ -105,8 +105,8 @@ caseTest('cargo reuses what another checkout built into a shared target, and a t
   }
 });
 
-// target directory guard case(G5.46)는 command line의 CARGO_TARGET_DIR이 이 checkout 밖을 가리키면 make가 아무것도
-// 실행하지 않고 그 이유를 적고 멈추는지, 이 checkout 안의 directory는 받는지 확인한다.
+// The target directory guard case (G5.46) checks that when CARGO_TARGET_DIR on the command line points outside this checkout, make stops without running anything,
+// states the reason, and accepts a directory inside this checkout.
 caseTest('make refuses a Rust target directory outside its checkout', PROCESS, () => {
   const repo = fileURLToPath(new URL('../..', import.meta.url));
   const make = (target?: string) => spawnSync('make', ['-n', '--no-print-directory', 'version-check', ...(target ? [`CARGO_TARGET_DIR=${target}`] : [])], { cwd: repo, encoding: 'utf8', env: isolatedEnvironment() });
@@ -117,9 +117,9 @@ caseTest('make refuses a Rust target directory outside its checkout', PROCESS, (
   assert.equal(make(join(repo, '.runtime', 'run', 'x', 'target')).status, 0);
 });
 
-// 빈 선택 case(G5.54)는 test 이름 filter가 모든 test binary에서 test를 하나도 고르지 않는 실행을 실패로 보는지 본다.
-// cargo-test는 binary마다 `--list`로 고른 test를 세고, 합이 0이면 binary를 실행하지 않고 실패한다. 이름을 잘못 쓴
-// filter는 아무것도 실행하지 않고도 모든 binary가 0으로 끝나기 때문이다.
+// The empty selection case (G5.54) checks whether a run in which the test name filter selects no test in any test binary counts as a failure.
+// cargo-test counts the tests each binary selects with `--list`, and if the sum is 0 it fails without running the binary. A filter with a misspelled name
+// would otherwise let every binary end with 0 without running anything.
 caseTest('cargo-test fails when the name filters select no test in any test binary', PROCESS, () => {
   const base = realpathSync(mkdtempSync(join(tmpdir(), 'cargo-empty-')));
   try {

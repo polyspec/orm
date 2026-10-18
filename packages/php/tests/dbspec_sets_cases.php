@@ -20,14 +20,14 @@ function manifest_parsed(string $id, array $lines, array $set, string $dbspec = 
     return $result->document;
 }
 
-/** 줄을 LF로 잇는다. 줄이 없으면 빈 text다. @param list<string> $lines */
+/** Joins lines with LF. With no lines the text is empty. @param list<string> $lines */
 function set_text(array $lines): string
 {
     return $lines === [] ? '' : manifest_text($lines);
 }
 
 /**
- * statement 가운데 CREATE TABLE이 만드는 table 이름이다.
+ * The table name that CREATE TABLE creates, among the statements.
  *
  * @param list<string> $statements
  * @return list<string>
@@ -51,8 +51,8 @@ function created_tables(array $statements): array
  */
 function dbspec_sets_check(string $dbspec, array $case): void
 {
-    // 각 문서는 다른 소유 문서, 외부 문서(external), parsing 문서(헤더 이름이 키)를 집합으로 파싱한다.
-    // 외부 문서는 external로 표시한다.
+    // Each document is parsed within the set, with the other owned documents, external documents (external), and parsing documents (the header name is the key).
+    // External documents are marked as external.
     $all = array_merge($case['documents'], $case['external'] ?? []);
     $owned = count($case['documents']);
     $names = [];

@@ -12,13 +12,13 @@ import (
 	"github.com/polyspec/orm/packages/go/orm"
 )
 
-// main은 run의 종료 코드로 끝난다. os.Exit는 defer를 실행하지 않으므로 run 안에서는 부르지 않는다: 실패한
-// check/dsn은 exit panic으로 run까지 올라오고, 그 사이의 defer(연결 닫기)가 실행된다.
+// main ends with the exit code of run. Since os.Exit does not run defers, it is not called inside run: a failed
+// check/dsn rises up to run as an exit panic, and the defers in between (closing connections) run.
 func main() {
 	os.Exit(run())
 }
 
-// exit는 check/dsn이 run을 끝내는 panic이고, 값은 종료 코드다.
+// exit is the panic by which check/dsn ends run, and its value is the exit code.
 type exit int
 
 func run() (code int) {
@@ -64,8 +64,8 @@ func run() (code int) {
 	page, err := model.Author().Connect(db).ServiceSeq(7).RemoveAllColumns().OrderBySeqAsc().GetsPage(2, 10)
 	check(err)
 
-	// 세 언어가 같은 byte를 내도록 member 순서는 output이 고정하고 HTML 문자는
-	// escape하지 않는다.
+	// So that the three languages emit the same bytes, the output fixes the member order, and HTML characters
+	// are not escaped.
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetEscapeHTML(false)
 	check(enc.Encode(output{
@@ -80,7 +80,7 @@ func run() (code int) {
 	return 0
 }
 
-// output은 출력 문서의 member를 PHP와 Rust 프로그램과 같은 순서로 선언한다.
+// output declares the members of the output document in the same order as the PHP and Rust programs.
 type output struct {
 	Rows       any     `json:"rows"`
 	Groups     int     `json:"groups"`
@@ -91,8 +91,8 @@ type output struct {
 	PageLength int     `json:"page_length"`
 }
 
-// dsn은 시드된 bench database를 가리키는 ORM_BENCH_MYSQL_DSN이다. 없거나 비어
-// 있으면 연결하지 않고 그 변수 이름을 출력하며 끝난다.
+// dsn is ORM_BENCH_MYSQL_DSN, which points to the seeded bench database. If it is missing or empty,
+// the program does not connect; it prints that variable name and ends.
 func dsn() string {
 	v := os.Getenv("ORM_BENCH_MYSQL_DSN")
 	if v == "" {

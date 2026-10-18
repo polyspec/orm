@@ -25,7 +25,7 @@ pub fn compile(m: &Manifest, d: Dialect, r: &ir::Request) -> Result<Plan> {
     planner::Planner { m, d }.compile(r)
 }
 
-/// request를 검증한다. IR executor 연결은 plan하지 않고 검증한 request를 보낸다(docs/protocol.md §5).
+/// Validates the request. An IR executor connection does not plan; it sends the validated request (docs/protocol.md §5).
 pub fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
     validate::validate(m, r)
 }
@@ -46,7 +46,7 @@ mod param_uses_tests;
 mod tests {
     use super::*;
 
-    // 모든 column을 고른 node는 AES key version column을 한 번만 읽고 그 위치를 표시한다.
+    // A node that selects all columns reads the AES key version column only once and marks its position.
     #[test]
     fn all_columns_select_the_aes_version_once() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -70,7 +70,7 @@ mod tests {
         assert!(!asm.columns[at].hidden);
     }
 
-    // relation은 foreign key의 모든 성분을 key 순서대로 잇고, 잘못된 key 목록은 거절된다.
+    // A relation links all components of the foreign key in key order, and a malformed key list is rejected.
     #[test]
     fn composite_relation_keys() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -114,9 +114,9 @@ mod tests {
         }
     }
 
-    // insert는 identity column 값을, update와 duplicate update는 primary key와
-    // identity column 값을 쓰지 못한다. PostgreSQL identity는 명시한 key를 지나
-    // 나아가지 않으므로(postgres.identity.by_default_not_advanced) 세 dialect 모두 거부한다.
+    // insert cannot write the identity column value, and update and duplicate update cannot write the primary key and
+    // identity column value. A PostgreSQL identity does not advance past an explicit key
+    // (postgres.identity.by_default_not_advanced), so all three dialects reject it.
     #[test]
     fn key_columns_are_not_written() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -169,8 +169,8 @@ mod tests {
         }
     }
 
-    // SQLite와 PostgreSQL insert는 assign하지 않은 `default now` column에 executor clock을 column의
-    // 소수 자리로 bind한다(여러 row insert는 row마다). MySQL은 database default에 맡긴다.
+    // SQLite and PostgreSQL inserts set the executor clock on an unassigned `default now` column, as the column's
+    // fractional digits (for multi-row inserts, per row). MySQL leaves it to the database default.
     #[test]
     fn sqlite_insert_binds_the_clock_for_default_now() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -206,8 +206,8 @@ mod tests {
         assert!(explicit.steps[0].bind_slots.iter().all(|b| b.from != "now"), "an assigned default now column binds its value");
     }
 
-    /// unique key를 가진 soft delete table 두 개(audit table link와 audit 없는 tag)와
-    /// soft_delete가 없는 plain이다. engine/planner/restore_test.go와 같은 문서다.
+    /// Two soft delete tables with a unique key (an audit table link and a tag without audit), and
+    /// a plain table without soft_delete. It is the same document as engine/planner/restore_test.go.
     const RESTORE_DOCUMENT: &str = "dbspec 1 restore\n\ntable link {\n  id i64 identity\n  team_id i64\n  member_id i64\n  audit_seq i64\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_link_pair (team_id, member_id)\n  index ix_link_audit (audit_seq)\n  foreign key fk_link_audit (audit_seq) references audit (seq) on delete restrict on update restrict\n  settings {\n    soft_delete deleted_at\n    audit into link_history column audit_seq references audit action change previous previous_audit_seq\n  }\n}\n\ntable link_history {\n  history_id i64 identity\n  change varchar(8)\n  previous_audit_seq i64 null\n  id i64\n  team_id i64\n  member_id i64\n  audit_seq i64\n  deleted_at datetime(6) null\n  primary key (history_id)\n}\n\ntable tag {\n  id i64 identity\n  name varchar(64)\n  label varchar(64)\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_tag_name (name)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable plain {\n  id i64 identity\n  name varchar(64)\n  primary key (id)\n}\n\ntable audit {\n  seq i64 identity\n  actor varchar(64)\n  primary key (seq)\n}\n";
 
     fn restore_manifest() -> Manifest {
@@ -216,7 +216,7 @@ mod tests {
         Manifest::load(&set.manifest_text, &set.manifest_hash).unwrap()
     }
 
-    /// (conn, column, op) 조건으로 entity를 restore하는 request다. is_null이 아니면 조건마다 param 하나를 둔다.
+    /// A request that restores an entity by (conn, column, op) conditions. Unless is_null, each condition has one param.
     fn restore_request(m: &Manifest, entity: &str, preds: &[(&str, &str, &str)]) -> ir::Request {
         let mut n = 0;
         let items = preds
@@ -239,7 +239,7 @@ mod tests {
         }
     }
 
-    /// request에 새 값의 assignment를 더한다. 값의 parameter는 조건 뒤에 이어진다.
+    /// Adds an assignment of new values to the request. The value parameters follow the conditions.
     fn with_set(mut r: ir::Request, columns: &[&str]) -> ir::Request {
         for column in columns {
             r.set.push(ir::Assign { column: (*column).into(), p: Some(r.n_params), ..Default::default() });
@@ -248,8 +248,8 @@ mod tests {
         r
     }
 
-    // restore는 set 값과 and로 이은 where의 eq 조건이 덮는 primary key나 unique key 하나로 soft delete
-    // column을 NULL로 되돌리는 update 하나다. 지워진 행만 고치고, audit table이면 audit column도 쓴다.
+    // restore is located by one primary key or unique key that the set values and the eq conditions of the where joined with and cover, and sets the soft delete
+    // column back to NULL in one update. It changes only the deleted row, and for an audit table it also writes the audit column.
     #[test]
     fn restore_plans_guarded_update() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -321,8 +321,8 @@ mod tests {
         }
     }
 
-    // set 값과 and로 이은 where의 eq 조건이 key를 덮지 않는 restore, or로 이은 where, key 밖의 key, soft
-    // delete, audit column assignment와 soft_delete가 없는 table의 restore는 IR_INVALID다.
+    // A restore whose set values and and-joined eq conditions do not cover the key, a where joined with or, a key outside those keys, soft
+    // delete, an audit column assignment, and a restore on a table without soft_delete are IR_INVALID.
     #[test]
     fn restore_rejects_other_requests() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

@@ -16,7 +16,7 @@ export function wallMicros(): number {
   const wall = Date.now() * 1000;
   const monotonic = performance.now() * 1000;
   const estimate = Math.floor(clockAnchor + monotonic);
-  // estimate를 Date.now()가 알리는 millisecond 안으로 옮기고, anchor도 함께 옮겨 다음 읽기가 이어지게 한다.
+  // Move the estimate into the millisecond that Date.now() reports, and move the anchor along with it so that the next read continues from there.
   const micros = Math.min(Math.max(estimate, wall), wall + 999);
   if (micros !== estimate) clockAnchor = micros - monotonic;
   return micros;

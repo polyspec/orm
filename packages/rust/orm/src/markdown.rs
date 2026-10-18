@@ -40,9 +40,9 @@ pub struct MarkdownDsn {
 
 const DSN_FORM: &str = "markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>";
 
-/// markdown://127.0.0.1:<port>/<corpus>?token=<token>을 읽는다. flowmark server는 127.0.0.1에서만 듣고
-/// token은 평문으로 가므로 host는 127.0.0.1뿐이다. `corpus`는 percent-decode한 path이고 `pairs`는
-/// `timezone`을 뺀 query parameter다.
+/// Reads markdown://127.0.0.1:<port>/<corpus>?token=<token>. The flowmark server listens only on 127.0.0.1, and
+/// since the token travels in plain text, the host is only 127.0.0.1. `corpus` is the percent-decoded path, and `pairs` are
+/// the query parameters without `timezone`.
 pub(crate) fn parse_markdown_dsn(url: &url::Url, corpus: &str, pairs: &[(String, String)]) -> Result<MarkdownDsn> {
     let bad = |reason: String| Error::Config(format!("{DSN_FORM}; {reason}"));
     if !url.username().is_empty() || url.password().is_some() {
@@ -82,8 +82,8 @@ fn answer_err(msg: impl std::fmt::Display) -> Error {
 }
 
 impl Db {
-    /// markdown 연결에서 SQL 전용 surface가 받는 오류다(docs/dialects.md "Markdown IR executor"). 다른
-    /// 연결에서는 Ok다.
+    /// The error a SQL-only surface gets on a markdown connection (docs/dialects.md "Markdown IR executor"). On other
+    /// connections it is Ok.
     pub(crate) fn unsupported_on_markdown(&self, surface: &str) -> Result<()> {
         if self.is_markdown() {
             return Err(Error::Engine { code: codes::CAPABILITY_UNSUPPORTED.into(), msg: format!("{surface} is not supported by the markdown IR executor") });
@@ -91,13 +91,13 @@ impl Db {
         Ok(())
     }
 
-    /// 연결이 flowmark server의 corpus다.
+    /// The connection is the flowmark server's corpus.
     pub(crate) fn is_markdown(&self) -> bool {
         matches!(self.inner.pool, Pool::Markdown(_))
     }
 
-    /// 이 연결에 등록된 schema의 runtime model이다. 등록되지 않은 manifest는 SQL 연결과 같이
-    /// SCHEMA_HASH_MISMATCH다.
+    /// The runtime model of the schema registered on this connection. An unregistered manifest, as on a SQL connection,
+    /// is SCHEMA_HASH_MISMATCH.
     fn markdown_model(&self, schema: &Schema) -> Result<Arc<Manifest>> {
         let manifest = schema.manifest()?;
         if !self.inner.sets.read().unwrap().contains(schema.hash()) {
@@ -110,14 +110,14 @@ impl Db {
     }
 }
 
-/// flowmark server와의 연결 하나, 곧 server session 하나다. 한 번에 한 task가 쓴다: pool이 내주거나
-/// transaction이 잡는다.
+/// One connection to the flowmark server, that is, one server session. One task uses it at a time: when the pool hands it out or
+/// a transaction holds it.
 pub(crate) struct MdSession {
     read: BufReader<OwnedReadHalf>,
     write: OwnedWriteHalf,
     created: Instant,
-    /// 연결을 더 쓸 수 없음을 뜻한다: 읽기나 쓰기가 실패했거나, 답을 읽기 전에 call의 future가
-    /// drop되었거나, server가 연결을 끝낸다고 답했다.
+    /// Means the connection can no longer be used: a read or write failed, or the call's future was dropped before the reply was read,
+    /// or the server replied that it is ending the connection.
     broken: bool,
 }
 
@@ -128,7 +128,7 @@ struct MdConnect<'a> {
     token: &'a str,
 }
 
-/// control message 하나다: begin, commit, rollback과 savepoint의 message다.
+/// One control message: a begin, commit, rollback, or savepoint message.
 #[derive(Serialize)]
 pub(crate) struct MdControl<'a> {
     pub(crate) op: &'static str,
@@ -145,7 +145,7 @@ pub(crate) fn begin_message(read_only: bool) -> MdControl<'static> {
 }
 
 impl MdSession {
-    /// server에 연결하고 첫 message connect로 corpus와 token을 보낸다.
+    /// Connects to the server and sends the corpus and token in the first message, connect.
     async fn dial(dsn: &MarkdownDsn) -> Result<MdSession> {
         let stream = TcpStream::connect(&dsn.address).await.map_err(|e| Error::Engine {
             code: codes::DRIVER.into(),
@@ -157,9 +157,9 @@ impl MdSession {
         Ok(session)
     }
 
-    /// message 하나를 한 줄로 보내고 답 한 줄을 읽는다. 답이 {"error": {code, message}}이면 그 code의
-    /// 오류다. 답을 읽기 전에 future가 drop되면 session은 끊긴 것으로 남고, pool은 그 연결을 닫는다:
-    /// server는 끊긴 연결의 transaction을 rollback하고 lock을 푼다.
+    /// Sends one message as one line and reads one reply line. If the reply is {"error": {code, message}}, that code's
+    /// error. If the future is dropped before the reply is read, the session stays marked as broken and the pool closes that connection:
+    /// the server rolls back the broken connection's transaction and releases its locks.
     pub(crate) async fn call(&mut self, msg: &impl Serialize) -> Result<Vec<u8>> {
         if self.broken {
             return Err(connection_lost("the flowmark session has ended"));
@@ -179,7 +179,7 @@ impl MdSession {
             self.broken = true;
             return Err(answer_err(format!("the error {error} has no code")));
         }
-        // server는 CONNECTION_LOST를 쓴 뒤 연결을 닫는다(idle transaction).
+        // The server writes CONNECTION_LOST and then closes the connection (idle transaction).
         if code == codes::CONNECTION_LOST {
             self.broken = true;
         }
@@ -197,8 +197,8 @@ impl MdSession {
     }
 }
 
-/// markdown 연결의 session pool이다. 열린 session은 pool size를 넘지 않고, 쉬는 session은 idle size까지
-/// 남긴다. lifetime이 지난 session은 쉬는 동안이나 돌아올 때 닫는다.
+/// The session pool of a markdown connection. Open sessions do not exceed the pool size, and idle sessions are kept, up to the idle size.
+/// Sessions past their lifetime are closed while idle or when they come back.
 pub struct MdPool {
     dsn: MarkdownDsn,
     size: u32,
@@ -215,7 +215,7 @@ struct MdPoolState {
     closed: bool,
 }
 
-/// pool이 내준 session이다. drop하면 pool에 돌아간다.
+/// A session the pool handed out. Dropping it returns it to the pool.
 pub(crate) struct MdLease {
     session: Option<MdSession>,
     pool: Arc<MdPool>,
@@ -236,7 +236,7 @@ impl Drop for MdLease {
     }
 }
 
-/// 새로 여는 session의 자리다. 연결이 실패하거나 그 future가 drop되면 열린 수를 되돌린다.
+/// The slot for a session being opened. If the connection fails or its future is dropped, the open count is reverted.
 struct Opening<'a> {
     pool: &'a MdPool,
     done: bool,
@@ -250,11 +250,11 @@ impl Drop for Opening<'_> {
     }
 }
 
-/// `pool_lifetime_ms`가 0일 때 session의 lifetime이다: SQL 연결의 pool과 같은 30분이다(docs/config.md).
+/// The session lifetime when `pool_lifetime_ms` is 0: 30 minutes, the same as the SQL connection pool (docs/config.md).
 const DEFAULT_LIFETIME: Duration = Duration::from_secs(30 * 60);
 
 impl MdPool {
-    /// `size`개까지 session을 여는 pool이다. 쉬는 session은 `idle`개까지, `lifetime_ms`(0이면 30분) 동안 남긴다.
+    /// A pool that opens up to `size` sessions. Idle sessions are kept up to `idle`, for `lifetime_ms` (30 minutes if 0).
     pub(crate) fn new(dsn: MarkdownDsn, size: u32, idle: u32, lifetime_ms: u32) -> Arc<MdPool> {
         let lifetime = if lifetime_ms == 0 { DEFAULT_LIFETIME } else { Duration::from_millis(lifetime_ms.into()) };
         Arc::new(MdPool {
@@ -267,7 +267,7 @@ impl MdPool {
         })
     }
 
-    /// 쉬는 session을 내주거나 새로 연결한다. 열린 session이 pool size이면 하나가 돌아올 때까지 기다린다.
+    /// Hands out an idle session or connects a new one. If open sessions equal the pool size, it waits until one returns.
     pub(crate) async fn acquire(self: &Arc<Self>) -> Result<MdLease> {
         let closed = || Error::Config("database is closed".into());
         let slot = self.slots.clone().acquire_owned().await.map_err(|_| closed())?;
@@ -291,7 +291,7 @@ impl MdPool {
         Ok(MdLease { session: Some(session), pool: self.clone(), _slot: slot })
     }
 
-    /// session을 pool에 돌려준다. 끊긴 session, lifetime이 지난 session과 닫힌 pool의 session은 닫는다.
+    /// Returns a session to the pool. Broken sessions, sessions past their lifetime, and sessions of a closed pool are closed.
     fn release(&self, session: MdSession) {
         let mut state = self.state.lock().unwrap();
         if session.broken || state.closed || state.idle.len() >= self.idle_size || session.created.elapsed() >= self.lifetime {
@@ -301,7 +301,7 @@ impl MdPool {
         state.idle.push(session);
     }
 
-    /// pool을 닫는다: 쉬는 session을 닫고, 쓰던 session은 돌아올 때 닫는다.
+    /// Closes the pool: idle sessions are closed now, and sessions in use are closed when they return.
     pub(crate) fn close(&self) {
         let mut state = self.state.lock().unwrap();
         state.closed = true;
@@ -316,8 +316,8 @@ impl MdPool {
     }
 }
 
-/// markdown 연결의 pool을 연다. session 하나를 연결해 server가 corpus와 token을 받아들이는지 확인하고
-/// pool에 둔다. statement timeout은 CAPABILITY_UNSUPPORTED다.
+/// Opens the pool of a markdown connection. Connects one session to check that the server accepts the corpus and token, and
+/// puts it in the pool. A statement timeout is CAPABILITY_UNSUPPORTED.
 pub(crate) async fn open_markdown(dsn: MarkdownDsn, size: u32, idle: u32, cfg: &crate::Config) -> Result<Arc<MdPool>> {
     if cfg.statement_timeout_ms > 0 {
         return Err(Error::Engine { code: codes::CAPABILITY_UNSUPPORTED.into(), msg: "statement timeout is not supported by the markdown IR executor".into() });
@@ -327,7 +327,7 @@ pub(crate) async fn open_markdown(dsn: MarkdownDsn, size: u32, idle: u32, cfg: &
     Ok(pool)
 }
 
-/// request message 하나다: {ir_version, manifest_hash, request, params, now}.
+/// One request message: {ir_version, manifest_hash, request, params, now}.
 #[derive(Serialize)]
 struct MdRequest<'a> {
     ir_version: u32,
@@ -337,8 +337,8 @@ struct MdRequest<'a> {
     now: String,
 }
 
-/// req를 검증하고 그 request message를 ex의 session에서 실행해 답과 runtime model을 돌려준다.
-/// transaction 밖이면 pool의 session 하나를 그 request 동안 쓴다.
+/// Validates req, runs that request message in ex's session, and returns the reply and runtime model.
+/// Outside a transaction, it uses one session from the pool for the duration of that request.
 async fn markdown_call(ex: &Executor, req: &mut Req) -> Result<(Vec<u8>, Arc<Manifest>)> {
     if let Some(error) = req.error() {
         return Err(error);
@@ -383,9 +383,9 @@ async fn markdown_call(ex: &Executor, req: &mut Req) -> Result<(Vec<u8>, Arc<Man
     Ok((answer, manifest))
 }
 
-/// parameter i의 runtime value model JSON이다: decimal은 string, bytes는 base64, datetime은 UTC의
-/// `YYYY-MM-DD HH:MM:SS.ffffff`, date는 `YYYY-MM-DD`, time은 `HH:MM:SS.ffffff`다(p 뒤 자리는 0, 문자열 값도 같다). 어느 form인지는 parameter가
-/// 채우는 slot의 type이 정한다. hex와 ip style column의 slot은 SQL 연결처럼 client가 값을 encode해 보낸다.
+/// The runtime value model JSON of parameter i: decimal is a string, bytes is base64, datetime is UTC
+/// `YYYY-MM-DD HH:MM:SS.ffffff`, date is `YYYY-MM-DD`, and time is `HH:MM:SS.ffffff` (digits after p are 0; string values are the same). Which form it is depends on the parameter
+/// fills: the type of the slot it fills decides. For hex and ip style columns, the client encodes the value and sends it, as on SQL connections.
 fn markdown_param(i: usize, value: &Param, slot: Option<&ParamUse<'_>>, aes_key: &str, zone: &crate::db::Zone) -> Result<Value> {
     let ty = slot.map(|u| u.ty.as_str()).unwrap_or("");
     let mut value = value.clone();
@@ -419,24 +419,24 @@ fn markdown_param(i: usize, value: &Param, slot: Option<&ParamUse<'_>>, aes_key:
     })
 }
 
-/// markdown 답의 행 하나: node의 output 값, 그리고 join과 relation의 행이다.
+/// One row of a markdown reply: the node's output values, and the rows of joins and relations.
 pub(crate) struct MdRow {
     pub(crate) vals: Vec<Val>,
-    /// join 이름마다 그 행, left join에 맞는 행이 없으면 None이다.
+    /// The row for each join name; None if there is no matching row for a left join.
     pub(crate) joins: HashMap<String, Option<MdRow>>,
-    /// relation 이름마다 그 행들이다.
+    /// The rows for each relation name.
     pub(crate) rels: HashMap<String, Vec<MdRow>>,
 }
 
-/// row read(one, all, group_count, paginate)의 답: root node의 배치 하나를 가진 plan, 행, 그리고
-/// paginate의 전체 행 수다.
+/// The reply to a row read (one, all, group_count, paginate): a plan with one batch for the root node, the rows, and
+/// for paginate, the total row count.
 pub(crate) struct MdRead {
     pub(crate) plan: Arc<Plan>,
     pub(crate) rows: Vec<MdRow>,
     pub(crate) count: Option<i64>,
 }
 
-/// JSON object의 member를 순서대로 읽는다.
+/// Reads the members of a JSON object in order.
 struct Members(Vec<(String, Box<RawValue>)>);
 
 impl<'de> Deserialize<'de> for Members {
@@ -463,14 +463,14 @@ fn members(raw: &RawValue) -> Result<Vec<(String, Box<RawValue>)>> {
     serde_json::from_str::<Members>(raw.get()).map(|m| m.0).map_err(|e| answer_err(format!("{} is not a JSON object: {e}", raw.get())))
 }
 
-/// 답의 한 node다: root, join, relation 하나가 하나씩이다. node의 column은 첫 행이 정하고 그 뒤 행은 같은
-/// output을 같은 순서로 가져야 한다.
+/// One node of the reply: exactly one each of root, join, and relation. The first row sets the node's columns, and later rows
+/// must have the outputs in the same order.
 struct MdNode<'m> {
     q: &'m ir::Query,
     ent: &'m Entity,
     m: &'m Manifest,
     groups: bool,
-    /// node 자신의 column만 가진 배치다. styled column의 decode가 읽는다. 첫 행 전에는 None이다.
+    /// A batch with only the node's own columns. The decode of styled columns reads it. None before the first row.
     flat: Option<Assemble>,
     joins: Vec<(String, MdNode<'m>)>,
     rels: Vec<MdRel<'m>>,
@@ -496,7 +496,7 @@ impl<'m> MdNode<'m> {
             let target = m.entity(&rel.query.entity)?;
             let parent_keys: Vec<&String> = rel.keys.iter().map(|k| &k.left).collect();
             let child_keys: Vec<&String> = rel.keys.iter().map(|k| &k.right).collect();
-            // 이 행이 relation 행의 외래 key가 가리키는 행이면 그 행들은 이 행에 속한다(planner와 같다).
+            // If this row is the row that a relation row's foreign key points to, those rows belong to this row (as in the planner).
             let cascade = !rel.query.no_cascade_delete
                 && parent_keys.iter().copied().eq(ent.primary_key.iter())
                 && !child_keys.iter().copied().eq(target.primary_key.iter());
@@ -505,8 +505,8 @@ impl<'m> MdNode<'m> {
         Ok(MdNode { q, ent, m, groups, flat: None, joins, rels })
     }
 
-    /// output name의 배치다: group count의 row_count, subquery, column 함수, 아니면 node entity의 column이다.
-    /// markdown executor는 모든 codec stage를 client에 맡기므로 column의 codec 전체가 decode할 style이다.
+    /// The batch for an output name: group count's row_count, a subquery, a column function, or otherwise the node entity's column.
+    /// The markdown executor leaves all codec stages to the client, so it is the style the column's whole codec decodes.
     fn out_col(&self, name: &str, index: usize) -> Result<OutCol> {
         if self.groups && name == "row_count" {
             return Ok(OutCol { index, name: name.into(), typ: "i64".into(), ..Default::default() });
@@ -524,7 +524,7 @@ impl<'m> MdNode<'m> {
         Ok(OutCol { index, name: name.into(), column: name.into(), typ: field.ty.name().into(), styles: field.codec.clone(), ..Default::default() })
     }
 
-    /// scalar subquery column의 type이다.
+    /// The type of a scalar subquery column.
     fn sub_type(&self, sub: &ir::Sub) -> String {
         match sub.agg.as_str() {
             "count" => "i64".into(),
@@ -533,7 +533,7 @@ impl<'m> MdNode<'m> {
         }
     }
 
-    /// node의 첫 행의 output으로 column과 key를 정한다.
+    /// Sets the columns and key from the output of the node's first row.
     fn build(&mut self, outputs: &[&str]) -> Result<()> {
         let mut columns = Vec::with_capacity(outputs.len());
         for (i, name) in outputs.iter().enumerate() {
@@ -550,7 +550,7 @@ impl<'m> MdNode<'m> {
         Ok(())
     }
 
-    /// 답의 행 하나를 읽는다: output 값을 column type으로 읽고 styled column을 decode한다.
+    /// Reads one row of the reply: reads output values as column types and decodes styled columns.
     fn row(&mut self, raw: &RawValue) -> Result<MdRow> {
         let ms = members(raw)?;
         let nested = |name: &str| self.joins.iter().any(|(rel, _)| rel == name) || self.rels.iter().any(|r| r.rel == name);
@@ -582,13 +582,13 @@ impl<'m> MdNode<'m> {
             })?;
             row.vals.push(value);
         }
-        // corpus catalog은 aes column을 거절하므로 keyring이 없다(docs/dialects.md).
+        // The corpus catalog rejects aes columns, so there is no keyring (docs/dialects.md).
         crate::row::decode_styled(self.flat.as_ref().expect("a built node has its columns"), std::slice::from_mut(&mut row.vals), &BTreeMap::new())?;
         Ok(row)
     }
 
-    /// relation의 값을 행 목록으로 읽는다: one relation은 object나 null, many relation은 array, key_by
-    /// relation은 key로 묶은 object다.
+    /// Reads a relation value as a list of rows: a one relation is an object or null, a many relation is an array, and with key_by
+    /// the relation is an object grouped by key.
     fn relation_rows(&mut self, raw: &RawValue) -> Result<Vec<MdRow>> {
         let text = raw.get().trim();
         if text == "null" {
@@ -604,7 +604,7 @@ impl<'m> MdNode<'m> {
         Ok(vec![self.row(raw)?])
     }
 
-    /// node와 그 join, relation의 배치다. 행이 없던 node는 column이 없다.
+    /// The batch of a node and its joins and relations. A node that had no rows has no columns.
     fn assemble(&self) -> Assemble {
         let mut out = self.flat.clone().unwrap_or_else(|| Assemble { entity: self.ent.name.clone(), ..Default::default() });
         for (rel, child) in &self.joins {
@@ -624,7 +624,7 @@ impl<'m> MdNode<'m> {
     }
 }
 
-/// 답의 값 하나를 column type의 값으로 읽는다. 값은 parameter와 같은 runtime value model이다.
+/// Reads one value of the reply as a value of the column type. The value uses the same runtime value model as parameters.
 fn answer_value(typ: &str, raw: &RawValue) -> Result<Val> {
     let bad = || Error::Engine { code: codes::CODEC_DECODE.into(), msg: format!("the answer value {} is not a {typ} value", raw.get()) };
     let value: Value = serde_json::from_str(raw.get()).map_err(|_| bad())?;
@@ -640,7 +640,7 @@ fn answer_value(typ: &str, raw: &RawValue) -> Result<Val> {
     })
 }
 
-/// sum과 avg 답의 값과 insert한 행의 key다: 정수, 소수, decimal string, 없으면 Null이다.
+/// The value of sum and avg replies, and the key of an inserted row: an integer, a decimal number, or a decimal string; Null if absent.
 fn aggregate_value(raw: &RawValue) -> Result<Val> {
     let value: Value = serde_json::from_str(raw.get()).map_err(|e| answer_err(format!("the value {}: {e}", raw.get())))?;
     Ok(match value {
@@ -654,7 +654,7 @@ fn aggregate_value(raw: &RawValue) -> Result<Val> {
     })
 }
 
-/// row read(one, all, group_count, paginate)의 답을 읽는다. plan은 root node의 배치 하나다.
+/// Reads the reply to a row read (one, all, group_count, paginate). The plan is one batch of the root node.
 pub(crate) async fn markdown_read(ex: &Executor, req: &mut Req) -> Result<MdRead> {
     let (answer, m) = markdown_call(ex, req).await?;
     #[derive(Deserialize)]
@@ -676,7 +676,7 @@ pub(crate) async fn markdown_read(ex: &Executor, req: &mut Req) -> Result<MdRead
     Ok(MdRead { plan: Arc::new(plan), rows, count: a.count })
 }
 
-/// count, sum, avg의 답이다.
+/// The reply of count, sum, and avg.
 pub(crate) async fn markdown_scalar(ex: &Executor, req: &mut Req) -> Result<Val> {
     let (answer, _) = markdown_call(ex, req).await?;
     let text = || String::from_utf8_lossy(&answer).into_owned();
@@ -692,8 +692,8 @@ pub(crate) async fn markdown_scalar(ex: &Executor, req: &mut Req) -> Result<Val>
     aggregate_value(&raw)
 }
 
-/// write의 답 {affected, keys}이다. keys는 insert한 행의 primary key를 insert 순서로 담는다: identity는
-/// 정수, key_prefix key는 text다.
+/// The reply {affected, keys} of a write. keys holds the primary keys of inserted rows in insert order: for an identity,
+/// an integer; for a key_prefix key, text.
 pub(crate) async fn markdown_write(ex: &Executor, req: &mut Req) -> Result<(Vec<Val>, u64)> {
     let (answer, _) = markdown_call(ex, req).await?;
     #[derive(Deserialize)]

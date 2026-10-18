@@ -1,11 +1,11 @@
-// composite_keys coverage: 두 column primary key 의 row 를 key 로 읽고, foreign key 의 두 성분
-// (tenant_id, account_id)으로 잇는 relation 으로 membership 을 읽고, account 를 지우면
-// ON DELETE CASCADE 가 membership 을 지우는지 확인한다. 쓴 row 는 모두 지운다.
+// composite_keys coverage: reads a row of a two-column primary key by its key, and the two parts of a foreign key
+// (tenant_id, account_id) form a relation that reads the membership, and deleting an account
+// is checked to cascade to the membership with ON DELETE CASCADE. All written rows are deleted.
 import assert from 'node:assert/strict';
 import { CompositeAccount, CompositeMembership, connect } from '../dist/index.js';
 import { runCases, withCleanup } from './coverage_case.mjs';
 
-// 다른 tenant 에도 account 2 가 있어야 account_id 한 성분만으로 잇는 relation 이 드러난다.
+// Account 2 must also exist in another tenant, so that a relation linked by the account_id component alone is exposed.
 const tenant = 990004;
 const otherTenant = 990006;
 
@@ -28,8 +28,8 @@ await runCases('coverage_composite_keys.mjs', {
         await membership().setTenantId(tenant).setAccountId(2).setRole('owner').create();
         await membership().setTenantId(otherTenant).setAccountId(2).setRole('guest').create();
         assert.equal((await account().getByTenantIdAndAccountId(tenant, 2)).getName(), 'b', 'row read by both key components');
-        // relation 은 foreign key 의 두 성분을 key 순서대로 잇는다. 자식이 자기 연결을 가지면 부모 row 를 읽은 뒤
-        // 따로 읽는다. 두 경로가 같은 결과를 낸다.
+        // A relation links the two parts of a foreign key in key order. When a child has its own link, after reading the parent row
+        // it is read separately. The two paths give the same result.
         const same = await account().tenantId(tenant)
           .relations(new CompositeMembership().matchTenantIdWithTenantId().matchAccountIdWithAccountId().aliasMemberships())
           .gets();
@@ -51,7 +51,7 @@ await runCases('coverage_composite_keys.mjs', {
           assert.equal(await membership().tenantId(t).getCount(), 0, `no membership of tenant ${t} remains`);
         }
       }, async () => {
-        // 실패한 실행도 이 case 가 쓴 row 를 남기지 않는다.
+        // Even a failed run leaves no rows written by this case.
         for (const t of [tenant, otherTenant]) {
           await (await membership().tenantId(t).gets()).delete();
           await (await account().tenantId(t).gets()).delete();

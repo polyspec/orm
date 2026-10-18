@@ -89,8 +89,8 @@ fn generated_fields_require_selection_or_assignment() {
 }
 
 impl Target {
-    /// `driver`의 새 case database에 연결하고 schema를 두 번 설치한다(두 번째는 아무것도 바꾸지
-    /// 않는다).
+    /// Connects to a new case database for `driver` and installs the schema twice (the second install
+    /// changes nothing).
     async fn installed(driver: &str) -> Target {
         let t = Target::empty(driver).await;
         t.db.utils().schema().install(&model::SCHEMA).await.unwrap_or_else(|e| panic!("{}: schema().install: {e}", t.driver));
@@ -98,7 +98,7 @@ impl Target {
         t
     }
 
-    /// `driver`의 새 case database(MySQL, PostgreSQL)나 새 SQLite file에 연결한다.
+    /// Connects to a new case database for `driver` (MySQL, PostgreSQL) or a new SQLite file.
     async fn empty(driver: &str) -> Target {
         let database = CaseDatabase::create(driver).await;
         let dsn = if driver == "sqlite" { format!("{}?_pragma=busy_timeout(5000)", database.dsn()) } else { database.dsn().to_owned() };
@@ -106,7 +106,7 @@ impl Target {
         Target { driver: database.driver(), dsn, db, database }
     }
 
-    /// 연결을 닫고 case database를 지운다.
+    /// Closes the connection and drops the case database.
     async fn finish(self) {
         self.db.close().await;
         self.database.drop().await;
@@ -449,8 +449,8 @@ async fn await_replica(primary: &Db, replica: &Db) {
         (Pool::MySql(p), Pool::MySql(r)) => {
             let status = sqlx::raw_sql("SHOW BINARY LOG STATUS").fetch_one(p).await.unwrap();
             let (file, position): (String, u64) = (status.get(0), status.get(1));
-            // 기한은 60초다: replica는 병렬로 실행하는 모든 client의 쓰기를 차례로 적용하므로, 4 vCPU Linux
-            // runner에서 10초 안에 primary 위치에 닿지 못했다.
+            // The deadline is 60 seconds: a replica applies the writes of all clients running in parallel one by one, so on a 4-vCPU Linux
+            // runner it could not reach the primary within 10 seconds.
             let waited: Option<i64> = sqlx::query_scalar("SELECT SOURCE_POS_WAIT(?, ?, 60)").bind(&file).bind(position).fetch_one(r).await.unwrap();
             assert!(waited.is_some_and(|w| w >= 0), "the replica did not reach {file}:{position}");
         }
@@ -463,7 +463,7 @@ async fn await_replica(primary: &Db, replica: &Db) {
 /// without a connection inside a transaction uses the transaction.
 async fn primary_and_replica(t: &Target, replica_base: &str) {
     let master = &t.db;
-    // replica가 case database와 설치된 table을 받을 때까지 replica의 기존 database 연결로 기다린다.
+    // Waits, through the replica's existing database connection, until the replica receives the case database and the installed table.
     let replica_admin = model::connect(replica_base, 1, config()).await.unwrap();
     await_replica(master, &replica_admin).await;
     replica_admin.close().await;
@@ -694,7 +694,7 @@ async fn main() {
         if selected.is_some_and(|case| case != name) {
             continue;
         }
-        // 각 case는 자기 case database에 schema를 설치하고 statement 수백 개 이하를 실행한다.
+        // Each case installs its schema in its own case database and runs no more than a few hundred statements.
         for driver in DRIVERS {
             let case = polyspec_orm_testcase::start(format!("{name}/{driver}"), polyspec_orm_testcase::DATABASE);
             let t = Target::installed(driver).await;

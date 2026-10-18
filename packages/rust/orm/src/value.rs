@@ -311,8 +311,8 @@ impl Val {
     }
 
     /// Moves the string out (leaves Null) — avoids a clone when the row is consumed.
-    /// string field의 값을 꺼낸다. MySQL은 binary collation의 text column을 binary로
-    /// 보고하므로 bytes는 UTF-8 text일 때 string이다.
+    /// Gets the value of a string field. MySQL reports a text column with binary collation as binary,
+    /// so bytes are a string when they are UTF-8 text.
     pub fn take_string(&mut self) -> crate::Result<String> {
         match std::mem::replace(self, Val::Null) {
             Val::Str(value) => Ok(value),

@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
-// composite_keys feature coverage: 두 column primary key의 composite_account와
-// 그 key를 참조하는 composite_membership(ON DELETE CASCADE)을 tenant 990004와
-// 990006으로 쓰고 읽고 지운다. memberships relation은 foreign key의 두 성분
-// (tenant_id, account_id)을 key 순서대로 잇는다. 다른 tenant에도 account 2가
-// 있어야 account_id 한 성분만으로 잇는 relation이 드러난다.
+// composite_keys feature coverage: composite_account with a two-column primary key and
+// composite_membership that refers to that key (ON DELETE CASCADE) are written, read, and removed for tenants 990004 and
+// 990006. The memberships relation links the two parts of the foreign key
+// (tenant_id, account_id) in key order. Account 2 must also exist in another tenant,
+// so that a relation linked only by the account_id part is exposed.
 
 require_once __DIR__ . '/coverage_cases.php';
 
@@ -42,7 +42,7 @@ final class CoverageCompositeKeysTest extends TestCase
                     (new CompositeMembership)($db)->setTenantId(COMPOSITE_OTHER_TENANT)->setAccountId(2)->setRole('guest')->create();
                     $name = (new CompositeAccount)($db)->getByTenantIdAndAccountId(COMPOSITE_TENANT, 2)->getName();
                     Assert::assertTrue($name === 'b', "account by both key components is $name, want b");
-                    // 자식이 자기 연결을 가진 relation은 부모 row를 읽은 뒤 따로 읽는다. 두 경로가 같은 결과를 낸다.
+                    // A child whose relation has its own link reads the parent row first, then reads separately. The two paths give the same result.
                     foreach (['same statement' => new CompositeMembership(), 'own connection' => (new CompositeMembership)($db)] as $path => $child) {
                         $loaded = (new CompositeAccount)($db)->tenantId(COMPOSITE_TENANT)
                             ->relations($child->matchTenantIdWithTenantId()->matchAccountIdWithAccountId()->aliasMemberships())
@@ -63,7 +63,7 @@ final class CoverageCompositeKeysTest extends TestCase
                         Assert::assertTrue($accounts($tenant) === 0 && $memberships($tenant) === 0, "tenant $tenant rows remain after the deletes");
                     }
                 }, function () use ($db, $tenants): void {
-                    // membership은 account 삭제의 cascade로 지워지지만, account 없이 남은 행도 지운다.
+                    // The membership is removed by the cascade when the account is deleted, and rows left without an account are removed too.
                     foreach ($tenants as $tenant) {
                         (new CompositeMembership)($db)->tenantId($tenant)->gets()->delete();
                         (new CompositeAccount)($db)->tenantId($tenant)->gets()->delete();

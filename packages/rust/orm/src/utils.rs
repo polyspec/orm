@@ -28,8 +28,8 @@ impl Db {
     }
 }
 
-/// utils statement 하나의 step이다. `types`는 bind 값마다의 dbspec type이며, utils의 bind는
-/// manifest의 column type이거나 이름과 key 같은 text다.
+/// One step of a utils statement. `types` are the dbspec types for each bind value, and the utils binds
+/// are either the manifest's column types or text such as names and keys.
 fn step(sql: String, types: &[&str]) -> Step {
     Step {
         plan_id: 0,
@@ -101,7 +101,7 @@ impl<'a> Utils<'a> {
         }
     }
 
-    /// 읽기의 executor: 연결의 활성 transaction, 없으면 연결의 pool이다.
+    /// The executor for reads: the connection's active transaction, or the connection's pool if there is none.
     fn read(&self) -> Executor {
         match active_for(self.db) {
             Some(t) => Executor::Tx(t),
@@ -109,13 +109,13 @@ impl<'a> Utils<'a> {
         }
     }
 
-    /// `kind`의 statement를 실행하고 행을 돌려준다. event는 `tables`를 싣는다.
+    /// Runs a statement of `kind` and returns the rows. The event carries `tables`.
     async fn query(&self, ex: &Executor, kind: &str, tables: &[String], sql: String, params: &[Param], types: &[&str]) -> Result<Vec<Vec<Val>>> {
         let rows = ex.query_as(Some(kind), Some(tables), &step(sql, types), params, Vec::new()).await?;
         rows.iter().map(|r| read_row(r, r.len(), self.db.inner.zone)).collect()
     }
 
-    /// `kind`의 statement를 실행하고 바뀐 행 수를 돌려준다. event는 `tables`를 싣는다.
+    /// Runs a statement of `kind` and returns the number of changed rows. The event carries `tables`.
     async fn exec(&self, ex: &Executor, kind: &str, tables: &[String], sql: String, params: &[Param], types: &[&str]) -> Result<u64> {
         Ok(ex.execute_as(Some(kind), Some(tables), &step(sql, types), params).await?.1)
     }
@@ -134,7 +134,7 @@ impl<'a> Utils<'a> {
         .await
     }
 
-    /// text bind만 받는 존재 확인 statement를 실행한다.
+    /// Runs an existence-check statement that takes only text binds.
     async fn exists(&self, sql: &str, params: &[Param]) -> Result<bool> {
         self.db.unsupported_on_markdown("schema inspection")?;
         let rows = self.query(&self.read(), KIND_SCHEMA, &[], sql.to_owned(), params, &vec!["text"; params.len()]).await?;
@@ -182,7 +182,7 @@ impl<'a> Utils<'a> {
             "mysql" => {
                 self.exec(&ex, KIND_UTILITY, &[], format!("SET @`orm.{key}` = ?"), &params[1..], &["text"]).await?;
             }
-            // SQLite에는 transaction-local 값을 담는 database 기능이 없어 transaction이 값을 갖는다.
+            // SQLite has no database feature for holding transaction-local values, so the transaction holds the value.
             _ => {}
         }
         t.locals.lock().unwrap().insert(key.to_owned(), value.to_owned());
@@ -219,25 +219,25 @@ pub struct SchemaUtils<'a> {
 }
 
 impl SchemaUtils<'_> {
-    /// generated schema의 set을 이 연결에 등록한다. database를 읽거나 쓰지 않는다: manifest
-    /// text가 선언한 hash로 hash되는지 확인하고(아니면 CONFIG) set을 등록할 뿐이다. 같은 set을
-    /// 다시 등록하면 아무것도 바꾸지 않는다. database가 set과 같은지는 `install`과
-    /// `add_tables_and_columns`가 설치와 upgrade 때 확인하며, 요청마다 연 연결에도
-    /// `register`가 statement 없이 set을 등록한다(docs/schema.md, "Schema registration").
+    /// Registers a set of the generated schema on this connection. It does not read or write the database: it only checks that the manifest
+    /// text hashes to the declared hash (otherwise CONFIG) and registers the set. Registering the same set
+    /// again changes nothing. Whether the database matches the set is checked by `install` and
+    /// `add_tables_and_columns` at install and upgrade time; connections opened per request do not check it either, and
+    /// `register` registers the set without statements (docs/schema.md, "Schema registration").
     pub fn register(&self, schema: &Schema) -> Result<()> {
         self.u.db.register(schema)
     }
 
-    /// generated schema의 dbspec document set을 연결의 database에 설치하고, database가 set과
-    /// 같은지 확인한 뒤 그 set을 이 연결에 등록한다. manifest text가 선언한 hash로 hash되지
-    /// 않으면 어떤 statement보다 먼저 CONFIG다. 연결의 database를 introspect해, 외부 문서에서
-    /// 쓰는 table이 외부 문서와 다르면 CONFIG다. set이 소유한 table이 하나도 없으면 연결의
-    /// dialect로 render한 statement(docs/dialects.md, "Rendered statements")로 모두 만들고, 모두
-    /// 있으면 아무것도 만들지 않으며, 일부만 있으면 CONFIG다. 그다음 database를 다시 읽어 set이
-    /// 소유한 table을 set과 비교하고, 차이가 있으면 그 차이를 모두 담은 CONFIG다(docs/schema.md,
-    /// "Schema installation"). PostgreSQL과 SQLite는 활성 transaction이나 새 transaction에서
-    /// 적용하므로 실패한 install은 아무것도 남기지 않는다. MySQL은 schema statement를 암묵적으로
-    /// commit하므로 transaction 밖에서 적용하고, transaction 안에서는 CONFIG다.
+    /// Installs the generated schema's dbspec document set into the connection's database and, after checking that the database matches the set,
+    /// registers that set on this connection. If the manifest text does not hash to the declared hash,
+    /// it is CONFIG before any statement. It introspects the connection's database; if a table the set writes from an external document
+    /// differs from the external document, it is CONFIG. If the set owns no tables, the connection's
+    /// dialect renders all of its tables as statements (docs/dialects.md, "Rendered statements"), and if all
+    /// exist, it creates nothing; if only some exist, it is CONFIG. Then it reads the database again to check that the set's
+    /// owned tables match the set; if there is a difference, it is CONFIG holding all differences (docs/schema.md,
+    /// "Schema installation"). PostgreSQL and SQLite apply it in the active transaction or a new one, so a failed install leaves nothing behind. MySQL
+    /// implicitly commits schema statements, so
+    /// it applies them outside a transaction, and inside one it is CONFIG.
     pub async fn install(&self, schema: &Schema) -> Result<()> {
         self.u.db.unsupported_on_markdown("schema install (flowmark install creates a corpus)")?;
         schema.registered()?;
@@ -278,18 +278,18 @@ impl SchemaUtils<'_> {
         self.u.db.register(schema)
     }
 
-    /// 설치한 document set을 generated schema의 새 version으로 더해서만 올린다(docs/schema.md,
-    /// "Adding tables and columns"). 연결의 database를 introspect해 database에 있는 set의 table을
-    /// set과 비교하고, database에 없는 set의 table을 index, foreign key, check, trigger와 함께
-    /// 만들며, 있는 table에 빠진 column 가운데 null이거나 default가 있는 column을 더한다.
-    /// `dbspec::add_tables_and_columns_steps`의 plan step을 실행하므로 바뀐 table의 audit
-    /// trigger도 새 column을 기록하도록 바뀐다. 다른 set의 table은 그대로 두며 set을 등록하지
-    /// 않는다. 다른 차이는 어떤 statement보다 먼저 SCHEMA_DIFFERS다. manifest text가 선언한
-    /// hash로 hash되지 않으면 먼저 CONFIG다. PostgreSQL은 활성 transaction이나 새 transaction에서
-    /// 적용한다. MySQL은 schema statement를 암묵적으로 commit하고, SQLite는 foreign key를 끈 채
-    /// table을 다시 만들어 column을 더하는데 foreign key 설정은 transaction 안에서 바뀌지
-    /// 않으므로, 둘 다 transaction 밖에서 적용하고 안에서는 CONFIG다. 만든 table은 "table", 더한
-    /// column은 "table.column"으로 table 이름, column 순서로 돌려준다.
+    /// Upgrades an installed document set only by adding it as a new version of the generated schema (docs/schema.md,
+    /// "Adding tables and columns"). It introspects the connection's database and compares the set's tables present in the database
+    /// with the set, and creates the set's tables missing from the database together with their indexes, foreign keys, checks, and triggers,
+    /// and adds to existing tables the missing columns that are nullable or have a default.
+    /// It runs the plan steps of `dbspec::add_tables_and_columns_steps`, so the audit
+    /// triggers of changed tables are changed to record the new column. Tables of other sets are left alone, and it does not register
+    /// the set. Any other difference is SCHEMA_DIFFERS before any statement. Manifest text that declares a
+    /// hash it does not match is CONFIG first. PostgreSQL applies it in the active transaction or a new one.
+    /// MySQL implicitly commits schema statements, and SQLite, with foreign keys turned off,
+    /// rebuilds the table to add the column, and the foreign key setting cannot change inside a transaction,
+    /// so both are applied outside a transaction and are CONFIG inside one. Created tables are reported as "table", and added
+    /// columns as "table.column", by table name and column order.
     pub async fn add_tables_and_columns(&self, schema: &Schema) -> Result<Vec<String>> {
         self.u.db.unsupported_on_markdown("add_tables_and_columns (schema evolution follows the flowmark migration rules)")?;
         schema.registered()?;
@@ -323,7 +323,7 @@ impl SchemaUtils<'_> {
                 let mut conn = pool.acquire().await?;
                 let result = without_foreign_keys(db, &mut conn, &target, &refs).await;
                 if result.is_err() {
-                    // foreign key가 꺼졌을 수 있는 연결은 pool에 돌려주지 않는다.
+                    // A connection whose foreign keys may have been turned off is not returned to the pool.
                     conn.close_on_drop();
                 }
                 result
@@ -512,11 +512,11 @@ struct AesSpec {
     keys: Vec<String>,
     version: String,
     columns: Vec<(String, Vec<String>)>,
-    /// key column의 dbspec type이며 `keys` 순서다.
+    /// The dbspec type of the key column, in `keys` order.
     key_types: Vec<&'static str>,
-    /// AES key version column의 dbspec type이다.
+    /// The dbspec type of the AES key version column.
     version_type: &'static str,
-    /// AES column의 dbspec type이며 `columns` 순서다. 암호문은 이 type으로 저장된다.
+    /// The dbspec type of the AES column, in `columns` order. Ciphertext is stored as this type.
     column_types: Vec<&'static str>,
 }
 
@@ -599,7 +599,7 @@ impl AesUtils<'_> {
         let update = format!("UPDATE {} SET {} WHERE {}", q(&spec.table), sets.join(", "), wheres.join(" AND "));
         let new_key = keyring.key(keyring.current)?;
         let tables = std::slice::from_ref(&spec.table);
-        // update의 bind 순서: AES column, 새 version, key, 이전 version.
+        // Bind order for update: AES column, new version, key, previous version.
         let mut update_types = spec.column_types.clone();
         update_types.push(spec.version_type);
         update_types.extend(spec.key_types.iter().copied());
@@ -636,7 +636,7 @@ impl AesUtils<'_> {
     }
 }
 
-/// 연결의 database를 introspect하고 `dbspec::add_tables_and_columns_steps`의 step을 실행한다.
+/// Introspects the connection's database and runs the steps of `dbspec::add_tables_and_columns_steps`.
 async fn add_tables_and_columns_on<C>(
     on: Observed<'_>,
     conn: &mut C,
@@ -660,11 +660,11 @@ where
         });
     }
     for step in &planned.steps {
-        // effect에 table이 없는 step은 table을 싣지 않는다.
+        // A step with no table in its effect does not carry a table.
         let tables: Vec<String> = Some(step.effect.table.clone()).filter(|t| !t.is_empty()).into_iter().collect();
         events::raw_schema(on.db, &mut *conn, Sent::bare(KIND_SCHEMA, &tables, on.transaction, &step.statement)).await?;
     }
-    // step을 실행한 database가 set과 같은지 다시 읽어 확인한다.
+    // Reads the database again after the steps run to check that it matches the set.
     if !planned.steps.is_empty() {
         live = introspect_on(on, &mut *conn, dialect).await?;
     }
@@ -672,8 +672,8 @@ where
     Ok(planned.added)
 }
 
-/// 연결에 set을 설치한다(`SchemaUtils::install` 참고). set이 소유한 table이 하나도 없을 때만
-/// `statements`를 실행하고, 그다음 database가 set과 같은지 확인한다.
+/// Installs the set on the connection (see `SchemaUtils::install`). Only when the set owns no tables at all,
+/// it runs `statements` and then checks that the database matches the set.
 async fn install_on<C>(
     on: Observed<'_>,
     conn: &mut C,
@@ -708,15 +708,15 @@ where
     verify_set(dbspec::installed_differences(&live.document, &live.unsupported, target))
 }
 
-/// schema statement를 실행하는 연결의 출처: 연결과 statement의 transaction 번호다.
+/// The source of the connection running a schema statement: the transaction numbers of the connection and the statement.
 #[derive(Clone, Copy)]
 struct Observed<'a> {
     db: &'a Db,
     transaction: Option<u64>,
 }
 
-/// 연결의 database를 introspect한다. catalog query마다 그 행을 읽은 뒤 행을 바꾸기 전에
-/// event를 publish한다. 행을 바꾸지 못한 것은 statement의 오류가 아니다.
+/// Introspects the connection's database. For each catalog query, after reading its rows and before converting them,
+/// Publishes the event. Failing to change a row is not a statement error.
 async fn introspect_on<C: CatalogFetch>(on: Observed<'_>, conn: &mut C, dialect: dbspec::Dialect) -> Result<crate::dbspec::Introspection> {
     let queries = dbspec::catalog_queries(dialect);
     let mut results = Vec::with_capacity(queries.len());
@@ -730,14 +730,14 @@ async fn introspect_on<C: CatalogFetch>(on: Observed<'_>, conn: &mut C, dialect:
     dbspec::read_catalog(dialect, &results, "schema").map_err(Error::internal)
 }
 
-/// catalog query 하나를 실행하고 그 행의 값을 돌려준다. 실행은 statement 관찰에 기록된다.
+/// Runs one catalog query and returns its row values. The run is recorded in statement observation.
 async fn fetch_catalog<C: CatalogFetch>(on: Observed<'_>, conn: &mut C, query: &str) -> Result<Vec<Vec<dbspec::CatalogValue>>> {
     let rows = events::guarded(on.db, Sent::bare(KIND_SCHEMA, &[], on.transaction, query), async { conn.fetch(query).await.map_err(Error::from) }).await?;
     C::values(&rows).map_err(Error::from)
 }
 
-/// 연결의 database를 introspect하고, set이 외부 문서에서 쓰는 table이 외부 문서와 다르면
-/// CONFIG다(docs/dbspec.md "External documents").
+/// Introspects the connection's database; if a table the set uses from an external document differs from that document,
+/// it is CONFIG (docs/dbspec.md "External documents").
 async fn introspect_set<C: CatalogFetch>(
     on: Observed<'_>,
     conn: &mut C,
@@ -749,7 +749,7 @@ async fn introspect_set<C: CatalogFetch>(
     Ok(live)
 }
 
-/// database가 set과 다르면 그 차이를 모두 담은 CONFIG다.
+/// If the database differs from the set, it is CONFIG holding all of those differences.
 fn verify_set(differences: Vec<String>) -> Result<()> {
     if differences.is_empty() {
         return Ok(());
@@ -757,8 +757,8 @@ fn verify_set(differences: Vec<String>) -> Result<()> {
     Err(Error::Config(format!("the database differs from the document set: {}", differences.join("; "))))
 }
 
-/// set의 schema text 문서다. database와 비교하는 대상이다. schema text의 use 줄은 외부 문서를
-/// 가리키므로 외부 문서를 집합으로 삼아 parse한다.
+/// The schema text document of the set, the target compared with the database. The use lines of the schema text point to external documents,
+/// so external documents are parsed as part of the set.
 fn schema_target(documents: &[Document]) -> Result<Document> {
     let refs: Vec<&Document> = documents.iter().collect();
     let manifest = dbspec::manifest(&refs).map_err(invalid)?;
@@ -766,18 +766,18 @@ fn schema_target(documents: &[Document]) -> Result<Document> {
     dbspec::parse(&manifest.schema_text, &externals).map(|parsed| parsed.document).map_err(invalid)
 }
 
-/// document set의 diagnostic은 SCHEMA_INVALID다.
+/// A diagnostic of the document set is SCHEMA_INVALID.
 fn invalid(errors: Vec<dbspec::Diagnostic>) -> Error {
     Error::Engine { code: codes::SCHEMA_INVALID.into(), msg: errors.iter().map(ToString::to_string).collect::<Vec<_>>().join("; ") }
 }
 
-/// SQLite 연결의 foreign key를 끄고 BEGIN IMMEDIATE transaction으로 table과 column을 더한 뒤 foreign
-/// key 검사가 row를 돌려주지 않을 때만 commit하고 foreign key를 다시 켠다(docs/plans.md,
-/// "Apply"의 SQLite 다시 만들기).
+/// Turns off foreign keys on the SQLite connection, adds tables and columns in a BEGIN IMMEDIATE transaction, then checks the foreign
+/// key check returns no rows; only then it commits and turns foreign keys back on (docs/plans.md,
+/// "Apply", SQLite rebuild).
 async fn without_foreign_keys(db: &Db, conn: &mut sqlx::SqliteConnection, target: &Document, documents: &[&Document]) -> Result<Vec<String>> {
     let outside = |sql| Sent::bare(KIND_UTILITY, &[], None, sql);
     events::raw_schema(db, &mut *conn, outside("PRAGMA foreign_keys = OFF")).await?;
-    // 이 transaction도 연결의 바깥 transaction이므로 번호를 하나 받는다.
+    // This transaction is also an outer transaction of the connection, so it receives a number.
     let number = Some(db.next_transaction());
     let inside = |kind, sql| Sent::bare(kind, &[], number, sql);
     let result = async {
@@ -811,12 +811,12 @@ async fn without_foreign_keys(db: &Db, conn: &mut sqlx::SqliteConnection, target
     match (result, restored) {
         (result, Ok(())) => result,
         (Ok(_), Err(e)) => Err(e),
-        // foreign key를 다시 켜지 못한 오류도 message에 남긴다.
+        // An error from failing to turn foreign keys back on is also kept in the message.
         (Err(error), Err(restore)) => Err(Error::Engine { code: error.code().to_owned(), msg: format!("{error}; restoring foreign keys failed: {restore}") }),
     }
 }
 
-/// 외부 문서와 database의 차이를 CONFIG로 돌려준다. 차이가 없으면 Ok다.
+/// Returns a difference between external documents and the database as CONFIG. Ok if there is no difference.
 fn external_error(differences: Vec<String>) -> Result<()> {
     if differences.is_empty() {
         return Ok(());

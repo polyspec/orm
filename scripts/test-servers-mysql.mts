@@ -1,22 +1,22 @@
-// test-servers-mysql는 `test-servers.mts start`가 이미 실행 중인 서버에 대해 부르는 MySQL 설정 검사와
-// migration이다. scripts/test-servers.mts가 선언한 설정(lower_case_table_names)을 기존 data
-// directory의 설정과 비교한다. 같으면 아무것도 하지 않는다. 다르면 data를 옮긴다:
+// test-servers-mysql is the MySQL settings check and migration that `test-servers.mts start` calls for a server already running.
+// It compares the settings declared by scripts/test-servers.mts (lower_case_table_names) with those of the existing data
+// directory. If they match, it does nothing. If they differ, it moves the data:
 //
-//   preflight  새 설정에서 이름이 겹칠 schema와 table을 찾고, 있으면 그 목록과 함께 거부한다
-//   dump       system이 아닌 모든 database(routine, trigger, event 포함)와 사용자를 dump하고
-//              database마다 table, view, routine, trigger, event 수와 table마다 행 수를 적는다
-//   stop       MySQL primary와 replica를 멈춘다
-//   keep       기존 data directory를 .runtime/mysql-before-<stamp>로 옮긴다(지우지 않는다)
-//   start      선언한 설정으로 새 primary와 replica를 초기화하고 시작한다
-//   restore    사용자와 dump를 새 primary에 넣는다(replica는 따라온다)
-//   verify     primary와 replica의 수가 기록과 같은지 확인하고, 다르면 그 차이로 실패한다
-//   record     새 data directory에 설정 marker를 쓰고 migration 기록을 보관한다
+//   preflight  finds schemas and tables whose names would collide under the new settings, and if any, rejects with that list
+//   dump       dumps all non-system databases (including routines, triggers, events) and users,
+//              and records for each database the counts of tables, views, routines, triggers, events and for each table its row count
+//   stop       stops the MySQL primary and replica
+//   keep       moves the existing data directory to .runtime/mysql-before-<stamp> (does not delete it)
+//   start      initializes and starts a new primary and replica with the declared settings
+//   restore    puts the users and dump into the new primary (the replica follows)
+//   verify     checks that the primary and replica counts match the record, and if not, fails with that difference
+//   record     writes the settings marker into the new data directory and keeps the migration record
 //
-// 각 단계는 장기 작업이므로 tests/testcase.mts의 runLong으로 RUN(no-deadline), STEP, PASS나 FAIL과 경과 시간을
-// 출력하고 기한이 없다. 성공과 실패는 각 명령의 종료 코드와 확인한 수로 정한다. replica가 primary의 binary log
-// 위치에 이르기를 기다리는 SOURCE_POS_WAIT에도 timeout이 없다. 진행은
-// .runtime/mysql-migration에 단계마다 기록되므로, 실패한 뒤 다시 실행하면 끝난 단계는 건너뛰고
-// 다음 단계부터 이어 간다. 새 data directory는 기존 것을 옮긴 뒤에만 지우고 다시 만든다.
+// Each step is a long task, so via runLong in tests/testcase.mts it prints RUN (no-deadline), STEP, PASS or FAIL, and the elapsed time,
+// and has no deadline. Success and failure are decided by each command's exit code and the counts checked. Waiting for the replica to reach the primary's binary log
+// position with SOURCE_POS_WAIT also has no timeout. Progress
+// is recorded per step in .runtime/mysql-migration, so after a failed run, running again skips the finished steps and
+// continues from the next step. The new data directory is removed and recreated only after the existing one has been moved.
 //
 // Usage: node scripts/test-servers-mysql.mts <test-servers.mts> <servers dir> <mysql-port> <mysql-replica-port> <lower_case_table_names>
 import { spawn, spawnSync } from 'node:child_process';
@@ -35,12 +35,12 @@ type RunOptions = Context & { input?: Buffer | string; output?: (chunk: Buffer) 
 const SCHEMAS_SCHEMA = new URL('./schema/mysql-migration-schemas.schema.json', import.meta.url).pathname;
 const COUNTS_SCHEMA = new URL('./schema/mysql-migration-counts.schema.json', import.meta.url).pathname;
 
-// SYSTEM_SCHEMAS는 dump하지 않는 MySQL system schema다. SYSTEM_USERS는 초기화가 만드는 계정이다.
+// SYSTEM_SCHEMAS are the MySQL system schemas not dumped. SYSTEM_USERS are the accounts that initialization creates.
 export const SYSTEM_SCHEMAS = ['mysql', 'information_schema', 'performance_schema', 'sys'];
 const SYSTEM_USERS = ['root', 'mysql.sys', 'mysql.session', 'mysql.infoschema'];
 
-// collisions는 lower_case_table_names가 0이 아닌 서버에서 같은 이름이 될 schema와 table을 돌려준다.
-// schemas는 schema 이름, tables는 [schema, table] 목록이다. 결과는 겹치는 이름 묶음마다 한 줄이다.
+// collisions returns the schemas and tables that would have the same name on a server where lower_case_table_names is not 0.
+// schemas are schema names; tables is the list of [schema, table]. The result is one line per group of colliding names.
 export function collisions(schemas: string[], tables: string[][]): string[] {
   const out: string[] = [];
   const group = (names: string[], label: string) => {
@@ -55,8 +55,8 @@ export function collisions(schemas: string[], tables: string[][]): string[] {
   return out;
 }
 
-// countDifferences는 기록한 수(before)와 새 서버의 수(after)가 다른 key마다 한 줄을 돌려준다. key는
-// 소문자로 비교한다: lower_case_table_names=1은 이름을 소문자로 저장한다.
+// countDifferences returns one line for each key where the recorded count (before) and the new server's count (after) differ. The key
+// is compared in lowercase: lower_case_table_names=1 stores names in lowercase.
 export function countDifferences(before: Record<string, number>, after: Record<string, number>): string[] {
   const lower = (counts: Record<string, number>) => new Map(Object.entries(counts).map(([key, value]) => [key.toLowerCase(), value]));
   const a = lower(before);
@@ -67,7 +67,7 @@ export function countDifferences(before: Record<string, number>, after: Record<s
   return out;
 }
 
-// run은 program을 실행해 stdout을 돌려준다. stderr 줄은 단계로 내보낸다. signal에 process를 끝낸다.
+// run executes the program and returns its stdout. stderr lines are emitted as steps. On a signal, it ends the process.
 function run(program: string, args: string[], { signal, step, input, output }: RunOptions = {}): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     const child = spawn(program, args, { stdio: [input ? 'pipe' : 'ignore', output ? 'pipe' : 'pipe', 'pipe'] });
@@ -95,7 +95,7 @@ const rows = async (port: string, sql: string, context?: Context): Promise<strin
   (await mysql(port, sql, context)).split('\n').filter(Boolean).map((line: string) => line.split('\t'));
 const quote = (name: string): string => `\`${name.replaceAll('`', '``')}\``;
 
-// catalogCounts는 schemas의 table, view, routine, trigger, event 수와 table마다 행 수를 돌려준다.
+// catalogCounts returns, for schemas, the counts of tables, views, routines, triggers, events and the row count of each table.
 async function catalogCounts(port: string, schemas: string[], context: Context): Promise<Record<string, number>> {
   const counts: Record<string, number> = {};
   if (schemas.length === 0) return counts;
@@ -118,9 +118,9 @@ async function catalogCounts(port: string, schemas: string[], context: Context):
   return counts;
 }
 
-// holdExclusive는 이 process가 끝날 때까지 서버의 exclusive lease(tests/lease)를 가진다. migration은
-// 서버를 멈추고 data를 옮기므로, 다른 실행이 서버의 lease를 가지고 있으면 아무것도 바꾸지 않고 그
-// 보유자를 적으며 실패한다. LEASE와 LEASES는 test-servers.mts가 준다.
+// holdExclusive holds the server's exclusive lease (tests/lease) until this process exits. The migration
+// stops the server and moves data, so if another run holds the server's lease, it changes nothing and then
+// fails, naming the holder. LEASE and LEASES are provided by test-servers.mts.
 function holdExclusive() {
   const { LEASE: lease, LEASES: leases } = process.env;
   if (!lease || !leases) throw new Error('LEASE and LEASES are unset; run make test-servers');
@@ -145,7 +145,7 @@ async function main() {
   const done = (name: string) => existsSync(state(`${name}.done`));
   const mark = (name: string, text = '') => writeFileSync(state(`${name}.done`), text);
 
-  // 진행 중인 migration이 없으면 기록된 설정(marker, 없으면 실행 중인 primary)을 선언과 비교한다.
+  // If no migration is in progress, it compares the recorded settings (the marker, or else the running primary) with the declaration.
   if (!existsSync(work)) {
     let recorded: string;
     if (existsSync(marker)) recorded = readFileSync(marker, 'utf8');
@@ -187,7 +187,7 @@ async function main() {
       const statements: string[] = [];
       for (const [user = '', host = ''] of users) {
         const account = `'${user.replaceAll("'", "''")}'@'${host.replaceAll("'", "''")}'`;
-        // print_identified_with_as_hex는 password hash를 hex로 적어 SQL text로 다시 실행할 수 있게 한다.
+        // print_identified_with_as_hex writes the password hash as hex so it can be re-run as SQL text.
         const [[create = ''] = []] = await rows(mysqlPort, `SET SESSION print_identified_with_as_hex = ON; SHOW CREATE USER ${account}`, context);
         statements.push(`${create.replace(/^CREATE USER /, 'CREATE USER IF NOT EXISTS ')};`);
         for (const [grant] of await rows(mysqlPort, `SHOW GRANTS FOR ${account}`, context)) statements.push(`${grant};`);
@@ -210,7 +210,7 @@ async function main() {
       }
     }],
     ['start', async context => {
-      // 기존 data는 keep 단계가 옮겼으므로, 앞선 시도가 남긴 새 data directory만 지운다.
+      // The keep step already moved the existing data, so only the new data directory left by the earlier attempt is removed.
       for (const name of ['mysql', 'mysql-replica']) rmSync(join(dir, name), { recursive: true, force: true });
       await run(process.execPath, [script, 'mysql-start', mysqlPort, replicaPort], context);
     }],

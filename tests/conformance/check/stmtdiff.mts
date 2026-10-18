@@ -1,24 +1,24 @@
-// stmtdiff는 두 statement 목록의 차이를 statement 단위로 적는다(internal/stmtdiff의 Go 형식과 같다): 기대 목록에
-// 없는데 나온 statement(+)와 기대했는데 나오지 않은 statement(-)를 그 kind와 text와 함께, 순서를 지키는 가장 긴 공통
-// 부분(LCS) 밖의 것만 적는다. conformance 비교가 차이를 "다르다"가 아니라 어느 statement가 더해지거나 빠졌는지로
-// 보고하는 데 쓴다.
+// stmtdiff reports the difference between two statement lists, statement by statement (same format as the Go internal/stmtdiff): statements that appear
+// though not in the expected list (+) and expected statements that do not appear (-), with their kind and text. Only what lies outside the longest common
+// subsequence (LCS) that keeps the order. The conformance comparison uses this to report which statements were added or missing,
+// rather than only that the output is "different".
 
-/** 비교할 statement 하나다. key가 같은 두 statement는 같은 것이다. kind와 text는 보고에 쓴다. */
+/** One statement to compare. Two statements with the same key are the same. kind and text are used for reporting. */
 export type Statement = { kind: string; text: string; key: string };
 
 /**
- * 차이 하나다. added면 나왔지만 기대하지 않은 statement, 아니면 기대했지만 나오지 않은 statement다. index는 그
- * statement가 속한 목록(added면 나온 목록, 아니면 기대 목록)에서의 1부터 센 위치다.
+ * One difference. If added, it is a statement that appeared but was not expected; otherwise it is an expected statement that did not appear. index is the
+ * 1-based position within the list the statement belongs to (the list where it appeared if added, otherwise the expected list).
  */
 export type Change = { added: boolean; index: number; statement: Statement };
 
-/** changeLine은 차이 하나의 줄이다: `+ #2 insert INSERT a`. */
+/** changeLine is the line for one difference: `+ #2 insert INSERT a`. */
 export function changeLine(change: Change): string {
   const text = change.statement.text === '' ? '' : ` ${change.statement.text}`;
   return `${change.added ? '+' : '-'} #${change.index} ${change.statement.kind}${text}`;
 }
 
-/** diff는 expected를 got으로 바꾸는 가장 작은 더하기와 빼기를 expected의 순서대로 돌려준다. */
+/** diff returns the smallest additions and removals that turn expected into got, in the order of expected. */
 export function diff(expected: Statement[], got: Statement[]): Change[] {
   const n = expected.length;
   const m = got.length;
@@ -49,7 +49,7 @@ export function diff(expected: Statement[], got: Statement[]): Change[] {
   return changes;
 }
 
-/** summary는 차이를 kind의 무리(group이 kind에 준 이름)마다 센 한 줄이다. 예: "+2 transaction-control, -1 model". */
+/** summary is the one-line count of differences per kind group (the name given to a kind by group). Example: "+2 transaction-control, -1 model". */
 export function summary(changes: Change[], group: (kind: string) => string): string {
   const counts = new Map<string, number>();
   for (const change of changes) {
@@ -61,8 +61,8 @@ export function summary(changes: Change[], group: (kind: string) => string): str
 }
 
 /**
- * statementGroup은 statement event의 kind를 무리로 나눈다(docs/usage.md "Statement events"): model,
- * transaction-control, schema, utility. 그 밖의 kind는 그대로 둔다.
+ * statementGroup divides the kinds of statement events into groups (docs/usage.md "Statement events"): model,
+ * transaction-control, schema, utility. Other kinds are left as they are.
  */
 export function statementGroup(kind: string): string {
   if (['select', 'insert', 'update', 'delete'].includes(kind)) return 'model';

@@ -70,7 +70,7 @@ class SqliteDriverErrorTest(unittest.TestCase):
         self.assertIsInstance(error.cause, sqlite3.Error)
         self.assertEqual(str(error), f"{code}: sqlite: {message}")
         self.assertEqual(str(error), f"{code}: sqlite: {error.cause}")
-        # 실패한 statement의 event는 caller가 받는 그 ORM 오류를 담는다.
+        # The event of a failed statement carries the ORM error that the caller receives.
         failed = [event.error for event in self.events if event.error is not None]
         self.assertEqual(len(failed), 1)
         self.assertIs(failed[0], error)
@@ -158,9 +158,9 @@ class SqliteDriverErrorTest(unittest.TestCase):
         self.assertEqual(busy.code, "CANCELED")
 
         class Frame:
-            """row lock statement만 busy 오류로 실패하는 transaction frame이다. run은
-            TxFrame.run과 같은 인자를 받고, row lock table의 statement가 statement
-            fault를 소비하지 않는지(protocol 3.2) faultable로 확인한다."""
+            """Transaction frame that fails only row lock statements with a busy error. run
+            Takes the same arguments as TxFrame.run, and checks, for a statement on a row lock table,
+            that it does not consume the fault (protocol 3.2), using faultable."""
 
             def run(
                 self,
@@ -200,7 +200,7 @@ class _Cursor:
 
 
 class _Connection:
-    """execute마다 주어진 오류를 던지는 driver 연결이다."""
+    """Driver connection that throws the given error on every execute."""
 
     def __init__(self, error, closed=False):
         self.error = error
@@ -219,7 +219,7 @@ def postgres_error(sqlstate: str, message: str):
 
 
 class ServerDriverErrorTest(unittest.TestCase):
-    """MySQL과 PostgreSQL 연결의 statement 경로가 driver 오류를 같은 표로 바꾼다."""
+    """The statement path of the MySQL and PostgreSQL connections maps driver errors to the same table."""
 
     MYSQL = [
         (

@@ -11,8 +11,8 @@
 //! of TEST_ENV), not through a pooler. Each case runs in a case database of its
 //! own (polyspec-orm-case-database). The test fails when one of the four DSNs is unset.
 //!
-//! `rollback_fault_*` case는 test entry point `polyspec_orm::testing`의 rollback fault를
-//! 설정하며 feature `test-faults`로 실행한다:
+//! The `rollback_fault_*` cases set the rollback fault of the test entry point `polyspec_orm::testing`
+//! and run with feature `test-faults`:
 //! `cargo test -p polyspec-orm --features test-faults --test rollback`.
 
 use std::time::Duration;
@@ -165,7 +165,7 @@ async fn rollback_failed(driver: &str, dsn: &str, session: &str) {
         .expect_err("transaction");
     let callback = check_rollback(driver, &error, "transaction");
     if driver != "sqlite" {
-        // server가 끝낸 session의 다음 statement와 rollback은 연결을 잃은 오류다.
+        // The next statement and rollback on a session the server ended are lost-connection errors.
         let polyspec_orm::Error::Rollback { rollback, .. } = &error else { unreachable!() };
         assert_eq!(callback.code(), polyspec_orm::codes::CONNECTION_LOST, "{driver}: the callback error is {callback}");
         assert_eq!(rollback.code(), polyspec_orm::codes::CONNECTION_LOST, "{driver}: the rollback error is {rollback}");
@@ -201,14 +201,14 @@ async fn savepoint_rollback_failed(driver: &str, dsn: &str, session: &str) {
     db.close().await;
 }
 
-/// rollback fault case의 callback 오류다.
+/// The callback error of a rollback fault case.
 #[cfg(feature = "test-faults")]
 fn fault_callback() -> polyspec_orm::Error {
     polyspec_orm::Error::Config("rollback fault callback failed".into())
 }
 
-/// rollback fault의 ROLLBACK 오류가 callback 오류와 FAULT 오류를 가지는지
-/// 확인한다.
+/// The ROLLBACK error of a rollback fault carries the callback error and the FAULT error;
+/// this is checked.
 #[cfg(feature = "test-faults")]
 fn check_fault(driver: &str, error: &polyspec_orm::Error, subject: &str) {
     let callback = check_rollback(driver, error, subject);
@@ -217,12 +217,12 @@ fn check_fault(driver: &str, error: &polyspec_orm::Error, subject: &str) {
     assert_eq!(rollback.code(), "FAULT", "{driver}: {subject}: rollback error {rollback}");
 }
 
-/// test entry point의 rollback fault다. commit된 transaction은 fault를 남기고,
-/// callback이 실패한 다음 transaction은 rollback되며 그 rollback은 FAULT를
-/// 보고하고 transaction은 callback 오류와 fault를 가진 ROLLBACK을 반환한다.
-/// fault는 소비된다: 그 뒤 transaction은 callback 오류만 반환한다.
-/// `transaction_send`와 `transaction_once`도 설정된 fault를 같은 방식으로
-/// 소비하고, connection은 이후 요청을 처리한다.
+/// The rollback fault of the test entry point. A committed transaction leaves the fault in place,
+/// and the next transaction whose callback fails is rolled back, and that rollback reports FAULT
+/// and the transaction returns a ROLLBACK carrying the callback error and the fault.
+/// The fault is consumed: afterwards, the transaction returns only the callback error.
+/// `transaction_send` and `transaction_once` also consume the configured fault in the same way
+/// , and the connection handles later requests.
 #[cfg(feature = "test-faults")]
 async fn rollback_fault(driver: &str, dsn: &str) {
     let db = installed(driver, dsn).await;
@@ -273,7 +273,7 @@ async fn rollback_fault(driver: &str, dsn: &str) {
     db.close().await;
 }
 
-/// case를 자기만의 case database에서 기한 안에 실행하고, 끝나면 database를 지운다.
+/// Runs the case within its deadline in its own case database, and drops the database when done.
 async fn bounded(driver: &str, case: &str) {
     let database = CaseDatabase::create(driver).await;
     let dsn = database.dsn();
@@ -348,8 +348,8 @@ async fn rollback_fault_postgres() {
     bounded("postgres", "rollback_fault").await;
 }
 
-/// test entry point는 feature `test-faults`가 있을 때만 있으며, crate의 어떤
-/// default feature도 그것을 켜지 않는다.
+/// The test entry point exists only when feature `test-faults` is enabled, and no
+/// default feature enables it.
 #[test]
 fn rollback_fault_entry() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);

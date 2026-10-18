@@ -1,8 +1,8 @@
-// root npm script가 쓰는 repository path 검사. `/`가 있는 단어는 repository path이고,
-// tracked file이거나 tracked file을 가진 directory여야 한다.
+// Check of the repository paths used by root npm scripts. A word that contains `/` is a repository path,
+// and must be a tracked file or a directory that has tracked files.
 
-// scriptPathErrors는 scripts({name: command})에서 tracked가 아닌 path마다 오류 하나를 돌려준다.
-// tracked는 repository root 기준 tracked file path 목록이다.
+// scriptPathErrors returns one error for each path in scripts({name: command}) that is not tracked.
+// tracked is the list of tracked file paths relative to the repository root.
 export function scriptPathErrors(scripts: Record<string, string>, tracked: string[]): string[] {
   const files = new Set(tracked);
   const directories = new Set<string>();
@@ -20,20 +20,20 @@ export function scriptPathErrors(scripts: Record<string, string>, tracked: strin
   return errors;
 }
 
-// otherLanguages는 repository의 도구 언어(Go, PHP, Rust, TypeScript와 JavaScript, shell) 밖의 program
-// 확장자다. 도구 하나가 다른 언어를 쓰면 그 runtime이 모든 machine과 runner의 의존이 된다.
+// otherLanguages is the extensions of programs outside the repository's tool languages (Go, PHP, Rust, TypeScript and JavaScript, shell).
+// If one tool used another language, that runtime would become a dependency of every machine and runner.
 const otherLanguages = /\.(?:py|rb|pl|pm|lua|java|kt|cs|swift|scala|r)$/i;
 
-// pythonRunners는 Python 구현을 시험하는 Python 파일의 정확한 목록이다. 명세(polyspec Python 구현과 도구 언어 통일 명세)는
-// Python 구현을 시험하는 runner를 Python으로 쓴다고 정한다. 목록은 다음 다섯 곳뿐이다:
-//   packages/python (Python client와 그 도구)
-//   packages/python/testing/interfaces/python.py와 tests/interfaces/test_*.py
-//   tests/conformance의 python runner (파일 이름에 python이 드는 것)
-//   tests/dbspec/compare의 python runner (파일 이름에 python이 드는 것)
-// 이 밖의 Python 프로그램은 면제되지 않는다.
+// pythonRunners is the exact list of Python files that test the Python implementation. The spec (polyspec Python implementation and tool-language unification spec)
+// sets that the runner testing the Python implementation is written in Python. The list is only these five places:
+//   packages/python (the Python client and its tools)
+//   packages/python/testing/interfaces/python.py and tests/interfaces/test_*.py
+//   the python runner in tests/conformance (file names containing python)
+//   the python runner in tests/dbspec/compare (file names containing python)
+// Other Python programs are not exempt.
 const pythonRunners = /^(?:packages\/python\/|tests\/interfaces\/(?:test_[^/]*|python)\.py$|tests\/conformance\/[^/]*python[^/]*\.py$|tests\/dbspec\/compare\/[^/]*python[^/]*\.py$)/;
 
-// toolingLanguageErrors는 tracked 가운데 다른 언어의 program file마다 오류 하나를 돌려준다.
+// toolingLanguageErrors returns one error for each program file of another language among the tracked files.
 export function toolingLanguageErrors(tracked: string[]) {
   return tracked.filter((path: string) => otherLanguages.test(path) && !pythonRunners.test(path))
     .map((path: string) => `${path} is a program in a language outside Go, PHP, Rust and TypeScript; write the tool in one of them`);

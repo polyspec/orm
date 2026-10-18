@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-// fixtureCase는 contracts/fixtures의 feature fixture에 있는 case 하나다.
+// fixtureCase is one case in a feature fixture under contracts/fixtures.
 type fixtureCase struct {
 	ID        string          `json:"id"`
 	Operation string          `json:"operation"`
@@ -20,8 +20,8 @@ type fixtureCase struct {
 	Schema string `json:"schema"`
 }
 
-// featureFixture는 feature fixture에서 id의 case를 읽고, case의 operation이
-// operation인지 확인한다. 없거나 반복된 id는 실패다.
+// featureFixture reads the case with the id from a feature fixture and checks that the case's operation
+// is an operation. A missing or repeated id fails.
 func featureFixture(t *testing.T, feature, id, operation string) fixtureCase {
 	t.Helper()
 	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "fixtures", feature+".json"))
@@ -53,7 +53,7 @@ func featureFixture(t *testing.T, feature, id, operation string) fixtureCase {
 	return found[0]
 }
 
-// decodeFixture는 fixture의 JSON 값을 out에 엄격히 읽는다.
+// decodeFixture strictly reads the fixture's JSON value into out.
 func decodeFixture(t *testing.T, raw json.RawMessage, out any) {
 	t.Helper()
 	decoder := json.NewDecoder(bytes.NewReader(raw))

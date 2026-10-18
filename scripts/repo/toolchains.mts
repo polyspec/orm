@@ -1,10 +1,10 @@
-// 개발 PHP와 Rust version 검사. Node(node.mts)처럼 검사를 실행하는 PHP와 Rust는 각각 한 file이
-// 한 번 선언한 것 하나이고, 로컬 검사와 모든 workflow가 그것으로 실행한다.
-//   - PHP: `.php-version`의 x.y. setup-php와 Homebrew의 php는 x.y의 patch release를 고르므로 선언은
-//     x.y다. packages/php/composer.json의 require.php(">=x.y")는 PHP client가 지원하는 최저
-//     release이며 make php-min-check가 실행한다.
-//   - Rust: rust-toolchain.toml의 channel x.y.z. Makefile은 그 channel을 읽고, workflow는
-//     인자 없는 `rustup toolchain install`로 그 file의 toolchain을 설치한다.
+// Development PHP and Rust version check. Like Node (node.mts), PHP and Rust that run the check each have one file
+// declaring one thing, and both the local checks and every workflow run with it.
+//   - PHP: x.y of `.php-version`. setup-php and Homebrew's php pick x.y patch releases, so the declaration is
+//     x.y. require.php (">=x.y") in packages/php/composer.json is the lowest release that the PHP client supports,
+//     and make php-min-check runs it.
+//   - Rust: channel x.y.z of rust-toolchain.toml. The Makefile reads that channel, and workflows
+//     install that file's toolchain with `rustup toolchain install` without arguments.
 
 import { parse as parseToml } from 'smol-toml';
 import semver from 'semver';
@@ -12,37 +12,37 @@ import { commands, type SimpleCommand } from './shell.mts';
 import { makeRecipes } from './testcases.mts';
 import { actionSteps, environment, workflowSteps, type WorkflowStep } from './workflow.mts';
 
-// MINIMUM_SCRIPT는 composer.json require.php의 최저 release를 출력하는 script다.
+// MINIMUM_SCRIPT is the script that prints the lowest release of composer.json's require.php.
 const MINIMUM_SCRIPT = 'node scripts/php/php-min.mts';
-// MINIMUM_STEP은 그 release를 setup-php의 입력으로 적는 CI step의 명령이다.
+// MINIMUM_STEP is the command of the CI step that writes that release as the input of setup-php.
 const MINIMUM_STEP = 'make --no-print-directory ci-php-min-version >> "$GITHUB_OUTPUT"';
-// runs는 workflow의 step이 실행하는 simple command(scripts/repo/shell.mts) 중 test에 맞는 것이 있는지 돌려준다.
+// runs returns whether a simple command (scripts/repo/shell.mts) run by a workflow step matches the test.
 const runs = (workflow: string, test: (command: SimpleCommand) => boolean) =>
   workflowSteps(workflow).some(step => step.run !== '' && commands(step.run, 'workflow').some(test));
-// installsToolchain은 command가 인자 없는 `rustup toolchain install`, 곧 rust-toolchain.toml의 toolchain 설치인지 돌려준다.
+// installsToolchain returns whether a command is `rustup toolchain install` without arguments, that is, the installation of the toolchain in rust-toolchain.toml.
 const installsToolchain = (command: SimpleCommand) => command.name === 'rustup' && command.args.join(' ') === 'toolchain install';
-// makes는 command가 make로 target을 실행하는지 돌려준다.
+// makes returns whether a command runs a target with make.
 const makes = (command: SimpleCommand, target: string) => command.name === 'make' && command.args.includes(target);
-// release는 x.y나 x.y.z를 semver version으로 읽는다(x.y는 x.y.0). 읽을 수 없으면 던진다.
+// release reads x.y or x.y.z as a semver version (x.y is x.y.0). It throws if it cannot read the version.
 const release = (text: string): semver.SemVer => {
   const read = semver.coerce(text);
   if (!read) throw new Error(`${text} is no release`);
   return read;
 };
-// sameMajorMinor는 두 version의 major와 minor가 같은지 돌려준다. patch는 비교하지 않는다.
+// sameMajorMinor returns whether two versions have the same major and minor. patch is not compared.
 const sameMajorMinor = (a: string, b: string): boolean => semver.major(release(a)) === semver.major(release(b)) && semver.minor(release(a)) === semver.minor(release(b));
 const below = (a: string, b: string): boolean => semver.lt(release(a), release(b));
 
-// phpVersionErrors는 PHP version 선언이 하나가 아니거나 실행 중인 PHP와 다른 곳마다 오류 하나를
-// 돌려준다. declared는 `.php-version`의 내용, minimum은 composer.json의 require.php, workflows는
-// {path: text}, running은 실행 중인 php의 PHP_MAJOR_VERSION.PHP_MINOR_VERSION이다.
-//   - declared는 정확한 x.y 하나이고 minimum(">=x.y")보다 낮지 않다.
-//   - shivammathur/setup-php step은 `php-version-file: .php-version`으로 읽고 `php-version`을
-//     직접 적지 않는다. 예외 하나는 make php-min-check의 최저 release를 설치하는 step으로,
-//     scripts/php/php-min.mts --version을 쓰는 step `php-min`의 output만 읽는다. 마지막
-//     setup-php step은 .php-version을 읽어 그 PHP가 PATH의 php가 된다. php나 composer를
-//     실행하는 workflow는 setup-php를 쓴다.
-//   - running은 declared와 같다.
+// phpVersionErrors returns one error at each place where the PHP version declaration is not one, or differs from the running PHP;
+// declared is the content of `.php-version`, minimum is composer.json's require.php, and workflows is
+// {path: text}, and running is PHP_MAJOR_VERSION.PHP_MINOR_VERSION of the running php.
+//   - declared is one exact x.y and is not lower than minimum (">=x.y").
+//   - A shivammathur/setup-php step reads with `php-version-file: .php-version` and does not write `php-version`
+//     directly. One exception is the step that installs make php-min-check's lowest release, which
+//     reads only the output of the step `php-min` that uses scripts/php/php-min.mts --version. The last
+//     setup-php step reads .php-version, so that PHP becomes the php in PATH. A workflow that runs php or composer
+//     uses setup-php.
+//   - running is the same as declared.
 export function phpVersionErrors(declared: string, minimum: string | undefined, workflows: Record<string, string>, running: string): string[] {
   const errors: string[] = [];
   const exact = /^\d+\.\d+$/.test(declared.trim()) && declared === `${declared.trim()}\n`;
@@ -55,9 +55,9 @@ export function phpVersionErrors(declared: string, minimum: string | undefined, 
     const steps = actionSteps(workflow, 'shivammathur/setup-php');
     if (runs(workflow, command => command.name === 'php' || command.name === 'composer') && steps.length === 0)
       errors.push(`${path} runs PHP without shivammathur/setup-php`);
-    // php-min step은 composer.json의 최저 release를 output version으로 쓰고, 그 release를
-    // 설치하는 setup-php step은 그 output만 읽는다.
-    // 그 step은 make ci-php-min-version(${MINIMUM_SCRIPT} --version을 version=x.y로 적는 target)을 실행한다.
+    // The php-min step writes composer.json's lowest release as the output version, and the setup-php step that
+    // installs that release reads only that output.
+    // That step runs make ci-php-min-version (the target that writes ${MINIMUM_SCRIPT} --version as version=x.y).
     const minimumStep = workflowSteps(workflow).some(step => step.id === 'php-min' &&
       step.run === MINIMUM_STEP);
     const readsFile = (step: WorkflowStep) => step.with['php-version-file'] === '.php-version';
@@ -66,7 +66,7 @@ export function phpVersionErrors(declared: string, minimum: string | undefined, 
       return typeof version === 'string' && /^\$\{\{\s*steps\.php-min\.outputs\.version\s*\}\}$/.test(version);
     };
     for (const step of steps) {
-      // 검사의 PHP는 debugger와 coverage driver 없이 실행한다: Xdebug는 hot-path gate의 비율을 바꾼다.
+      // The PHP for the check runs without a debugger or coverage driver: Xdebug changes the ratio of the hot-path gate.
       if (step.with['coverage'] !== 'none')
         errors.push(`${path} sets up PHP without coverage: none, so Xdebug or pcov can load`);
       if (readsMinimum(step)) {
@@ -87,16 +87,16 @@ export function phpVersionErrors(declared: string, minimum: string | undefined, 
   return errors;
 }
 
-// rustToolchainErrors는 Rust toolchain 선언이 하나가 아니거나 실행 중인 rustc와 다른 곳마다 오류
-// 하나를 돌려준다. toolchain은 rust-toolchain.toml, makefile은 Makefile, workflows는 {path: text},
-// running은 `rustc --version`의 version이다.
-//   - toolchain의 channel은 정확한 x.y.z 하나이고 clippy와 rustfmt를 component로 둔다.
-//   - Makefile은 PHYSICAL_RUST_TOOLCHAIN을 rust-toolchain.toml에서 읽고 toolchain을 직접 적지 않는다.
-//   - workflow는 toolchain을 정하는 action(dtolnay/rust-toolchain, actions-rust-lang/
-//     setup-rust-toolchain), `rustup default`, 인자가 있는 `rustup toolchain install`,
-//     `cargo +<toolchain>`, RUSTUP_TOOLCHAIN을 쓰지 않는다. cargo나 Rust cache를 쓰는 workflow는
-//     인자 없는 `rustup toolchain install`로 rust-toolchain.toml의 toolchain을 설치한다.
-//   - running은 channel과 같다.
+// rustToolchainErrors returns one error at each place where the Rust toolchain declaration is not one, or differs from the running rustc;
+// toolchain is rust-toolchain.toml, makefile is the Makefile, workflows is {path: text},
+// and running is the version from `rustc --version`.
+//   - The toolchain channel is one exact x.y.z, with clippy and rustfmt as components.
+//   - The Makefile reads PHYSICAL_RUST_TOOLCHAIN from rust-toolchain.toml and does not write the toolchain directly.
+//   - A workflow uses no action that picks a toolchain (dtolnay/rust-toolchain, actions-rust-lang/
+//     setup-rust-toolchain), no `rustup default`, no `rustup toolchain install` with arguments,
+//     no `cargo +<toolchain>`, and no RUSTUP_TOOLCHAIN. A workflow that uses cargo or the Rust cache
+//     installs rust-toolchain.toml's toolchain with `rustup toolchain install` without arguments.
+//   - running is the same as channel.
 export function rustToolchainErrors(toolchain: string, makefile: string, workflows: Record<string, string>, running: string): string[] {
   const errors: string[] = [];
   const channel = /^\[toolchain\]$[\s\S]*?^channel = "(\d+\.\d+\.\d+)"$/m.exec(toolchain)?.[1];
@@ -119,7 +119,7 @@ export function rustToolchainErrors(toolchain: string, makefile: string, workflo
         environment(workflow).has('RUSTUP_TOOLCHAIN'))
       errors.push(`${path} chooses a Rust toolchain itself; rust-toolchain.toml declares it`);
     const usesRust = runs(workflow, command => command.name === 'cargo') || actionSteps(workflow, 'Swatinem/rust-cache').length > 0;
-    // CI의 step은 make target을 실행하므로, 인자 없는 rustup toolchain install은 make install-rust-toolchain의 recipe에 있다.
+    // CI's steps run make targets, so `rustup toolchain install` without arguments is in the recipe of make install-rust-toolchain.
     const installsRust = runs(workflow, installsToolchain) ||
       (runs(workflow, command => makes(command, 'install-rust-toolchain')) && installRecipe.some(line => commands(line, 'make').some(installsToolchain)));
     if (usesRust && !installsRust)
@@ -147,11 +147,11 @@ export function goVersionErrors(workflows: Record<string, string>) {
   return errors;
 }
 
-// composerVersionErrors는 Composer 선언이 하나가 아니거나 실행 중인 composer와 다른 곳마다 오류 하나를 돌려준다.
-// miseToml은 `mise.toml`의 내용(tool http:composer의 version), workflows는 {path: text}, running은 `composer --version`의 version이다.
-//   - declared는 정확한 x.y.z 하나다.
-//   - 모든 shivammathur/setup-php step은 `tools: composer:<declared>`로 그 release를 설치한다.
-//   - running은 declared와 major.minor가 같다. patch는 상관없다.
+// composerVersionErrors returns one error at each place where the Composer declaration is not one, or differs from the running composer.
+// miseToml is the content of `mise.toml` (the version of tool http:composer), workflows is {path: text}, and running is the version from `composer --version`.
+//   - declared is one exact x.y.z.
+//   - Every shivammathur/setup-php step installs that release with `tools: composer:<declared>`.
+//   - running has the same major and minor as declared. patch does not matter.
 export function composerVersionErrors(miseToml: string, workflows: Record<string, string>, running: string): string[] {
   const errors: string[] = [];
   const tools: unknown = parseToml(miseToml)['tools'];
@@ -170,12 +170,12 @@ export function composerVersionErrors(miseToml: string, workflows: Record<string
   return errors;
 }
 
-// GO_MODULE_ROOT는 저장소 root의 Go module path다(GitHub의 저장소 path).
+// GO_MODULE_ROOT is the Go module path of the repository root (the repository path on GitHub).
 export const GO_MODULE_ROOT = 'github.com/polyspec/orm';
 
-// goModulePathErrors는 추적된 go.mod가 자기 directory의 module path(root는 GO_MODULE_ROOT, 하위 directory는 그 아래 그
-// directory)를 선언하지 않는 곳마다 오류 하나를 돌려준다. go get은 module path에서 저장소와 directory를 찾고, 하위
-// directory의 module은 tag `<dir>/vX.Y.Z`로 release한다. files는 {path: text}다.
+// goModulePathErrors returns one error at each place where a tracked go.mod does not declare the module path of its own directory (GO_MODULE_ROOT for the root, and
+// that directory under it for a subdirectory). go get finds the repository and directory from the module path, and a subdirectory
+// module is released with the tag `<dir>/vX.Y.Z`. files is {path: text}.
 export function goModulePathErrors(files: Record<string, string>) {
   const errors = [];
   for (const [path, text] of Object.entries(files)) {

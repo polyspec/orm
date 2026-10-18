@@ -8,8 +8,8 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// TestCoveragePerformanceGate는 ORM_BENCH_MYSQL_DSN의 seed bench database에서
-// hot path gate를 실행한다. DSN이 없으면 실패한다.
+// TestCoveragePerformanceGate runs the hot path gate against the seeded bench database at ORM_BENCH_MYSQL_DSN.
+// It fails if the DSN is missing.
 func TestCoveragePerformanceGate(t *testing.T) {
 	testcase.Start(t, gateDeadline)
 	hotPathGate(t)

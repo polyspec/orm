@@ -1,6 +1,6 @@
-//! contracts/fixtures/audit.dbs의 item, item_history, audit을 column 이름으로 읽고 쓰는 model과
-//! 그 table을 다루는 도구, audit 기록 transaction case. audit.rs와 coverage_audit_triggers.rs가 함께
-//! 쓴다.
+//! The model that reads and writes the item, item_history, and audit tables of contracts/fixtures/audit.dbs by column name, and
+//! the helpers that work with those tables, and the audit record transaction case. audit.rs and coverage_audit_triggers.rs
+//! both use them.
 
 use std::collections::BTreeMap;
 
@@ -11,7 +11,7 @@ use sqlx::Row;
 pub static SCHEMA: Schema =
     Schema::new(include_str!("../../../../../contracts/fixtures/audit.dbs"), "sha256:c651e923992a61fa5712620c7cf6cf7d1a509796b23c4ae597f58e9f561a0c1f");
 
-/// column 이름으로 값을 읽고 쓰는 model.
+/// A model that reads and writes values by column name.
 macro_rules! row_model {
     ($name:ident, $entity:ident, $entity_name:literal, $columns:expr) => {
         static $entity: Entity =
@@ -56,7 +56,7 @@ macro_rules! row_model {
 row_model!(Item, ITEM, "item", ["seq", "title", "audit_seq", "deleted_at"]);
 row_model!(History, HISTORY, "item_history", ["history_id", "change", "previous_audit_seq", "seq", "title", "audit_seq", "deleted_at"]);
 
-/// audit 값이 없는 transaction의 `.audit(...)` 인자.
+/// The `.audit(...)` argument of a transaction with no audit values.
 #[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
 pub const NO_VALUES: [(&str, &str); 0] = [];
 
@@ -70,25 +70,25 @@ pub fn connected<M: Model>(db: &Db) -> M {
     M::from_core(core)
 }
 
-/// actor를 audit 값으로 주는 audit source다.
+/// An audit source that provides the actor as an audit value.
 pub fn audit_source(actor: &str) -> polyspec_orm::AuditSource {
     let actor = actor.to_owned();
     std::sync::Arc::new(move || Ok(vec![("actor".to_owned(), Param::from(actor.as_str()))]))
 }
 
-/// actor를 audit 값으로 주는 연결 설정이다.
+/// A connection setting that provides the actor as an audit value.
 pub fn audit_config(actor: &str) -> polyspec_orm::Config {
     polyspec_orm::Config { audit_source: Some(audit_source(actor)), ..Default::default() }
 }
 
-/// dsn에 config로 연결하고 audit.dbs를 등록한다. table이 없으면 설치한다.
+/// Connects to dsn with the config and registers audit.dbs. Installs the tables if they are missing.
 pub async fn audit_db(dsn: &str, config: polyspec_orm::Config) -> Db {
     let db = Db::connect(dsn, 2, config).await.unwrap_or_else(|e| panic!("connect: {e}"));
     db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("install: {e}"));
     db
 }
 
-/// statement를 실행하고 그 결과를 돌려준다.
+/// Runs a statement and returns its result.
 pub async fn try_exec(db: &Db, statement: &str) -> Result<(), sqlx::Error> {
     let sql = sqlx::raw_sql(sqlx::AssertSqlSafe(statement.to_owned()));
     match db.pool() {
@@ -99,14 +99,14 @@ pub async fn try_exec(db: &Db, statement: &str) -> Result<(), sqlx::Error> {
     }
 }
 
-// coverage_audit_triggers.rs만 쓴다. audit.rs는 자기 case database를 통째로 지운다.
+// Only coverage_audit_triggers.rs uses this. audit.rs drops its whole case database.
 #[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
 pub async fn exec(db: &Db, statement: &str) {
     try_exec(db, statement).await.unwrap_or_else(|e| panic!("{statement}: {e}"));
 }
 
-/// fixture의 table과, PostgreSQL에서는 table과 함께 지워지지 않는 trigger function을 지운다.
-/// coverage_audit_triggers.rs만 쓴다.
+/// Drops the fixture's tables and, on PostgreSQL, the trigger functions that are not dropped with the tables.
+/// Only coverage_audit_triggers.rs uses this.
 #[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
 pub async fn drop_tables(db: &Db, driver: &str) {
     let q = |name: &str| if driver == "mysql" { format!("`{name}`") } else { format!("\"{name}\"") };
@@ -140,7 +140,7 @@ pub async fn history(db: &Db) -> Vec<BTreeMap<String, Val>> {
     polyspec_orm::model::gets(&q).await.unwrap().into_vec().into_iter().map(|r| r.values).collect()
 }
 
-/// item_history의 (change, previous, seq, title, audit, deleted)를 history_id 순서로 읽는다.
+/// Reads (change, previous, seq, title, audit, deleted) of item_history in history_id order.
 #[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
 pub async fn history_summary(db: &Db) -> Vec<(String, Option<i64>, i64, String, i64, bool)> {
     history(db)
@@ -154,7 +154,7 @@ pub async fn history_summary(db: &Db) -> Vec<(String, Option<i64>, i64, String, 
         .collect()
 }
 
-/// audit 기록을 seq 순서의 (seq, actor) 문자열로 읽는다.
+/// Reads the audit records as (seq, actor) strings in seq order.
 #[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
 pub async fn audit_records(db: &Db) -> Vec<(String, String)> {
     let query = "SELECT seq, actor FROM audit ORDER BY seq";
@@ -179,19 +179,19 @@ pub fn code<T>(r: polyspec_orm::Result<T>) -> String {
     }
 }
 
-/// audit 기록을 받은 transaction의 write를 확인한다(packages/go/orm/audit_transaction_test.go의 auditCase와
-/// 같은 순서). db에는 audit.dbs가 설치되어 있고 table은 비어 있다. 확인하는 것:
-///   - 연결 설정의 audit source가 준 값과 transaction의 audit 값을 합친 기록 하나를 transaction이 callback 전에
-///     audit setting의 references table에 삽입하고(같은 column이면 transaction 값이 이긴다), audit table의
-///     insert, update, soft delete는 그
-///     primary key를 audit column에 쓴다. trigger가 각 version을 history table에 남기고 previous는 이전
-///     version의 audit key다.
-///   - audit source가 없는 연결의 audit transaction, audit 기록 table의 column이 아닌 값(transaction이나
-///     source의 값)은 CONFIG이고, source의 오류는 transaction의 오류다.
-///   - 중첩 transaction은 바깥 audit을 쓰며 자기 audit을 받지 않는다(CONFIG).
-///   - audit 없는 audit table write는 CONFIG다. 없는 audit 기록을 가리키는 raw write는 foreign key가
-///     거부한다.
-///   - callback이 실패하면 audit 기록도 rollback된다.
+/// Checks the writes of a transaction that received an audit record (in the same order as auditCase in
+/// packages/go/orm/audit_transaction_test.go). The db has audit.dbs installed and its tables are empty. It checks:
+///   - the transaction inserts, before the callback, one record combining the values from the connection setting's audit source and the transaction's audit values,
+///     into the references table of the audit setting (for the same column, the transaction value wins), and
+///     inserts, updates, and soft deletes write the
+///     primary key to the audit column. The trigger keeps each version in the history table, and previous is the
+///     audit key of the previous version.
+///   - an audit transaction on a connection with no audit source, or a value that is not a column of the audit record table (a transaction or
+///     source value) is CONFIG, and a source's error is the transaction's error.
+///   - a nested transaction uses the outer audit and does not receive its own audit (CONFIG).
+///   - an audit table write without audit is CONFIG. A raw write that points to a missing audit record is
+///     rejected by its foreign key.
+///   - if the callback fails, the audit record is also rolled back.
 #[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
 pub async fn audit_case(driver: &str, dsn: &str) {
     let adb = audit_db(dsn, audit_config("default")).await;
@@ -225,7 +225,7 @@ pub async fn audit_case(driver: &str, dsn: &str) {
             let seq = polyspec_orm::model::create(&mut new_item("first")).await?.value("seq").expect("generated seq").as_i64()?;
             let nested = adb.transaction(async || Ok(())).audit([("actor", "nested")]).await;
             assert_eq!(code(nested), polyspec_orm::codes::CONFIG, "{driver}: a nested transaction with an audit");
-            // 중첩 transaction은 바깥 audit을 쓴다.
+            // The nested transaction uses the outer audit.
             db.transaction(async || polyspec_orm::model::update(&mut changed_item(seq, "second"), false).await).retry(0).await?;
             Ok(seq)
         })
@@ -236,7 +236,7 @@ pub async fn audit_case(driver: &str, dsn: &str) {
     let mut titled = changed_item(seq, "third");
     titled.core_mut().connect(db);
     assert_eq!(code(polyspec_orm::model::update(&mut titled, false).await), polyspec_orm::codes::CONFIG, "{driver}: update without an audit");
-    // 값이 없는 audit transaction은 기본값만으로 기록한다.
+    // An audit transaction with no values records only defaults.
     adb.transaction(async || polyspec_orm::model::delete(&changed_item(seq, "second"), false).await)
         .audit(NO_VALUES)
         .retry(0)
@@ -263,9 +263,9 @@ pub async fn audit_case(driver: &str, dsn: &str) {
     adb.close().await;
 }
 
-/// 모든 transaction 진입점이 audit 값을 받는다: transaction, transaction_send, transaction_once가 연결의 audit
-/// source와 자기 값으로 기록한 audit의 key를 audit 대상 write가 쓰고, 중첩 transaction_once는 audit을 받지
-/// 않는다(CONFIG). db에는 audit.dbs가 설치되어 있고 table은 비어 있다.
+/// Every transaction entry point takes audit values: transaction, transaction_send, and transaction_once take the connection's audit
+/// source and their own values, and the key of the audit record they make is written by audit-target writes; a nested transaction_once does not take audit
+/// values (CONFIG). The db has audit.dbs installed and its tables are empty.
 #[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
 pub async fn entry_points_case(driver: &str, dsn: &str) {
     let adb = audit_db(dsn, audit_config("default")).await;

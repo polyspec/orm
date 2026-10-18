@@ -8,8 +8,8 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// WatchExit는 pid의 pidfd를 열고, process가 끝나 pidfd가 읽을 수 있게 되기를 poll로 기다리는 함수를
-// 돌려준다. 이미 없는 process는 unix.ESRCH다.
+// WatchExit opens the pidfd of pid, and returns a function that waits with poll until the pidfd becomes readable, which happens when the process ends.
+// A process that is already gone gives unix.ESRCH.
 func WatchExit(pid int) (func() error, error) {
 	descriptor, err := unix.PidfdOpen(pid, 0)
 	if err != nil {
@@ -19,7 +19,7 @@ func WatchExit(pid int) (func() error, error) {
 		defer unix.Close(descriptor)
 		fds := []unix.PollFd{{Fd: int32(descriptor), Events: unix.POLLIN}}
 		for {
-			// timeout -1은 알림이 올 때까지 기다린다. signal에 끊기면(EINTR) 다시 기다린다.
+			// A timeout of -1 waits until a notification arrives. If interrupted by a signal (EINTR), it waits again.
 			n, err := unix.Poll(fds, -1)
 			if errors.Is(err, unix.EINTR) {
 				continue
@@ -34,9 +34,9 @@ func WatchExit(pid int) (func() error, error) {
 	}, nil
 }
 
-// WatchDir는 inotify에 directory의 변경(entry가 생기거나 없어지거나 옮겨짐)을 등록하고, 다음 변경을
-// 기다리는 함수와 감시를 닫는 함수를 돌려준다. 등록은 상태를 읽기 전에 해서 그 사이의 변경을 놓치지
-// 않는다.
+// WatchDir registers changes of the directory (an entry is created, removed, or moved) with inotify, and returns a function that waits for the next change
+// and a function that closes the watch. Registration happens before the state is read, so no change
+// between them is missed.
 func WatchDir(path string) (func() error, func(), error) {
 	descriptor, err := unix.InotifyInit1(unix.IN_CLOEXEC)
 	if err != nil {
@@ -49,7 +49,7 @@ func WatchDir(path string) (func() error, func(), error) {
 	buffer := make([]byte, 4096)
 	return func() error {
 		for {
-			// read는 변경 알림이 올 때까지 막힌다.
+			// read blocks until a change notification arrives.
 			_, err := unix.Read(descriptor, buffer)
 			if errors.Is(err, unix.EINTR) {
 				continue

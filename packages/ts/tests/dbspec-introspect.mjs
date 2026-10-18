@@ -17,14 +17,14 @@ for (const c of cases) {
     const rendered = renderDbspec(parseSet(c.id, sources), c.dialect);
     assert.deepEqual(rendered.diagnostics, []);
     await withDatabase(c.dialect, async (connection, exec, name) => {
-      // {schema}는 이 case의 database 또는 schema 이름이다.
+      // {schema} is the database or schema name of this case.
       const statements = c.statements.map(sql => sql.replaceAll('{schema}', name));
       for (const sql of [...CONNECTION_RULES[c.dialect], ...rendered.statements, ...statements]) await exec(connection, sql);
       const { document, unsupported } = await introspectDbspec(connection, c.dialect, 'introspected');
       assert.equal(emitDbspec(document), text(c.document));
       assert.deepEqual(unsupported.map(u => [u.kind, u.table, u.name]), c.unsupported.map(w => w.slice(0, 3)));
       for (const u of unsupported) assert(u.reason.length > 0, `reason of ${u.kind} ${u.table} ${u.name}`);
-      // 네 번째 원소는 reason이 포함해야 하는 rule이다. 없으면 reason은 비교하지 않는다.
+      // The fourth element is the rule that the reason must include. If absent, the reason is not compared.
       c.unsupported.forEach((w, i) => {
         if (w.length === 4) assert(unsupported[i].reason.includes(w[3]), `reason of ${w.slice(0, 3).join(' ')}: want rule ${w[3]}, got ${unsupported[i].reason}`);
       });

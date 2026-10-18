@@ -1,6 +1,6 @@
-# styled column의 SQL NULL은 root row, join row, relation row에서 StyledValue.sql_null()로 읽히고,
-# 읽은 값을 그대로 setter에 넘겨 다시 쓸 수 있다 (docs/codec.md "Value model": every getter returns
-# StyledValue, SqlNull reports SQL NULL; TypeScript decode가 StyledValue.sqlNull()을 돌려주는 것과 같다).
+# The SQL NULL of a styled column is read as StyledValue.sql_null() in root rows, join rows and relation rows,
+# and the value read can be passed as is to the setter to write it again (docs/codec.md "Value model": every getter returns
+# StyledValue, SqlNull reports SQL NULL; the same as TypeScript decode returning StyledValue.sqlNull()).
 import tempfile
 import unittest
 from pathlib import Path

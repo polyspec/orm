@@ -3,11 +3,11 @@ import path from 'node:path';
 import { root } from './lib.mts';
 import { runLong, stepLines, type Step } from '../../tests/testcase.mts';
 
-// 문서 build는 장기 작업이다: vitepress가 모든 page를 build한다. Mermaid 그림은 읽는 이의 browser가
-// 그리므로(docs/.vitepress/theme/index.ts) build는 Node만 쓴다. runLong으로 기한 없이 실행하고, 진행은
-// process의 출력 줄과 종료 코드로 본다.
+// The docs build is a long task: vitepress builds every page. The Mermaid diagrams are drawn by the reader's browser
+// (docs/.vitepress/theme/index.ts), so the build uses only Node. It runs with runLong and no deadline, and its progress is seen from
+// the process's output lines and exit code.
 
-// command는 node process 하나를 실행하고 그 출력 줄과 종료 코드를 작업의 단계로 내보낸다.
+// command runs one node process and emits its output lines and exit code as the task's steps.
 function command(args: string[], step: Step): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const child = spawn(process.execPath, args, { cwd: root });

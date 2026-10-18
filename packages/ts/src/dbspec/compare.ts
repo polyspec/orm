@@ -1,5 +1,5 @@
-// plan 없이 두 schema의 모든 차이를 나열한다 (docs/plans.md "Comparison").
-// 기준은 Go 엔진(engine/dbspec/compare.go)이며 diagnostic message는 Go와 같은 바이트다.
+// Lists every difference between two schemas without a plan (docs/plans.md "Comparison").
+// The reference is the Go engine (engine/dbspec/compare.go), and the diagnostic messages are the same bytes as Go.
 import { emitDbspec } from './index.js';
 import { emitDocument } from './emit.js';
 import type { DbspecDiagnostic, DbspecDocument, DbspecSetting, DbspecTable } from './model.js';
@@ -7,19 +7,19 @@ import { auditRecords } from './audit.js';
 import { columnOf, sameDefault, sameType, sortedKeys, widens } from './plan_diff.js';
 import { foreignKeyDef, indexDef } from './plan_objects.js';
 
-/** 두 schema의 차이 하나다. name은 column이나 객체의 이름이고, table 단위 차이에서는 빈 문자열이다. */
+/** One difference between two schemas. name is the name of a column or object, and is an empty string for a table-level difference. */
 export interface DbspecDifference {
   readonly kind: string;
   readonly table: string;
   readonly name: string;
 }
 
-/** diagnostic 없는 차이, 또는 차이 없는 compare diagnostic이다. */
+/** A difference without a diagnostic, or a compare diagnostic with no difference. */
 export type DbspecComparisonResult =
   | { readonly differences: readonly DbspecDifference[]; readonly diagnostics: readonly [] }
   | { readonly differences: null; readonly diagnostics: readonly DbspecDiagnostic[] };
 
-/** 한 table 안에서 차이가 오는 순서다. */
+/** The order in which differences come within one table. */
 const KINDS = [
   'create_table',
   'drop_table',
@@ -51,9 +51,9 @@ function compare(a: string, b: string): number {
 }
 
 /**
- * plan 없이 source에서 target까지의 모든 차이를 돌려준다. rename은 없고 table과
- * column은 이름으로만 맞춘다. 두 문서는 schema text여야 하며, 아닌 쪽마다 compare
- * diagnostic을 source, target 순으로 돌려준다.
+ * Returns every difference from source to target without a plan. There are no renames; tables and
+ * columns are matched by name only. Both documents must be schema texts, and for each side that is not, a compare
+ * diagnostic is returned, in source, target order.
  */
 export function compareSchemas(source: DbspecDocument, target: DbspecDocument): DbspecComparisonResult {
   const diagnostics: DbspecDiagnostic[] = [];
@@ -89,8 +89,8 @@ export function compareSchemas(source: DbspecDocument, target: DbspecDocument): 
 }
 
 /**
- * 문서의 canonical emission이 그 문서 하나의 schema text인지 알려 준다. 외부 문서의 use 줄은 문서 이름 순, 그 table은
- * 이름 순이어야 한다. 외부 문서 자체는 필요 없다.
+ * Tells whether the canonical emission of a document is that document's own schema text. The use lines of an external document are in document name order, and its tables
+ * must be in name order. The external document itself is not needed.
  */
 export function isSchemaText(document: DbspecDocument): boolean {
   if (document.name !== 'schema') return false;
@@ -100,7 +100,7 @@ export function isSchemaText(document: DbspecDocument): boolean {
   return emitDbspec(document) === emitDocument({ name: document.name, uses, tables, diagrams: [], closingComments: [] }, 'schema');
 }
 
-/** 두 쪽에 다 있는 table의 column, primary key, 객체, setting 차이를 더한다. */
+/** Adds the differences of the columns, primary key, objects and settings of tables that are on both sides. */
 function compareTables(s: DbspecTable, t: DbspecTable, add: Add): void {
   for (const c of s.columns) if (columnOf(t, c.name) === undefined) add('drop_column', c.name);
   const keptTarget: string[] = [];
@@ -138,7 +138,7 @@ function compareTables(s: DbspecTable, t: DbspecTable, add: Add): void {
   }
 }
 
-/** 이름으로 맞춘 객체가 한쪽에만 있으면 drop이나 add를, 정의가 다르면 둘 다 더한다. */
+/** If an object matched by name is on one side only, adds a drop or an add; if the definitions differ, adds both. */
 function compareObjects<T extends { readonly name: string }>(add: Add, kind: string, source: readonly T[], target: readonly T[], def: (o: T) => string): void {
   for (const o of source) {
     const other = target.find(x => x.name === o.name);
@@ -151,8 +151,8 @@ function compareObjects<T extends { readonly name: string }>(add: Add, kind: str
 }
 
 /**
- * table에 하나뿐인 setting의 정의, 없으면 null이다. audit은 두 쪽에 다 있는 column 가운데 기록하지
- * 않는 column까지 비교한다. 한쪽에만 있는 column은 add_column이나 drop_column이 차이로 남긴다.
+ * The definition of a setting that exists only once in the table, or null if none. audit is compared on columns that exist on both sides
+ * but it also compares columns it does not record. A column on one side only is left as a difference by add_column or drop_column.
  */
 function settingOf(x: DbspecTable, kind: 'immutable' | 'audit', s: DbspecTable, t: DbspecTable): string | null {
   const setting: DbspecSetting | undefined = x.settings?.settings.find(e => e.kind === kind);

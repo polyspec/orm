@@ -68,12 +68,12 @@ func TestDialectFacts(t *testing.T) {
 	t.Logf("summary all: %d probes in %s", len(probes), time.Since(started).Round(time.Millisecond))
 }
 
-// probeCaseDeadline은 probe 하나를 실행하는 case의 기한이다. probe 자신의 probeDeadline에,
-// 기한이 지난 probe가 자기 database, schema, file을 지우는 cleanupDeadline을 더했다.
+// probeCaseDeadline is the deadline of the case that runs one probe. It adds to the probe's own probeDeadline
+// the cleanupDeadline by which a probe past its deadline deletes its own database, schema, and file.
 const probeCaseDeadline = probeDeadline + cleanupDeadline
 
-// runProbeCase는 probe 하나를 자기 기한 아래의 case로 실행하고, detail과 probe가 관찰한
-// note를 단계로 출력한다. probe가 통과하면 true를 돌려준다.
+// runProbeCase runs one probe as a case under its own deadline, and reports the detail and
+// the notes the probe observed as steps. It returns true if the probe passes.
 func runProbeCase(t *testing.T, servers *Servers, probe Probe, index int, detail string) bool {
 	t.Helper()
 	c := testcase.Start(t, probeCaseDeadline)

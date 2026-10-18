@@ -11,7 +11,7 @@ import { readCases } from '../../../tests/dbspec/cases.mts';
 export const root = new URL('../../../', import.meta.url);
 // readCases refuses, through the schema of cases.json, a missing or unknown section or field of every section.
 export const cases = readCases();
-// TIMEOUT은 case 하나의 기한(ms)이다. vector 하나는 memory 안에서 문서 하나를 parse하고 emit한다.
+// TIMEOUT is the deadline (ms) of one case. One vector parses and emits one document in memory.
 const TIMEOUT = 15000;
 
 // vector runs one case with its own deadline and reports its start, result
@@ -185,7 +185,7 @@ export function setCases() {
     .map(s => s.slice('CREATE TABLE '.length).split(' ')[0].replace(/^[`"]|[`"]$/g, ''));
   for (const c of cases.sets) {
     vector(c.id, () => {
-      // 각 문서는 다른 소유 문서, 외부 문서, parsing 문서를 집합으로 파싱한다. 외부 문서는 external로 표시한다.
+      // Each document is parsed as a set with the other owned documents, the external documents, and the parsing documents. External documents are marked as external.
       const owned = c.documents.length;
       const all = [...c.documents, ...(c.external ?? [])];
       const documents = all.map((lines, i) => {

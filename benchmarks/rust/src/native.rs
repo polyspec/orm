@@ -9,8 +9,8 @@ use std::time::Instant;
 
 const COLS: &str = "`a`.`seq`, `a`.`name`, `a`.`created_ts`, `a`.`updated_ts`, `a`.`is_close`, `a`.`is_display`, `a`.`display_start_dt`, `a`.`display_end_dt`, `a`.`is_allday`, `a`.`target_club_reader_count`, `a`.`success_count`, `a`.`reader_count`, `a`.`read_count`, `a`.`photo_url`, `a`.`user_seq`, `a`.`service_seq`, `a`.`service_region_seq`, `a`.`service_member_seq`, `a`.`start_dt`, `a`.`end_dt`, `a`.`uuid`, `a`.`is_single_work`, `a`.`like_count`, `a`.`aes_hex_email`, `a`.`aes_hex_phone`";
 
-/// contracts/fixtures/bench/bench.dbs의 `author` column 형을 그대로 decode한다: `i64` key, `i32` count,
-/// `bool`, `datetime(6)`, `varchar`. AES column은 hex text로 읽는다.
+/// Decodes exactly the `author` column types of contracts/fixtures/bench/bench.dbs: `i64` key, `i32` count,
+/// `bool`, `datetime(6)`, `varchar`. The AES column is read as hex text.
 #[derive(Debug, Clone)]
 #[expect(
     dead_code,
@@ -112,8 +112,8 @@ async fn list100(pool: &MySqlPool, service_seq: i64) -> Vec<Author> {
         .collect()
 }
 
-/// insert workload가 `aes_hex_email`에 쓰는 값: Go baseline의 `HostEncode`처럼
-/// `bench-salt`의 AES envelope를 hex text로 쓴다.
+/// The value the insert workload writes to `aes_hex_email`: like the Go baseline's `HostEncode`,
+/// writes the AES envelope of `bench-salt` as hex text.
 fn insert_email() -> String {
     polyspec_orm::codec::hex_upper(&polyspec_orm::codec::aes_encrypt(
         b"ins@example.com",
@@ -157,8 +157,8 @@ async fn relation4(pool: &MySqlPool, service_seq: i64) -> HashMap<i64, Vec<Autho
     out
 }
 
-/// 시드된 bench database를 가리키는 `ORM_BENCH_MYSQL_DSN`이다. 없거나 비어 있으면 연결하지
-/// 않고 그 변수 이름을 출력하며 끝난다.
+/// Points to the seeded bench database through `ORM_BENCH_MYSQL_DSN`. If it is missing or empty, it does not connect
+/// and prints that variable name and ends.
 fn bench_dsn() -> String {
     match std::env::var("ORM_BENCH_MYSQL_DSN") {
         Ok(v) if !v.is_empty() => v,
@@ -173,9 +173,9 @@ fn bench_dsn() -> String {
     }
 }
 
-/// 첫 인자는 반복 횟수다. 없거나 `minimum` 이상의 정수가 아니면 인자 이름과 받은 값을
-/// 출력하며 끝난다. 기본 반복 횟수는 없다. relation4는
-/// 반복 횟수의 1/3을 재므로 최소 3이다.
+/// The first argument is the repeat count. If it is missing or not an integer of at least `minimum`, it prints the argument name and the value received
+/// and ends. There is no default repeat count. relation4 is
+/// measured as one third of the repeat count, so its minimum is 3.
 fn iterations(minimum: usize) -> usize {
     let Some(arg) = std::env::args().nth(1) else {
         eprintln!("usage: native <iterations>; the iterations argument is required; give the number of iterations as the first argument");
@@ -192,7 +192,7 @@ fn iterations(minimum: usize) -> usize {
     }
 }
 
-/// `ORM_BENCH_MYSQL_DSN`을 해석하지 못하면 그 오류를 출력하며 끝난다.
+/// If `ORM_BENCH_MYSQL_DSN` cannot be resolved, it prints that error and ends.
 fn invalid_dsn(error: impl std::fmt::Display) -> ! {
     eprintln!("ORM_BENCH_MYSQL_DSN: {error}");
     std::process::exit(1)
@@ -260,8 +260,8 @@ async fn main() {
 
 #[cfg(test)]
 mod tests {
-    // Go baseline의 `HostEncode(..., []string{"aes", "hex"}, "bench-salt")`처럼
-    // insert 값은 key version 1의 AES envelope를 hex로 쓴 text다.
+    // Like the Go baseline's `HostEncode(..., []string{"aes", "hex"}, "bench-salt")`,
+    // the insert value is text written as hex of the AES envelope of key version 1.
     #[test]
     fn insert_email_is_an_aes_hex_envelope() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);

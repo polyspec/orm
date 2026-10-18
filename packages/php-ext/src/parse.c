@@ -1,8 +1,8 @@
 /*
- * dbspec 문서 하나를 줄 단위로 읽고 검증한다(PHP client Parser, docs/dbspec.md). 줄 안의 rule은 그 줄에서, table
- * 전체의 rule은 block이 닫힐 때, table 사이의 rule(foreign key 대상, audit history와 기록 table)은 마지막 줄 뒤에
- * 확인한다. diagnostic은 token의 줄과 칸(Unicode code point)을 가지며 줄, 칸, rule 표 순서로 정렬한다. encoding,
- * header, 한도 error는 parse를 멈추고 그 앞에서 찾은 diagnostic 뒤에 온다.
+ * Reads and checks one dbspec document line by line (PHP client Parser, docs/dbspec.md). Rules within a line are checked on that line, and table-wide
+ * rules when the block closes; rules between tables (foreign key targets, audit history and record tables) are checked
+ * after the last line. Diagnostics carry the token's line and column (Unicode code points) and are sorted by line, column, then rule table order. Encoding,
+ * header, and limit errors stop parsing and come after the diagnostics found before them.
  */
 #include "dbspec.h"
 #include <setjmp.h>
@@ -56,20 +56,20 @@ static int parameterized(str name)
     return 0;
 }
 
-/* table 이름 => 정의와 column map. */
+/* table name => definition and column map. */
 typedef struct {
     table *table;
     smap *columns;
 } tentry;
 
-/* 사용한 문서의 parse 결과다. */
+/* Parse result of a used document. */
 typedef struct {
     document *doc;
     bool has_reason;
     str reason;
 } used_entry;
 
-/* [이름, 칸, 내림차순] */
+/* [name, column, descending] */
 typedef struct {
     str name;
     zend_long column;
@@ -88,7 +88,7 @@ typedef struct {
     fkey *fk;
     zend_long line, column;
     bool known;
-    /* Go의 known이다: 자식 열이 모두 알려지고 겹치지 않을 때만 색인 검사를 한다. */
+    /* Go's known: the index check is done only when all child columns are known and do not overlap. */
     bool children_known;
 } tfk_rec;
 
@@ -120,7 +120,7 @@ typedef struct {
     lcols parents;
 } dfk_rec;
 
-/* audit이 기록하는 column을 정한다. include이면 목록의 column만, 아니면 목록 밖의 column을 기록한다. */
+/* Determines the columns audit records. With include, only the columns in the list; otherwise the columns outside the list. */
 typedef struct {
     bool include;
     str audit;
@@ -146,7 +146,7 @@ typedef struct {
 
 typedef VEC(tsetting_rec *) tsettingv;
 
-/* state_machine의 history 줄을 검사하는 기록이다. 기록 table은 문서 끝에서 찾으므로 검사를 그때까지 미룬다. */
+/* Record that checks the history line of state_machine. The record table is found at the end of the document, so the check is deferred until then. */
 typedef struct {
     str owner;
     column *state;
@@ -156,7 +156,7 @@ typedef struct {
     zend_long line;
 } dstate_rec;
 
-/* default 값의 token과 그 줄이다. */
+/* Token of the default value and its line. */
 typedef struct {
     token value;
     zend_long line;
@@ -164,7 +164,7 @@ typedef struct {
 
 enum { S_TOP, S_TABLE, S_SETTINGS, S_DIAGRAM };
 
-/* 구문을 통과한 title 또는 body 설정 줄의 표 이름과 종류(Go는 once 규칙으로 버린 줄도 센다). */
+/* Table name and kind of title or body setting lines that passed the syntax check (Go also counts lines it dropped under the once rule). */
 typedef struct {
     str table;
     str kind;
@@ -201,7 +201,7 @@ typedef struct parser {
     VEC(tcheck_rec) table_checks;
     VEC(tsetting_rec) table_settings;
     smap setting_keys;
-    /* 설정 줄이 읽는 block: 표의 첫 block이거나, 반복된 block이면 표에 붙지 않은 block(Go의 detached settings)이다. */
+    /* The block a settings line reads: the table's first block, or, for a repeated block, a block not attached to the table (Go's detached settings). */
     settings *settings_block;
     bool detached_block;
     bool failed_primary;
@@ -213,33 +213,33 @@ typedef struct parser {
     VEC(daudit_rec) deferred_audits;
     VEC(drecord_rec) deferred_records;
     smap failed_primary_tables;
-    /* 구문을 통과한 title과 body 줄(Go의 h.settings.lines처럼 once 규칙으로 버린 줄도 포함한다). */
+    /* Title and body lines that passed the syntax check (including lines dropped under the once rule, as in Go's h.settings.lines). */
     VEC(rawtb_rec) raw_title_body;
-    /* 읽은 primary key 줄의 수(Go는 모든 줄을 보관한다)와 구문 오류가 난 column 줄의 수(Go의 failedLines)다. */
+    /* Number of primary key lines read (Go keeps all lines) and number of column lines with syntax errors (Go's failedLines). */
     zend_long pk_lines;
     zend_long failed_lines;
-    /* 줄의 첫 lex 오류: 칸과 message다. */
+    /* First lex error of the line: column and message. */
     bool lex_failed;
     zend_long lex_column;
     str lex_message;
-    /* 실패한 column과 foreign key 줄의 이름이다(Go failedName). table마다 새로 둔다. */
+    /* Name of the failed column and foreign key line (Go failedName). Created anew for each table. */
     smap failed_names;
-    /* column 이름 => tdefault, 첫 column의 default 값이다. */
+    /* column name => tdefault, the default value of the first column. */
     smap defaults;
-    /* 읽은 token의 class: "줄:index" => class다. 줄의 class는 구문 오류가 난 줄과 열린 block 본문에서 버린다(R1, R20). */
+    /* Class of read tokens: "line:index" => class. The classes of a line are discarded for a line with a syntax error and in the body of an open block (R1, R20). */
     smap marks;
-    /* 어휘 class만 쓰는 줄의 집합이다("줄" => TRUEP). */
+    /* Set of lines that use only lexical classes ("line" => TRUEP). */
     smap lexical;
-    /* 줄을 읽는 중이면 참이다: 그때의 구문 오류는 그 줄을 버린다(R1). */
+    /* True while a line is being read: a syntax error then discards that line (R1). */
     bool reading;
-    /* class를 기록하는지다: 분석만 기록하고 parse는 token 자료를 남기지 않는다. */
+    /* Whether classes are recorded: only analysis records them; parse leaves no token data. */
     bool marking;
-    /* 열린 줄이 실패한 block의 본문은 읽지만 어휘 class만 가진다(R20). */
+    /* The body of a block whose open line failed is read but has only lexical classes (R20). */
     bool table_failed;
     bool settings_failed;
     bool diagram_failed;
     VEC(dstate_rec) deferred_states;
-    /* 성공한 parse의 선언 위치다(run이 줄과 칸으로 정렬한다). */
+    /* Declaration positions of a successful parse (run sorts them by line and column). */
     dposv decls;
 
     jmp_buf stop_jump;
@@ -247,7 +247,7 @@ typedef struct parser {
 
 static void claim_used_generated(parser *p, table *definition);
 
-/* 문서 끝에서 닫히지 않은 block의 오류다. 같은 줄의 다른 syntax 오류와 함께 보고한다(Go는 줄당 한 번으로 제한하지 않는다). */
+/* Error for a block not closed at the end of the document. Reported together with other syntax errors on the same line (Go does not limit it to once per line). */
 static void unclosed(parser *p, zend_long line, zend_long column, str message)
 {
     PUSH(p->diagnostics, mkdiag(str_c("syntax"), line, column, message));
@@ -256,7 +256,7 @@ static void unclosed(parser *p, zend_long line, zend_long column, str message)
 static void error(parser *p, const char *rule, zend_long line, zend_long column, str message)
 {
     if (strcmp(rule, "syntax") == 0) {
-        /* 읽는 중의 구문 오류는 그 줄을 버린다(R1); 확인 단계의 오류는 버리지 않는다. */
+        /* A syntax error while reading discards that line (R1); errors in the check phase are not discarded. */
         if (p->reading && p->marking) {
             smap_set(&p->lexical, fmt("%d", line), TRUEP);
         }
@@ -302,15 +302,15 @@ static strs path2(str a, str b)
     return s;
 }
 
-/* 선언을 p->decls에 적는다: 줄과 칸은 이름 token(설정과 primary key는 keyword)의 것이다. 실패한 parse는 쓰지 않는다. */
+/* Records the declaration in p->decls: its line and column come from the name token (for settings and primary key, the keyword). A failed parse does not write it. */
 static void declare(parser *p, str kind, zend_long line, zend_long column, strs path)
 {
     dpos d = {kind, path, line, column};
     PUSH(p->decls, d);
 }
 
-/* 설정의 식별 인자다(docs/dbspec.md "Declaration positions"): codec, markdown, navigation, blind_index는 첫 인자,
- * checkbox는 column과 state, state_machine은 form과 상태(column은 뺀다), 나머지는 없다. */
+/* Identifying arguments of a setting (docs/dbspec.md "Declaration positions"): for codec, markdown, navigation, and blind_index, the first argument,
+ * for checkbox, column and state; for state_machine, form and state (column excluded); the rest have none. */
 static void declare_setting(parser *p, str keyword, zend_long column, str form, const strs *args)
 {
     strs path = path2(p->table->name, keyword);
@@ -345,7 +345,7 @@ static bool tok_is(parser *p, size_t i, const char *s)
     return t != NULL && str_eqc(t->text, s);
 }
 
-/* 읽은 token에 class를 준다. 파서가 만든 token(줄 0)은 준 class가 없다. */
+/* Gives a class to the token read. A token made by the parser (line 0) has no class given. */
 static void mark_token(parser *p, const token *t, const char *class)
 {
     if (!p->marking || t == NULL || t->line == 0) {
@@ -354,7 +354,7 @@ static void mark_token(parser *p, const token *t, const char *class)
     smap_set(&p->marks, fmt("%d:%d", (int)t->line, (int)t->index), (void *)class);
 }
 
-/* 값 자리의 낱말이다: true, false, null과 now는 keyword다(R6, R18). */
+/* Words in value positions: true, false, null and now are keywords (R6, R18). */
 static void mark_value(parser *p, const token *t)
 {
     if (t != NULL && (str_eqc(t->text, "true") || str_eqc(t->text, "false") || str_eqc(t->text, "null") || str_eqc(t->text, "now"))) {
@@ -362,7 +362,7 @@ static void mark_value(parser *p, const token *t)
     }
 }
 
-/* Go의 nameDiagnostics: 이름이 형식이나 길이를 어기면 그 규칙과 메시지를 쓰고 참을 돌려준다. */
+/* Go's nameDiagnostics: if a name violates the format or length, writes that rule and message and returns true. */
 bool name_rule(str name, const char **rule, str *message)
 {
     bool format = name.n > 0 && name.s[0] >= 'a' && name.s[0] <= 'z';
@@ -390,7 +390,7 @@ bool name_rule(str name, const char **rule, str *message)
     return false;
 }
 
-/* 이름 token의 형식과 길이를 확인한다. */
+/* Checks the format and length of a name token. */
 static bool name_ok(parser *p, str name, zend_long column)
 {
     const char *rule;
@@ -408,7 +408,7 @@ static bool name_tok(parser *p, const token *t)
     return name_ok(p, t->text, t->column);
 }
 
-/* 지역 제약 이름이 놓인 줄과 칸이다(constraint_names의 값; 쓰는 문서의 이름은 TRUEP). */
+/* Line and column where a local constraint name is placed (value of constraint_names; a name in the document being written is TRUEP). */
 typedef struct {
     zend_long line;
     zend_long column;
@@ -468,7 +468,7 @@ static bool end_at(parser *p, size_t i)
     return true;
 }
 
-/* `( <column> [asc|desc], ... )`를 token i부터 읽는다. */
+/* Reads `( <column> [asc|desc], ... )` from token i onward. */
 static bool column_list(parser *p, size_t i, bool directions, lcols *out, size_t *next)
 {
     if (!expect_at(p, i, "(")) {
@@ -612,14 +612,14 @@ static bool digitc(char c)
     return c >= '0' && c <= '9';
 }
 
-/* 머리글의 문서 이름은 Go의 isHeaderNameRune처럼 ASCII 글자, 숫자와 _만 잇는다. */
+/* A document name in the header is made only of ASCII letters, digits, and _, as in Go's isHeaderNameRune. */
 static bool header_name_char(char c)
 {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || digitc(c) || c == '_';
 }
 
-/* Go의 lexLine: 한 줄을 token으로 나눈다. 첫 오류는 p->lex_* 에 둔다. recover이면 오류 글자를 건너뛰며 계속 읽는다
- * (Go의 lexRecover는 그 글자를 빈칸으로 바꾸어 다시 읽는 것과 같다). 단어 글자는 Go의 isWordRune이 참인 글자다
+/* Go's lexLine: splits a line into tokens. The first error is kept in p->lex_*. In recover mode, it keeps reading, skipping error characters
+ * (Go's lexRecover is the same as replacing that character with a space and reading again). A word character is a character for which Go's isWordRune is true
  * (word_rune_width). */
 static void lex_line(parser *p, bool recover)
 {
@@ -714,7 +714,7 @@ static void fail_key(parser *p, bool primary)
     smap_set(&p->failed_key_tables, p->table->name, TRUEP);
 }
 
-/* 구문 오류가 난 column 줄은 Go처럼 구문 오류만 남긴다: 이름과 type 검사는 줄이 구문에 맞을 때만 한다. */
+/* A column line with a syntax error keeps only the syntax error, as in Go: name and type checks are done only when the line matches the syntax. */
 static void keep_syntax_since(parser *p, size_t mark)
 {
     size_t out = mark;
@@ -726,13 +726,13 @@ static void keep_syntax_since(parser *p, size_t mark)
     p->diagnostics.n = out;
 }
 
-/* 줄에 syntax 오류가 있었는지 본다(error의 syntax 줄 기록과 같은 key). */
+/* Checks whether the line had a syntax error (same key as the syntax line record of error). */
 static bool syntax_here(parser *p)
 {
     return smap_has(&p->syntax_lines, fmt("%d", p->line));
 }
 
-/* 설정 block을 연다. 반복된 block은 표에 붙이지 않고 구문만 읽는다(Go의 detached settings block). */
+/* Opens a settings block. A repeated block is not attached to the table; only its syntax is read (Go's detached settings block). */
 static void open_settings_block(parser *p, settings *s)
 {
     p->detached_block = p->table->settings != NULL;
@@ -743,7 +743,7 @@ static void open_settings_block(parser *p, settings *s)
     p->settings_failed = syntax_here(p);
 }
 
-/* lex 오류가 난 table 줄(}가 아닌)은 Go의 tableLine처럼 상태와 실패한 이름만 남긴다. */
+/* A table line with a lex error (not }) keeps only its state and failed name, as in Go's tableLine. */
 static void lexed_table_line(parser *p)
 {
     token first = p->t.v[0];
@@ -767,7 +767,7 @@ static void lexed_table_line(parser *p)
             smap_set(&p->failed_names, p->t.v[2].text, TRUEP);
         }
     } else if (str_eqc(w, "check")) {
-        /* 아무것도 알지 않는다 */
+        /* Does not know anything */
     } else {
         p->failed_lines++;
         if (str_dotted(w)) {
@@ -776,7 +776,7 @@ static void lexed_table_line(parser *p)
     }
 }
 
-/* lex 오류가 난 줄이 읽을 것이 있는지 본다: 닫는 } 줄이거나 맨 위 줄이면 평소 dispatch로 간다. */
+/* Checks whether a line with a lex error has anything to read: a closing } line or the top line goes to normal dispatch. */
 static bool lexed_line(parser *p)
 {
     if (p->t.n == 0) {
@@ -796,8 +796,8 @@ static bool lexed_line(parser *p)
     }
 }
 
-/* header error는 `dbspec 1 <name>`에서 벗어난 첫 글자, 빠진 부분이면 줄 끝의 다음 칸을 가리킨다. 그 앞은 모두
- * ASCII이므로 byte offset이 칸이다. */
+/* A header error points at the first character deviating from `dbspec 1 <name>`, or, if a part is missing, at the next column after the line's end. Everything before it is
+ * ASCII, so the byte offset is the column. */
 static void header(parser *p)
 {
     const char *prefix = "dbspec 1 ";
@@ -999,13 +999,13 @@ static void open_table(parser *p)
     declare(p, SL("table"), p->line, name.column, path1(name.text));
     if (name.text.n > 0) {
         if (smap_has(&p->tables, name.text)) {
-            /* Go는 표 줄이 실패한 표의 이름 중복을 보고하지 않는다(validate.go의 failed table). */
+            /* Go does not report a duplicate name for a table whose table line failed (validate.go's failed table). */
             if (!header_failed) {
                 error(p, "name.duplicate", p->line, name.column, fmt("table `%S` is already defined or used", name.text));
             }
         } else {
             if (smap_has(&p->constraint_names, name.text)) {
-                /* Go은 표와 같은 이름의 제약을 제약의 자리에 보고한다(표가 뒤에 와도). 쓰는 문서의 제약은 표의 자리다. */
+                /* Go reports a constraint with the same name as a table at the constraint's position (even if the table comes later). For the document being written, a constraint is reported at the table's position. */
                 const tpos *loc = smap_get(&p->constraint_names, name.text);
                 if (loc != TRUEP) {
                     error(p, "name.duplicate", loc->line, loc->column, fmt("constraint name `%S` is the name of a table", name.text));
@@ -1062,7 +1062,7 @@ static size_t skip_parentheses(parser *p, size_t i)
     return i + 1 < count ? i + 1 : count;
 }
 
-/* token i의 type을 읽는다. type이 잘못되면 NULL이다. */
+/* Reads the type of token i. NULL if the type is wrong. */
 static ctype *read_type(parser *p, size_t i, size_t *next)
 {
     mark_token(p, &p->t.v[i], "type");
@@ -1084,7 +1084,7 @@ static ctype *read_type(parser *p, size_t i, size_t *next)
     VEC(zend_long) params = {0};
     size_t j = i + 2;
     bool malformed = false;
-    /* Go처럼 값(수, 단어, `-` 수)과 구분자를 읽는다. 값 자리에 다른 token이 오거나 구분자가 `,`나 `)`가 아니면 구문 오류다. */
+    /* As in Go, reads values (numbers, words, `-` numbers) and separators. Another token in a value position, or a separator that is not `,` or `)`, is a syntax error. */
     for (;;) {
         const token *v = tok(p, j);
         if (v != NULL && str_eqc(v->text, "-") && tok(p, j + 1) != NULL && str_digits(tok(p, j + 1)->text)) {
@@ -1148,8 +1148,8 @@ static ctype *read_type(parser *p, size_t i, size_t *next)
     return intern_type(p, name, params.v, params.n);
 }
 
-/* 같은 renderer 이름을 앞선 표나 쓰는 문서의 표가 이미 쓰면 뒤의 자리에서 보고한다(docs/dbspec.md "Names"). */
-/* 쓰는 문서의 표나 앞선 표가 이미 쓴 renderer 이름이면 뒤의 자리에서 두 출처를 적어 보고한다(docs/dbspec.md "Names"). */
+/* If a preceding table or a table in the document being written already uses the same renderer name, reports it at the later position (docs/dbspec.md "Names"). */
+/* If the table of the document being written, or a preceding table, already wrote this renderer name, reports both sources at the later position (docs/dbspec.md "Names"). */
 static void record_generated(parser *p, str name, str source)
 {
     str *own = dbs_alloc(sizeof *own);
@@ -1167,7 +1167,7 @@ static void claim_generated(parser *p, zend_long line, zend_long column, str nam
     record_generated(p, name, source);
 }
 
-/* 쓰는 문서의 표가 쓰는 renderer 이름을 기록한다. 진단은 그 문서가 낸다. */
+/* Records the renderer name written by a table of the document being written. The diagnostic is issued by that document. */
 static void claim_used_generated(parser *p, table *definition)
 {
     for (size_t x = 0; x < definition->columns.n; x++) {
@@ -1289,7 +1289,7 @@ static void column_line(parser *p)
     column *c = column_new(name->text, type != NULL ? type : ctype_new(SL("invalid"), NULL, 0), nullable, identity != NULL,
         has_canonical ? &canonical : NULL);
     c->comments = take_comments(p);
-    /* renderer가 type CHECK를 쓰는 column은 그 이름 <table>$<column>이 이름 한도를 지킨다. */
+    /* For a column whose renderer writes a type CHECK, its name <table>$<column> keeps within the name limit. */
     if (identity == NULL && type != NULL && !str_eqc(type->name, "text") && !str_eqc(type->name, "bytes") && well_formed
         && dbs_valid_name(p->table->name)) {
         claim_generated(p, p->line, name->column, dbs_renderer_name(p->table->name, name->text),
@@ -1433,7 +1433,7 @@ static void foreign_key_line(parser *p)
     if (name == NULL) {
         return;
     }
-    /* 줄이 syntax error로 끝나면 그 이름은 실패한 것이다(Go markFailed). 성공하면 이전 실패 표시만 남긴다. */
+    /* If a line ends in a syntax error, its name is failed (Go markFailed). On success, only the earlier failure mark is kept. */
     bool failed_before = smap_has(&p->failed_names, name->text);
     smap_set(&p->failed_names, name->text, TRUEP);
     lcols children, parents;
@@ -1554,7 +1554,7 @@ static void check_line(parser *p)
     PUSH(p->table_checks, ((tcheck_rec){k, p->line, rest, end_column(p)}));
 }
 
-/* audit의 `exclude (<column>, ...)`와 `include (<column>, ...)` 목록을 읽는다. */
+/* Reads the audit's `exclude (<column>, ...)` and `include (<column>, ...)` lists. */
 static bool audit_list_tokens(parser *p, const tokens *t, audit_lists *out)
 {
     audit_lists lists = {0};
@@ -1596,16 +1596,16 @@ static bool audit_list_tokens(parser *p, const tokens *t, audit_lists *out)
     return true;
 }
 
-/* ----------------------------------------------- markdown과 저장, 상태 기계 설정 */
+/* ----------------------------------------------- markdown, store, and state machine settings */
 
-/* Go의 cursor처럼 줄의 token을 차례로 읽는다. 첫 실패가 syntax error 하나이고 줄의 나머지는 읽지 않는다. */
+/* Like Go's cursor, reads the tokens of a line in order. The first failure is one syntax error, and the rest of the line is not read. */
 typedef struct {
     parser *p;
     const tokens *t;
     size_t i;
 } scursor;
 
-/* name token은 word 또는 number다. */
+/* A name token is a word or a number. */
 static bool number_text(str s)
 {
     size_t i = 0;
@@ -1634,13 +1634,13 @@ static bool name_text(str s)
     return str_dotted(s) || number_text(s);
 }
 
-/* 닫힌 문자열 literal이다. 닫히지 않은 따옴표는 한 글자 token이다. */
+/* A closed string literal. An unclosed quote is a one-character token. */
 static bool string_text(str s)
 {
     return s.n >= 2 && s.s[0] == '\'' && s.s[s.n - 1] == '\'';
 }
 
-/* 문자열 literal의 값이다: 양 끝 따옴표를 빼고 '' 를 '로 바꾼다. */
+/* The value of a string literal: removes the outer quotes and changes '' to '. */
 static str string_value(str s)
 {
     return str_replace(str_sub(s, 1, s.n - 2), "''", "'");
@@ -1656,7 +1656,7 @@ static bool sc_is(const scursor *c, const char *text)
     return sc_more(c) && str_eqc(c->t->v[c->i].text, text);
 }
 
-/* keyword 글자가 다음에 오고 전환의 from state가 아닌지 본다: 뒤에 `-`가 오면 그 글자는 state 이름이다. */
+/* Checks whether the keyword letters are followed by a transition's from state: if `-` follows, those letters are a state name. */
 static bool sc_form_ahead(const scursor *c, const char *word)
 {
     return sc_is(c, word) && !(c->i + 1 < c->t->n && str_eqc(c->t->v[c->i + 1].text, "-"));
@@ -1725,7 +1725,7 @@ static bool sc_arrow(scursor *c)
     return sc_fail(c, SL("`->`"));
 }
 
-/* 행 수 token이다: 음수는 `-`와 number 두 token이고, 그 밖에는 name token 하나다. */
+/* A row count token: a negative number is two tokens, `-` and a number; otherwise it is one name token. */
 static bool sc_count(scursor *c, token *out)
 {
     if (sc_is(c, "-")) {
@@ -1761,13 +1761,13 @@ static bool take_name(scursor *c, str what, tokens *args)
     return true;
 }
 
-/* state_machine 줄의 형식 낱말이다. 검사는 이 자리의 낱말로 줄의 종류를 정한다. */
+/* Format word of a state_machine line. The check determines the line's kind from the word in this position. */
 static void take_form(tokens *args, str form)
 {
     PUSH(*args, ((token){form, 0, 0, 0}));
 }
 
-/* `(name, ...)`의 require 목록을 args 뒤에 이어 쓴다. */
+/* Appends the require list `(name, ...)` after args. */
 static bool take_requires(scursor *c, tokens *args)
 {
     if (!sc_is(c, "(")) {
@@ -1789,7 +1789,7 @@ static bool take_requires(scursor *c, tokens *args)
     }
 }
 
-/* terminal과 전환 줄은 require 목록을 쓸 수 있고, 그 뒤에 줄이 끝나야 한다. */
+/* Terminal and transition lines may use a require list, and the line must end after it. */
 static bool state_tail(scursor *c, tokens *args)
 {
     if (sc_is(c, "require")) {
@@ -1802,7 +1802,7 @@ static bool state_tail(scursor *c, tokens *args)
     return sc_end(c);
 }
 
-/* markdown, store, key_prefix, title, body, order, checkbox와 state_machine 줄의 인자를 Go의 settingsLine과 같은 순서로 읽는다. */
+/* Reads the arguments of the markdown, store, key_prefix, title, body, order, checkbox, and state_machine lines in the same order as Go's settingsLine. */
 static bool new_setting_args(scursor *c, str keyword, tokens *args)
 {
     if (str_eqc(keyword, "markdown") || str_eqc(keyword, "title") || str_eqc(keyword, "body") || str_eqc(keyword, "order")) {
@@ -1826,7 +1826,7 @@ static bool new_setting_args(scursor *c, str keyword, tokens *args)
             }
             PUSH(*args, shape);
         }
-        /* shard 절은 block에서도 읽는다: block table의 shard는 setting error다. `shard` token은 위치를 위해 남긴다. */
+        /* The shard clause is also read in a block: shard in a block table is a setting error. The `shard` token is kept for its position. */
         if (sc_is(c, "shard")) {
             static const char *const periods[] = {"year", "month", "day"};
             mark_token(c->p, &c->t->v[c->i], "keyword");
@@ -1862,7 +1862,7 @@ static bool new_setting_args(scursor *c, str keyword, tokens *args)
         PUSH(*args, glyph);
         return sc_end(c);
     }
-    /* state_machine: column, 형식 낱말, 형식의 인자다. */
+    /* state_machine: the column, the format word, and the format's arguments. */
     if (!take_name(c, SL("the state column"), args)) {
         return false;
     }
@@ -1904,7 +1904,7 @@ static bool new_setting_args(scursor *c, str keyword, tokens *args)
     return take_name(c, SL("the from state"), args) && sc_arrow(c) && take_name(c, SL("the to state"), args) && state_tail(c, args);
 }
 
-/* 정수 문자열을 strconv.ParseInt(text, 10, 64)처럼 읽는다. 부호는 하나이고 범위를 넘으면 실패다. */
+/* Reads an integer string as strconv.ParseInt(text, 10, 64) does. There is one sign, and exceeding the range is a failure. */
 static bool parse_count(str s, zend_long *out)
 {
     size_t i = 0;
@@ -1931,7 +1931,7 @@ static bool parse_count(str s, zend_long *out)
     return true;
 }
 
-/* 이 줄이 한 번만 쓸 수 있는 종류의 key다. state_machine, checkbox와 markdown의 종류는 따로 본다. */
+/* A key of a kind this line may use only once. The kinds for state_machine, checkbox, and markdown are checked separately. */
 static bool once_kind(str kind)
 {
     return str_eqc(kind, "store") || str_eqc(kind, "key_prefix") || str_eqc(kind, "title") || str_eqc(kind, "body") || str_eqc(kind, "order");
@@ -1943,8 +1943,8 @@ static bool new_setting_kind(str keyword)
         || str_eqc(keyword, "body") || str_eqc(keyword, "order") || str_eqc(keyword, "checkbox") || str_eqc(keyword, "state_machine");
 }
 
-/* state_machine 줄의 형식이 쓰는 token 수다(column과 형식 낱말을 포함하고 require 목록 앞까지). */
-/* store 종류마다 shard 절 앞의 token 수다(kind 포함, Setting::STORE_ARGUMENTS). */
+/* Number of tokens used by the format of a state_machine line (including the column and format word, up to the require list). */
+/* Number of tokens before the shard clause for each store kind (including the kind; Setting::STORE_ARGUMENTS). */
 static size_t store_arguments(str kind)
 {
     return str_eqc(kind, "files") ? 1 : str_eqc(kind, "document") ? 2 : 3;
@@ -1961,7 +1961,7 @@ static size_t machine_fixed(str form)
     return 3;
 }
 
-/* 새 종류의 설정 줄 하나다. args는 검사가 쓰는 token이고 setting의 인자는 그 text다(limit의 행 수는 표준 십진수). */
+/* One setting line of a new kind. args are the tokens the check uses, and the setting's argument is their text (a limit's row count is a standard decimal). */
 static void new_setting(parser *p, token keyword)
 {
     scursor c = {p, &p->t, 1};
@@ -1989,7 +1989,7 @@ static void new_setting(parser *p, token keyword)
     s->kind = kind;
     s->comments = take_comments(p);
     if (str_eqc(kind, "state_machine")) {
-        /* 설정의 인자는 column과 형식의 인자이고, 형식은 form, require 목록은 requires다(PHP client Setting). */
+        /* The arguments of a setting are the column and the format's arguments; the format is form, and the require list is requires (PHP client Setting). */
         size_t fixed = machine_fixed(args.v[1].text);
         PUSH(s->args, args.v[0].text);
         for (size_t i = 2; i < fixed; i++) {
@@ -2003,7 +2003,7 @@ static void new_setting(parser *p, token keyword)
             }
         }
     } else {
-        /* store의 `shard` token은 인자가 아니다: 인자는 kind의 인자 뒤의 column과 period다. */
+        /* The `shard` token of store is not an argument: the arguments are the column and period after the kind's arguments. */
         size_t shard = str_eqc(kind, "store") ? store_arguments(args.v[0].text) : args.n;
         for (size_t i = 0; i < args.n; i++) {
             if (i != shard) {
@@ -2058,7 +2058,7 @@ static void settings_line(parser *p)
     for (size_t i = 1; i < p->t.n; i++) {
         PUSH(args, p->t.v[i]);
     }
-    /* audit의 exclude와 include 목록은 열 낱말 뒤에 오며 앞의 낱말을 검사한 뒤 따로 읽는다. */
+    /* The exclude and include lists of audit come after the column word, and are read separately after checking the preceding word. */
     if (str_eqc(keyword, "audit") && args.n > 10) {
         for (size_t i = 10; i < args.n; i++) {
             PUSH(rest, args.v[i]);
@@ -2122,7 +2122,7 @@ static void settings_line(parser *p)
                 return;
             }
         }
-        /* audit의 인자는 history table, audit column, audit 기록 table, action, previous 순이다. */
+        /* The arguments of audit are, in order: history table, audit column, audit record table, action, previous. */
         tokens picked = {0};
         for (int n = 0; n < 5; n++) {
             PUSH(picked, args.v[2 * n + 1]);
@@ -2141,12 +2141,12 @@ static void settings_line(parser *p)
         }
         smap_set(&p->setting_keys, key, TRUEP);
     }
-    /* codec의 단계 말고는 모든 인자가 이름이다. */
+    /* All arguments except codec's stage are names. */
     size_t named_args = str_eqc(kind, "codec") ? 1 : args.n;
     for (size_t i = 0; i < named_args; i++) {
         name_tok(p, &args.v[i]);
     }
-    /* 목록의 이름은 처음 나올 때만 검사한다. audit column은 검사가 따로 거부한다. */
+    /* Names in a list are checked only at their first appearance. The audit column is rejected separately by the check. */
     smap named = {0};
     for (size_t l = 0; l < lists.n; l++) {
         for (size_t k = 0; k < lists.v[l].columns.n; k++) {
@@ -2345,7 +2345,7 @@ static void table_line(parser *p)
     }
     if (str_eqc(w, "settings")) {
         mark_token(p, &first, "keyword");
-        /* Go는 반복된 block의 키워드에 order를 줄이 올바른 형식(`settings {`만)일 때만 보고한다. */
+        /* Go reports order on the keyword of a repeated block only when the line has the correct form (just `settings {`). */
         bool well_formed = tok_is(p, 1, "{") && p->t.n == 2;
         if (p->table_phase == 2 && well_formed) {
             error(p, "order", p->line, first.column, SL("a table has at most one settings block, after its other lines"));
@@ -2371,7 +2371,7 @@ static void table_line(parser *p)
             fail_column(p, first.text);
         }
     } else if (p->table_phase > 0) {
-        /* Go는 column 줄이 구문에 맞을 때만 order를 보고한다(columnLine의 c.done 뒤). 구문 오류가 난 줄은 syntax만 낸다. */
+        /* Go reports order only when the column line matches the syntax (after c.done in columnLine). A line with a syntax error reports only the syntax error. */
         error(p, "order", p->line, first.column, SL("column lines come before key, index, foreign key, check and settings lines"));
     }
 }
@@ -2386,7 +2386,7 @@ static bool recorder_records(const recorder *r, str c)
     return r->include ? smap_has(&r->listed, c) : !smap_has(&r->listed, c);
 }
 
-/* settings 검사의 column 참조: column, 또는 diagnostic이나 실패한 이름과 줄 뒤의 NULL. */
+/* Column reference of the settings check: the column, or NULL after a diagnostic or a failed name and line. */
 static column *setting_column(parser *p, str kind, zend_long line, const token *t)
 {
     if (!dbs_valid_name(t->text)) {
@@ -2400,7 +2400,7 @@ static column *setting_column(parser *p, str kind, zend_long line, const token *
     return smap_has(&p->invalid_types, t->text) ? NULL : c;
 }
 
-/* audit의 exclude나 include 목록을 검사하고 column이 기록되는지 알리는 recorder를 돌려준다. */
+/* Checks the exclude or include list of audit and returns a recorder that reports whether the column is recorded. */
 static recorder *audit_lists_check(parser *p, const audit_lists *lists, str audit, zend_long line, str kind)
 {
     if (lists->n > 1) {
@@ -2428,9 +2428,9 @@ static recorder *audit_lists_check(parser *p, const audit_lists *lists, str audi
     return r;
 }
 
-/* 새 종류의 설정 검사다. 열 이름은 Go의 columnRef처럼 이름 형식을 보고, 실패한 줄의 이름이면 따로 보고하지 않는다. */
+/* Check for a setting of a new kind. A column name is checked for name format as in Go's columnRef; if it is the name of a failed line, it is not reported separately. */
 
-/* 정상 type의 column이다. type을 읽지 못한 column은 type이 invalid다. */
+/* A column with a valid type. A column whose type could not be read has an invalid type. */
 static bool col_valid(const column *c)
 {
     return !str_eqc(c->type->name, "invalid");
@@ -2487,7 +2487,7 @@ static void key_prefix_check(parser *p, zend_long line, zend_long at)
     }
 }
 
-/* 식 text가 이름 name의 column을 참조하는지 본다: 문자열 literal 밖의 낱말 중 같은 것이 있으면 그렇다. */
+/* Checks whether the expression text references the column named name: yes, if a word outside string literals is the same. */
 static bool expression_mentions(str s, str name)
 {
     size_t i = 0;
@@ -2512,7 +2512,7 @@ static bool expression_mentions(str s, str name)
     return false;
 }
 
-/* 이름이 primary key, unique key, index, foreign key 또는 check의 column인지 본다. */
+/* Checks whether the name is a column of a primary key, unique key, index, foreign key, or check. */
 static bool in_key_or_check(const table *t, str name)
 {
     if (t->pk != NULL && strs_has(&t->pk->columns, name)) {
@@ -2559,8 +2559,8 @@ static void order_check(parser *p, const tsetting_rec *s)
     }
 }
 
-/* store의 shard 절은 non-null date 또는 datetime column을 적고, block table, self foreign key가 있는 table과
- * order가 있는 table에서는 거절한다. */
+/* The shard clause of store names a non-null date or datetime column, and rejects it in a block table, a table with a self foreign key, and
+ * a table with order. */
 static void store_shard_check(parser *p, const tsetting_rec *s, bool order)
 {
     size_t at = store_arguments(s->args.v[0].text);
@@ -2586,7 +2586,7 @@ static void store_shard_check(parser *p, const tsetting_rec *s, bool order)
     }
 }
 
-/* title, body와 markdown의 column 검사다. markdown은 null을 허용하고 title과 body는 허용하지 않는다. */
+/* Column checks for title, body, and markdown. markdown allows null; title and body do not. */
 static void text_setting_check(parser *p, const tsetting_rec *s)
 {
     const token *name = &s->args.v[0];
@@ -2605,7 +2605,7 @@ static void text_setting_check(parser *p, const tsetting_rec *s)
     }
 }
 
-/* 상태 기계 줄 하나의 column과 require 목록을 검사한다. */
+/* Checks the column and require list of one state machine line. */
 static void state_line_check(parser *p, const tsetting_rec *s)
 {
     const tokens *a = &s->args;
@@ -2681,8 +2681,8 @@ static void checkboxes_check(parser *p, const tsettingv *boxes, bool has_column,
     }
 }
 
-/* state_machine의 줄들을 줄 사이에서 검사한다: table마다 column 하나, initial과 전환과 terminal의 상호 일치, limit,
- * history 기록(문서 끝에서 검사한다), state column의 default와 checkbox 줄이다. */
+/* Checks the state_machine lines across lines: one column per table; mutual consistency of initial, transitions, and terminal; limit,
+ * history records (checked at the end of the document), the default of the state column, and checkbox lines. */
 static void state_machine_check(parser *p)
 {
     bool has_column = false;
@@ -2783,7 +2783,7 @@ static void state_machine_check(parser *p)
     checkboxes_check(p, &boxes, has_column, column_name, &states);
 }
 
-/* 문서 끝에서 history 줄의 기록 table을 검사한다. 기록 table은 이 문서나 쓴 문서의 table이다. */
+/* At the end of the document, checks the record table of history lines. The record table is a table of this document or of a document it wrote. */
 static void check_state_histories(parser *p)
 {
     for (size_t i = 0; i < p->deferred_states.n; i++) {
@@ -3068,7 +3068,7 @@ static void close_table(parser *p)
                 }
             }
         }
-        /* Go는 자식 열이 알려지지 않아도 set_null 검사를 알려진 자식에 대해 한다. 색인 검사만 건너뛴다. */
+        /* Go runs the set_null check on known children even when child columns are unknown. Only the index check is skipped. */
         if (r->children_known) {
             bool covered = false;
             for (size_t k = 0; k < leading.n && !covered; k++) {
@@ -3123,12 +3123,12 @@ static void check_foreign_key_targets(parser *p)
             error(p, "foreign_key", r->line, r->target_at, fmt("foreign key `%S` references unknown table `%S`", f->name, f->table));
             continue;
         }
-        /* Go는 표 줄이 실패한 target의 열, 짝과 type을 검사하지 않는다(validate.go의 foreignKey). */
+        /* Go does not check the columns, pairing, or types of a target whose table line failed (validate.go's foreignKey). */
         if (target->table->header_failed) {
             continue;
         }
-        /* Go의 foreignKey와 같다: 개수 검사는 자식 열이 알려졌는지와 관계없이 하고, 짝과 type 검사는 참조 열이 모두
-         * 알려졌을 때 한다. type 검사는 알려진 자식만 보며, 첫 불일치에서 멈춘다. */
+        /* Same as Go's foreignKey: the count check is done regardless of whether child columns are known, and the pairing and type checks are done when all referenced columns
+         * are known. The type check looks only at known children and stops at the first mismatch. */
         bool refs_known = true;
         for (size_t k = 0; k < r->parents.n; k++) {
             if (!smap_has(target->columns, r->parents.v[k].name)) {
@@ -3153,7 +3153,7 @@ static void check_foreign_key_targets(parser *p)
         }
         for (size_t k = 0; k < f->columns.n; k++) {
             column *child = smap_get(r->columns, f->columns.v[k]);
-            /* 알려지지 않았거나 type이 invalid인 자식은 type을 보지 않는다(Go의 typ.valid). */
+            /* Children that are unknown or have an invalid type are not checked for type (Go's typ.valid). */
             if (child == NULL || str_eqc(child->type->name, "invalid")) {
                 continue;
             }
@@ -3183,7 +3183,7 @@ static void check_audit_records(parser *p)
             continue;
         }
         table *record = entry->table;
-        /* Go는 표 줄이 실패한 audit 기록 table의 key를 검사하지 않는다(settings.go의 auditRecord). */
+        /* Go does not check the key of an audit record table whose table line failed (settings.go's auditRecord). */
         if (record->header_failed) {
             continue;
         }
@@ -3250,7 +3250,7 @@ static void check_audit_histories(parser *p)
         }
         table *history = entry->table;
         smap *hcols = entry->columns;
-        /* Go는 표 줄이 실패한 history table의 열을 맞추어 보지 않는다(settings.go의 audit). */
+        /* Go does not match the columns of a history table whose table line failed (settings.go's audit). */
         if (history->header_failed) {
             continue;
         }
@@ -3287,7 +3287,7 @@ static void check_audit_histories(parser *p)
                 previous_tok->text, history->name));
         }
         smap_set(&reserved, previous_tok->text, TRUEP);
-        /* 두 목록을 다 쓴 setting은 기록하는 column이 정해지지 않으므로 column을 맞추어 보지 않는다. */
+        /* A setting that uses both lists does not have a fixed recorded column, so its columns are not matched. */
         if (r->recorded == NULL) {
             continue;
         }
@@ -3368,7 +3368,7 @@ static void read_source(parser *p, str source)
         tokenize(p);
         if (p->lex_failed) {
             error(p, "syntax", p->line, p->lex_column, p->lex_message);
-            /* 오류 글자를 뺀 token으로 읽는다(Go의 lexRecover): 맨 위 줄의 table 머리줄도 표를 연다. */
+            /* Reads with the error characters removed from the tokens (Go's lexRecover): a table header line on the top line also opens the table. */
             lex_line(p, true);
             if (lexed_line(p)) {
                 continue;
@@ -3393,7 +3393,7 @@ static void read_source(parser *p, str source)
     if (encoding) {
         stop(p, "encoding", encoding_line, encoding_column, str_c(encoding_message));
     }
-    /* 가장 안쪽의 열린 block만 보고한다(Go처럼): 열린 settings block은 표의 `{`를 보고하지 않는다. */
+    /* Reports only the innermost open block (as in Go): an open settings block does not report the table's `{`. */
     if (p->state == S_SETTINGS) {
         unclosed(p, p->settings_open[0], p->settings_open[1], SL("the settings block is not closed"));
         p->state = S_TABLE;
@@ -3433,8 +3433,8 @@ static int cmp_ranked(const void *a, const void *b, void *ctx)
     return x->index < y->index ? -1 : (x->index > y->index ? 1 : 0);
 }
 
-/* source를 끝까지 읽으면 true, stop이 longjmp로 읽기를 멈추면 false다. setjmp가 이 함수 안에만 있고 이 함수는
- * setjmp와 longjmp 사이에 자기 지역 변수를 바꾸지 않으므로, longjmp 뒤에 값이 정해지지 않는 지역 변수가 없다
+/* True if source is read to the end; false if stop halts reading through longjmp. setjmp is only within this function, and this function
+ * does not change its own locals between setjmp and longjmp, so no local has an indeterminate value after longjmp
  * (C11 7.13.2.1). */
 static bool read_until_stop(parser *p, str source)
 {
@@ -3562,15 +3562,15 @@ static parser *parser_new(const smap *documents, const strs *using, smap *used)
     return p;
 }
 
-/* 읽는 중인 사용한 문서의 표시다. */
+/* Mark of the used document being read. */
 static used_entry reading;
 
-/* 선언한 집합의 사용한 문서를 그 자신의 use 줄과 함께 한 번 parse하고 검증한다. */
+/* Parses and verifies once a used document of the declared set, together with its own use line. */
 static used_entry *used_document(parser *p, str name)
 {
     used_entry *e = smap_get(p->used, name);
     if (e == &reading) {
-        /* 읽는 중인 문서를 다시 쓰면 use cycle이다. header 이름이 집합의 이름과 다르면 이름의 사슬로는 찾지 못한다. */
+        /* Rewriting a document being read is a use cycle. If the header name differs from the set's name, it cannot be found through the name chain. */
         used_entry *cycle = dbs_alloc(sizeof *cycle);
         sbuf b = {0};
         sb_c(&b, "use cycle: ");

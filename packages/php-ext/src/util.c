@@ -1,4 +1,4 @@
-/* arena, 문자열, vector, map, 정렬처럼 모든 연산이 함께 쓰는 도구다. */
+/* Tools shared by all operations: arena, strings, vector, map, and sorting. */
 #include "dbspec.h"
 #include "unicode_word.h"
 #include "ext/hash/php_hash.h"
@@ -19,7 +19,7 @@ void *dbs_alloc(size_t size)
         dbs_block *nb = emalloc(sizeof(dbs_block) + cap);
         nb->used = 0;
         nb->cap = cap;
-        /* 큰 할당은 따로 둔 block이 되고, 지금 block은 계속 쓴다. */
+        /* A large allocation becomes its own block, and the current block continues to be used. */
         if (b != NULL && size > DBS_BLOCK) {
             nb->next = b->next;
             b->next = nb;
@@ -218,7 +218,7 @@ bool str_word(str s)
     return true;
 }
 
-/* 단어 token은 Go의 isWordRune처럼 `.`을 포함한다(`a.b`는 한 token이고 이름 형식 검사가 거부한다). */
+/* A word token includes `.` as in Go's isWordRune (`a.b` is one token, and the name format check rejects it). */
 bool str_dotted(str s)
 {
     if (s.n == 0) {
@@ -234,7 +234,7 @@ bool str_dotted(str s)
     return true;
 }
 
-/* 수의 모양 `[0-9]+\.[0-9]+`인지 본다(Go의 isNumberText 중 소수부가 있는 것). */
+/* Checks whether the number has the shape `[0-9]+\.[0-9]+` (the cases of Go's isNumberText that have a fractional part). */
 bool str_decimal(str s)
 {
     size_t i = 0;
@@ -297,7 +297,7 @@ static size_t utf8_width(unsigned char b)
     return b < 0x80 ? 1 : b < 0xE0 ? 2 : b < 0xF0 ? 3 : 4;
 }
 
-/* 위치 i의 올바른 UTF-8 code point 값을 돌려주고 그 byte 수를 width에 쓴다(입력은 utf8_valid_prefix가 확인했다). */
+/* Returns the valid UTF-8 code point value at position i and writes its byte count to width (the input was checked by utf8_valid_prefix). */
 uint32_t utf8_decode_at(str s, size_t i, size_t *width)
 {
     unsigned char b = (unsigned char)s.s[i];
@@ -310,7 +310,7 @@ uint32_t utf8_decode_at(str s, size_t i, size_t *width)
     return cp;
 }
 
-/* 위치 i의 code point의 byte 수다: 올바른 UTF-8 글자이면 그 길이, 아니면 byte 하나다(R15). */
+/* Byte count of the code point at position i: its length if it is a valid UTF-8 character, otherwise one byte (R15). */
 size_t utf8_char_width(str s, size_t i)
 {
     unsigned char b = (unsigned char)s.s[i];
@@ -324,7 +324,7 @@ size_t utf8_char_width(str s, size_t i)
     return utf8_valid_prefix(str_sub(s, i, n)) == n ? n : 1;
 }
 
-/* code point 수다. 올바르지 않은 byte는 각각 하나로 센다(R15). */
+/* Code point count. Each invalid byte counts as one (R15). */
 size_t utf8_count(str s)
 {
     size_t n = 0;
@@ -334,7 +334,7 @@ size_t utf8_count(str s)
     return n;
 }
 
-/* 위치 i에서 시작하는 글자가 Go의 isWordRune이면 그 byte 수를, 아니면 0을 돌려준다. ASCII는 [A-Za-z0-9_.]다. */
+/* If the character starting at position i is Go's isWordRune, returns its byte count; otherwise 0. ASCII is [A-Za-z0-9_.]. */
 size_t word_rune_width(str s, size_t i)
 {
     unsigned char c = (unsigned char)s.s[i];
@@ -349,7 +349,7 @@ size_t word_rune_width(str s, size_t i)
     return unicode_word_rune(utf8_decode_at(s, i, &width)) ? width : 0;
 }
 
-/* 위치 i에서 시작하는 word token이 끝나는 위치다: 글자가 Go의 isWordRune인 동안 이어진다. */
+/* The position where the word token starting at position i ends: it continues while the characters are Go's isWordRune. */
 size_t word_run_end(str s, size_t i)
 {
     for (size_t w = i < s.n ? word_rune_width(s, i) : 0; w > 0; w = i < s.n ? word_rune_width(s, i) : 0) {
@@ -690,7 +690,7 @@ void smap_del(smap *m, str key)
     }
     m->e[e].live = false;
     m->live--;
-    /* 지운 자리를 index에서 빼고 다시 만든다. 지우기는 드물다. */
+    /* Removes the deleted slot from the index and rebuilds it. Deletion is rare. */
     smap_rehash(m, m->icap);
 }
 
@@ -737,11 +737,11 @@ str dbs_renderer_name(str table, str suffix)
 
 bool dbs_throw(zend_class_entry *ce, str message)
 {
-    /* 첫 예외만 던진다: 연산은 예외 뒤에도 끝까지 계산하고 결과를 버리므로 뒤의 실패가 첫 예외를 가리지 않는다. */
+    /* Throws only the first exception: an operation keeps computing to the end after an exception and discards the result, so later failures do not hide the first exception. */
     if (EG(exception) != NULL) {
         return false;
     }
-    /* message는 NUL을 담을 수 있으므로 C 문자열로 넘기지 않고 property로 쓴다. */
+    /* message can contain NUL, so it is written as a property rather than passed as a C string. */
     zend_object *e = zend_throw_exception(ce, "", 0);
     zval m;
     ZVAL_STR(&m, str_zend(message));

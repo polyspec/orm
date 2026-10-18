@@ -1,7 +1,7 @@
 /*
- * dbspec 문서를 표준 Mermaid erDiagram으로 쓰고, erDiagram을 dbspec 문서로 읽는다(PHP client Mermaid,
- * docs/mermaid.md). 둘 다 옮기지 못한 것을 [table, kind, name] 순서로 알린다. PHP client의 정규식은 여기서 같은
- * 문법을 읽는 scanner다.
+ * Writes a dbspec document as a standard Mermaid erDiagram, and reads an erDiagram as a dbspec document (PHP client Mermaid,
+ * docs/mermaid.md). Reports what neither side could carry over, in [table, kind, name] order. The PHP client's regular expressions here are a scanner that reads the same
+ * grammar.
  */
 #include "dbspec.h"
 #include "ext/spl/spl_exceptions.h"
@@ -37,7 +37,7 @@ static bool settings_commented(const settings *s)
     return false;
 }
 
-/* Mermaid type에는 쉼표가 없으므로 decimal(p,s)를 decimal(p-s)로 쓴다. */
+/* Mermaid types have no commas, so decimal(p,s) is written as decimal(p-s). */
 static str mermaid_type(const ctype *t)
 {
     if (str_eqc(t->name, "decimal")) {
@@ -202,7 +202,7 @@ static bool ws(char c)
     return c == '\t' || c == '\n' || c == '\f' || c == '\r' || c == ' ';
 }
 
-/* Go strings.TrimSpace가 지우는 Unicode White_Space의 UTF-8 byte 열의 길이: s의 i에서 시작하면 그 길이, 아니면 0. */
+/* Length of the UTF-8 byte sequence of Unicode White_Space that Go strings.TrimSpace removes: that length if it starts at i in s, otherwise 0. */
 static size_t space_at(str s, size_t i)
 {
     unsigned char c = (unsigned char)s.s[i];
@@ -229,7 +229,7 @@ static size_t space_at(str s, size_t i)
     return 0;
 }
 
-/* `^SPACE+|SPACE+$`를 지운다. 끝의 공백은 그것으로만 끝까지 이어지는 가장 앞의 자리에서 시작한다. */
+/* Removes `^SPACE+|SPACE+$`. Trailing spaces start at the earliest position from which they continue to the end only as spaces. */
 static str trim_space(str s)
 {
     size_t a = 0;
@@ -243,7 +243,7 @@ static str trim_space(str s)
         }
         a += n;
     }
-    /* a부터 시작해 끝까지 공백만 이어지는 가장 앞의 자리 */
+    /* Earliest position from a onward where only spaces continue to the end */
     for (size_t p = a; p < s.n; p++) {
         size_t q = p;
         while (q < s.n) {
@@ -356,7 +356,7 @@ static bool attribute_line(str line, attribute *a)
         i++;
     }
     a->name = str_sub(line, start, i - start);
-    /* key 목록: WS+ KEY, 그 뒤 WS* , WS* KEY의 반복 */
+    /* key list: WS+ KEY, then repetitions of WS* , WS* KEY */
     size_t keys_start = i, keys_end = i;
     size_t k = skip_ws(line, i);
     if (k > i && key_at(line, k)) {
@@ -538,7 +538,7 @@ static bool digits_at(str s, size_t *i, str *out)
     return true;
 }
 
-/* 숫자 text가 lo 이상 hi 이하인 값이면 그 값이다. 9자리를 넘는 수는 범위 밖이다. */
+/* If the numeric text is a value from lo to hi inclusive, that value. Numbers over 9 digits are out of range. */
 static bool within(str digits, zend_long lo, zend_long hi, zend_long *out)
 {
     size_t z = 0;
@@ -557,7 +557,7 @@ static bool within(str digits, zend_long lo, zend_long hi, zend_long *out)
     return true;
 }
 
-/* Mermaid type이 dbspec type이면 그 type, 아니면 NULL이다. */
+/* If the Mermaid type is a dbspec type, that type; otherwise NULL. */
 static ctype *import_type(str s)
 {
     static const char *const simple[] = {"i16", "i32", "i64", "bool", "f64", "text", "bytes", "uuid", "date", NULL};
@@ -590,7 +590,7 @@ static ctype *import_type(str s)
     return NULL;
 }
 
-/* Go의 %q처럼 따옴표로 감싼다. ASCII escape는 Go와 같고, ASCII가 아닌 byte는 그대로 둔다. */
+/* Wraps in quotes like Go's %q. ASCII escapes are the same as Go's, and non-ASCII bytes are kept as is. */
 static str quoted(str s)
 {
     sbuf b = {0};
@@ -675,7 +675,7 @@ static icolumn *column_in(itable *t, str n)
     return NULL;
 }
 
-/* SUFFIX: `^(?:(null) )?(?:(identity) )?(?:default (.+) )?$`를 comment . ' '에 맞춘다. */
+/* SUFFIX: matches `^(?:(null) )?(?:(identity) )?(?:default (.+) )?$` against comment . ' '. */
 static bool column_suffix(str comment, icolumn *c)
 {
     str s = fmt("%S ", comment);
@@ -690,7 +690,7 @@ static bool column_suffix(str comment, icolumn *c)
     }
     size_t j = i;
     if (lit(s, &j, "default ")) {
-        /* (.+) 뒤의 마지막 공백까지: .은 줄 바꿈이 아닌 byte */
+        /* Up to the last space after (.+): . is a byte that is not a newline */
         str rest = str_sub(s, j, s.n - j);
         bool newline = false;
         for (size_t k = 0; k + 1 < rest.n; k++) {
@@ -820,7 +820,7 @@ document *mermaid_import(str text, str name, unsupportedv *dropped, diags *out)
             continue;
         }
         strs columns = split_names(cols_text), refs = split_names(refs_text);
-        /* column 수가 참조 column 수와 다르면 foreign key가 아니므로 column을 보지 않는다. */
+        /* If the column count differs from the referenced column count, it is not a foreign key, so the columns are not examined. */
         bool ok = columns.n == refs.n;
         bool nullable = false;
         entity *ce = smap_get(&by_name, child);
@@ -860,7 +860,7 @@ document *mermaid_import(str text, str name, unsupportedv *dropped, diags *out)
             smap_set(used, columns.v[k], TRUEP);
         }
         str index = fmt("ix_%S_%S", child, strs_join(&columns, "_"));
-        /* 같은 column의 foreign key가 이미 더한 index는 다시 더하지 않는다. */
+        /* An index already added by a foreign key on the same columns is not added again. */
         bool indexed = false;
         for (size_t k = 0; k < ct->indexes.n; k++) {
             indexed = indexed || str_eq(ct->indexes.v[k].name, index);
@@ -891,7 +891,7 @@ document *mermaid_import(str text, str name, unsupportedv *dropped, diags *out)
     }
     document *d = catalog_document(c, name, dropped);
     if (d == NULL && EG(exception) != NULL && instanceof_function(EG(exception)->ce, spl_ce_RuntimeException)) {
-        /* catalog가 문서를 만들지 못하면 import의 mermaid diagnostic이다. */
+        /* If the catalog cannot build a document, it is the mermaid diagnostic of the import. */
         zval rv;
         zval *message = zend_read_property_ex(zend_ce_exception, EG(exception), ZSTR_KNOWN(ZEND_STR_MESSAGE), true, &rv);
         zend_string *text_of = zval_get_string(message);

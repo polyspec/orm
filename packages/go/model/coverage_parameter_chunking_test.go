@@ -10,9 +10,9 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// TestCoverageRootInChunking는 모든 driver의 bind 한도를 넘는 root IN list가
-// 나뉘어 실행되고, 중복 값은 한 번만 세며, 나누면 결과가 바뀌는 limit은
-// IR_INVALID인지 확인한다.
+// TestCoverageRootInChunking checks that a root IN list exceeding every driver's bind limit
+// runs split into chunks, counts duplicate values only once, and that a limit whose split changes the result
+// is IR_INVALID.
 func TestCoverageRootInChunking(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, _, _ := connectFeature(t)

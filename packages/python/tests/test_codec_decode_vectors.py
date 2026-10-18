@@ -1,6 +1,6 @@
-# 공유 decode vector(tests/codec/decode-vectors.json): 저장 cell은 encoder가 쓰는 형태로만 decode되고 그 밖의
-# 형태는 CODEC_DECODE다. aes가 없는 host stage 목록은 key 없는 host_decode로, 나머지는 decode로 읽는다.
-# Go, PHP, Rust, TypeScript의 codec test가 같은 파일을 읽는다.
+# Shared decode vector (tests/codec/decode-vectors.json): a stored cell is decoded only in the form the encoder writes, and any other
+# form is CODEC_DECODE. For the stage list without aes, the host stage is read as host_decode without a key; the rest are read as decode.
+# The codec tests of Go, PHP, Rust and TypeScript read the same file.
 import json
 import unittest
 from pathlib import Path

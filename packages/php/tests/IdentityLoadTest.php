@@ -25,7 +25,7 @@ use Polyspec\Orm\OrmException;
 use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\Schema;
 
-/** request에 fixture의 manifest_hash를 더해 $dialect의 engine으로 compile한다. */
+/** Compiles the request, with the fixture's manifest_hash added, using the engine of $dialect. */
 function compile_load(RuntimeModel $model, string $dialect, array $request): array
 {
     if (array_key_exists('manifest_hash', $request)) {
@@ -34,7 +34,7 @@ function compile_load(RuntimeModel $model, string $dialect, array $request): arr
     return (new Engine($model, $dialect, 8))->compile(['manifest_hash' => $model->manifestHash] + $request);
 }
 
-/** plan step 하나의 비교 형태다: role, sql, slot의 from, param(param slot만), type, tables. */
+/** One plan step's comparison form: role, sql, the slot's from, param (param slots only), type, and tables. */
 function load_statement(array $step): array
 {
     $slots = [];
@@ -51,7 +51,7 @@ function load_statement(array $step): array
     return ['role' => $step['role'], 'sql' => $step['sql'], 'slots' => $slots, 'tables' => $step['tables']];
 }
 
-/** case 파일의 기대 statement를 load_statement와 같은 key 순서로 둔다. */
+/** Keeps the case file's expected statement in the same key order as load_statement. */
 function expected_statement(array $want): array
 {
     $slots = [];
@@ -68,7 +68,7 @@ function expected_statement(array $want): array
     return ['role' => $want['role'], 'sql' => $want['sql'], 'slots' => $slots, 'tables' => $want['tables']];
 }
 
-/** $fn이 code와 message로 끝나는 오류로 실패하는지 확인한다. */
+/** Checks that $fn fails with an error ending in code and message. */
 function expect_error(callable $fn, string $code, string $message, string $what): void
 {
     try {
@@ -97,7 +97,7 @@ function run_compile_case(RuntimeModel $model, array $case): void
     }
 }
 
-/** execute case 하나를 $driver의 case database $dsn에서 실행하고 load_probe의 행을 비교한다. */
+/** Runs one execute case in $driver's case database $dsn and compares the rows of load_probe. */
 function run_execute_case(RuntimeModel $model, Schema $schema, array $doc, array $case, string $driver, string $dsn): void
 {
     $db = Orm::connectSchema($dsn, $schema, new Config());
@@ -119,7 +119,7 @@ function run_execute_case(RuntimeModel $model, Schema $schema, array $doc, array
     $pdo = case_admin($dsn);
     $got = [];
     foreach ($pdo->query($doc['read'][$driver])->fetchAll(PDO::FETCH_NUM) as $row) {
-        // driver는 정수를 문자열로 돌려줄 수 있으므로 십진 정수 text만 정수로 읽는다.
+        // The driver may return integers as strings, so only decimal integer text is read as an integer.
         $seq = $row[0];
         if (is_string($seq) && preg_match('/^-?\d+$/D', $seq) === 1) {
             $seq = (int) $seq;

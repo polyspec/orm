@@ -1,9 +1,9 @@
-// case 하나가 쓰는 자기 database. 이름은 orm_case_<pid>_<counter>이고, MySQL과 PostgreSQL에서는
-// ORM_TEST_MYSQL_DSN, ORM_TEST_POSTGRES_DSN을 admin 연결로만 써서 그 server에 database를 만든다.
-// admin 연결의 database에는 아무것도 만들지 않는다. SQLite는 OS temp directory의
-// orm-case-<pid>-<counter>.sqlite file이다. case는 끝날 때, 실패한 뒤에도 그 database를 지운다.
-// PostgreSQL도 schema가 아니라 database를 받는다: schema().empty()는 public이 아닌 schema를
-// 내용으로 세므로 공유 database 안의 schema로는 빈 database를 확인할 수 없다.
+// The database that one case uses. The name is orm_case_<pid>_<counter>, and on MySQL and PostgreSQL
+// it creates the database on that server, using ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN only as admin connections.
+// Nothing is created in the database of the admin connection. SQLite uses a file in the OS temp directory,
+// orm-case-<pid>-<counter>.sqlite. The case drops that database when it ends, and also after a failure.
+// PostgreSQL also takes a database rather than a schema: schema().empty() counts the non-public schemas
+// by their content, so an empty database cannot be verified with a schema inside a shared database.
 import { rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
@@ -12,13 +12,13 @@ import { join } from 'node:path';
 const require = createRequire(new URL('../package.json', import.meta.url));
 let counter = 0;
 
-/** 이 process에서 아직 쓰지 않은 case 이름 orm_case_<pid>_<counter>다. */
+/** The case name orm_case_<pid>_<counter> not yet used in this process. */
 export function caseName() {
   counter++;
   return `orm_case_${process.pid}_${counter}`;
 }
 
-/** dsn의 path(database 이름)를 name으로 바꾼 DSN이다. query는 그대로 둔다. */
+/** The DSN with the path (database name) of dsn replaced by name. The query is kept as is. */
 export function relatedDsn(dsn, name) {
   const url = new URL(dsn);
   url.pathname = `/${name}`;
@@ -26,9 +26,9 @@ export function relatedDsn(dsn, name) {
 }
 
 /**
- * DSN의 user, password, socket, host, port로 연 mysql2 연결이다. database를 주지 않으면 DSN의
- * database를 열고, null이면 database 없이 연다. undefined를 넘기면 기본값이 쓰이므로 database
- * 없는 연결은 undefined가 아니라 null로 요청한다.
+ * A mysql2 connection opened with the user, password, socket, host, and port of the DSN. Without a database, the DSN's
+ * database is opened, and null opens it without a database. Passing undefined uses the default, so
+ * a connection with no database is requested as null, not undefined.
  */
 export function mysqlConnection(dsn, database = new URL(dsn).pathname.slice(1)) {
   const url = new URL(dsn);
@@ -39,7 +39,7 @@ export function mysqlConnection(dsn, database = new URL(dsn).pathname.slice(1)) 
   });
 }
 
-/** DSN의 host, port, database, user, password로 만든 pg client다. 연결은 호출자가 연다. */
+/** A pg client built from the host, port, database, user, and password of the DSN. The caller opens the connection. */
 export function postgresClient(dsn) {
   const url = new URL(dsn);
   const { Client } = require('pg');
@@ -52,7 +52,7 @@ export function postgresClient(dsn) {
 
 const adminEnv = { mysql: 'ORM_TEST_MYSQL_DSN', postgres: 'ORM_TEST_POSTGRES_DSN' };
 
-/** admin DSN으로 statement 하나를 실행한다. MySQL 연결은 database 없이 연다. */
+/** Runs one statement with the admin DSN. The MySQL connection opens without a database. */
 async function admin(dialect, statement) {
   const dsn = process.env[adminEnv[dialect]];
   if (!dsn) throw new Error(`${adminEnv[dialect]} is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers`);
@@ -68,10 +68,10 @@ async function admin(dialect, statement) {
 }
 
 /**
- * dialect의 새 case database를 만들고 { dialect, name, dsn, path, drop(report) }을 돌려준다. step(text)은
- * 실행 중인 case의 STEP 줄을 출력한다. drop(report)은 database(SQLite는 file과 -wal, -shm, -journal)를
- * 지우고 그 단계를 report(생략하면 만든 case의 step)로 출력하며, 실패하면 database 이름을 담은
- * error를 던진다. 다른 case가 지울 때는 그 case의 step을 넘긴다.
+ * Creates a new case database for the dialect and returns { dialect, name, dsn, path, drop(report) }. step(text)
+ * prints a STEP line for the running case. drop(report) removes the database (for SQLite, the file and its -wal, -shm, -journal)
+ * and prints that step to report (by default, the step of the case that created it). On failure, it throws an
+ * error that includes the database name. When another case drops it, that case's step is passed.
  */
 export async function createCaseDatabase(dialect, step) {
   const name = caseName();
@@ -104,8 +104,8 @@ export async function createCaseDatabase(dialect, step) {
 }
 
 /**
- * 새 case database로 body(database)를 실행하고, body가 실패해도 database를 지운다. 지우기가
- * 실패하면 case가 실패한다. body와 지우기가 함께 실패하면 두 이유를 모두 담는다.
+ * Runs body(database) on a new case database and drops the database even when body fails. If the drop
+ * fails, the case fails. If body and the drop both fail, the error carries both reasons.
  */
 export async function withCaseDatabase(dialect, step, body) {
   const database = await createCaseDatabase(dialect, step);

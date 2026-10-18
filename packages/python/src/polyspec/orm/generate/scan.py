@@ -1,19 +1,19 @@
-# scan은 생성된 model에 대해 소스가 부르는 method 이름을 모은다. 호출은 받는
-# 사람이 그 model의 class로 읽힐 때만 센다. Python source를 ast로 읽는다.
+# scan collects the method names that the source calls on a generated model. It counts a call
+# only when the receiver is read as that model's class. It reads the Python source with ast.
 import ast
 import os
 
 __all__ = ["scan_model_calls"]
 
 _SKIPPED = frozenset({"node_modules", "__pycache__", ".venv"})
-# 첫 parameter가 같은 model을 받는 method다.
+# A method whose first parameter receives the same model.
 _MODEL_CALLBACKS = frozenset(
     {"and_", "or_", "not_", "and_not", "or_not", "on", "fetch_key", "fetch_value"}
 )
 
 
 def _scan_tree(tree, classes: dict, out: dict) -> None:
-    # 지역 이름 -> 생성 class 이름. import 별명과 대입을 여기에 더한다.
+    # Local name -> generated class name. Import aliases and assignments are added here.
     imported = dict(classes)
 
     class ImportCollector(ast.NodeVisitor):
@@ -31,13 +31,13 @@ def _scan_tree(tree, classes: dict, out: dict) -> None:
     ImportCollector().visit(tree)
 
     def model_of(node, names) -> str | None:
-        # 표현식이 가리키는 model의 지역 이름, 또는 None.
+        # Local name of the model that the expression refers to, or None.
         while isinstance(node, ast.Await):
             node = node.value
         if isinstance(node, ast.Name):
             return names.get(node.id)
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
-            # 생성 호출 Author()는 그 class의 model을 만든다.
+            # The generation call Author() makes a model of that class.
             class_name = names.get(node.func.id)
             return class_name if class_name in classes else None
         return None
@@ -102,8 +102,8 @@ def _scan_file(path: str, classes: dict, out: dict) -> None:
 
 
 def scan_model_calls(paths, models) -> dict:
-    """생성된 model class마다, 소스가 그 model의 받는 사람에 대해 부르는 method
-    이름의 목록을 돌려준다."""
+    """For each generated model class, returns the list of method
+    names that the source calls on that model's receiver."""
     classes = {name: name for name in models}
     out = {name: set() for name in models}
     for path in paths:

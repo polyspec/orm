@@ -1,8 +1,8 @@
-// CI의 summary 단계다(.github/workflows/ci.yml, make check-run 뒤에 `if: always()`로 실행한다). ORM_CHECK_RUN_ID의
-// 실행 기록(.runtime/check/<id>/record.json)을 찾아 그 summary를 GITHUB_STEP_SUMMARY와 보고서의 summary.md에 쓴다. runner가
-// 끝나지 않았으면(process가 죽었거나 오류로 멈췄다) 그 사실과 runner가 마지막으로 기록한 단계를 쓰고, 기록에 그
-// 실행이 없으면 make check가 runner의 기록 전에 멈췄다고 쓴다. 그래서 upload 단계는 언제나 이 실행의 보고서
-// directory와 부분 기록을 싣는다.
+// CI's summary step (.github/workflows/ci.yml, runs after make check-run with `if: always()`). It finds the run record of ORM_CHECK_RUN_ID
+// (.runtime/check/<id>/record.json) and writes that summary to GITHUB_STEP_SUMMARY and to the report's summary.md. If the runner
+// did not finish (the process died or stopped with an error), it writes that fact and the step the runner last recorded, and, in the record,
+// if there is no run at all, it writes that make check stopped before the runner's record. So the upload step always carries this run's report
+// directory and the partial record.
 //
 // Usage: ORM_CHECK_RUN_ID=<id> node scripts/check/summary.mts
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -11,8 +11,8 @@ import { fileURLToPath } from 'node:url';
 import { readRecord, recordPath } from './record.mts';
 import { keepLogs, publish, reportDirectory, runName, summary } from './report.mts';
 
-// runSummary는 실행 id의 summary를 쓴다. 보고서에는 기록(record.json)과 test server의 log(servers/)도 둔다: upload
-// 단계는 그 실행의 보고서 directory만 올리므로, 이전 실행이 남긴 file은 들어가지 않는다.
+// runSummary writes the summary of the run id. The report also includes the record (record.json) and the test server logs (servers/): the upload
+// step uploads only that run's report directory, so files left by earlier runs are not included.
 export function runSummary(root: string, id: string, servers = resolve(root, '.runtime/servers')) {
   const name = runName(id);
   const report = reportDirectory(root, name);
@@ -26,7 +26,7 @@ export function runSummary(root: string, id: string, servers = resolve(root, '.r
     publish(text, report, { step: true });
     return { text, passed: false };
   }
-  // crashed는 runner가 처리하지 못한 오류로 멈춘 실행(그 이유가 기록에 있다)이거나, 끝을 기록하지 못하고 사라진 실행이다.
+  // crashed is either a run stopped by an error the runner could not handle (the reason is in the record), or a run that disappeared without recording its end.
   if (record.result === 'crashed' && record.reason === undefined) throw new Error(`${path} records a crashed run without its reason`);
   const crashed = record.result === 'crashed' ? record.reason ?? null
     : record.result === 'incomplete' ? `the runner process ended without recording the end of run ${name}` : null;

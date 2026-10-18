@@ -10,7 +10,7 @@ final class PlanStep
     public ?PlanAssemble $assemble = null;
     public ?array $parent = null;
 
-    /** @param list<string> $tables statement가 이름으로 쓰는 table, 정렬한 것 */
+    /** @param list<string> $tables The tables the statement uses by name, sorted */
     public function __construct(public string $role, public readonly string $sql, public readonly string $lock, public readonly array $slots, public readonly array $tables) {}
 
     public function toArray(): array

@@ -11,8 +11,8 @@ import (
 	"time"
 )
 
-// fixtureVariable은 아래 fixture test를 실행하게 하는 환경 변수다. TestReportForm만 이
-// 변수를 주고 하위 process로 실행한다.
+// fixtureVariable is the environment variable that makes the fixture test below run. Only TestReportForm
+// runs as a subprocess with this variable given.
 const fixtureVariable = "TESTCASE_FIXTURE"
 
 func fixture(t *testing.T, name string) {
@@ -25,7 +25,7 @@ func TestFixturePass(t *testing.T) {
 	fixture(t, "report")
 	c := Start(t, Compute)
 	c.Step("first step of %d", 2)
-	// Of는 case를 시작하지 않은 subtest에서 그 subtest를 감싼 case를 찾는다.
+	// Of finds, in a subtest that did not start a case, the case wrapping that subtest.
 	t.Run("inner", func(t *testing.T) { Of(t).Step("step of the enclosing case") })
 }
 
@@ -49,7 +49,7 @@ func TestFixtureGroup(t *testing.T) {
 	}
 }
 
-// TestFixtureRun은 test가 아닌 runner의 Run이 통과, 실패, 기한 초과를 돌려주는 모습이다. 단계는 stdout의 줄이다.
+// TestFixtureRun shows the non-test runner's Run returning pass, failure, and deadline-exceeded. Steps are lines on stdout.
 func TestFixtureRun(t *testing.T) {
 	fixture(t, "report")
 	if err := Run("runner/pass", time.Minute, func(c *Case) error {
@@ -71,7 +71,7 @@ func TestFixtureRun(t *testing.T) {
 	}); err == nil {
 		t.Error("runner/context returned no error")
 	}
-	// 느리지만 정상인 장기 작업은 기한 없이 끝까지 실행한다.
+	// A slow but normal long job runs to the end without a deadline.
 	if err := RunLong("runner/long", func(c *Case) error {
 		c.Step("building")
 		time.Sleep(1500 * time.Millisecond)
@@ -97,7 +97,7 @@ func TestFixtureDeadline(t *testing.T) {
 	time.Sleep(time.Minute)
 }
 
-// runFixture는 fixture test를 하위 `go test -v`로 실행하고 출력과 종료 error를 돌려준다.
+// runFixture runs the fixture test with a child `go test -v` and returns its output and exit error.
 func runFixture(name string) (string, error) {
 	command := exec.Command("go", "test", "-run", "^TestFixture", "-count=1", "-v", ".")
 	command.Env = append(os.Environ(), fixtureVariable+"="+name)
@@ -105,7 +105,7 @@ func runFixture(name string) (string, error) {
 	return string(output), err
 }
 
-// inOrder는 output에 patterns가 이 순서로 한 줄씩 나타나는지 확인한다.
+// inOrder checks whether patterns each appear as one line in output, in this order.
 func inOrder(output string, patterns ...string) error {
 	lines := strings.Split(output, "\n")
 	at := 0
@@ -127,9 +127,9 @@ func inOrder(output string, patterns ...string) error {
 	return nil
 }
 
-// TestReportForm은 Start로 시작한 case의 단계가 t.Log로, 결과가 go test의 `--- PASS`, `--- FAIL`, `--- SKIP`으로
-// 나오고, 묶음과 runner의 단계와 결과도 native 출력으로 나오며, 기한이 지난 case가 진단과 함께 process를 끝내는지
-// 확인한다.
+// TestReportForm checks that the steps of a case started with Start come out as t.Log and the results come out as go test's `--- PASS`, `--- FAIL`, `--- SKIP`,
+// that groups and the runner's steps and results also come out as native output, and that a case past its
+// deadline ends the process with a diagnostic.
 func TestReportForm(t *testing.T) {
 	Start(t, Process)
 	output, err := runFixture("report")

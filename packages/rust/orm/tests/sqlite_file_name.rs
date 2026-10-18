@@ -1,5 +1,5 @@
-//! query가 붙은 SQLite DSN은 path만으로 file을 만든다. query를 file 이름에 둔
-//! opener는 `named.sqlite?_pragma=…` 같은 file을 만든다(docs/dialects.md
+//! A SQLite DSN with a query creates the file from the path alone. A query placed in the file name
+//! the opener makes a file like `named.sqlite?_pragma=…` (docs/dialects.md
 //! "Probe environment").
 
 use polyspec_orm_testcase::Trial;
@@ -28,9 +28,9 @@ async fn sqlite_file_name_is_the_path() {
     }
 }
 
-/// tests/dsn/sqlite-paths.json: DSN path는 percent-decode한 file을 열고, 잘못된
-/// path는 CONFIG다(docs/config.md "Runtime connection"). 각 case는 trial `sqlite_path_cases::<id>`이고,
-/// 연결 하나를 10 s 기한 안에서 열고 닫는다.
+/// tests/dsn/sqlite-paths.json: a DSN path opens the percent-decoded file, and an invalid
+/// path is CONFIG (docs/config.md "Runtime connection"). Each case is trial `sqlite_path_cases::<id>`, and
+/// opens and closes one connection within a 10 s deadline.
 fn sqlite_path_cases() -> Vec<Trial> {
     let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/dsn/sqlite-paths.json");
     let vectors: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path).expect("sqlite-paths.json")).expect("sqlite-paths.json");
@@ -54,7 +54,7 @@ async fn sqlite_path_case(index: usize, case: &serde_json::Value) {
     assert!(!directory.exists(), "{} already exists", directory.display());
     std::fs::create_dir(&directory).expect("temporary directory");
     let dsn = format!("sqlite://{}/{}", directory.display(), case["path"].as_str().expect("path"));
-    // 각 case는 자기 기한 안에서 연결한다.
+    // Each case connects within its own deadline.
     let code = match tokio::time::timeout(std::time::Duration::from_secs(10), polyspec_orm::Db::connect(&dsn, 1, polyspec_orm::Config::default())).await {
         Err(_) => Some("TIMEOUT".to_owned()),
         Ok(Ok(db)) => {

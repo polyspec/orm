@@ -8,9 +8,9 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// TestRollbackFaultEntry는 FailNextRollback이 build tag ormtest가 있는 build에만
-// 있는지 확인한다: tag가 없으면 package가 그 file을 제외하고, tag가 있으면
-// compile한다.
+// TestRollbackFaultEntry checks that FailNextRollback is present only in builds with the ormtest build tag:
+// without the tag the package excludes this file, and with the tag it
+// compiles.
 func TestRollbackFaultEntry(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	list := func(args ...string) string {

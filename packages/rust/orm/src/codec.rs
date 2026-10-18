@@ -43,8 +43,8 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
             }
             "base64" => {
                 let text = std::str::from_utf8(&cur).map_err(|_| err(CODEC_DECODE, "base64 input is not UTF-8"))?;
-                // 저장 cell은 encoder가 쓰는 형태로만 decode한다(docs/codec.md). STANDARD는 공백, 빠진 padding,
-                // 0이 아닌 padding bit를 거절한다.
+                // A stored cell is decoded only in the form the encoder writes (docs/codec.md). STANDARD rejects whitespace, missing padding,
+                // and nonzero padding bits.
                 cur = base64::engine::general_purpose::STANDARD.decode(text).map_err(|e| err(CODEC_DECODE, format!("base64: {e}")))?;
             }
             "serialize" => value = Some(Val::Json(php_unserialize(&cur)?)),
@@ -553,7 +553,7 @@ fn is_host(style: &str) -> bool {
     matches!(style, "aes" | "hex" | "ip" | "blind_index")
 }
 
-/// executor codec이 적용하는 stage를 쓰기 순서로 돌려준다. `aes`, `hex`, `ip`는 host stage다.
+/// Returns the stages the executor codec applies, in write order. `aes`, `hex`, and `ip` are host stages.
 pub fn executor_stages(stages: &[String]) -> Vec<&str> {
     stages.iter().map(String::as_str).filter(|s| !is_host(s)).collect()
 }

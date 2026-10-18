@@ -1,10 +1,10 @@
 // publish-output.mts <output> <command> [args...]
 //
-// 다른 실행이나 뒤의 단계가 읽는 build 출력 file <output>을 원자적으로 publish한다. 명령은 같은 directory의 임시
-// file <output>.next-<pid>에 쓰고, 성공하면 rename으로 <output>을 바꾼다. 그래서 <output>을 읽는 쪽은 이전 file
-// 전체나 새 file 전체만 보고, 중간에 끊긴 build가 남긴 반쪽 file을 보지 않는다. 인자 가운데 @OUT@은 임시 file의
-// 경로로 바뀌고(go build -o @OUT@), @OUT@이 없으면 명령의 표준 출력이 임시 file이 된다. 실패한 명령의 임시 file은
-// 지우고 <output>은 그대로 둔다.
+// Atomically publishes the build output file <output> that another run or a later step reads. The command writes to a temporary
+// file <output>.next-<pid> in the same directory, and on success rename replaces <output>. So readers of <output> see only the previous file
+// in full or the new file in full, never a half file left by a build that was cut off. @OUT@ among the arguments is replaced by the path
+// of the temporary file (go build -o @OUT@); if there is no @OUT@, the command's standard output becomes the temporary file. On a failed command, the temporary file is
+// removed and <output> is left as it was.
 import { spawn } from 'node:child_process';
 import { createWriteStream, existsSync, mkdirSync, renameSync, rmSync } from 'node:fs';
 import { dirname } from 'node:path';

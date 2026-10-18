@@ -14,21 +14,21 @@ import (
 // A name is split into PascalCase words; column names never contain the
 // connector and operator segments, so the split is unambiguous.
 
-// method 이름 grammar는 column 이름을 connector와 operator 단어로 나누므로
-// column 이름에 다음 단어를 쓸 수 없다 (docs/dsl.md §9). dbspec 이름 규칙에
-// 더해 generator가 적용하는 규칙이다.
+// The method name grammar splits a column name into connector and operator words, so
+// a column name cannot contain the following words (docs/dsl.md §9). In addition to the dbspec name rules,
+// these are the rules the generator applies.
 var (
-	// reservedSegments는 underscore로 나눈 segment로 올 수 없다.
+	// reservedSegments cannot come as a segment split by underscore.
 	reservedSegments = []string{"and", "or", "with", "gt", "lt", "ge", "le", "eq", "ne", "lk", "lb", "between", "tuple"}
-	// reservedPrefixes로 column 이름을 시작할 수 없다.
+	// Column names cannot start with reservedPrefixes.
 	reservedPrefixes = []string{"and", "or", "get", "set", "new", "plus", "minus", "order_by", "group_by", "tuple", "gt", "lt", "ge", "le", "eq", "ne", "lk", "lb", "between"}
-	// reservedColumns는 column 이름이 될 수 없다.
+	// reservedColumns cannot be column names.
 	reservedColumns = []string{"and", "or", "not", "get", "gets", "gets_page", "get_query", "limit", "alias", "connect", "create", "creates", "update", "delete", "restore", "save", "on", "random"}
-	// reservedEntities는 generated package의 package-level 이름과 겹친다.
+	// reservedEntities collide with package-level names in the generated package.
 	reservedEntities = []string{"connect", "manifest_hash", "manifest_text"}
 )
 
-// checkNames는 model의 entity와 field 이름에 generator 이름 규칙을 적용한다.
+// checkNames applies the generator name rules to the model's entity and field names.
 func checkNames(m *runtimemodel.Model) error {
 	for _, name := range m.Order {
 		if slices.Contains(reservedEntities, name) {
@@ -43,7 +43,7 @@ func checkNames(m *runtimemodel.Model) error {
 	return nil
 }
 
-// checkFieldName은 field 이름 하나에 generator 이름 규칙을 적용한다.
+// checkFieldName applies the generator name rules to one field name.
 func checkFieldName(n string) error {
 	if strings.Contains(n, "__") {
 		return fmt.Errorf("column name may not contain '__': %s", n)

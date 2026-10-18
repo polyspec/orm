@@ -4,8 +4,8 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Dbspec;
 
 /**
- * catalog trigger 를 renderer statement 형식으로 다시 쓴 것에서 immutable 과
- * audit setting 을 알아본다 (docs/dialects.md "Introspection", "Triggers").
+ * The immutable and audit settings are recognized from the catalog triggers, rewritten in the renderer's statement form,
+ * (docs/dialects.md "Introspection", "Triggers").
  *
  * @internal
  */
@@ -16,8 +16,8 @@ final class CatalogTriggers
     private const AUDIT_UPDATE = '/VALUES \(\'update\', OLD\.[`"]([a-z0-9_]+)[`"],/';
 
     /**
-     * table 마다 trigger 집합이 immutable 이나 audit 의 renderer 출력과 같으면 그
-     * setting 을 더하고, 아니면 모든 trigger 를 미지원으로 보고한다.
+     * For each table, if the trigger set is immutable or equal to the renderer output of audit, then
+     * adds that setting; otherwise reports every trigger as unsupported.
      *
      * @param array<string, list<array{name: string, statements: list<string>}>> $triggers table: trigger
      */
@@ -45,9 +45,9 @@ final class CatalogTriggers
     }
 
     /**
-     * 각 setting 을 자기 trigger 이름(재계산한 renderer 이름)으로 알아보고, trigger 집합이 알아본 setting 들의
-     * renderer 출력과 이름과 내용이 모두 같을 때만 그 setting 줄들을 돌려준다. 아니면 null 이다
-     * (docs/dialects.md "Triggers"). 두 setting 을 함께 쓴 table 은 두 출력의 합이며 개수로 판단하지 않는다.
+     * Recognizes each setting by its own trigger name (recomputed by the renderer), and returns those setting lines only when
+     * the trigger set matches the recognized settings' renderer output in both name and content. Otherwise returns null
+     * (docs/dialects.md "Triggers"). A table with both settings is the sum of the two outputs, and is not judged by count.
      *
      * @param list<array{name: string, statements: list<string>}> $list
      * @return ?list<string>
@@ -108,11 +108,11 @@ final class CatalogTriggers
     }
 
     /**
-     * audit insert trigger의 column 목록(action, previous, 기록하는 column)과 update trigger의
-     * audit column으로 audit setting을 만든다. audit 기록 table은 audit column 하나만 가진 table의
-     * foreign key가 가리키는 table이다. 기록하지 않는 column은 table의 column 순서로 exclude
-     * 목록이 된다. 목록이 renderer 형식이 아니거나, audit column을 기록하지 않거나, 그 foreign
-     * key가 하나가 아니면 null이다. 만든 setting은 다시 렌더링해 catalog trigger와 비교한다.
+     * The column list of the audit insert trigger (action, previous, and the recorded columns) and the update trigger
+     * builds the audit setting from the audit columns. The audit record table is the table of a foreign key that
+     * points at a table with only one audit column. Columns not recorded become the exclude
+     * list in table column order. If the list is not in renderer form, does not record an audit column, or the foreign
+     * key is not exactly one, it is null. The built setting is rendered again and compared with the catalog trigger.
      *
      * @param list<string> $quoted
      */
@@ -147,12 +147,12 @@ final class CatalogTriggers
                 $excluded[] = $c['name'];
             }
         }
-        // audit 의 인자는 history table, audit column, audit 기록 table, action, previous 순이다.
+        // The arguments of audit are the history table, audit column, audit record table, action, and previous, in order.
         return new Setting('audit', [$history, $column, $references, $names[0], $names[1]], [], $excluded === [] ? null : $excluded);
     }
 
     /**
-     * renderer statement 목록에서 trigger 이름을 순서대로 꺼낸다.
+     * Takes the trigger names out of the renderer statement list in order.
      *
      * @param list<string> $statements
      * @return list<string>
@@ -172,8 +172,8 @@ final class CatalogTriggers
     }
 
     /**
-     * trigger statement 에서 본문을 꺼낸다: MySQL 은 FOR EACH ROW 뒤, PostgreSQL 은
-     * function 의 BEGIN 뒤, SQLite 는 BEGIN 뒤다.
+     * Takes the body out of a trigger statement: for MySQL, after FOR EACH ROW; for PostgreSQL,
+     * after BEGIN of the function; for SQLite, after BEGIN.
      *
      * @param list<string> $statements
      */

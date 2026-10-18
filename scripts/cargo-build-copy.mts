@@ -1,10 +1,10 @@
 // cargo-build-copy.mts <run target> <artifact>... -- <cargo command> [args...]
 //
-// 실행 하나가 쓸 Rust program을 공유 target directory(CARGO_TARGET_DIR)에서 build하고, 그 artifact를 실행의
-// directory <run target>의 같은 상대 경로로 복사한다. 실행은 복사본을 실행하므로, build 뒤에 이 checkout의 다른 실행이
-// 같은 target directory를 다시 build해도 이 실행의 program은 바뀌지 않는다. Makefile은 이 script를 target
-// directory의 exclusive lease(tests/lease, CARGO_LEASED) 아래에서 실행하므로 build와 복사 사이에 다른
-// build가 끼지 않는다. <artifact>는 CARGO_TARGET_DIR에 대한 상대 경로다(예: debug/examples/dbspec_apply).
+// Builds the Rust program one run needs in the shared target directory (CARGO_TARGET_DIR) and copies its artifact to the same relative path in the run's
+// target directory <run target>. The run executes the copy, so after the build, another run in this checkout
+// rebuilding the same target directory does not change this run's program. The Makefile runs this script under the target
+// directory's exclusive lease (tests/lease, CARGO_LEASED), so no other build comes in between the build and the copy.
+// <artifact> is a path relative to CARGO_TARGET_DIR (e.g. debug/examples/dbspec_apply).
 import { spawnSync } from 'node:child_process';
 import { constants, copyFileSync, mkdirSync, renameSync, statSync, chmodSync } from 'node:fs';
 import { dirname, join } from 'node:path';

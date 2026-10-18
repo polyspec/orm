@@ -2,17 +2,17 @@ package dbspec
 
 import "strings"
 
-// AddTablesAndColumnsSteps는 연결의 addTablesAndColumns가 실행할 step을 쓴다
-// (docs/schema.md "Adding tables and columns"). live는 연결의 database를 introspect한
-// 문서, unsupported는 introspection이 읽지 못한 객체, target은 document set의 schema
-// text 문서다. set에 없는 database의 table은 비교하지도 바꾸지도 않는다. database에
-// 있는 set의 table과 set의 차이가 database에 없는 table의 create_table, null이거나
-// default가 있는 column의 add_column, unique가 아닌 index의 add_index뿐이면, database에
-// 있는 set의 table에서 set까지의 plan step(docs/plans.md "Steps")과, table 이름 순으로
-// 만드는 table은 "table", 더하는 column은 column 순서로 "table.column", 그 뒤 더하는
-// index는 index 순서로 "table.index"인 목록을 돌려준다. 다른 차이는 step 없이
-// differences에 "<kind> <table>[.<name>]"로 돌려주며, 빠진 unique key는 있는 행에서 실패할
-// 수 있으므로 그 이유와 함께 돌려준다.
+// AddTablesAndColumnsSteps writes the steps that the connection's addTablesAndColumns runs
+// (docs/schema.md "Adding tables and columns"). live is the connection's database, introspected
+// document, unsupported is an object that introspection could not read, target is the document set's schema
+// text document. Tables of the database that are not in the set are neither compared nor changed. For the database
+// tables that exist in the database, the set's differences where the database lacks a table: create_table, and
+// add_column for a column that is null or has a default, and add_index for non-unique indexes only, when
+// the plan steps from the database's tables up to the set (docs/plans.md "Steps"), ordered by table name
+// Tables it creates are listed as "table", added columns as "table.column" in column order, then the added
+// indexes are listed in index order as "table.index". Other differences are returned without a step
+// in differences as "<kind> <table>[.<name>]", and a missing unique key can fail on existing rows,
+// so it is returned with that reason.
 func AddTablesAndColumnsSteps(live *Document, unsupported []Unsupported, target *Document, dialect Dialect) (added []string, steps []PlanStep, differences []string) {
 	declared, source, found, differences := compareSet(live, unsupported, target)
 	if source == nil {
@@ -31,10 +31,10 @@ func AddTablesAndColumnsSteps(live *Document, unsupported []Unsupported, target 
 			}
 			adding[qualified(d.Table, d.Name)] = true
 		case "add_index":
-			// index는 행을 거부하지 않으므로 있는 table에도 더한다.
+			// An index does not reject rows, so it is added even to an existing table.
 			adding[qualified(d.Table, d.Name)] = true
 		case "add_unique":
-			// unique key는 있는 행이 겹치면 실패하므로 plan과 apply가 다룬다.
+			// A unique key fails when existing rows collide, so the plan and apply handle it.
 			differences = append(differences, "add_unique "+qualified(d.Table, d.Name)+": a missing unique key can fail on the existing rows; add it with a plan")
 		default:
 			differences = append(differences, d.Kind+" "+qualified(d.Table, d.Name))
@@ -43,8 +43,8 @@ func AddTablesAndColumnsSteps(live *Document, unsupported []Unsupported, target 
 	if len(differences) > 0 || len(adding) == 0 {
 		return nil, nil, differences
 	}
-	// 만드는 table과 더하는 column과 index는 table 이름 순, table 안에서는 column 순서 뒤
-	// index 순서다.
+	// Tables to create, and columns and indexes to add, are in table-name order; within a table, column order then
+	// index order.
 	for _, t := range target.Tables {
 		if adding[t.Name] {
 			added = append(added, t.Name)
@@ -61,9 +61,9 @@ func AddTablesAndColumnsSteps(live *Document, unsupported []Unsupported, target 
 			}
 		}
 	}
-	// 더하는 table과 column은 plan 하나로 쓴다. plan은 database에 있는 set의 table에서
-	// 시작하므로(하나도 없으면 빈 database) step은 docs/plans.md의 순서와 rollback을 그대로
-	// 갖는다.
+	// The tables and columns to add are written as one plan. The plan starts from the set's tables that exist in the database
+	// (an empty database if there are none), so its steps keep the order and rollback of docs/plans.md
+	// as they are.
 	from, start := "", (*Document)(nil)
 	var diagnostics []Diagnostic
 	if len(source.Tables) > 0 {
@@ -72,8 +72,8 @@ func AddTablesAndColumnsSteps(live *Document, unsupported []Unsupported, target 
 		from, start = manifest.SchemaHash, source
 	}
 	if len(diagnostics) == 0 {
-		// target은 외부 문서를 쓰는 set의 schema text일 수 있으므로 plan 문서를 parse하지
-		// 않고 target으로 plan을 만든다.
+		// Target can be the schema text of a set that writes an external document, so the plan document is not parsed
+		// and the plan is built from target.
 		var plan *Plan
 		plan, diagnostics = planTo(&Plan{Name: "add_tables_and_columns", From: from}, target, Emit(target))
 		if len(diagnostics) == 0 {
@@ -89,12 +89,12 @@ func AddTablesAndColumnsSteps(live *Document, unsupported []Unsupported, target 
 	return added, steps, nil
 }
 
-// InstalledDifferences는 database가 document set과 같은지 확인한다(docs/schema.md "Schema
-// installation"). live는 연결의 database를 introspect한 문서, unsupported는 introspection이
-// 읽지 못한 객체, target은 document set의 schema text 문서다. set에 없는 database의 table은
-// 비교하지 않는다. set의 table에 읽지 못한 객체가 있으면 그 객체를
-// "unsupported_<kind> <table>[.<name>]: <reason>"로, 아니면 database에 있는 set의 table에서
-// set까지의 모든 차이를 "<kind> <table>[.<name>]"로 돌려준다. 빈 목록이면 같다.
+// InstalledDifferences checks that the database equals the document set (docs/schema.md "Schema
+// installation"). live is the database of the connection, introspected into a document; unsupported is the objects
+// that introspection could not read; target is the schema text document of the document set. Tables of the database
+// that are not in the set are not compared. If a table of the set has an object that could not be read, that object
+// is reported as "unsupported_<kind> <table>[.<name>]: <reason>"; otherwise all differences from the database's
+// set tables up to the set are reported as "<kind> <table>[.<name>]". An empty list means they match.
 func InstalledDifferences(live *Document, unsupported []Unsupported, target *Document) []string {
 	_, source, found, differences := compareSet(live, unsupported, target)
 	if source == nil {
@@ -106,15 +106,15 @@ func InstalledDifferences(live *Document, unsupported []Unsupported, target *Doc
 	return differences
 }
 
-// compareSet은 database에 있는 set의 table(source)과 set을 비교한다. set의 table에 읽지 못한
-// 객체가 있으면 source 없이 그 객체를 differences로 돌려준다. 아니면 set의 table 이름별
-// 정의, source, CompareSchemas의 차이와 그 diagnostic을 돌려준다.
+// compareSet compares the set's tables that exist in the database (source) with the set. If a set table has an object
+// that could not be read, it returns that object as a difference without a source. Otherwise it returns, per table name,
+// the definitions, the source, and the differences and diagnostic from CompareSchemas.
 func compareSet(live *Document, unsupported []Unsupported, target *Document) (declared map[string]*Table, source *Document, found []Difference, differences []string) {
 	declared = map[string]*Table{}
 	for i := range target.Tables {
 		declared[target.Tables[i].Name] = &target.Tables[i]
 	}
-	// set의 table에 읽지 못한 객체가 있으면 그 table은 set과 같다고 할 수 없다.
+	// A set table that has an object that could not be read cannot be said to equal the set.
 	for _, u := range unsupported {
 		if declared[u.Table] != nil {
 			differences = append(differences, "unsupported_"+u.Kind+" "+qualified(u.Table, u.Name)+": "+u.Reason)

@@ -9,8 +9,8 @@ import (
 	"strings"
 )
 
-// SQLite catalog query. sqlite_master와 table-valued pragma를 join해 모든
-// table을 한 번에 읽는다.
+// SQLite catalog queries. They join sqlite_master with table-valued pragmas, to read every
+// table at once.
 const (
 	sqliteMasterQuery = `SELECT type, name, tbl_name, IFNULL(sql, '') FROM sqlite_master
 WHERE name NOT LIKE 'sqlite_%' AND tbl_name NOT LIKE 'dbspec$%' ORDER BY type, name`
@@ -33,15 +33,15 @@ var (
 	sqliteNumberDefault   = regexp.MustCompile(`^-?\d+(\.\d+)?$`)
 )
 
-// sqliteTable은 CREATE TABLE text에서 읽은 constraint다.
+// sqliteTable is a constraint read from the CREATE TABLE text.
 type sqliteTable struct {
-	checks   map[string]string // 이름: 식
-	order    []string          // check 이름의 선언 순서
+	checks   map[string]string // Name: expression
+	order    []string          // declaration order of the check name
 	fks      []ifk
 	primary  []string
 	identity string
-	columns  map[string]string // 이름: column 정의 text
-	// unsupported가 비어 있지 않으면 table 전체를 읽지 못한 이유다.
+	columns  map[string]string // Name: column definition text
+	// If unsupported is not empty, it is the reason the whole table could not be read.
 	unsupported string
 }
 
@@ -154,8 +154,8 @@ func readSQLite(ctx context.Context, q Querier) (*catalog, error) {
 			return err
 		}
 		t := c.table(table)
-		// pk와 u origin index는 primary key와 unique 정의에서 나오며, 그 정의를
-		// 읽거나 보고한다.
+		// The pk and u origin indexes come from the primary key and unique definitions, and that definition
+		// is read or reported.
 		if t == nil || origin == "pk" || origin == "u" {
 			return nil
 		}
@@ -191,8 +191,8 @@ func slicesContainEmpty(list []string) bool {
 	return false
 }
 
-// sqliteType은 선언 type과 그 column의 renderer CHECK로 dbspec type을 정한다.
-// CHECK은 그 type의 renderer 출력과 정확히 같아야 한다.
+// sqliteType decides the dbspec type from the declared type and the column's renderer CHECK.
+// The CHECK must match the renderer output of that type exactly.
 func sqliteType(r renderer, declared, column, check string, hasCheck bool) (Type, bool) {
 	m := sqliteDeclaredPattern.FindStringSubmatch(declared)
 	if m == nil {
@@ -212,7 +212,7 @@ func sqliteType(r renderer, declared, column, check string, hasCheck bool) (Type
 		case "smallint":
 			candidates = []Type{{Kind: TypeI16}}
 		case "integer", "INTEGER":
-			// SQLite는 keyword인 integer를 INTEGER로 보고한다. identity는 CREATE text가 정한다.
+			// SQLite reports the keyword integer as INTEGER. Identity is decided by the CREATE text.
 			candidates = []Type{{Kind: TypeI32}}
 		case "bigint":
 			candidates = []Type{{Kind: TypeI64}}
@@ -245,8 +245,8 @@ func sqliteType(r renderer, declared, column, check string, hasCheck bool) (Type
 	return Type{}, false
 }
 
-// sqliteDefault는 dflt_value를 dbspec literal이나 now로 읽는다. decimal은 scale을
-// 곱한 정수이고 bool은 1과 0이다.
+// sqliteDefault reads dflt_value as a dbspec literal or now. A decimal is the integer multiplied by the scale,
+// and a bool is 1 or 0.
 func sqliteDefault(r renderer, text string, typ Type) (string, bool) {
 	if typ.Kind == TypeDatetime && "("+text+")" == r.defaultText(typ, Default{Now: true}) {
 		return "now", true
@@ -267,8 +267,8 @@ func sqliteDefault(r renderer, text string, typ Type) (string, bool) {
 	return "", false
 }
 
-// parseSQLiteTable은 renderer가 쓰는 한 줄 CREATE TABLE text에서 primary key,
-// identity, foreign key, check를 읽는다. 그 밖의 table 수준 항목은 미지원이다.
+// parseSQLiteTable reads the primary key, identity, foreign keys, and checks from the one-line CREATE TABLE text that the renderer writes,
+// reads the primary key, identity, foreign keys, and checks. Other table-level items are unsupported.
 func parseSQLiteTable(text string) (*sqliteTable, []Unsupported) {
 	st := &sqliteTable{checks: map[string]string{}, columns: map[string]string{}}
 	var unsupported []Unsupported
@@ -294,8 +294,8 @@ func parseSQLiteTable(text string) (*sqliteTable, []Unsupported) {
 			st.checks[m[1]] = m[2]
 			st.order = append(st.order, m[1])
 		case sqliteConstraintItem.MatchString(item):
-			// 이름 없는 constraint는 이름이 빈 객체로 보고한다. primary key의 다른
-			// 형식은 table을 읽지 못하게 한다.
+			// A constraint without a name is reported as an object with an empty name. A primary key in another
+			// form makes the table unreadable.
 			m := sqliteConstraintItem.FindStringSubmatch(item)
 			kind := map[string]string{"CHECK": "check", "UNIQUE": "unique", "FOREIGN KEY": "foreign_key"}[m[2]]
 			if kind == "" {
@@ -304,7 +304,7 @@ func parseSQLiteTable(text string) (*sqliteTable, []Unsupported) {
 			}
 			unsupported = append(unsupported, Unsupported{Kind: kind, Name: m[1], Reason: fmt.Sprintf("the table item %q has no dbspec definition", item)})
 		case sqliteColumnItem.MatchString(item):
-			// 정의는 pragma_table_xinfo가 읽고, 그 text는 renderer 형식인지 확인한다.
+			// Its definition is read by pragma_table_xinfo, and the text is checked to be in renderer form.
 			st.columns[sqliteColumnItem.FindStringSubmatch(item)[1]] = item
 		default:
 			st.unsupported = fmt.Sprintf("the table item %q has no dbspec definition", item)
@@ -314,7 +314,7 @@ func parseSQLiteTable(text string) (*sqliteTable, []Unsupported) {
 	return st, unsupported
 }
 
-// splitTopLevel은 괄호와 따옴표 밖의 쉼표로 나눈다.
+// splitTopLevel splits on commas outside parentheses and quotes.
 func splitTopLevel(text string) []string {
 	var out []string
 	depth, start := 0, 0
@@ -348,10 +348,10 @@ func unquoteList(text string) []string {
 	return out
 }
 
-// sqliteColumnText는 column 정의 text가 renderer의 column 형식, 곧 이름, 선언
-// type, NULL이나 NOT NULL, 그리고 있으면 DEFAULT뿐인지 알려 준다. 그 밖의
-// clause(CHECK, REFERENCES, UNIQUE, COLLATE 등)가 있으면 false다. SQLite는
-// keyword인 type 이름을 대문자로 보고하므로 type은 대소문자 없이 비교한다.
+// sqliteColumnText reports whether the column definition text is only the renderer's column form: name, declared
+// type, NULL or NOT NULL, and DEFAULT if present.
+// It is false if there is any other clause (CHECK, REFERENCES, UNIQUE, COLLATE, and so on). SQLite
+// reports a type name that is a keyword in uppercase, so types are compared without regard to case.
 func sqliteColumnText(item, name, declared string, notNull bool, dflt sql.NullString) bool {
 	rest, ok := strings.CutPrefix(item, `"`+name+`" `)
 	if !ok || len(rest) < len(declared) || !strings.EqualFold(rest[:len(declared)], declared) {

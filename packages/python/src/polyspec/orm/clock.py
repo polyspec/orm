@@ -1,4 +1,4 @@
-# client와 그 도구가 쓰는 microsecond wall clock.
+# Microsecond wall clock used by the client and its tools.
 import time
 
 _ANCHOR_START = time.time_ns() // 1000
@@ -7,11 +7,11 @@ _anchor = float(_ANCHOR_START)
 
 
 def wall_micros() -> int:
-    """epoch부터의 wall clock microsecond. time.time은 밀리초 분해능이라
-    monotonic clock을 wall clock에 anchor해 그 밀리초 안의 microsecond를 채운다.
-    두 clock이 벌어지거나 wall clock이 조정돼서 읽은 값이 그 밀리초 밖이면 가까운
-    끝으로 옮기고 anchor도 함께 옮긴다. 그래서 wall clock이 뒤로 가지 않는 동안
-    읽은 값도 뒤로 가지 않는다."""
+    """Wall clock microseconds since the epoch. time.time has millisecond resolution, so
+    anchor the monotonic clock to the wall clock and fill in the microseconds within that millisecond.
+    if the two clocks drift apart, or the wall clock is adjusted so the reading falls outside that millisecond, the value is moved to the nearest
+    edge and the anchor is moved along with it. So while the wall clock does not go backward,
+    the values read do not go backward either."""
     wall = time.time_ns() // 1000
     monotonic = time.monotonic_ns() // 1000
     global _anchor

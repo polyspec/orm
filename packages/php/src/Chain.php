@@ -33,7 +33,7 @@ final class Chain
         return strtolower((string) preg_replace('/(?<!^)[A-Z]/', '_$0', $pascal));
     }
 
-    /** date와 datetime column은 column function과 값 function을 받는다. */
+    /** date and datetime columns take a column function and a value function. */
     public static function functionColumn(array $col): bool
     {
         return $col['codec'] === [] && in_array($col['type'], ['date', 'datetime'], true);

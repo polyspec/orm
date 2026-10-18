@@ -17,10 +17,10 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// TestIRAnswers는 contracts/fixtures/ir_answers.json의 case마다 그 chain을 실행한다: server
-// 대신 connect에 {"ok": true}, chain의 request 하나에 case의 answer를 쓰는 listener에
-// 연결하고, chain의 결과가 expect와 같은지 본다(docs/protocol.md §5 Read). flowmark는
-// 필요 없다.
+// TestIRAnswers runs the chain of each case in contracts/fixtures/ir_answers.json: the server
+// instead writes {"ok": true} for connect and the case's answer for one request of the chain, and connects to a listener
+// and checks that the result of the chain equals expect (see Read in docs/protocol.md §5). flowmark
+// is not needed.
 func TestIRAnswers(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	b, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "fixtures", "ir_answers.json"))
@@ -75,8 +75,8 @@ func TestIRAnswers(t *testing.T) {
 	}
 }
 
-// answeringServer는 한 연결의 connect에 {"ok": true}를, 다음 message에 answer를 쓰는
-// listener의 DSN이다.
+// answeringServer is the DSN of a listener that writes {"ok": true} for the connect of one connection and, for the next message, the answer.
+// listener's DSN.
 func answeringServer(t *testing.T, answer string) string {
 	t.Helper()
 	ln, err := net.Listen("tcp4", "127.0.0.1:0")
@@ -104,8 +104,8 @@ func answeringServer(t *testing.T, answer string) string {
 	return "markdown://" + ln.Addr().String() + "/conformance?token=0123456789abcdef0123456789abcdef"
 }
 
-// keyedServer는 한 연결의 connect에 {"ok": true}를, 그다음 message마다 answers에서 그 control message의 op나
-// request의 kind로 찾은 답을 쓰는 listener의 DSN이다. 답이 없는 message에는 IR_INVALID를 쓴다.
+// keyedServer is the DSN of a listener that writes {"ok": true} for the connect of one connection and, for each following message, the answer found in answers by the op of that control message or by the
+// kind of the request. A message with no answer gets IR_INVALID.
 func keyedServer(t *testing.T, answers map[string]json.RawMessage) string {
 	t.Helper()
 	ln, err := net.Listen("tcp4", "127.0.0.1:0")

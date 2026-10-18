@@ -66,8 +66,8 @@ fn decode_error(message: String) -> sqlx::Error {
     sqlx::Error::Decode(message.into())
 }
 
-/// MySQL 값의 type 이름으로 CatalogValue를 정한다. binary collation의 문자열은
-/// UTF-8 text다.
+/// Chooses the CatalogValue by the MySQL value's type name. A string with binary collation
+/// is UTF-8 text.
 fn mysql_value(row: &MySqlRow, i: usize) -> Result<CatalogValue, sqlx::Error> {
     let raw = row.try_get_raw(i)?;
     if raw.is_null() {
@@ -104,7 +104,7 @@ fn postgres_value(row: &PgRow, i: usize) -> Result<CatalogValue, sqlx::Error> {
     })
 }
 
-/// SQLite 값의 storage class로 CatalogValue를 정한다.
+/// Chooses the CatalogValue by the storage class of the SQLite value.
 fn sqlite_value(row: &SqliteRow, i: usize) -> Result<CatalogValue, sqlx::Error> {
     let raw = row.try_get_raw(i)?;
     if raw.is_null() {
@@ -118,11 +118,11 @@ fn sqlite_value(row: &SqliteRow, i: usize) -> Result<CatalogValue, sqlx::Error> 
     })
 }
 
-/// catalog query를 실행하는 연결: 행을 읽는 일과 행을 [`CatalogValue`]로 바꾸는 일을 나눈다.
-/// 연결은 statement가 끝난 뒤, 행을 바꾸기 전에 그 statement의 event를 publish한다.
-/// `query`는 고정 catalog query이거나 `catalog_followups`가 만든 `SHOW CREATE TABLE`이다. 후자의
-/// table 이름은 information_schema에서 읽어 backtick으로 감싸 escape한 identifier이므로 `AssertSqlSafe`로
-/// 그 실행을 확인한다.
+/// A connection that runs catalog queries: reading rows and converting rows to [`CatalogValue`] are separate steps.
+/// After the statement ends and before converting rows, the connection publishes that statement's event.
+/// `query` is either a fixed catalog query or the `SHOW CREATE TABLE` made by `catalog_followups`. In the latter
+/// case the table name is read from information_schema and escaped as an identifier wrapped in backticks, so it is marked with `AssertSqlSafe`
+/// to confirm that execution.
 pub(crate) trait CatalogFetch: Send {
     type Row: Send;
     fn fetch(&mut self, query: &str) -> impl Future<Output = Result<Vec<Self::Row>, sqlx::Error>> + Send;

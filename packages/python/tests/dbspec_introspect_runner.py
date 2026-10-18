@@ -1,6 +1,6 @@
-# 한 database를 Python client로 introspect해 tests/dbspec/introspect의 출력 형식으로 쓴다:
-# stdout에 canonical 문서와 미지원 객체 줄 "! kind<TAB>table<TAB>name", stderr에 "elapsed <ms>".
-# make dbspec-introspect-compare-check가 이 파일을 venv의 python으로 실행한다(TestIntrospectCompare).
+# Introspects one database with the Python client and writes it in the output format of tests/dbspec/introspect:
+# canonical document on stdout and unsupported object lines "! kind<TAB>table<TAB>name", and "elapsed <ms>" on stderr.
+# make dbspec-introspect-compare-check runs this file with the python in the venv (TestIntrospectCompare).
 #
 # Usage: python packages/python/tests/dbspec_introspect_runner.py <mysql|postgres|sqlite> <uri>
 import sys
@@ -17,7 +17,7 @@ from polyspec.orm.dbspec.introspect import introspect_dbspec  # noqa: E402
 
 
 class Adapter:
-    """introspect_dbspec이 쓰는 연결: execute(sql, values)가 {'rows': [...]}를 돌려준다."""
+    """Connection used by introspect_dbspec: execute(sql, values) returns {'rows': [...]}."""
 
     def __init__(self, connection):
         self.connection = connection
@@ -36,7 +36,7 @@ class Adapter:
 
 
 def connect(dialect, uri):
-    """URI를 dialect의 driver connection으로 연다. packages/go/internal/dialects의 compare URI 형식이다."""
+    """Opens the URI as the dialect's driver connection. This is the compare URI format of packages/go/internal/dialects."""
     url = urlsplit(uri)
     if dialect == "mysql" and url.scheme == "mysql":
         return pymysql.connect(

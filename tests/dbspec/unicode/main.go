@@ -1,10 +1,10 @@
-// Command unicode는 dbspec lexer가 Unicode 글자와 숫자를 분류하는 표를 쓴다. 표는 Go의 unicode 패키지가 담은
-// Unicode 버전의 자료에서 나온다: engine/dbspec의 isWordRune과 같이 unicode.IsLetter 또는 unicode.IsDigit이 참인
-// code point가 word rune이다. C 확장, PHP, TypeScript, Rust, Python은 이 표를 읽으며, 각자 Unicode 자료를 가진
-// runtime에 기대지 않는다.
+// Command unicode writes the table the dbspec lexer uses to classify Unicode letters and digits. The table comes from the data that Go's unicode package holds
+// for its Unicode version. As in isWordRune of engine/dbspec, a code point is a word rune when unicode.IsLetter or unicode.IsDigit is true.
+// The C extension, PHP, TypeScript, Rust, and Python read this table and do not rely on a runtime
+// that has its own Unicode data.
 //
 // Usage: go run ./tests/dbspec/unicode [-write]
-// -write가 없으면 세 생성 파일이 표와 같은지 확인하고 다르면 실패한다. 표를 고치지 않고 생성기를 고친다.
+// Without -write, it checks that the three generated files match the table, and fails if they differ. Fix the generator, not the table.
 package main
 
 import (
@@ -17,13 +17,13 @@ import (
 	"unicode"
 )
 
-// lastCodePoint는 Unicode의 마지막 code point다.
+// lastCodePoint is the last code point in Unicode.
 const lastCodePoint = 0x10FFFF
 
-// span은 word rune의 닫힌 구간 [lo, hi]다.
+// span is the closed range [lo, hi] of word runes.
 type span struct{ lo, hi rune }
 
-// output은 표를 쓰는 저장소 파일(저장소 root 기준)과 그 내용을 만드는 함수다.
+// output is the repository file (relative to the repository root) that receives the table, and the function that builds its content.
 type output struct {
 	path   string
 	render func(version string, spans []span) []byte
@@ -67,10 +67,10 @@ func run() int {
 	return 0
 }
 
-// isWordRune는 engine/dbspec/lex.go의 isWordRune이 non-ASCII에 쓰는 분류다.
+// isWordRune is the classification that isWordRune in engine/dbspec/lex.go uses for non-ASCII.
 func isWordRune(r rune) bool { return unicode.IsLetter(r) || unicode.IsDigit(r) }
 
-// wordSpans는 모든 code point를 훑어 word rune의 최대 구간을 오름차순으로 돌려준다.
+// wordSpans scans all code points and returns the maximal word-rune ranges in ascending order.
 func wordSpans() []span {
 	var out []span
 	for r := rune(0); r <= lastCodePoint; r++ {
@@ -86,7 +86,7 @@ func wordSpans() []span {
 	return out
 }
 
-// header는 생성 파일의 설명이다. 줄마다 prefix를 붙여 주석으로 쓴다.
+// header is the description of the generated file. It writes it as a comment, prefixing each line.
 func header(version string) []string {
 	return []string{
 		"생성 파일이다. Unicode " + version + "의 word rune 표다.",
@@ -95,7 +95,7 @@ func header(version string) []string {
 	}
 }
 
-// comment는 header의 줄마다 prefix를 붙인다.
+// comment prefixes each header line.
 func comment(prefix string, version string) string {
 	var b strings.Builder
 	for _, line := range header(version) {
@@ -172,7 +172,7 @@ func renderPython(version string, spans []span) []byte {
 	return []byte(b.String())
 }
 
-// renderPHP는 PHP client의 UnicodeWord class를 쓴다. contains는 표에 든 code point를 이진 탐색으로 찾는다.
+// renderPHP writes the UnicodeWord class of the PHP client. contains finds a code point in the table by binary search.
 func renderPHP(version string, spans []span) []byte {
 	var b strings.Builder
 	b.WriteString("<?php\n")
@@ -197,7 +197,7 @@ func renderPHP(version string, spans []span) []byte {
 	return []byte(b.String())
 }
 
-// renderTS는 TypeScript client의 unicode_word.ts를 쓴다. containsWordRune은 표에 든 code point를 이진 탐색으로 찾는다.
+// renderTS writes the unicode_word.ts of the TypeScript client. containsWordRune finds a code point in the table by binary search.
 func renderTS(version string, spans []span) []byte {
 	var b strings.Builder
 	b.WriteString(comment("// ", version))

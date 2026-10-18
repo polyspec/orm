@@ -75,8 +75,8 @@ func (d *DB) plan(r *request) (*cached, error) {
 	if r.err != nil {
 		return nil, r.err
 	}
-	// plan cache key는 manifestHash와 요청 모양이므로, 같은 hash의 다른 text나 이
-	// 연결에 등록되지 않은 manifest가 cache된 plan을 쓰지 않게 cache를 보기 전에 확인한다.
+	// The plan cache key is manifestHash and the request shape, so a different text with the same hash, or this
+	// is checked before the cache is read, so that a manifest not registered on the connection does not use a cached plan.
 	eng, err := d.engineFor(r.schema)
 	if err != nil {
 		return nil, err
@@ -143,7 +143,7 @@ func (d *DB) now() time.Time {
 	return time.Now().In(d.location).Truncate(time.Microsecond)
 }
 
-// clockText는 clock을 precision 자리 소수로 자른 datetime text다.
+// clockText is the datetime text of the clock truncated to precision fractional digits.
 func clockText(t time.Time, precision int) string {
 	layout := "2006-01-02 15:04:05"
 	if precision > 0 {
@@ -243,8 +243,8 @@ func (d *DB) args(st *plan.Step, r *request, parentVals []any) (out []any, masks
 			return nil, nil, &ir.Error{Code: CodeInternal, Msg: "bind from " + b.From}
 		}
 	}
-	// datetime column은 time zone 없는 wall clock이므로 offset이 있는 값을 UTC
-	// wall clock text로 바꿔 보낸다. PostgreSQL timestamp는 offset을 버린다
+	// A datetime column is a wall clock with no time zone, so a value with an offset is converted to UTC
+	// and sent as wall clock text. A PostgreSQL timestamp drops the offset
 	// (postgres.timestamp.ignores_offset).
 	for i, v := range out {
 		if t, ok := v.(time.Time); ok {
@@ -254,8 +254,8 @@ func (d *DB) args(st *plan.Step, r *request, parentVals []any) (out []any, masks
 	return out, masks, nil
 }
 
-// auditValue는 audit slot의 값이다: transaction이 삽입한 audit 기록의 primary
-// key다. audit이 없거나 audit table이 다른 table에 audit을 기록하면 CONFIG다.
+// auditValue is the value of the audit slot: the primary
+// key of the audit record the transaction inserted. Without an audit, or if the audit table records into another table, it is CONFIG.
 func auditValue(a *auditRecord, record string) (any, error) {
 	if a == nil {
 		return nil, configErr("a write of an audited table needs an audit: run it in a transaction with orm.Audit(record)")
@@ -372,8 +372,8 @@ func (d *DB) Execute(st *plan.Step, params []any) error {
 	return d.modelDone(ex, st, st.SQL, args, masks, start, mapDriverErr(err))
 }
 
-// modelDone은 model statement의 event를 publish하고 operation이 받을 오류를
-// 돌려준다. bind는 비밀과 시각 slot을 가린 값이다.
+// modelDone publishes the event of a model statement and returns the error
+// the operation receives. bind is the value with secret and time slots masked.
 func (d *DB) modelDone(ex executor, st *plan.Step, sqlText string, args []any, masks map[int]string, start time.Time, err error) error {
 	shown := args
 	if len(masks) > 0 {
@@ -385,7 +385,7 @@ func (d *DB) modelDone(ex executor, st *plan.Step, sqlText string, args []any, m
 	return d.statementDone(statementKind(st.SQL), st.Tables, transactionNumber(ex), sqlText, shown, start, err)
 }
 
-// transactionNumber는 ex가 transaction이면 그 번호, 아니면 0이다.
+// transactionNumber is ex's transaction number if ex is a transaction, otherwise 0.
 func transactionNumber(ex executor) int64 {
 	if t := ex.transaction(); t != nil {
 		return t.number
@@ -400,8 +400,8 @@ type result struct {
 	main   [][]any
 	steps  map[int]*stepRows
 	params []any
-	// markdown은 markdown 답의 result임을 뜻한다: 각 행의 마지막 칸이 그 행의 join과
-	// relation 행(mdLinks)이다.
+	// markdown means the result is a markdown answer: the last cell of each row holds that row's join and
+	// relation rows (mdLinks).
 	markdown bool
 }
 
@@ -441,10 +441,10 @@ func (res *result) related(ch *plan.Child, parent []any) ([][]any, error) {
 	return out, nil
 }
 
-// applyRequestHook은 ex가 지나는 handle의 request hook을 plan 직전에 r에 적용한다(docs/usage.md
-// "Request hook"). hook은 r.ir을 그 자리에서 바꾸고 r.param으로 parameter를 더한다. r은 terminal 호출마다
-// 새로 만든 request이므로 다른 호출과 나누지 않는다. hook이 없는 handle은 아무것도 하지 않으며, hook의
-// 오류는 그대로 돌려준다. 바뀐 request는 d.plan이 다른 request처럼 검증한다.
+// applyRequestHook applies the request hook of the handle that ex passes through to r just before planning (docs/usage.md
+// "Request hook"). The hook changes r.ir in place and adds parameters with r.param. Since r is a new request for each terminal call,
+// it is not shared with other calls. A handle without a hook does nothing, and the hook's
+// error is returned as is. The changed request is validated by d.plan like any other request.
 func applyRequestHook(ex executor, r *request) error {
 	hook := ex.requestHook()
 	if hook == nil || r.err != nil {
@@ -791,8 +791,8 @@ func runSelect(ctx context.Context, ex executor, c *cached, st *plan.Step, r *re
 	}
 	var out [][]any
 	var chunk []any
-	// decodeErr는 읽은 행을 풀지 못한 client 쪽 오류다. statement의 오류가 아니므로
-	// event에는 싣지 않는다.
+	// decodeErr is a client-side error for failing to decode a read row. It is not a statement error, so
+	// it is not included in the event.
 	var decodeErr error
 	for rows.Next() {
 		if err = rows.Scan(ptrs...); err != nil {
@@ -848,7 +848,7 @@ func decodeSelectedRow(vals []any, si *scanInfo, st *plan.Step, keyring AESKeyri
 			continue
 		}
 		var err error
-		// aes가 없는 host stage(hex, ip)는 key 없이 decode한다.
+		// A host stage without aes (hex, ip) is decoded without a key.
 		switch {
 		case slices.Contains(sc.host, "aes"):
 			v, err = HostDecodeVersioned(v, sc.host, version, keyring)

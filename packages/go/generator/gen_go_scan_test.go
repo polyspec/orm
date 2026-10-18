@@ -143,8 +143,8 @@ func Cheap() *model.ProductModel { return model.Product().LtPrice(1) }
 	buildScannedModule(t)
 }
 
-// TestGoRelationGetterReportsMismatch는 generated relation getter가 type
-// assertion 실패를 버리지 않고 orm.RelatedAs로 error와 함께 돌려주는지 확인한다.
+// TestGoRelationGetterReportsMismatch checks that a generated relation getter does not discard a type
+// assertion failure but returns it together with an error through orm.RelatedAs.
 func TestGoRelationGetterReportsMismatch(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	write := scannedModule(t)

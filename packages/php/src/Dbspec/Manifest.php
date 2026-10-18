@@ -5,8 +5,8 @@ namespace Polyspec\Orm\Dbspec;
 
 /**
  * The manifest and schema texts of a document set and their hashes (docs/dbspec.md, "Manifest and hashes").
- * externalText는 외부 문서마다 소유한 문서가 쓰는 table의 column, primary key, unique key만 담은
- * canonical text이며 외부 문서가 없으면 빈 text다.
+ * externalText is the canonical text holding, for each external document, only the columns, primary key, and unique keys of the tables that the owned document uses,
+ * and it is empty text if there are no external documents.
  */
 final readonly class Manifest
 {

@@ -1,6 +1,6 @@
-// 한 database를 TypeScript client로 introspect해 tests/dbspec/introspect의 출력
-// 형식으로 쓴다: stdout에 canonical 문서와 미지원 객체 줄
-// "! kind<TAB>table<TAB>name", stderr에 "elapsed <ms>".
+// Introspects one database with the TypeScript client and writes the output in the format of tests/dbspec/introspect:
+// to stdout, the canonical document and the unsupported object lines
+// "! kind<TAB>table<TAB>name", and "elapsed <ms>" to stderr.
 //
 // Usage: node packages/ts/testing/dbspec/introspect/typescript.mts <mysql|postgres|sqlite> <uri>
 import { DatabaseSync } from 'node:sqlite';
@@ -15,14 +15,14 @@ if (dialect === undefined || uri === undefined || rest.length > 0) {
 }
 const url = new URL(uri);
 
-// timed는 introspection 하나의 결과와 그 milliseconds다. 연결을 열고 닫는 시간은 들지 않는다.
+// timed is the result of one introspection and its milliseconds. The time to open and close the connection is not included.
 async function timed(work: () => Promise<DbspecIntrospection>): Promise<[DbspecIntrospection, number]> {
   const start = process.hrtime.bigint();
   const result = await work();
   return [result, Number(process.hrtime.bigint() - start) / 1e6];
 }
 
-// introspect는 URI를 dialect의 driver connection으로 열어 introspect하고 닫는다.
+// introspect opens the URI as the dialect's driver connection, introspects, and closes it.
 async function introspect(): Promise<[DbspecIntrospection, number]> {
   if (dialect === 'mysql' && url.protocol === 'mysql:' && url.search === '') {
     const connection = await mysql.createConnection({

@@ -89,9 +89,9 @@ func (c *Core) Related(name string) any {
 	return c.row.related[name]
 }
 
-// RelatedAs는 relation result name의 값을 T로 돌려준다. row나 related row가
-// 없으면 T의 zero value이고, 저장된 값의 type이 T가 아니면 INTERNAL error다.
-// generated relation getter가 이 함수로 읽어 type assertion 실패를 버리지 않는다.
+// RelatedAs returns the value of the relation result name as T. If the row or the related row
+// is absent, it is the zero value of T; if the stored value's type is not T, it is an INTERNAL error.
+// Generated relation getters read through this function, so a type assertion failure is not discarded.
 func RelatedAs[T any](c *Core, name string) (T, error) {
 	var zero T
 	v := c.Related(name)
@@ -105,7 +105,7 @@ func RelatedAs[T any](c *Core, name string) (T, error) {
 	return r, nil
 }
 
-// entityModel은 model의 runtime model entity를 반환한다.
+// entityModel returns the runtime model entity of the model.
 func (c *Core) entityModel(d *DB) (*runtimemodel.Entity, error) {
 	m, err := d.registeredModel(c.ent.Schema)
 	if err != nil {
@@ -293,8 +293,8 @@ func (a *assembler) model(b *Core, asm *plan.Assemble, row []any) (*Core, error)
 	return m, nil
 }
 
-// joinRow는 join ch의 행과 그 행이 있는지다. SQL 결과에서는 join column이 부모 행에 함께
-// 있고 첫 column이 NULL이면 없다. markdown 답에서는 부모 행의 마지막 칸이 join 행을 가진다.
+// joinRow returns the row of join ch and whether that row exists. In SQL results the join column sits with the parent row,
+// and if its first column is NULL, it does not exist. In markdown answers, the parent row's last cell holds the join row.
 func (a *assembler) joinRow(ch *plan.Child, row []any) ([]any, bool) {
 	if a.res.markdown {
 		jrow := markdownLinks(row).joins[ch.Rel]
@@ -303,8 +303,8 @@ func (a *assembler) joinRow(ch *plan.Child, row []any) ([]any, bool) {
 	return row, ch.Assemble != nil && len(ch.Assemble.Columns) > 0 && row[ch.Assemble.Columns[0].Index] != nil
 }
 
-// related는 relation ch에서 부모 행 row의 행과 그 배치다. SQL 결과에서는 relation step의
-// 행을 key로 찾고, markdown 답에서는 부모 행의 마지막 칸이 relation 행을 가진다.
+// related is the row of relation ch for parent row row, and its layout. In SQL results, the rows of the relation step
+// are found by key; in markdown answers, the parent row's last cell holds the relation row.
 func (a *assembler) related(ch *plan.Child, row []any) ([][]any, *plan.Assemble, error) {
 	if a.res.markdown {
 		return markdownLinks(row).rels[ch.Rel], ch.Assemble, nil
@@ -463,7 +463,7 @@ func (a *assembler) external(r *request) error {
 	return nil
 }
 
-// matchColumns는 relation key의 부모 column이나(child가 false) 자식 column을 key 순서로 반환한다.
+// matchColumns returns the parent columns (if child is false) or the child columns of the relation key, in key order.
 func matchColumns(matches []ir.KeyPair, child bool) []string {
 	out := make([]string, len(matches))
 	for i, k := range matches {
@@ -475,8 +475,8 @@ func matchColumns(matches []ir.KeyPair, child bool) []string {
 	return out
 }
 
-// matchKey는 model의 relation key 값과 그 collection key를 반환한다. 한 성분이면
-// 값 하나, composite key이면 성분 값의 slice다. 성분 하나라도 null이면 false다.
+// matchKey returns the model's relation key value and its collection key. For a single component it is
+// one value; for a composite key it is a slice of the component values. If any component is null, it is false.
 func matchKey(m *Core, matches []ir.KeyPair, child bool) (any, Key, bool, error) {
 	columns := matchColumns(matches, child)
 	values := make([]any, len(columns))
@@ -530,7 +530,7 @@ func attachExternal(parents []*Core, rel relSpec) error {
 		q.matches, q.alias = nil, ""
 		match := condNode{pred: &predSpec{column: ch.matches[0].Right, op: "in", value: values, list: true}}
 		if len(ch.matches) > 1 {
-			// composite key는 자식 key column 전체를 tuple로 거른다.
+			// A composite key filters the whole child key column as a tuple.
 			rows := make([][]any, len(values))
 			for i, v := range values {
 				rows[i] = v.([]any)
@@ -897,8 +897,8 @@ func (c *Core) Create() (Model, error) {
 	if err != nil {
 		return nil, err
 	}
-	// 받은 key를 쓰는 column이다: identity, 또는 markdown executor가 정하는 key(key_prefix)로
-	// 요청이 값을 주지 않은 하나뿐인 primary key column이다.
+	// These are the columns that write the received key: identity, or the key the markdown executor decides (key_prefix).
+	// They are the single primary key column whose value the request did not supply.
 	assignedKey := ent.Identity
 	if assignedKey == "" && d.md != nil && len(ent.PK) == 1 && id != nil && !slices.ContainsFunc(c.sets, func(s setSpec) bool { return s.column == ent.PK[0] }) {
 		assignedKey = ent.PK[0]
@@ -934,8 +934,8 @@ func (c *Core) Create() (Model, error) {
 	return m.self, nil
 }
 
-// validateIdentityAssignment는 identity field가 generated model에 있는지
-// 확인하고 insert 전 model의 identity 값을 0으로 둔다.
+// validateIdentityAssignment checks that the identity field exists in the generated model
+// and sets the model's identity value to 0 before insert.
 func validateIdentityAssignment(ent *runtimemodel.Entity, generated *Entity, m Model) error {
 	if ent.Identity == "" {
 		return nil

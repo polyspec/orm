@@ -70,7 +70,7 @@ fn vectors() -> Vec<Trial> {
     let f: Map<String, Value> = serde_json::from_slice(&src).unwrap();
     let mut vectors: Vec<Vector> = serde_json::from_value(f["vectors"].clone()).unwrap();
     for v in &mut vectors {
-        // codec vector의 `json` stage는 dbspec의 `ordered_json` stage다.
+        // The `json` stage of a codec vector is the `ordered_json` stage of dbspec.
         for style in &mut v.styles {
             if style == "json" || style == "jsons" {
                 *style = "ordered_json".into();
@@ -213,7 +213,7 @@ fn styled_column_state_fixture() -> Vec<Trial> {
 
 fn styled_case(case: &Value) {
     let id = case["id"].as_str().expect("case ID");
-    // fixture의 `json`과 `jsons` stage는 dbspec의 `ordered_json` stage다.
+    // The `json` and `jsons` stages of the fixture are the `ordered_json` stage of dbspec.
     let style = match case["style"].as_str().expect("style") {
         "json" | "jsons" => "ordered_json",
         other => other,

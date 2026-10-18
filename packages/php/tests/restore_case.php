@@ -1,14 +1,14 @@
 <?php
 declare(strict_types=1);
-// contracts/fixtures/restore.dbs의 restore scenario(packages/go/orm/restore_test.go의 restoreCase와
-// 같다). RuntimeDbTest.php의 owner case와 CoverageAuditTriggersTest.php의 soft_delete_restore case가
-// 함께 쓴다. 호출자는 fixture의 model을 $namespace에 생성하고 연결에 설치한다.
+// The restore scenario of contracts/fixtures/restore.dbs (same as restoreCase in packages/go/orm/restore_test.go
+// ). The owner case of RuntimeDbTest.php and the soft_delete_restore case of CoverageAuditTriggersTest.php both use it
+// . The caller generates the fixture's model in $namespace and installs it on the connection.
 
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Db;
 use Polyspec\Orm\OrmException;
 
-/** $fn이 던진 OrmException의 code다. 성공하면 'no error'다. */
+/** The OrmException code thrown by $fn. 'no error' on success. */
 function restoreErrorCode(Closure $fn): string
 {
     try {
@@ -25,14 +25,14 @@ function restoreWant(bool $ok, string $message): void
 }
 
 /**
- * soft delete한 행을 restore로 되돌린다. membership은 unique key (team_id, member_id)와 exclude (note)를
- * 가진 audit table이고 label은 unique key (name)를 가진 audit 없는 table이다. 확인하는 것:
- * soft delete한 행의 unique key 값은 남아 같은 key의 insert는 DUPLICATE_KEY다. 기본 read는 지운 행을
- * 읽지 않는다. restore는 set 값만 보내고, planner가 고른 primary key나 unique key 하나의 set 값으로 지운 행을 찾아 soft delete column을
- * NULL로 쓰는 update를 하고 되돌린 행을 돌려준다. key 밖의 set 값은 그 update가 함께 쓰는 새 값이다. audit table이면 transaction의 audit 기록 key를 쓰고
- * trigger가 그 update를 기록하며, audit이 없으면 CONFIG다. 지워지지 않은 행의 restore는 아무것도
- * 쓰지 않고(새 값도 쓰지 않는다) 그 행을 돌려주고, 없는 행의 restore는 NO_ROWS다. key의 값이 없는
- * restore는 statement 없이 IR_INVALID다.
+ * Restores the soft-deleted row with restore. membership is an audit table with the unique key (team_id, member_id) and the exclude (note),
+ * and label is a table with no audit that has the unique key (name). Checks:
+ * the unique key values of the soft-deleted row remain, so an insert with the same key is DUPLICATE_KEY. The default read does not read deleted rows.
+ * restore sends only the set values. It finds the deleted row by the set value of one primary key or unique key the planner chose, and sets the soft delete column
+ * to NULL in an update, and returns the restored row. The set values outside the key are new values that the update writes together. For an audit table it uses the transaction's audit record key, and
+ * the trigger records that update; without audit it is CONFIG. A restore of a row that is not deleted writes nothing
+ * (not even new values) and returns that row, and restoring a missing row is NO_ROWS. A restore whose key values are missing
+ * is IR_INVALID with no statement.
  */
 function restoreCase(Db $db, string $namespace): void
 {
@@ -40,8 +40,8 @@ function restoreCase(Db $db, string $namespace): void
     $labelClass = "$namespace\\Label";
     $membership = static fn() => (new $membershipClass)($db);
     $label = static fn() => (new $labelClass)($db);
-    // audit 기록의 key는 실패한 transaction이 쓴 번호를 database마다 다르게 건너뛸 수 있으므로 actor로
-    // 찾는다.
+    // The audit record key may skip, in each database, a number that the failed transaction wrote, so it is found by the actor
+    // instead.
     $auditSeq = static function (string $actor) use ($db): string {
         $st = $db->pdo()->prepare('SELECT seq FROM audit WHERE actor = ?');
         $st->execute([$actor]);
@@ -49,7 +49,7 @@ function restoreCase(Db $db, string $namespace): void
         restoreWant(count($rows) === 1, "audit records of $actor " . json_encode($rows) . ', want one');
         return (string) $rows[0];
     };
-    // $db는 actor 'default'를 주는 audit source로 연 연결이다.
+    // $db is the connection opened with an audit source that gives the actor 'default'.
     $adb = $db;
     [$seq, $id] = $adb->transaction(function () use ($membershipClass, $labelClass): array {
         $seq = (new $membershipClass)->setTeamId(1)->setMemberId(2)->setNote('n1')->create()->getSeq();
@@ -72,7 +72,7 @@ function restoreCase(Db $db, string $namespace): void
         ksort($row);
         return $row;
     };
-    // key 밖의 set 값은 되돌리는 행에 함께 쓰는 새 값이다.
+    // A set value outside the key is a new value written together with the restored row.
     $restored = $adb->transaction(fn() => (new $membershipClass)->setTeamId(1)->setMemberId(2)->setNote('n2')->restore(), audit: ['actor' => 'restore'], retry: 0);
     $want = $values(['seq' => $seq, 'team_id' => 1, 'member_id' => 2, 'note' => 'n2', 'audit_seq' => (int) $auditSeq('restore'), 'deleted_at' => null]);
     restoreWant($values($restored->toArray()) === $want, 'restored membership ' . json_encode($restored->toArray()) . ', want ' . json_encode($want));

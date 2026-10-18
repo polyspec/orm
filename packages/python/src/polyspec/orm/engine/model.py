@@ -1,6 +1,6 @@
-# dbspec 문서 집합에서 만드는 runtime model (docs/dbspec.md "Runtime model").
-# 생성 code는 manifest text와 manifestHash를 담고, runtime은 그 text를 한 번
-# parse해서 entity, field, key, codec stage와 setting을 얻는다.
+# Runtime model made from the dbspec document set (docs/dbspec.md "Runtime model").
+# The generated code holds the manifest text and manifestHash; the runtime parses the text once
+# and obtains the entities, fields, keys, codec stages, and settings.
 from dataclasses import dataclass
 
 from polyspec.orm import codes
@@ -24,73 +24,73 @@ PLAIN_STAGES = frozenset({"aes", "hex", "ip"})
 
 @dataclass(frozen=True)
 class Field:
-    """entity의 column 하나."""
+    """One column of an entity."""
 
     name: str
     type: str  # FieldType: dbspec type kind
     nullable: bool
-    # automatic key: insert가 절대 쓰지 않고, 생성된 key를 돌려준다.
+    # Automatic key: insert never writes it, and returns the generated key.
     identity: bool
-    # column이 default를 가진다: 그것을 뺀 insert는 database의 default를 받는다.
+    # The column has a default: an insert that leaves it out takes the database's default.
     has_default: bool
-    # default가 `now`다. executor clock을 쓰는 dialect(PostgreSQL, SQLite)는 이 column을 뺀
-    # insert에 executor clock을 bind한다.
+    # The default is `now`. Dialects that use the executor clock (PostgreSQL, SQLite) leave this column out of
+    # the insert and bind the executor clock.
     default_now: bool
-    # decimal(p,s) p, time(p)와 datetime(p) p, 아니면 0.
+    # decimal(p,s) p; time(p) and datetime(p) p; otherwise 0.
     precision: int
-    # decimal(p,s) s, 아니면 0.
+    # decimal(p,s) s; otherwise 0.
     scale: int
-    # varchar(n) n, 아니면 0.
+    # varchar(n) n; otherwise 0.
     length: int
-    # 쓰기 순서의 codec stage.
+    # Codec stage in write order.
     stages: tuple
-    # 그 column이 기본 select 묶음에 있다 (`select explicit`이 아니다).
+    # The column is in the default select group (not `select explicit`).
     selected: bool
     primary: bool
-    # 그 table의 foreign key column이다.
+    # The foreign key column of that table.
     foreign: bool
-    # AES column의 blind index column, 또는 ''.
+    # Blind index column of an AES column, or ''.
     blind_index: str
 
 
 @dataclass(frozen=True)
 class Entity:
-    """문서 집합의 table 하나."""
+    """One table of the document set."""
 
     name: str
     table: str
     fields: tuple
     primary_key: tuple
-    # identity column, 또는 ''.
+    # Identity column, or ''.
     identity: str
-    # 각 unique key의 column들, 선언 순서대로.
+    # Columns of each unique key, in declaration order.
     uniques: tuple
-    # index와 unique key의 이름들.
+    # Names of the indexes and unique keys.
     indexes: tuple
-    # `updated` column, 또는 ''.
+    # `updated` column, or ''.
     updated: str
-    # `soft_delete` column, 또는 ''.
+    # `soft_delete` column, or ''.
     soft_delete: str
-    # `aes_version` column, 또는 ''.
+    # `aes_version` column, or ''.
     aes_version: str
-    # `audit` setting의 audit column, 또는 ''. insert와 update마다 transaction의
-    # audit record key를 여기에 쓴다.
+    # Audit column of the `audit` setting, or ''. For each insert and update, the transaction's audit
+    # record key is written here.
     audit_column: str
-    # `audit` setting의 audit 기록 table (references table), 또는 ''.
+    # Audit record table of the `audit` setting (the references table), or ''.
     audit_record: str
 
 
 @dataclass(frozen=True)
 class RuntimeModel:
-    """문서 집합의 runtime model과 그 manifest text와 hash."""
+    """The runtime model of the document set, with its manifest text and hash."""
 
     manifest_text: str
     manifest_hash: str
-    # 집합이 외부 문서에서 쓰는 table의 text. 외부 문서가 없으면 비어 있다.
+    # Text of the tables the set uses from external documents. Empty if there are no external documents.
     external_text: str
-    # 집합의 parse된 문서들, 문서 이름 순서로, 외부 문서는 external로 표시된다.
+    # Parsed documents of the set, in document name order; external documents are marked external.
     documents: tuple
-    # 소유한 문서의 entity들, 이름 순서. 외부 table은 entity가 아니다.
+    # Entities of the owned documents, in name order. External tables are not entities.
     entities: dict
 
     @staticmethod
@@ -120,7 +120,7 @@ _HEADER = "dbspec 1 "
 
 
 def split_documents(text: str) -> list:
-    """manifest text를 이은 문서들을 header 줄에서 나눈다."""
+    """Splits the documents from the manifest text at the header lines."""
     if not text.startswith(_HEADER):
         raise OrmError(
             codes.SCHEMA_INVALID, "manifest text does not start with a dbspec header"
@@ -215,7 +215,7 @@ def _entity_of_table(t) -> Entity:
 
 
 def model_of_documents(documents) -> RuntimeModel:
-    """parse된 문서들의 runtime model. 집합은 manifest를 가져야 한다."""
+    """Runtime model of the parsed documents. A set must have a manifest."""
 
     manifest, diagnostics = dbspec_manifest(documents)
     if manifest is None:
@@ -247,9 +247,9 @@ def model_of_documents(documents) -> RuntimeModel:
 
 
 def parse_document_set(texts, external_texts=()) -> list:
-    """한 문서 집합의 dbspec text들을 parse한다: 집합이 소유한 문서와 집합이 쓰는
-    외부 문서. parse_dbspec_set이 각 text를 다른 모든 문서와 함께 parse하고 외부 문서를
-    external로 표시한다. 문서의 첫 진단은 SCHEMA_INVALID다."""
+    """Parses the dbspec texts of one document set: the documents the set owns, and the external documents the set uses.
+    parse_dbspec_set parses each text together with all other documents, and marks external documents as
+    external. The first diagnostic of a document is SCHEMA_INVALID."""
     for text in list(texts) + list(external_texts):
         if not isinstance(text, str):
             raise OrmError(codes.SCHEMA_INVALID, "a dbspec text is not a string")
@@ -268,9 +268,9 @@ def parse_document_set(texts, external_texts=()) -> list:
 def model_of_manifest(
     manifest_text: str, manifest_hash: str, external_text: str = ""
 ) -> RuntimeModel:
-    """manifest text와 그 문서들이 외부 문서에서 쓰는 table의 text의 runtime model을
-    만들고, 그 text들이 문서들의 manifest text와 external text가 맞는지(SCHEMA_INVALID
-    아니면)와 manifestHash가 그 hash가 맞는지(SCHEMA_HASH_MISMATCH 아니면) 확인한다."""
+    """Builds the runtime model of the manifest text and of the text of the tables that its documents use from external documents,
+    and checks that those texts match the documents' manifest text and external text (SCHEMA_INVALID
+    otherwise), and that manifestHash matches its hash (SCHEMA_HASH_MISMATCH otherwise)."""
     model = model_of_documents(
         parse_document_set(
             split_documents(manifest_text),

@@ -1,5 +1,5 @@
-// --results의 비교: state contract의 statement kind 목록과 다른 statement를 위치, kind, SQL과 함께 적고, 쓰지 않은 output을
-// 그 경로로 적으며, i64 값과 그 type을 잃지 않는다.
+// Comparison of --results: a statement that differs from the state contract's statement kind list is reported with position, kind, and SQL, and an output not written
+// is reported by its path, and i64 values and their type are not lost.
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -9,7 +9,7 @@ import { deepEqual, losslessJson } from './json.mts';
 import type { Sequence } from './manifest.mts';
 import { checkResults, checkSequences, type SequenceOutput } from './sequences.mts';
 
-// utility statement는 dialect마다 다르므로 비교하지 않는다. now_defaults의 출력은 MySQL의 것과 같은 모양이다: begin, insert,
+// utility statements differ by dialect, so they are not compared. now_defaults output has the same shape as MySQL's: begin, insert,
 // select, delete, commit.
 caseTest('sequences name added and missing statements', COMPUTE, () => {
   const sequences: Sequence[] = [{ id: 'now_defaults', expected: { created_equals_updated: true }, statements: ['begin', 'insert', 'select', 'delete', 'commit'] }];
@@ -22,7 +22,7 @@ caseTest('sequences name added and missing statements', COMPUTE, () => {
   assert.deepEqual(checkSequences('go.json', output(statements), sequences), []);
   assert.deepEqual(checkSequences('go.json', output(`${statements},{"kind":"utility","sql":"SELECT GET_LOCK(?, 50)"}`), sequences), [], 'a utility statement was compared');
   const cases: [string, string[]][] = [
-    // T42 이전의 contract(model statement만)와 오늘의 출력이 다른 모양이다.
+    // Before T42 the contract (model statements only) and today's output have different shapes.
     ['{"kind":"insert","sql":"INSERT a"},{"kind":"select","sql":"SELECT a"},{"kind":"delete","sql":"DELETE a"}', [[
       'go.json: state contract now_defaults: statements other than utility differ from the contract: -2 transaction-control',
       '  - #1 begin',

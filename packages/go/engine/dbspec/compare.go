@@ -5,18 +5,18 @@ import (
 	"strings"
 )
 
-// RuleCompare는 schema text가 아닌 비교 대상의 diagnostic이다(docs/plans.md "Comparison").
+// RuleCompare is the diagnostic for a comparison target that is not schema text (docs/plans.md "Comparison").
 const RuleCompare = "compare"
 
-// Difference는 두 schema의 차이 하나다(docs/plans.md "Comparison"). Name은
-// column이나 객체의 이름이고, table 단위 차이에서는 빈 문자열이다.
+// Difference is one difference between two schemas (docs/plans.md "Comparison"). Name is
+// the name of a column or object, and is an empty string for a table-level difference.
 type Difference struct {
 	Kind  string
 	Table string
 	Name  string
 }
 
-// differenceKinds는 한 table 안에서 차이가 오는 순서다.
+// differenceKinds is the order in which differences occur within one table.
 var differenceKinds = []string{
 	"create_table", "drop_table",
 	"drop_column", "add_column", "alter_column", "change_column_type", "change_column_identity",
@@ -26,9 +26,9 @@ var differenceKinds = []string{
 	"drop_immutable", "add_immutable", "drop_audit", "add_audit",
 }
 
-// CompareSchemas는 plan 없이 source에서 target까지의 모든 차이를 돌려준다.
-// rename은 없고 table과 column은 이름으로만 맞춘다. 두 문서는 schema text여야
-// 하며, 아닌 쪽마다 compare diagnostic을 source, target 순으로 돌려준다.
+// CompareSchemas returns all differences from source to target without a plan.
+// There is no rename; tables and columns are matched by name only. Both documents must be schema text,
+// and for each one that is not, it returns a compare diagnostic in source, target order.
 func CompareSchemas(source, target *Document) ([]Difference, []Diagnostic) {
 	var out []Diagnostic
 	for _, side := range []struct {
@@ -80,9 +80,9 @@ func CompareSchemas(source, target *Document) ([]Difference, []Diagnostic) {
 	return differences, nil
 }
 
-// isSchemaText는 문서의 canonical emission이 그 문서 하나의 schema text인지 알려 준다.
-// 외부 문서의 use 줄은 문서 이름 순, 그 table은 이름 순이어야 한다. 외부 문서 자체는
-// 필요 없다.
+// isSchemaText reports whether the document's canonical emission is the schema text of that one document.
+// The use lines of an external document must be in document-name order, and its tables in name order. The external document itself
+// is not needed.
 func isSchemaText(d *Document) bool {
 	if d.Name != "schema" {
 		return false
@@ -97,7 +97,7 @@ func isSchemaText(d *Document) bool {
 	return Emit(d) == emitDocument(schema, viewSchema)
 }
 
-// compareTables는 두 쪽에 다 있는 table의 column, primary key, 객체, setting 차이를 더한다.
+// compareTables adds the column, primary key, object, and setting differences of tables present on both sides.
 func compareTables(s, t *Table, add func(kind, name string)) {
 	for _, c := range s.Columns {
 		if columnOf(t, c.Name) == nil {
@@ -151,8 +151,8 @@ func compareTables(s, t *Table, add func(kind, name string)) {
 		}
 		return []string{"immutable"}
 	}
-	// audit은 두 쪽에 다 있는 column 가운데 기록하지 않는 column까지 비교한다.
-	// 한쪽에만 있는 column은 add_column이나 drop_column이 차이로 남긴다.
+	// audit compares, among the columns present on both sides, even columns that are not recorded.
+	// A column present on only one side is left as a difference: add_column or drop_column.
 	audit := func(x *Table) []string {
 		if x.Settings == nil || x.Settings.Audit == nil {
 			return nil
@@ -170,8 +170,8 @@ func compareTables(s, t *Table, add func(kind, name string)) {
 	compareSettings(add, "audit", audit(s), audit(t))
 }
 
-// compareObjects는 이름으로 맞춘 객체가 한쪽에만 있으면 drop이나 add를, 정의가
-// 다르면 둘 다 더한다.
+// compareObjects, for an object matched by name that is on only one side, adds a drop or an add; if its definition
+// differs, it adds both.
 func compareObjects[T any](add func(kind, name string), kind string, source, target []T, name, def func(T) string) {
 	defs := map[string]string{}
 	for _, o := range target {
@@ -191,7 +191,7 @@ func compareObjects[T any](add func(kind, name string), kind string, source, tar
 	}
 }
 
-// compareSettings는 table에 하나뿐인 setting의 정의(없으면 nil)를 비교한다.
+// compareSettings compares the definition (nil if none) of the setting that a table has at most one of.
 func compareSettings(add func(kind, name string), kind string, source, target []string) {
 	if !slices.Equal(source, target) {
 		if source != nil {

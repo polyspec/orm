@@ -1,20 +1,20 @@
-// ci-setup은 CI workflow가 make check 앞에서 실행하는 setup step과 그것이 마련하는 것(need)이다. make check의
-// runner(scripts/check/run.mts)는 workflow가 ORM_CI_SETUP으로 준 step 결과(`${{ toJSON(steps) }}`)를 읽고, 실패한
-// step이 마련하는 need를 선언한 target(contracts/check-inputs.json의 `needs`)을 실행하지 않고 그 step과 함께
-// not-run으로 기록한다. 나머지 target은 모두 실행한다. repository check(scripts/repo/ci.mts)는 workflow의 setup step이
-// 모두 여기에 있는지 확인한다.
+// ci-setup is the setup step that the CI workflow runs before make check, and the needs it prepares.
+// The runner (scripts/check/run.mts) reads the step results the workflow passes as ORM_CI_SETUP (`${{ toJSON(steps) }}`), and for a failed
+// step, a target that declares a need the step prepares (`needs` in contracts/check-inputs.json) is not run; it is recorded together with that step as
+// not-run. All other targets run. The repository check (scripts/repo/ci.mts) confirms that the workflow's setup steps
+// are all listed here.
 //
-// CI는 make check를 CI group(Makefile의 CI_GROUPS와 CI_TARGETS_<group>)마다 job 하나로 실행한다. job의 step group-needs
-// (make ci-group-needs)가 그 group의 target이 선언한 need에서 GROUP_OUTPUTS의 값을 step output으로 쓰고, setup step은
-// STEP_OUTPUT이 적은 그 output이 true일 때만 실행한다. 그래서 group은 자기 target이 필요로 하는 setup만 한다.
+// CI runs make check as one job per CI group (CI_GROUPS and CI_TARGETS_<group> in the Makefile). The job's step group-needs
+// (make ci-group-needs) writes the GROUP_OUTPUTS values, taken from the needs the group's targets declare, as step outputs, and a setup step
+// runs only when the output named by its STEP_OUTPUT is true. So each group performs only the setup its own targets need.
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { declaredNeeds } from './inputs.mts';
 import { parseJson } from '../json/schema.mts';
 
-// CI_SETUP은 setup step의 id마다 그 step이 마련하는 need다. null인 step은 실패해도 target이 그 step 없이 실행된다:
-// rust-cache는 build cache를 되살릴 뿐이고, group-needs는 어느 setup step을 실행할지 정할 뿐이다(그 step이 실패하면
-// 조건이 있는 setup step은 건너뛰고, 그 need를 선언한 target은 not-run이 된다).
+// CI_SETUP is, for each setup step id, the need that step prepares. A step whose value is null lets its targets run without it even if it fails:
+// rust-cache only restores the build cache, and group-needs only decides which setup steps run (if such a step fails,
+// a conditional setup step is skipped, and the targets declaring its need become not-run).
 export const CI_SETUP: Record<string, string | null> = {
   'group-needs': null,
   go: 'go',
@@ -37,17 +37,17 @@ export const CI_SETUP: Record<string, string | null> = {
   flowmark: 'flowmark',
 };
 
-// RUNNER_STEPS는 runner 자신이 필요한 step이다: repository와 Node가 없으면 make check도 summary도 실행되지 않으므로,
-// 그 실패는 job의 실패이고 그 step의 log가 원인이다.
+// RUNNER_STEPS are the steps the runner itself needs: without the repository and Node, neither make check nor the summary runs, so
+// that failure is a job failure, and the log of that step is the cause.
 export const RUNNER_STEPS = ['checkout', 'node'];
 
-// NEEDS는 target이 선언할 수 있는 need다. databases는 runner의 setup 단계(servers, databases/create)가 마련하고, 나머지는
-// CI setup step이 마련한다. 로컬 실행에는 CI setup step이 없으므로 그 need는 언제나 마련된 것으로 본다.
+// NEEDS are the needs a target may declare. databases is prepared by the runner's setup phase (servers, databases/create), and the rest
+// are prepared by the CI setup steps. Local runs have no CI setup steps, so those needs are always treated as prepared.
 export const NEEDS = ['databases', ...new Set(Object.values(CI_SETUP).filter(Boolean).filter(need => need !== 'databases'))];
 
-// GROUP_OUTPUTS는 step group-needs가 쓰는 output마다 그 output을 true로 만드는 need다. php는 PHP 두 release(가장 낮은
-// release와 .php-version)와 Composer를 함께 설치한다: Composer와 PHP 확장 도구는 PATH의 PHP로 실행한다. server-programs는 make test-servers가 server를 시작하는 program이고 node-modules는
-// make databases-create가 build하는 TypeScript client의 의존성이므로 databases도 둘을 필요로 한다.
+// GROUP_OUTPUTS maps each output that step group-needs writes to the need that makes that output true. php installs two PHP releases (the lowest
+// release and .php-version) together with Composer: Composer and the PHP extension tools run with the PHP on PATH. server-programs is the program make test-servers uses to start the servers, and node-modules is
+// a dependency of the TypeScript client that make databases-create builds, so databases needs both of them as well.
 export const GROUP_OUTPUTS: Record<string, string[]> = {
   'node-modules': ['node-modules', 'databases'],
   rust: ['rust'],
@@ -59,8 +59,8 @@ export const GROUP_OUTPUTS: Record<string, string[]> = {
   flowmark: ['flowmark'],
 };
 
-// STEP_OUTPUT은 setup step마다 그 step을 실행하게 하는 group-needs의 output이다. null인 step은 모든 group에서 실행한다:
-// make check는 lease program을 Go로 build하고(BUILD_LEASE), group-needs는 어느 step을 실행할지 정하는 step 자신이다.
+// STEP_OUTPUT is, for each setup step, the group-needs output that makes that step run. A step whose value is null runs in every group:
+// make check builds the lease program in Go (BUILD_LEASE), and group-needs is itself the step that decides which steps run.
 export const STEP_OUTPUT: Record<string, string | null> = {
   'group-needs': null,
   go: null,
@@ -81,24 +81,24 @@ export const STEP_OUTPUT: Record<string, string | null> = {
   servers: 'databases',
   // install-python installs the tools of mise.toml and makes the venv from their Python (make python-venv).
   'install-python': 'python',
-  // flowmark은 markdown-conformance-check가 실행하는 flowmark build를 설치한다(make install-flowmark).
+  // flowmark installs the flowmark build that markdown-conformance-check runs (make install-flowmark).
   flowmark: 'flowmark',
 };
 
-// stepCondition은 CI group job에서 setup step id가 가지는 `if:` 조건이다.
+// stepCondition is the `if:` condition that a setup step id has in a CI group job.
 export const stepCondition = (id: string): string => STEP_OUTPUT[id]
   ? `\${{ !cancelled() && steps.group-needs.outputs.${STEP_OUTPUT[id]} == 'true' }}`
   : '${{ !cancelled() }}';
 
-// SETUP_NEEDS는 runner의 setup 단계가 마련하는 need마다 그 단계 자신이 필요로 하는 need다. databases는 setup 단계
-// servers와 databases/create(scripts/check/databases.mts)가 마련한다: server는 make test-servers가 server-programs의
-// program으로 시작하고 Go로 build한 lease와 stop-process 도구로 관리하며, databases.mts는 bench database(scripts/bench-db.mts)와
-// decimal database를 TypeScript client로 설치하고, make databases-create가 그 client를 build한다. 그래서 databases가
-// 필요한 target은 이 need도 필요하다(expandNeeds).
-// php-min은 그 release를 scripts/php/php-min.mts로 읽고, 그 script는 composer.json을 schema로 읽으므로 node_modules가 필요하다.
+// SETUP_NEEDS maps each need the runner's setup phase prepares to the needs that phase itself requires. databases (the setup phase
+// servers and databases/create (scripts/check/databases.mts) prepare: a server is started by make test-servers from server-programs,
+// and is managed by the lease and stop-process tools built in Go, and databases.mts sets up the bench database (scripts/bench-db.mts) and
+// the decimal database through the TypeScript client, which make databases-create builds. So a target that needs databases
+// also needs this need (expandNeeds).
+// php-min reads that release through scripts/php/php-min.mts, and that script reads composer.json as its schema, so it needs node_modules.
 export const SETUP_NEEDS: Record<string, string[]> = { databases: ['go', 'node-modules', 'server-programs'], 'php-min': ['node-modules'] };
 
-// expandNeeds는 need 목록에 SETUP_NEEDS가 적는 need를 끝까지 더한 목록이다(선언한 순서, 그다음 더한 순서).
+// expandNeeds is the need list with the needs that SETUP_NEEDS names appended transitively (declared order first, then the order added).
 export function expandNeeds(needs: readonly string[]): string[] {
   const all = [...needs];
   for (let index = 0; index < all.length; index++)
@@ -106,8 +106,8 @@ export function expandNeeds(needs: readonly string[]): string[] {
   return all;
 }
 
-// groupOutputs는 target들이 선언한 need(needs: {target: [need]})와 그 need의 setup 단계가 필요로 하는 need(expandNeeds)에서
-// group-needs의 output을 {output: boolean}으로 돌려준다. 선언하지 않은 target은 그 이름과 고치는 방법과 함께 던진다.
+// groupOutputs takes the needs the targets declare (needs: {target: [need]}) and the needs that those needs' setup phase requires (expandNeeds),
+// and returns the group-needs outputs as {output: boolean}. A target that was not declared throws, with its name and how to fix it.
 /** The needs of each target, {target: [need]}. */
 export type Needs = Record<string, string[]>;
 
@@ -120,10 +120,10 @@ export function groupOutputs(targets: readonly string[], needs: Needs): Record<s
   return Object.fromEntries(Object.entries(GROUP_OUTPUTS).map(([output, from]) => [output, from.some(need => wanted.has(need))]));
 }
 
-// groupSetupErrors는 CI group의 job이 그 target에 필요한 setup step을 건너뛰는 곳마다 오류 하나를 돌려준다. groups는
-// {group: [target]}, needs는 {target: [need]}이고, outputs는 group의 target에서 group-needs의 output을 만드는 함수(groupOutputs)다.
-// target의 need와 그 need의 setup 단계가 필요로 하는 need(SETUP_NEEDS)마다, 그 need를 마련하는 CI setup step(CI_SETUP)은
-// 언제나 실행되거나(STEP_OUTPUT이 null) 그 output이 true여야 한다.
+// groupSetupErrors returns one error for each place where a CI group's job skips a setup step its target needs. groups is
+// {group: [target]}, needs is {target: [need]}, and outputs is the function (groupOutputs) that builds the group-needs outputs from a group's targets.
+// For each need of a target and each need that its setup phase requires (SETUP_NEEDS), the CI setup step that prepares it (CI_SETUP)
+// must either always run (STEP_OUTPUT is null) or have its output true.
 export function groupSetupErrors(groups: Record<string, string[]>, needs: Needs, outputs: (targets: readonly string[], needs: Needs) => Record<string, boolean> = groupOutputs): string[] {
   const errors: string[] = [];
   for (const [group, targets] of Object.entries(groups)) {
@@ -142,15 +142,15 @@ export function groupSetupErrors(groups: Record<string, string[]>, needs: Needs,
   return [...new Set(errors)];
 }
 
-// failedCiSetup은 ORM_CI_SETUP의 text에서 성공하지 않은(실패했거나 건너뛴) setup step을 [{ id, need, outcome }]으로 돌려준다.
-// step이 마련하는 need가 없거나(rust-cache, group-needs) 성공한 step은 들지 않는다. server-programs가 실패하면 server를
-// 시작할 수 없으므로 databases도 실패한다. 모르는 step id는 그 step을 workflow와 이 표에 함께 선언하라는 오류다.
+// failedCiSetup returns the setup steps in the ORM_CI_SETUP text that did not succeed (failed or skipped) as [{ id, need, outcome }].
+// Steps that prepare no need (rust-cache, group-needs) or that succeeded are not included. If server-programs fails, the servers
+// cannot start, so databases fails too. An unknown step id is an error asking that the step be declared in both the workflow and this table.
 export function failedCiSetup(text: string | undefined): { id: string; need: string; outcome: string }[] {
   if (!text) return [];
   const steps = parseJson<Record<string, { outcome: 'success' | 'failure' | 'cancelled' | 'skipped' }>>(text, new URL('./schema/ci-steps.schema.json', import.meta.url).pathname, 'ORM_CI_SETUP');
   const failed: { id: string; need: string; outcome: string }[] = [];
   for (const [id, step] of Object.entries(steps)) {
-    // 실패하거나 건너뛴 step은 그것이 마련하는 것을 마련하지 않았다.
+    // A failed or skipped step did not prepare what it would have prepared.
     if (step.outcome === 'success' || RUNNER_STEPS.includes(id)) continue;
     if (!Object.hasOwn(CI_SETUP, id)) throw new Error(`CI step ${id} failed and declares no need; declare it in scripts/check/ci-setup.mts`);
     const need = CI_SETUP[id];
@@ -161,8 +161,8 @@ export function failedCiSetup(text: string | undefined): { id: string; need: str
   return failed;
 }
 
-// `node scripts/check/ci-setup.mts outputs <target>...`는 group-needs step의 output 줄(`<output>=true|false`)을 쓴다. make
-// ci-group-needs가 CI_TARGETS_<group>으로 실행하고, workflow가 그 줄을 $GITHUB_OUTPUT에 더한다.
+// `node scripts/check/ci-setup.mts outputs <target>...` writes the output lines (`<output>=true|false`) of the group-needs step. make
+// ci-group-needs runs it with CI_TARGETS_<group>, and the workflow appends those lines to $GITHUB_OUTPUT.
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const [action, ...targets] = process.argv.slice(2);
   if (action !== 'outputs' || targets.length === 0) {

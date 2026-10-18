@@ -12,7 +12,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// historyRow는 audit history table의 한 행이다.
+// historyRow is one row of the audit history table.
 type historyRow struct {
 	change   string
 	previous sql.NullInt64
@@ -22,8 +22,8 @@ type historyRow struct {
 	deleted  bool
 }
 
-// auditSource는 actor를 audit 값으로 주는 audit source다. context에
-// actorKey 값이 있으면 그 값을 쓴다.
+// auditSource is the audit source that supplies the actor as the audit value. From the context
+// it uses the actorKey value if present.
 func auditSource(actor string) func(context.Context) (map[string]any, error) {
 	return func(ctx context.Context) (map[string]any, error) {
 		if v, ok := ctx.Value(actorKey{}).(string); ok {
@@ -33,26 +33,26 @@ func auditSource(actor string) func(context.Context) (map[string]any, error) {
 	}
 }
 
-// actorKey는 audit source가 읽는 context 값의 key다.
+// actorKey is the key of the context value that the audit source reads.
 type actorKey struct{}
 
-// auditConfig는 actor를 audit 값으로 주는 연결 설정이다.
+// auditConfig is the connection setting that supplies the actor as the audit value.
 func auditConfig(actor string) orm.Config { return orm.Config{AuditSource: auditSource(actor)} }
 
-// auditCase는 dsn의 database에 contracts/fixtures/audit.dbs를 설치하고, audit
-// 기록을 받은 transaction의 write를 확인한다.
-//   - 연결 설정의 audit source가 준 값과 transaction의 audit 값을 합친 기록
-//     하나를 transaction이 callback 전에 audit setting의 references table에
-//     삽입하고(같은 column이면 transaction 값이 이긴다), audit table의 insert,
-//     update, soft delete는 그 primary key를 audit column에 쓴다. trigger가 각
-//     version을 history table에 남기고 previous는 이전 version의 audit key다.
-//   - audit source가 없는 연결의 audit transaction, audit 기록 table의 column이
-//     아닌 값(transaction이나 source의 값)은 CONFIG이고, source의 오류는
-//     transaction의 오류다.
-//   - 중첩 transaction은 바깥 audit을 쓰며 자기 audit을 받지 않는다(CONFIG).
-//   - audit 없는 audit table write는 CONFIG다. 없는 audit 기록을 가리키는 raw
-//     write는 foreign key가 거부한다.
-//   - callback이 실패하면 audit 기록도 rollback된다.
+// auditCase installs contracts/fixtures/audit.dbs in the database at dsn, and checks the audit
+// records for the writes of the transaction that receives them.
+//   - a record combining the value the connection setting's audit source gives with the transaction's audit value
+//     one, which the transaction inserts into the audit setting's references table before the callback
+//     (for the same column the transaction's value wins), and the audit table's insert,
+//     update, and soft delete write that primary key to the audit column; the trigger records each
+//     version in the history table, and previous is the audit key of the prior version.
+//   - an audit transaction on a connection with no audit source, where a column of the audit record table
+//     that is not a value (of the transaction or the source) is CONFIG, and an error from the source is
+//     a transaction error.
+//   - a nested transaction uses the outer audit and does not receive its own (CONFIG).
+//   - a write to an audit table without an audit is CONFIG. A raw
+//     write that points to a missing audit record is refused by the foreign key.
+//   - if the callback fails, the audit record is rolled back too.
 func auditCase(t *testing.T, driver, dsn string) {
 	t.Helper()
 	s := fixtureSchema(t, "audit")
@@ -129,7 +129,7 @@ func auditCase(t *testing.T, driver, dsn string) {
 		if orm.ErrorCode(nested) != orm.CodeConfig {
 			return fmt.Errorf("a nested transaction with an audit = %v, want CONFIG", nested)
 		}
-		// 중첩 transaction은 바깥 audit을 쓴다.
+		// A nested transaction uses the outer audit.
 		return db.Transaction(func() error {
 			c := byKey(seq)
 			c.Set("title", "second")
@@ -143,7 +143,7 @@ func auditCase(t *testing.T, driver, dsn string) {
 	if err := titled.Update(nil); orm.ErrorCode(err) != orm.CodeConfig {
 		t.Fatalf("update without an audit = %v, want CONFIG", err)
 	}
-	// 값이 없는 audit transaction은 기본값만으로 기록한다.
+	// An audit transaction with no values records only the defaults.
 	if err := adb.Transaction(func() error { return byKey(seq).Delete(nil) }, orm.Audit(nil), orm.Retry(0)); err != nil {
 		t.Fatal(err)
 	}
@@ -175,8 +175,8 @@ func auditCase(t *testing.T, driver, dsn string) {
 	}
 }
 
-// auditNative는 dsn의 database를 native driver로 연다. SQLite는 foreign key를
-// 연결마다 켜므로 그 pragma로 연다.
+// auditNative opens the database at dsn with the native driver. SQLite turns foreign keys on
+// per connection, so it opens with that pragma.
 func auditNative(t *testing.T, driver, dsn string) *sql.DB {
 	t.Helper()
 	if driver != "sqlite" {
@@ -190,8 +190,8 @@ func auditNative(t *testing.T, driver, dsn string) *sql.DB {
 	return raw
 }
 
-// TestAuditRecordTransaction는 auditCase를 세 database에서 case마다 새
-// database로 실행한다.
+// TestAuditRecordTransaction runs auditCase on three databases, with a new
+// database for each case.
 func TestAuditRecordTransaction(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	for _, driver := range []string{"sqlite", "mysql", "postgres"} {
@@ -199,7 +199,7 @@ func TestAuditRecordTransaction(t *testing.T) {
 	}
 }
 
-// readHistory는 item_history를 history_id 순서로 native driver로 읽는다.
+// readHistory reads item_history in history_id order with the native driver.
 func readHistory(t *testing.T, driver, dsn string) []historyRow {
 	t.Helper()
 	raw := restoreNative(t, driver, dsn)

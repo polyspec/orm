@@ -1,10 +1,10 @@
-//! test가 자기 계산에 두는 시간 제한은 그 계산을 실행한 thread가 쓴 CPU 시간으로 잰다. 공유
-//! machine에서 wall-clock 시간은 다른 process가 CPU를 쓰는 동안 기다린 시간도 담으므로 code가
-//! 한 일을 재지 못한다. wall-clock 시간은 함께 출력만 한다. 멈춘 case를 끊는 timer와 database나
-//! 다른 process가 하는 일의 제한은 wall-clock 시간을 쓴다.
+//! A time limit that a test puts on its own computation is measured in the CPU time used by the thread that runs it. On a shared
+//! machine, wall-clock time also includes time spent waiting while another process uses the CPU, so it does not measure
+//! the work the code did. Wall-clock time is only printed alongside. A timer that ends a stuck case, and a limit on work done by
+//! a database or another process, use wall-clock time.
 use std::time::{Duration, Instant};
 
-/// 한 case의 wall-clock 시간과 thread CPU 시간을 함께 잰다. case는 이 값을 만든 thread에서 돈다.
+/// Measures the wall-clock time and the thread CPU time of one case together. The case runs on the thread that made this value.
 pub struct CaseClock {
     wall: Instant,
     cpu: Duration,
@@ -15,7 +15,7 @@ impl CaseClock {
         Self { wall: Instant::now(), cpu: thread_cpu() }
     }
 
-    /// 시작 뒤 이 thread가 쓴 user와 system CPU 시간이다.
+    /// The user and system CPU time this thread has used since the start.
     pub fn cpu(&self) -> Duration {
         thread_cpu() - self.cpu
     }
@@ -25,7 +25,7 @@ impl CaseClock {
     }
 }
 
-/// 지금 thread가 지금까지 쓴 CPU 시간이다.
+/// The CPU time this thread has used up to now.
 pub fn thread_cpu() -> Duration {
     let now = rustix::time::clock_gettime(rustix::time::ClockId::ThreadCPUTime);
     Duration::new(now.tv_sec as u64, now.tv_nsec as u32)
@@ -35,7 +35,7 @@ pub fn thread_cpu() -> Duration {
 mod tests {
     use super::*;
 
-    // 잠든 시간은 CPU 시간에 들어가지 않고 wall-clock 시간에만 들어간다.
+    // Sleeping time is not counted in CPU time; it is counted only in wall-clock time.
     #[test]
     fn case_clock_does_not_count_time_off_the_cpu() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

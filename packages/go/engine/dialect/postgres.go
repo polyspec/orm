@@ -20,8 +20,8 @@ func (Postgres) ForceIndex(string) string { return "" } // planner hints are not
 func (Postgres) InsertReturningID() bool  { return true }
 func (Postgres) Now(int) string           { return "CURRENT_TIMESTAMP" }
 
-// HandlesStyle은 false다. ip stage도 bytea column에 넣을 packed byte를
-// executor가 만든다.
+// HandlesStyle is false: the packed bytes for the bytea column, including the ip stage, are made by the
+// executor.
 func (Postgres) HandlesStyle(string) bool { return false }
 
 func (Postgres) DecodesStyle(string) bool { return false }
@@ -36,9 +36,9 @@ func (Postgres) RowNumber(partition, orderBy string) string {
 	return s + ")"
 }
 
-// RestartIdentity: identity sequence를 가장 큰 key에 1을 더한 값으로 정하고 is_called를
-// false로 두어 다음 nextval이 그 값을 돌려주게 한다. pg_get_serial_sequence의 첫
-// 인자는 identifier로 읽히므로 quote한 table 이름이고, 둘째 인자는 column 이름 그대로다.
+// RestartIdentity: sets the identity sequence to the largest key plus 1 and sets is_called
+// to false, so that the next nextval returns that value. The first argument of pg_get_serial_sequence
+// is read as an identifier, so it is the quoted table name; the second argument is the column name as is.
 func (Postgres) RestartIdentity(table, column string) string {
 	q := QuoteWith(`"`, column)
 	return "SELECT setval(pg_get_serial_sequence(" + Literal(QuoteWith(`"`, table)) + ", " + Literal(column) + "), COALESCE(MAX(" + q + "), 0) + 1, false) FROM " + QuoteWith(`"`, table)

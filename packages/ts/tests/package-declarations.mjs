@@ -17,10 +17,10 @@ import { dirname, join } from 'node:path';
 import { COMPUTE, caseTest, runLong, stepLines } from '../../../tests/testcase.mts';
 
 const client = new URL('..', import.meta.url).pathname;
-// client의 dependency는 Node가 client의 package.json에서 package 이름으로 찾는다.
+// Node finds the client's dependencies by package name in the client's package.json.
 const clientPackage = new URL('../package.json', import.meta.url);
 const packageDirectory = name => dirname(findPackageJSON(name, clientPackage));
-// command는 program을 실행하고 출력 줄을 step으로 내보내며 종료 코드와 출력을 돌려준다.
+// command runs the program, emits the output lines as steps, and returns the exit code and the output.
 function command(program, args, options, step) {
   return new Promise((resolve, reject) => {
     const child = spawn(program, args, { ...options, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -84,7 +84,7 @@ try {
     const tar = await command('tar', ['-xzf', join(work, filename), '-C', target, '--strip-components', '1'], {}, step);
     if (tar.code !== 0) throw new Error(`tar exited with ${tar.code}`);
     cpSync(packageDirectory('@polyspec/ordered-json'), join(project, 'node_modules', '@polyspec', 'ordered-json'), { recursive: true });
-    // undici-types는 @types/node의 dependency다: node처럼 @types/node에서 찾는다(npm이 그 아래나 위에 설치한다).
+    // undici-types is a dependency of @types/node: like node, it is found from @types/node (npm installs it below or above that).
     const typesNode = packageDirectory('@types/node');
     const undiciTypes = dirname(createRequire(join(typesNode, 'package.json')).resolve('undici-types/package.json'));
     cpSync(typesNode, join(project, 'node_modules', '@types', 'node'), { recursive: true });
@@ -108,7 +108,7 @@ try {
       'export type ApplyConnections = [DbspecApplyMySqlConnection, DbspecApplyPostgresConnection, DbspecApplySqliteConnection];',
       '',
     ].join('\n'));
-    // tsc의 종료 코드와 출력은 아래 case가 판정한다. runLong은 tsc가 끝나기까지 기다리기만 한다.
+    // The case below judges tsc's exit code and output. runLong only waits until tsc finishes.
     await runLong('package-declarations/tsc', async ({ step }) => {
       tsc = await command(process.execPath, [typescriptCompiler(), '-p', project], {}, step);
     });

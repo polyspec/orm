@@ -4,12 +4,12 @@ declare(strict_types=1);
 namespace Polyspec\Orm;
 
 /**
- * 한 runtime model과 한 database의 요청을 compile한다: 검증, planning, 요청
- * shape를 key로 하는 크기 제한 plan cache.
+ * Compiles the requests of one runtime model and one database: validation, planning, and request
+ * shape as the key of a size-limited plan cache.
  */
 final class Engine
 {
-    /** @var array<string, Engine> manifest hash와 dialect별 engine */
+    /** @var array<string, Engine> Engine per manifest hash and dialect */
     private static array $engines = [];
 
     /** @var array<string, array> plans by request shape */
@@ -24,8 +24,8 @@ final class Engine
     }
 
     /**
-     * manifest hash의 generated model과 dialect가 공유하는 engine이다. 그 hash를
-     * 등록한 generated model이 없으면 SCHEMA_HASH_MISMATCH다.
+     * The engine shared by the generated model of a manifest hash and by the dialect. The hash
+     * of a generated model that has not registered it gives SCHEMA_HASH_MISMATCH.
      */
     public static function for(string $manifestHash, string $dialect, int $cacheSize): self
     {

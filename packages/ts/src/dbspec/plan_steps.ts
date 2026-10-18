@@ -1,5 +1,5 @@
-// plan의 step을 한 dialect로 쓴다 (docs/plans.md "Steps"). 기준은 Go 엔진
-// (engine/dbspec/plan_steps.go)이며 statement, rollback, 효과는 Go와 같은 바이트다.
+// Writes the steps of a plan in one dialect (docs/plans.md "Steps"). The reference is the Go engine
+// (engine/dbspec/plan_steps.go), and the statements, rollbacks and effects are the same bytes as Go.
 import { present as known } from '../present.js';
 import { readCheck } from './check.js';
 import type { DbspecColumn, DbspecDiagnostic, DbspecDocument, DbspecForeignKey, DbspecIndex, DbspecTable, DbspecType, DbspecUnique } from './model.js';
@@ -62,9 +62,9 @@ export function effectText(e: DbspecEffect): string {
 
 const DIALECTS: ReadonlySet<string> = new Set(['mysql', 'postgres', 'sqlite']);
 
-/** 되돌릴 수 없는 step의 이유(docs/plans.md "Irreversible steps"). */
+/** The reason a step cannot be reversed (docs/plans.md "Irreversible steps"). */
 const IRREVERSIBLE_PRECISION = 'narrowing the precision rounds the values written since';
-/** SQLite 다시 만들기의 작업 table. */
+/** The work table for a SQLite rebuild. */
 const REBUILD_TABLE = 'dbspec$rebuild';
 
 /**
@@ -91,16 +91,16 @@ function step(statement: string, rollback: string, effect: DbspecEffect, more: P
   return { statement, rollback, irreversible: '', effect, restore: '', rollbackRestore: '', restoreIf: null, nullChecks: [], finalize: false, ...more };
 }
 
-/** time이나 datetime의 정밀도가 커지는지 알려 준다. */
+/** Tells whether the precision of a time or datetime grows. */
 function precisionGrows(from: DbspecType, to: DbspecType): boolean {
   return (to.kind === 'time' || to.kind === 'datetime') && (from.kind === 'time' || from.kind === 'datetime') && to.precision > from.precision;
 }
 
 class PlanWriter {
   private readonly out: DbspecPlanStep[] = [];
-  /** SQLite에서 다시 만드는 target table */
+  /** The target table rebuilt in SQLite */
   private readonly rebuilt = new Set<string>();
-  /** 보관 이름: "table.column"(지우는 column, source 이름), table(지우는 table), "+table.column"(더하는 column, target 이름) */
+  /** Retained names: "table.column" (the column being dropped, its source name), table (the table being dropped), "+table.column" (the column being added, its target name) */
   private readonly holds = new Map<string, string>();
   private readonly holdOrder: string[] = [];
 
@@ -124,7 +124,7 @@ class PlanWriter {
     return h;
   }
 
-  /** docs/plans.md "Hiding instead of dropping"의 순서로 보관 이름을 정한다. */
+  /** Chooses the retained names in the order of docs/plans.md "Hiding instead of dropping". */
   private numberHolds(): void {
     const d = this.d;
     let n = 0;
@@ -158,7 +158,7 @@ class PlanWriter {
         for (const o of known(d.dropObjects.get(s), 'd.dropObjects.get(s)')) if (o.kind === 'foreign_key') this.dropObject(known(d.source.get(s), 'd.source.get(s)'), o);
       }
     }
-    // 3. check, unique, index와 지우는 table의 객체
+    // 3. check, unique, index, and the objects of a table being dropped
     const dropTables = new Map<string, ObjectRef[]>();
     const push = (s: string, o: ObjectRef): void => {
       const list = dropTables.get(s);
@@ -201,7 +201,7 @@ class PlanWriter {
     for (const r of sortedBy(d.renamedColumns, r => `${r.table}.${r.old}`)) {
       this.add(step(this.renameColumn(r.table, r.old, r.new), this.renameColumn(r.table, r.new, r.old), present('column', r.table, r.new)));
     }
-    // 5. 지우는 column과 table을 숨긴다
+    // 5. Hide the columns and tables being dropped
     if (!sqlite) {
       for (const name of d.matched) {
         const src = known(d.source.get(known(d.tableOf.get(name), 'd.tableOf.get(name)')), 'd.source.get(d.tableOf.get(name))');
@@ -218,7 +218,7 @@ class PlanWriter {
       this.add(step(known(this.r.table(t)[0], 'this.r.table(t)[0]'), `DROP TABLE ${this.q(name)}`, present('table', name, '')));
       this.createIndexes(t, name);
     }
-    // 7. add, alter column; SQLite 다시 만들기
+    // 7. add, alter column; SQLite rebuild
     for (const name of d.matched) {
       if (sqlite) {
         if (this.rebuilt.has(name)) this.rebuild(name);
@@ -306,7 +306,7 @@ class PlanWriter {
     return (d.addObjects.get(name) ?? []).some(structural);
   }
 
-  /** MySQL과 PostgreSQL에서 지우는 column을 nullable로 바꾸고 보관 이름으로 숨긴다. */
+  /** On MySQL and PostgreSQL, makes the column being dropped nullable and hides it under its retained name. */
   private hideColumn(table: string, c: DbspecColumn, h: string): void {
     if (!c.nullable) {
       const checks = [this.nullCheck(table, h, c)];
@@ -324,12 +324,12 @@ class PlanWriter {
     this.add(step(this.renameColumn(table, c.name, h), this.renameColumn(table, h, c.name), present('column', table, h)));
   }
 
-  /** source column c를 non-null로 되돌리는 rollback의 null 검사다. */
+  /** The null check of the rollback that makes source column c non-null again. */
   private nullCheck(table: string, column: string, c: DbspecColumn): DbspecNullCheck {
     return Object.freeze({ table, column, default: c.default === null ? null : this.r.defaultText(c.type, c.default) });
   }
 
-  /** SQLite table을 작업 table을 거쳐 다시 만든다(docs/plans.md "Steps"). */
+  /** Rebuilds a SQLite table through a work table (docs/plans.md "Steps"). */
   private rebuild(name: string): void {
     const d = this.d;
     const t = known(d.target.get(name), 'd.target.get(name)');
@@ -339,17 +339,17 @@ class PlanWriter {
     const removed = d.removed.get(name) ?? [];
     const added = d.added.get(name) ?? [];
     const columns = known(d.columnOf.get(name), 'd.columnOf.get(name)');
-    // 새 정의: target table과 보관 이름의 지우는 column
+    // New definition: the target table, and the column being dropped under its retained name
     const hiddenDropped = removed.map(c => ({ ...known(columnOf(src, c), 'columnOf(src, c)'), name: this.hold(`${src.name}.${c}`) }));
-    // 옛 정의: 이름 바꾸기를 적용한 source table과 보관 이름의 더하는 column
+    // Old definition: the source table with the rename applied, and the column being added under its retained name
     const old = this.renamedSource(name);
     const hiddenAdded = added.map(c => ({ ...known(columnOf(t, c), 'columnOf(t, c)'), name: this.hold(`+${name}.${c}`) }));
     const newCreate = (as: string): string => this.r.createTable(t, as, c => rendererName(t.name, c), hiddenDropped);
-    // sourceColumn은 옛 정의 column의 source 이름이다. 지우는 column은 이름이 그대로다.
+    // sourceColumn is the source name of the old-definition column. A column being dropped keeps its name.
     const sourceColumn = (c: string): string => columns.get(c) ?? c;
     const oldCreate = this.r.createTable(old, name, c => rendererName(src.name, sourceColumn(c)), hiddenAdded);
     const newList = this.r.list([...t.columns.map(c => c.name), ...hiddenDropped.map(c => c.name)]);
-    // 옛 table에서 새 정의로 옮기는 식
+    // The expression that moves values from the old table to the new definition
     const into: string[] = [];
     const from: string[] = [];
     const intoRestore: string[] = [];
@@ -373,7 +373,7 @@ class PlanWriter {
       intoRestore.push(q(known(hiddenDropped[i], 'hiddenDropped[i]').name));
       fromRestore.push(q(c));
     });
-    // 새 정의에서 옛 정의로 되돌리는 식
+    // The expression that goes back from the new definition to the old definition
     const backInto: string[] = [];
     const backFrom: string[] = [];
     let irreversible = '';
@@ -388,12 +388,12 @@ class PlanWriter {
         if (!c.nullable && tc.nullable) checks.push(this.nullCheck(name, c.name, c));
         continue;
       }
-      // 지우는 column: 새 정의에서는 보관 이름이다.
+      // Column being dropped: in the new definition it is the retained name.
       const h = this.hold(`${src.name}.${sourceName}`);
       backFrom.push(q(h));
       if (!c.nullable) checks.push(this.nullCheck(name, h, c));
     }
-    // 옛 table에 숨긴 더한 column이 있으면 그 값도 되돌린다.
+    // If the old table has a hidden added column, its value is restored too.
     const backIntoRestore = [...backInto, ...hiddenAdded.map(c => q(c.name))];
     const backFromRestore = [...backFrom, ...added.map(c => q(c))];
     const identity = t.columns.some(c => c.identity);
@@ -439,7 +439,7 @@ class PlanWriter {
     this.createIndexes(t, name);
   }
 
-  /** target table name의 source table에 이름 바꾸기를 적용한 정의다. 지우는 table을 참조하는 foreign key는 source 이름을 유지한다. */
+  /** The definition of the target table name with the rename applied to the source table. A foreign key that references a table being dropped keeps its source name. */
   private renamedSource(name: string): DbspecTable {
     const d = this.d;
     const src = known(d.source.get(known(d.tableOf.get(name), 'd.tableOf.get(name)')), 'd.source.get(d.tableOf.get(name))');
@@ -502,7 +502,7 @@ class PlanWriter {
     }
   }
 
-  /** 렌더링한 trigger statement에서 trigger 이름, CREATE TRIGGER와 PostgreSQL function을 짝짓는다. */
+  /** Pairs the trigger name, the CREATE TRIGGER and the PostgreSQL function in the rendered trigger statements. */
   private triggerParts(t: DbspecTable): { name: string; create: string; fn: string }[] {
     const out: { name: string; create: string; fn: string }[] = [];
     let fn = '';
@@ -549,7 +549,7 @@ class PlanWriter {
     this.add(step(this.dropCheck(table, name), `ALTER TABLE ${this.q(table)} ADD CONSTRAINT ${this.q(name)} CHECK (${expression})`, absent('constraint', table, name)));
   }
 
-  /** table t를 name으로 둔 unique key와 index를 renderer 순서로 돌려준다. SQLite unique key는 unique index다. */
+  /** Returns the unique keys and indexes of table t, named name, in renderer order. SQLite unique keys are unique indexes. */
   private indexes(t: DbspecTable, name: string): { name: string; create: string; drop: string }[] {
     const out: { name: string; create: string; drop: string }[] = [];
     if (this.r.d === 'sqlite') {
@@ -570,12 +570,12 @@ class PlanWriter {
     return this.r.d === 'mysql' ? `DROP INDEX ${this.q(name)} ON ${this.q(table)}` : `DROP INDEX ${this.q(name)}`;
   }
 
-  /** renderer가 CREATE TABLE 뒤에 쓰는 unique index와 index다. */
+  /** The unique indexes and indexes that the renderer writes after CREATE TABLE. */
   private createIndexes(t: DbspecTable, name: string): void {
     for (const x of this.indexes(t, name)) this.add(step(x.create, x.drop, present('index', name, x.name)));
   }
 
-  /** table t(name으로 둔)의 객체 o를 더하는 statement, 지우는 statement, 그 효과의 종류다. */
+  /** For object o of table t (named name): the statement that adds it, the statement that drops it, and the kind of its effect. */
   private objectStatements(t: DbspecTable, name: string, o: ObjectRef): [string, string, string] {
     const mysql = this.r.d === 'mysql';
     switch (o.kind) {
@@ -601,7 +601,7 @@ class PlanWriter {
     throw new Error(`unknown object kind ${String(o.kind)}`);
   }
 
-  /** source table t의 객체를 지우고, rollback은 source 정의로 다시 만든다. */
+  /** Drops the objects of source table t; rollback recreates them from the source definition. */
   private dropObject(t: DbspecTable, o: ObjectRef): void {
     const [create, drop, kind] = this.objectStatements(t, t.name, o);
     this.add(step(drop, create, absent(kind, t.name, o.name)));

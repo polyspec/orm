@@ -37,7 +37,7 @@ func (v *validator) settings(t *tableNode) {
 			}
 			seen[s.args[0].text] = true
 		} else if kind != "state_machine" && kind != "checkbox" {
-			// state_machine과 checkbox는 여러 줄로 쓰므로 once 검사에서 뺀다.
+			// state_machine and checkbox are written on several lines, so they are excluded from the once check.
 			if once[kind] {
 				v.add(RuleSetting, s.keyword, "setting %s repeats", kind)
 				continue
@@ -132,7 +132,7 @@ func (v *validator) setting(t *tableNode, s *settingNode, aesColumns map[string]
 	}
 }
 
-// foreignKeyName은 이름이 table의 foreign key를 가리키는지 검사한다.
+// foreignKeyName checks whether the name refers to a foreign key of the table.
 func (v *validator) foreignKeyName(t *tableNode, ref token) {
 	if v.ref(ref) && !t.failedName(ref.text) {
 		found := false
@@ -161,9 +161,9 @@ func (v *validator) stateMachine(t *tableNode, s *settingNode) {
 	}
 }
 
-// stateMachineConsistency는 기계의 줄들을 줄 사이에서 검사한다: table마다 column 하나,
-// initial, 전환과 terminal 줄의 상호 일치, history와 limit 줄, state column의 default,
-// checkbox 줄이다 (docs/dbspec.md "Settings").
+// stateMachineConsistency checks the machine's lines against each other: one column per table,
+// consistency among the initial, transition, and terminal lines, the history and limit lines, the default of the state column,
+// and the checkbox lines (docs/dbspec.md "Settings").
 func (v *validator) stateMachineConsistency(t *tableNode) {
 	column := ""
 	states := map[string]bool{}
@@ -241,7 +241,7 @@ func (v *validator) stateMachineConsistency(t *tableNode) {
 	v.checkboxes(t, column, states)
 }
 
-// limits는 limit 줄마다 검사한다: state는 state 집합에 속하고, state마다 반복하지 않으며, count는 양의 정수다.
+// limits checks each limit line: the state belongs to the state set, is not repeated per state, and count is a positive integer.
 func (v *validator) limits(lines []*settingNode, states map[string]bool) {
 	seen := map[string]bool{}
 	for _, s := range lines {
@@ -259,10 +259,10 @@ func (v *validator) limits(lines []*settingNode, states map[string]bool) {
 	}
 }
 
-// history는 state_machine history 줄의 history table을 검사한다. 그 column은
-// 이 table을 가리키는 foreign key, state column의 type을 가진 from과 to column,
-// datetime(6)의 at column, 필요한 column마다 같은 type의 nullable column 하나, key이며,
-// title이나 body를 선언하지 않는다. 불일치는 모두 history table의 이름에 보고한다.
+// history checks the history table of a state_machine history line. Its columns
+// include the foreign key that refers to this table; from and to columns with the state column's type;
+// an at column of datetime(6); and, for each required column, one nullable column of the same type, and a key,
+// and it declares no title or body. Every mismatch is reported at the history table's name.
 func (v *validator) history(t *tableNode, s *settingNode, state *columnNode, requires []token) {
 	name := s.args[1]
 	if !v.ref(name) {
@@ -333,7 +333,7 @@ func (v *validator) history(t *tableNode, s *settingNode, state *columnNode, req
 	}
 }
 
-// checkboxes는 checkbox 줄을 기계의 state 집합에 대해 검사한다: 기계의 column을 이름 붙이고, 집합의 state마다 한 글자이며 서로 다른 glyph를 가진 줄이 하나씩 있고, 어떤 줄도 다른 state를 이름 붙이지 않는다.
+// checkboxes checks checkbox lines against the machine's state set: each names the machine's column, and for each state in the set there is one line with a single character and a distinct glyph; no line names another state.
 func (v *validator) checkboxes(t *tableNode, column string, states map[string]bool) {
 	var boxes []*settingNode
 	for _, s := range t.settings.lines {
@@ -383,14 +383,14 @@ func (v *validator) checkboxes(t *tableNode, column string, states map[string]bo
 	}
 }
 
-// store는 block 저장을 검사한다: 그 foreign key는 table의 foreign key여야 한다. kind와 shape는 parser가 읽는다.
-// shard 절은 non-null date 또는 datetime column을 적고, block table, self foreign key가 있는 table과
-// order가 있는 table에서는 거절한다.
+// store checks block storage: its foreign key must be a foreign key of the table. The kind and shape are read by the parser.
+// A shard clause takes a non-null date or datetime column; it is rejected for block tables, for tables with a self foreign key,
+// and for tables with an order.
 func (v *validator) store(t *tableNode, s *settingNode) {
 	if s.args[0].text == "block" {
 		v.foreignKeyName(t, s.args[1])
 	}
-	// shard 절은 kind의 인자(files 0개, document 1개, block 2개) 바로 뒤에 온다.
+	// A shard clause comes right after the kind's arguments (0 for files, 1 for document, 2 for block).
 	i := map[string]int{"files": 1, "document": 2, "block": 3}[s.args[0].text]
 	if len(s.args) <= i {
 		return
@@ -411,7 +411,7 @@ func (v *validator) store(t *tableNode, s *settingNode) {
 	}
 }
 
-// keyPrefix는 primary key가 varchar column 하나인지 검사한다.
+// keyPrefix checks that the primary key is a single varchar column.
 func (v *validator) keyPrefix(t *tableNode, s *settingNode) {
 	if t.failedPK {
 		return
@@ -425,7 +425,7 @@ func (v *validator) keyPrefix(t *tableNode, s *settingNode) {
 	}
 }
 
-// textColumn은 title과 body column을 검사한다: 각각 non-null varchar 또는 text column이다.
+// textColumn checks the title and body columns: each is a non-null varchar or text column.
 func (v *validator) textColumn(t *tableNode, s *settingNode) {
 	c := v.columnRef(t, s.args[0], RuleSetting)
 	if c != nil && ((c.typ.valid && c.typ.typ.Kind != TypeVarchar && c.typ.typ.Kind != TypeText) || c.null != nil) {
@@ -433,7 +433,7 @@ func (v *validator) textColumn(t *tableNode, s *settingNode) {
 	}
 }
 
-// order는 order column을 검사한다: default가 없고 어떤 key, index 또는 check에도 없는 non-null i32 또는 i64 column이다.
+// order checks the order column: a non-null i32 or i64 column with no default, and not in any key, index, or check.
 func (v *validator) order(t *tableNode, s *settingNode) {
 	c := v.columnRef(t, s.args[0], RuleSetting)
 	if c == nil {
@@ -448,7 +448,7 @@ func (v *validator) order(t *tableNode, s *settingNode) {
 	}
 }
 
-// inKeyOrCheck는 t의 primary key, unique key, index, foreign key 또는 check가 그 column을 이름 붙이는지 보고한다.
+// inKeyOrCheck reports whether a primary key, unique key, index, foreign key, or check of t names that column.
 func inKeyOrCheck(t *tableNode, column string) bool {
 	for _, group := range [][]*keyNode{t.primaryKeys, t.uniques, t.indexes} {
 		for _, k := range group {
@@ -610,8 +610,8 @@ func (v *validator) audit(t *tableNode, s *settingNode) {
 		}
 		reserved[previousRef.text] = true
 	}
-	// 두 목록을 다 쓴 setting은 기록하는 column이 정해지지 않으므로 history
-	// table의 column을 맞추어 보지 않는다.
+	// A setting that uses both lists does not determine which columns are recorded, so it is not matched against the history
+	// table's columns.
 	if recorded == nil {
 		return
 	}
@@ -641,11 +641,11 @@ func (v *validator) audit(t *tableNode, s *settingNode) {
 	}
 }
 
-// auditRecord는 audit 기록 table을 검사한다. 그 table은 이 문서나 사용한
-// 문서의 다른 table이며 history table이 아니고, 자신은 audit 대상이 아니며,
-// column 하나의 primary key를 가지고 그 type이 audit column의 type이다. audit
-// column은 그 primary key를 restrict로 가리키는 선언한 foreign key의 유일한
-// column이다. 그래서 audit 기록 행이 없는 audit column 값은 database가 거부한다.
+// auditRecord checks the audit record table. That table is another table of this document or of a used
+// document, is not a history table, is not itself audited,
+// has a primary key of one column, and its type is the audit column's type. The audit
+// column is the only column of a declared foreign key that refers to that primary key with restrict.
+// So the database rejects an audit column value that has no audit record row.
 func (v *validator) auditRecord(t *tableNode, column *columnNode, columnRef, referencesRef, historyRef token) {
 	if !v.ref(referencesRef) {
 		return
@@ -697,11 +697,11 @@ func (v *validator) auditRecord(t *tableNode, column *columnNode, columnRef, ref
 	}
 }
 
-// auditLists는 audit의 exclude나 include 목록을 검사하고, column이 기록되는지
-// 알리는 함수를 돌려준다(docs/dbspec.md "Audit"). 두 목록을 다 쓰면 둘째
-// 목록의 keyword에서 거부하고 nil을 돌려준다. 목록의 column은 table의
-// column이고, 한 번만 나오며, audit column이 아니다. audit column은 언제나
-// 기록하므로 어느 목록에도 쓰지 않는다.
+// auditLists checks the audit's exclude or include lists, and returns a function that reports whether a column is recorded
+// (docs/dbspec.md "Audit"). If both lists are used, the second
+// list's keyword is rejected and nil is returned. A column in a list belongs to the table,
+// appears only once, and is not an audit column. Audit columns are always
+// recorded, so they do not appear in either list.
 func (v *validator) auditLists(t *tableNode, s *settingNode, columnRef token) func(string) bool {
 	if len(s.lists) > 1 {
 		v.add(RuleSetting, s.lists[1].keyword, "audit names its recorded columns by exclude or by include, not both")

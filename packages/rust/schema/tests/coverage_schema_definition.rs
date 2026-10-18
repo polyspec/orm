@@ -1,12 +1,12 @@
-//! schema_definition: contracts/fixtures/schema_definition.json의 case를 dbspec parse, emit,
-//! manifest, render로 실행한다. 값은 fixture에서 읽는다.
+//! schema_definition: runs the cases of contracts/fixtures/schema_definition.json through dbspec parse, emit,
+//! manifest, and render. The values are read from the fixture.
 use polyspec_orm_case_clock::CaseClock;
 use polyspec_orm_schema::dbspec::{self, Dialect, Document};
 use serde_json::Value;
 use std::path::PathBuf;
 use std::time::Duration;
 
-/// 한 case가 자기 계산에 쓰는 thread CPU 시간의 한도.
+/// The limit on the thread CPU time one case uses for its own computation.
 const CPU_LIMIT: Duration = Duration::from_secs(10);
 
 const DIALECTS: [(&str, Dialect); 3] = [("mysql", Dialect::MySql), ("postgres", Dialect::Postgres), ("sqlite", Dialect::Sqlite)];
@@ -15,7 +15,7 @@ fn repository() -> PathBuf {
     polyspec_orm_testcase::manifest_dir().join("../../..")
 }
 
-/// fixture에서 `id` case 하나를 찾아 operation이 `operation`인지 확인하고 input과 expected를 돌려준다.
+/// Finds the case with `id` in the fixture, checks that its operation is `operation`, and returns its input and expected.
 fn case(id: &str, operation: &str) -> (Value, Value) {
     let path = repository().join("contracts/fixtures/schema_definition.json");
     let fixture: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display())))
@@ -27,7 +27,7 @@ fn case(id: &str, operation: &str) -> (Value, Value) {
     (case["input"].clone(), case["expected"].clone())
 }
 
-/// input의 document 경로와 그 text.
+/// The document path of the input and its text.
 fn sources(input: &Value) -> Vec<(String, String)> {
     let paths = input["documents"].as_array().expect("input documents");
     assert!(!paths.is_empty(), "input names no document");
@@ -46,7 +46,7 @@ fn parse(path: &str, text: &str) -> Document {
     dbspec::parse(text, &Default::default()).map(|parsed| parsed.document).unwrap_or_else(|errors| panic!("{path}: {errors:?}"))
 }
 
-/// `body`를 실행하고 시작, 성공, 걸린 시간을 출력하며 CPU 시간 한도를 확인한다.
+/// Runs `body`, prints the start, success, and elapsed time, and checks the CPU time limit.
 fn run(id: &str, body: impl FnOnce()) {
     let clock = CaseClock::start();
     polyspec_orm_testcase::step(format_args!("start {id}"));

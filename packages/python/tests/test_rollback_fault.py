@@ -27,7 +27,7 @@ FAULT_MESSAGE = (
 
 
 def fail_next_rollback(db) -> None:
-    """test entry point를 그 module에서 읽어 부른다. module이 없으면 ModuleNotFoundError다."""
+    """Reads the test entry point from its module and calls it. It raises ModuleNotFoundError if the module is missing."""
     testing.fail_next_rollback(db)
 
 
@@ -64,7 +64,7 @@ class RollbackFaultTest(unittest.TestCase):
         return None
 
     def check_rollback(self, error, subject: str):
-        """ROLLBACK 오류는 두 오류를 갖고 message가 둘을 적는다."""
+        """A ROLLBACK error has two errors, and its message records both."""
         self.assertIsInstance(error, OrmError, f"{subject} raises {error!r}")
         self.assertEqual(error.code, "ROLLBACK", f"{subject}: {error}")
         self.assertIsNotNone(error.cause, f"{subject} keeps the callback error")
@@ -192,8 +192,8 @@ class RollbackFaultEntryTest(unittest.TestCase):
         self.assertTrue(callable(testing.fail_next_rollback))
 
     def test_the_distribution_holds_the_test_entry_point_that_no_import_loads(self):
-        # PHP의 testing/Faults.php처럼 배포는 test entry point를 담고, package entry point는 그것을 load하지
-        # 않는다. 소비자의 test만 그 이름으로 import해서 fault를 건다.
+        # As with testing/Faults.php in PHP, the distribution contains the test entry point, and the package entry point does not
+        # load it. Only the consumer's tests import it by that name to inject faults.
         with (PACKAGE / "pyproject.toml").open("rb") as file:
             find = tomllib.load(file)["tool"]["setuptools"]["packages"]["find"]
         self.assertNotIn("polyspec.orm.testing", find.get("exclude", []))

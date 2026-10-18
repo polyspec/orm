@@ -1,10 +1,10 @@
-//! 생성 파일이다. Unicode 17.0.0의 word rune 표다.
-//! unicode.IsLetter 또는 unicode.IsDigit이 참인 code point의 닫힌 구간이며 오름차순이고 서로 겹치지 않는다.
-//! `go run ./tests/dbspec/unicode -write`가 쓴다. 직접 고치지 않는다.
+//! Generated file. A word rune table of Unicode 17.0.0.
+//! Closed ranges of code points for which unicode.IsLetter or unicode.IsDigit is true; they are in ascending order and do not overlap.
+//! Written by `go run ./tests/dbspec/unicode -write`. Do not edit it directly.
 
 use std::cmp::Ordering;
 
-/// Go의 unicode 표가 담은 word rune 구간이다.
+/// The word rune ranges contained in Go's unicode table.
 #[rustfmt::skip]
 const WORD_RANGES: &[(u32, u32)] = &[
     (0x0030, 0x0039),
@@ -766,7 +766,7 @@ mod tests {
     use super::*;
     use std::time::Duration;
 
-    /// 모든 code point에서 이진 탐색이 구간을 표시한 bitmap과 같다.
+    /// For every code point, the binary search equals the bitmap that marks the ranges.
     #[test]
     fn binary_search_agrees_with_the_ranges_for_every_code_point() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(Duration::from_secs(10)));

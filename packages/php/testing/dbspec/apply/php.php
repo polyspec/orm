@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-// plans.json(tests/dbspec/plans.json)의 chain(create-from-empty 와
-// rename-table-and-column)을 PHP client 로 한 database 에 적용한다
-// (docs/plans.md "Apply"). action 은 apply-first(첫 plan 만), apply(chain 전체),
-// stop(둘째 plan 의 statement 1 이 실행된 뒤 멈춤), recover(중단된 plan 을 이어
-// 끝냄), rollback(history 의 마지막 plan 을 되돌림) 중 하나다. stdout 에는 결과 한 줄을 쓴다: "ok", "stopped" 또는
-// "error <code>". 그 밖의 error 는 stderr 에 쓰고 1 로 끝난다.
+// Applies the chains in plans.json (tests/dbspec/plans.json) (create-from-empty and
+// rename-table-and-column) to one database with the PHP client
+// (docs/plans.md "Apply"). action is one of apply-first (first plan only), apply (whole chain),
+// stop (stop after statement 1 of the second plan runs), recover (continue an interrupted plan
+// to completion), or rollback (revert the last plan in history). It writes one result line to stdout: "ok", "stopped", or
+// "error <code>". Any other error is written to stderr and exits with 1.
 //
 // Usage: php packages/php/testing/dbspec/apply/php.php <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>
 
@@ -19,7 +19,7 @@ use Polyspec\Orm\Dbspec\ApplyEvent;
 use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Orm;
 
-// 모든 client 가 새 connection 에서 실행하는 statement 다(packages/go/internal/dialects connectionRules).
+// The statements every client runs on a new connection (packages/go/internal/dialects connectionRules).
 const CONNECTION_RULES = ['mysql' => ["SET time_zone = '+00:00'"], 'postgres' => ["SET TimeZone = 'UTC'"], 'sqlite' => ['PRAGMA foreign_keys = ON']];
 
 if ($argc !== 5) {

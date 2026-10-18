@@ -1,7 +1,7 @@
 <?php
 // Conformance runner (PHP). Runs the chains of packages/go/internal/conformance/main.go and prints the same document.
 // Usage: php packages/php/testing/conformance/runner.php --dsn URI [--vector NAME]...
-// --vector는 반복할 수 있고, 주어지면 이름이 같은 vector만 실행한다. 모르는 이름은 오류다.
+// --vector can be repeated; when given, only the vectors with that name run. An unknown name is an error.
 declare(strict_types=1);
 
 require dirname(__DIR__, 2) . '/tests/autoload.php';
@@ -49,10 +49,10 @@ for ($i = 1; $i < $argc; $i++) {
 }
 $dsn ?? throw new RuntimeException('--dsn required');
 
-// $log는 vector의 statement event다(docs/usage.md "Statement events"). transaction은 vector 안에서
-// 처음 나온 순서로 1부터 다시 센 번호이고 밖이면 null이다. error는 statement의 오류 code이거나 null이다.
+// $log is the vector's statement events (docs/usage.md "Statement events"). A transaction's number within the vector
+// is renumbered from 1 in order of first appearance, and is null outside. error is the statement's error code or null.
 $log = [];
-/** @var array<int, int> vector 안의 transaction 번호를 처음 나온 순서의 번호로 바꾼다. */
+/** @var array<int, int> Maps transaction numbers in the vector to numbers in order of first appearance. */
 $transactions = [];
 $maskSeqs = [];
 $maskTs = [];
@@ -176,11 +176,11 @@ $db->subscribe(static function (StatementEvent $e): void {
 });
 
 $out = [];
-/** @var array<string, callable> vector 이름별 chain, 선언 순서 */
+/** @var array<string, callable> Chain per vector name, in declaration order */
 $vectors = [];
 $writeVectors = array_fill_keys(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive', 'contains_ascii_fold', 'contains_binary_code_point', 'datetime_p0_roundtrip', 'time_p3_roundtrip', 'date_roundtrip', 'date_null', 'upsert_one_key', 'affected_counts', 'uuid_roundtrip', 'clock_truncate_write', 'clock_compare_six_digits'], true);
 
-/** vector를 선언한다. 선택된 vector는 모든 선언이 끝난 뒤 선언 순서대로 실행한다. */
+/** Declares a vector. The selected vectors run in declaration order after all declarations are done. */
 function vector(string $name, callable $fn): void
 {
     global $vectors;
@@ -422,7 +422,7 @@ vector('creates_and_save', function () use ($db): array {
     return ['inserted' => $inserted, 'pairs' => $pairs->toArray(), 'left' => $left];
 });
 
-/** tenant 902에 Apple, apple, Évian, évian, x_y 행을 만들고 각 pattern이 $cond로 고르는 account_id를 모은 뒤 지운다. */
+/** Creates the Apple, apple, Évian, évian, x_y rows in tenant 902, collects the account_id each pattern selects with $cond, then deletes them. */
 function containsVector(Db $db, callable $cond, string ...$patterns): array
 {
     $rows = [];
@@ -487,8 +487,8 @@ vector('transactions', function () use ($db): array {
 });
 
 vector('restore', function () use ($db): array {
-    // soft delete한 행을 primary key로 되돌린다. 지운 시각은 고정한 값으로 써서 모든 database와 runner의
-    // bind가 같다. transaction은 끝에 rollback하므로 database는 처음과 같다.
+    // Restores a soft-deleted row by its primary key. The deletion time is written as a pinned value so every database and runner
+    // binds the same. The transaction ends with a rollback, so the database is unchanged from the start.
     $boom = new RuntimeException('boom');
     $result = [];
     try {
@@ -498,8 +498,8 @@ vector('restore', function () use ($db): array {
             mask([$seq]);
             $created->setDeletedAt('2026-01-02 03:04:05.000000')->update();
             $result['hidden'] = caught(fn() => (new SoftRecord)->getBySeq($seq));
-            // key 밖의 값은 지워진 행을 되돌릴 때만 쓴다. 두 번째 restore는 지워지지 않은 행을 바꾸지
-            // 않고 돌려준다.
+            // Values outside the key are used only when restoring a deleted row. A second restore does not change a row that was not deleted,
+            // and returns it unchanged.
             foreach (['restored' => 'restore-2', 'again' => 'ignored'] as $name => $value) {
                 $array = (new SoftRecord)->setSeq($seq)->setName($value)->restore()->toArray();
                 $array['seq'] = '$SEQ';

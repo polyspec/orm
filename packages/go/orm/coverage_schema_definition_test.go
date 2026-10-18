@@ -15,8 +15,8 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// schemaDocuments는 fixture input이 repository root 기준으로 나열한 dbspec
-// document를 읽어 text와 parse한 document를 같은 순서로 반환한다.
+// schemaDocuments reads the dbspec documents that the fixture input lists relative to the repository root,
+// and returns the parsed documents and their text in the same order.
 func schemaDocuments(t *testing.T, c fixtureCase) ([]string, []*dbspec.Document) {
 	t.Helper()
 	var input struct {
@@ -52,8 +52,8 @@ func schemaDocuments(t *testing.T, c fixtureCase) ([]string, []*dbspec.Document)
 	return texts, documents
 }
 
-// TestCoverageDbspecEmitRoundTrip는 각 document를 parse해 emit하면 원문이
-// byte 단위로 그대로인지 확인한다.
+// TestCoverageDbspecEmitRoundTrip checks that parsing each document and emitting it gives back the original
+// text byte for byte.
 func TestCoverageDbspecEmitRoundTrip(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	c := featureFixture(t, "schema_definition", "dbspec_emit_round_trip", "parse_emit")
@@ -69,8 +69,8 @@ func TestCoverageDbspecEmitRoundTrip(t *testing.T) {
 	}
 }
 
-// TestCoverageDbspecManifestHash는 document set의 manifest hash가 fixture의
-// 값인지 확인한다.
+// TestCoverageDbspecManifestHash checks that the manifest hash of a document set matches the value
+// in the fixture.
 func TestCoverageDbspecManifestHash(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	c := featureFixture(t, "schema_definition", "dbspec_manifest_hash", "manifest")
@@ -88,8 +88,8 @@ func TestCoverageDbspecManifestHash(t *testing.T) {
 	}
 }
 
-// TestCoverageDbspecRenderDdl는 document set을 각 dialect로 render한
-// statement가 fixture의 배열과 같은지 확인한다.
+// TestCoverageDbspecRenderDdl checks that rendering the document set for each dialect produces statements
+// that match the fixture's array.
 func TestCoverageDbspecRenderDdl(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	c := featureFixture(t, "schema_definition", "dbspec_render_ddl", "render")

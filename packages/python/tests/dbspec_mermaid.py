@@ -43,8 +43,8 @@ def diagnostic_triples(diagnostics) -> list:
     return [[d.rule, d.line, d.column] for d in diagnostics]
 
 
-# skeleton은 Mermaid가 옮기는 table, column, primary key, foreign key를 table 이름 순서의
-# 줄로 쓴다. foreign key action은 Mermaid가 옮기지 않으므로 뺀다.
+# The skeleton is written as lines of tables, columns, primary keys and foreign keys that Mermaid carries, in table name order.
+# foreign key actions are left out since Mermaid does not carry them.
 def skeleton(document) -> list:
     out = []
     for t in sorted(document.tables, key=lambda t: t.name):

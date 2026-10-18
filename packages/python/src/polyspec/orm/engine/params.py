@@ -1,5 +1,5 @@
-# request parameter가 채우는 slot과 그 논리 type이다 (docs/protocol.md §5 "Parameters"). IR executor message는
-# 각 parameter를 slot type의 form으로 쓰므로 client가 여기서 type을 읽는다. Go의 ir.ParamUses와 같다.
+# Slot that a request parameter fills, and its logical type (docs/protocol.md §5 "Parameters"). IR executor messages
+# write each parameter in the form of its slot type, so a client reads the type here. The same as Go's ir.ParamUses.
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -12,19 +12,19 @@ __all__ = ["ParamUse", "function_type", "interval_type", "param_uses"]
 
 @dataclass(frozen=True)
 class ParamUse:
-    """parameter가 채우는 slot 하나: slot의 논리 type(dbspec type kind)과, column slot이면 비교하거나 쓰는
-    column이다."""
+    """One slot that a parameter fills: the slot's logical type (dbspec type kind) and, for a column slot, the column that is compared or written
+    column."""
 
     type: str
     column: Field | None = None
-    # column의 할당(set, rows, on_duplicate)이다: non-null column은 NULL을 거부한다.
+    # Assignment of the column (set, rows, on_duplicate): a non-null column rejects NULL.
     assign: bool = False
 
 
 def param_uses(m: RuntimeModel, r: dict) -> list[list[ParamUse]]:
-    """검증된 request의 parameter마다 그 쓰임 목록이다: 비교하거나 쓰는 column, column 함수의 결과, 상대 시각
-    함수의 간격(i32, 초는 f64), contains와 contains_binary의 text, if_parent의 부모 column, optimistic의
-    column이다."""
+    """For each parameter of a validated request, the list of its uses: the column it compares or writes, the result of a column function,
+    the interval of a relative time function (i32; seconds as f64), the text of contains and contains_binary, the parent column of if_parent, and the
+    column of optimistic."""
     u = _ParamUses(m, r["n_params"])
     ent = entity_of(m, r["entity"])
     u.query(r, None)
@@ -67,7 +67,7 @@ class _ParamUses:
             self.add(i, ParamUse(f.type, f, True))
 
     def query(self, q: dict, parent: Entity | None) -> None:
-        """q를 걷는다. relation 자식이면 parent가 그 부모 entity다."""
+        """Walks q. For a relation child, parent is its parent entity."""
         ent = entity_of(self.m, q["entity"])
         if ent is None:
             return
@@ -126,8 +126,8 @@ class _ParamUses:
 
 
 def function_type(name: str, f: Field | None) -> str:
-    """column f에 쓴 column 함수 결과의 type이다: 그것과 비교하는 parameter와 그것을 고르는 출력 column의
-    type이다."""
+    """The type of the column-function result written to column f: the parameter compared with it, and the output column that selects it
+    type."""
     if name in ("day_of_week", "year", "month"):
         return "i64"
     if name == "date":
@@ -136,5 +136,5 @@ def function_type(name: str, f: Field | None) -> str:
 
 
 def interval_type(name: str) -> str:
-    """상대 시각 함수의 간격 type이다: 초는 소수를, 다른 단위는 정수를 받는다."""
+    """The interval type of a relative time function: seconds take a decimal, other units take an integer."""
     return "f64" if value_function_units.get(name) == "second" else "i32"

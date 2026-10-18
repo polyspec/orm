@@ -1,4 +1,4 @@
-/* plan.c의 diff를 steps.c와 함께 쓰는 내부 선언이다(PHP client PlanDiff). */
+/* Internal declarations for using plan.c's diff together with steps.c (PHP client PlanDiff). */
 #ifndef ORM_DBSPEC_PLANDIFF_H
 #define ORM_DBSPEC_PLANDIFF_H
 
@@ -12,21 +12,21 @@ typedef struct {
 typedef VEC(objref) objrefv;
 
 typedef struct {
-    smap source;          /* 이름 => source table* */
-    smap target;          /* 이름 => target table* */
+    smap source;          /* name => source table* */
+    smap target;          /* name => target table* */
     smap table_of;        /* target table => source table(str*) */
     smap column_of;       /* target table => smap*(target column => source column str*) */
     strs created;
-    strs dropped;         /* source 이름 순 */
-    strs matched;         /* target 이름 순 */
-    smap added;           /* target table => 더한 target column strs* */
-    smap removed;         /* target table => 지운 source column strs* */
-    smap altered;         /* target table => 바꾼 target column strs* */
+    strs dropped;         /* In source name order */
+    strs matched;         /* In target name order */
+    smap added;           /* target table => added target column strs* */
+    smap removed;         /* target table => dropped source column strs* */
+    smap altered;         /* target table => changed target column strs* */
     trenamev renamed_tables;
     crenamev renamed_columns;
-    smap drop_objects;    /* source table => 지울 objrefv* */
-    smap add_objects;     /* target table => 더할 objrefv* */
-    smap triggers;        /* target table => trigger가 바뀐다 */
+    smap drop_objects;    /* source table => objrefv* to drop */
+    smap add_objects;     /* target table => objrefv* to add */
+    smap triggers;        /* target table => its trigger changes */
     changev changes;
     smap renamed_from;    /* source table => target table(str*) */
     smap renamed_column;  /* target table => smap*(source column => target column str*) */

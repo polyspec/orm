@@ -1,4 +1,4 @@
-# styled column의 SQL NULL 상태와 인코딩된 값 (docs/codec.md).
+# The SQL NULL state and the encoded value of a styled column (docs/codec.md).
 from typing import Any
 
 from polyspec.ordered_json import (
@@ -12,8 +12,8 @@ __all__ = ["StyledValue"]
 
 
 def _assert_no_omitted(value: Any, ancestors: set, depth: int) -> None:
-    # codec이 값 표현에서 잃어버리는 요소(undefined, 순환, 비유한 수, 지원 밖 타입)를
-    # 쓰기 전에 거절한다. 깊이 제한은 256 level다.
+    # Elements that the codec loses in the value representation (undefined, cycles, non-finite numbers, types outside the set)
+    # are rejected before writing. The depth limit is 256 levels.
     if depth > 256:
         raise OrmError(codes.CODEC_ENCODE, "styled value nesting exceeds 256 levels")
     if value is None or isinstance(value, (bool, int, str, OrderedJson)):
@@ -58,7 +58,7 @@ def _assert_no_omitted(value: Any, ancestors: set, depth: int) -> None:
 
 
 class StyledValue:
-    """SQL NULL 상태나 styled column의 값."""
+    """The SQL NULL state, or the value of a styled column."""
 
     __slots__ = ("kind", "_stored")
 
@@ -90,7 +90,7 @@ class StyledValue:
 
 
 def _ordered_json_output(value: OrderedJson) -> Any:
-    # ordered-json 값을 Python 값으로: JSON.stringify가 object key를 보존하지 못하면 거절한다.
+    # An ordered-json value as a Python value: if JSON.stringify cannot keep object keys, it is rejected.
     if value.kind == "array":
         return [_ordered_json_output(item) for item in value.items()]
     if value.kind == "object":

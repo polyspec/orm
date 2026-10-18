@@ -13,8 +13,8 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// tests/events/vectors.json의 case를 이 client로 실행해 statement event를 비교한다.
-// ORM_EVENTS_RECORD=1이면 비교 대신 이 driver의 기대 event를 vector에 기록한다.
+// Runs the cases of tests/events/vectors.json with this client and compares the statement events.
+// If ORM_EVENTS_RECORD=1, it records this driver's expected events into the vector instead of comparing.
 
 const eventsVector = "../../../tests/events/vectors.json"
 
@@ -46,10 +46,10 @@ type eventCase struct {
 	Events  map[string][]eventRecord `json:"events"`
 }
 
-// errCallback은 실패하는 transaction callback의 오류다.
+// errCallback is the error of a transaction callback that fails.
 var errCallback = errors.New("callback failed")
 
-// eventRun은 case 하나를 실행하는 상태다.
+// eventRun is the state of running one case.
 type eventRun struct {
 	t        *testing.T
 	db       *orm.DB
@@ -103,7 +103,7 @@ func (r *eventRun) byLabel(label string) *orm.Core {
 	return c
 }
 
-// step은 step 하나를 실행하고 그 오류를 돌려준다.
+// step runs one step and returns its error.
 func (r *eventRun) step(s eventStep) error {
 	switch s.Op {
 	case "create":
@@ -168,9 +168,9 @@ func (r *eventRun) step(s eventStep) error {
 	return nil
 }
 
-// checked는 step을 실행하고 그 오류가 step이 기대한 것인지 확인한다. 기대한
-// 오류는 삼키지 않고 돌려주어 바깥 transaction의 callback이 받게 한다. transaction
-// step이 기대한 callback 오류는 바깥 callback에서 처리된 것으로 본다.
+// checked runs the step and checks whether its error is the one the step expected. Expected
+// errors are not swallowed; they are returned so the outer transaction's callback receives them. A transaction
+// callback error that the step expected is treated as handled by the outer callback.
 func (r *eventRun) checked(s eventStep) error {
 	err := r.step(s)
 	switch {
@@ -187,8 +187,8 @@ func (r *eventRun) checked(s eventStep) error {
 	return nil
 }
 
-// runEventCases는 vector의 모든 case를 driver에서 실행한다. subtests이면 case마다
-// subtest로 실행하고, 아니면(coverage는 test 하나의 결과만 받는다) 차례로 실행한다.
+// runEventCases runs every case of the vector on the driver. If subtests are used, it runs each case
+// as a subtest; otherwise (coverage receives the result of only one test) it runs them in order.
 func runEventCases(t *testing.T, driver string, subtests bool) {
 	cases := eventCases(t)
 	recording := os.Getenv("ORM_EVENTS_RECORD") == "1"
@@ -283,7 +283,7 @@ func runEventCase(t *testing.T, driver string, c eventCase, recording bool, reco
 	}
 }
 
-// normalized는 JSON으로 다시 읽은 record다. bind의 숫자와 빈 목록이 같은 형태가 된다.
+// normalized is the record read back as JSON. Numbers and empty lists in bind take the same form.
 func normalized(records []eventRecord) any {
 	raw, _ := json.Marshal(records)
 	var out any
@@ -291,7 +291,7 @@ func normalized(records []eventRecord) any {
 	return out
 }
 
-// recordEvents는 vector의 각 case에 driver의 기대 event를 쓴다.
+// recordEvents writes the driver's expected events into each case of the vector.
 func recordEvents(t *testing.T, driver string, recorded map[string][]eventRecord) {
 	raw, err := os.ReadFile(eventsVector)
 	if err != nil {
@@ -331,7 +331,7 @@ func TestStatementEventsSQLite(t *testing.T) {
 	runEventCases(t, "sqlite", true)
 }
 
-// serverTransactions는 vector의 server_transactions다.
+// serverTransactions is the server_transactions of the vector.
 type serverTransactions struct {
 	Database               string   `json:"database"`
 	FirstRunClients        []string `json:"first_run_clients"`
@@ -344,11 +344,11 @@ type serverTransactions struct {
 	} `json:"time_zone"`
 }
 
-// TestStatementEventsServerTransactions는 vector의 server_transactions를 PostgreSQL case
-// database에서 실행한다. probe가 돌려주는 backend의 local transaction 번호 차이로 page 실행 한
-// 번의 server transaction을 센다. pool size 1이므로 모든 statement가 한 backend에서 실행된다.
-// pgx statement cache는 연결에서 처음 보내는 statement text를 자기 round trip으로 prepare하므로,
-// go가 first_run_prepare_clients에 있으면 첫 실행은 event 수에 statement text 수를 더한다.
+// TestStatementEventsServerTransactions runs the vector's server_transactions on the PostgreSQL case
+// database. From the difference in the backend's local transaction numbers that the probe returns, it counts the
+// server transactions of the page run. The pool size is 1, so every statement runs on one backend.
+// The pgx statement cache prepares a statement text the first time a connection sends it, in its own round trip,
+// so if go is in first_run_prepare_clients, the first run adds the number of statement texts to the event count.
 func TestStatementEventsServerTransactions(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	raw, err := os.ReadFile(eventsVector)
@@ -397,8 +397,8 @@ func TestStatementEventsServerTransactions(t *testing.T) {
 	if err := orm.ReadForTest(db, "SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'", &setting, &source); err != nil {
 		t.Fatal(err)
 	}
-	// pooler를 거치면 pooler가 startup parameter를 server connection에 SET으로 적용하므로
-	// source는 client를 말하지 않는다. source는 server에 바로 닿을 때만 비교한다.
+	// Through a pooler, the pooler applies the startup parameters to the server connection with SET,
+	// so the source does not name the client. The source is compared only when connecting directly to the server.
 	pooled := os.Getenv("ORM_TEST_POSTGRES_DSN") != os.Getenv("ORM_TEST_POSTGRES_SERVER_DSN")
 	if setting != spec.TimeZone.Setting || (!pooled && source != spec.TimeZone.Source) {
 		t.Errorf("TimeZone setting and source = %s, %s, want %s, %s (pooled %v)", setting, source, spec.TimeZone.Setting, spec.TimeZone.Source, pooled)

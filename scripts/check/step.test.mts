@@ -1,6 +1,6 @@
-// check runner와 owner-check의 단계 하나(scripts/check/run.mts의 command)는 자기 임시 directory(TMPDIR)와 자기
-// process group에서 실행된다. 통과한 단계가 임시 entry나 process를 남기면 그 단계는 실패하고, 실패한 단계가 남긴
-// 임시 entry는 보고서로 복사된다. 어느 쪽이든 단계 뒤에는 남은 것이 없다. 각 case는 실제 sh로 단계를 실행한다.
+// The check runner and one step of owner-check (command of scripts/check/run.mts) run in their own temporary directory (TMPDIR) and their own
+// process group. If a step that passed leaves a temporary entry or process, that step fails; the temporary entries left by a failed step
+// are copied to the report. Either way, nothing is left after the step. Each case runs the step with a real sh.
 import assert from 'node:assert/strict';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -15,7 +15,7 @@ import { spawn } from 'node:child_process';
 const repo = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const run = command(repo);
 
-// step은 단계의 출력 줄을 모은다.
+// step collects the output lines of the step.
 function collect() {
   const lines: string[] = [];
   return { lines, step: (line: string) => { lines.push(line); } };
@@ -97,7 +97,7 @@ caseTest('a failed step keeps its temporary entries in the report and leaves no 
 caseTest("npm's compile cache stays in the system temporary directory and is not a leftover of the step", PROCESS, async () => {
   const { lines, step } = collect();
   await run('sh', ['-c', 'echo "cache=$NODE_COMPILE_CACHE"; npm --version'], step);
-  // runner 안에서 실행하면 바깥 단계가 이미 정한 cache를 그대로 쓴다.
+  // Run inside the runner, it uses as-is the cache the outer step already set.
   const expected = process.env.NODE_COMPILE_CACHE ?? join(tmpdir(), 'node-compile-cache');
   assert.ok(lines.includes(`cache=${expected}`), lines.join(' | '));
 });
@@ -117,9 +117,9 @@ caseTest('endGroup names and ends what a process of its own group left behind', 
   }
 });
 
-// fake runner case(G5.77)는 runner 자리의 node process를 자기 group으로 시작하고, 그 안에서 단계의 group signal을
-// 보낸다. 자기 group, group 0과 1, 음수에 보내는 signal은 거부되어 runner가 살아남고, 그 group에 그대로 보낸 signal은
-// runner를 끝낸다(대조군). 단계가 남긴 process를 끝내는 runStep도 runner를 끝내지 않는다.
+// The fake runner case (G5.77) starts the runner's node process in its own group, and inside it sends the step's group signal
+// to it. Signals sent to its own group, to group 0 and 1, or to negative groups are rejected, so the runner survives, and a signal sent to that group as is
+// ends the runner (control). runStep, which ends processes the step left behind, does not end the runner either.
 caseTest('a group signal never reaches the process group of the runner', PROCESS, async () => {
   const stepModule = new URL('./step.mts', import.meta.url).pathname;
   const fake = (body: string) => new Promise<{ code: number | null; signal: NodeJS.Signals | null; out: string }>(resolve => {
@@ -145,9 +145,9 @@ caseTest('a group signal never reaches the process group of the runner', PROCESS
   assert.equal(unguarded.signal, 'SIGTERM', 'a raw signal to the own group ends the runner');
 });
 
-// 단계 이름 case(G5.77)는 단계의 process가 .runtime/run에 단계 이름(ORM_STEP)을 담아 만든 directory를 runner가 단계의
-// 잔여물로 찾아 지우는지 본다. tests/cargo-test.mts의 test binary 복사본이 그 directory에 있다(CI의 /tmp는 memory를
-// 쓰는 tmpfs이므로 복사본은 disk에 둔다).
+// The step-name case (G5.77) checks that the runner finds, as a leftover of the step, the directory that a step's process created in .runtime/run
+// with the step name (ORM_STEP) and deletes it. The test-binary copy of tests/cargo-test.mts is in that directory (on CI /tmp is a tmpfs that uses
+// memory, so the copy is kept on disk).
 caseTest('a run directory named after the step is a leftover of the step', PROCESS, async () => {
   const root = mkdtempSync(join(tmpdir(), 'orm-step-test-'));
   try {

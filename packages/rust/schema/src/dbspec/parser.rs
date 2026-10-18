@@ -88,11 +88,11 @@ pub(crate) struct Syntax {
     /// The declarations of the document, in the order they were read; positions sorts them.
     pub declarations: Vec<Declaration>,
     pub unresolved: Vec<Vec<String>>,
-    /// 표마다, type이 잘못된 column 줄의 이름이다. Go는 그런 열을 남기므로 그 열을 가리키는 외래 key의 자식은 알려진 것으로 본다.
+    /// For each table, the name of a column line whose type is wrong. Go keeps such a column, so a child of a foreign key that points to that column is treated as known.
     pub typeless: Vec<Vec<(String, bool)>>,
     /// For each table, the key and index lines that failed.
     pub failed_keys: Vec<FailedKeys>,
-    /// 표마다, 표 줄이 실패했는지(이름이 없거나, `{`가 없거나, `{` 뒤에 말이 있다). Go의 failed table이다.
+    /// For each table, whether the table line failed (it has no name, no `{`, or text after `{`). This is Go's failed table.
     pub header_failed: Vec<bool>,
     /// For each table, the `default` value tokens of its column lines that parsed.
     pub defaults: Vec<Vec<DefaultToken>>,
@@ -250,7 +250,7 @@ struct Parser {
     /// The `{` of the open table, settings block and diagram.
     table_brace: Option<Pos>,
     settings_brace: Option<Pos>,
-    /// 반복된 settings block: 줄은 구문만 읽고 `detached_settings`에 쌓으며, Go의 detached block이다.
+    /// A repeated settings block: its lines are read only for syntax and collected in `detached_settings`; this is Go's detached block.
     settings_detached: bool,
     detached_settings: Option<Settings>,
     diagram_brace: Option<Pos>,
@@ -836,7 +836,7 @@ impl Parser {
             self.close_table();
             return;
         }
-        // 표 block 안의 `table`과 `diagram` 줄은 Go처럼 열 줄이다(block을 열지 않고 닫지도 않는다). 그 줄의 구문 오류는 열 줄의 구문으로 본다.
+        // The `table` and `diagram` lines inside a table block are column lines as in Go (they neither open nor close the block). A syntax error on such a line is treated as a column line syntax error.
         let first = &tokens[0];
         let kind = if first.kind == Kind::Word { line_kind(first) } else { None };
         if kind.is_some() {
@@ -847,7 +847,7 @@ impl Parser {
             Some(LineKind::Settings) => 2,
             Some(_) => 1,
         };
-        // Go는 반복된 block의 키워드에 order를 줄이 올바른 형식(`settings {`만)일 때만 보고한다.
+        // Go reports order on the keyword of a repeated block only when the line has the correct form (`settings {` only).
         let well_formed = tokens.len() == 2 && tokens[1].is("{");
         let second_settings = kind == Some(LineKind::Settings) && well_formed && self.table.as_ref().is_some_and(|t| t.settings.is_some());
         let mut cursor = Cursor::new(tokens);
@@ -884,7 +884,7 @@ impl Parser {
         let before = self.diags.len();
         self.column_line(cursor);
         let syntax = self.diags[before..].iter().any(|d| d.rule == "syntax");
-        // Go는 구문 오류가 난 줄의 이름과 type 검사를 하지 않는다: 이 줄에서는 구문 오류만 남긴다.
+        // Go does not check the name and type of a line with a syntax error: on this line only the syntax error is kept.
         if syntax {
             let later = self.diags.split_off(before);
             self.diags.extend(later.into_iter().filter(|d| d.rule == "syntax"));
@@ -980,7 +980,7 @@ impl Parser {
             }
         }
         let Some(ty) = ty else {
-            // 줄은 구문이 맞고 type만 잘못되었다. Go는 이 열을 남기므로(type만 invalid) 이름을 기록한다.
+            // The line's syntax is correct and only its type is wrong. Go keeps this column (only the type is invalid), so its name is recorded.
             self.table_typeless.push((name.text.to_owned(), nullable));
             return None;
         };
@@ -1022,8 +1022,8 @@ impl Parser {
         if cursor.peek_is("(") {
             cursor.next();
             let mut values = Vec::new();
-            // Go처럼 값(수, 단어, `-` 수)과 구분자를 읽는다. 값 자리에 다른 token이 오거나 구분자가 `,`나 `)`가 아니면
-            // 구문 오류다(type 오류는 줄이 구문에 맞을 때만 Go처럼 보고한다).
+            // As in Go, reads values (numbers, words, `-` numbers) and separators. If another token appears in a value position, or the separator is not `,` or `)`,
+            // it is a syntax error (as in Go, a type error is reported only when the line matches the syntax).
             loop {
                 match cursor.peek() {
                     Some(t) if t.kind == Kind::Number && !t.text.contains('.') => {
@@ -1108,7 +1108,7 @@ impl Parser {
     }
 
     /// `( <column> [asc|desc], ... )`; directions only when `directions` is set.
-    /// audit 목록의 `(<column>, ...)`를 읽는다. 이름은 부르는 쪽이 검사한다.
+    /// Reads the `(<column>, ...)` of an audit list. The caller checks the names.
     fn audit_columns(&mut self, cursor: &mut Cursor) -> Option<Vec<Name>> {
         self.expect(cursor, "(")?;
         let mut columns = Vec::new();
@@ -1338,8 +1338,8 @@ impl Parser {
         }
     }
 
-    /// `settings {`. 반복된 block은 구문만 읽는다(Go의 detached block): 줄은 표에 붙지 않고 검사되지 않는다.
-    /// header가 실패해도 block은 Go처럼 열린 채로 남는다.
+    /// `settings {`. A repeated block is read for syntax only (Go's detached block): its lines are not attached to a table and are not checked.
+    /// Even if the header fails, the block stays open, as in Go.
     fn open_settings(&mut self, cursor: &mut Cursor) {
         let keyword = self.take_keyword(cursor).map_or(Pos::default(), |t| t.pos);
         let comments = self.comments();
@@ -1348,7 +1348,7 @@ impl Parser {
         let ended = opened && self.end(cursor).is_some();
         // The block's opening line failed when it has no `{` or text after it (R20): its lines keep lexical classes.
         self.settings_header_failed = !ended;
-        // Go의 열린 위치: 읽은 `{`, 없으면 키워드다.
+        // Go's open position: the `{` read, or the keyword if there is none.
         self.settings_brace = Some(if opened { brace } else { keyword });
         let block = Settings { comments, lines: Vec::new(), closing: Vec::new() };
         self.settings_detached = self.table.as_ref().is_some_and(|t| t.settings.is_some());
@@ -1361,7 +1361,7 @@ impl Parser {
         self.context = Context::Settings;
     }
 
-    /// 줄을 읽는 settings block: 표의 첫 block이거나, 반복된 block의 detached block이다.
+    /// A settings block that reads lines: either the first block of a table, or the detached block of a repeated block.
     fn settings_target(&mut self) -> Option<&mut Settings> {
         if self.settings_detached {
             self.detached_settings.as_mut()
@@ -1380,7 +1380,7 @@ impl Parser {
             self.context = Context::Table;
             return;
         }
-        // settings block 안의 `table`이나 `diagram` 줄은 Go처럼 알 수 없는 setting이다. block을 닫지 않는다.
+        // A `table` or `diagram` line inside a settings block is an unknown setting, as in Go. It does not close the block.
         let mut cursor = Cursor::new(tokens);
         let comments = self.comments();
         let keyword = tokens[0];
@@ -1449,7 +1449,7 @@ impl Parser {
                     let columns = self.audit_columns(&mut cursor)?;
                     lists.push(AuditList { keyword, columns });
                 }
-                // 목록의 이름은 처음 나올 때만 검사한다. audit column은 검사가 따로 거부한다.
+                // Names in a list are checked only on first appearance. The audit column is rejected by a separate check.
                 let mut named = HashSet::new();
                 for listed in lists.iter().flat_map(|l| &l.columns) {
                     if named.insert(listed.text.clone()) && listed.text != column.text {
@@ -1668,8 +1668,8 @@ impl Parser {
         }
     }
 
-    /// 가장 안쪽의 열린 block의 `{`에 `syntax` 오류를 한 번 보고한다(Go처럼). 열린 settings block은 자기 `{`만
-    /// 보고하고 표의 `{`는 보고하지 않는다. header 줄이 실패한 block은 이미 오류가 있다.
+    /// Reports a `syntax` error once at the `{` of the innermost open block (as in Go). An open settings block reports only its own `{`
+    /// and does not report a table's `{`. A block whose header line failed already has an error.
     fn report_open_blocks(&mut self) {
         let braces = match self.context {
             Context::Top => vec![],

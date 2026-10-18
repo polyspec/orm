@@ -20,14 +20,14 @@ function errorText(error: unknown): string {
 }
 
 /**
- * transaction이나 savepoint를 끝낸 원인과 실패한 rollback을 하나의 ROLLBACK 오류로 보고한다
- * (docs/interfaces.md). cause는 원인이고 rollback은 rollback 오류다. ROLLBACK 오류는 retry하지 않는다.
+ * Reports the cause that ended the transaction or savepoint, and a failed rollback, as a single ROLLBACK error
+ * (docs/interfaces.md). cause is the cause, and rollback is the rollback error. A ROLLBACK error is not retried.
  */
 export function rollbackFailed(cause: unknown, rollback: unknown): OrmError {
   return new OrmError(codes.ROLLBACK, `transaction failed (${errorText(cause)}) and rollback failed (${errorText(rollback)})`, cause, rollback);
 }
 
-/** 오류가 하나면 그 오류, 여럿이면 message를 모은 CONFIG, 없으면 undefined다. */
+/** If there is one error, that error; if there are several, a CONFIG that gathers their messages; if none, undefined. */
 export function joinedErrors(errors: readonly unknown[]): unknown {
   if (errors.length <= 1) return errors[0];
   return new OrmError(codes.CONFIG, errors.map(errorText).join('; '), errors[0]);

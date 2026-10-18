@@ -21,11 +21,11 @@ import (
 
 func init() { orm.RegisterDriver("postgres", "pgx", mapErr) }
 
-// mapErr는 docs/errors.yaml이 mapping하는 조건에 이름을 붙이고, executor는
-// 나머지 driver 오류를 DRIVER로 보고한다.
+// mapErr names the conditions that docs/errors.yaml maps, and the executor
+// reports the remaining driver errors as DRIVER.
 func mapErr(err error) error {
-	// pgx가 이미 닫은 connection이다. 연결을 잃은 오류이며 cause는 driver.ErrBadConn으로
-	// 표시해 transaction의 rollback이 server가 끝낸 session을 실패로 보고하지 않게 한다.
+	// is a connection that pgx has already closed. It is a lost-connection error, and its cause is marked
+	// with driver.ErrBadConn so the transaction's rollback does not report a session the server ended as a failure.
 	if errors.Is(err, pgconn.ErrConnClosed) {
 		return &ir.Error{Code: orm.CodeConnectionLost, Msg: err.Error(), Cause: fmt.Errorf("%w: %w", driver.ErrBadConn, err)}
 	}
@@ -33,8 +33,8 @@ func mapErr(err error) error {
 	if !errors.As(err, &pe) {
 		return err
 	}
-	// class 08은 connection exception이다. 57P01(admin_shutdown), 57P02(crash_shutdown),
-	// 57P05(idle_session_timeout)는 server가 session을 끝낼 때 보낸다.
+	// class 08 is connection exception. 57P01 (admin_shutdown), 57P02 (crash_shutdown),
+	// and 57P05 (idle_session_timeout) are sent when the server ends a session.
 	if strings.HasPrefix(pe.Code, "08") || pe.Code == "57P01" || pe.Code == "57P02" || pe.Code == "57P05" {
 		return &ir.Error{Code: orm.CodeConnectionLost, Msg: pe.Error()}
 	}

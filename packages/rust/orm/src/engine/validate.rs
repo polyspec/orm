@@ -16,7 +16,7 @@ fn numeric(c: &Field) -> bool {
 
 const COMPARE: &[&str] = &["eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "between", "is_null", "is_not_null"];
 
-/// equality와 목록 비교만 하는 operator.
+/// An operator that only compares equality and lists.
 const EQUALITY: &[&str] = &["eq", "not_eq", "in", "not_in", "is_null", "is_not_null"];
 
 fn ops_by_type(typ: &str) -> &'static [&'static str] {
@@ -34,9 +34,9 @@ fn col_op(op: &str) -> bool {
     matches!(op, "eq_col" | "not_eq_col" | "gt_col" | "gte_col" | "lt_col" | "lte_col")
 }
 
-/// column의 type과 codec stage에 operator를 쓸 수 있는지 판단한다. AES column은
-/// blind index로 equality를 비교하고, `hex`와 `ip`만 쓰는 column은 같은 값이 같은
-/// stored value가 되므로 equality를 비교한다.
+/// Decides whether an operator can be used with the column's type and codec stages. An AES column
+/// compares equality by blind index, and a column that uses only `hex` and `ip` has the same value as the same
+/// stored value, so equality is compared.
 fn op_allowed(c: &Field, op: &str) -> bool {
     if col_op(op) {
         return true;
@@ -115,16 +115,16 @@ pub(crate) struct Validator<'m> {
     n: usize,
 }
 
-/// statement 안의 entity 자리 하나(root나 join)다. planner의 scope처럼 column-to-column 조건의
-/// ref path를 푼다. relation과 subquery는 자기 statement의 root다. manifest에 없는 entity의 ent는 None이다.
+/// One entity position in a statement (root or join). Like the planner's scope, of column-to-column conditions
+/// Resolves a ref path. A relation and a subquery are the root of their own statement. For an entity not in the manifest, ent is None.
 struct Scope<'m> {
     name: String,
     ent: Option<&'m Entity>,
     joins: Vec<(String, Scope<'m>)>,
 }
 
-/// 조건이 놓인 자리다: root는 statement의 root scope, outer는 subquery를 둘러싼 query의 scope
-/// (subquery가 아니면 None), node는 조건의 scope다.
+/// The position where the condition sits: root is the statement's root scope, outer is the scope of the query enclosing the subquery
+/// (None if not a subquery), and node is the condition's scope.
 #[derive(Clone, Copy)]
 struct At<'a, 'm> {
     root: &'a Scope<'m>,
@@ -148,7 +148,7 @@ pub(crate) fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
     if r.load && (r.kind != "insert" || !r.on_duplicate.is_empty()) {
         return Err(err(codes::IR_INVALID, "load is only valid on insert without on_duplicate"));
     }
-    // restart_identity은 entity 하나의 identity만 다시 시작하므로 행이나 값을 받지 않는다.
+    // restart_identity restarts only one entity's identity, so it takes no rows or values.
     if r.kind == "restart_identity"
         && (!r.set.is_empty() || !r.rows.is_empty() || !r.on_duplicate.is_empty() || r.query.where_.is_some() || r.optimistic.is_some())
     {
@@ -232,7 +232,7 @@ pub(crate) fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
         return Err(err(codes::IR_INVALID, format!("{} without where", r.kind)));
     }
     if r.kind == "restore" {
-        // restore는 지워진 행만 고치므로 읽은 version과 비교할 것이 없다.
+        // restore changes only deleted rows, so there is no read version to compare.
         if r.optimistic.is_some() {
             return Err(err(codes::IR_INVALID, "restore takes no optimistic"));
         }
@@ -344,8 +344,8 @@ impl<'m> Validator<'m> {
         self.params(&singles)
     }
 
-    /// q와 그 join의 scope tree다. planner의 build_scopes처럼 조건을 검사하기 전에 모든 join을
-    /// 두므로, 조건은 뒤에 선언한 join의 path도 푼다.
+    /// The scope tree of q and its joins. As in the planner's build_scopes, all joins are placed before the conditions are checked,
+    /// so a condition also resolves the path of a join declared later.
     fn scopes(&self, q: &ir::Query) -> Scope<'m> {
         let mut s = Scope { name: q.entity.clone(), ent: self.m.entity(&q.entity).ok(), joins: Vec::new() };
         for j in &q.joins {
@@ -356,9 +356,9 @@ impl<'m> Validator<'m> {
         s
     }
 
-    /// planner의 resolve_path처럼 column-to-column 조건의 ref를 푼다. path ""는 statement의 root,
-    /// "^"는 subquery를 둘러싼 query이며 subquery 안에서만 쓴다. 그 밖의 path는 root에서 join 이름을
-    /// "/"로 이은 것이다. 대상 entity에 ref의 column이 있어야 한다.
+    /// Like the planner's resolve_path, resolves the ref of a column-to-column condition. Path "" is the statement's root,
+    /// "^" is the query enclosing the subquery and is used only inside a subquery. Any other path is the join names from the root
+    /// joined by "/". The target entity must have the ref's column.
     fn column_ref(&self, at: At<'_, 'm>, r: &ir::ColRef) -> Result<&'m Field> {
         let mut target = at.root;
         if r.path == "^" {
@@ -443,7 +443,7 @@ impl<'m> Validator<'m> {
         if q.on.as_ref().is_some_and(|g| g.not) || q.where_.as_ref().is_some_and(|g| g.not) {
             return Err(err(codes::IR_INVALID, "not applies to a nested group"));
         }
-        // top-level group은 앞 형제가 없으므로 conn을 갖지 않는다.
+        // A top-level group has no preceding sibling, so it has no conn.
         for top in [&q.on, &q.where_].into_iter().flatten() {
             if !top.conn.is_empty() {
                 return Err(err(codes::IR_INVALID, format!("the top-level group takes no conn ({:?})", top.conn)));
@@ -487,7 +487,7 @@ impl<'m> Validator<'m> {
                         format!("relation {}: {}.{} does not meet {}.{}", r.rel, q.entity, k.left, target.name, k.right),
                     ));
                 }
-                // 한 column이 두 성분에 나오면 key가 아니다.
+                // A column that appears in two components is not a key.
                 if lefts.contains(&k.left) || rights.contains(&k.right) {
                     return Err(err(codes::IR_INVALID, format!("relation {}: key column {} or {} is used twice", r.rel, k.left, k.right)));
                 }
@@ -588,7 +588,7 @@ impl<'m> Validator<'m> {
             if i == 0 && conn == "or" {
                 return Err(err(codes::OR_AT_GROUP_START, "a group may not start with OR"));
             }
-            // group의 첫 item은 앞 형제가 없으므로 conn을 갖지 않는다.
+            // The first item of a group has no preceding sibling, so it has no conn.
             if i == 0 && !conn.is_empty() {
                 return Err(err(codes::IR_INVALID, format!("the first item of a group takes no conn ({conn:?})")));
             }
@@ -749,7 +749,7 @@ impl<'m> Validator<'m> {
         Ok(())
     }
 
-    /// subquery를 검사한다. outer는 subquery가 놓인 scope이며 그 "^" ref가 가리킨다.
+    /// Checks a subquery. outer is the scope where the subquery sits, and the "^" ref points to it.
     fn sub(&self, s: &ir::Sub, scalar: bool, outer: &Scope<'m>) -> Result<()> {
         let ent = self.m.entity(&s.query.entity)?;
         match s.agg.as_str() {

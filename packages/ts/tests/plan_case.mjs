@@ -7,11 +7,11 @@ import { chainPlans, compareSchemas, diffPlan, effectText, emitPlan, parseDbspec
 
 export const root = new URL('../../../', import.meta.url);
 export const vectors = JSON.parse(readFileSync(new URL('tests/dbspec/plans.json', root), 'utf8'));
-// TIMEOUT은 case 하나의 기한(ms)이다. plan vector 하나는 memory 안에서 plan 하나를 parse하고 step을 만든다.
+// TIMEOUT is the deadline (ms) of one case. One plan vector parses one plan in memory and builds its steps.
 const TIMEOUT = 5000;
 const DIALECTS = ['mysql', 'postgres', 'sqlite'];
 
-// stepFields는 step의 plans.json object다(docs/plans.md "Steps").
+// stepFields is the plans.json object of a step (docs/plans.md "Steps").
 function stepFields(s) {
   const out = { statement: s.statement, effect: effectText(s.effect) };
   if (s.rollback !== '') out.rollback = s.rollback;
@@ -100,7 +100,7 @@ export function parseCases() {
   for (const c of vectors.parse) {
     vector(c.id, () => {
       const { diagnostics } = parsePlan(text(c.plan));
-      // plan diagnostic은 message까지, target diagnostic은 rule, 줄, 칸까지 비교한다.
+      // A plan diagnostic is compared down to its message, and a target diagnostic down to its rule, line, and column.
       assert.deepEqual(diagnostics.map(d => [d.rule, d.line, d.column, d.rule === 'plan' ? d.message : null]), c.errors);
     });
   }

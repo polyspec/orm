@@ -22,12 +22,12 @@ const Version = 1
 // (insert/update/delete/restore), or a paginate (select + count).
 type Request struct {
 	IRVersion int `json:"ir_version"`
-	// ManifestHash는 request를 만든 generated code의 manifestHash다.
+	// ManifestHash is the manifestHash of the generated code that made the request.
 	ManifestHash string `json:"manifest_hash"`
 	Kind         string `json:"kind"` // one all count group_count sum avg paginate insert update delete restore restart_identity
 	Query
-	// Load은 insert가 행을 저장된 key 그대로 적재한다는 뜻이다: identity column의 값을
-	// 받고, identity가 있는 table이면 그 값을 요구한다. on_duplicate와 함께 쓰지 않는다.
+	// Load means insert loads a row under the stored key as it is: it takes the value of the identity column,
+	// and requires that value if the table has an identity. It is not used with on_duplicate.
 	Load        bool     `json:"load,omitempty"`
 	Set         []Assign `json:"set,omitempty"`
 	OnDuplicate []Assign `json:"on_duplicate,omitempty"` // insert: assignments applied when the unique key already exists
@@ -92,8 +92,8 @@ type Sub struct {
 	Agg    string `json:"agg,omitempty"`
 }
 
-// Join은 statement에 child table을 더한다. Rel은 join 이름이고, Left는
-// parent column, Right는 child column이다.
+// Join adds a child table to the statement. Rel is the join name, and Left is
+// the parent column, and Right is the child column.
 type Join struct {
 	Rel   string `json:"rel"`
 	Kind  string `json:"kind"` // inner | left
@@ -102,8 +102,8 @@ type Join struct {
 	Right string `json:"right,omitempty"`
 }
 
-// Relation은 별도 statement로 행을 읽는다. Rel은 결과 이름이고 Left, Right,
-// Kind가 key와 종류를 정한다.
+// Relation reads rows with a separate statement. Rel is the result name, and Left, Right,
+// Kind decide the key and the kind.
 type Relation struct {
 	Rel   string    `json:"rel"`
 	Query *Query    `json:"query"`
@@ -111,8 +111,8 @@ type Relation struct {
 	Keys  []KeyPair `json:"keys,omitempty"`
 }
 
-// KeyPair는 relation key의 한 성분이다: 부모 column Left와 자식 column Right가
-// 같다. composite key의 relation은 성분마다 한 쌍을 key 순서대로 담는다.
+// KeyPair is one component of a relation key: the parent column Left and the child column Right
+// are equal. A relation of a composite key holds one pair per component, in key order.
 type KeyPair struct {
 	Left  string `json:"left"`
 	Right string `json:"right"`
@@ -122,7 +122,7 @@ type KeyPair struct {
 // sibling; the first item of a group has no connector.
 type Group struct {
 	Conn string `json:"conn,omitempty"` // and | or
-	// Not은 nested group 전체를 부정한다(`NOT (…)`). top-level where와 on group은 부정하지 않는다.
+	// Not negates the whole nested group (`NOT (…)`). The top-level where and on groups are not negated.
 	Not   bool   `json:"not,omitempty"`
 	Items []Item `json:"items"`
 }
@@ -198,21 +198,21 @@ type Optimist struct {
 type Error struct {
 	Code string `json:"code"`
 	Msg  string `json:"msg"`
-	// Cause는 driver code의 driver 오류이거나 ROLLBACK의 callback 오류와 rollback
-	// 오류다. JSON 형태에는 들어가지 않는다.
+	// Cause is a driver error from the driver code, or the callback error of ROLLBACK and a rollback
+	// error. It is not included in the JSON form.
 	Cause error `json:"-"`
 }
 
 func (e *Error) Error() string { return e.Code + ": " + e.Msg }
 
-// Unwrap은 Cause를 돌려준다.
+// Unwrap returns Cause.
 func (e *Error) Unwrap() error { return e.Cause }
 
 func errf(code, format string, a ...any) *Error {
 	return &Error{Code: code, Msg: fmt.Sprintf(format, a...)}
 }
 
-// opsByType은 dbspec type kind마다 허용하는 operator다.
+// opsByType is the operators allowed for each dbspec type kind.
 var opsByType = map[string][]string{
 	"i16":      {"eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "between", "is_null", "is_not_null"},
 	"i32":      {"eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "between", "is_null", "is_not_null"},
@@ -229,10 +229,10 @@ var opsByType = map[string][]string{
 	"bytes":    {"eq", "not_eq", "in", "not_in", "is_null", "is_not_null"},
 }
 
-// ipOps는 codec이 ip 하나인 field의 operator다. 값은 address text다.
+// ipOps are the operators of a field whose codec is a single ip. Its values are address text.
 var ipOps = []string{"eq", "not_eq", "in", "not_in", "is_null", "is_not_null"}
 
-// numeric은 plus, minus, sum, avg를 받는 type kind다.
+// numeric is a type kind that accepts plus, minus, sum, and avg.
 func numeric(t string) bool {
 	return t == "i16" || t == "i32" || t == "i64" || t == "f64" || t == "decimal"
 }
@@ -268,12 +268,12 @@ func (v *validator) assign(ent *runtimemodel.Entity, r *Request, a *Assign) erro
 	return nil
 }
 
-// OpAllowed는 op가 field의 type과 codec에 허용되는지 알린다.
+// OpAllowed reports whether op is allowed for the field's type and codec.
 func OpAllowed(c *runtimemodel.Field, op string) bool {
 	if colOps[op] {
 		return true
 	}
-	// codec field는 ip면 address 비교, aes로 시작하면 blind index equality, 그 밖에는 null 검사만 받는다.
+	// A codec field accepts address comparison if it is ip, blind index equality if it starts with aes, and otherwise only null checks.
 	if len(c.Codec) > 0 {
 		switch {
 		case len(c.Codec) == 1 && c.Codec[0] == "ip":
@@ -319,7 +319,7 @@ func Validate(m *runtimemodel.Model, r *Request) error {
 	if r.Load && (r.Kind != "insert" || len(r.OnDuplicate) > 0) {
 		return errf("IR_INVALID", "load is only valid on insert without on_duplicate")
 	}
-	// restart_identity은 entity 하나의 identity만 다시 시작하므로 행이나 값을 받지 않는다.
+	// restart_identity restarts only one entity's identity, so it takes no row or value.
 	if r.Kind == "restart_identity" && (len(r.Set) > 0 || len(r.Rows) > 0 || len(r.OnDuplicate) > 0 || r.Where != nil || r.Optimistic != nil) {
 		return errf("IR_INVALID", "restart_identity takes no set, rows, on_duplicate, where or optimistic")
 	}
@@ -413,7 +413,7 @@ func Validate(m *runtimemodel.Model, r *Request) error {
 		return errf("IR_INVALID", "%s without where", r.Kind)
 	}
 	if r.Kind == "restore" {
-		// restore는 지워진 행만 고치므로 읽은 version과 비교할 것이 없다.
+		// restore fixes only deleted rows, so there is no read version to compare with.
 		if r.Optimistic != nil {
 			return errf("IR_INVALID", "restore takes no optimistic")
 		}
@@ -430,18 +430,18 @@ type validator struct {
 	root *Query // the request's own query: the only one that may group
 }
 
-// scope는 statement 안의 entity 자리 하나(statement의 root나 join)다. planner의 scope처럼
-// column-to-column 조건의 ref path를 푼다. relation과 subquery는 자기 statement의 root다.
+// scope is one entity position in a statement (the statement's root or a join), like the planner's scope
+// that resolves the ref path of a column-to-column condition. A relation and a subquery are the root of their own statement.
 type scope struct {
 	name   string
-	ent    *runtimemodel.Entity // manifest에 없는 entity면 nil
-	parent *scope               // join의 부모. statement의 root는 nil
-	outer  *scope               // subquery root를 둘러싼 query의 scope("^" ref)
+	ent    *runtimemodel.Entity // nil if the entity is not in the manifest
+	parent *scope               // the parent of a join. nil for the statement's root
+	outer  *scope               // the scope of the query enclosing a subquery root ("^" ref)
 	joins  map[string]*scope
 }
 
-// scopes는 q와 그 join의 scope tree를 만든다. planner의 buildScopes처럼 where를 검사하기 전에
-// 모든 join을 두므로, 조건은 뒤에 선언한 join의 path도 푼다.
+// scopes builds the scope tree of q and its joins. As the planner's buildScopes does, before checking where
+// it includes every join, so a condition also resolves paths of joins declared later.
 func (v *validator) scopes(q *Query, parent, outer *scope) *scope {
 	s := &scope{name: q.Entity, ent: v.m.Entities[q.Entity], parent: parent, outer: outer, joins: map[string]*scope{}}
 	for _, j := range q.Joins {
@@ -453,9 +453,9 @@ func (v *validator) scopes(q *Query, parent, outer *scope) *scope {
 	return s
 }
 
-// ref는 planner의 resolvePath처럼 column-to-column 조건의 ref를 푼다. path ""는 statement의 root,
-// "^"는 subquery를 둘러싼 query이며 subquery 안에서만 쓴다. 그 밖의 path는 root에서 join 이름을
-// "/"로 이은 것이다. 대상 entity에 ref의 column이 있어야 한다.
+// ref resolves a ref of a column-to-column condition, as the planner's resolvePath does. Path "" is the statement's root,
+// "^" is the query enclosing a subquery and is used only inside a subquery. Other paths are join names joined from the root
+// with "/". The target entity must have the ref's column.
 func (v *validator) ref(s *scope, r *ColRef) (*runtimemodel.Field, error) {
 	root := s
 	for root.parent != nil {
@@ -764,7 +764,7 @@ func (v *validator) query(q *Query, s *scope, isJoin, isRelation bool) error {
 			if !meets(ent.Field(k.Left), target.Field(k.Right)) {
 				return errf("OPERATOR_NOT_ALLOWED", "relation %s: %s.%s (%s) does not meet %s.%s (%s)", r.Rel, q.Entity, k.Left, ent.Field(k.Left).Type, target.Name, k.Right, target.Field(k.Right).Type)
 			}
-			// 한 column이 두 성분에 나오면 key가 아니다.
+			// If one column appears in both components, it is not a key.
 			if lefts[k.Left] || rights[k.Right] {
 				return errf("IR_INVALID", "relation %s: key column %s or %s is used twice", r.Rel, k.Left, k.Right)
 			}

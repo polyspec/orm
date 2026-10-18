@@ -40,7 +40,7 @@ abstract class Model implements \JsonSerializable
     private string $aggFn = '';
     private string $agg = '';
 
-    /** @var list<array{left: string, right: string}> relation key 성분: match<L>With<R>()마다 한 쌍을 호출 순서로 더한다 */
+    /** @var list<array{left: string, right: string}> Relation key components: a pair per match<L>With<R>() call, added in call order */
     private array $matches = [];
     private string $alias = '';
     private bool $parentNode = false;
@@ -65,7 +65,7 @@ abstract class Model implements \JsonSerializable
      */
     private ?array $row = null;
 
-    /** model의 entity다: RuntimeModel이 정의하는 runtime model entity 배열이다. */
+    /** The entity of the model: the array of runtime model entities that RuntimeModel defines. */
     abstract public static function meta(): array;
 
     // ---- connection and fixed builder methods ----
@@ -1129,7 +1129,7 @@ abstract class Model implements \JsonSerializable
             }
             if (($col['column'] ?? '') === $name && isset($meta['columns'][$name])) {
                 $mc = $meta['columns'][$name];
-                // codec column은 Codec::decodeRows가 이미 값으로 바꿨다.
+                // A codec column has already been turned into a value by Codec::decodeRows.
                 $kind = $mc['codec'] !== [] ? 'codec' : $mc['type'];
                 $group = match ($kind) {
                     'i16', 'i32', 'i64' => 'int',
@@ -1322,7 +1322,7 @@ abstract class Model implements \JsonSerializable
     }
 
     /**
-     * model의 relation key 성분 값을 key 순서로 반환한다. 성분 하나라도 null이면 null이다.
+     * Returns the model's relation key component values in key order. If any component is null, returns null.
      *
      * @return list<mixed>|null
      */
@@ -1339,7 +1339,7 @@ abstract class Model implements \JsonSerializable
         return $values;
     }
 
-    /** @param list<mixed> $values relation key 성분 값의 collection key. */
+    /** @param list<mixed> $values The collection key of the relation key component values. */
     private static function matchKey(array $values): string
     {
         if (count($values) === 1) {
@@ -1375,7 +1375,7 @@ abstract class Model implements \JsonSerializable
             $q->matches = [];
             $q->alias = '';
             $rights = array_column($this->matches, 'right');
-            // composite key는 자식 key column 전체를 tuple로 거른다.
+            // A composite key filters the whole child key column as a tuple.
             $match = count($rights) === 1
                 ? ['pred' => ['column' => $rights[0], 'op' => 'in', 'value' => $values, 'kind' => 'list']]
                 : ['pred' => ['op' => 'tuple_in', 'cols' => $rights, 'value' => $values, 'kind' => 'tuple']];
@@ -1632,9 +1632,9 @@ abstract class Model implements \JsonSerializable
     // ---- writes ----
 
     /**
-     * 요청이 싣는 manifestHash다. generated bootstrap이 이 class를 그 hash로
-     * 등록하지 않았으면 SCHEMA_HASH_MISMATCH이므로 다른 set의 model이 이 요청을
-     * plan하지 않는다.
+     * The manifestHash the request carries. If the generated bootstrap has not registered this class under that hash,
+     * it is SCHEMA_HASH_MISMATCH, so a model of another set does not
+     * plan this request.
      */
     private static function manifestHash(): string
     {
@@ -1718,8 +1718,8 @@ abstract class Model implements \JsonSerializable
                 $m->values[$column] = null;
             }
         }
-        // 받은 key를 쓰는 column이다: identity, 또는 markdown executor가 정하는 key(key_prefix)로
-        // 요청이 값을 주지 않은 하나뿐인 primary key column이다.
+        // The columns that write the received key: identity, or a key the markdown executor decides (key_prefix).
+        // The only primary key column whose value the request did not give.
         $assignedKey = $meta['identity'];
         if ($assignedKey === '' && $db->driver() === 'markdown' && count($meta['pk']) === 1 && $id !== null && !array_key_exists($meta['pk'][0], $this->sets)) {
             $assignedKey = $meta['pk'][0];
@@ -1770,7 +1770,7 @@ abstract class Model implements \JsonSerializable
             }
         }
         $meta = static::meta();
-        // 행은 주어진 순서대로 2의 거듭제곱 부분으로 나뉘어 한 transaction에서 실행된다(docs/protocol.md).
+        // Rows are split into power-of-two parts in the given order and run in one transaction (docs/protocol.md).
         $parts = Db::insertParts(count($rows), count($columns), $db->driver());
         $total = 0;
         Db::inTransaction($this->conn, function () use ($rows, $columns, $meta, $parts, &$total): void {

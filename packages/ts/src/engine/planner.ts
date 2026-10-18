@@ -48,23 +48,23 @@ function slot(fields: Partial<BindSlot> & { from: string }): BindSlot {
 class Builder {
   public readonly binds: BindSlot[] = [];
   public subs = 0;
-  /** statement가 이름으로 쓴 table이다. */
+  /** The table that the statement uses, by name. */
   private readonly tableNames = new Set<string>();
   public constructor(private readonly d: Dialect) {}
 
-  /** ent의 table 이름을 quote하고 statement의 table로 기록한다. */
+  /** Quotes the table name of ent and records it as the statement's table. */
   public table(ent: Entity): string {
     this.tableNames.add(ent.table);
     return this.d.quote(ent.table);
   }
-  /** statement가 쓴 table을 정렬해 돌려준다. */
+  /** Returns the tables the statement wrote, sorted. */
   public tables(): string[] { return [...this.tableNames].sort(); }
 
   private push(s: BindSlot): string {
     this.binds.push(s);
     return this.d.placeholder(this.binds.length);
   }
-  /** type 있는 slot을 더한다. type 없는 slot은 planner 오류다. */
+  /** Adds a slot that has a type. A slot without a type is a planner error. */
   private typed(s: BindSlot): string {
     if (s.col_type === '') fail(codes.IR_INVALID, `bind slot ${this.binds.length} (${s.from}) has no declared type`);
     return this.push(s);
@@ -470,7 +470,7 @@ export class Planner {
     }
     if (hasAES) {
       const version = columnOf(s.ent, s.ent.aesVersion) ?? fail(codes.SCHEMA_INVALID, `${s.ent.name}: AES column requires an aes_version column`);
-      // 고른 version column이 있으면 그것을 쓰고, 없을 때만 숨겨서 읽는다.
+      // If a chosen version column exists, uses it; hides and reads it only when there is none.
       const chosen = asm.columns.findIndex(c => c.column === version.name && c.styles.length === 0);
       if (chosen >= 0) asm.aes_version = chosen;
       else {
@@ -623,7 +623,7 @@ export class Planner {
         return `${lhs} ${cmp(op)} ${this.renderValue(b, col, present(pr.p, `the value of ${op}`))}`;
       }
       case 'eq_col': case 'not_eq_col': case 'gt_col': case 'gte_col': case 'lt_col': case 'lte_col': {
-        // 없거나 null인 path는 statement의 root다(검증기와 같다).
+        // A path that is missing or null is the root of the statement (same as the validator).
         const ref = present(pr.ref, `the reference of ${op}`);
         const rs = this.resolvePath(s, ref.path ?? '');
         if (!columnOf(rs.ent, ref.column)) fail(codes.COLUMN_UNKNOWN, `${rs.ent.name}.${ref.column}`);
@@ -665,7 +665,7 @@ export class Planner {
   private renderValue(b: Builder, col: Column, i: number): string {
     const host = styles(col).filter(st => (st === 'aes' || st === 'hex' || st === 'ip') && !this.d.handlesStage(st));
     const sql = this.sqlStyles(styles(col));
-    // SQL 쪽 style 함수가 감싸는 값의 type은 그 함수 입력의 type이다.
+    // The type of the value that a SQL-side style function wraps is the type of that function's input.
     const [first] = sql;
     const ph = first === undefined ? b.colParam(i, col) : b.param(i, styleInputType(first));
     b.last().host_styles = host;
@@ -691,8 +691,8 @@ export class Planner {
   }
 
   private columnFunction(b: Builder, s: Scope, column: string, f: OrmFunction): string {
-    // column 함수의 인자는 아직 없다(arity는 모두 0). 인자의 type을 선언하지 않은 함수가 인자를 받으면
-    // type 없는 slot으로 planner 오류다.
+    // Column functions do not take arguments yet (all arities are 0). A function that declares no argument type, if it receives an argument,
+    // is a planner error for a slot with no type.
     return this.d.columnFunction(f.name, this.qcol(s, column), i => b.param(present(f.ps?.[i], `argument ${i + 1} of ${f.name}`), '')) ?? fail(codes.CAPABILITY_UNSUPPORTED, `${f.name} is not available on ${this.d.name}`);
   }
 
@@ -749,8 +749,8 @@ export class Planner {
   }
 
   /**
-   * update time과 soft deletion이 datetime column에 쓰는 clock이다. executor clock을 쓰는 dialect(hostNow)는
-   * column의 소수 자리로 자른 `now` slot을 bind하고, MySQL은 CURRENT_TIMESTAMP(p)로 database clock을 자른다.
+   * The clock that update time and soft deletion write to a datetime column. A dialect that uses the executor clock (hostNow)
+   * binds the `now` slot cut to the column's fractional digits; MySQL cuts the database clock with CURRENT_TIMESTAMP(p).
    */
   private clock(b: Builder, col: Column): string {
     return this.d.hostNow ? b.now(col.precision) : this.d.now(col.precision);
@@ -763,9 +763,9 @@ export class Planner {
   }
 
   /**
-   * insert가 사용자 assignment 외에 쓰는 column이다: AES key version, audit column,
-   * executor clock을 쓰는 dialect(hostNow)에서 assign되지 않은 `default now` column(field 순서). 그 column에는
-   * column의 소수 자리로 자른 executor clock을 쓴다(SQLite에는 microsecond clock이 없고, PostgreSQL clock은 반올림된다).
+   * The columns that insert writes besides the user assignments: the AES key version, audit columns,
+   * the `default now` columns (in field order) that are not assigned in a dialect that uses the executor clock (hostNow). Those columns take
+   * the executor clock cut to the column's fractional digits (SQLite has no microsecond clock, and the PostgreSQL clock is rounded).
    */
   private managedInsertColumns(ent: Entity, set: readonly Assignment[]): { column: string; value: (b: Builder) => string }[] {
     const out: { column: string; value: (b: Builder) => string }[] = [];
@@ -789,7 +789,7 @@ export class Planner {
     const set = addBlindIndexAssignments(ent, [...input]);
     validateAESAssignments(ent, set, false);
     validateRequiredAssignments(ent, set);
-    // load은 행을 저장된 key 그대로 쓰므로 identity column의 값을 받고 요구한다.
+    // load writes the row with its stored key as it is, so it takes and requires the identity column's value.
     const load = r.load === true;
     if (load && ent.identity !== '' && !set.some(a => a.column === ent.identity && a.p !== undefined)) {
       fail(codes.IR_INVALID, `load of ${ent.name} needs a value for the identity column ${ent.identity}`);
@@ -803,8 +803,8 @@ export class Planner {
       cols.push(this.d.quote(a.column));
       vals.push(this.renderAssign(b, ent, col, a));
     }
-    // executor가 관리하는 column은 사용자 assignment 뒤에 AES key version, audit column,
-    // `default now` column 순서로 쓴다.
+    // The columns the executor manages are written after the user assignments: the AES key version, audit columns,
+    // and the `default now` columns, in that order.
     const managed = this.managedInsertColumns(ent, set);
     for (const c of managed) {
       cols.push(this.d.quote(c.column));
@@ -878,11 +878,11 @@ export class Planner {
   }
 
   /**
-   * soft delete 한 행 하나를 되돌리는 update 다. restoreKey 가 request 의 set 과 where 에서 primary key 나 unique key
-   * 하나를 고르고, 그 key column 의 set 값은 조건이 되며 다른 set 값은 되돌리는 행에 함께 쓰는 새 값으로 update 처럼
-   * 쓴다. where 의 다른 조건은 restore 를 더 좁힌다. 지워진 행만 고치므로 지워지지 않은 행과 없는 행은 아무것도 바꾸지
-   * 않는다. SET 순서는 새 값, AES key version, soft delete column, audit table 의 audit column 이다. updated column 은
-   * 쓰지 않는다.
+   * An update that restores one soft-deleted row. restoreKey picks a primary key or unique key from the request's set and where,
+   * one is chosen; the set value of that key column becomes the condition, and the other set values are the new values written to the restored row, as in an update.
+   * Writes it. The other conditions of where narrow the restore further. Since only deleted rows are changed, a row that is not deleted and a missing row change
+   * nothing. The SET order is the new values, the AES key version, the soft delete column, and the audit column of the audit table. The updated column
+   * is not written.
    */
   private restoreStep(r: Request): Omit<PlanStep, 'id'> {
     const ent = this.entity(r.entity);
@@ -903,8 +903,8 @@ export class Planner {
   }
 
   /**
-   * entity의 identity를 그 table의 가장 큰 key 다음 값에서 다시 시작하는 statement다: 다음 생성 key는 가장 큰
-   * key에 1을 더한 값이고, 빈 table이면 1이다. load로 key를 지정해 행을 적재한 뒤 실행한다.
+   * A statement that restarts the entity's identity from the value after the table's largest key: the next generated key is the largest
+   * key plus 1, or 1 if the table is empty. It runs after rows are loaded with explicit keys using load.
    */
   private restartIdentityStep(r: Request): Omit<PlanStep, 'id'> {
     const ent = this.entity(r.entity);

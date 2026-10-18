@@ -1,5 +1,5 @@
-// tests/go-test.mts의 build 단계 인자 test다. 실행 flag는 build에서 빠지고, package, build tag와
-// build flag는 남는다.
+// Tests the build-phase arguments of tests/go-test.mts. The run flag is removed from the build, and the package, build tag and
+// build flags remain.
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { chmod, mkdtemp, rm, writeFile } from 'node:fs/promises';
@@ -19,10 +19,10 @@ caseTest('the build step keeps packages and build flags and runs no test', COMPU
   assert.equal(packages(['-v']), '.');
 });
 
-// 느리지만 정상인 build는 기한 없이 끝까지 실행한다. PATH 앞의 가짜 go는 build 단계(-run '^$')에서
-// compiler 줄 사이에 1.5초를 쉬고 0으로 끝나며(FAKE_GO_FAIL이 있으면 오류 줄과 함께 2로 끝난다), 실행
-// 단계에서는 go test -json의 test 출력을 낸다. build 단계는 go의 출력 줄과 `ok - <case>`를 보고하고 그 뒤
-// 실행 단계가 이어진다. 실패한 build는 오류 줄과 `not ok`, 그 이유를 보고하고 실행 단계를 시작하지 않는다.
+// A slow but normal build runs to the end with no deadline. The fake go at the front of PATH, in the build phase (-run '^$'),
+// waits 1.5 s between compiler lines and ends with 0 (with FAKE_GO_FAIL it ends with 2, along with an error line), and in the run
+// phase it emits the test output of go test -json. The build phase reports the go output lines and `ok - <case>`, and after that
+// the run phase follows. A failed build reports the error line, `not ok` and its reason, and does not start the run phase.
 caseTest('a slow but healthy go test build runs to its end without a deadline', PROCESS, async () => {
   const dir = await mkdtemp(join(tmpdir(), 'orm-go-test-'));
   try {
@@ -63,8 +63,8 @@ esac
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
 
-// 빈 선택 case(G5.54)는 `-run`이 test를 하나도 고르지 않는 실행을 실패로 보는지 본다. 이름을 잘못 쓴 `-run`은 test를
-// 실행하지 않고도 go test를 0으로 끝내므로 아무것도 시험하지 않은 채 통과한다. 임시 module의 실제 go test로 실행한다.
+// The empty selection case (G5.54) checks whether a run in which `-run` selects no test counts as a failure. A `-run` with a misspelled name
+// makes go test end with 0 without running any test, so it passes without testing anything. It runs with the real go test of a temporary module.
 caseTest('a go test run whose -run selects no test fails', PROCESS, async () => {
   const dir = await mkdtemp(join(tmpdir(), 'orm-go-empty-'));
   try {
@@ -90,8 +90,8 @@ caseTest('a go test run whose -run selects no test fails', PROCESS, async () => 
   }
 });
 
-// event 수 case(G5.54)는 고른 test의 수를 사람이 읽는 `=== RUN` 줄이 아니라 test2json의 `run` event로 세는지 본다.
-// Output에 `=== RUN`이 있어도 run event가 없으면 세지 않고, run event는 Output 없이도 센다. Output은 그대로 잇는다.
+// The event count case (G5.54) checks whether the number of selected tests is counted from test2json's `run` events, not from the human-readable `=== RUN` lines.
+// If Output has `=== RUN` but there is no run event, it is not counted; a run event is counted even without Output. Output is passed along as it is.
 caseTest('the selected tests are counted from the run events of test2json', COMPUTE, () => {
   const written: string[] = [];
   const events = testEvents((text: string) => written.push(text));

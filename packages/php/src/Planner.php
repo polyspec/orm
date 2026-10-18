@@ -327,7 +327,7 @@ final class Planner
             $asm->columns[] = self::outCol($idx++, $c['name'], $c['column'], $type, $styles);
         }
         if ($hasAes && !in_array($s->ent['aes_version'], array_column($projection, 'column'), true)) {
-            // AES column을 읽는 행은 고르지 않은 key version column을 숨겨서 함께 읽는다.
+            // A row that reads an AES column also reads the key version column, which was not selected, hidden along with it.
             $name = $s->ent['aes_version'];
             $version = RuntimeModel::column($s->ent, $name) ?? throw self::err(Code::SCHEMA_INVALID, "{$s->ent['entity']}: an AES column requires the aes_version setting");
             $parts[] = $this->qcol($s, $name) . ' AS ' . $this->d->quote($s->alias . '__' . $name);
@@ -509,8 +509,8 @@ final class Planner
         }
         if (isset($p['value'])) {
             $fn = $p['value']['name'];
-            // ORM이 비교하는 clock은 소수 여섯 자리이고, datetime(p < 6) column은 여섯 자리로 늘린 값으로
-            // 비교한다(docs/protocol.md "Clock").
+            // The clock the ORM compares has six fractional digits, and a datetime(p < 6) column is compared with the value extended to six digits
+            // (docs/protocol.md "Clock").
             $value = $this->d->valueFunction($fn, static fn(): string => $b->param($p['value']['ps'][0], Validator::intervalType($fn)), static fn(): string => $b->now(6))
                 ?? throw self::err(Code::CAPABILITY_UNSUPPORTED, "$fn is not available on {$this->d->name}");
             if (($col['type'] ?? '') === 'datetime' && $fn !== 'today') {
@@ -614,11 +614,11 @@ final class Planner
                 default => $ph,
             };
         }
-        // SQL 쪽 style 함수가 감싸는 값의 type은 그 함수 입력의 type이다.
+        // The type of the value that a SQL-side style function wraps is the type of that function's input.
         return $this->d->writeExpr($b->param($i, self::styleInputType($styles[0]), '', $host), $styles);
     }
 
-    /** SQL 쪽 style 함수가 placeholder에서 받는 값의 type이다. hex는 byte를, ip는 IP 주소 text를 받는다. */
+    /** The type of value that a SQL-side style function receives at its placeholder. hex receives bytes, and ip receives an IP address text. */
     private static function styleInputType(string $style): string
     {
         return $style === 'ip' ? 'text' : 'bytes';
@@ -647,7 +647,7 @@ final class Planner
         return array_values(array_filter($col['codec'], fn(string $s): bool => $this->d->handlesStyle($s)));
     }
 
-    /** 읽기에서 dialect가 SQL로 푸는 stage다. clientStyles는 나머지를 executor에 남긴다. */
+    /** The stage the dialect decodes in SQL on read. clientStyles leaves the rest to the executor. */
     private function readSqlStyles(array $col): array
     {
         return array_values(array_filter($col['codec'], fn(string $s): bool => $this->d->decodesStyle($s)));
@@ -703,9 +703,9 @@ final class Planner
     }
 
     /**
-     * insert는 필수 column을 모두 지정한다: default가 없는 NOT NULL column 중
-     * identity, planner가 쓰는 AES key version, executor가 쓰는 audit
-     * column이 아닌 것이다. default가 있는 column은 database default를 받는다.
+     * An insert specifies every required column: NOT NULL columns with no default that are not
+     * identity, the AES key version the planner writes, or the audit columns the executor writes.
+     * A column with a default receives the database default.
      */
     private static function checkRequiredAssignments(array $ent, array $set): void
     {
@@ -809,8 +809,8 @@ final class Planner
         self::checkRequiredAssignments($ent, $set);
         $versioned = self::hasAes($ent);
         $audited = $ent['audit'] !== '';
-        // executor clock을 쓰는 dialect(hostNow)는 사용자가 assign하지 않은 `default now` column에
-        // column의 소수 자리로 자른 executor clock을 쓴다(docs/protocol.md "Clock").
+        // A dialect that uses the executor clock (hostNow) uses the executor clock, truncated to the column's fractional digits, for a `default now` column the user did not assign
+        // (docs/protocol.md "Clock").
         $clocked = [];
         if ($this->d->hostNow()) {
             foreach ($ent['columns'] as $c) {
@@ -819,7 +819,7 @@ final class Planner
                 }
             }
         }
-        // load은 행을 저장된 key 그대로 쓰므로 identity column의 값을 받고 요구한다.
+        // load keeps rows as the stored keys, so it accepts and requires the identity column's value.
         $load = $r['load'] ?? false;
         if ($load && $ent['identity'] !== '' && !self::assignsValue($set, $ent['identity'])) {
             throw self::err(Code::IR_INVALID, "load of {$ent['entity']} needs a value for the identity column {$ent['identity']}");
@@ -934,9 +934,9 @@ final class Planner
     }
 
     /**
-     * updated와 soft delete가 datetime column에 쓰는 statement 시각이다.
-     * executor clock을 쓰는 dialect(hostNow)는 column의 소수 자리로 자른 `now` slot을, MySQL은
-     * CURRENT_TIMESTAMP(p)로 database clock을 쓴다.
+     * The statement time that updated and soft delete write to datetime columns.
+     * A dialect that uses the executor clock (hostNow) uses the `now` slot truncated to the column's fractional digits; MySQL uses
+     * CURRENT_TIMESTAMP(p) as the database clock.
      */
     private function clock(PlanBinds $b, array $col): string
     {
@@ -953,7 +953,7 @@ final class Planner
         if ($soft !== '') {
             $sets = $this->d->quote($soft) . ' = ' . $this->clock($b, RuntimeModel::column($ent, $soft));
             if ($ent['audit'] !== '') {
-                // soft delete는 감사 대상 행의 update이므로 지우는 transaction의 audit을 기록한다.
+                // Soft delete is an update of an audited row, so it records the audit of the deleting transaction.
                 $sets .= ', ' . $this->d->quote($ent['audit']) . ' = ' . $b->audit($ent);
             }
         }
@@ -966,10 +966,10 @@ final class Planner
     }
 
     /**
-     * soft delete한 행 하나를 되돌리는 update다. Validator::restoreKey가 request의 set과 where에서 primary
-     * key나 unique key 하나를 고르고, 그 key column의 set 값은 조건이 되며 다른 set 값은 되돌리는 행에
-     * 함께 쓰는 새 값으로 update처럼 render한다. where의 다른 조건은 restore를 더 좁힌다. 지워진 행만
-     * 고치므로 지워지지 않은 행과 없는 행은 아무것도 바꾸지 않는다. updated column은 쓰지 않는다.
+     * An update that restores one soft-deleted row. Validator::restoreKey picks a primary key or unique key from the request's set and where;
+     * that key column's set value is the condition, and the other set values are rendered as an update of the restored row
+     * with the new values written together. The other conditions of where narrow the restore further. Only deleted rows
+     * are changed, so rows that are not deleted and rows that do not exist change nothing. The updated column is not written.
      */
     private function restoreStep(array $r): PlanStep
     {
@@ -996,7 +996,7 @@ final class Planner
         return new PlanStep('main', 'UPDATE ' . $b->table($ent) . ' SET ' . implode(', ', $sets) . ' WHERE ' . $where, '', $b->slots, $b->tables());
     }
 
-    /** set이 column에 parameter 값(p)을 assign하는지 여부다. */
+    /** Whether the set assigns a parameter value (p) to a column. */
     private static function assignsValue(array $set, string $column): bool
     {
         foreach ($set as $a) {
@@ -1008,9 +1008,9 @@ final class Planner
     }
 
     /**
-     * entity의 identity를 그 table의 가장 큰 key 다음 값에서 다시 시작하는 statement다: 다음 생성
-     * key는 가장 큰 key에 1을 더한 값이고, 빈 table이면 1이다. load로 key를 지정해 행을 적재한
-     * 뒤 실행한다.
+     * The statement that restarts the entity's identity from the value after the largest key of its table: the next generated
+     * key is the largest key plus 1, or 1 if the table is empty. Runs after loading rows with keys
+     * specified by load.
      */
     private function restartIdentityStep(array $r): PlanStep
     {

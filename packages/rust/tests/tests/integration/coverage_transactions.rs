@@ -1,5 +1,5 @@
-//! transactions: 실패한 transaction은 rollback되고 그 오류가 호출자에게 가며, 실패한 nested
-//! transaction은 savepoint까지만 rollback된다. composite_account에만 쓰고 쓴 row를 지운다.
+//! transactions: a failed transaction is rolled back and its error reaches the caller, and a failed nested
+//! transaction rolls back only to its savepoint. It writes only to composite_account and deletes the rows it wrote.
 use super::coverage_env::{code, connect, run};
 use super::model::CompositeAccount;
 

@@ -1,6 +1,6 @@
 use polyspec_orm::db::Pool;
 
-// feature-check가 ORM_FEATURE_DATABASE와 ORM_FEATURE_DSN을 주고 --include-ignored로 실행한다.
+// feature-check runs it with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN and with --include-ignored.
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_dsn_connection() {

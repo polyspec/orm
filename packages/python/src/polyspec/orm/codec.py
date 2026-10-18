@@ -1,5 +1,5 @@
-# codec: styled column의 저장 cell을 값으로, 값을 저장 cell로 바꾼다 (docs/codec.md).
-# 단계(stage)는 쓰기 순서대로 적용하고, decode는 그 역순으로 푼다.
+# codec: converts the stored cell of a styled column to a value, and a value to a stored cell (docs/codec.md).
+# Stages are applied in write order; decode undoes them in reverse order.
 import base64
 import hashlib
 import hmac
@@ -56,7 +56,7 @@ def _as_bytes(value) -> bytes:
 
 
 def blind_index(value, key: str):
-    """plaintext의 안정적인 소문자 HMAC-SHA256 index. 값이 None이면 None이다."""
+    """Stable lowercase HMAC-SHA256 index of the plaintext. None if the value is None."""
     if value is None:
         return None
     if key == "":
@@ -86,7 +86,7 @@ def _pack_ip(value: str) -> bytes:
         ) from None
     if isinstance(address, ipaddress.IPv4Address):
         return address.packed
-    # v4 mapped 주소(::ffff:a.b.c.d)는 4 byte로 쓴다.
+    # A v4-mapped address (::ffff:a.b.c.d) is written as 4 bytes.
     if address.ipv4_mapped is not None:
         return address.ipv4_mapped.packed
     return address.packed
@@ -120,7 +120,7 @@ def _unpack_ip(value: bytes) -> str:
 
 
 def host_encode(value, styles, aes_key: str):
-    """값을 host 저장 형태(aes, hex, ip)로 인코딩한다. None은 None이다."""
+    """Encodes the value into its host storage form (aes, hex, ip). None maps to None."""
     if value is None:
         return None
     current = _as_bytes(value)
@@ -149,13 +149,13 @@ def host_encode(value, styles, aes_key: str):
 
 
 def host_decode(raw, styles, aes_key: str):
-    """host 저장 형태(aes, hex, ip)의 값을 텍스트로 되돌린다. None은 None이다."""
+    """Turns a value in host storage form (aes, hex, ip) back into text. None maps to None."""
     if raw is None:
         return None
     current = raw.encode("utf-8") if isinstance(raw, str) else bytes(raw)
     for style in reversed(styles):
         if style == "hex":
-            # 저장 cell은 encoder가 쓰는 형태로만 decode한다: 공백이나 hex 숫자 밖의 byte는 CODEC_DECODE다.
+            # A stored cell is decoded only in the form the encoder writes: a byte other than whitespace or a hex digit is CODEC_DECODE.
             source = current.decode("utf-8", "replace")
             if len(source) % 2 != 0 or re.fullmatch(r"[0-9A-F]*", source) is None:
                 raise CodecError(codes.CODEC_DECODE, "hex: odd length or non-hex input")
@@ -195,8 +195,8 @@ def _text(data: bytes, operation: str) -> str:
 
 
 def _decode_base64(data: bytes) -> bytes:
-    # 저장 cell은 encoder가 쓰는 형태로만 decode한다: 공백, 줄바꿈, 빠진 padding, 0이 아닌 padding bit는
-    # CODEC_DECODE다(docs/codec.md). 다시 encode한 text가 같아야 encoder가 쓴 형태다.
+    # A stored cell is decoded only in the form the encoder writes: whitespace, line breaks, missing padding, or non-zero padding bits
+    # are CODEC_DECODE (docs/codec.md). The text must be the same when encoded again for it to be the encoder's form.
     source = _text(data, "decode")
     if (
         len(source) % 4 != 0
@@ -213,7 +213,7 @@ def _decode_base64(data: bytes) -> bytes:
 
 
 def _validate_codec_value(value, operation: str):
-    # codec 값 모델: None, bool, str, 안전 범위의 int, 유한한 float, list, str key dict.
+    # codec value model: None, bool, str, int within the safe range, finite float, list, and dict with str keys.
     if value is None or isinstance(value, (bool, str)):
         return value
     if isinstance(value, int):
@@ -244,7 +244,7 @@ def _php_key(key: str) -> str:
 
 
 def _php_float(value: float) -> str:
-    # PHP serialize의 float 표기: 지수는 E 다음 부호 붙은 자릿수, 가수는 정수부.0 형태다.
+    # PHP serialize float notation: the exponent is E followed by a signed digit count, and the mantissa is an integer part followed by .0.
     source = repr(value)
     match = re.fullmatch(r"(.+?)e([+-]?)([0-9]+)", source, re.IGNORECASE)
     if match is None:
@@ -258,8 +258,8 @@ def _php_float(value: float) -> str:
 
 
 def php_serialize(value) -> str:
-    """codec 값을 PHP serialize 문법으로 인코딩한다. Python int는 i:, float은
-    d: 로 쓴다 (PHP 정수와 float 표기와 같다)."""
+    """Encodes a codec value in PHP serialize syntax. A Python int is written with i:, and a float with
+    d: (the same as PHP integer and float notation)."""
     if value is None:
         return "N;"
     if isinstance(value, bool):
@@ -287,7 +287,7 @@ def php_serialize(value) -> str:
 
 
 class _PhpParser:
-    """PHP serialize 문법의 decoder; 객체와 참조 형식은 지원하지 않는다."""
+    """Decoder for PHP serialize syntax; object and reference forms are not supported."""
 
     def __init__(self, data: bytes):
         self._data = data
@@ -403,7 +403,7 @@ class _PhpParser:
 
 
 def _json_text(value, depth: int) -> str:
-    # 일반 값을 ordered-json 문법 텍스트로 만든다. object member는 삽입 순서를 지킨다.
+    # Builds ordered-json syntax text from a plain value. Object members keep their insertion order.
     if depth > 256:
         raise CodecError(codes.CODEC_ENCODE, "json: value nesting exceeds 256 levels")
     if isinstance(value, OrderedJson):
@@ -420,7 +420,7 @@ def _json_text(value, depth: int) -> str:
         if not math.isfinite(value):
             raise CodecError(codes.CODEC_ENCODE, f"json: non-finite number {value}")
         text = json.dumps(value, ensure_ascii=False)
-        # JSON.stringify는 정수값 float를 '2'로 쓴다; json.dumps는 '2.0'이다.
+        # JSON.stringify writes an integer-valued float as '2'; json.dumps writes '2.0'.
         if text.endswith(".0"):
             text = text[:-2]
         return text
@@ -443,8 +443,8 @@ def _json_text(value, depth: int) -> str:
 
 
 def ordered_json_value(value) -> OrderedJson:
-    """일반 값을 ordered-json 값으로 바꾼다. object member는 순서를 지키고, 범위 밖
-    값은 CODEC_ENCODE다."""
+    """Converts a plain value to an ordered-json value. Object members keep their order, and a value out of range
+    is CODEC_ENCODE."""
     try:
         return ordered_json_parse(_json_text(value, 0))
     except CodecError:
@@ -454,7 +454,7 @@ def ordered_json_value(value) -> OrderedJson:
 
 
 def _common_value(value, style: str):
-    # ordered_json 단계만 ordered-json 값을 받는다.
+    # Only the ordered_json stage takes an ordered-json value.
     if isinstance(value, OrderedJson):
         raise CodecError(
             codes.CODEC_ENCODE,
@@ -463,10 +463,10 @@ def _common_value(value, style: str):
     return value
 
 
-# --- yaml 단계: YAML 1.2 core schema 의미론으로 읽고 쓴다. ---
-# rapidyaml이 읽는다: YAML 1.2(5.4)대로 U+0085를 내용으로 읽고(PyYAML과 ruamel.yaml은 줄바꿈으로
-# 읽는다), tree가 scalar의 style과 tag를 지키므로 plain scalar를 core schema로 resolve한다.
-# ruamel.yaml이 쓴다.
+# --- yaml stage: reads and writes with YAML 1.2 core schema semantics. ---
+# rapidyaml reads U+0085 as content per YAML 1.2 (5.4) (PyYAML and ruamel.yaml read it as a line break
+# ), and since the tree keeps the scalar's style and tag, plain scalars are resolved with the core schema.
+# ruamel.yaml writes it.
 
 import ruamel.yaml  # noqa: E402
 import ryml  # noqa: E402
@@ -479,7 +479,7 @@ _YAML_FLOAT = re.compile(
 
 
 def _yaml_core(text: str):
-    # plain scalar를 YAML 1.2.2 10.3.2의 core tag로 resolve한다; 부호는 10진수에만 허용한다.
+    # Plain scalars are resolved to core tags of YAML 1.2.2 10.3.2; a sign is allowed only on decimal numbers.
     if text in ("", "~", "null", "Null", "NULL"):
         return None
     if text in ("true", "True", "TRUE"):
@@ -493,7 +493,7 @@ def _yaml_core(text: str):
             return int(text[2:], 8)
         return int(text, 10)
     if _YAML_FLOAT.fullmatch(text) is not None:
-        # float()는 '.inf', '.NaN' 등 core 표기도 읽는다; 값 검증이 유한하지 않은 수를 거절한다.
+        # float() also reads core notations such as '.inf' and '.NaN'; value validation rejects non-finite numbers.
         return float(text)
     return text
 
@@ -579,8 +579,8 @@ def _decode_yaml(data: bytes):
 def _yaml_dump(value) -> str:
     import io
 
-    # ruamel.yaml의 safe emitter는 YAML 1.2를 쓴다: core schema로 resolve될 문자열은 quote하고,
-    # U+0085는 내용으로 쓴다(PyYAML의 emitter는 줄바꿈으로 접는다). anchor와 alias를 만들지 않는다.
+    # ruamel.yaml's safe emitter writes YAML 1.2: strings that would resolve under the core schema are quoted,
+    # U+0085 is written as content (PyYAML's emitter folds it as a line break). No anchors or aliases are created.
     dumper = ruamel.yaml.YAML(typ="safe", pure=True)
     dumper.default_flow_style = False
     dumper.allow_unicode = True
@@ -598,9 +598,9 @@ def _yaml_dump(value) -> str:
 
 
 def decode(styles, raw):
-    """저장 cell을 codec 단계의 역순으로 되돌린다. ordered_json 단계의 결과는
-    ordered-json 값(member 순서와 number literal을 지킨다)이고, 값 단계가 없으면
-    byte의 텍스트다."""
+    """Reverses a stored cell through the codec stages in reverse order. The result of the ordered_json stage
+    is an ordered-json value (keeping member order and number literals); if there is no value stage,
+    it is the text of the bytes."""
     if raw is None:
         return StyledValue.sql_null()
     # An empty cell is CODEC_DECODE, except under a last base64 stage, whose encoder writes an empty
@@ -647,8 +647,8 @@ def decode(styles, raw):
 
 
 def encode(styles, state: StyledValue):
-    """값을 codec 단계의 쓰기 순서대로 인코딩한다. ordered_json 단계는
-    ordered-json 값이나 일반 값을 받는다. 첫 단계가 gz나 base64면 값은 텍스트다."""
+    """Encodes a value through the codec stages in write order. The ordered_json stage
+    takes an ordered-json or plain value. If the first stage is gz or base64, the value is text."""
     if state.kind == "sql-null":
         return None
     current = b""

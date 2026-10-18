@@ -11,7 +11,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// testModel은 dbspec document 하나의 runtime model이다.
+// testModel is the runtime model of one dbspec document.
 func testModel(t *testing.T, document string) *runtimemodel.Model {
 	t.Helper()
 	m, diagnostics := runtimemodel.LoadDocuments([]string{document})
@@ -83,8 +83,8 @@ func compileRuntime(t *testing.T, d dialect.Dialect, r *ir.Request) (*plan.Plan,
 
 func intp(i int) *int { return &i }
 
-// default select set은 select explicit column만 뺀다. text, bytes, codec
-// column은 스스로 빠지지 않는다.
+// The default select set leaves out only the explicit select columns. text, bytes, and codec
+// columns are not left out by themselves.
 func TestDefaultSelectSetLeavesOutOnlySelectExplicit(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	p, err := compileRuntime(t, dialect.MySQL{}, &ir.Request{Kind: "all", Query: ir.Query{Entity: "note"}})
@@ -100,7 +100,7 @@ func TestDefaultSelectSetLeavesOutOnlySelectExplicit(t *testing.T) {
 	}
 }
 
-// i16 field는 i16 value type으로 읽히고 plus를 받는다.
+// An i16 field is read as the i16 value type and accepts plus.
 func TestI16FieldPlansAsI16(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	p, err := compileRuntime(t, dialect.MySQL{}, &ir.Request{Kind: "all", Query: ir.Query{Entity: "note"}})
@@ -116,9 +116,9 @@ func TestI16FieldPlansAsI16(t *testing.T) {
 	}
 }
 
-// insert가 빼먹은 default column은 database default를 받는다. 단 executor clock을
-// 쓰는 dialect(PostgreSQL, SQLite)는 `default now` column에 executor clock을 now
-// slot으로 쓴다(docs/protocol.md "Clock").
+// A default column that the insert omitted receives the database default. But dialects that use the executor clock
+// (PostgreSQL, SQLite) bind the executor clock to a `default now` column as the now
+// slot (docs/protocol.md "Clock").
 func TestInsertLeavesDefaultsToTheDatabase(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, d := range []dialect.Dialect{dialect.MySQL{}, dialect.Postgres{}, dialect.SQLite{}} {
@@ -143,8 +143,8 @@ func TestInsertLeavesDefaultsToTheDatabase(t *testing.T) {
 	}
 }
 
-// audit table의 insert, update, soft delete는 audit column에 audit 기록
-// entity를 이름한 audit slot을 쓰고, 사용자는 그 column을 쓰지 못한다.
+// The insert, update, and soft delete of an audit table write the audit column with the audit record
+// slot that names the entity; the user cannot write that column.
 func TestAuditedWritesCarryTheAuditSlot(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	where := &ir.Group{Items: []ir.Item{{Pred: &ir.Pred{Column: "seq", Op: "eq", P: intp(0)}}}}

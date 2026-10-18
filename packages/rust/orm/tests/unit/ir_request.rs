@@ -20,13 +20,13 @@ pub(crate) fn schema(at: &str) -> Manifest {
     Manifest::load(&set.manifest_text, &set.manifest_hash).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
 }
 
-/// fixture에서 `id` case 하나를 찾아 그 schema 문서의 경로, input과 expected를 돌려준다.
+/// Finds one `id` case in the fixture and returns its schema document path, input, and expected.
 /// An object whose members are all the same kind, such as the `sub` map of `columns`: its member names are free.
 fn members_of<'a>(value: &'a Value, at: &str) -> &'a Map<String, Value> {
     value.as_object().unwrap_or_else(|| panic!("{REJECTED}{at}: expected an object, got {value}"))
 }
 
-/// `value`의 member를 읽는다. `allowed` 밖의 member는 그 위치와 함께 거부한다.
+/// Reads the members of `value`. A member outside `allowed` is rejected along with its position.
 pub(crate) fn members<'a>(value: &'a Value, at: &str, allowed: &[&str]) -> &'a Map<String, Value> {
     let object = value.as_object().unwrap_or_else(|| panic!("{REJECTED}{at}: expected an object, got {value}"));
     for key in object.keys() {
@@ -44,7 +44,7 @@ fn string(object: &Map<String, Value>, at: &str, key: &str) -> String {
 /// (docs/protocol.md), the typed request cannot be built from it.
 pub(crate) const REJECTED: &str = "IR_INVALID: ";
 
-/// text member다. 문자열이 아닌 값은 typed request가 담을 수 없다.
+/// A text member. A non-string value cannot be held by a typed request.
 fn text(object: &Map<String, Value>, at: &str, key: &str) -> String {
     match object.get(key) {
         Some(Value::String(s)) => s.clone(),
@@ -52,7 +52,7 @@ fn text(object: &Map<String, Value>, at: &str, key: &str) -> String {
     }
 }
 
-/// 문자열 목록 member이며 없으면 비어 있다.
+/// A string list member, empty if absent.
 fn strings(object: &Map<String, Value>, at: &str, key: &str) -> Vec<String> {
     object
         .get(key)
@@ -66,8 +66,8 @@ fn strings(object: &Map<String, Value>, at: &str, key: &str) -> Vec<String> {
         .unwrap_or_default()
 }
 
-/// typed request의 직렬화가 생략하거나 채우는 값을 입력에서도 같게 한다: 빈 `conn`과 빈 `key_by`는 없는 것과 같고,
-/// 없거나 null인 `ref.path`는 root인 ""다.
+/// Makes the input match the values that typed-request serialization omits or fills: an empty `conn` and an empty `key_by` are the same as absent,
+/// and a missing or null `ref.path` is "", the root.
 fn normalized(value: &Value) -> Value {
     match value {
         Value::Object(object) => {
@@ -101,13 +101,13 @@ fn count(value: Option<&Value>, at: &str) -> u32 {
     value.and_then(Value::as_u64).and_then(|n| u32::try_from(n).ok()).unwrap_or_else(|| panic!("{REJECTED}{at}: expected a count"))
 }
 
-/// column 함수나 value 함수 하나를 IR로 읽는다.
+/// Reads one column function or value function as IR.
 fn func(value: &Value, at: &str) -> ir::Func {
     let object = members(value, at, &["name", "ps"]);
     ir::Func { name: string(object, at, "name"), ps: indexes(object, at, "ps") }
 }
 
-/// `key`의 parameter 번호 목록이며 없으면 비어 있다.
+/// The list of parameter numbers of `key`, empty if absent.
 fn indexes(object: &Map<String, Value>, at: &str, key: &str) -> Vec<usize> {
     object
         .get(key)
@@ -115,7 +115,7 @@ fn indexes(object: &Map<String, Value>, at: &str, key: &str) -> Vec<usize> {
         .unwrap_or_default()
 }
 
-/// write의 assignment 목록을 IR로 읽는다.
+/// Reads the assignment list of a write as IR.
 fn assigns(value: &Value, at: &str) -> Vec<ir::Assign> {
     value
         .as_array()
@@ -184,7 +184,7 @@ fn group(value: &Value, at: &str) -> ir::Group {
                     r#ref: pred.get("ref").map(|r| {
                         let at = format!("{at}.ref");
                         let object = members(r, &at, &["path", "column"]);
-                        // 없거나 null인 path는 root다.
+                        // A missing or null path is the root.
                         let path = match object.get("path") {
                             None | Some(Value::Null) => String::new(),
                             Some(_) => text(object, &at, "path"),
@@ -215,7 +215,7 @@ fn group(value: &Value, at: &str) -> ir::Group {
     }
 }
 
-/// query 하나를 IR로 읽는다: entity, where, join, relation, order, limit.
+/// Reads one query as IR: entity, where, join, relation, order, limit.
 fn query(value: &Value, at: &str) -> ir::Query {
     let object = members(
         value,
@@ -344,8 +344,8 @@ fn query(value: &Value, at: &str) -> ir::Query {
     }
 }
 
-/// fixture의 request를 IR로 읽는다. 지원하지 않는 member는 거부하고, 읽은 IR을 다시 직렬화한
-/// 값이 manifest hash를 더한 입력과 같아야 한다.
+/// Reads the fixture's request as IR. Unsupported members are rejected, and the IR read is serialized again
+/// and must equal the input with the manifest hash added.
 pub(crate) fn request(input: &Value, manifest_hash: &str) -> ir::Request {
     let at = "input";
     let object = members(

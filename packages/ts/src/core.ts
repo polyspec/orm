@@ -146,7 +146,7 @@ export class Core {
   public agg = '';
   public aggFn = '';
 
-  /** relation key 성분: match<L>With<R>()마다 한 쌍을 호출 순서로 더한다. */
+  /** Relation key component: adds one pair per match<L>With<R>() call, in call order. */
   public matches: KeyPair[] = [];
   public alias = '';
   public parentNode = false;

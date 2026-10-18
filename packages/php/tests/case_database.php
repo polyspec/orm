@@ -1,16 +1,16 @@
 <?php
 declare(strict_types=1);
-// case database: test case 하나가 쓰는 자기 database다. 공유 test database
-// (ORM_TEST_MYSQL_DSN, ORM_TEST_POSTGRES_DSN의 database)가 비어 있다고 가정하지 않도록, schema를
-// 설치하거나 빈 database를 확인하는 case는 이름이 겹치지 않는 database(MySQL, PostgreSQL)나
-// SQLite file을 만들고 case가 끝날 때(실패한 뒤에도) 지운다. ORM_TEST_*_DSN은 database를
-// 만들고 지우는 admin connection으로만 쓰고 그 database에는 아무것도 만들지 않는다.
-// PostgreSQL도 schema가 아닌 database를 받는다: empty()는 public이 아닌 schema를 내용으로 센다.
-// 호출하는 script가 Polyspec\Orm\Orm을 autoload한다.
+// case database: the case's own database, used by one test case. The shared test database
+// (the database of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN) is not assumed to be empty, so a case that installs a schema or checks for an empty database
+// uses a database with a non-overlapping name (MySQL, PostgreSQL) or
+// a SQLite file, and removes it when the case ends (even after a failure). ORM_TEST_*_DSN is used only
+// as the admin connection that creates and removes the database; nothing is created in that database.
+// PostgreSQL also takes a database, not a schema: empty() counts a non-public schema as content.
+// The calling script autoloads Polyspec\Orm\Orm.
 
 use Polyspec\Orm\Orm;
 
-/** process에서 겹치지 않는 이름 orm_case_<pid>_<counter>다. counter는 1부터 센다. */
+/** A non-overlapping name orm_case_<pid>_<counter> per process. The counter counts from 1. */
 function case_name(): string
 {
     static $counter = 0;
@@ -18,7 +18,7 @@ function case_name(): string
     return 'orm_case_' . getmypid() . '_' . $counter;
 }
 
-/** DSN의 path(database 이름)를 $name으로 바꾼다. query는 그대로 둔다. */
+/** Changes the DSN's path (the database name) to $name. The query is left as it is. */
 function case_dsn_with_database(string $dsn, string $name): string
 {
     $replaced = preg_replace('~^([a-z]+://[^/?#]*)(/[^?#]*)?~', '${1}/' . $name, $dsn, 1, $count);
@@ -42,13 +42,13 @@ final class CaseDatabase
     ) {
     }
 
-    /** 다른 server(replica)의 DSN을 이 database 이름으로 바꾼다. */
+    /** Changes the DSN of another server (replica) to this database name. */
     public function related(string $dsn): string
     {
         return case_dsn_with_database($dsn, $this->name);
     }
 
-    /** database나 SQLite file을 지운다. 두 번째 호출은 아무것도 하지 않는다. */
+    /** Removes the database or SQLite file. A second call does nothing. */
     public function drop(): void
     {
         if ($this->dropped) {
@@ -75,7 +75,7 @@ final class CaseDatabase
     }
 }
 
-/** admin DSN의 PDO connection이다. */
+/** The PDO connection of the admin DSN. */
 function case_admin(string $dsn): PDO
 {
     [, $pdoDsn, $user, $password] = Orm::parseDsn($dsn);
@@ -83,10 +83,10 @@ function case_admin(string $dsn): PDO
 }
 
 /**
- * $driver의 새 case database를 만들고 $step으로 알린다. MySQL과 PostgreSQL은 ORM_TEST_<DRIVER>_DSN의
- * server에 database를, SQLite는 temp directory에 file을 만든다. 호출자가 drop()을 부른다.
+ * Creates a new case database for $driver and reports it with $step. MySQL and PostgreSQL make a database on the server of
+ * ORM_TEST_<DRIVER>_DSN, and SQLite makes a file in a temp directory. The caller calls drop().
  *
- * @param callable(string): void $step case의 단계를 알리는 callable(test는 아무것도 하지 않는 callable을 준다)
+ * @param callable(string): void $step callable that reports the case's steps (the test passes a callable that does nothing)
  */
 function case_database(string $driver, callable $step): CaseDatabase
 {
@@ -117,8 +117,8 @@ function case_database(string $driver, callable $step): CaseDatabase
 }
 
 /**
- * 새 case database의 DSN으로 $body를 실행하고, 성공해도 실패해도 database를 지운다. 지우기가
- * 실패하면 그 database 이름과 함께 실패하고, $body도 실패했으면 두 이유를 함께 담는다.
+ * Runs $body with the DSN of the new case database, and removes the database whether it succeeds or fails. If removal
+ * fails, it fails with that database name, and if $body also failed, it includes both reasons.
  *
  * @param callable(string): void $step
  * @param callable(string, CaseDatabase): mixed $body

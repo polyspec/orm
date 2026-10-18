@@ -32,7 +32,7 @@ async function setOf(dir, documents, external = []) {
   return set;
 }
 
-// generator check는 orm-gen과 tsc process를 실행하는 case 하나다.
+// The generator check is one case that runs the orm-gen and tsc processes.
 caseTest('generate', PROCESS, async () => {
   try {
     const usage = join(work, 'usage.ts');
@@ -132,7 +132,7 @@ caseTest('generate', PROCESS, async () => {
     await rm(join(out, 'models.ts'));
     checked = run(...genCheck);
     check(checked.status === 1 && checked.stdout === `missing: ${out}/models.ts\n`, `gen --check on missing models: ${checked.status} ${checked.stdout}${checked.stderr}`);
-    // 외부 문서(external)를 쓰는 set은 소유한 table의 model만 만들고, 외부 문서에서 쓰는 table의 text를 schema 값에 싣는다.
+    // A set that uses external documents creates models only for the tables it owns, and puts the text of the tables used from external documents into the schema value.
     const external = join(root, 'contracts/fixtures/external');
     const memberOut = join(work, 'member');
     // The set owns member.dbs and names core.dbs in a sibling directory, through a `..` path.
@@ -163,7 +163,7 @@ caseTest('generate', PROCESS, async () => {
       check(declares('Card', 'auditSeq'), 'Card declares auditSeq, the prefix of ix_card_audit, without a scanned call');
       check(declares('CardHistory', 'seq'), 'CardHistory declares seq, the prefix of ix_card_history_row, without a scanned call');
     }
-    // 모델 method 이름은 column 이름이 될 수 없다: restore() 가 있으므로 restore column 도 거부한다.
+    // A model method name cannot be a column name: since restore() exists, a restore column is rejected too.
     const reservedSchema = await setOf(join(work, 'reserved-set'), [['reserved.dbs', 'dbspec 1 reserved\n\ntable thing {\n  id i64 identity\n  restore i32\n  primary key (id)\n}\n']]);
     const reserved = run('gen', '--set', reservedSchema, '--out', join(work, 'reserved'));
     check(reserved.status !== 0 && reserved.stderr.includes('column name is a reserved method name: restore'), `a column named restore: ${reserved.status} ${reserved.stderr}`);

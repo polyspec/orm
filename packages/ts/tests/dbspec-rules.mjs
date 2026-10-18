@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { emitDbspec, parseDbspec } from '../dist/dbspec/index.js';
 import * as api from '../dist/index.js';
 
-// TIMEOUT은 case 하나의 기한(ms)이다. rule case 하나는 memory 안에서 문서 몇 개를 parse한다.
+// TIMEOUT is the deadline (ms) of one case. One rule case parses several documents in memory.
 const TIMEOUT = 15000;
 
 function rule(name, body) {
@@ -354,7 +354,7 @@ invalid('check typed predicates', [
   ['check', 21, 24],
   ['check', 22, 22],
 ]);
-// not, between과 피연산자 하나는 술어가 아니다: 뒤에 and, or, ) 또는 끝이 오면 피연산자에, 아니면 다음 토큰에 보고한다.
+// not, between, and a single operand are not predicates: when and, or, ), or the end follows, it is reported at the operand, otherwise at the next token.
 invalid('check forms outside the predicates', [
   ...typed,
   '  check ck_a (not (qty > 1))',

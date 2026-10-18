@@ -16,11 +16,11 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// contracts/fixtures/identity_load.json의 공유 case를 이 client로 실행한다. compile
-// case는 세 dialect의 engine으로 request를 compile해 statement나 오류를 비교하고,
-// execute case는 case database에 fixture를 설치한 뒤 각 step의 request를 그
-// database의 engine으로 compile해 DB.Execute로 실행하고, 마지막에 load_probe의 행을
-// 읽어 비교한다.
+// Runs the shared cases of contracts/fixtures/identity_load.json with this client. Compile
+// cases compile the request with the engine of each of the three dialects and compare the statement or error;
+// an execute case installs the fixture in the case database, then compiles each step's request with that
+// database's engine and runs it with DB.Execute, and at the end reads the rows of load_probe
+// and compares them.
 
 const identityLoadCases = "../../../contracts/fixtures/identity_load.json"
 
@@ -47,7 +47,7 @@ type identityLoadDoc struct {
 	schema  *orm.Schema
 }
 
-// loadStatement는 compile된 plan step 하나의 role, SQL, bind slot, table이다.
+// loadStatement is the role, SQL, bind slot, and table of one compiled plan step.
 type loadStatement struct {
 	Role   string     `json:"role"`
 	SQL    string     `json:"sql"`
@@ -55,15 +55,15 @@ type loadStatement struct {
 	Tables []string   `json:"tables"`
 }
 
-// loadSlot은 bind slot 하나의 출처, request 값의 번호, type이다.
+// loadSlot is the source of one bind slot, the number of the request value, and its type.
 type loadSlot struct {
 	From  string `json:"from"`
 	Param *int   `json:"param,omitempty"`
 	Type  string `json:"type,omitempty"`
 }
 
-// readIdentityLoad는 case 파일을 읽는다. 숫자는 json.Number로 읽어 정수 parameter가
-// int64로 bind되게 한다.
+// readIdentityLoad reads the case file. Numbers are read as json.Number so that integer parameters
+// are bound as int64.
 func readIdentityLoad(t *testing.T) *identityLoadDoc {
 	t.Helper()
 	raw, err := os.ReadFile(identityLoadCases)
@@ -85,7 +85,7 @@ func readIdentityLoad(t *testing.T) *identityLoadDoc {
 	return &doc
 }
 
-// compileIdentityLoad는 request에 manifest_hash를 더해 dialect의 engine으로 compile한다.
+// compileIdentityLoad adds manifest_hash to the request and compiles it with the dialect's engine.
 func compileIdentityLoad(t *testing.T, m *runtimemodel.Model, dialect string, request map[string]any) (*plan.Plan, error) {
 	t.Helper()
 	if _, ok := request["manifest_hash"]; ok {
@@ -114,7 +114,7 @@ func compileIdentityLoad(t *testing.T, m *runtimemodel.Model, dialect string, re
 	return &compiled, nil
 }
 
-// identityLoadParam은 case parameter를 client 값으로 바꾼다: 정수는 int64다.
+// identityLoadParam converts a case parameter to a client value: integers become int64.
 func identityLoadParam(t *testing.T, v any) any {
 	t.Helper()
 	if n, ok := v.(json.Number); ok {
@@ -127,9 +127,9 @@ func identityLoadParam(t *testing.T, v any) any {
 	return v
 }
 
-// TestIdentityLoad는 case 파일의 모든 case를 case ID의 subtest로 실행한다. compile case는
-// 세 dialect에서, execute case는 그 subtest 안에서 MySQL, PostgreSQL, SQLite의 case database마다
-// 차례로 실행한다.
+// TestIdentityLoad runs every case of the case file as a subtest named by its case ID. Compile cases
+// run in all three dialects, and execute cases run in turn inside that subtest,
+// in the case database of MySQL, PostgreSQL, and SQLite.
 func TestIdentityLoad(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	doc := readIdentityLoad(t)
@@ -150,8 +150,8 @@ func TestIdentityLoad(t *testing.T) {
 	}
 }
 
-// compileIdentityLoadCase는 compile case의 input을 세 dialect에서 compile해 기대한
-// statement나 오류 code와 message를 비교한다.
+// compileIdentityLoadCase compiles the input of a compile case in all three dialects and compares
+// the statement or error code and message with the expected ones.
 func compileIdentityLoadCase(t *testing.T, doc *identityLoadDoc, c identityLoadCase) {
 	var expected struct {
 		Error    string          `json:"error"`
@@ -195,8 +195,8 @@ func compileIdentityLoadCase(t *testing.T, doc *identityLoadDoc, c identityLoadC
 	}
 }
 
-// executeIdentityLoadCase는 execute case를 driver의 새 case database에서 실행한다: fixture를
-// 설치하고, 각 step의 request를 compile해 DB.Execute로 실행한 뒤 load_probe의 행을 읽는다.
+// executeIdentityLoadCase runs an execute case in a new case database of the driver: it installs the fixture,
+// compiles each step's request and runs it with DB.Execute, then reads the rows of load_probe.
 func executeIdentityLoadCase(t *testing.T, doc *identityLoadDoc, c identityLoadCase, driver string) {
 	dsn := newDatabase(t, driver)
 	db, err := orm.ConnectSchema(dsn, doc.schema, orm.Config{})

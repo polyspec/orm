@@ -36,7 +36,7 @@ MODELS = {}
 
 
 def fail_next_statement(db, code, message) -> None:
-    """test entry point를 그 module에서 읽어 부른다. module이 없으면 ModuleNotFoundError다."""
+    """Reads the test entry point from its module and calls it. It raises ModuleNotFoundError if the module is missing."""
     testing.fail_next_statement(db, code, message)
 
 
@@ -50,7 +50,7 @@ def setUpModule():
 
 
 def tearDownModule():
-    """fixture의 case가 모든 dialect에서 실행되지 않았으면 실패한다."""
+    """Fails if the fixture's case has not run in every dialect."""
     MODELS["dir"].cleanup()
     missing = [
         (case, dialect)
@@ -90,7 +90,7 @@ def admin_mysql(dsn: str):
 
 @contextlib.contextmanager
 def fresh_db(dialect: str):
-    """빈 database를 만들고 rollback probe schema를 설치한 Db를 준다. 끝나면 그 database를 지운다."""
+    """Creates an empty database and gives a Db with the rollback probe schema installed. Drops that database when finished."""
     models = MODELS["models"]
     if dialect == "sqlite":
         path = os.path.join(MODELS["dir"].name, f"{uuid.uuid4().hex}.sqlite3")
@@ -131,10 +131,10 @@ class StatementFaultTest(unittest.TestCase):
     deadline = testcase.DATABASE
 
     def each_dialect(self, case: str, body):
-        """case를 dialect마다 새 database에서 실행한다. case는 모든 dialect에서 통과해야 PASS다(testcase.py).
+        """Runs the case in a new database for each dialect. A case passes only if it passes in every dialect (testcase.py).
 
-        한 dialect의 실패가 다른 dialect를 막지 않도록 각 dialect를 끝까지 실행하고, 실패한 dialect의 이유를 모아
-        case의 실패 이유로 쓴다.
+        Runs each dialect to the end so one dialect's failure does not block another, and collects
+        the reasons of the failed dialects and uses them as the reason for the case failure.
         """
         reasons = []
         for dialect in DIALECTS:

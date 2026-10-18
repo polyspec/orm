@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { caseTest, COMPUTE } from '../../tests/testcase.mts';
 import { parseSelection, selectChecks, selectionErrors, USAGE } from './select.mts';
 
-// manifest는 기능 둘과 helper 셋의 최소 형태다. 각 case는 인자 하나의 고른 결과를 `<feature>/<command>`로 본다(G5.111).
+// The manifest is the minimal form of two features and three helpers. Each case checks the selection result for one argument as `<feature>/<command>` (G5.111).
 const manifest = {
   features: [
     { id: 'alpha', verification: [{ id: 'a1', command: 'make a1', shard: 'rust' }, { id: 'a2', command: 'make a2', shard: 'other' }] },
@@ -20,7 +20,7 @@ caseTest('--features runs every feature command and no helper check', COMPUTE, (
   assert.deepEqual(names(['--run', '--features']), ['alpha/a1', 'alpha/a2', 'beta/b1']);
 });
 
-// shard case(G5.122)는 --shard가 --features의 명령 가운데 선언한 shard가 그것인 명령만 고르는지 본다.
+// The shard case (G5.122) checks that --shard selects only the commands among --features' commands whose declared shard is that shard.
 caseTest('--features --shard runs the feature commands of that shard only', COMPUTE, () => {
   assert.deepEqual(names(['--run', '--features', '--shard', 'rust']), ['alpha/a1', 'beta/b1']);
   assert.deepEqual(names(['--run', '--features', '--shard', 'other']), ['alpha/a2']);

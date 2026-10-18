@@ -15,7 +15,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// plannerStatement는 compile된 plan step 하나의 role, SQL, bind slot, table이다.
+// plannerStatement is the role, SQL, bind slot, and table of one compiled plan step.
 type plannerStatement struct {
 	Role   string        `json:"role"`
 	SQL    string        `json:"sql"`
@@ -23,8 +23,8 @@ type plannerStatement struct {
 	Tables []string      `json:"tables"`
 }
 
-// plannerSlot은 bind slot 하나의 출처와 type이다. param slot은 request 값의
-// 번호를, parent slot은 key의 type을, 나머지 slot은 type을 싣는다.
+// plannerSlot is the source and type of one bind slot. A param slot
+// carries the request value's number, a parent slot carries the key's type, and the other slots carry a type.
 type plannerSlot struct {
 	From  string `json:"from"`
 	Param *int   `json:"param,omitempty"`
@@ -38,9 +38,9 @@ type plannerSlot struct {
 	KeyTypes []string `json:"key_types,omitempty"`
 }
 
-// compilePlannerCase는 planner fixture case의 input에 그 case의 schema 문서의
-// manifest_hash를 더해 각 dialect의 engine으로 compile하고, 기대한
-// statement나 error code와 비교한다.
+// compilePlannerCase adds the manifest_hash of that case's schema document to the input of a planner fixture case
+// and compiles it with each dialect's engine, then compares the result with the expected
+// statement or error code.
 func compilePlannerCase(t *testing.T, id string) {
 	t.Helper()
 	c := featureFixture(t, "planner", id, "compile")
@@ -121,43 +121,43 @@ func compilePlannerCase(t *testing.T, id string) {
 	}
 }
 
-// TestCoveragePlannerStatement는 조건, 정렬, limit이 있는 row select를 compile한다.
+// TestCoveragePlannerStatement compiles a row select with a condition, ordering, and limit.
 func TestCoveragePlannerStatement(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_statement")
 }
 
-// TestCoveragePlannerCount는 count를 compile한다.
+// TestCoveragePlannerCount compiles a count.
 func TestCoveragePlannerCount(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_count")
 }
 
-// TestCoveragePlannerContainsBinaryCollation는 contains_binary가 MySQL에서 binary collation 아래의 LIKE로 compile되는지 확인한다.
+// TestCoveragePlannerContainsBinaryCollation checks that contains_binary compiles on MySQL to a LIKE under the binary collation.
 func TestCoveragePlannerContainsBinaryCollation(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_contains_binary_collation")
 }
 
-// TestCoveragePlannerContainsAsciiFold는 contains가 MySQL에서 ASCII 글자만 접는 26겹 REPLACE로 compile되는지 확인한다.
+// TestCoveragePlannerContainsAsciiFold checks that contains compiles on MySQL to a 26-level REPLACE that folds only ASCII letters.
 func TestCoveragePlannerContainsAsciiFold(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_contains_ascii_fold")
 }
 
-// TestCoveragePlannerRejectsUnknownColumn는 없는 column 조건이 COLUMN_UNKNOWN인지 확인한다.
+// TestCoveragePlannerRejectsUnknownColumn checks that a condition on a missing column is COLUMN_UNKNOWN.
 func TestCoveragePlannerRejectsUnknownColumn(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_unknown_column")
 }
 
-// TestCoveragePlannerRestore는 soft delete한 행을 primary key로 되돌리는 restore를 compile한다.
+// TestCoveragePlannerRestore compiles a restore that brings back a soft-deleted row by primary key.
 func TestCoveragePlannerRestore(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_restore")
 }
 
-// TestCoveragePlannerRestoreRejectsNonKey는 key가 아닌 column의 restore가 IR_INVALID인지 확인한다.
+// TestCoveragePlannerRestoreRejectsNonKey checks that a restore on a non-key column is IR_INVALID.
 func TestCoveragePlannerRestoreRejectsNonKey(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_restore_rejects_non_key")
@@ -187,359 +187,359 @@ func TestCoveragePlannerRestoreFirstUniqueByName(t *testing.T) {
 	compilePlannerCase(t, "planner_restore_first_unique_by_name")
 }
 
-// TestCoveragePlannerTables는 subquery, join, relation이 있는 select의 step마다
-// statement가 이름으로 쓰는 table을 확인한다.
+// TestCoveragePlannerTables checks, for each step of a select with a subquery, join, and relation,
+// the table that the statement uses by name.
 func TestCoveragePlannerTables(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_tables")
 }
 
-// TestCoveragePlannerBindTypesSelect는 select의 조건 slot이 column, 함수, 상대 시각 함수의 type을 싣는지 확인한다.
+// TestCoveragePlannerBindTypesSelect checks that select condition slots carry the types of columns, functions, and relative time functions.
 func TestCoveragePlannerBindTypesSelect(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_bind_types_select")
 }
 
-// TestCoveragePlannerBindTypesUpdate는 update의 할당, AES, blind index, config, optimistic slot의 type을 확인한다.
+// TestCoveragePlannerBindTypesUpdate checks the types of the update assignment, AES, blind index, config, and optimistic slots.
 func TestCoveragePlannerBindTypesUpdate(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_bind_types_update")
 }
 
-// TestCoveragePlannerBindTypesInsert는 insert의 값, AES, blind index, config, now slot의 type을 확인한다.
+// TestCoveragePlannerBindTypesInsert checks the types of the insert values, AES, blind index, config, and now slots.
 func TestCoveragePlannerBindTypesInsert(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_bind_types_insert")
 }
 
-// TestCoveragePlannerTimeSelect는 time(p) column을 p자리 text로 읽고 비교하는 값을 text로 bind한다.
+// TestCoveragePlannerTimeSelect reads a time(p) column as text with p digits and binds the compared value as text.
 func TestCoveragePlannerTimeSelect(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_time_select")
 }
 
-// TestCoveragePlannerTimeInsert는 time(p)과 datetime(p) 값을 그 slot의 precision으로 bind한다.
+// TestCoveragePlannerTimeInsert binds time(p) and datetime(p) values at the precision of their slot.
 func TestCoveragePlannerTimeInsert(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_time_insert")
 }
 
-// TestCoveragePlannerUuidSelect는 PostgreSQL uuid column을 text로 읽고 비교하는 값을 text에서 cast한다.
+// TestCoveragePlannerUuidSelect reads a PostgreSQL uuid column as text and casts the compared value from text.
 func TestCoveragePlannerUuidSelect(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_uuid_select")
 }
 
-// TestCoveragePlannerUuidInsert는 PostgreSQL uuid 값을 text에서 cast해 쓴다.
+// TestCoveragePlannerUuidInsert casts a PostgreSQL uuid value from text and writes it.
 func TestCoveragePlannerUuidInsert(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_uuid_insert")
 }
 
-// TestCoveragePlannerClockCompare는 값 함수의 clock을 여섯 자리로 bind하고, SQLite에서 datetime(p < 6)
-// column을 여섯 자리로 늘려 비교한다.
+// TestCoveragePlannerClockCompare binds the value function's clock with six digits, and on SQLite compares datetime(p < 6)
+// by extending the column to six digits.
 func TestCoveragePlannerClockCompare(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_clock_compare")
 }
 
-// TestCoveragePlannerClockInsert는 insert가 빼먹은 default now column에 PostgreSQL과 SQLite에서
-// column의 소수 자리로 자른 now slot을 bind한다.
+// TestCoveragePlannerClockInsert checks that on PostgreSQL and SQLite, the default now column the insert omitted
+// binds a now slot truncated to the column's fractional digits.
 func TestCoveragePlannerClockInsert(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_clock_insert")
 }
 
-// TestCoveragePlannerParentKeyTypes는 composite key relation의 parent slot이 key type을 싣는지 확인한다.
+// TestCoveragePlannerParentKeyTypes checks that the parent slot of a composite key relation carries the key types.
 func TestCoveragePlannerParentKeyTypes(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_parent_key_types")
 }
 
-// TestCoveragePlannerNotGroup는 select의 NOT group이 그 조건을 괄호와 함께 부정하는지 확인한다.
+// TestCoveragePlannerNotGroup checks that a NOT group in select negates its condition together with the parentheses.
 func TestCoveragePlannerNotGroup(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_not_group")
 }
 
-// TestCoveragePlannerRejectsTopNot는 top-level where group의 not이 IR_INVALID인지 확인한다.
+// TestCoveragePlannerRejectsTopNot checks that not in a top-level where group is IR_INVALID.
 func TestCoveragePlannerRejectsTopNot(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_top_not")
 }
 
-// TestCoveragePlannerRejectsTopGroupConn는 top-level where group의 conn이 IR_INVALID인지 확인한다.
+// TestCoveragePlannerRejectsTopGroupConn checks that conn in a top-level where group is IR_INVALID.
 func TestCoveragePlannerRejectsTopGroupConn(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_top_group_conn")
 }
 
-// TestCoveragePlannerRejectsFirstItemConn는 group 첫 item의 conn and가 IR_INVALID인지 확인한다.
+// TestCoveragePlannerRejectsFirstItemConn checks that the conn and on the first item of a group is IR_INVALID.
 func TestCoveragePlannerRejectsFirstItemConn(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_first_item_conn")
 }
 
-// TestCoveragePlannerColumnRefs는 join path와 subquery 안의 "^" ref를 쓰는 column 비교를 compile한다.
+// TestCoveragePlannerColumnRefs compiles column comparisons that use "^" refs in a join path and in a subquery.
 func TestCoveragePlannerColumnRefs(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_column_refs")
 }
 
-// TestCoveragePlannerRejectsRefUnknownColumn는 count가 실행하지 않는 relation의 ref도 검증해 없는 column을
-// COLUMN_UNKNOWN으로 거절하는지 확인한다.
+// TestCoveragePlannerRejectsRefUnknownColumn also validates refs of relations that count does not run, and rejects a missing column
+// with COLUMN_UNKNOWN.
 func TestCoveragePlannerRejectsRefUnknownColumn(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_ref_unknown_column")
 }
 
-// TestCoveragePlannerRejectsOuterRefOutsideSubquery는 subquery 밖의 "^" ref가 IR_INVALID인지 확인한다.
+// TestCoveragePlannerRejectsOuterRefOutsideSubquery checks that a "^" ref outside a subquery is IR_INVALID.
 func TestCoveragePlannerRejectsOuterRefOutsideSubquery(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_outer_ref_outside_subquery")
 }
 
-// TestCoveragePlannerRefPathAbsent는 path 없는 ref가 statement의 root를 가리키는지 확인한다.
+// TestCoveragePlannerRefPathAbsent checks that a ref without a path points to the statement's root.
 func TestCoveragePlannerRefPathAbsent(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_ref_path_absent")
 }
 
-// TestCoveragePlannerRejectsUnjoinedRef는 statement에 join되지 않은 path의 ref가 ENTITY_NOT_JOINED인지 확인한다.
+// TestCoveragePlannerRejectsUnjoinedRef checks that a ref to a path not joined in the statement is ENTITY_NOT_JOINED.
 func TestCoveragePlannerRejectsUnjoinedRef(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_unjoined_ref")
 }
 
-// TestCoveragePlannerGroupByCount는 group_by가 있는 count가 group 수를 세는지 확인한다.
+// TestCoveragePlannerGroupByCount checks that a count with group_by counts the groups.
 func TestCoveragePlannerGroupByCount(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_group_by_count")
 }
 
-// TestCoveragePlannerGroupCountOrderColumn는 group_count가 group column으로 정렬되는지 확인한다.
+// TestCoveragePlannerGroupCountOrderColumn checks that group_count is ordered by the group column.
 func TestCoveragePlannerGroupCountOrderColumn(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_group_count_order_column")
 }
 
-// TestCoveragePlannerGroupCountOrderColumnFunction는 group_count가 group column의 column function으로 정렬되는지 확인한다.
+// TestCoveragePlannerGroupCountOrderColumnFunction checks that group_count is ordered by a column function of the group column.
 func TestCoveragePlannerGroupCountOrderColumnFunction(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_group_count_order_column_function")
 }
 
-// TestCoveragePlannerGroupCountOrderRandom는 group_count가 random으로 정렬되는지 확인한다.
+// TestCoveragePlannerGroupCountOrderRandom checks that group_count is ordered randomly.
 func TestCoveragePlannerGroupCountOrderRandom(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_group_count_order_random")
 }
 
-// TestCoveragePlannerRejectsGroupByAll는 all의 group_by가 IR_INVALID인지 확인한다.
+// TestCoveragePlannerRejectsGroupByAll checks that group_by on all is IR_INVALID.
 func TestCoveragePlannerRejectsGroupByAll(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_group_by_all")
 }
 
-// TestCoveragePlannerRejectsGroupBySum는 sum의 group_by가 IR_INVALID인지 확인한다.
+// TestCoveragePlannerRejectsGroupBySum checks that group_by on sum is IR_INVALID.
 func TestCoveragePlannerRejectsGroupBySum(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_group_by_sum")
 }
 
-// TestCoveragePlannerRejectsGroupByJoin는 join query의 group_by가 IR_INVALID인지 확인한다.
+// TestCoveragePlannerRejectsGroupByJoin checks that group_by on a join query is IR_INVALID.
 func TestCoveragePlannerRejectsGroupByJoin(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_group_by_join")
 }
 
-// TestCoveragePlannerRejectsGroupBySubquery는 subquery의 group_by가 IR_INVALID인지 확인한다.
+// TestCoveragePlannerRejectsGroupBySubquery checks that group_by on a subquery is IR_INVALID.
 func TestCoveragePlannerRejectsGroupBySubquery(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_group_by_subquery")
 }
 
-// TestCoveragePlannerRejectsGroupOrderNonGroupColumn는 group이 아닌 column의 group 정렬이 IR_INVALID인지 확인한다.
+// TestCoveragePlannerRejectsGroupOrderNonGroupColumn checks that ordering a group by a non-group column is IR_INVALID.
 func TestCoveragePlannerRejectsGroupOrderNonGroupColumn(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_group_order_non_group_column")
 }
 
-// TestCoveragePlannerRejectsNullableKeyBy는 nullable key_by column이 IR_INVALID인지 확인한다.
+// TestCoveragePlannerRejectsNullableKeyBy checks that a nullable key_by column is IR_INVALID.
 func TestCoveragePlannerRejectsNullableKeyBy(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_nullable_key_by")
 }
 
-// TestCoveragePlannerKeyByEmptyIsAbsent는 빈 key_by가 없는 key_by처럼 읽히는지 확인한다.
+// TestCoveragePlannerKeyByEmptyIsAbsent checks that an empty key_by reads as an absent key_by.
 func TestCoveragePlannerKeyByEmptyIsAbsent(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_key_by_empty_is_absent")
 }
 
-// TestCoveragePlannerInsertByValue는 insert by value case가 기대한 대로 compile되는지 확인한다.
+// TestCoveragePlannerInsertByValue checks that the insert by value case compiles as expected.
 func TestCoveragePlannerInsertByValue(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_insert_by_value")
 }
 
-// TestCoveragePlannerInsertOnDuplicatePlus는 insert on duplicate plus case가 기대한 대로 compile되는지 확인한다.
+// TestCoveragePlannerInsertOnDuplicatePlus checks that the insert on duplicate plus case compiles as expected.
 func TestCoveragePlannerInsertOnDuplicatePlus(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_insert_on_duplicate_plus")
 }
 
-// TestCoveragePlannerRejectsInsertSetPlus는 rejects insert set plus case가 기대한 대로 compile되는지 확인한다.
+// TestCoveragePlannerRejectsInsertSetPlus checks that the rejects insert set plus case compiles as expected.
 func TestCoveragePlannerRejectsInsertSetPlus(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_insert_set_plus")
 }
 
-// TestCoveragePlannerRejectsInsertSetMinus는 rejects insert set minus case가 기대한 대로 compile되는지 확인한다.
+// TestCoveragePlannerRejectsInsertSetMinus checks that the rejects insert set minus case compiles as expected.
 func TestCoveragePlannerRejectsInsertSetMinus(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_insert_set_minus")
 }
 
-// TestCoveragePlannerIpEqColIp는 ip eq col ip case가 기대한 대로 compile되는지 확인한다.
+// TestCoveragePlannerIpEqColIp checks that the ip eq col ip case compiles as expected.
 func TestCoveragePlannerIpEqColIp(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_ip_eq_col_ip")
 }
 
-// TestCoveragePlannerRejectsBoolGtCol는 rejects bool gt col case가 기대한 대로 compile되는지 확인한다.
+// TestCoveragePlannerRejectsBoolGtCol checks that the rejects bool gt col case compiles as expected.
 func TestCoveragePlannerRejectsBoolGtCol(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_bool_gt_col")
 }
 
-// TestCoveragePlannerRejectsIpGtCol는 rejects ip gt col case가 기대한 대로 compile되는지 확인한다.
+// TestCoveragePlannerRejectsIpGtCol checks that the rejects ip gt col case compiles as expected.
 func TestCoveragePlannerRejectsIpGtCol(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_ip_gt_col")
 }
 
-// TestCoveragePlannerRejectsAesEqCol는 rejects aes eq col case가 기대한 대로 compile되는지 확인한다.
+// TestCoveragePlannerRejectsAesEqCol checks that the rejects aes eq col case compiles as expected.
 func TestCoveragePlannerRejectsAesEqCol(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_aes_eq_col")
 }
 
-// TestCoveragePlannerColPairIntegers는 col pair integers case가 기대한 대로 compile되는지 확인한다.
+// TestCoveragePlannerColPairIntegers checks that the col pair integers case compiles as expected.
 func TestCoveragePlannerColPairIntegers(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_col_pair_integers")
 }
 
-// TestCoveragePlannerRejectsColPairIntegerVarchar는 rejects col pair integer varchar case가 기대한 대로 compile되는지 확인한다.
+// TestCoveragePlannerRejectsColPairIntegerVarchar checks that the rejects col pair integer varchar case compiles as expected.
 func TestCoveragePlannerRejectsColPairIntegerVarchar(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_col_pair_integer_varchar")
 }
 
-// TestCoveragePlannerRejectsInSubqueryIntegerVarchar는 rejects in subquery integer varchar case가 기대한 대로 compile되는지 확인한다.
+// TestCoveragePlannerRejectsInSubqueryIntegerVarchar checks that the rejects in subquery integer varchar case compiles as expected.
 func TestCoveragePlannerRejectsInSubqueryIntegerVarchar(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_in_subquery_integer_varchar")
 }
 
-// TestCoveragePlannerRejectsJoinIntegerVarchar는 rejects join integer varchar case가 기대한 대로 compile되는지 확인한다.
+// TestCoveragePlannerRejectsJoinIntegerVarchar checks that the rejects join integer varchar case compiles as expected.
 func TestCoveragePlannerRejectsJoinIntegerVarchar(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_join_integer_varchar")
 }
 
-// TestCoveragePlannerRejectsRelationIntegerVarchar는 rejects relation integer varchar case가 기대한 대로 compile되는지 확인한다.
+// TestCoveragePlannerRejectsRelationIntegerVarchar checks that the rejects relation integer varchar case compiles as expected.
 func TestCoveragePlannerRejectsRelationIntegerVarchar(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_relation_integer_varchar")
 }
 
-// TestCoveragePlannerRejectsUpsertPrimaryAndUniqueKey는 rejects upsert primary and unique key case가 기대한 대로 compile되는지 확인한다.
+// TestCoveragePlannerRejectsUpsertPrimaryAndUniqueKey checks that the rejects upsert primary and unique key case compiles as expected.
 func TestCoveragePlannerRejectsUpsertPrimaryAndUniqueKey(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_upsert_primary_and_unique_key")
 }
 
-// TestCoveragePlannerRejectsUpsertUniqueKeyNotAssigned는 rejects upsert unique key not assigned case가 기대한 대로 compile되는지 확인한다.
+// TestCoveragePlannerRejectsUpsertUniqueKeyNotAssigned checks that the rejects upsert unique key not assigned case compiles as expected.
 func TestCoveragePlannerRejectsUpsertUniqueKeyNotAssigned(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_upsert_unique_key_not_assigned")
 }
 
-// TestCoveragePlannerRejectsUpsertWithoutAKey는 rejects upsert without a key case가 기대한 대로 compile되는지 확인한다.
+// TestCoveragePlannerRejectsUpsertWithoutAKey checks that the rejects upsert without a key case compiles as expected.
 func TestCoveragePlannerRejectsUpsertWithoutAKey(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_upsert_without_a_key")
 }
 
-// TestCoveragePlannerOrderNullableColumn는 order nullable column case가 기대한 대로 compile되는지 확인한다.
+// TestCoveragePlannerOrderNullableColumn checks that the order nullable column case compiles as expected.
 func TestCoveragePlannerOrderNullableColumn(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_order_nullable_column")
 }
 
-// TestCoveragePlannerOrderNotNullColumn는 order not null column case가 기대한 대로 compile되는지 확인한다.
+// TestCoveragePlannerOrderNotNullColumn checks that the order not null column case compiles as expected.
 func TestCoveragePlannerOrderNotNullColumn(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_order_not_null_column")
 }
 
-// TestCoveragePlannerOrderNullableColumnFunction는 order nullable column function case가 기대한 대로 compile되는지 확인한다.
+// TestCoveragePlannerOrderNullableColumnFunction checks that the order nullable column function case compiles as expected.
 func TestCoveragePlannerOrderNullableColumnFunction(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_order_nullable_column_function")
 }
 
-// TestCoveragePlannerOrderNullableGroupCount는 order nullable group count case가 기대한 대로 compile되는지 확인한다.
+// TestCoveragePlannerOrderNullableGroupCount checks that the order nullable group count case compiles as expected.
 func TestCoveragePlannerOrderNullableGroupCount(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_order_nullable_group_count")
 }
 
-// TestCoveragePlannerOrderNullableLimitPerParent는 order nullable limit per parent case가 기대한 대로 compile되는지 확인한다.
+// TestCoveragePlannerOrderNullableLimitPerParent checks that the order nullable limit per parent case compiles as expected.
 func TestCoveragePlannerOrderNullableLimitPerParent(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_order_nullable_limit_per_parent")
 }
 
-// TestCoveragePlannerScalarColumnSubquery는 scalar column subquery case가 기대한 대로 compile되는지 확인한다.
+// TestCoveragePlannerScalarColumnSubquery checks that the scalar column subquery case compiles as expected.
 func TestCoveragePlannerScalarColumnSubquery(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_scalar_column_subquery")
 }
 
-// TestCoveragePlannerRejectsScalarColumnSubqueryWithoutLimit는 rejects scalar column subquery without limit case가 기대한 대로 compile되는지 확인한다.
+// TestCoveragePlannerRejectsScalarColumnSubqueryWithoutLimit checks that the rejects scalar column subquery without limit case compiles as expected.
 func TestCoveragePlannerRejectsScalarColumnSubqueryWithoutLimit(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_scalar_column_subquery_without_limit")
 }
 
-// TestCoveragePlannerRejectsScalarColumnSubqueryWithoutKeyOrder는 rejects scalar column subquery without key order case가 기대한 대로 compile되는지 확인한다.
+// TestCoveragePlannerRejectsScalarColumnSubqueryWithoutKeyOrder checks that the rejects scalar column subquery without key order case compiles as expected.
 func TestCoveragePlannerRejectsScalarColumnSubqueryWithoutKeyOrder(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_scalar_column_subquery_without_key_order")
 }
 
-// TestCoveragePlannerRejectsInSubqueryLimit는 rejects in subquery limit case가 기대한 대로 compile되는지 확인한다.
+// TestCoveragePlannerRejectsInSubqueryLimit checks that the rejects in subquery limit case compiles as expected.
 func TestCoveragePlannerRejectsInSubqueryLimit(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_in_subquery_limit")
 }
 
-// TestCoveragePlannerJoinInnerSoftDelete는 join inner soft delete case가 기대한 대로 compile되는지 확인한다.
+// TestCoveragePlannerJoinInnerSoftDelete checks that the join inner soft delete case compiles as expected.
 func TestCoveragePlannerJoinInnerSoftDelete(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_join_inner_soft_delete")
 }
 
-// TestCoveragePlannerJoinLeftSoftDelete는 join left soft delete case가 기대한 대로 compile되는지 확인한다.
+// TestCoveragePlannerJoinLeftSoftDelete checks that the join left soft delete case compiles as expected.
 func TestCoveragePlannerJoinLeftSoftDelete(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_join_left_soft_delete")
 }
 
-// TestCoveragePlannerJoinOnSoftDelete는 join on soft delete case가 기대한 대로 compile되는지 확인한다.
+// TestCoveragePlannerJoinOnSoftDelete checks that the join on soft delete case compiles as expected.
 func TestCoveragePlannerJoinOnSoftDelete(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_join_on_soft_delete")

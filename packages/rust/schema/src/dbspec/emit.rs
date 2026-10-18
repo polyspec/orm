@@ -227,8 +227,8 @@ fn setting_text(setting: &Setting, table: &Table, view: View) -> String {
         }
         Setting::Immutable => "immutable".into(),
         Setting::Audit { into, column, references, action, previous, lists } => {
-            // schema text는 database 상태로 정해지므로 기록하지 않는 column을 column 순서의 exclude
-            // 목록으로 쓴다. 다른 view는 쓴 목록을 그대로 쓴다.
+            // The schema text is determined by the database state, so the columns that are not recorded are passed as an exclude
+            // list in column order. Other views use the written list as is.
             let line = |list: &str, columns: Vec<&str>| audit_line(&into.text, &column.text, &references.text, &action.text, &previous.text, list, &columns);
             match (view, lists.first()) {
                 (View::Schema, _) => line("exclude", table.columns.iter().filter(|c| !setting.records(&c.name.text)).map(|c| c.name.text.as_str()).collect()),
@@ -273,7 +273,7 @@ pub(crate) fn emit_expr(out: &mut String, expr: &Expr) {
     }
 }
 
-/// `op` predicate의 `side`를 쓰며, `and` 안의 `or`이면 괄호로 감싼다.
+/// Writes the `side` of the `op` predicate, and wraps it in parentheses if it is an `or` inside an `and`.
 fn emit_side(out: &mut String, op: &str, side: &Expr) {
     if side.needs_parentheses(op) {
         out.push('(');

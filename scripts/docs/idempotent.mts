@@ -4,10 +4,10 @@ import path from 'node:path';
 import { root, dist, files, hash } from './lib.mts';
 import { runLong, stepLines, type Step } from '../../tests/testcase.mts';
 
-// 문서를 두 번 build해 비교하는 일은 장기 작업이므로 runLong으로 기한 없이 실행한다. 진행은 두 build의
-// 출력 줄로 보고, 결과는 build의 종료 코드와 두 build의 byte 비교로 정한다.
+// Building the docs twice and comparing them is a long task, so it runs with runLong and no deadline. Progress is seen from the output lines of the two builds,
+// and the result is decided by the exit code of the build and a byte comparison of the two builds.
 
-// build는 scripts/docs/build.mts를 실행하고 그 출력 줄을 단계로 내보낸 뒤 dist의 hash를 돌려준다.
+// build runs scripts/docs/build.mts, emits its output lines as steps, and then returns the hash of dist.
 function build(step: Step): Promise<Record<string, string>> {
   return new Promise<Record<string, string>>((resolve, reject) => {
     const child = spawn(process.execPath, ['scripts/docs/build.mts'], { cwd: root });

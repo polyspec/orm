@@ -49,8 +49,8 @@ func TestSoftDeleteConvertsDeleteToTimestampedUpdate(t *testing.T) {
 	}
 }
 
-// TestSoftDeleteClockPrecision는 soft delete가 column에 선언된 소수 자리로
-// database clock을 쓰는지 확인한다.
+// TestSoftDeleteClockPrecision checks that soft delete uses the database clock at the fractional digits
+// declared on the column.
 func TestSoftDeleteClockPrecision(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, tc := range []struct {
@@ -79,9 +79,9 @@ func TestSoftDeleteClockPrecision(t *testing.T) {
 	}
 }
 
-// TestSoftDeleteClockSlotPrecision는 SQLite soft delete의 now slot이 column의 소수
-// 자리를 가지는지 확인한다. executor는 그 자리로 clock을 잘라 SQLite의
-// datetime(p) CHECK를 만족한다.
+// TestSoftDeleteClockSlotPrecision checks that the now slot of a SQLite soft delete has the column's fractional digits.
+// The executor truncates the clock to those digits, so that
+// it satisfies SQLite's datetime(p) CHECK.
 func TestSoftDeleteClockSlotPrecision(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, precision := range []int{0, 3, 6} {

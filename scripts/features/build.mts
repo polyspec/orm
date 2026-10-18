@@ -6,7 +6,7 @@ import { readFeatures } from './manifest.mts';
 import { featureLanguages } from './languages.mts';
 import { errorCode } from '../../tests/errors.mts';
 
-// feature 문서 build는 manifest를 읽어 두 문서를 만들거나 비교하는 case 하나다.
+// The feature doc build is one case that reads the manifest and makes or compares two docs.
 const log = sections();
 log.begin(process.argv.includes('--check') ? 'feature-docs-check' : 'feature-docs', COMPUTE);
 

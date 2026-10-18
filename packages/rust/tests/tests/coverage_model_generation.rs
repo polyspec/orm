@@ -1,8 +1,8 @@
-//! model_generation: orm-build가 contracts/fixtures/bench/bench.dbs과 build.rs가 scan하는 source로 만든
-//! model과 manifest는 두 번 생성해도 같고, 이 crate가 build한 OUT_DIR의 것과 같다.
+//! model_generation: the model and manifest made by orm-build from contracts/fixtures/bench/bench.dbs and the source that build.rs scans
+//! are the same when generated twice, and the same as the OUT_DIR output that this crate built.
 use std::path::Path;
 
-/// build.rs와 같은 document와 scan 경로로 `out`에 생성하고 model과 manifest text를 읽는다.
+/// Generates into `out` with the same document and scan path as build.rs, and reads the model and manifest text.
 fn generate(out: &Path) -> (String, String) {
     let root = polyspec_orm_testcase::manifest_dir();
     let model = polyspec_orm_build::Builder::set(root.join("../../../contracts/fixtures/bench/dbspec-set.json"))
@@ -20,7 +20,7 @@ fn generate(out: &Path) -> (String, String) {
 #[ignore = "run by feature-check"]
 fn coverage_model_generation_check() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    // 생성기는 output directory를 canonical path로 include하므로 비교할 path도 canonical path로 만든다.
+    // The generator includes the output directory as a canonical path, so the paths compared are also made canonical.
     let temp = std::fs::canonicalize(std::env::temp_dir()).expect("canonical temp dir");
     let out = temp.join(format!("orm-rust-model-generation-{}", std::process::id()));
     let fresh = |dir: &Path| {
@@ -35,7 +35,7 @@ fn coverage_model_generation_check() {
     fresh(&out);
     assert!(first == second, "two generations from the same input differ");
 
-    // 생성된 model은 manifest file을 절대 경로로 include한다. build의 경로를 이 생성의 경로로 바꿔 비교한다.
+    // The generated model includes the manifest file as an absolute path. The build's path is replaced with this generation's path before comparing.
     let built_dir = &std::fs::canonicalize(env!("OUT_DIR")).expect("canonical OUT_DIR");
     let built_model = std::fs::read_to_string(built_dir.join(polyspec_orm_build::MODEL_FILE)).expect("built model");
     let built_manifest = std::fs::read_to_string(built_dir.join(polyspec_orm_build::MANIFEST_FILE)).expect("built manifest");

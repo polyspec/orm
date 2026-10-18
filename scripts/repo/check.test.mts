@@ -62,7 +62,7 @@ caseTest('the CI workflow provides every variable of make test-servers', COMPUTE
   assert.deepEqual(ciServerErrors(workflow, SERVER_VARIABLES), []);
 });
 
-// steps와 script는 workflow의 최소 형태와 test-servers.mts가 쓰는 변수 둘이다. 각 case는 그 하나를 바꾼다.
+// steps and script are the two variables of a workflow's minimal form that test-servers.mts uses. Each case changes one of them.
 const steps = [
   'jobs:',
   '  test:',
@@ -103,7 +103,7 @@ caseTest('a workflow that defines a server variable itself fails', COMPUTE, () =
 caseTest('a check before make test-servers fails', COMPUTE, () => {
   const early = steps.replace('      - name: database servers', '      - name: early\n        run: make feature-check\n      - name: database servers');
   assert.deepEqual(ciServerErrors(early, script), ['ci.yml step "early" runs make before make test-servers starts the servers']);
-  // make install과 그 부분은 download만 하므로 server보다 앞서도 된다.
+  // make install and that part only download, so they may come before the server.
   const install = steps.replace('      - name: database servers', '      - name: downloads\n        run: make install-go install-node-min\n      - name: database servers');
   assert.deepEqual(ciServerErrors(install, script), []);
 });
@@ -115,9 +115,9 @@ caseTest('a workflow that creates a symbolic link fails', COMPUTE, () => {
   }
 });
 
-// make check 뒤 case(G5.38-4)는 저장소의 workflow를 보고, 최소 workflow에서 make check 뒤에 선언된 summary와 report
-// 두 step만 받아들이는지 확인한다. 다른 명령 step, 다른 action step, 다른 path의 upload, 빠진 step, ORM_CHECK_RUN_ID
-// 없는 make check는 거부한다.
+// The case after make check (G5.38-4) looks at the repository's workflow and, in a minimal workflow, at the summary and report declared after make check
+// accepts only those two steps. It rejects another command step, another action step, an upload at another path, a missing step, and
+// a make check without ORM_CHECK_RUN_ID.
 caseTest('a workflow runs only the summary and the report upload after make check', COMPUTE, () => {
   assert.deepEqual(ciAfterCheckErrors(workflows), []);
   const check = ['      - name: make check', '        env:', '          ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}', '        run: make check'];
@@ -126,7 +126,7 @@ caseTest('a workflow runs only the summary and the report upload after make chec
     '          path: .runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}/report/', '          if-no-files-found: error'];
   const workflow = (...steps: string[][]) => ['jobs:', '  test:', '    steps:', '      - uses: actions/checkout@v5', '      - name: install', '        run: npm ci', ...steps.flat(), ''].join('\n');
   assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': workflow(check, summary, report) }), []);
-  // 다른 job의 step은 make check job의 step이 아니다(G5.98).
+  // A step of another job is not a step of the make check job (G5.98).
   assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': workflow(check, summary, report, ['  docs:', '    steps:', '      - name: documentation checks', '        run: make docs-ci']) }), []);
   const fuzz = ['      - name: decoder fuzz smoke checks', '        if: ${{ !cancelled() }}', '        run: make fuzz-check'];
   assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': workflow(check, summary, report, fuzz) }), [
@@ -149,8 +149,8 @@ caseTest('a workflow runs only the summary and the report upload after make chec
   ]);
 });
 
-// node case는 저장소의 mise.toml, package.json, workflow와 실행 중인 Node를 검사하고, 최소
-// workflow를 하나씩 바꾼다.
+// The node case checks the repository's mise.toml, package.json, workflow and the running Node, and the minimal
+// workflow, changing one at a time.
 const repository = new URL('../../', import.meta.url);
 const declared = readFileSync(new URL('mise.toml', repository), 'utf8');
 const minimum = readPackage(join(repository.pathname, 'package.json')).engines?.['node'];
@@ -238,7 +238,7 @@ caseTest('a mise.toml node that is not one exact version fails', COMPUTE, () => 
   ]);
 });
 
-// PHP와 Rust case는 저장소의 선언과 실행 중인 php, rustc를 검사하고, 최소 workflow를 하나씩 바꾼다.
+// The PHP and Rust cases check the repository's declarations and the running php and rustc, and change the minimal workflow one at a time.
 const text = (path: string) => readFileSync(new URL(path, repository), 'utf8');
 const runningPhp = execFileSync('php', ['-r', 'echo PHP_MAJOR_VERSION, ".", PHP_MINOR_VERSION;']).toString();
 const runningRustc = /^rustc (\S+)/.exec(execFileSync('rustc', ['--version'], { cwd: repository }).toString())?.[1] ?? '';
@@ -329,7 +329,7 @@ caseTest('a rustc other than rust-toolchain.toml fails', COMPUTE, () => {
   ]);
 });
 
-// CHECK_TARGETS case는 저장소의 workflow와 Makefile, 그리고 최소 workflow를 검사한다.
+// The CHECK_TARGETS case checks the repository's workflow and Makefile, and the minimal workflow.
 caseTest('the CI workflow runs every target of CHECK_TARGETS once', COMPUTE, () => {
   const targets = checkTargets(text('Makefile'));
   for (const target of ['ts-min-check', 'php-min-check', 'feature-coverage', 'feature-verify-rust', 'feature-verify-other', 'go-test-check'])
@@ -352,8 +352,8 @@ caseTest('a workflow that omits or repeats a target of CHECK_TARGETS fails', COM
   assert.deepEqual(ciCheckTargetErrors(steps, 'CHECK =\n'), ['Makefile declares no CHECK_TARGETS']);
 });
 
-// CI group case(G5.111)는 저장소의 Makefile과 workflow가 CHECK_TARGETS를 group으로 정확히 나누는지 보고, 최소
-// Makefile과 workflow에서 빠진 target, 두 group의 target, CHECK_TARGETS 밖의 target, CI_GROUPS와 다른 matrix를 거부한다.
+// The CI group case (G5.111) checks whether the repository's Makefile and workflow split CHECK_TARGETS exactly into groups, and the minimal
+// one rejects a target missing from the Makefile and workflow, a target in two groups, a target outside CHECK_TARGETS, and a matrix other than CI_GROUPS.
 caseTest('the CI groups run every target of CHECK_TARGETS in exactly one job', COMPUTE, () => {
   const makefile = text('Makefile');
   const { groups, targets } = ciGroups(makefile);
@@ -387,14 +387,14 @@ caseTest('a CI group set that omits, repeats or adds a target of CHECK_TARGETS f
   assert.deepEqual(ciCheckTargetErrors(grouped().replace('    strategy:\n      matrix:\n        group: [one, two]\n', ''), good), [
     'ci.yml job test runs make check-run GROUP=${{ matrix.group }} without a matrix group: [...] of CI_GROUPS',
   ]);
-  // group job도 CHECK_TARGETS의 target을 따로 실행하면 두 번 실행한다.
+  // A group job that also runs a CHECK_TARGETS target separately runs it twice.
   assert.deepEqual(ciCheckTargetErrors(grouped().replace('GROUP=${{ matrix.group }}\n', 'GROUP=${{ matrix.group }}\n      - name: again\n        run: make b-check\n'), good), [
     'ci.yml step "again" runs b-check, which make check runs',
   ]);
 });
 
-// 보고서 path case(G5.128)는 CI job이 올리는 보고서 directory가 CI_GROUPS의 group마다 runner가 그 job의 ORM_CHECK_RUN_ID로 쓰는
-// directory인지 본다. runner는 `-`를 `_`로 바꾸므로 `-`가 있는 group의 보고서는 올라가지 않았다.
+// The report path case (G5.128) checks whether the report directory a CI job uploads is the directory that the runner uses, for each group of CI_GROUPS, as that job's ORM_CHECK_RUN_ID
+// directory. The runner replaces `-` with `_`, so reports of a group with `-` in its name were not uploaded.
 caseTest('every CI group uploads the report directory that the runner writes', COMPUTE, () => {
   assert.deepEqual(ciReportPathErrors(workflow, text('Makefile')), []);
   const make = text('Makefile').replace(/^CI_GROUPS = (.*)$/m, 'CI_GROUPS = $1 stress-x').concat('\nCI_TARGETS_stress-x = feature-stress-mysql-check\n');
@@ -403,10 +403,10 @@ caseTest('every CI group uploads the report directory that the runner writes', C
   ]);
 });
 
-// group setup case(G5.127)는 CI_GROUPS의 모든 group이 그 target의 need와, 그 need의 setup 단계가 필요로 하는 need의 setup step을
-// 실행하는지 저장소의 Makefile과 contracts/check-inputs.json으로 본다. databases/create는 server를 server-programs의
-// program으로 시작하므로 databases만 선언한 target의 group도 server-programs output이 필요하다. 그 output이 databases를
-// 보지 않는 대조군에서는 stress-db가 server-programs setup step을 건너뛴다.
+// The group setup case (G5.127) checks, for every group in CI_GROUPS, whether the group runs the target's need and the setup step of that need's setup stage requires,
+// using the repository's Makefile and contracts/check-inputs.json. databases/create starts the server as a server-programs
+// program, so a group of a target that declares only databases also needs the server-programs output. The output is checked in the control case,
+// where the target does not look at databases: stress-db skips the server-programs setup step.
 caseTest('every CI group runs the setup steps of its needs and of the setup step databases/create', COMPUTE, () => {
   assert.deepEqual(expandNeeds(['databases']), ['databases', 'go', 'node-modules', 'server-programs']);
   assert.deepEqual(expandNeeds(['rust', 'go']), ['rust', 'go']);
@@ -424,8 +424,8 @@ caseTest('every CI group runs the setup steps of its needs and of the setup step
   assert.deepEqual(groupSetupErrors({ 'stress-db': ['stress-only'] }, { 'stress-only': ['go', 'databases'] }), []);
 });
 
-// CI group setup case(G5.111)는 group job의 setup step이 scripts/check/ci-setup.mts가 선언한 조건으로만 실행되는지, group-needs
-// step이 make ci-group-needs의 output을 쓰는지, 그 뒤의 summary와 report가 group마다의 실행 id와 보고서를 쓰는지 본다.
+// The CI group setup case (G5.111) checks whether the group job's setup step runs only under the condition ci-setup.mts declares, and the group-needs
+// step writes the output of make ci-group-needs, and whether the summary and report after it write each group's run id and report.
 caseTest('a CI group job runs each setup step under its declared condition and reports per group', COMPUTE, () => {
   assert.equal(stepCondition('go'), '${{ !cancelled() }}');
   assert.equal(stepCondition('composer'), "${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}");
@@ -451,7 +451,7 @@ caseTest('a CI group job runs each setup step under its declared condition and r
   assert.deepEqual(ciSetupErrors({ 'ci.yml': job('make ci-group-needs GROUP=static >> "$GITHUB_OUTPUT"', stepCondition('composer')) }, { setup, runner }), [
     `ci.yml step "setup of the CI group" runs make ci-group-needs GROUP=static >> "$GITHUB_OUTPUT" instead of ${GROUP_NEEDS}, which writes the setup of the CI group as step outputs`,
   ]);
-  // group마다의 보고서가 아닌 report step과 group 없는 실행 id는 group의 보고서를 서로 덮는다.
+  // A report step that is not a per-group report, and a run id without a group, overwrite the reports of the groups.
   const shared = good.replace('name: check-${{ matrix.group }}-', 'name: check-');
   assert.match(ciAfterCheckErrors({ 'ci.yml': shared })[0] ?? '', /^ci\.yml step "report" after make check is not the declared report step: /);
   assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': good.replace('${{ github.run_attempt }}-${{ matrix.group }}\n          ORM_CI_SETUP', '${{ github.run_attempt }}\n          ORM_CI_SETUP') }), [
@@ -459,8 +459,8 @@ caseTest('a CI group job runs each setup step under its declared condition and r
   ]);
 });
 
-// ci-passed case(G5.113-2)는 저장소의 ci.yml이 job ci-passed를 마지막에 두고 다른 모든 job을 needs로 받는지 보고, 최소
-// workflow에서 빠진 job, 마지막이 아닌 job, always()가 아닌 조건, 다른 step을 거부한다.
+// The ci-passed case (G5.113-2) checks whether the repository's ci.yml places job ci-passed last and takes every other job as needs, and the minimal
+// workflow rejects a missing job, a job that is not last, a condition other than always(), and another step.
 caseTest('the job ci-passed runs last under always() and needs every other job', COMPUTE, () => {
   assert.deepEqual(ciPassedErrors(workflow), []);
   const step = `    steps:\n${yamlSteps(CI_PASSED_STEPS)}`;
@@ -479,7 +479,7 @@ caseTest('the job ci-passed runs last under always() and needs every other job',
   assert.match(ciPassedErrors(`jobs:\n${others}${job('${{ always() }}', 'test, docs').replace('      - uses: actions/checkout@v5\n', '')}`)[0] ?? '', /^ci\.yml job ci-passed has the steps \[\{"uses":"actions\/setup-node@v7"/);
 });
 
-// 중복 실행 case는 저장소의 workflow, Makefile, feature contract와 최소 workflow를 검사한다.
+// The duplicate-run case checks the repository's workflow, Makefile, feature contract and the minimal workflow.
 caseTest('the CI workflow does not run a verification command of feature-check again', COMPUTE, () => {
   const commands = featureCommands(readFeatures(repository.pathname));
   for (const command of ['node scripts/perf-test.mts', 'node tests/run-long.mts typescript-build -- npm run typescript:build && PATH="$HOME/.cargo/bin:$PATH" node tests/interfaces/check/main.mts --self-test'])
@@ -516,8 +516,8 @@ caseTest('a workflow that runs a verification command of feature-check again fai
   ]);
 });
 
-// helper 실행 case(G5.120)는 make check가 helper check마다 한 번 실행하는지 본다: 저장소의 Makefile, feature contract와
-// scripts/check/databases.mts, 그리고 helper를 두 번 실행하거나 한 번도 실행하지 않는 최소 Makefile이다.
+// The helper run case (G5.120) checks whether make check runs each helper check once: the repository's Makefile, feature contract and
+// scripts/check/databases.mts, and a minimal Makefile that runs a helper twice or never.
 caseTest('make check runs the check of every helper once', COMPUTE, () => {
   assert.deepEqual(helperRunErrors(readFeatures(repository.pathname), text('Makefile'), scriptTexts.get('scripts/check/databases.mts') ?? ''), []);
   const manifest = { features: [], helpers: [
@@ -566,8 +566,8 @@ caseTest('make check runs the check of every helper once', COMPUTE, () => {
   ]);
 });
 
-// helper 환경 case는 helper check의 make 명령이 읽는 shell 변수를 Makefile이 export하는지 본다: 저장소의 contracts/features.json과
-// Makefile, 그리고 한 실행 경로만 설정하던 변수(ORM_OWNER_TEST_ENV)를 읽는 최소 manifest다.
+// The helper environment case checks whether the Makefile exports the shell variables read by the make commands of helper checks: the repository's contracts/features.json and
+// Makefile, and a minimal manifest that reads a variable (ORM_OWNER_TEST_ENV) that set only one execution path.
 caseTest('every variable a helper make command reads is exported by the Makefile', COMPUTE, () => {
   assert.deepEqual(helperEnvironmentErrors(readFeatures(repository.pathname), text('Makefile')), []);
   const makefile = 'export ORM_TEST_ENV = $(abspath $(TEST_ENV))\nDECIMAL_ENV =\nexport DECIMAL_ENV\nexport A B\n';
@@ -581,7 +581,7 @@ caseTest('every variable a helper make command reads is exported by the Makefile
   ]);
 });
 
-// runner case는 저장소의 .github/runner와 workflow, 그리고 최소 workflow를 검사한다.
+// The runner case checks the repository's .github/runner and workflow, and the minimal workflow.
 // A workflow among the copies of @polyspec/kit is kit's and make kit-check holds it byte for byte, so the workflow rules of this
 // repository do not check it (T115). A runner other than that of kit's release.yml is a change of kit.
 const vendoredFiles = copies;
@@ -691,7 +691,7 @@ caseTest('test-servers.mts refuses a socket path longer than the platform limit'
   }
 });
 
-// 공유 target case는 저장소의 Makefile과 최소 Makefile을 검사한다.
+// The shared target case checks the repository's Makefile and a minimal Makefile.
 caseTest('the Makefile runs no program from the shared Rust target directory and builds there under its lease', COMPUTE, () => {
   assert.deepEqual(sharedTargetErrors(text('Makefile')), []);
   const makefile = [
@@ -712,7 +712,7 @@ caseTest('the Makefile runs no program from the shared Rust target directory and
   ]);
 });
 
-// 실행 file case는 저장소의 Makefile과 최소 Makefile을 검사한다.
+// The executable file case checks the repository's Makefile and a minimal Makefile.
 caseTest('the files of one run live in its run directory and a TypeScript build holds its output', COMPUTE, () => {
   assert.deepEqual(runtimePathErrors(text('Makefile')), []);
   assert.deepEqual(typescriptHolderErrors(text('Makefile')), []);
@@ -741,7 +741,7 @@ caseTest('the files of one run live in its run directory and a TypeScript build 
   assert.deepEqual(typescriptHolderErrors(parts), ['Makefile ts/bare builds the TypeScript client without holding its build output; start the recipe with $(HOLD_TYPESCRIPT)']);
 });
 
-// Makefile 읽기 case는 make가 읽는 대로 target마다 선행 target과 recipe를 돌려주는지 본다(T137-1-4-2-2).
+// The Makefile reading case checks whether, as make reads it, each target gives back its prerequisite targets and recipe (T137-1-4-2-2).
 caseTest('the Makefile reader names every target with its prerequisites and recipe', COMPUTE, () => {
   const makefile = [
     '.PHONY: a b/c',
@@ -772,7 +772,7 @@ caseTest('the Makefile reader names every target with its prerequisites and reci
   assert.deepEqual(makeRecipes(makefile).map(unit => unit.name), ['Makefile a', 'Makefile b/c', 'Makefile x/y', 'Makefile p/%', 'Makefile']);
 });
 
-// lease case는 Makefile 밖의 명령과 최소 단위를 검사한다.
+// The lease case checks commands outside the Makefile and a minimal unit.
 caseTest('commands outside the Makefile build into the shared Rust target directory only under its lease', COMPUTE, () => {
   const { packageUnits } = runUnits();
   const commands = [...makeRecipes(text('Makefile')), ...featureUnits(), ...packageUnits].flatMap(unit => unit.commands.map(command => ({ command, dialect: unit.dialect })));
@@ -789,7 +789,7 @@ caseTest('commands outside the Makefile build into the shared Rust target direct
     'x runs a program of the shared Rust target directory; run a copy made under its lease (scripts/cargo-build-copy.mts): "${CARGO_TARGET_DIR:?unset; run make}/debug/integration" a']);
 });
 
-// TypeScript 읽기 case는 저장소의 Makefile과 최소 Makefile, file을 검사한다.
+// The TypeScript reading case checks the repository's Makefile, a minimal Makefile, and a file.
 caseTest('a target that runs code using the TypeScript build output holds it', COMPUTE, () => {
   const files = new Set(trackedFiles('*'));
   assert.deepEqual(typescriptReaderErrors(text('Makefile'), (path: string) => files.has(path) ? text(path) : undefined), []);
@@ -804,9 +804,9 @@ caseTest('a target that runs code using the TypeScript build output holds it', C
   ]);
 });
 
-// 이름만 적는 case(G5.40)는 TypeScript test의 경로를 실행하지 않고 문자열로만 적는 test(가짜 node의 기대 출력, stub
-// template, 정규식)를 읽는 것으로 세지 않고, 그 경로를 node로 실행하는 file(program과 인자 배열, exec나 spawn의 shell
-// 문자열)은 여전히 읽는 것으로 세며, 여러 줄에 걸친 import도 읽는 것으로 세는지 확인한다.
+// The name-only case (G5.40) does not count as reading a TypeScript test whose path is only written as a string (expected output of a fake node, stub,
+// template, regular expression), but counts as reading a file that runs that path with node (a program and argument array, or the shell string of exec or spawn),
+// and checks that a multi-line import also counts as reading.
 caseTest('a test that only names a TypeScript test path does not read the build output', COMPUTE, () => {
   const sources: Record<string, string> = {
     'packages/ts/tests/db.mjs': "const { Db } = await import('../dist/index.js');\n",
@@ -819,7 +819,7 @@ caseTest('a test that only names a TypeScript test path does not read the build 
     'scripts/array.mjs': "const run = ['node', ['packages/ts/tests/db.mjs']];\n",
     'scripts/exec-path.mjs': "spawnSync(process.execPath, ['packages/ts/tests/db.mjs', '--x']);\n",
     'scripts/shell.mjs': "execSync('node --conditions=orm-test packages/ts/tests/db.mjs');\n",
-    // 여러 줄의 import는 읽는 것이다. 함수 본문 뒤 주석에 적은 import 예시는 아니다.
+    // A multi-line import is a reading. An import example in a comment after a function body is not one.
     'packages/ts/tests/multi.mjs': "import {\n  Db,\n  OrmError as Failure,\n} from '../dist/index.js';\n",
     'scripts/multi.mjs': "const run = ['node', ['packages/ts/tests/multi.mjs']];\n",
     'scripts/comment.mjs': "export function f(a) {\n  // an import may span lines: `import {\\n  a,\\n} from '../dist/index.js'`\n}\n",
@@ -831,7 +831,7 @@ caseTest('a test that only names a TypeScript test path does not read the build 
   ]);
 });
 
-// go run case는 최소 단위를 검사한다. 저장소 전체는 repository check가 본다.
+// The go run case checks a minimal unit. The whole repository is checked by the repository check.
 caseTest('a go run, whose build has no step log, fails', COMPUTE, () => {
   assert.deepEqual(goRunErrors([
     { name: 'raw', commands: ['go run ./tests/interfaces/check --self-test'], dialect: 'sh' },
@@ -843,7 +843,7 @@ caseTest('a go run, whose build has no step log, fails', COMPUTE, () => {
   ]);
 });
 
-// 언어 case는 저장소의 tracked file과 최소 목록을 검사한다.
+// The language case checks the repository's tracked files and a minimal list.
 caseTest('every tool of the repository is written in Go, PHP, Rust or TypeScript', COMPUTE, () => {
   assert.deepEqual(toolingLanguageErrors(trackedFiles('*')), []);
   assert.deepEqual(toolingLanguageErrors(['scripts/stop-process.py', 'tests/stop-process/main.go', 'scripts/a.sh', 'tools/x.rb', 'packages/php/src/Db.php']), [
@@ -863,10 +863,10 @@ caseTest('every tool of the repository is written in Go, PHP, Rust or TypeScript
   ]);
 });
 
-// startLogged case는 test-servers.mts의 startLogged로 가짜 서버를 시작한다. 서버 시작은 장기 작업이므로 기한이 없다. 준비
-// 줄을 쓰고 계속 실행하면 startLogged는 서버가 끝나기 전에 돌아와야 하고, 준비 줄까지의 줄은 stderr에 보인다. 1.5초
-// 뒤에야 준비 줄을 쓰는 느리지만 정상인 서버도 시작하고, 준비 줄 없이 끝나는 서버는 log와 함께 실패한다. 서버는 시작한
-// process의 process group 밖, 자기 session에서 실행된다(G5.62). 출력은 다른 node process의 file로 받는다.
+// The startLogged case starts a fake server with startLogged from test-servers.mts. Starting a server is long-running work, so it has no deadline. It writes
+// a ready line and keeps running: startLogged must return before the server ends, and the lines up to the ready line appear on stderr. Only 1.5 seconds
+// later does it write the ready line. It also starts a slow but normal server, and a server that ends without a ready line fails with its log. The server runs
+// outside the process group of the process that started it, in its own session (G5.62). Its output goes to a file of another node process.
 caseTest('startLogged waits for a ready line or an exit, with no deadline', PROCESS, () => {
   const dir = mkdtempSync(join(tmpdir(), 'orm-logged-'));
   try {
@@ -891,7 +891,7 @@ catch (error) { if (!(error instanceof TestServerError)) throw error; console.er
     assert.match(readFileSync(join(dir, 'fake.log'), 'utf8'), /^starting\nnow accepting connections\n/);
     process.kill(pid());
     rmSync(join(dir, 'fake.log'));
-    // 느린 서버는 준비 줄 바로 앞에 marker file을 만든다. startLogged가 돌아왔을 때 그 file이 있으면 준비 줄을 기다린 것이다.
+    // The slow server creates a marker file just before the ready line. If that file exists when startLogged returns, startLogged waited for the ready line.
     const slow = run(`echo starting; sleep 1.5; echo still starting; sleep 1; touch ${dir}/ready-marker; echo now accepting connections; exec sleep 30`);
     assert.equal(slow.status, 0, slow.stderr);
     assert.equal(slow.stdout, 'returned\n');
@@ -908,7 +908,7 @@ catch (error) { if (!(error instanceof TestServerError)) throw error; console.er
   }
 });
 
-// timeout case는 저장소의 workflow와 최소 workflow의 step과 job에 timeout-minutes가 없는지 검사한다.
+// The timeout case checks that the repository's workflow and the minimal workflow have no timeout-minutes on their steps and jobs.
 caseTest('no workflow step or job has timeout-minutes', COMPUTE, () => {
   assert.deepEqual(stepTimeoutErrors(workflows), []);
   const plain = [
@@ -935,9 +935,9 @@ caseTest('no workflow step or job has timeout-minutes', COMPUTE, () => {
   ]);
 });
 
-// lease case는 저장소의 workflow가 lease 변수를 읽는 program을 make 밖에서 실행하지 않는지 보고, 최소 workflow의
-// step이 그런 program(Go checker, Node script, shell script)을 직접 실행하면 거부하는지 확인한다. make target과
-// lease를 읽지 않는 program은 허용한다.
+// The lease case checks that the repository's workflow does not run, outside make, a program that reads the lease variable, and that the minimal workflow's
+// step rejects running such a program (Go checker, Node script, shell script) directly. It checks that make targets
+// allow a program that does not read the lease.
 caseTest('a workflow step runs a program that reads the lease variables only through make', COMPUTE, () => {
   const all = execFileSync('git', ['ls-files', '-z'], { cwd: repository }).toString().split('\0').filter(Boolean).filter(notVendored);
   const read = (path: string) => all.includes(path) ? text(path) : undefined;
@@ -968,7 +968,7 @@ caseTest('a workflow step runs a program that reads the lease variables only thr
   ]);
 });
 
-// target case는 실행 명령이 packages/rust/target/를 직접 적으면 거부한다.
+// The target case rejects an execution command that writes packages/rust/target/ directly.
 caseTest('a run command names the Rust target directory through CARGO_TARGET_DIR', COMPUTE, () => {
   assert.deepEqual(targetPathErrors({
     Makefile: '# measured packages/rust/target 10 GiB\nexport CARGO_TARGET_DIR := $(abspath packages/rust/target)\nx:\n\t$(CARGO_TARGET_DIR)/debug/integration\n',
@@ -988,7 +988,7 @@ caseTest('a run command names the Rust target directory through CARGO_TARGET_DIR
   assert.ok(!runFile('examples/complex/rust/main.rs') && !runFile('packages/rust/README.md') && !runFile('scripts/repo/target.mts'));
 });
 
-// manifest directory case는 Rust source가 package directory를 compile 시점의 env!로 읽으면 거부한다.
+// The manifest directory case rejects Rust source that reads the package directory with env! at compile time.
 caseTest('Rust source reads the package directory when the program runs', COMPUTE, () => {
   assert.deepEqual(manifestDirErrors({
     'packages/rust/orm/tests/a.rs': 'let dir = polyspec_orm_testcase::manifest_dir();\n// env!("CARGO_MANIFEST_DIR") was the old form\n',
@@ -1003,7 +1003,7 @@ caseTest('Rust source reads the package directory when the program runs', COMPUT
   ]);
 });
 
-// 연결 probe case는 client runtime이 연결할 때 server에 묻는 statement를 거부한다.
+// The connection probe case rejects a statement that the client runtime asks the server for when it connects.
 caseTest('a client connects without a probe statement', COMPUTE, () => {
   assert.deepEqual(connectProbeErrors({
     'packages/go/orm/db.go': '\tversion := sqliteVersion\n',
@@ -1024,7 +1024,7 @@ caseTest('a client connects without a probe statement', COMPUTE, () => {
   ]);
 });
 
-// program 경로 case는 Rust test가 package program의 경로를 compile 시점의 env!로 읽으면 거부한다.
+// The program path case rejects a Rust test that reads the path of a package program with env! at compile time.
 caseTest('Rust tests read the paths of package programs when they run', COMPUTE, () => {
   assert.deepEqual(binExeErrors({
     'benchmarks/rust/tests/a.rs': 'let program = &polyspec_orm_testcase::program("native");\n// env!("CARGO_BIN_EXE_native") was the old form\n',
@@ -1034,11 +1034,11 @@ caseTest('Rust tests read the paths of package programs when they run', COMPUTE,
   ]);
 });
 
-// test 선언 case는 저장소의 JavaScript file과 최소 file을 검사한다.
+// The test declaration case checks the repository's JavaScript files and a minimal file.
 const trackedFiles = (pattern: string) => execFileSync('git', ['ls-files', '-z', pattern], { cwd: repository }).toString().split('\0').filter(Boolean).filter(notVendored);
 
-// scriptTexts는 scripts/의 script마다 그 명령 text다(scriptCommands): shell script의 줄과 TypeScript 명령 script의 COMMANDS.
-// readScript는 reachedScripts가 따라가는 path를 그것으로 읽고, 명령 script가 아닌 TypeScript file은 읽지 않는다.
+// scriptTexts is the command text of each script in scripts/ (scriptCommands): the lines of shell scripts and the COMMANDS of TypeScript command scripts.
+// readScript reads the path that reachedScripts follows with it, and does not read a TypeScript file that is not a command script.
 const scriptTexts = await scriptCommands(repository.pathname, trackedFiles('*'));
 const trackedAll = new Set(trackedFiles('*'));
 const readScript = (path: string) => scriptTexts.get(path) ?? (trackedAll.has(path) && !path.endsWith('.mts') ? text(path) : undefined);
@@ -1059,11 +1059,11 @@ caseTest('a JavaScript test that declares tests with node:test directly fails', 
   }), [message('a.test.mjs'), message('b.test.mjs'), message('c.test.mjs')]);
 });
 
-// 호출 환경 case(G5.119)는 JavaScript test가 하위 process에 자기를 실행한 쪽의 환경을 넘기지 않는지 본다. CI group의 job이
-// 실행한 `make -n check`는 그 job의 GROUP을 받아 멈췄다.
+// The calling environment case (G5.119) checks that a JavaScript test does not pass the environment of the process that ran it to a child process. The make -n check run
+// by the CI group's job stopped after receiving the job's GROUP.
 caseTest('a JavaScript test gives its child processes only the variables of the case', COMPUTE, () => {
   assert.deepEqual(callerEnvironmentErrors(trackedTexts(trackedFiles('*.test.mjs'))), []);
-  // 아래 fixture의 환경 이름은 이 file 자체가 그 규칙에 걸리지 않도록 조립한다.
+  // The environment names in the fixture below are assembled so that this file itself does not fall under that rule.
   const caller = ['process', 'env'].join('.');
   const spawn = 'spawn' + 'Sync';
   const spread = (at: string) => `${at} gives a child process the environment of its caller; give it isolatedEnvironment of tests/environment.mts with the variables of the case`;
@@ -1097,7 +1097,7 @@ caseTest('a Rust test without a case of its own fails', COMPUTE, () => {
   ]);
 });
 
-// case 보고 case는 저장소가 실행하는 PHP와 TypeScript test와 최소 file을 검사한다.
+// The case report case checks the PHP and TypeScript tests the repository runs, and a minimal file.
 caseTest('every PHP and TypeScript test that a check runs reports its cases', COMPUTE, () => {
   const commands = [
     ...recipeLines(text('Makefile')).filter(line => line.recipe).map(line => ({ source: 'Makefile', command: line.text })),
@@ -1131,7 +1131,7 @@ caseTest('a PHP test outside PHPUnit or a TypeScript test without the shared cas
   ]);
 });
 
-// 도구 case는 저장소의 검증 명령과 최소 명령을 검사한다.
+// The tool case checks the repository's verification commands and a minimal command.
 const featureUnits = () => {
   const manifest = readFeatures(repository.pathname);
   return [...manifest.features.flatMap(feature => feature.verification
@@ -1175,7 +1175,7 @@ caseTest('a build tool outside run-long or under a deadline fails', COMPUTE, () 
   ]);
 });
 
-// cargo test case는 저장소의 Makefile, 검증 명령, script와 최소 단위를 검사한다.
+// The cargo test case checks the repository's Makefile, verification commands, scripts and a minimal unit.
 const runUnits = () => {
   const recipes = makeRecipes(text('Makefile'));
   const packageUnits = Object.entries(readPackage(join(repository.pathname, 'package.json')).scripts ?? {}).map(([name, command]) => ({ name: `package.json ${name}`, commands: [command], dialect: 'sh' as const }));
@@ -1209,7 +1209,7 @@ caseTest('every build tool of the Makefile, package.json and the scripts runs un
   assert.deepEqual(unwrappedToolErrors([...recipes, ...packageUnits.filter(unit => segments(unit.commands[0] ?? '', 'sh').length > 1), ...scripts]), []);
 });
 
-// 재실행 case는 저장소의 workflow와 최소 workflow를 runner의 정체로 검사한다.
+// The rerun case checks the repository's workflow and the minimal workflow by the runner's identity.
 caseTest('the CI workflow runs no test runner outside make check', COMPUTE, () => {
   assert.deepEqual(ciRerunErrors(workflow, text('Makefile')), []);
 });
@@ -1255,7 +1255,7 @@ caseTest('a workflow that runs a test runner after make check fails by identity'
   assert.deepEqual(ciRerunErrors(steps.replace('make repo-check', 'make repo-check\n          go test ./...'), make), []);
 });
 
-// 생성 case는 make check의 recipe와 검증 명령, 그리고 최소 단위를 검사한다.
+// The generation case checks the recipe and verification commands of make check, and a minimal unit.
 caseTest('make check runs each go generate once', COMPUTE, () => {
   const targets = new Set(checkTargets(text('Makefile')));
   const { recipes } = runUnits();
@@ -1273,7 +1273,7 @@ caseTest('a go generate that make check runs twice fails', COMPUTE, () => {
   ]), ['go generate of packages/go/model runs 2 times in make check: Makefile go-model-check, contracts/features.json model_generation/generation-go']);
 });
 
-// go test case는 저장소의 Makefile(변수를 푼), 검증 명령, script와 최소 단위를 검사한다.
+// The go test case checks the repository's Makefile (with variables resolved), verification commands, scripts and a minimal unit.
 caseTest('every go test runs through go-test.mts or run-long', COMPUTE, () => {
   const makefile = text('Makefile');
   const variables = makeVariables(makefile);
@@ -1296,8 +1296,8 @@ caseTest('a go test without its build step, or under a deadline, fails', COMPUTE
     `timed runs go test under a deadline ($(RUN_CASE)); a long operation gets step logs and no deadline: ${fuzz}`]);
 });
 
-// 기한 case는 저장소의 Makefile(변수를 푼), 검증 명령, package.json script, run-long 아래의 것까지 모든
-// script와 최소 단위를 검사한다.
+// The deadline case checks the repository's Makefile (with variables resolved), verification commands, package.json scripts, and every script,
+// including those under run-long, and a minimal unit.
 caseTest('no check puts a deadline on a long operation', COMPUTE, () => {
   const makefile = text('Makefile');
   const variables = makeVariables(makefile);
@@ -1333,8 +1333,8 @@ caseTest('a deadline on a long operation fails', COMPUTE, () => {
   ]);
 });
 
-// 전체 suite 규칙 case(G5.38-5)는 AGENTS.md와 AGENTS.ko.md가 전체 suite를 push 뒤 CI에서 실행한다는 규칙을 적고 이전의
-// 로컬 규칙을 적지 않는지 확인한다.
+// The full suite rule case (G5.38-5) checks that AGENTS.md and AGENTS.ko.md state the rule that the full suite runs in CI after push, and do not state the earlier
+// local rule.
 caseTest('AGENTS states that the full suite runs on CI after a push', COMPUTE, () => {
   const read = (path: string) => readFileSync(new URL(path, repository), 'utf8');
   assert.deepEqual(fullSuiteRuleErrors({ 'AGENTS.md': read('AGENTS.md'), 'AGENTS.ko.md': read('AGENTS.ko.md') }), []);
@@ -1346,8 +1346,8 @@ caseTest('AGENTS states that the full suite runs on CI after a push', COMPUTE, (
     .includes('AGENTS.md still states the local full-suite rule: "runs exactly once, when every active checklist   item is complete"'));
 });
 
-// CI setup case(G5.52)는 workflow의 setup step이 실패해도 뒤의 step과 make check가 실행되고 그 실패를 runner에 넘기는지
-// 본다. main의 workflow처럼 id 없는 install step, 조건 없는 step, continue-on-error, ORM_CI_SETUP 없는 make check는 오류다.
+// The CI setup case (G5.52) checks that, when a setup step in the workflow fails, the steps after it and make check still run and pass the failure on to the runner.
+// A setup step without an id, as in main's workflow, a step with no condition, continue-on-error, and a make check without ORM_CI_SETUP are errors.
 caseTest('a workflow runs every setup step and make check after a failed setup step and passes the results on', COMPUTE, () => {
   const setup = { go: 'go', rust: 'rust' };
   const runner = ['checkout'];
@@ -1367,7 +1367,7 @@ caseTest('a workflow runs every setup step and make check after a failed setup s
     'ci.yml step "make check" does not run after a failed setup step; give it if: ${{ !cancelled() }}',
     'ci.yml step "make check" gives make check no ORM_CI_SETUP: ${{ toJSON(steps) }}, which tells the runner the failed setup steps',
   ]);
-  // job마다 runner가 따로이므로 make check job 뒤의 docs job은 make check의 setup이나 그 뒤의 step이 아니다(G5.98).
+  // Each job has its own runner, so the docs job after the make check job is not a setup or a later step of make check (G5.98).
   const docs = `  docs:\n    steps:\n      - uses: actions/checkout@v5\n        id: checkout\n      - id: node-modules\n        if: \${{ !cancelled() }}\n        run: make install-node\n      - name: documentation checks\n        id: docs\n        if: \${{ !cancelled() }}\n        run: make docs-ci\n`;
   assert.deepEqual(ciSetupErrors({ 'ci.yml': good + docs }, { setup, runner }), []);
   assert.deepEqual(ciSetupErrors({ 'ci.yml': good + docs.replace('        if: ${{ !cancelled() }}\n        run: make install-node', '        run: make install-node') }, { setup, runner }),
@@ -1379,8 +1379,8 @@ caseTest('a workflow runs every setup step and make check after a failed setup s
   assert.deepEqual(ciSetupErrors(workflows, { setup: CI_SETUP, runner: RUNNER_STEPS }), []);
 });
 
-// 독립 test case(G5.53)는 recipe 하나가 서로 다른 test나 lint 실행을 둘 이상 가지거나, 검증 명령이 `&&`로 test를 잇는
-// 곳을 오류로 본다. 같은 test의 두 번째 실행, compile만 하는 줄, 입력을 만드는 줄, 의존성 도구의 build는 test가 아니다.
+// The independent test case (G5.53) treats as an error a recipe with two or more separate test or lint runs, or a verification command that chains tests with `&&`.
+// A second run of the same test, a line that only compiles, a line that creates input, and a build of a dependency tool are not tests.
 caseTest('a recipe or a command that runs independent tests in sequence is refused', COMPUTE, () => {
   const makefile = [
     'GO_TEST = node tests/go-test.mts -v -timeout 0',
@@ -1430,7 +1430,7 @@ caseTest('a test does not fail on a measured time above a bound', COMPUTE, () =>
     'c.test.mjs': "    assert.ok(parseMs <= PARSE_BUDGET_MS, 'slow');\n",
     'd.php': "if ($cpuMs > 10000) {\n    throw new RuntimeException('slow');\n}\n",
   }).map(error => error.split(' fails ')[0]), ['b.rs:1', 'c.test.mjs:1', 'd.php:1']);
-  // 경고, 하한, 두 측정의 비교, 0과의 비교는 실패가 아니거나 정확성 검사다.
+  // Warnings, lower bounds, comparisons of two measurements, and comparisons with 0 are not failures or are correctness checks.
   assert.deepEqual(timeFailureErrors({
     'f.rs': '    assert!(waited >= Duration::from_millis(200), "too early");\n    assert!(cpu * 4 < wall, "clock");\n',
     'g.test.mjs': "    check(event.elapsed >= 0, 'negative');\n",
@@ -1439,8 +1439,8 @@ caseTest('a test does not fail on a measured time above a bound', COMPUTE, () =>
   assert.throws(() => timeFailureErrors({ 'a_test.go': 'package a\n' }), /timeFailureErrors reads no Go source \(a_test\.go\); go vet runs the analyzer timefailure of tests\/analyzers over it/);
 });
 
-// trigger case(G5.98)는 ci.yml, push-gate.yml과 docs-pages.yml의 `on:` block이 선언과 같고, 다른 workflow가 push,
-// pull_request, merge_group으로 실행하지 않는지 본다.
+// The trigger case (G5.98) checks that the `on:` blocks of ci.yml, push-gate.yml and docs-pages.yml match their declarations, and that other workflows do not run on push,
+// pull_request or merge_group.
 caseTest('every workflow runs on its declared events only', COMPUTE, () => {
   const root = new URL('../..', import.meta.url).pathname;
   const directory = join(root, '.github/workflows');
@@ -1461,7 +1461,7 @@ caseTest('every workflow runs on its declared events only', COMPUTE, () => {
     '.github/workflows/review.yml runs on pull_request; only ci.yml, push-gate.yml, docs-pages.yml and release.yml run on these events',
   ]);
   assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/review.yml': text(['on:', '  schedule:', "    - cron: '0 3 * * 1'", '  workflow_dispatch:']) }), []);
-  // release.yml은 version tag의 push에서만 실행한다(G5.113-3).
+  // release.yml runs only on a push of a version tag (G5.113-3).
   assert.deepEqual(WORKFLOW_TRIGGERS['.github/workflows/release.yml'], { push: { tags: ['v*', '**/v*'] } });
   assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/release.yml': text(['on:', '  push:', '    branches: [main]']) }), [
     '.github/workflows/release.yml has the triggers {"push":{"branches":["main"]}} instead of {"push":{"tags":["v*","**/v*"]}}',
@@ -1494,8 +1494,8 @@ caseTest('every workflow runs the Go of mise.toml', COMPUTE, () => {
   ]);
 });
 
-// Go module path case(G5.113-5)는 저장소의 모든 go.mod가 자기 directory의 module path를 선언하는지 보고, 최소 file에서 다른
-// path를 선언한 root와 하위 directory의 go.mod를 거부한다.
+// The Go module path case (G5.113-5) checks that every go.mod in the repository declares the module path of its own directory, and rejects, in a minimal file, a root or subdirectory go.mod that declares another
+// path.
 caseTest('every go.mod declares the module path of its directory', COMPUTE, () => {
   const paths = execFileSync('git', ['ls-files', '-z'], { cwd: repository }).toString().split('\0').filter(path => /(?:^|\/)go\.mod$/.test(path) && notVendored(path));
   assert.ok(paths.includes('packages/go/go.mod') && paths.includes('tests/go.mod') && paths.includes('examples/go.mod'), paths.join(' '));
@@ -1521,7 +1521,7 @@ caseTest('every setup-php step installs the Composer of mise.toml', COMPUTE, () 
   ]);
 });
 
-// T70: 실행 중인 Composer는 선언한 release와 major.minor가 같으면 patch와 상관없이 받아들인다.
+// T70: a running Composer is accepted regardless of patch if its major and minor match the declared release.
 caseTest('a running Composer with the declared major and minor passes whatever its patch', COMPUTE, () => {
   const php = 'jobs:\n  test:\n    steps:\n      - uses: shivammathur/setup-php@v2\n        with:\n          php-version-file: .php-version\n          tools: composer:2.10.3\n';
   for (const running of ['2.10.3', '2.10.0', '2.10.9'])
@@ -1553,7 +1553,7 @@ caseTest('a Makefile build output is published through a temporary file', COMPUT
 });
 
 caseTest('a failure message for a missing condition names its fix', COMPUTE, () => {
-  // fixture의 문구는 이어 붙여 만든다: 이 file도 검사 대상이다.
+  // The fixture's text is built by concatenation: this file is also a check target.
   const required = ['is', 'required'].join(' ');
   const files: Record<string, string> = {
     'tests/a.mjs': `if (!dsn) throw new Error('ORM_TEST_MYSQL_DSN ${required}; database tests never skip');\n// ORM_TEST_MYSQL_DSN ${required} in a comment\n`,
@@ -1572,8 +1572,8 @@ caseTest('no Makefile or script fixes a TCP port of the test servers', COMPUTE, 
   assert.deepEqual(fixedPortErrors(Object.fromEntries(tracked.map(path => [path, readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8')]))), []);
 });
 
-// shell reader case(T137-1-4-2)는 명령을 shell parser(unbash)로 읽는지 본다: 따옴표 밖의 escape된 따옴표, 주석, make의
-// 이은 줄과 참조, workflow의 expression, `&&`의 목록, 그리고 parser가 거부하는 명령이다.
+// The shell reader case (T137-1-4-2) checks that commands are read by the shell parser (unbash): an escaped quote outside quotes, comments, make's
+// joined lines and references, workflow expressions, `&&` lists, and commands that the parser rejects.
 caseTest('the checks read commands with the shell parser', COMPUTE, () => {
   // An escaped quote opens no string, so the command after the `;` is a command of its own.
   assert.deepEqual(segments("echo it\\'s; go vet ./a", 'sh'), ["echo it\\'s", 'go vet ./a']);
@@ -1603,8 +1603,8 @@ caseTest('the checks read commands with the shell parser', COMPUTE, () => {
   assert.throws(() => segments('echo $(RUN_LONG', 'make'), /the make reference at 5 never closes/);
 });
 
-// workflow reader case(T137-1-4-2)는 workflow를 YAML 문서로 읽는지 본다: flow 형식의 step, action 입력의 timeout-minutes,
-// 그리고 YAML이 아니거나 job이 없는 workflow다.
+// The workflow reader case (T137-1-4-2) checks that workflows are read as YAML documents: flow-form steps, timeout-minutes in action inputs,
+// and a workflow that is not YAML or has no jobs.
 caseTest('the checks read a workflow as a YAML document', COMPUTE, () => {
   // A step in flow style is a step.
   assert.deepEqual(ciMakeErrors({ 'ci.yml': 'jobs:\n  test:\n    steps:\n      - { name: tests, run: go test ./... }\n' }),

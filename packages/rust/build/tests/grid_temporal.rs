@@ -1,6 +1,6 @@
-//! date, time, datetime grid cell: MySQL과 PostgreSQL은 dbspec text 형식의 temporal cell로
-//! decode하고, 기술된 table의 read는 column precision p만큼, grid query는 여섯 자리 소수를 쓴다.
-//! SQLite는 기술된 table에서 같은 temporal cell을, grid query에서 저장된 text를 준다. 각 dialect가 만든 table을 끝에 지운다.
+//! Date, time, and datetime grid cells: MySQL and PostgreSQL decode them into temporal cells in dbspec text form,
+//! and for a described table's read, the column precision p applies; a grid query uses six fractional digits.
+//! SQLite gives the same temporal cell for a described table and the stored text for a grid query. The tables each dialect made are dropped at the end.
 use polyspec_orm_build::{
     catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableRef},
     tool_db::{self, GridCell, QueryLimits, P},
@@ -18,8 +18,8 @@ fn quote(value: &str, dialect: &str) -> String {
     format!("{mark}{value}{mark}")
 }
 
-/// dialect마다 date, time(0), time(3), datetime(0), datetime(6), p 없는 timestamp(PostgreSQL)를
-/// 가진 table 정의. MySQL의 마지막 column은 p 6을 명시한다.
+/// For each dialect, the table definition with date, time(0), time(3), datetime(0), datetime(6), and timestamp without p (PostgreSQL)
+/// The last column of MySQL specifies p 6.
 fn columns(dialect: &str) -> &'static str {
     match dialect {
         "mysql" => "k BIGINT NOT NULL PRIMARY KEY, d DATE NULL, t0 TIME NULL, t3 TIME(3) NULL, dt0 DATETIME NULL, dt6 DATETIME(6) NULL, dts DATETIME(6) NULL",
@@ -38,7 +38,7 @@ fn temporal(kinds: [fn(String) -> GridCell; 6], values: [&str; 6]) -> Vec<GridCe
     row
 }
 
-/// temporal column에 쓰는 값. kind는 date, time, datetime 중 하나다.
+/// Value written to a temporal column. kind is one of date, time, datetime.
 fn temporal_param(kind: &str, text: &str) -> P {
     match kind {
         "date" => P::Date(text.into()),
@@ -55,7 +55,7 @@ fn write_columns(dialect: &str) -> &'static str {
     }
 }
 
-/// catalog insert와 update가 temporal column에 쓰고, 다시 읽은 cell이 쓴 cell과 같다.
+/// The catalog insert and update write to temporal columns, and the cell read back is the same as the cell written.
 async fn writes(catalog: &mut CatalogConnection, namespace: &str, name: &str, failures: &mut Vec<String>, dialect: &str) {
     let table = TableRef { namespace: namespace.into(), name: name.into() };
     let metadata = match catalog.describe_table(&table).await {
@@ -90,7 +90,7 @@ async fn writes(catalog: &mut CatalogConnection, namespace: &str, name: &str, fa
         Ok(page) if page.result.rows == vec![want] => page,
         other => return failures.push(format!("{dialect}: page after temporal update: {other:?}")),
     };
-    // dbspec 형식이 아닌 temporal 값은 쓰기 전에 거부한다.
+    // A temporal value not in dbspec form is rejected before writing.
     let Ok(snapshot) = RowSnapshot::from_page(&page, 0) else { return failures.push(format!("{dialect}: snapshot after temporal update")) };
     let invalid = [("dt6".to_owned(), P::DateTime("2026-01-02T03:04:05".into()))];
     let result = catalog.update_row(&snapshot, &invalid, running(), publish, Arc::new(|| Ok(()))).await;
@@ -120,8 +120,8 @@ async fn check() {
         let namespace = catalog.current_namespace().await.expect("selected namespace");
         let table = TableRef { namespace, name: name.clone() };
 
-        // 기술된 table의 page는 column precision p만큼 소수 자릿수를 쓰고, SQLite page도 같은
-        // temporal cell이다. 선언이 없는 SQLite grid query는 저장된 text를 유지한다.
+        // A described table's page uses as many fractional digits as the column precision p, and SQLite's page also gives the same
+        // temporal cell. A SQLite grid query with no declaration keeps the stored text.
         let kinds = [GridCell::Date, GridCell::Time, GridCell::Time, GridCell::DateTime, GridCell::DateTime, GridCell::DateTime];
         let page_row = temporal(kinds, VALUES);
         let query_row = if dialect == "sqlite" {
@@ -134,7 +134,7 @@ async fn check() {
         let nulls: Vec<GridCell> = std::iter::once(GridCell::Integer(2)).chain(std::iter::repeat_n(GridCell::Null, 6)).collect();
         match catalog.table_page(&table, 10, 0).await {
             Ok(page) if page.result.rows == vec![page_row.clone(), nulls.clone()] => {
-                // temporal cell이 있는 row도 snapshot과 다른 column의 update가 된다.
+                // A row with a temporal cell can also be updated, both the snapshot and another column.
                 let publish: Arc<dyn Fn(MutationPhase) + Send + Sync> = Arc::new(|_| {});
                 let changed = match RowSnapshot::from_page(&page, 0) {
                     Ok(snapshot) => {
@@ -150,7 +150,7 @@ async fn check() {
             }
             other => failures.push(format!("{dialect}: table page: {other:?}")),
         }
-        // column 선언이 없는 grid query는 여섯 자리 소수를 쓴다.
+        // A grid query without a column declaration uses six fractional digits.
         let select = format!("SELECT k,d,t0,t3,dt0,dt6,dts FROM {table_sql} WHERE k=3");
         let mut want = query_row.clone();
         want[0] = GridCell::Integer(3);
@@ -159,7 +159,7 @@ async fn check() {
             other => failures.push(format!("{dialect}: grid query: {other:?}")),
         }
         if dialect != "sqlite" {
-            // 하루 밖의 시각과 time zone type은 지원하지 않는다.
+            // A time beyond a day and a time zone type are not supported.
             let outside = if dialect == "mysql" { "SELECT CAST('25:00:00' AS TIME)" } else { "SELECT CAST('24:00:00' AS time)" };
             if catalog.read_only_grid_query(outside, &[], QueryLimits::default()).await.is_ok() {
                 failures.push(format!("{dialect}: a time outside the day was accepted"));
@@ -194,7 +194,7 @@ async fn check() {
         seed.exec(&format!("CREATE TABLE {written_sql}({})", write_columns(dialect)), &[]).await.expect("owned temporal write table");
         writes(&mut catalog, &table.namespace, &written, &mut failures, dialect).await;
         seed.exec(&format!("DROP TABLE {written_sql}"), &[]).await.expect("remove owned temporal write table");
-        // temporal primary key는 row identity로 bind한다.
+        // A temporal primary key is bound as the row identity.
         let keyed = format!("orm_grid_temporal_key_{}", std::process::id());
         let keyed_sql = quote(&keyed, dialect);
         seed.exec(&format!("CREATE TABLE {keyed_sql}(d DATE NOT NULL PRIMARY KEY, n INTEGER NULL)"), &[]).await.expect("owned temporal key table");
@@ -216,7 +216,7 @@ async fn check() {
             Err(error) => failures.push(format!("{dialect}: temporal key page: {error}")),
         }
         if dialect == "sqlite" {
-            // dbspec 형식이 아닌 SQLite 값은 temporal cell이 되지 않고 실패한다.
+            // A SQLite value not in dbspec form does not become a temporal cell and fails.
             let loose = format!("orm_grid_temporal_loose_{}", std::process::id());
             seed.exec(&format!("CREATE TABLE {loose}(k INTEGER NOT NULL PRIMARY KEY, dt DATETIME NULL)"), &[]).await.expect("owned loose table");
             for value in ["'2026-01-02T03:04:05Z'", "20260102", "'2026-02-30 03:04:05'", "'2026-01-02 24:00:00'", "'2026-01-02 03:04:05.1234567'"] {

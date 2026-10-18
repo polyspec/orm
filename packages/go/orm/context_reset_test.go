@@ -11,11 +11,11 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// TestTransactionReportsFailedLocalReset는 transaction 끝의 MySQL local 값
-// reset이 실패하면 commit과 rollback이 그 오류를 돌려주는지 확인한다. MySQL
-// user variable은 COMMIT과 ROLLBACK 뒤에도 남으므로
-// (mysql.context.user_variable_session_scope) 실패를 숨기면 pool connection에
-// 값이 남는다.
+// TestTransactionReportsFailedLocalReset checks that when the MySQL local value at the end of a transaction
+// reset fails, commit and rollback return that error. MySQL
+// user variables persist after COMMIT and ROLLBACK, so
+// hiding the failure of (mysql.context.user_variable_session_scope) would leave the value
+// on the pool connection.
 func TestTransactionReportsFailedLocalReset(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	dsn := os.Getenv("ORM_TEST_MYSQL_DSN")

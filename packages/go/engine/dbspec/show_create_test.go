@@ -10,14 +10,14 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// showCreateVectors는 tests/dbspec/show-create.json이다: SHOW CREATE TABLE 문장과 그 안의 CHECK 이름,
-// 기대하는 CHECK_CLAUSE 형식의 본문(없으면 "not found")의 집합이다.
+// showCreateVectors is tests/dbspec/show-create.json: the SHOW CREATE TABLE statements, their CHECK names,
+// and the set of expected bodies in CHECK_CLAUSE form ("not found" if there is none).
 type showCreateVectors struct {
 	Catalog showCreateCatalog `json:"catalog"`
 	Cases   []showCreateCase  `json:"cases"`
 }
 
-// showCreateCatalog는 introspection이 읽는 canned catalog다(tests/dbspec/show-create.json의 catalog).
+// showCreateCatalog is the canned catalog that introspection reads (the catalog of tests/dbspec/show-create.json).
 type showCreateCatalog struct {
 	Table        string             `json:"table"`
 	Columns      []showCreateColumn `json:"columns"`
@@ -43,8 +43,8 @@ type showCreateCase struct {
 	Error       string   `json:"error"`
 }
 
-// TestMySQLShownCheckVectors는 mysqlShownCheck가 tests/dbspec/show-create.json의 모든 case를
-// 기대한 CHECK_CLAUSE 형식의 본문으로 읽는지 확인한다(T62-4-8).
+// TestMySQLShownCheckVectors checks that mysqlShownCheck reads every case of tests/dbspec/show-create.json
+// as the expected body in CHECK_CLAUSE form (T62-4-8).
 func TestMySQLShownCheckVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	raw, err := os.ReadFile(filepath.Join(repositoryRoot(t), "tests", "dbspec", "show-create.json"))

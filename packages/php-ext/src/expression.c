@@ -1,8 +1,8 @@
 /*
- * check predicate를 읽고 operand type을 확인한 뒤 canonical text를 쓴다(PHP client Expression). 먼저 predicate를
- * 읽는다: 형식 밖의 token이나 column이 필요한 자리의 literal은 diagnostic 하나로 멈추고 column은 확인하지 않는다.
- * 끝까지 읽은 predicate는 source 순서로 첫 column이나 type diagnostic을 보고한다. tree에는 괄호가 없고 emission은
- * `and` 안의 `or`가 필요로 하는 괄호만 쓴다.
+ * Reads a check predicate, checks the operand types, then writes canonical text (PHP client Expression). First, the predicate is
+ * read: a token outside the format, or a literal where a column is needed, stops with one diagnostic and the column is not checked.
+ * A predicate read to the end reports the first column or type diagnostic in source order. The tree has no parentheses, and emission
+ * writes only the parentheses that an `or` inside `and` needs.
  */
 #include "dbspec.h"
 #include <setjmp.h>
@@ -35,7 +35,7 @@ typedef struct {
     const tokens *t;
     zend_long line, end;
     const smap *columns, *action;
-    /* 읽은 token의 class, "줄:index" => class다(parse의 marks와 같다). */
+    /* Class of a read token, "line:index" => class (same as parse's marks). */
     smap *marks;
     size_t at;
     strs literals;
@@ -47,7 +47,7 @@ typedef struct {
 typedef struct {
     zend_long at;
     str message;
-    const char *rule; /* NULL이면 check */
+    const char *rule; /* NULL means check */
 } found;
 
 typedef VEC(found) foundv;
@@ -70,7 +70,7 @@ static bool ordering(str s)
     return str_eqc(s, "<") || str_eqc(s, "<=") || str_eqc(s, ">") || str_eqc(s, ">=");
 }
 
-/* 읽은 token에 class를 준다. */
+/* Gives a class to the token read. */
 static void mark_at(xparser *p, size_t at, const char *class)
 {
     const token *t = &p->t->v[at];
@@ -244,7 +244,7 @@ static enode *predicate(xparser *p)
         PUSH(p->predicates, n);
         return n;
     }
-    /* 비교, in, is가 따르지 않는 operand: and, or, )나 끝이 따르면 operand에서, 아니면 따르는 token에서 보고한다. */
+    /* An operand not followed by a comparison, in, or is: if followed by and, or, ), or the end, it is reported at the operand; otherwise at the following token. */
     if (next != NULL && !str_eqc(*next, "and") && !str_eqc(*next, "or") && !str_eqc(*next, ")")) {
         fail(p, fmt("`%S` is not allowed here", *next));
     }
@@ -352,7 +352,7 @@ static bool usable(xparser *p, const operand *o, foundv *f)
         return true;
     }
     if (o->col == NULL) {
-        /* Go의 ref: 형식이 틀린 참조는 그 이름 규칙을 보고하고 풀리지 않는다. */
+        /* Go's ref: a reference in the wrong format reports its name rule and is not resolved. */
         const char *rule;
         str message;
         if (name_rule(o->text, &rule, &message)) {
@@ -409,7 +409,7 @@ static void meet(xparser *p, const operand *left, const operand *right, foundv *
     const operand *col = left->kind == OP_COLUMN ? left : right;
     const operand *lit = left->kind == OP_COLUMN ? right : left;
     const ctype *type = col->col->type;
-    /* text column은 길이 한도 없는 varchar 형식을 받는다. */
+    /* A text column accepts the varchar format with no length limit. */
     zend_long unlimited = ZEND_LONG_MAX;
     const ctype *literal_type = str_eqc(type->name, "text") ? ctype_new(SL("varchar"), &unlimited, 1) : type;
     str canonical, problem;

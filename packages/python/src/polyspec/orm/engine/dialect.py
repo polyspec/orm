@@ -1,5 +1,5 @@
-# database별 SQL 조각 (docs/dialects.md). planner는 quote나 placeholder를 직접
-# 쓰지 않는다.
+# Per-database SQL fragments (docs/dialects.md). The planner does not write quotes or placeholders
+# directly.
 __all__ = [
     "MysqlDialect",
     "PostgresDialect",
@@ -13,7 +13,7 @@ __all__ = [
     "quote_with",
 ]
 
-# 각 column 함수가 받는 column type.
+# Column type that each column function takes.
 column_function_types = {
     "day_of_week": ("date", "datetime"),
     "year": ("date", "datetime"),
@@ -21,10 +21,10 @@ column_function_types = {
     "date": ("date", "datetime"),
 }
 
-# 각 column 함수의 인자 수 (비교 값은 세지 않는다).
+# Number of arguments of each column function (comparison values are not counted).
 column_function_arity = {"day_of_week": 0, "year": 0, "month": 0, "date": 0}
 
-# 상대 값 함수의 interval 단위.
+# Interval unit of the relative value functions.
 value_function_units = {
     "seconds_ago": "second",
     "minutes_ago": "minute",
@@ -85,7 +85,7 @@ def quote_with(q: str, ident: str) -> str:
 
 
 def literal(text: str) -> str:
-    """text를 SQL 문자열 literal로 quote한다."""
+    """Quotes text as an SQL string literal."""
     return "'" + text.replace("'", "''") + "'"
 
 
@@ -111,7 +111,7 @@ def _conflict_upsert(conflict, assigns: str) -> str:
 
 
 class _Dialect:
-    """database가 다루는 SQL 조각."""
+    """The SQL fragments that the database handles."""
 
     name = ""
     insert_returning_id = False
@@ -121,7 +121,7 @@ class _Dialect:
         return quote_with('"', ident)
 
     def clock_operand(self, col: str, precision: int) -> str:
-        """값 함수의 여섯 자리 clock과 비교하는 datetime(p) column이다. MySQL과 PostgreSQL은 값으로 비교한다."""
+        """The six-digit clock of the value functions and the datetime(p) column it is compared with. MySQL and PostgreSQL compare by value."""
         return col
 
     def placeholder(self, n: int) -> str:
@@ -146,33 +146,33 @@ class _Dialect:
         return ph
 
     def read_time(self, col: str, precision: int) -> str:
-        """time(p) column을 소수 정확히 p자리의 값 text `HH:MM:SS`로 읽는다. database가 그 text를 쓴다(MySQL
-        CAST AS CHAR, PostgreSQL to_char). SQLite는 그 text를 저장한다."""
+        """Reads a time(p) column as the text value `HH:MM:SS` with exactly p fractional digits. The database writes that text (MySQL
+        CAST AS CHAR, PostgreSQL to_char). SQLite stores that text."""
         return col
 
     def write_time(self, ph: str) -> str:
-        """time(p) 값을 text로 bind한다. PostgreSQL은 text를 time으로 cast한다."""
+        """Binds a time(p) value as text. PostgreSQL casts the text to time."""
         return ph
 
     def read_uuid(self, col: str) -> str:
-        """uuid column을 text로 읽는다. PostgreSQL은 uuid를 text로 cast한다."""
+        """Reads a uuid column as text. PostgreSQL casts the uuid to text."""
         return col
 
     def write_uuid(self, ph: str) -> str:
-        """uuid 값을 text로 bind한다. PostgreSQL은 text를 uuid로 cast한다."""
+        """Binds a uuid value as text. PostgreSQL casts the text to uuid."""
         return ph
 
     def now(self, precision: int) -> str:
         return "CURRENT_TIMESTAMP"
 
     def handles_stage(self, stage: str) -> bool:
-        """쓰기에서 codec stage를 SQL에서 적용하는지 여부다."""
+        """Whether the dialect applies the codec stage in SQL when writing."""
         return False
 
     def decodes_stage(self, stage: str) -> bool:
-        """읽기에서 codec stage를 SQL에서 푸는지 여부다(MySQL: ip). hex는 어느 dialect도 SQL에서 풀지
-        않는다: UNHEX는 홀수 길이를 받고 공백이 있는 셀에 NULL을 내므로, executor가 host_decode로
-        정확히 읽는다(docs/codec.md)."""
+        """Whether the dialect decodes the codec stage in SQL when reading (MySQL: ip). hex is not decoded in SQL by any dialect
+        because UNHEX takes odd lengths and returns NULL for cells with spaces, so the executor
+        reads exactly with host_decode (docs/codec.md)."""
         return False
 
     def row_lock(self, mode: str):
@@ -197,8 +197,8 @@ class _Dialect:
         """The clause that sorts NULL before every value ascending and after every value descending; PostgreSQL alone needs it."""
         return ""
 
-    # restart_identity(table, column)은 dialect마다 정의한다: table의 identity column을 가장 큰 key
-    # 다음 값에서 다시 시작하는 statement이며, 빈 table이면 다음 key는 1이다.
+    # restart_identity(table, column) is defined per dialect: the statement restarts from the value after the largest key of the table's identity column,
+    # and an empty table's next key is 1.
 
 
 def _ascii_lower(x: str) -> str:
@@ -212,7 +212,7 @@ def _ascii_lower(x: str) -> str:
 
 
 class MysqlDialect(_Dialect):
-    """AES와 hex는 host 쪽이라 row의 key version이 key를 고르고 모든 dialect가 같은 hex text를 쓰며, ip는 SQL 쪽이다."""
+    """AES and hex are on the host side, so the row's key version chooses the key and every dialect writes the same hex text; ip is on the SQL side."""
 
     name = "mysql"
 
@@ -290,17 +290,17 @@ class MysqlDialect(_Dialect):
         return "RAND()"
 
     def restart_identity(self, table, column):
-        # InnoDB는 AUTO_INCREMENT를 column의 가장 큰 값 이하로 정하면 가장 큰 값에 1을 더한 값으로
-        # 정하므로 1은 언제나 가장 큰 key 다음이다. DDL이므로 열린 transaction을 commit한다.
+        # InnoDB sets AUTO_INCREMENT, when it is set at or below the column's largest value, to the largest value plus 1,
+        # so 1 is always after the largest key. Since this is DDL, it commits an open transaction.
         return f"ALTER TABLE {quote_with('`', table)} AUTO_INCREMENT = 1"
 
 
 class PostgresDialect(_Dialect):
-    """모든 codec stage가 host 쪽이다: ip 값은 bytea column에 bytes로 저장한다."""
+    """All codec stages are on the host side: an ip value is stored as bytes in a bytea column."""
 
     name = "postgres"
     insert_returning_id = True
-    # PostgreSQL clock은 timestamp(p < 6)에 반올림되므로 ORM이 쓰는 clock은 executor가 준다
+    # The PostgreSQL clock is rounded to timestamp(p < 6), so the clock the ORM writes is given by the executor
     # (postgres.now.precision_rounds).
     host_now = True
 
@@ -342,8 +342,8 @@ class PostgresDialect(_Dialect):
         }.get(name)
 
     def value_function(self, name, arg, now):
-        # executor clock을 bind하므로 한 statement의 clock은 하나다: now()는 transaction 시작,
-        # statement_timestamp()는 statement 시작이다(postgres.now.transaction_start).
+        # The executor binds the clock, so a statement has one clock: now() is the transaction start,
+        # and statement_timestamp() is the statement start (postgres.now.transaction_start).
         if name == "now":
             return f"CAST({now()} AS timestamp(6))"
         if name == "today":
@@ -372,9 +372,9 @@ class PostgresDialect(_Dialect):
         return _guard_result(value)
 
     def restart_identity(self, table, column):
-        # identity sequence를 가장 큰 key에 1을 더한 값으로 정하고 is_called를 false로 두어 다음
-        # nextval이 그 값을 돌려주게 한다. pg_get_serial_sequence의 첫 인자는 identifier로 읽히므로
-        # quote한 table 이름이고, 둘째 인자는 column 이름 그대로다.
+        # Sets the identity sequence to the largest key plus 1, and sets is_called to false so that nextval
+        # returns that value. The first argument of pg_get_serial_sequence is read as an identifier, so
+        # it is the quoted table name; the second argument is the column name as is.
         quoted = quote_with('"', table)
         return (
             f"SELECT setval(pg_get_serial_sequence({literal(quoted)}, {literal(column)}), "
@@ -383,14 +383,14 @@ class PostgresDialect(_Dialect):
 
 
 class SqliteDialect(_Dialect):
-    """모든 codec stage가 host 쪽이다."""
+    """All codec stages are on the host side."""
 
     name = "sqlite"
     insert_returning_id = True
     host_now = True
 
     def clock_operand(self, col, precision):
-        """SQLite는 text로 비교하므로 p < 6인 column을 0으로 여섯 자리까지 늘린다."""
+        """SQLite compares as text, so a column with p < 6 is extended to six digits with zeros."""
         if precision >= 6:
             return col
         if precision == 0:
@@ -414,7 +414,7 @@ class SqliteDialect(_Dialect):
         return "CURRENT_TIMESTAMP"
 
     def row_lock(self, mode):
-        # executor가 orm 소유의 lock row를 잡는다; SQL 접미사는 비어 있다.
+        # The executor takes the ORM-owned lock row; the SQL suffix is empty.
         return "" if _lock_suffix(mode) is not None else None
 
     def column_function(self, name, col, arg):
@@ -426,7 +426,7 @@ class SqliteDialect(_Dialect):
         }.get(name)
 
     def value_function(self, name, arg, now):
-        # executor clock을 bind한다; `floor`가 달의 마지막 날을 유지한다.
+        # Binds the executor clock; `floor` keeps the last day of the month.
         if name == "now":
             return now()
         if name == "today":
@@ -436,8 +436,8 @@ class SqliteDialect(_Dialect):
             return None
         sign = "'+'" if name.endswith("_later") else "'-'"
 
-        # datetime은 초 단위만 돌려주므로 second clock slot의 여섯 소수 자리를 이어
-        # 붙인다; 한 statement 안에서 그것은 첫 clock과 같다.
+        # datetime returns only seconds, so the six fractional digits of the second clock slot are
+        # appended; within one statement it is the same as the first clock.
         def value():
             clock = now()
             modifier = f"{sign} || CAST({arg()} AS TEXT) || ' {unit}s'" + (
@@ -448,16 +448,16 @@ class SqliteDialect(_Dialect):
         return _guard_result(value)
 
     def contains_binary(self, col, value):
-        # SQLite LIKE는 ASCII 대소문자를 무시한다.
+        # SQLite LIKE ignores ASCII case.
         return f"instr({col}, {value('')}) > 0"
 
     def tuple_in(self, cols, rows, negate):
         return _tuple_in(cols, rows, negate, True)
 
     def restart_identity(self, table, column):
-        # AUTOINCREMENT table의 다음 key는 sqlite_sequence의 seq에 1을 더한 값이므로 seq를 가장 큰
-        # key로 정한다. table이 아직 행을 받은 적이 없어 sqlite_sequence에 행이 없으면 다음 key는
-        # 이미 가장 큰 key 다음이다.
+        # The next key of an AUTOINCREMENT table is seq in sqlite_sequence plus 1, so seq is set to the largest
+        # key. If the table has not yet received a row, so there is no row in sqlite_sequence, the next key is
+        # already the one after the largest key.
         return (
             f"UPDATE sqlite_sequence SET seq = (SELECT COALESCE(MAX({quote_with(chr(34), column)}), 0) "
             f"FROM {quote_with(chr(34), table)}) WHERE name = {literal(table)}"

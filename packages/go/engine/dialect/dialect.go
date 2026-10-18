@@ -36,15 +36,15 @@ type Dialect interface {
 	ReadUUID(col string) string
 	// WriteUUID binds a uuid value as its text: PostgreSQL casts the text to uuid.
 	WriteUUID(ph string) string
-	// Now은 precision 자리 소수 초로 column에 쓰는 database clock을 render한다:
-	// MySQL은 p > 0이면 CURRENT_TIMESTAMP(p), 나머지는 CURRENT_TIMESTAMP다.
+	// Now renders the database clock that is written to a column, with precision fractional digits:
+	// MySQL uses CURRENT_TIMESTAMP(p) if p > 0, and CURRENT_TIMESTAMP otherwise.
 	Now(precision int) string
-	// HandlesStyle은 쓰기에서 codec stage를 이 dialect의 SQL에서 적용하는지 알린다
-	// (MySQL: ip). hex를 포함한 나머지 stage는 executor가 적용한다.
+	// HandlesStyle reports whether the write applies the codec stage in this dialect's SQL
+	// (MySQL: ip). The other stages, including hex, are applied by the executor.
 	HandlesStyle(style string) bool
-	// DecodesStyle은 읽기에서 codec stage를 이 dialect의 SQL에서 푸는지 알린다(MySQL: ip).
-	// hex는 어느 dialect도 SQL에서 풀지 않는다: UNHEX는 홀수 길이를 받고 공백이 있는 셀에 NULL을
-	// 내므로, executor가 HostDecode로 정확히 읽는다(docs/codec.md).
+	// DecodesStyle reports whether the read undoes the codec stage in this dialect's SQL (MySQL: ip).
+	// No dialect undoes hex in SQL: UNHEX accepts odd lengths and returns NULL for cells with spaces,
+	// so the executor reads it correctly with HostDecode (docs/codec.md).
 	DecodesStyle(style string) bool
 	// HostNow reports that the clock the ORM writes comes from the executor (a `now`
 	// slot truncated to the column's fraction digits): SQLite has no sub-second clock
@@ -76,12 +76,12 @@ type Dialect interface {
 	// NullsOrder renders the clause that sorts NULL before every value ascending and after every value descending:
 	// MySQL and SQLite do so natively and render nothing, PostgreSQL sorts NULL last ascending and needs it.
 	NullsOrder(desc bool) string
-	// RestartIdentity은 table의 identity column을 가장 큰 key 다음 값에서 다시
-	// 시작하는 statement다. 빈 table이면 다음 key는 1이다.
+	// RestartIdentity is the statement that restarts a table's identity column from the value after the largest key.
+	// If the table is empty, the next key is 1.
 	RestartIdentity(table, column string) string
 }
 
-// Literal은 text를 SQL 문자열 literal로 quote한다.
+// Literal quotes text as a SQL string literal.
 func Literal(text string) string {
 	return "'" + strings.ReplaceAll(text, "'", "''") + "'"
 }

@@ -53,15 +53,15 @@ type StatementEvent struct {
 // returns fails the operation with SUBSCRIBER.
 type Subscriber func(StatementEvent) error
 
-// subscription은 등록한 subscriber 하나다. 해제할 때 pointer로 찾는다.
+// subscription is one registered subscriber. It is found by pointer when unsubscribed.
 type subscription struct{ fn Subscriber }
 
-// subscribers는 연결의 모든 handle이 공유하는 subscriber 목록이다. 목록은
-// 바꿀 때마다 새로 만들므로 publish는 lock 없이 읽은 목록을 쓴다.
+// subscribers is the subscriber list shared by all handles of the connection. The list
+// is rebuilt whenever it changes, so publish uses the list it reads without a lock.
 type subscribers struct {
 	mu   sync.Mutex
 	list atomic.Pointer[[]*subscription]
-	// txSeq는 연결의 바깥 transaction 번호다. begin마다 하나 늘린다.
+	// txSeq is the connection's outer transaction number. It goes up by one on every begin.
 	txSeq int64
 }
 
@@ -97,7 +97,7 @@ func (d *DB) Subscribe(fn Subscriber) (unsubscribe func(), err error) {
 	}, nil
 }
 
-// nextTransaction은 새 바깥 transaction의 번호다.
+// nextTransaction is the number of the new outer transaction.
 func (d *DB) nextTransaction() int64 {
 	d.m.subs.mu.Lock()
 	defer d.m.subs.mu.Unlock()
@@ -105,8 +105,8 @@ func (d *DB) nextTransaction() int64 {
 	return d.m.subs.txSeq
 }
 
-// statementDone은 끝난 statement의 event를 publish하고 operation이 받을 오류를
-// 돌려준다: subscriber가 실패하면 SUBSCRIBER, 아니면 statement의 오류다.
+// statementDone publishes the event of a finished statement and returns the error
+// that the operation receives: SUBSCRIBER if a subscriber fails, otherwise the statement's error.
 func (d *DB) statementDone(kind string, tables []string, tx int64, sqlText string, binds []any, start time.Time, err error) error {
 	p := d.m.subs.list.Load()
 	if p == nil || len(*p) == 0 {
@@ -128,8 +128,8 @@ func (d *DB) statementDone(kind string, tables []string, tx int64, sqlText strin
 	return err
 }
 
-// statementKind는 planner가 쓴 statement의 kind다: SQL의 첫 단어다. ALTER는
-// MySQL identity restart의 schema statement다.
+// statementKind is the kind of the statement the planner wrote: the first word of the SQL. ALTER
+// is the schema statement of a MySQL identity restart.
 func statementKind(sqlText string) string {
 	verb, _, _ := strings.Cut(strings.TrimSpace(sqlText), " ")
 	switch strings.ToUpper(verb) {

@@ -1,6 +1,6 @@
-// introspection의 중립 중간 model과 문서 만들기 (docs/dialects.md "Introspection").
-// dialect reader가 catalog을 채우고, document가 dbspec text를 쓰고 parse해서
-// parse가 거부한 줄의 객체를 미지원으로 보고하고 뺀다.
+// The neutral intermediate model of introspection and document building (docs/dialects.md "Introspection").
+// The dialect reader fills the catalog, and the document writes the dbspec text and parses it, so
+// an object on a line that the parse rejects is reported as unsupported and removed.
 import { present } from '../present.js';
 import { typeText } from './emit.js';
 import type { DbspecAction, DbspecDocument, DbspecType } from './model.js';
@@ -23,7 +23,7 @@ export interface IColumn {
   type: DbspecType;
   nullable: boolean;
   identity: boolean;
-  /** dbspec default text (`now` 또는 literal), 없으면 ''. */
+  /** The dbspec default text (`now` or a literal), or '' if there is none. */
   dflt: string;
 }
 
@@ -58,19 +58,19 @@ export interface ITable {
   settings: string[];
 }
 
-/** dbspec text 한 줄이 나타내는 객체다. kind는 DbspecUnsupported의 kind다. */
+/** The object that one dbspec text line represents. kind is the kind of DbspecUnsupported. */
 interface LineObject {
   kind: string;
   table: string;
   name: string;
 }
 
-/** Go의 strings.Compare와 같은 UTF-8 byte 순서다. */
+/** The UTF-8 byte order, the same as Go's strings.Compare. */
 export function byteOrder(a: string, b: string): number {
   return Buffer.compare(Buffer.from(a, 'utf8'), Buffer.from(b, 'utf8'));
 }
 
-/** 문자열을 dbspec 문자열 literal로 쓴다. */
+/** Writes a string as a dbspec string literal. */
 export function quote(s: string): string {
   return "'" + s.replaceAll("'", "''") + "'";
 }
@@ -91,7 +91,7 @@ export class Catalog {
     this.tables.push({ name, columns: [], primary, uniques: [], indexes: [], fks, checks: [], settings: [] });
   }
 
-  /** type이 정해지지 않은 column을 뺀다. */
+  /** Removes the columns whose type is not determined. */
   dropColumn(table: string, column: string): void {
     const t = present(this.table(table), 'this.table(table)');
     const i = t.columns.findIndex(c => c.name === column);
@@ -99,10 +99,10 @@ export class Catalog {
   }
 
   /**
-   * 중간 model을 dbspec text로 쓰고 parse한다. parse가 어떤 줄을 거부하면 그
-   * 줄의 객체를 미지원으로 보고하고 빼서 다시 만든다. 빠진 객체를 참조하던
-   * 객체는 다음 parse에서 거부되므로 같은 방식으로 빠진다. 객체에 속하지 않는
-   * 줄의 diagnostic은 reader의 결함이므로 error다.
+   * Writes the intermediate model as dbspec text and parses it. If the parse rejects a line, the
+   * object on that line is reported as unsupported and removed, and the document is rebuilt. An object that referred to the removed object
+   * is then rejected by the next parse, so it is removed the same way. A diagnostic on a line that belongs to no object
+   * is a reader defect, so it is an error.
    */
   document(name: string): { document: DbspecDocument; unsupported: DbspecUnsupported[] } {
     this.dropTablesWithoutKey();
@@ -114,7 +114,7 @@ export class Catalog {
         this.unsupported.sort((a, b) => byteOrder(key(a), key(b)));
         return { document: parsed.document, unsupported: this.unsupported };
       }
-      // 거부된 table의 객체는 table과 함께 빠지므로 따로 보고하지 않는다.
+      // Objects of a rejected table are removed together with the table, so they are not reported separately.
       const rejected = new Set<string>();
       for (const d of parsed.diagnostics) {
         const o = objects.get(d.line);
@@ -135,7 +135,7 @@ export class Catalog {
     }
   }
 
-  /** 객체 하나를 뺀다. table이나 primary key를 빼면 table 전체가 빠진다. */
+  /** Removes one object. Removing a table or a primary key removes the whole table. */
   private remove(o: LineObject): void {
     const t = this.table(o.table);
     if (t === undefined) throw new Error(`introspected table ${o.table} is not in the catalog`);
@@ -165,7 +165,7 @@ export class Catalog {
     throw new Error(`unknown introspected object kind ${o.kind}`);
   }
 
-  /** primary key가 없는 table을 뺀다. 그 table을 참조하던 foreign key는 parse가 거부해 빠진다. */
+  /** Removes a table without a primary key. A foreign key that referred to that table is rejected by parse, so it is removed too. */
   private dropTablesWithoutKey(): void {
     this.tables = this.tables.filter(t => {
       if (t.primary.length > 0) return true;
@@ -175,8 +175,8 @@ export class Catalog {
   }
 
   /**
-   * table을 이름 순으로 쓴 dbspec text와, 줄 번호마다 그 줄의 객체를 돌려준다.
-   * 닫는 괄호와 primary key 줄은 table에 속한다.
+   * Returns the dbspec text with the tables written in name order, and for each line number, the object on that line.
+   * The closing bracket and the primary key line belong to the table.
    */
   private text(name: string): { text: string; objects: Map<number, LineObject> } {
     const tables = [...this.tables].sort((a, b) => byteOrder(a.name, b.name));
@@ -225,7 +225,7 @@ function firstField(s: string): string {
   return present(s.trim().split(/\s+/)[0], 's.trim().split(/\\s+/)[0]');
 }
 
-/** catalog의 참조 action을 dbspec action으로 바꾼다. 없으면 null이다. */
+/** Converts a catalog reference action to a dbspec action. Returns null if there is none. */
 export function actionName(rule: string): DbspecAction | null {
   switch (rule.toUpperCase()) {
     case 'RESTRICT':
@@ -239,13 +239,13 @@ export function actionName(rule: string): DbspecAction | null {
 }
 
 
-/** table의 column 이름마다 type이다. */
+/** The type of each column name of a table. */
 export function tableTypes(t: ITable): Map<string, DbspecType> {
   return new Map(t.columns.map(c => [c.name, c.type]));
 }
 
 
-/** catalog query가 돌려준 row 하나다. 각 값은 기대한 JavaScript type이어야 한다. */
+/** One row returned by a catalog query. Each value must be the expected JavaScript type. */
 export class CatalogRow {
   constructor(
     private readonly query: string,
@@ -278,7 +278,7 @@ export class CatalogRow {
     throw this.invalid(i, 'an integer');
   }
 
-  /** PostgreSQL boolean, 또는 MySQL과 SQLite의 0과 1이다. */
+  /** A PostgreSQL boolean, or the 0 and 1 of MySQL and SQLite. */
   flag(i: number): boolean {
     const v = this.values[i];
     if (typeof v === 'boolean') return v;
@@ -287,5 +287,5 @@ export class CatalogRow {
   }
 }
 
-/** query 하나를 보내 모든 row를 값 배열로 돌려준다. query 실패는 reject된다. */
+/** Sends one query and returns all rows as arrays of values. A query failure is rejected. */
 export type CatalogQuery = (sql: string) => Promise<CatalogRow[]>;

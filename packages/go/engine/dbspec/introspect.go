@@ -8,22 +8,22 @@ import (
 	"strings"
 )
 
-// Querier는 introspection이 catalog query를 보내는 connection이다.
-// *sql.DB, *sql.Conn, *sql.Tx가 이를 만족한다.
+// Querier is the connection on which introspection sends catalog queries.
+// *sql.DB, *sql.Conn, and *sql.Tx satisfy it.
 type Querier interface {
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 }
 
-// QueryObserver는 Querier가 구현하면 catalog query마다 그 행을 모두 읽었거나 읽다
-// 실패했을 때 불린다. err는 query의 오류다. QueryEnded가 돌려준 오류는 introspection을
-// 그 오류로 끝낸다.
+// QueryObserver, if the Querier implements it, is called for each catalog query when all its rows have been read
+// or when reading fails. err is the query's error. The error that QueryEnded returns ends the introspection
+// with that error.
 type QueryObserver interface {
 	QueryEnded(query string, err error) error
 }
 
-// Unsupported는 introspection이 dbspec으로 읽지 못한 객체다(docs/dialects.md
-// "Introspection"). Kind는 column, index, unique, foreign_key, check, trigger,
-// view, routine, sequence, event, partition, table 중 하나다.
+// Unsupported is an object that introspection could not read as dbspec (docs/dialects.md
+// "Introspection"). Kind is one of column, index, unique, foreign_key, check, trigger,
+// view, routine, sequence, event, partition, or table.
 type Unsupported struct {
 	Kind   string
 	Table  string
@@ -31,9 +31,9 @@ type Unsupported struct {
 	Reason string
 }
 
-// Introspect는 connection의 현재 database, schema 또는 main database를 읽어
-// name이라는 dbspec 문서와 읽지 못한 객체 목록을 돌려준다. query 수는 table 수와
-// 무관하다. query 실패와 문서를 만들 수 없는 catalog는 error다.
+// Introspect reads the connection's current database, schema, or main database
+// and returns a dbspec document named name and the list of objects it could not read. The number of queries is
+// unrelated to the number of tables. A query failure, or a catalog from which no document can be made, is an error.
 func Introspect(ctx context.Context, q Querier, dialect Dialect, name string) (*Document, []Unsupported, error) {
 	var cat *catalog
 	var err error
@@ -53,8 +53,8 @@ func Introspect(ctx context.Context, q Querier, dialect Dialect, name string) (*
 	return cat.document(name)
 }
 
-// catalog은 dialect reader가 채우는 중립 중간 model이다. type은 Type이고,
-// default literal과 predicate는 이미 dbspec 표기다.
+// catalog is the neutral intermediate model that the dialect reader fills. type is Type, and
+// default literals and predicates are already in dbspec notation.
 type catalog struct {
 	tables      []*itable
 	unsupported []Unsupported
@@ -112,10 +112,10 @@ func (c *catalog) table(name string) *itable {
 	return nil
 }
 
-// document는 중간 model을 dbspec text로 쓰고 parse한다. parse가 어떤 줄을
-// 거부하면 그 줄의 객체를 미지원으로 보고하고 빼서 다시 만든다. 빠진 객체를
-// 참조하던 객체는 다음 parse에서 거부되므로 같은 방식으로 빠진다. 객체에 속하지
-// 않는 줄의 diagnostic은 reader의 결함이므로 error다.
+// document writes the intermediate model as dbspec text and parses it. When parse rejects a line,
+// it reports that line's object as unsupported, removes it, and builds again. Objects that referred to a removed object
+// are rejected at the next parse, so they are removed in the same way. A diagnostic on a line that does not belong
+// to an object is a defect of the reader, so it is an error.
 func (c *catalog) document(name string) (*Document, []Unsupported, error) {
 	c.dropTablesWithoutKey()
 	for {
@@ -127,7 +127,7 @@ func (c *catalog) document(name string) (*Document, []Unsupported, error) {
 			})
 			return document, c.unsupported, nil
 		}
-		// 거부된 table의 객체는 table과 함께 빠지므로 따로 보고하지 않는다.
+		// Objects of a table that was rejected are removed along with the table, so they are not reported separately.
 		rejected := map[string]bool{}
 		for _, d := range diagnostics {
 			o, ok := objects[d.Line]
@@ -151,10 +151,10 @@ func (c *catalog) document(name string) (*Document, []Unsupported, error) {
 	}
 }
 
-// lineObject는 dbspec text 한 줄이 나타내는 객체다. kind는 Unsupported의 kind다.
+// lineObject is the object that one line of dbspec text stands for. kind is the kind of Unsupported.
 type lineObject struct{ kind, table, name string }
 
-// remove는 객체 하나를 뺀다. table이나 primary key를 빼면 table 전체가 빠진다.
+// remove removes one object. Removing a table or a primary key removes the whole table.
 func (c *catalog) remove(o lineObject) {
 	t := c.table(o.table)
 	switch o.kind {
@@ -175,8 +175,8 @@ func (c *catalog) remove(o lineObject) {
 	}
 }
 
-// dropTablesWithoutKey는 primary key가 없는 table을 뺀다. 그 table을 참조하던
-// foreign key는 parse가 거부해 빠진다.
+// dropTablesWithoutKey removes tables that have no primary key. Foreign keys
+// that refer to that table are rejected by parse and removed.
 func (c *catalog) dropTablesWithoutKey() {
 	c.tables = slices.DeleteFunc(c.tables, func(t *itable) bool {
 		if len(t.primary) == 0 {
@@ -187,8 +187,8 @@ func (c *catalog) dropTablesWithoutKey() {
 	})
 }
 
-// text는 table을 이름 순으로 쓴 dbspec text와, 줄 번호마다 그 줄의 객체를
-// 돌려준다. 닫는 괄호와 primary key 줄은 table에 속한다.
+// text returns the dbspec text with tables in name order, and, for each line number, the object on that line.
+// The closing parenthesis and the primary key line belong to the table.
 func (c *catalog) text(name string) (string, map[int]lineObject) {
 	tables := slices.Clone(c.tables)
 	slices.SortFunc(tables, func(a, b *itable) int { return strings.Compare(a.name, b.name) })
@@ -248,7 +248,7 @@ func (c *catalog) text(name string) (string, map[int]lineObject) {
 	return strings.Join(lines, "\n") + "\n", objects
 }
 
-// actionName은 catalog의 참조 action을 dbspec action으로 바꾼다.
+// actionName converts the catalog's referential action to a dbspec action.
 func actionName(rule string) (string, bool) {
 	switch strings.ToUpper(rule) {
 	case "RESTRICT":

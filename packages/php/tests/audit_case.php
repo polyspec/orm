@@ -1,8 +1,8 @@
 <?php
 declare(strict_types=1);
-// audit 기록을 받은 transaction의 scenario(packages/go/orm/audit_transaction_test.go의 auditCase와
-// 같다). RuntimeDbTest.php의 owner case와 CoverageAuditTriggersTest.php의 audit_history case가 함께
-// 쓴다. 호출자는 contracts/fixtures/audit.dbs의 model을 $namespace에 생성하고 연결에 설치한다.
+// Scenario of a transaction that receives an audit record (same as auditCase in packages/go/orm/audit_transaction_test.go
+// ). The owner case of RuntimeDbTest.php and the audit_history case of CoverageAuditTriggersTest.php both use it
+// . The caller generates the model of contracts/fixtures/audit.dbs in $namespace and installs it on the connection.
 
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
@@ -10,7 +10,7 @@ use Polyspec\Orm\Db;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
 
-/** $fn이 던진 OrmException의 code다. 성공하면 'no error'다. */
+/** The OrmException code thrown by $fn. 'no error' on success. */
 function auditErrorCode(Closure $fn): string
 {
     try {
@@ -26,39 +26,39 @@ function auditWant(bool $ok, string $message): void
     \PHPUnit\Framework\Assert::assertTrue($ok, $message);
 }
 
-/** query의 모든 row를 문자열 목록으로 읽는다. NULL은 'NULL'이다. @return list<list<string>> */
+/** Reads all rows of the query as lists of strings. NULL is 'NULL'. @return list<list<string>> */
 function auditTextRows(Db $db, string $sql): array
 {
     $rows = $db->pdo()->query($sql)->fetchAll(PDO::FETCH_NUM);
     return array_map(static fn(array $r): array => array_map(static fn(mixed $v): string => $v === null ? 'NULL' : (string) $v, $r), $rows);
 }
 
-/** item_history의 [change, previous, seq, title, audit, deleted]를 history_id 순서로 읽는다. @return list<list<string>> */
+/** Reads item_history's [change, previous, seq, title, audit, deleted] in history_id order. @return list<list<string>> */
 function auditItemHistory(Db $db): array
 {
     $change = $db->driver() === 'mysql' ? '`change`' : '"change"';
     return auditTextRows($db, "SELECT $change, previous_audit_seq, seq, title, audit_seq, CASE WHEN deleted_at IS NULL THEN 'live' ELSE 'deleted' END FROM item_history ORDER BY history_id");
 }
 
-/** actor를 audit 값으로 주는 audit source를 가진 연결 설정이다. */
+/** The connection settings of an audit source that gives the actor as the audit value. */
 function auditConfig(string $actor): Config
 {
     return new Config(auditSource: static fn(): array => ['actor' => $actor]);
 }
 
 /**
- * audit 기록을 받은 transaction의 write를 확인한다. $db는 auditConfig('default')로 연 연결이고 $dsn은
- * 그 database다.
- *   - 연결 설정의 audit source가 준 값과 transaction의 audit 값을 합친 기록 하나를 transaction이
- *     callback 전에 audit setting의 references table에 삽입하고(같은 column이면 transaction 값이
- *     이긴다), audit table의 insert, update, soft delete는 그 primary key를 audit column에 쓴다.
- *     trigger가 각 version을 history table에 남기고 previous는 이전 version의 audit key다.
- *   - audit source가 없는 연결의 audit transaction, audit 기록 table의 column이 아닌 값(transaction이나
- *     source의 값)은 CONFIG이고, source가 던진 예외는 transaction의 예외다.
- *   - 중첩 transaction은 바깥 audit을 쓰며 자기 audit을 받지 않는다(CONFIG).
- *   - audit 없는 audit table write는 CONFIG다. 없는 audit 기록을 가리키는 raw write는 foreign key가
- *     거부한다.
- *   - callback이 실패하면 audit 기록도 rollback된다.
+ * Checks the writes of the transaction that receives audit records. $db is the connection opened with auditConfig('default'), and $dsn is
+ * that database.
+ *   - The transaction inserts one record that combines the value the connection setting's audit source gives with the transaction's audit value
+ *     into the audit setting's references table before the callback (for the same column, the transaction value
+ *     wins), and the insert, update, and soft delete of the audit table write its primary key to the audit column.
+ *     The trigger keeps each version in the history table, and previous is the audit key of the previous version.
+ *   - An audit transaction on a connection with no audit source, and a value that is not a column of the audit record table (a value of the transaction or
+ *     of the source) is CONFIG, and an exception the source throws is the transaction's exception.
+ *   - A nested transaction uses the outer audit and does not take its own (CONFIG).
+ *   - An audit table write without audit is CONFIG. A raw write that points at a missing audit record is refused by the foreign key
+ *     refuses it.
+ *   - If the callback fails, the audit record is rolled back too.
  */
 function auditCase(Db $db, string $dsn, string $namespace): void
 {
@@ -96,13 +96,13 @@ function auditCase(Db $db, string $dsn, string $namespace): void
         $seq = (new $itemClass)->setTitle('first')->create()->getSeq();
         $nested = auditErrorCode(fn() => $adb->transaction(fn() => null, audit: ['actor' => 'nested']));
         auditWant($nested === Code::CONFIG, "a nested transaction with an audit = $nested, want CONFIG");
-        // 중첩 transaction은 바깥 audit을 쓴다.
+        // A nested transaction writes the outer audit.
         $db->transaction(fn() => (new $itemClass)->setSeq($seq)->setTitle('second')->update(), retry: 0);
         return $seq;
     }, audit: ['actor' => 'create'], retry: 0);
     $third = auditErrorCode(fn() => (new $itemClass)($db)->setSeq($seq)->setTitle('third')->update());
     auditWant($third === Code::CONFIG, "update without an audit = $third, want CONFIG");
-    // 값이 없는 audit transaction은 기본값만으로 기록한다.
+    // A transaction with no value records only the defaults.
     $adb->transaction(fn() => (new $itemClass)->setSeq($seq)->delete(), audit: [], retry: 0);
     $failed = new RuntimeException('callback failed');
     try {

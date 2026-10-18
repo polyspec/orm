@@ -109,10 +109,10 @@ fn index_method(name: &str) -> String {
     out
 }
 
-/// null을 뺀 column의 Rust value type (docs/dbspec.md, "Runtime model"). codec이
-/// 있는 column은 첫 stage가 `ordered_json`이면 ordered-json styled value, 다른
-/// styled value stage가 있으면 common value model의 styled value, `aes`, `hex`,
-/// `ip`만 있으면 string이다.
+/// The Rust value type of a column without null (docs/dbspec.md, "Runtime model"). If the column has a codec
+/// first stage is `ordered_json`, it is an ordered-JSON styled value; otherwise
+/// if there is a styled-value stage, it is a styled value of the common value model; with `aes`, `hex`,
+/// with only `ip`, it is a string.
 fn base(c: &Field) -> &'static str {
     if c.codec.first().is_some_and(|s| s == "ordered_json") {
         return ORDERED;
@@ -295,7 +295,7 @@ impl<'m> Model<'m> {
     }
 }
 
-/// index hint를 받는 index와 unique key의 이름, 이름 순서.
+/// The name of an index receiving an index hint and of a unique key, in name order.
 fn index_names(e: &Entity) -> Vec<&str> {
     let mut names: Vec<&str> = e.indexes.iter().chain(&e.uniques).map(|k| k.name.as_str()).collect();
     names.sort_unstable();
@@ -730,7 +730,7 @@ fn key_prefix_calls(g: &Gen<'_>) -> Vec<Call> {
     calls
 }
 
-/// 한 document set과 scan의 generated source. `manifest_file`은 manifest text를 담은 file이다.
+/// Generated source of a document set and scan. `manifest_file` is the file holding the manifest text.
 pub fn generate(set: &DocumentSet, scan: &Scan, manifest_file: &str) -> Result<String, String> {
     let m = &set.model;
     let mut errors = Vec::new();
@@ -830,7 +830,7 @@ pub fn generate(set: &DocumentSet, scan: &Scan, manifest_file: &str) -> Result<S
         g.errors.dedup();
         return Err(g.errors.join("\n"));
     }
-    // 외부 문서를 쓰는 set은 그 text를 manifest text 옆의 file에서 싣는다.
+    // A set that uses external documents loads their text from the file beside the manifest text.
     let external_file = (!set.external_text.is_empty()).then(|| std::path::Path::new(manifest_file).with_file_name(crate::EXTERNAL_FILE).display().to_string());
     Ok(emit(&g, &set.manifest_hash, manifest_file, external_file.as_deref()))
 }

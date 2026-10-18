@@ -1,15 +1,15 @@
-// case database 검사(T25): 공유 test database에 이 검사가 만든 table 하나를 남겨 둔 채로 빈
-// database를 확인하거나 schema를 설치하는 client case를 실행한다. 그 case들이 모두 통과하고, 공유
-// database의 table과 row(tests/conformance/check/main.mts state의 digest), PostgreSQL schema 목록이
-// 그대로이며, case가 만든 `orm_case_` database와 `orm-case-` SQLite file이 하나도 남지 않아야 한다.
+// Case database check (T25): leave the one table this check created in the shared test database, then run client cases that
+// check an empty database or install a schema. All those cases must pass, and the shared
+// database's tables and rows (the digest of tests/conformance/check/main.mts state), the PostgreSQL schema list,
+// stay the same, and no `orm_case_` database or `orm-case-` SQLite file made by the cases may remain.
 //
-// 남은 case database와 file은 실행 전에 없던 것 가운데 이름의 process가 끝난 것만 남은 것으로
-// 본다. 실행 중인 process의 것은 다른 실행의 case다(T27). 공유 test database는 PgBouncer의
-// orm_test_single이 가리키는 database이므로 이 검사가 따로 만들 수 없고, 그 digest와 PostgreSQL
-// schema 목록은 같은 server에서 다른 session이 test를 실행하지 않을 때 비교할 수 있다.
+// A leftover case database or file counts as left over only if it was not there before the run and its named process has ended.
+// Those of a running process belong to another run's case (T27). The shared test database is the one PgBouncer's
+// orm_test_single points to, so this check cannot create its own; its digest and PostgreSQL
+// schema list can be compared when no other session on the same server runs tests.
 //
-// Usage: node scripts/case-database-check.mts (TEST_ENV를 읽은 shell에서, TypeScript build와
-// Rust integration debug build 뒤)
+// Usage: node scripts/case-database-check.mts (in a shell that has read TEST_ENV,
+// after the TypeScript build and the Rust integration debug build)
 import { spawn } from 'node:child_process';
 import { readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -34,8 +34,8 @@ const secrets = [mysqlDsn, postgresDsn];
 const redact = (text: string) => secrets.reduce((out, dsn) => out.replaceAll(dsn, '[redacted]'), String(text));
 const leftover = `orm_leftover_${process.pid}`;
 
-// 공유 database를 읽는 case를 고친 뒤에도 그 database를 빈 것으로 여기는 case가 있으면 이 명령들이
-// 실패한다. 각 명령은 자기 case를 보고하므로(Go와 TypeScript는 RUN/STEP/PASS/FAIL, PHP는 PHPUnit) 묶음(group)으로 실행한다.
+// If a case that reads the shared database is changed and a case still treats the database as empty, these commands
+// fail. Each command reports its own cases (Go and TypeScript print RUN/STEP/PASS/FAIL, PHP prints PHPUnit), so run them as a group.
 const commands: [string, string, string[]][] = [
   ['go/schema-empty', 'go', ['test', '-v', '-timeout', '0', '-count=1', './packages/go/orm', '-run', '^TestSchemaEmpty$']],
   ['go/model', 'go', ['test', '-v', '-timeout', '0', '-count=1', './packages/go/model']],
@@ -81,7 +81,7 @@ async function mysql(statements: string[], dsn: string = mysqlDsn): Promise<unkn
   } finally { await connection.end(); }
 }
 
-// program을 실행하고 출력 줄을 step으로 보고한다. 종료 상태가 0이 아니면 실패다.
+// Runs the program and reports its output lines as steps. A nonzero exit status is a failure.
 function execute(program: string, args: string[], step: (text: string) => void): Promise<void> {
   return new Promise<void>((done, fail) => {
     const child = spawn(program, args, { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -97,7 +97,7 @@ function execute(program: string, args: string[], step: (text: string) => void):
   });
 }
 
-// 공유 database의 table과 row digest(tests/conformance/check/main.mts state)다.
+// The table and row digest of the shared database (tests/conformance/check/main.mts state).
 async function digest(database: string, dsn: string): Promise<string> {
   let output = '';
   await execute(process.execPath, [join(root, 'tests/conformance/check/main.mts'), 'state', '--driver', database, '--dsn', dsn], (text: string) => { output += `${text}\n`; });
@@ -106,8 +106,8 @@ async function digest(database: string, dsn: string): Promise<string> {
   return match[1];
 }
 
-// 공유 database 밖의 흔적이다. case database 이름과 SQLite file 이름은 `orm_case_`,
-// `orm-case-`로 시작하고, PostgreSQL schema는 empty()가 내용으로 세므로 함께 본다.
+// Traces outside the shared database. Case database names and SQLite file names begin with `orm_case_`,
+// `orm-case-`; PostgreSQL schemas are counted by content in empty(), so they are checked too.
 // names reads the name column of the rows of a statement.
 function names(rows: unknown[] | undefined): string[] {
   return (rows ?? []).map(row => {
@@ -134,15 +134,15 @@ async function traces(): Promise<Traces> {
   };
 }
 
-// alive는 pid의 process가 실행 중인지다. 다른 사용자의 process도 실행 중으로 센다.
+// alive means the process with pid is running. Processes of other users are also counted as running.
 function alive(pid: number) {
   try { process.kill(pid, 0); return true; }
   catch (error) { return errorCode(error) === 'EPERM'; }
 }
 
-// leftovers는 before에 없던 case database와 file 가운데 이름의 process가 끝난 것이다. 이름은
-// `orm_case_<pid>_<n>`과 `orm-case-<pid>-<n>.sqlite`다. 이 검사의 client case는 모두 끝났으므로
-// 그 process가 남긴 것은 여기에 남는다.
+// leftovers are case databases and files absent before the run whose named process has ended. Their names are
+// `orm_case_<pid>_<n>` and `orm-case-<pid>-<n>.sqlite`. All of this check's client cases have ended, so
+// what that process left stays here.
 function leftovers(before: string[], after: string[]): string[] {
   return after.filter(name => !before.includes(name)).filter(name => {
     const match = /^orm[_-]case[_-]([0-9]+)[_-]/.exec(name);

@@ -1,5 +1,5 @@
-// authenticated_encryption coverage: contracts/fixtures/authenticated_encryption.json 의 AES envelope
-// 복호화, 암호화 왕복, 변조와 다른 key 의 거부, blind index 를 client 의 codec 함수로 확인한다.
+// authenticated_encryption coverage: the AES envelope of contracts/fixtures/authenticated_encryption.json
+// is checked for decryption, an encrypt-decrypt round trip, rejection of tampering and of a different key, and the blind index, using the client's codec functions.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';

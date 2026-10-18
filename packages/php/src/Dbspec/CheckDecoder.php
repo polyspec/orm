@@ -4,23 +4,23 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Dbspec;
 
 /**
- * dialect catalog 의 check 식을 dbspec predicate text 로 읽는다
- * (docs/dialects.md "Introspection", "Checks"). literal 은 그것이 만나는
- * column 의 값으로 읽는다. 읽을 수 없는 식은 CheckDecodeFailure 다.
+ * Reads a dialect catalog check expression as dbspec predicate text
+ * (docs/dialects.md "Introspection", "Checks"). A literal is read as the value of the column
+ * it meets. An expression that cannot be read is a CheckDecodeFailure.
  *
- * operand node 는 ['node' => 'operand', 'kind' => column|number|string|bool,
- * 'text' => ...], predicate node 는 ['node' => 'predicate', 'op' => and|or|
- * compare|in|null, ...] 이다.
+ * operand node is ['node' => 'operand', 'kind' => column|number|string|bool,
+ * 'text' => ...], and predicate node is ['node' => 'predicate', 'op' => and|or|
+ * compare|in|null, ...].
  *
  * @internal
  */
 final class CheckDecoder
 {
-    /** @var list<array{0: string, 1: string}> kind 와 text: ident, word, number, string, op, punct */
+    /** @var list<array{0: string, 1: string}> kind and text: ident, word, number, string, op, punct */
     private array $tokens = [];
     private int $i = 0;
 
-    /** @param array<string, ColumnType> $columns table 의 column type */
+    /** @param array<string, ColumnType> $columns The column types of the table */
     private function __construct(private readonly string $dialect, private readonly array $columns)
     {
     }
@@ -52,7 +52,7 @@ final class CheckDecoder
         return $d->write($node);
     }
 
-    /** CHECK_CLAUSE 가 문자열 literal 에 더한 두 번째 escape 를 푼다: `\\` 는 `\`, `\'` 는 `'` 가 된다. */
+    /** Undoes the second escape that CHECK_CLAUSE adds to a string literal: `\\` becomes `\`, and `\'` becomes `'`. */
     private static function unescapeMysqlClause(string $text): string
     {
         $out = '';
@@ -103,7 +103,7 @@ final class CheckDecoder
                     $j++;
                 }
                 $word = substr($text, $i, $j - $i);
-                // MySQL 문자열 앞의 character set introducer 는 값이 아니다.
+                // The character set introducer in front of a MySQL string is not a value.
                 if ($dialect === 'mysql' && str_starts_with($word, '_') && $j < $n && $text[$j] === "'") {
                     $i = $j;
                     continue;
@@ -127,8 +127,8 @@ final class CheckDecoder
     }
 
     /**
-     * ASCII 영문자 한 바이트인지 본다. Go 의 checkTokens 와 같은 범위다. ctype_alpha 와
-     * ctype_alnum 은 LC_CTYPE 과 libc 에 따라 0x80 이상의 바이트도 글자로 보므로 쓰지 않는다.
+     * Checks whether it is one ASCII letter byte, the same range as checkTokens in Go. ctype_alpha and
+     * ctype_alnum are not used, since they count bytes 0x80 and above as letters depending on LC_CTYPE and libc.
      */
     private static function isAsciiLetter(string $ch): bool
     {
@@ -137,8 +137,8 @@ final class CheckDecoder
     }
 
     /**
-     * text 앞의 문자열 literal 을 읽어 값과 길이를 돌려준다. PostgreSQL 과
-     * SQLite 는 '' 만 escape 이고, MySQL 은 backslash escape 도 쓴다.
+     * Reads the string literal at the start of the text, and returns its value and length. PostgreSQL and
+     * SQLite escape only '', while MySQL also uses backslash escapes.
      *
      * @return array{0: string, 1: int}
      */
@@ -226,7 +226,7 @@ final class CheckDecoder
         return $left;
     }
 
-    /** 괄호로 묶인 식이나 operand 로 시작하는 predicate 하나를 읽는다. */
+    /** Reads one predicate that starts with a parenthesized expression or an operand. */
     private function predicate(): array
     {
         $left = $this->term();
@@ -269,7 +269,7 @@ final class CheckDecoder
         return $left;
     }
 
-    /** 괄호 식이나 operand 와 그 뒤의 cast 를 읽는다. 괄호 안이 operand 하나면 operand 다. */
+    /** Reads a parenthesized expression or an operand and the cast after it. If the inside of the parentheses is one operand, it is that operand. */
     private function term(): array
     {
         if ($this->punct('(')) {
@@ -291,7 +291,7 @@ final class CheckDecoder
         return $node;
     }
 
-    /** `::` 뒤의 type 이름을 읽는다: 단어들과 (n), []. */
+    /** Reads the type name after `::`: words and (n), []. */
     private function castType(): string
     {
         $words = [];
@@ -343,7 +343,7 @@ final class CheckDecoder
         throw new CheckDecodeFailure("unexpected \"$text\"");
     }
 
-    /** in 뒤의 (a, b, ...) 를 읽는다. */
+    /** Reads the (a, b, ...) after in. */
     private function literalList(): array
     {
         $this->expect('(');
@@ -361,7 +361,7 @@ final class CheckDecoder
         }
     }
 
-    /** PostgreSQL 의 ANY 나 ALL 뒤의 (ARRAY[...]) 또는 ((ARRAY[...])::type[]) 를 읽는다. */
+    /** Reads the (ARRAY[...]) or ((ARRAY[...])::type[]) after PostgreSQL's ANY or ALL. */
     private function arrayLiterals(): array
     {
         $this->expect('(');
@@ -393,7 +393,7 @@ final class CheckDecoder
         return $out;
     }
 
-    /** predicate 를 dbspec text 로 쓴다. 괄호는 필요한 곳보다 많아도 되며 canonical form 은 parse 가 정한다. */
+    /** Writes a predicate as dbspec text. Parentheses may be more than needed; parse decides the canonical form. */
     private function write(array $p): string
     {
         switch ($p['op']) {
@@ -431,7 +431,7 @@ final class CheckDecoder
         return null;
     }
 
-    /** operand 를 dbspec 표기로 쓴다. bool column 의 1 과 0 은 true 와 false, SQLite decimal 의 정수는 scale 을 나눈 값이다. */
+    /** Writes an operand in dbspec notation. A bool column's 1 and 0 become true and false; a SQLite decimal integer is the value divided by the scale. */
     private function operandText(array $o, ?ColumnType $type): string
     {
         switch ($o['kind']) {

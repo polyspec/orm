@@ -11,14 +11,14 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// aesInput은 authenticated_encryption fixture case의 input이다.
+// aesInput is the input of an authenticated_encryption fixture case.
 type aesInput struct {
 	Key         string `json:"key"`
 	EnvelopeHex string `json:"envelope_hex"`
 	Plain       string `json:"plain"`
 }
 
-// aesExpected는 authenticated_encryption fixture case의 expected다.
+// aesExpected is the expected value of an authenticated_encryption fixture case.
 type aesExpected struct {
 	Plain         string `json:"plain"`
 	Error         string `json:"error"`
@@ -27,7 +27,7 @@ type aesExpected struct {
 	Index         string `json:"index"`
 }
 
-// aesCase는 fixture case의 input과 expected를 읽는다.
+// aesCase reads the input and expected values of a fixture case.
 func aesCase(t *testing.T, id, operation string) (aesInput, aesExpected) {
 	t.Helper()
 	c := featureFixture(t, "authenticated_encryption", id, operation)
@@ -38,7 +38,7 @@ func aesCase(t *testing.T, id, operation string) (aesInput, aesExpected) {
 	return input, expected
 }
 
-// decryptFixture는 input의 envelope를 input key로 연다.
+// decryptFixture opens the input's envelope with the input key.
 func decryptFixture(t *testing.T, input aesInput) ([]byte, error) {
 	t.Helper()
 	envelope, err := hex.DecodeString(input.EnvelopeHex)
@@ -48,7 +48,7 @@ func decryptFixture(t *testing.T, input aesInput) ([]byte, error) {
 	return orm.AESDecrypt(envelope, input.Key)
 }
 
-// TestCoverageAesEnvelopeDecrypt는 기록된 v2 envelope를 연다.
+// TestCoverageAesEnvelopeDecrypt opens the recorded v2 envelope.
 func TestCoverageAesEnvelopeDecrypt(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	input, expected := aesCase(t, "aes_envelope_decrypt", "aes_decrypt")
@@ -58,7 +58,7 @@ func TestCoverageAesEnvelopeDecrypt(t *testing.T) {
 	}
 }
 
-// TestCoverageAesRoundTrip는 암호화한 envelope의 prefix와 길이를 확인하고 다시 연다.
+// TestCoverageAesRoundTrip checks the prefix and length of the encrypted envelope and opens it again.
 func TestCoverageAesRoundTrip(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	input, expected := aesCase(t, "aes_round_trip", "aes_encrypt_decrypt")
@@ -79,7 +79,7 @@ func TestCoverageAesRoundTrip(t *testing.T) {
 	}
 }
 
-// TestCoverageAesTamperRejected는 바뀐 envelope를 거부한다.
+// TestCoverageAesTamperRejected rejects a modified envelope.
 func TestCoverageAesTamperRejected(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	input, expected := aesCase(t, "aes_tamper_rejected", "aes_decrypt")
@@ -89,7 +89,7 @@ func TestCoverageAesTamperRejected(t *testing.T) {
 	}
 }
 
-// TestCoverageAesWrongKeyRejected는 다른 key의 envelope를 거부한다.
+// TestCoverageAesWrongKeyRejected rejects an envelope with a different key.
 func TestCoverageAesWrongKeyRejected(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	input, expected := aesCase(t, "aes_wrong_key_rejected", "aes_decrypt")
@@ -99,7 +99,7 @@ func TestCoverageAesWrongKeyRejected(t *testing.T) {
 	}
 }
 
-// TestCoverageBlindIndexVector는 blind index가 기록된 값인지 확인한다.
+// TestCoverageBlindIndexVector checks that the blind index matches the recorded value.
 func TestCoverageBlindIndexVector(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	input, expected := aesCase(t, "blind_index_vector", "blind_index")

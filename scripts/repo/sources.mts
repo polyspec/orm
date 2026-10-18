@@ -1,13 +1,13 @@
-// source 검사: tracked JavaScript, Rust와 PHP file의 규칙이다. files는 {path: text}다. Go source의 규칙은 go vet이 실행하는
-// analyzer다(tests/analyzers, make go-vet-check/orm).
+// Source check: rules for tracked JavaScript, Rust and PHP files. files is {path: text}. The rules for Go source are checked by the analyzer that go vet runs
+// (tests/analyzers, make go-vet-check/orm).
 
-// detachedGroupErrors는 자기 process group으로 process를 시작하고(spawn의 `detached: true`) 그 group이 끝난 뒤
-// 남은 process를 확인하지 않는 JavaScript file마다 오류 하나를 돌려준다. 그런 group은 check runner 단계의 group을
-// 떠나므로 단계의 검사가 보지 못한다: 남은 process는 scripts/check/step.mts의 endGroup으로 확인하고 끝낸다.
-// files는 {path: text}다.
+// detachedGroupErrors returns one error for each JavaScript file that starts processes in its own process group (spawn's `detached: true`) and, after that group ends,
+// does not check for leftover processes. Such a group leaves the check runner step's group, so the step's check cannot see it;
+// leftover processes are checked and ended with endGroup in scripts/check/step.mts.
+// files is {path: text}.
 export function detachedGroupErrors(files: Record<string, string>) {
   const errors: string[] = [];
-  // 주석 줄과 문자열 literal 안의 `detached: true`는 spawn option이 아니다.
+  // A `detached: true` inside a comment line or a string literal is not a spawn option.
   const code = (text: string) => text.split('\n').filter((line: string) => !line.trim().startsWith('//'))
     .map((line: string) => line.replace(/(['"`])(?:\\.|(?!\1).)*\1/g, "''")).join('\n');
   for (const [path, text] of Object.entries(files)) {
@@ -18,17 +18,17 @@ export function detachedGroupErrors(files: Record<string, string>) {
   return errors;
 }
 
-// MEASURED은 측정한 시간이다: CPU 시간, wall-clock 시간, 경과 시간, 기다린 시간.
+// MEASURED is a measured time: CPU time, wall-clock time, elapsed time, or waiting time.
 const MEASURED = String.raw`(?:\b(?:cpu|cpuMs|wall|wallMs|elapsed|took|waited|parseMs|parseElapsed|parse_time|emitMs)\b|\.elapsed\(\)|(?:performance\.now|Date\.now|hrtime)\([^)]*\)\s*-\s*\$?\w+)`;
-// THRESHOLD는 시간의 고정 한도다: 0이 아닌 숫자, Duration 값, 대문자 상수와 budget, limit, deadline 이름.
+// THRESHOLD is a fixed time limit: a non-zero number, a Duration value, an uppercase constant, or a name of budget, limit or deadline.
 const THRESHOLD = String.raw`(?:(?!0\b)\d[\d_.]*(?:\s*\*\s*\d[\d_.]*)?|(?:std::time::)?Duration::from_\w+\([^)]*\)|\$?[A-Z][A-Z0-9_]{2,}|\$?\w*(?:[Bb]udget|[Ll]imit|[Dd]eadline)\w*)`;
 const FAILURE = /\bthrow\b|\bpanic!|\bfailures\.push\(|\bprocess\.exit\(/;
 
-// timeFailureErrors는 측정한 시간이 고정 한도를 넘을 때 실패하는 test 줄마다 오류 하나를 돌려준다. 성능은 측정하고
-// 보고할 뿐 test를 실패시키지 않는다(AGENTS.md): 한도를 넘은 측정은 경고(`WARNING` 줄)로 보고한다. 찾는 것은 둘이다.
-// 측정한 시간이 한도보다 크면 실패로 가는 `if`(그 뒤 세 줄 안의 실패 구문)와, 측정한 시간이 한도보다 작다고 단언하는
-// assertion이다. 하한(기다림이 한도를 넘었다)과 두 측정의 비교, 0과의 비교는 정확성 검사이므로 보지 않는다. files는
-// {path: text}이고 JavaScript, Rust와 PHP의 test file이다. Go test는 analyzer timefailure(tests/analyzers)가 본다.
+// timeFailureErrors returns one error for each test line that fails when a measured time exceeds a fixed limit. Performance is measured and
+// reported without failing the test (AGENTS.md): a measurement over the limit is reported as a warning (`WARNING` line). Two things are looked for.
+// An `if` that leads to a failure when the measured time is greater than the limit (the failure statement within the next three lines), and an assertion
+// that the measured time is less than the limit. A lower bound (waiting exceeded the limit), a comparison of two measurements, and a comparison with 0 are correctness checks, so they are not looked for. files is
+// {path: text} and the test files of JavaScript, Rust and PHP. Go tests are checked by the analyzer timefailure (tests/analyzers).
 export function timeFailureErrors(files: Record<string, string>) {
   const go = Object.keys(files).find(path => path.endsWith('.go'));
   if (go) throw new Error(`timeFailureErrors reads no Go source (${go}); go vet runs the analyzer timefailure of tests/analyzers over it`);
@@ -38,7 +38,7 @@ export function timeFailureErrors(files: Record<string, string>) {
   for (const [path, text] of Object.entries(files)) {
     const lines = text.split('\n');
     lines.forEach((line: string, index: number) => {
-      // 문자열 literal 안의 비교는 code가 아니다(test의 fixture 같은 것).
+      // A comparison inside a string literal is not code (such as a test fixture).
       const code = line.trim().replace(/(['"`])(?:\\.|(?!\1).)*\1/g, "''");
       if (code.startsWith('//') || code.startsWith('*') || code.startsWith('#')) return;
       const failsAbove = /\bif\b/.test(code) && above.test(code) && FAILURE.test(lines.slice(index, index + 4).join('\n'));

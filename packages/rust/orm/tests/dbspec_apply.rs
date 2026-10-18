@@ -27,7 +27,7 @@ use std::time::{Duration, Instant};
 
 type EventError = Box<dyn std::error::Error + Send + Sync>;
 
-/// apply를 event 처리기에서 멈추는 error.
+/// The error that halts apply in an event handler.
 #[derive(Debug)]
 struct Stop;
 
@@ -47,7 +47,7 @@ fn code(result: &Result<(), ApplyError>) -> Option<&'static str> {
     result.as_ref().err().and_then(ApplyError::code)
 }
 
-/// tests/dbspec/plans.json의 create-from-empty와 그 target에서 시작하는
+/// create-from-empty from tests/dbspec/plans.json, and the chain starting from its target
 /// rename-table-and-column.
 fn apply_chain() -> Vec<Plan> {
     let path = repository().join("tests/dbspec/plans.json");
@@ -63,14 +63,14 @@ fn apply_chain() -> Vec<Plan> {
     plans
 }
 
-/// tool clock: 2026-10-01T00:00:00.123456789Z. history의 applied_at은 소수 여섯 자리로 버린다.
+/// tool clock: 2026-10-01T00:00:00.123456789Z. applied_at in history is truncated to six fractional digits.
 fn fixed_now() -> DateTime<Utc> {
     Utc.with_ymd_and_hms(2026, 10, 1, 0, 0, 0).single().expect("fixed time") + chrono::Duration::nanoseconds(123_456_789)
 }
 
-/// `after`로 시작하는 statement를 실행한 직후 statement `then`을 같은 connection에서
-/// 한 번 실행한다. event 처리기는 apply가 빌린 connection을 쓸 수 없으므로, Go
-/// test가 event에서 실행하는 statement를 이 시점에 실행한다.
+/// Right after the statement that starts with `after` runs, runs statement `then` once
+/// on the same connection. An event handler cannot use the connection apply borrowed, so, unlike Go,
+/// the test runs at this point the statement it would run in the event.
 struct RunAfter<'c, C> {
     inner: &'c mut C,
     after: String,
@@ -103,12 +103,12 @@ impl<C: ApplyConnection + Send> ApplyConnection for RunAfter<'_, C> {
     }
 }
 
-/// docs/plans.md "Apply"의 lock 이름과 key.
+/// The lock name and key of docs/plans.md "Apply".
 const MYSQL_APPLY_LOCK: &str = "CONCAT('dbspec$plans$', LEFT(SHA2(DATABASE(), 256), 51))";
 const POSTGRES_APPLY_LOCK: &str = "hashtext('dbspec$plans'), hashtext(current_schema())";
 
-/// history table을 만드는 statement(lock을 잡은 뒤의 첫 statement)를 실행한
-/// 직후 두 번째 connection에 chain을 한 번 적용하고 그 결과를 남긴다.
+/// Runs the statement that creates the history table (the first statement after taking the lock),
+/// then immediately applies the chain once on a second connection and records the result.
 struct ApplyOtherUnderLock<'c, C> {
     inner: &'c mut C,
     other: &'c mut Conn,
@@ -145,7 +145,7 @@ impl<C: ApplyConnection + Send> ApplyConnection for ApplyOtherUnderLock<'_, C> {
     }
 }
 
-/// 명령의 종류.
+/// The kind of command.
 #[derive(Clone, Copy)]
 enum Command {
     Apply,
@@ -154,8 +154,8 @@ enum Command {
     Finalize,
 }
 
-/// probe connection 하나에 명령을 실행한다. `run_after`가 `(after, then)`이면
-/// `after`로 시작하는 statement 뒤에 statement `then`을 실행한다.
+/// Runs a command on one probe connection. If `run_after` is `(after, then)`,
+/// it runs statement `then` after the statement that starts with `after`.
 async fn run(
     conn: &mut Conn,
     command: Command,
@@ -204,7 +204,7 @@ fn quiet(_: &ApplyEvent) -> Result<(), EventError> {
     Ok(())
 }
 
-/// `query`의 유일한 값을 text로 읽는다.
+/// Reads the only value of `query` as text.
 async fn scalar(conn: &mut Conn, query: &str) -> Result<String, String> {
     let rows = match conn {
         Conn::MySql(c) => c.query_bound(query, &[]).await,
@@ -222,7 +222,7 @@ async fn scalar(conn: &mut Conn, query: &str) -> Result<String, String> {
     }
 }
 
-/// `query`의 모든 row를 `a|b`로, row를 쉼표로 잇는다.
+/// Joins all rows of `query` as `a|b`, with rows joined by commas.
 async fn rows_text(conn: &mut Conn, query: &str) -> Result<String, String> {
     let rows = match conn {
         Conn::MySql(c) => c.query_bound(query, &[]).await,
@@ -261,7 +261,7 @@ async fn want(conn: &mut Conn, query: &str, expected: &str) -> Result<(), String
     }
 }
 
-/// introspect한 schema text가 `expected`(빈 database이면 빈 문자열)인지 확인한다.
+/// Checks that the introspected schema text is `expected` (an empty string if the database is empty).
 async fn schema_is(conn: &mut Conn, expected: &str) -> Result<(), String> {
     let (introspection, _) = conn.introspect().await.map_err(|e| format!("introspect: {e}"))?;
     if !introspection.unsupported.is_empty() {
@@ -286,7 +286,7 @@ fn history(db: &str) -> &'static str {
     }
 }
 
-/// dialect마다 chain plan의 (step 수, finalize 앞 step 수).
+/// For each dialect, the chain plan's (step count, number of steps before finalize).
 type Counts = BTreeMap<&'static str, Vec<(usize, usize)>>;
 
 fn counts(chain: &[Plan]) -> Counts {
@@ -307,7 +307,7 @@ fn counts(chain: &[Plan]) -> Counts {
         .collect()
 }
 
-/// case의 source를 만드는 첫 plan base와 case의 plan으로 된 chain.
+/// A chain made of the first plan base that creates the case's source and the case's plan.
 fn case_chain(id: &str) -> Vec<Plan> {
     let path = repository().join("tests/dbspec/plans.json");
     let vectors: Value = serde_json::from_str(&std::fs::read_to_string(path).expect("plans.json")).expect("plans.json");
@@ -322,7 +322,7 @@ fn schema_text(p: &Plan) -> String {
     dbspec::manifest(&[p.schema()]).expect("plan manifest").schema_text
 }
 
-/// 이름이 dbspec$로 시작하는 table과 column 중 history table이 아닌 것의 수.
+/// The number of tables and columns whose names start with dbspec$, excluding the history table.
 fn hidden_left(db: &str) -> &'static str {
     match db {
         "mysql" => "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME LIKE 'dbspec$%' OR COLUMN_NAME LIKE 'dbspec$%') AND TABLE_NAME <> 'dbspec$plans'",
@@ -331,7 +331,7 @@ fn hidden_left(db: &str) -> &'static str {
     }
 }
 
-/// plan의 step 번째 statement를 실행한 뒤, step을 기록하기 전에 명령을 멈추는 event 처리기.
+/// An event handler that halts the command after running the plan's step-th statement, before the step is recorded.
 fn stop_after(plan: String, step: usize) -> impl FnMut(&ApplyEvent) -> Result<(), EventError> + Send {
     move |e: &ApplyEvent| {
         if e.kind == ApplyEventKind::Applied && e.plan == plan && e.step == step {
@@ -350,7 +350,7 @@ async fn chain_history_and_again(conn: &mut Conn, db: &str, plans: &[Plan], targ
     run(conn, Command::Apply, plans, None, &mut record).await.map_err(|e| format!("apply: {e}"))?;
     schema_is(conn, target).await?;
     history_is(conn, db, &format!("create_from_empty|applied|{},rename_table_and_column|applied|{}", c[0].1, c[1].1)).await?;
-    // applied_at은 tool clock의 UTC 시각을 소수 여섯 자리로 버린 text다.
+    // applied_at is the tool clock's UTC time truncated to six fractional digits, as text.
     want(conn, &format!("SELECT COUNT(*) FROM {} WHERE applied_at = '2026-10-01T00:00:00.123456Z'", history(db)), "2").await?;
     let count = |k: &str| counts.get(k).copied().unwrap_or(0);
     if count("plan") != 2 || count("verified") != 2 || count("done") != 2 || count("statement") != count("applied") || count("statement") != c[0].1 + c[1].1 {
@@ -402,8 +402,8 @@ async fn lock(conn: &mut Conn, db: &str, plans: &[Plan], session: &Session) -> R
 }
 
 async fn other_database(conn: &mut Conn, db: &str, plans: &[Plan], target: &str, session: &Session) -> Result<(), String> {
-    // 첫 database의 apply가 lock을 잡은 동안 두 번째 database, schema 또는 file에
-    // 같은 chain을 적용한다. lock은 database 하나만 덮으므로 locked가 아니다.
+    // While the apply on the first database holds the lock, the same chain is applied
+    // to a second database, schema, or file. The lock covers only one database, so it is not locked.
     let second = session.second();
     match db {
         "mysql" => conn.exec(&format!("CREATE DATABASE `{}`", second.name())).await?,
@@ -442,7 +442,7 @@ async fn other_database(conn: &mut Conn, db: &str, plans: &[Plan], target: &str,
 }
 
 async fn empty_chain(conn: &mut Conn, db: &str) -> Result<(), String> {
-    // plan이 없는 chain은 table이 없는 database에 아무것도 적용하지 않는다.
+    // A chain with no plans applies nothing to a database that has no tables.
     let mut events = 0;
     let mut record = |_: &ApplyEvent| -> Result<(), EventError> {
         events += 1;
@@ -465,8 +465,8 @@ async fn empty_chain(conn: &mut Conn, db: &str) -> Result<(), String> {
 }
 
 async fn unlock_not_held(conn: &mut Conn, plans: &[Plan]) -> Result<(), String> {
-    // history table을 만든 뒤 advisory lock을 먼저 풀면 명령 끝의 unlock은 아무것도
-    // 풀지 않는다.
+    // If the advisory lock is released first, after the history table is created, the unlock at the end of the command
+    // releases nothing.
     let result =
         run(conn, Command::Apply, plans, Some(("CREATE TABLE IF NOT EXISTS", &format!("SELECT pg_advisory_unlock({POSTGRES_APPLY_LOCK})"))), &mut quiet).await;
     let want = "the advisory lock of dbspec$plans was not held at unlock";
@@ -477,8 +477,8 @@ async fn unlock_not_held(conn: &mut Conn, plans: &[Plan]) -> Result<(), String> 
 }
 
 async fn verify_failure(conn: &mut Conn, db: &str, plans: &[Plan]) -> Result<(), String> {
-    // 첫 plan의 마지막 statement 뒤에 plan 밖의 table을 만들면 검증이 실패하고 row는
-    // 모든 step을 기록한 채 applying으로 남는다.
+    // If a table outside the plan is created after the last statement of the first plan, verification fails and the row
+    // stays in applying with all steps recorded.
     let dialect = DIALECTS.iter().find(|(name, _)| *name == db).map(|(_, d)| *d).ok_or_else(|| format!("unknown database {db}"))?;
     let steps = plan_steps(None, &plans[0], dialect).map_err(|e| format!("steps: {e:?}"))?;
     let last = &steps.last().ok_or("the first plan has no step")?.statement;
@@ -489,9 +489,9 @@ async fn verify_failure(conn: &mut Conn, db: &str, plans: &[Plan]) -> Result<(),
     history_is(conn, db, &format!("{}|applying|{}", plans[0].name(), steps.len())).await
 }
 
-/// 적용한 plan에 쓴 row는 rollback 뒤에도 남고 지운 column의 값과 default가
-/// 돌아오며, 다시 적용하면 더한 column의 값이 돌아온다. finalize 뒤 rollback은
-/// 되돌릴 수 없다.
+/// Rows written by an applied plan remain after rollback, and the values and defaults of dropped columns
+/// come back; applying again brings back the values of added columns. A rollback after finalize
+/// cannot be reverted.
 async fn rows_between(conn: &mut Conn, db: &str, chain: &[Plan], c: &[(usize, usize)]) -> Result<(), String> {
     let (source, target) = (schema_text(&chain[0]), schema_text(&chain[1]));
     run(conn, Command::Apply, &chain[..1], None, &mut quiet).await.map_err(|e| format!("apply base: {e}"))?;
@@ -518,8 +518,8 @@ async fn rows_between(conn: &mut Conn, db: &str, chain: &[Plan], c: &[(usize, us
     schema_is(conn, &target).await
 }
 
-/// 숨긴 non-null default 없는 column에 그사이 NULL row가 생기면 rollback은
-/// 아무것도 바꾸지 않고 row 수를 적은 nulls error로 멈춘다.
+/// If a NULL row appears in the meantime in a hidden non-null column with no default, rollback
+/// changes nothing and stops with a nulls error that states the row count.
 async fn nulls(conn: &mut Conn, db: &str, chain: &[Plan], c: &[(usize, usize)]) -> Result<(), String> {
     run(conn, Command::Apply, chain, None, &mut quiet).await.map_err(|e| format!("apply: {e}"))?;
     conn.exec("INSERT INTO t (a) VALUES ('y')").await?;
@@ -532,9 +532,9 @@ async fn nulls(conn: &mut Conn, db: &str, chain: &[Plan], c: &[(usize, usize)]) 
     history_is(conn, db, &format!("base|applied|{},drop_required_column|applied|{}", c[0].1, c[1].1)).await
 }
 
-/// representative plan의 step k: apply를 statement 뒤에 멈추고 rollback하고, 다시
-/// 멈추고 recover하고, 적용한 plan의 rollback을 step k의 rollback statement 뒤에
-/// 멈추고 rollback을 이어 간다.
+/// Step k of the representative plan: apply stops after the statement, rolls back, then
+/// stops, recovers, and stops the applied plan's rollback after the rollback statement of step k,
+/// and continues the rollback.
 async fn interrupt(conn: &mut Conn, db: &str, chain: &[Plan], c: &[(usize, usize)], k: usize) -> Result<(), String> {
     let (source, target) = (schema_text(&chain[0]), schema_text(&chain[1]));
     let name = chain[1].name().to_owned();
@@ -569,7 +569,7 @@ async fn interrupt(conn: &mut Conn, db: &str, chain: &[Plan], c: &[(usize, usize
     history_is(conn, db, &base).await
 }
 
-/// scenario 이름과 그 database.
+/// The scenario name and its database.
 const SCENARIOS: [(&str, &[&str]); 9] = [
     ("chain_history_and_again", &["mysql", "postgres", "sqlite"]),
     ("drift", &["mysql", "postgres", "sqlite"]),
@@ -611,7 +611,7 @@ async fn apply_chain_on_three_databases() {
         runs += 1;
         let id = format!("{db}.apply.{scenario}");
         let session = servers.session(db, runs);
-        // probe body는 'static future이므로 chain과 target을 복사해 가져간다.
+        // The probe body is a 'static future, so it takes copies of the chain and target.
         let (plans, target, representative, required) = (plans.clone(), target.clone(), representative.clone(), required.clone());
         let (pc, rc, qc) = (plan_counts[db].clone(), rep_counts[db].clone(), required_counts[db].clone());
         let result = run_probe(&mut servers, &id, db, runs, |conn| {
@@ -645,14 +645,14 @@ async fn apply_chain_on_three_databases() {
     let want = 25 + DIALECTS.iter().map(|(db, _)| rep_counts[db][1].1).sum::<usize>();
     assert_eq!(runs, want, "apply runs");
     polyspec_orm_testcase::step(format_args!("dbspec apply: {runs} runs on three databases in {:?}", started.elapsed()));
-    // 세 database의 apply scenario는 개발 machine에서 1분 안에 끝난다(T27 측정 41 s, build 포함). 5분이 지나면 멈춘 것이다.
+    // The apply scenarios for three databases finish within 1 minute on the development machine (41 s measured in T27, including build). Five minutes means it has stalled.
     if started.elapsed() >= Duration::from_secs(300) {
         polyspec_orm_testcase::warning(format_args!("apply exceeded 300s"));
     }
 }
 
-/// PgBouncer DSN의 database를 `name`으로 바꾼 connection. pooler 뒤의 server connection은
-/// statement마다 바뀔 수 있으므로 prepared statement cache를 쓰지 않는다.
+/// A connection with the database of the PgBouncer DSN replaced by `name`. The server connection behind the pooler
+/// may change per statement, so the prepared statement cache is not used.
 async fn pooler_connection(dsn: &str, name: &str) -> sqlx::PgConnection {
     use sqlx::Connection as _;
     let ConnectOptions::Postgres(options) = parse_dsn(dsn).expect("ORM_TEST_PGBOUNCER_DSN").options else {
@@ -661,12 +661,12 @@ async fn pooler_connection(dsn: &str, name: &str) -> sqlx::PgConnection {
     sqlx::PgConnection::connect_with(&options.database(name).statement_cache_capacity(0)).await.expect("connection through PgBouncer")
 }
 
-/// apply는 처음부터 끝까지 다른 client와 나누지 않는 server session 하나가 필요하다(docs/plans.md
-/// "Apply"). PgBouncer의 transaction pooling은 statement마다 server connection을 다시 고르므로 apply는
-/// lock에서와 step마다 server session을 확인하고 session error로 멈춘다. 각 scenario는 server에 자기
-/// database를 만들고 PgBouncer로 그 database에 연결한다. PgBouncer는 쉬는 server connection을 LIFO로
-/// 다시 쓰므로(server_round_robin = 0) 아래 순서가 정해진다. event 처리기는 동기 함수이므로 다른
-/// connection의 transaction은 다른 task가 열고, 처리기는 그 task를 block_in_place로 기다린다.
+/// apply needs one server session, not shared with another client, from start to finish (docs/plans.md
+/// "Apply"). PgBouncer's transaction pooling picks a server connection again per statement, so apply
+/// checks the server session at the lock and at each step, and stops with a session error. Each scenario
+/// creates its own database and connects to it through PgBouncer. PgBouncer reuses idle server connections LIFO
+/// (server_round_robin = 0), so the order below is fixed. An event handler is a synchronous function, so the
+/// connection's transaction is opened by another task, and the handler waits for that task with block_in_place.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn apply_through_a_transaction_pooler() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -685,14 +685,14 @@ async fn apply_through_a_transaction_pooler() {
         let mut apply_conn = pooler_connection(&pooler, &name).await;
         let other = std::sync::Arc::new(tokio::sync::Mutex::new(pooler_connection(&pooler, &name).await));
         let result = match scenario {
-            // 다른 client가 session advisory lock을 잡은 server connection을 apply가 이어받는다.
+            // Apply takes over a server connection on which another client holds a session advisory lock.
             "lock_shared" => {
                 let lock = format!("SELECT pg_advisory_lock({POSTGRES_APPLY_LOCK})");
                 sqlx::raw_sql(sqlx::AssertSqlSafe(lock)).execute(&mut *other.lock().await).await.expect("hold the lock");
                 apply(&mut apply_conn, Dialect::Postgres, &plans, &fixed_now, &mut quiet).await
             }
-            // 첫 step 앞에서 다른 client가 transaction으로 apply의 server connection을 잡으므로 apply의
-            // 다음 statement는 다른 server connection에서 실행된다.
+            // Before the first step, another client takes apply's server connection in a transaction, so apply's
+            // next statement runs on a different server connection.
             _ => {
                 let mut held = false;
                 let handle = tokio::runtime::Handle::current();

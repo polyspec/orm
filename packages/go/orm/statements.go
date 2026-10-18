@@ -6,18 +6,18 @@ import (
 	"time"
 )
 
-// runner는 model이 아닌 statement를 보내고 그 event를 publish한다. q는 연결,
-// transaction 연결, pool 중 하나이고 tx는 statement의 transaction 번호다(밖이면 0).
+// runner sends a statement that is not a model statement and publishes its event. q is the connection,
+// a transaction connection, or the pool; tx is the statement's transaction number (0 outside a transaction).
 type runner struct {
 	d  *DB
 	q  querier
 	tx int64
-	// machinery는 transaction 기계 statement의 runner다. 이 statement는 statement
-	// fault를 소비하지 않는다(docs/protocol.md 3.2).
+	// machinery is the runner for transaction machinery statements. This statement
+	// does not consume the statement fault (docs/protocol.md 3.2).
 	machinery bool
 }
 
-// exec는 statement 하나를 실행한다.
+// exec runs one statement.
 func (r runner) exec(ctx context.Context, kind string, tables []string, sqlText string, args ...any) (sql.Result, error) {
 	start := time.Now()
 	if err := r.fault(kind); err != nil {
@@ -27,7 +27,7 @@ func (r runner) exec(ctx context.Context, kind string, tables []string, sqlText 
 	return res, r.d.statementDone(kind, tables, r.tx, sqlText, args, start, mapDriverErr(err))
 }
 
-// scan은 한 row를 돌려주는 statement를 실행하고 그 row를 dest에 읽는다.
+// scan runs a statement that returns one row and reads that row into dest.
 func (r runner) scan(ctx context.Context, kind string, tables []string, sqlText string, args []any, dest ...any) error {
 	start := time.Now()
 	if err := r.fault(kind); err != nil {
@@ -37,9 +37,9 @@ func (r runner) scan(ctx context.Context, kind string, tables []string, sqlText 
 	return r.d.statementDone(kind, tables, r.tx, sqlText, args, start, err)
 }
 
-// observed는 dbspec이 보내는 catalog query와 schema statement의 event를
-// publish하는 연결이다. catalog query의 event는 dbspec이 그 행을 모두 읽은 뒤
-// QueryEnded로 publish한다. tables는 statement가 가리키는 table을 정한다.
+// observed is the connection that publishes the events of the catalog queries and schema statements
+// that dbspec sends. The event of a catalog query is published
+// as QueryEnded after dbspec has read all of its rows. tables determines the tables the statement refers to.
 type observed struct {
 	r      runner
 	kind   string
@@ -59,7 +59,7 @@ func (o *observed) QueryContext(ctx context.Context, query string, args ...any) 
 	return rows, nil
 }
 
-// QueryEnded는 catalog query의 행을 모두 읽었거나 읽다 실패했을 때 그 event를 publish한다.
+// QueryEnded publishes that event when the catalog query has read all of its rows or failed while reading them.
 func (o *observed) QueryEnded(query string, err error) error {
 	return o.r.d.statementDone(o.kind, o.tables(query), o.r.tx, query, nil, o.start, mapDriverErr(err))
 }
@@ -72,11 +72,11 @@ func (o *observed) QueryRowContext(ctx context.Context, query string, args ...an
 	panic("orm: observed connections do not read single rows")
 }
 
-// noTables는 table을 가리키지 않는 statement의 table 목록이다.
+// noTables is the table list of statements that refer to no table.
 func noTables(string) []string { return nil }
 
-// rows는 행을 돌려주는 statement를 실행하고 각 행에 each를 부른 뒤, 행을 모두
-// 읽었거나 실패했을 때 event를 publish한다. each의 오류는 statement의 오류가 아니다.
+// rows runs a statement that returns rows, calls each on each row, and after reading all of the rows
+// or failing, publishes the event. An error from each is not a statement error.
 func (r runner) rows(ctx context.Context, kind string, tables []string, sqlText string, args []any, each func(scan func(dest ...any) error) error) error {
 	start := time.Now()
 	if err := r.fault(kind); err != nil {

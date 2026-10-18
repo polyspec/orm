@@ -328,7 +328,7 @@ func (v *validator) tableRules(t *tableNode) {
 	switch {
 	case len(t.primaryKeys) == 0 && !t.failedPK:
 		v.add(RuleKey, t.anchor(), "table has no primary key")
-		// primary key가 없으면 identity column은 유일한 primary key column일 수 없다.
+		// If there is no primary key, the identity column cannot be the only primary key column.
 		if identity != nil {
 			v.add(RuleColumn, *identity.identity, "the identity column must be the only primary key column")
 		}

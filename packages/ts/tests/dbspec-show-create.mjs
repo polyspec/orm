@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createChecks } from '../dist/dbspec/introspect_mysql.js';
 
-// TIMEOUT은 case 하나의 기한(ms)이다. 문자열 하나를 읽는 계산이다.
+// TIMEOUT is the deadline (ms) of one case. It is a computation that reads one string.
 const TIMEOUT = 60000;
 const data = JSON.parse(readFileSync(new URL('../../../tests/dbspec/show-create.json', import.meta.url), 'utf8'));
 

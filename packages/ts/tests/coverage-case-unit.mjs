@@ -1,6 +1,6 @@
-// feature coverage case 실행부(packages/ts/tests/coverage_case.mjs)의 unit test다. 실행부는
-// TypeScript coverage test가 함께 쓰므로, 그 변경은 모든 기능의 coverage가 아니라 이 test가
-// 검사한다(contracts/features.json의 helpers). 전체 coverage는 make check가 실행한다.
+// Unit test of the feature coverage case runner (packages/ts/tests/coverage_case.mjs). The runner
+// is shared with the TypeScript coverage test, so a change to it is checked by this test,
+// not by the coverage of every feature (the helpers in contracts/features.json). make check runs the full coverage.
 // Usage: node packages/ts/tests/coverage-case-unit.mjs
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -11,7 +11,7 @@ import { errorCode, runCases, withCleanup } from './coverage_case.mjs';
 import { coverageItems } from '../../../scripts/features/coverage.mts';
 import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 
-// runCases는 명령 줄의 case ID를 읽으므로 각 호출 동안 process.argv를 바꾸고 출력을 모은다.
+// runCases reads the case IDs from the command line, so during each call it changes process.argv and collects the output.
 async function withArguments(ids, body) {
   const argv = process.argv;
   const log = console.log;

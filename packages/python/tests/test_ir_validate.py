@@ -1,6 +1,6 @@
-# 공유 검증 case(tests/ir/validate.json): 각 request에 schema의 manifest_hash를 더해 검증기에만 주고,
-# 받아들이는지나 기대한 오류 code로 실패하는지 본다. Go, PHP, Rust, TypeScript가 같은 파일을 자기
-# package에서 읽는다.
+# Shared validation cases (tests/ir/validate.json): adds the schema's manifest_hash to each request, gives it only to the validator,
+# and checks that it accepts or fails with the expected error code. Go, PHP, Rust and TypeScript read the same file from their own
+# package.
 import json
 import unittest
 from pathlib import Path

@@ -14,7 +14,7 @@ use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use std::time::Duration;
 
-/// case 하나의 기한.
+/// The deadline of one case.
 const DEADLINE: Duration = Duration::from_secs(5);
 
 fn vectors() -> Value {
@@ -34,13 +34,13 @@ fn cases<'v>(vectors: &'v Value, group: &str) -> &'v [Value] {
     cases
 }
 
-/// 뺀 객체의 `[kind, table, name]` 목록.
+/// The list of `[kind, table, name]` of the dropped objects.
 fn drops(dropped: &[Unsupported]) -> Value {
     Value::Array(dropped.iter().map(|u| json!([u.kind, u.table, u.name])).collect())
 }
 
-/// Mermaid가 옮기는 table, column, primary key, foreign key를 table 이름 순서의
-/// 줄로 쓴다. foreign key action은 Mermaid가 옮기지 않으므로 뺀다.
+/// The tables, columns, primary keys, and foreign keys that Mermaid carries, in table name order,
+/// written as lines. Foreign key actions are left out because Mermaid does not carry them.
 fn skeleton(document: &Document) -> Vec<String> {
     let names = |list: &[polyspec_orm_schema::dbspec::model::Name]| list.iter().map(|n| n.text.as_str()).collect::<Vec<_>>().join(", ");
     let mut tables: Vec<_> = document.tables.iter().collect();
@@ -68,7 +68,7 @@ fn skeleton(document: &Document) -> Vec<String> {
     out
 }
 
-/// case 하나를 실행하고 그 결과와 CPU 시간을 쓴다. 실패한 case는 이유와 함께 panic한다.
+/// Runs one case and writes its result and CPU time. A failed case panics with its reason.
 fn run(body: impl FnOnce() -> Result<(), String>) {
     let clock = CaseClock::start();
     let mut result = body();

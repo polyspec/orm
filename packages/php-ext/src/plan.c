@@ -1,7 +1,7 @@
 /*
- * plan 문서를 읽고 쓰며(PlanText), chain으로 잇고(PlanChain), source에서 target까지의 diff를 만들고(PlanDiff,
- * PlanObjects), schema text를 비교한다(SchemaComparison). 문서 집합과 database의 비교(externalDifferences,
- * installedDifferences, addTablesAndColumnsSteps)도 여기 있다. 모두 PHP client(packages/php/src/Dbspec)의 사양이다.
+ * Reads and writes plan documents (PlanText), links them into a chain (PlanChain), builds the diff from source to target (PlanDiff,
+ * PlanObjects), and compares schema text (SchemaComparison). The comparison of the document set and the database (externalDifferences,
+ * installedDifferences, addTablesAndColumnsSteps) is also here. All follow the specification of the PHP client (packages/php/src/Dbspec).
  */
 #include "dbspec.h"
 #include "plandiff.h"
@@ -25,7 +25,7 @@ static bool name_char(char c, bool first)
     return (c >= 'a' && c <= 'z') || (!first && ((c >= '0' && c <= '9') || c == '_'));
 }
 
-/* s의 i에서 [a-z][a-z0-9_]*를 읽는다. */
+/* Reads [a-z][a-z0-9_]* at i in s. */
 static bool read_name(str s, size_t *i, str *out)
 {
     size_t start = *i;
@@ -51,7 +51,7 @@ static bool lit(str s, size_t *i, const char *text)
     return true;
 }
 
-/* 줄 전체가 prefix 뒤 이름들(구분자 sep)인지 읽는다. seps[k]는 k번째 이름 앞의 구분자다. */
+/* Reads whether the whole line is names (separated by sep) after a prefix. seps[k] is the separator before the k-th name. */
 static bool names_line(str line, const char *prefix, const char *const *seps, size_t count, str *names)
 {
     size_t i = 0;
@@ -113,7 +113,7 @@ static bool is_hex64(str s)
     return true;
 }
 
-/* PCRE의 \s: 공백, \t, \n, \v, \f, \r */
+/* PCRE's \s: space, \t, \n, \v, \f, \r */
 static bool pcre_space(char c)
 {
     return c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r';
@@ -211,7 +211,7 @@ plan *plan_parse(str text, diags *out)
         return plan_fail(out, (zend_long)i + 1, SL("a blank line and the target schema text follow the header"));
     }
     size_t offset = i + 1;
-    /* plan은 database 전체를 하나의 schema로 옮긴다. 외부 문서를 쓰는 set의 table은 install과 addTablesAndColumns가 만든다. */
+    /* A plan moves the whole database into one schema. Tables of a set that uses external documents are created by install and addTablesAndColumns. */
     for (size_t k = offset; k < lines.n; k++) {
         str l = lines.v[k];
         if (str_starts(l, "use ")) {
@@ -241,7 +241,7 @@ plan *plan_parse(str text, diags *out)
     dposv decls = {0};
     document *d = dbs_parse(schema_text, &none, &found, &decls);
     if (d == NULL) {
-        /* target diagnostic은 plan 안의 위치로 옮긴다. */
+        /* The target diagnostic is moved to its position in the plan. */
         for (size_t k = 0; k < found.n; k++) {
             diag x = found.v[k];
             x.line += (zend_long)offset;
@@ -364,12 +364,12 @@ static diag chain_diag(str message)
 bool plan_chain(const planv *plans, planv *out, diags *d)
 {
     *out = (planv){0};
-    /* plan이 없으면 table이 없는 database의 빈 chain이다. */
+    /* If there is no plan, it is the empty chain of a database with no tables. */
     if (plans->n == 0) {
         return true;
     }
-    /* from이 없는 plan은 ''에 모은다. schemaHash는 비어 있지 않다. */
-    smap by_from = {0}; /* from => VEC(size_t)* (plans의 index) */
+    /* Plans without from are collected under ''. schemaHash is not empty. */
+    smap by_from = {0}; /* from => VEC(size_t)* (index into plans) */
     typedef VEC(size_t) idxv;
     for (size_t i = 0; i < plans->n; i++) {
         str key = plans->v[i]->has_from ? plans->v[i]->from : SL("");
@@ -442,7 +442,7 @@ column *diff_column(const table *t, str name)
     return table_column(t, name);
 }
 
-/* 세 database에서 모든 값을 지키는 type 변경인지 알린다. */
+/* Reports whether it is a type change that keeps every value in the three databases. */
 bool type_widens(const ctype *from, const ctype *to)
 {
     const zend_long *f = from->p, *t = to->p;
@@ -518,7 +518,7 @@ static str lookup(const smap *m, str key, str otherwise)
 
 static const char *const check_keywords[] = {"and", "or", "not", "in", "between", "is", "null", "true", "false", NULL};
 
-/* `'(?:[^']|'')*'`가 i에서 맞는 길이(되돌아가는 반복), 없으면 0이다. */
+/* Length that `'(?:[^']|'')*'` matches at i (backtracking repetition); 0 if none. */
 size_t quoted_length(str s, size_t i)
 {
     size_t j = i + 1;
@@ -566,7 +566,7 @@ static bool wordc(char c)
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_';
 }
 
-/* canonical check text의 token: `'(?:[^']|'')*'|[A-Za-z0-9_]+|.`(/s, byte 단위) */
+/* Tokens of canonical check text: `'(?:[^']|'')*'|[A-Za-z0-9_]+|.` (/s, per byte) */
 static strs check_tokens(str e)
 {
     strs out = {0};
@@ -592,7 +592,7 @@ static strs check_tokens(str e)
     return out;
 }
 
-/* column 이름을 f로 바꾼 canonical check text다. */
+/* Canonical check text with column names replaced by f. */
 str check_text_renamed(str expression, str (*f)(void *, str), void *ctx)
 {
     strs t = check_tokens(expression);
@@ -642,7 +642,7 @@ check *find_check(const table *t, str name) { return named_check(&t->checks, nam
 
 typedef struct {
     const pdiff *d;
-    str target;   /* column rename을 적용할 target table */
+    str target;   /* Target table to which the column rename is applied */
 } renamer;
 
 static str rename_column(void *ctx, str c)
@@ -684,7 +684,7 @@ static strs mapped(const strs *l, str (*f)(void *, str), void *ctx)
     return out;
 }
 
-/* source foreign key를 target 이름으로 읽은 column, parent, 참조 column이다. */
+/* The column, parent, and referenced column of a source foreign key, read with target names. */
 static void source_fkey(const pdiff *d, str name, const fkey *f, strs *cols, str *parent, strs *refs)
 {
     renamer child = {d, name};
@@ -728,7 +728,7 @@ static bool forced_check(const smap *renamed_col, const smap *altered_column, st
     return false;
 }
 
-/* strcmp("kind\0name", ...)의 순서다. */
+/* Order of strcmp("kind\0name", ...). */
 static str joined0(str a, str b)
 {
     sbuf s = {0};
@@ -834,7 +834,7 @@ static void compare_objects(pdiff *d)
                 push_ref(&d->add_objects, name, "foreign_key", f->name);
             }
         }
-        /* 이름 바뀐 column이나 바뀐 column을 쓰는 check는 다시 만든다. */
+        /* Recreates a renamed column and any check that uses a changed column. */
         for (size_t i = 0; i < src->checks.n; i++) {
             const check *k = src->checks.v[i];
             const check *t = named_check(&tgt->checks, k->name);
@@ -852,7 +852,7 @@ static void compare_objects(pdiff *d)
             }
         }
     }
-    /* 지우는 table 자신의 foreign key는 table과 함께 지운다. */
+    /* The foreign keys of a table being dropped are dropped together with the table. */
     for (size_t i = 0; i < d->dropped.n; i++) {
         const table *t = smap_get(&d->source, d->dropped.v[i]);
         for (size_t k = 0; k < t->fks.n; k++) {
@@ -869,7 +869,7 @@ static void compare_objects(pdiff *d)
     }
 }
 
-/* 세 dialect 중 하나에서라도 렌더링한 trigger statement가 다른 table을 표시한다. */
+/* A trigger statement rendered in any one of the three dialects shows a different table. */
 static void trigger_changes(pdiff *d)
 {
     for (size_t i = 0; i < d->matched.n; i++) {
@@ -1097,7 +1097,7 @@ pdiff *pdiff_of(const document *source, const plan *p, diags *out)
                 PUSH(*strs_at(&d->altered, name), c->name);
             }
         }
-        /* PostgreSQL은 column 자리를 정하지 못하므로 남는 column의 순서는 그대로이고 더한 column은 남는 column 뒤에 온다. */
+        /* PostgreSQL cannot place columns, so the order of remaining columns is kept and added columns come after the remaining ones. */
         strs kept = {0}, kept_target = {0};
         for (size_t i = 0; i < src->columns.n; i++) {
             str n = lookup(renamed, src->columns.v[i]->name, src->columns.v[i]->name);
@@ -1196,7 +1196,7 @@ static int cmp_table_name(const void *a, const void *b, void *ctx)
     return str_cmp((*(table *const *)a)->name, (*(table *const *)b)->name);
 }
 
-/* 문서의 canonical emission이 그 문서 하나의 schema text인지 알린다. */
+/* Reports whether a document's canonical emission is the schema text of that one document. */
 bool is_schema_text(const document *d)
 {
     if (!str_eqc(d->name, "schema")) {
@@ -1233,7 +1233,7 @@ static void add_difference(adder *a, const char *kind, str name)
     PUSH(*a->found, ((change){str_c(kind), a->table, name}));
 }
 
-/* table에 하나뿐인 setting의 정의, 없으면 NULL이다. audit은 두 쪽에 다 있는 column 가운데 기록하지 않는 column까지 비교한다. */
+/* Definition of the table's only setting; NULL if none. audit compares, among columns present on both sides, even the columns it does not record. */
 static str *setting_def(const table *x, const char *kind, const table *s, const table *t)
 {
     if (x->settings == NULL) {
@@ -1304,7 +1304,7 @@ static void compare_tables(adder *a, const table *s, const table *t)
     if (!strs_eq(s->pk != NULL ? &s->pk->columns : &empty, t->pk != NULL ? &t->pk->columns : &empty)) {
         add_difference(a, "change_primary_key", SL(""));
     }
-    /* 이름으로 맞춘 객체가 한쪽에만 있으면 drop이나 add를, 정의가 다르면 둘 다 더한다. */
+    /* If an object matched by name exists on one side only, it is dropped or added; if the definitions differ, both are added. */
 #define OBJECTS(kind, list, find, def) do { \
         for (size_t i = 0; i < s->list.n; i++) { \
             const void *other = find(&t->list, s->list.v[i]->name); \
@@ -1466,7 +1466,7 @@ static str qualified(str table, str name)
     return name.n == 0 ? table : fmt("%S.%S", table, name);
 }
 
-/* database에 있는 set의 table(source)과 set을 비교한다. 읽지 못한 객체가 있으면 source 없이 그 객체를 차이로 돌려준다. */
+/* Compares the set's tables in the database (source) with the set. If there are objects that could not be read, they are returned as differences without a source. */
 static document *compare_set(const document *live, const unsupportedv *skipped, const document *target, smap *declared,
     changev *differences, bool *compared, strs *out)
 {
@@ -1550,12 +1550,12 @@ void add_tables_and_columns_steps(const document *live, const unsupportedv *skip
             continue;
         }
         if (str_eqc(d->kind, "add_index")) {
-            /* index는 행을 거부하지 않으므로 있는 table에도 더한다. */
+            /* An index does not reject rows, so it is added even to an existing table. */
             smap_set(&adding, qualified(d->table, d->name), TRUEP);
             continue;
         }
         if (str_eqc(d->kind, "add_unique")) {
-            /* unique key는 있는 행이 겹치면 실패하므로 plan과 apply가 다룬다. */
+            /* A unique key fails if existing rows overlap, so the plan and apply handle it. */
             PUSH(differences, fmt("add_unique %S: a missing unique key can fail on the existing rows; add it with a plan", qualified(d->table, d->name)));
             continue;
         }
@@ -1565,7 +1565,7 @@ void add_tables_and_columns_steps(const document *live, const unsupportedv *skip
         *differences_out = differences;
         return;
     }
-    /* 만드는 table과 더하는 column과 index는 table 이름 순, table 안에서는 column 순서 뒤 index 순서다. */
+    /* Tables to create, columns to add, and indexes are in table name order; within a table, column order then index order. */
     strs added = {0};
     for (size_t i = 0; i < target->tables.n; i++) {
         const table *t = target->tables.v[i];
@@ -1586,7 +1586,7 @@ void add_tables_and_columns_steps(const document *live, const unsupportedv *skip
             }
         }
     }
-    /* 더하는 table과 column은 plan 하나로 쓴다. plan은 database에 있는 set의 table에서 시작한다(없으면 빈 database). */
+    /* Tables and columns to add are written as one plan. The plan starts from the set's tables in the database (an empty database if none). */
     diags d = {0};
     planstepv steps = {0};
     const document *start = source->tables.n == 0 ? NULL : source;
@@ -1602,11 +1602,11 @@ void add_tables_and_columns_steps(const document *live, const unsupportedv *skip
         }
     }
     if (d.n == 0) {
-        /* target은 외부 문서를 쓰는 set의 schema text일 수 있으므로 plan 문서를 parse하지 않고 target으로 plan을 만든다. */
+        /* The target may be the schema text of a set that uses external documents, so the plan is made from the target without parsing the plan document. */
         plan *p = plan_to(SL("add_tables_and_columns"), has_from, from, (trenamev){0}, (crenamev){0}, (strs){0}, (cnamev){0},
             (document *)target, dbs_emit(target, VIEW_CANONICAL), &d);
         dialect dl;
-        /* PHP client처럼 dialect는 step을 쓸 때 확인한다. */
+        /* As in the PHP client, the dialect is checked when a step is written. */
         if (p != NULL && dbs_dialect(dialect_name, &dl)) {
             plan_steps(start, p, dl, &steps, &d);
         }

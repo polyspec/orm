@@ -1,13 +1,13 @@
-//! `dbspec::runtime_model`로 만든 document set의 runtime model
-//! (docs/dbspec.md, "Runtime model")과 `dbspec::parse_manifest`로 manifest text에서
-//! 다시 읽은 document를 검사한다.
+//! The runtime model of a document set made with `dbspec::runtime_model`
+//! (docs/dbspec.md, "Runtime model"), using `dbspec::parse_manifest` on the manifest text,
+//! checks the documents read back.
 
 use polyspec_orm_case_clock::CaseClock;
 use polyspec_orm_schema::dbspec::{self, Document, Type};
 use std::collections::BTreeMap;
 use std::time::Duration;
 
-// DEADLINE는 test의 CPU 시간 한도이고, 멈춘 test를 끝내는 wall-clock 기한은 그 열 배다
+// DEADLINE is the CPU time limit of the test; the wall-clock deadline that ends a hung test is ten times that.
 // (polyspec_orm_testcase::wall_for_cpu).
 const DEADLINE: Duration = Duration::from_secs(10);
 

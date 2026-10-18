@@ -14,8 +14,8 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// featureDatabase는 feature coverage checker가 고른 database와 DSN이다.
-// 둘 중 하나라도 없으면 test가 실패한다.
+// featureDatabase is the database and DSN that the feature coverage checker selected.
+// If either one is missing, the test fails.
 func featureDatabase(t *testing.T) (string, string) {
 	t.Helper()
 	driver, dsn := os.Getenv("ORM_FEATURE_DATABASE"), os.Getenv("ORM_FEATURE_DSN")
@@ -25,7 +25,7 @@ func featureDatabase(t *testing.T) (string, string) {
 	return driver, dsn
 }
 
-// openFeatureNative는 고른 database를 native driver로 연다.
+// openFeatureNative opens the selected database with the native driver.
 func openFeatureNative(t *testing.T, driver, dsn string) *sql.DB {
 	t.Helper()
 	if driver != "sqlite" {
@@ -38,13 +38,13 @@ func openFeatureNative(t *testing.T, driver, dsn string) *sql.DB {
 	return raw
 }
 
-// sqliteFeaturePath는 SQLite DSN URI의 file path다.
+// sqliteFeaturePath is the file path of the SQLite DSN URI.
 func sqliteFeaturePath(dsn string) string {
 	path, _, _ := strings.Cut(strings.TrimPrefix(dsn, "sqlite://"), "?")
 	return path
 }
 
-// auditTables는 고른 database에 있는 audit fixture의 table 이름이다.
+// auditTables holds the table names of the audit fixture in the selected database.
 func auditTables(t *testing.T, raw *sql.DB, driver string) []string {
 	t.Helper()
 	query := map[string]string{
@@ -71,8 +71,8 @@ func auditTables(t *testing.T, raw *sql.DB, driver string) []string {
 	return out
 }
 
-// dropAudit는 audit fixture가 만든 table과 PostgreSQL trigger function을
-// 지운다. trigger는 table과 함께 지워진다.
+// dropAudit drops the tables and PostgreSQL trigger functions that the audit fixture created.
+// Triggers are dropped along with their tables.
 func dropAudit(t *testing.T, raw *sql.DB, driver string) {
 	t.Helper()
 	statements := map[string][]string{
@@ -92,11 +92,11 @@ func dropAudit(t *testing.T, raw *sql.DB, driver string) {
 	}
 }
 
-// TestCoverageAuditHistory는 고른 database에서 auditCase를 실행한다:
-// contracts/fixtures/audit.dbs를 설치하고, audit source를 가진 연결의 audit
-// transaction이 audit 기록 하나를 삽입하고 audit table의 insert, update, soft
-// delete가 그 key를 쓰며 trigger가 각 version을 item_history에 남기는지
-// 확인한다. 끝나면 설치한 table과 function을 지운다.
+// TestCoverageAuditHistory runs auditCase on the selected database:
+// it installs contracts/fixtures/audit.dbs, and on a connection with an audit source, the audit
+// transaction inserts one audit record, and the audit table's insert, update, soft
+// delete write that key, and whether the trigger records each version in item_history.
+// It checks this and then drops the installed tables and functions.
 func TestCoverageAuditHistory(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	driver, dsn := featureDatabase(t)
@@ -109,16 +109,16 @@ func TestCoverageAuditHistory(t *testing.T) {
 	if present := auditTables(t, raw, driver); len(present) > 0 {
 		t.Fatalf("audit tables exist before the case: %v", present)
 	}
-	// 설치가 일부만 적용되어도 지우도록 설치 전에 정리를 등록한다.
+	// It registers the cleanup before installing, so that partially applied installs are dropped too.
 	defer dropAudit(t, raw, driver)
 	auditCase(t, driver, dsn)
 }
 
-// TestCoverageAuditTransactionEntryPoints는 모든 transaction 진입점이 audit
-// 값을 받는지 확인한다: 연결의 Transaction과 WithContext handle의
-// Transaction이 audit 기록을 하나씩 삽입하고(audit source는 transaction의
-// context로 불린다) audit 대상 write가 그 key를 쓰며, 중첩 transaction은
-// audit을 받지 않는다.
+// TestCoverageAuditTransactionEntryPoints checks that every transaction entry point receives the audit
+// value: the connection's Transaction and the WithContext handle's
+// Transaction each insert one audit record (the audit source is called
+// with the transaction's context), the audited write writes that key, and a nested transaction
+// does not receive an audit.
 func TestCoverageAuditTransactionEntryPoints(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	driver, dsn := featureDatabase(t)
@@ -166,7 +166,7 @@ func TestCoverageAuditTransactionEntryPoints(t *testing.T) {
 	}, orm.Audit(map[string]any{"actor": "transaction"}), orm.Retry(0)); err != nil {
 		t.Fatal(err)
 	}
-	// audit source는 transaction이 쓰는 context로 불린다.
+	// The audit source is called with the context the transaction uses.
 	handle := adb.WithContext(context.WithValue(context.Background(), actorKey{}, "context"))
 	if err := handle.Transaction(func() error {
 		return item(handle, map[string]any{"seq": seq, "title": "second"}).Update(nil)
@@ -192,11 +192,11 @@ func TestCoverageAuditTransactionEntryPoints(t *testing.T) {
 	}
 }
 
-// auditColumnsTables는 audit_columns fixture가 만드는 table이다.
+// auditColumnsTables is the table that the audit_columns fixture creates.
 var auditColumnsTables = []string{"card", "card_history", "tag", "tag_history"}
 
-// dropAuditColumns는 audit_columns fixture가 만든 table과 PostgreSQL trigger
-// function을 지운다. trigger는 table과 함께 지워진다.
+// dropAuditColumns drops the table and PostgreSQL trigger that the audit_columns fixture created,
+// function. Triggers are dropped along with their table.
 func dropAuditColumns(t *testing.T, raw *sql.DB, driver string) {
 	t.Helper()
 	quote := func(name string) string { return `"` + name + `"` }
@@ -221,7 +221,7 @@ func dropAuditColumns(t *testing.T, raw *sql.DB, driver string) {
 	}
 }
 
-// auditColumnsRows는 query의 column 이름과 모든 row를 문자열로 읽는다.
+// auditColumnsRows reads the query's column names and all its rows as strings.
 func auditColumnsRows(t *testing.T, raw *sql.DB, query string) ([]string, [][]string) {
 	t.Helper()
 	rows, err := raw.Query(query)
@@ -258,11 +258,11 @@ func auditColumnsRows(t *testing.T, raw *sql.DB, query string) ([]string, [][]st
 	return columns, out
 }
 
-// TestCoverageAuditSelectedColumns는 contracts/fixtures/audit_columns.dbs를 고른
-// database에 설치하고, client가 쓴 insert, update, soft delete를 audit trigger가
-// 고른 column만으로 기록하는지 확인한다. card는 exclude (secret)로 secret을 빼고,
-// tag는 include (label)로 label과 audit column만 기록한다. history table에는
-// 기록하는 column만 있다. 끝나면 설치한 table과 function을 지운다.
+// TestCoverageAuditSelectedColumns installs contracts/fixtures/audit_columns.dbs in the selected
+// database and checks that the audit trigger, on client insert, update, and soft delete,
+// records only the selected columns. card omits secret with exclude (secret),
+// and tag records only label and the audit column with include (label). The history table holds
+// only the recorded columns. Afterward, it drops the installed tables and functions.
 func TestCoverageAuditSelectedColumns(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	driver, dsn := featureDatabase(t)
@@ -272,7 +272,7 @@ func TestCoverageAuditSelectedColumns(t *testing.T) {
 			t.Error(err)
 		}
 	}()
-	// 설치가 일부만 적용되어도 지우도록 설치 전에 정리를 등록한다.
+	// It registers the cleanup before installing, so that partially applied installs are dropped too.
 	defer dropAuditColumns(t, raw, driver)
 
 	s := fixtureSchema(t, "audit_columns")
@@ -347,8 +347,8 @@ func TestCoverageAuditSelectedColumns(t *testing.T) {
 	}
 }
 
-// dropRestore는 restore fixture가 만든 table과 PostgreSQL trigger function을
-// 지운다. trigger는 table과 함께 지워진다.
+// dropRestore drops the table and PostgreSQL trigger function that the restore fixture created.
+// Triggers are dropped along with their table.
 func dropRestore(t *testing.T, raw *sql.DB, driver string) {
 	t.Helper()
 	quote := func(name string) string { return `"` + name + `"` }
@@ -371,9 +371,9 @@ func dropRestore(t *testing.T, raw *sql.DB, driver string) {
 	}
 }
 
-// TestCoverageSoftDeleteRestore는 고른 database에서 restoreCase를 실행한다:
-// unique key와 exclude 목록을 가진 audit table과 audit 없는 table의 soft
-// delete한 행을 restore로 되돌린다. 끝나면 설치한 table과 function을 지운다.
+// TestCoverageSoftDeleteRestore runs restoreCase on the selected database:
+// an audit table with a unique key and an exclude list, and a table without audit, soft
+// deleted rows are restored. Afterward, it drops the installed tables and functions.
 func TestCoverageSoftDeleteRestore(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	driver, dsn := featureDatabase(t)
@@ -392,7 +392,7 @@ func TestCoverageSoftDeleteRestore(t *testing.T) {
 			t.Fatalf("table %s exists before the case", table)
 		}
 	}
-	// 설치가 일부만 적용되어도 지우도록 설치 전에 정리를 등록한다.
+	// It registers the cleanup before installing, so that partially applied installs are dropped too.
 	defer dropRestore(t, raw, driver)
 	restoreCase(t, driver, dsn)
 }

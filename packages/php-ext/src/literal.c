@@ -1,4 +1,4 @@
-/* dbspec default, check literal, coordinate의 canonical literal 형식이다(PHP client Literal). */
+/* Canonical literal format of dbspec defaults, check literals, and coordinates (PHP client Literal). */
 #include "dbspec.h"
 #include "Zend/zend_strtod.h"
 #include "ext/spl/spl_exceptions.h"
@@ -9,7 +9,7 @@ static bool digit(char c)
     return c >= '0' && c <= '9';
 }
 
-/* `-?digits(.digits)?`를 부호, 정수 숫자, 소수 숫자로 나눈다. */
+/* Splits `-?digits(.digits)?` into sign, integer digits, and fractional digits. */
 bool literal_number(str text, number *out)
 {
     size_t i = 0;
@@ -49,7 +49,7 @@ bool literal_number(str text, number *out)
 
 static str ltrim_zero(str s);
 
-/* 0이나 앞자리 0에 부호가 없는 정수. */
+/* An unsigned integer that is 0 or has no leading zero. */
 bool literal_integer(str text, str *out)
 {
     number n;
@@ -111,7 +111,7 @@ static bool all_digits(str s, size_t from, size_t n)
     return true;
 }
 
-/* `^([0-9]{4})-([0-9]{2})-([0-9]{2})$`이고 1년 이상의 checkdate다. */
+/* Matches `^([0-9]{4})-([0-9]{2})-([0-9]{2})$` and is a checkdate of year 1 or later. */
 static bool date_ok(str v)
 {
     if (v.n != 10 || !all_digits(v, 0, 4) || v.s[4] != '-' || !all_digits(v, 5, 2) || v.s[7] != '-' || !all_digits(v, 8, 2)) {
@@ -129,7 +129,7 @@ static bool date_ok(str v)
     return d <= max;
 }
 
-/* `HH:MM:SS[.f]`, 24:00:00 미만, 소수는 precision 이하 자리이며 precision 자리로 채운다. */
+/* `HH:MM:SS[.f]`, less than 24:00:00; fractional digits have at most the precision's digits and are padded to the precision's digits. */
 static bool time_text(str v, zend_long precision, str *out)
 {
     if (v.n < 8 || !all_digits(v, 0, 2) || v.s[2] != ':' || !all_digits(v, 3, 2) || v.s[5] != ':' || !all_digits(v, 6, 2)) {
@@ -296,7 +296,7 @@ bool literal_column_default(const ctype *type, str text, str *canonical, str *pr
     return false;
 }
 
-/* 같은 double로 다시 읽히는 가장 짧은 지수 없는 10진수다. 정수 값에는 점이 없고 음의 0은 `0`이다. */
+/* The shortest decimal without exponent that reads back as the same double. An integer value has no point, and negative zero is `0`. */
 str literal_shortest_decimal(double value)
 {
     if (value == 0.0) {
@@ -309,7 +309,7 @@ str literal_shortest_decimal(double value)
             break;
         }
     }
-    /* buf는 -?d(.ddd)?e[+-]dd 이다. */
+    /* buf is -?d(.ddd)?e[+-]dd. */
     str s = str_c(buf);
     size_t i = 0;
     bool negative = s.s[0] == '-';

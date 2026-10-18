@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-// PHP 확장 orm_dbspec(Polyspec\Orm\Dbspec\Native\Dbspec)으로 모든 공유 case, stress 문서, statement vector, plan vector,
-// Mermaid vector의 결과를 tests/dbspec/compare/check.mts의 줄 형식으로 출력한다. 출력은 PHP client의 runner(php.php)와
-// 같은 함수로 쓴다. It then prints the positions cases of cases.json and the analysis and format of each case of
+// With the PHP extension orm_dbspec (Polyspec\Orm\Dbspec\Native\Dbspec), all shared cases, stress documents, statement vectors, plan vectors,
+// and Mermaid vector results print in the line format of tests/dbspec/compare/check.mts. The output
+// is written by the same function as the PHP client's runner (php.php). It then prints the positions cases of cases.json and the analysis and format of each case of
 // syntax.json.
 //
 // Usage: php -d extension=<orm_dbspec library> packages/php-ext/testing/dbspec/compare/php-extension.php <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>

@@ -1,6 +1,6 @@
 use std::process::Command;
 
-// client_bench는 ORM_BENCH_MYSQL_DSN이 없거나 비어 있으면 연결하지 않고 그 변수 이름을 출력하며 실패한다.
+// client_bench fails without connecting if ORM_BENCH_MYSQL_DSN is missing or empty, and prints that variable name.
 fn run_without_dsn(value: Option<&str>) -> std::process::Output {
     let mut command = Command::new(polyspec_orm_testcase::program("client_bench"));
     command.arg("1");

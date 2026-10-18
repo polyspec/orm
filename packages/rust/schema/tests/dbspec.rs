@@ -10,7 +10,7 @@ use std::time::Duration;
 mod dbspec_cases;
 
 const CASE_DEADLINE: Duration = Duration::from_secs(1);
-// SUITE_DEADLINE는 test의 CPU 시간 한도이고, 멈춘 test를 끝내는 wall-clock 기한은 그 열 배다
+// SUITE_DEADLINE is the CPU time limit of the test; the wall-clock deadline that ends a hung test is ten times that.
 // (polyspec_orm_testcase::wall_for_cpu).
 const SUITE_DEADLINE: Duration = Duration::from_secs(5);
 
@@ -300,10 +300,10 @@ fn shared_dbspec_syntax(cases: &Value) -> Vec<Trial> {
     trials
 }
 
-/// files case는 `dbspec::read_file`에 path를 주어, `dbspec::read_bytes`에 파일 byte와 case
-/// path를 이름으로 주어 두 번 읽는다. signature가 없는 byte는 "<name> is not a dbspec
-/// document", UTF-8이 아닌 byte는 "<name> is not valid UTF-8" diagnostic 하나를, 나머지
-/// 파일은 그 byte를 돌려주며 그 text는 parse와 emit에서 바뀌지 않는다.
+/// The files case passes the path to `dbspec::read_file` and passes the file bytes and case
+/// path as the name to `dbspec::read_bytes`, reading twice. Bytes without a signature give "<name> is not a dbspec
+/// document" and bytes that are not UTF-8 give one "<name> is not valid UTF-8" diagnostic; the rest
+/// returns those bytes, and its text is unchanged by parse and emit.
 fn shared_dbspec_files(file: &Value, seen: &mut std::collections::BTreeSet<String>) -> Vec<Trial> {
     let path = cases_path();
     let cases = file["files"].as_array().expect("files cases are listed");

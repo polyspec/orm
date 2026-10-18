@@ -4,8 +4,8 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Dbspec;
 
 /**
- * Dbspec::readFile의 결과: diagnostic 없는 파일 text, 또는 text 없는 signature
- * diagnostic이며 둘을 함께 갖지 않는다.
+ * Result of Dbspec::readFile: file text with no diagnostic, or a signature
+ * diagnostic with no text; the two are never held together.
  */
 final readonly class ReadResult
 {

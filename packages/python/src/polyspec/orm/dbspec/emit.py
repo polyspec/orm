@@ -1,5 +1,5 @@
-# dbspec 문서의 canonical 출력 (docs/dbspec.md "Canonical form"). 주석은 그것이
-# 붙는 줄의 들여쓰기를 쓰고, 닫는 brace 앞의 주석은 block 줄의 들여쓰기를 쓴다.
+# Canonical output of a dbspec document (docs/dbspec.md "Canonical form"). A comment takes the indentation of the line it
+# attaches to, and a comment before a closing brace takes the indentation of the block line.
 from polyspec.orm.dbspec.model import (
     DbspecDefault,
     DbspecDocument,
@@ -20,9 +20,9 @@ CANONICAL = "canonical"
 MANIFEST = "manifest"
 SCHEMA = "schema"
 
-# settings 줄의 쓰는 순서(engine/dbspec/emit.go의 mappingSettings 다음 immutable과 audit). 같은 종류 안에서는
-# 정렬 key(codec과 blind_index는 column, navigation은 foreign key, markdown은 column)로, state_machine은
-# 줄, history, limit 순서로 나누어 쓴다.
+# Order of the settings lines (mappingSettings in engine/dbspec/emit.go, then immutable and audit). Within the same kind,
+# lines are sorted by key (codec and blind_index by column, navigation by foreign key, markdown by column), and state_machine
+# is written split into lines, history, and limit, in that order.
 _SETTING_ORDER = (
     "entity",
     "updated",
@@ -85,7 +85,7 @@ def _audit_line(setting, kind: str, columns) -> str:
 
 
 def quote(value: str) -> str:
-    """작은따옴표 string literal이다: 안의 작은따옴표는 두 개로 쓴다."""
+    """A single-quoted string literal: a single quote inside it is written as two."""
     return "'" + value.replace("'", "''") + "'"
 
 
@@ -153,8 +153,8 @@ def _setting_text(setting, table: DbspecTable, view: str) -> str:
         if setting.requires:
             text += f" require ({', '.join(setting.requires)})"
         return text
-    # schema text는 database 상태로 정해지므로 기록하지 않는 column을 column 순서의
-    # exclude 목록으로 쓴다. 다른 view는 쓴 목록을 그대로 쓴다.
+    # Schema text is determined by database state, so columns that are not recorded are listed
+    # in the exclude list in column order. Other views write the list as written.
     if view == SCHEMA:
         return _audit_line(setting, "exclude", _audit_excluded(setting, table))
     if setting.include is not None:
@@ -203,8 +203,8 @@ def _table(out: list, t: DbspecTable, view: str) -> None:
     for c in sorted(t.checks, key=lambda c: c.name):
         _comments(out, c.comments, "  ", view)
         out.append(f"  check {c.name} ({c.expression})")
-    # 빈 settings block은 의미가 없다: canonical form은 그것을 쓰지 않고 주석을
-    # 닫는 brace 앞에 둔다.
+    # An empty settings block has no meaning: the canonical form does not write it, and places its comments
+    # before the closing brace.
     written = (
         []
         if t.settings is None
@@ -234,7 +234,7 @@ def _table(out: list, t: DbspecTable, view: str) -> None:
 
 
 def emit_document(document: DbspecDocument, view: str) -> str:
-    """문서를 지정된 view(canonical, manifest, schema)의 텍스트로 쓴다."""
+    """Writes the document as text of the given view (canonical, manifest, or schema)."""
     out = [f"dbspec 1 {document.name}"]
     uses = sorted(document.uses, key=lambda u: u.document)
     if uses:

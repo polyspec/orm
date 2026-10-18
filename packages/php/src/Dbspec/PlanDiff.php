@@ -11,9 +11,9 @@ namespace Polyspec\Orm\Dbspec;
  */
 final class PlanDiff
 {
-    /** @var array<string, Table> 이름: source table */
+    /** @var array<string, Table> name: source table */
     public array $source = [];
-    /** @var array<string, Table> 이름: target table */
+    /** @var array<string, Table> name: target table */
     public array $target = [];
     /** @var array<string, string> target table: source table */
     public array $tableOf = [];
@@ -21,25 +21,25 @@ final class PlanDiff
     public array $columnOf = [];
     /** @var list<string> */
     public array $created = [];
-    /** @var list<string> source 이름 순 */
+    /** @var list<string> In source name order */
     public array $dropped = [];
-    /** @var list<string> target 이름 순 */
+    /** @var list<string> In target name order */
     public array $matched = [];
-    /** @var array<string, list<string>> target table: 더한 target column */
+    /** @var array<string, list<string>> target table: columns added */
     public array $added = [];
-    /** @var array<string, list<string>> target table: 지운 source column */
+    /** @var array<string, list<string>> target table: source columns removed */
     public array $removed = [];
-    /** @var array<string, list<string>> target table: 바꾼 target column */
+    /** @var array<string, list<string>> target table: target columns changed */
     public array $altered = [];
     /** @var list<TableRename> */
     public array $renamedTables = [];
     /** @var list<ColumnRename> */
     public array $renamedColumns = [];
-    /** @var array<string, list<array{0: string, 1: string}>> source table: 지울 [kind, name] */
+    /** @var array<string, list<array{0: string, 1: string}>> source table: [kind, name] to remove */
     public array $dropObjects = [];
-    /** @var array<string, list<array{0: string, 1: string}>> target table: 더할 [kind, name] */
+    /** @var array<string, list<array{0: string, 1: string}>> target table: [kind, name] to add */
     public array $addObjects = [];
-    /** @var array<string, true> target table: trigger 가 바뀐다 */
+    /** @var array<string, true> target table: its trigger changes */
     public array $triggers = [];
     /** @var list<Change> */
     public array $changes = [];
@@ -53,8 +53,8 @@ final class PlanDiff
     }
 
     /**
-     * source(null 이면 빈 schema)에서 plan 의 target 으로 가는 diff, 또는
-     * diagnostic. source 의 schemaHash 가 plan 의 from 과 다르면 diagnostic 이다.
+     * The diff from the source (an empty schema if null) to the plan's target, or
+     * a diagnostic. If the source's schemaHash differs from the plan's from, it is a diagnostic.
      *
      * @return array{0: ?self, 1: list<Diagnostic>}
      */
@@ -141,7 +141,7 @@ final class PlanDiff
             $allowedColumns["{$c->table}.{$c->name}"] = true;
         }
         $usedColumnPermissions = [];
-        // matched table 의 column
+        // Columns of a matched table
         foreach ($d->matched as $name) {
             $src = $d->source[$d->tableOf[$name]];
             $tgt = $d->target[$name];
@@ -185,8 +185,8 @@ final class PlanDiff
                     $d->altered[$name][] = $c->name;
                 }
             }
-            // PostgreSQL 은 column 자리를 정하지 못하므로 남는 column 의 순서는 그대로이고
-            // 더한 column 은 남는 column 뒤에 온다.
+            // PostgreSQL cannot decide column positions, so the order of remaining columns is kept as is, and
+            // added columns come after the remaining columns.
             $kept = [];
             foreach ($src->columns as $c) {
                 $n = $renamed[$c->name] ?? $c->name;
@@ -229,7 +229,7 @@ final class PlanDiff
         return [$d, []];
     }
 
-    /** 세 database 에서 모든 값을 지키는 type 변경인지 알려 준다. */
+    /** Tells whether the type change keeps every value across all three databases. */
     public static function widens(ColumnType $from, ColumnType $to): bool
     {
         $f = $from->parameters;
@@ -270,7 +270,7 @@ final class PlanDiff
     }
 
     /**
-     * 이름 key 를 byte 순서로 돌려준다.
+     * Returns the name keys in byte order.
      *
      * @param array<string, mixed> $map
      * @return list<string>
@@ -283,8 +283,8 @@ final class PlanDiff
     }
 
     /**
-     * 세 dialect 중 하나에서라도 렌더링한 trigger statement 가 다른 table 을
-     * 표시한다. source 는 rename 을 적용하기 전 이름 그대로 렌더링한다.
+     * If a trigger statement rendered in any one of the three dialects differs, it marks
+     * that table. The source is rendered with its names as they are, before renames are applied.
      */
     private function triggerChanges(): void
     {

@@ -1,9 +1,9 @@
-// TypeScript client를 build하고 그 출력 directory packages/ts/dist를 원자적으로 publish한다. tsc는 같은
-// directory의 임시 directory dist.next-<pid>에 쓰고, 성공하면 rename으로 dist를 바꾼다: 기존 dist를
-// dist.old-<pid>로 옮기고 새 directory를 dist로 옮긴 뒤 옛 것을 지운다. 그래서 dist에는 끝난 build 하나의 file만
-// 있고, 중간에 끊긴 build가 남긴 반쪽 출력이 없다. 실패한 build의 임시 directory는 지우고 dist는 그대로 둔다. dist를
-// 쓰고 읽는 make target은 TypeScript build lease(HOLD_TYPESCRIPT, READ_TYPESCRIPT)를 가지므로 두 rename 사이를
-// 다른 실행이 보지 않는다.
+// Builds the TypeScript client and atomically publishes its output directory packages/ts/dist. tsc writes to a temporary directory in the same
+// directory, dist.next-<pid>, and on success replaces dist by rename: the existing dist is
+// moved to dist.old-<pid>, the new directory is moved to dist, and then the old one is deleted. So dist contains the files of only one finished build,
+// and no half-written output is left by an interrupted build. A failed build's temporary directory is deleted and dist is left as it is. The make targets that write to and read
+// dist hold the TypeScript build lease (HOLD_TYPESCRIPT, READ_TYPESCRIPT), so
+// other runs do not see the state between the two renames.
 //
 // Usage: node scripts/typescript/build.mts
 import { spawnSync } from 'node:child_process';
@@ -18,7 +18,7 @@ const client = fileURLToPath(new URL('../../packages/ts/', import.meta.url));
 const dist = join(client, 'dist');
 const next = join(client, `dist.next-${process.pid}`);
 const old = join(client, `dist.old-${process.pid}`);
-// tsc는 client의 dependency typescript다: Node가 client의 package.json에서 package 이름으로 찾는다.
+// tsc is the client's dependency typescript: Node finds it by package name from the client's package.json.
 let tsc: string;
 try {
   // typescript 7 exports only its package.json, so the compiler is the file that its bin field names.

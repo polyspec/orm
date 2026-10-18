@@ -1,5 +1,5 @@
-# 모든 공유 case, stress 문서, statement vector, plan vector, Mermaid vector의 Python
-# dbspec 결과를 tests/dbspec/compare/check.mts의 줄 형식으로 출력한다. It then prints the positions cases of
+# Python of all shared cases, the stress document, statement vectors, plan vectors and Mermaid vectors
+# dbspec results in the line format of tests/dbspec/compare/check.mts. It then prints the positions cases of
 # cases.json and the analysis and format of each case of syntax.json.
 #
 # Usage: python3 -m packages.python.testing.dbspec.compare.python <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>
@@ -51,7 +51,7 @@ cases_path, stress_path, ddl_path, plans_path, mermaid_path, syntax_path = sys.a
 out = []
 
 
-# fail은 vector file의 위치와 문제를 stderr에 쓰고 1로 끝낸다.
+# fail writes the position and problem of the vector file to stderr and ends with 1.
 def fail(path, location, problem):
     print(f"{path}: {location} {problem}", file=sys.stderr)
     sys.exit(1)
@@ -100,7 +100,7 @@ def check_set_names(path, v):
                     fail(path, f"sets[{i}].{key}[{j}][0]", "has no document name")
 
 
-# join은 줄을 LF로, crlf이면 CRLF로, mixed이면 CRLF와 LF를 번갈아 마지막 줄 끝 없이 잇는다.
+# join joins lines with LF, with CRLF if crlf, and alternating CRLF and LF with no line ending on the last line if mixed.
 def join(ls, crlf, mixed):
     if mixed:
         return "".join(
@@ -115,7 +115,7 @@ def diagnostic_line(d):
     return f"! {d.rule} {d.line} {d.column}"
 
 
-# write는 text의 diagnostic을, 없으면 그 emission을 출력한다.
+# write prints the diagnostic of text, or otherwise its emission.
 def write(text, docs, stress):
     document, _positions, diagnostics = parse_dbspec(text, docs)
     if diagnostics:
@@ -128,8 +128,8 @@ def write(text, docs, stress):
         out.extend(f"| {line}" for line in emitted.split("\n"))
 
 
-# read_document는 path의 dbspec document 파일을 읽는다. 읽을 수 없거나 signature가 없으면
-# 그 이유를 stderr에 쓰고 1로 끝낸다.
+# read_document reads the dbspec document file at path. If it cannot be read or has no signature,
+# it writes the reason to stderr and ends with 1.
 def read_document(path):
     try:
         text, diagnostics = read_dbspec_file(path)
@@ -159,9 +159,9 @@ for kind in ["canonical", "normalize", "invalid"]:
 out.append("stress")
 write(read_document(stress_path), {}, True)
 
-# files case는 read_dbspec_file에 path를 주어 "files/<id>"로, read_dbspec_bytes에 파일 byte와
-# case path를 이름으로 주어 "files/<id>/bytes"로 읽어 diagnostic과 그 message를, 없으면
-# emission을 출력한다. message 앞의 이름은 "<name>"으로 쓴다.
+# For files cases, path is given to read_dbspec_file as "files/<id>", and the file bytes are given to read_dbspec_bytes
+# with the case path as name, read as "files/<id>/bytes", and prints the diagnostic and its message, or otherwise
+# the emission. The name before a message is written as "<name>".
 for c in shared["files"]:
     path = os.path.normpath(os.path.join(os.path.dirname(cases_path), c["path"]))
     try:
@@ -193,8 +193,8 @@ for c in shared["files"]:
             )
 
 
-# parse_case는 case 문서 집합의 각 문서를 다른 문서와 함께 parse한다. 진단이 있으면 그것을 출력하고
-# None을 돌려준다.
+# parse_case parses each document of the case document set together with the other documents. If there is a diagnostic it prints it and
+# returns None.
 def parse_set(c, print_diagnostics):
     parsed = []
     for name in sorted(c["documents"]):
@@ -213,7 +213,7 @@ def parse_set(c, print_diagnostics):
     return parsed
 
 
-# write_manifest는 case 문서 집합의 hash와 text를, 또는 문서나 집합의 diagnostic을 출력한다.
+# write_manifest prints the hash and text of the case document set, or the diagnostic of a document or the set.
 def write_manifest(c):
     docs = parse_set(c, lambda ds: out.extend(diagnostic_line(d) for d in ds))
     if docs is None:
@@ -235,7 +235,7 @@ for c in shared["hashes"]:
     write_manifest(c)
 
 
-# write_render는 case 문서 집합의 statement를 dialect마다, 또는 문서나 집합의 diagnostic을 출력한다.
+# write_render prints the statements of the case document set for each dialect, or the diagnostic of a document or the set.
 def write_render(c):
     def on_diagnostics(ds):
         out.append(f"render/{c['id']}")
@@ -255,7 +255,7 @@ for c in read_vectors(ddl_path, "ddl")["cases"]:
     write_render(c)
 
 
-# write_step은 step 하나를 statement 줄과 그 속성 줄로 쓴다(tests/dbspec/compare/check.mts).
+# write_step writes one step as a statement line and its attribute lines (tests/dbspec/compare/check.mts).
 def write_step(s):
     out.append(f"| {s['statement']}")
     if s["finalize"]:
@@ -276,8 +276,8 @@ def write_step(s):
         out.append(f"  null_check: {c['table']} {c['column']} {default}")
 
 
-# write_plan_diagnostics는 diagnostic을 출력한다. plan, chain, compare diagnostic은 모든 client가
-# 공유하는 message로 끝나고, target이나 source의 schema diagnostic은 그렇지 않다.
+# write_plan_diagnostics prints the diagnostic. Plan, chain and compare diagnostics end with the message shared by all clients,
+# but schema diagnostics of target or source do not.
 def write_plan_diagnostics(diagnostics):
     for d in diagnostics:
         if d.rule in ("plan", "chain", "compare"):
@@ -289,8 +289,8 @@ def write_plan_diagnostics(diagnostics):
 UNDEFINED = object()
 
 
-# plan_source는 plan case의 source schema를 돌려준다. source가 null이면 None을, diagnostic을
-# 출력했으면 UNDEFINED를 돌려준다.
+# plan_source returns the source schema of the plan case. If source is null it returns None, and if it printed a diagnostic
+# it returns UNDEFINED.
 def plan_source(ls):
     if ls is None:
         return None
@@ -383,13 +383,13 @@ for c in plans["comparisons"]:
         out.append(f"| {d['kind']} {d['table']} {d['name']}")
 
 
-# write_dropped는 export나 import가 뺀 것을 "= kind<TAB>table<TAB>name"으로 출력한다. 이유는 비교하지 않는다.
+# write_dropped prints what export or import dropped as "= kind<TAB>table<TAB>name". It does not compare the reason.
 def write_dropped(dropped):
     for u in dropped:
         out.append(f"= {u['kind']}\t{u['table']}\t{u['name']}")
 
 
-# write_export는 문서의 Mermaid text와 빠진 객체를 출력하고 Mermaid text를 돌려준다.
+# write_export prints the document's Mermaid text and the missing objects, and returns the Mermaid text.
 def write_export(document):
     result = export_mermaid(document)
     out.extend(f"| {line}" for line in result["mermaid"].split("\n"))
@@ -397,7 +397,7 @@ def write_export(document):
     return result["mermaid"]
 
 
-# write_import는 import의 emit한 문서와 빠진 객체를, 또는 diagnostic을 출력한다.
+# write_import prints the document emitted by import and the missing objects, or the diagnostic.
 def write_import(text):
     result = import_mermaid(text, "imported")
     if result["document"] is None:

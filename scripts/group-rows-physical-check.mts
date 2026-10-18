@@ -24,8 +24,8 @@ for (const database of databases) {
         let output: string;
         try { output = await run(program, args, { ...process.env, ORM_GROUP_DATABASE: database, ORM_GROUP_DSN: dsn }); }
         catch (error) { throw new Error(errorMessage(error).replaceAll(dsn, '[redacted]')); }
-        // PHPUnit의 TeamCity 출력에서는 test 하나가 끝나고 실패하거나 건너뛴 test가 없어야 하고, TypeScript test는 CASE 줄
-        // 하나를 쓴다.
+        // In PHPUnit's TeamCity output, a test ends with no failed or skipped test, and TypeScript tests write a CASE line
+        // one.
         const finished = [...output.matchAll(/^##teamcity\[testFinished name='([^']*)'/gm)].map(match => match[1]);
         const passed = language === 'php'
           ? JSON.stringify(finished) === JSON.stringify(['test_group_rows']) && !/^##teamcity\[test(?:Failed|Ignored) /m.test(output)

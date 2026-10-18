@@ -1,5 +1,5 @@
-// tests/testcase.mts의 runCase와 caseTest가 case마다 node:test의 출력(TAP)을 쓰는지, 기한이 지난 case가
-// `Bail out!`로 끝나는지 하위 process로 확인한다.
+// Checks through a child process that runCase and caseTest in tests/testcase.mts write node:test output (TAP) for each case, and that a case past its deadline
+// ends with `Bail out!`.
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
@@ -12,7 +12,7 @@ import { caseTest, COMPUTE, duration, PROCESS } from '../../tests/testcase.mts';
 
 const harness = new URL('../../tests/testcase.mts', import.meta.url).href;
 
-// inOrder는 output에 patterns가 이 순서로 한 줄씩 나타나는지 확인한다.
+// inOrder checks that the output contains the patterns, one line each, in this order.
 function inOrder(output: string, patterns: string[]) {
   const lines = output.split('\n').map((line: string) => line.trim());
   let at = 0;
@@ -24,14 +24,14 @@ function inOrder(output: string, patterns: string[]) {
   }
 }
 
-// timeout은 멈춘 fixture가 이 test를 붙잡지 않도록 하위 process를 끝내는 시간(ms)이다.
+// timeout is the time (ms) given to end the child process, so that a stuck fixture cannot hold this test.
 async function runChild(source: string, args: string[] = [], timeout = 30_000): Promise<{ code: number | string | undefined; stdout: string }> {
   const dir = await mkdtemp(join(tmpdir(), 'orm-testcase-'));
   try {
     const file = join(dir, 'fixture.mjs');
     await writeFile(file, source);
-    // 안쪽 node --test는 case가 주는 변수만 가진 환경으로 실행한다: 바깥 test runner의 NODE_TEST_CONTEXT도 받지 않으므로
-    // 그 runner의 자식으로 보고하지 않는다.
+    // The inner node --test runs with an environment that has only the variables the case gives. Since it does not take the outer test runner's NODE_TEST_CONTEXT either,
+    // it does not report as a child of that runner.
     const env = isolatedEnvironment();
     try {
       const { stdout } = await promisify(execFile)(process.execPath, [...args, file], { env, timeout, killSignal: 'SIGKILL' });
@@ -68,8 +68,8 @@ console.log('after signal');
   inOrder(stdout, ['not ok - fixture/fail', '# fixture failure reason']);
   inOrder(stdout, ['not ok - fixture/signal', '# deadline 100ms exceeded', 'after signal']);
   assert.doesNotMatch(stdout, /elapsed=|RUN |STEP |PASS |FAIL /);
-  // signal을 따르지 않고 timer, socket 같은 handle을 쥔 채 멈춘 case는 GRACE 뒤 process를 끝낸다.
-  // 끝내지 않으면 그 handle이 process를 살려 둔다.
+  // A case that ignores the signal and stops while holding a handle such as a timer or socket ends the process after GRACE.
+  // If it does not end the process, that handle keeps the process alive.
   const stuck = await runChild(`
 import { runCase } from ${JSON.stringify(harness)};
 await runCase('fixture/stuck', 100, () => new Promise(() => { setInterval(() => {}, 1000); }));
@@ -113,7 +113,7 @@ throw new Error('uncaught section error');
   inOrder(stdout, ['section step', 'ok - fixture/section-pass']);
   inOrder(stdout, ['not ok - fixture/section-fail', '# 2 check\\(s\\) failed']);
   inOrder(stdout, ['Bail out! fixture/section-crash: the process ended inside the case: uncaught section error']);
-  // 오류를 stderr에 적고 process.exit로 끝낸 구역의 Bail out! 줄은 그 마지막 오류 줄을 담는다(scripts/git/check.mts가 그렇게 끝난다).
+  // The Bail out! line of a section whose error was written to stderr and which ended with process.exit contains that last error line (scripts/git/check.mts ends that way).
   const exited = await runChild(`
 import { sections } from ${JSON.stringify(harness)};
 const log = sections();
@@ -135,9 +135,9 @@ await new Promise(resolve => setTimeout(resolve, 60000));
   assert.doesNotMatch(stuck.stdout, /process ended inside/);
 });
 
-// run-long case는 느리지만 정상인 build(출력 사이에 1.5초를 쉬고 0으로 끝나는 명령)가 기한 없이
-// 끝까지 실행되어 출력 줄을 그대로 보이고 종료 코드 0과 `ok`를 보고하는지, 실패한 명령은 종료 코드와 오류 출력을
-// 보고하는지, 기한 인자는 받지 않는지 확인한다.
+// The run-long case checks that a slow but normal build (a command that waits 1.5 s between output lines and ends with 0) runs to the end with no deadline,
+// shows its output lines as they are, and reports exit code 0 and `ok`; that a failed command reports its exit code and error output,
+// and that it does not accept a deadline argument.
 caseTest('testcase/run-long', PROCESS, async () => {
   const runLongScript = new URL('../../tests/run-long.mts', import.meta.url).pathname;
   const run = async (args: string[]) => {

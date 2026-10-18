@@ -10,7 +10,7 @@ use Polyspec\Orm\OrmException;
 #[Small]
 final class AggregateNumericTest extends TestCase
 {
-    /** @return iterable<string, array{array<string, mixed>}> contracts/fixtures/aggregate_numeric.json의 case마다 */
+    /** @return iterable<string, array{array<string, mixed>}> for each case in contracts/fixtures/aggregate_numeric.json */
     public static function cases(): iterable
     {
         $fixture = json_decode((string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/aggregate_numeric.json'), true, 512, JSON_THROW_ON_ERROR);

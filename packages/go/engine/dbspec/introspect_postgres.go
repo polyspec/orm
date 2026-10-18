@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// PostgreSQL catalog query. 모두 현재 schema 전체를 한 번에 읽는다.
+// PostgreSQL catalog queries. All of them read the whole current schema at once.
 const (
 	postgresTablesQuery = `SELECT c.relname, c.relkind::text, c.relispartition FROM pg_class c
 WHERE c.relnamespace = current_schema()::regnamespace AND c.relkind IN ('r', 'p', 'v', 'm', 'f') AND c.relname NOT LIKE 'dbspec$%' ORDER BY c.relname`
@@ -160,7 +160,7 @@ func readPostgres(ctx context.Context, q Querier) (*catalog, error) {
 			}
 			t.uniques = append(t.uniques, ikey{name: name, columns: list, desc: make([]bool, len(list))})
 		case kind == "f" && refTable == "":
-			// 다른 schema의 table을 가리키는 foreign key는 이 문서 밖의 table을 가리킨다.
+			// A foreign key that refers to a table in another schema points to a table outside this document.
 			c.report("foreign_key", table, name, "the referenced table is outside the current schema")
 		case kind == "f":
 			del, okDelete := postgresAction(onDelete)
@@ -266,7 +266,7 @@ func readPostgres(ctx context.Context, q Querier) (*catalog, error) {
 	return c, err
 }
 
-// postgresType은 format_type과 collation을 dbspec type으로 읽는다.
+// postgresType reads format_type and collation as a dbspec type.
 func postgresType(formatted, collation string) (Type, bool) {
 	m := postgresTypePattern.FindStringSubmatch(formatted)
 	if m == nil {
@@ -310,7 +310,7 @@ func postgresType(formatted, collation string) (Type, bool) {
 	return Type{}, false
 }
 
-// postgresDefault는 pg_get_expr의 default를 dbspec literal이나 now로 읽는다.
+// postgresDefault reads the default of pg_get_expr as a dbspec literal or now.
 func postgresDefault(text string, typ Type) (string, bool) {
 	if text == "statement_timestamp()" {
 		return "now", typ.Kind == TypeDatetime

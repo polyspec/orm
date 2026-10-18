@@ -9,7 +9,7 @@ declare(strict_types=1);
 // through ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN; the test fails when either
 // is unset.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AesJsonTest.php [--filter <case>]
-// bench model은 읽지 않는다: 이 test는 자기 document set의 model만 쓴다.
+// The bench model is not read: this test uses only the model of its own document set.
 require_once __DIR__ . '/case_database.php';
 
 use Polyspec\Orm\Tests\AesJson\SecretConfig;

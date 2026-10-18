@@ -1,5 +1,5 @@
-# 검사된 request를 plan으로 만든다: root와 그 join의 SELECT 문, relation마다
-# parent step의 row에 묶는 별도 statement, INSERT, UPDATE, DELETE 문
+# Makes a plan from a checked request: the SELECT statements of the root and its joins, a separate statement for each relation
+# bound to the parent step's rows, and the INSERT, UPDATE, and DELETE statements.
 # (docs/protocol.md).
 from polyspec.orm import codes
 from polyspec.orm.engine.params import function_type, interval_type
@@ -17,7 +17,7 @@ def _fail(code: str, message: str):
 
 
 class _Slot:
-    """plan의 bind slot 하나."""
+    """One bind slot of a plan."""
 
     __slots__ = (
         "from_",
@@ -77,7 +77,7 @@ class _Slot:
 
 
 class _Builder:
-    """한 statement의 bind slot들과 table 이름."""
+    """The bind slots and table name of one statement."""
 
     def __init__(self, dialect):
         self.dialect = dialect
@@ -208,9 +208,9 @@ def _validate_aes_assignments(ent: Entity, assignments, require_complete: bool) 
 
 
 def _validate_required_assignments(ent: Entity, assignments) -> None:
-    """insert는 모든 필수 column에 값을 준다: default 없는 NOT NULL column 중
-    identity도 planner가 쓰는 column(AES key version, audit column)도 아닌 것.
-    값을 뺀 default column은 database default를 받는다."""
+    """Insert gives values to all required columns: those that are NOT NULL without a default,
+    that are neither identity nor columns the planner writes (AES key version, audit column).
+    A column left out of the values takes the database default."""
     for col in ent.fields:
         if (
             col.nullable
@@ -256,8 +256,8 @@ def _style_input_type(style: str) -> str:
 
 
 def _mark_assigned(b, start: int, col: Field, sql: str) -> str:
-    """b의 start부터의 param slot을 col의 할당으로 표시하고 sql을 돌려준다: non-null column의 slot은 그 column을
-    싣고, executor는 NULL 값을 거부한다."""
+    """Marks the param slots from b's start as assignments of col and returns sql: a slot for a non-null column carries that column,
+    and the executor rejects a NULL value."""
     if not col.nullable:
         for slot in b.binds[start:]:
             if slot.from_ == "param":
@@ -274,7 +274,7 @@ def _placed_joins(group: dict, out: set) -> None:
 
 
 class _Scope:
-    """statement 안의 entity 출현(root나 join)과 그 alias."""
+    """An entity occurrence in a statement (root or join) and its alias."""
 
     __slots__ = ("ent", "alias", "q", "joins", "parent", "outer", "extra")
 
@@ -284,9 +284,9 @@ class _Scope:
         self.q = q
         self.joins: dict[str, _Scope] = {}
         self.parent = parent
-        # subquery root를 감싼 query ("^" 참조).
+        # Query that wraps a subquery root (the "^" reference).
         self.outer = None
-        # relation step가 선택해야 하는 column.
+        # Columns that the relation step must select.
         self.extra: list[str] = []
 
 
@@ -313,7 +313,7 @@ class Planner:
         if kind in ("one", "all", "count", "group_count", "sum", "avg"):
             self._select_step(add, steps, r, kind, r.get("agg") or "", None)
         elif kind == "paginate":
-            # main(relation step 포함) 뒤에 count step.
+            # Count step after main (including relation steps).
             self._select_step(add, steps, r, "all", "", None)
             self._select_step(add, steps, r, "count", "", None)
         elif kind == "insert":
@@ -353,7 +353,7 @@ class Planner:
         return [s for s in stages if self.d.handles_stage(s)]
 
     def _read_sql_styles(self, stages) -> list:
-        """읽기에서 dialect가 SQL로 푸는 stage다. _client_styles는 나머지를 executor에 남긴다."""
+        """The stages that the dialect decodes in SQL when reading. _client_styles leaves the rest to the executor."""
         return [s for s in stages if self.d.decodes_stage(s)]
 
     def _client_styles(self, stages) -> list:
@@ -389,8 +389,8 @@ class Planner:
         else:
             sql += self._select_list(b, root, asm, idx, out_names)
             asm["key"] = _key_refs(asm, root.ent.primary_key)
-        # parent마다 row 수 제한: match column 위의 ROW_NUMBER(). order가 있는 one
-        # relation도 n = 1로 같다.
+        # Row count limit per parent: ROW_NUMBER() over the match columns. For a one relation with order,
+        # a relation is the same with n = 1.
         per_parent = 0
         if rc is not None:
             per_parent = q.get("limit_per_parent") or 0
@@ -425,14 +425,14 @@ class Planner:
         self._collect_join_where(b, root, where)
         if where:
             sql += f" WHERE {' AND '.join(where)}"
-        # validator는 group_by를 count와 group_count에만 허용한다.
+        # The validator allows group_by only for count and group_count.
         if _has_group_by(q):
             sql += f" GROUP BY {self._render_group_by(root, q)}"
         if group_count:
             sql = f"SELECT COUNT(*) FROM ({sql}) AS {self.d.quote('orm_g')}"
         if kind in ("one", "all", "group_count"):
             if per_parent > 0:
-                # 출력 column 순서를 지키고, orm_rn을 버리고, parent마다 n에서 자른다.
+                # Keeps the output column order, drops orm_rn, and cuts at n for each parent.
                 w = self.d.quote("orm_w")
                 outer = ", ".join(f"{w}.{self.d.quote(n)}" for n in out_names)
                 outer = f"SELECT {outer} FROM ({sql}) AS {w} WHERE {w}.{self.d.quote('orm_rn')} <= {per_parent}"
@@ -487,7 +487,7 @@ class Planner:
         return added
 
     def _relation_steps(self, add, steps, s: _Scope, asm: dict, step_id: int) -> None:
-        """s의 relation마다 step 하나(s의 join 것까지); row가 붙는 방법을 기록한다."""
+        """One step for each relation of s (including those of s's joins); records how the rows are attached."""
         for relation in s.q.get("relations") or []:
             rc = {
                 "parent_step": step_id,
@@ -499,8 +499,8 @@ class Planner:
             target = self._entity(relation["query"]["entity"])
             step = self._select_step(add, steps, relation["query"], "all", "", rc)
             child_asm = step["assemble"]
-            # 자식 row가 이 row의 primary key를 가리키는 foreign key를 가지면
-            # owned다.
+            # When the child row's foreign key points at this row's primary key,
+            # it is owned.
             cascade = (
                 not (relation["query"].get("no_cascade_delete") or False)
                 and _same_list(rc["parent_keys"], s.ent.primary_key)
@@ -560,7 +560,7 @@ class Planner:
     def _select_group_count_list(
         self, b: _Builder, s: _Scope, asm: dict, idx, out_names
     ) -> str:
-        """group count의 group column들과 row_count를 root entity로 조립한다."""
+        """Assembles the group columns and row_count of a group count into the root entity."""
         parts = []
         for name in s.q.get("group_by") or []:
             col = field_of(s.ent, name)
@@ -599,7 +599,7 @@ class Planner:
         return ", ".join(parts)
 
     def _select_list(self, b: _Builder, s: _Scope, asm: dict, idx, out_names) -> str:
-        """scope와 그 join의 projection; join column은 join child가 된다."""
+        """Projection of a scope and its joins; a join column becomes a join child."""
         parts: list[str] = []
         has_aes = False
         for c in self._projection(s):
@@ -641,7 +641,7 @@ class Planner:
                     codes.SCHEMA_INVALID,
                     f"{s.ent.name}: AES column requires an aes_version column",
                 )
-            # 고른 version column이 있으면 그것을 쓰고, 없을 때만 숨겨서 읽는다.
+            # If there is a chosen version column, it is used; a hidden read happens only when none is chosen.
             chosen = next(
                 (
                     i
@@ -696,7 +696,7 @@ class Planner:
         return sql
 
     def _projection(self, s: _Scope) -> list:
-        """mode, add, remove와 이름 붙은 출력을 순서 있는 목록으로 푼다."""
+        """Resolves mode, add, remove, and the named outputs into an ordered list."""
         c = s.q.get("columns")
         mode = (c or {}).get("mode") or ""
         base: list[str] = []
@@ -722,7 +722,7 @@ class Planner:
                     for x in base
                     if x not in c["remove"] or field_of(s.ent, x).primary
                 ]
-        # relation step가 묶거나 key로 쓰는 column은 언제나 선택한다.
+        # A column that a relation step groups or uses as a key is always selected.
         for extra in s.extra:
             push(extra)
         for relation in s.q.get("relations") or []:
@@ -730,7 +730,7 @@ class Planner:
                 push(k["left"])
             if relation["query"].get("if_parent"):
                 push(relation["query"]["if_parent"]["column"])
-        # primary key는 언제나 선택한다.
+        # The primary key is always selected.
         for pk in s.ent.primary_key:
             if pk not in base:
                 base.insert(0, pk)
@@ -766,7 +766,7 @@ class Planner:
         return sql
 
     def _collect_join_where(self, b: _Builder, s: _Scope, where: list) -> None:
-        """group이 두지 않은 각 join의 where group(중첩 join 것까지)을 붙인다."""
+        """Attaches the where group of each join that a group does not cover (including those of nested joins)."""
         placed: set[str] = set()
         if s.q.get("where"):
             _placed_joins(s.q["where"], placed)
@@ -781,7 +781,7 @@ class Planner:
             self._collect_join_where(b, join_scope, where)
 
     def _render_group(self, b: _Builder, s: _Scope, group: dict, top: bool) -> str:
-        """group; 최상위는 겉 괄호를 뺀다."""
+        """A group; at the top level, the outer parentheses are removed."""
         parts: list[str] = []
         for i, item in enumerate(group["items"]):
             if item.get("pred"):
@@ -826,8 +826,8 @@ class Planner:
             def arg():
                 return b.param(fn["ps"][0], interval_type(fn["name"]))
 
-            # ORM이 비교하는 clock은 소수 여섯 자리이고, datetime(p < 6) column은 여섯 자리로 늘린 값으로
-            # 비교한다(docs/protocol.md "Clock").
+            # The clock the ORM compares has six fractional digits, and a datetime(p < 6) column is compared as the value extended to six digits
+            # (docs/protocol.md "Clock").
             def now():
                 return b.now(6)
 
@@ -867,7 +867,7 @@ class Planner:
                 return f"{lhs} {_cmp(op)} {self._render_blind_index_value(b, field_of(s.ent, col.blind_index), pr['p'])}"
             return f"{lhs} {_cmp(op)} {self._render_value(b, col, pr['p'])}"
         if op in ("eq_col", "not_eq_col", "gt_col", "gte_col", "lt_col", "lte_col"):
-            # 없거나 null인 path는 statement의 root다(검증기와 같다).
+            # A missing or null path is the root of the statement (same as the validator).
             rs = self._resolve_path(s, pr["ref"].get("path") or "")
             if field_of(rs.ent, pr["ref"]["column"]) is None:
                 _fail(codes.COLUMN_UNKNOWN, f"{rs.ent.name}.{pr['ref']['column']}")
@@ -901,7 +901,7 @@ class Planner:
         _fail(codes.OPERATOR_UNKNOWN, op)
 
     def _read_column(self, qcol: str, col: Field) -> str:
-        """column을 SQL 쪽 read stage로 읽는다; time(p) column은 p자리 text로 읽는다."""
+        """Reads a column in the SQL-side read stage; a time(p) column is read as p-digit text."""
         expr = self.d.read_expr(qcol, self._read_sql_styles(_styles(col)))
         if col.type == "uuid":
             return self.d.read_uuid(expr)
@@ -910,14 +910,14 @@ class Planner:
         )
 
     def _render_value(self, b: _Builder, col: Field, i: int) -> str:
-        """값 하나를 bind한다; SQL 쪽 stage가 감싸고 host 쪽 stage는 slot에 기록한다."""
+        """Binds one value; the SQL-side stage wraps it, and the host-side stage records it in the slot."""
         host = [
             s
             for s in _styles(col)
             if s in ("aes", "hex", "ip") and not self.d.handles_stage(s)
         ]
         sql = self._sql_styles(_styles(col))
-        # SQL 쪽 style 함수가 감싸는 값의 type은 그 함수 입력의 type이다.
+        # The type of the value wrapped by an SQL-side style function is the type of that function's input.
         ph = b.col_param(i, col) if not sql else b.param(i, _style_input_type(sql[0]))
         b.last().host_styles = host
         if not sql and col.type == "time":
@@ -927,8 +927,8 @@ class Planner:
         return self.d.write_expr(ph, sql)
 
     def _render_blind_index_value(self, b: _Builder, index: Field, i: int) -> str:
-        """executor가 blind index key로 hash할 plaintext를 bind한다; type은 index
-        column의 type이다."""
+        """The executor hashes the plaintext bound for the blind index key; its type is the index
+        column's type."""
         ph = b.param(i, index.type)
         b.last().host_styles = ["blind_index"]
         return ph
@@ -950,8 +950,8 @@ class Planner:
         return current
 
     def _column_function(self, b: _Builder, s: _Scope, column: str, f: dict) -> str:
-        # column 함수의 인자는 아직 없다(arity는 모두 0). 인자의 type을 선언하지 않은
-        # 함수가 인자를 받으면 type 없는 slot으로 planner 오류다.
+        # Column functions do not take arguments yet (all arities are 0). For a function whose argument type is not declared,
+        # a function that takes an argument is a planner error, with a slot that has no type.
         def arg(i: int) -> str:
             return b.param(f["ps"][i], "")
 
@@ -964,7 +964,7 @@ class Planner:
         return result
 
     def _sub_select(self, b: _Builder, outer: _Scope, sub: dict) -> str:
-        """IN 목록이나 스칼라 column의 subquery; "^"는 바깥을 가리킨다."""
+        """The subquery of an IN list or a scalar column; "^" points outward."""
         b.subs += 1
         root = self._build_scopes(sub["query"], f"s{b.subs}", None)
         root.outer = outer
@@ -1016,7 +1016,7 @@ class Planner:
             return _mark_assigned(
                 b, start, col, self._render_blind_index_value(b, col, a["p"])
             )
-        # table 한정 이름: ON CONFLICT DO UPDATE 안에서 맨 이름은 모호하다.
+        # Table-qualified name: inside ON CONFLICT DO UPDATE, a bare name is ambiguous.
         qualified = f"{self.d.quote(ent.table)}.{self.d.quote(col.name)}"
         if "plus_p" in a:
             return f"{qualified} + {b.col_param(a['plus_p'], col)}"
@@ -1029,9 +1029,9 @@ class Planner:
         return _mark_assigned(b, start, col, self._render_value(b, col, a["p"]))
 
     def _clock(self, b: _Builder, col: Field) -> str:
-        """update time과 soft deletion이 datetime column에 쓰는 clock이다. executor clock을
-        쓰는 dialect(host_now)는 column의 소수 자리로 자른 `now` slot을 bind하고, MySQL은
-        CURRENT_TIMESTAMP(p)로 database clock을 쓴다."""
+        """The update time and soft deletion write the clock to datetime columns. The executor clock
+        dialects that write with host_now bind the `now` slot truncated to the column's fractional digits, and MySQL
+        uses the database clock with CURRENT_TIMESTAMP(p)."""
         return b.now(col.precision) if self.d.host_now else self.d.now(col.precision)
 
     def _audit_assignment(self, b: _Builder, ent: Entity):
@@ -1040,10 +1040,10 @@ class Planner:
         return f"{self.d.quote(ent.audit_column)} = {b.audit(ent)}"
 
     def _managed_insert_columns(self, ent: Entity, assignments) -> list:
-        """insert가 사용자 assignment 외에 쓰는 column이다: AES key version, audit
-        column, executor clock을 쓰는 dialect(host_now)에서 assign되지 않은 `default now`
-        column(field 순서). 그 column에는 column의 소수 자리로 자른 executor clock을
-        쓴다(docs/protocol.md "Clock")."""
+        """The columns that insert writes besides the user's assignments: the AES key version, audit
+        column, and the `default now` column that is not assigned in a dialect that writes the executor clock (host_now)
+        (in field order). That column gets the executor clock truncated to the column's fractional digits
+        (docs/protocol.md "Clock")."""
         out = []
         version = ent.aes_version
         if version != "" and not _assigned(assignments, version):
@@ -1067,7 +1067,7 @@ class Planner:
         _validate_aes_assignments(ent, assignments, False)
         _validate_required_assignments(ent, assignments)
         load = r.get("load") is True
-        # load은 행을 저장된 key 그대로 쓰므로 identity column의 값을 받고 요구한다.
+        # load writes the row with its stored key as is, so it takes and requires the identity column's value.
         if (
             load
             and ent.identity != ""
@@ -1086,8 +1086,8 @@ class Planner:
                 _fail(codes.IR_INVALID, f"cannot set identity column {a['column']}")
             cols.append(self.d.quote(a["column"]))
             vals.append(self._render_assign(b, ent, col, a))
-        # executor가 관리하는 column은 사용자 assignment 뒤에 AES key version, audit
-        # column, `default now` column 순서로 쓴다.
+        # Columns managed by the executor are written after the user's assignments, in this order: AES key version, audit
+        # column, `default now` column.
         managed = self._managed_insert_columns(ent, assignments)
         for column, value in managed:
             cols.append(self.d.quote(column))
@@ -1096,7 +1096,7 @@ class Planner:
             f"INSERT INTO {b.table(ent)} ({', '.join(cols)}) VALUES ({', '.join(vals)})"
         )
         if r.get("rows") or []:
-            # 파생 blind-index column은 그 AES 원본 column의 값을 받는다.
+            # A derived blind-index column takes the value of its AES source column.
             source = []
             for i, a in enumerate(assignments):
                 if i < len(input_set):
@@ -1150,7 +1150,7 @@ class Planner:
             if operation is not None:
                 sets.append(operation)
             if ent.identity != "" and not self.d.insert_returning_id:
-                # 마지막 insert id가 update 뒤에도 그 row를 알리게 한다.
+                # Makes the last insert id still point to the row after an update.
                 sets.append(
                     f"{self.d.quote(ent.identity)} = LAST_INSERT_ID({self.d.quote(ent.identity)})"
                 )
@@ -1186,8 +1186,8 @@ class Planner:
             sets.append(
                 f"{self.d.quote(version)} = {b.config('aes_version', column.type)}"
             )
-        # update time은 언제나 쓴다: optimistic locking이 모든 dialect에서 같은
-        # 동작을 해야 한다.
+        # The update time is always written, so that optimistic locking
+        # behaves the same way in every dialect.
         if ent.updated != "" and not _assigned(r.get("set") or [], ent.updated):
             sets.append(
                 f"{self.d.quote(ent.updated)} = {self._clock(b, field_of(ent, ent.updated))}"
@@ -1219,8 +1219,8 @@ class Planner:
                 "tables": b.tables(),
                 "bind_slots": [s.as_dict() for s in b.binds],
             }
-        # soft delete는 update다: column에 시간을 찍고, audit 대상 table이면 audit
-        # column도 찍는다.
+        # A soft delete is an update: it stamps the time on the column, and if the table is audited, it also stamps the audit
+        # column.
         sets = [
             f"{self.d.quote(ent.soft_delete)} = {self._clock(b, field_of(ent, ent.soft_delete))}"
         ]
@@ -1236,12 +1236,12 @@ class Planner:
         }
 
     def _restore_step(self, r: dict) -> dict:
-        """soft delete 한 행 하나를 되돌리는 update다. restore_key가 request의 set과 where에서
-        primary key나 unique key 하나를 고르고, 그 key column의 set 값은 조건이 되며 다른 set
-        값은 되돌리는 행에 함께 쓰는 새 값으로 update처럼 쓴다. where의 다른 조건은 restore를
-        더 좁힌다. 지워진 행만 고치므로 지워지지 않은 행과 없는 행은 아무것도 바꾸지 않는다.
-        SET 순서는 새 값, AES key version, soft delete column, audit table의 audit column이다.
-        updated column은 쓰지 않는다."""
+        """An update that restores one soft-deleted row. restore_key picks one primary key or unique key from the request's set and where,
+        and the set value of that key column becomes a condition, and the other set
+        values are written together as new values into the restored row, as in an update. Other conditions of where narrow the restore
+        further. Only deleted rows are changed, so rows that are not deleted and rows that do not exist change nothing.
+        The SET order is the new values, the AES key version, the soft delete column, and the audit column of the audit table.
+        The updated column is not written."""
         ent = self._entity(r["entity"])
         parts = restore_key(ent, r)
         assignments = _add_blind_index_assignments(ent, parts["set"])
@@ -1273,9 +1273,9 @@ class Planner:
         }
 
     def _restart_identity_step(self, r: dict) -> dict:
-        """entity의 identity를 그 table의 가장 큰 key 다음 값에서 다시 시작하는 statement다: 다음
-        생성 key는 가장 큰 key에 1을 더한 값이고, 빈 table이면 1이다. load로 key를 지정해 행을
-        적재한 뒤 실행한다."""
+        """The statement that restarts the entity's identity from the value after the table's largest key: the next
+        generated key is the largest key plus 1, or 1 if the table is empty. It runs after rows are loaded with keys given by load
+        (see load)."""
         ent = self._entity(r["entity"])
         if ent.identity == "":
             _fail(

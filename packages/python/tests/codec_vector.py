@@ -30,8 +30,8 @@ OUTPUT: dict = {}
 
 
 def canonical(value):
-    # 비교용 정규 형태: ordered-json 값은 Python 값으로, float 중 정수값은 int로,
-    # dict key는 정렬한다.
+    # Canonical form for comparison: ordered-json values become Python values, and integer-valued floats become int,
+    # dict keys are sorted.
     if isinstance(value, OrderedJson):
         return canonical(json.loads(ordered_json_stringify(value)))
     if isinstance(value, list):
@@ -52,7 +52,7 @@ def shown(value) -> str:
 
 
 def stages_of(styles):
-    # vector는 mermaid style 이름을 쓴다; json과 jsons는 둘 다 ordered_json 단계다.
+    # vector uses mermaid style names; json and jsons are both ordered_json stages.
     return ["ordered_json" if style in ("json", "jsons") else style for style in styles]
 
 

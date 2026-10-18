@@ -1,6 +1,6 @@
 /*
- * 확장 orm_dbspec의 module이다. stubs/orm_dbspec.stub.php에서 만든 arginfo로 Polyspec\Orm\Dbspec\Native의 class를
- * 등록하고, 그 생성자와 메서드, Dbspec의 정적 메서드를 PHP client(packages/php/src/Dbspec)와 같게 구현한다.
+ * Module of the orm_dbspec extension. It uses the arginfo generated from stubs/orm_dbspec.stub.php to
+ * register the classes of Polyspec\Orm\Dbspec\Native, and implements their constructors, methods, and Dbspec's static methods the same as the PHP client (packages/php/src/Dbspec).
  */
 #include "dbspec.h"
 #include "ext/pdo/php_pdo_driver.h"
@@ -14,7 +14,7 @@
 
 #define ORM_DBSPEC_VERSION "0.0.18"
 
-/* 메서드 하나의 arena를 둔다. */
+/* Holds one method's arena. */
 #define ENTER() dbs_arena arena_; dbs_arena *saved_; dbs_enter(&arena_, &saved_)
 #define LEAVE() dbs_leave(&arena_, saved_)
 
@@ -23,10 +23,10 @@ static str zs(zend_string *z)
     return (str){ZSTR_VAL(z), ZSTR_LEN(z)};
 }
 
-/* 생성자가 property를 PHP 대입처럼 쓴다: type과 readonly 규칙을 엔진이 지킨다. */
+/* The constructor writes properties like a PHP assignment: the engine enforces the type and readonly rules. */
 static void init_prop(zval *self, const char *name, zval *v)
 {
-    /* PHP 생성자처럼 첫 실패에서 멈춘다. */
+    /* Stops at the first failure, as a PHP constructor does. */
     if (EG(exception) != NULL) {
         return;
     }
@@ -65,7 +65,7 @@ static void init_str_or_null(zval *self, const char *name, zend_string *s)
     init_prop(self, name, &v);
 }
 
-/* 배열 인자는 zval로 받아 PHP 대입처럼 복사한다(불변 배열의 참조 수를 건드리지 않는다). */
+/* Array arguments are received as zval and copied like a PHP assignment (does not touch the refcount of immutable arrays). */
 static void init_array(zval *self, const char *name, zval *array)
 {
     zval v;
@@ -190,7 +190,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ColumnType, __construct)
     init_array(ZEND_THIS, "parameters", parameters);
 }
 
-/* implode(',', $parameters)처럼 값을 문자열로 쓴다. */
+/* Writes the values as a string, like implode(',', $parameters). */
 ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ColumnType, text)
 {
     ZEND_PARSE_PARAMETERS_NONE();
@@ -246,7 +246,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_PrimaryKey, __construct)
     init_array(ZEND_THIS, "comments", comments);
 }
 
-/* UniqueKey, Index, Check는 (string, array|string, array = []) 모양이다. */
+/* UniqueKey, Index, and Check have the shape (string, array|string, array = []). */
 ZEND_METHOD(Polyspec_Orm_Dbspec_Native_UniqueKey, __construct)
 {
     zend_string *name;
@@ -383,7 +383,7 @@ static bool strict_in(zval *list, zend_string *column)
     return false;
 }
 
-/* Setting::records의 C 구현이다. arguments[1]이 없으면 audit column이 없는 것이다. */
+/* C implementation of Setting::records. If arguments[1] is missing, there is no audit column. */
 static bool setting_zrecords(zval *self, zend_string *column, bool *ok)
 {
     zval *arguments = obj_get(self, "arguments"), *exclude = obj_get(self, "exclude"), *include = obj_get(self, "include");
@@ -523,7 +523,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Placement, __construct)
 
 /* ------------------------------------------------------------- results */
 
-/* 두 property의 결과 class: 비공개 생성자, valid(값)와 invalid(diagnostics). value는 빌린 값이다. */
+/* Result class of the two properties: a private constructor, valid (value) and invalid (diagnostics). value is a borrowed value. */
 static void result_valid(zval *return_value, zend_class_entry *ce, const char *first, zval *value)
 {
     obj_new(return_value, ce);
@@ -1204,7 +1204,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ApplyEvent, __construct)
     init_str(ZEND_THIS, "statement", statement);
 }
 
-/* Exception::__construct($message, 0, $previous)처럼 message와 previous를 둔다. */
+/* Sets message and previous, as in Exception::__construct($message, 0, $previous). */
 static void exception_init(zval *self, zend_string *message, zend_object *previous)
 {
     zval m;
@@ -1454,7 +1454,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, parse)
     LEAVE();
 }
 
-/* 첫 잘못된 UTF-8 byte의 줄과 칸(code point 단위)이다. 줄은 LF로 나눈다. */
+/* Line and column (in code points) of the first invalid UTF-8 byte. Lines are split on LF. */
 static void invalid_utf8_position(str bytes, zend_long *line, zend_long *column)
 {
     size_t valid = utf8_valid_prefix(bytes);
@@ -1704,7 +1704,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, readBytes)
     LEAVE();
 }
 
-/* PHP 함수를 이름으로 부른다. 실패(예외)면 false다. */
+/* Calls a PHP function by name. On failure (exception), false. */
 static bool call_function(const char *name, zval *ret, uint32_t argc, zval *argv)
 {
     zval fn;
@@ -1714,7 +1714,7 @@ static bool call_function(const char *name, zval *ret, uint32_t argc, zval *argv
     return r == SUCCESS && EG(exception) == NULL;
 }
 
-/* PHP client처럼 is_dir과 경고를 막은 file_get_contents로 읽고, 실패 이유는 error_get_last의 message다. */
+/* Reads with file_get_contents with is_dir and warnings suppressed, as the PHP client does; the failure reason is the message of error_get_last. */
 ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, readFile)
 {
     zend_string *path;
@@ -1927,7 +1927,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, chain)
     LEAVE();
 }
 
-/* null이거나 Document인 source다. */
+/* A source that is null or a Document. */
 static bool in_source(zval *source, document **out)
 {
     *out = NULL;
@@ -2187,7 +2187,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_PlanApply, effectOn)
     LEAVE();
 }
 
-/* PlanApply::EFFECT_QUERIES: dialect마다 효과 종류의 query인 영속 불변 배열 */
+/* PlanApply::EFFECT_QUERIES: persistent immutable array of effect-kind queries per dialect */
 static void effect_queries_constant(void)
 {
     HashTable *outer = pemalloc(sizeof(HashTable), 1);
@@ -2224,7 +2224,7 @@ static void effect_queries_constant(void)
 
 /* ------------------------------------------------------------------ module */
 
-/* gen_stub이 쓰지 못하는 배열 상수를 영속 불변 배열로 선언한다. */
+/* Declares an array constant that gen_stub cannot write as a persistent immutable array. */
 static void array_constant(zend_class_entry *ce, const char *name, const char *const *keys, const zend_long *values, size_t n)
 {
     HashTable *ht = pemalloc(sizeof(HashTable), 1);
@@ -2305,7 +2305,7 @@ static PHP_MINIT_FUNCTION(orm_dbspec)
     dbs_ce_SetResult = register_class_Polyspec_Orm_Dbspec_Native_SetResult();
     dbs_ce_SetDocument = register_class_Polyspec_Orm_Dbspec_Native_SetDocument();
 
-    /* PHP의 readonly class는 동적 property를 받지 않는다. 내부 class는 그 flag를 따로 둔다. */
+    /* A PHP readonly class does not accept dynamic properties. Internal classes keep that flag separately. */
 #define DBS_NO_DYNAMIC(n) if (dbs_ce_##n->ce_flags & ZEND_ACC_READONLY_CLASS) dbs_ce_##n->ce_flags |= ZEND_ACC_NO_DYNAMIC_PROPERTIES;
     DBS_CLASSES(DBS_NO_DYNAMIC)
 #undef DBS_NO_DYNAMIC

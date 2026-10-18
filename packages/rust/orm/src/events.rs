@@ -69,18 +69,18 @@ impl<F> StatementSubscriber for F where F: Fn(&StatementEvent<'_>) -> std::resul
 
 type Subscriber = Arc<dyn Fn(&StatementEvent<'_>) -> std::result::Result<(), SubscriberError> + Send + Sync>;
 
-/// 연결의 모든 handle이 공유하는 subscriber 목록과 transaction 번호다. 목록은 바꿀 때마다
-/// 새로 만들므로 publish는 읽은 목록을 lock 없이 쓴다.
+/// The subscriber list and transaction number shared by all handles of the connection. Each time the list changes,
+/// a new one is built, so publish uses the list it read without a lock.
 #[derive(Default)]
 pub(crate) struct Subscribers {
-    /// subscriber가 하나라도 있는지다. subscriber가 없으면 publish는 이것만 읽는다.
+    /// Whether there is at least one subscriber. If there are none, publish reads only this.
     active: AtomicBool,
     list: RwLock<Arc<Vec<(u64, Subscriber)>>>,
-    /// 다음 subscription의 id다.
+    /// The id of the next subscription.
     next_id: AtomicU64,
-    /// 연결의 마지막 바깥 transaction 번호다.
+    /// The number of the connection's last outer transaction.
     transactions: AtomicU64,
-    /// 목록을 바꾸는 일을 차례로 한다.
+    /// Changes to the list are made in order.
     change: Mutex<()>,
 }
 
@@ -101,7 +101,7 @@ impl Subscription {
 }
 
 impl Subscribers {
-    /// subscriber가 하나라도 있으면 true다.
+    /// True if there is at least one subscriber.
     pub(crate) fn observed(&self) -> bool {
         self.active.load(Ordering::Acquire)
     }
@@ -138,13 +138,13 @@ impl Db {
         Ok(Subscription { db: Arc::downgrade(&self.inner), id })
     }
 
-    /// 새 바깥 transaction의 번호다.
+    /// The number of the new outer transaction.
     pub(crate) fn next_transaction(&self) -> u64 {
         self.inner.subscribers.transactions.fetch_add(1, Ordering::AcqRel) + 1
     }
 
-    /// 끝난 statement의 event를 publish하고 operation이 받을 결과를 돌려준다: subscriber가
-    /// 실패하면 SUBSCRIBER, 아니면 statement의 결과다.
+    /// Publishes the event of a finished statement and returns the result the operation receives: if a subscriber
+    /// fails, it is SUBSCRIBER; otherwise it is the statement's result.
     pub(crate) fn statement_done<T>(&self, s: Sent<'_>, start: Instant, result: Result<T>) -> Result<T> {
         let subscribers = &self.inner.subscribers;
         if !subscribers.observed() {
@@ -169,7 +169,7 @@ impl Db {
     }
 }
 
-/// 보낸 statement 하나: 문장, bind, kind, table, transaction 번호다.
+/// One statement sent: its text, bind, kind, table, and transaction number.
 #[derive(Clone, Copy)]
 pub(crate) struct Sent<'a> {
     pub(crate) sql: &'a str,
@@ -180,17 +180,17 @@ pub(crate) struct Sent<'a> {
 }
 
 impl<'a> Sent<'a> {
-    /// bind가 없는 statement다.
+    /// A statement with no bind.
     pub(crate) fn bare(kind: &'a str, tables: &'a [String], transaction: Option<u64>, sql: &'a str) -> Sent<'a> {
         Sent { sql, binds: &[], kind, tables, transaction }
     }
 }
 
-/// planner가 쓴 statement의 kind다: SQL의 첫 단어다.
+/// The kind of a statement the planner wrote: the first word of the SQL.
 pub(crate) fn statement_kind(sql: &str) -> &'static str {
     let verb = sql.trim_start().split(|c: char| c.is_whitespace()).next().unwrap_or("");
     if verb.eq_ignore_ascii_case("ALTER") {
-        // MySQL identity restart의 schema statement다.
+        // The schema statement for a MySQL identity restart.
         KIND_SCHEMA
     } else if verb.eq_ignore_ascii_case("INSERT") {
         KIND_INSERT
@@ -203,8 +203,8 @@ pub(crate) fn statement_kind(sql: &str) -> &'static str {
     }
 }
 
-/// statement 하나를 `executor`에서 bind 없이 실행하고 그 event를 publish한다. transaction 제어와
-/// 설정 statement가 쓴다. test statement fault는 이 경로를 막지 않는다.
+/// Runs one statement on `executor` without a bind and publishes its event. Transaction control and
+/// configuration statements use it. A test statement fault does not block this path.
 pub(crate) async fn raw<'c, E, DB>(db: &Db, executor: E, s: Sent<'_>) -> Result<()>
 where
     E: sqlx::Executor<'c, Database = DB>,
@@ -215,8 +215,8 @@ where
     db.statement_done(s, start, result)
 }
 
-/// schema statement 하나를 `executor`에서 bind 없이 실행한다. 설정된 statement fault가 있으면
-/// 보내지 않고 그 오류로 끝난다.
+/// Runs one schema statement on `executor` without a bind. If a statement fault is configured,
+/// it is not sent and ends with that error.
 pub(crate) async fn raw_schema<'c, E, DB>(db: &Db, executor: E, s: Sent<'_>) -> Result<()>
 where
     E: sqlx::Executor<'c, Database = DB>,
@@ -225,7 +225,7 @@ where
     guarded(db, s, send_raw(executor, s.sql)).await
 }
 
-/// `sql`을 bind 없이 `executor`에서 실행한다.
+/// Runs `sql` on `executor` without a bind.
 async fn send_raw<'c, E, DB>(executor: E, sql: &str) -> Result<()>
 where
     E: sqlx::Executor<'c, Database = DB>,
@@ -235,8 +235,8 @@ where
     sqlx::raw_sql(statement).execute(executor).await.map(drop).map_err(Error::from)
 }
 
-/// schema statement 하나의 결과를 event로 publish한다. `send`가 statement를 보내며, 설정된
-/// statement fault가 있으면 `send`를 기다리지 않고 그 오류를 event로 publish한 뒤 돌려준다.
+/// Publishes the result of one schema statement as an event. `send` sends the statement, and if a
+/// statement fault is configured, it does not wait for `send`; it publishes that error as an event and returns it.
 pub(crate) async fn guarded<T>(db: &Db, s: Sent<'_>, send: impl std::future::Future<Output = Result<T>>) -> Result<T> {
     let start = Instant::now();
     #[cfg(feature = "test-faults")]

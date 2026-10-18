@@ -24,13 +24,13 @@ import (
 
 const iterations = 500
 
-// main은 run의 종료 코드로 끝난다. os.Exit는 defer를 실행하지 않으므로 run 안에서는 부르지 않는다: 실패한
-// check/dsn은 exit panic으로 run까지 올라오고, 그 사이의 defer(연결 닫기)가 실행된다.
+// main ends with the exit code of run. Since os.Exit does not run defers, it is not called inside run: a failed
+// check/dsn rises up to run as an exit panic, and the defers in between (closing connections) run.
 func main() {
 	os.Exit(run())
 }
 
-// exit는 check/dsn이 run을 끝내는 panic이고, 값은 종료 코드다.
+// exit is the panic by which check/dsn ends run, and its value is the exit code.
 type exit int
 
 func run() (code int) {
@@ -114,8 +114,8 @@ func run() (code int) {
 	return 0
 }
 
-// dsn은 시드된 bench database를 가리키는 ORM_BENCH_MYSQL_DSN이다. 없거나 비어
-// 있으면 연결하지 않고 그 변수 이름을 출력하며 끝난다.
+// dsn is ORM_BENCH_MYSQL_DSN, which points to the seeded bench database. If it is missing or empty,
+// the program does not connect; it prints that variable name and ends.
 func dsn() string {
 	v := os.Getenv("ORM_BENCH_MYSQL_DSN")
 	if v == "" {

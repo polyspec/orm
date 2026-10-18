@@ -22,7 +22,7 @@ import (
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 )
 
-// markdownDSN은 markdown:// DSN의 flowmark server 주소, corpus 이름, token이다
+// markdownDSN is the flowmark server address, corpus name, and token of a markdown:// DSN
 // (docs/protocol.md §5 "IR executors").
 type markdownDSN struct {
 	address string
@@ -30,8 +30,8 @@ type markdownDSN struct {
 	token   string
 }
 
-// parseMarkdownDSN은 markdown://127.0.0.1:<port>/<corpus>?token=<token>을 읽는다. flowmark
-// server는 127.0.0.1에서만 듣고 token은 평문으로 가므로 host는 127.0.0.1뿐이다.
+// parseMarkdownDSN reads markdown://127.0.0.1:<port>/<corpus>?token=<token>. flowmark
+// server listens only on 127.0.0.1, and since the token travels in plain text, the host is only 127.0.0.1.
 func parseMarkdownDSN(u *url.URL, q url.Values) (markdownDSN, error) {
 	const form = "markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>"
 	if u.User != nil {
@@ -59,8 +59,8 @@ func parseMarkdownDSN(u *url.URL, q url.Values) (markdownDSN, error) {
 	return markdownDSN{address: u.Host, corpus: corpus, token: tokens[0]}, nil
 }
 
-// unsupportedOnMarkdown은 markdown 연결에서 SQL 전용 surface가 받는 오류다(docs/dialects.md
-// "Markdown IR executor"). 다른 연결에서는 nil이다.
+// unsupportedOnMarkdown is the error that SQL-only surfaces receive on a markdown connection (docs/dialects.md
+// "Markdown IR executor"). On other connections it is nil.
 func (d *DB) unsupportedOnMarkdown(surface string) error {
 	if d.md == nil {
 		return nil
@@ -68,14 +68,14 @@ func (d *DB) unsupportedOnMarkdown(surface string) error {
 	return &ir.Error{Code: CodeCapabilityUnsupported, Msg: surface + " is not supported by the markdown IR executor"}
 }
 
-// mdSession은 flowmark server와의 연결 하나, 곧 server session 하나다. 한 번에 한
-// goroutine이 쓴다: pool이 내주거나 transaction이 잡는다.
+// mdSession is one connection to the flowmark server, that is, one server session. Only one
+// goroutine uses it at a time: the pool hands it out, or a transaction holds it.
 type mdSession struct {
 	conn    net.Conn
 	in      *bufio.Reader
 	created time.Time
-	// broken은 연결을 더 쓸 수 없음을 뜻한다: 읽기나 쓰기가 실패했거나 context가 끊었거나
-	// server가 연결을 끝낸다고 답했다.
+	// broken means the connection can no longer be used: a read or write failed, the context cut it off,
+	// or the server answered that it ends the connection.
 	broken bool
 }
 
@@ -91,7 +91,7 @@ type mdControl struct {
 	Name     string `json:"name,omitempty"`
 }
 
-// dialMarkdown은 server에 연결하고 첫 message connect로 corpus와 token을 보낸다.
+// dialMarkdown connects to the server and sends the corpus and token in the first connect message.
 func dialMarkdown(ctx context.Context, dsn markdownDSN) (*mdSession, error) {
 	var dialer net.Dialer
 	conn, err := dialer.DialContext(ctx, "tcp4", dsn.address)
@@ -114,9 +114,9 @@ func (s *mdSession) close() {
 	s.conn.Close()
 }
 
-// call은 message 하나를 한 줄로 보내고 답 한 줄을 읽는다. 답이 {"error": {code, message}}이면
-// 그 code의 오류다. context가 끝나면 연결을 끊는다: server는 끊긴 연결의 transaction을
-// rollback하고 lock을 푼다.
+// call sends one message in one line and reads one reply line. If the reply is {"error": {code, message}},
+// it is an error with that code. When the context ends, it closes the connection: the server
+// rolls back the transaction of the closed connection and releases its locks.
 func (s *mdSession) call(ctx context.Context, msg any) (json.RawMessage, error) {
 	if s.broken {
 		return nil, &ir.Error{Code: CodeConnectionLost, Msg: "the flowmark session has ended"}
@@ -128,7 +128,7 @@ func (s *mdSession) call(ctx context.Context, msg any) (json.RawMessage, error) 
 	stop := context.AfterFunc(ctx, func() { s.conn.SetDeadline(time.Now()) })
 	answer, err := s.exchange(append(line, '\n'))
 	if !stop() && err == nil {
-		// context가 답을 읽은 뒤에 끝났다: 연결의 deadline이 섰으므로 연결을 더 쓰지 않는다.
+		// The context ended after the reply was read: the connection's deadline has passed, so the connection is not used again.
 		s.close()
 	}
 	if err != nil {
@@ -152,7 +152,7 @@ func (s *mdSession) call(ctx context.Context, msg any) (json.RawMessage, error) 
 			s.close()
 			return nil, &ir.Error{Code: CodeInternal, Msg: fmt.Sprintf("the flowmark server answered the error %s without a code", raw)}
 		}
-		// server는 CONNECTION_LOST를 쓴 뒤 연결을 닫는다(idle transaction).
+		// The server writes CONNECTION_LOST and then closes the connection (idle transaction).
 		if e.Code == CodeConnectionLost {
 			s.close()
 		}
@@ -175,7 +175,7 @@ func (s *mdSession) exchange(line []byte) ([]byte, error) {
 	return bytes.TrimSuffix(answer, []byte("\n")), nil
 }
 
-// marshalPlain은 v의 JSON이다. HTML 문자를 escape하지 않아 값이 그대로 간다.
+// marshalPlain is the JSON of v. HTML characters are not escaped, so the value passes through as is.
 func marshalPlain(v any) ([]byte, error) {
 	var b bytes.Buffer
 	enc := json.NewEncoder(&b)
@@ -186,8 +186,8 @@ func marshalPlain(v any) ([]byte, error) {
 	return bytes.TrimSuffix(b.Bytes(), []byte("\n")), nil
 }
 
-// mdPool은 markdown 연결의 session pool이다. 열린 session은 Config.PoolSize를 넘지 않고,
-// 쉬는 session은 PoolIdleSize까지 남긴다.
+// mdPool is the session pool of a markdown connection. Open sessions do not exceed Config.PoolSize,
+// and idle sessions are kept up to PoolIdleSize.
 type mdPool struct {
 	dsn      markdownDSN
 	idleSize int
@@ -205,8 +205,8 @@ func newMarkdownPool(dsn markdownDSN, cfg Config) *mdPool {
 	return &mdPool{dsn: dsn, idleSize: cfg.PoolIdleSize, lifetime: time.Duration(cfg.PoolLifetimeMs) * time.Millisecond, slots: make(chan struct{}, cfg.PoolSize)}
 }
 
-// acquire는 쉬는 session을 내주거나 새로 연결한다. 열린 session이 PoolSize이면 하나가
-// 돌아올 때까지 기다린다.
+// acquire hands out an idle session or connects a new one. If the open sessions are at PoolSize, it waits
+// until one returns.
 func (p *mdPool) acquire(ctx context.Context) (*mdSession, error) {
 	select {
 	case p.slots <- struct{}{}:
@@ -246,7 +246,7 @@ func (p *mdPool) acquire(ctx context.Context) (*mdSession, error) {
 	return s, nil
 }
 
-// release는 session을 pool에 돌려준다. 끊긴 session과 닫힌 pool의 session은 닫는다.
+// release returns the session to the pool. Broken sessions and sessions of a closed pool are closed.
 func (p *mdPool) release(s *mdSession) {
 	p.mu.Lock()
 	p.inUse--
@@ -277,8 +277,8 @@ func (p *mdPool) stats() DBStats {
 	return DBStats{MaxOpenConnections: cap(p.slots), OpenConnections: p.open, InUse: p.inUse, Idle: len(p.idle)}
 }
 
-// openMarkdown은 markdown 연결을 연다. session 하나를 연결해 server가 corpus와 token을
-// 받아들이는지 확인하고 pool에 둔다.
+// openMarkdown opens a markdown connection. It connects one session to check that the server accepts
+// the corpus and token, and puts it in the pool.
 func openMarkdown(ctx context.Context, dsn parsedDSN, cfg Config) (*DB, error) {
 	switch {
 	case cfg.StatementTimeoutMs > 0:
@@ -306,8 +306,8 @@ func openMarkdown(ctx context.Context, dsn parsedDSN, cfg Config) (*DB, error) {
 	return &DB{md: pool, ctx: ctx, m: &dbMutable{engines: nil, schemas: map[string]*Schema{}}, cfg: cfg, driver: dsn.driver, location: dsn.location}, nil
 }
 
-// markdownModel은 이 연결에 등록된 schema의 runtime model이다. 등록되지 않은 manifest는
-// SQL 연결과 같이 SCHEMA_HASH_MISMATCH다.
+// markdownModel is the runtime model of the schema registered on this connection. A manifest that is not registered
+// is SCHEMA_HASH_MISMATCH, as on an SQL connection.
 func (d *DB) markdownModel(s *Schema) (*runtimemodel.Model, error) {
 	if s == nil {
 		return nil, configErr("the model has no schema")
@@ -325,7 +325,7 @@ func (d *DB) markdownModel(s *Schema) (*runtimemodel.Model, error) {
 	return m, nil
 }
 
-// mdRequest는 request message 하나다: {ir_version, manifest_hash, request, params, now}.
+// mdRequest is one request message: {ir_version, manifest_hash, request, params, now}.
 type mdRequest struct {
 	IRVersion    int               `json:"ir_version"`
 	ManifestHash string            `json:"manifest_hash"`
@@ -334,8 +334,8 @@ type mdRequest struct {
 	Now          string            `json:"now"`
 }
 
-// markdownCall은 r을 검증하고 그 request message를 ex의 session에서 실행해 답을 돌려준다.
-// transaction 밖이면 pool의 session 하나를 그 request 동안 쓴다.
+// markdownCall validates r and runs its request message in ex's session, and returns the answer.
+// Outside a transaction, it uses one session from the pool for the duration of the request.
 func markdownCall(ex executor, r *request) (json.RawMessage, *runtimemodel.Model, error) {
 	if r.err != nil {
 		return nil, nil, r.err
@@ -384,10 +384,10 @@ func markdownCall(ex executor, r *request) (json.RawMessage, *runtimemodel.Model
 	return answer, m, err
 }
 
-// markdownParam은 parameter i의 runtime value model JSON이다: decimal은 string, bytes는
-// base64, datetime은 UTC의 YYYY-MM-DD HH:MM:SS.ffffff, date는 YYYY-MM-DD, time은
-// HH:MM:SS.ffffff다(p 뒤 자리는 0). time 값의 문자열도 그 form으로 쓴다. 어느 form인지는 parameter가 채우는 slot의 type이 정한다. hex와 ip
-// style column의 slot은 SQL 연결처럼 client가 값을 encode해 보낸다.
+// markdownParam is the runtime value model JSON of parameter i: a decimal is a string, and bytes
+// are base64, datetime is UTC as YYYY-MM-DD HH:MM:SS.ffffff, date is YYYY-MM-DD, and time is
+// HH:MM:SS.ffffff (digits after p are 0). Time values in string form are written in that form too. Which form applies is decided by the type of the slot the parameter fills. hex and ip
+// style column slots are encoded by the client and sent, as on SQL connections.
 func (d *DB) markdownParam(i int, v any, uses []ir.ParamUse) (json.RawMessage, error) {
 	var use ir.ParamUse
 	if len(uses) > 0 {
@@ -422,9 +422,9 @@ func (d *DB) markdownParam(i int, v any, uses []ir.ParamUse) (json.RawMessage, e
 	return b, nil
 }
 
-// mdNode는 답의 한 node다: root, join, relation 하나가 하나씩이다. asm은 node의 행 배치를
-// 적고 children은 그 join과 relation이다. asm의 column은 node의 첫 행이 정하고 그 뒤 행은
-// 같은 output을 같은 순서로 가져야 한다.
+// mdNode is one node of the answer: one each for root, join, and relation. asm records the row layout of the node
+// and children are that join and relation. The first row of the node decides the columns of asm, and later rows
+// must have the same output in the same order.
 type mdNode struct {
 	q      *ir.Query
 	ent    *runtimemodel.Entity
@@ -438,7 +438,7 @@ type mdNode struct {
 	rels   map[string]*mdNode
 }
 
-// mdLinks는 answer 행 하나의 join과 relation 값이다. 행의 마지막 칸에 둔다.
+// mdLinks is the join and relation values of one answer row. They are placed in the row's last cell.
 type mdLinks struct {
 	joins map[string][]any
 	rels  map[string][][]any
@@ -463,20 +463,20 @@ func newMarkdownNode(m *runtimemodel.Model, q *ir.Query, groups bool) *mdNode {
 		}
 		n.asm.Children = append(n.asm.Children, &plan.Child{
 			Rel: rel.Rel, Kind: rel.Kind, Flatten: rel.Query.Flatten, Assemble: child.asm,
-			// 이 행이 relation 행의 외래 key가 가리키는 행이면 그 행들은 이 행에 속한다(planner와 같다).
+			// If this row is the row that a relation row's foreign key points to, those rows belong to this row (same as the planner).
 			Cascade: !rel.Query.NoCascadeDelete && slices.Equal(parentKeys, ent.PK) && !slices.Equal(childKeys, target.PK),
 		})
 	}
 	return n
 }
 
-// mdMember는 JSON object member 하나다.
+// mdMember is one JSON object member.
 type mdMember struct {
 	name  string
 	value json.RawMessage
 }
 
-// members는 JSON object의 member를 순서대로 읽는다.
+// members reads the members of a JSON object in order.
 func members(raw json.RawMessage) ([]mdMember, error) {
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	tok, err := dec.Token()
@@ -503,9 +503,9 @@ func answerErr(format string, a ...any) error {
 	return &ir.Error{Code: CodeInternal, Msg: "the flowmark answer: " + fmt.Sprintf(format, a...)}
 }
 
-// outCol은 output name의 배치다: subquery, column 함수, 아니면 node entity의 column이다.
-// markdown executor는 모든 codec stage를 client에 맡기므로 column의 codec 전체가 decode할
-// style이다.
+// outCol is the placement of an output name: a subquery, a column function, or a column of a node entity.
+// The markdown executor leaves every codec stage to the client, so the whole codec of the column is the
+// style to decode.
 func (n *mdNode) outCol(name string, index int) (plan.OutCol, error) {
 	if n.groups && name == "row_count" {
 		return plan.OutCol{Index: index, Name: name, Type: "i64"}, nil
@@ -525,7 +525,7 @@ func (n *mdNode) outCol(name string, index int) (plan.OutCol, error) {
 	return plan.OutCol{Index: index, Name: name, Column: name, Type: f.Type, Styles: f.Codec}, nil
 }
 
-// subType은 scalar subquery column의 type이다.
+// subType is the type of a scalar subquery column.
 func subType(m *runtimemodel.Model, sub *ir.Sub) string {
 	switch sub.Agg {
 	case "count":
@@ -539,7 +539,7 @@ func subType(m *runtimemodel.Model, sub *ir.Sub) string {
 	return "text"
 }
 
-// build는 node의 첫 행의 output으로 asm의 column과 key를 정한다.
+// build decides the columns and key of asm from the output of the node's first row.
 func (n *mdNode) build(outputs []string) error {
 	for i, name := range outputs {
 		col, err := n.outCol(name, i)
@@ -565,8 +565,8 @@ func (n *mdNode) build(outputs []string) error {
 	return nil
 }
 
-// row는 답의 행 하나를 node 배치의 위치 행으로 읽는다: output 값, 그리고 마지막 칸에 join과
-// relation의 행이다.
+// row reads one row of the answer as a positional row of the node layout: the output values, and in the last cell, the join and
+// relation rows.
 func (n *mdNode) row(raw json.RawMessage) ([]any, error) {
 	ms, err := members(raw)
 	if err != nil {
@@ -630,7 +630,7 @@ func (n *mdNode) row(raw json.RawMessage) ([]any, error) {
 		vals[k] = v
 		k++
 	}
-	// corpus catalog은 aes column을 거절하므로 keyring이 없다(docs/dialects.md).
+	// The corpus catalog rejects aes columns, so it has no keyring (docs/dialects.md).
 	if err := decodeSelectedRow(vals[:len(outputs)], n.scan, n.flat, AESKeyring{}); err != nil {
 		return nil, err
 	}
@@ -638,8 +638,8 @@ func (n *mdNode) row(raw json.RawMessage) ([]any, error) {
 	return vals, nil
 }
 
-// relationRows는 relation의 값을 행 목록으로 읽는다: one relation은 object나 null, many
-// relation은 array, key_by relation은 key로 묶은 object다.
+// relationRows reads a relation's value as a list of rows: a one relation is an object or null, and a many
+// relation is an array, and a key_by relation is an object grouped by key.
 func (n *mdNode) relationRows(raw json.RawMessage) ([][]any, error) {
 	trimmed := bytes.TrimSpace(raw)
 	switch {
@@ -681,8 +681,8 @@ func (n *mdNode) rows(items []json.RawMessage) ([][]any, error) {
 	return out, nil
 }
 
-// answerValue는 답의 값 하나를 column type의 Go 값으로 읽는다. 값은 parameter와 같은
-// runtime value model이다.
+// answerValue reads one value of the answer as a Go value of the column type. The value is the same as a parameter's
+// runtime value model.
 func answerValue(typ string, raw json.RawMessage) (any, error) {
 	if string(bytes.TrimSpace(raw)) == "null" {
 		return nil, nil
@@ -741,7 +741,7 @@ func answerValue(typ string, raw json.RawMessage) (any, error) {
 	return s, nil
 }
 
-// aggregateValue는 sum과 avg 답의 값이다: 정수, 소수, decimal string, 없으면 nil이다.
+// aggregateValue is the value of a sum or avg answer: an integer, a decimal, a decimal string, or nil if there is none.
 func aggregateValue(raw json.RawMessage) (any, error) {
 	if string(bytes.TrimSpace(raw)) == "null" {
 		return nil, nil
@@ -764,8 +764,8 @@ func aggregateValue(raw json.RawMessage) (any, error) {
 	return nil, answerErr("the aggregate %s is no number", raw)
 }
 
-// markdownRead는 row read(one, all, group_count, paginate)의 답을 위치 result로 읽는다.
-// result의 plan은 root node의 배치 하나이고, 각 행의 마지막 칸이 그 join과 relation이다.
+// markdownRead reads the answer of a row read (one, all, group_count, paginate) as a positional result.
+// The result's plan is one layout of the root node, and the last cell of each row holds that row's join and relation.
 func markdownRead(ex executor, r *request) (*result, int64, error) {
 	answer, m, err := markdownCall(ex, r)
 	if err != nil {
@@ -801,7 +801,7 @@ func markdownRead(ex executor, r *request) (*result, int64, error) {
 	return res, count, nil
 }
 
-// markdownScalar는 count, sum, avg의 답이다.
+// markdownScalar is the answer of count, sum, and avg.
 func markdownScalar(ex executor, r *request) (any, error) {
 	answer, _, err := markdownCall(ex, r)
 	if err != nil {
@@ -825,8 +825,8 @@ func markdownScalar(ex executor, r *request) (any, error) {
 	return aggregateValue(raw)
 }
 
-// markdownWrite는 write의 답 {affected, keys}이다. keys는 insert한 행의 primary key를 insert
-// 순서로 담는다: identity는 정수, key_prefix key는 text다.
+// markdownWrite is the write answer {affected, keys}. keys holds the primary keys of the inserted rows in insert
+// order: an identity is an integer, and a key_prefix key is text.
 func markdownWrite(ex executor, r *request) ([]any, int64, error) {
 	answer, _, err := markdownCall(ex, r)
 	if err != nil {
@@ -853,7 +853,7 @@ func markdownWrite(ex executor, r *request) ([]any, int64, error) {
 	return keys, *a.Affected, nil
 }
 
-// markdownLinks는 markdown 답의 행이 마지막 칸에 가진 join과 relation이다.
+// markdownLinks is the join and relation that a markdown answer row holds in its last cell.
 func markdownLinks(row []any) *mdLinks {
 	links, _ := row[len(row)-1].(*mdLinks)
 	if links == nil {
@@ -868,8 +868,8 @@ func beginMessage(readOnly bool) mdControl {
 	return mdControl{Op: "begin", ReadOnly: readOnly}
 }
 
-// beginMarkdown은 markdown transaction을 연다: pool의 session 하나를 transaction이 끝날
-// 때까지 잡고 begin을 보낸다. 읽기 전용 transaction은 read_only를 보낸다.
+// beginMarkdown opens a markdown transaction: it holds one session from the pool until the transaction ends,
+// and sends begin. A read-only transaction sends read_only.
 func (d *DB) beginMarkdown(o txOptions) (*txConn, error) {
 	if o.isolation != "" {
 		return nil, d.unsupportedOnMarkdown("the transaction isolation option")
@@ -888,8 +888,8 @@ func (d *DB) beginMarkdown(o txOptions) (*txConn, error) {
 	return &txConn{db: d, md: s, ctx: ctx, cancel: cancel, readOnly: o.readOnly, number: d.nextTransaction()}, nil
 }
 
-// endMarkdown은 transaction을 끝내고 session을 pool에 돌려준다. context가 끝났으면 message를
-// 보내지 않고 연결을 끊는다: server가 끊긴 연결의 transaction을 rollback한다.
+// endMarkdown ends the transaction and returns the session to the pool. If the context has ended, it closes the connection
+// without sending a message: the server rolls back the transaction of the closed connection.
 func (t *txConn) endMarkdown(op string) error {
 	t.finished.Store(true)
 	var err error
@@ -906,7 +906,7 @@ func (t *txConn) endMarkdown(op string) error {
 	return err
 }
 
-// savepointMarkdown은 savepoint control message 하나를 보낸다: savepoint, release, rollback_to.
+// savepointMarkdown sends one savepoint control message: savepoint, release, or rollback_to.
 func (t *txConn) savepointMarkdown(op, name string) error {
 	_, err := t.md.call(t.ctx, mdControl{Op: op, Name: name})
 	return err

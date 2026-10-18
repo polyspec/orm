@@ -1,5 +1,5 @@
-// models script 검사: scan 대상이 model을 호출하는 source와 정확히 같고,
-// commit된 src/models/models.ts가 그 scan의 generator 출력과 같은지 확인한다.
+// models script check: the scan targets are exactly the sources that call a model,
+// and the committed src/models/models.ts equals the generator output of that scan.
 // Usage: node --test packages/ts/tests/models-scan.mjs (after tsc -p packages/ts/tsconfig.build.json)
 import { caseTest } from '../../../tests/testcase.mts';
 import assert from 'node:assert/strict';
@@ -11,14 +11,14 @@ import { parseSync } from 'oxc-parser';
 
 const client = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const root = resolve(client, '../..');
-// model을 호출하는 source를 찾는 디렉터리: scan이 읽을 수 있는 source 전체
+// Directories in which to find sources that call a model: all sources that the scan can read
 const scannedDirs = [join(client, 'tests'), join(client, 'testing'), join(root, 'tests/conformance'), join(root, 'examples/thin-slice/ts')];
 const extensions = new Set(['.ts', '.mts', '.js', '.mjs']);
 const modelModules = new Set([join(client, 'dist/models/models.js'), join(client, 'src/models/models.js')]);
 const indexModules = new Set([join(client, 'dist/index.js'), join(client, 'src/index.js')]);
 const modelClasses = new Set([...readFileSync(join(client, 'src/models/models.ts'), 'utf8').matchAll(/^export class (\w+)/gm)].map(m => m[1]));
 
-/** models script의 인자를 package.json에서 읽는다. */
+/** Reads the arguments of the models script from package.json. */
 function modelsArgs() {
   const script = JSON.parse(readFileSync(join(client, 'package.json'), 'utf8')).scripts.models;
   const words = script.split(' ');
@@ -35,7 +35,7 @@ function files(path) {
   });
 }
 
-/** source가 generated model module이나 model class를 import하면 true다. */
+/** True if the source imports a generated model module or a model class. */
 function callsModels(path) {
   const parsed = parseSync(path, readFileSync(path, 'utf8'));
   assert.deepEqual(parsed.errors.map(error => error.message), [], `${relative(root, path)} parses`);
@@ -48,7 +48,7 @@ function callsModels(path) {
   });
 }
 
-// 기한 10 s: test source를 oxc-parser로 읽기만 한다.
+// Deadline 10 s: only reads the test source with oxc-parser.
 caseTest('the models script scans exactly the sources that call models', 10000, () => {
   assert(modelClasses.size > 0, 'src/models/models.ts declares model classes');
   const args = modelsArgs();
@@ -58,7 +58,7 @@ caseTest('the models script scans exactly the sources that call models', 10000, 
   assert.deepEqual(names(scanned), names(calling));
 });
 
-// 기한 30 s: orm-gen process 하나가 models를 만들어 비교한다.
+// Deadline 30 s: one orm-gen process creates the models and compares them.
 caseTest('the committed models equal the generator output', 30000, () => {
   const result = spawnSync(process.execPath, ['dist/bin/orm-gen.js', ...modelsArgs(), '--check'], { cwd: client, encoding: 'utf8' });
   assert.equal(result.error, undefined);
@@ -77,7 +77,7 @@ function referencedNames(node, names = new Set()) {
   return names;
 }
 
-// 기한 10 s: committed generated file을 oxc-parser로 읽기만 한다.
+// Deadline 10 s: only reads the committed generated file with oxc-parser.
 caseTest('a generated model file imports only what it uses and declares each type once', 10000, () => {
   for (const file of ['src/models/models.ts', 'src/models/decimal_fixture/models.ts', 'src/models/markdown_fixture/models.ts']) {
     const { program, errors } = parseSync(file, readFileSync(join(client, file), 'utf8'));

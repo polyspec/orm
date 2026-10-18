@@ -1,6 +1,6 @@
-//! audit_triggers: contracts/fixtures/audit.dbs, audit_columns.dbs, restore.dbs를 시드된 bench database에
-//! 설치하고 Go의 coverage_audit_triggers_test.go와 같은 순서로 audit 기록 transaction으로 쓴 뒤 trigger가 남긴
-//! 이력을 읽고, 설치한 table과 PostgreSQL trigger function을 지운다. database는 시작한 상태로 끝난다.
+//! audit_triggers: installs contracts/fixtures/audit.dbs, audit_columns.dbs, and restore.dbs in a seeded bench database,
+//! writes with audit record transactions in the same order as Go's coverage_audit_triggers_test.go, then reads the history the trigger left,
+//! and drops the installed tables and PostgreSQL trigger functions. The database ends in the state it started in.
 
 #[path = "common/audit_rows.rs"]
 mod audit_rows;
@@ -14,10 +14,10 @@ use sqlx::Row;
 use std::collections::BTreeMap;
 use std::time::Duration;
 
-/// case의 기한. database가 하는 일을 제한하므로 wall-clock 시간이다.
+/// The case deadline. It is wall-clock time, since it bounds what the database does.
 const DEADLINE: Duration = Duration::from_secs(300);
 
-/// 연결의 database(MySQL), current schema(PostgreSQL), file(SQLite)에 `table`이 있는지 읽는다.
+/// Reads whether `table` exists in the connection's database (MySQL), current schema (PostgreSQL), or file (SQLite).
 async fn table_exists(db: &Db, table: &str) -> bool {
     let count: i64 = match db.pool() {
         Pool::MySql(p) => sqlx::query_scalar("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?")
@@ -36,7 +36,7 @@ async fn table_exists(db: &Db, table: &str) -> bool {
     count > 0
 }
 
-/// 고른 database와 DSN이다. 둘 중 하나라도 없으면 실패한다.
+/// The chosen database and DSN. It fails if either is missing.
 fn feature_database() -> (String, String) {
     let driver = std::env::var("ORM_FEATURE_DATABASE")
         .expect("ORM_FEATURE_DATABASE is required; run it through make feature-check, which sets it for each coverage case");
@@ -45,8 +45,8 @@ fn feature_database() -> (String, String) {
     (driver, dsn)
 }
 
-/// 고른 database에서 audit.dbs를 설치하는 case를 실행한 뒤, case가 실패해도 설치한 table과 function을 지우고
-/// 그 실패를 이어 간다. item, item_history, audit이 미리 있으면 실패한다.
+/// Runs the case that installs audit.dbs in the chosen database, then drops the installed tables and functions even if the case fails,
+/// and continues that failure. It fails if item, item_history, or audit already exist.
 async fn with_audit(case: impl AsyncFnOnce(&str, &str)) {
     let (driver, dsn) = feature_database();
     let db = Db::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: connect: {e}"));
@@ -54,7 +54,7 @@ async fn with_audit(case: impl AsyncFnOnce(&str, &str)) {
     for table in ["item", "item_history", "audit"] {
         assert!(!table_exists(&db, table).await, "{driver}: table {table} exists before the case");
     }
-    // case는 audit source를 가진 자기 연결로 audit.dbs를 설치하고 쓴다.
+    // The case installs audit.dbs and writes through its own connection, which has an audit source.
     let ran = futures_util::FutureExt::catch_unwind(std::panic::AssertUnwindSafe(case(&driver, &dsn))).await;
     drop_tables(&db, &driver).await;
     for table in ["item", "item_history", "audit"] {
@@ -84,12 +84,12 @@ async fn coverage_audit_transaction_entry_points() {
     }
 }
 
-/// contracts/fixtures/audit_columns.dbs: card는 exclude (secret)로 secret을 빼고, tag는 include (label)로
-/// label과 audit column만 기록한다. audit 기록은 audit table에 둔다.
+/// contracts/fixtures/audit_columns.dbs: card leaves out secret with exclude (secret), and tag uses include (label) to
+/// record only label and audit columns. Audit records are kept in the audit table.
 static COLUMNS_SCHEMA: Schema =
     Schema::new(include_str!("../../../../contracts/fixtures/audit_columns.dbs"), "sha256:13919322a592623065c8646e7649b8864edceedb07851d7483d4f6f8df65e727");
 
-/// audit_columns의 table을 column 이름으로 읽고 쓰는 model.
+/// The model that reads and writes the audit_columns tables by column name.
 macro_rules! columns_model {
     ($name:ident, $entity:ident, $entity_name:literal, $columns:expr) => {
         static $entity: Entity = Entity {
@@ -138,7 +138,7 @@ macro_rules! columns_model {
 columns_model!(Card, CARD, "card", ["seq", "title", "secret", "audit_seq", "deleted_at"]);
 columns_model!(Tag, TAG, "tag", ["id", "label", "color", "audit_seq"]);
 
-/// 값을 정한 model.
+/// A model with its values set.
 fn with<M: Model>(values: &[(&str, Param)]) -> M {
     let mut row = M::from_core(Core::new(M::entity()));
     for (column, value) in values {
@@ -147,7 +147,7 @@ fn with<M: Model>(values: &[(&str, Param)]) -> M {
     row
 }
 
-/// query의 row를 읽는다. query는 각 값을 문자열이나 NULL로 돌려주며, NULL은 "NULL"이다.
+/// Reads the rows of a query. The query returns each value as a string or NULL, and NULL is "NULL".
 async fn text_rows(db: &Db, query: &str) -> Vec<Vec<String>> {
     macro_rules! read {
         ($pool:expr) => {{
@@ -169,7 +169,7 @@ async fn text_rows(db: &Db, query: &str) -> Vec<Vec<String>> {
     }
 }
 
-/// audit_columns가 만든 table과 PostgreSQL trigger function을 지운다.
+/// Drops the tables made by audit_columns and the PostgreSQL trigger functions.
 async fn drop_columns_tables(db: &Db, driver: &str) {
     let quote = |n: &str| if driver == "mysql" { format!("`{n}`") } else { format!("\"{n}\"") };
     let mut statements: Vec<String> =
@@ -254,7 +254,7 @@ async fn audit_selected_columns() {
     db.close().await;
 }
 
-/// table의 column 이름을 catalog 순서로 읽는다.
+/// Reads a table's column names in catalog order.
 async fn columns_of(db: &Db, table: &str) -> Vec<String> {
     let query = match db.pool() {
         Pool::MySql(_) => format!("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{table}' ORDER BY ORDINAL_POSITION"),
@@ -274,7 +274,7 @@ async fn coverage_audit_selected_columns() {
     }
 }
 
-/// restore fixture가 만든 table과 PostgreSQL trigger function을 지운다.
+/// Drops the tables made by the restore fixture and the PostgreSQL trigger functions.
 async fn drop_restore_tables(db: &Db, driver: &str) {
     let quote = |n: &str| if driver == "mysql" { format!("`{n}`") } else { format!("\"{n}\"") };
     let mut statements: Vec<String> =
@@ -289,8 +289,8 @@ async fn drop_restore_tables(db: &Db, driver: &str) {
     }
 }
 
-/// 고른 database에서 restore_rows::restore_case를 실행한다: unique key와 exclude 목록을 가진 audit table과
-/// audit 없는 table의 soft delete한 행을 restore로 되돌린다. 끝나면 설치한 table과 function을 지운다.
+/// Runs restore_rows::restore_case on the chosen database: an audit table with a unique key and an exclude list, and
+/// a table without audit whose soft-deleted rows are restored. When done, it drops the installed tables and functions.
 async fn soft_delete_restore() {
     let (driver, dsn) = feature_database();
     let db = Db::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: connect: {e}"));
@@ -298,7 +298,7 @@ async fn soft_delete_restore() {
     for table in restore_rows::TABLES {
         assert!(!table_exists(&db, table).await, "{driver}: table {table} exists before the case");
     }
-    // 실패해도 설치한 table을 지우도록 case를 따로 실행하고 그 panic을 정리 뒤에 이어 간다.
+    // The case runs separately so that the installed tables are dropped even on failure, and its panic continues after cleanup.
     let case = futures_util::FutureExt::catch_unwind(std::panic::AssertUnwindSafe(restore_rows::restore_case(&driver, &dsn))).await;
     drop_restore_tables(&db, &driver).await;
     for table in restore_rows::TABLES {

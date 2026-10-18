@@ -1,5 +1,5 @@
-// request hook(docs/usage.md "Request hook")의 공유 case 다. 공유 fixture contracts/fixtures/request_hook.dbs 를
-// 설치한 연결에서 실행한다. SQLite unit test(request_hook.mjs)와 feature coverage(coverage_request_hook.mjs)가 쓴다.
+// Shared cases of the request hook (docs/usage.md "Request hook"). They run on a connection where the shared fixture contracts/fixtures/request_hook.dbs
+// is installed. The SQLite unit test (request_hook.mjs) and the feature coverage (coverage_request_hook.mjs) use them.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { CORE, Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
@@ -18,7 +18,7 @@ Entry.entity = { model: runtime, entity: runtime.entities.get('hook_entry'), cre
 
 const READS = new Set(['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate']);
 
-/** where 에 pred 를 and 로 더한다. 이미 있는 where 는 group 하나로 감싼다. */
+/** Adds pred to where with and. An existing where is wrapped in one group. */
 function andWhere(query, pred) {
   if (query.where === undefined || query.where.items.length === 0) {
     query.where = { items: [{ pred }] };
@@ -27,7 +27,7 @@ function andWhere(query, pred) {
   query.where = { items: [{ group: query.where }, { pred: { ...pred, conn: 'and' } }] };
 }
 
-/** 같은 part 의 행만 읽는 hook 이다. 읽기가 아닌 request 는 그대로 둔다. */
+/** A hook that reads only the rows of the same part. A request that is not a read is left as is. */
 function partFilter(value) {
   return (request, addParam) => {
     if (READS.has(request.kind)) andWhere(request, { column: 'part', op: 'eq', p: addParam(value) });
@@ -75,13 +75,13 @@ async function codeOf(promise) {
   try { await promise; return null; } catch (error) { return error instanceof OrmError ? error.code : String(error); }
 }
 
-/** label 순서의 [part, label] 목록이다. */
+/** The [part, label] list in label order. */
 async function stored(db) {
   const rows = (await new Item().connect(db).gets()).values().map(row => row.toArray());
   return rows.map(row => [row.part, row.label]).sort((a, b) => (a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0));
 }
 
-/** dsn 의 database 에 fixture 를 설치하고 a1, a2(part a)와 b1(part b)을 넣은 연결로 case 하나를 실행한다. */
+/** Installs the fixture in the database of dsn and runs one case on a connection where a1 and a2 (part a) and b1 (part b) are inserted. */
 export async function runOn(dsn, step, run) {
   const db = await Db.connect(dsn);
   try {
@@ -93,7 +93,7 @@ export async function runOn(dsn, step, run) {
 }
 
 export const cases = {
-  /** hook 없는 handle 과 hook handle 을 만든 뒤의 연결은 모든 행을 읽는다. */
+  /** After creating a handle without a hook and a hook handle, the connection reads all rows. */
   async without_hook(db) {
     assert.equal(await new Item().connect(db).getCount(), 3, 'the connection counts every row');
     const hooked = db.withRequestHook(partFilter('a'));
@@ -105,7 +105,7 @@ export const cases = {
     assert.equal(page.totalCount, 3, 'the connection pages every row');
   },
 
-  /** hook 이 더한 predicate 가 read, count, page 를 거른다. 다른 값의 handle 은 같은 plan 으로 다른 행을 읽는다. */
+  /** The predicate that the hook added filters read, count, and page. A handle with another value reads other rows with the same plan. */
   async read_filter(db) {
     const a = db.withRequestHook(partFilter('a'));
     assert.deepEqual(await stored(a), [['a', 'a1'], ['a', 'a2']], 'the hook filters a read');
@@ -121,7 +121,7 @@ export const cases = {
     assert.equal(await new Item().connect(signalled).getCount(), 2, 'a signal handle of a hooked handle keeps the hook');
   },
 
-  /** insert 에 hook 이 더한 assignment 를 한 행 insert 와 여러 행 insert 가 쓴다. */
+  /** A single-row insert and a multi-row insert write the assignment that the hook added to insert. */
   async insert_assign(db) {
     const hooked = db.withRequestHook((request, addParam) => {
       if (request.kind !== 'insert') return request;
@@ -136,7 +136,7 @@ export const cases = {
     assert.deepEqual(rows, [['h', 'h1'], ['h', 'h2'], ['h', 'h3']], 'the single and the bulk insert write the assigned part');
   },
 
-  /** hook handle 로 읽은 행의 update 와 delete 는 hook 을 지난다. hook handle 의 transaction 도 hook 을 지난다. */
+  /** Update and delete of rows read through a hook handle pass through the hook. The transaction of a hook handle also passes through the hook. */
   async loaded_row_writes(db) {
     const kinds = [];
     const hooked = db.withRequestHook((request, addParam) => {
@@ -159,7 +159,7 @@ export const cases = {
     assert.deepEqual(kinds, ['count'], 'a model without a connection in a transaction of the hooked handle passes the hook');
   },
 
-  /** hook 이 parameter 밖의 index 를 쓰면 validation 이 statement 전에 거부한다. */
+  /** If the hook writes an index outside the parameters, validation rejects it before the statement. */
   async invalid_param(db) {
     const events = [];
     const unsubscribe = db.subscribe(event => events.push(event));

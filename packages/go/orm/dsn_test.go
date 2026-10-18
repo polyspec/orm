@@ -38,7 +38,7 @@ func TestParseDSNRejectsInvalidInput(t *testing.T) {
 		"sqlite:///tmp/orm_example.sqlite?_txlock=immediate",
 		"sqlite:///tmp/orm_example.sqlite?_txlock=deferred",
 		"mysql://root@localhost/orm_example?timezone=Nowhere/City",
-		// 모든 connection은 datetime을 UTC로 읽고 쓴다(docs/dialects.md "Date and time").
+		// Every connection reads and writes datetime as UTC (docs/dialects.md "Date and time").
 		"mysql://root@localhost/orm_example?timezone=%2B09:00",
 		"postgres://root@localhost/orm_example?timezone=Asia/Seoul",
 		"sqlite:///tmp/orm_example.sqlite?timezone=Asia%2FSeoul",

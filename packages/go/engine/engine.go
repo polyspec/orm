@@ -34,8 +34,8 @@ func New(m *runtimemodel.Model, dialectName string) (*Engine, error) {
 	return &Engine{M: m, P: &planner.Planner{M: m, D: d}}, nil
 }
 
-// Load은 manifest text로 runtime model을 만들어 dialect의 engine을 반환한다.
-// 잘못된 manifest text는 SCHEMA_INVALID다.
+// Load returns the dialect's engine, built as a runtime model from the manifest text.
+// Malformed manifest text is SCHEMA_INVALID.
 func Load(manifestText, dialectName string) (*Engine, error) {
 	m, diagnostics := runtimemodel.Load(manifestText)
 	if len(diagnostics) > 0 {

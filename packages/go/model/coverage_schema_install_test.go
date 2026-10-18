@@ -12,9 +12,9 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// TestCoverageSchemaInstallExisting는 generated model이 품은 bench manifest를
-// 이미 설치된 database에 다시 설치하면 성공하고 아무것도 바꾸지 않는지
-// 확인한다.
+// TestCoverageSchemaInstallExisting checks that the bench manifest contained in the generated model
+// installs successfully and changes nothing when reinstalled into a database
+// where it is already installed.
 func TestCoverageSchemaInstallExisting(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, _, _ := connectFeature(t)
@@ -27,7 +27,7 @@ func TestCoverageSchemaInstallExisting(t *testing.T) {
 	}
 }
 
-// partialDocument는 table user만 bench database에 있는 document다.
+// partialDocument is the document whose only table, user, is in the bench database.
 const partialDocument = `dbspec 1 partial
 
 table user {
@@ -42,8 +42,8 @@ table coverage_install_missing {
 }
 `
 
-// TestCoverageSchemaInstallPartial는 table 일부만 있는 document set의 install이
-// CONFIG이고 없는 table을 만들지 않는지 확인한다.
+// TestCoverageSchemaInstallPartial checks that installing a document set with only some of its tables
+// is CONFIG and does not create the missing tables.
 func TestCoverageSchemaInstallPartial(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, driver, dsn := connectFeature(t)
@@ -62,8 +62,8 @@ func TestCoverageSchemaInstallPartial(t *testing.T) {
 	}
 }
 
-// externalUser는 bench database의 table user를 외부 문서로 쓰는 document set의
-// 외부 문서다. drift는 database에 없는 column을 더한다.
+// externalUser is the document for table user of the bench database, used by a document set that
+// treats it as an external document. drift adds a column that the database does not have.
 const externalUser = `dbspec 1 bench_user
 
 table user {
@@ -73,7 +73,7 @@ table user {
 }
 `
 
-// externalMember는 externalUser의 user를 쓰고 coverage_external_post만 소유한다.
+// externalMember uses externalUser's user and owns only coverage_external_post.
 const externalMember = `dbspec 1 coverage_external
 
 use bench_user { user }
@@ -87,10 +87,10 @@ table coverage_external_post {
 }
 `
 
-// TestCoverageSchemaInstallExternalDocuments는 외부 문서를 쓰는 set의 install이 외부
-// table을 database에서 확인하는지 본다. 같은 table이면 연결하고, 외부 문서의 column이
-// database에 없으면 install이 CONFIG이며 소유한 table을 만들지 않는다. 등록은 database를
-// 읽지 않으므로 그 set으로도 연결한다.
+// TestCoverageSchemaInstallExternalDocuments checks whether the install of a set that uses external documents
+// sees the external table in the database. If it is the same table, it links; if an external document's column
+// is not in the database, the install is CONFIG and does not create the table it owns. Registration does not
+// read the database, so it links with that set too.
 func TestCoverageSchemaInstallExternalDocuments(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, driver, dsn := connectFeature(t)

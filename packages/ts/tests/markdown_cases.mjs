@@ -5,10 +5,10 @@ import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { OrmError, StyledValue } from '../dist/index.js';
 import { Logs, People, Tasks, connect } from '../dist/models/markdown_fixture/models.js';
-/** transaction을 rollback시키려고 callback이 던지는 오류다. */
+/** The error that the callback throws to roll back the transaction. */
 export const stop = new Error('stop');
 
-/** cases.json의 id마다 그 case를 실행하고 README가 정한 결과 값을 돌려주는 함수다. 던진 OrmError는 그 code의 {"error": code}다. */
+/** A function that runs the case for each id in cases.json and returns the result value that README defines. A thrown OrmError becomes {"error": code} with its code. */
 export const conformanceCases = {
   insert_one: async s => {
     const m = await new People().connect(s.db).setName('Ann').setEmail('ann@example.com').setAge(30).setScore('1.50').create();
@@ -131,7 +131,7 @@ export const conformanceCases = {
     const error = await s.db.transaction(async () => {
       const m = await new People().id('P1').get();
       await m.setName('Ann C').update();
-      // engine 밖의 편집: transaction이 쓸 file을 commit 전에 바꾼다.
+      // Edit outside the engine: changes the file the transaction will write before the commit.
       const file = path.join(s.dir, 'people.flowmark.md');
       const text = await readFile(file, 'utf8');
       if (!text.includes('Cara')) throw new Error(`${file} holds no Cara to edit:\n${text}`);
@@ -144,8 +144,8 @@ export const conformanceCases = {
   connect_token_mismatch: async s => (await connect(s.dsn(s.corpus, '0'.repeat(32)))).close(),
 };
 
-/** 결과를 JSON으로 썼다 읽은 값이다: cases.json의 expect와 같은 형태다. TypeScript model은 date를 README
- * "Results"가 정한 YYYY-MM-DD text로 가진다. */
+/** The result, written as JSON and read back: it has the same form as expect in cases.json. The TypeScript model holds dates as the YYYY-MM-DD text that README
+ * "Results" defines. */
 export function normalize(value) {
   if (value instanceof StyledValue) throw new Error('a case result holds a styled value, which has no JSON form here');
   return JSON.parse(JSON.stringify(value ?? null));

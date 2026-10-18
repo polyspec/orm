@@ -1,12 +1,12 @@
-//! interface_contract: repository root에서 `node tests/interfaces/check/main.mts -language rust`를
-//! 실행하고 exit 0을 요구한다.
+//! interface_contract: runs `node tests/interfaces/check/main.mts -language rust` from the repository root
+//! and requires exit 0.
 use std::io::Read;
 use std::process::{Command, Stdio};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
-/// interface check의 기한. 다른 process(추출기 build와 symbol 추출)가 하는 일이므로 wall-clock 시간이다.
-/// 그 check는 개발 machine에서 10 s 안에 끝나고(T27 측정 8 s), build cache가 비면 1-2분 걸린다.
+/// The deadline for the interface check. It is wall-clock time, since another process (the extractor build and symbol extraction) does the work.
+/// The check finishes within 10 s on the development machine (8 s measured in T27), and takes 1-2 minutes when the build cache is empty.
 const DEADLINE: Duration = Duration::from_secs(300);
 
 #[test]
@@ -30,7 +30,7 @@ fn coverage_interface_symbols() {
         std::thread::spawn(move || {
             let mut text = String::new();
             let read = pipe.read_to_string(&mut text).map(|_| text);
-            // 수신자는 기한이 지나 실패한 뒤에만 사라지고, 그 실패가 이미 보고된다.
+            // The receiver disappears only after the deadline passes and fails, and that failure is already reported.
             if closed.send(read).is_err() {
                 eprintln!("interface check output arrived after the deadline");
             }

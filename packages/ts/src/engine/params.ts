@@ -1,5 +1,5 @@
-// request parameter가 채우는 slot이다. IR executor message는 각 parameter를 그 slot type의 form으로 쓰므로
-// (docs/protocol.md §5 Parameters) client가 여기서 type을 읽는다.
+// The slot that a request parameter fills. An IR executor message writes each parameter in the form of its slot type, so
+// (docs/protocol.md §5 Parameters) the client reads the type here.
 import type { Assignment, Group, Predicate, Request, RequestQuery } from '../ir.js';
 import { present } from '../present.js';
 import { valueFunctionUnits } from './dialect.js';
@@ -62,7 +62,7 @@ class ParamUses {
     if (f !== undefined) this.add(i, { type: f.type, column: f, assign: true });
   }
 
-  /** q를 걷는다. relation 자식이면 parent가 그 부모 entity다. */
+  /** Walks q. If it is a relation child, parent is its parent entity. */
   public query(q: RequestQuery, parent: Entity | undefined): void {
     const ent = entityOf(this.m, q.entity);
     if (ent === undefined) return;

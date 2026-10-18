@@ -1,6 +1,6 @@
 /*
- * 문서 집합의 table을 만드는 statement를 한 dialect로 쓴다(PHP client Renderer, docs/dialects.md "Rendered
- * statements"). 실패는 InvalidArgumentException이고, 실패 뒤의 계산 결과는 호출자가 버린다.
+ * Writes the statements that create the document set's tables in one dialect (PHP client Renderer, docs/dialects.md "Rendered
+ * statements"). A failure is an InvalidArgumentException, and the caller discards any computed result after a failure.
  */
 #include "dbspec.h"
 #include "ext/spl/spl_exceptions.h"
@@ -117,7 +117,7 @@ str r_type_text(renderer *r, const ctype *t)
     return SL("");
 }
 
-/* canonical decimal literal × 10^scale: 소수점과 앞의 0을 뺀 숫자다. */
+/* Canonical decimal literal × 10^scale: the digits without the decimal point and leading zeros. */
 static str scaled_decimal(str text)
 {
     bool negative = str_starts(text, "-");
@@ -134,7 +134,7 @@ static str scaled_decimal(str text)
     return negative ? fmt("-%S", digits) : digits;
 }
 
-/* column type t의 canonical literal을 dialect 형식으로 쓴다. */
+/* Writes the canonical literal of column type t in the dialect's format. */
 static str r_literal(renderer *r, const ctype *t, str text)
 {
     if (str_eqc(text, "true") || str_eqc(text, "false")) {
@@ -270,12 +270,12 @@ static bool digit(char c)
     return c >= '0' && c <= '9';
 }
 
-/* `\G(?:'(?:[^']|'')*'|<>|<=|>=|[=<>(),]|-?[0-9]+(?:\.[0-9]+)?(?![A-Za-z0-9_])|[A-Za-z0-9_]+)`의 길이, 없으면 0. */
+/* Length of `\G(?:'(?:[^']|'')*'|<>|<=|>=|[=<>(),]|-?[0-9]+(?:\.[0-9]+)?(?![A-Za-z0-9_])|[A-Za-z0-9_]+)`, or 0 if none. */
 static size_t check_token(str s, size_t i)
 {
     char c = s.s[i];
     if (c == '\'') {
-        /* 되돌아가는 반복이다: 반복이 끝까지 가서 닫는 따옴표가 없으면 마지막 '' 쌍의 첫 따옴표에서 닫는다. */
+        /* A backtracking repetition: if the repetition runs to the end without a closing quote, it closes at the first quote of the last '' pair. */
         size_t j = i + 1;
         ssize_t last_pair = -1;
         for (;;) {
@@ -520,8 +520,8 @@ static str cdisjunction(renderer *r)
     return sb_str(&b);
 }
 
-/* canonical check text를 dialect 형식으로 쓴다: column은 인용하고 keyword는 대문자로, literal은 그것이 만나는
- * column의 type으로 쓴다. */
+/* Writes canonical check text in the dialect's format: columns are quoted, keywords are uppercase, and a literal is
+ * written as the type of the column it meets. */
 str r_check_text(renderer *r, const table *t, const check *k)
 {
     renderer *c = dbs_alloc(sizeof *c);
@@ -552,8 +552,8 @@ str r_check_text(renderer *r, const table *t, const check *k)
 
 /* ------------------------------------------------------------------ tables */
 
-/* table t를 name으로 만드는 CREATE TABLE이다. check_name은 column의 renderer CHECK 이름이고, hidden은 t의 column
- * 뒤에 nullable이며 CHECK 없이 더하는 column이다. */
+/* CREATE TABLE that creates table t as name. check_name is the column's renderer CHECK name, and hidden is
+ * a column added after t's columns as nullable, without a CHECK. */
 str r_create_table(renderer *r, const table *t, str name, str (*check_name)(void *, str), void *ctx, const columnv *hidden)
 {
     strs parts = {0};
@@ -641,7 +641,7 @@ str r_index_columns(renderer *r, const xindex *x)
 
 /* ---------------------------------------------------------------- triggers */
 
-/* <table>$<event> trigger의 본문은 statement 하나다. PostgreSQL은 같은 이름의 함수로 감싼다. */
+/* The body of a <table>$<event> trigger is one statement. PostgreSQL wraps it in a function of the same name. */
 static void trigger(renderer *r, const table *t, const char *event, const char *timing, str body, bool rejects, strs *out)
 {
     str name = r_q(r, dbs_renderer_name(t->name, str_c(event)));
@@ -730,7 +730,7 @@ static void visit(str name, const smap *by_name, smap *done, documentv *out)
     }
     strs_sort(&used);
     for (size_t i = 0; i < used.n; i++) {
-        /* 집합 밖의 문서는 DocumentSet 검사가 거부하므로 여기 오지 않는다. */
+        /* A document outside the set is rejected by the DocumentSet check, so it does not reach here. */
         if (smap_has(by_name, used.v[i])) {
             visit(used.v[i], by_name, done, out);
         }
@@ -738,7 +738,7 @@ static void visit(str name, const smap *by_name, smap *done, documentv *out)
     PUSH(*out, d);
 }
 
-/* 사용되는 문서가 그것을 사용하는 문서보다 먼저, 같은 순위는 문서 이름 순이다. */
+/* A document that is used comes before the document that uses it; at the same rank, in document name order. */
 static documentv use_order(const documentv *documents)
 {
     smap by_name = {0};

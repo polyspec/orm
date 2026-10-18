@@ -1,5 +1,5 @@
-# 질의 작성 상태: 만들어지는 query와, 읽힌 row의 상태. Model chain이 이것을 채우고
-# planner가 이것을 IR로 만든다 (docs/protocol.md).
+# Query-building state: the query being built, and the state of a row that was read. The Model chain fills this
+# and the planner turns it into IR (docs/protocol.md).
 from polyspec.orm import codes
 from polyspec.orm.engine.model import Field, field_of
 from polyspec.orm.errors import OrmError
@@ -9,8 +9,8 @@ from polyspec.orm.values import ColumnFunction, ValueFunction
 
 __all__ = ["Core"]
 
-# 값 표현을 그대로 유지하는 codec stage. 그 밖의 stage는 column을 styled value로
-# 만든다.
+# A codec stage that keeps the value representation as is. Other stages turn the column into a styled value
+# make it.
 PLAIN_STAGES = frozenset({"aes", "hex", "ip"})
 
 # The Python types of the value of each column category and the name a getter's TypeError gives them.
@@ -35,7 +35,7 @@ SAFE_INTEGER = 9007199254740991
 
 
 def styled_field(f: Field) -> bool:
-    """column이 styled value를 담는지 (docs/dbspec.md "Runtime model")."""
+    """Whether the column holds a styled value (docs/dbspec.md "Runtime model")."""
     return any(stage not in PLAIN_STAGES for stage in f.stages)
 
 
@@ -66,7 +66,7 @@ class SetSpec:
 
 
 class CondGroup:
-    """읽은 조건들. 커넥터(and/or)는 앞 조건과 이어진다."""
+    """Read conditions. A connector (and/or) joins the preceding condition."""
 
     __slots__ = ("items", "pending", "not_")
 
@@ -82,8 +82,8 @@ class CondGroup:
         if self.pending != "":
             conn = self.pending
             self.pending = ""
-        # 맨 앞의 커넥터는 이을 조건이 없으므로 무시한다: 첫 조건이나 group은
-        # AND나 OR를 달지 않는다.
+        # A leading connector has no condition to join and is ignored: the first condition or group
+        # does not get an AND or OR.
         if not self.items:
             conn = ""
         if self.items and conn == "":
@@ -113,7 +113,7 @@ _OPERATORS = {
 
 
 class Core:
-    """만들어지는 query와, 읽힌 row라면 그 row 상태."""
+    """The query being built, and for a row that was read, its row state."""
 
     def __init__(self, ent):
         self.ent = ent
@@ -139,7 +139,7 @@ class Core:
         self.lock = ""
         self.agg = ""
         self.agg_fn = ""
-        # relation key 성분: match<L>With<R>()마다 한 쌍을 호출 순서로 더한다.
+        # relation key components: each match<L>With<R>() adds one pair, in call order.
         self.matches = []
         self.alias = ""
         self.parent_node = False
@@ -225,7 +225,7 @@ class Core:
         self.where.add(self, conn, {"group": CondGroup(list(group.where.items), not_)})
 
     def negated(self, conn: str, fn) -> None:
-        """group callback의 조건을 하나의 부정 group으로 추가한다: NOT (…)."""
+        """Adds the group callback's conditions as one negated group: NOT (…)."""
         if not callable(fn):
             return self.fail(
                 f"{f'{conn} not' if conn == '' else f'{conn}Not'} accepts a callback "
@@ -251,7 +251,7 @@ class Core:
         self.on = CondGroup(list(group.where.items))
 
     def where_chain(self, conn: str, keys, args) -> None:
-        """chain의 조건을 붙인다; column 함수는 비교 값을 다음 인자로 받는다."""
+        """Attaches a chain condition; a column function takes the comparison value as its next argument."""
         i = 0
         for index, key in enumerate(keys):
             if i >= len(args):
@@ -435,7 +435,7 @@ class Core:
         self.agg = column
 
     def column(self, name: str):
-        """선택되거나 할당된 column 값; 그 밖의 column은 COLUMN_UNSELECTED다."""
+        """Selected or assigned column values; other columns are COLUMN_UNSELECTED."""
         if name in self.values:
             return self.values[name]
         if field_of(self.ent.entity, name) is None:
@@ -466,7 +466,7 @@ class Core:
         )
 
     def set_value(self, column: str, value) -> None:
-        """column 값을 저장하고 다음 쓰기에 기록한다; null은 NULL을 저장한다."""
+        """Stores a column value and records it for the next write; null stores NULL."""
         from polyspec.orm.decimal import normalize_decimal
 
         field = field_of(self.ent.entity, column)
@@ -536,7 +536,7 @@ class Core:
         self.duplication = model.core
 
     def clone(self) -> "Core":
-        """builder 상태를 복사한다; 복사는 새 model을 소유한다."""
+        """Copies the builder state; the copy owns a new model."""
 
         out = Core(self.ent)
         for name in (
@@ -582,8 +582,8 @@ class Core:
         return out
 
     def by(self, keys, args) -> "Core":
-        """get_by/gets_by/get_count_by chain을 복사본에 적용한다; chain은 이미 있는
-        조건과 AND로 이어진다."""
+        """Applies the get_by/gets_by/get_count_by chain to the copy; the chain is joined with AND
+        to the conditions already present."""
         out = self.clone()
         out.where_chain("and" if out.where.items else "", keys, args)
         return out
@@ -594,7 +594,7 @@ class Core:
         return f"{self.ent.entity.name}_{'models' if many else 'model'}"
 
     def build(self, kind: str) -> "BuiltRequest":
-        """chain이 만든 상태를 request로 만든다."""
+        """Makes a request from the state the chain built."""
         request = BuiltRequest(kind, self.ent.model.runtime.manifest_hash)
         if self.error:
             request.fail(self.error)
@@ -606,7 +606,7 @@ class Core:
 
 
 class Frame:
-    """statement 안의 각 Core의 path."""
+    """The path of each Core in the statement."""
 
     def __init__(self, root: "Core", outer):
         self.paths = {id(root): ""}
@@ -643,7 +643,7 @@ def _pad(values):
 
 
 class BuiltRequest:
-    """만들어지는 request: 값 없는 IR과 값들."""
+    """The request being built: IR without values, and the values."""
 
     def __init__(self, kind: str, hash_: str):
         self.ir: dict = {
@@ -656,7 +656,7 @@ class BuiltRequest:
         self.params: list = []
         self.error = None
         self.join_paths: set = set()
-        # 자기 connection을 가진 relation들, parent Core마다.
+        # Relations that have their own connection, per parent Core.
         self.external: dict = {}
 
     def param(self, value) -> int:

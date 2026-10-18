@@ -165,7 +165,7 @@ fn rejects_an_invalid_document() {
     assert!(err.contains("zone.dbs: SCHEMA_INVALID 5:"), "{err}");
 }
 
-/// dbspec::read_bytes가 parse 전에 DbSchema project XML과 빈 파일을 그 joined path의 signature로 거부한다.
+/// dbspec::read_bytes rejects, before parse, a DbSchema project XML and an empty file by the signature of their joined path.
 #[test]
 fn rejects_a_file_without_the_signature() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -322,7 +322,7 @@ fn bound_setter_results_preserve_model_calls_after_extraction() {
     assert!(!error.contains("MapErr"), "{error}");
 }
 
-/// relation getter는 실패한 downcast를 None으로 버리지 않고 `polyspec_orm::Result`로 보고한다.
+/// The relation getter reports a failed downcast as `polyspec_orm::Result` instead of discarding it as None.
 #[test]
 fn relation_getters_report_a_mismatched_relation_value() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -339,8 +339,8 @@ fn relation_getters_report_a_mismatched_relation_value() {
     }
 }
 
-/// 외부 문서(`uses`)를 쓰는 set은 소유한 table의 model만 만들고, 외부 문서에서 쓰는 table의 text를 schema 값에
-/// 싣는다.
+/// A set that uses an external document (`uses`) makes models only for the tables it owns, and
+/// carries the text of tables used from external documents in the schema value.
 #[test]
 fn generation_leaves_external_tables_out() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -361,8 +361,8 @@ fn generation_leaves_external_tables_out() {
     assert!(!external.contains("ext_session"), "the external text carries ext_session, which the set does not use");
 }
 
-/// 같은 source와 schema는 scan과 output path를 어떻게 쓰든(package directory 기준 상대 path, 절대 path,
-/// `./`를 넣은 path, 끝에 `/`를 붙인 path) 같은 generated source를 만든다.
+/// The same source and schema give the same generated source however the scan and output path are written (relative to the package directory, absolute,
+/// a path with `./`, or a path with a trailing `/`).
 #[test]
 fn scan_path_spelling_keeps_the_generated_source() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -372,7 +372,7 @@ fn scan_path_spelling_keeps_the_generated_source() {
     std::fs::create_dir_all(dir.join("tests")).unwrap();
     std::fs::write(dir.join("src/main.rs"), "fn main() { let _ = ZoneEvent::new().gt_start_dt(now); }").unwrap();
     std::fs::write(dir.join("tests/case.rs"), "fn case() { let _ = ZoneEvent::new().or_seq(vec![1, 2]); }").unwrap();
-    // 상대 path는 package directory(CARGO_MANIFEST_DIR) 기준이므로 그 directory에서 root까지 올라간 뒤 dir로 내려간다.
+    // A relative path is relative to the package directory (CARGO_MANIFEST_DIR), so it goes up from that directory to the root and then down into dir.
     let base = PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR"));
     let up: PathBuf = base.components().skip(1).map(|_| "..").collect();
     let relative = up.join(dir.strip_prefix("/").expect("absolute temp dir"));
@@ -410,7 +410,7 @@ fn a_table_named_like_the_runtime_crate_gets_a_model_module_of_its_own() {
     let text = generate_with_schema(schema, "fn main() { let _ = PolyspecOrm::new(); }");
     let _ = std::fs::remove_dir_all(&dir);
     let text = text.unwrap();
-    // 생성된 code는 runtime crate를 polyspec_orm::으로 부르므로, 같은 이름의 model module은 그 path를 가린다.
+    // Generated code calls the runtime crate as polyspec_orm::, so a model module of the same name shadows that path.
     assert!(text.contains("pub mod polyspec_orm_model {"), "the model module of table polyspec_orm is polyspec_orm_model");
     assert!(!text.contains("pub mod polyspec_orm {"), "a model module named polyspec_orm shadows the runtime crate");
 }

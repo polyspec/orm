@@ -52,13 +52,13 @@ const Secret = "$SECRET"
 // NowBind replaces an executor clock bind wherever binds are shown.
 const NowBind = "$NOW"
 
-// Schema은 generated package가 품은 manifest다: document set의 manifest
-// text와 그 manifestHash. runtime model은 처음 쓸 때 한 번 만든다.
+// Schema is the manifest that the generated package holds: the document set's manifest
+// text and its manifestHash. The runtime model is built once, the first time it is used.
 type Schema struct {
 	Hash string
 	Text string
-	// External은 외부 문서에서 set이 쓰는 table의 text다(runtimemodel.Model.ExternalText).
-	// 외부 문서를 쓰지 않는 set은 비어 있다.
+	// External is the text of the external documents that the set uses from external tables (runtimemodel.Model.ExternalText).
+	// A set that uses no external documents is empty.
 	External string
 
 	once  sync.Once
@@ -66,8 +66,8 @@ type Schema struct {
 	err   error
 }
 
-// Model은 manifest text의 runtime model을 반환한다. text가 잘못되면
-// SCHEMA_INVALID, text의 hash가 Hash와 다르면 SCHEMA_HASH_MISMATCH다.
+// Model returns the runtime model of the manifest text. If the text is wrong, it returns
+// SCHEMA_INVALID, and if the text's hash differs from Hash, SCHEMA_HASH_MISMATCH.
 func (s *Schema) Model() (*runtimemodel.Model, error) {
 	s.once.Do(func() {
 		m, diagnostics := runtimemodel.LoadSet(s.Text, s.External)
@@ -88,12 +88,12 @@ func (s *Schema) Model() (*runtimemodel.Model, error) {
 // every copy shares one connection through dbMutable.
 type DB struct {
 	sql *sql.DB
-	// md는 markdown:// 연결의 flowmark session pool이다. SQL 연결에서는 nil이고 sql이 그
-	// 자리다.
+	// md is the flowmark session pool of a markdown:// connection. On SQL connections it is nil, and sql takes that
+	// place.
 	md   *mdPool
 	ctx  context.Context
 	root *DB
-	// hook은 이 handle의 request hook이다. nil이면 request를 그대로 plan한다.
+	// hook is the request hook of this handle. If nil, the request is planned as is.
 	hook     RequestHook
 	m        *dbMutable
 	cfg      Config
@@ -106,10 +106,10 @@ type DB struct {
 
 // dbMutable is the state every handle of one connection shares.
 type dbMutable struct {
-	// engines는 manifestHash마다 이 연결 dialect의 engine이다.
+	// engines holds the engine of this connection's dialect for each manifestHash.
 	engineMu sync.RWMutex
 	engines  map[string]*engine.Engine
-	// schemas는 engines의 hash마다 등록한 schema다.
+	// schemas holds the schema registered for each hash in engines.
 	schemas map[string]*Schema
 
 	planMu    sync.RWMutex
@@ -129,32 +129,32 @@ type dbMutable struct {
 	keyring     AESKeyring
 	keyringErr  error
 
-	// subs는 연결의 statement event subscriber와 transaction 번호다.
+	// subs holds the connection's statement event subscribers and the transaction number.
 	subs subscribers
 
-	// rollbackFault는 FailNextRollback이 설정하는 test fault다. build tag
-	// ormtest가 있는 build만 설정할 수 있다.
+	// rollbackFault is the test fault that FailNextRollback sets. Only builds with the build tag
+	// ormtest can set it.
 	rollbackFault atomic.Bool
 
-	// statementFault는 FailNextStatement이 설정하는 test fault다. 다음 statement가
-	// 소비하면 nil로 바꾼다. build tag ormtest가 있는 build만 설정할 수 있다.
+	// statementFault is the test fault that FailNextStatement sets. The next statement
+	// that consumes it resets it to nil. Only builds with the ormtest build tag can set it.
 	statementFault atomic.Pointer[stmtFault]
 
-	// fixedClock는 FixClock이 설정하는 test clock이다. 설정되면 executor clock은
-	// 이 시각이다. build tag ormtest가 있는 build만 설정할 수 있다.
+	// fixedClock is the test clock that FixClock sets. When it is set, the executor clock is
+	// this time. Only builds with the ormtest build tag can set it.
 	fixedClock atomic.Pointer[time.Time]
 
-	// lastAffected는 연결의 마지막 성공한 write 결과의 affected에 1을 더한 값이며,
-	// write가 없었으면 0이다. LastAffected가 읽고, build tag ormtest가 있는 build만
-	// 그것을 가진다.
+	// lastAffected is the connection's last successful write result's affected count plus 1,
+	// or 0 if there was no write. LastAffected reads it, and only builds with the ormtest build tag
+	// have it.
 	lastAffected atomic.Int64
 }
 
-// engineFor는 이 연결에 등록된 schema의 engine을 반환한다. 요청의 generated
-// code가 품은 text가 선언한 hash로 hash되지 않거나, 그 manifest가 이 연결에
-// 등록되지 않았으면 SCHEMA_HASH_MISMATCH다. 요청이 실행될 수 있는 대상은
-// process가 읽은 code가 아니라 연결이 쓰는 database가 정하므로, 연결은 자기에게
-// 등록된 set만 plan한다.
+// engineFor returns the engine of the schema registered on this connection. If the text the request's generated
+// code holds does not hash to the declared hash, or its manifest is not registered on this connection,
+// it is SCHEMA_HASH_MISMATCH. The target a request can run against is decided
+// by the database the connection writes, not by the code the process read, so a connection plans only
+// the sets registered to it.
 func (d *DB) engineFor(s *Schema) (*engine.Engine, error) {
 	if s == nil {
 		return nil, configErr("the model has no schema")
@@ -171,9 +171,9 @@ func (d *DB) engineFor(s *Schema) (*engine.Engine, error) {
 	return eng, nil
 }
 
-// registeredModel은 이 연결에 등록된 schema의 runtime model이다. SQL 연결은 그 engine의
-// model이고, plan하지 않는 markdown 연결은 등록한 set의 model이다. 등록되지 않았으면
-// SCHEMA_HASH_MISMATCH다.
+// registeredModel is the runtime model of the schema registered on this connection. An SQL connection uses the engine's
+// model, and a markdown connection, which does not plan, uses the model of the set it registered. If it is not registered,
+// it is SCHEMA_HASH_MISMATCH.
 func (d *DB) registeredModel(s *Schema) (*runtimemodel.Model, error) {
 	if d.md != nil {
 		return d.markdownModel(s)
@@ -185,8 +185,8 @@ func (d *DB) registeredModel(s *Schema) (*runtimemodel.Model, error) {
 	return eng.M, nil
 }
 
-// registered는 등록할 schema의 runtime model이다. text가 선언한 hash로 hash되지
-// 않으면 어떤 statement보다 먼저 CONFIG이고, text가 manifest가 아니면 SCHEMA_INVALID다.
+// registered is the runtime model of the schema to register. If the text does not hash to the declared hash,
+// it is CONFIG before any statement, and if the text is not a manifest, it is SCHEMA_INVALID.
 func (s *Schema) registered() (*runtimemodel.Model, error) {
 	if s == nil {
 		return nil, configErr("schema is required")
@@ -198,7 +198,7 @@ func (s *Schema) registered() (*runtimemodel.Model, error) {
 	return m, err
 }
 
-// register는 schema의 set을 이 연결에 등록한다. 같은 set을 다시 등록하면 아무것도 바꾸지 않는다.
+// register registers the schema's set on this connection. Registering the same set again changes nothing.
 func (d *DB) register(s *Schema) error {
 	m, err := s.registered()
 	if err != nil {
@@ -209,7 +209,7 @@ func (d *DB) register(s *Schema) error {
 	if d.m.schemas[s.Hash] != nil {
 		return nil
 	}
-	// markdown 연결은 plan하지 않으므로(docs/protocol.md §5) dialect engine 없이 set만 등록한다.
+	// A markdown connection does not plan (docs/protocol.md §5), so it registers only the set, without a dialect engine.
 	if d.md != nil {
 		d.m.schemas[s.Hash] = s
 		return nil
@@ -323,7 +323,7 @@ func open(ctx context.Context, dsn parsedDSN, cfg Config) (*DB, error) {
 	sqlDriver, ok := lookupDriver(dsn.driver)
 	if !ok {
 		msg := fmt.Sprintf("driver %q is not registered", dsn.driver)
-		// driver package 이름은 pg와 sqlite다.
+		// The driver package names are pg and sqlite.
 		if pkg := map[string]string{"postgres": "pg", "sqlite": "sqlite"}[dsn.driver]; pkg != "" {
 			msg += fmt.Sprintf(`: import _ "github.com/polyspec/orm/packages/go/orm/%s"`, pkg)
 		}
@@ -490,7 +490,7 @@ var (
 	driverMu   sync.RWMutex
 	sqlDrivers = map[string]string{"mysql": "mysql"}
 	errMappers = map[string]func(error) error{"mysql": mapMySQLErr}
-	// sqliteVersion은 SQLite driver package가 등록한 library version이다.
+	// sqliteVersion is the library version that the SQLite driver package registered.
 	sqliteVersion string
 )
 
@@ -524,9 +524,9 @@ func openSQL(sqlDriver string, dsn parsedDSN) (*sql.DB, error) {
 	}
 	cfg.Loc = dsn.location
 	if dsn.sslCA != "" {
-		// ssl-mode=VERIFY_IDENTITY: server 인증서를 CA와 host 이름으로 검사하는
-		// TLS다. password는 TLS 안에서만 오간다: driver는 caching_sha2_password
-		// secret을 TLS로 보내고, TLS가 없을 때만 server의 RSA public key를 요청한다.
+		// ssl-mode=VERIFY_IDENTITY: TLS that checks the server certificate against the CA and the host name.
+		// The password travels only inside TLS: the driver sends the caching_sha2_password
+		// secret over TLS, and requests the server's RSA public key only when there is no TLS.
 		pem, err := os.ReadFile(dsn.sslCA)
 		if err != nil {
 			return nil, fmt.Errorf("mysql DSN ssl-ca %s cannot be read: %w", dsn.sslCA, err)
@@ -581,9 +581,9 @@ func (d *DB) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {
 	return st, nil
 }
 
-// mapDriverErr는 error catalog가 이름 붙인 driver 오류를 그 code로, 나머지
-// driver 오류를 DRIVER로 보고한다. code가 붙은 오류는 driver message와 driver
-// 오류를 cause로 유지한다.
+// mapDriverErr reports a driver error that the error catalog names with its code, and the rest
+// as DRIVER. An error with a code keeps the driver message and the driver
+// error as its cause.
 func mapDriverErr(err error) error {
 	if err == nil {
 		return nil
@@ -606,16 +606,16 @@ func mapDriverErr(err error) error {
 			return mapped
 		}
 	}
-	// driver가 연결을 더 쓸 수 없다고 알린 오류는 연결을 잃은 오류다.
+	// An error the driver reports as unable to use the connection any further is a lost-connection error.
 	if errors.Is(err, driver.ErrBadConn) {
 		return &ir.Error{Code: CodeConnectionLost, Msg: err.Error(), Cause: err}
 	}
-	// trigger가 거절한 write 같은 나머지 driver 오류는 DRIVER다.
+	// Other driver errors, such as a write a trigger refused, are DRIVER.
 	return &ir.Error{Code: CodeDriver, Msg: err.Error(), Cause: err}
 }
 
 func mapMySQLErr(err error) error {
-	// go-sql-driver는 server가 끝냈거나 끊긴 연결의 statement를 ErrInvalidConn으로 알린다.
+	// go-sql-driver reports a statement on a connection the server ended or that dropped as ErrInvalidConn.
 	if errors.Is(err, mysql.ErrInvalidConn) {
 		return &ir.Error{Code: CodeConnectionLost, Msg: err.Error()}
 	}
@@ -639,7 +639,7 @@ func mapMySQLErr(err error) error {
 		return &ir.Error{Code: CodeReadOnly, Msg: me.Error()}
 	case me.Number == 3024 || me.Number == 1317: // query timeout / interrupted
 		return &ir.Error{Code: CodeCanceled, Msg: me.Error()}
-	case me.Number == 4031: // ER_CLIENT_INTERACTION_TIMEOUT: server가 쉬던 연결을 끝냈다
+	case me.Number == 4031: // ER_CLIENT_INTERACTION_TIMEOUT: the server ended an idle connection
 		return &ir.Error{Code: CodeConnectionLost, Msg: me.Error()}
 	}
 	return err

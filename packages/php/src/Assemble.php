@@ -42,7 +42,7 @@ final class Assemble
      */
     public static function cells(array $a, RuntimeModel $model): array
     {
-        // AES column을 읽는 node는 entity의 aes_version column을 함께 읽는다.
+        // A node that reads an AES column also reads the entity's aes_version column.
         $name = $model->entities[$a['entity']]['aes_version'];
         $version = null;
         foreach ($a['columns'] as $c) {

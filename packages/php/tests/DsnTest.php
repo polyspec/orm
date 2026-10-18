@@ -49,8 +49,8 @@ final class DsnTest extends TestCase
         }
     }
 
-    // query 가 붙은 SQLite DSN 은 path 만으로 file 을 만든다. query 를 file 이름에 둔
-    // opener 는 `named.sqlite?_pragma=…` 같은 file 을 만든다(docs/dialects.md "Probe environment").
+    // A SQLite DSN with a query makes the file from the path only. The query is not put in the file name.
+    // The opener makes a file like `named.sqlite?_pragma=…` (docs/dialects.md "Probe environment").
     public function test_sqlite_file_name(): void
     {
         $directory = sys_get_temp_dir() . '/orm-php-sqlite-name-' . getmypid();
@@ -67,7 +67,7 @@ final class DsnTest extends TestCase
         self::assertContains('named.sqlite', $names, 'files ' . json_encode($names) . ': named.sqlite is missing');
     }
 
-    /** @return iterable<string, array{array<string, mixed>}> tests/dsn/sqlite-paths.json의 case마다 */
+    /** @return iterable<string, array{array<string, mixed>}> for each case in tests/dsn/sqlite-paths.json */
     public static function sqlitePaths(): iterable
     {
         $vectors = json_decode(file_get_contents(dirname(__DIR__, 3) . '/tests/dsn/sqlite-paths.json'), true, 512, JSON_THROW_ON_ERROR);
@@ -79,8 +79,8 @@ final class DsnTest extends TestCase
         }
     }
 
-    // tests/dsn/sqlite-paths.json: DSN path 는 percent-decode 한 file 을 열고, 잘못된 path 는
-    // CONFIG 다(docs/config.md "Runtime connection").
+    // tests/dsn/sqlite-paths.json: a DSN path opens the percent-decoded file, and a wrong path is
+    // CONFIG (docs/config.md "Runtime connection").
     /** @param array<string, mixed> $case */
     #[DataProvider('sqlitePaths')]
     public function test_sqlite_path(array $case): void

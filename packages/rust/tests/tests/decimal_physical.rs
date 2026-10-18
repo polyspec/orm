@@ -71,7 +71,7 @@ async fn decimal_sqlite() {
 /// sqlx connection sends startup parameters that a pooler rejects.
 #[cfg(test)]
 async fn schema_set_database(driver: &str) -> (String, String) {
-    // 병렬 test가 같은 microsecond에 이름을 만들 수 있으므로 process id와 counter로 이름을 구분한다.
+    // Parallel tests may create names in the same microsecond, so names are told apart by process id and counter.
     static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
     let count = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
@@ -233,7 +233,7 @@ async fn schema_set_edited_manifest(driver: &str) {
     assert_eq!(runs.load(std::sync::atomic::Ordering::Relaxed), 0, "{driver}: statements of the edited install");
     db.utils().schema().install(&decimal_model::SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
     DecimalCase::new().connect(&db).set_seq(1).set_amount("48.0450").unwrap().create().await.unwrap();
-    // 같은 hash의 같은 요청을 먼저 plan해 둔다.
+    // Plan the same request with the same hash first.
     assert_eq!(DecimalCase::new().connect(&db).get_count().await.unwrap(), 1, "{driver}: decimal rows");
     let entity: &'static polyspec_orm::Entity = Box::leak(Box::new(polyspec_orm::Entity {
         name: "decimal_case",

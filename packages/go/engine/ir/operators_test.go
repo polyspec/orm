@@ -19,7 +19,7 @@ func TestStringAndTextSupportOrderedCursorPredicates(t *testing.T) {
 	}
 }
 
-// uuid column은 equality와 목록 비교만 받는다. PostgreSQL uuid에는 LIKE가 없다.
+// A uuid column accepts only equality and list comparison. PostgreSQL uuid has no LIKE.
 func TestUUIDAllowsEqualityOnly(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	column := &runtimemodel.Field{Type: "uuid"}

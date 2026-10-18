@@ -1,15 +1,15 @@
 <?php
 declare(strict_types=1);
-// addTablesAndColumns를 SQLite, MySQL, PostgreSQL에서 확인한다(docs/schema.md "Adding tables and
-// columns"). case database는 다른 set addcol_log의 table과 addcol set version 1의 table을 row와
-// 함께 가진다. version 2로 addTablesAndColumns를 부르면 있는 table에 빠진 null이거나 default가
-// 있는 column을 더하고, row를 지키며, 바뀐 audit table의 trigger가 새 column을 기록하고, 없는
-// table을 index, foreign key, check, audit trigger와 함께 만들며, 다른 set의 table은 그대로
-// 둔다. 다시 부르면 아무것도 더하지 않는다. 있는 table에 빠진 index는 더하고, 빠진 unique key는
-// 그 이유를 적은 SCHEMA_DIFFERS다. 다른 차이가 있는 set은 아무것도 바꾸기 전에
-// SCHEMA_DIFFERS다. fixture는 contracts/fixtures/add_tables_and_columns/*.dbs다. 각 case는 자기
-// case database(case_database.php)에서 실행하며 ORM_TEST_MYSQL_DSN이나 ORM_TEST_POSTGRES_DSN이
-// 없으면 실패한다.
+// Checks addTablesAndColumns on SQLite, MySQL, and PostgreSQL (docs/schema.md "Adding tables and
+// columns"). The case database holds the table of the other set addcol_log and the table of addcol set version 1, together with rows.
+// Calling addTablesAndColumns with version 2 adds to existing tables the missing columns that are nullable or have a default,
+// keeps the rows, the trigger of the changed audit table records the new column, and a missing
+// table is created with its index, foreign key, check, and audit trigger, and the tables of other sets are
+// left alone. Calling it again adds nothing. Missing indexes on existing tables are added, and a missing unique key
+// is SCHEMA_DIFFERS, which states the reason. A set with another difference, before changing anything,
+// is SCHEMA_DIFFERS. The fixtures are contracts/fixtures/add_tables_and_columns/*.dbs. Each case
+// runs in its own case database (case_database.php), and ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN
+// is missing, the test fails.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AddTablesAndColumnsTest.php [--filter <case>]
 require_once __DIR__ . '/case_database.php';
 
@@ -35,7 +35,7 @@ final class AddTablesAndColumnsTest extends TestCase
         'addcol_tag.color',
     ];
     private const DIFFERS = ['required', 'removed', 'changed', 'nullable', 'default', 'unique', 'reorder'];
-    // index.dbs가 version 1에 더하는 column과 index다. column 뒤에 index가 온다.
+    // index.dbs adds the column and index for version 1. The index comes after the column.
     private const ADDED_INDEX = ['addcol_item.note', 'addcol_item.ix_addcol_item_label', 'addcol_item_history.note'];
     private const MISSING_UNIQUE = 'add_unique addcol_item.uq_addcol_item_label: a missing unique key can fail on the existing rows; add it with a plan';
 
@@ -44,7 +44,7 @@ final class AddTablesAndColumnsTest extends TestCase
         \PHPUnit\Framework\Assert::assertTrue($ok, $message);
     }
 
-    /** call이 던진 OrmException이다. 오류가 없으면 null이다. */
+    /** The OrmException thrown by the call. It is null if there was no error. */
     private static function thrown(callable $f): ?OrmException
     {
         try {
@@ -55,7 +55,7 @@ final class AddTablesAndColumnsTest extends TestCase
         return null;
     }
 
-    /** contracts/fixtures/add_tables_and_columns/$name.dbs의 schema 값이다. */
+    /** The schema value of contracts/fixtures/add_tables_and_columns/$name.dbs. */
     private static function fixture(string $name): Schema
     {
         $path = dirname(__DIR__, 3) . "/contracts/fixtures/add_tables_and_columns/$name.dbs";
@@ -70,16 +70,16 @@ final class AddTablesAndColumnsTest extends TestCase
         return new Schema($manifest->manifest->manifestText, $manifest->manifest->manifestHash);
     }
 
-    /** connection의 PDO로 query가 돌려주는 수를 읽는다. */
+    /** Reads the count the query returns through the connection's PDO. */
     private static function count_of(Db $db, string $sql): int
     {
         return (int) $db->pdo()->query($sql)->fetchColumn();
     }
 
     /**
-     * case database에 addcol_log와 version 1을 설치하고 log row 하나, audit 기록 1로 item 하나, 그
-     * item의 tag와 그 tag의 자식 tag를 쓴 연결이다. item의 audit column은 audit 기록 table의 행을
-     * foreign key로 가리키므로 audit 기록을 먼저 쓴다.
+     * Installs addcol_log and version 1 in the case database, one log row, one item with audit record 1, and the
+     * link written with the item's tag and that tag's child tag. The item's audit column refers to the row of the audit record table
+     * by a foreign key, so the audit record is written first.
      */
     private static function installed(string $dsn): Db
     {
@@ -101,12 +101,12 @@ final class AddTablesAndColumnsTest extends TestCase
         try {
             $added = $db->utils()->schema()->addTablesAndColumns(self::fixture('v2'));
             self::check($added === self::ADDED, 'addTablesAndColumns = ' . json_encode($added));
-            // row는 그대로이고 새 column은 NULL이거나 default다.
+            // The rows are unchanged, and the new columns are NULL or default.
             $items = self::count_of($db, "SELECT COUNT(*) FROM addcol_item WHERE ref = 'item-1' AND label = 'first' AND note IS NULL AND priority = 3 AND archived = false AND status = 'new'");
             self::check($items === 1, "items with their values and the new defaults $items");
             self::check(self::count_of($db, 'SELECT COUNT(*) FROM addcol_tag WHERE color IS NULL') === 2, 'tags with a null color');
             self::check(self::count_of($db, "SELECT COUNT(*) FROM addcol_log_entry WHERE message = 'kept'") === 1, 'log entries');
-            // SQLite는 foreign key를 끄고 table을 다시 만들었다. 연결이 다시 켰는지 본다.
+            // SQLite turns foreign keys off and recreates the table. Checks that the connection turned them back on.
             $orphan = null;
             try {
                 $db->pdo()->exec("INSERT INTO addcol_tag (item_id, name) VALUES (999, 'orphan')");
@@ -114,12 +114,12 @@ final class AddTablesAndColumnsTest extends TestCase
                 $orphan = $e;
             }
             self::check($orphan !== null, 'a tag of a missing item was written');
-            // audit trigger는 새 column을 기록한다.
+            // The audit trigger records the new column.
             $db->pdo()->exec("INSERT INTO audit (actor) VALUES ('update')");
             $db->pdo()->exec("UPDATE addcol_item SET note = 'later', priority = 4, audit_seq = 2 WHERE id = 1");
             $history = self::count_of($db, "SELECT COUNT(*) FROM addcol_item_history WHERE history_action = 'update' AND previous_audit_seq = 1 AND audit_seq = 2 AND note = 'later' AND priority = 4 AND status = 'new'");
             self::check($history === 1, "history rows of the update with the new columns $history");
-            // 새 table은 index, foreign key, check, audit trigger와 함께 만들어졌다.
+            // The new table was created with its index, foreign key, check, and audit trigger.
             $db->pdo()->exec("INSERT INTO audit (actor) VALUES ('extra')");
             $db->pdo()->exec("INSERT INTO addcol_extra (item_id, label, audit_seq) VALUES (1, 'extra', 3)");
             $inserted = self::count_of($db, "SELECT COUNT(*) FROM addcol_extra_history WHERE history_action = 'insert' AND previous_audit_seq IS NULL AND audit_seq = 3 AND item_id = 1 AND label = 'extra'");
@@ -141,7 +141,7 @@ final class AddTablesAndColumnsTest extends TestCase
             self::check(self::count_of($db, 'SELECT COUNT(*) FROM addcol_extra') === 1, 'rows of the created table');
             $again = $db->utils()->schema()->addTablesAndColumns(self::fixture('v2'));
             self::check($again === [], 'repeated addTablesAndColumns = ' . json_encode($again));
-            // 모든 table이 있으므로 install은 아무것도 바꾸지 않는다(docs/schema.md "Schema installation").
+            // Every table exists, so install changes nothing (docs/schema.md "Schema installation").
             $install = self::thrown(fn() => $db->utils()->schema()->install(self::fixture('v2')));
             self::check($install === null, 'install of version 2 over its tables: ' . ($install?->getMessage() ?? ''));
         } finally {
@@ -165,8 +165,8 @@ final class AddTablesAndColumnsTest extends TestCase
     }
 
     /**
-     * 있는 table에 빠진 index는 더하고 다시 부르면 아무것도 하지 않는다. 빠진 unique key는 있는
-     * 행에서 실패할 수 있으므로 그 이유를 적은 SCHEMA_DIFFERS다.
+     * Adds the missing index to an existing table, and calling again does nothing. A missing unique key on a table that has
+     * rows fails, so it is SCHEMA_DIFFERS stating the reason.
      */
     private static function addTablesAndColumnsIndex(string $dsn, string $driver): void
     {
@@ -178,7 +178,7 @@ final class AddTablesAndColumnsTest extends TestCase
             self::check($added === self::ADDED_INDEX, 'addTablesAndColumns with a missing index = ' . json_encode($added));
             $again = $db->utils()->schema()->addTablesAndColumns(self::fixture('index'));
             self::check($again === [], 'repeated addTablesAndColumns with the index = ' . json_encode($again));
-            // install은 database가 set과 같을 때만 아무것도 바꾸지 않는다: index가 선언대로 있다.
+            // install changes nothing only when the database matches the set: the index exists as declared.
             $install = self::thrown(fn() => $db->utils()->schema()->install(self::fixture('index')));
             self::check($install === null, 'install of the set with the index: ' . ($install?->getMessage() ?? ''));
         } finally {

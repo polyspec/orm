@@ -1,6 +1,6 @@
-# dbspec 문서를 표준 Mermaid erDiagram으로 쓰고 읽는다 (docs/mermaid.md).
-# 기준은 다른 client의 mermaid이며 text, 문서, 뺀 객체와 diagnostic은 같은
-# 바이트다. 정규식의 공백은 [\t\n\f\r ]로 쓴다.
+# Writes and reads dbspec documents as standard Mermaid erDiagram (docs/mermaid.md).
+# The reference is the other client's mermaid; the text, document, dropped objects, and diagnostics are the same
+# bytes. Regex whitespace is written as [\t\n\f\r ].
 from __future__ import annotations
 
 import json
@@ -20,21 +20,21 @@ def _byte_key(value: str) -> bytes:
 
 
 def _settings_commented(s) -> bool:
-    """settings block의 여는 줄, setting 줄, 닫는 줄 중 하나에 comment가 있는지
-    알려준다."""
+    """Tells whether a comment is on the opening line, a setting line, or the closing line of a settings block
+    or not."""
     return s is not None and (
         s.comments or s.closing_comments or any(x.comments for x in s.settings)
     )
 
 
 def _mermaid_type(t: DbspecType) -> str:
-    """Mermaid type에는 쉼표가 없으므로 decimal(p,s)를 decimal(p-s)로 쓴다."""
+    """Mermaid types have no commas, so decimal(p,s) is written as decimal(p-s)."""
     return f"decimal({t.precision}-{t.scale})" if t.kind == "decimal" else type_text(t)
 
 
 def export_mermaid(document: DbspecDocument) -> dict:
-    """문서 하나를 표준 Mermaid erDiagram으로 쓰고, diagram이 담지 못하는 것을
-    [kind, table, name] 순서로 남긴다 (docs/mermaid.md "Export")."""
+    """Writes one document as a standard Mermaid erDiagram, and records what the diagram cannot hold
+    in [kind, table, name] order (docs/mermaid.md "Export")."""
     if document is None or not isinstance(document.tables, (list, tuple)):
         raise TypeError("export_mermaid takes a parsed dbspec document")
     dropped: list = []
@@ -153,7 +153,7 @@ def export_mermaid(document: DbspecDocument) -> dict:
     return {"mermaid": out, "dropped": dropped}
 
 
-# Go regexp의 \s는 [\t\n\f\r ]이다.
+# In Go regexp, \s is [\t\n\f\r ].
 _S = "[\\t\\n\\f\\r ]"
 _ENTITY_NAME = '([A-Za-z0-9_-]+|"[^"]*")'
 _ENTITY_START = re.compile(f"^{_ENTITY_NAME}{_S}*\\{{$")
@@ -171,15 +171,15 @@ _LABEL = re.compile(
     r"^([a-z][a-z0-9_]*) \(([a-z0-9_, ]+)\) "
     r"references \(([a-z0-9_, ]+)\)$"
 )
-# comment 뒤에 공백 하나를 붙인 text에 맞춘다. 각 부분이 공백 하나로 끝나야 하므로
-# 부분 사이에 공백이 정확히 하나 있다.
+# Matches text with one space appended after the comment. Each part must end with one space, so
+# there is exactly one space between the parts.
 _SUFFIX = re.compile(r"^(?:(null) )?(?:(identity) )?(?:default ([^\n]+) )?$")
 _KNOWN_TYPE = re.compile(
     r"^(i16|i32|i64|bool|f64|text|bytes|uuid|date)$"
     r"|^varchar\((\d+)\)$|^(time|datetime)\((\d)\)$"
     r"|^decimal\((\d+)-(\d+)\)$"
 )
-# Go strings.TrimSpace가 지우는 Unicode 공백이다.
+# These are the Unicode spaces that Go strings.TrimSpace removes.
 _GO_SPACE = (
     "[\\t\\n\\v\\f\\r \\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028"
     "\\u2029\\u202f\\u205f\\u3000]"
@@ -192,14 +192,14 @@ def _trim_space(s: str) -> str:
 
 
 def _trim_quotes(s: str) -> str:
-    """앞뒤의 큰따옴표를 모두 지운다."""
+    """Removes all double quotes at the front and back."""
     return s.strip('"')
 
 
 def import_mermaid(text: str, name: str) -> dict:
-    """표준 Mermaid erDiagram을 `name`의 dbspec 문서로 읽고, 옮겨 오지 못한 것을
-    남긴다 (docs/mermaid.md "Import"). 문법을 벗어난 줄은 그 줄의 `mermaid`
-    diagnostic이다."""
+    """Reads a standard Mermaid erDiagram as the dbspec document `name`, and records what it cannot carry over
+    (docs/mermaid.md "Import"). A line outside the grammar is recorded with its `mermaid`
+    diagnostic."""
     if not isinstance(text, str):
         raise TypeError("Mermaid text must be a string")
     if not isinstance(name, str):
@@ -435,7 +435,7 @@ def import_mermaid(text: str, name: str) -> dict:
         used.update(cols)
         prefix = ct["primary"][: min(len(cols), len(ct["primary"]))]
         ix = f"ix_{child}_{'_'.join(cols)}"
-        # 같은 column의 foreign key가 이미 더한 index는 다시 더하지 않는다.
+        # An index that a foreign key on the same column already added is not added again.
         indexed = any(x["name"] == ix for x in ct["indexes"])
         if (
             len(prefix) != len(cols) or any(p != cols[i] for i, p in enumerate(prefix))
@@ -462,8 +462,8 @@ def import_mermaid(text: str, name: str) -> dict:
     try:
         result = c.document(name)
     except Exception as error:  # noqa: BLE001
-        # catalog이 문서를 만들지 못하면(문서 이름이 dbspec 이름이 아닌 경우 등)
-        # 1행의 diagnostic이다.
+        # If the catalog cannot build a document (for example, when the document name is not a dbspec name),
+        # the diagnostic is at line 1.
         return fail(1, _message_of(error))
     return {
         "document": result[0],
@@ -481,8 +481,8 @@ def _split_names(s: str) -> list:
 
 
 def _within(digits: str, lo: int, hi: int):
-    """숫자 text가 lo 이상 hi 이하인 값이면 그 값을, 아니면 None을 돌려준다. 9자리를
-    넘는 수는 범위 밖이다."""
+    """Returns the value of a number text if it is between lo and hi inclusive, otherwise None. A number over 9 digits
+    is out of range."""
     significant = digits.lstrip("0")
     if len(significant) > 9:
         return None
@@ -491,10 +491,10 @@ def _within(digits: str, lo: int, hi: int):
 
 
 def _import_type(s: str):
-    """Mermaid type이 dbspec type이면 그 type을, 아니면 None을 돌려준다. 수가
-    dbspec 범위(varchar 1-16383, time과 datetime 0-6, decimal p 1-18과 s 0-p)를
-    벗어나면 dbspec type이 아니다. 범위를 여기서 정하므로 key column도 모든
-    client에서 같은 지점에서 빠진다."""
+    """Returns the Mermaid type as a dbspec type if it is one, otherwise None. The numbers
+    must fall in the dbspec range (varchar 1-16383, time and datetime 0-6, decimal p 1-18 and s 0-p);
+    outside it, it is not a dbspec type. Because the range is set here, key columns also fail at the same point in every
+    client."""
     m = _KNOWN_TYPE.match(s)
     if m is None:
         return None

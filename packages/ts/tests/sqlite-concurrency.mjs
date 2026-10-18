@@ -116,8 +116,8 @@ const tests = {
   },
 };
 
-// 각 case의 기한은 PROCESS다. 가장 큰 case가 writer process 6개를 띄우고 각각 transaction
-// 40개를 commit한다.
+// The deadline of each case is PROCESS. The largest case starts 6 writer processes, and each one runs a transaction
+// commits 40 of them.
 // node:test runs each case after this module body returns, so the directory is removed by an after hook that
 // runs when all the cases have finished, not in a finally block here (which would remove it before they run).
 after(async () => {

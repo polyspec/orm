@@ -1,10 +1,10 @@
-// 한 언어(또는 extension)의 native 선언을 공통 contract에 비교하는 검사다: rule의 signature, 금지 symbol, owner의 field
-// 목록, record의 wire 형식. 각 검사는 차이마다 한 줄을 돌려준다.
+// A check that compares a language's (or extension's) native declarations with the common contract: the signature of rules, prohibited symbols, the field
+// lists of owners, and the wire format of records. Each check returns one line per difference.
 import { sortBytes } from './json.mts';
 import { mark, type ContractRecord, type Owner, type Rule, type Symbol, type Symbols } from './manifest.mts';
 
-/** differences는 기대한 symbol과 실제 symbol의 차이(missing, changed, unexpected)를 byte 순서로 돌려준다. */
-// show는 한 symbol을 공개 여부와 signature로 적는다.
+/** differences returns the differences between expected and actual symbols (missing, changed, unexpected) in byte order. */
+// show writes one symbol with whether it is public and its signature.
 const show = (entry: Symbol): string => `${entry.exported ? 'exported' : 'private'} ${entry.signature}`;
 
 export function differences(want: Symbols, got: Symbols): string[] {
@@ -21,22 +21,22 @@ export function differences(want: Symbols, got: Symbols): string[] {
   return sortBytes(out);
 }
 
-// SPACE는 Go의 unicode.IsSpace가 공백으로 보는 문자다.
+// SPACE is a character that Go's unicode.IsSpace treats as whitespace.
 const SPACE = /[\t\n\v\f\r \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]/g;
 
-/** compact는 공백을 지운 signature다. rustfmt가 parameter 목록에 허용하는 끝 쉼표는 문법일 뿐 공통 signature를 바꾸지 않는다. */
+/** compact is the signature with whitespace removed. A trailing comma that rustfmt allows in a parameter list is syntax only and does not change the common signature. */
 function compact(value: string): string {
   return value.replace(SPACE, '').replaceAll(',)', ')');
 }
 
-/** pascal은 snake_case 이름의 PascalCase다. */
+/** pascal is the PascalCase of a snake_case name. */
 function pascal(value: string): string {
   return value.split('_').filter(part => part !== '').map(part => part.slice(0, 1).toUpperCase() + part.slice(1)).join('');
 }
 
 /**
- * checkRules는 rule마다 언어의 native symbol과 signature를 실제 선언에 비교한다. entity 단위 rule은 order(contract가
- * 가리키는 dbspec document의 entity 순서)로 펼친다.
+ * checkRules compares each rule's native symbol and signature with the actual declarations. An entity-level rule expands by order (the entity order
+ * of the dbspec document that the contract points to).
  */
 export function checkRules(lang: string, actual: Symbols, rules: Rule[], order: string[] | undefined): string[] {
   const errors: string[] = [];
@@ -62,13 +62,13 @@ export function checkRules(lang: string, actual: Symbols, rules: Rule[], order: 
   return errors;
 }
 
-// normalizeName은 글자와 숫자만 소문자로 남긴 이름이다. 언어마다 다른 이름 형식(MultiStatement, multi_statement,
-// multiStatement)이 같은 이름이 된다.
+// normalizeName is the name that keeps only letters and digits, in lowercase. Name forms that differ by language (MultiStatement, multi_statement,
+// multiStatement) become the same name.
 function normalizeName(value: string): string {
   return value.replaceAll(/[^\p{L}\p{Nd}]/gu, '').toLowerCase();
 }
 
-/** checkProhibitedSymbols는 금지 symbol이 이름 형식과 무관하게 선언이나 signature에 나오는 곳마다 한 줄을 돌려준다. */
+/** checkProhibitedSymbols returns one line for each place a prohibited symbol appears in a declaration or signature, regardless of name form. */
 export function checkProhibitedSymbols(lang: string, actual: Symbols, prohibited: string[]): string[] {
   const errors: string[] = [];
   for (const [symbol, entry] of Object.entries(actual)) {
@@ -81,14 +81,14 @@ export function checkProhibitedSymbols(lang: string, actual: Symbols, prohibited
 }
 
 /**
- * checkOwners는 owner의 field 목록을 실제 선언에 비교한다. source inventory는 다시 기록할 수 있지만, 공통 owner의 배치는
- * contract를 고치지 않고는 비공개 controller, cache, connection field를 얻을 수 없다.
+ * checkOwners compares each owner's field list with the actual declarations. The source inventory may be re-recorded, but the common owner's placement
+ * cannot get private controller, cache, or connection fields without changing the contract.
  */
 export function checkOwners(lang: string, symbols: Symbols, owners: Owner[]): string[] {
   return checkOwnersAs(lang, lang, symbols, owners);
 }
 
-/** checkOwnersAs는 checkOwners를 syntax 언어의 field 표기로 한다. extension(PHP 확장)은 자기 이름으로 mapping을 찾고 PHP 문법으로 field를 읽는다. */
+/** checkOwnersAs applies checkOwners in the field notation of a syntax language. An extension (the PHP extension) finds its mapping by its own name and reads fields in PHP syntax. */
 export function checkOwnersAs(lang: string, syntax: string, symbols: Symbols, owners: Owner[]): string[] {
   const failures: string[] = [];
   for (const owner of owners) {
@@ -118,7 +118,7 @@ export function checkOwnersAs(lang: string, syntax: string, symbols: Symbols, ow
   return failures;
 }
 
-// wireFields는 `#wire` symbol의 값, field 이름에서 wire type으로 가는 JSON object다.
+// wireFields is the value of the `#wire` symbol: a JSON object from field name to wire type.
 function wireFields(raw: string): Record<string, string> {
   const value: unknown = JSON.parse(raw);
   if (value === null || typeof value !== 'object' || Array.isArray(value)) throw new Error(`json: cannot unmarshal ${raw} into a record wire`);
@@ -137,8 +137,8 @@ const sameMap = (a: Record<string, string>, b: Record<string, string>): boolean 
   Object.keys(a).length === Object.keys(b).length && Object.entries(a).every(([key, value]) => Object.hasOwn(b, key) && b[key] === value);
 
 /**
- * checkRecords는 언어의 record 선언(`#wire` symbol)을 공통 record에 비교한다: extends와 flatten을 펼친 field와 그 중첩
- * type. PHP는 record가 모두 한 validator 안에 있고, 그 validator에 contract 밖의 record가 없어야 한다.
+ * checkRecords compares a language's record declarations (`#wire` symbols) with the common record: the fields with extends and flatten expanded, and their nested
+ * types. In PHP all records are in one validator, and that validator must have no records outside the contract.
  */
 export function checkRecords(lang: string, symbols: Symbols, records: ContractRecord[]): string[] {
   const byId = new Map<string, ContractRecord>(), byNative = new Map<string, ContractRecord>();

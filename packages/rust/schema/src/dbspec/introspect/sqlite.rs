@@ -1,5 +1,5 @@
-//! SQLite catalog를 읽는다. sqlite_master와 table-valued pragma를 join해 모든
-//! table을 한 번에 읽는다.
+//! Reads the SQLite catalog. It joins sqlite_master and the table-valued pragmas to read all
+//! tables at once.
 
 use super::super::model::{Column, Name, Type};
 use super::super::names::renderer_name;
@@ -43,19 +43,19 @@ static CONSTRAINT_ITEM: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#"^(?:CONSTRAINT "([^"]+)" )?(CHECK|UNIQUE|FOREIGN KEY|PRIMARY KEY)\b"#).expect("SQLite constraint pattern"));
 static NUMBER_DEFAULT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^-?\d+(\.\d+)?$").expect("SQLite number pattern"));
 
-/// CREATE TABLE text에서 읽은 constraint.
+/// A constraint read from CREATE TABLE text.
 #[derive(Default)]
 struct SqliteTable {
-    /// check 이름: 식.
+    /// Check name: expression.
     checks: BTreeMap<String, String>,
-    /// check 이름의 선언 순서.
+    /// The declaration order of the check name.
     order: Vec<String>,
     fks: Vec<IForeignKey>,
     primary: Vec<String>,
     identity: String,
-    /// column 이름: 정의 text.
+    /// Column name: definition text.
     columns: BTreeMap<String, String>,
-    /// 비어 있지 않으면 table 전체를 읽지 못한 이유다.
+    /// If not empty, the reason the whole table could not be read.
     unsupported: String,
 }
 
@@ -148,7 +148,7 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
     for row in results.rows(INDEXES) {
         let (table, name, unique, origin, partial, columns, desc) =
             (row.text(0)?, row.text(1)?, row.int(2)?, row.text(3)?, row.int(4)?, row.text(5)?, row.text(6)?);
-        // pk와 u origin index는 primary key와 unique 정의에서 나오며, 그 정의를 읽거나 보고한다.
+        // The pk and u origin indexes come from primary key and unique definitions; those definitions are read or reported.
         if !c.has_table(&table) || origin == "pk" || origin == "u" {
             continue;
         }
@@ -169,8 +169,8 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
     Ok(c)
 }
 
-/// 선언 type과 그 column의 renderer CHECK로 dbspec type을 정한다. CHECK은 그
-/// type의 renderer 출력과 정확히 같아야 한다.
+/// The dbspec type is determined from the declared type and the column's renderer CHECK. The CHECK must
+/// match the renderer output for the type exactly.
 fn sqlite_type(r: &Renderer, declared: &str, column: &str, check: Option<&str>) -> Option<Type> {
     let m = DECLARED_PATTERN.captures(declared)?;
     let candidates: Vec<Type> = if !group(&m, 2).is_empty() {
@@ -180,7 +180,7 @@ fn sqlite_type(r: &Renderer, declared: &str, column: &str, check: Option<&str>) 
     } else {
         match group(&m, 1) {
             "smallint" => vec![Type::I16],
-            // SQLite는 keyword인 integer를 INTEGER로 보고한다. identity는 CREATE text가 정한다.
+            // SQLite reports the keyword integer as INTEGER. The CREATE text determines identity.
             "integer" | "INTEGER" => vec![Type::I32],
             "bigint" => vec![Type::I64],
             "BOOLEAN" => vec![Type::Bool],
@@ -206,8 +206,8 @@ fn sqlite_type(r: &Renderer, declared: &str, column: &str, check: Option<&str>) 
     })
 }
 
-/// dflt_value를 dbspec literal이나 now로 읽는다. decimal은 scale을 곱한 정수이고
-/// bool은 1과 0이다.
+/// Reads dflt_value as a dbspec literal or now. A decimal is an integer multiplied by the scale, and
+/// a bool is 1 or 0.
 fn sqlite_default(r: &Renderer, text: &str, typ: Type) -> Option<String> {
     if let Type::DateTime(p) = typ {
         if format!("({text})") == r.now(p) {
@@ -226,8 +226,8 @@ fn sqlite_default(r: &Renderer, text: &str, typ: Type) -> Option<String> {
     (text.starts_with('\'') && text.ends_with('\'')).then(|| text.to_owned())
 }
 
-/// renderer가 쓰는 한 줄 CREATE TABLE text에서 primary key, identity, foreign
-/// key, check를 읽는다. 그 밖의 table 수준 항목은 미지원이다.
+/// From the one-line CREATE TABLE text the renderer writes, it reads the primary key, identity, foreign
+/// key, and check. Other table-level items are unsupported.
 fn parse_table(text: &str) -> (SqliteTable, Vec<Unsupported>) {
     let mut st = SqliteTable::default();
     let mut unsupported = Vec::new();
@@ -254,7 +254,7 @@ fn parse_table(text: &str) -> (SqliteTable, Vec<Unsupported>) {
             st.checks.insert(group(&m, 1).to_owned(), group(&m, 2).to_owned());
             st.order.push(group(&m, 1).to_owned());
         } else if let Some(m) = CONSTRAINT_ITEM.captures(item) {
-            // 이름 없는 constraint는 이름이 빈 객체로 보고한다. primary key의 다른 형식은 table을 읽지 못하게 한다.
+            // An unnamed constraint is reported as an object with an empty name. Another form of primary key makes the table unreadable.
             let kind = match group(&m, 2) {
                 "CHECK" => "check",
                 "UNIQUE" => "unique",
@@ -268,7 +268,7 @@ fn parse_table(text: &str) -> (SqliteTable, Vec<Unsupported>) {
             let reason = format!("the table item {item:?} has no dbspec definition");
             unsupported.push(Unsupported { kind: kind.to_owned(), table: String::new(), name, reason });
         } else if let Some(m) = COLUMN_ITEM.captures(item) {
-            // 정의는 pragma_table_xinfo가 읽고, 그 text는 renderer 형식인지 확인한다.
+            // The definition is read by pragma_table_xinfo, and its text is checked to be in renderer form.
             st.columns.insert(group(&m, 1).to_owned(), item.to_owned());
         } else {
             st.unsupported = format!("the table item {item:?} has no dbspec definition");
@@ -278,9 +278,9 @@ fn parse_table(text: &str) -> (SqliteTable, Vec<Unsupported>) {
     (st, unsupported)
 }
 
-/// column 정의 text가 renderer의 column 형식, 곧 이름, 선언 type, NULL이나 NOT
-/// NULL, 그리고 있으면 DEFAULT뿐인지 알려 준다. SQLite는 keyword인 type 이름을
-/// 대문자로 보고하므로 type은 대소문자 없이 비교한다.
+/// Tells whether the column definition text is the renderer's column form, that is, name, declared type, NULL or NOT
+/// NULL, and, if present, only DEFAULT. SQLite reports a type name that is a keyword
+/// in uppercase, so types are compared without regard to case.
 fn column_text(item: &str, name: &str, declared: &str, not_null: bool, dflt: Option<&str>) -> bool {
     let Some(rest) = item.strip_prefix(&format!("\"{name}\" ")) else { return false };
     let Some(head) = rest.get(..declared.len()) else { return false };
@@ -295,7 +295,7 @@ fn column_text(item: &str, name: &str, declared: &str, not_null: bool, dflt: Opt
     }
 }
 
-/// 괄호와 따옴표 밖의 쉼표로 나눈다.
+/// Splits at commas outside parentheses and quotes.
 fn split_top_level(text: &str) -> Vec<&str> {
     let bytes = text.as_bytes();
     let mut out = Vec::new();

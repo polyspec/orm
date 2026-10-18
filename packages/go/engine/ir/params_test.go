@@ -29,7 +29,7 @@ table notes {
 }
 `
 
-// paramUseOf는 비교를 쉽게 하려고 ParamUse를 type과 column 이름으로 줄인 것이다.
+// paramUseOf reduces a ParamUse to its type and column name, to make comparisons easy.
 type paramUseOf struct{ Type, Column string }
 
 func usesOf(uses [][]ParamUse) [][]paramUseOf {

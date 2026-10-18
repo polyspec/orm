@@ -10,9 +10,9 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// TestNativeStatementsEqualClient는 hot-path gate의 native 쪽이 generated
-// client가 실행하는 SQL text와 같은 statement를 실행하는지 확인한다. 두 쪽의
-// statement가 다르면 gate의 ratio는 client 비용이 아니라 statement 차이를 잰다.
+// TestNativeStatementsEqualClient checks that the native side of the hot-path gate runs
+// the same statement as the SQL text that the generated client runs. If the statements of the two sides
+// differ, the gate's ratio measures the statement difference, not the client cost.
 func TestNativeStatementsEqualClient(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, err := model.Connect(dsn(t), orm.Config{AESKey: "bench-salt", BlindIndexKey: "bench-blind-index"})
@@ -47,8 +47,8 @@ func TestNativeStatementsEqualClient(t *testing.T) {
 	}
 }
 
-// TestNativeWorkloadsRead는 gate와 benchmark의 native read workload가
-// 시드된 bench database에서 행을 읽고 오류 없이 끝나는지 확인한다.
+// TestNativeWorkloadsRead checks that the native read workloads of the gate and the benchmark
+// read rows from the seeded bench database and finish without error.
 func TestNativeWorkloadsRead(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db := open(t)

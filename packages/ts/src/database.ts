@@ -93,8 +93,8 @@ export interface Schema {
 }
 
 /**
- * 등록할 schema의 runtime model이다. text가 선언한 hash로 hash되지 않으면 어떤
- * statement보다 먼저 CONFIG이고, text가 manifest가 아니면 SCHEMA_INVALID다.
+ * The runtime model of the schema to register. If the text does not hash to the declared hash, then
+ * before any statement it is CONFIG, and if the text is not a manifest, it is SCHEMA_INVALID.
  */
 export function schemaModel(schema: Schema): RuntimeModel {
   if (schema === null || typeof schema !== 'object' || typeof schema.manifestText !== 'string' || typeof schema.manifestHash !== 'string'
@@ -114,10 +114,10 @@ export function schemaModel(schema: Schema): RuntimeModel {
   }
 }
 
-// 등록은 이 module의 registerSet과 Db.connectSchema만 한다. package는 이 symbol을 내보내지 않는다.
+// Registration is done only by this module's registerSet and Db.connectSchema. The package does not export this symbol.
 const REGISTER = Symbol('register');
 
-/** schema의 set을 연결에 등록한다. 같은 set을 다시 등록하면 아무것도 바꾸지 않는다. */
+/** Registers the schema's set on the connection. Registering the same set again changes nothing. */
 export function registerSet(db: Db, model: RuntimeModel): void {
   db.root()[REGISTER](model);
 }
@@ -133,8 +133,8 @@ export function registerSet(db: Db, model: RuntimeModel): void {
 export function registerModel(manifestText: string, manifestHash: string, externalText = ''): RuntimeModel {
   const registered = models.get(manifestHash);
   if (registered !== undefined && registered.manifestText === manifestText && registered.externalText === externalText) return registered;
-  // 이미 등록된 hash라도 다른 text는 자기 hash로 검사한다: 잘못된 text는 SCHEMA_INVALID,
-  // 다른 hash로 가는 text는 SCHEMA_HASH_MISMATCH다.
+  // A text whose hash is already registered is still checked against its own hash: a wrong text is SCHEMA_INVALID,
+  // and a text that goes to a different hash is SCHEMA_HASH_MISMATCH.
   const model = modelOfManifest(manifestText, manifestHash, externalText);
   models.set(manifestHash, model);
   return model;
@@ -151,13 +151,13 @@ export type RequestHook = (request: Request, addParam: (value: unknown) => numbe
 interface BeginOptions { isolation?: Isolation; readOnly?: boolean; timeoutMs: number; }
 
 /**
- * statement 하나를 보내고 그 event를 publish한다. kind와 tables는 event의 것이고 params는 bind다.
+ * Sends one statement and publishes its event. kind and tables belong to the event, and params are the binds.
  *
  * @internal
  */
 export type Runner = (kind: StatementKind, tables: readonly string[], sql: string, params?: readonly DriverValue[]) => Promise<DriverResult>;
 
-/** SQLite row lock statement가 가리키는 table이다. */
+/** The table that a SQLite row lock statement points to. */
 const ROW_LOCK_TABLES: readonly string[] = ['orm__row_lock'];
 const ROW_LOCK_DDL = 'CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))';
 
@@ -171,8 +171,8 @@ export class TxFrame {
   /** The audit record of the unit of work; audited writes of the transaction write its key. */
   public audit: AuditRecord | undefined = undefined;
   /**
-   * number는 연결에서 이 transaction의 번호다. 그 statement의 event가 싣는다. connection은 transaction이 끝날
-   * 때까지 잡아 두는 연결이다: SQL 연결의 driver session이나 markdown 연결의 flowmark session이다.
+   * The number is this transaction's number on the connection; the event of that statement carries it. The connection is held
+   * until the transaction ends: it is the driver session of an SQL connection or the flowmark session of a markdown connection.
    */
   public constructor(public readonly db: Db, private readonly connection: DriverSession | MarkdownSession, public readonly number: number, public readonly options: BeginOptions) {}
 
@@ -182,22 +182,22 @@ export class TxFrame {
     return this.connection;
   }
 
-  /** markdown transaction의 flowmark session이다. SQL transaction에서는 undefined이고 session이 그 자리다. */
+  /** The flowmark session of a markdown transaction. It is undefined in an SQL transaction, where the session itself is the place. */
   public get md(): MarkdownSession | undefined {
     return this.connection instanceof MarkdownSession ? this.connection : undefined;
   }
 
   /**
-   * transaction 연결에서 transaction control statement를 보내고 그 event를 publish한다. test statement
-   * fault는 소비하지 않는다.
+   * On a transaction connection, sends a transaction control statement and publishes its event. A test statement
+   * fault is not consumed.
    */
   public run(kind: StatementKind, tables: readonly string[], sql: string, params: readonly DriverValue[] = []): Promise<DriverResult> {
     return this.session.control(sql, params, this.db.statementDone(kind, tables, this.number, params));
   }
 
   /**
-   * transaction 연결에서 query나 schema statement를 보낸다. armed statement fault가 있으면 보내지 않고
-   * 그 오류로 거부한다.
+   * On a transaction connection, sends a query or schema statement. If an armed statement fault exists, it is not sent and
+   * is rejected with that error.
    *
    * @internal
    */
@@ -345,7 +345,7 @@ export interface Result {
   main: unknown[][];
   steps: Map<number, { step: PlanStep; data: unknown[][]; byKey: Map<string, number[]> }>;
   params: readonly unknown[];
-  /** markdown 답의 result임을 뜻한다: 각 행의 마지막 칸이 그 행의 join과 relation 행(MarkdownLinks)이다. */
+  /** Marks the result of a markdown answer: the last cell of each row is that row's join and relation rows (MarkdownLinks). */
   markdown: boolean;
 }
 
@@ -395,8 +395,8 @@ export function keyValue(value: unknown): Key {
 }
 
 /**
- * connection의 rollback fault를 설정한다. test entry point `src/testing.ts`만
- * 호출하며 package entry point는 export하지 않는다.
+ * Sets the rollback fault of a connection. Only the test entry point `src/testing.ts`
+ * calls it, and the package entry point does not export it.
  */
 export function armRollbackFault(db: Db): void {
   db['shared'].rollbackFault = true;
@@ -405,7 +405,7 @@ export function armRollbackFault(db: Db): void {
 /**
  * Arms the statement fault of the connection: the next query, model or schema
  * statement is refused with an OrmError of code and message, and a replaced
- * fault is dropped. test entry point `src/testing.ts`만 호출한다.
+ * fault is dropped. Only the test entry point `src/testing.ts` calls it.
  */
 export function armStatementFault(db: Db, code: string, message: string): void {
   db['shared'].statementFault = { code, message };
@@ -416,7 +416,7 @@ export function armFixedClock(db: Db, micros: number): void {
   db['shared'].fixedClock = micros;
 }
 
-/** The affected count of the last successful write on db's connection, or null before one. test entry point `src/testing.ts`만 호출한다. */
+/** The affected count of the last successful write on db's connection, or null before one. Only the test entry point `src/testing.ts` calls it. */
 export function readLastAffected(db: Db): number | null {
   return db['shared'].lastAffected;
 }
@@ -426,10 +426,10 @@ const CONTROL_KINDS: ReadonlySet<StatementKind> = new Set<StatementKind>(['begin
 
 /** A database connection with its plan cache and statement cache. */
 export class Db {
-  // 한 connection의 모든 handle이 공유하는 상태다. rollbackFault는 test entry
-  // point의 failNextRollback이 설정하는 test fault다.
-  // events는 subscriber 목록과 transaction 번호이고, rowLockTable은 SQLite row lock table을 이 연결에서
-  // 만들었는지다.
+  // State shared by all handles of one connection. rollbackFault is the test fault that the test entry
+  // point's failNextRollback sets.
+  // events holds the subscriber list and the transaction number; rowLockTable says whether the SQLite row lock table was created on this
+  // connection.
   private readonly shared: { closed: boolean; rollbackFault: boolean; statementFault: { code: string; message: string } | null; fixedClock: number | null; lastAffected: number | null; events: Subscribers; rowLockTable: boolean } = { closed: false, rollbackFault: false, statementFault: null, fixedClock: null, lastAffected: null, events: new Subscribers(), rowLockTable: false };
   public readonly signal: AbortSignal | undefined = undefined;
   /** The hook of the handle (withRequestHook); a connection has none. */
@@ -438,7 +438,7 @@ export class Db {
   private readonly auditSource: (() => Record<string, unknown>) | undefined;
   private readonly plans = new Map<string, Cached>();
   private readonly engines = new Map<string, Engine>();
-  // markdown 연결은 plan하지 않으므로(docs/protocol.md §5) dialect engine 없이 등록한 set의 model만 둔다.
+  // A markdown connection is not planned (docs/protocol.md §5), so it keeps only the models of the registered set, with no dialect engine.
   private readonly markdownModels = new Map<string, RuntimeModel>();
   public readonly aesKey: string;
   public readonly blindIndexKey: string;
@@ -447,7 +447,7 @@ export class Db {
   private readonly planCacheSize: number;
 
   /**
-   * connection은 연결의 pool이다: SQL database의 driver pool이나 markdown:// 연결의 flowmark session pool이다.
+   * connection is the pool of the connection: the driver pool of a SQL database or the flowmark session pool of a markdown:// connection.
    */
   private constructor(private readonly connection: DriverPool | MarkdownPool, public readonly zone: string, options: ConnectOptions) {
     this.blindIndexKey = options.blindIndexKey ?? '';
@@ -488,7 +488,7 @@ export class Db {
     if ((options.poolLifetimeMs ?? 0) < 0) throw new OrmError(codes.CONFIG, 'pool lifetime must not be negative');
     const bounds = { size, idleSize: idleSize || size, lifetimeMs: options.poolLifetimeMs ?? 0 };
     if (parsed.driver === 'markdown') {
-      // session 하나를 연결해 server가 corpus와 token을 받아들이는지 확인하고 pool에 둔다.
+      // Opens one session to check that the server accepts the corpus and token, and keeps it in the pool.
       const md = new MarkdownPool(parsed.markdown, bounds);
       const db = new Db(md, parsed.zone, options);
       md.release(await md.acquire(undefined));
@@ -496,16 +496,16 @@ export class Db {
     }
     const pool = openDriver(dsn, parsed, bounds, statementCacheSize, options.statementTimeoutMs ?? 0);
     const db = new Db(pool, parsed.zone, options);
-    // 연결 하나를 열어 pool에 돌려준다. 연결을 확인하려고 statement를 보내지 않는다.
+    // Opens one connection and returns it to the pool. It does not send a statement to check the connection.
     try { (await pool.reserve()).release(false); } catch (error) { await pool.close(); throw error; }
     return db;
   }
 
   /**
-   * DSN URI scheme이 고르는 database를 열고 generated schema의 set을 utils().schema().register처럼 그
-   * 연결에 등록한다. generated model의 connect helper가 부른다. manifest text가 선언한 hash로 hash되지
-   * 않으면 연결을 열기 전에 CONFIG다. 등록은 database를 읽지 않는다: database는 install과
-   * addTablesAndColumns가 확인한다.
+   * Opens the database that the DSN URI scheme selects, and registers the set of the generated schema with the connection the way utils().schema().register does.
+   * connection. The generated model's connect helper calls it. If the manifest text does not hash to the declared hash
+   * it is a CONFIG error before the connection is opened. Registration does not read the database: the database is checked by install and
+   * addTablesAndColumns.
    */
   public static async connectSchema(dsn: string, schema: Schema, options: ConnectOptions = {}): Promise<Db> {
     const model = schemaModel(schema);
@@ -515,7 +515,7 @@ export class Db {
   }
 
   public [REGISTER](model: RuntimeModel): void {
-    // markdown 연결은 plan하지 않으므로(docs/protocol.md §5) dialect engine 없이 set만 등록한다.
+    // A markdown connection is not planned (docs/protocol.md §5), so it registers only the set, with no dialect engine.
     if (this.md !== undefined) {
       if (!this.markdownModels.has(model.manifestHash)) this.markdownModels.set(model.manifestHash, model);
       return;
@@ -524,7 +524,7 @@ export class Db {
   }
 
   /**
-   * 이 연결에 등록된 set의 runtime model이다. 등록되지 않은 manifest는 SQL 연결과 같이 SCHEMA_HASH_MISMATCH다.
+   * The runtime model of the set registered on this connection. A manifest that is not registered is SCHEMA_HASH_MISMATCH, as with a SQL connection.
    *
    * @internal
    */
@@ -552,7 +552,7 @@ export class Db {
   }
 
   /**
-   * markdown:// 연결의 flowmark session pool이다. SQL 연결에서는 undefined이고 pool이 그 자리다.
+   * flowmark session pool of a markdown:// connection. It is undefined for a SQL connection, where the pool takes its place.
    *
    * @internal
    */
@@ -561,8 +561,8 @@ export class Db {
   }
 
   /**
-   * markdown 연결에서 SQL 전용 surface가 받는 CAPABILITY_UNSUPPORTED를 던진다(docs/dialects.md "Markdown IR
-   * executor"). 다른 연결에서는 아무것도 하지 않는다.
+   * Throws CAPABILITY_UNSUPPORTED, which a SQL-only surface receives on a markdown connection (docs/dialects.md "Markdown IR
+   * executor"). On other connections it does nothing.
    *
    * @internal
    */
@@ -595,7 +595,7 @@ export class Db {
     return this.derive('requestHook', hook);
   }
 
-  /** 같은 연결의 handle 이다: 상태를 공유하고 property 하나만 value 로 바꾼다. */
+  /** A handle of the same connection: it shares the state and changes only one property to value. */
   private derive(property: 'signal' | 'requestHook', value: unknown): Db {
     const handle: unknown = Object.create(Db.prototype);
     if (!(handle instanceof Db)) throw new OrmError(codes.INTERNAL, 'a derived handle is no Db');
@@ -636,7 +636,7 @@ export class Db {
   }
 
   /**
-   * statement 하나의 event를 publish하는 done이다.
+   * The done that publishes the event of one statement.
    *
    * @internal
    */
@@ -645,15 +645,15 @@ export class Db {
   }
 
   /**
-   * 새 바깥 transaction의 번호다.
+   * The number of a new outer transaction.
    *
    * @internal
    */
   public nextTransaction(): number { return this.shared.events.nextTransaction(); }
 
   /**
-   * session에서 prepare하지 않은 statement를 보내는 runner다. transaction은 statement의 transaction
-   * 번호이고 밖이면 null이다.
+   * The runner that sends a statement not prepared in the session. The transaction is the statement's transaction
+   * number, and null if it is outside one.
    *
    * @internal
    */
@@ -681,7 +681,7 @@ export class Db {
   }
 
   /**
-   * 연결 하나를 잡아 transaction 밖에서 fn을 실행하고 돌려준다.
+   * Takes one connection, runs fn outside a transaction, and returns its result.
    *
    * @internal
    */
@@ -705,7 +705,7 @@ export class Db {
     if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 0) throw new OrmError(codes.CONFIG, 'transaction timeoutMs must not be negative');
     const outer = activeFor(this);
     if (options.audit !== undefined) this.unsupportedOnMarkdown('a transaction with audit values');
-    // audit 기록은 transaction 이 시작하기 전에 검사하고 시도마다 callback 앞에서 삽입한다.
+    // The audit record is checked before the transaction starts, and is inserted before the callback on each attempt.
     const record = options.audit !== undefined && outer === undefined ? this.auditRecord(options.audit) : undefined;
     if (outer) {
       if (options.isolation !== undefined || options.readOnly !== undefined || options.timeoutMs !== undefined || options.audit !== undefined) {
@@ -727,11 +727,11 @@ export class Db {
   }
 
   /**
-   * audit source 의 값에 transaction 의 값을 더한 audit 기록이다. 같은 column 이면 transaction 의 값이 이긴다. 기록
-   * table 은 연결에 등록한 set 의 audit setting 이 references 로 이름한 table 하나이며, 그 table 을 entity 로 가진 set
-   * 이 연결에 등록되어 있어야 한다. audit source 가 없거나, 기록 table 이 없거나 여럿이거나, 값의 key 가 그 table 의
-   * column 이 아니거나, 값이 하나도 없거나, primary key 가 column 하나가 아니면 CONFIG 이고, source 가 던진 오류는
-   * 그대로 전한다.
+   * An audit record that adds the transaction's values to the audit source's values. For the same column, the transaction's value wins. The record
+   * table is the one table that the audit setting of a set registered on the connection names by references, and the set that has that table as its entity
+   * must be registered on this connection. It is a CONFIG error if there is no audit source, if the record table is missing or more than one, or if a key of the values is not in that table's
+   * column, if there are no values, or if the primary key is not one column; the error the source throws is
+   * passed through unchanged.
    */
   private auditRecord(values: Readonly<Record<string, unknown>>): AuditInsert {
     if (values === null || typeof values !== 'object' || Array.isArray(values)) throw new OrmError(codes.CONFIG, 'transaction audit is an object of column values');
@@ -763,8 +763,8 @@ export class Db {
   }
 
   /**
-   * transaction 의 audit 기록을 삽입하고 그 table 과 primary key 값을 돌려준다. primary key 가 identity 이면 생성된
-   * key, 아니면 기록의 값이다. 시도마다 다시 삽입한다.
+   * Inserts the transaction's audit record and returns that table and the primary key value. If the primary key is an identity, the generated
+   * key; otherwise it is the value of the record. It is inserted again on each attempt.
    */
   private async insertAudit(record: AuditInsert): Promise<AuditRecord> {
     const { model, entity } = record;
@@ -804,7 +804,7 @@ export class Db {
   }
 
   /**
-   * SQLite row lock table을 연결의 첫 transaction 전에 transaction 밖에서 한 번 만든다(docs/usage.md
+   * Creates the SQLite row lock table outside a transaction, once, before the connection's first transaction (docs/usage.md
    * "Statement events").
    */
   private async rowLockTable(): Promise<void> {
@@ -814,9 +814,9 @@ export class Db {
   }
 
   /**
-   * 연결 하나를 잡고 바깥 transaction을 연다. transaction은 연결의 다음 번호를 받는다. transaction을 여는
-   * statement는 docs/usage.md "Statement events"의 것이다. BEGIN 전에 실패하면 session에 남은 설정이 다음
-   * 사용자에게 가지 않도록 연결을 닫고, BEGIN 뒤에 실패하면 transaction을 rollback한다.
+   * Takes one connection and opens the outer transaction. The transaction takes the connection's next number. Opening the transaction
+   * statement is docs/usage.md "Statement events". If it fails before BEGIN, the connection is closed so that settings left in the session
+   * do not reach the next user; if it fails after BEGIN, the transaction is rolled back.
    */
   private async begin(options: BeginOptions): Promise<TxFrame> {
     if (options.timeoutMs > 0 && this.driver !== 'postgres') throw new OrmError(codes.CAPABILITY_UNSUPPORTED, 'transaction timeoutMs is supported only by postgres');
@@ -837,7 +837,7 @@ export class Db {
         if (options.timeoutMs > 0) steps.push(['utility', `SET LOCAL statement_timeout = ${Math.floor(options.timeoutMs)}`]);
         break;
       default:
-        // 읽기 전용 transaction은 deferred BEGIN이고, 나머지는 시작할 때 쓰기 lock을 잡고 busy_timeout까지 기다린다.
+        // A read-only transaction is a deferred BEGIN; the others take the write lock when they start and wait up to busy_timeout.
         steps.push(['begin', options.readOnly ? 'BEGIN' : 'BEGIN IMMEDIATE']);
         if (options.isolation === 'read_uncommitted') steps.push(['utility', 'PRAGMA read_uncommitted = 1']);
         if (options.readOnly) steps.push(['utility', 'PRAGMA query_only = 1']);
@@ -847,7 +847,7 @@ export class Db {
       try {
         await frame.run(kind, [], sql);
       } catch (error) {
-        // subscriber가 실패한 statement는 효과를 냈다.
+        // A statement whose subscriber failed still had its effect.
         if (kind === 'begin' && subscriberError(error)) began = true;
         if (!began) {
           frame.finished = true;
@@ -863,12 +863,12 @@ export class Db {
   }
 
   /**
-   * transaction을 끝낸다. 끝내기 전에 SQLite mode를 되돌리고 MySQL named lock을 풀고 MySQL local 값을
-   * key 순서로 지운다. 이 상태는 COMMIT과 ROLLBACK 뒤에도 connection에 남으므로 모든 단계를 시도하고
-   * 실패를 모두 보고한다. cleanup이 실패한 commit은 rollback하고 cleanup 오류를 던진다. signal이 취소된
-   * transaction은 ROLLBACK 대신 session을 닫아 server가 transaction과 그 상태를 함께 끝내게 한다. SQLite의
-   * 하나뿐인 연결은 닫을 수 없으므로 ROLLBACK한다. 정리, COMMIT이나 ROLLBACK이 실패한 session은 상태를 알 수
-   * 없으므로 pool에 돌려주지 않고 닫는다.
+   * Ends the transaction. Before ending it, restores the SQLite mode, releases the MySQL named lock, and clears the MySQL local values
+   * in key order. This state remains on the connection after COMMIT and ROLLBACK, so every step is tried and
+   * all failures are reported. A commit whose cleanup failed is rolled back and throws the cleanup error. When the signal is cancelled,
+   * the transaction closes the session instead of ROLLBACK, so the server ends the transaction and its state together. For SQLite,
+   * the only connection cannot be closed, so it is rolled back. A session whose cleanup, COMMIT, or ROLLBACK failed has an unknown state,
+   * so it is closed rather than returned to the pool.
    */
   private async finish(frame: TxFrame, commit: boolean): Promise<void> {
     if (frame.finished) return;
@@ -879,11 +879,11 @@ export class Db {
       session.release(true);
       return;
     }
-    // discard는 상태를 알 수 없는 session을 pool에 돌려주지 않고 닫는다.
+    // discard closes a session whose state is unknown instead of returning it to the pool.
     let discard = false;
     try {
       const errors: unknown[] = [];
-      // 설정을 되돌리고 lock을 푸는 cleanup statement는 test fault를 소비하지 않는다(protocol 3.2).
+      // The cleanup statement that restores settings and releases locks does not consume the test fault (protocol 3.2).
       const attempt = async (sql: string, params: readonly DriverValue[] = []): Promise<DriverResult | undefined> => {
         try {
           return await frame.run('utility', [], sql, params);
@@ -895,26 +895,26 @@ export class Db {
       }
       for (const key of frame.locks.splice(0)) {
         const released = await attempt('SELECT RELEASE_LOCK(?)', [key]);
-        // 1이 아니면 이 connection이 lock을 갖고 있지 않았다.
+        // If it is not 1, this connection did not hold the lock.
         if (released !== undefined && Number(released.rows[0]?.[0]) !== 1) errors.push(new OrmError(codes.CONFIG, `lock ${key} was not held at transaction end`));
       }
       if (this.driver === 'mysql') {
-        // 값을 지우는 statement는 key 순서로 보낸다.
+        // Statements that clear values are sent in key order.
         for (const key of [...frame.locals.keys()].sort()) await attempt(`SET @\`orm.${key}\` = NULL`);
       }
       const failure = joinedErrors(errors);
-      // pool에 돌아가는 session은 깨끗하거나 버려진다. 정리 statement가 실패했으면(subscriber만 실패한 것은
-      // statement가 효과를 냈으므로 제외) session의 상태를 알 수 없으므로 pool에 돌려주지 않는다.
+      // A session returned to the pool is either clean or discarded. If a cleanup statement failed (except when only the subscriber failed,
+      // since the statement had an effect), the state of the session is unknown, so it is not returned to the pool.
       if (errors.some(error => !subscriberError(error))) discard = true;
       if (commit && failure === undefined) {
         try {
           await frame.run('commit', [], 'COMMIT');
           return;
         } catch (error) {
-          // subscriber가 실패한 COMMIT은 commit되었다.
+          // A COMMIT whose subscriber failed has been committed.
           if (subscriberError(error)) throw error;
-          // 실패한 COMMIT은 transaction을 이미 끝냈을 수 있다. SQLite는 열려 있을 때만 rollback하고, 다른
-          // database는 상태를 알 수 없는 session을 닫는다.
+          // A failed COMMIT may already have ended the transaction. SQLite rolls back only when it is open, so
+          // the database closes a session whose state is unknown.
           if (session.inTransaction?.() === true) {
             try { await frame.run('rollback', [], codes.ROLLBACK); } catch (rollback) { throw rollbackFailed(error, rollback); }
           } else if (this.driver !== 'sqlite') discard = true;
@@ -935,8 +935,8 @@ export class Db {
   }
 
   /**
-   * markdown transaction을 연다: pool의 session 하나를 transaction이 끝날 때까지 잡고 begin을 보낸다. 읽기 전용
-   * transaction은 read_only를 보낸다.
+   * Opens a markdown transaction: holds one session of the pool until the transaction ends and sends begin. A read-only
+   * transaction sends read_only.
    */
   private async beginMarkdown(md: MarkdownPool, options: BeginOptions): Promise<TxFrame> {
     if (options.isolation !== undefined) this.unsupportedOnMarkdown('the transaction isolation option');
@@ -951,8 +951,8 @@ export class Db {
   }
 
   /**
-   * markdown transaction을 commit이나 rollback으로 끝내고 session을 pool에 돌려준다. signal이 취소되었으면
-   * message를 보내지 않고 연결을 끊는다: server가 끊긴 연결의 transaction을 rollback한다.
+   * Ends a markdown transaction with commit or rollback and returns the session to the pool. If the signal was cancelled,
+   * it disconnects without sending a message: the server rolls back the transaction of the disconnected connection.
    */
   private async endMarkdown(frame: TxFrame, session: MarkdownSession, op: 'commit' | 'rollback'): Promise<void> {
     frame.finished = true;
@@ -969,8 +969,8 @@ export class Db {
   }
 
   /**
-   * savepoint name의 단계 하나를 보낸다: savepoint, release, rollback_to. SQL 연결은 그 statement를, markdown
-   * 연결은 같은 이름의 control message를 보낸다.
+   * Sends one step of a savepoint name: savepoint, release, or rollback_to. An SQL connection sends that statement, and a markdown
+   * connection sends a control message of the same name.
    */
   private async savepointStep(frame: TxFrame, kind: 'savepoint' | 'release' | 'rollback_to', name: string): Promise<void> {
     if (frame.md !== undefined) {
@@ -990,7 +990,7 @@ export class Db {
       try {
         result = await flow.run([...frames(), frame], callback);
       } catch (error) {
-        // savepoint 뒤의 작업을 되돌리고 savepoint를 푸는 두 단계를 모두 시도한다.
+        // Tries both steps: undo the work after the savepoint, and release the savepoint.
         const errors: unknown[] = [];
         for (const kind of ['rollback_to', 'release'] as const) {
           try { await this.savepointStep(frame, kind, name); } catch (failure) { errors.push(failure); }
@@ -1006,9 +1006,9 @@ export class Db {
   }
 
   /**
-   * SQLite의 row lock이다. SQLite에는 row lock 절이 없으므로 lock row 하나가 ORM의 lock 요청을
-   * 차례로 세운다. 쓰기는 busy_timeout까지 기다리고, NOWAIT 요청은 기다림을 0으로 둔다. 다른
-   * database는 statement의 lock 절이 잡는다.
+   * SQLite's row lock. SQLite has no row lock clause, so one lock row stands in for the ORM's lock request
+   * in order. Writes wait until busy_timeout, and a NOWAIT request sets the wait to 0. Others
+   * the database takes it through the statement's lock clause.
    *
    * @internal
    */
@@ -1029,7 +1029,7 @@ export class Db {
 
   public async plan(request: Request): Promise<Cached> {
     if (this.closed) throw new OrmError(codes.CONFIG, 'database is closed');
-    // 연결은 자기에게 등록된 set만 plan한다. plan cache를 보기 전에 확인한다.
+    // A connection plans only the sets registered to it. It checks this before looking at the plan cache.
     const engine = this.engines.get(request.manifest_hash);
     if (engine === undefined) {
       throw new OrmError(codes.SCHEMA_HASH_MISMATCH, `manifest ${request.manifest_hash} is not registered on this connection: connect through its generated models or install it`);
@@ -1046,8 +1046,8 @@ export class Db {
   }
 
   /**
-   * executor clock이다: wall clock의 microsecond를 connection zone(UTC)의 text로 쓰고 6자리
-   * 소수를 precision 자리로 자른다. micros는 statement마다 한 번 읽은 wallMicros 값이다.
+   * The executor clock: writes the wall clock's microseconds as text in the connection zone (UTC) and cuts the
+   * fraction to the precision digits, six digits. micros is the wallMicros value read once per statement.
    */
   /** The executor clock in microseconds: the clock that the test entry point fixed, or the wall clock. */
   public clockMicros(): number {
@@ -1137,22 +1137,22 @@ export class Db {
   }
 
   /**
-   * plan step 하나를 ex에서 실행한다. sql은 보내는 statement이고(relation step은 부모 값을 펼친 SQL),
-   * parents는 parent slot의 값이다.
+   * Runs one plan step in ex. sql is the statement to send (for a relation step, the SQL with the parent values expanded),
+   * parents are the values of the parent slots.
    *
    * @internal
    */
   public async runStep(ex: Executor, sql: string, step: PlanStep, params: readonly unknown[], parents: readonly unknown[] = []): Promise<DriverResult> {
     const { values, masked } = this.args(step, params, parents, ex.frame?.audit);
     const connection = ex.frame?.session ?? this.pool;
-    // kind는 plan step이 쓰는 SQL의 동사이고 tables는 plan step의 table이다.
+    // kind is the verb of the SQL that the plan step writes, and tables is the table of the plan step.
     const done = this.statementDone(statementKind(step.sql), step.tables, ex.frame?.number ?? null, masked);
     this.checkStatementFault(sql, done);
     return connection.execute(sql, values.map((value, i) => driverValue(value, `bind ${i + 1}`)), this.signal, done);
   }
 }
 
-/** error가 subscriber 실패(SUBSCRIBER)인지다. 그 statement는 효과를 냈다. */
+/** Whether the error is a subscriber failure (SUBSCRIBER). That statement had an effect. */
 function subscriberError(error: unknown): boolean {
   return error instanceof OrmError && error.code === codes.SUBSCRIBER;
 }
@@ -1190,9 +1190,9 @@ function driverLimit(driver: string): number { return driver === 'sqlite' ? 999 
 interface Hooked { request: Request; params: readonly unknown[]; }
 
 /**
- * executor handle 의 request hook 을 plan 전에 적용한다. hook 은 parameter 목록의 사본에 addParam 으로 값을
- * 더하고, client 는 hook 이 돌려준 request 의 n_params 를 그 길이로 쓴다. validation 은 plan 이 한다. hook 이
- * 없는 handle 은 request 와 params 를 그대로 돌려준다.
+ * Applies the request hook of the executor handle before planning. The hook adds values to a copy of the parameter list with addParam,
+ * and the client uses the n_params of the request the hook returned as its length. Validation is done by the plan. If the hook
+ * is absent, the handle returns the request and params unchanged.
  */
 function hooked(ex: Executor, request: Request, params: readonly unknown[], afterHook?: (hooked: Hooked) => void): Hooked {
   const hook = ex.db.requestHook;
@@ -1272,8 +1272,8 @@ async function select(ex: Executor, cached: Cached, step: PlanStep, params: read
 }
 
 /**
- * row의 codec column을 assemble의 style로 decode한다: host stage(aes, hex, ip)를 풀고 나머지 codec을 읽는다. join
- * child의 column은 같은 행에 있으므로 함께 decode한다.
+ * Decodes the codec columns of a row in the style of assemble: unwraps the host stages (aes, hex, ip) and reads the remaining codecs. join
+ * The child's columns are on the same row, so they are decoded together.
  *
  * @internal
  */

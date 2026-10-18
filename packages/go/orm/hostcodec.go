@@ -206,7 +206,7 @@ func HostDecode(raw any, styles []string, aesKey string) (any, error) {
 		var err error
 		switch styles[i] {
 		case "hex":
-			// encoder는 대문자 hex만 쓴다. 그 밖의 byte는 hex.DecodeString이 받는 소문자도 거절한다.
+			// The encoder writes only uppercase hex. For other bytes it also rejects lowercase, which hex.DecodeString accepts.
 			if i := bytes.IndexFunc(cur, func(r rune) bool { return (r < '0' || r > '9') && (r < 'A' || r > 'F') }); i >= 0 {
 				return nil, codecErr(CodeCodecDecode, "hex: byte %#x at %d is not an upper-case hex digit", cur[i], i)
 			}

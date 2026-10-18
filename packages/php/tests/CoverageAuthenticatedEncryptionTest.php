@@ -1,8 +1,8 @@
 <?php
 declare(strict_types=1);
-// authenticated_encryption feature coverage: contracts/fixtures/authenticated_encryption.json의
-// 각 case를 PHP client의 AES envelope(Codec::hostEncode, Codec::hostDecode의
-// `aes` stage)과 blind index(Codec::blindIndex)로 실행한다.
+// authenticated_encryption feature coverage: each case in contracts/fixtures/authenticated_encryption.json
+// runs with the PHP client's AES envelope (Codec::hostEncode, the Codec::hostDecode
+// `aes` stage) and the blind index (Codec::blindIndex).
 
 require_once __DIR__ . '/coverage_cases.php';
 
@@ -12,7 +12,7 @@ use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
-/** @return array<string, mixed> fixture에서 id와 operation이 같은 case */
+/** @return array<string, mixed> the case in the fixture with the same id and operation */
 function encryptionCase(array $fixture, string $id, string $operation): array
 {
     $found = array_values(array_filter($fixture['cases'], static fn(array $c): bool => $c['id'] === $id));
@@ -21,7 +21,7 @@ function encryptionCase(array $fixture, string $id, string $operation): array
     return $found[0];
 }
 
-/** fixture의 envelope를 복호화하고 기대한 평문이나 오류 code와 비교한다. */
+/** Decrypts the fixture's envelope and compares it with the expected plaintext or error code. */
 function decryptCase(array $fixture, string $id): void
 {
     $case = encryptionCase($fixture, $id, 'aes_decrypt');

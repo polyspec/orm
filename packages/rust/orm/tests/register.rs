@@ -1,12 +1,12 @@
-//! 등록은 database에 아무 statement도 보내지 않는다(docs/schema.md "Schema registration"). sqlx는 연결이 보낸
-//! statement마다 target `sqlx::query`의 log record를 남기므로, 이 test는 그 record를 세는 logger를 process에
-//! 설치하고 SQLite, MySQL, PostgreSQL의 case database에서 `utils().schema().register`가 record를 남기지 않는지
-//! 확인한다. 외부 문서를 쓰는 set(contracts/fixtures/external의 member)도 database를 읽지 않고, 선언한 hash로
-//! hash되지 않는 text는 statement 없이 CONFIG다. 같은 연결의 `empty()`가 record를 남기는 것으로 logger가
-//! statement를 센다는 것을 확인한다. `connect_schema`는 `connect`가 보내는 statement만 보낸다.
+//! Registration sends no statement to the database (docs/schema.md "Schema registration"). sqlx writes a log record with target `sqlx::query`
+//! for each statement the connection sends, so this test installs a logger in the process that counts those records,
+//! and checks that `utils().schema().register` leaves no record in the case databases of SQLite, MySQL, and PostgreSQL.
+//! The same holds for a set that uses external documents (a member of contracts/fixtures/external): it does not read the database, and text that does not hash to the declared hash
+//! is CONFIG with no statement. The logger is confirmed to count statements by `empty()` on the same connection leaving a record,
+//! and `connect_schema` sends only the statements that `connect` sends.
 //!
-//! logger는 process에 하나이므로 이 binary에는 test가 하나뿐이다. ORM_TEST_MYSQL_DSN이나 ORM_TEST_POSTGRES_DSN이
-//! 없으면 실패한다.
+//! Since the logger is one per process, this binary has only one test. It fails if ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN
+//! is missing.
 
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -15,7 +15,7 @@ use polyspec_orm::dbspec::{self, Document};
 use polyspec_orm::{Config, Db, Schema};
 use polyspec_orm_case_database::CaseDatabase;
 
-/// sqlx가 database에 보낸 statement의 log record 수다.
+/// The number of log records of statements sqlx sent to the database.
 static SENT: AtomicU64 = AtomicU64::new(0);
 
 struct StatementCounter;
@@ -34,8 +34,8 @@ impl log::Log for StatementCounter {
 
 static COUNTER: StatementCounter = StatementCounter;
 
-/// contracts/fixtures/<name>.dbs로 만든 schema 값. generated code처럼 manifest text, external text와 그
-/// manifestHash를 가진다.
+/// A schema value made from contracts/fixtures/<name>.dbs. Like generated code, it has the manifest text, external text, and
+/// their manifestHash.
 fn set_schema(owned: &[&str], external: &[&str]) -> &'static Schema {
     let fixture = |name: &str| {
         let path = format!("{}/../../../contracts/fixtures/{name}.dbs", polyspec_orm_testcase::manifest_dir().display());
@@ -61,7 +61,7 @@ fn set_schema(owned: &[&str], external: &[&str]) -> &'static Schema {
 async fn register_case(driver: &str, dsn: &str) {
     let member = set_schema(&["external/member"], &["external/core"]);
     let note = set_schema(&["install/note"], &[]);
-    // 다른 set의 manifest text는 선언한 hash로 hash되지 않는다.
+    // The manifest text of another set does not hash to the declared hash.
     let edited: &'static Schema = Box::leak(Box::new(Schema::with_external(note.text(), "", member.hash())));
     let db = Db::connect(dsn, 2, Config::default()).await.unwrap_or_else(|e| panic!("{driver}: connect: {e}"));
     let before = SENT.load(Ordering::SeqCst);

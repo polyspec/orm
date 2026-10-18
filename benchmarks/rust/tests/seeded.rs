@@ -1,9 +1,9 @@
 use std::process::Command;
 use std::time::Instant;
 
-// native와 driver_compare는 ORM_BENCH_MYSQL_DSN의 시드된 bench database에서 모든 workload의
-// 모든 row를 읽고 status 0으로 끝나며 workload마다 통계 한 줄을 출력한다. DSN이 없으면
-// 실패한다.
+// native and driver_compare, against the seeded bench database of ORM_BENCH_MYSQL_DSN, read all rows of every workload
+// and end with status 0, printing one statistics line per workload. Without a DSN, they
+// fail.
 fn run_seeded(program: &str, iterations: &str) -> String {
     let dsn = std::env::var("ORM_BENCH_MYSQL_DSN")
         .expect("ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database; run it through make check or make run-databases TARGETS=<target>, which create the bench database of the run");

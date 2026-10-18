@@ -34,7 +34,7 @@ final class AuditExternalSetsTest extends TestCase
         self::$root = dirname(__DIR__, 3);
     }
 
-    /** contracts/fixtures/external의 set을 schema 값으로 만든다. generated class는 만들지 않는다. */
+    /** Creates the schema value of the set in contracts/fixtures/external. No generated class is made. */
     private static function valueSchema(array $owned, array $external): Schema
     {
         $path = static fn(string $name): string => self::$root . "/contracts/fixtures/external/$name.dbs";
@@ -42,7 +42,7 @@ final class AuditExternalSetsTest extends TestCase
         return new Schema($m->manifestText, $m->manifestHash, $m->externalText);
     }
 
-    /** member set의 model을 $work에 생성한다. bootstrap은 부르는 쪽이 require한다. */
+    /** Creates the model of the member set in $work. The caller requires the bootstrap. */
     private static function generateMember(string $work): void
     {
         $path = static fn(string $name): string => self::$root . "/contracts/fixtures/external/$name.dbs";
@@ -61,9 +61,9 @@ final class AuditExternalSetsTest extends TestCase
     }
 
     /**
-     * core와 board를 schema 값으로만 설치하고, member를 생성해 읽고 설치한 뒤 member의 audit transaction이
-     * core가 소유한 ext_audit에 기록하고 그 key를 ext_post_history에 남기는지 확인한다. member_by_value_first는
-     * member도 schema 값으로 먼저 설치하고 그 뒤에 generated bootstrap을 읽는다.
+     * Installs core and board only as schema values, creates and reads member, installs it, and checks whether the audit transaction of member
+     * writes to ext_audit, owned by core, and keeps that key in ext_post_history. member_by_value_first
+     * also installs member first as schema values, and then reads the generated bootstrap.
      */
     private static function scenario(string $order, string $dsn, string $work): void
     {

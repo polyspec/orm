@@ -1,6 +1,6 @@
-# dbspec parse와 검사 (docs/dbspec.md). 문서를 줄마다 token으로 읽어 모든 token
-# 위치를 지닌 내부 형태를 만들고, 문서 전체를 검사한다. 모든 진단을 모아 원본
-# 순서로 보고하고, encoding, header, limit 오류는 parse를 멈춘다.
+# dbspec parse and check (docs/dbspec.md). Reads the document line by line as tokens, and gives every token
+# an internal form with its position, and checks the whole document. It collects all diagnostics and reports them in source
+# order; encoding, header, and limit errors stop the parse.
 from __future__ import annotations
 
 import re
@@ -194,7 +194,7 @@ def fraction(digits, precision: int):
 
 
 def number_text(text: str) -> str:
-    """부호 없는 0이나 정수부 앞의 0을 생략한 number literal."""
+    """A number literal that omits an unsigned 0 or the leading 0 of the integer part."""
     negative = text.startswith("-")
     body = text[1:] if negative else text
     dot = body.find(".")
@@ -208,12 +208,12 @@ def number_text(text: str) -> str:
 
 
 def shortest_decimal(value: float) -> str:
-    """지수 없이 다시 읽혀 같은 double이 되는 가장 짧은 십진; 음의 0은 0."""
+    """The shortest decimal that reads back as the same double without an exponent; negative zero is 0."""
     if value == 0:
         return "0"
     text = repr(value)
     if "e" not in text and "E" not in text:
-        # 정수값 double은 JavaScript의 String이 그러하듯 소수점 없이 쓴다.
+        # An integer-valued double is written without a decimal point, as JavaScript's String does.
         return str(int(value)) if value.is_integer() and abs(value) < 1e21 else text
     negative = text.startswith("-")
     mantissa, _, exponent_text = text.replace("e", "E").partition("E")
@@ -231,7 +231,7 @@ def shortest_decimal(value: float) -> str:
 
 
 def default_of(t: DbspecType, tok: Tk):
-    """column type의 정규 기본값, 또는 literal이 맞지 않는 이유."""
+    """The canonical default of a column type, or the reason the literal does not fit."""
     word = tok.t if tok.k == WORD else None
     text = string_value(tok) if tok.k == STR else None
 
@@ -333,7 +333,7 @@ def meet_kind_of(t: DbspecType) -> str:
     return meet_kind(t.kind, t.scale or 0, t.precision or 0)
 
 
-# 예약어는 이름이 아니다 (docs/dbspec.md "Names").
+# Reserved words are not names (docs/dbspec.md "Names").
 RESERVED = frozenset(
     {
         "dbspec",
@@ -388,7 +388,7 @@ def valid_name(name: str) -> bool:
 
 
 def _check_refs(check):
-    """check 식의 column 참조 token: 식이 맞는 단어이고 함수 호출이 아니다(Go의 expr.go)."""
+    """A column reference token in a check expression: a valid word that is not a function call (Go's expr.go)."""
     out = []
     toks = check.expr
     for i, tok in enumerate(toks):
@@ -402,12 +402,12 @@ def _check_refs(check):
 
 
 def column_of(text: str, index: int) -> int:
-    # Python 문자열 index가 곧 code point 칸이다.
+    # A Python string index is the code point column.
     return index + 1
 
 
 def is_word_rune(c: str) -> bool:
-    """Go의 isWordRune과 같다: ASCII는 letter, digit, '_', '.'이고 그 밖은 Go의 표가 정한 Unicode letter나 digit이다."""
+    """Same as Go's isWordRune: ASCII letters, digits, '_', and '.'; anything else is a Unicode letter or digit as set by Go's table."""
     if ord(c) < 0x80:
         return (
             c == "_"
@@ -420,20 +420,20 @@ def is_word_rune(c: str) -> bool:
 
 
 def is_number_text(text: str) -> bool:
-    """Go의 isNumberText: 숫자 하나 이상과 선택적인 소수부 하나이다."""
+    """Go's isNumberText: one or more digits and an optional fractional part."""
     return re.fullmatch(r"[0-9]+(\.[0-9]+)?", text) is not None
 
 
 def go_rune_quote(c: str) -> str:
-    """Go의 %q로 쓴 rune이다. 제어 문자는 escape하고 그 밖은 작은따옴표로 감싼다."""
+    """A rune written with Go's %q. Control characters are escaped; everything else is wrapped in single quotes."""
     escapes = {"\t": "\\t", "\n": "\\n", "\r": "\\r", "'": "\\'", "\\": "\\\\"}
     return "'" + escapes.get(c, c) + "'"
 
 
 def lex_line(text: str, line: int):
-    """한 줄을 token으로 나눈다(engine/dbspec/lex.go의 lexLine). 돌려주는 값은 (token, 줄 끝 index,
-    오류)이다. 오류는 첫 글자가 token을 시작할 수 없을 때나 string이 닫히지 않을 때 (index, message)이고,
-    그때 token은 오류 앞까지다. 줄 끝 index는 문자 수다(칸 수는 index + 1)."""
+    """Splits a line into tokens (lexLine in engine/dbspec/lex.go). The returned value is (tokens, the line-end index,
+    error). An error is (index, message) when the first character cannot start a token, or when a string is not closed,
+    and the tokens then stop before the error. The line-end index is a character count (the column count is index + 1)."""
     toks = []
     n = len(text)
     i = 0
@@ -484,7 +484,7 @@ def lex_line(text: str, line: int):
 
 
 def lex_recover(text: str, line: int):
-    """오류 글자를 빈칸으로 바꾸며 다시 나누어 줄의 token을 모두 돌려준다(lexRecover). 오류가 남으면 []."""
+    """Replaces error characters with blanks, splits again, and returns all tokens of the line (lexRecover). If an error remains, []."""
     chars = list(text)
     while True:
         toks, _, err = lex_line("".join(chars), line)
@@ -512,7 +512,7 @@ class _Column:
         self.identity = identity
         self.value = value
         self.comments = comments
-        # 기본값 literal의 token(없으면 None). value는 맞는 literal일 때만 있다.
+        # Token of the default literal (None if none). value is present only when the literal is valid.
         self.default_tok = None
 
 
@@ -606,9 +606,9 @@ class _Setting:
         self.references = fields.get("references")
         self.action = fields.get("action")
         self.previous = fields.get("previous")
-        # audit의 exclude와 include 목록. 둘 다 쓴 setting은 검사가 거부한다.
+        # The exclude and include lists of audit. A setting that writes both is rejected by the check.
         self.lists = fields.get("lists", ())
-        # markdown, store, key_prefix, title, body, order, checkbox, state_machine 줄의 token과 form.
+        # Tokens and form of the markdown, store, key_prefix, title, body, order, checkbox, and state_machine lines.
         self.args = fields.get("args", ())
         self.form = fields.get("form", "")
 
@@ -687,17 +687,17 @@ class _Table:
         self.closing = []
         self.phase = 0
         self.identity = False
-        # block을 여는 { 또는 그런 줄의 table keyword.
+        # The { that opens a block, or the table keyword of such a line.
         self.open = open_
-        # 자기 줄이 실패한 column 이름: 그 참조는 더 보고하지 않는다.
+        # Column name whose own line failed: references to it are not reported further.
         self.failed = set()
-        # primary key 줄이 실패했다: table의 primary key column을 알 수 없다.
+        # The primary key line failed: the table's primary key columns cannot be known.
         self.failed_primary = False
-        # primary key, unique, index 줄이 실패했다: 어떤 key의 column을 알 수 없다.
+        # A primary key, unique, or index line failed: the columns of some key cannot be known.
         self.failed_key = False
-        # 구문 오류가 난 column 줄의 수(Go의 failedLines): 그 줄이 있으면 column이 없어도 보고하지 않는다.
+        # Count of column lines with syntax errors (Go's failedLines): if such a line exists, a missing column is not reported.
         self.failed_lines = 0
-        # table 줄이 실패했다(이름이 없거나, `{`가 없거나, `{` 뒤에 말이 더 있다): 이 table을 가리키는 검사는 하지 않는다(Go의 failed table).
+        # A table line failed (no name, no `{`, or more text after `{`): checks pointing to this table are not run (Go's failed table).
         self.header_failed = False
 
 
@@ -753,7 +753,7 @@ class _Document:
         self.diagrams = []
         self.closing = []
         self.failed = set()
-        # index, unique key, foreign key, check 이름의 첫 선언.
+        # First declaration of an index, unique key, foreign key, or check name.
         self.constraints = {}
 
 
@@ -803,12 +803,12 @@ FORM_SETTINGS = frozenset(
         "state_machine",
     }
 )
-# store 종류마다 shard 절 앞의 token 수다(kind 포함).
+# For each store kind, the number of tokens before the shard clause (including kind).
 STORE_ARGUMENTS = {"files": 1, "document": 2, "block": 3}
 
 
 def go_int64(text: str):
-    """Go의 strconv.ParseInt(text, 10, 64)와 같다: 선택적인 '-'와 십진 숫자, int64 범위. 아니면 None."""
+    """Same as Go's strconv.ParseInt(text, 10, 64): an optional '-' and decimal digits, in int64 range. Otherwise None."""
     if re.fullmatch(r"-?[0-9]+", text) is None:
         return None
     n = int(text)
@@ -818,7 +818,7 @@ def go_int64(text: str):
 
 
 class _Cursor:
-    """engine/dbspec/parse.go의 cursor와 같다: 줄의 첫 실패가 syntax 오류 하나를 보고하고, 그 뒤는 읽지 않는다."""
+    """Same as the cursor in engine/dbspec/parse.go: the first failure on a line reports one syntax error, and the rest is not read."""
 
     def __init__(self, parser, toks, line: int, text: str):
         self.parser = parser
@@ -884,7 +884,7 @@ class _Cursor:
         return None, self.fail(what)
 
     def value(self, what: str):
-        """literal 하나를 읽는다. '-'는 바로 뒤의 숫자와 붙어 음수가 된다."""
+        """Reads one literal. A '-' joins the digit right after it to make a negative number."""
         if self.peek(OP, "-"):
             minus = self.toks[self.i]
             if (
@@ -915,7 +915,7 @@ class _Cursor:
         return self.fail("'->'")
 
     def form_ahead(self, text: str) -> bool:
-        """keyword 글자가 다음에 오고 전환의 from state가 아닌지 보고한다: 뒤에 `->`가 오면 state 이름이다."""
+        """Reports whether a keyword letter follows and it is not the from state of a transition: if `->` follows, it is a state name."""
         if not self.peek(WORD, text):
             return False
         nxt = self.i + 1
@@ -926,7 +926,7 @@ class _Cursor:
         return True
 
     def names(self):
-        """`( name, ... )`를 읽는다. 실패하면 None."""
+        """Reads `( name, ... )`. None on failure."""
         if not self.punct("("):
             return None
         out = []
@@ -958,11 +958,11 @@ class DocumentParser:
         self.diagnostics = []
         self.document = _Document()
         self._stopped = False
-        # 줄을 읽는 settings block: 표의 첫 block이거나, 반복된 block이면 유지하지 않는 block이다.
+        # A settings block that reads lines: the first block of the table, or, for a repeated block, a block that is not kept.
         self._settings_block = None
-        # 반복된 settings block: 줄은 구문만 읽고 검사하지 않는다(Go의 detached block).
+        # Repeated settings block: its lines are read for syntax only and not checked (Go's detached block).
         self._detached_block = False
-        # 마지막 syntax 오류의 줄: 한 줄은 최대 하나만 보고한다. 나머지는 읽을 수 없다.
+        # Line of the last syntax error: a line reports at most one error. The rest cannot be read.
         self._syntax_line = 0
         self._column_count = 0
         self._foreign_key_count = 0
@@ -994,7 +994,7 @@ class DocumentParser:
         self._report(rule, tok.line, tok.s, message)
 
     def _unclosed(self, tok: Tk, message: str) -> None:
-        # 문서 끝에서 닫히지 않은 block의 오류다. 같은 줄의 다른 syntax 오류와 함께 보고한다(Go는 줄당 한 번으로 제한하지 않는다).
+        # An error for a block not closed at the end of the document. It is reported along with other syntax errors on the same line (Go does not limit it to one per line).
         text = self.lines[tok.line - 1] if 1 <= tok.line <= len(self.lines) else ""
         self.diagnostics.append(
             DbspecDiagnostic("syntax", tok.line, column_of(text, tok.s), message)
@@ -1005,7 +1005,7 @@ class DocumentParser:
         if tok is not None:
             self._at("syntax", tok, message)
         else:
-            # 줄 끝 오류는 줄의 끝 다음 칸이다(Go의 cursor.end): 뒤쪽 빈칸도 센다.
+            # A line-end error is the column after the end of the line (Go's cursor.end): trailing blanks are counted too.
             self._report(
                 "syntax",
                 line,
@@ -1073,7 +1073,7 @@ class DocumentParser:
             toks, _, lexed = lex_line(text, line)
             if lexed is not None:
                 self._report("syntax", line, lexed[0], lexed[1])
-                # 오류 글자를 뺀 token으로 dispatch한다(Go의 lexRecover): 맨 위 줄의 table 머리줄도 표를 연다.
+                # Dispatches on the tokens without the error characters (Go's lexRecover): a table header line at the top also opens the table.
                 toks = lex_recover(text, line)
             first = toks[0] if toks else None
             if first is None:
@@ -1125,7 +1125,7 @@ class DocumentParser:
                 elif is_word(first, "settings"):
                     _mark(first, "keyword")
                     second = toks[1] if len(toks) > 1 else None
-                    # Go는 반복된 block의 키워드에 order를 줄이 올바른 형식(`settings {`만)일 때만 보고한다.
+                    # Go reports order at the keyword of a repeated block only when the line has the correct form (only `settings {`).
                     if (
                         table.settings is not None
                         and is_punct(second, "{")
@@ -1157,7 +1157,7 @@ class DocumentParser:
                     self._constraint(table, toks, line, own)
                 else:
                     self._column(table, toks, line, own)
-                    # Go는 column 줄이 구문에 맞을 때만 order를 보고한다(columnLine의 c.done 뒤). limit으로 멈춘 줄도 아니다.
+                    # Go reports order only when the column line matches the syntax (after c.done in columnLine). It is also not a line stopped by limit.
                     if (
                         self._syntax_line != line
                         and table.phase > 0
@@ -1200,7 +1200,7 @@ class DocumentParser:
             n += 1
         if self._stopped or not self.complete:
             return
-        # 가장 안쪽의 열린 block만 보고한다(Go처럼): 열린 settings block은 표의 `{`를 보고하지 않는다.
+        # Reports only the innermost open block (as Go does): an open settings block does not report the table's `{`.
         if state == "settings":
             self._unclosed(
                 self._settings_block.open, "the settings block is not closed"
@@ -1212,7 +1212,7 @@ class DocumentParser:
         self.document.closing = comments
 
     def _header(self) -> bool:
-        # header 오류는 `dbspec 1 <name>`에서 어긋난 첫 글자를, 부족하면 줄 끝 다음을 가리킨다.
+        # A header error points at the first character that differs in `dbspec 1 <name>`, or, if it is missing, at the position after the end of the line.
         text = self.lines[0]
 
         def fail(offset: int) -> bool:
@@ -1242,7 +1242,7 @@ class DocumentParser:
         return True
 
     def _list(self, toks, i: int, line: int, close: str):
-        """`<word> (, <word>)*`를 닫는 token까지 읽는다."""
+        """Reads `<word> (, <word>)*` up to the closing token."""
         words = []
         while True:
             w = toks[i] if i < len(toks) else None
@@ -1389,11 +1389,11 @@ class DocumentParser:
         mark = len(self.diagnostics)
         self._column_line(table, toks, line, comments)
         if self._syntax_line == line:
-            # Go는 구문 오류가 난 column 줄의 이름과 type 검사를 하지 않는다: 이 줄에서는 구문 오류만 남긴다.
+            # Go does not check the name and type of a column line with a syntax error: on this line only the syntax error remains.
             self.diagnostics[mark:] = [
                 d for d in self.diagnostics[mark:] if d.rule == "syntax"
             ]
-            # Go의 markFailed와 failedLines: 구문 오류가 난 column 줄의 이름은 실패한 이름이다.
+            # Go's markFailed and failedLines: the name of a column line with a syntax error is a failed name.
             table.failed_lines += 1
             if toks and toks[0].k == WORD:
                 table.failed.add(toks[0].t)
@@ -1527,7 +1527,7 @@ class DocumentParser:
 
     def _constraint(self, table: _Table, toks, line: int, comments) -> None:
         self._constraint_line(table, toks, line, comments)
-        # Go의 markFailed: 구문 오류가 난 foreign key 줄의 이름은 실패한 이름이다.
+        # Go's markFailed: the name of a foreign key line with a syntax error is a failed name.
         if (
             toks
             and toks[0].t == "foreign"
@@ -1654,7 +1654,7 @@ class DocumentParser:
             table.checks.append(_Check(name, toks[3:-1], close, comments))
 
     def _open_settings_block(self, table: _Table, block: _Settings) -> None:
-        """다음 줄들이 읽을 settings block을 정한다: 첫 block은 유지하고, 반복된 block은 분리한다."""
+        """Decides which settings block the following lines read: the first block is kept, and a repeated block is separated."""
         self._detached_block = table.settings is not None
         if not self._detached_block:
             table.settings = block
@@ -1662,7 +1662,7 @@ class DocumentParser:
 
     def _setting(self, toks, line: int, comments, lexed: bool = False) -> None:
         if lexed:
-            # 줄의 lex 오류는 parse 루프가 이미 보고했다. Go의 cursor는 그 뒤로 이 줄의 나머지를 검사하지 않는다.
+            # The parse loop has already reported the lex error of the line. Go's cursor does not check the rest of the line after it.
             return
         kw = toks[0]
         if kw.k != WORD:
@@ -1802,8 +1802,8 @@ class DocumentParser:
         self._settings_block.entries.append(entry)
 
     def _form_setting(self, toks, line: int, comments):
-        """markdown, store, key_prefix, title, body, order, checkbox, state_machine 줄을 Go의 settingsLine처럼 읽는다.
-        줄이 맞으면 _Setting을, 아니면 None을 돌려준다(오류는 보고했다)."""
+        """Reads markdown, store, key_prefix, title, body, order, checkbox, and state_machine lines as Go's settingsLine does.
+        Returns _Setting if the line matches, otherwise None (the error was reported)."""
         c = _Cursor(self, toks, line, self.lines[line - 1])
         kw = c.next()
         args = []
@@ -1831,7 +1831,7 @@ class DocumentParser:
                 shape, ok = c.one_of("'list' or 'table'", "list", "table")
                 if ok:
                     args.append(shape)
-            # shard 절은 block에서도 읽는다: block table의 shard는 setting error다. `shard` token은 위치를 위해 남긴다.
+            # The shard clause is also read in a block: a shard in a block table is a setting error. The `shard` token is kept for its position.
             if ok and c.peek(WORD, "shard"):
                 shard = c.next()
                 _mark(shard, "keyword")
@@ -1904,8 +1904,8 @@ class DocumentParser:
         )
 
     def _lexed_table_line(self, table: _Table, toks, line: int, comments) -> str:
-        """lex 오류가 난 table 줄(}가 아닌)을 Go의 tableLine처럼 처리한다: 줄은 실패하고 이름만 남긴다. settings
-        줄은 상태를 settings로 바꾼다. 새 state를 돌려준다."""
+        """Handles a table line with a lex error (not }) as Go's tableLine does: the line fails and only the name remains. settings
+        lines change the state to settings. Returns the new state."""
         first = toks[0]
         if is_word(first, "settings"):
             opened = toks[1] if len(toks) > 1 and is_punct(toks[1], "{") else first
@@ -1969,7 +1969,7 @@ class DocumentParser:
             values.append(value)
         diagram.entries.append(_Placement(table, values[0], values[1], comments))
 
-    # 문서 전체의 검사.
+    # Checks of the whole document.
 
     def validate(self) -> None:
         doc = self.document
@@ -2044,7 +2044,7 @@ class DocumentParser:
                         f"table {t.name.t} repeats a constraint name of a used document",
                     )
                 continue
-            # Go는 header가 실패한 table의 이름 중복을 보고하지 않는다(validate.go의 failed table).
+            # Go does not report duplicate names of tables whose header failed (the failed table in validate.go).
             if t.header_failed:
                 continue
             used = used_at.get(t.name.t)
@@ -2059,7 +2059,7 @@ class DocumentParser:
         for name, tok in doc.constraints.items():
             table = local_tables.get(name)
             if table is not None:
-                # Go의 제약 검사처럼 제약 이름이 쓰인 자리에 보고한다(표가 앞이든 뒤든).
+                # As in Go's constraint checks, reports at the place where the constraint name is used (whether the table comes before or after).
                 self._at(
                     "name.duplicate", tok, f"{name} names both a table and a constraint"
                 )
@@ -2119,7 +2119,7 @@ class DocumentParser:
         return parsed.document
 
     def _lookup(self, table: _Table, tok: Tk, rule: str, what: str = "column"):
-        """table의 column. 잘못된 이름이면 None(이미 보고됨), 알 수 없으면 보고 뒤 None."""
+        """The column of the table. None for an invalid name (already reported); for an unknown name, reports and then returns None."""
         if not well_formed(tok.t):
             return None
         column = table.col_map.get(tok.t)
@@ -2257,7 +2257,7 @@ class DocumentParser:
         for c in fk.cols:
             column = self._lookup(table, c, "foreign_key")
             if column is None:
-                # 알려지지 않은 자식은 None으로 자리를 지킨다. Go의 children처럼 열 순서와 짝을 맞추기 위해서다.
+                # An unknown child keeps its place as None, to pair with the column order as Go's children do.
                 resolved = False
                 children.append(None)
                 continue
@@ -2266,8 +2266,8 @@ class DocumentParser:
                 resolved = False
             seen.add(c.t)
             children.append(column)
-        # Go는 참조 table이 없거나 이름이 잘못되었거나 header가 실패했어도 자식의 key 검사와 set_null 검사를 한다.
-        # 열, 짝과 type 검사만 건너뛴다(validate.go의 foreignKey, target이 nil인 경우).
+        # Go runs the child's key and set_null checks even if the referenced table is missing, its name is wrong, or its header failed.
+        # Only the column, pairing, and type checks are skipped (foreignKey in validate.go, when target is nil).
         if not well_formed(fk.table.t):
             self._foreign_key_keys(table, fk, children, resolved)
             return
@@ -2281,12 +2281,12 @@ class DocumentParser:
         if target is None:
             self._foreign_key_keys(table, fk, children, resolved)
             return
-        # Go는 header가 실패한 target의 열, 짝과 type을 검사하지 않는다. 자식의 key 검사는 그대로 한다.
+        # Go does not check the columns, pairing, and types of a target whose header failed. The child's key checks are still run.
         if target.header_failed:
             self._foreign_key_keys(table, fk, children, resolved)
             return
-        # Go의 foreignKey와 같다: 개수 검사는 자식 열이 알려졌는지와 관계없이 하고, 짝과 type 검사는 참조 열이 모두
-        # 알려졌을 때 한다. type 검사는 알려진 자식만 보며, 첫 불일치에서 멈춘다.
+        # As in Go's foreignKey: the count check runs regardless of whether the child columns are known, and the pairing and type checks run when all referenced columns
+        # are known. The type check looks only at known children and stops at the first mismatch.
         parents = []
         references_known = True
         for r in fk.refs:
@@ -2336,8 +2336,8 @@ class DocumentParser:
     def _foreign_key_keys(
         self, table: _Table, fk: _ForeignKey, children, known: bool
     ) -> None:
-        """자식 열의 key와 set_null 검사다. target의 열을 보지 않으므로 header가 실패한 target에도 쓴다.
-        known이 false이면 자식 열이 알려지지 않았거나 겹치는 것이므로 색인 검사를 건너뛴다(Go의 known)."""
+        """The key and set_null checks of the child columns. It does not look at the target's columns, so it is also used for a target whose header failed.
+        If known is false, the child columns are unknown or overlapping, so the index check is skipped (Go's known)."""
         lead = [c.t for c in fk.cols]
         indexed = any(
             len(k.cols) >= len(lead)
@@ -2365,7 +2365,7 @@ class DocumentParser:
         flagged = False
 
         def flag(rule: str, tok: Tk, message: str) -> None:
-            # 읽기 진단은 처음 하나만 보고하고, 그 경우 타입은 검사하지 않는다.
+            # A read diagnostic reports only the first one, and in that case the type is not checked.
             nonlocal flagged
             if flagged:
                 return
@@ -2489,7 +2489,7 @@ class DocumentParser:
                     if depth <= 0:
                         break
                 return None
-            # Go의 ref: a malformed reference reports its name rule and is not resolved.
+            # Go's ref: a malformed reference reports its name rule and is not resolved.
             read_mark(t, "name")
             malformed = _name_rule(t.t)
             if malformed is not None:
@@ -2527,7 +2527,7 @@ class DocumentParser:
             return o.tok.t in ("true", "false")
 
         def fit(column: _Operand, value: _Operand) -> None:
-            # literal을 열의 default 형식으로 검사하고 정규형으로 바꾼다.
+            # Checks the literal against the column's default form and converts it to canonical form.
             if column.type is None:
                 return
             fitted = default_of(column.type, value.tok)
@@ -2561,7 +2561,7 @@ class DocumentParser:
                 fit(right, left)
 
         def subject(left, word: Tk):
-            # in, is 앞의 피연산자는 열이다.
+            # The operand before in and is is a column.
             if left is not None and left.column is None:
                 flag("check", left.tok, f"{word.t} takes a column, not a literal")
                 return None
@@ -2685,8 +2685,8 @@ class DocumentParser:
     def _settings(
         self, table: _Table, settings: _Settings, available, action_child: bool
     ) -> None:
-        """settings 블록을 검사한다(engine/dbspec/settings.go의 settings). 반복 검사로 받아들인 줄만 검사하고,
-        state_machine과 checkbox는 줄 사이의 일치를 본다. 진단 위치는 setting keyword, column 참조, history table 이름이다."""
+        """Checks the settings block (settings in engine/dbspec/settings.go). Only the lines accepted by repeated checks are checked, and
+        state_machine and checkbox agreement between lines is checked. Diagnostic positions are the setting keyword, column reference, and history table name."""
         once = set()
         repeatable = {
             "codec": set(),
@@ -2788,7 +2788,7 @@ class DocumentParser:
         elif kind == "blind_index":
             self._blind_index(table, s, aes_columns)
         elif kind == "navigation":
-            # 이름이 형식을 어기면 parse가 이미 보고했다. 실패한 foreign key 줄의 이름은 검사하지 않는다.
+            # If the name breaks the format, parse already reported it. The name of a failed foreign key line is not checked.
             if (
                 well_formed(s.foreign_key.t)
                 and s.foreign_key.t not in table.failed
@@ -2843,7 +2843,7 @@ class DocumentParser:
             self._state_machine_line(table, s)
 
     def _ref(self, tok: Tk) -> bool:
-        """Go의 validator.ref다: 형식이 맞는 이름이면 참이고, 아니면 이름 진단을 보고하고 거짓이다."""
+        """Go's validator.ref: if the name has the right form it is true; otherwise it reports a name diagnostic and is false."""
         if well_formed(tok.t):
             return True
         if not well_formed(tok.t):
@@ -2859,7 +2859,7 @@ class DocumentParser:
         return False
 
     def _column_ref(self, table: _Table, tok: Tk):
-        """Go의 columnRef다: 이름이 맞고 table의 column이면 그 column, 아니면 보고 뒤 None."""
+        """Go's columnRef: if the name is valid and is a column of the table, that column; otherwise it reports and returns None."""
         if not self._ref(tok):
             return None
         column = table.col_map.get(tok.t)
@@ -2872,7 +2872,7 @@ class DocumentParser:
         return column
 
     def _foreign_key_name(self, table: _Table, tok: Tk) -> None:
-        """Go의 foreignKeyName이다: 이름이 table의 foreign key를 가리키는지 검사한다."""
+        """Go's foreignKeyName: checks whether the name refers to a foreign key of the table."""
         if not self._ref(tok) or tok.t in table.failed:
             return
         if not any(fk.name.t == tok.t for fk in table.fks):
@@ -2919,8 +2919,8 @@ class DocumentParser:
             )
 
     def _store_shard(self, table: _Table, s: _Setting) -> None:
-        """store의 shard 절은 non-null date 또는 datetime column을 적고, block table, self foreign key가
-        있는 table과 order가 있는 table에서는 거절한다."""
+        """The shard clause of store takes a non-null date or datetime column, and is rejected for a block table, a table with a self foreign key,
+        or a table with order."""
         at = STORE_ARGUMENTS[s.args[0].t]
         if len(s.args) <= at:
             return
@@ -2960,7 +2960,7 @@ class DocumentParser:
         return False
 
     def _state_machine_line(self, table: _Table, s: _Setting) -> None:
-        """state_machine 줄 하나: column은 non-null varchar 또는 text이고, require 목록은 table의 column이다."""
+        """One state_machine line: the column is non-null varchar or text, and the require list is columns of the table."""
         column = self._column_ref(table, s.args[0])
         if column is not None and (
             (column.type is not None and column.type.kind not in ("varchar", "text"))
@@ -2976,8 +2976,8 @@ class DocumentParser:
                 self._column_ref(table, ref)
 
     def _state_machine_consistency(self, table: _Table, entries, available) -> None:
-        """state_machine 줄들을 줄 사이에서 검사한다: table마다 column 하나, history 하나, 전환과 terminal과 initial의
-        상호 일치, limit, state column의 default, checkbox(docs/dbspec.md "Settings")."""
+        """Checks the state_machine lines against each other: one column per table, one history, and agreement among transitions, terminal and initial states,
+        limit, the default of the state column, and checkbox (docs/dbspec.md "Settings")."""
         machine = [s for s in entries if s.kind == "state_machine"]
         column = None
         states = set()
@@ -3066,7 +3066,7 @@ class DocumentParser:
         self._checkboxes(table, column, states)
 
     def _limits(self, lines, states) -> None:
-        """limit 줄마다 검사한다: state는 state 집합에 속하고, state마다 한 번이며, count는 양의 int64다."""
+        """Checks each limit line: state belongs to the state set and appears once per state, and count is a positive int64."""
         seen = set()
         for s in lines:
             state = s.args[1]
@@ -3088,9 +3088,9 @@ class DocumentParser:
                 )
 
     def _history(self, table: _Table, s: _Setting, state, requires, available) -> None:
-        """state_machine history 줄의 history table을 검사한다(docs/dbspec.md "Settings"): 이 table을 가리키는 foreign
-        key, state column의 type을 가진 from과 to, datetime(6)의 at, 필요한 column마다 같은 type의 nullable column,
-        key, title이나 body 없음. 불일치는 모두 history table의 이름에 보고한다."""
+        """Checks the history table of a state_machine history line (docs/dbspec.md "Settings"): a foreign key pointing to this table,
+        from and to with the state column's type, datetime(6) at, a nullable column of the same type for each required column,
+        key, no title or body. All mismatches are reported at the name of the history table."""
         name = s.args[1]
         if not self._ref(name):
             return
@@ -3180,8 +3180,8 @@ class DocumentParser:
                     )
 
     def _checkboxes(self, table: _Table, column, states) -> None:
-        """checkbox 줄을 기계의 state 집합에 대해 검사한다: 기계의 column을 이름 붙이고, state마다 한 글자이며 서로 다른
-        glyph를 가진 줄이 하나씩 있고, 어떤 줄도 다른 state를 이름 붙이지 않는다."""
+        """Checks a checkbox line against the machine's state set: names the column of the machine, each state has one line with a distinct
+        glyph, and no line names a different state."""
         boxes = (
             [s for s in table.settings.entries if s.kind == "checkbox"]
             if table.settings is not None
@@ -3232,7 +3232,7 @@ class DocumentParser:
                 )
 
     def _codec(self, table: _Table, s: _Setting) -> None:
-        """stage 순서와 마지막 stage가 요구하는 저장 type(engine/dbspec/settings.go의 codec)."""
+        """The stage order, and the storage type the last stage requires (codec in engine/dbspec/settings.go)."""
         column = self._lookup(table, s.column, "setting")
         stages = [stage.t for stage in s.stages]
         known = all(stage in STAGES for stage in stages)
@@ -3259,8 +3259,8 @@ class DocumentParser:
             )
 
     def _blind_index(self, table: _Table, s: _Setting, aes_columns) -> None:
-        """blind_index <aes column> <index column>(engine/dbspec/settings.go의 blindIndex). 검사는 switch처럼 처음 맞는
-        하나만 보고한다. AES codec이 없는 것은 setting keyword에서 보고한다."""
+        """blind_index <aes column> <index column> (blindIndex in engine/dbspec/settings.go). Like a switch, the check reports only the first match.
+        The absence of the AES codec is reported at the setting keyword."""
         aes = self._lookup(table, s.column, "setting")
         if aes is not None and s.column.t not in aes_columns:
             self._at(
@@ -3322,7 +3322,7 @@ class DocumentParser:
         history = available[s.into.t]
         if history is None:
             return
-        # Go는 header가 실패한 history table의 열을 맞추어 보지 않는다(settings.go의 audit).
+        # Go does not check the columns of a history table whose header failed (audit in settings.go).
         if history.header_failed:
             return
         if history is table:
@@ -3374,8 +3374,8 @@ class DocumentParser:
                     s.previous,
                     "the previous column is nullable and has the type of the audit column",
                 )
-        # 두 목록을 다 쓴 setting은 기록하는 column이 정해지지 않으므로 history table의
-        # column을 맞추어 보지 않는다.
+        # A setting that uses both lists does not determine which columns are recorded, so the history table's
+        # columns are not checked.
         if recorded is None:
             return
         allowed = {key.name.t if key is not None else "", s.action.t, s.previous.t}
@@ -3420,9 +3420,9 @@ class DocumentParser:
                 )
 
     def _audit_lists(self, table: _Table, s: _Setting):
-        """audit의 exclude나 include 목록을 검사하고 column이 기록되는지 알리는 함수를
-        돌려준다 (docs/dbspec.md "Audit"). 두 목록을 다 쓰면 둘째 목록의 keyword에서
-        거부하고 None을 돌려준다."""
+        """Checks the audit exclude or include list, and returns a function that tells whether a column is recorded
+        (docs/dbspec.md "Audit"). If both lists are used, the keyword of the second list is rejected
+        and None is returned."""
         if len(s.lists) > 1:
             self._at(
                 "setting",
@@ -3452,9 +3452,9 @@ class DocumentParser:
         return lambda column: column == audited or column not in listed
 
     def _audit_record(self, table: _Table, s: _Setting, column, available) -> None:
-        """audit 기록 table을 검사한다. 그 table은 이 문서나 사용한 문서의 다른 table이며
-        history table이 아니고, 자신은 audit 대상이 아니며, column 하나의 primary key를
-        가지고 그 type이 audit column의 type이다."""
+        """Checks the audit record table. It is another table of this document or of a used document,
+        not a history table; it is not itself audited, and it has a primary key of one column
+        whose type is the type of the audit column."""
         ref = s.references
         if not well_formed(ref.t):
             return
@@ -3469,7 +3469,7 @@ class DocumentParser:
         record = available[ref.t]
         if record is None:
             return
-        # Go는 header가 실패한 audit 기록 table의 key를 검사하지 않는다(settings.go의 auditRecord).
+        # Go does not check the key of an audit record table whose header failed (auditRecord in settings.go).
         if record.header_failed:
             return
         if record is table:
@@ -3740,7 +3740,7 @@ class DocumentParser:
 
 
 def _predicate_text(p) -> str:
-    """predicate의 canonical text. and 안의 or가 필요로 하는 괄호만 쓴다."""
+    """The canonical text of a predicate. Only the parentheses that an or inside an and needs are written."""
     if p[0] in ("and", "or"):
         op, left, right = p[0], p[1], p[2]
 
@@ -3760,8 +3760,8 @@ def _predicate_text(p) -> str:
 
 
 def _encoding_error(lines) -> DbspecDiagnostic | None:
-    # Python 문자열에는 unpaired surrogate가 encode에서 드러나므로 여기서는
-    # BOM과 bare CR만 검사한다.
+    # Python strings reveal unpaired surrogates at encode, so here only
+    # the BOM and bare CR are checked.
     for n, text in enumerate(lines):
         last = n == len(lines) - 1
         for i, c in enumerate(text):
@@ -3782,8 +3782,8 @@ def _parse_text(text: str, context: _ParseContext, parents) -> _Parsed:
         return _Parsed(diagnostics, empty, None, "limit")
     raw = text.split("\n")
     encoding = _encoding_error(raw)
-    # 인코딩 오류 앞의 완전한 줄만 parse한다(Go의 splitSource): 오류 줄 앞의 진단이 먼저 온다.
-    # 첫 줄의 오류(BOM, 첫 줄의 bare CR)는 완전한 줄이 없으므로 그 오류만 보고한다.
+    # Only complete lines before an encoding error are parsed (Go's splitSource): diagnostics before the error line come first.
+    # An error on the first line (a BOM or a bare CR on the first line) leaves no complete line, so only that error is reported.
     complete = raw if encoding is None else raw[: encoding.line - 1]
     if encoding is not None and not complete:
         return _Parsed([encoding], empty, None, "encoding")
@@ -3792,7 +3792,7 @@ def _parse_text(text: str, context: _ParseContext, parents) -> _Parsed:
     parser.parse()
     if not parser.halted:
         parser.validate()
-    # 멈춘 오류는 그 앞의 진단 뒤에 온다. 나머지는 줄, 칸, 규칙 표 순서다.
+    # A stopping error comes after the diagnostics before it. The rest is in order of line, column, and rule table.
     found = list(parser.diagnostics)
     stop = found.pop() if parser.halted and found else None
     rank = {rule: index for index, rule in enumerate(RULE_ORDER)}
@@ -3810,7 +3810,7 @@ def _parse_text(text: str, context: _ParseContext, parents) -> _Parsed:
     ]
     if stop is not None:
         found.append(stop)
-    # 인코딩 오류는 멈춘 오류가 없을 때만 보고한다(Go의 defer: 앞선 header나 limit 멈춤이 우선).
+    # An encoding error is reported only when there is no stopping error (Go's defer: an earlier header or limit stop takes precedence).
     if encoding is not None and not parser.halted:
         found.append(encoding)
         return _Parsed(found, parser.document, parser, "encoding")
@@ -3818,7 +3818,7 @@ def _parse_text(text: str, context: _ParseContext, parents) -> _Parsed:
 
 
 def parse_document(text: str, documents):
-    """문서 text와 그 선언된 문서 집합의 parse 결과, 또는 원본 순서의 모든 진단.
+    """The parse result of the document text and its declared document set, or all diagnostics in source order.
     On success it returns (document, positions, ()); on failure (None, None, diagnostics)."""
     return _outcome(_parse_text(text, _ParseContext(dict(documents)), []))
 
@@ -3842,8 +3842,8 @@ def _check_arguments(text: str, documents: Mapping[str, str]) -> None:
 def parse_dbspec(
     text: str, documents: Mapping[str, str]
 ) -> tuple[DbspecDocument | None, list[DbspecPosition] | None, list[DbspecDiagnostic]]:
-    """dbspec 문서를 parse하고 검사한다. `documents`는 use 줄을 위한 문서 집합의
-    다른 문서 이름과 text다.
+    """Parses and checks a dbspec document. `documents` is the document set for use lines:
+    the other document names and their text.
     On success it returns (document, positions, []); on failure (None, None, diagnostics)."""
     _check_arguments(text, documents)
     return parse_document(text, documents)

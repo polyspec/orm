@@ -1,13 +1,13 @@
 <?php
 declare(strict_types=1);
-// audit_triggers feature coverage: contracts/fixtures/audit_columns.dbs를 bench
-// database에 설치하고, client가 쓴 insert, update, soft delete를 audit trigger가
-// 고른 column만으로 기록하는지 확인한다. card는 exclude (secret)로 secret을 빼고,
-// tag는 include (label)로 label과 audit column만 기록하며, history table에는
-// 기록하는 column만 있다. 두 table은 audit source를 가진 연결의 audit transaction으로
-// 쓴다. 끝에 설치한 table과 PostgreSQL function을 지운다.
-// document의 model은 임시 directory에 생성한다: 한 process는 한 document set의
-// model만 가진다.
+// audit_triggers feature coverage: installs contracts/fixtures/audit_columns.dbs in the bench
+// database and checks that the audit trigger records, for the insert, update, and soft delete the client writes,
+// only the chosen columns. card uses exclude (secret) to leave out secret, and
+// tag uses include (label) to record only label and the audit columns; the history table has
+// only the columns it records. Both tables are written in an audit transaction on a connection with an audit source.
+// Removes the installed tables and the PostgreSQL function at the end.
+// The document's model is created in a temporary directory: one process holds one document set's
+// model only.
 
 require_once __DIR__ . '/coverage_cases.php';
 
@@ -22,7 +22,7 @@ use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
-/** connection의 database에 table이 있는지 catalog에서 읽는다. */
+/** Reads from the catalog whether the connection's database has the table. */
 function auditColumnsTable(Db $db, string $table): bool
 {
     $sql = match ($db->driver()) {
@@ -35,7 +35,7 @@ function auditColumnsTable(Db $db, string $table): bool
     return (int) $st->fetchColumn() === 1;
 }
 
-/** 설치한 table과, table과 함께 지워지지 않는 PostgreSQL trigger function을 지운다. */
+/** Removes the installed table, and the PostgreSQL trigger function that is not removed with the table. */
 function dropAuditColumns(Db $db): void
 {
     $quote = $db->driver() === 'mysql' ? static fn(string $n): string => "`$n`" : static fn(string $n): string => "\"$n\"";
@@ -52,7 +52,7 @@ function dropAuditColumns(Db $db): void
 }
 
 /**
- * query의 column 이름과 row를 문자열로 읽는다. NULL은 'NULL'이다.
+ * Reads the column names and rows of a query as strings. NULL is 'NULL'.
  *
  * @return array{list<string>, list<list<string>>}
  */
@@ -67,7 +67,7 @@ function auditColumnsRows(Db $db, string $sql): array
     return [$columns, $rows];
 }
 
-/** document의 model을 $work에 생성하고 설치, 쓰기, history 확인, 정리를 실행한다. */
+/** Creates the document's model in $work, then runs install, write, history check, and cleanup. */
 function auditColumnsCase(string $dsn, string $document, string $work): void
 {
     Generator::generate(RuntimeModel::build(RuntimeModel::parse(['audit_columns.dbs' => $document])), "$work/gen", 'Polyspec\\Orm\\Tests\\CoverageAuditColumns');

@@ -1,7 +1,7 @@
 <?php
-// statement_events coverage: feature-check가 고른 database(ORM_FEATURE_DATABASE)에서
-// tests/events/vectors.json의 모든 case를 case마다 새 case database(case_database.php)로
-// 실행하고 기대 event와 비교한다(statement_events_run.php). bench database는 읽거나 쓰지 않는다.
+// statement_events coverage: in the case database (ORM_FEATURE_DATABASE) chosen by feature-check,
+// runs each case of tests/events/vectors.json in a new case database (case_database.php) per case,
+// and compares with the expected events (statement_events_run.php). Does not read or write the bench database.
 declare(strict_types=1);
 
 require_once __DIR__ . '/statement_events_run.php';

@@ -1,16 +1,16 @@
 <?php
 declare(strict_types=1);
 
-// 확장 orm_dbspec이 등록한 class의 선언과 stubs/orm_dbspec.stub.php의 선언이 같은지 확인한다. 두 선언은
-// 같은 이름의 class라 한 process에 함께 load할 수 없으므로 declarations.php를 확장과 함께, 그리고
-// 확장 없이 실행한다. stub은 interface 검사(contracts/symbols/php-extension.json)의 inventory다. ORM_DBSPEC_EXTENSION은
-// build한 확장 library이고, 없으면 test가 실패한다.
+// The extension's declarations of the classes it registers match stubs/orm_dbspec.stub.php. The two declarations
+// have the same class names, so they cannot be loaded into one process. declarations.php runs with the extension, and
+// runs without the extension. The stub is the inventory of the interface check (contracts/symbols/php-extension.json). ORM_DBSPEC_EXTENSION is
+// the built extension library, and if it is missing the test fails.
 
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Large;
 use PHPUnit\Framework\TestCase;
 
-/** ORM_DBSPEC_EXTENSION이 적은, build한 확장 library다. */
+/** The built extension library that ORM_DBSPEC_EXTENSION names. */
 function extensionLibrary(): string
 {
     $extension = getenv('ORM_DBSPEC_EXTENSION');
@@ -20,7 +20,7 @@ function extensionLibrary(): string
     return $extension;
 }
 
-/** requiredModules는 확장이 ZEND_MOD_REQUIRED로 요구하는 module의 이름이다(src/orm_dbspec.c). */
+/** requiredModules is the names of the modules that the extension requires as ZEND_MOD_REQUIRED (src/orm_dbspec.c). */
 function requiredModules(): array
 {
     preg_match_all('/ZEND_MOD_REQUIRED\("([a-z_]+)"\)/', file_get_contents(dirname(__DIR__) . '/src/orm_dbspec.c'), $names);
@@ -28,10 +28,10 @@ function requiredModules(): array
 }
 
 /**
- * moduleArguments는 php.ini 없이(-n) 실행하는 PHP가 확장이 요구하는 module을 갖게 하는 인자다. -n은 php.ini가 load하는
- * shared module(예: Ubuntu의 PHP package가 conf.d로 load하는 pdo)도 load하지 않으므로, 그 PHP에 들어 있지 않은 module은
- * 이 PHP의 extension_dir에서 load한다. 요구한 module이 없으면 PHP는 확장을 load하지 않는다. $loaded(module 이름)는 php -n이
- * 그 module을 갖는지다.
+ * moduleArguments are the arguments that make the PHP run without php.ini (-n) have the module the extension requires. -n
+ * also does not load shared modules (for example pdo, which the Ubuntu PHP package loads from conf.d), so a module not in that PHP is
+ * loaded from this PHP's extension_dir. If a required module is missing, PHP does not load the extension. $loaded (module name) is whether php -n has
+ * that module.
  */
 function moduleArguments(array $modules, callable $loaded, string $extensionDir): array
 {
@@ -42,7 +42,7 @@ function moduleArguments(array $modules, callable $loaded, string $extensionDir)
     return ['-d', "extension_dir=$extensionDir", ...array_merge(...array_map(static fn(string $module): array => ['-d', "extension=$module"], $missing))];
 }
 
-/** run은 명령을 실행해 [종료 코드, stdout, stderr]를 돌려준다. */
+/** run executes the command and returns [exit code, stdout, stderr]. */
 function run(array $command): array
 {
     $process = proc_open($command, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
@@ -57,13 +57,13 @@ function run(array $command): array
 }
 
 /**
- * declarations.php를 $arguments(php 인자)로 실행해 그 JSON을 돌려준다. 실패하면 stderr와 stdout을 함께 적는다: PHP가
- * 확장을 load하지 못한 이유(startup 경고)는 CLI에서 stdout에 쓴다.
+ * Runs declarations.php with $arguments (php arguments) and returns its JSON. On failure, writes stderr and stdout together:
+ * the reason the extension did not load (startup warning) is written to stdout in the CLI.
  */
 function declarations(array $arguments, string $mode): array
 {
-    // -n은 php.ini를 읽지 않는다: php.ini가 확장을 load하면 stub과 같은 이름의 class가 이미 있다. 확장이 요구하는 module은
-    // moduleArguments가 load한다.
+    // -n does not read php.ini: if php.ini loads the extension, a class with the same name as the stub already exists. The module the extension requires is
+    // loaded by moduleArguments.
     $loaded = static fn(string $module): bool => run([PHP_BINARY, '-n', '-r', 'exit(extension_loaded($argv[1]) ? 0 : 1);', $module])[0] === 0;
     $command = [PHP_BINARY, '-n', ...moduleArguments(requiredModules(), $loaded, (string) ini_get('extension_dir')), ...$arguments, __DIR__ . '/declarations.php', $mode];
     [$code, $out, $err] = run($command);
@@ -75,8 +75,8 @@ function declarations(array $arguments, string $mode): array
 #[Large]
 final class DeclarationsTest extends TestCase
 {
-    // module case는 php.ini 없는 PHP에 확장이 요구하는 module이 shared module로만 있을 때(CI runner의 PHP package에서 pdo) 그
-    // module을 extension_dir에서 load하는 인자를 만들고, 모두 들어 있으면 인자를 더하지 않는지 본다.
+    // The module case is when the module the extension requires exists only as a shared module in a PHP without php.ini (pdo in the CI runner's PHP package). It
+    // builds the argument that loads that module from extension_dir, and checks that it adds no argument when all are present.
     public function test_required_modules(): void
     {
         $required = requiredModules();
@@ -105,8 +105,8 @@ final class DeclarationsTest extends TestCase
         Assert::assertSame([], $differences, "the extension declares other symbols than stubs/orm_dbspec.stub.php:\n" . implode("\n", $differences));
     }
 
-    // 확장은 PHP client의 @internal이 아닌 class마다 같은 public 선언(이름, 부모, 상수, property의 순서와 type, 메서드)을 가지고,
-    // 그 밖의 class는 stub이 @internal로 적은 것뿐이다.
+    // The extension has the same public declarations (name, parent, constants, order and types of properties, methods) for each class that is not PHP client's @internal,
+    // and the only other classes are those the stub marks @internal.
     public function test_client(): void
     {
         $extension = extensionLibrary();
@@ -121,7 +121,7 @@ final class DeclarationsTest extends TestCase
                 $differences[] = "$key\n  client    $want\n  extension $got";
             }
         }
-        // property 순서: 생성자와 객체 graph가 PHP client의 순서를 따른다.
+        // Property order: the constructor and object graph follow the PHP client's order.
         $order = static fn(array $declarations): array => array_values(array_filter(array_keys($declarations), static fn(string $k): bool => str_contains($k, '::$')));
         $clientOrder = $order($client);
         $nativeOrder = array_values(array_filter($order($native), static fn(string $k): bool => isset($classes[explode('::', $k)[0]]) && str_starts_with($native[$k], 'public')));
@@ -139,7 +139,7 @@ final class DeclarationsTest extends TestCase
         Assert::assertSame([], $differences, "the extension differs from the PHP client's dbspec classes:\n" . implode("\n", $differences));
     }
 
-    // PIE는 composer.json의 php-ext로 확장을 build한다: 그 이름은 load한 확장의 이름이고 build-path에 config.m4가 있다.
+    // PIE builds the extension from composer.json's php-ext: the name is the extension's name that was loaded, and config.m4 is in build-path.
     public function test_package(): void
     {
         $package = json_decode(file_get_contents(dirname(__DIR__) . '/composer.json'), true, 512, JSON_THROW_ON_ERROR);
@@ -149,8 +149,8 @@ final class DeclarationsTest extends TestCase
         Assert::assertFalse(!is_file($config) || !str_contains(file_get_contents($config), "PHP_NEW_EXTENSION([$name]"), "the build-path of packages/php-ext/composer.json has no config.m4 that builds $name");
     }
 
-    // 확장의 test 가운데 PHP client test와 같은 case를 따르는 것은 그 test와 본문이 같다: 그 file의 header(설명, require와
-    // use) 뒤 첫 `const` 선언부터 끝까지가 PHP client test의 같은 부분과 같다.
+    // Among the extension's tests, the ones that follow the same cases as the PHP client tests have the same body as those tests: from the first `const` declaration after the file's header (description, require and
+    // use) to the end is the same as that part of the PHP client test.
     public function test_mirrors(): void
     {
         $root = dirname(__DIR__, 3);

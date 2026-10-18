@@ -1,22 +1,22 @@
-// cargo test를 공유 Rust target directory(CARGO_TARGET_DIR, 이 checkout의 동시 실행이 함께 쓴다)가 아니라 실행
-// 하나의 복사본으로 실행한다. cargo test는 build한 test binary를 target directory에서 실행하므로, build와 실행
-// 사이에 다른 실행이 다시 build하면 그 실행이 build한 binary를 실행한다.
+// cargo test runs not in the shared Rust target directory (CARGO_TARGET_DIR, which concurrent runs of this checkout write together) but
+// in a single copy. cargo test runs the test binary it built from the target directory, so if another run builds again between the build and the run,
+// the other run's binary is executed instead.
 //
-//   1. build: 같은 인자의 `cargo test --no-run --message-format=json-render-diagnostics`를 장기 작업
-//      `rust-build/<name>`(runLong, 기한 없음, compiler 출력을 STEP으로)으로 실행하고, cargo가 알린 test binary를
-//      실행 directory로 복사한다. build와 복사는 target directory의 exclusive lease(LEASE, CARGO_LEASES, --wait)
-//      아래의 한 process에서 하므로 그 사이에 다른 build가 끼지 않는다.
-//      test가 실행하는 package의 program도 함께 복사하고, test는 그 경로를 ORM_PROGRAM_<NAME>으로 받는다.
-//   2. 실행: 복사본을 cargo test처럼 package directory에서 CARGO_MANIFEST_DIR과 함께, test 이름 filter와 `--`
-//      뒤의 인자로 하나씩 실행한다. 각 test case가 자기 기한과 RUN, PASS, FAIL 줄을 가진다. 실패한 binary 뒤에도
-//      나머지를 실행하고(cargo test --no-fail-fast와 같다), 실패한 binary를 모두 적은 뒤 첫 실패의 종료 코드로 끝난다.
+//   1. build: run `cargo test --no-run --message-format=json-render-diagnostics` with the same arguments as a long-running task
+//      `rust-build/<name>` (runLong, no deadline, compiler output as STEP), and copy the test binary cargo reported
+//      into the run directory. The build and the copy take the target directory's exclusive lease (LEASE, CARGO_LEASES, --wait)
+//      inside one process, so no other build can come in between.
+//      Also copy the program of the package the test runs; the test receives its path as ORM_PROGRAM_<NAME>.
+//   2. run: run the copy like cargo test, from the package directory with CARGO_MANIFEST_DIR, with the test name filter and `--`
+//      arguments after it, one at a time. Each test case has its own deadline and RUN, PASS, FAIL lines. Even after a failed binary,
+//      the rest still run (same as cargo test --no-fail-fast), all failed binaries are listed, and it ends with the first failure's exit code.
 //
-// 이 repository의 Rust 문서 code는 모두 ```text라 실행할 doctest가 없으므로 doctest는 실행하지 않는다.
+// All Rust doc code in this repository is ```text, so there are no doctests to run and doctests are not run.
 //
 // Usage: node tests/cargo-test.mts <name> -- cargo [+<toolchain>] test <cargo options and filters> [-- <test binary args>]
 //        node tests/cargo-test.mts --copy <run dir> -- <cargo test --no-run command>
-//            (lease 아래에서 실행한다: build하고 test binary와 dep-info를 <run dir>로 복사해 binaries.json에 적는다.
-//             scripts/features/coverage.mts도 쓴다.)
+//            (Runs under the lease: builds, copies the test binary and dep-info to <run dir>, and records them in binaries.json.
+//             Also used by scripts/features/coverage.mts.)
 import { spawn, spawnSync } from 'node:child_process';
 import { constants, copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
@@ -49,11 +49,11 @@ function artifact(line: string): Artifact | undefined {
   };
 }
 
-// valued는 값을 따로 받는 cargo test option이다. 그 다음 인자는 test 이름 filter가 아니다.
+// valued is a cargo test option that takes its value separately. The next argument is not a test name filter.
 const valued = new Set(['--manifest-path', '--features', '-F', '-p', '--package', '--test', '--bin', '--example', '--bench', '--exclude',
   '--target', '--target-dir', '--profile', '-j', '--jobs', '--color', '--message-format', '--config', '-Z']);
 
-// split은 cargo 명령을 program 앞부분(cargo와 toolchain), cargo test option, test 이름 filter, binary 인자로 나눈다.
+// split divides the cargo command into the program prefix (cargo and toolchain), cargo test options, test name filters, and binary arguments.
 export function split(command: string[]): { cargo: string[]; options: string[]; filters: string[]; binaryArgs: string[] } {
   const testIndex = command.indexOf('test');
   if (command[0] !== 'cargo' || testIndex < 1 || command.slice(1, testIndex).some(arg => !arg.startsWith('+')))
@@ -75,7 +75,7 @@ export function split(command: string[]): { cargo: string[]; options: string[]; 
   return { cargo: command.slice(0, testIndex), options, filters, binaryArgs };
 }
 
-// executables는 cargo의 JSON message에서 test binary와 그 package directory를 읽는다.
+// executables reads the test binary and its package directory from cargo's JSON messages.
 export function executables(stdout: string): { executable: string; manifestDir: string; target: string }[] {
   const out: { executable: string; manifestDir: string; target: string }[] = [];
   for (const line of stdout.split('\n')) {
@@ -87,8 +87,8 @@ export function executables(stdout: string): { executable: string; manifestDir: 
   return out;
 }
 
-// programs는 cargo가 test와 함께 build한 package의 program(`[[bin]]`, test가 아닌 것)을 이름과 실행 file로 읽는다.
-// test는 그 경로를 ORM_PROGRAM_<NAME>으로 받는다(polyspec_orm_testcase::program).
+// programs reads, as name and executable file, the package programs cargo built along with the tests (`[[bin]]`, not test targets).
+// The test receives that path as ORM_PROGRAM_<NAME> (polyspec_orm_testcase::program).
 export function programs(stdout: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const line of stdout.split('\n')) {
@@ -98,7 +98,7 @@ export function programs(stdout: string): Record<string, string> {
   return out;
 }
 
-// programEnvironment는 복사한 program마다 test가 읽는 ORM_PROGRAM_<NAME> 변수다.
+// programEnvironment is the ORM_PROGRAM_<NAME> variable, one per copied program, that the test reads.
 export function programEnvironment(copies: Record<string, string>): Record<string, string> {
   return Object.fromEntries(Object.entries(copies).map(([name, path]) => [`ORM_PROGRAM_${name.toUpperCase().replaceAll('-', '_')}`, path]));
 }
@@ -121,7 +121,7 @@ function run(program: string, args: string[], options: { cwd?: string; env?: Nod
 async function main() {
   const args = process.argv.slice(2);
   if (args[0] === '--copy') {
-    // --copy <run dir> -- <cargo build command>: lease 아래에서 build하고 test binary를 복사한다.
+    // --copy <run dir> -- <cargo build command>: builds under the lease and copies the test binary.
     const [, runDir, separator, program, ...build] = args;
     if (separator !== '--' || runDir === undefined || program === undefined) throw new Error('usage: cargo-test.mts --copy <run dir> -- <cargo command>');
     const child = spawn(program, build, { stdio: ['ignore', 'pipe', 'inherit'] });
@@ -131,16 +131,16 @@ async function main() {
     if (code !== 0) process.exit(code);
     const copies = executables(stdout).map((binary, index) => {
       const copy = join(runDir, `${index}-${basename(binary.executable)}`);
-      // 복사는 copy-on-write clone(APFS clonefile, Linux reflink)을 먼저 시도해 disk를 거의 쓰지 않는다. 그것이 안 되는
-      // file system에서는 보통 복사다.
+      // The copy first tries a copy-on-write clone (APFS clonefile, Linux reflink) so it uses almost no disk. Where that does not work,
+      // on the file system it is usually a plain copy.
       copyFileSync(binary.executable, copy, constants.COPYFILE_FICLONE);
-      // rustc가 binary 옆에 쓰는 dep-info(<binary>.d)도 함께 복사한다. feature coverage가 그것으로 binary가
-      // compile한 source file을 읽는다.
+      // Also copy the dep-info (<binary>.d) that rustc writes beside the binary. Feature coverage uses it to read the source files
+      // that the binary was compiled from.
       if (existsSync(`${binary.executable}.d`)) copyFileSync(`${binary.executable}.d`, `${copy}.d`, constants.COPYFILE_FICLONE);
       console.error(`cargo-test: ${binary.executable} copied to ${copy}`);
       return { ...binary, copy };
     });
-    // test가 실행하는 package의 program도 같은 lease 안에서 복사한다.
+    // Also copy the program of the package the test runs, within the same lease.
     const programCopies: Record<string, string> = {};
     for (const [name, executable] of Object.entries(programs(stdout))) {
       mkdirSync(join(runDir, 'programs'), { recursive: true });
@@ -158,9 +158,9 @@ async function main() {
   const { cargo, options, filters, binaryArgs } = split(args.slice(2));
   const { LEASE: lease, CARGO_LEASES: leases } = process.env;
   if (!lease || !leases) throw new Error('LEASE and CARGO_LEASES are unset; run this through make, which exports them');
-  // 실행 directory는 checkout의 .runtime/run에 둔다: test binary의 복사본은 크고, CI의 /tmp는 memory를 쓰는
-  // tmpfs다. 이름은 단계(ORM_STEP, check runner와 owner-check가 준다)를 담으므로, 이 process가 signal로 끝나 finally를
-  // 실행하지 못해도 runner가 단계가 끝날 때 그것을 찾아 지운다.
+  // The run directory goes in the checkout's .runtime/run: test binary copies are large, and CI's /tmp is a memory-backed
+  // tmpfs. The name carries the step (ORM_STEP, given by the check runner and owner-check), so even if this process ends by a signal and never runs its finally,
+  // the runner finds and removes it when the step ends.
   const runs = resolve(new URL('..', import.meta.url).pathname, '.runtime/run');
   mkdirSync(runs, { recursive: true });
   const runDir = mkdtempSync(join(runs, `cargo-test-${process.env.ORM_STEP ?? 'direct'}-${process.pid}-`));
@@ -179,8 +179,8 @@ async function main() {
     }
     const { tests: binaries, programs: programCopies } = readBinaries(runDir);
     if (binaries.length === 0) throw new Error(`cargo test --no-run ${options.join(' ')} built no test binary`);
-    // 실행하기 전에 binary마다 `--list`로 filter가 고르는 test를 센다. 합이 0이면 이름을 잘못 쓴 filter가 아무것도
-    // 실행하지 않고도 모든 binary를 0으로 끝내므로, 실행하지 않고 실패한다.
+    // Before running, count the tests each binary's filter selects with `--list`. If the total is 0, a misspelled filter
+    // would end every binary with 0 without running anything, so it fails without running.
     let selected = 0;
     for (const binary of binaries) {
       const listed = spawnSync(binary.copy, ['--list', ...filters, ...binaryArgs], { cwd: binary.manifestDir, encoding: 'utf8', env: { ...process.env, ...programEnvironment(programCopies), CARGO_MANIFEST_DIR: binary.manifestDir } });
@@ -193,7 +193,7 @@ async function main() {
       return;
     }
     console.log(`cargo-test: ${selected} tests selected in ${binaries.length} test binaries`);
-    // 실패한 binary 뒤에도 나머지 binary를 실행한다(cargo test --no-fail-fast와 같다). 끝에 실패한 binary를 모두 적는다.
+    // Even after a failed binary, run the remaining binaries (same as cargo test --no-fail-fast). At the end, list all failed binaries.
     const failed: { target: string; code: number; signal: NodeJS.Signals | null }[] = [];
     for (const binary of binaries) {
       console.log(`cargo-test: running ${binary.target} (${binary.copy})`);

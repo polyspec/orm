@@ -1,5 +1,5 @@
-//! model_queries: 생성된 model의 count, 정렬과 limit, 합계, 선언된 relation을 시드된
-//! bench database에서 읽는다.
+//! model_queries: reads the generated model's count, sort and limit, totals, and declared relations from the seeded
+//! bench database.
 use super::coverage_env::{connect, run};
 use super::model::{Author, User};
 

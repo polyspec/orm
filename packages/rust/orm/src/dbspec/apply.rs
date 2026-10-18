@@ -181,25 +181,25 @@ impl From<sqlx::Error> for ApplyError {
     }
 }
 
-/// 적용한 plan을 기록하는 table. dbspec 이름에는 `$`가 없으므로 사용자 table과
-/// 겹치지 않고, introspection은 `dbspec$`로 시작하는 table을 빼고 읽는다.
+/// The table that records applied plans. Since dbspec names have no `$`, it does not
+/// collide with user tables, and introspection reads while excluding tables that start with `dbspec$`.
 const HISTORY_TABLE: &str = "dbspec$plans";
 
-/// 현재 database 하나의 lock 이름. MySQL lock 이름은 64자까지이므로
-/// database 이름 대신 그 SHA-256 hex 앞 51자를 붙여 64자로 만든다.
+/// The lock name for the current database. MySQL lock names are up to 64 characters, so
+/// instead of the database name, the first 51 characters of its SHA-256 hex are appended to make 64 characters.
 const MYSQL_LOCK: &str = "CONCAT('dbspec$plans$', LEFT(SHA2(DATABASE(), 256), 51))";
 
-/// 현재 database의 현재 schema 하나의 advisory lock key.
+/// The advisory lock key for the current schema of the current database.
 const POSTGRES_LOCK: &str = "hashtext('dbspec$plans'), hashtext(current_schema())";
 
-/// session error가 밝히는 요구. lock은 server session에 속하므로 명령은 처음부터 끝까지 다른
-/// client와 나누지 않는 server session 하나에서 실행해야 한다. transaction pooler는 statement마다
-/// server connection을 다시 고르므로 그 요구를 지키지 못한다.
+/// The requirement that a session error reveals. A lock belongs to a server session, so the command must run from start to finish on a
+/// server session that is not shared with another client. A transaction pooler
+/// picks a server connection again for each statement, so it cannot meet that requirement.
 const SESSION_REQUIREMENT: &str =
     "apply, recover, rollback and finalize need one server session of their own for the whole run: a direct or session-pooled connection";
 
-/// 현재 server session의 id와, 그 session이 이 명령의 lock을 이미 잡고 있는지를 읽는 query.
-/// lock을 잡기 전에 이미 잡혀 있으면 다른 client가 같은 server session을 쓰고 있다.
+/// A query that reads the current server session's id and whether that session already holds this command's lock.
+/// If the lock is already held before taking it, another client is using the same server session.
 fn session_query(d: Dialect) -> String {
     match d {
         Dialect::MySql => format!("SELECT CONNECTION_ID(), COALESCE(IS_USED_LOCK({MYSQL_LOCK}) = CONNECTION_ID(), 0)"),
@@ -210,7 +210,7 @@ fn session_query(d: Dialect) -> String {
     }
 }
 
-/// statement가 다른 session의 lock을 기다리는 최대 시간(docs/plans.md "Apply"의 lock 대기).
+/// The maximum time a statement waits for another session's lock (lock wait in docs/plans.md "Apply").
 const LOCK_WAIT_SECONDS: i64 = 5;
 
 const APPLYING: &str = "applying";
@@ -357,7 +357,7 @@ pub async fn finalize<C: ApplyConnection + ?Sized>(
     a.close(result, restore).await
 }
 
-/// history table의 한 행.
+/// One row of the history table.
 struct HistoryRow {
     name: String,
     from: String,
@@ -366,14 +366,14 @@ struct HistoryRow {
     step: usize,
 }
 
-/// 명령이 끝에 되돌릴 session 설정.
+/// Session settings the command reverts at the end.
 enum Restore {
     MySql { lock_wait: i64, row_wait: i64 },
     Postgres { lock_timeout: String },
     Sqlite { foreign_keys: i64, legacy: i64, mode: String, busy: i64 },
 }
 
-/// 명령 한 번의 상태.
+/// The state of one command run.
 struct Applier<'a, C: ?Sized> {
     c: &'a mut C,
     d: Dialect,
@@ -381,11 +381,11 @@ struct Applier<'a, C: ?Sized> {
     events: &'a mut ApplyEvents<'a>,
     chain: Vec<&'a Plan>,
     history: Vec<HistoryRow>,
-    /// lock을 잡은 server session의 id(MySQL CONNECTION_ID, PostgreSQL pg_backend_pid).
+    /// The id of the server session holding the lock (MySQL CONNECTION_ID, PostgreSQL pg_backend_pid).
     server_session: i64,
 }
 
-/// dialect의 식별자 quote.
+/// The dialect's identifier quote.
 fn quote(d: Dialect, name: &str) -> String {
     match d {
         Dialect::MySql => format!("`{name}`"),
@@ -397,7 +397,7 @@ fn hash_or_empty(hash: Option<&str>) -> &str {
     hash.unwrap_or("empty")
 }
 
-/// 첫 finalize step의 index.
+/// The index of the first finalize step.
 fn finalize_start(steps: &[PlanStep]) -> usize {
     steps.iter().position(|s| s.finalize).unwrap_or(steps.len())
 }
@@ -419,7 +419,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         }
     }
 
-    /// 한 row를 돌려주는 query의 값들.
+    /// The values of a query that returns one row.
     async fn row(&mut self, query: &str, args: &[CatalogValue]) -> Result<Vec<CatalogValue>, ApplyError> {
         let rows = self.c.query_bound(query, args).await?;
         match <[Vec<CatalogValue>; 1]>::try_from(rows) {
@@ -428,7 +428,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         }
     }
 
-    /// 한 값만 돌려주는 query의 값.
+    /// The value of a query that returns only one value.
     async fn value(&mut self, query: &str) -> Result<CatalogValue, ApplyError> {
         let row = self.row(query, &[]).await?;
         match <[CatalogValue; 1]>::try_from(row) {
@@ -455,8 +455,8 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         Ok(self.c.execute(statement).await?)
     }
 
-    /// lock을 잡기 전에 server session의 id를 기억한다. 그 session이 lock을 이미 잡고 있으면 다른
-    /// client가 같은 server session을 쓰는 것이므로 session error다.
+    /// Remembers the server session's id before taking the lock. If that session already holds the lock, another
+    /// client is using the same server session, so it is a session error.
     async fn open_session(&mut self) -> Result<(), ApplyError> {
         let query = session_query(self.d);
         let row = self.row(&query, &[]).await?;
@@ -480,8 +480,8 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         Ok(())
     }
 
-    /// current가 lock을 잡은 server session인지 확인한다. 다르면 `plan`의 step 앞에서(None이면
-    /// lock에서) session error다.
+    /// Checks that current is the server session holding the lock. A mismatch is a session error before the step of `plan`
+    /// (or at the lock when None).
     fn same_session(&self, plan: Option<(&Plan, usize)>, current: i64) -> Result<(), ApplyError> {
         if current == self.server_session {
             return Ok(());
@@ -492,7 +492,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         })
     }
 
-    /// lock query의 결과 row(lock 결과, server session id)를 나눈다.
+    /// Splits the result row of the lock query (lock result, server session id).
     fn lock_row(query: &str, row: Vec<CatalogValue>) -> Result<(CatalogValue, i64), ApplyError> {
         match <[CatalogValue; 2]>::try_from(row) {
             Ok([got, CatalogValue::Int(current)]) => Ok((got, current)),
@@ -501,13 +501,13 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         }
     }
 
-    /// dialect의 lock을 잡고 session 설정을 바꾼다. 실패하면 그때까지 바꾼 것을
-    /// 되돌리고 놓은 뒤 error를 돌려준다.
+    /// Takes the dialect's lock and changes session settings. On failure, the changes so far
+    /// are reverted and released, then the error is returned.
     async fn open(&mut self) -> Result<Restore, ApplyError> {
         match self.d {
             Dialect::MySql => {
                 self.open_session().await?;
-                // GET_LOCK의 NULL은 lock을 기다리던 중의 error다.
+                // A NULL from GET_LOCK is an error while waiting for the lock.
                 let query = format!("SELECT GET_LOCK({MYSQL_LOCK}, 0), CONNECTION_ID()");
                 let (got, current) = Self::lock_row(&query, self.row(&query, &[]).await?)?;
                 match got {
@@ -539,7 +539,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
             }
             Dialect::Postgres => {
                 self.open_session().await?;
-                // current_schema()가 NULL이면 결과도 NULL이며 error다.
+                // If current_schema() is NULL, the result is also NULL and is an error.
                 let query = format!("SELECT pg_try_advisory_lock({POSTGRES_LOCK}), pg_backend_pid()");
                 let (got, current) = Self::lock_row(&query, self.row(&query, &[]).await?)?;
                 match got {
@@ -592,7 +592,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         }
     }
 
-    /// MySQL과 PostgreSQL의 lock을 놓는다. PostgreSQL에서 아무것도 풀지 않은 unlock은 error다.
+    /// Releases the MySQL and PostgreSQL lock. On PostgreSQL, an unlock that releases nothing is an error.
     async fn release(&mut self) -> Result<(), ApplyError> {
         match self.d {
             Dialect::MySql => self.exec(&format!("DO RELEASE_LOCK({MYSQL_LOCK})")).await,
@@ -605,7 +605,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         }
     }
 
-    /// session 설정을 되돌리고 lock을 놓는다. 정리의 실패는 앞선 error와 함께 알린다.
+    /// Reverts session settings and releases the lock. A cleanup failure is reported together with the earlier error.
     async fn close(&mut self, result: Result<(), ApplyError>, restore: Restore) -> Result<(), ApplyError> {
         match restore {
             Restore::MySql { lock_wait, row_wait } => {
@@ -633,7 +633,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
                     let done = self.exec(&statement).await;
                     result = settle(result, done);
                 }
-                // locking mode를 되돌린 뒤 한 번 읽어야 exclusive lock이 풀린다.
+                // After reverting the locking mode, one read is needed for the exclusive lock to be released.
                 let read = self.value("SELECT COUNT(*) FROM sqlite_master").await.map(drop);
                 result = settle(result, read);
                 let done = self.exec(&format!("PRAGMA busy_timeout = {busy}")).await;
@@ -741,7 +741,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         self.history.iter().find(|r| r.name == p.name()).map(|r| (r.state.clone(), r.step)).expect("a recorded plan has a history row")
     }
 
-    /// history table을 없을 때 만든다.
+    /// Creates the history table if it does not exist.
     async fn create_history(&mut self) -> Result<(), ApplyError> {
         let (integer, text, tail) = match self.d {
             Dialect::MySql => ("INT", "varchar(71) CHARACTER SET ascii COLLATE ascii_bin", " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"),
@@ -788,8 +788,8 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         Ok(())
     }
 
-    /// history를 읽어 기록된 plan 수를 돌려준다. 기록은 chain의 앞부분이어야 하고,
-    /// 마지막 앞의 row는 applied나 done이어야 한다.
+    /// Reads history and returns the number of recorded plans. The records must be a prefix of the chain,
+    /// and every row before the last must be applied or done.
     async fn position(&mut self) -> Result<usize, ApplyError> {
         self.read_history().await?;
         let mut position = 0;
@@ -823,7 +823,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         Ok(position)
     }
 
-    /// 중단된 plan이 없고 catalog가 기록한 schema와 같을 때 기록된 plan 수를 돌려준다.
+    /// Returns the number of recorded plans when there is no interrupted plan and the catalog matches the recorded schema.
     async fn settled(&mut self) -> Result<usize, ApplyError> {
         let position = self.position().await?;
         let mut want = None;
@@ -839,8 +839,8 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         Ok(position)
     }
 
-    /// database의 introspection이 `want` schemaHash(None이면 빈 database)이고
-    /// 미지원 객체가 없는지 확인한다. 다르면 그 차이를 돌려준다.
+    /// The database's introspection has the `want` schemaHash (None means an empty database), and
+    /// there are no unsupported objects. If it differs, returns that difference.
     async fn verify(&mut self, want: Option<&str>) -> Result<(), String> {
         let introspection = introspect(&mut *self.c, self.d, "schema").await.map_err(|e| e.to_string())?;
         if let Some(u) = introspection.unsupported.first() {
@@ -865,15 +865,15 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         Ok(())
     }
 
-    /// chain에서 plan의 앞 plan target을 source로 step을 쓴다.
+    /// Writes the steps in the chain, using the target of the plan before this plan as the source.
     fn steps(&self, p: &Plan) -> Result<Vec<PlanStep>, ApplyError> {
         let index = self.chain.iter().position(|c| std::ptr::eq(*c, p));
         let source = index.filter(|&i| i > 0).map(|i| self.chain[i - 1].schema());
         plan_steps(source, p, self.d).map_err(|diagnostics| ApplyError::Chain { plan: Some(p.name().to_owned()), message: diagnostics[0].message.clone() })
     }
 
-    /// 중단된 row의 step을 catalog의 효과로 정한다. forward이면 앞으로, 아니면 뒤로
-    /// 이어 갈 위치다(docs/plans.md "Apply"의 recover).
+    /// Decides the step of the interrupted row from the catalog's effect. Moves forward if forward, otherwise backward
+    /// to the position to continue from (recover in docs/plans.md "Apply").
     async fn resolve(&mut self, p: &Plan, state: &str, k: usize, steps: &[PlanStep], forward: bool) -> Result<usize, ApplyError> {
         if k > steps.len() {
             return Err(ApplyError::Chain {
@@ -888,7 +888,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         };
         let e = &steps[uncertain].effect;
         let held = e.kind != "repeat" && self.effect(p, uncertain, Some(e)).await?;
-        // 앞으로 갈 때 repeat step은 다시 실행하고, 뒤로 갈 때는 그 rollback을 다시 실행한다.
+        // When moving forward, repeat steps run again; when moving backward, their rollback runs again.
         let took = held || (!forward && e.kind == "repeat");
         Ok(match (rolling, took) {
             (true, true) => k,
@@ -898,7 +898,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         })
     }
 
-    /// plan의 row를 state와 step으로 쓴다. row가 없으면 만든다.
+    /// Writes the plan's row as state and step. Creates the row if it does not exist.
     async fn record(&mut self, p: &Plan, state: &str, step: usize, steps: usize) -> Result<(), ApplyError> {
         let count = |n: usize| i64::try_from(n).map_err(|_| ApplyError::Database(protocol(format!("the step {n} does not fit a history row"))));
         if !self.history.iter().any(|r| r.name == p.name()) {
@@ -915,7 +915,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
                 self.q("applied_at"),
                 placeholders.join(", ")
             );
-            // applied_at은 tool clock의 UTC 시각을 소수 여섯 자리로 버린 text다 (docs/plans.md "Apply").
+            // applied_at is the tool clock's UTC time truncated to six fractional digits, as text (docs/plans.md "Apply").
             let applied_at = (self.now)().format("%Y-%m-%dT%H:%M:%S%.6fZ").to_string();
             let args = [
                 CatalogValue::Text(p.name().to_owned()),
@@ -957,7 +957,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         Ok(self.c.execute_bound(&update, &[CatalogValue::Int(step), CatalogValue::Text(p.name().to_owned())]).await?)
     }
 
-    /// plan 하나를 finalize step 앞까지 적용하고 검증한다.
+    /// Applies one plan up to the finalize step and verifies it.
     async fn apply_plan(&mut self, p: &Plan) -> Result<(), ApplyError> {
         let steps = self.steps(p)?;
         self.emit(ApplyEventKind::Plan, p, 0, steps.len(), "")?;
@@ -970,7 +970,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         self.forward(p, &steps, 0).await
     }
 
-    /// step start부터 finalize step 앞까지 실행하고 검증한 뒤 row를 applied로 바꾼다.
+    /// Runs from step start up to the finalize step, verifies, then changes the row to applied.
     async fn forward(&mut self, p: &Plan, steps: &[PlanStep], start: usize) -> Result<(), ApplyError> {
         let end = finalize_start(steps);
         for (i, s) in steps.iter().enumerate().take(end).skip(start) {
@@ -988,7 +988,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         self.emit(ApplyEventKind::Done, p, 0, steps.len(), "")
     }
 
-    /// finalize step을 start부터 실행하고 row를 done으로 바꾼다.
+    /// Runs the finalize step from start and changes the row to done.
     async fn finalize_from(&mut self, p: &Plan, steps: &[PlanStep], start: usize) -> Result<(), ApplyError> {
         for (i, s) in steps.iter().enumerate().skip(start) {
             self.run(p, steps.len(), i, &s.statement).await?;
@@ -998,8 +998,8 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         self.emit(ApplyEventKind::Done, p, 0, steps.len(), "")
     }
 
-    /// step i의 statement 하나를 event와 함께 실행한다. statement 앞에서 server session을
-    /// 확인한다(SQLite connection은 file 하나의 connection이다).
+    /// Runs one statement of step i together with its event. Before the statement, the server session
+    /// is checked (a SQLite connection is one file's connection).
     async fn run(&mut self, p: &Plan, steps: usize, i: usize, statement: &str) -> Result<(), ApplyError> {
         self.emit(ApplyEventKind::Statement, p, i, steps, statement)?;
         let query = match self.d {
@@ -1026,7 +1026,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         self.emit(ApplyEventKind::Applied, p, i, steps, statement)
     }
 
-    /// SQLite에서 foreign key를 어기는 row가 없는지 확인한다.
+    /// Checks on SQLite that no row violates a foreign key.
     async fn foreign_key_check(&mut self, p: &Plan) -> Result<(), ApplyError> {
         if self.d != Dialect::Sqlite {
             return Ok(());
@@ -1037,8 +1037,8 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         }
     }
 
-    /// 적용한 plan의 rollback이 non-null로 되돌릴 column의 NULL row를 default로
-    /// 채우거나, default가 없으면 nulls error로 멈춘다(docs/plans.md "Steps").
+    /// For the NULL rows of a column that the applied plan's rollback would revert to non-null,
+    /// fills them with the default, or stops with a nulls error if there is no default (docs/plans.md "Steps").
     async fn null_checks(&mut self, p: &Plan, steps: &[PlanStep]) -> Result<(), ApplyError> {
         for (i, s) in steps.iter().enumerate() {
             for c in &s.null_checks {
@@ -1060,7 +1060,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         Ok(())
     }
 
-    /// 효과가 지금 database에 있는지 알려 준다. 읽지 못하면 step의 failed error다.
+    /// Reports whether the effect is now in the database. If it cannot be read, it is the step's failed error.
     async fn effect(&mut self, p: &Plan, step: usize, e: Option<&Effect>) -> Result<bool, ApplyError> {
         let e = e.expect("a step with a restore statement has its effect");
         effect_holds(&mut *self.c, self.d, e).await.map_err(|source| ApplyError::Failed { plan: p.name().to_owned(), step, statement: String::new(), source })
@@ -1076,8 +1076,8 @@ fn irreversible(p: &Plan, steps: &[PlanStep], i: usize) -> ApplyError {
     ApplyError::Irreversible { plan: p.name().to_owned(), step: i, message }
 }
 
-/// `result`에 정리 statement의 결과를 더한다. 앞선 error가 있으면 정리 실패를
-/// 그 error와 함께 돌려준다.
+/// Adds the cleanup statement's result to `result`. If there is an earlier error, the cleanup failure
+/// is returned together with that error.
 fn settle(result: Result<(), ApplyError>, cleanup: Result<(), ApplyError>) -> Result<(), ApplyError> {
     match (result, cleanup) {
         (result, Ok(())) => result,
@@ -1086,12 +1086,12 @@ fn settle(result: Result<(), ApplyError>, cleanup: Result<(), ApplyError>) -> Re
     }
 }
 
-/// 기대한 모양이 아닌 결과의 error.
+/// The error for a result that does not have the expected shape.
 fn protocol(message: String) -> sqlx::Error {
     sqlx::Error::Protocol(message)
 }
 
-/// 값을 placeholder 순서로 bind한다.
+/// Binds the values in placeholder order.
 fn bound<'q, DB: sqlx::Database>(query: &str, args: &[CatalogValue]) -> sqlx::query::Query<'q, DB, DB::Arguments>
 where
     for<'t> i64: sqlx::Encode<'t, DB> + sqlx::Type<DB>,

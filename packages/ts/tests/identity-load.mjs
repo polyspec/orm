@@ -1,10 +1,10 @@
-// contracts/fixtures/identity_load.json의 공유 case를 TypeScript client로 실행한다. case id 하나가
-// case 하나(node:test의 test <case id>)다. compile case는 세 dialect의 Engine으로 request를 compile해
-// statement나 오류를 비교하고, execute case는 MySQL, PostgreSQL, SQLite마다 새 case
-// database(case-database.mjs)에 fixture를 설치한 뒤 각 step의 request를 그 database의 Engine으로
-// compile해 Db.execute로 실행하고, 마지막에 file의 read SQL을 native 연결로 실행해 load_probe의 행을
-// 비교한다(docs/usage.md "Execute a compiled statement"). 한 dialect가 실패해도 나머지 dialect를
-// 실행하고 실패를 모두 보고한다.
+// Runs the shared cases of contracts/fixtures/identity_load.json with the TypeScript client. One case ID
+// is one case (a node:test test <case id>). A compile case compiles the request with the Engines of the three dialects
+// and compares the statements or errors. An execute case runs on a new case
+// database (case-database.mjs) for each of MySQL, PostgreSQL, and SQLite, installs the fixture, then compiles each step's request with that database's Engine
+// and runs it with Db.execute. At the end, it runs the file's read SQL over a native connection and
+// compares the load_probe rows (docs/usage.md "Execute a compiled statement"). Even if one dialect fails, the rest of the dialects
+// still run, and all failures are reported.
 //
 // Usage: node packages/ts/tests/identity-load.mjs [case ...]
 // (after npm run typescript:build; it reads ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN of make test-servers)
@@ -32,15 +32,15 @@ if (cases.some(c => c.operation === 'execute')) {
   }
 }
 
-/** request에 fixture의 manifest_hash를 더해 dialect의 Engine으로 compile한다. */
+/** Adds the fixture's manifest_hash to the request and compiles it with the dialect's Engine. */
 function compile(dialect, request) {
   if ('manifest_hash' in request) throw new Error('the case request already holds manifest_hash');
   return new Engine(model, dialect).compile({ manifest_hash: manifest.manifestHash, ...request });
 }
 
-/** compile된 plan step 하나의 role, bind slot(출처, param slot의 번호, dbspec type), SQL, table이다. */
+/** The role, bind slot (source, param slot number, dbspec type), SQL, and table of one compiled plan step. */
 function statementOf(step) {
-  // key 순서는 case file의 순서(이름순)다.
+  // The key order is the order in the case file (by name).
   const slots = step.bind_slots.map(slot => {
     const s = { from: slot.from };
     if (slot.from === 'param') s.param = slot.param;
@@ -50,7 +50,7 @@ function statementOf(step) {
   return { role: step.role, slots, sql: step.sql, tables: step.tables };
 }
 
-/** 오류가 code와 message의 OrmError인지다. OrmError의 message는 `<code>: <message>`다. */
+/** The error as an OrmError with its code and message. The message of an OrmError is `<code>: <message>`. */
 function sameError(error, code, message) {
   return error instanceof OrmError && error.code === code && error.message === `${code}: ${message}`;
 }
@@ -59,13 +59,13 @@ function errorText(error) {
   return error instanceof Error ? `${error.name} ${error.message}` : String(error);
 }
 
-/** case의 정수는 이 client의 정수 값 number다. */
+/** The case's integer is this client's integer value, a number. */
 function caseParam(value) {
   if (typeof value === 'number' && !Number.isSafeInteger(value)) throw new Error(`parameter ${value} is no integer`);
   return value;
 }
 
-/** file의 read SQL을 native 연결로 실행해 [seq, label] 행을 돌려준다. seq는 number다. */
+/** Runs the file's read SQL over a native connection and returns [seq, label] rows. seq is a number. */
 async function readRows(dialect, database) {
   const sql = doc.read[dialect];
   let rows;
@@ -78,7 +78,7 @@ async function readRows(dialect, database) {
     try { rows = (await client.query({ text: sql, rowMode: 'array' })).rows; } finally { await client.end(); }
   } else {
     const db = new DatabaseSync(database.path);
-    // node:sqlite는 행을 select 순서의 column을 key로 한 object로 돌려준다.
+    // node:sqlite returns each row as an object keyed by the columns in select order.
     try { rows = db.prepare(sql).all().map(row => Object.values(row)); } finally { db.close(); }
   }
   return rows.map(([seq, label]) => {
@@ -88,7 +88,7 @@ async function readRows(dialect, database) {
   });
 }
 
-/** compile case의 한 dialect를 확인하고 문제를 problems에 더한다. */
+/** Checks one dialect of a compile case and adds any problem to problems. */
 function compileCase(c, dialect, step, problems) {
   const want = c.expected.error === undefined ? 'statements' : `${c.expected.error} ${JSON.stringify(c.expected.message)}`;
   let plan;
@@ -109,7 +109,7 @@ function compileCase(c, dialect, step, problems) {
   else step(`${dialect}: ${plan.steps.length} statement(s) equal`);
 }
 
-/** statement event의 kind다: SQL 동사이고, MySQL identity restart의 ALTER는 schema다(docs/usage.md "Statement events"). */
+/** The kind of a statement event: the SQL verb, and the ALTER of a MySQL identity restart is schema (docs/usage.md "Statement events"). */
 function eventKind(sql) {
   const kinds = { ALTER: 'schema', INSERT: 'insert', UPDATE: 'update', DELETE: 'delete', SELECT: 'select' };
   const verb = sql.split(' ', 1)[0];
@@ -117,7 +117,7 @@ function eventKind(sql) {
   return kinds[verb];
 }
 
-/** execute case를 dialect의 새 case database에서 실행하고 행을 비교한다. 실패는 던진다. */
+/** Runs an execute case on a new case database for the dialect and compares rows. Failures are thrown. */
 async function executeCase(c, dialect, step) {
   const report = text => step(`${dialect}: ${text}`);
   await withCaseDatabase(dialect, report, async database => {
@@ -134,7 +134,7 @@ async function executeCase(c, dialect, step) {
         try {
           await db.execute(plan.steps[0], s.params.map(caseParam));
         } catch (thrown) { error = thrown; }
-        // 실행한 statement는 SQL 동사의 kind로 event 하나를 publish하고, 거부한 step은 statement를 보내지 않는다.
+        // An executed statement publishes one event with the SQL verb as its kind, and a rejected step sends no statement.
         const want = s.error === undefined ? [{ sql: plan.steps[0].sql, kind: eventKind(plan.steps[0].sql), tables: plan.steps[0].tables }] : [];
         const got = events.map(e => ({ sql: e.sql, kind: e.kind, tables: [...e.tables] }));
         if (JSON.stringify(got) !== JSON.stringify(want)) throw new Error(`step ${i} ${s.request.kind}: events ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);

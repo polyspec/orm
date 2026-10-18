@@ -1,5 +1,5 @@
-// MySQL의 현재 database를 catalog으로 읽는다 (docs/dialects.md "Introspection").
-// 모든 query는 현재 database 전체를 한 번에 읽는다.
+// Reads MySQL's current database as a catalog (docs/dialects.md "Introspection").
+// Every query reads the whole current database at once.
 import { present } from '../present.js';
 import { actionName, Catalog, quote, tableTypes, type CatalogQuery, type IColumn, type IForeignKey, type IKey, type ITable } from './introspect_catalog.js';
 import { CheckDecodeError, decodeCheck } from './introspect_check.js';
@@ -21,8 +21,8 @@ rc.MATCH_OPTION, k.COLUMN_NAME, k.REFERENCED_COLUMN_NAME FROM information_schema
 JOIN information_schema.KEY_COLUMN_USAGE k ON k.CONSTRAINT_SCHEMA = rc.CONSTRAINT_SCHEMA
 AND k.CONSTRAINT_NAME = rc.CONSTRAINT_NAME AND k.TABLE_NAME = rc.TABLE_NAME
 WHERE rc.CONSTRAINT_SCHEMA = DATABASE() ORDER BY rc.TABLE_NAME, rc.CONSTRAINT_NAME, k.ORDINAL_POSITION`;
-// CHECK_CONSTRAINTS와 TABLE_CONSTRAINTS의 join은 table 수에 비례해 느려지므로(2000 table에서
-// 60초 이상) 두 query로 읽고 이름으로 잇는다. MySQL의 CHECK 이름은 database 안에서 유일하다.
+// Joining CHECK_CONSTRAINTS and TABLE_CONSTRAINTS slows down in proportion to the number of tables (over
+// 60 seconds at 2000 tables), so two queries are read and joined by name. MySQL's CHECK names are unique within a database.
 const CHECK_CLAUSES_QUERY = `SELECT CONSTRAINT_NAME, CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS
 WHERE CONSTRAINT_SCHEMA = DATABASE() ORDER BY CONSTRAINT_NAME`;
 const CHECKS_QUERY = `SELECT TABLE_NAME, CONSTRAINT_NAME, ENFORCED FROM information_schema.TABLE_CONSTRAINTS
@@ -48,7 +48,7 @@ export async function readMySQL(query: CatalogQuery): Promise<Catalog> {
     }
   }
   const columns = new Map<string, Map<string, IColumn>>();
-  // table: column: renderer CHECK가 있어야 정해지는 type 후보
+  // table: column: renderer CHECK candidate types that are determined only when a CHECK exists
   const pending = new Map<string, Map<string, string>>();
   for (const r of await query(COLUMNS_QUERY)) {
     const [table, name, columnType, nullable, dflt] = [r.text(0), r.text(1), r.text(2), r.text(3), r.nullableText(4)];
@@ -127,7 +127,7 @@ export async function readMySQL(query: CatalogQuery): Promise<Catalog> {
     }
     t.checks.push({ name, predicate });
   }
-  // renderer CHECK이 있어야 하는 type은 그 CHECK이 없으면 dbspec type이 아니다.
+  // A type that requires the renderer CHECK is not a dbspec type without that CHECK.
   for (const [table, cols] of pending) {
     for (const [column, need] of cols) {
       if (checked.get(table)?.has(column)) continue;
@@ -148,9 +148,9 @@ export async function readMySQL(query: CatalogQuery): Promise<Catalog> {
 }
 
 /**
- * COLUMN_TYPE과 character set, collation을 dbspec type으로 읽는다. needsCheck는
- * renderer CHECK이 있어야 그 type이 되는 경우의 catalog type이다. dbspec type이
- * 아니면 null이다.
+ * Reads COLUMN_TYPE, the character set and the collation as a dbspec type. needsCheck is
+ * the catalog type for the case where the type becomes a dbspec type only when a renderer CHECK exists. The dbspec type
+ * is null otherwise.
  */
 function mysqlType(columnType: string, charset: string, collation: string): { type: DbspecType; needsCheck: string } | null {
   const m = TYPE_PATTERN.exec(columnType);
@@ -189,26 +189,26 @@ function mysqlType(columnType: string, charset: string, collation: string): { ty
 }
 
 /**
- * character set introducer를 뺀 CHECK_CLAUSE다. ALTER TABLE은 CHECK_CLAUSE를 다시
- * 쓰며 introducer를 바꾸거나 빼므로(probe mysql.check.alter_rewrites_introducers)
- * renderer CHECK은 introducer 없이 비교한다. 이 template의 literal은 ASCII이므로
- * 의미가 같다.
+ * The CHECK_CLAUSE with the character set introducer removed. ALTER TABLE writes the CHECK_CLAUSE again
+ * and changes or removes the introducers when it does so (probe mysql.check.alter_rewrites_introducers),
+ * so the renderer CHECK is compared without introducers. The literals of this template are ASCII, so
+ * they have the same meaning.
  */
 function withoutIntroducers(clause: string): string {
-  // ALTER TABLE은 time(p) column과 만나는 time literal에 0으로 된 p 자리 소수도 붙이므로
-  // (probe mysql.check.alter_writes_time_precision) 그 소수도 뺀다.
+  // ALTER TABLE also attaches a zero-valued fractional part of p digits to time literals that meet a time(p) column, so
+  // (probe mysql.check.alter_writes_time_precision) that fractional part is removed too.
   return clause.replace(/_[a-z0-9]+\\'/g, "\\'").replace(/\\'(\d\d:\d\d:\d\d)\.0+\\'/g, "\\'$1\\'");
 }
 
-/** CHECK_CLAUSE가 0x80 이상의 byte를 가지면 true다. MySQL 8.4는 non-ASCII literal을 두 번 인코딩해 보여 준다. */
+/** True if the CHECK_CLAUSE has a byte of 0x80 or more. MySQL 8.4 shows non-ASCII literals encoded twice. */
 function hasNonAscii(clause: string): boolean {
   for (let i = 0; i < clause.length; i++) if (clause.charCodeAt(i) > 0x7f) return true;
   return false;
 }
 
 /**
- * CHECK_CLAUSE가 non-ASCII를 깨뜨린 check의 본문을 SHOW CREATE TABLE에서 읽는다. table별로
- * SHOW CREATE TABLE을 한 번만 읽으며 shown에 모은다. 결과는 CHECK_CLAUSE 형식이다.
+ * Reads from SHOW CREATE TABLE the body of a check whose CHECK_CLAUSE garbled non-ASCII text. For each table
+ * reads SHOW CREATE TABLE only once and collects into shown. The result is in CHECK_CLAUSE form.
  */
 async function shownCheck(
   query: CatalogQuery,
@@ -229,7 +229,7 @@ async function shownCheck(
   return clause;
 }
 
-/** SHOW CREATE TABLE 문장의 모든 CHECK 본문을 이름별로 CHECK_CLAUSE 형식으로 돌려준다. */
+/** Returns the bodies of all CHECKs in a SHOW CREATE TABLE statement, by name, in CHECK_CLAUSE form. */
 export function createChecks(create: string): Map<string, string> {
   const checks = new Map<string, string>();
   const pattern = /CONSTRAINT `([^`]+)` CHECK \(/g;
@@ -255,7 +255,7 @@ export function createChecks(create: string): Map<string, string> {
   return checks;
 }
 
-/** renderer CHECK이 CHECK_CLAUSE에 남는 형식이다 (docs/dialects.md "Introspection", "Checks"). */
+/** The form in which a renderer CHECK remains in CHECK_CLAUSE (docs/dialects.md "Introspection", "Checks"). */
 function rendererCheck(col: IColumn): string {
   const c = '`' + col.name + '`';
   switch (col.type.kind) {
@@ -269,14 +269,14 @@ function rendererCheck(col: IColumn): string {
   return '';
 }
 
-/** DEFAULT_GENERATED default가 그 column의 renderer 시각 default인지 알려 준다. */
+/** Tells whether a DEFAULT_GENERATED default is the renderer's time default for that column. */
 function mysqlNow(text: string, type: DbspecType): boolean {
   if (type.kind !== 'datetime') return false;
   if (type.precision === 0) return text === 'CURRENT_TIMESTAMP';
   return text === `CURRENT_TIMESTAMP(${type.precision})`;
 }
 
-/** escape를 푼 COLUMN_DEFAULT 값을 dbspec literal로 쓴다. parse가 canonical form과 유효성을 정한다. */
+/** Writes the COLUMN_DEFAULT value with its escape removed as a dbspec literal. parse decides the canonical form and validity. */
 function mysqlDefault(value: string, type: DbspecType): string {
   switch (type.kind) {
     case 'bool':
@@ -335,7 +335,7 @@ async function readIndexes(query: CatalogQuery, c: Catalog): Promise<void> {
 
 async function readForeignKeys(query: CatalogQuery, c: Catalog): Promise<void> {
   let current: { fk: IForeignKey; table: ITable } | null = null;
-  // 보고한 key의 나머지 column row는 건너뛴다.
+  // The remaining column rows of the reported key are skipped.
   let skipped = '';
   for (const r of await query(FOREIGN_KEYS_QUERY)) {
     const [table, name, refTable, onDelete, onUpdate, match, column, refColumn] = [r.text(0), r.text(1), r.text(2), r.text(3), r.text(4), r.text(5), r.text(6), r.text(7)];
@@ -363,7 +363,7 @@ async function readForeignKeys(query: CatalogQuery, c: Catalog): Promise<void> {
   if (current !== null) current.table.fks.push(current.fk);
 }
 
-/** trigger를 renderer statement 형식으로 다시 쓰고 알아본다. */
+/** Rewrites a trigger in the renderer statement form and recognizes it. */
 async function readTriggers(query: CatalogQuery, c: Catalog): Promise<void> {
   const triggers = new Map<string, ITrigger[]>();
   for (const r of await query(TRIGGERS_QUERY)) {

@@ -100,9 +100,9 @@ func dbName(t *testing.T, dsn string) string {
 	return strings.TrimPrefix(u.Path, "/")
 }
 
-// TestInstallAppliesRenderedStatements는 dbspec document set을 연결의
-// dialect로 render한 statement를 적용하는지 확인한다. 두 번째 install은 아무것도
-// 바꾸지 않고, set의 table이 일부만 있으면 CONFIG다.
+// TestInstallAppliesRenderedStatements checks that the statements rendered for the dbspec document set
+// in the connection's dialect are applied. The second install changes nothing,
+// and if only some of the set's tables exist, it is CONFIG.
 func TestInstallAppliesRenderedStatements(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "audit")
@@ -139,7 +139,7 @@ func TestInstallAppliesRenderedStatements(t *testing.T) {
 				raw = openNative(t, driver, dsn)
 			}
 			defer raw.Close()
-			// render된 trigger가 database에 있으면 statement가 적용된 것이다.
+			// If the rendered trigger exists in the database, the statement was applied.
 			query := map[string]string{
 				"sqlite":   "SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger'",
 				"mysql":    "SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE()",
@@ -168,9 +168,9 @@ func TestInstallAppliesRenderedStatements(t *testing.T) {
 	}
 }
 
-// changedDatabase는 contracts/fixtures/install/changed_database.json이다. case마다 document를
-// 설치한 database에 statement로 ORM 밖에서 바꾸면, 같은 set의 install은 dialect마다 message의
-// CONFIG이고 remaining query는 바뀐 database를 읽는다.
+// changedDatabase is contracts/fixtures/install/changed_database.json. For each case, the document is
+// changed with a statement from outside the ORM on the database where the set was installed; then installing the same set gives, for each dialect, a message
+// that is CONFIG, and the remaining query reads the changed database.
 type changedDatabase struct {
 	Feature string `json:"feature"`
 	Cases   []struct {
@@ -186,9 +186,9 @@ type changedDatabase struct {
 	} `json:"cases"`
 }
 
-// TestInstallVerifiesTheDatabase는 install이 table 이름만이 아니라 database 전체를 set과
-// 비교하는지 확인한다(docs/schema.md "Schema installation"). ORM 밖에서 바꾼 database에 같은
-// set을 다시 install하면 그 차이를 담은 CONFIG이고 database는 그대로다.
+// TestInstallVerifiesTheDatabase checks that install compares the whole database, not only the table names,
+// with the set (docs/schema.md "Schema installation"). Installing the same set again on a database changed outside the ORM
+// gives CONFIG that carries the differences, and the database is left as it is.
 func TestInstallVerifiesTheDatabase(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	text, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "fixtures", "install", "changed_database.json"))

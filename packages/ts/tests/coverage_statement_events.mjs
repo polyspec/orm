@@ -1,8 +1,8 @@
-// statement_events coverage: feature-check가 고른 database(ORM_FEATURE_DATABASE)에서
-// tests/events/vectors.json의 모든 case를 새 case database(case-database.mjs)로 실행하고 기대
-// event와 비교한다. bench database는 읽거나 쓰지 않는다. 출력은 통과한 case의 줄뿐이다.
-// case ID 없이(parity check의 node --test) 실행하면 vectors.json의 case마다 그 ID의 test가
-// MySQL, PostgreSQL, SQLite에서 각각 새 case database로 그 case를 실행한다.
+// statement_events coverage: on the database that feature-check chose (ORM_FEATURE_DATABASE),
+// every case of tests/events/vectors.json runs in a new case database (case-database.mjs), and each
+// event is compared with the expected event. The bench database is not read or written. The output is only the lines of the passing cases.
+// When run without a case ID (the parity check's node --test), a test with that ID is registered for each case of vectors.json,
+// and each runs that case in a new case database on MySQL, PostgreSQL, and SQLite.
 import { DATABASE } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
 import { runCases } from './coverage_case.mjs';

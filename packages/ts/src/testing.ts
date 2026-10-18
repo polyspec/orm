@@ -1,24 +1,24 @@
-// TypeScript client의 test entry point다. package.json은 이것을 condition
-// `orm-test`에서만 `@polyspec/orm/testing`으로 export하므로, process는
-// Node가 `--conditions=orm-test`로 실행될 때만 이것을 resolve한다. package entry
-// point는 이것을 export하지 않는다.
+// The test entry point of the TypeScript client. package.json maps this to `@polyspec/orm/testing` only under the condition
+// `orm-test`, so the process
+// resolves this only when Node runs with `--conditions=orm-test`. The package entry
+// point does not export it.
 import { armFixedClock, armRollbackFault, armStatementFault, readLastAffected, type Db } from './database.js';
 
 /**
- * db의 connection에 test fault를 설정한다: callback이 실패한 다음 transaction의
- * rollback은 실행된 뒤 rollback 오류로 FAULT 오류를 보고하므로, transaction은
- * callback 오류와 fault를 가진 ROLLBACK 오류를 throw한다. fault는 그런 rollback이
- * 소비할 때까지 남는다.
+ * Sets a test fault on the connection of db: after the callback fails, the next transaction's
+ * rollback runs, and then reports a FAULT error as the rollback error, so the transaction
+ * throws the callback error and a ROLLBACK error that carries the fault. The fault remains until such a rollback
+ * consumes it.
  */
 export function failNextRollback(db: Db): void {
   armRollbackFault(db);
 }
 
 /**
- * db의 connection에 statement fault를 설정한다: 다음 query, model 또는 schema statement는
- * 보내지 않고 code와 message의 OrmError로 거부되며, 그 statement의 event가 오류를 싣는다.
- * transaction control statement는 fault를 소비하지 않는다. 다시 설정하면 이전 fault를 대체한다.
- * code나 message가 빈 문자열이면 TypeError를 throw하고 아무것도 설정하지 않는다.
+ * Sets a statement fault on the connection of db: the next query, model, or schema statement is
+ * not sent; it is rejected with an OrmError of the given code and message, and that statement's event carries the error.
+ * Transaction control statements do not consume the fault. Setting it again replaces the previous fault.
+ * If code or message is an empty string, it throws a TypeError and sets nothing.
  */
 export function failNextStatement(db: Db, code: string, message: string): void {
   if (typeof code !== 'string' || code === '') throw new TypeError('failNextStatement: code must be a nonempty string');
@@ -27,8 +27,8 @@ export function failNextStatement(db: Db, code: string, message: string): void {
 }
 
 /**
- * db의 connection의 executor clock을 clock 시각으로 고정한다. clock은 UTC의 `YYYY-MM-DD HH:MM:SS.ffffff` text다.
- * 형식이 다르면 TypeError를 throw하고 아무것도 설정하지 않는다(docs/protocol.md "Test clock").
+ * Fixes the executor clock of the connection of db to the clock time. clock is UTC text in the form YYYY-MM-DD HH:MM:SS.ffffff.
+ * If the form differs, it throws a TypeError and sets nothing (docs/protocol.md "Test clock").
  */
 export function fixClock(db: Db, clock: string): void {
   const m = typeof clock === 'string' ? /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})\.(\d{6})$/.exec(clock) : null;
@@ -38,7 +38,7 @@ export function fixClock(db: Db, clock: string): void {
 }
 
 /**
- * db의 connection에서 마지막으로 성공한 write 결과의 affected다. 성공한 write가 없었으면 null이다
+ * The affected count of the last successful write result on the connection of db. If there has been no successful write, null.
  * (docs/protocol.md "Test write result").
  */
 export function lastAffected(db: Db): number | null {

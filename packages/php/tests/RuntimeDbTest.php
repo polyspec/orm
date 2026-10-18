@@ -12,7 +12,7 @@ declare(strict_types=1);
 // through ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN; the test fails when either
 // is unset.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RuntimeDbTest.php [--filter <case>]
-// bench model은 읽지 않는다: 이 test는 자기 document set의 model만 쓴다.
+// The bench model is not read: this test uses only the model of its own document set.
 require_once __DIR__ . '/case_database.php';
 require_once __DIR__ . '/restore_case.php';
 require_once __DIR__ . '/audit_case.php';
@@ -45,7 +45,7 @@ final class RuntimeDbTest extends TestCase
 
         $values = "dbspec 1 runtime_values\n\ntable sample {\n  seq i64 identity\n  level i16\n  amount i32 default 7\n  label varchar(16) default 'x'\n"
             . "  note text null\n  day date null\n  clock time(3) null\n  created datetime(6) default now\n  token uuid null\n  primary key (seq)\n}\n";
-        // audit.dbs와 restore.dbs는 둘 다 audit table을 선언하므로 따로 생성하고 case마다 하나만 설치한다.
+        // audit.dbs and restore.dbs both declare an audit table, so each is generated separately and only one is installed per case.
         $sets = [
             'Polyspec\\Orm\\Tests\\RuntimeDb' => ['audit.dbs' => (string) file_get_contents("$root/contracts/fixtures/audit.dbs"), 'values.dbs' => $values],
             // The runtime restore is its own manifest: the coverage restore of the same fixture is generated in this process too, and
@@ -79,7 +79,7 @@ final class RuntimeDbTest extends TestCase
         return 'no error';
     }
 
-    /** actor 'default'를 audit 값으로 주는 audit source로 dsn에 연결하고 $namespace의 document set을 설치한다. */
+    /** Connects with dsn, using the audit source that gives 'default' as the audit value, and installs the document set of $namespace. */
     private static function database(string $dsn, string $namespace): Db
     {
         $db = Orm::connect($dsn, auditConfig('default'));
@@ -112,7 +112,7 @@ final class RuntimeDbTest extends TestCase
         self::want((new Sample)($db)->getCount() === 2, 'the rejected insert stays out of the database');
     }
 
-    // audit transaction은 audit 기록 하나를 삽입하고 audit table의 write가 그 key를 쓴다(audit_case.php).
+    // An audit transaction inserts one audit record, and the write to the audit table writes its key (audit_case.php).
     private static function case_audit_record_of_a_transaction(Db $db, string $dsn): void {
         auditCase($db, $dsn, 'Polyspec\\Orm\\Tests\\RuntimeDb');
         $assigned = self::errorCode(fn() => $db->transaction(fn() => (new Item)->setTitle('a')->setAuditSeq(1)->create(), audit: [], retry: 0));
@@ -120,7 +120,7 @@ final class RuntimeDbTest extends TestCase
         self::want((new Item)($db)->getCount() === 0, 'soft delete hides the row');
     }
 
-    // restore는 soft delete한 행을 primary key나 unique key로 되돌린다(restore_case.php).
+    // restore returns a soft-deleted row by its primary key or unique key (restore_case.php).
     private static function case_restore_of_soft_deleted_rows(Db $db): void {
         restoreCase($db, 'Polyspec\\Orm\\Tests\\RuntimeRestore');
     }

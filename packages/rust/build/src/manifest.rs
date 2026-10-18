@@ -1,12 +1,12 @@
-//! generator가 읽는 dbspec document set: manifest text, `manifestHash`, runtime model
+//! The dbspec document set read by the generator: manifest text, `manifestHash`, runtime model
 //! (docs/dbspec.md, "Manifest and hashes", "Runtime model").
 
 use polyspec_orm_schema::dbspec::{self, Document, Field, RuntimeModel};
 
-/// 한 document set의 manifest와 runtime model.
+/// The manifest and runtime model of one document set.
 pub struct DocumentSet {
     pub manifest_text: String,
-    /// 외부 문서에서 set이 쓰는 table의 text. 외부 문서가 없으면 비어 있다.
+    /// The text of the tables the set uses from external documents. Empty if there are no external documents.
     pub external_text: String,
     pub manifest_hash: String,
     pub model: RuntimeModel,
@@ -61,12 +61,12 @@ pub fn load_set(files: &dbspec::Set) -> Result<DocumentSet, String> {
     Ok(DocumentSet { manifest_text: manifest.manifest_text, external_text: manifest.external_text, manifest_hash: manifest.manifest_hash, model })
 }
 
-/// executor codec이 적용하는 stage (`aes`, `hex`, `ip`는 빠진다).
+/// Stages the executor codec applies (`aes`, `hex`; `ip` is left out).
 pub fn executor_stages(c: &Field) -> impl Iterator<Item = &str> {
     c.codec.iter().map(String::as_str).filter(|s| !matches!(*s, "aes" | "hex" | "ip"))
 }
 
-/// executor codec stage가 있는 column.
+/// Columns that have an executor codec stage.
 pub fn styled(c: &Field) -> bool {
     executor_stages(c).next().is_some()
 }
@@ -75,7 +75,7 @@ pub fn numeric(c: &Field) -> bool {
     !styled(c) && matches!(c.ty.name(), "i16" | "i32" | "i64" | "f64" | "decimal")
 }
 
-/// column function을 받는 column.
+/// Columns that take a column function.
 pub fn function_column(c: &Field) -> bool {
     !styled(c) && matches!(c.ty.name(), "date" | "datetime")
 }
@@ -130,7 +130,7 @@ pub fn check_column_name(n: &str) -> Result<(), String> {
 mod tests {
     use super::check_column_name;
 
-    // 고정 model method와 같은 이름의 column은 생성한 method와 겹치므로 거부한다.
+    // A column with the same name as a fixed model method would collide with the generated method, so it is rejected.
     #[test]
     fn reserved_method_names_are_not_columns() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

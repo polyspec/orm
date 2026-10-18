@@ -30,9 +30,9 @@ async fn state(db: &Db, table: &str) -> Vec<i32> {
 }
 async fn behavior(driver: &str, dsn: &str) {
     let db = Db::connect(dsn, 1, crate::Config::default()).await.expect("declared database must connect");
-    // 이 실행만의 이름을 가진 table이다. transaction pooler(PgBouncer)는 temporary table을
-    // client 연결이 아니라 server session에 남기고 다음 실행에 다른 session을 줄 수 있으므로
-    // temporary table을 쓰지 않는다. 끝에서 지운다.
+    // This is a table with a name unique to this run. A transaction pooler (PgBouncer) keeps a temporary table on the server session rather than the client connection, and
+    // the next run may get a different session, so
+    // no temporary table is used. It is dropped at the end.
     let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).expect("clock after the epoch").as_nanos();
     let table = format!("orm_send_savepoint_probe_{}_{nanos}", std::process::id());
     let table = table.as_str();
@@ -85,7 +85,7 @@ async fn behavior(driver: &str, dsn: &str) {
     assert_eq!(state(&db, table).await, [1, 2, 4], "{driver}: outer rollback includes released nested savepoint");
     assert!(active_for(&db).is_none(), "{driver}: transaction frame removed");
     db.transaction_send(|| async { Ok::<_, Error>(()) }).retry(0).await.expect("connection remains usable");
-    // transaction_once의 future는 callback과 그 future가 Send이면 Send다.
+    // The transaction_once future is Send if the callback and its future are Send.
     require_send(
         db.transaction_once(async || active_for(&db).expect("once frame").raw(KIND_UTILITY, &format!("INSERT INTO {table} (id) VALUES (7)")).await)
             .into_future(),
@@ -93,8 +93,8 @@ async fn behavior(driver: &str, dsn: &str) {
     .await
     .expect("once commit must succeed");
     assert_eq!(state(&db, table).await, [1, 2, 4, 7], "{driver}: transaction_once commits");
-    // audit 값을 정해도 transaction_send와 transaction_once의 future는 Send다. 이 연결에는 audit 기본값이
-    // 없으므로 둘 다 시작하기 전에 CONFIG다.
+    // Even when audit values are set, the transaction_send and transaction_once futures are Send. This connection has no audit default
+    // , so both are CONFIG before they start.
     let send = require_send(db.transaction_send(|| async { Ok::<_, Error>(()) }).audit([("actor", "send")]).retry(0).into_future()).await;
     assert!(matches!(send, Err(Error::Config(_))), "{driver}: transaction_send audit without defaults: {:?}", send.err());
     let once = require_send(db.transaction_once(async || Ok::<_, Error>(())).audit([("actor", "once")]).into_future()).await;

@@ -21,19 +21,19 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// runnerDeadline은 apply runner process 하나의 기한이다.
+// runnerDeadline is the deadline of one apply runner process.
 const runnerDeadline = 2 * time.Minute
 
-// pairDeadline은 순서쌍 case 하나의 기한이다. 한 case는 runner process를 많아야 세 번
-// (stop, apply, recover) 실행하고, database를 만들고 history와 schema를 읽고 지우는 데
-// 1분을 더 준다.
+// pairDeadline is the deadline of one ordered-pair case. A case runs the runner process at most three times
+// (stop, apply, recover), and creating a database and reading and deleting its history and schema
+// gets one more minute.
 const pairDeadline = 3*runnerDeadline + time.Minute
 
-// applyClients는 tests/dbspec/apply의 runner를 가진 client다: config/parity.json의 dbspec profile이 정한다.
+// applyClients is the client with the apply runner of tests/dbspec/apply, as set by the dbspec profile of config/parity.json.
 var applyClients = dbspecLanguages()
 
-// dbspecLanguages는 config/parity.json의 dbspec profile implementation을 읽는다. 이 test는 package directory에서
-// 실행되므로 경로는 packages/go/internal/dialects 기준이다.
+// dbspecLanguages reads the dbspec profile implementations of config/parity.json. This test runs from the package directory,
+// so the paths are relative to packages/go/internal/dialects.
 func dbspecLanguages() []string {
 	raw, err := os.ReadFile(filepath.Join(repoRoot, "config", "parity.json"))
 	if err != nil {
@@ -56,12 +56,12 @@ func dbspecLanguages() []string {
 	panic("config/parity.json has no dbspec profile")
 }
 
-// TestApplyChainAcrossClients는 한 client가 적용한 chain을 다른 client가 이어
-// 적용하는지 모든 순서쌍에서 확인한다(docs/plans.md "Apply"). 세 database에서
-// client A가 tests/dbspec/plans.json chain의 첫 plan을, client B가 나머지를 적용한
-// 뒤 history row와 introspect한 schema text가 기대와 같아야 한다. A가 둘째 plan
-// 중간에 멈춘 apply를 B가 interrupted로 거부하고 recover로 끝내야 하며, 다시 멈춘
-// apply를 B가 rollback으로 되돌려야 한다.
+// TestApplyChainAcrossClients checks, for every ordered pair, whether a chain applied by one client is continued
+// by another client (docs/plans.md "Apply"). On three databases
+// client A applies the first plan of the tests/dbspec/plans.json chain and client B applies the rest;
+// the history rows and the introspected schema text afterward must equal the expected ones. When A stops
+// partway, B must reject the interrupted apply and finish it with recover, and when it stops again
+// an apply, B must roll it back with rollback.
 func TestApplyChainAcrossClients(t *testing.T) {
 	testcase.Group(t)
 	rustRunner, extension, python := os.Getenv("DBSPEC_APPLY_RUST"), os.Getenv("ORM_DBSPEC_EXTENSION"), os.Getenv("ORM_PYTHON")
@@ -69,7 +69,7 @@ func TestApplyChainAcrossClients(t *testing.T) {
 	if rustRunner == "" || extension == "" || python == "" || mysqlDSN == "" || postgresDSN == "" {
 		t.Fatal("DBSPEC_APPLY_RUST, ORM_DBSPEC_EXTENSION, ORM_PYTHON, ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; run make dbspec-apply-pairs-check")
 	}
-	// make는 CARGO_TARGET_DIR 아래의 Rust runner, 실행 directory의 PHP 확장과 install-python이 만든 venv의 python을 절대 경로로 준다.
+	// make gives as absolute paths the Rust runner under CARGO_TARGET_DIR, the PHP extension in the run directory, and the python of the venv made by install-python.
 	if !filepath.IsAbs(rustRunner) || !filepath.IsAbs(extension) || !filepath.IsAbs(python) {
 		t.Fatalf("DBSPEC_APPLY_RUST %q, ORM_DBSPEC_EXTENSION %q and ORM_PYTHON %q must be absolute paths", rustRunner, extension, python)
 	}
@@ -84,7 +84,7 @@ func TestApplyChainAcrossClients(t *testing.T) {
 	}
 	vectors := filepath.Join(root, "tests", "dbspec", "plans.json")
 	goRunner := filepath.Join(t.TempDir(), "apply-go")
-	// Go runner build는 testcase.Process 기한을 가진다(build cache가 비면 몇 분 걸린다).
+	// The Go runner build has the testcase.Process deadline (it takes minutes when the build cache is empty).
 	building, cancelBuild := context.WithTimeout(context.Background(), testcase.Process)
 	build := exec.CommandContext(building, "go", "build", "-o", goRunner, "./packages/go/internal/dbspec/apply")
 	build.Dir = root
@@ -101,14 +101,14 @@ func TestApplyChainAcrossClients(t *testing.T) {
 		"php-extension": {"php", "-d", "extension=" + extension, "packages/php-ext/testing/dbspec/apply/php-extension.php"},
 		"python":        {python, "packages/python/tests/dbspec_apply_runner.py"},
 	}
-	// 동시에 도는 다른 test run과 겹치지 않도록 database 이름에 pid와 random 값을 넣는다.
+	// The database name includes the pid and a random value so that it does not overlap with another test run at the same time.
 	random := make([]byte, 4)
 	if _, err := rand.Read(random); err != nil {
 		t.Fatal(err)
 	}
 	token := strconv.Itoa(os.Getpid()) + "_" + hex.EncodeToString(random)
 
-	// step은 client의 runner로 action을 실행하고 결과 줄이 want인지 확인한다.
+	// step runs the action with the client's runner and checks that the result line is want.
 	step := func(t *testing.T, c *testcase.Case, client, action, dialect, uri, want string) {
 		t.Helper()
 		begin := time.Now()
@@ -139,7 +139,7 @@ func TestApplyChainAcrossClients(t *testing.T) {
 			uri, cleanup := compareDatabase(t, dialect, name, mysqlDSN, postgresDSN)
 			defer cleanup()
 			if dialect == "sqlite" {
-				// sqlx는 없는 SQLite file을 만들지 않으므로 빈 database file을 먼저 만든다.
+				// sqlx does not create a missing SQLite file, so an empty database file is created first.
 				if err := os.WriteFile(strings.TrimPrefix(uri, "sqlite://"), nil, 0o600); err != nil {
 					t.Fatal(err)
 				}
@@ -162,8 +162,8 @@ func TestApplyChainAcrossClients(t *testing.T) {
 			}
 		}
 	}
-	// 세 database에서 A가 둘째 plan의 statement 1을 실행한 뒤 멈추고, B가 그것을 이어
-	// 끝내거나 되돌린다.
+	// On three databases, A runs statement 1 of the second plan and stops, and B continues
+	// it to finish or roll it back.
 	for _, dialect := range []string{"mysql", "postgres", "sqlite"} {
 		want := chainHistory(t, plans, dialect, "")
 		running := chainHistory(t, plans, dialect, "applying 1")
@@ -196,9 +196,9 @@ func TestApplyChainAcrossClients(t *testing.T) {
 	t.Logf("pairs: %d", runs)
 }
 
-// chainHistory는 chain을 끝까지 적용한 dialect database의 history row다. 각 row는
-// finalize 앞의 step까지 applied다. last가 "<state> <step>"이면 마지막 plan의 row가
-// 그 state와 step이다.
+// chainHistory is the history rows of the dialect database to which the chain was applied to the end. Each row is
+// applied up to the step before finalize. If last is "<state> <step>", the row of the last plan has
+// that state and step.
 func chainHistory(t *testing.T, plans []*dbspec.Plan, dialect, last string) []string {
 	t.Helper()
 	var rows []string
@@ -229,7 +229,7 @@ func chainHistory(t *testing.T, plans []*dbspec.Plan, dialect, last string) []st
 	return rows
 }
 
-// checkHistory는 uri의 history row가 want인지 확인한다.
+// checkHistory checks whether the history rows of uri are want.
 func checkHistory(t *testing.T, dialect, uri string, want []string) {
 	t.Helper()
 	db := openURI(t, dialect, uri)
@@ -259,7 +259,7 @@ func checkHistory(t *testing.T, dialect, uri string, want []string) {
 	}
 }
 
-// checkChainState는 history row가 want이고 introspect한 schema text가 target인지 확인한다.
+// checkChainState checks that the history rows are want and the introspected schema text is target.
 func checkChainState(t *testing.T, dialect, uri string, want []string, target string) {
 	t.Helper()
 	checkHistory(t, dialect, uri, want)

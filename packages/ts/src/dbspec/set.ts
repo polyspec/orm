@@ -1,5 +1,5 @@
-// dbspec 문서 집합 검사 (docs/dbspec.md "Manifest and hashes"). manifest와
-// 렌더링이 같은 검사를 쓴다. 기준은 Go 엔진(engine/dbspec/dbspec.go checkSet)이다.
+// Checks a dbspec document set (docs/dbspec.md "Manifest and hashes"). The manifest and
+// the rendering use the same checks. The reference is the Go engine (engine/dbspec/dbspec.go checkSet).
 import { present } from '../present.js';
 import type { DbspecDiagnostic, DbspecDocument } from './model.js';
 
@@ -45,7 +45,7 @@ export function checkSet(documents: readonly DbspecDocument[]): {
       }
     }
   });
-  // 외부 문서는 소유한 문서에서 use를 따라 닿는 문서다.
+  // An external document is a document reached by following use from the document that owns it.
   const reached = new Set<string>();
   const walk = (document: DbspecDocument): void => {
     for (const u of document.uses) {

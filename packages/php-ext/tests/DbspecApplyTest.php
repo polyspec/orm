@@ -24,7 +24,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
-// 모든 client 가 새 connection 에서 실행하는 statement.
+// Statement that every client runs on a new connection.
 const APPLY_CONNECTION_RULES = ['mysql' => ["SET time_zone = '+00:00'"], 'postgres' => ["SET TimeZone = 'UTC'"], 'sqlite' => ['PRAGMA foreign_keys = ON']];
 
 /** The server DSNs: the scenarios check locks and session settings on the server, not through the pooler. */
@@ -40,9 +40,9 @@ function apply_dsns(): array
 }
 
 /**
- * run 마다 새 database, schema 또는 file 을 만든다. 돌려주는 함수는 그곳을 가리키는
- * 새 session 을 열고, 두 번째 함수는 그곳을 지운다. SQLite 의 session 은 busy
- * timeout 이 0 이라 다른 session 의 write lock 을 기다리지 않는다.
+ * Creates a new database, schema or file for each run. The function it returns points there,
+ * opens a new session, and the second function deletes it. In SQLite, the session's busy
+ * timeout is 0, so it does not wait for another session's write lock.
  *
  * @return array{0: Closure(): PDO, 1: Closure(): void}
  */
@@ -89,7 +89,7 @@ function apply_failure(string $id, array $diagnostics): never
     throw new RuntimeException("$id: " . json_encode(array_map(static fn(Diagnostic $d): array => [$d->rule, $d->line, $d->column, $d->message], $diagnostics)));
 }
 
-/** 첫 행 첫 column 의 text. 문자열과 정수만 text 로 읽는다. */
+/** Text of the first column of the first row. Only strings and integers are read as text. */
 function apply_value(PDO $pdo, string $query): string
 {
     $rows = $pdo->query($query)->fetchAll(PDO::FETCH_NUM);
@@ -108,7 +108,7 @@ function apply_want(PDO $pdo, string $query, string $want): void
     Assert::assertSame($want, $got, "$query: got " . json_encode($got) . '; want ' . json_encode($want));
 }
 
-/** introspect 한 schema text 가 want 인지 확인한다. 빈 database 의 text 는 '' 이다. */
+/** Checks that the introspected schema text is want. The text of an empty database is ''. */
 function apply_schema_is(PDO $pdo, string $dialect, string $want): void
 {
     $result = Dbspec::introspect($pdo, $dialect, 'x');
@@ -121,7 +121,7 @@ function apply_schema_is(PDO $pdo, string $dialect, string $want): void
     Assert::assertSame($want, $got, "schema text\n--- want\n$want--- got\n$got");
 }
 
-/** apply 나 recover 가 그 code 의 ApplyError 로 실패하는지 확인한다. */
+/** Checks that apply or recover fails with an ApplyError of that code. */
 function apply_code(string $want, Closure $operation): void
 {
     try {
@@ -133,7 +133,7 @@ function apply_code(string $want, Closure $operation): void
     throw new RuntimeException("succeeded; want the $want error");
 }
 
-/** operation 이 바로 그 stop 으로 멈추는지 확인한다. */
+/** Checks that the operation stops at exactly that stop. */
 function apply_stopped(RuntimeException $stop, Closure $operation): void
 {
     try {
@@ -145,10 +145,10 @@ function apply_stopped(RuntimeException $stop, Closure $operation): void
     throw new RuntimeException('apply did not stop at the event');
 }
 
-// docs/plans.md "Apply" 의 lock 이름과 key.
+// Lock name and key of "Apply" in docs/plans.md.
 const MYSQL_APPLY_LOCK = "CONCAT('dbspec\$plans\$', LEFT(SHA2(DATABASE(), 256), 51))";
 const POSTGRES_APPLY_LOCK = "hashtext('dbspec\$plans'), hashtext(current_schema())";
-// 이름이 dbspec$ 로 시작하는 table 과 column 중 history table 이 아닌 것의 수.
+// Number of tables and columns whose names start with dbspec$ that are not the history table.
 const HIDDEN_LEFT = [
     'mysql' => "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME LIKE 'dbspec\$%' OR COLUMN_NAME LIKE 'dbspec\$%') AND TABLE_NAME <> 'dbspec\$plans'",
     'postgres' => "SELECT COUNT(*) FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid WHERE c.relnamespace = current_schema()::regnamespace AND c.relkind = 'r' AND a.attnum > 0 AND (c.relname LIKE 'dbspec\$%' OR a.attname LIKE 'dbspec\$%') AND c.relname <> 'dbspec\$plans'",
@@ -184,7 +184,7 @@ function apply_scenarios(): array
         throw new RuntimeException('plans.json does not chain create-from-empty and rename-table-and-column');
     }
     /**
-     * case 의 source 를 만드는 첫 plan base 와 case 의 plan 으로 된 chain.
+     * Chain made of the first plan base that builds the case's source and the case's plan.
      *
      * @return list<Plan>
      */
@@ -201,7 +201,7 @@ function apply_scenarios(): array
         return $manifest->manifest?->schemaText ?? apply_failure('schema', $manifest->diagnostics);
     };
     /**
-     * dialect 마다 chain plan 의 [step 수, finalize 앞 step 수].
+     * [number of steps, number of steps before finalize] of the chain plan for each dialect.
      *
      * @param list<Plan> $chain
      * @return array<string, list<array{0: int, 1: int}>>
@@ -232,23 +232,23 @@ function apply_scenarios(): array
     $required = $caseChain('drop-required-column');
     $requiredTarget = $schemaText($required[1]);
     $requiredCounts = $counts($required);
-    // history의 applied_at은 이 clock을 소수 여섯 자리로 버림한 UTC text다.
+    // applied_at in history is the UTC text of this clock truncated to six decimal places.
     $now = static fn(): DateTimeImmutable => new DateTimeImmutable('2026-10-01T00:00:00.123456789Z');
     $history = static fn(string $dialect): string => $dialect === 'mysql' ? '`dbspec$plans`' : '"dbspec$plans"';
 
-    /** history row 의 name, state, step 이 want 인지 확인한다. */
+    /** Checks that the name, state and step of the history row are want. */
     $historyIs = static function (PDO $pdo, string $db, string $want) use ($history): void {
         $rows = $pdo->query('SELECT name, state, step FROM ' . $history($db) . ' ORDER BY name')->fetchAll(PDO::FETCH_NUM);
         $got = implode(',', array_map(static fn(array $r): string => implode('|', array_map('strval', $r)), $rows));
         Assert::assertSame($want, $got, "history rows: got \"$got\"; want \"$want\"");
     };
-    /** 열의 모든 row 를 `a|b` 로 이어 확인한다. */
+    /** Joins every row of the column as `a|b` and checks it. */
     $rowsAre = static function (PDO $pdo, string $query, string $want): void {
         $rows = $pdo->query($query)->fetchAll(PDO::FETCH_NUM);
         $got = implode(',', array_map(static fn(array $r): string => implode('|', array_map(static fn($v): string => $v === null ? 'NULL' : (string) $v, $r)), $rows));
         Assert::assertSame($want, $got, "$query: got \"$got\"; want \"$want\"");
     };
-    /** 명령이 plan 의 step 번째 statement 를 실행한 뒤, step 을 기록하기 전에 멈추는 event handler. */
+    /** Event handler that stops after the command runs the step-th statement of the plan, before it records the step. */
     $stopAfter = static fn(string $plan, int $step, RuntimeException $stop): Closure => static function (ApplyEvent $event) use ($plan, $step, $stop): void {
         if ($event->kind === 'applied' && $event->plan === $plan && $event->step === $step) {
             throw $stop;
@@ -288,8 +288,8 @@ function apply_scenarios(): array
             }
         }],
         ['other_database', $all, static function (Closure $session, PDO $pdo, string $db) use ($plans, $now, $target): void {
-            // 첫 database 의 apply 가 lock 을 잡은 동안 두 번째 database, schema 또는 file 에
-            // 같은 chain 을 적용한다. lock 은 database 하나만 덮으므로 locked 가 아니다.
+            // While the apply of the first database holds the lock, a second database, schema or file
+            // applies the same chain. The lock covers only one database, so it is not locked.
             [$secondSession, $dropSecond] = open_apply_database($db);
             try {
                 $second = $secondSession();
@@ -314,7 +314,7 @@ function apply_scenarios(): array
             }
         }],
         ['empty_chain', $all, static function (Closure $session, PDO $pdo, string $db) use ($now, $history): void {
-            // plan 이 없는 chain 은 table 이 없는 database 에 아무것도 적용하지 않는다.
+            // A chain without a plan applies nothing to a database without tables.
             $events = [];
             $record = static function (ApplyEvent $event) use (&$events): void {
                 $events[] = $event->kind;
@@ -330,7 +330,7 @@ function apply_scenarios(): array
             apply_code('drift', static fn() => Dbspec::apply($pdo, $db, [], $now, null));
         }],
         ['unlock_not_held', ['postgres'], static function (Closure $session, PDO $pdo, string $db) use ($plans, $now): void {
-            // event 에서 advisory lock 을 먼저 풀면 명령 끝의 unlock 은 아무것도 풀지 않는다.
+            // If the advisory lock is released first in the event, the unlock at the end of the command releases nothing.
             $release = static function (ApplyEvent $event) use ($pdo, $plans): void {
                 if ($event->kind === 'plan' && $event->plan === $plans[0]->name) {
                     $pdo->query('SELECT pg_advisory_unlock(' . POSTGRES_APPLY_LOCK . ')')->closeCursor();
@@ -346,8 +346,8 @@ function apply_scenarios(): array
             throw new RuntimeException("succeeded; want \"$want\"");
         }],
         ['verify_failure', $all, static function (Closure $session, PDO $pdo, string $db) use ($plans, $now, $historyIs, $planCounts): void {
-            // 마지막 statement 뒤에 plan 밖의 table 을 만들면 검증이 실패하고 row 는 모든 step 을
-            // 기록한 채 applying 으로 남는다.
+            // If a table outside the plan is created after the last statement, verification fails and the row stays
+            // recorded as applying, after all steps.
             $n = $planCounts[$db][0][1];
             $sneak = static function (ApplyEvent $event) use ($pdo, $plans, $n): void {
                 if ($event->kind === 'applied' && $event->plan === $plans[0]->name && $event->step === $n - 1) {
@@ -358,8 +358,8 @@ function apply_scenarios(): array
             $historyIs($pdo, $db, "{$plans[0]->name}|applying|$n");
         }],
         ['rows_between', $all, static function (Closure $session, PDO $pdo, string $db) use ($representative, $now, $repSource, $repTarget, $repCounts, $historyIs, $rowsAre): void {
-            // 적용한 plan 에 쓴 row 는 rollback 뒤에도 남고 지운 column 의 값과 default 가 돌아오며,
-            // 다시 적용하면 더한 column 의 값이 돌아온다. finalize 뒤 rollback 은 되돌릴 수 없다.
+            // Rows written by the applied plan remain after rollback, and the value and default of the dropped column return,
+            // Applying again brings back the value of the added column. Rollback after finalize cannot be undone.
             $c = $repCounts[$db];
             Dbspec::apply($pdo, $db, [$representative[0]], $now, null);
             $pdo->exec("INSERT INTO users (mail, legacy_code, age, nick) VALUES ('a@x', 7, 3, 'n1')");
@@ -382,8 +382,8 @@ function apply_scenarios(): array
             apply_schema_is($pdo, $db, $repTarget);
         }],
         ['nulls', $all, static function (Closure $session, PDO $pdo, string $db) use ($required, $now, $requiredTarget, $requiredCounts, $historyIs): void {
-            // 숨긴 non-null default 없는 column 에 그사이 NULL row 가 생기면 rollback 은 아무것도
-            // 바꾸지 않고 row 수를 적은 nulls error 로 멈춘다.
+            // If a NULL row appears meanwhile in a column with no hidden non-null default, rollback does nothing
+            // and stops with a nulls error that gives the row count without changing anything.
             $c = $requiredCounts[$db];
             Dbspec::apply($pdo, $db, $required, $now, null);
             $pdo->exec("INSERT INTO t (a) VALUES ('y')");
@@ -397,9 +397,9 @@ function apply_scenarios(): array
             $historyIs($pdo, $db, "base|applied|{$c[0][1]},drop_required_column|applied|{$c[1][1]}");
         }],
     ];
-    // representative plan 의 step k 마다: apply 를 statement 뒤에 멈추고 rollback 하고, 다시
-    // 멈추고 recover 하고, 적용한 plan 의 rollback 을 step k 의 rollback statement 뒤에 멈추고
-    // rollback 을 이어 간다.
+    // For each step k of the representative plan: stop apply after the statement, roll back, and again
+    // stop and recover, and stop the rollback of the applied plan after the rollback statement of step k,
+    // continue the rollback.
     foreach ($all as $db) {
         $c = $repCounts[$db];
         $baseRow = "base|applied|{$c[0][1]}";
@@ -427,19 +427,19 @@ function apply_scenarios(): array
         }
     }
 
-    // apply 는 처음부터 끝까지 다른 client 와 나누지 않는 server session 하나가 필요하다(docs/plans.md
-    // "Apply"). PgBouncer 의 transaction pooling 은 statement 마다 server connection 을 다시 고르므로
-    // apply 는 lock 에서와 step 마다 server session 을 확인하고 session error 로 멈춘다. 각 scenario 는
-    // server 에 자기 database 를 만들고 PgBouncer 로 그 database 에 연결한다. PgBouncer 는 쉬는 server
-    // connection 을 LIFO 로 다시 쓰므로(server_round_robin = 0) 아래 순서가 정해진다.
+    // apply needs one server session that is not shared with other clients from start to end (docs/plans.md
+    // "Apply"). PgBouncer's transaction pooling picks a server connection again for each statement, so
+    // apply checks the server session at the lock and at each step, and stops with a session error. Each scenario
+    // creates its own database on the server and connects to that database through PgBouncer. PgBouncer reuses an idle server
+    // connection in LIFO order (server_round_robin = 0), so the order below is fixed.
     $poolerScenarios = [
-        // 다른 client 가 session advisory lock 을 잡은 server connection 을 apply 가 이어받는다.
+        // apply takes over the server connection whose session advisory lock another client holds.
         'lock_shared' => static function (PDO $apply, PDO $other) use ($plans, $now): void {
             $other->query('SELECT pg_advisory_lock(' . POSTGRES_APPLY_LOCK . ')')->closeCursor();
             Dbspec::apply($apply, 'postgres', $plans, $now, null);
         },
-        // 첫 step 앞에서 다른 client 가 transaction 으로 apply 의 server connection 을 잡으므로 apply 의
-        // 다음 statement 는 다른 server connection 에서 실행된다.
+        // Before the first step, another client takes apply's server connection in a transaction, so apply's
+        // next statement runs on another server connection.
         'session_changed' => static function (PDO $apply, PDO $other) use ($plans, $now): void {
             $held = false;
             try {
@@ -544,7 +544,7 @@ final class DbspecApplyTest extends TestCase
             try {
                 $scenario($apply, $other);
             } catch (Throwable $e) {
-                // 정리 단계의 error(다른 server connection 에서 실행된 unlock)가 있으면 그 이전 throwable 이 실패다.
+                // If there is an error in the cleanup step (an unlock run on another server connection), the throwable before it is the failure.
                 $failure = $e instanceof ApplyCleanupError ? $e->getPrevious() : $e;
                 Assert::assertFalse(!$failure instanceof ApplyError || $failure->code_ !== 'session' || !str_contains($failure->detail, 'a direct or session-pooled connection'), "apply through a transaction pooler: {$e->getMessage()}, want a session error");
                 return;

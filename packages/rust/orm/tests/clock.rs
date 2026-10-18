@@ -68,7 +68,7 @@ fn connected(db: &Db) -> ClockEvent {
 /// digits near the wall clock; at least one value has microseconds that a
 /// millisecond clock cannot give.
 async fn clock_microseconds(driver: &str, dsn: &str) {
-    // 모든 connection은 UTC다.
+    // Every connection is UTC.
     let db = Db::connect(dsn, 2, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
     db.utils().schema().install(&CLOCK_SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
     let before = chrono::Utc::now().naive_utc();

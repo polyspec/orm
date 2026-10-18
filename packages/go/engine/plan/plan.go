@@ -12,7 +12,7 @@ type Step struct {
 	ID   int    `json:"id"`
 	Role string `json:"role"` // main | count | relation
 	SQL  string `json:"sql"`
-	// Tables는 statement가 이름으로 쓰는 table이다: 정렬하고 중복을 뺀 물리 table 이름.
+	// Tables are the tables that the statement names: physical table names, sorted and deduplicated.
 	Tables    []string   `json:"tables"`
 	Lock      string     `json:"lock,omitempty"` // adapter lock mode for a root row select
 	BindSlots []BindSlot `json:"bind_slots"`
@@ -47,7 +47,7 @@ type IfParent struct {
 //   - secret: a key from executor config (Name = "aes")
 //   - parent: the distinct values described by the step's ParentRef (relation IN lists; expands to N placeholders)
 //   - now:    the executor's current UTC time as "YYYY-MM-DD HH:MM:SS.ffffff" truncated to Precision digits (dialects whose ORM clock is the executor clock, HostNow)
-//   - audit: transaction의 audit 기록 key. audit table의 insert와 update가 audit column에 쓴다. Name은 audit 기록 table이다.
+//   - audit: the audit record key of the transaction. The inserts and updates of the audit table write it to the audit column. Name is the audit record table.
 //
 // Transform (executor-side, value-level): "" | "like_contains" (escape % _ \ then wrap in %).
 type BindSlot struct {
@@ -61,14 +61,14 @@ type BindSlot struct {
 	// value (aes/hex/ip on PostgreSQL/SQLite): the executor applies them to
 	// the bound value before sending it (write order). Empty on MySQL.
 	HostStyles []string `json:"host_styles,omitempty"`
-	// ColType은 placeholder가 받는 값의 dbspec type이다. column과 비교하거나
-	// column에 할당하는 값은 그 column의 type이고(host style을 거친 값도 column에
-	// 저장되는 값이므로 같다), SQL 쪽 style 함수가 받는 값은 그 함수 입력의 type,
-	// 함수와 비교하는 값은 함수 결과의 type, secret은 text, config는 그 값을 쓰는
-	// column의 type, now는 datetime, audit은 audit column의 type이다. parent
-	// slot은 ColType 대신 KeyTypes를 싣는다. type이 없는 slot은 없다.
+	// ColType is the dbspec type of the value that a placeholder takes. A value compared with, or
+	// assigned to, a column has that column's type (a value passed through a host style is stored in the column,
+	// so it is the same). The value a SQL-side style function takes is the type of that function's input;
+	// a value compared with a function is the type of its result; a secret is text; config is the type of the
+	// column that stores the value; now is datetime; and audit is the type of the audit column. A parent
+	// slot carries KeyTypes instead of ColType. A slot with no type does not exist.
 	ColType string `json:"col_type,omitempty"`
-	// KeyTypes는 parent slot이 펼치는 key 값의 dbspec type이며 key column 순서다.
+	// KeyTypes are the dbspec types of the key values that a parent slot expands, in key column order.
 	KeyTypes  []string `json:"key_types,omitempty"`
 	Precision int      `json:"precision,omitempty"`
 	Scale     int      `json:"scale,omitempty"`
@@ -84,8 +84,8 @@ type Assemble struct {
 	Entity  string   `json:"entity"`
 	Alias   string   `json:"alias"`
 	Columns []OutCol `json:"columns"`
-	// AESVersion는 node가 AES column을 읽을 때 key version을 담은 column의
-	// Columns 위치다. 고른 column이면 그대로, 아니면 숨은 column이다.
+	// AESVersion is the position, among Columns, of the column that holds the key version when the node reads
+	// an AES column. If it is a selected column, it is that column as is; otherwise it is a hidden column.
 	AESVersion *int     `json:"aes_version,omitempty"`
 	Children   []*Child `json:"children,omitempty"`
 	Key        []KeyRef `json:"key"`

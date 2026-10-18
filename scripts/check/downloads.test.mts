@@ -1,5 +1,5 @@
-// check가 읽는 download의 확인(scripts/check/downloads.mts)과 Makefile의 offline 규칙을 검사한다. 각 case는 임시
-// directory의 lock file과 설치 기록, 가짜 cargo와 go로 실행하고 network는 쓰지 않는다.
+// Checks the download check (scripts/check/downloads.mts) that check reads, and the offline rules in the Makefile. Each case runs in a temporary
+// directory with its lock file and install record, with fake cargo and go; it does not use the network.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';

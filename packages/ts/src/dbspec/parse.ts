@@ -153,7 +153,7 @@ type ISetting = { readonly kw: Tk; readonly comments: string[] } & (
       readonly references: Tk;
       readonly action: Tk;
       readonly previous: Tk;
-      /** exclude와 include 목록이다. 둘 다 쓴 setting은 검사가 거부한다. */
+      /** The exclude and include lists. A setting that uses both is rejected by the check. */
       readonly lists: readonly { readonly kw: Tk; readonly columns: readonly Tk[] }[];
     }
   | { readonly kind: 'markdown'; readonly column: Tk }
@@ -660,12 +660,12 @@ interface Operand {
   readonly slot: number;
 }
 
-/** 읽은 check predicate. 단순 predicate는 canonical token을 담고, tree에는 괄호가 없다. */
+/** The check predicate that was read. A simple predicate holds a canonical token, and the tree has no parentheses. */
 type Predicate =
   | { readonly kind: 'leaf'; readonly parts: readonly string[] }
   | { readonly kind: 'logical'; readonly op: 'and' | 'or'; readonly left: Predicate; readonly right: Predicate };
 
-/** predicate의 canonical text. and 안의 or가 필요로 하는 괄호만 쓴다. */
+/** The canonical text of a predicate. Only the parentheses that an or inside an and needs are written. */
 function predicateText(p: Predicate): string {
   if (p.kind === 'logical') {
     const side = (q: Predicate): string => (p.op === 'and' && q.kind === 'logical' && q.op === 'or' ? `(${predicateText(q)})` : predicateText(q));
@@ -688,9 +688,9 @@ class DocumentParser {
   readonly diagnostics: RawDiagnostic[] = [];
   readonly document: IDocument = { name: '', nameTok: null, uses: [], tables: [], diagrams: [], closing: [], failed: new Set(), constraints: new Map() };
   private stopped = false;
-  /** 줄을 읽는 settings block: 표의 첫 block이거나, 반복된 block이면 유지하지 않는 block이다. */
+  /** The settings block that reads a line: the first block of the table, or a repeated block that is not kept. */
   private settingsBlock: ISettings | null = null;
-  /** 반복된 settings block: 줄은 구문만 읽고 검사하지 않는다(Go의 detached block). */
+  /** A repeated settings block: its lines are parsed for syntax only and not checked (Go's detached block). */
   private detachedBlock = false;
   /** The line of the last syntax error: a line reports at most one, since the rest of it cannot be read reliably. */
   private syntaxLine = 0;
@@ -740,14 +740,14 @@ class DocumentParser {
     this.report(rule, tok.line, tok.s, message);
   }
 
-  /** 구문 오류가 난 줄은 mark 뒤의 구문 오류만 남긴다(Go는 구문이 맞는 줄에서만 이름과 type을 검사한다). */
+  /** A line with a syntax error keeps only the syntax error after the mark (Go checks names and types only on lines with correct syntax). */
   private keepSyntaxSince(mark: number): void {
     const later = this.diagnostics.slice(mark).filter(d => d.rule === 'syntax');
     this.diagnostics.length = mark;
     this.diagnostics.push(...later);
   }
 
-  /** 문서 끝에서 닫히지 않은 block의 오류다. 같은 줄의 다른 syntax 오류와 함께 보고한다(Go는 줄당 한 번으로 제한하지 않는다). */
+  /** An error for a block that is not closed at the end of the document. It is reported together with the other syntax errors on the same line (Go does not limit it to one per line). */
   private unclosed(tok: Tk, message: string): void {
     this.diagnostics.push({ rule: 'syntax', line: tok.line, column: columnOf(this.lines[tok.line - 1] ?? '', tok.s), message });
   }
@@ -832,7 +832,7 @@ class DocumentParser {
       let toks = lexed.toks;
       if (lexed.error !== null) {
         this.report('syntax', line, lexed.error.index, lexed.error.message);
-        // 오류 글자를 뺀 token으로 읽는다(Go의 lexRecover): 맨 위 줄의 table 머리줄도 표를 연다.
+        // Reads as a token with the erroneous characters removed (Go's lexRecover): a table header on the top line also opens a table.
         toks = lexRecover(text, line);
       }
       const first = toks[0];
@@ -872,7 +872,7 @@ class DocumentParser {
           if (state === 'settings') settingsLexical = this.abandoned.has(line);
         } else if (isWord(first, 'settings')) {
           this.mark(first, 'keyword');
-          // Go는 반복된 block의 키워드에 order를 줄이 올바른 형식(`settings {`만)일 때만 보고한다.
+          // Go reports the order for a keyword of a repeated block only when the line is in the correct form (only `settings {`).
           if (t.settings !== null && isPunct(toks[1], '{') && toks.length === 2) this.at('order', first, 'a table has at most one settings block');
           this.openSettingsBlock(t, { open: isPunct(toks[1], '{') ? present(toks[1], 'toks[1]') : first, entries: [], comments: own, closing: [] });
           t.phase = 2;
@@ -887,13 +887,13 @@ class DocumentParser {
         } else {
           const mark = this.diagnostics.length;
           this.column(t, toks, line, own);
-          // Go는 구문 오류가 난 column 줄의 이름과 type 검사를 하지 않는다: 이 줄에서는 구문 오류만 남긴다.
-          // Go의 markFailed와 failedLines: 구문 오류가 난 column 줄의 이름은 실패한 이름이다.
+          // Go does not check the name and type of a column line that has a syntax error: only the syntax error is kept for this line.
+          // Go's markFailed and failedLines: the name of a column line with a syntax error is the failed name.
           if (this.syntaxLine === line) {
             this.keepSyntaxSince(mark);
             this.failColumnLine(t, first);
           }
-          // Go는 column 줄이 구문에 맞을 때만 order를 보고한다(columnLine의 c.done 뒤). limit으로 멈춘 줄도 아니다.
+          // Go reports the order only when a column line matches the syntax (after c.done in columnLine). It is not a line stopped by the limit either.
           else if (t.phase > 0 && !this.stopped) this.at('order', first, 'columns come before keys, indexes, foreign keys, checks and settings');
         }
       } else if (state === 'settings') {
@@ -925,7 +925,7 @@ class DocumentParser {
       this.stopped = true;
       return;
     }
-    // 가장 안쪽의 열린 block만 보고한다(Go처럼): 열린 settings block은 표의 `{`를 보고하지 않는다.
+    // Only the innermost open block is reported (as in Go): an open settings block does not report the table's `{`.
     if (state === 'settings') this.unclosed(present(this.settingsBlock, 'this.settingsBlock').open, 'the settings block is not closed');
     else if (state === 'table') this.unclosed(present(table, 'table').open, 'the table block is not closed');
     if (state === 'diagram') this.unclosed(present(diagram, 'diagram').open, 'the diagram block is not closed');
@@ -1283,7 +1283,7 @@ class DocumentParser {
         return;
       }
       case 'foreign': {
-        // 줄이 실패하면 그 이름을 실패한 이름으로 표시한다(Go markFailed): 설정의 참조가 추가 진단을 내지 않는다.
+        // If a line fails, its name is marked as failed (Go markFailed), so that references to the setting raise no additional diagnostics.
         const failedName = toks[2];
         const before = table.fks.length;
         this.foreignKeyLine(table, toks, line, comments);
@@ -1360,7 +1360,7 @@ class DocumentParser {
   }
 
 
-  /** 다음 줄들이 읽을 settings block을 정한다: 첫 block은 유지하고, 반복된 block은 분리한다. */
+  /** Decides the settings block that the following lines will read: the first block is kept, and a repeated block is split off. */
   private openSettingsBlock(table: ITable, block: ISettings): void {
     this.detachedBlock = table.settings !== null;
     if (!this.detachedBlock) table.settings = block;
@@ -1368,7 +1368,7 @@ class DocumentParser {
   }
 
   private setting(toks: Tk[], line: number, comments: string[], lexed = false): void {
-    // 줄의 lex 오류는 이미 보고했다. Go의 cursor는 그 뒤로 이 줄을 검사하지 않는다.
+    // The lex error of the line was already reported. Go's cursor does not check this line after that.
     if (lexed) return;
     const kw = present(toks[0], 'toks[0]');
     if (kw.k !== K.Word) return this.syntax(toks, 0, line, 'expected a setting');
@@ -1578,7 +1578,7 @@ class DocumentParser {
       shape = word;
       i++;
     }
-    // shard 절은 block에서도 읽는다: block table의 shard는 setting error다.
+    // The shard clause is also read in a block: a shard in a block table is a setting error.
     let shard: { at: Tk; column: Tk; period: Tk } | null = null;
     const at = toks[i];
     if (at !== undefined && at.k === K.Word && at.t === 'shard') {
@@ -1798,7 +1798,7 @@ class DocumentParser {
         if (usedConstraints.has(t.name.t) && !t.headerFailed) this.at('name.duplicate', t.name, `table ${t.name.t} repeats a constraint name of a used document`);
         continue;
       }
-      // Go는 header가 실패한 table의 이름 중복을 보고하지 않는다(validate.go의 failed table).
+      // Go does not report duplicate table names for a table whose header failed (the failed table in validate.go).
       if (t.headerFailed) continue;
       const used = usedAt.get(t.name.t);
       this.at('name.duplicate', used === undefined ? t.name : later(used, t.name), `table ${t.name.t} repeats`);
@@ -1916,7 +1916,7 @@ class DocumentParser {
 
   private foreignKey(table: ITable, fk: IForeignKey, available: Map<string, ITable | null>): void {
     let resolved = true;
-    // 알려지지 않은 자식은 null로 자리를 지킨다. Go의 children처럼 열 순서와 짝을 맞추기 위해서다.
+    // An unknown child keeps its place with null, to match the column order as Go's children does.
     const children: (IColumn | null)[] = [];
     const seen = new Set<string>();
     if (fk.cols.length === 0) {
@@ -1937,8 +1937,8 @@ class DocumentParser {
       seen.add(c.t);
       children.push(column);
     }
-    // Go는 참조 table이 없거나 이름이 잘못되었거나 header가 실패했어도 자식의 key 검사와 set_null 검사를 한다.
-    // 열, 짝과 type 검사만 건너뛴다(validate.go의 foreignKey, target이 nil인 경우).
+    // Go also checks the child's key and set_null even when the referenced table is missing, its name is wrong, or its header failed.
+    // Only the column, pair and type checks are skipped (foreignKey in validate.go, when target is nil).
     if (!wellFormed(fk.table.t)) {
       this.foreignKeyKeyChecks(table, fk, children, resolved);
       return;
@@ -1953,13 +1953,13 @@ class DocumentParser {
       this.foreignKeyKeyChecks(table, fk, children, resolved);
       return;
     }
-    // Go는 header가 실패한 target의 열, 짝과 type을 검사하지 않는다. 자식의 key 검사는 그대로 한다.
+    // Go does not check the columns, pairs and types of a target whose header failed. The child's key check is still done.
     if (target.headerFailed) {
       this.foreignKeyKeyChecks(table, fk, children, resolved);
       return;
     }
-    // Go의 foreignKey와 같다: 개수 검사는 자식 열이 알려졌는지와 관계없이 하고, 짝과 type 검사는 참조 열이 모두
-    // 알려졌을 때 한다. type 검사는 알려진 자식만 보며, 첫 불일치에서 멈춘다.
+    // As in Go's foreignKey: the count check is done whether or not the child columns are known, and the pair and type checks are done when the referenced columns are all
+    // known. The type check looks only at known children and stops at the first mismatch.
     const parents: (IColumn | null)[] = [];
     let referencesKnown = true;
     for (const r of fk.refs) {
@@ -1992,8 +1992,8 @@ class DocumentParser {
   }
 
   /**
-   * 자식 열의 key와 set_null 검사다. target의 열을 보지 않으므로 header가 실패한 target에도 쓴다.
-   * known이 false이면 자식 열이 알려지지 않았거나 겹치는 것이므로 색인 검사를 건너뛴다(Go의 known).
+   * The key and set_null check of the child columns. It does not look at the target's columns, so it is also used for a target whose header failed.
+   * If known is false, the child columns are unknown or overlapping, so the index check is skipped (Go's known).
    */
   private foreignKeyKeyChecks(table: ITable, fk: IForeignKey, children: (IColumn | null)[], known: boolean): void {
     const lead = fk.cols.map(c => c.t);
@@ -2008,16 +2008,16 @@ class DocumentParser {
 
   private check(table: ITable, check: ICheck, banned: Set<string>): void {
     const toks = check.expr;
-    // 지금 읽는 단순 술어의 정규 토큰. 괄호와 and, or는 트리에 두고 출력할 때 필요한 괄호만 쓴다.
+    // The regular token of the simple predicate being read now. Parentheses, and and or stay in the tree; only the parentheses needed for output are written.
     let out: string[] = [];
-    // 술어를 먼저 읽는다. 읽기 진단은 처음 하나만 보고하고, 그 경우 타입은 검사하지 않는다.
+    // The predicate is read first. A reading diagnostic reports only the first one, and in that case the type is not checked.
     let flagged = false;
     const flag = (rule: DbspecRule, tok: Tk, message: string): void => {
       if (flagged) return;
       flagged = true;
       this.at(rule, tok, message);
     };
-    // 끝까지 읽힌 술어의 열과 타입 진단: 원본 순서로 첫 번째만 보고한다.
+    // The column and type diagnostics of a fully read predicate: report only the first, in source order.
     // R14: the tokens read before the first reading diagnostic keep their classes; the rest keep lexical classes.
     const mark = (tok: Tk | undefined, cls: DbspecTokenClass): void => {
       if (!flagged) this.mark(tok, cls);
@@ -2058,7 +2058,7 @@ class DocumentParser {
       const tok: Tk = { k: K.Word, t: '-' + number.t, s: t.s, e: number.e, line: t.line };
       return literalOperand(tok, numberText(tok.t));
     };
-    // in 목록의 리터럴. null은 진단 뒤의 알 수 없는 피연산자다.
+    // The literals in the in list. null is an unknown operand after a diagnostic.
     const literal = (): Operand | null => {
       const signed = negative();
       if (signed !== null) return signed;
@@ -2099,7 +2099,7 @@ class DocumentParser {
       if (EXPRESSION_WORDS.has(t.t)) throw new ExpressionSyntax(t);
       if (isPunct(peek(), '(')) {
         flag('check', t, `function ${t.t} is not part of a predicate`);
-        // 진단이 이미 보고되었으므로 인자는 괄호 짝만 맞춰 건너뛴다.
+        // A diagnostic has already been reported, so the arguments are skipped by matching parentheses only.
         let depth = 0;
         do {
           const u = take();
@@ -2108,7 +2108,7 @@ class DocumentParser {
         } while (depth > 0);
         return null;
       }
-      // Go의 ref: a malformed reference reports its name rule (format, then length) and is not resolved.
+      // Go's ref: a malformed reference reports its name rule (format, then length) and is not resolved.
       // A column reference is a name (R13), whether it resolves or not.
       mark(t, 'name');
       if (!wellFormed(t.t)) {
@@ -2121,9 +2121,9 @@ class DocumentParser {
       }
       out.push(t.t);
       const column = table.colMap.get(t.t);
-      // 자기 줄이 실패한 열은 그 줄에서 보고되었다.
+      // A column whose own line failed was reported on that line.
       if (column === undefined && table.failed.has(t.t)) return null;
-      // 열의 진단은 타입 진단과 함께 원본 순서로 고른다.
+      // The diagnostic of a column is chosen in source order together with the type diagnostics.
       if (column === undefined) issue(t, `${t.t} is not a column of table ${table.name.t}`);
       else if (banned.has(t.t)) issue(t, `column ${t.t} belongs to a cascade or set_null foreign key`);
       else if (column.type !== null && column.type.kind === 'bytes') issue(t, `bytes column ${t.t} is not part of a predicate`);
@@ -2142,7 +2142,7 @@ class DocumentParser {
     };
     const isBool = (o: Operand): boolean =>
       o.column !== null ? o.type !== null && o.type.kind === 'bool' : o.tok.t === 'true' || o.tok.t === 'false';
-    // 리터럴을 열의 default 형식으로 검사하고 정규형으로 바꾼다. 진단은 리터럴에 둔다.
+    // Checks the literal against the column's default form and converts it to the canonical form. The diagnostic is put on the literal.
     const fit = (column: Operand, value: Operand): void => {
       if (column.type === null) return;
       const fitted = defaultOf(column.type, value.tok);
@@ -2159,7 +2159,7 @@ class DocumentParser {
       } else if (left.column !== null) fit(left, right);
       else if (right.column !== null) fit(right, left);
     };
-    // in, is 앞의 피연산자는 열이다.
+    // The operand before in and is is a column.
     const subject = (left: Operand | null, word: Tk): Operand | null => {
       if (left !== null && left.column === null) {
         flag('check', left.tok, `${word.t} takes a column, not a literal`);
@@ -2167,7 +2167,7 @@ class DocumentParser {
       }
       return left;
     };
-    // 비교, in, is가 뒤따르지 않는 피연산자: and, or, ) 또는 끝이 뒤따르면 피연산자에, 아니면 뒤따르는 토큰에 보고한다.
+    // An operand not followed by a comparison, in, or is: reported at the operand if followed by and, or, ), or the end; otherwise at the following token.
     const alone = (start: Tk): never => {
       const next = peek();
       if (next !== undefined && !isWord(next, 'and') && !isWord(next, 'or') && !isPunct(next, ')')) {
@@ -2272,7 +2272,7 @@ class DocumentParser {
     for (const s of entries) if (s.kind === 'codec' && s.stages.some(stage => stage.t === 'aes')) aesColumns.add(s.column.t);
     const lookup = (tok: Tk): IColumn | null | undefined => this.lookup(table, tok, 'setting');
     for (const s of entries) {
-      // state_machine과 checkbox는 여러 줄로 쓰므로 반복 검사에서 뺀다.
+      // state_machine and checkbox are written on several lines, so they are excluded from the repeated check.
       if (s.kind !== 'state_machine' && s.kind !== 'checkbox') {
         const key =
           s.kind === 'codec'
@@ -2696,7 +2696,7 @@ class DocumentParser {
     }
     const history = available.get(s.into.t) ?? null;
     if (history === null) return;
-    // Go는 header가 실패한 history table의 열을 맞추어 보지 않는다(settings.go의 audit).
+    // Go does not check the columns of a history table whose header failed (audit in settings.go).
     if (history.headerFailed) return;
     if (history === table) {
       this.at('setting', s.into, 'a table is not its own history table');
@@ -2724,7 +2724,7 @@ class DocumentParser {
         this.at('setting', s.previous, 'the previous column is nullable and has the type of the audit column');
       }
     }
-    // 두 목록을 다 쓴 setting은 기록하는 column이 정해지지 않으므로 history table의 column을 맞추어 보지 않는다.
+    // A setting that uses both lists does not determine which columns are recorded, so the columns of the history table are not checked.
     if (recorded === null) return;
     const allowed = new Set([key?.name.t, s.action.t, s.previous.t]);
     for (const c of table.columns) {
@@ -2744,10 +2744,10 @@ class DocumentParser {
   }
 
   /**
-   * audit의 exclude나 include 목록을 검사하고, column이 기록되는지 알리는 함수를 돌려준다
-   * (docs/dbspec.md "Audit"). 두 목록을 다 쓰면 둘째 목록의 keyword에서 거부하고 null을 돌려준다.
-   * 목록의 column은 table의 column이고, 한 번만 나오며, audit column이 아니다. audit column은
-   * 언제나 기록하므로 어느 목록에도 쓰지 않는다.
+   * Checks the audit's exclude or include list, and returns a function that reports whether a column is recorded
+   * (docs/dbspec.md "Audit"). If both lists are used, it rejects at the keyword of the second list and returns null.
+   * The columns of a list are columns of the table, appear only once, and are not audit columns. Audit columns are
+   * always recorded, so they are not written in either list.
    */
   private auditLists(table: ITable, s: Extract<ISetting, { kind: 'audit' }>): ((column: string) => boolean) | null {
     if (s.lists.length > 1) {
@@ -2772,10 +2772,10 @@ class DocumentParser {
   }
 
   /**
-   * audit 기록 table을 검사한다. 그 table은 이 문서나 사용한 문서의 다른 table이며 history table이 아니고,
-   * 자신은 audit 대상이 아니며, column 하나의 primary key를 가지고 그 type이 audit column의 type이다. audit
-   * column은 그 primary key를 restrict로 가리키는 선언한 foreign key의 유일한 column이다. 그래서 audit 기록
-   * 행이 없는 audit column 값은 database가 거부한다.
+   * Checks the audit record table. That table is another table of this document or of a used document, not the history table, and
+   * is not itself audited; it has one primary key column, and its type is the type of the audit column. The audit
+   * column is the only column of the declared foreign key that points to that primary key with restrict. So for audit records
+   * the database rejects audit column values that have no row.
    */
   private auditRecord(table: ITable, s: Extract<ISetting, { kind: 'audit' }>, column: IColumn | undefined, available: Map<string, ITable | null>): void {
     const ref = s.references;
@@ -2786,7 +2786,7 @@ class DocumentParser {
     }
     const record = available.get(ref.t) ?? null;
     if (record === null) return;
-    // Go는 header가 실패한 audit 기록 table의 key를 검사하지 않는다(settings.go의 auditRecord).
+    // Go does not check the key of an audit record table whose header failed (auditRecord in settings.go).
     if (record.headerFailed) return;
     if (record === table) {
       this.at('setting', ref, 'a table cannot record its audits in itself');
@@ -3034,7 +3034,7 @@ function settingOf(s: ISetting): DbspecSetting {
   return Object.freeze(setting);
 }
 
-/** audit setting의 exclude나 include 목록, 없으면 null이다. */
+/** The exclude or include list of the audit setting, or null if there is none. */
 function listOf(s: Extract<ISetting, { kind: 'audit' }>, kind: 'exclude' | 'include'): readonly string[] | null {
   const list = s.lists.find(l => l.kw.t === kind);
   return list === undefined ? null : Object.freeze(list.columns.map(c => c.t));

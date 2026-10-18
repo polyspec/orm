@@ -24,7 +24,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
-// 모든 client 가 새 connection 에서 실행하는 statement.
+// The statement that every client runs on a new connection.
 const PLAN_CONNECTION_RULES = ['mysql' => ["SET time_zone = '+00:00'"], 'postgres' => ["SET TimeZone = 'UTC'"], 'sqlite' => ['PRAGMA foreign_keys = ON']];
 
 /** The DSNs of the servers; the test fails when either is unset. */
@@ -40,8 +40,8 @@ function plan_dsns(): array
 }
 
 /**
- * run 마다 새 database, schema 또는 file 을 만들고 그곳을 가리키는 connection 과
- * 그것을 지우는 함수를 돌려준다.
+ * Each run creates a new database, schema, or file, and returns the connection that points at it
+ * and the function that removes it.
  *
  * @return array{0: PDO, 1: Closure(): void}
  */
@@ -94,7 +94,7 @@ function plan_failure(string $id, array $diagnostics): never
     throw new RuntimeException("$id: " . json_encode(array_map(static fn(Diagnostic $d): array => [$d->rule, $d->line, $d->column, $d->message], $diagnostics)));
 }
 
-/** 첫 행 첫 column 의 text; SQL NULL 은 NULL 이다. 문자열과 정수만 text 로 읽는다. */
+/** The text of the first column of the first row; SQL NULL is NULL. Only strings and integers are read as text. */
 function plan_value(PDO $pdo, string $query): string
 {
     $rows = $pdo->query($query)->fetchAll(PDO::FETCH_NUM);
@@ -108,7 +108,7 @@ function plan_value(PDO $pdo, string $query): string
     };
 }
 
-/** step 을 dialect 에 맞게 실행한다. */
+/** Runs the step for the dialect. */
 function plan_steps(PDO $pdo, string $dialect, array $steps): void
 {
     foreach ($steps as $step) {
@@ -187,8 +187,8 @@ final class DbspecPlanApplyTest extends TestCase
             }
             Assert::assertSame($wantText, $gotText, "$id $what: schema text differs\n--- want\n$wantText--- got\n$gotText");
         };
-        // forward 는 finalize 앞의 step 을 실행한다. restore 이면 restore statement 가 있는
-        // step 은 그것을 실행한다(rollback 이 숨긴 더한 column 이 있다).
+        // forward runs the steps before finalize. If it is a restore, the step that has a restore statement
+        // runs it (the added column that rollback hid is there).
         $forward = static function (bool $restore) use (&$pdo, $steps, $dialect, $id): void {
             foreach ($steps as $step) {
                 if ($step->finalize) {
@@ -206,7 +206,7 @@ final class DbspecPlanApplyTest extends TestCase
                 $pdo->exec($statement);
             }
             plan_steps($pdo, $dialect, $case['before'] ?? []);
-            // SQLite 는 table 을 다시 만드는 동안 foreign key 를 끄고, 끝난 뒤 검사한다.
+            // SQLite turns foreign keys off while it recreates the table, and checks them afterwards.
             if ($dialect === 'sqlite') {
                 $pdo->exec('PRAGMA foreign_keys = OFF');
                 $pdo->exec('PRAGMA legacy_alter_table = OFF');
@@ -214,7 +214,7 @@ final class DbspecPlanApplyTest extends TestCase
             $forward(false);
             $schemaIs('applied', $want);
             if ($reversible) {
-                // 끝까지 되돌리는 rollback 은 옛 table 을 숨긴 더한 column 과 함께 다시 만든다.
+                // A rollback that goes all the way back recreates the old table with the added column hidden.
                 for ($i = count($steps) - 1; $i >= 0; $i--) {
                     if (!$steps[$i]->finalize) {
                         $pdo->exec($steps[$i]->rollbackRestore !== '' ? $steps[$i]->rollbackRestore : $steps[$i]->rollback);
@@ -232,7 +232,7 @@ final class DbspecPlanApplyTest extends TestCase
                 $pdo->exec('PRAGMA foreign_keys = ON');
             }
             plan_steps($pdo, $dialect, $case['after'] ?? []);
-            // finalize 도 apply 처럼 SQLite foreign key 를 끄고 실행한다.
+            // finalize also runs with SQLite foreign keys turned off, as apply does.
             if ($dialect === 'sqlite') {
                 $pdo->exec('PRAGMA foreign_keys = OFF');
             }

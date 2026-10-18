@@ -1,8 +1,8 @@
 <?php
 declare(strict_types=1);
-// model_queries feature coverage: 생성된 bench model로 seed된 bench database를
-// 읽는다(scripts/bench-db.sh). author seq i는 user_seq i%5000+1,
-// service_seq i%100+1, read_count i%1000이고 user seq n의 name은 user-n이다.
+// model_queries feature coverage: reads the bench database seeded with the generated bench model
+// (scripts/bench-db.sh). author seq i is user_seq i%5000+1,
+// service_seq i%100+1, read_count i%1000, and the name of user seq n is user-n.
 
 require_once __DIR__ . '/coverage_cases.php';
 

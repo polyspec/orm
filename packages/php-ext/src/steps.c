@@ -1,5 +1,5 @@
 /*
- * plan diff의 step을 한 dialect로 쓴다. 각 step은 rollback statement와 효과를 가진다(PHP client PlanSteps,
+ * Writes the steps of a plan diff in one dialect. Each step has a rollback statement and an effect (PHP client PlanSteps,
  * docs/plans.md "Steps").
  */
 #include "dbspec.h"
@@ -14,8 +14,8 @@ typedef struct {
     renderer r;
     str hold_prefix;
     planstepv out;
-    smap rebuilt;      /* SQLite에서 다시 만드는 target table */
-    smap holds;        /* 보관 이름: "table.column", table, "+table.column" => str* */
+    smap rebuilt;      /* Target table that is rebuilt in SQLite */
+    smap holds;        /* Kept names: "table.column", table, "+table.column" => str* */
     strs hold_order;
 } writer;
 
@@ -123,7 +123,7 @@ static column *column_must(const table *t, str name)
     return c;
 }
 
-/* source table의 target 이름이다. 지우는 table은 source 이름 그대로다. */
+/* The target name of a source table. A table being dropped keeps its source name. */
 static str target_name(writer *w, str source)
 {
     SMAP_EACH(&w->d->table_of, i) {
@@ -139,7 +139,7 @@ static str rename_column_sql(writer *w, str table, str from, str to)
     return fmt("ALTER TABLE %S RENAME COLUMN %S TO %S", q(w, table), q(w, from), q(w, to));
 }
 
-/* SQLite가 table을 다시 만들어야 하는지: 이름, column, foreign key, check 중 하나라도 바뀌면 그렇다. */
+/* Whether SQLite must rebuild the table: yes if any of name, columns, foreign keys, or checks changed. */
 static bool sqlite_rebuilds(writer *w, str name)
 {
     pdiff *d = w->d;
@@ -163,7 +163,7 @@ static bool sqlite_rebuilds(writer *w, str name)
     return false;
 }
 
-/* source column c를 non-null로 되돌리는 rollback의 null 검사다. */
+/* The null check of the rollback that restores source column c to non-null. */
 static nullcheck null_check(writer *w, str table, str column_name, const column *c)
 {
     nullcheck n = {table, column_name, c->has_default, SL("")};
@@ -178,7 +178,7 @@ static bool precision_grows(const ctype *from, const ctype *to)
     return (str_eqc(to->name, "time") || str_eqc(to->name, "datetime")) && str_eq(to->name, from->name) && to->p[0] > from->p[0];
 }
 
-/* MySQL과 PostgreSQL에서 지우는 column을 nullable로 바꾸고 보관 이름으로 숨긴다. */
+/* In MySQL and PostgreSQL, the column being dropped is made nullable and hidden under its kept name. */
 static void hide_column(writer *w, str table, const column *c, str h)
 {
     if (!c->nullable) {
@@ -239,7 +239,7 @@ static int cmp_fkey_name(const void *a, const void *b, void *ctx)
     return str_cmp((*(fkey *const *)a)->name, (*(fkey *const *)b)->name);
 }
 
-/* table t를 name으로 둔 unique key와 index를 renderer 순서로 [이름, 만드는 statement, 지우는 statement]로 돌려준다. */
+/* Returns the unique keys and indexes of table t named name, in renderer order, as [name, create statement, drop statement]. */
 static indexsqlv index_sqls(writer *w, const table *t, str name)
 {
     indexsqlv out = {0};
@@ -262,7 +262,7 @@ static indexsqlv index_sqls(writer *w, const table *t, str name)
     return out;
 }
 
-/* renderer가 CREATE TABLE 뒤에 쓰는 unique index와 index다. */
+/* The unique indexes and indexes that the renderer writes after CREATE TABLE. */
 static void create_indexes(writer *w, const table *t, str name)
 {
     indexsqlv l = index_sqls(w, t, name);
@@ -271,7 +271,7 @@ static void create_indexes(writer *w, const table *t, str name)
     }
 }
 
-/* table t(name으로 둔)의 객체를 더하는 statement, 지우는 statement, 효과의 종류다. */
+/* The add statement, drop statement, and effect kind of table t's (named name) objects. */
 static void object_sqls(writer *w, const table *t, str name, objref o, str *create, str *drop, const char **kind)
 {
     dialect dl = w->r.d;
@@ -319,7 +319,7 @@ static void object_sqls(writer *w, const table *t, str name, objref o, str *crea
     *kind = "constraint";
 }
 
-/* source table t의 객체를 지우고, rollback은 source 정의로 다시 만든다. */
+/* Drops the objects of source table t; the rollback recreates them from the source definition. */
 static void drop_object(writer *w, const table *t, objref o)
 {
     str create, drop;
@@ -336,7 +336,7 @@ static void add_object(writer *w, str table, objref o)
     add(w, step(create, drop, SL(""), present(kind, table, o.name)));
 }
 
-/* table의 renderer CHECK 이름과 식이다. */
+/* The renderer CHECK name and expression of the table. */
 static smap renderer_checks(writer *w, const table *t)
 {
     smap out = {0};
@@ -355,7 +355,7 @@ typedef struct {
 
 typedef VEC(triggerpart) triggerpartv;
 
-/* 렌더링한 trigger statement에서 trigger 이름, CREATE TRIGGER와 PostgreSQL function을 짝짓는다. */
+/* Pairs the trigger name, CREATE TRIGGER, and PostgreSQL function in the rendered trigger statements. */
 static triggerpartv trigger_parts(writer *w, const table *t)
 {
     triggerpartv out = {0};
@@ -404,7 +404,7 @@ static void create_triggers(writer *w, const table *t)
     }
 }
 
-/* SQLite 다시 만들기에서 source 값을 target column 형식으로 옮기는 식이다. 늘어난 소수 자리는 0으로 채운다. */
+/* In the SQLite rebuild, the expression that moves a source value into the target column's format. Added decimal places are filled with 0. */
 static str copy_value(writer *w, const column *from, const column *to)
 {
     str qn = q(w, to->name);
@@ -423,7 +423,7 @@ typedef struct {
     str target;
 } colmap;
 
-/* target table의 column 중 source column c를 가리키는 것, 없으면 c다. */
+/* The target table's column that refers to source column c, or c if none. */
 static str target_column(const pdiff *d, str table, str c)
 {
     smap *m = smap_get(&d->column_of, table);
@@ -443,7 +443,7 @@ static str rename_in(void *ctx, str c)
     return target_column(m->d, m->target, c);
 }
 
-/* target table name의 source table에 이름 바꾸기를 적용한 정의다. 지우는 table을 참조하는 foreign key는 source 이름을 유지한다. */
+/* The definition of the source table for target name, with the rename applied. Foreign keys referring to a table being dropped keep the source name. */
 static table *renamed_source(writer *w, str name)
 {
     pdiff *d = w->d;
@@ -479,7 +479,7 @@ static table *renamed_source(writer *w, str name)
     }
     for (size_t i = 0; i < src->fks.n; i++) {
         const fkey *f = src->fks.v[i];
-        /* array_flip($d->tableOf): 같은 source를 가리키는 target이 여럿이면 마지막 것이다. */
+        /* array_flip($d->tableOf): if several targets point to the same source, the last one. */
         str parent = f->table;
         SMAP_EACH(&d->table_of, k) {
             if (str_eq(*(str *)d->table_of.e[k].val, f->table)) {
@@ -547,7 +547,7 @@ static str join(const strs *l)
     return strs_join(l, ", ");
 }
 
-/* SQLite table을 작업 table을 거쳐 다시 만든다(docs/plans.md "Steps"). */
+/* Rebuilds a SQLite table through a work table (docs/plans.md "Steps"). */
 static void rebuild(writer *w, str name)
 {
     pdiff *d = w->d;
@@ -558,13 +558,13 @@ static void rebuild(writer *w, str name)
     strs *removed_list = smap_get(&d->removed, name), *added_list = smap_get(&d->added, name);
     strs removed = removed_list != NULL ? *removed_list : (strs){0};
     strs added = added_list != NULL ? *added_list : (strs){0};
-    /* 새 정의: target table과 보관 이름의 지우는 column */
+    /* New definition: the target table and the dropped column under its kept name */
     columnv hidden_dropped = {0};
     for (size_t i = 0; i < removed.n; i++) {
         const column *col = column_must(src, removed.v[i]);
         PUSH(hidden_dropped, column_new(hold(w, fmt("%S.%S", src->name, removed.v[i])), col->type, col->nullable, col->identity, col->has_default ? &col->def : NULL));
     }
-    /* 옛 정의: 이름 바꾸기를 적용한 source table과 보관 이름의 더하는 column */
+    /* Old definition: the source table with the rename applied, and the added column under its kept name */
     table *old = renamed_source(w, name);
     columnv hidden_added = {0};
     for (size_t i = 0; i < added.n; i++) {
@@ -582,7 +582,7 @@ static void rebuild(writer *w, str name)
         PUSH(new_columns, hidden_dropped.v[i]->name);
     }
     str new_list = r_list(&w->r, &new_columns);
-    /* 옛 table에서 새 정의로 옮기는 식 */
+    /* Expression that moves from the old table to the new definition */
     strs into = {0}, from = {0}, into_restore = {0}, from_restore = {0};
     smap *column_of = smap_get(&d->column_of, name);
     for (size_t i = 0; i < t->columns.n; i++) {
@@ -605,7 +605,7 @@ static void rebuild(writer *w, str name)
         PUSH(into_restore, q(w, hidden_dropped.v[i]->name));
         PUSH(from_restore, q(w, removed.v[i]));
     }
-    /* 새 정의에서 옛 정의로 되돌리는 식 */
+    /* Expression that moves from the new definition back to the old definition */
     strs back_into = {0}, back_from = {0};
     str irreversible = SL("");
     nullcheckv checks = {0};
@@ -625,14 +625,14 @@ static void rebuild(writer *w, str name)
             }
             continue;
         }
-        /* 지우는 column: 새 정의에서는 보관 이름이다. */
+        /* Column being dropped: in the new definition, its kept name. */
         str h = hold(w, fmt("%S.%S", src->name, source_name));
         PUSH(back_from, q(w, h));
         if (!c->nullable) {
             PUSH(checks, null_check(w, name, h, c));
         }
     }
-    /* 옛 table에 숨긴 더한 column이 있으면 그 값도 되돌린다. */
+    /* If the old table has a hidden added column, its value is also restored. */
     strs back_into_restore = strs_copy(&back_into), back_from_restore = strs_copy(&back_from);
     for (size_t i = 0; i < added.n; i++) {
         PUSH(back_into_restore, q(w, hidden_added.v[i]->name));
@@ -788,7 +788,7 @@ static void write_steps(writer *w)
             }
         }
     }
-    /* 3. check, unique, index와 지우는 table의 객체 */
+    /* 3. checks, unique keys, indexes, and objects of the table being dropped */
     smap drop_tables = {0};
     SMAP_EACH(&d->drop_objects, i) {
         str s = d->drop_objects.e[i].key;
@@ -872,7 +872,7 @@ static void write_steps(writer *w)
         add(w, step(rename_column_sql(w, rc.v[i].table, rc.v[i].old, rc.v[i].new_), rename_column_sql(w, rc.v[i].table, rc.v[i].new_, rc.v[i].old),
             SL(""), present("column", rc.v[i].table, rc.v[i].new_)));
     }
-    /* 5. 지우는 column과 table을 숨긴다 */
+    /* 5. Hide the columns and tables being dropped */
     if (!sqlite) {
         for (size_t i = 0; i < d->matched.n; i++) {
             str name = d->matched.v[i];
@@ -897,7 +897,7 @@ static void write_steps(writer *w)
         add(w, step(created.v[0], fmt("DROP TABLE %S", q(w, name)), SL(""), present("table", name, SL(""))));
         create_indexes(w, t, name);
     }
-    /* 7. add, alter column; SQLite 다시 만들기 */
+    /* 7. add, alter column; SQLite rebuild */
     for (size_t i = 0; i < d->matched.n; i++) {
         str name = d->matched.v[i];
         if (sqlite) {

@@ -173,7 +173,7 @@ class Validator {
     }
     if (!isJoin && q.on) fail(codes.IR_INVALID, 'on[] is only valid on join children');
     if (q.on?.not || q.where?.not) fail(codes.IR_INVALID, 'not applies to a nested group');
-    // top-level group 은 앞 형제가 없으므로 conn 을 갖지 않는다.
+    // A top-level group has no preceding sibling, so it has no conn.
     for (const top of [q.on, q.where]) {
       if (top && (top.conn ?? '') !== '') fail(codes.IR_INVALID, `the top-level group takes no conn ("${top.conn}")`);
     }
@@ -198,7 +198,7 @@ class Validator {
         const left = columnOf(ent, k.left) ?? fail(codes.COLUMN_UNKNOWN, `${q.entity}.${k.left}`);
         const right = columnOf(target, k.right) ?? fail(codes.COLUMN_UNKNOWN, `${target.name}.${k.right}`);
         if (!meets(left, right)) fail(codes.OPERATOR_NOT_ALLOWED, `relation ${r.rel}: ${q.entity}.${k.left} does not meet ${target.name}.${k.right}`);
-        // 한 column이 두 성분에 나오면 key가 아니다.
+        // If a column appears in two components, it is not a key.
         if (lefts.has(k.left) || rights.has(k.right)) fail(codes.IR_INVALID, `relation ${r.rel}: key column ${k.left} or ${k.right} is used twice`);
         lefts.add(k.left);
         rights.add(k.right);
@@ -255,7 +255,7 @@ class Validator {
       const conn = only.conn ?? '';
       if (conn !== '' && conn !== 'and' && conn !== 'or') fail(codes.IR_INVALID, `conn "${conn}"`);
       if (i === 0 && conn === 'or') fail(codes.OR_AT_GROUP_START, 'a group may not start with OR');
-      // group 의 첫 item 은 앞 형제가 없으므로 conn 을 갖지 않는다.
+      // The first item of a group has no preceding sibling, so it has no conn.
       if (i === 0 && conn !== '') fail(codes.IR_INVALID, `the first item of a group takes no conn ("${conn}")`);
       if (it.joined) {
         const j = joined.get(it.joined.join) ?? fail(codes.ENTITY_NOT_JOINED, `${it.joined.join} is not joined in this statement`);
@@ -342,7 +342,7 @@ class Validator {
     }
     if (columnOps.has(op)) {
       if (!p.ref) fail(codes.IR_INVALID, `${op} needs ref`);
-      // 없거나 null인 path는 root다. 문자열이 아닌 path나 column은 request의 형태가 틀린 것이다.
+      // A path that is missing or null is the root. A path or column that is not a string means the request has the wrong shape.
       const path: unknown = p.ref.path ?? '';
       const refColumn: unknown = p.ref.column;
       if (typeof path !== 'string' || typeof refColumn !== 'string') fail(codes.IR_INVALID, `${op} ref path and column must be strings`);
@@ -555,7 +555,7 @@ export function validate(m: RuntimeModel, r: Request): void {
   if (r.manifest_hash !== m.manifestHash) fail(codes.SCHEMA_HASH_MISMATCH, `client ${r.manifest_hash}, engine ${m.manifestHash}`);
   if (!kinds.has(r.kind)) fail(codes.IR_INVALID, `unknown kind "${r.kind}"`);
   if (r.load === true && (r.kind !== 'insert' || (r.on_duplicate ?? []).length > 0)) fail(codes.IR_INVALID, 'load is only valid on insert without on_duplicate');
-  // restart_identity은 entity 하나의 identity만 다시 시작하므로 행이나 값을 받지 않는다.
+  // restart_identity restarts the identity of one entity only, so it takes no row or value.
   if (r.kind === 'restart_identity' && ((r.set ?? []).length > 0 || (r.rows ?? []).length > 0 || (r.on_duplicate ?? []).length > 0 || r.where !== undefined || r.optimistic !== undefined)) {
     fail(codes.IR_INVALID, 'restart_identity takes no set, rows, on_duplicate, where or optimistic');
   }
@@ -607,7 +607,7 @@ export function validate(m: RuntimeModel, r: Request): void {
   }
   if ((r.kind === 'update' || r.kind === 'delete') && (!r.where || r.where.items.length === 0)) fail(codes.IR_INVALID, `${r.kind} without where`);
   if (r.kind === 'restore') {
-    // restore 는 지워진 행만 고치므로 읽은 version 과 비교할 것이 없다.
+    // restore only changes deleted rows, so there is nothing to compare with the version read.
     if (r.optimistic !== undefined) fail(codes.IR_INVALID, 'restore takes no optimistic');
     restoreKey(ent, r);
   }
@@ -641,7 +641,7 @@ export function restoreKey(ent: Entity, r: Request): RestoreParts {
   });
   for (const a of r.set ?? []) if (a.p !== undefined) valued.add(a.column);
   const covered = (columns: readonly string[]) => columns.length > 0 && columns.every(c => valued.has(c));
-  // indexes 의 앞부분이 uniques 와 같은 순서의 unique key 이름이다.
+  // The indexes' leading part is the unique key name in the same order as the uniques.
   const uniques = ent.uniques.map((columns, i) => ({ name: ent.indexes[i] ?? fail(codes.IR_INVALID, `${ent.name} has no index name for unique key ${i + 1}`), columns })).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
   const key = covered(ent.primaryKey) ? ent.primaryKey : uniques.find(u => covered(u.columns))?.columns
     ?? fail(codes.IR_INVALID, `restore of ${ent.name} gives no primary key or unique key a value in its set or in an eq condition of its where`);

@@ -18,7 +18,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
-/** introspection 이 보낸 catalog query 수를 센다. */
+/** Counts the catalog queries sent by introspection. */
 final class CountingPdo extends PDO
 {
     public int $queries = 0;
@@ -30,9 +30,9 @@ final class CountingPdo extends PDO
     }
 }
 
-// dialect 마다 table 수와 무관한 catalog query 수 (docs/dialects.md "Introspection").
+// The number of catalog queries per dialect, independent of the table count (docs/dialects.md "Introspection").
 const QUERY_COUNTS = ['mysql' => 9, 'postgres' => 7, 'sqlite' => 3];
-// 모든 client 가 새 connection 에서 실행하는 statement.
+// The statement that every client runs on a new connection.
 const INTROSPECT_CONNECTION_RULES = ['mysql' => ["SET time_zone = '+00:00'"], 'postgres' => ["SET TimeZone = 'UTC'"], 'sqlite' => ['PRAGMA foreign_keys = ON']];
 
 /** The DSNs of the servers; the test fails when either is unset. */
@@ -48,8 +48,8 @@ function introspect_dsns(): array
 }
 
 /**
- * case 마다 새 database, schema 또는 file 을 만들고 그곳을 가리키는 connection,
- * 그것을 지우는 함수와 그 이름을 돌려준다.
+ * Each case creates a new database, schema, or file, the connection that points at it,
+ * and the function that removes it, and returns its name.
  *
  * @return array{0: CountingPdo, 1: Closure(): void, 2: string}
  */
@@ -84,7 +84,7 @@ function open_database(string $dialect): array
     return [$pdo, static function () use (&$pdo, $admin, $dialect, $quoted, $name): void {
         $pdo = null;
         if ($dialect === 'postgres') {
-            // 두 번째 schema 가 필요한 case 는 그것을 <schema>_b 로 만든다.
+            // A case that needs a second schema makes it as <schema>_b.
             $admin->exec("DROP SCHEMA IF EXISTS \"{$name}_b\" CASCADE");
         }
         $admin->exec(($dialect === 'mysql' ? 'DROP DATABASE ' : 'DROP SCHEMA ') . $quoted . ($dialect === 'mysql' ? '' : ' CASCADE'));
@@ -99,7 +99,7 @@ function open_database(string $dialect): array
 }
 
 /**
- * 집합의 모든 문서를 parse 한다. 각 문서는 나머지 문서를 사용할 수 있다.
+ * Parses every document of the set. Each document can use the other documents.
  *
  * @param array<string, string> $texts
  * @return list<Document>
@@ -133,7 +133,7 @@ function render_statements(string $id, array $documents, string $dialect): array
     return $rendered->statements ?? throw new RuntimeException("$id/$dialect: " . json_encode(array_map(static fn($d) => [$d->rule, $d->line, $d->message], $rendered->diagnostics)));
 }
 
-/** 집합의 모든 table 을 이름 순으로 담은 한 문서의 schema text. @param list<Document> $documents */
+/** The schema text of one document with all the tables of the set in name order. @param list<Document> $documents */
 function expected_schema_text(array $documents): string
 {
     $combined = new Document('introspected');
@@ -146,8 +146,8 @@ function expected_schema_text(array $documents): string
 }
 
 /**
- * 새 database 에 statement 를 적용하고 introspect 한다. 결과와 query 수를 돌려준다.
- * statement 의 {schema} 는 그 database 또는 schema 의 이름이다.
+ * Applies the statement to a new database and introspects it. Returns the result and the query count.
+ * {schema} in the statement is the name of that database or schema.
  *
  * @param list<string> $statements
  * @return array{0: Polyspec\Orm\Dbspec\IntrospectResult, 1: int}
@@ -178,7 +178,7 @@ function unsupported_entries(array $unsupported): array
 #[Medium]
 final class DbspecIntrospectTest extends TestCase
 {
-    // round trip: ddl.json 의 모든 case 와 모든 schema 문서, 세 dialect 에서.
+    // round trip: all cases of ddl.json and all schema documents, in the three dialects.
     public static function roundTripCases(): iterable
     {
         $root = dirname(__DIR__, 3);
@@ -187,7 +187,7 @@ final class DbspecIntrospectTest extends TestCase
         foreach ($ddl['cases'] as $case) {
             $sets['ddl_' . str_replace('-', '_', $case['id'])] = array_map(lines_text(...), $case['documents']);
         }
-        // packages/go/internal/dialects 의 schemaDocumentPatterns 와 같은 목록.
+        // The same list as schemaDocumentPatterns in packages/go/internal/dialects.
         foreach (["$root/contracts/fixtures/bench/*.dbs", "$root/contracts/fixtures/*.dbs"] as $pattern) {
             foreach (glob($pattern) ?: throw new RuntimeException("no document matches $pattern") as $path) {
                 $sets['schema_' . basename($path, '.dbs')] = [basename($path, '.dbs') => $path];
@@ -216,11 +216,11 @@ final class DbspecIntrospectTest extends TestCase
         [$result, $queries] = introspect_applied($dialect, render_statements($id, $documents, $dialect));
         $this->assertSame([], array_map(static fn(Unsupported $u): array => [$u->kind, $u->table, $u->name, $u->reason], $result->unsupported), "$id: unsupported");
         $this->assertSame($want, expected_schema_text([$result->document]), "$id: schema text differs");
-        // dialect 마다 table 수와 무관한 catalog query 수다: 모든 집합에서 같다.
+        // The catalog query count per dialect, independent of the table count: it is the same for all sets.
         $this->assertSame(QUERY_COUNTS[$dialect], $queries, "$id: introspection query count");
     }
 
-    // 미지원 case: tests/dbspec/introspect.json.
+    // Unsupported cases: tests/dbspec/introspect.json.
     public static function unsupportedCases(): iterable
     {
         $vectors = json_decode(file_get_contents(dirname(__DIR__, 3) . '/tests/dbspec/introspect.json'), true, 512, JSON_THROW_ON_ERROR);
@@ -241,7 +241,7 @@ final class DbspecIntrospectTest extends TestCase
         [$result] = introspect_applied($case['dialect'], $statements);
         $this->assertSame(lines_text($case['document']), Dbspec::emit($result->document), "$id: document differs");
         $this->assertSame(array_map(static fn(array $w): array => array_slice($w, 0, 3), $case['unsupported']), unsupported_entries($result->unsupported), "$id: unsupported differs");
-        // 네 번째 원소는 reason이 포함해야 하는 rule이다. 없으면 reason은 비교하지 않는다.
+        // The fourth element is the rule the reason must contain. If absent, the reason is not compared.
         foreach ($case['unsupported'] as $i => $want) {
             if (isset($want[3])) {
                 $this->assertStringContainsString($want[3], $result->unsupported[$i]->reason, "$id: reason of " . implode(' ', array_slice($want, 0, 3)) . ' differs');
@@ -262,7 +262,7 @@ final class DbspecIntrospectTest extends TestCase
         yield 'query-failure-silent' => [PDO::ERRMODE_SILENT];
     }
 
-    // query 실패는 connection 의 error mode 와 무관하게 error 다.
+    // A query failure is an error regardless of the connection's error mode.
     #[DataProvider('queryFailureModes')]
     public function test_query_failure(int $mode): void
     {

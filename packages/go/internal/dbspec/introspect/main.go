@@ -1,6 +1,6 @@
-// Command go는 한 database를 Go engine으로 introspect해 tests/dbspec/introspect의
-// 출력 형식으로 쓴다: stdout에 canonical 문서와 미지원 객체 줄
-// "! kind<TAB>table<TAB>name", stderr에 미지원 객체마다 "reason ..." 줄과 "elapsed <ms>".
+// Command go introspects one database with the Go engine and writes it in the output format of tests/dbspec/introspect:
+// the canonical document on stdout and the unsupported object lines
+// "! kind<TAB>table<TAB>name", and on stderr a "reason ..." line per unsupported object and an "elapsed <ms>" line.
 //
 // Usage: go run ./packages/go/internal/dbspec/introspect <mysql|postgres|sqlite> <uri>
 package main
@@ -21,13 +21,13 @@ import (
 	"github.com/polyspec/orm/packages/go/engine/dbspec"
 )
 
-// main은 run의 종료 코드로 끝난다. os.Exit는 defer를 실행하지 않으므로 run 안에서는 부르지 않는다: 실패한
-// fail은 exit panic으로 run까지 올라오고, 그 사이의 defer(연결 닫기)가 실행된다.
+// main ends with the exit code of run. os.Exit does not run defers, so it is not called inside run: a failed
+// fail is raised up to run as an exit panic, and the defers in between (closing connections) run.
 func main() {
 	os.Exit(run())
 }
 
-// exit는 fail이 run을 끝내는 panic이고, 값은 종료 코드다.
+// exit is the panic by which fail ends run; its value is the exit code.
 type exit int
 
 func run() (code int) {
@@ -67,7 +67,7 @@ func run() (code int) {
 	return 0
 }
 
-// open은 URI를 dialect의 database/sql driver로 연다.
+// open opens the URI with the dialect's database/sql driver.
 func open(dialect, uri string) (*sql.DB, error) {
 	u, err := url.Parse(uri)
 	if err != nil {

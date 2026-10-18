@@ -1,6 +1,6 @@
 /*
- * PHP 객체 graph(Polyspec\Orm\Dbspec\Native\Document와 그 하위 class)와 C model을 양방향으로 바꾼다. 사용자가 고친
- * Document를 그대로 받으므로, 배열 property의 원소는 그 자리의 class인지 확인하고 아니면 TypeError다.
+ * Converts in both directions between the PHP object graph (Polyspec\Orm\Dbspec\Native\Document and its subclasses) and the C model. The user-edited
+ * Document is accepted as is, so each element of an array property is checked to be an instance of that slot's class, and otherwise it is a TypeError.
  */
 #include "dbspec.h"
 #include "Zend/zend_exceptions.h"
@@ -21,7 +21,7 @@ static zval *slot(zend_object *o, const char *name)
     return OBJ_PROP(o, info->offset);
 }
 
-/* property name의 값을 놓고 그 자리를 돌려준다. 호출자가 새 값을 쓴 뒤 property flag를 지운다. */
+/* Puts the value of property name and returns its slot. The caller clears the property flag after writing the new value. */
 static zval *released_slot(zval *obj, const char *name)
 {
     zval *p = slot(Z_OBJ_P(obj), name);
@@ -50,7 +50,7 @@ void obj_put_long(zval *obj, const char *name, zend_long n)
     obj_put(obj, name, &v);
 }
 
-/* bool과 null은 value 없이 type만 가지므로 property에 바로 쓴다. ZVAL_COPY_VALUE는 쓰지 않은 value를 읽는다. */
+/* bool and null have only a type and no value, so they are written to the property directly. ZVAL_COPY_VALUE reads a value that was not written. */
 void obj_put_bool(zval *obj, const char *name, bool b)
 {
     zval *p = released_slot(obj, name);
@@ -207,7 +207,7 @@ bool in_strs(zval *v, strs *out, const char *what)
     return true;
 }
 
-/* obj의 property name을 읽는다. */
+/* Reads property name of obj. */
 #define GET(obj, name) zval *name##_ = obj_get(obj, #name); if (name##_ == NULL) return false
 
 static bool in_obj(zval *v, zend_class_entry *ce, const char *what)
@@ -220,7 +220,7 @@ static bool in_obj(zval *v, zend_class_entry *ce, const char *what)
 }
 
 typedef struct {
-    HashTable types; /* ColumnType 객체 handle => ctype* */
+    HashTable types; /* ColumnType object handle => ctype* */
 } in_ctx;
 
 static bool in_ctype(in_ctx *c, zval *v, ctype **out)
@@ -283,7 +283,7 @@ static bool in_column(in_ctx *c, zval *v, column **out)
     return true;
 }
 
-/* 배열 property의 객체마다 f를 부른다. */
+/* Calls f for each object of an array property. */
 #define EACH_OBJ(arr, ce, what, ...) do { \
         zval *e_; \
         ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(arr), e_) { \
@@ -522,7 +522,7 @@ bool in_documents(zval *v, documentv *out, const char *what)
 /* ----------------------------------------------------------------- out */
 
 typedef struct {
-    HashTable types; /* ctype* => ColumnType 객체 */
+    HashTable types; /* ctype* => ColumnType object */
 } out_ctx;
 
 static void out_ctype(out_ctx *c, ctype *t, zval *out)

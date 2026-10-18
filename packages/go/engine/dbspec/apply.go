@@ -9,16 +9,16 @@ import (
 	"time"
 )
 
-// Execer는 명령이 statement를 실행하고 catalog를 읽는 connection 하나다.
-// *sql.Conn이 이를 만족하며, 명령은 lock과 session 설정을 그 connection에서만 쓴다.
+// Execer is the one connection on which the command runs statements and reads the catalog.
+// *sql.Conn satisfies it, and the command uses the lock and session settings only on that connection.
 type Execer interface {
 	Querier
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 }
 
-// ApplyEvent는 apply, recover, rollback, finalize가 알리는 일이다(docs/plans.md
-// "Apply"). Kind는 plan, rollback, finalize, irreversible, statement, applied,
-// verified, done 중 하나다.
+// ApplyEvent is what apply, recover, rollback, and finalize report (docs/plans.md
+// "Apply"). Kind is one of plan, rollback, finalize, irreversible, statement, applied,
+// verified, or done.
 type ApplyEvent struct {
 	Kind      string
 	Plan      string
@@ -27,8 +27,8 @@ type ApplyEvent struct {
 	Statement string
 }
 
-// ApplyError는 명령의 실패다. Code는 locked, session, interrupted, drift, chain, failed,
-// verify, irreversible, nulls 중 하나다.
+// ApplyError is a failure of the command. Code is one of locked, session, interrupted, drift, chain, failed,
+// verify, irreversible, or nulls.
 type ApplyError struct {
 	Code    string
 	Plan    string
@@ -61,39 +61,39 @@ func (e *ApplyError) Error() string {
 
 func (e *ApplyError) Unwrap() error { return e.Err }
 
-// historyTable은 적용한 plan을 기록하는 table이다. dbspec 이름에는 $가 없으므로
-// 사용자 table과 겹치지 않고, introspection은 dbspec$로 시작하는 table을 빼고 읽는다.
+// historyTable is the table that records applied plans. Since dbspec names have no $, it does not
+// collide with user tables, and introspection reads excluding tables that start with dbspec$.
 const historyTable = "dbspec$plans"
 
-// mysqlLockName은 현재 database 하나의 lock 이름이다. MySQL lock 이름은
-// 64자까지이므로 database 이름 대신 그 SHA-256 hex 앞 51자를 붙여 64자로 만든다.
+// mysqlLockName is the lock name of the current database. A MySQL lock name is
+// up to 64 characters, so it uses the first 51 characters of the SHA-256 hex of the database name, not the name itself, to make 64.
 const mysqlLockName = "CONCAT('" + historyTable + "$', LEFT(SHA2(DATABASE(), 256), 51))"
 
-// postgresLockKey는 현재 database의 현재 schema 하나의 advisory lock key다.
+// postgresLockKey is the advisory lock key of the current schema of the current database.
 const postgresLockKey = "hashtext('" + historyTable + "'), hashtext(current_schema())"
 
-// sessionRequirement는 session error가 밝히는 요구다. lock은 server session에 속하므로 명령은
-// 처음부터 끝까지 다른 client와 나누지 않는 server session 하나에서 실행해야 한다. transaction
-// pooler는 statement마다 server connection을 다시 고르므로 그 요구를 지키지 못한다.
+// sessionRequirement is the requirement that the session error states. The lock belongs to the server session, so the command
+// must run from start to finish on one server session that is not shared with other clients. A transaction
+// pooler picks a server connection again for each statement, so it cannot keep that requirement.
 const sessionRequirement = "apply, recover, rollback and finalize need one server session of their own for the whole run: a direct or session-pooled connection"
 
-// mysqlSessionQuery와 postgresSessionQuery는 현재 server session의 id와, 그 session이 이 명령의
-// lock을 이미 잡고 있는지를 읽는다. lock을 잡기 전에 이미 잡혀 있으면 다른 client가 같은 server
-// session을 쓰고 있다.
+// mysqlSessionQuery and postgresSessionQuery read the id of the current server session, and whether that session
+// already holds the lock, before the lock is taken. If it is already held, another client is using the same server
+// session.
 const (
 	mysqlSessionQuery    = "SELECT CONNECTION_ID(), COALESCE(IS_USED_LOCK(" + mysqlLockName + ") = CONNECTION_ID(), 0)"
 	postgresSessionQuery = "SELECT pg_backend_pid(), EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND pid = pg_backend_pid() AND objsubid = 2" +
 		" AND classid = (hashtext('" + historyTable + "')::bigint & 4294967295)::oid AND objid = (hashtext(current_schema())::bigint & 4294967295)::oid)"
 )
 
-// lockWait은 statement가 다른 session의 lock을 기다리는 최대 시간이다(docs/plans.md
-// "Apply"의 lock 대기).
+// lockWait is the maximum time a statement waits for another session's lock (docs/plans.md
+// "Apply" lock wait).
 const (
 	lockWaitSeconds = 5
 	lockWaitMillis  = lockWaitSeconds * 1000
 )
 
-// history row의 state.
+// state of the history row.
 const (
 	stateApplying    = "applying"
 	stateApplied     = "applied"
@@ -102,7 +102,7 @@ const (
 	stateRollingBack = "rolling_back"
 )
 
-// applier는 명령 한 번의 상태다.
+// applier is the state of one command.
 type applier struct {
 	ctx     context.Context
 	c       Execer
@@ -111,7 +111,7 @@ type applier struct {
 	events  func(ApplyEvent) error
 	chain   []*Plan
 	history map[string]historyRow
-	// serverSession은 lock을 잡은 server session의 id다(MySQL CONNECTION_ID, PostgreSQL pg_backend_pid).
+	// serverSession is the id of the server session holding the lock (MySQL CONNECTION_ID, PostgreSQL pg_backend_pid).
 	serverSession int64
 }
 
@@ -133,8 +133,8 @@ func newApplier(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, n
 	return &applier{ctx: ctx, c: c, r: renderer{d: dialect}, now: now, events: events, chain: chain}, nil
 }
 
-// Apply는 chain에서 database가 아직 적용하지 않은 plan을 차례로 finalize step 앞까지
-// 적용한다. 이미 끝까지 적용한 database에서는 아무것도 바꾸지 않는다.
+// Apply applies, in chain order, the plans the database has not yet applied, up to the finalize step.
+// It changes nothing on a database that is already applied to the end.
 func Apply(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error {
 	a, err := newApplier(ctx, c, dialect, plans, now, events)
 	if err != nil {
@@ -154,8 +154,8 @@ func Apply(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now fu
 	})
 }
 
-// Recover는 중단된 plan을 catalog의 효과로 판단해 앞으로 이어 간다. 중단된 plan이
-// 없으면 아무것도 바꾸지 않는다.
+// Recover judges an interrupted plan from the effects in the catalog and carries it forward. If there is no
+// interrupted plan, it changes nothing.
 func Recover(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error {
 	a, err := newApplier(ctx, c, dialect, plans, now, events)
 	if err != nil {
@@ -195,8 +195,8 @@ func Recover(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now 
 	})
 }
 
-// Rollback은 history의 마지막 plan을 rollback statement로 step 0까지 되돌리고 그
-// row를 지운다. row가 없으면 아무것도 바꾸지 않는다.
+// Rollback rolls the last plan in history back to step 0 with its rollback statements, and then
+// deletes its row. If there is no row, it changes nothing.
 func Rollback(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error {
 	a, err := newApplier(ctx, c, dialect, plans, now, events)
 	if err != nil {
@@ -277,8 +277,8 @@ func Rollback(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now
 	})
 }
 
-// Finalize는 applied인 모든 plan의 finalize step을 chain 순서로 실행해 숨긴 table과
-// column을 지운다.
+// Finalize runs the finalize steps of all applied plans in chain order, deleting hidden tables and
+// columns.
 func Finalize(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error {
 	a, err := newApplier(ctx, c, dialect, plans, now, events)
 	if err != nil {
@@ -312,7 +312,7 @@ func Finalize(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now
 	})
 }
 
-// finalizeStart는 첫 finalize step의 index다.
+// finalizeStart is the index of the first finalize step.
 func finalizeStart(steps []PlanStep) int {
 	for i, s := range steps {
 		if s.Finalize {
@@ -330,8 +330,8 @@ func (a *applier) irreversible(p *Plan, steps []PlanStep, i int) error {
 	return &ApplyError{Code: "irreversible", Plan: p.Name, Step: i, Message: message}
 }
 
-// session은 dialect의 lock을 잡고 session 설정을 바꾼 뒤 f를 실행하고, 끝에 설정을
-// 되돌리고 lock을 놓는다.
+// session takes the dialect's lock and changes the session settings, runs f, and at the end restores the settings
+// and releases the lock.
 func (a *applier) session(f func() error) error {
 	switch a.r.d {
 	case DialectMySQL:
@@ -343,7 +343,7 @@ func (a *applier) session(f func() error) error {
 		if err := a.queryRow("SELECT GET_LOCK("+mysqlLockName+", 0), CONNECTION_ID()", &got, &session); err != nil {
 			return err
 		}
-		// GET_LOCK의 NULL은 lock을 기다리던 중의 error다.
+		// A NULL from GET_LOCK is an error raised while waiting for the lock.
 		switch {
 		case !got.Valid:
 			return fmt.Errorf("GET_LOCK returned NULL; want 1 or 0")
@@ -368,7 +368,7 @@ func (a *applier) session(f func() error) error {
 		_, unlock := a.c.ExecContext(a.ctx, "DO RELEASE_LOCK("+mysqlLockName+")")
 		return joinCleanup(err, unlock)
 	case DialectPostgres:
-		// current_schema()가 NULL이면 결과도 NULL이며, bool로 읽지 못해 error다.
+		// If current_schema() is NULL, the result is NULL too, and it is an error because it cannot be read as bool.
 		if err := a.openSession(postgresSessionQuery); err != nil {
 			return err
 		}
@@ -403,8 +403,8 @@ func (a *applier) session(f func() error) error {
 	return a.sqliteSession(f)
 }
 
-// openSession은 lock을 잡기 전에 server session의 id를 기억한다. 그 session이 lock을 이미
-// 잡고 있으면 다른 client가 같은 server session을 쓰는 것이므로 session error다.
+// openSession remembers the id of the server session before the lock is taken. If that session already holds the
+// lock, another client is using the same server session, so it is a session error.
 func (a *applier) openSession(query string) error {
 	var held bool
 	if err := a.queryRow(query, &a.serverSession, &held); err != nil {
@@ -416,8 +416,8 @@ func (a *applier) openSession(query string) error {
 	return nil
 }
 
-// sameSession은 current가 lock을 잡은 server session인지 확인한다. 다르면 plan p의 step i
-// 앞에서(p가 nil이면 lock에서) session error다.
+// sameSession checks whether current is the server session holding the lock. If not, it is a session error
+// before step i of plan p (or on the lock when p is nil).
 func (a *applier) sameSession(p *Plan, i int, current int64) error {
 	if current == a.serverSession {
 		return nil
@@ -429,8 +429,8 @@ func (a *applier) sameSession(p *Plan, i int, current int64) error {
 	return e
 }
 
-// checkSession은 step 앞에서 connection이 아직 lock을 잡은 server session인지 확인한다.
-// SQLite connection은 file 하나의 connection이므로 확인하지 않는다.
+// checkSession checks, before a step, that the connection is still the server session holding the lock.
+// A SQLite connection is the connection of one file, so it is not checked.
 func (a *applier) checkSession(p *Plan, i int) error {
 	query := map[Dialect]string{DialectMySQL: "SELECT CONNECTION_ID()", DialectPostgres: "SELECT pg_backend_pid()"}[a.r.d]
 	if query == "" {
@@ -443,8 +443,8 @@ func (a *applier) checkSession(p *Plan, i int) error {
 	return a.sameSession(p, i, current)
 }
 
-// sqliteSession은 SQLite의 exclusive locking mode로 file을 잠그고, foreign key를 끄고,
-// 이름 바꾸기가 다른 table의 foreign key를 데려가게 한다.
+// sqliteSession locks the file in SQLite's exclusive locking mode, turns off foreign keys, and
+// lets a rename carry other tables' foreign keys along.
 func (a *applier) sqliteSession(f func() error) error {
 	var foreignKeys, legacy, busy int64
 	var mode string
@@ -466,7 +466,7 @@ func (a *applier) sqliteSession(f func() error) error {
 			exec("PRAGMA foreign_keys = " + strconv.FormatInt(foreignKeys, 10)),
 			exec("PRAGMA legacy_alter_table = " + strconv.FormatInt(legacy, 10)),
 			exec("PRAGMA locking_mode = " + mode),
-			// locking mode를 되돌린 뒤 한 번 읽어야 exclusive lock이 풀린다.
+			// After the locking mode is restored, one read is needed for the exclusive lock to be released.
 			a.queryRow("SELECT COUNT(*) FROM sqlite_master", &tables),
 			exec("PRAGMA busy_timeout = " + strconv.FormatInt(busy, 10)),
 		}
@@ -494,8 +494,8 @@ func (a *applier) sqliteSession(f func() error) error {
 	return joinCleanup(append([]error{err}, restore()...)...)
 }
 
-// joinCleanup은 실패와 그 뒤 정리 단계의 error를 함께 돌려준다. nil이 아닌 error가
-// 하나뿐이면 감싸지 않고 그 error를 그대로 돌려주고, 여럿이면 errors.Join으로 순서대로 담는다.
+// joinCleanup returns the failure together with the errors of the cleanup steps after it. When there is more than one
+// non-nil error, it returns the error unwrapped if there is only one; if there are several, it holds them in order with errors.Join.
 func joinCleanup(errs ...error) error {
 	var found []error
 	for _, err := range errs {
@@ -526,13 +526,13 @@ func (a *applier) queryRowArgs(query string, args []any, dest ...any) error {
 	return joinCleanup(err, rows.Close())
 }
 
-// appliedAt은 history의 applied_at text다: tool clock의 UTC 시각을 소수 여섯
-// 자리로 버림한 YYYY-MM-DDTHH:MM:SS.ffffffZ (docs/plans.md "Apply").
+// appliedAt is the applied_at text of history: the UTC time of the tool clock, truncated to six
+// fractional digits, as YYYY-MM-DDTHH:MM:SS.ffffffZ (docs/plans.md "Apply").
 func appliedAt(t time.Time) string {
 	return t.UTC().Format("2006-01-02T15:04:05.000000Z")
 }
 
-// createHistory는 history table을 없을 때 만든다.
+// createHistory creates the history table if it does not exist.
 func (a *applier) createHistory() error {
 	q := a.r.q
 	integer, text, tail := "integer", "varchar(71)", ""
@@ -564,8 +564,8 @@ func (a *applier) readHistory() error {
 	})
 }
 
-// position은 history를 읽어 기록된 plan 수를 돌려준다. 기록은 chain의 앞부분이어야
-// 하고, 마지막 앞의 row는 applied나 done이어야 한다.
+// position reads history and returns the number of recorded plans. The records must be at the front of the chain,
+// and the rows before the last must be applied or done.
 func (a *applier) position() (int, error) {
 	if err := a.readHistory(); err != nil {
 		return 0, err
@@ -599,8 +599,8 @@ func (a *applier) position() (int, error) {
 	return position, nil
 }
 
-// settled는 중단된 plan이 없고 catalog가 기록한 schema와 같을 때 기록된 plan 수를
-// 돌려준다.
+// settled returns the number of recorded plans when no plan is interrupted and the catalog matches the recorded
+// schema.
 func (a *applier) settled() (int, error) {
 	position, err := a.position()
 	if err != nil {
@@ -620,8 +620,8 @@ func (a *applier) settled() (int, error) {
 	return position, nil
 }
 
-// verify는 database의 introspection이 want schemaHash(빈 문자열이면 빈
-// database)이고 미지원 객체가 없는지 확인한다.
+// verify checks that the database's introspection equals want schemaHash (an empty string means an empty
+// database) and that there are no unsupported objects.
 func (a *applier) verify(want string) error {
 	document, unsupported, err := Introspect(a.ctx, a.c, a.r.d, "schema")
 	if err != nil {
@@ -645,7 +645,7 @@ func (a *applier) verify(want string) error {
 	return nil
 }
 
-// steps는 chain에서 plan의 앞 plan target을 source로 step을 쓴다.
+// steps writes the steps along the chain for a plan, using the target of the plan before it as source.
 func (a *applier) steps(p *Plan) ([]PlanStep, error) {
 	var source *Document
 	for i, c := range a.chain {
@@ -660,8 +660,8 @@ func (a *applier) steps(p *Plan) ([]PlanStep, error) {
 	return steps, nil
 }
 
-// resolve는 중단된 row의 step을 catalog의 효과로 정한다. forward이면 앞으로, 아니면
-// 뒤로 이어 갈 위치다(docs/plans.md "Apply"의 recover).
+// resolve decides the step of an interrupted row from the effects in the catalog. It carries on forward if forward, otherwise
+// backward (docs/plans.md "Apply" recover).
 func (a *applier) resolve(p *Plan, row historyRow, steps []PlanStep, forward bool) (int, error) {
 	k := row.step
 	if k < 0 || k > len(steps) {
@@ -683,7 +683,7 @@ func (a *applier) resolve(p *Plan, row historyRow, steps []PlanStep, forward boo
 			return 0, &ApplyError{Code: "failed", Plan: p.Name, Step: uncertain, Err: err}
 		}
 	}
-	// 앞으로 갈 때 repeat step은 다시 실행하고, 뒤로 갈 때는 그 rollback을 다시 실행한다.
+	// When going forward, repeat steps run again; when going backward, their rollback runs again.
 	took := held || (!forward && e.Kind == "repeat")
 	if rolling {
 		if took {
@@ -697,7 +697,7 @@ func (a *applier) resolve(p *Plan, row historyRow, steps []PlanStep, forward boo
 	return k, nil
 }
 
-// record는 plan의 row를 state와 step으로 쓴다. row가 없으면 만든다.
+// record writes the plan's row with state and step. If there is no row, it creates one.
 func (a *applier) record(p *Plan, state string, step int) error {
 	q := a.r.q
 	if _, ok := a.history[p.Name]; !ok {
@@ -724,7 +724,7 @@ func (a *applier) setStep(p *Plan, step int) error {
 	return err
 }
 
-// applyPlan은 plan 하나를 finalize step 앞까지 적용하고 검증한다.
+// applyPlan applies one plan up to the finalize step and verifies it.
 func (a *applier) applyPlan(p *Plan) error {
 	steps, err := a.steps(p)
 	if err != nil {
@@ -746,7 +746,7 @@ func (a *applier) applyPlan(p *Plan) error {
 	return a.forward(p, steps, 0)
 }
 
-// forward는 step start부터 finalize step 앞까지 실행하고 검증한 뒤 row를 applied로 바꾼다.
+// forward runs from step start up to the finalize step, verifies, and then changes the row to applied.
 func (a *applier) forward(p *Plan, steps []PlanStep, start int) error {
 	end := finalizeStart(steps)
 	for i := start; i < end; i++ {
@@ -782,7 +782,7 @@ func (a *applier) forward(p *Plan, steps []PlanStep, start int) error {
 	return a.emit(ApplyEvent{Kind: "done", Plan: p.Name, Steps: len(steps)})
 }
 
-// finalizeFrom은 finalize step을 start부터 실행하고 row를 done으로 바꾼다.
+// finalizeFrom runs the finalize steps from start and changes the row to done.
 func (a *applier) finalizeFrom(p *Plan, steps []PlanStep, start int) error {
 	for i := start; i < len(steps); i++ {
 		if err := a.run(p, steps, i, steps[i].Statement); err != nil {
@@ -798,8 +798,8 @@ func (a *applier) finalizeFrom(p *Plan, steps []PlanStep, start int) error {
 	return a.emit(ApplyEvent{Kind: "done", Plan: p.Name, Steps: len(steps)})
 }
 
-// run은 step i의 statement 하나를 event와 함께 실행한다. statement 앞에서 server session을
-// 확인한다.
+// run executes the statement of step i with an event. It checks the server session before the statement
+// is run.
 func (a *applier) run(p *Plan, steps []PlanStep, i int, statement string) error {
 	if err := a.emit(ApplyEvent{Kind: "statement", Plan: p.Name, Step: i, Steps: len(steps), Statement: statement}); err != nil {
 		return err
@@ -813,7 +813,7 @@ func (a *applier) run(p *Plan, steps []PlanStep, i int, statement string) error 
 	return a.emit(ApplyEvent{Kind: "applied", Plan: p.Name, Step: i, Steps: len(steps), Statement: statement})
 }
 
-// foreignKeyCheck는 SQLite에서 foreign key를 어기는 row가 없는지 확인한다.
+// foreignKeyCheck checks in SQLite that no row violates a foreign key.
 func (a *applier) foreignKeyCheck(p *Plan) error {
 	if a.r.d != DialectSQLite {
 		return nil
@@ -828,8 +828,8 @@ func (a *applier) foreignKeyCheck(p *Plan) error {
 	return nil
 }
 
-// nullChecks는 적용한 plan의 rollback이 non-null로 되돌릴 column의 NULL row를
-// default로 채우거나, default가 없으면 nulls error로 멈춘다(docs/plans.md "Steps").
+// nullChecks finds the NULL rows of the columns that the rollback of the applied plan returns to non-null, and
+// fills them with the default, or stops with a nulls error if there is no default (docs/plans.md "Steps").
 func (a *applier) nullChecks(p *Plan, steps []PlanStep) error {
 	q := a.r.q
 	for i, s := range steps {
@@ -877,8 +877,8 @@ func (a *applier) placeholders(n int) string {
 	return s
 }
 
-// effectQueries는 dialect마다 효과 종류를 읽는 query다. 인자는 Effect의 Table과 Name
-// 중 query가 쓰는 것이며, query는 개수를 돌려준다.
+// effectQueries are the queries that read each effect kind per dialect. Their arguments are the Table and Name
+// of the Effect, and each query returns a count.
 var effectQueries = map[Dialect]map[string]string{
 	DialectMySQL: {
 		"table":      "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?",
@@ -904,7 +904,7 @@ var effectQueries = map[Dialect]map[string]string{
 	},
 }
 
-// effect는 효과가 지금 database에 있는지 알려 준다.
+// effect reports whether the effect is in the database now.
 func (a *applier) effect(e Effect) (bool, error) {
 	var query string
 	var args []any

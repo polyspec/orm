@@ -1,5 +1,5 @@
-// model_queries coverage: 생성된 model 의 조건, 정렬, limit, 합계, 관계 읽기를 seed 된 bench
-// database 에서 확인한다. 읽기만 한다.
+// model_queries coverage: checks the conditions, ordering, limit, sums, and relation reads of the generated model on the seeded bench
+// database. It only reads.
 import assert from 'node:assert/strict';
 import { Author, User, connect } from '../dist/index.js';
 import { runCases } from './coverage_case.mjs';

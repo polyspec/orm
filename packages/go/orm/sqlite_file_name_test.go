@@ -13,9 +13,9 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// TestSQLiteFileNameIsThePath는 query가 붙은 SQLite DSN이 path만으로 file을
-// 만드는지 확인한다. query를 file 이름에 둔 opener는 `named.sqlite?_pragma=…`
-// 같은 file을 만든다(docs/dialects.md "Probe environment").
+// TestSQLiteFileNameIsThePath checks that a SQLite DSN with a query creates the file from the
+// path alone. An opener that puts the query in the file name makes a file such as `named.sqlite?_pragma=…`
+// (docs/dialects.md "Probe environment").
 func TestSQLiteFileNameIsThePath(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	dir := t.TempDir()

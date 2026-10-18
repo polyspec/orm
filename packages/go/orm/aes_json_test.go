@@ -16,8 +16,8 @@ import (
 
 const aesJSONText = `{"z":{},"a":[],"token":"s3cret-token","nested":{"second":2,"first":1.50}}`
 
-// TestAESJSONColumnSchema는 key version setting 없는 AES codec과 text
-// column에 저장하는 AES codec을 SCHEMA_INVALID setting diagnostic으로 거부한다.
+// TestAESJSONColumnSchema checks that an AES codec with no key version setting and a text
+// column storing an AES codec are rejected with a SCHEMA_INVALID setting diagnostic.
 func TestAESJSONColumnSchema(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	for _, c := range []struct{ document, message string }{

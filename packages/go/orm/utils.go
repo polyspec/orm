@@ -106,10 +106,10 @@ func (u *Utils) Lock(key string) error {
 	return nil
 }
 
-// releaseLocks는 transaction이 끝나기 전에 MySQL named lock을 푼다. named lock은
-// COMMIT과 ROLLBACK 뒤에도 connection에 남으므로 실패한 해제와 1이 아닌
-// RELEASE_LOCK 결과(lock을 갖고 있지 않음)를 모두 오류로 돌려준다. 한 번 시도한
-// lock은 다시 풀지 않는다.
+// releaseLocks releases MySQL named locks before the transaction ends. Named locks
+// remain on the connection after COMMIT and ROLLBACK, so it returns every failed release and every non-1
+// RELEASE_LOCK result (not holding the lock) as an error. A lock it attempted once
+// is not released again.
 func (t *txConn) releaseLocks() error {
 	locks := t.locks
 	t.locks = nil
@@ -127,8 +127,8 @@ func (t *txConn) releaseLocks() error {
 	return errors.Join(errs...)
 }
 
-// SetLocal은 transaction-local 값을 정한다. PostgreSQL은 set_config, MySQL은
-// user variable에 쓰고 SQLite는 transaction 안에만 둔다.
+// SetLocal sets a transaction-local value. PostgreSQL uses set_config, and MySQL
+// writes a user variable, and SQLite keeps it only inside the transaction.
 func (u *Utils) SetLocal(key, value string) error {
 	if err := u.db.unsupportedOnMarkdown("setLocal"); err != nil {
 		return err
@@ -157,10 +157,10 @@ func (u *Utils) SetLocal(key, value string) error {
 	return nil
 }
 
-// clearLocals는 transaction이 끝나기 전에 MySQL session variable을 지운다.
-// MySQL user variable은 COMMIT과 ROLLBACK 뒤에도 connection에 남으므로
-// (mysql.context.user_variable_session_scope) 실패한 reset은 오류로 돌려준다.
-// 한 번 시도한 값은 다시 지우지 않는다.
+// clearLocals clears MySQL session variables before the transaction ends.
+// MySQL user variables remain on the connection after COMMIT and ROLLBACK,
+// (mysql.context.user_variable_session_scope) so a failed reset is returned as an error.
+// A value attempted once is not cleared again.
 func (t *txConn) clearLocals() error {
 	locals := t.locals
 	t.locals = nil
@@ -168,7 +168,7 @@ func (t *txConn) clearLocals() error {
 		return nil
 	}
 	var errs []error
-	// 값을 지우는 statement는 key 순서로 보낸다.
+	// The statements that clear values are sent in key order.
 	for _, key := range slices.Sorted(maps.Keys(locals)) {
 		if _, err := t.machinery().exec(t.ctx, KindUtility, nil, "SET @`orm."+key+"` = NULL"); err != nil {
 			errs = append(errs, err)
@@ -215,25 +215,25 @@ type SchemaUtils struct{ u *Utils }
 // Schema returns the schema utilities.
 func (u *Utils) Schema() *SchemaUtils { return &SchemaUtils{u: u} }
 
-// Register는 generated schema의 set을 이 연결에 등록한다. database를 읽거나 쓰지 않는다:
-// manifest text가 선언한 hash로 hash되는지 확인하고(아니면 CONFIG) runtime model로 set을
-// 등록할 뿐이다. 같은 set을 다시 등록하면 아무것도 바꾸지 않는다. database가 set과 같은지는
-// Install과 AddTablesAndColumns가 설치와 upgrade 때 확인하며, 요청마다 연 연결에도
-// Register가 statement 없이 set을 등록한다(docs/schema.md "Schema registration").
+// Register registers the generated schema's set on this connection. It reads and writes no database:
+// it checks that the manifest text hashes to the declared hash (otherwise CONFIG) and only registers
+// the set as a runtime model. Registering the same set again changes nothing. Whether the database matches the set
+// is checked by Install and AddTablesAndColumns at install and upgrade time, and on connections opened for each request too,
+// since Register registers the set without any statement (docs/schema.md "Schema registration").
 func (s *SchemaUtils) Register(schema *Schema) error {
 	return s.u.db.register(schema)
 }
 
-// Install은 generated schema의 document set을 이 연결의 dialect로 render해
-// 적용하고, database가 set과 같은지 확인한 뒤 그 set을 이 연결에 등록한다. manifest
-// text가 선언한 hash로 hash되지 않으면 어떤 statement보다 먼저 CONFIG다. 연결의
-// database를 introspect해, 외부 문서에서 쓰는 table이 외부 문서와 다르면 CONFIG다. set이
-// 소유한 table이 하나도 없으면 모두 만들고, 모두 있으면 아무것도 만들지 않으며, 일부만
-// 있으면 CONFIG다. 그다음 database를 다시 읽어 set이 소유한 table을 set과 비교하고, 차이가
-// 있으면 그 차이를 모두 담은 CONFIG다(docs/schema.md "Schema installation").
-// PostgreSQL과 SQLite는 진행 중인 transaction이나 새 transaction에서 적용하므로 실패한
-// install은 아무것도 남기지 않는다. MySQL은 schema statement를 암묵적으로 commit하므로
-// transaction 밖에서 적용하고 안에서는 CONFIG다.
+// Install renders the generated schema's document set in this connection's dialect and applies it,
+// then checks that the database matches the set and registers the set on this connection. The manifest
+// text that does not hash to the declared hash is CONFIG before any statement. Install introspects the
+// database; if a table that an external document uses differs from that document, it is CONFIG. If none of the set's
+// owned tables exist, it creates them all; if all exist, it creates nothing; if only some exist,
+// it is CONFIG. Then it reads the database again, compares the set's owned tables with the set, and if there is any
+// difference, it is CONFIG with all the differences (docs/schema.md "Schema installation").
+// PostgreSQL and SQLite apply in an ongoing transaction or a new one, so a failed
+// install leaves nothing behind. MySQL implicitly commits schema statements, so it applies them
+// outside a transaction, and it is CONFIG inside one.
 func (s *SchemaUtils) Install(schema *Schema) error {
 	d := s.u.db
 	if err := d.unsupportedOnMarkdown("schema install (flowmark install creates a corpus)"); err != nil {
@@ -303,20 +303,20 @@ func (s *SchemaUtils) Install(schema *Schema) error {
 	return d.register(schema)
 }
 
-// AddTablesAndColumns는 설치한 document set을 generated schema의 새 version으로
-// 더해서만 올린다(docs/schema.md "Adding tables and columns"). 연결의 database를
-// introspect해 database에 있는 set의 table을 set과 비교하고, database에 없는 set의
-// table을 index, foreign key, check, trigger와 함께 만들며, 있는 table에 빠진 column
-// 가운데 null이거나 default가 있는 column을 더한다. dbspec.AddTablesAndColumnsSteps의
-// plan step을 실행하므로 바뀐 table의 audit trigger도 새 column을 기록하도록 바뀐다.
-// 다른 set의 table은 그대로 두며 set을 등록하지 않는다. 외부 문서에서 쓰는 table이
-// database와 다르면 어떤 statement보다 먼저 CONFIG다. 다른 차이는 어떤 statement보다
-// 먼저 SCHEMA_DIFFERS다. manifest text가 선언한 hash로 hash되지 않으면 먼저 CONFIG다.
-// PostgreSQL은 진행 중인 transaction이나 새 transaction에서 적용한다. MySQL은 schema
-// statement를 암묵적으로 commit하고, SQLite는 foreign key를 끈 채 table을 다시 만들어
-// column을 더하는데 foreign key 설정은 transaction 안에서 바뀌지 않으므로, 둘 다
-// transaction 밖에서 적용하고 안에서는 CONFIG다. 만든 table은 "table", 더한 column은
-// "table.column"으로 table 이름, column 순서로 돌려준다.
+// AddTablesAndColumns upgrades an installed document set to a new version of the generated schema,
+// only by adding (docs/schema.md "Adding tables and columns"). It introspects the connection's database and compares the
+// set's tables present in the database with the set. It creates the set's tables that are absent from the database,
+// with their index, foreign key, check, and trigger, and adds to existing tables the columns that are missing
+// and are nullable or have a default. It runs the plan steps of dbspec.AddTablesAndColumnsSteps, so the audit triggers
+// of changed tables are also changed to record the new columns.
+// It leaves tables of other sets as they are and does not register the set. If a table an external document uses
+// differs from the database, it is CONFIG before any statement. Other differences are
+// SCHEMA_DIFFERS before any statement. If the manifest text does not hash to the declared hash, it is CONFIG first.
+// PostgreSQL applies in an ongoing or new transaction. MySQL implicitly commits schema
+// statements, and SQLite re-creates tables with foreign keys off and adds
+// columns; foreign key settings do not change inside a transaction, so both are applied outside one and are CONFIG inside.
+// It returns created tables as "table" and added columns as
+// "table.column", in table name and column order.
 func (s *SchemaUtils) AddTablesAndColumns(schema *Schema) ([]string, error) {
 	d := s.u.db
 	if err := d.unsupportedOnMarkdown("addTablesAndColumns (schema evolution follows the flowmark migration rules)"); err != nil {
@@ -351,7 +351,7 @@ func (s *SchemaUtils) AddTablesAndColumns(schema *Schema) ([]string, error) {
 				return err
 			}
 		}
-		// step을 실행한 database가 set과 같은지 다시 읽어 확인한다.
+		// After running the steps, it rereads the database and checks that it matches the set.
 		if len(steps) > 0 {
 			if live, unsupported, err = dbspec.Introspect(ctx, q, dialect, "schema"); err != nil {
 				return mapDriverErr(err)
@@ -379,8 +379,8 @@ func (s *SchemaUtils) AddTablesAndColumns(schema *Schema) ([]string, error) {
 	return added, nil
 }
 
-// introspectSet은 연결의 database를 introspect하고, set이 외부 문서에서 쓰는 table이
-// 외부 문서와 다르면 CONFIG다(docs/dbspec.md "External documents").
+// introspectSet introspects the connection's database, and if the set uses a table from an external document
+// and that table differs from the external document, it is CONFIG (docs/dbspec.md "External documents").
 func introspectSet(ctx context.Context, q dbspec.Querier, dialect dbspec.Dialect, m *runtimemodel.Model) (*dbspec.Document, []dbspec.Unsupported, error) {
 	live, unsupported, err := dbspec.Introspect(ctx, q, dialect, "schema")
 	if err != nil {
@@ -392,7 +392,7 @@ func introspectSet(ctx context.Context, q dbspec.Querier, dialect dbspec.Dialect
 	return live, unsupported, nil
 }
 
-// setDiffers는 database가 set과 다를 때 그 차이를 모두 담은 CONFIG다.
+// setDiffers is the CONFIG that carries all differences when the database differs from the set.
 func setDiffers(differences []string) error {
 	if len(differences) == 0 {
 		return nil
@@ -400,7 +400,7 @@ func setDiffers(differences []string) error {
 	return configErr("the database differs from the document set: %s", strings.Join(differences, "; "))
 }
 
-// schemaTarget은 set의 schema text 문서다. database와 비교하는 대상이다.
+// schemaTarget is the schema text document of the set. It is the target compared with the database.
 func schemaTarget(m *runtimemodel.Model) (*dbspec.Document, error) {
 	manifest, diagnostics := dbspec.ManifestOf(m.Documents)
 	if len(diagnostics) > 0 {
@@ -417,8 +417,8 @@ func externalErr(differences []string) error {
 	return configErr("the tables that the set uses from external documents differ from the database: %s", strings.Join(differences, "; "))
 }
 
-// externalTexts는 set의 외부 문서 text를 문서 이름마다 돌려준다. schema text의 use
-// 줄을 parse할 때 쓴다.
+// externalTexts returns the external document texts of the set for each document name. It is used when parsing the use
+// lines of the schema text.
 func externalTexts(m *runtimemodel.Model) map[string]string {
 	out := map[string]string{}
 	for _, d := range m.Documents {
@@ -429,10 +429,10 @@ func externalTexts(m *runtimemodel.Model) map[string]string {
 	return out
 }
 
-// sqliteWithoutForeignKeys는 연결 하나에서 foreign key를 끄고 BEGIN IMMEDIATE
-// transaction으로 fn을 실행한 뒤 foreign key 검사가 row를 돌려주지 않을 때만
-// commit하고 foreign key를 다시 켠다(docs/plans.md "Apply"의 SQLite 다시 만들기).
-// foreign key를 다시 켜지 못한 연결은 pool에 돌려주지 않고 닫는다.
+// sqliteWithoutForeignKeys turns off foreign keys on one connection, runs fn in a BEGIN IMMEDIATE
+// transaction, and commits only when the foreign key check returns no rows; then it turns foreign keys back on
+// (the SQLite table rebuild in docs/plans.md "Apply").
+// A connection that cannot turn foreign keys back on is closed rather than returned to the pool.
 func sqliteWithoutForeignKeys(d *DB, fn func(ctx context.Context, r runner) error) (err error) {
 	ctx := d.ctx
 	conn, err := d.sql.Conn(ctx)
@@ -442,7 +442,7 @@ func sqliteWithoutForeignKeys(d *DB, fn func(ctx context.Context, r runner) erro
 	restored := false
 	defer func() {
 		if !restored {
-			// foreign key가 꺼졌을 수 있는 연결은 버린다.
+			// A connection whose foreign keys may have been turned off is discarded.
 			err = errors.Join(err, conn.Raw(func(any) error { return driver.ErrBadConn }))
 		}
 		if closeErr := conn.Close(); closeErr != nil && !errors.Is(closeErr, driver.ErrBadConn) {

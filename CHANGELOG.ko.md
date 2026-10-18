@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 60f0676dc142cbc7a233dcc15d3f243bbd2c927d8843c827515fa30ecbab90c7 -->
+<!-- source-sha256: e6ff3c5c9427738ca61fb6b671bcc55f7ffafecfa912a9cd696e65ee01225518 -->
 # 변경 이력
 
 ## Unreleased
@@ -22,6 +22,8 @@
 - Rust integration, conformance와 benchmark parity binding이 library가 아니라 자기 test가 든 target을 실행한다 (T148-3-14).
 - client bench, example, benchmark와 seeded test의 Rust parity binding이 tests/cargo-test.mts로 실행된다. 이 runner가 test가 읽는 복사된 program을 준다 (T148-3-9).
 - parity의 sqlite send-savepoint test가 parity-prepare가 만드는 단계의 run directory에 file을 연다 (T148-3-10).
+- 주석 언어 검사는 각 생태계의 tokenizer(go/scanner, TypeScript parser, tokenize, token_get_all)로 주석을 읽는다. Rust, C, hash 주석 파일은 docs/rebuild가 기록한 lexer를 쓴다 (T131-1-1).
+- 코드 주석은 영어다: tracked code 파일의 한글 주석 10,469줄을 번역했고, `make comment-language-check`는 code 주석의 한글을 실패시킨다 (T131).
 - parity-check 단계가 자기 실행 디렉터리(STEP_RUN_DIR, 단계가 끝나면 삭제)를 가지므로 남은 디렉터리가 보고되지 않는다 (T77-58).
 - MySQL days_ago bind가 바인드된 시각을 써서, physical fixture가 모든 database에서 결정적이다 (T77-33-1).
 - TestPhysicalQueryForms의 physical fixture가 mysql, postgres, sqlite에서 통과한다 (T77-33).

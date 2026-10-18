@@ -1,18 +1,18 @@
-// dialect catalog의 check 식을 dbspec predicate text로 읽는다
+// Reads a check expression of the dialect catalog as dbspec predicate text
 // (docs/dialects.md "Introspection", "Checks").
 import { present } from '../present.js';
 import { quote } from './introspect_catalog.js';
 import type { DbspecType } from './model.js';
 import type { DbspecDialect } from './render.js';
 
-/** check 식을 dbspec predicate로 읽을 수 없다는 error다. 그 check은 미지원으로 보고된다. */
+/** The error that a check expression cannot be read as a dbspec predicate. That check is reported as unsupported. */
 export class CheckDecodeError extends Error {
   override name = 'CheckDecodeError';
 }
 
 /**
- * check 식을 dbspec predicate text로 읽는다. columns는 table의 column type이며,
- * literal은 그것이 만나는 column의 값으로 읽는다. 읽을 수 없는 식은 CheckDecodeError다.
+ * Reads a check expression as dbspec predicate text. columns holds the column types of the table,
+ * and a literal is read as the value of the column it meets. An expression that cannot be read is a CheckDecodeError.
  */
 export function decodeCheck(dialect: DbspecDialect, text: string, columns: ReadonlyMap<string, DbspecType>): string {
   if (dialect === 'mysql') text = unescapeMySQLClause(text);
@@ -27,7 +27,7 @@ export function decodeCheck(dialect: DbspecDialect, text: string, columns: Reado
   return d.write(node);
 }
 
-/** CHECK_CLAUSE가 문자열 literal에 더한 두 번째 escape를 푼다: `\\`는 `\`, `\'`는 `'`가 된다. */
+/** Undoes the second escape that CHECK_CLAUSE added to string literals: `\\` becomes `\`, and `\'` becomes `'`. */
 function unescapeMySQLClause(text: string): string {
   let out = '';
   for (let i = 0; i < text.length; i++) {
@@ -77,7 +77,7 @@ function checkTokens(dialect: DbspecDialect, text: string): Token[] {
       let j = i;
       while (j < text.length && (text[j] === '_' || isLetter(present(text[j], 'text[j]')) || isDigit(present(text[j], 'text[j]')))) j++;
       const word = text.slice(i, j);
-      // MySQL 문자열 앞의 character set introducer는 값이 아니다.
+      // The character set introducer before a MySQL string is not a value.
       if (dialect === 'mysql' && word.startsWith('_') && text[j] === "'") {
         i = j;
         continue;
@@ -104,8 +104,8 @@ function checkTokens(dialect: DbspecDialect, text: string): Token[] {
 }
 
 /**
- * text 앞의 문자열 literal을 읽어 값과 길이를 돌려준다. PostgreSQL과 SQLite는
- * ''만 escape이고, MySQL은 backslash escape도 쓴다.
+ * Reads the string literal at the start of the text and returns its value and length. PostgreSQL and SQLite
+ * only escape '' , and MySQL also uses backslash escapes.
  */
 function readSQLString(dialect: DbspecDialect, text: string): [string, number] {
   let out = '';
@@ -128,14 +128,14 @@ function readSQLString(dialect: DbspecDialect, text: string): [string, number] {
 
 const MYSQL_ESCAPES: Readonly<Record<string, string>> = { '0': '\0', b: '\b', n: '\n', r: '\r', t: '\t', Z: '\x1a' };
 
-/** column이나 literal이다. */
+/** A column or a literal. */
 interface Operand {
   readonly kind: 'operand';
   readonly type: 'column' | 'number' | 'string' | 'bool';
   readonly text: string;
 }
 
-/** 비교, in, is null, and, or다. */
+/** Comparison, in, is null, and, or. */
 type Predicate =
   | { readonly kind: 'and' | 'or'; readonly left: Node; readonly right: Node }
   | { readonly kind: 'compare'; readonly left: Operand; readonly right: Operand; readonly operator: string }
@@ -197,7 +197,7 @@ class CheckDecoder {
     return left;
   }
 
-  /** 괄호로 묶인 식이나 operand로 시작하는 predicate 하나를 읽는다. */
+  /** Reads one predicate that starts with a parenthesized expression or an operand. */
   private predicate(): Node {
     const left = this.term();
     if (left.kind !== 'operand') return left;
@@ -227,7 +227,7 @@ class CheckDecoder {
     return left;
   }
 
-  /** 괄호 식이나 operand와 그 뒤의 cast를 읽는다. 괄호 안이 operand 하나면 operand다. */
+  /** Reads a parenthesized expression or an operand and the cast after it. If the parentheses hold one operand, it is that operand. */
   private term(): Node {
     let node: Node;
     if (this.punct('(')) {
@@ -245,7 +245,7 @@ class CheckDecoder {
     return node;
   }
 
-  /** `::` 뒤의 type 이름을 읽는다: 단어들과 (n), []. */
+  /** Reads the type name after `::`: words and (n), []. */
   private castType(): string {
     const words: string[] = [];
     for (;;) {
@@ -300,7 +300,7 @@ class CheckDecoder {
     throw new CheckDecodeError(`unexpected ${JSON.stringify(t.text)}`);
   }
 
-  /** in 뒤의 (a, b, ...)를 읽는다. */
+  /** Reads the (a, b, ...) after in. */
   private list(): Operand[] {
     this.expect('(');
     const out: Operand[] = [];
@@ -313,7 +313,7 @@ class CheckDecoder {
     }
   }
 
-  /** PostgreSQL의 ANY나 ALL 뒤의 (ARRAY[...]) 또는 ((ARRAY[...])::type[])를 읽는다. */
+  /** Reads the (ARRAY[...]) or ((ARRAY[...])::type[]) after PostgreSQL's ANY or ALL. */
   private array(): Operand[] {
     this.expect('(');
     const wrapped = this.punct('(');
@@ -338,7 +338,7 @@ class CheckDecoder {
     return out;
   }
 
-  /** predicate를 dbspec text로 쓴다. 괄호는 필요한 곳보다 많아도 되며 canonical form은 parse가 정한다. */
+  /** Writes a predicate as dbspec text. Parentheses may be more than needed; parse decides the canonical form. */
   write(p: Predicate): string {
     switch (p.kind) {
       case 'and':
@@ -370,7 +370,7 @@ class CheckDecoder {
     return null;
   }
 
-  /** operand를 dbspec 표기로 쓴다. bool column의 1과 0은 true와 false, SQLite decimal의 정수는 scale을 나눈 값이다. */
+  /** Writes an operand in dbspec notation. The 1 and 0 of a bool column become true and false, and an integer decimal of SQLite is the value divided by the scale. */
   private operandText(o: Operand, type: DbspecType | null): string {
     switch (o.type) {
       case 'column':
@@ -389,7 +389,7 @@ class CheckDecoder {
   }
 }
 
-/** 10^scale을 곱한 정수 text를 scale 자리 소수로 쓴다. */
+/** Writes integer text multiplied by 10^scale as a decimal with scale digits. */
 export function unscaledDecimal(text: string, scale: number): string {
   const negative = text.startsWith('-');
   let digits = negative ? text.slice(1) : text;

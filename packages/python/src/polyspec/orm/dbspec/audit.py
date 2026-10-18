@@ -1,13 +1,13 @@
-# audit setting이 기록하는 column (docs/dbspec.md "Audit").
+# The columns recorded by the audit setting (docs/dbspec.md "Audit").
 from polyspec.orm.dbspec.model import DbspecSetting, DbspecTable
 
 __all__ = ["audit_excluded", "audit_line", "audit_records"]
 
 
 def audit_records(a: DbspecSetting, column: str) -> bool:
-    """audit trigger가 column을 복사하는지 알린다. audit column은 언제나,
-    exclude 목록의 column은 언제나 아니며, include 목록이 있으면 그 column만
-    복사한다."""
+    """Tells whether the audit trigger copies a column. An audit column always is,
+    a column in the exclude list never is, and if there is an include list, only those columns are
+    copied."""
     if column == a.column:
         return True
     if a.exclude is not None:
@@ -18,14 +18,14 @@ def audit_records(a: DbspecSetting, column: str) -> bool:
 
 
 def audit_excluded(a: DbspecSetting, t: DbspecTable) -> list:
-    """audit trigger가 복사하지 않는 table의 column을 column 순서로 돌려준다.
-    schema text가 쓰는 목록이다."""
+    """Returns, in column order, the table's columns that the audit trigger does not copy.
+    This is the list the schema text writes."""
     return [c.name for c in t.columns if not audit_records(a, c.name)]
 
 
 def audit_line(a: DbspecSetting, list_kind: str, columns) -> str:
-    """setting 줄이다. columns가 None이면 목록 없이, 아니면 list keyword와 그
-    column을 쓴다."""
+    """The setting line. If columns is None, no list is written; otherwise the list keyword and its
+    columns are written."""
     head = (
         f"audit into {a.into} column {a.column} references {a.references} "
         f"action {a.action} previous {a.previous}"

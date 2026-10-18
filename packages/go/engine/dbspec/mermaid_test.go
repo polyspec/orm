@@ -13,7 +13,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// mermaidVectors는 tests/dbspec/mermaid.json이다(docs/mermaid.md).
+// mermaidVectors is tests/dbspec/mermaid.json (docs/mermaid.md).
 type mermaidVectors struct {
 	Export    []mermaidExportCase
 	Import    []mermaidImportCase
@@ -59,8 +59,8 @@ func loadMermaidVectors(t *testing.T) mermaidVectors {
 	return v
 }
 
-// decodeMermaidVectors는 mermaid.json의 모든 section과 field를 읽고, 없거나 type이
-// 다른 값을 위치와 함께 거부한다.
+// decodeMermaidVectors reads all sections and fields of mermaid.json, and rejects, with location, any that are missing or whose type
+// is different.
 func decodeMermaidVectors(r vectorReader, object map[string]any) (mermaidVectors, error) {
 	var v mermaidVectors
 	if err := r.version(object); err != nil {
@@ -165,7 +165,7 @@ func TestMermaidRoundTripVectors(t *testing.T) {
 	}
 }
 
-// jsonEqual은 got과 want의 JSON 표현이 같은지 확인한다.
+// jsonEqual checks whether the JSON forms of got and want are equal.
 func jsonEqual(what string, got, want any) error {
 	gj, err := json.Marshal(got)
 	if err != nil {
@@ -263,8 +263,8 @@ func checkMermaidRoundTrip(t *testing.T, c mermaidRoundTripCase) {
 	})
 }
 
-// mermaidSkeleton은 Mermaid가 옮기는 table, column, primary key, foreign key를
-// table 이름 순서의 줄로 쓴다. foreign key action은 Mermaid가 옮기지 않으므로 뺀다.
+// mermaidSkeleton writes the tables, columns, primary keys, and foreign keys that Mermaid carries
+// as lines in table-name order. Foreign key actions are omitted, since Mermaid does not carry them.
 func mermaidSkeleton(d *Document) []string {
 	var out []string
 	for _, t := range sortedBy(d.Tables, func(t Table) string { return t.Name }) {

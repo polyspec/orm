@@ -11,9 +11,9 @@ import (
 // the end of the line, attached to the line that follows them.
 type Document struct {
 	Name string
-	// External은 문서가 set의 소유가 아니라 소유한 문서가 use로 쓰는 외부 문서임을
-	// 뜻한다. 외부 문서는 parse하고 검사하지만 렌더링, 설치, 비교, 생성하지 않는다
-	// (docs/dbspec.md "Documents and use"). 문서 text에는 나오지 않는다.
+	// External means the document is not owned by the set; it is an external document that the owning document uses through use.
+	// External documents are parsed and checked, but not rendered, installed, compared, or generated
+	// (docs/dbspec.md "Documents and use"). They do not appear in document text.
 	External bool
 	Uses     []Use
 	Tables   []Table
@@ -187,31 +187,31 @@ type Settings struct {
 	ClosingComments []string
 }
 
-// StoreSetting은 table의 저장 선언이다. Kind는 files, document 또는 block이다.
-// block은 Foreign에 부모 행의 foreign key 이름을 쓰고, document와 block은 Shape에 list 또는 table을 쓴다.
+// StoreSetting is the table's storage declaration. Kind is files, document, or block.
+// For block, Foreign holds the foreign key name of the parent row; for document and block, Shape holds list or table.
 type StoreSetting struct {
 	Comments []string
 	Kind     string
 	Foreign  string
 	Shape    string
-	// Shard는 `shard <column> <period>` 절이며, 절이 없으면 nil이다. SQL backend는 읽지 않는다.
+	// Shard is the `shard <column> <period>` clause, or nil if there is no clause. The SQL backend does not read it.
 	Shard *StoreShard
 }
 
-// StoreShard는 저장의 시간 shard다: Column은 non-null date 또는 datetime column이고
-// Period는 year, month 또는 day다.
+// StoreShard is the time shard of the storage: Column is a non-null date or datetime column, and
+// Period is year, month, or day.
 type StoreShard struct {
 	Column string
 	Period string
 }
 
-// KeyPrefixSetting은 `key_prefix '<p>'`다: 문자 primary key의 할당 접두사다.
+// KeyPrefixSetting is `key_prefix '<p>'`: the assignment prefix of a character primary key.
 type KeyPrefixSetting struct {
 	Comments []string
 	Prefix   string
 }
 
-// CheckboxSetting은 한 state의 list glyph다.
+// CheckboxSetting is the list glyph of one state.
 type CheckboxSetting struct {
 	Comments []string
 	Column   string
@@ -219,8 +219,8 @@ type CheckboxSetting struct {
 	Glyph    string
 }
 
-// HistorySetting은 state_machine의 history 줄이다. Row는 history table의 foreign key column,
-// From, To와 At은 상태 전환의 이전 상태, 이후 상태와 시각 column이다.
+// HistorySetting is the history line of a state_machine. Row is the foreign key column of the history table,
+// From, To, and At are the previous state, next state, and time columns of a state transition.
 type HistorySetting struct {
 	Comments []string
 	Table    string
@@ -230,20 +230,20 @@ type HistorySetting struct {
 	At       string
 }
 
-// LimitSetting은 state_machine의 limit 줄이다: 그 state의 행은 Count를 넘을 수 없다.
+// LimitSetting is the limit line of a state_machine: rows of that state cannot exceed Count.
 type LimitSetting struct {
 	Comments []string
 	State    string
 	Count    int64
 }
 
-// MarkSetting은 `markdown <column>`이다: 산문 column의 manifest 전용 표시다.
+// MarkSetting is `markdown <column>`: a manifest-only mark of a prose column.
 type MarkSetting struct {
 	Comments []string
 	Column   string
 }
 
-// StateMachineSetting은 한 column의 상태 기계다. 줄은 선언 순서를 유지한다.
+// StateMachineSetting is the state machine of one column. Its lines keep their declaration order.
 type StateMachineSetting struct {
 	Comments []string
 	Column   string
@@ -252,7 +252,7 @@ type StateMachineSetting struct {
 	Limits   []LimitSetting
 }
 
-// StateLineSetting은 전환 줄, terminal 선언 줄 또는 initial 선언 줄이다.
+// StateLineSetting is a transition line, a terminal declaration line, or an initial declaration line.
 type StateLineSetting struct {
 	Comments []string
 	Initial  bool
@@ -309,12 +309,12 @@ type ImmutableSetting struct {
 	Comments []string
 }
 
-// AuditSetting은 `audit into <history> column <column> references <table>
+// AuditSetting is `audit into <history> column <column> references <table>
 // action <column> previous <column> [exclude (<column>, ...) | include
-// (<column>, ...)]`이다. Column은 audit 기록 table References의 primary
-// key를 담는 column이다.
-// 목록이 없으면 Exclude와 Include는 nil이고, parse한 setting은 둘 중 하나만
-// 가진다(docs/dbspec.md "Audit").
+// (<column>, ...)]`. Column is the column that holds the primary key of the audit record table that References names.
+// It is the column that holds the key.
+// If there is no list, Exclude and Include are nil, and a parsed setting has only one of them
+// (docs/dbspec.md "Audit").
 type AuditSetting struct {
 	Comments   []string
 	History    string
@@ -326,9 +326,9 @@ type AuditSetting struct {
 	Include    []string
 }
 
-// Records는 audit trigger가 column을 복사하는지 알린다. audit column은
-// 언제나, exclude 목록의 column은 언제나 아니며, include 목록이 있으면 그
-// column만 복사한다.
+// Records tells whether the audit trigger copies a column. Audit columns are always
+// recorded, a column in the exclude list never is, and if there is an include list, only
+// its columns are copied.
 func (a *AuditSetting) Records(column string) bool {
 	switch {
 	case column == a.Column:
@@ -341,8 +341,8 @@ func (a *AuditSetting) Records(column string) bool {
 	return true
 }
 
-// Excluded는 audit trigger가 복사하지 않는 t의 column을 column 순서로
-// 돌려준다. schema text가 쓰는 목록이다.
+// Excluded returns the columns of t that the audit trigger does not copy, in column order.
+// This is the list that schema text writes.
 func (a *AuditSetting) Excluded(t *Table) []string {
 	var out []string
 	for _, c := range t.Columns {
@@ -353,8 +353,8 @@ func (a *AuditSetting) Excluded(t *Table) []string {
 	return out
 }
 
-// line은 setting 줄을 쓴다. columns가 nil이면 목록 없이, 아니면 list
-// keyword와 그 column을 쓴다.
+// line writes the setting line. If columns is nil, it writes no list; otherwise it writes the list
+// keyword and its columns.
 func (a *AuditSetting) line(list string, columns []string) string {
 	s := "audit into " + a.History + " column " + a.Column + " references " + a.References + " action " + a.Action + " previous " + a.Previous
 	if columns != nil {

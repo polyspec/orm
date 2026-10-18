@@ -1,4 +1,4 @@
-// statement compiler: dialect에 묶인 runtime model.
+// Statement compiler: the runtime model bound to a dialect.
 import type { Plan, Request } from '../ir.js';
 import { OrmError } from '../runtime_error.js';
 import { dialectOf } from './dialect.js';

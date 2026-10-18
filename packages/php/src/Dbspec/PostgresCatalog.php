@@ -4,8 +4,8 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Dbspec;
 
 /**
- * PostgreSQL 의 현재 schema 를 중간 model 로 읽는다. 모든 query 는 schema 전체를
- * 한 번에 읽는다 (docs/dialects.md "Introspection").
+ * Reads the current PostgreSQL schema into an intermediate model. Every query reads the whole schema
+ * in one go (docs/dialects.md "Introspection").
  *
  * @internal
  */
@@ -130,7 +130,7 @@ WHERE NOT t.tgisinternal AND c.relnamespace = current_schema()::regnamespace ORD
                 }
                 $t->uniques[] = ['name' => $name, 'columns' => $list, 'desc' => array_fill(0, count($list), false)];
             } elseif ($kind === 'f' && $refTable === '') {
-                // 다른 schema 의 table 을 가리키는 foreign key 는 이 문서 밖의 table 을 가리킨다.
+                // A foreign key that points at a table of another schema points at a table outside this document.
                 $c->report('foreign_key', $table, $name, 'the referenced table is outside the current schema');
             } elseif ($kind === 'f') {
                 $delete = self::action($onDelete);
@@ -209,7 +209,7 @@ WHERE NOT t.tgisinternal AND c.relnamespace = current_schema()::regnamespace ORD
         return $c;
     }
 
-    /** format_type 과 collation 을 dbspec type 으로 읽는다. */
+    /** Reads format_type and collation as a dbspec type. */
     private static function type(string $formatted, string $collation): ?ColumnType
     {
         if (!preg_match(self::TYPE, $formatted, $m)) {
@@ -238,7 +238,7 @@ WHERE NOT t.tgisinternal AND c.relnamespace = current_schema()::regnamespace ORD
         };
     }
 
-    /** pg_get_expr 의 default 를 dbspec literal 이나 now 로 읽는다. 아니면 null. */
+    /** Reads a pg_get_expr default as a dbspec literal or now. Otherwise null. */
     private static function defaultLiteral(string $text, ColumnType $type): ?string
     {
         if ($text === 'statement_timestamp()') {

@@ -1,7 +1,7 @@
-# dbspec: 이 저장소의 schema 언어 (docs/dbspec.md). read_dbspec_file은 signature를
-# 확인하고 문서 파일을 읽는다. parse_dbspec는 문서를 선언된 문서 집합과 함께 검사하고,
-# emit_dbspec는 parse된 문서를 canonical form으로 쓴다. dbspec_manifest는 문서 집합의
-# manifest text, schema text와 그 hash를 낸다.
+# dbspec: this repository's schema language (docs/dbspec.md). read_dbspec_file checks the signature
+# and reads the document file. parse_dbspec checks the document together with its declared document set,
+# emit_dbspec writes a parsed document in canonical form. dbspec_manifest produces the manifest text of the document set,
+# the schema text, and their hashes.
 from polyspec.orm.dbspec.emit import (
     CANONICAL,
     MANIFEST,
@@ -104,5 +104,5 @@ __all__ = [
 
 
 def emit_dbspec(document: DbspecDocument) -> str:
-    """문서를 canonical form으로 쓴다: parse된 canonical text를 다시 쓰면 같은 text다."""
+    """Writes the document in canonical form: rewriting the parsed canonical text yields the same text."""
     return emit_document(document, CANONICAL)

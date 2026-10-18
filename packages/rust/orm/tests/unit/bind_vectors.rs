@@ -1,6 +1,6 @@
-//! bind_vectors: tests/bind/vectors.json의 bind case, parameter 값을 그 slot의 논리 type으로 검사한다(docs/protocol.md
-//! §5 "Parameters"). Go의 TestBindVectors와 같은 case다. check_param은 crate 안에서만 보이므로 src/bind_check.rs가 이
-//! file을 unit test module로 둔다.
+//! bind_vectors: the bind cases of tests/bind/vectors.json, checking parameter values against their slot's logical type (docs/protocol.md
+//! §5 "Parameters"). These are the same cases as Go's TestBindVectors. check_param is visible only inside the crate, so src/bind_check.rs makes this
+//! file a unit test module.
 use super::{check_assign, check_param, transform_param, ParamSlot};
 use crate::db::Zone;
 use crate::{Error, Param};

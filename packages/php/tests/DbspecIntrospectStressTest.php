@@ -18,7 +18,7 @@ final class DbspecIntrospectStressTest extends TestCase
 {
     public function test_introspect_stress(): void
     {
-        // case는 2000 table 문서를 만들어(node process 하나) SQLite file에 적용하고 introspect한다.
+        // The case builds a document of 2000 tables (one node process), applies it to a SQLite file, and introspects it.
         // The introspection of 2000 tables needs more than the default 128M; kit's runner runs php without a memory flag.
         ini_set('memory_limit', '512M');
         fwrite(STDERR, 'memoryLimit=' . ini_get('memory_limit') . "\n");
@@ -38,7 +38,7 @@ final class DbspecIntrospectStressTest extends TestCase
         $want = Dbspec::manifest([$parsed->document])->manifest?->schemaText ?? throw new RuntimeException('the stress document has no manifest');
         $path = sys_get_temp_dir() . '/dbspec_php_stress_' . getmypid() . '.sqlite';
         Assert::assertFalse(file_exists($path), "$path already exists");
-        // 검사에 쓴 값은 introspection 전에 놓아 그 메모리를 재지 않는다.
+        // The value for the check is set before introspection, so its memory is not measured.
         $statements = $rendered->statements;
         unset($parsed, $rendered, $text);
         try {

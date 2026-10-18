@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-// dbspec compare runner(php.php, php-extension.php)가 함께 쓰는 vector 읽기와 출력이다. 출력 함수는 Dbspec class
-// 하나(Polyspec\Orm\Dbspec\Dbspec 또는 확장의 Polyspec\Orm\Dbspec\Native\Dbspec)를 받아 tests/dbspec/compare/check.mts의 줄 형식으로
-// 출력한다: dbspec_write_interface는 공유 case, stress 문서, 파일 읽기, manifest와 statement vector를,
-// dbspec_write_plans는 plan vector를, dbspec_write_mermaid는 Mermaid vector를 쓴다. 두 class는 같은 메서드와 결과
-// 모양을 가진다.
+// Reads the vectors and writes the output shared by the dbspec compare runners (php.php, php-extension.php). The output functions take a Dbspec class
+// (Polyspec\Orm\Dbspec\Dbspec or the extension's Polyspec\Orm\Dbspec\Native\Dbspec) and write in the line format of tests/dbspec/compare/check.mts:
+// dbspec_write_interface writes the shared cases, stress documents, file reads, manifest and statement vectors,
+// dbspec_write_plans writes the plan vectors, and dbspec_write_mermaid writes the Mermaid vectors. The two classes have the same methods and result
+// shape.
 
 require_once __DIR__ . '/../../../../../tests/dbspec/input.php';
 require_once __DIR__ . '/../../../../../tests/dbspec/cases.php';
 
-/** vector file의 위치와 문제를 stderr에 쓰고 1로 끝낸다. */
+/** Writes the location and problem of a vector file to stderr and exits with 1. */
 function dbspec_vector_fail(string $path, string $location, string $problem): never
 {
     fwrite(STDERR, "$path: $location $problem\n");
@@ -43,7 +43,7 @@ function dbspec_read_vectors(string $path, string $kind): array
 }
 
 /**
-  * 줄을 LF로, $crlf이면 CRLF로, $mixed이면 CRLF와 LF를 번갈아 마지막 줄 끝 없이 잇는다.
+  * Joins the lines with LF, with CRLF if $crlf, or alternating CRLF and LF if $mixed, with no line ending after the last line.
  *
  * @param list<string> $lines
  */
@@ -62,7 +62,7 @@ function dbspec_join(array $lines, bool $crlf, bool $mixed): string
     return $text;
 }
 
-/** $dbspec으로 parse한 $text의 diagnostic을, 없으면 그 emission을 출력한다. @param array<string, string> $set */
+/** Writes the diagnostics of $text parsed with $dbspec, or its emission if there are none. @param array<string, string> $set */
 function dbspec_write(string $dbspec, string $text, array $set, bool $stress): void
 {
     $result = $dbspec::parse($text, $set);
@@ -83,8 +83,8 @@ function dbspec_write(string $dbspec, string $text, array $set, bool $stress): v
 }
 
 /**
- * $path의 dbspec document 파일을 $dbspec::readFile로 읽는다. 읽을 수 없는 파일은 그 이유를,
- * signature가 없는 파일은 그 diagnostic message를 stderr에 쓰고 1로 끝난다.
+ * Reads the dbspec document file at $path with $dbspec::readFile. A file that cannot be read writes its reason,
+ * and a file without a signature writes its diagnostic message to stderr and exits with 1.
  */
 function dbspec_read_document(string $dbspec, string $path): string
 {
@@ -101,7 +101,7 @@ function dbspec_read_document(string $dbspec, string $path): string
     return $read->text;
 }
 
-/** diagnostic을 출력한다. @param list<object> $diagnostics */
+/** Writes the diagnostics. @param list<object> $diagnostics */
 function dbspec_diagnostics(array $diagnostics): void
 {
     foreach ($diagnostics as $d) {
@@ -109,7 +109,7 @@ function dbspec_diagnostics(array $diagnostics): void
     }
 }
 
-/** case 문서 집합의 hash와 text를, 또는 문서나 집합의 diagnostic을 출력한다. */
+/** Writes the hash and text of the case document set, or the diagnostics of a document or the set. */
 function dbspec_write_manifest(string $dbspec, array $case): void
 {
     $names = array_keys($case['documents']);
@@ -145,7 +145,7 @@ function dbspec_write_manifest(string $dbspec, array $case): void
     }
 }
 
-/** case 문서 집합의 statement를 dialect마다, 또는 문서나 집합의 diagnostic을 출력한다. */
+/** Writes the statements of the case document set for each dialect, or the diagnostics of a document or the set. */
 function dbspec_write_render(string $dbspec, array $case): void
 {
     $names = array_keys($case['documents']);
@@ -202,9 +202,9 @@ function dbspec_vector_named_documents(string $path, array $documents, string $a
 }
 
 /**
- * $dbspec으로 tests/dbspec/cases.json의 canonical, normalize, invalid case, stress 문서, files case,
- * hashes case와 tests/dbspec/ddl.json의 rendering을 이 순서로 출력한다. vector file은 출력하기 전에
- * 모양을 확인하고, 잘못된 vector는 위치를 밝혀 stderr에 쓰고 1로 끝난다. It returns the cases it read, which
+ * With $dbspec, writes the canonical, normalize, invalid, stress document, and files cases of tests/dbspec/cases.json,
+ * the hashes case, and the tests/dbspec/ddl.json rendering, in this order. The vector file is checked before output
+ * its shape, and an invalid vector is reported with its location to stderr and exits with 1. It returns the cases it read, which
  * dbspec_write_positions and dbspec_write_syntax print.
  *
  * @return array<string, list<array<string, mixed>>>
@@ -238,9 +238,9 @@ function dbspec_write_interface(string $dbspec, string $casesPath, string $stres
     }
     echo "stress\n";
     dbspec_write($dbspec, $stress, [], true);
-    // files case는 $dbspec::readFile에 path를 주어 "files/<id>"로, $dbspec::readBytes에 파일
-    // byte와 case path를 이름으로 주어 "files/<id>/bytes"로 읽어 diagnostic과 그 message를,
-    // 없으면 emission을 출력한다. message 앞의 이름은 "<name>"으로 쓴다.
+    // The files case reads with $dbspec::readFile given the path as "files/<id>", and with $dbspec::readBytes given the file
+    // bytes and the case path as the name, as "files/<id>/bytes", and writes the diagnostic and its message
+    // or, if there is none, the emission. The name before the message is written as "<name>".
     foreach ($cases['files'] as $case) {
         $path = dirname($casesPath) . '/' . $case['path'];
         try {
@@ -388,7 +388,7 @@ function dbspec_write_syntax(string $dbspec, array $cases, string $syntaxPath): 
     }
 }
 
-/** step 하나를 statement 줄과 그 속성 줄로 쓴다(tests/dbspec/compare/check.mts). */
+/** Writes one step as a statement line and its attribute lines (tests/dbspec/compare/check.mts). */
 function dbspec_step(object $s): void
 {
     echo "| {$s->statement}\n";
@@ -415,8 +415,8 @@ function dbspec_step(object $s): void
 }
 
 /**
-  * diagnostic을 출력한다. plan, chain, compare diagnostic은 모든 client가 공유하는
-  * message로 끝나고, target이나 source의 schema diagnostic은 그렇지 않다.
+  * Writes the diagnostic. Plan, chain and compare diagnostics end in a message shared by all clients,
+  * while the target or source schema diagnostics do not.
  *
  * @param list<object> $diagnostics
  */
@@ -428,7 +428,7 @@ function dbspec_plan_diagnostics(array $diagnostics): void
 }
 
 /**
-  * plan case의 source schema이고, 빈 schema이면 null, diagnostic을 출력했으면 false다.
+  * the source schema of the plan case; null if the schema is empty, false if a diagnostic was written.
  *
  * @param ?list<string> $lines
  */
@@ -445,7 +445,7 @@ function dbspec_plan_source(string $dbspec, ?array $lines): object|null|false
     return $result->document;
 }
 
-/** change를 "| kind table name"으로 출력한다. @param list<object> $changes */
+/** Writes each change as "| kind table name". @param list<object> $changes */
 function dbspec_changes(array $changes): void
 {
     foreach ($changes as $c) {
@@ -453,7 +453,7 @@ function dbspec_changes(array $changes): void
     }
 }
 
-/** emit한 plan의 줄을 출력한다. */
+/** Writes the lines of the emitted plan. */
 function dbspec_emitted_plan(string $dbspec, object $plan): void
 {
     foreach (explode("\n", $dbspec::emitPlan($plan)) as $line) {
@@ -462,8 +462,8 @@ function dbspec_emitted_plan(string $dbspec, object $plan): void
 }
 
 /**
- * $dbspec으로 tests/dbspec/plans.json의 case, invalid, chain, parse, comparison을 이 순서로 출력한다. vector file은
- * 출력하기 전에 모양을 확인한다.
+ * With $dbspec, writes the case, invalid, chain, parse and comparison of tests/dbspec/plans.json in this order. The vector file
+ * is checked for its shape before output.
  */
 function dbspec_write_plans(string $dbspec, string $plansPath): void
 {
@@ -551,7 +551,7 @@ function dbspec_write_plans(string $dbspec, string $plansPath): void
     }
 }
 
-/** export나 import가 뺀 것을 "= kind<TAB>table<TAB>name"으로 출력하며 이유는 비교하지 않는다. @param list<object> $dropped */
+/** Writes what export or import dropped as "= kind<TAB>table<TAB>name", and does not compare the reasons. @param list<object> $dropped */
 function dbspec_dropped(array $dropped): void
 {
     foreach ($dropped as $u) {
@@ -559,7 +559,7 @@ function dbspec_dropped(array $dropped): void
     }
 }
 
-/** 문서의 Mermaid text와 빠진 객체를 출력하고 text를 돌려준다. */
+/** Writes the document's Mermaid text and the missing objects, and returns the text. */
 function dbspec_export(string $dbspec, object $document): string
 {
     $result = $dbspec::exportMermaid($document);
@@ -570,7 +570,7 @@ function dbspec_export(string $dbspec, object $document): string
     return $result->text;
 }
 
-/** import의 emit한 문서와 빠진 객체를, 또는 diagnostic을 출력한다. */
+/** Writes the emitted document of the import and the missing objects, or the diagnostics. */
 function dbspec_import(string $dbspec, string $text): void
 {
     $result = $dbspec::importMermaid($text, 'imported');
@@ -584,7 +584,7 @@ function dbspec_import(string $dbspec, string $text): void
     dbspec_dropped($result->dropped);
 }
 
-/** $dbspec으로 tests/dbspec/mermaid.json의 export, import, invalid, round trip case를 이 순서로 출력한다. */
+/** With $dbspec, writes the export, import, invalid and round trip cases of tests/dbspec/mermaid.json in this order. */
 function dbspec_write_mermaid(string $dbspec, string $mermaidPath): void
 {
     $mermaid = dbspec_read_vectors($mermaidPath, 'mermaid');

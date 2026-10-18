@@ -1,11 +1,11 @@
-//! 기술된 table의 read: time과 datetime cell을 column이 선언한 precision p만큼의 소수
-//! 자릿수로 쓴다(docs/dbspec.md). grid decode는 여섯 자리를 쓰므로 나머지 자리는 0이어야 한다.
-//! SQLite는 선언된 temporal column의 dbspec text를 같은 temporal cell로 바꾼다.
+//! Reads described tables: time and datetime cells are written with as many fractional digits as the column's declared precision p
+//! digits (docs/dbspec.md). The grid decode uses six digits, so the remaining digits must be 0.
+//! For SQLite, the dbspec text of a declared temporal column is turned into the same temporal cell.
 use super::TableMetadata;
 use crate::tool_db::{is_temporal, Conn, GridCell, GridQueryResult, QueryLimits, P};
 
-/// native type의 `(p)`. 없으면 dialect의 기본값: MySQL `time`과 `datetime`은 0, PostgreSQL
-/// `time`과 `timestamp`는 6이다.
+/// The `(p)` of the native type. If absent, the dialect default: MySQL `time` and `datetime` are 0, PostgreSQL
+/// `time` and `timestamp` are 6.
 fn precision(native_type: &str, dialect: &str) -> Result<usize, String> {
     let declared = native_type.split_once('(').and_then(|(_, rest)| rest.split_once(')')).map(|(digits, _)| digits);
     let p = match (declared, dialect) {
@@ -20,7 +20,7 @@ fn precision(native_type: &str, dialect: &str) -> Result<usize, String> {
     Ok(p)
 }
 
-/// 여섯 자리 소수의 text를 p자리로 줄인다. 버리는 자리가 0이 아니면 오류다.
+/// Reduces the six-digit fractional text to p digits. If the discarded digits are not 0, it is an error.
 fn fraction(text: &str, p: usize, column: &str) -> Result<String, String> {
     let Some((whole, digits)) = text.split_once('.') else {
         return Err(format!("GRID_TEMPORAL_PRECISION: {column} has no fraction digits"));
@@ -31,8 +31,8 @@ fn fraction(text: &str, p: usize, column: &str) -> Result<String, String> {
     Ok(if p == 0 { whole.to_owned() } else { format!("{whole}.{}", &digits[..p]) })
 }
 
-/// SQLite의 선언된 `DATE`, `TIME`, `DATETIME` column의 dbspec 종류. SQLite에는 temporal storage
-/// class가 없고 renderer CHECK가 text 형식과 p자리 소수를 강제한다.
+/// The dbspec kind of SQLite's declared `DATE`, `TIME`, `DATETIME` columns. SQLite has no temporal storage
+/// class, and the renderer CHECK enforces the text form and p-digit fractions.
 fn sqlite_kind(native_type: &str) -> Option<&'static str> {
     match native_type.to_ascii_uppercase().as_str() {
         "DATE" => Some("date"),
@@ -42,8 +42,8 @@ fn sqlite_kind(native_type: &str) -> Option<&'static str> {
     }
 }
 
-/// result의 time과 datetime cell을 metadata column의 precision으로 쓴다. SQLite의 선언된
-/// temporal column은 저장된 dbspec text를 MySQL, PostgreSQL과 같은 temporal cell로 바꾼다.
+/// Uses the time and datetime cells of the result as the precision of the metadata column. For SQLite's declared
+/// temporal columns, turns the stored dbspec text into the same temporal cells as MySQL and PostgreSQL.
 pub(super) fn declared_precision(metadata: &TableMetadata, dialect: &str, result: &mut GridQueryResult) -> Result<(), String> {
     for row in &mut result.rows {
         for (cell, column) in row.iter_mut().zip(&metadata.columns) {
@@ -66,7 +66,7 @@ pub(super) fn declared_precision(metadata: &TableMetadata, dialect: &str, result
     Ok(())
 }
 
-/// metadata의 column을 모두 고른 statement를 실행하고 temporal cell에 column precision을 적용한다.
+/// Runs the statement that selects all the metadata's columns, and applies the column precision to the temporal cells.
 pub(super) async fn read(
     connection: &mut Conn,
     metadata: &TableMetadata,

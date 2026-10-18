@@ -16,8 +16,8 @@ const resultRunnerLanguages = clientLanguages();
 assert.deepEqual(resultRunnerLanguages, requiredLanguages, 'physical result runners differ from required languages');
 lockBench();
 const root = resolve(import.meta.dirname, '../../..');
-// build된 runner는 언어 case가 모두 끝날 때까지 남아야 하므로 file 전체의 directory에 둔다. build는 장기 작업이므로
-// 기한 없이 실행한다(runLong).
+// The built runner must remain until all language cases finish, so it is placed in the directory of the whole file. Since the build is a long task,
+// it runs with no deadline (runLong).
 const binaries = mkdtempSync(join(tmpdir(), 'orm-conformance-runners-'));
 after(() => rmSync(binaries, { recursive: true, force: true }));
 const built = await longError('conformance/build', context => buildRunners(context, root, binaries));

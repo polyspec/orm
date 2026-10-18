@@ -44,10 +44,10 @@ func zoneEntity(s *orm.Schema) *orm.Entity {
 	}
 }
 
-// TestConnectionsUseUTC는 모든 connection이 server의 time zone과 상관없이
-// datetime을 UTC로 읽고 쓰는지 확인한다(docs/dialects.md "Date and time"). 시험
-// server의 MySQL은 SYSTEM(KST), PostgreSQL은 Asia/Seoul이다. offset이 있는 값은
-// UTC wall clock으로 저장되고 UTC location으로 읽히며, clock default도 UTC다.
+// TestConnectionsUseUTC checks that every connection reads and writes datetime as UTC,
+// regardless of the server's time zone (docs/dialects.md "Date and time"). The test
+// server's MySQL is SYSTEM (KST) and PostgreSQL is Asia/Seoul. A value with an offset is
+// stored as UTC wall clock, read back in the UTC location, and the clock default is also UTC.
 func TestConnectionsUseUTC(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "zone")
@@ -348,8 +348,8 @@ func TestStatementTimeout(t *testing.T) {
 	}
 }
 
-// lockedRead는 db의 transaction에서 ent의 행을 FOR UPDATE로 읽는다. 다른 연결이 그 행을 잡고
-// 있으면 lock을 기다린다.
+// lockedRead reads the row of ent with FOR UPDATE in db's transaction. If another connection holds that row,
+// it waits for the lock.
 func lockedRead(db *orm.DB, ent *orm.Entity) error {
 	return db.Transaction(func() error {
 		c := orm.NewCore(ent)
@@ -365,9 +365,9 @@ func lockedRead(db *orm.DB, ent *orm.Entity) error {
 // connection bounds only the statements of that connection when a pooler in
 // transaction mode hands one server session to every client in turn: through
 // ORM_TEST_PGBOUNCER_SINGLE_DSN every client shares one server connection.
-// PgBouncer의 orm_test_single은 ORM_TEST_POSTGRES_DSN의 database에 묶여 있어 case
-// database에 닿지 못하므로, case는 그 database에 자기 이름(testdb.Name)의 table 하나를
-// 만들고 끝날 때 실패한 뒤에도 그 table만 지운다.
+// PgBouncer's orm_test_single is bound to the database of ORM_TEST_POSTGRES_DSN, so the case cannot
+// reach any other database, so the case creates one table named testdb.Name in that database
+// and, when it ends, drops only that table, even after a failure.
 func TestStatementTimeoutThroughAPooler(t *testing.T) {
 	c := testcase.Start(t, testcase.Database)
 	base := requireDSN(t, "ORM_TEST_POSTGRES_DSN")

@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
-// planner feature coverage: contracts/fixtures/planner.json의 요청에
-// 그 case의 schema 문서의 manifest hash를 더해 각 dialect의 PHP engine으로
-// compile하고, statement의 role, sql, bind slot(출처, param 번호, type)이나 오류
-// code를 fixture와 비교한다.
+// planner feature coverage: the requests in contracts/fixtures/planner.json,
+// with the manifest hash of that case's schema document added, are compiled by the PHP engine of each dialect,
+// and the statement's role, sql, bind slots (source, param number, type), or error
+// code are compared with the fixture.
 
 require_once __DIR__ . '/coverage_cases.php';
 
@@ -16,8 +16,8 @@ use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
 /**
- * case의 요청을 각 dialect로 compile해 기대값과 비교한다.
- * bind slot은 param slot이면 그 번호로, 다른 slot이면 slot 전체로 비교한다.
+ * Compiles the case's request in each dialect and compares it with the expected value.
+ * A bind slot is compared by its number if it is a param slot, and as the whole slot otherwise.
  */
 function plannerCase(string $root, array $fixture, string $id): void
 {
@@ -36,7 +36,7 @@ function plannerCase(string $root, array $fixture, string $id): void
             continue;
         }
         $plan = $engine->compile($request);
-        // key는 fixture의 정렬된 key 순서다.
+        // key is the fixture's sorted key order.
         $statements = array_map(static fn(array $step): array => [
             'role' => $step['role'],
             'slots' => array_map(static function (array $slot): array {
@@ -81,7 +81,7 @@ function paramUsesCase(string $root, array $fixture, string $id): void
     $request = ['manifest_hash' => $model->manifestHash] + $case['input'];
     $validator = new Validator($model);
     $validator->validate($request);
-    // key는 fixture의 정렬된 key 순서다.
+    // key is the fixture's sorted key order.
     $uses = array_map(static fn(array $list): array => array_map(static fn(array $u): array => $u['column'] === null
         ? ['type' => $u['type']]
         : ($u['assign'] ? ['assign' => true] : []) + [

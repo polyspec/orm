@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use std::time::Duration;
 
 const CASE_DEADLINE: Duration = Duration::from_secs(1);
-// SUITE_DEADLINE는 test의 CPU 시간 한도이고, 멈춘 test를 끝내는 wall-clock 기한은 그 열 배다
+// SUITE_DEADLINE is the CPU time limit of the test; the wall-clock deadline that ends a hung test is ten times that.
 // (polyspec_orm_testcase::wall_for_cpu).
 const SUITE_DEADLINE: Duration = Duration::from_secs(10);
 
@@ -1117,7 +1117,7 @@ fn dbspec_rules() {
     let mut failures = Vec::new();
     for case in CASES {
         assert!(seen.insert(case.id), "case id {} is unique", case.id);
-        // 실패한 case는 자기 FAIL 줄을 이미 출력했다.
+        // A failed case has already printed its own FAIL line.
         if std::panic::catch_unwind(|| run(case)).is_err() {
             failures.push(case.id);
         }

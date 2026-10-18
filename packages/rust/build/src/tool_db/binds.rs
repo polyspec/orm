@@ -108,7 +108,7 @@ pub(super) fn sqlite<'q>(mut q: Query<'q, Sqlite, SqliteArguments>, values: &[P]
             P::Float64(v) => q.bind(f64::from_bits(*v)),
             P::Boolean(v) => q.bind(*v),
             P::Binary(v) => q.bind(v.clone()),
-            // SQLite에는 temporal storage class가 없으므로 dbspec text를 그대로 쓴다.
+            // SQLite has no temporal storage class, so the dbspec text is written as is.
             P::Date(v) | P::Time(v) | P::DateTime(v) => q.bind(v.clone()),
             P::Unsigned(_) | P::Float32(_) | P::Decimal(_) => return Err(params::invalid()),
             P::Null(kind) => match kind {

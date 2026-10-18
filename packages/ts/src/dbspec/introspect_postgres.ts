@@ -1,5 +1,5 @@
-// PostgreSQL의 현재 schema를 catalog으로 읽는다 (docs/dialects.md "Introspection").
-// 모든 query는 현재 schema 전체를 한 번에 읽는다.
+// Reads PostgreSQL's current schema as a catalog (docs/dialects.md "Introspection").
+// Every query reads the whole current schema at once.
 import { present } from '../present.js';
 import { Catalog, quote, tableTypes, type CatalogQuery } from './introspect_catalog.js';
 import { renderedColumn } from './names.js';
@@ -44,7 +44,7 @@ const TYPE_PATTERN =
   /^(smallint|integer|bigint|boolean|double precision|text|bytea|uuid|date)$|^numeric\((\d+),(\d+)\)$|^character varying\((\d+)\)$|^(time|timestamp)\((\d)\) without time zone$/;
 const LITERAL_PATTERN = /^'((?:[^']|'')*)'::([a-z ]+)$/;
 const NUMBER_PATTERN = /^-?\d+(\.\d+)?$/;
-// \S는 Go RE2처럼 ASCII 공백 [\t\n\f\r ]만 뺀다.
+// \S excludes only the ASCII whitespace [\t\n\f\r ], as Go RE2 does.
 const TRIGGER_PATTERN =
   /^CREATE TRIGGER ([^\t\n\f\r ]+) (BEFORE|AFTER) (INSERT|UPDATE|DELETE) ON (?:[^\t\n\f\r ]+\.)?([^\t\n\f\r ]+) FOR EACH ROW EXECUTE FUNCTION ([^\t\n\f\r ]+)\(\)$/;
 
@@ -122,7 +122,7 @@ export async function readPostgres(query: CatalogQuery): Promise<Catalog> {
       }
       t.uniques.push({ name, columns: list, desc: list.map(() => false) });
     } else if (kind === 'f' && refTable === '') {
-      // 다른 schema의 table을 가리키는 foreign key는 이 문서 밖의 table을 가리킨다.
+      // A foreign key that points to a table in another schema points to a table outside this document.
       c.report('foreign_key', table, name, 'the referenced table is outside the current schema');
     } else if (kind === 'f') {
       const del = postgresAction(onDelete);
@@ -202,7 +202,7 @@ export async function readPostgres(query: CatalogQuery): Promise<Catalog> {
   return c;
 }
 
-/** format_type과 collation을 dbspec type으로 읽는다. dbspec type이 아니면 null이다. */
+/** Reads format_type and collation as dbspec types. Returns null if it is not a dbspec type. */
 function postgresType(formatted: string, collation: string): DbspecType | null {
   const m = TYPE_PATTERN.exec(formatted);
   if (m === null) return null;
@@ -232,7 +232,7 @@ function postgresType(formatted: string, collation: string): DbspecType | null {
   return null;
 }
 
-/** pg_get_expr의 default를 dbspec literal이나 now로 읽는다. 읽을 수 없으면 null이다. */
+/** Reads the default of pg_get_expr as a dbspec literal or now. Returns null if it cannot be read. */
 function postgresDefault(text: string, type: DbspecType): string | null {
   if (text === 'statement_timestamp()') return type.kind === 'datetime' ? 'now' : null;
   const m = LITERAL_PATTERN.exec(text);

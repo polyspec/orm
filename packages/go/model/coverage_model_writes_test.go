@@ -10,12 +10,12 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// writeTenant는 이 case가 쓰는 composite_account의 tenant_id다.
+// writeTenant is the tenant_id of composite_account that this case writes.
 const writeTenant = 990002
 
-// TestCoverageModelWriteCycle는 generated CompositeAccount model로 만들고,
-// 여러 행을 만들고, 고치고, duplication으로 upsert하고, 세고, 지운다. 쓴
-// 행은 모두 지워 database가 처음과 같아진다.
+// TestCoverageModelWriteCycle creates rows with the generated CompositeAccount model,
+// creates several rows, updates them, upserts with duplication, counts, and deletes.
+// Deleting all the rows written returns the database to its initial state.
 func TestCoverageModelWriteCycle(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, _, _ := connectFeature(t)
@@ -73,9 +73,9 @@ func TestCoverageModelWriteCycle(t *testing.T) {
 	}
 }
 
-// removeTenantAccounts는 실패한 case가 남긴 tenant의 composite_account 행을
-// 지운다. membership은 ON DELETE CASCADE로 함께 지워진다. 지운 행이 있으면
-// case가 끝까지 정리하지 못한 것이므로 실패로 알린다.
+// removeTenantAccounts deletes the composite_account rows of the tenant that a failed case left
+// behind. Memberships are deleted along with them through ON DELETE CASCADE. If any row was deleted,
+// the case did not finish its cleanup, so it reports failure.
 func removeTenantAccounts(t *testing.T, db *orm.DB, tenant int64) {
 	t.Helper()
 	rows, err := model.CompositeAccount().Connect(db).TenantId(tenant).Gets()

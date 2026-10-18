@@ -13,18 +13,18 @@ import { fileURLToPath } from 'node:url';
 import { dbspecManifest, parseDbspec, readDbspecFile } from '../dist/dbspec/index.js';
 
 export const root = new URL('../../../', import.meta.url);
-// TIMEOUT은 case 하나의 기한(ms)이다. round trip 하나는 문서 집합 하나를 database 하나에 적용하고 introspect한 뒤 지운다.
+// TIMEOUT is the deadline (ms) of one case. One round trip applies one document set to one database, introspects it, then drops it.
 const TIMEOUT = 30000;
 export const DIALECTS = ['mysql', 'postgres', 'sqlite'];
-// 모든 집합에서 dialect마다 같아야 하는 catalog query 수다(docs/dialects.md "Introspection").
+// The number of catalog queries that must be the same for each dialect in every set (docs/dialects.md "Introspection").
 export const QUERIES = { mysql: 9, postgres: 7, sqlite: 3 };
-// 모든 client가 새 connection에서 실행하는 문장이다(packages/go/internal/dialects connectionRules).
+// The statements that every client runs on a new connection (packages/go/internal/dialects connectionRules).
 export const CONNECTION_RULES = {
   mysql: ["SET time_zone = '+00:00'"],
   postgres: ["SET TimeZone = 'UTC'"],
   sqlite: ['PRAGMA foreign_keys = ON'],
 };
-// packages/go/internal/dialects schemaDocumentPatterns와 같은 디렉터리의 *.dbs다.
+// The *.dbs files in the same directory as packages/go/internal/dialects schemaDocumentPatterns.
 const SCHEMA_DIRECTORIES = ['contracts/fixtures/bench', 'contracts/fixtures'];
 
 const mysqlDSN = process.env.ORM_TEST_MYSQL_DSN;
@@ -142,7 +142,7 @@ export async function withDatabase(dialect, body) {
             await client.end();
           }
         } finally {
-          // 두 번째 schema가 필요한 case는 그것을 <schema>_b로 만든다.
+          // A case that needs a second schema creates it as <schema>_b.
           await admin.query(`DROP SCHEMA IF EXISTS "${name}_b" CASCADE`);
           await admin.query(`DROP SCHEMA "${name}" CASCADE`);
           const { rows } = await admin.query('SELECT COUNT(*)::int AS n FROM pg_namespace WHERE nspname IN ($1, $2)', [name, `${name}_b`]);

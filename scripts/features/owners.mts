@@ -1,19 +1,19 @@
-// owners는 바뀐 file의 owner check를 고르고 실행한다(AGENTS.md "Owner checks").
+// owners selects and runs the owner check of changed files (AGENTS.md "Owner checks").
 //
 //   node scripts/features/owners.mts [--list] [<path>...]
 //
-// path가 없으면 HEAD에서 바뀐 file과 추적하지 않는 file이다. contracts/features.json의 검증 명령은
-// `inputs`를, coverage 단위(owner client와 dependent)는 `tests`와 `inputs`를 선언하고, 바뀐 path가 그 입력이거나
-// 선언한 fixture data가 적는 file이면 그 명령과 단위만 고른다. 여러 기능이 쓰는 helper(`helpers`)는 어떤
-// 입력도 아니며, 그 변경은 helper 자신의 check만 실행한다. 그 helper를 쓰는 모든 기능의 실행은 make check가
-// 맡는다. contracts/features.json이 바뀌면 HEAD의 manifest와 달라진 기능과 helper 항목을 고른다.
-// 고른 명령은 features/check.mts --run --feature <id> --command <id>, 단위는 features/coverage.mts --feature <id>
-// --part <part>, helper는 features/check.mts --run --helper <id>로 실행하고 RUN, STEP, PASS, FAIL과 경과 시간을
-// 보고한다. 기한은 그 안의 case마다 있고, 단계 전체에 거는 기한은 없다.
-// 또 contracts/check-inputs.json이 scope owner로 선언한 make target 중 입력이 바뀐 path를 맞추는
-// target(예: docs/*.md에 docs-check와 docs-verify-idempotent)을 먼저 실행한다. scope suite인 target은
-// 전체 suite(make check)에서만 실행하고 여기서는 고르지 않는다. contracts/check-inputs.json은 그 schema
-// (scripts/check/schema/check-inputs.schema.json)로 읽고, 선언이 schema나 규칙과 다르면 아무것도 실행하지 않고 실패한다.
+// Without a path, it uses the changed files against HEAD and the untracked files. The verify commands in contracts/features.json
+// declare `inputs`, and coverage units (owner client and dependent) declare `tests` and `inputs`; when a changed path is one of those inputs or
+// a file that declared fixture data writes, only that command and unit are selected. A helper (`helpers`) used by several features is neither
+// an input, and its change runs only the helper's own check. Running all features that use the helper is left to make check.
+// When contracts/features.json changes, it selects the features and helper entries that differ from HEAD's manifest.
+// The selected command runs as features/check.mts --run --feature <id> --command <id>, a unit as features/coverage.mts --feature <id>
+// --part <part>, and a helper as features/check.mts --run --helper <id>, reporting RUN, STEP, PASS, FAIL and the elapsed time
+// It reports. A deadline applies to each case within it, and there is no deadline over the whole step.
+// Also, among the make targets that contracts/check-inputs.json declares as scope owner, the ones whose input paths changed
+// target (e.g. docs-check and docs-verify-idempotent for docs/*.md) is run first. A target that is scope suite
+// runs only in the full suite (make check) and is not selected here. contracts/check-inputs.json is read
+// with its schema (scripts/check/schema/check-inputs.schema.json), and if a declaration differs from the schema or rules, it fails without running anything.
 import { spawn, spawnSync, execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
@@ -51,19 +51,19 @@ export type ManifestChange = { features: string[]; helpers: string[]; whole: boo
 /** A selected item and the changed paths that select it. */
 type Reasoned = { reasons: string[] };
 
-// fixture text 안의 repository path다. 확장자가 있는 상대 path만 본다.
+// is a repository path in fixture text. Only relative paths with an extension are looked at.
 const pathPattern = /(?:contracts|tests|schema|packages|engine)\/[A-Za-z0-9_./-]+\.[A-Za-z0-9]+/g;
 
-// namedPaths는 선언한 fixture file이 적는 repository path다. 없는 path는 버린다.
+// namedPaths is the repository paths that a declared fixture file writes. Paths that do not exist are discarded.
 async function namedPaths(root: string, fixture: string): Promise<string[]> {
   let text: string;
   try { text = await readFile(resolve(root, fixture), 'utf8'); } catch { return []; }
   return [...new Set(text.match(pathPattern) ?? [])].filter(p => p !== fixture && existsSync(resolve(root, p)));
 }
 
-// manifestChanges는 previous(HEAD의 contracts/features.json)와 current 사이에서 항목이 달라졌거나 새로
-// 생긴 기능과 helper의 id를 current 순서로 돌려준다. whole은 기능과 helper 항목 밖의 field가 달라졌거나
-// 기능이 사라졌거나 previous가 없다는 뜻이다. 그런 변경은 한 기능의 것이 아니므로 전체 suite가 검사한다.
+// manifestChanges returns, in current order, the ids of features and helpers whose entries changed or were added
+// between previous (contracts/features.json at HEAD) and current. whole means a field outside the feature and helper entries changed,
+// a feature was removed, or there is no previous. Such a change does not belong to one feature, so the whole suite checks it.
 export function manifestChanges(previous: OwnersManifest | null, current: OwnersManifest): ManifestChange {
   const changed = (key: 'features' | 'helpers') => {
     const before = new Map<string, unknown>((previous?.[key] ?? []).map(item => [item.id, item]));
@@ -75,8 +75,8 @@ export function manifestChanges(previous: OwnersManifest | null, current: Owners
   return { features: changed('features'), helpers: changed('helpers'), whole };
 }
 
-// coverageParts는 기능의 coverage 단위(owner client마다 `owner/<language>`, dependent마다
-// `dependent/<id>`)와 그 test, 입력이다. coverage.mts --part가 같은 이름으로 그 단위만 실행한다.
+// coverageParts is a feature's coverage units (`owner/<language>` for each owner client, and `dependent/<id>` for each dependent),
+// with its tests and inputs. coverage.mts --part runs only that unit under the same name.
 export function coverageParts(feature: OwnersFeature): { part: string; tests: string[]; inputs: string[] }[] {
   const coverage = feature.coverage ?? {};
   return [
@@ -85,11 +85,11 @@ export function coverageParts(feature: OwnersFeature): { part: string; tests: st
   ];
 }
 
-// inputMatcher는 선언한 입력 pattern과, 선언한 fixture data file(JSON, dbspec 문서)이 적는 file(예:
-// contracts/fixtures/schema_definition.json이 렌더링하는 contracts/fixtures/audit.dbs, contracts/symbols/rust.json이
-// 적는 Rust source)을 맞추는 함수를 돌려준다. 적힌 file이 다시 적는 file은 따라가지 않는다: 그 단위가
-// 선언한 data만 그 단위의 입력이다. source code의 주석과 문자열은 입력 선언이 아니다. 맞추면 이유(path나
-// "<path> (named by <input>)")를, 아니면 undefined를 돌려준다.
+// inputMatcher returns a function that matches the declared input pattern, and the file that a declared fixture data file (JSON, dbspec document) writes (e.g.
+// contracts/fixtures/audit.dbs rendered by contracts/fixtures/schema_definition.json, and the Rust source that contracts/symbols/rust.json
+// writes). A file that a written file writes again is not followed: only the data declared by that unit is its input.
+// Comments and strings in source code are not input declarations. When matched, it returns the reason (path or
+// "<path> (named by <input>)"), otherwise undefined.
 async function inputMatcher(root: string, patterns: string[]): Promise<(path: string) => string | undefined> {
   const globs = patterns.map((pattern: string) => globPattern(pattern));
   const named = new Map<string, string>();
@@ -103,11 +103,11 @@ async function inputMatcher(root: string, patterns: string[]): Promise<(path: st
   };
 }
 
-// selectOwners는 changed(repository 상대 path)가 입력인 기능의 검증 명령과 coverage 단위를 manifest
-// 순서로 돌려준다: [{ feature, commands: [{ id, reasons }], parts: [{ part, reasons }] }]. 검증 명령의 입력은
-// 그 `inputs`, coverage 단위의 입력은 그 `tests`와 `inputs`다. changed에 contracts/features.json이 있으면
-// change(manifestChanges의 결과)가 적는 기능의 명령과 단위를 모두 "contracts/features.json (entry of <id>)"로
-// 고른다. helper(manifest.helpers)는 어떤 명령이나 단위의 입력도 아니므로 기능을 고르지 않는다.
+// selectOwners returns, for the features whose inputs include changed (repository-relative paths), the verify commands and coverage units in manifest
+// order: [{ feature, commands: [{ id, reasons }], parts: [{ part, reasons }] }]. A verify command's input is
+// its `inputs`, and a coverage unit's input is its `tests` and `inputs`. If changed includes contracts/features.json,
+// it selects all commands and units of each feature whose change (result of manifestChanges) is listed as "contracts/features.json (entry of <id>)".
+// A helper (manifest.helpers) is an input to no command or unit, so it does not select a feature.
 /** The verification commands and coverage parts that the changed paths select in one feature. */
 export type Owner = { feature: OwnersFeature; commands: (Reasoned & { id: string })[]; parts: (Reasoned & { part: string })[] };
 
@@ -135,8 +135,8 @@ export async function selectOwners(manifest: OwnersManifest, root: string, chang
   return out;
 }
 
-// selectHelpers는 changed가 path인 helper(manifest.helpers)와 그 이유를 돌려준다. helper의 변경은 그
-// helper의 check만 실행하고, helper를 쓰는 모든 기능의 실행은 전체 suite(make check)가 맡는다.
+// selectHelpers returns the helpers (manifest.helpers) whose path is in changed, with the reasons. A change to a helper
+// runs only the helper's check; running every feature that uses the helper is left to the full suite (make check).
 export async function selectHelpers(manifest: OwnersManifest, root: string, changed: string[], change?: ManifestChange): Promise<(Reasoned & { helper: Helper })[]> {
   const out: (Reasoned & { helper: Helper })[] = [];
   for (const helper of manifest.helpers ?? []) {
@@ -148,11 +148,11 @@ export async function selectHelpers(manifest: OwnersManifest, root: string, chan
   return out;
 }
 
-// manifestInputErrors는 contracts/features.json의 입력 선언이 규칙과 다른 곳마다 오류 하나를 돌려준다.
-//   - 모든 검증 명령은 비어 있지 않은 `inputs`를 선언하고, 모든 pattern은 추적되는 file을 맞춘다.
-//   - coverage 단위의 `inputs`(있으면)도 추적되는 file을 맞추는 pattern이다.
-//   - helper는 id, 추적되는 `paths`, 추적되는 `tests`, `command`를 가진다. helper의 path는 어떤 검증 명령이나
-//     coverage 단위의 입력도 아니다: 그렇다면 helper 하나가 그것을 쓰는 모든 기능을 고른다.
+// manifestInputErrors returns one error for each place where input declarations in contracts/features.json differ from the rules.
+//   - Every verify command declares non-empty `inputs`, and every pattern matches a tracked file.
+//   - A coverage unit's `inputs` (if any) are also patterns that match tracked files.
+//   - A helper has an id, tracked `paths`, tracked `tests`, and a `command`. A helper's path is also not an input
+//     of any verify command or coverage unit: if it were, one helper selects every feature that uses it.
 export function manifestInputErrors(manifest: OwnersManifest, tracked: string[]): string[] {
   const errors: string[] = [];
   const matches = (pattern: string) => {
@@ -194,18 +194,18 @@ export function manifestInputErrors(manifest: OwnersManifest, tracked: string[])
   return errors;
 }
 
-// globPattern은 contracts/check-inputs.json과 contracts/features.json의 pattern을 맞추는 정규식이다: minimatch가 `*`를 path 한
-// 단계 안, `**`를 여러 단계로 읽고, dot은 `.github/`처럼 점으로 시작하는 path도 맞춘다.
+// globPattern is the regex that matches the patterns in contracts/check-inputs.json and contracts/features.json: minimatch's `*` matches within one path
+// segment, `**` reads as multiple segments, and dot also matches paths beginning with a dot such as `.github/`.
 function globPattern(glob: string): RegExp {
   const pattern = minimatch.makeRe(glob, { dot: true });
   if (pattern === false) throw new Error(`the input pattern ${glob} is not a glob`);
   return pattern;
 }
 
-// selectTargets는 declared(contracts/check-inputs.json의 targets)에서 scope owner이고 입력 pattern(inputs)이나
-// 형식 검사 pattern(lints)이 changed path를 맞추는 make target과 그 path를 선언 순서로 돌려준다. tested는 그
-// 가운데 inputs가 맞춘 path다: target이 그 path의 행동을 시험한다. lints만 맞춘 path는 형식만 검사받는다(go
-// vet, gofmt, 문서 규칙 같은 것).
+// selectTargets returns, in declaration order, the make targets from declared (targets in contracts/check-inputs.json) that are scope owner and whose input patterns (inputs) or
+// lint patterns (lints) match a changed path, along with that path. tested is
+// the path matched by inputs among those: the target tests the behavior of that path. A path matched only by lints is checked for form only (go
+// vet, gofmt, document rules and the like).
 export function selectTargets(declared: Record<string, TargetDeclaration>, changed: string[]): { target: string; reasons: string[]; tested: string[] }[] {
   const out: { target: string; reasons: string[]; tested: string[] }[] = [];
   for (const [target, { scope, inputs, lints }] of Object.entries(declared)) {
@@ -219,18 +219,18 @@ export function selectTargets(declared: Record<string, TargetDeclaration>, chang
   return out;
 }
 
-// pathScopes는 행동 시험이 없는 path의 선언(contracts/check-inputs.json의 paths)이다. 정확한 path마다 scope와
-// 이유를 둔다: lint는 본성상 형식 검사만 있는 file(LICENSE, rustfmt 설정 같은 것), suite는 그 효과가 suite
-// 전체에 미쳐 owner-check가 부분을 고를 수 없는 file(lockfile, toolchain 고정, workflow, 여러 target이 쓰는
-// test 기반)이며 그 시험은 make check가 맡는다. scope, 이유, pattern이 아닌 path는 schema가 확인하고, 여기서는
-// path가 추적되는 file인지 본다.
+// pathScopes is the declaration of paths with no behavior test (paths in contracts/check-inputs.json). Each exact path has a scope and
+// a reason: a lint is for files that have only form checks by nature (LICENSE, a rustfmt config and the like), a suite is for files whose effect
+// reaches the whole suite, so owner-check cannot select part of them (lockfile, toolchain pin, workflows, files several targets write,
+// test-based), and that test is handled by make check. Paths that are not a scope, reason, or pattern are checked by the schema;
+// here it only checks whether the path is a tracked file.
 export function pathScopeErrors(paths: Record<string, PathDeclaration>, tracked: string[]): string[] {
   return Object.keys(paths).filter(path => !tracked.includes(path)).map(path => `contracts/check-inputs.json paths: ${path} is not a tracked file`);
 }
 
-// untestedPaths는 changed 가운데 어떤 기능 검사, coverage 단위, helper도 고르지 않고, 어떤 make target도 그
-// inputs로 고르지 않으며, paths에 scope를 선언하지 않은 path다. owner-check는 이것이 있으면 실패한다: 그 path의
-// 변경은 owner-check로 시험되지 않는다. 지운 path는 시험할 것이 없으므로 들지 않는다.
+// untestedPaths is a path among changed that no feature check, coverage unit, or helper selects, that no make target selects through
+// inputs, and that declares no scope in paths. owner-check fails if there are any: a change to such a path
+// is not tested by owner-check. A deleted path has nothing to test, so it is not included.
 export function untestedPaths(changed: string[], { owners, helpers, targets, paths, exists }: { owners: Owner[]; helpers: Reasoned[]; targets: { tested?: string[] }[]; paths: Record<string, PathDeclaration>; exists: (path: string) => boolean }): string[] {
   const reasonsOf = (item: Reasoned) => item.reasons;
   const tested = new Set([
@@ -241,9 +241,9 @@ export function untestedPaths(changed: string[], { owners, helpers, targets, pat
   return changed.filter((path: string) => !tested.has(path) && !Object.hasOwn(paths, path) && exists(path));
 }
 
-// checkInputErrors는 declared가 CHECK_TARGETS의 target을 선언하지 않거나, CHECK_TARGETS에 없는 target을
-// 선언하거나, setup 단계가 마련하지 않는 need를 적거나, owner target의 pattern이 추적되는 file을 하나도 맞추지
-// 않는 곳마다 오류 하나를 돌려준다. scope, needs와 입력의 모양은 schema가 확인한다.
+// checkInputErrors returns one error for each place where declared does not declare a CHECK_TARGETS target, or declares a target that is not in CHECK_TARGETS,
+// declares a need the setup step does not provide, or where an owner target's pattern matches no tracked file
+// The shape of scope, needs, and inputs is checked by the schema.
 export function checkInputErrors(declared: Record<string, TargetDeclaration>, targets: string[], tracked: string[]): string[] {
   const errors: string[] = [];
   for (const target of targets)
@@ -251,7 +251,7 @@ export function checkInputErrors(declared: Record<string, TargetDeclaration>, ta
       errors.push(`contracts/check-inputs.json declares no scope of ${target} of CHECK_TARGETS`);
   for (const [target, declaration] of Object.entries(declared)) {
     if (!targets.includes(target)) errors.push(`contracts/check-inputs.json declares ${target}, which is not in CHECK_TARGETS`);
-    // needs는 target이 필요한 setup 단계다. runner(scripts/check/run.mts)는 그 단계가 실패하면 target을 not-run으로 기록한다.
+    // needs is the setup step a target requires. The runner (scripts/check/run.mts) records the target as not-run if that step fails.
     for (const need of declaration.needs) if (!NEEDS.includes(need)) errors.push(`contracts/check-inputs.json: ${target} needs ${need}, which no setup step provides; the needs are ${NEEDS.join(', ')}`);
     for (const glob of [...(declaration.inputs ?? []), ...(declaration.lints ?? [])]) {
       const pattern = globPattern(glob);
@@ -261,18 +261,18 @@ export function checkInputErrors(declared: Record<string, TargetDeclaration>, ta
   return errors;
 }
 
-// changedPaths는 HEAD와 다른 file과 추적하지 않는 file이다.
+// changedPaths is the files that differ from HEAD and the untracked files.
 function changedPaths(root: string) {
   const run = (args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean);
   return [...new Set([...run(['diff', '--name-only', 'HEAD']), ...run(['ls-files', '--others', '--exclude-standard'])])].sort();
 }
 
-// trackedPaths는 git이 추적하는 file이다.
+// trackedPaths is the files that git tracks.
 function trackedPaths(root: string) {
   return execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean);
 }
 
-// headManifest는 HEAD의 contracts/features.json을 schema로 읽은 것이다. HEAD에 그 file이 없으면 null이다.
+// headManifest is contracts/features.json at HEAD read with the schema. It is null if HEAD has no such file.
 function headManifest(root: string): FeatureManifest | null {
   const shown = spawnSync('git', ['show', 'HEAD:contracts/features.json'], { cwd: root, encoding: 'utf8' });
   if (shown.status !== 0) {
@@ -282,42 +282,42 @@ function headManifest(root: string): FeatureManifest | null {
   return parseFeatures(shown.stdout, 'HEAD:contracts/features.json');
 }
 
-// makeArguments는 target 하나를 실행하는 make 인자다. owner-check가 받은 서버 환경(ORM_TEST_ENV,
-// 곧 make의 TEST_ENV)과 decimal 환경(DECIMAL_ENV)을 target에도 준다: worktree는 main checkout의 서버를 쓰고,
-// make 변수는 command line으로만 Makefile의 값을 바꾼다. Rust target directory는 각 checkout의 것이므로
-// 넘기지 않는다(AGENTS.md).
+// makeArguments is the make arguments that run one target. It also passes the server environment that owner-check received (ORM_TEST_ENV,
+// that is, make's TEST_ENV) and the decimal environment (DECIMAL_ENV) to the target: a worktree uses the server of the main checkout, and
+// make variables change Makefile values only from the command line. The Rust target directory belongs to each checkout, so
+// it is not passed (AGENTS.md).
 export function makeArguments(target: string, env: NodeJS.ProcessEnv): string[] {
   const overrides: string[] = [];
   if (env.ORM_TEST_ENV) overrides.push(`TEST_ENV=${env.ORM_TEST_ENV}`);
   if (env.DECIMAL_ENV) overrides.push(`DECIMAL_ENV=${env.DECIMAL_ENV}`);
-  // -k: target의 독립된 부분(하위 target)은 앞 부분이 실패해도 실행한다.
+  // -k: independent parts of a target (sub-targets) run even if an earlier part fails.
   return ['--no-print-directory', '-k', ...overrides, target];
 }
 
-// make는 한 make target을 단계 하나로 실행하고(runStep: 자기 임시 directory와 process group) 출력 줄을 step으로
-// 내보낸다. 기한은 target 안의 case마다 있다.
+// make runs one make target as one step (runStep: its own temp directory and process group) and sends its output lines as step
+// lines. The deadline applies to each case within the target.
 function make(root: string, target: string, { step }: { step: Step }): Promise<void> {
   const env = { ...process.env };
   for (const variable of ['MAKEFLAGS', 'MFLAGS', 'MAKELEVEL', 'MAKEOVERRIDES']) delete env[variable];
   return runStep('make', makeArguments(target, process.env), { cwd: root, env, step, label: `owners/make/${target}` });
 }
 
-// execute는 node 명령을 단계 하나로 실행하고 출력 줄을 step으로 내보낸다. 기한은 명령 안의 case마다 있다.
+// execute runs a node command as one step and sends its output lines as steps. The deadline applies to each case within the command.
 function execute(root: string, args: string[], { step }: { step: Step }, label: string): Promise<void> {
   return runStep(process.execPath, args, { cwd: root, env: process.env, step, label });
 }
 
-// usesTestEnv는 Makefile의 target 하나가 server 환경(WITH_TEST_ENV)을 읽는지다.
+// usesTestEnv reports whether one Makefile target reads the server environment (WITH_TEST_ENV).
 export function usesTestEnv(makefile: string, target: string): boolean {
   return makeRecipes(makefile).some(unit => unit.name === `Makefile ${target}` && unit.commands.some((command: string) => command.includes('$(WITH_TEST_ENV)')));
 }
 
-// script는 node로 TypeScript script를 실행하고 출력 줄을 step으로 내보낸다.
+// script runs a TypeScript script with node and sends its output lines as steps.
 function script(root: string, args: string[], context: { step: Step }): Promise<void> {
   return child(root, process.execPath, args, context);
 }
 
-// child는 program을 실행하고 출력 줄을 step으로 내보낸다.
+// child runs the program and sends its output lines as steps.
 function child(root: string, program: string, args: string[], { step }: { step: Step }): Promise<void> {
   return new Promise<void>((resolveRun, rejectRun) => {
     const child = spawn(program, args, { cwd: root, env: process.env });
@@ -362,8 +362,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   }
   for (const { helper, reasons } of helpers) console.log(`owners: helper ${helper.id}: ${reasons.join(', ')}`);
   for (const { target, reasons } of targets) console.log(`owners: make ${target}: ${reasons.join(', ')}`);
-  // 행동 시험을 하나도 고르지 않고 scope도 선언하지 않은 path는 owner-check를 실패시킨다(untestedPaths). scope를
-  // 선언한 path는 그 scope와 이유를 보인다.
+  // A path that selects no behavior test and declares no scope makes owner-check fail (untestedPaths). A path with a declared scope
+  // shows its scope and reason.
   for (const path of changed) {
     const declared = Object.hasOwn(declarations.paths, path) ? declarations.paths[path] : undefined;
     if (declared) console.log(`owners: ${path} is declared ${declared.scope}: ${declared.reason}`);
@@ -376,16 +376,16 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     process.exit(1);
   }
   if (!list) {
-    // check가 읽는 download가 빠졌으면 아무것도 실행하지 않고 그것을 `run make install`과 함께 적는다.
+    // If a download that the check reads is missing, it runs nothing and writes that together with `run make install`.
     const missing = missingDownloads(root);
     if (missing.length) {
       for (const { message } of missing) console.error(`owners: ${message}`);
       process.exit(1);
     }
     let failed = 0;
-    // 기능, helper, server 환경을 읽는 make target은 이 실행의 자기 bench database와 decimal database를
-    // 쓴다(scripts/check/databases.mts, make check와 같은 것). 함께 쓰는 bench나 decimal database는 없다.
-    // 만든 database는 끝에 지운다.
+    // A feature, helper, or make target that reads the server environment uses this run's own bench database and decimal database
+    // (scripts/check/databases.mts, the same as make check). There is no shared bench or decimal database.
+    // The databases it creates are deleted at the end.
     const makefile = readFileSync(resolve(root, 'Makefile'), 'utf8');
     const needsDatabases = owners.length > 0 || helpers.length > 0 || targets.some(({ target }) => usesTestEnv(makefile, target));
     let databases: { servers: string; name: string; directory: string } | undefined;
@@ -411,10 +411,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     for (const { target } of targets) {
       if (!(await runGroup(`owners/make/${target}`, context => make(root, target, context)))) failed++;
     }
-    // 기능 단계와 helper는 TypeScript client의 build 출력을 쓰고, 그 일부는 그 출력을 build하는 make target을 하위
-    // process로 실행한다(make dbspec-ts-check 같은 검증 명령). 그래서 make target을 모두 실행한 뒤부터 이 process가
-    // 끝날 때까지 그 출력의 exclusive lease를 가진다. 하위 process는 조상인 이 process의 보유 안에서
-    // 같은 규칙으로 보유를 나눈다.
+    // Feature steps and helpers use the TypeScript client's build output, and some of them run as a sub-process that builds that output
+    // (a verify command like make dbspec-ts-check). So after all make targets have run, this process holds an exclusive lease on that output
+    // until it ends. Sub-processes divide the hold under this ancestor process's hold
+    // by the same rule.
     if (owners.length > 0 || helpers.length > 0) {
       const { LEASE: lease, TYPESCRIPT_LEASES: leases } = process.env;
       if (!lease || !leases) throw new Error('LEASE and TYPESCRIPT_LEASES are unset; run make owner-check');

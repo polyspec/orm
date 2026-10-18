@@ -9,19 +9,19 @@ final class PlanBinds
     /** @var list<array> */
     public array $slots = [];
     public int $subs = 0;
-    /** @var array<string, true> statement가 이름으로 쓴 table */
+    /** @var array<string, true> Tables that the statement used, by name */
     private array $tables = [];
 
     public function __construct(private readonly Dialect $d) {}
 
-    /** ent의 table 이름을 quote하고 statement의 table로 기록한다. */
+    /** Quotes the entity's table name and records it as a table of the statement. */
     public function table(array $ent): string
     {
         $this->tables[$ent['table']] = true;
         return $this->d->quote($ent['table']);
     }
 
-    /** @return list<string> statement가 쓴 table, 정렬한 것 */
+    /** @return list<string> The tables the statement wrote, sorted */
     public function tables(): array
     {
         $out = array_map('strval', array_keys($this->tables));
@@ -35,7 +35,7 @@ final class PlanBinds
         return $this->d->placeholder(count($this->slots));
     }
 
-    /** type 있는 slot을 더한다. type 없는 slot은 planner 오류다. */
+    /** Adds a slot with a type. A slot without a type is a planner error. */
     private function typed(array $slot): string
     {
         if (($slot['col_type'] ?? '') === '') {
@@ -45,7 +45,7 @@ final class PlanBinds
     }
 
     /**
-     * request 값 Params[$i]의 placeholder다. $type은 그 값의 dbspec type이다.
+     * The placeholder of request value Params[$i], compared with or assigned to column $col. $type is the dbspec type of that value.
      *
      * @param list<string> $hostStyles
      */
@@ -67,8 +67,8 @@ final class PlanBinds
     }
 
     /**
-     * column $col과 비교하거나 $col에 할당하는 값 Params[$i]의 placeholder다. type은 $col의 type이고
-     * decimal의 precision과 scale, datetime의 precision, varchar의 length를 싣는다.
+     * The placeholder of value Params[$i] compared with or assigned to column $col. The type is the type of $col, and
+     * it carries the decimal's precision and scale, the datetime's precision, and the varchar's length.
      *
      * @param list<string> $hostStyles
      */
@@ -99,16 +99,16 @@ final class PlanBinds
         return $this->param($i, $type, '', ['blind_index']);
     }
 
-    /** executor 설정 값이다. $type은 그 값을 쓰는 column의 type이다. */
+    /** An executor setting value. $type is the type of the column that uses the value. */
     public function config(string $name, string $type): string
     {
         return $this->typed(['from' => 'config', 'param' => 0, 'name' => $name, 'col_type' => $type]);
     }
 
     /**
-     * executor의 UTC 시각이다. 한 statement는 clock을 한 번 읽고 microsecond에서
-     * precision 자리로 자른다. column에 쓰는 시각은 column의 소수 자리를, 비교
-     * 값은 여섯 자리를 쓴다.
+     * The executor's UTC time. A statement reads the clock once and truncates it at microsecond
+     * precision. The time written to a column uses the column's fractional digits; for comparison
+     * values use six digits.
      */
     public function now(int $precision): string
     {
@@ -116,8 +116,8 @@ final class PlanBinds
     }
 
     /**
-     * transaction의 audit 기록 key다. name은 audit 기록 table이며, executor는 transaction의
-     * audit이 그 table의 행인지 확인한다. type은 audit column의 type이다.
+     * The key of the transaction's audit record. name is the audit record table; the executor
+     * checks that the audit is a row of that table. type is the type of the audit column.
      */
     public function audit(array $ent): string
     {

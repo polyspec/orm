@@ -12,22 +12,22 @@ const { CHECK_INPUTS_SCHEMA, checkInputErrors, makeArguments, manifestChanges, m
 const root = new URL('../..', import.meta.url).pathname;
 const manifest = readFeatures(root);
 const ids = (owners: Owner[]) => owners.map(owner => owner.feature.id);
-// selected는 고른 검증 명령과 coverage 단위를 `<feature>/<command>`, `<feature>/coverage/<part>`로 적는다.
+// selected records the chosen verify commands and coverage units as `<feature>/<command>` and `<feature>/coverage/<part>`.
 const selected = (owners: Owner[]) => owners.flatMap(({ feature, commands, parts }) => [
   ...commands.map(({ id }) => `${feature.id}/${id}`), ...parts.map(({ part }) => `${feature.id}/coverage/${part}`)]);
 const helperIds = async (paths: string[]) => (await selectHelpers(manifest, root, paths)).map(({ helper }) => helper.id);
 
-// 각 case는 repository file만 읽으므로 기한은 5 s다.
+// Each case reads only repository files, so its deadline is 5 s.
 caseTest('a changed test selects only the commands that run it', 5000, async () => {
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/go/orm/mysql_tls_test.go'])), ['dsn_connection/dsn-go', 'dsn_connection/dsn-mysql-tls-go']);
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/go/orm/external_documents_test.go'])), ['schema_install/install-register-go']);
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/php/tests/CoverageDsnTest.php'])), ['dsn_connection/coverage/owner/php']);
 });
 
-// transaction 끝 case(G5.45-1)는 test가 들어 있는 file이 그 test를 실행하는 명령을 고르는지 본다. Rust의 tx.rs는 자기
-// tests module과 tx_send_tests.rs를 가지고, Go의 transaction_end_test.go, context_reset_test.go,
-// cancelled_session_test.go는 transaction 끝의 정리를 test한다. 그 test가 쓰는 failing_driver_test.go는 helper이므로 자기
-// 검사(go-test-helpers)만 고른다.
+// The transaction-end case (G5.45-1) checks that for a file containing a test, the file selects the command that runs that test. Rust's tx.rs has its own
+// tests module and tx_send_tests.rs, and Go's transaction_end_test.go, context_reset_test.go,
+// cancelled_session_test.go tests cleanup at transaction end. failing_driver_test.go, which that test uses, is a helper, so it selects only its own
+// check (go-test-helpers).
 caseTest('a changed file selects the transaction end tests that it holds or that test it', 5000, async () => {
   for (const path of ['packages/rust/orm/src/tx.rs', 'packages/rust/orm/src/tx_send_tests.rs'])
     assert.deepEqual(selected(await selectOwners(manifest, root, [path])).filter(id => id.startsWith('transactions/')), ['transactions/transaction-end-rust'], path);
@@ -56,14 +56,14 @@ caseTest('a shared helper selects its own check and no feature', 5000, async () 
 });
 
 caseTest('a fixture selects the units whose declared data names it', 5000, async () => {
-  // schema_definition의 coverage는 contracts/fixtures/schema_definition.json에서 audit.dbs를 렌더링한다.
+  // The coverage of schema_definition renders audit.dbs from contracts/fixtures/schema_definition.json.
   const owners = await selectOwners(manifest, root, ['contracts/fixtures/audit.dbs']);
   assert.deepEqual(ids(owners), ['schema_definition', 'audit_triggers']);
   const [first] = owners;
   assert.ok(first);
   assert.deepEqual(first.parts[0]?.reasons, ['contracts/fixtures/audit.dbs (named by contracts/fixtures/schema_definition.json)']);
-  // contracts/symbols/rust.json은 Rust source의 symbol을 적으므로 그 source는 Rust coverage 단위를 고르고, 그 file이
-  // 담은 test의 명령(transaction-end-rust)도 고른다.
+  // contracts/symbols/rust.json records the symbols of the Rust source, so that source selects the Rust coverage unit, and that file
+  // also selects the command of the test it contains (transaction-end-rust).
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/rust/orm/src/tx_send_tests.rs'])), ['transactions/transaction-end-rust', 'interface_contract/coverage/owner/rust']);
 });
 
@@ -92,7 +92,7 @@ caseTest('a command without inputs or a helper used as an input fails the declar
   assert.deepEqual(manifestInputErrors(manifest, files), []);
 });
 
-// make target case는 contracts/check-inputs.json의 선언과 최소 선언으로 고른다.
+// The make target case selects with the declaration in contracts/check-inputs.json and a minimal declaration.
 const inputs = readCheckInputs(root).targets;
 const targets = (selected: { target: string }[]) => selected.map(item => item.target);
 
@@ -126,16 +126,16 @@ caseTest('every target of CHECK_TARGETS declares inputs that match tracked files
   ]);
 });
 
-// selected target은 owner-check의 서버와 decimal 환경을 받고, Rust target directory는 받지 않는다: 각 checkout은 자기
-// target directory에 build한다(AGENTS.md).
+// The selected target receives owner-check's server and decimal environment, but not the Rust target directory: each checkout builds into its own
+// target directory (AGENTS.md).
 caseTest('a selected make target runs with the environments of owner-check and the target directory of its checkout', 5000, async () => {
   assert.deepEqual(makeArguments('docs-check', {}), ['--no-print-directory', '-k', 'docs-check']);
   assert.deepEqual(makeArguments('client-db-check', { ORM_TEST_ENV: '/main/.runtime/servers/env', DECIMAL_ENV: '/main/.runtime/decimal-env', CARGO_TARGET_DIR: '/main/cargo-target' }),
     ['--no-print-directory', '-k', 'TEST_ENV=/main/.runtime/servers/env', 'DECIMAL_ENV=/main/.runtime/decimal-env', 'client-db-check']);
 });
 
-// T42은 네 client에 걸친 변경이었다. 그 모양의 변경은 바뀐 기능의 검사와 file 단위의 owner target만
-// 고르고, 전체 suite target(scope suite)은 make check만 실행한다.
+// T42 was a change across four clients. A change of that shape selects only the changed features' checks and the file-level owner target,
+// and the full suite target (scope suite) is run only by make check.
 const t42 = [
   'packages/go/orm/statement_events_test.go', 'packages/go/orm/events.go',
   'packages/php/src/StatementEvent.php', 'packages/php/tests/StatementEventsTest.php',
@@ -148,7 +148,7 @@ caseTest('a change across the four clients selects no full-suite target', 5000, 
   assert.deepEqual(targets(selectTargets(inputs, t42)), ['repo-check', 'go-fmt-check', 'go-vet-check', 'rust-fmt-check']);
   for (const target of ['client-db-check', 'client-pooler-check', 'case-database-check', 'conformance-check', 'feature-coverage', 'feature-verify-rust', 'feature-verify-other', 'go-test-check'])
     assert.equal(inputs[target]?.scope, 'suite', `${target} is not a full-suite target`);
-  // contracts/interfaces.json과 contracts/symbols/*.json이 적는 source는 interface 검사의 입력이다.
+  // The sources recorded by contracts/interfaces.json and contracts/symbols/*.json are inputs to the interface check.
   const owners = await selectOwners(manifest, root, t42);
   assert.deepEqual(ids(owners), ['statement_events', 'interface_contract']);
   assert.deepEqual(selected(owners.slice(0, 1)), [
@@ -159,9 +159,9 @@ caseTest('a change across the four clients selects no full-suite target', 5000, 
   ]);
 });
 
-// schema case는 contracts/check-inputs.json의 모양을 schema(scripts/check/schema/check-inputs.schema.json)가
-// 받고 거부하는지 본다: scope는 owner나 suite이고 needs를 선언하며, owner target은 inputs나 lints를 하나 이상,
-// suite target은 둘 다 선언하지 않고, path 선언은 pattern이 아닌 path에 scope lint나 suite와 빈칸이 아닌 이유를 둔다.
+// The schema case checks that the schema (scripts/check/schema/check-inputs.schema.json) accepts and rejects the shape of contracts/check-inputs.json:
+// scope is owner or suite and declares needs, an owner target declares one or more inputs or lints,
+// a suite target declares neither, and a path declaration gives a scope lint or suite and a non-empty reason for a path that is not a pattern.
 const declarationsOf = (targets: unknown, paths: unknown = {}) => JSON.stringify({ comment: '', targets, paths });
 const refused = (text: string): string[] => {
   try {
@@ -197,8 +197,8 @@ caseTest('the schema of contracts/check-inputs.json refuses a target or path out
   assert.ok(refused(JSON.stringify({ comment: '', targets: {} })).includes('/'));
 });
 
-// needs case(G5.38-1, G5.52)는 setup 단계 선언을 검사한다: 모든 target이 needs를 선언하고, 그 값은 setup 단계 databases나
-// CI setup step이 마련하는 것(scripts/check/ci-setup.mts)이다.
+// The needs case (G5.38-1, G5.52) checks setup-step declarations: every target declares needs, and the values are what the setup step
+// provides (scripts/check/ci-setup.mts).
 caseTest('every target declares the setup steps it needs', 5000, async () => {
   assert.deepEqual(checkInputErrors({ b: { scope: 'suite', needs: ['servers'] }, c: { scope: 'suite', needs: ['databases'] } }, ['b', 'c'], []), [
     'contracts/check-inputs.json: b needs servers, which no setup step provides; the needs are databases, go, node-modules, rust, php-min, php, composer, php-extension-tools, server-programs, python, flowmark',
@@ -222,8 +222,8 @@ caseTest('a changed feature entry of contracts/features.json selects that featur
     [['h', ['contracts/features.json (entry of h)']]]);
 });
 
-// 실행 database case는 owner-check가 자기 bench와 decimal database를 만들 target을 고르는 방법과, 그
-// database의 환경 file을 읽는 방법을 확인한다.
+// The executed-database case checks how owner-check picks the target that builds its bench and decimal databases, and how it
+// reads the database's environment file.
 caseTest('owner-check creates the databases of its run for a target that reads the server environment', 5000, () => {
   const { environmentFile, usesTestEnv } = ownerSelection;
   const makefile = 'WITH_TEST_ENV = x\nuses:\n\t$(WITH_TEST_ENV) go test ./a\n\nplain:\n\tnode --test a.test.mjs\n';
@@ -237,9 +237,9 @@ caseTest('owner-check creates the databases of its run for a target that reads t
   assert.throws(() => environmentFile('A=b\n'), /unexpected environment line: A=b/);
 });
 
-// 행동 시험 case(G5.51)는 owner-check가 바뀐 path마다 그 행동을 시험하는 것을 고르는지 본다. inputs가 아니라
-// lints만 맞춘 path(go vet, gofmt, 문서 규칙)는 시험받지 않은 것이고, paths에 scope를 선언한 path는 그 선언으로
-// 통과한다.
+// The behavior-test case (G5.51) checks that owner-check selects the behavior test for each changed path. It does so not with inputs but with
+// a path matched only by lints (go vet, gofmt, document rules) is not tested; a path with a scope declared in paths passes
+// with that declaration.
 caseTest('a path that only a lint selects is untested unless its scope is declared', 5000, () => {
   const declared: Record<string, TargetDeclaration> = { lint: { scope: 'owner', needs: [], lints: ['**/*.go'] }, unit: { scope: 'owner', needs: [], inputs: ['a/*_test.go'], lints: ['**/*.go'] } };
   const targets = selectTargets(declared, ['a/x.go', 'a/x_test.go', 'b/LICENSE']);
@@ -259,7 +259,7 @@ caseTest('a generator source selects the check that regenerates the models', 500
   assert.deepEqual(selected, ['go-model-check']);
 });
 
-// 전체 tree case는 추적하는 file마다 행동 시험이나 scope 선언이 있는지 본다. 하나라도 없으면 그 file을 적고 실패한다.
+// The whole-tree case checks that each tracked file has a behavior test or a scope declaration. If any lacks one, it names that file and fails.
 caseTest('every tracked file selects a behaviour test or declares its scope', 30000, async () => {
   const declarations = readCheckInputs(root);
   const tracked = execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean);

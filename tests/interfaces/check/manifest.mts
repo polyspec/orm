@@ -1,5 +1,5 @@
-// contracts/interfaces.json(공통 interface manifest)의 형식과 그 자체의 검사다: manifest 구조, 구성요소 method와
-// rule의 대응, 금지 symbol 목록, error label과 docs/errors.yaml의 code 목록.
+// Format of contracts/interfaces.json (the common interface manifest) and its own checks: manifest structure, component methods and
+// the correspondence of rules, the prohibited symbol list, error labels, and the code list of docs/errors.yaml.
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { parse as parseYaml } from 'yaml';
@@ -8,11 +8,11 @@ import { readLosslessJson } from './json.mts';
 
 const schemas = resolve(import.meta.dirname, '../../../scripts/schema');
 
-/** Symbol는 한 선언의 signature와, 그 언어에서 공개(export)인지 여부다. */
+/** Symbol is one declaration's signature and whether it is public (export) in that language. */
 export type Symbol = { signature: string; exported: boolean };
 export type Symbols = Record<string, Symbol>;
 
-/** mark는 공개 여부를 따지지 않는 비교용 symbol이다(owner field, record). */
+/** mark is a symbol for comparison that does not consider public visibility (owner fields, records). */
 export const mark = (signature: string, exported = true): Symbol => ({ signature, exported });
 type Language = { roots?: string[]; symbols?: string };
 export type Native = { symbol?: string; signature?: string };
@@ -21,9 +21,9 @@ export type Rule = {
   native?: Record<string, Native>;
 };
 /**
- * Extension은 다섯 client 언어 밖에서 contract의 일부를 구현하는 것이다(contracts/interfaces.json의 extensions, PHP 확장
- * orm_dbspec). 그 선언은 syntax 언어의 추출기로 roots에서 읽고, rules와 owners만 확인하며, symbol snapshot과 그 hash를
- * 따로 가진다.
+ * Extension is what implements part of the contract outside the five client languages (extensions in contracts/interfaces.json, PHP extension
+ * orm_dbspec). Its declarations are read from roots by a syntax language's extractor, only rules and owners are checked, and it holds its symbol snapshot and its hash
+ * separately.
  */
 export type Extension = {
   description?: string; syntax?: string; roots?: string[]; symbols?: string; symbol_hash?: string; rules?: string[]; owners?: string[];
@@ -33,21 +33,21 @@ export type Component = {
 };
 type Edge = { from?: string; to?: string; kind?: string; role?: string; role_ko?: string };
 /**
- * Sequence는 공통 state contract 하나다. statements는 그 sequence가 보내는 statement의 kind를 순서대로 적는다: model
- * statement(select, insert, update, delete), transaction 제어(begin, commit, rollback, savepoint, release, rollback_to)와
- * schema statement. utility statement(named lock, transaction-local 값 등)는 적지 않는다: 그 수와 위치는 dialect마다
- * 다르고(MySQL의 GET_LOCK과 RELEASE_LOCK), 정확한 목록은 conformance vector(tests/conformance/vectors*.json)가 dialect마다
- * 정해 make conformance-check가 비교한다. expected는 숫자를 원문으로 가진다(losslessJson).
+ * Sequence is one common state contract. statements lists in order the kinds of statement that sequence sends: model
+ * statements (select, insert, update, delete), transaction control (begin, commit, rollback, savepoint, release, rollback_to), and
+ * schema statements. Utility statements (named lock, transaction-local values, etc.) are not listed: their count and position
+ * differ by dialect (MySQL's GET_LOCK and RELEASE_LOCK), and the exact list is set per dialect by the conformance vectors (tests/conformance/vectors*.json), which make conformance-check compares.
+ * expected holds numbers as their original text (losslessJson).
  */
 export type Sequence = { id?: string; expected?: unknown; statements?: string[] };
 /**
- * Record는 값 없는 request/plan graph 전체를 구현과 무관하게 정한다. native 이름은 adapter이고 field와 중첩 type은
- * 공통이다.
+ * Record fixes the whole value-less request/plan graph regardless of implementation. A native name is an adapter, and field and nested types are
+ * common.
  */
 export type ContractRecord = {
   id?: string; native?: Record<string, string>; fields?: Record<string, string>; optional?: string[]; extends?: string; union?: boolean;
 };
-/** Owner는 한 symbol을 가리키며(`once`), 그 field 목록은 contract에 적힌 그대로다. */
+/** Owner points to one symbol (`once`), and its field list is exactly as written in the contract. */
 export type Owner = { id?: string; for?: string; native?: Record<string, { symbol?: string; fields?: string[] }> };
 export type Manifest = {
   version?: number;
@@ -66,8 +66,8 @@ export type Manifest = {
 };
 
 /**
- * readManifest는 manifest file을 schema로 읽는다. state contract의 expected 값은 숫자를 원문 그대로 가지도록 다시 읽는다:
- * conformance 결과와 원문으로 비교하기 때문이다.
+ * readManifest reads the manifest file with the schema. The expected values of the state contract are re-read so that numbers keep their original text:
+ * because conformance results are compared as original text.
  */
 export function readManifest(path: string): Manifest {
   const manifest = readJsonFile<Manifest>(path, join(schemas, 'interfaces-manifest.schema.json'));
@@ -80,14 +80,14 @@ export function readManifest(path: string): Manifest {
   return manifest;
 }
 
-/** allRules는 manifest의 rules와 storage rule이다. */
+/** allRules is the manifest's rules and storage rules. */
 export function allRules(m: Manifest): Rule[] {
   return [...(m.rules ?? []), ...(m.storage ?? [])];
 }
 
 const size = (value: object | undefined): number => (value === undefined ? 0 : Object.keys(value).length);
 
-/** validateManifest는 어느 언어나 file을 읽기 전에 manifest 자신의 구조를 검사한다. */
+/** validateManifest checks the manifest's own structure before any language or file is read. */
 export function validateManifest(m: Manifest): void {
   if (m.version !== 1 || size(m.languages) !== 5 || size(m.symbol_hashes) !== 5 || (m.prohibited_symbols ?? []).length === 0
     || (m.components ?? []).length === 0 || (m.sequences ?? []).length === 0) {
@@ -98,10 +98,10 @@ export function validateManifest(m: Manifest): void {
 }
 
 /**
- * checkComponentMethods는 구성요소 도표(docs/interfaces-model.md)와 rule이 같은 method를 가지게 한다: 공개 구성요소의
- * method는 그 rule로만 공통 API이므로 rule이 없는 method는 어느 언어와도 비교되지 않고, 어느 공개 구성요소도 적지 않은
- * method의 rule은 도표가 빠뜨린 공통 API다. internal로 표시한 구성요소는 두 언어로 각 client가 그 method를 공통 signature
- * 없이 비공개로 구현하는 이유를 적으므로 그 method에는 rule이 없다.
+ * checkComponentMethods makes the component diagram (docs/interfaces-model.md) and the rules have the same methods: the public component's
+ * method is common API only through its rule, so a method with no rule is compared with no language, and no public component may leave out
+ * a method. A method's rule is common API the diagram omitted. A component marked internal states why each client implements that method privately, without a common signature, in both languages,
+ * so that method has no rule.
  */
 function checkComponentMethods(m: Manifest): void {
   const rules = allRules(m);
@@ -127,7 +127,7 @@ function checkComponentMethods(m: Manifest): void {
   if (problems.length > 0) throw new Error(problems.join('; '));
 }
 
-/** validateProhibitions는 금지 symbol 목록이 비거나 중복된 이름이 없고 multi_statement를 금지하는지 검사한다. */
+/** validateProhibitions checks that the prohibited symbol list is not empty, has no duplicate names, and prohibits multi_statement. */
 export function validateProhibitions(prohibited: string[]): void {
   const seen = new Set<string>();
   for (const name of prohibited) {
@@ -137,7 +137,7 @@ export function validateProhibitions(prohibited: string[]): void {
   if (!seen.has('multi_statement')) throw new Error('interface manifest must prohibit multi_statement');
 }
 
-/** readErrorCatalog는 docs/errors.yaml의 code 목록이다. code는 대문자 이름이며 중복되지 않는다. */
+/** readErrorCatalog is the code list of docs/errors.yaml. A code is an uppercase name and is not duplicated. */
 export function readErrorCatalog(root: string): Set<string> {
   const document: unknown = parseYaml(readFileSync(join(root, 'docs/errors.yaml'), 'utf8'));
   const entries: unknown[] = document !== null && typeof document === 'object' && 'codes' in document && Array.isArray(document.codes) ? document.codes : [];
@@ -153,8 +153,8 @@ export function readErrorCatalog(root: string): Set<string> {
 }
 
 /**
- * checkErrorLabels는 rule의 error label이 catalog의 code(또는 driver error 두 label)이고 rule 안에서 중복되지 않는지,
- * errors state sequence가 하나뿐이며 catalog code의 비지 않은 목록을 기대하는지 검사한다.
+ * checkErrorLabels checks that each rule's error label is a code in the catalog (or one of the two driver error labels) and is not duplicated within the rule,
+ * and that the errors state sequence is the only one and expects a non-empty list of catalog codes.
  */
 export function checkErrorLabels(codes: Set<string>, rules: Rule[], sequences: Sequence[]): string[] {
   const failures: string[] = [];

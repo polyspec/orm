@@ -12,13 +12,13 @@ namespace Polyspec\Orm\Dbspec;
  */
 final class PlanObjects
 {
-    // canonical check text 의 token: 문자열 literal, 이름이나 숫자, 그 밖의 한 글자.
+    // Token of canonical check text: a string literal, a name or number, or any other single character.
     private const CHECK_TOKEN = "/'(?:[^']|'')*'|[A-Za-z0-9_]+|./s";
     private const KEYWORDS = ['and' => true, 'or' => true, 'not' => true, 'in' => true, 'between' => true, 'is' => true, 'null' => true, 'true' => true, 'false' => true];
 
     public static function compare(PlanDiff $d): void
     {
-        $alteredColumn = []; // "table.column" target 이름
+        $alteredColumn = []; // The target name "table.column"
         foreach ($d->altered as $t => $columns) {
             foreach ($columns as $c) {
                 $alteredColumn["$t.$c"] = true;
@@ -31,15 +31,15 @@ final class PlanObjects
             }
         }
         $targetTable = static fn(string $s): string => $d->renamedFrom[$s] ?? $s;
-        // column rename 을 적용한 source 이름
+        // Source name after the column rename is applied
         $column = static fn(string $target, string $c): string => $d->renamedColumn[$target][$c] ?? $c;
         $same = static fn(string $c): string => $c;
         foreach ($d->matched as $name) {
             $src = $d->source[$d->tableOf[$name]];
             $tgt = $d->target[$name];
             $renamed = static fn(string $c): string => $column($name, $c);
-            // 지우는 index 나 unique 위의 foreign key 는 MySQL 이 그 index 를 지우지
-            // 못하게 하므로 함께 다시 만든다.
+            // A foreign key on an index or unique that is dropped: MySQL would not let
+            // the index be dropped, so it is rebuilt together.
             $droppedKeys = [];
             // unique
             foreach ($src->uniqueKeys as $u) {
@@ -89,7 +89,7 @@ final class PlanObjects
                 }
                 return false;
             };
-            // source foreign key 를 target 이름으로 읽은 [columns, parent, references]
+            // Source foreign key read with target names: [columns, parent, references]
             $sourceForeignKey = static function (ForeignKey $f) use ($targetTable, $column, $renamed): array {
                 $parent = $targetTable($f->table);
                 return [array_map($renamed, $f->columns), $parent, array_map(static fn(string $c): string => $column($parent, $c), $f->referencedColumns)];
@@ -112,7 +112,7 @@ final class PlanObjects
                     $d->addObjects[$name][] = ['foreign_key', $f->name];
                 }
             }
-            // check: 이름 바뀐 column 이나 바뀐 column 을 쓰는 check 는 다시 만든다.
+            // check: a check that uses a renamed column or a changed column is rebuilt.
             $forcedCheck = static function (Check $k) use ($renamedCol, $alteredColumn, $name): bool {
                 foreach (self::checkColumns($k->expression) as $c) {
                     if (isset($renamedCol["$name.$c"]) || isset($alteredColumn["$name.$c"])) {
@@ -134,8 +134,8 @@ final class PlanObjects
                 }
             }
         }
-        // 지우는 table 을 참조하는 남은 table 의 foreign key 는 target 이 이미 뺐으므로
-        // 위에서 지운다. 지우는 table 자신의 foreign key 는 table 과 함께 지운다.
+        // A foreign key from a remaining table that refers to a table being dropped is already removed by the target,
+        // so it is dropped above. A foreign key of the dropped table itself is dropped with the table.
         foreach ($d->dropped as $name) {
             foreach ($d->source[$name]->foreignKeys as $f) {
                 $d->dropObjects[$name][] = ['foreign_key', $f->name];
@@ -153,7 +153,7 @@ final class PlanObjects
     }
 
     /**
-     * 이름이 같은 객체.
+     * Objects with the same name.
      *
      * @template T of object
      * @param list<T> $items items with a `name`
@@ -189,7 +189,7 @@ final class PlanObjects
     }
 
     /**
-     * canonical check text 가 쓰는 column 이름.
+     * The column names that canonical check text uses.
      *
      * @return list<string>
      */
@@ -200,7 +200,7 @@ final class PlanObjects
     }
 
     /**
-     * column 이름을 f 로 바꾼 canonical check text.
+     * The canonical check text with the column names changed by f.
      *
      * @param callable(string): string $f
      */
@@ -210,7 +210,7 @@ final class PlanObjects
             ?? throw new \LogicException("Check text `$expression` cannot be read");
     }
 
-    /** 문자열, 숫자와 keyword 가 아닌 이름 token 은 column 이다. */
+    /** A string, a number, and a name token that is not a keyword is a column. */
     private static function isColumn(string $token): bool
     {
         return preg_match('/^[a-z][a-z0-9_]*$/D', $token) === 1 && !isset(self::KEYWORDS[$token]);

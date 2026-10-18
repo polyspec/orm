@@ -17,29 +17,29 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// hiddenLeft는 dialect에서 이름이 dbspec$로 시작하는 table과 column의 수를 읽는다.
+// hiddenLeft reads the number of tables and columns whose name starts with dbspec$ in the dialect.
 var hiddenLeft = map[string]string{
 	"mysql":    "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME LIKE 'dbspec$%' OR COLUMN_NAME LIKE 'dbspec$%')",
 	"postgres": "SELECT COUNT(*) FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid WHERE c.relnamespace = current_schema()::regnamespace AND c.relkind = 'r' AND a.attnum > 0 AND (c.relname LIKE 'dbspec$%' OR a.attname LIKE 'dbspec$%')",
 	"sqlite":   "SELECT COUNT(*) FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type = 'table' AND (m.name LIKE 'dbspec$%' OR p.name LIKE 'dbspec$%')",
 }
 
-// planStep은 plans.json의 step object다(docs/plans.md "Steps").
+// planStep is the step object of plans.json (docs/plans.md "Steps").
 type planStep struct {
 	Statement    string `json:"statement"`
 	Rollback     string `json:"rollback"`
 	Irreversible string `json:"irreversible"`
 	Restore      string `json:"restore"`
-	// RollbackRestore는 옛 table이 숨긴 더한 column을 가질 때의 rollback이다. 끝까지
-	// 되돌리는 rollback은 옛 table을 그 column과 함께 다시 만든다.
+	// RollbackRestore is the rollback when the old table has an added column that was hidden. It rolls back to the end
+	// and re-creates the old table with that column.
 	RollbackRestore string `json:"rollback_restore"`
 	Finalize        bool   `json:"finalize"`
 }
 
-// TestPlanApply는 tests/dbspec/plans.json의 각 case를 세 database에 적용한다:
-// source를 렌더링해 적용하고, before step과 finalize 앞의 plan step을 실행해 target을
-// 확인하고, 되돌릴 수 없는 step이 없으면 rollback statement로 source를 확인한 뒤 다시
-// 적용하고, after step과 finalize step을 실행한 뒤 target과 숨긴 이름이 없음을 확인한다.
+// TestPlanApply applies each case of tests/dbspec/plans.json to three databases:
+// it renders and applies the source, runs the before steps and the plan steps before finalize to check the target,
+// checks the source with rollback statements if there are no irreversible steps, then re-applies,
+// and after running the after steps and the finalize step, checks the target and that no hidden names remain.
 func TestPlanApply(t *testing.T) {
 	testcase.Group(t)
 	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_DSN"), os.Getenv("ORM_TEST_POSTGRES_DSN")
@@ -122,7 +122,7 @@ func TestPlanApply(t *testing.T) {
 					}
 				}
 			}
-			// schemaIs는 introspect한 schema text가 want인지 확인한다.
+			// schemaIs checks that the introspected schema text is want.
 			schemaIs := func(e *Env, what, want string) {
 				if e.Err != nil {
 					return
@@ -145,8 +145,8 @@ func TestPlanApply(t *testing.T) {
 					e.fail("%s schema text differs\n--- want\n%s--- got\n%s", what, want, got)
 				}
 			}
-			// forward는 finalize 앞의 step을 실행한다. restore이면 restore statement가 있는
-			// step은 그것을 실행한다(rollback이 숨긴 더한 column이 있다).
+			// forward runs the steps before finalize. If it is restore, the step with the restore statement
+			// runs it (there is an added column that rollback hid).
 			forward := func(e *Env, restore bool) {
 				for _, s := range planSteps {
 					if s.Finalize {
@@ -166,7 +166,7 @@ func TestPlanApply(t *testing.T) {
 				e.Exec(connectionRules[db]...)
 				e.Exec(setup...)
 				steps(e, c.Before)
-				// SQLite는 table을 다시 만드는 동안 foreign key를 끄고, 끝난 뒤 검사한다.
+				// SQLite turns off foreign keys while re-creating a table, and checks them afterward.
 				if db == "sqlite" {
 					e.Exec("PRAGMA foreign_keys = OFF", "PRAGMA legacy_alter_table = OFF")
 				}
@@ -193,8 +193,8 @@ func TestPlanApply(t *testing.T) {
 					e.Exec("PRAGMA foreign_keys = ON")
 				}
 				steps(e, c.After)
-				// finalize도 apply처럼 SQLite foreign key를 끄고 실행한다. 숨긴 table끼리
-				// 참조할 수 있다.
+				// finalize also turns off SQLite foreign keys and runs, as apply does. Hidden tables
+				// can reference each other.
 				if db == "sqlite" {
 					e.Exec("PRAGMA foreign_keys = OFF")
 				}

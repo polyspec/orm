@@ -1,6 +1,6 @@
-// connection의 database를 dbspec 문서로 읽는다 (docs/dialects.md "Introspection").
-// dialect reader가 고정된 수의 catalog query로 중립 catalog을 채우고, catalog이
-// 문서를 만들어 parse한다.
+// Reads the connection's database as a dbspec document (docs/dialects.md "Introspection").
+// The dialect reader fills the neutral catalog with a fixed number of catalog queries, and the catalog
+// makes a document and parses it.
 import { isMySqlConnection, isPostgresConnection, isSqliteConnection, rowArrays, type DbspecMySqlConnection, type DbspecPostgresConnection, type DbspecSqliteConnection } from './connections.js';
 import { CatalogRow, type Catalog, type CatalogQuery, type DbspecUnsupported } from './introspect_catalog.js';
 import { readMySQL } from './introspect_mysql.js';
@@ -52,8 +52,8 @@ export async function introspectDbspec(
 }
 
 /**
- * catalog query를 query로 보내 introspectDbspec과 같은 문서를 읽는다. client의 연결처럼 driver
- * 객체가 아닌 query 함수로 catalog을 읽는 쪽이 쓴다.
+ * Sends the catalog queries as query and reads the same document as introspectDbspec. Unlike a client connection, which is a driver
+ * object, it is used by the side that reads the catalog through a query function.
  */
 export async function introspectCatalog(query: CatalogQuery, dialect: DbspecDialect, name: string): Promise<DbspecIntrospection> {
   let catalog: Catalog;
@@ -78,7 +78,7 @@ function missingMethod(dialect: DbspecDialect, method: string): TypeError {
   return new TypeError(`a ${dialect} connection must have a ${method} method`);
 }
 
-/** mysql2의 text protocol query다. row는 값 배열이다. */
+/** The text protocol query of mysql2. A row is an array of values. */
 function mysqlQuery(connection: DbspecMySqlConnection): CatalogQuery {
   return async sql => {
     const [rows] = await connection.query({ sql, rowsAsArray: true });
@@ -93,7 +93,7 @@ function postgresQuery(connection: DbspecPostgresConnection): CatalogQuery {
   };
 }
 
-/** node:sqlite statement 하나를 준비해 값 배열의 row로 읽는다. 같은 이름의 결과 column이 겹치지 않도록 배열로 받는다. */
+/** Prepares one node:sqlite statement and reads its rows as arrays of values. It takes arrays so that result columns with the same name do not collide. */
 function sqliteQuery(connection: DbspecSqliteConnection): CatalogQuery {
   return async sql => {
     const statement = connection.prepare(sql);

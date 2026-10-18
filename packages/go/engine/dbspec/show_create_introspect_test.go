@@ -14,8 +14,8 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// showCreateCannedQuerier는 readMySQL이 읽는 catalog query의 답을 tests/dbspec/show-create.json의
-// catalog와 case로 내는 Querier다. 답은 SQLite의 SELECT로 만들어 *sql.Rows로 돌려준다(T62-4-8).
+// showCreateCannedQuerier is the Querier that answers the catalog queries readMySQL reads, from the canned
+// catalog and cases of tests/dbspec/show-create.json. Answers are built with SQLite SELECT and returned as *sql.Rows (T62-4-8).
 type showCreateCannedQuerier struct {
 	db     *sql.DB
 	cat    showCreateCatalog
@@ -53,7 +53,7 @@ func (q showCreateCannedQuerier) QueryContext(ctx context.Context, query string,
 	return q.db.QueryContext(ctx, b.String(), params...)
 }
 
-// answer는 query의 행과 column 수다. 모르는 query는 error다.
+// answer is the rows and column count of a query. An unknown query is an error.
 func (q showCreateCannedQuerier) answer(query string) ([][]any, int, error) {
 	t := q.cat.Table
 	switch {
@@ -83,8 +83,8 @@ func (q showCreateCannedQuerier) answer(query string) ([][]any, int, error) {
 	return nil, 0, fmt.Errorf("showCreateCannedQuerier has no answer for the query %q", query)
 }
 
-// TestMySQLIntrospectionOfShownChecks는 Go의 MySQL introspection이 canned catalog에서 같은 predicate를
-// 내고 같은 error를 내는지 확인한다.
+// TestMySQLIntrospectionOfShownChecks checks that Go's MySQL introspection yields the same predicate from the canned catalog
+// and the same error.
 func TestMySQLIntrospectionOfShownChecks(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	raw, err := os.ReadFile(filepath.Join(repositoryRoot(t), "tests", "dbspec", "show-create.json"))

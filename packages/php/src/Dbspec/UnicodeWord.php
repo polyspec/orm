@@ -1,18 +1,18 @@
 <?php
-// 생성 파일이다. Unicode 17.0.0의 word rune 표다.
-// unicode.IsLetter 또는 unicode.IsDigit이 참인 code point의 닫힌 구간이며 오름차순이고 서로 겹치지 않는다.
-// `go run ./tests/dbspec/unicode -write`가 쓴다. 직접 고치지 않는다.
+// Generated file. The word rune table of Unicode 17.0.0.
+// Closed ranges of code points for which unicode.IsLetter or unicode.IsDigit is true, in ascending order and non-overlapping.
+// Written by `go run ./tests/dbspec/unicode -write`. Do not edit it directly.
 declare(strict_types=1);
 
 namespace Polyspec\Orm\Dbspec;
 
 /**
- * Go의 unicode 표가 담은 word rune 표다. 이 파일은 생성되며 직접 고치지 않는다.
+ * The word rune table that Go's unicode table holds. This file is generated and not edited directly.
  * @internal
  */
 final class UnicodeWord
 {
-    /** word rune의 닫힌 구간 [lo, hi]의 목록이며 오름차순이다. */
+    /** A list of closed ranges [lo, hi] of word runes, in ascending order. */
     public const RANGES = [
         [0x0030, 0x0039],
         [0x0041, 0x005A],
@@ -752,7 +752,7 @@ final class UnicodeWord
         [0x31350, 0x33479],
     ];
 
-    /** cp가 표의 word rune이면 참이다. `_`와 `.`은 표에 없으며 Parser가 따로 본다. */
+    /** True if cp is a word rune in the table. `_` and `.` are not in the table; Parser checks them separately. */
     public static function contains(int $cp): bool
     {
         $lo = 0;

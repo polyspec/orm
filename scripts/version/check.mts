@@ -1,5 +1,5 @@
-// orm의 모든 version 선언이 VERSION 파일과 같은지 확인한다. 다른 선언과 사라진 선언을
-// 파일 이름과 함께 하나씩 보고한다.
+// Checks that every version declaration in orm matches the VERSION file. Each mismatched or missing declaration is reported one by one
+// along with its file name.
 import { readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -9,7 +9,7 @@ import { parseFeatures } from '../features/manifest.mts';
 import { parseComposer, parseNpmLock, parsePackage } from '../json/formats.mts';
 import { errorMessage } from '../../tests/errors.mts';
 
-// orm이 내는 Rust package. Cargo.lock에서 이 package의 version만 orm version이다.
+// The Rust package orm produces. In Cargo.lock, only this package's version is the orm version.
 const RUST_PACKAGES = ['polyspec-orm', 'polyspec-orm-schema', 'polyspec-orm-build', 'polyspec-orm-case-clock', 'polyspec-orm-case-database', 'polyspec-orm-testcase', 'polyspec-orm-tests', 'polyspec-orm-bench',
   'polyspec-orm-interface-symbols'];
 
@@ -23,11 +23,11 @@ const cargoToml = (text: string) => [
 ];
 const cargoLock = (text: string) => [...text.matchAll(/^name = "([^"]+)"\nversion = "([^"]+)"$/gm)]
   .filter(m => RUST_PACKAGES.includes(m[1] ?? '')).map(m => m[2] ?? '');
-// 저장소 root의 package-lock.json에서 orm version은 workspace packages/ts의 항목이다(root는 version이 없는 private
-// workspace다).
+// In the repository root's package-lock.json, the orm version is the entry of the workspace packages/ts (the root is a private
+// workspace with no version).
 const packageLock = (text: string) => [parseNpmLock(text, 'package-lock.json').packages['packages/ts']?.version].filter(present);
 
-// 각 선언의 파일과 그 파일에서 orm version을 읽는 방법.
+// For each declaration, its file and how the orm version is read from that file.
 export const DECLARATIONS = [
   ...['packages/rust/orm', 'packages/rust/schema', 'packages/rust/build', 'packages/rust/case-clock', 'packages/rust/case-database',
     'packages/rust/testcase', 'packages/rust/tests', 'benchmarks/rust', 'packages/rust/testing/interfaces'].map(dir => ({ file: `${dir}/Cargo.toml`, read: cargoToml })),
@@ -60,16 +60,16 @@ export async function versionErrors(root: string): Promise<string[]> {
   return errors;
 }
 
-// CHANGELOGS는 변경 이력 file이다. 각 file은 맨 위에 `## Unreleased`(아직 tag하지 않은 변경)를 두고, 그 아래 section은
-// release한 version `## X.Y.Z`이며 새 version이 위에 온다. release PR은 VERSION과 모든 package file을 X.Y.Z로 바꾸고
-// `## Unreleased`를 `## X.Y.Z`로 바꾼 뒤 그 위에 빈 `## Unreleased`를 둔다(AGENTS.md), 그래서 어느 section도 VERSION보다 크지
-// 않다. 두 언어의 file은 같은 section을 가진다.
+// CHANGELOGS are the change history files. Each file has `## Unreleased` at the top (changes not yet tagged), and the sections below it are
+// released versions `## X.Y.Z`, with the newest version on top. A release PR changes VERSION and every package file to X.Y.Z,
+// and turns `## Unreleased` into `## X.Y.Z` and then puts an empty `## Unreleased` above it (AGENTS.md), so that no section is larger
+// than VERSION. The files in both languages have the same sections.
 export const CHANGELOGS = ['CHANGELOG.md', 'CHANGELOG.ko.md'];
 const SEMVER = /^(\d+)\.(\d+)\.(\d+)$/;
 // compare orders two released versions X.Y.Z with semver.
 const compare = (a: string, b: string): number => semver.compare(a, b);
 
-// changelogErrors는 version의 변경 이력 file({path: text})이 그 규칙을 어기는 곳마다 오류 하나를 돌려준다.
+// changelogErrors returns one error for each place where a version's change history file ({path: text}) violates these rules.
 export function changelogErrors(version: string, files: Record<string, string>): string[] {
   const errors: string[] = [];
   const sections: Record<string, string[]> = {};
@@ -95,7 +95,7 @@ export function changelogErrors(version: string, files: Record<string, string>):
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  // version check는 선언 file을 읽고 비교하는 case 하나다.
+  // The version check is one case that reads the declaration file and compares it.
   const log = sections();
   log.begin('version', COMPUTE);
   const root = resolve(import.meta.dirname, '..', '..');

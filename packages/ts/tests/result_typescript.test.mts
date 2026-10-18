@@ -4,7 +4,7 @@ import { parse } from '@polyspec/ordered-json';
 import { StyledValue } from '../dist/index.js';
 import { derivedInteger, executeVector, resultValue } from '../testing/conformance/result_typescript.mts';
 
-// 각 case의 기한 1 s: case는 memory 안에서 result 값 몇 개를 쓰고 비교한다.
+// Deadline of each case 1 s: the case writes a few result values in memory and compares them.
 caseTest('ordered-json numbers and styled states remain exact in result output', 1000, () => {
   const result = resultValue({
     exact: parse('9007199254740993'),

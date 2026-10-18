@@ -15,7 +15,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// generateCommand는 generate.go의 go:generate 줄에 선언된 생성 명령이다.
+// generateCommand is the generation command declared on the go:generate line of generate.go.
 func generateCommand(t *testing.T) []string {
 	t.Helper()
 	source, err := os.ReadFile("generate.go")
@@ -37,8 +37,8 @@ func generateCommand(t *testing.T) []string {
 	return command
 }
 
-// runCheck는 생성 명령을 --check로 dir에서 실행하고 stdout, stderr, exit
-// code를 반환한다.
+// runCheck runs the generation command with --check in dir and returns the stdout, stderr, and exit
+// code.
 func runCheck(t *testing.T, dir string, command []string) (string, string, int) {
 	t.Helper()
 	cmd := exec.Command(command[0], append(command[1:], "--check")...)
@@ -57,10 +57,10 @@ func runCheck(t *testing.T, dir string, command []string) (string, string, int) 
 	return "", "", 0
 }
 
-// copyModule는 생성 명령이 읽는 module 부분의 Go source를 dst에 복사한다:
-// go.work와 그 세 module의 go.mod, go.sum, packages/go module(orm-gen, generator, engine,
-// Go client), 그리고 scan이 읽는 examples와 Go conformance runner, 그리고 set file
-// contracts/fixtures/bench/dbspec-set.json과 그것이 적은 document contracts/fixtures/bench/bench.dbs다.
+// copyModule copies into dst the Go source of the module parts that the generation command reads:
+// go.work, the go.mod and go.sum of its three modules, the packages/go modules (orm-gen, generator, engine,
+// the Go client), plus the examples that scan reads, the Go conformance runner, and the set file
+// contracts/fixtures/bench/dbspec-set.json and the document it lists, contracts/fixtures/bench/bench.dbs.
 func copyModule(t *testing.T, root, dst string) {
 	t.Helper()
 	files := []string{"go.work", filepath.Join("contracts", "fixtures", "bench", "dbspec-set.json"), filepath.Join("contracts", "fixtures", "bench", "bench.dbs")}
@@ -108,9 +108,9 @@ func copyFile(t *testing.T, src, dst string) {
 	}
 }
 
-// TestCoverageModelGenerationCheck는 commit된 model이 선언된 생성 명령의
-// 출력과 같다고 check가 알리고, 한 byte를 바꾼 복사본은 다르다고 알리는지
-// 확인한다.
+// TestCoverageModelGenerationCheck checks that the committed model is the same as the output of the declared
+// generation command, and that check reports a copy with one changed byte as different,
+// and verifies this.
 func TestCoverageModelGenerationCheck(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	command := generateCommand(t)
@@ -130,7 +130,7 @@ func TestCoverageModelGenerationCheck(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// 첫 줄 generated header 다음 주석의 한 글자를 바꾼다.
+	// Changes one character of the comment after the first-line generated header.
 	at := bytes.Index(data, []byte("\n// "))
 	if at < 0 || at+4 >= len(data) || data[at+4] < 'A' || data[at+4] > 'z' {
 		t.Fatal("author.go has no comment letter after its header")
@@ -139,7 +139,7 @@ func TestCoverageModelGenerationCheck(t *testing.T) {
 	if err := os.WriteFile(target, data, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	// check는 차이를 stdout에 쓰고 1로 끝나며, go run은 그 exit status를 stderr에 알린다.
+	// check writes the difference to stdout and exits with 1, and go run reports that exit status on stderr.
 	if stdout, stderr, code := runCheck(t, dir, command); code != 1 || stdout != "differs: author.go\n" || stderr != "exit status 1\n" {
 		t.Fatalf("check of the changed copy exited %d:\n%s%s", code, stdout, stderr)
 	}

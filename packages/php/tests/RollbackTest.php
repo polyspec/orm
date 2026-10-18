@@ -43,8 +43,8 @@ final class RollbackTest extends TestCase
     /** The fixture of the file: what the script did before its cases, once per class. */
     private static function fixture(): void
     {
-        // package autoloader는 test entry point를 load하지 않으므로 이 test는 그 path로
-        // require한다.
+        // The package autoloader does not load the test entry point, so this test requires it by that path
+        // require.
         self::$faultsAutoloaded = class_exists(\Polyspec\Orm\Testing\Faults::class);
         require_once dirname(__DIR__) . '/testing/Faults.php';
 
@@ -120,7 +120,7 @@ final class RollbackTest extends TestCase
         if ($server === false || $server === '') {
             throw new RuntimeException("$env is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers");
         }
-        // case database 이름은 case DSN의 path다. server 연결도 그 database를 연다.
+        // The case database name is the path of the case DSN. The server connection opens that database too.
         $database = ltrim((string) parse_url($dsn, PHP_URL_PATH), '/');
         [, $pdo] = self::native(case_dsn_with_database($server, $database));
         if ($driver === 'postgres') {
@@ -161,7 +161,7 @@ final class RollbackTest extends TestCase
         }, retry: 0));
         self::checkRollback($e, 'transaction');
         if ($driver !== 'sqlite' && $e instanceof OrmException) {
-            // server가 끝낸 session의 다음 statement와 rollback은 연결을 잃은 오류다.
+            // A next statement and a rollback on a session the server ended fail with a lost-connection error.
             $callback = $e->getPrevious();
             self::check($callback instanceof OrmException && $callback->code_ === Code::CONNECTION_LOST, 'the callback error is CONNECTION_LOST: ' . ($callback === null ? 'none' : $callback->getMessage()));
             self::check($e->rollback instanceof OrmException && $e->rollback->code_ === Code::CONNECTION_LOST, 'the rollback error is CONNECTION_LOST: ' . ($e->rollback === null ? 'none' : $e->rollback->getMessage()));
@@ -196,11 +196,11 @@ final class RollbackTest extends TestCase
     }
 
     /**
-     * test entry point의 rollback fault다. commit된 transaction은 fault를 남기고,
-     * callback이 실패한 다음 transaction은 rollback되며 그 rollback은 FAULT를 보고하고
-     * transaction은 callback 오류와 fault를 가진 ROLLBACK을 throw한다. fault는
-     * 소비된다: 그 뒤 transaction은 callback 오류만 throw하고 connection은 이후 요청을
-     * 처리한다.
+     * The rollback fault of the test entry point. A committed transaction leaves a fault behind,
+     * a transaction after a failed callback is rolled back, and that rollback reports FAULT
+     * and the transaction throws the callback error and a ROLLBACK with the fault. The fault
+     * is consumed: the transaction after it throws only the callback error, and the connection
+     * handles later requests.
      */
     private static function rollbackFault(string $dsn): void
     {

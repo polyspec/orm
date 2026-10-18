@@ -26,7 +26,7 @@ final class EngineTest extends TestCase
         return 'no error';
     }
 
-    // manifest 검사, request 검증, statement 형식이다.
+    // manifest check, request validation, and statement form.
     public function test_engine(): void
     {
         $root = dirname(__DIR__, 3);
@@ -70,9 +70,9 @@ final class EngineTest extends TestCase
             self::assertTrue(self::code(fn() => $mysql->compile($ir)) === $code, "validation: $name");
         }
 
-        // insert 는 identity column 값을, update 와 duplicate update 는 primary key 와
-        // identity column 값을 쓰지 못한다. PostgreSQL identity 는 명시한 key 를 지나
-        // 나아가지 않으므로(postgres.identity.by_default_not_advanced) 세 dialect 모두 거부한다.
+        // insert takes the identity column value, and update and duplicate update take the primary key and
+        // cannot write the identity column value. PostgreSQL identity does not advance past an explicit key,
+        // so all three dialects refuse it (postgres.identity.by_default_not_advanced).
         $keyWrites = [
             'cannot set identity column seq' => $request(['kind' => 'insert', 'entity' => 'service', 'set' => [['column' => 'seq', 'p' => 0], ['column' => 'name', 'p' => 1]], 'n_params' => 2]),
             'cannot update seq' => $request(['kind' => 'update', 'entity' => 'service', 'set' => [['column' => 'seq', 'p' => 0]], 'where' => ['items' => [['pred' => ['column' => 'seq', 'op' => 'eq', 'p' => 1]]]], 'n_params' => 2]),
@@ -90,7 +90,7 @@ final class EngineTest extends TestCase
             }
         }
 
-        // relation 은 foreign key 의 모든 성분을 key 순서대로 잇고, 잘못된 key 목록은 거절된다.
+        // A relation links every part of the foreign key in key order, and an invalid key list is refused.
         $compositeRelation = static fn(array $keys): array => $request(['kind' => 'all', 'entity' => 'composite_account', 'n_params' => 0,
             'relations' => [['rel' => 'memberships', 'kind' => 'many', 'keys' => $keys, 'query' => ['entity' => 'composite_membership']]]]);
         $plan = $mysql->plan($compositeRelation([['left' => 'tenant_id', 'right' => 'tenant_id'], ['left' => 'account_id', 'right' => 'account_id']]));
@@ -119,9 +119,9 @@ final class EngineTest extends TestCase
             self::assertTrue(str_starts_with($delete, 'UPDATE ') && str_contains($delete, $mark) && str_contains($delete, $q('soft_record') . '.' . $q('deleted_at') . ' IS NULL'), "$d soft-delete guarded update: $delete");
         }
 
-        // restore 는 set 값과 and 로 이은 where 의 eq 조건이 덮는 primary key 나 unique key 하나로 soft delete column 을 NULL 로
-        // 되돌리는 update 하나다(packages/go/engine/planner/restore_test.go 와 같은 case). 지워진 행만 고치고,
-        // audit table 이면 audit 기록 entity 를 이름한 audit slot 으로 audit column 도 쓴다.
+        // restore is one update that sets the soft delete column to NULL, keyed by a primary key or unique key covered by the set values and the eq condition of the where, joined by and,
+        // to restore it (the same case as packages/go/engine/planner/restore_test.go). Only the deleted row is changed,
+        // and for an audit table it also writes the audit column with the audit slot that names the audit record entity.
         $restoreDocument = <<<'DBS'
         dbspec 1 restore
 
@@ -190,7 +190,7 @@ final class EngineTest extends TestCase
             }
             return ['ir_version' => 1, 'manifest_hash' => $restoreModel->manifestHash, 'kind' => 'restore', 'entity' => $entity, 'where' => ['items' => $items], 'n_params' => $n];
         };
-        // withSet는 request의 set에 assignment를 더한다. 각 값은 where 다음 parameter다.
+        // withSet adds assignments to the request's set. Each value is a parameter after where.
         $withSet = static function (array $r, string ...$columns): array {
             foreach ($columns as $column) {
                 $r['set'][] = ['column' => $column, 'p' => $r['n_params']++];
@@ -259,7 +259,7 @@ final class EngineTest extends TestCase
         }
     }
 
-    /** @return iterable<string, array{array<string, mixed>}> tests/ir/validate.json의 case마다 */
+    /** @return iterable<string, array{array<string, mixed>}> for each case in tests/ir/validate.json */
     public static function validateCases(): iterable
     {
         $file = json_decode((string) file_get_contents(dirname(__DIR__, 3) . '/tests/ir/validate.json'), true, 512, JSON_THROW_ON_ERROR);
@@ -271,8 +271,8 @@ final class EngineTest extends TestCase
         }
     }
 
-    // 공유 검증 case(tests/ir/validate.json): 각 request에 schema의 manifest_hash를 더해 검증기에만 주고,
-    // 받아들이는지나 기대한 오류 code로 실패하는지 본다.
+    // Shared validation cases (tests/ir/validate.json): each request gets the schema's manifest_hash added and is given only to the validator,
+    // and checks whether it is accepted or fails with the expected error code.
     /** @param array<string, mixed> $case */
     #[DataProvider('validateCases')]
     public function test_validate(array $case): void

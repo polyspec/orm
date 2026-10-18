@@ -12,17 +12,17 @@ final class Db
     public const DRIVERS = ['mysql', 'postgres', 'sqlite'];
     public const SECRET = '$SECRET';
     public const NOW = '$NOW';
-    /** SQLite row lock을 대신하는 table이다. row lock statement가 가리킨다. */
+    /** A table that stands in for the SQLite row lock. The row lock statement points at it. */
     private const ROW_LOCK_TABLE = 'orm__row_lock';
 
     /** @var list<TxFrame> active transactions of the request, innermost last */
     private static array $frames = [];
-    /** 한 연결의 모든 handle이 공유하는 상태다: PDO handle, statement cache, 등록한 set, subscriber, test fault. */
+    /** State shared by all handles of one connection: PDO handle, statement cache, registered sets, subscribers, test faults. */
     private readonly DbState $state;
     /** @var array<int, string> masked bind positions of the last args() result */
     private array $masks = [];
     private bool $typed = false;
-    /** @var (\Closure(Request): void)|null 이 handle의 request hook이다. 없으면 null이다. */
+    /** @var (\Closure(Request): void)|null The request hook of this handle. null if none. */
     private ?\Closure $requestHook = null;
 
     /**
@@ -44,9 +44,9 @@ final class Db
         // MySQL uses emulated prepares: a request runs most statement shapes once.
         $pdo->setAttribute(\PDO::ATTR_EMULATE_PREPARES, $driver === 'mysql');
         if ($driver === 'postgres') {
-            // PostgreSQL은 statement와 bind를 unnamed statement 하나로 한 round trip에 전송한다.
-            // named statement를 따로 prepare하는 round trip과 그 implicit transaction이 들지 않는다.
-            // bind는 prepare할 때와 같은 server-side parameter이고 type 추론도 같다.
+            // PostgreSQL sends the statement and bind to one unnamed statement in one round trip.
+            // It does not incur a separate round trip to prepare a named statement, nor that implicit transaction.
+            // bind is the same server-side parameter as when prepared, and its type inference is the same too.
             $pdo->setAttribute(\Pdo\Pgsql::ATTR_DISABLE_PREPARES, true);
         }
         $pdo->setAttribute(\PDO::ATTR_STRINGIFY_FETCHES, false);
@@ -54,8 +54,8 @@ final class Db
     }
 
     /**
-     * @internal Orm::connectSchema와 SchemaUtils의 register, install만 부른다. schema의 set을
-     * 이 연결에 등록한다. 같은 set을 다시 등록하면 아무것도 바꾸지 않는다.
+     * @internal Only Orm::connectSchema and the SchemaUtils register and install call this. Registers the schema's set
+     * on this connection. Registering the same set again changes nothing.
      */
     public function registerSet(Schema $schema): void
     {
@@ -83,8 +83,8 @@ final class Db
     }
 
     /**
-     * @internal markdown 연결이면 SQL 전용 surface $surface를 CAPABILITY_UNSUPPORTED로 거절한다
-     * (docs/dialects.md "Markdown IR executor"). 다른 연결에서는 아무것도 하지 않는다.
+     * @internal On a markdown connection, rejects the SQL-only surface $surface with CAPABILITY_UNSUPPORTED
+     * (docs/dialects.md "Markdown IR executor"). On other connections it does nothing.
      */
     public function unsupportedOnMarkdown(string $surface): void
     {
@@ -94,9 +94,9 @@ final class Db
     }
 
     /**
-     * @internal 이 연결에 등록된 set의 runtime model이다. 등록되지 않은 manifest는
-     * SCHEMA_HASH_MISMATCH다: 요청이 실행될 수 있는 대상은 process가 읽은 code가 아니라 연결이 쓰는
-     * database가 정한다.
+     * @internal The runtime model of the set registered on this connection. A manifest not registered
+     * is SCHEMA_HASH_MISMATCH: the target a request can run against is decided by the database the connection writes,
+     * not the code the process read.
      */
     public function registeredModel(string $hash): RuntimeModel
     {
@@ -125,8 +125,8 @@ final class Db
     }
 
     /**
-     * 연결의 PDO handle이다. close한 연결은 CONFIG다. markdown 연결은 SQL statement를 보내지 않으므로
-     * CAPABILITY_UNSUPPORTED다.
+     * The PDO handle of the connection. A closed connection is CONFIG. A markdown connection sends no SQL statement, so
+     * it is CAPABILITY_UNSUPPORTED.
      */
     private function handle(): \PDO
     {
@@ -140,7 +140,7 @@ final class Db
         return $this->state->pdo;
     }
 
-    /** @internal 이 연결의 driver 오류를 error catalog의 code로 보고한다. */
+    /** @internal Reports this connection's driver error as a code of the error catalog. */
     public function driverError(\PDOException $e): OrmException
     {
         return OrmException::fromDriver($e, $this->driver, $this->handle());
@@ -205,8 +205,8 @@ final class Db
     }
 
     /**
-     * 이 handle의 request hook을 $r에 적용한다. hook이 없으면 아무것도 부르지 않는다. n_params는
-     * plan할 때 Request::shape가 parameter 수로 정하고, hook의 예외는 그대로 전한다.
+     * Applies this handle's request hook to $r. If there is no hook, calls nothing. n_params is
+     * set by Request::shape as the parameter count when planning; an exception from the hook is passed through unchanged.
      */
     private function hook(Request $r): void
     {
@@ -240,22 +240,22 @@ final class Db
         };
     }
 
-    /** @internal 새 바깥 transaction의 번호다. */
+    /** @internal The number of a new outermost transaction. */
     public function nextTransaction(): int
     {
         return ++$this->state->transactions;
     }
 
-    /** @internal 연결의 진행 중인 transaction 번호다. transaction 밖이면 null이다. */
+    /** @internal The number of the connection's ongoing transaction. null when outside a transaction. */
     public function transactionNumber(): ?int
     {
         return self::activeFor($this)?->number;
     }
 
     /**
-     * @internal 끝난 statement의 event를 subscriber에게 publish한다. subscriber가 던지면 남은
-     * subscriber를 부르지 않고 SUBSCRIBER를 던진다. 그 previous가 subscriber의 오류다.
-     * subscriber가 없으면 목록이 빈 것만 확인한다. $start는 statement를 보내기 전의 hrtime이다.
+     * @internal Publishes the event of a finished statement to the subscribers. If a subscriber throws, the remaining
+     * subscribers are not called and SUBSCRIBER is thrown; its previous is the subscriber's error.
+     * With no subscribers, it only checks that the list is empty. $start is the hrtime before the statement was sent.
      *
      * @param list<string> $tables
      * @param list<mixed> $binds
@@ -272,7 +272,7 @@ final class Db
             }
         }
         $event = new StatementEvent($sql, array_values($binds), $kind, $tables, $elapsed, $transaction, $error);
-        // 목록의 복사본을 돈다. subscriber가 구독을 풀어도 이번 event의 순서는 그대로다.
+        // Iterates over a copy of the list. Even if a subscriber unsubscribes, the order of this event stays the same.
         foreach ($this->state->subscribers as $subscriber) {
             try {
                 $subscriber($event);
@@ -283,8 +283,8 @@ final class Db
     }
 
     /**
-     * @internal model이 아닌 statement 하나를 보내고 event를 publish한다. $send는 statement를
-     * 실행해 결과를 돌려준다. driver 오류는 mapping한 OrmException으로 event에 싣고 던진다.
+     * @internal Sends one statement that is not a model statement, and publishes its event. $send runs the statement
+     * and returns its result. A driver error is mapped to an OrmException, attached to the event, and thrown.
      *
      * @template T
      * @param list<string> $tables
@@ -298,8 +298,8 @@ final class Db
     }
 
     /**
-     * observed의 본체다. $control이 true면 transaction 제어 statement이므로 statement fault가 그것을
-     * 막지 않는다.
+     * The body of observed. If $control is true, this is a transaction control statement, so a statement fault does not
+     * block it.
      *
      * @template T
      * @param list<string> $tables
@@ -316,10 +316,10 @@ final class Db
     }
 
     /**
-     * statement 하나를 보내고 그 event를 publish한다. $send는 statement를 보내 결과를 돌려주고,
-     * $done은 statement를 보내기 전의 hrtime과 오류로 event를 publish한다. driver 오류는 mapping한
-     * OrmException으로 event에 싣고 던진다. $control이 false인 statement는 armed statement fault를
-     * 소비한다: 보내지 않고 그 오류로 끝난다(docs/protocol.md 3.2).
+     * Sends one statement and publishes its event. $send sends the statement and returns the result, and
+     * $done publishes the event with the hrtime before the statement was sent and the error. A driver error is mapped to an
+     * OrmException, attached to the event, and thrown. A statement whose $control is false consumes an armed statement fault:
+     * it is not sent, and ends with that error (docs/protocol.md 3.2).
      *
      * @template T
      * @param \Closure(): T $send
@@ -347,8 +347,8 @@ final class Db
     }
 
     /**
-     * @internal bind도 행도 없는 statement 하나를 실행한다. transaction 제어와 schema statement가
-     * 쓴다.
+     * @internal Runs one statement with no binds and no rows. Transaction control and schema statements
+     * use it.
      *
      * @param list<string> $tables
      */
@@ -358,8 +358,8 @@ final class Db
     }
 
     /**
-     * @internal transaction 제어 statement 하나를 실행한다: BEGIN, COMMIT, ROLLBACK, SAVEPOINT,
-     * RELEASE, ROLLBACK TO와 isolation, read-only 설정이다. statement fault는 이 statement를 막지 않는다.
+     * @internal Runs one transaction control statement: BEGIN, COMMIT, ROLLBACK, SAVEPOINT,
+     * RELEASE, ROLLBACK TO, and the isolation and read-only settings. A statement fault does not block this statement.
      */
     private function control(string $kind, ?int $transaction, string $sql): void
     {
@@ -367,9 +367,9 @@ final class Db
     }
 
     /**
-     * @internal model이 아닌 statement 하나를 실행하고 그 행을 위치 순 값으로 돌려준다. 행이 없는
-     * statement는 빈 목록이다. PostgreSQL text의 $n placeholder는 pdo_pgsql이 받는 ?로 바꿔
-     * 보낸다. event의 sql은 text 그대로다.
+     * @internal Runs one statement that is not a model statement and returns its row as position-ordered values. A statement with no row
+     * returns an empty list. The $n placeholders of PostgreSQL text are changed to ?, which pdo_pgsql accepts, and
+     * sent. The event's sql is the text as is.
      *
      * @param list<string> $tables
      * @param list<mixed> $args
@@ -381,7 +381,7 @@ final class Db
             $text = $sql;
             $bound = $args;
             if ($this->driver === 'postgres') {
-                // 같은 $n이 여러 번 나오면 ?마다 그 값을 다시 bind한다.
+                // If the same $n appears several times, that value is bound again for each ?.
                 $bound = [];
                 $text = preg_replace_callback('/\$(\d+)/', static function (array $m) use ($args, &$bound): string {
                     $bound[] = $args[(int) $m[1] - 1];
@@ -490,13 +490,13 @@ final class Db
      * transaction of the same connection inside an active one creates a
      * savepoint and accepts only retry, which it ignores.
      *
-     * $audit은 이 작업 단위의 audit 기록 값(column => 값)이다. 값이 있으면 transaction은 시작하기
-     * 전에 연결 설정의 auditSource를 한 번 부르고, 시도마다 callback 전에 그 값에 $audit을 더한(같은
-     * column이면 $audit이 이긴다) 행 하나를 연결에 등록한 set의 audit 기록 table에 삽입한다.
-     * transaction 안의 모든 감사 대상 insert, update, soft delete, restore는 그 primary key를 audit
-     * column에 쓴다(docs/dbspec.md "Audit"). source가 없거나, 기록 table이 하나가 아니거나, 값의
-     * key가 그 table의 column이 아니면 transaction을 시작하기 전에 CONFIG다.
-     * 중첩 transaction은 바깥 transaction의 audit을 쓰며 $audit을 받지 않는다.
+     * $audit is the audit record value (column => value) for this unit of work. If there is a value, the transaction starts
+     * before it, calls the connection setting's auditSource once, and before each attempt's callback adds $audit to that value (for the same
+     * column, $audit wins) and inserts one row into the audit record table of the set registered on the connection.
+     * Every audited insert, update, soft delete, and restore in the transaction writes its primary key to the audit
+     * column (docs/dbspec.md "Audit"). If there is no source, or the record table is not one table, or a value's
+     * key is not a column of that table, it is CONFIG before the transaction starts.
+     * A nested transaction uses the outer transaction's audit and does not accept $audit.
      *
      * @template T
      * @param \Closure(): T $fn
@@ -546,11 +546,11 @@ final class Db
     }
 
     /**
-     * audit source의 값에 transaction의 값을 더한 audit 기록이다. 같은 column이면 transaction의 값이
-     * 이긴다. 기록 table은 연결에 등록한 set의 audit setting이 references로 이름한 table 하나이며, 그
-     * table을 entity로 가진 set이 연결에 등록되어 있어야 한다. audit source가 없거나, 기록 table이
-     * 없거나 여럿이거나, 값의 key가 그 table의 column이 아니거나, primary key가 column 하나가
-     * 아니면 CONFIG다. source는 transaction을 시작하기 전에 한 번 부르며 그 예외는 그대로 전한다.
+     * The audit record: the audit source's value plus the transaction's value. For the same column, the transaction's value
+     * wins. The record table is the one table that the set registered on the connection's audit setting names with references, and that
+     * table must be the entity of a set registered on the connection. If there is no audit source, or the record table
+     * is missing or there are several, or a value's key is not a column of that table, or the primary key is not
+     * a single column, it is CONFIG. The source is called once before the transaction starts, and its exception passes through unchanged.
      *
      * @param array<string, mixed> $values
      * @return array{hash: string, entity: array, values: array<string, mixed>}
@@ -609,8 +609,8 @@ final class Db
     }
 
     /**
-     * transaction의 audit 기록을 삽입하고 그 table과 primary key 값을 돌려준다. primary key가
-     * identity이면 생성된 key, 아니면 기록의 값이다. 시도마다 다시 삽입한다.
+     * Inserts the transaction's audit record and returns that table and the primary key value. If the primary key
+     * is identity, it is the generated key; otherwise it is the record's value. Inserts again on each attempt.
      *
      * @param array{hash: string, entity: array, values: array<string, mixed>} $record
      * @return array{table: string, key: mixed}
@@ -647,7 +647,7 @@ final class Db
             try {
                 $this->finish($frame, false);
             } catch (\Throwable $cleanup) {
-                // callback 오류와 transaction 끝의 오류를 함께 보고한다(docs/interfaces.md).
+                // Reports both the callback error and the error at the end of the transaction (docs/interfaces.md).
                 throw OrmException::rollback($failure, $cleanup);
             }
             if ($this->state->rollbackFault) {
@@ -674,13 +674,13 @@ final class Db
         }
         $level = strtoupper(str_replace('_', ' ', $isolation));
         if ($this->driver === 'sqlite') {
-            // SQLite의 row lock table은 연결의 첫 transaction 전에 transaction 밖에서 한 번 만든다.
+            // The SQLite row lock table is created once, outside a transaction, before the connection's first transaction.
             $this->ensureRowLockTable();
         }
         $frame = new TxFrame($this, $readOnly, $isolation, $this->nextTransaction());
-        // transaction을 여는 statement다(docs/usage.md "Statement events"). driver의 transaction
-        // API 대신 client가 이 text를 그대로 보낸다.
-        // 각 step은 [kind, sql, control]이다. control이 true인 step은 transaction 제어 statement다.
+        // The statement that opens a transaction (docs/usage.md "Statement events"). Instead of the driver's transaction
+        // API, the client sends this text as is.
+        // Each step is [kind, sql, control]. A step whose control is true is a transaction control statement.
         $steps = [];
         switch ($this->driver) {
             case 'mysql':
@@ -692,13 +692,13 @@ final class Db
             case 'postgres':
                 $steps[] = [StatementEvent::BEGIN, 'BEGIN' . ($level !== '' ? ' ISOLATION LEVEL ' . $level : '') . ($readOnly ? ' READ ONLY' : ''), true];
                 if ($timeoutMs > 0) {
-                    // statement_timeout은 isolation도 read-only도 아니므로 제어 statement가 아니다.
+                    // statement_timeout is neither isolation nor read-only, so it is not a control statement.
                     $steps[] = [StatementEvent::UTILITY, 'SET LOCAL statement_timeout = ' . $timeoutMs, true];
                 }
                 break;
             default:
-                // 쓰기 transaction은 시작할 때 쓰기 lock을 잡고 busy_timeout까지 기다린다. 읽기 전용
-                // transaction은 deferred BEGIN이다.
+                // A write transaction takes the write lock when it starts and waits up to busy_timeout. A read-only
+                // transaction is a deferred BEGIN.
                 $steps[] = [StatementEvent::BEGIN, $readOnly ? 'BEGIN' : 'BEGIN IMMEDIATE', true];
                 if ($isolation === 'read_uncommitted') {
                     $steps[] = [StatementEvent::UTILITY, 'PRAGMA read_uncommitted = 1', true];
@@ -711,8 +711,8 @@ final class Db
             try {
                 $this->run($kind, [], $frame->number, $sql, $control);
             } catch (OrmException $failure) {
-                // 시작한 transaction은 SQLite mode까지 되돌리고 rollback한다. BEGIN이 실행된 뒤
-                // subscriber가 실패해도 transaction은 시작했으므로 driver의 상태로 판단한다.
+                // A transaction that was started is rolled back, returning SQLite to its mode. After BEGIN has run,
+                // even if a subscriber fails, the transaction was started, so it is judged by the driver's state.
                 if (!$this->handle()->inTransaction()) {
                     throw $failure;
                 }
@@ -728,8 +728,8 @@ final class Db
     }
 
     /**
-     * markdown transaction을 연다: 연결의 session에 begin을 보낸다. 읽기 전용 transaction은
-     * read_only를 보낸다. isolation option은 executor가 받지 않는다.
+     * Opens a markdown transaction: sends begin on the connection's session. A read-only transaction
+     * sends read_only. The isolation option is not accepted by the executor.
      */
     private function beginMarkdown(string $isolation, bool $readOnly): TxFrame
     {
@@ -741,7 +741,7 @@ final class Db
         return $frame;
     }
 
-    /** SQLite 연결의 row lock table을 연결에서 처음 한 번 만든다. */
+    /** Creates the SQLite connection's row lock table from the connection the first time. */
     private function ensureRowLockTable(): void
     {
         if ($this->state->rowLockReady) {
@@ -752,17 +752,17 @@ final class Db
     }
 
     /**
-     * transaction을 끝낸다. 끝내기 전에 MySQL named lock을 풀고 MySQL local 값을
-     * 지우고 SQLite mode를 되돌린다. 이 상태는 COMMIT과 ROLLBACK 뒤에도
-     * connection에 남으므로 모든 단계를 시도하고 실패를 모두 보고한다. cleanup이
-     * 실패한 commit은 rollback하고 cleanup 오류를 던진다.
+     * Ends the transaction. Before ending it, releases the MySQL named lock and clears the MySQL local value,
+     * and returns the SQLite mode. This state remains on the connection after COMMIT and ROLLBACK too,
+     * so every step is tried and all failures are reported. Cleanup
+     * of a failed commit rolls it back, and the cleanup error is thrown.
      */
     private function finish(TxFrame $frame, bool $commit): void
     {
         $frame->finished = true;
         if ($this->md !== null) {
-            // markdown transaction은 session에 남는 상태가 없다: commit이나 rollback message 하나가
-            // 끝낸다. 실패한 commit은 server가 transaction을 끝냈으므로 rollback을 보내지 않는다.
+            // A markdown transaction leaves no state on the session: a single commit or rollback message
+            // ends it. A failed commit does not send a rollback, since the server has already ended the transaction.
             $this->markdownSession()->call(['op' => $commit ? 'commit' : 'rollback']);
             return;
         }
@@ -777,9 +777,9 @@ final class Db
         }
         $rollback = null;
         try {
-            // 실패한 COMMIT은 server가 transaction을 끝냈을 수 있으므로 남은 transaction만
-            // rollback한다. 작업이 실패한 transaction은 언제나 rollback하며, driver나
-            // server가 transaction이나 connection을 이미 끝내 실패한 rollback도 보고한다.
+            // A failed COMMIT may have ended the transaction on the server, so only the remaining transaction is
+            // rolled back. A transaction whose work failed is always rolled back, and a rollback that fails
+            // because the driver or server already ended the transaction or connection is reported too.
             if (!$commit || $this->handle()->inTransaction()) {
                 $this->control(StatementEvent::ROLLBACK, $frame->number, 'ROLLBACK');
             }
@@ -795,7 +795,7 @@ final class Db
         }
     }
 
-    /** @return list<\Throwable> transaction 끝의 cleanup에서 실패한 단계들이다. */
+    /** @return list<\Throwable> The steps that failed during cleanup at the end of the transaction. */
     private function cleanup(TxFrame $frame): array
     {
         $errors = [];
@@ -809,7 +809,7 @@ final class Db
         foreach ($frame->locks as $key) {
             $attempt(function () use ($key, $frame): void {
                 $released = $this->fetch(StatementEvent::UTILITY, [], $frame->number, 'SELECT RELEASE_LOCK(?)', [$key], true)[0][0] ?? null;
-                // 1이 아니면 이 connection이 lock을 갖고 있지 않았다.
+                // If it is not 1, this connection did not hold the lock.
                 if ((string) $released !== '1') {
                     throw new OrmException(Code::CONFIG, "lock $key was not held at transaction end");
                 }
@@ -817,7 +817,7 @@ final class Db
         }
         $frame->locks = [];
         if ($this->driver === 'mysql') {
-            // 값을 지우는 statement는 key 순서로 보낸다.
+            // The statement that clears values is sent in key order.
             $keys = array_map('strval', array_keys($frame->locals));
             sort($keys, SORT_STRING);
             foreach ($keys as $key) {
@@ -835,7 +835,7 @@ final class Db
         return $errors;
     }
 
-    /** @param list<\Throwable> $errors 하나면 그 오류, 여럿이면 message를 모은 CONFIG다. */
+    /** @param list<\Throwable> $errors If one, that error; if several, a CONFIG with their messages collected. */
     private static function joined(array $errors): ?\Throwable
     {
         if (count($errors) <= 1) {
@@ -855,7 +855,7 @@ final class Db
             } catch (\Throwable $e) {
                 array_pop(self::$frames);
                 $failure = $e instanceof \PDOException ? $this->driverError($e) : $e;
-                // savepoint 뒤의 작업을 되돌리고 savepoint를 푸는 두 statement를 모두 시도한다.
+                // Attempts both statements: the one that undoes the work after the savepoint, and the one that releases the savepoint.
                 $ended = self::joined(array_values(array_filter([
                     $this->endSavepoint($frame, StatementEvent::ROLLBACK_TO, $name),
                     $this->endSavepoint($frame, StatementEvent::RELEASE, $name),
@@ -873,7 +873,7 @@ final class Db
         }
     }
 
-    /** savepoint name을 끝내는 statement를 실행하고 실패하면 그 오류를 돌려준다. */
+    /** Runs the statement that ends the savepoint name, and if it fails, returns that error. */
     private function endSavepoint(TxFrame $frame, string $kind, string $name): ?\Throwable
     {
         try {
@@ -885,8 +885,8 @@ final class Db
     }
 
     /**
-     * savepoint name을 만들거나(SAVEPOINT) 풀거나(RELEASE) 그 뒤의 작업을 되돌린다(ROLLBACK_TO).
-     * SQL 연결은 그 statement를, markdown 연결은 같은 이름의 control message를 보낸다.
+     * Creates the savepoint name (SAVEPOINT), releases it (RELEASE), or undoes the work after it (ROLLBACK_TO).
+     * The SQL connection sends that statement; the markdown connection sends a control message with the same name.
      */
     private function savepointControl(TxFrame $frame, string $kind, string $name): void
     {
@@ -919,7 +919,7 @@ final class Db
 
     private function plan(Request $r): array
     {
-        // 연결은 자기에게 등록된 set만 plan한다.
+        // The connection plans only the sets registered to it.
         $hash = $r->ir['manifest_hash'];
         $this->registeredModel($hash);
         $engine = Engine::for($hash, $this->driver, $this->config->planCacheSize);
@@ -928,8 +928,8 @@ final class Db
         if (count($r->params) <= self::bindLimit($this->driver)) {
             return $engine->plan($shape);
         }
-        // bind 한도보다 많은 값의 요청은 나뉜 요청(rootInParts)의 plan으로 실행된다.
-        // 값마다 bind slot을 가진 이 plan은 수십 MB이므로 plan cache에 남기지 않는다.
+        // A request with more values than the bind limit runs as the plan of split requests (rootInParts).
+        // A plan with a bind slot per value is tens of MB, so it is not kept in the plan cache.
         $plan = $engine->compile($shape);
         Assemble::index($plan, $engine->model);
         return $plan;
@@ -1084,7 +1084,7 @@ final class Db
             $st = $this->stmt($step['sql']);
             try {
                 $this->exec($st, $args);
-                // RETURNING이나 PostgreSQL setval처럼 행을 돌려주는 statement의 결과는 읽지 않는다.
+                // The result of a statement that returns rows, such as RETURNING or PostgreSQL setval, is not read.
                 $st->closeCursor();
             } catch (\PDOException $e) {
                 throw self::failed($st, $e);
@@ -1111,7 +1111,7 @@ final class Db
     }
 
     /**
-     * executor clock이다: test entry point가 고정한 시각, 아니면 connection 시간대의 wall clock이다.
+     * The executor clock: the time fixed by the test entry point, or else the wall clock of the connection's time zone.
      *
      * @internal
      */
@@ -1120,7 +1120,7 @@ final class Db
         return $this->state->fixedClock?->setTimezone($this->zone) ?? new \DateTimeImmutable('now', $this->zone);
     }
 
-    /** 'Y-m-d H:i:s'에 precision 자리의 소수를 붙인 text다. */
+    /** Text of 'Y-m-d H:i:s' with fractional digits of the precision appended. */
     private static function timeText(\DateTimeImmutable $t, int $precision): string
     {
         return $t->format('Y-m-d H:i:s') . ($precision > 0 ? '.' . substr($t->format('u'), 0, $precision) : '');
@@ -1139,10 +1139,10 @@ final class Db
     }
 
     /**
-     * datetime이나 date 값을 offset 없는 text로 쓴다. datetime은 UTC로 바꾸고
-     * column precision 자리의 소수를 가지므로, SQLite에 저장된 text와 같고
-     * MySQL과 PostgreSQL은 offset literal을 받지 않는다(docs/dialects.md). date는
-     * 값의 달력 날짜다.
+     * Writes a datetime or date value as text with no offset. A datetime is converted to UTC and
+     * has fractional digits of the column precision, so it matches the text stored in SQLite, and
+     * MySQL and PostgreSQL do not accept offset literals (docs/dialects.md). A date is
+     * the calendar date of the value.
      */
     private function bindTimeValue(mixed $v, string $colType, int $precision): mixed
     {
@@ -1150,8 +1150,8 @@ final class Db
     }
 
     /**
-     * date, time, datetime 값을 offset 없는 text로 쓴다(bindTimeValue). time은 `HH:MM:SS`에 precision 자리의
-     * 소수를 붙인 text다. IR executor message는 precision 6으로 쓴다(docs/protocol.md §5).
+     * Writes date, time, and datetime values as text with no offset (bindTimeValue). A time is `HH:MM:SS` followed by
+     * fractional digits of the precision. The IR executor message writes precision 6 (docs/protocol.md §5).
      *
      * @internal
      */
@@ -1278,7 +1278,7 @@ final class Db
                 case 'now':
                     $this->masks[count($out)] = self::NOW;
                     $clock ??= $this->clock();
-                    // 한 statement는 clock을 한 번 읽고 slot의 소수 자리로 자른다.
+                    // One statement reads the clock once and truncates it to the slot's fractional digits.
                     $out[] = self::timeText($clock, $b['precision']);
                     break;
                 case 'audit':
@@ -1333,7 +1333,7 @@ final class Db
         $st->execute();
     }
 
-    /** 실패한 statement의 cursor를 닫고 그 driver 오류를 돌려준다. */
+    /** Closes the cursor of a failed statement and returns its driver error. */
     private static function failed(\PDOStatement $st, \PDOException $e): \PDOException
     {
         try {
@@ -1345,8 +1345,8 @@ final class Db
     }
 
     /**
-     * model statement의 event를 publish한다. kind는 plan step SQL의 첫 단어, tables는 plan
-     * step의 table이다. bind는 비밀과 시각 slot을 가린 값이다.
+     * Publishes the event of a model statement. kind is the first word of the plan step SQL, and tables are the
+     * step's tables of the plan. bind is the value with secret and clock slots masked.
      */
     private function modelDone(array $step, string $sql, array $args, int $start, ?OrmException $err): void
     {
@@ -1356,7 +1356,7 @@ final class Db
         $this->publish(self::statementKind($step['sql']), $step['tables'], $this->transactionNumber(), $sql, $args, $start, $err);
     }
 
-    /** planner가 쓴 statement의 kind다: SQL의 첫 단어다. ALTER는 MySQL identity restart의 schema statement다. */
+    /** The kind of statement the planner wrote: the first word of the SQL. ALTER is the schema statement of the MySQL identity restart. */
     private static function statementKind(string $sql): string
     {
         return match (strtoupper(explode(' ', ltrim($sql), 2)[0])) {
@@ -1413,7 +1413,7 @@ final class Db
                 throw self::failed($st, $e);
             }
         }, fn(int $start, ?OrmException $error) => $this->modelDone($step, $sql, $args, $start, $error));
-        // 읽은 행을 풀지 못한 오류는 statement의 오류가 아니므로 event 뒤에 던진다.
+        // An error from failing to free a row that was read is not the statement's error, so it is thrown after the event.
         if ($step['decode'] !== []) {
             Codec::decodeRows($rows, $step['decode'], $this->config);
         }

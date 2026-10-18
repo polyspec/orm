@@ -24,8 +24,8 @@ func init() {
 	orm.RegisterSQLiteVersion(sqlite3.SQLITE_VERSION)
 }
 
-// mapErr는 docs/errors.yaml이 mapping하는 조건에 이름을 붙이고, executor는
-// 나머지 driver 오류를 DRIVER로 보고한다. SQLITE_BUSY reports a lock that another connection
+// mapErr names the conditions that docs/errors.yaml maps, and the executor
+// reports the remaining driver errors as DRIVER. SQLITE_BUSY reports a lock that another connection
 // still held when the busy_timeout wait ended, so it is CANCELED.
 func mapErr(err error) error {
 	var se *sqlite.Error
@@ -42,7 +42,7 @@ func mapErr(err error) error {
 		return &ir.Error{Code: orm.CodeDuplicateKey, Msg: se.Error()}
 	case 787: // SQLITE_CONSTRAINT_FOREIGNKEY
 		return &ir.Error{Code: orm.CodeForeignKey, Msg: se.Error()}
-	case 1811: // SQLITE_CONSTRAINT_TRIGGER: RESTRICT action은 FK 오류로, trigger RAISE는 DRIVER다
+	case 1811: // SQLITE_CONSTRAINT_TRIGGER: a RESTRICT action is an FK error, and a trigger RAISE is DRIVER
 		if strings.Contains(se.Error(), "FOREIGN KEY constraint failed") {
 			return &ir.Error{Code: orm.CodeForeignKey, Msg: se.Error()}
 		}

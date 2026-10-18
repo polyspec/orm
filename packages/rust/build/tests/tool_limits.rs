@@ -46,7 +46,7 @@ async fn check_databases() {
     std::fs::remove_file(path).expect("remove owner SQLite fixture");
 }
 
-// query가 붙은 SQLite DSN은 path만으로 file을 만든다(docs/dialects.md "Probe environment").
+// A SQLite DSN with a query creates the file from the path alone (docs/dialects.md "Probe environment").
 #[tokio::test]
 async fn tool_sqlite_file_name_is_the_path() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);

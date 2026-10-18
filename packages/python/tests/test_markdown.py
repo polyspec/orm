@@ -1,5 +1,5 @@
-# markdown IR executor의 DSN, connect와 control message, error 줄, 거절하는 surface (docs/protocol.md §5,
-# docs/dialects.md "Markdown IR executor"). flowmark server 대신 한 연결의 message를 적는 fake server를 쓴다.
+# The markdown IR executor's DSN, connect and control messages, error lines, and the surfaces it rejects (docs/protocol.md §5,
+# docs/dialects.md "Markdown IR executor"). Uses a fake server that records the messages of one connection instead of the flowmark server.
 import queue
 import socket
 import threading
@@ -19,7 +19,7 @@ CONNECT_LINE = (
 
 
 class FakeServer:
-    """flowmark server 대신 한 연결의 message를 받아 적고 script의 답을 차례로 쓴다."""
+    """Receives and records the messages of one connection instead of the flowmark server, and writes the script's replies in order."""
 
     def __init__(self, test: unittest.TestCase, *answers: str):
         self.listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -52,7 +52,7 @@ class FakeServer:
         return f"markdown://{host}:{port}/tracker?token={TOKEN}"
 
     def messages(self) -> list:
-        # 한 case의 deadline이다: fake server가 script를 끝내지 못하면 case가 실패한다.
+        # Deadline of one case: if the fake server does not finish the script, the case fails.
         return self.received.get(timeout=10)
 
     def close(self) -> None:
@@ -162,8 +162,8 @@ class MarkdownTest(unittest.TestCase):
 
 
 class BindMessageVectors(unittest.TestCase):
-    """tests/bind/vectors.json의 message case: IR executor message parameter의 runtime value model JSON이다
-    (docs/protocol.md §5 "Parameters"). Go의 TestBindMessageVectors와 같은 case다."""
+    """Message case of tests/bind/vectors.json: the runtime value model JSON of an IR executor message parameter
+    (docs/protocol.md §5 "Parameters"). It is the same case as Go's TestBindMessageVectors."""
 
     def test_message_cases(self):
         import json
@@ -223,8 +223,8 @@ def vector_value(value):
 
 
 class BindVectors(unittest.TestCase):
-    """tests/bind/vectors.json의 bind case: parameter 값을 그 slot의 논리 type으로 검사한다(docs/protocol.md §5
-    "Parameters"). Go의 TestBindVectors와 같은 case다."""
+    """Bind case of tests/bind/vectors.json: checks the parameter value against the logical type of its slot (docs/protocol.md §5
+    "Parameters"). It is the same case as Go's TestBindVectors."""
 
     def test_bind_cases(self):
         import json

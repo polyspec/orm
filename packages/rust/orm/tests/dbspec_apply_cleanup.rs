@@ -20,10 +20,10 @@ use std::time::Duration;
 
 type EventError = Box<dyn std::error::Error + Send + Sync>;
 
-/// 한 case의 기한.
+/// The deadline of one case.
 const CASE_DEADLINE: Duration = Duration::from_secs(20);
 
-/// apply를 event 처리기에서 멈추는 error.
+/// The error that halts apply in an event handler.
 #[derive(Debug)]
 struct Stop;
 
@@ -35,7 +35,7 @@ impl std::fmt::Display for Stop {
 
 impl std::error::Error for Stop {}
 
-/// tests/dbspec/plans.json의 create-from-empty.
+/// create-from-empty from tests/dbspec/plans.json.
 fn create_from_empty() -> Vec<Plan> {
     let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec/plans.json");
     let vectors: Value = serde_json::from_str(&std::fs::read_to_string(path).expect("plans.json")).expect("plans.json");
@@ -44,7 +44,7 @@ fn create_from_empty() -> Vec<Plan> {
     vec![parse_plan(&text).unwrap_or_else(|e| panic!("create-from-empty: {e:?}"))]
 }
 
-/// tool clock: 2026-10-01T00:00:00.123456789Z. history의 applied_at은 소수 여섯 자리로 버린다.
+/// tool clock: 2026-10-01T00:00:00.123456789Z. applied_at in history is truncated to six fractional digits.
 fn fixed_now() -> DateTime<Utc> {
     Utc.with_ymd_and_hms(2026, 10, 1, 0, 0, 0).single().expect("fixed time") + chrono::Duration::nanoseconds(123_456_789)
 }
@@ -53,8 +53,8 @@ fn quiet(_: &ApplyEvent) -> Result<(), EventError> {
     Ok(())
 }
 
-/// 실제 SQLite connection을 감싸서 `fail`의 statement를 실행하면 그 message의
-/// error를 돌려준다.
+/// Wraps a real SQLite connection so that when the `fail` statement runs, its message
+/// is returned as the error.
 struct Failing {
     inner: SqliteConnection,
     fail: HashMap<&'static str, &'static str>,
@@ -88,8 +88,8 @@ async fn failing(fail: &[(&'static str, &'static str)]) -> Result<Failing, Strin
     Ok(Failing { inner, fail: fail.iter().copied().collect() })
 }
 
-/// 읽는 query마다 정한 row를 돌려주는 MySQL connection. 정한 문장 밖의
-/// 실행과 query는 error다.
+/// A MySQL connection that returns the set rows for each query it reads. Statements outside the set
+/// executions and queries are errors.
 struct Scripted {
     executes: Vec<String>,
     queries: HashMap<String, Vec<Vec<CatalogValue>>>,
@@ -126,7 +126,7 @@ fn protocol_message(e: &sqlx::Error) -> Option<&str> {
     }
 }
 
-/// 정리에서 난 database error의 message.
+/// The message of a database error raised in cleanup.
 fn cleanup_message(e: &ApplyError) -> Option<&str> {
     match e {
         ApplyError::Database(e) => protocol_message(e),
@@ -154,7 +154,7 @@ async fn release(plans: Vec<Plan>) -> Result<String, String> {
 }
 
 async fn begin_restore(plans: Vec<Plan>) -> Result<String, String> {
-    // sqlx는 SQLite foreign key를 켠 채 연다.
+    // sqlx opens with SQLite foreign keys turned on.
     let mut c = failing(&[("BEGIN EXCLUSIVE", "begin failed"), ("PRAGMA foreign_keys = 1", "restore failed")]).await?;
     let result = apply(&mut c, Dialect::Sqlite, &plans, &fixed_now, &mut quiet).await;
     match &result {
@@ -191,7 +191,7 @@ async fn effect_row() -> Result<String, String> {
     }
 }
 
-/// case 하나를 기한 안에서 실행하고 시작, 결과, 걸린 시간을 알린다.
+/// Runs one case within its deadline and reports the start, result, and elapsed time.
 async fn case<F: Future<Output = Result<String, String>>>(id: &str, body: F) -> Result<(), String> {
     let mut inner = polyspec_orm_testcase::start(id, CASE_DEADLINE);
     let result = match tokio::time::timeout(CASE_DEADLINE, body).await {

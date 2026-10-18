@@ -1,6 +1,6 @@
-# parse된 dbspec 문서의 데이터 모델 (docs/dbspec.md). 모든 값은 불변으로 다룬다.
-# 주석 줄(`#`에서 줄 끝까지)은 그 다음 줄에 붙고, `closing_comments`는 block의
-# 닫는 brace나 문서 끝에 붙는다.
+# Data model of a parsed dbspec document (docs/dbspec.md). All values are treated as immutable.
+# A comment line (from `#` to the end of the line) attaches to the next line, and `closing_comments` belongs to the block's
+# closing brace or to the end of the document.
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -90,7 +90,7 @@ class DbspecAnalysis:
 
 @dataclass(frozen=True)
 class DbspecDiagnostic:
-    """SCHEMA_INVALID 진단 하나: 규칙, 1-based 줄과 칸, message."""
+    """One SCHEMA_INVALID diagnostic: rule, 1-based line and column, message."""
 
     rule: str
     line: int
@@ -100,7 +100,7 @@ class DbspecDiagnostic:
 
 @dataclass(frozen=True)
 class DbspecType:
-    """column type. kind에 따라 precision, scale, length만 의미가 있다."""
+    """Column type. Only precision, scale, and length are meaningful, depending on kind."""
 
     kind: str
     precision: int = 0
@@ -110,7 +110,7 @@ class DbspecType:
 
 @dataclass(frozen=True)
 class DbspecDefault:
-    """기본값: `now`, 또는 정규 텍스트의 literal(`'pending'`, `1.00`, `true`)."""
+    """Default value: `now`, or a literal in canonical text (`'pending'`, `1.00`, `true`)."""
 
     kind: str  # 'now' | 'literal'
     text: str = ""
@@ -167,13 +167,13 @@ class DbspecForeignKey:
 class DbspecCheck:
     comments: tuple
     name: str
-    # 괄호를 제외한 정규 텍스트의 표현식.
+    # The expression in canonical text, excluding the parentheses.
     expression: str
 
 
 @dataclass(frozen=True)
 class DbspecStoreShard:
-    """store setting의 시간 shard: non-null date 또는 datetime column과 기간(year, month, day). SQL backend는 읽지 않는다."""
+    """Time shard of a store setting: a non-null date or datetime column and a period (year, month, day). The SQL backend does not read it."""
 
     column: str
     period: str
@@ -181,7 +181,7 @@ class DbspecStoreShard:
 
 @dataclass(frozen=True)
 class DbspecSetting:
-    """table setting. kind에 따라 field가 의미를 가진다."""
+    """Table setting. Fields have meaning depending on kind."""
 
     kind: str
     comments: tuple = ()
@@ -193,18 +193,18 @@ class DbspecSetting:
     foreign_key: str = ""
     child_name: str = ""
     parent_name: str = ""
-    # audit 전용.
+    # audit only.
     into: str = ""
     references: str = ""
     action: str = ""
     previous: str = ""
     exclude: tuple | None = None
     include: tuple | None = None
-    # markdown, store, key_prefix, title, body, order, checkbox, state_machine 전용. store의 kind는 form,
-    # state_machine의 form은 initial, terminal, transition, history, limit이다.
+    # For markdown, store, key_prefix, title, body, order, checkbox, and state_machine only. The kind of store is form,
+    # and the forms of state_machine are initial, terminal, transition, history, and limit.
     form: str = ""
     shape: str = ""
-    # store 전용: shard 절이 없으면 None이다.
+    # store only: None if there is no shard clause.
     shard: DbspecStoreShard | None = None
     prefix: str = ""
     glyph: str = ""
@@ -271,8 +271,8 @@ class DbspecDocument:
     tables: tuple
     diagrams: tuple
     closing_comments: tuple
-    # 문서가 다른 set에 속한다: set의 문서가 그 table을 쓰지만 set이 소유하지는
-    # 않는다. parse와 검사는 하지만 render, install, compare, 생성의 대상이 아니다.
+    # The document belongs to another set: the set's document uses that table, but the set does not own it.
+    # It is parsed and checked, but is not a target of render, install, compare, or generation.
     external: bool = False
 
 

@@ -8,9 +8,9 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// TestStatementFaultEntry는 FailNextStatement이 build tag ormtest가 있는 build에만
-// 있는지 확인한다. FailNextStatement은 fault_ormtest.go에 있으므로 그 file이 tag가
-// 없는 build에서 제외되고 tag가 있는 build에 포함되어야 한다.
+// TestStatementFaultEntry checks that FailNextStatement is present only in builds with the ormtest build tag
+// FailNextStatement is in fault_ormtest.go, so that file must be excluded from builds without the tag
+// and included in builds with it.
 func TestStatementFaultEntry(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	list := func(args ...string) string {

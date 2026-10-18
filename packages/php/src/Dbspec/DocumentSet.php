@@ -40,7 +40,7 @@ final class DocumentSet
                 }
             }
         }
-        // 외부 문서는 소유한 문서에서 use를 따라 닿는 문서다.
+        // An external document is one reached by following use from an owned document.
         $byName = [];
         foreach ($documents as $document) {
             $byName[$document->name] ??= $document;

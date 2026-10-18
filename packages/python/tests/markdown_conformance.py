@@ -1,6 +1,6 @@
-# markdown IR executor conformance (tests/markdown/README.md): tests/markdown/cases.json의 모든 case를 그 순서대로,
-# FLOWMARK가 가리키는 flowmark build의 server 하나에 대해 Python client로 실행한다. 그 build는 flowmark.version이
-# 고정한 build여야 하고, 없거나 다른 build이면 실행은 실패한다(건너뛰지 않는다).
+# markdown IR executor conformance (tests/markdown/README.md): runs every case of tests/markdown/cases.json, in that order,
+# with the Python client against one flowmark server of the flowmark build that FLOWMARK points to. The build
+# must be the build pinned by flowmark.version; if it is missing or a different build, the run fails (it is not skipped).
 import json
 import os
 import re
@@ -22,7 +22,7 @@ from polyspec.orm import Collection, Model, OrmError  # noqa: E402
 CONFORMANCE_DIR = ROOT / "tests" / "markdown"
 FLOWMARK_MODULE = "github.com/polyspec/flowmark"
 CORPUS = "conformance"
-# case 하나의 deadline이다. 넘으면 server를 멈춰 연결을 끊으므로 case는 CONNECTION_LOST로 실패한다.
+# Deadline of one case. Past it, the server is stopped to drop the connection, so the case fails with CONNECTION_LOST.
 CASE_TIMEOUT_S = 60
 LISTENING = re.compile(
     r"\[serve\] listening on 127\.0\.0\.1:([0-9]+) for the corpus (.+)"
@@ -30,11 +30,11 @@ LISTENING = re.compile(
 
 
 class Stop(Exception):
-    """transaction을 rollback시키려고 callback이 던지는 오류다."""
+    """The error that the callback raises to roll back the transaction."""
 
 
 class Served:
-    """시작한 flowmark server와 그 corpus, 그리고 연결이다."""
+    """The started flowmark server, its corpus, and the connection."""
 
     def __init__(self, models, directory: Path, port: str, token: str):
         self.models = models
@@ -60,8 +60,8 @@ def load_cases() -> list:
 
 
 def pinned_flowmark() -> str:
-    """FLOWMARK가 가리키는 flowmark binary다. build 정보의 main module이 flowmark.version의 flowmark가
-    아니면 실패한다."""
+    """The flowmark binary that FLOWMARK points to. The main module of its build info must be the flowmark of flowmark.version,
+    otherwise it fails."""
     pin = (CONFORMANCE_DIR / "flowmark.version").read_text().strip()
     binary = os.environ.get("FLOWMARK", "")
     if binary == "":
@@ -96,7 +96,7 @@ def pinned_flowmark() -> str:
 
 
 def array_form(m: Model) -> dict:
-    """model의 array form(to_array)이다. Python model은 date를 README "Results"의 YYYY-MM-DD text로 가진다."""
+    """The array form (to_array) of the model. The Python model holds date as the YYYY-MM-DD text of README "Results"."""
     out = m.to_array()
     related = m.core.row.related if m.core.row is not None else {}
     for name in out:
@@ -109,7 +109,7 @@ def array_form(m: Model) -> dict:
 
 
 def same(actual, expect) -> bool:
-    """JSON 값의 비교다. bool은 숫자와 다르고, 숫자는 값으로 비교한다."""
+    """Comparison of JSON values. bool differs from numbers, and numbers are compared by value."""
     if isinstance(expect, bool) or isinstance(actual, bool):
         return (
             isinstance(expect, bool) and isinstance(actual, bool) and actual == expect
@@ -132,7 +132,7 @@ def same(actual, expect) -> bool:
 
 
 def serve(binary: str, workdir: Path, models, cleanups: list) -> Served:
-    """corpus/를 새 corpus로 install하고 그 server를 시작해 연결한다. 끝낼 일은 cleanups에 넣는다."""
+    """Installs corpus/ as a new corpus, starts its server and connects to it. Anything to clean up goes into cleanups."""
     directory = workdir / CORPUS
     (directory / "dbspec").mkdir(parents=True)
     shutil.copyfile(
@@ -184,7 +184,7 @@ def serve(binary: str, workdir: Path, models, cleanups: list) -> Served:
 
 
 def conformance_cases() -> dict:
-    """cases.json의 id마다 그 case를 실행하는 함수다."""
+    """Function that runs each case of cases.json by its id."""
 
     def insert_one(s):
         m = (
@@ -469,7 +469,7 @@ def conformance_cases() -> dict:
     def write_conflict(s):
         def body():
             s.models.People().id("P1").get().set_name("Ann C").update()
-            # engine 밖의 편집: transaction이 쓸 file을 commit 전에 바꾼다.
+            # Edit outside the engine: changes the file the transaction will write before commit.
             path = s.dir / "people.flowmark.md"
             text = path.read_text()
             if "Cara" not in text:
@@ -553,7 +553,7 @@ def conformance_cases() -> dict:
 
 
 def run_case(s: Served, case: dict, run) -> str | None:
-    """case 하나를 실행하고 실패의 이유를, 통과하면 None을 돌려준다."""
+    """Runs one case and returns the reason for a failure, or None if it passes."""
     stopped = []
 
     def expire():

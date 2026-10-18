@@ -7,7 +7,7 @@ import { kitCopies } from '../repo/kit-copies.mts';
 import { readJsonFile } from '../json/schema.mts';
 import { errorCode } from '../../tests/errors.mts';
 
-// rules check는 문서 file을 읽어 쌍과 문체를 검사하는 case 하나다.
+// rules check is one case that reads the documentation files and checks pairs and style.
 const log = sections();
 log.begin('docs-rules', COMPUTE);
 
@@ -20,8 +20,8 @@ const fail = (id: string, message: string) => failures.push(`${id}: ${message}`)
 const relative = (file: string) => path.relative(root, file).split(path.sep).join('/');
 
 const allDocs = (await files(docs)).filter(file => file.endsWith('.md') && !file.includes(`${path.sep}.vitepress${path.sep}`));
-// docs/ 밖의 추적되는 한국어 문서(AGENTS.ko.md, README.ko.md, CHANGELOG.ko.md 등)도 영문 원본과
-// 같은 구조 검사를 받는다.
+// The tracked Korean documents outside docs/ (AGENTS.ko.md, README.ko.md, CHANGELOG.ko.md, etc.) also receive the same
+// structural checks as their English originals.
 // The copies of @polyspec/kit (kit.copies of its package.json) are kit's documents: the rules of this repository do not read
 // them (AGENTS.md), and kit checks them where they are written.
 const vendored = new Set(Object.keys(kitCopies(root)));
@@ -40,8 +40,8 @@ try {
 }
 
 const headings = (text: string) => text.split('\n').filter((line: string) => /^(#{1,6})\s+/.test(line)).map((line: string) => /^(#{1,6})\s+/.exec(line)?.[1]?.length ?? 0);
-// listShape는 제목으로 나눈 절마다 목록 항목의 들여쓰기를 차례로 돌려준다. code fence 안은 세지
-// 않는다. 번역은 절마다 같은 수와 깊이의 목록 항목(규칙, 변경 기록 항목)을 가져야 한다.
+// listShape returns, section by section (split by heading), the indentation of list items in order. Code fences are not
+// counted. A translation must have the same number and depth of list items (rules, changelog entries) in each section.
 const listShape = (text: string) => {
   const shape: { heading: string; items: number[] }[] = [{ heading: '', items: [] }];
   let fenced = false;
@@ -115,8 +115,8 @@ for (const file of allDocs) {
   if (file.endsWith('.ko.md') && /(?:요|어요|해요|합니다|됩니다|있어요|없어요)[.!?]?\s*$/.test(text.replace(/```[\s\S]*?```/g, '').trim())) fail('docs.writing-style', `${relative(file)} uses an informal ending`);
 }
 
-// VitePress는 문서의 Markdown을 Vue template으로 compile하므로, code 밖의 `<word>`는 HTML element로
-// 읽혀 닫히지 않으면 build가 실패한다. code 밖에서 쓰는 element는 생성 문서의 줄바꿈 `<br>`뿐이다.
+// VitePress compiles the document's Markdown into a Vue template, so a `<word>` outside code is read as an HTML element, and the build fails
+// if it is not closed. The only element used outside code is the line break `<br>` in generated documents.
 const allowedElements = new Set(['br']);
 for (const file of allDocs) {
   const text = (await readFile(file, 'utf8'))

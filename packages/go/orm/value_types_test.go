@@ -27,9 +27,9 @@ table typed_value {
 }
 `
 
-// TestRuntimeValueTypes는 세 database에서 i16, uuid, time(p), date, ip codec,
-// gz codec, select explicit 없는 text column을 쓰고 docs/dbspec.md "Runtime
-// model"의 Go value type으로 다시 읽는다.
+// TestRuntimeValueTypes writes i16, uuid, time(p), date, and ip codec values,
+// gz codec values, and a text column without select explicit in three databases, and reads them back as the Go value types of docs/dbspec.md "Runtime
+// model" Go value types.
 func TestRuntimeValueTypes(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	s := documentSchema(t, valueTypesDocument)

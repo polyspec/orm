@@ -1,22 +1,22 @@
-//! request parameter가 채우는 slot (Go engine/ir/params.go의 ParamUses). IR executor message는 각
-//! parameter를 그 slot type의 form으로 쓰므로(docs/protocol.md §5 "Parameters") client가 여기서 type을 읽는다.
+//! The slots that request parameters fill (ParamUses in Go engine/ir/params.go). An IR executor message has each
+//! parameter in the form of its slot type (docs/protocol.md §5 "Parameters"), so the client reads the type here.
 
 use crate::ir;
 use crate::schema::Manifest;
 use polyspec_orm_schema::dbspec::{Entity, Field};
 
-/// request parameter가 채우는 slot 하나: slot의 논리 type(dbspec type 이름), 그리고 column slot이면 비교하거나
-/// 쓰는 column이다.
+/// One slot that a request parameter fills: the slot's logical type (dbspec type name), and, for a column slot, the column it compares or
+/// writes.
 pub(crate) struct ParamUse<'m> {
     pub(crate) ty: String,
     pub(crate) column: Option<&'m Field>,
-    /// column의 할당(set, rows, on_duplicate)이다: non-null column은 NULL을 거부한다.
+    /// A column assignment (set, rows, on_duplicate): a non-null column rejects NULL.
     pub(crate) assign: bool,
 }
 
-/// 검증한 request의 parameter마다, parameter 순서로, 그 slot들이다: 비교하거나 쓰는 column, column 함수의
-/// 결과, 상대 시각 함수의 간격(초는 f64, 나머지는 i32), contains와 contains_binary의 text, if_parent의 부모
-/// column, optimistic의 column이다.
+/// For each parameter of the validated request, in parameter order, these slots: the column compared or written, the column function's
+/// result, the interval of relative time functions (seconds as f64, the rest as i32), the text of contains and contains_binary, and the parent
+/// column of if_parent, and the column of optimistic.
 pub(crate) fn param_uses<'m>(m: &'m Manifest, r: &ir::Request) -> Vec<Vec<ParamUse<'m>>> {
     let mut u = ParamUses { m, out: (0..r.n_params).map(|_| Vec::new()).collect() };
     u.query(&r.query, None);
@@ -72,7 +72,7 @@ impl<'m> ParamUses<'m> {
         }
     }
 
-    /// q를 돈다. relation 자식이면 parent는 그 부모 entity다.
+    /// Walks q. For a relation child, the parent is its parent entity.
     fn query(&mut self, q: &ir::Query, parent: Option<&'m Entity>) {
         let m = self.m;
         let Some(ent) = m.model.entity(&q.entity) else { return };
@@ -144,8 +144,8 @@ impl<'m> ParamUses<'m> {
     }
 }
 
-/// column f에 column 함수 `name`을 적용한 결과의 type이다: 그것과 비교하는 parameter와 그것을 고르는 output
-/// column의 type이다.
+/// The type of the result of applying column function `name` to column f: the parameter compared with it and the output that selects it
+/// has the column's type.
 pub(crate) fn function_type(name: &str, f: Option<&Field>) -> String {
     match name {
         "day_of_week" | "year" | "month" => "i64".into(),
@@ -154,7 +154,7 @@ pub(crate) fn function_type(name: &str, f: Option<&Field>) -> String {
     }
 }
 
-/// 상대 시각 함수가 받는 간격 값의 type이다. 초는 소수를, 나머지 단위는 정수를 받는다.
+/// The type of the interval value a relative time function takes. Seconds take a decimal number; other units take an integer.
 pub(crate) fn interval_type(name: &str) -> &'static str {
     if super::dialect::value_function_unit(name) == Some("second") {
         "f64"

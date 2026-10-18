@@ -1,5 +1,5 @@
-# plan 없이 두 schema의 모든 차이를 나열한다 (docs/plans.md "Comparison").
-# 기준은 다른 client의 compare이며 diagnostic message는 같은 바이트다.
+# Lists all differences between two schemas without a plan (docs/plans.md "Comparison").
+# The reference is the other client's compare, and the diagnostic messages are the same bytes.
 from __future__ import annotations
 
 from polyspec.orm.dbspec.audit import audit_records
@@ -15,7 +15,7 @@ from polyspec.orm.dbspec.plan_diff import (
 
 __all__ = ["compare_schemas", "is_schema_text"]
 
-# 한 table 안에서 차이가 오는 순서다.
+# The order in which differences come within one table.
 _KINDS = [
     "create_table",
     "drop_table",
@@ -42,9 +42,9 @@ _KINDS = [
 
 
 def compare_schemas(source: DbspecDocument, target: DbspecDocument) -> dict:
-    """plan 없이 source에서 target까지의 모든 차이를 돌려준다. rename은 없고
-    table과 column은 이름으로만 맞춘다. 두 문서는 schema text여야 하며, 아닌
-    쪽마다 compare diagnostic을 source, target 순으로 돌려준다."""
+    """Returns all differences from source to target without a plan. There are no renames;
+    tables and columns are matched by name only. Both documents must be schema text; for any that is not,
+    a compare diagnostic is returned for each side, in source, target order."""
     diagnostics: list = []
     for side, document in (("source", source), ("target", target)):
         if not is_schema_text(document):
@@ -83,16 +83,16 @@ def compare_schemas(source: DbspecDocument, target: DbspecDocument) -> dict:
 
 
 def is_schema_text(document) -> bool:
-    """문서의 canonical 출력이 그 문서 하나의 schema text인지 알려 준다. 외부
-    문서의 use 줄은 문서 이름 순, 그 table은 이름 순이어야 한다. 외부 문서 자체는
-    필요 없다."""
+    """Tells whether the document's canonical output is the schema text of that single document. External
+    documents' use lines must be in document-name order, and their tables in name order. The external documents themselves
+    are not needed."""
     from polyspec.orm.dbspec.emit import CANONICAL, SCHEMA, emit_document
     from polyspec.orm.dbspec.model import DbspecDocument, DbspecUse
 
     if document.name != "schema":
         return False
     tables = sorted(document.tables, key=lambda t: t.name)
-    # use 줄도 emit_document가 읽는 DbspecUse로 만든다(TypeScript isSchemaText와 같은 field).
+    # use lines are also built as DbspecUse, which emit_document reads (the same fields as TypeScript isSchemaText).
     uses = [
         DbspecUse((), u.document, tuple(sorted(set(u.tables)))) for u in document.uses
     ]
@@ -108,7 +108,7 @@ def is_schema_text(document) -> bool:
 
 
 def _compare_tables(s, t, add) -> None:
-    """두 쪽에 다 있는 table의 column, primary key, 객체, setting 차이를 더한다."""
+    """Adds the differences in columns, primary key, objects, and settings of tables present on both sides."""
     for c in s.columns:
         if column_of(t, c.name) is None:
             add("drop_column", c.name)
@@ -167,8 +167,8 @@ def _compare_tables(s, t, add) -> None:
 
 
 def _compare_objects(add, kind: str, source, target, definition) -> None:
-    """이름으로 맞춘 객체가 한쪽에만 있으면 drop이나 add를, 정의가 다르면 둘 다
-    더한다."""
+    """For objects matched by name, if one exists on only one side, add a drop or an add; if the definitions differ, add both
+    (both)."""
     for o in source:
         other = next((x for x in target if x.name == o.name), None)
         if other is None or definition(other) != definition(o):
@@ -180,9 +180,9 @@ def _compare_objects(add, kind: str, source, target, definition) -> None:
 
 
 def _setting_of(x, kind: str, s, t):
-    """table에 하나뿐인 setting의 정의, 없으면 None이다. audit은 두 쪽에 다 있는
-    column 가운데 기록하지 않는 column까지 비교한다. 한쪽에만 있는 column은
-    add_column이나 drop_column이 차이로 남긴다."""
+    """The definition of the single setting on a table, or None if there is none. audit compares, on both sides,
+    even the columns it does not record among the table's columns. A column that exists on only one side
+    is reported as an add_column or drop_column difference."""
     if x.settings is None:
         return None
     setting = next((e for e in x.settings.settings if e.kind == kind), None)

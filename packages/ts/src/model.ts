@@ -275,8 +275,8 @@ function convert(type: string, value: unknown, zone: string, declared?: Field): 
   throw new OrmError(codes.INTERNAL, `cell of unknown type ${type}`);
 }
 
-// host stage(aes, hex, ip)만 가진 column의 model 값은 문자열이다. 저장 형식은
-// executor가 bind할 때 만든다.
+// The model value of a column that has only host stages (aes, hex, ip) is a string. The storage form
+// is made when the executor binds it.
 function columnType(col: Field): string {
   if (styledField(col)) return 'styled';
   if (col.stages.length > 0 && col.stages.every(s => s === 'aes' || s === 'hex' || s === 'ip')) return 'text';
@@ -342,8 +342,8 @@ class Assembler {
   }
 
   /**
-   * join ch의 행이고, 없으면 undefined다. SQL 결과에서는 join column이 부모 행에 함께 있고 첫 column이 NULL이면
-   * 없다. markdown 답에서는 부모 행의 마지막 칸이 join 행을 가진다.
+   * The row of join ch, or undefined if there is none. In an SQL result the join column is on the parent row too, and if the first column is NULL
+   * then there is none. In a markdown answer, the last cell of the parent row holds the join row.
    */
   private joinRow(ch: Assemble['children'][number], row: readonly unknown[]): readonly unknown[] | undefined {
     if (this.result.markdown) return markdownLinks(row).joins.get(ch.rel) ?? undefined;
@@ -352,8 +352,8 @@ class Assembler {
   }
 
   /**
-   * relation ch에서 부모 행 parent의 행과 그 배치다. SQL 결과에서는 relation step의 행을 key로 찾고, markdown
-   * 답에서는 부모 행의 마지막 칸이 relation 행을 가진다.
+   * The row of the relation ch for parent row parent, and its layout. In an SQL result the relation step's row is found by key; in a markdown
+   * answer the last cell of the parent row holds the relation row.
    */
   private related(ch: Assemble['children'][number], parent: readonly unknown[]): [unknown[][], Assemble] {
     if (this.result.markdown) return [markdownLinks(parent).rels.get(ch.rel) ?? [], present(ch.assemble, `the assembly of relation ${ch.rel}`)];
@@ -509,7 +509,7 @@ async function assemble(c: Core, ex: Executor, external: Map<Core, Array<{ many:
   return out;
 }
 
-/** model의 relation key 성분 값을 key 순서로 반환한다. 성분 하나라도 null이면 undefined다. */
+/** Returns the model's relation key component values in key order. If any component is null, returns undefined. */
 function matchValues(m: Core, ch: Core, side: 'left' | 'right'): unknown[] | undefined {
   const values: unknown[] = [];
   for (const k of ch.matches) {
@@ -537,7 +537,7 @@ async function attachExternal(parents: Core[], rel: { many: boolean; child: Core
     const q = ch.clone();
     q.matches = [];
     q.alias = '';
-    // composite key는 자식 key column 전체를 tuple로 거른다.
+    // A composite key filters the whole child key column as a tuple.
     const rights = ch.matches.map(k => k.right);
     const keys: ChainKey[] = rights.length === 1
       ? [{ conn: '', op: '', column: present(rights[0], 'the one key column of a relation'), columns: [], compare: '' }]
@@ -672,8 +672,8 @@ async function create(c: Core): Promise<Model> {
       ? (type === 'styled' ? StyledValue.sqlNull() : null)
       : convert(type, s.value, ex.db.zone, field));
   }
-  // 받은 key를 쓰는 column이다: identity, 또는 markdown executor가 정하는 key(key_prefix)로 요청이 값을 주지
-  // 않은 하나뿐인 primary key column이다.
+  // A column that takes the key it is given: an identity, or the key the markdown executor decides (key_prefix), for the case where the request gives no value,
+  // and the only primary key column.
   let assignedKey = schema.identity;
   if (assignedKey === '' && ex.db.md !== undefined && schema.primaryKey.length === 1 && key !== null && !c.sets.some(s => s.column === schema.primaryKey[0])) {
     assignedKey = present(schema.primaryKey[0], `the primary key of ${schema.name}`);
@@ -835,12 +835,12 @@ async function deleteOne(c: Core, recursive: boolean): Promise<void> {
 }
 
 /**
- * soft delete 한 행을 되돌리고(soft delete column 을 NULL 로 쓰는 update) 그 행을 읽어 돌려준다. set 값을 restore request 의
- * set 으로 보내고, planner 가 request hook 뒤에 set 값과 where 의 eq 조건에서 key 를 고른다(docs/protocol.md 1.5): 그것들이
- * 덮으면 primary key, 아니면 이름 순서로 첫 unique key 다. key column 의 set 값은 조건이고 다른 set 값은 되돌리는 행에
- * update 처럼 함께 쓰는 새 값이다. audit table 의 update 는 다른 update 처럼 transaction 의 audit 기록 key 를 쓴다. 그 뒤
- * 그 key 의 값으로 행을 읽는다. 지워지지 않은 행은 아무것도 쓰지 않고 그대로 돌려주며, 없는 행은 NO_ROWS 다. 기본 read 는
- * 지운 행을 읽지 않는다.
+ * Restores a soft-deleted row (an update that writes NULL to the soft delete column) and reads the row back to return it. The set values are sent as the set of the restore request,
+ * and the planner picks the key from the set values and the where's eq conditions after the request hook (docs/protocol.md 1.5): if they
+ * cover it, the primary key; otherwise the first unique key in name order. The key column's set value is a condition, and the other set values are new values written to the restored row
+ * as in an update. An update of the audit table uses the transaction's audit record key, as other updates do. After that
+ * the row is read by the value of that key. A row that was not deleted is returned unchanged without writing anything; a missing row is NO_ROWS. The default read
+ * does not read the deleted row.
  */
 async function restore(c: Core): Promise<Model> {
   const ex = terminal(c);
@@ -849,7 +849,7 @@ async function restore(c: Core): Promise<Model> {
   if (r.error) throw r.error;
   const set = c.sets.map(s => assign(r, schema, s));
   if (set.length > 0) r.ir.set = set;
-  // own 은 model 이 set 값마다 더한 parameter 의 그 set 값이다. hook 은 그 뒤에 parameter 를 더한다.
+  // own is the set value of the parameter that the model added for each set value. The hook adds parameters after that.
   const own = new Map<number, SetSpec>();
   set.forEach((a, i) => { if (a.p !== undefined) own.set(a.p, present(c.sets[i], `set value ${i}`)); });
   // The key is read from the request as the hook left it, before the planner renumbers its parameters, as Go reads it.
@@ -866,8 +866,8 @@ async function restore(c: Core): Promise<Model> {
 }
 
 /**
- * hook 이 남긴 restore request 에서 key column 의 값이다. parameter 가 model 이 같은 column 에 더한 것인 set item 은 model
- * 자신의 set 값(read 가 다른 조건 값처럼 변환한다)을, 다른 set item 과 where 의 그 column eq 조건은 hook 이 남긴 parameter 를 쓴다.
+ * The key column's value in the restore request left by the hook. A set item whose parameter the model added to the same column
+ * takes its own set value (which read converts like another condition value), while another set item and the where's eq condition on that column use the parameter the hook left.
  */
 function restoreKeyValue(own: ReadonlyMap<number, SetSpec>, written: { request: Request; params: readonly unknown[] }, column: string): unknown {
   const p = written.request.set?.find(a => a.column === column && a.p !== undefined)?.p;

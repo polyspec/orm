@@ -14,11 +14,11 @@ final class SchemaUtils
     public function __construct(private readonly Db $db, private readonly Utils $u) {}
 
     /**
-     * generated schema의 set을 이 연결에 등록한다. database를 읽거나 쓰지 않는다: manifest
-     * text가 선언한 hash로 hash되는지 확인하고(아니면 CONFIG) set을 등록할 뿐이다. 같은 set을
-     * 다시 등록하면 아무것도 바꾸지 않는다. database가 set과 같은지는 install과
-     * addTablesAndColumns가 설치와 upgrade 때 확인하며, 요청마다 연 연결에도
-     * register가 statement 없이 set을 등록한다(docs/schema.md "Schema registration").
+     * Registers the generated schema's set on this connection. It reads and writes nothing in the database: the manifest
+     * text is checked to hash to its declared hash (otherwise CONFIG), and the set is only registered. Registering the same set
+     * again changes nothing. Whether the database matches the set is checked by install and
+     * addTablesAndColumns at setup and upgrade, and by the connection opened for each request as well.
+     * register sets the set without any statement (docs/schema.md "Schema registration").
      */
     public function register(Schema $schema): void
     {
@@ -26,17 +26,17 @@ final class SchemaUtils
     }
 
     /**
-     * generated schema의 document set을 connection의 database에 설치하고, database가 set과
-     * 같은지 확인한 뒤 그 set을 이 연결에 등록한다. manifest text가 선언한 hash로 hash되지
-     * 않으면 어떤 statement보다 먼저 CONFIG다. 집합에 diagnostic이 있으면 SCHEMA_INVALID다.
-     * 연결의 database를 introspect해, 외부 문서에서 쓰는 table이 외부 문서와 다르면 CONFIG다.
-     * set이 소유한 table이 하나도 없으면 client의 renderer가 만든 statement(docs/dialects.md
-     * "Rendered statements")로 모두 만들고, 모두 있으면 아무것도 만들지 않으며, 일부만 있으면
-     * CONFIG다. 그다음 database를 다시 읽어 set이 소유한 table을 set과 비교하고, 차이가 있으면
-     * 그 차이를 모두 담은 CONFIG다(docs/schema.md "Schema installation"). PostgreSQL과
-     * SQLite는 진행 중인 transaction이나 새 transaction에서 적용하므로 실패한 install은
-     * 아무것도 남기지 않는다. MySQL은 DDL마다 스스로 commit하므로 transaction 밖에서 실행하고
-     * 안에서는 CONFIG다.
+     * Installs the generated schema's document set into the connection's database, and after checking that the database matches the set,
+     * registers that set on this connection. If the manifest text does not hash to its declared hash, it is CONFIG before any statement.
+     * If the set has a diagnostic, it is SCHEMA_INVALID.
+     * Introspects the connection's database; if a table that external documents use differs from the external document, it is CONFIG.
+     * If the set owns no tables, the client's renderer creates all the statements (docs/dialects.md
+     * "Rendered statements"); if all of them exist, nothing is created; if only some exist, it is
+     * CONFIG. Then it rereads the database and compares the tables the set owns with the set; if there is a difference,
+     * it is CONFIG with all of those differences (docs/schema.md "Schema installation"). On PostgreSQL and
+     * SQLite, it runs inside a transaction (in progress or new), so a failed install leaves
+     * nothing behind. MySQL commits each DDL by itself, so it runs outside a transaction, and
+     * inside one it is CONFIG.
      */
     public function install(Schema $schema): void
     {
@@ -100,20 +100,20 @@ final class SchemaUtils
     }
 
     /**
-     * 설치한 document set을 generated schema의 새 version으로 더해서만 올린다(docs/schema.md
-     * "Adding tables and columns"). 연결의 database를 introspect해 database에 있는 set의
-     * table을 set과 비교하고, database에 없는 set의 table을 index, foreign key, check,
-     * trigger와 함께 만들며, 있는 table에 빠진 column 가운데 null이거나 default가 있는
-     * column을 더한다. Dbspec::addTablesAndColumnsSteps의 plan step을 실행하므로 바뀐 table의
-     * audit trigger도 새 column을 기록하도록 바뀐다. 다른 set의 table은 그대로 두며 set을
-     * 등록하지 않는다. 다른 차이는 어떤 statement보다 먼저 SCHEMA_DIFFERS다. manifest
-     * text가 선언한 hash로 hash되지 않으면 먼저 CONFIG다. PostgreSQL은 진행 중인
-     * transaction이나 새 transaction에서 적용한다. MySQL은 schema statement를 암묵적으로
-     * commit하고, SQLite는 foreign key를 끈 채 table을 다시 만들어 column을 더하는데
-     * foreign key 설정은 transaction 안에서 바뀌지 않으므로, 둘 다 transaction 밖에서
-     * 적용하고 안에서는 CONFIG다.
+     * Upgrades the installed document set only by adding it as a new version of the generated schema (docs/schema.md
+     * "Adding tables and columns"). Introspects the connection's database and compares the set's tables that are in the database with the set,
+     * creates tables of the set that are not in the database, together with their indexes, foreign keys, checks,
+     * and triggers, and adds to existing tables the missing columns that are null or have a default.
+     * adds those columns. It runs the plan steps of Dbspec::addTablesAndColumnsSteps, so the changed tables'
+     * audit triggers are also changed to record the new columns. Tables of other sets are left as they are, and the set
+     * is not registered. Any other difference is SCHEMA_DIFFERS before any statement. The manifest
+     * text is first CONFIG if it does not hash to its declared hash. PostgreSQL applies it in an in-progress
+     * transaction or a new one. MySQL commits schema statements implicitly, and
+     * SQLite rebuilds a table with foreign keys turned off to add a column, but
+     * the foreign key setting does not change inside a transaction, so both are applied outside a transaction,
+     * and inside one it is CONFIG.
      *
-     * @return list<string> 만든 table은 "table", 더한 column은 "table.column", table 이름과 column 순서
+     * @return list<string> Created tables are "table", added columns are "table.column", in table name and column order
      */
     public function addTablesAndColumns(Schema $schema): array
     {
@@ -132,10 +132,10 @@ final class SchemaUtils
                     throw new OrmException(Code::SCHEMA_DIFFERS, 'the existing tables of the document set differ beyond missing tables, missing columns that are null or have a default and missing indexes: ' . implode('; ', $differences));
                 }
                 foreach ($steps as $step) {
-                    // step은 그 effect의 table을 만들거나 바꾼다.
+                    // A step creates or changes the table of its effect.
                     $db->run(StatementEvent::SCHEMA, $step->effect->table === '' ? [] : [$step->effect->table], $tx, $step->statement);
                 }
-                // step을 실행한 database가 set과 같은지 다시 읽어 확인한다.
+                // Reads the database again after the steps and checks that it matches the set.
                 if ($steps !== []) {
                     $live = Dbspec::introspect($pdo, $driver, 'schema');
                 }
@@ -158,8 +158,8 @@ final class SchemaUtils
     }
 
     /**
-     * $fn을 실행하는 동안 introspection의 catalog query마다 schema event를 publish한다.
-     * catalog query는 table을 가리키지 않는다. $tx는 그 query의 transaction 번호다.
+     * During $fn, publishes a schema event for each introspection catalog query.
+     * A catalog query does not point at a table. $tx is the transaction number of that query.
      *
      * @template T
      * @param \Closure(): T $fn
@@ -179,8 +179,8 @@ final class SchemaUtils
     }
 
     /**
-     * 연결의 database를 introspect하고, set이 외부 문서에서 쓰는 table이 외부 문서와 다르면
-     * CONFIG다(docs/dbspec.md "External documents").
+     * Introspects the connection's database; if a table the set uses from an external document differs from that external document,
+     * it is CONFIG (docs/dbspec.md "External documents").
      *
      * @param list<\Polyspec\Orm\Dbspec\Document> $documents
      */
@@ -195,7 +195,7 @@ final class SchemaUtils
     }
 
     /**
-     * database가 set과 다르면 그 차이를 모두 담은 CONFIG다.
+     * If the database differs from the set, it is CONFIG with all of those differences.
      *
      * @param list<string> $differences
      */
@@ -207,8 +207,8 @@ final class SchemaUtils
     }
 
     /**
-     * set의 schema text 문서다. database와 비교하는 대상이다. schema text는 외부 문서를 use
-     * 줄로 쓰므로 외부 문서의 text를 집합으로 parse한다.
+     * The schema text document of the set, which is what the database is compared with. The schema text uses external documents as use
+     * lines, so the external document's text is parsed into the set.
      *
      * @param list<\Polyspec\Orm\Dbspec\Document> $documents
      */
@@ -243,11 +243,11 @@ final class SchemaUtils
     }
 
     /**
-     * SQLite 연결의 foreign key를 끄고 BEGIN IMMEDIATE transaction으로 `$fn`을 실행한
-     * 뒤 foreign key 검사가 row를 돌려주지 않을 때만 commit하고 foreign key를 다시
-     * 켠다(docs/plans.md "Apply"의 SQLite 다시 만들기).
+     * Runs $fn inside a BEGIN IMMEDIATE transaction with SQLite's foreign keys turned off,
+     * and commits only if the foreign key check returns no rows, then turns foreign keys back
+     * on (docs/plans.md "Apply"'s SQLite rebuild).
      *
-     * 이 transaction도 연결의 transaction 번호를 하나 받는다.
+     * This transaction also takes one transaction number of the connection.
      *
      * @param \Closure(int): list<string> $fn
      * @return list<string>
@@ -268,7 +268,7 @@ final class SchemaUtils
                     throw new OrmException(Code::INTERNAL, "the rebuilt tables break $broken foreign keys");
                 }
             } catch (\Throwable $e) {
-                // BEGIN 뒤 subscriber가 실패해도 transaction은 시작했으므로 driver의 상태로도 판단한다.
+                // Even if a subscriber fails after BEGIN, the transaction was started, so it is also judged by the driver's state.
                 if ($began || $db->pdo()->inTransaction()) {
                     try {
                         $db->run(StatementEvent::ROLLBACK, [], $tx, 'ROLLBACK');

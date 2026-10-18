@@ -184,8 +184,8 @@ func (SQLite) ColumnFunction(name, col string, arg func(int) string) (string, bo
 
 // ValueFunction binds the executor clock on SQLite and applies the interval
 // with datetime modifiers; `floor` keeps the last valid day of the month.
-// datetime은 초 단위를 돌려주므로 상대 형식은 두 번째 clock slot의 소수 여섯
-// 자리를 붙인다. 한 statement에서 두 slot은 같다.
+// datetime returns seconds, so the relative form appends six fractional digits from the second clock slot.
+// Within one statement the two slots are equal.
 func (SQLite) ValueFunction(name string, arg, now func() string) (string, bool) {
 	switch name {
 	case "now":

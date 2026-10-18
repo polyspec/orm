@@ -112,8 +112,8 @@ func (c *checkTyper) predicate(e Expr) Expr {
 	return e
 }
 
-// subject는 in이나 is null predicate의 column을 찾는다. 그 자리의 literal은
-// 읽기 단계가 이미 거부했다.
+// subject finds the column of an in or is null predicate. The literal in that place was
+// already rejected by the read stage.
 func (c *checkTyper) subject(e Expr) *columnNode {
 	return c.column(e.(ColumnRef))
 }

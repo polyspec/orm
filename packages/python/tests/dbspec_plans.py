@@ -1,6 +1,6 @@
-# 공유 plan 사례(tests/dbspec/plans.json): plan 문법의 오류, source와 대상의
-# diff, 세 dialect의 step, plan chain과 schema 비교가 다른 client와 같은지
-# 확인한다. step의 database 실행(before/after)은 conformance가 검사한다.
+# Shared plan case (tests/dbspec/plans.json): checks that the plan grammar errors, the diff of source and target,
+# the steps of the three dialects, and the plan chain and schema comparison match the other clients.
+# The database execution of the steps (before/after) is checked by conformance.
 import json
 import unittest
 from pathlib import Path
@@ -80,7 +80,7 @@ def check_invalid(_test: unittest.TestCase, case: dict) -> None:
     result = parse_plan(_text(case["plan"]))
     if result["plan"] is not None:
         result = diff_plan(source, result["plan"])
-    # invalid 사례의 errors는 message만 담는다.
+    # The errors of an invalid case hold only the message.
     assert [d.message for d in result["diagnostics"]] == case["errors"], (
         f"{case['id']}: diagnostics differ"
     )
@@ -106,7 +106,7 @@ def check_parse(_test: unittest.TestCase, case: dict) -> None:
     result = parse_plan(_text(case["plan"]))
     assert result["plan"] is None, case["id"]
     for want, got in zip(case["errors"], _errors(result["diagnostics"])):
-        # message가 null인 사례는 위치만 비교한다.
+        # A case whose message is null compares only the position.
         assert want[:3] == got[:3] and (want[3] is None or want[3] == got[3]), (
             f"{case['id']}: parse diagnostics differ"
         )

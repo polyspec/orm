@@ -4,8 +4,8 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Dbspec;
 
 /**
- * 두 schema 의 차이 하나다(docs/plans.md "Comparison"). name 은 column 이나
- * 객체의 이름이고, table 단위 차이에서는 빈 문자열이다.
+ * One difference between two schemas (docs/plans.md "Comparison"). name is a column or
+ * object name; for a table-level difference it is an empty string.
  */
 final readonly class Difference
 {

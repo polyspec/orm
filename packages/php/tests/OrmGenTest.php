@@ -123,7 +123,7 @@ final class OrmGenTest extends TestCase
     public function test_gen_rejects_a_column_named_after_a_model_method(): void
     {
         $work = self::$work;
-        // restore()는 모든 model의 method이므로 restore column의 condition method와 겹친다.
+        // restore() is a method of every model, so it overlaps with the condition method of a restore column.
         $dir = "$work/gen-reserved";
         @mkdir("$dir/model", 0o700, true);
         $set = self::setFile($dir, ['example.dbs']);

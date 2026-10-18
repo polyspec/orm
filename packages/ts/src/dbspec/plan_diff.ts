@@ -1,5 +1,5 @@
-// plan의 source와 target schema를 비교한다 (docs/plans.md "Diff").
-// 기준은 Go 엔진(engine/dbspec/plan_diff.go)이며 diagnostic message는 Go와 같은 바이트다.
+// Compares the source and target schemas of a plan (docs/plans.md "Diff").
+// The reference is the Go engine (engine/dbspec/plan_diff.go), and the diagnostic messages are the same bytes as Go.
 import { present } from '../present.js';
 import { typeText } from './emit.js';
 import { dbspecManifest } from './index.js';
@@ -162,7 +162,7 @@ export function planDiff(source: DbspecDocument | null, p: DbspecPlan): { diff: 
     if (d.tableOf.has(name)) d.matched.push(name);
     else d.created.push(name);
   }
-  // table drop 허가
+  // Permission to drop a table
   const allowedTables = new Set<string>();
   for (const t of p.dropTables) {
     allowedTables.add(t);
@@ -192,7 +192,7 @@ export function planDiff(source: DbspecDocument | null, p: DbspecPlan): { diff: 
   const columnKey = (table: string, name: string): string => `${table}.${name}`;
   const allowedColumns = new Set(p.dropColumns.map(c => columnKey(c.table, c.name)));
   const usedColumnPermissions = new Set<string>();
-  // matched table의 column
+  // Columns of a matched table
   for (const name of d.matched) {
     const src = present(d.source.get(present(d.tableOf.get(name), 'd.tableOf.get(name)')), 'd.source.get(d.tableOf.get(name))');
     const tgt = present(d.target.get(name), 'd.target.get(name)');
@@ -233,8 +233,8 @@ export function planDiff(source: DbspecDocument | null, p: DbspecPlan): { diff: 
       }
       if (!sameType(sc.type, c.type) || sc.nullable !== c.nullable || !sameDefault(sc.default, c.default)) append(d.altered, name, c.name);
     }
-    // PostgreSQL은 column 자리를 정하지 못하므로 남는 column의 순서는 그대로이고
-    // 더한 column은 남는 column 뒤에 온다.
+    // PostgreSQL cannot decide the column positions, so the order of the remaining columns stays as it is, and
+    // the added columns come after the remaining columns.
     const kept = src.columns.map(c => renamedOr(renames, c.name)).filter(n => columnOf(tgt, n) !== undefined);
     const keptTarget: string[] = [];
     let lastKept = -1;

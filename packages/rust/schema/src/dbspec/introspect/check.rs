@@ -1,4 +1,4 @@
-//! dialect catalog의 check 식을 dbspec predicate text로 읽는다
+//! Reads the check expressions of the dialect catalog as dbspec predicate text
 //! (docs/dialects.md "Introspection", "Checks").
 
 use super::super::literal::quote;
@@ -6,9 +6,9 @@ use super::super::model::Type;
 use super::super::render::Dialect;
 use std::collections::BTreeMap;
 
-/// check 식 `text`를 dbspec predicate로 읽는다. `columns`는 table의 column
-/// type이며, literal은 그것이 만나는 column의 값으로 읽는다. 읽을 수 없는 식은
-/// error다.
+/// Reads the check expression `text` as a dbspec predicate. `columns` are the table's columns
+/// with their types, and a literal is read as a value of the column it meets. An expression that cannot be read
+/// is an error.
 pub(super) fn decode_check(dialect: Dialect, text: &str, columns: &BTreeMap<String, Type>) -> Result<String, String> {
     let unescaped;
     let mut text = text;
@@ -31,8 +31,8 @@ pub(super) fn decode_check(dialect: Dialect, text: &str, columns: &BTreeMap<Stri
     }
 }
 
-/// CHECK_CLAUSE가 문자열 literal에 더한 두 번째 escape를 푼다: `\\`는 `\`,
-/// `\'`는 `'`가 된다.
+/// Undoes the second escape that CHECK_CLAUSE adds to string literals: `\\` becomes `\`,
+/// `\'` becomes `'`.
 fn unescape_mysql_clause(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut chars = text.chars().peekable();
@@ -103,7 +103,7 @@ fn tokens(dialect: Dialect, text: &str) -> Result<Vec<Token>, String> {
                 j += 1;
             }
             let word = &text[i..j];
-            // MySQL 문자열 앞의 character set introducer는 값이 아니다.
+            // The character set introducer before a MySQL string is not a value.
             if dialect == Dialect::MySql && word.starts_with('_') && j < bytes.len() && bytes[j] == b'\'' {
                 i = j;
                 continue;
@@ -130,8 +130,8 @@ fn tokens(dialect: Dialect, text: &str) -> Result<Vec<Token>, String> {
     Ok(out)
 }
 
-/// text 앞의 문자열 literal을 읽어 값과 byte 길이를 돌려준다. PostgreSQL과
-/// SQLite는 `''`만 escape이고, MySQL은 backslash escape도 쓴다.
+/// Reads the string literal at the start of text and returns its value and byte length. PostgreSQL and
+/// SQLite only escapes `''`; MySQL also uses backslash escapes.
 fn read_sql_string(dialect: Dialect, text: &str) -> Result<(String, usize), String> {
     let mut out = String::new();
     let mut chars = text.char_indices().skip(1).peekable();
@@ -160,14 +160,14 @@ fn read_sql_string(dialect: Dialect, text: &str) -> Result<(String, usize), Stri
     Err("unclosed string literal".to_owned())
 }
 
-/// column이나 literal. kind는 column, number, string, bool이다.
+/// A column or literal. kind is column, number, string, or bool.
 #[derive(Clone, Debug)]
 struct Operand {
     kind: &'static str,
     text: String,
 }
 
-/// 비교, in, is null, and, or.
+/// A comparison, in, is null, and, or.
 #[derive(Clone, Debug)]
 enum Predicate {
     Logic(&'static str, Box<Node>, Box<Node>),
@@ -240,7 +240,7 @@ impl Decoder<'_> {
         Ok(left)
     }
 
-    /// 괄호로 묶인 식이나 operand로 시작하는 predicate 하나를 읽는다.
+    /// Reads one predicate that starts with a parenthesized expression or an operand.
     fn predicate(&mut self) -> Result<Node, String> {
         let operand = match self.term()? {
             Node::Operand(operand) => operand,
@@ -284,8 +284,8 @@ impl Decoder<'_> {
         Ok(Node::Operand(operand))
     }
 
-    /// 괄호 식이나 operand와 그 뒤의 cast를 읽는다. 괄호 안이 operand 하나면
-    /// operand다.
+    /// Reads a parenthesized expression or operand and the cast after it. If the parentheses hold one operand,
+    /// it is that operand.
     fn term(&mut self) -> Result<Node, String> {
         let mut node = if self.punct("(") {
             let inner = self.expression()?;
@@ -306,7 +306,7 @@ impl Decoder<'_> {
         Ok(node)
     }
 
-    /// `::` 뒤의 type 이름을 읽는다: 단어들과 (n), [].
+    /// Reads the type name after `::`: words and (n), [].
     fn cast_type(&mut self) -> String {
         let mut words = Vec::new();
         while let Some(t) = self.peek() {
@@ -362,7 +362,7 @@ impl Decoder<'_> {
         }
     }
 
-    /// in 뒤의 (a, b, ...)를 읽는다.
+    /// Reads the (a, b, ...) after in.
     fn list(&mut self) -> Result<Vec<Operand>, String> {
         self.expect("(")?;
         let mut out = Vec::new();
@@ -378,8 +378,8 @@ impl Decoder<'_> {
         }
     }
 
-    /// PostgreSQL의 ANY나 ALL 뒤의 (ARRAY[...]) 또는 ((ARRAY[...])::type[])를
-    /// 읽는다.
+    /// Reads the (ARRAY[...]) or ((ARRAY[...])::type[]) that follows
+    /// ANY or ALL in PostgreSQL.
     fn array(&mut self) -> Result<Vec<Operand>, String> {
         self.expect("(")?;
         let wrapped = self.punct("(");
@@ -409,8 +409,8 @@ impl Decoder<'_> {
         Ok(out)
     }
 
-    /// predicate를 dbspec text로 쓴다. 괄호는 필요한 곳보다 많아도 되며
-    /// canonical form은 parse가 정한다.
+    /// Writes the predicate as dbspec text. Parentheses may be more than needed,
+    /// the canonical form is set by parse.
     fn write(&self, p: &Predicate) -> Result<String, String> {
         match p {
             Predicate::Logic(op, left, right) => Ok(format!("({} {op} {})", self.side(left)?, self.side(right)?)),
@@ -438,13 +438,13 @@ impl Decoder<'_> {
         }
     }
 
-    /// 첫 column operand의 type. 모르는 column이면 None이다.
+    /// The type of the first column operand; None if the column is unknown.
     fn type_of(&self, a: &Operand, b: Option<&Operand>) -> Option<Type> {
         [Some(a), b].into_iter().flatten().find(|o| o.kind == "column").and_then(|o| self.columns.get(&o.text).copied())
     }
 
-    /// operand를 dbspec 표기로 쓴다. bool column의 1과 0은 true와 false, SQLite
-    /// decimal의 정수는 scale을 나눈 값이다.
+    /// Writes the operand in dbspec notation. The 1 and 0 of a bool column are true and false; in SQLite
+    /// a decimal integer is divided by the scale.
     fn operand_text(&self, o: &Operand, typ: Option<Type>) -> Result<String, String> {
         match o.kind {
             "column" => {
@@ -469,7 +469,7 @@ fn numeric_cast(type_name: &str) -> bool {
     matches!(type_name, "smallint" | "integer" | "bigint" | "numeric" | "double precision" | "real")
 }
 
-/// 10^scale을 곱한 정수 text를 scale 자리 소수로 쓴다.
+/// Writes the integer text multiplied by 10^scale as a decimal with scale digits after the point.
 pub(super) fn unscaled_decimal(text: &str, scale: usize) -> String {
     let (negative, digits) = match text.strip_prefix('-') {
         Some(rest) => (true, rest),

@@ -1,7 +1,7 @@
-// Package runtimemodel은 dbspec document set의 runtime model을 만든다
-// (docs/dbspec.md, "Runtime model"). planner, executor, generator가 읽는
-// entity, field, key, default select set, codec, executor setting을 담는다.
-// model은 parse된 document나 generated code가 품은 manifest text로 만든다.
+// Package runtimemodel builds the runtime model of a dbspec document set
+// (docs/dbspec.md, "Runtime model"). It is read by the planner, executor, and generator.
+// It holds the entities, fields, keys, default select set, codecs, and executor settings.
+// A model is built from a parsed document or from the manifest text that generated code holds.
 package runtimemodel
 
 import (
@@ -12,111 +12,111 @@ import (
 	"github.com/polyspec/orm/packages/go/engine/dbspec"
 )
 
-// Model은 document set 하나의 runtime model이다.
+// Model is the runtime model of one document set.
 type Model struct {
-	// ManifestText와 ManifestHash는 document set을 식별하며 모든 request는
-	// ManifestHash를 싣는다.
+	// ManifestText and ManifestHash identify the document set, and every request
+	// carries the ManifestHash.
 	ManifestText string
 	ManifestHash string
-	// ExternalText는 외부 문서에서 소유한 문서가 쓰는 table의 text다(dbspec.Manifest).
+	// ExternalText is the text of the tables that external documents write, which the owning document uses (dbspec.Manifest).
 	ExternalText string
-	// Documents는 document name 순서의 parse된 document이며 schema 설치가
-	// 이를 render한다.
+	// Documents are the parsed documents in document-name order, and schema installation
+	// renders them.
 	Documents []*dbspec.Document
-	// Order는 소유한 문서의 entity 이름 목록이다. document는 이름 순서, table은
-	// document 순서다. 외부 문서의 table은 entity가 아니다.
+	// Order is the list of entity names the owned documents hold: documents in name order, tables in
+	// document order. A table of an external document is not an entity.
 	Order    []string
 	Entities map[string]*Entity
 }
 
-// Entity는 document set의 table 하나다.
+// Entity is one table of the document set.
 type Entity struct {
-	// Name은 `entity` setting이거나 table 이름이다.
+	// Name is the `entity` setting or the table name.
 	Name  string
 	Table string
-	// PK는 key 순서의 primary key column이다.
+	// PK is the primary key columns in key order.
 	PK []string
-	// Identity는 identity column이며 없으면 비어 있다.
+	// Identity is the identity column; it is empty if there is none.
 	Identity string
 	Fields   []*Field
-	// Uniques는 이름 순서의 unique key다.
+	// Uniques are the unique keys in name order.
 	Uniques []Key
-	// Indexes는 index 이름에서 그 column으로 가는 map이다.
+	// Indexes is a map from index name to its columns.
 	Indexes map[string][]string
-	// Updated, SoftDelete, AESVersion은 각 setting의 column이며 없으면 비어
-	// 있다.
+	// Updated, SoftDelete, and AESVersion are each setting's column; they are empty
+	// if there is none.
 	Updated    string
 	SoftDelete string
 	AESVersion string
-	// Audit은 audit setting이며 없으면 nil이다.
+	// Audit is the audit setting; it is nil if absent.
 	Audit *Audit
 
 	fields map[string]*Field
 }
 
-// Key는 이름 있는 unique key다.
+// Key is a named unique key.
 type Key struct {
 	Name    string
 	Columns []string
 }
 
-// Audit은 audit setting 중 executor가 쓰는 부분이다. table의 모든 insert와
-// update가 transaction의 audit 기록 key를 Column에 쓴다. Record는 audit 기록
-// table의 이름이다. 그 table은 외부 문서의 table일 수 있으므로 entity가 아니라
-// table로 정한다.
+// Audit is the part of the audit setting that the executor uses. Every insert and
+// update of the table writes the transaction's audit record key to Column. Record is the name of
+// the audit record table. That table may be a table of an external document, so it is not an entity;
+// it is determined as a table.
 type Audit struct {
 	History string
 	Column  string
 	Record  string
 }
 
-// Field는 entity의 column 하나와 그 value type, setting이다.
+// Field is one column of an entity, with its value type and settings.
 type Field struct {
 	Name string
-	// Type은 dbspec type kind다: i16, i32, i64, bool, decimal, f64, varchar,
+	// Type is a dbspec type kind: i16, i32, i64, bool, decimal, f64, varchar,
 	// text, bytes, uuid, date, time, datetime.
 	Type string
-	// Length는 varchar(n)의 n, Precision은 decimal(p,s), time(p),
-	// datetime(p)의 p, Scale은 decimal(p,s)의 s다.
+	// Length is n of varchar(n); Precision is p of decimal(p,s), time(p),
+	// datetime(p); Scale is s of decimal(p,s).
 	Length    int
 	Precision int
 	Scale     int
 	Null      bool
 	Identity  bool
-	// Default는 선언된 default가 있음을 뜻한다. column을 빼먹은 insert는
-	// database default를 받는다.
+	// Default means a declared default exists. An insert that omits the column
+	// receives the database default.
 	Default bool
-	// DefaultNow는 default가 `now`임을 뜻한다. executor clock을 쓰는 dialect(PostgreSQL,
-	// SQLite)는 이 column을 뺀 insert에 executor clock을 bind한다.
+	// DefaultNow means the default is `now`. Dialects that use the executor clock (PostgreSQL,
+	// SQLite) bind the executor clock to an insert that omits this column.
 	DefaultNow bool
-	// SelectExplicit인 field는 default select set에서 빠진다.
+	// A field that is SelectExplicit is left out of the default select set.
 	SelectExplicit bool
-	// Codec은 write 순서의 codec stage 목록이다.
+	// Codec is the list of codec stages in write order.
 	Codec []string
-	// BlindIndex는 AES field의 index column이며 없으면 비어 있다.
+	// BlindIndex is the index column of an AES field; it is empty if there is none.
 	BlindIndex string
 	PrimaryKey bool
 	ForeignKey bool
 }
 
-// Field는 이름으로 field를 찾고 없으면 nil을 반환한다.
+// Field finds a field by name and returns nil if there is none.
 func (e *Entity) Field(name string) *Field { return e.fields[name] }
 
-// styledStages는 값이 common value model의 styled value가 되는 codec
-// stage다.
+// styledStages are the codec stages whose value becomes a styled value of the common value model
+// stages.
 var styledStages = []string{"ordered_json", "serialize", "yaml", "gz", "base64"}
 
-// Styled는 field가 styled value를 담는지 알린다. codec stage 중
-// ordered_json, serialize, yaml, gz, base64가 있으면 그렇다.
+// Styled reports whether the field holds a styled value. It does if its codec stages include
+// ordered_json, serialize, yaml, gz, or base64.
 func (f *Field) Styled() bool {
 	return slices.ContainsFunc(f.Codec, func(stage string) bool { return slices.Contains(styledStages, stage) })
 }
 
-// Encrypted는 field의 codec stage에 aes가 있는지 알린다.
+// Encrypted reports whether the field's codec stages include aes.
 func (f *Field) Encrypted() bool { return slices.Contains(f.Codec, "aes") }
 
-// Build는 document set의 runtime model을 반환하고, set이 잘못되면
-// diagnostic을 반환한다.
+// Build returns the runtime model of the document set, and returns
+// diagnostics if the set is invalid.
 func Build(documents []*dbspec.Document) (*Model, []dbspec.Diagnostic) {
 	manifest, diagnostics := dbspec.ManifestOf(documents)
 	if len(diagnostics) > 0 {
@@ -141,16 +141,16 @@ func Build(documents []*dbspec.Document) (*Model, []dbspec.Diagnostic) {
 	return m, nil
 }
 
-// Load는 manifest text(set이 소유한 canonical document를 document name
-// 순서로 이어 붙인 text)를 parse해 runtime model을 반환한다. "dbspec "으로
-// 시작하는 줄마다 document가 시작한다.
+// Load parses manifest text (the canonical documents the set owns, joined in document-name
+// order) and returns the runtime model. A line that begins with "dbspec " starts a document.
+// LoadSet parses manifest text and external text (the tables that external documents write)
 func Load(text string) (*Model, []dbspec.Diagnostic) {
 	return LoadSet(text, "")
 }
 
-// LoadSet은 manifest text와 external text(외부 문서에서 쓰는 table)를 parse해
-// runtime model을 반환한다. 외부 문서는 자기들끼리, 소유한 문서는 모든 문서를
-// set으로 삼아 parse한다.
+// and returns the runtime model. External documents are parsed among themselves, and owned documents are parsed
+// with all documents as the set.
+// LoadDocuments parses a list of document texts as one document set and
 func LoadSet(text, external string) (*Model, []dbspec.Diagnostic) {
 	texts, diagnostics := splitDocuments(text)
 	if len(diagnostics) > 0 {
@@ -165,14 +165,14 @@ func LoadSet(text, external string) (*Model, []dbspec.Diagnostic) {
 	return LoadDocumentSet(texts, externalTexts)
 }
 
-// LoadDocuments는 document text 목록을 하나의 document set으로 parse해
-// runtime model을 반환한다. document 이름은 각 text의 header 이름이다.
+// returns the runtime model. A document name is the header name of each text.
+// LoadDocumentSet returns the runtime model of a document set made from the owned document
 func LoadDocuments(documents []string) (*Model, []dbspec.Diagnostic) {
 	return LoadDocumentSet(documents, nil)
 }
 
-// LoadDocumentSet은 소유한 document text와 외부 document text로 document
-// set의 runtime model을 반환한다.
+// texts and external document texts,
+// as a set.
 func LoadDocumentSet(owned, external []string) (*Model, []dbspec.Diagnostic) {
 	set := dbspec.ParseSet(owned, external)
 	documents := make([]*dbspec.Document, 0, len(set))
@@ -219,7 +219,7 @@ func splitDocuments(text string) ([]string, []dbspec.Diagnostic) {
 	return texts, nil
 }
 
-// entityOf는 table 하나의 entity를 만든다.
+// entityOf makes one table's entity.
 func entityOf(t *dbspec.Table) *Entity {
 	e := &Entity{Name: t.Name, Table: t.Name, PK: slices.Clone(t.PrimaryKey.Columns), Indexes: map[string][]string{}, fields: map[string]*Field{}}
 	s := t.Settings
@@ -281,8 +281,8 @@ func entityOf(t *dbspec.Table) *Entity {
 	return e
 }
 
-// DiagnosticsError는 diagnostic을 line:column rule: message 형식으로 이어
-// 한 message로 만든다.
+// DiagnosticsError joins the diagnostics, each as line:column rule: message,
+// into one message.
 func DiagnosticsError(diagnostics []dbspec.Diagnostic) string {
 	parts := make([]string, len(diagnostics))
 	for i, d := range diagnostics {

@@ -1,6 +1,6 @@
-// dbspec 문서를 표준 Mermaid erDiagram으로 쓰고 읽는다 (docs/mermaid.md).
-// 기준은 Go 엔진(engine/dbspec/mermaid.go)이며 text, 문서, 뺀 객체와 diagnostic이
-// Go와 같은 바이트다. 정규식의 공백은 Go의 \s([\t\n\f\r ])로 쓴다.
+// Writes and reads a dbspec document as a standard Mermaid erDiagram (docs/mermaid.md).
+// The reference is the Go engine (engine/dbspec/mermaid.go), and the text, document, omitted objects and diagnostics are
+// the same bytes as Go. Regex whitespace is written as Go's \s([\t\n\f\r ]).
 import { present } from '../present.js';
 import { typeText } from './emit.js';
 import { byteOrder, Catalog, type DbspecUnsupported, type ITable } from './introspect_catalog.js';
@@ -107,17 +107,17 @@ export function exportMermaid(document: DbspecDocument): DbspecMermaidExport {
   return Object.freeze({ mermaid: out, dropped: Object.freeze(dropped) });
 }
 
-/** settings block의 여는 줄, setting 줄, 닫는 줄 중 하나에 comment가 있는지 알려준다. */
+/** Tells whether the opening line, a setting line, or the closing line of a settings block has a comment. */
 function settingsCommented(s: DbspecSettings | null): boolean {
   return s !== null && (s.comments.length > 0 || s.closingComments.length > 0 || s.settings.some(x => x.comments.length > 0));
 }
 
-/** Mermaid type에는 쉼표가 없으므로 decimal(p,s)를 decimal(p-s)로 쓴다. */
+/** Mermaid types have no commas, so decimal(p,s) is written as decimal(p-s). */
 function mermaidType(t: DbspecType): string {
   return t.kind === 'decimal' ? `decimal(${t.precision}-${t.scale})` : typeText(t);
 }
 
-// Go regexp의 \s는 [\t\n\f\r ]이다.
+// In Go regexp, \s is [\t\n\f\r ].
 const S = '[\\t\\n\\f\\r ]';
 const ENTITY_NAME = '([A-Za-z0-9_-]+|"[^"]*")';
 const ENTITY_START = new RegExp(`^${ENTITY_NAME}${S}*\\{$`);
@@ -128,13 +128,13 @@ const RELATION = new RegExp(
   `^${ENTITY_NAME}${S}+(\\|o|\\|\\||\\}o|\\}\\|)(--|\\.\\.)(o\\||\\|\\||o\\{|\\|\\{)${S}+${ENTITY_NAME}${S}*:${S}*("[^"]*"|[^\\t\\n\\f\\r "]+)$`,
 );
 const LABEL = /^([a-z][a-z0-9_]*) \(([a-z0-9_, ]+)\) references \(([a-z0-9_, ]+)\)$/;
-// comment 뒤에 공백 하나를 붙인 text에 맞춘다. 각 부분이 공백 하나로 끝나야 하므로
-// 부분 사이에 공백이 정확히 하나 있다. Go의 .은 \n 말고 모든 문자다.
+// Matches text with one space added after the comment. Each part must end with one space, so
+// there is exactly one space between the parts. In Go, . matches every character except \n.
 const SUFFIX = /^(?:(null) )?(?:(identity) )?(?:default ([^\n]+) )?$/;
 /** The kinds of the types without parameters, the first group of KNOWN_TYPE. */
 const SIMPLE_KINDS = ['i16', 'i32', 'i64', 'bool', 'f64', 'text', 'bytes', 'uuid', 'date'] as const;
 const KNOWN_TYPE = /^(i16|i32|i64|bool|f64|text|bytes|uuid|date)$|^varchar\((\d+)\)$|^(time|datetime)\((\d)\)$|^decimal\((\d+)-(\d+)\)$/;
-// Go strings.TrimSpace가 지우는 Unicode 공백이다.
+// The Unicode whitespace that Go strings.TrimSpace removes.
 const GO_SPACE = '[\\t\\n\\v\\f\\r \\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000]';
 const TRIM_SPACE = new RegExp(`^${GO_SPACE}+|${GO_SPACE}+$`, 'g');
 
@@ -142,7 +142,7 @@ function trimSpace(s: string): string {
   return s.replace(TRIM_SPACE, '');
 }
 
-/** Go strings.Trim(s, `"`)처럼 앞뒤의 큰따옴표를 모두 지운다. */
+/** Removes all the leading and trailing double quotes, like Go's strings.Trim(s, `"`). */
 function trimQuotes(s: string): string {
   return s.replace(/^"+|"+$/g, '');
 }
@@ -316,7 +316,7 @@ export function importMermaid(text: string, name: string): DbspecMermaidImport {
     for (const col of cols) used.add(col);
     const prefix = ct.primary.slice(0, Math.min(cols.length, ct.primary.length));
     const ix = `ix_${child}_${cols.join('_')}`;
-    // 같은 column의 foreign key가 이미 더한 index는 다시 더하지 않는다.
+    // An index already added by a foreign key on the same column is not added again.
     const indexed = ct.indexes.some(x => x.name === ix);
     if ((prefix.length !== cols.length || prefix.some((p, i) => p !== cols[i])) && !indexed) {
       ct.indexes.push({ name: ix, columns: cols, desc: cols.map(() => false) });
@@ -334,7 +334,7 @@ export function importMermaid(text: string, name: string): DbspecMermaidImport {
   try {
     result = c.document(name);
   } catch (error) {
-    // catalog이 문서를 만들지 못하면(문서 이름이 dbspec 이름이 아닌 경우 등) Go처럼 1행의 diagnostic이다.
+    // If the catalog cannot make a document (for example, when the document name is not a dbspec name), it is a one-line diagnostic, as in Go.
     return fail(1, error instanceof Error ? error.message : String(error));
   }
   const noDiagnostics: readonly [] = Object.freeze([]);
@@ -349,7 +349,7 @@ function splitNames(s: string): string[] {
   return s.split(',').map(p => trimSpace(p));
 }
 
-/** 숫자 text가 lo 이상 hi 이하인 값이면 그 값을, 아니면 null을 돌려준다. 9자리를 넘는 수는 범위 밖이다. */
+/** If the numeric text is a value from lo to hi inclusive, returns that value; otherwise null. A number over nine digits is out of range. */
 function within(digits: string, lo: number, hi: number): number | null {
   const significant = digits.replace(/^0+/, '');
   if (significant.length > 9) return null;
@@ -358,9 +358,9 @@ function within(digits: string, lo: number, hi: number): number | null {
 }
 
 /**
- * Mermaid type이 dbspec type이면 그 type을, 아니면 null을 돌려준다. 수가 dbspec 범위
- * (varchar 1-16383, time과 datetime 0-6, decimal p 1-18과 s 0-p)를 벗어나면 dbspec
- * type이 아니다. 범위를 여기서 정하므로 key column도 모든 client에서 같은 지점에서 빠진다.
+ * If the Mermaid type is a dbspec type, returns that type; otherwise null. If the number is outside the dbspec range
+ * (varchar 1-16383, time and datetime 0-6, decimal p 1-18 and s 0-p), it is not a dbspec
+ * type. Because the range is decided here, key columns also drop out at the same point for every client.
  */
 function importType(s: string): DbspecType | null {
   const m = KNOWN_TYPE.exec(s);

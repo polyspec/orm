@@ -22,7 +22,7 @@ const RUN_DEADLINE: Duration = Duration::from_secs(10);
 
 fn main() -> ExitCode {
     let run = CaseClock::start();
-    // stress case의 wall-clock 기한은 CPU 한도 RUN_DEADLINE의 열 배다(timing-check).
+    // The wall-clock deadline of a stress case is ten times the CPU limit RUN_DEADLINE (timing-check).
     let mut case = polyspec_orm_testcase::start("dbspec stress", polyspec_orm_testcase::wall_for_cpu(RUN_DEADLINE));
     let Some(path) = std::env::args().nth(1) else {
         case.fail("missing document path argument");
@@ -65,8 +65,8 @@ fn main() -> ExitCode {
     let parse_time = parses[PARSES / 2];
     let ms = |d: Duration| d.as_secs_f64() * 1000.0;
     case.step(format_args!("parse cpu min {:.3} median {:.3} max {:.3} ms", ms(parses[0]), ms(parse_time), ms(parses[PARSES - 1])));
-    // 기준 작업은 같은 문서의 byte마다 checksum을 갱신하는 loop다. 네 client가 같은 계산을 같은 시계로 재고, parse
-    // 시간과의 비율을 적는다. 비율은 아직 판정에 쓰지 않는다(docs/dbspec.md, Verification).
+    // The baseline job is a loop that updates a checksum for each byte of the same document. The four clients time the same computation with the same clock, parse
+    // time against it and records the ratio. The ratio is not yet used for judgment (docs/dbspec.md, Verification).
     let mut references = Vec::with_capacity(PARSES);
     let mut sum = 0;
     for _ in 0..PARSES {

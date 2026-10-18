@@ -63,7 +63,7 @@ var outputs = map[string]map[string]string{
 	"InsertedRows": {"go": "(int64,error)", "php": "int", "rust": "polyspec_orm::Result<u64>", "typescript": "Promise<number>", "python": "int"},
 	"ModelSuccess": {"go": "error", "php": "void", "rust": "polyspec_orm::Result<()>", "typescript": "Promise<void>", "python": "None"},
 	"Success":      {"go": "error", "php": "void", "rust": "Result<()>", "typescript": "Promise<void>", "python": "None"},
-	// 등록은 database를 읽거나 쓰지 않으므로 Rust와 TypeScript에서도 동기 호출이다.
+	// Registration reads and writes no database, so it is also a synchronous call in Rust and TypeScript.
 	"Registered":        {"go": "error", "php": "void", "rust": "Result<()>", "typescript": "void", "python": "None"},
 	"RowMap":            {"go": "map[string]any", "php": "array", "rust": "polyspec_orm::Result<polyspec_orm::serde_json::Value>", "typescript": "Record<string,unknown>", "python": "dict"},
 	"Db":                {"go": "(*DB,error)", "php": "Polyspec\\Orm\\Db", "rust": "Result<Db>", "typescript": "Promise<Db>", "python": "Db"},
@@ -89,7 +89,7 @@ var outputs = map[string]map[string]string{
 	"DbspecChainResult":         {"go": "([]*Plan,[]Diagnostic)", "php": "Polyspec\\Orm\\Dbspec\\ChainResult", "rust": "Result<Vec<&Plan>,Vec<Diagnostic>>", "typescript": "DbspecChainResult", "php-extension": "Polyspec\\Orm\\Dbspec\\Native\\ChainResult", "python": "dict"},
 	"DbspecDiffResult":          {"go": "([]Change,[]Diagnostic)", "php": "Polyspec\\Orm\\Dbspec\\DiffResult", "rust": "Result<Vec<Change>,Vec<Diagnostic>>", "typescript": "DbspecDiffResult", "php-extension": "Polyspec\\Orm\\Dbspec\\Native\\DiffResult", "python": "dict"},
 	"DbspecComparisonResult":    {"go": "([]Difference,[]Diagnostic)", "php": "Polyspec\\Orm\\Dbspec\\ComparisonResult", "rust": "Result<Vec<Difference>,Vec<Diagnostic>>", "typescript": "DbspecComparisonResult", "php-extension": "Polyspec\\Orm\\Dbspec\\Native\\ComparisonResult", "python": "dict"},
-	// installedDifferences는 TypeScript에서 읽기 전용 목록이다.
+	// installedDifferences is a read-only list in TypeScript.
 	"DbspecInstalledDifferences": {"go": "[]string", "php": "array", "rust": "Vec<String>", "typescript": "readonlystring[]", "php-extension": "array", "python": "list[str]"},
 	"DbspecAddedSteps":           {"go": "(added[]string,steps[]PlanStep,differences[]string)", "php": "array", "rust": "AddTablesAndColumnsSteps", "typescript": "DbspecAddTablesAndColumnsSteps", "php-extension": "array", "python": "dict"},
 	"DbspecPlanStepsResult":      {"go": "([]PlanStep,[]Diagnostic)", "php": "Polyspec\\Orm\\Dbspec\\PlanStepsResult", "rust": "Result<Vec<PlanStep>,Vec<Diagnostic>>", "typescript": "DbspecPlanStepsResult", "php-extension": "Polyspec\\Orm\\Dbspec\\Native\\PlanStepsResult", "python": "dict"},
@@ -97,8 +97,8 @@ var outputs = map[string]map[string]string{
 	"DbspecMermaidExport":        {"go": "(string,[]Unsupported)", "php": "Polyspec\\Orm\\Dbspec\\MermaidExportResult", "rust": "(String,Vec<Unsupported>)", "typescript": "DbspecMermaidExport", "php-extension": "Polyspec\\Orm\\Dbspec\\Native\\MermaidExportResult", "python": "dict"},
 	"DbspecMermaidImport":        {"go": "(*Document,[]Unsupported,[]Diagnostic)", "php": "Polyspec\\Orm\\Dbspec\\MermaidImportResult", "rust": "Result<(Document,Vec<Unsupported>),Vec<Diagnostic>>", "typescript": "DbspecMermaidImport", "php-extension": "Polyspec\\Orm\\Dbspec\\Native\\MermaidImportResult", "python": "dict"},
 	"AddedTablesAndColumns":      {"go": "([]string,error)", "php": "array", "rust": "Result<Vec<String>>", "typescript": "Promise<string[]>", "python": "list[str]"},
-	// 구독과 그 해제는 database를 읽거나 쓰지 않는 동기 호출이다. Go와 Rust는 markdown 연결의 거절을 error로 돌려준다.
-	// request hook handle은 같은 연결의 handle이며 database에 닿지 않는 동기 호출이다.
+	// Subscribing and unsubscribing are synchronous calls that read or write no database. Go and Rust return the markdown connection's rejection as an error.
+	// A request hook handle is a handle on the same connection, and a synchronous call that does not touch the database.
 	"RequestHookHandle": {"go": "*DB", "php": "Polyspec\\Orm\\Db", "rust": "Db", "typescript": "Db", "python": "Db"},
 	"Unsubscribe":       {"go": "(unsubscribefunc(),errerror)", "php": "Closure", "rust": "Result<Subscription>", "typescript": "()=>void", "python": "Callable[[],None]"},
 	// Rust closes its pool without a result; Go reports the first statement that failed to close.
@@ -155,7 +155,7 @@ var inputs = map[string]map[string]string{
 	"DbspecInstalledSource":  {"go": "live*Document,unsupported[]Unsupported,target*Document", "php": "Polyspec\\Orm\\Dbspec\\Document$live,array$unsupported,Polyspec\\Orm\\Dbspec\\Document$target", "rust": "live:&Document,unsupported:&[Unsupported],target:&Document", "typescript": "live:DbspecDocument,unsupported:readonlyDbspecUnsupported[],target:DbspecDocument", "php-extension": "Polyspec\\Orm\\Dbspec\\Native\\Document$live,array$unsupported,Polyspec\\Orm\\Dbspec\\Native\\Document$target", "python": "live:DbspecDocument,unsupported:list[Unsupported],target:DbspecDocument"},
 	"DbspecAddedSource":      {"go": "live*Document,unsupported[]Unsupported,target*Document,dialectDialect", "php": "Polyspec\\Orm\\Dbspec\\Document$live,array$unsupported,Polyspec\\Orm\\Dbspec\\Document$target,string$dialect", "rust": "live:&Document,unsupported:&[Unsupported],target:&Document,dialect:Dialect", "typescript": "live:DbspecDocument,unsupported:readonlyDbspecUnsupported[],target:DbspecDocument,dialect:DbspecDialect", "php-extension": "Polyspec\\Orm\\Dbspec\\Native\\Document$live,array$unsupported,Polyspec\\Orm\\Dbspec\\Native\\Document$target,string$dialect", "python": "live:DbspecDocument,unsupported:list[Unsupported],target:DbspecDocument,dialect:str"},
 	"DbspecStepsSource":      {"go": "source*Document,p*Plan,dialectDialect", "php": "?Polyspec\\Orm\\Dbspec\\Document$source,Polyspec\\Orm\\Dbspec\\Plan$plan,string$dialect", "rust": "source:Option<&Document>,plan:&Plan,dialect:Dialect", "typescript": "source:DbspecDocument|null,plan:DbspecPlan,dialect:DbspecDialect", "php-extension": "?Polyspec\\Orm\\Dbspec\\Native\\Document$source,Polyspec\\Orm\\Dbspec\\Native\\Plan$plan,string$dialect", "python": "source:DbspecDocument|None,plan:DbspecPlan,dialect:str"},
-	// Rust의 apply 인자 목록은 끝에 쉼표를 둔다.
+	// Rust's apply argument list ends with a trailing comma.
 	"DbspecApplySource":      {"go": "ctxcontext.Context,cExecer,dialectDialect,plans[]*Plan,nowfunc()time.Time,eventsfunc(ApplyEvent)error", "php": "PDO$connection,string$dialect,array$plans,Closure$now,?Closure$events", "rust": "connection:&mutC,dialect:Dialect,plans:&[Plan],now:&ApplyClock<'_>,events:&mutApplyEvents<'_>,", "typescript": "connection:Connection,dialect:DbspecDialect,plans:readonlyDbspecPlan[],now:()=>number,events?:DbspecApplyHandler|null", "php-extension": "PDO$connection,string$dialect,array$plans,Closure$now,?Closure$events", "python": "connection:Connection,dialect:str,plans:list[DbspecPlan],now:Callable[[],int],events:DbspecApplyHandler|None=None"},
 	"DbspecExportedDocument": {"go": "d*Document", "php": "Polyspec\\Orm\\Dbspec\\Document$document", "rust": "document:&Document", "typescript": "document:DbspecDocument", "php-extension": "Polyspec\\Orm\\Dbspec\\Native\\Document$document", "python": "document:DbspecDocument"},
 	"DbspecMermaidSource":    {"go": "text,namestring", "php": "string$text,string$name", "rust": "text:&str,name:&str", "typescript": "text:string,name:string", "php-extension": "string$text,string$name", "python": "text:str,name:str"},
@@ -220,9 +220,9 @@ func validateRules(d document) error {
 						return fmt.Errorf("%s Rust receiver %s, want %s", r.ID, receiver, wantReceiver)
 					}
 				}
-				// 오류가 있는 operation은 database에서 실행되므로 async다. transaction은 Transaction
-				// builder를, 등록은 database 없이 동기 결과를 돌려준다. 구독도 database에 닿지 않으며, 그 오류는
-				// statement를 보내지 않는 markdown 연결의 거절뿐이다.
+				// An operation with an error runs against the database, so it is async. A transaction
+				// builder, and registration returns a synchronous result without a database. Subscription also does not touch the database, and its errors
+				// are only the markdown connection's rejection, which sends no statement.
 				// local reads the value that setLocal left in the transaction and never reaches the database.
 				if len(r.Errors) > 0 && r.Output != "TransactionResult" && r.Output != "Registered" && r.Output != "Unsubscribe" && r.Output != "LocalValue" && !strings.Contains(sig, "asyncfn") {
 					return fmt.Errorf("%s Rust execution must be async", r.ID)
@@ -249,9 +249,9 @@ func validateRules(d document) error {
 	return nil
 }
 
-// validateExtensionRule은 extension(contracts/interfaces.json의 extensions)마다 r의 native adapter를 확인한다:
-// extension이 구현한다고 적은 rule만 그 extension의 adapter를 가지며, 그 signature는 extension의 문법(syntax)으로
-// 읽어 같은 공통 입력과 결과의 extension 열과 같아야 한다.
+// validateExtensionRule checks each rule's native adapter for each extension (extensions in contracts/interfaces.json):
+// only rules that the extension declares it implements have that extension's adapter, and its signature, read in the extension's syntax,
+// must match the extension columns of the same common input and result.
 func validateExtensionRule(d document, r rule, want, args map[string]string) error {
 	for name, e := range d.Extensions {
 		n, has := r.Native[name]

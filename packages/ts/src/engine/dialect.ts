@@ -77,7 +77,7 @@ export interface Dialect {
   readUuid(col: string): string;
   /** A uuid value bound as its text: PostgreSQL casts the text to uuid. */
   writeUuid(ph: string): string;
-  /** column에 쓰는 database clock이며 precision은 column의 소수 자리다. */
+  /** The database clock written to a column; the precision is the column's fractional digits. */
   now(precision: number): string;
   /** On write, the codec stage runs in SQL; every other stage runs in the executor. */
   handlesStage(stage: string): boolean;
@@ -106,7 +106,7 @@ export interface Dialect {
   random(): string;
   /** The clause that sorts NULL before every value ascending and after every value descending; PostgreSQL alone needs it. */
   nullsOrder(desc: boolean): string;
-  /** table의 identity column을 가장 큰 key 다음 값에서 다시 시작하는 statement다. 빈 table이면 다음 key는 1이다. */
+  /** A statement that restarts a table's identity column from the value after the largest key. If the table is empty, the next key is 1. */
   restartIdentity(table: string, column: string): string;
 }
 
@@ -114,7 +114,7 @@ function quoteWith(q: string, ident: string): string {
   return ident.split('.').map(part => q + part.replaceAll(q, q + q) + q).join('.');
 }
 
-/** text를 SQL 문자열 literal로 quote한다. */
+/** Quotes text as an SQL string literal. */
 function literal(text: string): string {
   return `'${text.replaceAll("'", "''")}'`;
 }
@@ -204,8 +204,8 @@ const mysql: Dialect = {
   tupleIn: (cols, rows, negate) => tupleIn(cols, rows, negate, false),
   random: () => 'RAND()',
   nullsOrder: () => '',
-  // InnoDB는 AUTO_INCREMENT를 column의 가장 큰 값 이하로 정하면 가장 큰 값에 1을 더한 값으로 정하므로 1은
-  // 언제나 가장 큰 key 다음이다. DDL이므로 열린 transaction을 commit한다.
+  // InnoDB sets AUTO_INCREMENT, when the column's largest value is at or below it, to the largest value plus 1, so 1
+  // is always after the largest key. It is DDL, so it commits the open transaction.
   restartIdentity: table => `ALTER TABLE ${quoteWith('`', table)} AUTO_INCREMENT = 1`,
 };
 
@@ -261,9 +261,9 @@ const postgres: Dialect = {
   tupleIn: (cols, rows, negate) => tupleIn(cols, rows, negate, false),
   random: () => 'random()',
   nullsOrder: desc => (desc ? ' NULLS LAST' : ' NULLS FIRST'),
-  // identity sequence를 가장 큰 key에 1을 더한 값으로 정하고 is_called를 false로 두어 다음 nextval이 그 값을
-  // 돌려주게 한다. pg_get_serial_sequence의 첫 인자는 identifier로 읽히므로 quote한 table 이름이고, 둘째
-  // 인자는 column 이름 그대로다.
+  // Sets the identity sequence to the largest key plus 1 and makes is_called false, so the next nextval returns that value.
+  // The first argument of pg_get_serial_sequence is read as an identifier, so it is the quoted table name, and the second
+  // argument is the column name as it is.
   restartIdentity(table, column) {
     const q = quoteWith('"', column);
     return `SELECT setval(pg_get_serial_sequence(${literal(quoteWith('"', table))}, ${literal(column)}), COALESCE(MAX(${q}), 0) + 1, false) FROM ${quoteWith('"', table)}`;
@@ -324,8 +324,8 @@ const sqlite: Dialect = {
   tupleIn: (cols, rows, negate) => tupleIn(cols, rows, negate, true),
   random: () => 'random()',
   nullsOrder: () => '',
-  // AUTOINCREMENT table의 다음 key는 sqlite_sequence의 seq에 1을 더한 값이므로 seq를 가장 큰 key로 정한다.
-  // table이 아직 행을 받은 적이 없어 sqlite_sequence에 행이 없으면 다음 key는 이미 가장 큰 key 다음이다.
+  // The next key of an AUTOINCREMENT table is the seq in sqlite_sequence plus 1, so the seq is set to the largest key.
+  // If the table has never received a row and sqlite_sequence has no row for it, the next key is already after the largest key.
   restartIdentity: (table, column) => `UPDATE sqlite_sequence SET seq = (SELECT COALESCE(MAX(${quoteWith('"', column)}), 0) FROM ${quoteWith('"', table)}) WHERE name = ${literal(table)}`,
 };
 

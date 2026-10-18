@@ -19,7 +19,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// countingQuerier는 introspection이 보낸 query 수를 센다.
+// countingQuerier counts the number of queries that introspection sent.
 type countingQuerier struct {
 	q     dbspec.Querier
 	count int
@@ -30,13 +30,13 @@ func (c *countingQuerier) QueryContext(ctx context.Context, query string, args .
 	return c.q.QueryContext(ctx, query, args...)
 }
 
-// roundTripSet은 한 database에 함께 적용하는 문서 집합이다.
+// roundTripSet is the document set applied together to one database.
 type roundTripSet struct {
 	id        string
 	documents map[string]string
 }
 
-// roundTripSets는 tests/dbspec/ddl.json의 모든 case와 모든 schema 문서다.
+// roundTripSets is every case of tests/dbspec/ddl.json and every schema document.
 func roundTripSets(t *testing.T) []roundTripSet {
 	var out []roundTripSet
 	raw, err := os.ReadFile(filepath.Join(repoRoot, "tests", "dbspec", "ddl.json"))
@@ -79,7 +79,7 @@ func roundTripSets(t *testing.T) []roundTripSet {
 	return out
 }
 
-// parseSet은 집합의 모든 문서를 parse한다.
+// parseSet parses every document in the set.
 func parseSet(t *testing.T, s roundTripSet) []*dbspec.Document {
 	var documents []*dbspec.Document
 	names := make([]string, 0, len(s.documents))
@@ -103,8 +103,8 @@ func parseSet(t *testing.T, s roundTripSet) []*dbspec.Document {
 	return documents
 }
 
-// expectedSchemaText는 문서 집합의 schema text다. schema text는 문서를 나누는
-// 방식과 무관하므로 introspect한 문서 하나의 schema text와 비교할 수 있다.
+// expectedSchemaText is the schema text of the document set. The schema text is independent
+// of how the documents are split, so it can be compared with the schema text of one introspected document.
 func expectedSchemaText(t *testing.T, documents []*dbspec.Document) string {
 	manifest, diagnostics := dbspec.ManifestOf(documents)
 	if len(diagnostics) > 0 {
@@ -113,9 +113,9 @@ func expectedSchemaText(t *testing.T, documents []*dbspec.Document) string {
 	return manifest.SchemaText
 }
 
-// TestIntrospectRoundTrip은 각 집합을 렌더링해 적용하고 introspect한 문서의
-// schema text가 원본과 같은지, 미지원 객체가 없는지, dialect마다 query 수가
-// 집합의 table 수와 무관하게 같은지 확인한다.
+// TestIntrospectRoundTrip renders and applies each set, and checks that the schema text of the introspected documents
+// equals the original, that there are no unsupported objects, and that the query count per dialect
+// is the same regardless of the table count of the set.
 func TestIntrospectRoundTrip(t *testing.T) {
 	testcase.Group(t)
 	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_DSN"), os.Getenv("ORM_TEST_POSTGRES_DSN")
@@ -189,8 +189,8 @@ func TestIntrospectRoundTrip(t *testing.T) {
 	t.Logf("summary: %d sets on three databases in %s", len(sets), time.Since(started).Round(time.Millisecond))
 }
 
-// TestIntrospectUnsupported는 tests/dbspec/introspect.json의 각 case를 그
-// dialect의 빈 database에 적용하고, introspect한 문서와 미지원 목록을 확인한다.
+// TestIntrospectUnsupported applies each case of tests/dbspec/introspect.json
+// to an empty database of the dialect, and checks the introspected document and the unsupported list.
 func TestIntrospectUnsupported(t *testing.T) {
 	testcase.Group(t)
 	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_DSN"), os.Getenv("ORM_TEST_POSTGRES_DSN")
@@ -239,7 +239,7 @@ func TestIntrospectUnsupported(t *testing.T) {
 			e.Exec(connectionRules[c.Dialect]...)
 			e.Exec(statements...)
 			for _, statement := range c.Statements {
-				// {schema}는 이 case의 database 또는 schema 이름이다.
+				// {schema} is the database or schema name of this case.
 				e.Exec(strings.ReplaceAll(statement, "{schema}", e.Name))
 			}
 			if e.Err != nil {
@@ -265,7 +265,7 @@ func TestIntrospectUnsupported(t *testing.T) {
 				e.fail("unsupported differs\nwant %v\ngot  %+v", c.Unsupported, unsupported)
 				return
 			}
-			// 네 번째 원소는 reason이 포함해야 하는 rule이다. 없으면 reason은 비교하지 않는다.
+			// The fourth element is a rule the reason must contain. If absent, the reason is not compared.
 			for i, w := range c.Unsupported {
 				if len(w) == 4 && !strings.Contains(unsupported[i].Reason, w[3]) {
 					e.fail("reason of %s %s %s differs\nwant rule %q\ngot  %q", w[0], w[1], w[2], w[3], unsupported[i].Reason)

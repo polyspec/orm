@@ -1,6 +1,6 @@
-// tests/dbspec의 모든 runner와 Rust stress harness가 읽을 수 없는 input(없는 file,
-// directory)을 그 경로와 0이 아닌 exit로, signature가 없는 stress 문서를 그 diagnostic
-// message와 0이 아닌 exit로 거부하는지 확인한다.
+// Checks that all tests/dbspec runners and the Rust stress harness reject unreadable inputs (a missing file,
+// directory) with that path and a nonzero exit, and a stress document without a signature with its diagnostic
+// message and a nonzero exit.
 //
 // Usage: DBSPEC_STRESS_DOCUMENT=<stress document> node --test tests/dbspec/inputs.test.mts
 // (after the TypeScript build, the debug builds of the Rust dbspec_compare,
@@ -15,8 +15,8 @@ import { cargoTarget } from '../cargo-target.mts';
 import { INPUTS, root, runRunner, runners, type Runner } from './compare/runners.mts';
 import { readVectors } from './vectors.mts';
 
-// TIMEOUT은 case 하나의 기한이다. case는 runner process 하나를 없거나 directory인 input으로
-// 실행하고, Go runner는 `go run` compile을 포함한다.
+// TIMEOUT is the deadline for one case. A case runs one runner process on a missing or directory input,
+// and the Go runner includes the `go run` compile.
 const TIMEOUT = 120000;
 const stress = process.env.DBSPEC_STRESS_DOCUMENT;
 if (stress === undefined || stress === '') throw new Error('DBSPEC_STRESS_DOCUMENT is required; run it through make dbspec-compare-check, which writes the stress document');
@@ -30,7 +30,7 @@ mkdirSync(folder);
 const vector = (name: string) => join(root, `tests/dbspec/${name}.json`);
 const compareInputs: string[] = [vector('cases'), stress, vector('ddl'), vector('plans'), vector('mermaid'), vector('syntax')];
 
-// round trip case의 path만 바꾼 mermaid vector를 쓴다.
+// Writes the mermaid vector with only the path changed for the round trip case.
 function mermaidWithPath(path: string): string {
   const value = readVectors(vector('mermaid'), 'mermaid');
   const [first] = value.round_trip;
@@ -48,14 +48,14 @@ const applyRunners: Runner[] = [
   { name: 'apply rust', command: join(cargoTarget(), 'debug/examples/dbspec_apply'), args: [] },
 ];
 const stressHarness: Runner = { name: 'stress rust', command: join(cargoTarget(), 'debug/examples/dbspec_stress'), args: [] };
-// inputNames는 INPUTS 순서의 input을 message에 쓰는 이름이다.
+// inputNames is the name, in INPUTS order, that the input uses in messages.
 const inputNames: Record<string, string> = { cases: 'cases', stress: 'stress document', ddl: 'ddl', plans: 'plans', mermaid: 'mermaid', syntax: 'syntax' };
 
-// 각 경우는 runner, 그 인자, 그리고 stderr에 나와야 할 읽을 수 없는 경로다.
+// Each case is the runner, its arguments, and the unreadable path that must appear on stderr.
 const cases: { name: string; runner: Runner; inputs: string[]; unreadable: string }[] = [];
 for (const unreadable of [missing, folder]) {
   const kind = unreadable === missing ? 'missing' : 'directory';
-  // runner는 자기가 읽는 input(runners.mts의 reads)만 받는다.
+  // The runner accepts only the inputs it reads (reads in runners.mts).
   for (const runner of runners) {
     INPUTS.forEach((input, i) => {
       if (!runner.reads.includes(input)) return;
@@ -75,7 +75,7 @@ for (const unreadable of [missing, folder]) {
   cases.push({ name: `${stressHarness.name} rejects a ${kind} document`, runner: stressHarness, inputs: [unreadable], unreadable });
 }
 
-// signature가 없는 stress 문서는 parse하지 않고 "<path> is not a dbspec document"로 거부한다.
+// A stress document without a signature is not parsed; it is rejected with "<path> is not a dbspec document".
 const unsigned = join(root, 'tests/dbspec/files/dbschema.dbs');
 const signatureCases: { name: string; runner: Runner; inputs: string[] }[] = runners.map(runner => {
   const inputs = compareInputs.slice();

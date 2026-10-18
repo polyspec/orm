@@ -10,8 +10,8 @@
 // transaction) and error (the code of the statement's error, or null).
 // elapsed must not be negative. The test fails when ORM_TEST_MYSQL_DSN or
 // ORM_TEST_POSTGRES_DSN is unset.
-// StatementEventsTest.php와 statement_events coverage가 이 실행부를 쓴다: statementEventsModels로 model을 만든
-// 뒤 runCase와 runServerTransactions를 PHPUnit test 안에서 부른다. 각 확인은 PHPUnit assertion이다.
+// StatementEventsTest.php and the statement_events coverage use this runner: the model is made by statementEventsModels,
+// then runCase and runServerTransactions are called inside a PHPUnit test. Each check is a PHPUnit assertion.
 declare(strict_types=1);
 
 require_once __DIR__ . '/case_database.php';
@@ -28,8 +28,8 @@ use Polyspec\Orm\StatementEvent;
 use Polyspec\Orm\Tests\StatementEventsCase\EventProbe;
 
 /**
- * contracts/fixtures/statement_events.dbs의 model을 이 process의 임시 directory에 한 번 만들고 autoload한다.
- * directory는 process가 끝날 때 지운다.
+ * The model of contracts/fixtures/statement_events.dbs is created once in a temporary directory of this process and autoloaded.
+ * The directory is removed when the process ends.
  */
 function statementEventsModels(): void
 {
@@ -60,21 +60,21 @@ function statementEventsVector(): array
     return json_decode((string) file_get_contents(dirname(__DIR__, 3) . '/tests/events/vectors.json'), true, 512, JSON_THROW_ON_ERROR);
 }
 
-/** 실패하는 transaction callback의 오류다. step의 error "callback"이 이 오류를 기대한다. */
+/** The error of a failing transaction callback. The step's error "callback" expects this error. */
 final class CallbackFailed extends RuntimeException
 {
 }
 
-/** case 하나를 실행하는 상태다. */
+/** The state that runs one case. */
 final class EventRun
 {
     /** @var list<array<string, mixed>> */
     public array $records = [];
-    /** @var array<int, int> 연결의 transaction 번호를 case 안에서 처음 나온 순서의 번호로 바꾼다. */
+    /** @var array<int, int> Renumbers the transaction numbers of a connection in the order they first appear within the case. */
     private array $numbers = [];
     public ?Closure $stopRecording = null;
     public ?Closure $stopFailing = null;
-    /** fail_subscriber가 던진 오류다. SUBSCRIBER 오류의 previous가 이 오류다. */
+    /** The error that fail_subscriber threw. The previous of a SUBSCRIBER error is this error. */
     public ?Throwable $refused = null;
     /** @var list<string> the events whose elapsed time is negative */
     public array $negative = [];
@@ -115,7 +115,7 @@ final class EventRun
         return (new EventProbe)($this->db)->label($label);
     }
 
-    /** step 하나를 실행한다. 오류는 던진다. */
+    /** Runs one step. Throws the error. */
     public function step(array $s): void
     {
         switch ($s['op']) {
@@ -169,8 +169,8 @@ final class EventRun
     }
 
     /**
-     * step을 실행하고 그 오류가 step이 기대한 것인지 확인한다. 기대하지 않은 오류는 case를
-     * 끝낸다. 기대한 오류는 삼켜 바깥 transaction의 callback이 이어진다.
+     * Runs the step and checks that its error is the one the step expected. An unexpected error ends the case.
+     * The expected error is swallowed, so the outer transaction's callback continues.
      */
     public function checked(array $s): void
     {
@@ -199,13 +199,13 @@ final class EventRun
     }
 }
 
-/** JSON으로 다시 읽은 값이다. bind의 숫자와 빈 목록이 vector와 같은 형태가 된다. */
+/** The value read back from JSON. Bind numbers and empty lists take the same form as in the vector. */
 function normalized(array $records): mixed
 {
     return json_decode(json_encode($records, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION), true, 512, JSON_THROW_ON_ERROR);
 }
 
-/** record의 key 순서를 vector와 같게 한다. */
+/** Makes the record's key order the same as the vector's. */
 function ordered(array $records): array
 {
     return array_map(static fn(array $r): array => [
@@ -242,10 +242,10 @@ function runCase(array $case, string $driver, string $dsn): void
 }
 
 /**
- * vector의 server_transactions를 PostgreSQL case database에서 실행한다. probe가 돌려주는 backend의
- * local transaction 번호 차이로 page 실행 한 번의 server transaction을 센다. PHP 연결은 요청 하나
- * 동안만 살므로 요청마다 첫 실행이고, first_run_clients의 PHP는 첫 실행도 event마다 transaction
- * 하나여야 한다.
+ * Runs the vector's server_transactions on the PostgreSQL case database. The backend that the probe returns
+ * local transaction number difference counts the server transactions of one page run. A PHP connection lives only
+ * for one request, so each request is a first run, and the PHP of first_run_clients must have one
+ * transaction per event even on the first run.
  *
  * @param array<string, mixed> $spec
  * @param array<string, array<string, mixed>> $cases
@@ -262,8 +262,8 @@ function runServerTransactions(array $spec, array $cases, string $dsn): void
     try {
         $u = $db->utils();
         $zone = $db->fetch('utility', [], null, "SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'");
-        // pooler를 거치면 pooler가 startup parameter를 server connection에 SET으로 적용하므로
-        // source는 client를 말하지 않는다. source는 server에 바로 닿을 때만 비교한다.
+        // Through a pooler, the pooler applies the startup parameters to the server connection as SET, so
+        // the source does not name the client. The source is compared only when it reaches the server directly.
         $pooled = getenv('ORM_TEST_POSTGRES_DSN') !== getenv('ORM_TEST_POSTGRES_SERVER_DSN');
         Assert::assertTrue(count($zone) === 1 && $zone[0][0] === $spec['time_zone']['setting'] && ($pooled || $zone[0][1] === $spec['time_zone']['source']),
             'TimeZone setting and source = ' . json_encode($zone) . ', want ' . json_encode($spec['time_zone']) . ($pooled ? ' (pooled)' : ''));

@@ -139,7 +139,7 @@ func TestDatabaseValueConversionRejectsInvalidValues(t *testing.T) {
 	}
 }
 
-// time(p) 값은 소수 자릿수가 정확히 p인 text다.
+// A time(p) value is text with exactly p fractional digits.
 func TestTimeTextHasExactlyPrecisionDigits(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, c := range []struct {

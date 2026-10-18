@@ -23,21 +23,21 @@ import pg from 'pg';
 import { DbspecApplyError, applyPlans, dbspecManifest, finalizePlans, introspectDbspec, parsePlan, planSteps, recoverPlans, rollbackPlans } from '../dist/dbspec/index.js';
 
 const root = new URL('../../../', import.meta.url);
-// TIMEOUT은 case 하나의 기한(ms)이다. apply scenario 하나는 database 하나를 만들고 plan chain을 적용, 중단, recover, rollback한 뒤 지운다.
+// TIMEOUT is the deadline (ms) of one case. One apply scenario creates one database, applies, stops, recovers, and rolls back the plan chain, then drops it.
 const TIMEOUT = 60000;
-// 모든 client가 새 connection에서 실행하는 문장이다(packages/go/internal/dialects connectionRules).
+// The statements that every client runs on a new connection (packages/go/internal/dialects connectionRules).
 const CONNECTION_RULES = {
   mysql: ["SET time_zone = '+00:00'"],
   postgres: ["SET TimeZone = 'UTC'"],
   sqlite: ['PRAGMA foreign_keys = ON'],
 };
 
-// scenario는 lock과 session 설정을 server에서 확인하므로 pooler가 아니라 server DSN을 쓴다.
+// The scenario checks the lock and session settings on the server, so it uses the server DSN, not the pooler.
 const mysqlDSN = process.env.ORM_TEST_MYSQL_SERVER_DSN;
 const postgresDSN = process.env.ORM_TEST_POSTGRES_SERVER_DSN;
 if (!mysqlDSN || !postgresDSN) throw new Error('ORM_TEST_MYSQL_SERVER_DSN and ORM_TEST_POSTGRES_SERVER_DSN are required; pass TEST_ENV');
 
-// tool clock: 2026-10-01T00:00:00.123456789Z를 microsecond로 자른 값(epoch 이후 microsecond)이다.
+// tool clock: 2026-10-01T00:00:00.123456789Z truncated to microseconds (microseconds since the epoch).
 const fixedNow = () => Date.UTC(2026, 9, 1, 0, 0, 0) * 1000 + 123456;
 
 const cases = new Map(JSON.parse(readFileSync(new URL('tests/dbspec/plans.json', root), 'utf8')).cases.map(c => [c.id, c]));
@@ -46,10 +46,10 @@ function parse(id, text) {
   assert.deepEqual(parsed.diagnostics, [], `${id} diagnostics`);
   return parsed.plan;
 }
-// plans는 plans.json의 create-from-empty와 그 target에서 시작하는 rename-table-and-column이다.
+// plans is create-from-empty from plans.json and rename-table-and-column, which starts from its target.
 const plans = ['create-from-empty', 'rename-table-and-column'].map(id => parse(id, cases.get(id).plan.join('\n') + '\n'));
 assert(plans[1].from === plans[0].to, 'plans.json does not chain create-from-empty and rename-table-and-column');
-// caseChain은 case의 source를 만드는 첫 plan base와 case의 plan으로 된 chain이다.
+// caseChain is a chain made of the first plan base that creates the case's source, and the case's plan.
 function caseChain(id) {
   const c = cases.get(id);
   const base = parse(id, `dbplan 1 base\nfrom empty\n\n${c.source.join('\n')}\n`);
@@ -58,7 +58,7 @@ function caseChain(id) {
   return [base, plan];
 }
 const schemaText = plan => dbspecManifest([plan.schema]).manifest.schemaText;
-// counts는 dialect마다 chain plan의 [step 수, finalize 앞 step 수]다.
+// counts is, for each dialect, the chain plan's [number of steps, number of steps before finalize].
 function counts(chain) {
   const out = {};
   for (const dialect of ['mysql', 'postgres', 'sqlite']) {
@@ -103,7 +103,7 @@ const sqliteDirectory = mkdtempSync(join(tmpdir(), `dbspec-apply-${run}-`));
 process.on('exit', () => rmSync(sqliteDirectory, { recursive: true, force: true }));
 let probes = 0;
 
-// session은 statement를 실행하고 query의 첫 값을 text로 읽는 connection이다.
+// session is a connection that runs a statement and reads the first value of a query as text.
 function mysqlSession(connection) {
   return {
     connection,
@@ -237,10 +237,10 @@ async function applyCode(promise) {
 }
 
 const historyTable = dialect => (dialect === 'mysql' ? '`dbspec$plans`' : '"dbspec$plans"');
-// docs/plans.md "Apply"의 lock 이름과 key다.
+// The lock name and key of docs/plans.md "Apply".
 const MYSQL_APPLY_LOCK = "CONCAT('dbspec$plans$', LEFT(SHA2(DATABASE(), 256), 51))";
 const POSTGRES_APPLY_LOCK = "hashtext('dbspec$plans'), hashtext(current_schema())";
-// 이름이 dbspec$로 시작하는 table과 column 중 history table이 아닌 것의 수다.
+// The number of tables and columns whose name starts with dbspec$, excluding history tables.
 const HIDDEN_LEFT = {
   mysql: "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME LIKE 'dbspec$%' OR COLUMN_NAME LIKE 'dbspec$%') AND TABLE_NAME <> 'dbspec$plans'",
   postgres:
@@ -248,13 +248,13 @@ const HIDDEN_LEFT = {
   sqlite: "SELECT COUNT(*) FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type = 'table' AND (m.name LIKE 'dbspec$%' OR p.name LIKE 'dbspec$%') AND m.name <> 'dbspec$plans'",
 };
 
-// rowsAre는 query의 모든 row를 a|b로, row를 쉼표로 이어 want와 비교한다.
+// rowsAre compares every row of the query, as a|b with the row's values joined by commas, against want.
 async function rowsAre(session, sql, want) {
   const rows = await session.rows(sql);
   assert.equal(rows.map(r => r.map(v => (v === null ? 'NULL' : String(v))).join('|')).join(','), want, sql);
 }
 const historyIs = (session, dialect, want) => rowsAre(session, `SELECT name, state, step FROM ${historyTable(dialect)} ORDER BY name`, want);
-// stopAfter는 plan의 step 번째 statement를 실행한 뒤, step을 기록하기 전에 명령을 멈추는 event handler다.
+// stopAfter is an event handler that runs the plan's statement of the given step, then stops the command before the step is recorded.
 const stopAfter = (plan, step, stop) => event => {
   if (event.kind === 'applied' && event.plan === plan && event.step === step) throw stop;
 };
@@ -273,7 +273,7 @@ const scenarios = [
     await schemaIs(session, dialect, target);
     const c = planCounts[dialect];
     await historyIs(session, dialect, `create_from_empty|applied|${c[0][1]},rename_table_and_column|applied|${c[1][1]}`);
-    // applied_at은 tool clock의 UTC 시각을 소수 여섯 자리로 자른 text다.
+    // applied_at is the tool clock's UTC time, as text truncated to six decimal places.
     assert.equal(await firstValue(session, `SELECT COUNT(*) FROM ${historyTable(dialect)} WHERE applied_at = '2026-10-01T00:00:00.123456Z'`), '2');
     const kinds = {};
     for (const kind of events) kinds[kind] = (kinds[kind] ?? 0) + 1;
@@ -302,8 +302,8 @@ const scenarios = [
     }
   }],
   ['other_database', ALL, async (session, dialect) => {
-    // 첫 database의 apply가 lock을 잡은 동안 두 번째 database, schema 또는 file에
-    // 같은 chain을 적용한다. lock은 database 하나만 덮으므로 locked가 아니다.
+    // While the apply of the first database holds the lock, the same chain is applied to a second database, schema, or file
+    // The lock covers only one database, so the second is not locked.
     await withDatabase(dialect, async second => {
       for (const sql of CONNECTION_RULES[dialect]) await second.exec(sql);
       let applied = false;
@@ -320,7 +320,7 @@ const scenarios = [
     });
   }],
   ['empty_chain', ALL, async (session, dialect) => {
-    // plan이 없는 chain은 table이 없는 database에 아무것도 적용하지 않는다.
+    // A chain with no plan applies nothing to a database with no tables.
     const events = [];
     const record = event => {
       events.push(event.kind);
@@ -336,7 +336,7 @@ const scenarios = [
     assert.equal(await applyCode(applyPlans(session.connection, dialect, [], fixedNow, null)), 'drift');
   }],
   ['unlock_not_held', ['postgres'], async (session, dialect) => {
-    // event에서 advisory lock을 먼저 풀면 명령 끝의 unlock은 아무것도 풀지 않는다.
+    // If the advisory lock is released first in an event, the unlock at the end of the command releases nothing.
     const release = async event => {
       if (event.kind === 'plan' && event.plan === plans[0].name) await session.exec(`SELECT pg_advisory_unlock(${POSTGRES_APPLY_LOCK})`);
     };
@@ -345,8 +345,8 @@ const scenarios = [
     });
   }],
   ['verify_failure', ALL, async (session, dialect) => {
-    // 마지막 statement 뒤에 plan 밖의 table을 만들면 검증이 실패하고 row는 모든 step을
-    // 기록한 채 applying으로 남는다.
+    // If a table outside the plan is created after the last statement, verification fails and the row
+    // stays as applying, with all steps recorded.
     const n = planCounts[dialect][0][1];
     const sneak = async event => {
       if (event.kind === 'applied' && event.plan === plans[0].name && event.step === n - 1) {
@@ -357,8 +357,8 @@ const scenarios = [
     await historyIs(session, dialect, `${plans[0].name}|applying|${n}`);
   }],
   ['rows_between', ALL, async (session, dialect) => {
-    // 적용한 plan에 쓴 row는 rollback 뒤에도 남고 지운 column의 값과 default가 돌아오며,
-    // 다시 적용하면 더한 column의 값이 돌아온다. finalize 뒤 rollback은 되돌릴 수 없다.
+    // Rows written under the applied plan remain after rollback, and the values and defaults of the dropped columns come back,
+    // and applying again brings back the values of the added column. A rollback after finalize cannot be undone.
     const c = repCounts[dialect];
     await applyPlans(session.connection, dialect, representative.slice(0, 1), fixedNow, null);
     await session.exec("INSERT INTO users (mail, legacy_code, age, nick) VALUES ('a@x', 7, 3, 'n1')");
@@ -381,8 +381,8 @@ const scenarios = [
     await schemaIs(session, dialect, repTarget);
   }],
   ['nulls', ALL, async (session, dialect) => {
-    // 숨긴 non-null default 없는 column에 그사이 NULL row가 생기면 rollback은 아무것도
-    // 바꾸지 않고 row 수를 적은 nulls error로 멈춘다.
+    // If a NULL row appears in between in a hidden column with no non-null default, rollback does not change anything
+    // and stops with a nulls error that states the number of rows.
     const c = requiredCounts[dialect];
     await applyPlans(session.connection, dialect, required, fixedNow, null);
     await session.exec("INSERT INTO t (a) VALUES ('y')");
@@ -391,9 +391,9 @@ const scenarios = [
     await historyIs(session, dialect, `base|applied|${c[0][1]},drop_required_column|applied|${c[1][1]}`);
   }],
 ];
-// representative plan의 step k마다: apply를 statement 뒤에 멈추고 rollback하고, 다시 멈추고
-// recover하고, 적용한 plan의 rollback을 step k의 rollback statement 뒤에 멈추고 rollback을
-// 이어 간다.
+// For each step k of the representative plan: stop the apply after the statement, roll back, stop again,
+// recover, stop the rollback of the applied plan after the rollback statement of step k, and
+// continue the rollback.
 for (const dialect of ALL) {
   const c = repCounts[dialect];
   const baseRow = `base|applied|${c[0][1]}`;
@@ -443,19 +443,19 @@ vector('every apply scenario runs on its dialects', () => {
   console.log(`apply runs: ${runs}`);
 });
 
-// apply는 처음부터 끝까지 다른 client와 나누지 않는 server session 하나가 필요하다(docs/plans.md
-// "Apply"). PgBouncer의 transaction pooling은 statement마다 server connection을 다시 고르므로
-// apply는 lock에서와 step마다 server session을 확인하고 session error로 멈춘다. 각 scenario는
-// server에 자기 database를 만들고 PgBouncer로 그 database에 연결한다. PgBouncer는 쉬는 server
-// connection을 LIFO로 다시 쓰므로(server_round_robin = 0) 아래 순서가 정해진다.
+// apply needs one server session that is not shared with other clients from start to end (docs/plans.md
+// "Apply"). PgBouncer's transaction pooling picks a server connection again for each statement, so
+// apply checks the server session at the lock and at each step, and stops on a session error. Each scenario
+// creates its own database on the server and connects to that database through PgBouncer. PgBouncer reuses idle server
+// connections in LIFO order (server_round_robin = 0), so the order below is fixed.
 const poolerScenarios = {
-  // 다른 client가 session advisory lock을 잡은 server connection을 apply가 이어받는다.
+  // apply takes over a server connection on which another client holds a session advisory lock.
   lock_shared: async (apply, other) => {
     await other.query(`SELECT pg_advisory_lock(${POSTGRES_APPLY_LOCK})`);
     return applyPlans(apply, 'postgres', plans, fixedNow, null);
   },
-  // 첫 step 앞에서 다른 client가 transaction으로 apply의 server connection을 잡으므로 apply의
-  // 다음 statement는 다른 server connection에서 실행된다.
+  // Before the first step, another client takes apply's server connection in a transaction, so apply's
+  // next statement runs on a different server connection.
   session_changed: async (apply, other) => {
     let held = false;
     try {
@@ -488,7 +488,7 @@ for (const [name, scenario] of Object.entries(poolerScenarios)) {
         await apply.connect();
         await other.connect();
         try {
-          // 정리 단계의 error(다른 server connection에서 실행된 unlock)가 있으면 AggregateError의 첫 error가 실패다.
+          // If the cleanup step has an error (an unlock run on another server connection), the first error of the AggregateError is the failure.
           await assert.rejects(scenario(apply, other), error => {
             const failure = error instanceof AggregateError ? error.errors[0] : error;
             assert(failure instanceof DbspecApplyError, `${error}`);

@@ -1,6 +1,6 @@
-# model JSON 출력: to_json_text()는 TypeScript toJSONText()와 같은 텍스트를 쓴다. 멤버는 행 순서이고,
-# 값 스타일 컬럼은 바깥 표현 안에 ordered-json 저장 텍스트를 그대로 담으며, 다른 값은 JSON.stringify가
-# 쓰는 대로 쓴다 (docs/codec.md "Value model"; packages/ts/tests/model.mjs의 toJSONText 기대값).
+# model JSON output: to_json_text() writes the same text as TypeScript toJSONText(). Members are in row order, and
+# value-style columns carry the ordered-json stored text as is inside the outer expression, while other values are written
+# as JSON.stringify writes them (docs/codec.md "Value model"; the toJSONText expected values of packages/ts/tests/model.mjs).
 import json
 import tempfile
 import unittest
@@ -16,7 +16,7 @@ from polyspec.orm.errors import OrmError  # noqa: E402
 from polyspec.orm.styled_value import StyledValue  # noqa: E402
 
 STORED = '{"b":1,"1":2,"a":1.50,"e":1E2,"s":"\\u00e9"}'
-# 선택하지 않은 key column도 planner가 함께 읽으므로 행 순서에 들어간다.
+# Key columns not selected are also read by the planner, so they enter the row order.
 KEYS = '"user_seq":1,"service_seq":1,"service_region_seq":1,"service_member_seq":1,'
 ROW_TEXT = (
     '{"seq":1,'

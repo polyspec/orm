@@ -5,35 +5,35 @@ import (
 	"slices"
 )
 
-// Change는 diff의 변경 하나다(docs/plans.md "Diff"). Table은 target 이름이고,
-// drop_table, drop_* 객체는 source 이름이다.
+// Change is one change of the diff (docs/plans.md "Diff"). Table is the target name,
+// and drop_table and drop_* objects use the source name.
 type Change struct {
 	Kind  string
 	Table string
 	Name  string
 }
 
-// planDiff는 Diff와 statement 렌더링이 함께 쓰는 diff 결과다.
+// planDiff is the diff result that Diff and statement rendering share.
 type planDiff struct {
-	source, target   map[string]*Table // 이름: table
+	source, target   map[string]*Table // Name: table
 	tableOf          map[string]string // target table: source table
 	columnOf         map[string]map[string]string
 	created, dropped []string
-	matched          []string // target 이름 순
+	matched          []string // target name order
 	added, removed   map[string][]string
 	altered          map[string][]string
 	renamedTables    []TableRename
 	renamedColumns   []ColumnRename
-	dropObjects      map[string][]objectRef // source table: 지울 객체
-	addObjects       map[string][]objectRef // target table: 더할 객체
-	triggers         map[string]bool        // target table: trigger가 바뀐다
+	dropObjects      map[string][]objectRef // source table: object to drop
+	addObjects       map[string][]objectRef // target table: object to add
+	triggers         map[string]bool        // target table: trigger changes
 	changes          []Change
 }
 
 type objectRef struct{ kind, name string }
 
-// Diff는 source schema(nil이면 빈 schema)에서 plan의 target으로 가는 변경을
-// 돌려준다. source의 schemaHash가 plan의 from과 다르면 diagnostic이다.
+// Diff returns the changes from the source schema (empty schema if nil) to the plan's target
+// If the source schemaHash differs from the plan's from, it is a diagnostic.
 func Diff(source *Document, p *Plan) ([]Change, []Diagnostic) {
 	d, diagnostics := diffPlan(source, p)
 	if len(diagnostics) > 0 {
@@ -143,7 +143,7 @@ func diffPlan(source *Document, p *Plan) (*planDiff, []Diagnostic) {
 		allowedColumns[c] = true
 	}
 	usedColumnPermissions := map[ColumnName]bool{}
-	// matched table의 column
+	// columns of a matched table
 	for _, name := range d.matched {
 		src, tgt := d.source[d.tableOf[name]], d.target[name]
 		d.columnOf[name] = map[string]string{}
@@ -188,8 +188,8 @@ func diffPlan(source *Document, p *Plan) (*planDiff, []Diagnostic) {
 				d.altered[name] = append(d.altered[name], c.Name)
 			}
 		}
-		// PostgreSQL은 column 자리를 정하지 못하므로 남는 column의 순서는 그대로이고
-		// 더한 column은 남는 column 뒤에 온다.
+		// PostgreSQL cannot determine the column position, so the order of the remaining columns stays as it is, and
+		// added columns come after the remaining columns.
 		var kept, keptTarget []string
 		for _, c := range src.Columns {
 			if n := renamedOr(renamedColumn[name], c.Name); columnOf(tgt, n) != nil {
@@ -233,7 +233,7 @@ func diffPlan(source *Document, p *Plan) (*planDiff, []Diagnostic) {
 	return d, nil
 }
 
-// widens는 세 database에서 모든 값을 지키는 type 변경인지 알려 준다.
+// widens reports whether a type change keeps every value in all three databases.
 func widens(from, to Type) bool {
 	switch {
 	case from.Kind == TypeI16:

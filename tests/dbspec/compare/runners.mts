@@ -1,8 +1,8 @@
-// 여섯 dbspec compare runner. Go, PHP, TypeScript, Python, Rust, PHP 확장 runner는 모두 <cases.json> <stress document>
-// <ddl.json> <plans.json> <mermaid.json> <syntax.json>을 받는다(reads). 각 runner는 tests/dbspec/compare/check.mts의
-// line format을 출력하고, input을 읽을 수 없거나 vector가 없거나 type이 다르면 stderr에 위치를 밝힌
-// error를 쓰고 nonzero로 끝난다. TypeScript runner는 TypeScript build를, Rust runner는 dbspec_compare
-// example의 debug build를, PHP 확장 runner는 make가 build한 확장 orm_dbspec(ORM_DBSPEC_EXTENSION)을 요구한다.
+// Six dbspec compare runners. The Go, PHP, TypeScript, Python, Rust, and PHP extension runners all read <cases.json> <stress document>
+// <ddl.json> <plans.json> <mermaid.json> <syntax.json> (reads). Each runner follows the
+// line format of tests/dbspec/compare/check.mts, and if an input cannot be read or a vector is missing or of another type, it writes to stderr an error stating the location
+// error and exits nonzero. The TypeScript runner requires the TypeScript build, and the Rust runner requires dbspec_compare
+// example's debug build, and the PHP extension runner requires the orm_dbspec extension (ORM_DBSPEC_EXTENSION) that make built.
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,18 +10,18 @@ import { cargoTarget } from '../../cargo-target.mts';
 
 export const root = fileURLToPath(new URL('../../../', import.meta.url));
 
-// INPUTS는 runRunner가 받는 input의 이름과 순서다.
+// INPUTS is the name and order of the inputs that runRunner receives.
 export const INPUTS = ['cases', 'stress', 'ddl', 'plans', 'mermaid', 'syntax'];
 
-// phpExtension은 make dbspec-compare-check가 그 실행의 directory에 build한 확장 orm_dbspec의 경로다.
+// phpExtension is the path of the orm_dbspec extension that make dbspec-compare-check built into that run's directory.
 function phpExtension() {
   const path = process.env.ORM_DBSPEC_EXTENSION;
   if (!path) throw new Error('ORM_DBSPEC_EXTENSION names no build of the PHP extension orm_dbspec; run make dbspec-compare-check, which builds it and sets it');
   return path;
 }
 
-// pythonCommand는 Python client의 의존성(cryptography, PyYAML)이 설치된 interpreter다. make dbspec-compare-check가
-// make install-python이 만든 packages/python/.venv의 interpreter를 ORM_PYTHON으로 준다.
+// pythonCommand is the interpreter with the Python client's dependencies (cryptography, PyYAML) installed. make dbspec-compare-check
+// gives ORM_PYTHON the interpreter of packages/python/.venv that make install-python created.
 function pythonCommand() {
   const path = process.env.ORM_PYTHON;
   if (!path) throw new Error('ORM_PYTHON names no Python interpreter with the client dependencies; run make install-python, which creates packages/python/.venv, and run make dbspec-compare-check, which sets ORM_PYTHON');
@@ -51,9 +51,9 @@ export const runners: (Runner & { reads: string[] })[] = [
   },
 ];
 
-// runRunner는 runner를 실행해 exit code 또는 signal, stdout, stderr를 돌려주고, process를 시작할 수 없을 때만
-// reject한다. reads를 선언한 compare runner에는 inputs(INPUTS 순서의 경로) 가운데 그것이 읽는 것을 주고, reads가 없는
-// runner(tests/dbspec/inputs.test.mts의 apply runner와 stress harness)에는 inputs를 그대로 준다.
+// runRunner returns the runner's exit code or signal, stdout, and stderr, and rejects only when the process cannot be started.
+// For compare runners that declare reads, it gives the inputs (paths in INPUTS order) that the runner reads; for runners without reads,
+// it gives the inputs as they are (the apply runner and stress harness of tests/dbspec/inputs.test.mts).
 /** A runner: its program and arguments, and for a compare runner the inputs it reads, by name. */
 export type Runner = { name: string; readonly command: string; readonly args: string[]; reads?: string[] };
 /** The end of a runner: its exit code or signal and its output. */

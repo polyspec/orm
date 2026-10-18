@@ -15,17 +15,17 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// schemaSetDatabase는 case가 혼자 쓰는 database(internal/testdb)의 DSN이다.
-// ORM_TEST_MYSQL_DSN이나 ORM_TEST_POSTGRES_DSN의 server에 새 database를 만들고, SQLite는
-// 새 file이며, test가 끝나면 지운다.
+// schemaSetDatabase is the DSN of the database (internal/testdb) that the case uses alone.
+// It creates a new database on the server of ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN, and SQLite
+// uses a new file, which the test removes when it ends.
 func schemaSetDatabase(t *testing.T, driver string) string {
 	t.Helper()
 	return testdb.New(t, driver)
 }
 
-// schemaSet은 bench set의 connect helper로 연결하고 bench와 decimal schema를
-// 설치한 뒤(decimal은 두 번, 두 번째 설치는 아무것도 바꾸지 않는다), 두 set의
-// generated model을 그 연결에서 transaction 안팎으로 쓴다.
+// schemaSet connects with the bench set's connect helper and installs the bench and decimal schemas
+// (decimal twice; the second install changes nothing), and uses the generated models of both sets
+// inside and outside transactions on that connection.
 func schemaSet(t *testing.T, driver string) {
 	dsn := schemaSetDatabase(t, driver)
 	db, err := model.Connect(dsn, orm.Config{})
@@ -91,7 +91,7 @@ func TestSchemaSetPostgres(t *testing.T) {
 	schemaSet(t, "postgres")
 }
 
-// counted는 db가 실행한 statement 수를 n에 센다.
+// counted counts into n the statements that the db executed.
 func counted(t *testing.T, db *orm.DB, n *int) {
 	t.Helper()
 	if _, err := db.Subscribe(func(orm.StatementEvent) error { *n++; return nil }); err != nil {
@@ -99,10 +99,10 @@ func counted(t *testing.T, db *orm.DB, n *int) {
 	}
 }
 
-// schemaSetUnregistered는 연결에 등록되지 않은 set의 요청이 table이 있어도
-// 실행 전에 SCHEMA_HASH_MISMATCH로 실패하는지 확인한다. raw 연결은 아무 set도
-// 등록하지 않고, bench helper로 연 연결은 다른 연결이 설치한 decimal set을
-// 등록하지 않는다. decimal helper로 연 연결은 그 set을 쓴다.
+// schemaSetUnregistered checks that a request of a set not registered on the connection fails with
+// SCHEMA_HASH_MISMATCH before execution, even when the table exists. A raw connection registers no set, and a
+// connection opened with the bench helper registers no decimal set that another connection installed,
+// and a connection opened with the decimal helper uses that set.
 func schemaSetUnregistered(t *testing.T, driver string) {
 	dsn := schemaSetDatabase(t, driver)
 	var rawRuns, coreRuns int
@@ -172,10 +172,10 @@ func TestSchemaSetUnregisteredPostgres(t *testing.T) {
 	schemaSetUnregistered(t, "postgres")
 }
 
-// schemaSetEditedManifest는 text가 선언한 manifestHash로 hash되지 않는 schema를
-// 확인한다. 그 schema의 설치와 connect는 어떤 statement보다 먼저 CONFIG이고
-// table을 만들지 않는다. 그 text를 품은 model의 요청은 같은 hash의 같은 요청이
-// plan된 뒤에도 실행 전에 SCHEMA_HASH_MISMATCH다.
+// schemaSetEditedManifest checks a schema whose text does not hash to the manifestHash that the text declares.
+// Installing and connecting that schema fails with CONFIG before any statement, and it creates no table. A request
+// of a model that embeds that text, with the same hash as a request
+// already planned, still fails with SCHEMA_HASH_MISMATCH before execution.
 func schemaSetEditedManifest(t *testing.T, driver string) {
 	dsn := schemaSetDatabase(t, driver)
 	edited := &orm.Schema{Hash: decimalmodel.ManifestHash, Text: strings.ReplaceAll(decimalmodel.ManifestText, "decimal(13,4)", "decimal(14,4)")}
@@ -201,7 +201,7 @@ func schemaSetEditedManifest(t *testing.T, driver string) {
 	if err := db.Utils().Schema().Install(decimalmodel.Schema); err != nil {
 		t.Fatal(err)
 	}
-	// 같은 hash의 같은 요청을 먼저 plan해 둔다.
+	// First plans the same request with the same hash.
 	if n, err := decimalmodel.DecimalCase().Connect(db).GetCount(); err != nil || n != 0 {
 		t.Fatalf("decimal rows before the edited request = %d, %v", n, err)
 	}

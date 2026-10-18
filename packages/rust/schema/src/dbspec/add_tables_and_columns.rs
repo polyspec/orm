@@ -1,17 +1,17 @@
-//! 연결의 addTablesAndColumns가 실행할 step을 쓴다(docs/schema.md, "Adding tables and columns").
+//! Writes the steps that addTablesAndColumns of a connection runs (docs/schema.md, "Adding tables and columns").
 
 use super::model::{Name, Pos, Table};
 use super::plan::plan_to;
 use super::{compare_schemas, emit, manifest, plan_steps, Dialect, Document, Plan, PlanStep, Unsupported};
 use std::collections::{BTreeMap, BTreeSet};
 
-/// [`add_tables_and_columns_steps`]의 결과: 만드는 table과 더하는 column, step, 또는 차이다.
+/// The result of [`add_tables_and_columns_steps`]: the tables to create and columns to add as steps, or a difference.
 #[derive(Clone, Debug)]
 pub struct AddTablesAndColumnsSteps {
-    /// table 이름 순으로 만드는 table은 "table", 더하는 column은 column 순서로 "table.column".
+    /// Tables to create come first in table name order as "table", then columns to add in column order as "table.column".
     pub added: Vec<String>,
     pub steps: Vec<PlanStep>,
-    /// create_table이나 add_column이 아닌 차이, "<kind> <table>[.<name>]".
+    /// A difference that is neither create_table nor add_column, as "<kind> <table>[.<name>]".
     pub differences: Vec<String>,
 }
 
@@ -34,9 +34,9 @@ fn schema_document(tables: Vec<Table>) -> Document {
     }
 }
 
-/// database에 있는 set의 table(source)이다. set의 table에 읽지 못한 객체가 있으면 그 table은
-/// set과 같다고 할 수 없으므로 그 객체를 "unsupported_<kind> <table>[.<name>]: <reason>"로
-/// 돌려준다.
+/// is the table of the set in the database (source). If the set's table has an object that could not be read, that table
+/// cannot be said to equal the set, so that object is reported as "unsupported_<kind> <table>[.<name>]: <reason>"
+/// and returned.
 fn set_source(live: &Document, unsupported: &[Unsupported], target: &Document) -> Result<Document, Vec<String>> {
     let declared: BTreeSet<&str> = target.tables.iter().map(|t| t.name.text.as_str()).collect();
     let differences: Vec<String> = unsupported
@@ -50,12 +50,12 @@ fn set_source(live: &Document, unsupported: &[Unsupported], target: &Document) -
     Ok(schema_document(live.tables.iter().filter(|t| declared.contains(t.name.text.as_str())).cloned().collect()))
 }
 
-/// database가 document set과 같은지 확인한다(docs/schema.md, "Schema installation"). `live`는
-/// 연결의 database를 introspect한 문서, `unsupported`는 introspection이 읽지 못한 객체,
-/// `target`은 document set의 schema text 문서다. set에 없는 database의 table은 비교하지 않는다.
-/// set의 table에 읽지 못한 객체가 있으면 그 객체를 "unsupported_<kind> <table>[.<name>]: <reason>"로,
-/// 아니면 database에 있는 set의 table에서 set까지의 모든 차이를 "<kind> <table>[.<name>]"로
-/// 돌려준다. 빈 목록이면 같다.
+/// Checks whether the database equals the document set (docs/schema.md, "Schema installation"). `live`
+/// is the document introspected from the connection's database, `unsupported` is the objects introspection could not read,
+/// `target` is the schema text document of the document set. Tables of the database that are not in the set are not compared.
+/// If a set's table has an unreadable object, that object is reported as "unsupported_<kind> <table>[.<name>]: <reason>",
+/// otherwise every difference from the database's table of the set to the set is reported as "<kind> <table>[.<name>]"
+/// and returned. An empty list means equal.
 pub fn installed_differences(live: &Document, unsupported: &[Unsupported], target: &Document) -> Vec<String> {
     let source = match set_source(live, unsupported, target) {
         Ok(source) => source,
@@ -67,15 +67,15 @@ pub fn installed_differences(live: &Document, unsupported: &[Unsupported], targe
     }
 }
 
-/// `live`는 연결의 database를 introspect한 문서, `unsupported`는 introspection이 읽지
-/// 못한 객체, `target`은 document set의 schema text 문서다. set에 없는 database의 table은
-/// 비교하지도 바꾸지도 않는다. database에 있는 set의 table과 set의 차이가 database에 없는
-/// table의 create_table, null이거나 default가 있는 column의 add_column, unique가 아닌 index의
-/// add_index뿐이면, database에 있는 set의 table에서 set까지의 plan step(docs/plans.md,
-/// "Steps")과, table 이름 순으로 만드는 table은 "table", 더하는 column은 column 순서로
-/// "table.column", 그 뒤 더하는 index는 index 순서로 "table.index"인 목록을 돌려준다. 다른
-/// 차이는 step 없이 "<kind> <table>[.<name>]"로 돌려주며, 빠진 unique key는 있는 행에서 실패할
-/// 수 있으므로 그 이유와 함께 돌려준다.
+/// `live` is the document introspected from the connection's database, `unsupported` is the objects introspection could not read,
+/// `target` is the schema text document of the document set. Tables of the database that are not in the set
+/// are neither compared nor changed. A difference between a set's table in the database and the set that is missing from the database
+/// table's create_table, add_column for a nullable or defaulted column, and add_index for a non-unique index
+/// only, the plan step from the set's table in the database to the set (docs/plans.md,
+/// "Steps"), with tables to create in table name order as "table" and columns to add in column order
+/// as "table.column", then indexes to add in index order as "table.index", and returns that list. Other
+/// differences are returned without a step as "<kind> <table>[.<name>]", and a missing unique key, which could fail on existing rows,
+/// is returned with its reason.
 pub fn add_tables_and_columns_steps(live: &Document, unsupported: &[Unsupported], target: &Document, dialect: Dialect) -> AddTablesAndColumnsSteps {
     let declared: BTreeMap<&str, &Table> = target.tables.iter().map(|t| (t.name.text.as_str(), t)).collect();
     let mut differences = Vec::new();
@@ -102,11 +102,11 @@ pub fn add_tables_and_columns_steps(live: &Document, unsupported: &[Unsupported]
                             _ => differences.push(format!("add_column {} without null or default", qualified(&d.table, &d.name))),
                         }
                     }
-                    // index는 행을 거부하지 않으므로 있는 table에도 더한다.
+                    // An index does not reject rows, so it is added to existing tables too.
                     "add_index" => {
                         adding.insert(qualified(&d.table, &d.name));
                     }
-                    // unique key는 있는 행이 겹치면 실패하므로 plan과 apply가 다룬다.
+                    // A unique key fails when existing rows overlap, so plan and apply handle it.
                     "add_unique" => differences
                         .push(format!("add_unique {}: a missing unique key can fail on the existing rows; add it with a plan", qualified(&d.table, &d.name))),
                     _ => differences.push(format!("{} {}", d.kind, qualified(&d.table, &d.name))),
@@ -117,7 +117,7 @@ pub fn add_tables_and_columns_steps(live: &Document, unsupported: &[Unsupported]
     if !differences.is_empty() || adding.is_empty() {
         return none(differences);
     }
-    // 만드는 table과 더하는 column과 index는 table 이름 순, table 안에서는 column 순서 뒤 index 순서다.
+    // Tables to create, columns to add, and indexes are ordered by table name; within a table, columns come first, then indexes.
     let added: Vec<String> = target
         .tables
         .iter()
@@ -134,16 +134,16 @@ pub fn add_tables_and_columns_steps(live: &Document, unsupported: &[Unsupported]
             }
         })
         .collect();
-    // 더하는 table과 column은 plan 하나로 쓴다. plan은 database에 있는 set의 table에서
-    // 시작하므로(하나도 없으면 빈 database) step은 docs/plans.md의 순서와 rollback을 그대로
-    // 갖는다.
+    // Tables and columns to add are written as one plan. The plan starts from the set's table in the database
+    // (an empty database if there are none), so the steps keep the order and rollback of docs/plans.md
+    // as is.
     let start = (!source.tables.is_empty()).then_some(&source);
     let from = match start {
         Some(source) => manifest(&[source]).map(|m| Some(m.schema_hash)),
         None => Ok(None),
     };
-    // target은 외부 문서를 쓰는 set의 schema text일 수 있으므로 plan 문서를 parse하지 않고 target으로 plan을
-    // 만든다.
+    // The target may be the schema text of a set that writes external documents, so the plan document is not parsed; the plan is built
+    // from the target.
     let steps = from
         .and_then(|from| {
             plan_to(Plan {

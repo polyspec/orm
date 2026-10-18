@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-// 모든 공유 case, stress 문서, statement vector, plan vector, Mermaid vector의 PHP dbspec
-// 결과를 tests/dbspec/compare/check.mts의 줄 형식으로 출력한다. It then prints the positions cases of cases.json and
+// The PHP dbspec of all shared cases, stress documents, statement vectors, plan vectors and Mermaid vectors
+// results, written in the line format of tests/dbspec/compare/check.mts. It then prints the positions cases of cases.json and
 // the analysis and format of each case of syntax.json.
 //
 // Usage: php packages/php/testing/dbspec/compare/php.php <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>

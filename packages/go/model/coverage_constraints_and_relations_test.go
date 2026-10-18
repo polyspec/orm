@@ -10,9 +10,9 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// TestCoverageConstraintErrors는 seed 행에 대한 foreign key, check, unique
-// 위반이 각각 FOREIGN_KEY, CONSTRAINT, DUPLICATE_KEY이고 아무 행도 바뀌지
-// 않는지 확인한다.
+// TestCoverageConstraintErrors checks that a foreign key, check, and unique violation against a seed row
+// yield FOREIGN_KEY, CONSTRAINT, and DUPLICATE_KEY respectively, and
+// that no row changes.
 func TestCoverageConstraintErrors(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, _, _ := connectFeature(t)

@@ -13,11 +13,11 @@ final class PlanChain
     /** @param list<Plan> $plans */
     public static function chain(array $plans): ChainResult
     {
-        // plan이 없으면 table이 없는 database의 빈 chain이다.
+        // If there is no plan, it is an empty chain of a database with no table.
         if ($plans === []) {
             return ChainResult::valid([]);
         }
-        // from 이 없는 plan 은 '' 에 모은다; schemaHash 는 비어 있지 않다.
+        // A plan with no from is gathered under ''; schemaHash is not empty.
         $byFrom = [];
         foreach ($plans as $plan) {
             $byFrom[$plan->from ?? ''][] = $plan;

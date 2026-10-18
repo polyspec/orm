@@ -1,12 +1,12 @@
-# orm 값 함수와 column 함수 (docs/protocol.md "Functions").
-# 값 함수는 비교 값 자체이고, column 함수는 비교 대상 column을 감싸고 비교 값이 뒤따른다.
+# orm value functions and column functions (docs/protocol.md "Functions").
+# A value function is the comparison value itself; a column function wraps the column being compared, and the comparison value follows it.
 from typing import Any, Callable
 
 __all__ = ["orm", "ValueFunction", "ColumnFunction"]
 
 
 class _FunctionValue:
-    """ORM 함수 값: 받는 model method가 column과 operator를 기록한다."""
+    """ORM function value: the model method that takes it records the column and the operator."""
 
     def __init__(self, name: str, args: tuple):
         self.name = name
@@ -20,11 +20,11 @@ class _FunctionValue:
 
 
 class ValueFunction(_FunctionValue):
-    """값 함수: 비교 값 자신이다."""
+    """Value function: is the comparison value itself."""
 
 
 class ColumnFunction(_FunctionValue):
-    """column 함수: 비교 대상 column을 감싼다."""
+    """Column function: wraps the column being compared."""
 
 
 def _value(name: str, *args) -> ValueFunction:
@@ -36,7 +36,7 @@ def _column(name: str, *args) -> ColumnFunction:
 
 
 class _Orm:
-    """query가 clock과 날짜 표현을 나타내는 함수들."""
+    """Functions that the query uses to represent clock and date expressions."""
 
     def now(self) -> ValueFunction:
         return _value("now")

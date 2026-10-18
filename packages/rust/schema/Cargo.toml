@@ -22,7 +22,7 @@ serde = "1"
 serde_json = { version = "1", features = ["raw_value"] }
 
 [dev-dependencies]
-# test case가 시작, 결과, 경과 시간과 자기 기한을 보고한다.
+# Reports the test case's start, result, elapsed time, and its own deadline.
 polyspec-orm-testcase = { path = "../testcase" }
 polyspec-orm-case-clock = { path = "../case-clock" }
 # The shared dbspec vectors are read against their JSON Schemas (tests/dbspec/schema); the schemas name no remote or file

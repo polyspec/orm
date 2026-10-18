@@ -1,4 +1,4 @@
-# model 실행: 조립된 chain의 질의를 내보내고 결과를 model로 조립한다
+# Model execution: sends the query of the assembled chain and assembles the results into models
 # (docs/usage.md).
 import math
 import re
@@ -43,7 +43,7 @@ def _terminal(c: Core) -> Executor:
     if c.error is not None:
         raise c.error
     if c.conn is None:
-        # connect 없는 model은 활성 transaction을 쓴다 (docs/usage.md).
+        # A model without connect uses the active transaction (docs/usage.md).
         if not _ACTIVE:
             raise OrmError(codes.CONFIG, "the model has no connection: connect(db) first")
         frame = next(reversed(_ACTIVE.values()))
@@ -58,7 +58,7 @@ def _new_model(ent) -> Core:
 
 
 class _Assembler:
-    """결과 row를 model로 조립한다."""
+    """Assembles the result rows into models."""
 
     def __init__(self, result, db: Db, conn):
         self.result = result
@@ -158,8 +158,8 @@ class _Assembler:
         return core
 
     def _join_row(self, child, row):
-        """join child의 행이다; 없으면 None이다. SQL 결과에서는 join column이 부모 행에 함께 있고 첫 column이
-        NULL이면 없다. markdown 답에서는 부모 행의 마지막 칸이 join 행을 가진다."""
+        """The row of a join child, or None if there is none. In a SQL result the join column sits in the parent row with the first column
+        NULL meaning there is none. In a markdown answer, the parent row's last cell holds the join row."""
         if self.result.get("markdown"):
             return markdown_links(row).joins.get(child["rel"])
         first = (
@@ -168,8 +168,8 @@ class _Assembler:
         return row if first is not None and row[first["index"]] is not None else None
 
     def _related(self, child, parent):
-        """relation child에서 부모 행 parent의 행과 그 배치다. SQL 결과에서는 relation step의 행을 key로 찾고,
-        markdown 답에서는 부모 행의 마지막 칸이 relation 행을 가진다."""
+        """The row of a relation child for the parent row parent, and its placement. In a SQL result, the relation step's row is found by key, and
+        in a markdown answer, the parent row's last cell holds the relation row."""
         if self.result.get("markdown"):
             return markdown_links(parent).rels.get(child["rel"], []), child["assemble"]
         step_result = self.result["steps"].get(child["step"])
@@ -188,7 +188,7 @@ class _Assembler:
 
 
 class _RowState:
-    """읽었거나 만든 model의 row 상태."""
+    """The row state of a model that was read or made."""
 
     def __init__(self):
         self.loaded = False
@@ -260,14 +260,14 @@ def _assemble(c: Core, ex: Executor, external, result) -> Collection:
 
 
 def _value_of(m: Core, name: str):
-    """model의 relation key 성분 값. 조립된 column이나 extra에서 읽는다."""
+    """The value of a model's relation key component. Read from an assembled column or from extra."""
     if name in m.values:
         return m.values[name]
     return m.row.extra.get(name) if m.row is not None else None
 
 
 def _match_values(m: Core, ch: Core, side: str):
-    """relation key 성분 값을 key 순서로 돌려준다. 성분 하나라도 null이면 None이다."""
+    """Returns the relation key component values in key order. None if any component is null."""
     values = []
     for k in ch.matches:
         v = _value_of(m, k[side])
@@ -278,7 +278,7 @@ def _match_values(m: Core, ch: Core, side: str):
 
 
 def _attach_external(parents: list, rel: dict) -> None:
-    """자기 connection을 가진 relation의 child row를 읽어 parent에 붙인다."""
+    """Reads the child rows of a relation that has its own connection and attaches them to the parent."""
     ch: Core = rel["child"]
 
     def possible(p: Core) -> bool:
@@ -301,7 +301,7 @@ def _attach_external(parents: list, rel: dict) -> None:
         q = ch.clone()
         q.matches = []
         q.alias = ""
-        # composite key는 자식 key column 전체를 tuple로 거른다.
+        # A composite key filters the child key columns as a whole tuple.
         rights = [k["right"] for k in ch.matches]
         keys = (
             [ChainKey(conn="", op="", column=rights[0], columns=(), compare="")]
@@ -340,7 +340,7 @@ def _attach_external(parents: list, rel: dict) -> None:
 
 
 def execute_query(runner_core: Core, kind: str):
-    """Model이 resolve한 질의 method(get_by, gets_by, get_count_by)를 실행한다."""
+    """Runs the query method (get_by, gets_by, get_count_by) that Model resolved."""
     if kind == "get_by":
         rows = load(runner_core, "one")
         first = rows.first()
@@ -433,7 +433,7 @@ def _write_request(c: Core, kind: str) -> dict:
 
 
 def create(c: Core):
-    """set_<col>() 값들로 row를 insert하고 만들어진 row를 돌려준다."""
+    """Inserts a row with the set_<col>() values and returns the row that was made."""
     from polyspec.orm.database import column_type
 
     ex = _terminal(c)
@@ -463,8 +463,8 @@ def create(c: Core):
             )
         else:
             core.values[s.column] = convert(type_, s.value, ex.db.zone, field)
-    # 받은 key를 쓰는 column이다: identity, 또는 markdown executor가 정하는 key(key_prefix)로 요청이 값을 주지
-    # 않은 하나뿐인 primary key column이다.
+    # Columns that take the key: the identity, or a key that the markdown executor decides (key_prefix), and the one primary key column
+    # that the request gives no value for.
     assigned_key = schema.identity
     if (
         assigned_key == ""
@@ -491,7 +491,7 @@ def create(c: Core):
 
 
 def creates(c: Core, models) -> int:
-    """여러 model의 set 값을 한 transaction에 나누어 insert하고 row 수를 센다."""
+    """Inserts the set values of several models in one transaction, split up, and counts the rows."""
     ex = _terminal(c)
     if len(models) == 0:
         return 0
@@ -591,7 +591,7 @@ def _key_where(r: dict, schema: Entity, keys: dict) -> None:
 
 
 def _with_aes_columns(c: Core, schema: Entity) -> list:
-    """읽은 row의 한 AES column이 바뀌면 나머지 AES column도 함께 쓴다."""
+    """When one AES column of a read row changes, the other AES columns are written too."""
     if schema.aes_version == "":
         return c.sets
 
@@ -621,7 +621,7 @@ def _with_aes_columns(c: Core, schema: Entity) -> list:
 
 
 def update(c: Core, optimistic: bool = False) -> None:
-    """바뀐 column을 쓴다; update(True)는 update time이 바뀌지 않았음을 요구한다."""
+    """Writes the changed columns; update(True) requires that the update time did not change."""
     ex = _terminal(c)
     schema = c.ent.entity
     r = _write_request(c, "update")
@@ -657,7 +657,7 @@ def update(c: Core, optimistic: bool = False) -> None:
 
 
 def save(c: Core):
-    """primary key를 알면 update하고, 아니면 create한다."""
+    """If the primary key is known, updates; otherwise, creates."""
     _terminal(c)
     try:
         _key_values(c, c.ent.entity)
@@ -697,11 +697,11 @@ def _delete_one(c: Core, recursive: bool) -> None:
 
 
 def restore(c: Core):
-    """soft delete 한 행을 되돌리고(soft delete column을 NULL로 쓰는 update) 그 행을 읽어 돌려준다. set 값을 restore
-    request의 set으로 보내고, planner가 request hook 뒤에 set 값과 where의 eq 조건에서 key를 고른다(docs/protocol.md
-    1.5): 그것들이 덮으면 primary key, 아니면 이름 순서로 첫 unique key다. key column의 set 값은 조건이고 다른 set
-    값은 되돌리는 행에 update처럼 함께 쓰는 새 값이다. 그 뒤 그 key의 값으로 행을 읽는다. 지워지지 않은 행은 아무것도
-    쓰지 않고 그대로 돌려주며, 없는 행은 NO_ROWS다."""
+    """Reverts one soft-deleted row (an update that writes NULL to the soft delete column), and reads and returns that row. The set value is sent as the restore
+    request's set, and the planner picks the key after the request hook, from the set values and the eq conditions in where (docs/protocol.md
+    1.5): if those cover a primary key, it is used; otherwise, the first unique key in name order. The key column's set value is the condition, and other set
+    values are written as new values into the restored row, as in an update. The row is then read by that key's value. A row that was not deleted
+    is returned unchanged without writing anything, and a missing row is NO_ROWS."""
     ex = _terminal(c)
     schema = c.ent.entity
     request = _new_model(c.ent).build("restore")
@@ -711,7 +711,7 @@ def restore(c: Core):
     set_list = [_assign(r, schema, s) for s in c.sets]
     if set_list:
         request.ir["set"] = set_list
-    # own은 model이 set 값마다 더한 parameter의 그 set 값이다. hook은 그 뒤에 parameter를 더한다.
+    # own is the set value of each set that the model added as a parameter. The hook adds parameters after it.
     own = {a["p"]: s for a, s in zip(set_list, c.sets) if a.get("p") is not None}
     request.finish()
     found = {}
@@ -748,9 +748,9 @@ def restore(c: Core):
 
 
 def _restore_key_value(own: dict, written: dict, column: str):
-    """hook이 남긴 restore request에서 key column의 값이다. parameter가 model이 같은 column에 더한 것인 set item은
-    model 자신의 set 값(read가 다른 조건 값처럼 변환한다)을, 다른 set item과 where의 그 column eq 조건은 hook이 남긴
-    parameter를 쓴다."""
+    """The value of the key column in the restore request left by the hook. A set item whose parameter is the model's own addition to the same column
+    is the model's own set value (read converts it like another condition value); for other set items and for the where's eq condition on that column, the hook's
+    parameter is used."""
     request, params = written["request"], written["params"]
     for a in request.get("set") or []:
         if a["column"] == column and a.get("p") is not None:
@@ -772,14 +772,14 @@ def _restore_key_value(own: dict, written: dict, column: str):
 
 
 def _in_transaction(conn, fn):
-    """transaction 안에서 fn을 실행한다; 연결이 없으면 그냥 실행한다."""
+    """Runs fn inside a transaction; if there is no connection, it just runs fn."""
     if conn is None:
         return fn()
     return conn.transaction(fn, {"retry": 0})
 
 
 def gets_count(c: Core):
-    """group 값들과 검사된 row 수를, 불완전한 model row 없이 돌려준다."""
+    """Returns the group values and the checked row count, without incomplete model rows."""
     from polyspec.orm.group_rows import GroupRow, GroupRows
 
     ex = _terminal(c)
@@ -906,7 +906,7 @@ def _group_value(db, column: dict, raw, schema: Entity):
 
 
 def page_of(c: Core, page: int, per_page: int) -> dict:
-    """matching row의 한 page와 총 개수를 돌려준다."""
+    """Returns one page of the matching rows and the total count."""
     import math
 
     if (

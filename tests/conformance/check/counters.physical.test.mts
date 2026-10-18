@@ -20,7 +20,7 @@ async function insertTask(db: StateDatabase, driver: string, title: string): Pro
 }
 
 for (const { driver, env } of benchDatabases) {
-  // database 하나에서 state digest를 앞뒤로 읽고 counter를 읽고 되돌린다.
+  // Reads the state digest of one database before and after, and reads and restores the counter.
   caseTest(`TestPhysicalCounterCleanup/${driver}`, 3 * stateDeadline, async () => {
     const db = await openStateDatabase(driver, benchDsn(env));
     try {
@@ -56,7 +56,7 @@ for (const { driver, env } of benchDatabases) {
 }
 
 for (const { driver, env } of benchDatabases) {
-  // database 하나에서 state digest를 앞뒤로 읽고 counter를 읽고 되돌린다.
+  // Reads the state digest of one database before and after, and reads and restores the counter.
   caseTest(`TestPhysicalFailedRunnerStateCheck/${driver}`, 3 * stateDeadline, async () => {
     const db = await openStateDatabase(driver, benchDsn(env));
     try {

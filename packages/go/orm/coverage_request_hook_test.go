@@ -10,8 +10,8 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// request_hook coverage: feature-check가 고른 database(ORM_FEATURE_DATABASE)에서 공유 case 하나를
-// 그 case만의 새 case database로 실행한다. ORM_FEATURE_DSN의 database는 읽거나 쓰지 않는다.
+// request_hook coverage: runs one shared case on the database that the feature check selected (ORM_FEATURE_DATABASE)
+// in a new case database used only by that case. It neither reads nor writes the database of ORM_FEATURE_DSN.
 func runRequestHookCoverage(t *testing.T, id string) {
 	driver := os.Getenv("ORM_FEATURE_DATABASE")
 	if !slices.Contains([]string{"mysql", "postgres", "sqlite"}, driver) {

@@ -40,7 +40,7 @@ final class DbspecManifestTest extends TestCase
         self::$started = caseClockStart();
     }
 
-    // 모든 case를 합친 CPU 시간이 10 s 기준값을 넘으면 경고한다.
+    // Warns if the CPU time of all cases together exceeds the 10 s baseline.
     public static function tearDownAfterClass(): void
     {
         [$cpuMs, $wallMs] = caseClockElapsed(self::$started);
@@ -56,7 +56,7 @@ final class DbspecManifestTest extends TestCase
         }
     }
 
-    // 각 case는 memory 안에서 문서 집합 하나의 manifest와 hash를 만든다.
+    // Each case makes the manifest and hash of one document set in memory.
     #[DataProvider('hashesCases')]
     public function test_hashes(array $case): void
     {

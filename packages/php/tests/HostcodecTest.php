@@ -14,7 +14,7 @@ use Polyspec\Orm\OrmException;
 #[Small]
 final class HostcodecTest extends TestCase
 {
-    /** $call이 code의 OrmException을 던지는지 확인한다. */
+    /** Checks that $call throws an OrmException with the code. */
     private static function assertCode(string $code, callable $call, string $what): void
     {
         try {
@@ -64,7 +64,7 @@ final class HostcodecTest extends TestCase
         self::assertCode(Code::CODEC_UNSUPPORTED, static fn() => Codec::hostEncode('x', ['gz'], ''), 'codec style as host stage → CODEC_UNSUPPORTED');
     }
 
-    /** @return iterable<string, array{array<string, mixed>}> tests/codec/decode-vectors.json의 vector마다 */
+    /** @return iterable<string, array{array<string, mixed>}> for each vector in tests/codec/decode-vectors.json */
     public static function decodeVectors(): iterable
     {
         $vectors = json_decode((string) file_get_contents(dirname(__DIR__, 3) . '/tests/codec/decode-vectors.json'), true, 512, JSON_THROW_ON_ERROR)['vectors'];
@@ -76,8 +76,8 @@ final class HostcodecTest extends TestCase
         }
     }
 
-    // 공유 decode vector(tests/codec/decode-vectors.json): 저장 cell은 encoder가 쓰는 형태로만 decode되고 그 밖의
-    // 형태는 CODEC_DECODE다. aes가 없는 host stage 목록은 key 없는 hostDecode로, 나머지는 decode로 읽는다.
+    // Shared decode vectors (tests/codec/decode-vectors.json): stored cells decode only in the form the encoder writes, and other
+    // forms are CODEC_DECODE. Host stage lists without aes are read by hostDecode with no key, and the rest by decode.
     /** @param array<string, mixed> $v */
     #[DataProvider('decodeVectors')]
     public function test_decode_vector(array $v): void

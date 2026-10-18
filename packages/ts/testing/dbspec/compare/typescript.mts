@@ -1,9 +1,9 @@
-// 모든 공유 case, stress 문서, statement vector, plan vector, Mermaid vector의 TypeScript
-// dbspec 결과를 tests/dbspec/compare/check.mts의 줄 형식으로 출력한다. It then prints the positions cases of
+// TypeScript side of every shared case, stress document, statement vector, plan vector, and Mermaid vector:
+// dbspec results are printed in the line format of tests/dbspec/compare/check.mts. It then prints the positions cases of
 // cases.json and the analysis and format of each case of syntax.json.
 //
 // Usage: node packages/ts/testing/dbspec/compare/typescript.mts <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>
-// (TypeScript build 뒤)
+// (after the TypeScript build)
 import { readFileSync } from 'node:fs';
 import { dirname, join as joinPath } from 'node:path';
 import { parseCases, type Cases } from '../../../../../tests/dbspec/cases.mts';
@@ -46,7 +46,7 @@ if (casesPath === undefined || stressPath === undefined || ddlPath === undefined
   process.exit(2);
 }
 
-// fail은 vector file의 위치와 문제를 stderr에 쓰고 1로 끝낸다.
+// fail writes the position and the problem of the vector file to stderr and exits with 1.
 function fail(path: string, location: string, problem: string): never {
   console.error(`${path}: ${location} ${problem}`);
   process.exit(1);
@@ -87,7 +87,7 @@ function others(documents: Record<string, string[]>, name: string, crlf = false,
   return Object.fromEntries(Object.entries(documents).filter(([other]) => other !== name).map(([other, lines]) => [other, join(lines, crlf, mixed)]));
 }
 
-// write는 text의 diagnostic을, 없으면 그 emission을 출력한다.
+// write prints the diagnostic of the text, or otherwise its emission.
 function write(text: string, set: Record<string, string>, stress: boolean): void {
   const result = parseDbspec(text, set);
   const document = documentOf(result);
@@ -100,8 +100,8 @@ function write(text: string, set: Record<string, string>, stress: boolean): void
   else for (const line of emitted.split('\n')) out.push(`| ${line}`);
 }
 
-// readDocument는 path의 dbspec document 파일을 readDbspecFile로 읽는다. 읽을 수 없는 파일은
-// "<path>: <reason>"을, signature가 없는 파일은 그 diagnostic message를 stderr에 쓰고 1로 끝낸다.
+// readDocument reads the dbspec document file at path with readDbspecFile. A file that cannot be read
+// is reported as "<path>: <reason>", and a file without a signature writes its diagnostic message to stderr and exits with 1.
 function readDocument(path: string): string {
   let read: DbspecReadResult;
   try {
@@ -128,9 +128,9 @@ for (const kind of ['canonical', 'normalize', 'invalid'] as const) {
 }
 out.push('stress');
 write(readDocument(stressPath), {}, true);
-// files case는 readDbspecFile에 path를 주어 "files/<id>"로, readDbspecBytes에 파일 byte와
-// case path를 이름으로 주어 "files/<id>/bytes"로 읽어 diagnostic과 그 message를, 없으면
-// emission을 출력한다. message 앞의 이름은 "<name>"으로 쓴다.
+// The files case passes the path to readDbspecFile as "files/<id>", and passes the file bytes to readDbspecBytes
+// with the case path as name as "files/<id>/bytes", and reads the diagnostic and its message, or otherwise
+// the emission is printed. The name before the message is written as "<name>".
 for (const c of shared.files) {
   const path = joinPath(dirname(casesPath), c.path);
   let reads: [string, string, DbspecReadResult][];
@@ -153,7 +153,7 @@ for (const c of shared.files) {
   }
 }
 
-// writeManifest는 case 문서 집합의 hash와 text를, 또는 문서나 집합의 diagnostic을 출력한다.
+// writeManifest prints the hash and text of the case's document set, or the diagnostic of a document or set.
 function writeManifest(c: { documents: Record<string, string[]> }): void {
   const documents: DbspecDocument[] = [];
   for (const name of Object.keys(c.documents).sort()) {
@@ -183,8 +183,8 @@ for (const c of shared.hashes) {
   writeManifest(c);
 }
 
-// writeRender는 case 문서 집합의 statement를 dialect마다, 또는 문서나 집합의 diagnostic을
-// 출력한다.
+// writeRender prints the statements of the case's document set for each dialect, or
+// the diagnostic of a document or set.
 function writeRender(c: { documents: Record<string, string[]>; id: string }): void {
   const documents: DbspecDocument[] = [];
   for (const name of Object.keys(c.documents).sort()) {
@@ -207,7 +207,7 @@ function writeRender(c: { documents: Record<string, string[]>; id: string }): vo
 
 for (const c of readVectors(ddlPath, 'ddl').cases) writeRender(c);
 
-// writeStep은 step 하나를 statement 줄과 그 속성 줄로 쓴다(tests/dbspec/compare/check.mts).
+// writeStep writes one step as a statement line and its attribute lines (tests/dbspec/compare/check.mts).
 function writeStep(s: DbspecPlanStep): void {
   out.push(`| ${s.statement}`);
   if (s.finalize) out.push('  finalize');
@@ -223,16 +223,16 @@ function writeStep(s: DbspecPlanStep): void {
   for (const c of s.nullChecks) out.push(`  null_check: ${c.table} ${c.column} ${c.default ?? 'none'}`);
 }
 
-// writePlanDiagnostics는 diagnostic을 출력한다. plan, chain, compare diagnostic은 모든
-// client가 공유하는 message로 끝나고, target이나 source의 schema diagnostic은 그렇지 않다.
+// writePlanDiagnostics prints the diagnostics. Plan, chain, and compare diagnostics all
+// end with a message that every client shares, while schema diagnostics of the target or source do not.
 function writePlanDiagnostics(diagnostics: readonly DbspecDiagnostic[]): void {
   for (const d of diagnostics) {
     out.push(['plan', 'chain', 'compare'].includes(d.rule) ? `! ${d.rule} ${d.line} ${d.column} ${d.message}` : `! ${d.rule} ${d.line} ${d.column}`);
   }
 }
 
-// planSource는 plan case의 source schema를, 빈 schema이면 null을, diagnostic을 출력했으면
-// undefined를 돌려준다.
+// planSource returns the source schema of the plan case, null for an empty schema,
+// or undefined if it printed a diagnostic.
 function planSource(lines: string[] | null): DbspecDocument | null | undefined {
   if (lines === null) return null;
   const result = parseDbspec(join(lines, false), {});
@@ -244,7 +244,7 @@ function planSource(lines: string[] | null): DbspecDocument | null | undefined {
   return document;
 }
 
-// writeChanges는 change를 "| kind table name"으로 출력한다.
+// writeChanges prints each change as "| kind table name".
 function writeChanges(changes: readonly DbspecChange[]): void {
   for (const c of changes) out.push(`| ${c.kind} ${c.table} ${c.name}`);
 }
@@ -315,13 +315,13 @@ for (const c of plans.comparisons) {
   writePlanDiagnostics(result.diagnostics);
   for (const d of result.differences ?? []) out.push(`| ${d.kind} ${d.table} ${d.name}`);
 }
-// writeDropped는 export나 import가 뺀 것을 "= kind<TAB>table<TAB>name"으로 출력한다.
-// 이유는 비교하지 않는다.
+// writeDropped prints what the export or import dropped as "= kind<TAB>table<TAB>name".
+// The reason is not compared.
 function writeDropped(dropped: readonly DbspecUnsupported[]): void {
   for (const u of dropped) out.push(`= ${u.kind}\t${u.table}\t${u.name}`);
 }
 
-// writeExport는 문서의 Mermaid text와 빠진 객체를 출력한다.
+// writeExport prints the document's Mermaid text and the missing objects.
 function writeExport(document: DbspecDocument): string {
   const { mermaid, dropped } = exportMermaid(document);
   for (const line of mermaid.split('\n')) out.push(`| ${line}`);
@@ -329,7 +329,7 @@ function writeExport(document: DbspecDocument): string {
   return mermaid;
 }
 
-// writeImport는 import의 emit한 문서와 빠진 객체를, 또는 diagnostic을 출력한다.
+// writeImport prints the document emitted by the import and the missing objects, or the diagnostic.
 function writeImport(text: string) {
   const result = importMermaid(text, 'imported');
   if (result.document === null) {

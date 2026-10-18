@@ -4,14 +4,14 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Dbspec;
 
 /**
- * plan 없이 두 schema 의 모든 차이를 나열한다(docs/plans.md "Comparison"). rename 이
- * 없으므로 table 과 column 은 이름으로만 맞춘다.
+ * Lists all differences between two schemas without a plan (docs/plans.md "Comparison"). Since there is no
+ * rename, tables and columns are matched by name only.
  *
  * @internal
  */
 final class SchemaComparison
 {
-    /** 한 table 안에서 차이가 오는 순서다. */
+    /** The order in which differences come within one table. */
     private const KINDS = [
         'create_table', 'drop_table',
         'drop_column', 'add_column', 'alter_column', 'change_column_type', 'change_column_identity',
@@ -67,10 +67,10 @@ final class SchemaComparison
     }
 
     /**
-     * 문서의 canonical emission 이 그 문서 하나의 schema text 인지 알려 준다. 외부 문서의 use 줄은
-     * 문서 이름 순, 그 table 은 이름 순이어야 한다. 외부 문서 자체는 필요 없다.
+     * Tells whether the canonical emission of the document is that one document's schema text. The use lines of external documents
+     * are in document name order, and the tables in name order. The external document itself is not needed.
      *
-     * @internal PlanText 도 쓴다.
+     * @internal PlanText also uses it.
      */
     public static function isSchemaText(Document $document): bool
     {
@@ -89,7 +89,7 @@ final class SchemaComparison
     }
 
     /**
-     * 두 쪽에 다 있는 table 의 column, primary key, 객체, setting 차이를 더한다.
+     * Adds the differences in columns, primary key, objects, and settings of tables present on both sides.
      *
      * @param \Closure(string, string): void $add
      */
@@ -157,7 +157,7 @@ final class SchemaComparison
     }
 
     /**
-     * 이름으로 맞춘 객체가 한쪽에만 있으면 drop 이나 add 를, 정의가 다르면 둘 다 더한다.
+     * Objects matched by name: if only on one side, adds a drop or an add; if the definitions differ, adds both.
      *
      * @template T of object
      * @param \Closure(string, string): void $add
@@ -181,11 +181,11 @@ final class SchemaComparison
         }
     }
 
-    /** table 에 하나뿐인 setting 의 정의, 없으면 null 이다. */
+    /** The definition of a setting that a table has only one of; null if none. */
     /**
-     * table에 하나뿐인 setting의 정의, 없으면 null이다. audit은 두 쪽에 다 있는 column 가운데
-     * 기록하지 않는 column까지 비교한다. 한쪽에만 있는 column은 add_column이나 drop_column이
-     * 차이로 남긴다.
+     * The definition of the table's single setting, or null if none. Among the columns on both sides, audit
+     * compares even the columns it does not record. A column on only one side becomes an add_column or drop_column
+     * difference.
      */
     private static function setting(Table $x, string $kind, Table $s, Table $t): ?string
     {

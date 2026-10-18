@@ -1,5 +1,5 @@
-// interface_contract coverage: 저장소 root 에서 `node tests/interfaces/check/main.mts -language typescript`
-// 를 실행해 TypeScript client 가 공통 interface 계약의 symbol 을 모두 갖는지 확인한다.
+// interface_contract coverage: from the repository root, runs `node tests/interfaces/check/main.mts -language typescript`
+// to check that the TypeScript client has every symbol of the shared interface contract.
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { repositoryRoot, runCases } from './coverage_case.mjs';

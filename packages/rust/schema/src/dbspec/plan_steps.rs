@@ -65,9 +65,9 @@ pub struct PlanStep {
     pub finalize: bool,
 }
 
-/// 되돌릴 수 없는 step의 이유(docs/plans.md "Irreversible steps").
+/// The reason a step cannot be reversed (docs/plans.md "Irreversible steps").
 const IRREVERSIBLE_PRECISION: &str = "narrowing the precision rounds the values written since";
-/// SQLite 다시 만들기의 작업 table.
+/// The working table of a SQLite rebuild.
 const REBUILD_TABLE: &str = "dbspec$rebuild";
 
 /// Writes the steps of `plan` in `dialect`. `source` is the schema the plan
@@ -101,7 +101,7 @@ fn repeat() -> Effect {
     Effect { kind: "repeat", table: String::new(), name: String::new(), present: true }
 }
 
-/// optional 부분이 빈 step.
+/// A step whose optional part is empty.
 fn step(statement: String, rollback: String, effect: Effect) -> PlanStep {
     PlanStep {
         statement,
@@ -116,7 +116,7 @@ fn step(statement: String, rollback: String, effect: Effect) -> PlanStep {
     }
 }
 
-/// time이나 datetime의 정밀도가 커지는지 알려 준다.
+/// Tells whether the precision of a time or datetime increases.
 fn precision_grows(from: Type, to: Type) -> Option<(u8, u8)> {
     match (from, to) {
         (Type::Time(p), Type::Time(q)) | (Type::DateTime(p), Type::DateTime(q)) if q > p => Some((p, q)),
@@ -124,7 +124,7 @@ fn precision_grows(from: Type, to: Type) -> Option<(u8, u8)> {
     }
 }
 
-/// column 이름을 f로 바꾼 식.
+/// An expression with the column name replaced by f.
 fn rename_expr(e: &Expr, f: &dyn Fn(&str) -> String) -> Expr {
     let name = |n: &Name| Name { text: f(&n.text), pos: n.pos };
     let operand = |o: &Operand| match o {
@@ -139,17 +139,17 @@ fn rename_expr(e: &Expr, f: &dyn Fn(&str) -> String) -> Expr {
     }
 }
 
-/// renderer CHECK 이름: 식
+/// Renderer CHECK name: expression
 type RendererChecks = BTreeMap<String, String>;
 
-/// table의 unique key나 index 하나를 만들고 지우는 statement.
+/// Statements that create and drop one unique key or index of a table.
 struct NamedIndex {
     name: String,
     create: String,
     drop: String,
 }
 
-/// trigger 하나와 그 CREATE TRIGGER, PostgreSQL function.
+/// One trigger, its CREATE TRIGGER, and the PostgreSQL function.
 struct TriggerPart {
     name: String,
     create: String,
@@ -160,11 +160,11 @@ struct PlanWriter<'w, 'd> {
     d: &'w PlanDiff<'d>,
     r: Renderer,
     out: Vec<PlanStep>,
-    /// SQLite에서 다시 만드는 target table
+    /// The target table rebuilt in SQLite
     rebuilt: BTreeSet<&'d str>,
     hold_prefix: String,
-    /// 보관 이름: "table.column"(지우는 column, source 이름), table(지우는 table),
-    /// "+table.column"(더하는 column, target 이름)
+    /// Hidden names: "table.column" (a dropped column, source name), table (a dropped table),
+    /// "+table.column" (an added column, target name)
     holds: BTreeMap<String, String>,
     hold_order: Vec<String>,
 }
@@ -182,7 +182,7 @@ impl<'d> PlanWriter<'_, 'd> {
         self.holds.get(key).cloned().expect("every dropped and added name has a holding name")
     }
 
-    /// docs/plans.md "Hiding instead of dropping"의 순서로 보관 이름을 정한다.
+    /// Sets the hidden names in the order of docs/plans.md "Hiding instead of dropping".
     fn number_holds(&mut self) {
         let d = self.d;
         let mut keys = Vec::new();
@@ -236,7 +236,7 @@ impl<'d> PlanWriter<'_, 'd> {
                 }
             }
         }
-        // 3. check, unique, index와 지우는 table의 객체
+        // 3. Checks, unique keys, indexes, and objects of a dropped table
         let mut drop_tables: BTreeMap<&str, Vec<ObjectRef<'d>>> = BTreeMap::new();
         for (&s, objects) in &d.drop_objects {
             if sqlite && (self.rebuilt.contains(self.target_name(s)) || d.dropped.contains(&s)) {
@@ -296,7 +296,7 @@ impl<'d> PlanWriter<'_, 'd> {
         for r in sorted_by(&d.renamed_columns, |r| format!("{}.{}", r.table, r.old)) {
             self.add(step(self.rename_column(&r.table, &r.old, &r.new), self.rename_column(&r.table, &r.new, &r.old), present("column", &r.table, &r.new)));
         }
-        // 5. 지우는 column과 table을 숨긴다
+        // 5. Hide the dropped columns and tables
         if !sqlite {
             for &name in &d.matched {
                 let src = d.source[d.table_of[name]];
@@ -322,7 +322,7 @@ impl<'d> PlanWriter<'_, 'd> {
             self.add(step(create, format!("DROP TABLE {}", self.q(name)), present("table", name, "")));
             self.create_indexes(t, name);
         }
-        // 7. add, alter column; SQLite 다시 만들기
+        // 7. Add and alter column; SQLite rebuild
         for &name in &d.matched {
             if sqlite {
                 if self.rebuilt.contains(name) {
@@ -408,7 +408,7 @@ impl<'d> PlanWriter<'_, 'd> {
         }
     }
 
-    /// source table의 target 이름.
+    /// The target name of the source table.
     fn target_name<'s>(&self, source: &'s str) -> &'s str
     where
         'd: 's,
@@ -420,9 +420,9 @@ impl<'d> PlanWriter<'_, 'd> {
         format!("ALTER TABLE {} RENAME COLUMN {} TO {}", self.q(table), self.q(from), self.q(to))
     }
 
-    /// SQLite가 table을 다시 만들어야 하는지 알려 준다: 이름, column, foreign
-    /// key, check 중 하나라도 바뀌면 그렇다. index와 unique만 바뀌거나 trigger만
-    /// 바뀌면 다시 만들지 않는다.
+    /// Tells whether SQLite must rebuild the table: if any of its name, columns, foreign
+    /// key, or check changes, it must. If only indexes and uniques change, or only triggers,
+    /// it is not rebuilt.
     fn sqlite_rebuilds(&self, name: &str) -> bool {
         let d = self.d;
         let table_changes = |objects: Option<&Vec<ObjectRef>>| objects.into_iter().flatten().any(|o| o.kind == "foreign_key" || o.kind == "check");
@@ -435,7 +435,7 @@ impl<'d> PlanWriter<'_, 'd> {
             || table_changes(d.add_objects.get(name))
     }
 
-    /// MySQL과 PostgreSQL에서 지우는 column을 nullable로 바꾸고 보관 이름으로 숨긴다.
+    /// In MySQL and PostgreSQL, changes a dropped column to nullable and hides it under its hidden name.
     fn hide_column(&mut self, table: &str, c: &Column, h: &str) {
         if !c.nullable {
             let mut nullable = c.clone();
@@ -457,12 +457,12 @@ impl<'d> PlanWriter<'_, 'd> {
         self.add(step(self.rename_column(table, &c.name.text, h), self.rename_column(table, h, &c.name.text), present("column", table, h)));
     }
 
-    /// source column c를 non-null로 되돌리는 rollback의 null 검사다.
+    /// The null check of the rollback that restores source column c to non-null.
     fn null_check(&self, table: &str, column: &str, c: &Column) -> NullCheck {
         NullCheck { table: table.to_owned(), column: column.to_owned(), default: c.default.as_ref().map(|d| self.r.default_text(c.ty, d)) }
     }
 
-    /// SQLite table을 작업 table을 거쳐 다시 만든다(docs/plans.md "Steps").
+    /// Rebuilds a SQLite table through a working table (docs/plans.md "Steps").
     fn rebuild(&mut self, name: &str) {
         let d = self.d;
         let t = d.target[name];
@@ -472,7 +472,7 @@ impl<'d> PlanWriter<'_, 'd> {
         let removed: Vec<&str> = d.removed.get(name).cloned().unwrap_or_default();
         let added: Vec<&str> = d.added.get(name).cloned().unwrap_or_default();
         let columns = &d.column_of[name];
-        // 새 정의: target table과 보관 이름의 지우는 column
+        // New definition: the target table and the dropped columns under their hidden names
         let hidden_dropped: Vec<Column> = removed
             .iter()
             .map(|c| {
@@ -481,7 +481,7 @@ impl<'d> PlanWriter<'_, 'd> {
                 column
             })
             .collect();
-        // 옛 정의: 이름 바꾸기를 적용한 source table과 보관 이름의 더하는 column
+        // Old definition: the source table with the renames applied, and the added columns under their hidden names
         let old = self.renamed_source(name);
         let hidden_added: Vec<Column> = added
             .iter()
@@ -492,12 +492,12 @@ impl<'d> PlanWriter<'_, 'd> {
             })
             .collect();
         let new_create = |as_name: &str| self.r.create_table(t, as_name, &|c: &str| renderer_name(&t.name.text, c), &hidden_dropped);
-        // source_column은 옛 정의 column의 source 이름이다. 지우는 column은 이름이 그대로다.
+        // source_column is the source name of the old definition's column. A dropped column keeps its name.
         let source_column = |c: &str| -> String { columns.get(c).map_or_else(|| c.to_owned(), |s| (*s).to_owned()) };
         let old_create = self.r.create_table(&old, name, &|c: &str| renderer_name(&src.name.text, &source_column(c)), &hidden_added);
         let new_names: Vec<String> = t.columns.iter().map(|c| c.name.text.clone()).chain(hidden_dropped.iter().map(|c| c.name.text.clone())).collect();
         let new_list = self.r.list(new_names.iter());
-        // 옛 table에서 새 정의로 옮기는 식
+        // Expression that moves values from the old table to the new definition
         let (mut into, mut from, mut into_restore, mut from_restore) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
         for c in &t.columns {
             if let Some(&old_name) = columns.get(c.name.text.as_str()) {
@@ -517,7 +517,7 @@ impl<'d> PlanWriter<'_, 'd> {
             into_restore.push(self.q(&hidden_dropped[i].name.text));
             from_restore.push(self.q(c));
         }
-        // 새 정의에서 옛 정의로 되돌리는 식
+        // Expression that moves values from the new definition back to the old
         let (mut back_into, mut back_from) = (Vec::new(), Vec::new());
         let mut irreversible = "";
         let mut checks = Vec::new();
@@ -534,14 +534,14 @@ impl<'d> PlanWriter<'_, 'd> {
                 }
                 continue;
             }
-            // 지우는 column: 새 정의에서는 보관 이름이다.
+            // Dropped column: in the new definition, its hidden name.
             let h = self.hold(&format!("{}.{source_name}", src.name.text));
             back_from.push(self.q(&h));
             if !c.nullable {
                 checks.push(self.null_check(name, &h, c));
             }
         }
-        // 옛 table에 숨긴 더한 column이 있으면 그 값도 되돌린다.
+        // If the old table has hidden added columns, their values are also restored.
         let mut back_into_restore = back_into.clone();
         let mut back_from_restore = back_from.clone();
         for (i, c) in added.iter().enumerate() {
@@ -604,8 +604,8 @@ impl<'d> PlanWriter<'_, 'd> {
         self.create_indexes(t, name);
     }
 
-    /// target table name의 source table에 이름 바꾸기를 적용한 정의다. 지우는 table을
-    /// 참조하는 foreign key는 source 이름을 유지한다.
+    /// The definition of the source table with the renames applied, under the target table name. The foreign keys that
+    /// refer to a dropped table keep their source names.
     fn renamed_source(&self, name: &str) -> Table {
         let d = self.d;
         let src = d.source[d.table_of[name]];
@@ -640,8 +640,8 @@ impl<'d> PlanWriter<'_, 'd> {
         t
     }
 
-    /// SQLite 다시 만들기에서 source 값을 target column 형식으로 옮기는 식이다. time과
-    /// datetime은 늘어난 소수 자리를 0으로 채운다.
+    /// The expression that moves source values into the target column form in a SQLite rebuild. time and
+    /// datetime fill the added fractional digits with 0.
     fn copy_value(&self, from: &Column, to: &Column) -> String {
         let q = self.q(&to.name.text);
         match precision_grows(from.ty, to.ty) {
@@ -693,7 +693,7 @@ impl<'d> PlanWriter<'_, 'd> {
         }
     }
 
-    /// 렌더링한 trigger statement에서 trigger와 PostgreSQL function을 짝짓는다.
+    /// Pairs the trigger and the PostgreSQL function in the rendered trigger statements.
     fn trigger_parts(&self, t: &Table) -> Vec<TriggerPart> {
         let mut out = Vec::new();
         let mut function = String::new();
@@ -762,8 +762,8 @@ impl<'d> PlanWriter<'_, 'd> {
         format!("CREATE INDEX {} ON {} ({})", self.q(&x.name.text), self.q(table), columns.join(", "))
     }
 
-    /// table t를 name으로 둔 unique key와 index를 renderer 순서로 돌려준다. SQLite
-    /// unique key는 unique index다.
+    /// Returns the unique keys and indexes of table t under name, in renderer order. In SQLite
+    /// a unique key is a unique index.
     fn indexes(&self, t: &Table, name: &str) -> Vec<NamedIndex> {
         let mut out = Vec::new();
         if self.r.d == Dialect::Sqlite {
@@ -781,14 +781,14 @@ impl<'d> PlanWriter<'_, 'd> {
         out
     }
 
-    /// renderer가 CREATE TABLE 뒤에 쓰는 unique index와 index다.
+    /// The unique indexes and indexes the renderer writes after CREATE TABLE.
     fn create_indexes(&mut self, t: &Table, name: &str) {
         for x in self.indexes(t, name) {
             self.add(step(x.create, x.drop, present("index", name, &x.name)));
         }
     }
 
-    /// table t(name으로 둔)의 객체를 더하는 statement, 지우는 statement, 그 효과의 종류다.
+    /// Statements that add and drop objects of table t (named by name), and the kind of their effect.
     fn object_statements(&self, t: &Table, name: &str, kind: &str, object: &str) -> (String, String, &'static str) {
         match kind {
             "unique" => {
@@ -831,7 +831,7 @@ impl<'d> PlanWriter<'_, 'd> {
         }
     }
 
-    /// source table t의 객체를 지우고, rollback은 source 정의로 다시 만든다.
+    /// Drops the objects of source table t; rollback rebuilds them from the source definition.
     fn drop_object(&mut self, t: &Table, kind: &str, object: &str) {
         let (create, drop, effect) = self.object_statements(t, &t.name.text, kind, object);
         self.add(step(drop, create, absent(effect, &t.name.text, object)));
@@ -842,7 +842,7 @@ impl<'d> PlanWriter<'_, 'd> {
         self.add(step(create, drop, present(effect, table, object)));
     }
 
-    /// table의 renderer CHECK 이름과 식.
+    /// The table's renderer CHECK name and expression.
     fn renderer_checks(&self, t: &Table) -> RendererChecks {
         t.columns.iter().filter_map(|c| self.r.type_check(c).map(|check| (renderer_name(&t.name.text, &c.name.text), check))).collect()
     }

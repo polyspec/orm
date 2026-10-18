@@ -84,8 +84,8 @@ func Decode(styles []string, raw any) (StyledValue, error) {
 				return StyledValue{}, codecErr(CodeCodecDecode, "gz: %v", closeErr)
 			}
 		case "base64":
-			// 저장 cell은 encoder가 쓰는 형태로만 decode한다: 공백, 줄바꿈, 빠진 padding, 0이 아닌
-			// padding bit는 CODEC_DECODE다(docs/codec.md). Go의 decoder는 \r과 \n을 건너뛰므로 따로 거절한다.
+			// A stored cell is decoded only in the form the encoder writes: whitespace, line breaks, missing padding, or non-zero
+			// padding bits is CODEC_DECODE (docs/codec.md). Go's decoder skips \r and \n, so they are rejected separately.
 			if bytes.ContainsAny(cur, "\r\n") {
 				return StyledValue{}, codecErr(CodeCodecDecode, "base64: line break in stored text")
 			}
@@ -112,7 +112,7 @@ func Decode(styles []string, raw any) (StyledValue, error) {
 			return StyledValue{}, codecErr(CodeCodecUnsupported, "style %s", styles[i])
 		}
 	}
-	// 첫 stage가 gz나 base64면 값은 그 stage가 받은 text다.
+	// If the first stage is gz or base64, the value is the text that stage received.
 	if raw, ok := v.([]byte); ok {
 		if !utf8.Valid(raw) {
 			return StyledValue{}, codecErr(CodeCodecDecode, "decoded text is not valid UTF-8")
@@ -204,8 +204,8 @@ func Encode(styles []string, v StyledValue) (any, error) {
 	return string(cur), nil
 }
 
-// firstStageText는 첫 stage인 gz나 base64가 encode하는 값이다. 그 stage는
-// byte를 받으므로 값은 string이어야 한다.
+// firstStageText is the value that the first stage, gz or base64, encodes. That stage
+// receives bytes, so the value must be a string.
 func firstStageText(stage string, value any) ([]byte, error) {
 	s, ok := value.(string)
 	if !ok {

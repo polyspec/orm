@@ -11,9 +11,9 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// TestValidateVectors는 공유 검증 case(tests/ir/validate.json)를 읽는다. 각 request에 schema의
-// manifest_hash를 더해 Decode(곧 Validate)에 주고, 받아들이는지나 기대한 오류 code로 실패하는지 본다.
-// TypeScript, PHP, Rust, Python이 같은 파일을 자기 package에서 읽는다.
+// TestValidateVectors reads the shared validation cases (tests/ir/validate.json). It adds each request's schema
+// manifest_hash, passes the request to Decode (that is, Validate), and checks that it is accepted or fails with the expected error code.
+// TypeScript, PHP, Rust, and Python read the same file in their own packages.
 func TestValidateVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	root := filepath.Join("..", "..", "..", "..")

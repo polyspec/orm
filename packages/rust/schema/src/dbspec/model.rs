@@ -26,9 +26,9 @@ pub struct Document {
     pub diagrams: Vec<Diagram>,
     /// Comment lines after the last line of the document.
     pub trailing: Vec<String>,
-    /// 문서가 set의 소유가 아니라 소유한 문서가 use로 쓰는 외부 문서임을 뜻한다. 외부 문서는 parse하고
-    /// 검사하지만 렌더링, 설치, 비교, 생성하지 않는다(docs/dbspec.md "Documents and use"). 문서 text에는
-    /// 나오지 않는다.
+    /// Means the document is not owned by the set but is an external document that an owning document uses. An external document is parsed
+    /// and checked, but not rendered, installed, compared, or generated (docs/dbspec.md "Documents and use"). It
+    /// does not appear in the document text.
     pub external: bool,
 }
 
@@ -96,7 +96,7 @@ impl Type {
         }
     }
 
-    /// parameter를 뺀 type 이름: `decimal(13,2)`는 `decimal`이다.
+    /// The type name without its parameters: `decimal(13,2)` is `decimal`.
     pub fn name(&self) -> &'static str {
         match self {
             Type::I16 => "i16",
@@ -115,7 +115,7 @@ impl Type {
         }
     }
 
-    /// dbspec이 쓰는 type text.
+    /// The type text dbspec writes.
     pub fn render(&self) -> String {
         match self {
             Type::I16 => "i16".into(),
@@ -248,8 +248,8 @@ pub struct Literal {
 }
 
 impl Expr {
-    /// `op` predicate의 한 side인 이 expression이 `and` 안의 `or`이라 괄호가
-    /// 필요한지 여부. tree는 그 밖의 괄호를 갖지 않는다.
+    /// This expression, one side of an `op` predicate, is an `or` inside an `and`, so parentheses
+    /// are needed or not. The tree has no other parentheses.
     pub fn needs_parentheses(&self, op: &str) -> bool {
         op == "and" && matches!(self, Expr::Logic(_, "or", _))
     }
@@ -345,8 +345,8 @@ pub enum Setting {
         line: StateLine,
     },
     Immutable,
-    /// `lists`는 exclude와 include 목록이다. 유효한 문서는 많아야 하나를 가진다(docs/dbspec.md "Audit").
-    /// `column`은 audit 기록 table `references`의 primary key를 담는 column이다.
+    /// `lists` are the exclude and include lists. A valid document has at most one (docs/dbspec.md "Audit").
+    /// `column` is the column holding the primary key of the audit record table `references`.
     Audit {
         into: Name,
         column: Name,
@@ -382,8 +382,8 @@ pub struct History {
     pub at: Name,
 }
 
-/// store의 `shard <column> <period>` 절: `keyword`는 `shard`이고, column은 non-null date 또는 datetime
-/// column, period는 `year`, `month` 또는 `day`다. SQL backend는 읽지 않는다.
+/// The `shard <column> <period>` clause of store: `keyword` is `shard`, and the column is a non-null date or datetime
+/// column; period is `year`, `month`, or `day`. The SQL backend does not read it.
 #[derive(Clone, Debug)]
 pub struct StoreShard {
     pub keyword: Name,
@@ -391,14 +391,14 @@ pub struct StoreShard {
     pub period: Name,
 }
 
-/// audit의 `exclude (<column>, ...)`나 `include (<column>, ...)` 목록. `keyword`는 `exclude`나 `include`다.
+/// The `exclude (<column>, ...)` or `include (<column>, ...)` list of audit. `keyword` is `exclude` or `include`.
 #[derive(Clone, Debug)]
 pub struct AuditList {
     pub keyword: Name,
     pub columns: Vec<Name>,
 }
 
-/// audit setting 줄. `list`의 column이 비면 목록 없이, 아니면 list keyword와 그 column을 쓴다.
+/// The audit setting line. If the `list` columns are empty, no list is written; otherwise the list keyword and its columns are written.
 pub fn audit_line(into: &str, column: &str, references: &str, action: &str, previous: &str, list: &str, columns: &[&str]) -> String {
     let line = format!("audit into {into} column {column} references {references} action {action} previous {previous}");
     if columns.is_empty() {
@@ -435,9 +435,9 @@ impl Setting {
         }
     }
 
-    /// audit trigger가 column을 복사하는지 알린다. audit column은 언제나, exclude 목록의
-    /// column은 언제나 아니며, include 목록이 있으면 그 column만 복사한다. audit이 아닌 setting은
-    /// 참이다.
+    /// Tells whether the audit trigger copies a column. An audit column is always copied; a column in the exclude list
+    /// is never copied; if there is an include list, only those columns are copied. For a setting that is not audit,
+    /// the result is true.
     pub fn records(&self, column: &str) -> bool {
         let Setting::Audit { column: audited, lists, .. } = self else { return true };
         if column == audited.text {

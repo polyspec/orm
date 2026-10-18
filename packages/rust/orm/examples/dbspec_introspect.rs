@@ -1,6 +1,6 @@
-//! 한 database를 Rust client로 introspect해 tests/dbspec/introspect의 출력
-//! 형식으로 쓴다: stdout에 canonical 문서와 미지원 객체 줄
-//! "! kind<TAB>table<TAB>name", stderr에 "elapsed <ms>".
+//! Introspects one database with the Rust client and writes output in the format of tests/dbspec/introspect:
+//! to stdout, the canonical document and lines for unsupported objects
+//! "! kind<TAB>table<TAB>name", and "elapsed <ms>" to stderr.
 //!
 //! Usage: dbspec_introspect <mysql|postgres|sqlite> <uri>
 
@@ -39,7 +39,7 @@ async fn main() {
     eprintln!("elapsed {:.1}", elapsed);
 }
 
-/// 연결을 introspect하고 introspection에 걸린 시간을 ms로 돌려준다.
+/// Introspects the connection and returns the time the introspection took, in ms.
 async fn run<C>(connection: Result<C, sqlx::Error>, dialect: Dialect) -> Result<(Introspection, f64), String>
 where
     C: polyspec_orm::dbspec::CatalogQuerier,

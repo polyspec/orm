@@ -126,7 +126,7 @@ func errorsCmd(args []string) {
 	fmt.Fprintf(os.Stderr, "orm-gen: %d codes → %s\n", len(codes), *out)
 }
 
-// constantName은 UPPER_SNAKE 오류 코드를 Go 상수 이름의 PascalCase로 바꾼다.
+// constantName converts an UPPER_SNAKE error code into a PascalCase Go constant name.
 func constantName(code string) string {
 	var b strings.Builder
 	for _, part := range strings.Split(strings.ToLower(code), "_") {

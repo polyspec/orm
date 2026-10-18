@@ -1,8 +1,8 @@
-// dbspec apply와 introspection이 받는 connection의 type이다. 이 type은 driver module의 type을
-// 쓰지 않고 dbspec이 부르는 method만 적는다. 공개 선언이 pg, mysql2, node:sqlite를 import하면
-// 그 driver의 type 없이(MySQL이나 SQLite driver만 설치해) 하는 type 검사가 실패하기 때문이다.
-// mysql2 promise connection과 pool, pg client와 pool, node:sqlite DatabaseSync가 이 type에 맞는다
-// (tests/typecheck.ts가 확인한다).
+// The type of connection that dbspec apply and introspection take. This type does not use the driver module's type,
+// and lists only the methods that dbspec calls. If a public declaration imports pg, mysql2, or node:sqlite,
+// a type check fails without that driver's type (when only the MySQL or SQLite driver is installed).
+// mysql2 promise connections and pools, pg clients and pools, and node:sqlite DatabaseSync all match this type
+// (checked by tests/typecheck.ts).
 
 /** The rows and fields that a mysql2 promise query resolves to. */
 export type DbspecMySqlQueryResult = readonly unknown[];

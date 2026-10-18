@@ -14,7 +14,7 @@ pub struct Step {
     pub id: u32,
     pub role: String,
     pub sql: String,
-    /// statement가 이름으로 쓰는 table이다: 정렬하고 중복을 뺀 물리 table 이름.
+    /// A table the statement uses by name: the physical table name, sorted and deduplicated.
     pub tables: Vec<String>,
     pub lock: String,
     pub bind_slots: Vec<BindSlot>,
@@ -54,16 +54,16 @@ pub struct BindSlot {
     /// Style stages the dialect leaves to the executor for this value (aes/hex/ip on
     /// PostgreSQL/SQLite), applied to the bound value in write order. Empty on MySQL.
     pub host_styles: Vec<String>,
-    /// placeholder가 받는 값의 dbspec type이다(engine/plan/plan.go의 BindSlot.ColType). parent
-    /// slot은 대신 `key_types`를 싣는다. type이 없는 slot은 없다.
+    /// The dbspec type of the value the placeholder takes (BindSlot.ColType in engine/plan/plan.go). The parent
+    /// slot carries `key_types` instead. A slot with no type does not exist.
     pub col_type: String,
-    /// parent slot이 펼치는 key 값의 dbspec type이며 key column 순서다.
+    /// The dbspec type of the key values that the parent slot expands, in key column order.
     pub key_types: Vec<String>,
     pub precision: i64,
     pub scale: i64,
-    /// varchar(n) slot의 n이다: 값은 n 글자 이하다.
+    /// The n of a varchar(n) slot: the value is at most n characters.
     pub length: i64,
-    /// assignment slot이 non-null column `column`에 쓰는 값이다: NULL 값은 어떤 statement보다 먼저 CODEC_ENCODE다.
+    /// The value an assignment slot writes to the non-null column `column`: a NULL value is CODEC_ENCODE before any statement.
     pub not_null: bool,
 }
 
@@ -74,7 +74,7 @@ pub struct Assemble {
     pub columns: Vec<OutCol>,
     pub key: Vec<KeyRef>,
     pub children: Vec<Child>,
-    /// AES column을 읽는 node에서 key version을 담은 `columns`의 위치다.
+    /// The position in `columns` holding the key version, for a node that reads an AES column.
     pub aes_version: Option<usize>,
 }
 

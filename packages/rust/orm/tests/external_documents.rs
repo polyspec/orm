@@ -1,15 +1,15 @@
-//! 외부 문서를 쓰는 document set을 SQLite, MySQL, PostgreSQL에서 확인한다(docs/dbspec.md "External
-//! documents", contracts/fixtures/external). member set은 ext_core의 ext_account와 ext_audit을 use로 쓰고
-//! ext_post와 ext_post_history만 소유한다.
-//!   - 외부 table이 없으면 install, add_tables_and_columns가 어떤 statement보다 먼저 CONFIG이고 member의 table을
-//!     만들지 않는다. 등록은 database를 읽지 않으므로 connect_schema는 외부 table이 없거나 달라도 연결한다.
-//!   - core를 설치한 뒤 member install은 소유한 table만 만들고, 다시 하면 아무것도 바꾸지 않는다.
-//!     add_tables_and_columns는 소유한 table에만 column을 더한다.
-//!   - member의 audit transaction은 core가 소유한 ext_audit에 기록을 삽입한다.
-//!   - 외부 문서의 쓰는 table이 database와 다르면(없는 column) CONFIG다.
+//! Checks document sets that use external documents on SQLite, MySQL, and PostgreSQL (docs/dbspec.md "External
+//! documents", contracts/fixtures/external). The member set uses ext_account and ext_audit from ext_core via use,
+//! and owns only ext_post and ext_post_history.
+//!   - if the external tables are missing, install and add_tables_and_columns are CONFIG before any statement and do not create the member's tables;
+//!     registration does not read the database, so connect_schema connects even if the external tables are missing or differ.
+//!   - after core is installed, member install creates only the tables it owns, and running it again changes nothing.
+//!     add_tables_and_columns adds columns only to the tables it owns.
+//!   - a member's audit transaction inserts the record into ext_audit, which core owns.
+//!   - if a table the external document writes differs from the database (a missing column), it is CONFIG.
 //!
-//! 각 case는 자기 case database(polyspec-orm-case-database)에서 실행하며 ORM_TEST_MYSQL_DSN이나 ORM_TEST_POSTGRES_DSN이
-//! 없으면 실패한다.
+//! Each case runs in its own case database (polyspec-orm-case-database) and fails if ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN
+//! is missing.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -19,14 +19,14 @@ use polyspec_orm::dbspec::{self, Document};
 use polyspec_orm::{Config, Core, Db, Entity, Model, Param, Schema, Val};
 use polyspec_orm_case_database::CaseDatabase;
 
-/// contracts/fixtures/<name>.dbs의 text.
+/// The text of contracts/fixtures/<name>.dbs.
 fn fixture(name: &str) -> String {
     let path = format!("{}/../../../contracts/fixtures/{name}.dbs", polyspec_orm_testcase::manifest_dir().display());
     dbspec::read_file(std::path::Path::new(&path)).unwrap_or_else(|e| panic!("{path}: {e:?}"))
 }
 
-/// 소유한 문서와 외부 문서의 schema 값. generated code처럼 manifest text, external text와 그 manifestHash를
-/// 가진다.
+/// The schema values of the owned document and the external document. Like generated code, they hold the manifest text, external text, and
+/// their manifestHash.
 fn set_schema(owned: &[&str], external: &[&str]) -> &'static Schema {
     let texts: Vec<(String, bool)> = owned.iter().map(|n| (fixture(n), false)).chain(external.iter().map(|n| (fixture(n), true))).collect();
     let name = |text: &str| text.lines().next().unwrap().trim_start_matches("dbspec 1 ").to_owned();
@@ -45,13 +45,13 @@ fn set_schema(owned: &[&str], external: &[&str]) -> &'static Schema {
     Box::leak(Box::new(Schema::with_external(leak(manifest.manifest_text), leak(manifest.external_text), leak(manifest.manifest_hash))))
 }
 
-/// member set의 manifest text와 external text, manifestHash. generated code처럼 상수다. external_case가
-/// set_schema로 만든 값과 같은지 확인한다.
+/// The manifest text, external text, and manifestHash of the member set. Like generated code, they are constants. external_case
+/// checks that they match the values made by set_schema.
 const MEMBER_EXTERNAL: &str = "dbspec 1 ext_core\n\ntable ext_account {\n  seq i64 identity\n  name varchar(64)\n  primary key (seq)\n  unique uq_ext_account_name (name)\n}\n\ntable ext_audit {\n  seq i64 identity\n  actor varchar(64)\n  primary key (seq)\n}\n";
 const MEMBER_TEXT: &str = "dbspec 1 ext_member\n\nuse ext_core { ext_account, ext_audit }\n\ntable ext_post {\n  seq i64 identity\n  account_seq i64\n  title varchar(191)\n  audit_seq i64\n  primary key (seq)\n  index ix_ext_post_account (account_seq)\n  index ix_ext_post_audit (audit_seq)\n  foreign key fk_ext_post_account (account_seq) references ext_account (seq) on delete restrict on update restrict\n  foreign key fk_ext_post_audit (audit_seq) references ext_audit (seq) on delete restrict on update restrict\n  settings {\n    audit into ext_post_history column audit_seq references ext_audit action change previous previous_audit_seq\n  }\n}\n\ntable ext_post_history {\n  history_id i64 identity\n  change varchar(8)\n  previous_audit_seq i64 null\n  seq i64\n  account_seq i64\n  title varchar(191)\n  audit_seq i64\n  primary key (history_id)\n  index ix_ext_post_history_row (seq)\n}\n";
 static MEMBER: Schema = Schema::with_external(MEMBER_TEXT, MEMBER_EXTERNAL, "sha256:c96bcde55bf0c8034c0b1ca46cc2d1ac097d9de4a54f55b058708eebd2f313b2");
 
-/// member set의 ext_post를 column 이름으로 쓰는 model.
+/// The model that writes the member set's ext_post by column name.
 static POST: Entity =
     Entity { name: "ext_post", schema: &MEMBER, new: polyspec_orm::model::new_boxed::<Post>, collect: polyspec_orm::model::collect_boxed::<Post> };
 
@@ -116,7 +116,7 @@ async fn text(db: &Db, query: &str) -> String {
     .unwrap_or_else(|e| panic!("{query}: {e}"))
 }
 
-/// CONFIG이고 message가 `message`를 담는지 확인한다.
+/// Checks that it is CONFIG and that the message contains `message`.
 fn expect_config<T: std::fmt::Debug>(step: &str, result: polyspec_orm::Result<T>, message: &str) {
     match result {
         Err(e) if e.code() == polyspec_orm::codes::CONFIG && e.to_string().contains(message) => {}
@@ -156,8 +156,8 @@ async fn external_case(driver: &str, dsn: &str) {
     let connected = Db::connect_schema(dsn, member, 2, config()).await.unwrap_or_else(|e| panic!("{driver}: connect with core installed: {e}"));
     connected.close().await;
 
-    // board는 같은 core를 쓰는 다른 module set이다. schema 값으로만 등록된 set이 있어도 audit 기록 table은
-    // 그것을 소유한 core에서 찾는다.
+    // board is another module set that uses the same core. Even if a set is registered only as a schema value, the audit record table
+    // is found in the core that owns it.
     let board = set_schema(&["external/board"], &["external/core"]);
     schema.install(board).await.unwrap_or_else(|e| panic!("{driver}: install of board: {e}"));
     db.transaction(async || {

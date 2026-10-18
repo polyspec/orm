@@ -4,8 +4,8 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Dbspec;
 
 /**
- * SQLite 의 main database 를 중간 model 로 읽는다. sqlite_master 와 table-valued
- * pragma 를 join 해 모든 table 을 한 번에 읽는다 (docs/dialects.md "Introspection").
+ * Reads the SQLite main database into an intermediate model. It joins sqlite_master and table-valued
+ * pragmas to read all tables at once (docs/dialects.md "Introspection").
  *
  * @internal
  */
@@ -31,7 +31,7 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
     public static function read(\PDO $connection): Catalog
     {
         $c = new Catalog();
-        // table: CREATE TABLE text 에서 읽은 constraint
+        // table: constraints read from the CREATE TABLE text
         $parsed = [];
         $triggers = [];
         $q = self::MASTER;
@@ -66,7 +66,7 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
             [$table, $name, $declared] = array_map(static fn(int $i): string => CatalogRows::text($row, $i, $q), [0, 1, 2]);
             $notNull = CatalogRows::integer($row, 3, $q);
             $default = CatalogRows::nullableText($row, 4, $q);
-            // pk 는 쓰지 않는다: primary key 와 identity 는 CREATE text 가 정한다. 값의 모양만 확인한다.
+            // pk is not used: primary key and identity are decided by the CREATE text. Only the shape of the value is checked.
             CatalogRows::integer($row, 5, $q);
             $hidden = CatalogRows::integer($row, 6, $q);
             $t = $c->table($table);
@@ -136,7 +136,7 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
             $columns = CatalogRows::text($row, 5, $q);
             $desc = CatalogRows::text($row, 6, $q);
             $t = $c->table($table);
-            // pk 와 u origin index 는 primary key 와 unique 정의에서 나오며, 그 정의를 읽거나 보고한다.
+            // The pk and u origin indexes come from the primary key and unique definitions, and that definition is read or reported.
             if ($t === null || $origin === 'pk' || $origin === 'u') {
                 continue;
             }
@@ -156,7 +156,7 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
         return $c;
     }
 
-    /** 선언 type 과 그 column 의 renderer CHECK 로 dbspec type 을 정한다. CHECK 은 그 type 의 renderer 출력과 정확히 같아야 한다. */
+    /** Decides the dbspec type from the declared type and the column's renderer CHECK. The CHECK must match the renderer output of that type exactly. */
     private static function type(string $declared, string $column, string $check, bool $hasCheck): ?ColumnType
     {
         if (!preg_match(self::DECLARED, $declared, $m)) {
@@ -170,7 +170,7 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
         } else {
             $candidates = match ($g(1)) {
                 'smallint' => [new ColumnType('i16')],
-                // SQLite 는 keyword 인 integer 를 INTEGER 로 보고한다. identity 는 CREATE text 가 정한다.
+                // SQLite reports integer, which is a keyword, as INTEGER. Identity is decided by the CREATE text.
                 'integer', 'INTEGER' => [new ColumnType('i32')],
                 'bigint' => [new ColumnType('i64')],
                 'BOOLEAN' => [new ColumnType('bool')],
@@ -190,7 +190,7 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
         return null;
     }
 
-    /** dflt_value 를 dbspec literal 이나 now 로 읽는다. decimal 은 scale 을 곱한 정수이고 bool 은 1 과 0 이다. 아니면 null. */
+    /** Reads dflt_value as a dbspec literal or now. A decimal is an integer multiplied by the scale; a bool is 1 or 0. Otherwise null. */
     private static function defaultLiteral(string $text, ColumnType $type): ?string
     {
         if ($type->name === 'datetime' && "($text)" === Renderer::columnDefault($type, 'now', 'sqlite')) {
@@ -209,14 +209,14 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
     }
 
     /**
-     * renderer 가 쓰는 한 줄 CREATE TABLE text 에서 primary key, identity,
-     * foreign key, check 를 읽는다. 그 밖의 table 수준 항목은 미지원이다.
+     * Reads the primary key, identity,
+     * foreign keys, and checks from the one-line CREATE TABLE text the renderer writes. Other table-level items are unsupported.
      *
      * @return array{0: array{checks: array<string, string>, order: list<string>, foreignKeys: list<array>, primary: list<string>, identity: string, columns: array<string, string>, unsupported: string}, 1: list<array{0: string, 1: string, 2: string}>}
      */
     private static function parseTable(string $text): array
     {
-        // unsupported 가 비어 있지 않으면 table 전체를 읽지 못한 이유다.
+        // If unsupported is not empty, it is the reason the whole table could not be read.
         $st = ['checks' => [], 'order' => [], 'foreignKeys' => [], 'primary' => [], 'identity' => '', 'columns' => [], 'unsupported' => ''];
         $open = strpos($text, '(');
         if ($open === false || !str_ends_with($text, ')')) {
@@ -237,7 +237,7 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
                 $st['checks'][$m[1]] = $m[2];
                 $st['order'][] = $m[1];
             } elseif (preg_match(self::CONSTRAINT_ITEM, $item, $m)) {
-                // 이름 없는 constraint 는 이름이 빈 객체로 보고한다. primary key 의 다른 형식은 table 을 읽지 못하게 한다.
+                // A constraint without a name is reported with an empty name. Any other form of primary key makes the table unreadable.
                 $kind = ['CHECK' => 'check', 'UNIQUE' => 'unique', 'FOREIGN KEY' => 'foreign_key'][$m[2]] ?? null;
                 if ($kind === null) {
                     $st['unsupported'] = "the primary key \"$item\" has no dbspec definition";
@@ -245,7 +245,7 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
                 }
                 $unsupported[] = [$kind, $m[1], "the table item \"$item\" has no dbspec definition"];
             } elseif (preg_match(self::COLUMN_ITEM, $item, $m)) {
-                // 정의는 pragma_table_xinfo 가 읽고, 그 text 는 renderer 형식인지 확인한다.
+                // The definition is read by pragma_table_xinfo, and its text is checked to be in renderer form.
                 $st['columns'][$m[1]] = $item;
             } else {
                 $st['unsupported'] = "the table item \"$item\" has no dbspec definition";
@@ -256,9 +256,9 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
     }
 
     /**
-     * column 정의 text 가 renderer 의 column 형식, 곧 이름, 선언 type, NULL 이나 NOT
-     * NULL, 그리고 있으면 DEFAULT 뿐인지 알려 준다. SQLite 는 keyword 인 type 이름을
-     * 대문자로 보고하므로 type 은 대소문자 없이 비교한다.
+     * Tells whether the column definition text is the renderer's column form: name, declared type, NULL or NOT
+     * NULL, and, if present, only a DEFAULT. SQLite reports a type name that is a keyword
+     * in upper case, so the type is compared without regard to case.
      */
     private static function columnText(string $item, string $name, string $declared, bool $notNull, ?string $default): bool
     {
@@ -278,7 +278,7 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
         return $rest === "$tail DEFAULT $default" || $rest === "$tail DEFAULT ($default)";
     }
 
-    /** 괄호와 따옴표 밖의 쉼표로 나눈다. @return list<string> */
+    /** Splits on commas outside parentheses and quotes. @return list<string> */
     private static function splitTopLevel(string $text): array
     {
         $out = [];

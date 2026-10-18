@@ -10,7 +10,7 @@ namespace Polyspec\Orm;
  */
 final class Markdown
 {
-    /** markdown 연결에서 SQL 전용 surface가 받는 오류다(docs/dialects.md "Markdown IR executor"). */
+    /** The error that the SQL-only surface accepts on a markdown connection (docs/dialects.md "Markdown IR executor"). */
     /**
      * The begin control message of a transaction: a read-only transaction sends read_only true, any other leaves the
      * member out (docs/protocol.md §5 Session, the control cases of tests/bind/vectors.json).
@@ -33,8 +33,8 @@ final class Markdown
     }
 
     /**
-     * r을 검증하고 그 request message를 연결의 session에서 실행해 답과 runtime model을 돌려준다.
-     * message는 {ir_version, manifest_hash, request, params, now}다.
+     * Validates r, runs its request message on the connection's session, and returns the answer and the runtime model.
+     * The message is {ir_version, manifest_hash, request, params, now}.
      *
      * @return array{0: array<string, mixed>, 1: RuntimeModel}
      */
@@ -69,10 +69,10 @@ final class Markdown
     }
 
     /**
-     * parameter $i의 runtime value model JSON 값이다: decimal은 string, bytes는 base64, datetime은
-     * UTC의 YYYY-MM-DD HH:MM:SS.ffffff, date는 YYYY-MM-DD, time은 HH:MM:SS.ffffff다(p 뒤 자리는 0, 문자열 값도 같다). 어느 form인지는
-     * parameter가 채우는 slot의 type이 정한다. hex와 ip style column의 slot은 SQL 연결처럼 client가
-     * 값을 encode해 보낸다.
+     * The runtime value model JSON value of parameter $i: a decimal is a string, bytes are base64, and a datetime is
+     * YYYY-MM-DD HH:MM:SS.ffffff in UTC, a date is YYYY-MM-DD, a time is HH:MM:SS.ffffff (digits after p are 0; string values too). Which form it is
+     * is decided by the type of the slot the parameter fills. For a hex or ip style column's slot, the client encodes
+     * the value before sending it, as on an SQL connection.
      *
      * @param list<array{type: string, column: ?array}> $uses
      */
@@ -110,9 +110,9 @@ final class Markdown
     }
 
     /**
-     * row read(one, all, group_count, paginate)의 답을 plan과 위치 result로 읽는다. plan은 root
-     * node의 배치 하나이고, result의 각 행의 마지막 칸이 그 행의 join과 relation 행(MarkdownLinks)이다.
-     * paginate의 셋째 값은 조건에 맞는 모든 행의 수다.
+     * Reads the answer of row reads (one, all, group_count, paginate) as a plan and a positional result. The plan is one placement of the root
+     * node; the last cell of each row in the result is that row's join and relation rows (MarkdownLinks).
+     * The third value of paginate is the number of all rows that match the condition.
      *
      * @return array{0: array, 1: array, 2: int}
      */
@@ -135,7 +135,7 @@ final class Markdown
         return [$plan, ['main' => $main, 'steps' => [], 'params' => $r->params, 'markdown' => true], is_int($count) ? $count : 0];
     }
 
-    /** count, sum, avg의 답이다. */
+    /** The answer for count, sum, and avg. */
     public static function scalar(Db $db, Request $r): mixed
     {
         [$answer] = self::call($db, $r);
@@ -153,8 +153,8 @@ final class Markdown
     }
 
     /**
-     * write의 답 {affected, keys}이다. keys는 insert한 행의 primary key를 insert 순서로 담는다:
-     * identity는 정수, key_prefix key는 text다.
+     * The write answer {affected, keys}. keys holds the primary keys of inserted rows in insert order:
+     * an identity is an integer, and a key_prefix key is text.
      *
      * @return array{0: list<int|float|string|null>, 1: int}
      */
@@ -172,7 +172,7 @@ final class Markdown
         return [array_map(self::aggregateValue(...), $keys), $affected];
     }
 
-    /** sum과 avg 답의 값, 그리고 write 답의 key다: 정수, 소수, decimal string, 없으면 null이다. */
+    /** The value of a sum or avg answer, and the key of a write answer: an integer, a decimal, a decimal string, or null if none. */
     private static function aggregateValue(mixed $v): int|float|string|null
     {
         if ($v === null || is_int($v) || is_float($v) || is_string($v)) {
@@ -181,24 +181,24 @@ final class Markdown
         throw self::answerError('the value ' . json_encode($v) . ' is no number');
     }
 
-    /** markdown 답의 행이 마지막 칸에 가진 join과 relation이다. */
+    /** The join and relation that a row of a markdown answer holds in its last cell. */
     public static function links(array $row): MarkdownLinks
     {
         $links = $row[count($row) - 1] ?? null;
         return $links instanceof MarkdownLinks ? $links : new MarkdownLinks();
     }
 
-    /** JSON object로 읽은 행인지다. */
+    /** Whether the row was read as a JSON object. */
     private static function isObject(mixed $v): bool
     {
         return is_array($v) && ($v === [] || !array_is_list($v));
     }
 
     /**
-     * query $q의 node 배치다. column은 답에서 그 node의 첫 행이 정하고, 그 뒤 행은 같은 output을 같은
-     * 순서로 가져야 한다. join과 relation의 배치는 그 child 행의 첫 행이 정한다. 행이 없는 node는
-     * column이 없다: 그 node의 model은 만들어지지 않는다. 행이 없는 group count는 group column과
-     * row_count를 column으로 가진다.
+     * The placement of the node for query $q. The columns are decided by the node's first row in the answer, and later rows must have the same output in the same
+     * order. The placement of join and relation is decided by the first row of the child rows. A node with no rows
+     * has no columns: the node's model is not built. A group count with no rows has the group column and
+     * row_count as its columns.
      *
      * @param list<mixed> $rows
      */
@@ -209,7 +209,7 @@ final class Markdown
         $rels = array_column($q['relations'] ?? [], null, 'rel');
         $asm = ['entity' => $q['entity'], 'columns' => [], 'key' => []];
         $first = $rows[0] ?? null;
-        // 행이 없는 group count도 그 결과의 column을 가진다: group column과 row_count다.
+        // A group count with no rows still has the result's columns: the group column and row_count.
         $outputs = $first === null && $groups ? [...$q['group_by'], 'row_count'] : null;
         if ($first !== null) {
             if (!self::isObject($first)) {
@@ -260,7 +260,7 @@ final class Markdown
             $asm['children'][] = [
                 'rel' => $name, 'kind' => $rel['kind'], 'flatten' => !empty($rel['query']['flatten']),
                 'assemble' => self::layout($m, $rel['query'], false, $child),
-                // 이 행이 relation 행의 외래 key가 가리키는 행이면 그 행들은 이 행에 속한다(planner와 같다).
+                // If this row is the row that a relation row's foreign key points at, those rows belong to this row (same as the planner).
                 'cascade' => empty($rel['query']['no_cascade_delete']) && $parentKeys === $ent['pk'] && $childKeys !== $target['pk'],
             ];
         }
@@ -268,9 +268,9 @@ final class Markdown
     }
 
     /**
-     * output 이름의 배치다: group count의 row_count, scalar subquery, column 함수, 아니면 node entity의
-     * column이다. markdown executor는 모든 codec stage를 client에 맡기므로 column의 codec 전체가
-     * decode할 style이다.
+     * The placement of output names: the group count's row_count, a scalar subquery, a column function, or otherwise the node entity's
+     * column. The markdown executor leaves every codec stage to the client, so the whole codec of the column
+     * is the style it decodes.
      */
     private static function outCol(RuntimeModel $m, array $q, array $ent, bool $groups, string $name, int $index): array
     {
@@ -299,8 +299,8 @@ final class Markdown
     }
 
     /**
-     * relation의 값을 행 목록으로 읽는다: one relation은 object나 null, many relation은 array,
-     * key_by relation은 key로 묶은 object다.
+     * Reads a relation's value as a list of rows: a one relation is an object or null, a many relation is an array,
+     * and a key_by relation is an object grouped by key.
      *
      * @return list<mixed>
      */
@@ -319,8 +319,8 @@ final class Markdown
     }
 
     /**
-     * 답의 행들을 node 배치 $asm의 위치 행으로 읽는다: output 값, 그리고 마지막 칸에 join과
-     * relation의 행이다. codec column은 node마다 decode한다.
+     * Reads the answer's rows as the positional rows of node placement $asm: the output values, and in the last cell the join and
+     * relation rows. A codec column is decoded per node.
      *
      * @param list<mixed> $rows
      * @return list<list<mixed>>
@@ -366,7 +366,7 @@ final class Markdown
         return $out;
     }
 
-    /** 답의 값 하나를 column type의 PHP 값으로 읽는다. 값은 parameter와 같은 runtime value model이다. */
+    /** Reads one answer value as a PHP value of the column type. The value is the same runtime value model as a parameter. */
     private static function answerValue(string $type, mixed $v, string $where): mixed
     {
         if ($v === null) {

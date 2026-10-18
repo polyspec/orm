@@ -11,18 +11,18 @@ namespace Polyspec\Orm\Dbspec;
  */
 final class PlanSteps
 {
-    /** 되돌릴 수 없는 step 의 이유(docs/plans.md "Irreversible steps"). */
+    /** The reason for a step that cannot be reverted (docs/plans.md "Irreversible steps"). */
     public const IRREVERSIBLE_PRECISION = 'narrowing the precision rounds the values written since';
-    /** SQLite 다시 만들기의 작업 table. */
+    /** The work table for SQLite rebuilding. */
     public const REBUILD_TABLE = 'dbspec$rebuild';
 
     /** @var list<PlanStep> */
     private array $out = [];
-    /** @var array<string, true> SQLite 에서 다시 만드는 target table */
+    /** @var array<string, true> The target tables rebuilt in SQLite */
     private array $rebuilt = [];
     /**
-     * 보관 이름: "table.column"(지우는 column, source table 과 column 이름), table(지우는
-     * table), "+table.column"(더하는 column, target 이름)
+     * Stash name: "table.column" (the column to drop, given by source table and column name), table
+     * (the table to drop), "+table.column" (the column to add, given by target name)
      *
      * @var array<string, string>
      */
@@ -68,7 +68,7 @@ final class PlanSteps
         return $this->holds[$key] ?? throw new \LogicException("No holding name for $key");
     }
 
-    /** docs/plans.md "Hiding instead of dropping"의 순서로 보관 이름을 정한다. */
+    /** Decides the stash name in the order of docs/plans.md "Hiding instead of dropping". */
     private function numberHolds(): void
     {
         $d = $this->d;
@@ -127,7 +127,7 @@ final class PlanSteps
                 }
             }
         }
-        // 3. check, unique, index 와 지우는 table 의 객체
+        // 3. check, unique, index, and objects of the table to drop
         $dropTables = [];
         foreach ($d->dropObjects as $s => $objects) {
             if ($sqlite && (isset($this->rebuilt[$this->targetName((string) $s)]) || in_array((string) $s, $d->dropped, true))) {
@@ -192,7 +192,7 @@ final class PlanSteps
         foreach (PlanText::sortedBy($d->renamedColumns, static fn(ColumnRename $r): string => "{$r->table}.{$r->old}") as $r) {
             $this->add(new PlanStep($this->renameColumn($r->table, $r->old, $r->new), $this->renameColumn($r->table, $r->new, $r->old), '', self::present('column', $r->table, $r->new)));
         }
-        // 5. 지우는 column 과 table 을 숨긴다
+        // 5. Hide the column and table to drop
         if (!$sqlite) {
             foreach ($d->matched as $name) {
                 $src = $d->source[$d->tableOf[$name]];
@@ -216,7 +216,7 @@ final class PlanSteps
             $this->add(new PlanStep($this->r->table($t)[0], 'DROP TABLE ' . $this->q($name), '', self::present('table', $name, '')));
             $this->createIndexes($t, $name);
         }
-        // 7. add, alter column; SQLite 다시 만들기
+        // 7. add, alter column; SQLite rebuild
         foreach ($d->matched as $name) {
             if ($sqlite) {
                 if (isset($this->rebuilt[$name])) {
@@ -312,7 +312,7 @@ final class PlanSteps
         return PlanDiff::column($t, $name) ?? throw new \LogicException("Table {$t->name} has no column $name");
     }
 
-    /** source table 의 target 이름; 지우는 table 은 source 이름 그대로다. */
+    /** The target name of the source table; the table to drop keeps its source name. */
     private function targetName(string $source): string
     {
         $target = array_search($source, $this->d->tableOf, true);
@@ -325,9 +325,9 @@ final class PlanSteps
     }
 
     /**
-     * SQLite 가 table 을 다시 만들어야 하는지 알려 준다: 이름, column, foreign
-     * key, check 중 하나라도 바뀌면 그렇다. index 와 unique 만 바뀌거나 trigger
-     * 만 바뀌면 다시 만들지 않는다.
+     * Tells whether SQLite must rebuild the table: it does if any of name, columns, foreign
+     * keys, or checks changes. If only indexes and uniques change, or only triggers
+     * change, it is not rebuilt.
      */
     private function sqliteRebuilds(string $name): bool
     {
@@ -348,7 +348,7 @@ final class PlanSteps
         return false;
     }
 
-    /** MySQL 과 PostgreSQL 에서 지우는 column 을 nullable 로 바꾸고 보관 이름으로 숨긴다. */
+    /** On MySQL and PostgreSQL, makes the column to drop nullable and hides it under its stash name. */
     private function hideColumn(string $table, Column $c, string $h): void
     {
         if (!$c->nullable) {
@@ -370,32 +370,32 @@ final class PlanSteps
         $this->add(new PlanStep($this->renameColumn($table, $c->name, $h), $this->renameColumn($table, $h, $c->name), '', self::present('column', $table, $h)));
     }
 
-    /** source column c 를 non-null 로 되돌리는 rollback 의 null 검사다. */
+    /** The null check of the rollback that restores source column c to non-null. */
     private function nullCheck(string $table, string $column, Column $c): NullCheck
     {
         return new NullCheck($table, $column, $c->default === null ? null : $this->r->defaultText($c->type, $c->default));
     }
 
-    /** time 이나 datetime 의 정밀도가 커지는지 알려 준다. */
+    /** Tells whether the precision of time or datetime increases. */
     private static function precisionGrows(ColumnType $from, ColumnType $to): bool
     {
         return ($to->name === 'time' || $to->name === 'datetime') && $to->name === $from->name && $to->parameters[0] > $from->parameters[0];
     }
 
-    /** SQLite table 을 작업 table 을 거쳐 다시 만든다(docs/plans.md "Steps"). */
+    /** Rebuilds a SQLite table through a work table (docs/plans.md "Steps"). */
     private function rebuild(string $name): void
     {
         $d = $this->d;
         $t = $d->target[$name];
         $src = $d->source[$d->tableOf[$name]];
         $work = $this->q(self::REBUILD_TABLE);
-        // 새 정의: target table 과 보관 이름의 지우는 column
+        // New definition: the target table and the columns to drop, under their stash names
         $hiddenDropped = [];
         foreach ($d->removed[$name] ?? [] as $c) {
             $col = self::column($src, $c);
             $hiddenDropped[] = new Column($this->hold($src->name . '.' . $c), $col->type, $col->nullable, $col->identity, $col->default);
         }
-        // 옛 정의: 이름 바꾸기를 적용한 source table 과 보관 이름의 더하는 column
+        // Old definition: the source table with renames applied, and the columns to add, under their stash names
         $old = $this->renamedSource($name);
         $hiddenAdded = [];
         foreach ($d->added[$name] ?? [] as $c) {
@@ -403,7 +403,7 @@ final class PlanSteps
             $hiddenAdded[] = new Column($this->hold("+$name.$c"), $col->type, $col->nullable, $col->identity, $col->default);
         }
         $newCreate = fn(string $as): string => $this->r->createTable($t, $as, static fn(string $c): string => Names::render($t->name, $c), $hiddenDropped);
-        // sourceColumn 은 옛 정의 column 의 source 이름이다. 지우는 column 은 이름이 그대로다.
+        // sourceColumn is the source name of the column in the old definition. A column to drop keeps its name.
         $sourceColumn = static fn(string $c): string => $d->columnOf[$name][$c] ?? $c;
         $oldCreate = $this->r->createTable($old, $name, static fn(string $c): string => Names::render($src->name, $sourceColumn($c)), $hiddenAdded);
         $newColumns = [];
@@ -414,7 +414,7 @@ final class PlanSteps
             $newColumns[] = $c->name;
         }
         $newList = $this->r->list($newColumns);
-        // 옛 table 에서 새 정의로 옮기는 식
+        // An expression that moves values from the old table to the new definition
         $into = $from = $intoRestore = $fromRestore = [];
         foreach ($t->columns as $c) {
             $oldName = $d->columnOf[$name][$c->name] ?? null;
@@ -435,7 +435,7 @@ final class PlanSteps
             $intoRestore[] = $this->q($hiddenDropped[$i]->name);
             $fromRestore[] = $this->q($c);
         }
-        // 새 정의에서 옛 정의로 되돌리는 식
+        // An expression that goes back from the new definition to the old one
         $backInto = $backFrom = [];
         $irreversible = '';
         $checks = [];
@@ -454,14 +454,14 @@ final class PlanSteps
                 }
                 continue;
             }
-            // 지우는 column: 새 정의에서는 보관 이름이다.
+            // Column to drop: in the new definition it is its stash name.
             $h = $this->hold($src->name . '.' . $sourceName);
             $backFrom[] = $this->q($h);
             if (!$c->nullable) {
                 $checks[] = $this->nullCheck($name, $h, $c);
             }
         }
-        // 옛 table 에 숨긴 더한 column 이 있으면 그 값도 되돌린다.
+        // If the old table has hidden added columns, their values are reverted too.
         $backIntoRestore = $backInto;
         $backFromRestore = $backFrom;
         foreach ($d->added[$name] ?? [] as $i => $c) {
@@ -536,8 +536,8 @@ final class PlanSteps
     }
 
     /**
-     * target table name 의 source table 에 이름 바꾸기를 적용한 정의다. 지우는 table 을
-     * 참조하는 foreign key 는 source 이름을 유지한다.
+     * The definition of the target table name from the source table with a rename applied. A table being dropped
+     * keeps the source name in the foreign keys that refer to it.
      */
     private function renamedSource(string $name): Table
     {
@@ -576,8 +576,8 @@ final class PlanSteps
     }
 
     /**
-     * SQLite 다시 만들기에서 source 값을 target column 형식으로 옮기는 식이다.
-     * time 과 datetime 은 늘어난 소수 자리를 0 으로 채운다.
+     * The expression that moves a source value into the target column's form in a SQLite rebuild.
+     * time and datetime fill the added fractional digits with 0.
      */
     private function copyValue(Column $from, Column $to): string
     {
@@ -632,8 +632,8 @@ final class PlanSteps
     }
 
     /**
-     * 렌더링한 trigger statement 에서 trigger 이름, CREATE TRIGGER 와 PostgreSQL
-     * function 을 짝짓는다.
+     * From a rendered trigger statement, pairs the trigger name, CREATE TRIGGER, and the PostgreSQL
+     * function.
      *
      * @return list<array{0: string, 1: string, 2: string}>
      */
@@ -694,8 +694,8 @@ final class PlanSteps
     }
 
     /**
-     * table t 를 name 으로 둔 unique key 와 index 를 renderer 순서로 [이름, 만드는
-     * statement, 지우는 statement]로 돌려준다. SQLite unique key 는 unique index 다.
+     * Returns, in renderer order, the unique keys and indexes of table t named name as [name, create
+     * statement, drop statement]. A SQLite unique key is a unique index.
      *
      * @return list<array{0: string, 1: string, 2: string}>
      */
@@ -719,7 +719,7 @@ final class PlanSteps
         return $this->r->dialect === 'mysql' ? 'DROP INDEX ' . $this->q($name) . ' ON ' . $this->q($table) : 'DROP INDEX ' . $this->q($name);
     }
 
-    /** renderer 가 CREATE TABLE 뒤에 쓰는 unique index 와 index 다. */
+    /** The unique index and index that the renderer writes after CREATE TABLE. */
     private function createIndexes(Table $t, string $name): void
     {
         foreach ($this->indexes($t, $name) as [$indexName, $create, $drop]) {
@@ -728,8 +728,8 @@ final class PlanSteps
     }
 
     /**
-     * table t(name 으로 둔)의 객체 o 를 더하는 statement, 지우는 statement, 그 효과의
-     * 종류다.
+     * For object o of table t (named name): the statement that adds it, the statement that drops it, and
+     * the kind of its effect.
      *
      * @param array{0: string, 1: string} $o [kind, name]
      * @return array{0: string, 1: string, 2: string}
@@ -765,7 +765,7 @@ final class PlanSteps
     }
 
     /**
-     * source table t 의 객체를 지우고, rollback 은 source 정의로 다시 만든다.
+     * Drops the objects of source table t; a rollback rebuilds them from the source definition.
      *
      * @param array{0: string, 1: string} $o [kind, name]
      */
@@ -783,7 +783,7 @@ final class PlanSteps
     }
 
     /**
-     * table 의 renderer CHECK 이름과 식이다.
+     * The renderer CHECK name and expression of the table.
      *
      * @return array<string, string>
      */

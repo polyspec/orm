@@ -11,9 +11,9 @@ import (
 
 var refusalColumns = []string{"seq", "amount"}
 
-// refusalModels는 immutable trigger가 모든 update를 거절하고 CHECK constraint가
-// 양수가 아닌 amount를 거절하는 refused_row를 새 database에 설치하고, 연결된
-// model 생성 함수를 돌려준다.
+// refusalModels: an immutable trigger refuses every update, and a CHECK constraint
+// refuses a non-positive amount. It installs refused_row in a new database and returns the connected
+// model constructor.
 func refusalModels(t *testing.T, driver string) func() *orm.Core {
 	t.Helper()
 	s := fixtureSchema(t, "refusal")
@@ -34,9 +34,9 @@ func refusalModels(t *testing.T, driver string) func() *orm.Core {
 	}
 }
 
-// triggerRefused는 immutable row를 update한다. trigger가 catalog에 없는
-// database 오류로 write를 거절하고, client는 그것을 driver message와 driver
-// 오류를 cause로 가진 DRIVER로 보고한다.
+// triggerRefused updates an immutable row. The trigger, which is not in the catalog,
+// refuses the write with a database error, and the client reports it as DRIVER with the driver
+// message and the driver error as its cause.
 func triggerRefused(t *testing.T, driver string) {
 	model := refusalModels(t, driver)
 	c := model()
@@ -72,8 +72,8 @@ func triggerRefused(t *testing.T, driver string) {
 	}
 }
 
-// checkRefused는 CHECK constraint가 거절하는 row를 insert하고, client는 그것을
-// CONSTRAINT로 보고한다.
+// checkRefused inserts a row that the CHECK constraint refuses, and the client reports it
+// as a CONSTRAINT.
 func checkRefused(t *testing.T, driver string) {
 	model := refusalModels(t, driver)
 	c := model()

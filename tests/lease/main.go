@@ -1,41 +1,41 @@
-// lease는 여러 실행이 함께 쓰는 test 자원(test server, Rust target directory, TypeScript build)의
-// 보유를 directory 하나의 lock file로 다룬다. 보유는 두 가지다:
+// lease handles the test resources that several runs share (test server, Rust target directory, TypeScript build)
+// holdings as a lock file in one directory. There are two kinds of holding:
 //
-//	shared     여러 실행이 동시에 가진다. 자원을 쓰는 실행이 가진다.
-//	exclusive  하나만 가지고, shared나 다른 exclusive가 있으면 얻지 못한다. 자원을 지우거나 다시 만드는
-//	           일(정지, migration, build)이 가진다.
+//	shared     several runs hold it at once. A run that uses the resource holds it.
+//	exclusive  only one holds it; it cannot be obtained while a shared or another exclusive holding exists. Held by work
+//	           that erases or rebuilds the resource (stop, migration, build).
 //
-// 보유 하나는 <dir>의 file 하나이고 보유자(checkout path, pid, 시작 시각, 명령)를 담는다. file은 다른 이름의
-// 임시 file을 쓴 뒤 rename(shared)이나 link(exclusive, 이미 있으면 실패)로 만든다. shared는 만든 뒤
-// exclusive가 있는지, exclusive는 만든 뒤 shared가 있는지 보고, 있으면 자기 file을 지우고 거부한다. 그래서
-// 두 보유가 겹치지 않는다.
+// A holding is one file in <dir> and contains the holder (checkout path, pid, start time, command). The file is written as a
+// temporary file and made by rename (shared) or link (exclusive, fails if it already exists). Shared checks, after creating it,
+// whether an exclusive exists, and exclusive checks, after creating it, whether a shared exists; if so, it removes its own file and refuses. So
+// two holdings never overlap.
 //
-// exclusive를 가진 process의 하위 process가 다시 보유를 청하면, 그 보유는 조상의 보유 안에서 나뉜다: 하위
-// process는 조상 보유의 안쪽 directory(<dir>/within-<pid>-<시작 시각>)에서 같은 규칙으로 보유를 얻는다. 그래서
-// 조상(예: make feature-check)이 동시에 실행하는 하위 process들도 서로의 exclusive를 막고, 같은 process가 다시
-// 청한 보유만 그대로 쓴다. 안쪽 directory는 조상의 보유가 풀릴 때 함께 지운다.
+// If a child process of a process holding an exclusive requests a holding again, that holding is divided within the ancestor's holding: the child
+// process gets a holding by the same rules in the inner directory of the ancestor's holding (<dir>/within-<pid>-<start time>). So
+// child processes that an ancestor (e.g. make feature-check) runs concurrently also block each other's exclusives, and the same process uses only
+// the holding it requested again. The inner directory is removed together when the ancestor's holding is released.
 //
-// 기다리는 일은 polling이 아니다: 거부되면 곧바로 보유자를 적고 끝나거나(--wait 없음), directory 변경을
-// 운영체제의 알림(internal/procevent)으로 기다린 뒤 다시 얻는다(--wait).
+// Waiting is not polling: when refused, it either ends at once naming the holder (without --wait), or waits for a change in the directory
+// through the operating system's notification (internal/procevent) and then acquires again (--wait).
 //
-// hold의 보유는 보유자 process가 끝난 뒤 releaser process(release-on-exit)가 지우므로, 보유 file은 releaser의
-// pid도 담는다. 보유자가 끝났고 releaser가 살아 있는 보유는 풀리는 중이다: --wait는 directory 변경이나 releaser의
-// 종료를 기다린다. 보유자와 releaser가 모두 없는 보유(죽은 보유)는 아무도 지우지 않으므로 막지 않게 가져간다.
-// shared는 자원을 읽기만 했으므로 누구든 그 file을 지우고 진행한다. exclusive는 자원을 바꾸다 끝났을 수 있으므로
-// 다음 exclusive 보유자만 가져가고 자원을 다시 만든다. shared로 청한 실행은 죽은 exclusive가 남긴 자원을 읽지
-// 않도록 거부되며, 거부 message가 그것을 적는다. 가져간 보유는 stderr에 적는다. clear-dead는 죽은 보유를
-// 명시적으로 지우고 지운 것을 보고한다.
+// The holding of hold is removed by a releaser process (release-on-exit) after the holder process ends, so the holding file also records the
+// releaser's pid. A holding whose holder has ended while the releaser is alive is being released: --wait waits for a directory change or the releaser's
+// exit. A holding where both holder and releaser are gone (a dead holding) is taken without blocking, since nobody removes it.
+// shared only read the resource, so anyone may remove its file and proceed. An exclusive may have left the resource partly changed, so only
+// the next exclusive holder takes it and rebuilds the resource. A run requesting shared is refused so that it does not read a resource left by a dead exclusive,
+// and the refusal message states it. The holding taken is written to stderr. clear-dead
+// explicitly removes dead holdings and reports what it removed.
 //
 // Usage:
 //
 //	lease hold <dir> shared|exclusive [--wait] --pid <pid>
-//	                                                  pid의 process가 끝날 때까지 보유한다. pid가 이미 exclusive를
-//	                                                  가지면 그 보유를 그대로 쓰고, 조상 process가 가지면 그 보유
-//	                                                  안에서 얻는다
+//	                                                  holds until the process with pid ends. If pid already holds an exclusive,
+//	                                                  it uses that holding as is; if an ancestor process holds it, that holding
+//	                                                  is taken within it
 //	lease run <dir> shared|exclusive [--wait] -- <command> [args...]
-//	                                                  command를 실행하는 동안 보유한다
-//	lease list <dir>                                  보유자를 적는다
-//	lease clear-dead <dir>                            죽은 보유를 지우고 적는다
+//	                                                  holds it while the command runs
+//	lease list <dir>                                  prints the holders
+//	lease clear-dead <dir>                            removes dead holdings and prints them
 package main
 
 import (
@@ -60,13 +60,13 @@ import (
 
 const exclusiveName = "exclusive.json"
 
-// errHeld는 그 process가 이미 exclusive를 가지고 있다는 뜻이다. hold는 그 보유를 그대로 쓴다.
+// errHeld means this process already holds an exclusive. hold uses that holding as is.
 var errHeld = errors.New("the process already holds the exclusive lease")
 
-// errAgain은 안쪽 directory에서 기다리는 동안 조상의 보유가 풀렸다는 뜻이다. 바깥 directory부터 다시 얻는다.
+// errAgain means that while waiting in the inner directory, the ancestor's holding was released. It acquires again from the outer directory.
 var errAgain = errors.New("the enclosing lease was released")
 
-// inside는 조상 process가 exclusive를 가진다는 뜻이다. 보유는 그 보유의 안쪽 directory에서 얻는다.
+// inside means the ancestor process holds the exclusive. The holding is taken in that holding's inner directory.
 type inside struct {
 	holder holder
 }
@@ -75,12 +75,12 @@ func (i inside) Error() string {
 	return "an ancestor process holds the exclusive lease: " + i.holder.String()
 }
 
-// within은 exclusive 보유 h의 안쪽 directory다. 그 보유를 가진 process의 하위 process들이 여기서 보유를 나눈다.
+// within is the inner directory of exclusive holding h. The child processes of the process that holds it divide holdings here.
 func within(dir string, h holder) string {
 	return filepath.Join(dir, fmt.Sprintf("within-%d-%s", h.PID, strings.ReplaceAll(h.Started, ":", "")))
 }
 
-// release는 보유 file을 지우고, exclusive였으면 그 안쪽 directory도 지운다.
+// release removes the holding file and, if it was an exclusive, also its inner directory.
 func release(file string) {
 	text, err := os.ReadFile(file)
 	var h holder
@@ -90,24 +90,24 @@ func release(file string) {
 	os.Remove(file)
 }
 
-// holder는 보유 file의 내용이다.
+// holder is the content of the holding file.
 type holder struct {
 	Kind     string `json:"kind"`
 	Checkout string `json:"checkout"`
 	PID      int    `json:"pid"`
 	Started  string `json:"started"`
 	Command  string `json:"command"`
-	// Releaser는 hold가 남긴 release-on-exit process의 pid다. run의 보유는 보유자 자신이 지우므로 0이다.
+	// Releaser is the pid of the release-on-exit process left by hold. For run's holding, the holder removes it itself, so it is 0.
 	Releaser int `json:"releaser,omitempty"`
 	file     string
 }
 
-// releasing은 보유자는 끝났지만 그 보유를 지울 releaser가 아직 살아 있는지다.
+// releasing means the holder has ended but the releaser that will remove the holding is still alive.
 func (h holder) releasing() bool {
 	return !procevent.Alive(h.PID) && h.Releaser != 0 && procevent.Alive(h.Releaser)
 }
 
-// gone은 보유자도 releaser도 없는지다. 그 보유는 아무도 지우지 않는다.
+// gone means neither the holder nor the releaser exists. Nobody removes that holding.
 func (h holder) gone() bool {
 	return !procevent.Alive(h.PID) && (h.Releaser == 0 || !procevent.Alive(h.Releaser))
 }
@@ -127,7 +127,7 @@ func usage() {
 	os.Exit(2)
 }
 
-// refusal은 보유를 얻지 못한 이유와 막는 보유자다.
+// refusal is the reason the holding could not be obtained and the blocking holder.
 type refusal struct {
 	blocking []holder
 }
@@ -140,8 +140,8 @@ func (r refusal) Error() string {
 	return "held by:\n" + strings.Join(lines, "\n")
 }
 
-// current는 h의 file이 아직 같은 보유자를 담는지다. 보유자는 file을 지운 뒤에 끝나고, 같은 이름(exclusive.json)은
-// 다른 보유자가 다시 만들 수 있으므로, file이 있는지와 그 pid가 같은지를 함께 본다.
+// current checks whether h's file still records the same holder; the holder ends after removing the file, and the same name (exclusive.json)
+// may be created again by another holder, so it checks both whether the file exists and whether its pid matches.
 func current(h holder) bool {
 	text, err := os.ReadFile(h.file)
 	if err != nil {
@@ -151,8 +151,8 @@ func current(h holder) bool {
 	return json.Unmarshal(text, &now) == nil && now.PID == h.PID && now.Started == h.Started
 }
 
-// dead는 막는 보유 가운데 보유자와 releaser가 모두 없는데 그 보유가 아직 남은 것이 있는지다. process를 본 뒤에
-// 보유가 남았는지 다시 본다: 정상으로 끝난 보유는 그 사이에 지워진다.
+// dead means: among blocking holdings, whether any remain where both holder and releaser are gone. It looks again after checking the process,
+// to see whether the holding still remains: a holding that ended normally is removed in between.
 func (r refusal) dead() bool {
 	for _, h := range r.blocking {
 		if h.gone() && current(h) {
@@ -162,7 +162,7 @@ func (r refusal) dead() bool {
 	return false
 }
 
-// releasers는 막는 보유 가운데 풀리는 중인 것의 releaser pid다.
+// releasers is the releaser pid of those blocking holdings that are being released.
 func (r refusal) releasers() []int {
 	var out []int
 	for _, h := range r.blocking {
@@ -173,8 +173,8 @@ func (r refusal) releasers() []int {
 	return out
 }
 
-// takeOver는 kind로 청한 실행이 가져갈 수 있는 죽은 보유를 지우고 지운 것이 있는지 돌려준다. 죽은 shared는
-// 누구든, 죽은 exclusive는 exclusive로 청한 실행만 가져간다. 지우기 직전에 그 file이 아직 같은 보유인지 본다.
+// takeOver removes the dead holdings that a run requesting kind may take, and returns whether anything was removed. A dead shared
+// may be taken by anyone; a dead exclusive is taken only by a run requesting exclusive. Just before removing, it checks whether the file is still the same holding.
 func (r refusal) takeOver(kind string) bool {
 	took := false
 	for _, h := range r.blocking {
@@ -188,7 +188,7 @@ func (r refusal) takeOver(kind string) bool {
 	return took
 }
 
-// released는 막는 보유 가운데 이미 풀린 것이 있는지다. 그러면 기다리지 않고 다시 시도한다.
+// released means whether any blocking holding has already been released. If so, it retries without waiting.
 func (r refusal) released() bool {
 	for _, h := range r.blocking {
 		if !current(h) {
@@ -198,7 +198,7 @@ func (r refusal) released() bool {
 	return false
 }
 
-// holders는 dir의 보유를 이름 순서로 읽는다. 쓰는 중인 임시 file(.tmp-)은 보유가 아니다.
+// holders reads the holdings in dir in name order. A temporary file being written (.tmp-) is not a holding.
 func holders(dir string) ([]holder, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -236,8 +236,8 @@ func random() string {
 	return hex.EncodeToString(b)
 }
 
-// acquire는 kind의 보유를 pid의 이름으로 한 번 시도한다. 얻으면 보유 file의 경로를, 막히면 refusal을
-// 돌려준다.
+// acquire tries once to take a holding of kind under the name pid. If it succeeds it returns the holding file's path; if blocked, it returns a refusal
+// instead.
 func acquire(dir, kind string, pid int, command string) (string, error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
@@ -268,7 +268,7 @@ func acquire(dir, kind string, pid int, command string) (string, error) {
 		for _, h := range all {
 			if h.Kind == "exclusive" {
 				os.Remove(file)
-				// 이 process가 exclusive를 가지면 이미 그 보유 안에 있고, 조상 process가 가지면 그 안에서 얻는다.
+				// If this process holds an exclusive, it is already inside that holding; if an ancestor process holds it, it acquires within that holding.
 				if h.PID == pid {
 					return "", errHeld
 				}
@@ -290,8 +290,8 @@ func acquire(dir, kind string, pid int, command string) (string, error) {
 			var blocking []holder
 			for _, h := range all {
 				if h.Kind == "exclusive" {
-					// 같은 process가 이미 가진 exclusive는 그 process의 것이다. 조상 process(예: 하위 make를 실행한
-					// make)가 가진 exclusive 안에서는 그 하위 process들이 안쪽 directory에서 보유를 나눈다.
+					// An exclusive already held by the same process belongs to that process. Within an exclusive held by an ancestor process (e.g. the make
+					// that ran the child make), its child processes divide holdings in the inner directory.
 					if h.PID == pid {
 						return "", errHeld
 					}
@@ -323,9 +323,9 @@ func acquire(dir, kind string, pid int, command string) (string, error) {
 	return file, nil
 }
 
-// acquireWaiting은 acquire를 하고, wait이면 막힐 때 dir의 변경 알림을 기다려 다시 시도한다. 감시는 시도
-// 전에 등록한다. 죽은 보유가 막으면 기다리지 않는다. 조상 process가 exclusive를 가지면 그 안쪽 directory에서
-// 같은 일을 하고, 거기서 기다리는 동안 조상의 보유(enclosing)가 풀리면 바깥 directory부터 다시 얻는다.
+// acquireWaiting calls acquire, and if wait, when blocked, waits for a change notification in dir and retries. Watching is registered before
+// the attempt. If a dead holding is blocking, it does not wait. If an ancestor process holds an exclusive, it does the same
+// in the inner directory; if the ancestor's holding (enclosing) is released while waiting there, it acquires again from the outer directory.
 func acquireWaiting(dir, kind string, pid int, command string, wait bool, enclosing *holder) (string, error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
@@ -348,12 +348,12 @@ func acquireWaiting(dir, kind string, pid int, command string, wait bool, enclos
 		}
 		var refused refusal
 		if errors.As(err, &refused) && refused.released() {
-			// 거부를 만든 보유가 그 사이에 풀렸다. 그 변경 알림은 감시 등록 뒤에 왔으므로 기다리지 않고 다시 시도한다.
+			// The holding that caused the refusal was released in the meantime. The change notification came after the watch was registered, so it retries without waiting.
 			closeWatch()
 			continue
 		}
 		if errors.As(err, &refused) && refused.takeOver(kind) {
-			// 죽은 보유를 가져갔다. 그 보유가 없는 상태에서 다시 시도한다.
+			// Took over a dead holding. Retries with no holding present.
 			closeWatch()
 			continue
 		}
@@ -376,8 +376,8 @@ func acquireWaiting(dir, kind string, pid int, command string, wait bool, enclos
 	}
 }
 
-// waitChange는 directory의 다음 변경이나, 풀리는 중인 보유의 releaser 가운데 하나의 종료를 기다린다. releaser가
-// 보유를 지우지 못하고 끝나면 directory는 바뀌지 않으므로 그 종료도 기다린다.
+// waitChange waits for the next change in the directory, or for the exit of one of the releasers of holdings being released. If a releaser
+// ends without removing the holding, the directory does not change, so it also waits for that exit.
 func waitChange(next func() error, releasers []int) error {
 	done := make(chan error, 1+len(releasers))
 	go func() { done <- next() }()
@@ -421,7 +421,7 @@ func main() {
 	command, dir := os.Args[1], os.Args[2]
 	switch command {
 	case "hold":
-		// hold <dir> <kind> [--wait] --pid <pid>: 보유를 얻고, pid의 종료를 기다려 보유를 지우는 process를 남긴다.
+		// hold <dir> <kind> [--wait] --pid <pid>: acquires the holding, waits for pid to exit, and leaves a process that removes the holding.
 		rest := os.Args[4:]
 		wait := false
 		if len(rest) > 0 && rest[0] == "--wait" {
@@ -443,8 +443,8 @@ func main() {
 		if err != nil {
 			refuse(dir, os.Args[3], err)
 		}
-		// releaser는 보유 file에 자기 pid를 적은 뒤 stdout에 한 줄을 쓴다. hold는 그 줄을 받은 뒤에 끝나므로, 보유자가
-		// hold 뒤에 끝나도 그 보유를 기다리는 실행은 releaser가 살아 있는 동안 기다린다.
+		// The releaser writes its pid into the holding file, then writes one line to stdout. hold ends only after receiving that line, so if the holder
+		// ends after hold, a run waiting for that holding waits while the releaser is alive.
 		releaser := exec.Command(os.Args[0], "release-on-exit", file, strconv.Itoa(pid))
 		releaser.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 		recorded, err := releaser.StdoutPipe()
@@ -464,8 +464,8 @@ func main() {
 		}
 		releaser.Process.Release()
 	case "release-on-exit":
-		// release-on-exit <file> <pid>: hold가 남기는 process다. pid의 종료 알림을 받으면 보유와 그 안쪽
-		// directory를 지운다.
+		// release-on-exit <file> <pid>: the process hold leaves behind. On receiving the exit notice of pid, it removes the holding and its inner
+		// directory.
 		if len(os.Args) != 4 {
 			usage()
 		}
@@ -479,7 +479,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "lease: record the releaser in %s: %v\n", file, err)
 			os.Exit(1)
 		}
-		// hold는 이 줄을 기다린다. 그 뒤 stdout은 닫는다: hold가 끝난 뒤에는 읽는 쪽이 없다.
+		// hold waits for this line. After that it closes stdout: once hold ends, nothing reads it.
 		fmt.Println("recorded")
 		os.Stdout.Close()
 		wait, err := procevent.WatchExit(pid)
@@ -512,8 +512,8 @@ func main() {
 		}
 		child := exec.Command(rest[1], rest[2:]...)
 		child.Stdin, child.Stdout, child.Stderr = os.Stdin, os.Stdout, os.Stderr
-		// 명령은 같은 process group에 있으므로 terminal의 interrupt는 명령에도 닿는다. 이 process는 그
-		// signal로 끝나지 않고 명령이 끝나기를 기다려 보유를 지운다.
+		// The command is in the same process group, so a terminal interrupt reaches the command too. This process
+		// does not end by signal; it waits for the command to finish, then removes the holding.
 		signal.Ignore(syscall.SIGINT, syscall.SIGQUIT)
 		runErr := child.Run()
 		release(file)
@@ -568,8 +568,8 @@ func main() {
 	}
 }
 
-// recordReleaser는 보유 file에 releaser pid를 더해 같은 이름으로 바꿔 쓴다. 바꿔 쓰기는 임시 file의 rename이라
-// 읽는 쪽은 언제나 온전한 file 하나를 본다.
+// recordReleaser writes the holding file again under the same name with the releaser pid added. The rewrite is a rename of a temporary file,
+// so the reader always sees one complete file.
 func recordReleaser(file string, pid int) error {
 	text, err := os.ReadFile(file)
 	if err != nil {
@@ -591,7 +591,7 @@ func recordReleaser(file string, pid int) error {
 	return os.Rename(temporary, file)
 }
 
-// nestedHolders는 dir의 보유와 그 안쪽 directory(within-)의 보유를 모두 읽는다.
+// nestedHolders reads both the holdings in dir and those in its inner directory (within-).
 func nestedHolders(dir string) ([]holder, error) {
 	out, err := holders(dir)
 	if err != nil {
@@ -614,7 +614,7 @@ func nestedHolders(dir string) ([]holder, error) {
 	return out, nil
 }
 
-// ancestorOrSelf는 holder가 pid 자신이거나 그 조상 process인지다. 조상은 ps로 parent process id를 따라 찾는다.
+// ancestorOrSelf checks whether the holder is pid itself or one of its ancestor processes. Ancestors are found by following parent process ids with ps.
 func ancestorOrSelf(holder, pid int) bool {
 	for current := pid; current > 1; {
 		if current == holder {
@@ -633,7 +633,7 @@ func ancestorOrSelf(holder, pid int) bool {
 	return false
 }
 
-// parentCommand는 보유자 process의 명령을 적는다. 읽을 수 없으면 pid만 적는다.
+// parentCommand records the command of the holder process. If it cannot be read, it records only the pid.
 func parentCommand(pid int) string {
 	output, err := exec.Command("ps", "-o", "command=", "-p", strconv.Itoa(pid)).Output()
 	if err != nil {

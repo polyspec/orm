@@ -384,7 +384,7 @@ func AsInt32(v any) (int32, error) {
 	return int32(n), nil
 }
 
-// AsInt16은 database 값을 넘침 없이 int16으로 바꾼다.
+// AsInt16 converts a database value to int16 without overflow.
 func AsInt16(v any) (int16, error) {
 	n, err := AsInt64(v)
 	if err != nil {
@@ -396,9 +396,9 @@ func AsInt16(v any) (int16, error) {
 	return int16(n), nil
 }
 
-// AsTimeText는 time(p) 값을 소수 자릿수가 정확히 p인 HH:MM:SS text로 바꾼다.
-// 시각은 00:00:00 이상 24:00:00 미만이며, p보다 긴 소수는 값을 잃으므로
-// CODEC_DECODE다.
+// AsTimeText converts a time(p) value to HH:MM:SS text with exactly p fractional digits.
+// The time runs from 00:00:00 up to but not including 24:00:00, and a fraction longer than p loses value, so
+// it is CODEC_DECODE.
 func AsTimeText(v any, precision int) (string, error) {
 	var s string
 	switch x := v.(type) {

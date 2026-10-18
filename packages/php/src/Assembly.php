@@ -10,7 +10,7 @@ final class Assembly
     public array $made = [];
 
     public readonly \DateTimeZone $zone;
-    /** markdown 답의 result인지다: 각 행의 마지막 칸이 그 행의 join과 relation 행(MarkdownLinks)이다. */
+    /** Whether this is the result of a markdown answer: the last cell of each row is that row's join and relation rows (MarkdownLinks). */
     private readonly bool $markdown;
 
     public function __construct(public readonly Db $db, public readonly ?Db $conn, private readonly array $result, public readonly bool $track = false)
@@ -20,8 +20,8 @@ final class Assembly
     }
 
     /**
-     * join $ch의 행이다. 없으면 null이다. SQL 결과에서는 join column이 부모 행에 함께 있고 첫 column이
-     * NULL이면 없다. markdown 답에서는 부모 행의 마지막 칸이 join 행을 가진다.
+     * The row of join $ch. If absent, null. In SQL results, the join column is in the parent row, and the first column
+     * If NULL, absent. In a markdown answer, the last cell of the parent row holds the join row.
      *
      * @param list<mixed> $parent
      * @return list<mixed>|null
@@ -35,15 +35,15 @@ final class Assembly
         return $first !== null && $parent[$first] !== null ? $parent : null;
     }
 
-    /** relation $ch의 행 배치다: SQL 결과에서는 relation step의 배치, markdown 답에서는 child 자신의 배치다. */
+    /** Row placement of relation $ch: in SQL results, the placement of the relation step; in a markdown answer, the placement of the child itself. */
     public function relationAssemble(array $ch): array
     {
         return $this->markdown ? $ch['assemble'] : $this->result['steps'][$ch['step']]['step']['assemble'];
     }
 
     /**
-     * relation $ch에서 부모 행 $parent의 행이다. SQL 결과에서는 relation step의 행을 key로 찾고,
-     * markdown 답에서는 부모 행의 마지막 칸이 relation 행을 가진다.
+     * The row of parent row $parent in relation $ch. In SQL results, it is found by the key of the relation step's row,
+     * in a markdown answer, the last cell of the parent row holds the relation row.
      *
      * @return list<list<mixed>>
      */

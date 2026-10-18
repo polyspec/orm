@@ -1,7 +1,7 @@
-//! planner: contracts/fixtures/planner.json의 `input`에 그 case의 schema 문서의 manifest hash를 더해
-//! 이 client의 engine으로 각 dialect에서 compile한다. statement(role, sql, bind slot의 param
-//! 순서(parent slot은 -1), table)가 `expected[dialect]`와 같거나 error code가 `expected.error`와 같아야 한다.
-//! engine의 compile은 crate 안에서만 보이므로 src/engine/mod.rs가 이 file을 unit test module로 둔다.
+//! planner: adds the manifest hash of the case's schema document to the `input` of contracts/fixtures/planner.json
+//! and compiles it for each dialect with this client's engine. A statement (role, sql, the params of the bind slots
+//! in order (the parent slot is -1), table) must equal `expected[dialect]`, or the error code must equal `expected.error`.
+//! The engine's compile is visible only inside the crate, so src/engine/mod.rs makes this file a unit test module.
 use super::ir_request::{members, repository, request, schema};
 use super::{compile, param_uses, validate, Dialect};
 use polyspec_orm_case_clock::CaseClock;
@@ -9,7 +9,7 @@ use polyspec_orm_schema::dbspec::Type;
 use serde_json::{json, Value};
 use std::time::Duration;
 
-/// 한 case가 자기 계산에 쓰는 thread CPU 시간의 한도.
+/// The limit on thread CPU time one case uses for its own computation.
 const CPU_LIMIT: Duration = Duration::from_secs(10);
 
 const DIALECTS: [(&str, Dialect); 3] = [("mysql", Dialect::MySql), ("postgres", Dialect::Postgres), ("sqlite", Dialect::Sqlite)];

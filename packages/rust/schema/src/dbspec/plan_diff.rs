@@ -15,16 +15,16 @@ pub struct Change {
     pub name: String,
 }
 
-/// unique, index, foreign key, check 객체 하나. kind, name 순으로 정렬한다.
+/// One unique, index, foreign key, or check object. Sorted by kind, then name.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct ObjectRef<'d> {
     pub kind: &'static str,
     pub name: &'d str,
 }
 
-/// diff와 statement 렌더링이 함께 쓰는 diff 결과.
+/// The diff result shared by diff and statement rendering.
 pub(crate) struct PlanDiff<'d> {
-    /// 이름: table
+    /// Name: table
     pub source: BTreeMap<&'d str, &'d Table>,
     pub target: BTreeMap<&'d str, &'d Table>,
     /// target table: source table
@@ -33,18 +33,18 @@ pub(crate) struct PlanDiff<'d> {
     pub column_of: BTreeMap<&'d str, BTreeMap<&'d str, &'d str>>,
     pub created: Vec<&'d str>,
     pub dropped: Vec<&'d str>,
-    /// target 이름 순
+    /// In target name order
     pub matched: Vec<&'d str>,
     pub added: BTreeMap<&'d str, Vec<&'d str>>,
     pub removed: BTreeMap<&'d str, Vec<&'d str>>,
     pub altered: BTreeMap<&'d str, Vec<&'d str>>,
     pub renamed_tables: Vec<&'d TableRename>,
     pub renamed_columns: Vec<&'d ColumnRename>,
-    /// source table: 지울 객체
+    /// Source table: objects to drop
     pub drop_objects: BTreeMap<&'d str, Vec<ObjectRef<'d>>>,
-    /// target table: 더할 객체
+    /// Target table: objects to add
     pub add_objects: BTreeMap<&'d str, Vec<ObjectRef<'d>>>,
-    /// trigger가 바뀌는 target table
+    /// Target table whose trigger changes
     pub triggers: BTreeSet<&'d str>,
     pub changes: Vec<Change>,
 }
@@ -72,7 +72,7 @@ pub(crate) fn column_of<'t>(t: &'t Table, name: &str) -> Option<&'t Column> {
     t.column(name)
 }
 
-/// table의 primary key column 이름.
+/// The name of the table's primary key column.
 pub(crate) fn primary_key(t: &Table) -> Vec<&str> {
     t.primary.iter().flat_map(|k| k.columns.iter().map(|n| n.text.as_str())).collect()
 }
@@ -175,7 +175,7 @@ pub(crate) fn diff_plan<'d>(source: Option<&'d Document>, plan: &'d Plan) -> Res
         }
     }
     let mut used_column_permissions: BTreeSet<ColumnName> = BTreeSet::new();
-    // matched table의 column
+    // Columns of the matched table
     for &name in &d.matched {
         let (src, tgt) = (d.source[d.table_of[name]], d.target[name]);
         let renamed = renamed_column.get(name);
@@ -228,8 +228,8 @@ pub(crate) fn diff_plan<'d>(source: Option<&'d Document>, plan: &'d Plan) -> Res
                 d.altered.entry(name).or_default().push(&c.name.text);
             }
         }
-        // PostgreSQL은 column 자리를 정하지 못하므로 남는 column의 순서는 그대로이고
-        // 더한 column은 남는 column 뒤에 온다.
+        // PostgreSQL cannot place columns, so the order of the remaining columns stays as is, and
+        // Added columns come after the remaining columns.
         let kept: Vec<&str> = src.columns.iter().map(|c| renamed_or(renamed, &c.name.text)).filter(|n| column_of(tgt, n).is_some()).collect();
         let kept_target: Vec<&str> = tgt.columns.iter().map(|c| c.name.text.as_str()).filter(|n| columns.contains_key(n)).collect();
         let last_kept = tgt.columns.iter().rposition(|c| columns.contains_key(c.name.text.as_str()));
@@ -261,7 +261,7 @@ pub(crate) fn diff_plan<'d>(source: Option<&'d Document>, plan: &'d Plan) -> Res
     Ok(d)
 }
 
-/// 세 database에서 모든 값을 지키는 type 변경인지 알려 준다.
+/// Tells whether the type change keeps every value in all three databases.
 pub(crate) fn widens(from: Type, to: Type) -> bool {
     match (from, to) {
         (Type::I16, Type::I32 | Type::I64) | (Type::I32, Type::I64) | (Type::Varchar(_), Type::Text) => true,
@@ -329,7 +329,7 @@ impl<'d> PlanDiff<'d> {
     }
 }
 
-/// `immutable`이나 `audit` setting이 trigger를 만드는 table인지 알려 준다.
+/// Tells whether a table is one where the `immutable` or `audit` setting creates triggers.
 pub(crate) fn has_triggers(t: &Table) -> bool {
     use super::model::Setting;
     t.settings.as_ref().is_some_and(|s| s.lines.iter().any(|l| matches!(l.setting, Setting::Immutable | Setting::Audit { .. })))

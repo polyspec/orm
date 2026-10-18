@@ -10,8 +10,8 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// hashCase는 tests/dbspec/cases.json의 `hashes` case 하나다. 나열한 각 문서를 나머지 문서에
-// 대해 parse하고, 문서 집합은 나열한 manifest text, schema text와 hash를 가진다.
+// hashCase is one `hashes` case of tests/dbspec/cases.json. Each listed document is parsed against the other
+// documents, and the document set has the manifest text, schema text, and hash that were listed.
 type hashCase struct {
 	ID           string
 	Documents    map[string][]string
@@ -21,7 +21,7 @@ type hashCase struct {
 	SchemaHash   string
 }
 
-// parseSet은 case의 모든 문서를 나머지 문서에 대해 문서 이름 순으로 parse한다.
+// parseSet parses all documents of the case, in document-name order, against the other documents.
 func (c hashCase) parseSet() ([]*Document, error) {
 	names := make([]string, 0, len(c.Documents))
 	for name := range c.Documents {
@@ -78,7 +78,7 @@ func TestManifestVectors(t *testing.T) {
 				if err := expectManifest(c, documents); err != nil {
 					return err
 				}
-				// 집합은 주어진 순서가 아니라 문서 이름 순으로 정렬된다.
+				// The set is sorted by document name, not by the order given.
 				slices.Reverse(documents)
 				return expectManifest(c, documents)
 			})
@@ -107,26 +107,26 @@ func TestManifestRejectsRepeatedDocumentName(t *testing.T) {
 	})
 }
 
-// setCase는 tests/dbspec/cases.json의 `sets` case 하나다. 나열한 문서가 집합을 이루며, 각
-// 문서는 나열한 다른 문서와 parsing 문서에 대해 parse한다.
+// setCase is one `sets` case of tests/dbspec/cases.json. The listed documents form a set, and each
+// document is parsed against the other listed documents and the parsing document.
 type setCase struct {
 	ID        string
 	Documents [][]string
-	// External은 set이 소유하지 않고 use로 쓰는 외부 문서다.
+	// External is an external document that the set does not own and uses through use.
 	External [][]string
 	Parsing  map[string][]string
 	Errors   []vectorError
 	Manifest *setManifest
 }
 
-// setManifest는 유효한 set의 manifest와 render가 만드는 table이다. 빈 text는 빈 배열이다.
+// setManifest is the manifest of a valid set and the table that render makes. Empty text is an empty array.
 type setManifest struct {
 	ManifestText, ExternalText, SchemaText []string
 	ManifestHash, SchemaHash               string
 	Created                                []string
 }
 
-// textOf는 줄을 LF로 잇는다. 줄이 없으면 빈 text다.
+// textOf joins lines with LF. If there are no lines, it is empty text.
 func textOf(lines []string) string {
 	if len(lines) == 0 {
 		return ""
@@ -134,7 +134,7 @@ func textOf(lines []string) string {
 	return joinLines(lines, false)
 }
 
-// createdTables는 statement 가운데 CREATE TABLE이 만드는 table 이름이다.
+// createdTables is the table names that CREATE TABLE statements create.
 func createdTables(statements []string) []string {
 	var out []string
 	for _, s := range statements {
@@ -167,7 +167,7 @@ func TestDocumentSets(t *testing.T) {
 	for _, c := range vectors.Sets {
 		t.Run(c.ID, func(t *testing.T) {
 			runTimed(t, c.ID, 5*time.Second, func() error {
-				// 각 문서는 다른 소유 문서, 외부 문서, parsing 문서를 집합으로 parse한다.
+				// Each document is parsed as a set against the other owned documents, the external documents, and the parsing document.
 				all := append(slices.Clone(c.Documents), c.External...)
 				var documents []*Document
 				for i, lines := range all {

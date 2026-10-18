@@ -165,7 +165,7 @@ var fixedMethods = []string{"Orm_", "MarshalJSON", "ToArray", "Connect", "And", 
 	"Duplication", "Limit", "OrderByRandom", "RemoveAllColumns", "AddAllColumns", "ParentNode", "GroupLimit",
 	"DeleteLock", "FetchKey", "FetchValue", "ForUpdate", "ForShare", "ForUpdateNoWait", "ForShareNoWait"}
 
-// numeric은 plus, minus, sum, avg method를 받는 field다.
+// numeric is a field that takes the plus, minus, sum, and avg methods.
 func numeric(c *runtimemodel.Field) bool {
 	return len(c.Codec) == 0 && (c.Type == "i16" || c.Type == "i32" || c.Type == "i64" || c.Type == "f64" || c.Type == "decimal")
 }
@@ -194,8 +194,8 @@ func (g *goGen) staticNames(gm *goModel) map[string]bool {
 	return out
 }
 
-// goType은 field의 Go type이다 (docs/dbspec.md "Runtime model"). styled
-// value codec은 orm.StyledValue, aes, hex, ip만 있는 codec은 string이다.
+// goType is the Go type of a field (docs/dbspec.md "Runtime model"). styled
+// The value codec is orm.StyledValue; a codec with only aes, hex, or ip is string.
 func goType(c *runtimemodel.Field) string {
 	if c.Styled() {
 		return "orm.StyledValue"
@@ -1080,8 +1080,8 @@ func (g *goGen) relationGetter(pos string, parent, child *goModel, many bool, al
 	g.addGetter(pos, parent, name, getter{result: result, expr: expr, origin: origin})
 }
 
-// goStringLiteral은 text를 줄마다 하나의 quoted string으로 이어 붙인 Go
-// 상수식으로 쓴다. generated code에서 manifest text를 줄 단위로 읽을 수 있다.
+// goStringLiteral is the Go constant expression that joins text into one quoted string per line,
+// so manifest text can be read line by line in generated code.
 func goStringLiteral(text string) string {
 	lines := strings.SplitAfter(text, "\n")
 	if lines[len(lines)-1] == "" {

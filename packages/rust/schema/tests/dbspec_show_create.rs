@@ -11,7 +11,7 @@ use polyspec_orm_testcase::Trial;
 use serde_json::Value;
 use std::time::Duration;
 
-/// case 하나의 기한.
+/// The deadline of one case.
 const DEADLINE: Duration = Duration::from_secs(5);
 
 fn text(value: &Value) -> CatalogValue {

@@ -165,7 +165,7 @@ pub struct Core {
     pub(crate) agg: String,
     pub(crate) agg_fn: &'static str,
 
-    /// relation key 성분 (부모 column, 자식 column): `add_match`마다 한 쌍을 호출 순서로 더한다.
+    /// relation key component (parent column, child column): adds one pair per `add_match`, in call order.
     pub(crate) matches: Vec<(&'static str, &'static str)>,
     pub(crate) alias: String,
     pub(crate) parent_node: bool,
@@ -406,7 +406,7 @@ impl Core {
         }
     }
 
-    /// column이 value와 같다는 조건을 붙인다. restore가 key 조건을 read의 eq 조건과 같은 방법으로 만든다.
+    /// Adds the condition that the column equals value. restore builds the key condition the same way as the eq condition of read.
     pub(crate) fn add_eq(&mut self, conn: &'static str, column: &str, value: Param) {
         self.add(conn, CondKind::Pred(PredSpec { column: column.to_owned(), op: "eq", value: PredValue::One(value) }));
     }

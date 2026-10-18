@@ -1,12 +1,12 @@
-// tests/events/vectors.json의 statement event case를 TypeScript client로 MySQL, PostgreSQL,
-// SQLite에서 실행하고 기록한 event를 vector의 기대 event와 비교한다(docs/usage.md
-// "Statement events"). case마다 새 case database(case-database.mjs)에 fixture
-// contracts/fixtures/statement_events.dbs를 설치하고(install이 false인 case는 빼고), 새 연결에
-// 기록하는 subscriber 하나를 등록한 뒤 step을 차례로 실행한다. transaction 번호는 case 안에서
-// 처음 나온 순서로 1부터 다시 세고, compare가 "tables"인 case는 table을 가리키는 event만 비교한다.
-// elapsed는 0 이상인지 확인한다.
+// Runs the statement event cases of tests/events/vectors.json with the TypeScript client on MySQL, PostgreSQL,
+// and SQLite, and compares the recorded events with the expected events of the vector (docs/usage.md
+// "Statement events"). For each case, the fixture
+// contracts/fixtures/statement_events.dbs is installed in a new case database (case-database.mjs), except for cases whose install is false, and then on a new connection
+// a subscriber that records events is registered, and then the steps are run in order. Transaction numbers are numbered
+// again from 1 in order of first appearance within the case, and for a case whose compare is "tables", only events that point to a table are compared.
+// Checks that elapsed is 0 or more.
 //
-// statement-events.mjs와 coverage_statement_events.mjs가 이 실행부를 쓴다.
+// statement-events.mjs and coverage_statement_events.mjs use this runner.
 import { readFile } from 'node:fs/promises';
 import { CORE, Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 
@@ -22,15 +22,15 @@ const entity = [...runtime.entities.values()].find(e => e.table === 'event_probe
 const EventProbe = class extends Model {};
 EventProbe.entity = { model: runtime, entity, create: core => new EventProbe(core) };
 
-/** 실패하는 transaction callback이 던지는 오류다. */
+/** The error that a failing transaction callback throws. */
 const callbackError = new Error('callback failed');
 
-/** bind를 JSON으로 다시 읽은 값이다. bigint는 number가 된다. */
+/** A bind value read back from JSON. A bigint becomes a number. */
 function jsonValue(value) {
   return JSON.parse(JSON.stringify(value, (_, v) => typeof v === 'bigint' ? Number(v) : v));
 }
 
-/** case 하나를 실행하는 상태다. */
+/** The state for running one case. */
 class EventRun {
   constructor(db, check) {
     this.db = db;
@@ -63,7 +63,7 @@ class EventRun {
     return m;
   }
 
-  /** step 하나를 실행한다. 실패는 던진다. */
+  /** Runs one step. Failures are thrown. */
   async step(s) {
     switch (s.op) {
       case 'create': {
@@ -116,8 +116,8 @@ class EventRun {
   }
 
   /**
-   * step을 실행하고 그 오류가 step이 기대한 것인지 확인한다. 기대하지 않은 오류는 던져 case를 끝낸다.
-   * transaction step이 기대한 callback 오류는 바깥 callback에서 처리된 것으로 본다.
+   * Runs the step and checks that its error is the one the step expected. An unexpected error is thrown, ending the case.
+   * A callback error that a transaction step expected is treated as handled by the outer callback.
    */
   async checked(s) {
     let error;
@@ -135,12 +135,12 @@ class EventRun {
   }
 }
 
-/** JSON으로 다시 읽은 값이다. key 순서와 숫자 형태가 같아진다. */
+/** A value read back from JSON. Its key order and number form become the same. */
 function normalized(records) {
   return JSON.stringify(records.map(r => ({ sql: r.sql, binds: r.binds, kind: r.kind, tables: r.tables, transaction: r.transaction, error: r.error })), null, 2);
 }
 
-/** case c를 dialect의 database dsn에서 실행하고, 기대 event와 다르면 check로 보고한다. */
+/** Runs case c on the dialect's database dsn, and reports it with check if the events differ from the expected events. */
 export async function runEventCase(c, dialect, dsn, check) {
   const db = await Db.connectSchema(dsn, schema);
   try {
@@ -155,9 +155,9 @@ export async function runEventCase(c, dialect, dsn, check) {
 }
 
 /**
- * vector의 server_transactions를 PostgreSQL case database dsn에서 실행한다. probe가 돌려주는 backend의
- * local transaction 번호 차이로 page 실행 한 번의 server transaction을 센다. pool size 1이므로 모든
- * statement가 한 backend에서 실행된다.
+ * Runs the server_transactions of the vector on the PostgreSQL case database dsn. The backend that the probe returns
+ * is used to count the server transactions of one page run by the difference in local transaction numbers. Since the pool size is 1, all
+ * statements run on one backend.
  */
 export async function runServerTransactions(spec, dsn, check) {
   const setup = await Db.connectSchema(dsn, schema);
@@ -166,8 +166,8 @@ export async function runServerTransactions(spec, dsn, check) {
   try {
     const u = db.utils();
     const zone = await u.read('utility', [], "SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'");
-    // pooler를 거치면 pooler가 startup parameter를 server connection에 SET으로 적용하므로
-    // source는 client를 말하지 않는다. source는 server에 바로 닿을 때만 비교한다.
+    // Through a pooler, the pooler applies the startup parameters to the server connection with SET, so
+    // the source does not identify the client. The source is compared only when connecting directly to the server.
     const pooled = process.env.ORM_TEST_POSTGRES_DSN !== process.env.ORM_TEST_POSTGRES_SERVER_DSN;
     check(zone.length === 1 && zone[0][0] === spec.time_zone.setting && (pooled || zone[0][1] === spec.time_zone.source),
       `TimeZone setting and source = ${JSON.stringify(zone)}, want ${JSON.stringify(spec.time_zone)}${pooled ? ' (pooled)' : ''}`);

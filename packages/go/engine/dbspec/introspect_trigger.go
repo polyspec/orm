@@ -6,8 +6,8 @@ import (
 	"strings"
 )
 
-// itrigger는 catalog trigger 하나를 renderer가 쓰는 statement 형식으로 다시 쓴
-// 것이다. PostgreSQL은 function과 trigger statement 두 개다.
+// itrigger rewrites a catalog trigger into the statement form that the renderer writes.
+// PostgreSQL uses two statements: a function and a trigger.
 type itrigger struct {
 	name       string
 	statements []string
@@ -19,8 +19,8 @@ var (
 	auditUpdatePattern = regexp.MustCompile("VALUES \\('update', OLD\\.[`\"]([a-z0-9_]+)[`\"],")
 )
 
-// recognizeTriggers는 table마다 trigger 집합이 immutable이나 audit의 renderer
-// 출력과 같으면 그 setting을 더하고, 아니면 모든 trigger를 미지원으로 보고한다.
+// recognizeTriggers: if a table's trigger set equals the output of the immutable and audit renderers, it adds
+// that setting; otherwise it reports all triggers as unsupported.
 func (c *catalog) recognizeTriggers(dialect Dialect, triggers map[string][]itrigger) {
 	tables := make([]string, 0, len(triggers))
 	for table := range triggers {
@@ -47,11 +47,11 @@ func (c *catalog) recognizeTriggers(dialect Dialect, triggers map[string][]itrig
 	}
 }
 
-// triggerSetting은 trigger 집합이 immutable과 audit setting 각각의 renderer 출력과
-// 같은지 본다. 각 setting은 자기 trigger 이름(재계산한 renderer 이름)으로 알아보며
-// 개수로 알아보지 않는다. 두 setting을 함께 쓴 table의 trigger는 두 출력의 합이다.
-// 집합이 합과 이름과 내용이 모두 같을 때만 그 setting 줄을 돌려준다. 아니면 ok가
-// false다.
+// triggerSetting checks whether the trigger set equals each renderer output of the immutable and audit settings.
+// Each setting is recognized by its own trigger names (the renderer names, recomputed), not by
+// count. A table that uses both settings has triggers that are the sum of the two outputs.
+// It returns the setting line only if the set equals the sum in names and content; otherwise ok is
+// false.
 func (c *catalog) triggerSetting(dialect Dialect, t *itable, list []itrigger) (bool, []string) {
 	names := map[string]itrigger{}
 	for _, tr := range list {
@@ -107,13 +107,13 @@ func (c *catalog) triggerSetting(dialect Dialect, t *itable, list []itrigger) (b
 	return true, lines
 }
 
-// auditOf는 audit insert trigger의 column 목록(action, previous, 기록하는
-// column)과 update trigger의 audit column으로 audit setting을 만든다. audit
-// 기록 table은 audit column 하나만 가진 table의 foreign key가 가리키는
-// table이다. 기록하지 않는 column은 table의 column 순서로 exclude 목록이
-// 된다. 목록이 renderer 형식이 아니거나, audit column을 기록하지 않거나, 그
-// foreign key가 하나가 아니면 nil이다. 만든 setting은 다시 렌더링해 catalog
-// trigger와 비교한다.
+// auditOf makes the audit setting from the column list of the audit insert trigger (action, previous, and the recorded
+// columns) and the audit columns of the update trigger. The audit
+// record table is the table that the foreign key of a table with only one audit column points to.
+// Columns that are not recorded become the exclude list, in the table's column order.
+// It is nil if the list is not in renderer form, if an audit column is not recorded, or if
+// there is not exactly one foreign key. It compares the setting it made, once rendered again,
+// with the catalog trigger.
 func auditOf(t *itable, history string, quoted []string, column string) *AuditSetting {
 	var names []string
 	for _, q := range quoted {
@@ -147,7 +147,7 @@ func auditOf(t *itable, history string, quoted []string, column string) *AuditSe
 	return a
 }
 
-// triggerOrder는 renderer statement 목록에서 trigger 이름을 순서대로 꺼낸다.
+// triggerOrder takes the trigger names, in order, from the list of renderer statements.
 func triggerOrder(statements []string) []string {
 	var names []string
 	for _, s := range statements {
@@ -162,8 +162,8 @@ func triggerOrder(statements []string) []string {
 	return names
 }
 
-// statementBody는 trigger statement에서 본문을 꺼낸다: MySQL은 FOR EACH ROW
-// 뒤, PostgreSQL은 function의 BEGIN 뒤, SQLite는 BEGIN 뒤다.
+// statementBody takes the body from a trigger statement: in MySQL, after FOR EACH ROW;
+// in PostgreSQL, after the function's BEGIN; and in SQLite, after BEGIN.
 func statementBody(statements []string) string {
 	for _, s := range statements {
 		if i := strings.Index(s, "$$BEGIN "); i >= 0 {

@@ -4,8 +4,8 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Dbspec;
 
 /**
- * MySQL 의 현재 database 를 중간 model 로 읽는다. 모든 query 는 database 전체를
- * 한 번에 읽는다 (docs/dialects.md "Introspection").
+ * Reads the current MySQL database into an intermediate model. Every query reads the whole database
+ * in one go (docs/dialects.md "Introspection").
  *
  * @internal
  */
@@ -24,8 +24,8 @@ rc.MATCH_OPTION, k.COLUMN_NAME, k.REFERENCED_COLUMN_NAME FROM information_schema
 JOIN information_schema.KEY_COLUMN_USAGE k ON k.CONSTRAINT_SCHEMA = rc.CONSTRAINT_SCHEMA
 AND k.CONSTRAINT_NAME = rc.CONSTRAINT_NAME AND k.TABLE_NAME = rc.TABLE_NAME
 WHERE rc.CONSTRAINT_SCHEMA = DATABASE() ORDER BY rc.TABLE_NAME, rc.CONSTRAINT_NAME, k.ORDINAL_POSITION';
-    // CHECK_CONSTRAINTS 와 TABLE_CONSTRAINTS 의 join 은 table 수에 비례해 느려지므로(2000 table 에서
-    // 60초 이상) 두 query 로 읽고 이름으로 잇는다. MySQL 의 CHECK 이름은 database 안에서 유일하다.
+    // The join of CHECK_CONSTRAINTS and TABLE_CONSTRAINTS slows down in proportion to the number of tables (at 2000 tables
+    // Read by two queries (60 seconds or more) and joined by name. A MySQL CHECK name is unique within a database.
     private const CHECK_CLAUSES = 'SELECT CONSTRAINT_NAME, CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS
 WHERE CONSTRAINT_SCHEMA = DATABASE() ORDER BY CONSTRAINT_NAME';
     private const CHECKS = "SELECT TABLE_NAME, CONSTRAINT_NAME, ENFORCED FROM information_schema.TABLE_CONSTRAINTS
@@ -52,7 +52,7 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
             }
         }
         $columns = [];
-        // table: column: renderer CHECK 이 있어야 정해지는 type 의 catalog type
+        // table: column: the catalog type of a type that is determined only when the renderer CHECK exists
         $pending = [];
         foreach (CatalogRows::read($connection, self::COLUMNS) as $row) {
             [$table, $name, $columnType, $nullable] = array_map(static fn(int $i): string => CatalogRows::text($row, $i, self::COLUMNS), [0, 1, 2, 3]);
@@ -133,7 +133,7 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
                 $c->report('check', $table, $name, $e->getMessage());
             }
         }
-        // renderer CHECK 이 있어야 하는 type 은 그 CHECK 이 없으면 dbspec type 이 아니다.
+        // A type that needs the renderer CHECK is not a dbspec type when that CHECK is absent.
         foreach ($pending as $table => $cols) {
             foreach ($cols as $column => $need) {
                 if (!isset($checked[$table][$column])) {
@@ -152,8 +152,8 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
     }
 
     /**
-     * COLUMN_TYPE 과 character set, collation 을 dbspec type 으로 읽는다. 두 번째
-     * 값은 renderer CHECK 이 있어야 그 type 이 되는 경우의 catalog type 이다.
+     * Reads COLUMN_TYPE, character set, and collation as a dbspec type. The second
+     * value is the catalog type for the case where the type is determined only if the renderer CHECK exists.
      *
      * @return ?array{0: ColumnType, 1: string}
      */
@@ -188,30 +188,30 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
     }
 
     /**
-     * character set introducer 를 뺀 CHECK_CLAUSE 다. ALTER TABLE 은 CHECK_CLAUSE 를 다시
-     * 쓰며 introducer 를 바꾸거나 빼므로(probe mysql.check.alter_rewrites_introducers)
-     * renderer CHECK 은 introducer 없이 비교한다. 이 template 의 literal 은 ASCII 이므로
-     * 의미가 같다.
+     * The CHECK_CLAUSE without the character set introducer. ALTER TABLE rewrites CHECK_CLAUSE again,
+     * and changes or drops the introducer (probe mysql.check.alter_rewrites_introducers),
+     * so the renderer CHECK is compared without the introducer. The literals in this template are ASCII, so
+     * the meaning is the same.
      */
     private static function withoutIntroducers(string $clause): string
     {
-        // ALTER TABLE 은 time(p) column 과 만나는 time literal 에 0 으로 된 p 자리 소수도
-        // 붙이므로(probe mysql.check.alter_writes_time_precision) 그 소수도 뺀다.
+        // ALTER TABLE also adds a zero-valued p-place fraction to a time literal that meets a time(p) column,
+        // so that fraction is removed too (probe mysql.check.alter_writes_time_precision).
         $clause = preg_replace("/_[a-z0-9]+\\\\'/", "\\'", $clause) ?? throw new \RuntimeException('introducer pattern failed');
         return preg_replace("/\\\\'(\\d\\d:\\d\\d:\\d\\d)\\.0+\\\\'/", "\\'\$1\\'", $clause) ?? throw new \RuntimeException('time fraction pattern failed');
     }
 
-    /** CHECK_CLAUSE 가 0x80 이상의 byte 를 가지면 true 다. MySQL 8.4 는 non-ASCII literal 을 두 번 인코딩해 보여 준다. */
+    /** True if CHECK_CLAUSE has a byte of 0x80 or above. MySQL 8.4 shows non-ASCII literals encoded twice. */
     private static function hasNonAscii(string $clause): bool
     {
         return preg_match('/[\x80-\xff]/', $clause) === 1;
     }
 
     /**
-     * CHECK_CLAUSE 가 non-ASCII 를 깨뜨린 check 의 본문을 SHOW CREATE TABLE 에서 읽고, CHECK_CLAUSE
-     * 형식으로 다시 escape 한다. information_schema 는 utf8 bytes 를 한 번 더 인코딩해 보여 주지만
-     * SHOW CREATE TABLE 은 바르게 쓰며, 본문의 literal 은 `\` 와 `'` 를 한 번만 escape 한다.
-     * table 별로 SHOW CREATE TABLE 을 한 번만 읽고, $shown 에 table 마다 모은다.
+     * Reads from SHOW CREATE TABLE the body of a check whose CHECK_CLAUSE garbled non-ASCII, and
+     * escapes it again in CHECK_CLAUSE form. information_schema encodes the utf8 bytes one more time when showing them, but
+     * SHOW CREATE TABLE writes them correctly; the literals in the body escape `\` and `'` only once.
+     * Reads SHOW CREATE TABLE once per table, and collects the results into $shown per table.
      *
      * @param array<string, array<string, string>> $shown
      */
@@ -227,7 +227,7 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
     }
 
     /**
-     * SHOW CREATE TABLE 문장의 모든 CHECK 본문을 이름별로 CHECK_CLAUSE 형식으로 돌려준다.
+     * Returns all CHECK bodies of a SHOW CREATE TABLE statement by name, in CHECK_CLAUSE form.
      *
      * @return array<string, string>
      */
@@ -262,7 +262,7 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
         return $checks;
     }
 
-    /** renderer CHECK 이 CHECK_CLAUSE 에 남는 형식 (docs/dialects.md "Introspection", "Checks"). */
+    /** The form in which a renderer CHECK stays in CHECK_CLAUSE (docs/dialects.md "Introspection", "Checks"). */
     private static function rendererCheck(array $column): string
     {
         $c = "`{$column['name']}`";
@@ -274,7 +274,7 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
         };
     }
 
-    /** DEFAULT_GENERATED default 가 그 column 의 renderer 시각 default 인지 알려 준다. */
+    /** Tells whether a DEFAULT_GENERATED default is the renderer's time default for that column. */
     private static function now(string $text, ColumnType $type): bool
     {
         if ($type->name !== 'datetime') {
@@ -284,7 +284,7 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
         return $text === ($p === 0 ? 'CURRENT_TIMESTAMP' : "CURRENT_TIMESTAMP($p)");
     }
 
-    /** escape 를 푼 COLUMN_DEFAULT 값을 dbspec literal 로 쓴다. parse 가 canonical form 과 유효성을 정한다. */
+    /** Writes the COLUMN_DEFAULT value, with escapes undone, as a dbspec literal. parse decides the canonical form and validity. */
     private static function defaultLiteral(string $value, ColumnType $type): string
     {
         if ($type->name === 'bool' && ($value === '1' || $value === '0')) {
@@ -344,15 +344,15 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
     }
 
     /**
-     * foreign key 마다 column row 를 모은다. 지원하지 않는 key 는 Go reference 와
-     * 같게 column row 마다 보고된다.
+     * Collects a column row for each foreign key. Unsupported keys are reported per column row,
+     * as the Go reference does.
      */
     private static function readForeignKeys(\PDO $connection, Catalog $c): void
     {
         $q = self::FOREIGN_KEYS;
         $current = null;
         $currentTable = null;
-        // 보고한 key 의 나머지 column row 는 건너뛴다.
+        // The remaining column rows of a reported key are skipped.
         $skipped = '';
         $flush = static function () use (&$current, &$currentTable): void {
             if ($current !== null && $currentTable !== null) {
@@ -391,7 +391,7 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
         $flush();
     }
 
-    /** trigger 를 renderer statement 형식으로 다시 쓰고 알아본다. */
+    /** Rewrites a trigger in renderer statement form and recognizes it. */
     private static function readTriggers(\PDO $connection, Catalog $c): void
     {
         $q = self::TRIGGERS;

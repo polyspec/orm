@@ -1,5 +1,5 @@
-// constraints_and_relations coverage: database 가 거부한 foreign key, check, unique 위반이 각각
-// FOREIGN_KEY, CONSTRAINT, DUPLICATE_KEY 로 보고되고 아무 row 도 바뀌지 않는지 확인한다.
+// constraints_and_relations coverage: each foreign key, check, and unique violation that the database rejects
+// is reported as FOREIGN_KEY, CONSTRAINT, or DUPLICATE_KEY, and no row changes.
 import assert from 'node:assert/strict';
 import { Author, User, connect } from '../dist/index.js';
 import { errorCode, runCases } from './coverage_case.mjs';

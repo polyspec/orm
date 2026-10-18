@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
-// schema_install feature coverage: 생성된 model이 담은 bench manifest를 이미
-// 설치된 bench database에 다시 설치하면 아무것도 바꾸지 않고, 일부 table만 있는
-// document set의 설치는 CONFIG로 실패하며 빠진 table을 만들지 않는다. 외부 문서를 쓰는 set의
-// 설치는 외부 table을 database에서 확인하고, 등록은 database를 읽지 않는다.
+// schema_install feature coverage: the bench manifest held by the generated model is
+// installed again on an installed bench database and changes nothing, and a database with only some tables
+// is not created: the install of a document set fails with CONFIG and creates no missing tables. The install of a set that uses external documents
+// checks the external tables in the database, and registration does not read the database.
 
 require_once __DIR__ . '/coverage_cases.php';
 
@@ -34,7 +34,7 @@ table coverage_install_missing {
 
 DBSPEC;
 
-/** bench database의 table user를 외부 문서로 쓰는 document set의 외부 문서다. */
+/** External document of the set that uses the bench database's table user as an external document. */
 const EXTERNAL_USER = <<<'DBSPEC'
 dbspec 1 bench_user
 
@@ -46,7 +46,7 @@ table user {
 
 DBSPEC;
 
-/** EXTERNAL_USER의 user를 쓰고 coverage_external_post만 소유하는 문서다. */
+/** Document that uses the user of EXTERNAL_USER and owns only coverage_external_post. */
 const EXTERNAL_MEMBER = <<<'DBSPEC'
 dbspec 1 coverage_external
 
@@ -62,7 +62,7 @@ table coverage_external_post {
 
 DBSPEC;
 
-/** connection의 database에 table이 있는지 catalog에서 읽는다. */
+/** Reads from the catalog whether the connection's database has the table. */
 function installedTable(Db $db, string $table): bool
 {
     $sql = match ($db->driver()) {
@@ -86,7 +86,7 @@ final class CoverageSchemaInstallTest extends TestCase
             $db = coverageConnect($dsn);
             try {
                 Assert::assertTrue(installedTable($db, 'author'), 'the bench database has no author table');
-                // generated code의 schema 값을 설치한다.
+                // Installs the schema value of the generated code.
                 $db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema());
             } finally {
                 $db->close();
@@ -112,9 +112,9 @@ final class CoverageSchemaInstallTest extends TestCase
         }
     }
 
-    // 외부 문서를 쓰는 set의 install은 외부 table을 database에서 확인한다. 외부 문서의 column이
-    // database에 없으면 install이 CONFIG이며 소유한 table을 만들지 않는다. 등록은 database를 읽지
-    // 않으므로 그 set으로도 연결한다.
+    // The install of a set that uses external documents checks the external tables in the database. If an external document's column
+    // is missing from the database, install is CONFIG and does not create the table it owns. Registration
+    // does not read the database, so it connects with that set too.
     public function test_schema_install_external_documents(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {

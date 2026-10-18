@@ -14,12 +14,12 @@ import (
 	"github.com/polyspec/orm/packages/go/orm"
 )
 
-// request hook의 공유 case다(docs/usage.md "Request hook"). contracts/fixtures/request_hook.dbs를 SQLite
-// temp file에 설치하고 hook_item(id identity, part, label)과 soft delete table hook_entry(unique key part,
-// label)에서 확인한다. hook은 request를 plan하기 직전에 받으며, client는 hook이 하는 일을 알지 못한다.
+// A shared case for the request hook (docs/usage.md "Request hook"). It installs contracts/fixtures/request_hook.dbs in a SQLite
+// temp file and checks hook_item(id identity, part, label) and the soft delete table hook_entry(unique key part,
+// label). The hook receives the request just before it is planned, and the client does not know what the hook does.
 
-// hookFixture는 dsn의 database에 request_hook.dbs를 설치한 연결과 hook_item, hook_entry entity다. 연결은
-// test가 끝나면 닫힌다. database를 만들고 지우는 일은 호출자가 한다.
+// hookFixture is the connection with request_hook.dbs installed on the database at dsn, and the hook_item and hook_entry entities. The connection
+// is closed when the test ends. Creating and dropping the database is up to the caller.
 func hookFixture(t *testing.T, dsn string) (*orm.DB, *orm.Entity, *orm.Entity) {
 	t.Helper()
 	s := fixtureSchema(t, "request_hook")
@@ -93,7 +93,7 @@ func partScope(value string) orm.RequestHook {
 	}
 }
 
-// hookItem은 db에 연결한 hook_item model이고 values를 set한다. db가 nil이면 연결하지 않는다.
+// hookItem is a hook_item model connected to db, with its values set. If db is nil, it does not connect.
 func hookItem(e *orm.Entity, db *orm.DB, values map[string]any) *orm.Core {
 	c := orm.NewCore(e)
 	e.New(c)
@@ -108,7 +108,7 @@ func hookItem(e *orm.Entity, db *orm.DB, values map[string]any) *orm.Core {
 	return c
 }
 
-// hookRows는 db로 읽은 모든 행의 column 값이다.
+// hookRows holds the column values of all the rows read from db.
 func hookRows(t *testing.T, e *orm.Entity, db *orm.DB) []map[string]any {
 	t.Helper()
 	rows, err := orm.Gets[*keywordRow](hookItem(e, db, nil))
@@ -131,7 +131,7 @@ func hookCount(t *testing.T, e *orm.Entity, db *orm.DB) int64 {
 	return n
 }
 
-// seedHookItems는 연결로 a1, a2(part a)와 b1(part b)을 넣는다.
+// seedHookItems inserts a1 and a2 (part a) and b1 (part b) through the connection.
 func seedHookItems(t *testing.T, e *orm.Entity, db *orm.DB) {
 	t.Helper()
 	for _, v := range [][2]string{{"a", "a1"}, {"a", "a2"}, {"b", "b1"}} {
@@ -141,7 +141,7 @@ func seedHookItems(t *testing.T, e *orm.Entity, db *orm.DB) {
 	}
 }
 
-// andWhere는 q의 where에 pred를 and로 더한다. 이미 있는 where는 group item 하나로 감싼다.
+// andWhere adds pred to q's where with and. An existing where is wrapped in one group item.
 func andWhere(q *ir.Query, pred ir.Pred) {
 	if q.Where == nil || len(q.Where.Items) == 0 {
 		q.Where = &ir.Group{Items: []ir.Item{{Pred: &pred}}}
@@ -158,7 +158,7 @@ func partIs(addParam func(any) int, value string) ir.Pred {
 
 var hookReadKinds = []string{"one", "all", "count", "group_count", "sum", "avg", "paginate"}
 
-// partFilter는 read에 part = value를 더하는 hook이다.
+// partFilter is a hook that adds part = value to a read.
 func partFilter(value string) orm.RequestHook {
 	return func(r *ir.Request, addParam func(any) int, params []any) error {
 		if slices.Contains(hookReadKinds, r.Kind) {
@@ -168,7 +168,7 @@ func partFilter(value string) orm.RequestHook {
 	}
 }
 
-// requestHookCases는 공유 case ID마다 그 본문이다. 각 본문은 request_hook.dbs를 설치한 빈 database의 연결을 받는다.
+// requestHookCases holds the body of each shared case ID. Each body receives a connection to an empty database with request_hook.dbs installed.
 var requestHookCases = []struct {
 	id  string
 	run func(t *testing.T, db *orm.DB, e, entry *orm.Entity)
@@ -207,7 +207,7 @@ var requestHookCases = []struct {
 		if page.TotalCount != 2 || page.Items.Len() != 2 {
 			t.Fatalf("hooked page total %d items %d, want 2 and 2", page.TotalCount, page.Items.Len())
 		}
-		// 다른 값의 hook은 같은 plan을 쓰고 자기 값으로 거른다.
+		// A hook with another value uses the same plan and filters by its own value.
 		if n := len(hookRows(t, e, db.WithRequestHook(partFilter("b")))); n != 1 {
 			t.Fatalf("hook with b reads %d rows, want 1", n)
 		}
@@ -319,7 +319,7 @@ var requestHookCases = []struct {
 		if n := hookCount(t, e, db); n != 3 {
 			t.Fatalf("connection counts %d after the hooked delete, want 3", n)
 		}
-		// hooked handle에서 시작한 transaction 안의 연결 없는 model은 그 hook을 지난다.
+		// A connection-less model in a transaction started from a hooked handle passes through that hook.
 		kinds = nil
 		if err := hooked.Transaction(func() error {
 			_, err := orm.Gets[*keywordRow](hookItem(e, nil, nil))
@@ -351,7 +351,7 @@ var requestHookCases = []struct {
 		if statements != 0 {
 			t.Fatalf("%d statements ran, want none", statements)
 		}
-		// hook의 오류는 그대로 돌아온다.
+		// A hook's error is returned as is.
 		failing := errors.New("hook refused")
 		_, err = hookItem(e, db.WithRequestHook(func(*ir.Request, func(any) int, []any) error { return failing }), nil).GetCount()
 		if !errors.Is(err, failing) || statements != 0 {
@@ -490,7 +490,7 @@ var requestHookCases = []struct {
 	}},
 }
 
-// TestRequestHook은 각 case를 SQLite temp file에서 실행한다. file은 test가 끝나면 지워진다.
+// TestRequestHook runs each case in a SQLite temp file. The file is removed when the test ends.
 func TestRequestHook(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	for _, c := range requestHookCases {
@@ -501,9 +501,9 @@ func TestRequestHook(t *testing.T) {
 	}
 }
 
-// TestCreatesParts는 docs/protocol.md의 여러 행 insert 규칙을 model 경로로 확인한다. creates는 행을
-// 2의 거듭제곱 부분으로 나눠 주어진 순서대로 한 transaction에서 실행한다: 부분 크기만큼만 INSERT 형태가
-// 생기고, 행과 key와 statement event는 주어진 순서를 지키며, 실패한 부분이 있으면 행이 남지 않는다.
+// TestCreatesParts checks the multi-row insert rules of docs/protocol.md through the model path. creates splits the rows
+// into parts of power-of-two size and runs them in the given order in one transaction: only parts of that size produce an INSERT shape,
+// rows, keys, and statement events keep the given order, and if any part fails, no rows remain.
 func TestCreatesParts(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	inserts := func(t *testing.T, db *orm.DB) *[]orm.StatementEvent {

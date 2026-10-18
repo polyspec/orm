@@ -4,8 +4,8 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Dbspec;
 
 /**
- * introspection 의 중립 중간 model 에서 table 하나. type 은 ColumnType 이고,
- * default literal 과 predicate 는 이미 dbspec 표기다.
+ * One table of the introspection's neutral intermediate model. type is a ColumnType, and
+ * the default literals and predicates are already in dbspec notation.
  *
  * @internal
  */
@@ -23,14 +23,14 @@ final class CatalogTable
     public array $foreignKeys = [];
     /** @var list<array{name: string, predicate: string}> */
     public array $checks = [];
-    /** @var list<string> settings 블록의 줄 */
+    /** @var list<string> Lines of the settings block */
     public array $settings = [];
 
     public function __construct(public readonly string $name)
     {
     }
 
-    /** column 이름: type. @return array<string, ColumnType> */
+    /** column name: type. @return array<string, ColumnType> */
     public function columnTypes(): array
     {
         $out = [];
@@ -40,7 +40,7 @@ final class CatalogTable
         return $out;
     }
 
-    /** type 이 정해지지 않은 column 을 뺀다. */
+    /** Removes columns whose type is undetermined. */
     public function dropColumn(string $name): void
     {
         $this->columns = array_values(array_filter($this->columns, static fn(array $c): bool => $c['name'] !== $name));

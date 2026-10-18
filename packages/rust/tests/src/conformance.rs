@@ -21,7 +21,7 @@ struct Log {
     statements: Vec<Value>,
     seqs: HashSet<i64>,
     times: HashSet<String>,
-    /// vector 안의 transaction 번호를 처음 나온 순서의 번호로 바꾼다.
+    /// Renumbers the transaction numbers in the vector by order of first appearance, starting at 1.
     transactions: BTreeMap<u64, u64>,
 }
 
@@ -156,7 +156,7 @@ fn picks<M: Model>(c: &Collection<M>, names: &[&str]) -> Value {
     Value::Array(c.models().map(|m| pick(Some(m), names)).collect())
 }
 
-/// tenant 902에 Apple, apple, Évian, évian, x_y 행을 만들고 각 pattern이 cond로 고르는 account_id를 모은 뒤 지운다.
+/// Creates Apple, apple, Évian, évian, and x_y rows in tenant 902, collects the account_id each pattern selects by cond, then deletes them.
 async fn contains_vector(db: &Db, cond: impl Fn(CompositeAccount, &str) -> CompositeAccount, patterns: &[&str]) -> polyspec_orm::Result<Value> {
     let rows = ["Apple", "apple", "Évian", "évian", "x_y"]
         .iter()
@@ -201,7 +201,7 @@ fn invalid_derived_integers_cannot_be_reported_as_zero() {
 
 struct Args {
     dsn: String,
-    /// 실행할 vector 이름. 비어 있으면 모든 vector를 실행한다.
+    /// The vector name to run. If empty, all vectors run.
     vectors: Vec<String>,
 }
 
@@ -290,9 +290,9 @@ async fn main() {
     let hook = shared.clone();
     let config = polyspec_orm::Config { aes_key: "bench-salt".into(), blind_index_key: "bench-blind-index".into(), ..Default::default() };
     let db = model::connect(&args.dsn, 4, config).await.expect("connect");
-    // 각 statement를 그 event로 기록한다(docs/usage.md "Statement events"). transaction은 vector
-    // 안에서 처음 나온 순서로 1부터 다시 센 번호이고 밖이면 null이다. error는 statement의 오류
-    // code이거나 null이다.
+    // Records each statement as that event (docs/usage.md "Statement events"). A transaction's
+    // number is counted from 1 in order of first appearance within the vector, and is null outside a transaction. error is the statement's error
+    // code, or null.
     let _recording = db
         .subscribe(move |e: &polyspec_orm::StatementEvent<'_>| {
             let mut log = hook.lock().unwrap();
@@ -326,8 +326,8 @@ async fn main() {
 
 type Vector<'a> = (&'static str, std::pin::Pin<Box<dyn std::future::Future<Output = polyspec_orm::Result<Value>> + 'a>>);
 
-/// 선언된 vector 중 `selected`가 고른 것을 선언 순서로 실행한다. `selected`가 비어 있으면
-/// 모두 실행하고, 선언되지 않은 이름이 있으면 어떤 vector도 실행하지 않고 오류를 돌려준다.
+/// Runs, in declaration order, the declared vectors that `selected` picks. If `selected` is empty,
+/// it runs all of them; if a name is not declared, it runs no vector and returns an error.
 async fn run_all(db: &Db, shared: &Shared, selected: &[String]) -> Result<BTreeMap<String, Value>, String> {
     let vectors = vectors(db, shared);
     let unknown: Vec<&str> = selected.iter().map(String::as_str).filter(|name| !vectors.iter().any(|(declared, _)| declared == name)).collect();
@@ -350,7 +350,7 @@ async fn run_all(db: &Db, shared: &Shared, selected: &[String]) -> Result<BTreeM
     Ok(out)
 }
 
-/// 모든 vector를 선언 순서로 만든다. future는 await할 때 실행된다.
+/// Builds all vectors in declaration order. A future runs when it is awaited.
 fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
     let mut out: Vec<Vector<'a>> = Vec::new();
     macro_rules! run {
@@ -728,8 +728,8 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         Ok::<Value, polyspec_orm::Error>(Value::Array(events))
     });
     run!("restore", async {
-        // soft delete한 행을 primary key로 되돌린다. 지운 시각은 고정한 값으로 써서 모든 database와
-        // runner의 bind가 같다. transaction은 끝에 rollback하므로 database는 처음과 같다.
+        // Restores the soft-deleted row to its primary key. The deletion time is written as a fixed value so that all databases and
+        // the runner's binds match. The transaction rolls back at the end, so the database is as it was at the start.
         let result = Mutex::new(Map::new());
         let ended: polyspec_orm::Result<()> = db
             .transaction(async || {
@@ -741,8 +741,8 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
                 created.update(false).await?;
                 let hidden = SoftRecord::new().get_by_seq(seq).await;
                 result.lock().unwrap().insert("hidden".into(), code_of(hidden));
-                // key 밖의 값은 지워진 행을 되돌릴 때만 쓴다. 두 번째 restore는 지워지지 않은 행을 바꾸지 않고
-                // 돌려준다.
+                // Values outside the key are used only when restoring a deleted row. The second restore does not change a row that was not deleted, and
+                // returns it.
                 for (name, value) in [("restored", "restore-2"), ("again", "ignored")] {
                     let row = SoftRecord::new().set_seq(seq).set_name(value).restore().await?;
                     let mut array = row.to_array()?;

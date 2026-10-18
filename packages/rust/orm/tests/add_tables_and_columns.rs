@@ -1,13 +1,13 @@
-//! addTablesAndColumns를 SQLite, MySQL, PostgreSQL에서 확인한다(docs/schema.md, "Adding tables
-//! and columns"). case database는 다른 set addcol_log의 table과 addcol set version 1의 table을
-//! row와 함께 가진다. version 2로 add_tables_and_columns를 부르면 있는 table에 빠진 null이거나
-//! default가 있는 column을 더하고, row를 지키며, 바뀐 audit table의 trigger가 새 column을
-//! 기록하고, 없는 table을 index, foreign key, check, audit trigger와 함께 만들며, 다른 set의
-//! table은 그대로 둔다. 다시 부르면 아무것도 더하지 않는다. 있는 table에 빠진 index는 더하고,
-//! 빠진 unique key는 그 이유를 적은 SCHEMA_DIFFERS다. 다른 차이가 있는 set은 아무것도
-//! 바꾸기 전에 SCHEMA_DIFFERS다. fixture는 contracts/fixtures/add_tables_and_columns/*.dbs다. 각
-//! case는 자기 case database(polyspec-orm-case-database)에서 실행하며 ORM_TEST_MYSQL_DSN이나
-//! ORM_TEST_POSTGRES_DSN이 없으면 실패한다.
+//! Checks addTablesAndColumns on SQLite, MySQL, and PostgreSQL (docs/schema.md, "Adding tables
+//! and columns"). The case database holds the tables of another set, addcol_log, and the tables of addcol set version 1,
+//! with rows. Calling add_tables_and_columns with version 2 adds to existing tables
+//! the columns that are nullable or have a default, keeps the rows, and the trigger of the changed audit table records the new column,
+//! creates missing tables together with their index, foreign key, check, and audit trigger, and leaves the other set's
+//! tables as they are. Calling it again adds nothing. Missing indexes on existing tables are added,
+//! and a missing unique key is SCHEMA_DIFFERS with the reason. A set with other differences changes nothing
+//! before it is SCHEMA_DIFFERS. The fixtures are contracts/fixtures/add_tables_and_columns/*.dbs. Each
+//! case runs in its own case database (polyspec-orm-case-database) and fails if ORM_TEST_MYSQL_DSN or
+//! ORM_TEST_POSTGRES_DSN is missing.
 
 use std::collections::BTreeMap;
 
@@ -30,12 +30,12 @@ const ADDED: [&str; 11] = [
     "addcol_tag.color",
 ];
 const DIFFERS: [&str; 7] = ["required", "removed", "changed", "nullable", "default", "unique", "reorder"];
-/// index.dbs가 version 1에 더하는 column과 index다. column 뒤에 index가 온다.
+/// The columns and indexes that index.dbs adds to version 1. Indexes come after columns.
 const ADDED_INDEX: [&str; 3] = ["addcol_item.note", "addcol_item.ix_addcol_item_label", "addcol_item_history.note"];
 const MISSING_UNIQUE: &str = "add_unique addcol_item.uq_addcol_item_label: a missing unique key can fail on the existing rows; add it with a plan";
 
-/// contracts/fixtures/add_tables_and_columns/<name>.dbs의 schema 값. generated code처럼 manifest text와
-/// 그 manifestHash를 가진다.
+/// The schema value of contracts/fixtures/add_tables_and_columns/<name>.dbs. Like generated code, it has the manifest text and
+/// that manifestHash.
 fn fixture(name: &str) -> &'static Schema {
     let path = format!("{}/../../../contracts/fixtures/add_tables_and_columns/{name}.dbs", polyspec_orm_testcase::manifest_dir().display());
     let text = dbspec::read_file(std::path::Path::new(&path)).unwrap_or_else(|e| panic!("{path}: {e:?}"));
@@ -44,12 +44,12 @@ fn fixture(name: &str) -> &'static Schema {
     edited(&manifest.manifest_text, &manifest.manifest_hash)
 }
 
-/// manifest text와 선언한 hash로 만든 schema 값.
+/// A schema value made from manifest text and the declared hash.
 fn edited(text: &str, hash: &str) -> &'static Schema {
     Box::leak(Box::new(Schema::new(Box::leak(text.to_owned().into_boxed_str()), Box::leak(hash.to_owned().into_boxed_str()))))
 }
 
-/// 연결의 pool에서 statement 하나를 실행한다.
+/// Runs one statement from the connection's pool.
 async fn exec(db: &Db, statement: &str) -> Result<(), sqlx::Error> {
     let sql = sqlx::raw_sql(sqlx::AssertSqlSafe(statement.to_owned()));
     match db.pool() {
@@ -60,7 +60,7 @@ async fn exec(db: &Db, statement: &str) -> Result<(), sqlx::Error> {
     }
 }
 
-/// 연결의 pool에서 query가 돌려주는 수를 읽는다.
+/// Reads the number a query returns from the connection's pool.
 async fn count(db: &Db, query: &str) -> Result<i64, sqlx::Error> {
     let sql = || sqlx::AssertSqlSafe(query.to_owned());
     match db.pool() {
@@ -78,9 +78,9 @@ fn code<T>(r: polyspec_orm::Result<T>) -> String {
     }
 }
 
-/// case database에 addcol_log와 version 1을 설치하고 log row 하나, audit 기록 1로 item 하나, 그
-/// item의 tag와 그 tag의 자식 tag를 쓴 연결. pool은 연결 하나라 add_tables_and_columns가 쓴 연결을 다음
-/// statement가 다시 쓴다.
+/// Installs addcol_log and version 1 in the case database, with one log row, one item with audit record 1, and
+/// the item's tag and that tag's child tag. The pool has one connection, so the connection that add_tables_and_columns used
+/// is reused by the next statement.
 async fn installed(database: &CaseDatabase) -> Db {
     let db = Db::connect(database.dsn(), 1, polyspec_orm::Config::default()).await.unwrap();
     db.utils().schema().install(fixture("log")).await.unwrap();
@@ -108,19 +108,19 @@ async fn add_tables_and_columns() {
         let database = CaseDatabase::create(driver).await;
         let db = installed(&database).await;
         assert_eq!(added(db.utils().schema().add_tables_and_columns(fixture("v2")).await), ADDED, "{driver}: add_tables_and_columns");
-        // row는 그대로이고 새 column은 NULL이거나 default다.
+        // The rows are unchanged, and the new columns are NULL or the default.
         let items = "SELECT COUNT(*) FROM addcol_item WHERE ref = 'item-1' AND label = 'first' AND note IS NULL AND priority = 3 AND archived = false AND status = 'new'";
         assert_eq!(count(&db, items).await.unwrap(), 1, "{driver}: items with their values and the new defaults");
         assert_eq!(count(&db, "SELECT COUNT(*) FROM addcol_tag WHERE color IS NULL").await.unwrap(), 2, "{driver}: tags with a null color");
         assert_eq!(count(&db, "SELECT COUNT(*) FROM addcol_log_entry WHERE message = 'kept'").await.unwrap(), 1, "{driver}: log entries");
-        // SQLite는 foreign key를 끄고 table을 다시 만들었다. 연결이 다시 켰는지 본다.
+        // SQLite turned off foreign keys and rebuilt the table. Checks that the connection turned them back on.
         assert!(exec(&db, "INSERT INTO addcol_tag (item_id, name) VALUES (999, 'orphan')").await.is_err(), "{driver}: a tag of a missing item was written");
-        // audit trigger는 새 column을 기록한다.
+        // The audit trigger records the new column.
         exec(&db, "INSERT INTO audit (actor) VALUES ('update')").await.unwrap();
         exec(&db, "UPDATE addcol_item SET note = 'later', priority = 4, audit_seq = 2 WHERE id = 1").await.unwrap();
         let history = "SELECT COUNT(*) FROM addcol_item_history WHERE history_action = 'update' AND previous_audit_seq = 1 AND audit_seq = 2 AND note = 'later' AND priority = 4 AND status = 'new'";
         assert_eq!(count(&db, history).await.unwrap(), 1, "{driver}: history rows of the update with the new columns");
-        // 새 table은 index, foreign key, check, audit trigger와 함께 만들어졌다.
+        // The new table was created with its index, foreign key, check, and audit trigger.
         exec(&db, "INSERT INTO audit (actor) VALUES ('extra')").await.unwrap();
         exec(&db, "INSERT INTO addcol_extra (item_id, label, audit_seq) VALUES (1, 'extra', 3)").await.unwrap();
         let inserted = "SELECT COUNT(*) FROM addcol_extra_history WHERE history_action = 'insert' AND previous_audit_seq IS NULL AND audit_seq = 3 AND item_id = 1 AND label = 'extra'";
@@ -135,7 +135,7 @@ async fn add_tables_and_columns() {
         }
         assert_eq!(count(&db, "SELECT COUNT(*) FROM addcol_extra").await.unwrap(), 1, "{driver}: rows of the created table");
         assert!(added(db.utils().schema().add_tables_and_columns(fixture("v2")).await).is_empty(), "{driver}: repeated add_tables_and_columns");
-        // 모든 table이 있으므로 install은 아무것도 바꾸지 않는다(docs/schema.md, "Schema installation").
+        // All tables exist, so install changes nothing (docs/schema.md, "Schema installation").
         db.utils().schema().install(fixture("v2")).await.unwrap_or_else(|e| panic!("{driver}: install of version 2 over its tables: {e}"));
         db.close().await;
         database.drop().await;
@@ -158,8 +158,8 @@ async fn add_tables_and_columns_differs() {
     }
 }
 
-/// 있는 table에 빠진 index는 더하고 다시 부르면 아무것도 하지 않는다. 빠진 unique key는 있는 행에서
-/// 실패할 수 있다는 이유를 적은 SCHEMA_DIFFERS다.
+/// Missing indexes on existing tables are added, and calling again does nothing. A missing unique key may fail on existing rows,
+/// so it is SCHEMA_DIFFERS with that reason noted.
 #[tokio::test]
 async fn add_tables_and_columns_index() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -180,7 +180,7 @@ async fn add_tables_and_columns_index() {
             added(db.utils().schema().add_tables_and_columns(fixture("index")).await).is_empty(),
             "{driver}: repeated add_tables_and_columns with the index"
         );
-        // install은 database가 set과 같을 때만 아무것도 바꾸지 않는다: index가 선언대로 있다.
+        // install changes nothing only when the database matches the set: the indexes are there as declared.
         db.utils().schema().install(fixture("index")).await.unwrap_or_else(|e| panic!("{driver}: install of the set with the index: {e}"));
         db.close().await;
         database.drop().await;

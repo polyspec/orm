@@ -44,9 +44,9 @@ type document struct {
 	Extensions map[string]extension `json:"extensions"`
 }
 
-// extension은 네 client 언어 밖에서 contract의 일부를 구현하는 것이다(PHP 확장 orm_dbspec). syntax는 그 선언을 읽는
-// 언어의 문법이고, rules와 owners는 그것이 구현하는 rule과 owner다. 그 rule의 native adapter는 extension 이름을 key로
-// 가진다.
+// An extension implements part of the contract outside the four client languages (PHP extension orm_dbspec). syntax is the grammar of the language that reads its declarations, and rules and owners are the ones it implements. The native adapter of such a rule
+// is keyed by the extension name
+// as its key.
 type extension struct {
 	Description string   `json:"description"`
 	Syntax      string   `json:"syntax"`

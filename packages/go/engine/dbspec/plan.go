@@ -7,14 +7,14 @@ import (
 	"strings"
 )
 
-// RulePlan과 RuleChain은 plan 문서와 plan chain의 diagnostic이다
+// RulePlan and RuleChain are the diagnostics of a plan document and a plan chain
 // (docs/plans.md).
 const (
 	RulePlan  = "plan"
 	RuleChain = "chain"
 )
 
-// Plan은 parse한 plan 문서다. From이 빈 문자열이면 빈 database에서 시작한다.
+// Plan is a parsed plan document. If From is an empty string, it starts from an empty database.
 type Plan struct {
 	Name          string
 	From          string
@@ -22,20 +22,20 @@ type Plan struct {
 	RenameColumns []ColumnRename
 	DropTables    []string
 	DropColumns   []ColumnName
-	// Schema는 target schema text를 parse한 문서이고 To는 그 schemaHash다.
+	// Schema is the document parsed from the target schema text, and To is its schemaHash.
 	Schema *Document
 	To     string
-	// schemaText는 parse한 target schema text이며 EmitPlan이 그대로 쓴다.
+	// schemaText is the parsed target schema text, which EmitPlan writes as is.
 	schemaText string
 }
 
-// TableRename은 `rename table <old> <new>`다.
+// TableRename is `rename table <old> <new>`.
 type TableRename struct{ Old, New string }
 
-// ColumnRename은 `rename column <table>.<old> <new>`이며 Table은 target 이름이다.
+// ColumnRename is `rename column <table>.<old> <new>`, and Table is the target name.
 type ColumnRename struct{ Table, Old, New string }
 
-// ColumnName은 `allow drop column <table>.<name>`의 source table과 column이다.
+// ColumnName is the source table and column of `allow drop column <table>.<name>`.
 type ColumnName struct{ Table, Name string }
 
 var (
@@ -47,7 +47,7 @@ var (
 	planDropColumn   = regexp.MustCompile(`^allow drop column ([a-z][a-z0-9_]*)\.([a-z][a-z0-9_]*)$`)
 )
 
-// ParsePlan은 plan 문서를 읽는다. 잘못된 문서는 위치가 붙은 diagnostic이다.
+// ParsePlan reads a plan document. An invalid document is a diagnostic with its location.
 func ParsePlan(text string) (*Plan, []Diagnostic) {
 	if !strings.HasSuffix(text, "\n") {
 		return nil, []Diagnostic{{Rule: RulePlan, Line: strings.Count(text, "\n") + 1, Column: 1, Message: "a plan ends with a line end"}}
@@ -122,8 +122,8 @@ func ParsePlan(text string) (*Plan, []Diagnostic) {
 		return fail(i+1, "a blank line and the target schema text follow the header")
 	}
 	offset := i + 1
-	// plan은 database 전체를 하나의 schema로 옮긴다. 외부 문서를 쓰는 set의 table은
-	// install과 addTablesAndColumns가 만든다.
+	// A plan moves the whole database to one schema. Tables of a set that uses external documents
+	// are made by install and addTablesAndColumns.
 	for k := offset; k < len(lines); k++ {
 		if strings.HasPrefix(lines[k], "use ") {
 			return fail(k+1, "a plan targets a whole database, and its target uses the external document %s: install a set that uses external documents with install or addTablesAndColumns", strings.Fields(lines[k])[1])
@@ -143,8 +143,8 @@ func ParsePlan(text string) (*Plan, []Diagnostic) {
 	return planTo(p, document, schemaText)
 }
 
-// planTo는 plan의 target을 schema text 문서로 정한다. target이 from과 같으면
-// diagnostic이다.
+// planTo sets the plan's target as a schema text document. If the target equals from,
+// it is a diagnostic.
 func planTo(p *Plan, document *Document, schemaText string) (*Plan, []Diagnostic) {
 	to := textHash(schemaText)
 	if to == p.From {
@@ -163,8 +163,8 @@ func planNames(names []string) string {
 	return ""
 }
 
-// EmitPlan은 plan을 canonical 문서로 쓴다: rename table, rename column, allow
-// drop table, allow drop column 순서로, 각각 이름 순이다.
+// EmitPlan writes the plan as a canonical document: rename table, rename column, allow
+// drop table, allow drop column, in that order, each in name order.
 func EmitPlan(p *Plan) string {
 	var b strings.Builder
 	b.WriteString("dbplan 1 " + p.Name + "\n")
@@ -194,8 +194,8 @@ func EmitPlan(p *Plan) string {
 	return b.String()
 }
 
-// Chain은 plan들을 from empty에서 이어지는 순서로 돌려준다. plan이 없으면
-// table이 없는 database의 빈 chain이다.
+// Chain returns the plans in the order in which they follow from empty. If there are no plans, it is
+// the empty chain of a database that has no tables.
 func Chain(plans []*Plan) ([]*Plan, []Diagnostic) {
 	if len(plans) == 0 {
 		return []*Plan{}, nil

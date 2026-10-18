@@ -31,7 +31,7 @@ type positionCase struct {
 	Positions []Position
 }
 
-// fileCase는 cases.json의 files case다. path는 cases.json 기준 상대 경로다.
+// fileCase is the files case of cases.json. path is a path relative to cases.json.
 type fileCase struct {
 	ID     string
 	Path   string
@@ -62,8 +62,8 @@ func joinLines(lines []string, crlf bool) string {
 	return strings.Join(lines, end) + end
 }
 
-// join은 case 문서 하나의 줄을 LF로, CRLF로, 또는 mixed case이면 CRLF부터 CRLF와 LF를
-// 번갈아 마지막 줄 끝 없이 잇는다.
+// join joins a case document's lines with LF, with CRLF, or, for a mixed case, starting with CRLF and alternating CRLF and LF,
+// without a final line ending.
 func (c vectorCase) join(lines []string) string {
 	if !c.Mixed {
 		return joinLines(lines, c.CRLF)
@@ -82,7 +82,7 @@ func (c vectorCase) join(lines []string) string {
 	return b.String()
 }
 
-// documentSet은 main text와 선언한 문서 집합, 곧 main이 아닌 case의 모든 문서를 돌려준다.
+// documentSet returns the main text and the declared document set, that is, all documents of the case other than main.
 func (c vectorCase) documentSet() (string, map[string]string, error) {
 	main, ok := c.Documents[c.Main]
 	if !ok {
@@ -116,9 +116,9 @@ func loadVectors(t *testing.T) vectorFile {
 	return vectors
 }
 
-// decodeCaseVectors는 cases.json의 모든 section과 field를 읽고, 없거나 type이 다른
-// 값을 위치와 함께 거부한다. normalize case는 canonical을, invalid case는 errors를
-// 가지며, crlf와 mixed는 없으면 false다. A section or field that the format does not name is refused too.
+// decodeCaseVectors reads all sections and fields of cases.json, and rejects any that are missing or of another type
+// with location. A normalize case has canonical, and an invalid case has errors,
+// and crlf and mixed are false when absent. A section or field that the format does not name is refused too.
 func decodeCaseVectors(r vectorReader, object map[string]any) (vectorFile, error) {
 	var v vectorFile
 	if err := r.fields(object, "", []string{"version", "note", "canonical", "normalize", "invalid", "hashes", "sets", "files", "positions"}); err != nil {
@@ -222,7 +222,7 @@ func decodeCaseVectors(r vectorReader, object map[string]any) (vectorFile, error
 		if s.Parsing, err = r.linesMap(c, location, "parsing"); err != nil {
 			return s, err
 		}
-		// external과 manifest는 외부 문서를 가진 case에만 있다.
+		// external and manifest exist only in cases that have external documents.
 		if _, ok := c["external"]; ok {
 			items, err := r.arrayField(c, location, "external")
 			if err != nil {
@@ -331,8 +331,8 @@ func decodeCaseVectors(r vectorReader, object map[string]any) (vectorFile, error
 	return v, err
 }
 
-// emitStable은 text를 parse해 emit하고, 그 emission을 다시 parse해 emit하면 byte까지 같은지
-// 확인한다.
+// emitStable parses the text and emits it, and checks that parsing the emission again and emitting it yields the same
+// bytes.
 func emitStable(text string, set map[string]string) (string, error) {
 	document, _, diagnostics := Parse(text, set)
 	if err := expectDocument(document, diagnostics); err != nil {
@@ -447,9 +447,9 @@ func TestPositionVectors(t *testing.T) {
 	}
 }
 
-// TestFileVectors는 files case마다 파일을 ReadFile로 path를 주어, ReadBytes로 그 byte와
-// case path를 이름으로 주어 읽는다. 두 reader는 같은 rule과 위치를 내고 message는 각자
-// 받은 이름을 쓴다.
+// TestFileVectors reads each files case by passing the path to ReadFile, and reads it with ReadBytes
+// using the case path as the name. Both readers give the same rule and location, and each message uses
+// the name it received.
 func TestFileVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	vectors := loadVectors(t)
@@ -487,11 +487,11 @@ func TestFileVectors(t *testing.T) {
 	}
 }
 
-// fileMessages는 file reader와 byte check가 rule마다 쓰는 message다.
+// fileMessages is the message that the file reader and the byte check use for each rule.
 var fileMessages = map[string]string{RuleSignature: " is not a dbspec document", RuleEncoding: " is not valid UTF-8"}
 
-// expectFileRead는 한 reader의 결과를 files case와 비교한다. errors가 있으면 text 없이 그
-// diagnostic만, 없으면 파일 byte와 같은 text가 parse되고 그대로 emit되어야 한다.
+// expectFileRead compares one reader's result with the files case. If there are errors, only the diagnostics are compared, without text;
+// if there are none, the parsed text, which equals the file bytes, must be emitted unchanged.
 func expectFileRead(path, name, text string, diagnostics []Diagnostic, want []vectorError) error {
 	if len(want) > 0 {
 		if text != "" {
@@ -529,8 +529,8 @@ func expectFileRead(path, name, text string, diagnostics []Diagnostic, want []ve
 	return nil
 }
 
-// expectDiagnostics는 text를 parse해 모든 diagnostic의 rule, 줄, 칸을 순서대로 want와
-// 비교한다.
+// expectDiagnostics parses the text and compares the rule, line, and column of every diagnostic, in order,
+// with want.
 func expectDiagnostics(text string, set map[string]string, want []vectorError) error {
 	document, _, diagnostics := Parse(text, set)
 	if document != nil {
