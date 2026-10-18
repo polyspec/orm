@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The language-set declaration of config/parity.json is removed, because the set is read from config and no literal list remains (T77-47).
 - The Go feature units run through one wrapper that takes the environment of feature-check from the same functions (T77-46).
 - Every tracked test file runs under an owner target, and a test file never takes a scope declaration; the sixteen files that had no owner target are connected or declared as helpers (T77-45).
 - The CHECK_TARGETS inputs name tracked paths, and the Python interface unit check runs its two test files instead of an empty directory (T77-44).

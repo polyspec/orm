@@ -7197,9 +7197,6 @@
     "profile": "client",
     "catalog": { "file": "docs/errors.yaml", "pattern": "^codes:$|^  - code: (\\w+)(?:\\s+#.*)?$|^    origin: \\w+$" }
   },
-  "languageLists": [
-    { "file": "tests/interfaces/contracts/validate.go", "pattern": "^var languages = \\[\\]string\\{(.*)\\}$", "profile": "client" }
-  ],
   "documents": {
     "globs": ["AGENTS.md", "AGENTS.ko.md", "README.md", "README.ko.md", "docs/*.md", "tests/**/README*.md", "packages/**/README*.md"],
     "nouns": ["languages", "implementations", "clients", "planners", "runners", "언어", "구현", "client", "planner", "runner"]
