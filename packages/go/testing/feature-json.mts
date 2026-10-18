@@ -21,12 +21,16 @@ const database = values.database;
 const test = values.test;
 if (database === undefined || !databases.includes(database)) throw new Error(`--database must be one of ${databases.join(', ')}`);
 if (test === undefined || test === '') throw new Error('--test names the Go test');
+// go test -run matches each level by regexp. The top-level name is a Go identifier; it is escaped with the same syntax
+// characters kit escapes its names with (parity-runners.mts), so no name can change the pattern it runs.
+if (!/^[A-Za-z_]\w*$/.test(test)) throw new Error(`--test must be a Go identifier, got ${JSON.stringify(test)}`);
+const pattern = `^(${test.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&')})$`;
 if (positionals.length === 0) throw new Error('give the Go package path after the options, for example ./orm');
 const dsn = databaseDsn(process.env, { database, dsn_env: values['dsn-env'] });
 const env = featureEnvironment(process.env, database, dsn);
 // kit runs this command in the directory of the Go implementation (packages/go). The Go test runs there.
 const goDirectory = resolve(import.meta.dirname, '..');
-const child = spawn('go', ['test', '-json', '-count=1', '-tags', values.tags as string, '-run', `^(${test})$`, ...positionals], { cwd: goDirectory, env, stdio: 'inherit' });
+const child = spawn('go', ['test', '-json', '-count=1', '-tags', values.tags as string, '-run', pattern, ...positionals], { cwd: goDirectory, env, stdio: 'inherit' });
 child.on('exit', (code, signal) => {
   if (signal !== null) throw new Error(`go test was stopped by ${signal}`);
   process.exitCode = code ?? 1;

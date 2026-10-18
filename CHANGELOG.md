@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The Go feature wrapper validates its test name as a Go identifier and escapes it for go test -run (T77-48-1).
 - The twelve database-backed Go feature units run through the wrapper for each database, mysql on their existing ids and postgres and sqlite as their own units (T77-48).
 - The language-set declaration of config/parity.json is removed, because the set is read from config and no literal list remains (T77-47).
 - The Go feature units run through one wrapper that takes the environment of feature-check from the same functions (T77-46).

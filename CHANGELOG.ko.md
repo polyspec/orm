@@ -3,6 +3,7 @@
 # 변경 이력
 
 ## Unreleased
+- Go feature wrapper는 테스트 이름을 Go 식별자로 검증하고 go test -run용으로 이스케이프한다 (T77-48-1).
 - DB 항목이 있는 Go feature unit 열두 개는 DB마다 wrapper로 실행된다. mysql은 기존 id, postgres와 sqlite는 자기 unit이다 (T77-48).
 - config/parity.json의 언어 집합 선언은 집합이 config에서 읽히고 리터럴 목록이 남지 않아 제거되었다 (T77-47).
 - Go feature unit들은 feature-check와 같은 함수가 준 환경을 가진 wrapper 하나로 실행된다 (T77-46).
