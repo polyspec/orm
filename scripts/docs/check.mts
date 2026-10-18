@@ -4,9 +4,9 @@ import path from 'node:path';
 import { docs, dist, files, siteBase } from './lib.mts';
 import { COMPUTE, runCase, type CaseBody } from '../../tests/testcase.mts';
 
-// docs check는 build한 site의 HTML을 Node로 읽는다: Markdown page마다 HTML page가 있는지, 모든 내부 link, image,
-// script와 stylesheet가 dist의 file을 가리키는지, fragment가 그 page의 id인지, Mermaid fence가 소스(<pre
-// class="mermaid">)로 들어 있는지 본다. Mermaid 그림은 읽는 이의 browser가 그린다(docs/.vitepress/theme/index.ts).
+// docs check reads the built site's HTML with Node: for each Markdown page it checks that an HTML page exists, and that all internal links, images,
+// scripts and stylesheets point to files in dist, that fragments are ids of their page, and that the Mermaid fences are included as source (<pre
+// class="mermaid">). The Mermaid diagrams are drawn by the reader's browser (docs/.vitepress/theme/index.ts).
 let failed = 0;
 const check = async (name: string, body: CaseBody) => { if (!(await runCase(name, COMPUTE, body))) failed++; };
 
