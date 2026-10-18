@@ -2163,6 +2163,10 @@
     "exported": true,
     "signature": "str"
   },
+  "packages/python/src/polyspec/orm/engine/model.py::Entity#field.external": {
+    "exported": true,
+    "signature": "bool"
+  },
   "packages/python/src/polyspec/orm/engine/model.py::Entity#field.fields": {
     "exported": true,
     "signature": "tuple"
@@ -6115,6 +6119,122 @@
     "exported": true,
     "signature": "def value(self, value, *compared) -\u003e Self"
   },
+  "packages/python/src/polyspec/orm/models/models.py::NoteReader": {
+    "exported": true,
+    "signature": "class NoteReader(Model)"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::NoteReader.add_column_seq": {
+    "exported": true,
+    "signature": "def add_column_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::NoteReader.add_column_shared_note_seq": {
+    "exported": true,
+    "signature": "def add_column_shared_note_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::NoteReader.avg_seq": {
+    "exported": true,
+    "signature": "def avg_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::NoteReader.avg_shared_note_seq": {
+    "exported": true,
+    "signature": "def avg_shared_note_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::NoteReader.entity_def": {
+    "exported": true,
+    "signature": "@property def entity_def(self)"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::NoteReader.force_index_ix_note_reader_shared_note": {
+    "exported": true,
+    "signature": "def force_index_ix_note_reader_shared_note(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::NoteReader.get_seq": {
+    "exported": true,
+    "signature": "def get_seq(self) -\u003e int"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::NoteReader.get_shared_note_seq": {
+    "exported": true,
+    "signature": "def get_shared_note_seq(self) -\u003e int"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::NoteReader.group_by_seq": {
+    "exported": true,
+    "signature": "def group_by_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::NoteReader.group_by_shared_note_seq": {
+    "exported": true,
+    "signature": "def group_by_shared_note_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::NoteReader.key_name_seq": {
+    "exported": true,
+    "signature": "def key_name_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::NoteReader.key_name_shared_note_seq": {
+    "exported": true,
+    "signature": "def key_name_shared_note_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::NoteReader.minus_seq": {
+    "exported": true,
+    "signature": "def minus_seq(self, n) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::NoteReader.minus_shared_note_seq": {
+    "exported": true,
+    "signature": "def minus_shared_note_seq(self, n) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::NoteReader.order_by_seq_asc": {
+    "exported": true,
+    "signature": "def order_by_seq_asc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::NoteReader.order_by_seq_desc": {
+    "exported": true,
+    "signature": "def order_by_seq_desc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::NoteReader.order_by_shared_note_seq_asc": {
+    "exported": true,
+    "signature": "def order_by_shared_note_seq_asc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::NoteReader.order_by_shared_note_seq_desc": {
+    "exported": true,
+    "signature": "def order_by_shared_note_seq_desc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::NoteReader.plus_seq": {
+    "exported": true,
+    "signature": "def plus_seq(self, n) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::NoteReader.plus_shared_note_seq": {
+    "exported": true,
+    "signature": "def plus_shared_note_seq(self, n) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::NoteReader.remove_column_seq": {
+    "exported": true,
+    "signature": "def remove_column_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::NoteReader.remove_column_shared_note_seq": {
+    "exported": true,
+    "signature": "def remove_column_shared_note_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::NoteReader.seq": {
+    "exported": true,
+    "signature": "def seq(self, value, *compared) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::NoteReader.set_seq": {
+    "exported": true,
+    "signature": "def set_seq(self, value: int) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::NoteReader.set_shared_note_seq": {
+    "exported": true,
+    "signature": "def set_shared_note_seq(self, value: int) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::NoteReader.shared_note_seq": {
+    "exported": true,
+    "signature": "def shared_note_seq(self, value, *compared) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::NoteReader.sum_seq": {
+    "exported": true,
+    "signature": "def sum_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::NoteReader.sum_shared_note_seq": {
+    "exported": true,
+    "signature": "def sum_shared_note_seq(self) -\u003e Self"
+  },
   "packages/python/src/polyspec/orm/models/models.py::Project": {
     "exported": true,
     "signature": "class Project(Model)"
@@ -6630,6 +6750,102 @@
   "packages/python/src/polyspec/orm/models/models.py::ServiceRegion.sum_service_seq": {
     "exported": true,
     "signature": "def sum_service_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SharedNote": {
+    "exported": true,
+    "signature": "class SharedNote(Model)"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SharedNote.add_column_seq": {
+    "exported": true,
+    "signature": "def add_column_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SharedNote.add_column_title": {
+    "exported": true,
+    "signature": "def add_column_title(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SharedNote.avg_seq": {
+    "exported": true,
+    "signature": "def avg_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SharedNote.entity_def": {
+    "exported": true,
+    "signature": "@property def entity_def(self)"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SharedNote.get_seq": {
+    "exported": true,
+    "signature": "def get_seq(self) -\u003e int"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SharedNote.get_title": {
+    "exported": true,
+    "signature": "def get_title(self) -\u003e str"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SharedNote.group_by_seq": {
+    "exported": true,
+    "signature": "def group_by_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SharedNote.group_by_title": {
+    "exported": true,
+    "signature": "def group_by_title(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SharedNote.key_name_seq": {
+    "exported": true,
+    "signature": "def key_name_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SharedNote.key_name_title": {
+    "exported": true,
+    "signature": "def key_name_title(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SharedNote.minus_seq": {
+    "exported": true,
+    "signature": "def minus_seq(self, n) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SharedNote.order_by_seq_asc": {
+    "exported": true,
+    "signature": "def order_by_seq_asc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SharedNote.order_by_seq_desc": {
+    "exported": true,
+    "signature": "def order_by_seq_desc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SharedNote.order_by_title_asc": {
+    "exported": true,
+    "signature": "def order_by_title_asc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SharedNote.order_by_title_desc": {
+    "exported": true,
+    "signature": "def order_by_title_desc(self, *fn) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SharedNote.plus_seq": {
+    "exported": true,
+    "signature": "def plus_seq(self, n) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SharedNote.remove_column_seq": {
+    "exported": true,
+    "signature": "def remove_column_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SharedNote.remove_column_title": {
+    "exported": true,
+    "signature": "def remove_column_title(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SharedNote.seq": {
+    "exported": true,
+    "signature": "def seq(self, value, *compared) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SharedNote.set_seq": {
+    "exported": true,
+    "signature": "def set_seq(self, value: int) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SharedNote.set_title": {
+    "exported": true,
+    "signature": "def set_title(self, value: str) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SharedNote.sum_seq": {
+    "exported": true,
+    "signature": "def sum_seq(self) -\u003e Self"
+  },
+  "packages/python/src/polyspec/orm/models/models.py::SharedNote.title": {
+    "exported": true,
+    "signature": "def title(self, value, *compared) -\u003e Self"
   },
   "packages/python/src/polyspec/orm/models/models.py::SoftLink": {
     "exported": true,

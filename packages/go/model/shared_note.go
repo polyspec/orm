@@ -261,6 +261,13 @@ func (x *SharedNoteModel) GroupLimit(n int) *SharedNoteModel { x.m.GroupLimit(n)
 // DeleteLock excludes the relation from recursive delete.
 func (x *SharedNoteModel) DeleteLock() *SharedNoteModel { x.m.DeleteLock(); return x }
 
+// ExpectRevision makes the next Update or Delete write only while column holds
+// revision; a mismatch returns CodeRevisionChanged and changes nothing.
+func (x *SharedNoteModel) ExpectRevision(column string, revision int64) *SharedNoteModel {
+	x.m.ExpectRevision(column, revision)
+	return x
+}
+
 // FetchKey computes the collection key of each row.
 func (x *SharedNoteModel) FetchKey(fn func(*SharedNoteModel) any) *SharedNoteModel {
 	x.m.FetchKey(func(m orm.Model) any { return fn(m.(*SharedNoteModel)) })

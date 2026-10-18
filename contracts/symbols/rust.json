@@ -12253,7 +12253,7 @@
   },
   "packages/rust/schema/src/dbspec/runtime.rs::Entity": {
     "exported": true,
-    "signature": "pub struct Entity  { # [doc = \" The `entity` setting, or the table name if there is none.\"] pub name : String , pub table : String , # [doc = \" One field per column, in column order.\"] pub fields : Vec \u003c Field \u003e , pub primary_key : Vec \u003c String \u003e , # [doc = \" identity column.\"] pub identity : Option \u003c String \u003e , pub uniques : Vec \u003c Key \u003e , pub indexes : Vec \u003c Key \u003e , pub foreign_keys : Vec \u003c ForeignKey \u003e , # [doc = \" `updated` column.\"] pub updated : Option \u003c String \u003e , # [doc = \" `soft_delete` column.\"] pub soft_delete : Option \u003c String \u003e , # [doc = \" `aes_version` column.\"] pub aes_version : Option \u003c String \u003e , pub audit : Option \u003c Audit \u003e , pub immutable : bool , }"
+    "signature": "pub struct Entity  { # [doc = \" The `entity` setting, or the table name if there is none.\"] pub name : String , pub table : String , # [doc = \" One field per column, in column order.\"] pub fields : Vec \u003c Field \u003e , pub primary_key : Vec \u003c String \u003e , # [doc = \" identity column.\"] pub identity : Option \u003c String \u003e , pub uniques : Vec \u003c Key \u003e , pub indexes : Vec \u003c Key \u003e , pub foreign_keys : Vec \u003c ForeignKey \u003e , # [doc = \" `updated` column.\"] pub updated : Option \u003c String \u003e , # [doc = \" `soft_delete` column.\"] pub soft_delete : Option \u003c String \u003e , # [doc = \" `aes_version` column.\"] pub aes_version : Option \u003c String \u003e , pub audit : Option \u003c Audit \u003e , pub immutable : bool , # [doc = \" A used table of an external document: it is read like any entity, and every write fails with `CONFIG` before\"] # [doc = \" any statement (docs/dbspec.md \\\"External documents\\\").\"] pub external : bool , }"
   },
   "packages/rust/schema/src/dbspec/runtime.rs::Entity#field.aes_version": {
     "exported": true,
@@ -12262,6 +12262,10 @@
   "packages/rust/schema/src/dbspec/runtime.rs::Entity#field.audit": {
     "exported": true,
     "signature": "Option \u003c Audit \u003e"
+  },
+  "packages/rust/schema/src/dbspec/runtime.rs::Entity#field.external": {
+    "exported": true,
+    "signature": "bool"
   },
   "packages/rust/schema/src/dbspec/runtime.rs::Entity#field.fields": {
     "exported": true,
@@ -12309,7 +12313,7 @@
   },
   "packages/rust/schema/src/dbspec/runtime.rs::Entity#wire": {
     "exported": true,
-    "signature": "{\"aes_version\":\"text\",\"audit\":\"Audit\",\"fields\":\"list\u003cField\u003e\",\"foreign_keys\":\"list\u003cForeignKey\u003e\",\"identity\":\"text\",\"immutable\":\"bool\",\"indexes\":\"list\u003cKey\u003e\",\"name\":\"text\",\"primary_key\":\"list\u003ctext\u003e\",\"soft_delete\":\"text\",\"table\":\"text\",\"uniques\":\"list\u003cKey\u003e\",\"updated\":\"text\"}"
+    "signature": "{\"aes_version\":\"text\",\"audit\":\"Audit\",\"external\":\"bool\",\"fields\":\"list\u003cField\u003e\",\"foreign_keys\":\"list\u003cForeignKey\u003e\",\"identity\":\"text\",\"immutable\":\"bool\",\"indexes\":\"list\u003cKey\u003e\",\"name\":\"text\",\"primary_key\":\"list\u003ctext\u003e\",\"soft_delete\":\"text\",\"table\":\"text\",\"uniques\":\"list\u003cKey\u003e\",\"updated\":\"text\"}"
   },
   "packages/rust/schema/src/dbspec/runtime.rs::Entity::field": {
     "exported": true,

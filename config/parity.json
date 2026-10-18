@@ -36,6 +36,7 @@
       "tests": ["packages/ts/tests/coverage_*.mjs"],
       "support": [
         "packages/ts/tests/case-database.mjs",
+        "packages/ts/tests/bench-set.mjs",
         "packages/ts/tests/codec_case.mjs",
         "packages/ts/tests/conformance_case.mjs",
         "packages/ts/tests/coverage_case.mjs",
@@ -62,6 +63,7 @@
       "tests": ["packages/python/tests/coverage_*.py"],
       "support": [
         "packages/python/tests/__init__.py",
+        "packages/python/tests/bench_set.py",
         "packages/python/tests/case_database.py",
         "packages/python/tests/conformance_case.py",
         "packages/python/tests/coverage_case.py",
@@ -86,6 +88,7 @@
       "tests": ["packages/rust/**/tests/**/coverage_*.rs"],
       "support": [
         "packages/rust/tests/tests/integration/main.rs",
+        "packages/rust/tests/src/bench_set.rs",
         "packages/rust/build/tests/lock_probe/mod.rs",
         "packages/rust/build/tests/row_insert_identity/expression.rs",
         "packages/rust/orm/tests/common/audit_rows.rs",

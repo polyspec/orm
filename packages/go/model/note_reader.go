@@ -261,6 +261,13 @@ func (x *NoteReaderModel) GroupLimit(n int) *NoteReaderModel { x.m.GroupLimit(n)
 // DeleteLock excludes the relation from recursive delete.
 func (x *NoteReaderModel) DeleteLock() *NoteReaderModel { x.m.DeleteLock(); return x }
 
+// ExpectRevision makes the next Update or Delete write only while column holds
+// revision; a mismatch returns CodeRevisionChanged and changes nothing.
+func (x *NoteReaderModel) ExpectRevision(column string, revision int64) *NoteReaderModel {
+	x.m.ExpectRevision(column, revision)
+	return x
+}
+
 // FetchKey computes the collection key of each row.
 func (x *NoteReaderModel) FetchKey(fn func(*NoteReaderModel) any) *NoteReaderModel {
 	x.m.FetchKey(func(m orm.Model) any { return fn(m.(*NoteReaderModel)) })

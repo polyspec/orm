@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- A table of an external document is read through a read-only entity of the using set: select, joins, subqueries and relations work, and every write fails with `CONFIG`, in the five clients (T209).
 - `expectRevision(column, revision)` makes update() and delete() write only a row at that revision, update() incrementing it, and fails otherwise with the new code `REVISION_CHANGED`, in the five clients (T212).
 - Breaking: `creates(rows, batch)` is the only form; each batch of `batch` rows is one multi-row INSERT, every batch runs in one transaction, and a batch over the bind limit fails with the new code `BATCH_TOO_LARGE`, in the five clients (T205).
 - The Mermaid round-trip vector of the bench document lists the soft_link objects (T214).

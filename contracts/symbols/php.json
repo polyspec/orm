@@ -2731,6 +2731,122 @@
     "exported": true,
     "signature": "public function value(mixed $value, mixed ...$compared): static"
   },
+  "packages/php/gen/NoteReader.php::Polyspec\\Orm\\Tests\\Model\\NoteReader": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Tests\\Model\\NoteReader extends Polyspec\\Orm\\Model implements JsonSerializable uses "
+  },
+  "packages/php/gen/NoteReader.php::Polyspec\\Orm\\Tests\\Model\\NoteReader::addColumnSeq": {
+    "exported": true,
+    "signature": "public function addColumnSeq(): static"
+  },
+  "packages/php/gen/NoteReader.php::Polyspec\\Orm\\Tests\\Model\\NoteReader::addColumnSharedNoteSeq": {
+    "exported": true,
+    "signature": "public function addColumnSharedNoteSeq(): static"
+  },
+  "packages/php/gen/NoteReader.php::Polyspec\\Orm\\Tests\\Model\\NoteReader::avgSeq": {
+    "exported": true,
+    "signature": "public function avgSeq(): static"
+  },
+  "packages/php/gen/NoteReader.php::Polyspec\\Orm\\Tests\\Model\\NoteReader::avgSharedNoteSeq": {
+    "exported": true,
+    "signature": "public function avgSharedNoteSeq(): static"
+  },
+  "packages/php/gen/NoteReader.php::Polyspec\\Orm\\Tests\\Model\\NoteReader::forceIndexIxNoteReaderSharedNote": {
+    "exported": true,
+    "signature": "public function forceIndexIxNoteReaderSharedNote(): static"
+  },
+  "packages/php/gen/NoteReader.php::Polyspec\\Orm\\Tests\\Model\\NoteReader::getSeq": {
+    "exported": true,
+    "signature": "public function getSeq(): int"
+  },
+  "packages/php/gen/NoteReader.php::Polyspec\\Orm\\Tests\\Model\\NoteReader::getSharedNoteSeq": {
+    "exported": true,
+    "signature": "public function getSharedNoteSeq(): int"
+  },
+  "packages/php/gen/NoteReader.php::Polyspec\\Orm\\Tests\\Model\\NoteReader::groupBySeq": {
+    "exported": true,
+    "signature": "public function groupBySeq(): static"
+  },
+  "packages/php/gen/NoteReader.php::Polyspec\\Orm\\Tests\\Model\\NoteReader::groupBySharedNoteSeq": {
+    "exported": true,
+    "signature": "public function groupBySharedNoteSeq(): static"
+  },
+  "packages/php/gen/NoteReader.php::Polyspec\\Orm\\Tests\\Model\\NoteReader::keyNameSeq": {
+    "exported": true,
+    "signature": "public function keyNameSeq(): static"
+  },
+  "packages/php/gen/NoteReader.php::Polyspec\\Orm\\Tests\\Model\\NoteReader::keyNameSharedNoteSeq": {
+    "exported": true,
+    "signature": "public function keyNameSharedNoteSeq(): static"
+  },
+  "packages/php/gen/NoteReader.php::Polyspec\\Orm\\Tests\\Model\\NoteReader::meta": {
+    "exported": true,
+    "signature": "public static function meta(): array"
+  },
+  "packages/php/gen/NoteReader.php::Polyspec\\Orm\\Tests\\Model\\NoteReader::minusSeq": {
+    "exported": true,
+    "signature": "public function minusSeq(int|float $n): static"
+  },
+  "packages/php/gen/NoteReader.php::Polyspec\\Orm\\Tests\\Model\\NoteReader::minusSharedNoteSeq": {
+    "exported": true,
+    "signature": "public function minusSharedNoteSeq(int|float $n): static"
+  },
+  "packages/php/gen/NoteReader.php::Polyspec\\Orm\\Tests\\Model\\NoteReader::orderBySeqAsc": {
+    "exported": true,
+    "signature": "public function orderBySeqAsc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/NoteReader.php::Polyspec\\Orm\\Tests\\Model\\NoteReader::orderBySeqDesc": {
+    "exported": true,
+    "signature": "public function orderBySeqDesc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/NoteReader.php::Polyspec\\Orm\\Tests\\Model\\NoteReader::orderBySharedNoteSeqAsc": {
+    "exported": true,
+    "signature": "public function orderBySharedNoteSeqAsc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/NoteReader.php::Polyspec\\Orm\\Tests\\Model\\NoteReader::orderBySharedNoteSeqDesc": {
+    "exported": true,
+    "signature": "public function orderBySharedNoteSeqDesc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/NoteReader.php::Polyspec\\Orm\\Tests\\Model\\NoteReader::plusSeq": {
+    "exported": true,
+    "signature": "public function plusSeq(int|float $n): static"
+  },
+  "packages/php/gen/NoteReader.php::Polyspec\\Orm\\Tests\\Model\\NoteReader::plusSharedNoteSeq": {
+    "exported": true,
+    "signature": "public function plusSharedNoteSeq(int|float $n): static"
+  },
+  "packages/php/gen/NoteReader.php::Polyspec\\Orm\\Tests\\Model\\NoteReader::removeColumnSeq": {
+    "exported": true,
+    "signature": "public function removeColumnSeq(): static"
+  },
+  "packages/php/gen/NoteReader.php::Polyspec\\Orm\\Tests\\Model\\NoteReader::removeColumnSharedNoteSeq": {
+    "exported": true,
+    "signature": "public function removeColumnSharedNoteSeq(): static"
+  },
+  "packages/php/gen/NoteReader.php::Polyspec\\Orm\\Tests\\Model\\NoteReader::seq": {
+    "exported": true,
+    "signature": "public function seq(mixed $value, mixed ...$compared): static"
+  },
+  "packages/php/gen/NoteReader.php::Polyspec\\Orm\\Tests\\Model\\NoteReader::setSeq": {
+    "exported": true,
+    "signature": "public function setSeq(int $v): static"
+  },
+  "packages/php/gen/NoteReader.php::Polyspec\\Orm\\Tests\\Model\\NoteReader::setSharedNoteSeq": {
+    "exported": true,
+    "signature": "public function setSharedNoteSeq(int $v): static"
+  },
+  "packages/php/gen/NoteReader.php::Polyspec\\Orm\\Tests\\Model\\NoteReader::sharedNoteSeq": {
+    "exported": true,
+    "signature": "public function sharedNoteSeq(mixed $value, mixed ...$compared): static"
+  },
+  "packages/php/gen/NoteReader.php::Polyspec\\Orm\\Tests\\Model\\NoteReader::sumSeq": {
+    "exported": true,
+    "signature": "public function sumSeq(): static"
+  },
+  "packages/php/gen/NoteReader.php::Polyspec\\Orm\\Tests\\Model\\NoteReader::sumSharedNoteSeq": {
+    "exported": true,
+    "signature": "public function sumSharedNoteSeq(): static"
+  },
   "packages/php/gen/Project.php::Polyspec\\Orm\\Tests\\Model\\Project": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Tests\\Model\\Project extends Polyspec\\Orm\\Model implements JsonSerializable uses "
@@ -3246,6 +3362,102 @@
   "packages/php/gen/ServiceRegion.php::Polyspec\\Orm\\Tests\\Model\\ServiceRegion::sumServiceSeq": {
     "exported": true,
     "signature": "public function sumServiceSeq(): static"
+  },
+  "packages/php/gen/SharedNote.php::Polyspec\\Orm\\Tests\\Model\\SharedNote": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Tests\\Model\\SharedNote extends Polyspec\\Orm\\Model implements JsonSerializable uses "
+  },
+  "packages/php/gen/SharedNote.php::Polyspec\\Orm\\Tests\\Model\\SharedNote::addColumnSeq": {
+    "exported": true,
+    "signature": "public function addColumnSeq(): static"
+  },
+  "packages/php/gen/SharedNote.php::Polyspec\\Orm\\Tests\\Model\\SharedNote::addColumnTitle": {
+    "exported": true,
+    "signature": "public function addColumnTitle(): static"
+  },
+  "packages/php/gen/SharedNote.php::Polyspec\\Orm\\Tests\\Model\\SharedNote::avgSeq": {
+    "exported": true,
+    "signature": "public function avgSeq(): static"
+  },
+  "packages/php/gen/SharedNote.php::Polyspec\\Orm\\Tests\\Model\\SharedNote::getSeq": {
+    "exported": true,
+    "signature": "public function getSeq(): int"
+  },
+  "packages/php/gen/SharedNote.php::Polyspec\\Orm\\Tests\\Model\\SharedNote::getTitle": {
+    "exported": true,
+    "signature": "public function getTitle(): string"
+  },
+  "packages/php/gen/SharedNote.php::Polyspec\\Orm\\Tests\\Model\\SharedNote::groupBySeq": {
+    "exported": true,
+    "signature": "public function groupBySeq(): static"
+  },
+  "packages/php/gen/SharedNote.php::Polyspec\\Orm\\Tests\\Model\\SharedNote::groupByTitle": {
+    "exported": true,
+    "signature": "public function groupByTitle(): static"
+  },
+  "packages/php/gen/SharedNote.php::Polyspec\\Orm\\Tests\\Model\\SharedNote::keyNameSeq": {
+    "exported": true,
+    "signature": "public function keyNameSeq(): static"
+  },
+  "packages/php/gen/SharedNote.php::Polyspec\\Orm\\Tests\\Model\\SharedNote::keyNameTitle": {
+    "exported": true,
+    "signature": "public function keyNameTitle(): static"
+  },
+  "packages/php/gen/SharedNote.php::Polyspec\\Orm\\Tests\\Model\\SharedNote::meta": {
+    "exported": true,
+    "signature": "public static function meta(): array"
+  },
+  "packages/php/gen/SharedNote.php::Polyspec\\Orm\\Tests\\Model\\SharedNote::minusSeq": {
+    "exported": true,
+    "signature": "public function minusSeq(int|float $n): static"
+  },
+  "packages/php/gen/SharedNote.php::Polyspec\\Orm\\Tests\\Model\\SharedNote::orderBySeqAsc": {
+    "exported": true,
+    "signature": "public function orderBySeqAsc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/SharedNote.php::Polyspec\\Orm\\Tests\\Model\\SharedNote::orderBySeqDesc": {
+    "exported": true,
+    "signature": "public function orderBySeqDesc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/SharedNote.php::Polyspec\\Orm\\Tests\\Model\\SharedNote::orderByTitleAsc": {
+    "exported": true,
+    "signature": "public function orderByTitleAsc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/SharedNote.php::Polyspec\\Orm\\Tests\\Model\\SharedNote::orderByTitleDesc": {
+    "exported": true,
+    "signature": "public function orderByTitleDesc(Polyspec\\Orm\\Func ...$fn): static"
+  },
+  "packages/php/gen/SharedNote.php::Polyspec\\Orm\\Tests\\Model\\SharedNote::plusSeq": {
+    "exported": true,
+    "signature": "public function plusSeq(int|float $n): static"
+  },
+  "packages/php/gen/SharedNote.php::Polyspec\\Orm\\Tests\\Model\\SharedNote::removeColumnSeq": {
+    "exported": true,
+    "signature": "public function removeColumnSeq(): static"
+  },
+  "packages/php/gen/SharedNote.php::Polyspec\\Orm\\Tests\\Model\\SharedNote::removeColumnTitle": {
+    "exported": true,
+    "signature": "public function removeColumnTitle(): static"
+  },
+  "packages/php/gen/SharedNote.php::Polyspec\\Orm\\Tests\\Model\\SharedNote::seq": {
+    "exported": true,
+    "signature": "public function seq(mixed $value, mixed ...$compared): static"
+  },
+  "packages/php/gen/SharedNote.php::Polyspec\\Orm\\Tests\\Model\\SharedNote::setSeq": {
+    "exported": true,
+    "signature": "public function setSeq(int $v): static"
+  },
+  "packages/php/gen/SharedNote.php::Polyspec\\Orm\\Tests\\Model\\SharedNote::setTitle": {
+    "exported": true,
+    "signature": "public function setTitle(string $v): static"
+  },
+  "packages/php/gen/SharedNote.php::Polyspec\\Orm\\Tests\\Model\\SharedNote::sumSeq": {
+    "exported": true,
+    "signature": "public function sumSeq(): static"
+  },
+  "packages/php/gen/SharedNote.php::Polyspec\\Orm\\Tests\\Model\\SharedNote::title": {
+    "exported": true,
+    "signature": "public function title(mixed $value, mixed ...$compared): static"
   },
   "packages/php/gen/SoftLink.php::Polyspec\\Orm\\Tests\\Model\\SoftLink": {
     "exported": true,
@@ -10702,6 +10914,10 @@
   "packages/php/src/RuntimeModel.php::Polyspec\\Orm\\RuntimeModel::entity": {
     "exported": true,
     "signature": "public function entity(string $name): ?array"
+  },
+  "packages/php/src/RuntimeModel.php::Polyspec\\Orm\\RuntimeModel::externalEntity": {
+    "exported": false,
+    "signature": "private static function externalEntity(Polyspec\\Orm\\Dbspec\\Table $table): array"
   },
   "packages/php/src/RuntimeModel.php::Polyspec\\Orm\\RuntimeModel::files": {
     "exported": true,

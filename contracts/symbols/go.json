@@ -5977,7 +5977,7 @@
   },
   "packages/go/engine/runtimemodel/runtimemodel.go::Entity": {
     "exported": true,
-    "signature": "type Entity struct { Name string Table string PK []string Identity string Fields []*Field Uniques []Key Indexes map[string][]string Updated string SoftDelete string AESVersion string Audit *Audit fields map[string]*Field }"
+    "signature": "type Entity struct { Name string Table string PK []string Identity string Fields []*Field Uniques []Key Indexes map[string][]string Updated string SoftDelete string AESVersion string Audit *Audit External bool fields map[string]*Field }"
   },
   "packages/go/engine/runtimemodel/runtimemodel.go::Entity#field.AESVersion": {
     "exported": true,
@@ -5986,6 +5986,10 @@
   "packages/go/engine/runtimemodel/runtimemodel.go::Entity#field.Audit": {
     "exported": true,
     "signature": "*Audit"
+  },
+  "packages/go/engine/runtimemodel/runtimemodel.go::Entity#field.External": {
+    "exported": true,
+    "signature": "bool"
   },
   "packages/go/engine/runtimemodel/runtimemodel.go::Entity#field.Fields": {
     "exported": true,
@@ -6179,9 +6183,17 @@
     "exported": false,
     "signature": "func(t *dbspec.Table) *Entity"
   },
+  "packages/go/engine/runtimemodel/runtimemodel.go::externalTables": {
+    "exported": false,
+    "signature": "func(d *dbspec.Document, used []string) []dbspec.Table"
+  },
   "packages/go/engine/runtimemodel/runtimemodel.go::splitDocuments": {
     "exported": false,
     "signature": "func(text string) ([]string, []dbspec.Diagnostic)"
+  },
+  "packages/go/engine/runtimemodel/runtimemodel.go::usedTables": {
+    "exported": false,
+    "signature": "func(documents []*dbspec.Document) map[string][]string"
   },
   "packages/go/model/account.go::Account": {
     "exported": true,
@@ -11059,6 +11071,326 @@
     "exported": false,
     "signature": "func(c *orm.Core) (*HexCellModel, error)"
   },
+  "packages/go/model/note_reader.go::NoteReader": {
+    "exported": true,
+    "signature": "func() *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel": {
+    "exported": true,
+    "signature": "type NoteReaderModel struct { m *orm.Core fSeq int64 fSharedNoteSeq int64 }"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel#field.fSeq": {
+    "exported": false,
+    "signature": "int64"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel#field.fSharedNoteSeq": {
+    "exported": false,
+    "signature": "int64"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel#field.m": {
+    "exported": false,
+    "signature": "*orm.Core"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.AddAllColumns": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.AddColumnSeq": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.AddColumnSharedNoteSeq": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.And": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(args ...any) *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.AndNot": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(fn func(*NoteReaderModel)) *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.AvgSeq": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.AvgSharedNoteSeq": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.Connect": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(db *orm.DB) *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.Create": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() (*NoteReaderModel, error)"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.Creates": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(rows []*NoteReaderModel, batch int) (int64, error)"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.Delete": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(recursive ...bool) error"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.DeleteLock": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.Duplication": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(m *NoteReaderModel) *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.ExpectRevision": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(column string, revision int64) *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.FetchKey": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(fn func(*NoteReaderModel) any) *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.FetchValue": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(fn func(*NoteReaderModel) any) *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.ForShare": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.ForShareNoWait": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.ForUpdate": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.ForUpdateNoWait": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.ForceIndexIxNoteReaderSharedNote": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.Get": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() (*NoteReaderModel, error)"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.GetAvg": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() (*float64, error)"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.GetCount": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() (int64, error)"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.GetQuery": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() (*orm.Statement, error)"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.GetSeq": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() int64"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.GetSharedNoteModel": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() (*SharedNoteModel, error)"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.GetSharedNoteSeq": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() int64"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.GetSum": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() (float64, error)"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.Gets": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() (*orm.Collection[*NoteReaderModel], error)"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.GetsCount": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() (*orm.GroupRows, error)"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.GetsPage": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(page, perPage int) (*orm.Page[*NoteReaderModel], error)"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.GroupBySeq": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.GroupBySharedNoteSeq": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.GroupLimit": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(n int) *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.KeyNameSeq": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.KeyNameSharedNoteSeq": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.Limit": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(offset, count int) *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.MarshalJSON": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() ([]byte, error)"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.MinusSeq": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(n int64) *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.MinusSharedNoteSeq": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(n int64) *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.Not": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(fn func(*NoteReaderModel)) *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.On": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(fn func(*NoteReaderModel)) *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.Or": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(args ...any) *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.OrNot": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(fn func(*NoteReaderModel)) *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.OrderByRandom": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.OrderBySeqAsc": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(fn ...orm.Func) *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.OrderBySeqDesc": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(fn ...orm.Func) *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.OrderBySharedNoteSeqAsc": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(fn ...orm.Func) *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.OrderBySharedNoteSeqDesc": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(fn ...orm.Func) *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.Orm_": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() *orm.Core"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.ParentNode": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.PlusSeq": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(n int64) *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.PlusSharedNoteSeq": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(n int64) *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.Relation": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(child orm.Model) *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.Relations": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(child orm.Model) *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.RemoveAllColumns": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.RemoveColumnSeq": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.RemoveColumnSharedNoteSeq": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.Restore": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() (*NoteReaderModel, error)"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.RestoreOrCreate": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() (*NoteReaderModel, error)"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.Save": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() (*NoteReaderModel, error)"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.Seq": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func[T0 argIntEq](v0 T0) *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.SetSeq": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(v int64) *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.SetSharedNoteSeq": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(v int64) *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.SharedNoteSeq": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func[T0 argIntEq](v0 T0) *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.SumSeq": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.SumSharedNoteSeq": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.ToArray": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func() map[string]any"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.Update": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(optimistic ...bool) (*NoteReaderModel, error)"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.assign": {
+    "exported": false,
+    "signature": "receiver=*NoteReaderModel func(name string, v any) (bool, error)"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.connector": {
+    "exported": false,
+    "signature": "receiver=*NoteReaderModel func(conn string, args []any) *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.negated": {
+    "exported": false,
+    "signature": "receiver=*NoteReaderModel func(conn string, fn func(*NoteReaderModel)) *NoteReaderModel"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.value": {
+    "exported": false,
+    "signature": "receiver=*NoteReaderModel func(name string) (any, bool)"
+  },
+  "packages/go/model/note_reader.go::oneNoteReader": {
+    "exported": false,
+    "signature": "func(c *orm.Core) (*NoteReaderModel, error)"
+  },
   "packages/go/model/orm.go::AccountProjectAccountSeqWithProjectSeq": {
     "exported": true,
     "signature": "type AccountProjectAccountSeqWithProjectSeq struct { AccountSeq int64 ProjectSeq int64 }"
@@ -11145,11 +11477,11 @@
   },
   "packages/go/model/orm.go::hasSeq": {
     "exported": false,
-    "signature": "type hasSeq interface { *AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *SoftRecordModel | *SoftLinkModel | *AccountModel | *ProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *DayCellModel | *UpsertCellModel | *UuidCellModel | *BindCellModel Orm_() *orm.Core }"
+    "signature": "type hasSeq interface { *AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *SoftRecordModel | *SoftLinkModel | *AccountModel | *ProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *DayCellModel | *UpsertCellModel | *UuidCellModel | *BindCellModel | *NoteReaderModel | *SharedNoteModel Orm_() *orm.Core }"
   },
   "packages/go/model/orm.go::ormModel": {
     "exported": false,
-    "signature": "type ormModel interface { *AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *CompositeAccountModel | *CompositeMembershipModel | *SoftRecordModel | *SoftLinkModel | *AccountModel | *ProjectModel | *AccountProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *DayCellModel | *UpsertCellModel | *UuidCellModel | *BindCellModel }"
+    "signature": "type ormModel interface { *AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *CompositeAccountModel | *CompositeMembershipModel | *SoftRecordModel | *SoftLinkModel | *AccountModel | *ProjectModel | *AccountProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *DayCellModel | *UpsertCellModel | *UuidCellModel | *BindCellModel | *NoteReaderModel | *SharedNoteModel }"
   },
   "packages/go/model/project.go::Project": {
     "exported": true,
@@ -12542,6 +12874,302 @@
   "packages/go/model/service_region.go::oneServiceRegion": {
     "exported": false,
     "signature": "func(c *orm.Core) (*ServiceRegionModel, error)"
+  },
+  "packages/go/model/shared_note.go::SharedNote": {
+    "exported": true,
+    "signature": "func() *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel": {
+    "exported": true,
+    "signature": "type SharedNoteModel struct { m *orm.Core fSeq int64 fTitle string }"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel#field.fSeq": {
+    "exported": false,
+    "signature": "int64"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel#field.fTitle": {
+    "exported": false,
+    "signature": "string"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel#field.m": {
+    "exported": false,
+    "signature": "*orm.Core"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.AddAllColumns": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.AddColumnSeq": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.AddColumnTitle": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.And": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func(args ...any) *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.AndNot": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func(fn func(*SharedNoteModel)) *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.AvgSeq": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.Connect": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func(db *orm.DB) *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.Create": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() (*SharedNoteModel, error)"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.Creates": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func(rows []*SharedNoteModel, batch int) (int64, error)"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.Delete": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func(recursive ...bool) error"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.DeleteLock": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.Duplication": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func(m *SharedNoteModel) *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.ExpectRevision": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func(column string, revision int64) *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.FetchKey": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func(fn func(*SharedNoteModel) any) *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.FetchValue": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func(fn func(*SharedNoteModel) any) *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.ForShare": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.ForShareNoWait": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.ForUpdate": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.ForUpdateNoWait": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.Get": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() (*SharedNoteModel, error)"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.GetAvg": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() (*float64, error)"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.GetCount": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() (int64, error)"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.GetQuery": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() (*orm.Statement, error)"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.GetSeq": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() int64"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.GetSum": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() (float64, error)"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.GetTitle": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() string"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.Gets": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() (*orm.Collection[*SharedNoteModel], error)"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.GetsCount": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() (*orm.GroupRows, error)"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.GetsPage": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func(page, perPage int) (*orm.Page[*SharedNoteModel], error)"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.GroupBySeq": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.GroupByTitle": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.GroupLimit": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func(n int) *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.KeyNameSeq": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.KeyNameTitle": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.Limit": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func(offset, count int) *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.MarshalJSON": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() ([]byte, error)"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.MatchSharedNoteSeqWithSeq": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.MinusSeq": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func(n int64) *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.Not": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func(fn func(*SharedNoteModel)) *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.On": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func(fn func(*SharedNoteModel)) *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.Or": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func(args ...any) *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.OrNot": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func(fn func(*SharedNoteModel)) *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.OrderByRandom": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.OrderBySeqAsc": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func(fn ...orm.Func) *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.OrderBySeqDesc": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func(fn ...orm.Func) *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.OrderByTitleAsc": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func(fn ...orm.Func) *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.OrderByTitleDesc": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func(fn ...orm.Func) *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.Orm_": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() *orm.Core"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.ParentNode": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.PlusSeq": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func(n int64) *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.Relation": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func(child orm.Model) *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.Relations": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func(child orm.Model) *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.RemoveAllColumns": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.RemoveColumnSeq": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.RemoveColumnTitle": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.Restore": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() (*SharedNoteModel, error)"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.RestoreOrCreate": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() (*SharedNoteModel, error)"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.Save": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() (*SharedNoteModel, error)"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.Seq": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func[T0 argIntEq](v0 T0) *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.SetSeq": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func(v int64) *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.SetTitle": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func(v string) *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.SumSeq": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.ToArray": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func() map[string]any"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.Update": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func(optimistic ...bool) (*SharedNoteModel, error)"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.assign": {
+    "exported": false,
+    "signature": "receiver=*SharedNoteModel func(name string, v any) (bool, error)"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.connector": {
+    "exported": false,
+    "signature": "receiver=*SharedNoteModel func(conn string, args []any) *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.negated": {
+    "exported": false,
+    "signature": "receiver=*SharedNoteModel func(conn string, fn func(*SharedNoteModel)) *SharedNoteModel"
+  },
+  "packages/go/model/shared_note.go::SharedNoteModel.value": {
+    "exported": false,
+    "signature": "receiver=*SharedNoteModel func(name string) (any, bool)"
+  },
+  "packages/go/model/shared_note.go::oneSharedNote": {
+    "exported": false,
+    "signature": "func(c *orm.Core) (*SharedNoteModel, error)"
   },
   "packages/go/model/soft_link.go::SoftLink": {
     "exported": true,
