@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- Every push runs the parity checks: parity-check and parity-declarations-check are in CHECK_TARGETS and the CI groups (T77-12).
 - The parity-check step owns its run directory (STEP_RUN_DIR, removed when the step ends), so no leftover is reported (T77-58).
 - The MySQL days_ago bind uses the bound instant, so the physical fixture is deterministic on every database (T77-33-1).
 - The physical fixture of TestPhysicalQueryForms passes on mysql, postgres and sqlite (T77-33).
