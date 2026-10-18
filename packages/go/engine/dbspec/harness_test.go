@@ -14,8 +14,8 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// repositoryRoot는 module root다. go test는 test를 package directory(engine/dbspec)에서 실행하므로 그 두 단계
-// 위다. 실행하는 checkout의 경로이고, binary가 compile된 곳의 경로(runtime.Caller)가 아니다.
+// repositoryRoot is the module root. go test runs tests in the package directory (engine/dbspec), so it goes up two levels
+// from there. It is the path of the checkout being run, not the path where the binary was compiled (runtime.Caller).
 func repositoryRoot(t *testing.T) string {
 	t.Helper()
 	directory, err := os.Getwd()
@@ -25,8 +25,8 @@ func repositoryRoot(t *testing.T) string {
 	return filepath.Clean(filepath.Join(directory, "..", "..", "..", ".."))
 }
 
-// runTimed는 work를 자기 deadline 아래에서 실행하고 시작, 결과, 경과 시간을 기록한다. work는
-// 자기 goroutine에서 실행되며 error를 돌려 실패를 알리므로, work가 멈춰도 deadline을 지킨다.
+// runTimed runs work under its own deadline and records its start, result, and elapsed time. work runs
+// in its own goroutine and reports failure by returning an error, so the deadline holds even if work is stuck.
 func runTimed(t *testing.T, name string, deadline time.Duration, work func() error) {
 	t.Helper()
 	started := time.Now()
@@ -55,11 +55,11 @@ func runTimed(t *testing.T, name string, deadline time.Duration, work func() err
 	}
 }
 
-// failingCaseFixture는 TestFailingCaseFixture를 실행하게 하는 환경 변수다.
-// TestCaseHarnessReportsOnlyFailure만 이 변수를 주고 하위 process로 실행한다.
+// failingCaseFixture is the environment variable that makes TestFailingCaseFixture run.
+// Only TestCaseHarnessReportsOnlyFailure sets this variable and runs it as a subprocess.
 const failingCaseFixture = "DBSPEC_FAILING_CASE_FIXTURE"
 
-// failingCaseNames는 TestFailingCaseFixture가 틀린 기대값으로 실행하는 case의 이름이다.
+// failingCaseNames is the name of the case that TestFailingCaseFixture runs with a wrong expected value.
 func failingCaseNames(t *testing.T) []string {
 	t.Helper()
 	m := loadMermaidVectors(t)
@@ -77,8 +77,8 @@ func failingCaseNames(t *testing.T) []string {
 	}
 }
 
-// TestFailingCaseFixture는 각 case 검사를 기대값 하나만 틀린 vector로 실행한다.
-// 모든 case가 실패해야 하므로 failingCaseFixture가 없으면 건너뛴다.
+// TestFailingCaseFixture runs each case check with a vector that is wrong in only one expected value.
+// Every case must fail, so it is skipped if failingCaseFixture is absent.
 func TestFailingCaseFixture(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	if os.Getenv(failingCaseFixture) != "1" {
@@ -102,7 +102,7 @@ func TestFailingCaseFixture(t *testing.T) {
 	chain.Order = []string{"wrong"}
 	parse := p.Parse[0]
 	parse.Errors = nil
-	// 첫 comparison은 차이가 없으므로 차이가 있는 둘째 case를 비운다.
+	// The first comparison has no differences, so the second case, which has differences, is emptied.
 	comparison := p.Comparisons[1]
 	comparison.Differences = nil
 	t.Run("export", func(t *testing.T) { checkMermaidExport(t, export) })
@@ -116,8 +116,8 @@ func TestFailingCaseFixture(t *testing.T) {
 	t.Run("comparison", func(t *testing.T) { checkComparison(t, comparison) })
 }
 
-// TestCaseHarnessReportsOnlyFailure는 실패한 case가 FAIL 줄만 출력하고 PASS 줄은
-// 출력하지 않는지 TestFailingCaseFixture를 하위 process로 실행해 확인한다.
+// TestCaseHarnessReportsOnlyFailure checks that a failed case prints only FAIL lines and not PASS lines,
+// by running TestFailingCaseFixture as a subprocess.
 func TestCaseHarnessReportsOnlyFailure(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	names := failingCaseNames(t)

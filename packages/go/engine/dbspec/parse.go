@@ -165,14 +165,14 @@ type settingNode struct {
 	comments []string
 	keyword  token
 	args     []token
-	// lists는 audit의 exclude와 include 목록이다. 둘 다 쓴 setting은 검사가
-	// 거부한다.
+	// lists are the exclude and include lists of audit. A setting that writes both
+	// is rejected by the check.
 	lists []columnList
-	// form은 state_machine 줄의 종류다: transition, terminal, initial, history 또는 limit.
+	// form is the kind of a state_machine line: transition, terminal, initial, history, or limit.
 	form string
 }
 
-// columnList는 `exclude (<column>, ...)`나 `include (<column>, ...)`다.
+// columnList is `exclude (<column>, ...)` or `include (<column>, ...)`.
 type columnList struct {
 	keyword token
 	columns []token
@@ -452,8 +452,8 @@ func (c *cursor) arrow() bool {
 	return c.fail("'->'")
 }
 
-// formAhead는 keyword 글자가 다음에 오고 전환의 from state가 아닌지 보고한다:
-// 뒤에 전환 화살표 `->`가 오면 그 글자는 state 이름이다.
+// formAhead reports whether a keyword's letters are followed by something other than a transition's from state:
+// if a transition arrow `->` follows, those letters are a state name.
 func (c *cursor) formAhead(text string) bool {
 	if !c.peekIs(tokenWord, text) {
 		return false
@@ -467,7 +467,7 @@ func (c *cursor) action(what string) (token, bool) {
 	return c.member(what, func(s string) bool { return s == "restrict" || s == "cascade" || s == "set_null" })
 }
 
-// oneOf는 주어진 word 가운데 하나인 word를 소비하고, 아니면 what으로 실패한다.
+// oneOf consumes a word that is one of the given words, and otherwise fails with what.
 func (c *cursor) oneOf(what string, words ...string) (token, bool) {
 	if c.more() && c.tokens[c.i].kind == tokenWord && slices.Contains(words, c.tokens[c.i].text) {
 		return c.take(classKeyword), true
@@ -475,7 +475,7 @@ func (c *cursor) oneOf(what string, words ...string) (token, bool) {
 	return token{}, c.fail(what)
 }
 
-// quoted는 string literal 하나를 읽는다. 그 text는 따옴표를 뺀 값이다.
+// quoted reads one string literal; its text is the value without the quotes.
 func (c *cursor) quoted(what string) (token, bool) {
 	if c.more() && c.tokens[c.i].kind == tokenString {
 		return c.next(), true
@@ -1072,7 +1072,7 @@ func (p *parser) settingsLine(c *cursor) {
 				line.args = append(line.args, shape)
 			}
 		}
-		// shard 절은 kind 뒤에 오며 block에서도 읽는다: block table의 shard는 validator의 setting error다.
+		// A shard clause comes after the kind and is also read in a block: a shard on a block table is a setting error of the validator.
 		if ok && c.peekIs(tokenWord, "shard") {
 			line.args = append(line.args, c.take(classKeyword))
 			ok = arg("the shard column")

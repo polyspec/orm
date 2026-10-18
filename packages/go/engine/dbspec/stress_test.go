@@ -55,8 +55,8 @@ func TestStressDocument(t *testing.T) {
 		}
 		slices.Sort(parses)
 		parseElapsed := parses[parseRuns/2]
-		// 기준 작업은 같은 문서의 byte마다 checksum을 갱신하는 loop다. 같은 process에서 같은 시계로 재고, parse 시간과의
-		// 비율을 출력한다(docs/dbspec.md, Verification).
+		// The reference work is a loop that updates a checksum for each byte of the same document. It is timed with the same clock in the same process, and it prints the ratio of the parse time to
+		// that work (docs/dbspec.md, Verification).
 		references := make([]time.Duration, parseRuns)
 		for i := range references {
 			clock := startCaseClock(t)
@@ -99,11 +99,11 @@ func TestStressDocument(t *testing.T) {
 	})
 }
 
-// referenceSum은 기준 작업의 결과다. compiler가 loop를 지우지 못하게 package 변수에 둔다.
+// referenceSum is the result of the reference work. It is kept in a package variable so the compiler cannot delete the loop.
 var referenceSum uint32
 
-// referenceScan은 stress 문서의 기준 작업이다: byte마다 h = h*31 + b(mod 2^32)를 차례로 계산한다. 앞 값에 기대는
-// 계산이라 병렬로 줄일 수 없다.
+// referenceScan is the reference work for the stress document: for each byte it computes h = h*31 + b (mod 2^32) in order. It depends on the previous value,
+// so it cannot be reduced in parallel.
 func referenceScan(text string) uint32 {
 	var h uint32
 	for i := 0; i < len(text); i++ {

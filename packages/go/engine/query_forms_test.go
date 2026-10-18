@@ -282,8 +282,8 @@ func TestRandomOrder(t *testing.T) {
 	}
 }
 
-// IR에는 SQL 조각을 싣는 form이 없다. 조건, column, 정렬, group, 할당의 옛 raw
-// form은 모르는 field라서 IR_INVALID다.
+// The IR has no form that carries a SQL fragment. The old raw forms for conditions, columns, sorts, groups, and assignments
+// are unknown fields, so they are IR_INVALID.
 func TestRawFormsRejected(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	e := formsEngine(t, "postgres")
@@ -339,11 +339,11 @@ func TestMultiRowInsert(t *testing.T) {
 	formsError(t, e, `"kind":"update","entity":"visit","set":[{"column":"amount","p":0}],"rows":[[1]],"where":{"items":[{"pred":{"column":"seq","op":"eq","p":2}}]}`, "IR_INVALID")
 }
 
-// TestKeyColumnsAreNotWritten은 insert가 identity column 값을, update와
-// duplicate update가 primary key와 identity column 값을 쓰지 못하게 하는지
-// 세 dialect에서 확인한다. PostgreSQL identity는 명시한 key를 지나 나아가지
-// 않으므로(postgres.identity.by_default_not_advanced) 이 거부가 없으면 다음
-// 생성 key가 충돌한다.
+// TestKeyColumnsAreNotWritten checks that insert does not write the identity column value, and
+// that duplicate update does not write the primary key and identity column values.
+// It checks this in the three dialects. PostgreSQL identity does not advance past an explicit key
+// (postgres.identity.by_default_not_advanced), so without this rejection
+// the next generated key would collide.
 func TestKeyColumnsAreNotWritten(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	cases := []struct{ body, message string }{

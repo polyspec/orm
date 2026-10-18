@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-// MySQL catalog query. 모두 현재 database 전체를 한 번에 읽는다.
+// MySQL catalog queries. All of them read the whole current database at once.
 const (
 	mysqlTablesQuery = `SELECT TABLE_NAME, TABLE_TYPE, IFNULL(CREATE_OPTIONS, '') FROM information_schema.TABLES
 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME NOT LIKE 'dbspec$%' ORDER BY TABLE_NAME`
@@ -24,9 +24,9 @@ rc.MATCH_OPTION, k.COLUMN_NAME, k.REFERENCED_COLUMN_NAME FROM information_schema
 JOIN information_schema.KEY_COLUMN_USAGE k ON k.CONSTRAINT_SCHEMA = rc.CONSTRAINT_SCHEMA
 AND k.CONSTRAINT_NAME = rc.CONSTRAINT_NAME AND k.TABLE_NAME = rc.TABLE_NAME
 WHERE rc.CONSTRAINT_SCHEMA = DATABASE() ORDER BY rc.TABLE_NAME, rc.CONSTRAINT_NAME, k.ORDINAL_POSITION`
-	// CHECK_CONSTRAINTS와 TABLE_CONSTRAINTS의 join은 table 수에 비례해 느려지므로
-	// (2000 table에서 60초 이상) 두 query로 읽고 이름으로 잇는다. MySQL의 CHECK
-	// 이름은 database 안에서 유일하다.
+	// The join of CHECK_CONSTRAINTS and TABLE_CONSTRAINTS gets slower in proportion to the table count, so
+	// (over 60 seconds with 2000 tables) they are read in two queries and joined by name. MySQL's CHECK
+	// names are unique within the database.
 	mysqlCheckClausesQuery = `SELECT CONSTRAINT_NAME, CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS
 WHERE CONSTRAINT_SCHEMA = DATABASE() ORDER BY CONSTRAINT_NAME`
 	mysqlChecksQuery = `SELECT TABLE_NAME, CONSTRAINT_NAME, ENFORCED FROM information_schema.TABLE_CONSTRAINTS
@@ -61,7 +61,7 @@ func readMySQL(ctx context.Context, q Querier) (*catalog, error) {
 		return nil, err
 	}
 	columns := map[string]map[string]icolumn{}
-	pending := map[string]map[string]string{} // 표: column: renderer CHECK가 있어야 정해지는 type 후보
+	pending := map[string]map[string]string{} // Table: column: the type candidate that is decided only when the renderer CHECK is present
 	err = eachRow(ctx, q, mysqlColumnsQuery, func(r scanner) error {
 		var table, name, columnType, nullable, extra, charset, collation, generation string
 		var dflt sql.NullString
@@ -192,7 +192,7 @@ func readMySQL(ctx context.Context, q Querier) (*catalog, error) {
 			return nil, err
 		}
 	}
-	// renderer CHECK이 있어야 하는 type은 그 CHECK이 없으면 dbspec type이 아니다.
+	// A type that needs the renderer CHECK is not a dbspec type without that CHECK.
 	for table, cols := range pending {
 		for column, need := range cols {
 			if !checked[table][column] {
@@ -222,8 +222,8 @@ func readMySQL(ctx context.Context, q Querier) (*catalog, error) {
 	return c, err
 }
 
-// mysqlType은 COLUMN_TYPE과 character set, collation을 dbspec type으로 읽는다.
-// needsCheck는 renderer CHECK이 있어야 그 type이 되는 경우의 catalog type이다.
+// mysqlType reads COLUMN_TYPE, character set, and collation as a dbspec type.
+// needsCheck is the catalog type for a case where the type holds only if the renderer CHECK is present.
 func mysqlType(columnType, charset, collation string) (typ Type, needsCheck string, ok bool) {
 	m := mysqlTypePattern.FindStringSubmatch(columnType)
 	if m == nil {
@@ -270,7 +270,7 @@ func mysqlType(columnType, charset, collation string) (typ Type, needsCheck stri
 	return Type{}, "", false
 }
 
-// mysqlRendererCheck는 renderer CHECK이 CHECK_CLAUSE에 남는 형식이다
+// mysqlRendererCheck is the form in which a renderer CHECK remains in CHECK_CLAUSE
 // (docs/dialects.md "Introspection", "Checks").
 func mysqlRendererCheck(col icolumn) string {
 	c := "`" + col.name + "`"
@@ -285,29 +285,29 @@ func mysqlRendererCheck(col icolumn) string {
 	return ""
 }
 
-// mysqlIntroducer는 CHECK_CLAUSE의 문자열 literal 앞 character set introducer다.
+// mysqlIntroducer is the character set introducer before a string literal in CHECK_CLAUSE.
 var mysqlIntroducer = regexp.MustCompile(`_[a-z0-9]+\\'`)
 
-// mysqlTimeFraction은 CHECK_CLAUSE의 time literal 뒤 0뿐인 소수 자리다.
+// mysqlTimeFraction is the fractional digits after a time literal in CHECK_CLAUSE, which are only 0.
 var mysqlTimeFraction = regexp.MustCompile(`\\'(\d\d:\d\d:\d\d)\.0+\\'`)
 
-// withoutIntroducers는 character set introducer를 뺀 CHECK_CLAUSE다. ALTER TABLE은
-// CHECK_CLAUSE를 다시 쓰며 introducer를 바꾸거나 빼므로(probe
-// mysql.check.alter_rewrites_introducers) renderer CHECK은 introducer 없이
-// 비교한다. 같은 다시 쓰기는 time(p) column과 만나는 time literal에 0으로 된 p
-// 자리 소수를 붙이므로(probe mysql.check.alter_writes_time_precision) 그 소수도
-// 뺀다. 이 template의 literal은 ASCII이고 0인 소수는 값을 바꾸지 않으므로 의미가 같다.
+// withoutIntroducers is CHECK_CLAUSE with the character set introducers removed. ALTER TABLE
+// rewrites CHECK_CLAUSE, changing or removing introducers, so
+// (probe mysql.check.alter_rewrites_introducers) the renderer CHECK is compared without introducers.
+// The same rewrite adds fractional digits of 0 in the p position to a time literal that meets a time(p) column,
+// (probe mysql.check.alter_writes_time_precision) so those digits are removed too.
+// The literals in this template are ASCII, and fractional digits of 0 do not change the value, so the meaning is the same.
 func withoutIntroducers(clause string) string {
 	return mysqlTimeFraction.ReplaceAllString(mysqlIntroducer.ReplaceAllString(clause, `\'`), `\'$1\'`)
 }
 
-// mysqlShownChecks는 CHECK_CLAUSE가 0x80 이상의 byte를 가진 check의 본문을 SHOW CREATE
-// TABLE에서 읽는다. MySQL 8.4.11의 information_schema는 non-ASCII 문자열 literal의 UTF-8
-// bytes를 한 번 더 인코딩한 text로 보여 주지만(`café`가 `cafÃ©`), SHOW CREATE TABLE은 같은
-// 식을 바르게 쓴다. 그 CHECK_CLAUSE는 서버가 저장한 text를 그대로 읽은 것이므로 client에서
-// 되돌리지 않는다. 결과는 CHECK_CLAUSE 형식이다: 이 함수는 SHOW CREATE의 본문을
-// CHECK_CLAUSE처럼 한 번 더 escape하고, decodeCheck가 그것을 푼다. table별로 SHOW CREATE TABLE을
-// 한 번만 읽으며, rows를 닫은 뒤에만 실행한다(같은 connection에서 열린 rows 안에서 query하지 않는다).
+// mysqlShownChecks reads, from SHOW CREATE
+// TABLE, the body of a check whose CHECK_CLAUSE has a byte of 0x80 or above. The MySQL 8.4.11 information_schema shows the UTF-8
+// bytes of non-ASCII string literals encoded once more (`café` as `cafÃ©`), but SHOW CREATE TABLE writes the
+// expression correctly. That CHECK_CLAUSE is the text the server stored, read as is, so it is not
+// reversed on the client. The result is in CHECK_CLAUSE form: this function escapes the body of SHOW CREATE
+// once more, as CHECK_CLAUSE does, and decodeCheck undoes that. It reads SHOW CREATE TABLE once per table,
+// and runs only after rows is closed (it does not query inside rows that are open on the same connection).
 func mysqlShownChecks(ctx context.Context, q Querier, checks [][3]string, clauses map[string]string) (map[string]map[string]string, error) {
 	shown := map[string]map[string]string{}
 	created := map[string]string{}
@@ -335,7 +335,7 @@ func mysqlShownChecks(ctx context.Context, q Querier, checks [][3]string, clause
 	return shown, nil
 }
 
-// mysqlCreateTable은 SHOW CREATE TABLE의 문장이다.
+// mysqlCreateTable is the statement of SHOW CREATE TABLE.
 func mysqlCreateTable(ctx context.Context, q Querier, table string) (string, error) {
 	var text string
 	err := eachRow(ctx, q, "SHOW CREATE TABLE `"+strings.ReplaceAll(table, "`", "``")+"`", func(r scanner) error {
@@ -345,9 +345,9 @@ func mysqlCreateTable(ctx context.Context, q Querier, table string) (string, err
 	return text, err
 }
 
-// mysqlShownCheck는 SHOW CREATE TABLE 문장에서 name인 CHECK의 본문을 CHECK_CLAUSE 형식으로
-// 돌려준다. SHOW CREATE의 문자열 literal은 `\` 와 `'` 를 한 번 escape하므로 본문에서 그 literal을
-// 건너뛰고, 본문 끝은 CHECK ( 의 짝이 되는 ) 다.
+// mysqlShownCheck returns, in CHECK_CLAUSE form, the body of the CHECK named name in the SHOW CREATE TABLE statement
+// The string literals of SHOW CREATE escape `\` and `'` once, so the body skips over those literals
+// and ends at the ) that pairs with CHECK (.
 func mysqlShownCheck(create, name string) (string, bool) {
 	prefix := "CONSTRAINT `" + name + "` CHECK ("
 	at := strings.Index(create, prefix)
@@ -376,12 +376,12 @@ func mysqlShownCheck(create, name string) (string, bool) {
 	return "", false
 }
 
-// escapeMySQLClause는 unescapeMySQLClause의 역이다: `\` 와 `'` 를 escape한다.
+// escapeMySQLClause is the inverse of unescapeMySQLClause: it escapes `\` and `'`.
 func escapeMySQLClause(text string) string {
 	return strings.NewReplacer(`\`, `\\`, `'`, `\'`).Replace(text)
 }
 
-// mysqlNonASCII는 CHECK_CLAUSE에 0x80 이상의 byte가 있는지 알려 준다.
+// mysqlNonASCII reports whether CHECK_CLAUSE has a byte of 0x80 or above.
 func mysqlNonASCII(clause string) bool {
 	for i := 0; i < len(clause); i++ {
 		if clause[i] >= 0x80 {
@@ -391,8 +391,8 @@ func mysqlNonASCII(clause string) bool {
 	return false
 }
 
-// mysqlNow는 DEFAULT_GENERATED default가 그 column의 renderer 시각 default인지
-// 알려 준다.
+// mysqlNow reports whether a DEFAULT_GENERATED default is the renderer clock default of that column,
+// or not.
 func mysqlNow(text string, typ Type) bool {
 	if typ.Kind != TypeDatetime {
 		return false
@@ -403,8 +403,8 @@ func mysqlNow(text string, typ Type) bool {
 	return text == "CURRENT_TIMESTAMP("+strconv.Itoa(typ.Precision)+")"
 }
 
-// mysqlDefault는 escape를 푼 COLUMN_DEFAULT 값을 dbspec literal로 쓴다. parse가
-// canonical form과 유효성을 정한다.
+// mysqlDefault writes the COLUMN_DEFAULT value, with its escapes undone, as a dbspec literal. parse
+// decides the canonical form and the validity.
 func mysqlDefault(value string, typ Type) string {
 	switch typ.Kind {
 	case TypeBool:
@@ -480,7 +480,7 @@ func readMySQLIndexes(ctx context.Context, q Querier, c *catalog) error {
 func readMySQLForeignKeys(ctx context.Context, q Querier, c *catalog) error {
 	var current *ifk
 	var currentTable *itable
-	// 보고한 key의 나머지 column row는 건너뛴다.
+	// The remaining column rows of a reported key are skipped.
 	skipped := ""
 	flush := func() {
 		if current != nil && currentTable != nil {
@@ -522,7 +522,7 @@ func readMySQLForeignKeys(ctx context.Context, q Querier, c *catalog) error {
 	return err
 }
 
-// dropColumn은 type이 정해지지 않은 column을 뺀다.
+// dropColumn removes a column whose type is not determined.
 func (c *catalog) dropColumn(table, column string) {
 	t := c.table(table)
 	for i, col := range t.columns {
@@ -543,8 +543,8 @@ func tableTypes(t *itable) map[string]Type {
 
 type scanner interface{ Scan(dest ...any) error }
 
-// eachRow는 query의 모든 row에 f를 부르고 rows의 error를 돌려준다.
-// q가 QueryObserver이면 행을 모두 읽었거나 읽다 실패했을 때 QueryEnded를 부른다.
+// eachRow calls f on every row of the query and returns the error of rows.
+// If q is a QueryObserver, QueryEnded is called when all rows have been read or reading has failed.
 func eachRow(ctx context.Context, q Querier, query string, f func(scanner) error) error {
 	rows, err := q.QueryContext(ctx, query)
 	if err != nil {
@@ -571,7 +571,7 @@ func eachRow(ctx context.Context, q Querier, query string, f func(scanner) error
 	return err
 }
 
-// readMySQLTriggers는 trigger를 renderer statement 형식으로 다시 쓰고 알아본다.
+// readMySQLTriggers rewrites triggers in renderer statement form and recognizes them.
 func readMySQLTriggers(ctx context.Context, q Querier, c *catalog) error {
 	triggers := map[string][]itrigger{}
 	err := eachRow(ctx, q, mysqlTriggersQuery, func(r scanner) error {

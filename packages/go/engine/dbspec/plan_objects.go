@@ -5,13 +5,13 @@ import (
 	"strings"
 )
 
-// objects는 unique, index, foreign key, check를 이름과 정의로 비교한다. source
-// 정의는 rename을 적용해 target 이름으로 읽는다(docs/plans.md "Diff").
+// objects compares unique, index, foreign key, and check by name and definition. The source
+// definitions are read under the rename, with the target name (docs/plans.md "Diff").
 func (d *planDiff) objects(renamedFrom map[string]string, renamedColumn map[string]map[string]string) {
 	targetTable := func(s string) string { return renamedOr(renamedFrom, s) }
-	// column rename을 적용한 source 정의
+	// source definition with the column rename applied
 	column := func(target, c string) string { return renamedOr(renamedColumn[target], c) }
-	alteredColumn := map[string]bool{} // "table.column" target 이름
+	alteredColumn := map[string]bool{} // "table.column" target name
 	renamedCol := map[string]bool{}
 	for t, cols := range d.altered {
 		for _, c := range cols {
@@ -25,8 +25,8 @@ func (d *planDiff) objects(renamedFrom map[string]string, renamedColumn map[stri
 	}
 	for _, name := range d.matched {
 		src, tgt := d.source[d.tableOf[name]], d.target[name]
-		// 지우는 index나 unique 위의 foreign key는 MySQL이 그 index를 지우지 못하게
-		// 하므로 함께 다시 만든다.
+		// A foreign key on an index or unique key that is dropped is recreated together with it, since MySQL will not let
+		// that index be dropped while the foreign key depends on it.
 		droppedKeys := map[string]bool{}
 		// unique
 		for _, u := range src.Uniques {
@@ -101,7 +101,7 @@ func (d *planDiff) objects(renamedFrom map[string]string, renamedColumn map[stri
 				d.addObjects[name] = append(d.addObjects[name], objectRef{"foreign_key", f.Name})
 			}
 		}
-		// check: 이름 바뀐 column이나 바뀐 column을 쓰는 check는 다시 만든다.
+		// check: a check on a renamed column, or on a changed column, is recreated.
 		forcedCheck := func(k Check) bool {
 			for _, c := range exprColumns(k.Expression) {
 				if renamedCol[name+"."+c] || alteredColumn[name+"."+c] {
@@ -123,8 +123,8 @@ func (d *planDiff) objects(renamedFrom map[string]string, renamedColumn map[stri
 			}
 		}
 	}
-	// 지우는 table을 참조하는 남은 table의 foreign key는 target이 이미 뺐으므로
-	// 위에서 지운다. 지우는 table 자신의 foreign key는 table과 함께 지운다.
+	// A remaining table's foreign key that refers to a table being dropped is already removed by the target,
+	// so it is dropped above. A dropped table's own foreign keys are dropped with the table.
 	for _, name := range d.dropped {
 		for _, f := range d.source[name].ForeignKeys {
 			d.dropObjects[name] = append(d.dropObjects[name], objectRef{"foreign_key", f.Name})
@@ -142,8 +142,8 @@ func compareRef(a, b objectRef) int {
 	return strings.Compare(a.kind+"\x00"+a.name, b.kind+"\x00"+b.name)
 }
 
-// triggerChanges는 세 dialect 중 하나에서라도 렌더링한 trigger statement가 다른
-// table을 표시한다. source는 rename을 적용하기 전 이름 그대로 렌더링한다.
+// triggerChanges marks the tables whose rendered trigger statements differ in any one of the three dialects.
+// The source is rendered with its name as it was before the rename is applied.
 func (d *planDiff) triggerChanges(renamedFrom map[string]string, renamedColumn map[string]map[string]string) {
 	for _, name := range d.matched {
 		src, tgt := d.source[d.tableOf[name]], d.target[name]
@@ -276,7 +276,7 @@ func checkOf(t *Table, name string) *Check {
 	return nil
 }
 
-// exprColumns는 식이 쓰는 column 이름이다.
+// exprColumns is the column names the expression uses.
 func exprColumns(e Expr) []string {
 	switch e := e.(type) {
 	case ColumnRef:
@@ -291,7 +291,7 @@ func exprColumns(e Expr) []string {
 	return nil
 }
 
-// exprText는 column 이름을 f로 바꾼 식의 canonical text다.
+// exprText is the canonical text of the expression, with its column names changed by f.
 func exprText(e Expr, f func(string) string) string {
 	var b strings.Builder
 	writeExpr(&b, renameExpr(e, f))

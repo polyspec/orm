@@ -11,23 +11,23 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// planVectors는 tests/dbspec/plans.json이다(docs/plans.md).
+// planVectors is tests/dbspec/plans.json (docs/plans.md).
 type planVectors struct {
 	Cases   []planCase
 	Invalid []planInvalidCase
 	Chains  []planChainCase
 	Parse   []planParseCase
-	// Comparisons는 plan 없이 두 schema를 비교하는 case다(docs/plans.md "Comparison").
+	// Comparisons are the cases that compare two schemas without a plan (docs/plans.md "Comparison").
 	Comparisons []comparisonCase
 }
 
-// planCase의 Source가 nil이면 빈 schema다.
+// If the Source of a planCase is nil, it is an empty schema.
 type planCase struct {
 	ID      string
 	Source  []string
 	Plan    []string
 	Changes [][3]string
-	// Steps는 dialect마다 step object의 array다(docs/plans.md "Steps").
+	// Steps is an array of step objects per dialect (docs/plans.md "Steps").
 	Steps map[string][]any
 }
 
@@ -38,7 +38,7 @@ type planInvalidCase struct {
 	Errors []string
 }
 
-// planChainCase는 Order와 Errors 중 하나만 가진다.
+// planChainCase has only one of Order and Errors.
 type planChainCase struct {
 	ID     string
 	Plans  [][]string
@@ -70,8 +70,8 @@ func loadPlanVectors(t *testing.T) planVectors {
 	return v
 }
 
-// decodePlanVectors는 plans.json의 모든 section과 field를 읽고, 없거나 type이 다른
-// 값을 위치와 함께 거부한다.
+// decodePlanVectors reads all sections and fields of plans.json, and rejects, with location, any that are missing or whose type
+// is different.
 func decodePlanVectors(r vectorReader, object map[string]any) (planVectors, error) {
 	var v planVectors
 	if err := r.version(object); err != nil {
@@ -165,7 +165,7 @@ func decodePlanVectors(r vectorReader, object map[string]any) (planVectors, erro
 	return v, err
 }
 
-// planSourceOf는 plan case의 source schema이고, source가 없으면 빈 schema(nil)이다.
+// planSourceOf is the source schema of a plan case; if there is no source, it is an empty schema (nil).
 func planSourceOf(lines []string) (*Document, error) {
 	if lines == nil {
 		return nil, nil
@@ -177,8 +177,8 @@ func planSourceOf(lines []string) (*Document, error) {
 	return d, nil
 }
 
-// TestPlanVectors는 모든 case의 diff와 세 dialect의 statement가 vector와 같은지
-// 확인한다. TestPlanInvalidVectors는 invalid case의 diagnostic을 확인한다.
+// TestPlanVectors checks whether the diff of every case and the statements of the three dialects equal the vector.
+// TestPlanInvalidVectors checks the diagnostics of the invalid cases.
 func TestPlanVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, c := range loadPlanVectors(t).Cases {
@@ -261,8 +261,8 @@ func checkPlanInvalid(t *testing.T, c planInvalidCase) {
 	})
 }
 
-// TestPlanChains는 chains case의 순서나 chain diagnostic이 vector와 같은지
-// 확인한다.
+// TestPlanChains checks whether the order or chain diagnostic of the chains case equals the vector.
+// It checks that.
 func TestPlanChains(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	v := loadPlanVectors(t)
@@ -307,8 +307,8 @@ func checkPlanChain(t *testing.T, c planChainCase) {
 	})
 }
 
-// TestPlanParseErrors는 parse case가 plan diagnostic을 rule, 줄, 칸, message까지,
-// target diagnostic을 rule, 줄, 칸까지 vector와 같게 보고하는지 확인한다.
+// TestPlanParseErrors checks that a parse case reports the plan diagnostic, down to its rule, line, column, and message,
+// and that a target diagnostic reports down to its rule, line, and column, the same as the vector.
 func TestPlanParseErrors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	v := loadPlanVectors(t)
@@ -335,8 +335,8 @@ func checkPlanParse(t *testing.T, c planParseCase) {
 	})
 }
 
-// TestCompareSchemas는 comparison case의 차이와 diagnostic이 vector와 같은지
-// 확인한다.
+// TestCompareSchemas checks whether the differences and diagnostics of the comparison case equal the vector.
+// It checks that.
 func TestCompareSchemas(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	v := loadPlanVectors(t)
@@ -378,7 +378,7 @@ func checkComparison(t *testing.T, c comparisonCase) {
 	})
 }
 
-// stepFields는 step의 plans.json object다(docs/plans.md "Steps").
+// stepFields is the plans.json object of a step (docs/plans.md "Steps").
 func stepFields(s PlanStep) map[string]any {
 	out := map[string]any{"statement": s.Statement, "effect": s.Effect.String()}
 	switch {

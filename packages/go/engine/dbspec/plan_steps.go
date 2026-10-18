@@ -6,15 +6,15 @@ import (
 	"strings"
 )
 
-// PlanStep은 plan의 step 하나다(docs/plans.md "Steps"). Rollback이 비어 있으면
-// finalize step이거나 Irreversible이 그 이유를 적는다.
+// PlanStep is one step of a plan (docs/plans.md "Steps"). If Rollback is empty,
+// it is a finalize step, or Irreversible gives the reason.
 type PlanStep struct {
 	Statement    string
 	Rollback     string
 	Irreversible string
 	Effect       Effect
-	// Restore와 RollbackRestore는 RestoreIf가 참일 때 Statement와 Rollback 대신 실행하는
-	// statement다(rollback이 숨긴 더한 column이 table에 있을 때).
+	// Restore and RollbackRestore are the statements that run instead of Statement and Rollback when RestoreIf is true
+	// (when a column that rollback hid and added is in the table).
 	Restore         string
 	RollbackRestore string
 	RestoreIf       Effect
@@ -22,9 +22,9 @@ type PlanStep struct {
 	Finalize        bool
 }
 
-// Effect는 statement가 효과를 냈는지 catalog나 table에서 읽는 방법이다. Kind는
-// table, column, index, constraint, trigger, function, sequence, rows, repeat 중
-// 하나다. Present는 statement 뒤의 상태다.
+// Effect is how to read, from the catalog or the table, whether a statement had its effect. Kind is
+// one of table, column, index, constraint, trigger, function, sequence, rows, or repeat.
+// Present is the state after the statement.
 type Effect struct {
 	Kind    string
 	Table   string
@@ -32,7 +32,7 @@ type Effect struct {
 	Present bool
 }
 
-// String은 docs/plans.md "Effects"의 text 형식이다.
+// String is the text form of docs/plans.md "Effects".
 func (e Effect) String() string {
 	if e.Kind == "repeat" {
 		return "repeat"
@@ -50,8 +50,8 @@ func (e Effect) String() string {
 	return s
 }
 
-// NullCheck는 rollback이 다시 non-null로 만드는 column이다. Column은 적용한 plan에서의
-// 이름이고, HasDefault이면 Default가 source default의 SQL text다.
+// NullCheck is a column that the rollback returns to non-null. Column is its name
+// in the applied plan; if HasDefault, Default is the SQL text of the source default.
 type NullCheck struct {
 	Table      string
 	Column     string
@@ -59,14 +59,14 @@ type NullCheck struct {
 	HasDefault bool
 }
 
-// 되돌릴 수 없는 step의 이유(docs/plans.md "Irreversible steps").
+// The reason a step cannot be reversed (docs/plans.md "Irreversible steps").
 const irreversiblePrecision = "narrowing the precision rounds the values written since"
 
-// rebuildTable은 SQLite 다시 만들기의 작업 table이다.
+// rebuildTable is the work table for a SQLite rebuild.
 const rebuildTable = "dbspec$rebuild"
 
-// PlanSteps는 plan의 step을 dialect로 쓴다(docs/plans.md "Steps"). source는 plan이
-// 시작하는 schema이며 빈 database이면 nil이다.
+// PlanSteps writes the plan's steps per dialect (docs/plans.md "Steps"). source is the schema
+// that the plan starts from; it is nil if the database is empty.
 func PlanSteps(source *Document, p *Plan, dialect Dialect) ([]PlanStep, []Diagnostic) {
 	switch dialect {
 	case DialectMySQL, DialectPostgres, DialectSQLite:
@@ -85,10 +85,10 @@ type planWriter struct {
 	d          *planDiff
 	r          renderer
 	out        []PlanStep
-	rebuilt    map[string]bool // SQLite에서 다시 만드는 target table
+	rebuilt    map[string]bool // target table to rebuild in SQLite
 	holdPrefix string
-	// 보관 이름: "table.column"(지우는 column, source table과 column 이름),
-	// table(지우는 table), "+table.column"(더하는 column, target 이름)
+	// kept name: "table.column" (the column being dropped, with source table and column name),
+	// table (the table being dropped), "+table.column" (the column being added, with its target name)
 	holds     map[string]string
 	holdOrder []string
 }
@@ -104,7 +104,7 @@ var repeat = Effect{Kind: "repeat"}
 
 func (w *planWriter) hold(key string) string { return w.holds[key] }
 
-// numberHolds는 docs/plans.md "Hiding instead of dropping"의 순서로 보관 이름을 정한다.
+// numberHolds picks the kept names in the order of docs/plans.md "Hiding instead of dropping".
 func (w *planWriter) numberHolds() {
 	d := w.d
 	w.holds = map[string]string{}
@@ -162,7 +162,7 @@ func (w *planWriter) steps() []PlanStep {
 			}
 		}
 	}
-	// 3. check, unique, index와 지우는 table의 객체
+	// 3. check, unique, index, and the objects of the table being dropped
 	dropTables := map[string][]objectRef{}
 	for s, objects := range d.dropObjects {
 		if sqlite && (w.rebuilt[w.targetName(s)] || slices.Contains(d.dropped, s)) {
@@ -229,7 +229,7 @@ func (w *planWriter) steps() []PlanStep {
 			Effect:    present("column", r.Table, r.New),
 		})
 	}
-	// 5. 지우는 column과 table을 숨긴다
+	// 5. hide the columns and the table being dropped
 	if !sqlite {
 		for _, name := range d.matched {
 			src := d.source[d.tableOf[name]]
@@ -256,7 +256,7 @@ func (w *planWriter) steps() []PlanStep {
 		})
 		w.createIndexes(t, name)
 	}
-	// 7. add, alter column; SQLite 다시 만들기
+	// 7. add and alter columns; SQLite rebuild
 	for _, name := range d.matched {
 		if sqlite {
 			if w.rebuilt[name] {
@@ -345,7 +345,7 @@ func (w *planWriter) steps() []PlanStep {
 	return w.out
 }
 
-// targetName은 source table의 target 이름이다.
+// targetName is the target name of the source table.
 func (w *planWriter) targetName(source string) string {
 	for t, s := range w.d.tableOf {
 		if s == source {
@@ -359,9 +359,9 @@ func (w *planWriter) renameColumn(table, from, to string) string {
 	return "ALTER TABLE " + w.q(table) + " RENAME COLUMN " + w.q(from) + " TO " + w.q(to)
 }
 
-// sqliteRebuilds는 SQLite가 table을 다시 만들어야 하는지 알려 준다: 이름,
-// column, foreign key, check 중 하나라도 바뀌면 그렇다. index와 unique만
-// 바뀌거나 trigger만 바뀌면 다시 만들지 않는다.
+// sqliteRebuilds reports whether SQLite must rebuild the table: it does if the name,
+// a column, a foreign key, or a check changes. It does not if only index and unique
+// changes, or if only trigger changes.
 func (w *planWriter) sqliteRebuilds(name string) bool {
 	d := w.d
 	if d.tableOf[name] != name || len(d.added[name]) > 0 || len(d.removed[name]) > 0 || len(d.altered[name]) > 0 {
@@ -385,8 +385,8 @@ func (w *planWriter) sqliteRebuilds(name string) bool {
 	return false
 }
 
-// hideColumn은 MySQL과 PostgreSQL에서 지우는 column을 nullable로 바꾸고 보관
-// 이름으로 숨긴다.
+// hideColumn, in MySQL and PostgreSQL, makes the column being dropped nullable and hides it
+// under its kept name.
 func (w *planWriter) hideColumn(table string, c Column, h string) {
 	if !c.Null {
 		nullable := c
@@ -408,7 +408,7 @@ func (w *planWriter) hideColumn(table string, c Column, h string) {
 	})
 }
 
-// nullCheck는 source column c를 non-null로 되돌리는 rollback의 null 검사다.
+// nullCheck is the null check of the rollback that returns source column c to non-null.
 func (w *planWriter) nullCheck(table, column string, c Column) NullCheck {
 	check := NullCheck{Table: table, Column: column}
 	if c.Default != nil {
@@ -417,26 +417,26 @@ func (w *planWriter) nullCheck(table, column string, c Column) NullCheck {
 	return check
 }
 
-// precisionGrows는 time이나 datetime의 정밀도가 커지는지 알려 준다.
+// precisionGrows reports whether the precision of a time or datetime grows.
 func precisionGrows(from, to Type) bool {
 	return (to.Kind == TypeTime || to.Kind == TypeDatetime) && to.Precision > from.Precision
 }
 
-// rebuild는 SQLite table을 작업 table을 거쳐 다시 만든다(docs/plans.md "Steps").
+// rebuild rebuilds a SQLite table through a work table (docs/plans.md "Steps").
 func (w *planWriter) rebuild(name string) {
 	d := w.d
 	t := d.target[name]
 	src := d.source[d.tableOf[name]]
 	q := w.q
 	work := q(rebuildTable)
-	// 새 정의: target table과 보관 이름의 지우는 column
+	// new definition: the target table, with the column being dropped under its kept name
 	var hiddenDropped []Column
 	for _, c := range d.removed[name] {
 		col := *columnOf(src, c)
 		col.Name = w.hold(src.Name + "." + c)
 		hiddenDropped = append(hiddenDropped, col)
 	}
-	// 옛 정의: 이름 바꾸기를 적용한 source table과 보관 이름의 더하는 column
+	// old definition: the source table with the rename applied, with the column being added under its kept name
 	old := w.renamedSource(name)
 	var hiddenAdded []Column
 	for _, c := range d.added[name] {
@@ -447,7 +447,7 @@ func (w *planWriter) rebuild(name string) {
 	newCreate := func(as string) string {
 		return w.r.createTable(t, as, func(c string) string { return rendererName(t.Name, c) }, hiddenDropped)
 	}
-	// sourceColumn은 옛 정의 column의 source 이름이다. 지우는 column은 이름이 그대로다.
+	// sourceColumn is the source name of a column in the old definition. A column being dropped keeps its name.
 	sourceColumn := func(c string) string {
 		if s, ok := d.columnOf[name][c]; ok {
 			return s
@@ -463,7 +463,7 @@ func (w *planWriter) rebuild(name string) {
 		newColumns = append(newColumns, c.Name)
 	}
 	newList := w.r.list(newColumns)
-	// 옛 table에서 새 정의로 옮기는 식
+	// expression that moves a value from the old table to the new definition
 	var into, from, intoRestore, fromRestore []string
 	for _, c := range t.Columns {
 		old, ok := d.columnOf[name][c.Name]
@@ -480,7 +480,7 @@ func (w *planWriter) rebuild(name string) {
 		into, from = append(into, q(hiddenDropped[i].Name)), append(from, q(c))
 		intoRestore, fromRestore = append(intoRestore, q(hiddenDropped[i].Name)), append(fromRestore, q(c))
 	}
-	// 새 정의에서 옛 정의로 되돌리는 식
+	// expression that moves a value from the new definition back to the old definition
 	var backInto, backFrom []string
 	irreversible := ""
 	var checks []NullCheck
@@ -497,14 +497,14 @@ func (w *planWriter) rebuild(name string) {
 			}
 			continue
 		}
-		// 지우는 column: 새 정의에서는 보관 이름이다.
+		// column being dropped: in the new definition it is the kept name.
 		h := w.hold(src.Name + "." + sourceName)
 		backFrom = append(backFrom, q(h))
 		if !c.Null {
 			checks = append(checks, w.nullCheck(name, h, c))
 		}
 	}
-	// 옛 table에 숨긴 더한 column이 있으면 그 값도 되돌린다.
+	// If the old table had a hidden added column, its value is restored as well.
 	backIntoRestore, backFromRestore := slices.Clone(backInto), slices.Clone(backFrom)
 	for i, c := range d.added[name] {
 		backIntoRestore, backFromRestore = append(backIntoRestore, q(hiddenAdded[i].Name)), append(backFromRestore, q(c))
@@ -568,8 +568,8 @@ func (w *planWriter) rebuild(name string) {
 	w.createIndexes(t, name)
 }
 
-// renamedSource는 target table name의 source table에 이름 바꾸기를 적용한 정의다.
-// 지우는 table을 참조하는 foreign key는 source 이름을 유지한다.
+// renamedSource is the definition of the source table with the rename applied to the target table name.
+// A foreign key that refers to a table being dropped keeps the source name.
 func (w *planWriter) renamedSource(name string) *Table {
 	d := w.d
 	src := d.source[d.tableOf[name]]
@@ -626,8 +626,8 @@ func (w *planWriter) renamedSource(name string) *Table {
 	return &t
 }
 
-// copyValue는 SQLite 다시 만들기에서 source 값을 target column 형식으로 옮기는 식이다.
-// time과 datetime은 늘어난 소수 자리를 0으로 채운다.
+// copyValue is the expression that moves a source value into the target column type in a SQLite rebuild.
+// time and datetime fill the added fractional digits with 0.
 func (w *planWriter) copyValue(from, to Column) string {
 	q := w.q(to.Name)
 	if precisionGrows(from.Type, to.Type) {
@@ -695,7 +695,7 @@ func (w *planWriter) alterColumn(table string, from, to Column) {
 	}
 }
 
-// triggerParts는 렌더링한 trigger statement에서 trigger와 PostgreSQL function을 짝짓는다.
+// triggerParts pairs a trigger with a PostgreSQL function in the rendered trigger statements.
 type triggerPart struct {
 	name, create, function string
 }
@@ -753,14 +753,14 @@ func (w *planWriter) dropRendererCheck(table, name, expression string) {
 	})
 }
 
-// namedIndex는 table의 unique key나 index 하나를 만들고 지우는 statement다.
+// namedIndex is the statement that creates or drops one unique key or index of a table.
 type namedIndex struct {
 	name, create, drop string
-	constraint         bool // MySQL과 PostgreSQL의 unique constraint
+	constraint         bool // unique constraints of MySQL and PostgreSQL
 }
 
-// indexes는 table t를 name으로 둔 unique key와 index를 renderer 순서로 돌려준다.
-// SQLite unique key는 unique index다.
+// indexes returns the unique keys and indexes of table t, named by name, in renderer order.
+// SQLite unique keys are unique indexes.
 func (w *planWriter) indexes(t *Table, name string) []namedIndex {
 	var out []namedIndex
 	if w.r.d == DialectSQLite {
@@ -788,15 +788,15 @@ func (w *planWriter) dropIndex(table, name string) string {
 	return "DROP INDEX " + w.q(name)
 }
 
-// createIndexes는 renderer가 CREATE TABLE 뒤에 쓰는 unique index와 index다.
+// createIndexes is the unique indexes and indexes that the renderer writes after CREATE TABLE.
 func (w *planWriter) createIndexes(t *Table, name string) {
 	for _, x := range w.indexes(t, name) {
 		w.add(PlanStep{Statement: x.create, Rollback: x.drop, Effect: present("index", name, x.name)})
 	}
 }
 
-// objectStatements는 table t(name으로 둔)의 객체 o를 더하는 statement, 지우는
-// statement, 그 효과의 종류다.
+// objectStatements: the statements that add object o of table t (named name), the statements that drop it,
+// and the kind of effect of those statements.
 func (w *planWriter) objectStatements(t *Table, name string, o objectRef) (create, drop, kind string) {
 	switch o.kind {
 	case "unique":
@@ -829,7 +829,7 @@ func (w *planWriter) objectStatements(t *Table, name string, o objectRef) (creat
 	panic("dbspec: unknown object kind " + o.kind)
 }
 
-// dropObject는 source table t의 객체를 지우고, rollback은 source 정의로 다시 만든다.
+// dropObject drops an object of the source table t, and rollback recreates it from the source definition.
 func (w *planWriter) dropObject(t *Table, o objectRef) {
 	create, drop, kind := w.objectStatements(t, t.Name, o)
 	w.add(PlanStep{Statement: drop, Rollback: create, Effect: absent(kind, t.Name, o.name)})
@@ -844,7 +844,7 @@ func (w *planWriter) addForeignKey(table string, f ForeignKey) {
 	w.addObject(table, objectRef{"foreign_key", f.Name})
 }
 
-// rendererChecks는 table의 renderer CHECK 이름과 식이다.
+// rendererChecks is the renderer CHECK names and expressions of the table.
 func (w *planWriter) rendererChecks(t *Table) map[string]string {
 	out := map[string]string{}
 	for _, c := range t.Columns {

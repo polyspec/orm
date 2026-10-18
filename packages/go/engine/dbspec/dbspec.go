@@ -111,8 +111,8 @@ func Emit(document *Document) string {
 // hashes (docs/dbspec.md, "Manifest and hashes").
 type Manifest struct {
 	ManifestText string
-	// ExternalText는 외부 문서마다 소유한 문서가 쓰는 table의 column, primary key,
-	// unique key만 담은 canonical text다. 외부 문서가 없으면 비어 있다.
+	// ExternalText is the canonical text holding, for each external document, only the columns, primary key,
+	// and unique keys of the tables it owns that the external document writes. It is empty if there are no external documents.
 	ExternalText string
 	SchemaText   string
 	ManifestHash string
@@ -148,7 +148,7 @@ func checkSet(documents []*Document) ([]*Document, []Diagnostic) {
 			}
 		}
 	}
-	// 외부 문서는 소유한 문서에서 use를 따라 닿는 문서다.
+	// An external document is a document reached by following use from the owning document.
 	reached := map[string]bool{}
 	var walk func(d *Document)
 	walk = func(d *Document) {
@@ -212,9 +212,9 @@ func ManifestOf(documents []*Document) (*Manifest, []Diagnostic) {
 		manifest.WriteString(emitDocument(d, viewManifest))
 		schema.Tables = append(schema.Tables, d.Tables...)
 	}
-	// schema text는 집합이 소유한 모든 table을 이름 순으로 담은 문서 schema
-	// 하나이므로 문서를 나누는 방식과 무관하다. 외부 문서에서 쓰는 table은 그
-	// 문서의 use 줄로 남는다.
+	// schema text is one document holding all tables the set owns, in name order, so
+	// it does not depend on how the documents are split. Tables that an external document writes are kept as
+	// use lines of the document.
 	slices.SortStableFunc(schema.Tables, func(a, b Table) int { return cmp.Compare(a.Name, b.Name) })
 	schemaText := emitDocument(schema, viewSchema)
 	return &Manifest{
@@ -226,9 +226,9 @@ func ManifestOf(documents []*Document) (*Manifest, []Diagnostic) {
 	}, nil
 }
 
-// externalDocument는 외부 문서에서 tables의 column, primary key, unique key만
-// 문서 순서로 담은 문서다. 그 table이 없으면 nil이다. foreign key, index,
-// check, setting은 외부 문서가 소유하므로 담지 않는다.
+// externalDocument is a document holding, from an external document's tables, only the columns, primary key, and unique keys
+// in document order. It is nil if the table does not exist. Foreign keys, indexes,
+// checks, and settings are owned by the external document, so they are not held.
 func externalDocument(d *Document, tables []string) *Document {
 	out := &Document{Name: d.Name}
 	for _, t := range d.Tables {
@@ -242,11 +242,11 @@ func externalDocument(d *Document, tables []string) *Document {
 	return out
 }
 
-// ExternalDifferences는 set이 외부 문서에서 쓰는 table이 database에 있는지
-// 확인한다(docs/dbspec.md "External documents"). live는 database를 introspect한
-// 문서다. 쓰는 table마다 table이 없거나, 외부 문서의 column이 없거나 type이나 null이
-// 다르거나, primary key가 다르거나, unique key의 column 목록이 없으면 그 차이를
-// table, column 순으로 돌려준다. 외부 문서가 없으면 nil이다.
+// ExternalDifferences checks that the tables the set uses from external documents exist in the database
+// (docs/dbspec.md "External documents"). live is the database introspected into
+// a document. For each table used: it is a difference if the table is missing, if an external document's column is missing, if the type or null differs,
+// if the primary key differs, or if a unique key has no column list,
+// and the differences are returned in table, column order. It is nil if there are no external documents.
 func ExternalDifferences(live *Document, documents []*Document) []string {
 	byName := map[string]*Document{}
 	for _, d := range documents {

@@ -57,13 +57,13 @@ type builder struct {
 	binds  []plan.BindSlot
 	n      int
 	subs   int             // subquery alias counter
-	tables map[string]bool // statement이 이름으로 쓴 table
-	// err는 type 없는 slot처럼 placeholder를 만들며 생긴 첫 planner 오류다.
-	// statement를 만드는 곳이 step을 돌려주기 전에 확인한다.
+	tables map[string]bool // table the statement uses by name
+	// err is the first planner error raised while making placeholders, such as for a slot with no type.
+	// It is checked before the place that makes the statement returns the step.
 	err error
 }
 
-// table은 ent의 table 이름을 quote하고 statement의 table로 기록한다.
+// table quotes the entity's table name and records it as a table of the statement.
 func (b *builder) table(ent *runtimemodel.Entity) string {
 	if b.tables == nil {
 		b.tables = map[string]bool{}
@@ -72,7 +72,7 @@ func (b *builder) table(ent *runtimemodel.Entity) string {
 	return b.p.D.Quote(ent.Table)
 }
 
-// tableList는 statement가 쓴 table을 정렬해 돌려준다.
+// tableList returns the tables the statement uses, sorted.
 func (b *builder) tableList() []string {
 	out := make([]string, 0, len(b.tables))
 	for t := range b.tables {
@@ -82,8 +82,8 @@ func (b *builder) tableList() []string {
 	return out
 }
 
-// slot은 bind slot 하나를 더하고 그 placeholder를 돌려준다. type 없는 slot은
-// planner 오류다.
+// slot adds one bind slot and returns its placeholder. A slot with no type is a
+// planner error.
 func (b *builder) slot(s plan.BindSlot) string {
 	if s.ColType == "" && b.err == nil {
 		b.err = &ir.Error{Code: "IR_INVALID", Msg: fmt.Sprintf("bind slot %d (%s) has no declared type", len(b.binds), s.From)}
@@ -93,25 +93,25 @@ func (b *builder) slot(s plan.BindSlot) string {
 	return b.p.D.Placeholder(b.n)
 }
 
-// param은 request 값 Params[i]의 placeholder다. typ은 그 값의 dbspec type이다.
+// param is the placeholder of request value Params[i]. typ is that value's dbspec type.
 func (b *builder) param(i int, typ string) string {
 	slot := plan.BindSlot{From: "param", Param: i, ColType: typ}
-	// 함수 인자나 결과와 비교하는 datetime과 time 값은 여섯 자리 text다.
+	// datetime and time values compared with a function argument or result are six-digit text.
 	if typ == "datetime" || typ == "time" {
 		slot.Precision = 6
 	}
 	return b.slot(slot)
 }
 
-// colParam은 column col과 비교하거나 col에 할당하는 값 Params[i]의
-// placeholder다. type은 col의 type이고 decimal은 그 자릿수를 싣는다.
+// colParam is the placeholder of the value Params[i] that is compared with, or assigned to, column col.
+// type is col's type, and for decimal it carries the digit counts.
 func (b *builder) colParam(i int, col *runtimemodel.Field, transform string) string {
 	s := plan.BindSlot{From: "param", Param: i, Transform: transform, ColType: col.Type}
 	switch col.Type {
 	case "decimal":
 		s.Precision, s.Scale = col.Precision, col.Scale
 	case "datetime", "time":
-		// 값은 column의 소수 자리 수만큼의 자리로 bind된다. 0은 소수 자리가 없다는 뜻이다.
+		// The value is bound with as many places as the column's fractional digits. 0 means no fractional digits.
 		s.Precision = col.Precision
 	case "varchar":
 		s.Length = col.Length
@@ -119,25 +119,25 @@ func (b *builder) colParam(i int, col *runtimemodel.Field, transform string) str
 	return b.slot(s)
 }
 
-// secret은 executor 설정의 key다. key는 text다.
+// secret is the key of an executor setting. The key is text.
 func (b *builder) secret(name string) string {
 	return b.slot(plan.BindSlot{From: "secret", Name: name, ColType: "text"})
 }
 
-// config는 executor 설정 값이다. typ은 그 값을 쓰는 column의 type이다.
+// config is an executor setting value. typ is the type of the column that uses that value.
 func (b *builder) config(name, typ string) string {
 	return b.slot(plan.BindSlot{From: "config", Name: name, ColType: typ})
 }
 
-// now은 executor가 주는 statement 시각이다(docs/protocol.md "Clock"). precision은 그
-// 시각을 쓰는 datetime column의 소수 자리이고, 비교하는 clock은 6이다.
+// now is the statement time given by the executor (docs/protocol.md "Clock"). precision is
+// the fractional digits of the datetime column that writes the time; the clock compared is 6.
 func (b *builder) now(precision int) string {
 	return b.slot(plan.BindSlot{From: "now", Precision: precision, ColType: "datetime"})
 }
 
-// audit은 executor가 채우는 transaction의 audit 기록 key다. Name은 audit 기록
-// table이며, executor는 transaction의 audit이 그 table의 행인지 확인한다. type은
-// audit column의 type이다.
+// audit is the transaction's audit record key, which the executor fills in. Name is the audit record
+// table; the executor checks that the transaction's audit is a row of that table. The type
+// is the audit column's type.
 func (b *builder) audit(ent *runtimemodel.Entity) string {
 	return b.slot(plan.BindSlot{From: "audit", Name: ent.Audit.Record, ColType: ent.Field(ent.Audit.Column).Type})
 }
@@ -594,7 +594,7 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 		if version == nil {
 			return &ir.Error{Code: "SCHEMA_INVALID", Msg: s.ent.Name + ": AES column requires an aes_version setting"}
 		}
-		// 고른 version column이 있으면 그것을 쓰고, 없을 때만 숨겨서 읽는다.
+		// If a chosen version column exists, it is used; only when there is none is it read hidden.
 		for i, c := range asm.Columns {
 			if c.Column == version.Name && len(c.Styles) == 0 {
 				asm.AESVersion = &i
@@ -996,16 +996,16 @@ func (p *Planner) renderValue(b *builder, col *runtimemodel.Field, i int) (strin
 
 // renderBlindIndexValue binds plaintext for executor-side keyed hashing. The
 // index key never reaches the compiler or the SQL text.
-// index는 blind index column이며 slot의 type은 그 column의 type이다. 값은
-// executor가 hash한 text다.
+// index is the blind index column, and the slot's type is that column's type. The value is
+// the text the executor hashed.
 func (p *Planner) renderBlindIndexValue(b *builder, index *runtimemodel.Field, i int) (string, error) {
 	ph := b.param(i, index.Type)
 	b.binds[len(b.binds)-1].HostStyles = []string{"blind_index"}
 	return ph, nil
 }
 
-// styleInputType은 SQL 쪽 style 함수가 placeholder에서 받는 값의 type이다.
-// hex는 byte를, ip는 IP 주소 text를 받는다.
+// styleInputType is the type of the value that a SQL-side style function takes from the placeholder.
+// hex takes bytes, and ip takes IP address text.
 func styleInputType(style string) string {
 	if style == "ip" {
 		return "text"
@@ -1055,7 +1055,7 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 	if err := validateRequiredAssignments(ent, set); err != nil {
 		return nil, err
 	}
-	// load은 행을 저장된 key 그대로 쓰므로 identity column의 값을 받고 요구한다.
+	// load writes a row under its stored key, so it takes and requires the value of the identity column.
 	if r.Load && ent.Identity != "" && !slices.ContainsFunc(set, func(a ir.Assign) bool { return a.Column == ent.Identity && a.P != nil }) {
 		return nil, &ir.Error{Code: "IR_INVALID", Msg: "load of " + ent.Name + " needs a value for the identity column " + ent.Identity}
 	}
@@ -1072,7 +1072,7 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 		}
 		vals = append(vals, v)
 	}
-	// executor가 관리하는 column은 사용자 assignment 뒤에 AES key version, audit column 순서로 쓴다.
+	// Columns the executor manages are written after the user's assignments, in the order: AES key version, then audit columns.
 	managed := p.managedInsertColumns(ent, set)
 	for _, c := range managed {
 		cols = append(cols, p.D.Quote(c.column))
@@ -1131,7 +1131,7 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 		if version := ent.AESVersion; version != "" && assignsAES(ent, r.OnDuplicate) {
 			sets = append(sets, p.D.Quote(version)+" = "+b.config("aes_version", ent.Field(version).Type))
 		}
-		// 기존 행을 바꾸는 duplicate update도 audit table의 update다.
+		// A duplicate update that changes an existing row is also an update of the audit table.
 		if ent.Audit != nil {
 			sets = append(sets, p.D.Quote(ent.Audit.Column)+" = "+b.audit(ent))
 		}
@@ -1150,14 +1150,14 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 	return &plan.Step{Role: "main", SQL: sql, Tables: b.tableList(), BindSlots: b.binds}, nil
 }
 
-// managedColumn은 executor가 insert마다 쓰는 column과 그 bind slot이다.
+// managedColumn is a column that the executor writes on every insert, and its bind slot.
 type managedColumn struct {
 	column string
 	value  func(*builder) string
 }
 
-// managedInsertColumns는 insert가 사용자 assignment 외에 쓰는 column이다:
-// AES key version, audit column, executor clock을 쓰는 dialect(HostNow)의 `default now` column.
+// managedInsertColumns are the columns that an insert writes besides the user's assignments:
+// the AES key version, the audit columns, and `default now` columns in dialects that use the executor clock (HostNow).
 func (p *Planner) managedInsertColumns(ent *runtimemodel.Entity, set []ir.Assign) []managedColumn {
 	var out []managedColumn
 	if ent.AESVersion != "" && !assigned(set, ent.AESVersion) {
@@ -1166,9 +1166,9 @@ func (p *Planner) managedInsertColumns(ent *runtimemodel.Entity, set []ir.Assign
 	if ent.Audit != nil {
 		out = append(out, managedColumn{ent.Audit.Column, func(b *builder) string { return b.audit(ent) }})
 	}
-	// executor clock을 쓰는 dialect는 사용자가 assign하지 않은 `default now` column에
-	// column의 소수 자리로 자른 executor clock을 쓴다(SQLite에는 microsecond clock이 없고,
-	// PostgreSQL clock은 timestamp(p < 6)에 반올림된다).
+	// In a dialect that uses the executor clock, a `default now` column the user did not assign
+	// takes the executor clock truncated to the column's fractional digits (SQLite has no microsecond clock,
+	// and PostgreSQL's clock is rounded to timestamp(p) for p < 6).
 	if p.D.HostNow() {
 		for _, f := range ent.Fields {
 			if f.DefaultNow && !assigned(set, f.Name) {
@@ -1210,7 +1210,7 @@ func validateAESAssignments(ent *runtimemodel.Entity, set []ir.Assign, requireCo
 	return nil
 }
 
-// validateAuditAssignments는 audit column을 executor만 쓰게 한다.
+// validateAuditAssignments makes sure only the executor writes audit columns.
 func validateAuditAssignments(ent *runtimemodel.Entity, set []ir.Assign) error {
 	if ent.Audit != nil && assigned(set, ent.Audit.Column) {
 		return &ir.Error{Code: "IR_INVALID", Msg: ent.Name + "." + ent.Audit.Column + " is written by the executor from the audit of the transaction"}
@@ -1218,9 +1218,9 @@ func validateAuditAssignments(ent *runtimemodel.Entity, set []ir.Assign) error {
 	return nil
 }
 
-// validateRequiredAssignments는 default가 없는 non-null column을 빼먹은
-// insert를 database에 닿기 전에 거부한다. identity, AES key version, audit
-// audit column은 executor나 database가 채운다.
+// validateRequiredAssignments rejects, before the database is reached, an insert that omits a non-null
+// column with no default. Identity, AES key version, and audit
+// columns are filled in by the executor or the database.
 func validateRequiredAssignments(ent *runtimemodel.Entity, set []ir.Assign) error {
 	for _, col := range ent.Fields {
 		if col.Null || col.Default || col.Identity || col.Name == ent.AESVersion || ent.Audit != nil && col.Name == ent.Audit.Column || assigned(set, col.Name) {
@@ -1331,8 +1331,8 @@ func (p *Planner) updateStep(r *ir.Request) (*plan.Step, error) {
 	if version := ent.AESVersion; version != "" && assignsAES(ent, set) {
 		sets = append(sets, p.D.Quote(version)+" = "+b.config("aes_version", ent.Field(version).Type))
 	}
-	// updated setting의 column은 executor가 statement 시각으로 쓴다. 사용자가
-	// 직접 assign하면 그 값이 남는다.
+	// The column of an updated setting is written by the executor with the statement time. If the user
+	// assigns it directly, that value stays.
 	if ent.Updated != "" && !assigned(r.Set, ent.Updated) {
 		sets = append(sets, p.D.Quote(ent.Updated)+" = "+p.statementTime(b, ent.Field(ent.Updated)))
 	}
@@ -1356,9 +1356,9 @@ func (p *Planner) updateStep(r *ir.Request) (*plan.Step, error) {
 	return &plan.Step{Role: "main", SQL: sql, Tables: b.tableList(), BindSlots: b.binds}, nil
 }
 
-// statementTime은 updated와 soft delete가 datetime column에 쓰는 statement
-// 시각이다. HostNow dialect는 column의 소수 자리로 자른 executor clock을 bind하고,
-// MySQL은 CURRENT_TIMESTAMP(p)로 database clock을 자른다.
+// statementTime is the statement time that updated and soft delete write to datetime columns.
+// In the HostNow dialect it binds the executor clock truncated to the column's fractional digits,
+// and MySQL truncates the database clock with CURRENT_TIMESTAMP(p).
 func (p *Planner) statementTime(b *builder, col *runtimemodel.Field) string {
 	if p.D.HostNow() {
 		return b.now(col.Precision)
@@ -1370,7 +1370,7 @@ func (p *Planner) deleteStep(r *ir.Request) (*plan.Step, error) {
 	b := &builder{p: p}
 	ent := p.M.Entities[r.Entity]
 	root := p.buildScopes(&r.Query, ent.Table, nil)
-	// soft delete는 UPDATE이므로 audit table이면 audit column도 쓴다.
+	// soft delete is an UPDATE, so for an audit table it also writes the audit columns.
 	var sets []string
 	if ent.SoftDelete != "" {
 		sets = append(sets, p.D.Quote(ent.SoftDelete)+" = "+p.statementTime(b, ent.Field(ent.SoftDelete)))
@@ -1396,12 +1396,12 @@ func (p *Planner) deleteStep(r *ir.Request) (*plan.Step, error) {
 	return &plan.Step{Role: "main", SQL: sql, Tables: b.tableList(), BindSlots: b.binds}, nil
 }
 
-// restoreStep은 soft delete한 행 하나를 되돌리는 update다. ir.RestoreKey가 request의 set과
-// where에서 primary key나 unique key 하나를 고르고, 그 key column의 set 값은 조건이 되며 다른
-// set 값은 되돌리는 행에 함께 쓰는 새 값으로 update의 assignment와 같은 규칙을 따른다. where의
-// 다른 조건은 restore를 더 좁힌다. 지워진 행만 고치므로 지워지지 않은 행과 없는 행은 아무것도
-// 바꾸지 않는다. 그 뒤에 soft delete column을 비우고, audit table이면 audit column을 쓴다.
-// updated column은 soft delete처럼 쓰지 않는다.
+// restoreStep is an update that reverts one soft-deleted row. ir.RestoreKey is the request's set and
+// picks one primary or unique key in where; that key column's set value becomes a condition, and the other
+// set values follow the same rules as update assignments, as new values written to the restored row. The where
+// other conditions narrow the restore further. Only deleted rows are changed, so undeleted and nonexistent rows change nothing.
+// Afterwards it clears the soft delete column, and for an audit table it writes the audit columns.
+// updated columns are not written the way soft delete writes them.
 func (p *Planner) restoreStep(r *ir.Request) (*plan.Step, error) {
 	ent := p.M.Entities[r.Entity]
 	parts, err := ir.RestoreKey(ent, r)
@@ -1443,9 +1443,9 @@ func (p *Planner) restoreStep(r *ir.Request) (*plan.Step, error) {
 	return &plan.Step{Role: "main", SQL: "UPDATE " + b.table(ent) + " SET " + strings.Join(sets, ", ") + " WHERE " + where, Tables: b.tableList(), BindSlots: b.binds}, nil
 }
 
-// restartIdentityStep은 entity의 identity를 그 table의 가장 큰 key 다음 값에서 다시
-// 시작하는 statement다: 다음 생성 key는 가장 큰 key에 1을 더한 값이고, 빈 table이면
-// 1이다. load로 key를 지정해 행을 적재한 뒤 실행한다.
+// restartIdentityStep is the statement that restarts an entity's identity from the value after the table's largest key:
+// the next generated key is the largest key plus 1, and if the table is empty,
+// it is 1. It runs after a row is loaded with a key given by load.
 func (p *Planner) restartIdentityStep(r *ir.Request) (*plan.Step, error) {
 	ent := p.M.Entities[r.Entity]
 	if ent.Identity == "" {
@@ -1551,8 +1551,8 @@ func placedJoins(g *ir.Group, out map[string]bool) {
 
 // columnFunction renders an ORM column function on a column of s.
 func (p *Planner) columnFunction(b *builder, s *scope, column string, f *ir.Func) (string, error) {
-	// column 함수의 인자는 아직 없다(dialect.ColumnFunctionArity는 모두 0). 인자의
-	// type을 선언하지 않은 함수가 인자를 받으면 type 없는 slot으로 planner 오류다.
+	// Column function arguments do not exist yet (dialect.ColumnFunctionArity is all 0). The arguments
+	// of a function that declares no type, if it takes any, are a planner error with a slot that has no type.
 	out, ok := p.D.ColumnFunction(f.Name, p.qcol(s, column), func(i int) string { return b.param(f.Ps[i], "") })
 	if !ok {
 		return "", &ir.Error{Code: "CAPABILITY_UNSUPPORTED", Msg: f.Name + " is not available on " + p.D.Name()}

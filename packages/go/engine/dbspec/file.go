@@ -6,12 +6,12 @@ import (
 	"unicode/utf8"
 )
 
-// Signature는 모든 dbspec document 파일의 첫 byte다. header `dbspec 1 <document>`가
-// 이것으로 시작한다(docs/dbspec.md "Files").
+// Signature is the first bytes of every dbspec document file. The header `dbspec 1 <document>`
+// starts with it (docs/dbspec.md "Files").
 const Signature = "dbspec "
 
-// ReadFile은 parse할 path의 dbspec document 파일을 읽고 그 byte를 path를 이름으로
-// ReadBytes로 확인한다. 읽을 수 없는 파일은 읽기의 error를 돌려준다.
+// ReadFile reads the dbspec document file at path, to parse, and checks its bytes with ReadBytes,
+// using path as the name. A file that cannot be read returns the read error.
 func ReadFile(path string) (string, []Diagnostic, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -21,15 +21,15 @@ func ReadFile(path string) (string, []Diagnostic, error) {
 	return text, diagnostics, nil
 }
 
-// ReadBytes는 호출자가 자기 규칙으로 읽은 dbspec document 파일의 byte를 parse 전에
-// 확인한다. name은 message가 파일을 가리키는 이름이다. Signature로 시작하지 않는 byte는
-// text 없이 line 1, column 1의 RuleSignature diagnostic 하나와 message
-// "<name> is not a dbspec document"를, UTF-8이 아닌 byte는 첫 잘못된 byte의 줄과 칸에서
-// RuleEncoding diagnostic 하나와 message "<name> is not valid UTF-8"을 돌려준다. 그 밖의
-// byte는 diagnostic 없이 그대로 text가 된다.
+// ReadBytes checks the bytes of a dbspec document file that the caller read under its own rules, before parsing.
+// name is the name the message uses for the file. Bytes that do not start with Signature give
+// one RuleSignature diagnostic at line 1, column 1, with no text, and the message
+// "<name> is not a dbspec document"; a byte that is not UTF-8 gives a diagnostic at the line and column of the first invalid byte with
+// RuleEncoding and the message "<name> is not valid UTF-8". Other
+// bytes become text as they are, with no diagnostic.
 func ReadBytes(name string, b []byte) (string, []Diagnostic) {
-	// signature는 decode 전에 byte로 확인한다. 다른 형식의 파일(예: DbSchema project XML)이나
-	// 빈 파일은 dbspec header diagnostic이 아니라 파일 하나의 signature diagnostic이다.
+	// The signature is checked on the bytes before decoding. A file of another format (for example a DbSchema project XML) or
+	// an empty file gives one file-level signature diagnostic, not a dbspec header diagnostic.
 	if !bytes.HasPrefix(b, []byte(Signature)) {
 		return "", []Diagnostic{{Rule: RuleSignature, Line: 1, Column: 1, Message: name + " is not a dbspec document"}}
 	}
@@ -40,8 +40,8 @@ func ReadBytes(name string, b []byte) (string, []Diagnostic) {
 	return string(b), nil
 }
 
-// invalidUTF8Position은 첫 잘못된 UTF-8 byte의 줄과 칸(code point 단위)이다. 줄은 LF로
-// 나눈다.
+// invalidUTF8Position is the line and column (in code points) of the first invalid UTF-8 byte. Lines are split at LF
+// on LF.
 func invalidUTF8Position(b []byte) (int, int) {
 	line, column := 1, 1
 	for i := 0; i < len(b); {

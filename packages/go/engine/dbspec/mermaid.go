@@ -8,11 +8,11 @@ import (
 	"strings"
 )
 
-// RuleMermaid는 import가 읽지 못한 Mermaid 줄의 diagnostic이다(docs/mermaid.md).
+// RuleMermaid is the diagnostic for a Mermaid line that import could not read (docs/mermaid.md).
 const RuleMermaid = "mermaid"
 
-// ExportMermaid는 문서 하나를 표준 erDiagram으로 쓰고, diagram이 담지 못해 뺀
-// 것을 [kind, table, name] 순서로 돌려준다(docs/mermaid.md "Export").
+// ExportMermaid writes one document as a standard erDiagram, and returns what the diagram could not hold and so left out,
+// as [kind, table, name] (docs/mermaid.md "Export").
 func ExportMermaid(d *Document) (string, []Unsupported) {
 	var dropped []Unsupported
 	report := func(kind, table, name, reason string) {
@@ -133,8 +133,8 @@ func ExportMermaid(d *Document) (string, []Unsupported) {
 	return b.String(), dropped
 }
 
-// settingsCommented는 settings block의 여는 줄, setting 줄, 닫는 줄 중 하나에
-// comment가 있는지 알려준다.
+// settingsCommented reports whether one of the opening line, setting lines, or closing line of the settings block
+// has a comment.
 func settingsCommented(s *Settings) bool {
 	if s == nil {
 		return false
@@ -169,7 +169,7 @@ func settingsCommented(s *Settings) bool {
 	return slices.ContainsFunc(lines, func(c []string) bool { return len(c) > 0 })
 }
 
-// mermaidType은 Mermaid type에는 쉼표가 없으므로 decimal(p,s)를 decimal(p-s)로 쓴다.
+// mermaidType: Mermaid types have no commas, so decimal(p,s) is written as decimal(p-s).
 func mermaidType(t Type) string {
 	if t.Kind == TypeDecimal {
 		return "decimal(" + strconv.Itoa(t.Precision) + "-" + strconv.Itoa(t.Scale) + ")"
@@ -183,8 +183,8 @@ var (
 	mermaidAttribute   = regexp.MustCompile(`^([A-Za-z][A-Za-z0-9_()\[\]-]*)\s+([A-Za-z_*][A-Za-z0-9_-]*)((?:\s+(?:PK|FK|UK)(?:\s*,\s*(?:PK|FK|UK))*)?)(?:\s+"([^"]*)")?$`)
 	mermaidRelation    = regexp.MustCompile(`^` + mermaidEntityName + `\s+(\|o|\|\||\}o|\}\|)(--|\.\.)(o\||\|\||o\{|\|\{)\s+` + mermaidEntityName + `\s*:\s*("[^"]*"|[^\s"]+)$`)
 	mermaidLabel       = regexp.MustCompile(`^([a-z][a-z0-9_]*) \(([a-z0-9_, ]+)\) references \(([a-z0-9_, ]+)\)$`)
-	// mermaidSuffix는 comment 뒤에 공백 하나를 붙인 text에 맞춘다. 각 부분이 공백
-	// 하나로 끝나야 하므로 부분 사이에 공백이 정확히 하나 있다.
+	// mermaidSuffix matches text with one space added after the comment. Each part must end
+	// in exactly one space, so there is exactly one space between the parts.
 	mermaidSuffix    = regexp.MustCompile(`^(?:(null) )?(?:(identity) )?(?:default (.+) )?$`)
 	mermaidKnownType = regexp.MustCompile(`^(i16|i32|i64|bool|f64|text|bytes|uuid|date)$|^varchar\((\d+)\)$|^(time|datetime)\((\d)\)$|^decimal\((\d+)-(\d+)\)$`)
 )
@@ -206,8 +206,8 @@ type mermaidRel struct {
 	label                     string
 }
 
-// ImportMermaid는 표준 erDiagram을 name이라는 dbspec 문서로 읽고, 옮기지 못한
-// 것을 돌려준다(docs/mermaid.md "Import"). 문법에 맞지 않는 줄은 diagnostic이다.
+// ImportMermaid reads a standard erDiagram as a dbspec document named name, and returns
+// what it could not carry over (docs/mermaid.md "Import"). A line that does not match the syntax is a diagnostic.
 func ImportMermaid(text, name string) (*Document, []Unsupported, []Diagnostic) {
 	lines := strings.Split(strings.TrimSuffix(text, "\n"), "\n")
 	var entities []*mermaidEntity
@@ -342,7 +342,7 @@ func ImportMermaid(text, name string) (*Document, []Unsupported, []Diagnostic) {
 			continue
 		}
 		cols, refs := splitNames(m[2]), splitNames(m[3])
-		// column 수가 참조 column 수와 다르면 foreign key가 아니므로 column을 보지 않는다.
+		// If the column count differs from the referenced column count, it is not a foreign key, so the columns are not examined.
 		ok := len(cols) == len(refs)
 		nullable := false
 		for i := 0; ok && i < len(cols); i++ {
@@ -375,7 +375,7 @@ func ImportMermaid(text, name string) (*Document, []Unsupported, []Diagnostic) {
 			usedFK[child][col] = true
 		}
 		ix := "ix_" + child + "_" + strings.Join(cols, "_")
-		// 같은 column의 foreign key가 이미 더한 index는 다시 더하지 않는다.
+		// A foreign key on a column already covered by an index added by an earlier foreign key does not add that index again.
 		indexed := slices.ContainsFunc(ct.indexes, func(k ikey) bool { return k.name == ix })
 		if !slices.Equal(ct.primary[:min(len(cols), len(ct.primary))], cols) && !indexed {
 			ct.indexes = append(ct.indexes, ikey{name: ix, columns: cols, desc: make([]bool, len(cols))})
@@ -404,17 +404,17 @@ func splitNames(s string) []string {
 	return out
 }
 
-// mermaidImportType은 Mermaid type이 dbspec type이면 그 Type을 돌려준다. 수가
-// dbspec 범위(varchar 1-16383, time과 datetime 0-6, decimal p 1-18와 s 0-p)를
-// 벗어나면 dbspec type이 아니다. 범위를 여기서 정하므로 key column도 모든
-// client에서 같은 지점에서 빠진다.
+// mermaidImportType returns the Type if the Mermaid type is a dbspec type. Counts
+// outside the dbspec ranges (varchar 1-16383, time and datetime 0-6, decimal p 1-18 and s 0-p) are not dbspec types.
+// The range is decided here, so key columns also drop at the same point in every
+// client.
 func mermaidImportType(s string) (Type, bool) {
 	m := mermaidKnownType.FindStringSubmatch(s)
 	if m == nil {
 		return Type{}, false
 	}
-	// within은 숫자 text가 lo 이상 hi 이하인 값이면 그 값을 돌려준다. int 범위를
-	// 넘는 text는 범위 밖이다.
+	// within returns the value if the numeric text is a value from lo up to hi inclusive. Text that exceeds the
+	// int range is out of range.
 	within := func(x string, lo, hi int) (int, bool) {
 		n, err := strconv.Atoi(x)
 		return n, err == nil && n >= lo && n <= hi

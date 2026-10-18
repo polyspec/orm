@@ -14,8 +14,8 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// failing은 실제 SQLite connection을 감싸서 정한 statement에 error를 주입하고,
-// 정한 query를 다른 query로 바꾼다.
+// failing wraps a real SQLite connection, injects an error into a chosen statement, and
+// replaces a chosen query with another query.
 type failing struct {
 	conn    *sql.Conn
 	fail    map[string]error
@@ -67,7 +67,7 @@ func applyTestPlans(t *testing.T) []*Plan {
 	return nil
 }
 
-// logResult는 case의 결과와 걸린 시간을 알린다.
+// logResult reports the case's result and the time it took.
 func logResult(t *testing.T, name string, start time.Time) {
 	t.Helper()
 	result := "PASS"
@@ -77,8 +77,8 @@ func logResult(t *testing.T, name string, start time.Time) {
 	t.Logf("%s %s elapsed=%s", result, name, time.Since(start))
 }
 
-// TestApplyReportsCleanupErrors는 apply가 실패한 뒤 정리(lock 해제, foreign key
-// 복원)에서 난 error도 버리지 않고 함께 돌려주는지 확인한다.
+// TestApplyReportsCleanupErrors checks that when apply fails, the errors from cleanup (releasing the lock, restoring foreign key
+// checks) are not discarded but returned together with it.
 func TestApplyReportsCleanupErrors(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	start := time.Now()
@@ -95,7 +95,7 @@ func TestApplyReportsCleanupErrors(t *testing.T) {
 		}
 		return nil
 	}
-	// 정리 error가 없으면 실패를 감싸지 않고 그대로 돌려준다.
+	// Without a cleanup error, it returns the failure unwrapped.
 	if err := Apply(ctx, applyTestConn(t), DialectSQLite, plans, now, stopAt); err != stop {
 		t.Errorf("apply stopped by an event without a cleanup error: %#v, want the event error itself", err)
 	}
@@ -117,8 +117,8 @@ func TestApplyReportsCleanupErrors(t *testing.T) {
 	logResult(t, "apply/cleanup-errors", start)
 }
 
-// TestEffectRequiresRow는 효과 query가 row를 돌려주지 않으면 효과가 없다고 읽지
-// 않고 error로 보고하는지 확인한다.
+// TestEffectRequiresRow checks that when an effect query returns no row, it is reported as an error
+// rather than read as no effect.
 func TestEffectRequiresRow(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	start := time.Now()
@@ -133,8 +133,8 @@ func TestEffectRequiresRow(t *testing.T) {
 	logResult(t, "apply/effect-row", start)
 }
 
-// TestRollbackRejectsRecordedStepOutsidePlan은 applied row의 step이 plan의 step 밖이면 rollback이 step을 읽지 않고
-// chain error로 멈추는지 확인한다(docs/plans.md "Apply").
+// TestRollbackRejectsRecordedStepOutsidePlan checks that when the step of an applied row is outside the plan's steps, rollback stops without reading the step
+// with a chain error (docs/plans.md "Apply").
 func TestRollbackRejectsRecordedStepOutsidePlan(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	start := time.Now()

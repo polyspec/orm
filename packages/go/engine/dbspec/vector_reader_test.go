@@ -9,13 +9,13 @@ import (
 	"testing"
 )
 
-// vectorReader는 tests/dbspec vector file 하나의 값을 위치를 밝히며 읽는다. 없거나
-// type이 다른 값은 "<file>: <location> <problem>" error다.
+// vectorReader reads one value of a tests/dbspec vector file, with its location. A value that is missing or
+// of the wrong type is a "<file>: <location> <problem>" error.
 type vectorReader struct {
 	path string
 }
 
-// readVectorFile은 tests/dbspec/<name>을 JSON object로 읽는다.
+// readVectorFile reads tests/dbspec/<name> as a JSON object.
 func readVectorFile(t *testing.T, name string) (vectorReader, map[string]any) {
 	t.Helper()
 	r := vectorReader{path: filepath.Join("tests", "dbspec", name)}
@@ -30,7 +30,7 @@ func readVectorFile(t *testing.T, name string) (vectorReader, map[string]any) {
 	return r, object
 }
 
-// object는 raw가 JSON object인지 확인해 돌려준다.
+// object checks that raw is a JSON object and returns it.
 func (r vectorReader) object(raw []byte) (map[string]any, error) {
 	var value any
 	if err := json.Unmarshal(raw, &value); err != nil {
@@ -80,7 +80,7 @@ func (r vectorReader) fields(object map[string]any, location string, required []
 	return nil
 }
 
-// field는 object의 key 값을 돌려주고, key가 없으면 error다.
+// field returns the value of the object's key; if the key is missing, it is an error.
 func (r vectorReader) field(object map[string]any, location, key string) (any, error) {
 	value, ok := object[key]
 	if !ok {
@@ -101,7 +101,7 @@ func (r vectorReader) string(object map[string]any, location, key string) (strin
 	return s, nil
 }
 
-// integer는 value가 정수인 number인지 확인해 돌려준다.
+// integer checks that the value is a number that is an integer, and returns it.
 func (r vectorReader) integer(value any, location string) (int, error) {
 	n, ok := value.(float64)
 	if !ok || n != float64(int(n)) {
@@ -118,7 +118,7 @@ func (r vectorReader) integerField(object map[string]any, location, key string) 
 	return r.integer(value, vectorAt(location, key))
 }
 
-// flag는 key가 없으면 false를, 있으면 boolean인지 확인한 값을 돌려준다.
+// flag returns false if the key is missing, and otherwise the value, after checking that it is a boolean.
 func (r vectorReader) flag(object map[string]any, location, key string) (bool, error) {
 	value, ok := object[key]
 	if !ok {
@@ -147,7 +147,7 @@ func (r vectorReader) arrayField(object map[string]any, location, key string) ([
 	return r.array(value, vectorAt(location, key))
 }
 
-// lines는 value가 string array인지 확인해 돌려준다. 빈 array는 빈 slice다.
+// lines checks that the value is an array of strings and returns it. An empty array is an empty slice.
 func (r vectorReader) lines(value any, location string) ([]string, error) {
 	items, err := r.array(value, location)
 	if err != nil {
@@ -172,7 +172,7 @@ func (r vectorReader) linesField(object map[string]any, location, key string) ([
 	return r.lines(value, vectorAt(location, key))
 }
 
-// nullableLines는 null이면 nil을, 아니면 string array를 돌려준다. key는 있어야 한다.
+// nullableLines returns nil if the value is null, and otherwise an array of strings. The key must exist.
 func (r vectorReader) nullableLines(object map[string]any, location, key string) ([]string, error) {
 	value, err := r.field(object, location, key)
 	if err != nil || value == nil {
@@ -181,7 +181,7 @@ func (r vectorReader) nullableLines(object map[string]any, location, key string)
 	return r.lines(value, vectorAt(location, key))
 }
 
-// linesMap은 이름마다 string array를 가진 object를 돌려준다.
+// linesMap returns an object whose each name holds an array of strings.
 func (r vectorReader) linesMap(object map[string]any, location, key string) (map[string][]string, error) {
 	value, err := r.field(object, location, key)
 	if err != nil {
@@ -200,8 +200,8 @@ func (r vectorReader) linesMap(object map[string]any, location, key string) (map
 	return out, nil
 }
 
-// stepsMap은 dialect마다 step object array를 가진 object를 돌려준다. step object는
-// statement와 effect string을 가지며, docs/plans.md "Steps"의 key만 가진다.
+// stepsMap returns an object that holds, per dialect, an array of step objects. A step object
+// has statement and effect strings, and only the keys of docs/plans.md "Steps".
 func (r vectorReader) stepsMap(object map[string]any, location, key string) (map[string][]any, error) {
 	value, err := r.field(object, location, key)
 	if err != nil {
@@ -241,7 +241,7 @@ func (r vectorReader) stepsMap(object map[string]any, location, key string) (map
 	return out, nil
 }
 
-// triples는 [kind, table, name] string 세 개짜리 array의 array를 돌려준다.
+// triples returns an array of arrays of three strings: [kind, table, name].
 func (r vectorReader) triples(object map[string]any, location, key string) ([][3]string, error) {
 	items, err := r.arrayField(object, location, key)
 	if err != nil {
@@ -262,9 +262,9 @@ func (r vectorReader) triples(object map[string]any, location, key string) ([][3
 	return out, nil
 }
 
-// diagnostics는 width가 4이면 [rule, line, column, message], 3이면 [rule, line,
-// column] array의 array를 돌려준다. message는 string이거나 null이고, line과 column은
-// JSON 비교를 위해 decode한 number 그대로 둔다.
+// diagnostics returns an array of arrays: [rule, line, column, message] if width is 4, and [rule, line,
+// column] if 3. message is a string or null, and line and column are
+// kept as the numbers decoded for JSON comparison.
 func (r vectorReader) diagnostics(object map[string]any, location, key string, width int) ([][]any, error) {
 	items, err := r.arrayField(object, location, key)
 	if err != nil {
@@ -298,8 +298,8 @@ func (r vectorReader) diagnostics(object map[string]any, location, key string, w
 	return out, nil
 }
 
-// vectorCases는 section key의 각 case가 object인지와 그 id를 확인하고 read로 읽는다.
-// 빈 section은 error다.
+// vectorCases checks that each case under a section key is an object, checks its id, and reads it with read.
+// An empty section is an error.
 func vectorCases[T any](r vectorReader, object map[string]any, key string, read func(c map[string]any, location, id string) (T, error)) ([]T, error) {
 	items, err := r.arrayField(object, "", key)
 	if err != nil {
@@ -326,7 +326,7 @@ func vectorCases[T any](r vectorReader, object map[string]any, key string, read 
 	return out, nil
 }
 
-// version은 vector file의 version이 1인지 확인한다.
+// version checks that the vector file's version is 1.
 func (r vectorReader) version(object map[string]any) error {
 	version, err := r.integerField(object, "", "version")
 	if err != nil {
@@ -338,7 +338,7 @@ func (r vectorReader) version(object map[string]any) error {
 	return nil
 }
 
-// locatedErrors는 {line, column, rule} object의 array를 돌려준다.
+// locatedErrors returns an array of {line, column, rule} objects.
 func (r vectorReader) locatedErrors(object map[string]any, location, key string) ([]vectorError, error) {
 	items, err := r.arrayField(object, location, key)
 	if err != nil {

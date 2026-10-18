@@ -49,8 +49,8 @@ table member_row {
 }
 `
 
-// TestLoadRebuildsTheModelOfTheManifestText는 document set의 manifest text를
-// 다시 읽으면 같은 manifestHash와 entity가 나오는지 확인한다.
+// TestLoadRebuildsTheModelOfTheManifestText checks that reading the manifest text of a document set again
+// gives the same manifestHash and entities.
 func TestLoadRebuildsTheModelOfTheManifestText(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	built, diagnostics := LoadDocuments([]string{childDocument, parentDocument})
@@ -79,8 +79,8 @@ func TestLoadRebuildsTheModelOfTheManifestText(t *testing.T) {
 	}
 }
 
-// TestLoadRejectsInvalidManifestText는 header 없는 text와 같은 document가 두
-// 번 있는 text를 diagnostic으로 거부한다.
+// TestLoadRejectsInvalidManifestText rejects, with a diagnostic, text with no header and text in which the same document
+// appears twice.
 func TestLoadRejectsInvalidManifestText(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for text, rule := range map[string]string{
@@ -94,8 +94,8 @@ func TestLoadRejectsInvalidManifestText(t *testing.T) {
 	}
 }
 
-// TestLoadFilesRejectsFileWithoutSignature는 signature가 없는 파일(DbSchema project XML,
-// 빈 파일)을 parse하지 않고 SCHEMA_INVALID signature diagnostic 하나로 거부하는지 확인한다.
+// TestLoadFilesRejectsFileWithoutSignature checks that a file with no signature (a DbSchema project XML,
+// an empty file) is rejected, without parsing it, by a single SCHEMA_INVALID signature diagnostic.
 func TestLoadFilesRejectsFileWithoutSignature(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, name := range []string{"dbschema.dbs", "empty.dbs"} {

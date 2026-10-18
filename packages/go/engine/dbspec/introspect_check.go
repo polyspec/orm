@@ -5,10 +5,10 @@ import (
 	"strings"
 )
 
-// decodeCheck는 dialect catalog의 check 식을 dbspec predicate text로 읽는다
-// (docs/dialects.md "Introspection", "Checks"). columns는 table의 column
-// type이며, literal은 그것이 만나는 column의 값으로 읽는다. 읽을 수 없는 식은
-// error다.
+// decodeCheck reads the dialect catalog's check expression as dbspec predicate text
+// (docs/dialects.md "Introspection", "Checks"). columns are the table's columns
+// with their types, and a literal is read as a value of the column it meets. An expression that cannot be read is
+// an error.
 func decodeCheck(dialect Dialect, text string, columns map[string]Type) (string, error) {
 	if dialect == DialectMySQL {
 		text = unescapeMySQLClause(text)
@@ -39,8 +39,8 @@ func decodeCheck(dialect Dialect, text string, columns map[string]Type) (string,
 	return d.write(predicate)
 }
 
-// unescapeMySQLClause는 CHECK_CLAUSE가 문자열 literal에 더한 두 번째 escape를
-// 푼다: `\\`는 `\`, `\'`는 `'`가 된다.
+// unescapeMySQLClause undoes the second escape that CHECK_CLAUSE adds to string literals:
+// `\\` becomes `\`, and `\'` becomes `'`.
 func unescapeMySQLClause(text string) string {
 	var b strings.Builder
 	for i := 0; i < len(text); i++ {
@@ -93,7 +93,7 @@ func checkTokens(dialect Dialect, text string) ([]cToken, error) {
 				j++
 			}
 			word := text[i:j]
-			// MySQL 문자열 앞의 character set introducer는 값이 아니다.
+			// The character set introducer before a MySQL string is not a value.
 			if dialect == DialectMySQL && strings.HasPrefix(word, "_") && j < len(text) && text[j] == '\'' {
 				i = j
 				continue
@@ -119,8 +119,8 @@ func checkTokens(dialect Dialect, text string) ([]cToken, error) {
 	return out, nil
 }
 
-// readSQLString은 text 앞의 문자열 literal을 읽어 값과 길이를 돌려준다.
-// PostgreSQL과 SQLite는 ”만 escape이고, MySQL은 backslash escape도 쓴다.
+// readSQLString reads the string literal at the start of text and returns its value and length.
+// PostgreSQL and SQLite escape only by doubling the quote, and MySQL also uses backslash escapes.
 func readSQLString(dialect Dialect, text string) (string, int, error) {
 	var b strings.Builder
 	for i := 1; i < len(text); i++ {
@@ -158,10 +158,10 @@ func readSQLString(dialect Dialect, text string) (string, int, error) {
 
 type cNode interface{}
 
-// cOperand는 column이나 literal이다. kind는 column, number, string, bool이다.
+// cOperand is a column or a literal. kind is column, number, string, or bool.
 type cOperand struct{ kind, text string }
 
-// cPredicate는 비교, in, is null, and, or다.
+// cPredicate is a comparison, in, is null, and, or.
 type cPredicate struct {
 	op       string // and, or, compare, in, null
 	left     cNode
@@ -239,7 +239,7 @@ func (d *checkDecoder) and() (cNode, error) {
 	return left, nil
 }
 
-// predicate는 괄호로 묶인 식이나 operand로 시작하는 predicate 하나를 읽는다.
+// predicate reads one predicate that starts with a parenthesized expression or an operand.
 func (d *checkDecoder) predicate() (cNode, error) {
 	left, err := d.term()
 	if err != nil {
@@ -293,8 +293,8 @@ func (d *checkDecoder) predicate() (cNode, error) {
 	return operand, nil
 }
 
-// term은 괄호 식이나 operand와 그 뒤의 cast를 읽는다. 괄호 안이 operand 하나면
-// operand다.
+// term reads a parenthesized expression or an operand, and the cast after it. If what is inside the parentheses is one
+// operand.
 func (d *checkDecoder) term() (cNode, error) {
 	var node cNode
 	if d.punct("(") {
@@ -328,7 +328,7 @@ func (d *checkDecoder) term() (cNode, error) {
 	return node, nil
 }
 
-// castType은 `::` 뒤의 type 이름을 읽는다: 단어들과 (n), [].
+// castType reads the type name after `::`: words, and (n), [].
 func (d *checkDecoder) castType() string {
 	var words []string
 	for {
@@ -395,7 +395,7 @@ func (d *checkDecoder) operand() (cOperand, error) {
 	return cOperand{}, fmt.Errorf("unexpected %q", t.text)
 }
 
-// list는 in 뒤의 (a, b, ...)를 읽는다.
+// list reads the (a, b, ...) after in.
 func (d *checkDecoder) list() ([]cOperand, error) {
 	if err := d.expect("("); err != nil {
 		return nil, err
@@ -420,8 +420,8 @@ func (d *checkDecoder) list() ([]cOperand, error) {
 	}
 }
 
-// array는 PostgreSQL의 ANY나 ALL 뒤의 (ARRAY[...]) 또는 ((ARRAY[...])::type[])를
-// 읽는다.
+// array reads the (ARRAY[...]) or ((ARRAY[...])::type[]) after PostgreSQL's ANY or ALL,
+// and it is read.
 func (d *checkDecoder) array() ([]cOperand, error) {
 	if err := d.expect("("); err != nil {
 		return nil, err
@@ -463,8 +463,8 @@ func (d *checkDecoder) array() ([]cOperand, error) {
 	return out, d.expect(")")
 }
 
-// write는 predicate를 dbspec text로 쓴다. 괄호는 필요한 곳보다 많아도 되며
-// canonical form은 parse가 정한다.
+// write writes the predicate as dbspec text. It may have more parentheses than needed;
+// the canonical form is decided by parse.
 func (d *checkDecoder) write(p cPredicate) (string, error) {
 	switch p.op {
 	case "and", "or":
@@ -537,8 +537,8 @@ func (d *checkDecoder) typeOf(a, b cOperand) Type {
 	return Type{}
 }
 
-// operandText는 operand를 dbspec 표기로 쓴다. bool column의 1과 0은 true와
-// false, SQLite decimal의 정수는 scale을 나눈 값이다.
+// operandText writes an operand in dbspec notation. The 1 and 0 of a bool column become true and
+// false, and an integer of a SQLite decimal is the value divided by the scale.
 func (d *checkDecoder) operandText(o cOperand, typ Type) (string, error) {
 	switch o.kind {
 	case "column":
@@ -562,7 +562,7 @@ func (d *checkDecoder) operandText(o cOperand, typ Type) (string, error) {
 	return o.text, nil
 }
 
-// unscaledDecimal은 10^scale을 곱한 정수 text를 scale 자리 소수로 쓴다.
+// unscaledDecimal writes an integer text multiplied by 10^scale as a decimal with scale digits.
 func unscaledDecimal(text string, scale int) string {
 	negative := strings.HasPrefix(text, "-")
 	digits := strings.TrimPrefix(text, "-")

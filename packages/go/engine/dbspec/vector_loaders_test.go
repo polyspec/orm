@@ -8,14 +8,14 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// vectorCaseOf는 object의 section key에서 index번째 case object다.
+// vectorCaseOf is the index-th case object, found by the section key of the object.
 func vectorCaseOf(object map[string]any, key string, index int) map[string]any {
 	return object[key].([]any)[index].(map[string]any)
 }
 
-// TestVectorLoadersRejectMalformedVectors는 engine test가 tests/dbspec vector를 읽을 때
-// 없거나 type이 다른 section과 field를 "<file>: <location> <problem>" error로
-// 거부하는지 확인한다.
+// TestVectorLoadersRejectMalformedVectors checks that the engine test, when reading tests/dbspec vectors,
+// rejects sections and fields that are missing or of the wrong type with a "<file>: <location> <problem>" error;
+// the test checks that it does.
 func TestVectorLoadersRejectMalformedVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	decoders := map[string]func(vectorReader, map[string]any) error{

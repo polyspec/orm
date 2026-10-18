@@ -8,32 +8,32 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// caseClock은 한 case의 wall-clock 시간과 그 case를 실행한 OS thread의 CPU 시간을 함께
-// 잰다. test가 자기 계산에 두는 시간 제한은 CPU 시간으로 잰다(docs/dbspec.md,
-// "Verification"). 공유 machine에서 wall-clock 시간은 다른 process가 CPU를 쓰는 동안 기다린
-// 시간도 담으므로 code가 한 일을 재지 못한다. process CPU 시간은 다른 core에서 병렬로 도는
-// garbage collector worker의 시간도 담으므로 Rust와 TypeScript client처럼 case의 thread를
-// 잰다. 멈춘 case를 끊는 runTimed의 timer는 wall-clock 시간을 쓴다.
+// caseClock measures a case's wall-clock time and the CPU time of the OS thread that ran the case
+// together. A test's time limit on its own computation is measured in CPU time (docs/dbspec.md,
+// "Verification"). On a shared machine wall-clock time includes the time spent waiting while other processes use the CPU,
+// so it does not measure what the code did. Process CPU time includes the time of parallel work on other cores,
+// and garbage collector worker time too, so, as with the Rust and TypeScript clients, it measures the case's thread.
+// runTimed's timer that cuts off a stuck case uses wall-clock time.
 type caseClock struct {
 	wall time.Time
 	cpu  time.Duration
 }
 
-// startCaseClock은 goroutine을 지금 OS thread에 묶고 시계를 시작한다. 호출한 goroutine은
-// elapsed를 부른 뒤 runtime.UnlockOSThread로 묶음을 푼다.
+// startCaseClock pins the goroutine to the current OS thread and starts the clock. The calling goroutine
+// unpins by calling runtime.UnlockOSThread after it calls elapsed.
 func startCaseClock(t *testing.T) caseClock {
 	t.Helper()
 	runtime.LockOSThread()
 	return caseClock{wall: time.Now(), cpu: threadCPU(t)}
 }
 
-// elapsed는 시작 뒤 이 thread가 쓴 user와 system CPU 시간과 wall-clock 시간이다.
+// elapsed is the user and system CPU time, and the wall-clock time, that this thread used since the start.
 func (c caseClock) elapsed(t *testing.T) (cpu, wall time.Duration) {
 	t.Helper()
 	return threadCPU(t) - c.cpu, time.Since(c.wall)
 }
 
-// threadCPU는 지금 OS thread가 지금까지 쓴 CPU 시간이다.
+// threadCPU is the CPU time this OS thread has used so far.
 func threadCPU(t *testing.T) time.Duration {
 	t.Helper()
 	var now unix.Timespec

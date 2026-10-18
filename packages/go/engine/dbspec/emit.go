@@ -141,7 +141,7 @@ func (s *settingsNode) model() *Settings {
 			case "history":
 				machine.History = &HistorySetting{Comments: line.comments, Table: args[1], Row: args[2], From: args[3], To: args[4], At: args[5]}
 			case "limit":
-				count, _ := strconv.ParseInt(args[2], 10, 64) // 검사가 count를 받아들였으므로 변환 오류가 없다
+				count, _ := strconv.ParseInt(args[2], 10, 64) // There is no conversion error here, since the check accepted the count.
 				machine.Limits = append(machine.Limits, LimitSetting{Comments: line.comments, State: args[1], Count: count})
 			default:
 				stateLine := StateLineSetting{Comments: line.comments, Initial: line.form == "initial", Terminal: line.form == "terminal"}
@@ -306,8 +306,8 @@ func (e *emitter) settings(t *Table, s *Settings) {
 		e.line(2, s.Immutable.Comments, "immutable")
 	}
 	if a := s.Audit; a != nil {
-		// schema text는 database 상태로 정해지므로 기록하지 않는 column을 column
-		// 순서의 exclude 목록으로 쓴다. 다른 view는 쓴 목록을 그대로 쓴다.
+		// Schema text is determined by the database state, so it uses the columns that are not recorded
+		// as the exclude list, in column order. Other views use the list they wrote as is.
 		switch {
 		case e.view == viewSchema:
 			e.line(2, a.Comments, a.line("exclude", a.Excluded(t)))

@@ -470,7 +470,7 @@ func TestMarkdownSetting(t *testing.T) {
 	}
 }
 
-// markdownColumns는 markdown storage case들이 공유하는 tickets table의 column이다.
+// markdownColumns are the columns of the tickets table shared by the markdown storage cases.
 var markdownColumns = []string{
 	"  id varchar(32)",
 	"  title varchar(255)",
@@ -480,7 +480,7 @@ var markdownColumns = []string{
 	"  reason varchar(200) null",
 }
 
-// historyColumns는 state_machine history가 이름 붙이는 ticket_history table의 column이다.
+// historyColumns are the columns of the ticket_history table that state_machine history names.
 var historyColumns = []string{
 	"  id i64 identity",
 	"  ticket_id varchar(32)",
@@ -490,7 +490,7 @@ var historyColumns = []string{
 	"  reason varchar(200) null",
 }
 
-// ticketHistory는 주어진 column과 key, foreign key를 선행하는 index, tickets를 가리키는 foreign key를 가진 ticket_history table을 쓴다.
+// ticketHistory writes a ticket_history table with the given columns, key, and foreign key, an index leading the foreign key, and a foreign key that points to tickets.
 func ticketHistory(columns []string) []string {
 	out := []string{"table ticket_history {"}
 	out = append(out, columns...)
@@ -502,7 +502,7 @@ func ticketHistory(columns []string) []string {
 	)
 }
 
-// markdownDoc은 주어진 column, key 줄과 setting으로 tickets table을 쓰고, 그 뒤에 history table을 쓴다. 각 setting은 settings block 안에 들여쓴다.
+// markdownDoc writes the tickets table with the given columns, key lines, and settings, and then writes the history table. Each setting is indented inside the settings block.
 func markdownDoc(columns, key, history []string, settings ...string) []string {
 	body := []string{"table tickets {"}
 	body = append(body, columns...)
@@ -515,7 +515,7 @@ func markdownDoc(columns, key, history []string, settings ...string) []string {
 	return with(body, []string{""}, history)
 }
 
-// at은 text를 담은 첫 줄에서 rule이 token에 보고하는 diagnostic을 돌려준다.
+// at returns the diagnostic that the rule reports at the token on the first line that holds the text.
 func at(lines []string, text, token, rule string) vectorError {
 	for i, line := range lines {
 		if start := strings.Index(line, text); start >= 0 {
@@ -546,7 +546,7 @@ var (
 	}
 )
 
-// TestMarkdownStorageSetting: markdown storage의 storage, key, title, body, order, checkbox와 state_machine setting이 parse되고 canonical하게 emit되어 settings model에 도달한다.
+// TestMarkdownStorageSetting: the storage, key, title, body, order, checkbox, and state_machine settings of markdown storage are parsed, emitted canonically, and reach the settings model.
 func TestMarkdownStorageSetting(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	text := joinLines(markdownDoc(markdownColumns, pkID, standardHistory, markdownSettings...), false)
@@ -576,7 +576,7 @@ func TestMarkdownStorageSetting(t *testing.T) {
 	}
 }
 
-// TestMarkdownStorageManifest: markdown setting은 manifest hash에 들어가고 schema hash에는 들어가지 않는다.
+// TestMarkdownStorageManifest: a markdown setting enters the manifest hash and does not enter the schema hash.
 func TestMarkdownStorageManifest(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	list := joinLines(markdownDoc(markdownColumns, pkID, standardHistory, markdownSettings...), false)
@@ -601,7 +601,7 @@ func TestMarkdownStorageManifest(t *testing.T) {
 	}
 }
 
-// TestStateMachineKeywordStates: state_machine 줄의 keyword와 이름이 같은 state도 뒤에 전환 화살표가 오면 여전히 전환 state다.
+// TestStateMachineKeywordStates: a state with the same name as a state_machine line keyword is still a transition state when a transition arrow follows it.
 func TestStateMachineKeywordStates(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	text := joinLines(with(block(
@@ -626,7 +626,7 @@ func TestStateMachineKeywordStates(t *testing.T) {
 	}
 }
 
-// TestMarkdownStorageRules: 각 markdown storage setting은 그 rule이 이름 붙이는 state, column, 모양을 rule이 이름 붙이는 token에서 거부한다.
+// TestMarkdownStorageRules: each markdown storage setting is rejected at the token that its rule names, for the state, column, or shape that the rule names.
 func TestMarkdownStorageRules(t *testing.T) {
 	intKey := []string{"  primary key (id)"}
 	intColumns := append([]string{"  id i64 identity"}, markdownColumns[1:]...)

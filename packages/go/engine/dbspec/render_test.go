@@ -9,8 +9,8 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// ddlFile은 tests/dbspec/ddl.json이다. 문서 집합과 Render가 dialect마다 쓰는 statement를
-// 담는다(docs/dialects.md "Rendered statements").
+// ddlFile is tests/dbspec/ddl.json. It holds the document set and the statements that Render writes per dialect
+// (docs/dialects.md "Rendered statements").
 type ddlFile struct {
 	Cases []ddlCase
 }
@@ -31,8 +31,8 @@ func loadDDL(t *testing.T) ddlFile {
 	return f
 }
 
-// decodeDDLVectors는 ddl.json의 case와 field를 읽고, 없거나 type이 다른 값을 위치와
-// 함께 거부한다.
+// decodeDDLVectors reads the cases and fields of ddl.json, and rejects any value that is missing or of another type
+// along with its location.
 func decodeDDLVectors(r vectorReader, object map[string]any) (ddlFile, error) {
 	var f ddlFile
 	if err := r.version(object); err != nil {
@@ -51,7 +51,7 @@ func decodeDDLVectors(r vectorReader, object map[string]any) (ddlFile, error) {
 	return f, err
 }
 
-// parseDDLSet은 case의 모든 문서를 나머지 문서에 대해 parse한다.
+// parseDDLSet parses all documents of the case against the other documents.
 func parseDDLSet(c ddlCase) ([]*Document, error) {
 	names := make([]string, 0, len(c.Documents))
 	for name := range c.Documents {

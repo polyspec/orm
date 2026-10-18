@@ -11,8 +11,8 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// restoreDocument는 unique key를 가진 soft delete table 두 개다. link는 audit
-// table이고 tag는 아니며, plain에는 soft_delete가 없다.
+// restoreDocument is two soft-delete tables with a unique key. link is an audit
+// table and not a tag; plain has no soft_delete.
 const restoreDocument = `dbspec 1 restore
 
 table link {
@@ -68,8 +68,8 @@ table plain {
 }
 `
 
-// restoreRequest는 columns의 eq 조건으로 entity를 restore하는 request다. op와
-// conn은 column마다 바꿀 수 있다.
+// restoreRequest is a request that restores an entity by eq conditions on columns. op and
+// conn can be changed for each column.
 func restoreRequest(m *runtimemodel.Model, entity string, preds ...ir.Pred) *ir.Request {
 	r := &ir.Request{IRVersion: ir.Version, ManifestHash: m.ManifestHash, Kind: "restore", Query: ir.Query{Entity: entity, Where: &ir.Group{}}}
 	for i := range preds {
@@ -84,8 +84,8 @@ func restoreRequest(m *runtimemodel.Model, entity string, preds ...ir.Pred) *ir.
 	return r
 }
 
-// withSet은 request에 새 값의 assignment를 더한다. 값의 parameter는 조건 뒤에
-// 이어진다.
+// withSet adds an assignment of a new value to the request. The parameter of the value follows
+// the conditions.
 func withSet(r *ir.Request, assigns ...ir.Assign) *ir.Request {
 	for _, a := range assigns {
 		n := r.NParams
@@ -96,7 +96,7 @@ func withSet(r *ir.Request, assigns ...ir.Assign) *ir.Request {
 	return r
 }
 
-// compileRestore는 request를 검증하고 dialect로 compile한다.
+// compileRestore validates the request and compiles it with the dialect.
 func compileRestore(m *runtimemodel.Model, d dialect.Dialect, r *ir.Request) (*plan.Plan, error) {
 	if err := ir.Validate(m, r); err != nil {
 		return nil, err
@@ -104,9 +104,9 @@ func compileRestore(m *runtimemodel.Model, d dialect.Dialect, r *ir.Request) (*p
 	return (&Planner{M: m, D: d}).Compile(r)
 }
 
-// TestRestorePlansGuardedUpdate는 restore가 primary key나 unique key 하나의
-// eq 조건으로 soft delete column을 NULL로 되돌리는 update 하나가 되는지
-// 확인한다. 지워진 행만 고치고, audit table이면 audit column도 쓴다.
+// TestRestorePlansGuardedUpdate checks that restore becomes one update that sets the soft delete column
+// back to NULL under an eq condition on one primary or unique key.
+// It changes only deleted rows, and for an audit table it also writes the audit columns.
 func TestRestorePlansGuardedUpdate(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	m := testModel(t, restoreDocument)
@@ -166,9 +166,9 @@ func TestRestorePlansGuardedUpdate(t *testing.T) {
 	}
 }
 
-// TestRestoreRejectsOtherRequests는 set 값과 and로 이은 where의 eq 조건이 key를 덮지 않는
-// restore, or로 이은 where, key 밖의 key, soft delete, audit column assignment와 soft_delete가 없는
-// table의 restore가 IR_INVALID인지 확인한다.
+// TestRestoreRejectsOtherRequests checks that a set value and an eq condition in a where joined by and do not overwrite the key,
+// that a restore with a where joined by or, a key outside the key, a soft delete, an audit column assignment, and a restore of a table without soft_delete
+// are all IR_INVALID.
 func TestRestoreRejectsOtherRequests(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	m := testModel(t, restoreDocument)

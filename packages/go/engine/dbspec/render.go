@@ -32,14 +32,14 @@ func Render(documents []*Document, dialect Dialect) ([]string, []Diagnostic) {
 	return out, nil
 }
 
-// RenderedStatement은 Render의 statement 하나와 그 statement가 만들거나 바꾸는 table이다.
+// RenderedStatement is one statement of Render, and the table that the statement creates or changes.
 type RenderedStatement struct {
 	SQL   string
 	Table string
 }
 
-// RenderStatements는 Render와 같은 statement를 같은 순서로 쓰고, 각 statement가
-// 만들거나 바꾸는 table을 함께 돌려준다.
+// RenderStatements writes the same statements, in the same order, as Render, and for each statement
+// returns the table it creates or changes.
 func RenderStatements(documents []*Document, dialect Dialect) ([]RenderedStatement, []Diagnostic) {
 	switch dialect {
 	case DialectMySQL, DialectPostgres, DialectSQLite:
@@ -57,7 +57,7 @@ func RenderStatements(documents []*Document, dialect Dialect) ([]RenderedStateme
 			out = append(out, RenderedStatement{SQL: sql, Table: table})
 		}
 	}
-	// 외부 문서의 table은 그 문서를 소유한 set이 만든다.
+	// The set that owns an external document creates that document's tables.
 	ordered = slices.DeleteFunc(ordered, func(d *Document) bool { return d.External })
 	for _, document := range ordered {
 		for i := range document.Tables {
@@ -158,9 +158,9 @@ func (r renderer) table(t *Table) []string {
 	return out
 }
 
-// createTable은 table t를 name으로 만드는 CREATE TABLE이다. checkName은 column의
-// renderer CHECK 이름이고, hidden은 t의 column 뒤에 nullable이며 CHECK 없이 더하는
-// column이다(docs/plans.md "Steps"의 SQLite 다시 만들기).
+// createTable is the CREATE TABLE that creates table t with the given name. checkName is the column's
+// renderer CHECK name, and hidden is a nullable column added after t's columns, with no CHECK
+// (SQLite rebuild in docs/plans.md "Steps").
 func (r renderer) createTable(t *Table, name string, checkName func(column string) string, hidden []Column) string {
 	var parts []string
 	for _, c := range t.Columns {

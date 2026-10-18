@@ -2,8 +2,8 @@ package dbspec
 
 import "strings"
 
-// Expr는 check predicate나 그 operand다(docs/dbspec.md "Checks"). tree에는
-// 괄호가 없고, emission은 and 안의 or가 필요로 하는 괄호만 쓴다.
+// Expr is a check predicate or its operand (docs/dbspec.md "Checks"). The tree holds no
+// parentheses; emission writes only the parentheses that an or inside an and requires.
 type Expr interface{ expr() }
 
 // ColumnRef refers to a column of the same table.
@@ -138,8 +138,8 @@ func (p *expressionParser) and() Expr {
 	return left
 }
 
-// predicate는 predicate 형식 하나를 읽는다. 괄호는 predicate를 묶기만 하고
-// node를 남기지 않는다. emission이 우선순위에 필요한 괄호를 쓰기 때문이다.
+// predicate reads one predicate form. Parentheses only group the predicate and
+// leave no node, because emission writes the parentheses that precedence requires.
 func (p *expressionParser) predicate() Expr {
 	if p.punct("(") {
 		inner := p.or()
@@ -208,8 +208,8 @@ func (p *expressionParser) predicate() Expr {
 	return p.alone(left)
 }
 
-// alone은 비교, in, is가 뒤따르지 않는 operand를 보고한다. 뒤에 and, or, ),
-// 끝이 오면 operand에서, 그 밖에는 뒤따르는 token에서 보고한다.
+// alone reports an operand that is not followed by a comparison, in, or is. When followed by and, or, a closing parenthesis,
+// or the end, it reports at the operand, and elsewhere at the token that follows.
 func (p *expressionParser) alone(operand Expr) Expr {
 	if next := p.peek(); p.i < len(p.tokens) && !next.is(tokenWord, "and") && !next.is(tokenWord, "or") && !next.is(tokenPunct, ")") {
 		return p.fail("is not allowed here")
@@ -342,7 +342,7 @@ func writeExpr(b *strings.Builder, e Expr) {
 	}
 }
 
-// needsParentheses는 op의 operand인 e가 and 안의 or인지 알려 준다.
+// needsParentheses reports whether e, the operand of op, is an or inside an and.
 func needsParentheses(op string, e Expr) bool {
 	inner, ok := e.(Binary)
 	return op == "and" && ok && inner.Op == "or"

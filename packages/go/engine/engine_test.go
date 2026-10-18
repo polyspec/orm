@@ -13,7 +13,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// benchModel은 contracts/fixtures/bench/bench.dbs의 runtime model이다.
+// benchModel is the runtime model of contracts/fixtures/bench/bench.dbs.
 func benchModel(t *testing.T) *runtimemodel.Model {
 	t.Helper()
 	m, err := runtimemodel.LoadFiles("../../../contracts/fixtures/bench/bench.dbs")
@@ -65,7 +65,7 @@ func TestSelectAll(t *testing.T) {
 	sql := p.Steps[0].SQL
 	wantParts := []string{
 		"SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, ",
-		// MySQL도 hex를 SQL에서 풀지 않는다: executor가 HostDecode로 정확히 읽는다(docs/codec.md).
+		// MySQL also does not decode hex in SQL: the executor reads it correctly with HostDecode (docs/codec.md).
 		"`a`.`aes_hex_email` AS `a__aes_hex_email`",
 		" FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? AND (`a`.`is_display` = ? OR (`a`.`is_display` = ? AND `a`.`display_start_dt` < ?)) AND `a`.`seq` IN (?, ?, ?) AND `a`.`email_blind_index` = ? AND " + dialect.MySQL{}.Like("`a`.`name`", "?") + " ORDER BY `a`.`seq` DESC LIMIT 0, 100",
 	}
@@ -93,12 +93,12 @@ func TestSelectAll(t *testing.T) {
 		t.Errorf("bind kinds: %s", got)
 	}
 	asm := p.Steps[0].Assemble
-	// default select set의 26개 column과 숨은 AES version column이다. select
-	// explicit column(ip 등)은 빠진다.
+	// The 26 columns of the default select set, and the hidden AES version column. select
+	// explicit columns (such as ip) are left out.
 	if asm == nil || asm.Columns[0].Name != "seq" || asm.Columns[0].Index != 0 || len(asm.Columns) != 27 || asm.Columns[26].Name != "aes_key_version" || !asm.Columns[26].Hidden || strings.Contains(sql, "`a`.`ip`") {
 		t.Errorf("assemble: %+v", asm)
 	}
-	// 읽은 aes_hex column은 executor가 hex와 aes를 모두 decode한다.
+	// The aes_hex column that is read is decoded by the executor as both hex and aes.
 	for _, c := range asm.Columns {
 		if c.Name == "aes_hex_email" && !slices.Equal(c.Styles, []string{"aes", "hex"}) {
 			t.Errorf("aes_hex_email styles %v, want [aes hex]", c.Styles)
@@ -295,7 +295,7 @@ func TestPostgresAndSQLite(t *testing.T) {
 	if aes == nil || strings.Join(aes.Styles, ",") != "aes,hex" || !strings.Contains(p.Steps[0].SQL, "\"a\".\"aes_hex_email\" AS \"a__aes_hex_email\"") {
 		t.Errorf("postgres aes read: %+v", aes)
 	}
-	// ip는 bytea column의 packed byte이므로 executor가 address text로 바꾼다.
+	// ip is the packed bytes of a bytea column, so the executor converts it to address text.
 	if ip == nil || strings.Join(ip.Styles, ",") != "ip" || !strings.Contains(p.Steps[0].SQL, "\"a\".\"ip\" AS \"a__ip\"") {
 		t.Errorf("postgres ip read: %+v", ip)
 	}
@@ -311,7 +311,7 @@ func TestPostgresAndSQLite(t *testing.T) {
 		t.Errorf("sqlite select:\n got  %s\n want %s", p.Steps[0].SQL, want)
 	}
 	for irs, code := range map[string]string{
-		// fulltext 조건은 protocol에 없다.
+		// Fulltext conditions are not in the protocol.
 		`"kind":"count","entity":"author","n_params":1,"where":{"items":[{"pred":{"op":"match","match":["name","description"],"p":0}}]}`: "IR_INVALID",
 	} {
 		_, err := lite.Compile([]byte(`{"ir_version":1,"manifest_hash":"` + lite.M.ManifestHash + `",` + irs + `}`))
@@ -496,9 +496,9 @@ func TestRelations(t *testing.T) {
 	}
 }
 
-// TestCompositeRelationKeys는 relation이 foreign key의 모든 성분을 key 순서대로
-// 이어 composite_account에서 composite_membership을 (tenant_id, account_id)로
-// 함께 읽는지, 그리고 잘못된 key 목록을 거절하는지 확인한다.
+// TestCompositeRelationKeys checks that a relation reads every component of a foreign key, in key order,
+// and joins composite_membership from composite_account on (tenant_id, account_id),
+// and that it rejects a wrong key list.
 func TestCompositeRelationKeys(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	e := testEngine(t)
@@ -533,8 +533,8 @@ func TestCompositeRelationKeys(t *testing.T) {
 	}
 }
 
-// TestAllColumnsSelectAESVersionOnce는 모든 column을 고른 node가 AES key
-// version column을 한 번만 읽고, 그 column을 version으로 표시하는지 확인한다.
+// TestAllColumnsSelectAESVersionOnce checks that a node that selects all columns reads the AES key
+// version column only once, and marks that column as the version.
 func TestAllColumnsSelectAESVersionOnce(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	e := testEngine(t)

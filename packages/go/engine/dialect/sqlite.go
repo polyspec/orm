@@ -39,9 +39,9 @@ func (SQLite) RowNumber(partition, orderBy string) string {
 	return s + ")"
 }
 
-// RestartIdentity: AUTOINCREMENT table의 다음 key는 sqlite_sequence의 seq에 1을 더한
-// 값이므로 seq를 가장 큰 key로 정한다. table이 아직 행을 받은 적이 없어 sqlite_sequence에
-// 행이 없으면 다음 key는 이미 가장 큰 key 다음이다.
+// RestartIdentity: the next key of an AUTOINCREMENT table is the seq in sqlite_sequence plus 1,
+// so seq is set to the largest key. A table that has not yet received rows has
+// no sqlite_sequence row, so the next key is already the one after the largest key.
 func (SQLite) RestartIdentity(table, column string) string {
 	return "UPDATE sqlite_sequence SET seq = (SELECT COALESCE(MAX(" + QuoteWith(`"`, column) + "), 0) FROM " + QuoteWith(`"`, table) + ") WHERE name = " + Literal(table)
 }
