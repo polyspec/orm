@@ -1,17 +1,17 @@
-// JavaScript test와 check runner가 쓰는 case 보고는 node:test의 출력(TAP)이다.
+// Case reporting used by JavaScript tests and the check runner is node:test's output (TAP).
 //
-//   caseTest: node:test의 test다. 단계는 t.diagnostic으로 쓰므로 TAP의 `# <단계>` 줄이 되고, 결과와 실패
-//   이유는 node:test가 `ok`나 `not ok`로 쓴다.
-//   runCase, runGroup, runLong, sections: test가 아닌 runner가 쓴다. 결과는 TAP 줄 `ok - <case>`나
-//   `not ok - <case>`와 그 이유 `# <이유>`이고, 단계는 하위 process의 출력 줄 그대로다.
+//   caseTest: a node:test test. Steps are written with t.diagnostic, so they become `# <step>` lines in TAP; the result and failure
+//   reason are written by node:test as `ok` or `not ok`.
+//   runCase, runGroup, runLong, sections: written by runners that are not tests. The result is the TAP lines `ok - <case>` or
+//   `not ok - <case>` with the reason `# <reason>`, and steps are the subprocess output lines as-is.
 //
-// 기한이 지난 case가 signal을 따르지 않고 멈춰 있으면 TAP이 실행을 끊을 때 쓰는 줄 `Bail out! <case>: ...`를
-// 쓰고 process를 종료 코드 1로 끝낸다.
+// When a case past its deadline is stuck and ignores its signal, write the `Bail out! <case>: ...` line that TAP uses to stop the run,
+// and end the process with exit code 1.
 //
-// 장기 작업(build, 설치, 도구 실행)은 기한이 없다. runLong은 기한을 두지 않고, 그 성공과 실패는 시계가 아니라
-// 관측한 결과와 오류로 정한다.
+// Long tasks (build, install, tool runs) have no deadline. runLong sets no deadline; its success and failure are decided not by the clock but
+// by the observed result and errors.
 //
-// 기한은 wall-clock 시간이다. 멈춘 case를 끝내는 timer이고 case 자신의 계산 시간을 재는 제한이 아니기 때문이다(AGENTS.md testing rule).
+// Deadlines are wall-clock time, because a deadline is a timer that ends a stuck case, not a limit measuring the case's own computation time (AGENTS.md testing rule).
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -24,32 +24,32 @@ export type CaseBody = (context: { signal: AbortSignal; step: Step }) => unknown
 /** The body of a group or a long task, which has no deadline. */
 export type LongBody = (context: { step: Step }) => unknown;
 
-// 기한의 등급이다. case는 자기가 하는 일에 맞는 등급을 쓰고, 등급보다 오래 걸리는 일은
-// 그 기준을 주석에 밝힌 자기 기한을 쓴다.
-// COMPUTE: memory 안의 계산과 repository file 읽기만 하는 case. 가장 큰 것(dbspec stress
-// 문서의 parse와 emit)도 몇 초 안에 끝나므로 1분을 넘긴 case는 멈춘 것이다.
+// The deadline classes. A case uses the class that fits what it does; work that takes longer than its class
+// uses its own deadline, with the basis stated in a comment.
+// COMPUTE: cases that only compute in memory and read repository files. The largest one (parsing and emitting the dbspec stress
+// document) also finishes within seconds, so a case past one minute is stuck.
 export const COMPUTE = 60_000;
-// DATABASE: TEST_ENV의 database에 연결해 정해진 수의 statement를 실행하는 case. database를
-// 만들고 지우는 일과 공유 server에서 lock을 기다리는 시간까지 2분이면 넉넉하다.
+// DATABASE: cases that connect to the database of TEST_ENV and run a set number of statements. Two minutes is generous, including
+// creating and dropping the database and waiting for locks on the shared server.
 export const DATABASE = 120_000;
-// PROCESS: go, php, cargo binary, node 같은 하위 process를 실행하는 case. `go run`은 build
-// cache가 비었을 때 compile에 몇 분이 걸린다.
+// PROCESS: cases that run child processes such as go, php, cargo binaries, node. `go run` compile takes minutes when
+// the build cache is empty.
 export const PROCESS = 300_000;
-// GRACE: 기한이 지난 뒤 case를 실패로 끝내기까지 기다리는 시간이다. signal을 따르는 case는
-// 기한에 자기 error로 실패하고 정리를 마칠 수 있다.
+// GRACE: the time to wait after the deadline passes before failing the case. A case that follows its signal can
+// fail on the deadline with its own error and finish its cleanup.
 export const GRACE = 5_000;
 
-// duration은 ms를 Go time.Duration의 String 형식(1m0s, 1.5s, 12ms)으로 쓴다. 세 언어의
-// 보고 줄이 같은 형식을 가진다.
-// warning은 성능 측정이 문서의 기준값을 넘었다는 줄 `WARNING <message>`를 쓴다. 성능은 측정하고 보고할 뿐 test를
-// 실패시키지 않는다(AGENTS.md): 경고는 실패가 아니다. message는 측정값, 기준값, 기계를 담는다. check runner는 이 줄을
-// 실행 기록과 summary에 모으고 GitHub Actions의 `::warning::` annotation으로도 쓴다.
+// duration writes ms in Go time.Duration's String format (1m0s, 1.5s, 12ms). The report lines of the three
+// languages share this format.
+// warning writes a line `WARNING <message>` when a performance measurement exceeds the document's reference value. Performance is measured and reported, not used to fail a test
+// (AGENTS.md): a warning is not a failure. The message carries the measured value, the reference value, and the machine. The check runner collects this line
+// into the run record and summary, and also writes it as a GitHub Actions `::warning::` annotation.
 export function warning(message: string): void {
   console.log(`WARNING ${message}`);
 }
 
 export function duration(ms: number): string {
-  // 반올림한 값으로 단위를 고른다. 999.6ms는 1000ms가 아니라 1s다.
+  // The unit is chosen from the rounded value. 999.6ms is 1s, not 1000ms.
   if (Math.round(ms * 1000) < 1000) return `${Math.round(ms * 1000)}µs`;
   if (Math.round(ms) < 1000) return `${Math.round(ms)}ms`;
   const totalSeconds = Math.round(ms) / 1000;
@@ -224,7 +224,7 @@ export function stepLines(step: Step): { write(chunk: string | Uint8Array): void
 }
 
 // caseTest는 node:test의 test 하나로 case를 실행한다. 단계는 t.diagnostic(TAP의 `#` 줄)이고, 실패한 case는 이유를
-// 담은 error로 test를 실패시킨다. node:test의 timeout은 기한이 먼저 끝나도록 deadline에 GRACE의 두 배를 더한다.
+// Fails the test with the error it carries. node:test's timeout adds twice GRACE to the deadline so the deadline ends first.
 export function caseTest(name: string, deadline: number, body: CaseBody): void {
   test(name, { timeout: deadline + 2 * GRACE }, async t => {
     const failure = await execute(name, deadline, body, text => t.diagnostic(text));

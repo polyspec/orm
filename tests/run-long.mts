@@ -1,10 +1,10 @@
-// 장기 작업(build, 설치, tsc, go generate, go vet, cargo build, cargo test --no-run, format이나
-// lint 같은 도구 실행) 하나를 기한 없이 실행한다. tests/testcase.mts의 runLong으로 시작
-// (`RUN <name> no-deadline`), 명령의 출력 줄(STEP, 경과 시간과 함께), 종료 코드(STEP `exit 0`)와
-// 결과(PASS, 또는 종료 코드나 signal을 담은 FAIL)를 출력한다. 느리지만 정상인 작업이 시계 때문에
-// 실패하지 않도록 기한도, 출력 없음 기한도 없으며 기한 인자를 받지 않는다. 성공과 실패는 명령의
-// 종료 코드와 출력한 오류로 정한다. 명령은 이 process와 같은 process group에서 돌아 terminal의
-// interrupt가 함께 닿는다.
+// Runs one long task (build, install, tsc, go generate, go vet, cargo build, cargo test --no-run, a format or
+// lint tool run) with no deadline. Starts from runLong in tests/testcase.mts
+// (`RUN <name> no-deadline`), prints command output lines (with elapsed time), the exit code (STEP `exit 0`), and
+// the result (PASS, or FAIL with the exit code or signal). So that a slow but normal task does not fail because of the clock,
+// there is no deadline and no no-output deadline, and it takes no deadline argument. Success and failure are decided by
+// the exit code and the errors printed. The command runs in the same process group as this process, so terminal
+// interrupts reach it too.
 //
 // Usage: node tests/run-long.mts <name> [--cwd <dir>] -- <program> [args...]
 import { spawn } from 'node:child_process';
