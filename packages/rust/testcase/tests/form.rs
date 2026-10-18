@@ -1,5 +1,5 @@
-//! orm-testcase의 출력을 하위 process로 확인한다. fixture test는 `TESTCASE_FIXTURE`가 있을
-//! 때만 일하고, `report_form`이 이 test binary를 그 변수와 함께 다시 실행해 libtest의 출력을 읽는다.
+//! Checks orm-testcase's output through a child process. The fixture test works only when `TESTCASE_FIXTURE` is set,
+//! and `report_form` runs this test binary again with that variable to read libtest's output.
 use std::process::Command;
 use std::time::Duration;
 
@@ -21,7 +21,7 @@ fn fixture_pass() {
     helper_step();
 }
 
-/// case 값 없이 단계를 출력하는 helper다.
+/// Helper that prints stage lines with no case value.
 fn helper_step() {
     polyspec_orm_testcase::step("helper step");
 }
@@ -63,7 +63,7 @@ fn fixture_deadline() {
     std::thread::sleep(Duration::from_secs(60));
 }
 
-/// 이 test binary를 fixture 이름과 함께 실행하고 종료 상태와 출력(stdout과 stderr)을 돌려준다. `--nocapture`로 단계가 보인다.
+/// Runs this test binary with the fixture name and returns the exit status and output (stdout and stderr). Stages are visible with `--nocapture`.
 fn run_fixture(name: &str, filter: &str) -> (Option<i32>, String) {
     let output = Command::new(std::env::current_exe().expect("test binary"))
         .args([filter, "--test-threads=1", "--nocapture"])
