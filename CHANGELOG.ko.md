@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b6f3c4f2a4f17c732069d3ba49a8665de1199eeb8613a13ee7eae93e0de1760a -->
+<!-- source-sha256: fa588739de31a942d235b55cb92ac35e9cb426008076f7b75ee96ebe3e837943 -->
 # 변경 이력
 
 ## Unreleased
+- TypeScript IR answer case가 ir_answers.mjs에서 fixture id로 실행되고, flowmark case는 markdown_conformance.mjs에 남는다 (T148-3-ts-3).
 - TypeScript install fixture가 자기 file에서 실행되어, install unit은 자기 fixture case만 보고한다 (T148-3-ts-1).
 - TypeScript statement-fault entry point 검사가 자기 file에서 실행되어, fault suite는 자기 네 case만 보고한다 (T148-3-ts-4).
 - TypeScript collection-key test가 case를 id로 node:test test로 보고해 parity unit 둘이 통과한다 (T148-3-ts-6).

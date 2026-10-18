@@ -1468,7 +1468,7 @@ ir-answers-check/rust: cargo-downloads-check lease-tool
 ir-answers-check/typescript: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	$(NODE) --conditions=orm-test packages/ts/tests/markdown_conformance.mjs --ir-answers
+	$(NODE) --conditions=orm-test packages/ts/tests/ir_answers.mjs
 ir-answers-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.ir_answers
 ir-answers-check/php: php-vendor-check

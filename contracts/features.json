@@ -7781,6 +7781,8 @@
         "packages/python/tests/markdown_conformance.py",
         "packages/rust/tests/tests/markdown_conformance.rs",
         "packages/ts/tests/markdown_conformance.mjs",
+        "packages/ts/tests/markdown_cases.mjs",
+        "packages/ts/tests/ir_answers.mjs",
         "packages/go/markdownmodel/ir_answers_test.go",
         "packages/php/tests/IrAnswersTest.php",
         "packages/python/tests/ir_answers.py",
@@ -7845,10 +7847,12 @@
         },
         {
           "id": "ir-answers-typescript",
-          "command": "node --conditions=orm-test packages/ts/tests/markdown_conformance.mjs --ir-answers",
+          "command": "node --conditions=orm-test packages/ts/tests/ir_answers.mjs",
           "shard": "other",
           "inputs": [
             "packages/ts/tests/markdown_conformance.mjs",
+            "packages/ts/tests/ir_answers.mjs",
+            "packages/ts/tests/markdown_cases.mjs",
             "contracts/fixtures/ir_answers.json"
           ]
         },

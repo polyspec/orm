@@ -43,6 +43,7 @@
         "packages/ts/tests/decimal_model_db.mjs",
         "packages/ts/tests/group_rows_db.mjs",
         "packages/ts/tests/introspect_case.mjs",
+        "packages/ts/tests/markdown_cases.mjs",
         "packages/ts/tests/mermaid_case.mjs",
         "packages/ts/tests/model.mjs",
         "packages/ts/tests/plan_case.mjs",
@@ -5926,7 +5927,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/markdownmodel/ir_answers_test.go", "symbol": "TestIRAnswers" },
         { "implementation": "php", "test": "packages/php/tests/IrAnswersTest.php", "symbol": "IrAnswersTest::test_ir_answer" },
-        { "implementation": "typescript", "test": "packages/ts/tests/markdown_conformance.mjs" },
+        { "implementation": "typescript", "test": "packages/ts/tests/ir_answers.mjs" },
         { "implementation": "python", "test": "packages/python/tests/ir_answers.py" },
         { "implementation": "rust", "test": "packages/rust/tests/tests/markdown_conformance.rs", "symbol": "ir_answers" }
       ]
