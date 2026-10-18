@@ -1,6 +1,6 @@
-// runner(scripts/check/run.mts)와 그 실행 기록(scripts/check/record.mts)을 stub 단계로 검사한다. 각 case는 임시 git
-// checkout에서, database 만들기와 지우기, make target 대신 자기 이름을 log에 적는 stub 명령으로 runChecks를 별도
-// process에서 실행한다. 실제 target과 database는 실행하지 않는다. 전체 suite의 guard는 @polyspec/kit의 도구다.
+// Checks the runner (scripts/check/run.mts) and its run record (scripts/check/record.mts) with stub steps. Each case, in a temporary git
+// checkout, runs runChecks in its own process, with stub commands in place of database creation and removal and of make targets, which log their own names.
+// The real targets and databases are not run. The full suite's guard is a tool of @polyspec/kit.
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
@@ -14,13 +14,13 @@ import type { StepRecord } from './report.mts';
 import { errorMessage } from '../../tests/errors.mts';
 
 const repo = resolve(fileURLToPath(new URL('../..', import.meta.url)));
-// caseTest는 node:test의 context를 주지 않으므로 임시 directory는 case 끝의 cleanup이 지운다.
+// caseTest does not give a node:test context, so the temporary directory is removed by the cleanup at the end of the case.
 const after: (() => void)[] = [];
 function cleanup() {
   for (let f = after.pop(); f; f = after.pop()) f();
 }
-// scope는 checkout의 임시 directory를 case 끝의 cleanup에 넘긴다.
-// named는 record의 target 하나다. 없으면 case가 실패한다.
+// scope hands the checkout's temporary directory to the cleanup at the end of the case.
+// named is one target of the record. If it is missing, the case fails.
 function named(record: CheckRecord, name: string): StepRecord {
   const found = record.targets.find(target => target.name === name);
   assert.ok(found, `the record has no target ${name}`);
@@ -28,12 +28,12 @@ function named(record: CheckRecord, name: string): StepRecord {
 }
 const scope = { after: (f: () => void) => { after.push(f); } };
 
-// stub은 runChecks를 stub 명령으로 실행한다. database 명령(node scripts/check/databases.mts)은 log에 `databases <action>`을, make target은 자기
-// 이름을 적는다. `b`는 추적하지 않는 file `pass-b`가 있을 때만 통과하므로 case는 tree를 바꾸지 않고 결과를
-// 바꾼다. kill에 target 이름을 주면 그 target이 runner process를 SIGKILL로 끝낸다. 
+// stub runs runChecks with stub commands. The database command (node scripts/check/databases.mts) logs `databases <action>`, and a make target logs its own
+// name. `b` passes only when an untracked file `pass-b` is present, so the case changes results
+// without changing the tree. Giving kill a target name makes that target end the runner process with SIGKILL.
 //
-// STUB_SUITE=failing는 setup 실패 case의 suite다: target a, b, c, d 가운데 a와 c는 database가 필요하고, database
-// 만들기는 실패하며, b는 실패한 case 하나와 끝나지 않은 case 하나를 출력하고 실행 directory를 남기며, d는 통과한다.
+// STUB_SUITE=failing is the suite for the setup-failure case: among targets a, b, c, d, a and c need a database, and the database
+// creation fails; b prints one failed case and one unfinished case and leaves a run directory, and d passes.
 const STUB = `import { appendFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { handleCrashes, runChecks } from ${JSON.stringify(resolve(repo, 'scripts/check/run.mts'))};
 const [root, log, kill, servers] = process.argv.slice(2);
@@ -156,7 +156,7 @@ function checkout(t: { after: (f: () => void) => void }) {
   };
 }
 
-// recipe는 Makefile에서 target의 명령 줄을 돌려준다.
+// recipe returns the target's command lines from the Makefile.
 function recipe(target: string): string[] {
   const lines = readFileSync(resolve(repo, 'Makefile'), 'utf8').split('\n');
   const body: string[] = [];
@@ -167,10 +167,10 @@ function recipe(target: string): string[] {
   return body;
 }
 
-// check case는 make check가 kit의 guard(the full-run tool of @polyspec/kit)를 거쳐 target check-run을 실행하고, make check-run이 runner를
-// 실행하는지 본다. check-run의 첫 두 줄은 GROUP을 확인하는 make 함수이고 명령이 없다: GROUP이 없으면 빈 줄로 펼쳐지고, 맞지
-// 않는 GROUP과 GitHub Actions 밖의 GROUP은 명령 전에 make를 멈춘다(G5.111). `make -n check-run`은 case가 주는 변수만 가진
-// 환경으로 실행하므로(tests/environment.mts) CI group의 job이 이 case를 실행해도 그 GROUP과 GITHUB_ACTIONS는 닿지 않는다
+// The check case checks that make check runs target check-run through the kit guard (the full-run tool of @polyspec/kit) and that make check-run runs
+// the runner. The first two lines of check-run are a make function that checks GROUP and has no command: without GROUP they expand to an empty line, and a GROUP that does not match
+// or a GROUP outside GitHub Actions stops make before any command (G5.111). `make -n check-run` runs with only the variables the case provides
+// as its environment (tests/environment.mts), so even when a CI group's job runs this case, that GROUP and GITHUB_ACTIONS do not reach it
 // (G5.119).
 caseTest('make check starts the kit guard and make check-run starts the runner', COMPUTE, () => {
   assert.deepEqual(recipe('check'), ['$(NODE) $(KIT)/full-run.$(KIT_EXT) run check-run']);
@@ -219,8 +219,8 @@ caseTest('a killed run stays recorded as incomplete', PROCESS, () => {
   }
 });
 
-// 목록 case는 강제 종료된 실행의 기록이 실패한 target과 끝나지 않은 target을 나누어 담는지 확인한다. `a`는 통과하고 `b`는
-// 실패하며 `c`가 runner를 끝낸다.
+// The list case checks that the record of a forcibly terminated run separates failed targets from unfinished targets. `a` passes and `b`
+// fails, and `c` ends the runner.
 caseTest('a killed run records failed and unfinished targets apart', PROCESS, () => {
   const c = checkout(scope);
   try {
@@ -239,10 +239,10 @@ caseTest('summarize separates failed from unfinished targets', COMPUTE, () => {
   assert.deepEqual([record.failed, record.incomplete], [['b'], ['c', 'd']]);
 });
 
-// setup 실패 case(G5.38-1)는 database 만들기가 실패한 4개 target의 suite다: database가 필요한 a와 c는 그 단계와 첫
-// 실패 줄을 이유로 not-run이고, 필요 없는 b와 d는 실행된다. b는 실패하며 보고서는 그 정확한 명령과 출력, 실패한 case의
-// 기대값과 실제값, 끝나지 않은 case와 그 마지막 단계, b가 남긴 실행 directory(LIMIT_BYTES를 넘는 file은 끝만)를
-// 담고, 실행은 1로 끝난다. CI의 summary 단계는 같은 실행 id의 summary를 GITHUB_STEP_SUMMARY에 쓴다.
+// The setup-failure case (G5.38-1) is a suite of four targets for which creating the database fails: a and c, which need the database, are not-run, with that step and its first
+// failure line as the reason, while b and d, which do not need it, run. b fails, and the report contains its exact command and output, and the failed case's
+// expected and actual values, the unfinished case and its last step, and the run directory b left (only the end of files over LIMIT_BYTES),
+// and the run exits with 1. The CI summary step writes the summary of the same run id to GITHUB_STEP_SUMMARY.
 caseTest('a failed setup step blocks only the targets that need it, and the report explains every failure', PROCESS, async ({ step }) => {
   const c = checkout(scope);
   try {
@@ -268,7 +268,7 @@ caseTest('a failed setup step blocks only the targets that need it, and the repo
     assert.match(log, /FAIL b\/count elapsed=2ms: rows of t: expected 3, actual 5/);
     assert.match(readFileSync(join(report, 'environment.txt'), 'utf8'), /^commit [0-9a-f]{40}\ntree [0-9a-f]{40}\nos .*\nnode v/);
     const kept = join(report, 'targets/b/run/b-4242');
-    // 실행 directory는 보고서로 복사된 뒤 지워진다.
+    // The run directory is deleted after it is copied into the report.
     assert.equal(existsSync(join(c.root, '.runtime/run/b-4242')), false);
     assert.equal(readFileSync(join(kept, 'out.json'), 'utf8'), '{"rows": 5}\n');
     assert.match(readFileSync(join(kept, 'big.log'), 'utf8'), /^\[the last 262144 of 2097156 bytes of .*big\.log\]\nx+END\n$/);
@@ -277,7 +277,7 @@ caseTest('a failed setup step blocks only the targets that need it, and the repo
     for (const row of [/\| servers \| passed \|/, /\| databases\/create \| failed \|/, /\| a \| not-run \| {2}\| the setup step databases\/create failed/, /\| b \| failed \|/, /\| d \| passed \|/])
       assert.match(summaryText, row);
     assert.match(summaryText, /keeps only its last 262144 bytes/);
-    // CI의 summary 단계는 같은 실행 id의 summary를 GITHUB_STEP_SUMMARY에 쓴다.
+    // The CI summary step writes the summary of the same run id to GITHUB_STEP_SUMMARY.
     process.env.GITHUB_STEP_SUMMARY = stepSummary;
     const { runSummary } = await import('./summary.mts');
     const published = runSummary(c.root, '1234-1');
@@ -289,8 +289,8 @@ caseTest('a failed setup step blocks only the targets that need it, and the repo
   }
 });
 
-// crash case(G5.38-1)는 runner가 target c에서 죽은 실행이다. summary 단계는 runner가 끝나지 않았다고 쓰고, 보고서
-// directory는 그때까지의 기록과 target log를 담는다.
+// The crash case (G5.38-1) is a run in which the runner dies at target c. The summary step writes that the runner did not finish, and the report
+// directory holds the records up to that point and the target logs.
 caseTest('the summary step reports a runner that did not finish, with the partial record', PROCESS, async () => {
   const c = checkout(scope);
   try {
@@ -316,9 +316,9 @@ caseTest('the summary step reports a runner that did not finish, with the partia
   }
 });
 
-// recipe 부분 case(G5.38-2)는 서로의 결과를 읽지 않는 명령을 가진 target이 그 명령마다 하위 target(부분)을 두는지
-// 확인한다. runner는 target을 `make -k`로 실행하므로 앞 부분이 실패해도 뒤 부분이 실행된다. setup 부분(lease, build)에
-// 기대는 부분은 그 setup 부분을 prerequisite으로 가진다.
+// The recipe-parts case (G5.38-2) checks whether a target whose commands do not read each other's results has a sub-target (part) for each command,
+// and it is confirmed. The runner runs targets with `make -k`, so later parts run even when an earlier part fails. A setup part (lease, build)
+// a part that depends on it has the setup part as its prerequisite.
 const PARTS = {
   'version-check': ['unit', 'run'], 'repo-check': ['unit', 'run'],
   'testcase-check': ['go', 'node', 'runners', 'rust'], 'ts-check': ['hold', 'types', 'test'],
@@ -340,8 +340,8 @@ caseTest('a target of independent commands runs each as a part of its own', COMP
   assert.deepEqual(problems, []);
 });
 
-// make -k case는 version-check의 실제 정의를 임시 Makefile에 두고, $(NODE)가 첫 부분에서 실패하는 node를 가리키게 한 채 runner의
-// command로 `make -k version-check`를 실행한다. 둘째 부분이 실행되고 make는 실패로 끝난다.
+// The make -k case puts the real definition of version-check into a temporary Makefile, with $(NODE) pointing at a node that fails in the first part, and runs the runner's
+// command `make -k version-check`. The second part runs, and make ends with a failure.
 caseTest('the parts of a target after a failed part still run under make -k', PROCESS, async () => {
   const base = realpathSync(mkdtempSync(join(tmpdir(), 'parts-')));
   try {
@@ -376,8 +376,8 @@ caseTest('the parts of a target after a failed part still run under make -k', PR
   }
 });
 
-// 보고서 case(G5.38-4)는 CI의 summary 단계가 그 실행의 보고서에 기록과 test server의 log를 두는지 확인한다. upload
-// 단계는 그 보고서 directory만 올리므로 이것이 artifact다. 1 MiB보다 큰 log는 끝만 남고 data directory는 들어가지 않는다.
+// The report case (G5.38-4) checks that the CI summary step puts the record and the test server logs into that run's report. The upload
+// step uploads only that report directory, so this is the artifact. Logs larger than 1 MiB keep only their end, and the data directory is not included.
 caseTest('the summary step keeps the record and the server logs in the report of the run', PROCESS, async () => {
   const c = checkout(scope);
   try {
@@ -399,8 +399,8 @@ caseTest('the summary step keeps the record and the server logs in the report of
   }
 });
 
-// 보고서 쓰기 case(G5.43-1)는 target b가 실행 도중 보고서 directory를 지우는 실행이다. runner는 죽지 않고 끝까지
-// 실행하며, b의 기록에 `report write failed`를 남기고 1로 끝난다.
+// The report-write case (G5.43-1) is a run in which target b deletes the report directory during the run. The runner does not die and runs to the end
+// and records `report write failed` in b's record, and exits with 1.
 caseTest('a report write that fails is recorded and does not stop the runner', PROCESS, () => {
   const c = checkout(scope);
   try {
@@ -420,8 +420,8 @@ caseTest('a report write that fails is recorded and does not stop the runner', P
   }
 });
 
-// crash case(G5.43-1)는 target b가 runner 밖에서 처리되지 않는 오류를 던지는 실행이다. runner는 그 오류를 `runner
-// error: <stack>`으로 기록하고 실행을 crashed로 적고 1로 끝난다.
+// The crash case (G5.43-1) is a run in which target b throws an error not handled outside the runner. The runner records that error as `runner
+// error: <stack>`, records the run as crashed, and exits with 1.
 caseTest('an unhandled error of the runner is recorded as the reason of a crashed run', PROCESS, async () => {
   const c = checkout(scope);
   try {
@@ -438,8 +438,8 @@ caseTest('an unhandled error of the runner is recorded as the reason of a crashe
   }
 });
 
-// 보고서 위치 case(G5.43-2)는 database 지우기가 databases.mts drop처럼 받은 directory를 통째로 지우는 실행이다. 보고서는
-// 그 directory 밖에 있으므로 environment.txt와 모든 단계의 log가 남고, 쓰기 실패는 없다.
+// The report-location case (G5.43-2) is a run in which removing the database deletes the whole received directory, as databases.mts drop does. The report
+// is outside that directory, so environment.txt and the logs of all steps remain, and there are no write failures.
 caseTest('removing the run databases leaves the report of the run', PROCESS, () => {
   const c = checkout(scope);
   try {
@@ -457,8 +457,8 @@ caseTest('removing the run databases leaves the report of the run', PROCESS, () 
   }
 });
 
-// log 크기 case(G5.43-2)는 target b가 3 MiB를 출력하는 실행이다. log는 실행 중에도 처음 1 MiB와 마지막 256 KiB만
-// 담고, 머리(명령)와 마지막 줄, 생략한 byte 수를 가진다.
+// The log-size case (G5.43-2) is a run in which target b prints 3 MiB. Even during the run, the log keeps only the first 1 MiB and the last 256 KiB,
+// and has the head (the command), the last line, and the number of bytes omitted.
 caseTest('a target log keeps its head and its tail within the size limit', PROCESS, () => {
   const c = checkout(scope);
   try {
@@ -475,9 +475,9 @@ caseTest('a target log keeps its head and its tail within the size limit', PROCE
   }
 });
 
-// 첫 실패 줄 case(G5.43-3)는 G5.41-1의 CI run이 낸 client-db-check 출력 끝(scripts/check/fixtures/client-db-check-lanes.txt,
-// job log에서 runner의 STEP 접두사를 뗀 그대로)을 읽는다. lane 접두사가 붙은 실패와 오류 줄이 나온 순서대로 첫 실패 줄이
-// 되고, PASS와 STEP 줄은 들어가지 않는다.
+// The first-failure-line case (G5.43-3) reads the end of the client-db-check output from the CI run of G5.41-1 (scripts/check/fixtures/client-db-check-lanes.txt,
+// as it appears in the job log with the runner's STEP prefix removed). The failure and error lines with lane prefixes, in the order they appeared, become the first failure line
+// and PASS and STEP lines are not included.
 caseTest('the first failure lines of a target are its failure and error lines', COMPUTE, async () => {
   const { failures } = await import('./report.mts');
   const found = failures();
@@ -496,9 +496,9 @@ caseTest('the first failure lines of a target are its failure and error lines', 
   ]);
 });
 
-// 보고된 오류 case(G5.57)는 G5.53의 CI run이 낸 feature-check 줄이다. Go testcase는 실패를 `stress_test.go:80: ...`로
-// 적은 뒤 `FAIL <case> ...: the errors reported above`만 쓴다. 그 앞의 보고 줄이 FAIL 줄 앞의 첫 실패 줄이 되므로, log가
-// 가운데를 줄여도 이유가 남는다. 앞서 통과한 case의 줄은 들어가지 않는다.
+// The reported-error case (G5.57) is the feature-check line from the CI run of G5.53. The Go testcase records a failure as `stress_test.go:80: ...`
+// and then writes only `FAIL <case> ...: the errors reported above`. The report line before it becomes the first failure line before the FAIL line, so even if the log
+// shrinks its middle, the reason remains. Lines of cases that passed earlier are not included.
 caseTest('a FAIL that points at the errors reported above keeps those errors as first failure lines', COMPUTE, async () => {
   const { failures } = await import('./report.mts');
   const found = failures();
@@ -519,9 +519,9 @@ caseTest('a FAIL that points at the errors reported above keeps those errors as 
   ]);
 });
 
-// 통과한 case case(G5.71)는 CI run이 낸 feature-unit-check 줄이다. coverage test의 case는 검사하는 대상의 sample이
-// 일부러 실패하는 출력(`FAIL sample/...`)을 보이고 PASS로 끝난다. 그 줄은 target의 실패가 아니므로 첫 실패 줄에서 빠지고,
-// 그 뒤의 진짜 실패가 첫 실패 줄이 된다.
+// The passed-case case (G5.71) is the feature-unit-check line from a CI run. A coverage test's case shows the sample output
+// that deliberately fails (`FAIL sample/...`) and ends with PASS. That line is not a target failure, so it is left out of the first failure line,
+// and the real failure after it becomes the first failure line.
 caseTest('the failure lines of a case that passed are not the first failure lines of the target', COMPUTE, async () => {
   const { failures } = await import('./report.mts');
   const found = failures();
@@ -538,8 +538,8 @@ caseTest('the failure lines of a case that passed are not the first failure line
   ]);
 });
 
-// 경고 case(G5.73)는 성능 측정이 기준값을 넘은 `WARNING` 줄이 실패가 아니라 경고로 모이고, summary가 그것을 따로
-// 적는지 본다.
+// The warning case (G5.73) checks that `WARNING` lines, where a performance measurement exceeded the reference value, are collected as warnings rather than failures, and that the summary
+// records them separately.
 caseTest('a WARNING line is kept as a warning, not a failure, and the summary lists it', COMPUTE, async () => {
   const { failureLine, failures, summary } = await import('./report.mts');
   const found = failures();
@@ -552,8 +552,8 @@ caseTest('a WARNING line is kept as a warning, not a failure, and the summary li
   assert.ok(text.includes(`## warnings\n\nA warning is no failure: a measurement exceeded its documented reference value (AGENTS.md).\n\n- feature-check: ${warned}`), text);
 });
 
-// 공간 case(G5.43-4)는 target b가 /tmp의 quota 초과(EDQUOT)로 실패하는 실행이다. 보고서는 시작할 때와 단계마다 공간을
-// 기록하고, b의 첫 실패 줄은 공간이 없어 실패했다는 것과 그 순간의 `/`와 `/tmp`의 남은 공간이다.
+// The space case (G5.43-4) is a run in which target b fails because /tmp exceeds its quota (EDQUOT). The report records space at the start and at each step
+// and b's first failure line states that it failed for lack of space, along with the free space of `/` and `/tmp` at that moment.
 caseTest('a target that runs out of space says so with the free space of / and /tmp', PROCESS, () => {
   const c = checkout(scope);
   try {
@@ -571,9 +571,9 @@ caseTest('a target that runs out of space says so with the free space of / and /
   }
 });
 
-// case 이름 case(G5.44-2)는 G5.43-4의 CI run이 낸 client-db-check 출력이다. TypeScript lane의 case 이름
-// `driver-error/...`는 오류 낱말을 담지만 그 단계 줄은 database를 만들고 지운 것일 뿐이므로 첫 실패 줄이 아니고, 첫 실패
-// 줄은 Rust lane의 실패다.
+// The case-name case (G5.44-2) is the client-db-check output from the CI run of G5.43-4. The case name in the TypeScript lane
+// `driver-error/...` contains an error word, but that step line only created and removed a database, so it is not the first failure line; the first failure
+// line is the Rust lane's failure.
 caseTest('a case name that holds an error word does not make its step lines failures', COMPUTE, async () => {
   const { failures } = await import('./report.mts');
   const found = failures();
@@ -600,8 +600,8 @@ caseTest('a case name that holds an error word does not make its step lines fail
   ]);
 });
 
-// disk I/O error case(G5.44-2)는 SQLite의 disk I/O error로 실패한 target b다. 그 순간 /tmp의 남은 공간이 0이면 첫 실패 줄은
-// 공간 부족과 지웠지만 열린 가장 큰 file이고, 공간이 남아 있으면 그 오류만으로 공간 부족이라 적지 않는다.
+// The disk I/O error case (G5.44-2) is target b, which fails with a SQLite disk I/O error. If /tmp has 0 bytes free at that moment, the first failure line
+// records the lack of space and the largest deleted-but-open file; if space remains, the error alone is not recorded as lack of space.
 caseTest('a disk I/O error is out of space only while a file system has no free space', PROCESS, () => {
   const c = checkout(scope);
   try {
@@ -618,8 +618,8 @@ caseTest('a disk I/O error is out of space only while a file system has no free 
   }
 });
 
-// npm case(G5.44-3)는 npm처럼 보고서 밖의 debug log만 가리키고 실패한 target b다. 보고서는 그 log를 targets/b/에 옮기고,
-// 첫 실패 줄은 그 log의 오류 줄이다.
+// The npm case (G5.44-3) is target b, which fails and points only to a debug log outside the report, as npm does. The report moves that log into targets/b/,
+// and its first failure line is the error line of that log.
 caseTest('a failed npm command keeps its debug log and its error lines in the report', PROCESS, () => {
   const c = checkout(scope);
   try {
@@ -636,9 +636,9 @@ caseTest('a failed npm command keeps its debug log and its error lines in the re
   }
 });
 
-// CI setup case(G5.52)는 CI setup step rust가 실패한 실행이다. runner는 setup 단계 ci/rust를 실패로 기록하고, rust가
-// 필요한 a를 그 step과 함께 not-run으로 기록하며, 나머지 b와 c는 실행한다. 실패해도 target에 필요 없는 step(rust-cache)은
-// 기록하지 않는다.
+// The CI-setup case (G5.52) is a run in which the CI setup step rust fails. The runner records setup phase ci/rust as failed, and records a
+// target that needs rust, a, along with that step, as not-run; b and c run. Even if it fails, a step the targets do not need (rust-cache)
+// is not recorded.
 caseTest('a failed CI setup step marks the targets that need it not-run and runs every other target', PROCESS, () => {
   const c = checkout(scope);
   try {
@@ -657,8 +657,8 @@ caseTest('a failed CI setup step marks the targets that need it not-run and runs
 });
 
 
-// databases setup need case(G5.127)는 databases/create가 필요로 하는 setup step(server-programs)이 마련되지 않은 실행이다. runner는
-// server를 읽거나 database를 만들지 않고, databases를 선언한 target을 그 step과 함께 not-run으로 기록하며, 나머지 target은 실행한다.
+// The databases setup-need case (G5.127) is a run in which the setup step that databases/create requires (server-programs) is not prepared. The runner
+// neither reads the server nor creates a database; it records targets declaring databases as not-run with that step, and runs the other targets.
 caseTest('a run without the setup step that databases/create needs records the database targets as not-run', PROCESS, () => {
   const c = checkout(scope);
   try {
@@ -677,9 +677,9 @@ caseTest('a run without the setup step that databases/create needs records the d
   }
 });
 
-// CI group case(G5.111)는 group-needs가 setup step을 건너뛴 job의 실행이다. 건너뛴 step의 need를 이 실행의 어느 target도
-// 선언하지 않으면 그 step은 setup 단계로 기록하지 않고, database가 필요한 target이 없으므로 servers와 databases 단계도
-// 없으며, 모든 target이 실행되어 통과한다. 건너뛴 rust가 필요한 target은 그 step과 이유와 함께 not-run이다.
+// The CI group case (G5.111) is a run of a job in which group-needs skipped a setup step. If no target in this run declares the need of the skipped step,
+// that step is not recorded as a setup phase, and since no target needs a database, the servers and databases phases are also
+// absent, and all targets run and pass. A target that needs the skipped rust is not-run, with that step and its reason.
 caseTest('a CI group job ignores the setup steps it skipped for needs of no target and starts no databases without a database target', PROCESS, () => {
   const c = checkout(scope);
   try {
@@ -711,9 +711,9 @@ caseTest('a CI group job records a target not-run when it needs a setup step tha
   }
 });
 
-// server 없는 실행 case(G5.67)는 문서 workflow의 make docs-ci처럼 servers 없이 runner를 실행한다. server와 database
-// 단계가 없고, database가 필요한 target은 not-run이며, 나머지 target은 실행되고, summary와 target log가 그 실행의
-// 보고서에 남는다.
+// The no-server run case (G5.67) runs the runner without servers, as make docs-ci does in the docs workflow. Server and database
+// steps are absent, targets that need a database are not-run, the other targets run, and the summary and target logs remain in that run's
+// report.
 caseTest('a run without servers runs the targets that need no database and reports them', PROCESS, async () => {
   const { runChecks } = await import('./run.mts');
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'run-')));
@@ -724,7 +724,7 @@ caseTest('a run without servers runs the targets that need no database and repor
     const run = async (program: string, args: string[], step: (line: string) => void) => { ran.push(args.at(-1) ?? ''); step(`ran ${args.at(-1) ?? ''}`); };
     const code = await runChecks({ root, servers: null, targets: ['docs-a', 'db-b'], run, needs: { 'docs-a': [], 'db-b': ['databases'] },
       id: '77-1-docs', snapshot: () => ({ text: 'stub\n', places: { '/': 1 } }), ciSetup: '',
-      // 빠진 crate는 이 실행의 target이 필요로 하지 않으므로 downloads 단계를 실패시키지 않는다.
+      // A missing crate is not needed by this run's targets, so it does not fail the downloads step.
       downloads: () => [{ need: 'rust', message: 'the crates of packages/rust/Cargo.lock are not downloaded; run make install, which downloads it' }] });
     assert.equal(code, 1);
     assert.deepEqual(ran, ['docs-a']);

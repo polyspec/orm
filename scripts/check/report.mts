@@ -1,17 +1,17 @@
-// 전체 suite 실행 하나의 보고서다(.runtime/check/<run id>/report). CI 실행 한 번이 다음 CI 실행 전에 그 실행이
-// 찾은 모든 실패를 고칠 수 있을 만큼의 정보를 모아야 하므로, 실패마다 다시 실행하지 않고 진단할 수 있는 것을
-// 남긴다:
+// The report of one full-suite run (.runtime/check/<run id>/report). Before the next CI run, one CI run has to gather
+// enough information to fix every failure it finds, so rather than rerunning per failure, it keeps what can be diagnosed
+// it keeps:
 //
-//   environment.txt          실행의 환경: commit과 tree, OS, 도구와 server의 version, disk
-//   targets/<target>.log     target의 정확한 명령, Makefile의 recipe, 입력 path, 출력 전체
-//   targets/<target>/run/    실패한 target이 남긴 실행 directory(.runtime/run/<target>-<pid>)의 file
-//   summary.md               target마다 상태, 시간, 첫 실패 줄. CI에서는 GITHUB_STEP_SUMMARY에도 쓴다
-//   record.json              .runtime/full-run.json의 그 실행 기록(CI의 summary 단계가 쓴다)
-//   servers/*.log            test server의 log(CI의 summary 단계가 쓴다)
+//   environment.txt          the run's environment: commit and tree, OS, versions of tools and servers, disk
+//   targets/<target>.log     the target's exact command, its Makefile recipe, input paths, and the full output
+//   targets/<target>/run/    files from the run directory (.runtime/run/<target>-<pid>) left by a failed target
+//   summary.md               per target: status, time, first failure line. In CI it is also written to GITHUB_STEP_SUMMARY
+//   record.json              that run's record from .runtime/full-run.json (written by the CI summary step)
+//   servers/*.log            test server logs (written by the CI summary step)
 //
-// target log는 처음 LIMIT_BYTES와 마지막 TAIL_BYTES를 남기고(cappedLog), 옮기는 file 가운데 LIMIT_BYTES보다 큰
-// file은 끝의 TAIL_BYTES만 남기며 그 사실을 file 첫 줄과 summary에 적는다. build
-// target(`target` directory), node_modules와 database file은 옮기지 않고 manifest에 크기와 함께 적는다.
+// A target log keeps the first LIMIT_BYTES and the last TAIL_BYTES (cappedLog), and among the files it moves, any file larger than LIMIT_BYTES
+// keeps only its last TAIL_BYTES and notes that in the file's first line and in the summary. The build
+// target (`target` directory), node_modules, and database files are not moved; they are listed with their sizes in the manifest.
 import { spawnSync } from 'node:child_process';
 import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -29,16 +29,16 @@ export type DiskSnapshot = { text: string; places: Record<string, number> };
 
 export const LIMIT_BYTES = 1024 * 1024;
 export const TAIL_BYTES = 256 * 1024;
-// FAILURE_LINES는 summary와 기록이 target마다 담는 첫 실패 줄의 수다.
+// FAILURE_LINES is the number of first failure lines that the summary and the record keep per target.
 export const FAILURE_LINES = 20;
 const SKIPPED_DIRECTORIES = new Set(['target', 'node_modules', '.git']);
 const DATABASE_FILE = /\.(sqlite|sqlite-wal|sqlite-shm|sqlite-journal|db|ibd)$/;
 
 export const reportDirectory = (root: string, id: string): string => resolve(root, '.runtime/check', id, 'report');
 
-// reportWriter는 보고서의 모든 쓰기를 맡는다. 쓰기는 던지지 않는다: 실패하면 `report write failed: <path>: <code>
-// <message>`를 failed에 모으고 false를 돌려준다. runner는 그것을 단계 기록과 summary에 싣고 1로 끝난다. 없는
-// directory는 다시 만들지 않는다: 보고서 directory가 실행 도중 사라졌다면 그 사실이 실패로 남아야 한다.
+// reportWriter handles every write to the report. Writes do not throw: on failure, `report write failed: <path>: <code>
+// <message>` is collected into failed and false is returned. The runner puts it into the step record and the summary and exits with 1. A missing
+// directory is not recreated: if the report directory disappeared during the run, that fact must remain as a failure.
 export function reportWriter(): ReportWriter {
   const failed: string[] = [];
   const attempt = (path: string, action: () => void) => {
@@ -54,15 +54,15 @@ export function reportWriter(): ReportWriter {
     failed,
     write: (path: string, text: string) => attempt(path, () => writeFileSync(path, text)),
     append: (path: string, text: string) => attempt(path, () => appendFileSync(path, text)),
-    // run은 보고서에 쓰는 다른 작업(환경, 실행 directory 보관, log 줄이기)을 같은 규칙으로 실행한다.
+    // run executes the other report-writing tasks (environment, keeping run directories, shrinking logs) under the same rule.
     run: (path: string, action: () => void) => attempt(path, action),
   };
 }
 
-// failureLine은 줄이 실패나 오류 수준의 출력인지다. 줄 앞의 lane 접두사(`[rust] `, client-db-test의 병렬 lane)와 GitHub의
-// annotation(`##[error]`)은 떼고 본다. 통과나 시작을 알리는 줄(PASS, RUN)은 오류 낱말을 담아도 실패가 아니다. 단계
-// 줄(`STEP <case> elapsed=...: <message>`)은 case 이름이 아니라 그 message로 판단하고, 오류 낱말은 `driver-error/...`
-// 같은 이름의 일부(앞에 `-`, `/`, `.`이나 글자가 붙은 것)가 아닐 때만 센다.
+// failureLine tells whether a line is failure or error-level output. It strips the lane prefix at the start of the line (`[rust] `, the parallel lanes of client-db-test) and GitHub's
+// annotation (`##[error]`) before checking. A line that reports a pass or a start (PASS, RUN) is not a failure even if it contains an error word. A step
+// line (`STEP <case> elapsed=...: <message>`) is judged by its message, not by the case name, and the error word in `driver-error/...`
+// is counted only when it is not part of a longer name (preceded by `-`, `/`, `.`, or letters).
 const LANE = /^(?:##\[\w+\])?(?:\[[\w-]+\] )?/;
 const FAILURE = [
   /^(?:FAIL|TIMEOUT)\b/, /^--- FAIL/, /^not ok\b/, /panicked at|^panic:/,
@@ -76,14 +76,14 @@ export function failureLine(text: string): boolean {
   return FAILURE.some(pattern => pattern.test(message));
 }
 
-// failures는 target 출력 줄을 받아 실패를 모은다. case runner(tests/testcase.mts, packages/go/testcase, PHP와 Rust의
-// testcase)는 case마다 `RUN <case>`, `STEP <case> ...`, `PASS <case>`나 `FAIL <case> ...: <이유>`를 쓴다. 끝나지
-// 않은 case(기한 초과로 멈춘 process, 죽은 process)는 RUN 뒤에 결과가 없으므로 그 case와 마지막 단계를 적는다.
-// lane 접두사가 붙은 줄도 같은 case 줄로 읽는다.
-// REPORT는 test framework가 실패를 source 위치와 함께 적은 줄이다(Go의 `    stress_test.go:80: <message>`). Go
-// testcase는 그런 줄 뒤에 `FAIL <case> ...: the errors reported above`만 쓰므로, 그 FAIL 줄의 이유는 앞의 줄에 있다.
+// failures takes the target's output lines and collects the failures. The case runners (tests/testcase.mts, packages/go/testcase, and the PHP and Rust
+// testcase) write `RUN <case>`, `STEP <case> ...`, and `PASS <case>` or `FAIL <case> ...: <reason>` for each case. A case that does not finish
+// (a process stopped for exceeding its deadline, or a dead process) has no result after RUN, so its case and last step are recorded.
+// A line with a lane prefix is also read as the same case line.
+// REPORT is a line in which the test framework records a failure with its source location (Go's `    stress_test.go:80: <message>`). Go
+// testcase writes only `FAIL <case> ...: the errors reported above` after such a line, so the reason for that FAIL line is in the earlier line.
 const REPORT = /^\s*[\w./-]+\.(?:go|rs|php|m?[jt]s):\d+(?::\d+)?: \S/;
-// innermost는 lane 접두사와 겹친 단계 접두사(`STEP <case> elapsed=<경과>: `, runner 안의 runner가 붙인다)를 뗀 message다.
+// innermost is the message with the lane prefix and the overlapping step prefix removed (`STEP <case> elapsed=<elapsed>: `, added by a runner inside a runner).
 function innermost(text: string): string {
   let line = text.replace(LANE, '');
   for (let next; (next = line.replace(/^STEP .*? elapsed=\S+: /, '')) !== line;) line = next;
@@ -97,19 +97,19 @@ export function failures(): Failures {
   const failed: string[] = [];
   const open = new Map<string, string | null>();
   const tail: string[] = [];
-  // reports는 지금 case의 source 위치 보고 줄이다. `the errors reported above`인 FAIL 줄 앞에 첫 실패 줄로 넣는다:
-  // 출력이 길어 log가 가운데를 줄여도 그 이유가 보고서와 summary에 남는다.
+  // reports is the source-location report line of the current case. It is put in as the first failure line before a FAIL line that reads `the errors reported above`:
+  // even when the output is so long that the log shrinks its middle, the reason stays in the report and the summary.
   const reports: string[] = [];
-  // starts는 열린 case마다 그 RUN 줄 때의 실패 줄 수다. case가 PASS로 끝나면 그 사이에 모인 줄은 그 case의 출력(검사하는
-  // 대상이 일부러 실패시킨 sample 같은 것)이지 target의 실패가 아니므로 버린다. 그래서 그 뒤의 진짜 실패가 첫 실패 줄이 된다.
+  // starts holds, for each open case, the number of failure lines at the time of its RUN line. If the case ends with PASS, the lines collected in between are that case's output (for example a sample
+  // that the subject deliberately makes fail), not a failure of the target, so they are discarded. That way, the real failure after them becomes the first failure line.
   const starts = new Map<string, number>();
-  // warnings는 성능 측정이 문서의 기준값을 넘었다는 줄(`WARNING <message>`, AGENTS.md)이다. 실패가 아니므로 첫 실패 줄에
-  // 들지 않고, 실행 기록과 summary에 따로 남는다.
+  // warnings are the lines saying a performance measurement exceeded the document's reference value (`WARNING <message>`, AGENTS.md). Since they are not failures, they do not go into the first failure line
+  // and are recorded separately in the run record and the summary.
   const warnings: string[] = [];
   let exit: string | null = null;
   return {
     warnings: () => [...warnings],
-    // exit는 명령이 끝난 방식이다(종료 코드나 signal). 실패 줄이 없는 실패는 출력의 끝과 이것을 적는다.
+    // exit is how the command ended (exit code or signal). A failure with no failure line is recorded with the end of its output and this.
     exit(text: string): void {
       exit = text;
     },
@@ -148,8 +148,8 @@ export function failures(): Failures {
       }
       if (failureLine(text)) failed.push(text);
     },
-    // lines는 실패한 target의 첫 실패 줄이다: 나온 순서대로의 실패와 오류 수준의 줄, 끝나지 않은 case, 둘 다 없으면
-    // 출력의 마지막 줄들, 그리고 명령이 끝난 방식.
+    // lines are the first failure lines of a failed target: its failures and error-level lines in the order they appeared, and unfinished cases; if neither exists,
+    // the last lines of the output, and how the command ended.
     lines(): string[] {
       const pending = [...open].map(([name, last]) => `case ${name} did not finish; its last step: ${last ?? 'none (it reported no step)'}`);
       const lines = [...failed, ...pending].slice(0, FAILURE_LINES);
@@ -164,8 +164,8 @@ function command(program: string, args: string[]): string {
   return `${(result.stdout || result.stderr).trim().split('\n')[0]}`;
 }
 
-// environment는 실행의 환경을 적는다. 실패한 case가 기대한 값과 다른 이유가 환경에 있을 때 다시 실행하지 않고
-// 알 수 있도록 version과 disk를 남긴다.
+// environment records the run's environment, so that when a failed case differs from the expected value because of the environment, it can be seen without rerunning
+// the versions and disk are kept.
 export function writeEnvironment(root: string, report: string, extra: Record<string, string> = {}): void {
   const lines = [
     `commit ${command('git', ['-C', root, 'rev-parse', 'HEAD'])}`,
@@ -221,12 +221,12 @@ export function diskSnapshot(root: string, run: string): DiskSnapshot {
   return { text, places };
 }
 
-// DISK_IO는 SQLite가 file을 쓰지 못한 줄이다(SQLITE_IOERR, 그 쓰기 형태 778). 공간이 없을 때도 나오지만 다른 원인도
-// 있으므로, 그 순간의 기록에서 file system 하나가 남은 공간 0일 때만 공간 부족으로 적는다.
+// DISK_IO is the line in which SQLite could not write a file (SQLITE_IOERR, that write form 778). It also appears when space is out, but other causes exist too,
+// so it is recorded as out of space only when a file system has 0 bytes free in that moment's record.
 export const DISK_IO = /disk I\/O error|\(code: 778\)|SQLITE_IOERR/;
 
-// spaceLine은 공간이 없어 실패한 target의 첫 실패 줄이다: 실패 원인과 그 순간의 남은 공간, /tmp의 가장 큰 항목, 그리고
-// 지웠지만 process가 열어 둔 가장 큰 file이다. 지운 file은 du에 보이지 않으므로 그것이 공간을 채운 것일 때 따로 적는다.
+// spaceLine is the first failure line of a target that failed for lack of space: the failure cause and the free space at that moment, the largest item in /tmp, and
+// the largest file that was deleted but is still held open by a process. A deleted file is not visible to du, so when it is what filled the space, it is recorded separately.
 export function spaceLine(snapshot: DiskSnapshot, cause = 'ENOSPC or EDQUOT'): string {
   const free = Object.entries(snapshot.places).map(([place, kib]) => `${place} ${(kib / 1024 ** 2).toFixed(2)} GiB free`).join(', ');
   const tmp = /## the largest entries of \/tmp \(KiB\)\n([^#]*)/.exec(snapshot.text)?.[1]?.trim().split('\n').slice(0, 3).map(line => line.trim().replace(/\s+/, ' KiB ')).join('; ');
@@ -237,8 +237,8 @@ export function spaceLine(snapshot: DiskSnapshot, cause = 'ENOSPC or EDQUOT'): s
   return `out of space: the target failed with ${cause}; ${free}; the largest under /tmp: ${tmp || 'none listed'}${removed}`;
 }
 
-// spaceCause는 실패한 target의 첫 실패 줄 앞에 둘 공간 부족 줄이다. ENOSPC나 EDQUOT 줄이 있으면 언제나, SQLite의 disk
-// I/O error 줄은 그 순간 남은 공간이 0인 file system이 있을 때만이다. 둘 다 아니면 null이다.
+// spaceCause is the out-of-space line placed before the first failure line of a failed target. Whenever there is an ENOSPC or EDQUOT line, and for SQLite's disk
+// I/O error line only when a file system has 0 bytes free at that moment. If neither applies, it is null.
 export function spaceCause(lines: string[], snapshot: DiskSnapshot): string | null {
   if (lines.some((line: string) => SPACE.test(line))) return spaceLine(snapshot);
   const full = Object.entries(snapshot.places).filter(([, kib]) => kib === 0).map(([place]) => place);
@@ -246,15 +246,15 @@ export function spaceCause(lines: string[], snapshot: DiskSnapshot): string | nu
   return null;
 }
 
-// NPM_LOG는 npm이 자기 debug log의 경로를 적는 줄이다. 그 log는 보고서 밖(~/.npm/_logs)에 있다.
+// NPM_LOG is the line where npm writes the path of its debug log. That log is outside the report (~/.npm/_logs).
 export const NPM_LOG = /A complete log of this run can be found in:\s*(\S+)/;
 
-// npmErrors는 npm debug log의 오류 줄(`<n> error <message>`)에서 message를 처음부터 5개 돌려준다.
+// npmErrors returns the first 5 messages from the error lines of the npm debug log (`<n> error <message>`).
 export function npmErrors(text: string): string[] {
   return text.split('\n').map((line: string) => /^\d+ error (.*)$/.exec(line)?.[1]).filter((message): message is string => message !== undefined && message !== '' && !NPM_LOG.test(message)).slice(0, 5);
 }
 
-// keepFile은 file 하나를 보고서로 옮긴다. LIMIT_BYTES보다 크면 끝만 남기고 그 사실을 첫 줄에 적는다.
+// keepFile moves one file into the report. If it is larger than LIMIT_BYTES, only its end is kept, and the first line says so.
 export function keepFile(source: string, destination: string): void {
   const { size } = statSync(source);
   mkdirSync(resolve(destination, '..'), { recursive: true });
@@ -262,7 +262,7 @@ export function keepFile(source: string, destination: string): void {
   else writeFileSync(destination, readFileSync(source));
 }
 
-// tail은 file의 마지막 TAIL_BYTES를 읽는다.
+// tail reads the last TAIL_BYTES of a file.
 function tail(path: string, size: number): Buffer {
   const descriptor = openSync(path, 'r');
   try {
@@ -274,8 +274,8 @@ function tail(path: string, size: number): Buffer {
   }
 }
 
-// keepRunDirectory는 실패한 target이 남긴 실행 directory를 보고서로 옮겨 적는다. LIMIT_BYTES보다 큰 file은 끝만,
-// build target, node_modules, database file과 binary file은 옮기지 않고 manifest에 이유와 크기를 적는다.
+// keepRunDirectory moves the run directory left by a failed target into the report. A file larger than LIMIT_BYTES keeps only its end,
+// build targets, node_modules, database files, and binary files are not moved; the manifest records the reason and size.
 export function keepRunDirectory(source: string, destination: string): number {
   const manifest: string[] = [];
   const walk = (directory: string) => {
@@ -318,8 +318,8 @@ export function keepRunDirectory(source: string, destination: string): number {
   return manifest.length;
 }
 
-// keepLogs는 directory 바로 아래의 `*.log` file(test server의 log)을 보고서로 옮긴다. LIMIT_BYTES보다 큰 file은 끝만
-// 남긴다. data directory는 읽지 않는다. 옮긴 file 수를 돌려준다.
+// keepLogs moves the `*.log` files directly under the directory (the test server logs) into the report. A file larger than LIMIT_BYTES keeps only its end,
+// The data directory is not read. It returns the number of files moved.
 export function keepLogs(source: string, destination: string): number {
   if (!existsSync(source)) return 0;
   let kept = 0;
@@ -336,10 +336,10 @@ export function keepLogs(source: string, destination: string): number {
   return kept;
 }
 
-// cappedLog는 단계 하나의 log다. 쓴 크기가 LIMIT_BYTES에 이르면 file에는 더 쓰지 않고 마지막 TAIL_BYTES만 memory에
-// 두었다가 close가 `[... <n> bytes of output omitted; the last <m> bytes follow ...]`와 함께 붙인다. 그래서 log는 실행
-// 중에도 LIMIT_BYTES와 TAIL_BYTES를 넘지 않고, 머리(명령, recipe, 입력, 처음 출력)와 끝을 모두 가진다. 쓰기는
-// writer(reportWriter)가 한다. close는 생략한 byte 수를 돌려준다.
+// cappedLog is the log of one step. Once the written size reaches LIMIT_BYTES, nothing more is written to the file; only the last TAIL_BYTES are kept in memory
+// and close appends them with `[... <n> bytes of output omitted; the last <m> bytes follow ...]`. So the log, during the run,
+// never exceeds LIMIT_BYTES and TAIL_BYTES, and has both its head (command, recipe, inputs, first output) and its end. Writing is
+// done by the writer (reportWriter). close returns the number of bytes omitted.
 export function cappedLog(writer: ReportWriter, path: string, header: string): { line: (text: string) => void; close: () => number } {
   let size = 0;
   let omitted = 0;
@@ -374,8 +374,8 @@ const time = (step: StepRecord): string => step.elapsed !== undefined ? `${(step
   : step.started && step.ended ? `${((Date.parse(step.ended) - Date.parse(step.started)) / 1000).toFixed(1)} s` : '';
 const escape = (text: string) => String(text).replaceAll('|', '\\|');
 
-// summary는 기록에서 summary.md를 만든다. run은 기록의 실행(전체 실행이면 기록 자신, 재실행이면 그 재실행)이고,
-// crashed가 문자열이면 runner가 끝나지 않은 이유이며 그때 기록은 runner가 마지막으로 쓴 상태다.
+// summary builds summary.md from the record. run is the run of the record (the record itself for a full run, or that re-run for a re-run),
+// if crashed is a string, it is the reason the runner did not finish, and the record at that point is the last state the runner wrote.
 export function summary(record: RunRecord, { run = record, report, crashed = null }: { run?: RunRecord; report?: string | undefined; crashed?: string | null } = {}): string {
   const steps = [...(run.setup ?? []), ...record.targets];
   const count = (status: string) => steps.filter(step => step.status === status).length;
@@ -396,7 +396,7 @@ export function summary(record: RunRecord, { run = record, report, crashed = nul
   }
   const writes = [...(run.reportErrors ?? []), ...steps.flatMap(step => step.reportErrors ?? [])];
   if (writes.length) lines.push('', '## report write failures', '', '```', ...writes, '```');
-  // 경고는 실패가 아니다: 성능 측정이 문서의 기준값을 넘은 단계와 그 줄을 따로 적는다.
+  // Warnings are not failures: the step where a performance measurement exceeded the document's reference value, and its line, are recorded separately.
   const warned = steps.filter(step => step.warnings?.length);
   if (warned.length) {
     lines.push('', '## warnings', '', 'A warning is no failure: a measurement exceeded its documented reference value (AGENTS.md).', '');
@@ -408,7 +408,7 @@ export function summary(record: RunRecord, { run = record, report, crashed = nul
   return `${lines.join('\n')}\n`;
 }
 
-// publish는 summary를 보고서에 쓴다. CI의 summary 단계(scripts/check/summary.mts)는 GITHUB_STEP_SUMMARY에도 쓴다.
+// publish writes the summary into the report. The CI summary step (scripts/check/summary.mts) also writes to GITHUB_STEP_SUMMARY.
 export function publish(text: string, report: string | undefined, { step = false }: { step?: boolean } = {}): void {
   if (report) {
     mkdirSync(report, { recursive: true });
@@ -417,5 +417,5 @@ export function publish(text: string, report: string | undefined, { step = false
   if (step && process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, text);
 }
 
-// runName은 ORM_CHECK_RUN_ID에서 실행의 이름을 만든다. 이름은 database 이름에도 쓰므로 소문자, 숫자와 밑줄이다.
+// runName builds the run's name from ORM_CHECK_RUN_ID. The name is also used in database names, so it consists of lowercase letters, digits, and underscores.
 export const runName = (id: string): string => `ci_${id.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`;

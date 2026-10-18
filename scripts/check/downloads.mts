@@ -1,8 +1,8 @@
-// downloads는 check가 읽는 download가 이 checkout에 있는지 network 없이 확인한다. check는 network를 읽지 않는다:
-// `make install`이 download하고, 모든 recipe는 cargo, go, npm, Composer를 offline으로 실행한다(Makefile의
-// CARGO_NET_OFFLINE, GOPROXY, npm_config_offline, COMPOSER_DISABLE_NETWORK). 그래서 빠진 download는 registry에
-// 닿는 실행과 닿지 않는 실행으로 결과가 갈리지 않고 곧바로 실패하며, 이 확인이 그것을 `run make install`과 함께
-// 적는다. 결과는 빠진 것마다 { need, message }이고 need는 contracts/check-inputs.json의 needs다(rust, go,
+// downloads checks, without the network, that the downloads the check reads are present in this checkout. The check does not read the network:
+// `make install` downloads them, and every recipe runs cargo, go, npm, and Composer offline (in the Makefile's
+// CARGO_NET_OFFLINE, GOPROXY, npm_config_offline, COMPOSER_DISABLE_NETWORK). So a missing download does not split results between runs that reach the registry and runs that do not;
+// it fails at once, and this check records it along with
+// `run make install`. The result is { need, message } for each missing item, where need is a needs entry of contracts/check-inputs.json (rust, go,
 // node-modules, composer).
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -11,18 +11,18 @@ import { join } from 'node:path';
 import { readComposer, readComposerPackages, readNpmLock } from '../json/formats.mts';
 import { makeTargets } from '../repo/testcases.mts';
 
-// NPM_ROOTS는 npm ci로 설치하는 package directory다. 저장소 root는 packages/ts를 workspace로 함께 설치한다.
+// NPM_ROOTS are the package directories installed with npm ci. The repository root also installs packages/ts together as a workspace.
 export const NPM_ROOTS = ['.'];
-// COMPOSER_ROOTS는 composer install로 설치하는 package directory다. 저장소 root의 composer.json이 packages/php를 path
-// repository로 설치한다.
+// COMPOSER_ROOTS are the package directories installed with composer install. The repository root's composer.json installs packages/php as a path
+// repository.
 export const COMPOSER_ROOTS = ['.'];
 
 const fix = 'run make install, which downloads it';
 const offline = { CARGO_NET_OFFLINE: 'true', GOPROXY: 'off', npm_config_offline: 'true', COMPOSER_DISABLE_NETWORK: '1' };
 
 
-// npmMissing은 package-lock.json이 설치하는 package(선택적인 platform package는 뺀다) 가운데 node_modules에 없거나
-// version이 다른 것이다.
+// npmMissing returns the packages that package-lock.json installs (optional platform packages excluded) that are either absent from node_modules or
+// at a different version.
 export function npmMissing(root: string, directory: string) {
   const lock = join(root, directory, 'package-lock.json');
   const installed = join(root, directory, 'node_modules', '.package-lock.json');

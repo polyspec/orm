@@ -1,17 +1,17 @@
-// runStep은 check runner(scripts/check/run.mts)와 owner-check(scripts/features/owners.mts)의 단계 하나를 실행한다.
-// 단계는 자기 임시 directory와 자기 process group을 가진다.
+// runStep runs one step of the check runner (scripts/check/run.mts) and of owner-check (scripts/features/owners.mts).
+// A step has its own temporary directory and its own process group.
 //
-// - 임시 directory: 시스템 임시 directory 아래에 단계마다 새로 만든 `orm-step-*`이고 TMPDIR로 준다. Go
-//   os.TempDir, Rust env::temp_dir, PHP sys_get_temp_dir, Node os.tmpdir와 mktemp가 모두 TMPDIR을 따르므로,
-//   단계가 만든 임시 file은 모두 그 안에 생긴다. 시스템 임시 directory 아래에 두는 것은 socket path 길이 한도
-//   때문이다.
-// - process group: 단계는 자기 group의 leader로 시작한다. daemon처럼 자기 session을 새로 여는 process는 group을
-//   떠나므로 보이지 않는다. 이 한계는 AGENTS.md가 적는다.
+// - temporary directory: a fresh `orm-step-*` under the system temporary directory for each step, given as TMPDIR. Go
+//   os.TempDir, Rust env::temp_dir, PHP sys_get_temp_dir, Node os.tmpdir and mktemp all follow TMPDIR, so
+//   every temporary file a step creates lands inside it. Keeping it under the system temporary directory is for the socket path
+//   length limit.
+// - process group: a step starts as the leader of its own group. A process that opens a new session of its own, like a daemon, leaves the group
+//   and so is not visible. AGENTS.md records this limit.
 //
-// 단계가 끝나면 group에 남은 process를 적고 끝내며, 임시 directory에 남은 entry를 적는다. 통과한 단계가
-// process나 entry를 남겼으면 그 단계는 실패한다. 통과한 실행은 자기가 만든 것을 남기지 않아야 하기 때문이다.
-// 실패한 단계가 남긴 entry는 keep으로 보고서에 복사한다. 어느 쪽이든 임시 directory는 지운다. runner가
-// signal로 끝나도 진행 중인 단계의 group을 끝낸다.
+// When a step ends, it records and ends the processes left in the group, and records the entries left in the temporary directory. A passing step
+// that leaves a process or entry fails. A passing run must not leave behind what it made.
+// Entries left by a failed step are copied into the report with keep. Either way the temporary directory is deleted. The runner
+// ends the group of the in-progress step even when it ends by signal.
 import { spawn, spawnSync, type ChildProcessByStdio } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -19,7 +19,7 @@ import { basename, join } from 'node:path';
 import type { Readable } from 'node:stream';
 import { stepLines, type Step } from '../../tests/testcase.mts';
 
-// active는 진행 중인 단계의 process group id다. runner가 끝날 때 남은 group을 끝낸다.
+// active is the process group id of the in-progress step. It ends the remaining group when the runner finishes.
 const active = new Set<number>();
 let installed = false;
 function install() {
@@ -35,8 +35,8 @@ function install() {
     });
 }
 
-// ownGroup은 이 process의 process group이다. 단계의 group을 끝내는 signal이 이 process의 group(그리고 GitHub Actions
-// runner와 함께 쓰는 group)에 닿지 않도록 signalGroup이 비교한다.
+// ownGroup is this process's process group. The signal that ends a step's group must not reach this process's group (and the group
+// shared with the runner and GitHub Actions); signalGroup compares for this.
 let ownGroup: number | null | undefined;
 export function processGroupOf(pid: number): number | null {
   const listed = spawnSync('ps', ['-o', 'pgid=', '-p', String(pid)], { encoding: 'utf8' });
@@ -44,11 +44,11 @@ export function processGroupOf(pid: number): number | null {
   return Number.isInteger(group) && group > 0 ? group : null;
 }
 
-// signals는 보낸 group signal의 기록이다(resources.mts가 30초마다 출력한다).
+// signals is the record of group signals sent (resources.mts prints it every 30 seconds).
 export const signals: string[] = [];
 
-// signalGroup은 단계의 process group에 signal을 보낸다. 1 이하의 group(모든 process나 자기 group을 뜻한다)과
-// 이 process 자신의 group에는 보내지 않고 그 사실을 적는다: 그 signal은 runner와 그것을 실행한 job까지 끝낸다.
+// signalGroup sends a signal to a step's process group. Groups of 1 or lower (which mean all processes or one's own group) and
+// this process's own group are not signaled, and that fact is recorded: such a signal would end the runner and the job that ran it.
 export function signalGroup(group: number, signal: NodeJS.Signals): boolean {
   ownGroup ??= processGroupOf(process.pid);
   if (!Number.isInteger(group) || group <= 1 || group === ownGroup || group === process.pid) {
@@ -61,12 +61,12 @@ export function signalGroup(group: number, signal: NodeJS.Signals): boolean {
     process.kill(-group, signal);
     return true;
   } catch {
-    // group에 process가 없다.
+    // The group has no processes.
     return false;
   }
 }
 
-// groupProcesses는 process group의 살아 있는 process(pid와 명령)다. 이미 끝나 회수를 기다리는 process(Z)는 뺀다.
+// groupProcesses are the live processes (pid and command) of the process group. Processes that have already ended and are waiting to be reaped (Z) are excluded.
 export function groupProcesses(group: number): { pid: number; command: string }[] {
   const listed = spawnSync('ps', ['-A', '-o', 'pid=,pgid=,stat=,command='], { encoding: 'utf8' });
   if (listed.status !== 0) throw new Error(`ps exited with ${listed.status ?? listed.signal}: ${listed.stderr}`);
@@ -78,7 +78,7 @@ export function groupProcesses(group: number): { pid: number; command: string }[
   return found;
 }
 
-// stopGroup은 group의 process에 SIGTERM을 보내고, 3초 안에 끝나지 않으면 SIGKILL을 보낸다.
+// stopGroup sends SIGTERM to the group's processes and sends SIGKILL if they have not ended within 3 seconds.
 async function stopGroup(group: number): Promise<void> {
   signalGroup(group, 'SIGTERM');
   for (let waited = 0; waited < 3000; waited += 100) {
@@ -88,9 +88,9 @@ async function stopGroup(group: number): Promise<void> {
   signalGroup(group, 'SIGKILL');
 }
 
-// endGroup은 자기 process group으로 시작한 process(spawn의 detached)가 끝난 뒤 그 group에 남은 process를 적고
-// 끝낸다. 남은 것이 없으면 빈 목록이다. 그런 group은 단계의 group을 떠나므로 단계의 검사가 보지 못한다. 그래서 group을
-// 만든 code가 직접 확인하고, 남긴 것은 실패로 다룬다(`make repo-check`가 그것을 요구한다).
+// endGroup records the processes left in the group after a process started in its own process group (detached spawn)
+// ends them. If nothing remains, the list is empty. Such a group leaves the step's group, so the step's check cannot see it. So the group
+// is checked by the code that made it, and anything left behind is treated as a failure (`make repo-check` requires that).
 export async function endGroup(group: number | null | undefined): Promise<string[]> {
   if (!group) return [];
   const processes = groupProcesses(group);
@@ -98,13 +98,13 @@ export async function endGroup(group: number | null | undefined): Promise<string
   return processes.map(({ pid, command }) => `${pid} ${command}`);
 }
 
-// runStep은 program을 실행하고 출력 줄을 step으로 내보낸다. label은 실패 줄의 이름, spawned는 시작한 process의
-// id를 받고, keep(directory)은 실패한 단계의 임시 entry를 복사하는 함수다. leftovers()는 단계 밖에 남은 것을
-// 더 찾는다(runner의 실행 directory). 통과하면 resolve하고, 실패하거나 남긴 것이 있으면 그 이유로 reject한다.
+// runStep runs a program and emits its output lines as steps. label is the name on failure lines, and spawned takes the id of the process that was started,
+// and keep (directory) is the function that copies the temporary entries of a failed step. leftovers() finds what remains outside the step
+// (the runner's run directory). It resolves on pass; on failure, or if something was left behind, it rejects with that reason.
 //
-// setup 단계(servers, databases/*, ci/*)는 guard를 false로 준다: 그 단계는 시스템 임시 directory와 runner의 process
-// group을 그대로 쓴다. 시작한 server는 단계보다 오래 살고, daemon으로 띄운 mysqld는 TMPDIR을 자기 tmpdir로 쓰므로
-// 단계 뒤에 지울 directory를 줄 수 없기 때문이다.
+// Setup steps (servers, databases/*, ci/*) give guard as false: those steps use the system temporary directory and the runner's process
+// group as is. A started server outlives the step, and a mysqld started as a daemon uses TMPDIR as its tmpdir, so
+// the directory cannot be given to be removed after the step.
 /** The options of runStep. */
 export type StepOptions = {
   cwd?: string;
@@ -128,8 +128,8 @@ export function runStep(program: string, args: string[], { cwd, env, step, label
   return new Promise<void>((finish, fail) => {
     let child: ChildProcessByStdio<null, Readable, Readable>;
     try {
-      // npm은 Node의 compile cache를 켜고, 그 cache는 따로 정하지 않으면 TMPDIR 아래의 node-compile-cache다. 그것은
-      // test가 남긴 것이 아니라 실행끼리 함께 쓰는 npm의 cache이므로, 단계 전과 같은 시스템 임시 directory에 둔다.
+      // npm turns on Node's compile cache, which, unless set otherwise, is node-compile-cache under TMPDIR. That is not
+      // something a test left behind but an npm cache shared between runs, so it stays in the same system temporary directory as before the step.
       const compileCache = env.NODE_COMPILE_CACHE ?? join(tmpdir(), 'node-compile-cache');
       child = spawn(program, args, { cwd, env: { ...env, TMPDIR: temporary, NODE_COMPILE_CACHE: compileCache, ORM_STEP: basename(temporary), STEP_RUN_DIR: stepRun }, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
     } catch (error) {
@@ -158,7 +158,7 @@ export function runStep(program: string, args: string[], { cwd, env, step, label
       const exited = { code, signal };
       const problems: string[] = [];
       try {
-        // 남은 process를 먼저 적고 끝낸다. 그 process가 출력 pipe를 쥐고 있으면 close가 오지 않기 때문이다.
+        // The remaining processes are recorded first and then ended. If such a process holds the output pipe, close does not arrive.
         const processes = group ? groupProcesses(group) : [];
         if (group && processes.length) {
           problems.push(`check: ${label} left ${processes.length} processes: ${processes.map(({ pid, command }) => `${pid} ${command}`).join(', ')}`);
@@ -180,8 +180,8 @@ export function runStep(program: string, args: string[], { cwd, env, step, label
           }
         }
         for (const path of leftovers()) problems.push(`check: ${label} left ${path}`);
-        // 단계의 process가 .runtime/run에 단계 이름(ORM_STEP)을 담아 만든 실행 directory(tests/cargo-test.mts)도 단계가
-        // 남긴 것이다. signal로 끝난 process는 그것을 지우지 못한다.
+        // A run directory that a step's process created in .runtime/run with the step name (ORM_STEP) (tests/cargo-test.mts) is also a leftover
+        // the step left behind. A process ended by signal cannot delete it.
         const runs = join(cwd ?? '.', '.runtime/run');
         for (const entry of existsSync(runs) ? readdirSync(runs).filter(name => name.includes(`-${basename(temporary)}-`)) : []) {
           problems.push(`check: ${label} left .runtime/run/${entry}`);
