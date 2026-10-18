@@ -17,8 +17,8 @@ use serde_json::json;
 const ITERATIONS: usize = 500;
 const AES_KEY: &str = "bench-salt";
 
-/// 시드된 bench database를 가리키는 `ORM_BENCH_MYSQL_DSN`이다. 없거나 비어 있으면 연결하지
-/// 않고 그 변수 이름을 출력하며 끝난다.
+/// `ORM_BENCH_MYSQL_DSN` points to the seeded bench database. If it is missing or empty, it does not connect
+/// and ends after printing that variable name.
 fn dsn() -> String {
     match std::env::var("ORM_BENCH_MYSQL_DSN") {
         Ok(v) if !v.is_empty() => v,
@@ -49,7 +49,7 @@ async fn main() -> polyspec_orm::Result<()> {
     };
     let db = model::connect(&dsn(), 1, config).await?;
     let _last_statement = db.subscribe(move |e: &polyspec_orm::StatementEvent<'_>| {
-        // event는 비밀 bind를 가리므로 native 재실행은 실제 key를 쓴다.
+        // An event reveals a secret bind, so a native rerun uses the real key.
         let binds = e
             .binds
             .iter()
