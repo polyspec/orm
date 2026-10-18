@@ -8,8 +8,8 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// WatchExit는 kqueue에 pid의 종료(EVFILT_PROC, NOTE_EXIT)를 등록하고, 그 알림을 기다리는 함수를 돌려준다.
-// 이미 없는 process는 unix.ESRCH다.
+// WatchExit registers the exit of pid (EVFILT_PROC, NOTE_EXIT) with kqueue, and returns a function that waits for that notification.
+// A process that is already gone gives unix.ESRCH.
 func WatchExit(pid int) (func() error, error) {
 	queue, err := unix.Kqueue()
 	if err != nil {
@@ -26,7 +26,7 @@ func WatchExit(pid int) (func() error, error) {
 		defer unix.Close(queue)
 		events := make([]unix.Kevent_t, 1)
 		for {
-			// timeout nil은 알림이 올 때까지 기다린다. signal에 끊기면(EINTR) 다시 기다린다.
+			// A nil timeout waits until a notification arrives. If interrupted by a signal (EINTR), it waits again.
 			n, err := unix.Kevent(queue, nil, events, nil)
 			if errors.Is(err, unix.EINTR) {
 				continue
@@ -41,9 +41,9 @@ func WatchExit(pid int) (func() error, error) {
 	}, nil
 }
 
-// WatchDir는 kqueue에 directory의 변경(EVFILT_VNODE NOTE_WRITE: entry가 생기거나 없어짐)을 등록하고,
-// 다음 변경을 기다리는 함수와 감시를 닫는 함수를 돌려준다. 등록은 상태를 읽기 전에 해서 그 사이의
-// 변경을 놓치지 않는다.
+// WatchDir registers changes of the directory (EVFILT_VNODE NOTE_WRITE: an entry is created or removed) with kqueue,
+// and returns a function that waits for the next change and a function that closes the watch. Registration happens before the state is read, so
+// no change between them is missed.
 func WatchDir(path string) (func() error, func(), error) {
 	directory, err := unix.Open(path, unix.O_RDONLY|unix.O_EVTONLY, 0)
 	if err != nil {
