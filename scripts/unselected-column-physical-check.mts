@@ -19,7 +19,7 @@ for (const database of ['mysql', 'postgres', 'sqlite']) {
           ...process.env, ORM_UNSELECTED_DATABASE: database, ORM_UNSELECTED_DSN: dsn,
         });
       } catch (error) { throw new Error(errorMessage(error).replaceAll(dsn, '[redacted]')); }
-      // PHPUnit의 TeamCity 출력에서 test 하나가 끝나고 실패하거나 건너뛴 test가 없어야 한다.
+      // In PHPUnit's TeamCity output, after a test ends there must be no failed or skipped test.
       const finished = [...output.matchAll(/^##teamcity\[testFinished name='([^']*)'/gm)].map(match => match[1]);
       if (JSON.stringify(finished) !== JSON.stringify(['test_unselected_column']) || /^##teamcity\[test(?:Failed|Ignored) /m.test(output)) {
         throw new Error(`${database}/${attempt}: missing exact pass event`);

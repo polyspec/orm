@@ -38,8 +38,8 @@ function observed(language: string, database: string, output: string): boolean {
       events.some(event => event.Action === 'pass' && !event.Test);
   }
   if (language === 'rust') return output.includes(`test ${id} ... ok`) && output.includes('1 passed; 0 failed');
-  // PHPUnit은 test마다 TeamCity 줄(testStarted, testFailed, testIgnored, testFinished)을 쓴다. 정해진 test가 모두
-  // 끝나고 실패하거나 건너뛴 test가 없어야 한다.
+  // PHPUnit writes TeamCity lines per test (testStarted, testFailed, testIgnored, testFinished). All the expected tests must
+  // finish, and there must be no failed or skipped test.
   if (language === 'php') {
     const finished = [...output.matchAll(/^##teamcity\[testFinished name='([^']*)'/gm)].map(match => match[1]);
     const wanted = ['generate', 'setters', 'round_trip'].map(name => `test_${name} with data set "${database}"`);
@@ -52,7 +52,7 @@ function observed(language: string, database: string, output: string): boolean {
     const wanted = ['round_trip', 'setters'].map(name => `PASS __main__.DecimalModelDbTest.test_${name}`);
     return JSON.stringify(results) === JSON.stringify(wanted);
   }
-  // TypeScript test는 case마다 RUN과 PASS 줄을 쓴다. 정해진 case가 모두 통과하고 다른 결과 줄이 없어야 한다.
+  // TypeScript tests write a RUN and PASS line for each case. All the expected cases must pass, and there must be no other result line.
   const cases = ['setters', 'round_trip'].map(name => `decimal_db/${database}/${name}`);
   const results = output.split('\n').filter((line: string) => /^(?:PASS|FAIL) /.test(line)).map((line: string) => line.split(' ').slice(0, 2).join(' '));
   return JSON.stringify(results) === JSON.stringify(cases.map(name => `PASS ${name}`));

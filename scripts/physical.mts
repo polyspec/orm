@@ -38,7 +38,7 @@ export function run(program: string, args: string[], env: NodeJS.ProcessEnv = pr
     child.stdout.on('data', (chunk: Buffer) => { stdout += String(chunk); });
     child.stderr.on('data', (chunk: Buffer) => { stderr += String(chunk); });
     child.on('error', finish);
-    // child는 자기 group의 leader다. 끝난 뒤 그 group에 남은 process는 실패로 다룬다(endGroup).
+    // child is the leader of its own group. A process left in that group after it ends is treated as a failure (endGroup).
     const ended = new Promise<string[]>(resolve => child.on('exit', () => endGroup(child.pid).then(resolve, (error: unknown) => resolve([`its group could not be checked: ${errorMessage(error)}`]))));
     child.on('close', code => ended.then(left => finish(left.length ? new Error(`${program} left ${left.length} processes: ${left.join(', ')}`)
       : code === 0 ? null : new Error(`${program} exit ${code}: ${stderr || stdout}`))));
