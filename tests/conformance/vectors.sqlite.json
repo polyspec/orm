@@ -990,7 +990,65 @@
         "setTitle",
         "create"
       ],
-      "expect": null
+      "expect": {
+        "result": {
+          "relation": [
+            [
+              1,
+              "note-1"
+            ],
+            [
+              2,
+              "note-1"
+            ],
+            [
+              3,
+              "note-3"
+            ]
+          ],
+          "subquery": [
+            "note-1",
+            "note-3"
+          ],
+          "write": "CONFIG"
+        },
+        "statements": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"shared_note_seq\" AS \"a__shared_note_seq\" FROM \"note_reader\" AS \"a\" ORDER BY \"a\".\"seq\" ASC",
+            "tables": [
+              "note_reader"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              1,
+              3
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"title\" AS \"a__title\" FROM \"shared_note\" AS \"a\" WHERE \"a\".\"seq\" IN (?, ?)",
+            "tables": [
+              "shared_note"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"title\" AS \"a__title\" FROM \"shared_note\" AS \"a\" WHERE \"a\".\"seq\" IN (SELECT \"s1\".\"shared_note_seq\" FROM \"note_reader\" AS \"s1\") ORDER BY \"a\".\"seq\" ASC",
+            "tables": [
+              "note_reader",
+              "shared_note"
+            ],
+            "transaction": null
+          }
+        ]
+      }
     },
     {
       "name": "subqueries",

@@ -64,7 +64,7 @@ DSN, MODELS_DIR, SELECTED = None, None, []
 bench = Author = CompositeAccount = Service = ServiceMember = ServiceRegion = None
 User = SoftRecord = Task = HexCell = TimeCell = DayCell = ClockCell = UpsertCell = (
     UuidCell
-) = BindCell = SoftLink = None
+) = BindCell = SoftLink = NoteReader = SharedNote = None
 
 log = []
 transactions = {}
@@ -288,7 +288,9 @@ def load_models():
         UpsertCell, \
         UuidCell, \
         BindCell, \
-        SoftLink
+        SoftLink, \
+        NoteReader, \
+        SharedNote
     # The models generated from contracts/fixtures/bench/bench.dbs are compiled from their source and
     # registered as models; the client itself is the one installed into the interpreter.
     source = os.path.join(MODELS_DIR, "models.py")
