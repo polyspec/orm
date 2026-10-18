@@ -1,5 +1,5 @@
-// orm-gen은 dbspec document set에서 Go model을 만들고 docs/errors.yaml에서 각
-// 언어의 오류 코드 file을 만든다.
+// orm-gen makes Go models from a dbspec document set and, from docs/errors.yaml, each
+// language's error code file.
 //
 //	orm-gen gen --set <dbspec-set.json> --lang go --out <directory> [--scan <package pattern>...] [--check]
 //	orm-gen errors --lang go|php|rust|typescript|python --out <file> [--yaml docs/errors.yaml]
@@ -64,9 +64,9 @@ func gen(args []string) {
 	if err != nil {
 		fail(err)
 	}
-	// 생성 실패는 output directory를 바꾸지 않고 1로 끝난다. 생성된 model로
-	// scan한 package가 compile되지 않으면 3으로 끝난다. 차이를 찾은 check는
-	// 차이를 출력하고 1로 끝난다.
+	// A failed generation leaves the output directory unchanged and exits with 1. When the scanned package does not compile,
+	// it exits with 3. A check that finds a difference
+	// prints the difference and exits with 1.
 	options := generator.Options{Model: m, OutputDir: *out, Scan: scan}
 	var lines []string
 	if *check {
@@ -94,7 +94,7 @@ func fail(err error) {
 	os.Exit(1)
 }
 
-// reportCheck는 check의 줄을 출력하고 줄이 있으면 1로 끝난다.
+// reportCheck prints the check's lines, and exits with 1 if there are any lines.
 func reportCheck(lines []string) {
 	for _, line := range lines {
 		fmt.Println(line)
@@ -104,7 +104,7 @@ func reportCheck(lines []string) {
 	}
 }
 
-// stringList는 반복되는 string flag를 모은다.
+// stringList collects a repeated string flag.
 type stringList []string
 
 func (s *stringList) String() string     { return strings.Join(*s, ",") }
