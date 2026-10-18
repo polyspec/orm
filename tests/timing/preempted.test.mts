@@ -1,8 +1,8 @@
-// 각 client의 시간 측정은 그 계산이 쓴 CPU 시간을 재고, 성능은 측정해 보고할 뿐 test를 실패시키지 않는다
-// (AGENTS.md). 이 test는 process group을 SIGSTOP과 SIGCONT로 번갈아 멈춰, 공유 machine에서 다른 process가 CPU를
-// 쓰는 동안 기다리는 상태를 결정적으로 만든다. 각 test는 멈추지 않을 때와 같이 통과해야 하고, 그 측정은
-// 출력된다. 멈춤과 재개 주기는 timer가 정한다: 멈춘 process는
-// event를 내지 않으므로 다른 event source가 없다.
+// Each client's timing measures the CPU time its computation used, and performance is only measured and reported, never failing the test
+// (AGENTS.md). This test alternately stops the process group with SIGSTOP and SIGCONT, so that on a shared machine it deterministically creates
+// the state of waiting while another process uses the CPU. Each test must pass just as it does when not stopped, and its measurement is
+// printed. The stop and resume cycle is set by a timer: a stopped process
+// emits no event, so there is no other event source.
 //
 // Usage: make timing-check (the target builds the Go test binary, the Rust stress example and
 // the TypeScript client, and writes the stress document first).
@@ -16,16 +16,16 @@ import { fileURLToPath } from 'node:url';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
-// 실행 10 ms, 멈춤 90 ms: process는 wall-clock 시간의 10분의 1만 CPU를 받는다. 11개 core에
-// load average 90인 공유 machine과 비슷한 비율이다.
+// Run 10 ms, stop 90 ms: the process gets one tenth of the wall-clock time as CPU, on 11 cores,
+// a ratio similar to a shared machine with a load average of 90.
 const RUN_MS = 10;
 const STOP_MS = 90;
-// TIMEOUT은 case 하나의 기한이다. 하위 process는 wall-clock 시간의 10분의 1만 CPU를 받으므로
-// 멈추지 않을 때 1분 안에 끝나는 test가 10분까지 걸린다.
+// TIMEOUT is the deadline for one case. The child process gets only one tenth of the wall-clock time as CPU, so
+// a test that finishes in 1 minute without stopping takes up to 10 minutes.
 const TIMEOUT = 600_000;
 
-// TOOLCHAIN은 make timing-check의 Makefile이 export하는 toolchain 설정이다: cargo, go, npm과 Composer는 이 값으로 같은
-// toolchain, target directory와 offline 실행을 쓴다.
+// TOOLCHAIN is the toolchain setting exported by the Makefile of make timing-check: cargo, go, npm and Composer use this value to use the same
+// toolchain, target directory and offline execution.
 const TOOLCHAIN = ['RUSTUP_TOOLCHAIN', 'CARGO_TARGET_DIR', 'CARGO_INCREMENTAL', 'CARGO_PROFILE_DEV_DEBUG', 'CARGO_NET_OFFLINE', 'GOPROXY', 'npm_config_offline', 'COMPOSER_DISABLE_NETWORK'];
 
 function declared(name: string) {
@@ -34,13 +34,13 @@ function declared(name: string) {
   return value;
 }
 
-// runPreempted는 command를 자기 process group에서 실행하며 그 group을 주기적으로 멈추고
-// 종료 code, signal, 출력을 돌려준다. 하위 process의 출력 줄은 실행 중에 case의 단계로 나온다.
+// runPreempted runs the command in its own process group, and periodically stops that group,
+// and returns the exit code, signal and output. The output lines of the child process come out as the case's steps during the run.
 async function runPreempted(step: Step, command: string, args: string[], cwd: string) {
   step(`start ${command} ${args.join(' ')}`);
   const lines = stepLines(step);
-  // 하위 process는 case가 주는 변수만 받는다(tests/environment.mts): Makefile이 export하는 toolchain 설정(TOOLCHAIN)이다.
-  // 바깥 test runner의 NODE_TEST_CONTEXT도 받지 않으므로 안쪽 node --test는 그 runner의 자식으로 보고하지 않는다.
+  // The child process receives only the variables the case gives (tests/environment.mts): the toolchain setting (TOOLCHAIN) exported by the Makefile.
+  // It also does not receive NODE_TEST_CONTEXT of the outer test runner, so the inner node --test does not report as a child of that runner.
   const env = isolatedEnvironment(Object.fromEntries(TOOLCHAIN.flatMap(name => { const value = process.env[name]; return value === undefined ? [] : [[name, value]]; })));
   const child = spawn(command, args, { cwd, env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
   let output = '';
@@ -62,16 +62,16 @@ async function runPreempted(step: Step, command: string, args: string[], cwd: st
   }
   const { code, signal } = await done;
   lines.flush();
-  // command는 자기 group의 leader였다. 끝난 뒤 그 group에 남은 process는 실패다(endGroup).
+  // The command was the leader of its own group. A process left in that group after it ends is a failure (endGroup).
   const left = await endGroup(child.pid);
   assert.deepEqual(left, [], `${command} left processes in its group`);
   step(`end ${command} code=${code} signal=${signal} stops=${stops}`);
   return { code, signal, output, stops };
 }
 
-// signalGroup은 group이 이미 끝났으면 false를 돌려준다. macOS는 끝났지만 아직 회수되지 않은
-// leader의 group에 EPERM을 돌려주므로, EPERM은 1초 안에 leader의 exit event가 오면 끝난
-// group으로 본다. 다른 실패는 그대로 던진다.
+// signalGroup returns false when the group has already ended. On macOS, for a leader that has ended but is not yet reaped,
+// the group returns EPERM, so EPERM counts as the group having ended if
+// the leader's exit event arrives within 1 second. Other failures are thrown as they are.
 async function signalGroup(pid: number | undefined, signal: NodeJS.Signals, exit: Promise<void>): Promise<boolean> {
   if (pid === undefined) throw new Error('the child has no process id; it did not start');
   try {
