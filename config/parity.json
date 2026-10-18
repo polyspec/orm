@@ -4475,7 +4475,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/orm/install_test.go", "symbol": "TestInstallVerifiesTheDatabase" },
         { "implementation": "php", "test": "packages/php/tests/SchemaSetTest.php", "symbol": "SchemaSetTest::test_install_verifies_the_database" },
-        { "implementation": "typescript", "test": "packages/ts/tests/schema-set.mjs" },
+        { "implementation": "typescript", "test": "packages/ts/tests/install_changed_database.mjs" },
         { "implementation": "python", "test": "packages/python/tests/install_changed_database.py" },
         { "implementation": "rust", "test": "packages/rust/orm/tests/install.rs", "symbol": "install_verifies_the_database" }
       ]

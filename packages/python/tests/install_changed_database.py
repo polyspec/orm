@@ -1,7 +1,7 @@
 # install-changed-database: every case of contracts/fixtures/install/changed_database.json installs its document set,
 # changes the database outside the ORM with its statement, and requires a second install of the same set to fail with
 # the dialect's code and message and to leave the database as it is (docs/schema.md "Schema installation"), on SQLite,
-# MySQL and PostgreSQL, as packages/ts/tests/schema-set.mjs and the other clients' tests do. MySQL and PostgreSQL need
+# MySQL and PostgreSQL, as packages/ts/tests/install_changed_database.mjs and the other clients' tests do. MySQL and PostgreSQL need
 # ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN, and a missing variable fails the case. Each case is a test named by its
 # id; a case passes when it agrees on every dialect.
 import json

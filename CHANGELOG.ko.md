@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: de940616e18554ed2539adf81ba4cd4eaae150ddb649f184d2e95b739a0149bc -->
+<!-- source-sha256: b6f3c4f2a4f17c732069d3ba49a8665de1199eeb8613a13ee7eae93e0de1760a -->
 # 변경 이력
 
 ## Unreleased
+- TypeScript install fixture가 자기 file에서 실행되어, install unit은 자기 fixture case만 보고한다 (T148-3-ts-1).
 - TypeScript statement-fault entry point 검사가 자기 file에서 실행되어, fault suite는 자기 네 case만 보고한다 (T148-3-ts-4).
 - TypeScript collection-key test가 case를 id로 node:test test로 보고해 parity unit 둘이 통과한다 (T148-3-ts-6).
 - TypeScript code-catalog test가 case를 id로 node:test test로 보고해 parity unit이 통과한다 (T148-3-ts-5).

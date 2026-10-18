@@ -12,6 +12,8 @@
 // ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name the test servers; the
 // test fails when either is unset.
 //
+// The install fixture (contracts/fixtures/install/changed_database.json) runs in install_changed_database.mjs.
+//
 // Usage: node packages/ts/tests/schema-set.mjs [case ...] (after npm run typescript:build)
 import { readFile } from 'node:fs/promises';
 import { CORE, Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
@@ -274,29 +276,6 @@ async function registerSendsNoStatement(dsn) {
   await connected.close();
 }
 
-/**
- * install 은 table 이름만이 아니라 database 전체를 set 과 비교한다(docs/schema.md "Schema installation").
- * contracts/fixtures/install/changed_database.json 의 case 마다 statement 로 ORM 밖에서 바꾼 database 에 같은 set 을
- * 다시 install 하면 dialect 의 message 인 CONFIG 이고 database 는 그대로다.
- */
-const installFixture = JSON.parse(await readFile(new URL('../../../contracts/fixtures/install/changed_database.json', import.meta.url), 'utf8'));
-if (installFixture.cases.length === 0) throw new Error('contracts/fixtures/install/changed_database.json has no cases');
-async function installVerifiesTheDatabase(c, dsn, driver) {
-  check(c.operation === 'install', `${c.id}: the operation ${c.operation}, want install`);
-  const text = await readFile(new URL(`../../../contracts/fixtures/${c.document}`, import.meta.url), 'utf8');
-  const note = manifestOf(text);
-  const schema = { manifestText: note.manifestText, manifestHash: note.manifestHash };
-  const db = await Db.connect(dsn);
-  try {
-    await db.utils().schema().install(schema);
-    await nativeQuery(driver, dsn, [c.statement]);
-    const want = `${c.expected.code}: ${c.expected.message[driver]}`;
-    const error = await thrown(() => db.utils().schema().install(schema));
-    check(error instanceof OrmError && error.code === c.expected.code && error.message === want, `${c.id}: install over the changed database: ${error?.code ?? ''} ${error?.message ?? 'no error'}, want ${want}`);
-    await nativeQuery(driver, dsn, [c.remaining]);
-  } finally { await db.close(); }
-}
-
 const cases = {
   several_schemas: severalSchemas,
   unregistered_schema: unregisteredSchema,
@@ -304,13 +283,11 @@ const cases = {
   external_documents: externalDocuments,
   register_sends_no_statement: registerSendsNoStatement,
 };
-// install_verifies_the_database runs each case of the install fixture as one test named by the case id.
-const INSTALL = 'install_verifies_the_database';
-const selected = process.argv.length > 2 ? process.argv.slice(2) : [...Object.keys(cases), INSTALL];
+const selected = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(cases);
 for (const env of ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_POSTGRES_DSN']) {
   if (!process.env[env]) throw new Error(`${env} is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers`);
 }
-for (const name of selected.filter(name => name !== INSTALL)) {
+for (const name of selected) {
   const run = cases[name];
   if (run === undefined) throw new Error(`unknown case ${name}`);
   for (const driver of ['sqlite', 'mysql', 'postgres']) {
@@ -323,15 +300,3 @@ for (const name of selected.filter(name => name !== INSTALL)) {
   }
 }
 if (failures > 0) process.exitCode = 1;
-if (selected.includes(INSTALL)) {
-  for (const c of installFixture.cases) {
-    caseTest(c.id, 3 * CASE_DEADLINE_MS, async ({ step }) => {
-      const before = failures;
-      for (const driver of ['sqlite', 'mysql', 'postgres']) {
-        current = `${c.id}/${driver}`;
-        await withCaseDatabase(driver, step, database => installVerifiesTheDatabase(c, database.dsn, driver));
-      }
-      if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
-    });
-  }
-}

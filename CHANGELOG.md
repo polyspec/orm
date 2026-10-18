@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The TypeScript install fixture runs in its own file, so the install unit reports only its fixture cases (T148-3-ts-1).
 - The TypeScript statement-fault entry-point check runs in its own file, so the fault suite reports only its four cases (T148-3-ts-4).
 - The TypeScript collection-key tests report their cases by id as node:test tests, so the parity run passes both units (T148-3-ts-6).
 - The TypeScript code-catalog test reports its cases by id as node:test tests, so the parity run passes its unit (T148-3-ts-5).

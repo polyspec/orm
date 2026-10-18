@@ -4078,6 +4078,7 @@
         "packages/go/orm/install_test.go",
         "packages/php/tests/SchemaSetTest.php",
         "packages/ts/tests/schema-set.mjs",
+        "packages/ts/tests/install_changed_database.mjs",
         "packages/php/tests/case_database.php",
         "packages/ts/tests/case-database.mjs",
         "packages/go/decimalmodel/schema_set_test.go",
@@ -4196,10 +4197,11 @@
         },
         {
           "id": "install-register-typescript",
-          "command": "node packages/ts/tests/schema-set.mjs register_sends_no_statement install_verifies_the_database external_documents",
+          "command": "node packages/ts/tests/schema-set.mjs register_sends_no_statement external_documents && node packages/ts/tests/install_changed_database.mjs",
           "shard": "other",
           "inputs": [
             "packages/ts/tests/schema-set.mjs",
+            "packages/ts/tests/install_changed_database.mjs",
             "packages/ts/tests/case-database.mjs",
             "contracts/fixtures/install/changed_database.json"
           ]
