@@ -806,6 +806,15 @@ test-servers-stop:
 	$(BUILD_LEASE)
 	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts stop
 
+# worktree-remove WORKTREE=<path> removes a worktree of this repository: it first stops the servers that run from the
+# .runtime/servers of that worktree (its make test-servers-stop, which knows them by their pid files), since a server
+# whose data directory is removed under it never exits, and then runs git worktree remove.
+.PHONY: worktree-remove
+worktree-remove:
+	@test -n "$(WORKTREE)" || { echo "usage: make worktree-remove WORKTREE=<path>" >&2; exit 2; }
+	$(MAKE) -C "$(WORKTREE)" test-servers-stop
+	git worktree remove "$(WORKTREE)"
+
 # test-servers-leases lists the lease holders of the servers, and test-servers-leases-clear, when a holder process is gone,
 # deletes dead leases (those whose holder and releaser have both ended) and records what it deleted. A dead lease may also be taken by the next request (tests/lease).
 SERVERS_LEASES = $(abspath .runtime/servers.leases)

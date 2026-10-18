@@ -12,7 +12,9 @@
 // start initializes the primaries and replicas, creates the databases orm_test and orm_tools, starts the poolers, and
 // writes the environment file .runtime/servers/env last. Each run creates its own bench and decimal databases
 // (scripts/check/databases.mts). When that file exists, start rewrites it for the running servers and changes nothing
-// else. A failed start stops the servers it started and keeps the logs in .runtime/servers. stop stops the servers that
+// else. When the file is missing or a server of it is not running, start first stops the servers whose pid files remain
+// under .runtime/servers (stopEarlierStart) and starts afresh. A failed start stops the servers it started and keeps the
+// logs in .runtime/servers. stop stops the servers that
 // start started and removes .runtime/servers.
 //
 // Each replica applies every change of its primary. The PostgreSQL primary names the replica in
@@ -234,6 +236,17 @@ function stopServers(p: Paths): void {
   }
 }
 
+// stopEarlierStart stops the servers that an earlier start left on the data directories of <p> and removes them, so a
+// start never leaves a second server pair running on one datadir. A server is known only by its pid file in <p>.dir,
+// which the server wrote when it was started on that datadir (mysqld --pid-file, PostgreSQL postmaster.pid, the
+// poolers' <name>.pid): never by a search of the process names. The caller holds the exclusive lease.
+export function stopEarlierStart(p: Paths): void {
+  if (!existsSync(p.dir)) return;
+  console.log(`test-servers: stopping the servers of the earlier start under ${p.dir}`);
+  stopServers(p);
+  rmSync(p.dir, { recursive: true, force: true });
+}
+
 const allRunning = (p: Paths): boolean => pidRunning(p.mysqlPid) && pidRunning(p.mysqlReplicaPid) && postgresRunning(p.postgresData) &&
   postgresRunning(p.postgresReplicaData) && pidRunning(p.proxysqlPid) && pidRunning(p.pgbouncerPid);
 
@@ -441,9 +454,8 @@ const TOOLS = ['mysqld', 'initdb', 'postgres', 'pg_ctl', 'pg_basebackup', 'proxy
 const onPath = (tool: string): boolean => spawnSync('sh', ['-c', 'command -v "$1"', 'sh', tool], { stdio: 'ignore' }).status === 0;
 
 async function start(p: Paths): Promise<void> {
-  if (existsSync(p.env)) {
+  if (existsSync(p.env) && allRunning(p)) {
     const ports = environmentPorts(readFileSync(p.env, 'utf8'), p.env);
-    if (!allRunning(p)) throw new TestServerError(`test-servers: ${p.env} exists but a server is not running; run make test-servers-stop`);
     // The running servers keep their data; a MySQL setting that differs from the declared one moves the data into newly
     // initialized directories.
     run(process.execPath, [join(ROOT, 'scripts/test-servers-mysql.mts'), join(ROOT, 'scripts/test-servers.mts'), p.dir, String(ports.mysql), String(ports.mysqlReplica), String(MYSQL_LOWER_CASE)],
@@ -453,7 +465,6 @@ async function start(p: Paths): Promise<void> {
     process.stdout.write(readFileSync(p.env, 'utf8'));
     return;
   }
-  if (existsSync(p.dir)) throw new TestServerError(`test-servers: ${p.dir} holds an incomplete start; run make test-servers-stop`);
   const [socketError] = socketPathErrors(p.sockets);
   if (socketError) throw new TestServerError(socketError);
   for (const tool of TOOLS)
@@ -466,6 +477,8 @@ async function start(p: Paths): Promise<void> {
   if (mysql === undefined || postgres === undefined || mysqlReplica === undefined || postgresReplica === undefined || proxysql === undefined || pgbouncer === undefined) throw new TestServerError('test-servers: scripts/free-ports.mts chose fewer than 6 ports');
   const ports: Ports = { mysql, postgres, mysqlReplica, postgresReplica, proxysql, pgbouncer };
   holdExclusive(p);
+  // An incomplete or partly stopped earlier start may still run servers on these datadirs; they stop first.
+  stopEarlierStart(p);
   mkdirSync(p.dir, { recursive: true });
   socketDir(p);
   try {

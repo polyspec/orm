@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { createServer } from 'node:net';
 import { isolatedEnvironment } from '../tests/environment.mts';
 import { caseTest, COMPUTE, DATABASE } from '../tests/testcase.mts';
-import { environment, MYSQLD_BINLOG, mysqldArguments, paths, stopPid } from './test-servers.mts';
+import { environment, MYSQLD_BINLOG, mysqldArguments, paths, stopEarlierStart, stopPid } from './test-servers.mts';
 
 // processState is the state that ps reports for a process, empty when it is gone. exited is whether it has ended: an ended
 // process is gone, or a zombie (state Z) until the process that adopted it reaps it, and kill(pid, 0) still succeeds on a
@@ -40,6 +40,31 @@ read state < ${ready}`], { timeout: 10_000 });
     }
   } finally {
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// The earlier-start case leaves a fake server running on the datadir of an earlier start, known by its pid file under
+// .runtime/servers, and checks that stopEarlierStart, which start runs before it starts servers, stops it on its exit
+// event and removes the directory. No database starts.
+caseTest('a start first stops the server an earlier start left on its datadir, by its pid file', COMPUTE, () => {
+  const { LEASE: lease, STOP_PROCESS: stopProcess } = process.env;
+  assert.ok(lease && stopProcess, 'LEASE or STOP_PROCESS is unset; run make test-servers-check, which builds them');
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'orm-earlier-')));
+  const p = paths(root, join(root, 'sockets'));
+  try {
+    mkdirSync(p.dir, { recursive: true });
+    const ready = join(root, 'ready');
+    const server = spawnSync('sh', ['-c', `mkfifo ${ready}
+sh -c 'trap "kill \\$child; exit 0" TERM; sleep 30 & child=$!; echo ready > ${ready}; wait' >/dev/null 2>&1 &
+echo $! > ${p.proxysqlPid}
+read state < ${ready}`], { timeout: 10_000 });
+    assert.equal(server.status, 0, String(server.stderr));
+    const pid = Number(readFileSync(p.proxysqlPid, 'utf8').trim());
+    stopEarlierStart(p);
+    assert.ok(exited(pid), `the server of the earlier start still runs (state ${processState(pid)})`);
+    assert.ok(!existsSync(p.dir), `${p.dir} is kept`);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
   }
 });
 
