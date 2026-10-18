@@ -23,11 +23,11 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
-// CPU 시간 기준값(초)이다.
+// CPU time reference value (seconds).
 const PLAN_CASE_CPU_SECONDS = 5.0;
 
 /**
- * step 의 plans.json object 다(docs/plans.md "Steps"). key 는 이름 순이다.
+ * The plans.json object of the step (docs/plans.md "Steps"). Keys are in name order.
  *
  * @return array<string, mixed>
  */
@@ -155,7 +155,7 @@ final class DbspecPlanTest extends TestCase
         $diagnostics = $parsed->plan === null ? $parsed->diagnostics : Dbspec::diff($source, $parsed->plan)->diagnostics;
         $got = plan_messages($id, 'plan', $diagnostics);
         Assert::assertSame($case['errors'], $got, "$id: errors\nwant " . json_encode($case['errors']) . "\ngot  " . json_encode($got));
-        // step 도 diff 와 같은 diagnostic 으로 거절한다.
+        // A step is also rejected with the same diagnostic as the diff.
         if ($parsed->plan !== null) {
             $steps = Dbspec::planSteps($source, $parsed->plan, 'postgres');
             Assert::assertFalse($steps->steps !== null || plan_messages($id, 'plan', $steps->diagnostics) !== $case['errors'], "$id: planSteps does not report the diff diagnostics: " . plan_diagnostics($steps->diagnostics));
@@ -199,7 +199,7 @@ final class DbspecPlanTest extends TestCase
         $id = "plan/parse/{$case['id']}";
 
         $parsed = Dbspec::parsePlan(plan_text($case['plan']));
-        // plan diagnostic 은 message 까지, target diagnostic 은 rule, 줄, 칸까지 비교한다.
+        // Plan diagnostics are compared down to the message, and target diagnostics down to the rule, line and column.
         $got = array_map(static fn(Diagnostic $d): array => [$d->rule, $d->line, $d->column, $d->rule === 'plan' ? $d->message : null], $parsed->diagnostics);
         Assert::assertSame($case['errors'], $got, "$id: errors\nwant " . json_encode($case['errors']) . "\ngot  " . json_encode($got));
         cpuCaseEnd($id, $caseStarted);

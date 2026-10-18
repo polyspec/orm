@@ -20,20 +20,20 @@ use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
-// APPLY_CLEANUP_RUN는 case가 쓰는 SQLite file 이름의 앞부분이다. 뒤에 process id와 file 번호가 붙는다.
+// APPLY_CLEANUP_RUN is the prefix of the SQLite file name the case uses. A process id and a file number follow it.
 const APPLY_CLEANUP_RUN = 'apply_cleanup_php';
 
 
 /**
- * 정한 statement 에 error 를 주입하고 정한 query 를 다른 query 로 바꾸는 SQLite connection.
- * 바꾼 query 는 원래 query 의 parameter 없이 실행한다.
+ * A SQLite connection that injects an error into the chosen statements and replaces the chosen query with another query.
+ * The replacement query runs without the parameters of the original query.
  */
 final class FailingPdo extends PDO
 {
     /**
-     * @param array<string, PDOException> $fail statement 마다 exec 가 던질 error
-     * @param array<string, string> $replace query 마다 대신 보낼 query
-     * @param list<string> $failClose 닫기가 실패하는 query
+     * @param array<string, PDOException> $fail error that exec throws for each statement
+     * @param array<string, string> $replace query to send instead, for each query
+     * @param list<string> $failClose queries whose close fails
      */
     public function __construct(string $path, private readonly array $fail, private readonly array $replace, array $failClose)
     {
@@ -62,11 +62,11 @@ final class FailingPdo extends PDO
     }
 }
 
-/** 바꾼 query 를 parameter 없이 실행하고, 정한 query 의 result 닫기가 실패하는 statement. */
+/** The statement that runs the replaced query without parameters, and whose result close fails for the chosen query. */
 final class FailingStatement extends PDOStatement
 {
     /**
-     * @param list<string> $replacements 바꿔 보낸 query
+     * @param list<string> $replacements queries sent as replacements
      * @param list<string> $failClose
      */
     protected function __construct(private readonly array $replacements, private readonly array $failClose)
@@ -101,7 +101,7 @@ function apply_cleanup_plans(): array
 }
 
 /**
- * 새 SQLite file 위의 FailingPdo.
+ * FailingPdo on a new SQLite file.
  *
  * @param array<string, PDOException> $fail
  * @param array<string, string> $replace
@@ -126,8 +126,8 @@ function failing_pdo(array $fail, array $replace = [], array $failClose = []): F
 }
 
 /**
- * operation 이 failure 로 실패하고 그 뒤 정리 error 가 정확히 cleanup 인지 확인한다.
- * failure 는 기대한 첫 error 인지 판단한다.
+ * Checks that the operation fails with the failure, and that the cleanup error after it is exactly cleanup.
+ * Decides whether the failure is the first expected error.
  *
  * @param Closure(Throwable): bool $failure
  * @param list<Throwable> $cleanup
@@ -145,7 +145,7 @@ function want_cleanup(Closure $operation, Closure $failure, array $cleanup): voi
     Assert::fail('succeeded; want the failure with the cleanup errors');
 }
 
-/** operation 이 메시지가 want 인 error 로 실패하는지 확인한다. */
+/** Checks that the operation fails with an error whose message is want. */
 function want_message(Closure $operation, string $want): void
 {
     try {

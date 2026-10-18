@@ -18,7 +18,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
-// CPU 시간 기준값(초)이다.
+// CPU time reference value (seconds).
 const MERMAID_CASE_CPU_SECONDS = 5.0;
 
 /** The vectors of tests/dbspec/mermaid.json. */
@@ -43,8 +43,8 @@ function mermaid_drops(array $dropped): array
 
 
 /**
- * Mermaid 가 옮기는 table, column, primary key, foreign key 를 table 이름 순서의 줄로 쓴다.
- * foreign key action 은 Mermaid 가 옮기지 않으므로 뺀다.
+ * Writes the tables, columns, primary keys and foreign keys that Mermaid translates as lines sorted by table name.
+ * Foreign key actions are left out, since Mermaid does not translate them.
  *
  * @return list<string>
  */

@@ -1,15 +1,15 @@
 <?php
 declare(strict_types=1);
 
-// Polyspec\Orm\Dbspec\Native의 class 선언을 Reflection으로 읽어 JSON으로 출력한다: class와 그 modifier, 부모와
-// interface, 상수와 값, property의 modifier, type과 기본값, 메서드의 modifier, 인자와 return type.
+// Reads the class declarations of Polyspec\Orm\Dbspec\Native with Reflection and prints them as JSON: each class and its modifiers, parent and
+// interfaces, constants and values, property modifiers, types and defaults, method modifiers, arguments and return types.
 //
 // Usage: php -d extension=<orm_dbspec library> declarations.php extension
 //        php declarations.php stub
 //        php declarations.php client
-// extension은 load한 확장 orm_dbspec이 등록한 class를, stub은 stubs/orm_dbspec.stub.php가 선언한
-// class를 읽는다. 두 출력이 같아야 한다(DeclarationsTest.php). client는 PHP client의 Polyspec\Orm\Dbspec에서 @internal이
-// 아닌 class를 Polyspec\Orm\Dbspec\Native의 이름으로 읽는다: 확장은 그 class의 public 선언을 같게 가져야 한다.
+// The extension reads the classes that the loaded extension orm_dbspec registers, and the stub reads the
+// classes that stubs/orm_dbspec.stub.php declares. The two outputs must match (DeclarationsTest.php). The client reads the PHP client's Polyspec\Orm\Dbspec
+// classes that are not @internal as Polyspec\Orm\Dbspec\Native names: the extension must have the same public declarations for each class.
 
 const NATIVE_NAMESPACE = 'Polyspec\\Orm\\Dbspec\\Native\\';
 
@@ -45,7 +45,7 @@ if ($mode === 'extension') {
     fwrite(STDERR, "usage: php declarations.php extension|stub|client\n");
     exit(2);
 }
-// client의 이름과 self는 확장의 이름으로 읽는다.
+// The client's name and self are read as the extension's name.
 $native = static fn(string $text, string $class): string => preg_replace(['/\\bPolyspec\\\\Orm\\\\Dbspec\\\\(?!Native\\\\)/', '/\\bself\\b/'], ['Polyspec\\Orm\\Dbspec\\Native\\', $class], $text);
 
 $type = static fn(?ReflectionType $t): string => $t === null ? '' : (string) $t;
@@ -84,7 +84,7 @@ foreach ($classes as $source) {
     }
 }
 if ($client) {
-    // client는 public 선언만 확장과 비교하고, 이름과 self를 확장의 것으로 읽는다.
+    // The client compares only the public declarations with the extension, and reads its name and self as the extension's.
     $public = [];
     foreach ($out as $key => $value) {
         if (str_contains($key, '::') && !str_starts_with($value, 'public') && !str_starts_with($value, 'final public') && !str_starts_with($value, 'abstract public')) {
