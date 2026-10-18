@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: fa25a937adf2477decd6895faeb05d32d98efce8293a7e424e227b3143b309b9 -->
+<!-- source-sha256: 0cd7c2f417293747a89c4f761d7938f385fee380942c6b85bc26fbc204828aae -->
 # 변경 이력
 
 ## Unreleased
+- 공유 vector가 고정하지 않는 PHP dbspec 동작을 PHP library에서 기록한 결과를 가진 case로 두어, test 하나가 Polyspec\Orm\Dbspec의 각 구현을 자기 process에서 검사한다(T182-0-1).
 - PHP library가 array에 다른 type을 담은 document, document set, plan 목록, unsupported 목록을 경고와 함께 읽지 않고, extension과 같은 TypeError로 거부한다(T182-0-1-1).
 - PHP extension이 docs/errors.yaml의 error code를 `orm-gen errors --lang php-extension`이 쓰는 stub에서 Polyspec\Orm\Native\Code로 등록한다(T182-1).
 - PHP extension의 mirror dbspec test가 다시 PHP client와 같은 본문을 갖는다(T131-11).

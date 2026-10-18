@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The PHP dbspec behaviours that no shared vector fixes are cases with outcomes recorded from the PHP library, so one test checks either implementation of Polyspec\Orm\Dbspec in its own process (T182-0-1).
 - The PHP library refuses a document, document set, plan list or unsupported list whose array holds another type with the TypeError the extension gives, instead of reading it with warnings (T182-0-1-1).
 - The PHP extension registers the error codes of docs/errors.yaml as Polyspec\Orm\Native\Code, from a stub that `orm-gen errors --lang php-extension` writes (T182-1).
 - The PHP extension's mirrored dbspec tests have the same bodies as the PHP client's again (T131-11).
