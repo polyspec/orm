@@ -19,7 +19,7 @@ fn diagnostics(path: &str, errors: Vec<dbspec::Diagnostic>) -> String {
 /// Loads the document set that `dbspec::read_set` read: each file's bytes go to `dbspec::read_bytes`
 /// with its joined path, and each document whose bytes pass is parsed with every other such
 /// document as its declared document set; every diagnostic of every file is reported together.
-/// The external documents are marked `external`; their tables do not become models.
+/// The external documents are marked `external`; their used tables become external models.
 pub fn load_set(files: &dbspec::Set) -> Result<DocumentSet, String> {
     let mut paths = (Vec::new(), Vec::new());
     let mut texts = (Vec::new(), Vec::new());

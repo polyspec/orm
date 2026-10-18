@@ -52,7 +52,7 @@ impl Manifest {
     }
 
     /// Makes the runtime model of the manifest text and the external text (tables the set uses from external documents), and checks that the hash of the two texts is
-    /// `manifest_hash`. Tables from external documents are not entities.
+    /// `manifest_hash`. A used table of an external document is an external entity.
     pub fn load_set(manifest_text: &str, external_text: &str, manifest_hash: &str) -> Result<Manifest> {
         let documents = documents(manifest_text, external_text, manifest_hash)?;
         let refs: Vec<&Document> = documents.iter().collect();

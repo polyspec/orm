@@ -977,6 +977,22 @@
       }
     },
     {
+      "name": "external_read",
+      "chain": "NoteReader relation(SharedNote-\u003ematchSharedNoteSeqWithSeq())-\u003eorderBySeqAsc()-\u003egets() reading getSharedNoteModel()-\u003egetTitle(); SharedNote seq(NoteReader-\u003eaddColumnSharedNoteSeq())-\u003eorderBySeqAsc()-\u003egets(); SharedNote setSeq(9)-\u003esetTitle('written')-\u003ecreate(): shared_note is a table of the external document bench_shared, read through its entity, and the write fails with CONFIG before any statement (docs/dbspec.md \"External documents\")",
+      "calls": [
+        "relation",
+        "matchSharedNoteSeqWithSeq",
+        "orderBySeqAsc",
+        "gets",
+        "seq",
+        "addColumnSharedNoteSeq",
+        "setSeq",
+        "setTitle",
+        "create"
+      ],
+      "expect": null
+    },
+    {
       "name": "subqueries",
       "chain": "addColumnReadTotal(fn -\u003e sumReadCount()-\u003euserSeqEqSeq(u)); seq(model-\u003eaddColumnUserSeq())",
       "calls": [

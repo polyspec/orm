@@ -10,8 +10,8 @@ use std::sync::{Arc, Mutex};
 polyspec_orm::models!();
 
 use model::{
-    Author, BindCell, ClockCell, CompositeAccount, DayCell, HexCell, Service, ServiceMember, ServiceRegion, SoftLink, SoftRecord, Task, TimeCell, UpsertCell, User,
-    UuidCell,
+    Author, BindCell, ClockCell, CompositeAccount, DayCell, HexCell, NoteReader, Service, ServiceMember, ServiceRegion, SharedNote, SoftLink, SoftRecord, Task,
+    TimeCell, UpsertCell, User, UuidCell,
 };
 use polyspec_orm::{AesKeyring, Collection, Db, Model, Null, Param};
 use serde_json::{json, Map, Value};
@@ -494,6 +494,23 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
             Ok(rows) => Ok::<Value, polyspec_orm::Error>(json!(rows.len())),
             Err(e) => Ok(json!({"error": code(&e), "message": e.to_string()})),
         }
+    });
+    // shared_note is a table of the external document bench_shared: it is read through its entity, and a write fails
+    // with CONFIG before any statement (docs/dbspec.md "External documents").
+    run!("external_read", async {
+        let readers = NoteReader::new().connect(db).relation(SharedNote::new().match_shared_note_seq_with_seq()).order_by_seq_asc().gets().await?;
+        let mut related = Vec::new();
+        for r in readers.models() {
+            let note = r.get_shared_note_model()?.ok_or(polyspec_orm::Error::NoRows)?;
+            related.push(json!([r.get_seq()?, note.get_title()?]));
+        }
+        let notes = SharedNote::new().connect(db).seq(NoteReader::new().add_column_shared_note_seq()).order_by_seq_asc().gets().await?;
+        let mut titles = Vec::new();
+        for n in notes.models() {
+            titles.push(json!(n.get_title()?));
+        }
+        let write = code_of(SharedNote::new().connect(db).set_seq(9).set_title("written").create().await);
+        Ok::<Value, polyspec_orm::Error>(json!({"relation": related, "subquery": titles, "write": write}))
     });
     run!("subqueries", async {
         let users = User::new()

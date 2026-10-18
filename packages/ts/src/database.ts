@@ -745,7 +745,7 @@ export class Db {
     const table = present(tables[0], 'the audited table');
     let target: { model: RuntimeModel; entity: Entity } | undefined;
     for (const engine of engines) {
-      for (const entity of engine.model.entities.values()) if (entity.table === table) target = { model: engine.model, entity };
+      for (const entity of engine.model.entities.values()) if (entity.table === table && !entity.external) target = { model: engine.model, entity };
     }
     if (target === undefined) throw new OrmError(codes.CONFIG, `the audit record table ${table} is not a table of a set registered on the connection`);
     if (target.entity.primaryKey.length !== 1) throw new OrmError(codes.CONFIG, `the audit record table ${table} needs a primary key of one column`);

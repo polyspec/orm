@@ -28,7 +28,7 @@ final class CompositeMembership extends Model
             ],
             'unique' => [],
             'indexes' => [],
-            'manifest_hash' => 'sha256:18b7c53c3dd768b76732c743c89659ec5dd7a1cdc2a818b7792d389740e50a88',
+            'manifest_hash' => 'sha256:e82672f09b5852725e8b4d17ad0500b3d8ef5fbeeeee1c04c7e2b1ec0b9bb785',
         ];
     }
 

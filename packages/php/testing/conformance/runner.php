@@ -13,6 +13,8 @@ use Polyspec\Orm\Tests\Model\BindCell;
 use Polyspec\Orm\Tests\Model\ClockCell;
 use Polyspec\Orm\Tests\Model\CompositeAccount;
 use Polyspec\Orm\Tests\Model\HexCell;
+use Polyspec\Orm\Tests\Model\NoteReader;
+use Polyspec\Orm\Tests\Model\SharedNote;
 use Polyspec\Orm\Tests\Model\DayCell;
 use Polyspec\Orm\Tests\Model\TimeCell;
 use Polyspec\Orm\Tests\Model\Service;
@@ -291,6 +293,26 @@ vector('relation_null_key', function () use ($db): int|array {
         // a nullable key_by is refused by the engine (IR_INVALID): that refusal is the result, not a crash.
         return ['error' => 'IR_INVALID', 'message' => $e->getMessage()];
     }
+});
+
+// shared_note is a table of the external document bench_shared: it is read through its entity, and a write fails
+// with CONFIG before any statement (docs/dbspec.md "External documents").
+vector('external_read', function () use ($db): array {
+    $related = array_map(
+        static fn(NoteReader $r): array => [$r->getSeq(), $r->getSharedNoteModel()->getTitle()],
+        (new NoteReader)($db)->relation((new SharedNote)->matchSharedNoteSeqWithSeq())->orderBySeqAsc()->gets()->all(),
+    );
+    $titles = array_map(
+        static fn(SharedNote $n): string => $n->getTitle(),
+        (new SharedNote)($db)->seq((new NoteReader)->addColumnSharedNoteSeq())->orderBySeqAsc()->gets()->all(),
+    );
+    $write = null;
+    try {
+        (new SharedNote)($db)->setSeq(9)->setTitle('written')->create();
+    } catch (Throwable $e) {
+        $write = code($e);
+    }
+    return ['relation' => $related, 'subquery' => $titles, 'write' => $write];
 });
 
 vector('subqueries', fn() => array_map(

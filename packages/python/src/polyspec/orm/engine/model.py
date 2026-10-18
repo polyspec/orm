@@ -1,6 +1,7 @@
 # Runtime model made from the dbspec document set (docs/dbspec.md "Runtime model").
 # The generated code holds the manifest text and manifestHash; the runtime parses the text once
 # and obtains the entities, fields, keys, codec stages, and settings.
+import dataclasses
 from dataclasses import dataclass
 
 from polyspec.orm import codes
@@ -78,6 +79,9 @@ class Entity:
     audit_column: str
     # Audit record table of the `audit` setting (the references table), or ''.
     audit_record: str
+    # True for a used table of an external document: it is read like any entity, and every
+    # write fails with CONFIG before any statement (docs/dbspec.md "External documents").
+    external: bool = False
 
 
 @dataclass(frozen=True)
@@ -90,7 +94,7 @@ class RuntimeModel:
     external_text: str
     # Parsed documents of the set, in document name order; external documents are marked external.
     documents: tuple
-    # Entities of the owned documents, in name order. External tables are not entities.
+    # Entities of the owned documents and the used tables of external documents, in name order.
     entities: dict
 
     @staticmethod
@@ -214,6 +218,21 @@ def _entity_of_table(t) -> Entity:
     )
 
 
+def _external_entity(t) -> Entity:
+    """The external entity of a used table of an external document: the table reduced to its columns,
+    primary key and unique keys, as the external text holds it, so a model built from the documents equals
+    one built from that text."""
+    reduced = dataclasses.replace(
+        t,
+        primary_key=dataclasses.replace(t.primary_key, comments=()),
+        indexes=(),
+        foreign_keys=(),
+        checks=(),
+        settings=None,
+    )
+    return dataclasses.replace(_entity_of_table(reduced), external=True)
+
+
 def model_of_documents(documents) -> RuntimeModel:
     """Runtime model of the parsed documents. A set must have a manifest."""
 
@@ -226,11 +245,20 @@ def model_of_documents(documents) -> RuntimeModel:
         )
     entities = {}
     ordered = sorted(documents, key=lambda d: d.name)
+    # The tables that owned documents use from each external document.
+    used: dict = {}
     for document in ordered:
-        if document.external is True:
-            continue
+        if document.external is not True:
+            for use in document.uses:
+                used.setdefault(use.document, []).extend(use.tables)
+    for document in ordered:
         for table in document.tables:
-            entity = _entity_of_table(table)
+            if document.external is True:
+                if table.name not in used.get(document.name, ()):
+                    continue
+                entity = _external_entity(table)
+            else:
+                entity = _entity_of_table(table)
             if entity.name in entities:
                 raise OrmError(
                     codes.SCHEMA_INVALID,

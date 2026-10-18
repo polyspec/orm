@@ -83,7 +83,7 @@ fn audit_record(db: &Db, values: &AuditValues) -> Result<AuditInsert> {
     tables.sort();
     let target = match tables.as_slice() {
         [] => return Err(Error::Config("the transaction has audit values but no set of the connection has an audited table".into())),
-        [table] => models.iter().find_map(|(schema, manifest)| manifest.model.entities.iter().find(|e| &e.table == table).map(|e| (*schema, e.clone()))),
+        [table] => models.iter().find_map(|(schema, manifest)| manifest.model.entities.iter().find(|e| &e.table == table && !e.external).map(|e| (*schema, e.clone()))),
         _ => {
             return Err(Error::Config(format!(
                 "the audited tables of the connection record their audits in {}; one audit record table is required",

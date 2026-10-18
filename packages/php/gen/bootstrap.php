@@ -11,7 +11,7 @@ use Polyspec\Orm\Registry;
 use Polyspec\Orm\Schema;
 
 /** The manifestHash of the document set the models were generated from. */
-const MANIFEST_HASH = 'sha256:18b7c53c3dd768b76732c743c89659ec5dd7a1cdc2a818b7792d389740e50a88';
+const MANIFEST_HASH = 'sha256:e82672f09b5852725e8b4d17ad0500b3d8ef5fbeeeee1c04c7e2b1ec0b9bb785';
 
 /** The manifest text of the document set the models were generated from. */
 const MANIFEST_TEXT = 'dbspec 1 bench
@@ -239,12 +239,33 @@ table bind_cell {
   token uuid null
   primary key (seq)
 }
+dbspec 1 bench_reader
+
+use bench_shared { shared_note }
+
+table note_reader {
+  seq i64
+  shared_note_seq i64
+  primary key (seq)
+  index ix_note_reader_shared_note (shared_note_seq)
+  foreign key fk_note_reader_shared_note (shared_note_seq) references shared_note (seq) on delete restrict on update restrict
+}
+';
+
+/** The tables that the set uses from external documents, which other sets own. */
+const EXTERNAL_TEXT = 'dbspec 1 bench_shared
+
+table shared_note {
+  seq i64
+  title varchar(191)
+  primary key (seq)
+}
 ';
 
 /** The generated schema value: install takes it to create the tables and register the set. */
 function schema(): Schema
 {
-    return new Schema(MANIFEST_TEXT, MANIFEST_HASH);
+    return new Schema(MANIFEST_TEXT, MANIFEST_HASH, EXTERNAL_TEXT);
 }
 
 /** Opens the database selected by the DSN URI and registers the set of these models on the connection. */
@@ -253,7 +274,7 @@ function connect(string $dsn, Config $config): Db
     return Orm::connectSchema($dsn, schema(), $config);
 }
 
-Registry::generated(MANIFEST_HASH, MANIFEST_TEXT);
+Registry::generated(MANIFEST_HASH, MANIFEST_TEXT, EXTERNAL_TEXT);
 Registry::register(Author::class);
 Registry::register(User::class);
 Registry::register(Service::class);
@@ -274,3 +295,5 @@ Registry::register(DayCell::class);
 Registry::register(UpsertCell::class);
 Registry::register(UuidCell::class);
 Registry::register(BindCell::class);
+Registry::register(NoteReader::class);
+Registry::register(SharedNote::class);

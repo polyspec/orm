@@ -1,1 +1,1 @@
-{"schema": 1, "documents": ["bench.dbs"]}
+{"schema": 1, "documents": ["bench.dbs", "bench_reader.dbs"], "external": ["bench_shared.dbs"]}

@@ -227,19 +227,40 @@ table bind_cell {
   token uuid null
   primary key (seq)
 }
+dbspec 1 bench_reader
+
+use bench_shared { shared_note }
+
+table note_reader {
+  seq i64
+  shared_note_seq i64
+  primary key (seq)
+  index ix_note_reader_shared_note (shared_note_seq)
+  foreign key fk_note_reader_shared_note (shared_note_seq) references shared_note (seq) on delete restrict on update restrict
+}
 `;
 
-export const MANIFEST_HASH = 'sha256:18b7c53c3dd768b76732c743c89659ec5dd7a1cdc2a818b7792d389740e50a88';
+export const MANIFEST_HASH = 'sha256:e82672f09b5852725e8b4d17ad0500b3d8ef5fbeeeee1c04c7e2b1ec0b9bb785';
+
+/** The text of the tables that the document set uses from external documents. */
+export const EXTERNAL_TEXT = `dbspec 1 bench_shared
+
+table shared_note {
+  seq i64
+  title varchar(191)
+  primary key (seq)
+}
+`;
 
 /** The generated schema value: install takes it to create the tables and register the set. */
-export const SCHEMA: Schema = { manifestText: MANIFEST_TEXT, manifestHash: MANIFEST_HASH };
+export const SCHEMA: Schema = { manifestText: MANIFEST_TEXT, manifestHash: MANIFEST_HASH, externalText: EXTERNAL_TEXT };
 
 /** Opens the database selected by the DSN URI and registers the set of these models on the connection. */
 export function connect(dsn: string, options: ConnectOptions = {}): Promise<Db> {
   return Db.connectSchema(dsn, SCHEMA, options);
 }
 
-const model = registerModel(MANIFEST_TEXT, MANIFEST_HASH);
+const model = registerModel(MANIFEST_TEXT, MANIFEST_HASH, EXTERNAL_TEXT);
 
 /** The entity `name` of the model set, which registerModel built from the manifest. */
 function modelEntity(name: string): EntityDef['entity'] {
@@ -620,7 +641,7 @@ export class Author extends Model {
   declare andSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare andServiceSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare andStartDt: (...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) => this;
-  declare andSuccessCountLtSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
+  declare andSuccessCountLtSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) => this;
   declare andUuid: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
   declare betweenReadCount: (v0: readonly [number, number]) => this;
   declare betweenStartDt: (v0: readonly [string | Date, string | Date]) => this;
@@ -637,18 +658,18 @@ export class Author extends Model {
   declare gtStartDt: (...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]) => this;
   declare isClose: (v0: boolean | readonly (boolean)[] | ValueFunction | Model) => this;
   declare isDisplay: (v0: boolean | readonly (boolean)[] | ValueFunction | Model) => this;
-  declare joinNameWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
-  declare joinReadCountWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
-  declare joinServiceMemberSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
-  declare joinServiceSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
-  declare joinUserSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
-  declare leftJoinServiceRegionSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
-  declare leftJoinUserSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
+  declare joinNameWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) => this;
+  declare joinReadCountWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) => this;
+  declare joinServiceMemberSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) => this;
+  declare joinServiceSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) => this;
+  declare joinUserSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) => this;
+  declare leftJoinServiceRegionSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) => this;
+  declare leftJoinUserSeqWithSeq: (child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) => this;
   declare likeCount: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare ltReadCount: (v0: number | ValueFunction) => this;
   declare matchSeqWithUserSeq: () => this;
   declare name: (v0: string | readonly (string)[] | ValueFunction | Model) => this;
-  declare nameEqSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
+  declare nameEqSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) => this;
   declare nePhotoUrl: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
   declare newLabel: (value: unknown) => this;
   declare orGtReadCount: (v0: number | ValueFunction) => this;
@@ -657,17 +678,17 @@ export class Author extends Model {
   declare phoneBlindIndex: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
   declare photoUrl: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
   declare price: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
-  declare priceEqSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
+  declare priceEqSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) => this;
   declare readCount: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
-  declare readCountGtSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
-  declare readCountLtSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
+  declare readCountGtSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) => this;
+  declare readCountLtSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) => this;
   declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare serviceMemberSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare serviceRegionSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare serviceSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare startDt: (...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) => this;
   declare userSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
-  declare userSeqEqSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell) => this;
+  declare userSeqEqSeq: (v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | SoftLink | Account | Project | Task | HexCell | TimeCell | ClockCell | DayCell | UpsertCell | UuidCell | BindCell | NoteReader | SharedNote) => this;
   declare uuid: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
   /** Returns the author relation result; T is its model type. */
   declare getAuthorModels: <T = unknown>() => T;
@@ -685,6 +706,8 @@ export class Author extends Model {
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
   declare getServiceRegionModel: <T = unknown>() => T;
+  /** Returns the shared_note relation result; T is its model type. */
+  declare getSharedNoteModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
   declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
@@ -743,6 +766,8 @@ export class User extends Model {
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
   declare getServiceRegionModel: <T = unknown>() => T;
+  /** Returns the shared_note relation result; T is its model type. */
+  declare getSharedNoteModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
   declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
@@ -802,6 +827,8 @@ export class Service extends Model {
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
   declare getServiceRegionModel: <T = unknown>() => T;
+  /** Returns the shared_note relation result; T is its model type. */
+  declare getSharedNoteModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
   declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
@@ -870,6 +897,8 @@ export class ServiceRegion extends Model {
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
   declare getServiceRegionModel: <T = unknown>() => T;
+  /** Returns the shared_note relation result; T is its model type. */
+  declare getSharedNoteModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
   declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
@@ -948,6 +977,8 @@ export class ServiceMember extends Model {
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
   declare getServiceRegionModel: <T = unknown>() => T;
+  /** Returns the shared_note relation result; T is its model type. */
+  declare getSharedNoteModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
   declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
@@ -1018,6 +1049,8 @@ export class CompositeAccount extends Model {
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
   declare getServiceRegionModel: <T = unknown>() => T;
+  /** Returns the shared_note relation result; T is its model type. */
+  declare getSharedNoteModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
   declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
@@ -1089,6 +1122,8 @@ export class CompositeMembership extends Model {
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
   declare getServiceRegionModel: <T = unknown>() => T;
+  /** Returns the shared_note relation result; T is its model type. */
+  declare getSharedNoteModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
   declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
@@ -1151,6 +1186,8 @@ export class SoftRecord extends Model {
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
   declare getServiceRegionModel: <T = unknown>() => T;
+  /** Returns the shared_note relation result; T is its model type. */
+  declare getSharedNoteModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
   declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
@@ -1222,6 +1259,8 @@ export class SoftLink extends Model {
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
   declare getServiceRegionModel: <T = unknown>() => T;
+  /** Returns the shared_note relation result; T is its model type. */
+  declare getSharedNoteModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
   declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
@@ -1275,6 +1314,8 @@ export class Account extends Model {
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
   declare getServiceRegionModel: <T = unknown>() => T;
+  /** Returns the shared_note relation result; T is its model type. */
+  declare getSharedNoteModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
   declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
@@ -1326,6 +1367,8 @@ export class Project extends Model {
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
   declare getServiceRegionModel: <T = unknown>() => T;
+  /** Returns the shared_note relation result; T is its model type. */
+  declare getSharedNoteModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
   declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
@@ -1388,6 +1431,8 @@ export class AccountProject extends Model {
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
   declare getServiceRegionModel: <T = unknown>() => T;
+  /** Returns the shared_note relation result; T is its model type. */
+  declare getSharedNoteModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
   declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
@@ -1449,6 +1494,8 @@ export class Task extends Model {
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
   declare getServiceRegionModel: <T = unknown>() => T;
+  /** Returns the shared_note relation result; T is its model type. */
+  declare getSharedNoteModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
   declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
@@ -1511,6 +1558,8 @@ export class HexCell extends Model {
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
   declare getServiceRegionModel: <T = unknown>() => T;
+  /** Returns the shared_note relation result; T is its model type. */
+  declare getSharedNoteModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
   declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
@@ -1574,6 +1623,8 @@ export class TimeCell extends Model {
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
   declare getServiceRegionModel: <T = unknown>() => T;
+  /** Returns the shared_note relation result; T is its model type. */
+  declare getSharedNoteModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
   declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
@@ -1655,6 +1706,8 @@ export class ClockCell extends Model {
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
   declare getServiceRegionModel: <T = unknown>() => T;
+  /** Returns the shared_note relation result; T is its model type. */
+  declare getSharedNoteModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
   declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
@@ -1725,6 +1778,8 @@ export class DayCell extends Model {
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
   declare getServiceRegionModel: <T = unknown>() => T;
+  /** Returns the shared_note relation result; T is its model type. */
+  declare getSharedNoteModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
   declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
@@ -1789,6 +1844,8 @@ export class UpsertCell extends Model {
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
   declare getServiceRegionModel: <T = unknown>() => T;
+  /** Returns the shared_note relation result; T is its model type. */
+  declare getSharedNoteModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
   declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
@@ -1843,6 +1900,8 @@ export class UuidCell extends Model {
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
   declare getServiceRegionModel: <T = unknown>() => T;
+  /** Returns the shared_note relation result; T is its model type. */
+  declare getSharedNoteModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
   declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */
@@ -1912,6 +1971,125 @@ export class BindCell extends Model {
   declare getServiceMemberModels: <T = unknown>() => T;
   /** Returns the service_region relation result; T is its model type. */
   declare getServiceRegionModel: <T = unknown>() => T;
+  /** Returns the shared_note relation result; T is its model type. */
+  declare getSharedNoteModel: <T = unknown>() => T;
+  /** Returns the value or relation result named StartMonth. */
+  declare getStartMonth: <T = unknown>() => T;
+  /** Returns the user relation result; T is its model type. */
+  declare getUserModel: <T = unknown>() => T;
+  /** Returns the value or relation result named Writer. */
+  declare getWriter: <T = unknown>() => T;
+}
+
+/** A note_reader model or row. */
+export class NoteReader extends Model {
+  public static readonly entity: EntityDef = { model, entity: modelEntity('note_reader'), create: core => new NoteReader(core) };
+  public getSeq(): number { const value = this[CORE].column('seq'); if (typeof value === 'number') return value; throw new TypeError('note_reader.seq holds a value of type ' + typeof value + ', not number'); }
+  public setSeq(value: number): this { this[CORE].setValue('seq', value); return this; }
+  public addColumnSeq(): this { this[CORE].addColumn('seq'); return this; }
+  public removeColumnSeq(): this { this[CORE].removeColumn('seq'); return this; }
+  public groupBySeq(): this { this[CORE].groupBy.push('seq'); return this; }
+  public keyNameSeq(): this { this[CORE].keyName = 'seq'; return this; }
+  public orderBySeqAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('seq', false, fn); return this; }
+  public orderBySeqDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('seq', true, fn); return this; }
+  public plusSeq(n: number): this { this[CORE].putSet({ column: 'seq', value: n, plus: true }); return this; }
+  public minusSeq(n: number): this { this[CORE].putSet({ column: 'seq', value: n, minus: true }); return this; }
+  public sumSeq(): this { this[CORE].aggregate('sum', 'seq'); return this; }
+  public avgSeq(): this { this[CORE].aggregate('avg', 'seq'); return this; }
+  public getSharedNoteSeq(): number { const value = this[CORE].column('shared_note_seq'); if (typeof value === 'number') return value; throw new TypeError('note_reader.shared_note_seq holds a value of type ' + typeof value + ', not number'); }
+  public setSharedNoteSeq(value: number): this { this[CORE].setValue('shared_note_seq', value); return this; }
+  public addColumnSharedNoteSeq(): this { this[CORE].addColumn('shared_note_seq'); return this; }
+  public removeColumnSharedNoteSeq(): this { this[CORE].removeColumn('shared_note_seq'); return this; }
+  public groupBySharedNoteSeq(): this { this[CORE].groupBy.push('shared_note_seq'); return this; }
+  public keyNameSharedNoteSeq(): this { this[CORE].keyName = 'shared_note_seq'; return this; }
+  public orderBySharedNoteSeqAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('shared_note_seq', false, fn); return this; }
+  public orderBySharedNoteSeqDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('shared_note_seq', true, fn); return this; }
+  public plusSharedNoteSeq(n: number): this { this[CORE].putSet({ column: 'shared_note_seq', value: n, plus: true }); return this; }
+  public minusSharedNoteSeq(n: number): this { this[CORE].putSet({ column: 'shared_note_seq', value: n, minus: true }); return this; }
+  public sumSharedNoteSeq(): this { this[CORE].aggregate('sum', 'shared_note_seq'); return this; }
+  public avgSharedNoteSeq(): this { this[CORE].aggregate('avg', 'shared_note_seq'); return this; }
+  public forceIndexIxNoteReaderSharedNote(): this { this[CORE].index = 'ix_note_reader_shared_note'; return this; }
+
+  declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
+  declare sharedNoteSeq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
+  /** Returns the value or relation result named AesHexEmail. */
+  declare getAesHexEmail: <T = unknown>() => T;
+  /** Returns the author relation result; T is its model type. */
+  declare getAuthorModels: <T = unknown>() => T;
+  /** Returns the value or relation result named Members. */
+  declare getMembers: <T = unknown>() => T;
+  /** Returns the value or relation result named Module. */
+  declare getModule: <T = unknown>() => T;
+  /** Returns the value or relation result named Name. */
+  declare getName: <T = unknown>() => T;
+  /** Returns the value or relation result named Owner. */
+  declare getOwner: <T = unknown>() => T;
+  /** Returns the value or relation result named ReadTotal. */
+  declare getReadTotal: <T = unknown>() => T;
+  /** Returns the value or relation result named Record. */
+  declare getRecord: <T = unknown>() => T;
+  /** Returns the service_member relation result; T is its model type. */
+  declare getServiceMemberModels: <T = unknown>() => T;
+  /** Returns the service_region relation result; T is its model type. */
+  declare getServiceRegionModel: <T = unknown>() => T;
+  /** Returns the shared_note relation result; T is its model type. */
+  declare getSharedNoteModel: <T = unknown>() => T;
+  /** Returns the value or relation result named StartMonth. */
+  declare getStartMonth: <T = unknown>() => T;
+  /** Returns the user relation result; T is its model type. */
+  declare getUserModel: <T = unknown>() => T;
+  /** Returns the value or relation result named Writer. */
+  declare getWriter: <T = unknown>() => T;
+}
+
+/** A shared_note model or row. */
+export class SharedNote extends Model {
+  public static readonly entity: EntityDef = { model, entity: modelEntity('shared_note'), create: core => new SharedNote(core) };
+  public getSeq(): number { const value = this[CORE].column('seq'); if (typeof value === 'number') return value; throw new TypeError('shared_note.seq holds a value of type ' + typeof value + ', not number'); }
+  public setSeq(value: number): this { this[CORE].setValue('seq', value); return this; }
+  public addColumnSeq(): this { this[CORE].addColumn('seq'); return this; }
+  public removeColumnSeq(): this { this[CORE].removeColumn('seq'); return this; }
+  public groupBySeq(): this { this[CORE].groupBy.push('seq'); return this; }
+  public keyNameSeq(): this { this[CORE].keyName = 'seq'; return this; }
+  public orderBySeqAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('seq', false, fn); return this; }
+  public orderBySeqDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('seq', true, fn); return this; }
+  public plusSeq(n: number): this { this[CORE].putSet({ column: 'seq', value: n, plus: true }); return this; }
+  public minusSeq(n: number): this { this[CORE].putSet({ column: 'seq', value: n, minus: true }); return this; }
+  public sumSeq(): this { this[CORE].aggregate('sum', 'seq'); return this; }
+  public avgSeq(): this { this[CORE].aggregate('avg', 'seq'); return this; }
+  public getTitle(): string { const value = this[CORE].column('title'); if (typeof value === 'string') return value; throw new TypeError('shared_note.title holds a value of type ' + typeof value + ', not string'); }
+  public setTitle(value: string): this { this[CORE].setValue('title', value); return this; }
+  public addColumnTitle(): this { this[CORE].addColumn('title'); return this; }
+  public removeColumnTitle(): this { this[CORE].removeColumn('title'); return this; }
+  public groupByTitle(): this { this[CORE].groupBy.push('title'); return this; }
+  public keyNameTitle(): this { this[CORE].keyName = 'title'; return this; }
+  public orderByTitleAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('title', false, fn); return this; }
+  public orderByTitleDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('title', true, fn); return this; }
+
+  declare matchSharedNoteSeqWithSeq: () => this;
+  declare seq: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
+  /** Returns the value or relation result named AesHexEmail. */
+  declare getAesHexEmail: <T = unknown>() => T;
+  /** Returns the author relation result; T is its model type. */
+  declare getAuthorModels: <T = unknown>() => T;
+  /** Returns the value or relation result named Members. */
+  declare getMembers: <T = unknown>() => T;
+  /** Returns the value or relation result named Module. */
+  declare getModule: <T = unknown>() => T;
+  /** Returns the value or relation result named Name. */
+  declare getName: <T = unknown>() => T;
+  /** Returns the value or relation result named Owner. */
+  declare getOwner: <T = unknown>() => T;
+  /** Returns the value or relation result named ReadTotal. */
+  declare getReadTotal: <T = unknown>() => T;
+  /** Returns the value or relation result named Record. */
+  declare getRecord: <T = unknown>() => T;
+  /** Returns the service_member relation result; T is its model type. */
+  declare getServiceMemberModels: <T = unknown>() => T;
+  /** Returns the service_region relation result; T is its model type. */
+  declare getServiceRegionModel: <T = unknown>() => T;
+  /** Returns the shared_note relation result; T is its model type. */
+  declare getSharedNoteModel: <T = unknown>() => T;
   /** Returns the value or relation result named StartMonth. */
   declare getStartMonth: <T = unknown>() => T;
   /** Returns the user relation result; T is its model type. */

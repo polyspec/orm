@@ -26,3 +26,7 @@ SELECT setval(pg_get_serial_sequence('"hex_cell"', 'seq'), (SELECT MAX("seq") FR
 -- The authors of service 100 hold a price unless their seq is a multiple of 3, so an order
 -- on price meets NULL and values (vector order_nulls, docs/dialects.md).
 UPDATE "author" SET "price" = "seq" % 7 WHERE "service_seq" = 100 AND "seq" % 3 <> 0;
+
+-- The external table shared_note, which bench_shared.dbs owns, and the owned note_reader rows that reference it.
+INSERT INTO shared_note (seq, title) VALUES (1, 'note-1'), (2, 'note-2'), (3, 'note-3');
+INSERT INTO note_reader (seq, shared_note_seq) VALUES (1, 1), (2, 1), (3, 3);

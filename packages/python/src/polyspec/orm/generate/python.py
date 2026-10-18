@@ -169,14 +169,20 @@ def _static_names(e: Entity) -> set:
 
 def _tuple_names(m: RuntimeModel, e: Entity) -> list:
     """The tuple method names of every key prefix of two or more columns of e: its primary key, unique keys and
-    indexes, read from the table of its document."""
+    indexes, read from the table of its document. An external entity has no index (docs/dbspec.md "External
+    documents")."""
     table = next(
-        t for d in m.documents if not d.external for t in d.tables if t.name == e.table
+        t
+        for d in m.documents
+        if bool(d.external) == e.external
+        for t in d.tables
+        if t.name == e.table
     )
+    indexes = () if e.external else table.indexes
     keys = (
         [list(table.primary_key.columns)]
         + [list(u.columns) for u in table.uniques]
-        + [[c.name for c in i.columns] for i in table.indexes]
+        + [[c.name for c in i.columns] for i in indexes]
     )
     names = set()
     for columns in keys:

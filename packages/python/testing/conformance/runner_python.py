@@ -318,6 +318,8 @@ def load_models():
     UpsertCell = bench.UpsertCell
     UuidCell = bench.UuidCell
     BindCell = bench.BindCell
+    NoteReader = bench.NoteReader
+    SharedNote = bench.SharedNote
     SoftLink = bench.SoftLink
 
 
@@ -628,6 +630,39 @@ def main():
         return len(rows.values())
 
     run("relation_null_key", relation_null_key)
+
+    # shared_note is a table of the external document bench_shared: it is read through its entity, and a
+    # write fails with CONFIG before any statement (docs/dbspec.md "External documents").
+    def external_read():
+        readers = (
+            NoteReader()
+            .connect(db)
+            .relation(SharedNote().match_shared_note_seq_with_seq())
+            .order_by_seq_asc()
+            .gets()
+        )
+        related = [
+            [r.get_seq(), r.get_shared_note_model().get_title()] for r in readers.values()
+        ]
+        notes = (
+            SharedNote()
+            .connect(db)
+            .seq(NoteReader().add_column_shared_note_seq())
+            .order_by_seq_asc()
+            .gets()
+        )
+        write = None
+        try:
+            SharedNote().connect(db).set_seq(9).set_title("written").create()
+        except Exception as error:  # noqa: BLE001 - every library error is the result of the vector
+            write = code_of(error)
+        return {
+            "relation": related,
+            "subquery": [n.get_title() for n in notes.values()],
+            "write": write,
+        }
+
+    run("external_read", external_read)
 
     def subqueries():
         users = (

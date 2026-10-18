@@ -18,7 +18,8 @@
           "chain": { "type": "string", "minLength": 1 },
           "calls": { "description": "The public methods of the client API that the vector verifies, in camelCase; each runner calls each of them in its body of the vector, in its own naming (tests/conformance/check/chain-methods.test.mts).", "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" } },
           "expect": {
-            "type": "object",
+            "description": "The recorded expectation, or null for a vector that is declared and not recorded yet.",
+            "type": ["object", "null"],
             "additionalProperties": false,
             "required": ["statements", "result"],
             "properties": {

@@ -554,6 +554,11 @@ export function validate(m: RuntimeModel, r: Request): void {
   if (r.ir_version !== IR_VERSION) fail(codes.VERSION_MISMATCH, `ir_version ${String(r.ir_version)}, engine ${String(IR_VERSION)}`);
   if (r.manifest_hash !== m.manifestHash) fail(codes.SCHEMA_HASH_MISMATCH, `client ${r.manifest_hash}, engine ${m.manifestHash}`);
   if (!kinds.has(r.kind)) fail(codes.IR_INVALID, `unknown kind "${r.kind}"`);
+  // A table of an external document is written only by the set that owns it (docs/dbspec.md "External documents").
+  const target = m.entities.get(r.entity);
+  if (target?.external === true && ['insert', 'update', 'delete', 'restore', 'restart_identity'].includes(r.kind)) {
+    fail(codes.CONFIG, `${target.table} is owned by another document set`);
+  }
   if (r.load === true && (r.kind !== 'insert' || (r.on_duplicate ?? []).length > 0)) fail(codes.IR_INVALID, 'load is only valid on insert without on_duplicate');
   // restart_identity restarts the identity of one entity only, so it takes no row or value.
   if (r.kind === 'restart_identity' && ((r.set ?? []).length > 0 || (r.rows ?? []).length > 0 || (r.on_duplicate ?? []).length > 0 || r.where !== undefined || r.optimistic !== undefined)) {

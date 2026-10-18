@@ -7,7 +7,7 @@
 // With no argument every dialect is seeded. A named dialect is seeded alone, and its DSN is required; the other DSNs are
 // not read.
 import { spawnSync } from 'node:child_process';
-import { closeSync, openSync, rmSync } from 'node:fs';
+import { closeSync, openSync, readFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
@@ -41,10 +41,24 @@ function run(program: string, args: string[], { input, text, env }: { input?: st
 
 // The client of the checkout, built by make typescript-build: the bench model and the host codecs.
 const { connect, SCHEMA } = await import('../packages/ts/dist/models/models.js');
-const { blindIndex, hostEncode } = await import('../packages/ts/dist/index.js');
+const { Db, blindIndex, dbspecManifest, hostEncode, parseDbspec } = await import('../packages/ts/dist/index.js');
 
-// install installs the manifest of contracts/fixtures/bench/bench.dbs on the database of a DSN.
+// SHARED is the schema value of contracts/fixtures/bench/bench_shared.dbs, the external document of the bench set, as
+// the set that owns it would generate it: the bench set requires its used table to exist before it installs
+// (docs/dbspec.md "External documents").
+function sharedSchema(): { manifestText: string; manifestHash: string } {
+  const parsed = parseDbspec(readFileSync(resolve(root, 'contracts/fixtures/bench/bench_shared.dbs'), 'utf8'), {});
+  const manifest = parsed.document === null ? null : dbspecManifest([parsed.document]).manifest;
+  if (manifest === null) return fail('bench-db: contracts/fixtures/bench/bench_shared.dbs does not parse');
+  return { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash };
+}
+
+// install installs the external document of the bench set as its own set, then the manifest of
+// contracts/fixtures/bench/dbspec-set.json, on the database of a DSN.
 async function install(source: string): Promise<void> {
+  const shared = sharedSchema();
+  const owner = await Db.connectSchema(source, shared);
+  try { await owner.utils().schema().install(shared); } finally { await owner.close(); }
   const db = await connect(source);
   try { await db.utils().schema().install(SCHEMA); } finally { await db.close(); }
 }

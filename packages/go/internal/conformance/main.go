@@ -513,6 +513,36 @@ func run() (status int) {
 		}
 		return rows.Len(), nil
 	})
+	// shared_note is a table of the external document bench_shared: it is read through its entity, and a write
+	// fails with CONFIG before any statement (docs/dbspec.md "External documents").
+	run("external_read", func() (any, error) {
+		readers, err := model.NoteReader().Connect(db).
+			Relation(model.SharedNote().MatchSharedNoteSeqWithSeq()).
+			OrderBySeqAsc().Gets()
+		if err != nil {
+			return nil, err
+		}
+		related := []any{}
+		for _, r := range readers.Slice() {
+			note, err := r.GetSharedNoteModel()
+			if err != nil {
+				return nil, err
+			}
+			related = append(related, []any{r.GetSeq(), note.GetTitle()})
+		}
+		notes, err := model.SharedNote().Connect(db).
+			Seq(model.NoteReader().AddColumnSharedNoteSeq()).
+			OrderBySeqAsc().Gets()
+		if err != nil {
+			return nil, err
+		}
+		titles := []any{}
+		for _, n := range notes.Slice() {
+			titles = append(titles, n.GetTitle())
+		}
+		_, err = model.SharedNote().Connect(db).SetSeq(9).SetTitle("written").Create()
+		return map[string]any{"relation": related, "subquery": titles, "write": code(err)}, nil
+	})
 	run("subqueries", func() (any, error) {
 		users, err := model.User().Connect(db).
 			AddColumnReadTotal(func(u *model.UserModel) orm.Model {

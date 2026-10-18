@@ -1679,7 +1679,7 @@ class Db:
         target = None
         for engine in self.engines.values():
             for entity in engine.model.entities.values():
-                if entity.table == table:
+                if entity.table == table and not entity.external:
                     target = (engine.model, entity)
         if target is None:
             raise OrmError(

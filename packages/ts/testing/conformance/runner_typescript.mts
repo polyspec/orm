@@ -9,7 +9,7 @@
 // Each --vector selects one vector by name; without one every vector runs.
 // The models embed the manifest of contracts/fixtures/bench/bench.dbs.
 import {
-  AesKeyring, Author, BindCell, CORE, ClockCell, type Collection, type Model, CompositeAccount, HexCell, Service, TimeCell, DayCell, ServiceMember, ServiceRegion, SoftLink, SoftRecord, StyledValue, Task, UpsertCell, User, UuidCell, connect, orm,
+  AesKeyring, Author, BindCell, CORE, ClockCell, type Collection, type Model, CompositeAccount, HexCell, NoteReader, Service, SharedNote, TimeCell, DayCell, ServiceMember, ServiceRegion, SoftLink, SoftRecord, StyledValue, Task, UpsertCell, User, UuidCell, connect, orm,
 } from '../../dist/index.js';
 import { fixClock, lastAffected } from '../../dist/testing.js';
 import { parseArgs } from 'node:util';
@@ -272,6 +272,15 @@ async function main() {
     } catch (e) {
       return { error: code(e), message: errorMessage(e) };
     }
+  });
+  // shared_note is a table of the external document bench_shared: it is read through its entity, and a write fails
+  // with CONFIG before any statement (docs/dbspec.md "External documents").
+  await run('external_read', async () => {
+    const readers = await new NoteReader().connect(db).relation(new SharedNote().matchSharedNoteSeqWithSeq()).orderBySeqAsc().gets();
+    const related = readers.values().map(r => [r.getSeq(), r.getSharedNoteModel<SharedNote>().getTitle()]);
+    const notes = await new SharedNote().connect(db).seq(new NoteReader().addColumnSharedNoteSeq()).orderBySeqAsc().gets();
+    const write = await caught(new SharedNote().connect(db).setSeq(9).setTitle('written').create());
+    return { relation: related, subquery: notes.values().map(n => n.getTitle()), write };
   });
   await run('subqueries', async () => {
     const users = await new User().connect(db)

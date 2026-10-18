@@ -33,6 +33,9 @@ pub struct Entity {
     pub aes_version: Option<String>,
     pub audit: Option<Audit>,
     pub immutable: bool,
+    /// A used table of an external document: it is read like any entity, and every write fails with `CONFIG` before
+    /// any statement (docs/dbspec.md "External documents").
+    pub external: bool,
 }
 
 /// One column as seen by the ORM.
@@ -117,11 +120,28 @@ impl Field {
     }
 }
 
-/// Returns the runtime model of the document set with documents in name order. An entity is a table of an owned document, and
-/// a table of an external document is not an entity. For an invalid document set, returns the same diagnostic as `manifest`.
+/// Returns the runtime model of the document set with documents in name order. An entity is a table of an owned document or
+/// a used table of an external document, an external entity reduced to its columns, primary key and unique keys as the
+/// external text holds it. For an invalid document set, returns the same diagnostic as `manifest`.
 pub fn runtime_model(documents: &[&Document]) -> Result<RuntimeModel, Vec<Diagnostic>> {
     let ordered = super::check_set(documents)?;
-    let entities = ordered.iter().filter(|d| !d.external).flat_map(|d| d.tables.iter()).map(entity).collect();
+    let used: Vec<(&str, &str)> = ordered
+        .iter()
+        .filter(|d| !d.external)
+        .flat_map(|d| d.uses.iter())
+        .flat_map(|u| u.tables.iter().map(move |t| (u.document.text.as_str(), t.text.as_str())))
+        .collect();
+    let mut entities = Vec::new();
+    for d in &ordered {
+        for t in &d.tables {
+            if !d.external {
+                entities.push(entity(t));
+            } else if used.contains(&(d.name.text.as_str(), t.name.text.as_str())) {
+                let reduced = Table { indexes: Vec::new(), foreign_keys: Vec::new(), checks: Vec::new(), settings: None, ..t.clone() };
+                entities.push(Entity { external: true, ..entity(&reduced) });
+            }
+        }
+    }
     Ok(RuntimeModel { entities })
 }
 
@@ -191,6 +211,7 @@ fn entity(table: &Table) -> Entity {
             _ => None,
         }),
         immutable: lines.iter().any(|s| matches!(s, Setting::Immutable)),
+        external: false,
     }
 }
 

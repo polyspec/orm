@@ -804,6 +804,14 @@ def validate(m: RuntimeModel, r: dict) -> None:
         )
     if r["kind"] not in _KINDS:
         _fail(codes.IR_INVALID, f'unknown kind "{r["kind"]}"')
+    # A table of an external document is written only by the set that owns it (docs/dbspec.md "External documents").
+    target = entity_of(m, r.get("entity", ""))
+    if (
+        target is not None
+        and target.external
+        and r["kind"] in ("insert", "update", "delete", "restore", "restart_identity")
+    ):
+        _fail(codes.CONFIG, f"{target.table} is owned by another document set")
     if r.get("load") and (r["kind"] != "insert" or r.get("on_duplicate")):
         _fail(codes.IR_INVALID, "load is only valid on insert without on_duplicate")
     # restart_identity restarts the identity of one entity only, so it takes no rows or values.

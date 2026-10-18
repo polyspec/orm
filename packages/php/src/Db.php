@@ -578,7 +578,7 @@ final class Db
         $target = null;
         foreach ($models as $hash => $model) {
             foreach ($model->entities as $entity) {
-                if ($entity['table'] === $tables[0]) {
+                if ($entity['table'] === $tables[0] && !($entity['external'] ?? false)) {
                     $target = ['hash' => $hash, 'entity' => $entity];
                 }
             }

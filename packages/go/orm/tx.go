@@ -344,7 +344,7 @@ func (d *DB) auditRecord(values map[string]any) (*auditInsert, error) {
 	if len(tables) == 1 {
 		for hash, eng := range d.m.engines {
 			for _, name := range eng.M.Order {
-				if e := eng.M.Entities[name]; e.Table == tables[0] {
+				if e := eng.M.Entities[name]; e.Table == tables[0] && !e.External {
 					target = &auditInsert{schema: d.m.schemas[hash], ent: e}
 				}
 			}

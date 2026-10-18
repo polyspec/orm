@@ -145,6 +145,12 @@ pub(crate) fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
     ) {
         return Err(err(codes::IR_INVALID, format!("unknown kind {:?}", r.kind)));
     }
+    // A table of an external document is written only by the set that owns it (docs/dbspec.md "External documents").
+    if let Some(ent) = m.model.entity(&r.query.entity) {
+        if ent.external && matches!(r.kind.as_str(), "insert" | "update" | "delete" | "restore" | "restart_identity") {
+            return Err(err(codes::CONFIG, format!("{} is owned by another document set", ent.table)));
+        }
+    }
     if r.load && (r.kind != "insert" || !r.on_duplicate.is_empty()) {
         return Err(err(codes::IR_INVALID, "load is only valid on insert without on_duplicate"));
     }

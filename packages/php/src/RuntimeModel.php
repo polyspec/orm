@@ -30,7 +30,7 @@ final class RuntimeModel
     /**
      * @param array<string, array> $entities entity name => entity
      * @param string $externalText The text (Dbspec Manifest) of the tables that the owned documents use from external documents; a set
-     *     with no external documents has empty text. A table of an external document is not an entity.
+     *     with no external documents has empty text. A used table of an external document is an external entity.
      */
     public function __construct(
         public readonly string $manifestHash,
@@ -194,14 +194,26 @@ final class RuntimeModel
             throw new OrmException(Code::SCHEMA_INVALID, implode("\n", $lines));
         }
         usort($documents, static fn(Document $a, Document $b): int => strcmp($a->name, $b->name));
+        // The tables that owned documents use from each external document (docs/dbspec.md "External documents").
+        $used = [];
+        foreach ($documents as $document) {
+            if (!$document->external) {
+                foreach ($document->uses as $use) {
+                    $used[$use->document] = [...($used[$use->document] ?? []), ...$use->tables];
+                }
+            }
+        }
         $entities = [];
         foreach ($documents as $document) {
-            // Tables of external documents are not entities.
-            if ($document->external) {
-                continue;
-            }
             foreach ($document->tables as $table) {
-                $entity = self::tableEntity($table);
+                if ($document->external) {
+                    if (!in_array($table->name, $used[$document->name] ?? [], true)) {
+                        continue;
+                    }
+                    $entity = self::externalEntity($table);
+                } else {
+                    $entity = self::tableEntity($table);
+                }
                 if (isset($entities[$entity['entity']])) {
                     throw new OrmException(Code::SCHEMA_INVALID, "entity {$entity['entity']} is declared twice in the document set");
                 }
@@ -290,6 +302,20 @@ final class RuntimeModel
     public static function numeric(array $column): bool
     {
         return $column['codec'] === [] && in_array($column['type'], ['i16', 'i32', 'i64', 'f64', 'decimal'], true);
+    }
+
+    /**
+     * The external entity of a used table of an external document: the table reduced to its columns, primary key
+     * and unique keys, as the external text holds it, so a model built from the documents equals one built from
+     * that text. Every write of it fails with CONFIG (docs/dbspec.md "External documents").
+     */
+    private static function externalEntity(\Polyspec\Orm\Dbspec\Table $table): array
+    {
+        $reduced = new \Polyspec\Orm\Dbspec\Table($table->name);
+        $reduced->columns = $table->columns;
+        $reduced->primaryKey = $table->primaryKey;
+        $reduced->uniqueKeys = $table->uniqueKeys;
+        return self::tableEntity($reduced) + ['external' => true];
     }
 
     private static function tableEntity(\Polyspec\Orm\Dbspec\Table $table): array

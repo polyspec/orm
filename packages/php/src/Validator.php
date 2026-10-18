@@ -101,6 +101,11 @@ final class Validator
         if (!in_array($kind, ['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate', 'insert', 'update', 'delete', 'restore', 'restart_identity'], true)) {
             throw self::err(Code::IR_INVALID, "unknown kind \"$kind\"");
         }
+        // A table of an external document is written only by the set that owns it (docs/dbspec.md "External documents").
+        $target = $this->m->entities[$r['entity'] ?? ''] ?? null;
+        if (($target['external'] ?? false) && in_array($kind, ['insert', 'update', 'delete', 'restore', 'restart_identity'], true)) {
+            throw self::err(Code::CONFIG, "{$target['table']} is owned by another document set");
+        }
         if (($r['load'] ?? false) && ($kind !== 'insert' || ($r['on_duplicate'] ?? []) !== [])) {
             throw self::err(Code::IR_INVALID, 'load is only valid on insert without on_duplicate');
         }

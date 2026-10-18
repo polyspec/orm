@@ -23,8 +23,9 @@ type Model struct {
 	// Documents are the parsed documents in document-name order, and schema installation
 	// renders them.
 	Documents []*dbspec.Document
-	// Order is the list of entity names the owned documents hold: documents in name order, tables in
-	// document order. A table of an external document is not an entity.
+	// Order is the list of entity names of the set: documents in name order, tables in document
+	// order. A table of an external document that an owned document uses is an external entity,
+	// reduced to its columns, primary key and unique keys (docs/dbspec.md "External documents").
 	Order    []string
 	Entities map[string]*Entity
 }
@@ -50,6 +51,9 @@ type Entity struct {
 	AESVersion string
 	// Audit is the audit setting; it is nil if absent.
 	Audit *Audit
+	// External reports a table of an external document: it is read like any entity, and every
+	// write fails with CONFIG before any statement.
+	External bool
 
 	fields map[string]*Field
 }
@@ -125,12 +129,15 @@ func Build(documents []*dbspec.Document) (*Model, []dbspec.Diagnostic) {
 	ordered := slices.Clone(documents)
 	slices.SortStableFunc(ordered, func(a, b *dbspec.Document) int { return strings.Compare(a.Name, b.Name) })
 	m := &Model{ManifestText: manifest.ManifestText, ManifestHash: manifest.ManifestHash, ExternalText: manifest.ExternalText, Documents: ordered, Entities: map[string]*Entity{}}
+	used := usedTables(ordered)
 	for _, document := range ordered {
+		tables := document.Tables
 		if document.External {
-			continue
+			tables = externalTables(document, used[document.Name])
 		}
-		for i := range document.Tables {
-			e := entityOf(&document.Tables[i])
+		for i := range tables {
+			e := entityOf(&tables[i])
+			e.External = document.External
 			if _, duplicate := m.Entities[e.Name]; duplicate {
 				return nil, []dbspec.Diagnostic{{Rule: dbspec.RuleNameDuplicate, Line: 1, Column: 1, Message: fmt.Sprintf("entity %s of document %s repeats an entity name of the document set", e.Name, document.Name)}}
 			}
@@ -139,6 +146,33 @@ func Build(documents []*dbspec.Document) (*Model, []dbspec.Diagnostic) {
 		}
 	}
 	return m, nil
+}
+
+// usedTables returns, per external document name, the tables that owned documents name in their use lines.
+func usedTables(documents []*dbspec.Document) map[string][]string {
+	used := map[string][]string{}
+	for _, d := range documents {
+		if d.External {
+			continue
+		}
+		for _, u := range d.Uses {
+			used[u.Document] = append(used[u.Document], u.Tables...)
+		}
+	}
+	return used
+}
+
+// externalTables returns the used tables of an external document in document order, each reduced to its
+// columns, primary key and unique keys, as the external text holds them, so a model built from the documents
+// equals one built from the external text.
+func externalTables(d *dbspec.Document, used []string) []dbspec.Table {
+	var out []dbspec.Table
+	for _, t := range d.Tables {
+		if slices.Contains(used, t.Name) {
+			out = append(out, dbspec.Table{Name: t.Name, Columns: t.Columns, PrimaryKey: dbspec.PrimaryKey{Columns: t.PrimaryKey.Columns}, Uniques: t.Uniques})
+		}
+	}
+	return out
 }
 
 // Load parses manifest text (the canonical documents the set owns, joined in document-name

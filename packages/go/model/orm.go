@@ -11,7 +11,7 @@ import (
 var _ time.Time
 
 // ManifestHash is the manifestHash of the document set the models were generated from.
-const ManifestHash = "sha256:18b7c53c3dd768b76732c743c89659ec5dd7a1cdc2a818b7792d389740e50a88"
+const ManifestHash = "sha256:e82672f09b5852725e8b4d17ad0500b3d8ef5fbeeeee1c04c7e2b1ec0b9bb785"
 
 // ManifestText is the manifest text of the document set the models were generated from.
 const ManifestText = "dbspec 1 bench\n" +
@@ -238,11 +238,32 @@ const ManifestText = "dbspec 1 bench\n" +
 	"  body text null\n" +
 	"  token uuid null\n" +
 	"  primary key (seq)\n" +
+	"}\n" +
+	"dbspec 1 bench_reader\n" +
+	"\n" +
+	"use bench_shared { shared_note }\n" +
+	"\n" +
+	"table note_reader {\n" +
+	"  seq i64\n" +
+	"  shared_note_seq i64\n" +
+	"  primary key (seq)\n" +
+	"  index ix_note_reader_shared_note (shared_note_seq)\n" +
+	"  foreign key fk_note_reader_shared_note (shared_note_seq) references shared_note (seq) on delete restrict on update restrict\n" +
 	"}\n"
 
-// Schema is the generated schema value: the manifest text with its declared
-// manifestHash. Install takes it to create the tables and register the set.
-var Schema = &orm.Schema{Hash: ManifestHash, Text: ManifestText}
+// ExternalText is the text of the tables that the document set uses from external documents.
+const ExternalText = "dbspec 1 bench_shared\n" +
+	"\n" +
+	"table shared_note {\n" +
+	"  seq i64\n" +
+	"  title varchar(191)\n" +
+	"  primary key (seq)\n" +
+	"}\n"
+
+// Schema is the generated schema value: the manifest text and the external
+// text with their declared manifestHash. Install takes it to create the tables
+// and register the set.
+var Schema = &orm.Schema{Hash: ManifestHash, Text: ManifestText, External: ExternalText}
 
 // Connect opens the database selected by the DSN URI and registers the
 // set of these models on the connection, so the models plan their requests on
@@ -251,7 +272,7 @@ func Connect(dsn string, cfg orm.Config) (*orm.DB, error) { return orm.ConnectSc
 
 // ormModel is any generated model; a model value is a subquery.
 type ormModel interface {
-	*AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *CompositeAccountModel | *CompositeMembershipModel | *SoftRecordModel | *SoftLinkModel | *AccountModel | *ProjectModel | *AccountProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *DayCellModel | *UpsertCellModel | *UuidCellModel | *BindCellModel
+	*AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *CompositeAccountModel | *CompositeMembershipModel | *SoftRecordModel | *SoftLinkModel | *AccountModel | *ProjectModel | *AccountProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *DayCellModel | *UpsertCellModel | *UuidCellModel | *BindCellModel | *NoteReaderModel | *SharedNoteModel
 }
 
 type argBoolEq interface {
@@ -302,7 +323,7 @@ type hasName interface {
 
 // hasSeq is a model with the column seq.
 type hasSeq interface {
-	*AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *SoftRecordModel | *SoftLinkModel | *AccountModel | *ProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *DayCellModel | *UpsertCellModel | *UuidCellModel | *BindCellModel
+	*AuthorModel | *UserModel | *ServiceModel | *ServiceRegionModel | *ServiceMemberModel | *SoftRecordModel | *SoftLinkModel | *AccountModel | *ProjectModel | *TaskModel | *HexCellModel | *TimeCellModel | *ClockCellModel | *DayCellModel | *UpsertCellModel | *UuidCellModel | *BindCellModel | *NoteReaderModel | *SharedNoteModel
 	Orm_() *orm.Core
 }
 

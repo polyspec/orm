@@ -316,6 +316,13 @@ func Validate(m *runtimemodel.Model, r *Request) error {
 	default:
 		return errf("IR_INVALID", "unknown kind %q", r.Kind)
 	}
+	// A table of an external document is written only by the set that owns it (docs/dbspec.md "External documents").
+	if ent := m.Entities[r.Entity]; ent != nil && ent.External {
+		switch r.Kind {
+		case "insert", "update", "delete", "restore", "restart_identity":
+			return errf("CONFIG", "%s is owned by another document set", ent.Table)
+		}
+	}
 	if r.Load && (r.Kind != "insert" || len(r.OnDuplicate) > 0) {
 		return errf("IR_INVALID", "load is only valid on insert without on_duplicate")
 	}

@@ -63,6 +63,11 @@ export interface Entity {
   readonly auditColumn: string;
   /** The audit record table of an `audit` setting (its references table), or ''. */
   readonly auditRecord: string;
+  /**
+   * True for a used table of an external document: it is read like any entity, and every write fails with CONFIG
+   * before any statement (docs/dbspec.md "External documents").
+   */
+  readonly external: boolean;
 }
 
 /** The runtime model of a document set with its manifest text and hash. */
@@ -170,7 +175,17 @@ function entityOfTable(t: DbspecTable): Entity {
     aesVersion,
     auditColumn,
     auditRecord,
+    external: false,
   });
+}
+
+/**
+ * The external entity of a used table of an external document: the table reduced to its columns, primary key and unique
+ * keys, as the external text holds it, so a model built from the documents equals one built from that text.
+ */
+function externalEntity(t: DbspecTable): Entity {
+  const reduced: DbspecTable = { ...t, primaryKey: { ...t.primaryKey }, indexes: [], foreignKeys: [], checks: [], settings: null };
+  return Object.freeze({ ...entityOfTable(reduced), external: true });
 }
 
 /** The runtime model of parsed documents of one document set; the set must have a manifest. */
@@ -183,10 +198,16 @@ export function modelOfDocuments(documents: readonly DbspecDocument[]): RuntimeM
   }
   const entities = new Map<string, Entity>();
   const ordered = [...documents].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  // The tables that owned documents use from each external document.
+  const used = new Map<string, string[]>();
   for (const document of ordered) {
     if (document.external === true) continue;
+    for (const u of document.uses) used.set(u.document, [...(used.get(u.document) ?? []), ...u.tables]);
+  }
+  for (const document of ordered) {
     for (const table of document.tables) {
-      const e = entityOfTable(table);
+      if (document.external === true && !(used.get(document.name) ?? []).includes(table.name)) continue;
+      const e = document.external === true ? externalEntity(table) : entityOfTable(table);
       if (entities.has(e.name)) throw new OrmError(codes.SCHEMA_INVALID, `entity ${e.name} is declared twice in the document set`);
       entities.set(e.name, e);
     }
