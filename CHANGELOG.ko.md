@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b7f222dace32e36ed0298f67a6803f7eefa72ab9bdc5164beb8ee2d99896f9c0 -->
+<!-- source-sha256: e2cd6ee1f2a37209bc905e145961ad1ce8f567b2f2c028bdde8c36374a8c642d -->
 # 변경 이력
 
 ## Unreleased
+- NULL collection key vector를 recorder의 형식으로 저장해, 바뀌지 않은 출력을 기록해도 vector 파일이 그대로 남는다(T77-6-1-8).
 - dbspec editor stack의 CodeMirror와 VS Code adapter가 완성됐다(T128-8).
 - test의 모든 language adapter가 자기 package에 있고, parity root 어느 것도 tests/를 가리키지 않는다(T77-9).
 - TestApplyStressPlan은 table 100개로 apply 문장마다 따로 commit됨을 증명한다. apply 중인 PostgreSQL session은 어떤 step 뒤에도 relation lock을 갖지 않고, 200 step마다 진행과 경과 시간을 출력한다(T148-4-5).

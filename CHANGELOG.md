@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The NULL collection key vector is stored in the recorder's form, so recording unchanged outputs leaves the vector files as they are (T77-6-1-8).
 - The CodeMirror and VS Code adapters of the dbspec editor stack are complete (T128-8).
 - Every language adapter of the tests lives in its package; no parity root names tests/ (T77-9).
 - TestApplyStressPlan proves that each apply statement commits separately at 100 tables: the applying PostgreSQL session holds no relation lock after any step, and every 200 steps it prints its progress and elapsed time (T148-4-5).
