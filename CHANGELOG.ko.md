@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e8dbf10028dcafa590df2d1900cc01ac585129ef59400200543821878f874ddd -->
+<!-- source-sha256: 2b9b2bd1aa944850ee326d8ba7a0bd3c3c00e2be0c2328b60b3731dfcb4e8e23 -->
 # 변경 이력
 
 ## Unreleased
+- PHP extension 선언 unit 다섯이 parity 실행에서 통과한다. binding이 parity-check가 지정한 build된 extension을 불러온다 (T148-4-3).
 - Python decimal unit이 parity 실행에서 통과한다. round trip이 parity-check가 내보내는 DECIMAL_*_DSN 이름을 읽는다 (T148-4-1).
 - 두 PHP 성능 gate가 parity 실행에서 통과한다. parity-check가 가드가 읽는 ORM_BENCH_MYSQL_DSN을 내보낸다 (T148-4-2).
 - PHP decimal-set binding이 decimal document를 자기 case로 실행해, dbspec-set-decimal unit이 PHP와 TypeScript에서 통과한다 (T148-3-php-1, T148-3-ts-2).
