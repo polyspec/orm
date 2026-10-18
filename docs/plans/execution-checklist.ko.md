@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 54ce9db789fd9de46b600d83c60ba53da581a49b9018ebcedcd001314e916eb8 -->
+<!-- source-sha256: b6887de9596905b310cab43a919c33940ac112bd1898d72af601899e022b490b -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1447,4 +1447,4 @@
 - [o] T69 Release 0.0.9. 원인: T61, T62와 markdown IR executor인 T62-1, T63부터 T67까지는 polyspec/flowmark가 요구하는 protocol section, markdown 저장 setting과 executor를 추가하며, flowmark는 pseudo-version 대신 released tag를 요구한다. 완료 기준: 0.0.9의 release 절차를 이전 release 항목(T52, T56)과 같이 밟고 tag로 끝난다. T62-1, T63, T64, T65, T66, T67이 필요하다.
   Evidence: annotated tag v0.0.9가 ddcdca4f에 있고 GitHub release v0.0.9가 asset 4개를 가진다. flowmark는 그때부터 release tag를 받는다(지금은 v0.0.18에 고정). 이 항목은 release된 뒤 닫히지 않았다.
 
-- [ ] T77-58 parity-check 단계가 자기 실행 디렉터리를 남긴다: PARITY_RUN_DIR(.runtime/run/parity-check-$PPID)은 parity-prepare가 만들고 어떤 단계도 지우지 않으며, 종료 시 지울 수 있는 주체는 kit의 parity.mjs뿐이다. 원인: step.mts:166-168이 TMPDIR에 남은 항목을 보고하고 지우지 않으므로 TMPDIR 아래에는 둘 수 없다. 완료 기준: 깨끗한 parity-check 실행이 남은 디렉터리를 보고하지 않는다. 빨강: 단계가 left .runtime/run/parity-check-NNN을 보고. 초록: 보고하지 않는다. kit 행 필요.
+- [o] T77-58 parity-check 단계가 자기 실행 디렉터리를 남긴다: PARITY_RUN_DIR(.runtime/run/parity-check-$PPID)은 parity-prepare가 만들고 어떤 단계도 지우지 않으며, 종료 시 지울 수 있는 주체는 kit의 parity.mjs뿐이다. 원인: step.mts:166-168이 TMPDIR에 남은 항목을 보고하고 지우지 않으므로 TMPDIR 아래에는 둘 수 없다. 완료 기준: 깨끗한 parity-check 실행이 남은 디렉터리를 보고하지 않는다. 빨강: 단계가 left .runtime/run/parity-check-NNN을 보고. 초록: 보고하지 않는다. kit 행 필요. 증거: 깨끗한 실행 scratchpad/g4-parity.log(바인딩 84개 두 번 실행, 케이스 85개 통과, 모든 unit이 모든 구현에서 성립); 같은 단계 parity-check PASS이고 남은 디렉터리 없음. 수정 전에는 같은 단계가 left .runtime/run/parity-check-86307로 실패했다.

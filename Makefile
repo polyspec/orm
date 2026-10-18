@@ -1105,9 +1105,12 @@ FLOWMARK ?= $(abspath .runtime/bin/flowmark)
 # (ORM_PROGRAM_CONFORMANCE, polyspec_orm_testcase::program). parity-check also passes FLOWMARK to the
 # markdown-conformance bindings. The database bindings read the test servers and the bench databases from the
 # environment of the run.
-PARITY_RUN_DIR = $(abspath .runtime/run)/parity-check-$(shell echo $$PPID)
+# PARITY_RUN_DIR is the run directory of the parity-check step, which the check runner owns (scripts/check/step.mts) and
+# removes when the step ends, pass or fail. parity-prepare refuses to run outside that step.
+PARITY_RUN_DIR = $(STEP_RUN_DIR)
 .PHONY: parity-prepare
 parity-prepare: lease-tool
+	test -n "$(STEP_RUN_DIR)" || { echo "parity-prepare: STEP_RUN_DIR is unset; run the parity-check through make run-databases TARGETS=parity-check, whose step owns the directory"; exit 1; }
 	mkdir -p $(PARITY_RUN_DIR)
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PARITY_RUN_DIR)/orm_dbspec.so
 	$(RUN_LONG) rust-build/parity-conformance --cwd packages/rust -- $(CARGO_LEASED) node $(abspath scripts/cargo-build-copy.mts) $(PARITY_RUN_DIR)/target debug/conformance -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm-tests --bin conformance
@@ -1134,6 +1137,8 @@ parity-check: parity-bench-env-check flowmark-check interface-check
 parity-check: export FLOWMARK := $(FLOWMARK)
 parity-check: export ORM_PARITY_PHP_EXTENSION = $(PARITY_RUN_DIR)/orm_dbspec.so
 parity-check: export ORM_SEND_SQLITE_DSN = $(SEND_SQLITE_DSN)
+# ORM_CHECKOUT is the checkout root: a binding command names it with ${ORM_CHECKOUT}, since kit forbids .. in a command word.
+parity-check: export ORM_CHECKOUT = $(CURDIR)
 parity-check: export ORM_PROGRAM_CONFORMANCE = $(PARITY_RUN_DIR)/target/debug/conformance
 markdown-conformance-check: markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/python markdown-conformance-check/rust markdown-conformance-check/typescript
 markdown-conformance-check/go:

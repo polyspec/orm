@@ -13,7 +13,7 @@
 // 실패한 단계가 남긴 entry는 keep으로 보고서에 복사한다. 어느 쪽이든 임시 directory는 지운다. runner가
 // signal로 끝나도 진행 중인 단계의 group을 끝낸다.
 import { spawn, spawnSync, type ChildProcessByStdio } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import type { Readable } from 'node:stream';
@@ -121,15 +121,19 @@ export function runStep(program: string, args: string[], { cwd, env, step, label
   if (!guard) return plainStep(program, args, { cwd, env, step, spawned });
   install();
   const temporary = mkdtempSync(join(tmpdir(), 'orm-step-'));
+  // The run directory of the step, which the step owns: the recipes of the step (parity-prepare) write into it, and the
+  // runner removes it when the step ends, pass or fail, before it looks for leftovers.
+  const stepRun = join(cwd ?? '.', '.runtime/run', basename(temporary));
+  mkdirSync(stepRun, { recursive: true });
   return new Promise<void>((finish, fail) => {
     let child: ChildProcessByStdio<null, Readable, Readable>;
     try {
       // npm은 Node의 compile cache를 켜고, 그 cache는 따로 정하지 않으면 TMPDIR 아래의 node-compile-cache다. 그것은
       // test가 남긴 것이 아니라 실행끼리 함께 쓰는 npm의 cache이므로, 단계 전과 같은 시스템 임시 directory에 둔다.
       const compileCache = env.NODE_COMPILE_CACHE ?? join(tmpdir(), 'node-compile-cache');
-      child = spawn(program, args, { cwd, env: { ...env, TMPDIR: temporary, NODE_COMPILE_CACHE: compileCache, ORM_STEP: basename(temporary) }, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
+      child = spawn(program, args, { cwd, env: { ...env, TMPDIR: temporary, NODE_COMPILE_CACHE: compileCache, ORM_STEP: basename(temporary), STEP_RUN_DIR: stepRun }, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
     } catch (error) {
-      rmSync(temporary, { recursive: true, force: true });
+      rmSync(temporary, { recursive: true, force: true }); rmSync(stepRun, { recursive: true, force: true });
       fail(error);
       return;
     }
@@ -145,7 +149,7 @@ export function runStep(program: string, args: string[], { cwd, env, step, label
       if (settled) return;
       settled = true;
       if (group) active.delete(group);
-      rmSync(temporary, { recursive: true, force: true });
+      rmSync(temporary, { recursive: true, force: true }); rmSync(stepRun, { recursive: true, force: true });
       fail(error);
     });
     child.on('exit', async (code, signal) => {
@@ -162,6 +166,7 @@ export function runStep(program: string, args: string[], { cwd, env, step, label
         }
         if (group) active.delete(group);
         await closed;
+        rmSync(stepRun, { recursive: true, force: true });
         lines.flush();
         const entries = readdirSync(temporary).sort();
         if (entries.length) {
@@ -186,7 +191,7 @@ export function runStep(program: string, args: string[], { cwd, env, step, label
         problems.push(`check: ${label}: its leftovers could not be checked: ${error instanceof Error ? error.message : String(error)}`);
       } finally {
         if (group) active.delete(group);
-        rmSync(temporary, { recursive: true, force: true });
+        rmSync(temporary, { recursive: true, force: true }); rmSync(stepRun, { recursive: true, force: true });
       }
       for (const problem of problems) step(problem);
       if (exited.code === 0 && problems.length === 0) finish();
