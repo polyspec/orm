@@ -335,6 +335,16 @@ export function renderTypeScript(m: Manifest, outDir: string, scan: readonly str
     for (const n of used) if (n.startsWith('addColumn') && n.endsWith(`Alias${key}`)) named = true;
     if (named) g.getters.set(name, `the value or relation result named ${key}`);
   }
+  // A scanned getter call that no alias<Name>, new<Name> or addColumn call attaches would leave the model without the method
+  // the source calls; generation stops naming the model and the method (docs/dsl.md, the scan).
+  for (const e of m.entities.values()) {
+    const statics = staticNames(e);
+    for (const name of [...(calls.get(pascal(e.name)) ?? [])].sort(byteOrder)) {
+      if (!name.startsWith('get') || name.length < 4 || !isUpperAt(name, 3)) continue;
+      if (statics.has(name) || g.getters.has(name) || g.methods.get(e.name)?.has(name) === true) continue;
+      throw new Error(`orm-gen --scan: ${pascal(e.name)}.${name}() is called, but no alias${name.slice(3)}, new${name.slice(3)} or addColumn call attaches it`);
+    }
+  }
   return g.write(runtimeImport(outDir));
 }
 

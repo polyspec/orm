@@ -142,6 +142,67 @@ class OrmGenTest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Author.not_a_model_method", result.stderr)
 
+    def _scan(self, text):
+        """Runs orm-gen with --scan of one source into a new folder; returns the completed process."""
+        with tempfile.TemporaryDirectory(prefix="orm-gen-scan-") as out:
+            source = Path(out) / "usage.py"
+            source.write_text(text, encoding="utf-8")
+            return subprocess.run(
+                args=ORM_GEN
+                + [
+                    "gen",
+                    "--set",
+                    str(ROOT / "contracts" / "fixtures" / "bench" / "dbspec-set.json"),
+                    "--out",
+                    out,
+                    "--scan",
+                    str(source),
+                ],
+                capture_output=True,
+                text=True,
+            )
+
+    def test_an_alias_named_match_is_accepted_with_its_getter(self):
+        result = self._scan(
+            "from models import Author, User\n"
+            "a = Author().relation(User().match_user_seq_with_seq().alias_match())"
+            ".relation(User().match_user_seq_with_seq().alias_join()).get()\n"
+            "a.get_match()\n"
+            "a.get_join()\n"
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_a_nested_relation_alias_attaches_its_getter(self):
+        # The alias of a relation nested in a relation names the getter of the model it aliases on, and a receiver
+        # annotated through a getter's result resolves to that model.
+        result = self._scan(
+            "from typing import Iterable\n"
+            "from models import Author, User\n"
+            "Author().relation(User().match_user_seq_with_seq().alias_writer()"
+            ".relation(Author().match_seq_with_user_seq().alias_match())).gets()\n"
+            "def read(rows: Iterable[Author]):\n"
+            "    for row in rows:\n"
+            "        writer: User | None = row.get_writer()\n"
+            "        writer.get_match()\n"
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_a_getter_call_that_nothing_attaches_stops_generation(self):
+        result = self._scan(
+            "from typing import Iterable\n"
+            "from models import Author, User\n"
+            "Author().relation(User().match_user_seq_with_seq().alias_writer()).gets()\n"
+            "def read(rows: Iterable[Author]):\n"
+            "    for row in rows:\n"
+            "        writer: User | None = row.get_writer()\n"
+            "        writer.get_ghost()\n"
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(
+            "User.get_ghost is called, but no alias_ghost, new_ghost or add_column call attaches it",
+            result.stderr,
+        )
+
     def test_check_reports_a_missing_or_differing_file(self):
         with tempfile.TemporaryDirectory(prefix="orm-gen-missing-") as missing:
             result = subprocess.run(

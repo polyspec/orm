@@ -479,3 +479,45 @@ fn check_keeps_the_output_directory_on_generation_error() {
     assert!(err.is_err(), "a call the schema does not allow must fail the check");
     assert!(!created, "the check created the output directory");
 }
+
+/// A relation alias that starts with a chain prefix (match, join) still gives the parent its getter.
+#[test]
+fn relation_alias_with_a_chain_prefix_has_its_getter() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let text = generate_with_schema(
+        bench(),
+        "fn main() { let b = Author::new().relation(User::new().match_user_seq_with_seq().alias_match()).relation(User::new().match_user_seq_with_seq().alias_join()); let _ = b.get_match(); let _ = b.get_join(); }",
+    )
+    .unwrap();
+    for want in ["pub fn get_match(&self)", "pub fn get_join(&self)"] {
+        assert!(text.contains(want), "generated source lacks {want}");
+    }
+}
+
+/// The alias of a relation nested in a relation gives its getter to the model it aliases on, and a receiver typed through
+/// a wrapper of the getter's result (`Option<User>`) resolves to that model.
+#[test]
+fn nested_relation_alias_attaches_its_getter_to_its_parent() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let text = generate_with_schema(
+        bench(),
+        "fn main() { let _ = Author::new().relation(User::new().match_user_seq_with_seq().alias_writer().relation(Author::new().match_seq_with_user_seq().alias_match())); }
+fn read(row: &Author) { let writer: Option<User> = row.get_writer().unwrap(); let _ = writer.unwrap().get_match(); }",
+    )
+    .unwrap();
+    let user = text.split("pub struct User ").nth(1).and_then(|rest| rest.split("pub struct ").next()).expect("the generated source has User");
+    assert!(user.contains("pub fn get_match(&self)"), "User lacks get_match");
+}
+
+/// A scanned getter call that no alias, new or add_column call attaches stops generation, naming the model and the method.
+#[test]
+fn unattached_getter_stops_generation() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let err = generate_with_schema(
+        bench(),
+        "fn main() { let _ = Author::new().relation(User::new().match_user_seq_with_seq().alias_writer()); }
+fn read(row: &Author) { let writer: Option<User> = row.get_writer().unwrap(); let _ = writer.unwrap().get_ghost(); }",
+    )
+    .unwrap_err();
+    assert!(err.contains("User has no method get_ghost: no call attaches \"ghost\""), "{err}");
+}

@@ -181,8 +181,22 @@ impl Scanner<'_> {
             Type::Reference(r) => self.type_name(&r.elem),
             Type::Paren(p) => self.type_name(&p.elem),
             Type::Path(p) => {
-                let name = p.path.segments.last()?.ident.to_string();
-                self.models.contains(&name).then_some(name)
+                let last = p.path.segments.last()?;
+                let name = last.ident.to_string();
+                if self.models.contains(&name) {
+                    return Some(name);
+                }
+                // A model read through a getter is typed with its wrapper: Option<User>, Box<User>, Rc<User>, Arc<User>.
+                if !matches!(name.as_str(), "Option" | "Box" | "Rc" | "Arc") {
+                    return None;
+                }
+                match &last.arguments {
+                    syn::PathArguments::AngleBracketed(a) if a.args.len() == 1 => match &a.args[0] {
+                        syn::GenericArgument::Type(t) => self.type_name(t),
+                        _ => None,
+                    },
+                    _ => None,
+                }
             }
             _ => None,
         }
@@ -225,6 +239,17 @@ impl Scanner<'_> {
                         "map_err" | "unwrap" | "expect" => self.model_of(&m.receiver),
                         _ => None,
                     };
+                }
+                // A getter `get_<name>::<T>()` returns the value its one type argument declares, so the receiver of a
+                // later call typed through it resolves to that model.
+                if name.starts_with("get_") {
+                    if let Some(t) = m.turbofish.as_ref().filter(|t| t.args.len() == 1) {
+                        if let syn::GenericArgument::Type(ty) = &t.args[0] {
+                            if let Some(model) = self.type_name(ty) {
+                                return Some(model);
+                            }
+                        }
+                    }
                 }
                 if name == "clone" || returns_model(&name) {
                     self.model_of(&m.receiver)

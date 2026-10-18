@@ -309,3 +309,99 @@ func Query() *model.ProductModel { return model.Product().GePrice(1) }
 		t.Fatalf("the integration configuration loads %q, want only %q", tagged, want)
 	}
 }
+
+// TestGoRelationAliasWithChainPrefix checks that a relation alias that starts
+// with a chain prefix (Match, Join) still gives the parent its getter.
+func TestGoRelationAliasWithChainPrefix(t *testing.T) {
+	testcase.Start(t, testcase.Process)
+	write := scannedModule(t)
+	write("example/example.go", `package example
+
+import "example.com/ormexample/model"
+
+func Load() *model.ProductModel {
+	return model.Product().
+		Relation(model.Brand().MatchBrandSeqWithSeq().AliasMatch()).
+		Relation(model.Brand().MatchBrandSeqWithSeq().AliasJoin())
+}
+
+func Match(p *model.ProductModel) (*model.BrandModel, error) { return p.GetMatch() }
+
+func Join(p *model.ProductModel) (*model.BrandModel, error) { return p.GetJoin() }
+`)
+	if err := generateGo(namesManifest(t, namesDiagram), "model", "", []string{"./..."}); err != nil {
+		t.Fatal(err)
+	}
+	product, err := os.ReadFile("model/product.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"func (x *ProductModel) GetMatch() (*BrandModel, error)", "func (x *ProductModel) GetJoin() (*BrandModel, error)"} {
+		if !strings.Contains(string(product), want) {
+			t.Errorf("generated product.go lacks %s", want)
+		}
+	}
+	buildScannedModule(t)
+}
+
+// TestGoNestedRelationAliasAttachesToItsParent checks that the alias of a
+// relation nested in a relation gives its getter to the model it aliases on,
+// and that a call on the result of a getter resolves to that model.
+func TestGoNestedRelationAliasAttachesToItsParent(t *testing.T) {
+	testcase.Start(t, testcase.Process)
+	write := scannedModule(t)
+	write("example/example.go", `package example
+
+import "example.com/ormexample/model"
+
+func Load() *model.ProductModel {
+	return model.Product().
+		Relation(model.Brand().MatchBrandSeqWithSeq().AliasStore().
+			Relation(model.Product().MatchSeqWithBrandSeq().AliasMatch()))
+}
+
+func Match(p *model.ProductModel) (*model.ProductModel, error) {
+	store, err := p.GetStore()
+	if err != nil {
+		return nil, err
+	}
+	return store.GetMatch()
+}
+`)
+	if err := generateGo(namesManifest(t, namesDiagram), "model", "", []string{"./..."}); err != nil {
+		t.Fatal(err)
+	}
+	brand, err := os.ReadFile("model/brand.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "func (x *BrandModel) GetMatch() (*ProductModel, error)"; !strings.Contains(string(brand), want) {
+		t.Errorf("generated brand.go lacks %s", want)
+	}
+	buildScannedModule(t)
+}
+
+// TestGoUnattachedGetterStopsGeneration checks that a scanned getter call
+// that no Alias, New or AddColumn call attaches stops generation, naming the
+// model and the method.
+func TestGoUnattachedGetterStopsGeneration(t *testing.T) {
+	testcase.Start(t, testcase.Process)
+	write := scannedModule(t)
+	write("example/example.go", `package example
+
+import "example.com/ormexample/model"
+
+func Load() *model.ProductModel {
+	return model.Product().Relation(model.Brand().MatchBrandSeqWithSeq().AliasStore())
+}
+
+func Ghost(p *model.ProductModel) (*model.BrandModel, error) { return p.GetGhost() }
+`)
+	err := generateGo(namesManifest(t, namesDiagram), "model", "", []string{"./..."})
+	if err == nil {
+		t.Fatal("generation accepted a getter call that nothing attaches")
+	}
+	if !strings.Contains(err.Error(), "ProductModel.GetGhost is called") {
+		t.Errorf("the refusal does not name ProductModel.GetGhost: %v", err)
+	}
+}

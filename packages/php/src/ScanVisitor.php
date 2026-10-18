@@ -23,6 +23,10 @@ final class ScanVisitor extends NodeVisitorAbstract
     private \SplObjectStorage $given;
     /** @var list<array<string, array{cls: string, many: bool}>> typed properties of the classes being walked */
     private array $properties = [];
+    /** The namespace being walked, which a relative class name of a @var tag resolves in. */
+    private string $namespace = '';
+    /** @var array<string, string> the class imports of the file, lowercase alias => fully qualified name */
+    private array $uses = [];
 
     /**
      * @param array<string, string> $models lowercase fully qualified class name => class name
@@ -73,6 +77,15 @@ final class ScanVisitor extends NodeVisitorAbstract
 
     public function enterNode(Node $node): null
     {
+        if ($node instanceof Node\Stmt\Namespace_) {
+            $this->namespace = $node->name === null ? '' : $node->name->toString();
+            $this->uses = [];
+        }
+        if ($node instanceof Node\Stmt\Use_ && $node->type === Node\Stmt\Use_::TYPE_NORMAL) {
+            foreach ($node->uses as $use) {
+                $this->uses[strtolower($use->getAlias()->toString())] = $use->name->toString();
+            }
+        }
         if ($node instanceof Node\Stmt\Class_ || $node instanceof Node\Stmt\Trait_) {
             $props = [];
             foreach ($node->stmts as $stmt) {
@@ -145,7 +158,42 @@ final class ScanVisitor extends NodeVisitorAbstract
         if ($node instanceof Node\Expr\Assign && $node->var instanceof Node\Expr\Variable && is_string($node->var->name)) {
             $this->bind($node->var->name, $this->valueOf($node->expr));
         }
+        // A `/** @var Model|null $name */` tag on an assignment types its variable: a getter returns mixed, so the tag is how
+        // a receiver read through a getter names its model.
+        if ($node instanceof Node\Stmt\Expression && $node->expr instanceof Node\Expr\Assign && $node->expr->var instanceof Node\Expr\Variable
+            && is_string($node->expr->var->name)) {
+            $typed = $this->docValue($node->getDocComment()?->getText() ?? '', $node->expr->var->name);
+            if ($typed !== null) {
+                $this->bind($node->expr->var->name, $typed);
+            }
+        }
         return null;
+    }
+
+    /** @return array{cls: string, many: bool}|null the model that a `@var` tag of the variable names */
+    private function docValue(string $doc, string $var): ?array
+    {
+        if (preg_match('/@var\s+([^\s]+)\s+\$' . preg_quote($var, '/') . '\b/', $doc, $m) !== 1) {
+            return null;
+        }
+        $values = [];
+        foreach (explode('|', $m[1]) as $type) {
+            $type = ltrim($type, '?');
+            if (strtolower($type) === 'null' || $type === '') {
+                continue;
+            }
+            $many = str_ends_with($type, '[]');
+            $type = $many ? substr($type, 0, -2) : $type;
+            if (str_starts_with($type, '\\')) {
+                $name = substr($type, 1);
+            } else {
+                $first = strtolower(explode('\\', $type)[0]);
+                $name = isset($this->uses[$first]) ? $this->uses[$first] . substr($type, strlen($first)) : ltrim($this->namespace . '\\' . $type, '\\');
+            }
+            $cls = $this->models[strtolower($name)] ?? null;
+            $values[] = $cls === null ? null : ['cls' => $cls, 'many' => $many];
+        }
+        return count($values) === 1 ? $values[0] : null;
     }
 
     /** @param array{cls: string, many: bool}|null $value */

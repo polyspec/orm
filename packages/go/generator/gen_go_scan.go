@@ -50,6 +50,7 @@ func (g *goGen) scan(patterns []string) error {
 	for round := 0; round < scanRounds; round++ {
 		g.pending = false
 		g.errors = nil
+		g.getterCalls = nil
 		visited := map[string]bool{}
 		var pkgs []*packages.Package
 		for i := 0; i < len(loads); i++ {
@@ -90,6 +91,14 @@ func (g *goGen) scan(patterns []string) error {
 				}
 			}
 			pkgs = append(pkgs, loaded...)
+		}
+		// A scanned getter call that no alias, new or addColumn call
+		// attaches stops generation (docs/dsl.md, the scan).
+		for _, c := range g.getterCalls {
+			if _, ok := c.gm.getters[c.name]; !ok && !c.gm.static[c.name] {
+				rest := strings.TrimPrefix(c.name, "Get")
+				g.fail(c.pos, "%s.%s is called, but no Alias%s, New%s or AddColumn call attaches it", c.gm.typ, c.name, rest, rest)
+			}
 		}
 		if len(g.errors) > 0 {
 			sort.Strings(g.errors)

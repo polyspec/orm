@@ -140,7 +140,7 @@ class Scanner {
       if (inner.shape === 'collection') return { cls: inner.cls, shape: 'promiseCollection' };
       return undefined;
     }
-    return ['Collection', 'Array', 'ReadonlyArray'].includes(name) && inner.shape === 'model' ? { cls: inner.cls, shape: 'collection' } : undefined;
+    return ['Collection', 'Array', 'ReadonlyArray', 'Iterable'].includes(name) && inner.shape === 'model' ? { cls: inner.cls, shape: 'collection' } : undefined;
   }
 
   /** The value of an expression, when it resolves to a model, a promise or a collection of models. */
@@ -166,6 +166,13 @@ class Scanner {
       if (e.callee.type === 'Identifier') return this.lookup(e.callee.name) === undefined ? this.functions.get(e.callee.name) : undefined;
       const name = memberName(e.callee);
       if (e.callee.type === 'MemberExpression' && name !== undefined) {
+        // A getter `get<Name><T>()` returns the value its one type argument declares, so the receiver of a later call
+        // typed through it resolves to that model.
+        const args = e.typeArguments?.params ?? [];
+        if (/^get[A-Z]/.test(name) && args.length === 1) {
+          const typed = this.typeValue(args[0]);
+          if (typed !== undefined) return typed;
+        }
         const receiver = this.valueOf(e.callee.object);
         return receiver === undefined ? undefined : callResult(receiver, name);
       }

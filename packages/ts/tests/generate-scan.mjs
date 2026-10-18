@@ -134,7 +134,74 @@ async function scanPathSpelling() {
   }
 }
 
-const cases = { non_model_call: nonModelCall, model_calls: modelCalls, scan_path_spelling: scanPathSpelling };
+/** Runs orm-gen on one source file that must stop generation; returns its exit status and standard error. */
+async function generateRefused(source) {
+  const work = await mkdtemp(join(tmpdir(), 'orm-ts-scan-'));
+  try {
+    const usage = join(work, 'usage.ts');
+    await writeFile(usage, source);
+    const result = spawnSync(process.execPath, [bin, 'gen', '--set', join(root, 'contracts/fixtures/bench/dbspec-set.json'), '--out', join(work, 'models'), '--scan', usage], { encoding: 'utf8', timeout: CASE_DEADLINE_MS });
+    return { status: result.status, stderr: result.stderr };
+  } finally {
+    await rm(work, { recursive: true, force: true });
+  }
+}
+
+/** A relation alias that starts with a chain prefix (Match, Join, Possible, New) still declares its getter on the parent. */
+async function aliasMatchGetter() {
+  const { members } = await generate(`
+import { Author, User } from './models/models.js';
+declare const db: unknown;
+const a = await new Author().connect(db).relation(new User().matchUserSeqWithSeq().aliasMatch()).relation(new User().matchUserSeqWithSeq().aliasWriter()).get();
+a.getMatch();
+a.getWriter();
+const child = new User().matchUserSeqWithSeq().aliasMatchup();
+const rows = await new Author().connect(db).relations(child).gets();
+for (const row of rows) row.getMatchup();
+rows.map(r => r.getJoin());
+class Repo { list(): Promise<Author | null> { return new Author().connect(db).relation(new User().matchUserSeqWithSeq().aliasJoin()).get(); } }
+const r2 = await new Repo().list(); r2?.getMatch();
+export {};
+`);
+  check(members('User').includes('aliasMatch'), 'User lacks aliasMatch');
+  check(members('Author').includes('getWriter'), 'Author lacks getWriter');
+  for (const n of ['getMatch', 'getMatchup', 'getJoin']) check(members('Author').includes(n), `Author lacks ${n}`);
+}
+
+/**
+ * The alias of a relation nested in a relation attaches its getter to the model it aliases on, and a receiver typed through
+ * a getter's generic argument resolves to that model (consumer: OrdersheetStore.getMatch).
+ */
+async function nestedAliasGetter() {
+  const { members } = await generate(`
+import { Author, User } from './models/models.js';
+declare const db: unknown;
+await new Author().connect(db).relation(new User().matchUserSeqWithSeq().aliasWriter().relation(new Author().matchSeqWithUserSeq().aliasMatch())).gets();
+export function read(rows: Iterable<Author>): void {
+  for (const row of rows) {
+    const writer = row.getWriter<User | null>();
+    writer?.getMatch<Author | null>();
+  }
+}
+`);
+  check(members('Author').includes('getWriter'), 'Author lacks getWriter');
+  check(members('User').includes('getMatch'), 'User lacks getMatch of the nested alias');
+}
+
+/** A scanned getter call that no alias, new or addColumn call attaches stops generation, naming the model and the method. */
+async function unattachedGetter() {
+  const { status, stderr } = await generateRefused(`
+import { Author, User } from './models/models.js';
+declare const db: unknown;
+const rows = await new Author().connect(db).relation(new User().matchUserSeqWithSeq().aliasWriter()).gets();
+for (const row of rows) row.getWriter<User | null>()?.getGhost();
+export {};
+`);
+  check(status !== 0, 'orm-gen accepted an unattached getter');
+  check(stderr.includes('User.getGhost()'), `the refusal does not name User.getGhost(): ${stderr}`);
+}
+
+const cases = { non_model_call: nonModelCall, model_calls: modelCalls, scan_path_spelling: scanPathSpelling, alias_match_getter: aliasMatchGetter, nested_alias_getter: nestedAliasGetter, unattached_getter: unattachedGetter };
 const selected = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(cases);
 for (const name of selected) {
   const run = cases[name];

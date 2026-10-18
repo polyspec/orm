@@ -150,6 +150,71 @@ PHP;
         self::assertSame(['ltSeq'], self::tags($dir, 'Service'), 'Service');
     }
 
+    public function test_an_alias_named_match_declares_its_getter(): void
+    {
+        $ns = self::NS;
+        $source = <<<PHP
+<?php
+use $ns\\Author;
+use $ns\\User;
+
+\$a = (new Author())->relation((new User())->matchUserSeqWithSeq()->aliasMatch())
+    ->relation((new User())->matchUserSeqWithSeq()->aliasJoin())->get();
+\$a->getMatch();
+\$a->getJoin();
+PHP;
+        [$code, $err, $dir] = self::generate('alias-match', ['usage.php' => $source]);
+        self::assertSame(0, $code, $err);
+        $author = self::tags($dir, 'Author');
+        self::assertContains('getJoin', $author);
+        self::assertContains('getMatch', $author);
+    }
+
+    public function test_a_nested_relation_alias_declares_its_getter_on_the_model_it_aliases_on(): void
+    {
+        $ns = self::NS;
+        $source = <<<PHP
+<?php
+namespace App;
+
+use $ns\\Author;
+use $ns\\User;
+
+\$rows = (new Author())->relation((new User())->matchUserSeqWithSeq()->aliasWriter()
+    ->relation((new Author())->matchSeqWithUserSeq()->aliasMatch()))->gets();
+foreach (\$rows as \$row) {
+    /** @var User|null \$writer */
+    \$writer = \$row->getWriter();
+    \$writer?->getMatch();
+}
+PHP;
+        [$code, $err, $dir] = self::generate('nested-alias', ['usage.php' => $source]);
+        self::assertSame(0, $code, $err);
+        self::assertContains('getWriter', self::tags($dir, 'Author'));
+        self::assertContains('getMatch', self::tags($dir, 'User'));
+    }
+
+    public function test_a_getter_call_that_nothing_attaches_stops_generation(): void
+    {
+        $ns = self::NS;
+        $source = <<<PHP
+<?php
+use $ns\\Author;
+use $ns\\User;
+
+\$rows = (new Author())->relation((new User())->matchUserSeqWithSeq()->aliasWriter())->gets();
+foreach (\$rows as \$row) {
+    /** @var User|null \$writer */
+    \$writer = \$row->getWriter();
+    \$writer?->getGhost();
+}
+PHP;
+        [$code, $err, $dir] = self::generate('unattached-getter', ['usage.php' => $source]);
+        self::assertSame(1, $code, 'status');
+        self::assertStringContainsString('User.getGhost is called, but no aliasGhost, newGhost or addColumn call attaches it', $err);
+        self::assertFileDoesNotExist("$dir/model/User.php", 'a refused generation writes nothing');
+    }
+
     public function test_a_directory_is_scanned_and_a_file_that_does_not_parse_fails_the_scan(): void
     {
         $dir = self::$work . '/directory';

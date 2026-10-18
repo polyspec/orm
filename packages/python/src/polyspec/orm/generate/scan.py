@@ -6,6 +6,12 @@ import os
 __all__ = ["scan_model_calls"]
 
 _SKIPPED = frozenset({"node_modules", "__pycache__", ".venv"})
+# Model methods whose result is no model: a call on it ends the chain.
+_TERMINALS = frozenset(
+    {"create", "creates", "update", "save", "delete", "restore", "to_array", "to_json", "to_json_text"}
+)
+# The annotation names of a collection of models.
+_COLLECTIONS = frozenset({"Iterable", "Iterator", "list", "List", "Sequence", "Collection", "tuple"})
 # A method whose first parameter receives the same model.
 _MODEL_CALLBACKS = frozenset(
     {"and_", "or_", "not_", "and_not", "or_not", "on", "fetch_key", "fetch_value"}
@@ -30,31 +36,103 @@ def _scan_tree(tree, classes: dict, out: dict) -> None:
 
     ImportCollector().visit(tree)
 
-    def model_of(node, names) -> str | None:
-        # Local name of the model that the expression refers to, or None.
+    # A binding maps a local name to a model class name, or to ("many", class name) for a collection of models.
+    def annotated(node, names):
+        # The model that a type annotation names: Author, Author | None, Optional[Author], or a collection of Author
+        # (Iterable, list, Sequence, Collection) as ("many", Author).
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            try:
+                node = ast.parse(node.value, mode="eval").body
+            except SyntaxError:
+                return None
+        if isinstance(node, ast.Name):
+            class_name = names.get(node.id)
+            return class_name if isinstance(class_name, str) and class_name in classes else None
+        if isinstance(node, ast.Attribute):
+            return node.attr if node.attr in classes else None
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
+            found = [v for v in (annotated(node.left, names), annotated(node.right, names)) if v is not None]
+            return found[0] if len(found) == 1 else None
+        if isinstance(node, ast.Subscript):
+            outer = node.value.attr if isinstance(node.value, ast.Attribute) else getattr(node.value, "id", "")
+            inner = annotated(node.slice, names)
+            if outer == "Optional":
+                return inner
+            if outer in _COLLECTIONS and isinstance(inner, str):
+                return ("many", inner)
+        return None
+
+    def value_of(node, names):
+        # The model, or ("many", model) for a collection, that the expression holds, or None.
         while isinstance(node, ast.Await):
             node = node.value
         if isinstance(node, ast.Name):
-            return names.get(node.id)
+            value = names.get(node.id)
+            return value if value is None or isinstance(value, tuple) or value in classes else None
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
             # The generation call Author() makes a model of that class.
             class_name = names.get(node.func.id)
-            return class_name if class_name in classes else None
+            return class_name if isinstance(class_name, str) and class_name in classes else None
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            receiver = value_of(node.func.value, names)
+            name = node.func.attr
+            if isinstance(receiver, tuple):
+                return receiver[1] if name in ("first", "get") else None
+            if receiver is None:
+                return None
+            if name == "gets" or name.startswith("gets_by_"):
+                return ("many", receiver)
+            if name == "get" or name.startswith("get_by_"):
+                return receiver
+            if name in _TERMINALS or name.startswith("get"):
+                return None
+            return receiver
+        if isinstance(node, ast.Subscript):
+            collection = value_of(node.value, names)
+            return collection[1] if isinstance(collection, tuple) else None
         return None
+
+    def model_of(node, names):
+        value = value_of(node, names)
+        return value if isinstance(value, str) else None
+
+    def bind(target, value, names):
+        if isinstance(target, ast.Name):
+            if value is None:
+                names.pop(target.id, None)
+            else:
+                names[target.id] = value
 
     def visit(node, names):
         if isinstance(node, ast.Assign):
-            local = model_of(node.value, names)
-            for target in node.targets:
-                if isinstance(target, ast.Name) and local is not None:
-                    names[target.id] = local
             for child in ast.iter_child_nodes(node):
                 visit(child, names)
+            value = value_of(node.value, names)
+            for target in node.targets:
+                if isinstance(target, ast.Name) and value is not None:
+                    names[target.id] = value
+            return
+        if isinstance(node, ast.AnnAssign):
+            # A getter returns no declared model, so an annotation is how a receiver read through a getter names its
+            # model: writer: User | None = row.get_writer().
+            if node.value is not None:
+                visit(node.value, names)
+            value = annotated(node.annotation, names)
+            bind(node.target, value if value is not None else (value_of(node.value, names) if node.value is not None else None), names)
+            return
+        if isinstance(node, (ast.For, ast.AsyncFor)):
+            visit(node.iter, names)
+            collection = value_of(node.iter, names)
+            bind(node.target, collection[1] if isinstance(collection, tuple) else None, names)
+            for stmt in node.body + node.orelse:
+                visit(stmt, names)
             return
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             inner = dict(names)
-            for arg in list(node.args.args) + list(node.args.kwonlyargs):
+            for arg in list(node.args.posonlyargs) + list(node.args.args) + list(node.args.kwonlyargs):
                 inner.pop(arg.arg, None)
+                if arg.annotation is not None:
+                    bind(ast.Name(id=arg.arg), annotated(arg.annotation, names), inner)
             for child in node.args.defaults:
                 visit(child, inner)
             for stmt in node.body:
@@ -76,7 +154,9 @@ def _scan_tree(tree, classes: dict, out: dict) -> None:
                         inner = dict(names)
                         if params:
                             inner[params[0].arg] = receiver
-                        for stmt in getattr(callback, "body", []):
+                        visit(func.value, names)
+                        body = callback.body if isinstance(callback.body, list) else [callback.body]
+                        for stmt in body:
                             visit(stmt, inner)
                         for default in callback.args.defaults:
                             visit(default, inner)

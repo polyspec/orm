@@ -295,21 +295,41 @@ def _resolved_prefix(model: RuntimeModel, e: Entity, name: str) -> str | None:
         return None
 
 
+def _named_getter(m: RuntimeModel, key: str, used: set) -> bool:
+    """Whether get_<key> reads a value that the scanned calls name: the relation result <entity>_model or
+    <entity>_models, or a name that an alias_, new_ or add_column_ call adds (docs/dsl.md, the scan)."""
+    for entity in m.entities:
+        if key in (f"{snake(entity)}_model", f"{snake(entity)}_models"):
+            return True
+    if f"alias_{key}" in used or f"new_{key}" in used or f"add_column_{key}" in used:
+        return True
+    return any(n.startswith("add_column_") and n.endswith(f"_alias_{key}") for n in used)
+
+
 def render_models(m: RuntimeModel, out_dir: str, scan) -> str:
     """The models.py text of the runtime model. scan is the file or directory where the model calls were found."""
     check_column_names(m)
     calls = scan_model_calls(scan, {pascal(name) for name in m.entities})
     problems = []
+    used = {name for names in calls.values() for name in names}
     for class_name, names in calls.items():
         entity = m.entities.get(snake(class_name))
         if entity is None:
             continue
         statics = _static_names(entity)
-        for name in names:
+        for name in sorted(names):
             if name in statics or name.startswith("_"):
                 continue
-            if _resolved_prefix(m, entity, name) is None:
-                problems.append(f"{class_name}.{name} is not a model method")
+            if _resolved_prefix(m, entity, name) is not None:
+                continue
+            if name.startswith("get_") and len(name) > 4 and not name.startswith(("get_by_", "gets_by_", "get_count_by_")):
+                if not _named_getter(m, name[4:], used):
+                    key = name[4:]
+                    problems.append(
+                        f"{class_name}.{name} is called, but no alias_{key}, new_{key} or add_column call attaches it"
+                    )
+                continue
+            problems.append(f"{class_name}.{name} is not a model method")
     if problems:
         raise OrmError(codes.CONFIG, "; ".join(problems))
     kinds = {category(c) for e in m.entities.values() for c in e.fields}

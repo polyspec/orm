@@ -245,7 +245,9 @@ final class Generator
                         $found[$name] = ChainDeclare::getter($name);
                         continue;
                     }
-                    $problems[] = "$class.$name is not a model method: no column, chain or operator accepts it";
+                    $problems[] = str_starts_with($name, 'get') && strlen($name) > 3 && ctype_upper($name[3])
+                        ? "$class.$name is called, but no alias$key, new$key or addColumn call attaches it"
+                        : "$class.$name is not a model method: no column, chain or operator accepts it";
                     continue;
                 }
                 foreach (array_unique(array_filter($counts, static fn(?int $n): bool => $n !== null)) as $n) {

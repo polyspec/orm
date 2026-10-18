@@ -49,6 +49,16 @@ type goGen struct {
 	owners  map[string]bool     // column names used as a comparison target
 	errors  []string
 	pending bool
+	// getterCalls are the scanned Get<Name> calls of a round, checked after
+	// the round against the getters its alias, new and addColumn calls attach.
+	getterCalls []getterCall
+}
+
+// getterCall is one scanned call of a getter that no fixed method names.
+type getterCall struct {
+	pos  string
+	gm   *goModel
+	name string
 }
 
 func generateGo(m *runtimemodel.Model, out, pkg string, scan []string) error {
@@ -906,7 +916,10 @@ func (g *goGen) method(pos string, gm *goModel, name string, args []argInfo) {
 		g.addMethod(gm, name, fmt.Sprintf("func (x *%s) %s(fn func(*%s) orm.Model) *%s {\n\tx.m.AddColumnSub(%q, func(m orm.Model) orm.Model { return fn(m.(*%s)) })\n\treturn x\n}\n", t, name, t, t, key, t))
 		g.addGetter(pos, gm, "Get"+rest, getter{result: "any", expr: fmt.Sprintf("return x.m.NewValue(%q)", key), origin: "the column added with " + name})
 	case strings.HasPrefix(name, "Get"):
-		// Getters are generated from the calls that define their names.
+		// Getters are generated from the calls that define their names; the
+		// call is checked when the round ends, since the call that attaches it
+		// may come later in the round.
+		g.getterCalls = append(g.getterCalls, getterCall{pos: pos, gm: gm, name: name})
 	default:
 		conn, chain := "", name
 		if strings.HasPrefix(name, "And") && len(name) > 3 && isUpperAt(name, 3) {
