@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 64933e994f474d45c1a66659548fdc2111269abae96a16cad05417978b759b46 -->
+<!-- source-sha256: dc1b0491134079a64a8926a5df61a95f7028dac648e920756b5ca0a5a025e994 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -162,6 +162,7 @@ orm 자신의 규칙만 적는다.
   `make owner-check`가 그 사실을 출력한다. 그 file을 실행하는 명령의 입력에 선언하고, 새 make target의
   scope도 선언한다. 커밋 전에는 바뀐 모든 file의 이름을 test와 script에서 찾아 그 file을 읽는 것 가운데 unit test를 실행한다.
   항목의 증거에 명령과 통과 수를 적는다.
+- 시험 파일은 자기를 실행하는 owner target의 레시피가 `contracts/check-inputs.json`의 `paths`나 `inputs`로 고른다. `scope` 선언(`suite`나 `lint`)은 어떤 owner target도 실행하지 않는 헬퍼나 도구에만 쓴다. 시험 파일의 scope 선언은 시험이 돌지 않는데 검사가 통과하게 하므로, 이 규칙이 금지하는 우회다. `contracts/check-inputs.json`에 선언된 target은 모두 `CHECK_TARGETS`에 있다.
 - `contracts/features.json`이 `environment: linux-runner`로 선언한 검증(예:
   `make php-without-mysql-check`)은 `.github/runner`의 Linux runner에서 실행한다. 다른 machine의
   `make check`는 그것을 RUNNER 줄로 출력하고 통과로 세지 않는다. CI가 그것을 실행한다.

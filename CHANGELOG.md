@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- Every tracked test file runs under an owner target, and a test file never takes a scope declaration; the sixteen files that had no owner target are connected or declared as helpers (T77-45).
 - The CHECK_TARGETS inputs name tracked paths, and the Python interface unit check runs its two test files instead of an empty directory (T77-44).
 - Every runtime reads a restore key from the request the hook left, before canonicalize renumbers the parameters, and the shared case restore_rewritten_key_set_scope covers it (T77-43).
 - The Python request-hook coverage module runs its cases per item, so it exits 0 when every case passes (T77-42).

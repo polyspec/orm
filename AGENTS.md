@@ -203,6 +203,7 @@ vendors; this file states only the rules of orm.
   and `make owner-check` prints that; declare it as an input of the command that runs it, and
   declare a new make target's scope. Before a commit, also search the tests and scripts for the name of every changed file and
   run the unit tests among those that read it. State the commands and their pass counts in the item's evidence.
+- A test file is selected by an owner target whose recipe runs it, through `paths` or `inputs` in `contracts/check-inputs.json`. A `scope` declaration (`suite` or `lint`) is only for a helper or tool that no owner target runs. It is never for a test file: declaring a test file's scope makes the check pass while the test does not run, which is the shortcut this rule forbids. Every target declared in `contracts/check-inputs.json` is listed in `CHECK_TARGETS`.
 - A verification that `contracts/features.json` declares with `environment: linux-runner`, such as
   `make php-without-mysql-check`, runs on the Linux runner of `.github/runner`; `make check` on
   another machine prints it as a RUNNER line and does not count it. CI runs it.
