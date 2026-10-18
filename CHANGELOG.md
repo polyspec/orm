@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The PHP decimal-set binding runs its decimal document as its own case, so the dbspec-set-decimal unit passes in both PHP and TypeScript (T148-3-php-1, T148-3-ts-2).
 - The TypeScript IR-answer cases run in ir_answers.mjs under their fixture ids, and the flowmark cases stay in markdown_conformance.mjs (T148-3-ts-3).
 - The TypeScript install fixture runs in its own file, so the install unit reports only its fixture cases (T148-3-ts-1).
 - The TypeScript statement-fault entry-point check runs in its own file, so the fault suite reports only its four cases (T148-3-ts-4).

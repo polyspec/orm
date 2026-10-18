@@ -5947,7 +5947,7 @@
       "id": "dbspec-set-decimal", "kind": "suite", "profile": "set-consumers",
       "file": "contracts/fixtures/dbspec-set.json", "cases": "$.documents[*]",
       "bindings": [
-        { "implementation": "php", "test": "packages/php/tests/SchemaSetTest.php" },
+        { "implementation": "php", "test": "packages/php/tests/SchemaSetTest.php", "symbol": "SchemaSetTest::test_decimal_document" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-set-decimal.mjs" }
       ]
     },

@@ -143,6 +143,25 @@ final class SchemaSetTest extends TestCase
         }
     }
 
+    /** The decimal set installs on $dsn, and two amounts at the edges of decimal(13,4) are stored and read back exactly. */
+    private static function decimalDocumentRoundTrip(string $dsn): void
+    {
+        $decimal = \Polyspec\Orm\Tests\SchemaSetDecimal\connect($dsn, new Config());
+        try {
+            $decimal->utils()->schema()->install(\Polyspec\Orm\Tests\SchemaSetDecimal\schema());
+            (new DecimalCase)($decimal)->setSeq(1)->setAmount('48.0450')->create();
+            (new DecimalCase)($decimal)->setSeq(2)->setAmount('123456789.1234')->create();
+            $rows = (new DecimalCase)($decimal)->getCount();
+            self::check($rows === 2, "decimal rows $rows");
+            $first = (new DecimalCase)($decimal)->addAllColumns()->getBySeq(1)->getAmount();
+            self::check($first === '48.0450', "decimal amount $first");
+            $last = (new DecimalCase)($decimal)->addAllColumns()->getBySeq(2)->getAmount();
+            self::check($last === '123456789.1234', "decimal amount $last");
+        } finally {
+            $decimal->close();
+        }
+    }
+
     /** 연결이 보낸 statement를 $n에 세는 subscriber를 등록하고 그 연결을 돌려준다. */
     private static function counted(Db $db, int &$n): Db
     {
@@ -436,6 +455,23 @@ final class SchemaSetTest extends TestCase
     {
         foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
             yield $driver => [$driver];
+        }
+    }
+
+    /** @return iterable<string, array{string}> the decimal document of contracts/fixtures/decimal_schema.dbs, its one case */
+    public static function decimalDocumentCase(): iterable
+    {
+        yield 'decimal_schema.dbs' => ['decimal_schema.dbs'];
+    }
+
+    // The decimal document runs on every driver, in a case database of its own per driver, removed when it ends, also when
+    // it fails. The unit binds this method, so the decimal document is its only data set.
+    #[DataProvider('decimalDocumentCase')]
+    public function test_decimal_document(string $document): void
+    {
+        self::check($document === 'decimal_schema.dbs', "decimal document $document");
+        foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
+            with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::decimalDocumentRoundTrip($dsn));
         }
     }
 

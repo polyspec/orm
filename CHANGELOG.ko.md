@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: fa588739de31a942d235b55cb92ac35e9cb426008076f7b75ee96ebe3e837943 -->
+<!-- source-sha256: 60f0676dc142cbc7a233dcc15d3f243bbd2c927d8843c827515fa30ecbab90c7 -->
 # 변경 이력
 
 ## Unreleased
+- PHP decimal-set binding이 decimal document를 자기 case로 실행해, dbspec-set-decimal unit이 PHP와 TypeScript에서 통과한다 (T148-3-php-1, T148-3-ts-2).
 - TypeScript IR answer case가 ir_answers.mjs에서 fixture id로 실행되고, flowmark case는 markdown_conformance.mjs에 남는다 (T148-3-ts-3).
 - TypeScript install fixture가 자기 file에서 실행되어, install unit은 자기 fixture case만 보고한다 (T148-3-ts-1).
 - TypeScript statement-fault entry point 검사가 자기 file에서 실행되어, fault suite는 자기 네 case만 보고한다 (T148-3-ts-4).
