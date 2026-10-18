@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 988b5092e9477cf041550bc3e2295b26466c3efb426b8797841856f6b3c2fa5a -->
+<!-- source-sha256: a33d32710ef0a0057c6a383bf2f81f3c19a1f201fcce32bb5223a620b7285699 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1556,3 +1556,4 @@
 - [ ] T210 native time 값을 넘기는 test가 통과한다. 원인: Go TestStatementTimeout과 TestStatementTimeoutThroughAPooler가 `CODEC_ENCODE: parameter 0 (time.Time) is not a datetime value`(timezone_test.go:333, 403)로, packages/ts/tests/model.mjs의 모든 case가 `Date` setup(model.mjs:176-177)에서 `CODEC_ENCODE: parameter 5 (object) is not a datetime value`로 실패하며, T200 이전 main에서도 그렇다. native time 값은 14f1796a부터 거부된다. 완료 기준: 각 test가 정규 text 형태를 넘기고 MySQL, PostgreSQL, SQLite에서 통과한다.
   재개 (2026-10-19): 수정(9ce82e84)은 문법 점검만으로 반영됐다. 다음: 두 Go test와 model.mjs를 9ce82e84 이전에 red, 이후에 green으로 MySQL, PostgreSQL, SQLite에서 실행한다.
 - [ ] T211 TypeScript scan이 어떤 호출도 붙이지 않는 getter 호출을 거부한다(consumer: 중첩 relation alias의 `getMatch`). 원인: scan은 `alias<Name>()` 호출과 getter의 receiver를 모두 generated model로 풀 때만 `get<Name>()`을 선언하고, 풀지 못한 호출은 말없이 버린다. relation 안에 중첩된 relation의 alias와 getter의 generic 인자로만 type이 정해지는 receiver가 버려진다. Rust는 이미 거부한다("no call attaches", generate.rs). 완료 기준: 다섯 생성기가 중첩 relation alias를 풀고, 어떤 alias, `new<Name>`, `addColumn`도 붙이지 않는 scan된 getter 호출은 model과 method를 말하며 생성을 멈춘다. 각각 전 red, 후 green.
+- [ ] T212 기대 revision을 받은 update와 delete는 행이 바뀌었으면 `REVISION_CHANGED`로 실패한다 (consumer S-286-19: page/board ManageViews::submit와 board comment 삭제가 각자 이 순서를 다시 만들고 `make duplicates`가 보고한다). 수용 기준: model이 revision column을 선언하거나 chain이 지정한다. 기대 revision을 받은 `update()`와 `delete()`는 주어진 transaction에서 행을 잠그고 revision을 비교해, 같으면 revision + 1로 update하거나 delete하고, 다르면 새 catalog code `REVISION_CHANGED`로 실패하며 아무것도 바꾸지 않는다. docs(+ko)와 contracts에 명시하고, conformance vector가 Go, PHP, Python, Rust, TypeScript에서 MySQL, PostgreSQL, SQLite로 red 후 green으로 실행된다.
