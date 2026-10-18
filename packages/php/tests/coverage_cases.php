@@ -53,15 +53,7 @@ function coverageItem(): array
     return $item;
 }
 
-/** A DSN variable of the test servers' environment; unset fails with its name, and a database test never skips. */
-function requiredDsn(string $name): string
-{
-    $value = getenv($name);
-    if (!is_string($value) || $value === '') {
-        throw new RuntimeException("$name is not set; run the test through make test-servers or its make target");
-    }
-    return $value;
-}
+require_once __DIR__ . '/required_dsn.php';
 
 /** seed된 bench database의 AES와 blind index key로 연결한다(scripts/bench-db.sh). */
 function coverageConnect(string $dsn): Db

@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2afb39e061e98275c9cbd05ebb3c5898b66a916de9391654c3ba5321e81bfeca -->
+<!-- source-sha256: 0ec6d03c1821ce2ac2ac777453097fd437a5ae65e6755a0519c2f8fbfa8f6b6d -->
 # 변경 이력
 
 ## Unreleased
+- PHP 확장 테스트 helper requiredDsn은 packages/php/tests/required_dsn.php에 한 번만 선언하고, 확장과 PHP 클라이언트 bootstrap이 함께 로드해도 redeclare가 나지 않는다 (T77-37).
 - Go 성능 gate는 tools root인 packages/go/bench의 benchmark다. 이 root는 어떤 구현에도 속하지 않으므로 그 go-internal parity unit을 없앴다. gate는 performance_gate feature로 계속 실행된다. (#T77-8-1-1)
 - physical fixture가 sqlite와 postgres에서 고정 시계를 써서 day_of_week와 days_ago 기대값이 고정 날짜에서 유도된다(T77-33, MySQL은 T77-33-1로 열림).
 - The coverage case unit runs its child without the test context (T77-32).
