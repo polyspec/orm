@@ -62,8 +62,6 @@ class ConnectionUtcTest(unittest.TestCase):
             .set_user_seq(user.get_seq())
             .create()
         )
-        kst = datetime.timezone(datetime.timedelta(hours=9))
-        midnight = datetime.datetime(2026, 1, 2, 0, 0, 0, tzinfo=kst)
         before = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
         created = (
             models.Author()
@@ -73,7 +71,7 @@ class ConnectionUtcTest(unittest.TestCase):
             .set_service_seq(service.get_seq())
             .set_service_region_seq(region.get_seq())
             .set_service_member_seq(member.get_seq())
-            .set_start_dt(midnight)
+            .set_start_dt("2026-01-02T00:00:00+09:00")
             .set_end_dt("2026-01-03 00:00:00")
             .create()
         )
@@ -87,7 +85,7 @@ class ConnectionUtcTest(unittest.TestCase):
             f"created_ts {row.get_created_ts()} at {before.isoformat()}",
         )
         self.assertEqual(
-            author().start_dt(midnight).get_count(),
+            author().start_dt("2026-01-02T00:00:00+09:00").get_count(),
             1,
             "equality filter with an instant",
         )

@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The Python connection UTC test binds the instant as offset text, as the protocol takes datetime parameters (T77-57).
 - The physical Go units read their cases from the go test -json stream of their make targets: GO_TEST_FLAGS selects it (T77-56).
 - The zero-case rule uses kit's run-tests, and the orm counter scripts/check/count-cases.mts is removed (T77-55).
 - A test run that reports zero cases fails: scripts/check/count-cases.mts counts the cases through kit's event readers (T77-54).
