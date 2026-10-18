@@ -182,7 +182,7 @@ async fn conditions(t: &Target) {
     assert_eq!(Author::new().connect(db).photo_url(Null).get_count().await.unwrap(), 2, "null");
     assert_eq!(Author::new().connect(db).ne_photo_url(Null).and_lk_name("lph").get_count().await.unwrap(), 1, "not null and like");
     assert_eq!(Author::new().connect(db).between_read_count([10, 20]).get_count().await.unwrap(), 2, "between");
-    assert_eq!(Author::new().connect(db).gt_start_dt(start() + chrono::Duration::minutes(90)).get_count().await.unwrap(), 2, "time compare");
+    assert_eq!(Author::new().connect(db).gt_start_dt(txt(start() + chrono::Duration::minutes(90))).get_count().await.unwrap(), 2, "time compare");
     let one = Author::new().connect(db).get_by_name("gamma").await.unwrap().expect("a row");
     assert_eq!(one.get_read_count().unwrap(), 20, "get_by");
     assert!(Author::new().connect(db).get_by_name("missing").await.unwrap().is_none(), "get without a row");
