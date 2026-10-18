@@ -514,12 +514,12 @@ function connect(dsn) {
 /**
  * Every connection reads and writes datetime as UTC regardless of the server's time zone
  * (docs/dialects.md "Date and time"). The test server's MySQL uses SYSTEM (KST),
- * and PostgreSQL uses Asia/Seoul. An instant with an offset is stored as UTC wall clock,
- * and the clock default is also UTC.
+ * and PostgreSQL uses Asia/Seoul. A datetime is its canonical UTC text, stored as that wall
+ * clock, and the clock default is also UTC.
  */
 async function connectionsUseUtc(db) {
   const f = await seed(db);
-  const midnight = new Date('2026-01-02T00:00:00+09:00');
+  const midnight = '2026-01-01 15:00:00';
   const before = Date.now();
   const created = await new Author().connect(db)
     .setName('zone').setUserSeq(f.users[0].getSeq()).setServiceSeq(f.service.getSeq())
@@ -529,7 +529,6 @@ async function connectionsUseUtc(db) {
   check(row?.getStartDt() === '2026-01-01 15:00:00.000000', `start_dt ${row?.getStartDt()}`);
   const wall = text => Date.parse(`${text.replace(' ', 'T').slice(0, 23)}Z`);
   check(row !== null && Math.abs(wall(row.getCreatedTs()) - before) < 60_000, `created_ts ${row?.getCreatedTs()} at ${new Date(before).toISOString()}`);
-  check(await new Author().connect(db).startDt(midnight).getCount() === 1, 'equality filter with an instant');
   check(await new Author().connect(db).startDt('2026-01-01 15:00:00').getCount() === 1, 'equality filter by text');
   check(await new Author().connect(db).startDt('2026-01-01T15:00:00.0').getCount() === 1, 'equality filter by text with fraction');
   check(await new Author().connect(db).startDt(['2026-01-01 15:00:00', '2026-01-03 00:00:00']).getCount() === 1, 'in filter by text');

@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b418f00d31dbc0cc6819706a7af481f82d96c60ed6f458e5ccdaa93ed7a4c138 -->
+<!-- source-sha256: 251145e409012558285dbdb34493bd2748c0474bac8497bdf9039139a690528d -->
 # 변경 이력
 
 ## Unreleased
+- model.mjs는 connectionsUseUtc 시각을 canonical UTC text로 넘긴다 (T210).
 - 다섯 생성기가 중첩 relation alias와 wrapper나 type 인자로 type이 정해진 getter를 풀고, 아무것도 붙이지 않는 getter 호출에서 생성을 멈춘다(T211).
 - 다섯 client의 request-hook case가 hook이 conflict key를 채우는 upsert를 다룬다 (T202).
 - 전체 parity-check는 kit K236의 parse 시점 gate로 interface-check가 빌드하기 전에 거부한다. orm 자체 gate 줄은 지운다 (T206).
