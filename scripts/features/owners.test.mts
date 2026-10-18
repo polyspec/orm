@@ -145,7 +145,8 @@ const t42 = [
 ];
 
 caseTest('a change across the four clients selects no full-suite target', 5000, async () => {
-  assert.deepEqual(targets(selectTargets(inputs, t42)), ['repo-check', 'go-fmt-check', 'go-vet-check', 'rust-fmt-check']);
+  // comment-language-check reads every source file (T131), so a source change selects it.
+  assert.deepEqual(targets(selectTargets(inputs, t42)), ['comment-language-check', 'repo-check', 'go-fmt-check', 'go-vet-check', 'rust-fmt-check']);
   for (const target of ['client-db-check', 'client-pooler-check', 'case-database-check', 'conformance-check', 'feature-coverage', 'feature-verify-rust', 'feature-verify-other', 'go-test-check'])
     assert.equal(inputs[target]?.scope, 'suite', `${target} is not a full-suite target`);
   // The sources recorded by contracts/interfaces.json and contracts/symbols/*.json are inputs to the interface check.
@@ -256,7 +257,7 @@ caseTest('a path that only a lint selects is untested unless its scope is declar
 caseTest('a generator source selects the check that regenerates the models', 5000, () => {
   const { targets: declared } = readCheckInputs(root);
   const selected = selectTargets(declared, ['packages/go/generator/gen_go.go']).filter(({ tested }) => tested.length).map(({ target }) => target);
-  assert.deepEqual(selected, ['go-model-check']);
+  assert.deepEqual(selected, ['comment-language-check', 'go-model-check']);
 });
 
 // The whole-tree case checks that each tracked file has a behavior test or a scope declaration. If any lacks one, it names that file and fails.
