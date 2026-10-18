@@ -255,7 +255,7 @@ export function createChecks(create: string): Map<string, string> {
   return checks;
 }
 
-/** renderer CHECK이 CHECK_CLAUSE에 남는 형식이다 (docs/dialects.md "Introspection", "Checks"). */
+/** The form in which a renderer CHECK remains in CHECK_CLAUSE (docs/dialects.md "Introspection", "Checks"). */
 function rendererCheck(col: IColumn): string {
   const c = '`' + col.name + '`';
   switch (col.type.kind) {
@@ -269,14 +269,14 @@ function rendererCheck(col: IColumn): string {
   return '';
 }
 
-/** DEFAULT_GENERATED default가 그 column의 renderer 시각 default인지 알려 준다. */
+/** Tells whether a DEFAULT_GENERATED default is the renderer's time default for that column. */
 function mysqlNow(text: string, type: DbspecType): boolean {
   if (type.kind !== 'datetime') return false;
   if (type.precision === 0) return text === 'CURRENT_TIMESTAMP';
   return text === `CURRENT_TIMESTAMP(${type.precision})`;
 }
 
-/** escape를 푼 COLUMN_DEFAULT 값을 dbspec literal로 쓴다. parse가 canonical form과 유효성을 정한다. */
+/** Writes the COLUMN_DEFAULT value with its escape removed as a dbspec literal. parse decides the canonical form and validity. */
 function mysqlDefault(value: string, type: DbspecType): string {
   switch (type.kind) {
     case 'bool':
@@ -335,7 +335,7 @@ async function readIndexes(query: CatalogQuery, c: Catalog): Promise<void> {
 
 async function readForeignKeys(query: CatalogQuery, c: Catalog): Promise<void> {
   let current: { fk: IForeignKey; table: ITable } | null = null;
-  // 보고한 key의 나머지 column row는 건너뛴다.
+  // The remaining column rows of the reported key are skipped.
   let skipped = '';
   for (const r of await query(FOREIGN_KEYS_QUERY)) {
     const [table, name, refTable, onDelete, onUpdate, match, column, refColumn] = [r.text(0), r.text(1), r.text(2), r.text(3), r.text(4), r.text(5), r.text(6), r.text(7)];
@@ -363,7 +363,7 @@ async function readForeignKeys(query: CatalogQuery, c: Catalog): Promise<void> {
   if (current !== null) current.table.fks.push(current.fk);
 }
 
-/** trigger를 renderer statement 형식으로 다시 쓰고 알아본다. */
+/** Rewrites a trigger in the renderer statement form and recognizes it. */
 async function readTriggers(query: CatalogQuery, c: Catalog): Promise<void> {
   const triggers = new Map<string, ITrigger[]>();
   for (const r of await query(TRIGGERS_QUERY)) {

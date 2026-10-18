@@ -555,7 +555,7 @@ export function validate(m: RuntimeModel, r: Request): void {
   if (r.manifest_hash !== m.manifestHash) fail(codes.SCHEMA_HASH_MISMATCH, `client ${r.manifest_hash}, engine ${m.manifestHash}`);
   if (!kinds.has(r.kind)) fail(codes.IR_INVALID, `unknown kind "${r.kind}"`);
   if (r.load === true && (r.kind !== 'insert' || (r.on_duplicate ?? []).length > 0)) fail(codes.IR_INVALID, 'load is only valid on insert without on_duplicate');
-  // restart_identity은 entity 하나의 identity만 다시 시작하므로 행이나 값을 받지 않는다.
+  // restart_identity restarts the identity of one entity only, so it takes no row or value.
   if (r.kind === 'restart_identity' && ((r.set ?? []).length > 0 || (r.rows ?? []).length > 0 || (r.on_duplicate ?? []).length > 0 || r.where !== undefined || r.optimistic !== undefined)) {
     fail(codes.IR_INVALID, 'restart_identity takes no set, rows, on_duplicate, where or optimistic');
   }
@@ -607,7 +607,7 @@ export function validate(m: RuntimeModel, r: Request): void {
   }
   if ((r.kind === 'update' || r.kind === 'delete') && (!r.where || r.where.items.length === 0)) fail(codes.IR_INVALID, `${r.kind} without where`);
   if (r.kind === 'restore') {
-    // restore 는 지워진 행만 고치므로 읽은 version 과 비교할 것이 없다.
+    // restore only changes deleted rows, so there is nothing to compare with the version read.
     if (r.optimistic !== undefined) fail(codes.IR_INVALID, 'restore takes no optimistic');
     restoreKey(ent, r);
   }
@@ -641,7 +641,7 @@ export function restoreKey(ent: Entity, r: Request): RestoreParts {
   });
   for (const a of r.set ?? []) if (a.p !== undefined) valued.add(a.column);
   const covered = (columns: readonly string[]) => columns.length > 0 && columns.every(c => valued.has(c));
-  // indexes 의 앞부분이 uniques 와 같은 순서의 unique key 이름이다.
+  // The indexes' leading part is the unique key name in the same order as the uniques.
   const uniques = ent.uniques.map((columns, i) => ({ name: ent.indexes[i] ?? fail(codes.IR_INVALID, `${ent.name} has no index name for unique key ${i + 1}`), columns })).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
   const key = covered(ent.primaryKey) ? ent.primaryKey : uniques.find(u => covered(u.columns))?.columns
     ?? fail(codes.IR_INVALID, `restore of ${ent.name} gives no primary key or unique key a value in its set or in an eq condition of its where`);

@@ -480,7 +480,7 @@ class Applier {
     if (got !== want) throw new Error(`the database is at ${hashOrEmpty(got)}, not ${hashOrEmpty(want)}`);
   }
 
-  /** chain에서 plan의 앞 plan target을 source로 step을 쓴다. */
+  /** In the chain, writes the step with the plan's previous plan target as source. */
   steps(p: DbspecPlan): readonly DbspecPlanStep[] {
     const i = this.chain.indexOf(p);
     const source: DbspecDocument | null = i > 0 ? present(this.chain[i - 1], 'this.chain[i - 1]').schema : null;
@@ -489,7 +489,7 @@ class Applier {
     return steps;
   }
 
-  /** 중단된 row의 step을 catalog의 효과로 정한다. forward이면 앞으로, 아니면 뒤로 이어 갈 위치다. */
+  /** Decides the step of an interrupted row by the effect in the catalog. It is the position to continue from, forward if so, otherwise backward. */
   async resolve(p: DbspecPlan, row: HistoryRow, steps: readonly DbspecPlanStep[], forward: boolean): Promise<number> {
     const k = row.step;
     if (k < 0 || k > steps.length) throw new DbspecApplyError('chain', p.name, 0, `the recorded step ${k} is outside the plan's ${steps.length} steps`);
@@ -498,13 +498,13 @@ class Applier {
     if (uncertain < 0 || uncertain >= steps.length) return k;
     const e = present(steps[uncertain], 'steps[uncertain]').effect;
     const held = e.kind !== 'repeat' && (await this.effect(p, uncertain, e));
-    // 앞으로 갈 때 repeat step은 다시 실행하고, 뒤로 갈 때는 그 rollback을 다시 실행한다.
+    // When going forward, a repeat step runs again; when going backward, its rollback runs again.
     const took = held || (!forward && e.kind === 'repeat');
     if (rolling) return took ? k : k - 1;
     return took ? k + 1 : k;
   }
 
-  /** plan의 row를 state와 step으로 쓴다. row가 없으면 만든다. */
+  /** Writes the plan's row as state and step. Creates the row if there is none. */
   async record(p: DbspecPlan, state: string, step: number): Promise<void> {
     const q = (n: string) => this.q(n);
     if (!this.history.has(p.name)) {
@@ -527,7 +527,7 @@ class Applier {
     await this.s.exec(`UPDATE ${q(HISTORY_TABLE)} SET ${q('step')} = ${this.placeholder(1)} WHERE ${q('name')} = ${this.placeholder(2)}`, [step, p.name]);
   }
 
-  /** plan 하나를 finalize step 앞까지 적용하고 검증한다. */
+  /** Applies one plan up to the finalize step and validates it. */
   async applyPlan(p: DbspecPlan): Promise<void> {
     const steps = this.steps(p);
     await this.emit('plan', p.name, 0, steps.length, '');
@@ -538,7 +538,7 @@ class Applier {
     await this.forward(p, steps, 0);
   }
 
-  /** step start부터 finalize step 앞까지 실행하고 검증한 뒤 row를 applied로 바꾼다. */
+  /** Runs from the start step up to the finalize step, validates, then changes the row to applied. */
   async forward(p: DbspecPlan, steps: readonly DbspecPlanStep[], start: number): Promise<void> {
     const end = finalizeStart(steps);
     for (let i = start; i < end; i++) {
@@ -559,7 +559,7 @@ class Applier {
     await this.emit('done', p.name, 0, steps.length, '');
   }
 
-  /** finalize step을 start부터 실행하고 row를 done으로 바꾼다. */
+  /** Runs the finalize step from start and changes the row to done. */
   async finalizeFrom(p: DbspecPlan, steps: readonly DbspecPlanStep[], start: number): Promise<void> {
     for (let i = start; i < steps.length; i++) {
       await this.run(p, steps, i, present(steps[i], 'steps[i]').statement);
@@ -570,8 +570,8 @@ class Applier {
   }
 
   /**
-   * lock을 잡기 전에 server session의 id를 기억한다. 그 session이 lock을 이미 잡고 있으면 다른
-   * client가 같은 server session을 쓰는 것이므로 session error다.
+   * Before taking the lock, records the server session's id. If that session already holds the lock, the other
+   * client uses the same server session, so it is a session error.
    */
   async openSession(query: string): Promise<void> {
     const [id, held] = await this.queryRow(query);
@@ -581,14 +581,14 @@ class Applier {
     }
   }
 
-  /** current가 lock을 잡은 server session인지 확인한다. 다르면 plan p의 step i 앞에서(p가 null이면 lock에서) session error다. */
+  /** Checks that current is the server session that holds the lock. If not, it is a session error before step i of plan p (or at the lock if p is null). */
   sameSession(p: DbspecPlan | null, i: number, current: unknown): void {
     const id = integer(current, 'server session id');
     if (id === this.serverSession) return;
     throw new DbspecApplyError('session', p?.name ?? '', p === null ? 0 : i, `the connection moved from server session ${this.serverSession} to ${id}; ${SESSION_REQUIREMENT}`);
   }
 
-  /** step i의 statement 하나를 event와 함께 실행한다. statement 앞에서 server session을 확인한다(SQLite는 file 하나의 connection이다). */
+  /** Runs one statement of step i with its event. Checks the server session before the statement (SQLite is one connection per file). */
   async run(p: DbspecPlan, steps: readonly DbspecPlanStep[], i: number, statement: string): Promise<void> {
     await this.emit('statement', p.name, i, steps.length, statement);
     if (this.dialect !== 'sqlite') {
@@ -609,14 +609,14 @@ class Applier {
     await this.emit('applied', p.name, i, steps.length, statement);
   }
 
-  /** SQLite에서 foreign key를 어기는 row가 없는지 확인한다. */
+  /** Checks in SQLite that no row violates a foreign key. */
   async foreignKeyCheck(p: DbspecPlan): Promise<void> {
     if (this.dialect !== 'sqlite') return;
     const broken = integer(await this.queryValue('SELECT COUNT(*) FROM pragma_foreign_key_check'), 'foreign_key_check count');
     if (broken > 0) throw new DbspecApplyError('verify', p.name, 0, `${broken} rows break a foreign key`);
   }
 
-  /** 적용한 plan의 rollback이 non-null로 되돌릴 column의 NULL row를 default로 채우거나, default가 없으면 nulls error로 멈춘다. */
+  /** Fills the NULL rows of the column that the applied plan's rollback would restore as non-null with the default; if there is no default, stops with a nulls error. */
   async nullChecks(p: DbspecPlan, steps: readonly DbspecPlanStep[]): Promise<void> {
     const q = (n: string) => this.q(n);
     for (const [i, s] of steps.entries()) {
@@ -648,7 +648,7 @@ class Applier {
     return Array.from({ length: n }, (_, i) => this.placeholder(i + 1)).join(', ');
   }
 
-  /** 효과가 지금 database에 있는지 알려 준다. 읽지 못하면 step의 failed error다. */
+  /** Reports whether the effect is in the database now. If it cannot be read, it is the step's failed error. */
   async effect(p: DbspecPlan, step: number, e: DbspecEffect | null): Promise<boolean> {
     if (e === null) throw new Error(`step ${step} has no effect to read`);
     try {
@@ -678,8 +678,8 @@ function messageOf(error: unknown): string {
 }
 
 /**
- * applied_at은 tool clock의 UTC 시각을 소수 여섯 자리로 자른 YYYY-MM-DDTHH:MM:SS.ffffffZ다.
- * micros는 epoch 이후 microsecond(wallMicros와 같은 단위)다.
+ * applied_at is the UTC time of the tool clock, cut to six fractional digits, in the form YYYY-MM-DDTHH:MM:SS.ffffffZ.
+ * micros is the microseconds since the epoch (the same unit as wallMicros).
  */
 function appliedAt(micros: number): string {
   if (!Number.isSafeInteger(micros)) throw new TypeError('now must return the microseconds since the epoch as a safe integer');
