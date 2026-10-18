@@ -2407,6 +2407,10 @@
     "exported": true,
     "signature": "def render_models(m: RuntimeModel, out_dir: str, scan) -\u003e str"
   },
+  "packages/python/src/polyspec/orm/generate/scan.py::parameters": {
+    "exported": true,
+    "signature": "def parameters(args) -\u003e list"
+  },
   "packages/python/src/polyspec/orm/generate/scan.py::scan_model_calls": {
     "exported": true,
     "signature": "def scan_model_calls(paths, models, sites=None) -\u003e dict"

@@ -298,7 +298,9 @@ class Scanner {
     fn.params.forEach((p, i) => {
       const { name, type, initializer } = parameter(p);
       if (initializer !== undefined) this.visit(initializer);
-      this.bind(name, this.typeValue(type) ?? (i === 0 ? given : undefined));
+      // An annotated parameter is the class its annotation names, or unknown if it names none. Only an untyped first parameter of a
+      // model callback takes the receiver's model.
+      this.bind(name, type === undefined ? (i === 0 ? given : undefined) : this.typeValue(type));
     });
     if (fn.body !== null) this.visit(fn.body);
     this.scopes.pop();

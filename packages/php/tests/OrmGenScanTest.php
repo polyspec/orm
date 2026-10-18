@@ -694,6 +694,31 @@ PHP;
         self::assertSame(0, $code, $err);
     }
 
+    /** A typed, variadic or arrow-function parameter named like an outer model variable is not that model. */
+    public function test_a_parameter_named_like_an_outer_model_is_not_that_model(): void
+    {
+        $ns = self::NS;
+        $source = <<<PHP
+<?php
+namespace App;
+
+use $ns\Author;
+
+\$module = new Author();
+\$arrow = fn(Holder \$module) => \$module->setGhostColumn(true);
+function typed(Holder \$module): void
+{
+    \$module->setGhostColumn(true);
+}
+function variadic(...\$module): void
+{
+    \$module->setGhostColumn(true);
+}
+PHP;
+        [$code, $err] = self::generate('parameter-shadowing', ['usage.php' => $source]);
+        self::assertSame(0, $code, $err);
+    }
+
     public function test_a_restore_or_create_call_is_a_model_method(): void
     {
         // restoreOrCreate is a public method of Model, so a scanned call to it is accepted.

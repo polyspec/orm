@@ -335,6 +335,18 @@ async function possibleClasses() {
   }
 }
 
+/**
+ * A callback parameter annotated with another class is not the receiver: the untyped first parameter of a model callback gets the
+ * model, a typed one gets the class it names.
+ */
+async function callbackParameters() {
+  const head = "import { Author } from './models/models.js';\ndeclare const db: unknown;\ninterface Holder { getOwner(): void }\n";
+  const other = await generateRefused(head + 'new Author().connect(db).and((module: Holder) => module.getOwner());\nexport {};\n');
+  check(other.status === 0, `a parameter annotated with another class is recorded against the receiver: ${other.stderr}`);
+  const own = await generateRefused(head + 'new Author().connect(db).and((module: Author) => module.getOwner());\nexport {};\n');
+  check(own.status !== 0 && own.stderr.includes('Author.getOwner()'), `a parameter annotated with Author is not recorded against Author: status ${own.status}: ${own.stderr}`);
+}
+
 /** The base method names of the generator are the public methods of the runtime Model, which every generated model inherits. */
 async function baseMethodsMatchModel() {
   const { baseMethods } = await import('../dist/generate/typescript.js');
@@ -346,7 +358,7 @@ async function baseMethodsMatchModel() {
   check(missing.length === 0 && extra.length === 0, `baseMethods differs from the Model methods: missing ${JSON.stringify(missing)}, extra ${JSON.stringify(extra)}`);
 }
 
-const cases = { non_model_call: nonModelCall, base_methods_match_model: baseMethodsMatchModel, model_calls: modelCalls, scan_path_spelling: scanPathSpelling, alias_match_getter: aliasMatchGetter, nested_alias_getter: nestedAliasGetter, unattached_getter: unattachedGetter, external_getter: externalGetter, scope_binding: scopeBinding, may_hold_two_models: mayHoldTwoModels, possible_classes: possibleClasses };
+const cases = { non_model_call: nonModelCall, base_methods_match_model: baseMethodsMatchModel, model_calls: modelCalls, scan_path_spelling: scanPathSpelling, alias_match_getter: aliasMatchGetter, nested_alias_getter: nestedAliasGetter, unattached_getter: unattachedGetter, external_getter: externalGetter, scope_binding: scopeBinding, may_hold_two_models: mayHoldTwoModels, possible_classes: possibleClasses, callback_parameters: callbackParameters };
 const selected = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(cases);
 for (const name of selected) {
   const run = cases[name];

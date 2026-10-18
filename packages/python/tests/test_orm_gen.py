@@ -364,6 +364,60 @@ class OrmGenTest(unittest.TestCase):
             "ServiceMember.set_is_close is not a model method",
         )
 
+    def test_a_variadic_or_keyword_parameter_binds_its_name(self):
+        # module is an Author in the outer scope; the *module and lambda parameters named module are not Author rows.
+        self._assert_round_three(
+            "from models import Author\n"
+            "module = Author()\n"
+            "def holds(db, *module, **options):\n"
+            "    module.set_ghost_column(True)\n",
+            0,
+        )
+        self._assert_round_three(
+            "from models import Author\n"
+            "module = Author()\n"
+            "holds = lambda *module, **options: module.set_ghost_column(True)\n",
+            0,
+        )
+
+    def test_a_parameter_annotated_with_another_class_is_not_the_outer_model(self):
+        self._assert_round_three(
+            "from models import Author\n"
+            "module = Author()\n"
+            "class Installer:\n"
+            "    def _holds(self, db, module: Holder, *rest, **options):\n"
+            "        module.set_ghost_column(True)\n",
+            0,
+        )
+
+    def test_a_parameter_annotated_with_a_model_records_against_that_model(self):
+        self._assert_round_three(
+            "from models import Author\n"
+            "def holds(db, module: Author):\n"
+            "    module.set_ghost_column(True)\n",
+            1,
+            "Author.set_ghost_column is not a model method",
+        )
+
+    def test_a_class_named_like_a_model_but_imported_from_another_module_is_not_the_model(self):
+        # consumer's harness imports the model Module as ModuleRow and its own class Module from another module; a parameter
+        # annotated with the class Module is not a model row, so its call is not checked against the model Author.
+        self._assert_round_three(
+            "from models import Author as AuthorRow\n"
+            "from .calls import Author\n"
+            "def call(row: Author):\n"
+            "    row.set_ghost_column(True)\n",
+            0,
+        )
+        # The model imported from models still records against its class.
+        self._assert_round_three(
+            "from models import Author as AuthorRow\n"
+            "def call(row: AuthorRow):\n"
+            "    row.set_ghost_column(True)\n",
+            1,
+            "Author.set_ghost_column is not a model method",
+        )
+
     def _scan_external(self, text):
         """Runs orm-gen with --scan of one source, for the set of member.dbs that uses core.dbs as an external document."""
         external = ROOT / "contracts" / "fixtures" / "external"

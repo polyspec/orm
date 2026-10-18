@@ -73,15 +73,27 @@ def _exits(stmts) -> bool:
     return isinstance(last, (ast.Return, ast.Raise))
 
 
+def parameters(args) -> list:
+    """Every parameter of a function or lambda: positional, keyword-only, *args and **kwargs."""
+    found = list(args.posonlyargs) + list(args.args) + list(args.kwonlyargs)
+    for extra in (args.vararg, args.kwarg):
+        if extra is not None:
+            found.append(extra)
+    return found
+
+
 def _scan_tree(tree, classes: dict, out: dict, sites=None) -> None:
     # Local name -> generated class name. Import aliases and assignments are added here.
     imported = dict(classes)
 
     class ImportCollector(ast.NodeVisitor):
         def visit_ImportFrom(self, node):
+            # orm-gen writes the generated classes to models.py, so a class name is a model only when it is imported from that
+            # module. The same name imported from another module is another class, and it unbinds the model of that name.
+            from_models = (node.module or "").rsplit(".", 1)[-1] == "models"
             for alias in node.names:
                 if alias.name in classes:
-                    imported[alias.asname or alias.name] = alias.name
+                    imported[alias.asname or alias.name] = alias.name if from_models else None
 
         def visit_Import(self, node):
             for alias in node.names:
@@ -347,8 +359,8 @@ def _scan_tree(tree, classes: dict, out: dict, sites=None) -> None:
             # A lambda or a comprehension has its own scope: its parameters and targets shadow the enclosing names.
             inner = dict(names)
             if isinstance(node, ast.Lambda):
-                for arg in list(node.args.posonlyargs) + list(node.args.args) + list(node.args.kwonlyargs):
-                    inner.pop(arg.arg, None)
+                for arg in parameters(node.args):
+                    inner[arg.arg] = UNKNOWN
                 visit(node.body, inner)
                 return
             for generator in node.generators:
@@ -371,10 +383,14 @@ def _scan_tree(tree, classes: dict, out: dict, sites=None) -> None:
             return
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             inner = dict(names)
-            for arg in list(node.args.posonlyargs) + list(node.args.args) + list(node.args.kwonlyargs):
-                inner.pop(arg.arg, None)
-                if arg.annotation is not None:
-                    bind(ast.Name(id=arg.arg), annotated(arg.annotation, names), inner)
+            for arg in parameters(node.args):
+                # A parameter is a new binding: the model its annotation names, or unknown, which hides the outer name.
+                # A variadic or keyword parameter is a tuple or a dict, never a model.
+                inner[arg.arg] = UNKNOWN
+                if arg.annotation is not None and arg is not node.args.vararg and arg is not node.args.kwarg:
+                    value = annotated(arg.annotation, names)
+                    if value is not None:
+                        inner[arg.arg] = value
             for child in node.args.defaults:
                 visit(child, inner)
             for stmt in node.body:
