@@ -840,6 +840,15 @@ feature-go-unit:
 feature-rust-unit:
 	$(WITH_TEST_ENV) cd $(FEATURE_CRATE) && $(CARGO_TEST) feature-rust-unit -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline $(FEATURE_CARGO_TARGET) -- --test-threads=1
 
+# feature-rust-database runs one ignored Rust test of a feature against one database, as a parity binding names it: FEATURE_CRATE
+# and FEATURE_CARGO_TARGET as feature-rust-unit, FEATURE_TEST (the exact name of the test), and FEATURE_DATABASE with
+# FEATURE_DSN_ENV (the database, and the variable that holds its DSN). The test is ignored by default: the feature checker runs it
+# with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN set for each database of its coverage item (scripts/features/coverage.mts), and
+# this target does the same for the one database that the binding names.
+.PHONY: feature-rust-database
+feature-rust-database:
+	$(WITH_TEST_ENV) cd $(FEATURE_CRATE) && ORM_FEATURE_DATABASE=$(FEATURE_DATABASE) ORM_FEATURE_DSN="$$$(FEATURE_DSN_ENV)" $(CARGO_TEST) feature-rust-database -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline $(FEATURE_CARGO_TARGET) -- --test-threads=1 --exact --include-ignored $(FEATURE_TEST)
+
 # feature-check는 기능의 coverage와 모든 검증 명령이고, make check는 그것을 세 target으로 실행한다: feature-coverage는
 # coverage, feature-verify-rust는 shard rust(cargo로 Rust를 build하고 실행하는 명령)의 검증 명령, feature-verify-other는
 # shard other의 검증 명령이다(contracts/features.json의 `shard`). CI는 셋을 서로 다른 group에서 동시에 실행한다. 같은
