@@ -328,7 +328,7 @@ func TestStatementTimeout(t *testing.T) {
 			row := orm.NewCore(ent)
 			ent.New(row)
 			row.Connect(setup)
-			row.Set("start_dt", time.Now())
+			row.Set("start_dt", time.Now().UTC().Format(time.DateTime))
 			if _, err := row.Create(); err != nil {
 				t.Fatal(err)
 			}
@@ -398,7 +398,7 @@ func TestStatementTimeoutThroughAPooler(t *testing.T) {
 		row := orm.NewCore(ent)
 		ent.New(row)
 		row.Connect(setup)
-		row.Set("start_dt", time.Now())
+		row.Set("start_dt", time.Now().UTC().Format(time.DateTime))
 		if _, err := row.Create(); err != nil {
 			t.Fatal(err)
 		}

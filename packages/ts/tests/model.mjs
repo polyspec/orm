@@ -173,8 +173,10 @@ async function schemaEmpty(dialect, dsn) {
   } finally { await db.close(); }
 }
 
-const start = new Date(Date.UTC(2026, 0, 2, 3, 4, 5));
-const hours = h => new Date(start.getTime() + h * 3_600_000);
+// A datetime parameter is its canonical text, YYYY-MM-DD HH:MM:SS in UTC (docs/interfaces.md).
+const start = Date.UTC(2026, 0, 2, 3, 4, 5);
+const datetime = ms => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
+const hours = h => datetime(start + h * 3_600_000);
 
 async function seed(db) {
   const service = await new Service().connect(db).setName('service').create();
@@ -239,7 +241,7 @@ async function conditions(db) {
   check(await new Author().connect(db).photoUrl(null).getCount() === 2, 'null');
   check(await new Author().connect(db).nePhotoUrl(null).andLkName('lph').getCount() === 1, 'not null and like');
   check(await new Author().connect(db).betweenReadCount([10, 20]).getCount() === 2, 'between');
-  check(await new Author().connect(db).gtStartDt(new Date(start.getTime() + 90 * 60_000)).getCount() === 2, 'time compare');
+  check(await new Author().connect(db).gtStartDt(datetime(start + 90 * 60_000)).getCount() === 2, 'time compare');
   const one = await new Author().connect(db).getByName('gamma');
   check(one !== null && one.getReadCount() === 20, 'getBy');
   check(await new Author().connect(db).getByName('missing') === null, 'get without a row returns null');

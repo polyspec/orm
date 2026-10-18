@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The Go statement-timeout tests and the TypeScript model test pass datetimes as canonical text (T210).
 - The audit setting takes `tables <table> (<record column>, <name column>)`: its triggers record each audited table of a transaction once, in the six dbspec implementations (T201).
 - A full parity-check passes the full-run gate before parity-prepare builds anything (T206).
 - A full parity-check passes the full-run gate before parity-prepare builds anything; T148-4-4 is closed as no defect (T206, T148-4-4).

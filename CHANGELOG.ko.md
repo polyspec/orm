@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 074724b0a19fdd35183be75e29bf25f24c1213e1308939d5843281f70771f5e3 -->
+<!-- source-sha256: c69ac4b98074af5cb6508bc8725d8bbca1c510945bea0c1da477f464e41785a2 -->
 # 변경 이력
 
 ## Unreleased
+- Go statement-timeout test와 TypeScript model test는 datetime을 canonical text로 넘긴다 (T210).
 - audit setting이 `tables <table> (<record column>, <name column>)`를 받는다: 그 trigger가 transaction의 감사 대상 table을 한 번씩 기록한다. 여섯 dbspec 구현에서(T201).
 - 전체 parity-check는 parity-prepare가 빌드하기 전에 full-run gate를 통과해야 한다. (T206).
 - 전체 parity-check는 parity-prepare가 빌드하기 전에 full-run gate를 통과해야 한다. T148-4-4는 결함 없음으로 닫는다 (T206, T148-4-4).
