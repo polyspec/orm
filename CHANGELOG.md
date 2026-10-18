@@ -3,6 +3,7 @@
 
 ## Unreleased
 - A start of the test servers stops the servers an earlier start left on its datadir, and `make worktree-remove` stops a worktree's servers before removing it (T207).
+- T202 is closed as no defect: the request hook already runs before the conflict-key validation in every client (T202).
 - The Go statement-timeout tests and the TypeScript model test pass datetimes as canonical text (T210).
 - The audit setting takes `tables <table> (<record column>, <name column>)`: its triggers record each audited table of a transaction once, in the six dbspec implementations (T201).
 - A full parity-check passes the full-run gate before parity-prepare builds anything (T206).
