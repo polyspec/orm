@@ -1,6 +1,6 @@
-# model의 method 이름은 docs/dsl.md의 chain 문법을 따른다. 이름을 PascalCase
-# 단어로 나눈다; column 이름에는 connector나 operator 단어가 없으므로 나눔이
-# 모호하지 않다.
+# The method names of a model follow the chain syntax of docs/dsl.md. A PascalCase name is split
+# into words. Column names have no connector or operator words, so the split
+# is unambiguous.
 from polyspec.orm import codes
 from polyspec.orm.engine.model import Entity, Field, RuntimeModel
 from polyspec.orm.errors import OrmError
@@ -19,7 +19,7 @@ __all__ = [
     "words",
 ]
 
-# operator가 column type에 맞는지 정하는 표 (docs/dbspec.md "Runtime model").
+# The table that decides which operators fit a column type (docs/dbspec.md "Runtime model").
 COMPARABLE = (
     "eq",
     "not_eq",
@@ -81,9 +81,9 @@ HOST_STAGES = frozenset({"aes", "hex", "ip"})
 
 
 def op_allowed(c: Field, op: str) -> bool:
-    """op가 그 type과 codec stage의 column에 쓸 수 있는지: AES column은 blind
-    index로 비교하고, host stage만의 column은 동등성으로만, 그 밖의 codec column은
-    NULL로만 비교한다."""
+    """Whether op can be used on that type and that codec stage's column: an AES column is compared by blind
+    index, a column with only host stages is compared only by equality, and other codec columns are compared
+    only with NULL."""
     if op in COLUMN_OPS:
         return True
     if c.stages:
@@ -137,7 +137,7 @@ def _column_index(e: Entity) -> dict:
 
 
 def column_name(model: RuntimeModel, e: Entity | None, name: str) -> str:
-    """PascalCase 이름이 가리키는 column (e가 None이면 모든 entity에서 찾는다)."""
+    """The column that a PascalCase name refers to (if e is None, it is found in all entities)."""
     if e is not None:
         return _column_index(e).get(name, "")
     for entity in model.entities.values():
@@ -173,7 +173,7 @@ _ENGINE_OPS = {
 
 
 def client_styles(c: Field) -> tuple:
-    """column을 styled value로 만드는 codec stage (aes, hex, ip는 문자열을 유지한다)."""
+    """The codec stage that makes the column a styled value (aes, hex, and ip keep the string)."""
     return tuple(s for s in c.stages if s not in ("aes", "hex", "ip"))
 
 
@@ -182,12 +182,12 @@ def numeric(c: Field) -> bool:
 
 
 def function_column(c: Field) -> bool:
-    """column 함수를 받는 column."""
+    """A column that takes a column function."""
     return len(c.stages) == 0 and c.type in ("date", "datetime")
 
 
 def category(c: Field) -> str:
-    """column의 값 범주 (docs/dbspec.md "Runtime model")."""
+    """The value category of a column (docs/dbspec.md "Runtime model")."""
     if client_styles(c):
         return "styled"
     if c.stages:
@@ -288,7 +288,7 @@ def _parse_key(model: RuntimeModel, e: Entity, ws) -> ChainKey:
 
 
 def parse_chain(model: RuntimeModel, e: Entity, name: str) -> list:
-    """entity e의 method 이름(PascalCase)에서 chain 부분을 parse한다."""
+    """Parses the chain part from an entity e's method name (PascalCase)."""
     ws = words(name)
     if not ws:
         raise OrmError(codes.CONFIG, "empty condition name")
@@ -311,7 +311,7 @@ def parse_chain(model: RuntimeModel, e: Entity, name: str) -> list:
 
 
 def parse_order(e: Entity, name: str) -> list:
-    """orderBy 이름을 column과 방향으로 parse한다."""
+    """Parses an orderBy name into a column and a direction."""
     ws = words(name)
     out = []
     start = 0
@@ -337,7 +337,7 @@ def parse_order(e: Entity, name: str) -> list:
 def split_pair(
     model: RuntimeModel, left: Entity | None, right: Entity | None, name: str
 ) -> tuple:
-    """<L>With<R>를 parse한다; None entity는 모든 entity의 column을 받는다."""
+    """Parses <L>With<R>; a None entity accepts the columns of all entities."""
     ws = words(name)
     found = []
     for i, w in enumerate(ws):
@@ -419,7 +419,7 @@ RESERVED_COLUMNS = frozenset(
 
 
 def check_column_name(n: str) -> str | None:
-    """column 이름 규칙을 확인하고 문제를 돌려준다."""
+    """Checks the column name rules and returns the problems."""
     import re
 
     if re.fullmatch(r"[a-z][a-z0-9_]*", n) is None:
@@ -446,7 +446,7 @@ def check_column_names(m: RuntimeModel) -> None:
 
 
 def valid_order(e: Entity, name: str) -> bool:
-    """orderBy chain이 올바른지 알린다 (생성 검증)."""
+    """Reports whether an orderBy chain is correct (generation check)."""
     try:
         parse_order(e, name)
         return True

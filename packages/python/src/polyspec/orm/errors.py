@@ -1,5 +1,5 @@
-# OrmError: 실행 중 오류의 code와 message를 함께 전달한다.
-# code 목록은 docs/interfaces.md가 정의한다.
+# OrmError: carries the code and message of an error during execution together.
+# The code list is defined by docs/interfaces.md.
 
 from polyspec.orm import codes
 
@@ -13,7 +13,7 @@ class OrmError(Exception):
         super().__init__(f"{code}: {message}")
         self.code = code
         self.cause = cause
-        # ROLLBACK 오류의 rollback 실패; 그 원인은 cause다.
+        # ROLLBACK error: a rollback failure; its cause is cause.
         if rollback is not None:
             self.rollback = rollback
 
@@ -25,9 +25,9 @@ def _error_text(error: object) -> str:
 
 
 def rollback_failed(cause: object, rollback: object) -> OrmError:
-    """transaction이나 savepoint를 끝낸 원인과 실패한 rollback을 하나의
-    ROLLBACK 오류로 보고한다 (docs/interfaces.md). cause는 원인이고
-    rollback은 rollback 오류다. ROLLBACK 오류는 retry하지 않는다."""
+    """Reports the cause that ended a transaction or savepoint, and a failed rollback,
+    as a single ROLLBACK error (docs/interfaces.md). cause is the cause, and
+    rollback is the rollback error. A ROLLBACK error is not retried."""
     return OrmError(
         codes.ROLLBACK,
         f"transaction failed ({_error_text(cause)}) "
@@ -38,7 +38,7 @@ def rollback_failed(cause: object, rollback: object) -> OrmError:
 
 
 def joined_errors(errors: list) -> object:
-    """오류가 하나면 그 오류, 여럿이면 message를 모은 CONFIG, 없으면 None이다."""
+    """If there is one error, that error; if there are several, a CONFIG error that collects their messages; if none, None."""
     if len(errors) <= 1:
         return errors[0] if errors else None
     return OrmError(

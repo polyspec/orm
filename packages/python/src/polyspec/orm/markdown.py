@@ -1,6 +1,6 @@
-# markdown IR executor: markdown:// DSN의 연결은 flowmark server에 IR request를 보내고 답의 행을 model로 조립한다
-# (docs/protocol.md §5 "IR executors", docs/dialects.md "Markdown IR executor"). Go client의 markdown.go와 같은
-# 규칙이다. Python client는 SQL 연결처럼 server 연결 하나를 쓴다.
+# markdown IR executor: a markdown:// DSN connection sends IR requests to the flowmark server and assembles the answer rows into models
+# (docs/protocol.md §5 "IR executors", docs/dialects.md "Markdown IR executor"). The rules are the same as the Go client's markdown.go.
+# The Python client uses one server connection, as SQL connections do.
 from __future__ import annotations
 
 import base64
@@ -19,13 +19,13 @@ from polyspec.orm.errors import OrmError
 __all__ = ["MarkdownDsn", "parse_markdown_dsn"]
 
 _FORM = "markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>"
-# host 단계: SQL 연결처럼 client가 값을 encode해 보낸다.
+# Host stage: the client encodes the values and sends them, as with SQL connections.
 _HOST_STAGES = ("aes", "hex", "ip")
 
 
 @dataclass(frozen=True)
 class MarkdownDsn:
-    """markdown:// DSN의 flowmark server 주소, corpus 이름, token이다."""
+    """The flowmark server address, corpus name, and token of a markdown:// DSN."""
 
     address: str
     corpus: str
@@ -33,8 +33,8 @@ class MarkdownDsn:
 
 
 def parse_markdown_dsn(url) -> MarkdownDsn:
-    """markdown://127.0.0.1:<port>/<corpus>?token=<token>을 읽는다. flowmark server는 127.0.0.1에서만 듣고
-    token은 평문으로 가므로 host는 127.0.0.1뿐이다."""
+    """Reads markdown://127.0.0.1:<port>/<corpus>?token=<token>. The flowmark server listens only on 127.0.0.1, and
+    the token travels in plain text, so the host is only 127.0.0.1."""
     if url.username is not None or url.password is not None:
         raise OrmError(codes.CONFIG, f"{_FORM}; it takes no user")
     if url.hostname != "127.0.0.1":
@@ -74,8 +74,8 @@ def parse_markdown_dsn(url) -> MarkdownDsn:
 
 
 def unsupported_on_markdown(db, surface: str) -> None:
-    """markdown 연결에서 SQL 전용 surface가 받는 오류를 던진다(docs/dialects.md "Markdown IR executor"). 다른
-    연결에서는 아무것도 하지 않는다."""
+    """Raises the error that SQL-only surfaces receive on a markdown connection (docs/dialects.md "Markdown IR executor"). On other
+    connections it does nothing."""
     if db.driver == "markdown":
         raise OrmError(
             codes.CAPABILITY_UNSUPPORTED,
@@ -84,17 +84,17 @@ def unsupported_on_markdown(db, surface: str) -> None:
 
 
 def _plain(value) -> str:
-    """value의 JSON 한 줄이다. 비ASCII 문자를 escape하지 않아 값이 그대로 간다."""
+    """The JSON form of a value on one line. Non-ASCII characters are not escaped, so the value passes through as is."""
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
 
 
 class MdSession:
-    """flowmark server와의 연결 하나, 곧 server session 하나다."""
+    """One connection to the flowmark server, that is, one server session."""
 
     def __init__(self, sock: socket.socket):
         self.sock = sock
         self.stream = sock.makefile("rwb")
-        # broken은 연결을 더 쓸 수 없음을 뜻한다: 읽기나 쓰기가 실패했거나 server가 연결을 끝낸다고 답했다.
+        # broken means the connection can no longer be used: a read or write failed, or the server said it ends the connection.
         self.broken = False
 
     def close(self) -> None:
@@ -105,8 +105,8 @@ class MdSession:
             self.sock.close()
 
     def call(self, msg: dict) -> dict:
-        """message 하나를 한 줄로 보내고 답 한 줄을 읽는다. 답이 {"error": {code, message}}이면 그 code의
-        오류다."""
+        """Sends one message as one line and reads one line of reply. If the reply is {"error": {code, message}}, it is the error with that code
+        error."""
         if self.broken:
             raise OrmError(codes.CONNECTION_LOST, "the flowmark session has ended")
         try:
@@ -144,7 +144,7 @@ class MdSession:
                     codes.INTERNAL,
                     f"the flowmark server answered the error {_plain(e)} without a code",
                 )
-            # server는 CONNECTION_LOST를 쓴 뒤 연결을 닫는다(idle transaction).
+            # The server writes CONNECTION_LOST and then closes the connection (idle transaction).
             if e["code"] == codes.CONNECTION_LOST:
                 self.close()
             message = e.get("message")
@@ -161,7 +161,7 @@ class MdSession:
 
 
 def dial_markdown(dsn: MarkdownDsn) -> MdSession:
-    """server에 연결하고 첫 message connect로 corpus와 token을 보낸다."""
+    """Connects to the server and sends connect as the first message, carrying the corpus and token."""
     host, _, port = dsn.address.rpartition(":")
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
@@ -184,8 +184,8 @@ def dial_markdown(dsn: MarkdownDsn) -> MdSession:
 
 
 def markdown_model(db, manifest_hash: str) -> RuntimeModel:
-    """이 연결에 등록된 schema의 runtime model이다. 등록되지 않은 manifest는 SQL 연결과 같이
-    SCHEMA_HASH_MISMATCH다."""
+    """The runtime model of the schema registered on this connection. A manifest that is not registered gives
+    SCHEMA_HASH_MISMATCH, as with SQL connections."""
     model = db.schemas.get(manifest_hash)
     if model is None:
         raise OrmError(
@@ -197,7 +197,7 @@ def markdown_model(db, manifest_hash: str) -> RuntimeModel:
 
 
 def markdown_call(ex, request: dict, params) -> tuple[dict, RuntimeModel]:
-    """request를 검증하고 그 request message를 ex의 session에서 실행해 답을 돌려준다."""
+    """Validates the request, runs the request message in the session ex, and returns the answer."""
     db = ex.db
     if db.closed:
         raise OrmError(codes.CONFIG, "database is closed")
@@ -229,9 +229,9 @@ def markdown_call(ex, request: dict, params) -> tuple[dict, RuntimeModel]:
 
 
 def markdown_param(db, i: int, value, uses: list[ParamUse]):
-    """parameter i의 runtime value model JSON 값이다: decimal은 string, bytes는 base64, datetime은 UTC의
-    YYYY-MM-DD HH:MM:SS.ffffff, date는 YYYY-MM-DD, time은 HH:MM:SS.ffffff다. 어느 form인지는 parameter가 채우는
-    slot의 type이 정한다. hex와 ip style column의 slot은 SQL 연결처럼 client가 값을 encode해 보낸다."""
+    """The runtime value model JSON value of parameter i: decimal is a string, bytes are base64, and datetime is UTC
+    YYYY-MM-DD HH:MM:SS.ffffff, date is YYYY-MM-DD, and time is HH:MM:SS.ffffff. The form is decided by the type of the slot
+    that the parameter fills. The slots of hex and ip style columns are encoded by the client and sent, as with SQL connections."""
     from polyspec.orm.codec import host_encode
     from polyspec.orm.database import time_value
 
@@ -260,7 +260,7 @@ def _answer_error(message: str) -> OrmError:
 
 
 class MdLinks:
-    """answer 행 하나의 join과 relation 값이다. 행의 마지막 칸에 둔다."""
+    """The join and relation values of one answer row. They are placed in the row's last cell."""
 
     __slots__ = ("joins", "rels")
 
@@ -270,8 +270,8 @@ class MdLinks:
 
 
 class MdNode:
-    """답의 한 node다: root, join, relation 하나가 하나씩이다. asm은 node의 행 배치를 적고 children은 그 join과
-    relation이다. asm의 column은 node의 첫 행이 정하고 그 뒤 행은 같은 output을 같은 순서로 가져야 한다."""
+    """One node of the answer: root, join, or relation, one each. asm describes the row layout of the node; children are that join and
+    relation. The node's first row decides the columns of asm, and later rows must have the same outputs in the same order."""
 
     def __init__(self, m: RuntimeModel, q: dict, groups: bool):
         self.q = q
@@ -319,7 +319,7 @@ class MdNode:
                     "child_keys": [],
                     "key": [],
                     "flatten": bool(relation["query"].get("flatten")),
-                    # 이 행이 relation 행의 외래 key가 가리키는 행이면 그 행들은 이 행에 속한다(planner와 같다).
+                    # If this row is the row that a relation row's foreign key points to, those rows belong to this row (as in the planner).
                     "cascade": not relation["query"].get("no_cascade_delete")
                     and parent_keys == list(self.ent.primary_key)
                     and child_keys != list(target.primary_key),
@@ -328,8 +328,8 @@ class MdNode:
             )
 
     def out_col(self, name: str, index: int) -> dict:
-        """output name의 배치다: subquery, column 함수, 아니면 node entity의 column이다. markdown executor는
-        모든 codec stage를 client에 맡기므로 column의 stage 전체가 decode할 style이다."""
+        """The layout of an output name: a subquery, a column function, or a column of the node's entity. The markdown executor leaves
+        all codec stages to the client, so the style is the whole stage of the column that decodes."""
         if self.groups and name == "row_count":
             return {
                 "index": index,
@@ -378,7 +378,7 @@ class MdNode:
         }
 
     def build(self, outputs: list[str]) -> None:
-        """node의 첫 행의 output으로 asm의 column과 key를 정한다."""
+        """The first row of the node's output decides the asm columns and keys."""
         for i, name in enumerate(outputs):
             self.asm["columns"].append(self.out_col(name, i))
         keys = (self.q.get("group_by") or []) if self.groups else self.ent.primary_key
@@ -391,8 +391,8 @@ class MdNode:
         self.built = True
 
     def row(self, raw, db) -> list:
-        """답의 행 하나를 node 배치의 위치 행으로 읽는다: output 값, 그리고 마지막 칸에 join과 relation의
-        행이다."""
+        """Reads one answer row as a position row of the node's layout: the output values, and in the last cell, the join and relation
+        rows."""
         if not isinstance(raw, dict):
             raise _answer_error(
                 f"a row of {self.ent.name}: {_plain(raw)} is not a JSON object"
@@ -427,14 +427,14 @@ class MdNode:
             values.append(answer_value(col["type"], value, f"{self.ent.name}.{name}"))
         from polyspec.orm.database import _decode_assembly
 
-        # corpus catalog은 aes column을 거절하므로 keyring이 없다(docs/dialects.md).
+        # The corpus catalog rejects aes columns, so there is no keyring (docs/dialects.md).
         _decode_assembly(values, {"columns": columns, "children": []}, db)
         values.append(links)
         return values
 
     def relation_rows(self, raw, db) -> list:
-        """relation의 값을 행 목록으로 읽는다: one relation은 object나 null, many relation은 array, key_by
-        relation은 key로 묶은 object다."""
+        """Reads a relation's value as a list of rows: a one relation is an object or null, a many relation is an array, and a key_by
+        relation is an object grouped by key."""
         if raw is None:
             return []
         if isinstance(raw, list):
@@ -452,7 +452,7 @@ class MdNode:
 
 
 def sub_type(m: RuntimeModel, sub: dict) -> str:
-    """scalar subquery column의 type이다."""
+    """The type of a scalar subquery column."""
     if sub.get("agg") == "count":
         return "i64"
     if sub.get("agg") == "avg":
@@ -462,7 +462,7 @@ def sub_type(m: RuntimeModel, sub: dict) -> str:
 
 
 def answer_value(type_: str, raw, where: str):
-    """답의 값 하나를 column type의 Python 값으로 읽는다. 값은 parameter와 같은 runtime value model이다."""
+    """Reads one answer value as a Python value of the column's type. The value is in the same runtime value model as the parameters."""
     if raw is None:
         return None
 
@@ -497,7 +497,7 @@ def answer_value(type_: str, raw, where: str):
 
 
 def aggregate_value(raw):
-    """sum과 avg 답의 값이다: 정수, 소수, decimal string, 없으면 None이다."""
+    """The value of sum and avg answers: an integer, a decimal, or a decimal string, or None if there is none."""
     if raw is None or isinstance(raw, str):
         return raw
     if isinstance(raw, bool) or not isinstance(raw, (int, float)):
@@ -506,8 +506,8 @@ def aggregate_value(raw):
 
 
 def markdown_read(ex, request: dict, params) -> tuple[dict, int]:
-    """row read(one, all, group_count, paginate)의 답을 위치 result로 읽는다. result의 plan은 root node의 배치
-    하나이고, 각 행의 마지막 칸이 그 join과 relation이다."""
+    """Reads the answer of a row read (one, all, group_count, paginate) as a positional result. The plan of the result is the layout of the root node,
+    and the last cell of each row is that join and relation."""
     answer, m = markdown_call(ex, request, params)
     rows = answer.get("rows")
     if not isinstance(rows, list):
@@ -538,7 +538,7 @@ def markdown_read(ex, request: dict, params) -> tuple[dict, int]:
 
 
 def markdown_scalar(ex, request: dict, params):
-    """count, sum, avg의 답이다."""
+    """The answer for count, sum, and avg."""
     answer, _ = markdown_call(ex, request, params)
     if request["kind"] == "count":
         count = answer.get("count")
@@ -551,8 +551,8 @@ def markdown_scalar(ex, request: dict, params):
 
 
 def markdown_write(ex, request: dict, params) -> tuple[list, int]:
-    """write의 답 {affected, keys}이다. keys는 insert한 행의 primary key를 insert 순서로 담는다: identity는
-    정수, key_prefix key는 text다."""
+    """The write answer {affected, keys}. keys holds the primary keys of the inserted rows in insert order: an identity is
+    an integer; a key_prefix key is text."""
     answer, _ = markdown_call(ex, request, params)
     affected = answer.get("affected")
     if isinstance(affected, bool) or not isinstance(affected, int):
@@ -566,7 +566,7 @@ def markdown_write(ex, request: dict, params) -> tuple[list, int]:
 
 
 def markdown_links(row: list) -> MdLinks:
-    """markdown 답의 행이 마지막 칸에 가진 join과 relation이다."""
+    """The join and relation that the answer row holds in its last cell."""
     links = row[-1] if row else None
     return links if isinstance(links, MdLinks) else MdLinks()
 
@@ -578,8 +578,8 @@ def begin_message(read_only: bool) -> dict:
 
 
 def begin_markdown(db, frame, options: dict) -> None:
-    """markdown transaction을 연다: 연결의 session을 transaction이 끝날 때까지 frame이 잡고 begin을 보낸다.
-    읽기 전용 transaction은 read_only를 보낸다."""
+    """Opens a markdown transaction: the frame holds the connection's session until the transaction ends, and sends begin.
+    A read-only transaction sends read_only."""
     if options.get("isolation") is not None:
         unsupported_on_markdown(db, "the transaction isolation option")
     frame.connection = db._connection
@@ -592,7 +592,7 @@ def begin_markdown(db, frame, options: dict) -> None:
 
 
 def end_markdown(frame, op: str) -> None:
-    """transaction을 commit이나 rollback으로 끝내고 session을 연결에 돌려준다."""
+    """Ends the transaction with commit or rollback, and returns the session to the connection."""
     try:
         frame.connection.call({"op": op})
     finally:
@@ -600,5 +600,5 @@ def end_markdown(frame, op: str) -> None:
 
 
 def savepoint_markdown(frame, op: str, name: str) -> None:
-    """savepoint control message 하나를 보낸다: savepoint, release, rollback_to."""
+    """Sends one savepoint control message: savepoint, release, or rollback_to."""
     frame.connection.call({"op": op, "name": name})

@@ -1,5 +1,5 @@
-# plan의 step을 한 dialect로 쓴다 (docs/plans.md "Steps"). 기준은 다른 client의
-# plan steps이며 statement, rollback, 효과는 같은 바이트다.
+# Writes the plan's steps in one dialect (docs/plans.md "Steps"). The reference is the other client's
+# plan steps; the statements, rollbacks, and effects are the same bytes.
 from __future__ import annotations
 
 import dataclasses
@@ -32,14 +32,14 @@ from polyspec.orm.dbspec.render import DIALECTS, Renderer
 
 __all__ = ["effect_text", "plan_steps"]
 
-# 되돌릴 수 없는 step의 이유(docs/plans.md "Irreversible steps").
+# Reason a step cannot be reversed (docs/plans.md "Irreversible steps").
 IRREVERSIBLE_PRECISION = "narrowing the precision rounds the values written since"
-# SQLite 다시 만들기의 작업 table.
+# Work table for the SQLite table rebuild.
 REBUILD_TABLE = "dbspec$rebuild"
 
 
 def effect_text(e: dict) -> str:
-    """docs/plans.md "Effects"의 text 형태. `present table users` 같은 것이다."""
+    """The text form of effects in docs/plans.md "Effects", such as `present table users`."""
     if e["kind"] == "repeat":
         return "repeat"
     s = f"{'present' if e['present'] else 'absent'} {e['kind']}"
@@ -61,7 +61,7 @@ _REPEAT = {"kind": "repeat", "table": "", "name": "", "present": True}
 
 
 def _step(statement: str, rollback: str, effect: dict, **more) -> dict:
-    """빠진 부분이 비어 있는 step 하나."""
+    """A step with an empty part that is missing."""
     out = {
         "statement": statement,
         "rollback": rollback,
@@ -78,7 +78,7 @@ def _step(statement: str, rollback: str, effect: dict, **more) -> dict:
 
 
 def _precision_grows(from_, to) -> bool:
-    """time이나 datetime의 정밀도가 커지는지 알려 준다."""
+    """Tells whether the precision of a time or datetime increases."""
     return (
         to.kind in ("time", "datetime")
         and from_.kind in ("time", "datetime")
@@ -87,8 +87,8 @@ def _precision_grows(from_, to) -> bool:
 
 
 def plan_steps(source: DbspecDocument | None, plan: DbspecPlan, dialect: str) -> dict:
-    """plan의 step을 한 dialect로 쓴다 (docs/plans.md "Steps"). source는 plan이
-    시작하는 schema이고 None이면 빈 database다."""
+    """Writes a plan's steps in one dialect (docs/plans.md "Steps"). The source is the schema the plan
+    starts from; if None, it is an empty database."""
     if dialect not in DIALECTS:
         raise TypeError(f"unknown dbspec dialect {dialect}")
     result = plan_diff(source, plan)
@@ -105,10 +105,10 @@ class _PlanWriter:
         self.r = r
         self.hold_prefix = hold_prefix
         self.out: list = []
-        # SQLite에서 다시 만드는 target table
+        # Target table rebuilt in SQLite
         self.rebuilt: set = set()
-        # 보관 이름: "table.column"(지우는 column, source 이름), table(지우는
-        # table), "+table.column"(더하는 column, target 이름)
+        # Keep name: "table.column" (column to be dropped, source name), table (table to be
+        # dropped), "+table.column" (column to be added, target name)
         self.holds: dict = {}
         self.hold_order: list = []
 
@@ -124,8 +124,8 @@ class _PlanWriter:
         return self.holds[key]
 
     def _number_holds(self) -> None:
-        """docs/plans.md "Hiding instead of dropping"의 순서로 보관 이름을
-        정한다."""
+        """Chooses the keep names in the order of "Hiding instead of dropping" in docs/plans.md.
+        accordingly."""
         d = self.d
 
         def next_name(key: str) -> None:
@@ -166,7 +166,7 @@ class _PlanWriter:
                 for o in d["drop_objects"][s]:
                     if o["kind"] == "foreign_key":
                         self._drop_object(d["source"][s], o)
-        # 3. check, unique, index와 지우는 table의 객체
+        # 3. check, unique, index, and objects of the table being dropped
         drop_tables: dict = {}
         for s, objects in d["drop_objects"].items():
             if sqlite and (self._target_name(s) in self.rebuilt or s in d["dropped"]):
@@ -224,7 +224,7 @@ class _PlanWriter:
                     _present("column", rn["table"], rn["new"]),
                 )
             )
-        # 5. 지우는 column과 table을 숨긴다
+        # 5. Hide the column and table being dropped
         if not sqlite:
             for name in d["matched"]:
                 src = d["source"][d["table_of"][name]]
@@ -252,7 +252,7 @@ class _PlanWriter:
                 )
             )
             self._create_indexes(t, name)
-        # 7. add, alter column; SQLite 다시 만들기
+        # 7. add, alter column; SQLite rebuild
         for name in d["matched"]:
             if sqlite:
                 if name in self.rebuilt:
@@ -340,7 +340,7 @@ class _PlanWriter:
         return self.out
 
     def _target_name(self, source: str) -> str:
-        """source table의 target 이름이다."""
+        """The target name of the source table."""
         for t, s in self.d["table_of"].items():
             if s == source:
                 return t
@@ -353,8 +353,8 @@ class _PlanWriter:
         )
 
     def _sqlite_rebuilds(self, name: str) -> bool:
-        """SQLite가 table을 다시 만드는지: 이름, column, foreign key나 check가
-        바뀐다. index와 unique만, trigger만 바뀌는 경우는 다시 만들지 않는다."""
+        """Whether SQLite rebuilds the table: its name, columns, foreign keys, or checks change.
+        Only index and unique changes, or only trigger changes, do not rebuild."""
         d = self.d
         if (
             d["table_of"].get(name) != name
@@ -374,8 +374,8 @@ class _PlanWriter:
         return any(structural(o) for o in d["add_objects"].get(name, ()))
 
     def _hide_column(self, table: str, c: DbspecColumn, h: str) -> None:
-        """MySQL과 PostgreSQL에서 지우는 column을 nullable로 바꾸고 보관 이름으로
-        숨긴다."""
+        """For MySQL and PostgreSQL, makes the column being dropped nullable and hides it under its keep name.
+        it."""
         if not c.nullable:
             checks = [self._null_check(table, h, c)]
             if self.r.d == "mysql":
@@ -409,7 +409,7 @@ class _PlanWriter:
         )
 
     def _null_check(self, table: str, column: str, c: DbspecColumn) -> dict:
-        """source column c를 non-null로 되돌리는 rollback의 null 검사다."""
+        """The null check of the rollback that restores source column c to non-null."""
         return {
             "table": table,
             "column": column,
@@ -419,7 +419,7 @@ class _PlanWriter:
         }
 
     def _rebuild(self, name: str) -> None:
-        """SQLite table을 작업 table을 거쳐 다시 만든다 (docs/plans.md
+        """Rebuilds a SQLite table through a work table (docs/plans.md
         "Steps")."""
         d = self.d
         t = d["target"][name]
@@ -428,12 +428,12 @@ class _PlanWriter:
         removed = d["removed"].get(name, [])
         added = d["added"].get(name, [])
         columns = d["column_of"][name]
-        # 새 정의: target table과 보관 이름의 지우는 column
+        # New definition: target table and the column being dropped under its keep name
         hidden_dropped = [
             dataclasses.replace(column_of(src, c), name=self._hold(f"{src.name}.{c}"))
             for c in removed
         ]
-        # 옛 정의: 이름 바꾸기를 적용한 source table과 보관 이름의 더하는 column
+        # Old definition: source table with renames applied, and the column being added under its keep name
         old = self._renamed_source(name)
         hidden_added = [
             dataclasses.replace(column_of(t, c), name=self._hold(f"+{name}.{c}"))
@@ -445,8 +445,8 @@ class _PlanWriter:
                 t, as_, lambda c: renderer_name(t.name, c), hidden_dropped
             )
 
-        # sourceColumn은 옛 정의 column의 source 이름이다. 지우는 column은 이름이
-        # 그대로다.
+        # sourceColumn is the source name of the column in the old definition. The column being dropped keeps its
+        # name.
         def source_column(c: str) -> str:
             return columns.get(c, c)
 
@@ -456,7 +456,7 @@ class _PlanWriter:
         new_list = self.r.list(
             [c.name for c in t.columns] + [c.name for c in hidden_dropped]
         )
-        # 옛 table에서 새 정의로 옮기는 식
+        # Expression that moves values from the old table to the new definition
         into: list = []
         from_: list = []
         into_restore: list = []
@@ -477,7 +477,7 @@ class _PlanWriter:
             from_.append(self._q(c))
             into_restore.append(self._q(hidden_dropped[i].name))
             from_restore.append(self._q(c))
-        # 새 정의에서 옛 정의로 되돌리는 식
+        # Expression that moves values from the new definition back to the old definition
         back_into: list = []
         back_from: list = []
         irreversible = ""
@@ -493,12 +493,12 @@ class _PlanWriter:
                 if not c.nullable and tc.nullable:
                     checks.append(self._null_check(name, c.name, c))
                 continue
-            # 지우는 column: 새 정의에서는 보관 이름이다.
+            # Column being dropped: in the new definition it is the keep name.
             h = self._hold(f"{src.name}.{source_name}")
             back_from.append(self._q(h))
             if not c.nullable:
                 checks.append(self._null_check(name, h, c))
-        # 옛 table에 숨긴 더한 column이 있으면 그 값도 되돌린다.
+        # If the old table has a hidden added column, its value is moved back too.
         back_into_restore = back_into + [self._q(c.name) for c in hidden_added]
         back_from_restore = back_from + [self._q(c) for c in added]
         identity = any(c.identity for c in t.columns)
@@ -641,8 +641,8 @@ class _PlanWriter:
         self._create_indexes(t, name)
 
     def _renamed_source(self, name: str):
-        """target table name의 source table에 이름 바꾸기를 적용한 정의다. 지우는
-        table을 참조하는 foreign key는 source 이름을 유지한다."""
+        """The definition of the source table with the rename applied, for the target table name. A table being dropped
+        keeps its source name in the foreign keys that reference it."""
         d = self.d
         src = d["source"][d["table_of"][name]]
         target_of_table = {s: t for t, s in d["table_of"].items()}
@@ -702,8 +702,8 @@ class _PlanWriter:
         )
 
     def _copy_value(self, from_: DbspecColumn, to: DbspecColumn) -> str:
-        """SQLite 다시 만들기에서 source 값을 target column로 옮기는 식. time과
-        datetime은 0 소수 자리를 붙인다."""
+        """The expression that moves source values into the target column in a SQLite rebuild. time and
+        datetime get 0 fractional digits added."""
         q = self._q(to.name)
         if (
             _precision_grows(from_.type, to.type)
@@ -791,8 +791,8 @@ class _PlanWriter:
             self._add(_step(forward, back, _REPEAT))
 
     def _trigger_parts(self, t):
-        """렌더링한 trigger statement에서 trigger 이름, CREATE TRIGGER와
-        PostgreSQL function을 짝짓는다."""
+        """From the rendered trigger statement, pairs the trigger name with CREATE TRIGGER and the
+        PostgreSQL function."""
         out: list = []
         fn = ""
         for s in self.r.triggers(t):
@@ -873,8 +873,8 @@ class _PlanWriter:
         )
 
     def _indexes(self, t, name: str) -> list:
-        """table t를 name으로 둔 unique key와 index를 renderer 순서로 돌려준다.
-        SQLite unique key는 unique index다."""
+        """The unique keys and indexes of table t, named name, in renderer order.
+        A SQLite unique key is a unique index."""
         out: list = []
         if self.r.d == "sqlite":
             for u in sorted_by(t.uniques, lambda u: u.name):
@@ -908,13 +908,13 @@ class _PlanWriter:
         return f"DROP INDEX {self._q(name)}"
 
     def _create_indexes(self, t, name: str) -> None:
-        """renderer가 CREATE TABLE 뒤에 쓰는 unique index와 index다."""
+        """The unique indexes and indexes that the renderer writes after CREATE TABLE."""
         for x in self._indexes(t, name):
             self._add(_step(x["create"], x["drop"], _present("index", name, x["name"])))
 
     def _object_statements(self, t, name: str, o: dict):
-        """table t(name으로 둔)의 객체 o를 더하는 statement, 지우는 statement,
-        그 효과의 종류다."""
+        """The statement that adds object o to table t (named name), the statement that drops it,
+        and the kind of its effect."""
         mysql = self.r.d == "mysql"
         if o["kind"] == "unique":
             u = unique_of(t, o["name"])
@@ -969,7 +969,7 @@ class _PlanWriter:
         raise ValueError(f"unknown object kind {o['kind']}")
 
     def _drop_object(self, t, o: dict) -> None:
-        """source table t의 객체를 지우고, rollback은 source 정의로 다시 만든다."""
+        """Drops the objects of source table t; the rollback recreates them from the source definition."""
         create, drop, kind = self._object_statements(t, t.name, o)
         self._add(_step(drop, create, _absent(kind, t.name, o["name"])))
 
@@ -978,7 +978,7 @@ class _PlanWriter:
         self._add(_step(create, drop, _present(kind, table, o["name"])))
 
     def _renderer_checks(self, t) -> dict:
-        """table의 renderer CHECK 이름과 식이다."""
+        """The renderer CHECK name and expression of the table."""
         out: dict = {}
         for c in t.columns:
             check = self.r.type_check(c)

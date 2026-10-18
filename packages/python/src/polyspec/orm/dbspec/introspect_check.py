@@ -1,4 +1,4 @@
-# dialect catalog의 check 식을 dbspec predicate text로 읽는다
+# Reads a dialect catalog's check expression as dbspec predicate text
 # (docs/dialects.md "Introspection", "Checks").
 from polyspec.orm.dbspec.introspect_catalog import quote
 
@@ -6,14 +6,14 @@ __all__ = ["CheckDecodeError", "decode_check", "unscaled_decimal"]
 
 
 class CheckDecodeError(Exception):
-    """check 식을 dbspec predicate로 읽을 수 없다는 error다. 그 check은 미지원으로
-    보고된다."""
+    """The error that a check expression cannot be read as a dbspec predicate. That check is reported
+    as unsupported."""
 
 
 def decode_check(dialect: str, text: str, columns: dict) -> str:
-    """check 식을 dbspec predicate text로 읽는다. columns는 table의 column
-    type이며, literal은 그것이 만나는 column의 값으로 읽는다. 읽을 수 없는 식은
-    CheckDecodeError다."""
+    """Reads a check expression as dbspec predicate text. columns is the table's column
+    types, and a literal is read as the value of the column it meets. An expression that cannot be read
+    is a CheckDecodeError."""
     if dialect == "mysql":
         text = _unescape_mysql_clause(text)
     if dialect == "postgres":
@@ -32,8 +32,8 @@ def decode_check(dialect: str, text: str, columns: dict) -> str:
 
 
 def _unescape_mysql_clause(text: str) -> str:
-    """CHECK_CLAUSE가 문자열 literal에 더한 두 번째 escape를 푼다: `\\`는
-    `\\`, `\\'`는 `'`가 된다."""
+    """Undoes the second escape that CHECK_CLAUSE adds to string literals: `\\` becomes
+    `\\`, `\\'` becomes `'`."""
     out = ""
     i = 0
     while i < len(text):
@@ -84,7 +84,7 @@ def _check_tokens(dialect: str, text: str) -> list:
             ):
                 j += 1
             word = text[i:j]
-            # MySQL 문자열 앞의 character set introducer는 값이 아니다.
+            # A character set introducer before a MySQL string is not a value.
             if (
                 dialect == "mysql"
                 and word.startswith("_")
@@ -116,8 +116,8 @@ _MYSQL_ESCAPES = {"0": "\0", "b": "\b", "n": "\n", "r": "\r", "t": "\t", "Z": "\
 
 
 def _read_sql_string(dialect: str, text: str):
-    """text 앞의 문자열 literal을 읽어 값과 길이를 돌려준다. PostgreSQL과
-    SQLite는 ''만 escape이고, MySQL은 backslash escape도 쓴다."""
+    """Reads the string literal before the text and returns its value and length. PostgreSQL and
+    SQLite escape only '', while MySQL also uses backslash escapes."""
     out = ""
     i = 1
     while i < len(text):
@@ -190,7 +190,7 @@ class _CheckDecoder:
         return left
 
     def _predicate(self) -> dict:
-        """괄호로 묶인 식이나 operand로 시작하는 predicate 하나를 읽는다."""
+        """Reads one predicate that starts with a parenthesized expression or an operand."""
         left = self._term()
         if left["kind"] != "operand":
             return left
@@ -232,8 +232,8 @@ class _CheckDecoder:
         return left
 
     def _term(self) -> dict:
-        """괄호 식이나 operand와 그 뒤의 cast를 읽는다. 괄호 안이 operand 하나면
-        operand다."""
+        """Reads a parenthesized expression or an operand, and the cast after it. If the parentheses hold one operand,
+        it is that operand."""
         if self._punct("("):
             node = self.expression()
             self._expect(")")
@@ -249,7 +249,7 @@ class _CheckDecoder:
         return node
 
     def _cast_type(self) -> str:
-        """`::` 뒤의 type 이름을 읽는다: 단어들과 (n), []."""
+        """Reads the type name after `::`: words, and (n), []."""
         words: list = []
         while True:
             t = self._peek()
@@ -300,7 +300,7 @@ class _CheckDecoder:
         raise CheckDecodeError(f"unexpected {t['text']!r}")
 
     def _list(self) -> list:
-        """in 뒤의 (a, b, ...)를 읽는다."""
+        """Reads (a, b, ...) after in."""
         self._expect("(")
         out: list = []
         while True:
@@ -313,8 +313,8 @@ class _CheckDecoder:
             self._expect(",")
 
     def _array(self) -> list:
-        """PostgreSQL의 ANY나 ALL 뒤의 (ARRAY[...]) 또는 ((ARRAY[...])::type[])를
-        읽는다."""
+        """Reads the (ARRAY[...]) or ((ARRAY[...])::type[]) that follows ANY or ALL in PostgreSQL
+        as one unit."""
         self._expect("(")
         wrapped = self._punct("(")
         if not self._word("array"):
@@ -338,8 +338,8 @@ class _CheckDecoder:
         return out
 
     def write(self, p: dict) -> str:
-        """predicate를 dbspec text로 쓴다. 괄호는 필요한 곳보다 많아도 되며
-        canonical form은 parse가 정한다."""
+        """Writes the predicate as dbspec text. Parentheses may be more than needed,
+        but the canonical form is set by parse."""
         if p["kind"] in ("and", "or"):
             return f"({self._side(p['left'])} {p['kind']} {self._side(p['right'])})"
         if p["kind"] == "compare":
@@ -370,8 +370,8 @@ class _CheckDecoder:
         return None
 
     def _operand_text(self, o: dict, type_) -> str:
-        """operand를 dbspec 표기로 쓴다. bool column의 1과 0은 true와 false,
-        SQLite decimal의 정수는 scale을 나눈 값이다."""
+        """Writes an operand in dbspec notation. A 1 and 0 of a bool column are true and false,
+        and a SQLite decimal integer is divided by the scale."""
         if o["type"] == "column":
             if o["text"] not in self.columns:
                 raise CheckDecodeError(f"unknown column {o['text']}")
@@ -391,7 +391,7 @@ class _CheckDecoder:
 
 
 def unscaled_decimal(text: str, scale: int) -> str:
-    """10^scale을 곱한 정수 text를 scale 자리 소수로 쓴다."""
+    """Writes the integer text multiplied by 10^scale as a decimal with scale digits."""
     negative = text.startswith("-")
     digits = text[1:] if negative else text
     if scale > 0:

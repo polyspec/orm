@@ -1,6 +1,6 @@
-# models.py 생성: entity마다 고정 column method를 가진 class 하나를 만든다.
-# chain 문법 이름의 method는 런타임에 method 이름에서 해석한다. scan이 찾은
-# 호출 이름을 검증해, 문법에 맞지 않는 이름을 생성 시점에 보고한다.
+# models.py generation: makes one class per entity, with fixed column methods.
+# Methods named by chain syntax are resolved at runtime from the method name. The call names that the scan finds
+# are validated, so a name that does not fit the syntax is reported at generation time.
 import os
 
 from polyspec.orm import codes
@@ -52,7 +52,7 @@ def _getattr_call(name: str, tail: str) -> list[str]:
 
 
 def _py_template(text: str) -> str:
-    # manifest text를 줄마다 문자열로 담는다.
+    # Holds the manifest text as strings, one per line.
     return _py_string(text)
 
 
@@ -89,7 +89,7 @@ def _field_of(e: Entity, name: str) -> Field:
 
 
 def _hint(c: Field, setter: bool) -> str:
-    """column 값의 type hint (생성 module의 주석용)."""
+    """The type hint of a column value (for comments in the generated module)."""
     kind = category(c)
     if kind == "styled":
         text = "StyledValue"
@@ -224,7 +224,7 @@ def _tuple_names(m: RuntimeModel, e: Entity) -> list:
 
 
 def _resolved_prefix(model: RuntimeModel, e: Entity, name: str) -> str | None:
-    """chain 문법 이름의 접두사 종류, 또는 고정 method면 None."""
+    """The prefix kind of a chain-syntax name, or None for a fixed method."""
     pascal_name = "".join(part[:1].upper() + part[1:] for part in name.split("_"))
     if pascal_name.startswith("GetsBy"):
         rest = pascal_name[6:]
@@ -296,7 +296,7 @@ def _resolved_prefix(model: RuntimeModel, e: Entity, name: str) -> str | None:
 
 
 def render_models(m: RuntimeModel, out_dir: str, scan) -> str:
-    """runtime model의 models.py text. scan은 모델 호출을 찾은 file이나 directory다."""
+    """The models.py text of the runtime model. scan is the file or directory where the model calls were found."""
     check_column_names(m)
     calls = scan_model_calls(scan, {pascal(name) for name in m.entities})
     problems = []
@@ -467,7 +467,7 @@ def render_models(m: RuntimeModel, out_dir: str, scan) -> str:
 
 
 def generate_models(m: RuntimeModel, out_dir: str, scan) -> None:
-    """models.py를 out_dir에 쓴다."""
+    """Writes models.py to out_dir."""
     text = render_models(m, out_dir, scan)
     os.makedirs(out_dir, exist_ok=True)
     with open(os.path.join(out_dir, "models.py"), "w", encoding="utf-8") as handle:

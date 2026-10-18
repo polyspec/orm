@@ -1,5 +1,5 @@
-# plan의 source와 target schema를 비교한다 (docs/plans.md "Diff").
-# 기준은 다른 client의 plan diff이며 diagnostic message는 같은 바이트다.
+# Compares the source and target schemas of a plan (docs/plans.md "Diff").
+# The reference is the other client's plan diff; the diagnostic messages are the same bytes.
 from __future__ import annotations
 
 from polyspec.orm.dbspec.emit import type_text
@@ -49,7 +49,7 @@ def same_default(a, b) -> bool:
 
 
 def widens(from_, to) -> bool:
-    """type 변화가 세 database에서 모든 값을 보존하는지 알려 준다."""
+    """Tells whether a type change preserves all values in the three databases."""
     if from_.kind == "i16":
         return to.kind in ("i32", "i64")
     if from_.kind == "i32":
@@ -82,8 +82,8 @@ def _same_list(a, b) -> bool:
 
 
 def plan_diff(source, p: dict) -> dict:
-    """source schema(None이면 빈 schema)와 plan의 대상을 비교한다. plan이 만들지
-    못하는 변경은 plan diagnostic을 준다."""
+    """Compares the source schema (an empty schema if None) with the target of the plan. A change that the plan
+    cannot make gives a plan diagnostic."""
     from polyspec.orm.dbspec.manifest import dbspec_manifest
     from polyspec.orm.dbspec.plan import sorted_by
     from polyspec.orm.dbspec.plan_objects import (
@@ -168,7 +168,7 @@ def plan_diff(source, p: dict) -> dict:
             d["matched"].append(name)
         else:
             d["created"].append(name)
-    # table drop 허가
+    # Permission to drop a table
     allowed_tables: set = set()
     for t in p["drop_tables"]:
         allowed_tables.add(t)
@@ -221,7 +221,7 @@ def plan_diff(source, p: dict) -> dict:
 
     allowed_columns = {column_key(c["table"], c["name"]) for c in p["drop_columns"]}
     used_column_permissions: set = set()
-    # matched table의 column
+    # Columns of a matched table
     for name in d["matched"]:
         src = d["source"][d["table_of"][name]]
         tgt = d["target"][name]
@@ -287,8 +287,8 @@ def plan_diff(source, p: dict) -> dict:
                 or not same_default(sc.default, c.default)
             ):
                 append(d["altered"], name, c.name)
-        # PostgreSQL은 column 자리를 정하지 못하므로 남는 column의 순서는 그대로이고
-        # 더한 column은 남는 column 뒤에 온다.
+        # PostgreSQL cannot determine the column position, so the order of the remaining columns is kept, and
+        # added columns come after the remaining columns.
         kept = [
             renamed_or(renames, c.name)
             for c in src.columns
@@ -335,9 +335,9 @@ def plan_diff(source, p: dict) -> dict:
 
 
 def diff_plan(source: DbspecDocument | None, plan: DbspecPlan) -> dict:
-    """source schema(None이면 빈 schema)에서 plan의 대상까지의 변경을 돌려준다
-    (docs/plans.md "Diff"). schemaHash가 plan의 `from`과 다른 source는
-    diagnostic이다."""
+    """Returns the changes from the source schema (an empty schema if None) to the target of the plan
+    (docs/plans.md "Diff"). A source whose schemaHash differs from the plan's `from` is a
+    diagnostic."""
     result = plan_diff(source, plan)
     if result["diff"] is None:
         return {"changes": None, "diagnostics": result["diagnostics"]}

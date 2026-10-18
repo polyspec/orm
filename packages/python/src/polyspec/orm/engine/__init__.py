@@ -1,4 +1,4 @@
-# engine: 모든 client가 공유하는 planner, dialect, schema, 검사 동작
+# engine: planner, dialect, schema, and checking behavior shared by all clients
 # (docs/protocol.md).
 from polyspec.orm import codes
 from polyspec.orm.engine.dialect import dialect_of

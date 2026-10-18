@@ -1,5 +1,5 @@
-# Db: DSN URI 하나로 database를 고르는 연결과 plan cache, transaction
-# (docs/config.md, docs/usage.md). 실행은 동기다.
+# Db: the connection that selects a database by one DSN URI, plus the plan cache and transactions
+# (docs/config.md, docs/usage.md). Execution is synchronous.
 from __future__ import annotations
 
 import contextlib
@@ -71,7 +71,7 @@ __all__ = [
     "time_value",
 ]
 
-# scheme마다 DSN이 받는 parameter다(docs/config.md). 다른 parameter는 CONFIG다.
+# Parameters a DSN accepts for each scheme (docs/config.md). Any other parameter is CONFIG.
 DSN_PARAMETERS = {
     "mysql": ("timezone", "socket", "ssl-mode", "ssl-ca"),
     "postgres": ("timezone", "host", "sslmode"),
@@ -114,15 +114,15 @@ class ParsedDsn:
         self.driver = driver
         self.zone = zone
         self.url = url
-        # markdown:// DSN의 server 주소, corpus, token이다. 다른 scheme에서는 None이다.
+        # The server address, corpus, and token of a markdown:// DSN. None for other schemes.
         self.markdown = markdown
-        # ssl-mode=VERIFY_IDENTITY인 MySQL DSN의 CA file 절대 경로다. TLS가 없으면 None이다.
+        # The absolute path of the CA file for a MySQL DSN with ssl-mode=VERIFY_IDENTITY. None without TLS.
         self.ssl_ca = ssl_ca
 
 
 def _mysql_tls(parameters: dict, host: str) -> str | None:
-    """MySQL TLS parameter를 검사한다(docs/config.md "DSN parameters and MySQL TLS"): `ssl-ca`에 CA file의 절대
-    경로를 둔 `ssl-mode=VERIFY_IDENTITY`로 host 이름에 TCP 연결하거나, 둘 다 없다. CA 경로나 None을 돌려준다."""
+    """Checks the MySQL TLS parameters (docs/config.md "DSN parameters and MySQL TLS"): `ssl-ca` with the absolute
+    path of the CA file plus `ssl-mode=VERIFY_IDENTITY` connects over TCP to a host name, or neither is present. Returns the CA path or None."""
     mode = parameters.get("ssl-mode")
     ca = parameters.get("ssl-ca")
     if mode is None and ca is None:
@@ -144,7 +144,7 @@ def _mysql_tls(parameters: dict, host: str) -> str | None:
         raise OrmError(
             codes.CONFIG, "mysql DSN ssl-mode connects over TCP and does not accept socket"
         )
-    # identity 검사는 host 이름을 인증서와 비교한다.
+    # The identity check compares the host name with the certificate.
     try:
         ipaddress.ip_address(host)
     except ValueError:
@@ -156,8 +156,8 @@ def _mysql_tls(parameters: dict, host: str) -> str | None:
 
 
 def _sqlite_path(url) -> str:
-    """sqlite:// DSN의 percent-decoding한 경로. 잘못된 escape, UTF-8이 아닌 경로,
-    NUL byte는 CONFIG 오류이다."""
+    """The percent-decoded path of a sqlite:// DSN. A malformed escape, a path that is not UTF-8,
+    or a NUL byte is a CONFIG error."""
     path = url.path
     # unquote keeps a % without two hexadecimal digits as text, so the escape is checked before it decodes.
     if re.search(r"%(?![0-9A-Fa-f]{2})", path):
@@ -176,16 +176,16 @@ def _sqlite_path(url) -> str:
             "sqlite DSN path has a % without two hexadecimal digits "
             "or is not UTF-8 after percent-decoding",
         ) from None
-    # NUL 뒤를 버리는 opener는 다른 file을 연다.
+    # An opener that discards what follows NUL opens a different file.
     if "\0" in path:
         raise OrmError(codes.CONFIG, "sqlite DSN path must not contain a NUL byte")
     return path
 
 
 def parse_dsn(dsn: str) -> ParsedDsn:
-    """DSN URI를 dialect와 connection 시간대로 나눈다. 모든 connection이 datetime
-    값을 UTC로 읽고 쓰므로(docs/dialects.md "Date and time") timezone parameter는
-    UTC와 +00:00만 받는다."""
+    """Splits a DSN URI into the dialect and the connection time zone. Every connection reads and writes datetime
+    values as UTC (docs/dialects.md "Date and time"), so the timezone parameter
+    accepts only UTC and +00:00."""
     try:
         url = urlsplit(dsn)
     except ValueError:
@@ -256,7 +256,7 @@ def _zone_offset(zone: str) -> int:
 
 
 def format_instant(instant, zone: str) -> str:
-    """instant를 connection 시간대의 6자리 소수 date-time text로 쓴다."""
+    """Writes an instant as date-time text with 6 fractional digits in the connection time zone."""
     import datetime
 
     shifted = instant + datetime.timedelta(minutes=_zone_offset(zone))
@@ -286,7 +286,7 @@ def _valid_date(y, m, d, h=0, mi=0, sec=0) -> bool:
 
 
 def _fraction(digits, precision: int):
-    """p자리로 자른 소수 자리; 잘린 자리에 0이 아닌 숫자가 있으면 None이다."""
+    """Fractional digits truncated to p places; None if a non-zero digit is in the truncated part."""
     all_digits = (digits or "").ljust(precision, "0")
     if re.search(r"[1-9]", all_digits[precision:]):
         return None
@@ -309,15 +309,15 @@ def _native_time_text(value):
 
 
 def _time_form(value, col_type: str, zone: str, precision: int):
-    """date, time, datetime text를 값 형태(docs/dbspec.md "Runtime model")로 읽는다:
-    `YYYY-MM-DD`, `HH:MM:SS`, p자리 소수의 `YYYY-MM-DD HH:MM:SS`. offset이 있는
-    datetime은 connection 시간대로 바꾼다. 다른 값이면 None이다."""
+    """Reads date, time, and datetime text as value forms (docs/dbspec.md "Runtime model"):
+    `YYYY-MM-DD`, `HH:MM:SS`, and `YYYY-MM-DD HH:MM:SS` with p fractional digits. A datetime with an offset
+    is converted to the connection time zone. Any other value is None."""
     import datetime
 
     if isinstance(value, datetime.datetime):
         if value.tzinfo is None:
-            # PyMySQL과 psycopg는 시간대 없는 datetime을 연결 시간대의 시각으로 준다. astimezone은 그 값을
-            # process의 지역 시각(TZ)으로 읽으므로, 연결 시간대를 붙인 뒤에 바꾼다.
+            # PyMySQL and psycopg give a datetime without a time zone as the time in the connection zone. astimezone reads that value
+            # as the process's local time (TZ), so the connection zone is attached before converting.
             value = value.replace(
                 tzinfo=datetime.timezone(datetime.timedelta(minutes=_zone_offset(zone)))
             )
@@ -404,7 +404,7 @@ def _shown(value) -> str:
 
 
 def time_value(value, col_type: str, zone: str, precision: int) -> str:
-    """date, time, datetime bind를 저장 text 형태로 쓴다; 다른 값은 CODEC_ENCODE다."""
+    """Writes date, time, and datetime binds in stored text form; any other value is CODEC_ENCODE."""
     text = _time_form(value, col_type, zone, precision)
     if text is None:
         raise OrmError(
@@ -416,8 +416,8 @@ def time_value(value, col_type: str, zone: str, precision: int) -> str:
 
 
 def read_time(value, col_type: str, zone: str, precision: int) -> str:
-    """저장된 date, time, datetime cell을 값 형태로 읽는다; 다른 cell은
-    CODEC_DECODE다."""
+    """Reads stored date, time, and datetime cells as value forms; other cells
+    are CODEC_DECODE."""
     text = _time_form(value, col_type, zone, precision)
     if text is None:
         raise OrmError(
@@ -482,7 +482,7 @@ _INTEGER_RANGES = {
 
 
 def convert(type_: str, value, zone: str, declared: Field | None = None):
-    """cell을 그 column type의 값으로 바꾼다 (docs/dbspec.md "Runtime model")."""
+    """Converts a cell to a value of its column type (docs/dbspec.md "Runtime model")."""
 
     if value is None:
         return None
@@ -543,8 +543,8 @@ def convert(type_: str, value, zone: str, declared: Field | None = None):
 
 
 def column_type(col: Field) -> str:
-    """host stage(aes, hex, ip)만 가진 column의 model 값은 문자열이다. 저장 형식은
-    executor가 bind할 때 만든다."""
+    """The model value of a column that has only host stages (aes, hex, ip) is a string. Its storage form
+    is made by the executor when binding."""
     from polyspec.orm.core import styled_field
 
     if styled_field(col):
@@ -558,12 +558,12 @@ def _driver_limit(driver: str) -> int:
     return 999 if driver == "sqlite" else 65535
 
 
-# driver 오류의 code 표다(docs/protocol.md "Errors", docs/errors.yaml). TypeScript client의 driverError
-# (packages/ts/src/driver.ts)와 PHP client의 OrmException::fromDriver와 같은 조건을 쓴다. 표에 없는 driver
-# 오류는 DRIVER다. audit이나 immutable trigger가 거부한 쓰기도 DRIVER다.
+# The table of driver error codes (docs/protocol.md "Errors", docs/errors.yaml). It uses the same conditions as driverError in the TypeScript client
+# (packages/ts/src/driver.ts) and OrmException::fromDriver in the PHP client. A driver error that is not in the table
+# is DRIVER. A write rejected by an audit or immutable trigger is also DRIVER.
 _MYSQL_CODES = {
-    # 2006(server has gone away), 2013(lost connection during query)은 client가 연결을 잃은 것이고 4031은
-    # server가 쉬던 연결을 끝낸 것이다.
+    # 2006 (server has gone away) and 2013 (lost connection during query) mean the client lost the connection, and 4031
+    # means the server ended an idle connection.
     2006: codes.CONNECTION_LOST,
     2013: codes.CONNECTION_LOST,
     4031: codes.CONNECTION_LOST,
@@ -580,8 +580,8 @@ _MYSQL_CODES = {
     4025: codes.CONSTRAINT,
 }
 _POSTGRES_CODES = {
-    # 57P01(admin_shutdown), 57P02(crash_shutdown), 57P05(idle_session_timeout)는 server가 session을 끝낼 때
-    # 보낸다. class 08(connection exception)은 _postgres_code가 고른다.
+    # 57P01 (admin_shutdown), 57P02 (crash_shutdown), and 57P05 (idle_session_timeout) are sent when the server ends a session.
+    # Class 08 (connection exception) is chosen by _postgres_code.
     "57P01": codes.CONNECTION_LOST,
     "57P02": codes.CONNECTION_LOST,
     "57P05": codes.CONNECTION_LOST,
@@ -597,24 +597,24 @@ _POSTGRES_CODES = {
 
 
 def _sqlite_code(error: sqlite3.Error) -> str:
-    """SQLite extended result code의 ORM 오류 code다."""
+    """The ORM error code for a SQLite extended result code."""
     number = getattr(error, "sqlite_errorcode", None)
     if not isinstance(number, int):
         return codes.DRIVER
-    # SQLITE_BUSY와 그 extended code는 busy_timeout이 끝날 때 다른 연결이 아직 잡은 lock이고,
-    # SQLITE_INTERRUPT(9)는 끝나기 전에 멈춘 statement다.
+    # SQLITE_BUSY and its extended codes are a lock another connection still holds when busy_timeout ends,
+    # and SQLITE_INTERRUPT (9) is a statement stopped before it finished.
     if (number & 0xFF) == 5 or number == 9:
         return codes.CANCELED
     if number in (2067, 1555):
         return codes.DUPLICATE_KEY
-    # RESTRICT action의 FK 위반은 CONSTRAINT_TRIGGER(1811)로 온다. trigger RAISE의 1811은 DRIVER다.
+    # An FK violation from a RESTRICT action arrives as CONSTRAINT_TRIGGER (1811). The 1811 from a trigger RAISE is DRIVER.
     if number == 787 or (
         number == 1811 and "FOREIGN KEY constraint failed" in str(error)
     ):
         return codes.FOREIGN_KEY
     if number in (6, 262):
         return codes.DEADLOCK
-    # SQLITE_READONLY(8)와 그 extended code는 읽기 전용 연결이나 query_only가 거부한 쓰기다.
+    # SQLITE_READONLY (8) and its extended codes are writes rejected by a read-only connection or by query_only.
     if (number & 0xFF) == 8:
         return codes.READ_ONLY
     if number == 275:
@@ -623,8 +623,8 @@ def _sqlite_code(error: sqlite3.Error) -> str:
 
 
 def _postgres_code(sqlstate, lost: bool) -> str:
-    """psycopg 오류의 ORM 오류 code다. server의 SQLSTATE가 없는 오류는 연결이 닫혔을 때(lost)
-    연결을 잃은 오류다."""
+    """The ORM error code for a psycopg error. An error with no server SQLSTATE is lost when the connection was closed
+    an error that lost the connection."""
     if sqlstate is None:
         return codes.CONNECTION_LOST if lost else codes.DRIVER
     if sqlstate.startswith("08"):
@@ -635,9 +635,9 @@ def _postgres_code(sqlstate, lost: bool) -> str:
 def _driver_error(
     driver: str, error: BaseException, lost: bool = False
 ) -> BaseException:
-    """driver 오류를 catalog의 code를 가진 OrmError로 바꾼다. message는 `<driver>: <driver message>`이고
-    cause는 driver 오류다. driver 오류가 아닌 오류는 그대로 돌려준다. lost는 PostgreSQL 연결이 오류 뒤에
-    닫혔는지다."""
+    """Converts a driver error to an OrmError with the catalog's code. The message is `<driver>: <driver message>`, and
+    the cause is the driver error. A non-driver error is returned as is. lost tells whether the PostgreSQL connection was closed after the error
+    was closed."""
     if driver == "sqlite":
         if not isinstance(error, sqlite3.Error):
             return error
@@ -650,7 +650,7 @@ def _driver_error(
         args = error.args
         number = args[0] if args and isinstance(args[0], int) else None
         message = str(args[1]) if len(args) >= 2 else str(error)
-        # PyMySQL은 이미 닫힌 연결에 보낸 statement를 InterfaceError로 알린다.
+        # PyMySQL reports a statement sent on an already closed connection as InterfaceError.
         code = (
             codes.CONNECTION_LOST
             if isinstance(error, pymysql.err.InterfaceError)
@@ -667,7 +667,7 @@ def _driver_error(
 
 
 def _raise_driver_error(driver: str, error: Exception, lost: bool = False):
-    """except 절 안에서 부른다: driver 오류는 ORM 오류로 바꾸어 던지고, 다른 오류는 그대로 다시 던진다."""
+    """Call inside an except clause: a driver error is re-raised as an ORM error, and any other error is re-raised as is."""
     mapped = _driver_error(driver, error, lost)
     if mapped is error:
         raise error
@@ -675,7 +675,7 @@ def _raise_driver_error(driver: str, error: Exception, lost: bool = False):
 
 
 class _SqliteConnection:
-    """표준 sqlite3 연결 한 개. pool 규칙 없이 한 연결을 재사용한다."""
+    """One standard sqlite3 connection. Reuses a single connection without pool rules."""
 
     def __init__(self, parsed: ParsedDsn):
         path = _sqlite_path(parsed.url)
@@ -689,13 +689,13 @@ class _SqliteConnection:
             ):
                 raise OrmError(codes.CONFIG, f"sqlite DSN _pragma {value} is invalid")
             pragmas.append(f"PRAGMA {match.group(1)} = {match.group(2)}")
-        # sqlite3가 link한 SQLite library의 version이다. 연결은 그것을 묻는 statement를 보내지 않는다.
+        # The version of the SQLite library that sqlite3 is linked with. The connection does not send a statement to ask for it.
         version = sqlite3.sqlite_version
         if tuple(int(part) for part in version.split(".")[:2]) < (3, 46):
             raise OrmError(
                 codes.CAPABILITY_UNSUPPORTED, f"SQLite {version} is older than 3.46"
             )
-        # 연결을 여는 driver 오류도 statement의 오류처럼 ORM 오류다.
+        # A driver error that opens the connection is also an ORM error, like a statement error.
         try:
             self.connection = sqlite3.connect(
                 path,
@@ -775,7 +775,7 @@ def _tls_failure(error: BaseException) -> bool:
 
 
 class _MysqlConnection:
-    """PyMySQL 연결 한 개. 필요할 때 import한다."""
+    """One PyMySQL connection. Imported when needed."""
 
     def __init__(self, parsed: ParsedDsn, statement_timeout_ms: int = 0):
         try:
@@ -851,7 +851,7 @@ class _MysqlConnection:
 
 
 class _PostgresConnection:
-    """psycopg 연결 한 개. 필요할 때 import한다."""
+    """One psycopg connection. Imported when needed."""
 
     def __init__(self, parsed: ParsedDsn, statement_timeout_ms: int = 0):
         try:
@@ -892,7 +892,7 @@ class _PostgresConnection:
                 [list(row) for row in cursor.fetchall()] if cursor.description else []
             )
         except Exception as error:
-            # psycopg는 server가 끝냈거나 끊긴 연결을 닫힌 연결로 표시한다.
+            # psycopg marks a connection that the server ended or that was dropped as closed.
             _raise_driver_error("postgres", error, bool(self.connection.closed))
         insert_id = None
         affected = cursor.rowcount if cursor.rowcount is not None else 0
@@ -913,7 +913,7 @@ def _unquote(text: str) -> str:
 
 
 class TxFrame:
-    """transaction 하나: 잡은 연결과 그 상태."""
+    """One transaction: the held connection and its state."""
 
     def __init__(self, db: "Db", number: int, options: dict):
         self.db = db
@@ -939,9 +939,9 @@ class TxFrame:
         tables=(),
         faultable: bool = True,
     ):
-        """statement를 실행하고 그 event를 남긴다; kind는 이 statement의
-        종류다. faultable=False는 transaction control statement이며 statement fault를
-        소비하지 않는다."""
+        """Runs a statement and records its event; kind is the statement's
+        kind. faultable=False marks a transaction control statement that does not consume
+        a statement fault."""
         if self.connection is None:
             raise OrmError(codes.CONFIG, "transaction already finished")
         values = values if values is not None else []
@@ -967,7 +967,7 @@ class TxFrame:
 
 
 class Executor:
-    """하나의 질의 실행 맥락: db와 transaction frame(있으면)."""
+    """The context of one query run: the db and the transaction frame, if any."""
 
     __slots__ = ("db", "frame")
 
@@ -977,7 +977,7 @@ class Executor:
 
 
 class _ActiveFrames:
-    """연결(root)마다 활성 transaction frame이다. 같은 연결의 handle은 같은 frame을 본다. Each thread has its own
+    """The active transaction frame of each connection (root). Handles of the same connection see the same frame. Each thread has its own
     frames, so transactions of different threads run on connections of their own."""
 
     def __init__(self):
@@ -1012,15 +1012,15 @@ def _active_for(db: "Db") -> TxFrame | None:
     return _ACTIVE.get(id(db.root()))
 
 
-# Request hook: handle의 각 request를 plan 직전에 받아 plan할 request를 돌려준다. 두 번째 인자 add_param(value)는
-# value를 request parameter 끝에 더하고 그 index를 돌려주며, 세 번째 인자는 request가 bind한 parameter의 읽기 전용
-# tuple이다 (docs/usage.md "Request hook").
+# Request hook: receives each request of a handle just before it is planned and returns the request to plan. The second argument, add_param(value),
+# appends value to the end of the request parameters and returns its index; the third argument is a read-only
+# tuple of the parameters the request bound (docs/usage.md "Request hook").
 RequestHook = Callable[[IRRequest, Callable[[object], int], tuple], IRRequest]
 
 
 class _Shared:
-    """한 연결의 모든 handle이 공유하는 바뀌는 상태다. rollback_fault와 statement_fault는 test entry point
-    polyspec.orm.testing이 설정하는 test fault다."""
+    """Mutable state shared by all handles of one connection. rollback_fault and statement_fault are test faults set by the test entry point
+    polyspec.orm.testing."""
 
     __slots__ = (
         "closed",
@@ -1037,11 +1037,11 @@ class _Shared:
         self.closed = False
         self.row_lock_ready = False
         self.rollback_fault = False
-        # fail_next_statement이 설정하는 (code, message)다.
+        # The (code, message) set by fail_next_statement.
         self.statement_fault = None
-        # fix_clock이 고정한 executor clock(UTC epoch의 microsecond)이다.
+        # The executor clock (microseconds of the UTC epoch) pinned by fix_clock.
         self.fixed_clock = None
-        # 마지막으로 성공한 write 결과의 affected다. last_affected가 읽는다.
+        # The affected count of the last successful write. Read by last_affected.
         self.last_affected = None
         # The connections of the Db, and the connection a thread holds for a sequence of statements.
         self.pool = None
@@ -1216,14 +1216,14 @@ class DbStats:
 
 
 class Db:
-    """plan cache와 statement cache를 가진 database 연결."""
+    """A database connection with a plan cache and a statement cache."""
 
     def __init__(self, dsn: str, options: dict | None = None):
         options = dict(options or {})
         self.dsn = dsn
         self.parsed = parse_dsn(dsn)
         self.driver = self.parsed.driver
-        # markdown 연결은 plan하지 않으므로(docs/protocol.md §5) dialect가 없다.
+        # A markdown connection does not plan (docs/protocol.md §5), so it has no dialect.
         self.dialect = None
         if self.driver != "markdown":
             dialect_class = dialect_of(self.driver)
@@ -1241,13 +1241,13 @@ class Db:
         if self.driver == "markdown" and self.statement_timeout_ms > 0:
             unsupported_on_markdown(self, "statement timeout")
         self.engines: dict[str, Engine] = {}
-        # markdown 연결에 등록된 set의 runtime model이다. SQL 연결은 engines가 그 자리다.
+        # The runtime model of the set registered on a markdown connection. For SQL connections, engines takes that place.
         self.schemas: dict[str, RuntimeModel] = {}
         self.plans: dict[str, dict] = {}
         self.plan_cache_size = options.get("planCacheSize", 1024)
         self.events = Subscribers()
         self._shared = _Shared()
-        # handle의 root는 그 handle을 파생한 연결이고, 연결 자신은 None이다.
+        # A handle's root is the connection it was derived from; the connection itself has None.
         self._root: Db | None = None
         self.request_hook: RequestHook | None = None
         if self.driver == "markdown":
@@ -1319,12 +1319,12 @@ class Db:
         if self.driver == "mysql":
             return _MysqlConnection(self.parsed, self.statement_timeout_ms)
         if self.driver == "markdown":
-            # session 하나를 연결해 server가 corpus와 token을 받아들이는지 확인한다.
+            # Connects one session to check that the server accepts the corpus and token.
             return dial_markdown(self.parsed.markdown)
         return _PostgresConnection(self.parsed, self.statement_timeout_ms)
 
     def register(self, schema: Schema) -> "Db":
-        """생성된 model 집합을 이 연결에 등록한다."""
+        """Registers the generated model set on this connection."""
         from polyspec.orm.engine.model import model_of_manifest
 
         model = model_of_manifest(
@@ -1334,8 +1334,8 @@ class Db:
         return self
 
     def _register_set(self, manifest_hash: str, model: RuntimeModel) -> None:
-        """manifest의 runtime model을 등록한다. SQL 연결은 그 planner를 만들고, plan하지 않는 markdown 연결은
-        model만 둔다. 이미 등록된 set은 바꾸지 않는다."""
+        """Registers the runtime model of the manifest. A SQL connection creates its planner, while a markdown connection, which does not plan,
+        keeps only the model. A set that is already registered is not changed."""
         if self.driver == "markdown":
             self.schemas.setdefault(manifest_hash, model)
             return
@@ -1365,10 +1365,10 @@ class Db:
     def subscribe(
         self, subscriber: Callable[[StatementEvent], None]
     ) -> Callable[[], None]:
-        """이 연결과 그 파생 handle이 보내는 모든 statement의 event를 받을
-        subscriber를 등록한다 (docs/usage.md "Statement events"). subscriber는
-        등록 순서로 statement가 끝난 뒤, 작업이 계속되기 전에 불리고, 던지면
-        안 된다. markdown 연결은 statement를 보내지 않으므로 CAPABILITY_UNSUPPORTED다."""
+        """Registers a subscriber that receives the event of every statement sent by this connection
+        and its derived handles (docs/usage.md "Statement events"). A subscriber
+        is called in registration order after the statement ends and before work continues, and must not throw.
+        A markdown connection sends no statement, so it is CAPABILITY_UNSUPPORTED."""
         unsupported_on_markdown(self, "statement events")
         return self.events.subscribe(subscriber)
 
@@ -1383,7 +1383,7 @@ class Db:
     def plan(self, request: dict) -> dict:
         if self._shared.closed:
             raise OrmError(codes.CONFIG, "database is closed")
-        # 연결은 자기에게 등록된 set만 plan한다. plan cache를 보기 전에 확인한다.
+        # The connection plans only the sets registered to it. It checks this before looking at the plan cache.
         engine = self.engines.get(request["manifest_hash"])
         if engine is None:
             raise OrmError(
@@ -1403,13 +1403,13 @@ class Db:
         return entry
 
     def clock_micros(self) -> int:
-        """executor clock(UTC epoch의 microsecond)이다: test entry point가 고정한 시각, 아니면 wall clock이다."""
+        """The executor clock (microseconds of the UTC epoch): the time pinned by the test entry point, otherwise the wall clock."""
         fixed = self._shared.fixed_clock
         return wall_micros() if fixed is None else fixed
 
     def now(self, micros: int, precision: int) -> str:
-        """executor clock이다: wall clock의 microsecond를 connection zone(UTC)의
-        text로 쓰고 6자리 소수를 precision 자리로 자른다."""
+        """The executor clock: writes the wall clock's microseconds as text in the connection zone (UTC)
+        and truncates the 6 fractional digits to the precision."""
         import datetime
 
         whole = datetime.datetime.fromtimestamp(
@@ -1419,7 +1419,7 @@ class Db:
         return text[:19] if precision == 0 else text[: 20 + precision]
 
     def args(self, step: dict, params, parents=None, audit=None):
-        """step의 bind slot을 푼다; masked는 secret과 clock 자리를 가린다."""
+        """Resolves the bind slots of a step; masked hides the secret and clock slots."""
         values: list = []
         masked: list = []
         clock = None
@@ -1481,7 +1481,7 @@ class Db:
                 for value in parents or ():
                     push(value)
             elif source == "now":
-                # 한 statement는 clock을 한 번만 읽으므로 그 clock column들은 같다.
+                # A statement reads the clock once, so its clock columns are equal.
                 if clock is None:
                     clock = self.clock_micros()
                 push(self.now(clock, slot.get("precision", 6)), "$NOW")
@@ -1518,8 +1518,8 @@ class Db:
         _guarded(ex, work)
 
     def _send_step(self, ex: Executor, sql: str, step: dict, params, parents=None):
-        """plan step 하나를 executor의 연결(활성 transaction이면 그 연결)에서 실행하고 statement
-        event를 publish한다."""
+        """Runs one plan step on the executor's connection (the active transaction's connection, if there is one) and publishes the statement
+        event."""
         resolved = self.args(
             step, params, parents, ex.frame.audit if ex.frame is not None else None
         )
@@ -1548,9 +1548,9 @@ class Db:
     # --- transaction ---
 
     def transaction(self, callback: Callable[[], T], options: dict | None = None) -> T:
-        """callback을 한 transaction에서 실행한다. 오류이면 rollback하고, 아니면
-        commit하고 callback 결과를 돌려준다. connect 없는 model은 이 transaction을
-        쓴다. 활성 transaction의 같은 연결 transaction은 savepoint를 만든다."""
+        """Runs the callback in one transaction. On error it rolls back; otherwise
+        it commits and returns the callback result. A model without connect uses this transaction.
+        A transaction on the same connection as an active transaction creates a savepoint."""
         options = dict(options or {})
         retry = options.get("retry", 3)
         if isinstance(retry, bool) or not isinstance(retry, int) or retry < 0:
@@ -1565,8 +1565,8 @@ class Db:
         if "audit" in options:
             unsupported_on_markdown(self, "a transaction with audit values")
         outer = _active_for(self)
-        # audit 기록은 transaction이 시작하기 전에 검사하고 시도마다 callback 앞에서
-        # 삽입한다.
+        # The audit record is checked before the transaction starts and, on every attempt,
+        # is inserted before the callback.
         record = (
             self._audit_record(options["audit"])
             if "audit" in options and outer is None
@@ -1622,7 +1622,7 @@ class Db:
                 self._finish(frame, False)
             except OrmError as cleanup:
                 raise rollback_failed(error, cleanup) from None
-            # 설정된 test fault는 실행된 rollback을 실패로 보고하고 소비된다.
+            # A configured test fault reports the executed rollback as failed and is consumed.
             if self._shared.rollback_fault:
                 self._shared.rollback_fault = False
                 raise rollback_failed(
@@ -1641,10 +1641,10 @@ class Db:
         return result
 
     def _audit_record(self, values) -> dict:
-        """audit source의 값과 transaction의 값을 더한 audit 기록이다. 같은
-        column이면 transaction의 값이 이긴다. 기록 table은 연결에 등록한 set의
-        audit setting이 references로 이름하는 table 하나이며, 그 table을 entity로
-        가진 set이 이 연결에 등록되어 있어야 한다."""
+        """The audit record that adds the audit source's values and the transaction's values. For the same
+        column, the transaction's value wins. The record table is the one table that the audit setting of the set registered on the connection names with references,
+        and the set that has that table as an entity
+        must be registered on this connection."""
         if not isinstance(values, dict):
             raise OrmError(codes.CONFIG, "transaction audit is an object of column values")
         if self.audit_source is None:
@@ -1714,8 +1714,8 @@ class Db:
         return {"runtime": target[0], "entity": target[1], "values": merged}
 
     def _insert_audit(self, record: dict) -> dict:
-        """transaction의 audit 기록을 삽입하고 그 table과 primary key 값을
-        돌려준다. primary key가 identity이면 생성된 key, 아니면 기록의 값이다."""
+        """Inserts the transaction's audit record and returns its table and primary key value
+        . If the primary key is an identity, it is the generated key; otherwise it is the record's value."""
         from polyspec.orm.model import EntityDef
 
         class _RuntimeRef:
@@ -1748,8 +1748,8 @@ class Db:
         return {"table": entity.table, "key": key}
 
     def _row_lock_table(self) -> None:
-        """SQLite row lock table을 첫 transaction 전에 transaction 밖에서 한 번
-        만든다 (docs/usage.md "Statement events")."""
+        """Creates the SQLite row lock table once, outside any transaction, before the first transaction
+        (docs/usage.md "Statement events")."""
         if self._shared.row_lock_ready:
             return
         self.events.send(
@@ -1763,10 +1763,10 @@ class Db:
         self._shared.row_lock_ready = True
 
     def row_lock(self, frame: TxFrame, mode: str) -> None:
-        """SQLite의 row lock이다. SQLite에는 row lock 절이 없으므로 lock row 하나가
-        ORM의 lock 요청을 차례로 세운다. 쓰기는 busy_timeout까지 기다리고,
-        NOWAIT 요청은 기다림을 0으로 둔다. 다른 database는 statement의 lock 절이
-        잡는다."""
+        """The row lock for SQLite. SQLite has no row lock clause, so one lock row
+        serializes the ORM's lock requests in turn. A write waits up to busy_timeout,
+        and a NOWAIT request waits zero. Other databases take the lock in the statement's lock clause
+        ."""
         if self.driver != "sqlite" or mode == "":
             return
         no_wait = mode.endswith("_nowait")
@@ -1782,7 +1782,7 @@ class Db:
                 run("PRAGMA busy_timeout=0")
             run(ROW_LOCK_TAKE, tables=ROW_LOCK_TABLES)
         except OrmError as error:
-            # NOWAIT 요청의 SQLITE_BUSY는 CANCELED가 아니라 LOCK_NOT_AVAILABLE이다.
+            # SQLITE_BUSY from a NOWAIT request is LOCK_NOT_AVAILABLE, not CANCELED.
             if no_wait and _sqlite_busy(error.cause):
                 raise OrmError(codes.LOCK_NOT_AVAILABLE, str(error), error.cause) from None
             raise
@@ -1837,8 +1837,8 @@ class Db:
                     ("utility", f"SET LOCAL statement_timeout = {options['timeoutMs']}")
                 )
         else:
-            # 읽기 전용 transaction은 deferred BEGIN이고, 나머지는 시작할 때 쓰기
-            # lock을 잡고 busy_timeout까지 기다린다.
+            # A read-only transaction uses a deferred BEGIN; the others take the write
+            # lock at start and wait up to busy_timeout.
             steps.append(
                 ("begin", "BEGIN" if options.get("readOnly") else "BEGIN IMMEDIATE")
             )
@@ -1903,13 +1903,13 @@ class Db:
         locks, frame.locks = frame.locks, []
         for key in locks:
             released = attempt("SELECT RELEASE_LOCK(?)", [key], faultable=True)
-            # 1이 아니면 이 connection이 lock을 갖고 있지 않았다.
+            # If it is not 1, this connection did not hold the lock.
             if released is not None and int((released["rows"] or [[0]])[0][0]) != 1:
                 errors.append(
                     OrmError(codes.CONFIG, f"lock {key} was not held at transaction end")
                 )
         if self.driver == "mysql":
-            # 값을 지우는 statement는 key 순서로 보낸다.
+            # Statements that delete values are sent in key order.
             for key in sorted(frame.locals):
                 attempt(f"SET @`orm.{key}` = NULL")
         try:
@@ -1933,7 +1933,7 @@ class Db:
         name = f"orm_sp_{frame.savepoints}"
 
         def control(kind: str, sql: str) -> None:
-            # SQL 연결은 그 statement를, markdown 연결은 같은 이름의 control message를 보낸다.
+            # A SQL connection sends that statement; a markdown connection sends a control message of the same name.
             if self.driver == "markdown":
                 savepoint_markdown(frame, kind, name)
             else:
@@ -1962,14 +1962,14 @@ class Db:
             frame.savepoints -= 1
 
     def active_frame(self):
-        """이 연결에서 열려 있는 transaction frame(없으면 None)."""
+        """The transaction frame open on this connection (None if there is none)."""
         return _active_for(self)
 
 
 def _audit_value(slot: dict, audit):
-    """transaction의 audit record key를 audited table의 audit column에 bind한다.
-    audit 없는 쓰기나, 그 table이 transaction의 audit record를 다른 table에 남기는
-    쓰기는 CONFIG다."""
+    """Binds the transaction's audit record key to the audit column of the audited table.
+    A write without audit, or one whose table records the transaction's audit record in another table,
+    is CONFIG."""
     if audit is None:
         raise OrmError(
             codes.CONFIG,
@@ -1987,7 +1987,7 @@ def _audit_value(slot: dict, audit):
 
 
 def _guarded(ex: Executor, work):
-    """executor의 statement 시작을 표시한다; transaction은 겹친 사용을 거부한다."""
+    """Marks the start of a statement on the executor; a transaction rejects overlapping use."""
     frame = ex.frame
     if frame is None:
         return work()
@@ -2008,25 +2008,25 @@ def _check_lock(ex: Executor, request: dict) -> None:
 
 
 def _arm_rollback_fault(db: Db) -> None:
-    """connection의 rollback fault를 설정한다. test entry point polyspec.orm.testing만
-    부르며 package entry point는 export하지 않는다."""
+    """Sets the rollback fault of the connection. Only the test entry point polyspec.orm.testing
+    calls it; the package entry point does not export it."""
     db._shared.rollback_fault = True
 
 
 def _read_last_affected(db: Db) -> int | None:
-    """connection에서 마지막으로 성공한 write 결과의 affected다. test entry point polyspec.orm.testing만 부른다."""
+    """The affected count of the last successful write on the connection. Only the test entry point polyspec.orm.testing calls it."""
     return db._shared.last_affected
 
 
 def _arm_fixed_clock(db: Db, micros: int) -> None:
-    """connection의 executor clock을 micros(UTC epoch의 microsecond)로 고정한다. test entry point
-    polyspec.orm.testing만 부르며 package entry point는 export하지 않는다."""
+    """Pins the connection's executor clock to micros (microseconds of the UTC epoch). Test entry point
+    polyspec.orm.testing only calls it; the package entry point does not export it."""
     db._shared.fixed_clock = micros
 
 
 def _arm_statement_fault(db: Db, code: str, message: str) -> None:
-    """connection의 statement fault를 설정한다. 이미 설정된 fault는 대체된다. test entry point
-    polyspec.orm.testing만 부르며 package entry point는 export하지 않는다."""
+    """Sets the statement fault of the connection. A fault already set is replaced. Test entry point
+    polyspec.orm.testing only calls it; the package entry point does not export it."""
     db._shared.statement_fault = (code, message)
 
 
@@ -2067,7 +2067,7 @@ def _hooked(db: Db, request: dict, params, after_hook=None):
 
 
 def query(ex: Executor, request: dict, params):
-    """select request를 실행해 main row들과 relation step들의 결과를 낸다."""
+    """Runs the select request and returns the main rows and the results of the relation steps."""
     request, params = _hooked(ex.db, request, params)
 
     def work():
@@ -2116,8 +2116,8 @@ def _decode_assembly(row, assemble: dict, db: Db) -> None:
             version = int(at)
     for column in assemble["columns"]:
         value = row[column["index"]]
-        # SQL NULL도 client codec 단계를 거쳐 StyledValue.sql_null()이 된다 (docs/codec.md
-        # "Value model"). host 단계만 가진 column의 NULL은 None으로 남는다.
+        # SQL NULL also goes through the client codec stages and becomes StyledValue.sql_null() (docs/codec.md
+        # "Value model"). The NULL of a column with only host stages stays None.
         if not column["styles"]:
             continue
         host = [s for s in column["styles"] if s in ("aes", "hex", "ip")]
@@ -2265,7 +2265,7 @@ def _child_keys(plan: dict, step_id: int):
 
 
 def _root_in_parts(request: dict, plan: dict, driver: str, params):
-    """driver bind 한도를 넘는, AND로 이은 root IN 목록을 나눈다."""
+    """Splits a root IN list joined with AND that exceeds the driver bind limit."""
     main = plan["steps"][0]
     limit = _driver_limit(driver)
     if len(main["bind_slots"]) <= limit:
@@ -2345,7 +2345,7 @@ def _root_in_parts(request: dict, plan: dict, driver: str, params):
 
 
 def scalar(ex: Executor, request: dict, params):
-    """집계나 count 등 스칼라 하나를 실행한다."""
+    """Runs one scalar, such as an aggregate or a count."""
     request, params = _hooked(ex.db, request, params)
 
     def work():
@@ -2397,9 +2397,9 @@ def paginate(ex: Executor, request: dict, params):
 
 
 def write(ex: Executor, request: dict, params, after_hook=None):
-    """insert, update, delete, restore를 실행하고 insert한 행의 key와 영향 줄 수를 낸다: SQL database에서는 생성된
-    identity, markdown executor에서는 그 답의 첫 key다. 'request'와 'params'는 request hook이 남긴 실행한 request와 그
-    parameter다."""
+    """Runs insert, update, delete, and restore, and returns the key of the inserted row and the affected row count: in SQL databases the generated
+    identity; in the markdown executor it is the first key of the answer. 'request' and 'params' are the executed request left by the request hook and its
+    parameters."""
     request, params = _hooked(ex.db, request, params, after_hook)
 
     def work():
@@ -2436,7 +2436,7 @@ def write(ex: Executor, request: dict, params, after_hook=None):
 
 
 def statement(ex: Executor, request: dict, params):
-    """select request의 statement를 실행 없이 돌려준다."""
+    """Returns the statement of the select request without running it."""
     unsupported_on_markdown(ex.db, "getQuery")
     request, params = _hooked(ex.db, request, params)
     cached = ex.db.plan(request)
@@ -2445,5 +2445,5 @@ def statement(ex: Executor, request: dict, params):
 
 
 def connect(dsn: str, options: dict | None = None) -> Db:
-    """DSN URI가 고르는 database를 연다."""
+    """Opens the database selected by the DSN URI."""
     return Db.connect(dsn, options)

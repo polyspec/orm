@@ -1,5 +1,5 @@
-# plan diff의 객체, trigger, 변경 목록 (docs/plans.md "Diff").
-# 기준은 다른 client의 plan 객체 비교다.
+# Plan diff objects, triggers, and change list (docs/plans.md "Diff").
+# The reference is the other client's plan object comparison.
 from polyspec.orm.dbspec.check import read_check
 from polyspec.orm.dbspec.plan_diff import append, renamed_or, sorted_keys
 from polyspec.orm.dbspec.render import Renderer
@@ -24,12 +24,12 @@ def _compare_ref(ref: dict) -> str:
 
 
 def diff_objects(d: dict, renamed_from: dict, renamed_column: dict) -> None:
-    """맞춘 table의 unique, index, foreign key, check를 이름과 정의로 비교한다.
-    source 정의는 rename을 적용해 읽는다."""
+    """Compares the unique keys, indexes, foreign keys, and checks of the matched tables by name and definition.
+    The source definition is read with the rename applied."""
     target_table = lambda s: renamed_or(renamed_from, s)  # noqa: E731
-    # column rename을 적용한 source 정의
+    # Source definition with the column renames applied
     column = lambda target, c: renamed_or(renamed_column.get(target), c)  # noqa: E731
-    altered_column: set = set()  # "table.column" target 이름
+    altered_column: set = set()  # "table.column" target name
     renamed_col: set = set()
     for t, cols in d["altered"].items():
         for c in cols:
@@ -41,8 +41,8 @@ def diff_objects(d: dict, renamed_from: dict, renamed_column: dict) -> None:
         src = d["source"][d["table_of"][name]]
         tgt = d["target"][name]
         col = lambda c, name=name: column(name, c)  # noqa: E731
-        # 지우는 index나 unique 위의 foreign key는 MySQL이 그 index를 지우지
-        # 못하게 하므로 함께 다시 만든다.
+        # A foreign key on an index or unique key being dropped is recreated with it, because MySQL
+        # does not allow dropping that index otherwise.
         dropped_keys: set = set()
         # unique
         for u in src.uniques:
@@ -103,7 +103,7 @@ def diff_objects(d: dict, renamed_from: dict, renamed_column: dict) -> None:
                 ) and not forced_fk(name, cols, parent, refs)
             if not keep:
                 append(d["add_objects"], name, {"kind": "foreign_key", "name": f.name})
-        # check: 이름 바뀐 column이나 바뀐 column을 쓰는 check는 다시 만든다.
+        # check: a check that uses a renamed column, or a column that changes, is recreated.
 
         def forced_check(k) -> bool:
             return any(
@@ -127,8 +127,8 @@ def diff_objects(d: dict, renamed_from: dict, renamed_column: dict) -> None:
                 or forced_check(k)
             ):
                 append(d["add_objects"], name, {"kind": "check", "name": k.name})
-    # 지우는 table을 참조하는 남은 table의 foreign key는 target이 이미 뺐으므로
-    # 위에서 지운다. 지우는 table 자신의 foreign key는 table과 함께 지운다.
+    # Foreign keys of remaining tables that reference a dropped table are already removed in the target, so
+    # they are dropped above. A dropped table's own foreign keys are dropped together with the table.
     for name in d["dropped"]:
         for f in d["source"][name].foreign_keys:
             append(d["drop_objects"], name, {"kind": "foreign_key", "name": f.name})
@@ -139,8 +139,8 @@ def diff_objects(d: dict, renamed_from: dict, renamed_column: dict) -> None:
 
 
 def diff_triggers(d: dict) -> None:
-    """맞춘 table 가운데 render한 trigger 문장이 세 dialect 하나에서 다른 table을
-    표시한다. source는 자기 이름으로 render한다."""
+    """Among the matched tables, lists those whose rendered trigger statement names a different table in any one of the three dialects.
+    The source is rendered under its own name."""
     for name in d["matched"]:
         src = d["source"][d["table_of"][name]]
         tgt = d["target"][name]
@@ -190,8 +190,8 @@ def collect_changes(d: dict) -> None:
 
 
 def has_triggers(t) -> bool:
-    """table이 immutable이나 audit setting을 가져 renderer가 trigger를 쓰는지
-    알려 준다."""
+    """Tells whether the table has an immutable or audit setting, so the renderer writes triggers.
+    Whether the renderer writes triggers."""
     return t.settings is not None and any(
         s.kind in ("immutable", "audit") for s in t.settings.settings
     )
@@ -236,7 +236,7 @@ def _operand_columns(e) -> list:
 
 
 def _expr_columns(e) -> list:
-    """식이 쓰는 column 이름들."""
+    """Column names that the expression uses."""
     if e["kind"] == "logical":
         return [*_expr_columns(e["left"]), *_expr_columns(e["right"])]
     if e["kind"] == "compare":
@@ -249,7 +249,7 @@ def _operand_text(e, f) -> str:
 
 
 def _expr_text(e, f) -> str:
-    """column 이름을 f로 바꾼 식의 정규 text. and 안의 or만 괄호를 쓴다."""
+    """The canonical text of the check expression with column names replaced by f. Only the or inside an and gets parentheses."""
     if e["kind"] == "logical":
 
         def side(q):
@@ -271,5 +271,5 @@ def _expr_text(e, f) -> str:
 
 
 def rename_check(k, f) -> str:
-    """column 이름을 f로 바꾼 check 식의 정규 text다."""
+    """The canonical text of the check expression with column names replaced by f."""
     return _expr_text(_check_tree(k), f)

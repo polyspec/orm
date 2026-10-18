@@ -1,5 +1,5 @@
-# schema plan 문서와 plan chain (docs/plans.md "Plan document", "Chain").
-# 기준은 다른 client의 plan이며 diagnostic message는 같은 바이트다.
+# Schema plan document and plan chain (docs/plans.md "Plan document", "Chain").
+# The reference is the other client's plan; the diagnostic messages are the same bytes.
 from __future__ import annotations
 
 import hashlib
@@ -30,7 +30,7 @@ _PLAN_DROP_COLUMN = re.compile(f"^allow drop column {_NAME}\\.{_NAME}$")
 
 
 def sorted_by(items, key) -> list:
-    """key 순서로 정렬한 복사본이다."""
+    """A copy sorted by key."""
     return sorted(items, key=key)
 
 
@@ -52,8 +52,8 @@ def _plan_names(names) -> str:
 
 
 def parse_plan(text: str) -> dict:
-    """plan 문서를 parse한다 (docs/plans.md "Plan document"). 못 쓴 문서는 그 줄의
-    `plan` diagnostic을 준다. 대상 schema text의 diagnostic은 plan 안에 위치한다."""
+    """Parses a plan document (docs/plans.md "Plan document"). A document that cannot be written gives a `plan` diagnostic
+    at that line. A diagnostic of the target schema text is located inside the plan."""
     if not isinstance(text, str):
         raise TypeError("plan text must be a string")
     if not text.endswith("\n"):
@@ -140,8 +140,8 @@ def parse_plan(text: str) -> dict:
             i + 1, "a blank line and the target schema text follow the header"
         )
     offset = i + 1
-    # plan은 database 전체를 하나의 schema로 옮긴다. 외부 문서를 쓰는 set의
-    # table은 install과 addTablesAndColumns가 만든다.
+    # A plan moves the whole database into one schema. The external tables of a set that uses external documents
+    # are created by install and addTablesAndColumns.
     for k in range(offset, len(lines)):
         if lines[k].startswith("use "):
             return _failed(
@@ -187,8 +187,8 @@ def parse_plan(text: str) -> dict:
 
 
 def plan_to(header: dict, schema, schema_text: str) -> dict:
-    """plan의 대상을 text가 schema_text인 schema text 문서로 정한다. 그 hash가
-    `to`다. 대상이 `from`과 같으면 2번 줄의 plan diagnostic이다."""
+    """The target of the plan is the schema text document whose text is schema_text. Its hash is
+    `to`. If the target is the same as `from`, it is a plan diagnostic on line 2."""
     to = "sha256:" + hashlib.sha256(schema_text.encode("utf-8")).hexdigest()
     if to == header["from"]:
         return _failed(2, "the plan starts from its own target schema")
@@ -199,13 +199,13 @@ def plan_to(header: dict, schema, schema_text: str) -> dict:
 
 
 def plan_schema_text(schema) -> str:
-    """plan 대상의 schema text: schema text 문서의 canonical 출력이다."""
+    """The schema text of the plan target: the canonical output of the schema text document."""
     return emit_document(schema, CANONICAL)
 
 
 def emit_plan(plan: DbspecPlan) -> str:
-    """plan을 canonical 문서로 쓴다: header 줄은 rename table, rename column,
-    allow drop table, allow drop column 순서로, 각각 이름 순서다."""
+    """Writes the plan as a canonical document: the header lines are rename table, rename column,
+    allow drop table, allow drop column, in that order, each in name order."""
     out = f"dbplan 1 {plan['name']}\n"
     out += "from empty\n" if plan["from"] is None else f"from {plan['from']}\n"
     for r in sorted_by(plan["rename_tables"], lambda r: r["old"]):
@@ -220,14 +220,14 @@ def emit_plan(plan: DbspecPlan) -> str:
 
 
 def chain_plans(plans: list[DbspecPlan]) -> dict:
-    """plan들을 `from empty`인 plan에서 하나의 chain으로 잇는다 (docs/plans.md
-    "Chain"). 못 잇는 경우 plan 이름을 말하는 `chain` diagnostic을 준다."""
+    """Joins the plans into one chain starting from the plan with `from empty` (docs/plans.md
+    "Chain"). If they cannot be joined, gives a `chain` diagnostic that names the plan."""
     if not isinstance(plans, (list, tuple)):
         raise TypeError("plans must be a list of parsed plans")
-    # plan이 없으면 table이 없는 database의 빈 chain이다.
+    # If there are no plans, it is the empty chain of a database with no tables.
     if not plans:
         return {"plans": [], "diagnostics": []}
-    # 빈 database에서 시작하는 plan의 key는 ''이다.
+    # The key of a plan that starts from an empty database is ''.
     by_from: dict = {}
     for p in plans:
         by_from.setdefault(p["from"] or "", []).append(p)

@@ -1,5 +1,5 @@
-# dbspec 문서 집합의 manifest와 hash (docs/dbspec.md "Manifest and hashes").
-# 기준은 Go 엔진(engine/dbspec)이다.
+# Manifest and hash of a dbspec document set (docs/dbspec.md "Manifest and hashes").
+# The reference is the Go engine (engine/dbspec).
 from __future__ import annotations
 
 import hashlib
@@ -9,7 +9,7 @@ from polyspec.orm.dbspec.model import DbspecDiagnostic, DbspecDocument, DbspecUs
 
 __all__ = ["check_set", "dbspec_manifest", "external_differences"]
 
-# header 줄 `dbspec 1 <name>`의 문서 이름 칸.
+# The document name field of the header line `dbspec 1 <name>`.
 _HEADER_NAME_COLUMN = len("dbspec 1 ") + 1
 
 
@@ -43,10 +43,10 @@ class DbspecManifestResult:
 
 
 def check_set(documents):
-    """문서를 문서 이름 순서로 정렬해 돌려주고 집합의 진단을 돌려준다. 문서 이름의
-    반복은 나중 문서에서 name.duplicate, 집합에 없는 문서의 사용은 쓴 문서에서 use,
-    소유한 문서가 use로 닿지 않는 외부 문서는 그 문서에서 use 진단이다. 전부 header
-    이름 칸에 보고한다."""
+    """Returns the documents sorted by document name, along with the set's diagnostics. Repeated document names
+    are name.duplicate in the later document; a use of a document not in the set is use in the document that uses it,
+    and an external document that no owned document reaches through use is a use diagnostic in that document. All are reported at the header
+    name field."""
     ordered = sorted(documents, key=lambda d: d.name)
     by_name = {d.name: d for d in ordered}
     diagnostics = []
@@ -70,7 +70,7 @@ def check_set(documents):
                         f"document {document.name} uses {name}, which is not in the document set",
                     )
                 )
-    # 외부 문서는 소유한 문서에서 use를 따라 닿는 문서다.
+    # An external document is one reached by following use from an owned document.
     reached = set()
 
     def walk(document: DbspecDocument) -> None:
@@ -101,9 +101,9 @@ def _text_hash(text: str) -> str:
 
 
 def _external_document(document: DbspecDocument, tables):
-    """외부 문서에서 tables의 column, primary key, unique key만 문서 순서로 담은
-    문서다. 그 table이 없으면 None이다. foreign key, index, check, setting은 외부
-    문서가 소유하므로 담지 않는다."""
+    """An external document that keeps only the columns, primary key, and unique keys of tables, in document order,
+    is returned. If the table is missing, None is returned. Foreign keys, indexes, checks, and settings are not kept, because the external
+    document owns them."""
     from polyspec.orm.dbspec.model import DbspecPrimaryKey, DbspecTable
 
     kept = [
@@ -130,10 +130,10 @@ def _external_document(document: DbspecDocument, tables):
 def dbspec_manifest(
     documents: list[DbspecDocument],
 ) -> tuple[DbspecManifestResult, tuple]:
-    """문서 집합의 manifest (문서 이름 순서) 또는 잘못된 집합의 진단. manifest text는
-    소유한 문서를, external text는 각 외부 문서에서 소유한 문서가 쓰는 table을,
-    schema text는 소유한 모든 table을 이름 순서로 담은 문서 하나를 담고,
-    manifestHash는 manifest text에 external text를 이은 것의 hash다."""
+    """The manifest of the document set (in document name order), or the diagnostics of an invalid set. The manifest text
+    holds the owned documents; the external text holds, for each external document, the tables that the owned documents use,
+    and the schema text holds one document with all owned tables in name order,
+    and manifestHash is the hash of the manifest text followed by the external text."""
     ordered, diagnostics = check_set(documents)
     if diagnostics:
         return None, diagnostics
@@ -160,8 +160,8 @@ def dbspec_manifest(
             continue
         manifest_text += emit_document(document, MANIFEST)
         owned.extend(document.tables)
-    # schema text는 집합이 소유한 모든 table을 이름 순으로 담은 문서 `schema` 하나이므로
-    # 문서를 나누는 방식과 무관하다. 외부 문서에서 쓰는 table은 그 문서의 use 줄로 남는다.
+    # The schema text is one document `schema` with all tables the set owns in name order, so
+    # it is independent of how documents are split. A table used from an external document remains as a use line in that document.
     tables = sorted(owned, key=lambda t: t.name)
     schema_text = emit_document(
         DbspecDocument("schema", tuple(uses), tuple(tables), (), (), False), SCHEMA
@@ -178,11 +178,11 @@ def dbspec_manifest(
 def external_differences(
     live: DbspecDocument, documents: list[DbspecDocument]
 ) -> list[str]:
-    """문서 집합이 외부 문서에서 쓰는 table을 database(docs/dbspec.md "External
-    documents")와 비교한다. `live`는 introspect한 database다. 쓰는 table마다 이름
-    순서로 차이를 돌려준다: 없는 table, 외부 문서의 column마다 없는 column·다른
-    type·다른 nullability, 다른 primary key, live unique key가 담지 않는 unique key.
-    database의 남는 column은 차이가 아니다. 외부 문서가 없는 집합은 차이가 없다."""
+    """Compares the tables the document set uses from external documents with the database (docs/dbspec.md "External
+    documents"). `live` is the introspected database. For each table used, in name order,
+    it returns the differences: a missing table, and for each column of the external document, a missing column, a different
+    type, a different nullability, a different primary key, and a unique key that the live unique keys do not hold.
+    A remaining column in the database is not a difference. A set with no external documents has no differences."""
     externals = {d.name: d for d in documents if d.external is True}
     tables = []
     seen = set()

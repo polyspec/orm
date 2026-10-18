@@ -1,11 +1,11 @@
-# 생성 파일이다. Unicode 17.0.0의 word rune 표다.
-# unicode.IsLetter 또는 unicode.IsDigit이 참인 code point의 닫힌 구간이며 오름차순이고 서로 겹치지 않는다.
-# `go run ./tests/dbspec/unicode -write`가 쓴다. 직접 고치지 않는다.
+# Generated file. The word rune table of Unicode 17.0.0.
+# Closed ranges of code points for which unicode.IsLetter or unicode.IsDigit is true; ascending and non-overlapping.
+# Written by `go run ./tests/dbspec/unicode -write`. Do not edit it directly.
 #
-# unicodedata는 interpreter마다 Unicode 버전이 달라서 이 표로 분류한다.
+# Classified with this table, because unicodedata's Unicode version differs from one interpreter to another.
 import bisect
 
-# (lo, hi)는 word rune의 닫힌 구간이다.
+# (lo, hi) is a closed range of word runes.
 WORD_RANGES = (
     (0x0030, 0x0039),
     (0x0041, 0x005A),
@@ -749,6 +749,6 @@ _STARTS = tuple(lo for lo, _ in WORD_RANGES)
 
 
 def _is_word_rune_code_point(cp: int) -> bool:
-    """cp가 Go의 isWordRune과 같이 Unicode 글자나 숫자이면 참이다."""
+    """True if cp is a Unicode letter or digit, as with Go's isWordRune."""
     i = bisect.bisect_right(_STARTS, cp) - 1
     return i >= 0 and cp <= WORD_RANGES[i][1]

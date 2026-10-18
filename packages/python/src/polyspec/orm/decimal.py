@@ -1,4 +1,4 @@
-# decimal column 값의 검사와 자릿수 맞춤 (docs/dbspec.md "decimal(p,s)").
+# Checking and digit alignment of decimal column values (docs/dbspec.md "decimal(p,s)").
 import re
 
 from polyspec.orm import codes
@@ -10,7 +10,7 @@ _DECIMAL_TEXT = re.compile(r"[+-]?[0-9]+(?:\.[0-9]+)?\Z")
 
 
 def normalize_decimal(text: str, precision: int, scale: int) -> str:
-    """decimal field 값을 검사하고 선언된 scale로 채운다."""
+    """Checks a decimal field value and pads it to the declared scale."""
 
     def fail(reason: str) -> None:
         raise OrmError(codes.CODEC_ENCODE, f"decimal {text!r}: {reason}")
@@ -39,7 +39,7 @@ def normalize_decimal(text: str, precision: int, scale: int) -> str:
 
 
 def decimal_scaled(text: str, precision: int, scale: int) -> int:
-    """SQLite가 선언된 decimal을 정확한 자릿수의 부호 있는 정수로 저장한다."""
+    """SQLite stores a declared decimal as a signed integer with the exact number of digits."""
     return int(normalize_decimal(text, precision, scale).replace(".", ""))
 
 

@@ -1,7 +1,7 @@
-# plan chain을 database 하나에 step 하나씩 적용하고, 중단된 plan을 이어 가거나
-# 되돌리고, 적용한 plan을 finalize한다 (docs/plans.md "Apply"). 기준은 다른
-# client의 apply이며 lock, session 설정, history table, step, 검증과 효과 query는
-# 같은 바이트다. 실행은 동기다.
+# Applies the plan chain to one database one step at a time, resumes an interrupted plan or
+# rolls it back, and finalizes an applied plan (docs/plans.md "Apply"). The reference is the other
+# client's apply; the lock, session settings, history table, steps, and the verification and effect queries
+# produce the same bytes. Execution is synchronous.
 from __future__ import annotations
 
 import datetime
@@ -26,16 +26,16 @@ __all__ = [
     "rollback_plans",
 ]
 
-# history table은 적용한 plan을 기록한다. dbspec 이름에는 $가 없으므로 사용자
-# table과 겹치지 않고, introspection은 dbspec$로 시작하는 table을 빼고 읽는다.
+# The history table records the applied plans. Since dbspec names have no $, user
+# tables never collide with it, and introspection reads without the tables starting with dbspec$.
 HISTORY_TABLE = "dbspec$plans"
-# 현재 database 하나의 apply lock 이름이다. MySQL lock 이름은 64자까지이므로
-# database 이름 대신 그 SHA-256 hex 앞 51자를 붙여 64자로 만든다.
+# The apply lock name for the current database. MySQL lock names are up to 64 characters, so
+# instead of the database name, the first 51 characters of its SHA-256 hex are appended to make 64.
 MYSQL_LOCK = f"CONCAT('{HISTORY_TABLE}$', LEFT(SHA2(DATABASE(), 256), 51))"
-# 현재 database의 현재 schema 하나의 advisory lock key다.
+# The advisory lock key for the current schema of the current database.
 POSTGRES_LOCK = f"hashtext('{HISTORY_TABLE}'), hashtext(current_schema())"
-# session error가 밝히는 요구다. lock은 server session에 속하므로 명령은 처음부터
-# 끝까지 다른 client와 나누지 않는 server session 하나에서 실행해야 한다.
+# The requirement stated by the session error. The lock belongs to a server session, so the commands must run from the start
+# to the end in one server session that is not shared with another client.
 SESSION_REQUIREMENT = (
     "apply, recover, rollback and finalize need one server "
     "session of their own for the whole run: a direct or "
@@ -56,8 +56,8 @@ SESSION_QUERIES = {
         "4294967295)::oid)"
     ),
 }
-# statement가 다른 session의 lock을 기다리는 최대 시간이다 (docs/plans.md
-# "Apply"의 lock 대기).
+# The maximum time a statement waits for a lock held by another session (docs/plans.md
+# "Apply" lock waits).
 LOCK_WAIT_SECONDS = 5
 
 APPLYING = "applying"
@@ -66,8 +66,8 @@ FINALIZING = "finalizing"
 DONE = "done"
 ROLLING_BACK = "rolling_back"
 
-# dialect마다 효과 종류를 읽는 query다. 인자는 effect의 table과 name 중 query가
-# 쓰는 것이며, query는 개수를 돌려준다.
+# A query that reads the effect kind for each dialect. Its arguments are the effect's table and name; whichever the query
+# uses, and the query returns a count.
 EFFECT_QUERIES = {
     "mysql": {
         "table": "SELECT COUNT(*) FROM information_schema.TABLES WHERE "
@@ -121,9 +121,9 @@ _INTEGER = re.compile(r"-?\d+\Z")
 
 
 class DbspecApplyError(Exception):
-    """apply, recover, rollback, finalize의 실패. `plan`은 해당 plan이고 없으면
-    ''이며, `step`은 failed, interrupted, irreversible, nulls와 step 앞의 session
-    error의 step 번호다."""
+    """Failure of apply, recover, rollback, or finalize. `plan` is that plan, or
+    '' if none; `step` is the step number of the failed, interrupted, irreversible, or nulls step, and of the session
+    error before the step."""
 
     code: str
     plan: str
@@ -155,7 +155,7 @@ def _message_of(error) -> str:
 
 
 def _integer(value, what: str) -> int:
-    """integer column이나 COUNT의 값이다. 정수가 아닌 값은 error다."""
+    """The value of an integer column or COUNT. A non-integer value is an error."""
     if isinstance(value, bool):
         pass
     elif isinstance(value, int) and -9007199254740991 <= value <= 9007199254740991:
@@ -174,14 +174,14 @@ def _text(value, what: str) -> str:
 
 
 def _hash_or_empty(h) -> str:
-    """빈 database의 hash는 history에 empty로 쓴다."""
+    """The hash of an empty database is written as empty in the history."""
     return "empty" if h is None or h == "" else h
 
 
 def _finish(f, *ends) -> None:
-    """f를 실행한 뒤 ends를 앞의 실패와 상관없이 차례로 모두 실행한다. error가
-    하나면 그 error를, 둘 이상이면 첫 error에 뒤의 정리 error를 note로 남긴
-    error를 던진다."""
+    """Runs f, then runs all of ends in order regardless of an earlier failure. If there is
+    one error, that error is raised; if there are two or more, the later cleanup errors are attached as notes to the first error
+    and raised."""
     failure = None
     try:
         f()
@@ -200,7 +200,7 @@ def _finish(f, *ends) -> None:
 
 
 def _finalize_start(steps) -> int:
-    """첫 finalize step의 index다."""
+    """The index of the first finalize step."""
     for i, s in enumerate(steps):
         if s["finalize"]:
             return i
@@ -208,8 +208,8 @@ def _finalize_start(steps) -> int:
 
 
 def _applied_at(micros: int) -> str:
-    """applied_at은 clock의 UTC 시각을 소수 여섯 자리로 자른
-    YYYY-MM-DDTHH:MM:SS.ffffffZ다."""
+    """applied_at is the clock's UTC time truncated to six fractional digits
+    in the form YYYY-MM-DDTHH:MM:SS.ffffffZ."""
     if not isinstance(micros, int) or isinstance(micros, bool):
         raise TypeError(
             "now must return the microseconds since the epoch as an integer"
@@ -220,7 +220,7 @@ def _applied_at(micros: int) -> str:
 
 
 class _Applier:
-    """명령 한 번의 상태다."""
+    """The state of one command."""
 
     def __init__(self, connection, dialect: str, chain, now, events):
         self.connection = connection
@@ -230,7 +230,7 @@ class _Applier:
         self.events = events
         self.r = Renderer(dialect)
         self.history: dict = {}
-        # lock을 잡은 server session의 id다 (MySQL CONNECTION_ID, PostgreSQL
+        # The id of the server session holding the lock (MySQL CONNECTION_ID, PostgreSQL
         # pg_backend_pid).
         self.server_session = 0
 
@@ -253,11 +253,11 @@ class _Applier:
         return self._query_row(sql, args)[0]
 
     def session(self, f) -> None:
-        """dialect의 lock을 잡고 session 설정을 바꾼 뒤 f를 실행하고, 끝에 설정을
-        되돌리고 lock을 놓는다."""
+        """Takes the dialect's lock, changes the session settings, runs f, and at the end restores the settings
+        and releases the lock."""
         if self.dialect == "mysql":
             self._open_session(SESSION_QUERIES["mysql"])
-            # GET_LOCK의 None은 lock을 기다리던 중의 error다.
+            # A None from GET_LOCK is an error raised while waiting for the lock.
             got, current = self._query_row(
                 f"SELECT GET_LOCK({MYSQL_LOCK}, 0), CONNECTION_ID()"
             )
@@ -306,7 +306,7 @@ class _Applier:
             )
             return
         if self.dialect == "postgres":
-            # current_schema()가 None이면 결과도 None이며 error다.
+            # If current_schema() is None, the result is also None and is an error.
             self._open_session(SESSION_QUERIES["postgres"])
             got, current = self._query_row(
                 f"SELECT pg_try_advisory_lock({POSTGRES_LOCK}), pg_backend_pid()"
@@ -361,8 +361,8 @@ class _Applier:
         self._sqlite_session(f)
 
     def _sqlite_session(self, f) -> None:
-        """SQLite의 exclusive locking mode로 file을 잠그고, foreign key를 끄고,
-        이름 바꾸기가 다른 table의 foreign key를 데려가게 한다."""
+        """Locks the file in SQLite's exclusive locking mode, turns off foreign keys,
+        and keeps a rename from carrying other tables' foreign keys along."""
         foreign_keys = _integer(
             self._query_value("PRAGMA foreign_keys"), "PRAGMA foreign_keys"
         )
@@ -395,13 +395,13 @@ class _Applier:
             lambda: self._exec(f"PRAGMA foreign_keys = {foreign_keys}"),
             lambda: self._exec(f"PRAGMA legacy_alter_table = {legacy}"),
             lambda: self._exec(f"PRAGMA locking_mode = {mode}"),
-            # locking mode를 되돌린 뒤 한 번 읽어야 exclusive lock이 풀린다.
+            # The exclusive lock is released only after a read that follows the locking mode being restored.
             lambda: self._query_value("SELECT COUNT(*) FROM sqlite_master"),
             lambda: self._exec(f"PRAGMA busy_timeout = {busy}"),
         )
 
     def _create_history(self) -> None:
-        """history table을 없을 때 만든다."""
+        """Creates the history table if it does not exist."""
         integer_type = "integer"
         text_type = "varchar(71)"
         tail = ""
@@ -438,8 +438,8 @@ class _Applier:
             }
 
     def position(self) -> int:
-        """history를 읽어 기록된 plan 수를 돌려준다. 기록은 chain의 앞부분이어야
-        하고, 마지막 앞의 row는 applied나 done이어야 한다."""
+        """Reads the history and returns the number of recorded plans. The records must be at the front of the chain
+        and every row before the last must be applied or done."""
         self._read_history()
         position = 0
         for i, p in enumerate(self.chain):
@@ -481,8 +481,8 @@ class _Applier:
         return position
 
     def settled(self) -> int:
-        """중단된 plan이 없고 catalog가 기록한 schema와 같을 때 기록된 plan 수를
-        돌려준다."""
+        """When there is no interrupted plan and the catalog matches the recorded schema, the number of recorded plans is
+        returned."""
         position = self.position()
         want = ""
         if position > 0:
@@ -505,8 +505,8 @@ class _Applier:
         return position
 
     def verify(self, want: str) -> None:
-        """database의 introspection이 want schemaHash(빈 문자열이면 빈 database)
-        이고 미지원 객체가 없는지 확인한다."""
+        """Checks that the database's introspection matches the wanted schemaHash (an empty string means an empty database)
+        and that there are no unsupported objects."""
         introspected = introspect_dbspec(self.connection, self.dialect, "schema")
         unsupported = introspected["unsupported"]
         if unsupported:
@@ -534,7 +534,7 @@ class _Applier:
             )
 
     def steps(self, p: dict) -> list:
-        """chain에서 plan의 앞 plan target을 source로 step을 쓴다."""
+        """Writes the steps with the plan's previous plan target as the source, in the chain."""
         i = self.chain.index(p)
         source = self.chain[i - 1]["schema"] if i > 0 else None
         result = plan_steps(source, p, self.dialect)
@@ -545,8 +545,8 @@ class _Applier:
         return result["steps"]
 
     def resolve(self, p: dict, row: dict, steps, forward: bool) -> int:
-        """중단된 row의 step을 catalog의 효과로 정한다. forward이면 앞으로, 아니면
-        뒤로 이어 갈 위치다."""
+        """Determines the step of an interrupted row from the catalog's effects. If forward, the step moves forward; otherwise
+        it is the position to continue backward from."""
         k = row["step"]
         if k < 0 or k > len(steps):
             raise DbspecApplyError(
@@ -561,15 +561,15 @@ class _Applier:
             return k
         e = steps[uncertain]["effect"]
         held = e["kind"] != "repeat" and self.effect(p, uncertain, e)
-        # 앞으로 갈 때 repeat step은 다시 실행하고, 뒤로 갈 때는 그 rollback을
-        # 다시 실행한다.
+        # When moving forward, a repeat step runs again; when moving backward, its rollback
+        # runs again.
         took = held or (not forward and e["kind"] == "repeat")
         if rolling:
             return k if took else k - 1
         return k + 1 if took else k
 
     def record(self, p: dict, state: str, step: int) -> None:
-        """plan의 row를 state와 step으로 쓴다. row가 없으면 만든다."""
+        """Writes the plan's row with its state and step. Creates the row if there is none."""
         if p["name"] not in self.history:
             self._exec(
                 f"INSERT INTO {self.q(HISTORY_TABLE)} ({self.q('name')}, "
@@ -610,7 +610,7 @@ class _Applier:
         )
 
     def apply_plan(self, p: dict) -> None:
-        """plan 하나를 finalize step 앞까지 적용하고 검증한다."""
+        """Applies one plan up to the finalize step and verifies it."""
         steps = self.steps(p)
         self._emit("plan", p["name"], 0, len(steps), "")
         for i, s in enumerate(steps[: _finalize_start(steps)]):
@@ -620,8 +620,8 @@ class _Applier:
         self.forward(p, steps, 0)
 
     def forward(self, p: dict, steps, start: int) -> None:
-        """step start부터 finalize step 앞까지 실행하고 검증한 뒤 row를 applied로
-        바꾼다."""
+        """Runs from step start up to the finalize step, verifies it, and changes the row to
+        applied."""
         end = _finalize_start(steps)
         for i in range(start, end):
             step = steps[i]
@@ -642,7 +642,7 @@ class _Applier:
         self._emit("done", p["name"], 0, len(steps), "")
 
     def finalize_from(self, p: dict, steps, start: int) -> None:
-        """finalize step을 start부터 실행하고 row를 done으로 바꾼다."""
+        """Runs the finalize step from start and changes the row to done."""
         for i in range(start, len(steps)):
             self.run(p, steps, i, steps[i]["statement"])
             self._set_step(p, i + 1)
@@ -650,9 +650,9 @@ class _Applier:
         self._emit("done", p["name"], 0, len(steps), "")
 
     def _open_session(self, query: str) -> None:
-        """lock을 잡기 전에 server session의 id를 기억한다. 그 session이 lock을
-        이미 잡고 있으면 다른 client가 같은 server session을 쓰는 것이므로 session
-        error다."""
+        """Remembers the server session's id before taking the lock. If that session already holds the lock,
+        another client is using the same server session, so it is a session
+        error."""
         session_id, held = self._query_row(query)
         self.server_session = _integer(session_id, "server session id")
         if held in (True, 1, "1"):
@@ -665,8 +665,8 @@ class _Applier:
             )
 
     def _same_session(self, p, i: int, current) -> None:
-        """current가 lock을 잡은 server session인지 확인한다. 다르면 plan p의
-        step i 앞에서(p가 None이면 lock에서) session error다."""
+        """Checks whether current is the server session holding the lock. If not, it is a session error before
+        step i of plan p (or at the lock if p is None)."""
         session_id = _integer(current, "server session id")
         if session_id == self.server_session:
             return
@@ -679,8 +679,8 @@ class _Applier:
         )
 
     def run(self, p: dict, steps, i: int, statement: str) -> None:
-        """step i의 statement 하나를 event와 함께 실행한다. statement 앞에서
-        server session을 확인한다 (SQLite는 file 하나의 connection이다)."""
+        """Runs one statement of step i along with its event. Before the statement,
+        it checks the server session (SQLite has one file-level connection)."""
         self._emit("statement", p["name"], i, len(steps), statement)
         if self.dialect != "sqlite":
             query = (
@@ -700,7 +700,7 @@ class _Applier:
         self._emit("applied", p["name"], i, len(steps), statement)
 
     def _foreign_key_check(self, p: dict) -> None:
-        """SQLite에서 foreign key를 어기는 row가 없는지 확인한다."""
+        """Checks in SQLite that no row violates a foreign key."""
         if self.dialect != "sqlite":
             return
         broken = _integer(
@@ -713,8 +713,8 @@ class _Applier:
             )
 
     def null_checks(self, p: dict, steps) -> None:
-        """적용한 plan의 rollback이 non-null로 되돌릴 column의 NULL row를
-        default로 채우거나, default가 없으면 nulls error로 멈춘다."""
+        """For an applied plan, the NULL rows in columns that the rollback restores to non-null
+        are filled with the default; if there is no default, it stops with a nulls error."""
         for i, s in enumerate(steps):
             for c in s["null_checks"]:
                 n = _integer(
@@ -772,8 +772,8 @@ class _Applier:
         return ", ".join(self._placeholder(i + 1) for i in range(n))
 
     def effect(self, p: dict, step: int, e) -> bool:
-        """효과가 지금 database에 있는지 알려 준다. 읽지 못하면 step의 failed
-        error다."""
+        """Tells whether the effect is in the database now. If it cannot be read, the step's failed
+        error."""
         if e is None:
             raise ValueError(f"step {step} has no effect to read")
         try:
@@ -828,11 +828,11 @@ def apply_plans(
     now: Callable[[], int],
     events: DbspecApplyHandler | None = None,
 ) -> None:
-    """적용하지 않은 plan을 chain 순서로, step 하나씩, finalize step까지 dialect의
-    lock 아래 한 연결에 적용한다 (docs/plans.md "Apply"). chain 전부를 적용한
-    database는 그대로 둔다. `now`는 applied_at에 기록할 epoch microsecond
-    (wall_micros와 같은 단위)를 주고, `events`는 event마다 불린다. 실패는
-    DbspecApplyError, handler의 오류 또는 database 오류로 그대로 남는다."""
+    """Applies the unapplied plans in chain order, one step at a time up to the finalize step, using the dialect's
+    lock on one connection (docs/plans.md "Apply"). If the whole chain is applied,
+    the database is left as is. `now` is the epoch microseconds recorded in applied_at
+    (the same unit as wall_micros), and `events` is called for each event. A failure
+    remains as DbspecApplyError, a handler error, or a database error."""
     a = _new_applier(connection, dialect, plans, now, events)
 
     def run():
@@ -850,8 +850,8 @@ def recover_plans(
     now: Callable[[], int],
     events: DbspecApplyHandler | None = None,
 ) -> None:
-    """중단된 plan을 기록한 step 뒤의 catalog 효과에서 앞으로 이어 간다 (docs/
-    plans.md "Apply"). 중단된 plan이 없으면 아무것도 바뀌지 않는다."""
+    """Continues forward from the catalog effects after the step that recorded the interrupted plan (docs/
+    plans.md "Apply"). If there is no interrupted plan, nothing changes."""
     a = _new_applier(connection, dialect, plans, now, events)
 
     def run():
@@ -882,9 +882,9 @@ def rollback_plans(
     now: Callable[[], int],
     events: DbspecApplyHandler | None = None,
 ) -> None:
-    """history의 마지막 plan을 그 rollback 문장으로 첫 step까지 되돌리고 row를
-    지운다 (docs/plans.md "Apply"). 적용된 plan은 먼저 drift와 NULL row를 검사하고,
-    rollback이 없는 step은 irreversible DbspecApplyError로 멈춘다."""
+    """Rolls the last plan in the history back to the first step with its rollback statements, and removes the row
+    (docs/plans.md "Apply"). An applied plan first checks for drift and NULL rows,
+    and a step without a rollback stops with an irreversible DbspecApplyError."""
     a = _new_applier(connection, dialect, plans, now, events)
 
     def run():
@@ -954,8 +954,8 @@ def finalize_plans(
     now: Callable[[], int],
     events: DbspecApplyHandler | None = None,
 ) -> None:
-    """적용된 모든 plan의 finalize step을 chain 순서로 실행해 숨긴 table과 column을
-    지우고, plan을 done으로 기록한다 (docs/plans.md "Apply")."""
+    """Runs the finalize steps of all applied plans in chain order, removing the hidden tables and columns
+    and records each plan as done (docs/plans.md "Apply")."""
     a = _new_applier(connection, dialect, plans, now, events)
 
     def run():

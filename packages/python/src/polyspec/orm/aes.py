@@ -1,4 +1,4 @@
-# AES column의 key 관리: version마다 key를 두고 row 단위로 갱신한다 (docs/codec.md "AES").
+# Key management for AES columns: one key per version, updated per row (docs/codec.md "AES").
 from typing import Mapping
 
 from polyspec.orm import codes
@@ -16,7 +16,7 @@ def _is_safe_integer(value: object) -> bool:
 
 
 class _RowCodec:
-    """encode와 decode: codec의 host_encode/host_decode와 같은 contract다."""
+    """encode and decode: same contract as codec's host_encode/host_decode."""
 
     def encode(self, value, styles, key: str):
         from polyspec.orm.codec import host_encode
@@ -30,7 +30,7 @@ class _RowCodec:
 
 
 class AesKeyring:
-    """저장된 AES 값을 여는 key들을 version별로 담는다."""
+    """Holds, per version, the keys that open stored AES values."""
 
     def __init__(self, keys: Mapping[int, str], current_version: int):
         if (
@@ -62,7 +62,7 @@ class AesKeyring:
         target_version: int,
         codec: object = None,
     ) -> dict:
-        """row의 모든 AES column을 대상 version으로 다시 암호화한다."""
+        """Re-encrypts every AES column of the row to the target version."""
         codec = codec or _RowCodec()
         old_version = row.get(version_column)
         if not _is_safe_integer(old_version):

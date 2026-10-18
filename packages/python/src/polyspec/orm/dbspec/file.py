@@ -1,18 +1,18 @@
-# dbspec 문서 파일 reader (docs/dbspec.md "Files"). 파일을 읽는 모든 도구가 이것으로
-# 읽어, signature가 없는 파일을 parse 전에 거부한다.
+# dbspec document file reader (docs/dbspec.md "Files"). Every tool that reads a file does so with this,
+# and rejects a file without the signature before parsing.
 from __future__ import annotations
 
 from polyspec.orm.dbspec.model import DbspecDiagnostic
 
 __all__ = ["DBSPEC_SIGNATURE", "read_dbspec_bytes", "read_dbspec_file"]
 
-# 모든 dbspec 문서 파일의 첫 byte다. header `dbspec 1 <document>`가 이것으로 시작한다.
+# The first byte of every dbspec document file. The header `dbspec 1 <document>` starts with it.
 DBSPEC_SIGNATURE = b"dbspec "
 
 
 def read_dbspec_file(path: str) -> tuple[str | None, list[DbspecDiagnostic]]:
-    """parse할 `path`의 dbspec 문서 파일을 읽고 그 byte를 path를 이름으로
-    read_dbspec_bytes로 확인한다. 읽을 수 없는 파일은 OSError를 던진다."""
+    """Reads the dbspec document file at `path` to be parsed, and checks its bytes with path as the name
+    in read_dbspec_bytes. A file that cannot be read raises OSError."""
     if not isinstance(path, str):
         raise TypeError("dbspec file path must be a string")
     with open(path, "rb") as handle:
@@ -22,18 +22,18 @@ def read_dbspec_file(path: str) -> tuple[str | None, list[DbspecDiagnostic]]:
 def read_dbspec_bytes(
     name: str, data: bytes
 ) -> tuple[str | None, list[DbspecDiagnostic]]:
-    """호출자가 자기 규칙으로 읽은 dbspec 문서 파일의 byte를 parse 전에 확인한다.
-    `name`은 message가 파일을 가리키는 이름이다. DBSPEC_SIGNATURE로 시작하지 않는
-    byte는 text 없이 line 1, column 1의 `signature` 진단 하나와 message `<name> is
-    not a dbspec document`를, UTF-8이 아닌 byte는 첫 잘못된 byte의 줄과 칸에서
-    `encoding` 진단 하나와 message `<name> is not valid UTF-8`을 돌려준다. 그 밖의
-    byte는 진단 없이 그대로 text가 된다."""
+    """Checks, before parsing, the bytes of a dbspec document file that the caller read under its own rules.
+    `name` is the name the message uses to refer to the file. Bytes that do not start with DBSPEC_SIGNATURE
+    give no text, only one `signature` diagnostic at line 1, column 1, with the message `<name> is
+    not a dbspec document`; bytes that are not UTF-8 give one `encoding` diagnostic at the line and column of the first invalid byte
+    with the message `<name> is not valid UTF-8`. Other
+    bytes become text as they are, with no diagnostic."""
     if not isinstance(name, str):
         raise TypeError("dbspec file name must be a string")
     if not isinstance(data, (bytes, bytearray)):
         raise TypeError("dbspec file bytes must be bytes")
-    # signature는 decode 전에 byte로 확인한다. 다른 형식의 파일과 빈 파일은 header가
-    # 아니라 signature 진단이다.
+    # The signature is checked as bytes before decoding. A file of another format, or an empty file, gives a signature
+    # diagnostic, not a header diagnostic.
     if (
         len(data) < len(DBSPEC_SIGNATURE)
         or data[: len(DBSPEC_SIGNATURE)] != DBSPEC_SIGNATURE
@@ -52,7 +52,7 @@ def read_dbspec_bytes(
 
 
 def _invalid_utf8_position(data: bytes):
-    """첫 잘못된 UTF-8 byte의 줄과 칸(code point 단위)이다. 줄은 LF로 나눈다."""
+    """The line and column (in code points) of the first invalid UTF-8 byte. Lines are split on LF."""
     line = 1
     column = 1
     i = 0
@@ -70,7 +70,7 @@ def _invalid_utf8_position(data: bytes):
 
 
 def _utf8_size(data: bytes, i: int) -> int:
-    """`i`에서 시작하는 올바른 UTF-8 문자의 byte 수, 잘못된 byte이면 0이다."""
+    """The number of bytes of the valid UTF-8 character starting at `i`, or 0 if the byte is invalid."""
     b = data[i]
     if b < 0x80:
         return 1

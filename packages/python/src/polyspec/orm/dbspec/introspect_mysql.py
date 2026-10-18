@@ -1,5 +1,5 @@
-# MySQL의 현재 database를 catalog으로 읽는다 (docs/dialects.md "Introspection").
-# 모든 query는 현재 database 전체를 한 번에 읽는다.
+# Reads MySQL's current database as a catalog (docs/dialects.md "Introspection").
+# Every query reads the whole current database at once.
 import re
 
 from polyspec.orm.dbspec.introspect_catalog import (
@@ -29,9 +29,9 @@ rc.MATCH_OPTION, k.COLUMN_NAME, k.REFERENCED_COLUMN_NAME FROM information_schema
 Join information_schema.KEY_COLUMN_USAGE k ON k.CONSTRAINT_SCHEMA = rc.CONSTRAINT_SCHEMA
 AND k.CONSTRAINT_NAME = rc.CONSTRAINT_NAME AND k.TABLE_NAME = rc.TABLE_NAME
 WHERE rc.CONSTRAINT_SCHEMA = DATABASE() ORDER BY rc.TABLE_NAME, rc.CONSTRAINT_NAME, k.ORDINAL_POSITION"""
-# CHECK_CONSTRAINTS와 TABLE_CONSTRAINTS의 join은 table 수에 비례해 느려지므로(2000
-# table에서 60초 이상) 두 query로 읽고 이름으로 잇는다. MySQL의 CHECK 이름은
-# database 안에서 유일하다.
+# Joining CHECK_CONSTRAINTS and TABLE_CONSTRAINTS slows in proportion to the number of tables (2000
+# tables takes over 60 seconds), so they are read with two queries and joined by name. MySQL CHECK names
+# are unique within the database.
 _CHECK_CLAUSES_QUERY = """SELECT CONSTRAINT_NAME, CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS
 WHERE CONSTRAINT_SCHEMA = DATABASE() ORDER BY CONSTRAINT_NAME"""
 _CHECKS_QUERY = """SELECT TABLE_NAME, CONSTRAINT_NAME, ENFORCED FROM information_schema.TABLE_CONSTRAINTS
@@ -57,7 +57,7 @@ _TIME_FRACTION = re.compile(r"\\'(\d\d:\d\d:\d\d)\.0+\\'")
 
 
 def read_mysql(query) -> Catalog:
-    """query는 SQL을 받아 CatalogRow list를 돌려주는 호출이다."""
+    """query is a call that takes SQL and returns a list of CatalogRow."""
     c = Catalog()
     for r in query(_TABLES_QUERY):
         name, kind, options = r.text(0), r.text(1), r.text(2)
@@ -70,7 +70,7 @@ def read_mysql(query) -> Catalog:
         else:
             c.add_table(name)
     columns: dict = {}
-    # table: column: renderer CHECK가 있어야 정해지는 type 후보
+    # table: column: candidate types that are determined only when a renderer CHECK exists
     pending: dict = {}
     for r in query(_COLUMNS_QUERY):
         table, name, column_type, nullable, dflt = (
@@ -172,7 +172,7 @@ def read_mysql(query) -> Catalog:
             c.report("check", table, name, str(error))
             continue
         t["checks"].append({"name": name, "predicate": predicate})
-    # renderer CHECK이 있어야 하는 type은 그 CHECK이 없으면 dbspec type이 아니다.
+    # A type that needs a renderer CHECK is not a dbspec type without that CHECK.
     for table, cols in pending.items():
         for column, need in cols.items():
             if column in checked.get(table, ()):
@@ -192,9 +192,9 @@ def read_mysql(query) -> Catalog:
 
 
 def _mysql_type(column_type: str, charset: str, collation: str):
-    """COLUMN_TYPE과 character set, collation을 dbspec type으로 읽는다.
-    needs_check는 renderer CHECK이 있어야 그 type이 되는 경우의 catalog type이다.
-    dbspec type이 아니면 None이다."""
+    """Reads COLUMN_TYPE, character set, and collation as a dbspec type.
+    needs_check is the catalog type for the case where that type exists only if a renderer CHECK is present.
+    None if it is not a dbspec type."""
     m = _TYPE_PATTERN.match(column_type)
     if m is None:
         return None
@@ -244,11 +244,11 @@ def _mysql_type(column_type: str, charset: str, collation: str):
 
 
 def _without_introducers(clause: str) -> str:
-    """character set introducer를 뺀 CHECK_CLAUSE다. ALTER TABLE은 CHECK_CLAUSE를
-    다시 쓰며 introducer를 바꾸거나 빼므로 renderer CHECK은 introducer 없이
-    비교한다. 이 template의 literal은 ASCII이므로 의미가 같다."""
-    # ALTER TABLE은 time(p) column과 만나는 time literal에 0으로 된 p 자리 소수도
-    # 붙이므로 그 소수도 뺀다.
+    """CHECK_CLAUSE without the character set introducer. ALTER TABLE rewrites CHECK_CLAUSE
+    and changes or removes the introducer, so the renderer CHECK is compared without the introducer.
+    The literals in this template are ASCII, so the meaning is the same."""
+    # ALTER TABLE also attaches to a time literal that meets a time(p) column a fractional part of p zeros,
+    # so that fractional part is removed as well.
     clause = _INTRODUCER.sub("\\'", clause)
     return _TIME_FRACTION.sub(r"\\'\1\\'", clause)
 
@@ -258,14 +258,14 @@ _CREATE_CHECK = re.compile(r"CONSTRAINT `([^`]+)` CHECK \(")
 
 
 def _has_non_ascii(clause: str) -> bool:
-    """CHECK_CLAUSE가 0x80 이상의 byte를 가지면 True다. MySQL 8.4는 non-ASCII literal을 두 번
-    인코딩해 보여 준다."""
+    """True if CHECK_CLAUSE has a byte of 0x80 or higher. MySQL 8.4 shows a non-ASCII literal encoded twice
+    as shown."""
     return _NON_ASCII.search(clause) is not None
 
 
 def _shown_check(query, table: str, name: str, shown: dict) -> str:
-    """CHECK_CLAUSE가 non-ASCII를 깨뜨린 check의 본문을 SHOW CREATE TABLE에서 읽는다. table별로
-    SHOW CREATE TABLE을 한 번만 읽으며 shown에 모은다. 결과는 CHECK_CLAUSE 형식이다."""
+    """Reads from SHOW CREATE TABLE the body of a check whose CHECK_CLAUSE garbles non-ASCII. For each table,
+    it reads SHOW CREATE TABLE only once and collects into shown. The result is in CHECK_CLAUSE form."""
     checks = shown.get(table)
     if checks is None:
         rows = list(query("SHOW CREATE TABLE `" + table.replace("`", "``") + "`"))
@@ -280,9 +280,9 @@ def _shown_check(query, table: str, name: str, shown: dict) -> str:
 
 
 def _create_checks(create: str) -> dict:
-    """SHOW CREATE TABLE 문장의 모든 CHECK 본문을 이름별로 CHECK_CLAUSE 형식으로 돌려준다.
-    문자열 literal은 `\\`와 `'`를 한 번 escape하므로 literal을 건너뛰고, 본문 끝은 CHECK (의
-    짝인 )다."""
+    """Returns all CHECK bodies of the SHOW CREATE TABLE statement by name, in CHECK_CLAUSE form.
+    A string literal escapes `\\` and `'` once, so the scan skips the literal; the body ends at the
+    matching ")"."""
     checks = {}
     for m in _CREATE_CHECK.finditer(create):
         start, depth, i = m.end(), 1, m.end()
@@ -306,7 +306,7 @@ def _create_checks(create: str) -> dict:
 
 
 def _renderer_check(col: dict) -> str:
-    """renderer CHECK이 CHECK_CLAUSE에 남는 형식이다 (docs/dialects.md
+    """The form in which a renderer CHECK remains in CHECK_CLAUSE (docs/dialects.md
     "Introspection", "Checks")."""
     c = f"`{col['name']}`"
     kind = col["type"].kind
@@ -320,8 +320,8 @@ def _renderer_check(col: dict) -> str:
 
 
 def _mysql_now(text: str, type_: DbspecType) -> bool:
-    """DEFAULT_GENERATED default가 그 column의 renderer 시각 default인지 알려
-    준다."""
+    """Tells whether a DEFAULT_GENERATED default is the renderer's time default of that column
+    or not."""
     if type_.kind != "datetime":
         return False
     if type_.precision == 0:
@@ -330,8 +330,8 @@ def _mysql_now(text: str, type_: DbspecType) -> bool:
 
 
 def _mysql_default(value: str, type_: DbspecType) -> str:
-    """escape를 푼 COLUMN_DEFAULT 값을 dbspec literal로 쓴다. parse가 canonical
-    form과 유효성을 정한다."""
+    """Writes the COLUMN_DEFAULT value, with its escapes undone, as a dbspec literal. parse determines the canonical
+    form and validity."""
     if type_.kind == "bool":
         if value == "1":
             return "true"
@@ -399,7 +399,7 @@ def _read_indexes(query, c: Catalog) -> None:
 
 def _read_foreign_keys(query, c: Catalog) -> None:
     current = None
-    # 보고한 key의 나머지 column row는 건너뛴다.
+    # Skips the remaining column rows of a key that was reported.
     skipped = ""
     for r in query(_FOREIGN_KEYS_QUERY):
         table, name, ref_table, on_delete, on_update, match, column, ref_column = (
@@ -447,7 +447,7 @@ def _read_foreign_keys(query, c: Catalog) -> None:
 
 
 def _read_triggers(query, c: Catalog) -> None:
-    """trigger를 renderer statement 형식으로 다시 쓰고 알아본다."""
+    """Rewrites the trigger in renderer statement form and recognizes it."""
     triggers: dict = {}
     for r in query(_TRIGGERS_QUERY):
         table, name, timing, event, statement = (

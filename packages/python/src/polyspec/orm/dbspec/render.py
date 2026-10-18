@@ -1,6 +1,6 @@
-# dbspec 문서 집합을 한 dialect의 문장으로 쓴다 (docs/dialects.md "Rendered
-# statements"). 문장의 바이트는 tests/dbspec/ddl.json과 다른 client의 render와
-# 같다.
+# Writes the dbspec document set as statements of one dialect (docs/dialects.md "Rendered
+# statements"). The bytes of the statements are the same as tests/dbspec/ddl.json and the render of other clients.
+# are the same.
 from __future__ import annotations
 
 from polyspec.orm.dbspec.audit import audit_records
@@ -24,8 +24,8 @@ _ACTIONS = {"restrict": "RESTRICT", "cascade": "CASCADE", "set_null": "SET NULL"
 
 
 def _use_order(documents) -> list:
-    """검사된 집합(check_set)의 문서를, 쓰이는 문서가 쓰는 문서보다 앞에 오고
-    같은 깊이는 문서 이름 순서로 놓는다."""
+    """The document of the checked set (check_set) is placed before the documents that use it;
+    documents of the same depth are placed in document name order."""
     by_name = {d.name: d for d in documents}
     out: list = []
     done: set = set()
@@ -44,13 +44,13 @@ def _use_order(documents) -> list:
 
 
 class Renderer:
-    """한 dialect의 문장을 만든다."""
+    """Creates the statements of one dialect."""
 
     def __init__(self, dialect: str):
         self.d = dialect
 
     def q(self, name: str) -> str:
-        """식별자를 quote한다."""
+        """Quotes an identifier."""
         return f"`{name}`" if self.d == "mysql" else f'"{name}"'
 
     def list(self, names) -> str:
@@ -72,9 +72,9 @@ class Renderer:
         return out
 
     def create_table(self, t: DbspecTable, name: str, check_name, hidden) -> str:
-        """name 아래 table t의 CREATE TABLE. check_name은 column의 renderer
-        CHECK 이름을 정하고, hidden column은 t의 column 뒤에 nullable로, CHECK
-        없이 따른다 (docs/plans.md "Steps"의 SQLite 다시 만들기)."""
+        """CREATE TABLE of table t under name. check_name decides the renderer
+        CHECK name of the column; hidden columns follow t's columns as nullable, without a CHECK
+        (SQLite rebuild in docs/plans.md "Steps")."""
         parts = [self.column(c) for c in t.columns]
         for c in hidden:
             plain = DbspecColumn(c.comments, c.name, c.type, True, False, c.default)
@@ -187,7 +187,7 @@ class Renderer:
         return f"(strftime('%Y-%m-%d %H:%M:%f', 'now') || '{'0' * (p - 3)}')"
 
     def literal(self, t, text: str) -> str:
-        """그 dialect에서 type t(null이면 column type 없음)의 정규 literal."""
+        """The canonical literal of type t in that dialect (null if there is no column type)."""
         if text in ("true", "false"):
             if self.d == "postgres":
                 return text.upper()
@@ -207,7 +207,7 @@ class Renderer:
         )
 
     def type_check(self, c: DbspecColumn) -> str:
-        """column의 renderer CHECK; dialect가 type 자체를 강제하면 ''이다."""
+        """The renderer CHECK of a column; '' if the dialect enforces the type itself."""
         if c.identity:
             return ""
         q = self.q(c.name)
@@ -268,9 +268,9 @@ class Renderer:
         return ""
 
     def predicate(self, t: DbspecTable, e: dict) -> str:
-        """table t의 check 술어를 그 dialect로 쓴다."""
+        """Writes the check predicate of table t in that dialect."""
         if e["kind"] == "logical":
-            # and 안의 or만 괄호로 묶는다.
+            # Only the or inside an and is wrapped in parentheses.
             def side(q):
                 if e["op"] == "and" and q["kind"] == "logical" and q["op"] == "or":
                     return f"({self.predicate(t, q)})"
@@ -301,7 +301,7 @@ class Renderer:
         return self.literal(type_, e["text"])
 
     def triggers(self, t: DbspecTable) -> list:
-        """immutable과 audit setting의 trigger."""
+        """Triggers for the immutable and audit settings."""
         if t.settings is None:
             return []
         out: list = []
@@ -338,8 +338,8 @@ class Renderer:
     def trigger(
         self, t: DbspecTable, event: str, timing: str, body: str, rejects: bool
     ) -> list:
-        """몸통이 statement 하나인 trigger <table>$<event>. PostgreSQL은 같은
-        이름의 function으로 감싼다."""
+        """A trigger <table>$<event> whose body is one statement. PostgreSQL wraps it in a
+        function of the same name."""
         name = self.q(renderer_name(t.name, event))
         on = f" {timing} ON {self.q(t.name)} FOR EACH ROW "
         if self.d == "mysql":
@@ -378,7 +378,7 @@ class Renderer:
 
 
 def _scaled_decimal(text: str) -> str:
-    """정규 decimal literal에 10^scale을 곱한 값: 점과 앞자리 0을 뺀 자릿수."""
+    """The canonical decimal literal multiplied by 10^scale: the digits without the point and leading zeros."""
     negative = text.startswith("-")
     digits = (text[1:] if negative else text).replace(".", "").lstrip("0")
     if digits == "":
@@ -387,8 +387,8 @@ def _scaled_decimal(text: str) -> str:
 
 
 def _operand_type(t: DbspecTable, a: dict, b):
-    """피연산자 가운데 column의 type. 검증된 비교에는 column이 하나 이상
-    있다."""
+    """The column type among the operands. A validated comparison has at least one column
+    of the comparison."""
     for e in (a, b):
         if e is None or e["kind"] != "column":
             continue
@@ -402,9 +402,9 @@ def _operand_type(t: DbspecTable, a: dict, b):
 
 
 def render_dbspec(documents: list[DbspecDocument], dialect: str) -> dict:
-    """parse된 문서 집합의 table을 만드는 문장을 한 dialect로 쓴다 (docs/dialects.md
-    "Rendered statements"): 문서는 `use` 순서, table은 문서 순서다. 검사가 실패하면
-    그 진단을, dialect를 모르면 TypeError를 던진다."""
+    """Writes the statements that create the tables of the parsed document set in one dialect (docs/dialects.md
+    "Rendered statements"): documents in `use` order, tables in document order. If a check fails,
+    it raises that diagnostic; if the dialect is unknown, it raises TypeError."""
     rendered = render_dbspec_statements(documents, dialect)
     if rendered["statements"] is None:
         return rendered
@@ -412,8 +412,8 @@ def render_dbspec(documents: list[DbspecDocument], dialect: str) -> dict:
 
 
 def render_dbspec_statements(documents, dialect: str) -> dict:
-    """render_dbspec의 문장을 같은 순서로, 그 문장이 만들거나 바꾸는 table과
-    함께 쓴다."""
+    """Writes the statements of render_dbspec in the same order, together with the tables
+    they create or change."""
     if dialect not in DIALECTS:
         raise TypeError(f"unknown dbspec dialect {dialect}")
     if not isinstance(documents, (list, tuple)):
@@ -422,7 +422,7 @@ def render_dbspec_statements(documents, dialect: str) -> dict:
     if diagnostics:
         return {"statements": None, "diagnostics": diagnostics}
     r = Renderer(dialect)
-    # 외부 문서의 table은 그 문서를 소유한 set이 만든다.
+    # The tables of an external document are created by the set that owns that document.
     ordered = [d for d in _use_order(documents) if d.external is not True]
     out: list = []
     for document in ordered:

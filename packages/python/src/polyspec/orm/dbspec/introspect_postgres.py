@@ -1,5 +1,5 @@
-# PostgreSQL의 현재 schema를 catalog으로 읽는다 (docs/dialects.md "Introspection").
-# 모든 query는 현재 schema 전체를 한 번에 읽는다.
+# Reads PostgreSQL's current schema as a catalog (docs/dialects.md "Introspection").
+# Every query reads the whole current schema at once.
 import re
 
 from polyspec.orm.dbspec.introspect_catalog import Catalog, quote, table_types
@@ -53,7 +53,7 @@ _TYPE_PATTERN = re.compile(
 )
 _LITERAL_PATTERN = re.compile(r"^'((?:[^']|'')*)'::([a-z ]+)$")
 _NUMBER_PATTERN = re.compile(r"^-?\d+(\.\d+)?$")
-# \S는 Go RE2처럼 ASCII 공백 [\t\n\f\r ]만 뺀다.
+# \S, as in Go RE2, excludes only the ASCII whitespace [\t\n\f\r ].
 _TRIGGER_PATTERN = re.compile(
     r"^CREATE TRIGGER ([^\t\n\f\r ]+) (BEFORE|AFTER) (INSERT|UPDATE|DELETE) ON "
     r"(?:[^\t\n\f\r ]+\.)?([^\t\n\f\r ]+) FOR EACH ROW EXECUTE FUNCTION "
@@ -66,7 +66,7 @@ def _trim_quotes(s: str) -> str:
 
 
 def read_postgres(query) -> Catalog:
-    """query는 SQL을 받아 CatalogRow list를 돌려주는 호출이다."""
+    """query is a call that takes SQL and returns a list of CatalogRow."""
     c = Catalog()
     for r in query(_TABLES_QUERY):
         name, kind, partition = r.text(0), r.text(1), r.flag(2)
@@ -195,8 +195,8 @@ def read_postgres(query) -> Catalog:
                 {"name": name, "columns": listed, "desc": [False] * len(listed)}
             )
         elif kind == "f" and ref_table == "":
-            # 다른 schema의 table을 가리키는 foreign key는 이 문서 밖의 table을
-            # 가리킨다.
+            # A foreign key to a table in another schema points at a table outside this document;
+            # that table is not in this document.
             c.report(
                 "foreign_key",
                 table,
@@ -351,8 +351,8 @@ def read_postgres(query) -> Catalog:
 
 
 def _postgres_type(formatted: str, collation: str):
-    """format_type과 collation을 dbspec type으로 읽는다. dbspec type이 아니면
-    None이다."""
+    """Reads format_type and collation as a dbspec type. If it is not a dbspec type,
+    it is None."""
     m = _TYPE_PATTERN.match(formatted)
     if m is None:
         return None
@@ -384,8 +384,8 @@ def _postgres_type(formatted: str, collation: str):
 
 
 def _postgres_default(text: str, type_: DbspecType):
-    """pg_get_expr의 default를 dbspec literal이나 now로 읽는다. 읽을 수 없으면
-    None이다."""
+    """Reads the default from pg_get_expr as a dbspec literal or now. If it cannot be read,
+    it is None."""
     if text == "statement_timestamp()":
         return "now" if type_.kind == "datetime" else None
     m = _LITERAL_PATTERN.match(text)

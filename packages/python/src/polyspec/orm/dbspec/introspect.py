@@ -1,6 +1,6 @@
-# connection의 database를 dbspec 문서로 읽는다 (docs/dialects.md "Introspection").
-# dialect reader가 고정된 수의 catalog query로 중립 catalog을 채우고, catalog이
-# 문서를 만들어 parse한다.
+# Reads the connection's database as a dbspec document (docs/dialects.md "Introspection").
+# The dialect reader fills the neutral catalog with a fixed number of catalog queries, and the catalog
+# builds and parses the document.
 from __future__ import annotations
 
 from typing import Protocol
@@ -23,10 +23,10 @@ _READERS = {"mysql": read_mysql, "postgres": read_postgres, "sqlite": read_sqlit
 
 
 def introspect_dbspec(connection: Connection, dialect: str, name: str) -> dict:
-    """연결의 현재 database(MySQL), 현재 schema(PostgreSQL) 또는 main
-    database(SQLite)를 `name`의 dbspec 문서 하나로 읽는다. catalog query의 수는
-    table 수에 의존하지 않는다. connection은 execute(sql, values)로 rows의 list를
-    돌려주는 이 client의 연결이다."""
+    """Reads the connection's current database (MySQL), current schema (PostgreSQL), or main
+    database (SQLite) as one dbspec document named `name`. The number of catalog queries
+    does not depend on the number of tables. The connection is one that returns a list of rows through execute(sql, values)
+    for this client."""
     if dialect not in _READERS:
         raise TypeError(f"unknown dbspec dialect {dialect}")
     if not isinstance(name, str):
@@ -39,7 +39,7 @@ def introspect_dbspec(connection: Connection, dialect: str, name: str) -> dict:
 
 
 def introspect_catalog(query, dialect: str, name: str) -> dict:
-    """catalog query를 query로 보내 introspect_dbspec과 같은 문서를 읽는다."""
+    """Sends the catalog queries as queries and reads the same document as introspect_dbspec."""
     if dialect not in _READERS:
         raise TypeError(f"unknown dbspec dialect {dialect}")
     catalog: Catalog = _READERS[dialect](query)

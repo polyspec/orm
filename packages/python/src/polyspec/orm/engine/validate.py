@@ -1,5 +1,5 @@
-# manifest에 대한 request 검사. 모든 client가 같은 request를 render한다; 아래 규칙이
-# 공유 statement 규칙이다.
+# Request validation against the manifest. Every client renders the same request; the rules below are
+# the shared statement rules.
 from polyspec.orm import codes
 from polyspec.orm.engine.dialect import (
     column_function_arity,
@@ -124,9 +124,9 @@ class _Validator:
         )
 
     def scopes(self, q: dict) -> dict:
-        """q와 그 join의 scope tree(name, ent, joins)다. planner의 scope처럼 조건을 검사하기 전에
-        모든 join을 두므로, 조건은 뒤에 선언한 join의 path도 푼다. manifest에 없는 entity의 ent는
-        None이다."""
+        """The scope tree (name, ent, joins) of q and its joins. As in the planner's scope, all joins are added before the conditions are checked,
+        so conditions can also resolve paths of joins declared later. The ent of an entity that is not in the manifest is
+        None."""
         s = {
             "name": q.get("entity", ""),
             "ent": entity_of(self.m, q.get("entity", "")),
@@ -138,11 +138,11 @@ class _Validator:
         return s
 
     def ref(self, at: dict, ref: dict) -> Field:
-        """planner의 resolve_path처럼 column-to-column 조건의 ref를 푼다. at은 조건의 자리다: root는
-        statement의 root scope, outer는 subquery를 둘러싼 query의 scope(subquery가 아니면 None), node는
-        조건의 scope다. path ""는 root, "^"는 outer이며 subquery 안에서만 쓰고, 그 밖의 path는 root에서
-        join 이름을 "/"로 이은 것이다. 대상 entity에 ref의 column이 있어야 한다."""
-        # 없거나 null인 path는 root다. 문자열이 아닌 path나 column은 request의 형태가 틀린 것이다.
+        """Resolves the ref of a column-to-column condition, as the planner's resolve_path does. at is the condition's place: root is the
+        root scope of the statement, outer is the scope of the query that wraps the subquery (None if not a subquery), and node is
+        the condition's scope. path "" is root, "^" is outer and is used only inside a subquery; any other path is, from root,
+        the join names joined with "/". The target entity must have the ref's column."""
+        # A missing or null path is root. A path or column that is not a string means the request's shape is wrong.
         path = ref.get("path")
         path = "" if path is None else path
         column = ref.get("column")
@@ -166,7 +166,7 @@ class _Validator:
         return found
 
     def query(self, q: dict, at: dict, is_join: bool, is_relation: bool) -> None:
-        """q를 검사한다. at은 q의 자리다(ref 참고)."""
+        """Checks q. at is the place of q (see ref)."""
         ent = self.entity(q["entity"])
         cols = q.get("columns")
         if cols is not None:
@@ -224,7 +224,7 @@ class _Validator:
             _fail(codes.IR_INVALID, "on[] is only valid on join children")
         if (q.get("on") or {}).get("not") or (q.get("where") or {}).get("not"):
             _fail(codes.IR_INVALID, "not applies to a nested group")
-        # top-level group은 앞 형제가 없으므로 conn을 갖지 않는다.
+        # The top-level group has no preceding sibling, so it does not have conn.
         for top in ("on", "where"):
             if (q.get(top) or {}).get("conn"):
                 _fail(
@@ -275,7 +275,7 @@ class _Validator:
                         codes.OPERATOR_NOT_ALLOWED,
                         f"relation {relation['rel']}: {q['entity']}.{k['left']} does not meet {target.name}.{k['right']}",
                     )
-                # 한 column이 두 성분에 나오면 key가 아니다.
+                # If a column appears in two components, it is not a key.
                 if k["left"] in lefts or k["right"] in rights:
                     _fail(
                         codes.IR_INVALID,
@@ -403,7 +403,7 @@ class _Validator:
                 _fail(codes.IR_INVALID, f'conn "{conn}"')
             if i == 0 and conn == "or":
                 _fail(codes.OR_AT_GROUP_START, "a group may not start with OR")
-            # group의 첫 item은 앞 형제가 없으므로 conn을 갖지 않는다.
+            # The first item of a group has no preceding sibling, so it does not have conn.
             if i == 0 and conn != "":
                 _fail(
                     codes.IR_INVALID, f'the first item of a group takes no conn ("{conn}")'
@@ -556,7 +556,7 @@ class _Validator:
         self.params(f.get("ps"))
 
     def sub(self, s, scalar: bool, outer: dict) -> None:
-        """subquery를 검사한다. outer는 subquery가 놓인 scope이며 그 "^" ref가 가리킨다."""
+        """Checks a subquery. outer is the scope in which the subquery sits, and its "^" refs point to it."""
         if not s or "query" not in s:
             _fail(codes.IR_INVALID, "subquery needs a query")
         ent = self.entity(s["query"]["entity"])
@@ -615,7 +615,7 @@ class _Validator:
 
 
 def _joined_refs(g: dict, seen: set) -> None:
-    """group이 두는 각 join은 한 번만 나온다."""
+    """Each join that a group places appears only once."""
     for item in g["items"]:
         if item.get("joined"):
             if item["joined"]["join"] in seen:
@@ -791,7 +791,7 @@ def _typed(kind: str, value, path: str) -> None:
 
 
 def validate(m: RuntimeModel, r: dict) -> None:
-    """request를 manifest에 대해 검사한다."""
+    """Checks the request against the manifest."""
     _shape("Request", r, "")
     if r.get("ir_version") != IR_VERSION:
         _fail(
@@ -806,7 +806,7 @@ def validate(m: RuntimeModel, r: dict) -> None:
         _fail(codes.IR_INVALID, f'unknown kind "{r["kind"]}"')
     if r.get("load") and (r["kind"] != "insert" or r.get("on_duplicate")):
         _fail(codes.IR_INVALID, "load is only valid on insert without on_duplicate")
-    # restart_identity은 entity 하나의 identity만 다시 시작하므로 행이나 값을 받지 않는다.
+    # restart_identity restarts the identity of one entity only, so it takes no rows or values.
     if r["kind"] == "restart_identity" and (
         r.get("set")
         or r.get("rows")
@@ -894,7 +894,7 @@ def validate(m: RuntimeModel, r: dict) -> None:
     if r["kind"] in ("update", "delete") and not (r.get("where") or {}).get("items"):
         _fail(codes.IR_INVALID, f"{r['kind']} without where")
     if r["kind"] == "restore":
-        # restore는 지워진 행만 고치므로 읽은 version과 비교할 것이 없다.
+        # restore fixes only deleted rows, so there is nothing to compare with the version read.
         if r.get("optimistic") is not None:
             _fail(codes.IR_INVALID, "restore takes no optimistic")
         restore_key(ent, r)
@@ -936,7 +936,7 @@ def restore_key(ent: Entity, r: dict) -> dict:
     def covered(columns) -> bool:
         return len(columns) > 0 and all(c in valued for c in columns)
 
-    # indexes의 앞부분이 uniques와 같은 순서의 unique key 이름이다.
+    # The leading part of indexes is the names of unique keys in the same order as uniques.
     uniques = sorted(
         ((ent.indexes[i], list(columns)) for i, columns in enumerate(ent.uniques)),
         key=lambda u: u[0],

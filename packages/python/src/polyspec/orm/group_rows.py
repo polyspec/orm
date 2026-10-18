@@ -1,4 +1,4 @@
-# group 결과: 선택된 값과 검사된 row 수만 담고, 불완전한 model row는 없다.
+# A group result holds only the selected values and the number of checked rows; it has no incomplete model rows.
 from polyspec.orm import codes
 from polyspec.orm.errors import OrmError
 
@@ -35,7 +35,7 @@ def _checked_count(value) -> int:
 
 
 class GroupRow:
-    """선택된 값과 검사된 row count를 가진 group 결과 하나."""
+    """One group result with the selected values and the checked row count."""
 
     __slots__ = ("_values", "count")
 
@@ -65,7 +65,7 @@ class GroupRow:
 
 
 class GroupRows:
-    """결과 순서의 group 값들; 불완전한 model row는 없다."""
+    """Group values in result order; there are no incomplete model rows."""
 
     __slots__ = ("_rows",)
 

@@ -1,6 +1,6 @@
-# introspection의 중립 중간 model과 문서 만들기 (docs/dialects.md "Introspection").
-# dialect reader가 catalog을 채우고, document가 dbspec text를 쓰고 parse해서
-# parse가 거부한 줄의 객체를 미지원으로 보고하고 뺀다.
+# The neutral intermediate model of introspection, and building the document (docs/dialects.md "Introspection").
+# The dialect reader fills the catalog, and the document writes the dbspec text and parses it,
+# reporting the objects of lines that parse rejected as unsupported and dropping them.
 from polyspec.orm.dbspec.emit import type_text
 from polyspec.orm.dbspec.parse import parse_document
 
@@ -12,12 +12,12 @@ def _byte_key(value: str) -> bytes:
 
 
 def quote(s: str) -> str:
-    """문자열을 dbspec 문자열 literal로 쓴다."""
+    """Writes a string as a dbspec string literal."""
     return "'" + s.replace("'", "''") + "'"
 
 
 def action_name(rule: str):
-    """catalog의 참조 action을 dbspec action으로 바꾼다. 없으면 None이다."""
+    """Converts the catalog's reference action to a dbspec action. None if there is none."""
     upper = rule.upper()
     if upper == "RESTRICT":
         return "restrict"
@@ -29,7 +29,7 @@ def action_name(rule: str):
 
 
 def table_types(t) -> dict:
-    """table의 column 이름마다 type이다."""
+    """The type for each column name of the table."""
     return {c["name"]: c["type"] for c in t["columns"]}
 
 
@@ -38,8 +38,8 @@ def _first_field(s: str) -> str:
 
 
 class CatalogRow:
-    """catalog query가 돌려준 row 하나다. 각 값은 기대한 Python type이어야
-    한다."""
+    """One row returned by a catalog query. Each value must be of the
+    expected Python type."""
 
     __slots__ = ("_query", "_values")
 
@@ -78,7 +78,7 @@ class CatalogRow:
         raise self._invalid(i, "an integer")
 
     def flag(self, i: int) -> bool:
-        """PostgreSQL boolean, 또는 MySQL과 SQLite의 0과 1이다."""
+        """A PostgreSQL boolean, or 0 and 1 for MySQL and SQLite."""
         value = self._values[i]
         if isinstance(value, bool):
             return value
@@ -88,14 +88,14 @@ class CatalogRow:
 
 
 class Catalog:
-    """introspection의 중립 중간 model."""
+    """The neutral intermediate model of introspection."""
 
     def __init__(self):
         self.tables: list = []
         self.unsupported: list = []
 
     def report(self, kind: str, table: str, name: str, reason: str) -> None:
-        """introspection이 dbspec로 읽지 못하는 객체를 남긴다."""
+        """Records the objects that introspection cannot read as dbspec."""
         self.unsupported.append(
             {"kind": kind, "table": table, "name": name, "reason": reason}
         )
@@ -118,15 +118,15 @@ class Catalog:
         )
 
     def drop_column(self, table: str, column: str) -> None:
-        """type이 정해지지 않은 column을 뺀다."""
+        """Drops the columns whose type is not determined."""
         t = self.table(table)
         t["columns"] = [c for c in t["columns"] if c["name"] != column]
 
     def document(self, name: str):
-        """중간 model을 dbspec text로 쓰고 parse한다. parse가 어떤 줄을 거부하면
-        그 줄의 객체를 미지원으로 보고하고 빼서 다시 만든다. 빠진 객체를 참조하던
-        객체는 다음 parse에서 거부되므로 같은 방식으로 빠진다. 객체에 속하지 않는
-        줄의 diagnostic은 reader의 결함이므로 error다."""
+        """Writes the intermediate model as dbspec text and parses it. If parse rejects a line,
+        it reports that line's object as unsupported, removes it, and builds again. An object that referred to a removed object
+        is rejected by the next parse and removed the same way. A diagnostic on a line that does not belong to an object
+        is a defect of the reader, so it is an error."""
         self._drop_tables_without_key()
         while True:
             text, objects = self._text(name)
@@ -136,7 +136,7 @@ class Catalog:
                     key=lambda u: _byte_key(f"{u['table']}\0{u['kind']}\0{u['name']}")
                 )
                 return document, self.unsupported
-            # 거부된 table의 객체는 table과 함께 빠지므로 따로 보고하지 않는다.
+            # Objects of a rejected table are removed along with the table, so they are not reported separately.
             rejected: set = set()
             for d in diagnostics:
                 o = objects.get(d.line)
@@ -157,7 +157,7 @@ class Catalog:
                 self._remove(o)
 
     def _remove(self, o: dict) -> None:
-        """객체 하나를 뺀다. table이나 primary key를 빼면 table 전체가 빠진다."""
+        """Removes one object. Removing a table or its primary key removes the whole table."""
         t = self.table(o["table"])
         if t is None:
             raise ValueError(f"introspected table {o['table']} is not in the catalog")
@@ -186,8 +186,8 @@ class Catalog:
         raise ValueError(f"unknown introspected object kind {kind}")
 
     def _drop_tables_without_key(self) -> None:
-        """primary key가 없는 table을 뺀다. 그 table을 참조하던 foreign key는
-        parse가 거부해 빠진다."""
+        """Removes a table without a primary key. A foreign key that referred to that table
+        is rejected by parse and removed."""
         kept: list = []
         for t in self.tables:
             if t["primary"]:
@@ -199,8 +199,8 @@ class Catalog:
         self.tables = kept
 
     def _text(self, name: str):
-        """table을 이름 순으로 쓴 dbspec text와, 줄 번호마다 그 줄의 객체를
-        돌려준다. 닫는 괄호와 primary key 줄은 table에 속한다."""
+        """The dbspec text with tables written in name order, and for each line number, the object of that line
+        is returned. The closing brace and the primary key line belong to the table."""
         tables = sorted(self.tables, key=lambda t: _byte_key(t["name"]))
         lines = [f"dbspec 1 {name}"]
         objects: dict = {}
