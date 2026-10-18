@@ -39,7 +39,7 @@ final class RuntimeModelTest extends TestCase
     public function test_entities_in_document_order(): void
     {
         $bench = self::bench();
-        $want = ['author', 'user', 'service', 'service_region', 'service_member', 'composite_account', 'composite_membership', 'soft_record', 'account', 'project', 'account_project', 'task', 'hex_cell', 'time_cell', 'clock_cell', 'day_cell', 'upsert_cell', 'uuid_cell', 'bind_cell'];
+        $want = ['author', 'user', 'service', 'service_region', 'service_member', 'composite_account', 'composite_membership', 'soft_record', 'soft_link', 'account', 'project', 'account_project', 'task', 'hex_cell', 'time_cell', 'clock_cell', 'day_cell', 'upsert_cell', 'uuid_cell', 'bind_cell'];
         self::assertTrue(array_keys($bench->entities) === $want, 'entities ' . implode(',', array_keys($bench->entities)));
         $author = $bench->entities['author'];
         self::assertTrue($author['identity'] === 'seq' && $author['pk'] === ['seq'], 'author keys');

@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The tests that pin the bench set read its new table, entity count and manifest hash (T200-1).
 - `restoreOrCreate()` restores the soft-deleted row of a key, or creates it, in one transaction, in the five clients; a live row of the key fails with `ROW_NOT_DELETED`. `RECORD=1` of the conformance check also records only the vectors that `VECTOR` names (T200).
 - The element type and behaviour tests read plans.json through the one PHP reader of it (T182-0-1-4).
 - The PHP symbol snapshot records the element type check Graph, whose public symbols are declared as PHP-only (T182-0-1-3).

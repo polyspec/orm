@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a82faef337d58f4133ff8f2bb133d4c896320e6cab28eb269f31b47a70f6e462 -->
+<!-- source-sha256: 572d072e92360e7fdfaa011f48d9fbf19b749843fac7f1c013524bca648f897a -->
 # 변경 이력
 
 ## Unreleased
+- bench set을 고정한 test가 새 table, entity 개수, manifest hash를 읽는다(T200-1).
 - `restoreOrCreate()`가 다섯 client에서 한 transaction 안에 key의 soft-delete된 행을 되돌리거나 만든다. 그 key의 살아 있는 행은 `ROW_NOT_DELETED`로 실패한다. conformance check의 `RECORD=1`은 `VECTOR`가 이름 붙인 vector만 기록하기도 한다(T200).
 - 요소 type test와 behaviour test가 plans.json을 PHP의 하나뿐인 reader로 읽는다(T182-0-1-4).
 - PHP symbol snapshot이 요소 type 검사 Graph를 기록하고, 그 공개 symbol을 PHP 전용으로 선언한다(T182-0-1-3).
