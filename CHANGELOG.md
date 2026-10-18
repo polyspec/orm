@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The parity run exports the SQLite DSN of the Rust savepoint test, so the Rust lib units no longer fail on it (T77-38).
 - The PHP extension test helper requiredDsn is declared once, in packages/php/tests/required_dsn.php, so the extension and PHP client bootstraps load it together without a redeclare (T77-37).
 - The Go performance gate is a benchmark of the tools root packages/go/bench, which belongs to no implementation, so its go-internal parity unit is removed; the gate still runs as the performance_gate feature. (#T77-8-1-1)
 - The physical fixture uses a fixed clock on sqlite and postgres, so the day_of_week and days_ago expectations are derived from fixed dates (T77-33, T77-33-1 open for MySQL).

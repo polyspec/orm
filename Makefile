@@ -1120,6 +1120,7 @@ flowmark-check:
 parity-check: parity-bench-env-check flowmark-check interface-check
 parity-check: export FLOWMARK := $(FLOWMARK)
 parity-check: export ORM_PARITY_PHP_EXTENSION = $(PARITY_RUN_DIR)/orm_dbspec.so
+parity-check: export ORM_SEND_SQLITE_DSN = $(SEND_SQLITE_DSN)
 parity-check: export ORM_PROGRAM_CONFORMANCE = $(PARITY_RUN_DIR)/target/debug/conformance
 markdown-conformance-check: markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/python markdown-conformance-check/rust markdown-conformance-check/typescript
 markdown-conformance-check/go:
