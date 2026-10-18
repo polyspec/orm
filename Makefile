@@ -1129,7 +1129,7 @@ markdown-conformance-check: markdown-conformance-check/go markdown-conformance-c
 markdown-conformance-check/go:
 	FLOWMARK=$(FLOWMARK) $(GO_TEST) -tags markdown ./packages/go/markdownmodel -run '^TestMarkdownConformance$$' -count=1
 markdown-conformance-check/php: php-vendor-check
-	FLOWMARK=$(FLOWMARK) $(PHP) vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --stop-on-defect packages/php/tests/MarkdownConformanceTest.php
+	FLOWMARK=$(FLOWMARK) $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --stop-on-defect packages/php/tests/MarkdownConformanceTest.php
 # Python runner는 build 정보를 go version -m으로 읽는다.
 markdown-conformance-check/python: python-venv-check
 	FLOWMARK=$(FLOWMARK) $(PYTHON_VENV)/bin/python -m packages.python.tests.markdown_conformance
@@ -1411,7 +1411,7 @@ bind-check/typescript: lease-tool
 bind-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase packages.python.tests.test_markdown.BindMessageVectors packages.python.tests.test_markdown.BindVectors
 bind-check/php: php-vendor-check
-	$(PHP) vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'test_bind_(message_)?vectors' packages/php/tests/MarkdownTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter 'test_bind_(message_)?vectors' packages/php/tests/MarkdownTest.php
 
 # ir-answers-check runs the read answers of contracts/fixtures/ir_answers.json in the five clients (docs/protocol.md
 # section 5, Read): each runner runs the chain of the markdown conformance case that a case names on a listener that
@@ -1429,7 +1429,7 @@ ir-answers-check/typescript: lease-tool
 ir-answers-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.ir_answers
 ir-answers-check/php: php-vendor-check
-	$(PHP) vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/IrAnswersTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/IrAnswersTest.php
 
 # rust-fmt-check fails when cargo fmt would change a source of the Rust
 # workspace (packages/rust/rustfmt.toml).
