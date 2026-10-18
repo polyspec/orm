@@ -28,14 +28,14 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// conformanceDir는 공유 suite의 directory다: cases.json, flowmark.version, corpus/.
-// go test의 working directory는 이 package directory다.
+// conformanceDir is the directory of the shared suite: cases.json, flowmark.version, corpus/.
+// The working directory of go test is this package directory.
 const conformanceDir = "../../../tests/markdown"
 
-// flowmarkModule은 FLOWMARK가 가리키는 build의 main module이어야 하는 module path다.
+// flowmarkModule is the module path that must be the main module of the build FLOWMARK points to.
 const flowmarkModule = "github.com/polyspec/flowmark"
 
-// served는 test가 시작한 flowmark server와 그 corpus다.
+// served is the flowmark server that the test started and its corpus.
 type served struct {
 	db     *orm.DB
 	dir    string
@@ -44,13 +44,13 @@ type served struct {
 	token  string
 }
 
-// caseFunc는 case 하나를 실행하고 README가 정한 결과 값을 돌려준다. error는 그 code의
-// {"error": code} 결과가 된다.
+// caseFunc runs one case and returns the result value that README defines. The error of its code
+// becomes the result {"error": code}.
 type caseFunc func(s *served) (any, error)
 
-// TestMarkdownConformance는 tests/markdown/cases.json의 모든 case를 그 순서대로, FLOWMARK가
-// 가리키는 flowmark build의 server 하나에 대해 실행한다. 그 build는 flowmark.version이 고정한
-// build여야 하고, 없거나 다른 build이면 test는 실패한다(건너뛰지 않는다).
+// TestMarkdownConformance runs every case of tests/markdown/cases.json, in order, against one server of the flowmark build that FLOWMARK
+// points to, which must be the build pinned by flowmark.version;
+// if it is missing or a different build, the test fails (it is not skipped).
 func TestMarkdownConformance(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	bin := pinnedFlowmark(t)
@@ -93,7 +93,7 @@ func TestMarkdownConformance(t *testing.T) {
 			}
 		})
 		if !ok {
-			// 뒤의 case는 앞 case가 만든 corpus 상태를 읽으므로 첫 실패에서 멈춘다.
+			// Later cases read the corpus state that earlier cases produced, so it stops at the first failure.
 			t.FailNow()
 		}
 	}
@@ -126,8 +126,8 @@ func loadCases(t *testing.T) []conformanceCase {
 	return doc.Cases
 }
 
-// pinnedFlowmark는 FLOWMARK가 가리키는 flowmark binary다. binary의 build 정보가 flowmark
-// module의 flowmark.version 판이 아니면 test를 실패시킨다.
+// pinnedFlowmark is the flowmark binary that FLOWMARK points to. It fails the test if the binary's build info
+// is not the flowmark.version of the module.
 func pinnedFlowmark(t *testing.T) string {
 	t.Helper()
 	b, err := os.ReadFile(filepath.Join(conformanceDir, "flowmark.version"))
@@ -151,8 +151,8 @@ func pinnedFlowmark(t *testing.T) string {
 
 var listening = regexp.MustCompile(`^\[serve\] listening on 127\.0\.0\.1:([0-9]+) for the corpus (.+)$`)
 
-// serve는 corpus/를 새 corpus로 install하고 그 server를 시작해 연결한다. test가 끝나면
-// 연결을 닫고 server를 멈춘 뒤 끝나기를 기다린다.
+// serve installs corpus/ as a new corpus, starts its server, and connects to it. When the test ends,
+// it closes the connection, stops the server, and waits for it to finish.
 func serve(t *testing.T, bin string) *served {
 	t.Helper()
 	c := testcase.Of(t)
@@ -231,10 +231,10 @@ func day(s string) *string {
 	return &s
 }
 
-// errStop는 transaction을 rollback시키려고 callback이 돌려주는 오류다.
+// errStop is the error the callback returns to roll the transaction back.
 var errStop = errors.New("stop")
 
-// conformanceCases는 cases.json의 id마다 그 case를 실행하는 함수다.
+// conformanceCases is the function that runs each case for each id in cases.json.
 func conformanceCases() map[string]caseFunc {
 	return map[string]caseFunc{
 		"insert_one": func(s *served) (any, error) {
@@ -513,7 +513,7 @@ func conformanceCases() map[string]caseFunc {
 				if _, err := m.SetName("Ann C").Update(); err != nil {
 					return err
 				}
-				// engine 밖의 편집: transaction이 쓸 file을 commit 전에 바꾼다.
+				// Edit from outside the engine: changes a file that the transaction writes, before commit.
 				path := filepath.Join(s.dir, "people.flowmark.md")
 				b, err := os.ReadFile(path)
 				if err != nil {
@@ -570,7 +570,7 @@ func conformanceCases() map[string]caseFunc {
 	}
 }
 
-// normalize는 결과를 JSON으로 썼다 읽은 값이다: cases.json의 expect와 같은 형태다.
+// normalize is the value read back after the result was written as JSON: it has the same shape as expect in cases.json.
 func normalize(t *testing.T, v any) any {
 	t.Helper()
 	b, err := json.Marshal(v)
