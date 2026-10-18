@@ -482,7 +482,7 @@ dbspec-compare-check/%: RUN_DIR = $(abspath .runtime/run)/dbspec-compare-check-$
 dbspec-compare-check: dbspec-compare-check/unit dbspec-compare-check/runners dbspec-compare-check/inputs dbspec-compare-check/compare
 	rm -rf $(RUN_DIR)
 dbspec-compare-check/unit:
-	$(NODE) --test tests/dbspec/compare/check.test.mts
+	$(RUN_TESTS) node -- tests/dbspec/compare/check.test.mts
 # PYTHON_VENV is the virtual environment that install-python makes. It holds the Python client installed in editable mode,
 # with the pinned dependencies of its pyproject.toml (ordered-json, cryptography, PyMySQL, psycopg, rapidyaml, ruamel.yaml) and
 # of its extra test (jsonschema-rs); the checks
@@ -522,9 +522,9 @@ php-vendor-check:
 .PHONY: python-check python-unit-check python-interface-unit-check
 python-check: python-unit-check python-interface-unit-check python-model-check conformance-result-check/python
 python-unit-check: python-venv-check
-	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p 'test_*.py'
+	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- discover -s packages/python/tests -t . -p 'test_*.py'
 python-interface-unit-check: python-venv-check
-	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase discover -s packages/python/tests -t . -p 'test_python_[en]*.py'
+	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- discover -s packages/python/tests -t . -p 'test_python_[en]*.py'
 # python-coverage-case-check is the check of the helper coverage-runner-python (contracts/features.json): the unit test of
 # the case runner that the Python coverage tests share.
 .PHONY: python-coverage-case-check
@@ -745,13 +745,13 @@ php-extension-arginfo:
 # TypeScript package와 lockfile, feature contract, 문서)이 같은지 확인한다.
 version-check: version-check/unit version-check/run
 version-check/unit:
-	$(NODE) --test scripts/version/check.test.mts
+	$(RUN_TESTS) node -- scripts/version/check.test.mts
 version-check/run:
 	$(NODE) scripts/version/check.mts
 
 repo-check: repo-check/unit repo-check/run
 repo-check/unit:
-	$(NODE) --test scripts/repo/check.test.mts scripts/repo/python-venv.test.mts
+	$(RUN_TESTS) node -- scripts/repo/check.test.mts scripts/repo/python-venv.test.mts
 repo-check/run:
 	$(NODE) scripts/repo/check.mts
 
@@ -816,11 +816,11 @@ feature-unit-check: feature-unit-check/docs feature-unit-check/coverage feature-
 feature-unit-check/docs:
 	$(NODE) scripts/features/build.mts --check
 feature-unit-check/coverage:
-	$(NODE) --test scripts/features/coverage.test.mts scripts/features/languages.test.mts
+	$(RUN_TESTS) node -- scripts/features/coverage.test.mts scripts/features/languages.test.mts
 feature-unit-check/owners:
-	$(NODE) --test scripts/features/owners.test.mts scripts/features/manifest.test.mts
+	$(RUN_TESTS) node -- scripts/features/owners.test.mts scripts/features/manifest.test.mts
 feature-unit-check/select:
-	$(NODE) --test scripts/features/select.test.mts
+	$(RUN_TESTS) node -- scripts/features/select.test.mts
 
 # feature-check는 기능의 coverage와 모든 검증 명령이고, make check는 그것을 세 target으로 실행한다: feature-coverage는
 # coverage, feature-verify-rust는 shard rust(cargo로 Rust를 build하고 실행하는 명령)의 검증 명령, feature-verify-other는
