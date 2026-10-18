@@ -1,5 +1,5 @@
-// 선언을 공통 contract에 비교하는 검사: record의 중첩 drift, 금지 symbol의 이름 형식, 금지된 호출, PHP record와 상대 type,
-// extension(PHP 확장)의 선언.
+// Checks declarations against the common contract: nested drift of records, name forms of prohibited symbols, prohibited calls, PHP records and relative types,
+// and declarations of extensions (PHP extension).
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -153,8 +153,8 @@ caseTest('the PHP records match the common contract', PROCESS, async ({ signal }
   assert.deepEqual(checkRecords('php', got, manifest.records ?? []), [], 'PHP record contract differs');
 });
 
-// extension(PHP 확장 php-extension)의 확인이 기록된 stub을 받아들이고, 공통 contract와 다른 stub, extension이 적지 않은
-// adapter, 다른 symbol snapshot을 거부하는지 확인한다. 각 경우는 stub과 snapshot을 임시 root에 복사해 그것을 고친다.
+// Checks that it accepts the stub with the PHP extension (php-extension) check recorded, and rejects a stub that differs from the common contract, an adapter the extension does not write,
+// or a different symbol snapshot. Each case copies the stub and snapshot into a temporary root and changes them there.
 caseTest('the extension declarations are checked against the contract', PROCESS, async ({ signal }) => {
   requirePhp();
   const m = readManifest(join(root, 'contracts/interfaces.json'));
@@ -162,7 +162,7 @@ caseTest('the extension declarations are checked against the contract', PROCESS,
   assert.ok(e, 'contracts/interfaces.json declares no php-extension');
   const stubPath = join(e.roots?.[0] ?? '', 'orm_dbspec.stub.php'), symbolsPath = e.symbols ?? '';
   const stub = readFileSync(join(root, stubPath), 'utf8'), snapshot = readFileSync(join(root, symbolsPath), 'utf8');
-  // check는 stub과 snapshot을 고친 임시 root에서 extension을 확인한다. extract는 그 root의 php.php를 실행하므로 같은 자리에 둔다.
+  // check verifies the extension in the temporary root where the stub and snapshot were changed. extract runs php.php in that root, so it is kept in the same place.
   const check = async (stubSource: string, snapshotSource: string, manifest: Manifest): Promise<string> => {
     const dir = mkdtempSync(join(tmpdir(), 'orm-interface-test-'));
     try {

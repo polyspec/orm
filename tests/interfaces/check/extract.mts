@@ -1,7 +1,7 @@
-// native 선언을 각 언어의 추출기로 읽는다. 추출기는 그 언어 자신의 parser로 선언을 읽는 program이다: Go(go/parser,
+// Reads native declarations with each language's extractor. An extractor is a program that reads declarations with that language's own parser: Go (go/parser,
 // packages/go/internal/symbols), PHP(Reflection, packages/php/testing/interfaces/php.php), Rust(syn, packages/rust/testing/interfaces), TypeScript(TypeScript
-// compiler API, packages/ts/testing/interfaces/typescript.mts), Python(ast, packages/python/testing/interfaces/python.py). Go와 Rust의 추출기는 이 실행의
-// 임시 directory에 build한 실행 file이다. 금지된 multi_statement 호출은 source text에서 찾는다.
+// compiler API, packages/ts/testing/interfaces/typescript.mts), Python (ast, packages/python/testing/interfaces/python.py). The Go and Rust extractors are execution files built in this run's
+// temporary directory. Prohibited multi_statement calls are found in the source text.
 import { spawn } from 'node:child_process';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
@@ -12,18 +12,18 @@ import type { Symbols } from './manifest.mts';
 
 const symbolsSchema = resolve(import.meta.dirname, '../../../scripts/schema/interface-symbols.schema.json');
 
-/** Tools는 이 실행이 build한 추출기 실행 file이다. 그 언어를 확인하지 않는 실행에서는 비어 있다. */
+/** Tools is the extractor execution file built by this run. It is empty in a run that does not check that language. */
 export type Tools = { go?: string; rust?: string };
 
-/** Output은 끝난 하위 process의 종료 코드(signal로 끝났으면 null), signal, 표준 출력과 표준 오류다. */
+/** Output is the exit code of the finished child process (null if ended by a signal), the signal, stdout, and stderr. */
 type Output = { code: number | null; signal: NodeJS.Signals | null; stdout: string; stderr: string };
 
-// exitText는 끝난 process의 상태를 Go의 exec.ExitError처럼 적는다.
+// exitText writes the state of a finished process the way Go's exec.ExitError does.
 function exitText(output: Output): string {
   return output.signal !== null ? `signal: ${output.signal}` : `exit status ${output.code ?? 1}`;
 }
 
-// run은 program을 실행해 그 출력을 모은다. onOutput이 있으면 두 출력을 그것으로도 보낸다. signal이 abort되면 process를 끝낸다.
+// run executes the program and collects its output. If onOutput is given, it also sends both outputs there. If the signal aborts, it ends the process.
 function run(program: string, args: string[], options: { cwd?: string; signal?: AbortSignal; onOutput?: (chunk: string) => void } = {}): Promise<Output> {
   return new Promise((resolvePromise, reject) => {
     const child = spawn(program, args, { cwd: options.cwd, stdio: ['ignore', 'pipe', 'pipe'], ...(options.signal ? { signal: options.signal } : {}) });
@@ -36,8 +36,8 @@ function run(program: string, args: string[], options: { cwd?: string; signal?: 
 }
 
 /**
- * extract는 lang 추출기로 root 아래 roots의 선언을 읽는다. toolRoot는 PHP, TypeScript, Python 추출기 script가 있는 저장소
- * root다. 추출기가 실패하면 그 종료 상태와 표준 오류를 담은 error다.
+ * extract reads declarations of roots under root with the lang extractor. toolRoot is the repository
+ * root where the PHP, TypeScript, and Python extractor scripts are. If the extractor fails, it is an error containing its exit status and stderr.
  */
 export async function extract(signal: AbortSignal | undefined, root: string, lang: string, roots: string[], tools: Tools, toolRoot: string): Promise<Symbols> {
   let program: string, args: string[];
@@ -58,8 +58,8 @@ export async function extract(signal: AbortSignal | undefined, root: string, lan
 }
 
 /**
- * buildGo는 Go symbol 추출기(packages/go/internal/symbols)를 directory에 build하고 그 실행 file을 돌려준다. compiler의 출력은 step
- * 줄로 보인다.
+ * buildGo builds the Go symbol extractor (packages/go/internal/symbols) into a directory and returns its execution file. The compiler's output is shown as step
+ * lines.
  */
 export async function buildGo(step: Step, root: string, directory: string): Promise<string> {
   const executable = join(directory, 'polyspec-orm-interface-symbols-go');
@@ -72,10 +72,10 @@ export async function buildGo(step: Step, root: string, directory: string): Prom
 }
 
 /**
- * buildRust는 Rust symbol 도구를 공유 Rust target directory의 exclusive lease(LEASE, CARGO_LEASES, --wait) 아래에서 build하고,
- * 그 lease 안에서 directory로 복사한 실행 file을 돌려준다(scripts/cargo-build-copy.mts). 이 checkout의 다른 실행의 build가
- * target directory를 바꿔도 이 실행의 추출기는 바뀌지 않는다. build는 장기 작업이므로 기한이 없고, cargo의 진행 출력은 경과
- * 시간과 함께 step 줄로 보인다.
+ * buildRust builds the Rust symbol tool under the exclusive lease of the shared Rust target directory (LEASE, CARGO_LEASES, --wait),
+ * and returns the execution file copied into the directory under that lease (scripts/cargo-build-copy.mts). Even if the target directory of another build in this checkout
+ * changes, this run's extractor does not change. The build is a long task, so it has no deadline, and cargo's progress output is shown as step lines with the elapsed
+ * time.
  */
 export async function buildRust(step: Step, root: string, directory: string): Promise<string> {
   const lease = process.env['LEASE'] ?? '', leases = process.env['CARGO_LEASES'] ?? '';
@@ -106,7 +106,7 @@ const PROHIBITED_CALLS: Record<string, RegExp> = {
   python: /\.\s*multi_statement\s*\(/,
 };
 
-/** checkProhibitedCalls는 source가 multi_statement를 호출하면 한 줄을 돌려준다. */
+/** checkProhibitedCalls returns one line if the source calls multi_statement. */
 export function checkProhibitedCalls(lang: string, source: string): string[] {
   const pattern = PROHIBITED_CALLS[lang];
   if (pattern === undefined) return [`unsupported language ${lang}`];
@@ -115,7 +115,7 @@ export function checkProhibitedCalls(lang: string, source: string): string[] {
 
 const EXTENSIONS: Record<string, string> = { go: '.go', php: '.php', rust: '.rs', typescript: '.ts', python: '.py' };
 
-// walkFiles는 directory 아래의 file을 Go의 filepath.WalkDir처럼 이름의 byte 순서로 돌려준다. symlink는 따라가지 않는다.
+// walkFiles returns files under a directory in byte order of names, like Go's filepath.WalkDir. It does not follow symlinks.
 function walkFiles(directory: string): string[] {
   const files: string[] = [];
   const entries = readdirSync(directory, { withFileTypes: true }).sort((a, b) => byteOrder(a.name, b.name));
@@ -127,7 +127,7 @@ function walkFiles(directory: string): string[] {
   return files;
 }
 
-/** checkCallsInRoots는 root 아래 roots의 lang source file(Go test file은 빼고)마다 multi_statement 호출을 찾는다. */
+/** checkCallsInRoots finds multi_statement calls in each lang source file of roots under root (excluding Go test files). */
 export function checkCallsInRoots(root: string, lang: string, roots: string[]): string[] {
   const ext = EXTENSIONS[lang];
   if (ext === undefined) throw new Error(`unsupported language ${lang}`);

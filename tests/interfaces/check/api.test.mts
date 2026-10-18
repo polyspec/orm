@@ -9,7 +9,7 @@ import { readErrorCatalog } from './manifest.mts';
 const root = resolve(import.meta.dirname, '../../..');
 const CLIENTS = ['go', 'php', 'typescript', 'python', 'rust'];
 
-// tinyParity는 apiProblems가 읽는 부분만 가진 config/parity.json이다: 두 client, 각각의 catalog file과 한 code의 unit.
+// tinyParity is a config/parity.json that has only the parts apiProblems reads: two clients, each one's catalog file, and one code's unit.
 function tinyParity(): Parity {
   return {
     implementations: [

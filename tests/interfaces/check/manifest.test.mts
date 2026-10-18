@@ -1,4 +1,4 @@
-// manifest 자신의 검사: 구성요소 method와 rule의 대응, 금지 symbol 목록, error label과 catalog, getsCount의 결과 type.
+// The manifest's own checks: correspondence of component methods and rules, the prohibited symbol list, error labels and catalog, and the result type of getsCount.
 import assert from 'node:assert/strict';
 import { join, resolve } from 'node:path';
 import { caseTest, COMPUTE } from '../../testcase.mts';
@@ -6,7 +6,7 @@ import { allRules, checkErrorLabels, readErrorCatalog, readManifest, validateMan
 
 const root = resolve(import.meta.dirname, '../../..');
 
-// componentManifest는 구성요소와 rule을 뺀 나머지를 validateManifest가 받아들이는 가장 작은 manifest다.
+// componentManifest is the smallest manifest that validateManifest accepts, with components and rules removed.
 function componentManifest(components: Component[], ...rules: string[]): Manifest {
   return {
     version: 1,
@@ -49,8 +49,8 @@ caseTest('the manifest refuses a rule without a component method', COMPUTE, () =
   }
 });
 
-// internal 구성요소("internal" field가 그 이유를 적는다)는 각 client가 공통 signature 없이 비공개로 구현하는 동작이다: 그
-// method에는 rule이 없고, rule이 그 method를 가리킬 수 없다.
+// An internal component (its "internal" field gives the reason) is behavior each client implements privately without a common signature: the
+// method has no rule, and no rule can point to that method.
 caseTest('the methods of an internal component have no rule', COMPUTE, () => {
   const internal = { id: 'Planner', methods: ['plan'], internal: 'Each client plans privately.', internal_ko: '각 client가 비공개로 plan한다.' };
   assert.equal(refusal(componentManifest([internal])), '', 'the method of an internal component was refused for having no rule');

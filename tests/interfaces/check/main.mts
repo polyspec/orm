@@ -1,14 +1,14 @@
-// Interface check: 각 언어의 native 선언을 검토한 symbol manifest(contracts/interfaces.json과 contracts/symbols/*.json)에
-// 비교하고, 생성된 source와 무관하게 공통 method contract를 강제한다. 다섯 client 언어와 extension(PHP 확장)을 차례로
-// 확인하며, --results가 주어지면 conformance 실행의 state trace도 공통 state contract에 비교한다.
+// Interface check: compares each language's native declarations with the reviewed symbol manifest (contracts/interfaces.json and contracts/symbols/*.json),
+// and enforces the common method contract regardless of generated source. It checks the five client languages and the extension (PHP extension) in turn,
+// and when --results is given, it also compares the state trace of the conformance run against the common state contract.
 //
 // Usage: node tests/interfaces/check/main.mts [-root dir] [-record] [-self-test] [-generate] [-language name] [-results dir]...
 //
-// 옵션은 한 줄표(-record)와 두 줄표(--record) 모두 받고, 값은 `-language php`나 `-language=php`로 준다. bool 옵션은
-// `-record=false`도 받는다.
+// Options accept both single-dash (-record) and double-dash (--record), and values are given as `-language php` or `-language=php`. Bool options
+// also accept `-record=false`.
 //
-// entity 단위 rule은 contract가 가리키는 dbspec document의 entity 순서로 펼친다. 그 순서는 TypeScript client(make
-// typescript-build가 만드는 packages/ts/dist)의 runtime model에서 읽는다.
+// Expands rules per entity in the entity order of the dbspec document the contract points to. That order is read from the runtime model of the TypeScript client (make
+// typescript-build's packages/ts/dist).
 import { createHash } from 'node:crypto';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -27,12 +27,12 @@ import { apiProblems, readParity } from './api.mts';
 
 const symbolsSchema = resolve(import.meta.dirname, '../../../scripts/schema/interface-symbols.schema.json');
 
-// interface check의 case 기한이다.
-// MANIFEST: manifest, error catalog, component diagram, dbspec 문서를 읽고 비교하는 memory 안의 계산이다.
+// Case deadline of the interface check.
+// MANIFEST: an in-memory computation that reads and compares the manifest, error catalog, component diagram, and dbspec documents.
 const MANIFEST = COMPUTE;
-// LANGUAGE: 한 언어의 native 선언을 추출기 process로 읽고, --self-test면 source mutation마다 추출기를 다시 실행한다.
+// LANGUAGE: reads one language's native declarations with the extractor process, and with --self-test re-runs the extractor for each source mutation.
 const LANGUAGE = PROCESS;
-// RESULTS: conformance output file을 읽어 state trace를 비교한다.
+// RESULTS: reads the conformance output file and compares its state trace.
 const RESULTS = COMPUTE;
 
 const LANGUAGES = ['go', 'php', 'rust', 'typescript', 'python'];
@@ -53,8 +53,8 @@ const USAGE = `Usage of tests/interfaces/check/main.mts:
     \talso verify native parsers reject source mutations`;
 
 /**
- * goFlags는 Go의 flag package가 받는 인자를 parseArgs의 형식으로 바꾼다: `-name`과 `--name`은 같고, bool 옵션의
- * `=true`와 `=false`를 받는다. 첫 위치 인자나 `--`에서 옵션이 끝난다.
+ * goFlags converts arguments accepted by Go's flag package into parseArgs form: `-name` and `--name` are the same, and bool options
+ * accept `=true` and `=false`. Options end at the first positional argument or `--`.
  */
 export function goFlags(argv: string[]): string[] {
   const out: string[] = [];
@@ -79,7 +79,7 @@ export function goFlags(argv: string[]): string[] {
   return out;
 }
 
-/** loadOrder는 dbspec document의 entity 이름 순서다(TypeScript client의 runtime model). */
+/** loadOrder is the entity name order of the dbspec document (the TypeScript client's runtime model). */
 async function loadOrder(root: string, path: string): Promise<string[]> {
   const dist = join(root, 'packages/ts/dist');
   if (!existsSync(join(dist, 'engine/model.js'))) throw new Error(`${dist} has no build of the TypeScript client; run make typescript-build`);
@@ -106,7 +106,7 @@ function fileSHA256(path: string): string {
   return `sha256:${createHash('sha256').update(readFileSync(path)).digest('hex')}`;
 }
 
-// writeSymbols는 symbol 기록을 Go의 json.MarshalIndent(두 칸 들여쓰기)와 줄 끝 하나로 쓴다.
+// writeSymbols writes the symbol record the way Go's json.MarshalIndent does (two-space indentation) with one trailing newline.
 function writeSymbols(path: string, symbols: Symbols): void {
   writeFileSync(path, `${goJson(symbols, '  ')}\n`, { mode: 0o644 });
 }
@@ -118,8 +118,8 @@ const recordedHashes = new Map<string, string>();
 type Options = { root: string; lang: string; tools: Tools; manifest: Manifest; order: string[] | undefined; record: boolean; selfTest: boolean };
 
 /**
- * checkLanguage는 한 언어의 native 선언을 공통 contract, 기록된 symbol snapshot과 그 hash에 비교하고, selfTest면 추출기가
- * source mutation을 놓치지 않는지 확인한다.
+ * checkLanguage compares one language's native declarations with the common contract, the recorded symbol snapshot, and its hash, and with selfTest checks
+ * that the extractor does not miss source mutations.
  */
 async function checkLanguage({ root, lang, tools, manifest: m, order, record, selfTest }: Options, signal: AbortSignal, step: Step): Promise<void> {
   const config = m.languages?.[lang] ?? {};
@@ -151,9 +151,9 @@ async function checkLanguage({ root, lang, tools, manifest: m, order, record, se
 }
 
 /**
- * checkExtension은 extension 하나의 선언을 그 syntax의 추출기로 roots에서 읽어, extension이 구현하는 rule과 owner, 금지된
- * symbol, 기록된 symbol snapshot과 그 hash에 비교한다. extension이 적지 않은 rule이나 owner가 그 이름의 adapter를 가지면
- * 실패한다.
+ * checkExtension reads one extension's declarations from roots with the extractor of its syntax, and compares the rules and owners it implements, the prohibited
+ * symbols, and the recorded symbol snapshot and its hash. If a rule or owner the extension does not declare has an adapter of that name, it
+ * fails.
  */
 export async function checkExtension(root: string, name: string, e: Extension, m: Manifest, order: string[] | undefined, record: boolean,
   signal: AbortSignal | undefined, step: Step): Promise<void> {
@@ -188,7 +188,7 @@ export async function checkExtension(root: string, name: string, e: Extension, m
   console.log(`${name}: ${Object.keys(actual).length} native symbols inspected; ${rules.length} rules and ${owners.length} owners checked`);
 }
 
-/** main은 이 실행의 종료 코드다. 임시 directory는 끝에 지운다. */
+/** main is this run's exit code. The temporary directory is deleted at the end. */
 async function main(argv: string[]): Promise<number> {
   let values;
   try {
@@ -206,7 +206,7 @@ async function main(argv: string[]): Promise<number> {
   }
   const record = values.record, selfTest = values['self-test'], generate = values.generate, results = values.results, language = values.language;
   let languages = [...LANGUAGES];
-  // extensions가 undefined면 manifest의 모든 extension을 확인한다.
+  // If extensions is undefined, checks all extensions in the manifest.
   let extensions: string[] | undefined;
   if (language !== '') {
     if (LANGUAGES.includes(language)) {
@@ -248,7 +248,7 @@ async function main(argv: string[]): Promise<number> {
     if (problems.length > 0) throw new Error(problems.join('\n'));
   });
   const tools: Tools = {};
-  // 추출기는 이 실행의 directory에 build하고, Rust 추출기는 lease 아래에서 그곳으로 복사한 것을 실행한다.
+  // The extractor is built into this run's directory, and the Rust extractor runs what is copied there under the lease.
   const directory = languages.includes('go') || languages.includes('rust') ? mkdtempSync(join(tmpdir(), 'orm-interface-symbols-')) : undefined;
   try {
     if (directory !== undefined && languages.includes('go')) {

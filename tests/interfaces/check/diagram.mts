@@ -1,13 +1,13 @@
-// 공통 구성요소 문서(docs/interfaces-model.md와 그 한국어 쌍)를 manifest에서 만든다. 도표는 reviewer가 manifest에서 고치는
-// 구성요소의 field, method, ownership 규칙에서 나온다. 손으로 쓴 lifecycle 도표는 따로 있다.
+// The component document (docs/interfaces-model.md and its Korean pair) is made from the manifest. The diagram is what a reviewer edits in the manifest
+// It comes from the component's fields, methods, and ownership rules. The hand-written lifecycle diagram is separate.
 import { createHash } from 'node:crypto';
 import { byteOrder } from './json.mts';
 import type { Manifest } from './manifest.mts';
 
-// DOCUMENT_ID는 구성요소 문서 쌍의 doc-id다(@polyspec/kit의 make documents-check). 한국어 문서는 영어 문서의 sha256도 가진다.
+// DOCUMENT_ID is the doc-id of the component document pair (make documents-check of @polyspec/kit). The Korean document also carries the sha256 of the English document.
 const DOCUMENT_ID = 'interfaces-model';
 
-/** diagram은 manifest의 구성요소 문서다. korean이면 한국어 문서다. 지역화한 설명이나 관계가 없으면 error다. */
+/** diagram is a component document of the manifest. If korean, it is the Korean document. Without localized explanations or relations it is an error. */
 export function diagram(m: Manifest, korean: boolean): string {
   const components = m.components ?? [], edges = m.edges ?? [];
   let b = '';

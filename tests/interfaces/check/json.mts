@@ -1,7 +1,7 @@
-// interface check가 읽고 쓰는 JSON의 형식이다. symbol 기록과 그 hash는 Go의 encoding/json이 쓰던 byte 그대로여야 하므로
-// goJson은 그 규칙을 따른다: object key는 byte 순서로 정렬하고, <, >, &, U+2028, U+2029는 \u escape로 쓰며, 들여쓰기는
-// MarshalIndent의 형식이다. conformance 결과와 state contract의 값은 숫자를 그 원문 그대로 비교하므로(i64 정밀도와
-// 1과 1.0의 구분) losslessJson이 숫자를 JsonNumber로 읽는다.
+// The format of JSON that the interface check reads and writes. Symbol records and their hashes must be byte-for-byte what Go's encoding/json wrote, so
+// goJson follows that rule: object keys are sorted in byte order, <, >, &, U+2028, U+2029 are written as \u escapes, and indentation is
+// the MarshalIndent format. Values of conformance results and state contract compare numbers as their original text (i64 precision and
+// the distinction between 1 and 1.0), so losslessJson reads numbers as JsonNumber.
 import { readFileSync } from 'node:fs';
 import { inspect } from 'node:util';
 

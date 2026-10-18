@@ -1,4 +1,4 @@
-// 구성요소 문서와 command line, JSON 형식의 test다.
+// Test of component documents and the command line, JSON format.
 import assert from 'node:assert/strict';
 import { join, resolve } from 'node:path';
 import { caseTest, COMPUTE } from '../../testcase.mts';

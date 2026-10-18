@@ -101,8 +101,8 @@ func TestGroupedResultCannotBecomeModelCollection(t *testing.T) {
 	t.Fatal("Model.getsCount rule is missing")
 }
 
-// TestExtensionContractRejectsDrift는 extension(PHP 확장 php-extension)의 adapter가 공통 입력과 결과의
-// extension 열과 다르거나, extension이 적은 rule과 adapter를 가진 rule이 다르면 manifest를 거부하는지 확인한다.
+// TestExtensionContractRejectsDrift checks that the extension (PHP extension php-extension)'s adapter rejects a manifest where the common input and result
+// differ from the extension columns, or where a rule that the extension lists has a different adapter.
 func TestExtensionContractRejectsDrift(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	find := func(d *document, id string) *rule {

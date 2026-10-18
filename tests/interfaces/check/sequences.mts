@@ -1,5 +1,5 @@
-// --results: conformance 실행의 출력을 공통 state contract(contracts/interfaces.json의 sequences)와 비교한다. statement
-// 목록의 차이는 "다르다"가 아니라 순서를 지키는 가장 긴 공통 부분(LCS) 밖에서 더해지거나 빠진 statement로 적는다.
+// --results: compares the output of a conformance run with the common state contract (sequences in contracts/interfaces.json). Statement
+// list differences are written not as "different" but as statements added or missing outside the longest common subsequence (LCS) that keeps order.
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { checkJson } from '../../../scripts/json/schema.mts';
@@ -8,15 +8,15 @@ import type { Sequence } from './manifest.mts';
 
 const outputSchema = resolve(import.meta.dirname, '../../../scripts/schema/interfaces-results.schema.json');
 
-/** SequenceOutput은 conformance 출력의 vector 하나다. 각 statement는 statement event의 kind를 가진다(docs/usage.md "Statement events"). */
+/** SequenceOutput is one vector of conformance output. Each statement has its statement event kind (docs/usage.md "Statement events"). */
 export type SequenceOutput = { result?: unknown; statements?: { kind?: string | null; sql?: string }[] | null } | null;
 
-// STATEMENT_KINDS는 statement event의 모든 kind다.
+// STATEMENT_KINDS is all kinds of statement event.
 const STATEMENT_KINDS = new Set(['select', 'insert', 'update', 'delete', 'begin', 'commit', 'rollback', 'savepoint', 'release', 'rollback_to', 'schema', 'utility']);
 
-/** Statement는 비교할 statement 하나다. key가 같은 두 statement는 같은 것이다. kind와 text는 보고에 쓴다. */
+/** Statement is one statement to compare. Two statements with the same key are the same. kind and text are used in the report. */
 type Statement = { kind: string; text: string; key: string };
-/** Change는 차이 하나다. added면 나왔지만 기대하지 않은 statement, 아니면 기대했지만 나오지 않은 statement다. index는 그 목록에서 1부터 센 위치다. */
+/** Change is one difference. If added, it is a statement that appeared but was not expected; otherwise, it is an expected statement that did not appear. index is the position counted from 1 in that list. */
 type Change = { added: boolean; index: number; statement: Statement };
 
 function changeText(change: Change): string {
@@ -24,7 +24,7 @@ function changeText(change: Change): string {
   return `${change.added ? '+' : '-'} #${change.index} ${change.statement.kind}${text}`;
 }
 
-/** diffStatements는 expected를 got으로 바꾸는 가장 작은 더하기와 빼기를 expected의 순서대로 돌려준다. */
+/** diffStatements returns the smallest additions and removals that turn expected into got, in expected's order. */
 function diffStatements(expected: Statement[], got: Statement[]): Change[] {
   const n = expected.length, m = got.length;
   const lcs = Array.from({ length: n + 1 }, () => Array.from({ length: m + 1 }, () => 0));
@@ -53,14 +53,14 @@ function diffStatements(expected: Statement[], got: Statement[]): Change[] {
   return changes;
 }
 
-/** group은 statement event의 kind를 무리로 나눈다(docs/usage.md "Statement events"): model, transaction-control, schema, utility. */
+/** group divides statement event kinds into groups (docs/usage.md "Statement events"): model, transaction-control, schema, utility. */
 function group(kind: string): string {
   if (['select', 'insert', 'update', 'delete'].includes(kind)) return 'model';
   if (['begin', 'commit', 'rollback', 'savepoint', 'release', 'rollback_to'].includes(kind)) return 'transaction-control';
   return kind;
 }
 
-/** summary는 차이를 kind의 무리마다 센 한 줄이다. 예: "+2 transaction-control, -1 model". */
+/** summary is a one-line count of differences per kind group. e.g. "+2 transaction-control, -1 model". */
 function summary(changes: Change[]): string {
   const counts = new Map<string, number>();
   for (const change of changes) {
@@ -71,9 +71,9 @@ function summary(changes: Change[]): string {
 }
 
 /**
- * checkSequences는 한 언어의 conformance 출력(file)을 공통 state contract와 비교해 차이마다 그 이유를 적는다: 없는 vector,
- * 다른 result(두 값), kind가 없거나 알 수 없는 statement, 그리고 contract의 statement kind 목록과 다른 statement(더해지거나
- * 빠진 statement를 위치, kind, SQL과 함께).
+ * checkSequences compares one language's conformance output (file) with the common state contract and gives a reason for each difference: a missing vector,
+ * a different result (two values), a statement with no kind or an unknown kind, and a statement that differs from the contract's statement kind list (added or
+ * missing statements, with position, kind, and SQL).
  */
 export function checkSequences(file: string, output: Record<string, SequenceOutput>, sequences: Sequence[]): string[] {
   const problems: string[] = [];
@@ -105,8 +105,8 @@ export function checkSequences(file: string, output: Record<string, SequenceOutp
 }
 
 /**
- * checkResults는 conformance 실행의 output directory 하나(MySQL은 그 root, PostgreSQL과 SQLite는 그 안의 directory)의 각 언어
- * output을 공통 state contract와 비교한다. output file이 없으면 그 정확한 경로를 적는다.
+ * checkResults compares each language's output in one output directory of a conformance run (MySQL: its root; PostgreSQL and SQLite: directories within it)
+ * with the common state contract. If an output file is missing, it gives that exact path.
  */
 export function checkResults(directory: string, languages: string[], sequences: Sequence[]): string[] {
   const problems: string[] = [];
