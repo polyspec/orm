@@ -2,7 +2,7 @@
 // Usage: node packages/ts/tests/collection_identity.mjs (after npm run typescript:build)
 import { readFile } from 'node:fs/promises';
 import * as orm from '../dist/index.js';
-import { cases as caseRunner, COMPUTE } from '../../../tests/testcase.mts';
+import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 
 const fixture = JSON.parse(await readFile(new URL('../../../tests/collection/keys.json', import.meta.url), 'utf8'));
 
@@ -22,8 +22,8 @@ function valueOf(entry) {
   }
 }
 
-const suite = caseRunner();
-await suite.run('collection-key/identity-from-fixture', COMPUTE, () => {
+// Each case is a node:test test, the form that the parity runner reads (tests/testcase.mts, caseTest).
+caseTest('collection-key/identity-from-fixture', COMPUTE, () => {
   const collection = new orm.Collection();
   const distinct = fixture.keys.filter(entry => entry.same_as === undefined);
   for (const entry of distinct) collection.put(valueOf(entry), { name: entry.name });
@@ -36,7 +36,7 @@ await suite.run('collection-key/identity-from-fixture', COMPUTE, () => {
     if (got?.name !== want) throw new Error(`key ${entry.name} reads ${got?.name}, want ${want}`);
   }
 });
-await suite.run('collection-key/null-is-codec-decode', COMPUTE, () => {
+caseTest('collection-key/null-is-codec-decode', COMPUTE, () => {
   try {
     new orm.Collection().put(null, {});
   } catch (error) {
@@ -45,4 +45,3 @@ await suite.run('collection-key/null-is-codec-decode', COMPUTE, () => {
   }
   throw new Error('a NULL collection key was accepted');
 });
-suite.finish();

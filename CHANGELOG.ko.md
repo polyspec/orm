@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 6a4de142e55cfa6391258b563dc06770408d62800f9bac743947577c0e9760e5 -->
+<!-- source-sha256: 5a4b3845e44e4f780e4a3c10d4332d47ff133b3bf7b905dcdd279b0fd5eaf36f -->
 # 변경 이력
 
 ## Unreleased
+- TypeScript collection-key test가 case를 id로 node:test test로 보고해 parity unit 둘이 통과한다 (T148-3-ts-6).
 - TypeScript code-catalog test가 case를 id로 node:test test로 보고해 parity unit이 통과한다 (T148-3-ts-5).
 - parity-check 단계가 바인딩이 읽는 bench와 decimal DSN, ORM_DBSPEC_EXTENSION을 내보낸다 (T148-5).
 - 모든 push가 parity 검사를 실행한다: parity-check와 parity-declarations-check가 CHECK_TARGETS와 CI 그룹에 있다 (T77-12).
