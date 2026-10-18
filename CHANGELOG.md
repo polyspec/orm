@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The Mermaid round-trip vector of the bench document lists the soft_link objects (T214).
 - Each generator takes its base Model methods from Model itself, so a T200 `restore_or_create` call generates and a `json_text` column is refused (T213).
 - The external text keeps the foreign keys between used tables and their leading indexes, so a runtime accepts the audit `tables` clause of an external document (T201-1).
 - The TypeScript AesKeyring symbols hold red and green in interface-check and their parity units (T148-4-4).

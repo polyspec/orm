@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ff0b4fceee91a0326f1646707da0b3607cc3d2cd82d91967e4d4fb993a91154f -->
+<!-- source-sha256: 61fb51e014d3ab7c8615af6621da0ea4b25d81b3393f284625b368b245fd1584 -->
 # 변경 이력
 
 ## Unreleased
+- bench 문서의 Mermaid round-trip vector가 soft_link object를 나열한다 (T214).
 - 각 generator는 base Model method를 Model에서 직접 읽는다. T200 `restore_or_create` 호출이 생성되고 `json_text` column은 거부된다 (T213).
 - external text가 사용 table 사이의 foreign key와 그 선두 index를 유지해, runtime이 external document의 audit `tables` 절을 받아들인다(T201-1).
 - TypeScript AesKeyring symbol이 interface-check와 parity unit에서 red와 green을 거쳤다 (T148-4-4).

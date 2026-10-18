@@ -821,6 +821,21 @@
           "ix_service_region_service"
         ],
         [
+          "comment",
+          "soft_link",
+          "soft_link"
+        ],
+        [
+          "settings",
+          "soft_link",
+          "soft_link"
+        ],
+        [
+          "unique",
+          "soft_link",
+          "uq_soft_link_code"
+        ],
+        [
           "settings",
           "soft_record",
           "soft_record"
@@ -882,6 +897,11 @@
           "index",
           "service_region",
           "ix_service_region_service_seq"
+        ],
+        [
+          "unique",
+          "soft_link",
+          "code"
         ],
         [
           "unique",
