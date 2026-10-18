@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The Go tests bind text to date and datetime columns, as the setters do, so the cancel, value-types and conditions tests pass again (T77-40).
 - The Go DSN test expects the MySQL session sql_mode that T104 sets, so TestParseDSN passes again (T77-39).
 - The parity run exports the SQLite DSN of the Rust savepoint test, so the Rust lib units no longer fail on it (T77-38).
 - The PHP extension test helper requiredDsn is declared once, in packages/php/tests/required_dsn.php, so the extension and PHP client bootstraps load it together without a redeclare (T77-37).

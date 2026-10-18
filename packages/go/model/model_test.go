@@ -148,7 +148,7 @@ func TestConditions(t *testing.T) {
 		if n := must(model.Author().Connect(db).BetweenReadCount([2]int{10, 20}).GetCount()); n != 2 {
 			t.Fatalf("between: %d", n)
 		}
-		if n := must(model.Author().Connect(db).GtStartDt(start.Add(90 * time.Minute)).GetCount()); n != 2 {
+		if n := must(model.Author().Connect(db).GtStartDt(start.Add(90 * time.Minute).Format(time.DateTime)).GetCount()); n != 2 {
 			t.Fatalf("time compare: %d", n)
 		}
 		one := must(model.Author().Connect(db).GetByName("gamma"))

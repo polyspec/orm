@@ -42,7 +42,7 @@ func TestWithContextCancels(t *testing.T) {
 			row := orm.NewCore(ent)
 			ent.New(row)
 			row.Connect(db)
-			row.Set("start_dt", time.Now())
+			row.Set("start_dt", time.Now().UTC().Format("2006-01-02 15:04:05.000000"))
 			if _, err := row.Create(); err != nil {
 				t.Fatal(err)
 			}
@@ -75,7 +75,7 @@ func TestWithContextCancels(t *testing.T) {
 				t.Fatal(err)
 			}
 			got.Orm_().Connect(db.WithContext(ctx))
-			got.Orm_().Set("start_dt", time.Now())
+			got.Orm_().Set("start_dt", time.Now().UTC().Format("2006-01-02 15:04:05.000000"))
 			started := time.Now()
 			if err := got.Orm_().Update(nil); orm.ErrorCode(err) != orm.CodeCanceled {
 				t.Fatalf("cancelled statement: %v (code %q)", err, orm.ErrorCode(err))
@@ -156,7 +156,7 @@ func TestWithContextCancelsTransaction(t *testing.T) {
 				row := orm.NewCore(ent)
 				ent.New(row)
 				row.Connect(handle)
-				row.Set("start_dt", time.Now())
+				row.Set("start_dt", time.Now().UTC().Format("2006-01-02 15:04:05.000000"))
 				if _, err := row.Create(); err != nil {
 					return err
 				}
@@ -207,7 +207,7 @@ func TestWithContextCancelsInsideTransaction(t *testing.T) {
 			seed := orm.NewCore(ent)
 			ent.New(seed)
 			seed.Connect(holder)
-			seed.Set("start_dt", time.Now())
+			seed.Set("start_dt", time.Now().UTC().Format("2006-01-02 15:04:05.000000"))
 			if _, err := seed.Create(); err != nil {
 				t.Fatal(err)
 			}

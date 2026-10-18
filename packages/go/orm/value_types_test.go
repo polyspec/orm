@@ -54,7 +54,7 @@ func TestRuntimeValueTypes(t *testing.T) {
 			c.Set("small", int16(-1234))
 			c.Set("ref", "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e")
 			c.Set("clock", "10:20:30.500")
-			c.Set("day", time.Date(2026, 2, 3, 0, 0, 0, 0, time.UTC))
+			c.Set("day", "2026-02-03")
 			c.Set("address", "192.0.2.7")
 			c.Set("packed", orm.Value("compressed text"))
 			c.Set("note", "plain text")
