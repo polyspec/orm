@@ -1,8 +1,11 @@
-// The comment language check reads the comments of each language family and no string, so Hangul in a
+// The comment language check reads each ecosystem's comments with that ecosystem's own tokenizer, so Hangul in a
 // string, a raw string or a template is accepted, and Hangul in a comment is rejected with its line.
 import assert from 'node:assert/strict';
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 import { caseTest, COMPUTE } from '../../tests/testcase.mts';
-import { commentsOf, hangulComments, syntaxOf } from './check.mts';
+import { commentsByFile, familyOf, hangulComments } from './check.mts';
 
 const KO = '한글';
 
@@ -18,32 +21,44 @@ const cases: Array<{ name: string; path: string; text: string; lines: number[] }
   { name: 'Rust string literal may span lines and hides its comment marker', path: 'a.rs', text: `let s = "a\n// ${KO}\n";\n`, lines: [] },
   { name: 'TypeScript line comment is reported', path: 'a.ts', text: `const x = 1; // ${KO}\n`, lines: [1] },
   { name: 'TypeScript template literal with Hangul is accepted', path: 'a.ts', text: 'const s = `' + KO + '`;\n', lines: [] },
+  { name: 'TypeScript regular expression does not hide the comment after it', path: 'a.ts', text: `const r = /'/;\n// ${KO}\n`, lines: [2] },
   { name: 'TypeScript URL inside a string does not start a comment', path: 'a.mts', text: `const u = "https://x";\n/* ${KO} */\n`, lines: [2] },
   { name: 'PHP hash comment is reported', path: 'a.php', text: `<?php\n# ${KO}\n`, lines: [2] },
+  { name: 'PHP double-slash comment is reported', path: 'a.php', text: `<?php\n// ${KO}\n`, lines: [2] },
   { name: 'PHP attribute is code, not a comment', path: 'a.php', text: `<?php\n#[Attr("${KO}")]\n`, lines: [] },
   { name: 'Python hash comment is reported', path: 'a.py', text: `x = 1  # ${KO}\n`, lines: [1] },
-  { name: 'Python docstring at a line start is a comment', path: 'a.py', text: `def f():\n    """\n    ${KO}\n    """\n`, lines: [3] },
-  { name: 'Python triple-quoted data is accepted', path: 'a.py', text: `sql = """\n${KO}\n"""\n`, lines: [] },
+  { name: 'Python docstring is a comment', path: 'a.py', text: `def f():\n    """\n    ${KO}\n    """\n`, lines: [3] },
+  { name: 'Python triple-quoted data that is not a docstring is accepted', path: 'a.py', text: `sql = """\n${KO}\n"""\n`, lines: [] },
   { name: 'Makefile comment is reported', path: 'Makefile', text: `all:\n\t@true\n# ${KO}\n`, lines: [3] },
-  { name: 'Makefile escaped hash is not a comment in a string', path: 'Makefile', text: `x = \\#${KO}\n`, lines: [] },
+  { name: 'Makefile escaped hash is not a comment', path: 'Makefile', text: `x = \\#${KO}\n`, lines: [] },
   { name: 'TOML comment is reported and a string with hash is not', path: 'a.toml', text: `a = "#${KO}"\n# ${KO}\n`, lines: [2] },
   { name: 'Shebang selects PHP for an extension-less file', path: 'bin/tool', text: `#!/usr/bin/env php\n<?php\n// ${KO}\n`, lines: [3] },
 ];
 
-for (const { name, path, text, lines } of cases) {
-  caseTest(name, COMPUTE, () => {
-    assert.deepEqual(hangulComments(path, text).map(comment => comment.line), lines);
-  });
+// Every case is written to its own directory, so one batch run of each tokenizer covers all of them.
+const dir = await mkdtemp(join(tmpdir(), 'orm-comments-'));
+const paths = cases.map((c, i) => join(String(i), c.path));
+for (const [i, c] of cases.entries()) {
+  await mkdir(dirname(join(dir, paths[i] as string)), { recursive: true });
+  await writeFile(join(dir, paths[i] as string), c.text);
 }
+const byFile = await commentsByFile(dir, paths);
 
-caseTest('a file without comment syntax is not read', COMPUTE, () => {
-  assert.equal(syntaxOf('docs/a.md'), undefined);
-  assert.equal(syntaxOf('config/a.json'), undefined);
-  assert.deepEqual(hangulComments('config/a.json', `{"a": "${KO}"}`), []);
+cases.forEach(({ name, lines }, i) => {
+  caseTest(name, COMPUTE, () => {
+    assert.deepEqual(hangulComments(byFile.get(paths[i] as string) ?? []).map(comment => comment.line), lines);
+  });
 });
 
-caseTest('commentsOf returns the line of each comment span', COMPUTE, () => {
-  const syntax = syntaxOf('a.go');
-  assert.ok(syntax);
-  assert.deepEqual(commentsOf('x\n// one\n/* two\nthree */\n', syntax).map(comment => comment.line), [2, 3, 4]);
+caseTest('a file without comment syntax has no family', COMPUTE, () => {
+  assert.equal(familyOf('docs/a.md'), undefined);
+  assert.equal(familyOf('config/a.json'), undefined);
+});
+
+caseTest('commentsByFile splits a block comment into its physical lines', COMPUTE, async () => {
+  const rel = join('block', 'a.go');
+  await mkdir(dirname(join(dir, rel)), { recursive: true });
+  await writeFile(join(dir, rel), 'x\n// one\n/* two\nthree */\n');
+  const comments = (await commentsByFile(dir, [rel])).get(rel) ?? [];
+  assert.deepEqual(comments.map(comment => comment.line), [2, 3, 4]);
 });

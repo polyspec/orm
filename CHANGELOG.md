@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The comment language check reads each ecosystem's comments with its own tokenizer (go/scanner, the TypeScript parser, tokenize, token_get_all); Rust, C and the hash-comment files keep a lexer that docs/rebuild records (T131-1-1).
 - Code comments are English: the 10,469 Korean comment lines of the tracked code files are translated, and `make comment-language-check` fails on Hangul in any code comment (T131).
 - The parity-check step owns its run directory (STEP_RUN_DIR, removed when the step ends), so no leftover is reported (T77-58).
 - The MySQL days_ago bind uses the bound instant, so the physical fixture is deterministic on every database (T77-33-1).

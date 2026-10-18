@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7d3429c3cd1910bce46ccb1c741614028c1f5cfbdd089b89c91bad2128bb9830 -->
+<!-- source-sha256: f5a8c38a0e88e29b55e662a20fc8f1f44919d8cfa8753c855707fcaa4f924b1a -->
 # 변경 이력
 
 ## Unreleased
+- 주석 언어 검사는 각 생태계의 tokenizer(go/scanner, TypeScript parser, tokenize, token_get_all)로 주석을 읽는다. Rust, C, hash 주석 파일은 docs/rebuild가 기록한 lexer를 쓴다 (T131-1-1).
 - 코드 주석은 영어다: tracked code 파일의 한글 주석 10,469줄을 번역했고, `make comment-language-check`는 code 주석의 한글을 실패시킨다 (T131).
 - parity-check 단계가 자기 실행 디렉터리(STEP_RUN_DIR, 단계가 끝나면 삭제)를 가지므로 남은 디렉터리가 보고되지 않는다 (T77-58).
 - MySQL days_ago bind가 바인드된 시각을 써서, physical fixture가 모든 database에서 결정적이다 (T77-33-1).
