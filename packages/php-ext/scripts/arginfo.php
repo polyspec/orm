@@ -1,13 +1,13 @@
 <?php
 declare(strict_types=1);
 
-// stubs/orm_dbspec.stub.php에서 gen_stub.php로 src/orm_dbspec_arginfo.h를 만든다. gen_stub은 비어 있지 않은 배열
-// 상수를 쓰지 못하므로 `public const array` 줄을 뺀 사본에서 만들고, 그 상수는 src/orm_dbspec.c가 등록한다
-// (선언 검사가 stub 전체와 확장의 Reflection을 비교한다).
+// Makes src/orm_dbspec_arginfo.h from stubs/orm_dbspec.stub.php with gen_stub.php. gen_stub cannot
+// write array constants, so it is made from a copy without the `public const array` line; that constant is registered by src/orm_dbspec.c
+// (the declaration check compares the whole stub with the extension's Reflection).
 //
 // Usage: php packages/php-ext/scripts/arginfo.php <gen_stub.php> write|check
-// write는 header를 다시 쓰고, check는 다시 만든 header가 저장된 것과 다르면 1로 끝난다. gen_stub.php는 같은
-// directory의 PHP-Parser를 쓰며, 그것이 없으면 내려받으므로 미리 있는지 확인한다(make install-php-extension-tools).
+// write rewrites the header, and check exits with 1 if the regenerated header differs from the saved one. gen_stub.php uses the
+// PHP-Parser in the same directory, and downloads it if it is absent, so check that it is present first (make install-php-extension-tools).
 
 [, $genStub, $mode] = $argv + [null, '', ''];
 if ($genStub === '' || !in_array($mode, ['write', 'check'], true)) {
