@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d3ccfce2f1716aab462fc8ac240e214d9abbac5da81da3fb179b5666f9344fe0 -->
+<!-- source-sha256: 2b2e1c82f9d0166d49c47f733932b9c9e71a685ba1f63080491828dec802c50c -->
 # 변경 이력
 
 ## Unreleased
 - Python decimal unit이 parity 실행에서 통과한다. round trip이 parity-check가 내보내는 DECIMAL_*_DSN 이름을 읽는다 (T148-4-1).
+- 두 PHP 성능 gate가 parity 실행에서 통과한다. parity-check가 가드가 읽는 ORM_BENCH_MYSQL_DSN을 내보낸다 (T148-4-2).
 - PHP decimal-set binding이 decimal document를 자기 case로 실행해, dbspec-set-decimal unit이 PHP와 TypeScript에서 통과한다 (T148-3-php-1, T148-3-ts-2).
 - TypeScript IR answer case가 ir_answers.mjs에서 fixture id로 실행되고, flowmark case는 markdown_conformance.mjs에 남는다 (T148-3-ts-3).
 - TypeScript install fixture가 자기 file에서 실행되어, install unit은 자기 fixture case만 보고한다 (T148-3-ts-1).
