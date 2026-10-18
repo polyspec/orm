@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- A test run that reports zero cases fails: scripts/check/count-cases.mts counts the cases through kit's event readers (T77-54).
 - The PHP CollectionKey contract lists the key set PHP implements, and the recorded interface hashes follow it (T77-52).
 - Every check target in CHECK_TARGETS runs in a CI group: the Go dbspec engine and perf-check (T77-53).
 - The interface record run writes the symbol hashes of contracts/interfaces.json, so the manifest is not edited by hand (T77-51).

@@ -3,6 +3,7 @@
 # 변경 이력
 
 ## Unreleased
+- 케이스를 하나도 보고하지 않은 시험 실행은 실패한다. scripts/check/count-cases.mts가 kit의 이벤트 리더로 케이스를 센다 (T77-54).
 - PHP CollectionKey 계약은 PHP가 구현하는 키 집합을 나열하고, 기록된 interface 해시가 그것을 따른다 (T77-52).
 - CHECK_TARGETS의 모든 검사 대상은 CI 그룹에서 실행된다: Go dbspec engine과 perf-check (T77-53).
 - interface 기록 실행은 contracts/interfaces.json의 symbol hash를 쓴다. manifest를 손으로 고치지 않는다 (T77-51).
