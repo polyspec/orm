@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 011229e30e6e6a138ba07e13ffa697e7113ab6b79db21915618784996531968e -->
+<!-- source-sha256: 0ce3b1b26736d8242278cbb24f64e4e55b93bfa0964daded4b43fffbc79880ad -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1542,8 +1542,8 @@
   - bind 수가 dialect의 bind 한도를 넘는 묶음은 어떤 statement보다 먼저 새 오류 code `BATCH_TOO_LARGE`(docs/errors.yaml, 모든 catalog, parity unit)로 실패하며, message가 묶음, 그 bind 수, dialect 한도를 말한다. 나누지 않는다.
   - 결과는 삽입된 행 수다.
   - docs/dsl.md, docs/interfaces.md, docs/usage.md와 ko 쌍, contracts/interfaces.json, 생성된 wrapper, parity unit.
-- [o] T202 upsert의 conflict key를 request hook 뒤에 검증한다(consumer hyper ScopeHook). 원인: request hook이 insert의 scope column을 할당하지만 `duplication()->create()`의 conflict key 검증이 hook 전의 request를 읽으므로, hook이 완성하는 key가 거부된다. 완료 기준: 검증 위치(Go ir.go, PHP Validator.php, Python validate.py, Rust validate.rs, TS validate.ts)가 hook이 돌려준 request를 읽는다. 언어마다 unit case, 전 red, 후 green.
-  결함 없음으로 닫는다 (2026-10-19, 9ce82e84 코드 읽기): 모든 client에서 request hook은 planner가 conflict key를 검증하기 전에 실행된다. Go exec.go:1088 applyRequestHook → db.go:254 ir.Validate (ir.go:400), PHP Db::writeOf hook (Db.php:1017) → Engine::compile (Validator.php:180), Python database.py `_hooked` → validate.py:889, Rust model.rs:961 hook_request → validate.rs:223, TypeScript database.ts:1202 hook → validate.ts:602. hook 전에 request를 읽는 validator가 없으므로 hook이 채운 key는 통과한다. 같은 모양의 consumer 거부는 재현과 함께 새 행으로 연다.
+- [ ] T202 upsert의 conflict key를 request hook 뒤에 검증한다(consumer hyper ScopeHook). 원인: request hook이 insert의 scope column을 할당하지만 `duplication()->create()`의 conflict key 검증이 hook 전의 request를 읽으므로, hook이 완성하는 key가 거부된다. 완료 기준: 검증 위치(Go ir.go, PHP Validator.php, Python validate.py, Rust validate.rs, TS validate.ts)가 hook이 돌려준 request를 읽는다. 언어마다 unit case, 전 red, 후 green.
+  재개 (2026-10-19): 코드 읽기만으로 결함 없음으로 닫았다. 다음: client마다 request hook이 `duplication()->create()`의 conflict key를 채우는 case를 red 후 green으로 실행한다. 코드 읽기(각 client에서 hook이 검증보다 먼저)는 출발점이지 증명이 아니다.
 - [o] T203 `relation()`과 `relations()`가 service scope 아래에서 실행된다(consumer). 원인: service scope 아래에서 둘 다 `CONFIG`로 실패한다. 완료 기준: 원인을 찾아 여기에 적고, 언어마다 case, 전 red, 후 green.
   재현되지 않음으로 닫는다 (2026-10-19, c2b2bd6f 코드 읽기): request hook은 root request마다 한 번 적용되고 (Go exec.go:448, PHP Db.php:211, Python database.py:2042, TypeScript database.ts:1197, Rust db.rs:64), relation child는 root statement 안에서, external relation은 그 뒤에 읽힌다. 다섯 client 어디에도 hook 아래 relation()/relations()가 `CONFIG`를 내는 경로가 없다. consumer에는 message와 호출 위치가 없다 (`CONFIG`라고만 보고됨). S-286-19-4는 relation()을 직접 쓰고, 마지막 실행에서 `CONFIG`가 나면 message, file:line, hook 본문과 함께 새 행을 연다.
 - [o] T206 orm이 행이 대기나 진행 중인 동안 `make check`와 `parity-check`를 거부하는 kit full-run guard를 쓴다(kit K233, K234). 완료 기준: orm에서 각각 한 번의 dry run이 열린 행을 말하고 거부한다.
