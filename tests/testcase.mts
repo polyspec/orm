@@ -69,10 +69,10 @@ function reason(error: unknown): string {
   return String(error);
 }
 
-// execute는 body를 deadline(ms) 아래에서 실행하고 실패 이유를 돌려준다. 통과하면 undefined다. deadline에 abort되는
-// signal을 body에 주고, deadline에 GRACE를 더한 시간이 지나도 body가 끝나지 않으면 `Bail out!` 줄을 쓰고 process를
-// 종료 코드 1로 끝낸다. 멈춘 body가 쥔 timer나 연결 같은 handle은 풀 수 없고, 남겨 두면 process가 끝나지 않기 때문이다.
-// 같은 process의 뒤 case는 실행되지 않는다.
+// execute runs body under deadline (ms) and returns the failure reason; it is undefined when body passes. A body that is aborted at the deadline
+// gives body a signal; if body still has not finished after the deadline plus GRACE, it writes a `Bail out!` line and ends the process
+// with exit code 1. A stuck body's handles, such as timers or connections, cannot be released, and leaving them open would keep the process from ending.
+// Later cases in the same process do not run.
 async function execute(name: string, deadline: number, body: CaseBody, step: Step): Promise<string | undefined> {
   if (!(deadline > 0)) throw new Error(`runCase ${name}: deadline ${deadline} is not positive`);
   const controller = new AbortController();
@@ -92,7 +92,7 @@ async function execute(name: string, deadline: number, body: CaseBody, step: Ste
   }
 }
 
-// report는 case 하나의 TAP 결과 줄을 쓴다. 이유는 `#` 줄로 쓰고, 여러 줄이면 줄마다 `#`를 붙인다.
+// report writes one case's TAP result line. The reason is written as `#` lines, with a `#` prefixed to each line when there are several.
 function report(name: string, failure: string | undefined): boolean {
   if (failure === undefined) {
     console.log(`ok - ${name}`);
@@ -103,16 +103,16 @@ function report(name: string, failure: string | undefined): boolean {
   return false;
 }
 
-// runCase는 case 하나를 deadline(ms) 아래에서 실행하고 TAP 결과 줄을 쓴다. body는 { signal, step }을 받는다. signal은
-// deadline에 abort되고, step(text)은 단계 줄을 쓴다. 통과하면 true, 실패하면 false를 돌려준다. process의 종료 코드는
-// 호출자가 정한다.
+// runCase runs one case under deadline (ms) and writes its TAP result line. body receives { signal, step }. signal is
+// aborted at the deadline, and step(text) writes a step line. It returns true when the case passes and false when it fails. The process exit code is
+// decided by the caller.
 export async function runCase(name: string, deadline: number, body: CaseBody): Promise<boolean> {
   return report(name, await execute(name, deadline, body, text => console.log(text)));
 }
 
-// cases는 test script 하나의 case를 차례로 실행하는 runner다. run(name, deadline, body)은
-// runCase로 case 하나를 실행하고 그 결과를 돌려주며, finish()는 실패한 case가 있으면 그 수를
-// 출력하고 종료 코드를 1로 둔다.
+// cases is a runner that executes the cases of one test script in order. run(name, deadline, body)
+// runs one case with runCase and returns its result, and finish() reports the number of failed cases, if any,
+// and sets the exit code to 1.
 export function cases() {
   let failed = 0;
   return {
@@ -131,11 +131,11 @@ export function cases() {
   };
 }
 
-// sections는 함수로 나뉘지 않은 test 코드 구역을 case로 보고한다. begin(name, deadline)이
-// 구역을 시작하고, end(reason)이 reason이 없으면 `ok`, 있으면 `not ok` 줄을 쓴다. 구역은 끊을 수 없는 코드이므로
-// deadline에 GRACE를 더한 시간이 지나면 `Bail out!` 줄을 쓰고 process를 끝낸다. 구역이 열린 채 process가
-// 끝나면(잡히지 않은 error, 오류를 적고 부른 process.exit) `Bail out!` 줄을 쓴다. 그 이유는 구역이 열려 있는
-// 동안의 마지막 오류다: 잡히지 않은 error의 message, 없으면 stderr에 쓴 마지막 줄이다. 그래서 그 줄이 실제 오류를 담는다.
+// sections reports test code regions that are not split into functions as cases. begin(name, deadline)
+// starts a region, and end(reason) writes an `ok` line if there is no reason, or a `not ok` line if there is one. Since a region is code that cannot be interrupted,
+// if the deadline plus GRACE passes, it writes a `Bail out!` line and ends the process. If the process
+// exits while the region is open (an uncaught error, or a process.exit called after logging an error), it writes a `Bail out!` line. The reason is that the region's
+// last error while it was open is the message of the uncaught error, or otherwise the last line written to stderr. So that line carries the actual error.
 export function sections() {
   let open: { name: string; timer?: NodeJS.Timeout } | null = null;
   let lastError = '';
@@ -178,16 +178,16 @@ export function sections() {
   };
 }
 
-// runGroup은 저마다 기한을 가진 case를 묶은 일 하나(다른 runner를 실행하는 명령)를 실행하고 TAP 결과 줄을 쓴다.
-// 묶음 자신은 기한이 없다. body는 { step }을 받는다. 통과하면 true, 실패하면 false를 돌려준다.
+// runGroup runs one job that groups cases, each with its own deadline (a command that runs another runner), and writes a TAP result line.
+// The group itself has no deadline. body receives { step }. It returns true when it passes and false when it fails.
 export function runGroup(name: string, body: LongBody): Promise<boolean> {
   return runWithoutDeadline(name, body);
 }
 
-// runLong은 장기 작업 하나(build, 설치, 도구 실행)를 기한 없이 실행하고 TAP 결과 줄을 쓴다. 느리지만 정상인 작업이
-// 시계 때문에 실패하지 않도록 timer를 두지 않는다. 진행은 body가 step으로 내보내는 출력 줄(하위 process의 출력)로
-// 관측하고, 성공과 실패는 body가 관측한 결과(종료 코드와 오류)로 정한다. body는 { step }을 받는다. 통과하면 true,
-// 실패하면 false를 돌려준다.
+// runLong runs one long-running job (a build, an install, a tool run) with no deadline and writes a TAP result line. So that a slow but healthy job
+// does not fail because of the clock, no timer is set. Progress is observed through the output lines that body emits with step (the output of child processes),
+// and success or failure is decided by the result body observes (the exit code and errors). body receives { step }. It returns true when it passes,
+// and false when it fails.
 export function runLong(name: string, body: LongBody): Promise<boolean> {
   return runWithoutDeadline(name, body);
 }
@@ -202,8 +202,8 @@ async function runWithoutDeadline(name: string, body: LongBody): Promise<boolean
   }
 }
 
-// stepLines는 하위 process 출력 조각을 받아 빈 줄이 아닌 줄마다 step(line)을 부르는 writer다. flush가
-// 줄 끝 없이 남은 출력을 내보낸다.
+// stepLines is a writer that takes child process output chunks and calls step(line) for each non-empty line. flush
+// emits the output left without a line end.
 export function stepLines(step: Step): { write(chunk: string | Uint8Array): void; flush(): void } {
   let partial = '';
   return {
@@ -223,7 +223,7 @@ export function stepLines(step: Step): { write(chunk: string | Uint8Array): void
   };
 }
 
-// caseTest는 node:test의 test 하나로 case를 실행한다. 단계는 t.diagnostic(TAP의 `#` 줄)이고, 실패한 case는 이유를
+// caseTest runs a case as one node:test test. Steps are t.diagnostic (the `#` lines of TAP), and a failed case reports its reason
 // Fails the test with the error it carries. node:test's timeout adds twice GRACE to the deadline so the deadline ends first.
 export function caseTest(name: string, deadline: number, body: CaseBody): void {
   test(name, { timeout: deadline + 2 * GRACE }, async t => {
