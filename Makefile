@@ -326,7 +326,7 @@ dbspec-introspect-ts-check: lease-tool
 # Polyspec\Orm\Dbspec\Dbspec::introspect로 실행한다.
 .PHONY: dbspec-introspect-php-check
 dbspec-introspect-php-check: php-vendor-check
-	$(WITH_TEST_ENV) php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecIntrospectTest.php
+	$(WITH_TEST_ENV) $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecIntrospectTest.php
 
 # dbspec-introspect-php-extension-check는 같은 round trip과 미지원 case를 PHP 확장 orm_dbspec의
 # Polyspec\Orm\Dbspec\Native\Dbspec::introspect로 실행한다. 확장은 이 실행의 directory에 build한다.
@@ -424,14 +424,14 @@ dbspec-plan-rust-check: cargo-downloads-check
 # Dbspec::introspect로 적용한다.
 .PHONY: dbspec-plan-php-check
 dbspec-plan-php-check: php-vendor-check
-	$(WITH_TEST_ENV) php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecPlanApplyTest.php
-	$(WITH_TEST_ENV) php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecPlanReaderTest.php
+	$(WITH_TEST_ENV) $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecPlanApplyTest.php
+	$(WITH_TEST_ENV) $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecPlanReaderTest.php
 
 # dbspec-apply-php-check는 2000 table plan을 뺀 dbspec-apply-check의 scenario를 PHP client의
 # Polyspec\Orm\Dbspec\Dbspec::apply, recover, rollback, finalize로 MySQL, PostgreSQL, SQLite에서 실행한다.
 .PHONY: dbspec-apply-php-check
 dbspec-apply-php-check: php-vendor-check
-	$(WITH_TEST_ENV) php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecApplyTest.php
+	$(WITH_TEST_ENV) $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecApplyTest.php
 
 # dbspec-apply-php-extension-check는 같은 scenario를 PHP 확장 orm_dbspec의 Polyspec\Orm\Dbspec\Native\Dbspec::apply,
 # recover, rollback, finalize로 실행한다. 확장은 이 실행의 directory에 build한다.
@@ -573,10 +573,10 @@ dbspec-stress-bench/go: dbspec-stress-bench/prepare
 	$(GO_TEST) -tags bench ./packages/go/engine/dbspec -run '^TestStressDocument$$' -count=1
 	$(GO_TEST) -tags bench ./packages/go/engine/dbspec -run '^TestStressDocument$$' -count=1
 dbspec-stress-bench/php: php-vendor-check dbspec-stress-bench/prepare
-	php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecStressTest.php
-	php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecStressTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecStressTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecStressTest.php
 dbspec-stress-bench/php-introspect: php-vendor-check dbspec-stress-bench/prepare
-	php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecIntrospectStressTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecIntrospectStressTest.php
 dbspec-stress-bench/typescript: dbspec-stress-bench/prepare lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
@@ -636,44 +636,44 @@ rust-send-savepoint-check/test: cargo-downloads-check
 dbspec-php-check: dbspec-php-check/documents dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode dbspec-php-check/show-create dbspec-php-check/analyze dbspec-php-check/set dbspec-php-check/set-parse
 .PHONY: dbspec-php-check/documents dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode dbspec-php-check/show-create dbspec-php-check/analyze dbspec-php-check/set dbspec-php-check/set-parse
 dbspec-php-check/documents: php-vendor-check
-	php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecTest.php
-	php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecTest.php
 dbspec-php-check/rules: php-vendor-check
-	php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRulesTest.php
-	php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRulesTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRulesTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRulesTest.php
 dbspec-php-check/manifest: php-vendor-check
-	php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecManifestTest.php
-	php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecManifestTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecManifestTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecManifestTest.php
 dbspec-php-check/render: php-vendor-check
-	php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRenderTest.php
-	php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRenderTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRenderTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRenderTest.php
 dbspec-php-check/plan: php-vendor-check
-	php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecPlanTest.php
-	php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecPlanTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecPlanTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecPlanTest.php
 dbspec-php-check/mermaid: php-vendor-check
-	php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecMermaidTest.php
-	php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecMermaidTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecMermaidTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecMermaidTest.php
 dbspec-php-check/apply-cleanup: php-vendor-check
-	php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecApplyCleanupTest.php
-	php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecApplyCleanupTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecApplyCleanupTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecApplyCleanupTest.php
 # dbspec-php-check/unicode는 PHP UnicodeWord의 표가 모든 code point에서 그 구간과 같은지 본다(표 자체는 dbspec-go-check/unicode가 Go와 맞춘다).
 dbspec-php-check/unicode: php-vendor-check
-	php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecUnicodeTest.php
-	php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecUnicodeTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecUnicodeTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecUnicodeTest.php
 # dbspec-php-check/show-create는 MysqlCatalog::createChecks가 tests/dbspec/show-create.json의 모든 case를 기대한 본문으로 읽는지 본다.
 # dbspec-php-check/analyze는 syntax analysis와 format을 focused case와 cases.json의 모든 case로 본다(docs/dbspec.md "Syntax analysis", "Formatting").
 dbspec-php-check/analyze: php-vendor-check
-	php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecAnalyzeTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecAnalyzeTest.php
 dbspec-php-check/show-create: php-vendor-check
-	php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecShowCreateTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecShowCreateTest.php
 # dbspec-php-check/set runs Dbspec::readSet on every case of tests/dbspec/set-files.json and the focused cases, each
 # a temporary file tree with real symbolic and hard links (docs/dbspec.md "Document sets").
 dbspec-php-check/set: php-vendor-check
-	php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecSetTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecSetTest.php
 # dbspec-php-check/set-parse runs Dbspec::parseSet on every case of tests/dbspec/set-parse.json (docs/dbspec.md
 # "Parsing a set").
 dbspec-php-check/set-parse: php-vendor-check
-	php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecSetParseTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecSetParseTest.php
 
 .PHONY: dbspec-php-extension-check php-extension-arginfo
 # dbspec-php-extension-check는 PHP 확장 orm_dbspec(packages/php-ext, PHP client의 dbspec 표면을 C로 구현한
@@ -990,7 +990,7 @@ conformance-counter-check:
 conformance-result-check: conformance-result-check/php conformance-result-check/typescript conformance-result-check/go conformance-result-check/python
 .PHONY: conformance-result-check/php conformance-result-check/typescript conformance-result-check/go conformance-result-check/python
 conformance-result-check/php: php-vendor-check
-	php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ConformanceResultTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ConformanceResultTest.php
 conformance-result-check/typescript: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(RUN_LONG) typescript-build -- npm run typescript:build
@@ -1391,7 +1391,7 @@ codec-check/typescript: lease-tool
 	$(TSC_BUILD)
 	ORM_CODEC_OUT=$(CODEC_OUT) $(NODE) packages/ts/tests/codec-vector.mjs
 codec-check/compare: php-vendor-check codec-check/go codec-check/rust codec-check/typescript codec-check/python
-	ORM_CODEC_OUT=$(CODEC_OUT) php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecVectorsTest.php
+	ORM_CODEC_OUT=$(CODEC_OUT) $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecVectorsTest.php
 	rm -rf $(CODEC_OUT)
 
 # bind-check runs the shared cases of tests/bind/vectors.json in the five clients (tests/bind/README.md): the bind
