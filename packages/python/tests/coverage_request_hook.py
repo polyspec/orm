@@ -22,21 +22,21 @@ CASES = (
 )
 
 
-class CoverageRequestHook(RequestHookTest):
-    """The cases of RequestHookTest on a case database of the database item the run is on (driver, set by run_case)."""
+def coverage_request_hook_class(driver: str) -> type:
+    """The cases of RequestHookTest on a case database of the database item of this run. Built per item, so unittest
+    discovers no class without its driver."""
 
-    driver = ""
+    class CoverageRequestHook(RequestHookTest):
+        def database(self) -> str:
+            stack = contextlib.ExitStack()
+            self.addCleanup(stack.close)
+            return stack.enter_context(case_database(driver, self.dir, "orm_hook"))
 
-    def database(self) -> str:
-        driver = CoverageRequestHook.driver
-        stack = contextlib.ExitStack()
-        self.addCleanup(stack.close)
-        return stack.enter_context(case_database(driver, self.dir, "orm_hook"))
+    return CoverageRequestHook
 
 
 def run_case(name: str, item) -> None:
-    CoverageRequestHook.driver = item[0]
-    suite = unittest.TestSuite([CoverageRequestHook(f"test_{name}")])
+    suite = unittest.TestSuite([coverage_request_hook_class(item[0])(f"test_{name}")])
     result = unittest.TestResult()
     suite.run(result)
     problems = [text for _, text in result.errors + result.failures]

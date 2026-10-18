@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The Python request-hook coverage module runs its cases per item, so it exits 0 when every case passes (T77-42).
 - A PHP restore reads its key from the request the request hook left, before the planner renumbers parameters, as Go does (T77-41).
 - The Go tests bind text to date and datetime columns, as the setters do, so the cancel, value-types and conditions tests pass again (T77-40).
 - The Go DSN test expects the MySQL session sql_mode that T104 sets, so TestParseDSN passes again (T77-39).
