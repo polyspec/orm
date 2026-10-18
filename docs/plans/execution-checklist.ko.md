@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 76dd8b7189dd0492858fdae6580eb92cf42361844c758dc1811c6e8a731eb096 -->
+<!-- source-sha256: 54ce9db789fd9de46b600d83c60ba53da581a49b9018ebcedcd001314e916eb8 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1446,3 +1446,5 @@
   - [o] T156-2 Go markdown model을 다시 생성한다 (T156에 이어). 원인: run 38504701356이 go-markdown-model-generated에서 실패했다. packages/orm-go/markdownmodel에 key-prefix 메서드가 없었다. 완료 조건: go generate가 폴더를 바꾸지 않는다.
 - [o] T69 Release 0.0.9. 원인: T61, T62와 markdown IR executor인 T62-1, T63부터 T67까지는 polyspec/flowmark가 요구하는 protocol section, markdown 저장 setting과 executor를 추가하며, flowmark는 pseudo-version 대신 released tag를 요구한다. 완료 기준: 0.0.9의 release 절차를 이전 release 항목(T52, T56)과 같이 밟고 tag로 끝난다. T62-1, T63, T64, T65, T66, T67이 필요하다.
   Evidence: annotated tag v0.0.9가 ddcdca4f에 있고 GitHub release v0.0.9가 asset 4개를 가진다. flowmark는 그때부터 release tag를 받는다(지금은 v0.0.18에 고정). 이 항목은 release된 뒤 닫히지 않았다.
+
+- [ ] T77-58 parity-check 단계가 자기 실행 디렉터리를 남긴다: PARITY_RUN_DIR(.runtime/run/parity-check-$PPID)은 parity-prepare가 만들고 어떤 단계도 지우지 않으며, 종료 시 지울 수 있는 주체는 kit의 parity.mjs뿐이다. 원인: step.mts:166-168이 TMPDIR에 남은 항목을 보고하고 지우지 않으므로 TMPDIR 아래에는 둘 수 없다. 완료 기준: 깨끗한 parity-check 실행이 남은 디렉터리를 보고하지 않는다. 빨강: 단계가 left .runtime/run/parity-check-NNN을 보고. 초록: 보고하지 않는다. kit 행 필요.
