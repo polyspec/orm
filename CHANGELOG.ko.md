@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: bf4f70a843a3b2850fcc195878854e9576d29b7491ad4951e3554b8df28a5189 -->
+<!-- source-sha256: 1f6d8dabc8fcb466c9b39abe76b4ed6f0cc9a3efc8cc6a1cc30556a25cbadeeb -->
 # 변경 이력
 
 ## Unreleased
+- test server의 PostgreSQL replica가 물리 replication slot으로 WAL을 보존해, 뒤처진 뒤에도 다시 streaming한다(T218).
 - PHP insert parts case가 반복한 model 하나로 묶음 거부를 memory 한도 안에서 증명한다(T216).
 - generator scan은 이름을 가질 수 있는 class로 판정해 어떤 class도 선언하지 않을 때만 호출을 거부하고, use한 문서 entity의 getter를 받아들인다 (T219).
 - Rust integration case `conditions`가 시간 비교를 text로 넘긴다(T217).

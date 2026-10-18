@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The test servers' PostgreSQL replica keeps its WAL through a physical replication slot, so it streams again after falling behind (T218).
 - The PHP insert parts case proves the batch refusal with one repeated model, within the memory limit (T216).
 - The generator scans type a name by the classes it may hold, refuse a call only when none declares it, and accept getters of used-document entities (T219).
 - The Rust integration case `conditions` passes its time compare as text (T217).
