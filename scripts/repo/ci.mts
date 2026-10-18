@@ -6,38 +6,38 @@ import { CI_SETUP, stepCondition } from '../check/ci-setup.mts';
 import { parseSelection, selectChecks } from '../features/select.mts';
 import { runName } from '../check/report.mts';
 
-// CI workflow의 database 서버 검사. make check의 database 검사는 make test-servers
-// (scripts/test-servers.mts)가 쓴 .runtime/servers/env의 변수를 읽으므로, workflow는 같은 정의로
-// 서버를 시작하고 그 모든 변수를 검사 단계에 준다.
+// The database server check of the CI workflow. The database check of make check reads the variables in .runtime/servers/env that make test-servers
+// (scripts/test-servers.mts) wrote, so the workflow starts the servers with the same definition
+// and gives all of those variables to the check step.
 
 
-// runSegments는 step의 run text가 실행하는 명령이다(scripts/repo/shell.mts).
+// runSegments is the commands that a step's run text executes (scripts/repo/shell.mts).
 const runSegments = (step: WorkflowStep): string[] => step.run ? segments(step.run, 'workflow') : [];
-// runCommands는 step의 run text가 실행하는 simple command다(scripts/repo/shell.mts).
+// runCommands is the simple commands that a step's run text executes (scripts/repo/shell.mts).
 const runCommands = (step: WorkflowStep): SimpleCommand[] => step.run ? commands(step.run, 'workflow') : [];
-// provides는 command가 variable을 정의하는지 돌려준다: 그 이름을 assign하거나(`NAME=…`, `export NAME=…`) `NAME=…`를
-// $GITHUB_ENV에 쓴다.
+// provides returns whether a command defines a variable: it assigns that name (`NAME=…`, `export NAME=…`) or writes `NAME=…` to
+// $GITHUB_ENV.
 const provides = (command: SimpleCommand, variable: string): boolean => command.assigns.includes(variable) ||
   (command.writes.includes('$GITHUB_ENV') && command.args.some(arg => arg.startsWith(`${variable}=`)));
-// links는 command가 symbolic link를 만드는지 돌려준다: `ln`(`sudo ln`)의 `-s`나 `--symbolic`, 또는 symlink를 부르는 word.
+// links returns whether a command creates a symbolic link: `-s` or `--symbolic` of `ln` (`sudo ln`), or a word that calls symlink.
 const links = (command: SimpleCommand): boolean => {
   const words = command.name === 'sudo' ? command.args : [command.name ?? '', ...command.args];
   return (words[0] === 'ln' && words.slice(1).some(word => /^-[A-Za-z]*s[A-Za-z]*$/.test(word) || word === '--symbolic')) ||
     words.some(word => /symlink/i.test(word));
 };
 
-// repository의 make target은 step이 실행하는 명령이다. 다른 directory에서 build하는
-// make(예: `(cd /tmp/sqlite && make)`)는 검사가 아니다.
+// A repository make target is a command that a step runs. A make that builds in another directory
+// (e.g. `(cd /tmp/sqlite && make)`) is not a check.
 const startsServers = (step: WorkflowStep): boolean => runSegments(step).some(segment => /^make test-servers$/.test(segment));
-// make install과 그 부분(install-*)은 server 없이 download만 하므로 server보다 앞서도 된다.
+// make install and that part (install-*) only download without a server, so they may come before the server.
 const runsMake = (step: WorkflowStep): boolean => runSegments(step).some(segment => /^make\s+(?!install(?:-[\w-]+)?(?:\s+install(?:-[\w-]+)?)*$)/.test(segment)) && !startsServers(step);
 
-// ciServerErrors는 workflow가 database 검사의 서버와 변수를 test-servers.mts와 같은 정의로 주지
-// 않거나 symbolic link를 만드는 곳마다 오류 하나를 돌려준다.
-//   - make test-servers를 실행하는 step이 없으면 workflow가 적지 않은 각 변수가 오류다.
-//   - make를 실행하는 다른 step이 그 step보다 앞서면 오류다.
-//   - workflow가 그 변수를 직접 정의하거나 .runtime/servers/env를 직접 쓰면 오류다.
-//   - symbolic link를 만드는 step(ln -s, symlink)은 오류다.
+// ciServerErrors returns one error at each place where the workflow does not give the database check's servers and variables with the same definition as test-servers.mts,
+// or where it creates a symbolic link.
+//   - If no step runs make test-servers, each variable the workflow does not set is an error.
+//   - If another step that runs make comes before that step, it is an error.
+//   - If the workflow defines that variable directly or writes .runtime/servers/env directly, it is an error.
+//   - A step that creates a symbolic link (ln -s, symlink) is an error.
 export function ciServerErrors(workflow: string, variables: readonly string[]): string[] {
   const errors: string[] = [];
   if (variables.length === 0) return ['scripts/test-servers.mts writes no environment variable'];
@@ -51,7 +51,7 @@ export function ciServerErrors(workflow: string, variables: readonly string[]): 
     }
     errors.push('ci.yml does not start the database servers with make test-servers');
   } else {
-    // CI setup step(scripts/check/ci-setup.mts)은 server가 필요 없는 설치와 환경 확인이다.
+    // The CI setup step (scripts/check/ci-setup.mts) is installation and environment checking that needs no server.
     steps.slice(0, server).filter(step => runsMake(step) && !Object.hasOwn(CI_SETUP, step.id ?? '')).forEach(step =>
       errors.push(`ci.yml step "${step.name}" runs make before make test-servers starts the servers`));
   }
@@ -61,7 +61,7 @@ export function ciServerErrors(workflow: string, variables: readonly string[]): 
   }
   if (steps.some(step => step.run && writtenFiles(step.run, 'workflow').includes('.runtime/servers/env')))
     errors.push('ci.yml writes .runtime/servers/env; make test-servers writes it');
-  // symbolic link는 쓰지 않는다(AGENTS.md): 서버 program은 자기 package 경로에서 찾는다.
+  // Symbolic links are not used (AGENTS.md): the server program is found from its own package path.
   for (const step of steps) {
     if (runCommands(step).some(links))
       errors.push(`ci.yml step "${step.name}" creates a symbolic link`);
@@ -69,27 +69,27 @@ export function ciServerErrors(workflow: string, variables: readonly string[]): 
   return errors;
 }
 
-// checkTargets는 Makefile의 CHECK_TARGETS, 곧 make check가 실행하는 target을 돌려준다.
+// checkTargets returns the Makefile's CHECK_TARGETS, that is, the targets that make check runs.
 export function checkTargets(makefile: string): string[] {
   return /^CHECK_TARGETS = (.*)$/m.exec(makefile)?.[1]?.trim().split(/\s+/) ?? [];
 }
 
-// GROUP_CHECK는 CI group의 job이 runner(make check-run)를 실행하는 줄이다: matrix의 group 하나의 target(CI_TARGETS_<group>)을 실행한다.
+// GROUP_CHECK is the line that a CI group's job runs for the runner (make check-run): it runs the target (CI_TARGETS_<group>) of one group in the matrix.
 export const GROUP_CHECK = 'make check-run GROUP=${{ matrix.group }}';
 
-// runsCheck는 명령 조각이 전체 suite를 실행하는지다: 모든 target(`make check`, `make check-run`)이거나 CI group 하나(GROUP_CHECK)다.
+// runsCheck is whether a command fragment runs the full suite: all targets (`make check`, `make check-run`) or one CI group (GROUP_CHECK).
 export const runsCheck = (segment: string) => /^make\s+check(?:-run)?\s*$/.test(segment.trim()) || segment.trim() === GROUP_CHECK;
 const checkStep = (step: WorkflowStep): boolean => runSegments(step).some(runsCheck);
 const groupStep = (step: WorkflowStep): boolean => runSegments(step).some((segment: string) => segment === GROUP_CHECK);
 
-// ciGroups는 Makefile의 CI group이다: groups는 CI_GROUPS, targets는 CI_TARGETS_<group>마다 그 target이다.
+// ciGroups is the Makefile's CI groups: groups is CI_GROUPS, and targets is, for each group, that group's CI_TARGETS_<group>.
 export function ciGroups(makefile: string): { groups: string[]; targets: Record<string, string[]> } {
   const groups = /^CI_GROUPS = (.*)$/m.exec(makefile)?.[1]?.trim().split(/\s+/).filter(Boolean) ?? [];
   const targets: Record<string, string[]> = Object.fromEntries([...makefile.matchAll(/^CI_TARGETS_([a-z0-9_-]+) = (.*)$/gm)].map(match => [match[1] ?? '', (match[2] ?? '').trim().split(/\s+/).filter(Boolean)]));
   return { groups, targets };
 }
 
-// matrixGroups는 job의 strategy.matrix.group 목록이다. 없으면 null이다.
+// matrixGroups is the job's strategy.matrix.group list. It is null if there is none.
 export function matrixGroups(job: WorkflowJob): string[] | null {
   const strategy = job.value['strategy'];
   const matrix = typeof strategy === 'object' && strategy !== null && 'matrix' in strategy ? strategy.matrix : undefined;
@@ -97,9 +97,9 @@ export function matrixGroups(job: WorkflowJob): string[] | null {
   return Array.isArray(list) ? list.map(String) : null;
 }
 
-// ciGroupErrors는 CI group이 CHECK_TARGETS를 나누지 않는 곳마다 오류 하나를 돌려준다. GROUP_CHECK를 실행하는 job의
-// matrix group은 CI_GROUPS와 같고, CI group마다 CI_TARGETS_<group>이 있으며, 모든 group의 target을 합하면 CHECK_TARGETS와
-// 같고 어느 target도 두 group에 있지 않다. 그래서 job들이 함께 make check의 모든 target을 한 번씩 실행한다.
+// ciGroupErrors returns one error at each place where the CI groups do not split CHECK_TARGETS. For a job that runs GROUP_CHECK,
+// the matrix groups equal CI_GROUPS, each CI group has a CI_TARGETS_<group>, the targets of all groups together equal CHECK_TARGETS,
+// and no target is in two groups. So the jobs together run every target of make check once.
 export function ciGroupErrors(workflow: string, makefile: string): string[] {
   const errors: string[] = [];
   const { groups, targets } = ciGroups(makefile);
@@ -128,10 +128,10 @@ export function ciGroupErrors(workflow: string, makefile: string): string[] {
   return errors;
 }
 
-// ciReportPathErrors는 CI job이 올리는 보고서 directory가 runner가 쓰는 directory가 아닌 곳마다 오류 하나를 돌려준다. job마다
-// step의 `ORM_CHECK_RUN_ID`와 upload step의 `path:`에 run id 1, attempt 1과 matrix group(CI_GROUPS의 group마다)을 넣고, 그
-// path가 runner의 보고서 `.runtime/check/<runName(ORM_CHECK_RUN_ID)>/report/`와 같기를 요구한다. runName은 영문 소문자와 숫자가
-// 아닌 글자를 `_`로 바꾸므로, 그 밖의 글자가 있는 group 이름의 path는 runner가 쓰지 않은 directory를 가리킨다.
+// ciReportPathErrors returns one error at each place where the report directory a CI job uploads is not the directory the runner writes. For each job,
+// the `ORM_CHECK_RUN_ID` of the step and the `path:` of the upload step take run id 1, attempt 1 and the matrix group (for each group of CI_GROUPS), and
+// require the path to equal the runner's report `.runtime/check/<runName(ORM_CHECK_RUN_ID)>/report/`. runName replaces every character that is not
+// a lowercase English letter or digit with `_`, so a path for a group name with other characters points to a directory the runner did not write.
 export function ciReportPathErrors(workflow: string, makefile: string): string[] {
   const { groups } = ciGroups(makefile);
   const errors: string[] = [];
@@ -440,8 +440,8 @@ export function ciRerunErrors(workflow: string, makefile: string): string[] {
 const LEASE_READ = /Getenv\("LEASE"\)|process\.env\.LEASE\b|\bLEASE\s*:\s*\w+[^\n]*\}\s*=\s*process\.env|\$\{?LEASE\b/;
 
 // leaseProgram은 명령 조각이 실행하는 repository program의 source file을 돌려준다: `node tests/go-run.mts
-// <name> <package>`와 `go run <package>`는 그 package의 Go file(test 제외), `node <file>`과 `sh <file>`,
-// `./<file>`은 그 file이다. repository program이 아니면 빈 목록이다.
+// `<name> <package>` and `go run <package>` are that package's Go files (excluding tests), `node <file>` and `sh <file>`,
+// and `./<file>` is that file. It is an empty list if the program is not a repository program.
 function leaseProgram(segment: string, tracked: string[]): { name: string; files: string[] } {
   const command = segment.replace(/^(?:[A-Z_][A-Z0-9_]*=(?:"[^"]*"|'[^']*'|\S*)\s+)+/, '');
   const goPackage = /^node\s+tests\/go-run\.mts\s+\S+\s+(\S+)/.exec(command)?.[1] ?? /^go\s+run\s+(\.\/\S+)/.exec(command)?.[1];
@@ -457,11 +457,11 @@ function leaseProgram(segment: string, tracked: string[]): { name: string; files
   return { name: file, files: tracked.includes(path) ? [path] : [] };
 }
 
-// ciLeaseErrors는 workflow의 step이 lease 변수를 읽는 repository program을 make 밖에서 실행하는 곳마다 오류
-// 하나를 돌려준다. 그런 program(예: Rust 추출기를 공유 target directory의 lease 아래에서 build하는
-// tests/interfaces/check)은 make가 export하는 LEASE와 lease directory 없이 실패하므로, CI도 make check처럼
-// 그것을 make target으로 실행한다. workflows는 {path: text}, tracked는 추적하는 file, read는 file의 내용을
-// 돌려주는 함수다.
+// ciLeaseErrors returns one error at each place where a workflow step runs, outside make, a repository program that reads the lease variable
+// . Such a program (e.g. the Rust extractor built under a lease of the shared target directory
+// tests/interfaces/check) fails without the LEASE and lease directory that make exports, so CI also runs it as a make target, as make check does.
+// workflows is {path: text}, tracked lists the tracked files, and read
+// is a function that returns the content of a file.
 export function ciLeaseErrors(workflows: Record<string, string>, tracked: string[], read: (path: string) => string | undefined): string[] {
   const errors: string[] = [];
   for (const [path, workflow] of Object.entries(workflows)) {
@@ -477,11 +477,11 @@ export function ciLeaseErrors(workflows: Record<string, string>, tracked: string
   return errors;
 }
 
-// AFTER_CHECK은 make check 뒤에 오는 step이다. 전체 suite는 push 뒤 CI에서 실행되고 실패에서 멈추지 않으므로, 그
-// 뒤에는 검사가 아니라 그 실행의 정보를 남기는 두 step만 온다: runner가 끝나지 않았어도 summary를 job summary와
-// 보고서에 쓰는 summary, 그리고 그 실행 id의 보고서 directory만 올리는 report다. 둘 다 `if: ${{ !cancelled() }}`다.
-// AFTER_GROUP_CHECK은 CI group job의 같은 두 step이다: 실행 id, artifact 이름과 보고서 directory가 matrix의 group을 가지므로
-// group들의 보고서가 서로 겹치지 않는다. step은 workflow의 YAML 값으로 비교한다.
+// AFTER_CHECK is the steps that come after make check. The full suite runs in CI after push and does not stop at a failure, so after it
+// only two steps that record the run's information come, not checks: the summary, which writes to the job summary and the
+// report even if the runner has not finished, and report, which uploads only the report directory of that run id. Both have `if: ${{ !cancelled() }}`.
+// AFTER_GROUP_CHECK is the same two steps of a CI group job: since the run id, artifact name and report directory carry the matrix group,
+// the groups' reports do not overlap. Steps are compared by their YAML values in the workflow.
 export const RUN_ID = '${{ github.run_id }}-${{ github.run_attempt }}';
 export const GROUP_RUN_ID = '${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.group }}';
 const NOT_CANCELLED = '${{ !cancelled() }}';
@@ -496,9 +496,9 @@ export const AFTER_GROUP_CHECK: Record<string, unknown>[] = [
     with: { name: 'check-${{ matrix.group }}-${{ github.run_id }}-${{ github.run_attempt }}', path: '.runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}_${{ matrix.group }}/report/', 'if-no-files-found': 'error' } },
 ];
 
-// ciAfterCheckErrors는 make check를 실행하는 workflow의 job마다 make check step이 ORM_CHECK_RUN_ID를 주지 않거나, 그 뒤의
-// step이 AFTER_CHECK의 summary와 report와 정확히 같지 않은 곳마다 오류 하나를 돌려준다. 검사는 모두 make check의
-// target에 있고(CHECK_TARGETS), 그 뒤의 step은 그 실행의 summary와 보고서만 남긴다.
+// ciAfterCheckErrors returns one error at each place where, in each job of a workflow that runs make check, the make check step does not give ORM_CHECK_RUN_ID, or the steps after it
+// are not exactly the same as AFTER_CHECK's summary and report. All the checks are in make check's
+// targets (CHECK_TARGETS), and the steps after it only leave that run's summary and report.
 export function ciAfterCheckErrors(workflows: Record<string, string>): string[] {
   const errors: string[] = [];
   for (const [path, whole] of Object.entries(workflows)) for (const { steps } of readWorkflow(whole, path).jobs) {
@@ -524,8 +524,8 @@ export function ciAfterCheckErrors(workflows: Record<string, string>): string[] 
   return errors;
 }
 
-// FULL_SUITE_RULE은 AGENTS.md와 AGENTS.ko.md가 적어야 하는 전체 suite의 규칙이다: 전체 suite는 push 뒤 CI에서
-// 실행되고, CI 실행 한 번은 다음 실행 전에 모든 실패를 고칠 정보를 모으며, push 전에 필요한 로컬 검사는 없다. 이전 규칙(활성 항목이 모두 완료되었을 때 로컬에서 한 번 실행한다)은 남지 않는다.
+// FULL_SUITE_RULE is the full suite rule that AGENTS.md and AGENTS.ko.md must state: the full suite runs in CI after push, and one CI run
+// gathers the information to fix all failures before the next run, and no local check is needed before push. The previous rule (run once locally when every active item is done) does not remain.
 export const FULL_SUITE_RULE: Record<string, { required: string[]; removed: string[] }> = {
   'AGENTS.md': {
     required: ['runs on GitHub CI after a push', 'collect enough information to fix every failure it found before the next CI run', 'no local check is required', 'do not push again to react to it'],
@@ -537,8 +537,8 @@ export const FULL_SUITE_RULE: Record<string, { required: string[]; removed: stri
   },
 };
 
-// fullSuiteRuleErrors는 documents({path: text})가 FULL_SUITE_RULE의 문장을 적지 않거나 이전 규칙을 적는 곳마다
-// 오류 하나를 돌려준다.
+// fullSuiteRuleErrors returns one error for each place where documents ({path: text}) does not state
+// the FULL_SUITE_RULE sentence, or states the previous rule.
 export function fullSuiteRuleErrors(documents: Record<string, string>): string[] {
   const errors: string[] = [];
   for (const [path, { required, removed }] of Object.entries(FULL_SUITE_RULE)) {
@@ -549,14 +549,14 @@ export function fullSuiteRuleErrors(documents: Record<string, string>): string[]
   return errors;
 }
 
-// ciSetupErrors는 workflow의 setup step이 실패해도 그 뒤의 step이 실행되고 그 실패가 기록되지 않는 곳마다 오류 하나를
-// 돌려준다. make check를 실행하는 job에서 make check 앞의 step은 모두 id를 가지고, 그 id는 runner가 필요로 하는
-// step(RUNNER_STEPS)이거나 scripts/check/ci-setup.mts의 CI_SETUP이 그 step이 마련하는 것을 적은 step이다. 표의 step은
-// 모두 workflow에 있다. 첫 step 뒤의 step과 make check는 `if: ${{ !cancelled() }}`로 앞의 step이 실패해도 실행되고,
-// make check는 step 결과를 ORM_CI_SETUP: ${{ toJSON(steps) }}로 받는다. 다른 job의 `run:` step도 같은 job의 앞 step이
-// 실패해도 실행되는 조건(`if: ${{ !cancelled()`로 시작)을 가진다. continue-on-error는 실패를 job에서 지우므로 어디에도
-// 없다.
-// GROUP_NEEDS는 CI group job의 step group-needs가 실행하는 줄이다.
+// ciSetupErrors returns one error at each place where a workflow's setup step fails, yet the steps after it still run and that failure is not recorded.
+// In a job that runs make check, every step before make check has an id, and that id is a step the runner needs (RUNNER_STEPS)
+// or a step that records what that step provides in CI_SETUP of scripts/check/ci-setup.mts. The steps of the table
+// are all in the workflow. A step after the first step, and make check, run even if an earlier step fails, via `if: ${{ !cancelled() }}`,
+// and make check receives the step results as ORM_CI_SETUP: ${{ toJSON(steps) }}. A `run:` step in another job also has, for the
+// earlier steps of its job, a condition that it runs even if they fail (starting with `if: ${{ !cancelled()`). continue-on-error removes the failure from the job, so it
+// appears nowhere.
+// GROUP_NEEDS is the line that the group-needs step of a CI group job runs.
 export const GROUP_NEEDS = 'make --no-print-directory ci-group-needs GROUP=${{ matrix.group }} >> "$GITHUB_OUTPUT"';
 
 export function ciSetupErrors(workflows: Record<string, string>, { setup, runner }: { setup: Record<string, string | null>; runner: string[] }): string[] {
@@ -578,8 +578,8 @@ export function ciSetupErrors(workflows: Record<string, string>, { setup, runner
         else if (!runner.includes(step.id) && !Object.hasOwn(setup, step.id)) errors.push(`${path} step "${step.name}" has the id ${step.id}, which scripts/check/ci-setup.mts does not map to what it installs`);
         if (index > 0 && !guarded(index)) errors.push(`${path} step "${step.name}" does not run after a failed earlier setup step; give it if: \${{ !cancelled() }}`);
       }
-      // CI group의 job에서 setup step은 그 group이 필요로 할 때만 실행한다: 조건은 scripts/check/ci-setup.mts의
-      // stepCondition이고, group-needs step이 make ci-group-needs의 output을 $GITHUB_OUTPUT에 쓴다.
+      // In a CI group's job, a setup step runs only when that group needs it: the condition is stepCondition in scripts/check/ci-setup.mts,
+      // and the group-needs step writes the output of make ci-group-needs to $GITHUB_OUTPUT.
       const checkStepOf = steps[check];
       if (!checkStepOf) continue;
       if (groupStep(checkStepOf)) {

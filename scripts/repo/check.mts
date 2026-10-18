@@ -21,8 +21,8 @@ import { declaredNeeds, readCheckInputs } from '../check/inputs.mts';
 import { readFeatures } from '../features/manifest.mts';
 import { readComposer, readPackage } from '../json/formats.mts';
 
-// repository check는 CI workflow가 database 검사의 서버와 변수를 make test-servers로 주는지,
-// 검사와 workflow가 mise.toml의 Node 하나로 실행하는지 확인하는 case 하나다.
+// The repository check covers one case: whether the CI workflow gives the database check's servers and variables through make test-servers,
+// and whether the check and the workflow run on the one Node version declared in mise.toml.
 const log = sections();
 log.begin('repo', COMPUTE);
 
@@ -36,33 +36,33 @@ const failures = [];
 
 const makefile = readFileSync(join(root, 'Makefile'), 'utf8');
 const ci = readFileSync(join(root, '.github/workflows/ci.yml'), 'utf8');
-// CI workflow는 database 검사의 서버와 변수를 make test-servers로 준다.
+// The CI workflow gives the database check's servers and variables through make test-servers.
 failures.push(...ciServerErrors(ci, SERVER_VARIABLES));
 
-// CI workflow는 로컬 make check와 같은 target(CHECK_TARGETS)을 모두 한 번씩 실행한다.
+// The CI workflow runs every target the same as the local make check (CHECK_TARGETS), once each.
 failures.push(...ciCheckTargetErrors(ci, makefile));
-// CI job이 올리는 보고서 directory는 runner가 그 job의 ORM_CHECK_RUN_ID로 쓰는 directory다.
+// The report directory a CI job uploads is the directory the runner uses as that job's ORM_CHECK_RUN_ID.
 failures.push(...ciReportPathErrors(ci, makefile));
-// ci.yml의 마지막 job ci-passed는 다른 모든 job을 needs로 받고 `if: always()`로 실행한다. ruleset은 그 check를 요구한다.
+// The last job of ci.yml, ci-passed, takes every other job as needs and runs with `if: always()`. The ruleset requires that check.
 failures.push(...ciPassedErrors(ci));
-// make check의 feature-check가 실행하는 검증 명령을 CI가 따로 다시 실행하지 않는다.
+// CI does not run again the verification command that the feature-check of make check runs.
 const features = readFeatures(root);
 failures.push(...ciDuplicateCommandErrors(ci, makefile, featureCommands(features)));
-// make check는 helper check마다 한 번 실행한다: feature-helper-check, stress target, 또는 그 check가 make check의 target이나
-// setup 단계인 helper(FEATURE_SUITE_HELPERS)는 그 target이나 setup 단계에서다.
+// make check runs each helper check once: feature-helper-check, the stress target, or the check that is a target of make check or
+// a helper in the setup step (FEATURE_SUITE_HELPERS) runs in that target or in the setup step.
 
-// helper check의 make 명령이 읽는 shell 변수는 Makefile이 export한다.
+// The shell variables read by the make commands of helper checks are exported by the Makefile.
 failures.push(...helperEnvironmentErrors(features, makefile));
-// make check를 실행하는 CI는 그 밖에서 test runner를 다시 실행하지 않는다(runner의 정체로 판단).
+// CI that runs make check does not run the test runner again outside it (judged by the runner's identity).
 failures.push(...ciRerunErrors(ci, makefile));
 
-// root npm script가 쓰는 path는 tracked file이나 directory다.
+// The paths used by root npm scripts are tracked files or directories.
 const rootPackage = readPackage(join(root, 'package.json'));
 failures.push(...scriptPathErrors(rootPackage.scripts ?? {}, tracked));
-// repository의 도구는 Go, PHP, Rust, TypeScript(와 shell)로 쓴다.
+// The repository's tools are written in Go, PHP, Rust, TypeScript (and shell).
 failures.push(...toolingLanguageErrors(tracked));
 
-// 검사를 실행하는 Node는 mise.toml이 선언한 version 하나이고, 모든 workflow가 그 file을 읽는다.
+// The Node that runs the checks is the one version mise.toml declares, and every workflow reads that file.
 const workflowDirectory = join(root, '.github/workflows');
 // allWorkflows holds every workflow of .github/workflows. A workflow among the copies of @polyspec/kit is kit's and make
 // kit-check holds it byte for byte, so the rules of how a workflow is written (workflows) skip it; which triggers need a
@@ -70,34 +70,34 @@ const workflowDirectory = join(root, '.github/workflows');
 const allWorkflows = Object.fromEntries(readdirSync(workflowDirectory).filter(name => /\.ya?ml$/.test(name)).sort()
   .map(name => [`.github/workflows/${name}`, readFileSync(join(workflowDirectory, name), 'utf8')]));
 const workflows = ownWorkflows(allWorkflows, copies);
-// CI의 모든 step은 make target을 실행한다(summary만 예외다).
+// Every CI step runs a make target (except the summary).
 failures.push(...ciMakeErrors(workflows));
-// push로 실행하는 workflow는 새 push가 앞 실행을 끝내도록 concurrency를 선언한다.
+// Workflows that run on push declare concurrency so that a new push ends the earlier run.
 failures.push(...concurrencyErrors(workflows));
-// ci.yml, push-gate.yml과 docs-pages.yml은 선언한 event에서만 실행하고, 다른 workflow는 push, pull_request, merge_group으로
-// 실행하지 않는다.
+// ci.yml, push-gate.yml and docs-pages.yml run only on the events they declare, and the other workflows
+// do not run on push, pull_request, merge_group.
 failures.push(...workflowTriggerErrors(allWorkflows));
-// CHECK_TARGETS의 모든 target은 contracts/check-inputs.json에 scope를 선언하고, owner target은 make
-// owner-check가 고를 입력도 선언한다.
+// Every target of CHECK_TARGETS declares its scope in contracts/check-inputs.json, and owner targets make
+// also declare the inputs that owner-check selects.
 const checkInputs = readCheckInputs(root).targets;
 failures.push(...checkInputErrors(checkInputs, checkTargets(makefile), trackedAll));
-// CI group의 job은 그 target의 need와, 그 need의 setup 단계(databases/create)가 필요로 하는 need의 setup step을 실행한다.
+// The jobs of a CI group run the target's needs, and the setup steps of the needs that the need's setup stage (databases/create) requires.
 const { targets: groupTargets } = ciGroups(makefile);
 failures.push(...groupSetupErrors(groupTargets, declaredNeeds(root)));
-// cargo가 만든 program의 경로는 CARGO_TARGET_DIR에서 얻는다.
+// The path of a program built by cargo is obtained from CARGO_TARGET_DIR.
 failures.push(...targetPathErrors(Object.fromEntries(tracked.filter(runFile).map(path => [path, readFileSync(join(root, path), 'utf8')]))));
 failures.push(...manifestDirErrors(Object.fromEntries(tracked.filter(path => path.endsWith('.rs')).map(path => [path, readFileSync(join(root, path), 'utf8')]))));
 failures.push(...binExeErrors(Object.fromEntries(tracked.filter(path => path.endsWith('.rs')).map(path => [path, readFileSync(join(root, path), 'utf8')]))));
-// 연결은 server에 SQLite version이나 연결 여부를 묻는 statement를 보내지 않는다.
+// The connection does not send a statement asking the server for the SQLite version or whether it is connected.
 failures.push(...connectProbeErrors(Object.fromEntries(tracked.filter(runtimeSource).map(path => [path, readFileSync(join(root, path), 'utf8')]))));
-// 모든 test는 자기 기한 아래 case로 보고한다(scripts/repo/testcases.mts).
+// Every test reports its cases under its own deadline (scripts/repo/testcases.mts).
 const trackedText = (paths: string[]) => Object.fromEntries(paths.map((path: string) => [path, readFileSync(join(root, path), 'utf8')]));
 failures.push(...nodeTestErrors(trackedText(tracked.filter(path => /\.(?:mjs|mts|js)$/.test(path) && !path.startsWith('docs/')))));
-// JavaScript test는 하위 process에 자기를 실행한 쪽의 환경을 넘기지 않는다: case가 주는 변수만 준다.
+// A JavaScript test does not pass the environment of the process that ran it to a child process: it passes only the variables a case gives.
 failures.push(...callerEnvironmentErrors(trackedText(tracked.filter(path => /\.test\.m[jt]s$/.test(path)))));
 failures.push(...rustTestCaseErrors(trackedText(tracked.filter(path => path.endsWith('.rs')))));
-// Makefile, contracts/features.json, scripts/의 shell script와 root package.json이 실행하는 PHP와
-// TypeScript test도 공유 case 보고를 쓴다.
+// PHP run by the Makefile, contracts/features.json, the shell scripts in scripts/, and the root package.json,
+// and TypeScript tests also use the shared case report.
 const trackedSet = new Set(tracked);
 const scripts = await scriptCommands(root, tracked);
 // The setup step databases/create runs the commands of scripts/check/databases.mts.
@@ -109,81 +109,81 @@ const runCommands = [
   ...Object.values(rootPackage.scripts ?? {}).map(command => ({ source: 'package.json', command, dialect: 'sh' as const })),
 ];
 failures.push(...reportingScriptErrors(runCommands, (path: string) => trackedSet.has(path) ? readFileSync(join(root, path), 'utf8') : undefined));
-// build와 lint 도구(tsc, go generate, go vet, go build, cargo build)는 장기 작업이므로 tests/run-long.mts
-// 아래에서 단계 로그와 함께 기한 없이 실행한다.
+// Build and lint tools (tsc, go generate, go vet, go build, cargo build) are long-running work, so they run
+// under tests/run-long.mts with step logs and without a deadline, as below.
 const featureUnits = [...features.features.flatMap(feature => feature.verification.filter(check => (check.cwd ?? '.') === '.')
   .map(check => ({ name: `contracts/features.json ${feature.id}/${check.id}`, commands: [check.command], dialect: 'sh' as const }))),
   ...(features.helpers ?? []).map(helper => ({ name: `contracts/features.json helper ${helper.id}`, commands: [helper.command], dialect: 'sh' as const }))];
 failures.push(...unwrappedToolErrors(featureUnits));
-// cargo test 실행 앞에는 같은 인자의 `cargo test --no-run` build가 RUN_LONG 아래에서 기한 없이 있다.
-// Makefile recipe, 검증 명령, root package.json script, 그리고 그 명령이 run-long 밖에서 실행하는
-// scripts/의 shell script를 본다.
+// Before cargo test runs, a `cargo test --no-run` build with the same arguments runs under RUN_LONG without a deadline.
+// Makefile recipes, verification commands, root package.json scripts, and the shell scripts in scripts/ that these commands run
+// outside run-long are checked.
 // A script of scripts/ is read as its commands; a TypeScript file that is no command script runs none.
 const readTracked = (path: string) => scripts.get(path) ?? (trackedSet.has(path) && !path.endsWith('.mts') ? readFileSync(join(root, path), 'utf8') : undefined);
 const recipeUnits = makeRecipes(makefile);
 const scriptUnits = reachedScripts(runCommands, readTracked);
 const allPackageUnits = Object.entries(rootPackage.scripts ?? {}).map(([name, command]) => ({ name: `package.json ${name}`, commands: [command], dialect: 'sh' as const }));
 failures.push(...unbuiltCargoTestErrors([...recipeUnits, ...featureUnits, ...allPackageUnits, ...scriptUnits]));
-// Makefile recipe, 명령 여럿인 root package.json script(명령 하나인 script는 도구의 정의이고 그
-// 호출을 본다), run-long 밖의 shell script도 build 도구를 run-long 아래에서 기한 없이 실행한다.
+// Makefile recipes and root package.json scripts with several commands (a script with one command is a tool's definition, and its
+// call is checked), and shell scripts outside run-long, also run build tools under run-long without a deadline.
 const packageUnits = allPackageUnits.filter(unit => segments(unit.commands[0] ?? '', 'sh').length > 1);
 failures.push(...unwrappedToolErrors([...recipeUnits, ...packageUnits, ...scriptUnits]));
-// go test는 tests/go-test.mts(기한 없는 build 뒤 실행)나 RUN_LONG 아래에서 실행한다.
+// go test runs in tests/go-test.mts (after the build, without a deadline) or under RUN_LONG.
 const variables = makeVariables(makefile);
 const expandedRecipes = recipeUnits.map(unit => ({ ...unit, commands: unit.commands.map(command => expand(command, variables)) }));
 failures.push(...rawGoTestErrors([...expandedRecipes, ...featureUnits, ...scriptUnits]));
-// check의 명령(Makefile recipe, 검증 명령, package.json script, run-long 아래의 것까지 scripts/의 shell
-// script)은 장기 작업에 기한을 두지 않는다. 기한은 test case 안에만 있다.
+// The commands of checks (Makefile recipes, verification commands, package.json scripts, and the shell scripts in scripts/,
+// including those under run-long) put no deadline on long-running work. The deadline is only inside test cases.
 const everyScriptUnit = reachedScripts(runCommands, readTracked, { throughLong: true });
 failures.push(...longDeadlineErrors([...expandedRecipes, ...featureUnits, ...allPackageUnits, ...everyScriptUnit]));
-// go run의 build는 단계 로그가 없으므로 tests/go-run.mts로 실행한다. workflow의 step도 본다.
+// The build of go run has no step logs, so it runs with tests/go-run.mts. Workflow steps are also checked.
 failures.push(...goRunErrors([...expandedRecipes, ...featureUnits, ...allPackageUnits, ...everyScriptUnit,
   ...Object.entries(workflows).flatMap(([path, workflow]) => workflowSteps(workflow).map(step => ({ name: `${path} step "${step.name}"`, commands: [step.run], dialect: 'workflow' as const })))]));
-// Makefile 밖의 명령도 공유 Rust target directory에 lease 아래에서만 build하고 그곳의 program을 실행하지 않는다.
+// Commands outside the Makefile also build only under a lease in the shared Rust target directory, and do not run the program there.
 failures.push(...unleasedCargoErrors([...featureUnits, ...allPackageUnits, ...everyScriptUnit]));
 // The rules of Go source (a Go test starts its case, cargo under its lease, no os.Exit after a defer, no runtime.Caller, no
 // failure on a measured time) are the analyzers of tests/analyzers, which make go-vet-check/orm runs with go vet.
-// 실행 조건이 없다는 실패 message는 원인과 고치는 방법을 함께 적는다.
+// A failure message for a missing run condition states the cause and the way to fix it together.
 failures.push(...fixlessMessageErrors(Object.fromEntries(messageFiles(tracked).map((path: string) => [path, readFileSync(join(root, path), 'utf8')]))));
-// test는 측정한 시간이 한도를 넘었다고 실패하지 않는다: 성능은 측정하고 경고로 보고한다(AGENTS.md).
+// A test does not fail because its measured time exceeds a limit: performance is measured and reported as a warning (AGENTS.md).
 const testFile = (path: string) => /(?:\.test\.m[jt]s|\/tests\/.*\.(?:php|rs|m[jt]s)|^tests\/.*\.(?:m[jt]s|php)|\/examples\/.*\.rs|\/src\/lib\.rs)$/.test(path);
 failures.push(...timeFailureErrors(Object.fromEntries(tracked.filter(testFile).map(path => [path, readFileSync(join(root, path), 'utf8')]))));
-// 자기 process group으로 process를 시작한 JavaScript는 그 group이 끝난 뒤 남은 process를 확인한다.
+// JavaScript that starts a process in its own process group checks for leftover processes after the group ends.
 failures.push(...detachedGroupErrors(Object.fromEntries(tracked.filter(path => /\.m?js$/.test(path)).map(path => [path, readFileSync(join(root, path), 'utf8')]))));
-// Makefile은 공유 Rust target directory의 program을 실행하거나 그곳에 file을 쓰지 않고, 그곳의 build는 lease
-// 아래에서 한다.
+// The Makefile does not run programs in the shared Rust target directory or write files there, and its builds happen
+// below, under a lease.
 failures.push(...sharedTargetErrors(makefile));
-// 실행 하나의 file은 그 실행의 RUN_DIR에 두고, TypeScript client를 build하는 target은 그 출력을 가진다.
+// A file of one run goes in that run's RUN_DIR, and a target that builds the TypeScript client has that output.
 failures.push(...runtimePathErrors(makefile));
-// build 출력은 임시 file에 쓰고 rename으로 publish한다(scripts/publish-output.mts).
+// Build output is written to a temporary file and published by rename (scripts/publish-output.mts).
 failures.push(...unpublishedOutputErrors(makefile));
-// test server는 고정 port 대신 make test-servers가 고른 빈 port를 쓴다.
+// Test servers use an empty port chosen by make test-servers, not a fixed port.
 failures.push(...fixedPortErrors(Object.fromEntries(tracked.filter(path => path === 'Makefile' || path.endsWith('.sh')).map(path => [path, readFileSync(join(root, path), 'utf8')]))));
 failures.push(...typescriptHolderErrors(makefile));
 failures.push(...typescriptReaderErrors(makefile, readTracked));
-// make check는 같은 directory의 생성(go generate와 git diff)을 한 번만 실행한다.
+// make check runs the generation (go generate and git diff) of the same directory only once.
 const checkTargetSet = new Set(checkTargets(makefile));
 failures.push(...repeatedGenerateErrors([...recipeUnits.filter(unit => checkTargetSet.has(unit.name.replace(/^Makefile /, ''))), ...featureUnits]));
-// workflow의 step과 job은 timeout-minutes를 두지 않는다. step은 단계 로그를 가진 장기 작업이다.
+// Workflow steps and jobs have no timeout-minutes. A step is long-running work with step logs.
 failures.push(...stepTimeoutErrors(workflows));
-// workflow의 step은 lease 변수(LEASE)를 읽는 program을 make 밖에서 실행하지 않는다.
+// A workflow step does not run, outside make, a program that reads the lease variable (LEASE).
 failures.push(...ciLeaseErrors(workflows, tracked, readTracked));
-// make check를 실행하는 workflow는 그 뒤에 다른 검사 step을 두지 않는다.
+// A workflow that runs make check has no other check step after it.
 failures.push(...ciAfterCheckErrors(workflows));
 failures.push(...ciSetupErrors(workflows, { setup: CI_SETUP, runner: RUNNER_STEPS }));
 failures.push(...independentTestErrors(readFileSync(join(root, 'Makefile'), 'utf8')));
 failures.push(...chainedCommandErrors(features));
-// AGENTS.md와 AGENTS.ko.md는 전체 suite가 push 뒤 CI에서 실행된다는 규칙을 적는다.
+// AGENTS.md and AGENTS.ko.md state the rule that the full suite runs in CI after push.
 failures.push(...fullSuiteRuleErrors(Object.fromEntries(['AGENTS.md', 'AGENTS.ko.md'].map(path => [path, readFileSync(join(root, path), 'utf8')]))));
-// 모든 workflow의 job은 .github/runner가 선언한 runner에서 실행한다.
+// Every workflow job runs on the runner declared in .github/runner.
 failures.push(...runnerErrors(existsSync(join(root, '.github/runner')) ? readFileSync(join(root, '.github/runner'), 'utf8') : '', workflows));
 failures.push(...nodeVersionErrors(existsSync(join(root, 'mise.toml')) ? readFileSync(join(root, 'mise.toml'), 'utf8') : '',
   rootPackage.engines?.node, workflows, process.versions.node));
-// npm은 git으로 받는 dependency 없이 release archive와 registry에서만 설치한다.
+// npm installs only from release archives and the registry, with no dependency fetched from git.
 failures.push(...npmGitSourceErrors(Object.fromEntries(tracked.filter(path => /(?:^|\/)package(?:-lock)?\.json$/.test(path)).map(path => [path, readFileSync(join(root, path), 'utf8')]))));
 
-// 검사를 실행하는 PHP와 Rust도 .php-version과 rust-toolchain.toml이 선언한 것 하나다. 실행 중인
-// version은 repository root에서 PATH의 php와 rustc가 보고한 것이다.
+// PHP and Rust that run the checks are each also the one version declared by .php-version and rust-toolchain.toml. The version
+// being run is what php and rustc in PATH report from the repository root.
 const text = (path: string) => existsSync(join(root, path)) ? readFileSync(join(root, path), 'utf8') : '';
 const reported = (program: string, args: string[]) => execFileSync(program, args, { cwd: root }).toString().trim();
 const composer = readComposer(join(root, 'packages/php/composer.json'));
@@ -193,8 +193,8 @@ const rustc = /^rustc (\S+)/.exec(reported('rustc', ['--version']))?.[1] ?? '';
 failures.push(...rustToolchainErrors(text('rust-toolchain.toml'), makefile, workflows, rustc));
 // Every workflow sets up the Go of the go line of packages/go/go.mod, which kit's toolchain-check holds to the kit pin.
 failures.push(...goVersionErrors(workflows));
-// Composer는 mise.toml의 tool http:composer가 선언한 정확한 release 하나다. 실행 중인 것은 그 major와 minor만 같으면 된다(patch는 상관없다).
-// 추적된 go.mod는 모두 자기 directory의 module path를 선언한다.
+// Composer is the one exact release declared by the mise.toml tool http:composer. The running one need only match its major and minor (patch does not matter).
+// Every tracked go.mod declares the module path of its own directory.
 failures.push(...goModulePathErrors(Object.fromEntries(tracked.filter(path => /(?:^|\/)go\.mod$/.test(path)).map(path => [path, text(path)]))));
 const composerRelease = /Composer version (\S+)/.exec(reported('composer', ['--version', '--no-ansi']))?.[1] ?? '';
 failures.push(...composerVersionErrors(text('mise.toml'), workflows, composerRelease));

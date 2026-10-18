@@ -10,14 +10,14 @@ export type Unit = { name: string; commands: string[]; dialect: Dialect };
 /** read(path) is the text of a tracked file, or undefined when it is not tracked. */
 export type Read = (path: string) => string | undefined;
 
-// test case 보고 규칙(AGENTS.md testing rule): 모든 test case는 자기 기한 아래에서 실행, 단계, 결과와
-// 경과 시간을 보고하고, 장기 작업(build, 설치, 도구 실행, 전체 suite)은 단계 로그와 함께 기한 없이
-// 실행한다. 이 module은 tracked file의 text에서 그 규칙을 어기는 test와 명령을 찾는다.
+// Test case reporting rule (AGENTS.md testing rule): every test case runs under its own deadline, reports its steps, results and
+// elapsed time, and runs long-running work (build, install, tool run, full suite) without a deadline, with step logs.
+// This module finds the tests and commands that break that rule in the text of the tracked files.
 
-// nodeTestErrors는 node:test의 test 함수(test, it, describe나 default import)를 직접 쓰는 JavaScript
-// file마다 오류 하나를 돌려준다. node:test의 test는 case마다 RUN 줄과 기한을 내지 않으므로, test는
-// tests/testcase.mts의 caseTest로 선언한다. after와 before 같은 hook은 쓸 수 있다. files는
-// {path: text}이고, caseTest를 정의하는 tests/testcase.mts는 검사하지 않는다.
+// nodeTestErrors returns one error for each JavaScript file that directly uses node:test's test functions (test, it, describe, or the default import).
+// node:test tests do not emit a RUN line and a deadline per case, so a test
+// is declared with caseTest from tests/testcase.mts. Hooks such as after and before may be used. files is
+// {path: text}, and tests/testcase.mts, which defines caseTest, is not checked.
 export function nodeTestErrors(files: Record<string, string>) {
   const errors: string[] = [];
   for (const [path, text] of Object.entries(files)) {
@@ -32,11 +32,11 @@ export function nodeTestErrors(files: Record<string, string>) {
   return errors;
 }
 
-// callerEnvironmentErrors는 하위 process에 자기를 실행한 쪽의 환경을 넘기는 JavaScript test file(`.test.mjs`)의 줄마다
-// 오류 하나를 돌려준다: `...process.env`나 `env: process.env`, 그리고 `env: isolatedEnvironment(`가 없는 make 실행이다.
-// 그런 case의 결과는 CI의 `make check GROUP=<group>`이 환경에 둔 GROUP, GITHUB_ACTIONS, ORM_CHECK_RUN_ID와 상위
-// make의 MAKEFLAGS, Makefile이 export하는 변수에 달린다. 하위 process는 tests/environment.mts의 isolatedEnvironment로
-// case가 주는 변수만 받는다. files는 {path: text}다.
+// callerEnvironmentErrors returns one error for each line of a JavaScript test file (`.test.mjs`) that passes the environment of the process that ran it to child processes:
+// `...process.env`, `env: process.env`, or a make run without `env: isolatedEnvironment(`.
+// The result of such a case depends on GROUP, GITHUB_ACTIONS and ORM_CHECK_RUN_ID that CI's `make check GROUP=<group>` sets in the environment, and on the upper
+// make's MAKEFLAGS and the variables the Makefile exports. A child process receives, under isolatedEnvironment in tests/environment.mts,
+// only the variables that the case gives. files is {path: text}.
 export function callerEnvironmentErrors(files: Record<string, string>) {
   const errors: string[] = [];
   for (const [path, text] of Object.entries(files)) {
@@ -52,8 +52,8 @@ export function callerEnvironmentErrors(files: Record<string, string>) {
   return errors;
 }
 
-// body는 text의 index에서 시작하는 첫 `{`부터 짝이 맞는 `}`까지다. 문자열 안의 괄호는 세지 않으므로
-// 함수의 경계를 찾는 데만 쓴다.
+// The body runs from the first `{` after the text's index to the matching `}`. Parentheses inside strings are not counted, so it is used
+// only to find function boundaries.
 function body(text: string, index: number): string {
   const start = text.indexOf('{', index);
   let depth = 0;
@@ -64,8 +64,8 @@ function body(text: string, index: number): string {
   return text.slice(start);
 }
 
-// rustTestCaseErrors는 Rust의 #[test]나 #[tokio::test] 함수가 polyspec_orm_testcase의 case(case! macro나
-// start)를 시작하지 않을 때마다 오류 하나를 돌려준다. files는 {path: text}다.
+// rustTestCaseErrors returns one error each time a Rust #[test] or #[tokio::test] function does not start a polyspec_orm_testcase case (the case! macro or
+// start). files is {path: text}.
 export function rustTestCaseErrors(files: Record<string, string>) {
   const errors: string[] = [];
   for (const [path, text] of Object.entries(files)) {
@@ -78,8 +78,8 @@ export function rustTestCaseErrors(files: Record<string, string>) {
   return errors;
 }
 
-// testEntries는 명령 text에서 php나 node가 실행하는 packages/<runtime>/tests/의 file(.php, .mjs)을
-// 돌려준다. `node --test a.mjs b.mjs`처럼 file이 여럿이면 모두다.
+// testEntries returns, from the command text, the files (.php, .mjs) under packages/<runtime>/tests/ that php or node runs,
+// and all of them when there are several files, as in `node --test a.mjs b.mjs`.
 export function testEntries(command: string): string[] {
   const out: string[] = [];
   for (const match of command.matchAll(/(?:^|[\s;&|(])(?:php|node)((?:\s+-[-\w=]+)*)((?:\s+[\w./-]+\.(?:php|m[jt]s))+)/g))
@@ -88,8 +88,8 @@ export function testEntries(command: string): string[] {
   return out;
 }
 
-// dependencies는 PHP file이 __DIR__나 dirname(__DIR__, n)에서 require하는 file, JavaScript file이 상대
-// 경로로 import하는 file을 repository 상대 path로 돌려준다.
+// dependencies returns, as repository-relative paths, the files that a PHP file requires from __DIR__ or dirname(__DIR__, n), and the files that a JavaScript file imports by relative
+// path.
 function dependencies(path: string, text: string): string[] {
   const directory = path.split('/').slice(0, -1);
   // posix.join resolves the . and .. segments of a relative path against its directory.
@@ -100,11 +100,11 @@ function dependencies(path: string, text: string): string[] {
   return [...text.matchAll(/(?:\bfrom|\bimport)\s*\(?\s*'(\.{1,2}\/[^']+)'/g)].map(match => resolve(directory, match[1] ?? ''));
 }
 
-// reportingScriptErrors는 명령(commands: {source, command})이 실행하는 test file이 case를 보고하지 않을 때마다
-// 오류 하나를 돌려준다. TypeScript test는 공유 case 보고(tests/testcase.mts)를 직접이나 import한 file을 거쳐
-// 써야 한다. PHP test는 PHPUnit(개발 root의 vendor-php/bin/phpunit과 그 package의 phpunit.xml.dist)이
-// 실행하고 보고하며 기한을 둔다. 그래서 php가 packages/<runtime>/tests/의 file을 직접 실행하면 오류다.
-// read(path)는 tracked file의 text이거나 없으면 undefined다.
+// reportingScriptErrors returns one error each time a test file that a command (commands: {source, command}) runs does not report a case.
+// A TypeScript test must write the shared case report (tests/testcase.mts), directly or through an imported file.
+// PHP tests are run, reported and given a deadline by PHPUnit (vendor-php/bin/phpunit of the development root, and that package's phpunit.xml.dist).
+// So it is an error if php runs a file in packages/<runtime>/tests/ directly.
+// read(path) is the text of a tracked file, or undefined if there is none.
 export function reportingScriptErrors(commands: { source: string; command: string }[], read: Read): string[] {
   const reports = (path: string, seen = new Set<string>()): boolean => {
     if (path === 'tests/testcase.mts') return true;
@@ -127,9 +127,9 @@ export function reportingScriptErrors(commands: { source: string; command: strin
   return errors;
 }
 
-// 자기 case를 보고하지 않는 build와 lint 도구다. 이 도구는 장기 작업이므로 tests/run-long.mts(Makefile의
-// RUN_LONG, TSC_BUILD) 아래에서 단계 로그(RUN, STEP, 종료 코드, PASS나 FAIL)와 함께 기한 없이 실행한다.
-// `cargo test --no-run`은 unbuiltCargoTestErrors가 본다.
+// Build and lint tools do not report their own cases. Because these tools are long-running work, they run
+// under tests/run-long.mts (Makefile's RUN_LONG, TSC_BUILD) without a deadline, with step logs (RUN, STEP, exit code, PASS or FAIL).
+// `cargo test --no-run` is checked by unbuiltCargoTestErrors.
 const tools: [string, RegExp][] = [
   ['tsc', /(?:^|[\s/])tsc(?=\s|$)/],
   ['a TypeScript build', /\bnpm\s+(?:--prefix\s+\S+\s+)?run\s+(?:typescript:build|typescript:check|build)(?=\s|$)/],
@@ -139,11 +139,11 @@ const tools: [string, RegExp][] = [
   ['cargo build', /\bcargo\s+(?:\+\S+\s+)?(?:build|check|clippy)\b/],
 ];
 const noRun = /\bcargo\s+(?:\+\S+\s+)?test\b(?=.*\s--no-run\b)/;
-// longRunner는 장기 작업을 단계 로그와 함께 기한 없이 실행하는 runner다.
+// longRunner is the runner that runs long-running work without a deadline, with step logs.
 const longRunner = /(?:\brun-long\.mts|\$\(RUN_LONG\)|\$\(TSC_BUILD\))/;
-// deadlineForms는 명령 전체에 기한을 두는 형식이다: 기한을 받아 명령을 끝내는 tests/run-case.mjs(Makefile의
-// RUN_CASE)와 그 기한 변수, timeout(1), 그리고 0이 아닌 `-timeout`이나 그것이 없을 때의 기본 10분으로 test
-// binary 전체에 기한을 두는 go test 실행(`-c` build는 실행하지 않는다)이다.
+// deadlineForms is the form that puts a deadline on the whole command: tests/run-case.mjs (Makefile's
+// RUN_CASE), which takes a deadline and ends the command, its deadline variable, timeout(1), and a go test run whose -timeout is non-zero, or the default of 10 minutes when it is absent, for the test
+// binary as a whole (a `-c` build is not run).
 const deadlineForms = [
   /\brun-case\.mjs\b/,
   /\$\(RUN_CASE\)/,
@@ -152,8 +152,8 @@ const deadlineForms = [
 ];
 const goTestRun = /(?:^|\s)(?:go\s+test|node\s+tests\/go-test\.mts)(?=\s|$)(.*)$/;
 
-// deadline은 segment가 명령에 두는 기한의 형식(일치한 text)이고, 없으면 undefined다. before가 있으면 그
-// 위치 앞의 형식만 본다.
+// deadline is the form of the deadline that a segment puts on the command (the matched text), and undefined if there is none. If before is given, only the form
+// before the position is checked.
 export function deadline(segment: string, before = segment.length): string | undefined {
   for (const form of deadlineForms) {
     const match = form.exec(segment);
@@ -168,8 +168,8 @@ export function deadline(segment: string, before = segment.length): string | und
   return undefined;
 }
 
-// cargoArguments는 segment의 `cargo test` 인자 가운데 `--` 앞의 것을 `--no-run`과 toolchain(`+x`) 없이
-// 돌려준다. build와 실행이 같은 test binary를 쓰는지 비교한다.
+// cargoArguments returns the arguments of `cargo test` in the segment before `--`, without `--no-run` and the toolchain (`+x`).
+// It checks whether the build and the run use the same test binary.
 function cargoArguments(segment: string): string | undefined {
   const match = /\bcargo\s+(?:\+\S+\s+)?test\b(.*)$/.exec(segment);
   if (!match) return undefined;
@@ -177,9 +177,9 @@ function cargoArguments(segment: string): string | undefined {
   return before.trim().split(/\s+/).filter(token => token && token !== '--no-run').join(' ');
 }
 
-// longOperationError는 장기 작업(what)을 실행하는 segment가 규칙을 어기면 오류 하나를, 지키면 undefined를
-// 돌려준다: 장기 작업은 longRunner 아래에서 단계 로그와 함께 실행하고 기한을 두지 않는다. at은 segment
-// 안에서 작업이 시작하는 위치다.
+// longOperationError returns one error if a segment that runs long-running work (what) breaks the rule, and undefined if it keeps it:
+// long-running work runs under longRunner with step logs and has no deadline. at is
+// the position where the work starts inside the segment.
 function longOperationError(name: string, what: string, segment: string, at: number): string | undefined {
   const form = deadline(segment, at);
   if (form) return `${name} runs ${what} under a deadline (${form}); a long operation gets step logs and no deadline: ${segment}`;
@@ -188,8 +188,8 @@ function longOperationError(name: string, what: string, segment: string, at: num
   return undefined;
 }
 
-// unwrappedToolErrors는 units(이름과 차례로 실행하는 명령 목록)에서 tools의 도구를 RUN_LONG 밖에서
-// 실행하거나 기한 아래에서 실행하는 segment마다 오류 하나를 돌려준다.
+// unwrappedToolErrors returns one error for each segment that runs a tool of tools outside RUN_LONG,
+// or under a deadline, from units (the list of commands with their names, in order).
 export function unwrappedToolErrors(units: Unit[]): string[] {
   const errors: string[] = [];
   for (const { name, commands, dialect } of units) {
@@ -205,11 +205,11 @@ export function unwrappedToolErrors(units: Unit[]): string[] {
   return errors;
 }
 
-// unbuiltCargoTestErrors는 units에서 `cargo test --no-run` build가 RUN_LONG 밖이나 기한 아래에서 실행될 때마다,
-// 그리고 `cargo test` 실행(--no-run 없음)이 tests/cargo-test.mts(Makefile의 CARGO_TEST) 밖에 있을 때마다 오류
-// 하나를 돌려준다. cargo test는 공유 Rust target directory(이 checkout의 동시 실행이 함께 쓴다)의 test binary를
-// 실행하므로, build와 실행 사이에 다른 실행이 다시 build하면 그 code를 실행한다. tests/cargo-test.mts는 lease 아래에서
-// build하고 복사한 실행 하나의 binary를 실행하며, 그 build는 단계 로그와 함께 기한 없는 장기 작업이다.
+// unbuiltCargoTestErrors returns one error each time a `cargo test --no-run` build in units runs outside RUN_LONG or under a deadline,
+// and each time a `cargo test` run (without --no-run) is outside tests/cargo-test.mts (Makefile's CARGO_TEST).
+// cargo test runs the test binary in the shared Rust target directory (which this checkout's concurrent runs share),
+// so if another run builds again between the build and the run, it runs that code. tests/cargo-test.mts builds under a lease
+// and runs a copied binary of one run; that build is long-running work without a deadline, with step logs.
 export function unbuiltCargoTestErrors(units: Unit[]): string[] {
   const errors: string[] = [];
   for (const { name, commands, dialect } of units)
@@ -226,8 +226,8 @@ export function unbuiltCargoTestErrors(units: Unit[]): string[] {
   return errors;
 }
 
-// longDeadlineErrors는 units에서 명령에 기한을 두는 segment(deadline)마다 오류 하나를 돌려준다. check의
-// 명령은 build, 설치, 도구 실행, 전체 suite인 장기 작업이고, 기한은 test case 안에만 둔다.
+// longDeadlineErrors returns one error for each segment in units that puts a deadline on a command (deadline). The commands of check
+// are long-running work (build, install, tool run, the full suite); deadlines go only inside test cases.
 export function longDeadlineErrors(units: Unit[]): string[] {
   const errors: string[] = [];
   for (const { name, commands, dialect } of units)
@@ -239,10 +239,10 @@ export function longDeadlineErrors(units: Unit[]): string[] {
   return errors;
 }
 
-// recipeLines는 Makefile의 줄(lines, tab으로 시작하는 recipe 줄과 그 밖의 줄)을 make가 읽는 대로 돌려준다: 줄이
-// `\`로 끝나면 다음 줄과 이어진다. recipe 줄은 이은 그대로 명령 하나이고(make는 이은 줄 첫머리의 tab 하나를 뗀다),
-// 다른 줄은 make처럼 이음과 그 둘레의 공백을 공백 하나로 바꾼다. recipe 줄은 앞의 tab 없이 { recipe: true, text },
-// 다른 줄은 { recipe: false, text }다.
+// recipeLines returns the Makefile's lines (lines, recipe lines starting with a tab, and the others) as make reads them: a line
+// ending in `\` continues with the next line. A recipe line is one command as continued (make removes one tab at the start of a continued line),
+// and other lines, as make does, change the continuation and the whitespace around it into a single space. A recipe line without its leading tab is { recipe: true, text },
+// and other lines are { recipe: false, text }.
 export function recipeLines(makefile: string): { recipe: boolean; text: string }[] {
   const out: { recipe: boolean; text: string }[] = [];
   const lines = makefile.split('\n');
@@ -266,11 +266,11 @@ export function recipeLines(makefile: string): { recipe: boolean; text: string }
 /** A rule of a Makefile: its target, its prerequisites (normal and order-only) and its recipe commands. */
 export type MakeTarget = { target: string; prerequisites: string[]; commands: string[] };
 
-// makeEntries는 Makefile을 make가 읽는 대로(recipeLines) 규칙마다 { targets, prerequisites, commands }로 돌려준다.
-// 규칙 줄은 `targets: prerequisites`나 `targets:: prerequisites`이고, `;` 뒤는 그 recipe의 첫 명령이며, `|` 뒤의
-// order-only 선행 target도 선행 target이다. 변수 정의(`=`, `:=`, `::=`, `?=`, `+=`)와 target별 변수
-// (`target: NAME = value`), 지시어(ifeq, include, export 같은)는 규칙이 아니다: 그 뒤의 recipe 줄은 이름 없는
-// 항목(targets [])에 들어간다. 빈 줄과 주석은 recipe를 끝내지 않는다.
+// makeEntries returns the Makefile, as make reads it (recipeLines), as { targets, prerequisites, commands } for each rule.
+// A rule line is `targets: prerequisites` or `targets:: prerequisites`; what follows `;` is the first command of its recipe, and the order-only prerequisite targets after `|`
+// are also prerequisite targets. Variable definitions (`=`, `:=`, `::=`, `?=`, `+=`) and target-specific variables
+// (`target: NAME = value`), and directives (such as ifeq, include, export), are not rules: the recipe lines after them go into an entry with no name
+// (targets []). Blank lines and comments do not end a recipe.
 function makeEntries(makefile: string): { targets: string[]; prerequisites: string[]; commands: string[] }[] {
   const entries: { targets: string[]; prerequisites: string[]; commands: string[] }[] = [];
   const directive = /^(?:ifeq|ifneq|ifdef|ifndef|else|endif|include|-include|sinclude|define|endef|export|unexport|override|undefine|vpath|private)\b/;
@@ -296,26 +296,26 @@ function makeEntries(makefile: string): { targets: string[]; prerequisites: stri
   return entries;
 }
 
-// makeTargets는 Makefile의 규칙마다 target 하나씩, 그 선행 target과 recipe 명령을 돌려준다(makeEntries). target의
-// 이름은 make가 쓰는 그대로다: `/`를 담은 하위 target(testcase-check/go), pattern 규칙(`%`), 특수 target(.PHONY).
-// 이 module과 scripts/repo/ci.mts, scripts/features/owners.mts의 Makefile 읽기는 모두 이것을 쓴다.
+// makeTargets returns one target per rule of the Makefile, with its prerequisite targets and recipe commands (makeEntries). The target
+// names are exactly as make uses them: sub-targets containing `/` (testcase-check/go), pattern rules (`%`), and special targets (.PHONY).
+// Reading of the Makefile in this module, in scripts/repo/ci.mts and in scripts/features/owners.mts all use this.
 export function makeTargets(makefile: string): MakeTarget[] {
   return makeEntries(makefile).flatMap(({ targets, prerequisites, commands }) => targets.map(target => ({ target, prerequisites, commands })));
 }
 
-// makeRecipes는 Makefile의 target마다 recipe 명령(makeTargets)을 단위 하나로 돌려준다. 규칙이 아닌 줄 뒤의 recipe 줄은
-// 이름 `Makefile`인 단위다. recipe가 없는 target은 단위가 아니다.
+// makeRecipes returns the recipe commands (makeTargets) of each Makefile target as one unit. A recipe line after a line that is not a rule
+// is a unit named `Makefile`. A target with no recipe is not a unit.
 export function makeRecipes(makefile: string): Unit[] {
   return makeEntries(makefile)
     .flatMap(({ targets, commands }) => (targets.length ? targets.map(target => `Makefile ${target}`) : ['Makefile']).map(name => ({ name, commands, dialect: 'make' as const })))
     .filter(unit => unit.commands.length);
 }
 
-// reachedScripts는 명령(commands: {command, dialect})이 tests/run-long.mts 밖에서 실행하는 scripts/의 shell
-// script나 명령 script(scriptCommands)와, 그 script가 다시 그렇게 실행하는 script다. script 하나는 그 text 전체를 명령
-// 하나로 가진 단위다. run-long 아래의 script는 전체가 장기 작업 하나로
-// 단계 로그를 가진다. throughLong이면 run-long 아래의 script도 담는다: 그 안의 명령도 기한을 두지 않는다.
-// read(path)는 tracked file의 text이거나 없으면 undefined다.
+// reachedScripts returns the shell scripts in scripts/ that a command (commands: {command, dialect}) runs outside tests/run-long.mts,
+// and the command scripts (scriptCommands), and the scripts that those scripts in turn run that way. One script is a unit whose whole text is one command.
+// A script under run-long is one long-running work as a whole
+// with step logs. With throughLong, a script under run-long is also included: the commands in it do not get a deadline either.
+// read(path) is the text of a tracked file, or undefined if there is none.
 export function reachedScripts(commands: { command: string; dialect: Dialect }[], read: Read, { throughLong = false }: { throughLong?: boolean } = {}): Unit[] {
   const reached = new Map<string, string>();
   const visit = (command: string, dialect: Dialect) => {
@@ -335,9 +335,9 @@ export function reachedScripts(commands: { command: string; dialect: Dialect }[]
   return [...reached].map(([path, text]) => ({ name: path, commands: [text], dialect: 'sh' }));
 }
 
-// generateRuns는 명령이 `go generate`를 실행하는 directory를 돌려준다. `sh -c '...'` 안도 읽고, 앞의
-// `cd <dir>`와 run-long의 `--cwd <dir>`로 directory를 정한다. 생성은 추적되는 file을 다시 쓰고 `git diff`로
-// 비교하므로, 같은 directory의 생성은 make check에서 한 번만 실행한다.
+// generateRuns returns the directory in which a command runs `go generate`. It also reads inside `sh -c '...'`, and sets the directory with
+// `cd <dir>` before it and run-long's `--cwd <dir>`. Generation rewrites tracked files and compares them with `git diff`,
+// so generation in the same directory runs only once in make check.
 export function generateRuns(command: string, dialect: Dialect): string[] {
   const out: string[] = [];
   const visit = (text: string, language: Dialect, cwd: string) => {
@@ -356,8 +356,8 @@ export function generateRuns(command: string, dialect: Dialect): string[] {
   return out;
 }
 
-// repeatedGenerateErrors는 make check의 단위(CHECK_TARGETS의 recipe와 feature-check의 검증 명령)가 같은
-// directory의 `go generate`를 두 번 이상 실행할 때마다 오류 하나를 돌려준다.
+// repeatedGenerateErrors returns one error each time a unit of make check (the recipe of CHECK_TARGETS and the verification command of feature-check) runs
+// `go generate` in the same directory two or more times.
 export function repeatedGenerateErrors(units: Unit[]): string[] {
   const seen = new Map<string, string[]>();
   for (const { name, commands, dialect } of units)
@@ -369,11 +369,11 @@ export function repeatedGenerateErrors(units: Unit[]): string[] {
     .map(([directory, names]) => `go generate of ${directory} runs ${names.length} times in make check: ${names.join(', ')}`);
 }
 
-// rawGoTestErrors는 units에서 `go test`를 tests/go-test.mts나 RUN_LONG 없이, 또는 기한 아래에서 실행하는
-// segment마다 오류 하나를 돌려준다. go test는 test를 실행하기 전에 compile하고, 그 compile은 case로
-// 보고되지 않는 장기 작업이다. tests/go-test.mts는 build를 단계 로그와 함께 기한 없이 먼저 실행하고,
-// RUN_LONG은 명령 전체를 장기 작업 하나로 실행한다(fuzzing처럼 instrument한 build가 실행과 함께인 경우).
-// test binary 전체의 기한(`-timeout`)은 longDeadlineErrors가 본다. Makefile의 변수는 미리 풀어 둔다.
+// rawGoTestErrors returns one error for each segment in units that runs `go test` without tests/go-test.mts or RUN_LONG, or under a deadline.
+// go test compiles before it runs the tests, and that compile is long-running work not reported as a case.
+// tests/go-test.mts first runs the build without a deadline, with step logs,
+// and RUN_LONG runs the whole command as one long-running work (as when an instrumented build runs alongside the fuzzing).
+// The deadline of the whole test binary (`-timeout`) is checked by longDeadlineErrors. The Makefile's variables are resolved beforehand.
 export function rawGoTestErrors(units: Unit[]): string[] {
   const errors: string[] = [];
   for (const { name, commands, dialect } of units)
@@ -392,15 +392,15 @@ export function rawGoTestErrors(units: Unit[]): string[] {
   return errors;
 }
 
-// sharedTargetErrors는 Makefile이 공유 Rust target directory(CARGO_TARGET_DIR, 이 checkout의 동시 실행이 함께 쓴다)를
-// 실행 하나의 것처럼 쓰는 곳마다 오류 하나를 돌려준다. 그 directory의 program을 실행하거나 file을 쓰면, 다른
-// checkout이 그 사이에 다시 build하거나 덮어쓴 것을 쓰게 된다. 실행은 자기 RUN_DIR의 복사본과 file을 쓰고
-// (CARGO_COPY), cargo build는 target directory의 lease 아래에서 한다(CARGO_LEASED). 주석은 보지 않는다.
+// sharedTargetErrors returns one error each time the Makefile uses the shared Rust target directory (CARGO_TARGET_DIR, which this checkout's concurrent runs share)
+// as if it were one run's own. Running a program in that directory, or writing a file there,
+// makes a run use what another checkout rebuilt or overwrote in between. A run uses its own copy in RUN_DIR and writes its own files
+// (CARGO_COPY), and cargo build happens under the lease of the target directory (CARGO_LEASED). Comments are not checked.
 export function sharedTargetErrors(makefile: string): string[] {
   const errors: string[] = [];
   for (const [index, line] of makefile.split('\n').entries()) {
-    // lease directory(CARGO_LEASES)는 target directory 안에 둔다: 그 directory를 함께 쓰는 모든 checkout이 같은
-    // lease를 본다.
+    // The lease directory (CARGO_LEASES) is placed inside the target directory, so every checkout that shares that directory sees the same
+    // lease.
     if (/^\s*#/.test(line) || /^CARGO_LEASES = \$\(CARGO_TARGET_DIR\)\/\.leases$/.test(line)) continue;
     if (line.includes('$(CARGO_TARGET_DIR)/'))
       errors.push(`Makefile:${index + 1} uses a path in the shared Rust target directory; run the copy in $(RUN_TARGET) and write run files into $(RUN_DIR): ${line.trim()}`);
@@ -417,9 +417,9 @@ export function sharedTargetErrors(makefile: string): string[] {
   return errors;
 }
 
-// runtimePathErrors는 Makefile에서 여러 실행이 함께 쓰는 .runtime의 고정 file(또는 TEST_ENV 옆의 file)을 실행
-// 하나의 file로 쓰는 줄마다 오류 하나를 돌려준다. 실행 하나의 file은 RUN_DIR에 둔다. 함께 쓰는 것은 server
-// 환경(TEST_ENV), build한 도구(.runtime/bin), 실행 directory의 뿌리(.runtime/run)와 lease directory(*.leases)뿐이다.
+// runtimePathErrors returns one error for each line in the Makefile that writes a fixed file of .runtime shared by several runs (or the file beside TEST_ENV)
+// as one file. A run's own file goes in RUN_DIR. What is shared is only the server
+// environment (TEST_ENV), the built tools (.runtime/bin), the root of the run directories (.runtime/run), and the lease directories (*.leases).
 export function runtimePathErrors(makefile: string): string[] {
   const allowed = [/^TEST_ENV = \.runtime\/servers\/env$/, /\.runtime\/bin\//, /\.runtime\/run\)/, /\.leases\)?$/];
   const errors: string[] = [];
@@ -432,9 +432,9 @@ export function runtimePathErrors(makefile: string): string[] {
   return errors;
 }
 
-// fixedPortErrors는 고정 TCP port를 정하는 줄마다 오류 하나를 돌려준다(files는 Makefile과 shell script의 {path: text}):
-// `<NAME>PORT = <number>` 같은 할당과 port를 인자로 주는 `test-servers.mts start`다. 두 checkout의 server가 같은 고정
-// port를 다투므로, make test-servers는 빈 port를 고르고(scripts/free-ports.mts) 환경 file에 기록한다. 주석 줄은 보지 않는다.
+// fixedPortErrors returns one error for each line that sets a fixed TCP port (files is the {path: text} of the Makefile and the shell scripts):
+// an assignment such as `<NAME>PORT = <number>`, and `test-servers.mts start` given a port as an argument. Servers of two checkouts
+// contend for the same fixed port, so make test-servers picks an empty port (scripts/free-ports.mts) and records it in the environment file. Comment lines are not checked.
 export function fixedPortErrors(files: Record<string, string>) {
   const errors: string[] = [];
   for (const [path, text] of Object.entries(files)) {
@@ -447,11 +447,11 @@ export function fixedPortErrors(files: Record<string, string>) {
   return errors;
 }
 
-// unpublishedOutputErrors는 build 출력을 그 자리에 바로 쓰는 Makefile 줄마다 오류 하나를 돌려준다: `go build -o`나
-// `go test -c -o`의 출력이 @OUT@이 아닌 줄, 표준 출력을 file로 redirect하는 줄(`> file`), tsc를 직접 실행하는 줄.
-// 그런 출력은 끊긴 build가 반쪽 file을 남기고, 다른 실행이나 뒤의 단계가 쓰는 도중의 file을 읽는다. 출력은
-// $(PUBLISH)(scripts/publish-output.mts)로 임시 file에 쓰고 rename하며, TypeScript client는 scripts/typescript/build.mts로
-// build한다. 주석 줄과 stderr redirect(>&2), /dev/null은 보지 않는다.
+// unpublishedOutputErrors returns one error for each Makefile line that writes build output directly to its place: `go build -o` or
+// a `go test -c -o` whose output is not @OUT@, a line that redirects standard output to a file (`> file`), and a line that runs tsc directly.
+// Such output leaves a half-written file when the build is cut off, and other runs or later steps read a file still being written. Output is
+// written to a temporary file and renamed by $(PUBLISH) (scripts/publish-output.mts), and the TypeScript client is built with scripts/typescript/build.mts.
+// Comment lines, stderr redirects (>&2) and /dev/null are not checked.
 export function unpublishedOutputErrors(makefile: string): string[] {
   const errors: string[] = [];
   for (const [index, line] of makefile.split('\n').entries()) {
@@ -465,10 +465,10 @@ export function unpublishedOutputErrors(makefile: string): string[] {
   return errors;
 }
 
-// typescriptHolderErrors는 TypeScript client를 build하는(TSC_BUILD, npm의 typescript:build, typescript:test,
-// typescript:check, 그것을 하는 scripts/client-db-test.mts) make target 가운데 그 build 출력의 보유
-// ($(HOLD_TYPESCRIPT))를 얻지 않는 것마다 오류 하나를 돌려준다. target은 recipe의 첫 줄에서 보유를 얻거나, 보유를
-// 얻는 선행 target(ts-check/types의 ts-check/hold)을 통해 얻는다: make는 선행 target을 먼저 실행한다.
+// typescriptHolderErrors returns one error for each make target that builds the TypeScript client (TSC_BUILD, npm's typescript:build, typescript:test,
+// typescript:check, and scripts/client-db-test.mts that does it) that does not get the holding ($(HOLD_TYPESCRIPT)) of that build output.
+// A target gets the holding on the first line of its recipe, or gets it
+// through a prerequisite target that gets it (ts-check/hold of ts-check/types): make runs prerequisite targets first.
 export function typescriptHolderErrors(makefile: string): string[] {
   const builds = /\$\(TSC_BUILD\)|typescript:(?:build|test|check)\b|client-db-test\.sh|tests\/conformance\/check run\b/;
   const targets = makeTargets(makefile);
@@ -484,10 +484,10 @@ export function typescriptHolderErrors(makefile: string): string[] {
     .map(rule => `Makefile ${rule.target} builds the TypeScript client without holding its build output; start the recipe with $(HOLD_TYPESCRIPT)`);
 }
 
-// unleasedCargoErrors는 Makefile 밖의 명령(검증 명령, script, package.json script)이 공유 Rust target
-// directory(CARGO_TARGET_DIR)에 lease 없이 build하거나 그곳의 program을 실행하는 segment마다 오류 하나를 돌려준다.
-// build는 `"$LEASE" run "$CARGO_LEASES" exclusive --wait --` 아래에서 하고(tests/cargo-test.mts는 스스로 한다),
-// 실행할 program은 그 lease 안에서 실행 하나의 directory로 복사한다(scripts/cargo-build-copy.mts).
+// unleasedCargoErrors returns one error for each segment in which a command outside the Makefile (verification command, script, package.json script) builds in the shared Rust target
+// directory (CARGO_TARGET_DIR) without a lease, or runs a program from it.
+// The build runs under `"$LEASE" run "$CARGO_LEASES" exclusive --wait --` (tests/cargo-test.mts does this itself),
+// and the program to run is copied, under that lease, into one run directory (scripts/cargo-build-copy.mts).
 export function unleasedCargoErrors(units: Unit[]): string[] {
   const errors: string[] = [];
   for (const { name, commands, dialect } of units)
@@ -504,23 +504,23 @@ export function unleasedCargoErrors(units: Unit[]): string[] {
   return errors;
 }
 
-// usesTypescriptOutput는 path의 JavaScript file이 TypeScript client의 build 출력(packages/ts/dist)을 쓰는지다:
-// 직접 `dist/`를 import하거나, 상대 import나 `packages/ts/...mjs` 경로로 실행하는 file이 그것을 쓴다.
+// usesTypescriptOutput is whether a JavaScript file at the path uses the TypeScript client's build output (packages/ts/dist):
+// a file that imports `dist/` directly, or runs through a relative import or a `packages/ts/...mjs` path, uses it.
 export function usesTypescriptOutput(path: string, read: Read, seen = new Set<string>()): boolean {
   if (seen.has(path)) return false;
   seen.add(path);
   const text = read(path);
   if (text === undefined) return false;
-  // import 문(정적, 동적, re-export)만 본다. 문자열 안의 import 예시는 쓰는 것이 아니다.
-  // 정적 import와 re-export는 여러 줄에 걸칠 수 있다(`import {\n  a,\n} from '../dist/index.js'`).
-  // 줄을 넘는 것은 `{ ... }` 안의 이름 목록뿐이다: 이름, `as`, 쉼표와 공백만 담는다.
+  // It looks only at import statements (static, dynamic, re-export). An import example inside a string is not a use.
+  // Static imports and re-exports can span several lines (`import {\n  a,\n} from '../dist/index.js'`).
+  // Only a list of names inside `{ ... }` may cross lines: it holds only names, `as`, commas and spaces.
   if (/^\s*(?:(?:import|export)\s+(?:type\s+)?(?:[\w$*]+(?:\s+as\s+[\w$]+)?\s*,?\s*)?(?:\{[\w$\s,]*\}\s*)?from\s*|(?:[^'"\n]*\bawait\s+)?import\(\s*)['"](?:(?:\.\.\/)+|[\w./-]*packages\/ts\/)dist\//m.test(text)) return true;
   return [...dependencies(path, text), ...nodeRuns(text)].some((next: string) => usesTypescriptOutput(next, read, seen));
 }
 
-// nodeRuns는 JavaScript text가 node로 실행하는 packages/ts의 file이다. 실행은 두 형태다: program과 인자 배열
-// (`'node', ['<file>', ...]`이나 `process.execPath, ['<file>', ...]`), 그리고 exec나 spawn 호출의 shell 문자열
-// (`execSync('node [option...] <file>')`). 경로를 문자열로만 적는 곳(기대 출력, stub, 정규식, 주석)은 실행이 아니다.
+// nodeRuns is the file in packages/ts that JavaScript text runs with node. Runs take two forms: a program and an argument array
+// (`'node', ['<file>', ...]` or `process.execPath, ['<file>', ...]`), and the shell string of an exec or spawn call
+// (`execSync('node [option...] <file>')`). A place where a path is only written as a string (expected output, stub, regular expression, comment) is not a run.
 export function nodeRuns(text: string): string[] {
   const file = '(packages\\/ts\\/[\\w./-]+\\.mjs)';
   const forms = [
@@ -530,8 +530,8 @@ export function nodeRuns(text: string): string[] {
   return forms.flatMap(form => [...text.matchAll(form)].map(match => match[1] ?? ''));
 }
 
-// typescriptReaderErrors는 TypeScript client의 build 출력을 쓰는 file을 node로 실행하는 make target 가운데 첫 줄에서
-// 그 출력의 보유(읽기는 $(READ_TYPESCRIPT), build하면 $(HOLD_TYPESCRIPT))를 얻지 않는 것마다 오류 하나를 돌려준다.
+// typescriptReaderErrors returns one error for each make target that runs with node a file writing the TypeScript client's build output and, on its first line,
+// does not get the holding of that output ($(READ_TYPESCRIPT) to read, $(HOLD_TYPESCRIPT) when building).
 export function typescriptReaderErrors(makefile: string, read: Read): string[] {
   const errors: string[] = [];
   for (const unit of makeRecipes(makefile)) {
@@ -544,9 +544,9 @@ export function typescriptReaderErrors(makefile: string, read: Read): string[] {
   return errors;
 }
 
-// goRunErrors는 units에서 `go run`을 실행하는 segment마다 오류 하나를 돌려준다. go run은 program을 실행하기 전에
-// 출력 없이 compile하므로 그 build는 단계 로그가 없는 장기 작업이다. tests/go-run.mts는 build를 기한 없는
-// 장기 작업으로 단계 로그와 함께 실행한 뒤 program을 실행한다.
+// goRunErrors returns one error for each segment in units that runs `go run`. go run compiles without
+// output before it runs the program, so that build is long-running work without step logs. tests/go-run.mts runs the build
+// as long-running work with step logs and no deadline, then runs the program.
 export function goRunErrors(units: Unit[]): string[] {
   const errors: string[] = [];
   for (const { name, commands, dialect } of units)

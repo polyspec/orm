@@ -1,17 +1,17 @@
-// 연결 probe 검사. client는 schema와 type을 manifest에서 읽고, 연결할 때 server에 무엇을 묻는
-// statement를 보내지 않는다. SQLite version은 각 driver가 link한 library에서 읽고(Go
+// Connection probe check. The client reads the schema and types from the manifest and, on connecting, sends the server no
+// statement asking anything. The SQLite version is read from the library each driver links (Go
 // `RegisterSQLiteVersion`, PHP `PDO::ATTR_SERVER_VERSION`, TypeScript `process.versions.sqlite`, Rust
-// `libsqlite3_sys::SQLITE_VERSION`), TypeScript의 연결 확인은 statement 없이 연결 하나를 연다.
+// `libsqlite3_sys::SQLITE_VERSION`), and TypeScript's connection check opens one connection without a statement.
 
-// runtimeSource는 client runtime의 source file이다. test와 dbspec introspection, 생성 code는 뺀다.
+// runtimeSource is the source file of the client runtime. Tests, dbspec introspection and generated code are excluded.
 export const runtimeSource = (path: string) =>
   (/^packages\/go\/orm\/(?:[^/]+|sqlite\/[^/]+|pg\/[^/]+)\.go$/.test(path) && !path.endsWith('_test.go')) ||
   /^packages\/php\/src\/[^/]+\.php$/.test(path) ||
   /^packages\/ts\/src\/[^/]+\.ts$/.test(path) ||
   (/^packages\/rust\/orm\/src\/[^/]+\.rs$/.test(path) && !path.endsWith('_tests.rs'));
 
-// connectProbeErrors는 files({path: text})의 runtime source가 연결 probe statement를 적는 줄마다 오류
-// 하나를 돌려준다: SQL `sqlite_version()`과 TypeScript의 `'SELECT 1'`. 주석 줄은 제외한다.
+// connectProbeErrors returns one error for each line of the runtime source in files ({path: text}) that writes a connection probe statement:
+// SQL `sqlite_version()` and TypeScript's `'SELECT 1'`. Comment lines are excluded.
 export function connectProbeErrors(files: Record<string, string>) {
   const errors: string[] = [];
   for (const [path, text] of Object.entries(files)) {

@@ -1,30 +1,30 @@
-// 개발 Node version 검사. 검사와 build를 실행하는 Node는 `mise.toml`의 tool node가 한 번 선언한 version
-// 하나이고(kit K171), make install-tools가 var/tools에 설치하며, 로컬 검사와 모든 workflow가 그 version으로
-// 실행한다. package.json의 engines.node(">=x.y.z")는 TypeScript client가 지원하는 최저 version이며 make
-// ts-min-check가 실행한다.
+// Development Node version check. The Node that runs the checks and the build is the one version the tool node in `mise.toml` declares once
+// (kit K171), which make install-tools installs into var/tools, and which the local checks and every workflow run with.
+// engines.node (">=x.y.z") in package.json is the lowest version the TypeScript client supports; make
+// ts-min-check runs it.
 
 import semver from 'semver';
 import { parse as parseToml } from 'smol-toml';
 import { actionSteps, workflowSteps } from './workflow.mts';
 import { parseNpmLock, parsePackage } from '../json/formats.mts';
 
-// exactVersion은 정확한 x.y.z이면 그 version이고 아니면 null이다. 비교는 semver가 한다.
+// exactVersion is that version if it is an exact x.y.z, and null otherwise. The comparison is done by semver.
 const exactVersion = (text: string): string | null => /^\d+\.\d+\.\d+$/.test(text) ? text : null;
 
-// miseNode는 mise.toml의 `[tools]` node가 문자열이면 그것이고 아니면 ''이다.
+// miseNode is the `[tools]` node of mise.toml if it is a string, and '' otherwise.
 const miseNode = (miseToml: string): string => {
   const tools: unknown = parseToml(miseToml)['tools'];
   const node = typeof tools === 'object' && tools !== null && 'node' in tools ? tools.node : undefined;
   return typeof node === 'string' ? node : '';
 };
 
-// nodeVersionErrors는 Node version 선언이 하나가 아니거나 실행 중인 Node와 다른 곳마다 오류
-// 하나를 돌려준다.
-//   - declared(miseToml, `mise.toml`의 내용의 tool node)는 정확한 x.y.z 하나다.
-//   - minimum(package.json engines.node의 ">=x.y.z")은 declared보다 높지 않다.
-//   - workflows({path: text})의 actions/setup-node step은 `node-version-file: mise.toml`로
-//     version을 읽고 `node-version`을 직접 적지 않는다. Node를 쓰는 workflow는 setup-node를 쓴다.
-//   - running(process.versions.node)은 declared와 같다.
+// nodeVersionErrors returns one error at each place where the Node version declaration is not one, or differs from the running Node;
+// it returns one error.
+//   - declared (the tool node in the content of miseToml, `mise.toml`) is one exact x.y.z.
+//   - minimum (">=x.y.z" in package.json engines.node) is not higher than declared.
+//   - The actions/setup-node step of the workflows ({path: text}) reads the version with `node-version-file: mise.toml`
+//     and does not write `node-version` directly. A workflow that uses Node uses setup-node.
+//   - running (process.versions.node) is the same as declared.
 export function nodeVersionErrors(miseToml: string, minimum: string | undefined, workflows: Record<string, string>, running: string): string[] {
   const errors: string[] = [];
   const declared = miseNode(miseToml);
@@ -50,18 +50,18 @@ export function nodeVersionErrors(miseToml: string, minimum: string | undefined,
   return errors;
 }
 
-// npm의 git source 검사. polyspec package는 GitHub tag의 release archive URL로 받고, npm은 git으로
-// 받는 package가 없어야 git을 쓸 수 없는 `npm ci`에서도 설치한다.
+// Check of npm git sources. polyspec packages are fetched from the release archive URL of a GitHub tag, and npm
+// also installs with `npm ci`, which cannot use git, so no package may be fetched from git.
 const GIT_SOURCE = /^(?:git\+|git:|ssh:|github:)/;
-// GITHUB_SHORTHAND는 npm이 GitHub 저장소로 읽는 `owner/repo` 또는 `owner/repo#ref` spec이다.
+// GITHUB_SHORTHAND is the `owner/repo` or `owner/repo#ref` spec that npm reads as a GitHub repository.
 const GITHUB_SHORTHAND = /^[^@\s/:.][^\s/:]*\/[^\s/:]+$/;
 const DEPENDENCY_FIELDS = ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'] as const;
 
-// npmGitSourceErrors는 files({path: text}, 추적된 package.json과 package-lock.json)에서 git으로 받는
-// dependency마다 오류 하나를 돌려준다.
-//   - package.json의 dependency spec은 `git+`, `git:`, `ssh:`, `github:`로 시작하지 않고 GitHub
-//     shorthand(`owner/repo#ref`)가 아니다.
-//   - package-lock.json의 모든 `resolved`는 `git+`, `git:`, `ssh:`, `github:`로 시작하지 않는다.
+// npmGitSourceErrors, over files ({path: text}: the tracked package.json and package-lock.json), returns
+// one error for each dependency fetched from git.
+//   - A dependency spec in package.json does not start with `git+`, `git:`, `ssh:` or `github:`, and is not a GitHub
+//     shorthand (`owner/repo#ref`).
+//   - No `resolved` in package-lock.json starts with `git+`, `git:`, `ssh:` or `github:`.
 export function npmGitSourceErrors(files: Record<string, string>): string[] {
   const errors: string[] = [];
   for (const [path, text] of Object.entries(files)) {
