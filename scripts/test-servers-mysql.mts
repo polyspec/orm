@@ -118,9 +118,9 @@ async function catalogCounts(port: string, schemas: string[], context: Context):
   return counts;
 }
 
-// holdExclusive는 이 process가 끝날 때까지 서버의 exclusive lease(tests/lease)를 가진다. migration은
-// 서버를 멈추고 data를 옮기므로, 다른 실행이 서버의 lease를 가지고 있으면 아무것도 바꾸지 않고 그
-// 보유자를 적으며 실패한다. LEASE와 LEASES는 test-servers.mts가 준다.
+// holdExclusive holds the server's exclusive lease (tests/lease) until this process exits. The migration
+// stops the server and moves data, so if another run holds the server's lease, it changes nothing and then
+// fails, naming the holder. LEASE and LEASES are provided by test-servers.mts.
 function holdExclusive() {
   const { LEASE: lease, LEASES: leases } = process.env;
   if (!lease || !leases) throw new Error('LEASE and LEASES are unset; run make test-servers');
@@ -145,7 +145,7 @@ async function main() {
   const done = (name: string) => existsSync(state(`${name}.done`));
   const mark = (name: string, text = '') => writeFileSync(state(`${name}.done`), text);
 
-  // 진행 중인 migration이 없으면 기록된 설정(marker, 없으면 실행 중인 primary)을 선언과 비교한다.
+  // If no migration is in progress, it compares the recorded settings (the marker, or else the running primary) with the declaration.
   if (!existsSync(work)) {
     let recorded: string;
     if (existsSync(marker)) recorded = readFileSync(marker, 'utf8');
@@ -187,7 +187,7 @@ async function main() {
       const statements: string[] = [];
       for (const [user = '', host = ''] of users) {
         const account = `'${user.replaceAll("'", "''")}'@'${host.replaceAll("'", "''")}'`;
-        // print_identified_with_as_hex는 password hash를 hex로 적어 SQL text로 다시 실행할 수 있게 한다.
+        // print_identified_with_as_hex writes the password hash as hex so it can be re-run as SQL text.
         const [[create = ''] = []] = await rows(mysqlPort, `SET SESSION print_identified_with_as_hex = ON; SHOW CREATE USER ${account}`, context);
         statements.push(`${create.replace(/^CREATE USER /, 'CREATE USER IF NOT EXISTS ')};`);
         for (const [grant] of await rows(mysqlPort, `SHOW GRANTS FOR ${account}`, context)) statements.push(`${grant};`);
@@ -210,7 +210,7 @@ async function main() {
       }
     }],
     ['start', async context => {
-      // 기존 data는 keep 단계가 옮겼으므로, 앞선 시도가 남긴 새 data directory만 지운다.
+      // The keep step already moved the existing data, so only the new data directory left by the earlier attempt is removed.
       for (const name of ['mysql', 'mysql-replica']) rmSync(join(dir, name), { recursive: true, force: true });
       await run(process.execPath, [script, 'mysql-start', mysqlPort, replicaPort], context);
     }],

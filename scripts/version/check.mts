@@ -95,7 +95,7 @@ export function changelogErrors(version: string, files: Record<string, string>):
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  // version check는 선언 file을 읽고 비교하는 case 하나다.
+  // The version check is one case that reads the declaration file and compares it.
   const log = sections();
   log.begin('version', COMPUTE);
   const root = resolve(import.meta.dirname, '..', '..');
