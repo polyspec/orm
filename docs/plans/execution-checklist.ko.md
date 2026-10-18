@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: c8962165efdb8ca0faca03f9a3947c1d080db4864c0e0d84de3cc44aea8b6324 -->
+<!-- source-sha256: 8ed9e229d8fefe910980505c4963caed4451754fcedabc770b54ba02671af79c -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1543,7 +1543,8 @@
   - docs/dsl.md, docs/interfaces.md, docs/usage.md와 ko 쌍, contracts/interfaces.json, 생성된 wrapper, parity unit.
 - [ ] T202 upsert의 conflict key를 request hook 뒤에 검증한다(consumer hyper ScopeHook). 원인: request hook이 insert의 scope column을 할당하지만 `duplication()->create()`의 conflict key 검증이 hook 전의 request를 읽으므로, hook이 완성하는 key가 거부된다. 완료 기준: 검증 위치(Go ir.go, PHP Validator.php, Python validate.py, Rust validate.rs, TS validate.ts)가 hook이 돌려준 request를 읽는다. 언어마다 unit case, 전 red, 후 green.
 - [ ] T203 `relation()`과 `relations()`가 service scope 아래에서 실행된다(consumer). 원인: service scope 아래에서 둘 다 `CONFIG`로 실패한다. 완료 기준: 원인을 찾아 여기에 적고, 언어마다 case, 전 red, 후 green.
-- [ ] T206 orm이 행이 대기나 진행 중인 동안 `make check`와 `parity-check`를 거부하는 kit full-run guard를 쓴다(kit K233, K234). 완료 기준: orm에서 각각 한 번의 dry run이 열린 행을 말하고 거부한다.
+- [o] T206 orm이 행이 대기나 진행 중인 동안 `make check`와 `parity-check`를 거부하는 kit full-run guard를 쓴다(kit K233, K234). 완료 기준: orm에서 각각 한 번의 dry run이 열린 행을 말하고 거부한다.
+  증거: e095582f에서 `make check`는 대기 행(T205 … T211)을 나열하고 거부한다. parity-prepare는 UNITS가 비어 있으면 full-run gate를 먼저 실행하므로, 전체 parity-check는 extension과 Rust conformance binary를 빌드하기 전에 거부한다 (`make -n parity-prepare`에서 gate가 자기 첫 줄이다).
 - [ ] T207 database server가 그 checkout과 함께 멈춘다. 원인: 지워진 worktree의 mysqld 쌍과 같은 datadir의 이전 시작이 며칠씩 돈다. 완료 기준: worktree를 지우거나 datadir에 server 쌍을 시작하면 먼저 그것에 속한 server를 멈춘다. 전 red, 후 green인 test. 지금 도는 고아 process는 사용자가 멈출 일이다.
 - [ ] T208 metadata가 manifest와 다른 generated model을 거부한다(consumer PlanBinds 경고). 원인: consumer의 PHP model이 orm-gen이 varchar `length`를 쓰기 전(adc4d518) 생성됐고, runtime은 그것을 거부하지 않고 PlanBinds.php:91의 PHP 경고와 null length로 읽는다. 완료 기준: runtime model을 만들 때 각 generated model의 metadata를 그 manifest가 주는 entity와 비교하고, 다르면 class, entity, 처음 다른 필드, orm-gen 명령을 말하는 `CONFIG`로 실패한다. 낡은 model로 red, 뒤 green. generated code가 metadata를 갖는 모든 client에서.
 - [ ] T209 external document의 table을 읽기 전용 entity로 읽는다(consumer: set을 넘는 행의 audit). 원인: request 하나는 manifest hash 하나를 갖고 runtime model에 external table의 entity가 없어 어떤 query도 다른 set의 table을 읽지 못하며, key를 모아 IN에 넣는 것은 금지다. 완료 기준: 쓰는 set의 runtime model과 generated code가 쓰는 external table마다 select, join, subquery, relation, 조건이 되는 entity를 주고, 모든 쓰기는 `CONFIG` `<table> is owned by another document set`으로 실패한다. docs/dbspec.md "External documents"(+ko). 다섯 client에서 전 red, 후 green인 conformance vector.

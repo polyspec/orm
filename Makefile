@@ -1148,7 +1148,9 @@ FLOWMARK ?= $(abspath .runtime/bin/flowmark)
 # removes when the step ends, pass or fail. parity-prepare refuses to run outside that step.
 PARITY_RUN_DIR = $(STEP_RUN_DIR)
 .PHONY: parity-prepare
+# A full parity run (no UNITS) passes the gate of full-run before it builds anything (T206).
 parity-prepare: lease-tool
+	$(if $(UNITS),,$(NODE) $(KIT)/full-run.$(KIT_EXT) gate)
 	test -n "$(STEP_RUN_DIR)" || { echo "parity-prepare: STEP_RUN_DIR is unset; run the parity-check through make run-databases TARGETS=parity-check, whose step owns the directory"; exit 1; }
 	mkdir -p $(PARITY_RUN_DIR)
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PARITY_RUN_DIR)/orm_dbspec.so
