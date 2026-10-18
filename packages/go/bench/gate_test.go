@@ -32,9 +32,9 @@ const (
 	gatePairs = 1000
 )
 
-// gateDeadline은 hot-path gate case의 기한이다. 각 workload는 gateWarm+gatePairs 쌍의
-// native와 client 호출을 bench database에 보내고, 부하 process가 모든 CPU를 쓰는 동안에도
-// 몇십 초 안에 끝나므로 5분은 멈춘 case만 끝낸다.
+// gateDeadline is the deadline of a hot-path gate case. Each workload sends the gateWarm+gatePairs pairs of
+// native and client calls to the bench database, and even while a load process uses all CPUs,
+// they finish within a few tens of seconds, so five minutes only ends a case that is stuck.
 const gateDeadline = 5 * time.Minute
 
 // pairedRatio measures native and client in adjacent pairs, alternating which
@@ -109,8 +109,8 @@ func TestHotPathGateUnderLoad(t *testing.T) {
 // when that test starts it with ORM_BENCH_CPU_LOAD=1 and ends when killed.
 func TestCPULoad(t *testing.T) {
 	if os.Getenv("ORM_BENCH_CPU_LOAD") != "1" {
-		// 부하를 만드는 일은 TestHotPathGateUnderLoad가 띄워 끝내는 하위 process에서만 하고,
-		// 그 process는 기한 없이 부모가 끝낼 때까지 돈다.
+		// Load is generated only in a child process that TestHotPathGateUnderLoad starts and waits for,
+		// and that process runs without a deadline until the parent ends it.
 		testcase.Start(t, testcase.Compute)
 		return
 	}

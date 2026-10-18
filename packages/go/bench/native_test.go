@@ -62,8 +62,8 @@ func nativeDSN(raw string) (string, error) {
 	return cfg.FormatDSN(), nil
 }
 
-// listCols는 generated client가 author의 기본 select set으로 만드는 column 목록과
-// 같다. TestNativeStatementsEqualClient가 두 statement text를 비교한다.
+// listCols is the list of columns that the generated client builds as the author's default select set,
+// and the two are the same. TestNativeStatementsEqualClient compares the two statement texts.
 const listCols = "`a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version`"
 
 type author struct {
@@ -91,7 +91,7 @@ type author struct {
 	AESKeyVersion            int32
 }
 
-// nativeKeyring은 client가 연결마다 한 번 만드는 것처럼 한 번 만든 AES keyring이다.
+// nativeKeyring is an AES keyring built once, as the client builds it once per connection.
 var nativeKeyring = sync.OnceValues(func() (orm.AESKeyring, error) {
 	return orm.NewAESKeyring(map[int32]string{1: "bench-salt"}, 1)
 })
@@ -108,7 +108,7 @@ func scan(rows *sql.Rows, b *author) error {
 	if err != nil {
 		return err
 	}
-	// client처럼 hex와 aes stage를 모두 executor에서 decode한다(어느 dialect도 hex를 SQL에서 풀지 않는다).
+	// As the client does, it decodes the hex and aes stages in the executor (no dialect decodes hex in SQL).
 	for _, column := range []struct {
 		name   string
 		cipher []byte
