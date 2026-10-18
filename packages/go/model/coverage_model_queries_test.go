@@ -10,8 +10,8 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// TestCoverageModelQueryRows는 seed bench database의 author을 generated
-// model로 세고, 정렬해 읽고, 합하고, 선언된 match로 user를 함께 읽는다.
+// TestCoverageModelQueryRows counts, with the generated model, the authors in the seed bench database,
+// reads them sorted, aggregates them, and reads users together with the declared match.
 func TestCoverageModelQueryRows(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, _, _ := connectFeature(t)

@@ -12,8 +12,8 @@ import (
 	"github.com/polyspec/orm/packages/go/orm"
 )
 
-// featureDatabase는 feature coverage checker가 고른 database와 DSN이다.
-// 둘 중 하나라도 없으면 test가 실패한다.
+// featureDatabase is the database and DSN that the feature coverage checker chose.
+// If either one is missing, the test fails.
 func featureDatabase(t *testing.T) (string, string) {
 	t.Helper()
 	driver, dsn := os.Getenv("ORM_FEATURE_DATABASE"), os.Getenv("ORM_FEATURE_DSN")
@@ -23,8 +23,8 @@ func featureDatabase(t *testing.T) (string, string) {
 	return driver, dsn
 }
 
-// connectFeature는 고른 seed bench database에 generated model로 연결한다.
-// AES와 blind index key는 seed가 쓴 key다.
+// connectFeature connects to the chosen seed bench database with the generated model.
+// The AES and blind index keys are the keys the seed wrote.
 func connectFeature(t *testing.T) (*orm.DB, string, string) {
 	t.Helper()
 	driver, dsn := featureDatabase(t)
@@ -43,8 +43,8 @@ func connectFeature(t *testing.T) (*orm.DB, string, string) {
 	return db, driver, dsn
 }
 
-// nativeTableExists는 native driver로 연결의 현재 database나 schema에 table이
-// 있는지 읽는다.
+// nativeTableExists uses the native driver to read whether a table exists in the
+// current database or schema of the connection.
 func nativeTableExists(t *testing.T, driver, dsn, table string) bool {
 	t.Helper()
 	var raw *sql.DB

@@ -71,8 +71,8 @@ func awaitReplica(t *testing.T, driver, primary, replicaServer string) {
 	target := openNative(t, driver, replicaServer)
 	defer target.Close()
 	var waited *int64
-	// 기한은 60초다: replica는 병렬로 실행하는 모든 client의 쓰기를 차례로 적용하므로, 4 vCPU Linux
-	// runner에서 10초 안에 primary 위치에 닿지 못했다.
+	// The deadline is 60 seconds: the replica applies the writes of all clients running in parallel in turn, so on a 4 vCPU Linux
+	// runner it could not reach the primary position within 10 seconds.
 	if err := target.QueryRow("SELECT SOURCE_POS_WAIT(?, ?, 60)", file, position).Scan(&waited); err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func TestPrimaryAndReplica(t *testing.T) {
 	manifest := model.Schema
 	for driver, dsns := range replicaTargets(t) {
 		t.Run(driver, func(t *testing.T) {
-			// primary에 case database를 만들고 replica에서는 복제된 같은 이름의 database를 연다.
+			// It creates the case database on the primary, and on the replica opens the replicated database of the same name.
 			primary := testdb.New(t, driver)
 			replica := testdb.Retarget(t, dsns[1], testdb.DatabaseOf(t, primary))
 			master, err := model.Connect(primary, orm.Config{})

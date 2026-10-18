@@ -11,18 +11,18 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// compositeTenant와 compositeOtherTenant는 이 case가 쓰는 composite_account의
-// tenant_id다. 다른 tenant에도 account 2가 있어야 account_id 한 성분만으로
-// 잇는 relation이 드러난다.
+// compositeTenant and compositeOtherTenant are the tenant_id of composite_account that this case uses.
+// tenant_id. Account 2 must also exist in another tenant, so that a relation linked by
+// the account_id component alone is revealed.
 const (
 	compositeTenant      = 990004
 	compositeOtherTenant = 990006
 )
 
-// TestCoverageCompositeKeyRows는 두 column primary key의 account와
-// membership을 만들고, 두 key 성분으로 읽고, foreign key의 두 성분
-// (tenant_id, account_id)으로 잇는 memberships relation으로 함께 읽고,
-// account를 지우면 ON DELETE CASCADE로 membership이 지워지는지 확인한다.
+// TestCoverageCompositeKeyRows creates the account and
+// membership rows with a two-column primary key, and reads them by the two key components,
+// and reads them together through the memberships relation linked by (tenant_id, account_id),
+// and checks that deleting an account cascades to delete its membership (ON DELETE CASCADE).
 func TestCoverageCompositeKeyRows(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, _, _ := connectFeature(t)
@@ -48,9 +48,9 @@ func TestCoverageCompositeKeyRows(t *testing.T) {
 	if got := must(account().GetByTenantIdAndAccountId(compositeTenant, 2)).GetName(); got != "b" {
 		t.Fatalf("account (%d, 2) name = %q, want b", compositeTenant, got)
 	}
-	// relation은 foreign key의 두 성분을 key 순서대로 잇는다. 한 성분만 이으면
-	// tenant의 다른 account나 다른 tenant의 account 2의 membership이 붙는다.
-	// 자식이 자기 연결을 가진 relation은 부모 row를 읽은 뒤 따로 읽는다. 두 경로가 같은 결과를 낸다.
+	// The relation links both components of the foreign key in key order. Linking only one component
+	// attaches the memberships of another account in the tenant, or of account 2 in another tenant.
+	// A child whose relation has its own link reads the parent row first and then reads separately. The two paths give the same result.
 	for path, child := range map[string]*model.CompositeMembershipModel{
 		"same statement": model.CompositeMembership(),
 		"own connection": model.CompositeMembership().Connect(db),
