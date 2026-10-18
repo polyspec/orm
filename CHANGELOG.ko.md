@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 251145e409012558285dbdb34493bd2748c0474bac8497bdf9039139a690528d -->
+<!-- source-sha256: 6d968bfcd12dded357022182efd591529f8b3ece061c8ebbf5e782e58ed90688 -->
 # 변경 이력
 
 ## Unreleased
+- TypeScript AesKeyring symbol이 interface-check와 parity unit에서 red와 green을 거쳤다 (T148-4-4).
 - model.mjs는 connectionsUseUtc 시각을 canonical UTC text로 넘긴다 (T210).
 - 다섯 생성기가 중첩 relation alias와 wrapper나 type 인자로 type이 정해진 getter를 풀고, 아무것도 붙이지 않는 getter 호출에서 생성을 멈춘다(T211).
 - 다섯 client의 request-hook case가 hook이 conflict key를 채우는 upsert를 다룬다 (T202).

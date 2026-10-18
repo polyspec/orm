@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The TypeScript AesKeyring symbols hold red and green in interface-check and their parity units (T148-4-4).
 - model.mjs passes its connectionsUseUtc time as canonical UTC text (T210).
 - The five generators resolve a nested relation alias and a getter typed through its wrapper or type argument, and stop generation on a getter call that nothing attaches (T211).
 - The request-hook cases of the five clients cover an upsert whose conflict key the hook completes (T202).
