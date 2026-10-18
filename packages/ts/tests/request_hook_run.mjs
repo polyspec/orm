@@ -15,6 +15,8 @@ class Item extends Model {}
 Item.entity = { model: runtime, entity: runtime.entities.get('hook_item'), create: core => new Item(core) };
 class Entry extends Model {}
 Entry.entity = { model: runtime, entity: runtime.entities.get('hook_entry'), create: core => new Entry(core) };
+class Upsert extends Model {}
+Upsert.entity = { model: runtime, entity: runtime.entities.get('hook_upsert'), create: core => new Upsert(core) };
 
 const READS = new Set(['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate']);
 
@@ -134,6 +136,23 @@ export const cases = {
     assert.equal(inserted, 2, 'the bulk insert writes two rows');
     const rows = (await stored(db)).filter(([, label]) => label.startsWith('h'));
     assert.deepEqual(rows, [['h', 'h1'], ['h', 'h2'], ['h', 'h3']], 'the single and the bulk insert write the assigned part');
+  },
+
+  /** The hook sets scope_col on the insert, and the conflict key (scope_col, name) of the upsert is checked after the hook. The caller sets only name, and the update sets hits: the first call inserts and the second updates the row. */
+  async upsert_scope(db) {
+    const hooked = db.withRequestHook((request, addParam) => {
+      if (request.kind === 'insert') request.set.push({ column: 'scope_col', p: addParam('a') });
+      return request;
+    });
+    for (let call = 1; call <= 2; call += 1) {
+      const row = new Upsert().connect(hooked);
+      row[CORE].setValue('name', 'k');
+      const update = new Upsert();
+      update[CORE].setValue('hits', 7);
+      await row.duplication(update).create();
+    }
+    const rows = (await new Upsert().connect(db).gets()).values().map(row => row.toArray());
+    assert.deepEqual(rows.map(row => [row.scope_col, row.name, row.hits]), [['a', 'k', 7]], 'the stored row holds scope_col a, name k and hits 7');
   },
 
   /** Update and delete of rows read through a hook handle pass through the hook. The transaction of a hook handle also passes through the hook. */

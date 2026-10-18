@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 6b30bc0dba1fe9f1e4bedb85a48449682c3d0d58a6031d2ff6e3d85364bdc122 -->
+<!-- source-sha256: b418f00d31dbc0cc6819706a7af481f82d96c60ed6f458e5ccdaa93ed7a4c138 -->
 # 변경 이력
 
 ## Unreleased
 - 다섯 생성기가 중첩 relation alias와 wrapper나 type 인자로 type이 정해진 getter를 풀고, 아무것도 붙이지 않는 getter 호출에서 생성을 멈춘다(T211).
+- 다섯 client의 request-hook case가 hook이 conflict key를 채우는 upsert를 다룬다 (T202).
 - 전체 parity-check는 kit K236의 parse 시점 gate로 interface-check가 빌드하기 전에 거부한다. orm 자체 gate 줄은 지운다 (T206).
 - PHP가 manifest와 metadata가 어긋나는 generated model을 거부하며, class, 필드, orm-gen 명령을 말한다(T208).
 - T203을 재현되지 않음으로 닫는다: request hook 아래 relation()/relations()가 CONFIG를 내는 client가 없다 (T203).

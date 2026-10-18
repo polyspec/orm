@@ -16,7 +16,7 @@ use polyspec_orm::{Core, Db, Entity, Model, Param, RequestParams, Schema, Val};
 use polyspec_orm_case_database::CaseDatabase;
 
 static HOOK_SCHEMA: Schema =
-    Schema::new(include_str!("../../../../contracts/fixtures/request_hook.dbs"), "sha256:77d6d7c8afbfeac561a6f4b29f203b0b0b10553a72a9514d3f00496c53aaba65");
+    Schema::new(include_str!("../../../../contracts/fixtures/request_hook.dbs"), "sha256:b9ee83943930e19f474fe2c98ef5f6facd4ad40551becbdcb81b74ab5f2167ea");
 static HOOK_ITEM: Entity = Entity {
     name: "hook_item",
     schema: &HOOK_SCHEMA,
@@ -92,6 +92,49 @@ impl Model for HookEntry {
     }
     fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
         if !ENTRY_COLUMNS.contains(&name) {
+            return Ok(false);
+        }
+        self.values.insert(name.to_owned(), v);
+        Ok(true)
+    }
+    fn value(&self, name: &str) -> Option<Val> {
+        self.values.get(name).cloned()
+    }
+}
+
+static HOOK_UPSERT: Entity = Entity {
+    name: "hook_upsert",
+    schema: &HOOK_SCHEMA,
+    new: polyspec_orm::model::new_boxed::<HookUpsert>,
+    collect: polyspec_orm::model::collect_boxed::<HookUpsert>,
+};
+const UPSERT_COLUMNS: [&str; 4] = ["id", "scope_col", "name", "hits"];
+
+/// A row of hook_upsert, whose unique key is (scope_col, name).
+#[derive(Clone)]
+struct HookUpsert {
+    core: Core,
+    values: BTreeMap<String, Val>,
+}
+
+impl Model for HookUpsert {
+    fn entity() -> &'static Entity {
+        &HOOK_UPSERT
+    }
+    fn core(&self) -> &Core {
+        &self.core
+    }
+    fn core_mut(&mut self) -> &mut Core {
+        &mut self.core
+    }
+    fn from_core(core: Core) -> Self {
+        HookUpsert { core, values: BTreeMap::new() }
+    }
+    fn into_core(self) -> Core {
+        self.core
+    }
+    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
+        if !UPSERT_COLUMNS.contains(&name) {
             return Ok(false);
         }
         self.values.insert(name.to_owned(), v);
@@ -350,6 +393,44 @@ async fn loaded_row_writes_case(driver: &str) {
     database.drop().await;
 }
 
+/// A hook_upsert model connected to db (or to nothing when db is None) with values set.
+fn upsert_row(db: Option<&Db>, values: &[(&str, Param)]) -> HookUpsert {
+    let mut core = Core::new(&HOOK_UPSERT);
+    if let Some(db) = db {
+        core.connect(db);
+    }
+    let mut m = HookUpsert::from_core(core);
+    for (column, value) in values {
+        m.core_mut().set(column, value.clone());
+    }
+    m
+}
+
+/// The insert of the upsert sets scope_col through the hook, and the conflict key (scope_col, name) is checked after the hook.
+/// The caller sets only name; the update sets hits. The first call inserts and the second updates the row.
+async fn upsert_scope_case(driver: &str) {
+    let database = CaseDatabase::create(driver).await;
+    let db = installed(&database).await;
+    let hooked = db.with_request_hook(|request: &mut Request, params: &mut RequestParams| {
+        if request.kind == "insert" {
+            let p = params.add("a");
+            request.set.push(Assign { column: "scope_col".into(), p: Some(p), ..Default::default() });
+        }
+        Ok(())
+    });
+    for call in 1..=2 {
+        let mut m = upsert_row(Some(&hooked), &[("name", Param::from("k"))]);
+        m.core_mut().duplication(upsert_row(None, &[("hits", Param::from(7_i64))]).into_core());
+        polyspec_orm::model::create(&mut m).await.unwrap_or_else(|e| panic!("upsert call {call} = {e:?}, want the row inserted or updated"));
+    }
+    let rows = polyspec_orm::model::gets(&upsert_row(Some(&db), &[])).await.expect("gets");
+    let stored: Vec<(String, String, Option<i64>)> =
+        rows.models().map(|m| (text_of(m, "scope_col"), text_of(m, "name"), m.value("hits").and_then(|v| v.as_i64().ok()))).collect();
+    assert_eq!(stored, [("a".to_owned(), "k".to_owned(), Some(7))]);
+    db.close().await;
+    database.drop().await;
+}
+
 async fn invalid_param_case(driver: &str) {
     let database = CaseDatabase::create(driver).await;
     let db = installed(&database).await;
@@ -567,6 +648,12 @@ async fn loaded_row_writes() {
 async fn coverage_request_hook_loaded_row_writes() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     loaded_row_writes_case(feature_database()).await;
+}
+
+#[tokio::test]
+async fn upsert_scope() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    upsert_scope_case("sqlite").await;
 }
 
 #[tokio::test]

@@ -21,6 +21,7 @@ use Polyspec\Orm\Request;
 use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\Tests\RequestHookCase\HookEntry;
 use Polyspec\Orm\Tests\RequestHookCase\HookItem;
+use Polyspec\Orm\Tests\RequestHookCase\HookUpsert;
 
 /**
  * Generates the models of contracts/fixtures/request_hook.dbs into a work directory of the process, removed when the
@@ -164,6 +165,29 @@ function insertAssign(string $dsn): void
     }
     ksort($parts, SORT_STRING);
     hookCheck($parts === ['bulk1' => 'h', 'bulk2' => 'h', 'single' => 'h'], 'every inserted row holds the part the hook assigned: ' . json_encode($parts));
+    $db->close();
+}
+
+/**
+ * The hook sets scope_col on the insert, and the conflict key (scope_col, name) of the upsert is checked after the hook.
+ * The caller sets only name; the update sets hits. The first call inserts and the second updates the row.
+ */
+function upsertScope(string $dsn): void
+{
+    $db = hookConnect($dsn);
+    $h = $db->withRequestHook(static function (Request $r): void {
+        if ($r->ir['kind'] === 'insert') {
+            $r->ir['set'][] = ['column' => 'scope_col', 'p' => $r->param('a')];
+        }
+    });
+    for ($call = 1; $call <= 2; $call++) {
+        (new HookUpsert)($h)->setName('k')->duplication((new HookUpsert)->setHits(7))->create();
+    }
+    $rows = [];
+    foreach ((new HookUpsert)($db)->gets() as $row) {
+        $rows[] = [$row->getScopeCol(), $row->getName(), $row->getHits()];
+    }
+    hookCheck($rows === [['a', 'k', 7]], 'the stored row holds scope_col a, name k and hits 7: ' . json_encode($rows));
     $db->close();
 }
 
@@ -361,6 +385,7 @@ const REQUEST_HOOK_CASES = [
     'without_hook' => 'withoutHook',
     'read_filter' => 'readFilterCase',
     'insert_assign' => 'insertAssign',
+    'upsert_scope' => 'upsertScope',
     'loaded_row_writes' => 'loadedRowWrites',
     'invalid_param' => 'invalidParam',
     'restore_key' => 'restoreKeyCase',

@@ -19,3 +19,12 @@ table hook_entry {
     soft_delete deleted_at
   }
 }
+
+table hook_upsert {
+  id i64 identity
+  scope_col varchar(16)
+  name varchar(32)
+  hits i64 null
+  primary key (id)
+  unique uq_hook_upsert_key (scope_col, name)
+}

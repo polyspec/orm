@@ -133,6 +133,25 @@ class RequestHookTest(unittest.TestCase):
         )
         self.assertEqual(len(stored), 6)
 
+    def test_upsert_scope(self):
+        # The hook sets scope_col on the insert, and the conflict key (scope_col, name) of the upsert is checked after the hook.
+        # The caller sets only name; the update sets hits. The first call inserts and the second updates the row.
+        def hook(request, add_param, params):
+            if request["kind"] == "insert":
+                request["set"].append({"column": "scope_col", "p": add_param("a")})
+            return request
+
+        hooked = self.db.with_request_hook(hook)
+        for _ in range(2):
+            self.models.HookUpsert().connect(hooked).set_name("k").duplication(
+                self.models.HookUpsert().set_hits(7)
+            ).create()
+        rows = [
+            (row.get_scope_col(), row.get_name(), row.get_hits())
+            for row in self.models.HookUpsert().connect(self.db).gets()
+        ]
+        self.assertEqual(rows, [("a", "k", 7)], "the stored row holds scope_col a, name k and hits 7")
+
     def test_loaded_row_writes(self):
         seen = []
 

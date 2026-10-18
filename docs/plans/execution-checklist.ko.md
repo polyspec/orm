@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: e8d668e8a5c8a748899601a9688c0f55510c7e6881058b9054a65aba7e61d405 -->
+<!-- source-sha256: 098a14ecaa16d2006d77d000f87720124b6516437f36e6b6aafe9273233d8d88 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1542,8 +1542,8 @@
   - bind 수가 dialect의 bind 한도를 넘는 묶음은 어떤 statement보다 먼저 새 오류 code `BATCH_TOO_LARGE`(docs/errors.yaml, 모든 catalog, parity unit)로 실패하며, message가 묶음, 그 bind 수, dialect 한도를 말한다. 나누지 않는다.
   - 결과는 삽입된 행 수다.
   - docs/dsl.md, docs/interfaces.md, docs/usage.md와 ko 쌍, contracts/interfaces.json, 생성된 wrapper, parity unit.
-- [ ] T202 upsert의 conflict key를 request hook 뒤에 검증한다(consumer hyper ScopeHook). 원인: request hook이 insert의 scope column을 할당하지만 `duplication()->create()`의 conflict key 검증이 hook 전의 request를 읽으므로, hook이 완성하는 key가 거부된다. 완료 기준: 검증 위치(Go ir.go, PHP Validator.php, Python validate.py, Rust validate.rs, TS validate.ts)가 hook이 돌려준 request를 읽는다. 언어마다 unit case, 전 red, 후 green.
-  재개 (2026-10-19): 코드 읽기만으로 결함 없음으로 닫았다. 다음: client마다 request hook이 `duplication()->create()`의 conflict key를 채우는 case를 red 후 green으로 실행한다. 코드 읽기(각 client에서 hook이 검증보다 먼저)는 출발점이지 증명이 아니다.
+- [o] T202 upsert의 conflict key를 request hook 뒤에 검증한다(consumer hyper ScopeHook). 원인: request hook이 insert의 scope column을 할당하지만 `duplication()->create()`의 conflict key 검증이 hook 전의 request를 읽으므로, hook이 완성하는 key가 거부된다. 완료 기준: 검증 위치(Go ir.go, PHP Validator.php, Python validate.py, Rust validate.rs, TS validate.ts)가 hook이 돌려준 request를 읽는다. 언어마다 unit case, 전 red, 후 green.
+  증거 (2026-10-19): client마다 case `upsert_scope` (contracts/fixtures/request_hook.dbs의 hook_upsert table, unique (scope_col, name); hook이 insert에 scope_col을 넣고, `name`만 준 `duplication(hits=7)->create()`를 두 번 실행해 a/k/7 한 행이 남는다). RED (hook의 할당을 뺀 상태): Go, PHP (Validator.php:180), Python, Rust, TypeScript가 `IR_INVALID: on_duplicate needs exactly one conflict key; unique (scope_col, name) can meet the row but the insert does not assign scope_col`로 실패 (var/t202-red-{go,php,python,rust,ts}.log). GREEN (실제 hook): 다섯 모두 통과 (var/t202-green-*.log). 모든 validator가 hook이 돌려준 request를 읽으며, 이 case가 그것을 지킨다. consumer는 더 이상 이 upsert를 쓰지 않는다 (canister는 read와 save()로 쓴다).
 - [ ] T203 `relation()`과 `relations()`가 service scope 아래에서 실행된다(consumer). 원인: service scope 아래에서 둘 다 `CONFIG`로 실패한다. 완료 기준: 원인을 찾아 여기에 적고, 언어마다 case, 전 red, 후 green.
   재개 (2026-10-19): 재현되지 않음으로 닫았다. 다음: consumer가 ScopeHook 아래 canister relation()/relations() case를 한 번 실행해 CONFIG message, file:line, hook 본문을 기록하고, 그 case를 client마다 red 후 green으로 만든다.
 - [o] T206 orm이 행이 대기나 진행 중인 동안 `make check`와 `parity-check`를 거부하는 kit full-run guard를 쓴다(kit K233, K234). 완료 기준: orm에서 각각 한 번의 dry run이 열린 행을 말하고 거부한다.

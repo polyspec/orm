@@ -332,6 +332,50 @@ var requestHookCases = []struct {
 		}
 	}},
 
+	{"upsert_scope", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
+		// The hook sets scope_col on the insert, and the conflict key (scope_col, name) of the upsert is checked after the hook.
+		// The caller sets only name, and the update sets hits: the first call inserts and the second updates the row.
+		upsert := rowEntity("hook_upsert", fixtureSchema(t, "request_hook"), "id", "scope_col", "name", "hits")
+		upsertRow := func(conn *orm.DB, values map[string]any) *orm.Core {
+			c := orm.NewCore(upsert)
+			upsert.New(c)
+			if conn != nil {
+				c.Connect(conn)
+			}
+			for _, column := range []string{"name", "hits"} {
+				if v, ok := values[column]; ok {
+					c.Set(column, v)
+				}
+			}
+			return c
+		}
+		hooked := db.WithRequestHook(func(r *ir.Request, addParam func(any) int, params []any) error {
+			if r.Kind == "insert" {
+				p := addParam("a")
+				r.Set = append(r.Set, ir.Assign{Column: "scope_col", P: &p})
+			}
+			return nil
+		})
+		for call := 1; call <= 2; call++ {
+			c := upsertRow(hooked, map[string]any{"name": "k"})
+			c.Duplication(upsertRow(nil, map[string]any{"hits": int64(7)}).Self())
+			if _, err := c.Create(); err != nil {
+				t.Fatalf("upsert call %d = %v, want the row inserted or updated", call, err)
+			}
+		}
+		rows, err := orm.Gets[*keywordRow](upsertRow(db, nil))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if rows.Len() != 1 {
+			t.Fatalf("connection reads %d rows, want 1", rows.Len())
+		}
+		vals := rows.Slice()[0].vals
+		if vals["scope_col"] != "a" || vals["name"] != "k" || fmt.Sprint(vals["hits"]) != "7" {
+			t.Fatalf("stored row = %v, want scope_col a, name k and hits 7", vals)
+		}
+	}},
+
 	{"invalid_param", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
 		hooked := db.WithRequestHook(func(r *ir.Request, addParam func(any) int, params []any) error {
 			p := r.NParams + 5
