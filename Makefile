@@ -1118,9 +1118,16 @@ parity-check: parity-prepare
 # interface-check runs first: it reads the API units of config/parity.json and the symbol snapshots that parity-check reads.
 # The bench DSNs of a run are in its TEST_ENV file (run-databases writes them). Export them into make itself, so the parity
 # units, which kit starts from make, inherit them. A TEST_ENV without them exports nothing and the guard names what is missing.
-BENCH_DSN_NAMES := BENCH_MYSQL_DSN BENCH_POSTGRES_DSN BENCH_SQLITE_DSN
+BENCH_DSN_NAMES := BENCH_MYSQL_DSN BENCH_POSTGRES_DSN BENCH_SQLITE_DSN ORM_BENCH_MYSQL_DSN
 ifneq ($(wildcard $(abspath $(TEST_ENV))),)
 $(foreach v,$(BENCH_DSN_NAMES),$(eval export $(v) := $(shell . $(abspath $(TEST_ENV)) >/dev/null 2>&1 && printf "%s" "$$$(v)")))
+endif
+# The decimal DSNs of a run are in its DECIMAL_ENV file (run-databases writes them), read by the python decimal unit.
+DECIMAL_DSN_NAMES := DECIMAL_MYSQL_DSN DECIMAL_POSTGRES_DSN DECIMAL_SQLITE_DSN
+ifneq ($(DECIMAL_ENV),)
+ifneq ($(wildcard $(abspath $(DECIMAL_ENV))),)
+$(foreach v,$(DECIMAL_DSN_NAMES),$(eval export $(v) := $(shell . $(abspath $(DECIMAL_ENV)) >/dev/null 2>&1 && printf "%s" "$$$(v)")))
+endif
 endif
 
 # parity-bench-env-check names each bench DSN a parity-check run needs that the environment does not set, so a run without the
@@ -1136,6 +1143,7 @@ flowmark-check:
 parity-check: parity-bench-env-check flowmark-check interface-check
 parity-check: export FLOWMARK := $(FLOWMARK)
 parity-check: export ORM_PARITY_PHP_EXTENSION = $(PARITY_RUN_DIR)/orm_dbspec.so
+parity-check: export ORM_DBSPEC_EXTENSION = $(PARITY_RUN_DIR)/orm_dbspec.so
 parity-check: export ORM_SEND_SQLITE_DSN = $(SEND_SQLITE_DSN)
 # ORM_CHECKOUT is the checkout root: a binding command names it with ${ORM_CHECKOUT}, since kit forbids .. in a command word.
 parity-check: export ORM_CHECKOUT = $(CURDIR)
