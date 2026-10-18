@@ -10,7 +10,7 @@ import type {
   DbspecMySqlConnection, DbspecPostgresConnection, DbspecSqliteConnection,
 } from '../src/index.js';
 
-// dbspec의 connection type은 driver type 없이 선언되지만 driver의 connection을 그대로 받는다.
+// The dbspec connection type is declared without a driver type, but it accepts the driver's connection as is.
 export function driverConnections(
   mysql: MySqlConnection, mysqlPool: MySqlPool, mysqlPoolConnection: MySqlPoolConnection,
   client: pg.Client, poolClient: pg.PoolClient, pool: pg.Pool, sqlite: DatabaseSync,

@@ -14,9 +14,9 @@ import { DbspecApplyError, applyPlans, parsePlan, rollbackPlans } from '../dist/
 import { EFFECT_QUERIES, dbspecEffectHolds } from '../dist/dbspec/apply.js';
 
 const root = new URL('../../../', import.meta.url);
-// TIMEOUT은 case 하나의 기한(ms)이다. apply의 정리 error case 하나는 memory SQLite database 하나에 plan 하나를 적용한다.
+// TIMEOUT is the deadline (ms) of one case. One apply cleanup error case applies one plan to one in-memory SQLite database.
 const TIMEOUT = 20000;
-// tool clock: 2026-10-01T00:00:00.123456789Z를 microsecond로 자른 값(epoch 이후 microsecond)이다.
+// tool clock: 2026-10-01T00:00:00.123456789Z truncated to microseconds (microseconds since the epoch).
 const fixedNow = () => Date.UTC(2026, 9, 1, 0, 0, 0) * 1000 + 123456;
 
 const plans = JSON.parse(readFileSync(new URL('tests/dbspec/plans.json', root), 'utf8'))
@@ -34,7 +34,7 @@ function vector(name, body) {
   caseTest(name, TIMEOUT, body);
 }
 
-// failingSqlite는 memory SQLite database를 감싸서 fail의 statement를 exec하면 그 error를 던진다.
+// failingSqlite wraps an in-memory SQLite database and throws that error when the fail statement is executed.
 function failingSqlite(fail) {
   const db = new DatabaseSync(':memory:');
   return {
@@ -47,7 +47,7 @@ function failingSqlite(fail) {
   };
 }
 
-// wantCleanup은 promise가 failure를 처음 error로, cleanup을 그 뒤 error로 가진 AggregateError로 실패하는지 확인한다.
+// wantCleanup checks that the promise fails with an AggregateError whose first error is the failure and whose following error is the cleanup.
 async function wantCleanup(promise, failure, cleanup) {
   await assert.rejects(promise, error => {
     assert(error instanceof AggregateError, `${error} alone; want it with the cleanup errors`);
@@ -75,7 +75,7 @@ vector('apply/cleanup-errors/release', async () => {
 vector('apply/cleanup-errors/begin-restore', async () => {
   const begin = new Error('begin failed');
   const restore = new Error('restore failed');
-  // node:sqlite는 foreign key를 켠 채 연다.
+  // node:sqlite opens with foreign keys turned on.
   const db = failingSqlite(new Map([['BEGIN EXCLUSIVE', begin], ['PRAGMA foreign_keys = 1', restore]]));
   try {
     await wantCleanup(
@@ -89,7 +89,7 @@ vector('apply/cleanup-errors/begin-restore', async () => {
 });
 
 vector('apply/rollback-step-outside', async () => {
-  // applied row의 step이 plan의 step 밖이면 rollback은 step을 읽지 않고 chain error로 멈춘다.
+  // If the step of an applied row is outside the plan's steps, rollback does not read the step and stops with a chain error.
   const db = failingSqlite(new Map());
   try {
     await applyPlans(db, 'sqlite', plans, fixedNow, null);
@@ -106,7 +106,7 @@ vector('apply/rollback-step-outside', async () => {
 });
 
 vector('apply/effect-row', async () => {
-  // 효과 query가 row를 돌려주지 않는 scripted MySQL connection이다.
+  // A scripted MySQL connection whose effect query returns no row.
   const tables = EFFECT_QUERIES.mysql.table;
   const connection = {
     async query(q) {

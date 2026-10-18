@@ -14,7 +14,7 @@ const [{ OrmError }, { activeFor }, { DecimalCase, connect }] = await Promise.al
   import('../dist/models/decimal_fixture/models.js'),
 ]);
 
-// case는 둘이다: 생성된 setter의 거부(COMPUTE), database에서 쓰고 읽은 뒤 rollback(DATABASE).
+// There are two cases: rejection by the generated setter (COMPUTE), and write and read in the database followed by rollback (DATABASE).
 caseTest(`decimal_db/${dialect}/setters`, COMPUTE, () => {
   for (const invalid of ['1.00001', '1000000000.0000', 'NaN', 48.045]) {
     try {

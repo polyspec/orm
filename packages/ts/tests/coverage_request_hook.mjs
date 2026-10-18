@@ -1,6 +1,6 @@
-// request_hook coverage: feature-check 가 고른 database(ORM_FEATURE_DATABASE)에서 request_hook_run.mjs 의 각 case 를
-// 새 case database(case-database.mjs)로 실행한다. ORM_FEATURE_DSN 의 database 는 읽거나 쓰지 않는다. 출력은 통과한
-// case 의 줄뿐이다.
+// request_hook coverage: each case of request_hook_run.mjs runs on the database that feature-check chose (ORM_FEATURE_DATABASE)
+// in a new case database (case-database.mjs). It does not read or write the database of ORM_FEATURE_DSN. The output is
+// only the lines of the passing cases.
 import { DATABASE } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
 import { runCases } from './coverage_case.mjs';

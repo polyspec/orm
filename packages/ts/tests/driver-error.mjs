@@ -15,7 +15,7 @@ import { caseTest } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
 
 const refusalText = await readFile(new URL('../../../contracts/fixtures/refusal.dbs', import.meta.url), 'utf8');
-// CASE_DEADLINE_MS는 case 하나의 기한이다. case 하나는 case database를 만들고 refusal 문서를 설치해 거부되는 쓰기 몇 개를 실행한 뒤 database를 지운다.
+// CASE_DEADLINE_MS is the deadline of one case. A case creates a case database, installs the refusal document, runs a few writes that are rejected, then drops the database.
 const CASE_DEADLINE_MS = 30_000;
 let failures = 0;
 let current = '';

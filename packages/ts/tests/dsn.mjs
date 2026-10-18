@@ -14,7 +14,7 @@ await run.run('dsn/invalid', COMPUTE, async () => {
     if (!failed) throw new Error(`invalid DSN was accepted: ${dsn}`);
   }
 });
-// 모든 connection은 datetime을 UTC로 읽고 쓰므로 timezone은 UTC와 +00:00만 받는다.
+// Every connection reads and writes datetime as UTC, so the timezone accepts only UTC and +00:00.
 await run.run('dsn/timezone', COMPUTE, () => {
   for (const dsn of ['mysql://root@localhost/orm_example?timezone=%2B09:00', 'postgres://root@localhost/orm_example?timezone=Asia/Seoul', 'sqlite:///tmp/x.sqlite?timezone=Asia%2FSeoul']) {
     let failed = false;
@@ -42,8 +42,8 @@ await run.run('dsn/pool-bounds', COMPUTE, async () => {
   if (mysql.pool.pool.config.connectionLimit !== 3 || mysql.pool.pool.listenerCount('release') !== 1 || mysql.pool.pool.listenerCount('connection') !== 2) throw new Error('mysql pool bounds were not applied');
   await mysql.close();
 });
-// query가 붙은 SQLite DSN은 path만으로 file을 만든다. query를 file 이름에 둔 opener는
-// `named.sqlite?_pragma=…` 같은 file을 만든다(docs/dialects.md "Probe environment").
+// A SQLite DSN with a query creates the file from the path alone. An opener that puts the query in the file name
+// creates a file such as `named.sqlite?_pragma=…` (docs/dialects.md "Probe environment").
 await run.run('dsn/sqlite-file-name', COMPUTE, async () => {
   const directory = mkdtempSync(join(tmpdir(), 'orm-ts-sqlite-name-'));
   try {
@@ -57,8 +57,8 @@ await run.run('dsn/sqlite-file-name', COMPUTE, async () => {
     rmSync(directory, { recursive: true, force: true });
   }
 });
-// tests/dsn/sqlite-paths.json: DSN path는 percent-decode한 file을 열고, 잘못된 path는
-// CONFIG다(docs/config.md "Runtime connection").
+// tests/dsn/sqlite-paths.json: a DSN path opens the percent-decoded file, and an invalid path
+// is CONFIG (docs/config.md "Runtime connection").
 const pathVectors = JSON.parse(readFileSync(new URL('../../../tests/dsn/sqlite-paths.json', import.meta.url), 'utf8'));
 if (pathVectors.version !== 1 || pathVectors.cases.length === 0) throw new Error('tests/dsn/sqlite-paths.json has no cases');
 for (const c of pathVectors.cases) caseTest(c.id, COMPUTE, async () => {

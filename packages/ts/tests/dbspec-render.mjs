@@ -10,7 +10,7 @@ import { parseDbspec, renderDbspec } from '../dist/dbspec/index.js';
 
 const root = new URL('../../../', import.meta.url);
 const ddl = JSON.parse(readFileSync(new URL('tests/dbspec/ddl.json', root), 'utf8'));
-// TIMEOUT은 case 하나의 기한(ms)이다. render vector 하나는 memory 안에서 문서 하나를 세 dialect로 렌더링한다.
+// TIMEOUT is the deadline (ms) of one case. One render vector renders one document in memory into three dialects.
 const TIMEOUT = 15000;
 const DIALECTS = ['mysql', 'postgres', 'sqlite'];
 

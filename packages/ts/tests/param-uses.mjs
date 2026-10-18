@@ -1,8 +1,8 @@
-// paramUses가 request parameter마다 그 parameter가 채우는 slot의 logical type과 column을 나열하는지 확인한다.
-// markdown IR executor message는 각 parameter를 그 type의 form으로 쓴다(docs/protocol.md §5 Parameters). Go의
-// engine/ir/params_test.go TestParamUses와 같은 case다.
+// Checks that paramUses lists, for each request parameter, the logical type and column of the slot that parameter fills.
+// A markdown IR executor message writes each parameter in the form of its type (docs/protocol.md §5 Parameters). The Go
+// engine/ir/params_test.go TestParamUses has the same cases.
 //
-// 사용: node packages/ts/tests/param-uses.mjs (npm run typescript:build 뒤)
+// Usage: node packages/ts/tests/param-uses.mjs (after npm run typescript:build)
 import { isDeepStrictEqual } from 'node:util';
 import { COMPUTE, caseTest } from '../../../tests/testcase.mts';
 import { dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
@@ -30,7 +30,7 @@ table notes {
 }
 `;
 
-/** 비교를 쉽게 하려고 use를 [type, column 이름]으로 줄인 것이다. */
+/** Reduces each use to [type, column name] to make comparison easy. */
 function usesOf(uses) {
   return uses.map(list => list.map(use => [use.type, use.column?.name ?? '']));
 }

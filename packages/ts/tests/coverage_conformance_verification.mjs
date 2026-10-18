@@ -1,5 +1,5 @@
-// conformance_verification coverage: TypeScript conformance runner 를 선택한 database 에서 읽기 전용
-// vector 만 골라 실행하고, 각 출력이 그 database 의 기록된 expect 와 JSON 값으로 같은지 확인한다.
+// conformance_verification coverage: runs the TypeScript conformance runner read-only on the chosen database,
+// running only the selected vectors, and checks that each output equals the recorded expect of that database as a JSON value.
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { readFile } from 'node:fs/promises';

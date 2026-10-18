@@ -20,10 +20,10 @@ import pg from 'pg';
 import { dbspecManifest, introspectDbspec, parseDbspec, parsePlan, planSteps, renderDbspec } from '../dist/dbspec/index.js';
 
 const root = new URL('../../../', import.meta.url);
-// TIMEOUT은 case 하나의 기한(ms)이다. plan case 하나는 database 하나를 만들고 step을 적용, 되돌리기, 다시 적용, finalize한 뒤 지운다.
+// TIMEOUT is the deadline (ms) of one case. One plan case creates one database, applies steps, reverts, applies again, finalizes, then drops it.
 const TIMEOUT = 60000;
 const DIALECTS = ['mysql', 'postgres', 'sqlite'];
-// 모든 client가 새 connection에서 실행하는 문장이다(packages/go/internal/dialects connectionRules).
+// The statements that every client runs on a new connection (packages/go/internal/dialects connectionRules).
 const CONNECTION_RULES = {
   mysql: ["SET time_zone = '+00:00'"],
   postgres: ["SET TimeZone = 'UTC'"],
@@ -198,8 +198,8 @@ for (const c of cases) {
           const got = document.tables.length > 0 ? dbspecManifest([document]).manifest.schemaText : '';
           assert.equal(got, want, `${what}: introspected schema text`);
         };
-        // forward는 finalize 앞의 step을 실행한다. restore이면 restore statement가 있는 step은
-        // 그것을 실행한다(rollback이 숨긴 더한 column이 있다).
+        // forward runs the steps before finalize. For a restore, the steps with a restore statement
+        // run it (there is an added column that rollback hid).
         const forward = async restore => {
           for (const s of steps) {
             if (s.finalize) break;
@@ -209,7 +209,7 @@ for (const c of cases) {
         };
         for (const sql of [...CONNECTION_RULES[dialect], ...setup]) await session.exec(sql);
         await runSteps(session, dialect, c.before ?? []);
-        // SQLite는 table을 다시 만드는 동안 foreign key를 끄고, 끝난 뒤 검사한다.
+        // SQLite turns off foreign keys while rebuilding the table and checks them afterward.
         if (dialect === 'sqlite') {
           await session.exec('PRAGMA foreign_keys = OFF');
           await session.exec('PRAGMA legacy_alter_table = OFF');
@@ -217,7 +217,7 @@ for (const c of cases) {
         await forward(false);
         await schemaIs('applied', target);
         if (reversible) {
-          // 끝까지 되돌리는 rollback은 옛 table을 숨긴 더한 column과 함께 다시 만든다.
+          // A rollback that reverts all the way recreates the old table with the hidden added column.
           for (const s of [...steps].reverse()) if (!s.finalize) await session.exec(s.rollbackRestore !== '' ? s.rollbackRestore : s.rollback);
           if (dialect === 'sqlite') assert.equal(await firstValue(session, 'SELECT COUNT(*) FROM pragma_foreign_key_check'), '0', 'foreign key check after rollback');
           await schemaIs('rolled back', sourceText);
@@ -226,7 +226,7 @@ for (const c of cases) {
         }
         if (dialect === 'sqlite') await session.exec('PRAGMA foreign_keys = ON');
         await runSteps(session, dialect, c.after ?? []);
-        // finalize도 apply처럼 SQLite foreign key를 끄고 실행한다.
+        // finalize also runs with SQLite foreign keys turned off, as apply does.
         if (dialect === 'sqlite') await session.exec('PRAGMA foreign_keys = OFF');
         for (const s of steps) if (s.finalize) await session.exec(s.statement);
         if (dialect === 'sqlite') await session.exec('PRAGMA foreign_keys = ON');

@@ -1,6 +1,6 @@
-// model_writes coverage: 생성된 CompositeAccount model 로 create, creates, update, upsert,
-// delete 를 한 번씩 돌린다. identity column 이 없는 composite_account 에만 쓰고 쓴 row 를 모두
-// 지우므로 database 상태는 그대로다.
+// model_writes coverage: runs create, creates, update, upsert,
+// and delete once each with the generated CompositeAccount model. It writes only to composite_account, which has no identity column, and
+// deletes all rows it wrote, so the database state is unchanged.
 import assert from 'node:assert/strict';
 import { CompositeAccount, connect } from '../dist/index.js';
 import { errorCode, runCases, withCleanup } from './coverage_case.mjs';
@@ -32,7 +32,7 @@ await runCases('coverage_model_writes.mjs', {
         assert.equal(await errorCode(account().getByTenantIdAndAccountId(tenant, 1)), 'NO_ROWS', 'deleted row');
         assert.equal(await account().tenantId(tenant).getCount(), 0, 'every row of the tenant deleted');
       }, async () => {
-        // 실패한 실행도 이 case 가 쓴 row 를 남기지 않는다.
+        // Even a failed run leaves no rows written by this case.
         await (await account().tenantId(tenant).gets()).delete();
       });
     } finally { await db.close(); }

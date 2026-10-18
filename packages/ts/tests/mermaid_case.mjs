@@ -10,7 +10,7 @@ import { emitDbspec, exportMermaid, importMermaid, parseDbspec, readDbspecFile }
 
 export const root = new URL('../../../', import.meta.url);
 export const vectors = JSON.parse(readFileSync(new URL('tests/dbspec/mermaid.json', root), 'utf8'));
-// TIMEOUT은 case 하나의 기한(ms)이다. Mermaid vector 하나는 memory 안에서 문서 하나를 바꾼다.
+// TIMEOUT is the deadline (ms) of one case. One Mermaid vector transforms one document in memory.
 const TIMEOUT = 5000;
 
 // vector runs one case with its own deadline and reports its start, result
@@ -27,8 +27,8 @@ assert(
   vectors.export.length > 0 && vectors.import.length > 0 && vectors.invalid.length > 0 && vectors.round_trip.length > 0,
   'mermaid vectors have export, import, invalid and round trip cases',
 );
-// skeleton은 Mermaid가 옮기는 table, column, primary key, foreign key를 table 이름
-// 순서의 줄로 쓴다. foreign key action은 Mermaid가 옮기지 않으므로 뺀다.
+// The skeleton writes the tables, columns, primary keys, and foreign keys that Mermaid carries over, by table name
+// order, one line each. Foreign key actions are left out because Mermaid does not carry them over.
 function skeleton(document) {
   const byName = (a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
   const out = [];

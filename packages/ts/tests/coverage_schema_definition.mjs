@@ -1,6 +1,6 @@
-// schema_definition coverage: contracts/fixtures/schema_definition.json 의 문서로 parse 후 emit,
-// manifest hash, dialect 별 rendered statement 를 확인한다. It also checks the tokens of syntax analysis, formatting
-// and its refusal, and the declaration positions of a parse. 기대값은 fixture 에서만 읽는다.
+// schema_definition coverage: after parsing and emitting the documents of contracts/fixtures/schema_definition.json,
+// it checks the manifest hash and the rendered statements for each dialect. It also checks the tokens of syntax analysis, formatting
+// and its refusal, and the declaration positions of a parse. The expected values are read only from the fixture.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';

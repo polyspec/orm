@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { containsWordRune, WORD_RANGES } from '../dist/dbspec/unicode_word.js';
 
 const LAST_CODE_POINT = 0x10ffff;
-// TIMEOUT은 case 하나의 기한(ms)이다. 모든 code point의 이진 탐색과 bitmap 한 번이다.
+// TIMEOUT is the deadline (ms) of one case. A binary search over every code point and one bitmap.
 const TIMEOUT = 60000;
 
 caseTest('every code point is classified by the ranges of the table', TIMEOUT, () => {

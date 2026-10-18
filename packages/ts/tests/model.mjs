@@ -49,8 +49,8 @@ async function code(promise) {
   try { await promise; return null; } catch (error) { return error instanceof OrmError ? error.code : String(error); }
 }
 let current = '';
-// 각 구역은 case 하나다. 기한은 DATABASE다: 구역은 schema를 설치하고 statement 수백 개 이하를
-// 실행한다.
+// Each section is one case, with the DATABASE deadline: a section installs the schema and runs up to
+// several hundred statements.
 const caseLog = sections();
 let caseFailures = 0;
 function begin(name) {
@@ -84,8 +84,8 @@ async function awaitReplica(dialect, primary, replica) {
     } finally { await client.end(); }
     return;
   }
-  // replica에 case database가 아직 없을 수 있으므로 두 연결 모두 database 없이 연다. 한 연결이
-  // 실패해도 열린 연결은 닫는다. 열린 연결은 test process가 끝나지 못하게 한다.
+  // The replica may not have the case database yet, so both connections open without a database. If one connection
+  // fails, the open connection is still closed. An open connection would keep the test process from ending.
   const source = await mysqlConnection(primary, null);
   try {
     const target = await mysqlConnection(replica, null);
@@ -93,8 +93,8 @@ async function awaitReplica(dialect, primary, replica) {
       const [[{ current }]] = await target.query('SELECT DATABASE() AS current');
       if (current !== null) throw new Error(`the replica wait connection opened database ${current}`);
       const [[status]] = await source.query('SHOW BINARY LOG STATUS');
-      // 기한은 60초다: replica는 병렬로 실행하는 모든 client의 쓰기를 차례로 적용하므로, 4 vCPU Linux
-      // runner에서 10초 안에 primary 위치에 닿지 못했다.
+      // The deadline is 60 seconds: the replica applies the writes of all clients that run in parallel, one after another, so on a 4 vCPU Linux
+      // runner it could not reach the primary position within 10 seconds.
       const [[{ waited }]] = await target.query('SELECT SOURCE_POS_WAIT(?, ?, 60) AS waited', [status.File, status.Position]);
       if (waited === null || Number(waited) < 0) throw new Error(`the replica did not reach ${status.File}:${status.Position}`);
     } finally { await target.end(); }
@@ -203,8 +203,8 @@ async function seed(db) {
 const names = rows => rows.values().map(b => b.getName()).join(',');
 
 /**
- * 다른 연결의 열린 transaction에서 table의 모든 행을 갱신해 그 행의 lock을 잡는다(MySQL, PostgreSQL).
- * 돌려준 함수는 그 transaction을 rollback하고 연결을 닫으며, 두 번째 호출은 아무것도 하지 않는다.
+ * Takes the row locks by updating every row of the table in an open transaction on another connection (MySQL, PostgreSQL).
+ * The returned function rolls back that transaction and closes the connection; a second call does nothing.
  */
 async function holdRows(dialect, dsn, table) {
   if (dialect === 'mysql') {
@@ -222,7 +222,7 @@ async function holdRows(dialect, dsn, table) {
   return async () => { if (released) return; released = true; await client.query('ROLLBACK'); await client.end(); };
 }
 
-/** connection의 transaction에서 Model의 행을 FOR UPDATE로 읽는다. 다른 연결이 그 행을 잡고 있으면 기다린다. */
+/** Reads the Model's rows with FOR UPDATE in a connection's transaction. Waits if another connection holds those rows. */
 const lockedRead = (db, Model) => db.transaction(async () => { await new Model().forUpdate().get(); }, { retry: 0 });
 
 async function conditions(db) {
@@ -510,10 +510,10 @@ function connect(dsn) {
 }
 
 /**
- * 모든 connection은 server의 time zone과 상관없이 datetime을 UTC로 읽고 쓴다
- * (docs/dialects.md "Date and time"). 시험 server의 MySQL은 SYSTEM(KST),
- * PostgreSQL은 Asia/Seoul이다. offset이 있는 instant는 UTC wall clock으로 저장되고,
- * clock default도 UTC다.
+ * Every connection reads and writes datetime as UTC regardless of the server's time zone
+ * (docs/dialects.md "Date and time"). The test server's MySQL uses SYSTEM (KST),
+ * and PostgreSQL uses Asia/Seoul. An instant with an offset is stored as UTC wall clock,
+ * and the clock default is also UTC.
  */
 async function connectionsUseUtc(db) {
   const f = await seed(db);
@@ -685,8 +685,8 @@ async function storedCell(dialect, dsn, sqlitePath) {
 
 const zones = ['', 'UTC', '+00:00'];
 
-// poolSize와 failedLocalReset, failedLockRelease는 schema를 설치하지 않고 table도 만들지 않으므로
-// DSN이 가리키는 database에 연결만 한다. 나머지 case는 저마다 case database를 받는다.
+// poolSize, failedLocalReset, and failedLockRelease install no schema and create no table, so
+// they only connect to the database the DSN points to. Each of the other cases gets its own case database.
 const targets = [['sqlite', `sqlite://${join(work, 'model.sqlite')}?_pragma=busy_timeout(5000)`]];
 if (!process.env.ORM_TEST_MYSQL_DSN) throw new Error('ORM_TEST_MYSQL_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers');
 if (!process.env.ORM_TEST_POSTGRES_DSN) throw new Error('ORM_TEST_POSTGRES_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers');
@@ -697,8 +697,8 @@ if (selectedCase !== undefined) targets.splice(0, targets.length, ...targets.fil
 const dialects = targets.map(([dialect]) => dialect);
 
 /**
- * 열린 case에서 dialect의 새 case database로 body(dsn, database)를 실행하고 끝나면 지운다. SQLite DSN은
- * busy_timeout을 가진다. body나 database 지우기의 실패는 열린 case의 FAIL이 된다.
+ * Runs body(dsn, database) on a new case database for the dialect within an open case, and drops it when done. A SQLite DSN
+ * Has a busy_timeout. A failure of the body or of the database drop becomes a FAIL of the open case.
  */
 async function inCaseDatabase(dialect, body) {
   try {
@@ -816,9 +816,9 @@ try {
     // in turn. Through ORM_TEST_PGBOUNCER_SINGLE_DSN every client shares one
     // server connection, so the statement timeout of one connection must
     // bound only the statements of that connection.
-    // PgBouncer의 orm_test_single은 정해진 database 하나에만 닿으므로 새 case database를 쓸 수
-    // 없다. case는 그 database에 자기 이름(orm_case_<pid>_<counter>)의 table 하나를 만들고, 끝날 때
-    // 실패한 뒤에도 그 table만 지운다.
+    // PgBouncer's orm_test_single reaches only one fixed database, so it cannot use a new case database.
+    // Instead, the case creates one table named after itself (orm_case_<pid>_<counter>) in that database, and when it ends,
+    // even after a failure, it drops only that table.
     begin('postgres/statementTimeoutThroughAPooler');
     try {
       const single = process.env.ORM_TEST_PGBOUNCER_SINGLE_DSN;
@@ -897,7 +897,7 @@ try {
   }
   for (const dialect of dialects) {
     begin(`${dialect}/aesJsonColumn`);
-    // SQLite case는 busy_timeout 없는 DSN으로 연결하고 저장된 cell을 file에서 직접 읽는다.
+    // The SQLite case connects with a DSN without busy_timeout and reads the stored cells directly from the file.
     await inCaseDatabase(dialect, (dsn, database) => aesJsonColumn(dialect, database.dsn, database.path));
     end();
   }
@@ -942,8 +942,8 @@ try {
   for (const dialect of dialects) {
     if (dialect === 'sqlite') continue;
     begin(`${dialect}/primaryAndReplica`);
-    // replica DSN은 case database와 같은 이름을 가리킨다. replica는 primary의 CREATE DATABASE를
-    // 복제하고, primaryAndReplica는 replica에 연결하기 전에 replica가 따라오기를 기다린다.
+    // The replica DSN points to the same name as the case database. The replica replicates the primary's CREATE DATABASE,
+    // and primaryAndReplica waits for the replica to catch up before connecting to it.
     await inCaseDatabase(dialect, async primary => {
       const replica = process.env[`ORM_TEST_${dialect.toUpperCase()}_REPLICA_DSN`];
       if (!replica) throw new Error(`ORM_TEST_${dialect.toUpperCase()}_REPLICA_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers`);
@@ -951,9 +951,9 @@ try {
     });
     end();
   }
-  // transaction 끝의 MySQL local 값 reset이 실패하면 commit과 rollback이 그 오류를 보고한다.
-  // MySQL user variable은 COMMIT과 ROLLBACK 뒤에도 남는다(mysql.context.user_variable_session_scope).
-  // 실제 server는 reset을 거부하지 않으므로 transaction connection의 control이 reset만 실패시킨다.
+  // If the MySQL local value reset at the end of a transaction fails, commit and rollback report that error.
+  // A MySQL user variable survives COMMIT and ROLLBACK (mysql.context.user_variable_session_scope).
+  // The real server does not reject the reset, so the control of the transaction connection makes only the reset fail.
   begin('mysql/failedLocalReset');
   try {
     const db = await connectBench(process.env.ORM_TEST_MYSQL_DSN);
@@ -977,11 +977,11 @@ try {
   } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
   end();
   const failureMessage = async promise => { try { await promise; return 'no error'; } catch (error) { return String(error?.message); } };
-  // message가 원인과 transaction 끝의 오류를 함께 담은 ROLLBACK인지 확인한다.
+  // Checks that the message is a ROLLBACK that includes both the cause and the error at the end of the transaction.
   const checkBoth = (what, message, cause, end) => check(message.startsWith('ROLLBACK: transaction failed (') && message.includes(cause) && message.includes(`and rollback failed (`) && message.includes(end), `${what} reports the cause and the failed transaction end: ${message}`);
-  // transaction 끝의 MySQL RELEASE_LOCK이 실패하거나 lock을 풀지 못하면 commit과 rollback이 그 오류를
-  // 보고하고, 그 connection은 pool에 돌아가지 않는다(mysql/failedEndDiscards). 실제 server는 RELEASE_LOCK을 거부하지 않으므로
-  // transaction connection의 control이 RELEASE_LOCK만 실패시킨다.
+  // If MySQL RELEASE_LOCK at the end of a transaction fails or cannot release the lock, commit and rollback
+  // report that error, and that connection is not returned to the pool (mysql/failedEndDiscards). The real server does not reject RELEASE_LOCK, so
+  // the control of the transaction connection makes only RELEASE_LOCK fail.
   begin('mysql/failedLockRelease');
   try {
     const db = await connectBench(process.env.ORM_TEST_MYSQL_DSN);
@@ -996,7 +996,7 @@ try {
       check(committed.includes('statement rejected by the test driver'), `commit reports the failed release: ${committed}`);
       const rolledBack = await failureMessage(db.transaction(async () => { failRelease(); await db.utils().lock(key('rollback')); throw new Error('callback failed'); }, { retry: 0 }));
       checkBoth('rollback', rolledBack, 'callback failed', 'statement rejected by the test driver');
-      // lock을 미리 풀면 transaction 끝의 RELEASE_LOCK은 0을 돌려준다.
+      // If the lock was released in advance, RELEASE_LOCK at the end of the transaction returns 0.
       const notHeld = await failureMessage(db.transaction(async () => {
         await db.utils().lock(key('released'));
         await db.utils().active('lock').session.control('DO RELEASE_LOCK(?)', [key('released')], () => undefined);
@@ -1007,10 +1007,10 @@ try {
     }
   } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
   end();
-  // transaction 끝의 정리(RELEASE_LOCK)가 실패한 connection은 pool에 돌아가지 않고 버려진다. 실패한 정리 뒤의
-  // session 상태는 알 수 없으므로 pool에 돌아가는 connection은 깨끗하거나 버려진다. connection이 하나인 pool의
-  // 다음 transaction이 같은 session(CONNECTION_ID)을 받으면 connection이 돌아간 것이고, 풀리지 않은 lock은 그
-  // session에 남는다. 깨끗하게 끝난 transaction은 같은 session을 다시 쓴다.
+  // A connection whose cleanup at the end of a transaction (RELEASE_LOCK) fails is discarded and not returned to the pool. After a failed cleanup,
+  // the session state is unknown, so a connection returned to the pool is either clean or discarded. In a pool with one connection,
+  // if the next transaction gets the same session (CONNECTION_ID), the connection came back, and a lock that was not released stays
+  // on that session. A transaction that ended cleanly reuses the same session.
   begin('mysql/failedEndDiscards');
   try {
     const db = await connectBench(process.env.ORM_TEST_MYSQL_DSN, { poolSize: 1 });
@@ -1018,7 +1018,7 @@ try {
     try {
       const key = name => `orm_test.discard.${name}.${process.pid}`;
       const session = () => db.transaction(async () => Number((await db.utils().active('lock').session.control('SELECT CONNECTION_ID()', [], () => undefined)).rows[0][0]), { retry: 0 });
-      // free는 다른 connection이 lock을 5초 안에 얻는지다. 끝난 session의 lock은 server가 곧 푼다.
+      // free checks whether another connection gets the lock within 5 seconds. The server soon releases the lock of an ended session.
       const free = async name => other.transaction(async () => {
         const control = other.utils().active('lock').session.control.bind(other.utils().active('lock').session);
         const got = Number((await control('SELECT GET_LOCK(?, 5)', [key(name)], () => undefined)).rows[0][0]);
@@ -1047,9 +1047,9 @@ try {
     }
   } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
   end();
-  // native rollback, SQLite mode 복원, begin 뒤의 rollback이 실패하면 transaction이 그 오류를 원인과
-  // 함께 보고한다. 실제 SQLite는 이 statement를 거부하지 않으므로 connection의 statement 준비가 실패시킨다.
-  // rollback은 실제로 끝낸 뒤 실패를 돌려준다.
+  // If the native rollback, the SQLite mode restore, or the rollback after begin fails, the transaction reports that error
+  // together with its cause. The real SQLite does not reject this statement, so the connection's statement preparation makes it fail.
+  // The rollback returns the failure after actually finishing.
   begin('sqlite/failedRollback');
   try {
     const db = await connectBench(`sqlite://${join(work, 'transaction-end.sqlite')}`);
@@ -1059,7 +1059,7 @@ try {
       const statement = state.statement.bind(state);
       let rejects = () => false;
       let rejectRollback = false;
-      // ROLLBACK은 실제로 실행한 뒤 실패를 돌려준다.
+      // ROLLBACK returns the failure after actually running.
       state.statement = sql => {
         if (rejects(sql)) throw new Error('statement rejected by the test driver');
         const prepared = statement(sql);
@@ -1084,9 +1084,9 @@ try {
     }
   } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
   end();
-  // 중첩 transaction의 savepoint를 끝내는 ROLLBACK TO SAVEPOINT나 RELEASE SAVEPOINT가 실패하면 callback
-  // 오류와 그 오류를 함께 보고하고, 성공한 callback은 실패한 RELEASE SAVEPOINT를 보고한다. 실제 SQLite는
-  // 이 statement를 거부하지 않으므로 transaction connection의 control이 실패시킨다.
+  // If ROLLBACK TO SAVEPOINT or RELEASE SAVEPOINT, which ends a nested transaction's savepoint, fails, the callback
+  // reports its error together with that error, and a successful callback reports the failed RELEASE SAVEPOINT. The real SQLite
+  // does not reject this statement, so the control of the transaction connection makes it fail.
   begin('sqlite/failedSavepointEnd');
   try {
     const db = await connectBench(`sqlite://${join(work, 'savepoint-end.sqlite')}`);

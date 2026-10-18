@@ -10,7 +10,7 @@ import { caseTest } from '../../../tests/testcase.mts';
 
 const root = new URL('../../..', import.meta.url).pathname;
 const bin = join(root, 'packages/ts/dist/bin/orm-gen.js');
-// CASE_DEADLINE_MS는 case 하나의 기한이다. case는 orm-gen process 하나로 models를 만들고 읽는다.
+// CASE_DEADLINE_MS is the deadline of one case. A case creates and reads the models with one orm-gen process.
 const CASE_DEADLINE_MS = 30_000;
 let failures = 0;
 let current = '';

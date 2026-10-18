@@ -1,7 +1,7 @@
-// model_generation coverage: orm-gen 을 커밋된 생성과 같은 인자에 --check 를 더해 실행하면 커밋된
-// src/models/models.ts 가 생성 결과와 같다고 보고하고, 한 byte 를 바꾼 사본은 다르다고 보고하는지
-// 확인한다. 사본은 os temp 아래의 packages/ts/src/models 경로에 두어 생성 결과의 runtime
-// import 가 원본과 같다.
+// model_generation coverage: running orm-gen with the same arguments as the committed generation plus --check reports that the committed
+// src/models/models.ts matches the generated result, and that a copy with one byte changed is reported as different,
+// is checked. The copy is placed at packages/ts/src/models under the OS temp directory so the runtime
+// imports of the generated result match the original.
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';

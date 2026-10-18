@@ -18,7 +18,7 @@ async function codeOf(promise) {
   try { await promise; return null; } catch (error) { return error.code ?? String(error); }
 }
 
-// engine check는 memory 안의 model 등록, request 검증, plan을 한 case로 실행한다.
+// The engine check runs model registration, request validation, and the plan in memory as one case.
 const run = cases();
 await run.run('engine', COMPUTE, async () => {
   // The generated models embed the manifest of contracts/fixtures/bench/bench.dbs.
@@ -27,7 +27,7 @@ await run.run('engine', COMPUTE, async () => {
   const model = registerModel(MANIFEST_TEXT, MANIFEST_HASH);
   check(registerModel(MANIFEST_TEXT, MANIFEST_HASH) === model, 'registering the same manifest returns the registered model');
   check([...model.entities.keys()].join(',') === 'author,user,service,service_region,service_member,composite_account,composite_membership,soft_record,account,project,account_project,task,hex_cell,time_cell,clock_cell,day_cell,upsert_cell,uuid_cell,bind_cell', 'entities in document order');
-  // 선언한 hash로 가지 않는 text는 그 hash가 이미 등록되어 있어도 SCHEMA_HASH_MISMATCH다.
+  // Text that does not hash to the declared hash is SCHEMA_HASH_MISMATCH, even if that hash is already registered.
   const edited = MANIFEST_TEXT.replace('table author', 'table authors');
   check(edited !== MANIFEST_TEXT, 'the edited manifest text differs');
   check(code(() => registerModel(edited, MANIFEST_HASH)) === 'SCHEMA_HASH_MISMATCH', 'an edited manifest text is rejected');
@@ -55,7 +55,7 @@ await run.run('engine', COMPUTE, async () => {
   check(compileCode({ ...base, kind: 'delete', n_params: 0 }) === 'IR_INVALID', 'delete without where');
   check(compileCode({ ...base, manifest_hash: 'x', kind: 'all', n_params: 0 }) === 'SCHEMA_HASH_MISMATCH', 'request of another manifest');
 
-  // relation 은 foreign key 의 모든 성분을 key 순서대로 잇고, 잘못된 key 목록은 거절된다.
+  // A relation links all parts of a foreign key in key order, and an invalid key list is rejected.
   const compositeRelation = keys => ({ ir_version: 1, manifest_hash: MANIFEST_HASH, entity: 'composite_account', kind: 'all', n_params: 0, relations: [{ rel: 'memberships', kind: 'many', keys, query: { entity: 'composite_membership' } }] });
   {
     const plan = engine.compile(compositeRelation([{ left: 'tenant_id', right: 'tenant_id' }, { left: 'account_id', right: 'account_id' }]));
@@ -73,9 +73,9 @@ await run.run('engine', COMPUTE, async () => {
   ]) check(compileCode(compositeRelation(keys)) === want, `relation keys ${JSON.stringify(keys)}: want ${want}`);
   check(compileCode({ ...base, kind: 'all', n_params: 0, force_index: 'nope' }) === 'INDEX_UNKNOWN', 'unknown index');
 
-  // insert는 identity column 값을, update와 duplicate update는 primary key와 identity
-  // column 값을 쓰지 못한다. PostgreSQL identity는 명시한 key를 지나 나아가지 않으므로
-  // (postgres.identity.by_default_not_advanced) 세 dialect 모두 거부한다.
+  // insert cannot write an identity column value, and update and duplicate update cannot write the primary key and identity
+  // column values. PostgreSQL identity does not advance past an explicitly given key, so
+  // (postgres.identity.by_default_not_advanced) all three dialects reject it.
   const keyWrites = {
     'cannot set identity column seq': { kind: 'insert', entity: 'service', set: [{ column: 'seq', p: 0 }, { column: 'name', p: 1 }], n_params: 2 },
     'cannot update seq': { kind: 'update', entity: 'service', set: [{ column: 'seq', p: 0 }], where: { items: [{ pred: { column: 'seq', op: 'eq', p: 1 } }] }, n_params: 2 },
@@ -96,7 +96,7 @@ await run.run('engine', COMPUTE, async () => {
   check(plan.steps.length === 1 && plan.steps[0].sql === want, `plan SQL: ${plan.steps[0].sql}`);
   check(plan.steps[0].bind_slots.map(s => s.param).join(',') === '0,1', 'plan binds');
 
-  // 모든 column을 고른 node는 AES key version column을 한 번만 읽고 그 위치를 표시한다.
+  // A node that selects every column reads the AES key version column only once and marks its position.
   const allPlan = engine.compile({ ...base, kind: 'one', n_params: 1, columns: { mode: 'all' }, where: { items: [{ pred: { column: 'seq', op: 'eq', p: 0 } }] } });
   const allAsm = allPlan.steps[0].assemble;
   check(allPlan.steps[0].sql.split('"a"."aes_key_version" AS').length - 1 === 1, `aes_key_version selected once: ${allPlan.steps[0].sql}`);
@@ -112,8 +112,8 @@ await run.run('engine', COMPUTE, async () => {
     `soft-delete guarded update: ${softDelete.steps[0].sql}`,
   );
 
-  // Restore: primary key 나 unique key 하나의 eq 조건으로 soft delete column 을 NULL 로 되돌리는 update 하나다.
-  // 지워진 행만 고치고, audit table 이면 audit column 도 쓴다(engine/planner/restore_test.go 와 같은 case).
+  // Restore: one update that sets the soft delete column back to NULL, with an eq condition on one primary key or unique key.
+  // It changes only deleted rows, and if the table is audited it also writes the audit column (the same case as engine/planner/restore_test.go).
   {
     const restoreText = `dbspec 1 restore
 
@@ -247,8 +247,8 @@ table plain {
 
   if (failures > 0) throw new Error(`${failures} check(s) failed; each FAIL line above names one`);
 });
-// 공유 검증 case(tests/ir/validate.json): 각 request에 schema의 manifest_hash를 더해 검증기에만 주고,
-// 받아들이는지나 기대한 오류 code로 실패하는지 본다.
+// Shared validation cases (tests/ir/validate.json): each request, with the schema's manifest_hash added, is given only to the validator, and
+// it is checked whether it is accepted or fails with the expected error code.
 const validateText = await readFile(new URL('../../../tests/ir/validate.json', import.meta.url), 'utf8');
 const file = JSON.parse(validateText);
 // Each request is read again as its JSON text through ordered-json, so a number keeps its literal (0.0 is not 0).

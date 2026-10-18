@@ -4,8 +4,8 @@ import { isDeepStrictEqual } from 'node:util';
 import { CodecError, decode, hostDecode } from '../dist/index.js';
 import { check } from './codec_case.mjs';
 
-// 공유 decode vector(tests/codec/decode-vectors.json): 저장 cell은 encoder가 쓰는 형태로만 decode되고 그 밖의
-// 형태는 CODEC_DECODE다. aes가 없는 host stage 목록은 key 없는 hostDecode로, 나머지는 decode로 읽는다.
+// Shared decode vectors (tests/codec/decode-vectors.json): a stored cell is decoded only from the form the encoder writes, and any other
+// form is CODEC_DECODE. The host stage list without aes is read with hostDecode, which takes no key; the rest are read with decode.
 const decodeVectors = JSON.parse(await readFile('tests/codec/decode-vectors.json', 'utf8')).vectors;
 if (decodeVectors.length === 0) throw new Error('decode-vectors.json has no vectors');
 for (const vector of decodeVectors) check(vector.name, wrong => {

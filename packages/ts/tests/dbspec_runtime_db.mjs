@@ -76,11 +76,11 @@ async function code(promise) {
 if (!process.env.ORM_TEST_MYSQL_DSN) throw new Error('ORM_TEST_MYSQL_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers');
 if (!process.env.ORM_TEST_POSTGRES_DSN) throw new Error('ORM_TEST_POSTGRES_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers');
 
-// 각 case의 기한: 연결이나 statement 몇 개는 30 s, schema 설치와 audit trigger를 거치는 쓰기는
-// DDL을 실행하므로 60 s다.
-// dialect마다 첫 case가 case database를 만들고 마지막 case가 지운다. 앞 case가 실패해도 node:test는
-// 마지막 case를 실행한다. process가 그 전에 끝나는 경우에는 after가 남은 database를 지우고, 지운
-// database가 있으면 실패한다.
+// Deadline of each case: a few connections or statements take 30 s, and writes that go through schema install and the audit trigger
+// run DDL, so they take 60 s.
+// For each dialect, the first case creates the case database and the last case drops it. Even if an earlier case fails, node:test
+// still runs the last case. If the process ends before that, after drops the leftover database and
+// fails if a database is still there.
 for (const dialect of ['sqlite', 'mysql', 'postgres']) {
   let db;
   let database;
@@ -167,13 +167,13 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
     assert.equal(read[CORE].column('stamp'), '2026-01-02 03:04:05.678');
   });
 
-  // audit 기록을 받은 transaction 의 write 를 확인한다(tests/restore_case.mjs). audit.dbs 는 앞 case 가 설치했다.
+  // Checks the writes of a transaction that received the audit record (tests/restore_case.mjs). audit.dbs was installed by the earlier case.
   caseTest(`${dialect}: an audited write takes the audit record of its transaction`, 60_000, async () => {
     await auditCase(db, dialect, database.dsn);
   });
 
-  // soft delete 한 행을 unique key 나 primary key 로 restore 한다(tests/restore_case.mjs). restore.dbs 는 audit.dbs 와
-  // 같은 이름의 audit table 을 가지므로 자기 case database 에 설치한다.
+  // Restores a soft-deleted row by its unique key or primary key (tests/restore_case.mjs). restore.dbs has the same
+  // name for its audit table as audit.dbs, so it is installed in its own case database.
   caseTest(`${dialect}: restore brings back a soft-deleted row by its primary key or a unique key`, 60_000, async ({ step }) => {
     const own = await createCaseDatabase(dialect, step);
     let restoreDb;

@@ -1,6 +1,6 @@
-// transactions coverage: callback 의 오류가 transaction 을 rollback 하고 호출자에게 그대로
-// 전달되는지, 중첩 transaction 이 savepoint 로 안쪽 write 만 되돌리는지 확인한다. 쓴 row 는
-// composite_account 에만 있고 case 가 끝날 때 모두 지운다.
+// transactions coverage: a callback error rolls back the transaction and is passed to the caller unchanged,
+// and a nested transaction rolls back only its inner writes with a savepoint. The written rows
+// are only in composite_account, and the case deletes all of them when it ends.
 import assert from 'node:assert/strict';
 import { CompositeAccount, connect } from '../dist/index.js';
 import { runCases, withCleanup } from './coverage_case.mjs';

@@ -1,20 +1,20 @@
-// TypeScript client의 DSN parameter와 MySQL TLS 연결(docs/config.md): DSN은 scheme의
-// parameter만 쓰고, 절대 경로 `ssl-ca`를 둔 `ssl-mode=VERIFY_IDENTITY`가 유일한 MySQL TLS
-// mode이며, 다른 parameter와 mode는 모두 CONFIG다. 연결 case는 `make test-servers`의
-// ORM_TEST_MYSQL_TLS_DSN, ORM_TEST_MYSQL_TLS_OTHER_CA_DSN, ORM_TEST_MYSQL_TLS_MISMATCH_DSN이
-// 필요하며, 하나라도 없으면 실패한다.
+// The DSN parameters of the TypeScript client and the MySQL TLS connection (docs/config.md): the DSN uses only the scheme's
+// parameters, and `ssl-mode=VERIFY_IDENTITY` with an absolute path `ssl-ca` is the only MySQL TLS
+// mode; any other parameter or mode is CONFIG. The connection cases use the DSNs of `make test-servers`:
+// ORM_TEST_MYSQL_TLS_DSN, ORM_TEST_MYSQL_TLS_OTHER_CA_DSN, and ORM_TEST_MYSQL_TLS_MISMATCH_DSN
+// are required, and the test fails if any of them is missing.
 // Usage: node packages/ts/tests/mysql_tls.mjs
 import { readFile } from 'node:fs/promises';
 import { Db } from '../dist/index.js';
 import { parseDsn } from '../dist/driver.js';
 import { caseTest, COMPUTE, DATABASE } from '../../../tests/testcase.mts';
 
-// 각 case는 실패를 모아 그 case의 끝에 한 error로 보고한다.
+// Each case collects its failures and reports them as one error at the end of the case.
 function check(failures) {
   if (failures.length > 0) throw new Error(failures.join('; '));
 }
 
-// parameter case는 memory 안의 parse다.
+// A parameter case is a parse in memory.
 caseTest('mysql_tls/parameters', COMPUTE, () => {
   const failures = [];
   const refused = (dsn, wanted) => {
@@ -57,7 +57,7 @@ async function sslVersion(dsn) {
   }
 }
 
-// connection case는 TLS server에 세 번 연결한다.
+// A connection case connects to the TLS server three times.
 caseTest('mysql_tls/connections', DATABASE, async ({ step }) => {
   const failures = [];
   const dsns = ['ORM_TEST_MYSQL_TLS_DSN', 'ORM_TEST_MYSQL_TLS_OTHER_CA_DSN', 'ORM_TEST_MYSQL_TLS_MISMATCH_DSN'].map(name => {

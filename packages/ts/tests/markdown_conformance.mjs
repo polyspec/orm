@@ -1,16 +1,16 @@
-// markdown IR executor conformance(tests/markdown/README.md)를 TypeScript client로 실행한다.
-// tests/markdown/cases.json의 모든 case를 그 순서대로, FLOWMARK가 가리키는 flowmark build의 server
-// 하나에서 실행하고 각 결과를 expect와 비교한다. 그 build는 tests/markdown/flowmark.version이 고정한
-// build여야 하고, 없거나 다른 build이면 실패한다(건너뛰지 않는다). 뒤의 case는 앞 case가 만든 corpus
-// 상태를 읽으므로 첫 실패 뒤의 case는 그 실패를 이유로 실패한다.
+// Runs the markdown IR executor conformance (tests/markdown/README.md) with the TypeScript client.
+// Runs every case of tests/markdown/cases.json in order, on one server of the flowmark build that FLOWMARK points to,
+// and compares each result with expect. That build must be the build pinned by tests/markdown/flowmark.version,
+// and it fails if the build is missing or different (it does not skip). Later cases read the corpus state created by earlier cases,
+// so cases after the first failure fail because of that failure.
 //
-// 사용: FLOWMARK=<flowmark> node --conditions=orm-test packages/ts/tests/markdown_conformance.mjs
-// (npm run typescript:build 뒤; make markdown-conformance-check가 FLOWMARK를 준다)
+// Usage: FLOWMARK=<flowmark> node --conditions=orm-test packages/ts/tests/markdown_conformance.mjs
+// (after npm run typescript:build; make markdown-conformance-check supplies FLOWMARK)
 //
-// --ir-answers를 주면 flowmark 없이 contracts/fixtures/ir_answers.json의 case만 실행한다: case마다 server 대신
-// connect에 {"ok":true}, chain의 request 하나에 case의 answer를 쓰는 listener에 연결해 chain(cases.json의 case)을
-// 실행하고 결과를 expect와 비교한다(docs/protocol.md §5 Read).
-// 사용: node --conditions=orm-test packages/ts/tests/markdown_conformance.mjs --ir-answers
+// With --ir-answers, it runs only the cases of contracts/fixtures/ir_answers.json, without flowmark: for each case, in place of the server,
+// it connects to a listener that answers {"ok":true} to connect and writes the case's answer to one request of the chain, and runs the chain (a case of cases.json)
+// and compares the result with expect (docs/protocol.md §5 Read).
+// Usage: node --conditions=orm-test packages/ts/tests/markdown_conformance.mjs --ir-answers
 import { execFile, spawn } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -26,12 +26,12 @@ import { Logs, People, Tasks, connect } from '../dist/models/markdown_fixture/mo
 
 const run = promisify(execFile);
 const conformanceDir = fileURLToPath(new URL('../../../tests/markdown/', import.meta.url));
-// FLOWMARK가 가리키는 build의 main module이어야 하는 module path다.
+// The module path, which must be the main module of the build that FLOWMARK points to.
 const flowmarkModule = 'github.com/polyspec/flowmark';
 
 const runner = cases();
 
-/** cases.json의 case다: 비지 않고 겹치지 않는 id와 expect. */
+/** A case of cases.json: an id that is non-empty and unique, and expect. */
 async function loadCases() {
   const doc = JSON.parse(await readFile(path.join(conformanceDir, 'cases.json'), 'utf8'));
   const seen = new Set();
@@ -43,8 +43,8 @@ async function loadCases() {
 }
 
 /**
- * FLOWMARK가 가리키는 flowmark binary다. `go version -m`이 읽은 build 정보의 main module이 flowmark module의
- * flowmark.version 판이 아니면 실패한다.
+ * The flowmark binary that FLOWMARK points to. The main module of the build information read by `go version -m` must be the flowmark module
+ * at the flowmark.version pin, or it fails.
  */
 async function pinnedFlowmark() {
   const pin = (await readFile(path.join(conformanceDir, 'flowmark.version'), 'utf8')).trim();
@@ -66,8 +66,8 @@ async function pinnedFlowmark() {
 const listening = /^\[serve\] listening on 127\.0\.0\.1:([0-9]+) for the corpus (.+)$/;
 
 /**
- * corpus/를 새 corpus로 install하고 그 server를 시작해 연결한다. 돌려준 served의 stop이 연결을 닫고 server를
- * 멈춘 뒤 끝나기를 기다리고 directory를 지운다.
+ * Installs corpus/ as a new corpus, starts its server, and connects to it. The stop of the returned served closes the connection and stops the server
+ * and waits for it to end, then deletes the directory.
  */
 async function serve(bin, step) {
   const s = { corpus: 'conformance', root: await mkdtemp(path.join(tmpdir(), 'orm-markdown-')), db: undefined, server: undefined, stderr: '' };
@@ -95,7 +95,7 @@ async function serve(bin, step) {
       s.server.once('exit', () => resolve(''));
     });
     lines.close();
-    // server는 계속 stdout에 쓰므로 남은 출력을 읽어 버린다.
+    // The server keeps writing to stdout, so the remaining output is read and discarded.
     s.server.stdout.resume();
     const m = listening.exec(line);
     if (m === null || m[2] !== s.corpus) throw new Error(`flowmark serve printed ${JSON.stringify(line)}, not its listening line; stderr:\n${s.stderr}`);
@@ -110,10 +110,10 @@ async function serve(bin, step) {
   }
 }
 
-/** transaction을 rollback시키려고 callback이 던지는 오류다. */
+/** The error that the callback throws to roll back the transaction. */
 const stop = new Error('stop');
 
-/** cases.json의 id마다 그 case를 실행하고 README가 정한 결과 값을 돌려주는 함수다. 던진 OrmError는 그 code의 {"error": code}다. */
+/** A function that runs the case for each id in cases.json and returns the result value that README defines. A thrown OrmError becomes {"error": code} with its code. */
 const conformanceCases = {
   insert_one: async s => {
     const m = await new People().connect(s.db).setName('Ann').setEmail('ann@example.com').setAge(30).setScore('1.50').create();
@@ -236,7 +236,7 @@ const conformanceCases = {
     const error = await s.db.transaction(async () => {
       const m = await new People().id('P1').get();
       await m.setName('Ann C').update();
-      // engine 밖의 편집: transaction이 쓸 file을 commit 전에 바꾼다.
+      // Edit outside the engine: changes the file the transaction will write before the commit.
       const file = path.join(s.dir, 'people.flowmark.md');
       const text = await readFile(file, 'utf8');
       if (!text.includes('Cara')) throw new Error(`${file} holds no Cara to edit:\n${text}`);
@@ -249,15 +249,15 @@ const conformanceCases = {
   connect_token_mismatch: async s => (await connect(s.dsn(s.corpus, '0'.repeat(32)))).close(),
 };
 
-/** 결과를 JSON으로 썼다 읽은 값이다: cases.json의 expect와 같은 형태다. TypeScript model은 date를 README
- * "Results"가 정한 YYYY-MM-DD text로 가진다. */
+/** The result, written as JSON and read back: it has the same form as expect in cases.json. The TypeScript model holds dates as the YYYY-MM-DD text that README
+ * "Results" defines. */
 function normalize(value) {
   if (value instanceof StyledValue) throw new Error('a case result holds a styled value, which has no JSON form here');
   return JSON.parse(JSON.stringify(value ?? null));
 }
 
 let served;
-/** connect에 {"ok":true}, 다음 message에 answer를 쓰는 listener다. */
+/** A listener that answers {"ok":true} to connect and writes the answer to the next message. */
 /**
  * A listener that answers connect with {"ok":true} and every later message with the answer of answers keyed by the op
  * of a control message or the kind of a request; a message without an answer is IR_INVALID.
@@ -327,7 +327,7 @@ if (process.argv.includes('--ir-answers')) {
 let ready = false;
 let all = [];
 await runner.run('markdown/setup', PROCESS, async ({ step }) => {
-  // commit된 model은 corpus catalog과 이 file의 scan에서 생성한 출력과 같아야 한다.
+  // The committed model must equal the output generated from the corpus catalog and from the scan of this file.
   step('orm-gen gen --check of src/models/markdown_fixture');
   try {
     await run(process.execPath, ['dist/bin/orm-gen.js', 'gen', '--set', '../../tests/markdown/corpus/dbspec/dbspec-set.json', '--out', 'src/models/markdown_fixture', '--scan', 'tests/markdown_conformance.mjs', '--check'], { cwd: fileURLToPath(new URL('..', import.meta.url)) });

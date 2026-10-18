@@ -6,10 +6,10 @@
 // reference work, and a ratio above REFERENCE_RATIO prints a warning
 // (docs/dbspec.md, "Verification"); a measurement never fails the test.
 //
-// 시간 제한은 parse를 실행한 main thread의 CPU 시간(process.threadCpuUsage)으로 잰다. 공유
-// machine에서 wall-clock 시간은 다른 process가 CPU를 쓰는 동안 기다린 시간도 담고, process
-// CPU 시간은 다른 thread에서 도는 garbage collector의 시간도 담는다. wall-clock 시간은 함께
-// 출력만 한다.
+// The time limit is measured as the CPU time of the main thread that ran parse (process.threadCpuUsage). On a shared
+// machine, wall-clock time also includes the time spent waiting while other processes use the CPU, and process
+// CPU time also includes the time of the garbage collector running on other threads. Wall-clock time is
+// only printed.
 //
 // Usage: node --test packages/ts/tests/dbspec-stress.mjs (after the build)
 import { caseTest, warning } from '../../../tests/testcase.mts';
@@ -53,8 +53,8 @@ caseTest('dbspec stress document parses and emits canonically', TIMEOUT, async (
     }
     parses.sort((a, b) => a - b);
     const parseMs = parses[Math.floor(PARSES / 2)];
-    // 기준 작업은 같은 문서의 byte마다 checksum을 갱신하는 loop다. 같은 thread에서 같은 시계로 재고, parse 시간과의
-    // 비율을 출력한다(docs/dbspec.md, Verification).
+    // The baseline work is a loop that updates a checksum for each byte of the same document. It is measured on the same thread with the same clock, and the ratio to the parse time
+    // is printed (docs/dbspec.md, Verification).
     const bytes = Buffer.from(text);
     const references = [];
     let sum = 0;
@@ -86,7 +86,7 @@ caseTest('dbspec stress document parses and emits canonically', TIMEOUT, async (
       warning(`median parse CPU of ${parseMs.toFixed(3)} ms is ${ratio.toFixed(2)} times the reference CPU of ${referenceMs.toFixed(3)} ms, above the reference ratio ${REFERENCE_RATIO} (docs/dbspec.md, Verification); machine ${machine}`);
 });
 
-// referenceScan은 stress 문서의 기준 작업이다: byte마다 h = h*31 + b(mod 2^32)를 차례로 계산한다.
+// referenceScan is the baseline work for the stress document: for each byte in turn, it computes h = h*31 + b (mod 2^32).
 function referenceScan(bytes) {
   let h = 0;
   for (let i = 0; i < bytes.length; i++) h = (Math.imul(h, 31) + bytes[i]) >>> 0;

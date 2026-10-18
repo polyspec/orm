@@ -1,8 +1,8 @@
-// markdown:// 연결의 DSN, connect와 control message, error 줄의 해석, markdown 연결이 거절하는 SQL 전용
-// surface를 flowmark server 대신 script대로 답하는 가짜 server로 확인한다(docs/protocol.md §5, docs/dialects.md
-// "Markdown IR executor"). Go의 packages/go/orm/markdown_test.go와 같은 case다.
+// The DSN of a markdown:// connection, connect and control messages, parsing of error lines, and the SQL-only
+// surface that a markdown connection rejects are checked with a fake server that answers from a script in place of the flowmark server (docs/protocol.md §5, docs/dialects.md
+// "Markdown IR executor"). These are the same cases as packages/go/orm/markdown_test.go in Go.
 //
-// 사용: node packages/ts/tests/markdown.mjs (npm run typescript:build 뒤)
+// Usage: node packages/ts/tests/markdown.mjs (after npm run typescript:build)
 import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { isDeepStrictEqual } from 'node:util';
@@ -17,8 +17,8 @@ const token = '0123456789abcdef0123456789abcdef';
 const connectLine = `{"op":"connect","corpus":"tracker","token":"${token}"}`;
 
 /**
- * 한 연결의 message를 받아 적고 answers의 답을 차례로 쓰는 가짜 server다. received는 연결이 끝났을 때 받은
- * 줄들이다.
+ * A fake server that records the messages of one connection and writes the answers from answers in order. received holds the lines
+ * received when the connection ends.
  */
 async function fakeServer(...answers) {
   let done;
@@ -72,7 +72,7 @@ caseTest('markdown/parse-dsn', COMPUTE, () => {
   }
 });
 
-// client가 보내는 connect와 control message, 그리고 error 줄의 해석이다.
+// The connect and control messages the client sends, and the parsing of error lines.
 caseTest('markdown/session-messages', COMPUTE, async () => {
   const s = await fakeServer(
     '{"ok":true}',
@@ -107,7 +107,7 @@ caseTest('markdown/session-messages', COMPUTE, async () => {
   }
 });
 
-// server가 connect에 답한 CONFIG가 connect의 오류다.
+// The CONFIG the server answers to connect is the error of connect.
 caseTest('markdown/connect-refused', COMPUTE, async () => {
   const s = await fakeServer('{"error":{"code":"CONFIG","message":"connect: the token is not the corpus\'s token"}}');
   try {
@@ -123,7 +123,7 @@ caseTest('markdown/connect-refused', COMPUTE, async () => {
   }
 });
 
-// markdown 연결은 SQL 전용 surface를 CAPABILITY_UNSUPPORTED로 거절한다.
+// A markdown connection rejects the SQL-only surface with CAPABILITY_UNSUPPORTED.
 caseTest('markdown/rejected-surfaces', COMPUTE, async () => {
   const s = await fakeServer('{"ok":true}');
   try {
@@ -148,8 +148,8 @@ caseTest('markdown/rejected-surfaces', COMPUTE, async () => {
     await s.close();
   }
 });
-// tests/bind/vectors.json의 message case: IR executor message parameter의 runtime value model JSON이다
-// (docs/protocol.md §5 "Parameters"). Go의 TestBindMessageVectors와 같은 case다.
+// Message case of tests/bind/vectors.json: the runtime value model JSON of an IR executor message parameter
+// (docs/protocol.md §5 "Parameters"). These are the same cases as TestBindMessageVectors in Go.
 const bind = JSON.parse(readFileSync(new URL('../../../tests/bind/vectors.json', import.meta.url), 'utf8'));
 // The control cases: the begin control message of a transaction with and without readOnly (docs/protocol.md §5 Session).
 if (!Array.isArray(bind.control) || bind.control.length === 0) throw new Error('tests/bind/vectors.json has no control cases');
@@ -174,8 +174,8 @@ for (const c of bind.message) {
     }
   });
 }
-// tests/bind/vectors.json의 bind case: parameter 값을 그 slot의 논리 type으로 검사한다(docs/protocol.md §5
-// "Parameters"). Go의 TestBindVectors와 같은 case다.
+// Bind case of tests/bind/vectors.json: checks a parameter value against the logical type of its slot (docs/protocol.md §5
+// "Parameters"). These are the same cases as TestBindVectors in Go.
 function vectorValue(value) {
   if (value === null || typeof value !== 'object') return value;
   // A native value of the tagged kind: the host object a TypeScript program passes for it.

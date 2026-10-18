@@ -1,8 +1,8 @@
-// feature coverage test 의 공용 실행부. checker 는 `node <file> <case id>...` 로 실행하고
-// 출력 전체가 `CASE <id> PASS` 줄뿐이어야 하므로, 요청한 case 만 순서대로 실행하고 통과한
-// case 마다 그 한 줄만 쓴다. 실패는 throw 해서 process 가 0 아닌 code 로 끝난다.
-// case ID 없이 실행하면(parity check 의 `node --test <file>`) suite 의 case 마다 그 ID 의
-// top-level node:test test 를 등록한다.
+// Shared runner of the feature coverage test. The checker runs it as `node <file> <case id>...`, and
+// since the whole output must be only `CASE <id> PASS` lines, it runs only the requested cases in order and
+// writes only that one line per passing case. A failure throws, so the process ends with a non-zero code.
+// When run without a case ID (the parity check's `node --test <file>`), it registers, for each case of the suite,
+// a top-level node:test test under that ID.
 import { createRequire } from 'node:module';
 import { caseTest } from '../../../tests/testcase.mts';
 import { coverageItems } from '../../../scripts/features/coverage.mts';

@@ -1,5 +1,5 @@
-// schema_install coverage: 이미 설치된 bench manifest 의 설치는 아무것도 바꾸지 않고, table 일부만
-// 있는 문서 집합의 설치는 CONFIG 로 거부되어 없는 table 을 만들지 않는지 확인한다.
+// schema_install coverage: installing an already installed bench manifest changes nothing, and
+// installing a document set where only some tables exist is rejected as CONFIG, without creating the missing tables.
 import assert from 'node:assert/strict';
 import { Author, Db, SCHEMA, connect, dbspecManifest, parseDbspec } from '../dist/index.js';
 import { runCases, tableExists } from './coverage_case.mjs';
@@ -83,8 +83,8 @@ await runCases('coverage_schema_install.mjs', {
     });
   },
 
-  // 외부 문서를 쓰는 set의 install은 외부 table을 database에서 확인한다. 외부 문서의 column이 database에 없으면
-  // install이 CONFIG이며 소유한 table을 만들지 않는다. 등록은 database를 읽지 않으므로 그 set으로도 연결한다.
+  // Install of a set that uses external documents checks the external tables in the database. If an external document's column is missing from the database,
+  // install is CONFIG and creates no table it owns. Registration does not read the database, so the set is also connected with it.
   async schema_install_external_documents(item) {
     await withDatabase(item, async (db, driver, dsn) => {
       const connected = await Db.connectSchema(dsn, externalSchema(externalUser));

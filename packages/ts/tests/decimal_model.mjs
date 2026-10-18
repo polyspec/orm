@@ -20,7 +20,7 @@ for (const testCase of fixture.cases) caseTest(testCase.id, COMPUTE, () => {
     if (!testCase.expected.error || error.code !== testCase.expected.error) throw error;
   }
 });
-// SQLite decimal column은 dbspec renderer가 scaled integer storage로 쓴다.
+// The dbspec renderer writes SQLite decimal columns as scaled integer storage.
 await run.run('decimal_model/sqlite_decimal_ddl', COMPUTE, () => {
   const parsed = parseDbspec('dbspec 1 decimal\n\ntable t {\n  seq i64\n  amount decimal(13,4)\n  primary key (seq)\n}\n', {});
   if (parsed.diagnostics.length !== 0) throw new Error(`decimal document: ${JSON.stringify(parsed.diagnostics)}`);

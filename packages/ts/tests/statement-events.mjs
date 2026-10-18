@@ -1,6 +1,6 @@
-// tests/events/vectors.json의 statement event case를 TypeScript client로 MySQL, PostgreSQL,
-// SQLite에서 실행한다(statement-events-run.mjs). case마다 새 case database(case-database.mjs)를 쓴다.
-// vector의 server_transactions는 case id server_transactions로 PostgreSQL에서 실행한다.
+// Runs the statement event cases of tests/events/vectors.json with the TypeScript client on MySQL, PostgreSQL,
+// and SQLite (statement-events-run.mjs). Each case uses a new case database (case-database.mjs).
+// The server_transactions of the vector runs on PostgreSQL as the case with id server_transactions.
 //
 // Usage: node packages/ts/tests/statement-events.mjs [--dialect mysql|postgres|sqlite]... [case ...]
 // (after npm run typescript:build)

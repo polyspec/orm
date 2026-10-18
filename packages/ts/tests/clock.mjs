@@ -18,7 +18,7 @@ import { mysqlConnection, postgresClient, withCaseDatabase } from './case-databa
 
 const clockText = await readFile(new URL('../../../contracts/fixtures/clock.dbs', import.meta.url), 'utf8');
 const markText = await readFile(new URL('../../../contracts/fixtures/clock_mark.dbs', import.meta.url), 'utf8');
-// CASE_DEADLINE_MS는 case 하나의 기한이다. case 하나는 case database를 만들고 clock_mark 문서를 설치해 row 몇 개를 쓰고 읽은 뒤 database를 지운다.
+// CASE_DEADLINE_MS is the deadline of one case. A case creates a case database, installs the clock_mark document, writes and reads a few rows, then drops the database.
 const CASE_DEADLINE_MS = 30_000;
 let failures = 0;
 let current = '';
@@ -169,7 +169,7 @@ function clockWallMicrosOrder() {
   Date.now = () => wall;
   performance.now = () => monotonic;
   try {
-    // base는 실제 wall clock보다 하루 뒤라서, 첫 읽기는 그 millisecond의 시작으로 옮겨지고 anchor가 정해진다.
+    // base is one day ahead of the real wall clock, so the first read is moved to the start of that millisecond and the anchor is set.
     const base = wallNow() + 86_400_000;
     wall = base; monotonic = 1_000;
     const start = wallMicros();
@@ -190,7 +190,7 @@ function clockWallMicrosOrder() {
   }
 }
 
-// databaseFree는 database 없이 한 번 실행하는 case다.
+// databaseFree is a case that runs once without a database.
 const databaseFree = {
   clock_wall_micros_order: clockWallMicrosOrder,
 };

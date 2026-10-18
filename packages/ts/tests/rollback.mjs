@@ -15,8 +15,8 @@
 // ORM_TEST_POSTGRES_DSN, or a new SQLite file (case-database.mjs); the test
 // fails when one of the four DSNs is unset.
 //
-// rollback_fault case는 condition `orm-test`에서만 resolve되는 test entry point
-// `@polyspec/orm/testing`의 rollback fault를 설정한다.
+// The rollback_fault case sets a rollback fault in the test entry point that resolves only under condition `orm-test`
+// of `@polyspec/orm/testing`.
 //
 // Usage: node --conditions=orm-test packages/ts/tests/rollback.mjs [case ...] (after npm run typescript:build)
 import { spawnSync } from 'node:child_process';
@@ -29,7 +29,7 @@ import { CORE, Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel }
 import { failNextRollback } from '@polyspec/orm/testing';
 
 const rollbackText = await readFile(new URL('../../../contracts/fixtures/rollback.dbs', import.meta.url), 'utf8');
-// CASE_DEADLINE_MS는 case 하나의 기한이다. case 하나는 case database를 만들고 rollback 문서를 설치해 실패하는 transaction 몇 개를 실행한 뒤 database를 지운다.
+// CASE_DEADLINE_MS is the deadline of one case. A case creates a case database, installs the rollback document, runs a few failing transactions, then drops the database.
 const CASE_DEADLINE_MS = 30_000;
 let failures = 0;
 let current = '';
@@ -104,7 +104,7 @@ async function endSession(driver, dsn) {
   const env = `ORM_TEST_${driver.toUpperCase()}_SERVER_DSN`;
   const server = process.env[env];
   if (!server) throw new Error(`${env} is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers`);
-  // case database 이름은 case DSN의 path다. server 연결도 그 database를 연다.
+  // The case database name is the path of the case DSN. The server connection also opens that database.
   const session = relatedDsn(server, new URL(dsn).pathname.slice(1));
   if (driver === 'postgres') {
     const rows = await native(driver, session, ["SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = 'rollback_probe' AND l.pid <> pg_backend_pid() LIMIT 1"]);
@@ -140,7 +140,7 @@ async function rollbackFailed(driver, dsn) {
     }, { retry: 0 }));
     checkRollback(error, 'transaction');
     if (driver !== 'sqlite') {
-      // server가 끝낸 session의 다음 statement와 rollback은 연결을 잃은 오류다.
+      // The next statement and rollback on a session the server has ended are connection-lost errors.
       check(error?.cause?.code === 'CONNECTION_LOST', `the callback error is CONNECTION_LOST: ${error?.cause?.code} ${error?.cause?.message}`);
       check(error?.rollback?.code === 'CONNECTION_LOST', `the rollback error is CONNECTION_LOST: ${error?.rollback?.code} ${error?.rollback?.message}`);
     }
@@ -170,8 +170,8 @@ async function savepointRollbackFailed(driver, dsn) {
 }
 
 /**
- * test entry point가 condition `orm-test`에서만 resolve되고 package entry point가
- * fault를 export하지 않는지 확인한다.
+ * The test entry point resolves only under condition `orm-test`, and the package entry point
+ * does not export the fault.
  */
 function checkFaultEntry() {
   const packageRoot = new URL('..', import.meta.url).pathname;
@@ -184,11 +184,11 @@ function checkFaultEntry() {
 }
 
 /**
- * test entry point의 rollback fault다. commit된 transaction은 fault를 남기고,
- * callback이 실패한 다음 transaction은 rollback되며 그 rollback은 FAULT를 보고하고
- * transaction은 callback 오류와 fault를 가진 ROLLBACK을 throw한다. fault는
- * 소비된다: 그 뒤 transaction은 callback 오류만 throw하고 connection은 이후 요청을
- * 처리한다.
+ * The rollback fault of the test entry point. A committed transaction leaves the fault in place,
+ * and the next transaction whose callback fails is rolled back, and that rollback reports FAULT
+ * and the transaction throws a ROLLBACK that carries both the callback error and the fault. The fault
+ * is consumed: after that, the transaction throws only the callback error, and the connection
+ * handles later requests.
  */
 async function rollbackFault(driver, dsn) {
   checkFaultEntry();

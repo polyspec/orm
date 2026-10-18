@@ -1,6 +1,6 @@
-// parameter_chunking coverage: 모든 driver 의 bind 한도를 넘는 root IN list 를 나눠 실행해 중복과
-// 없는 값을 포함해도 count 가 맞는지, 나누면 결과가 달라지는 limit 은 IR_INVALID 로 거부하는지
-// 확인한다. 읽기만 한다.
+// parameter_chunking coverage: runs a root IN list that exceeds every driver's bind limit split into chunks, checking duplicates
+// and missing values are still counted correctly, and that a limit whose result changes when split is rejected with IR_INVALID
+// are checked. It only reads.
 import assert from 'node:assert/strict';
 import { Author, connect } from '../dist/index.js';
 import { errorCode, runCases } from './coverage_case.mjs';

@@ -21,7 +21,7 @@ import { nativeQuery } from './coverage_case.mjs';
 
 const benchText = await readFile(new URL('../../../contracts/fixtures/bench/bench.dbs', import.meta.url), 'utf8');
 const decimalText = await readFile(new URL('../../../contracts/fixtures/decimal_schema.dbs', import.meta.url), 'utf8');
-// CASE_DEADLINE_MS는 case 하나의 기한이다. case 하나는 database를 만들고 schema set 몇 개를 설치하고 읽은 뒤 지운다.
+// CASE_DEADLINE_MS is the deadline of one case. A case creates a database, installs and reads a few schema sets, then drops it.
 const CASE_DEADLINE_MS = 60_000;
 let failures = 0;
 let current = '';
@@ -50,10 +50,10 @@ function classes(model) {
   return out;
 }
 
-// generated code처럼 각 set의 manifest text와 manifestHash로 model을 등록한다.
+// Registers models with the manifest text and manifestHash of each set, as generated code does.
 const bench = manifestOf(benchText);
 const decimal = manifestOf(decimalText);
-// generated code가 내보내는 schema 값: manifest text와 선언한 manifestHash다.
+// The schema value that generated code exports: the manifest text and the declared manifestHash.
 const benchSchema = { manifestText: bench.manifestText, manifestHash: bench.manifestHash };
 const decimalSchema = { manifestText: decimal.manifestText, manifestHash: decimal.manifestHash };
 const { user: User } = classes(registerModel(bench.manifestText, bench.manifestHash));
@@ -171,14 +171,14 @@ async function thrown(run) {
 }
 
 /**
- * packages/go/orm/external_documents_test.go 의 externalCase 다. member set 은 ext_core 의 ext_account 와 ext_audit 을
- * use 로 쓰고 ext_post 와 ext_post_history 만 소유한다(contracts/fixtures/external).
- * - 외부 table 이 없으면 install, addTablesAndColumns 가 어떤 statement 보다 먼저 CONFIG 이고 member 의 table 을
- *   만들지 않는다. 등록은 database 를 읽지 않으므로 connectSchema 는 외부 table 이 없거나 달라도 연결한다.
- * - core 를 설치한 뒤 member install 은 소유한 table 만 만들고, 다시 하면 아무것도 바꾸지 않는다. addTablesAndColumns 는
- *   소유한 table 에만 column 을 더한다.
- * - member 의 audit transaction 은 core 가 소유한 ext_audit 에 기록을 삽입한다.
- * - 외부 문서의 쓰는 table 이 database 와 다르면(없는 column) CONFIG 다.
+ * The externalCase of packages/go/orm/external_documents_test.go. The member set uses ext_account and ext_audit of ext_core
+ * as uses, and owns only ext_post and ext_post_history (contracts/fixtures/external).
+ * - If an external table is missing, install and addTablesAndColumns are CONFIG before any statement and do not create the member's
+ *   tables. Registration does not read the database, so connectSchema connects even if the external tables are missing or differ.
+ * - After core is installed, member install creates only the tables it owns, and running it again changes nothing. addTablesAndColumns
+ *   adds columns only to the tables it owns.
+ * - The member's audit transaction inserts a record into ext_audit, which core owns.
+ * - If a writable table of an external document differs from the database (a missing column), it is CONFIG.
  */
 async function externalDocuments(dsn, driver) {
   const core = manifestOf(externalTexts.core);
@@ -232,8 +232,8 @@ async function externalDocuments(dsn, driver) {
 }
 
 /**
- * db 의 pool 이 database 에 보낸 statement, transaction 시작, 예약한 session 을 모두 센다. 등록이 driver 를 부르면
- * 그 수가 는다.
+ * Counts all statements the db's pool sent to the database, transaction starts, and reserved sessions. If registration calls the driver,
+ * that count increases.
  */
 function countStatements(db) {
   const counter = { sent: 0 };
@@ -247,9 +247,9 @@ function countStatements(db) {
 }
 
 /**
- * 등록은 database 에 아무 statement 도 보내지 않는다(docs/schema.md "Schema registration"). register 는 외부 문서를
- * 쓰는 set 도 database 를 읽지 않고, 선언한 hash 로 hash 되지 않는 text 는 statement 없이 CONFIG 다. 등록한 bench
- * set 의 요청은 그 연결에서 실행된다. connectSchema 는 외부 table 이 없는 database 에서도 연결한다.
+ * Registration sends no statement to the database (docs/schema.md "Schema registration"). register does not read
+ * external documents, and a set that writes them does not read the database either; text that does not hash to the declared hash is CONFIG without any statement. The requests of a registered bench
+ * set run on that connection. connectSchema also connects to a database without the external tables.
  */
 async function registerSendsNoStatement(dsn) {
   const member = externalSchema(['member'], ['core']);
@@ -269,15 +269,15 @@ async function registerSendsNoStatement(dsn) {
     const users = await new User().connect(db).getCount();
     check(users === 0, `bench read after the register: ${users} rows`);
   } finally { await db.close(); }
-  // connectSchema 는 외부 table 이 없는 이 database 에서도 연결한다: 등록은 외부 table 을 읽지 않는다.
+  // connectSchema also connects to this database, which lacks the external tables: registration does not read external tables.
   const connected = await Db.connectSchema(dsn, member);
   await connected.close();
 }
 
 /**
- * install 은 table 이름만이 아니라 database 전체를 set 과 비교한다(docs/schema.md "Schema installation").
- * contracts/fixtures/install/changed_database.json 의 case 마다 statement 로 ORM 밖에서 바꾼 database 에 같은 set 을
- * 다시 install 하면 dialect 의 message 인 CONFIG 이고 database 는 그대로다.
+ * install compares the whole database with the set, not only the table names (docs/schema.md "Schema installation").
+ * For each case of contracts/fixtures/install/changed_database.json, the same set is installed again, by statement, on a database changed outside the ORM,
+ * and the dialect's message is CONFIG, and the database stays as it is.
  */
 const installFixture = JSON.parse(await readFile(new URL('../../../contracts/fixtures/install/changed_database.json', import.meta.url), 'utf8'));
 if (installFixture.cases.length === 0) throw new Error('contracts/fixtures/install/changed_database.json has no cases');

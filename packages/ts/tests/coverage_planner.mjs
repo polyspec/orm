@@ -1,6 +1,6 @@
-// planner coverage: contracts/fixtures/planner.json 의 request 를 그 case 의 schema 문서의 manifest hash
-// 와 함께 dialect 마다 client engine 으로 compile 해서 statement (role, sql, bind slot 의 출처, param 번호, type)
-// 또는 오류 code 가 기대값과 같은지 확인한다.
+// planner coverage: the request of contracts/fixtures/planner.json is compiled with the client engine for each dialect, together with the manifest hash
+// of the schema document of that case, and the statements (role, sql, source of the bind slot, param number, type)
+// or the error code is checked to equal the expected value.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
