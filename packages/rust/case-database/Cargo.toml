@@ -8,9 +8,9 @@ description = "A database of its own for each Rust ORM test case, dropped when t
 license = "MIT"
 
 [dependencies]
-# 관리 연결은 test와 같은 DSN 해석을 쓰도록 orm으로 연다.
+# The management connection is opened with orm, the same DSN resolution the tests use.
 polyspec-orm = { path = "../orm" }
-# 만든 database와 지운 database를 실행 중인 case의 STEP 줄로 보고한다.
+# Reports the databases it created and dropped as STEP lines of the running case.
 polyspec-orm-testcase = { path = "../testcase" }
 sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "postgres"] }
 tokio = { version = "1", features = ["rt"] }
