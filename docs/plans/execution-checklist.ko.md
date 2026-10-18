@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 7b0d87a086a610cf0994f992a89f978e8994dda25844832336e518398a043906 -->
+<!-- source-sha256: 43e84371c8636b632fcca62e18f8af3c20b8b5af5e4071fd9188a296a1cbbb41 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1567,7 +1567,8 @@
   증거 (2026-10-19), 각각 단독 실행: RED: Python test_orm_gen이 `Author.restore_or_create is not a model method`, `Author.alias is not a model method`로 실패, PHP RuntimeModelTest가 충돌하는 `json_text` column을 받아들임, TypeScript generate-scan `base_methods_match_model`이 `missing ["restoreOrCreate"]`, Rust guard는 FIXED에서 `restore`를 빼면 `FIXED differs from the public methods of the fixed impl`로 실패 (var/scan-methods-red-*.log). GREEN: Python 14 OK, PHP RuntimeModelTest 11/11, OrmGenScanTest 31/31, TypeScript generate-scan 7/7, generate 1/1, Rust fixed_method_tests와 generate test 30 통과 (var/scan-methods-green-*.log). Generator::modelMethods를 기록한 뒤 `make interface-check` 통과 (var/scan-methods-interface.log).
 - [o] T214 bench 문서의 Mermaid round trip은 soft_link table의 object를 기대한다 (T200에 이어). 원인: T200이 contracts/fixtures/bench/bench.dbs에 soft_link를 넣었지만 tests/dbspec/mermaid.json의 round_trip case `bench`는 그 전 문서의 drop을 나열해, 모든 구현이 `export dropped 22 objects`, `import dropped 11 objects`로 실패했다. 수정: export가 버리는 soft_link의 comment, settings, unique `uq_soft_link_code`와 import가 버리는 unique `code`를 case에 넣는다.
   증거 (2026-10-19), 각 round-trip test 단독 실행: RED (299f9976): Go TestMermaidRoundTripVectors/bench, Python test_dbspec_mermaid_round_trip, TypeScript dbspec-mermaid-round-trip.mjs, Rust dbspec_mermaid `round_trip::bench`, PHP와 PHP extension DbspecMermaidTest test_round_trip이 이 네 object로 실패 (var/mermaid-red*.log). GREEN: 여섯 모두 통과 (var/mermaid-green-*.log).
-- [ ] T215 ClientGenericsTest의 PHPStan case가 T204 뒤에 통과한다. 원인: closure가 이제 `Author|null`을 반환해 ClientGenericsTest.php:100이 실패한다. T204부터 `get()`이 null을 반환하는데 case는 여전히 `Author`를 선언한다. 완료 기준: case가 nullable 결과를 type하고, 전 red, 후 green.
+- [o] T215 ClientGenericsTest의 PHPStan case가 T204 뒤에 통과한다. 원인: closure가 이제 `Author|null`을 반환해 ClientGenericsTest.php:100이 실패한다. T204부터 `get()`이 null을 반환하는데 case는 여전히 `Author`를 선언한다. 완료 기준: case가 nullable 결과를 type하고, 전 red, 후 green.
+  근거: source는 이미 nullable 읽기를 선언했다(`Model::get(): ?static`, packages/php/src/Model.php:1485, `TModel|null`을 반환하는 `Collection::get`). case는 `fn(): Author`를 선언하고 null 검사 없이 이름을 읽었다. red: `calls.php:9: Anonymous function should return ...Author but returns ...Author|null [return.type]`, Failures: 1. case는 이제 `?Author`로 type하고 `$author?->getName() ?? ''`로 읽는다. green: ClientGenericsTest.php만 실행해 OK (1 test, 1 assertion).
 - [ ] T216 PHP ModelTest test_insert_parts@mysql가 memory 한도 안에서 실행된다. 원인: Service object 65536개를 만들며 Model.php:403에서 128M 한도를 다 쓴다. 완료 기준: 원인(test의 크기 또는 client의 행당 memory)을 적고 case가 통과한다. 전 red, 후 green.
 - [ ] T217 Rust integration case `conditions`가 통과한다. 원인: integration.rs:185가 native DateTime을 넘기며, native time 값은 text만 받으므로 parameter 검사가 `CODEC_ENCODE ... is not a datetime value`로 거부한다. 완료 기준: 정규 text를 넘기고, 전 red, 후 green.
 - [ ] T218 test server의 PostgreSQL replica가 동기를 유지한다. 원인: log가 `requested WAL segment ... has already been removed`를 반복해, synchronous replication을 기다리는 commit이 멈추고 primary_and_replica postgres case가 막힌다. 완료 기준: server 설정의 원인을 적고 고치며(WAL 보존 또는 replication slot), 긴 실행 동안 replica가 streaming을 유지하는 case를 둔다.

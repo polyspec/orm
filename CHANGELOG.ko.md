@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 6f2cd9e37994f07393c93c3e1642c2808bc78dfd2063e3d04581a396e6ce3179 -->
+<!-- source-sha256: 36cd0e2a5da94fff66038edbbee2e244cdb7d729ef1b69d5258f3773eaa93247 -->
 # 변경 이력
 
 ## Unreleased
+- PHP generics case가 `get()`의 nullable 결과를 type한다(T215).
 - external document의 table을 쓰는 set의 읽기 전용 entity로 읽는다: select, join, subquery, relation이 되고, 모든 쓰기는 `CONFIG`로 실패한다. 다섯 client에서(T209).
 - `expectRevision(column, revision)`이 update()와 delete()가 그 revision의 행만 쓰게 하고 update()는 그것을 1 늘리며, 아니면 새 code `REVISION_CHANGED`로 실패한다. 다섯 client에서(T212).
 - 호환 깨짐: `creates(rows, batch)`가 유일한 형태다. `batch` 행씩의 각 묶음은 multi-row INSERT 하나이고, 모든 묶음이 한 transaction에서 실행되며, bind 한도를 넘는 묶음은 새 code `BATCH_TOO_LARGE`로 실패한다. 다섯 client에서(T205).
