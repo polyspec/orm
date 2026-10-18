@@ -75,6 +75,31 @@ final class RuntimeModelTest extends TestCase
         self::assertTrue(Registry::model($hash)->entities === $bench->entities, 'generated model differs from the document model');
     }
 
+    public function test_a_generated_model_that_its_manifest_contradicts_is_refused(): void
+    {
+        // A model generated before orm-gen wrote the varchar length: its meta() lacks columns.name.length.
+        $stale = new class extends \Polyspec\Orm\Model {
+            public static function meta(): array
+            {
+                $meta = Author::meta();
+                unset($meta['columns']['name']['length']);
+                return $meta;
+            }
+        };
+        $hash = Author::meta()['manifest_hash'];
+        $text = Registry::manifestText($hash);
+        self::assertTrue(RuntimeModel::fromModels($hash, $text, [Author::class])->entities['author'] === self::bench()->entities['author'], 'a current model is taken');
+        $message = '';
+        try {
+            RuntimeModel::fromModels($hash, $text, [$stale::class]);
+        } catch (OrmException $e) {
+            self::assertTrue($e->code_ === Code::CONFIG, "code {$e->code_}");
+            $message = $e->getMessage();
+        }
+        self::assertTrue(str_contains($message, $stale::class) && str_contains($message, 'entity author'), "names the class and the entity: $message");
+        self::assertTrue(str_contains($message, 'columns.name.length') && str_contains($message, 'orm-gen gen'), "names the field and the command: $message");
+    }
+
     public function test_generated_files_are_current(): void
     {
         $root = dirname(__DIR__, 3);

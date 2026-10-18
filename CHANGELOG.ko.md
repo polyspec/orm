@@ -1,4 +1,10 @@
 <!-- doc-id: changelog -->
+<!-- source-sha256: 779ce1a08754a89a654a2261873a6fe211d525f8fbfdfe6ef724a38af51f7f07 -->
+<!-- source-sha256: 3f7c8b8f745f3670f252c6e783a92ea70c7de17694905726be0327f4c62cb177 -->
+# 변경 이력
+
+## Unreleased
+- PHP가 manifest와 metadata가 어긋나는 generated model을 거부하며, class, 필드, orm-gen 명령을 말한다(T208).
 <!-- source-sha256: 2047e56ddfd3dfff2e61a9ed87b1b58bbf4ee7b59f01f27135fb5c0002e5207b -->
 # 변경 이력
 
