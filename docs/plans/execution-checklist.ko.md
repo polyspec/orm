@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: c148ea3d8146ffe30735d7a23db2e2407d93714220645151c69664d47faa27da -->
+<!-- source-sha256: 724441e6f1de31633cd16a99431da3bb5bf5d9e8cb8feb6b6543f9967027dba4 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1329,7 +1329,7 @@
 - [ ] T148-4 전체 parity 실행이 exit 2로 끝나는 원인 가운데 Rust가 아닌 네 가지를 통과시킨다 (T148에 이어). 원인: 전체 parity 실행이 Rust 밖의 네 원인으로 exit 2다. py-decimal-model-db는 test 실패 3건으로 실패하고, PHP 성능 gate 둘과 PHP extension 선언 unit 다섯은 parity-check가 내보내지 않은 환경 때문에 exit 2이며(T148-5), TypeScript AesKeyring의 public symbol은 선언되어 있지 않다. 인수 조건: 아래 자식 항목이 모두 끝나고, 전체 parity 실행이 이 네 원인을 보고하지 않는다.
   - [o] T148-4-1 parity 실행에서 py-decimal-model-db를 통과시킨다 (T148-4에 이어). 원인: python unit이 packages/python/tests/decimal_model_db.py에 `python -m unittest`를 실행하며, DECIMAL_MYSQL_DSN, DECIMAL_POSTGRES_DSN, DECIMAL_SQLITE_DSN이 없으면 `Ran 2 tests … FAILED (failures=3)`를 보고한다. 각 round-trip subtest가 "is required"를 던지기 때문이다. 인수 조건: `make run-databases TARGETS=parity-check UNITS="py-decimal-model-db"`가 R3 줄 없이 exit 0이며, red를 먼저 재현하고 고침은 잘못된 쪽에 가한다.
     근거: RED: var/proof-red.log가 `py-decimal-model-db python: exit 1`과 `R3 not-executed … FAILED (failures=3)`를 보고한다. DSN 변수를 비운 채 같은 세 실패가 var/py-decimal-noenv.log에서 재현된다. GREEN: var/py-decimal-red.log는 cebf00eb에서 make 명령이 exit 0이고 `1 of 1 ids passed`이며 R3 줄이 없다. 이 tip에서는 make 명령으로 red가 재현되지 않는데, T148-5가 이미 DECIMAL_ENV로 DECIMAL_*_DSN 이름을 내보내기 때문이며, 이 항목에서 바뀐 코드는 없다.
-  - [ ] T148-4-2 두 PHP 성능 gate를 통과시킨다 (T148-4에 이어). 원인: CoveragePerformanceGateTest::test_hot_path_gate와 PerfGateTest::test_perf_gate가 0 of 1 id 통과로 exit 2인데, 가드가 요구하는 ORM_BENCH_MYSQL_DSN을 parity-check가 내보내지 않았기 때문이다(T148-5가 내보낸다). 인수 조건: 두 PHP binding이 parity 실행에서 1 of 1 id 통과로 exit 0이고, 그 binding에 R3 줄이 없다.
+  - [o] T148-4-2 두 PHP 성능 gate를 통과시킨다 (T148-4에 이어). 원인: CoveragePerformanceGateTest::test_hot_path_gate와 PerfGateTest::test_perf_gate가 0 of 1 id 통과로 exit 2인데, 가드가 요구하는 ORM_BENCH_MYSQL_DSN을 parity-check가 내보내지 않았기 때문이다(T148-5가 내보낸다). 인수 조건: 두 PHP binding이 parity 실행에서 1 of 1 id 통과로 exit 0이고, 그 binding에 R3 줄이 없다.
     근거: var/t148-4-23.log가 `php-internal-coverage-performance-gate-hot-path-gate php: exit 0, 1 of 1 ids passed`와 `php-internal-perf-gate-perf-gate php: exit 0, 1 of 1 ids passed`를 보고하며, 실행은 `check: result passed`와 exit 0으로 끝난다.
   - [ ] T148-4-3 PHP extension 선언 unit 다섯을 통과시킨다 (T148-4에 이어). 원인: packages/php-ext/tests/DeclarationsTest.php의 unit 다섯(required-modules, declarations, client, package, mirrors)이 0 of 5 id 통과로 exit 2인데, binding이 `php -d extension=${ORM_PARITY_PHP_EXTENSION}`으로 extension을 불러오고 실행이 build된 library를 찾지 못했기 때문이다(T148-5가 extension 경로를 내보낸다). 인수 조건: 다섯 binding이 parity 실행에서 5 of 5 id 통과로 exit 0이고, 그 binding에 R3 줄이 없다.
     근거: var/t148-4-23.log가 `php-extension-internal-declarations-required-modules, …-declarations, …-client, …-package, …-mirrors php-extension: exit 0, 5 of 5 ids passed`를 보고하며, 실행은 exit 0으로 끝난다.
