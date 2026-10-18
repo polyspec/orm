@@ -7279,6 +7279,22 @@
     "exported": true,
     "signature": "export function validOrder(e: Entity, name: string): boolean"
   },
+  "packages/ts/src/generate/scan.ts::ScanSite": {
+    "exported": true,
+    "signature": "interface ScanSite"
+  },
+  "packages/ts/src/generate/scan.ts::ScanSite#field.classes": {
+    "exported": true,
+    "signature": "readonly string[]"
+  },
+  "packages/ts/src/generate/scan.ts::ScanSite#field.name": {
+    "exported": true,
+    "signature": "string"
+  },
+  "packages/ts/src/generate/scan.ts::ScanSite#wire": {
+    "exported": true,
+    "signature": "{\"name\":\"text\",\"classes\":\"readonlystring[]\"}"
+  },
   "packages/ts/src/generate/scan.ts::Scanner": {
     "exported": false,
     "signature": "class Scanner"
@@ -7307,13 +7323,25 @@
     "exported": false,
     "signature": "Array\u003cMap\u003cstring, Value\u003e\u003e"
   },
+  "packages/ts/src/generate/scan.ts::Scanner#field.sites": {
+    "exported": false,
+    "signature": "ScanSite[]"
+  },
+  "packages/ts/src/generate/scan.ts::Scanner.assign": {
+    "exported": false,
+    "signature": "private assign(name: string, value: Value | undefined): void"
+  },
   "packages/ts/src/generate/scan.ts::Scanner.bind": {
     "exported": false,
-    "signature": "private bind(name: Node, value: Value | undefined): void"
+    "signature": "private bind(target: Node, value: Value | undefined): void"
   },
   "packages/ts/src/generate/scan.ts::Scanner.className": {
     "exported": false,
     "signature": "private className(node: Expression | TSTypeName): string | undefined"
+  },
+  "packages/ts/src/generate/scan.ts::Scanner.enterLoop": {
+    "exported": false,
+    "signature": "private enterLoop(loop: Node): void"
   },
   "packages/ts/src/generate/scan.ts::Scanner.hoist": {
     "exported": false,
@@ -7323,13 +7351,25 @@
     "exported": false,
     "signature": "private lookup(name: string): Value | undefined"
   },
+  "packages/ts/src/generate/scan.ts::Scanner.mergeAll": {
+    "exported": false,
+    "signature": "private mergeAll(states: ReadonlyArray\u003cReadonlyArray\u003cReadonlyMap\u003cstring, Value\u003e\u003e\u003e): Array\u003cMap\u003cstring, Value\u003e\u003e"
+  },
   "packages/ts/src/generate/scan.ts::Scanner.record": {
     "exported": false,
     "signature": "private record(cls: string, name: string): void"
   },
+  "packages/ts/src/generate/scan.ts::Scanner.restore": {
+    "exported": false,
+    "signature": "private restore(state: ReadonlyArray\u003cReadonlyMap\u003cstring, Value\u003e\u003e): void"
+  },
   "packages/ts/src/generate/scan.ts::Scanner.returnValue": {
     "exported": false,
     "signature": "private returnValue(fn: FunctionLike): Value | undefined"
+  },
+  "packages/ts/src/generate/scan.ts::Scanner.snapshot": {
+    "exported": false,
+    "signature": "private snapshot(): Array\u003cMap\u003cstring, Value\u003e\u003e"
   },
   "packages/ts/src/generate/scan.ts::Scanner.typeValue": {
     "exported": false,
@@ -7363,13 +7403,21 @@
     "exported": false,
     "signature": "string"
   },
+  "packages/ts/src/generate/scan.ts::Value#field.members": {
+    "exported": false,
+    "signature": "readonly Value[]"
+  },
   "packages/ts/src/generate/scan.ts::Value#field.shape": {
     "exported": false,
     "signature": "Shape"
   },
   "packages/ts/src/generate/scan.ts::Value#wire": {
     "exported": false,
-    "signature": "{\"cls\":\"text\",\"shape\":\"Shape\"}"
+    "signature": "{\"cls\":\"text\",\"shape\":\"Shape\",\"members\":\"readonlyValue[]\"}"
+  },
+  "packages/ts/src/generate/scan.ts::boundNames": {
+    "exported": false,
+    "signature": "function boundNames(node: Node): string[]"
   },
   "packages/ts/src/generate/scan.ts::callResult": {
     "exported": false,
@@ -7379,13 +7427,25 @@
     "exported": false,
     "signature": "function children(node: Node): Node[]"
   },
+  "packages/ts/src/generate/scan.ts::exits": {
+    "exported": false,
+    "signature": "function exits(node: Node): boolean"
+  },
   "packages/ts/src/generate/scan.ts::isNode": {
     "exported": false,
     "signature": "function isNode(value: unknown): value is Node"
   },
+  "packages/ts/src/generate/scan.ts::mapValue": {
+    "exported": false,
+    "signature": "function mapValue(value: Value | undefined, f: (member: Value) =\u003e Value | undefined): Value | undefined"
+  },
   "packages/ts/src/generate/scan.ts::memberName": {
     "exported": false,
     "signature": "function memberName(node: Node): string | undefined"
+  },
+  "packages/ts/src/generate/scan.ts::members": {
+    "exported": false,
+    "signature": "function members(value: Value | undefined): readonly Value[]"
   },
   "packages/ts/src/generate/scan.ts::parameter": {
     "exported": false,
@@ -7393,19 +7453,23 @@
   },
   "packages/ts/src/generate/scan.ts::scanModelCalls": {
     "exported": true,
-    "signature": "export function scanModelCalls(paths: readonly string[], models: ReadonlySet\u003cstring\u003e): Map\u003cstring, Set\u003cstring\u003e\u003e"
+    "signature": "export function scanModelCalls(paths: readonly string[], models: ReadonlySet\u003cstring\u003e, sites: ScanSite[] = []): Map\u003cstring, Set\u003cstring\u003e\u003e"
   },
   "packages/ts/src/generate/scan.ts::typeOf": {
     "exported": false,
     "signature": "function typeOf(node: Node): TSType | undefined"
   },
+  "packages/ts/src/generate/scan.ts::union": {
+    "exported": false,
+    "signature": "function union(values: ReadonlyArray\u003cValue | undefined\u003e): Value | undefined"
+  },
   "packages/ts/src/generate/scan.ts::visitDir": {
     "exported": false,
-    "signature": "function visitDir(dir: string, models: ReadonlySet\u003cstring\u003e, out: Map\u003cstring, Set\u003cstring\u003e\u003e): void"
+    "signature": "function visitDir(dir: string, models: ReadonlySet\u003cstring\u003e, out: Map\u003cstring, Set\u003cstring\u003e\u003e, sites: ScanSite[]): void"
   },
   "packages/ts/src/generate/scan.ts::visitFile": {
     "exported": false,
-    "signature": "function visitFile(path: string, models: ReadonlySet\u003cstring\u003e, out: Map\u003cstring, Set\u003cstring\u003e\u003e): void"
+    "signature": "function visitFile(path: string, models: ReadonlySet\u003cstring\u003e, out: Map\u003cstring, Set\u003cstring\u003e\u003e, sites: ScanSite[]): void"
   },
   "packages/ts/src/generate/typescript.ts::Generator": {
     "exported": false,

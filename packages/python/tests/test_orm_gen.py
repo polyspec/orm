@@ -1,5 +1,6 @@
 # orm-gen generator check: builds models.py from the document set of contracts/fixtures/bench/dbspec-set.json,
 # and checks that the generated module interprets the chain syntax (unittest).
+import json
 import types
 import subprocess
 import sys
@@ -178,6 +179,215 @@ class OrmGenTest(unittest.TestCase):
                 text=True,
             )
 
+    def test_a_name_that_may_hold_two_models_is_checked_against_each(self):
+        # No class declares set_ghost_column, so the call on a name that may hold either model is refused.
+        # Each construct binds row to a ServiceMember on one path: an if, a match, a try and a loop.
+        sources = {
+            "branches": (
+                "from models import Author, ServiceMember\n"
+                "def read(flag):\n"
+                "    if flag:\n"
+                "        row = ServiceMember()\n"
+                "    else:\n"
+                "        row = Author()\n"
+                "    row.set_ghost_column(True)\n"
+            ),
+            "match": (
+                "from models import Author, ServiceMember\n"
+                "def read(k):\n"
+                "    match k:\n"
+                "        case 1:\n"
+                "            row = ServiceMember()\n"
+                "        case _:\n"
+                "            row = Author()\n"
+                "    row.set_ghost_column(True)\n"
+            ),
+            "try": (
+                "from models import Author, ServiceMember\n"
+                "def read():\n"
+                "    try:\n"
+                "        row = ServiceMember()\n"
+                "    except ValueError:\n"
+                "        row = Author()\n"
+                "    row.set_ghost_column(True)\n"
+            ),
+            "loop": (
+                "from models import Author, ServiceMember\n"
+                "def read(more):\n"
+                "    row = Author()\n"
+                "    while more:\n"
+                "        row.set_ghost_column(True)\n"
+                "        row = ServiceMember()\n"
+            ),
+        }
+        for name, source in sources.items():
+            with self.subTest(construct=name):
+                result = self._scan(source)
+                self.assertNotEqual(result.returncode, 0, result.stderr)
+                self.assertIn("is not a model method", result.stderr)
+
+    def _assert_round_three(self, source, expected_code, message=None):
+        result = self._scan(source)
+        self.assertEqual(result.returncode, expected_code, result.stderr)
+        if message is not None:
+            self.assertIn(message, result.stderr)
+
+    def test_a_possible_class_with_the_getter_accepts_the_call_after_an_if(self):
+        self._assert_round_three(
+            "from models import Author, User\n"
+            "def read(x):\n"
+            "    row = Author()\n"
+            "    if x:\n"
+            "        row = User()\n"
+            "    row.get_is_close()\n",
+            0,
+        )
+
+    def test_a_branch_that_returns_contributes_nothing(self):
+        self._assert_round_three(
+            "from models import Author, User\n"
+            "def read(x):\n"
+            "    row = Author()\n"
+            "    if x:\n"
+            "        row = User()\n"
+            "        return\n"
+            "    row.get_is_close()\n",
+            0,
+        )
+
+    def test_a_finally_block_starts_from_every_outcome_of_the_try(self):
+        self._assert_round_three(
+            "from models import Author, User\n"
+            "def read():\n"
+            "    row = Author()\n"
+            "    try:\n"
+            "        row = User()\n"
+            "    finally:\n"
+            "        row.get_is_close()\n",
+            0,
+        )
+
+    def test_a_loop_that_may_run_zero_times_keeps_the_class_before_it(self):
+        self._assert_round_three(
+            "from models import Author, User\n"
+            "def read(xs):\n"
+            "    row = Author()\n"
+            "    for x in xs:\n"
+            "        row = User()\n"
+            "    row.get_is_close()\n",
+            0,
+        )
+
+    def test_an_except_name_is_unknown_after_the_handler(self):
+        self._assert_round_three(
+            "from models import Author, User\n"
+            "def read():\n"
+            "    row = User()\n"
+            "    try:\n"
+            "        pass\n"
+            "    except ValueError as row:\n"
+            "        pass\n"
+            "    row.get_is_close()\n",
+            0,
+        )
+
+    def test_none_contributes_nothing(self):
+        self._assert_round_three(
+            "from models import Author, User\n"
+            "def read(x):\n"
+            "    row = None\n"
+            "    if x:\n"
+            "        row = User()\n"
+            "    row.get_is_close()\n",
+            1, 'User.get_is_close is called',
+        )
+
+    def test_a_with_or_except_name_in_a_loop_is_unknown_at_its_entry(self):
+        self._assert_round_three(
+            "from models import Author, User\n"
+            "def read(c, items):\n"
+            "    row = User()\n"
+            "    while c:\n"
+            "        row.get_is_close()\n"
+            "        with open(items) as row:\n"
+            "            pass\n",
+            0,
+        )
+
+    def test_a_method_is_refused_only_when_no_possible_class_declares_it(self):
+        # Author has is_close and ServiceMember does not: the call after the if or the try is on Author too.
+        self._assert_round_three(
+            "from models import Author, ServiceMember\n"
+            "def read(x):\n"
+            "    if x:\n"
+            "        row = Author()\n"
+            "        exit(1)\n"
+            "    else:\n"
+            "        row = ServiceMember()\n"
+            "    row.set_is_close(True)\n",
+            0,
+        )
+        self._assert_round_three(
+            "from models import Author, ServiceMember\n"
+            "def read():\n"
+            "    try:\n"
+            "        row = Author()\n"
+            "    except ValueError:\n"
+            "        row = ServiceMember()\n"
+            "    row.set_is_close(True)\n",
+            0,
+        )
+        # A handler that re-raises contributes nothing, so the call is on Author alone.
+        self._assert_round_three(
+            "from models import Author, ServiceMember\n"
+            "def read():\n"
+            "    try:\n"
+            "        row = Author()\n"
+            "    except ValueError:\n"
+            "        row = ServiceMember()\n"
+            "        raise\n"
+            "    row.set_is_close(True)\n",
+            0,
+        )
+
+    def test_a_try_leaves_no_outcome_with_the_value_before_it(self):
+        self._assert_round_three(
+            "from models import Author, ServiceMember\n"
+            "def read():\n"
+            "    row = Author()\n"
+            "    try:\n"
+            "        row = ServiceMember()\n"
+            "    except ValueError:\n"
+            "        row = ServiceMember()\n"
+            "    row.set_is_close(True)\n",
+            1,
+            "ServiceMember.set_is_close is not a model method",
+        )
+
+    def _scan_external(self, text):
+        """Runs orm-gen with --scan of one source, for the set of member.dbs that uses core.dbs as an external document."""
+        external = ROOT / "contracts" / "fixtures" / "external"
+        with tempfile.TemporaryDirectory(prefix="orm-gen-scan-external-") as work:
+            work_path = Path(work)
+            (work_path / "app").mkdir()
+            (work_path / "core").mkdir()
+            (work_path / "out").mkdir()
+            (work_path / "app" / "member.dbs").write_text((external / "member.dbs").read_text(encoding="utf-8"), encoding="utf-8")
+            (work_path / "core" / "core.dbs").write_text((external / "core.dbs").read_text(encoding="utf-8"), encoding="utf-8")
+            set_file = work_path / "dbspec-set.json"
+            set_file.write_text(
+                json.dumps({"schema": 1, "documents": ["app/member.dbs"], "external": ["core/core.dbs"]}),
+                encoding="utf-8",
+            )
+            source = work_path / "usage.py"
+            source.write_text(text, encoding="utf-8")
+            return subprocess.run(
+                args=ORM_GEN
+                + ["gen", "--set", str(set_file), "--out", str(work_path / "out"), "--scan", str(source)],
+                capture_output=True,
+                text=True,
+            )
+
     def test_an_alias_named_match_is_accepted_with_its_getter(self):
         result = self._scan(
             "from models import Author, User\n"
@@ -218,6 +428,39 @@ class OrmGenTest(unittest.TestCase):
             "User.get_ghost is called, but no alias_ghost, new_ghost or add_column call attaches it",
             result.stderr,
         )
+
+    def test_a_relation_to_an_entity_of_a_used_document_attaches_its_getter(self):
+        # ext_post of member.dbs uses ext_audit of core.dbs, an external document: the relation to ExtAudit attaches
+        # get_ext_audit_model as it does for a local entity.
+        result = self._scan_external(
+            "from typing import Iterable\n"
+            "from models import ExtPost\n"
+            "ExtPost().relation(ExtAudit().connect(db).match_audit_seq_with_seq()).gets()\n"
+            "def read(rows: Iterable[ExtPost]):\n"
+            "    for row in rows:\n"
+            "        row.get_ext_audit_model()\n"
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_a_name_is_typed_by_its_binding_in_its_own_scope(self):
+        # The outer row is a ServiceMember. The nested function rebinds row to a value the scan cannot type, so its
+        # set_is_close call is not the outer ServiceMember's; the call on an Author row in another nested function is
+        # attributed to Author.
+        result = self._scan(
+            "from models import Author, ServiceMember\n"
+            "def read(db):\n"
+            "    row = ServiceMember().connect(db).get()\n"
+            "    def write(db):\n"
+            "        row = db.load_author(2)\n"
+            "        row.set_is_close(True)\n"
+            "    def write_author(db):\n"
+            "        row = Author().connect(db).get()\n"
+            "        row.set_is_close(False)\n"
+            "    write(db)\n"
+            "    write_author(db)\n"
+            "    row.set_user_seq(4)\n"
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_check_reports_a_missing_or_differing_file(self):
         with tempfile.TemporaryDirectory(prefix="orm-gen-missing-") as missing:

@@ -8,7 +8,7 @@ import { join, resolve } from 'node:path';
 import type { Entity, Field as Column, RuntimeModel as Manifest } from '../engine/model.js';
 import { Model } from '../model.js';
 import { category, checkColumnNames, columnName, functionColumn, numeric, parseChain, pascal, splitPair, validOrder, type ChainKey } from './names.js';
-import { scanModelCalls } from './scan.js';
+import { scanModelCalls, type ScanSite } from './scan.js';
 
 function tsString(s: string): string {
   return `'${s.replaceAll('\\', '\\\\').replaceAll("'", "\\'").replaceAll('\n', '\\n').replaceAll('\r', '\\r')}'`;
@@ -298,7 +298,8 @@ function runtimeImport(outDir: string): string {
 /** Returns models.ts for a runtime model; scan lists files or directories whose model calls are typed. */
 export function renderTypeScript(m: Manifest, outDir: string, scan: readonly string[]): string {
   checkColumnNames(m);
-  const calls = scanModelCalls(scan, new Set([...m.entities.keys()].map(pascal)));
+  const sites: ScanSite[] = [];
+  const calls = scanModelCalls(scan, new Set([...m.entities.keys()].map(pascal)), sites);
   const names = [...new Set([...calls.values()].flatMap(set => [...set]))].sort(byteOrder);
   const g = new Generator(m);
   for (const e of m.entities.values()) {
@@ -335,15 +336,17 @@ export function renderTypeScript(m: Manifest, outDir: string, scan: readonly str
     for (const n of used) if (n.startsWith('addColumn') && n.endsWith(`Alias${key}`)) named = true;
     if (named) g.getters.set(name, `the value or relation result named ${key}`);
   }
-  // A scanned getter call that no alias<Name>, new<Name> or addColumn call attaches would leave the model without the method
+  // A scanned getter call is refused only when no class the call may be on attaches it: a class of the call that lacks the getter is
+  // not an error, since the call runs on a class that has it. A call that nothing attaches would leave the model without the method
   // the source calls; generation stops naming the model and the method (docs/dsl.md, the scan).
-  for (const e of m.entities.values()) {
-    const statics = staticNames(e);
-    for (const name of [...(calls.get(pascal(e.name)) ?? [])].sort(byteOrder)) {
-      if (!name.startsWith('get') || name.length < 4 || !isUpperAt(name, 3)) continue;
-      if (statics.has(name) || g.getters.has(name) || g.methods.get(e.name)?.has(name) === true) continue;
-      throw new Error(`orm-gen --scan: ${pascal(e.name)}.${name}() is called, but no alias${name.slice(3)}, new${name.slice(3)} or addColumn call attaches it`);
-    }
+  const entities = new Map([...m.entities.values()].map(e => [pascal(e.name), e] as const));
+  for (const site of sites) {
+    if (!site.name.startsWith('get') || site.name.length < 4 || !isUpperAt(site.name, 3)) continue;
+    const attached = site.classes.some(cls => {
+      const e = entities.get(cls);
+      return e !== undefined && (staticNames(e).has(site.name) || g.getters.has(site.name) || g.methods.get(e.name)?.has(site.name) === true);
+    });
+    if (!attached) throw new Error(`orm-gen --scan: ${site.classes[0]}.${site.name}() is called, but no alias${site.name.slice(3)}, new${site.name.slice(3)} or addColumn call attaches it`);
   }
   return g.write(runtimeImport(outDir));
 }

@@ -9205,7 +9205,7 @@
   },
   "packages/php/src/Generator.php::Polyspec\\Orm\\Generator::namedGetter": {
     "exported": false,
-    "signature": "private static function namedGetter(string $name, string $key, array $metas, array $used): bool"
+    "signature": "private static function namedGetter(string $name, string $key, array $entities, array $used): bool"
   },
   "packages/php/src/Generator.php::Polyspec\\Orm\\Generator::pascal": {
     "exported": true,
@@ -10969,7 +10969,7 @@
   },
   "packages/php/src/Scan.php::Polyspec\\Orm\\Scan::calls": {
     "exported": true,
-    "signature": "public static function calls(array $paths, string $namespace, array $classes): array"
+    "signature": "public static function calls(array $paths, string $namespace, array $classes, ?array \u0026$sites=null): array"
   },
   "packages/php/src/Scan.php::Polyspec\\Orm\\Scan::collect": {
     "exported": false,
@@ -10999,6 +10999,14 @@
     "exported": false,
     "signature": "private SplObjectStorage"
   },
+  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$ifs": {
+    "exported": false,
+    "signature": "private array"
+  },
+  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$loopBefore": {
+    "exported": false,
+    "signature": "private array"
+  },
   "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$models": {
     "exported": false,
     "signature": "private readonly array"
@@ -11019,13 +11027,17 @@
     "exported": false,
     "signature": "private array"
   },
+  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$sites": {
+    "exported": false,
+    "signature": "private array"
+  },
   "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$uses": {
     "exported": false,
     "signature": "private array"
   },
   "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::__construct": {
     "exported": true,
-    "signature": "public function __construct(array $models, array \u0026$out): "
+    "signature": "public function __construct(array $models, array \u0026$out, array \u0026$sites): "
   },
   "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::beforeTraverse": {
     "exported": true,
@@ -11039,13 +11051,33 @@
     "exported": false,
     "signature": "private function call(PhpParser\\Node\\Expr\\MethodCall|PhpParser\\Node\\Expr\\NullsafeMethodCall $node): void"
   },
+  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::callValue": {
+    "exported": false,
+    "signature": "private static function callValue(array $receiver, string $name): ?array"
+  },
   "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::docValue": {
     "exported": false,
     "signature": "private function docValue(string $doc, string $var): ?array"
   },
+  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::elementOf": {
+    "exported": false,
+    "signature": "private static function elementOf(?array $collection): ?array"
+  },
+  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::enterLoop": {
+    "exported": false,
+    "signature": "private function enterLoop(PhpParser\\Node $loop): void"
+  },
   "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::enterNode": {
     "exported": true,
     "signature": "public function enterNode(PhpParser\\Node $node): null"
+  },
+  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::exits": {
+    "exported": false,
+    "signature": "private static function exits(array $stmts): bool"
+  },
+  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::forget": {
+    "exported": false,
+    "signature": "private function forget(?PhpParser\\Node $target): void"
   },
   "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::hoist": {
     "exported": false,
@@ -11059,9 +11091,33 @@
     "exported": false,
     "signature": "private function lookup(string $name): ?array"
   },
+  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::members": {
+    "exported": false,
+    "signature": "private static function members(?array $value): array"
+  },
+  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::mergeScopes": {
+    "exported": false,
+    "signature": "private static function mergeScopes(array $states): array"
+  },
+  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::nothing": {
+    "exported": false,
+    "signature": "private static function nothing(): array"
+  },
+  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::setTop": {
+    "exported": false,
+    "signature": "private function setTop(array $scope): void"
+  },
+  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::top": {
+    "exported": false,
+    "signature": "private function top(): array"
+  },
   "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::typeValue": {
     "exported": false,
     "signature": "private function typeValue(?PhpParser\\Node $type): ?array"
+  },
+  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::unionOf": {
+    "exported": false,
+    "signature": "private static function unionOf(array $values): ?array"
   },
   "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::valueOf": {
     "exported": false,

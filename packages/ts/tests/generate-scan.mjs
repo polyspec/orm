@@ -201,6 +201,140 @@ export {};
   check(stderr.includes('User.getGhost()'), `the refusal does not name User.getGhost(): ${stderr}`);
 }
 
+/**
+ * Generates models.ts of member.dbs, which uses core.dbs as an external document, with --scan of one source; returns the
+ * declared chain methods of each model class, as generate does.
+ */
+async function generateExternal(source) {
+  const work = await mkdtemp(join(tmpdir(), 'orm-ts-scan-external-'));
+  try {
+    const external = join(root, 'contracts/fixtures/external');
+    await mkdir(join(work, 'external/app'), { recursive: true });
+    await mkdir(join(work, 'external/core'), { recursive: true });
+    await writeFile(join(work, 'external/app/member.dbs'), await readFile(join(external, 'member.dbs'), 'utf8'));
+    await writeFile(join(work, 'external/core/core.dbs'), await readFile(join(external, 'core.dbs'), 'utf8'));
+    const set = join(work, 'external/app/dbspec-set.json');
+    await writeFile(set, JSON.stringify({ schema: 1, documents: ['member.dbs'], external: ['../core/core.dbs'] }) + '\n');
+    const usage = join(work, 'usage.ts');
+    await writeFile(usage, source);
+    const out = join(work, 'models');
+    const result = spawnSync(process.execPath, [bin, 'gen', '--set', set, '--out', out, '--scan', usage], { encoding: 'utf8', timeout: CASE_DEADLINE_MS });
+    if (result.status !== 0) throw new Error(`orm-gen exit ${result.status}: ${result.stderr}`);
+    const text = await readFile(join(out, 'models.ts'), 'utf8');
+    const members = new Map();
+    for (const match of text.matchAll(/export class (\w+) extends Model \{\n([\s\S]*?)\n\}\n/g)) {
+      members.set(match[1], [...match[2].matchAll(/^  declare (\w+):/gm)].map(declared => declared[1]));
+    }
+    return { text, members: name => members.get(name) ?? [] };
+  } finally {
+    await rm(work, { recursive: true, force: true });
+  }
+}
+
+/** A relation to an entity of a used external document attaches its getter, as a relation to an entity of the set does. */
+async function externalGetter() {
+  await generateExternal(`
+import { ExtPost } from './models/models.js';
+declare const db: unknown;
+const rows = await new ExtPost().relation(new ExtAudit().connect(db).matchAuditSeqWithSeq()).gets();
+for (const row of rows) row.getExtAuditModel();
+export {};
+`);
+}
+
+/**
+ * A name is typed by its latest assignment in its own scope: a nested function that reassigns row to a value the scan
+ * cannot type does not leave the outer ServiceMember on the call, and a call on an Author row is attributed to Author.
+ */
+async function scopeBinding() {
+  const { members } = await generate(`
+import { Author, ServiceMember } from './models/models.js';
+declare const db: unknown;
+declare function loadRow(db: unknown): unknown;
+export function read(): void {
+  let row = new ServiceMember().connect(db);
+  const write = (): void => { row = loadRow(db); };
+  write();
+  row.getIsClose();
+}
+export function author(): void {
+  const row = new Author().connect(db);
+  row.getIsClose();
+}
+`);
+  check(!members('ServiceMember').includes('getIsClose'), 'ServiceMember declares getIsClose');
+}
+
+/**
+ * A name that may hold two models gets the call on each of them: an if with two branches, a switch, a try and a loop each
+ * bind row to a ServiceMember on one path, and getIsClose, which only Author has as a column getter, is refused for it.
+ */
+/** A name that may hold two models gets the call on each of them: an if, a switch, a try and a loop each bind row to a ServiceMember on one path. */
+async function mayHoldTwoModels() {
+  const sources = {
+    branches: `
+import { Author, ServiceMember } from './models/models.js';
+declare const db: unknown;
+export function read(flag: boolean): void {
+  let row;
+  if (flag) row = new ServiceMember().connect(db); else row = new Author().connect(db);
+  row.gtSeq(1);
+}
+`,
+    switch: `
+import { Author, ServiceMember } from './models/models.js';
+declare const db: unknown;
+export function read(k: number): void {
+  let row;
+  switch (k) { case 1: row = new ServiceMember().connect(db); break; default: row = new Author().connect(db); }
+  row.gtSeq(1);
+}
+`,
+    try: `
+import { Author, ServiceMember } from './models/models.js';
+declare const db: unknown;
+export function read(): void {
+  let row;
+  try { row = new ServiceMember().connect(db); } catch (error) { row = new Author().connect(db); }
+  row.gtSeq(1);
+}
+`,
+    loop: `
+import { Author, ServiceMember } from './models/models.js';
+declare const db: unknown;
+export function read(more: boolean): void {
+  let row = new Author().connect(db);
+  while (more) { row.gtSeq(1); row = new ServiceMember().connect(db); }
+}
+`,
+  };
+  for (const [construct, source] of Object.entries(sources)) {
+    // Each class of the name declares the chain method, so the call is recorded for each of them.
+    const { members } = await generate(source);
+    for (const model of ['Author', 'ServiceMember']) check(members(model).includes('gtSeq'), `${construct}: ${model} lacks gtSeq`);
+  }
+}
+
+/**
+ * A getter on a name that may hold two models is refused only when no possible class has it, and the branches, the try
+ * finalizer, the loop entry and the unbound declaration contribute the models they can hold. Author has is_close and User does not.
+ */
+async function possibleClasses() {
+  const head = "import { Author, User } from './models/models.js';\ndeclare const db: unknown;\ndeclare const flag: boolean;\ndeclare const xs: number[];\n";
+  const cases = {
+    group_if: ['let row = new Author().connect(db); if (flag) row = new User().connect(db); row.getIsClose();', 'accepted'],
+    branch_returns: ['export function read(): void { let row = new Author().connect(db); if (flag) { row = new User().connect(db); return; } row.getIsClose(); }', 'accepted'],
+    finally_outcomes: ['export function read(): void { let row = new Author().connect(db); try { row = new User().connect(db); } finally { row.getIsClose(); } }', 'accepted'],
+    zero_iterations: ['export function read(): void { let row = new Author().connect(db); for (const x of xs) { row = new User().connect(db); } row.getIsClose(); }', 'accepted'],
+    unbound_declaration: ['export function read(): void { let row; if (flag) row = new User().connect(db); row.getIsClose(); }', 'refused'],
+  };
+  for (const [construct, [body, expected]] of Object.entries(cases)) {
+    const result = await generateRefused(head + body + '\nexport {};\n');
+    if (expected === 'accepted') check(result.status === 0, `${construct}: the call is refused: ${result.stderr}`);
+    else check(result.status !== 0 && result.stderr.includes('User.getIsClose()'), `${construct}: User.getIsClose() is not refused: status ${result.status}: ${result.stderr}`);
+  }
+}
+
 /** The base method names of the generator are the public methods of the runtime Model, which every generated model inherits. */
 async function baseMethodsMatchModel() {
   const { baseMethods } = await import('../dist/generate/typescript.js');
@@ -212,7 +346,7 @@ async function baseMethodsMatchModel() {
   check(missing.length === 0 && extra.length === 0, `baseMethods differs from the Model methods: missing ${JSON.stringify(missing)}, extra ${JSON.stringify(extra)}`);
 }
 
-const cases = { non_model_call: nonModelCall, base_methods_match_model: baseMethodsMatchModel, model_calls: modelCalls, scan_path_spelling: scanPathSpelling, alias_match_getter: aliasMatchGetter, nested_alias_getter: nestedAliasGetter, unattached_getter: unattachedGetter };
+const cases = { non_model_call: nonModelCall, base_methods_match_model: baseMethodsMatchModel, model_calls: modelCalls, scan_path_spelling: scanPathSpelling, alias_match_getter: aliasMatchGetter, nested_alias_getter: nestedAliasGetter, unattached_getter: unattachedGetter, external_getter: externalGetter, scope_binding: scopeBinding, may_hold_two_models: mayHoldTwoModels, possible_classes: possibleClasses };
 const selected = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(cases);
 for (const name of selected) {
   const run = cases[name];

@@ -58,6 +58,35 @@ final class OrmGenScanTest extends TestCase
         return [$code, (string) stream_get_contents($stderr), $dir];
     }
 
+    /**
+     * Generates the models of member.dbs, which uses core.dbs as an external document, with --scan of $sources in a new
+     * folder; returns the code, stderr and the folder.
+     */
+    private static function generateExternal(string $name, array $sources): array
+    {
+        $root = dirname(__DIR__, 3);
+        $dir = self::$work . '/' . $name;
+        @mkdir("$dir/set/app", 0o700, true);
+        @mkdir("$dir/set/core", 0o700, true);
+        @mkdir("$dir/src", 0o700, true);
+        copy("$root/contracts/fixtures/external/member.dbs", "$dir/set/app/member.dbs");
+        copy("$root/contracts/fixtures/external/core.dbs", "$dir/set/core/core.dbs");
+        $set = "$dir/set/app/dbspec-set.json";
+        file_put_contents($set, json_encode(['schema' => 1, 'documents' => ['member.dbs'], 'external' => ['../core/core.dbs']], JSON_UNESCAPED_SLASHES));
+        $scan = [];
+        foreach ($sources as $file => $text) {
+            file_put_contents("$dir/src/$file", $text);
+            $scan[] = '--scan';
+            $scan[] = "$dir/src/$file";
+        }
+        $stderr = fopen('php://memory', 'w+');
+        ob_start();
+        $code = OrmGen::run(['gen', '--set', $set, '--out', "$dir/model", '--namespace', self::NS, ...$scan], $stderr);
+        ob_end_clean();
+        rewind($stderr);
+        return [$code, (string) stream_get_contents($stderr), $dir];
+    }
+
     /** @return list<string> the methods the class comment of a model declares with @method, in file order */
     private static function tags(string $dir, string $class): array
     {
@@ -213,6 +242,456 @@ PHP;
         self::assertSame(1, $code, 'status');
         self::assertStringContainsString('User.getGhost is called, but no aliasGhost, newGhost or addColumn call attaches it', $err);
         self::assertFileDoesNotExist("$dir/model/User.php", 'a refused generation writes nothing');
+    }
+
+    public function test_a_relation_to_an_entity_of_a_used_document_attaches_its_getter(): void
+    {
+        // ext_post of member.dbs uses ext_audit of core.dbs, an external document: the relation to ExtAudit attaches
+        // getExtAuditModel as it does for a local entity.
+        $ns = self::NS;
+        $source = <<<PHP
+<?php
+namespace App;
+
+use $ns\\ExtPost;
+
+\$rows = (new ExtPost())->relation((new ExtAudit())->connect(\$db)->matchAuditSeqWithSeq())->gets();
+foreach (\$rows as \$row) {
+    \$row->getExtAuditModel();
+}
+PHP;
+        [$code, $err] = self::generateExternal('external-getter', ['usage.php' => $source]);
+        self::assertSame(0, $code, $err);
+    }
+
+    public function test_a_name_is_typed_by_its_binding_in_its_own_scope(): void
+    {
+        // The outer row is a ServiceMember. A destructuring assignment and an if with differing branches leave row with a
+        // class the scan cannot type, so their setIsClose calls are not the outer ServiceMember's; the call on an Author row
+        // in another function is attributed to Author.
+        $ns = self::NS;
+        $source = <<<PHP
+<?php
+namespace App;
+
+use $ns\\Author;
+use $ns\\ServiceMember;
+
+function read(array \$blocks, bool \$flag): void
+{
+    \$row = new ServiceMember();
+    [\$row] = \$blocks;
+    \$row->setIsClose(true);
+    if (\$flag) {
+        \$row = new Author();
+    } else {
+        \$row = \$blocks[0];
+    }
+    \$row->setIsClose(false);
+}
+
+function write_author(): void
+{
+    \$row = new Author();
+    \$row->setIsClose(false);
+}
+PHP;
+        [$code, $err] = self::generate('scope-binding', ['usage.php' => $source]);
+        self::assertSame(0, $code, $err);
+    }
+
+    public function test_a_name_that_may_hold_two_models_gets_the_call_on_each(): void
+    {
+        // Each branch binds row to another model, so the call after the if is on either: each class declares the method.
+        $ns = self::NS;
+        $source = <<<PHP
+<?php
+namespace App;
+
+use $ns\\Author;
+use $ns\\ServiceMember;
+
+function branches(bool \$flag): void
+{
+    if (\$flag) {
+        \$row = new ServiceMember();
+    } else {
+        \$row = new Author();
+    }
+    \$row->ltSeq(1);
+}
+
+function cases(int \$k): void
+{
+    switch (\$k) {
+        case 1:
+            \$row = new ServiceMember();
+            break;
+        default:
+            \$row = new Author();
+    }
+    \$row->geSeq(2);
+}
+
+function attempts(): void
+{
+    try {
+        \$row = new ServiceMember();
+    } catch (\\Exception \$e) {
+        \$row = new Author();
+    }
+    \$row->leSeq(3);
+}
+
+function loops(bool \$more): void
+{
+    \$row = new Author();
+    while (\$more) {
+        \$row->neSeq(4);
+        \$row = new ServiceMember();
+    }
+}
+PHP;
+        [$code, $err, $dir] = self::generate('may-hold', ['usage.php' => $source]);
+        self::assertSame(0, $code, $err);
+        foreach (['Author', 'ServiceMember'] as $class) {
+            foreach (['ltSeq', 'geSeq', 'leSeq', 'neSeq'] as $method) {
+                self::assertContains($method, self::tags($dir, $class), "$class declares $method");
+            }
+        }
+    }
+
+    public function test_a_reference_forgets_both_names(): void
+    {
+        // $alias and $row are one variable after the reference, so the call on $row is not attributed to Author.
+        $ns = self::NS;
+        $source = <<<PHP
+<?php
+namespace App;
+
+use $ns\\Author;
+
+function alias(): void
+{
+    \$row = new Author();
+    \$alias = &\$row;
+    \$row->ltSeq(1);
+}
+PHP;
+        [$code, $err, $dir] = self::generate('reference', ['usage.php' => $source]);
+        self::assertSame(0, $code, $err);
+        self::assertNotContains('ltSeq', self::tags($dir, 'Author'));
+    }
+
+    /** A getter on a name that may hold two models is refused only when no possible class has it: Author has is_close, User does not. */
+    public function test_a_possible_class_with_the_getter_accepts_the_call_after_an_if(): void
+    {
+        $ns = self::NS;
+        $source = <<<PHP
+<?php
+namespace App;
+
+use $ns\Author;
+use $ns\User;
+
+function branch(bool \$x): void
+{
+    \$row = new Author();
+    if (\$x) {
+        \$row = new User();
+    }
+    \$row->getIsClose();
+}
+PHP;
+        [$code, $err] = self::generate('a_possible_class_with_the_getter_accepts_the_call_after_an_if', ['usage.php' => $source]);
+        self::assertSame(0, $code, $err);
+    }
+
+    public function test_a_possible_class_with_the_getter_accepts_the_call_in_a_loop(): void
+    {
+        $ns = self::NS;
+        $source = <<<PHP
+<?php
+namespace App;
+
+use $ns\Author;
+use $ns\User;
+
+function loops(): void
+{
+    \$row = new Author();
+    for (\$i = 0; \$i < 3; \$i++) {
+        if (\$i > 0) {
+            \$row->getIsClose();
+        }
+        \$row = new User();
+    }
+}
+PHP;
+        [$code, $err] = self::generate('a_possible_class_with_the_getter_accepts_the_call_in_a_loop', ['usage.php' => $source]);
+        self::assertSame(0, $code, $err);
+    }
+
+    public function test_a_branch_that_returns_contributes_nothing(): void
+    {
+        $ns = self::NS;
+        $source = <<<PHP
+<?php
+namespace App;
+
+use $ns\Author;
+use $ns\User;
+
+function returns(bool \$x): void
+{
+    \$row = new Author();
+    if (\$x) {
+        \$row = new User();
+        return;
+    }
+    \$row->getIsClose();
+}
+PHP;
+        [$code, $err] = self::generate('a_branch_that_returns_contributes_nothing', ['usage.php' => $source]);
+        self::assertSame(0, $code, $err);
+    }
+
+    public function test_a_loop_that_may_run_zero_times_keeps_the_class_before_it(): void
+    {
+        $ns = self::NS;
+        $source = <<<PHP
+<?php
+namespace App;
+
+use $ns\Author;
+use $ns\User;
+
+function zero(array \$xs): void
+{
+    \$row = new Author();
+    foreach (\$xs as \$x) {
+        \$row = new User();
+    }
+    \$row->getIsClose();
+}
+PHP;
+        [$code, $err] = self::generate('a_loop_that_may_run_zero_times_keeps_the_class_before_it', ['usage.php' => $source]);
+        self::assertSame(0, $code, $err);
+    }
+
+    public function test_a_null_assignment_contributes_nothing(): void
+    {
+        $ns = self::NS;
+        $source = <<<PHP
+<?php
+namespace App;
+
+use $ns\Author;
+use $ns\User;
+
+function nothing(bool \$x): void
+{
+    \$row = null;
+    if (\$x) {
+        \$row = new User();
+    }
+    \$row->getIsClose();
+}
+PHP;
+        [$code, $err] = self::generate('a_null_assignment_contributes_nothing', ['usage.php' => $source]);
+        self::assertSame(1, $code, $err);
+        self::assertStringContainsString('User.getIsClose is called', $err);
+    }
+
+    public function test_a_reference_in_a_loop_forgets_both_names_at_its_entry(): void
+    {
+        $ns = self::NS;
+        $source = <<<PHP
+<?php
+namespace App;
+
+use $ns\Author;
+use $ns\User;
+
+function loops(bool \$more): void
+{
+    \$row = new Author();
+    while (\$more) {
+        \$row->getOwner();
+        \$alias = &\$row;
+    }
+}
+PHP;
+        [$code, $err] = self::generate('a_reference_in_a_loop_forgets_both_names_at_its_entry', ['usage.php' => $source]);
+        self::assertSame(0, $code, $err);
+    }
+
+    /** A model method is refused only when no possible class declares it: Author has is_close, ServiceMember does not. */
+    public function test_a_method_is_refused_only_when_no_possible_class_declares_it(): void
+    {
+        $ns = self::NS;
+        $branch = <<<PHP
+<?php
+namespace App;
+
+use $ns\Author;
+use $ns\ServiceMember;
+
+function branch(bool \$x): void
+{
+    if (\$x) {
+        \$row = new Author();
+        exit(1);
+    } else {
+        \$row = new ServiceMember();
+    }
+    \$row->neIsClose(true);
+}
+PHP;
+        [$code, $err] = self::generate('method-branch', ['usage.php' => $branch]);
+        self::assertSame(0, $code, $err);
+        $try = <<<PHP
+<?php
+namespace App;
+
+use $ns\Author;
+use $ns\ServiceMember;
+
+function attempts(): void
+{
+    try {
+        \$row = new Author();
+    } catch (\\Exception \$e) {
+        \$row = new ServiceMember();
+    }
+    \$row->neIsClose(true);
+}
+PHP;
+        [$code, $err] = self::generate('method-try', ['usage.php' => $try]);
+        self::assertSame(0, $code, $err);
+        // A handler that rethrows contributes nothing, so the call is on Author alone.
+        $rethrow = <<<PHP
+<?php
+namespace App;
+
+use $ns\Author;
+use $ns\ServiceMember;
+
+function rethrows(): void
+{
+    try {
+        \$row = new Author();
+    } catch (\\Exception \$e) {
+        \$row = new ServiceMember();
+        throw \$e;
+    }
+    \$row->neIsClose(true);
+}
+PHP;
+        [$code, $err] = self::generate('method-rethrow', ['usage.php' => $rethrow]);
+        self::assertSame(0, $code, $err);
+    }
+
+    /** A try that assigns the name on every path leaves no outcome with the value from before the try. */
+    public function test_a_try_leaves_no_outcome_with_the_value_before_it(): void
+    {
+        $ns = self::NS;
+        $source = <<<PHP
+<?php
+namespace App;
+
+use $ns\Author;
+use $ns\ServiceMember;
+
+function attempts(): void
+{
+    \$row = new Author();
+    try {
+        \$row = new ServiceMember();
+    } catch (\\Exception \$e) {
+        \$row = new ServiceMember();
+    }
+    \$row->neIsClose(true);
+}
+PHP;
+        [$code, $err] = self::generate('try-no-base', ['usage.php' => $source]);
+        self::assertSame(1, $code, 'status');
+        self::assertStringContainsString('ServiceMember.neIsClose is not a model method', $err);
+    }
+
+    /**
+     * Generates the models of shapes.dbs, whose alpha and beta tables share the name flag with a boolean and a datetime column, with
+     * --scan of $source in a new folder; returns the code, stderr and the folder.
+     */
+    private static function generateShapes(string $name, string $source): array
+    {
+        $dir = self::$work . '/' . $name;
+        @mkdir("$dir/set", 0o700, true);
+        @mkdir("$dir/src", 0o700, true);
+        file_put_contents("$dir/set/shapes.dbs", "dbspec 1 shapes\n\ntable alpha {\n  seq i64 identity\n  flag bool\n  primary key (seq)\n}\n\ntable beta {\n  seq i64 identity\n  flag datetime(6)\n  primary key (seq)\n}\n");
+        $set = "$dir/set/dbspec-set.json";
+        file_put_contents($set, json_encode(['schema' => 1, 'documents' => ['shapes.dbs']], JSON_UNESCAPED_SLASHES));
+        file_put_contents("$dir/src/usage.php", $source);
+        $stderr = fopen('php://memory', 'w+');
+        ob_start();
+        $code = OrmGen::run(['gen', '--set', $set, '--out', "$dir/model", '--namespace', self::NS, '--scan', "$dir/src/usage.php"], $stderr);
+        ob_end_clean();
+        rewind($stderr);
+        return [$code, (string) stream_get_contents($stderr), $dir];
+    }
+
+    /** An argument count is accepted when one class that may hold the name accepts it, and refused when no possible class does. */
+    public function test_an_argument_count_is_refused_only_when_no_possible_class_accepts_it(): void
+    {
+        $ns = self::NS;
+        $source = <<<PHP
+<?php
+namespace App;
+
+use $ns\Alpha;
+use $ns\Beta;
+
+function read(bool \$x): void
+{
+    if (\$x) {
+        \$row = new Alpha();
+    } else {
+        \$row = new Beta();
+    }
+    \$row->neFlag(true, false);
+}
+PHP;
+        // Alpha takes one argument and Beta takes two (its datetime column takes the optional comparison): two arguments are accepted.
+        [$code, $err] = self::generateShapes('count-one-accepts', $source);
+        self::assertSame(0, $code, $err);
+        // No class takes three arguments, so the call is refused, naming the class that declares the method.
+        [$code, $err] = self::generateShapes('count-none-accepts', str_replace('neFlag(true, false)', 'neFlag(true, false, true)', $source));
+        self::assertSame(1, $code, 'status');
+        self::assertStringContainsString('Alpha.neFlag takes 1 argument, called with 3', $err);
+    }
+
+    /** A zero-iteration foreach keeps the value the name had before the loop, so the call is on Author or User. */
+    public function test_a_zero_iteration_foreach_keeps_the_value_before_it(): void
+    {
+        $ns = self::NS;
+        $source = <<<PHP
+<?php
+namespace App;
+
+use $ns\Author;
+use $ns\User;
+
+function loops(): void
+{
+    \$row = new Author();
+    \$rows = (new User())->gets();
+    foreach (\$rows as \$row) {
+    }
+    \$row->neIsClose(true);
+}
+PHP;
+        [$code, $err] = self::generate('foreach-before', ['usage.php' => $source]);
+        self::assertSame(0, $code, $err);
     }
 
     public function test_a_restore_or_create_call_is_a_model_method(): void

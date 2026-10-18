@@ -21,6 +21,26 @@ mod nonnull_model {
     include!(concat!(env!("OUT_DIR"), "/nonnull/orm_model.rs"));
 }
 
+#[cfg(test)]
+#[allow(
+    dead_code,
+    unused_imports,
+    clippy::all,
+    reason = "the generated models are included whole, a crate uses only some of them, and lints of hand-written code do not apply to generated code"
+)]
+mod external_member {
+    include!(concat!(env!("OUT_DIR"), "/external/orm_model.rs"));
+}
+
+/// A relation to an entity of a used external document is a relation to an entity of the set: its getter returns the model of that
+/// entity, which the member set generates, and a row without a related row reads no error and no model.
+#[test]
+fn external_relation_getter_returns_the_external_entity_model() {
+    let row = external_member::ExtPost::new();
+    let audit: polyspec_orm::Result<Option<&external_member::ExtAudit>> = row.get_ext_audit_model();
+    assert!(audit.expect("a row without a related row reads no error").is_none());
+}
+
 #[test]
 fn generated_nonnull_styled_setter_rejects_sql_null() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);

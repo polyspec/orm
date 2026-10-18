@@ -265,7 +265,8 @@ def _resolved_prefix(model: RuntimeModel, e: Entity, name: str) -> str | None:
 
 def _named_getter(m: RuntimeModel, key: str, used: set) -> bool:
     """Whether get_<key> reads a value that the scanned calls name: the relation result <entity>_model or
-    <entity>_models, or a name that an alias_, new_ or add_column_ call adds (docs/dsl.md, the scan)."""
+    <entity>_models of an entity of the set (the used tables of external documents included), or a name that an alias_,
+    new_ or add_column_ call adds (docs/dsl.md, the scan)."""
     for entity in m.entities:
         if key in (f"{snake(entity)}_model", f"{snake(entity)}_models"):
             return True
@@ -277,7 +278,8 @@ def _named_getter(m: RuntimeModel, key: str, used: set) -> bool:
 def render_models(m: RuntimeModel, out_dir: str, scan) -> str:
     """The models.py text of the runtime model. scan is the file or directory where the model calls were found."""
     check_column_names(m)
-    calls = scan_model_calls(scan, {pascal(name) for name in m.entities})
+    sites = []
+    calls = scan_model_calls(scan, {pascal(name) for name in m.entities}, sites)
     problems = []
     used = {name for names in calls.values() for name in names}
     for class_name, names in calls.items():
@@ -291,13 +293,29 @@ def render_models(m: RuntimeModel, out_dir: str, scan) -> str:
             if _resolved_prefix(m, entity, name) is not None:
                 continue
             if name.startswith("get_") and len(name) > 4 and not name.startswith(("get_by_", "gets_by_", "get_count_by_")):
-                if not _named_getter(m, name[4:], used):
-                    key = name[4:]
-                    problems.append(
-                        f"{class_name}.{name} is called, but no alias_{key}, new_{key} or add_column call attaches it"
-                    )
+                # A getter that this class lacks is refused by the group check below, when no class of the call attaches it.
                 continue
-            problems.append(f"{class_name}.{name} is not a model method")
+    # A name that a scanned call makes is refused only when no class the call may be on accepts it: a class that lacks it is not an
+    # error, since the call runs on a class that has it (docs/dsl.md, the scan).
+    for site in sites:
+        name = site["name"]
+        key = name[4:]
+        is_getter = name.startswith("get_") and len(name) > 4 and not name.startswith(("get_by_", "gets_by_", "get_count_by_"))
+        if name.startswith("_"):
+            continue
+        attached = False
+        for class_name in site["classes"]:
+            entity = m.entities.get(snake(class_name))
+            if entity is None:
+                continue
+            if name in _static_names(entity) or _resolved_prefix(m, entity, name) is not None or (is_getter and _named_getter(m, key, used)):
+                attached = True
+                break
+        if not attached:
+            if is_getter:
+                problems.append(f"{site['classes'][0]}.{name} is called, but no alias_{key}, new_{key} or add_column call attaches it")
+            else:
+                problems.append(f"{site['classes'][0]}.{name} is not a model method: no column, chain or operator accepts it")
     if problems:
         raise OrmError(codes.CONFIG, "; ".join(problems))
     kinds = {category(c) for e in m.entities.values() for c in e.fields}

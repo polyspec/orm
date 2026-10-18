@@ -1,5 +1,5 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: 60a356a18a8b8c9a4758a49e39de28a606da84ba7c57ed52dd9ee1634623edad -->
+<!-- source-sha256: 4294677cf1c403a622cb5786cbfc130272a32ed296daa8fc8ca57d66d688c36b -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
@@ -95,7 +95,7 @@ Key   = [Operator] Column
   - Rust는 `build.rs`에서 `scan`으로 지정한 소스를 `syn`으로 읽는다. `polyspec_orm_build::Builder::set("contracts/fixtures/bench/dbspec-set.json").scan("src").generate()`를 실행하고, `polyspec_orm::models!()`가 결과를 `model` 모듈로 포함한다.
   - PHP는 컬럼 메타데이터와 타입이 있는 getter·setter를 가진 모델 클래스를 작성한다. `vendor/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out src/Model --namespace Example\Model --scan src`를 실행한다. `--scan`은 파일이나 디렉터리를 받고 여러 번 쓸 수 있다. 디렉터리는 그 안의 `vendor`와 `node_modules` 디렉터리를 빼고 읽으며, symlink를 만나면 따라가지 않고 상태 1로 생성을 멈춘다. `nikic/php-parser`로 PHP 파일을 읽고, 소스가 그 모델에서 호출하는 체인 메서드(예: `ltSeq`, `andIsClose`, `getsBySeqAndName`)마다 타입이 있는 `@method` 태그를 각 모델 클래스의 주석에 선언하므로 PHPStan이 호출을 찾는다. 호출은 그대로 `__call`로 실행된다. 받는 사람은 생성 클래스 `C`의 `new C`(`use` 별칭 포함), 그 클래스로 선언한 변수·매개변수·반환 타입, 모델의 체인 메서드, `and`·`or`·`not`·`andNot`·`orNot`·`on`·`fetchKey`·`fetchValue`에 준 클로저의 타입 없는 첫 매개변수일 때 모델로 읽는다. 다른 받는 사람의 호출은 태그를 더하지 않는다. 어떤 컬럼·체인·연산자도 받지 않는 이름이나 체인이 받지 않는 인자 개수의 호출은 모델과 메서드 이름을 밝히며 상태 1로 생성을 멈춘다.
   - Python은 타입이 있는 getter·setter를 가진 모델 클래스를 작성하고, 읽은 source 중 어떤 규칙에도 맞지 않는 model method를 보고한다. package가 설치하는 console script로 `orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out model --scan src`을 실행한다.
-  - scan의 getter는 다섯 generator에서 같은 규칙이다. model로 해석되는 receiver에 대한 scan된 `get<Name>()` 호출(Python과 Rust는 `get_<name>()`)은 column getter, 고정 method, `getBy`·`getsBy`·`getCountBy` chain이 아니면 getter다. getter는 relation child의 `alias<Name>()` 호출, `new<Name>()` 호출, `<Name>`을 이름 짓는 `addColumn` 호출이 붙이며, relation 결과 `get<Model>Model`·`get<Model>Models`도 getter다. relation 안에 중첩된 relation의 alias는 중첩 relation을 호출한 model에 getter를 붙인다. `new Product().relation(new Store().matchSeqWithStoreSeq().aliasStore().relation(new Match().matchStoreSeqWithSeq().aliasMatch()))`는 Product에 `getStore`를, Store에 `getMatch`를 준다. getter는 선언된 model을 반환하지 않으므로, getter로 읽은 receiver는 TypeScript에서는 getter의 type argument(`row.getStore<Store | null>()`), Go·Rust(`Option<Store>`)·Python(`store: Store | None = row.get_store()`)에서는 binding의 type, PHP에서는 대입에 붙인 `/** @var Store|null $store */` tag로 model을 밝힌다. `Iterable<Store>`(TypeScript), `Iterable[Store]`(Python) 또는 model collection으로 type을 밝힌 parameter는 loop에 model을 준다. 아무것도 붙이지 않는 scan된 getter 호출은 생성을 멈추고 model과 method를 밝히므로, 빠진 getter가 message 없이 버려지는 일은 없다.
+  - scan의 getter는 다섯 generator에서 같은 규칙이다. model로 해석되는 receiver에 대한 scan된 `get<Name>()` 호출(Python과 Rust는 `get_<name>()`)은 column getter, 고정 method, `getBy`·`getsBy`·`getCountBy` chain이 아니면 getter다. getter는 relation child의 `alias<Name>()` 호출, `new<Name>()` 호출, `<Name>`을 이름 짓는 `addColumn` 호출이 붙이며, relation 결과 `get<Model>Model`·`get<Model>Models`도 getter다. relation 안에 중첩된 relation의 alias는 중첩 relation을 호출한 model에 getter를 붙인다. `new Product().relation(new Store().matchSeqWithStoreSeq().aliasStore().relation(new Match().matchStoreSeqWithSeq().aliasMatch()))`는 Product에 `getStore`를, Store에 `getMatch`를 준다. getter는 선언된 model을 반환하지 않으므로, getter로 읽은 receiver는 TypeScript에서는 getter의 type argument(`row.getStore<Store | null>()`), Go·Rust(`Option<Store>`)·Python(`store: Store | None = row.get_store()`)에서는 binding의 type, PHP에서는 대입에 붙인 `/** @var Store|null $store */` tag로 model을 밝힌다. `Iterable<Store>`(TypeScript), `Iterable[Store]`(Python) 또는 model collection으로 type을 밝힌 parameter는 loop에 model을 준다. 아무것도 붙이지 않는 scan된 getter 호출은 생성을 멈추고 model과 method를 밝히므로, 빠진 getter가 message 없이 버려지는 일은 없다. scan은 receiver가 가질 수 있는 class 중 어느 것도 선언하지 않을 때만 model method 호출을 거부한다. PHP generator는 인자 개수도 그 class들에 대해 검사한다. TypeScript, Rust, Go는 선언되지 않은 chain method와 인자 개수를 컴파일러에 맡기며, Python은 chain을 호출 시점에 해석한다. 사용하는 외부 document의 used table은 set의 entity이므로(T209), 그 entity에 대한 관계도 다른 entity와 같이 getter를 붙인다.
 
 ### 2.3 값 형태
 
@@ -264,11 +264,10 @@ rows, err := model.Product().Connect(slave1).
 | `new<Name>(value)` | 컬럼이 아닌 명칭으로 값을 행에 추가. 아래 규칙 참고 |
 | `plus<Col>(n)`, `minus<Col>(n)` | 바인드한 증가·감소. `minus`는 음수를 저장하지 않는다 |
 | `create()` | 삽입 후 생성 키를 포함한 행 반환 |
-| `creates(models, batch)` | `set<Col>`로 만든 모델을 `batch`개 행씩 batch로 나누어 각 batch를 하나의 multi-row INSERT로, 모두 하나의 트랜잭션(활성 트랜잭션 안에서는 savepoint)에서 삽입하고 삽입한 행 수 반환. 모든 모델은 같은 컬럼을 설정해야 한다. `batch`는 필수인 양의 정수이며 아니면 `CONFIG`, 바인드 수가 dialect의 바인드 한도를 넘는 batch는 `BATCH_TOO_LARGE`이고, 둘 다 어떤 statement보다 먼저 실패한다 |
+| `creates(models)` | `set<Col>`로 만든 모델을 하나의 트랜잭션에서 여러 행 문장으로 삽입하고 삽입한 행 수 반환. 모든 모델은 같은 컬럼을 설정해야 한다 |
 | `duplication(model)`과 `create()` | `model`의 변경 값으로 중복 키 갱신을 포함한 삽입 |
 | `update()` | 행의 변경 컬럼 갱신 |
 | `update(true)` | 저장된 `updated_ts`가 조회 값과 같을 때만 갱신, 다르면 `OPTIMISTIC_LOCK` |
-| `expectRevision(column, revision)`과 `update()` 또는 `delete()` | 행의 `column`이 아직 `revision`일 때만 쓰기. `update()`는 `revision + 1`도 저장. 다르면 `REVISION_CHANGED`이며 아무것도 바꾸지 않는다. 아래 규칙 참고 |
 | `save()` | 기본 키가 있으면 `update()`, 없으면 `create()` |
 | `delete()` | 행 또는 컬렉션의 모든 행 삭제 |
 | `delete(true)` | `deleteLock()` 관계를 제외하고 조회한 관계 행을 재귀 삭제 |
@@ -276,7 +275,6 @@ rows, err := model.Product().Connect(slave1).
 쓰기가 성공하면 속성 변경 기록을 비운다.
 
 - `create()`와 `creates()`는 identity column 값을, `update()`와 `duplication` 모델의 변경은 primary key나 identity column 값을 statement 실행 전에 `IR_INVALID`로 거부한다. PostgreSQL identity는 명시한 key를 지나 나아가지 않아 다음 생성 key가 충돌하므로, identity key는 모두 database가 만든다. identity key를 쓰는 것은 적재뿐이다: `load`가 있는 `insert` 요청, 그다음 `restart_identity` 요청을 연결의 `execute`로 실행한다([protocol](protocol.ko.md#_1-6-load)).
-- `expectRevision(column, revision)`은 모델의 다음 `update()`나 `delete()`를 expected revision을 가진 쓰기로 만든다. revision column은 dbspec setting이 아니라 chain이 지정한다. revision column은 chain이 이미 지정하는(`plus<Col>`처럼) 평범한 정수 column이고, expected revision은 chain만 전달할 수 있는 쓰기 하나의 값이며, setting은 그것을 선언한 모든 document set의 manifest와 manifest hash를 바꾸기 때문이다. column은 entity의 primary key가 아닌 `i16`, `i32`, `i64` column이다. 다른 column, 같은 쓰기에서 설정한 그 column의 값, expectation과 함께한 `update(true)`는 statement 실행 전에 `CONFIG`로 실패한다. 쓰기는 두 번째 mechanism 없이 모델이 이미 보내는 요청 위에 선다. `update()`와 `delete()`의 key predicate에 `column = revision`을 더하고, `update()`는 변경 컬럼과 함께 바인드한 증가 `column = column + 1`(`plus<Col>(1)`처럼)을 할당하며, 다른 컬럼이 바뀌지 않았어도 그렇다. 조건이 있는 statement 하나가 일치한 행을 연결의 트랜잭션(열려 있으면) 안에서 lock하고, 비교와 쓰기 사이에 틈 없이 비교하고 쓴다. `FOR UPDATE`가 없는 SQLite는 statement 동안 write lock을 가진다. 행이 다른 revision이거나 더는 없어서 일치하는 행이 없는 statement는 `REVISION_CHANGED`로 실패하고 아무것도 쓰지 않는다. `delete(true)`는 자신의 트랜잭션에서 실행하므로 root의 `REVISION_CHANGED`는 이미 삭제한 관계 행을 rollback한다. soft delete도 같은 방식으로 비교한다. 모델을 다시 읽지 않으며, 성공한 `update()` 뒤 행의 revision은 `revision + 1`이다. expectation은 성공한 `update()` 뒤 다른 변경과 함께 비워지고, 그 모델에만 적용되며 컬렉션의 행에는 적용되지 않는다. `update(true)`의 `optimistic` 요청 slot은 실행기가 쓰는 `updated_ts`를 비교한다. revision은 form을 그린 revision처럼 호출자가 가진 값이며 `delete()`도 보호한다.
 - `new<Name>`은 계산한 금액이나 화면용 표시 값처럼 행이 출력까지 전달하는 데이터를 추가한다. 이 값은 `INSERT`, `UPDATE`, `SELECT` 문장에 사용하지 않는다. 조회와 쓰기 뒤에도 `get<Name>()`, `toArray()`, JSON 출력에 포함되며 `create()`가 반환한 모델도 추가한 값을 유지한다.
 - `new<Name>`에 실제 컬럼 명칭을 사용하면 거부한다. 저장 컬럼 값은 `set<Col>`을 사용한다.
 - Go와 Rust는 읽은 소스가 호출하는 명칭의 `New<Name>`과 `Get<Name>`을 생성한다. 값 타입은 Go의 `any`, Rust의 공통 값 타입이다.

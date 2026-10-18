@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
@@ -404,4 +405,84 @@ func Ghost(p *model.ProductModel) (*model.BrandModel, error) { return p.GetGhost
 	if !strings.Contains(err.Error(), "ProductModel.GetGhost is called") {
 		t.Errorf("the refusal does not name ProductModel.GetGhost: %v", err)
 	}
+}
+
+// fixtureDocument reads a document of contracts/fixtures/external. It must run
+// before scannedModule, which changes the working directory.
+func fixtureDocument(t *testing.T, name string) string {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "fixtures", "external", name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
+
+// TestGoRelationGetterOfExternalEntity checks that a relation to an entity of a
+// used external document gives the owned model its getter, typed with the
+// external model of its own package.
+// A relation to an entity of a used external document is a relation to an entity of the set: the member package generates its
+// model (ExtAudit), so the relation argument is that model and its getter is attached as the getter of any entity.
+func TestGoRelationGetterOfExternalEntity(t *testing.T) {
+	testcase.Start(t, testcase.Process)
+	member := fixtureDocument(t, "member.dbs")
+	core := fixtureDocument(t, "core.dbs")
+	write := scannedModule(t)
+	m, diagnostics := runtimemodel.LoadSet(member, core)
+	if len(diagnostics) > 0 {
+		t.Fatal(runtimemodel.DiagnosticsError(diagnostics))
+	}
+	write("example/example.go", `package example
+
+import "example.com/ormexample/model"
+
+func Load() *model.ExtPostModel {
+	return model.ExtPost().Relation(model.ExtAudit().MatchAccountSeqWithSeq())
+}
+
+func Audit(row *model.ExtPostModel) (*model.ExtAuditModel, error) { return row.GetExtAuditModel() }
+`)
+	if err := generateGo(m, "model", "", []string{"./example"}); err != nil {
+		t.Fatal(err)
+	}
+	post, err := os.ReadFile("model/ext_post.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `orm.RelatedAs[*ExtAuditModel]`; !strings.Contains(string(post), want) || !strings.Contains(string(post), `"ext_audit_model")`) {
+		t.Errorf("generated ext_post.go lacks the getter of the external relation %s", want)
+	}
+	buildScannedModule(t)
+}
+
+// TestGoGetterOfNestedRebindingUsesItsOwnModel checks that a getter called on a
+// variable that a nested scope rebinds to another model is attributed to the
+// model of that inner binding, not to the model of the outer one.
+func TestGoGetterOfNestedRebindingUsesItsOwnModel(t *testing.T) {
+	testcase.Start(t, testcase.Process)
+	write := scannedModule(t)
+	write("example/example.go", `package example
+
+import "example.com/ormexample/model"
+
+func Scoped() (int, error) {
+	row := model.Product().Relation(model.Brand().MatchBrandSeqWithSeq().AliasStore())
+	if _, err := row.GetStore(); err != nil {
+		return 0, err
+	}
+	count := func() (int, error) {
+		row := model.Brand().Relations(model.Product().MatchSeqWithBrandSeq())
+		products, err := row.GetProductModels()
+		if err != nil {
+			return 0, err
+		}
+		return products.Len(), nil
+	}
+	return count()
+}
+`)
+	if err := generateGo(namesManifest(t, namesDiagram), "model", "", []string{"./..."}); err != nil {
+		t.Fatal(err)
+	}
+	buildScannedModule(t)
 }

@@ -13,8 +13,9 @@ const extensions = new Set(['.ts', '.mts', '.js', '.mjs']);
 const skipped = new Set(['node_modules', 'dist']);
 
 /** What an expression holds: a model, a promise of one, or a collection of models. */
-type Shape = 'model' | 'promise' | 'collection' | 'promiseCollection';
-interface Value { readonly cls: string; readonly shape: Shape }
+type Shape = 'model' | 'promise' | 'collection' | 'promiseCollection' | 'union';
+/** A value; a union holds the models that a name may hold, one member each. */
+interface Value { readonly cls: string; readonly shape: Shape; readonly members?: readonly Value[] }
 
 /** Model methods that return something other than the model they are called on. */
 const terminals = new Set(['create', 'creates', 'update', 'save', 'delete', 'restore', 'restoreOrCreate', 'toArray', 'toJSON', 'toJSONText']);
@@ -38,8 +39,49 @@ function callResult(receiver: Value, name: string): Value | undefined {
   return undefined;
 }
 
-/** A name bound to something other than a model hides an outer model binding. */
+/** A name bound to something the scan cannot type holds an unknown model; it poisons a union. */
 const hidden: Value = { cls: '', shape: 'model' };
+/** The value of null, undefined and an uninitialized declaration: a union of no model, which contributes nothing to a union. */
+const nothing: Value = { cls: '', shape: 'union', members: [] };
+
+/** A getter call that a scanned source makes, with the classes its receiver may be. */
+export interface ScanSite {
+  readonly name: string;
+  readonly classes: readonly string[];
+}
+
+/** The values that a value stands for: its members when it is a union, itself otherwise. */
+function members(value: Value | undefined): readonly Value[] {
+  if (value === undefined || value === hidden) return [];
+  return value.shape === 'union' ? (value.members ?? []) : [value];
+}
+
+/** The value that may hold any of the values: undefined when one is unknown, the value when they agree, else a union of their members. */
+function union(values: ReadonlyArray<Value | undefined>): Value | undefined {
+  const items: Value[] = [];
+  let holdsNothing = false;
+  for (const value of values) {
+    if (value === undefined || value === hidden) return undefined;
+    if (members(value).length === 0) {
+      holdsNothing = true;
+      continue;
+    }
+    for (const member of members(value)) {
+      if (!items.some(item => item.cls === member.cls && item.shape === member.shape)) items.push(member);
+    }
+  }
+  const [only] = items;
+  if (items.length === 0) return holdsNothing ? nothing : undefined;
+  return items.length === 1 ? only : { cls: '', shape: 'union', members: items };
+}
+
+/** The value of f on each member of a value; a member without a value makes the result unknown. */
+function mapValue(value: Value | undefined, f: (member: Value) => Value | undefined): Value | undefined {
+  if (value === undefined) return undefined;
+  if (value.shape !== 'union') return f(value);
+  if ((value.members ?? []).length === 0) return value;
+  return union((value.members ?? []).map(f));
+}
 
 /** A function node whose parameters and body the scan visits. */
 type FunctionLike = FunctionNode | ArrowFunctionExpression;
@@ -90,7 +132,7 @@ class Scanner {
   private readonly functions = new Map<string, Value>();
   private readonly scopes: Array<Map<string, Value>> = [];
 
-  public constructor(private readonly models: ReadonlySet<string>, private readonly out: Map<string, Set<string>>) {
+  public constructor(private readonly models: ReadonlySet<string>, private readonly out: Map<string, Set<string>>, private readonly sites: ScanSite[]) {
     for (const name of models) this.classes.set(name, name);
   }
 
@@ -102,10 +144,32 @@ class Scanner {
     return undefined;
   }
 
-  private bind(name: Node, value: Value | undefined): void {
+  /** Binds the names of a declaration in the innermost scope; a destructured name takes no model. */
+  private bind(target: Node, value: Value | undefined): void {
     const scope = this.scopes.at(-1);
     if (scope === undefined) throw new Error('a binding is outside every scope of the scanner');
-    if (name.type === 'Identifier') scope.set(name.name, value ?? hidden);
+    if (target.type === 'Identifier') scope.set(target.name, value ?? hidden);
+    else for (const name of boundNames(target)) scope.set(name, hidden);
+  }
+
+  /** Assigns a name: the assignment rebinds the scope that declares the name, as JavaScript does. */
+  private assign(name: string, value: Value | undefined): void {
+    let scope: Map<string, Value> | undefined;
+    for (let i = this.scopes.length - 1; i >= 0 && scope === undefined; i--) {
+      if (this.scopes[i]?.has(name) === true) scope = this.scopes[i];
+    }
+    (scope ?? this.scopes[0])?.set(name, value ?? hidden);
+  }
+
+  private snapshot(): Array<Map<string, Value>> {
+    return this.scopes.map(scope => new Map(scope));
+  }
+
+  private restore(state: ReadonlyArray<ReadonlyMap<string, Value>>): void {
+    this.scopes.forEach((scope, i) => {
+      scope.clear();
+      for (const [name, value] of state[i] ?? []) scope.set(name, value);
+    });
   }
 
   /** The model class that the expression of a `new` or a type name refers to. */
@@ -148,19 +212,20 @@ class Scanner {
     if (e.type === 'ParenthesizedExpression' || e.type === 'TSNonNullExpression' || e.type === 'TSSatisfiesExpression' || e.type === 'ChainExpression') return this.valueOf(e.expression);
     if (e.type === 'TSAsExpression' || e.type === 'TSTypeAssertion') return this.typeValue(e.typeAnnotation) ?? this.valueOf(e.expression);
     if (e.type === 'AwaitExpression') {
-      const inner = this.valueOf(e.argument);
-      if (inner?.shape === 'promise') return { cls: inner.cls, shape: 'model' };
-      if (inner?.shape === 'promiseCollection') return { cls: inner.cls, shape: 'collection' };
-      return inner;
+      return mapValue(this.valueOf(e.argument), inner => {
+        if (inner.shape === 'promise') return { cls: inner.cls, shape: 'model' };
+        if (inner.shape === 'promiseCollection') return { cls: inner.cls, shape: 'collection' };
+        return inner;
+      });
     }
     if (e.type === 'NewExpression') {
       const cls = this.className(e.callee);
       return cls === undefined ? undefined : { cls, shape: 'model' };
     }
-    if (e.type === 'Identifier') return this.lookup(e.name);
+    if (e.type === 'Literal' && e.value === null) return nothing;
+    if (e.type === 'Identifier') return this.lookup(e.name) ?? (e.name === 'undefined' ? nothing : undefined);
     if (e.type === 'ArrayExpression' && e.elements.length === 1 && e.elements[0]?.type === 'SpreadElement') {
-      const inner = this.valueOf(e.elements[0].argument);
-      return inner?.shape === 'collection' ? inner : undefined;
+      return mapValue(this.valueOf(e.elements[0].argument), inner => (inner.shape === 'collection' ? inner : undefined));
     }
     if (e.type === 'CallExpression') {
       if (e.callee.type === 'Identifier') return this.lookup(e.callee.name) === undefined ? this.functions.get(e.callee.name) : undefined;
@@ -173,13 +238,11 @@ class Scanner {
           const typed = this.typeValue(args[0]);
           if (typed !== undefined) return typed;
         }
-        const receiver = this.valueOf(e.callee.object);
-        return receiver === undefined ? undefined : callResult(receiver, name);
+        return mapValue(this.valueOf(e.callee.object), receiver => callResult(receiver, name));
       }
     }
     if (e.type === 'MemberExpression' && e.computed) {
-      const receiver = this.valueOf(e.object);
-      return receiver?.shape === 'collection' ? { cls: receiver.cls, shape: 'model' } : undefined;
+      return mapValue(this.valueOf(e.object), receiver => (receiver.shape === 'collection' ? { cls: receiver.cls, shape: 'model' } : undefined));
     }
     return undefined;
   }
@@ -188,6 +251,45 @@ class Scanner {
     let names = this.out.get(cls);
     if (names === undefined) this.out.set(cls, names = new Set());
     names.add(name);
+  }
+
+  /** The scopes after branches that each end in one of the states: a name holds the union of its values in them. */
+  private mergeAll(states: ReadonlyArray<ReadonlyArray<ReadonlyMap<string, Value>>>): Array<Map<string, Value>> {
+    return (states[0] ?? []).map((_, i) => {
+      const names = new Set<string>();
+      for (const state of states) for (const name of state[i]?.keys() ?? []) names.add(name);
+      const merged = new Map<string, Value>();
+      for (const name of names) {
+        // A state that does not bind the name contributes nothing.
+        const values = states.flatMap(state => (state[i]?.has(name) === true ? [state[i]?.get(name)] : []));
+        merged.set(name, union(values) ?? hidden);
+      }
+      return merged;
+    });
+  }
+
+  /** Before a loop runs, a name that the loop assigns may hold what it held before the loop or what its assignments give it. */
+  private enterLoop(loop: Node): void {
+    const declared = new Set<string>();
+    const assigned = new Map<string, Array<Value | undefined>>();
+    const walk = (node: Node): void => {
+      if (node.type === 'VariableDeclarator') for (const name of boundNames(node.id)) declared.add(name);
+      if (node.type === 'AssignmentExpression') {
+        const value = node.operator === '=' && node.left.type === 'Identifier' ? this.valueOf(node.right) : undefined;
+        for (const name of boundNames(node.left)) assigned.set(name, [...(assigned.get(name) ?? []), value]);
+      }
+      for (const child of children(node)) walk(child);
+    };
+    walk(loop);
+    for (const [name, values] of assigned) {
+      if (declared.has(name)) continue;
+      let scope: Map<string, Value> | undefined;
+      for (let i = this.scopes.length - 1; i >= 0 && scope === undefined; i--) {
+        if (this.scopes[i]?.has(name) === true) scope = this.scopes[i];
+      }
+      if (scope === undefined) continue;
+      scope.set(name, union([scope.get(name), ...values]) ?? hidden);
+    }
   }
 
   /** Visits a function; an untyped first parameter takes the value the call site gives it. */
@@ -233,13 +335,14 @@ class Scanner {
     let given: Value | undefined;
     const name = memberName(call.callee);
     if (call.callee.type === 'MemberExpression' && name !== undefined) {
-      const receiver = this.valueOf(call.callee.object);
-      if (receiver?.shape === 'model') {
-        this.record(receiver.cls, name);
-        if (modelCallbacks.has(name) || name.startsWith('addColumn')) given = receiver;
-      } else if (receiver?.shape === 'collection' && elementCallbacks.has(name)) {
-        given = { cls: receiver.cls, shape: 'model' };
-      }
+      // A name that may hold several models gets the call on each of them.
+      const receivers = members(this.valueOf(call.callee.object));
+      const models = receivers.filter(r => r.shape === 'model');
+      for (const model of models) this.record(model.cls, name);
+      if (models.length > 0) this.sites.push({ name, classes: models.map(model => model.cls) });
+      const collections = receivers.filter(r => r.shape === 'collection');
+      if (models.length === 1 && (modelCallbacks.has(name) || name.startsWith('addColumn'))) given = models[0];
+      else if (models.length === 0 && collections.length === 1 && elementCallbacks.has(name)) given = { cls: collections[0]?.cls ?? '', shape: 'model' };
     }
     for (const arg of call.arguments) {
       if (given !== undefined && (arg.type === 'ArrowFunctionExpression' || arg.type === 'FunctionExpression')) this.visitFunction(arg, given);
@@ -280,39 +383,156 @@ class Scanner {
         }
         this.visit(init);
       }
-      this.bind(node.id, this.typeValue(typeOf(node.id)) ?? (init === null ? undefined : this.valueOf(init)));
+      this.bind(node.id, this.typeValue(typeOf(node.id)) ?? (init === null ? nothing : this.valueOf(init)));
       return;
     }
     if (node.type === 'ForOfStatement') {
       this.visit(node.right);
+      const before = this.snapshot();
+      this.enterLoop(node);
       const collection = this.valueOf(node.right);
-      const element: Value | undefined = collection?.shape === 'collection' ? { cls: collection.cls, shape: 'model' } : undefined;
+      const element = mapValue(collection, c => (c.shape === 'collection' ? { cls: c.cls, shape: 'model' } : undefined));
       this.scopes.push(new Map());
       if (node.left.type === 'VariableDeclaration') for (const d of node.left.declarations) this.bind(d.id, this.typeValue(typeOf(d.id)) ?? element);
       this.visit(node.body);
       this.scopes.pop();
+      // A loop may run zero times, so the scope after it joins the scope before it.
+      this.restore(this.mergeAll([before, this.snapshot()]));
+      return;
+    }
+    if (node.type === 'AssignmentExpression') {
+      this.visit(node.right);
+      if (node.left.type === 'Identifier') {
+        this.assign(node.left.name, node.operator === '=' ? this.valueOf(node.right) : undefined);
+        return;
+      }
+      this.visit(node.left);
+      for (const name of boundNames(node.left)) this.assign(name, undefined);
+      return;
+    }
+    if (node.type === 'IfStatement') {
+      this.visit(node.test);
+      const before = this.snapshot();
+      this.visit(node.consequent);
+      const consequent = this.snapshot();
+      this.restore(before);
+      if (node.alternate !== null) this.visit(node.alternate);
+      const alternate = this.snapshot();
+      // A branch that returns or throws contributes nothing to the scope after the if.
+      const states = [];
+      if (!exits(node.consequent)) states.push(consequent);
+      if (node.alternate === null || !exits(node.alternate)) states.push(alternate);
+      this.restore(states.length > 0 ? this.mergeAll(states) : alternate);
+      return;
+    }
+    if (node.type === 'CatchClause') {
+      this.scopes.push(new Map());
+      if (node.param !== null) this.bind(node.param, undefined);
+      this.visit(node.body);
+      this.scopes.pop();
+      return;
+    }
+    if (node.type === 'ForStatement' || node.type === 'ForInStatement' || node.type === 'WhileStatement' || node.type === 'DoWhileStatement') {
+      const before = this.snapshot();
+      this.enterLoop(node);
+      // The declarations of a loop head belong to the loop.
+      this.scopes.push(new Map());
+      for (const child of children(node)) this.visit(child);
+      this.scopes.pop();
+      // A loop may run zero times, so the scope after it joins the scope before it.
+      this.restore(this.mergeAll([before, this.snapshot()]));
+      return;
+    }
+    if (node.type === 'SwitchStatement') {
+      this.visit(node.discriminant);
+      const base = this.snapshot();
+      const ends: Array<Array<Map<string, Value>>> = [];
+      let end: Array<Map<string, Value>> | undefined;
+      let endExits = false;
+      let hasDefault = false;
+      for (const c of node.cases) {
+        if (c.test === null) hasDefault = true;
+        // A case starts from the scope before the switch, joined with the scope at the end of the case before it when that case
+        // falls through; a case that returns or throws does not fall through.
+        if (end === undefined || endExits) this.restore(base);
+        else {
+          ends.push(end);
+          this.restore(this.mergeAll([base, end]));
+        }
+        if (c.test !== null) this.visit(c.test);
+        for (const statement of c.consequent) this.visit(statement);
+        end = this.snapshot();
+        endExits = c.consequent.length > 0 && exits(c.consequent[c.consequent.length - 1] as Node);
+      }
+      if (end !== undefined && !endExits) ends.push(end);
+      if (!hasDefault) ends.push(base);
+      this.restore(this.mergeAll(ends.length > 0 ? ends : [base]));
+      return;
+    }
+    if (node.type === 'TryStatement') {
+      // A handler starts from the scope before the try joined with the scope at the end of the block, since an exception can leave
+      // any statement. A branch that returns or throws contributes nothing after the try; the finalizer starts from every outcome.
+      const base = this.snapshot();
+      this.visit(node.block);
+      const blockEnd = this.snapshot();
+      const all = [base, blockEnd];
+      const ends = exits(node.block) ? [] : [blockEnd];
+      if (node.handler !== null) {
+        this.restore(this.mergeAll([base, blockEnd]));
+        this.visit(node.handler);
+        const handlerEnd = this.snapshot();
+        all.push(handlerEnd);
+        if (!exits(node.handler.body)) ends.push(handlerEnd);
+      }
+      if (node.finalizer !== null) {
+        this.restore(this.mergeAll(all));
+        this.visit(node.finalizer);
+        return;
+      }
+      this.restore(this.mergeAll(ends.length > 0 ? ends : [blockEnd]));
       return;
     }
     if (node.type === 'CallExpression') return this.visitCall(node);
+
     for (const child of children(node)) this.visit(child);
   }
 }
 
+/** Whether a statement, or the last statement of a block, returns or throws, so that the scope after it is not reached from its end. */
+function exits(node: Node): boolean {
+  if (node.type === 'ReturnStatement' || node.type === 'ThrowStatement') return true;
+  if (node.type === 'BlockStatement') {
+    const last = node.body.at(-1);
+    return last !== undefined && exits(last);
+  }
+  return false;
+}
+
+/** The names that a binding or assignment target declares: an identifier, or the names of a destructuring pattern. */
+function boundNames(node: Node): string[] {
+  if (node.type === 'Identifier') return [node.name];
+  if (node.type === 'ObjectPattern') return node.properties.flatMap(p => boundNames(p.type === 'RestElement' ? p.argument : p.value));
+  if (node.type === 'ArrayPattern') return node.elements.flatMap(e => (e === null ? [] : boundNames(e)));
+  if (node.type === 'AssignmentPattern') return boundNames(node.left);
+  if (node.type === 'RestElement') return boundNames(node.argument);
+  return [];
+}
+
 /** Parses a source file; a syntax error fails the scan with the file and the errors, since an unparsed file would hide its calls. */
-function visitFile(path: string, models: ReadonlySet<string>, out: Map<string, Set<string>>): void {
+function visitFile(path: string, models: ReadonlySet<string>, out: Map<string, Set<string>>, sites: ScanSite[]): void {
   if (!extensions.has(extname(path))) return;
   const parsed = parseSync(path, readFileSync(path, 'utf8'));
   const errors = parsed.errors.filter(error => error.severity === 'Error');
   if (errors.length > 0) throw new Error(`orm-gen --scan: ${path} does not parse: ${errors.map(error => error.message).join('; ')}`);
-  new Scanner(models, out).visit(parsed.program);
+  new Scanner(models, out, sites).visit(parsed.program);
 }
 
-function visitDir(dir: string, models: ReadonlySet<string>, out: Map<string, Set<string>>): void {
+function visitDir(dir: string, models: ReadonlySet<string>, out: Map<string, Set<string>>, sites: ScanSite[]): void {
   for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : 1))) {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) {
-      if (!skipped.has(entry.name)) visitDir(path, models, out);
-    } else if (entry.isFile()) visitFile(path, models, out);
+      if (!skipped.has(entry.name)) visitDir(path, models, out, sites);
+    } else if (entry.isFile()) visitFile(path, models, out, sites);
   }
 }
 
@@ -320,11 +540,11 @@ function visitDir(dir: string, models: ReadonlySet<string>, out: Map<string, Set
  * Returns, for each generated model class, the names of the methods that the
  * sources call on a receiver that resolves to that model.
  */
-export function scanModelCalls(paths: readonly string[], models: ReadonlySet<string>): Map<string, Set<string>> {
+export function scanModelCalls(paths: readonly string[], models: ReadonlySet<string>, sites: ScanSite[] = []): Map<string, Set<string>> {
   const out = new Map<string, Set<string>>();
   for (const path of paths) {
-    if (statSync(path).isDirectory()) visitDir(path, models, out);
-    else visitFile(path, models, out);
+    if (statSync(path).isDirectory()) visitDir(path, models, out, sites);
+    else visitFile(path, models, out, sites);
   }
   return out;
 }

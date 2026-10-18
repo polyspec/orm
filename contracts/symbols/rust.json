@@ -1207,6 +1207,10 @@
     "exported": false,
     "signature": " struct Scanner \u003c 'a \u003e { models : \u0026 'a HashSet \u003c String \u003e , fallible_setters : \u0026 'a HashSet \u003c (String , String) \u003e , file : String , scopes : Vec \u003c HashMap \u003c String , Binding \u003e \u003e , attached : Vec \u003c bool \u003e , out : \u0026 'a mut Scan , }"
   },
+  "packages/rust/build/src/scan.rs::Scanner \u003c '_ \u003e as Visit \u003c 'ast \u003e::visit_arm": {
+    "exported": false,
+    "signature": " fn visit_arm (\u0026 mut self , a : \u0026 'ast syn :: Arm)"
+  },
   "packages/rust/build/src/scan.rs::Scanner \u003c '_ \u003e as Visit \u003c 'ast \u003e::visit_block": {
     "exported": false,
     "signature": " fn visit_block (\u0026 mut self , b : \u0026 'ast syn :: Block)"
@@ -1215,9 +1219,25 @@
     "exported": false,
     "signature": " fn visit_expr_closure (\u0026 mut self , c : \u0026 'ast syn :: ExprClosure)"
   },
+  "packages/rust/build/src/scan.rs::Scanner \u003c '_ \u003e as Visit \u003c 'ast \u003e::visit_expr_for_loop": {
+    "exported": false,
+    "signature": " fn visit_expr_for_loop (\u0026 mut self , f : \u0026 'ast syn :: ExprForLoop)"
+  },
+  "packages/rust/build/src/scan.rs::Scanner \u003c '_ \u003e as Visit \u003c 'ast \u003e::visit_expr_if": {
+    "exported": false,
+    "signature": " fn visit_expr_if (\u0026 mut self , i : \u0026 'ast syn :: ExprIf)"
+  },
+  "packages/rust/build/src/scan.rs::Scanner \u003c '_ \u003e as Visit \u003c 'ast \u003e::visit_expr_let": {
+    "exported": false,
+    "signature": " fn visit_expr_let (\u0026 mut self , l : \u0026 'ast syn :: ExprLet)"
+  },
   "packages/rust/build/src/scan.rs::Scanner \u003c '_ \u003e as Visit \u003c 'ast \u003e::visit_expr_method_call": {
     "exported": false,
     "signature": " fn visit_expr_method_call (\u0026 mut self , m : \u0026 'ast syn :: ExprMethodCall)"
+  },
+  "packages/rust/build/src/scan.rs::Scanner \u003c '_ \u003e as Visit \u003c 'ast \u003e::visit_expr_while": {
+    "exported": false,
+    "signature": " fn visit_expr_while (\u0026 mut self , w : \u0026 'ast syn :: ExprWhile)"
   },
   "packages/rust/build/src/scan.rs::Scanner \u003c '_ \u003e as Visit \u003c 'ast \u003e::visit_impl_item_fn": {
     "exported": false,
@@ -1242,6 +1262,10 @@
   "packages/rust/build/src/scan.rs::Scanner \u003c '_ \u003e::bind_params": {
     "exported": false,
     "signature": " fn bind_params \u003c 'p \u003e (\u0026 mut self , params : impl Iterator \u003c Item = \u0026 'p Pat \u003e)"
+  },
+  "packages/rust/build/src/scan.rs::Scanner \u003c '_ \u003e::bind_pattern": {
+    "exported": false,
+    "signature": " fn bind_pattern (\u0026 mut self , p : \u0026 Pat)"
   },
   "packages/rust/build/src/scan.rs::Scanner \u003c '_ \u003e::lookup": {
     "exported": false,
@@ -1322,6 +1346,10 @@
   "packages/rust/build/src/scan.rs::pat_ident": {
     "exported": false,
     "signature": " fn pat_ident (p : \u0026 Pat) -\u003e Option \u003c (String , Option \u003c \u0026 Type \u003e) \u003e"
+  },
+  "packages/rust/build/src/scan.rs::pattern_names": {
+    "exported": false,
+    "signature": " fn pattern_names (p : \u0026 Pat) -\u003e Vec \u003c String \u003e"
   },
   "packages/rust/build/src/scan.rs::returns_model": {
     "exported": true,

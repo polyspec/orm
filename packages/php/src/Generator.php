@@ -218,7 +218,8 @@ final class Generator
             $classes[] = $class;
             $metas[] = $e + ['manifest_hash' => $m->manifestHash, 'class' => ltrim($namespace, '\\') . '\\' . $class];
         }
-        $calls = Scan::calls($scan, $namespace, $classes);
+        $sites = [];
+        $calls = Scan::calls($scan, $namespace, $classes, $sites);
         $used = [];
         foreach ($calls as $names) {
             foreach (array_keys($names) as $name) {
@@ -228,6 +229,52 @@ final class Generator
         $declare = new ChainDeclare($metas);
         $problems = [];
         $tags = [];
+        // A getter that a scanned call names is refused only when no class the call may be on attaches it: a class of the call
+        // that lacks the getter is not an error, since the call runs on the class that has it (docs/dsl.md, the scan).
+        $entities = array_column($metas, 'entity');
+        foreach ($sites as $site) {
+            $name = $site['name'];
+            $count = $site['count'];
+            $key = substr($name, 3);
+            $declaresAny = false;
+            $accepts = false;
+            $declaredBy = null;
+            foreach ($metas as $meta) {
+                if (!in_array(self::pascal($meta['entity']), $site['classes'], true)) {
+                    continue;
+                }
+                $static = array_fill_keys([...array_map('strtolower', self::modelMethods()), ...array_map('strtolower', array_keys(self::queryMethodMap($meta)))], true);
+                foreach ($meta['columns'] as $c) {
+                    $p = self::pascal($c['name']);
+                    $static[strtolower("get$p")] = $static[strtolower("set$p")] = true;
+                }
+                if (isset($static[strtolower($name)])) {
+                    $declaresAny = $accepts = true;
+                    continue;
+                }
+                $declaration = $declare->declare($meta, $name);
+                if ($declaration !== null) {
+                    $declaresAny = true;
+                    $declaredBy ??= [self::pascal($meta['entity']), $declaration];
+                    if ($count === null || ($count >= $declaration['min'] && $count <= $declaration['max'])) {
+                        $accepts = true;
+                    }
+                    continue;
+                }
+                if (self::namedGetter($name, $key, $entities, $used)) {
+                    $declaresAny = $accepts = true;
+                }
+            }
+            if (!$declaresAny) {
+                $problems[] = str_starts_with($name, 'get') && strlen($name) > 3 && ctype_upper($name[3])
+                    ? "{$site['classes'][0]}.$name is called, but no alias$key, new$key or addColumn call attaches it"
+                    : "{$site['classes'][0]}.$name is not a model method: no column, chain or operator accepts it";
+            } elseif (!$accepts && $declaredBy !== null) {
+                [$class, $declaration] = $declaredBy;
+                $takes = $declaration['min'] === $declaration['max'] ? (string) $declaration['min'] : "{$declaration['min']} to {$declaration['max']}";
+                $problems[] = "$class.$name takes $takes argument" . ($declaration['max'] === 1 ? '' : 's') . ", called with $count";
+            }
+        }
         foreach ($metas as $meta) {
             $class = self::pascal($meta['entity']);
             $static = array_fill_keys([...array_map('strtolower', self::modelMethods()), ...array_map('strtolower', array_keys(self::queryMethodMap($meta)))], true);
@@ -242,22 +289,11 @@ final class Generator
                 }
                 $declaration = $declare->declare($meta, $name);
                 if ($declaration === null) {
-                    $key = substr($name, 3);
-                    if (self::namedGetter($name, $key, $metas, $used)) {
+                    // A name that no class declares is refused by the group check above, with the classes of its call.
+                    if (self::namedGetter($name, substr($name, 3), array_column($metas, 'entity'), $used)) {
                         $found[$name] = ChainDeclare::getter($name);
-                        continue;
                     }
-                    $problems[] = str_starts_with($name, 'get') && strlen($name) > 3 && ctype_upper($name[3])
-                        ? "$class.$name is called, but no alias$key, new$key or addColumn call attaches it"
-                        : "$class.$name is not a model method: no column, chain or operator accepts it";
                     continue;
-                }
-                foreach (array_unique(array_filter($counts, static fn(?int $n): bool => $n !== null)) as $n) {
-                    if ($n < $declaration['min'] || $n > $declaration['max']) {
-                        $takes = $declaration['min'] === $declaration['max'] ? (string) $declaration['min'] : "{$declaration['min']} to {$declaration['max']}";
-                        $problems[] = "$class.$name takes $takes argument" . ($declaration['max'] === 1 ? '' : 's') . ", called with $n";
-                        break;
-                    }
                 }
                 $found[$name] = ChainDeclare::tag($name, $declaration);
             }
@@ -277,13 +313,14 @@ final class Generator
      * @param list<array> $metas
      * @param array<string, true> $used
      */
-    private static function namedGetter(string $name, string $key, array $metas, array $used): bool
+    /** @param list<string> $entities the entity names of the owned tables and of the external tables that are used */
+    private static function namedGetter(string $name, string $key, array $entities, array $used): bool
     {
         if (!str_starts_with($name, 'get') || strlen($name) < 4 || !ctype_upper($name[3])) {
             return false;
         }
-        foreach ($metas as $meta) {
-            $pascal = self::pascal($meta['entity']);
+        foreach ($entities as $entity) {
+            $pascal = self::pascal($entity);
             if ($key === $pascal . 'Model' || $key === $pascal . 'Models') {
                 return true;
             }

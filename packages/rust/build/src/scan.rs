@@ -131,6 +131,20 @@ fn collect_files(p: &Path, out: &mut Vec<PathBuf>) -> Result<(), String> {
     Ok(())
 }
 
+/// The names that a pattern binds, in any position of it: a tuple, struct, slice or reference pattern binds each of its names.
+fn pattern_names(p: &Pat) -> Vec<String> {
+    struct Names(Vec<String>);
+    impl<'ast> Visit<'ast> for Names {
+        fn visit_pat_ident(&mut self, i: &'ast syn::PatIdent) {
+            self.0.push(i.ident.unraw().to_string());
+            visit::visit_pat_ident(self, i);
+        }
+    }
+    let mut names = Names(Vec::new());
+    names.visit_pat(p);
+    names.0
+}
+
 fn pat_ident(p: &Pat) -> Option<(String, Option<&Type>)> {
     match p {
         Pat::Ident(i) => Some((i.ident.unraw().to_string(), None)),
@@ -174,6 +188,13 @@ impl Scanner<'_> {
 
     fn bind(&mut self, name: String, b: Binding) {
         self.scopes.last_mut().expect("scope").insert(name, b);
+    }
+
+    /// Binds every name of a pattern that gives no model, so that it hides an outer binding of the same name.
+    fn bind_pattern(&mut self, p: &Pat) {
+        for name in pattern_names(p) {
+            self.bind(name, Binding::default());
+        }
     }
 
     /// Whether the type wraps its model in an Option, whose `unwrap` and `expect` give the model; Box, Rc and Arc
@@ -289,6 +310,8 @@ impl Scanner<'_> {
                 let model = ty.and_then(|t| self.type_name(t));
                 let result = ty.is_some_and(Self::optional);
                 self.bind(name, Binding { model, aliases: Vec::new(), result });
+            } else {
+                self.bind_pattern(p);
             }
         }
     }
@@ -350,6 +373,8 @@ impl<'ast> Visit<'ast> for Scanner<'_> {
     }
 
     fn visit_item_fn(&mut self, f: &'ast syn::ItemFn) {
+        // A function item sees no local of the function that contains it, so the scopes of the outer function are set aside.
+        let outer = std::mem::take(&mut self.scopes);
         self.scopes.push(HashMap::new());
         let pats: Vec<Pat> = f
             .sig
@@ -362,10 +387,11 @@ impl<'ast> Visit<'ast> for Scanner<'_> {
             .collect();
         self.bind_params(pats.iter());
         visit::visit_item_fn(self, f);
-        self.scopes.pop();
+        self.scopes = outer;
     }
 
     fn visit_impl_item_fn(&mut self, f: &'ast syn::ImplItemFn) {
+        let outer = std::mem::take(&mut self.scopes);
         self.scopes.push(HashMap::new());
         let pats: Vec<Pat> = f
             .sig
@@ -378,7 +404,7 @@ impl<'ast> Visit<'ast> for Scanner<'_> {
             .collect();
         self.bind_params(pats.iter());
         visit::visit_impl_item_fn(self, f);
-        self.scopes.pop();
+        self.scopes = outer;
     }
 
     fn visit_block(&mut self, b: &'ast syn::Block) {
@@ -402,7 +428,50 @@ impl<'ast> Visit<'ast> for Scanner<'_> {
             let aliases = l.init.as_ref().map(|i| aliases_in(&i.expr)).unwrap_or_default();
             let result = ty.is_some_and(Self::optional) || l.init.as_ref().is_some_and(|init| self.result_of(&init.expr));
             self.bind(name, Binding { model, aliases, result });
+        } else {
+            self.bind_pattern(&l.pat);
         }
+    }
+
+    fn visit_expr_for_loop(&mut self, f: &'ast syn::ExprForLoop) {
+        self.visit_expr(&f.expr);
+        self.scopes.push(HashMap::new());
+        self.bind_pattern(&f.pat);
+        self.visit_block(&f.body);
+        self.scopes.pop();
+    }
+
+    fn visit_expr_let(&mut self, l: &'ast syn::ExprLet) {
+        self.visit_expr(&l.expr);
+        self.bind_pattern(&l.pat);
+    }
+
+    /// The bindings of an `if let` condition belong to the then branch only.
+    fn visit_expr_if(&mut self, i: &'ast syn::ExprIf) {
+        self.scopes.push(HashMap::new());
+        self.visit_expr(&i.cond);
+        self.visit_block(&i.then_branch);
+        self.scopes.pop();
+        if let Some((_, otherwise)) = &i.else_branch {
+            self.visit_expr(otherwise);
+        }
+    }
+
+    fn visit_expr_while(&mut self, w: &'ast syn::ExprWhile) {
+        self.scopes.push(HashMap::new());
+        self.visit_expr(&w.cond);
+        self.visit_block(&w.body);
+        self.scopes.pop();
+    }
+
+    fn visit_arm(&mut self, a: &'ast syn::Arm) {
+        self.scopes.push(HashMap::new());
+        self.bind_pattern(&a.pat);
+        if let Some((_, guard)) = &a.guard {
+            self.visit_expr(guard);
+        }
+        self.visit_expr(&a.body);
+        self.scopes.pop();
     }
 
     fn visit_expr_closure(&mut self, c: &'ast syn::ExprClosure) {

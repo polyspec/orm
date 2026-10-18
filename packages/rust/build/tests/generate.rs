@@ -33,6 +33,21 @@ fn generate(source: &str) -> Result<String, String> {
     generate_with_schema(schema(), source)
 }
 
+/// Generates from the source with the set of member.dbs, which uses core.dbs as an external document.
+fn generate_external(source: &str) -> Result<String, String> {
+    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let dir = std::env::temp_dir().join(format!("orm-build-test-{}-{n}", std::process::id()));
+    let src = dir.join("src");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::write(src.join("main.rs"), source).unwrap();
+    let external = polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/external");
+    let set = set_file(&dir, &[external.join("member.dbs")], &[external.join("core.dbs")]);
+    let out = polyspec_orm_build::Builder::set(set).scan(&src).out_dir(dir.join("out")).try_generate();
+    let text = out.map(|p| std::fs::read_to_string(p).unwrap());
+    let _ = std::fs::remove_dir_all(&dir);
+    text
+}
+
 fn generate_with_schema(schema: PathBuf, source: &str) -> Result<String, String> {
     let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let dir = std::env::temp_dir().join(format!("orm-build-test-{}-{n}", std::process::id()));
@@ -260,7 +275,7 @@ fn styled_setter_result_handling_preserves_model_calls() {
         let source = format!("fn main() {{ let row = Author::new().set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::Value::null())).{handler}; let _ = row.get_jsons_tags(); }}");
         let text = generate_with_schema(root.clone(), &source).expect("Result handling must not be a column call");
         assert!(text.contains("pub fn get_jsons_tags"));
-        assert!(!text.contains("pub fn expect"));
+        assert!(!text.contains("pub fn expect("), "Result handling is not a model method");
         assert!(!text.contains("pub fn unwrap"));
     }
 }
@@ -522,6 +537,43 @@ fn read(row: &Author) { let writer: Option<User> = row.get_writer().unwrap(); le
     )
     .unwrap_err();
     assert!(err.contains("User has no method get_ghost: no call attaches \"ghost\""), "{err}");
+}
+
+/// A relation to an entity of a used external document attaches its getter, as a relation to an entity of the set does.
+#[test]
+fn relation_to_an_external_entity_attaches_its_getter() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let text = generate_external(
+        "fn main() { let _ = ExtPost::new().relation(ExtAudit::new().match_audit_seq_with_seq()); }
+fn read(row: &ExtPost) { let _ = row.get_ext_audit_model(); }",
+    )
+    .unwrap();
+    assert!(text.contains("pub fn get_ext_audit_model(&self)"), "the getter of the external entity is missing");
+}
+
+/// A name is typed by its binding in its own scope: a for loop or a match arm that binds the name gives it no model, so a
+/// call on it is not the outer Author's; a call on a ServiceMember is attributed to ServiceMember.
+#[test]
+fn a_name_is_typed_by_its_binding_in_its_own_scope() {
+    // The outer row is a ServiceMember, which has no is_close column. The for loop and the match arm bind row to values the
+    // scan cannot type, so their get_is_close calls are not the outer ServiceMember's; the call on an Author is Author's.
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    generate_with_schema(
+        bench(),
+        "fn read(blocks: Vec<Author>) {
+    let row = ServiceMember::new();
+    for row in blocks {
+        let _ = row.get_is_close();
+    }
+    match blocks.first() {
+        Some(row) => { let _ = row.get_is_close(); }
+        None => {}
+    }
+    let member = Author::new();
+    let _ = member.get_is_close();
+}",
+    )
+    .unwrap();
 }
 
 #[test]

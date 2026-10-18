@@ -28,9 +28,10 @@ final class Scan
      * @param list<string> $classes the class names of the generated models, without namespace
      * @return array<string, array<string, list<int|null>>>
      */
-    public static function calls(array $paths, string $namespace, array $classes): array
+    public static function calls(array $paths, string $namespace, array $classes, ?array &$sites = null): array
     {
         $out = [];
+        $siteList = [];
         $files = [];
         foreach ($paths as $path) {
             if (is_link($path)) {
@@ -61,9 +62,10 @@ final class Scan
             // A file that does not parse would hide its calls, so it fails the scan.
             $traverser = new NodeTraverser(new NameResolver());
             $tree = $traverser->traverse($tree ?? []);
-            $visitor = new ScanVisitor($models, $out);
+            $visitor = new ScanVisitor($models, $out, $siteList);
             (new NodeTraverser($visitor))->traverse($tree);
         }
+        $sites = $siteList;
         return $out;
     }
 
