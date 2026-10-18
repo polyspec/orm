@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- TestApplyStressPlan proves that each apply statement commits separately at 100 tables: the applying PostgreSQL session holds no relation lock after any step, and every 200 steps it prints its progress and elapsed time (T148-4-5).
 - The Unicode word tables are generated in English: the generator's headers match the committed tables, so TestCommittedTablesAreGenerated passes (T131-8-1).
 - The Rust interface snapshot records the translated doc comments again (T131-8).
 - The Python decimal unit passes in the parity run: its round trip reads the DECIMAL_*_DSN names that parity-check exports (T148-4-1).
