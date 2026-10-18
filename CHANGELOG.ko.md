@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 524a5e99186b24d0beb99cac5a0c2bb36f3e34e03d4b0aa2c45090b623756597 -->
+<!-- source-sha256: 1ff30ec9a3c1c383d97b781959d687a3942808265e02f72aaaacc53d3089d7b7 -->
 # 변경 이력
 
 ## Unreleased
+- Unicode word 표는 영어로 생성된다. 생성기 header가 커밋된 표와 같아져 TestCommittedTablesAreGenerated가 통과한다(T131-8-1).
 - Rust interface snapshot가 번역된 doc comment를 다시 기록한다 (T131-8).
 - PHP extension 선언 unit 다섯이 parity 실행에서 통과한다. binding이 parity-check가 지정한 build된 extension을 불러온다 (T148-4-3).
 - Python decimal unit이 parity 실행에서 통과한다. round trip이 parity-check가 내보내는 DECIMAL_*_DSN 이름을 읽는다 (T148-4-1).

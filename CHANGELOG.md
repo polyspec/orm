@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The Unicode word tables are generated in English: the generator's headers match the committed tables, so TestCommittedTablesAreGenerated passes (T131-8-1).
 - The Rust interface snapshot records the translated doc comments again (T131-8).
 - The Python decimal unit passes in the parity run: its round trip reads the DECIMAL_*_DSN names that parity-check exports (T148-4-1).
 - The five PHP extension declaration units pass in the parity run: the binding loads the built extension that parity-check names (T148-4-3).

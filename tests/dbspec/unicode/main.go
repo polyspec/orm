@@ -89,9 +89,9 @@ func wordSpans() []span {
 // header is the description of the generated file. It writes it as a comment, prefixing each line.
 func header(version string) []string {
 	return []string{
-		"생성 파일이다. Unicode " + version + "의 word rune 표다.",
-		"unicode.IsLetter 또는 unicode.IsDigit이 참인 code point의 닫힌 구간이며 오름차순이고 서로 겹치지 않는다.",
-		"`go run ./tests/dbspec/unicode -write`가 쓴다. 직접 고치지 않는다.",
+		"Generated file. The word rune table of Unicode " + version + ".",
+		"Closed ranges of code points for which unicode.IsLetter or unicode.IsDigit is true, in ascending order and non-overlapping.",
+		"Written by `go run ./tests/dbspec/unicode -write`. Do not edit it directly.",
 	}
 }
 
@@ -118,7 +118,7 @@ func renderC(version string, spans []span) []byte {
 		fmt.Fprintf(&b, "    {0x%04X, 0x%04X},\n", s.lo, s.hi)
 	}
 	b.WriteString("};\n\n")
-	b.WriteString("/* unicode_word_rune은 cp가 word rune이면 참이다. 표를 이진 탐색한다. */\n")
+	b.WriteString("/* unicode_word_rune is true if cp is a word rune. Binary-searches the table. */\n")
 	b.WriteString("static inline bool unicode_word_rune(uint32_t cp)\n{\n")
 	b.WriteString("    size_t lo = 0;\n    size_t hi = sizeof unicode_word_ranges / sizeof unicode_word_ranges[0];\n")
 	b.WriteString("    while (lo < hi) {\n        size_t mid = lo + (hi - lo) / 2;\n")
@@ -133,7 +133,7 @@ func renderRust(version string, spans []span) []byte {
 	var b strings.Builder
 	b.WriteString(comment("//! ", version))
 	b.WriteString("\nuse std::cmp::Ordering;\n\n")
-	b.WriteString("/// Go의 unicode 표가 담은 word rune 구간이다.\n")
+	b.WriteString("/// The word rune ranges contained in Go's unicode table.\n")
 	b.WriteString("#[rustfmt::skip]\nconst WORD_RANGES: &[(u32, u32)] = &[\n")
 	for _, s := range spans {
 		fmt.Fprintf(&b, "    (0x%04X, 0x%04X),\n", s.lo, s.hi)
@@ -145,7 +145,7 @@ func renderRust(version string, spans []span) []byte {
 	b.WriteString("    WORD_RANGES\n        .binary_search_by(|&(lo, hi)| {\n")
 	b.WriteString("            if hi < cp {\n                Ordering::Less\n            } else if lo > cp {\n                Ordering::Greater\n            } else {\n                Ordering::Equal\n            }\n        })\n        .is_ok()\n}\n\n")
 	b.WriteString("#[cfg(test)]\nmod tests {\n    use super::*;\n    use std::time::Duration;\n\n")
-	b.WriteString("    /// 모든 code point에서 이진 탐색이 구간을 표시한 bitmap과 같다.\n")
+	b.WriteString("    /// For every code point, the binary search equals the bitmap that marks the ranges.\n")
 	b.WriteString("    #[test]\n    fn binary_search_agrees_with_the_ranges_for_every_code_point() {\n")
 	b.WriteString("        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(Duration::from_secs(10)));\n")
 	b.WriteString("        let mut listed = vec![false; 0x110000];\n")
@@ -158,15 +158,15 @@ func renderRust(version string, spans []span) []byte {
 func renderPython(version string, spans []span) []byte {
 	var b strings.Builder
 	b.WriteString(comment("# ", version))
-	b.WriteString("#\n# unicodedata는 interpreter마다 Unicode 버전이 달라서 이 표로 분류한다.\n")
+	b.WriteString("#\n# Classified with this table, because unicodedata's Unicode version differs from one interpreter to another.\n")
 	b.WriteString("import bisect\n\n")
-	b.WriteString("# (lo, hi)는 word rune의 닫힌 구간이다.\nWORD_RANGES = (\n")
+	b.WriteString("# (lo, hi) is a closed range of word runes.\nWORD_RANGES = (\n")
 	for _, s := range spans {
 		fmt.Fprintf(&b, "    (0x%04X, 0x%04X),\n", s.lo, s.hi)
 	}
 	b.WriteString(")\n\n_STARTS = tuple(lo for lo, _ in WORD_RANGES)\n\n\n")
 	b.WriteString("def _is_word_rune_code_point(cp: int) -> bool:\n")
-	b.WriteString("    \"\"\"cp가 Go의 isWordRune과 같이 Unicode 글자나 숫자이면 참이다.\"\"\"\n")
+	b.WriteString("    \"\"\"True if cp is a Unicode letter or digit, as with Go's isWordRune.\"\"\"\n")
 	b.WriteString("    i = bisect.bisect_right(_STARTS, cp) - 1\n")
 	b.WriteString("    return i >= 0 and cp <= WORD_RANGES[i][1]\n")
 	return []byte(b.String())
@@ -178,15 +178,15 @@ func renderPHP(version string, spans []span) []byte {
 	b.WriteString("<?php\n")
 	b.WriteString(comment("// ", version))
 	b.WriteString("declare(strict_types=1);\n\nnamespace Polyspec\\Orm\\Dbspec;\n\n")
-	b.WriteString("/**\n * Go의 unicode 표가 담은 word rune 표다. 이 파일은 생성되며 직접 고치지 않는다.\n * @internal\n */\n")
+	b.WriteString("/**\n * The word rune table that Go's unicode table holds. This file is generated and not edited directly.\n * @internal\n */\n")
 	b.WriteString("final class UnicodeWord\n{\n")
-	b.WriteString("    /** word rune의 닫힌 구간 [lo, hi]의 목록이며 오름차순이다. */\n")
+	b.WriteString("    /** A list of closed ranges [lo, hi] of word runes, in ascending order. */\n")
 	b.WriteString("    public const RANGES = [\n")
 	for _, s := range spans {
 		fmt.Fprintf(&b, "        [0x%04X, 0x%04X],\n", s.lo, s.hi)
 	}
 	b.WriteString("    ];\n\n")
-	b.WriteString("    /** cp가 표의 word rune이면 참이다. `_`와 `.`은 표에 없으며 Parser가 따로 본다. */\n")
+	b.WriteString("    /** True if cp is a word rune in the table. `_` and `.` are not in the table; Parser checks them separately. */\n")
 	b.WriteString("    public static function contains(int $cp): bool\n    {\n")
 	b.WriteString("        $lo = 0;\n        $hi = count(self::RANGES);\n")
 	b.WriteString("        while ($lo < $hi) {\n            $mid = intdiv($lo + $hi, 2);\n")
@@ -202,13 +202,13 @@ func renderTS(version string, spans []span) []byte {
 	var b strings.Builder
 	b.WriteString(comment("// ", version))
 	b.WriteString("\nimport { present } from '../present.js';\n")
-	b.WriteString("\n/** Go의 unicode 표가 담은 word rune의 닫힌 구간 [lo, hi]이며 오름차순이다. */\n")
+	b.WriteString("\n/** The closed range [lo, hi] of word runes in Go's unicode table, in ascending order. */\n")
 	b.WriteString("export const WORD_RANGES: ReadonlyArray<readonly [number, number]> = [\n")
 	for _, s := range spans {
 		fmt.Fprintf(&b, "  [0x%04X, 0x%04X],\n", s.lo, s.hi)
 	}
 	b.WriteString("];\n\n")
-	b.WriteString("/** cp가 표의 word rune이면 참이다. `_`와 `.`은 표에 없으며 parse.ts가 따로 본다. */\n")
+	b.WriteString("/** True if cp is a word rune of the table. `_` and `.` are not in the table; parse.ts checks them separately. */\n")
 	b.WriteString("export function containsWordRune(cp: number): boolean {\n")
 	b.WriteString("  let lo = 0;\n  let hi = WORD_RANGES.length;\n")
 	b.WriteString("  while (lo < hi) {\n    const mid = (lo + hi) >>> 1;\n")

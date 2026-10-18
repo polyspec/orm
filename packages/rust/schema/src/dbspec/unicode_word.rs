@@ -1,5 +1,5 @@
-//! Generated file. A word rune table of Unicode 17.0.0.
-//! Closed ranges of code points for which unicode.IsLetter or unicode.IsDigit is true; they are in ascending order and do not overlap.
+//! Generated file. The word rune table of Unicode 17.0.0.
+//! Closed ranges of code points for which unicode.IsLetter or unicode.IsDigit is true, in ascending order and non-overlapping.
 //! Written by `go run ./tests/dbspec/unicode -write`. Do not edit it directly.
 
 use std::cmp::Ordering;
