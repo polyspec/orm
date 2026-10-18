@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 91f21232b8228c49dacd20dd0ba276b2894c248364db09a60678bb58e00f6748 -->
+<!-- source-sha256: b0d639bd7b92e0b472fd8f9f16eee2dc9c1e7525efc661fd50c9814557ebc0a9 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1521,3 +1521,23 @@
 - [o] T200 `restoreOrCreate`: soft-delete된 행을 키로 복원하거나 생성한다 (consumer S-286-19-1). 원인: soft delete는 행의 키 값을 남기므로 같은 키의 새 create는 DUPLICATE_KEY로 실패하고, 앱이 키를 찾아 복원하거나 생성해야 한다. 기존 upsert(`duplication()->create()`)는 충돌 키를 정확히 하나 받고, 살아 있는 행을 덮어쓰며, soft-delete된 행은 지운 채로 둔다. 완료 기준: docs/usage.md(+ko)가 다섯 client(php, ts, python, go, rust)의 호출을 명세한다. `soft_delete`가 있는 table에서 한 transaction 안에, `restore()`가 고르는 방식으로 고른 키를 가진 soft-delete된 행은 set 값으로 복원되고 audit도 함께 쓰여 돌려지며, 그 키를 가진 행이 없으면 set 값으로 생성되어 돌려지고, 살아 있는 행이 그 키를 가지면 새 catalog code ROW_NOT_DELETED로 실패하고 아무것도 쓰지 않는다. identity가 아닌 unique key를 가진 bench table 위의 conformance vector `restore_or_create`가 MySQL, PostgreSQL, SQLite에서 세 경우의 statement와 결과를 고정한다. 구현 전 red, 구현 뒤 green. 호출의 interface rule, symbol, parity unit. 결정(사용자, 2026-10-18): 지금 만든다.
   근거: 구현을 stash한 red(var/t200-red3.log): Go `RestoreOrCreate undefined`, Rust `SoftLink has no method restore_or_create`, Python `CONFIG: Restore is not a column of soft_link`. 실행이 Rust build에서 멈추므로 TS와 PHP에는 닿지 않았다. green(var/t200-green.log, `make run-databases TARGETS=conformance-check VECTOR=restore_or_create`): MySQL, PostgreSQL, SQLite에서 go, php, typescript, python, rust가 ok이고, 모든 vector를 실행하는 Python case가 세 데이터베이스 모두에서 통과한다. SQLite에서 그 vector만의 실행은 전체 실행이라면 앞 vector가 보내는 연결의 첫 `orm__row_lock` table statement도 보내며, 그 기대값은 그 statement를 뺀다(tests/conformance/README.md). 담당 검사: interface-check, parity-declarations-check, feature-unit-check, python-model-check, Go generator test, Rust build test(database case 하나는 DSN이 필요하다).
 - [ ] T201 audit trigger가 transaction의 감사 대상 table을 기록한다 (consumer S-286-19). 원인: audit 기록(seq, uuid, service_seq, account_seq, service_member_seq, action, reason, created_at, request_id)은 table을 저장하지 않고, 각 history table의 audit column만 그것을 가리키므로, 화면이 table별로 audit을 거르거나 page를 나눌 수 없다. 완료 기준: 문서(+ko)가 다섯 client에서 같은 의미로, `audit into` trigger가 transaction이 바꾼 감사 대상 table마다 한 행(audit seq와 감사 대상 table 이름)을 audit set의 table에 함께 쓴다고 명세한다. 그것은 audit set의 일반 생성 model에서 audit의 relation으로 읽히므로, query가 ltSeq, limit, getCount로 table별로 거르고 page를 나눈다. 맞는 행이 없으면 다른 읽기와 같다(빈 결과 또는 NO_ROWS). MySQL, PostgreSQL, SQLite에서 vector가 red 뒤 green이고, trigger의 statement, schema, 모든 runtime의 생성 model이 포함된다. 결정(사용자, 2026-10-18): 지금, T200과 병렬로 만든다.
+- [ ] T204 일치하는 행이 없는 select 읽기는 빈 값을 돌려주며, 어떤 select도 `NO_ROWS`를 내지 않는다(사용자 판정). 원인: `get()`은 일치하는 행이 없으면 `NO_ROWS`를 내고, `getSum()`과 `getAvg()`는 행이 없을 때 SQL이 주는 null에 `CODEC_DECODE`를 돌려주므로, 호출자가 평범한 빈 결과에 오류를 잡는다. consumer python(262곳)과 php, node의 `NO_ROWS` catch가 이것을 기다린다. 완료 기준, 각 값을 Go, PHP, Python, Rust, TypeScript에서 red 뒤 green으로 실행하는 conformance vector로 고정한다:
+  - `get()`과 `getBy…()`는 null을 돌려준다(Python `None`, Go `nil`, Rust `None`). `get()`의 `NO_ROWS` 경로는 지운다.
+  - `gets()`, `getsBy…()`, `getsCount()`는 빈 컬렉션을 돌려준다. `getsCount()`는 그룹별 행이므로 빈 값이 컬렉션이다. `getsPage()`는 빈 `items`와 `totalCount`, `totalPages` 0을 돌려준다.
+  - `getCount…()`는 0을 돌려준다.
+  - `getSum()`은 0을 돌려준다: 빈 집합의 합은 정의상 0이고, `COALESCE(SUM(x), 0)`이 SQL null의 표준 관용구이며, 결과 type이 모든 언어에서 숫자로 남는다.
+  - `getAvg()`는 null을 돌려준다: 빈 집합의 평균은 정의되지 않으며, 0은 실제 평균과 구분할 수 없는 지어낸 평균이다.
+  - 존재하는 행 위의 null, 숫자가 아닌 값, 유한하지 않은 값, 범위를 넘는 scalar는 `CODEC_DECODE`로 남는다: 빈 결과가 아니라 잘못된 값이다.
+  - `restore()`는 어떤 행도 갖지 않은 key에 `NO_ROWS`를 유지한다: 쓰기이며, 아무것도 쓰지 않은 restore가 성공처럼 보이면 안 되고, 행이 있게 만드는 호출은 `restoreOrCreate()`(T200)다.
+  - `local(key)`는 없는 key에 `NO_ROWS`를 유지한다: select가 아니라 transaction 로컬 값이며, 없는 key는 호출자 오류이고, null은 저장된 빈 값과 구분되지 않는다.
+  - docs/dsl.md, docs/interfaces.md, docs/usage.md, README와 ko 쌍, contracts/interfaces.json, contracts/fixtures/ir_answers.json, 생성된 `Get` 주석, select에서 `NO_ROWS`를 기대한 모든 test.
+- [ ] T205 `creates(rows, batch)`: 호출자가 multi-row INSERT 하나의 행 수를 정한다(consumer S-286-19 상품 import, 사용자 요청). 원인: `creates(rows)`가 행을 자기 규칙으로 statement에 나누므로 호출자가 statement 크기를 고를 수 없다. 완료 기준, Go, PHP, Python, Rust, TypeScript에서 red 뒤 green으로 실행하는 conformance vector로:
+  - `creates(rows, batch)`가 유일한 형태다: `batch`는 필수이며 양수이고, `batch` 없는 `creates(rows)`는 기본값도 fallback 분할도 없이 지운다. 양의 정수만 받으며, 다른 값은 어떤 statement보다 먼저 `CONFIG`로 실패한다.
+  - `batch` 행씩의 각 묶음(마지막은 더 작을 수 있다)이 multi-row INSERT 하나이고, 모든 묶음이 한 transaction(활성 transaction 안에서는 savepoint) 안에서 실행되며, 실패하면 모든 묶음을 rollback한다.
+  - bind 수가 dialect의 bind 한도를 넘는 묶음은 어떤 statement보다 먼저 새 오류 code `BATCH_TOO_LARGE`(docs/errors.yaml, 모든 catalog, parity unit)로 실패하며, message가 묶음, 그 bind 수, dialect 한도를 말한다. 나누지 않는다.
+  - 결과는 삽입된 행 수다.
+  - docs/dsl.md, docs/interfaces.md, docs/usage.md와 ko 쌍, contracts/interfaces.json, 생성된 wrapper, parity unit.
+- [ ] T202 upsert의 conflict key를 request hook 뒤에 검증한다(consumer hyper ScopeHook). 원인: request hook이 insert의 scope column을 할당하지만 `duplication()->create()`의 conflict key 검증이 hook 전의 request를 읽으므로, hook이 완성하는 key가 거부된다. 완료 기준: 검증 위치(Go ir.go, PHP Validator.php, Python validate.py, Rust validate.rs, TS validate.ts)가 hook이 돌려준 request를 읽는다. 언어마다 unit case, 전 red, 후 green.
+- [ ] T203 `relation()`과 `relations()`가 service scope 아래에서 실행된다(consumer). 원인: service scope 아래에서 둘 다 `CONFIG`로 실패한다. 완료 기준: 원인을 찾아 여기에 적고, 언어마다 case, 전 red, 후 green.
+- [ ] T206 orm이 행이 대기나 진행 중인 동안 `make check`와 `parity-check`를 거부하는 kit full-run guard를 쓴다(kit K233, K234). 완료 기준: orm에서 각각 한 번의 dry run이 열린 행을 말하고 거부한다.
+- [ ] T207 database server가 그 checkout과 함께 멈춘다. 원인: 지워진 worktree의 mysqld 쌍과 같은 datadir의 이전 시작이 며칠씩 돈다. 완료 기준: worktree를 지우거나 datadir에 server 쌍을 시작하면 먼저 그것에 속한 server를 멈춘다. 전 red, 후 green인 test. 지금 도는 고아 process는 사용자가 멈출 일이다.
