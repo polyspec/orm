@@ -3,6 +3,7 @@
 
 ## Unreleased
 - The Python decimal unit passes in the parity run: its round trip reads the DECIMAL_*_DSN names that parity-check exports (T148-4-1).
+- The five PHP extension declaration units pass in the parity run: the binding loads the built extension that parity-check names (T148-4-3).
 - The two PHP performance gates pass in the parity run: parity-check exports ORM_BENCH_MYSQL_DSN, which their guards read (T148-4-2).
 - The PHP decimal-set binding runs its decimal document as its own case, so the dbspec-set-decimal unit passes in both PHP and TypeScript (T148-3-php-1, T148-3-ts-2).
 - The TypeScript IR-answer cases run in ir_answers.mjs under their fixture ids, and the flowmark cases stay in markdown_conformance.mjs (T148-3-ts-3).
