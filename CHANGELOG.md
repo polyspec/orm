@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The PHP tests of the element type check, the behaviour cases and the show-create introspection are bound in the parity declaration (T182-0-1-2).
 - Names::column states its own TypeError for a column that is not a string, as the extension does (T182-0-2-2).
 - The PHP dbspec behaviours that no shared vector fixes are cases with outcomes recorded from the PHP library, so one test checks either implementation of Polyspec\Orm\Dbspec in its own process (T182-0-1).
 - The PHP library refuses a document, document set, plan list or unsupported list whose array holds another type with the TypeError the extension gives, instead of reading it with warnings (T182-0-1-1).
