@@ -1,6 +1,6 @@
-// markdown:// 연결의 flowmark IR executor client다(docs/protocol.md §5 "IR executors", docs/dialects.md "Markdown IR
-// executor"). client는 request를 검증하고 plan하지 않은 채 IR executor message로 보내며, 답의 행을 model로
-// 조립한다.
+// The IR executor client of flowmark that serves markdown:// connections (docs/protocol.md §5 "IR executors", docs/dialects.md "Markdown IR
+// executor"). The client validates the request and sends it as an IR executor message without planning it, and assembles the answer's rows
+// into models.
 import { connect as netConnect, type Socket } from 'node:net';
 import { parse as parseJson, type Value } from '@polyspec/ordered-json';
 import { checkAssign, checkParam, useSlotType } from './bind_check.js';
@@ -15,7 +15,7 @@ import { present } from './present.js';
 import { OrmError } from './runtime_error.js';
 import * as codes from './codes.js';
 
-/** markdown:// DSN의 flowmark server 주소, corpus 이름, token이다(docs/protocol.md §5 "IR executors"). */
+/** The flowmark server address, corpus name and token of a markdown:// DSN (docs/protocol.md §5 "IR executors"). */
 export interface MarkdownDsn {
   readonly address: string;
   readonly corpus: string;
@@ -25,8 +25,8 @@ export interface MarkdownDsn {
 const dsnForm = 'markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>';
 
 /**
- * markdown://127.0.0.1:<port>/<corpus>?token=<token>을 읽는다. flowmark server는 127.0.0.1에서만 듣고 token은
- * 평문으로 가므로 host는 127.0.0.1뿐이다.
+ * Reads markdown://127.0.0.1:<port>/<corpus>?token=<token>. The flowmark server listens only on 127.0.0.1, and the token
+ * travels in plaintext, so the host is 127.0.0.1 only.
  */
 export function parseMarkdownDsn(url: URL): MarkdownDsn {
   if (url.username !== '' || url.password !== '') throw new OrmError(codes.CONFIG, `${dsnForm}; it takes no user`);
@@ -49,17 +49,17 @@ function canceled(): OrmError {
   return new OrmError(codes.CANCELED, 'the call was cancelled');
 }
 
-/** control message 하나다: begin(read_only), commit, rollback, savepoint, release, rollback_to(name). */
+/** One control message: begin(read_only), commit, rollback, savepoint, release, rollback_to(name). */
 function controlLine(op: string, readOnly = false, name = ''): string {
   return JSON.stringify({ op, ...(readOnly ? { read_only: true } : {}), ...(name !== '' ? { name } : {}) });
 }
 
 /**
- * flowmark server와의 연결 하나, 곧 server session 하나다. 한 번에 한 호출이 쓴다: pool이 내주거나 transaction이
- * 잡는다. server가 쓰는 줄은 socket event로 받아 둔다.
+ * One connection to the flowmark server, that is, one server session. Only one call uses it at a time: the pool hands it out, or a transaction
+ * holds it. Lines the server writes are received as socket events and kept.
  */
 export class MarkdownSession {
-  /** 연결을 더 쓸 수 없음을 뜻한다: 읽기나 쓰기가 실패했거나 signal이 끊었거나 server가 연결을 끝냈다. */
+  /** Means the connection can no longer be used: a read or write failed, a signal cut it, or the server ended it. */
   public broken = false;
   public readonly created = performance.now();
   private partial = '';
@@ -93,7 +93,7 @@ export class MarkdownSession {
     wake?.();
   }
 
-  /** server에 연결하고 첫 message connect로 corpus와 token을 보낸다. */
+  /** Connects to the server, and the first message, connect, sends the corpus and token. */
   public static async dial(dsn: MarkdownDsn, signal: AbortSignal | undefined): Promise<MarkdownSession> {
     if (signal?.aborted) throw canceled();
     const at = dsn.address.lastIndexOf(':');
@@ -128,8 +128,8 @@ export class MarkdownSession {
   }
 
   /**
-   * message 하나를 한 줄로 보내고 답 한 줄을 읽는다. 답이 {"error": {code, message}}이면 그 code의 오류다. signal이
-   * 끝나면 연결을 끊는다: server는 끊긴 연결의 transaction을 rollback하고 lock을 푼다.
+   * Sends one message as one line and reads one answer line. If the answer is {"error": {code, message}}, it is an error with that code. If the signal
+   * ends, the connection is disconnected: the server rolls back the transaction of the disconnected connection and releases the lock.
    */
   public async call(line: string, signal: AbortSignal | undefined): Promise<Value> {
     if (this.broken) throw new OrmError(codes.CONNECTION_LOST, 'the flowmark session has ended');
@@ -164,7 +164,7 @@ export class MarkdownSession {
         this.close();
         throw new OrmError(codes.INTERNAL, `the flowmark server answered the error ${failure.raw} without a code`);
       }
-      // server는 CONNECTION_LOST를 쓴 뒤 연결을 닫는다(idle transaction).
+      // The server closes the connection after writing CONNECTION_LOST (idle transaction).
       if (code.stringValue() === codes.CONNECTION_LOST) this.close();
       throw new OrmError(code.stringValue(), message?.kind === 'string' ? message.stringValue() : '');
     }
@@ -181,7 +181,7 @@ export class MarkdownSession {
   }
 }
 
-/** markdown 연결의 session pool이다. 열린 session은 bounds.size를 넘지 않고, 쉬는 session은 bounds.idleSize까지 남긴다. */
+/** The session pool of a markdown connection. Open sessions never exceed bounds.size, and idle sessions are kept up to bounds.idleSize. */
 export class MarkdownPool {
   private idle: MarkdownSession[] = [];
   private open = 0;
@@ -191,7 +191,7 @@ export class MarkdownPool {
 
   public constructor(private readonly dsn: MarkdownDsn, private readonly bounds: PoolBounds) {}
 
-  /** 쉬는 session을 내주거나 새로 연결한다. 쓰는 session이 bounds.size이면 하나가 돌아올 때까지 기다린다. */
+  /** Hands out an idle session or connects a new one. If bounds.size sessions are in use, waits until one comes back. */
   public async acquire(signal: AbortSignal | undefined): Promise<MarkdownSession> {
     while (!this.closed && this.inUse >= this.bounds.size) await this.wait(signal);
     if (this.closed) throw new OrmError(codes.CONFIG, 'database is closed');
@@ -230,7 +230,7 @@ export class MarkdownPool {
     this.waiters.shift()?.();
   }
 
-  /** session을 pool에 돌려준다. 끊긴 session과 닫힌 pool의 session은 닫는다. */
+  /** Returns a session to the pool. A broken session and a session of a closed pool are closed. */
   public release(s: MarkdownSession): void {
     this.inUse--;
     if (s.broken || this.closed || this.idle.length >= this.bounds.idleSize) {
@@ -257,19 +257,19 @@ export class MarkdownPool {
   }
 }
 
-/** transaction을 여는 control message다. 읽기 전용 transaction은 read_only를 보낸다. */
+/** The control message that opens a transaction. A read-only transaction sends read_only. */
 export function beginLine(readOnly: boolean): string { return controlLine('begin', readOnly); }
 
-/** transaction을 끝내는 control message다: commit이나 rollback. */
+/** The control message that ends a transaction: commit or rollback. */
 export function endLine(op: 'commit' | 'rollback'): string { return controlLine(op); }
 
-/** savepoint control message다: savepoint, release, rollback_to. */
+/** Savepoint control message: savepoint, release, rollback_to. */
 export function savepointLine(op: 'savepoint' | 'release' | 'rollback_to', name: string): string { return controlLine(op, false, name); }
 
 /**
- * parameter i의 runtime value model JSON이다: decimal은 string, bytes는 base64, datetime은 UTC의
- * YYYY-MM-DD HH:MM:SS.ffffff, date는 YYYY-MM-DD, time은 HH:MM:SS.ffffff다(p 뒤 자리는 0, 문자열 값도 같다). 어느 form인지는 parameter가 채우는
- * slot의 type이 정한다. hex와 ip style column의 slot은 SQL 연결처럼 client가 값을 encode해 보낸다.
+ * The runtime value model JSON of parameter i: decimal is a string, bytes are base64, datetime is UTC
+ * YYYY-MM-DD HH:MM:SS.ffffff, date is YYYY-MM-DD, time is HH:MM:SS.ffffff (the digits after p are 0, and string values match too). Which form is used is decided by the
+ * type of the slot that the parameter fills. A slot of a hex or ip style column is sent with the value encoded by the client, as in an SQL connection.
  */
 export function markdownParam(db: Pick<Db, 'zone' | 'aesKey'>, i: number, value: unknown, uses: readonly ParamUse[]): string {
   const use = uses[0];
@@ -287,8 +287,8 @@ export function markdownParam(db: Pick<Db, 'zone' | 'aesKey'>, i: number, value:
 }
 
 /**
- * request를 검증하고 그 request message {ir_version, manifest_hash, request, params, now}를 ex의 session에서 실행해
- * 답과 request의 runtime model을 돌려준다. transaction 밖이면 pool의 session 하나를 그 request 동안 쓴다.
+ * Validates the request and runs its request message {ir_version, manifest_hash, request, params, now} in the session of ex, then
+ * returns the answer and the request's runtime model. Outside a transaction, one session from the pool is used for the duration of that request.
  */
 async function markdownCall(ex: Executor, request: Request, params: readonly unknown[]): Promise<{ answer: Value; model: RuntimeModel }> {
   const db = ex.db;
@@ -319,13 +319,13 @@ function answerError(message: string): OrmError {
   return new OrmError(codes.INTERNAL, `the flowmark answer: ${message}`);
 }
 
-/** markdown 답의 행이 마지막 칸에 가지는 join과 relation 행이다. */
+/** The join and relation rows that a markdown answer's row has in its last cell. */
 export interface MarkdownLinks {
   readonly joins: Map<string, unknown[] | null>;
   readonly rels: Map<string, unknown[][]>;
 }
 
-/** markdown 답의 행이 마지막 칸에 가진 join과 relation이다. */
+/** The join and relation that a markdown answer's row had in its last cell. */
 export function markdownLinks(row: readonly unknown[]): MarkdownLinks {
   const links = row[row.length - 1];
   if (links !== null && typeof links === 'object' && links instanceof LinksOf) return links;
@@ -337,7 +337,7 @@ class LinksOf implements MarkdownLinks {
   public readonly rels = new Map<string, unknown[][]>();
 }
 
-/** scalar subquery column의 type이다. */
+/** The type of a scalar subquery column. */
 function subType(m: RuntimeModel, sub: Subquery): string {
   switch (sub.agg) {
     case 'count': return 'i64';
@@ -348,8 +348,8 @@ function subType(m: RuntimeModel, sub: Subquery): string {
 }
 
 /**
- * 답의 한 node다: root, join, relation 하나가 하나씩이다. asm은 node의 행 배치를 적고 joins와 rels는 그 join과
- * relation이다. asm의 column은 node의 첫 행이 정하고 그 뒤 행은 같은 output을 같은 순서로 가져야 한다.
+ * One node of the answer: exactly one each of root, join, and relation. asm records the row layout of the node, and joins and rels are that join and
+ * relation. The node's first row decides the columns of asm, and later rows must have the same outputs in the same order.
  */
 class MarkdownNode {
   public readonly asm: Assemble;
@@ -372,13 +372,13 @@ class MarkdownNode {
       const target = present(entityOf(m, rel.query.entity), `entity ${rel.query.entity}`);
       const parentKeys = (rel.keys ?? []).map(k => k.left);
       const childKeys = (rel.keys ?? []).map(k => k.right);
-      // 이 행이 relation 행의 외래 key가 가리키는 행이면 그 행들은 이 행에 속한다(planner와 같다).
+      // If this row is the one that a relation row's foreign key points to, those rows belong to this row (as in the planner).
       const cascade = rel.query.no_cascade_delete !== true && sameList(parentKeys, this.ent.primaryKey) && !sameList(childKeys, target.primaryKey);
       this.asm.children.push(childOf(rel.rel, rel.kind ?? 'one', rel.query.flatten === true, cascade, child.asm));
     }
   }
 
-  /** output name의 배치다: subquery, column 함수, 아니면 node entity의 column이다. markdown executor는 모든 codec stage를 client에 맡기므로 column의 codec 전체가 decode할 style이다. */
+  /** The placement of an output name: a subquery, a column function, or a column of the node's entity. Since the markdown executor leaves all codec stages to the client, the whole codec of the column is the style to decode. */
   private outCol(name: string, index: number): OutputColumn {
     if (this.groups && name === 'row_count') return { index, name, column: '', type: 'i64', styles: [], hidden: false };
     const c = this.q.columns;
@@ -393,7 +393,7 @@ class MarkdownNode {
     return { index, name, column: name, type: f.type, styles: [...f.stages], hidden: false };
   }
 
-  /** node의 첫 행의 output으로 asm의 column과 key를 정한다. */
+  /** Takes the columns and key of asm from the first row's outputs of the node. */
   public build(outputs: readonly string[]): void {
     outputs.forEach((name, i) => this.asm.columns.push(this.outCol(name, i)));
     const keys = this.groups ? this.q.group_by ?? [] : this.ent.primaryKey;
@@ -405,7 +405,7 @@ class MarkdownNode {
     this.built = true;
   }
 
-  /** 답의 행 하나를 node 배치의 위치 행으로 읽는다: output 값, 그리고 마지막 칸에 join과 relation의 행이다. */
+  /** Reads one answer row as the position row of the node layout: the output values, and in the last cell the join and relation rows. */
   public row(raw: Value): unknown[] {
     if (raw.kind !== 'object') throw answerError(`a row of ${this.ent.name} is ${raw.raw}, not a JSON object`);
     const members = [...raw.members];
@@ -437,14 +437,14 @@ class MarkdownNode {
       }
       k++;
     }
-    // join은 자기 행을 가지므로 node 자신의 column만 decode한다. corpus catalog은 aes column을 거절하므로
-    // keyring이 없다(docs/dialects.md).
+    // A join has its own row, so it decodes only the node's own columns. The corpus catalog rejects aes columns, so
+    // there is no keyring (docs/dialects.md).
     decodeAssembly(values, { ...this.asm, children: [] }, this.db);
     values[outputs.length] = links;
     return values;
   }
 
-  /** relation의 값을 행 목록으로 읽는다: one relation은 object나 null, many relation은 array, key_by relation은 key로 묶은 object다. */
+  /** Reads a relation's value as a list of rows: a one relation is an object or null, a many relation is an array, and a key_by relation is an object grouped by key. */
   public relationRows(raw: Value): unknown[][] {
     if (raw.kind === 'null') return [];
     if (raw.kind === 'array') return this.rows(raw.items);
@@ -456,7 +456,7 @@ class MarkdownNode {
     return items.map(item => this.row(item));
   }
 
-  /** 행이 없는 답의 group_count node는 그 request의 group column과 row_count로 배치를 정한다. */
+  /** A group_count node of an answer with no rows is laid out by the request's group column and row_count. */
   public buildGroups(): void {
     if (!this.built) this.build([...this.q.group_by ?? [], 'row_count']);
   }
@@ -470,7 +470,7 @@ function sameList(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((v, i) => v === b[i]);
 }
 
-/** 답의 값 하나를 column type의 cell로 읽는다. 값은 parameter와 같은 runtime value model이다. */
+/** Reads one answer value as a cell of the column type. The value is the same runtime value model as a parameter. */
 function answerValue(type: string, raw: Value): unknown {
   if (raw.kind === 'null') return null;
   const bad = () => new OrmError(codes.CODEC_DECODE, `the answer value ${raw.raw} is not a ${type} value`);
@@ -496,7 +496,7 @@ function answerValue(type: string, raw: Value): unknown {
   return raw.stringValue();
 }
 
-/** sum과 avg 답의 값과 insert한 행의 key다: 정수, 소수, decimal string, 없으면 null이다. */
+/** The value of sum and avg answers, and the key of an inserted row: an integer, a decimal, a decimal string, or null if none. */
 function aggregateValue(raw: Value): number | string | null {
   switch (raw.kind) {
     case 'null': return null;
@@ -506,7 +506,7 @@ function aggregateValue(raw: Value): number | string | null {
   throw answerError(`the value ${raw.raw} is no number`);
 }
 
-/** row read(one, all, group_count, paginate)의 답을 위치 result로 읽는다. result의 plan은 root node의 배치 하나이고, 각 행의 마지막 칸이 그 join과 relation이다. */
+/** Reads the answer to a row read (one, all, group_count, paginate) as a positional result. The result's plan is one layout of the root node, and the last cell of each row is its join and relation. */
 export async function markdownRead(ex: Executor, request: Request, params: readonly unknown[]): Promise<{ result: Result; total: number }> {
   const { answer, model } = await markdownCall(ex, request, params);
   const rows = answer.get('rows');
@@ -523,7 +523,7 @@ export async function markdownRead(ex: Executor, request: Request, params: reado
   return { result, total: count?.kind === 'number' ? Number(count.numberLiteral()) : 0 };
 }
 
-/** count, sum, avg의 답이다. */
+/** The answer to count, sum, and avg. */
 export async function markdownScalar(ex: Executor, request: Request, params: readonly unknown[]): Promise<unknown> {
   const { answer } = await markdownCall(ex, request, params);
   if (request.kind === 'count') {
@@ -536,7 +536,7 @@ export async function markdownScalar(ex: Executor, request: Request, params: rea
   return aggregateValue(value);
 }
 
-/** write의 답 {affected, keys}이다. keys는 insert한 행의 primary key를 insert 순서로 담는다: identity는 정수, key_prefix key는 text다. */
+/** The answer to write, {affected, keys}. keys holds the primary keys of the inserted rows in insert order: an identity is an integer, and a key_prefix key is text. */
 export async function markdownWrite(ex: Executor, request: Request, params: readonly unknown[]): Promise<{ keys: Array<number | string | null>; affected: number }> {
   const { answer } = await markdownCall(ex, request, params);
   const affected = answer.get('affected');

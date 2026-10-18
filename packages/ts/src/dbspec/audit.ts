@@ -1,11 +1,11 @@
-// audit setting이 기록하는 column(docs/dbspec.md "Audit").
+// The columns that the audit setting records (docs/dbspec.md "Audit").
 import type { DbspecSetting, DbspecTable } from './model.js';
 
 export type DbspecAuditSetting = Extract<DbspecSetting, { readonly kind: 'audit' }>;
 
 /**
- * audit trigger가 column을 복사하는지 알린다. audit column은 언제나, exclude 목록의 column은
- * 언제나 아니며, include 목록이 있으면 그 column만 복사한다.
+ * Tells whether the audit trigger copies a column: audit columns always, columns in the exclude list never,
+ * and if there is an include list, only the columns in it.
  */
 export function auditRecords(a: DbspecAuditSetting, column: string): boolean {
   if (column === a.column) return true;
@@ -14,12 +14,12 @@ export function auditRecords(a: DbspecAuditSetting, column: string): boolean {
   return true;
 }
 
-/** audit trigger가 복사하지 않는 table의 column을 column 순서로 돌려준다. schema text가 쓰는 목록이다. */
+/** Returns, in column order, the columns of a table that the audit trigger does not copy. This is the list that the schema text writes. */
 export function auditExcluded(a: DbspecAuditSetting, t: DbspecTable): string[] {
   return t.columns.filter(c => !auditRecords(a, c.name)).map(c => c.name);
 }
 
-/** setting 줄이다. columns가 null이면 목록 없이, 아니면 list keyword와 그 column을 쓴다. */
+/** A setting line. If columns is null, it writes no list; otherwise it writes the list keyword and its columns. */
 export function auditLine(a: DbspecAuditSetting, list: 'exclude' | 'include', columns: readonly string[] | null): string {
   const head = `audit into ${a.into} column ${a.column} references ${a.references} action ${a.action} previous ${a.previous}`;
   return columns === null || columns.length === 0 ? head : `${head} ${list} (${columns.join(', ')})`;

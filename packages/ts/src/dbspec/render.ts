@@ -1,5 +1,5 @@
-// dbspec 문서 집합을 한 dialect의 문장으로 쓴다 (docs/dialects.md "Rendered statements").
-// 문장의 바이트는 tests/dbspec/ddl.json과 Go 엔진(engine/dbspec/render.go)과 같다.
+// Writes a dbspec document set as the statements of one dialect (docs/dialects.md "Rendered statements").
+// The bytes of the statements are the same as tests/dbspec/ddl.json and the Go engine (engine/dbspec/render.go).
 import { present } from '../present.js';
 import { readCheck, type CheckExpr, type CheckOperand } from './check.js';
 import { checkSet } from './set.js';
@@ -308,7 +308,7 @@ export class Renderer {
   predicate(t: DbspecTable, e: CheckExpr): string {
     switch (e.kind) {
       case 'logical': {
-        // and 안의 or만 괄호로 묶는다.
+        // Only an or inside an and is wrapped in parentheses.
         const side = (q: CheckExpr): string =>
           e.op === 'and' && q.kind === 'logical' && q.op === 'or' ? `(${this.predicate(t, q)})` : this.predicate(t, q);
         return `${side(e.left)} ${e.op.toUpperCase()} ${side(e.right)}`;
@@ -465,7 +465,7 @@ export function renderDbspecStatements(documents: readonly DbspecDocument[], dia
   const { diagnostics } = checkSet(documents);
   if (diagnostics.length > 0) return Object.freeze({ statements: null, diagnostics });
   const r = new Renderer(dialect);
-  // 외부 문서의 table은 그 문서를 소유한 set이 만든다.
+  // A table of an external document is created by the set that owns that document.
   const ordered = useOrder(documents).filter(d => d.external !== true);
   const out: DbspecRenderedStatement[] = [];
   const add = (table: string, statements: readonly string[]) => { for (const sql of statements) out.push(Object.freeze({ sql, table })); };

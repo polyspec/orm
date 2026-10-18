@@ -33,15 +33,15 @@ export interface DriverResult {
 export interface PoolStats { maxOpenConnections: number; openConnections: number; inUse: number; idle: number; }
 
 /**
- * driver가 보낸 statement의 출처다. statement는 호출자가 보낸 statement, deallocate는 PostgreSQL이
- * statement cache에서 밀어낸 prepared statement를 푸는 statement, kill은 MySQL이 다른 연결에서
- * 실행 중인 statement를 멈추는 statement다.
+ * The source of a statement the driver sent. A statement is one the caller sent; deallocate is the statement PostgreSQL
+ * sends to release a prepared statement evicted from the statement cache; kill is the statement MySQL uses from another connection
+ * to stop a running statement.
  */
 export type SentOrigin = 'statement' | 'deallocate' | 'kill';
 
 /**
- * driver가 statement 하나의 결과를 읽었거나 statement가 실패했을 때 부른다. elapsed는 statement를
- * 보낸 때부터의 초이고 error는 statement의 오류다. 던진 오류는 operation의 오류가 된다.
+ * Called when the driver has read one statement's result or the statement failed. elapsed is the time in seconds since the statement
+ * was sent, and error is the statement's error. An error that is thrown becomes the error of the operation.
  */
 export type StatementDone = (sql: string, elapsed: number, error: OrmError | null, origin: SentOrigin) => void;
 
@@ -55,23 +55,23 @@ interface DriverConnection {
 
 export interface DriverPool extends DriverConnection {
   /**
-   * 연결 하나를 잡는다. transaction과, transaction 밖에서 한 연결로 실행해야 하는 statement(MySQL
-   * schema statement와 그것이 읽는 catalog, foreign key를 끄는 SQLite statement)가 쓴다.
+   * Takes one connection. It is used by a transaction, and by statements that must run on one connection outside a transaction (MySQL
+   * schema statements and the catalog they read, and the SQLite statement that turns off foreign keys).
    */
   reserve(): Promise<DriverSession>;
   stats(): PoolStats;
   close(): Promise<void>;
 }
 
-/** 잡아 둔 연결 하나다. 끝나면 release로 돌려준다. */
+/** One held connection. It is returned with release when finished. */
 export interface DriverSession extends DriverConnection {
   /** Runs a statement that is not prepared (transaction control, savepoints, locks, session values, schema statements). */
   control(sql: string, params: readonly DriverValue[], done: StatementDone): Promise<DriverResult>;
-  /** SQLite 연결이 transaction 안에 있는지다. 다른 driver는 알리지 않는다. */
+  /** Whether the SQLite connection is inside a transaction. Other drivers do not report it. */
   inTransaction?(): boolean;
   /**
-   * 연결을 돌려준다. discard면 pool에 돌려주지 않고 닫아 server가 그 session을 끝내게 한다. SQLite의
-   * 하나뿐인 연결은 닫지 않는다.
+   * Returns the connection. With discard, it is not returned to the pool but closed, so the server ends that session. For SQLite
+   * a single connection is not closed.
    */
   release(discard: boolean): void;
 }
@@ -79,8 +79,8 @@ export interface DriverSession extends DriverConnection {
 function seconds(started: number): number { return (performance.now() - started) / 1000; }
 
 /**
- * work가 보내는 statement 하나를 실행하고, 결과를 읽었거나 실패했을 때 done을 부른다. 실패는
- * driver 오류로 바꾸어 done에 주고 던진다.
+ * Runs one statement that work sends, and calls done when the result has been read or the statement failed. A failure is
+ * converted into a driver error, given to done, and thrown.
  */
 async function observed<T>(name: DriverName, sql: string, done: StatementDone, origin: SentOrigin, work: () => Promise<T> | T): Promise<T> {
   const started = performance.now();
@@ -153,11 +153,11 @@ export function sqliteBusy(name: DriverName, error: unknown): boolean {
 }
 
 /**
- * 연결을 잃은 driver 오류인지다: server가 연결을 끝냈거나 연결이 끊겼다. mysql2는 연결을 더 쓸 수
- * 없게 된 오류에 fatal을 두고, 연결을 열지 못한 fatal 오류(ECONNREFUSED, 인증 실패)는 다른 code를
- * 가진다. code가 없는 fatal 오류는 이미 닫힌 연결에 보낸 statement다. MySQL 4031은 server가 쉬던 연결을
- * 끝낸 것이다. PostgreSQL은 class 08(connection exception)과 server가 session을 끝낼 때 보내는
- * 57P01(admin_shutdown), 57P02(crash_shutdown), 57P05(idle_session_timeout)다.
+ * Whether the error is a driver error for a lost connection: the server ended the connection or it dropped. mysql2 sets fatal on an error after which
+ * the connection cannot be used any more, and a fatal error that failed to open the connection (ECONNREFUSED, authentication failure) has a different code.
+ * A fatal error without a code is a statement sent to a connection that was already closed. MySQL 4031 means the server ended a connection that was idle.
+ * PostgreSQL treats class 08 (connection exception) and the codes sent when the server ends a session
+ * 57P01 (admin_shutdown), 57P02 (crash_shutdown), and 57P05 (idle_session_timeout) as lost connections.
  */
 function connectionLost(name: DriverName, source: { code: string | undefined; errno: number | undefined; fatal: boolean }): boolean {
   if (name === 'mysql') {
@@ -189,7 +189,7 @@ function driverError(name: DriverName, error: unknown): OrmError {
   }
   const duplicate = source.code === 'ER_DUP_ENTRY' || source.code === '23505' || source.errcode === 2067 || source.errcode === 1555;
   const foreignKey = source.code === 'ER_NO_REFERENCED_ROW_2' || source.code === 'ER_ROW_IS_REFERENCED_2' || source.code === '23503' || source.errcode === 787 ||
-    // SQLite는 RESTRICT action의 FK 위반을 CONSTRAINT_TRIGGER(1811)로 보고한다. trigger RAISE의 1811은 DRIVER다.
+    // SQLite reports an FK violation of a RESTRICT action as CONSTRAINT_TRIGGER (1811). The 1811 of a trigger RAISE is DRIVER.
     (source.errcode === 1811 && message.includes('FOREIGN KEY constraint failed'));
   const deadlock = source.code === 'ER_LOCK_DEADLOCK' || source.code === '40P01' || source.code === '40001' || source.errcode === 6 || source.errcode === 262;
   // MySQL 1290/1792, PostgreSQL 25006, and SQLite READONLY (8) with its
@@ -216,8 +216,8 @@ async function cancellable<T>(name: DriverName, signal: AbortSignal, stop: () =>
     await work.catch(() => undefined);
     throw canceled(name);
   }
-  // 멈추는 statement의 실패는 statement의 CANCELED가 보고하므로 버린다. 그 event의 subscriber
-  // 실패(SUBSCRIBER)만 statement가 끝난 뒤 operation의 오류로 던진다.
+  // The failure of a statement that is being stopped is reported as the statement's CANCELED, so it is discarded. Only the subscriber's
+  // failure (SUBSCRIBER) is thrown as the operation's error after the statement ends.
   let stopping: Promise<unknown> | undefined;
   const abort = () => { stopping = stop().then(() => undefined, (error: unknown) => error); };
   signal.addEventListener('abort', abort, { once: true });
@@ -235,7 +235,7 @@ async function cancellable<T>(name: DriverName, signal: AbortSignal, stop: () =>
   return result;
 }
 
-/** 멈추는 statement의 subscriber가 실패했으면 그 SUBSCRIBER 오류를 던진다. */
+/** If the subscriber of a statement being stopped failed, throws that SUBSCRIBER error. */
 async function subscriberFailure(stopping: Promise<unknown> | undefined): Promise<void> {
   if (stopping === undefined) return;
   const error = await stopping;
@@ -353,8 +353,8 @@ class StatementNames {
 const statementCaches = new WeakMap<object, StatementNames>();
 
 /**
- * prepared statement를 실행한다. statement cache가 밀어낸 prepared statement는 statement의 결과를 읽은
- * 뒤 같은 연결에서 DEALLOCATE로 푼다. 그 statement는 statement 다음의 event다.
+ * Runs a prepared statement. A prepared statement that the statement cache evicted is released with DEALLOCATE on the same connection after
+ * the statement's result is read. That statement is the event after the statement.
  */
 async function pgExecute(client: pg.PoolClient, sql: string, params: readonly DriverValue[], cacheSize: number, done: StatementDone, failure: () => unknown): Promise<DriverResult> {
   let cache = statementCaches.get(client);
@@ -373,9 +373,9 @@ async function pgExecute(client: pg.PoolClient, sql: string, params: readonly Dr
 }
 
 /**
- * 잡아 둔 연결이 'error' event로 연결 오류를 알렸으면 statement의 실패는 연결을 잃은 오류다. pg는 그
- * 연결의 다음 statement를 code 없는 오류(`Client has encountered a connection error and is not
- * queryable`)로 거절하므로 연결이 알린 오류로 판단한다. failure는 그 오류이거나 undefined다.
+ * If the held connection reported a connection error through its 'error' event, the failure of the statement is a lost-connection error. pg then
+ * rejects the connection's next statement with an error that has no code (`Client has encountered a connection error and is not
+ * queryable`), so the error the connection reported is taken as the judgment. The failure is that error or undefined.
  */
 async function afterFailure<T>(work: Promise<T>, failure: () => unknown): Promise<T> {
   try {
@@ -430,7 +430,7 @@ class PostgresPoolDriver implements DriverPool {
     let client: pg.PoolClient;
     try { client = await this.pool.connect(); } catch (error) { throw driverError(this.name, error); }
     try {
-      // pool이 빌려준 연결의 연결 오류는 pool이 받는다. statement의 오류가 그 code를 가진다.
+      // A connection error on a connection that the pool lent out is received by the pool. The statement's error has that code.
       const work = pgExecute(client, sql, params, this.cacheSize, done, () => undefined);
       return await (signal === undefined ? work : cancellable(this.name, signal, () => pgCancel(this.config, client), work));
     } finally { this.release(client); }
@@ -509,7 +509,7 @@ class SqlitePoolDriver implements DriverPool {
     if (signal?.aborted) throw canceled(this.name);
     return observed(this.name, sql, done, 'statement', () => sqliteExecute(this.state, sql, params));
   }
-  /** transaction이나 session이 쓰지 않을 때 하나뿐인 SQLite 연결을 잡는다. */
+  /** Takes the one SQLite connection when no transaction or session uses it. */
   public async reserve(): Promise<DriverSession> {
     await this.idle();
     this.state.busy = true;
@@ -556,7 +556,7 @@ interface MarkdownParsedDsn { driver: 'markdown'; zone: string; markdown: Markdo
 
 export type ParsedDsn = SqlDsn | MarkdownParsedDsn;
 
-/** scheme마다 DSN이 받는 parameter다(docs/config.md). 다른 parameter는 CONFIG다. */
+/** The parameters a DSN accepts for each scheme (docs/config.md). Any other parameter is CONFIG. */
 const DSN_PARAMETERS: Record<string, readonly string[]> = {
   'mysql:': ['timezone', 'socket', 'ssl-mode', 'ssl-ca'],
   'postgres:': ['timezone', 'host', 'sslmode'],
@@ -564,8 +564,8 @@ const DSN_PARAMETERS: Record<string, readonly string[]> = {
 };
 
 /**
- * MySQL TLS parameter를 검사한다: `ssl-ca`에 CA file의 절대 경로를 둔
- * `ssl-mode=VERIFY_IDENTITY`로 TCP 연결하거나, 둘 다 없다. CA 경로나 undefined를 돌려준다.
+ * Checks the MySQL TLS parameters: a TCP connection that puts the absolute path of the CA file in `ssl-ca`
+ * with `ssl-mode=VERIFY_IDENTITY`, or neither. Returns the CA path or undefined.
  */
 function mysqlTls(url: URL): string | undefined {
   const mode = url.searchParams.get('ssl-mode');
@@ -575,14 +575,14 @@ function mysqlTls(url: URL): string | undefined {
   if (ca === null || ca === '') throw new OrmError(codes.CONFIG, 'mysql DSN ssl-mode=VERIFY_IDENTITY needs ssl-ca, the absolute path of the CA file');
   if (!ca.startsWith('/')) throw new OrmError(codes.CONFIG, `mysql DSN ssl-ca ${ca} is not an absolute path`);
   if (url.searchParams.has('socket')) throw new OrmError(codes.CONFIG, 'mysql DSN ssl-mode connects over TCP and does not accept socket');
-  // identity 검사는 host 이름을 인증서와 비교한다. driver는 IP 주소 host를 이름 localhost와 비교한다.
+  // The identity check compares the host name with the certificate. The driver compares a host that is an IP address with the name localhost.
   if (isIP(url.hostname.replace(/^\[|\]$/g, '')) !== 0) throw new OrmError(codes.CONFIG, `mysql DSN ssl-mode=VERIFY_IDENTITY needs a host name, not the address ${url.hostname}`);
   return ca;
 }
 
 /**
- * ssl-mode=VERIFY_IDENTITY의 mysql2 TLS option이거나 undefined다: `ssl-ca`의 CA, 그 CA가
- * 서명하지 않은 인증서의 거부, host 이름 검사다.
+ * The mysql2 TLS option for ssl-mode=VERIFY_IDENTITY, or undefined: the CA of `ssl-ca`, the rejection of
+ * certificates not signed by that CA, and the host name check.
  */
 function mysqlSsl(parsed: SqlDsn): { ca: string; rejectUnauthorized: true; verifyIdentity: true } | undefined {
   if (parsed.sslCa === undefined) return undefined;
@@ -639,7 +639,7 @@ function sqlitePath(url: URL): string {
   } catch {
     throw new OrmError(codes.CONFIG, 'sqlite DSN path has a % without two hexadecimal digits or is not UTF-8 after percent-decoding');
   }
-  // NUL 뒤를 버리는 opener는 다른 file을 연다.
+  // An opener that drops what follows a NUL opens a different file.
   if (path.includes('\0')) throw new OrmError(codes.CONFIG, 'sqlite DSN path must not contain a NUL byte');
   return path;
 }
@@ -732,9 +732,9 @@ export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, stat
   switch (parsed.driver) {
     case 'mysql': {
       const socket = url.searchParams.get('socket');
-      // ssl-mode=VERIFY_IDENTITY: server 인증서를 CA와 host 이름으로 검사하는 TLS이며,
-      // rejectUnauthorized를 둔 Node TLS 기본값이다. password는 TLS 안에서만 오가고 client는
-      // server의 RSA public key를 요청하지 않는다.
+      // ssl-mode=VERIFY_IDENTITY: TLS that checks the server certificate against the CA and the host name, and
+      // is the Node TLS default with rejectUnauthorized. The password travels only inside TLS, and the client
+      // does not request the server's RSA public key.
       const ssl = mysqlSsl(parsed);
       const created = mysql.createPool({
         ...(socket ? { socketPath: socket } : { host: url.hostname, ...(url.port ? { port: Number(url.port) } : {}) }),
@@ -778,7 +778,7 @@ export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, stat
       // The connection waits for a lock up to busy_timeout from its first statement.
       const busyTimeout = pragmas.find(([name]) => name === 'busy_timeout');
       const db = new DatabaseSync(sqlitePath(url), { timeout: busyTimeout ? Number(busyTimeout[1]) : SQLITE_BUSY_TIMEOUT_MS });
-      // node:sqlite가 link한 SQLite library의 version이다. 연결은 그것을 묻는 statement를 보내지 않는다.
+      // The version of the SQLite library that node:sqlite links. The connection does not send a statement that asks for it.
       const version = process.versions.sqlite ?? '';
       const [major = 0, minor = 0] = version.split('.').map(Number);
       if (major < 3 || (major === 3 && minor < 46)) {

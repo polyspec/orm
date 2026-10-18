@@ -144,15 +144,15 @@ export type DbspecSetting = { readonly comments: readonly string[] } & (
   | {
       readonly kind: 'audit';
       readonly into: string;
-      /** audit 기록 table references의 primary key를 담는 column이다. */
+      /** The column that holds the primary key of the audit record table's references. */
       readonly column: string;
-      /** audit 기록 table이다. */
+      /** The audit record table. */
       readonly references: string;
       readonly action: string;
       readonly previous: string;
-      /** 기록하지 않는 column 목록. 목록이 없으면 null이다. */
+      /** The list of columns that are not recorded. Null if there is no list. */
       readonly exclude: readonly string[] | null;
-      /** audit column 말고 기록하는 column 목록. 목록이 없으면 null이다. */
+      /** The list of columns recorded besides the audit columns. Null if there is no list. */
       readonly include: readonly string[] | null;
     }
 );

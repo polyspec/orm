@@ -48,23 +48,23 @@ function slot(fields: Partial<BindSlot> & { from: string }): BindSlot {
 class Builder {
   public readonly binds: BindSlot[] = [];
   public subs = 0;
-  /** statement가 이름으로 쓴 table이다. */
+  /** The table that the statement uses, by name. */
   private readonly tableNames = new Set<string>();
   public constructor(private readonly d: Dialect) {}
 
-  /** ent의 table 이름을 quote하고 statement의 table로 기록한다. */
+  /** Quotes the table name of ent and records it as the statement's table. */
   public table(ent: Entity): string {
     this.tableNames.add(ent.table);
     return this.d.quote(ent.table);
   }
-  /** statement가 쓴 table을 정렬해 돌려준다. */
+  /** Returns the tables the statement wrote, sorted. */
   public tables(): string[] { return [...this.tableNames].sort(); }
 
   private push(s: BindSlot): string {
     this.binds.push(s);
     return this.d.placeholder(this.binds.length);
   }
-  /** type 있는 slot을 더한다. type 없는 slot은 planner 오류다. */
+  /** Adds a slot that has a type. A slot without a type is a planner error. */
   private typed(s: BindSlot): string {
     if (s.col_type === '') fail(codes.IR_INVALID, `bind slot ${this.binds.length} (${s.from}) has no declared type`);
     return this.push(s);
@@ -470,7 +470,7 @@ export class Planner {
     }
     if (hasAES) {
       const version = columnOf(s.ent, s.ent.aesVersion) ?? fail(codes.SCHEMA_INVALID, `${s.ent.name}: AES column requires an aes_version column`);
-      // 고른 version column이 있으면 그것을 쓰고, 없을 때만 숨겨서 읽는다.
+      // If a chosen version column exists, uses it; hides and reads it only when there is none.
       const chosen = asm.columns.findIndex(c => c.column === version.name && c.styles.length === 0);
       if (chosen >= 0) asm.aes_version = chosen;
       else {

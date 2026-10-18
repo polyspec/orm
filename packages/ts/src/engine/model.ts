@@ -1,6 +1,6 @@
-// dbspec 문서 집합에서 만드는 runtime model (docs/dbspec.md "Runtime model").
-// generated code는 manifest text와 manifestHash를 담고, runtime은 그 text를
-// 한 번 parse해서 entity, field, key, codec stage와 setting을 얻는다.
+// The runtime model made from a dbspec document set (docs/dbspec.md "Runtime model").
+// Generated code holds the manifest text and manifestHash, and the runtime
+// parses the text once to get the entities, fields, keys, codec stages and settings.
 import { dbspecManifest, parseDbspecSet } from '../dbspec/index.js';
 import type { DbspecCodecStage, DbspecDocument, DbspecTable, DbspecType } from '../dbspec/model.js';
 import { OrmError } from '../runtime_error.js';
@@ -18,8 +18,8 @@ export interface Field {
   /** The column has a default, which an insert that omits it takes from the database. */
   readonly hasDefault: boolean;
   /**
-   * default가 `now`다. executor clock을 쓰는 dialect(PostgreSQL, SQLite)는 이 column을 뺀 insert에
-   * executor clock을 bind한다.
+   * default is `now`. Dialects that use the executor clock (PostgreSQL, SQLite) leave this column out of the insert
+   * and bind the executor clock.
    */
   readonly defaultNow: boolean;
   /** decimal(p,s) p, time(p) and datetime(p) p, otherwise 0. */

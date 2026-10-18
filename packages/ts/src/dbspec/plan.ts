@@ -1,5 +1,5 @@
-// schema plan 문서와 plan chain (docs/plans.md "Plan document", "Chain").
-// 기준은 Go 엔진(engine/dbspec/plan.go)이며 diagnostic message는 Go와 같은 바이트다.
+// The schema plan document and the plan chain (docs/plans.md "Plan document", "Chain").
+// The reference is the Go engine (engine/dbspec/plan.go), and the diagnostic messages are the same bytes as Go.
 import { present } from '../present.js';
 import { createHash } from 'node:crypto';
 import { isSchemaText } from './compare.js';
@@ -141,7 +141,7 @@ export function parsePlan(text: string): DbspecPlanResult {
   }
   if (i >= lines.length) return failed(i + 1, 'a blank line and the target schema text follow the header');
   const offset = i + 1;
-  // plan은 database 전체를 하나의 schema로 옮긴다. 외부 문서를 쓰는 set의 table은 install과 addTablesAndColumns가 만든다.
+  // A plan moves the whole database to one schema. Tables of a set that uses an external document are created by install and addTablesAndColumns.
   for (let k = offset; k < lines.length; k++) {
     if (present(lines[k], 'lines[k]').startsWith('use ')) {
       return failed(k + 1, `a plan targets a whole database, and its target uses the external document ${present(lines[k], 'lines[k]').split(/\s+/)[1]}: install a set that uses external documents with install or addTablesAndColumns`);
@@ -213,9 +213,9 @@ export function emitPlan(plan: DbspecPlan): string {
 export function chainPlans(plans: readonly DbspecPlan[]): DbspecChainResult {
   const list: unknown = plans;
   if (!Array.isArray(list)) throw new TypeError('plans must be an array of parsed plans');
-  // plan이 없으면 table이 없는 database의 빈 chain이다.
+  // If there is no plan, it is the empty chain of a database without tables.
   if (plans.length === 0) return Object.freeze({ plans: Object.freeze([]), diagnostics: NO_DIAGNOSTICS });
-  // 빈 database에서 시작하는 plan의 key는 ''이다.
+  // The key of a plan that starts from an empty database is ''.
   const byFrom = new Map<string, DbspecPlan[]>();
   for (const p of plans) {
     const key = p.from ?? '';

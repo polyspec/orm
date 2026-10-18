@@ -173,7 +173,7 @@ class Validator {
     }
     if (!isJoin && q.on) fail(codes.IR_INVALID, 'on[] is only valid on join children');
     if (q.on?.not || q.where?.not) fail(codes.IR_INVALID, 'not applies to a nested group');
-    // top-level group 은 앞 형제가 없으므로 conn 을 갖지 않는다.
+    // A top-level group has no preceding sibling, so it has no conn.
     for (const top of [q.on, q.where]) {
       if (top && (top.conn ?? '') !== '') fail(codes.IR_INVALID, `the top-level group takes no conn ("${top.conn}")`);
     }
@@ -198,7 +198,7 @@ class Validator {
         const left = columnOf(ent, k.left) ?? fail(codes.COLUMN_UNKNOWN, `${q.entity}.${k.left}`);
         const right = columnOf(target, k.right) ?? fail(codes.COLUMN_UNKNOWN, `${target.name}.${k.right}`);
         if (!meets(left, right)) fail(codes.OPERATOR_NOT_ALLOWED, `relation ${r.rel}: ${q.entity}.${k.left} does not meet ${target.name}.${k.right}`);
-        // 한 column이 두 성분에 나오면 key가 아니다.
+        // If a column appears in two components, it is not a key.
         if (lefts.has(k.left) || rights.has(k.right)) fail(codes.IR_INVALID, `relation ${r.rel}: key column ${k.left} or ${k.right} is used twice`);
         lefts.add(k.left);
         rights.add(k.right);
@@ -255,7 +255,7 @@ class Validator {
       const conn = only.conn ?? '';
       if (conn !== '' && conn !== 'and' && conn !== 'or') fail(codes.IR_INVALID, `conn "${conn}"`);
       if (i === 0 && conn === 'or') fail(codes.OR_AT_GROUP_START, 'a group may not start with OR');
-      // group 의 첫 item 은 앞 형제가 없으므로 conn 을 갖지 않는다.
+      // The first item of a group has no preceding sibling, so it has no conn.
       if (i === 0 && conn !== '') fail(codes.IR_INVALID, `the first item of a group takes no conn ("${conn}")`);
       if (it.joined) {
         const j = joined.get(it.joined.join) ?? fail(codes.ENTITY_NOT_JOINED, `${it.joined.join} is not joined in this statement`);
@@ -342,7 +342,7 @@ class Validator {
     }
     if (columnOps.has(op)) {
       if (!p.ref) fail(codes.IR_INVALID, `${op} needs ref`);
-      // 없거나 null인 path는 root다. 문자열이 아닌 path나 column은 request의 형태가 틀린 것이다.
+      // A path that is missing or null is the root. A path or column that is not a string means the request has the wrong shape.
       const path: unknown = p.ref.path ?? '';
       const refColumn: unknown = p.ref.column;
       if (typeof path !== 'string' || typeof refColumn !== 'string') fail(codes.IR_INVALID, `${op} ref path and column must be strings`);

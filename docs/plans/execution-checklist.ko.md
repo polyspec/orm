@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: e7b8b67bd41b87e7ca6b9482957ce25c364abb858b75d826df9bb92830307a82 -->
+<!-- source-sha256: 69da6c6aa6bc405260af07884c14626df78afe82240646d9f47e8223a1e50fdb -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1167,7 +1167,7 @@
 - [~] T131 code 주석을 영어로 번역한다. 원인: AGENTS가 code 주석은 한국어라고 적어, 주석은 영어라는 owner 규칙(kit PRINCIPLES, K84)과 어긋났다. 2026-10-13 기준 728개 파일에 한국어 주석 10,059줄이 남아 있다. 인수 조건: code 파일의 주석에 한글이 없으며, 이를 어기면 실패하는 검사가 check target에 들어 있다; AGENTS가 영어 규칙을 적는다. Cause: owner 판정(2026-10-15): flowmark가 받을 release는 protocol 항목을 먼저 끝내고, 이 항목은 그 release 뒤로 미룬다. Resumed: link-owner 판정(2026-10-18): 지금 로컬 전용 개발로 시작한다. 주석 번역은 protocol 항목과 충돌하지 않는다. Evidence(T131-1): scripts/comments/check.mts의 검사가 단위 case 23개를 통과하고, `make comment-language-check`는 tree에서 한글 주석 10,469줄을 파일과 줄을 대며 실패한다.
   - [o] T131-1 주석 언어 검사: 각 생태계 자신의 tokenizer(Go `go/scanner`, TypeScript scanner, Python `tokenize`, PHP `token_get_all`; tokenizer가 없는 언어는 먼저 S1의 rebuild 기록)로 모든 code 파일의 주석 token을 꺼내 한글이 있으면 파일과 줄을 대며 실패하는 얇은 도구; 현재 tree에서 red다. Cause: owner 판정(2026-10-15): flowmark가 받을 release는 protocol 항목을 먼저 끝내고, 이 항목은 그 release 뒤로 미룬다. Resumed: link-owner 판정(2026-10-18): 지금 로컬 전용 개발로 시작한다. 주석 번역은 protocol 항목과 충돌하지 않는다. Evidence(T131-1): scripts/comments/check.mts의 검사가 단위 case 23개를 통과하고, `make comment-language-check`는 tree에서 한글 주석 10,469줄을 파일과 줄을 대며 실패한다.
   - [!] T131-2 Go 주석을 영어로. Cause: owner 판정(2026-10-15): flowmark가 받을 release는 protocol 항목을 먼저 끝내고, 이 항목은 그 release 뒤로 미룬다. Retry: 그 orm release가 공개되면 시작한다.
-  - [!] T131-3 TypeScript와 JavaScript 주석을 영어로. Cause: owner 판정(2026-10-15): flowmark가 받을 release는 protocol 항목을 먼저 끝내고, 이 항목은 그 release 뒤로 미룬다. Retry: 그 orm release가 공개되면 시작한다.
+  - [o] T131-3 TypeScript와 JavaScript 주석을 영어로. Cause: owner 판정(2026-10-15): flowmark가 받을 release는 protocol 항목을 먼저 끝내고, 이 항목은 그 release 뒤로 미룬다. Resumed: link-owner 판정(2026-10-18), 로컬 전용 개발. Evidence(T131-3): packages/ts/src, packages/ts/tests, packages/ts/testing의 TypeScript 주석은 영어이며, `node scripts/comments/check.mts packages/ts`가 통과한다.
   - [!] T131-4 PHP와 PHP extension 주석을 영어로. Cause: owner 판정(2026-10-15): flowmark가 받을 release는 protocol 항목을 먼저 끝내고, 이 항목은 그 release 뒤로 미룬다. Retry: 그 orm release가 공개되면 시작한다.
   - [!] T131-5 Python 주석을 영어로. Cause: owner 판정(2026-10-15): flowmark가 받을 release는 protocol 항목을 먼저 끝내고, 이 항목은 그 release 뒤로 미룬다. Retry: 그 orm release가 공개되면 시작한다.
   - [!] T131-6 Rust 주석을 영어로. Cause: owner 판정(2026-10-15): flowmark가 받을 release는 protocol 항목을 먼저 끝내고, 이 항목은 그 release 뒤로 미룬다. Retry: 그 orm release가 공개되면 시작한다.

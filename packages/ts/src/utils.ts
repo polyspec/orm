@@ -37,9 +37,9 @@ function versionOf(value: unknown): number {
 }
 
 /**
- * SQLite 연결의 foreign key를 끄고 BEGIN IMMEDIATE transaction으로 fn을 실행한 뒤 foreign key 검사가
- * row를 돌려주지 않을 때만 commit하고 foreign key를 다시 켠다(docs/plans.md "Apply"의 SQLite 다시
- * 만들기). transaction은 연결의 다음 번호를 받고, foreign key를 바꾸는 statement는 transaction 밖이다.
+ * Turns off foreign keys on a SQLite connection, runs fn in a BEGIN IMMEDIATE transaction, and then, only if the foreign key check
+ * returns no rows, commits and turns foreign keys back on (docs/plans.md "Apply", SQLite rebuild).
+ * The transaction takes the connection's next number, and the statements that change foreign keys are outside the transaction.
  */
 async function withoutForeignKeys<T>(db: Db, session: DriverSession, fn: (run: Runner) => Promise<T>): Promise<T> {
   const outside = db.runner(session, null);
@@ -58,7 +58,7 @@ async function withoutForeignKeys<T>(db: Db, session: DriverSession, fn: (run: R
     }
     await inside('commit', [], 'COMMIT');
   } catch (error) {
-    // foreign key를 다시 켜지 못하면 두 오류를 함께 돌려준다.
+    // If foreign keys cannot be turned back on, both errors are returned together.
     try { await outside('utility', [], 'PRAGMA foreign_keys = ON'); } catch (restore) { throw joinedErrors([error, restore]); }
     throw error;
   }
@@ -66,23 +66,23 @@ async function withoutForeignKeys<T>(db: Db, session: DriverSession, fn: (run: R
   return result;
 }
 
-/** 외부 문서의 쓰는 table이 database와 다른 set의 CONFIG다. */
+/** The CONFIG for a set whose table that an external document writes differs from the database. */
 function externalError(differences: readonly string[]): OrmError {
   return config(`the tables that the set uses from external documents differ from the database: ${differences.join('; ')}`);
 }
 
-/** set의 외부 문서 text를 문서 이름마다 돌려준다. schema text의 use 줄을 parse할 때 쓴다. */
+/** The external document text of the set, returned for each document name. Used when parsing the use lines of schema text. */
 function externalTexts(model: RuntimeModel): Record<string, string> {
   return Object.fromEntries(model.documents.filter(d => d.external === true).map(d => [d.name, emitDbspec(d)]));
 }
 
-/** 연결의 database를 introspect한다. run은 연결의 statement를 보낸다. catalog query는 table을 가리키지 않는 schema statement다. */
+/** Introspects the connection's database. run sends the connection's statements. A catalog query is a schema statement that does not point to a table. */
 async function introspect(run: Runner, driver: DriverName): Promise<DbspecIntrospection> {
   return introspectCatalog(async sql => (await run('schema', [], sql)).rows.map(values => new CatalogRow(sql, values)), driver, 'schema');
 }
 
 /**
- * 연결의 database를 introspect하고, set이 외부 문서에서 쓰는 table이 외부 문서와 다르면 CONFIG다(docs/dbspec.md
+ * Introspects the connection's database, and if a table that the set writes through an external document differs from that document, it is CONFIG (docs/dbspec.md
  * "External documents").
  */
 async function introspectSet(run: Runner, driver: DriverName, model: RuntimeModel): Promise<DbspecIntrospection> {
@@ -92,15 +92,15 @@ async function introspectSet(run: Runner, driver: DriverName, model: RuntimeMode
   return live;
 }
 
-/** database가 set과 다르면 그 차이를 모두 담은 CONFIG다. */
+/** If the database differs from the set, a CONFIG holding all the differences. */
 function verifySet(differences: readonly string[]): void {
   if (differences.length > 0) throw config(`the database differs from the document set: ${differences.join('; ')}`);
 }
 
-/** set의 schema text 문서다. database와 비교하는 대상이다. */
+/** The schema text document of the set, which is what the database is compared against. */
 function schemaTarget(model: RuntimeModel): DbspecDocument {
   const manifest = dbspecManifest(model.documents);
-  // schema text의 use 줄은 외부 문서를 가리키므로 외부 문서를 집합으로 삼아 parse한다.
+  // The use lines of schema text point to external documents, so the external documents are parsed as the set.
   const parsed = manifest.manifest === null ? null : parseDbspec(manifest.manifest.schemaText, externalTexts(model));
   const failed = parsed === null ? manifest.diagnostics : parsed.diagnostics;
   const [d] = failed;
@@ -222,10 +222,10 @@ export class SchemaUtils {
   }
 
   /**
-   * generated schema의 set을 이 연결에 등록한다. database를 읽거나 쓰지 않는다: manifest text가 선언한
-   * hash로 hash되는지 확인하고(아니면 CONFIG) set을 등록할 뿐이다. 같은 set을 다시 등록하면 아무것도
-   * 바꾸지 않는다. database가 set과 같은지는 install과 addTablesAndColumns가 설치와 upgrade 때
-   * 확인하며, 요청마다 연 연결에도 register가 statement 없이 set을 등록한다(docs/schema.md "Schema
+   * Registers the generated schema's set on this connection. It reads and writes no database: the manifest text declares a
+   * hash, and it checks that the text hashes to it (otherwise CONFIG), then only registers the set. Registering the same set again changes nothing.
+   * Whether the database equals the set is checked by install and addTablesAndColumns at install and upgrade time,
+   * and register also registers the set, without a statement, on connections opened per request (docs/schema.md "Schema
    * registration").
    */
   public register(schema: Schema): void {
@@ -233,15 +233,15 @@ export class SchemaUtils {
   }
 
   /**
-   * generated schema의 document set을 연결의 database에 설치하고, database가 set과 같은지 확인한 뒤 그
-   * set을 이 연결에 등록한다. manifest text가 선언한 hash로 hash되지 않으면 어떤 statement보다 먼저
-   * CONFIG다. 연결의 database를 introspect해, 외부 문서에서 쓰는 table이 외부 문서와 다르면 CONFIG다.
-   * set이 소유한 table이 하나도 없으면 render한 statement(docs/dialects.md "Rendered statements")로 모두
-   * 만들고, 모두 있으면 아무것도 만들지 않으며, 일부만 있으면 CONFIG다. 그다음 database를 다시 읽어 set이
-   * 소유한 table을 set과 비교하고, 차이가 있으면 그 차이를 모두 담은 CONFIG다(docs/schema.md "Schema
-   * installation"). PostgreSQL과 SQLite는 진행 중인 transaction이나 새 transaction에서 적용하므로 실패한
-   * install은 아무것도 남기지 않는다. MySQL은 schema statement를 암묵적으로 commit하므로 transaction
-   * 밖에서 적용하고 안에서는 CONFIG다.
+   * Installs the generated schema's document set on the connection's database, then checks that the database equals the set and
+   * registers the set on this connection. If the text does not hash to the declared hash, it is CONFIG before any statement.
+   * CONFIG. The connection's database is introspected, and if a table that an external document writes differs from that document, it is CONFIG.
+   * If the set owns no table at all, it creates all of them with the rendered statements (docs/dialects.md "Rendered statements"),
+   * if all of them exist it creates nothing, and if only some exist it is CONFIG. Then the database is read again and the set's
+   * owned tables are compared with the set, and if there is any difference, it is CONFIG holding all the differences (docs/schema.md "Schema
+   * installation"). PostgreSQL and SQLite apply in an ongoing or a new transaction, so a failed
+   * install leaves nothing behind. MySQL implicitly commits schema statements, so it applies them outside a transaction
+   * and is CONFIG inside one.
    */
   public async install(schema: Schema): Promise<void> {
     this.u.db.unsupportedOnMarkdown('schema install (flowmark install creates a corpus)');
@@ -274,17 +274,17 @@ export class SchemaUtils {
   }
 
   /**
-   * 설치한 document set을 generated schema의 새 version으로 더해서만 올린다(docs/schema.md "Adding
-   * tables and columns"). 연결의 database를 introspect해 database에 있는 set의 table을 set과 비교하고,
-   * database에 없는 set의 table을 index, foreign key, check, trigger와 함께 만들며, 있는 table에 빠진
-   * column 가운데 null이거나 default가 있는 column을 더한다. addTablesAndColumnsSteps의 plan step을
-   * 실행하므로 바뀐 table의 audit trigger도 새 column을 기록하도록 바뀐다. 다른 set의 table은 그대로
-   * 두며 set을 등록하지 않는다. 다른 차이는 어떤 statement보다 먼저 SCHEMA_DIFFERS다. manifest text가
-   * 선언한 hash로 hash되지 않으면 먼저 CONFIG다. PostgreSQL은 진행 중인 transaction이나 새
-   * transaction에서 적용한다. MySQL은 schema statement를 암묵적으로 commit하고, SQLite는 foreign key를
-   * 끈 채 table을 다시 만들어 column을 더하는데 foreign key 설정은 transaction 안에서 바뀌지 않으므로,
-   * 둘 다 transaction 밖에서 적용하고 안에서는 CONFIG다. 만든 table은 "table", 더한 column은
-   * "table.column"으로 table 이름, column 순서로 돌려준다.
+   * Only raises the installed document set by adding it as a new version of the generated schema (docs/schema.md "Adding
+   * tables and columns"). It introspects the connection's database and compares the set's tables in the database with the set,
+   * creates the set's tables that are not in the database with their indexes, foreign keys, checks and triggers, and adds to existing tables the missing
+   * columns that are null or have a default, by running the plan steps of addTablesAndColumnsSteps, so the audit triggers of changed tables record the new columns.
+   * Tables of other sets are left as they are, and no set is registered for them. Other differences are SCHEMA_DIFFERS before any statement.
+   * If the manifest text does not hash to the declared hash, it is CONFIG first. PostgreSQL applies in an ongoing or new transaction,
+   * while MySQL implicitly commits schema statements and SQLite rebuilds tables to add columns with foreign key settings turned off.
+   * Since those foreign key settings do not change inside a transaction, both apply outside a transaction and are CONFIG inside one.
+   * A created table is listed as "table", and an added column as
+   * "table.column", returned in
+   * table name and column order.
    */
   public async addTablesAndColumns(schema: Schema): Promise<string[]> {
     this.u.db.unsupportedOnMarkdown('addTablesAndColumns (schema evolution follows the flowmark migration rules)');
@@ -295,9 +295,9 @@ export class SchemaUtils {
       let live = await introspectSet(run, driver, model);
       const { added, steps, differences } = addTablesAndColumnsSteps(live.document, live.unsupported, target, driver);
       if (differences.length > 0) throw new OrmError(codes.SCHEMA_DIFFERS, `the existing tables of the document set differ beyond missing tables, missing columns that are null or have a default and missing indexes: ${differences.join('; ')}`);
-      // step의 statement는 그 효과가 가리키는 table을 만들거나 바꾼다.
+      // The statements of a step create or change the tables that its effect points to.
       for (const step of steps) await run('schema', step.effect.table === '' ? [] : [step.effect.table], step.statement);
-      // step을 실행한 database가 set과 같은지 다시 읽어 확인한다.
+      // Reads the database again after running the step to check that it equals the set.
       if (steps.length > 0) live = await introspect(run, driver);
       verifySet(installedDifferences(live.document, live.unsupported, target));
       return [...added];

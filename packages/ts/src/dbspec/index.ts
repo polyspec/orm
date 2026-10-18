@@ -139,8 +139,8 @@ export function dbspecManifest(documents: readonly DbspecDocument[]): DbspecMani
     manifestText += emitDocument(document, 'manifest');
     owned.push(...document.tables);
   }
-  // schema text는 집합이 소유한 모든 table을 이름 순으로 담은 문서 `schema` 하나이므로 문서를 나누는 방식과 무관하다.
-  // 외부 문서에서 쓰는 table은 그 문서의 use 줄로 남는다.
+  // The schema text is a single document `schema` that holds every table the set owns, in name order, so it does not depend on how the documents are split.
+  // A table used by an external document remains as a use line of that document.
   const tables = owned.sort((a, b) => compareText(a.name, b.name));
   const schemaText = emitDocument({ name: 'schema', uses, tables, diagrams: [], closingComments: [] }, 'schema');
   const manifest = Object.freeze({
@@ -155,8 +155,8 @@ function compareText(a: string, b: string): number {
 }
 
 /**
- * 외부 문서에서 tables의 column, primary key, unique key만 문서 순서로 담은 문서다. 그 table이 없으면 null이다. foreign
- * key, index, check, setting은 외부 문서가 소유하므로 담지 않는다.
+ * A document of only the columns, primary key and unique keys of the tables, in document order, from the external document. If the table does not exist, null. foreign
+ * key, index, check and setting are owned by the external document, so they are not included.
  */
 function externalDocument(document: DbspecDocument, tables: readonly string[]): DbspecDocument | null {
   const kept: DbspecTable[] = document.tables.filter(t => tables.includes(t.name)).map(t => ({

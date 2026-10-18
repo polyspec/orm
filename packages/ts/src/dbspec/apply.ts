@@ -1,7 +1,7 @@
-// plan chain을 database 하나에 step 하나씩 적용하고, 중단된 plan을 이어 가거나
-// 되돌리고, 적용한 plan을 finalize한다(docs/plans.md "Apply"). 기준은 Go 엔진
-// (engine/dbspec/apply.go)이며 lock, session 설정, history table, step, 검증과 효과
-// query가 Go와 같다.
+// Applies a plan chain to a database one step at a time, continues an interrupted plan or
+// rolls it back, and finalizes an applied plan (docs/plans.md "Apply"). The reference is the Go engine
+// (engine/dbspec/apply.go); the lock, session settings, history table, steps, validation and effects
+// queries are the same as Go.
 import { present } from '../present.js';
 import mysql from 'mysql2/promise';
 import pg from 'pg';
@@ -74,26 +74,26 @@ export class DbspecApplyError extends Error {
   }
 }
 
-// history table은 적용한 plan을 기록한다. dbspec 이름에는 $가 없으므로
-// 사용자 table과 겹치지 않고, introspection은 dbspec$로 시작하는 table을 빼고 읽는다.
+// The history table records the applied plans. A dbspec name has no $, so
+// it does not overlap a user table, and introspection reads without the tables that start with dbspec$.
 const HISTORY_TABLE = 'dbspec$plans';
-// 현재 database 하나의 apply lock 이름이다. MySQL lock 이름은 64자까지이므로 database
-// 이름 대신 그 SHA-256 hex 앞 51자를 붙여 64자로 만든다.
+// The apply lock name of the current database. MySQL lock names are up to 64 characters, so the database
+// name is replaced by the first 51 characters of its SHA-256 hex to make 64 characters.
 const MYSQL_LOCK = `CONCAT('${HISTORY_TABLE}$', LEFT(SHA2(DATABASE(), 256), 51))`;
-// 현재 database의 현재 schema 하나의 advisory lock key다.
+// The advisory lock key of the current schema of the current database.
 const POSTGRES_LOCK = `hashtext('${HISTORY_TABLE}'), hashtext(current_schema())`;
-// session error가 밝히는 요구다. lock은 server session에 속하므로 명령은 처음부터 끝까지 다른
-// client와 나누지 않는 server session 하나에서 실행해야 한다. transaction pooler는 statement마다
-// server connection을 다시 고르므로 그 요구를 지키지 못한다.
+// The requirement that the session error reveals. The lock belongs to the server session, so the command must run from start to finish
+// in one server session that is not shared with another client. A transaction pooler picks a server
+// connection for each statement, so it cannot keep that requirement.
 const SESSION_REQUIREMENT = 'apply, recover, rollback and finalize need one server session of their own for the whole run: a direct or session-pooled connection';
-// 현재 server session의 id와, 그 session이 이 명령의 lock을 이미 잡고 있는지를 읽는다. lock을 잡기
-// 전에 이미 잡혀 있으면 다른 client가 같은 server session을 쓰고 있다.
+// Reads the id of the current server session and whether that session already holds this command's lock. Before the lock is taken,
+// if it is already held, another client is using the same server session.
 const SESSION_QUERIES: Readonly<Record<'mysql' | 'postgres', string>> = Object.freeze({
   mysql: `SELECT CONNECTION_ID(), COALESCE(IS_USED_LOCK(${MYSQL_LOCK}) = CONNECTION_ID(), 0)`,
   postgres: "SELECT pg_backend_pid(), EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND pid = pg_backend_pid() AND objsubid = 2"
     + ` AND classid = (hashtext('${HISTORY_TABLE}')::bigint & 4294967295)::oid AND objid = (hashtext(current_schema())::bigint & 4294967295)::oid)`,
 });
-// statement가 다른 session의 lock을 기다리는 최대 시간이다(docs/plans.md "Apply"의 lock 대기).
+// The maximum time a statement waits for another session's lock (the lock wait in docs/plans.md "Apply").
 const LOCK_WAIT_SECONDS = 5;
 
 const APPLYING = 'applying';
@@ -103,8 +103,8 @@ const DONE = 'done';
 const ROLLING_BACK = 'rolling_back';
 
 /**
- * dialect마다 효과 종류를 읽는 query다. 인자는 effect의 table과 name 중 query가
- * 쓰는 것이며, query는 개수를 돌려준다.
+ * A query that reads the kind of effect for each dialect. The arguments are the table and name of the effect, of which the query
+ * uses one, and the query returns a count.
  */
 export const EFFECT_QUERIES: Readonly<Record<DbspecDialect, Readonly<Record<string, string>>>> = Object.freeze({
   mysql: Object.freeze({
@@ -134,7 +134,7 @@ export const EFFECT_QUERIES: Readonly<Record<DbspecDialect, Readonly<Record<stri
   }),
 });
 
-// mysql2/promise는 PromisePool class를 내보내지만 type 선언에는 없다.
+// mysql2/promise exports the PromisePool class, but it is not in the type declarations.
 const MYSQL_POOL = mysqlPoolClass();
 
 function mysqlPoolClass(): Function {
@@ -143,7 +143,7 @@ function mysqlPoolClass(): Function {
   return value;
 }
 
-/** dialect connection 하나의 statement 실행과 row 읽기다. row는 값 배열이다. */
+/** Runs statements and reads rows on one dialect connection. A row is an array of values. */
 interface Session {
   exec(sql: string, args?: readonly (string | number)[]): Promise<void>;
   rows(sql: string, args?: readonly (string | number)[]): Promise<unknown[][]>;
@@ -157,7 +157,7 @@ function session(connection: unknown, dialect: DbspecDialect): Session {
   switch (dialect) {
     case 'mysql': {
       if (!isMySqlConnection(connection)) throw missingMethod(dialect, 'query');
-      // pool은 statement마다 다른 connection을 쓰므로 lock과 기록이 맞지 않는다.
+      // The pool uses a different connection for each statement, so the lock and the records would not match.
       if (connection instanceof MYSQL_POOL) throw new TypeError('apply needs one mysql connection, not a pool');
       const c = connection;
       return {
@@ -197,7 +197,7 @@ function session(connection: unknown, dialect: DbspecDialect): Session {
   throw new TypeError(`unknown dbspec dialect ${String(dialect)}`);
 }
 
-/** integer column이나 COUNT의 값이다. 정수가 아닌 값은 error다. */
+/** The value of an integer column or COUNT. A non-integer value is an error. */
 function integer(value: unknown, what: string): number {
   if (typeof value === 'number' && Number.isSafeInteger(value)) return value;
   if (typeof value === 'bigint' && value >= BigInt(Number.MIN_SAFE_INTEGER) && value <= BigInt(Number.MAX_SAFE_INTEGER)) return Number(value);
@@ -210,7 +210,7 @@ function text(value: unknown, what: string): string {
   return value;
 }
 
-/** 빈 database의 hash는 history에 empty로 쓴다. */
+/** The hash of an empty database is written to the history as empty. */
 function hashOrEmpty(hash: string | null): string {
   return hash === null || hash === '' ? 'empty' : hash;
 }
@@ -222,13 +222,13 @@ interface HistoryRow {
   step: number;
 }
 
-/** 이 module이 정리 error를 모아 만든 AggregateError다. 바깥 정리에서 한 목록으로 편다. */
+/** The AggregateError that this module makes from the collected cleanup errors. The outer cleanup unfolds it into one list. */
 const cleanupAggregates = new WeakSet<AggregateError>();
 
 /**
- * f를 실행한 뒤 ends를 앞의 실패와 상관없이 차례로 모두 실행한다. error가 하나면 그
- * error를, 둘 이상이면 처음 error와 그 뒤의 정리 error를 순서대로 담은 AggregateError를
- * 던진다.
+ * After running f, runs the ends in order, all of them, regardless of the earlier failure. If there is one error, it throws that
+ * error; if there are two or more, it throws the AggregateError that holds, in order, the first error and the cleanup errors after it
+ * throws.
  */
 async function finish(f: () => Promise<void>, ...ends: (() => Promise<unknown>)[]): Promise<void> {
   const failures: unknown[] = [];
@@ -256,18 +256,18 @@ async function finish(f: () => Promise<void>, ...ends: (() => Promise<unknown>)[
   }
 }
 
-/** 첫 finalize step의 index다. */
+/** The index of the first finalize step. */
 function finalizeStart(steps: readonly DbspecPlanStep[]): number {
   const i = steps.findIndex(s => s.finalize);
   return i < 0 ? steps.length : i;
 }
 
-/** 명령 한 번의 상태다. */
+/** The state of one command. */
 class Applier {
   readonly s: Session;
   readonly r: Renderer;
   history = new Map<string, HistoryRow>();
-  // lock을 잡은 server session의 id다(MySQL CONNECTION_ID, PostgreSQL pg_backend_pid).
+  // The id of the server session that holds the lock (MySQL CONNECTION_ID, PostgreSQL pg_backend_pid).
   serverSession: number = 0;
 
   constructor(
@@ -295,12 +295,12 @@ class Applier {
     return (await this.queryRow(sql, args))[0];
   }
 
-  /** dialect의 lock을 잡고 session 설정을 바꾼 뒤 f를 실행하고, 끝에 설정을 되돌리고 lock을 놓는다. */
+  /** Takes the dialect's lock and changes the session settings, runs f, and then restores the settings and releases the lock. */
   async session(f: () => Promise<void>): Promise<void> {
     switch (this.dialect) {
       case 'mysql': {
         await this.openSession(SESSION_QUERIES.mysql);
-        // GET_LOCK의 NULL은 lock을 기다리던 중의 error다.
+        // A NULL from GET_LOCK is an error raised while waiting for the lock.
         const [got, current] = await this.queryRow(`SELECT GET_LOCK(${MYSQL_LOCK}, 0), CONNECTION_ID()`);
         if (got === null) throw new Error('GET_LOCK returned NULL; want 1 or 0');
         const acquired = integer(got, 'GET_LOCK');
@@ -324,7 +324,7 @@ class Applier {
         return;
       }
       case 'postgres': {
-        // current_schema()가 NULL이면 결과도 NULL이며 error다.
+        // If current_schema() is NULL, the result is also NULL and an error.
         await this.openSession(SESSION_QUERIES.postgres);
         const [got, current] = await this.queryRow(`SELECT pg_try_advisory_lock(${POSTGRES_LOCK}), pg_backend_pid()`);
         if (got !== true) {
@@ -357,7 +357,7 @@ class Applier {
     await this.sqliteSession(f);
   }
 
-  /** SQLite의 exclusive locking mode로 file을 잠그고, foreign key를 끄고, 이름 바꾸기가 다른 table의 foreign key를 데려가게 한다. */
+  /** Locks the file in SQLite's exclusive locking mode, turns off foreign keys, and makes a rename carry the foreign keys of other tables along. */
   async sqliteSession(f: () => Promise<void>): Promise<void> {
     const foreignKeys = integer(await this.queryValue('PRAGMA foreign_keys'), 'PRAGMA foreign_keys');
     const legacy = integer(await this.queryValue('PRAGMA legacy_alter_table'), 'PRAGMA legacy_alter_table');
@@ -380,13 +380,13 @@ class Applier {
       () => this.s.exec(`PRAGMA foreign_keys = ${foreignKeys}`),
       () => this.s.exec(`PRAGMA legacy_alter_table = ${legacy}`),
       () => this.s.exec(`PRAGMA locking_mode = ${mode}`),
-      // locking mode를 되돌린 뒤 한 번 읽어야 exclusive lock이 풀린다.
+      // After restoring the locking mode, one read is needed to release the exclusive lock.
       () => this.queryValue('SELECT COUNT(*) FROM sqlite_master'),
       () => this.s.exec(`PRAGMA busy_timeout = ${busy}`),
     );
   }
 
-  /** history table을 없을 때 만든다. */
+  /** Creates the history table if it does not exist. */
   async createHistory(): Promise<void> {
     const q = (n: string) => this.q(n);
     let integerType = 'integer';
@@ -420,7 +420,7 @@ class Applier {
     }
   }
 
-  /** history를 읽어 기록된 plan 수를 돌려준다. 기록은 chain의 앞부분이어야 하고, 마지막 앞의 row는 applied나 done이어야 한다. */
+  /** Reads the history and returns the number of recorded plans. The records must be at the front of the chain, and the row before the last must be applied or done. */
   async position(): Promise<number> {
     await this.readHistory();
     let position = 0;
@@ -444,7 +444,7 @@ class Applier {
     return position;
   }
 
-  /** 중단된 plan이 없고 catalog가 기록한 schema와 같을 때 기록된 plan 수를 돌려준다. */
+  /** When no plan is interrupted and the catalog is the same as the recorded schema, returns the number of recorded plans. */
   async settled(): Promise<number> {
     const position = await this.position();
     let want = '';
@@ -464,7 +464,7 @@ class Applier {
     return position;
   }
 
-  /** database의 introspection이 want schemaHash(빈 문자열이면 빈 database)이고 미지원 객체가 없는지 확인한다. */
+  /** Checks that the introspection of the database is the want schemaHash (an empty string means an empty database) and that there are no unsupported objects. */
   async verify(want: string): Promise<void> {
     const { document, unsupported } = await introspectCatalog(async sql => (await this.s.rows(sql)).map(values => new CatalogRow(sql, values)), this.dialect, 'schema');
     if (unsupported.length > 0) {

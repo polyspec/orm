@@ -1,5 +1,5 @@
-// SQLite의 main database를 catalog으로 읽는다 (docs/dialects.md "Introspection").
-// sqlite_master와 table-valued pragma를 join해 모든 table을 한 번에 읽는다.
+// Reads SQLite's main database as a catalog (docs/dialects.md "Introspection").
+// Joins sqlite_master and the table-valued pragmas to read all tables at once.
 import { present } from '../present.js';
 import { actionName, Catalog, tableTypes, type CatalogQuery, type DbspecUnsupported, type IForeignKey } from './introspect_catalog.js';
 import { CheckDecodeError, decodeCheck, unscaledDecimal } from './introspect_check.js';
@@ -28,18 +28,18 @@ const COLUMN_ITEM = /^"([^"]+)" /;
 const CONSTRAINT_ITEM = /^(?:CONSTRAINT "([^"]+)" )?(CHECK|UNIQUE|FOREIGN KEY|PRIMARY KEY)\b/;
 const NUMBER_DEFAULT = /^-?\d+(\.\d+)?$/;
 
-/** CREATE TABLE text에서 읽은 constraint다. */
+/** A constraint read from CREATE TABLE text. */
 interface SqliteTable {
-  /** 이름: 식 */
+  /** name: expression */
   checks: Map<string, string>;
-  /** check 이름의 선언 순서 */
+  /** The declaration order of the check names. */
   order: string[];
   fks: IForeignKey[];
   primary: string[];
   identity: string;
-  /** 이름: column 정의 text */
+  /** name: column definition text */
   columns: Map<string, string>;
-  /** 비어 있지 않으면 table 전체를 읽지 못한 이유다. */
+  /** If not empty, the reason the whole table could not be read. */
   unsupported: string;
 }
 
@@ -72,7 +72,7 @@ export async function readSQLite(query: CatalogQuery): Promise<Catalog> {
   const renderer = new Renderer('sqlite');
   for (const r of await query(COLUMNS_QUERY)) {
     const [table, name, declared, notNull, dflt, hidden] = [r.text(0), r.text(1), r.text(2), r.integer(3), r.nullableText(4), r.integer(6)];
-    // pk는 쓰지 않는다. primary key와 identity는 CREATE TABLE text가 정한다.
+    // pk is not written. The primary key and identity are decided by the CREATE TABLE text.
     r.integer(5);
     const t = c.table(table);
     if (t === undefined) continue;
@@ -135,7 +135,7 @@ export async function readSQLite(query: CatalogQuery): Promise<Catalog> {
   for (const r of await query(INDEXES_QUERY)) {
     const [table, name, unique, origin, partial, columns, desc] = [r.text(0), r.text(1), r.integer(2), r.text(3), r.integer(4), r.text(5), r.text(6)];
     const t = c.table(table);
-    // pk와 u origin index는 primary key와 unique 정의에서 나오며, 그 정의를 읽거나 보고한다.
+    // The pk and u origin indexes come from the primary key and unique definitions, and they are read or reported with those definitions.
     if (t === undefined || origin === 'pk' || origin === 'u') continue;
     const list = columns.split(',');
     if (origin !== 'c' || partial !== 0 || name.includes('$') || list.includes('')) {
@@ -151,8 +151,8 @@ export async function readSQLite(query: CatalogQuery): Promise<Catalog> {
 }
 
 /**
- * 선언 type과 그 column의 renderer CHECK로 dbspec type을 정한다. CHECK은 그
- * type의 renderer 출력과 정확히 같아야 한다. check이 undefined면 CHECK이 없다.
+ * Decides the dbspec type from the declared type and the column's renderer CHECK. The CHECK must
+ * be exactly the renderer output for the type. If check is undefined, there is no CHECK.
  */
 function sqliteType(r: Renderer, declared: string, column: string, check: string | undefined): DbspecType | null {
   const m = DECLARED_PATTERN.exec(declared);
@@ -169,7 +169,7 @@ function sqliteType(r: Renderer, declared: string, column: string, check: string
         break;
       case 'integer':
       case 'INTEGER':
-        // SQLite는 keyword인 integer를 INTEGER로 보고한다. identity는 CREATE text가 정한다.
+        // SQLite reports the keyword integer as INTEGER. Identity is decided by the CREATE text.
         candidates = [{ kind: 'i32' }];
         break;
       case 'bigint':
@@ -205,7 +205,7 @@ function sqliteType(r: Renderer, declared: string, column: string, check: string
   return null;
 }
 
-/** dflt_value를 dbspec literal이나 now로 읽는다. decimal은 scale을 곱한 정수이고 bool은 1과 0이다. 읽을 수 없으면 null이다. */
+/** Reads dflt_value as a dbspec literal or now. A decimal is an integer multiplied by the scale, and bool is 1 or 0. Returns null if it cannot be read. */
 function sqliteDefault(r: Renderer, text: string, type: DbspecType): string | null {
   if (type.kind === 'datetime' && `(${text})` === r.defaultText(type, { kind: 'now' })) return 'now';
   if (type.kind === 'bool' && (text === '1' || text === '0')) return text === '1' ? 'true' : 'false';
@@ -216,8 +216,8 @@ function sqliteDefault(r: Renderer, text: string, type: DbspecType): string | nu
 }
 
 /**
- * renderer가 쓰는 한 줄 CREATE TABLE text에서 primary key, identity, foreign
- * key, check를 읽는다. 그 밖의 table 수준 항목은 미지원이다.
+ * Reads the primary key, identity and foreign key from the one-line CREATE TABLE text that the renderer writes;
+ * key and check. Other table-level items are unsupported.
  */
 function parseSQLiteTable(text: string): { table: SqliteTable; unsupported: DbspecUnsupported[] } {
   const st: SqliteTable = { checks: new Map(), order: [], fks: [], primary: [], identity: '', columns: new Map(), unsupported: '' };
@@ -247,7 +247,7 @@ function parseSQLiteTable(text: string): { table: SqliteTable; unsupported: Dbsp
       st.checks.set(present(m[1], 'm[1]'), present(m[2], 'm[2]'));
       st.order.push(present(m[1], 'm[1]'));
     } else if ((m = CONSTRAINT_ITEM.exec(item)) !== null) {
-      // 이름 없는 constraint는 이름이 빈 객체로 보고한다. primary key의 다른 형식은 table을 읽지 못하게 한다.
+      // A constraint without a name is reported with an empty name object. A primary key in another form keeps the table from being read.
       const kind = ({ CHECK: 'check', UNIQUE: 'unique', 'FOREIGN KEY': 'foreign_key' } as Record<string, DbspecUnsupported['kind']>)[present(m[2], 'm[2]')];
       if (kind === undefined) {
         st.unsupported = `the primary key ${JSON.stringify(item)} has no dbspec definition`;
@@ -255,7 +255,7 @@ function parseSQLiteTable(text: string): { table: SqliteTable; unsupported: Dbsp
       }
       unsupported.push({ kind, table: '', name: m[1] ?? '', reason: `the table item ${JSON.stringify(item)} has no dbspec definition` });
     } else if ((m = COLUMN_ITEM.exec(item)) !== null) {
-      // 정의는 pragma_table_xinfo가 읽고, 그 text는 renderer 형식인지 확인한다.
+      // The definition is read by pragma_table_xinfo, and its text is checked to be in renderer form.
       st.columns.set(present(m[1], 'm[1]'), item);
     } else {
       st.unsupported = `the table item ${JSON.stringify(item)} has no dbspec definition`;
@@ -265,7 +265,7 @@ function parseSQLiteTable(text: string): { table: SqliteTable; unsupported: Dbsp
   return { table: st, unsupported };
 }
 
-/** 괄호와 따옴표 밖의 쉼표로 나눈다. */
+/** Splits at commas outside parentheses and quotes. */
 function splitTopLevel(text: string): string[] {
   const out: string[] = [];
   let depth = 0;
@@ -295,9 +295,9 @@ function unquoteList(text: string): string[] {
 }
 
 /**
- * column 정의 text가 renderer의 column 형식, 곧 이름, 선언 type, NULL이나 NOT
- * NULL, 그리고 있으면 DEFAULT뿐인지 알려 준다. SQLite는 keyword인 type 이름을
- * 대문자로 보고하므로 type은 대소문자 없이 비교한다.
+ * Tells whether the column definition text is in the renderer's column form: name, declared type, NULL or NOT
+ * NULL, and, if present, DEFAULT only. SQLite reports type names that are keywords
+ * in uppercase, so types are compared without regard to case.
  */
 function sqliteColumnText(item: string, name: string, declared: string, notNull: boolean, dflt: string | null): boolean {
   const prefix = `"${name}" `;

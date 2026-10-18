@@ -1,10 +1,10 @@
-// 생성 파일이다. Unicode 17.0.0의 word rune 표다.
-// unicode.IsLetter 또는 unicode.IsDigit이 참인 code point의 닫힌 구간이며 오름차순이고 서로 겹치지 않는다.
-// `go run ./tests/dbspec/unicode -write`가 쓴다. 직접 고치지 않는다.
+// Generated file. It is the word-rune table of Unicode 17.0.0.
+// Closed ranges of code points for which unicode.IsLetter or unicode.IsDigit is true; they are in ascending order and do not overlap.
+// Written by `go run ./tests/dbspec/unicode -write`. Do not edit it directly.
 
 import { present } from '../present.js';
 
-/** Go의 unicode 표가 담은 word rune의 닫힌 구간 [lo, hi]이며 오름차순이다. */
+/** The closed range [lo, hi] of word runes in Go's unicode table, in ascending order. */
 export const WORD_RANGES: ReadonlyArray<readonly [number, number]> = [
   [0x0030, 0x0039],
   [0x0041, 0x005A],
@@ -744,7 +744,7 @@ export const WORD_RANGES: ReadonlyArray<readonly [number, number]> = [
   [0x31350, 0x33479],
 ];
 
-/** cp가 표의 word rune이면 참이다. `_`와 `.`은 표에 없으며 parse.ts가 따로 본다. */
+/** True if cp is a word rune of the table. `_` and `.` are not in the table; parse.ts checks them separately. */
 export function containsWordRune(cp: number): boolean {
   let lo = 0;
   let hi = WORD_RANGES.length;

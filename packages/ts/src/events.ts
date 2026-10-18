@@ -1,5 +1,5 @@
-// statement event다(docs/usage.md "Statement events"). 연결은 자기가 보내는 모든 statement마다
-// event 하나를 등록한 subscriber에게 publish한다.
+// A statement event (docs/usage.md "Statement events"). A connection, for every statement it sends,
+// publishes an event to the subscribers that registered for it.
 import type { SentOrigin, StatementDone } from './driver.js';
 import { present } from './present.js';
 import { OrmError } from './runtime_error.js';
@@ -36,8 +36,8 @@ const noTables: readonly string[] = Object.freeze([]);
 const noBinds: readonly unknown[] = Object.freeze([]);
 
 /**
- * 연결의 모든 handle이 공유하는 subscriber 목록과 transaction 번호다. 목록은 바꿀 때마다 새로
- * 만들므로 publish 중에 등록하거나 해제해도 그 publish의 목록은 그대로다.
+ * The subscriber list and transaction number shared by all handles of the connection. The list is rebuilt each time it changes,
+ * so registering or unregistering during a publish leaves that publish's list as it is.
  */
 export class Subscribers {
   private list: readonly StatementSubscriber[] = [];
@@ -45,18 +45,18 @@ export class Subscribers {
 
   public subscribe(subscriber: StatementSubscriber): () => void {
     if (typeof subscriber !== 'function') throw new OrmError(codes.CONFIG, 'subscribe takes a function that receives a statement event');
-    // 같은 함수를 두 번 등록해도 해제는 자기 등록 하나만 지운다.
+    // Even if the same function is registered twice, unregistering removes only its own single registration.
     const entry: StatementSubscriber = event => subscriber(event);
     this.list = [...this.list, entry];
     return () => { this.list = this.list.filter(s => s !== entry); };
   }
 
-  /** 새 바깥 transaction의 번호다. */
+  /** The number of a new outer transaction. */
   public nextTransaction(): number { return ++this.transactions; }
 
   /**
-   * statement 하나의 event를 publish하는 done이다. kind와 tables는 호출자가 보낸 statement의 것이고,
-   * driver가 스스로 보낸 statement는 table이 없는 utility다. 다른 연결에서 보낸 kill은 transaction 밖이다.
+   * A done that publishes the event of one statement. kind and tables are those of the statement the caller sent, and
+   * a statement the driver sent itself is a utility with no table. A kill sent from another connection is outside any transaction.
    */
   public done(kind: StatementKind, tables: readonly string[], transaction: number | null, binds: readonly unknown[]): StatementDone {
     return (sql: string, elapsed: number, error: OrmError | null, origin: SentOrigin) => {
@@ -66,7 +66,7 @@ export class Subscribers {
     };
   }
 
-  /** subscriber를 등록 순서로 부른다. 하나가 던지면 나머지는 부르지 않고 SUBSCRIBER를 던진다. */
+  /** Calls the subscribers in registration order. If one throws, the rest are not called and SUBSCRIBER is thrown. */
   private publish(event: StatementEvent): void {
     const list = this.list;
     if (list.length === 0) return;
@@ -79,11 +79,11 @@ export class Subscribers {
   }
 }
 
-/** planner가 쓴 statement의 kind다: SQL의 첫 단어다. */
+/** The kind of statement the planner wrote: the first word of the SQL. */
 export function statementKind(sql: string): StatementKind {
   const verb = present(sql.trimStart().split(' ', 1)[0], 'the first word of a statement').toUpperCase();
   switch (verb) {
-    // ALTER는 MySQL identity restart의 schema statement다.
+    // ALTER is the schema statement of MySQL identity restart.
     case 'ALTER': return 'schema';
     case 'INSERT': return 'insert';
     case 'UPDATE': return 'update';

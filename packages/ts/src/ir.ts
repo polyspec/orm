@@ -26,8 +26,8 @@ export interface Request extends RequestQuery {
   manifest_hash: string;
   kind: QueryKind;
   /**
-   * insert가 행을 저장된 key 그대로 적재한다는 뜻이다: identity column의 값을 받고, identity가 있는
-   * table이면 그 값을 요구한다. on_duplicate와 함께 쓰지 않는다.
+   * Means that insert loads rows with their stored keys as they are: it accepts identity column values and, for a
+   * table with identity, requires that value. Not used together with on_duplicate.
    */
   load?: boolean;
   set?: Assignment[];
@@ -84,7 +84,7 @@ export interface Relation {
   keys?: KeyPair[];
 }
 
-/** 한 relation key 성분: 부모 column left와 자식 column right가 같다. composite key는 성분마다 한 쌍을 key 순서로 담는다. */
+/** One relation key component: the parent column left and the child column right are equal. A composite key holds one pair per component, in key order. */
 export interface KeyPair { left: string; right: string; }
 
 export interface Join {
@@ -106,7 +106,7 @@ export interface BindSlot { from: string; param: number; transform: string; name
 export interface PlanIfParent { column: string; index: number; param: number; }
 export interface KeyReference { column: string; index: number; }
 export interface ParentReference { step: number; keys: KeyReference[]; if_parent?: PlanIfParent; }
-// aes_version은 AES column을 읽는 node에서 key version을 담은 columns 위치다.
+// aes_version is the position in columns, for a node that reads an AES column, that holds the key version.
 export interface Assemble { entity: string; alias: string; columns: OutputColumn[]; children: Child[]; key: KeyReference[]; aes_version?: number; }
 export interface OutputColumn { index: number; name: string; column: string; type: string; styles: string[]; hidden: boolean; }
 export interface Child { rel: string; kind: string; step: number; parent_keys: KeyReference[]; child_keys: KeyReference[]; key: KeyReference[]; flatten: boolean; cascade: boolean; assemble?: Assemble; }

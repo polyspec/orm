@@ -58,7 +58,7 @@ export function hostDecode(raw: string | Uint8Array | null, styles: readonly str
     switch (styles[index]) {
       case 'hex': {
         const source = current.toString();
-        // encoder는 대문자 hex만 쓴다.
+        // The encoder writes uppercase hex only.
         if (source.length % 2 !== 0 || !/^[0-9A-F]*$/.test(source)) throw new CodecError(codes.CODEC_DECODE, 'hex: odd length or non-hex input');
         current = Buffer.from(source, 'hex');
         break;
@@ -147,9 +147,9 @@ function string(value: Uint8Array, operation: 'decode' | 'encode'): string {
 }
 
 function decodeBase64(value: Uint8Array): Uint8Array {
-  // 저장 cell은 encoder가 쓰는 형태로만 decode한다: 공백, 줄바꿈, 빠진 padding, 0이 아닌 padding bit는
-  // CODEC_DECODE다(docs/codec.md). 다시 encode한 text가 같아야 encoder가 쓴 형태다. byte를 그대로 읽어야
-  // UTF-8 decoder가 앞의 BOM을 지우지 않는다.
+  // Decode a stored cell only in the form the encoder writes: whitespace, line breaks, missing padding, and non-zero padding bits are
+  // rejected with CODEC_DECODE (docs/codec.md). Re-encoding must give the same text, which is the encoder's form. The bytes must be read unchanged, so
+  // the UTF-8 decoder must not strip a leading BOM.
   const source = Buffer.from(value).toString('latin1');
   const bytes = Buffer.from(source, 'base64');
   if (!/^[A-Za-z0-9+/=]*$/.test(source) || bytes.toString('base64') !== source) {

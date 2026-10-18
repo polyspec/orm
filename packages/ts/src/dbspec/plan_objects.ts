@@ -1,5 +1,5 @@
-// plan diff의 객체, trigger, 변경 목록 (docs/plans.md "Diff").
-// 기준은 Go 엔진(engine/dbspec/plan_objects.go)이다.
+// Objects, triggers, and the change lists of a plan diff (docs/plans.md "Diff").
+// The reference is the Go engine (engine/dbspec/plan_objects.go).
 import { present } from '../present.js';
 import { readCheck, type CheckExpr, type CheckOperand } from './check.js';
 import type { DbspecCheck, DbspecForeignKey, DbspecIndex, DbspecTable, DbspecUnique } from './model.js';
@@ -27,9 +27,9 @@ const same: Rename = c => c;
  */
 export function diffObjects(d: PlanDiff, renamedFrom: ReadonlyMap<string, string>, renamedColumn: ReadonlyMap<string, ReadonlyMap<string, string>>): void {
   const targetTable = (s: string): string => renamedOr(renamedFrom, s);
-  // column rename을 적용한 source 정의
+  // The source definition with the column rename applied
   const column = (target: string, c: string): string => renamedOr(renamedColumn.get(target), c);
-  const alteredColumn = new Set<string>(); // "table.column" target 이름
+  const alteredColumn = new Set<string>(); // "table.column" target name
   const renamedCol = new Set<string>();
   for (const [t, cols] of d.altered) for (const c of cols) alteredColumn.add(`${t}.${c}`);
   for (const [t, m] of renamedColumn) for (const c of m.values()) renamedCol.add(`${t}.${c}`);
@@ -37,8 +37,8 @@ export function diffObjects(d: PlanDiff, renamedFrom: ReadonlyMap<string, string
     const src = present(d.source.get(present(d.tableOf.get(name), 'd.tableOf.get(name)')), 'd.source.get(d.tableOf.get(name))');
     const tgt = present(d.target.get(name), 'd.target.get(name)');
     const col: Rename = c => column(name, c);
-    // 지우는 index나 unique 위의 foreign key는 MySQL이 그 index를 지우지 못하게
-    // 하므로 함께 다시 만든다.
+    // An index or a foreign key on a unique key that is dropped is rebuilt together, because MySQL will not
+    // let its index be dropped.
     const droppedKeys = new Set<string>();
     // unique
     for (const u of src.uniques) {
@@ -92,7 +92,7 @@ export function diffObjects(d: PlanDiff, renamedFrom: ReadonlyMap<string, string
       }
       if (!keep) append(d.addObjects, name, { kind: 'foreign_key', name: f.name });
     }
-    // check: 이름 바뀐 column이나 바뀐 column을 쓰는 check는 다시 만든다.
+    // check: a check that uses a renamed column, or a changed column, is rebuilt.
     const forcedCheck = (k: DbspecCheck): boolean =>
       exprColumns(checkTree(k)).some(c => renamedCol.has(`${name}.${c}`) || alteredColumn.has(`${name}.${c}`));
     for (const k of src.checks) {
@@ -108,8 +108,8 @@ export function diffObjects(d: PlanDiff, renamedFrom: ReadonlyMap<string, string
       }
     }
   }
-  // 지우는 table을 참조하는 남은 table의 foreign key는 target이 이미 뺐으므로
-  // 위에서 지운다. 지우는 table 자신의 foreign key는 table과 함께 지운다.
+  // A foreign key of a remaining table that references a table being dropped has already been removed by the target, so
+  // it is dropped above. A table's own foreign keys are dropped together with the table.
   for (const name of d.dropped) {
     for (const f of present(d.source.get(name), 'd.source.get(name)').foreignKeys) append(d.dropObjects, name, { kind: 'foreign_key', name: f.name });
   }

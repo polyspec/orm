@@ -148,8 +148,8 @@ function settingText(setting: DbspecSetting, t: DbspecTable, view: View): string
     case 'state_machine':
       return `state_machine ${setting.column} ${stateLineText(setting.line)}`;
     case 'audit':
-      // schema text는 database 상태로 정해지므로 기록하지 않는 column을 column 순서의 exclude 목록으로
-      // 쓴다. 다른 view는 쓴 목록을 그대로 쓴다.
+      // The schema text is decided by the database state, so the columns that are not recorded are written as an exclude list in column order.
+      // Other views write the list as it is.
       if (view === 'schema') return auditLine(setting, 'exclude', auditExcluded(setting, t));
       return setting.include !== null ? auditLine(setting, 'include', setting.include) : auditLine(setting, 'exclude', setting.exclude);
   }
