@@ -194,8 +194,11 @@ func (x *TimeCellModel) Create() (*TimeCellModel, error) {
 	return m.(*TimeCellModel), nil
 }
 
-// Creates inserts rows in one transaction and returns the inserted row count.
-func (x *TimeCellModel) Creates(rows []*TimeCellModel) (int64, error) { return orm.Creates(x.m, rows) }
+// Creates inserts rows in batches of batch rows, each one multi-row INSERT, in one transaction
+// and returns the inserted row count.
+func (x *TimeCellModel) Creates(rows []*TimeCellModel, batch int) (int64, error) {
+	return orm.Creates(x.m, rows, batch)
+}
 
 // Update writes the changed columns; Update(true) requires an unchanged updated time.
 func (x *TimeCellModel) Update(optimistic ...bool) (*TimeCellModel, error) {

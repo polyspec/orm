@@ -896,7 +896,7 @@ def main():
             CompositeAccount().set_tenant_id(900).set_account_id(2).set_name("b"),
             CompositeAccount().set_tenant_id(901).set_account_id(1).set_name("c"),
         ]
-        inserted = CompositeAccount().connect(db).creates(rows)
+        inserted = CompositeAccount().connect(db).creates(rows, 2)
         CompositeAccount().connect(db).set_tenant_id(900).set_account_id(1).set_name(
             "dup"
         ).duplication(CompositeAccount().set_name("updated")).create()
@@ -924,13 +924,41 @@ def main():
 
     run("creates_and_save", creates_and_save)
 
+    def creates_batch():
+        """creates(rows, batch) runs each batch of batch rows as one multi-row INSERT in one transaction; a batch
+        that is not a positive integer is CONFIG before any statement (docs/protocol.md)."""
+        rows = [
+            CompositeAccount().set_tenant_id(903).set_account_id(i + 1).set_name(name)
+            for i, name in enumerate(["a", "b", "c", "d", "e"])
+        ]
+        inserted = CompositeAccount().connect(db).creates(rows, 2)
+        zero = caught(lambda: CompositeAccount().connect(db).creates(rows, 0))
+        count = CompositeAccount().connect(db).tenant_id([903]).get_count()
+        CompositeAccount().connect(db).tenant_id([903]).order_by_account_id_asc().gets().delete()
+        return {"inserted": inserted, "zero": zero, "count": count}
+
+    run("creates_batch", creates_batch)
+
+    def creates_batch_too_large():
+        """A batch whose binds exceed the bind limit is BATCH_TOO_LARGE before any statement: 21846 rows of three
+        columns bind 65538 parameters, over the limit of every dialect."""
+        rows = [
+            CompositeAccount().set_tenant_id(904).set_account_id(i + 1).set_name("n")
+            for i in range(21846)
+        ]
+        code = caught(lambda: CompositeAccount().connect(db).creates(rows, len(rows)))
+        count = CompositeAccount().connect(db).tenant_id([904]).get_count()
+        return {"code": code, "count": count}
+
+    run("creates_batch_too_large", creates_batch_too_large)
+
     def contains_vector(cond, *patterns):
         """Creates rows Apple, apple, Évian, évian, x_y for tenant 902, collects the account_id that each pattern selects with cond, then deletes them."""
         rows = [
             CompositeAccount().set_tenant_id(902).set_account_id(i + 1).set_name(name)
             for i, name in enumerate(["Apple", "apple", "Évian", "évian", "x_y"])
         ]
-        CompositeAccount().connect(db).creates(rows)
+        CompositeAccount().connect(db).creates(rows, len(rows))
         matches = [
             picks(
                 cond(CompositeAccount().connect(db).tenant_id(902), p)
@@ -1419,7 +1447,7 @@ def main():
                 lambda: (
                     BindCell()
                     .connect(db)
-                    .creates([BindCell().set_label("a"), BindCell().set_label(None)])
+                    .creates([BindCell().set_label("a"), BindCell().set_label(None)], 2)
                 )
             )
         },

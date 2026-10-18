@@ -1012,37 +1012,39 @@
       "id": "Model.creates",
       "for": "entity",
       "inputs": [
-        "Rows"
+        "Rows",
+        "Batch"
       ],
       "output": "InsertedRows",
       "errors": [
         "CONFIG",
+        "BATCH_TOO_LARGE",
         "IR_INVALID",
         "driver or codec error",
         "DUPLICATE_KEY",
         "FOREIGN_KEY"
       ],
-      "state": "Inserts the rows in one statement per bind limit",
+      "state": "Inserts the rows in batches of the given size, one multi-row statement per batch, in one transaction",
       "native": {
         "go": {
           "symbol": "packages/go/model/{entity}.go::{Entity}Model.Creates",
-          "signature": "receiver=*{Entity}Model func(rows []*{Entity}Model) (int64, error)"
+          "signature": "receiver=*{Entity}Model func(rows []*{Entity}Model, batch int) (int64, error)"
         },
         "php": {
           "symbol": "packages/php/src/Model.php::Polyspec\\Orm\\Model::creates",
-          "signature": "public function creates(array $rows): int"
+          "signature": "public function creates(array $rows, int $batch): int"
         },
         "rust": {
           "symbol": "packages/rust/build/src/fixed.rs.txt::T::creates",
-          "signature": "pub async fn creates(&self, rows: Vec<Self>) -> polyspec_orm::Result<u64>"
+          "signature": "pub async fn creates(&self, rows: Vec<Self>, batch: usize) -> polyspec_orm::Result<u64>"
         },
         "typescript": {
           "symbol": "packages/ts/src/model.ts::Model.creates",
-          "signature": "public async creates(rows: readonly this[]): Promise<number>"
+          "signature": "public async creates(rows: readonly this[], batch: number): Promise<number>"
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Model.creates",
-          "signature": "def creates(self, rows: list[Self]) -> int"
+          "signature": "def creates(self, rows: list[Self], batch: int) -> int"
         }
       }
     },

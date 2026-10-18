@@ -218,14 +218,14 @@ final class MarkdownConformanceTest extends TestCase
             'insert_rows' => static function (Served $s): mixed {
                 $bob = (new People())->setName('Bob')->setEmail('bob@example.com')->setAge(25)->setScore('2.00');
                 $cara = (new People())->setName('Cara')->setEmail(null)->setAge(null)->setScore('0.50');
-                return (new People())->connect($s->db)->creates([$bob, $cara]);
+                return (new People())->connect($s->db)->creates([$bob, $cara], 2);
             },
             'insert_rows_tasks' => static function (Served $s): mixed {
                 return (new Tasks())->connect($s->db)->creates([
                     (new Tasks())->setOwner('P1')->setTitle('write spec')->setPoints(3)->setDue(self::day('2026-10-01')),
                     (new Tasks())->setOwner('P1')->setTitle('review')->setPoints(5)->setDue(null),
                     (new Tasks())->setOwner('P2')->setTitle('ship')->setPoints(8)->setDue(self::day('2026-10-05')),
-                ]);
+                ], 3);
             },
             'insert_identity' => static function (Served $s): mixed {
                 $m = (new Logs())->connect($s->db)->setTask('T1')->setNote('started')->create();

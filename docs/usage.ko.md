@@ -282,6 +282,7 @@ $row->newIsMember(true);                                                        
 - `update`는 방언 간 값을 맞추기 위해 `updated_ts`를 항상 명시적으로 기록한다.
 - `minus<Col>`은 음수를 저장하지 않는다.
 - `save()`는 기본 키가 있으면 갱신하고 없으면 행을 생성한다.
+- `creates(rows, batch)`는 행을 `batch`개씩 batch로 나누어 각 batch를 하나의 multi-row INSERT로, 하나의 트랜잭션에서 삽입하고 삽입한 행 수를 반환한다. `batch`는 호출자가 정하며 client는 batch를 나누지 않는다. `batch`는 필수인 양의 정수이며 아니면 `CONFIG`다. 바인드 수(행 수 × 컬럼 수)가 바인드 한도(SQLite 999, MySQL과 PostgreSQL 65535)를 넘는 batch는 `BATCH_TOO_LARGE`이고, message는 그 batch와 바인드 수와 한도를 밝힌다. 둘 다 어떤 statement보다 먼저 실패한다.
 - 트랜잭션은 `connection.transaction(fn)`을 사용한다. 콜백 오류나 예외는 트랜잭션을 되돌리고 교착 상태는 재시도한다.
 - 활성 트랜잭션 안에서 같은 연결의 `transaction`을 호출하면 savepoint를 만든다. 바깥 콜백이 안쪽 실패를 반환하지 않으면 안쪽 작업만 되돌린다.
 - 트랜잭션 옵션은 `isolation`, `readOnly`, `timeoutMs`를 선택한다. 지원하는 격리 수준은 `default`, `read_uncommitted`, `read_committed`, `repeatable_read`, `serializable`이다. PostgreSQL은 `BEGIN` 후에, MySQL은 유지한 연결에서 `START TRANSACTION` 전에 설정을 적용한다. SQLite는 `PRAGMA query_only`로 `readOnly`를 적용하고 공통 격리 수준을 트랜잭션 연결에 대응시키며, ORM은 commit이나 rollback 전에 연결 상태를 복원한다. 양수 `timeoutMs`는 PostgreSQL `statement_timeout`을 적용하고 MySQL·SQLite는 `CAPABILITY_UNSUPPORTED`를 반환한다.

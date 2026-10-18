@@ -268,7 +268,7 @@ var requestHookCases = []struct {
 		for _, label := range []string{"bulk1", "bulk2"} {
 			bulk = append(bulk, hookItem(e, nil, map[string]any{"label": label}).Self().(*keywordRow))
 		}
-		if n, err := orm.Creates(hookItem(e, hooked, nil), bulk); err != nil || n != 2 {
+		if n, err := orm.Creates(hookItem(e, hooked, nil), bulk, 2); err != nil || n != 2 {
 			t.Fatalf("bulk create = %d, %v; want 2 rows", n, err)
 		}
 		rows := hookRows(t, e, db)
@@ -546,17 +546,16 @@ func TestRequestHook(t *testing.T) {
 }
 
 // TestCreatesParts checks the multi-row insert rules of docs/protocol.md through the model path. creates splits the rows
-// into parts of power-of-two size and runs them in the given order in one transaction: only parts of that size produce an INSERT shape,
-// rows, keys, and statement events keep the given order, and if any part fails, no rows remain.
+// into batches of the given size and runs them in the given order in one transaction: each batch is one INSERT,
+// rows, keys, and statement events keep the given order, a batch that is not positive is CONFIG and a batch over the
+// bind limit is BATCH_TOO_LARGE before any statement, and if any batch fails, no rows remain.
 func TestCreatesParts(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	inserts := func(t *testing.T, db *orm.DB) *[]orm.StatementEvent {
 		t.Helper()
 		var seen []orm.StatementEvent
 		unsubscribe, err := db.Subscribe(func(e orm.StatementEvent) error {
-			if strings.HasPrefix(e.SQL, "INSERT") {
-				seen = append(seen, e)
-			}
+			seen = append(seen, e)
 			return nil
 		})
 		if err != nil {
@@ -579,21 +578,19 @@ func TestCreatesParts(t *testing.T) {
 		}
 		return out
 	}
-	t.Run("shapes", func(t *testing.T) {
+	t.Run("refused", func(t *testing.T) {
 		db, e, _ := hookFixture(t, "sqlite://"+filepath.Join(t.TempDir(), "parts.sqlite"))
 		seen := inserts(t, db)
-		for n := 1; n <= 40; n++ {
-			if _, err := orm.Creates(hookItem(e, db, nil), batch(e, labels(n))); err != nil {
-				t.Fatal(err)
+		for _, size := range []int{0, -1} {
+			if _, err := orm.Creates(hookItem(e, db, nil), batch(e, labels(3)), size); orm.ErrorCode(err) != orm.CodeConfig {
+				t.Errorf("creates with batch %d = %v, want CONFIG", size, err)
 			}
 		}
-		texts := map[string]bool{}
-		for _, ev := range *seen {
-			texts[ev.SQL] = true
+		if _, err := orm.Creates(hookItem(e, db, nil), batch(e, labels(500)), 500); orm.ErrorCode(err) != orm.CodeBatchTooLarge {
+			t.Errorf("creates of 500 rows of two columns in one batch on sqlite = %v, want BATCH_TOO_LARGE", err)
 		}
-		t.Logf("creates of 1..40 rows: %d distinct INSERT statements", len(texts))
-		if len(texts) != 6 {
-			t.Errorf("creates of 1..40 rows ran %d distinct INSERT statements, want 6 (parts 1, 2, 4, 8, 16, 32)", len(texts))
+		if len(*seen) != 0 {
+			t.Errorf("refused creates ran %d statements, want none", len(*seen))
 		}
 	})
 	t.Run("order", func(t *testing.T) {
@@ -601,17 +598,20 @@ func TestCreatesParts(t *testing.T) {
 		seen := inserts(t, db)
 		given := labels(13)
 		slices.Reverse(given)
-		if n, err := orm.Creates(hookItem(e, db, nil), batch(e, given)); err != nil || n != 13 {
+		if n, err := orm.Creates(hookItem(e, db, nil), batch(e, given), 6); err != nil || n != 13 {
 			t.Fatalf("creates = %d, %v; want 13 rows", n, err)
 		}
 		var sizes []int
 		var bound []any
 		for _, ev := range *seen {
+			if !strings.HasPrefix(ev.SQL, "INSERT") {
+				continue
+			}
 			sizes = append(sizes, len(ev.Binds)/2)
 			bound = append(bound, ev.Binds...)
 		}
-		if !slices.Equal(sizes, []int{8, 4, 1}) {
-			t.Errorf("INSERT parts %v, want [8 4 1]", sizes)
+		if !slices.Equal(sizes, []int{6, 6, 1}) {
+			t.Errorf("INSERT batches %v, want [6 6 1]", sizes)
 		}
 		for i, label := range given {
 			if bound[2*i+1] != label {
@@ -632,8 +632,8 @@ func TestCreatesParts(t *testing.T) {
 		last := hookItem(e, nil, map[string]any{"part": "p"})
 		last.SetNull("label")
 		rows = append(rows, last.Self().(*keywordRow))
-		if _, err := orm.Creates(hookItem(e, db, nil), rows); err == nil {
-			t.Fatal("creates with a null label in its second part succeeded")
+		if _, err := orm.Creates(hookItem(e, db, nil), rows, 4); err == nil {
+			t.Fatal("creates with a null label in its third batch succeeded")
 		}
 		if n := hookCount(t, e, db); n != 0 {
 			t.Errorf("a failed creates left %d rows, want 0", n)

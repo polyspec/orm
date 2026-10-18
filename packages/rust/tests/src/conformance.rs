@@ -163,7 +163,7 @@ async fn contains_vector(db: &Db, cond: impl Fn(CompositeAccount, &str) -> Compo
         .enumerate()
         .map(|(i, name)| CompositeAccount::new().set_tenant_id(902).set_account_id(i as i64 + 1).set_name(*name))
         .collect::<Vec<_>>();
-    CompositeAccount::new().connect(db).creates(rows).await?;
+    CompositeAccount::new().connect(db).creates(rows, 5).await?;
     let mut matches = Vec::new();
     for p in patterns {
         let found = cond(CompositeAccount::new().connect(db).tenant_id(902), p).order_by_account_id_asc().gets().await?;
@@ -676,7 +676,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
                 CompositeAccount::new().set_tenant_id(900).set_account_id(2).set_name("b"),
                 CompositeAccount::new().set_tenant_id(901).set_account_id(1).set_name("c"),
             ];
-            let inserted = CompositeAccount::new().connect(db).creates(rows).await?;
+            let inserted = CompositeAccount::new().connect(db).creates(rows, 2).await?;
             CompositeAccount::new()
                 .connect(db)
                 .set_tenant_id(900)
@@ -694,6 +694,32 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         })
         .retry(0)
     );
+    // creates(rows, batch) runs each batch of batch rows as one multi-row INSERT in one transaction; a batch that is
+    // not a positive integer is CONFIG before any statement (docs/protocol.md).
+    run!("creates_batch", async {
+        let rows = || {
+            ["a", "b", "c", "d", "e"]
+                .iter()
+                .enumerate()
+                .map(|(i, name)| CompositeAccount::new().set_tenant_id(903).set_account_id(i as i64 + 1).set_name(*name))
+                .collect::<Vec<_>>()
+        };
+        let inserted = CompositeAccount::new().connect(db).creates(rows(), 2).await?;
+        let zero = code_of(CompositeAccount::new().connect(db).creates(rows(), 0).await);
+        let count = CompositeAccount::new().connect(db).tenant_id(vec![903]).get_count().await?;
+        let all = CompositeAccount::new().connect(db).tenant_id(vec![903]).order_by_account_id_asc().gets().await?;
+        all.delete(false).await?;
+        Ok::<Value, polyspec_orm::Error>(json!({"inserted": inserted, "zero": zero, "count": count}))
+    });
+    // A batch whose binds exceed the bind limit is BATCH_TOO_LARGE before any statement: 21846 rows of three columns
+    // bind 65538 parameters, over the limit of every dialect.
+    run!("creates_batch_too_large", async {
+        let rows = (0..21846).map(|i| CompositeAccount::new().set_tenant_id(904).set_account_id(i as i64 + 1).set_name("n")).collect::<Vec<_>>();
+        let n = rows.len();
+        let refused = code_of(CompositeAccount::new().connect(db).creates(rows, n).await);
+        let count = CompositeAccount::new().connect(db).tenant_id(vec![904]).get_count().await?;
+        Ok::<Value, polyspec_orm::Error>(json!({"code": refused, "count": count}))
+    });
     run!("contains_ascii_fold", db.transaction(async || contains_vector(db, |q, p| q.and_lk_name(p), &["PPL", "ÉV", "_", ""]).await).retry(0));
     run!("contains_binary_code_point", db.transaction(async || contains_vector(db, |q, p| q.and_lb_name(p), &["pp", "É", "PPL", "_"]).await).retry(0));
     run!(
@@ -1039,7 +1065,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
     run!("null_into_not_null", async {
         let mut null_row = BindCell::new();
         polyspec_orm::core::Core::set(polyspec_orm::Model::core_mut(&mut null_row), "label", Param::Null);
-        let created = BindCell::new().connect(db).creates(vec![BindCell::new().set_label("a"), null_row]).await;
+        let created = BindCell::new().connect(db).creates(vec![BindCell::new().set_label("a"), null_row], 2).await;
         Ok::<Value, polyspec_orm::Error>(json!({"code": code_of(created)}))
     });
     // A contains value NULL binds NULL, so `col LIKE NULL` matches no row (docs/protocol.md §2).

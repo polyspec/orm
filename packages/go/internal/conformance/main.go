@@ -229,7 +229,7 @@ func containsVector(db *orm.DB, cond func(*model.CompositeAccountModel, string) 
 	for i, name := range []string{"Apple", "apple", "Évian", "évian", "x_y"} {
 		rows = append(rows, model.CompositeAccount().SetTenantId(902).SetAccountId(int64(i+1)).SetName(name))
 	}
-	if _, err := model.CompositeAccount().Connect(db).Creates(rows); err != nil {
+	if _, err := model.CompositeAccount().Connect(db).Creates(rows, len(rows)); err != nil {
 		return nil, err
 	}
 	matches := []any{}
@@ -800,7 +800,7 @@ func run() (status int) {
 			model.CompositeAccount().SetTenantId(900).SetAccountId(2).SetName("b"),
 			model.CompositeAccount().SetTenantId(901).SetAccountId(1).SetName("c"),
 		}
-		inserted, err := model.CompositeAccount().Connect(db).Creates(rows)
+		inserted, err := model.CompositeAccount().Connect(db).Creates(rows, 2)
 		if err != nil {
 			return nil, err
 		}
@@ -826,6 +826,45 @@ func run() (status int) {
 		}
 		left, err := model.CompositeAccount().Connect(db).TenantId([]int64{900, 901}).GetCount()
 		return map[string]any{"inserted": inserted, "pairs": pairs.ToArray(), "left": left}, err
+	})
+	// creates(rows, batch) runs each batch of batch rows as one multi-row INSERT in one transaction;
+	// a batch that is not a positive integer is CONFIG before any statement (docs/protocol.md).
+	run("creates_batch", func() (any, error) {
+		var rows []*model.CompositeAccountModel
+		for i, name := range []string{"a", "b", "c", "d", "e"} {
+			rows = append(rows, model.CompositeAccount().SetTenantId(903).SetAccountId(int64(i+1)).SetName(name))
+		}
+		inserted, err := model.CompositeAccount().Connect(db).Creates(rows, 2)
+		if err != nil {
+			return nil, err
+		}
+		_, zero := model.CompositeAccount().Connect(db).Creates(rows, 0)
+		count, err := model.CompositeAccount().Connect(db).TenantId([]int64{903}).GetCount()
+		if err != nil {
+			return nil, err
+		}
+		all, err := model.CompositeAccount().Connect(db).TenantId([]int64{903}).OrderByAccountIdAsc().Gets()
+		if err != nil {
+			return nil, err
+		}
+		if err := all.Delete(); err != nil {
+			return nil, err
+		}
+		return map[string]any{"inserted": inserted, "zero": code(zero), "count": count}, nil
+	})
+	// A batch whose binds exceed the bind limit is BATCH_TOO_LARGE before any statement: 21846 rows
+	// of three columns bind 65538 parameters, over the limit of every dialect.
+	run("creates_batch_too_large", func() (any, error) {
+		rows := make([]*model.CompositeAccountModel, 21846)
+		for i := range rows {
+			rows[i] = model.CompositeAccount().SetTenantId(904).SetAccountId(int64(i + 1)).SetName("n")
+		}
+		_, err := model.CompositeAccount().Connect(db).Creates(rows, len(rows))
+		count, cerr := model.CompositeAccount().Connect(db).TenantId([]int64{904}).GetCount()
+		if cerr != nil {
+			return nil, cerr
+		}
+		return map[string]any{"code": code(err), "count": count}, nil
 	})
 	run("contains_ascii_fold", func() (any, error) {
 		return containsVector(db, func(q *model.CompositeAccountModel, p string) *model.CompositeAccountModel { return q.AndLkName(p) }, "PPL", "ÉV", "_", "")
@@ -1353,7 +1392,7 @@ func run() (status int) {
 	run("null_into_not_null", func() (any, error) {
 		null := model.BindCell()
 		null.Orm_().SetNull("label")
-		_, err := bindCell().Creates([]*model.BindCellModel{model.BindCell().SetLabel("a"), null})
+		_, err := bindCell().Creates([]*model.BindCellModel{model.BindCell().SetLabel("a"), null}, 2)
 		return map[string]any{"code": code(err)}, nil
 	})
 

@@ -322,7 +322,7 @@ async function columnsAndSubqueries(db) {
     new CompositeMembership().setTenantId(1).setAccountId(10).setRole('owner'),
     new CompositeMembership().setTenantId(1).setAccountId(11).setRole('member'),
     new CompositeMembership().setTenantId(2).setAccountId(10).setRole('member'),
-  ]);
+  ], 3);
   check(inserted === 3, `creates: ${inserted}`);
   const pairs = await new CompositeMembership().connect(db).tupleTenantIdWithAccountId([[1, 10], [2, 10]]).getCount();
   check(pairs === 2, `tuple: ${pairs}`);
@@ -552,7 +552,7 @@ async function bindLimitSplitting(db) {
     rows.push(new Service().setName(name));
     names.push(name);
   }
-  check(await new Service().connect(db).creates(rows) === n, 'inserted rows');
+  check(await new Service().connect(db).creates(rows, 500) === n, 'inserted rows');
   names.push(...names.slice(0, 200));
   for (let i = 0; i < 100; i++) names.push(`missing-${i}`);
   const found = await new Service().connect(db).name(names).gets();
@@ -564,26 +564,28 @@ async function bindLimitSplitting(db) {
 }
 
 /**
- * A multi-row insert runs as power-of-two parts in row order inside one transaction (docs/protocol.md "Relation
- * steps"; the shared cases of contracts/fixtures/insert_parts.json run in insert-parts.mjs): batches of 1 to 40 rows use the six statements of 1, 2, 4, 8, 16
- * and 32 rows, 13 rows run as parts of 8, 4 and 1 and keep their order and ascending keys, and a failing part
- * leaves no row of the call.
+ * A multi-row insert runs as batches of the given size in row order inside one transaction (docs/protocol.md
+ * "Relation steps"; the shared cases of contracts/fixtures/insert_parts.json run in insert-parts.mjs): a batch that
+ * is not a positive integer is CONFIG and a batch over the bind limit is BATCH_TOO_LARGE before any statement, 13
+ * rows in batches of 6 run as 6, 6 and 1 rows and keep their order and ascending keys, and a failing batch leaves no
+ * row of the call.
  */
 async function insertParts(db) {
   const inserts = [];
   const unsubscribe = db.subscribe(event => { if (event.sql.startsWith('INSERT INTO')) inserts.push(event); });
   try {
-    for (let n = 1; n <= 40; n++) {
-      const rows = Array.from({ length: n }, (_, i) => new Service().setName(`shape-${n}-${i}`));
-      check(await new Service().connect(db).creates(rows) === n, `creates ${n} rows`);
+    const few = [new Service().setName('refused-a'), new Service().setName('refused-b')];
+    for (const size of [0, -1, 1.5, Number.NaN]) {
+      check(await code(new Service().connect(db).creates(few, size)) === 'CONFIG', `batch ${size} is CONFIG`);
     }
-    const shapes = new Set(inserts.map(e => e.sql));
-    check(shapes.size === 6, `batches of 1 to 40 rows use ${shapes.size} insert statements, want 6`);
-    inserts.length = 0;
+    const limit = db.driver === 'sqlite' ? 999 : 65535;
+    const over = Array.from({ length: limit + 1 }, (_, i) => new Service().setName(`over-${i}`));
+    check(await code(new Service().connect(db).creates(over, over.length)) === 'BATCH_TOO_LARGE', 'a batch over the bind limit');
+    check(inserts.length === 0, `refused creates ran ${inserts.length} inserts, want none`);
     const labels = Array.from({ length: 13 }, (_, i) => `order-${String.fromCharCode(109 - i)}`);
-    check(await new Service().connect(db).creates(labels.map(name => new Service().setName(name))) === 13, 'creates 13 rows');
+    check(await new Service().connect(db).creates(labels.map(name => new Service().setName(name)), 6) === 13, 'creates 13 rows');
     const parts = inserts.map(e => e.binds.length);
-    check(JSON.stringify(parts) === '[8,4,1]', `13 rows run as parts ${JSON.stringify(parts)}, want [8,4,1]`);
+    check(JSON.stringify(parts) === '[6,6,1]', `13 rows run as batches ${JSON.stringify(parts)}, want [6,6,1]`);
     check(JSON.stringify(inserts.flatMap(e => e.binds)) === JSON.stringify(labels), 'the parts bind the rows in the given order');
     const stored = Array.from(await new Service().connect(db).name(labels).orderBySeqAsc().gets(), r => r.toArray());
     check(JSON.stringify(stored.map(r => r.name)) === JSON.stringify(labels), `stored order ${stored.map(r => r.name)}`);
@@ -592,7 +594,7 @@ async function insertParts(db) {
   const before = await new Service().connect(db).getCount();
   const failing = Array.from({ length: 9 }, (_, i) => new Service().setName(`rollback-${i}`));
   failing[8][CORE].setValue('name', null);
-  check(await code(new Service().connect(db).creates(failing)) !== null, 'a null name in the second part fails');
+  check(await code(new Service().connect(db).creates(failing, 4)) !== null, 'a null name in the third batch fails');
   check(await new Service().connect(db).getCount() === before, 'the failing call leaves no row');
 }
 

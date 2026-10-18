@@ -435,7 +435,7 @@ vector('creates_and_save', function () use ($db): array {
         (new CompositeAccount)->setTenantId(900)->setAccountId(1)->setName('a'),
         (new CompositeAccount)->setTenantId(900)->setAccountId(2)->setName('b'),
         (new CompositeAccount)->setTenantId(901)->setAccountId(1)->setName('c'),
-    ]);
+    ], 2);
     (new CompositeAccount)($db)->setTenantId(900)->setAccountId(1)->setName('dup')
         ->duplication((new CompositeAccount)->setName('updated'))->create();
     (new CompositeAccount)($db)->setTenantId(900)->setAccountId(2)->setName('saved')->save();
@@ -445,6 +445,31 @@ vector('creates_and_save', function () use ($db): array {
     return ['inserted' => $inserted, 'pairs' => $pairs->toArray(), 'left' => $left];
 });
 
+// creates(rows, batch) runs each batch of batch rows as one multi-row INSERT in one transaction; a batch that
+// is not a positive integer is CONFIG before any statement (docs/protocol.md).
+vector('creates_batch', function () use ($db): array {
+    $rows = [];
+    foreach (['a', 'b', 'c', 'd', 'e'] as $i => $name) {
+        $rows[] = (new CompositeAccount)->setTenantId(903)->setAccountId($i + 1)->setName($name);
+    }
+    $inserted = (new CompositeAccount)($db)->creates($rows, 2);
+    $zero = caught(fn() => (new CompositeAccount)($db)->creates($rows, 0));
+    $count = (new CompositeAccount)($db)->tenantId([903])->getCount();
+    (new CompositeAccount)($db)->tenantId([903])->orderByAccountIdAsc()->gets()->delete();
+    return ['inserted' => $inserted, 'zero' => $zero, 'count' => $count];
+});
+
+// A batch whose binds exceed the bind limit is BATCH_TOO_LARGE before any statement: 21846 rows of three columns
+// bind 65538 parameters, over the limit of every dialect.
+vector('creates_batch_too_large', function () use ($db): array {
+    $rows = [];
+    for ($i = 1; $i <= 21846; $i++) {
+        $rows[] = (new CompositeAccount)->setTenantId(904)->setAccountId($i)->setName('n');
+    }
+    $code = caught(fn() => (new CompositeAccount)($db)->creates($rows, count($rows)));
+    return ['code' => $code, 'count' => (new CompositeAccount)($db)->tenantId([904])->getCount()];
+});
+
 /** Creates the Apple, apple, Évian, évian, x_y rows in tenant 902, collects the account_id each pattern selects with $cond, then deletes them. */
 function containsVector(Db $db, callable $cond, string ...$patterns): array
 {
@@ -452,7 +477,7 @@ function containsVector(Db $db, callable $cond, string ...$patterns): array
     foreach (['Apple', 'apple', 'Évian', 'évian', 'x_y'] as $i => $name) {
         $rows[] = (new CompositeAccount)->setTenantId(902)->setAccountId($i + 1)->setName($name);
     }
-    (new CompositeAccount)($db)->creates($rows);
+    (new CompositeAccount)($db)->creates($rows, count($rows));
     $matches = [];
     foreach ($patterns as $p) {
         $matches[] = picks($cond((new CompositeAccount)($db)->tenantId(902), $p)->orderByAccountIdAsc()->gets(), 'account_id');
@@ -761,7 +786,7 @@ vector('null_into_not_null', function () use ($db): array {
     // The typed setter takes a string, so the row writes NULL through the column writer of the model.
     $null = new BindCell();
     (new ReflectionMethod(BindCell::class, 'writeColumn'))->invoke($null, 'label', null);
-    return ['code' => caught(fn() => (new BindCell)($db)->creates([(new BindCell)->setLabel('a'), $null]))];
+    return ['code' => caught(fn() => (new BindCell)($db)->creates([(new BindCell)->setLabel('a'), $null], 2))];
 });
 // A contains value NULL binds NULL, so `col LIKE NULL` matches no row (docs/protocol.md §2).
 vector('contains_null', function () use ($author): array {

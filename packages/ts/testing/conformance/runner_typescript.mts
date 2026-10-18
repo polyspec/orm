@@ -395,7 +395,7 @@ async function main() {
       new CompositeAccount().setTenantId(900).setAccountId(2).setName('b'),
       new CompositeAccount().setTenantId(901).setAccountId(1).setName('c'),
     ];
-    const inserted = await new CompositeAccount().connect(db).creates(rows);
+    const inserted = await new CompositeAccount().connect(db).creates(rows, 2);
     await new CompositeAccount().connect(db).setTenantId(900).setAccountId(1).setName('dup')
       .duplication(new CompositeAccount().setName('updated')).create();
     await new CompositeAccount().connect(db).setTenantId(900).setAccountId(2).setName('saved').save();
@@ -407,10 +407,28 @@ async function main() {
     const left = await new CompositeAccount().connect(db).tenantId([900, 901]).getCount();
     return { inserted, pairs: pairs.toArray(), left };
   });
+  // creates(rows, batch) runs each batch of batch rows as one multi-row INSERT in one transaction; a batch that is not
+  // a positive integer is CONFIG before any statement (docs/protocol.md).
+  await run('creates_batch', async () => {
+    const rows = ['a', 'b', 'c', 'd', 'e'].map((name, i) => new CompositeAccount().setTenantId(903).setAccountId(i + 1).setName(name));
+    const inserted = await new CompositeAccount().connect(db).creates(rows, 2);
+    const zero = await caught(new CompositeAccount().connect(db).creates(rows, 0));
+    const count = await new CompositeAccount().connect(db).tenantId(903).getCount();
+    await (await new CompositeAccount().connect(db).tenantId(903).orderByAccountIdAsc().gets()).delete();
+    return { inserted, zero, count };
+  });
+  // A batch whose binds exceed the bind limit is BATCH_TOO_LARGE before any statement: 21846 rows of three columns
+  // bind 65538 parameters, over the limit of every dialect.
+  await run('creates_batch_too_large', async () => {
+    const rows = Array.from({ length: 21846 }, (_, i) => new CompositeAccount().setTenantId(904).setAccountId(i + 1).setName('n'));
+    const code = await caught(new CompositeAccount().connect(db).creates(rows, rows.length));
+    const count = await new CompositeAccount().connect(db).tenantId(904).getCount();
+    return { code, count };
+  });
   // Creates the rows Apple, apple, Évian, évian, and x_y for tenant 902, collects the account_id that each pattern selects with cond, then deletes them.
   const containsVector = async (cond: (p: string) => CompositeAccount, ...patterns: string[]) => {
     const rows = ['Apple', 'apple', 'Évian', 'évian', 'x_y'].map((name, i) => new CompositeAccount().setTenantId(902).setAccountId(i + 1).setName(name));
-    await new CompositeAccount().connect(db).creates(rows);
+    await new CompositeAccount().connect(db).creates(rows, rows.length);
     const matches: unknown[] = [];
     for (const p of patterns) matches.push(picks(await cond(p).orderByAccountIdAsc().gets(), 'account_id'));
     await (await new CompositeAccount().connect(db).tenantId(902).orderByAccountIdAsc().gets()).delete();
@@ -686,7 +704,7 @@ async function main() {
   await run('null_into_not_null', async () => {
     const nullRow = new BindCell();
     nullRow[CORE].setValue('label', null);
-    return { code: await caught(new BindCell().connect(db).creates([new BindCell().setLabel('a'), nullRow])) };
+    return { code: await caught(new BindCell().connect(db).creates([new BindCell().setLabel('a'), nullRow], 2)) };
   });
   await run('contains_null', async () => {
     try {

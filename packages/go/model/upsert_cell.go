@@ -198,9 +198,10 @@ func (x *UpsertCellModel) Create() (*UpsertCellModel, error) {
 	return m.(*UpsertCellModel), nil
 }
 
-// Creates inserts rows in one transaction and returns the inserted row count.
-func (x *UpsertCellModel) Creates(rows []*UpsertCellModel) (int64, error) {
-	return orm.Creates(x.m, rows)
+// Creates inserts rows in batches of batch rows, each one multi-row INSERT, in one transaction
+// and returns the inserted row count.
+func (x *UpsertCellModel) Creates(rows []*UpsertCellModel, batch int) (int64, error) {
+	return orm.Creates(x.m, rows, batch)
 }
 
 // Update writes the changed columns; Update(true) requires an unchanged updated time.

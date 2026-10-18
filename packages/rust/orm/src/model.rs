@@ -259,19 +259,33 @@ fn bind_limit(driver: &str) -> usize {
     }
 }
 
-/// The row counts of the parts of a multi-row insert of `rows` rows with `columns` columns, in row order
-/// (docs/protocol.md §2.1): each part is the largest power of two at most the rows left and at most the
-/// bind-limit chunk, so the statements stay in the size classes of an IN list.
-fn insert_parts(driver: &str, columns: usize, rows: usize) -> Vec<usize> {
-    let chunk = (bind_limit(driver) / columns).max(1);
+/// The row counts of the batches of a multi-row insert of `rows` rows in batches of `batch` rows, in row order
+/// (docs/protocol.md §2.1): each batch is `batch` rows, the last one the rows left when fewer.
+fn insert_parts(rows: usize, batch: usize) -> Vec<usize> {
     let mut parts = Vec::new();
     let mut left = rows;
     while left > 0 {
-        let part = 1 << left.min(chunk).ilog2();
+        let part = left.min(batch);
         parts.push(part);
         left -= part;
     }
     parts
+}
+
+/// Refuses, before any statement, the first batch whose binds exceed the bind limit of `driver`, naming the batch,
+/// its bind count and the limit.
+fn batch_fits(driver: &str, parts: &[usize], columns: usize) -> Result<()> {
+    let limit = bind_limit(driver);
+    for (i, part) in parts.iter().enumerate() {
+        let binds = part * columns;
+        if binds > limit {
+            return Err(Error::Engine {
+                code: codes::BATCH_TOO_LARGE.into(),
+                msg: format!("creates batch {} of {part} rows binds {binds} parameters, over the {driver} limit of {limit}", i + 1),
+            });
+        }
+    }
+    Ok(())
 }
 
 /// Splits a root IN list that exceeds the bind limit into requests whose
@@ -1061,9 +1075,13 @@ pub async fn create<M: Model>(m: &mut M) -> Result<M> {
     Ok(out)
 }
 
-/// Inserts models in multi-row statements in one transaction and returns the
-/// inserted row count.
-pub async fn creates<M: Model>(m: &M, rows: Vec<M>) -> Result<u64> {
+/// Inserts models in batches of `batch` rows, each batch one multi-row INSERT, in one transaction (a savepoint
+/// inside an active one) and returns the inserted row count. A `batch` of 0 is CONFIG and a batch whose binds exceed
+/// the bind limit is BATCH_TOO_LARGE, both before any statement.
+pub async fn creates<M: Model>(m: &M, rows: Vec<M>, batch: usize) -> Result<u64> {
+    if batch == 0 {
+        return Err(config("creates batch must be a positive integer, got 0"));
+    }
     let c = m.core();
     let ex = terminal(c)?;
     if rows.is_empty() {
@@ -1075,7 +1093,8 @@ pub async fn creates<M: Model>(m: &M, rows: Vec<M>) -> Result<u64> {
         return Err(config("creates requires models with set_<col> values"));
     }
     let columns: Vec<String> = first.sets.iter().map(|s| s.column.clone()).collect();
-    let parts = insert_parts(ex.db().driver(), columns.len(), rows.len());
+    let parts = insert_parts(rows.len(), batch);
+    batch_fits(ex.db().driver(), &parts, columns.len())?;
     in_transaction(&c.conn, async || {
         let mut total = 0;
         let mut start = 0;
@@ -1602,7 +1621,7 @@ mod insert_parts_cases {
 
     /// The ids of the cases that this module has a test for, in file order.
     pub(super) const IDS: &[&str] =
-        &["empty", "one_row", "power_of_two", "sqlite_two_columns", "sqlite_wide_row", "postgres_one_column", "mysql_three_columns", "mysql_chunk_edge"];
+        &["empty", "one_row", "exact_batches", "last_batch_smaller", "batch_over_rows", "batch_of_one"];
 
     pub(super) fn cases() -> Vec<serde_json::Value> {
         let doc: serde_json::Value = serde_json::from_str(FIXTURE).expect("insert_parts.json");
@@ -1616,13 +1635,13 @@ mod insert_parts_cases {
         let input = &case["input"];
         let number = |key: &str| input[key].as_u64().unwrap_or_else(|| panic!("{key}")) as usize;
         let want: Vec<usize> = case["expected"].as_array().expect("expected").iter().map(|p| p.as_u64().expect("part") as usize).collect();
-        assert_eq!(insert_parts(input["driver"].as_str().expect("driver"), number("columns"), number("rows")), want);
+        assert_eq!(insert_parts(number("rows"), number("batch")), want);
     }
 
     macro_rules! cases {
         ($($id:ident),* $(,)?) => { $( #[test] fn $id() { check(stringify!($id)); } )* };
     }
-    cases!(empty, one_row, power_of_two, sqlite_two_columns, sqlite_wide_row, postgres_one_column, mysql_three_columns, mysql_chunk_edge);
+    cases!(empty, one_row, exact_batches, last_batch_smaller, batch_over_rows, batch_of_one);
 }
 
 #[cfg(test)]

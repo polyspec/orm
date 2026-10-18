@@ -227,7 +227,7 @@ class SqliteEndToEndTest(unittest.TestCase):
             .set_name(f"c{i}")
             for i in range(3)
         ]
-        inserted = model.creates(rows)
+        inserted = model.creates(rows, 2)
         self.assertEqual(inserted, 3)
         model.set_tenant_id(900).set_account_id(1).set_name("dup").duplication(
             self.models.CompositeAccount().set_name("updated")

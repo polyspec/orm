@@ -24,6 +24,6 @@ final class InsertPartsTest extends TestCase
     public function test_case(array $case): void
     {
         self::assertSame('insert_parts', $case['operation'], 'operation');
-        self::assertSame($case['expected'], Db::insertParts($case['input']['rows'], $case['input']['columns'], $case['input']['driver']));
+        self::assertSame($case['expected'], Db::insertParts($case['input']['rows'], $case['input']['batch']));
     }
 }

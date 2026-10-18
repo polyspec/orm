@@ -182,8 +182,11 @@ func (x *UuidCellModel) Create() (*UuidCellModel, error) {
 	return m.(*UuidCellModel), nil
 }
 
-// Creates inserts rows in one transaction and returns the inserted row count.
-func (x *UuidCellModel) Creates(rows []*UuidCellModel) (int64, error) { return orm.Creates(x.m, rows) }
+// Creates inserts rows in batches of batch rows, each one multi-row INSERT, in one transaction
+// and returns the inserted row count.
+func (x *UuidCellModel) Creates(rows []*UuidCellModel, batch int) (int64, error) {
+	return orm.Creates(x.m, rows, batch)
+}
 
 // Update writes the changed columns; Update(true) requires an unchanged updated time.
 func (x *UuidCellModel) Update(optimistic ...bool) (*UuidCellModel, error) {

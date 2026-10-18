@@ -41,6 +41,8 @@ LIMIT_IN_RELATION = "LIMIT_IN_RELATION"
 NO_ROWS = "NO_ROWS"
 # executor: restoreOrCreate found its key on a row that is not deleted; nothing was written
 ROW_NOT_DELETED = "ROW_NOT_DELETED"
+# executor: a batch of creates binds more parameters than the dialect allows; names the batch, its bind count and the limit; nothing was written
+BATCH_TOO_LARGE = "BATCH_TOO_LARGE"
 # executor: a requested column was not included in the loaded row
 COLUMN_UNSELECTED = "COLUMN_UNSELECTED"
 # executor: updateOptimistic matched no row (updated_ts changed)

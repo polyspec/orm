@@ -293,7 +293,7 @@ final class ModelTest extends TestCase
             (new CompositeMembership)->setTenantId(1)->setAccountId(11)->setRole('member'),
             (new CompositeMembership)->setTenantId(2)->setAccountId(10)->setRole('member'),
         ];
-        self::check((new CompositeMembership)($db)->creates($memberships) === 3, 'creates');
+        self::check((new CompositeMembership)($db)->creates($memberships, 2) === 3, 'creates');
         self::check((new CompositeMembership)($db)->tupleTenantIdWithAccountId([[1, 10], [2, 10]])->getCount() === 2, 'tuple');
         $fetched = (new Author)($db)->orderBySeqAsc()->fetchValue(fn(Author $b) => strtoupper($b->getName()))->gets();
         self::check($fetched->fetchedValues() === ['ALPHA', 'BETA', 'GAMMA', 'DELTA'], 'fetchValue');
@@ -532,7 +532,7 @@ final class ModelTest extends TestCase
             $rows[] = (new Service)->setName($name);
             $names[] = $name;
         }
-        self::check((new Service)($db)->creates($rows) === $n, 'inserted rows');
+        self::check((new Service)($db)->creates($rows, 500) === $n, 'inserted rows');
         $names = array_merge($names, array_slice($names, 0, 200));
         for ($i = 0; $i < 100; $i++) {
             $names[] = "missing-$i";
@@ -544,9 +544,10 @@ final class ModelTest extends TestCase
         }
     }
 
-    // Multi-row inserts run as power-of-two parts (docs/protocol.md "Relation steps"; the shared cases of
-    // contracts/fixtures/insert_parts.json run in InsertPartsTest.php): the statements stay at the size classes, the rows keep
-    // their order, and a failing part leaves no row of the call.
+    // Multi-row inserts run as batches of the given size (docs/protocol.md "Relation steps"; the shared cases of
+    // contracts/fixtures/insert_parts.json run in InsertPartsTest.php): each batch is one insert statement, a batch that is
+    // not positive is CONFIG and one over the bind limit is BATCH_TOO_LARGE before any statement, the rows keep their
+    // order, and a failing batch leaves no row of the call.
     private static function case_insert_parts(Db $db): void {
         $inserts = [];
         $unsubscribe = $db->subscribe(static function (\Polyspec\Orm\StatementEvent $e) use (&$inserts): void {
@@ -554,22 +555,23 @@ final class ModelTest extends TestCase
                 $inserts[] = $e;
             }
         });
-        for ($n = 1; $n <= 40; $n++) {
-            (new Service)($db)->creates(array_map(static fn(int $i): Service => (new Service)->setName("shape-$n-$i"), range(1, $n)));
-        }
-        $shapes = count(array_unique(array_map(static fn($e): string => $e->sql, $inserts)));
-        self::check($shapes === 6, "creates of 1..40 rows sends 6 insert statements, got $shapes");
+        $three = array_map(static fn(int $i): Service => (new Service)->setName("refused-$i"), range(1, 3));
+        self::check(self::code(fn() => (new Service)($db)->creates($three, 0)) === Code::CONFIG, 'batch 0 is CONFIG');
+        $limit = Db::bindLimit($db->driver()) + 1;
+        $over = array_map(static fn(int $i): Service => (new Service)->setName("over-$i"), range(1, $limit));
+        self::check(self::code(fn() => (new Service)($db)->creates($over, $limit)) === Code::BATCH_TOO_LARGE, 'a batch over the bind limit is BATCH_TOO_LARGE');
+        self::check($inserts === [], 'refused creates send no insert');
         $inserts = [];
         $labels = array_map(static fn(int $i): string => sprintf('order-%02d', 12 - $i), range(0, 12));
-        self::check((new Service)($db)->creates(array_map(static fn(string $l): Service => (new Service)->setName($l), $labels)) === 13, 'creates 13 rows');
-        self::check(array_map(static fn($e): int => count($e->binds), $inserts) === [8, 4, 1], 'parts 8, 4, 1: ' . json_encode(array_map(static fn($e): int => count($e->binds), $inserts)));
+        self::check((new Service)($db)->creates(array_map(static fn(string $l): Service => (new Service)->setName($l), $labels), 6) === 13, 'creates 13 rows');
+        self::check(array_map(static fn($e): int => count($e->binds), $inserts) === [6, 6, 1], 'batches 6, 6, 1: ' . json_encode(array_map(static fn($e): int => count($e->binds), $inserts)));
         $read = (new Service)($db)->name($labels)->orderBySeqAsc()->gets()->all();
         self::check(array_map(static fn(Service $s): string => $s->getName(), $read) === $labels, 'rows keep the given order');
         $unsubscribe();
         $before = (new Service)($db)->getCount();
         $rows = array_map(static fn(int $i): Service => (new Service)->setName("rollback-$i"), range(1, 8));
         $rows[] = (fn(): Service => $this->writeColumn('name', null))->call(new Service);
-        self::check(self::code(fn() => (new Service)($db)->creates($rows)) !== 'no error', 'a failing part fails creates');
+        self::check(self::code(fn() => (new Service)($db)->creates($rows, 4)) !== 'no error', 'a failing batch fails creates');
         self::check((new Service)($db)->getCount() === $before, 'a failing part leaves no row');
     }
 

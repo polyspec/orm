@@ -184,8 +184,11 @@ func (x *TaskModel) Create() (*TaskModel, error) {
 	return m.(*TaskModel), nil
 }
 
-// Creates inserts rows in one transaction and returns the inserted row count.
-func (x *TaskModel) Creates(rows []*TaskModel) (int64, error) { return orm.Creates(x.m, rows) }
+// Creates inserts rows in batches of batch rows, each one multi-row INSERT, in one transaction
+// and returns the inserted row count.
+func (x *TaskModel) Creates(rows []*TaskModel, batch int) (int64, error) {
+	return orm.Creates(x.m, rows, batch)
+}
 
 // Update writes the changed columns; Update(true) requires an unchanged updated time.
 func (x *TaskModel) Update(optimistic ...bool) (*TaskModel, error) {

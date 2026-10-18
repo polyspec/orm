@@ -41,7 +41,8 @@ def model_write_cycle(item):
                     .set_account_id(i)
                     .set_name(f"many-{i}")
                     for i in (2, 3, 4)
-                ]
+                ],
+                2,
             )
             expect_equal(inserted, 3, "rows inserted by creates")
             account().get_by_tenant_id_and_account_id(TENANT, 1).set_name(

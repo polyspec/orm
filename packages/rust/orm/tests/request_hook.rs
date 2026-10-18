@@ -331,7 +331,7 @@ async fn insert_assign_case(driver: &str) {
     let mut single = with_values(item(&hooked), &[("label", "one")]);
     polyspec_orm::model::create(&mut single).await.expect("create");
     let rows = vec![with_values(unconnected(), &[("label", "two")]), with_values(unconnected(), &[("label", "three")])];
-    let n = polyspec_orm::model::creates(&item(&hooked), rows).await.expect("creates");
+    let n = polyspec_orm::model::creates(&item(&hooked), rows, 2).await.expect("creates");
     assert_eq!(n, 2);
     assert_eq!(labels(&db).await, ["one", "three", "two"]);
     assert_eq!(parts(&db).await, ["h", "h", "h"]);
@@ -735,7 +735,7 @@ async fn coverage_request_hook_restore_hook_set_key() {
 }
 
 // Parts of a multi-row insert (docs/protocol.md §2.1, contracts/fixtures/insert_parts.json): creates take rows in the given order
-// and split them into parts of power-of-two sizes, run in one transaction. Checked on a connection without a hook.
+// and split them into batches of the given size, each one INSERT, run in one transaction. Checked on a connection without a hook.
 
 /// A subscription that collects the INSERT statement SQL of db in execution order.
 fn insert_statements(db: &Db) -> (Arc<Mutex<Vec<String>>>, polyspec_orm::Subscription) {
@@ -756,26 +756,26 @@ fn labelled(labels: &[String]) -> Vec<HookItem> {
     labels.iter().map(|label| with_values(unconnected(), &[("part", "p"), ("label", label)])).collect()
 }
 
-/// Creates of 1..=40 rows make only six INSERTs, of size ranges 1, 2, 4, 8, 16, 32.
+/// A batch of 0 is CONFIG and a batch over the bind limit is BATCH_TOO_LARGE, both before any statement.
 #[tokio::test]
 async fn creates_parts_shapes() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let database = CaseDatabase::create("sqlite").await;
     let db = installed(&database).await;
     let (seen, subscription) = insert_statements(&db);
-    for n in 1..=40 {
-        let rows = labelled(&(0..n).map(|i| format!("s{n}-{i}")).collect::<Vec<_>>());
-        assert_eq!(polyspec_orm::model::creates(&item(&db), rows).await.expect("creates"), n as u64);
-    }
+    let rows = |n: usize| labelled(&(0..n).map(|i| format!("s{i}")).collect::<Vec<_>>());
+    let error = polyspec_orm::model::creates(&item(&db), rows(3), 0).await.expect_err("batch 0");
+    assert_eq!(error.code(), polyspec_orm::codes::CONFIG, "{error}");
+    let error = polyspec_orm::model::creates(&item(&db), rows(500), 500).await.expect_err("500 rows of two columns");
+    assert_eq!(error.code(), polyspec_orm::codes::BATCH_TOO_LARGE, "{error}");
     drop(subscription);
-    let distinct: std::collections::BTreeSet<String> = seen.lock().unwrap().iter().cloned().collect();
-    eprintln!("creates 1..=40: {} distinct INSERT statements", distinct.len());
-    assert_eq!(distinct.len(), 6, "distinct INSERT statements");
+    assert!(seen.lock().unwrap().is_empty(), "refused creates ran no INSERT");
+    assert_eq!(count(&db).await, 0, "no row was written");
     db.close().await;
     database.drop().await;
 }
 
-/// 13 rows are inserted as parts of 8, 4, and 1 rows in the given order, and the keys rise in that order.
+/// 13 rows in batches of 6 are inserted as INSERTs of 6, 6, and 1 rows in the given order, and the keys rise in that order.
 #[tokio::test]
 async fn creates_parts_order() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -783,10 +783,10 @@ async fn creates_parts_order() {
     let db = installed(&database).await;
     let (seen, subscription) = insert_statements(&db);
     let given: Vec<String> = (0..13).map(|i| format!("r{:02}", 12 - i)).collect();
-    assert_eq!(polyspec_orm::model::creates(&item(&db), labelled(&given)).await.expect("creates"), 13);
+    assert_eq!(polyspec_orm::model::creates(&item(&db), labelled(&given), 6).await.expect("creates"), 13);
     drop(subscription);
     let sizes: Vec<usize> = seen.lock().unwrap().iter().map(|sql| sql.matches("(?").count()).collect();
-    assert_eq!(sizes, [8, 4, 1], "INSERT parts in order");
+    assert_eq!(sizes, [6, 6, 1], "INSERT batches in order");
     let rows = polyspec_orm::model::gets(&item(&db)).await.expect("gets");
     let mut stored: Vec<(i64, String)> = rows.models().map(|m| (id_of(m), text_of(m, "label"))).collect();
     stored.sort();
@@ -795,7 +795,7 @@ async fn creates_parts_order() {
     database.drop().await;
 }
 
-/// If the second part fails, the first part is also rolled back, and no rows remain.
+/// If the third batch fails, the first batches are is also rolled back, and no rows remain.
 #[tokio::test]
 async fn creates_parts_rollback() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -805,7 +805,7 @@ async fn creates_parts_rollback() {
     let mut failing = with_values(unconnected(), &[("part", "p")]);
     failing.core_mut().set("label", Param::Null);
     rows.push(failing);
-    polyspec_orm::model::creates(&item(&db), rows).await.expect_err("the second part fails");
+    polyspec_orm::model::creates(&item(&db), rows, 4).await.expect_err("the third batch fails");
     assert_eq!(count(&db).await, 0, "no row of the call remains");
     db.close().await;
     database.drop().await;

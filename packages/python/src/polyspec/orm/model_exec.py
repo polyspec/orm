@@ -486,8 +486,12 @@ def create(c: Core):
     return core.self
 
 
-def creates(c: Core, models) -> int:
-    """Inserts the set values of several models in one transaction, split up, and counts the rows."""
+def creates(c: Core, models, batch: int) -> int:
+    """Inserts the set values of several models in batches of batch rows, each one multi-row INSERT, in one
+    transaction (a savepoint inside an active one), and counts the rows. batch is a positive integer, otherwise
+    CONFIG; a batch whose binds exceed the bind limit is BATCH_TOO_LARGE; both before any statement."""
+    if isinstance(batch, bool) or not isinstance(batch, int) or batch < 1:
+        raise OrmError(codes.CONFIG, f"creates batch must be a positive integer, got {batch!r}")
     ex = _terminal(c)
     if len(models) == 0:
         return 0
@@ -500,13 +504,22 @@ def creates(c: Core, models) -> int:
             raise OrmError(codes.CONFIG, "creates accepts stored values only")
         columns.append(s.column)
     schema = c.ent.entity
-    per = max(1, (999 if ex.db.driver == "sqlite" else 65535) // len(columns))
+    parts = _insert_parts(len(models), batch)
+    limit = 999 if ex.db.driver == "sqlite" else 65535
+    for n, size in enumerate(parts, 1):
+        binds = size * len(columns)
+        if binds > limit:
+            raise OrmError(
+                codes.BATCH_TOO_LARGE,
+                f"creates batch {n} of {size} rows binds {binds} parameters, "
+                f"over the {ex.db.driver} limit of {limit}",
+            )
     total = 0
 
     def insert_all():
         nonlocal total
         start = 0
-        for size in _insert_parts(len(models), per):
+        for size in parts:
             r = _write_request(c, "insert")
             rows: list = []
             part = models[start : start + size]
@@ -543,12 +556,12 @@ def creates(c: Core, models) -> int:
     return total
 
 
-def _insert_parts(rows: int, per: int) -> list:
-    """The row counts of the parts of a multi-row insert, in row order (docs/protocol.md 2.1): each part is
-    the largest power of two at most the rows left and at most per, the bind-limit chunk."""
+def _insert_parts(rows: int, batch: int) -> list:
+    """The row counts of the batches of a multi-row insert, in row order (docs/protocol.md 2.1): each batch is
+    batch rows, the last one the rows left when fewer."""
     parts = []
     while rows > 0:
-        size = 1 << (min(rows, per).bit_length() - 1)
+        size = min(rows, batch)
         parts.append(size)
         rows -= size
     return parts

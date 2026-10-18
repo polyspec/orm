@@ -208,7 +208,7 @@ def conformance_cases() -> dict:
             .set_score("2.00")
         )
         cara = People().set_name("Cara").set_email(None).set_age(None).set_score("0.50")
-        return People().connect(s.db).creates([bob, cara])
+        return People().connect(s.db).creates([bob, cara], 2)
 
     def insert_rows_tasks(s):
         Tasks = s.models.Tasks
@@ -225,7 +225,7 @@ def conformance_cases() -> dict:
             .set_points(8)
             .set_due("2026-10-05"),
         ]
-        return Tasks().connect(s.db).creates(rows)
+        return Tasks().connect(s.db).creates(rows, len(rows))
 
     def insert_identity(s):
         m = s.models.Logs().connect(s.db).set_task("T1").set_note("started").create()

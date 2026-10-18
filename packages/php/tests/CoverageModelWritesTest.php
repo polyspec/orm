@@ -34,7 +34,7 @@ final class CoverageModelWritesTest extends TestCase
                         (new CompositeAccount)->setTenantId(WRITE_TENANT)->setAccountId(2)->setName('many-2'),
                         (new CompositeAccount)->setTenantId(WRITE_TENANT)->setAccountId(3)->setName('many-3'),
                         (new CompositeAccount)->setTenantId(WRITE_TENANT)->setAccountId(4)->setName('many-4'),
-                    ]);
+                    ], 2);
                     Assert::assertTrue($inserted === 3, "creates inserted $inserted rows, want 3");
                     (new CompositeAccount)($db)->getByTenantIdAndAccountId(WRITE_TENANT, 1)->setName('updated')->update();
                     $name = (new CompositeAccount)($db)->getByTenantIdAndAccountId(WRITE_TENANT, 1)->getName();

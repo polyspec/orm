@@ -150,7 +150,7 @@ classDiagram
 | `getsPage` | 페이지 | 모델 연결 또는 활성 트랜잭션 |
 | `getCount` | 정수 | 모델 연결 또는 활성 트랜잭션 |
 | `create` | 생성 키를 포함한 행 | 모델 연결 또는 활성 트랜잭션 |
-| `creates` | 삽입한 행 수 | 모델 연결 또는 활성 트랜잭션 |
+| `creates(rows, batch)` | 삽입한 행 수. `batch`가 양의 정수가 아니면 `CONFIG`, batch의 바인드 수가 dialect의 바인드 한도를 넘으면 `BATCH_TOO_LARGE`이며 둘 다 어떤 statement보다 먼저 | 모델 연결 또는 활성 트랜잭션 |
 | `update` | 행 | 행 연결 또는 활성 트랜잭션 |
 | `delete` | 행 또는 컬렉션 | 행 연결 또는 활성 트랜잭션 |
 | `restore` | 되돌린 행. 그 key를 가진 행이 없으면 `NO_ROWS` | 모델 연결 또는 활성 트랜잭션 |

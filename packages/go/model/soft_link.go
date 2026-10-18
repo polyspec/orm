@@ -210,8 +210,11 @@ func (x *SoftLinkModel) Create() (*SoftLinkModel, error) {
 	return m.(*SoftLinkModel), nil
 }
 
-// Creates inserts rows in one transaction and returns the inserted row count.
-func (x *SoftLinkModel) Creates(rows []*SoftLinkModel) (int64, error) { return orm.Creates(x.m, rows) }
+// Creates inserts rows in batches of batch rows, each one multi-row INSERT, in one transaction
+// and returns the inserted row count.
+func (x *SoftLinkModel) Creates(rows []*SoftLinkModel, batch int) (int64, error) {
+	return orm.Creates(x.m, rows, batch)
+}
 
 // Update writes the changed columns; Update(true) requires an unchanged updated time.
 func (x *SoftLinkModel) Update(optimistic ...bool) (*SoftLinkModel, error) {

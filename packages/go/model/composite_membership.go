@@ -211,9 +211,10 @@ func (x *CompositeMembershipModel) Create() (*CompositeMembershipModel, error) {
 	return m.(*CompositeMembershipModel), nil
 }
 
-// Creates inserts rows in one transaction and returns the inserted row count.
-func (x *CompositeMembershipModel) Creates(rows []*CompositeMembershipModel) (int64, error) {
-	return orm.Creates(x.m, rows)
+// Creates inserts rows in batches of batch rows, each one multi-row INSERT, in one transaction
+// and returns the inserted row count.
+func (x *CompositeMembershipModel) Creates(rows []*CompositeMembershipModel, batch int) (int64, error) {
+	return orm.Creates(x.m, rows, batch)
 }
 
 // Update writes the changed columns; Update(true) requires an unchanged updated time.

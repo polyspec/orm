@@ -132,7 +132,7 @@ export const cases = {
       return request;
     });
     await item({ label: 'h1' }).connect(hooked).create();
-    const inserted = await new Item().connect(hooked).creates([item({ label: 'h2' }), item({ label: 'h3' })]);
+    const inserted = await new Item().connect(hooked).creates([item({ label: 'h2' }), item({ label: 'h3' })], 2);
     assert.equal(inserted, 2, 'the bulk insert writes two rows');
     const rows = (await stored(db)).filter(([, label]) => label.startsWith('h'));
     assert.deepEqual(rows, [['h', 'h1'], ['h', 'h2'], ['h', 'h3']], 'the single and the bulk insert write the assigned part');

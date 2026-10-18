@@ -402,18 +402,16 @@ final class Db
     }
 
     /**
-     * @internal The row counts of the parts a multi-row insert of $rows rows with $columns columns runs as
-     * (docs/protocol.md "Relation steps"): each part is the largest power of two that is at most the rows
-     * left and at most the bind-limit chunk.
+     * @internal The row counts of the batches a multi-row insert of $rows rows runs as (docs/protocol.md
+     * "Relation steps"): each batch is $batch rows, the last one the rows left when fewer.
      *
      * @return list<int>
      */
-    public static function insertParts(int $rows, int $columns, string $driver): array
+    public static function insertParts(int $rows, int $batch): array
     {
-        $chunk = max(1, intdiv(self::bindLimit($driver), $columns));
         $parts = [];
         while ($rows > 0) {
-            $part = 1 << (int) floor(log(min($rows, $chunk), 2));
+            $part = min($rows, $batch);
             $parts[] = $part;
             $rows -= $part;
         }

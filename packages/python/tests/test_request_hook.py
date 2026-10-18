@@ -3,7 +3,6 @@
 # Case names are the same as in the other clients: without_hook, read_filter, insert_assign, loaded_row_writes, invalid_param,
 # restore_key, restore_condition, restore_no_key, restore_rewritten_key, restore_hook_set_key.
 import os
-import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -124,7 +123,8 @@ class RequestHookTest(unittest.TestCase):
             [
                 self.models.HookItem().set_label("bulk1"),
                 self.models.HookItem().set_label("bulk2"),
-            ]
+            ],
+            2,
         )
         stored = {row.get_label(): row.get_part() for row in self.item(self.db).gets()}
         self.assertEqual(
@@ -345,8 +345,8 @@ class RequestHookTest(unittest.TestCase):
 
 
 class InsertPartsTest(unittest.TestCase):
-    """A multi-row insert in creates is split into parts of powers of two (docs/protocol.md 2.1,
-    contracts/fixtures/insert_parts.json). The parts run in the given row order in one transaction."""
+    """A multi-row insert in creates runs in batches of the given size (docs/protocol.md 2.1,
+    contracts/fixtures/insert_parts.json). The batches run in the given row order in one transaction."""
 
     @classmethod
     def setUpClass(cls):
@@ -376,28 +376,26 @@ class InsertPartsTest(unittest.TestCase):
     def inserts(self, events):
         return [e for e in events if e.sql.startswith("INSERT")]
 
-    def test_shapes(self):
+    def test_refused(self):
         events = []
         self.db.subscribe(events.append)
-        for n in range(1, 41):
+        for size in (0, -1, True, 2.0):
+            with self.assertRaises(OrmError) as caught:
+                self.models.HookItem().connect(self.db).creates(self.rows(["a", "b"]), size)
+            self.assertEqual(caught.exception.code, "CONFIG", f"batch {size!r}")
+        with self.assertRaises(OrmError) as caught:
             self.models.HookItem().connect(self.db).creates(
-                self.rows([f"n{n}r{i}" for i in range(n)])
+                self.rows([f"r{i}" for i in range(500)]), 500
             )
-        statements = {e.sql for e in self.inserts(events)}
-        print(
-            f"insert parts: {len(statements)} distinct INSERT statements for batches 1..40",
-            file=sys.stderr,
-        )
-        self.assertEqual(
-            len(statements), 6, "one statement per size class 1, 2, 4, 8, 16, 32"
-        )
+        self.assertEqual(caught.exception.code, "BATCH_TOO_LARGE")
+        self.assertEqual(events, [], "a refused creates runs no statement")
 
     def test_order(self):
         events = []
         self.db.subscribe(events.append)
         labels = [f"r{i:02d}" for i in reversed(range(13))]
         self.assertEqual(
-            self.models.HookItem().connect(self.db).creates(self.rows(labels)), 13
+            self.models.HookItem().connect(self.db).creates(self.rows(labels), 6), 13
         )
         rows = sorted(
             self.models.HookItem().connect(self.db).gets(), key=lambda row: row.get_id()
@@ -407,8 +405,8 @@ class InsertPartsTest(unittest.TestCase):
         )
         self.assertEqual(
             [len(e.binds) // 2 for e in self.inserts(events)],
-            [8, 4, 1],
-            "parts in row order",
+            [6, 6, 1],
+            "batches in row order",
         )
 
     def test_rollback(self):
@@ -416,7 +414,7 @@ class InsertPartsTest(unittest.TestCase):
             self.models.HookItem().set_part("p").set_label(None)
         ]
         with self.assertRaises(OrmError):
-            self.models.HookItem().connect(self.db).creates(rows)
+            self.models.HookItem().connect(self.db).creates(rows, 4)
         self.assertEqual(
             self.models.HookItem().connect(self.db).get_count(),
             0,

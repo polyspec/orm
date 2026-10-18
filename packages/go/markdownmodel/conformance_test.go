@@ -257,7 +257,7 @@ func conformanceCases() map[string]caseFunc {
 			if err != nil {
 				return nil, err
 			}
-			return markdownmodel.People().Connect(s.db).Creates([]*markdownmodel.PeopleModel{bob, cara})
+			return markdownmodel.People().Connect(s.db).Creates([]*markdownmodel.PeopleModel{bob, cara}, 2)
 		},
 		"insert_rows_tasks": func(s *served) (any, error) {
 			rows := []*markdownmodel.TasksModel{
@@ -265,7 +265,7 @@ func conformanceCases() map[string]caseFunc {
 				markdownmodel.Tasks().SetOwner("P1").SetTitle("review").SetPoints(5).SetDue(nil),
 				markdownmodel.Tasks().SetOwner("P2").SetTitle("ship").SetPoints(8).SetDue(day("2026-10-05")),
 			}
-			return markdownmodel.Tasks().Connect(s.db).Creates(rows)
+			return markdownmodel.Tasks().Connect(s.db).Creates(rows, len(rows))
 		},
 		"insert_identity": func(s *served) (any, error) {
 			m, err := markdownmodel.Logs().Connect(s.db).SetTask("T1").SetNote("started").Create()

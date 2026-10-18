@@ -364,7 +364,7 @@ async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
         "insert_rows" => {
             let bob = People::new().set_name("Bob").set_email(Some("bob@example.com".to_owned())).set_age(Some(25)).set_score("2.00")?;
             let cara = People::new().set_name("Cara").set_email(None::<String>).set_age(None::<i32>).set_score("0.50")?;
-            json!(People::new().connect(db).creates(vec![bob, cara]).await?)
+            json!(People::new().connect(db).creates(vec![bob, cara], 2).await?)
         }
         "insert_rows_tasks" => {
             let rows = vec![
@@ -372,7 +372,7 @@ async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
                 Tasks::new().set_owner("P1").set_title("review").set_points(5).set_due(None::<String>)?,
                 Tasks::new().set_owner("P2").set_title("ship").set_points(8).set_due(Some("2026-10-05".to_string()))?,
             ];
-            json!(Tasks::new().connect(db).creates(rows).await?)
+            json!(Tasks::new().connect(db).creates(rows, 100).await?)
         }
         "insert_identity" => {
             let m = Logs::new().connect(db).set_task("T1").set_note("started").create().await?;

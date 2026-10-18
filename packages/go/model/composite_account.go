@@ -206,9 +206,10 @@ func (x *CompositeAccountModel) Create() (*CompositeAccountModel, error) {
 	return m.(*CompositeAccountModel), nil
 }
 
-// Creates inserts rows in one transaction and returns the inserted row count.
-func (x *CompositeAccountModel) Creates(rows []*CompositeAccountModel) (int64, error) {
-	return orm.Creates(x.m, rows)
+// Creates inserts rows in batches of batch rows, each one multi-row INSERT, in one transaction
+// and returns the inserted row count.
+func (x *CompositeAccountModel) Creates(rows []*CompositeAccountModel, batch int) (int64, error) {
+	return orm.Creates(x.m, rows, batch)
 }
 
 // Update writes the changed columns; Update(true) requires an unchanged updated time.

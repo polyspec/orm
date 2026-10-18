@@ -20,7 +20,7 @@ async fn coverage_model_write_cycle() {
             CompositeAccount::new().set_tenant_id(TENANT).set_account_id(3).set_name("many-3"),
             CompositeAccount::new().set_tenant_id(TENANT).set_account_id(4).set_name("many-4"),
         ];
-        assert_eq!(account().creates(many).await.unwrap(), 3, "creates");
+        assert_eq!(account().creates(many, 3).await.unwrap(), 3, "creates");
         let mut row = account().get_by_tenant_id_and_account_id(TENANT, 1).await.unwrap().expect("a row").set_name("updated");
         row.update(false).await.unwrap();
         assert_eq!(account().get_by_tenant_id_and_account_id(TENANT, 1).await.unwrap().expect("a row").get_name().unwrap(), "updated", "update");

@@ -355,7 +355,7 @@ func TestColumnsAndSubqueries(t *testing.T) {
 				must(model.CompositeAccount().Connect(db).SetTenantId(tenant).SetAccountId(a).SetName("n").Create())
 			}
 		}
-		if n := must(model.CompositeMembership().Connect(db).Creates(memberships)); n != 3 {
+		if n := must(model.CompositeMembership().Connect(db).Creates(memberships, 2)); n != 3 {
 			t.Fatalf("creates: %d", n)
 		}
 		pairs := must(model.CompositeMembership().Connect(db).

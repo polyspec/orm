@@ -172,7 +172,7 @@ export abstract class Model implements ModelLike {
   /** Inserts the row and returns the created row. */
   public async create(): Promise<this> { return modelOf(this, await create(this[CORE])); }
   /** Inserts rows in one transaction and returns the inserted row count. */
-  public async creates(rows: readonly this[]): Promise<number> { return creates(this[CORE], rows); }
+  public async creates(rows: readonly this[], batch: number): Promise<number> { return creates(this[CORE], rows, batch); }
   /** Writes the changed columns; update(true) requires an unchanged update time. */
   public async update(optimistic = false): Promise<this> { await update(this[CORE], optimistic); return this; }
   /** Updates the row when its primary key is known, otherwise creates it. */
@@ -701,7 +701,8 @@ async function create(c: Core): Promise<Model> {
   return asModel(m.self);
 }
 
-async function creates(c: Core, models: readonly Model[]): Promise<number> {
+async function creates(c: Core, models: readonly Model[], batch: number): Promise<number> {
+  if (!Number.isSafeInteger(batch) || batch < 1) throw configError(`creates batch must be a positive integer, got ${String(batch)}`);
   const ex = terminal(c);
   if (models.length === 0) return 0;
   const first = present(models[0], 'the first model of creates')[CORE];
@@ -710,11 +711,13 @@ async function creates(c: Core, models: readonly Model[]): Promise<number> {
     if (s.plus || s.minus) throw configError('creates accepts stored values only');
     return s.column;
   });
+  const parts = insertParts(models.length, batch);
+  batchFits(ex.db.driver, parts, columns.length);
   const schema = c.ent.entity;
   let total = 0;
   await inTransaction(c.conn, async () => {
     let start = 0;
-    for (const part of insertParts(models.length, columns.length, ex.db.driver)) {
+    for (const part of parts) {
       const r = writeRequest(c, 'insert');
       const rows: number[][] = [];
       models.slice(start, start + part).forEach((model, i) => {
@@ -736,19 +739,24 @@ async function creates(c: Core, models: readonly Model[]): Promise<number> {
 }
 
 /**
- * The row counts of the parts a multi-row insert of rows rows with columns columns runs as, in row order
- * (docs/protocol.md "Relation steps"): each the largest power of two that is at most the rows left and at most
- * the bind-limit chunk, floor(bind limit / columns) and at least 1.
+ * Refuses, before any statement, the first batch whose binds exceed the bind limit of driver, naming the batch, its
+ * bind count and the limit.
  */
-export function insertParts(rows: number, columns: number, driver: string): number[] {
-  const chunk = Math.max(1, Math.floor((driver === 'sqlite' ? 999 : 65535) / columns));
+function batchFits(driver: string, parts: readonly number[], columns: number): void {
+  const limit = driver === 'sqlite' ? 999 : 65535;
+  parts.forEach((part, i) => {
+    const binds = part * columns;
+    if (binds > limit) throw new OrmError(codes.BATCH_TOO_LARGE, `creates batch ${i + 1} of ${part} rows binds ${binds} parameters, over the ${driver} limit of ${limit}`);
+  });
+}
+
+/**
+ * The row counts of the batches a multi-row insert of rows rows runs as, in row order (docs/protocol.md "Relation
+ * steps"): each batch rows, the last one the rows left when fewer.
+ */
+export function insertParts(rows: number, batch: number): number[] {
   const parts: number[] = [];
-  for (let left = rows; left > 0;) {
-    let part = 1;
-    while (part * 2 <= Math.min(left, chunk)) part *= 2;
-    parts.push(part);
-    left -= part;
-  }
+  for (let left = rows; left > 0; left -= Math.min(left, batch)) parts.push(Math.min(left, batch));
   return parts;
 }
 

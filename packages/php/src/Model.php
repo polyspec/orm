@@ -1748,12 +1748,18 @@ abstract class Model implements \JsonSerializable
     }
 
     /**
-     * Inserts rows in multi-row statements in one transaction and returns the
-     * inserted row count; every row must set the same columns in the same order.
+     * Inserts rows in batches of $batch rows, each batch one multi-row INSERT, in one
+     * transaction (a savepoint inside an active one) and returns the inserted row count;
+     * every row must set the same columns in the same order. $batch is a positive
+     * integer, otherwise CONFIG; a batch over the bind limit is BATCH_TOO_LARGE; both
+     * fail before any statement.
      * @param list<Model> $rows
      */
-    public function creates(array $rows): int
+    public function creates(array $rows, int $batch): int
     {
+        if ($batch < 1) {
+            throw new OrmException(Code::CONFIG, "creates batch must be a positive integer, got $batch");
+        }
         [$db] = $this->executor();
         if ($rows === []) {
             return 0;
@@ -1773,8 +1779,17 @@ abstract class Model implements \JsonSerializable
             }
         }
         $meta = static::meta();
-        // Rows are split into power-of-two parts in the given order and run in one transaction (docs/protocol.md).
-        $parts = Db::insertParts(count($rows), count($columns), $db->driver());
+        // Rows run as batches of $batch rows in the given order in one transaction (docs/protocol.md).
+        $parts = Db::insertParts(count($rows), $batch);
+        $limit = Db::bindLimit($db->driver());
+        foreach ($parts as $i => $part) {
+            // A batch over the bind limit is refused before any statement, never split.
+            $binds = $part * count($columns);
+            if ($binds > $limit) {
+                $n = $i + 1;
+                throw new OrmException(Code::BATCH_TOO_LARGE, "creates batch $n of $part rows binds $binds parameters, over the {$db->driver()} limit of $limit");
+            }
+        }
         $total = 0;
         Db::inTransaction($this->conn, function () use ($rows, $columns, $meta, $parts, &$total): void {
             [$db, $frame] = Db::resolve($this->conn);

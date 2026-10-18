@@ -111,7 +111,7 @@ func TestShapeIgnoresParamValues(t *testing.T) {
 }
 
 // TestInsertPartsFixture checks that the row count of each shared case in contracts/fixtures/insert_parts.json
-// divides into the same parts as the driver and the column count (docs/protocol.md multi-row insert).
+// divides into the same batches as its batch size (docs/protocol.md multi-row insert).
 func TestInsertPartsFixture(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	text, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "fixtures", "insert_parts.json"))
@@ -123,9 +123,8 @@ func TestInsertPartsFixture(t *testing.T) {
 			ID        string `json:"id"`
 			Operation string `json:"operation"`
 			Input     struct {
-				Driver  string `json:"driver"`
-				Columns int    `json:"columns"`
-				Rows    int    `json:"rows"`
+				Rows  int `json:"rows"`
+				Batch int `json:"batch"`
 			} `json:"input"`
 			Expected []int `json:"expected"`
 		} `json:"cases"`
@@ -141,7 +140,7 @@ func TestInsertPartsFixture(t *testing.T) {
 			if c.Operation != "insert_parts" {
 				t.Fatalf("unknown operation %q", c.Operation)
 			}
-			got := insertParts(c.Input.Rows, insertChunk(c.Input.Driver, c.Input.Columns))
+			got := insertParts(c.Input.Rows, c.Input.Batch)
 			if !slices.Equal(got, c.Expected) {
 				t.Errorf("parts %v, want %v", got, c.Expected)
 			}

@@ -34,7 +34,7 @@ func TestCoverageModelWriteCycle(t *testing.T) {
 		model.CompositeAccount().SetTenantId(writeTenant).SetAccountId(3).SetName("many-3"),
 		model.CompositeAccount().SetTenantId(writeTenant).SetAccountId(4).SetName("many-4"),
 	}
-	if n := must(account().Creates(many)); n != 3 {
+	if n := must(account().Creates(many, 2)); n != 3 {
 		t.Fatalf("creates inserted %d rows, want 3", n)
 	}
 	for id, name := range map[int64]string{2: "many-2", 3: "many-3", 4: "many-4"} {

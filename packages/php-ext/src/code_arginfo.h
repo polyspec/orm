@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: f3e9ccf0b8880db7b038849331a14ed4bdf26d7d */
+ * Stub hash: 55a808a3e1b9f302d98ab3fd4b678c44313fbb82 */
 
 static zend_class_entry *register_class_Polyspec_Orm_Native_Code(void)
 {
@@ -147,6 +147,13 @@ static zend_class_entry *register_class_Polyspec_Orm_Native_Code(void)
 	zend_string *const_ROW_NOT_DELETED_name = zend_string_init_interned("ROW_NOT_DELETED", sizeof("ROW_NOT_DELETED") - 1, 1);
 	zend_declare_typed_class_constant(class_entry, const_ROW_NOT_DELETED_name, &const_ROW_NOT_DELETED_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
 	zend_string_release(const_ROW_NOT_DELETED_name);
+
+	zval const_BATCH_TOO_LARGE_value;
+	zend_string *const_BATCH_TOO_LARGE_value_str = zend_string_init("BATCH_TOO_LARGE", strlen("BATCH_TOO_LARGE"), 1);
+	ZVAL_STR(&const_BATCH_TOO_LARGE_value, const_BATCH_TOO_LARGE_value_str);
+	zend_string *const_BATCH_TOO_LARGE_name = zend_string_init_interned("BATCH_TOO_LARGE", sizeof("BATCH_TOO_LARGE") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_BATCH_TOO_LARGE_name, &const_BATCH_TOO_LARGE_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_BATCH_TOO_LARGE_name);
 
 	zval const_COLUMN_UNSELECTED_value;
 	zend_string *const_COLUMN_UNSELECTED_value_str = zend_string_init("COLUMN_UNSELECTED", strlen("COLUMN_UNSELECTED"), 1);

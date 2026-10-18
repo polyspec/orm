@@ -110,9 +110,10 @@ impl T {
         polyspec_orm::model::create(self).await
     }
 
-    /// Inserts rows in one transaction and returns the inserted row count.
-    pub async fn creates(&self, rows: Vec<Self>) -> polyspec_orm::Result<u64> {
-        polyspec_orm::model::creates(self, rows).await
+    /// Inserts rows in batches of `batch` rows, each one multi-row INSERT, in one transaction and returns the
+    /// inserted row count.
+    pub async fn creates(&self, rows: Vec<Self>, batch: usize) -> polyspec_orm::Result<u64> {
+        polyspec_orm::model::creates(self, rows, batch).await
     }
 
     /// Writes the changed columns; update(true) requires an unchanged update time.

@@ -23,7 +23,7 @@ func TestBindLimitSplitting(t *testing.T) {
 			rows[i] = model.Service().SetName(name)
 			names = append(names, name)
 		}
-		if inserted := must(model.Service().Connect(db).Creates(rows)); inserted != n {
+		if inserted := must(model.Service().Connect(db).Creates(rows, 500)); inserted != n {
 			t.Fatalf("inserted %d rows", inserted)
 		}
 		names = append(names, names[:200]...)

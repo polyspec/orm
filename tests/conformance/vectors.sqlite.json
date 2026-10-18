@@ -1866,6 +1866,25 @@
       }
     },
     {
+      "name": "creates_batch",
+      "chain": "CompositeAccount creates(5 rows of tenant 903, 2) runs batches of 2, 2 and 1 rows in one transaction and returns 5; creates(rows, 0) is CONFIG before any statement; tenantId(903)-\u003egetCount(), the rows deleted",
+      "calls": [
+        "creates",
+        "getCount",
+        "delete"
+      ],
+      "expect": null
+    },
+    {
+      "name": "creates_batch_too_large",
+      "chain": "CompositeAccount creates(21846 rows of tenant 904, 21846): the batch binds 65538 parameters, over the bind limit of every dialect, and is BATCH_TOO_LARGE before any statement; tenantId(904)-\u003egetCount() is 0",
+      "calls": [
+        "creates",
+        "getCount"
+      ],
+      "expect": null
+    },
+    {
       "name": "contains_ascii_fold",
       "chain": "creates(Apple, apple, Évian, évian, x_y), tenantId(902)-\u003eandLkName(p)-\u003eorderByAccountIdAsc()-\u003egets() for p in PPL, ÉV, _, '', delete",
       "calls": [

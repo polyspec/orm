@@ -978,9 +978,14 @@ func isZero(v any) bool {
 	return false
 }
 
-// Creates inserts models in multi-row statements in one transaction and
-// returns the inserted row count.
-func Creates[T Model](c *Core, models []T) (int64, error) {
+// Creates inserts models in batches of batch rows, each batch one multi-row INSERT, all in one
+// transaction (a savepoint inside an active one), and returns the inserted row count. batch is a
+// positive integer, otherwise CONFIG; a batch whose binds exceed the driver bind limit is
+// BATCH_TOO_LARGE; both fail before any statement.
+func Creates[T Model](c *Core, models []T, batch int) (int64, error) {
+	if batch < 1 {
+		return 0, configErr("creates batch must be a positive integer, got %d", batch)
+	}
 	c.ensureStatement()
 	ex, err := c.terminal()
 	if err != nil {
@@ -1001,10 +1006,14 @@ func Creates[T Model](c *Core, models []T) (int64, error) {
 		}
 		columns[i] = s.column
 	}
+	parts := insertParts(len(models), batch)
+	if err := batchFits(d.driver, parts, len(columns)); err != nil {
+		return 0, err
+	}
 	var total int64
 	err = inTransaction(c.conn, func() error {
 		start := 0
-		for _, part := range insertParts(len(models), insertChunk(d.driver, len(columns))) {
+		for _, part := range parts {
 			end := start + part
 			r, ent, err := c.writeRequest("insert", d)
 			if err != nil {
@@ -1055,21 +1064,24 @@ func Creates[T Model](c *Core, models []T) (int64, error) {
 	return total, err
 }
 
-// insertChunk is the most rows of columns values one statement binds on driver, at least 1.
-func insertChunk(driver string, columns int) int {
-	return max(1, driverBindLimit(driver)/columns)
+// batchFits refuses, before any statement, the first batch whose binds exceed the bind limit of
+// driver, naming the batch, its bind count and the limit.
+func batchFits(driver string, parts []int, columns int) error {
+	limit := driverBindLimit(driver)
+	for i, part := range parts {
+		if binds := part * columns; binds > limit {
+			return &ir.Error{Code: CodeBatchTooLarge, Msg: fmt.Sprintf("creates batch %d of %d rows binds %d parameters, over the %s limit of %d", i+1, part, binds, driver, limit)}
+		}
+	}
+	return nil
 }
 
-// insertParts splits n rows into the parts of a multi-row insert (docs/protocol.md): in row
-// order, each part is the largest power of two at most the rows left and at most chunk, so
-// the insert statements stay in the same size classes as the IN lists.
-func insertParts(n, chunk int) []int {
+// insertParts splits n rows into the batches of a multi-row insert (docs/protocol.md): in row
+// order, each batch is batch rows, the last one the rows left when fewer.
+func insertParts(n, batch int) []int {
 	var parts []int
 	for n > 0 {
-		part := 1
-		for part*2 <= min(n, chunk) {
-			part *= 2
-		}
+		part := min(n, batch)
 		parts = append(parts, part)
 		n -= part
 	}

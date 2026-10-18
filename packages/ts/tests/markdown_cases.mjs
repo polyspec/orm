@@ -17,13 +17,13 @@ export const conformanceCases = {
   insert_rows: async s => {
     const bob = new People().setName('Bob').setEmail('bob@example.com').setAge(25).setScore('2.00');
     const cara = new People().setName('Cara').setEmail(null).setAge(null).setScore('0.50');
-    return new People().connect(s.db).creates([bob, cara]);
+    return new People().connect(s.db).creates([bob, cara], 2);
   },
   insert_rows_tasks: async s => new Tasks().connect(s.db).creates([
     new Tasks().setOwner('P1').setTitle('write spec').setPoints(3).setDue('2026-10-01'),
     new Tasks().setOwner('P1').setTitle('review').setPoints(5).setDue(null),
     new Tasks().setOwner('P2').setTitle('ship').setPoints(8).setDue('2026-10-05'),
-  ]),
+  ], 3),
   insert_identity: async s => {
     const m = await new Logs().connect(s.db).setTask('T1').setNote('started').create();
     return { id: m.getId() };

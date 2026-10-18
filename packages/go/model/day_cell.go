@@ -206,8 +206,11 @@ func (x *DayCellModel) Create() (*DayCellModel, error) {
 	return m.(*DayCellModel), nil
 }
 
-// Creates inserts rows in one transaction and returns the inserted row count.
-func (x *DayCellModel) Creates(rows []*DayCellModel) (int64, error) { return orm.Creates(x.m, rows) }
+// Creates inserts rows in batches of batch rows, each one multi-row INSERT, in one transaction
+// and returns the inserted row count.
+func (x *DayCellModel) Creates(rows []*DayCellModel, batch int) (int64, error) {
+	return orm.Creates(x.m, rows, batch)
+}
 
 // Update writes the changed columns; Update(true) requires an unchanged updated time.
 func (x *DayCellModel) Update(optimistic ...bool) (*DayCellModel, error) {

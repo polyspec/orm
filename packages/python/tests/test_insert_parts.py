@@ -1,5 +1,5 @@
 # The shared cases of contracts/fixtures/insert_parts.json: one test for each case, named by its id. _insert_parts
-# splits the rows of the case into the parts of its driver and column count (docs/protocol.md "Multi-row inserts").
+# splits the rows of the case into batches of its batch size (docs/protocol.md "Multi-row inserts").
 # Run: python -m packages.python.tests.test_insert_parts
 import json
 import unittest
@@ -22,11 +22,7 @@ def check_case(test: unittest.TestCase, case: Any) -> None:
     """The parts of the case's rows are its expected parts."""
     test.assertEqual(case["operation"], "insert_parts")
     given = case["input"]
-    limit = 999 if given["driver"] == "sqlite" else 65535
-    test.assertEqual(
-        _insert_parts(given["rows"], max(1, limit // given["columns"])),
-        case["expected"],
-    )
+    test.assertEqual(_insert_parts(given["rows"], given["batch"]), case["expected"])
 
 
 def load_tests(

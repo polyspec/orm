@@ -174,8 +174,11 @@ func (x *ProjectModel) Create() (*ProjectModel, error) {
 	return m.(*ProjectModel), nil
 }
 
-// Creates inserts rows in one transaction and returns the inserted row count.
-func (x *ProjectModel) Creates(rows []*ProjectModel) (int64, error) { return orm.Creates(x.m, rows) }
+// Creates inserts rows in batches of batch rows, each one multi-row INSERT, in one transaction
+// and returns the inserted row count.
+func (x *ProjectModel) Creates(rows []*ProjectModel, batch int) (int64, error) {
+	return orm.Creates(x.m, rows, batch)
+}
 
 // Update writes the changed columns; Update(true) requires an unchanged updated time.
 func (x *ProjectModel) Update(optimistic ...bool) (*ProjectModel, error) {

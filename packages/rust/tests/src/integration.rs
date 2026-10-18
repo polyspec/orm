@@ -314,7 +314,7 @@ async fn columns_and_subqueries(t: &Target) {
         CompositeMembership::new().set_tenant_id(1).set_account_id(11).set_role("member"),
         CompositeMembership::new().set_tenant_id(2).set_account_id(10).set_role("member"),
     ];
-    assert_eq!(CompositeMembership::new().connect(db).creates(memberships).await.unwrap(), 3, "creates");
+    assert_eq!(CompositeMembership::new().connect(db).creates(memberships, 3).await.unwrap(), 3, "creates");
     let pairs = CompositeMembership::new().connect(db).tuple_tenant_id_with_account_id(vec![(1, 10), (2, 10)]).get_count().await.unwrap();
     assert_eq!(pairs, 2, "tuple");
 }
@@ -545,7 +545,7 @@ async fn bind_limit_splitting(t: &Target) {
         rows.push(Service::new().set_name(name.clone()));
         names.push(name);
     }
-    assert_eq!(Service::new().connect(db).creates(rows).await.unwrap(), N as u64, "inserted");
+    assert_eq!(Service::new().connect(db).creates(rows, 500).await.unwrap(), N as u64, "inserted");
     names.extend(names[..200].to_vec());
     names.extend((0..100).map(|i| format!("missing-{i}")));
     let found = Service::new().connect(db).name(names.clone()).gets().await.unwrap();

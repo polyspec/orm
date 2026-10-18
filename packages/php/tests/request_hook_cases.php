@@ -157,7 +157,7 @@ function insertAssign(string $dsn): void
         }
     });
     (new HookItem)($h)->setLabel('single')->create();
-    $written = (new HookItem)($h)->creates([(new HookItem)->setLabel('bulk1'), (new HookItem)->setLabel('bulk2')]);
+    $written = (new HookItem)($h)->creates([(new HookItem)->setLabel('bulk1'), (new HookItem)->setLabel('bulk2')], 2);
     hookCheck($written === 2, "the bulk insert writes 2 rows, got $written");
     $parts = [];
     foreach ((new HookItem)($db)->gets() as $row) {

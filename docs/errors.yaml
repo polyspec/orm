@@ -49,6 +49,8 @@ codes:
     origin: executor
   - code: ROW_NOT_DELETED        # restoreOrCreate found its key on a row that is not deleted; nothing was written
     origin: executor
+  - code: BATCH_TOO_LARGE        # a batch of creates binds more parameters than the dialect allows; names the batch, its bind count and the limit; nothing was written
+    origin: executor
   - code: COLUMN_UNSELECTED      # a requested column was not included in the loaded row
     origin: executor
   - code: OPTIMISTIC_LOCK         # updateOptimistic matched no row (updated_ts changed)

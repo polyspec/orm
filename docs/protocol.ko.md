@@ -182,7 +182,7 @@ PostgreSQL identity는 명시한 key를 지나 나아가지 않으므로 다시 
 - 관계마다 부모 단계 뒤에 `relation` 단계가 하나 있다. 중첩 관계도 같은 규칙을 따르며, `paginate`의 단계 순서는 본문, 관계, 개수다.
 - 클라이언트는 모든 부모 행의 키를 순서대로 읽고, 키가 null인 행과 중복을 제거한다. 남은 키가 없으면 문장을 실행하지 않는다. `if_parent`가 있으면 컬럼 값이 매개변수와 같은 부모만 사용한다.
 - `parent` 슬롯은 클라이언트가 키 목록으로 확장하는 자리표시자 하나다. 목록은 마지막 키를 반복해 2의 거듭제곱 길이로 맞추므로 크기 구간마다 준비된 문장 하나를 사용한다. 드라이버 바인드 한도보다 긴 목록은 나누어 실행한다.
-- 여러 행 insert(`creates`)도 같은 크기 구간을 따른다. 행은 주어진 순서대로 부분으로 나뉘어 실행되며, 각 부분은 남은 행 수 이하이고 바인드 한도 단위, 곧 floor(바인드 한도 / 컬럼 수)(적어도 1) 이하인 가장 큰 2의 거듭제곱이다. 바인드 한도는 SQLite에서 999, MySQL과 PostgreSQL에서 65535다. SQLite에서 컬럼 두 개인 1000행은 256, 256, 256, 128, 64, 32, 8행으로 실행된다. 반복한 행은 삽입되므로 행은 채우지 않는다. 모든 부분은 한 transaction에서 실행되므로 실패한 부분이 있으면 그 호출의 행은 남지 않고, 삽입된 행과 생성된 키와 statement event는 주어진 행의 순서를 지킨다. 공유 case는 `contracts/fixtures/insert_parts.json`이다.
+- 여러 행 insert(`creates(rows, batch)`)는 행을 주어진 순서대로 batch로 나누어 실행한다. 각 batch는 `batch`개 행이고 마지막 batch는 남은 행이 더 적으면 그만큼이며, 각 batch는 하나의 multi-row INSERT다. client는 다른 크기를 고르지 않고 batch를 나누지 않는다. `batch`는 양의 정수이며, 아니면 어떤 statement보다 먼저 `CONFIG`다. 바인드 수(행 수 × 컬럼 수)가 바인드 한도(SQLite 999, MySQL과 PostgreSQL 65535)를 넘는 batch는 어떤 statement보다 먼저 `BATCH_TOO_LARGE`로 실패하고, message는 그 batch와 바인드 수와 한도를 밝힌다. 반복된 행은 insert되므로 행은 padding하지 않는다. 모든 batch는 한 transaction(활성 transaction 안에서는 savepoint)에서 실행되므로 실패한 batch는 그 호출의 어떤 행도 남기지 않으며, insert된 행과 생성된 key와 statement event는 주어진 행의 순서를 따른다. 공유 case는 `contracts/fixtures/insert_parts.json`이다.
 - `one`은 첫 자식 행을, `many`는 자식 순서의 컬렉션을 붙인다. 컬렉션 키가 겹치면 마지막 행을 유지한다.
 
 ## 3. 오류

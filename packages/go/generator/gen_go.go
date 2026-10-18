@@ -598,8 +598,9 @@ func (x *T) Create() (*T, error) {
 	return m.(*T), nil
 }
 
-// Creates inserts rows in one transaction and returns the inserted row count.
-func (x *T) Creates(rows []*T) (int64, error) { return orm.Creates(x.m, rows) }
+// Creates inserts rows in batches of batch rows, each one multi-row INSERT, in one transaction
+// and returns the inserted row count.
+func (x *T) Creates(rows []*T, batch int) (int64, error) { return orm.Creates(x.m, rows, batch) }
 
 // Update writes the changed columns; Update(true) requires an unchanged updated time.
 func (x *T) Update(optimistic ...bool) (*T, error) {

@@ -220,9 +220,10 @@ func (x *ClockCellModel) Create() (*ClockCellModel, error) {
 	return m.(*ClockCellModel), nil
 }
 
-// Creates inserts rows in one transaction and returns the inserted row count.
-func (x *ClockCellModel) Creates(rows []*ClockCellModel) (int64, error) {
-	return orm.Creates(x.m, rows)
+// Creates inserts rows in batches of batch rows, each one multi-row INSERT, in one transaction
+// and returns the inserted row count.
+func (x *ClockCellModel) Creates(rows []*ClockCellModel, batch int) (int64, error) {
+	return orm.Creates(x.m, rows, batch)
 }
 
 // Update writes the changed columns; Update(true) requires an unchanged updated time.

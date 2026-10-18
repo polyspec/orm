@@ -149,7 +149,7 @@ The shared vector `terminal_by` in `tests/conformance/vectors.json` runs `getsBy
 | `getsPage` | page | model connection or active transaction |
 | `getCount` | integer | model connection or active transaction |
 | `create` | row with generated key | model connection or active transaction |
-| `creates` | inserted row count | model connection or active transaction |
+| `creates(rows, batch)` | inserted row count; `CONFIG` when `batch` is not a positive integer and `BATCH_TOO_LARGE` when a batch binds more than the dialect bind limit, both before any statement | model connection or active transaction |
 | `update` | row | row connection or active transaction |
 | `delete` | row or collection | row connection or active transaction |
 | `restore` | the restored row; `NO_ROWS` when no row has the key | model connection or active transaction |

@@ -18,7 +18,7 @@ await runCases('coverage_model_writes.mjs', {
         const created = await account().setTenantId(tenant).setAccountId(1).setName('created').create();
         assert.equal(created.getName(), 'created');
         const inserted = await account().creates([2, 3, 4].map(id =>
-          new CompositeAccount().setTenantId(tenant).setAccountId(id).setName(`many-${id}`)));
+          new CompositeAccount().setTenantId(tenant).setAccountId(id).setName(`many-${id}`)), 3);
         assert.equal(inserted, 3, 'rows inserted by creates');
         await (await account().getByTenantIdAndAccountId(tenant, 1)).setName('updated').update();
         assert.equal((await account().getByTenantIdAndAccountId(tenant, 1)).getName(), 'updated', 'updated name');

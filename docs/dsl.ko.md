@@ -264,7 +264,7 @@ rows, err := model.Product().Connect(slave1).
 | `new<Name>(value)` | 컬럼이 아닌 명칭으로 값을 행에 추가. 아래 규칙 참고 |
 | `plus<Col>(n)`, `minus<Col>(n)` | 바인드한 증가·감소. `minus`는 음수를 저장하지 않는다 |
 | `create()` | 삽입 후 생성 키를 포함한 행 반환 |
-| `creates(models)` | `set<Col>`로 만든 모델을 하나의 트랜잭션에서 여러 행 문장으로 삽입하고 삽입한 행 수 반환. 모든 모델은 같은 컬럼을 설정해야 한다 |
+| `creates(models, batch)` | `set<Col>`로 만든 모델을 `batch`개 행씩 batch로 나누어 각 batch를 하나의 multi-row INSERT로, 모두 하나의 트랜잭션(활성 트랜잭션 안에서는 savepoint)에서 삽입하고 삽입한 행 수 반환. 모든 모델은 같은 컬럼을 설정해야 한다. `batch`는 필수인 양의 정수이며 아니면 `CONFIG`, 바인드 수가 dialect의 바인드 한도를 넘는 batch는 `BATCH_TOO_LARGE`이고, 둘 다 어떤 statement보다 먼저 실패한다 |
 | `duplication(model)`과 `create()` | `model`의 변경 값으로 중복 키 갱신을 포함한 삽입 |
 | `update()` | 행의 변경 컬럼 갱신 |
 | `update(true)` | 저장된 `updated_ts`가 조회 값과 같을 때만 갱신, 다르면 `OPTIMISTIC_LOCK` |

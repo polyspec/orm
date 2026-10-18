@@ -263,7 +263,7 @@ rows, err := model.Product().Connect(slave1).
 | `new<Name>(value)` | attach a value under a name that is not a column; see the rules below |
 | `plus<Col>(n)`, `minus<Col>(n)` | bound increment and decrement; `minus` never stores a negative value |
 | `create()` | insert and return the row with its generated key |
-| `creates(models)` | insert models created with `set<Col>` in multi-row statements in one transaction and return the inserted row count; every model must set the same columns |
+| `creates(models, batch)` | insert models created with `set<Col>` in batches of `batch` rows, each batch one multi-row INSERT, all in one transaction (a savepoint inside an active transaction), and return the inserted row count; every model must set the same columns. `batch` is required and a positive integer, otherwise `CONFIG`; a batch whose binds exceed the dialect bind limit is `BATCH_TOO_LARGE`; both fail before any statement |
 | `duplication(model)` with `create()` | insert with duplicate-key update from the changes of `model` |
 | `update()` | update changed columns of the row |
 | `update(true)` | update only when the stored `updated_ts` equals the value that was read; otherwise `OPTIMISTIC_LOCK` |

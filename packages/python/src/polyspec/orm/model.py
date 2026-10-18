@@ -482,11 +482,11 @@ class Model:
 
         return create_row(self.core)
 
-    def creates(self, rows: list[Self]) -> int:
-        """Inserts several rows in one transaction and counts the rows."""
+    def creates(self, rows: list[Self], batch: int) -> int:
+        """Inserts rows in batches of batch rows, each one multi-row INSERT, in one transaction and counts the rows."""
         from polyspec.orm.model_exec import creates as creates_rows
 
-        return creates_rows(self.core, rows)
+        return creates_rows(self.core, rows, batch)
 
     def update(self, optimistic: bool = False) -> Self:
         """Writes the changed columns; update(True) requires that the update time did not change."""
