@@ -77,6 +77,10 @@ func testPhysicalQueryForms(t *testing.T, driver, dsn string) {
 	case "sqlite":
 		point, datetime = "TEXT", "TEXT"
 	}
+	// The second place row is two days before the database's own clock, so days_ago(3) selects it on every run day.
+	// Each dialect writes that instant with its own expression, and the reference clock is read from the same server.
+	recent := map[string]string{"mysql": "NOW(6) - INTERVAL 2 DAY", "postgres": "now() - interval '2 days'", "sqlite": "datetime('now','-2 days')"}[driver]
+	clockSQL := map[string]string{"mysql": "SELECT DATE_FORMAT(NOW(6), '%Y-%m-%d %H:%i:%s')", "postgres": "SELECT to_char(now(), 'YYYY-MM-DD HH24:MI:SS')", "sqlite": "SELECT datetime('now')"}[driver]
 	exec("CREATE TABLE place (seq BIGINT PRIMARY KEY, owner_seq BIGINT NOT NULL, name VARCHAR(50) NOT NULL, price INT NOT NULL, location " + point + ", created_ts " + datetime + " NOT NULL)")
 	exec("CREATE TABLE owner (seq BIGINT PRIMARY KEY, name VARCHAR(50) NOT NULL, min_price INT NOT NULL)")
 	exec("CREATE TABLE visit (seq BIGINT PRIMARY KEY, place_seq BIGINT NOT NULL, amount INT NOT NULL, status INT NOT NULL)")
@@ -90,14 +94,21 @@ func testPhysicalQueryForms(t *testing.T, driver, dsn string) {
 		}
 		return fmt.Sprintf("'POINT(%g %g)'", lon, lat)
 	}
-	// The fixture timestamps and the reference instant are fixed, so the expectations do not depend on the run day.
-	clock := time.Date(2026, 10, 16, 12, 0, 0, 0, time.UTC)
 	exec("INSERT INTO owner VALUES (1, 'kim bakery', 900), (2, 'lee market', 100)")
 	exec("INSERT INTO place VALUES " +
 		"(1, 1, 'seoul hall', 1000, " + pointValue(126.978, 37.5665) + ", '2020-01-02 10:00:00'), " +
-		"(2, 2, 'busan hall', 50, " + pointValue(129.0756, 35.1796) + ", '2026-10-15 09:00:00')")
+		"(2, 2, 'busan hall', 50, " + pointValue(129.0756, 35.1796) + ", " + recent + ")")
 	exec("INSERT INTO visit VALUES (1, 1, 30, 1), (2, 1, 20, 1), (3, 1, 99, 0), (4, 2, 5, 1)")
 	exec("INSERT INTO membership VALUES (1, 10, 'owner'), (1, 11, 'member'), (2, 10, 'member')")
+	// The now and days_ago binds use the database's clock, the same clock that wrote the second row.
+	var clockText string
+	if err := db.QueryRowContext(ctx, clockSQL).Scan(&clockText); err != nil {
+		t.Fatalf("%s clock: %v", driver, err)
+	}
+	clock, err := time.Parse("2006-01-02 15:04:05", clockText)
+	if err != nil {
+		t.Fatalf("%s clock %q: %v", driver, clockText, err)
+	}
 
 	e := formsEngine(t, driver)
 	run := func(body string, params ...any) [][]any {
@@ -107,16 +118,16 @@ func testPhysicalQueryForms(t *testing.T, driver, dsn string) {
 	}
 
 	rows := run(`"kind":"all","entity":"place","columns":{"mode":"none"},
-	 "where":{"items":[{"pred":{"column":"created_ts","op":"eq","p":0,"fn":{"name":"day_of_week"}}}]},"order":[{"column":"seq"}]`,
-		5)
-	// The place fixture holds seq 1 (created 2020-01-02, a Thursday, DAYOFWEEK 5) and seq 2 (created 2026-10-15,
-	// a Thursday, DAYOFWEEK 5), so both rows match and the expected count is 2 on any run day.
-	if len(rows) != 2 || asInt(rows[0][0]) != 1 {
-		t.Fatalf("day_of_week rows %v, want 2 rows starting at seq 1", rows)
+	 "where":{"items":[{"pred":{"column":"created_ts","op":"eq","p":0,"fn":{"name":"day_of_week"}}},
+	   {"pred":{"conn":"and","column":"seq","op":"not_eq","p":1}}]},"order":[{"column":"seq"}]`,
+		5, 2)
+	// Seq 2 is dated relative to the run clock, so its weekday changes by day; it is excluded. Seq 1 (created 2020-01-02,
+	// a Thursday, DAYOFWEEK 5) is the only fixed-date row, so the expected result is seq 1 on any run day.
+	if len(rows) != 1 || asInt(rows[0][0]) != 1 {
+		t.Fatalf("day_of_week rows %v, want seq 1 only", rows)
 	}
 
-	// On sqlite and postgres the days_ago bind uses the fixed clock 2026-10-16 12:00: days_ago(3) is 2026-10-13 12:00, so seq 2
-	// (2026-10-15 09:00) is inside the window and seq 1 (2020) is outside it. MySQL computes days_ago from NOW(6), not from the bind.
+	// Seq 2 is two days before the database clock, so days_ago(3) selects it on every run day; seq 1 (2020) is outside.
 	rows = run(`"kind":"all","entity":"place","columns":{"mode":"none"},
 	 "where":{"items":[{"pred":{"column":"created_ts","op":"gt","value":{"name":"days_ago","ps":[0]}}},
 	   {"pred":{"conn":"and","column":"created_ts","op":"lte","value":{"name":"now"}}}]}`, 3)
