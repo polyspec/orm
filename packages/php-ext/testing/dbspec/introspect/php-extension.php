@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-// 한 database 를 PHP 확장 orm_dbspec(Polyspec\Orm\Dbspec\Native\Dbspec)으로 introspect 해 PHP client 의 runner(php.php)와
-// 같은 형식으로 쓴다: stdout 에 canonical 문서와 미지원 객체 줄 "! kind<TAB>table<TAB>name", stderr 에 "elapsed <ms>".
-// DSN 은 PHP client 의 Orm::parseDsn 으로 PDO 인자로 바꾼다.
+// Introspects one database with the PHP extension orm_dbspec (Polyspec\Orm\Dbspec\Native\Dbspec) and writes it in the same format as the PHP client's runner (php.php):
+// on stdout, the canonical document and unsupported object lines "! kind<TAB>table<TAB>name", and on stderr "elapsed <ms>".
+// The DSN is converted to PDO arguments with the PHP client's Orm::parseDsn.
 //
 // Usage: php -d extension=<orm_dbspec library> packages/php-ext/testing/dbspec/introspect/php-extension.php <mysql|postgres|sqlite> <uri>
 
