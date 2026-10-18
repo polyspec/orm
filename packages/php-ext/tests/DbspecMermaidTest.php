@@ -43,8 +43,8 @@ function mermaid_drops(array $dropped): array
 
 
 /**
- * Writes the tables, columns, primary keys and foreign keys that Mermaid translates as lines sorted by table name.
- * Foreign key actions are left out, since Mermaid does not translate them.
+ * Writes the tables, columns, primary keys, and foreign keys that Mermaid carries, as lines in table name order.
+ * Foreign key actions are not carried by Mermaid, so they are left out.
  *
  * @return list<string>
  */

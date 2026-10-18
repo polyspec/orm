@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The PHP extension's mirrored dbspec tests have the same bodies as the PHP client's again (T131-11).
 - The PHP extension's arginfo header is regenerated for its translated stub, so its check passes (T131-10).
 - The owner selection tests expect comment-language-check, which every source change selects (T131-9).
 - Each conformance vector declares `calls`, the public methods it verifies, and a unit test checks that every runner's body calls them; contains_null states that the typed clients set its NULL predicate through the core (T77-6-3).

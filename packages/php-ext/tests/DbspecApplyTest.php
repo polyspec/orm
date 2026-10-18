@@ -40,9 +40,9 @@ function apply_dsns(): array
 }
 
 /**
- * Creates a new database, schema or file for each run. The function it returns points there,
- * opens a new session, and the second function deletes it. In SQLite, the session's busy
- * timeout is 0, so it does not wait for another session's write lock.
+ * Each run creates a new database, schema, or file. The returned function points at that place
+ * and opens a new session there; the second function removes it. A SQLite session has busy
+ * timeout 0, so it does not wait for another session's write lock.
  *
  * @return array{0: Closure(): PDO, 1: Closure(): void}
  */
@@ -89,7 +89,7 @@ function apply_failure(string $id, array $diagnostics): never
     throw new RuntimeException("$id: " . json_encode(array_map(static fn(Diagnostic $d): array => [$d->rule, $d->line, $d->column, $d->message], $diagnostics)));
 }
 
-/** Text of the first column of the first row. Only strings and integers are read as text. */
+/** The text of the first column of the first row. Only strings and integers are read as text. */
 function apply_value(PDO $pdo, string $query): string
 {
     $rows = $pdo->query($query)->fetchAll(PDO::FETCH_NUM);
@@ -133,7 +133,7 @@ function apply_code(string $want, Closure $operation): void
     throw new RuntimeException("succeeded; want the $want error");
 }
 
-/** Checks that the operation stops at exactly that stop. */
+/** Checks that the operation stops exactly at that stop. */
 function apply_stopped(RuntimeException $stop, Closure $operation): void
 {
     try {
@@ -145,10 +145,10 @@ function apply_stopped(RuntimeException $stop, Closure $operation): void
     throw new RuntimeException('apply did not stop at the event');
 }
 
-// Lock name and key of "Apply" in docs/plans.md.
+// The lock name and key of docs/plans.md "Apply".
 const MYSQL_APPLY_LOCK = "CONCAT('dbspec\$plans\$', LEFT(SHA2(DATABASE(), 256), 51))";
 const POSTGRES_APPLY_LOCK = "hashtext('dbspec\$plans'), hashtext(current_schema())";
-// Number of tables and columns whose names start with dbspec$ that are not the history table.
+// The number of tables whose name starts with dbspec$, and of columns, excluding the history table.
 const HIDDEN_LEFT = [
     'mysql' => "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME LIKE 'dbspec\$%' OR COLUMN_NAME LIKE 'dbspec\$%') AND TABLE_NAME <> 'dbspec\$plans'",
     'postgres' => "SELECT COUNT(*) FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid WHERE c.relnamespace = current_schema()::regnamespace AND c.relkind = 'r' AND a.attnum > 0 AND (c.relname LIKE 'dbspec\$%' OR a.attname LIKE 'dbspec\$%') AND c.relname <> 'dbspec\$plans'",
@@ -184,7 +184,7 @@ function apply_scenarios(): array
         throw new RuntimeException('plans.json does not chain create-from-empty and rename-table-and-column');
     }
     /**
-     * Chain made of the first plan base that builds the case's source and the case's plan.
+     * The first plan base that builds the case's source, and the chain of the case's plan.
      *
      * @return list<Plan>
      */
@@ -201,7 +201,7 @@ function apply_scenarios(): array
         return $manifest->manifest?->schemaText ?? apply_failure('schema', $manifest->diagnostics);
     };
     /**
-     * [number of steps, number of steps before finalize] of the chain plan for each dialect.
+     * Per dialect, [number of steps, number of steps before finalize] of the chain's plan.
      *
      * @param list<Plan> $chain
      * @return array<string, list<array{0: int, 1: int}>>
@@ -236,19 +236,19 @@ function apply_scenarios(): array
     $now = static fn(): DateTimeImmutable => new DateTimeImmutable('2026-10-01T00:00:00.123456789Z');
     $history = static fn(string $dialect): string => $dialect === 'mysql' ? '`dbspec$plans`' : '"dbspec$plans"';
 
-    /** Checks that the name, state and step of the history row are want. */
+    /** Checks that the name, state, and step of the history row are want. */
     $historyIs = static function (PDO $pdo, string $db, string $want) use ($history): void {
         $rows = $pdo->query('SELECT name, state, step FROM ' . $history($db) . ' ORDER BY name')->fetchAll(PDO::FETCH_NUM);
         $got = implode(',', array_map(static fn(array $r): string => implode('|', array_map('strval', $r)), $rows));
         Assert::assertSame($want, $got, "history rows: got \"$got\"; want \"$want\"");
     };
-    /** Joins every row of the column as `a|b` and checks it. */
+    /** Checks all rows of the column joined as `a|b`. */
     $rowsAre = static function (PDO $pdo, string $query, string $want): void {
         $rows = $pdo->query($query)->fetchAll(PDO::FETCH_NUM);
         $got = implode(',', array_map(static fn(array $r): string => implode('|', array_map(static fn($v): string => $v === null ? 'NULL' : (string) $v, $r)), $rows));
         Assert::assertSame($want, $got, "$query: got \"$got\"; want \"$want\"");
     };
-    /** Event handler that stops after the command runs the step-th statement of the plan, before it records the step. */
+    /** An event handler that stops the command after it runs the step-th statement of the plan, before recording the step. */
     $stopAfter = static fn(string $plan, int $step, RuntimeException $stop): Closure => static function (ApplyEvent $event) use ($plan, $step, $stop): void {
         if ($event->kind === 'applied' && $event->plan === $plan && $event->step === $step) {
             throw $stop;
@@ -288,7 +288,7 @@ function apply_scenarios(): array
             }
         }],
         ['other_database', $all, static function (Closure $session, PDO $pdo, string $db) use ($plans, $now, $target): void {
-            // While the apply of the first database holds the lock, a second database, schema or file
+            // While the first database's apply holds the lock, a second database, schema, or file
             // applies the same chain. The lock covers only one database, so it is not locked.
             [$secondSession, $dropSecond] = open_apply_database($db);
             try {
@@ -314,7 +314,7 @@ function apply_scenarios(): array
             }
         }],
         ['empty_chain', $all, static function (Closure $session, PDO $pdo, string $db) use ($now, $history): void {
-            // A chain without a plan applies nothing to a database without tables.
+            // A chain with no plan applies nothing to a database without the table.
             $events = [];
             $record = static function (ApplyEvent $event) use (&$events): void {
                 $events[] = $event->kind;
@@ -330,7 +330,7 @@ function apply_scenarios(): array
             apply_code('drift', static fn() => Dbspec::apply($pdo, $db, [], $now, null));
         }],
         ['unlock_not_held', ['postgres'], static function (Closure $session, PDO $pdo, string $db) use ($plans, $now): void {
-            // If the advisory lock is released first in the event, the unlock at the end of the command releases nothing.
+            // If the advisory lock is released first in an event, the unlock at the end of the command releases nothing.
             $release = static function (ApplyEvent $event) use ($pdo, $plans): void {
                 if ($event->kind === 'plan' && $event->plan === $plans[0]->name) {
                     $pdo->query('SELECT pg_advisory_unlock(' . POSTGRES_APPLY_LOCK . ')')->closeCursor();
@@ -347,7 +347,7 @@ function apply_scenarios(): array
         }],
         ['verify_failure', $all, static function (Closure $session, PDO $pdo, string $db) use ($plans, $now, $historyIs, $planCounts): void {
             // If a table outside the plan is created after the last statement, verification fails and the row stays
-            // recorded as applying, after all steps.
+            // recorded as applying.
             $n = $planCounts[$db][0][1];
             $sneak = static function (ApplyEvent $event) use ($pdo, $plans, $n): void {
                 if ($event->kind === 'applied' && $event->plan === $plans[0]->name && $event->step === $n - 1) {
@@ -358,8 +358,8 @@ function apply_scenarios(): array
             $historyIs($pdo, $db, "{$plans[0]->name}|applying|$n");
         }],
         ['rows_between', $all, static function (Closure $session, PDO $pdo, string $db) use ($representative, $now, $repSource, $repTarget, $repCounts, $historyIs, $rowsAre): void {
-            // Rows written by the applied plan remain after rollback, and the value and default of the dropped column return,
-            // Applying again brings back the value of the added column. Rollback after finalize cannot be undone.
+            // Rows written by the applied plan remain after rollback, the value and default of a dropped column come back,
+            // and applying again brings back the value of the added column. A rollback after finalize cannot be undone.
             $c = $repCounts[$db];
             Dbspec::apply($pdo, $db, [$representative[0]], $now, null);
             $pdo->exec("INSERT INTO users (mail, legacy_code, age, nick) VALUES ('a@x', 7, 3, 'n1')");
@@ -382,8 +382,8 @@ function apply_scenarios(): array
             apply_schema_is($pdo, $db, $repTarget);
         }],
         ['nulls', $all, static function (Closure $session, PDO $pdo, string $db) use ($required, $now, $requiredTarget, $requiredCounts, $historyIs): void {
-            // If a NULL row appears meanwhile in a column with no hidden non-null default, rollback does nothing
-            // and stops with a nulls error that gives the row count without changing anything.
+            // If a NULL row is written in the meantime to a hidden column with no non-null default, rollback changes nothing
+            // and stops with a nulls error that gives the row count.
             $c = $requiredCounts[$db];
             Dbspec::apply($pdo, $db, $required, $now, null);
             $pdo->exec("INSERT INTO t (a) VALUES ('y')");
@@ -397,9 +397,9 @@ function apply_scenarios(): array
             $historyIs($pdo, $db, "base|applied|{$c[0][1]},drop_required_column|applied|{$c[1][1]}");
         }],
     ];
-    // For each step k of the representative plan: stop apply after the statement, roll back, and again
-    // stop and recover, and stop the rollback of the applied plan after the rollback statement of step k,
-    // continue the rollback.
+    // For each step k of the representative plan: stop apply after the statement and roll back, then again
+    // stop and recover, and stop the rollback of the applied plan after step k's rollback statement,
+    // and continue the rollback.
     foreach ($all as $db) {
         $c = $repCounts[$db];
         $baseRow = "base|applied|{$c[0][1]}";
@@ -427,19 +427,19 @@ function apply_scenarios(): array
         }
     }
 
-    // apply needs one server session that is not shared with other clients from start to end (docs/plans.md
-    // "Apply"). PgBouncer's transaction pooling picks a server connection again for each statement, so
+    // apply needs one server session that no other client shares from start to finish (docs/plans.md
+    // "Apply"). PgBouncer's transaction pooling chooses a server connection again for each statement, so
     // apply checks the server session at the lock and at each step, and stops with a session error. Each scenario
-    // creates its own database on the server and connects to that database through PgBouncer. PgBouncer reuses an idle server
-    // connection in LIFO order (server_round_robin = 0), so the order below is fixed.
+    // creates its own database on the server and connects to that database through PgBouncer. PgBouncer
+    // reuses the idle server connection LIFO (server_round_robin = 0), so the order below is fixed.
     $poolerScenarios = [
-        // apply takes over the server connection whose session advisory lock another client holds.
+        // apply takes over a server connection on which another client holds the session advisory lock.
         'lock_shared' => static function (PDO $apply, PDO $other) use ($plans, $now): void {
             $other->query('SELECT pg_advisory_lock(' . POSTGRES_APPLY_LOCK . ')')->closeCursor();
             Dbspec::apply($apply, 'postgres', $plans, $now, null);
         },
-        // Before the first step, another client takes apply's server connection in a transaction, so apply's
-        // next statement runs on another server connection.
+        // Before the first step, another client takes apply's server connection in a transaction, so the
+        // next statement of apply runs on another server connection.
         'session_changed' => static function (PDO $apply, PDO $other) use ($plans, $now): void {
             $held = false;
             try {
@@ -544,7 +544,7 @@ final class DbspecApplyTest extends TestCase
             try {
                 $scenario($apply, $other);
             } catch (Throwable $e) {
-                // If there is an error in the cleanup step (an unlock run on another server connection), the throwable before it is the failure.
+                // If there is an error in the cleanup step (the unlock, run on another server connection), the earlier throwable is the failure.
                 $failure = $e instanceof ApplyCleanupError ? $e->getPrevious() : $e;
                 Assert::assertFalse(!$failure instanceof ApplyError || $failure->code_ !== 'session' || !str_contains($failure->detail, 'a direct or session-pooled connection'), "apply through a transaction pooler: {$e->getMessage()}, want a session error");
                 return;

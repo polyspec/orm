@@ -25,15 +25,15 @@ const APPLY_CLEANUP_RUN = 'apply_cleanup_php';
 
 
 /**
- * A SQLite connection that injects an error into the chosen statements and replaces the chosen query with another query.
- * The replacement query runs without the parameters of the original query.
+ * A SQLite connection that injects an error into the chosen statement and replaces the chosen query with another query.
+ * The replaced query runs without the parameters of the original query.
  */
 final class FailingPdo extends PDO
 {
     /**
-     * @param array<string, PDOException> $fail error that exec throws for each statement
-     * @param array<string, string> $replace query to send instead, for each query
-     * @param list<string> $failClose queries whose close fails
+     * @param array<string, PDOException> $fail the error exec throws for each statement
+     * @param array<string, string> $replace the query sent instead, for each query
+     * @param list<string> $failClose the queries whose close fails
      */
     public function __construct(string $path, private readonly array $fail, private readonly array $replace, array $failClose)
     {
@@ -66,7 +66,7 @@ final class FailingPdo extends PDO
 final class FailingStatement extends PDOStatement
 {
     /**
-     * @param list<string> $replacements queries sent as replacements
+     * @param list<string> $replacements the queries that were sent instead
      * @param list<string> $failClose
      */
     protected function __construct(private readonly array $replacements, private readonly array $failClose)

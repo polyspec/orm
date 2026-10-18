@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 6800aef4fefab60c256fc094f538aa5b526d431db5133eb21571f1d6a8028ce0 -->
+<!-- source-sha256: bf43cb7d822cb35ec1da4fdd0d4af4c466cc3272b3dcb6370d0bfeb3d6f7aafe -->
 # 변경 이력
 
 ## Unreleased
+- PHP extension의 mirror dbspec test가 다시 PHP client와 같은 본문을 갖는다(T131-11).
 - PHP extension의 arginfo header를 번역된 stub에 맞게 다시 생성해 그 검사가 통과한다(T131-10).
 - owner 선택 test가 모든 source 변경이 선택하는 comment-language-check를 기대한다(T131-9).
 - 각 conformance vector가 자기가 검증하는 공개 method `calls`를 선언하고, unit test가 모든 runner의 본문이 그것을 호출하는지 검사한다. contains_null은 타입 있는 client가 NULL predicate를 core로 설정한다고 밝힌다(T77-6-3).

@@ -155,7 +155,7 @@ final class DbspecPlanTest extends TestCase
         $diagnostics = $parsed->plan === null ? $parsed->diagnostics : Dbspec::diff($source, $parsed->plan)->diagnostics;
         $got = plan_messages($id, 'plan', $diagnostics);
         Assert::assertSame($case['errors'], $got, "$id: errors\nwant " . json_encode($case['errors']) . "\ngot  " . json_encode($got));
-        // A step is also rejected with the same diagnostic as the diff.
+        // Refuses the step with the same diagnostic as the diff.
         if ($parsed->plan !== null) {
             $steps = Dbspec::planSteps($source, $parsed->plan, 'postgres');
             Assert::assertFalse($steps->steps !== null || plan_messages($id, 'plan', $steps->diagnostics) !== $case['errors'], "$id: planSteps does not report the diff diagnostics: " . plan_diagnostics($steps->diagnostics));
@@ -199,7 +199,7 @@ final class DbspecPlanTest extends TestCase
         $id = "plan/parse/{$case['id']}";
 
         $parsed = Dbspec::parsePlan(plan_text($case['plan']));
-        // Plan diagnostics are compared down to the message, and target diagnostics down to the rule, line and column.
+        // Compares the plan diagnostic down to its message, and the target diagnostic down to its rule, line, and column.
         $got = array_map(static fn(Diagnostic $d): array => [$d->rule, $d->line, $d->column, $d->rule === 'plan' ? $d->message : null], $parsed->diagnostics);
         Assert::assertSame($case['errors'], $got, "$id: errors\nwant " . json_encode($case['errors']) . "\ngot  " . json_encode($got));
         cpuCaseEnd($id, $caseStarted);
