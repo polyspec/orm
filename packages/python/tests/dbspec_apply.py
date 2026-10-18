@@ -1,8 +1,8 @@
-# 공유 plan 사례(tests/dbspec/plans.json)의 chain을 SQLite에 적용한다
-# (docs/plans.md "Apply"). 첫 plan만 적용하고, chain 전체를 적용하고, 둘째
-# plan의 statement 1 뒤에 멈추고 이어 가고, 마지막 plan을 되돌린다. MySQL과
-# PostgreSQL은 conformance와 apply 순서쌍 비교(dbspec_apply_runner.py, make dbspec-apply-pairs-check)가
-# 검사한다. 실행: make dbspec-python-check
+# Applies the chain of the shared plan case (tests/dbspec/plans.json) to SQLite
+# (docs/plans.md "Apply"). Applies only the first plan, applies the whole chain, and the second
+# plan stops after statement 1 and resumes, then reverts the last plan. MySQL and
+# PostgreSQL are checked by conformance and the apply order-pair comparison (dbspec_apply_runner.py, make dbspec-apply-pairs-check).
+# Run: make dbspec-python-check
 import json
 import os
 import sqlite3
@@ -21,7 +21,7 @@ NOW = 1_700_000_000_000_000
 
 
 class Conn:
-    """apply가 받는 연결: execute(sql, values)가 rows를 돌려준다."""
+    """Connection used by apply: execute(sql, values) returns rows."""
 
     def __init__(self, path: str):
         self.connection = sqlite3.connect(path)
@@ -41,7 +41,7 @@ class Conn:
 
 
 def chain() -> list:
-    """plans.json의 create-from-empty와 rename-table-and-column chain이다."""
+    """The create-from-empty and rename-table-and-column chains from plans.json."""
     data = json.loads((ROOT / "tests" / "dbspec" / "plans.json").read_text())
     plans = []
     for case_id in ("create-from-empty", "rename-table-and-column"):
@@ -72,13 +72,13 @@ def scenarios(tmp: str) -> None:
         len(plan_steps(source, p, "sqlite")["steps"])
         for p, source in zip(plans, sources)
     ]
-    # 첫 plan만 적용한다.
+    # Applies only the first plan.
     conn = Conn(os.path.join(tmp, "first.sqlite3"))
     apply_plans(conn, "sqlite", plans[:1], lambda: NOW)
     assert history(conn) == [("create_from_empty", "applied", steps[0])], history(conn)
     assert conn.value('SELECT COUNT(*) FROM "users"') == 0
     conn.close()
-    # chain 전체를 적용한다.
+    # Applies the whole chain.
     conn = Conn(os.path.join(tmp, "chain.sqlite3"))
     apply_plans(conn, "sqlite", plans, lambda: NOW)
     assert history(conn) == [
@@ -86,7 +86,7 @@ def scenarios(tmp: str) -> None:
         ("rename_table_and_column", "applied", steps[1]),
     ], history(conn)
     conn.close()
-    # 둘째 plan의 statement 1 뒤에 멈추고 recover로 끝낸다.
+    # Stops after statement 1 of the second plan and finishes with recover.
     conn = Conn(os.path.join(tmp, "stopped.sqlite3"))
     stopped = []
 
@@ -113,7 +113,7 @@ def scenarios(tmp: str) -> None:
         ("create_from_empty", "applied", steps[0]),
         ("rename_table_and_column", "applied", steps[1]),
     ], history(conn)
-    # 마지막 plan을 되돌린다.
+    # Reverts the last plan.
     rollback_plans(conn, "sqlite", plans, lambda: NOW)
     assert history(conn) == [("create_from_empty", "applied", steps[0])], history(conn)
     assert conn.value('SELECT COUNT(*) FROM "users"') == 0

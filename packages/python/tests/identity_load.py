@@ -1,8 +1,8 @@
-# contracts/fixtures/identity_load.json의 공유 case를 Python client로 실행한다. compile case는 세 dialect의
-# Engine으로 request를 compile해 statement나 오류를 비교하고, execute case는 database마다 새 case database에
-# fixture를 설치한 뒤 각 step의 request를 그 database의 Engine으로 compile해 Db.execute로 실행하고, 마지막에
-# 파일의 read SQL로 load_probe의 행을 native driver로 읽어 비교한다. MySQL과 PostgreSQL은
-# ORM_TEST_MYSQL_DSN과 ORM_TEST_POSTGRES_DSN이 필요하며, 변수가 없으면 그 case는 실패한다.
+# Runs the shared case of contracts/fixtures/identity_load.json with the Python client. For compile cases, the three dialects'
+# Engine compiles the request and compares the statement or errors, and for execute cases a new case database is used for each database,
+# installs the fixture and then compiles each step's request with that database's Engine and runs it with Db.execute, and finally
+# reads the load_probe rows with the native driver using the file's read SQL and compares them. MySQL and PostgreSQL
+# require ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN, and the case fails if a variable is missing.
 import contextlib
 import copy
 import json
@@ -38,9 +38,9 @@ SCHEMA = Schema(
 )
 DIALECTS = ("mysql", "postgres", "sqlite")
 DSN_VARIABLES = {"mysql": "ORM_TEST_MYSQL_DSN", "postgres": "ORM_TEST_POSTGRES_DSN"}
-# case 하나(한 database)의 wall-clock 기한이다: database 작업이 멈춘 case만 끝낸다.
+# Wall-clock deadline of one case (one database): it ends only a case whose database work has stalled.
 CASE_SECONDS = 60
-RAN = set()  # 시작한 (case, dialect) 쌍이다.
+RAN = set()  # The (case, dialect) pair that was started.
 TEMP = {}
 
 
@@ -49,7 +49,7 @@ def setUpModule():
 
 
 def tearDownModule():
-    """파일의 모든 case가 실행되지 않았으면 실패한다."""
+    """Fails if not every case in the file was run."""
     TEMP["dir"].cleanup()
     expected = {
         (case["id"], dialect) for case in CASES["cases"] for dialect in DIALECTS
@@ -65,7 +65,7 @@ class CaseTimeout(Exception):
 
 @contextlib.contextmanager
 def deadline(seconds: int, name: str):
-    """case가 seconds 안에 끝나지 않으면 CaseTimeout을 던진다."""
+    """Raises CaseTimeout if the case does not finish within seconds."""
 
     def expire(_signum, _frame):
         raise CaseTimeout(f"{name} did not finish within {seconds}s")
@@ -80,7 +80,7 @@ def deadline(seconds: int, name: str):
 
 
 def compile_request(dialect: str, request: dict) -> dict:
-    """request에 fixture의 manifest_hash를 더해 dialect의 Engine으로 compile한다."""
+    """Compiles the request with the dialect's Engine, adding the fixture's manifest_hash to it."""
     if "manifest_hash" in request:
         raise AssertionError("request already holds manifest_hash")
     return Engine(MODEL, dialect).compile(
@@ -89,7 +89,7 @@ def compile_request(dialect: str, request: dict) -> dict:
 
 
 def statements(plan: dict) -> list:
-    """plan step마다 role, SQL, bind slot(출처, param slot의 번호, type), table이다."""
+    """For each plan step: role, SQL, bind slot (source, the number of the param slot, type), and table."""
     out = []
     for step in plan["steps"]:
         slots = []
@@ -149,7 +149,7 @@ def mysql_connection(dsn: str, database: str | None = None):
 
 @contextlib.contextmanager
 def case_database(dialect: str):
-    """빈 case database를 만들어 그 DSN을 주고, 끝나면 지운다."""
+    """Creates an empty case database, gives its DSN, and drops it when finished."""
     if dialect == "sqlite":
         path = os.path.join(TEMP["dir"].name, f"{uuid.uuid4().hex}.sqlite3")
         try:
@@ -181,7 +181,7 @@ def case_database(dialect: str):
 
 
 def read_rows(dialect: str, dsn: str) -> list:
-    """파일의 read SQL로 load_probe의 행을 native driver로 읽는다."""
+    """Reads the load_probe rows with the native driver using the file's read SQL."""
     sql = CASES["read"][dialect]
     if dialect == "sqlite":
         connection = sqlite3.connect(urlsplit(dsn).path)
@@ -232,7 +232,7 @@ def run_execute_case(dialect: str, case: dict) -> None:
 
 
 def compile_case(case: dict) -> list:
-    """compile case를 세 dialect에서 실행하고 실패한 dialect의 이유를 돌려준다."""
+    """Runs a compile case in the three dialects and returns the reason from each dialect that failed."""
     expected = case["expected"]
     reasons = []
     for dialect in DIALECTS:
@@ -262,8 +262,8 @@ def compile_case(case: dict) -> list:
 
 
 def execute_case(case: dict) -> list:
-    """execute case를 database마다 새 case database에서 기한 안에 실행하고 실패한 database의 이유를
-    돌려준다. 한 database의 실패가 다른 database를 막지 않는다."""
+    """Runs an execute case in a new case database per database, within the deadline, and
+    returns the reasons for the databases that failed. One database's failure does not block another."""
     reasons = []
     for dialect in DIALECTS:
         RAN.add((case["id"], dialect))

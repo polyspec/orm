@@ -62,7 +62,7 @@ class SchemaInstallUsesTest(unittest.TestCase):
         db = Db.connect_schema(f"sqlite://{path}", requests)
         try:
             db.utils().schema().install(requests)
-            # 두 번째 install은 같은 database를 확인만 한다(idempotent).
+            # A second install only checks the same database (idempotent).
             db.utils().schema().install(requests)
         finally:
             db.close()

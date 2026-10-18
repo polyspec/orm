@@ -1,6 +1,6 @@
-# 공유 ddl 사례(tests/dbspec/ddl.json)의 문장 대조: Python render가 세 dialect의
-# 문장을 다른 client와 같은 byte로 쓰는지 확인한다. behavior 단계(실제 database
-# 실행)는 conformance가 검사한다.
+# Statement comparison of the shared ddl case (tests/dbspec/ddl.json): checks that the Python render writes the
+# statements of the three dialects with the same bytes as the other clients. The behavior stage (running against a real database)
+# is checked by conformance.
 import json
 import unittest
 from pathlib import Path
@@ -14,7 +14,7 @@ from .vector_case import VectorCase, vector_tests  # noqa: E402
 
 
 def parse_set(documents: dict) -> list:
-    """사례의 문서 집합을 parse한다; main 문서가 집합을 대표한다."""
+    """Parses the document set of the case; the main document represents the set."""
     out: list = []
     for name, lines in documents.items():
         document, _positions, diagnostics = parse_dbspec(

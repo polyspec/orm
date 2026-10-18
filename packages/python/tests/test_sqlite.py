@@ -1,5 +1,5 @@
-# SQLite e2e: 생성된 model로 row를 만들고 읽고 고치고 지운다 (docs/usage.md).
-# conformance runner가 세 database를 검사하므로 여기서는 SQLite만 확인한다.
+# SQLite e2e: creates, reads, updates and deletes rows with the generated model (docs/usage.md).
+# The conformance runner checks the three databases, so only SQLite is checked here.
 import types
 import json
 import subprocess
@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[3]
 # orm-gen runs from the package installed into this interpreter's venv.
 ORM_GEN = [sys.executable, "-m", "polyspec.orm.bin_orm_gen"]
 
-# bench.dbs와 같은 모양의 최소 DDL. render가 Python에 오면(T43.4) 이 표를 대신한다.
+# Minimal DDL with the same shape as bench.dbs. Once render moves to Python (T43.4), this table is replaced.
 DDL = """
 CREATE TABLE "user" ("seq" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT NOT NULL);
 CREATE TABLE "service" ("seq" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT NOT NULL);
@@ -46,7 +46,7 @@ CREATE TABLE "task" ("seq" INTEGER PRIMARY KEY AUTOINCREMENT, "title" TEXT NOT N
   "state" TEXT NOT NULL);
 """
 
-# audit record를 가진 문서 집합: audited table과 audit record table.
+# Document set with an audit record: an audited table and an audit record table.
 AUDIT_DOCS = """dbspec 1 audit
 
 table change_log {
@@ -109,7 +109,7 @@ def generate(out: str, set_file: Path):
 
 
 def run_script(db, text: str) -> None:
-    """여러 statement를 하나씩 실행한다."""
+    """Runs several statements one by one."""
     for statement in text.split(";"):
         if statement.strip():
             db._connection.execute(statement, [])
@@ -164,7 +164,7 @@ class SqliteEndToEndTest(unittest.TestCase):
         loaded = self.models.Author().connect(self.db).add_all_columns().get_by_seq(seq)
         self.assertEqual(loaded.get_read_count(), 10)
         loaded.set_name("cycle-2").plus_read_count(3).update(True)
-        # 첫 update가 update time을 지웠으므로 다시 쓰려면 row를 다시 읽는다.
+        # The first update cleared the update time, so the row is read again to write it again.
         with self.assertRaisesRegex(Exception, "CONFIG"):
             loaded.set_name("stale").update(True)
         again = self.models.Author().connect(self.db).get_by_seq(seq)
@@ -444,7 +444,7 @@ class SqliteAuditTest(unittest.TestCase):
             logs = self.db._connection.execute(
                 'SELECT "id", "actor" FROM "change_log"', []
             )
-            # 같은 column이면 transaction의 값이 audit source의 값을 이긴다.
+            # For the same column, the transaction's value wins over the audit source's value.
             self.assertEqual(logs["rows"][0][1], "job")
             bound = self.db._connection.execute(
                 'SELECT "change_log_id" FROM "audited_row"', []

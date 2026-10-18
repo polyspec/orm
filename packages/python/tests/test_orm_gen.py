@@ -1,5 +1,5 @@
-# orm-gen 생성기 검사: contracts/fixtures/bench/dbspec-set.json 문서 집합에서 models.py를 만들고,
-# 생성 module이 chain 문법을 해석하는지 확인한다 (unittest).
+# orm-gen generator check: builds models.py from the document set of contracts/fixtures/bench/dbspec-set.json,
+# and checks that the generated module interprets the chain syntax (unittest).
 import types
 import subprocess
 import sys
@@ -64,7 +64,7 @@ class OrmGenTest(unittest.TestCase):
         self.assertEqual(
             [(spec.column, spec.value) for spec in user.core.sets], [("name", "tester")]
         )
-        user.get_name  # 생성된 getter가 있다
+        user.get_name  # The generated getter exists
         user.add_column_name().remove_column_name()
         self.assertEqual(user.core.columns_add, ["name"])
         self.assertEqual(user.core.columns_remove, ["name"])

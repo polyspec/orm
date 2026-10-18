@@ -1,4 +1,4 @@
-# 값 함수와 column 함수가 IR을 만드는 검사와 codec 단위 사례 (unittest).
+# Checks that value functions and column functions build IR, and codec unit cases (unittest).
 import unittest
 
 
@@ -30,8 +30,8 @@ class ValueFunctionTest(unittest.TestCase):
 
 
 class NaiveDatetimeTest(unittest.TestCase):
-    """MySQL과 PostgreSQL driver는 시간대 없는 datetime을 연결의 시간대로 돌려준다. process의 지역
-    시간대(TZ)는 그 값을 바꾸지 않는다."""
+    """MySQL and PostgreSQL drivers return a datetime without a time zone in the connection's time zone. The process's local
+    time zone (TZ) does not change that value."""
 
     def test_a_naive_cell_is_in_the_connection_zone_whatever_the_process_zone(self):
         import datetime
@@ -53,7 +53,7 @@ class NaiveDatetimeTest(unittest.TestCase):
             self.assertEqual(
                 read_time(cell, "datetime", "+09:00", 6), "2026-10-11 06:07:08.123456"
             )
-            # 시간대가 있는 값은 연결의 시간대로 바꾼다.
+            # A value with a time zone is converted to the connection's time zone.
             aware = cell.replace(tzinfo=datetime.timezone.utc)
             self.assertEqual(
                 read_time(aware, "datetime", "+09:00", 6), "2026-10-11 15:07:08.123456"
@@ -125,7 +125,7 @@ class HostCodecTest(unittest.TestCase):
             self.assertEqual(host_decode(packed, ["ip"], ""), address)
 
     def test_mapped_ipv6_writes_four_bytes(self):
-        # v4 mapped 주소는 4 byte로 저장되고 v4 형태로 되돌아온다.
+        # A v4 mapped address is stored in 4 bytes and comes back in v4 form.
         packed = host_encode("::ffff:192.168.0.1", ["ip"], "")
         self.assertEqual(packed, bytes([192, 168, 0, 1]))
         self.assertEqual(host_decode(packed, ["ip"], ""), "192.168.0.1")

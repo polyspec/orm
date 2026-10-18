@@ -1,9 +1,9 @@
-# 공유 introspect 사례(tests/dbspec/introspect.json)를 Python client로 실행한다. 사례마다
-# 빈 database(MySQL), schema(PostgreSQL) 또는 file(SQLite)을 만들고, render한 statement와 사례의
-# statement를 실행한 뒤 introspect한 문서와 미지원 객체를 사례와 비교하고, 지운 뒤 남은 것이
-# 없는지 본다. MySQL과 PostgreSQL은 ORM_TEST_MYSQL_DSN과 ORM_TEST_POSTGRES_DSN(TEST_ENV)의
-# 서버를 쓴다. 미지원 객체의 네 번째 원소는 reason이 포함해야 하는 rule이다.
-# make dbspec-introspect-python-check가 이 파일을 venv의 python으로 실행한다.
+# Runs the shared introspect case (tests/dbspec/introspect.json) with the Python client. For each case
+# creates an empty database (MySQL), schema (PostgreSQL), or file (SQLite), and the rendered statements and the case's
+# statements are run, the introspected document and unsupported objects are compared with the case, and it checks that what remains after the drop
+# is nothing. MySQL and PostgreSQL use ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN (TEST_ENV)
+# servers. The fourth element of an unsupported object is the rule its reason must include.
+# make dbspec-introspect-python-check runs this file with the python in the venv.
 import contextlib
 import json
 import os
@@ -24,7 +24,7 @@ from polyspec.orm.dbspec.introspect import introspect_dbspec  # noqa: E402
 from polyspec.orm.dbspec.render import render_dbspec  # noqa: E402
 from .vector_case import VectorCase, vector_tests  # noqa: E402
 
-# tests/dbspec/introspect의 연결 규칙과 같다(packages/ts/tests/dbspec-introspect.mjs).
+# Same connection rules as tests/dbspec/introspect (packages/ts/tests/dbspec-introspect.mjs).
 CONNECTION_RULES = {
     "mysql": ["SET time_zone = '+00:00'"],
     "postgres": ["SET TimeZone = 'UTC'"],
@@ -33,7 +33,7 @@ CONNECTION_RULES = {
 
 
 class Adapter:
-    """introspect_dbspec이 쓰는 연결: execute(sql, values)가 {'rows': [...]}를 돌려준다."""
+    """Connection used by introspect_dbspec: execute(sql, values) returns {'rows': [...]}."""
 
     def __init__(self, connection):
         self.connection = connection
@@ -65,7 +65,7 @@ def mysql_connect(dsn, database):
 
 @contextlib.contextmanager
 def case_database(dialect, name, dsn, sqlite_dir):
-    """사례의 빈 database, schema 또는 file을 만들고 그 연결을 준다. 지운 뒤 남은 것이 있으면 실패한다."""
+    """Creates the case's empty database, schema or file and gives its connection. Fails if anything remains after the drop."""
     if dialect == "sqlite":
         path = os.path.join(sqlite_dir, name + ".sqlite")
         connection = sqlite3.connect(path, isolation_level=None)
@@ -105,7 +105,7 @@ def case_database(dialect, name, dsn, sqlite_dir):
         finally:
             connection.close()
     finally:
-        # 두 번째 schema가 필요한 case는 그것을 <schema>_b로 만든다.
+        # A case that needs a second schema creates it as <schema>_b.
         Adapter(admin).execute(f'DROP SCHEMA IF EXISTS "{name}_b" CASCADE')
         Adapter(admin).execute(f'DROP SCHEMA "{name}" CASCADE')
         left = Adapter(admin).execute(
@@ -131,7 +131,7 @@ def check_case(case, index, dsns, sqlite_dir):
         for sql in [*CONNECTION_RULES[dialect], *statements]:
             db.execute(sql)
         for sql in case["statements"]:
-            # {schema}는 이 case의 database 또는 schema 이름이다.
+            # {schema} is this case's database or schema name.
             db.execute(sql.replace("{schema}", schema))
         result = introspect_dbspec(db, dialect, "introspected")
     assert emit_dbspec(result["document"]).splitlines() == case["document"], (

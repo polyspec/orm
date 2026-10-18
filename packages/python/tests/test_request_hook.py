@@ -1,6 +1,6 @@
-# Db.with_request_hook의 공유 case(docs/usage.md "Request hook")를 contracts/fixtures/request_hook.dbs로 SQLite에서
-# 실행한다. hook은 handle의 각 request를 plan 직전에 받아 predicate, assignment, parameter를 더할 수 있다.
-# case 이름은 다른 client와 같다: without_hook, read_filter, insert_assign, loaded_row_writes, invalid_param,
+# Runs the shared Db.with_request_hook cases (docs/usage.md "Request hook") on SQLite with contracts/fixtures/request_hook.dbs.
+# The hook receives each request of the handle just before planning, and can add predicates, assignments and parameters.
+# Case names are the same as in the other clients: without_hook, read_filter, insert_assign, loaded_row_writes, invalid_param,
 # restore_key, restore_condition, restore_no_key, restore_rewritten_key, restore_hook_set_key.
 import os
 import sys
@@ -21,7 +21,7 @@ READS = ("one", "all", "count", "paginate")
 
 
 def and_where(query: dict, pred: dict) -> None:
-    """query의 where에 pred를 AND로 더한다. 있던 where는 group item 하나로 감싼다."""
+    """Adds pred to the query's where with AND. The existing where is wrapped in one group item."""
     where = query.get("where")
     if not where or not where.get("items"):
         query["where"] = {"items": [{"pred": pred}]}
@@ -30,7 +30,7 @@ def and_where(query: dict, pred: dict) -> None:
 
 
 def part_filter(value: str, kinds=READS):
-    """kinds의 request에 part eq value를 더하는 hook이다."""
+    """Hook that adds the part eq value to the request of kinds."""
 
     def hook(request, add_param, params):
         if request["kind"] in kinds:
@@ -326,8 +326,8 @@ class RequestHookTest(unittest.TestCase):
 
 
 class InsertPartsTest(unittest.TestCase):
-    """creates의 여러 행 insert는 2의 거듭제곱 부분으로 나뉜다(docs/protocol.md 2.1,
-    contracts/fixtures/insert_parts.json). 부분은 한 transaction에서 주어진 행 순서로 실행된다."""
+    """A multi-row insert in creates is split into parts of powers of two (docs/protocol.md 2.1,
+    contracts/fixtures/insert_parts.json). The parts run in the given row order in one transaction."""
 
     @classmethod
     def setUpClass(cls):

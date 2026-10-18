@@ -21,8 +21,8 @@ ROOT = Path(__file__).resolve().parents[3]
 
 
 def text_of(case, lines, as_input: bool = True) -> str:
-    """사례의 줄을 잇는다: LF, 또는 (입력이고) crlf면 CRLF, (입력이고) mixed면
-    CRLF와 LF를 번갈아 마지막 줄은 줄 끝 없이. canonical 기대값은 항상 LF다."""
+    """Joins the case lines: LF, or CRLF when (input) crlf, or when (input) mixed
+    alternating CRLF and LF, with no line ending on the last line. The canonical expected value is always LF."""
     if as_input and case.get("mixed"):
         return (
             "".join(
