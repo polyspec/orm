@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e2cd6ee1f2a37209bc905e145961ad1ce8f567b2f2c028bdde8c36374a8c642d -->
+<!-- source-sha256: 3d8383d66cd21465d464dab885c4e43cb3593da7aa42a930777ce1aa8216d942 -->
 # 변경 이력
 
 ## Unreleased
+- 각 conformance vector가 자기가 검증하는 공개 method `calls`를 선언하고, unit test가 모든 runner의 본문이 그것을 호출하는지 검사한다. contains_null은 타입 있는 client가 NULL predicate를 core로 설정한다고 밝힌다(T77-6-3).
 - NULL collection key vector를 recorder의 형식으로 저장해, 바뀌지 않은 출력을 기록해도 vector 파일이 그대로 남는다(T77-6-1-8).
 - dbspec editor stack의 CodeMirror와 VS Code adapter가 완성됐다(T128-8).
 - test의 모든 language adapter가 자기 package에 있고, parity root 어느 것도 tests/를 가리키지 않는다(T77-9).

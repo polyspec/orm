@@ -3,6 +3,15 @@
     {
       "name": "conditions_connectors",
       "chain": "serviceSeq(7)-\u003eandIsClose(false)-\u003eor()-\u003ereadCount(6)-\u003eorderBySeqAsc()-\u003elimit(0, 3)-\u003egets()",
+      "calls": [
+        "serviceSeq",
+        "andIsClose",
+        "or",
+        "readCount",
+        "orderBySeqAsc",
+        "limit",
+        "gets"
+      ],
       "expect": {
         "result": [
           {
@@ -48,6 +57,17 @@
     {
       "name": "conditions_group",
       "chain": "serviceSeq(7)-\u003eand(fn: isDisplay(false)-\u003eor(fn: isClose(true)-\u003eandGtReadCount(500)))-\u003eorderBySeqDesc()-\u003elimit(0, 3)-\u003egets()",
+      "calls": [
+        "serviceSeq",
+        "and",
+        "isDisplay",
+        "or",
+        "isClose",
+        "andGtReadCount",
+        "orderBySeqDesc",
+        "limit",
+        "gets"
+      ],
       "expect": {
         "result": [
           {
@@ -94,6 +114,15 @@
     {
       "name": "conditions_leading_group",
       "chain": "and(fn: isDisplay(false)-\u003eorIsClose(true))-\u003eandServiceSeq(7)-\u003eorderBySeqDesc()-\u003elimit(0, 3)-\u003egets()",
+      "calls": [
+        "and",
+        "isDisplay",
+        "orIsClose",
+        "andServiceSeq",
+        "orderBySeqDesc",
+        "limit",
+        "gets"
+      ],
       "expect": {
         "result": [
           {
@@ -139,6 +168,13 @@
     {
       "name": "conditions_leading_prefix",
       "chain": "andServiceSeq(7)-\u003eandGtReadCount(990)-\u003eorderBySeqDesc()-\u003elimit(0, 3)-\u003egets()",
+      "calls": [
+        "andServiceSeq",
+        "andGtReadCount",
+        "orderBySeqDesc",
+        "limit",
+        "gets"
+      ],
       "expect": {
         "result": [],
         "statements": [
@@ -161,6 +197,9 @@
     {
       "name": "conditions_values",
       "chain": "list, null, not null, not in, between, lk, lb, ge, le, lt conditions with getCount()",
+      "calls": [
+        "getCount"
+      ],
       "expect": {
         "result": [
           1714,
@@ -314,6 +353,11 @@
     {
       "name": "terminal_by",
       "chain": "getBySeq(42), getBySeq(-1), getsByServiceSeqAndIsClose(7, false), getCountByServiceSeq(7)",
+      "calls": [
+        "getBySeq",
+        "getsByServiceSeqAndIsClose",
+        "getCountByServiceSeq"
+      ],
       "expect": {
         "result": {
           "count": 1000,
@@ -398,6 +442,11 @@
     {
       "name": "terminal_reuse",
       "chain": "one model: getCountByIsClose(true), gets(), getCount()",
+      "calls": [
+        "getCountByIsClose",
+        "gets",
+        "getCount"
+      ],
       "expect": {
         "result": [
           143,
@@ -448,6 +497,21 @@
     {
       "name": "expression_forms",
       "chain": "serviceSeq(7)-\u003eandNot(fn: isClose(true)-\u003eorGtReadCount(500))-\u003egetCount(), not(fn: isDisplay(false))-\u003eandServiceSeq(7)-\u003eorderBySeqDesc()-\u003elimit(0, 3)-\u003egets(), serviceSeq(7)-\u003eorNot(fn: ltReadCount(990))-\u003egetCount()",
+      "calls": [
+        "serviceSeq",
+        "andNot",
+        "isClose",
+        "orGtReadCount",
+        "getCount",
+        "not",
+        "isDisplay",
+        "andServiceSeq",
+        "orderBySeqDesc",
+        "limit",
+        "gets",
+        "orNot",
+        "ltReadCount"
+      ],
       "expect": {
         "result": {
           "count": 428,
@@ -514,6 +578,13 @@
     {
       "name": "columns",
       "chain": "removeAllColumns(), addColumnName(), addColumnStartDtAliasStartYear(year()), removeColumnName()",
+      "calls": [
+        "removeAllColumns",
+        "addColumnName",
+        "addColumnStartDtAliasStartYear",
+        "year",
+        "removeColumnName"
+      ],
       "expect": {
         "result": [
           {
@@ -571,6 +642,11 @@
     {
       "name": "joins",
       "chain": "joinServiceSeqWithSeq(child with on(fn)) placed with or(child); column comparison with a joined model; leftJoin with alias",
+      "calls": [
+        "joinServiceSeqWithSeq",
+        "on",
+        "or"
+      ],
       "expect": {
         "result": {
           "compared": 1000,
@@ -654,6 +730,16 @@
     {
       "name": "relations",
       "chain": "relation/relations with match, alias, groupLimit, keyName, possible, parentNode",
+      "calls": [
+        "relation",
+        "relations",
+        "matchSeqWithUserSeq",
+        "aliasWriter",
+        "groupLimit",
+        "keyNameUserSeq",
+        "possibleIsClose",
+        "parentNode"
+      ],
       "expect": {
         "result": [
           {
@@ -868,6 +954,10 @@
     {
       "name": "relation_empty",
       "chain": "relations(...)-\u003egetsBySeq(-1)",
+      "calls": [
+        "relations",
+        "getsBySeq"
+      ],
       "expect": {
         "result": 0,
         "statements": [
@@ -889,6 +979,13 @@
     {
       "name": "subqueries",
       "chain": "addColumnReadTotal(fn -\u003e sumReadCount()-\u003euserSeqEqSeq(u)); seq(model-\u003eaddColumnUserSeq())",
+      "calls": [
+        "addColumnReadTotal",
+        "sumReadCount",
+        "userSeqEqSeq",
+        "seq",
+        "addColumnUserSeq"
+      ],
       "expect": {
         "result": [
           [
@@ -934,6 +1031,15 @@
     {
       "name": "aggregates",
       "chain": "sumReadCount()-\u003egetSum(), avgLikeCount()-\u003egetAvg(), groupByIsClose()-\u003egetsCount(), getsPage(3, 4)",
+      "calls": [
+        "sumReadCount",
+        "getSum",
+        "avgLikeCount",
+        "getAvg",
+        "groupByIsClose",
+        "getsCount",
+        "getsPage"
+      ],
       "expect": {
         "result": {
           "avg": "48.0450",
@@ -1028,6 +1134,10 @@
     {
       "name": "functions",
       "chain": "dayOfWeek, year, daysAgo, monthsLater conditions; addColumn\u003cCol\u003eAlias\u003cName\u003e(month()); orderBy\u003cCol\u003eAsc(year())",
+      "calls": [
+        "month",
+        "year"
+      ],
       "expect": {
         "result": {
           "counts": [
@@ -1123,6 +1233,14 @@
     {
       "name": "errors",
       "chain": "missing connector, dangling connector, empty list, no connection, lock outside a transaction, join child with connection, page with limit, relation with limit, unjoined model placement",
+      "calls": [
+        "and",
+        "or",
+        "forUpdate",
+        "getsPage",
+        "relation",
+        "joinUserSeqWithSeq"
+      ],
       "expect": {
         "result": [
           "CONFIG",
@@ -1141,6 +1259,14 @@
     {
       "name": "get_query",
       "chain": "serviceSeq(7)-\u003eandLkName('x')-\u003eandAesHexEmail(...)-\u003eorderBySeqDesc()-\u003elimit(0, 5)-\u003egetQuery()",
+      "calls": [
+        "serviceSeq",
+        "andLkName",
+        "andAesHexEmail",
+        "orderBySeqDesc",
+        "limit",
+        "getQuery"
+      ],
       "expect": {
         "result": {
           "binds": [
@@ -1156,6 +1282,12 @@
     {
       "name": "aes_values",
       "chain": "AES columns read and blind-index condition",
+      "calls": [
+        "addColumnAesHexEmail",
+        "addColumnAesHexPhone",
+        "aesHexEmail",
+        "getBySeq"
+      ],
       "expect": {
         "result": {
           "found": 1,
@@ -1200,6 +1332,9 @@
     {
       "name": "write_cycle",
       "chain": "create with codecs and new\u003cName\u003e, update(true), stale update(true), delete",
+      "calls": [
+        "update"
+      ],
       "expect": {
         "result": {
           "created": {
@@ -1375,6 +1510,10 @@
     {
       "name": "now_defaults",
       "chain": "create() without clock columns; getBySeq(seq): created_ts equals updated_ts and is within a minute of the client clock in the connection time zone; delete()",
+      "calls": [
+        "create",
+        "getBySeq"
+      ],
       "expect": {
         "result": {
           "created_equals_updated": true,
@@ -1448,6 +1587,10 @@
     {
       "name": "required_columns",
       "chain": "create() without the NOT NULL enum column state, create() without the NOT NULL column title, create() with both, delete()",
+      "calls": [
+        "create",
+        "delete"
+      ],
       "expect": {
         "result": {
           "missing_state": {
@@ -1507,6 +1650,12 @@
     {
       "name": "creates_and_save",
       "chain": "creates(models), duplication(model)-\u003ecreate(), save(), tuple condition, collection delete",
+      "calls": [
+        "creates",
+        "duplication",
+        "create",
+        "save"
+      ],
       "expect": {
         "result": {
           "inserted": 3,
@@ -1719,6 +1868,9 @@
     {
       "name": "contains_ascii_fold",
       "chain": "creates(Apple, apple, Évian, évian, x_y), tenantId(902)-\u003eandLkName(p)-\u003eorderByAccountIdAsc()-\u003egets() for p in PPL, ÉV, _, '', delete",
+      "calls": [
+        "andLkName"
+      ],
       "expect": {
         "result": [
           [
@@ -1978,6 +2130,9 @@
     {
       "name": "contains_binary_code_point",
       "chain": "creates(Apple, apple, Évian, évian, x_y), tenantId(902)-\u003eandLbName(p)-\u003eorderByAccountIdAsc()-\u003egets() for p in pp, É, PPL, _, delete",
+      "calls": [
+        "andLbName"
+      ],
       "expect": {
         "result": [
           [
@@ -2221,6 +2376,11 @@
     {
       "name": "delete_recursive",
       "chain": "relations(...)-\u003egetBySeq(seq)-\u003edelete(true)",
+      "calls": [
+        "relations",
+        "getBySeq",
+        "delete"
+      ],
       "expect": {
         "result": {
           "members": 2,
@@ -2388,6 +2548,13 @@
     {
       "name": "transactions",
       "chain": "transaction with savepoint rollback, row lock, lock, setLocal/local, rollback",
+      "calls": [
+        "transaction",
+        "forUpdate",
+        "lock",
+        "setLocal",
+        "local"
+      ],
       "expect": {
         "result": [
           true,
@@ -2526,6 +2693,11 @@
     {
       "name": "restore",
       "chain": "transaction: create, set deleted_at, getBySeq, setSeq(seq)-\u003esetName(...)-\u003erestore() twice, setSeq(0)-\u003erestore(), rollback",
+      "calls": [
+        "setSeq",
+        "setName",
+        "restore"
+      ],
       "expect": {
         "result": {
           "again": {
@@ -2688,6 +2860,10 @@
     {
       "name": "joins_soft_deleted",
       "chain": "transaction: create a live and a soft-deleted soft_record beside two services, joinNameWithName(soft_record) and leftJoinNameWithName(soft_record), rollback",
+      "calls": [
+        "joinNameWithName",
+        "leftJoinNameWithName"
+      ],
       "expect": {
         "result": {
           "inner": [
@@ -2820,6 +2996,12 @@
     {
       "name": "column_pairs",
       "chain": "readCountLtSeq(joined service), descriptionNeName(joined service), likeCount(user subquery), joinReadCountWithSeq, relation matchLikeCountWithSeq; nameEqSeq, priceEqSeq, name(user subquery), joinNameWithSeq, relation matchNameWithSeq refused",
+      "calls": [
+        "readCountLtSeq",
+        "descriptionNeName",
+        "likeCount",
+        "name"
+      ],
       "expect": {
         "result": {
           "col_decimal_i64": "OPERATOR_NOT_ALLOWED",
@@ -2907,6 +3089,11 @@
     {
       "name": "relative_time_out_of_range",
       "chain": "andGtStartDt and andLeStartDt with secondsAgo(1e15), daysLater(4000000) and monthsAgo(200000): each NULL, so no row",
+      "calls": [
+        "secondsAgo",
+        "daysLater",
+        "monthsAgo"
+      ],
       "expect": {
         "result": {
           "days_later": [
@@ -3031,6 +3218,11 @@
     {
       "name": "aes_status",
       "chain": "utils()-\u003eaes()-\u003estatus(model, keyring)",
+      "calls": [
+        "utils",
+        "aes",
+        "status"
+      ],
       "expect": {
         "result": {
           "current": 1,
@@ -3054,6 +3246,9 @@
     {
       "name": "hex_malformed",
       "chain": "HexCell getBySeq(1) (' 4F', white space), getBySeq(2) ('686', odd length): each CODEC_DECODE",
+      "calls": [
+        "getBySeq"
+      ],
       "expect": {
         "result": {
           "odd_length": "CODEC_DECODE",
@@ -3090,6 +3285,14 @@
     {
       "name": "datetime_p0_roundtrip",
       "chain": "TimeCell setAt(2026-06-01 12:34:56)-\u003esetClock('10:11:12')-\u003ecreate(), at(same value)-\u003egets() picking clock, delete(): datetime(0) is bound with no fraction digits",
+      "calls": [
+        "setAt",
+        "setClock",
+        "create",
+        "at",
+        "gets",
+        "delete"
+      ],
       "expect": {
         "result": [
           {
@@ -3156,6 +3359,14 @@
     {
       "name": "time_p3_roundtrip",
       "chain": "TimeCell setAt(2026-06-01 12:34:56)-\u003esetClock('10:11:12.345000')-\u003ecreate(), clock('10:11:12.345')-\u003egets() picking clock, delete(): time(3) is bound with three fraction digits, zeros past p dropped",
+      "calls": [
+        "setAt",
+        "setClock",
+        "create",
+        "clock",
+        "gets",
+        "delete"
+      ],
       "expect": {
         "result": [
           {
@@ -3222,6 +3433,15 @@
     {
       "name": "date_roundtrip",
       "chain": "DayCell setLabel('date')-\u003esetDay('2026-06-01')-\u003esetAtTime('10:11:12')-\u003ecreate(), label('date')-\u003egets() picking day and at_time, delete(): a date and a time(0) cell read back as their text form",
+      "calls": [
+        "setLabel",
+        "setDay",
+        "setAtTime",
+        "create",
+        "label",
+        "gets",
+        "delete"
+      ],
       "expect": {
         "result": [
           {
@@ -3290,6 +3510,13 @@
     {
       "name": "date_null",
       "chain": "DayCell setLabel('nil')-\u003ecreate(), label('nil')-\u003egets() picking day and at_time, delete(): unset date and time cells read back as null",
+      "calls": [
+        "setLabel",
+        "create",
+        "label",
+        "gets",
+        "delete"
+      ],
       "expect": {
         "result": [
           {
@@ -3356,6 +3583,15 @@
     {
       "name": "upsert_one_key",
       "chain": "UpsertCell setCode('k1')-\u003esetLabel('first')-\u003eduplication(setLabel('second'))-\u003ecreate() inserts, the same with setLabel('other') updates on the one conflict key code, code('k1')-\u003egets() picking label after each; setLabel('none') without code is IR_INVALID before any statement; delete()",
+      "calls": [
+        "setCode",
+        "setLabel",
+        "duplication",
+        "create",
+        "code",
+        "gets",
+        "delete"
+      ],
       "expect": {
         "result": {
           "inserted": [
@@ -3476,6 +3712,13 @@
     {
       "name": "uuid_roundtrip",
       "chain": "UuidCell setId('0f8e2d4c-1a3b-4c5d-8e9f-a0b1c2d3e4f5')-\u003ecreate(), id(same value)-\u003egets() picking id, delete(): a PostgreSQL uuid is read as text and bound as text cast to uuid",
+      "calls": [
+        "setId",
+        "create",
+        "id",
+        "gets",
+        "delete"
+      ],
       "expect": {
         "result": [
           {
@@ -3541,6 +3784,15 @@
     {
       "name": "affected_counts",
       "chain": "UpsertCell setCode('c1')-\u003esetLabel('x')-\u003eduplication(setLabel('y'))-\u003ecreate() twice (inserts, then updates), getBySeq(seq)-\u003esetLabel('y')-\u003eupdate() (the row already holds the value), setLabel('z')-\u003eupdate(), each followed by the affected count of the test entry point; delete()",
+      "calls": [
+        "setCode",
+        "setLabel",
+        "duplication",
+        "create",
+        "getBySeq",
+        "update",
+        "delete"
+      ],
       "expect": {
         "result": {
           "update_changed": 1,
@@ -3649,6 +3901,11 @@
     {
       "name": "datetime_precision_rejected",
       "chain": "TimeCell setAt(2026-06-01 12:34:56.5) setClock('10:11:12') create(): datetime(0) has a non-zero digit past p, CODEC_ENCODE before any statement",
+      "calls": [
+        "setAt",
+        "setClock",
+        "create"
+      ],
       "expect": {
         "result": {
           "code": "CODEC_ENCODE"
@@ -3659,6 +3916,10 @@
     {
       "name": "varchar_length_rejected",
       "chain": "BindCell setLabel('123456789') create(): nine characters for varchar(8), CODEC_ENCODE before any statement",
+      "calls": [
+        "setLabel",
+        "create"
+      ],
       "expect": {
         "result": {
           "code": "CODEC_ENCODE"
@@ -3669,6 +3930,11 @@
     {
       "name": "text_nul_rejected",
       "chain": "BindCell setLabel('nul') setBody('a' U+0000 'b') create(): U+0000 in text, CODEC_ENCODE before any statement",
+      "calls": [
+        "setLabel",
+        "setBody",
+        "create"
+      ],
       "expect": {
         "result": {
           "code": "CODEC_ENCODE"
@@ -3679,6 +3945,11 @@
     {
       "name": "uuid_form_rejected",
       "chain": "BindCell setLabel('uuid') setToken('123E4567-E89B-12D3-A456-426614174000') create(): an upper-case uuid, CODEC_ENCODE before any statement",
+      "calls": [
+        "setLabel",
+        "setToken",
+        "create"
+      ],
       "expect": {
         "result": {
           "code": "CODEC_ENCODE"
@@ -3688,7 +3959,11 @@
     },
     {
       "name": "contains_null",
-      "chain": "Author serviceSeq(7) andLkName(NULL) getCount(): the contains value NULL binds NULL, so col LIKE NULL matches no row",
+      "chain": "Author serviceSeq(7) andLkName(NULL) getCount(): the contains value NULL binds NULL, so col LIKE NULL matches no row; the typed clients (Go, Rust, TypeScript) accept no NULL in andLkName, so their runners set the NULL predicate through the core",
+      "calls": [
+        "serviceSeq",
+        "getCount"
+      ],
       "expect": {
         "result": {
           "code": null,
@@ -3714,6 +3989,9 @@
     {
       "name": "null_into_not_null",
       "chain": "BindCell creates([label 'a', label NULL]): the parameter that assigns NULL to the non-null label is CODEC_ENCODE before any statement",
+      "calls": [
+        "creates"
+      ],
       "expect": {
         "result": {
           "code": "CODEC_ENCODE"
@@ -3741,6 +4019,11 @@
     {
       "name": "clock_truncate_write",
       "chain": "FixClock(db, '2026-06-01 12:34:56.999999'); ClockCell setLabel('write')-\u003ecreate() leaving at0, at3 and at6 to default now; getBySeq(seq): at0 and at3 equal at6 truncated to 0 and 3 digits; delete()",
+      "calls": [
+        "setLabel",
+        "create",
+        "getBySeq"
+      ],
       "expect": {
         "result": {
           "p0_truncated": true,
@@ -3808,6 +4091,14 @@
     {
       "name": "clock_compare_six_digits",
       "chain": "FixClock(db, '2026-06-01 12:34:56.999999'); ClockCell create() with at0 12:34:56, at3 12:34:56.999; label('compare')-\u003eandGeAt0(now())-\u003egetCount() and -\u003eandLtAt3(now())-\u003egetCount(): the columns compare with the clock at six digits; delete()",
+      "calls": [
+        "create",
+        "label",
+        "andGeAt0",
+        "now",
+        "getCount",
+        "andLtAt3"
+      ],
       "expect": {
         "result": {
           "at0_ge_now": 0,
@@ -3889,6 +4180,10 @@
     {
       "name": "order_nulls",
       "chain": "price ascending and descending with NULL prices of service 100 (orderByPriceAsc/Desc()-\u003eorderBySeqAsc()), and the same orders under groupLimit(2) of user 100's authors",
+      "calls": [
+        "orderBySeqAsc",
+        "groupLimit"
+      ],
       "expect": {
         "result": {
           "asc": [
@@ -4107,6 +4402,17 @@
     {
       "name": "scalar_column_subquery",
       "chain": "addColumnReadTotal(fn -\u003e removeAllColumns()-\u003eaddColumnName()-\u003euserSeqEqSeq(u)-\u003eandLtSeq(10000)-\u003eorderByPriceAsc|Desc()-\u003eorderBySeqAsc()-\u003elimit(0, 1))-\u003eseq(100)-\u003egets(): two matching authors, one with a NULL price",
+      "calls": [
+        "addColumnReadTotal",
+        "removeAllColumns",
+        "addColumnName",
+        "userSeqEqSeq",
+        "andLtSeq",
+        "orderBySeqAsc",
+        "limit",
+        "seq",
+        "gets"
+      ],
       "expect": {
         "result": {
           "asc": [
@@ -4157,6 +4463,17 @@
     {
       "name": "relations_flatten",
       "chain": "relation(serviceRegion-\u003epossibleIsClose(true)-\u003eparentNode()-\u003erelation(service-\u003eparentNode()-\u003erelations(serviceMember-\u003egroupLimit(2))))-\u003eserviceSeq(7)-\u003eorderBySeqAsc()-\u003elimit(0, 8)-\u003egets(): parent and child share seq, name and service_seq, an open author has no child, and the child holds a flattened grandchild",
+      "calls": [
+        "relation",
+        "possibleIsClose",
+        "parentNode",
+        "relations",
+        "groupLimit",
+        "serviceSeq",
+        "orderBySeqAsc",
+        "limit",
+        "gets"
+      ],
       "expect": {
         "result": [
           {
@@ -4355,6 +4672,12 @@
     {
       "name": "relation_null_key",
       "chain": "relation keyed by the nullable column price (keyNamePrice) over the authors of user 100: key_by names a nullable column, which the IR refuses as IR_INVALID (docs/dialects.md key_by row: key_by names a non-null column, IR_INVALID otherwise)",
+      "calls": [
+        "relations",
+        "keyNamePrice",
+        "matchSeqWithUserSeq",
+        "gets"
+      ],
       "expect": {
         "result": {
           "error": "IR_INVALID",

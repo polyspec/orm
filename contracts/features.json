@@ -7790,6 +7790,7 @@
         "packages/go/internal/conformance/main.go",
         "packages/go/internal/conformance/main_test.go",
         "tests/conformance/check/styled-expectations.test.mts",
+        "tests/conformance/check/chain-methods.test.mts",
         "tests/conformance/check/rust-group.physical.test.mts",
         "packages/php/testing/conformance/runner.php",
         "packages/ts/testing/conformance/runner_typescript.mts",
@@ -7876,11 +7877,14 @@
         },
         {
           "id": "conformance-check-go",
-          "command": "node --test tests/conformance/check/main.test.mts tests/conformance/check/lock.test.mts tests/conformance/check/state.test.mts tests/conformance/check/state-run.test.mts tests/conformance/check/styled-expectations.test.mts tests/conformance/check/stmtdiff.test.mts",
+          "command": "node --test tests/conformance/check/main.test.mts tests/conformance/check/lock.test.mts tests/conformance/check/state.test.mts tests/conformance/check/state-run.test.mts tests/conformance/check/styled-expectations.test.mts tests/conformance/check/stmtdiff.test.mts tests/conformance/check/chain-methods.test.mts",
           "shard": "other",
           "inputs": [
             "tests/conformance/check/*.mts",
             "tests/conformance/vectors*.json",
+            "packages/go/internal/conformance/*.go",
+            "packages/rust/tests/src/conformance.rs",
+            "packages/python/testing/conformance/runner_python.py",
             "tests/conformance/schema/vectors.schema.json",
             "scripts/schema/conformance-*.schema.json",
             "scripts/json/schema.mts",
@@ -9180,7 +9184,7 @@
         "packages/php/testing/conformance/runner.php",
         "packages/ts/testing/conformance/runner_typescript.mts"
       ],
-      "tests": [],
+      "tests": ["tests/conformance/check/chain-methods.test.mts"],
       "command": "make --no-print-directory TEST_ENV=\"$ORM_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" conformance-check"
     },
     {

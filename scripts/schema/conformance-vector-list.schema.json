@@ -11,6 +11,7 @@
         "properties": {
           "name": { "type": "string" },
           "chain": { "type": "string" },
+          "calls": { "type": "array", "items": { "type": "string" } },
           "expect": true
         }
       }

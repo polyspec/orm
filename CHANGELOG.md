@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- Each conformance vector declares `calls`, the public methods it verifies, and a unit test checks that every runner's body calls them; contains_null states that the typed clients set its NULL predicate through the core (T77-6-3).
 - The NULL collection key vector is stored in the recorder's form, so recording unchanged outputs leaves the vector files as they are (T77-6-1-8).
 - The CodeMirror and VS Code adapters of the dbspec editor stack are complete (T128-8).
 - Every language adapter of the tests lives in its package; no parity root names tests/ (T77-9).

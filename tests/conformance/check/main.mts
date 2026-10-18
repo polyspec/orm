@@ -60,8 +60,8 @@ export type Target = { driver: string; dsn: string; selected: string[] };
 /** The context of a case or a long task: its step writer and, for a case, the signal of its deadline. */
 export type Context = { step: Step; signal?: AbortSignal };
 
-/** A vector as the checker reads it: its name, its chain and its expectation (undefined when none is recorded). */
-type Vector = { name: string; chain: string; expect: Json | undefined };
+/** A vector as the checker reads it: its name, its chain, the methods it verifies and its expectation (undefined when none is recorded). */
+type Vector = { name: string; chain: string; calls: string[]; expect: Json | undefined };
 
 /** The usage of the program: it ends the program with the exit status 2. */
 class UsageError extends Error {}
@@ -404,7 +404,13 @@ function vectorsOf(value: Json): Vector[] {
     const fields = item instanceof Map ? item : new Map<string, Json>();
     const name = fields.get('name');
     const chain = fields.get('chain');
-    return { name: typeof name === 'string' ? name : '', chain: typeof chain === 'string' ? chain : '', expect: fields.get('expect') };
+    const calls = fields.get('calls');
+    return {
+      name: typeof name === 'string' ? name : '',
+      chain: typeof chain === 'string' ? chain : '',
+      calls: Array.isArray(calls) ? calls.filter((call): call is string => typeof call === 'string') : [],
+      expect: fields.get('expect'),
+    };
   });
 }
 
@@ -597,7 +603,7 @@ export function recordVerified(root: string, outputs: string[], driver: string, 
     }
   }
   const document: Json = new Map([['vectors', vectors.map((vector): Json => new Map<string, Json>([
-    ['name', vector.name], ['chain', vector.chain], ['expect', vector.expect ?? null]]))]]);
+    ['name', vector.name], ['chain', vector.chain], ['calls', vector.calls], ['expect', vector.expect ?? null]]))]]);
   const path = join(root, vectorsPath(driver));
   const temporary = join(dirname(path), `.vectors-${process.pid}-${createHash('sha256').update(String(Math.random())).digest('hex').slice(0, 8)}`);
   try {
