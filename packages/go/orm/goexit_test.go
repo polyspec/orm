@@ -38,7 +38,7 @@ func TestTransactionRollsBackWhenTheCallbackLeaves(t *testing.T) {
 		// The inner goroutine leaves through runtime.Goexit, as t.Fatal does.
 		_ = db.Transaction(func() error {
 			c := row()
-			c.Set("start_dt", time.Now())
+			c.Set("start_dt", time.Now().UTC().Format("2006-01-02 15:04:05.000000"))
 			if _, err := c.Create(); err != nil {
 				return err
 			}
@@ -55,7 +55,7 @@ func TestTransactionRollsBackWhenTheCallbackLeaves(t *testing.T) {
 		t.Fatalf("rows after the abandoned transaction: %d", count)
 	}
 	c := row()
-	c.Set("start_dt", time.Now())
+	c.Set("start_dt", time.Now().UTC().Format("2006-01-02 15:04:05.000000"))
 	if _, err := c.Create(); err != nil {
 		t.Fatalf("write after the abandoned transaction: %v", err)
 	}

@@ -3,6 +3,7 @@
 # 변경 이력
 
 ## Unreleased
+- goexit 시험은 setter와 같은 날짜 텍스트를 bind해 transaction 시험이 다시 통과한다 (T77-50).
 - PHP 확장의 dbspec 시험 복사본은 PHP client와 맞고 공유 plan vector와 case를 읽는다. 공유 DSN helper는 packages/php/testing으로 옮겨졌다 (T77-49).
 - Go feature wrapper는 테스트 이름을 Go 식별자로 검증하고 go test -run용으로 이스케이프한다 (T77-48-1).
 - DB 항목이 있는 Go feature unit 열두 개는 DB마다 wrapper로 실행된다. mysql은 기존 id, postgres와 sqlite는 자기 unit이다 (T77-48).

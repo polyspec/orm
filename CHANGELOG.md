@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The goexit test binds its date text as the setters do, so its transaction test passes again (T77-50).
 - The PHP extension's dbspec test copies match the PHP client's and read the shared plan vectors and cases; the shared DSN helper moves to packages/php/testing (T77-49).
 - The Go feature wrapper validates its test name as a Go identifier and escapes it for go test -run (T77-48-1).
 - The twelve database-backed Go feature units run through the wrapper for each database, mysql on their existing ids and postgres and sqlite as their own units (T77-48).
