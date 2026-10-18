@@ -16,6 +16,7 @@ const TESTS: Command[] = [
   node('packages/ts/tests/sqlite-concurrency.mjs'),
   node('packages/ts/tests/schema-set.mjs'),
   node('packages/ts/tests/install_changed_database.mjs'),
+  node('packages/ts/tests/dbspec-set-decimal.mjs'),
   node('packages/ts/tests/add-tables-and-columns.mjs'),
   node('packages/ts/tests/clock.mjs'),
   node('packages/ts/tests/driver-error.mjs'),

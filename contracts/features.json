@@ -4079,6 +4079,7 @@
         "packages/php/tests/SchemaSetTest.php",
         "packages/ts/tests/schema-set.mjs",
         "packages/ts/tests/install_changed_database.mjs",
+        "packages/ts/tests/dbspec-set-decimal.mjs",
         "packages/php/tests/case_database.php",
         "packages/ts/tests/case-database.mjs",
         "packages/go/decimalmodel/schema_set_test.go",

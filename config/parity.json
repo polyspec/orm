@@ -4387,6 +4387,21 @@
     {"id": "ts-sqlite-concurrency", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/sqlite-concurrency.mjs", "id": "sqlite-concurrency/writersInSeveralProcesses"}]},
     {"id": "ts-statement-events", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/statement-events.mjs", "id": "statement_events/model_statements/sqlite"}]},
     {"id": "ts-statement-fault-entry", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/statement_fault_entry.mjs", "id": "statement-fault-entry/entry_point"}]},
+    {"id": "ts-schema-set-several-schemas-sqlite", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/schema-set.mjs", "id": "schema-set/several_schemas/sqlite"}]},
+    {"id": "ts-schema-set-several-schemas-mysql", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/schema-set.mjs", "id": "schema-set/several_schemas/mysql"}]},
+    {"id": "ts-schema-set-several-schemas-postgres", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/schema-set.mjs", "id": "schema-set/several_schemas/postgres"}]},
+    {"id": "ts-schema-set-unregistered-schema-sqlite", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/schema-set.mjs", "id": "schema-set/unregistered_schema/sqlite"}]},
+    {"id": "ts-schema-set-unregistered-schema-mysql", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/schema-set.mjs", "id": "schema-set/unregistered_schema/mysql"}]},
+    {"id": "ts-schema-set-unregistered-schema-postgres", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/schema-set.mjs", "id": "schema-set/unregistered_schema/postgres"}]},
+    {"id": "ts-schema-set-edited-manifest-sqlite", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/schema-set.mjs", "id": "schema-set/edited_manifest/sqlite"}]},
+    {"id": "ts-schema-set-edited-manifest-mysql", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/schema-set.mjs", "id": "schema-set/edited_manifest/mysql"}]},
+    {"id": "ts-schema-set-edited-manifest-postgres", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/schema-set.mjs", "id": "schema-set/edited_manifest/postgres"}]},
+    {"id": "ts-schema-set-external-documents-sqlite", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/schema-set.mjs", "id": "schema-set/external_documents/sqlite"}]},
+    {"id": "ts-schema-set-external-documents-mysql", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/schema-set.mjs", "id": "schema-set/external_documents/mysql"}]},
+    {"id": "ts-schema-set-external-documents-postgres", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/schema-set.mjs", "id": "schema-set/external_documents/postgres"}]},
+    {"id": "ts-schema-set-register-sends-no-statement-sqlite", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/schema-set.mjs", "id": "schema-set/register_sends_no_statement/sqlite"}]},
+    {"id": "ts-schema-set-register-sends-no-statement-mysql", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/schema-set.mjs", "id": "schema-set/register_sends_no_statement/mysql"}]},
+    {"id": "ts-schema-set-register-sends-no-statement-postgres", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/schema-set.mjs", "id": "schema-set/register_sends_no_statement/postgres"}]},
     {"id": "ts-syntax-vectors", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/syntax-vectors.mjs", "id": "syntax.json is what the generator writes from the current cases"}]},
     {"id": "ts-plan-cache-in-lengths-share-keys", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/plan-cache-in.mjs", "id": "IN lists of lengths 1 to 300 share at most ten plan cache keys"}]},
     {"id": "ts-plan-cache-in-pads-to-bucket", "kind": "feature", "profile": "ts-internal", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/plan-cache-in.mjs", "id": "an IN list pads to its bucket by repeating its last value and renumbers its parameters"}]},
@@ -5932,7 +5947,7 @@
       "file": "contracts/fixtures/dbspec-set.json", "cases": "$.documents[*]",
       "bindings": [
         { "implementation": "php", "test": "packages/php/tests/SchemaSetTest.php" },
-        { "implementation": "typescript", "test": "packages/ts/tests/schema-set.mjs" }
+        { "implementation": "typescript", "test": "packages/ts/tests/dbspec-set-decimal.mjs" }
       ]
     },
     {
