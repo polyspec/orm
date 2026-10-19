@@ -75,10 +75,12 @@ function summary(changes: Change[]): string {
  * a different result (two values), a statement with no kind or an unknown kind, and a statement that differs from the contract's statement kind list (added or
  * missing statements, with position, kind, and SQL).
  */
-export function checkSequences(file: string, output: Record<string, SequenceOutput>, sequences: Sequence[]): string[] {
+export function checkSequences(file: string, output: Record<string, SequenceOutput>, sequences: Sequence[], selected: string[] = []): string[] {
   const problems: string[] = [];
   for (const s of sequences) {
     const id = s.id ?? '';
+    // A run of selected vectors (VECTOR) holds the outputs of those vectors only, so it checks their contracts only.
+    if (selected.length > 0 && !selected.includes(id)) continue;
     const prefix = `${file}: state contract ${id}`;
     if (!Object.hasOwn(output, id)) {
       problems.push(`${prefix}: the output has no ${id} vector`);
@@ -108,7 +110,7 @@ export function checkSequences(file: string, output: Record<string, SequenceOutp
  * checkResults compares each language's output in one output directory of a conformance run (MySQL: its root; PostgreSQL and SQLite: directories within it)
  * with the common state contract. If an output file is missing, it gives that exact path.
  */
-export function checkResults(directory: string, languages: string[], sequences: Sequence[]): string[] {
+export function checkResults(directory: string, languages: string[], sequences: Sequence[], selected: string[] = []): string[] {
   const problems: string[] = [];
   for (const lang of languages) {
     const path = join(directory, `${lang}.json`);
@@ -128,7 +130,7 @@ export function checkResults(directory: string, languages: string[], sequences: 
       problems.push(`${path} is not a conformance output: ${error instanceof Error ? error.message : String(error)}`);
       continue;
     }
-    problems.push(...checkSequences(path, output, sequences));
+    problems.push(...checkSequences(path, output, sequences, selected));
   }
   return problems;
 }

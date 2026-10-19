@@ -42,6 +42,18 @@ caseTest('sequences name added and missing statements', COMPUTE, () => {
   assert.deepEqual(checkSequences('go.json', {}, sequences), ['go.json: state contract now_defaults: the output has no now_defaults vector']);
 });
 
+// A run of selected vectors checks the state contracts of those vectors only: a contract whose vector did not run is not
+// reported missing, and a selected one is still compared.
+caseTest('a selection checks the state contracts of its vectors', COMPUTE, () => {
+  const sequences: Sequence[] = [
+    { id: 'now_defaults', expected: { created_equals_updated: true }, statements: [] },
+    { id: 'restore', expected: { hidden: null }, statements: [] },
+  ];
+  const output: Record<string, SequenceOutput> = { restore: { result: { hidden: 'NO_ROWS' }, statements: [] } };
+  assert.deepEqual(checkSequences('go.json', output, sequences, ['restore']), ['go.json: state contract restore: result {"hidden":"NO_ROWS"}, expected {"hidden":null}']);
+  assert.deepEqual(checkSequences('go.json', { restore: { result: { hidden: null }, statements: [] } }, sequences, ['restore']), []);
+});
+
 caseTest('the results name a missing output', COMPUTE, () => {
   const directory = mkdtempSync(join(tmpdir(), 'orm-interface-test-'));
   try {

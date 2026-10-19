@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The interface contracts follow the nullable reads, the creates batch and the revision write, and a conformance run of selected vectors checks their state contracts (T204-1).
 - An audited transaction inserts its audit record right before its first audited write, so a unit of work that writes no audited row writes no audit record, in the five clients (T220).
 - The MySQL migration case of the test servers reads the TAP lines of its steps (T221).
 - The Python scan binds a model only from the generated models module and starts every parameter as its own binding; TypeScript typed callback parameters take their own class (T222).

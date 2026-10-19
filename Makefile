@@ -1109,8 +1109,8 @@ conformance-check/%: RUN_DIR = $(abspath .runtime/run)/conformance-check-$$PPID
 # for the vectors that VECTOR names or, without VECTOR, for every vector. A vector that makes a connection's first use of a statement that an earlier
 # vector makes in a full run (SQLite's orm__row_lock table) records it too when run alone; its expectation drops that statement (tests/conformance/README.md).
 # record writes only when all five outputs match, and fails if it cannot record, or if the runner fails and leaves no diagnostic output.
-# After recording, the same vector runs again and is compared with the new expected value. The state contract of contracts/interfaces.json
-# reads the output of every vector, so with VECTOR it does not check and prints that it does not.
+# After recording, the same vector runs again and is compared with the new expected value. The state contracts of contracts/interfaces.json
+# are checked for the vectors the run made: with VECTOR, the contracts of the named vectors only.
 CONFORMANCE_VECTORS = $(foreach name,$(VECTOR),--vector $(name))
 CONFORMANCE_RUN = node tests/conformance/check/main.mts run --out $(RUN_DIR)/out $(CONFORMANCE_VECTORS) --driver mysql --dsn "$$BENCH_MYSQL_DSN" --driver postgres --dsn "$$BENCH_POSTGRES_DSN" --driver sqlite --dsn "$$BENCH_SQLITE_DSN"
 .PHONY: conformance-check/run
@@ -1138,7 +1138,7 @@ conformance-check/run: lease-tool conformance-python-models
 	  [ $$recorded = 1 ] || { echo "conformance-check: the run failed before any comparison, so RECORD=1 has nothing to record" >&2; exit 1; }; \
 	  rm -rf $(RUN_DIR)/out && $(CONFORMANCE_RUN); \
 	else exit 1; fi
-	$(if $(VECTOR),@echo "conformance-check: the state contracts of contracts/interfaces.json are not checked because VECTOR selects only some of their vectors",PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/interfaces/check/main.mts --results $(RUN_DIR)/out --results $(RUN_DIR)/out/postgres --results $(RUN_DIR)/out/sqlite)
+	PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/interfaces/check/main.mts --results $(RUN_DIR)/out --results $(RUN_DIR)/out/postgres --results $(RUN_DIR)/out/sqlite $(CONFORMANCE_VECTORS)
 	rm -rf $(RUN_DIR)
 
 # markdown-conformance-check runs the cases of tests/markdown/cases.json for each client against the flowmark server of FLOWMARK

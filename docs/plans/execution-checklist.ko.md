@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 9d02a278c650cd1ae733b96e9c2f0be1842c4f4bde0cffcd4c733746c78823c1 -->
+<!-- source-sha256: b87f2bfcabf4bfa8660ac1aa57c1e769821a832e4caf5c6008c10b98195512bd -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1538,6 +1538,8 @@
   - `local(key)`는 없는 key에 `NO_ROWS`를 유지한다: select가 아니라 transaction 로컬 값이며, 없는 key는 호출자 오류이고, null은 저장된 빈 값과 구분되지 않는다.
   - docs/dsl.md, docs/interfaces.md, docs/usage.md, README와 ko 쌍, contracts/interfaces.json, contracts/fixtures/ir_answers.json, 생성된 `Get` 주석, select에서 `NO_ROWS`를 기대한 모든 test.
   근거: 구현을 뺀 red: Go와 Rust는 nullable `get`/`getAvg`에서 build가 실패하고, Python, PHP, TypeScript는 `NO_ROWS: query matched no rows`로 실패한다. green: vector `empty_reads`와 옛 `get()` `NO_ROWS`를 기대값에 가진 vector(terminal_by, write_cycle, delete_recursive)를 MySQL, PostgreSQL, SQLite에서 다섯 client가 합의한 출력으로 기록했다. `restore`는 `NO_ROWS`를 유지한다. 기록 도구가 client 사이에 다른 필드를 말한다. 담당 검사: interface-check, Rust workspace clippy, 다섯 client의 ir-answers, 각 client의 바뀐 unit test.
+- [o] T204-1 contract가 T204의 빈 읽기, T205의 batch, T212의 revision을 따른다. 원인: T204, T205, T212가 contract 없이 API를 바꿨다. restore(hidden)와 delete_recursive(service_left)의 state contract는 읽기가 이제 null을 주는 곳에 여전히 `NO_ROWS`를 기대했고, tests/interfaces/contracts/validate.go에는 get과 getAvg의 nullable output과 input 목록 `Rows,Batch`, `ColumnRevision`이 없었으며, Python test_python_natives는 이제 24개인 entity rule을 22개로 고정했다. 선택한 vector의 실행은 state contract를 검사하지도 않았다. 완료 기준: 각 contract가 API와 맞고, 선택한 vector의 실행이 그 state contract를 검사한다. 전 red, 후 green.
+  근거: `Model.get`의 output은 `OptionalModel`, `Model.getAvg`는 `OptionalAggregate`(validate.go, interfaces.json). validate.go가 `Rows,Batch`와 `ColumnRevision`을 선언한다. 두 state contract가 null을 기대한다. tests/interfaces/check가 `--results`와 함께 `--vector`를 받고 conformance-check가 VECTOR를 넘겨, 선택한 vector의 실행이 그 contract만 검사한다(Makefile, tests/conformance/README.md +ko). red: Go TestLogicalContractRejectsNativeDrift `Model.get/php return ?static does not implement Model`, Python `24 != 22` 다음 `KeyError: 'ColumnRevision'`, 옛 contract로 `make run-databases TARGETS=conformance-check VECTOR="audit_lazy restore delete_recursive"`가 세 dialect의 다섯 client에서 `state contract restore`와 `state contract delete_recursive`로 실패(audit_lazy는 연결의 첫 row lock vector). green: Go contract test ok, test_python_natives OK, sequence와 flag test 통과, 같은 실행이 `ok - interfaces/results`로 통과.
 - [o] T205 `creates(rows, batch)`: 호출자가 multi-row INSERT 하나의 행 수를 정한다(consumer S-286-19 상품 import, 사용자 요청). 원인: `creates(rows)`가 행을 자기 규칙으로 statement에 나누므로 호출자가 statement 크기를 고를 수 없다. 완료 기준, Go, PHP, Python, Rust, TypeScript에서 red 뒤 green으로 실행하는 conformance vector로:
   - `creates(rows, batch)`가 유일한 형태다: `batch`는 필수이며 양수이고, `batch` 없는 `creates(rows)`는 기본값도 fallback 분할도 없이 지운다. 양의 정수만 받으며, 다른 값은 어떤 statement보다 먼저 `CONFIG`로 실패한다.
   - `batch` 행씩의 각 묶음(마지막은 더 작을 수 있다)이 multi-row INSERT 하나이고, 모든 묶음이 한 transaction(활성 transaction 안에서는 savepoint) 안에서 실행되며, 실패하면 모든 묶음을 rollback한다.

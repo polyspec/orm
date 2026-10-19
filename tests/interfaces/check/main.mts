@@ -37,7 +37,7 @@ const RESULTS = COMPUTE;
 
 const LANGUAGES = ['go', 'php', 'rust', 'typescript', 'python'];
 const BOOLEANS = new Set(['record', 'self-test', 'generate']);
-const VALUES = new Set(['root', 'language', 'results']);
+const VALUES = new Set(['root', 'language', 'results', 'vector']);
 const USAGE = `Usage of tests/interfaces/check/main.mts:
   -generate
     \tregenerate the component diagram from the manifest
@@ -47,6 +47,8 @@ const USAGE = `Usage of tests/interfaces/check/main.mts:
     \twrite candidate native symbol inventories after common-contract checks
   -results value
     \talso check the state traces of a conformance output directory of this run, repeatable
+  -vector value
+    \twith -results, check the state contracts of the named vectors only, repeatable
   -root string
     \trepository root (default ".")
   -self-test
@@ -196,7 +198,7 @@ async function main(argv: string[]): Promise<number> {
       args: goFlags(argv),
       options: {
         root: { type: 'string', default: '.' }, record: { type: 'boolean', default: false }, 'self-test': { type: 'boolean', default: false },
-        generate: { type: 'boolean', default: false }, results: { type: 'string', multiple: true, default: [] }, language: { type: 'string', default: '' },
+        generate: { type: 'boolean', default: false }, results: { type: 'string', multiple: true, default: [] }, vector: { type: 'string', multiple: true, default: [] }, language: { type: 'string', default: '' },
       },
     }));
   } catch (error) {
@@ -204,7 +206,7 @@ async function main(argv: string[]): Promise<number> {
     console.error(USAGE);
     return 2;
   }
-  const record = values.record, selfTest = values['self-test'], generate = values.generate, results = values.results, language = values.language;
+  const record = values.record, selfTest = values['self-test'], generate = values.generate, results = values.results, vectors = values.vector, language = values.language;
   let languages = [...LANGUAGES];
   // If extensions is undefined, checks all extensions in the manifest.
   let extensions: string[] | undefined;
@@ -274,7 +276,7 @@ async function main(argv: string[]): Promise<number> {
     if (record && recordedHashes.size > 0) writeManifestHashes(join(root, 'contracts/interfaces.json'), recordedHashes);
     if (results.length > 0) {
       const passed = await runCase('interfaces/results', RESULTS, () => {
-        const problems = results.flatMap(dir => checkResults(dir, languages, m.sequences ?? []));
+        const problems = results.flatMap(dir => checkResults(dir, languages, m.sequences ?? [], vectors));
         if (problems.length > 0) throw new Error(problems.join('\n'));
       });
       if (!passed) failed = true;

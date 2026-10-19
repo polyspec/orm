@@ -735,7 +735,7 @@
       "id": "Model.get",
       "for": "entity",
       "inputs": [],
-      "output": "Model",
+      "output": "OptionalModel",
       "errors": [
         "CONFIG",
         "IR_INVALID",
@@ -905,7 +905,7 @@
       "id": "Model.getAvg",
       "for": "entity",
       "inputs": [],
-      "output": "Aggregate",
+      "output": "OptionalAggregate",
       "errors": [
         "CONFIG",
         "IR_INVALID",
@@ -3322,7 +3322,7 @@
       "expected": {
         "members": 2,
         "members_left": 0,
-        "service_left": "NO_ROWS"
+        "service_left": null
       },
       "statements": [
         "begin",
@@ -3374,7 +3374,7 @@
           "name": "restore-2",
           "seq": "$SEQ"
         },
-        "hidden": "NO_ROWS",
+        "hidden": null,
         "left": 0,
         "missing": "NO_ROWS",
         "restored": {

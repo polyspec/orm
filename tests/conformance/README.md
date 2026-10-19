@@ -98,8 +98,8 @@ comparison failed has its five diagnostic outputs passed to `check record`
 for the same names; recording fails when the outputs disagree or when a runner
 failed before any comparison, and after recording the target runs the same
 vectors again against the new expectations. The state contracts of
-`contracts/interfaces.json` read the outputs of every vector, so a run with
-`VECTOR` does not check them and says so; only a run without it does. `RECORD=1` with `VECTOR` records only the named
+`contracts/interfaces.json` are checked for the vectors the run made: a run with
+`VECTOR` checks the contracts of the named vectors only. `RECORD=1` with `VECTOR` records only the named
 vectors. A vector that makes a connection's first use of a statement, such as
 SQLite's `orm__row_lock` table, which the full run makes in an earlier vector,
 records that statement too when it runs alone, and the full run would fail on

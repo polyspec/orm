@@ -27,6 +27,7 @@ caseTest('JSON is written as Go encoding/json writes it', COMPUTE, () => {
 caseTest('the options are read as Go flag reads them', COMPUTE, () => {
   assert.deepEqual(goFlags(['-record', '--self-test', '-language', 'php', '-results=a', '--results', 'b', '-generate=false', 'rest', '-root', 'x']),
     ['--record', '--self-test', '--language=php', '--results=a', '--results=b']);
+  assert.deepEqual(goFlags(['--vector', 'restore', '-vector=delete_recursive']), ['--vector=restore', '--vector=delete_recursive'], 'the conformance target passes --vector NAME');
   assert.throws(() => goFlags(['-nope']), /flag provided but not defined: -nope/);
   assert.throws(() => goFlags(['-language']), /flag needs an argument: -language/);
 });
