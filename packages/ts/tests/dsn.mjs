@@ -43,7 +43,7 @@ await run.run('dsn/pool-bounds', COMPUTE, async () => {
   await mysql.close();
 });
 // A SQLite DSN with a query creates the file from the path alone. An opener that puts the query in the file name
-// creates a file such as `named.sqlite?_pragma=…` (docs/dialects.md "Probe environment").
+// creates a file such as `named.sqlite?_pragma=…` (docs/spec/dialects.md "Probe environment").
 await run.run('dsn/sqlite-file-name', COMPUTE, async () => {
   const directory = mkdtempSync(join(tmpdir(), 'orm-ts-sqlite-name-'));
   try {
@@ -58,7 +58,7 @@ await run.run('dsn/sqlite-file-name', COMPUTE, async () => {
   }
 });
 // tests/dsn/sqlite-paths.json: a DSN path opens the percent-decoded file, and an invalid path
-// is CONFIG (docs/config.md "Runtime connection").
+// is CONFIG (docs/spec/config.md "Runtime connection").
 const pathVectors = JSON.parse(readFileSync(new URL('../../../tests/dsn/sqlite-paths.json', import.meta.url), 'utf8'));
 if (pathVectors.version !== 1 || pathVectors.cases.length === 0) throw new Error('tests/dsn/sqlite-paths.json has no cases');
 for (const c of pathVectors.cases) caseTest(c.id, COMPUTE, async () => {

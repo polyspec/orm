@@ -1,4 +1,4 @@
-# Statement events (docs/usage.md "Statement events"). The connection publishes
+# Statement events (docs/operations/usage.md "Statement events"). The connection publishes
 # one event per statement to the subscribers registered for every statement.
 import time
 
@@ -52,7 +52,8 @@ class Subscribers:
         """Registers a subscriber and returns the removal function."""
         if not callable(subscriber):
             raise OrmError(
-                codes.CONFIG, "subscribe takes a function that receives a statement event"
+                codes.CONFIG,
+                "subscribe takes a function that receives a statement event",
             )
 
         # Even if the same function is registered twice, removal removes only its own registration.

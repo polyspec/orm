@@ -25,6 +25,9 @@ export function canonicalize(request: Request, params: readonly unknown[]): { re
   return { request: out, params: c.out };
 }
 
+// byKey orders the entries of a record by their keys, as the default sort of strings does.
+const byKey = <T>(a: [string, T], b: [string, T]): number => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
+
 class Canonicalizer {
   public readonly out: unknown[] = [];
   public readonly used: boolean[];
@@ -52,7 +55,11 @@ class Canonicalizer {
     let bucket = 1;
     while (bucket < n) bucket <<= 1;
     const out: number[] = [];
-    for (let j = 0; j < bucket; j++) out.push(this.index(ps[Math.min(j, n - 1)]!));
+    for (let j = 0; j < bucket; j++) {
+      const p = ps[Math.min(j, n - 1)];
+      if (p === undefined) throw new Error('a canonical bucket has no path');
+      out.push(this.index(p));
+    }
     return out;
   }
 
@@ -106,11 +113,11 @@ class Canonicalizer {
       if (q.columns.remove !== undefined) cols.remove = [...q.columns.remove];
       if (q.columns.fn !== undefined) {
         cols.fn = {};
-        for (const k of Object.keys(q.columns.fn).sort()) cols.fn[k] = { ...q.columns.fn[k]!, fn: this.fn(q.columns.fn[k]!.fn) };
+        for (const [k, column] of Object.entries(q.columns.fn).sort(byKey)) cols.fn[k] = { ...column, fn: this.fn(column.fn) };
       }
       if (q.columns.sub !== undefined) {
         cols.sub = {};
-        for (const k of Object.keys(q.columns.sub).sort()) cols.sub[k] = this.subquery(q.columns.sub[k]!);
+        for (const [k, sub] of Object.entries(q.columns.sub).sort(byKey)) cols.sub[k] = this.subquery(sub);
       }
       out.columns = cols;
     }

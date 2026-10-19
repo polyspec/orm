@@ -18,7 +18,7 @@ fn bench_dsn() -> Result<String, String> {
     match std::env::var("ORM_BENCH_MYSQL_DSN") {
         Ok(v) if !v.is_empty() => Ok(v),
         Ok(_) | Err(std::env::VarError::NotPresent) => {
-            Err("ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database, and the bench never skips; run it through make check or make run-databases TARGETS=<target>, which create the bench database of the run".into())
+            Err("ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database, and the bench never skips; run it through make orm-check or make run-databases TARGETS=<target>, which create the bench database of the run".into())
         }
         Err(e) => Err(format!("ORM_BENCH_MYSQL_DSN must be UTF-8: {e}")),
     }

@@ -1,5 +1,5 @@
 # OrmError: carries the code and message of an error during execution together.
-# The code list is defined by docs/interfaces.md.
+# The code list is defined by docs/spec/interfaces.md.
 
 from polyspec.orm import codes
 
@@ -26,7 +26,7 @@ def _error_text(error: object) -> str:
 
 def rollback_failed(cause: object, rollback: object) -> OrmError:
     """Reports the cause that ended a transaction or savepoint, and a failed rollback,
-    as a single ROLLBACK error (docs/interfaces.md). cause is the cause, and
+    as a single ROLLBACK error (docs/spec/interfaces.md). cause is the cause, and
     rollback is the rollback error. A ROLLBACK error is not retried."""
     return OrmError(
         codes.ROLLBACK,

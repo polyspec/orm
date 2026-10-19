@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 )
 
-// The renderer names of CHECKs, triggers and functions (docs/dbspec.md
+// The renderer names of CHECKs, triggers and functions (docs/spec/dbspec.md
 // "Names"): the plain form <table>$<suffix> when it has at most maxNameBytes,
 // otherwise its first 54 bytes, a $ and the first 8 lowercase hexadecimal
 // digits of its SHA-256, 54 + 1 + 8 = 63 bytes.
@@ -27,7 +27,7 @@ func rendererName(table, suffix string) string {
 
 // renderedColumn returns the column of columns whose renderer name is name,
 // recomputing the name of each column, so a name read from a database is
-// matched exactly and never split on $ (docs/dbspec.md "Names").
+// matched exactly and never split on $ (docs/spec/dbspec.md "Names").
 func renderedColumn[V any](table, name string, columns map[string]V) (string, bool) {
 	for column := range columns {
 		if rendererName(table, column) == name {

@@ -2,7 +2,7 @@ package dbspec
 
 import "sort"
 
-// Position is the place of one declaration of a parsed document (docs/dbspec.md "Declaration positions"): its kind,
+// Position is the place of one declaration of a parsed document (docs/spec/dbspec.md "Declaration positions"): its kind,
 // its path of enclosing names and its own name, and the 1-based line and column, in Unicode code points, of its name
 // token or, for a setting and the primary key, of its keyword.
 type Position struct {
@@ -79,7 +79,7 @@ func (d *documentNode) positions() []Position {
 	return out
 }
 
-// settingIdentity returns what the repeat rule of a setting makes unique (docs/dbspec.md "Settings"): the column of
+// settingIdentity returns what the repeat rule of a setting makes unique (docs/spec/dbspec.md "Settings"): the column of
 // codec and markdown, the foreign key of navigation, the AES column of blind_index, the column and state of checkbox,
 // and the form and states of a state_machine line, whose column is left out since a table holds one machine. Every
 // other setting appears at most once and has no identity.

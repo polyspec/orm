@@ -1,5 +1,5 @@
 # removeAllColumns() keeps only the primary and foreign keys of the entity, and each added column
-# (docs/dsl.md, the removeAllColumns row of the chain table).
+# (docs/spec/dsl.md, the removeAllColumns row of the chain table).
 import tempfile
 import unittest
 from pathlib import Path

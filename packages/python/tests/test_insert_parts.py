@@ -1,5 +1,5 @@
 # The shared cases of contracts/fixtures/insert_parts.json: one test for each case, named by its id. _insert_parts
-# splits the rows of the case into batches of its batch size (docs/protocol.md "Multi-row inserts").
+# splits the rows of the case into batches of its batch size (docs/spec/protocol.md "Multi-row inserts").
 # Run: python -m packages.python.tests.test_insert_parts
 import json
 import unittest

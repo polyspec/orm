@@ -1,4 +1,4 @@
-//! The plan of a request (docs/protocol.md §2).
+//! The plan of a request (docs/spec/protocol.md §2).
 
 #[derive(Debug, Clone, Default)]
 pub struct Plan {

@@ -1,6 +1,6 @@
 # Makes a plan from a checked request: the SELECT statements of the root and its joins, a separate statement for each relation
 # bound to the parent step's rows, and the INSERT, UPDATE, and DELETE statements.
-# (docs/protocol.md).
+# (docs/spec/protocol.md).
 from polyspec.orm import codes
 from polyspec.orm.engine.params import function_type, interval_type
 from polyspec.orm.engine.model import Entity, Field, RuntimeModel, entity_of, field_of
@@ -156,7 +156,9 @@ def _index_of(asm: dict, name: str) -> int:
     for column in asm["columns"]:
         if column["name"] == name:
             return column["index"]
-    raise OrmError(codes.CONFIG, f"planner: column {name} not projected in {asm['entity']}")
+    raise OrmError(
+        codes.CONFIG, f"planner: column {name} not projected in {asm['entity']}"
+    )
 
 
 def _key_refs(asm: dict, columns) -> list:
@@ -827,7 +829,7 @@ class Planner:
                 return b.param(fn["ps"][0], interval_type(fn["name"]))
 
             # The clock the ORM compares has six fractional digits, and a datetime(p < 6) column is compared as the value extended to six digits
-            # (docs/protocol.md "Clock").
+            # (docs/spec/protocol.md "Clock").
             def now():
                 return b.now(6)
 
@@ -1008,7 +1010,8 @@ class Planner:
         if _blind_index_source(ent, col.name):
             if "plus_p" in a or "minus_p" in a:
                 _fail(
-                    codes.IR_INVALID, "blind index assignment must use its AES source value"
+                    codes.IR_INVALID,
+                    "blind index assignment must use its AES source value",
                 )
             if a.get("null"):
                 return "NULL"
@@ -1043,7 +1046,7 @@ class Planner:
         """The columns that insert writes besides the user's assignments: the AES key version, audit
         column, and the `default now` column that is not assigned in a dialect that writes the executor clock (host_now)
         (in field order). That column gets the executor clock truncated to the column's fractional digits
-        (docs/protocol.md "Clock")."""
+        (docs/spec/protocol.md "Clock")."""
         out = []
         version = ent.aes_version
         if version != "" and not _assigned(assignments, version):

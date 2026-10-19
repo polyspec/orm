@@ -1,5 +1,5 @@
 //! Reads the check expressions of the dialect catalog as dbspec predicate text
-//! (docs/dialects.md "Introspection", "Checks").
+//! (docs/spec/dialects.md "Introspection", "Checks").
 
 use super::super::literal::quote;
 use super::super::model::Type;

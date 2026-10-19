@@ -19,7 +19,7 @@ def dsn() -> str:
     value = os.environ.get("ORM_BENCH_MYSQL_DSN", "")
     if value == "":
         print(
-            "ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database; run it through make check or make run-databases TARGETS=<target>, which create the bench database of the run",
+            "ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database; run it through make orm-check or make run-databases TARGETS=<target>, which create the bench database of the run",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -48,7 +48,9 @@ def main() -> None:
 
     def on_statement(event) -> None:
         last["sql"] = event.sql
-        last["binds"] = [AES_KEY if value == "$SECRET" else value for value in event.binds]
+        last["binds"] = [
+            AES_KEY if value == "$SECRET" else value for value in event.binds
+        ]
 
     db = connect(target, aesKey=AES_KEY, blindIndexKey="bench-blind-index")
     try:
@@ -61,7 +63,11 @@ def main() -> None:
                 .connect(db)
                 .service_seq(7)
                 .and_is_close(False)
-                .and_(lambda q: q.is_display(True).or_(lambda q: q.is_display(False).and_lt_display_start_dt(now)))
+                .and_(
+                    lambda q: q.is_display(True).or_(
+                        lambda q: q.is_display(False).and_lt_display_start_dt(now)
+                    )
+                )
                 .and_seq([6, 106, 206, 306, 406])
                 .order_by_seq_desc()
                 .limit(0, 3)
@@ -78,7 +84,9 @@ def main() -> None:
             }
             for r in rows
         ]
-        print(json.dumps(out, separators=(",", ":"), sort_keys=True, ensure_ascii=False))
+        print(
+            json.dumps(out, separators=(",", ":"), sort_keys=True, ensure_ascii=False)
+        )
 
         client = p50(lambda: list(query()))
         params = parse_qs(url.query)
@@ -95,10 +103,17 @@ def main() -> None:
         raw = pymysql.connect(**connection_args)
         try:
             with raw.cursor() as cursor:
-                native = p50(lambda: cursor.execute(last["sql"], last["binds"]) and cursor.fetchall())
+                native = p50(
+                    lambda: (
+                        cursor.execute(last["sql"], last["binds"]) and cursor.fetchall()
+                    )
+                )
         finally:
             raw.close()
-        print(f"python: client p50 {client}µs, native p50 {native}µs ({ITERATIONS} iterations)", file=sys.stderr)
+        print(
+            f"python: client p50 {client}µs, native p50 {native}µs ({ITERATIONS} iterations)",
+            file=sys.stderr,
+        )
     finally:
         db.close()
 

@@ -14,7 +14,7 @@ const AES_KEY = 'bench-salt';
 function dsn(): string {
   const value = process.env.ORM_BENCH_MYSQL_DSN;
   if (value === undefined || value === '') {
-    console.error('ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database; run it through make check or make run-databases TARGETS=<target>, which create the bench database of the run');
+    console.error('ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database; run it through make orm-check or make run-databases TARGETS=<target>, which create the bench database of the run');
     process.exit(1);
   }
   return value;
@@ -66,7 +66,7 @@ async function main(): Promise<void> {
       ...(url.searchParams.get('socket') !== null ? { socketPath: url.searchParams.get('socket') ?? undefined } : { host: url.hostname, port: url.port ? Number(url.port) : undefined }),
     });
     try {
-      const native = await p50(async () => { await raw.execute(lastSql, lastArgs as never[]); });
+      const native = await p50(async () => { await raw.execute(lastSql, lastArgs); });
       console.error(`ts: client p50 ${client}µs, native p50 ${native}µs (${ITERATIONS} iterations)`);
     } finally {
       await raw.end();

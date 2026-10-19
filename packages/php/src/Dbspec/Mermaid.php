@@ -5,7 +5,7 @@ namespace Polyspec\Orm\Dbspec;
 
 /**
  * Writes a dbspec document as standard Mermaid erDiagram, and reads an erDiagram back into a dbspec document
- * (docs/mermaid.md). Reports what neither could carry, as [kind, table, name].
+ * (docs/spec/mermaid.md). Reports what neither could carry, as [kind, table, name].
  *
  * @internal
  */

@@ -233,7 +233,7 @@ async function main(argv: string[]): Promise<number> {
     const failures = checkErrorLabels(codes, allRules(m), m.sequences ?? []);
     if (failures.length !== 0) throw new Error(failures.join('\n'));
     const english = diagram(m, false), korean = diagram(m, true);
-    const englishPath = join(root, 'docs/interfaces-model.md'), koreanPath = join(root, 'docs/interfaces-model.ko.md');
+    const englishPath = join(root, 'docs/spec/interfaces-model.md'), koreanPath = join(root, 'docs/spec/interfaces-model.ko.md');
     if (generate) {
       writeFileSync(englishPath, english, { mode: 0o644 });
       writeFileSync(koreanPath, korean, { mode: 0o644 });

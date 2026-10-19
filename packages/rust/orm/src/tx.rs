@@ -196,7 +196,7 @@ impl TxShared {
 
     /// Runs one step of savepoint `name`: if `kind` is KIND_SAVEPOINT it creates it, if KIND_RELEASE it releases it,
     /// if KIND_ROLLBACK_TO it reverts the work after it. A SQL connection sends that statement and publishes its event, and
-    /// a markdown connection sends a control message of the same name (docs/protocol.md §5 "Session").
+    /// a markdown connection sends a control message of the same name (docs/spec/protocol.md §5 "Session").
     pub(crate) async fn savepoint_step(&self, kind: &str, name: &str) -> Result<()> {
         let (op, statement) = match kind {
             KIND_SAVEPOINT => ("savepoint", format!("SAVEPOINT {name}")),
@@ -876,7 +876,7 @@ async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, timeout_m
         return Err(Error::Engine { code: codes::CAPABILITY_UNSUPPORTED.into(), msg: "transaction timeoutMs is supported only by postgres".into() });
     }
     let level = isolation.map(Isolation::sql);
-    // The statement that opens a transaction (docs/usage.md "Statement events").
+    // The statement that opens a transaction (docs/operations/usage.md "Statement events").
     let mut opening: Vec<(&str, String)> = Vec::new();
     let mut sqlite_mode = None;
     let inner = match db.pool() {
@@ -954,7 +954,7 @@ async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, timeout_m
 }
 
 /// Opens a markdown transaction: holds one session from the pool until the transaction ends and sends begin. A read-only
-/// transaction sends read_only (docs/protocol.md §5 "Session"). Isolation is CAPABILITY_UNSUPPORTED.
+/// transaction sends read_only (docs/spec/protocol.md §5 "Session"). Isolation is CAPABILITY_UNSUPPORTED.
 async fn begin_markdown(db: &Db, pool: &Arc<MdPool>, isolation: Option<Isolation>, read_only: bool) -> Result<TxShared> {
     if isolation.is_some() {
         db.unsupported_on_markdown("the transaction isolation option")?;
@@ -992,7 +992,7 @@ async fn ensure_sqlite_lock_table(db: &Db) -> Result<()> {
 }
 
 /// Rolls back the transaction of a callback that panicked and continues the panic. If the rollback fails,
-/// the panic message carries both the cause and the failed rollback (docs/interfaces.md).
+/// the panic message carries both the cause and the failed rollback (docs/spec/interfaces.md).
 async fn rollback_and_resume(tx: &TxShared, payload: Box<dyn std::any::Any + Send>) -> std::convert::Infallible {
     resume_panic(payload, rollback(tx).await.err())
 }
@@ -1317,7 +1317,7 @@ mod tests {
 
     /// On PostgreSQL, `timeout_ms` is `SET LOCAL statement_timeout`, so the server ends a long-running statement
     /// and the transaction is rolled back. MySQL and SQLite do not support that option, so the transaction
-    /// fails with CAPABILITY_UNSUPPORTED before it starts, and the callback does not run (docs/interfaces.md).
+    /// fails with CAPABILITY_UNSUPPORTED before it starts, and the callback does not run (docs/spec/interfaces.md).
     /// 0 is the same as not giving the option. Mismatches from each database are collected and reported together at the end.
     #[tokio::test]
     async fn transaction_timeout_is_the_postgres_statement_timeout() {

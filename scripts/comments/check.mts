@@ -47,6 +47,24 @@ export function familyOf(path: string, firstLine = ''): Family | undefined {
 
 type Entry = { line: number; col: number; text: string };
 
+// entriesOf reads the JSON that a tokenizer prints: one array of comment entries per path, each with a line, a column and a text.
+function entriesOf(text: string): Entry[][] {
+  const value: unknown = JSON.parse(text);
+  if (!Array.isArray(value)) throw new Error('the tokenizer printed no array of files');
+  return value.map((file: unknown) => {
+    if (!Array.isArray(file)) throw new Error('the tokenizer printed a file that is no array');
+    return file.map((entry: unknown) => {
+      if (typeof entry !== 'object' || entry === null || !('line' in entry) || typeof entry.line !== 'number' || !('col' in entry) || typeof entry.col !== 'number' || !('text' in entry) || typeof entry.text !== 'string') {
+        throw new Error('the tokenizer printed a comment without its line, column and text');
+      }
+      return { line: entry.line, col: entry.col, text: entry.text };
+    });
+  });
+}
+
+// isTypeScript is the module of the pinned TypeScript: it has the compiler's entry points.
+const isTypeScript = (value: unknown): value is typeof TypeScript => typeof value === 'object' && value !== null && 'createSourceFile' in value && typeof value.createSourceFile === 'function';
+
 // splitLines turns an entry that spans several physical lines into one Comment per line; a continuation line starts at column 0.
 function splitLines(entries: Entry[]): Comment[] {
   return entries.flatMap(entry => entry.text.split('\n').map((part, index) => ({
@@ -67,7 +85,7 @@ async function runTokenizer(command: string, args: string[], env: NodeJS.Process
     child.on('error', error => fail(new Error(`${command} cannot start: ${errorMessage(error)}`)));
     child.on('close', code => {
       if (code !== 0) return fail(new Error(`${command} ${args.join(' ')} exited ${code}: ${stderr.trim()}`));
-      try { done(JSON.parse(stdout) as Entry[][]); }
+      try { done(entriesOf(stdout)); }
       catch (error) { fail(new Error(`${command} printed no JSON: ${errorMessage(error)}`)); }
     });
     child.stdin.end(`${paths.join('\n')}\n`);
@@ -78,7 +96,9 @@ async function runTokenizer(command: string, args: string[], env: NodeJS.Process
 // interface project: each child token is visited, and its leading and trailing trivia hold every comment.
 function typescriptComments(path: string, text: string): Entry[] {
   const require = createRequire(join(root, 'package.json'));
-  const ts = require(join(root, 'packages/ts/testing/interfaces/typescript/node_modules/typescript')) as typeof TypeScript;
+  const loaded: unknown = require(join(root, 'packages/ts/testing/interfaces/typescript/node_modules/typescript'));
+  if (!isTypeScript(loaded)) throw new Error('the pinned typescript module exports no createSourceFile');
+  const ts = loaded;
   const ext = extname(path);
   const kind = ext === '.tsx' ? ts.ScriptKind.TSX : ext === '.jsx' ? ts.ScriptKind.JSX : ['.js', '.mjs', '.cjs'].includes(ext) ? ts.ScriptKind.JS : ts.ScriptKind.TS;
   const sf = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true, kind);

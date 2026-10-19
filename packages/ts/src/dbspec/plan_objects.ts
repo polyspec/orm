@@ -1,4 +1,4 @@
-// Objects, triggers, and the change lists of a plan diff (docs/plans.md "Diff").
+// Objects, triggers, and the change lists of a plan diff (docs/spec/plans.md "Diff").
 // The reference is the Go engine (engine/dbspec/plan_objects.go).
 import { present } from '../present.js';
 import { readCheck, type CheckExpr, type CheckOperand } from './check.js';

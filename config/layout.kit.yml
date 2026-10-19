@@ -87,15 +87,59 @@ templates:
     message: "S5: a file at the root that the layout does not declare; move it into a root folder or declare it in vars.root_files of layout-root-files in config/layout.yml"
 
 rules:
-  # S5: the root folders of every monorepo, and the dot folders of Git, GitHub and kit. .mise holds .mise/locks/, the uv lock
-  # sidecars that make toolchain-lock writes and mise.lock names: lock data that is tracked with mise.lock (K192).
+  # K244: the integration and conformance suites cross packages, so they live under tests/ of the root, where a unit run in a
+  # package never reaches them.
+  - id: suites-at-root
+    kind: dir_absent
+    level: error
+    paths: ["packages/**/integration", "packages/**/conformance"]
+    message: "K244: an integration or conformance suite lives in tests/integration/<runtime> or tests/conformance/<runtime> of the root"
+  # S10: the PHP extension has one stub, in packages/php-ext/src/; php-extension.mts checks its name.
+  - id: php-ext-stub-place
+    kind: file_absent
+    level: error
+    paths: ["**/*.stub.php", "!packages/php-ext/src/*.stub.php"]
+    message: "S10: the stub of the PHP extension is packages/php-ext/src/polyspec_<repository>.stub.php"
+  # S5: the root folders of every monorepo, and the dot folders of Git, GitHub, kit and Claude Code. .mise holds .mise/locks/,
+  # the uv lock sidecars that make toolchain-lock writes and mise.lock names: lock data that is tracked with mise.lock (K192).
+  # .claude holds settings.json, the Claude Code settings that kit vendors with the hook of K240.
   - id: layout-root-folders
     kind: dir_absent
     level: error
     root_only: true
-    paths: ["*", "!packages", "!contracts", "!docs", "!scripts", "!tests", "!examples", "!benchmarks", "!config", "!.github", "!.githooks", "!.kit", "!.mise"]
+    paths: ["*", "!packages", "!contracts", "!docs", "!scripts", "!tests", "!examples", "!benchmarks", "!config", "!.github", "!.githooks", "!.kit", "!.mise", "!.claude"]
     message: "S5: the root holds only packages/, contracts/, docs/, scripts/, tests/, examples/, benchmarks/ and config/"
 
+  # K245: docs/ holds the spec, the operations, the plans, the rebuild records (S1) and features.md, and the files of a VitePress
+  # site where the repository builds one: its .vitepress/ and public/ folders and its index and 404 pages.
+  - id: docs-folders
+    kind: dir_absent
+    level: error
+    paths: ["docs/*", "!docs/spec", "!docs/operations", "!docs/plans", "!docs/rebuild", "!docs/.vitepress", "!docs/public"]
+    message: "K245: docs/ holds spec/, operations/, plans/, rebuild/ and the .vitepress/ and public/ of a site"
+  - id: docs-files
+    kind: file_absent
+    level: error
+    paths: ["docs/*", "!docs/features.md", "!docs/features.ko.md", "!docs/index.md", "!docs/index.ko.md", "!docs/404.md", "!docs/404.ko.md"]
+    message: "K245: a document lies in docs/spec, docs/operations or docs/plans; docs/ itself holds features.md and the index and 404 pages of a site"
+  # K245: the management files of a repository lie at its root; a package keeps the README that its registry shows (S1).
+  - id: management-files-at-root
+    kind: file_absent
+    level: error
+    paths: ["packages/**/AGENTS*.md", "packages/**/CHANGELOG*.md", "packages/**/Makefile"]
+    message: "K245: AGENTS, CHANGELOG and Makefile lie at the root; a package states its rules and changes there"
+  # K245: a folder of tests is tests/; Go keeps its tests beside the code, as go test finds them.
+  - id: tests-folder
+    kind: dir_absent
+    level: error
+    paths: ["packages/**/test", "packages/**/__tests__", "packages/**/spec"]
+    message: "K245: a folder of tests is named tests"
+  # K245: a runtime folder names the language of its sources: TypeScript lies in ts, and js holds JavaScript and its .d.ts types.
+  - id: runtime-language
+    kind: file_absent
+    level: error
+    paths: ["packages/js/**/*.{ts,mts,cts,tsx}", "packages/*/js/**/*.{ts,mts,cts,tsx}", "!packages/**/*.d.ts", "!packages/**/*.d.mts", "!packages/**/*.d.cts"]
+    message: "K245: TypeScript sources lie in a ts folder; a js folder holds JavaScript"
   # S5: the root files of kit and of the repository (the template root-files). A repository sets only vars.root_files, a
   # glob alternation of its own files; "{}" names none.
   - extends_template: root-files

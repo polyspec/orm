@@ -21,7 +21,7 @@ import (
 
 func init() { orm.RegisterDriver("postgres", "pgx", mapErr) }
 
-// mapErr names the conditions that docs/errors.yaml maps, and the executor
+// mapErr names the conditions that docs/spec/errors.yaml maps, and the executor
 // reports the remaining driver errors as DRIVER.
 func mapErr(err error) error {
 	// is a connection that pgx has already closed. It is a lost-connection error, and its cause is marked

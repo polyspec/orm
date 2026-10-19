@@ -5,7 +5,7 @@ namespace Polyspec\Orm\Dbspec;
 
 /**
  * Compares the unique keys, indexes, foreign keys and checks of a plan's
- * matched tables by name and definition (docs/plans.md "Diff"). A source
+ * matched tables by name and definition (docs/spec/plans.md "Diff"). A source
  * definition is read with the renames applied, in target names.
  *
  * @internal

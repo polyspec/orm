@@ -1,5 +1,5 @@
 //! A SQLite DSN with a query creates the file from the path alone. A query placed in the file name
-//! the opener makes a file like `named.sqlite?_pragma=…` (docs/dialects.md
+//! the opener makes a file like `named.sqlite?_pragma=…` (docs/spec/dialects.md
 //! "Probe environment").
 
 use polyspec_orm_testcase::Trial;
@@ -29,7 +29,7 @@ async fn sqlite_file_name_is_the_path() {
 }
 
 /// tests/dsn/sqlite-paths.json: a DSN path opens the percent-decoded file, and an invalid
-/// path is CONFIG (docs/config.md "Runtime connection"). Each case is trial `sqlite_path_cases::<id>`, and
+/// path is CONFIG (docs/spec/config.md "Runtime connection"). Each case is trial `sqlite_path_cases::<id>`, and
 /// opens and closes one connection within a 10 s deadline.
 fn sqlite_path_cases() -> Vec<Trial> {
     let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/dsn/sqlite-paths.json");

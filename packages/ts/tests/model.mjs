@@ -174,7 +174,7 @@ async function schemaEmpty(dialect, dsn) {
   } finally { await db.close(); }
 }
 
-// A datetime parameter is its canonical text, YYYY-MM-DD HH:MM:SS in UTC (docs/interfaces.md).
+// A datetime parameter is its canonical text, YYYY-MM-DD HH:MM:SS in UTC (docs/spec/interfaces.md).
 const start = Date.UTC(2026, 0, 2, 3, 4, 5);
 const datetime = ms => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
 const hours = h => datetime(start + h * 3_600_000);
@@ -514,7 +514,7 @@ function connect(dsn) {
 
 /**
  * Every connection reads and writes datetime as UTC regardless of the server's time zone
- * (docs/dialects.md "Date and time"). The test server's MySQL uses SYSTEM (KST),
+ * (docs/spec/dialects.md "Date and time"). The test server's MySQL uses SYSTEM (KST),
  * and PostgreSQL uses Asia/Seoul. A datetime is its canonical UTC text, stored as that wall
  * clock, and the clock default is also UTC.
  */
@@ -565,7 +565,7 @@ async function bindLimitSplitting(db) {
 }
 
 /**
- * A multi-row insert runs as batches of the given size in row order inside one transaction (docs/protocol.md
+ * A multi-row insert runs as batches of the given size in row order inside one transaction (docs/spec/protocol.md
  * "Relation steps"; the shared cases of contracts/fixtures/insert_parts.json run in insert-parts.mjs): a batch that
  * is not a positive integer is CONFIG and a batch over the bind limit is BATCH_TOO_LARGE before any statement, 13
  * rows in batches of 6 run as 6, 6 and 1 rows and keep their order and ascending keys, and a failing batch leaves no
@@ -692,8 +692,8 @@ const zones = ['', 'UTC', '+00:00'];
 // poolSize, failedLocalReset, and failedLockRelease install no schema and create no table, so
 // they only connect to the database the DSN points to. Each of the other cases gets its own case database.
 const targets = [['sqlite', `sqlite://${join(work, 'model.sqlite')}?_pragma=busy_timeout(5000)`]];
-if (!process.env.ORM_TEST_MYSQL_DSN) throw new Error('ORM_TEST_MYSQL_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers');
-if (!process.env.ORM_TEST_POSTGRES_DSN) throw new Error('ORM_TEST_POSTGRES_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers');
+if (!process.env.ORM_TEST_MYSQL_DSN) throw new Error('ORM_TEST_MYSQL_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers');
+if (!process.env.ORM_TEST_POSTGRES_DSN) throw new Error('ORM_TEST_POSTGRES_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers');
 targets.push(['mysql', process.env.ORM_TEST_MYSQL_DSN]);
 targets.push(['postgres', process.env.ORM_TEST_POSTGRES_DSN]);
 const cases = { conditions, joinsAndRelations, columnsAndSubqueries, writes, styledStates, transactions, aesRotation, bindLimitSplitting, insertParts };
@@ -826,7 +826,7 @@ try {
     begin('postgres/statementTimeoutThroughAPooler');
     try {
       const single = process.env.ORM_TEST_PGBOUNCER_SINGLE_DSN;
-      if (!single) throw new Error('ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers');
+      if (!single) throw new Error('ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers');
       const table = caseName();
       const probeText = `dbspec 1 pooler_probe\n\ntable ${table} {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n`;
       const { [table]: Probe } = documentModels(probeText);
@@ -950,7 +950,7 @@ try {
     // and primaryAndReplica waits for the replica to catch up before connecting to it.
     await inCaseDatabase(dialect, async primary => {
       const replica = process.env[`ORM_TEST_${dialect.toUpperCase()}_REPLICA_DSN`];
-      if (!replica) throw new Error(`ORM_TEST_${dialect.toUpperCase()}_REPLICA_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers`);
+      if (!replica) throw new Error(`ORM_TEST_${dialect.toUpperCase()}_REPLICA_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers`);
       await primaryAndReplica(dialect, primary, relatedDsn(replica, new URL(primary).pathname.slice(1)));
     });
     end();

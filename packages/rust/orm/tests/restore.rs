@@ -1,4 +1,4 @@
-//! Restore of a soft-deleted row (docs/usage.md, "Writes"): finds a deleted row by the set values of one primary key or unique key,
+//! Restore of a soft-deleted row (docs/operations/usage.md, "Writes"): finds a deleted row by the set values of one primary key or unique key,
 //! writes an update that sets the soft delete column to NULL, and returns the restored row. On SQLite, MySQL, and PostgreSQL,
 //! each database runs in its own case database (polyspec-orm-case-database), and it fails if ORM_TEST_MYSQL_DSN or
 //! ORM_TEST_POSTGRES_DSN is missing.

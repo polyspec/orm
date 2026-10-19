@@ -1,6 +1,6 @@
 //! Applies the chain from plans.json (tests/dbspec/plans.json) (create-from-empty and
 //! rename-table-and-column) to one database with the Rust client
-//! (docs/plans.md "Apply"). The action is apply-first (first plan only), apply (whole chain),
+//! (docs/spec/plans.md "Apply"). The action is apply-first (first plan only), apply (whole chain),
 //! stop (halts after statement 1 of the second plan runs), recover (continues an interrupted plan
 //! to the end), rollback (reverts the last plan in history). One result line goes to stdout: "ok", "stopped", or
 //! "error <code>". Any other error is written to stderr and the process exits with 1.

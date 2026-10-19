@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 use PHPUnit\Framework\Assert;
 
-// The set reader vectors (tests/dbspec/set-files.json, docs/dbspec.md "Document sets"), shared by the PHP
+// The set reader vectors (tests/dbspec/set-files.json, docs/spec/dbspec.md "Document sets"), shared by the PHP
 // client test and the extension test. The vector file is read strictly: an unknown or missing field is an
 // error, and every case runs.
 

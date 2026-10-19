@@ -1,5 +1,5 @@
 //! The dbspec model is public: a tool reads a parsed document, changes it and
-//! emits it again (docs/dbspec.md, "Document").
+//! emits it again (docs/spec/dbspec.md, "Document").
 
 use polyspec_orm_schema::dbspec::model::{Column, Name, Pos, Type};
 use polyspec_orm_schema::dbspec::{emit, parse};

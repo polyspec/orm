@@ -1,9 +1,11 @@
 # Release workflow of a repository that adopts kit. kit-sync copies this file from the installed package @polyspec/kit to
 # .github/workflows/release.yml, and kit-check fails when the checkout differs from it; a repository never edits it.
 #
-# A tag push creates the GitHub Release of the tag as a draft, proves the draft from outside the checkout, and makes it public
+# A dispatch of the workflow with a tag, or a push of the tag, creates the GitHub Release of the tag as a draft, proves the draft from outside the checkout, and makes it public
 # only after the proof passes. The steps run in order and stop at the first failure; each step runs one make target of
 # kit with TAG from the environment. The first two install the package in the bootstrap order of a repository:
+#   release-tag      on a dispatch, creates the annotated tag at origin/main and pushes it, or passes when it is there
+#                    (K269); a tag pushed with the token of the run starts no second run
 #   install-tools TOOLS=npm installs the npm of packageManager with the copied installer of scripts/kit/bootstrap
 #   install-packages installs package-lock.json with that npm, @polyspec/kit included, whose kit.mk has the targets below
 #   release-prepare  the preparation that the release of the repository declares with release-prepare:: (none by default)
@@ -21,6 +23,12 @@ name: release
 on:
   push:
     tags: ['v*', '**/v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The tag of the release, such as v0.0.1
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -29,7 +37,7 @@ jobs:
   release:
     runs-on: ubuntu-24.04
     env:
-      TAG: ${{ github.ref_name }}
+      TAG: ${{ inputs.tag || github.ref_name }}
       GH_TOKEN: ${{ github.token }}
     steps:
       # actions/checkout v7.0.1: the whole history and every branch, so origin/main is there for the ancestry check.
@@ -60,6 +68,9 @@ jobs:
       # and declares no .php-version stops here instead of releasing with the PHP of the runner (K193).
       - name: check the configuration
         run: make kit-check
+      - name: tag
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: make release-tag
       - name: prepare the release of the repository
         run: make release-prepare
       - name: make release-tools

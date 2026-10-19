@@ -1,4 +1,4 @@
-// Writes a dbspec document set as the statements of one dialect (docs/dialects.md "Rendered statements").
+// Writes a dbspec document set as the statements of one dialect (docs/spec/dialects.md "Rendered statements").
 // The bytes of the statements are the same as tests/dbspec/ddl.json and the Go engine (engine/dbspec/render.go).
 import { present } from '../present.js';
 import { readCheck, type CheckExpr, type CheckOperand } from './check.js';
@@ -75,7 +75,7 @@ export class Renderer {
   /**
    * The CREATE TABLE of table t under name. checkName names the renderer
    * CHECK of a column, and hidden columns follow t's columns, nullable and
-   * without a CHECK (docs/plans.md "Steps", the SQLite rebuild).
+   * without a CHECK (docs/spec/plans.md "Steps", the SQLite rebuild).
    */
   createTable(t: DbspecTable, name: string, checkName: (column: string) => string, hidden: readonly DbspecColumn[]): string {
     const parts = t.columns.map(c => this.column(c));
@@ -397,7 +397,7 @@ export class Renderer {
     const values = [action, previous, ...recorded.map(c => `NEW.${this.q(c.name)}`)];
     let body = `INSERT INTO ${this.q(a.into)} (${columns.join(', ')}) VALUES (${values.join(', ')})`;
     if (a.tables !== null) {
-      // The tables table keeps one row per audit record and audited table (docs/dialects.md "Triggers").
+      // The tables table keeps one row per audit record and audited table (docs/spec/dialects.md "Triggers").
       const tables = `INSERT INTO ${this.q(a.tables.table)} (${this.q(a.tables.record)}, ${this.q(a.tables.name)}) VALUES (NEW.${this.q(a.column)}, '${t.name}')`;
       body = this.d === 'mysql'
         ? `BEGIN ${body}; ${tables} ON DUPLICATE KEY UPDATE ${this.q(a.tables.name)} = ${this.q(a.tables.name)}; END`
@@ -441,9 +441,9 @@ function operandType(t: DbspecTable, a: CheckOperand, b: CheckOperand | null): D
 
 /**
  * Writes the statements that create the tables of a parsed document set in
- * one dialect (docs/dialects.md "Rendered statements"): documents in `use`
+ * one dialect (docs/spec/dialects.md "Rendered statements"): documents in `use`
  * order, tables in document order, or the diagnostics of an invalid set
- * (docs/dbspec.md, "Manifest and hashes"). An unknown dialect is a TypeError.
+ * (docs/spec/dbspec.md, "Manifest and hashes"). An unknown dialect is a TypeError.
  */
 export function renderDbspec(documents: readonly DbspecDocument[], dialect: DbspecDialect): DbspecRenderResult {
   const rendered = renderDbspecStatements(documents, dialect);

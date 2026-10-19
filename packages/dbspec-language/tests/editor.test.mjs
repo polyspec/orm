@@ -1,6 +1,6 @@
 // The editor fixtures of tests/editor: each .dbs with its .json of expected diagnostics, tokens, folding and formatted
 // text. A .dbs without its .json, or the reverse, is a failure. The expected values are written by hand from the rules
-// of docs/dbspec.md and docs/editor.md; a range is [[line, character], [line, character]] with 0-based lines and
+// of docs/spec/dbspec.md and docs/spec/editor.md; a range is [[line, character], [line, character]] with 0-based lines and
 // UTF-16 characters, and a folding range runs from the line of a `{` to the line of its matching `}`.
 //
 // Usage: node --test packages/dbspec-language/tests/editor.test.mjs (after the build)

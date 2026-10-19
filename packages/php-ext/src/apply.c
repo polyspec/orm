@@ -1,6 +1,6 @@
 /*
  * Applies the plan chain one step per connection, resumes or rolls back an interrupted plan, and finalizes an applied plan
- * (PHP client PlanApply, docs/plans.md "Apply"). PDO and its statement call the object's methods through the Zend API, so subclasses
+ * (PHP client PlanApply, docs/spec/plans.md "Apply"). PDO and its statement call the object's methods through the Zend API, so subclasses
  * that override methods and exceptions behave as in the PHP client. All failures are PHP exceptions, and the function returns false if one is left.
  */
 #include "dbspec.h"

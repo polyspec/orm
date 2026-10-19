@@ -2,7 +2,7 @@
 declare(strict_types=1);
 // conformance_verification: the PHP conformance runner runs every vector of a dialect once on the seeded bench
 // database of that dialect (BENCH_MYSQL_DSN, BENCH_POSTGRES_DSN, BENCH_SQLITE_DSN, which make run-databases and
-// make check create), and each vector is one data set, named by the vector, whose output must equal the recorded
+// make orm-check create), and each vector is one data set, named by the vector, whose output must equal the recorded
 // expect as a JSON value (tests/conformance/vectors.json for MySQL, vectors.<dialect>.json for the others).
 // test_conformance_vector is the feature coverage (contracts/features.json): it runs the read-only vectors
 // conditions_values and relations on the database that ORM_FEATURE_DATABASE and ORM_FEATURE_DSN select.

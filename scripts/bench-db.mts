@@ -25,7 +25,7 @@ if (unknown !== undefined) fail(`bench-db: unknown dialect ${unknown}; use mysql
 const dialects: Dialect[] = given.length === 0 ? [...DIALECTS] : given.filter(isDialect);
 
 const dsn = (name: string): string => process.env[name]
-  || fail(`${name} is required; run it through make check or make run-databases TARGETS=<target>, which create the bench database of the run`);
+  || fail(`${name} is required; run it through make orm-check or make run-databases TARGETS=<target>, which create the bench database of the run`);
 // run runs one step in the root; input names a file it reads as its standard input, text is its standard input. A failure
 // stops the seed.
 function run(program: string, args: string[], { input, text, env }: { input?: string; text?: string; env?: NodeJS.ProcessEnv } = {}): void {
@@ -45,7 +45,7 @@ const { Db, blindIndex, dbspecManifest, hostEncode, parseDbspec } = await import
 
 // SHARED is the schema value of contracts/fixtures/bench/bench_shared.dbs, the external document of the bench set, as
 // the set that owns it would generate it: the bench set requires its used table to exist before it installs
-// (docs/dbspec.md "External documents").
+// (docs/spec/dbspec.md "External documents").
 function sharedSchema(): { manifestText: string; manifestHash: string } {
   const parsed = parseDbspec(readFileSync(resolve(root, 'contracts/fixtures/bench/bench_shared.dbs'), 'utf8'), {});
   const manifest = parsed.document === null ? null : dbspecManifest([parsed.document]).manifest;

@@ -52,11 +52,11 @@ async function pinnedFlowmark() {
   try {
     info = (await run('go', ['version', '-m', bin])).stdout;
   } catch (error) {
-    throw new Error(`FLOWMARK ${bin} is no Go build (${String(error.stderr ?? error.message).trim()}); run make install-flowmark, which installs the flowmark ${pin} pinned in tests/markdown/flowmark.version`);
+    throw new Error(`FLOWMARK ${bin} is no Go build (${String(error.stderr ?? error.message).trim()}); run make orm-install-flowmark, which installs the flowmark ${pin} pinned in tests/markdown/flowmark.version`);
   }
   const main = /^\tmod\t(\S+)\t(\S+)/m.exec(info);
   if (main === null || main[1] !== flowmarkModule || main[2] !== pin) {
-    throw new Error(`FLOWMARK ${bin} is ${JSON.stringify(main?.[1] ?? '')} ${JSON.stringify(main?.[2] ?? '')}, not the pinned ${flowmarkModule} ${pin}; run make install-flowmark, or give FLOWMARK a build of a flowmark checkout at that revision`);
+    throw new Error(`FLOWMARK ${bin} is ${JSON.stringify(main?.[1] ?? '')} ${JSON.stringify(main?.[2] ?? '')}, not the pinned ${flowmarkModule} ${pin}; run make orm-install-flowmark, or give FLOWMARK a build of a flowmark checkout at that revision`);
   }
   return bin;
 }

@@ -19,7 +19,7 @@ var rollbackColumns = []string{"seq", "label"}
 // the transaction ends during the callback, and the ending function does nothing.
 // On MySQL and PostgreSQL, the ending function ends the server session that holds the rollback_probe
 // lock. That connection is not a pooler, but
-// the server behind the server DSN of ORM_TEST_MYSQL_SERVER_DSN or ORM_TEST_POSTGRES_SERVER_DSN (set in TEST_ENV by make test-servers)
+// the server behind the server DSN of ORM_TEST_MYSQL_SERVER_DSN or ORM_TEST_POSTGRES_SERVER_DSN (set in TEST_ENV by make orm-test-servers)
 // and opens the case database there, since a pooler handles statements on its own:
 // ProxySQL receives KILL in text protocol as a command for its own client session
 // command. The lock on the case database table marks the transaction held behind the pooler

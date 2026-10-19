@@ -1,4 +1,4 @@
-//! Plan documents and the plan chain (docs/plans.md, "Plan document" and
+//! Plan documents and the plan chain (docs/spec/plans.md, "Plan document" and
 //! "Chain"): [`parse_plan`] reads a plan, [`emit_plan`] writes its canonical
 //! text and [`chain`] orders plans from the empty database.
 

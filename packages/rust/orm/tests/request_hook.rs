@@ -1,10 +1,10 @@
-//! The request hook of a connection handle (docs/usage.md "Request hook"): the handle returned by `Db::with_request_hook`
+//! The request hook of a connection handle (docs/operations/usage.md "Request hook"): the handle returned by `Db::with_request_hook`
 //! uses the same connection, and its hook receives the request and `RequestParams` for each request of the handle, just before planning.
 //! Runs ten shared cases of contracts/fixtures/request_hook.dbs in a SQLite case database (polyspec-orm-case-database,
 //! the file is deleted when it ends or panics): without_hook, read_filter, insert_assign,
 //! loaded_row_writes, invalid_param, restore_key, restore_condition, restore_no_key, restore_rewritten_key,
 //! restore_hook_set_key. `coverage_request_hook_<case>` runs the same case on the database that feature-check chose,
-//! in that database's case database (docs/feature-coverage.md).
+//! in that database's case database (docs/spec/feature-coverage.md).
 //!
 //! `cargo test -p polyspec-orm --test request_hook`
 
@@ -734,7 +734,7 @@ async fn coverage_request_hook_restore_hook_set_key() {
     restore_hook_set_key_case(feature_database()).await;
 }
 
-// Parts of a multi-row insert (docs/protocol.md §2.1, contracts/fixtures/insert_parts.json): creates take rows in the given order
+// Parts of a multi-row insert (docs/spec/protocol.md §2.1, contracts/fixtures/insert_parts.json): creates take rows in the given order
 // and split them into batches of the given size, each one INSERT, run in one transaction. Checked on a connection without a hook.
 
 /// A subscription that collects the INSERT statement SQL of db in execution order.

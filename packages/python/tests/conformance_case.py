@@ -1,7 +1,7 @@
 # The conformance vectors of one database as unittest cases, one for each vector, named by the vector name.
 # The runner packages/python/testing/conformance/runner_python.py runs every vector once, in the order of tests/conformance/vectors.json,
 # against the bench database of the dialect (BENCH_MYSQL_DSN, BENCH_POSTGRES_DSN or BENCH_SQLITE_DSN, which
-# make run-databases and make check create), with the models that orm-gen writes from
+# make run-databases and make orm-check create), with the models that orm-gen writes from
 # contracts/fixtures/bench/dbspec-set.json (packages/python/src/polyspec/orm/models, kept current by
 # make python-model-check). Each case compares the output of its vector with the expectation recorded for that
 # database, as tests/conformance/check/main.mts compares it: numbers by their exact value.
@@ -16,7 +16,14 @@ from decimal import Decimal
 from .coverage_case import REPOSITORY_ROOT
 from .vector_case import vector_tests
 
-RUNNER = REPOSITORY_ROOT / "packages" / "python" / "testing" / "conformance" / "runner_python.py"
+RUNNER = (
+    REPOSITORY_ROOT
+    / "packages"
+    / "python"
+    / "testing"
+    / "conformance"
+    / "runner_python.py"
+)
 MODELS = REPOSITORY_ROOT / "packages" / "python" / "src" / "polyspec" / "orm" / "models"
 VECTORS = REPOSITORY_ROOT / "tests" / "conformance"
 
@@ -55,7 +62,7 @@ class Run:
         dsn = os.environ.get(variable, "")
         if dsn == "":
             raise RuntimeError(
-                f"{variable} is required; run the test through make run-databases or make check, which create the "
+                f"{variable} is required; run the test through make run-databases or make orm-check, which create the "
                 "bench database of the run; conformance tests never skip"
             )
         result = subprocess.run(

@@ -1,8 +1,8 @@
-// make install-cli and make uninstall-cli (docs/editor.md "The command line"): scripts/install-cli.mts installs
+// make orm-install-cli and make uninstall-cli (docs/spec/editor.md "The command line"): scripts/install-cli.mts installs
 // dbspec-fmt under a prefix without a symbolic link, the installed command formats a document and checks one, and the
 // uninstall removes what the install wrote. The install reads the registry, so the run is online.
 //
-// Usage: make install-cli-check (after the build of packages/ts and packages/dbspec-language)
+// Usage: make orm-install-cli-check (after the build of packages/ts and packages/dbspec-language)
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { existsSync, lstatSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync } from 'node:fs';
@@ -28,7 +28,7 @@ function links(directory: string) {
 
 const run = (args: string[], input?: string) => spawnSync(process.execPath, args, { input, encoding: 'utf8' });
 
-caseTest('install-cli installs dbspec-fmt without a link, and uninstall removes it', TIMEOUT, () => {
+caseTest('orm-install-cli installs dbspec-fmt without a link, and uninstall removes it', TIMEOUT, () => {
   const prefix = realpathSync(mkdtempSync(join(tmpdir(), 'dbspec-fmt-prefix-')));
   try {
     const installed = run([script, 'install', '--prefix', prefix]);

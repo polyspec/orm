@@ -21,7 +21,7 @@ import { declaredNeeds, readCheckInputs } from '../check/inputs.mts';
 import { readFeatures } from '../features/manifest.mts';
 import { readComposer, readPackage } from '../json/formats.mts';
 
-// The repository check covers one case: whether the CI workflow gives the database check's servers and variables through make test-servers,
+// The repository check covers one case: whether the CI workflow gives the database check's servers and variables through make orm-test-servers,
 // and whether the check and the workflow run on the one Node version declared in mise.toml.
 const log = sections();
 log.begin('repo', COMPUTE);
@@ -36,24 +36,24 @@ const failures = [];
 
 const makefile = readFileSync(join(root, 'Makefile'), 'utf8');
 const ci = readFileSync(join(root, '.github/workflows/ci.yml'), 'utf8');
-// The CI workflow gives the database check's servers and variables through make test-servers.
+// The CI workflow gives the database check's servers and variables through make orm-test-servers.
 failures.push(...ciServerErrors(ci, SERVER_VARIABLES));
 
-// The CI workflow runs every target the same as the local make check (CHECK_TARGETS), once each.
+// The CI workflow runs every target the same as the local make orm-check (CHECK_TARGETS), once each.
 failures.push(...ciCheckTargetErrors(ci, makefile));
 // The report directory a CI job uploads is the directory the runner uses as that job's ORM_CHECK_RUN_ID.
 failures.push(...ciReportPathErrors(ci, makefile));
 // The last job of ci.yml, ci-passed, takes every other job as needs and runs with `if: always()`. The ruleset requires that check.
 failures.push(...ciPassedErrors(ci));
-// CI does not run again the verification command that the feature-check of make check runs.
+// CI does not run again the verification command that the feature-check of make orm-check runs.
 const features = readFeatures(root);
 failures.push(...ciDuplicateCommandErrors(ci, makefile, featureCommands(features)));
-// make check runs each helper check once: feature-helper-check, the stress target, or the check that is a target of make check or
+// make orm-check runs each helper check once: feature-helper-check, the stress target, or the check that is a target of make orm-check or
 // a helper in the setup step (FEATURE_SUITE_HELPERS) runs in that target or in the setup step.
 
 // The shell variables read by the make commands of helper checks are exported by the Makefile.
 failures.push(...helperEnvironmentErrors(features, makefile));
-// CI that runs make check does not run the test runner again outside it (judged by the runner's identity).
+// CI that runs make orm-check does not run the test runner again outside it (judged by the runner's identity).
 failures.push(...ciRerunErrors(ci, makefile));
 
 // The paths used by root npm scripts are tracked files or directories.
@@ -157,18 +157,18 @@ failures.push(...sharedTargetErrors(makefile));
 failures.push(...runtimePathErrors(makefile));
 // Build output is written to a temporary file and published by rename (scripts/publish-output.mts).
 failures.push(...unpublishedOutputErrors(makefile));
-// Test servers use an empty port chosen by make test-servers, not a fixed port.
+// Test servers use an empty port chosen by make orm-test-servers, not a fixed port.
 failures.push(...fixedPortErrors(Object.fromEntries(tracked.filter(path => path === 'Makefile' || path.endsWith('.sh')).map(path => [path, readFileSync(join(root, path), 'utf8')]))));
 failures.push(...typescriptHolderErrors(makefile));
 failures.push(...typescriptReaderErrors(makefile, readTracked));
-// make check runs the generation (go generate and git diff) of the same directory only once.
+// make orm-check runs the generation (go generate and git diff) of the same directory only once.
 const checkTargetSet = new Set(checkTargets(makefile));
 failures.push(...repeatedGenerateErrors([...recipeUnits.filter(unit => checkTargetSet.has(unit.name.replace(/^Makefile /, ''))), ...featureUnits]));
 // Workflow steps and jobs have no timeout-minutes. A step is long-running work with step logs.
 failures.push(...stepTimeoutErrors(workflows));
 // A workflow step does not run, outside make, a program that reads the lease variable (LEASE).
 failures.push(...ciLeaseErrors(workflows, tracked, readTracked));
-// A workflow that runs make check has no other check step after it.
+// A workflow that runs make orm-check has no other check step after it.
 failures.push(...ciAfterCheckErrors(workflows));
 failures.push(...ciSetupErrors(workflows, { setup: CI_SETUP, runner: RUNNER_STEPS }));
 failures.push(...independentTestErrors(readFileSync(join(root, 'Makefile'), 'utf8')));

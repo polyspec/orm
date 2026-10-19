@@ -1,5 +1,5 @@
 # Applies the chain of the shared plan case (tests/dbspec/plans.json) to SQLite
-# (docs/plans.md "Apply"). Applies only the first plan, applies the whole chain, and the second
+# (docs/spec/plans.md "Apply"). Applies only the first plan, applies the whole chain, and the second
 # plan stops after statement 1 and resumes, then reverts the last plan. MySQL and
 # PostgreSQL are checked by conformance and the apply order-pair comparison (dbspec_apply_runner.py, make dbspec-apply-pairs-check).
 # Run: make dbspec-python-check

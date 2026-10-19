@@ -98,7 +98,7 @@ final class ModelTest extends TestCase
         foreach (['mysql' => 'ORM_TEST_MYSQL_DSN', 'postgres' => 'ORM_TEST_POSTGRES_DSN'] as $driver => $env) {
             $v = requiredDsn($env);
             if ($v === false || $v === '') {
-                throw new RuntimeException("$env is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers");
+                throw new RuntimeException("$env is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers");
             }
             self::$targets[$driver] = $v;
         }
@@ -544,7 +544,7 @@ final class ModelTest extends TestCase
         }
     }
 
-    // Multi-row inserts run as batches of the given size (docs/protocol.md "Relation steps"; the shared cases of
+    // Multi-row inserts run as batches of the given size (docs/spec/protocol.md "Relation steps"; the shared cases of
     // contracts/fixtures/insert_parts.json run in InsertPartsTest.php): each batch is one insert statement, a batch that is
     // not positive is CONFIG and one over the bind limit is BATCH_TOO_LARGE before any statement, the rows keep their
     // order, and a failing batch leaves no row of the call.
@@ -811,7 +811,7 @@ final class ModelTest extends TestCase
         try {
             $single = requiredDsn('ORM_TEST_PGBOUNCER_SINGLE_DSN');
             if ($single === false || $single === '') {
-                throw new RuntimeException('ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers');
+                throw new RuntimeException('ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers');
             }
             $table = case_name();
             $probe = "dbspec 1 pooler_probe\n\ntable $table {\n  seq i64 identity\n  label varchar(16)\n  primary key (seq)\n}\n";
@@ -898,7 +898,7 @@ final class ModelTest extends TestCase
         $env = strtoupper($driver);
         $replica = requiredDsn("ORM_TEST_{$env}_REPLICA_DSN");
         if ($replica === false || $replica === '') {
-            throw new RuntimeException("ORM_TEST_{$env}_REPLICA_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers");
+            throw new RuntimeException("ORM_TEST_{$env}_REPLICA_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers");
         }
         // The replica copies the primary's case database under the same name. MySQL needs that database on the replica
         // before it can connect, so it waits on the shared replica database and then connects.

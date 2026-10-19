@@ -1,5 +1,5 @@
 // Checks that paramUses lists, for each request parameter, the logical type and column of the slot that parameter fills.
-// A markdown IR executor message writes each parameter in the form of its type (docs/protocol.md §5 Parameters). The Go
+// A markdown IR executor message writes each parameter in the form of its type (docs/spec/protocol.md §5 Parameters). The Go
 // engine/ir/params_test.go TestParamUses has the same cases.
 //
 // Usage: node packages/ts/tests/param-uses.mjs (after npm run typescript:build)

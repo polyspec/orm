@@ -1,4 +1,4 @@
-// dbspec introspection round trips on MySQL, PostgreSQL and SQLite (docs/dialects.md "Introspection"): every case of
+// dbspec introspection round trips on MySQL, PostgreSQL and SQLite (docs/spec/dialects.md "Introspection"): every case of
 // tests/dbspec/ddl.json and every schema document is rendered, applied to an empty database, schema or file and
 // introspected: the schema text of the result equals the schema text of the source with its tables in name order,
 // nothing is unsupported, and every set takes the same number of catalog queries per dialect. Introspection rejects an

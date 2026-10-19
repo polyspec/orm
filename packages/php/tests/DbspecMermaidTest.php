@@ -2,7 +2,7 @@
 declare(strict_types=1);
 // Runs the export, import, invalid and round trip cases of
 // tests/dbspec/mermaid.json through Polyspec\Orm\Dbspec\Dbspec::exportMermaid and
-// ::importMermaid (docs/mermaid.md): the Mermaid text, the emitted document,
+// ::importMermaid (docs/spec/mermaid.md): the Mermaid text, the emitted document,
 // the dropped [kind, table, name] and the [rule, line, column] diagnostics
 // must equal the case, and a round trip gets back the tables, columns,
 // primary keys and foreign keys of its document. Each case is a data set

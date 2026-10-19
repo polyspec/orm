@@ -1,5 +1,5 @@
 # Recognizes the trigger set the renderer wrote as an immutable or audit setting
-# (docs/dialects.md "Introspection", "Triggers").
+# (docs/spec/dialects.md "Introspection", "Triggers").
 import re
 
 from polyspec.orm.dbspec.audit import audit_line
@@ -56,7 +56,7 @@ def recognize_triggers(c: Catalog, dialect: str, triggers: dict) -> None:
 def _trigger_setting(dialect: str, t: dict, listed: list):
     """Recognizes each setting by its own trigger name (the recomputed renderer name), and returns the setting lines only when the trigger set
     matches the renderer output of those settings in name and content. Otherwise None
-    (docs/dialects.md "Triggers"). A table with both settings is the sum of the two outputs, and is not judged by count
+    (docs/spec/dialects.md "Triggers"). A table with both settings is the sum of the two outputs, and is not judged by count
     alone."""
     names = {tr["name"]: tr for tr in listed}
     settings: list = []
@@ -74,7 +74,13 @@ def _trigger_setting(dialect: str, t: dict, listed: list):
         )
         tm = _AUDIT_TABLES_PATTERN.search(_statement_body(insert["statements"]))
         audit = (
-            _audit_of(t, m.group(1), m.group(2).split(", "), u.group(1), tm.groups() if tm else None)
+            _audit_of(
+                t,
+                m.group(1),
+                m.group(2).split(", "),
+                u.group(1),
+                tm.groups() if tm else None,
+            )
             if m is not None and u is not None
             else None
         )

@@ -1,4 +1,4 @@
-// The IR executor client of flowmark that serves markdown:// connections (docs/protocol.md §5 "IR executors", docs/dialects.md "Markdown IR
+// The IR executor client of flowmark that serves markdown:// connections (docs/spec/protocol.md §5 "IR executors", docs/spec/dialects.md "Markdown IR
 // executor"). The client validates the request and sends it as an IR executor message without planning it, and assembles the answer's rows
 // into models.
 import { connect as netConnect, type Socket } from 'node:net';
@@ -15,7 +15,7 @@ import { present } from './present.js';
 import { OrmError } from './runtime_error.js';
 import * as codes from './codes.js';
 
-/** The flowmark server address, corpus name and token of a markdown:// DSN (docs/protocol.md §5 "IR executors"). */
+/** The flowmark server address, corpus name and token of a markdown:// DSN (docs/spec/protocol.md §5 "IR executors"). */
 export interface MarkdownDsn {
   readonly address: string;
   readonly corpus: string;
@@ -438,7 +438,7 @@ class MarkdownNode {
       k++;
     }
     // A join has its own row, so it decodes only the node's own columns. The corpus catalog rejects aes columns, so
-    // there is no keyring (docs/dialects.md).
+    // there is no keyring (docs/spec/dialects.md).
     decodeAssembly(values, { ...this.asm, children: [] }, this.db);
     values[outputs.length] = links;
     return values;

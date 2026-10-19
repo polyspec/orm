@@ -1,5 +1,5 @@
 //! Reads described tables: time and datetime cells are written with as many fractional digits as the column's declared precision p
-//! digits (docs/dbspec.md). The grid decode uses six digits, so the remaining digits must be 0.
+//! digits (docs/spec/dbspec.md). The grid decode uses six digits, so the remaining digits must be 0.
 //! For SQLite, the dbspec text of a declared temporal column is turned into the same temporal cell.
 use super::TableMetadata;
 use crate::tool_db::{is_temporal, Conn, GridCell, GridQueryResult, QueryLimits, P};

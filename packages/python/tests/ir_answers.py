@@ -1,4 +1,4 @@
-# The read answers of an IR executor (docs/protocol.md section 5, Read): each case of
+# The read answers of an IR executor (docs/spec/protocol.md section 5, Read): each case of
 # contracts/fixtures/ir_answers.json runs the chain of the markdown conformance case it names on a
 # connection whose listener answers connect with {"ok": true} and the chain's one request with the
 # case's answer, and the chain's result equals expect. No flowmark server runs.

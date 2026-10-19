@@ -1,5 +1,5 @@
 //! The statements that create the tables of a dbspec document set in one
-//! dialect (docs/dialects.md, "Rendered statements").
+//! dialect (docs/spec/dialects.md, "Rendered statements").
 
 use super::model::{Action, AuditTables, Column, DefaultValue, Document, Expr, ForeignKey, Operand, Setting, Table, Type};
 use super::names::renderer_name;
@@ -14,7 +14,7 @@ pub enum Dialect {
 }
 
 /// Writes the statements that create the tables of the document set in
-/// `dialect` (docs/dialects.md, "Rendered statements"), or the diagnostics of
+/// `dialect` (docs/spec/dialects.md, "Rendered statements"), or the diagnostics of
 /// an invalid document set, as [`super::manifest`] reports them.
 pub fn render(documents: &[&Document], dialect: Dialect) -> Result<Vec<String>, Vec<Diagnostic>> {
     Ok(render_statements(documents, dialect)?.into_iter().map(|r| r.sql).collect())
@@ -131,7 +131,7 @@ impl Renderer {
 
     /// The CREATE TABLE of table `t` under `name`. `check_name` names the
     /// renderer CHECK of a column, and `hidden` columns follow `t`'s columns,
-    /// nullable and without a CHECK (docs/plans.md, "Steps", the SQLite
+    /// nullable and without a CHECK (docs/spec/plans.md, "Steps", the SQLite
     /// rebuild).
     pub fn create_table(&self, t: &Table, name: &str, check_name: &dyn Fn(&str) -> String, hidden: &[Column]) -> String {
         let mut parts: Vec<String> = t.columns.iter().map(|c| self.column(c)).collect();
@@ -425,7 +425,7 @@ impl Renderer {
         }
         let mut body = format!("INSERT INTO {} ({}) VALUES ({})", self.q(a.history), columns.join(", "), values.join(", "));
         if let Some(tt) = a.tables {
-            // The tables table keeps one row per audit record and audited table (docs/dialects.md "Triggers").
+            // The tables table keeps one row per audit record and audited table (docs/spec/dialects.md "Triggers").
             let name = self.q(&tt.name.text);
             let tables =
                 format!("INSERT INTO {} ({}, {name}) VALUES (NEW.{}, '{}')", self.q(&tt.table.text), self.q(&tt.record.text), self.q(a.column), t.name.text);

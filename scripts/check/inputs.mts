@@ -4,9 +4,9 @@
 import { resolve } from 'node:path';
 import { readJsonFile } from '../json/schema.mts';
 
-/** A make target: owner-check selects an owner target by its inputs or lints; make check runs a suite target whole. */
+/** A make target: owner-check selects an owner target by its inputs or lints; make orm-check runs a suite target whole. */
 export type TargetDeclaration = { scope: 'owner' | 'suite'; needs: string[]; inputs?: string[]; lints?: string[] };
-/** A path that no behaviour test selects: lint is checked for its form only, suite is tested by make check. */
+/** A path that no behaviour test selects: lint is checked for its form only, suite is tested by make orm-check. */
 export type PathDeclaration = { scope: 'lint' | 'suite'; reason: string };
 /** contracts/check-inputs.json, the shape its schema declares. */
 export type CheckInputs = { comment: string; targets: Record<string, TargetDeclaration>; paths: Record<string, PathDeclaration> };

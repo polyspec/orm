@@ -3,7 +3,7 @@
     "description": "A project that installs polyspec/orm from the release zips",
     "type": "project",
     "require": {
-        "php": ">=8.5",
+        "php": ">=8.4",
         "polyspec/orm": "0.0.18",
         "polyspec/ordered-json": "0.0.9"
     },
@@ -19,7 +19,7 @@
                 "version": "0.0.9",
                 "type": "library",
                 "require": {
-                    "php": ">=8.5",
+                    "php": ">=8.4",
                     "ext-json": "*",
                     "ext-pcre": "*"
                 },
@@ -49,7 +49,7 @@
     ],
     "config": {
         "platform": {
-            "php": "8.5.0"
+            "php": "8.4.1"
         }
     }
 }

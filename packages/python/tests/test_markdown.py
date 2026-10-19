@@ -1,5 +1,5 @@
-# The markdown IR executor's DSN, connect and control messages, error lines, and the surfaces it rejects (docs/protocol.md §5,
-# docs/dialects.md "Markdown IR executor"). Uses a fake server that records the messages of one connection instead of the flowmark server.
+# The markdown IR executor's DSN, connect and control messages, error lines, and the surfaces it rejects (docs/spec/protocol.md §5,
+# docs/spec/dialects.md "Markdown IR executor"). Uses a fake server that records the messages of one connection instead of the flowmark server.
 import queue
 import socket
 import threading
@@ -163,7 +163,7 @@ class MarkdownTest(unittest.TestCase):
 
 class BindMessageVectors(unittest.TestCase):
     """Message case of tests/bind/vectors.json: the runtime value model JSON of an IR executor message parameter
-    (docs/protocol.md §5 "Parameters"). It is the same case as Go's TestBindMessageVectors."""
+    (docs/spec/protocol.md §5 "Parameters"). It is the same case as Go's TestBindMessageVectors."""
 
     def test_message_cases(self):
         import json
@@ -223,7 +223,7 @@ def vector_value(value):
 
 
 class BindVectors(unittest.TestCase):
-    """Bind case of tests/bind/vectors.json: checks the parameter value against the logical type of its slot (docs/protocol.md §5
+    """Bind case of tests/bind/vectors.json: checks the parameter value against the logical type of its slot (docs/spec/protocol.md §5
     "Parameters"). It is the same case as Go's TestBindVectors."""
 
     def test_bind_cases(self):

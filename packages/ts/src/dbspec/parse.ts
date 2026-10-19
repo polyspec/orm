@@ -1,4 +1,4 @@
-// dbspec parsing and validation (docs/dbspec.md). A document is read line by
+// dbspec parsing and validation (docs/spec/dbspec.md). A document is read line by
 // line into an internal form that keeps every token position, then validated
 // as a whole; every diagnostic is collected and reported in source order. An
 // encoding, header or limit error stops parsing.
@@ -183,7 +183,7 @@ type IStateLine =
 
 /**
  * The identity of an initial, terminal or transition line and its description: a line of the same identity adds no
- * meaning, and one with another require list contradicts it, so a repeat is a `setting` error (docs/dbspec.md "Settings").
+ * meaning, and one with another require list contradicts it, so a repeat is a `setting` error (docs/spec/dbspec.md "Settings").
  */
 function machineLine(line: Extract<IStateLine, { form: 'initial' | 'terminal' | 'transition' }>): [string, string] {
   if (line.form === 'transition') return [`transition ${line.from.t} ${line.to.t}`, `${line.from.t} -> ${line.to.t}`];
@@ -277,14 +277,14 @@ interface ParseContext {
   readonly cache: Map<string, Parsed>;
 }
 
-/** The reserved words, which are not names (docs/dbspec.md "Names"). */
+/** The reserved words, which are not names (docs/spec/dbspec.md "Names"). */
 export const RESERVED: ReadonlySet<string> = new Set([
   'dbspec', 'use', 'table', 'diagram', 'primary', 'unique', 'index', 'foreign', 'check', 'settings',
   'null', 'identity', 'default', 'true', 'false', 'and', 'or', 'not', 'in', 'between', 'is',
 ]);
 
 /** Whether a name matches the name rule; reserved words are not names. */
-/** A name that the renderer writes for a table, with the token that writes it (docs/dbspec.md "Names"). */
+/** A name that the renderer writes for a table, with the token that writes it (docs/spec/dbspec.md "Names"). */
 interface IGeneratedName {
   readonly name: string;
   readonly at: Tk;
@@ -347,7 +347,7 @@ export type ParsedDocument =
   | { readonly document: DbspecDocument; readonly positions: RawPosition[]; readonly diagnostics: [] }
   | { readonly document: null; readonly positions: null; readonly diagnostics: RawDiagnostic[] };
 
-/** The identity of a setting that its repeat rule makes unique (docs/dbspec.md "Settings"), beside its keyword. */
+/** The identity of a setting that its repeat rule makes unique (docs/spec/dbspec.md "Settings"), beside its keyword. */
 function settingIdentity(s: ISetting): string[] {
   switch (s.kind) {
     case 'codec':
@@ -700,7 +700,7 @@ class DocumentParser {
   private foreignKeyCount = 0;
   /** The lines on which the reader reported a syntax diagnostic: their words are `word` (R1). An unclosed block is not one. */
   readonly abandoned = new Set<number>();
-  /** The class the reader gave a word, by `line:start` (docs/dbspec.md "Syntax analysis"). */
+  /** The class the reader gave a word, by `line:start` (docs/spec/dbspec.md "Syntax analysis"). */
   readonly classes = new Map<string, DbspecTokenClass>();
   /** The lines of a block whose opening line failed: read for diagnostics, with lexical classes (R20). */
   readonly lexical = new Set<number>();
@@ -779,7 +779,7 @@ class DocumentParser {
   /**
    * Refuses a generated name of a table of the document that equals a generated
    * name of a used table or of an earlier table of the document, with
-   * name.duplicate at the later name (docs/dbspec.md "Names").
+   * name.duplicate at the later name (docs/spec/dbspec.md "Names").
    */
   private generatedNamesUnique(doc: IDocument, available: Map<string, ITable | null>): void {
     const seen = new Map<string, string>(); // generated name => the source that wrote it first
@@ -2764,7 +2764,7 @@ class DocumentParser {
 
   /**
    * Checks the audit's exclude or include list, and returns a function that reports whether a column is recorded
-   * (docs/dbspec.md "Audit"). If both lists are used, it rejects at the keyword of the second list and returns null.
+   * (docs/spec/dbspec.md "Audit"). If both lists are used, it rejects at the keyword of the second list and returns null.
    * The columns of a list are columns of the table, appear only once, and are not audit columns. Audit columns are
    * always recorded, so they are not written in either list.
    */
@@ -2794,7 +2794,7 @@ class DocumentParser {
    * Checks the tables table of `tables <table> (<record>, <name>)`: another table than the audited, the history and the
    * audit record table, not audited itself, with exactly the record and the name column, the name column a varchar(n)
    * with n >= 63, the primary key (record, name) and the foreign key (record) references the audit record table's key
-   * with restrict (docs/dbspec.md "Audit").
+   * with restrict (docs/spec/dbspec.md "Audit").
    */
   private auditTables(
     table: ITable,
@@ -2890,7 +2890,7 @@ class DocumentParser {
   }
 
   /**
-   * The declaration positions of the document in source order (docs/dbspec.md "Declaration positions"), read from the
+   * The declaration positions of the document in source order (docs/spec/dbspec.md "Declaration positions"), read from the
    * tokens before build() drops them. A successful parse has every name that a position needs; a missing one is an
    * internal error, never a skipped position.
    */
@@ -3214,7 +3214,7 @@ function classOf(tok: Tk, line: number, parser: DocumentParser | null, read: boo
 }
 
 /**
- * The tokens of a text (docs/dbspec.md "Syntax analysis"), from the parse of the same text. The lines the reader read
+ * The tokens of a text (docs/spec/dbspec.md "Syntax analysis"), from the parse of the same text. The lines the reader read
  * take the classes it gave; a line it did not read, after a stop, keeps lexical classes. A limit stop gives no tokens.
  */
 function tokensOf(text: string, parsed: Parsed): RawToken[] {

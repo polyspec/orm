@@ -30,7 +30,7 @@
   .VPHome .vp-doc { padding: 0 24px; }
 }
 
-/* The dbs fence (docs/.vitepress/dbs.ts): one colour per class of syntax analysis (docs/dbspec.md), light and dark. */
+/* The dbs fence (docs/.vitepress/dbs.ts): one colour per class of syntax analysis (docs/spec/dbspec.md), light and dark. */
 :root {
   --dbs-keyword: #a626a4;
   --dbs-type: #0184bc;

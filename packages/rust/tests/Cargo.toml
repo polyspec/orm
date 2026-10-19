@@ -29,7 +29,7 @@ path = "../../../examples/thin-slice/rust/main.rs"
 # markdown_conformance needs the flowmark server, so it is left out of every test in the workspace, and make
 # Runs markdown-conformance-check/rust with FLOWMARK and --test markdown_conformance.
 # One libtest-mimic trial per conformance vector of each dialect (polyspec_orm_testcase::trial). Its trials read the
-# seeded bench databases of the run (BENCH_*_DSN), which make check and the runner of a run give.
+# seeded bench databases of the run (BENCH_*_DSN), which make orm-check and the runner of a run give.
 [[test]]
 name = "coverage_conformance_verification"
 path = "tests/coverage_conformance_verification.rs"

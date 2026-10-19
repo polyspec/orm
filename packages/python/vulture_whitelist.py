@@ -29,7 +29,7 @@ _.allow_unicode
 _.ignore_aliases
 _.isolation_level
 
-# Public API of the Python client, kept in parity with the other languages (docs/interfaces.md).
+# Public API of the Python client, kept in parity with the other languages (docs/spec/interfaces.md).
 _.CODES  # CodecError: the stable codes a codec failure carries
 _.max_open_connections  # DbStats fields of stats()
 _.open_connections
@@ -53,7 +53,7 @@ _.totalCount  # Page: the fields of one page of rows
 _.totalPages
 _.perPage
 
-# Public types of the dbspec API and of the IR (docs/protocol.md), which consumers annotate with; a TypedDict
+# Public types of the dbspec API and of the IR (docs/spec/protocol.md), which consumers annotate with; a TypedDict
 # key names a field of the wire form, read by key, never by attribute.
 DbspecChange
 DbspecPlanStep
@@ -89,3 +89,9 @@ function_column
 
 # sqlite3 reads the row_factory of a connection; the native query of the coverage runner (tests/coverage_case.py) sets it.
 _.row_factory
+
+# Error codes of the catalog that orm-gen writes from docs/spec/errors.yaml for every client: this client receives
+# WRITE_CONFLICT from the markdown executor's answer as text and raises no RELATION_UNKNOWN, so no Python code names the
+# constant. The catalog keeps every code of each client, which the parity of the codes compares.
+RELATION_UNKNOWN
+WRITE_CONFLICT

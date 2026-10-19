@@ -24,7 +24,7 @@ final class Expression
     private const KEYWORDS = ['and' => true, 'or' => true, 'not' => true, 'in' => true, 'between' => true, 'is' => true, 'null' => true, 'true' => true, 'false' => true];
 
     private int $at = 0;
-    /** @var array<int, string> index in the line => class of the tokens the predicate read (docs/dbspec.md "Syntax analysis") */
+    /** @var array<int, string> index in the line => class of the tokens the predicate read (docs/spec/dbspec.md "Syntax analysis") */
     private array $marks = [];
     /** @var list<string> The text of the literal; type checking turns it into canonical form. */
     private array $literals = [];

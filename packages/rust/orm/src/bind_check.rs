@@ -1,4 +1,4 @@
-//! A parameter is checked against the logical type of each slot it fills before any statement (docs/protocol.md §5
+//! A parameter is checked against the logical type of each slot it fills before any statement (docs/spec/protocol.md §5
 //! "Parameters"): the SQL bind path reads the slot of the plan step, an IR executor the uses of `param_uses`.
 
 use crate::db::{bound_time_value, time_value, Zone};

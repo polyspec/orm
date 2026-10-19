@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-// The focused syntax analysis cases shared by the PHP client and the extension (docs/dbspec.md "Syntax analysis"):
+// The focused syntax analysis cases shared by the PHP client and the extension (docs/spec/dbspec.md "Syntax analysis"):
 // each is [text, expected tokens as [line, start, end, class]] of the one main document "d".
 
 /** @return array<string, array{0: string, 1: list<array{0:int,1:int,2:int,3:string}>}> */

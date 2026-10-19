@@ -148,7 +148,7 @@ fn markdown_conformance_case(id: &str, expect: &Value) {
 }
 
 /// Runs one case of contracts/fixtures/ir_answers.json: a listener answers connect with {"ok": true} and the chain's
-/// one request with the case's answer, and the chain's result equals expect (docs/protocol.md section 5, Read).
+/// one request with the case's answer, and the chain's result equals expect (docs/spec/protocol.md section 5, Read).
 /// A case with `answers` instead of `answer` is a transaction: the listener answers every later message with the member
 /// of `answers` named by the op of a control message or the kind of a request, and a message without one IR_INVALID.
 fn ir_answer_case(chain: &str, answer: &Value, answers: &Value, expect: &Value) {
@@ -270,14 +270,14 @@ fn pinned_flowmark() -> PathBuf {
         "FLOWMARK is not set; run make markdown-conformance-check, which passes the path of the flowmark {pin} pinned in tests/markdown/flowmark.version"
     );
     let bytes = std::fs::read(&bin).unwrap_or_else(|e| {
-        panic!("FLOWMARK {bin}: {e}; run make install-flowmark, which installs the flowmark {pin} pinned in tests/markdown/flowmark.version")
+        panic!("FLOWMARK {bin}: {e}; run make orm-install-flowmark, which installs the flowmark {pin} pinned in tests/markdown/flowmark.version")
     });
     let main = main_module(&bytes).unwrap_or_else(|| {
-        panic!("FLOWMARK {bin} is no Go build; run make install-flowmark, which installs the flowmark {pin} pinned in tests/markdown/flowmark.version")
+        panic!("FLOWMARK {bin} is no Go build; run make orm-install-flowmark, which installs the flowmark {pin} pinned in tests/markdown/flowmark.version")
     });
     assert!(
         main == (FLOWMARK_MODULE.to_owned(), pin.clone()),
-        "FLOWMARK {bin} is {main:?}, not the pinned {FLOWMARK_MODULE} {pin}; run make install-flowmark, or give FLOWMARK a build of a flowmark checkout at that revision"
+        "FLOWMARK {bin} is {main:?}, not the pinned {FLOWMARK_MODULE} {pin}; run make orm-install-flowmark, or give FLOWMARK a build of a flowmark checkout at that revision"
     );
     PathBuf::from(bin)
 }

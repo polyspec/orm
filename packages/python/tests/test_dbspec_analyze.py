@@ -1,4 +1,4 @@
-# analyze_dbspec and format_dbspec: the token classes of docs/dbspec.md "Syntax analysis" and the
+# analyze_dbspec and format_dbspec: the token classes of docs/spec/dbspec.md "Syntax analysis" and the
 # formatting rules of "Formatting". Expected tokens are written from the rules, as (line, start, end, class).
 import unittest
 

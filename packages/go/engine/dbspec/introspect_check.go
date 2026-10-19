@@ -6,7 +6,7 @@ import (
 )
 
 // decodeCheck reads the dialect catalog's check expression as dbspec predicate text
-// (docs/dialects.md "Introspection", "Checks"). columns are the table's columns
+// (docs/spec/dialects.md "Introspection", "Checks"). columns are the table's columns
 // with their types, and a literal is read as a value of the column it meets. An expression that cannot be read is
 // an error.
 func decodeCheck(dialect Dialect, text string, columns map[string]Type) (string, error) {

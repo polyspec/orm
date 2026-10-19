@@ -146,16 +146,14 @@ class OrmGenTest(unittest.TestCase):
     def test_a_restore_or_create_call_is_a_model_method(self):
         # restore_or_create is a public method of Model, so a scanned call to it is accepted.
         result = self._scan(
-            "from models import Author\n"
-            "row = Author().restore_or_create()\n"
+            "from models import Author\nrow = Author().restore_or_create()\n"
         )
         self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_an_alias_call_is_a_model_method(self):
         # alias is a public method of Model, so a scanned call to it is accepted.
         result = self._scan(
-            "from models import Author\n"
-            "author = Author().alias('author_alias')\n"
+            "from models import Author\nauthor = Author().alias('author_alias')\n"
         )
         self.assertEqual(result.returncode, 0, result.stderr)
 
@@ -299,7 +297,8 @@ class OrmGenTest(unittest.TestCase):
             "    if x:\n"
             "        row = User()\n"
             "    row.get_is_close()\n",
-            1, 'User.get_is_close is called',
+            1,
+            "User.get_is_close is called",
         )
 
     def test_a_with_or_except_name_in_a_loop_is_unknown_at_its_entry(self):
@@ -399,7 +398,9 @@ class OrmGenTest(unittest.TestCase):
             "Author.set_ghost_column is not a model method",
         )
 
-    def test_a_class_named_like_a_model_but_imported_from_another_module_is_not_the_model(self):
+    def test_a_class_named_like_a_model_but_imported_from_another_module_is_not_the_model(
+        self,
+    ):
         # consumer's harness imports the model Module as ModuleRow and its own class Module from another module; a parameter
         # annotated with the class Module is not a model row, so its call is not checked against the model Author.
         self._assert_round_three(
@@ -426,18 +427,36 @@ class OrmGenTest(unittest.TestCase):
             (work_path / "app").mkdir()
             (work_path / "core").mkdir()
             (work_path / "out").mkdir()
-            (work_path / "app" / "member.dbs").write_text((external / "member.dbs").read_text(encoding="utf-8"), encoding="utf-8")
-            (work_path / "core" / "core.dbs").write_text((external / "core.dbs").read_text(encoding="utf-8"), encoding="utf-8")
+            (work_path / "app" / "member.dbs").write_text(
+                (external / "member.dbs").read_text(encoding="utf-8"), encoding="utf-8"
+            )
+            (work_path / "core" / "core.dbs").write_text(
+                (external / "core.dbs").read_text(encoding="utf-8"), encoding="utf-8"
+            )
             set_file = work_path / "dbspec-set.json"
             set_file.write_text(
-                json.dumps({"schema": 1, "documents": ["app/member.dbs"], "external": ["core/core.dbs"]}),
+                json.dumps(
+                    {
+                        "schema": 1,
+                        "documents": ["app/member.dbs"],
+                        "external": ["core/core.dbs"],
+                    }
+                ),
                 encoding="utf-8",
             )
             source = work_path / "usage.py"
             source.write_text(text, encoding="utf-8")
             return subprocess.run(
                 args=ORM_GEN
-                + ["gen", "--set", str(set_file), "--out", str(work_path / "out"), "--scan", str(source)],
+                + [
+                    "gen",
+                    "--set",
+                    str(set_file),
+                    "--out",
+                    str(work_path / "out"),
+                    "--scan",
+                    str(source),
+                ],
                 capture_output=True,
                 text=True,
             )

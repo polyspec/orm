@@ -643,7 +643,7 @@ def main():
     run("relation_null_key", relation_null_key)
 
     # shared_note is a table of the external document bench_shared: it is read through its entity, and a
-    # write fails with CONFIG before any statement (docs/dbspec.md "External documents").
+    # write fails with CONFIG before any statement (docs/spec/dbspec.md "External documents").
     def external_read():
         readers = (
             NoteReader()
@@ -653,7 +653,8 @@ def main():
             .gets()
         )
         related = [
-            [r.get_seq(), r.get_shared_note_model().get_title()] for r in readers.values()
+            [r.get_seq(), r.get_shared_note_model().get_title()]
+            for r in readers.values()
         ]
         notes = (
             SharedNote()
@@ -1002,7 +1003,7 @@ def main():
 
     def creates_batch():
         """creates(rows, batch) runs each batch of batch rows as one multi-row INSERT in one transaction; a batch
-        that is not a positive integer is CONFIG before any statement (docs/protocol.md)."""
+        that is not a positive integer is CONFIG before any statement (docs/spec/protocol.md)."""
         rows = [
             CompositeAccount().set_tenant_id(903).set_account_id(i + 1).set_name(name)
             for i, name in enumerate(["a", "b", "c", "d", "e"])
@@ -1010,7 +1011,9 @@ def main():
         inserted = CompositeAccount().connect(db).creates(rows, 2)
         zero = caught(lambda: CompositeAccount().connect(db).creates(rows, 0))
         count = CompositeAccount().connect(db).tenant_id([903]).get_count()
-        CompositeAccount().connect(db).tenant_id([903]).order_by_account_id_asc().gets().delete()
+        CompositeAccount().connect(db).tenant_id(
+            [903]
+        ).order_by_account_id_asc().gets().delete()
         return {"inserted": inserted, "zero": zero, "count": count}
 
     run("creates_batch", creates_batch)
@@ -1158,7 +1161,7 @@ def main():
 
     def restore_or_create():
         # restore_or_create restores the soft-deleted row of its key, refuses a live row with ROW_NOT_DELETED and creates a
-        # missing key (docs/usage.md "Restore or create a row"). The transaction rolls back at the end.
+        # missing key (docs/operations/usage.md "Restore or create a row"). The transaction rolls back at the end.
         class Boom(Exception):
             pass
 
@@ -1171,12 +1174,21 @@ def main():
                 mask([created.get_seq()])
                 created.set_deleted_at("2026-01-02 03:04:05.000000").update()
                 restored = (
-                    SoftLink().set_code("roc-1").set_label("second").restore_or_create().to_array()
+                    SoftLink()
+                    .set_code("roc-1")
+                    .set_label("second")
+                    .restore_or_create()
+                    .to_array()
                 )
                 restored["seq"] = "$SEQ"
                 result["restored"] = restored
                 result["live"] = caught(
-                    lambda: SoftLink().set_code("roc-1").set_label("third").restore_or_create()
+                    lambda: (
+                        SoftLink()
+                        .set_code("roc-1")
+                        .set_label("third")
+                        .restore_or_create()
+                    )
                 )
                 made = SoftLink().set_code("roc-2").set_label("new").restore_or_create()
                 mask([made.get_seq()])
@@ -1197,7 +1209,7 @@ def main():
 
     def expect_revision():
         # expect_revision makes an update or a delete write only while author 42's like_count still holds the expected
-        # revision; an update stores revision + 1, and a mismatch is REVISION_CHANGED and writes nothing (docs/dsl.md
+        # revision; an update stores revision + 1, and a mismatch is REVISION_CHANGED and writes nothing (docs/spec/dsl.md
         # "Writes"). The transaction rolls back at the end.
         class Boom(Exception):
             pass
@@ -1214,22 +1226,36 @@ def main():
             def body():
                 result["before"] = read()
                 revision = result["before"]["like_count"]
-                Author().set_seq(42).set_name("revision-1").expect_revision("like_count", revision).update()
+                Author().set_seq(42).set_name("revision-1").expect_revision(
+                    "like_count", revision
+                ).update()
                 result["updated"] = read()
                 result["update_mismatch"] = caught(
-                    lambda: Author()
-                    .set_seq(42)
-                    .set_name("revision-stale")
-                    .expect_revision("like_count", revision)
-                    .update()
+                    lambda: (
+                        Author()
+                        .set_seq(42)
+                        .set_name("revision-stale")
+                        .expect_revision("like_count", revision)
+                        .update()
+                    )
                 )
                 result["after_mismatch"] = read()
                 result["delete_mismatch"] = caught(
-                    lambda: Author().set_seq(42).expect_revision("like_count", revision).delete()
+                    lambda: (
+                        Author()
+                        .set_seq(42)
+                        .expect_revision("like_count", revision)
+                        .delete()
+                    )
                 )
                 result["kept"] = Author().seq(42).get_count()
                 result["delete_match"] = caught(
-                    lambda: Author().set_seq(42).expect_revision("like_count", revision + 1).delete()
+                    lambda: (
+                        Author()
+                        .set_seq(42)
+                        .expect_revision("like_count", revision + 1)
+                        .delete()
+                    )
                 )
                 result["deleted"] = Author().seq(42).get_count()
                 raise Boom()
@@ -1293,7 +1319,7 @@ def main():
     run("joins_soft_deleted", joins_soft_deleted)
 
     def column_pairs():
-        # Two compared columns meet as dbspec check operands do (docs/dbspec.md "Checks"): a comparison of two
+        # Two compared columns meet as dbspec check operands do (docs/spec/dbspec.md "Checks"): a comparison of two
         # columns, a column in a subquery column, a join and a relation run when their columns meet, here i32 with i64
         # and text with varchar, and fail with OPERATOR_NOT_ALLOWED before any statement when they do not.
         result = {}
@@ -1380,7 +1406,7 @@ def main():
     run("hex_malformed", hex_malformed)
 
     # A datetime(p) or time(p) value is bound with exactly p fraction digits, the form the SQLite CHECK of the column
-    # requires (docs/dialects.md); zeros past p are dropped. Each vector inserts, reads the row back by the same
+    # requires (docs/spec/dialects.md); zeros past p are dropped. Each vector inserts, reads the row back by the same
     # parameter and deletes it.
     at = "2026-06-01 12:34:56.000000"
 
@@ -1431,7 +1457,7 @@ def main():
 
     run("date_null", date_null)
 
-    # An upsert has exactly one conflict key (docs/protocol.md 1): upsert_cell leaves its identity primary key out, so
+    # An upsert has exactly one conflict key (docs/spec/protocol.md 1): upsert_cell leaves its identity primary key out, so
     # the unique key on code is the one key that can meet the row; an insert that does not assign code is IR_INVALID
     # before any statement.
     def upsert_one_key():
@@ -1466,7 +1492,7 @@ def main():
     run("upsert_one_key", upsert_one_key)
 
     # A PostgreSQL uuid column is read as its text and a uuid value is bound as text cast to uuid, in one form in
-    # every planner (docs/dialects.md); the vector inserts, reads the row back by the same value and deletes it.
+    # every planner (docs/spec/dialects.md); the vector inserts, reads the row back by the same value and deletes it.
     def uuid_roundtrip():
         created = (
             UuidCell()
@@ -1481,9 +1507,9 @@ def main():
 
     run("uuid_roundtrip", uuid_roundtrip)
 
-    # A write counts each written row once (docs/protocol.md "Write"): an upsert is 1 whether it inserts or updates,
+    # A write counts each written row once (docs/spec/protocol.md "Write"): an upsert is 1 whether it inserts or updates,
     # and an update counts the row it matched even when the row already holds the value. The count is read through
-    # the test entry point (docs/protocol.md "Test write result").
+    # the test entry point (docs/spec/protocol.md "Test write result").
     from polyspec.orm.testing import last_affected
 
     def affected_counts():
@@ -1514,7 +1540,7 @@ def main():
 
     run("affected_counts", affected_counts)
 
-    # A value outside the logical type of its slot is CODEC_ENCODE before any statement (docs/protocol.md §5
+    # A value outside the logical type of its slot is CODEC_ENCODE before any statement (docs/spec/protocol.md §5
     # "Parameters"). A create that the client lets through is deleted, so the vector leaves the database as it
     # found it.
     def rejected(create):
@@ -1563,7 +1589,7 @@ def main():
         ),
     )
 
-    # A parameter that assigns NULL to a non-null column is CODEC_ENCODE before any statement (docs/protocol.md §5
+    # A parameter that assigns NULL to a non-null column is CODEC_ENCODE before any statement (docs/spec/protocol.md §5
     # "Parameters"); creates binds each row value as a parameter.
     run(
         "null_into_not_null",
@@ -1578,7 +1604,7 @@ def main():
         },
     )
 
-    # A contains value NULL binds NULL, so `col LIKE NULL` matches no row (docs/protocol.md §2).
+    # A contains value NULL binds NULL, so `col LIKE NULL` matches no row (docs/spec/protocol.md §2).
     def contains_null():
         try:
             return {
@@ -1590,7 +1616,7 @@ def main():
 
     run("contains_null", contains_null)
 
-    # One statement has one clock (docs/protocol.md "Clock"): the columns that an insert leaves to `default now`
+    # One statement has one clock (docs/spec/protocol.md "Clock"): the columns that an insert leaves to `default now`
     # hold that clock truncated to their digits, and a datetime(p) column compares with a clock at six digits. The
     # executor clock is fixed at .999999 through the test entry point, so a rounding clock shows as the next second;
     # MySQL writes its own clock, CURRENT_TIMESTAMP(p), which truncates. These vectors come last because the fixed

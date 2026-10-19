@@ -8,7 +8,7 @@ import (
 
 // checkTyper validates the types of one check predicate of table t and
 // rewrites its literals into the canonical default form of the column they
-// meet (docs/dbspec.md "Checks"). It keeps every diagnostic; the caller
+// meet (docs/spec/dbspec.md "Checks"). It keeps every diagnostic; the caller
 // reports the first in source order.
 type checkTyper struct {
 	v          *validator

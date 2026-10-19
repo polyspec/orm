@@ -1,4 +1,4 @@
-# The SQL NULL state and the encoded value of a styled column (docs/codec.md).
+# The SQL NULL state and the encoded value of a styled column (docs/spec/codec.md).
 from typing import Any
 
 from polyspec.ordered_json import (
@@ -22,7 +22,9 @@ def _assert_no_omitted(value: Any, ancestors: set, depth: int) -> None:
         import math
 
         if not math.isfinite(value):
-            raise OrmError(codes.CODEC_ENCODE, "styled value contains a non-finite number")
+            raise OrmError(
+                codes.CODEC_ENCODE, "styled value contains a non-finite number"
+            )
         return
     if isinstance(value, list):
         if id(value) in ancestors:

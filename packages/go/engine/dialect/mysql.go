@@ -43,7 +43,7 @@ func (MySQL) RowLock(mode string) (string, bool) {
 
 // AES is host-side so row version metadata can select the key before decode,
 // and hex is host-side so every dialect writes and reads the same text
-// (docs/dialects.md, Rules that keep the three databases identical). ip
+// (docs/spec/dialects.md, Rules that keep the three databases identical). ip
 // remains SQL-side: INET6_ATON packs the address into the binary column.
 func (MySQL) HandlesStyle(s string) bool { return s == "ip" }
 

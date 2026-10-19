@@ -17,7 +17,7 @@ pub const DIALECTS: [(&str, Dialect); 3] = [("mysql", Dialect::MySql), ("postgre
 const PROBE_DEADLINE: Duration = Duration::from_secs(60);
 
 /// Statements every client runs on a new connection: MySQL and PostgreSQL use UTC,
-/// and SQLite turns on foreign keys (docs/dbspec.md "Types", docs/dialects.md "Foreign keys").
+/// and SQLite turns on foreign keys (docs/spec/dbspec.md "Types", docs/spec/dialects.md "Foreign keys").
 pub fn connection_rules(db: &str) -> &'static [&'static str] {
     match db {
         "mysql" => &["SET time_zone = '+00:00'"],

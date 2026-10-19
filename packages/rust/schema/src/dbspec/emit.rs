@@ -7,7 +7,7 @@ use super::model::*;
 
 /// What an emission writes: the canonical text, the manifest text without
 /// comments and diagrams, or the schema text that also keeps only the schema
-/// settings (docs/dbspec.md, "Manifest and hashes").
+/// settings (docs/spec/dbspec.md, "Manifest and hashes").
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum View {
     Canonical,

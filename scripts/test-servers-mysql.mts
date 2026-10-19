@@ -123,7 +123,7 @@ async function catalogCounts(port: string, schemas: string[], context: Context):
 // fails, naming the holder. LEASE and LEASES are provided by test-servers.mts.
 function holdExclusive() {
   const { LEASE: lease, LEASES: leases } = process.env;
-  if (!lease || !leases) throw new Error('LEASE and LEASES are unset; run make test-servers');
+  if (!lease || !leases) throw new Error('LEASE and LEASES are unset; run make orm-test-servers');
   const result = spawnSync(lease, ['hold', leases, 'exclusive', '--pid', String(process.pid)], { stdio: 'inherit' });
   if (result.status !== 0) {
     console.error('test-servers: the MySQL migration needs the exclusive lease of the servers; nothing changed');
@@ -239,7 +239,7 @@ async function main() {
   for (const [name, body] of steps) {
     if (existsSync(work) && done(name)) { console.log(`test-servers: MySQL migration step ${name} done earlier`); continue; }
     if (!(await runLong(`mysql-migration/${name}`, body))) {
-      console.error(`test-servers: the MySQL migration stopped in ${name}; run make test-servers again to resume`);
+      console.error(`test-servers: the MySQL migration stopped in ${name}; run make orm-test-servers again to resume`);
       process.exit(1);
     }
     if (existsSync(work)) mark(name);

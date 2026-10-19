@@ -76,7 +76,7 @@ def check_vector(test: unittest.TestCase, vector: dict) -> None:
     name = vector["name"]
     try:
         decoded = decode(stages_of(vector["styles"]), raw)
-    except Exception as error:
+    except CodecError as error:
         test.fail(f"{name}: decode {error}")
     kind = "sql-null" if raw is None else "value"
     if not isinstance(decoded, StyledValue) or decoded.kind != kind:
@@ -220,7 +220,7 @@ class CodecVectorTest(unittest.TestCase):
             except CodecError as error:
                 if error.code != code:
                     failures.append(f"{name}: {error} want {code}")
-            except Exception as error:
+            except (TypeError, ValueError) as error:
                 failures.append(f"{name}: {error!r} want CodecError {code}")
         if failures:
             self.fail("\n".join(failures))

@@ -1,4 +1,4 @@
-"""install-python installs the wheel lock with hashes (kit K54): packages/python/pylock.toml goes to pip with --require-hashes."""
+"""orm-install-python installs the wheel lock with hashes (kit K54): packages/python/pylock.toml goes to pip with --require-hashes."""
 
 import pathlib
 import unittest
@@ -25,7 +25,7 @@ class InstallLockTest(unittest.TestCase):
         makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
         pip_lines = [
             line
-            for line in recipe_of(makefile, "install-python")
+            for line in recipe_of(makefile, "orm-install-python")
             if " install " in line
         ]
         hashed = [
@@ -33,7 +33,7 @@ class InstallLockTest(unittest.TestCase):
             for line in pip_lines
             if "--require-hashes" in line and "-r packages/python/pylock.toml" in line
         ]
-        message = "install-python must install packages/python/pylock.toml with --require-hashes; its pip install lines:\n"
+        message = "orm-install-python must install packages/python/pylock.toml with --require-hashes; its pip install lines:\n"
         self.assertEqual(len(hashed), 1, message + "\n".join(pip_lines))
 
 

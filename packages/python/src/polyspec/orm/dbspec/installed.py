@@ -1,7 +1,7 @@
 """installed_differences: the differences between the document of an installed set and the target
 schema of the set, as packages/ts/src/dbspec/add_tables_and_columns.ts lists them. Only the
 tables that the set declares are compared; an object the introspection could not read in such a
-table is a difference by itself, and then the table is not compared (docs/schema.md "Schema
+table is a difference by itself, and then the table is not compared (docs/spec/schema.md "Schema
 installation")."""
 
 from __future__ import annotations

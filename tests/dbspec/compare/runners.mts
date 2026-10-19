@@ -21,10 +21,10 @@ function phpExtension() {
 }
 
 // pythonCommand is the interpreter with the Python client's dependencies (cryptography, PyYAML) installed. make dbspec-compare-check
-// gives ORM_PYTHON the interpreter of packages/python/.venv that make install-python created.
+// gives ORM_PYTHON the interpreter of packages/python/.venv that make orm-install-python created.
 function pythonCommand() {
   const path = process.env.ORM_PYTHON;
-  if (!path) throw new Error('ORM_PYTHON names no Python interpreter with the client dependencies; run make install-python, which creates packages/python/.venv, and run make dbspec-compare-check, which sets ORM_PYTHON');
+  if (!path) throw new Error('ORM_PYTHON names no Python interpreter with the client dependencies; run make orm-install-python, which creates packages/python/.venv, and run make dbspec-compare-check, which sets ORM_PYTHON');
   return path;
 }
 

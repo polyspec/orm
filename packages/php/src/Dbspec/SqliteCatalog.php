@@ -5,7 +5,7 @@ namespace Polyspec\Orm\Dbspec;
 
 /**
  * Reads the SQLite main database into an intermediate model. It joins sqlite_master and table-valued
- * pragmas to read all tables at once (docs/dialects.md "Introspection").
+ * pragmas to read all tables at once (docs/spec/dialects.md "Introspection").
  *
  * @internal
  */

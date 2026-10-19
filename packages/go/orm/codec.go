@@ -1,6 +1,6 @@
 package orm
 
-// Column-style codecs (docs/codec.md): json/jsons, serialize, base64, gz, yaml.
+// Column-style codecs (docs/spec/codec.md): json/jsons, serialize, base64, gz, yaml.
 // Styles are listed in write order; Decode applies them in reverse.
 
 import (
@@ -58,7 +58,7 @@ func Decode(styles []string, raw any) (StyledValue, error) {
 		return StyledValue{}, codecErr(CodeCodecDecode, "cell is %T, not bytes", raw)
 	}
 	// An empty cell is CODEC_DECODE, except under a last base64 stage, whose encoder writes an empty cell
-	// for empty bytes (docs/codec.md, Stage lists).
+	// for empty bytes (docs/spec/codec.md, Stage lists).
 	if len(b) == 0 && (len(styles) == 0 || styles[len(styles)-1] != "base64") {
 		return StyledValue{}, codecErr(CodeCodecDecode, "styled cell is empty")
 	}
@@ -85,7 +85,7 @@ func Decode(styles []string, raw any) (StyledValue, error) {
 			}
 		case "base64":
 			// A stored cell is decoded only in the form the encoder writes: whitespace, line breaks, missing padding, or non-zero
-			// padding bits is CODEC_DECODE (docs/codec.md). Go's decoder skips \r and \n, so they are rejected separately.
+			// padding bits is CODEC_DECODE (docs/spec/codec.md). Go's decoder skips \r and \n, so they are rejected separately.
 			if bytes.ContainsAny(cur, "\r\n") {
 				return StyledValue{}, codecErr(CodeCodecDecode, "base64: line break in stored text")
 			}

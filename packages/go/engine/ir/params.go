@@ -21,7 +21,7 @@ type ParamUse struct {
 // i32, or f64 for seconds, for the interval of a relative time function; text
 // for contains and contains_binary; the parent column for if_parent; the column
 // for optimistic. An IR executor message writes each parameter in the form of
-// its slot's type (docs/protocol.md §5), so the client reads the type here.
+// its slot's type (docs/spec/protocol.md §5), so the client reads the type here.
 func ParamUses(m *runtimemodel.Model, r *Request) [][]ParamUse {
 	u := &paramUses{m: m, out: make([][]ParamUse, r.NParams)}
 	ent := m.Entities[r.Entity]

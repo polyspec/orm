@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-// Syntax analysis and formatting (docs/dbspec.md "Syntax analysis", "Formatting") through the PHP client:
+// Syntax analysis and formatting (docs/spec/dbspec.md "Syntax analysis", "Formatting") through the PHP client:
 // focused token cases, the shared cases of tests/dbspec/cases.json, the shared syntax vectors of
 // tests/dbspec/syntax.json, and the limit stop.
 require_once __DIR__ . '/case_clock.php';
@@ -67,7 +67,7 @@ final class DbspecAnalyzeTest extends TestCase
     }
 
     // The shared cases: analyze returns the parse result unchanged, and format of each canonical or normalize case
-    // gives its canonical text; an invalid case is refused with its diagnostics (docs/dbspec.md "Formatting").
+    // gives its canonical text; an invalid case is refused with its diagnostics (docs/spec/dbspec.md "Formatting").
     #[DataProvider('sharedCases')]
     public function test_shared(string $kind, array $case): void
     {

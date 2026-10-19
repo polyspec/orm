@@ -26,7 +26,7 @@ final readonly class Diagnostic
     public function __construct(string $rule, int $line, int $column, string $message) {}
 }
 
-/** One declaration of a parsed document: its kind, its path of enclosing names and its own name, and its line and column (docs/dbspec.md "Declaration positions"). */
+/** One declaration of a parsed document: its kind, its path of enclosing names and its own name, and its line and column (docs/spec/dbspec.md "Declaration positions"). */
 final readonly class Position
 {
     public string $kind;
@@ -299,7 +299,7 @@ final readonly class ParseResult
     public static function invalid(array $diagnostics): ParseResult {}
 }
 
-/** One token of a dbspec text: its 1-based line, its start and end in code points on the line, and its class (docs/dbspec.md "Syntax analysis"). */
+/** One token of a dbspec text: its 1-based line, its start and end in code points on the line, and its class (docs/spec/dbspec.md "Syntax analysis"). */
 final readonly class Token
 {
     public int $line;
@@ -332,7 +332,7 @@ final readonly class FormatResult
     public function __construct(?string $text, array $diagnostics) {}
 }
 
-/** The renderer names that the renderer writes for a table and a suffix, and the column whose name they are (docs/dbspec.md "Names"). */
+/** The renderer names that the renderer writes for a table and a suffix, and the column whose name they are (docs/spec/dbspec.md "Names"). */
 final class Names
 {
     public static function render(string $table, string $suffix): string {}
@@ -342,7 +342,7 @@ final class Names
     public static function column(string $table, string $name, \Traversable|array $columns): ?string {}
 }
 
-/** The manifest and schema texts of a document set and their hashes (docs/dbspec.md, "Manifest and hashes"). */
+/** The manifest and schema texts of a document set and their hashes (docs/spec/dbspec.md, "Manifest and hashes"). */
 final readonly class Manifest
 {
     public string $manifestText;
@@ -395,7 +395,7 @@ final readonly class Plan
     public function __construct(string $name, ?string $from, array $renameTables, array $renameColumns, array $dropTables, array $dropColumns, Document $schema, string $to) {}
 }
 
-/** One step of a plan (docs/plans.md "Steps"). */
+/** One step of a plan (docs/spec/plans.md "Steps"). */
 final readonly class PlanStep
 {
     public string $statement;
@@ -411,7 +411,7 @@ final readonly class PlanStep
     public function __construct(string $statement, string $rollback, string $irreversible, Effect $effect, string $restore = '', string $rollbackRestore = '', ?Effect $restoreIf = null, array $nullChecks = [], bool $finalize = false) {}
 }
 
-/** How a step's statement shows that it took effect (docs/plans.md "Steps", effects). */
+/** How a step's statement shows that it took effect (docs/spec/plans.md "Steps", effects). */
 final readonly class Effect
 {
     public string $kind;
@@ -423,7 +423,7 @@ final readonly class Effect
 
     public static function repeat(): Effect {}
 
-    /** The text form of docs/plans.md "Effects", such as `present table users`. */
+    /** The text form of docs/spec/plans.md "Effects", such as `present table users`. */
     public function text(): string {}
 }
 
@@ -437,7 +437,7 @@ final readonly class NullCheck
     public function __construct(string $table, string $column, ?string $default) {}
 }
 
-/** One change of a plan's diff (docs/plans.md "Diff"). */
+/** One change of a plan's diff (docs/spec/plans.md "Diff"). */
 final readonly class Change
 {
     public string $kind;
@@ -447,7 +447,7 @@ final readonly class Change
     public function __construct(string $kind, string $table, string $name) {}
 }
 
-/** One difference of two schemas (docs/plans.md "Comparison"). */
+/** One difference of two schemas (docs/spec/plans.md "Comparison"). */
 final readonly class Difference
 {
     public string $kind;
@@ -496,7 +496,7 @@ final readonly class ColumnName
     public function __construct(string $table, string $name) {}
 }
 
-/** One occurrence of apply, recover, rollback or finalize (docs/plans.md "Apply"). */
+/** One occurrence of apply, recover, rollback or finalize (docs/spec/plans.md "Apply"). */
 final readonly class ApplyEvent
 {
     public string $kind;
@@ -508,7 +508,7 @@ final readonly class ApplyEvent
     public function __construct(string $kind, string $plan, int $step, int $steps, string $statement) {}
 }
 
-/** A failure of apply or recover (docs/plans.md "Apply"). */
+/** A failure of apply or recover (docs/spec/plans.md "Apply"). */
 final class ApplyError extends \RuntimeException
 {
     public readonly string $code_;
@@ -624,7 +624,7 @@ final readonly class IntrospectResult
     public function __construct(Document $document, array $unsupported) {}
 }
 
-/** Parses, validates and canonically emits dbspec documents (docs/dbspec.md). */
+/** Parses, validates and canonically emits dbspec documents (docs/spec/dbspec.md). */
 final class Dbspec
 {
     /** The first bytes of every dbspec document file; the header `dbspec 1 <document>` starts with them. */
@@ -635,10 +635,10 @@ final class Dbspec
      */
     public static function parse(string $text, array $documents): ParseResult {}
 
-    /** Parses like parse and returns that result unchanged, with the tokens of the text (docs/dbspec.md "Syntax analysis"). */
+    /** Parses like parse and returns that result unchanged, with the tokens of the text (docs/spec/dbspec.md "Syntax analysis"). */
     public static function analyze(string $text, array $documents): Analysis {}
 
-    /** The canonical text of the document when the text has no diagnostic; else every diagnostic and no text (docs/dbspec.md "Formatting"). */
+    /** The canonical text of the document when the text has no diagnostic; else every diagnostic and no text (docs/spec/dbspec.md "Formatting"). */
     public static function format(string $text, array $documents): FormatResult {}
 
     /** Reads a dbspec document file and checks its bytes with readBytes, the path naming the file. */
@@ -647,10 +647,10 @@ final class Dbspec
     /** Checks the bytes of a document file that the caller read; $name is the name its messages use. */
     public static function readBytes(string $name, string $bytes): ReadResult {}
 
-    /** Reads the set file at $path and the files it lists (docs/dbspec.md "Document sets"): the set file, its JSON, each path and the read with the file identity, in that order. */
+    /** Reads the set file at $path and the files it lists (docs/spec/dbspec.md "Document sets"): the set file, its JSON, each path and the read with the file identity, in that order. */
     public static function readSet(string $path): SetResult {}
 
-    /** Parses the texts of one document set (docs/dbspec.md "Parsing a set"): one result per text, owned, then external, each in set order; a text whose header name an earlier text has is not parsed and carries `name.duplicate`. */
+    /** Parses the texts of one document set (docs/spec/dbspec.md "Parsing a set"): one result per text, owned, then external, each in set order; a text whose header name an earlier text has is not parsed and carries `name.duplicate`. */
     public static function parseSet(array $owned, array $external): array {}
 
     /** Writes a document in its canonical text: `emit(parse(s)) === s` for canonical input. */

@@ -1,10 +1,10 @@
-// The component document (docs/interfaces-model.md and its Korean pair) is made from the manifest. The diagram is what a reviewer edits in the manifest
+// The component document (docs/spec/interfaces-model.md and its Korean pair) is made from the manifest. The diagram is what a reviewer edits in the manifest
 // It comes from the component's fields, methods, and ownership rules. The hand-written lifecycle diagram is separate.
 import { createHash } from 'node:crypto';
 import { byteOrder } from './json.mts';
 import type { Manifest } from './manifest.mts';
 
-// DOCUMENT_ID is the doc-id of the component document pair (make documents-check of @polyspec/kit). The Korean document also carries the sha256 of the English document.
+// DOCUMENT_ID is the doc-id of the component document pair (make docs-check of @polyspec/kit). The Korean document also carries the sha256 of the English document.
 const DOCUMENT_ID = 'interfaces-model';
 
 /** diagram is a component document of the manifest. If korean, it is the Korean document. Without localized explanations or relations it is an error. */

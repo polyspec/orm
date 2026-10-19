@@ -5,13 +5,13 @@ import { performance } from 'node:perf_hooks';
 import { chmod, mkdtemp, mkdir, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { packageDirectoryOf } from './packages.mts';
 import { checkCoverage, databases, executeCoverage, observedCases, languages, NATIVE_DEADLINE, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
 import { readFeatures } from './manifest.mts';
+import { readParityConfig } from '../json/formats.mts';
 
-const parityUnits: { id: string; bindings?: { implementation: string }[] }[] = JSON.parse(readFileSync(new URL('../../config/parity.json', import.meta.url), 'utf8')).units;
+const parityUnits = readParityConfig(new URL('../../config/parity.json', import.meta.url).pathname).units;
 // parityOf names one parity unit that binds only each language, so the feature claims exactly those languages.
 function parityOf(claimed: string[]): string[] {
   return claimed.map(language => {

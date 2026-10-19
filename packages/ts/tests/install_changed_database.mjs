@@ -1,5 +1,5 @@
 // The install fixture of the TypeScript client, contracts/fixtures/install/changed_database.json. install compares the whole
-// database with the set and not only its table names (docs/schema.md "Schema installation"): each case changes the database
+// database with the set and not only its table names (docs/spec/schema.md "Schema installation"): each case changes the database
 // outside the ORM with a statement, installs the same set again, and gets the dialect's CONFIG message, and the database stays
 // as the statement left it. Each case runs on a case database of its own (case-database.mjs) on SQLite, MySQL and PostgreSQL.
 // ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name the test servers; the test fails when either is unset.
@@ -30,7 +30,7 @@ function manifestOf(text) {
 }
 
 for (const env of ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_POSTGRES_DSN']) {
-  if (!process.env[env]) throw new Error(`${env} is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers`);
+  if (!process.env[env]) throw new Error(`${env} is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers`);
 }
 const installFixture = JSON.parse(await readFile(new URL('../../../contracts/fixtures/install/changed_database.json', import.meta.url), 'utf8'));
 if (installFixture.cases.length === 0) throw new Error('contracts/fixtures/install/changed_database.json has no cases');

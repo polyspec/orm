@@ -108,7 +108,7 @@ export function rustToolchainErrors(toolchain: string, makefile: string, workflo
     errors.push('Makefile does not read PHYSICAL_RUST_TOOLCHAIN from rust-toolchain.toml');
   if (/^\s*(?:export\s+)?(?:PHYSICAL_RUST_TOOLCHAIN|RUSTUP_TOOLCHAIN)\s*[:?]?=\s*\d/m.test(makefile))
     errors.push('Makefile declares a Rust toolchain itself; rust-toolchain.toml declares it');
-  const installRecipe = makeRecipes(makefile).find(unit => unit.name === 'Makefile install-rust-toolchain')?.commands ?? [];
+  const installRecipe = makeRecipes(makefile).find(unit => unit.name === 'Makefile orm-install-rust-toolchain')?.commands ?? [];
   for (const [path, workflow] of Object.entries(workflows)) {
     for (const action of ['dtolnay/rust-toolchain', 'actions-rust-lang/setup-rust-toolchain'])
       if (actionSteps(workflow, action).length > 0)
@@ -119,9 +119,9 @@ export function rustToolchainErrors(toolchain: string, makefile: string, workflo
         environment(workflow).has('RUSTUP_TOOLCHAIN'))
       errors.push(`${path} chooses a Rust toolchain itself; rust-toolchain.toml declares it`);
     const usesRust = runs(workflow, command => command.name === 'cargo') || actionSteps(workflow, 'Swatinem/rust-cache').length > 0;
-    // CI's steps run make targets, so `rustup toolchain install` without arguments is in the recipe of make install-rust-toolchain.
+    // CI's steps run make targets, so `rustup toolchain install` without arguments is in the recipe of make orm-install-rust-toolchain.
     const installsRust = runs(workflow, installsToolchain) ||
-      (runs(workflow, command => makes(command, 'install-rust-toolchain')) && installRecipe.some(line => commands(line, 'make').some(installsToolchain)));
+      (runs(workflow, command => makes(command, 'orm-install-rust-toolchain')) && installRecipe.some(line => commands(line, 'make').some(installsToolchain)));
     if (usesRust && !installsRust)
       errors.push(`${path} does not install the toolchain of rust-toolchain.toml with rustup toolchain install`);
   }
@@ -140,7 +140,7 @@ export function goVersionErrors(workflows: Record<string, string>) {
   for (const [path, workflow] of Object.entries(workflows)) {
     if (actionSteps(workflow, 'actions/setup-go').length > 0)
       errors.push(`${path} sets up Go with actions/setup-go; the Go of mise.toml is installed by make install-tools`);
-    if (runs(workflow, command => command.name === 'go' || makes(command, 'check') || makes(command, 'install-go')) &&
+    if (runs(workflow, command => command.name === 'go' || makes(command, 'orm-check') || makes(command, 'orm-install-go')) &&
         !runs(workflow, command => makes(command, 'install-tools') && !command.args.some(arg => arg.startsWith('TOOLS='))))
       errors.push(`${path} runs Go without the Go of mise.toml; add a step that runs make install-tools`);
   }

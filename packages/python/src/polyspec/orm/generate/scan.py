@@ -8,10 +8,22 @@ __all__ = ["scan_model_calls"]
 _SKIPPED = frozenset({"node_modules", "__pycache__", ".venv"})
 # Model methods whose result is no model: a call on it ends the chain.
 _TERMINALS = frozenset(
-    {"create", "creates", "update", "save", "delete", "restore", "to_array", "to_json", "to_json_text"}
+    {
+        "create",
+        "creates",
+        "update",
+        "save",
+        "delete",
+        "restore",
+        "to_array",
+        "to_json",
+        "to_json_text",
+    }
 )
 # The annotation names of a collection of models.
-_COLLECTIONS = frozenset({"Iterable", "Iterator", "list", "List", "Sequence", "Collection", "tuple"})
+_COLLECTIONS = frozenset(
+    {"Iterable", "Iterator", "list", "List", "Sequence", "Collection", "tuple"}
+)
 # A method whose first parameter receives the same model.
 _MODEL_CALLBACKS = frozenset(
     {"and_", "or_", "not_", "and_not", "or_not", "on", "fetch_key", "fetch_value"}
@@ -59,12 +71,19 @@ def _merge(*states) -> dict:
         for key in state:
             if key not in keys:
                 keys.append(key)
-    return {key: _union([state[key] for state in states if key in state]) for key in keys}
+    return {
+        key: _union([state[key] for state in states if key in state]) for key in keys
+    }
 
 
 def _element(collection) -> object:
     """The model that each element of a collection of models holds."""
-    return _union([m[1] if isinstance(m, tuple) and m[0] == "many" else None for m in _members(collection)])
+    return _union(
+        [
+            m[1] if isinstance(m, tuple) and m[0] == "many" else None
+            for m in _members(collection)
+        ]
+    )
 
 
 def _exits(stmts) -> bool:
@@ -93,7 +112,9 @@ def _scan_tree(tree, classes: dict, out: dict, sites=None) -> None:
             from_models = (node.module or "").rsplit(".", 1)[-1] == "models"
             for alias in node.names:
                 if alias.name in classes:
-                    imported[alias.asname or alias.name] = alias.name if from_models else None
+                    imported[alias.asname or alias.name] = (
+                        alias.name if from_models else None
+                    )
 
         def visit_Import(self, node):
             for alias in node.names:
@@ -114,14 +135,26 @@ def _scan_tree(tree, classes: dict, out: dict, sites=None) -> None:
                 return None
         if isinstance(node, ast.Name):
             class_name = names.get(node.id)
-            return class_name if isinstance(class_name, str) and class_name in classes else None
+            return (
+                class_name
+                if isinstance(class_name, str) and class_name in classes
+                else None
+            )
         if isinstance(node, ast.Attribute):
             return node.attr if node.attr in classes else None
         if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
-            found = [v for v in (annotated(node.left, names), annotated(node.right, names)) if v is not None]
+            found = [
+                v
+                for v in (annotated(node.left, names), annotated(node.right, names))
+                if v is not None
+            ]
             return found[0] if len(found) == 1 else None
         if isinstance(node, ast.Subscript):
-            outer = node.value.attr if isinstance(node.value, ast.Attribute) else getattr(node.value, "id", "")
+            outer = (
+                node.value.attr
+                if isinstance(node.value, ast.Attribute)
+                else getattr(node.value, "id", "")
+            )
             inner = annotated(node.slice, names)
             if outer == "Optional":
                 return inner
@@ -135,11 +168,19 @@ def _scan_tree(tree, classes: dict, out: dict, sites=None) -> None:
             node = node.value
         if isinstance(node, ast.Name):
             value = names.get(node.id)
-            return value if value is None or isinstance(value, tuple) or value in classes else None
+            return (
+                value
+                if value is None or isinstance(value, tuple) or value in classes
+                else None
+            )
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
             # The generation call Author() makes a model of that class.
             class_name = names.get(node.func.id)
-            return class_name if isinstance(class_name, str) and class_name in classes else None
+            return (
+                class_name
+                if isinstance(class_name, str) and class_name in classes
+                else None
+            )
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
             receiver = value_of(node.func.value, names)
             name = node.func.attr
@@ -191,16 +232,26 @@ def _scan_tree(tree, classes: dict, out: dict, sites=None) -> None:
                 if isinstance(sub, ast.Assign):
                     for target in sub.targets:
                         if isinstance(target, ast.Name):
-                            candidates.setdefault(target.id, []).append(value_of(sub.value, names))
+                            candidates.setdefault(target.id, []).append(
+                                value_of(sub.value, names)
+                            )
                         else:
                             for inner in ast.walk(target):
                                 if isinstance(inner, ast.Name):
                                     candidates.setdefault(inner.id, []).append(None)
-                elif isinstance(sub, ast.AnnAssign) and isinstance(sub.target, ast.Name):
-                    candidates.setdefault(sub.target.id, []).append(value_of(sub.value, names) if sub.value is not None else None)
+                elif isinstance(sub, ast.AnnAssign) and isinstance(
+                    sub.target, ast.Name
+                ):
+                    candidates.setdefault(sub.target.id, []).append(
+                        value_of(sub.value, names) if sub.value is not None else None
+                    )
                 elif isinstance(sub, (ast.With, ast.AsyncWith)):
                     for item in sub.items:
-                        for inner in ast.walk(item.optional_vars) if item.optional_vars is not None else []:
+                        for inner in (
+                            ast.walk(item.optional_vars)
+                            if item.optional_vars is not None
+                            else []
+                        ):
                             if isinstance(inner, ast.Name):
                                 candidates.setdefault(inner.id, []).append(None)
                 elif isinstance(sub, ast.ExceptHandler) and sub.name is not None:
@@ -208,7 +259,9 @@ def _scan_tree(tree, classes: dict, out: dict, sites=None) -> None:
                 elif isinstance(sub, (ast.MatchAs, ast.MatchStar, ast.MatchMapping)):
                     for captured in pattern_names(sub):
                         candidates.setdefault(captured, []).append(None)
-                elif isinstance(sub, (ast.AugAssign, ast.NamedExpr)) and isinstance(sub.target, ast.Name):
+                elif isinstance(sub, (ast.AugAssign, ast.NamedExpr)) and isinstance(
+                    sub.target, ast.Name
+                ):
                     candidates.setdefault(sub.target.id, []).append(None)
                 elif isinstance(sub, (ast.For, ast.AsyncFor)):
                     for inner in ast.walk(sub.target):
@@ -260,7 +313,9 @@ def _scan_tree(tree, classes: dict, out: dict, sites=None) -> None:
             for stmt in node.orelse:
                 visit(stmt, else_names)
             # A branch that returns or raises contributes nothing to the scope after the if.
-            states = ([] if _exits(node.body) else [then_names]) + ([] if _exits(node.orelse) else [else_names])
+            states = ([] if _exits(node.body) else [then_names]) + (
+                [] if _exits(node.orelse) else [else_names]
+            )
             names.clear()
             names.update(_merge(*states) if states else else_names)
             return
@@ -275,7 +330,9 @@ def _scan_tree(tree, classes: dict, out: dict, sites=None) -> None:
             names.clear()
             names.update(_merge(before, after))
             return
-        if isinstance(node, (ast.Try,) + ((ast.TryStar,) if hasattr(ast, "TryStar") else ())):
+        if isinstance(
+            node, (ast.Try,) + ((ast.TryStar,) if hasattr(ast, "TryStar") else ())
+        ):
             # A handler starts from the scope before the try joined with the scope at the end of its body, since an exception can
             # leave any statement of the body; the handler's name is unknown inside the handler. A branch that returns or raises
             # contributes nothing after the try, but the finally block starts from every outcome of it.
@@ -324,7 +381,11 @@ def _scan_tree(tree, classes: dict, out: dict, sites=None) -> None:
                     visit(stmt, state)
                 if not _exits(case.body):
                     ends.append(state)
-                if case.guard is None and isinstance(case.pattern, ast.MatchAs) and case.pattern.pattern is None:
+                if (
+                    case.guard is None
+                    and isinstance(case.pattern, ast.MatchAs)
+                    and case.pattern.pattern is None
+                ):
                     irrefutable = True
             if not irrefutable:
                 ends.append(base)
@@ -338,7 +399,15 @@ def _scan_tree(tree, classes: dict, out: dict, sites=None) -> None:
             if node.value is not None:
                 visit(node.value, names)
             value = annotated(node.annotation, names)
-            bind(node.target, value if value is not None else (value_of(node.value, names) if node.value is not None else NOTHING), names)
+            bind(
+                node.target,
+                value
+                if value is not None
+                else (
+                    value_of(node.value, names) if node.value is not None else NOTHING
+                ),
+                names,
+            )
             return
         if isinstance(node, (ast.For, ast.AsyncFor)):
             before = dict(names)
@@ -355,7 +424,10 @@ def _scan_tree(tree, classes: dict, out: dict, sites=None) -> None:
             names.clear()
             names.update(_merge(before, after))
             return
-        if isinstance(node, (ast.Lambda, ast.ListComp, ast.SetComp, ast.GeneratorExp, ast.DictComp)):
+        if isinstance(
+            node,
+            (ast.Lambda, ast.ListComp, ast.SetComp, ast.GeneratorExp, ast.DictComp),
+        ):
             # A lambda or a comprehension has its own scope: its parameters and targets shadow the enclosing names.
             inner = dict(names)
             if isinstance(node, ast.Lambda):
@@ -372,7 +444,11 @@ def _scan_tree(tree, classes: dict, out: dict, sites=None) -> None:
                     forget(generator.target, inner)
                 for condition in generator.ifs:
                     visit(condition, inner)
-            for part in ((node.key, node.value) if isinstance(node, ast.DictComp) else (node.elt,)):
+            for part in (
+                (node.key, node.value)
+                if isinstance(node, ast.DictComp)
+                else (node.elt,)
+            ):
                 visit(part, inner)
             return
         if isinstance(node, ast.ClassDef):
@@ -387,7 +463,11 @@ def _scan_tree(tree, classes: dict, out: dict, sites=None) -> None:
                 # A parameter is a new binding: the model its annotation names, or unknown, which hides the outer name.
                 # A variadic or keyword parameter is a tuple or a dict, never a model.
                 inner[arg.arg] = UNKNOWN
-                if arg.annotation is not None and arg is not node.args.vararg and arg is not node.args.kwarg:
+                if (
+                    arg.annotation is not None
+                    and arg is not node.args.vararg
+                    and arg is not node.args.kwarg
+                ):
                     value = annotated(arg.annotation, names)
                     if value is not None:
                         inner[arg.arg] = value
@@ -418,7 +498,11 @@ def _scan_tree(tree, classes: dict, out: dict, sites=None) -> None:
                         if params:
                             inner[params[0].arg] = receiver
                         visit(func.value, names)
-                        body = callback.body if isinstance(callback.body, list) else [callback.body]
+                        body = (
+                            callback.body
+                            if isinstance(callback.body, list)
+                            else [callback.body]
+                        )
                         for stmt in body:
                             visit(stmt, inner)
                         for default in callback.args.defaults:

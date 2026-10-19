@@ -1,6 +1,6 @@
 // The node:fs host of resolveSet (set.ts), which the command line passes. It examines without following a symbolic
 // link, lists a POSIX directory by the bytes of its names and opens each file once, taking its bytes and its identity
-// from that handle, as the set reader of @polyspec/orm does (docs/dbspec.md "Document sets", steps 1, 3 and 4).
+// from that handle, as the set reader of @polyspec/orm does (docs/spec/dbspec.md "Document sets", steps 1, 3 and 4).
 import { closeSync, constants, fstatSync, lstatSync, openSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import type { SetHost, SetHostEntry } from '../set.js';
 

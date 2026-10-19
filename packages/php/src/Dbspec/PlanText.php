@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Dbspec;
 
 /**
- * Reads and writes plan documents (docs/plans.md "Plan document").
+ * Reads and writes plan documents (docs/spec/plans.md "Plan document").
  *
  * @internal
  */

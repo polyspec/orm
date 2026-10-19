@@ -1,4 +1,4 @@
-//! Lists every difference between two schemas without a plan (docs/plans.md, "Comparison"). Since no rename
+//! Lists every difference between two schemas without a plan (docs/spec/plans.md, "Comparison"). Since no rename
 //! is involved, tables and columns are matched by name only.
 
 use super::model::{Setting, Table};

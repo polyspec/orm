@@ -1,4 +1,4 @@
-// Compares the source and target schemas of a plan (docs/plans.md "Diff").
+// Compares the source and target schemas of a plan (docs/spec/plans.md "Diff").
 // The reference is the Go engine (engine/dbspec/plan_diff.go), and the diagnostic messages are the same bytes as Go.
 import { present } from '../present.js';
 import { typeText } from './emit.js';
@@ -265,7 +265,7 @@ export function planDiff(source: DbspecDocument | null, p: DbspecPlan): { diff: 
 
 /**
  * Gives the changes from the source schema (null: the empty schema) to the
- * plan's target (docs/plans.md "Diff"), or the plan diagnostics. A source
+ * plan's target (docs/spec/plans.md "Diff"), or the plan diagnostics. A source
  * whose schemaHash differs from the plan's `from` is a diagnostic.
  */
 export function diffPlan(source: DbspecDocument | null, plan: DbspecPlan): DbspecDiffResult {

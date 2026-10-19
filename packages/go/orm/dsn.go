@@ -30,12 +30,12 @@ type parsedDSN struct {
 // parseDSN reads the DSN URI; the scheme is the only database selector.
 // statementTimeoutMs bounds every statement of the connection; zero keeps the
 // server default. Every connection reads and writes datetime values in UTC
-// (docs/dialects.md "Date and time"), so the timezone parameter accepts only
+// (docs/spec/dialects.md "Date and time"), so the timezone parameter accepts only
 // UTC or +00:00.
 
 // mysqlSQLMode is the session sql_mode of every MySQL connection, so that a
 // coercion, truncation or grouping result does not depend on the server's
-// setting (tests/dsn/mysql-session.json, docs/config.md "Runtime connection").
+// setting (tests/dsn/mysql-session.json, docs/spec/config.md "Runtime connection").
 const mysqlSQLMode = "STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"
 
 func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
@@ -135,7 +135,7 @@ func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 	return out, nil
 }
 
-// mysqlTLS reads ssl-mode and ssl-ca of a MySQL DSN (docs/config.md):
+// mysqlTLS reads ssl-mode and ssl-ca of a MySQL DSN (docs/spec/config.md):
 // with ssl-mode=VERIFY_IDENTITY and the absolute path of the CA file in ssl-ca, TCP connects by host name,
 // or neither is present. The driver must not read these as session variables, so
 // the parameters are removed from the query.

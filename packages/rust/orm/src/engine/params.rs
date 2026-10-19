@@ -1,5 +1,5 @@
 //! The slots that request parameters fill (ParamUses in Go engine/ir/params.go). An IR executor message has each
-//! parameter in the form of its slot type (docs/protocol.md §5 "Parameters"), so the client reads the type here.
+//! parameter in the form of its slot type (docs/spec/protocol.md §5 "Parameters"), so the client reads the type here.
 
 use crate::ir;
 use crate::schema::Manifest;

@@ -90,10 +90,10 @@ final class MarkdownConformanceTest extends TestCase
             }
         }
         if ($code !== 0 || $main === null) {
-            throw new RuntimeException("FLOWMARK $bin is no Go build (go version -m: " . trim($err . $out) . "); run make install-flowmark, which installs the flowmark $pin pinned in tests/markdown/flowmark.version");
+            throw new RuntimeException("FLOWMARK $bin is no Go build (go version -m: " . trim($err . $out) . "); run make orm-install-flowmark, which installs the flowmark $pin pinned in tests/markdown/flowmark.version");
         }
         if ($main[0] !== self::FLOWMARK_MODULE || $main[1] !== $pin) {
-            throw new RuntimeException("FLOWMARK $bin is \"{$main[0]}\" \"{$main[1]}\", not the pinned " . self::FLOWMARK_MODULE . " $pin; run make install-flowmark, or give FLOWMARK a build of a flowmark checkout at that revision");
+            throw new RuntimeException("FLOWMARK $bin is \"{$main[0]}\" \"{$main[1]}\", not the pinned " . self::FLOWMARK_MODULE . " $pin; run make orm-install-flowmark, or give FLOWMARK a build of a flowmark checkout at that revision");
         }
         return $bin;
     }

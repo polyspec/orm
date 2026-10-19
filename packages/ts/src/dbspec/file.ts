@@ -1,4 +1,4 @@
-// The file reader of dbspec documents (docs/dbspec.md "Files"): it reads the file with the Node file system and checks
+// The file reader of dbspec documents (docs/spec/dbspec.md "Files"): it reads the file with the Node file system and checks
 // its bytes with readDbspecBytes. It is Node-only, so the browser entry (entry.ts) does not reach it.
 import { readFileSync } from 'node:fs';
 import { readDbspecBytes, type DbspecReadResult } from './read_bytes.js';

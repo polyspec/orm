@@ -1,5 +1,5 @@
 //! bind_message: the message cases of tests/bind/vectors.json, the runtime value model JSON of IR executor message parameters
-//! (docs/protocol.md §5 "Parameters"). These are the same cases as Go's TestBindMessageVectors. markdown_param is visible only inside the crate
+//! (docs/spec/protocol.md §5 "Parameters"). These are the same cases as Go's TestBindMessageVectors. markdown_param is visible only inside the crate
 //! , so src/markdown.rs makes this file a unit test module.
 use super::{begin_message, markdown_param};
 use crate::db::Zone;
@@ -31,7 +31,7 @@ fn message_vectors() {
 }
 
 /// The control cases of tests/bind/vectors.json: the begin control message of a transaction with and without its
-/// read_only option (docs/protocol.md §5 "Session").
+/// read_only option (docs/spec/protocol.md §5 "Session").
 #[test]
 fn control_vectors() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

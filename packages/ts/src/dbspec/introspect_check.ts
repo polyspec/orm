@@ -1,5 +1,5 @@
 // Reads a check expression of the dialect catalog as dbspec predicate text
-// (docs/dialects.md "Introspection", "Checks").
+// (docs/spec/dialects.md "Introspection", "Checks").
 import { present } from '../present.js';
 import { quote } from './introspect_catalog.js';
 import type { DbspecType } from './model.js';

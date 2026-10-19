@@ -10,7 +10,7 @@ import (
 )
 
 // ddlFile is tests/dbspec/ddl.json. It holds the document set and the statements that Render writes per dialect
-// (docs/dialects.md "Rendered statements").
+// (docs/spec/dialects.md "Rendered statements").
 type ddlFile struct {
 	Cases []ddlCase
 }

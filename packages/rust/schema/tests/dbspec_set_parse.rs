@@ -1,4 +1,4 @@
-//! The set parse vectors (tests/dbspec/set-parse.json, docs/dbspec.md "Parsing a set").
+//! The set parse vectors (tests/dbspec/set-parse.json, docs/spec/dbspec.md "Parsing a set").
 //!
 //! Each case calls `dbspec::parse_set` with its owned and external texts and compares, per text,
 //! the name read from the header, the external mark, whether a document was parsed and the

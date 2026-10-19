@@ -1,4 +1,4 @@
-//! The markdown IR executor connection (docs/protocol.md §5 "IR executors", docs/dialects.md
+//! The markdown IR executor connection (docs/spec/protocol.md §5 "IR executors", docs/spec/dialects.md
 //! "Markdown IR executor"): the DSN `markdown://127.0.0.1:<port>/<corpus>?token=<token>` selects a
 //! flowmark server instead of a database. The client validates each request, sends it as one IR
 //! executor message and assembles the answer rows into models; it plans no SQL.
@@ -82,7 +82,7 @@ fn answer_err(msg: impl std::fmt::Display) -> Error {
 }
 
 impl Db {
-    /// The error a SQL-only surface gets on a markdown connection (docs/dialects.md "Markdown IR executor"). On other
+    /// The error a SQL-only surface gets on a markdown connection (docs/spec/dialects.md "Markdown IR executor"). On other
     /// connections it is Ok.
     pub(crate) fn unsupported_on_markdown(&self, surface: &str) -> Result<()> {
         if self.is_markdown() {
@@ -139,7 +139,7 @@ pub(crate) struct MdControl<'a> {
 }
 
 /// The begin control message of a transaction: a read-only transaction sends `read_only` true, any other leaves the
-/// member out (docs/protocol.md §5 Session, the control cases of tests/bind/vectors.json).
+/// member out (docs/spec/protocol.md §5 Session, the control cases of tests/bind/vectors.json).
 pub(crate) fn begin_message(read_only: bool) -> MdControl<'static> {
     MdControl { op: "begin", read_only, name: None }
 }
@@ -250,7 +250,7 @@ impl Drop for Opening<'_> {
     }
 }
 
-/// The session lifetime when `pool_lifetime_ms` is 0: 30 minutes, the same as the SQL connection pool (docs/config.md).
+/// The session lifetime when `pool_lifetime_ms` is 0: 30 minutes, the same as the SQL connection pool (docs/spec/config.md).
 const DEFAULT_LIFETIME: Duration = Duration::from_secs(30 * 60);
 
 impl MdPool {
@@ -582,7 +582,7 @@ impl<'m> MdNode<'m> {
             })?;
             row.vals.push(value);
         }
-        // The corpus catalog rejects aes columns, so there is no keyring (docs/dialects.md).
+        // The corpus catalog rejects aes columns, so there is no keyring (docs/spec/dialects.md).
         crate::row::decode_styled(self.flat.as_ref().expect("a built node has its columns"), std::slice::from_mut(&mut row.vals), &BTreeMap::new())?;
         Ok(row)
     }

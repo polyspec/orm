@@ -380,7 +380,7 @@ export function summary(record: RunRecord, { run = record, report, crashed = nul
   const steps = [...(run.setup ?? []), ...record.targets];
   const count = (status: string) => steps.filter(step => step.status === status).length;
   const lines = [
-    `# make check ${run.id ?? ''}`.trim(),
+    `# make orm-check ${run.id ?? ''}`.trim(),
     '',
     `commit \`${run.commit ?? record.commit}\`, tree \`${run.tree ?? record.tree}\`, started ${run.started ?? record.started}, ended ${run.ended ?? record.ended ?? 'never'}, result **${crashed ? 'crashed' : (run.result ?? record.result)}**`,
     '',

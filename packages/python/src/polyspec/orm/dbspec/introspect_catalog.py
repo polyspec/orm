@@ -1,4 +1,4 @@
-# The neutral intermediate model of introspection, and building the document (docs/dialects.md "Introspection").
+# The neutral intermediate model of introspection, and building the document (docs/spec/dialects.md "Introspection").
 # The dialect reader fills the catalog, and the document writes the dbspec text and parses it,
 # reporting the objects of lines that parse rejected as unsupported and dropping them.
 from polyspec.orm.dbspec.emit import type_text

@@ -27,7 +27,7 @@ use PHPUnit\Framework\TestCase;
 const PLAN_CASE_CPU_SECONDS = 5.0;
 
 /**
- * The plans.json object of the step (docs/plans.md "Steps"). Keys are in name order.
+ * The plans.json object of the step (docs/spec/plans.md "Steps"). Keys are in name order.
  *
  * @return array<string, mixed>
  */

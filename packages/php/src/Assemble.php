@@ -12,7 +12,7 @@ final class Assemble
      * 'idx' => [name => position] and a process-unique 'node' number to every assemble node in
      * place. A styled column's stages are
      * split once into 'host' (aes/hex/ip, the stages the dialect left to the executor) and 'codec'
-     * (docs/codec.md), in write order.
+     * (docs/spec/codec.md), in write order.
      */
     public static function index(array &$plan, RuntimeModel $model): void
     {

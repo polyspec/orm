@@ -1,6 +1,6 @@
 # sqlite-paths: every case of tests/dsn/sqlite-paths.json connects with sqlite://<directory>/<path> in a new temporary
 # directory. A DSN path is percent-decoded to the file it opens, and an invalid path fails with its code and leaves
-# the directory empty (docs/config.md "Runtime connection"), as packages/ts/tests/dsn.mjs and the other clients' tests
+# the directory empty (docs/spec/config.md "Runtime connection"), as packages/ts/tests/dsn.mjs and the other clients' tests
 # do. Each case is a test named by its id.
 import json
 import os

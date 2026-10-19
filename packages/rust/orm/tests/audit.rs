@@ -1,4 +1,4 @@
-//! Audit record transactions (docs/dbspec.md, "Audit"): a transaction inserts one audit record, built from the connection setting's audit source and its own audit values,
+//! Audit record transactions (docs/spec/dbspec.md, "Audit"): a transaction inserts one audit record, built from the connection setting's audit source and its own audit values,
 //! before the callback, and the executor writes its primary key to the audit column of every audited row that the transaction inserts or updates.
 //! The rendered trigger copies each version to a history table. Run on SQLite,
 //! MySQL, and PostgreSQL, each database runs in its own case database (polyspec-orm-case-database),

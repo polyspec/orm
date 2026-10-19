@@ -1,4 +1,4 @@
-# dbspec parse and check (docs/dbspec.md). Reads the document line by line as tokens, and gives every token
+# dbspec parse and check (docs/spec/dbspec.md). Reads the document line by line as tokens, and gives every token
 # an internal form with its position, and checks the whole document. It collects all diagnostics and reports them in source
 # order; encoding, header, and limit errors stop the parse.
 from __future__ import annotations
@@ -112,7 +112,7 @@ class Tk:
         self.s = s
         self.e = e
         self.line = line
-        # The token class of docs/dbspec.md "Syntax analysis": the lexical class until the parser sets it.
+        # The token class of docs/spec/dbspec.md "Syntax analysis": the lexical class until the parser sets it.
         self.cls = _lexical_class(k, t)
 
 
@@ -333,7 +333,7 @@ def meet_kind_of(t: DbspecType) -> str:
     return meet_kind(t.kind, t.scale or 0, t.precision or 0)
 
 
-# Reserved words are not names (docs/dbspec.md "Names").
+# Reserved words are not names (docs/spec/dbspec.md "Names").
 RESERVED = frozenset(
     {
         "dbspec",
@@ -617,7 +617,7 @@ class _Setting:
 
 
 def _setting_identity(s: _Setting) -> tuple[str, ...]:
-    """Return what the repeat rule of a setting makes unique (docs/dbspec.md "Settings"; the same as
+    """Return what the repeat rule of a setting makes unique (docs/spec/dbspec.md "Settings"; the same as
     settingIdentity in engine/dbspec/positions.go): the column of codec, markdown and blind_index, the
     foreign key of navigation, the column and state of checkbox, and the form and states of a state_machine
     line (its column left out). Every other setting has no identity."""
@@ -1775,7 +1775,14 @@ class DocumentParser:
             if is_word(toks[i] if i < len(toks) else None, "tables"):
                 _mark(toks[i], "keyword")
                 names = []
-                for k, want in ((1, None), (2, "("), (3, None), (4, ","), (5, None), (6, ")")):
+                for k, want in (
+                    (1, None),
+                    (2, "("),
+                    (3, None),
+                    (4, ","),
+                    (5, None),
+                    (6, ")"),
+                ):
                     w = toks[i + k] if i + k < len(toks) else None
                     if want is None:
                         if w is None or w.k != WORD:
@@ -2190,7 +2197,7 @@ class DocumentParser:
 
     def _generated_names_unique(self, doc, available) -> None:
         """Refuses a renderer name of a table of the document that an earlier table or a used
-        table of the document already writes, at the later token (docs/dbspec.md "Names")."""
+        table of the document already writes, at the later token (docs/spec/dbspec.md "Names")."""
         local = {id(t) for t in doc.tables}
         seen = {}  # generated name => the source that wrote it first
         for table in available.values():
@@ -2997,7 +3004,7 @@ class DocumentParser:
 
     def _state_machine_consistency(self, table: _Table, entries, available) -> None:
         """Checks the state_machine lines against each other: one column per table, one history, and agreement among transitions, terminal and initial states,
-        limit, the default of the state column, and checkbox (docs/dbspec.md "Settings")."""
+        limit, the default of the state column, and checkbox (docs/spec/dbspec.md "Settings")."""
         machine = [s for s in entries if s.kind == "state_machine"]
         column = None
         states = set()
@@ -3108,7 +3115,7 @@ class DocumentParser:
                 )
 
     def _history(self, table: _Table, s: _Setting, state, requires, available) -> None:
-        """Checks the history table of a state_machine history line (docs/dbspec.md "Settings"): a foreign key pointing to this table,
+        """Checks the history table of a state_machine history line (docs/spec/dbspec.md "Settings"): a foreign key pointing to this table,
         from and to with the state column's type, datetime(6) at, a nullable column of the same type for each required column,
         key, no title or body. All mismatches are reported at the name of the history table."""
         name = s.args[1]
@@ -3443,7 +3450,7 @@ class DocumentParser:
 
     def _audit_lists(self, table: _Table, s: _Setting):
         """Checks the audit exclude or include list, and returns a function that tells whether a column is recorded
-        (docs/dbspec.md "Audit"). If both lists are used, the keyword of the second list is rejected
+        (docs/spec/dbspec.md "Audit"). If both lists are used, the keyword of the second list is rejected
         and None is returned."""
         if len(s.lists) > 1:
             self._at(
@@ -3477,40 +3484,78 @@ class DocumentParser:
         """Checks the tables table of `tables <table> (<record>, <name>)`: another table than the audited, the history
         and the audit record table, not audited itself, with exactly the record and the name column, the name column a
         varchar(n) with n >= 63, the primary key (record, name) and the foreign key (record) references the audit record
-        table's key with restrict (docs/dbspec.md "Audit")."""
+        table's key with restrict (docs/spec/dbspec.md "Audit")."""
         ref, rec, nm = s.tables
         if not well_formed(ref.t):
             return
         if ref.t not in available:
-            self._at("setting", ref, f"tables table {ref.t} is not a table of this document or a used table")
+            self._at(
+                "setting",
+                ref,
+                f"tables table {ref.t} is not a table of this document or a used table",
+            )
             return
         tables = available[ref.t]
         if tables is None or tables.header_failed:
             return
         if tables is table or ref.t == s.into.t or ref.t == s.references.t:
-            self._at("setting", ref, "the tables table is another table than the audited, the history and the audit record table")
+            self._at(
+                "setting",
+                ref,
+                "the tables table is another table than the audited, the history and the audit record table",
+            )
             return
-        if tables.settings is not None and any(e.kind == "audit" for e in tables.settings.entries):
+        if tables.settings is not None and any(
+            e.kind == "audit" for e in tables.settings.entries
+        ):
             self._at("setting", ref, f"tables table {ref.t} is audited itself")
             return
         known = True
         for tok in (rec, nm):
-            if well_formed(tok.t) and tok.t not in tables.col_map and tok.t not in tables.failed:
-                self._at("setting", tok, f"column {tok.t} is not a column of tables table {ref.t}")
+            if (
+                well_formed(tok.t)
+                and tok.t not in tables.col_map
+                and tok.t not in tables.failed
+            ):
+                self._at(
+                    "setting",
+                    tok,
+                    f"column {tok.t} is not a column of tables table {ref.t}",
+                )
                 known = False
         if not known:
             return
         name = tables.col_map.get(nm.t)
-        if name is not None and name.type is not None and not (name.type.kind == "varchar" and name.type.length >= 63):
+        if (
+            name is not None
+            and name.type is not None
+            and not (name.type.kind == "varchar" and name.type.length >= 63)
+        ):
             self._at("setting", nm, "the name column is a varchar(n) with n >= 63")
         for c in tables.columns:
             if c.name.t not in (rec.t, nm.t):
-                self._at("setting", ref, f"tables table {ref.t} has the extra column {c.name.t}")
+                self._at(
+                    "setting",
+                    ref,
+                    f"tables table {ref.t} has the extra column {c.name.t}",
+                )
         pk = tables.pks[0] if len(tables.pks) == 1 else None
-        if not tables.failed_primary and (pk is None or [c.tok.t for c in pk.cols] != [rec.t, nm.t]):
-            self._at("setting", ref, f"the primary key of tables table {ref.t} is ({rec.t}, {nm.t})")
+        if not tables.failed_primary and (
+            pk is None or [c.tok.t for c in pk.cols] != [rec.t, nm.t]
+        ):
+            self._at(
+                "setting",
+                ref,
+                f"the primary key of tables table {ref.t} is ({rec.t}, {nm.t})",
+            )
         record = available.get(s.references.t)
-        if record is None or record.header_failed or len(record.pks) != 1 or len(record.pks[0].cols) != 1 or tables.failed_key:
+        if (
+            record is None
+            or record.header_failed
+            or len(record.pks) != 1
+            or len(record.pks[0].cols) != 1
+            or tables.failed_key
+        ):
             return
         key = record.pks[0].cols[0].tok.t
         declared = any(
@@ -3616,7 +3661,7 @@ class DocumentParser:
         positions.append(DbspecPosition(kind, path, at.line, column_of(text, at.s)))
 
     def positions(self) -> list[DbspecPosition]:
-        """Return the declaration positions in source order (docs/dbspec.md "Declaration positions"; the same
+        """Return the declaration positions in source order (docs/spec/dbspec.md "Declaration positions"; the same
         rule as engine/dbspec/positions.go)."""
         doc = self.document
         out: list[DbspecPosition] = []
@@ -3814,7 +3859,9 @@ class DocumentParser:
             references=s.references.t if s.references is not None else "",
             action=s.action.t if s.action is not None else "",
             previous=s.previous.t if s.previous is not None else "",
-            tables=tuple(t.t for t in s.tables) if getattr(s, "tables", None) is not None else None,
+            tables=tuple(t.t for t in s.tables)
+            if getattr(s, "tables", None) is not None
+            else None,
             exclude=exclude,
             include=include,
         )
@@ -3931,7 +3978,7 @@ def parse_dbspec(
 
 
 def analyze_dbspec(text: str, documents: Mapping[str, str]) -> DbspecAnalysis:
-    """The parse result, unchanged, and the tokens of the text (docs/dbspec.md "Syntax analysis")."""
+    """The parse result, unchanged, and the tokens of the text (docs/spec/dbspec.md "Syntax analysis")."""
     _check_arguments(text, documents)
     parsed = _parse_text(text, _ParseContext(dict(documents)), [])
     document, positions, diagnostics = _outcome(parsed)

@@ -1,4 +1,4 @@
-// The request hook of a connection handle (docs/usage.md "Request hook") on SQLite: the shared cases of
+// The request hook of a connection handle (docs/operations/usage.md "Request hook") on SQLite: the shared cases of
 // request_hook_run.mjs, each on a SQLite file of its own in a temporary directory that is removed when the
 // case ends, also after a failure.
 //

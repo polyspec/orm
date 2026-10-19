@@ -1,4 +1,4 @@
-# Runs the shared Db.with_request_hook cases (docs/usage.md "Request hook") on SQLite with contracts/fixtures/request_hook.dbs.
+# Runs the shared Db.with_request_hook cases (docs/operations/usage.md "Request hook") on SQLite with contracts/fixtures/request_hook.dbs.
 # The hook receives each request of the handle just before planning, and can add predicates, assignments and parameters.
 # Case names are the same as in the other clients: without_hook, read_filter, insert_assign, loaded_row_writes, invalid_param,
 # restore_key, restore_condition, restore_no_key, restore_rewritten_key, restore_hook_set_key.
@@ -150,7 +150,9 @@ class RequestHookTest(unittest.TestCase):
             (row.get_scope_col(), row.get_name(), row.get_hits())
             for row in self.models.HookUpsert().connect(self.db).gets()
         ]
-        self.assertEqual(rows, [("a", "k", 7)], "the stored row holds scope_col a, name k and hits 7")
+        self.assertEqual(
+            rows, [("a", "k", 7)], "the stored row holds scope_col a, name k and hits 7"
+        )
 
     def test_loaded_row_writes(self):
         seen = []
@@ -345,7 +347,7 @@ class RequestHookTest(unittest.TestCase):
 
 
 class InsertPartsTest(unittest.TestCase):
-    """A multi-row insert in creates runs in batches of the given size (docs/protocol.md 2.1,
+    """A multi-row insert in creates runs in batches of the given size (docs/spec/protocol.md 2.1,
     contracts/fixtures/insert_parts.json). The batches run in the given row order in one transaction."""
 
     @classmethod
@@ -381,7 +383,9 @@ class InsertPartsTest(unittest.TestCase):
         self.db.subscribe(events.append)
         for size in (0, -1, True, 2.0):
             with self.assertRaises(OrmError) as caught:
-                self.models.HookItem().connect(self.db).creates(self.rows(["a", "b"]), size)
+                self.models.HookItem().connect(self.db).creates(
+                    self.rows(["a", "b"]), size
+                )
             self.assertEqual(caught.exception.code, "CONFIG", f"batch {size!r}")
         with self.assertRaises(OrmError) as caught:
             self.models.HookItem().connect(self.db).creates(

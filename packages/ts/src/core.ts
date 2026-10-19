@@ -24,7 +24,7 @@ export interface EntityDef {
 /** Codec stages that keep the plain value; any other stage makes the column a styled value. */
 const plainStages = new Set(['aes', 'hex', 'ip']);
 
-/** Whether a column holds a styled value (docs/dbspec.md "Runtime model", codecs). */
+/** Whether a column holds a styled value (docs/spec/dbspec.md "Runtime model", codecs). */
 export function styledField(f: Field): boolean {
   return f.stages.some(stage => !plainStages.has(stage));
 }
@@ -153,7 +153,7 @@ export class Core {
   public possible: { column: string; value: unknown } | undefined;
   public groupLimit = 0;
   public deleteLock = false;
-  /** The revision column and the expected revision of the next update or delete (docs/dsl.md "Writes"). */
+  /** The revision column and the expected revision of the next update or delete (docs/spec/dsl.md "Writes"). */
   public expectedRevision: { column: string; revision: number | bigint } | undefined;
   public keyName = '';
   public fetchKey: ((m: ModelLike) => unknown) | undefined;
@@ -277,7 +277,7 @@ export class Core {
     }
     const op = present(operators[key.op], `the operator ${key.op}`);
     const nullable = key.op === '' || key.op === 'ne';
-    // contains binds NULL as its value, which matches no row (docs/protocol.md §2).
+    // contains binds NULL as its value, which matches no row (docs/spec/protocol.md §2).
     if (value === null && (key.op === 'lk' || key.op === 'lb')) return [p({ kind: 'value', op, value }), 0];
     if (value === null) {
       if (!nullable) throw configError(`null is not accepted by the ${key.op} operator`);

@@ -90,7 +90,7 @@ function aesV2Key(key: string): Buffer {
 
 
 function packIp(value: string): Buffer {
-  // The exact text only: white space around the address is CODEC_ENCODE (docs/codec.md).
+  // The exact text only: white space around the address is CODEC_ENCODE (docs/spec/codec.md).
   const source = value;
   const version = isIP(source);
   if (version === 4) return Buffer.from(source.split('.').map(Number));
@@ -148,7 +148,7 @@ function string(value: Uint8Array, operation: 'decode' | 'encode'): string {
 
 function decodeBase64(value: Uint8Array): Uint8Array {
   // Decode a stored cell only in the form the encoder writes: whitespace, line breaks, missing padding, and non-zero padding bits are
-  // rejected with CODEC_DECODE (docs/codec.md). Re-encoding must give the same text, which is the encoder's form. The bytes must be read unchanged, so
+  // rejected with CODEC_DECODE (docs/spec/codec.md). Re-encoding must give the same text, which is the encoder's form. The bytes must be read unchanged, so
   // the UTF-8 decoder must not strip a leading BOM.
   const source = Buffer.from(value).toString('latin1');
   const bytes = Buffer.from(source, 'base64');
@@ -167,7 +167,7 @@ function decodeBase64(value: Uint8Array): Uint8Array {
 export function decode(styles: readonly string[], raw: string | Uint8Array | null): StyledValue<CodecValue | JsonValue | string> {
   if (raw === null) return StyledValue.sqlNull();
   // An empty cell is CODEC_DECODE, except under a last base64 stage, whose encoder writes an empty cell for empty
-  // bytes (docs/codec.md, Stage lists).
+  // bytes (docs/spec/codec.md, Stage lists).
   if (raw.length === 0 && styles.at(-1) !== 'base64') throw new CodecError(codes.CODEC_DECODE, 'styled cell is empty');
   let current = bytes(raw);
   let value: CodecValue | JsonValue | undefined;
@@ -338,7 +338,7 @@ function decodeYaml(current: Uint8Array): CodecValue {
     if (document.warnings.length > 0) throw document.warnings[0];
     const schema = document.schema;
     visit(document, {
-      // docs/codec.md (yaml): anchors and every explicit tag, the core tags included, are refused.
+      // docs/spec/codec.md (yaml): anchors and every explicit tag, the core tags included, are refused.
       // The parser sets a node's anchor and tag only when the text writes them.
       Node(_key, node) {
         if (node.anchor !== undefined) throw new Error(`anchor &${node.anchor} is not supported`);

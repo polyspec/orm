@@ -1,4 +1,4 @@
-// Reads MySQL's current database as a catalog (docs/dialects.md "Introspection").
+// Reads MySQL's current database as a catalog (docs/spec/dialects.md "Introspection").
 // Every query reads the whole current database at once.
 import { present } from '../present.js';
 import { actionName, Catalog, quote, tableTypes, type CatalogQuery, type IColumn, type IForeignKey, type IKey, type ITable } from './introspect_catalog.js';
@@ -255,7 +255,7 @@ export function createChecks(create: string): Map<string, string> {
   return checks;
 }
 
-/** The form in which a renderer CHECK remains in CHECK_CLAUSE (docs/dialects.md "Introspection", "Checks"). */
+/** The form in which a renderer CHECK remains in CHECK_CLAUSE (docs/spec/dialects.md "Introspection", "Checks"). */
 function rendererCheck(col: IColumn): string {
   const c = '`' + col.name + '`';
   switch (col.type.kind) {

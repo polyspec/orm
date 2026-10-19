@@ -6,7 +6,7 @@ namespace Polyspec\Orm\Dbspec;
 /**
  * What an emission writes: the canonical text, the manifest text without
  * comments and diagrams, or the schema text that also keeps only the schema
- * settings (docs/dbspec.md, "Manifest and hashes").
+ * settings (docs/spec/dbspec.md, "Manifest and hashes").
  *
  * @internal
  */

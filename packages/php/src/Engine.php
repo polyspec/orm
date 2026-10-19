@@ -32,7 +32,7 @@ final class Engine
         return self::$engines[$manifestHash . "\0" . $dialect] ??= new self(Registry::model($manifestHash), $dialect, $cacheSize);
     }
 
-    /** The plan of a value-free request (docs/protocol.md). */
+    /** The plan of a value-free request (docs/spec/protocol.md). */
     public function plan(array $ir): array
     {
         $shape = json_encode($ir, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION);

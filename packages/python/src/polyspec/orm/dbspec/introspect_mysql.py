@@ -1,4 +1,4 @@
-# Reads MySQL's current database as a catalog (docs/dialects.md "Introspection").
+# Reads MySQL's current database as a catalog (docs/spec/dialects.md "Introspection").
 # Every query reads the whole current database at once.
 import re
 
@@ -306,7 +306,7 @@ def _create_checks(create: str) -> dict:
 
 
 def _renderer_check(col: dict) -> str:
-    """The form in which a renderer CHECK remains in CHECK_CLAUSE (docs/dialects.md
+    """The form in which a renderer CHECK remains in CHECK_CLAUSE (docs/spec/dialects.md
     "Introspection", "Checks")."""
     c = f"`{col['name']}`"
     kind = col["type"].kind

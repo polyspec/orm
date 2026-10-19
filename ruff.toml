@@ -8,7 +8,9 @@ target-version = "py314"
 cache-dir = "var/ruff"
 
 [lint]
-select = ["E4", "E7", "E9", "F", "TID251"]
+# No swallowed error (K256): E722 a bare except, BLE001 a blind except of Exception, S110 and S112 an except that only
+# passes or continues.
+select = ["E4", "E7", "E9", "F", "TID251", "BLE001", "S110", "S112"]
 
 [lint.per-file-ignores]
 # A vulture whitelist names the code it keeps as bare names and attributes of `_`, which it never defines.
@@ -16,7 +18,7 @@ select = ["E4", "E7", "E9", "F", "TID251"]
 
 # S3: tests run against the installed package. ruff resolves a qualified name statically, so the module sys reached through
 # importlib.import_module("sys") escapes the sys.path ban; import_module is banned with it, since an import statement names
-# every module that a test needs. __import__("sys") and getattr(sys, "path") stay beyond a static check (docs/tool-inventory.md).
+# every module that a test needs. __import__("sys") and getattr(sys, "path") stay beyond a static check (docs/operations/tool-inventory.md).
 [lint.flake8-tidy-imports.banned-api]
 "sys.path".msg = "S3: tests run against the installed package; never change sys.path"
 "importlib.import_module".msg = "S3: import the module with an import statement; a module chosen at run time escapes the sys.path ban"

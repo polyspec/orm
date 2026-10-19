@@ -1,4 +1,4 @@
-# Slot that a request parameter fills, and its logical type (docs/protocol.md §5 "Parameters"). IR executor messages
+# Slot that a request parameter fills, and its logical type (docs/spec/protocol.md §5 "Parameters"). IR executor messages
 # write each parameter in the form of its slot type, so a client reads the type here. The same as Go's ir.ParamUses.
 from __future__ import annotations
 

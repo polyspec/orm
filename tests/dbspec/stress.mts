@@ -3,7 +3,7 @@
 // form.
 //
 // Usage: node tests/dbspec/stress.mts [tables]
-// Given tables, it writes a small document of the same shape, with 30 columns and 5 foreign keys per table. make check
+// Given tables, it writes a small document of the same shape, with 30 columns and 5 foreign keys per table. make orm-check
 // runs the same code paths (render, apply, introspect, comparison) briefly with this.
 
 const TABLES = process.argv[2] === undefined ? 2000 : Number(process.argv[2]);

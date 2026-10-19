@@ -47,7 +47,7 @@ final class Faults
 
     /**
      * Pins the connection's executor clock to the $clock time. $clock is UTC text in the form `YYYY-MM-DD HH:MM:SS.ffffff`
-     * (docs/protocol.md "Test clock"). A different format is an \InvalidArgumentException and nothing is set.
+     * (docs/spec/protocol.md "Test clock"). A different format is an \InvalidArgumentException and nothing is set.
      */
     public static function fixClock(Db $db, string $clock): void
     {
@@ -64,7 +64,7 @@ final class Faults
 
     /**
      * The affected count of the last successful write on the connection. It is null if there was no successful write
-     * (docs/protocol.md "Test write result").
+     * (docs/spec/protocol.md "Test write result").
      */
     public static function lastAffected(Db $db): ?int
     {

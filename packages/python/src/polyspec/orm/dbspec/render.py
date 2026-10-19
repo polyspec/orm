@@ -1,4 +1,4 @@
-# Writes the dbspec document set as statements of one dialect (docs/dialects.md "Rendered
+# Writes the dbspec document set as statements of one dialect (docs/spec/dialects.md "Rendered
 # statements"). The bytes of the statements are the same as tests/dbspec/ddl.json and the render of other clients.
 # are the same.
 from __future__ import annotations
@@ -74,7 +74,7 @@ class Renderer:
     def create_table(self, t: DbspecTable, name: str, check_name, hidden) -> str:
         """CREATE TABLE of table t under name. check_name decides the renderer
         CHECK name of the column; hidden columns follow t's columns as nullable, without a CHECK
-        (SQLite rebuild in docs/plans.md "Steps")."""
+        (SQLite rebuild in docs/spec/plans.md "Steps")."""
         parts = [self.column(c) for c in t.columns]
         for c in hidden:
             plain = DbspecColumn(c.comments, c.name, c.type, True, False, c.default)
@@ -375,7 +375,7 @@ class Renderer:
             f"VALUES ({', '.join(values)})"
         )
         if a.tables is not None:
-            # The tables table keeps one row per audit record and audited table (docs/dialects.md "Triggers").
+            # The tables table keeps one row per audit record and audited table (docs/spec/dialects.md "Triggers").
             table, record, name = a.tables
             tables = (
                 f"INSERT INTO {self.q(table)} ({self.q(record)}, {self.q(name)}) "
@@ -413,7 +413,7 @@ def _operand_type(t: DbspecTable, a: dict, b):
 
 
 def render_dbspec(documents: list[DbspecDocument], dialect: str) -> dict:
-    """Writes the statements that create the tables of the parsed document set in one dialect (docs/dialects.md
+    """Writes the statements that create the tables of the parsed document set in one dialect (docs/spec/dialects.md
     "Rendered statements"): documents in `use` order, tables in document order. If a check fails,
     it raises that diagnostic; if the dialect is unknown, it raises TypeError."""
     rendered = render_dbspec_statements(documents, dialect)

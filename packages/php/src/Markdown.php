@@ -4,16 +4,16 @@ declare(strict_types=1);
 namespace Polyspec\Orm;
 
 /**
- * @internal The markdown IR executor client (docs/protocol.md §5): a markdown connection sends
+ * @internal The markdown IR executor client (docs/spec/protocol.md §5): a markdown connection sends
  * each validated request as one message to a flowmark server and assembles the rows it answers.
  * It plans nothing and sends no SQL.
  */
 final class Markdown
 {
-    /** The error that the SQL-only surface accepts on a markdown connection (docs/dialects.md "Markdown IR executor"). */
+    /** The error that the SQL-only surface accepts on a markdown connection (docs/spec/dialects.md "Markdown IR executor"). */
     /**
      * The begin control message of a transaction: a read-only transaction sends read_only true, any other leaves the
-     * member out (docs/protocol.md §5 Session, the control cases of tests/bind/vectors.json).
+     * member out (docs/spec/protocol.md §5 Session, the control cases of tests/bind/vectors.json).
      *
      * @return array{op: 'begin', read_only?: true}
      */

@@ -1,4 +1,4 @@
-//! Reads check predicates (docs/dbspec.md, "Checks"): a column and literal
+//! Reads check predicates (docs/spec/dbspec.md, "Checks"): a column and literal
 //! comparison, `in`, `is null`, and `and`/`or` with parentheses. `check_type`
 //! checks the type.
 

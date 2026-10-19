@@ -1,6 +1,6 @@
 /*
  * Reads the connection's database into the intermediate model (PHP client CatalogRows, CheckDecoder, CatalogTriggers, MysqlCatalog,
- * PostgresCatalog, SqliteCatalog, docs/dialects.md "Introspection"). PDO calls the methods of its object through the Zend API, so
+ * PostgresCatalog, SqliteCatalog, docs/spec/dialects.md "Introspection"). PDO calls the methods of its object through the Zend API, so
  * subclasses' overridden methods and the meaning of PDOException are the same as in the PHP client.
  */
 #include "dbspec.h"
@@ -1111,7 +1111,7 @@ static setting *audit_setting(const itable *t, str history, const strs *quoted, 
 
 /* The setting line whose trigger set gives the same renderer output; NULL if none. */
 /* Recognizes each setting by its own trigger name (the recomputed renderer name); the renderer
- * output of the settings the trigger set recognized. Returns those setting lines only when output, name, and content all match; otherwise NULL (docs/dialects.md "Triggers").
+ * output of the settings the trigger set recognized. Returns those setting lines only when output, name, and content all match; otherwise NULL (docs/spec/dialects.md "Triggers").
  * A table that writes two settings together is the sum of both outputs, and is not judged by count. */
 static strs *trigger_setting(dialect d, const itable *t, itriggerv *list)
 {

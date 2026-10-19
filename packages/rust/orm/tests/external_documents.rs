@@ -1,4 +1,4 @@
-//! Checks document sets that use external documents on SQLite, MySQL, and PostgreSQL (docs/dbspec.md "External
+//! Checks document sets that use external documents on SQLite, MySQL, and PostgreSQL (docs/spec/dbspec.md "External
 //! documents", contracts/fixtures/external). The member set uses ext_account and ext_audit from ext_core via use,
 //! and owns only ext_post and ext_post_history.
 //!   - if the external tables are missing, install and add_tables_and_columns are CONFIG before any statement and do not create the member's tables;

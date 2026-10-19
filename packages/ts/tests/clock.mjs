@@ -210,7 +210,7 @@ for (const name of selected.filter(name => Object.hasOwn(databaseFree, name))) {
 }
 const databaseCases = selected.filter(name => !Object.hasOwn(databaseFree, name));
 for (const env of databaseCases.length > 0 ? ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_POSTGRES_DSN'] : []) {
-  if (!process.env[env]) throw new Error(`${env} is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers`);
+  if (!process.env[env]) throw new Error(`${env} is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers`);
 }
 for (const name of databaseCases) {
   const run = cases[name];

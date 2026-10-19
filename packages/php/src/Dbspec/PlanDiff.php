@@ -5,7 +5,7 @@ namespace Polyspec\Orm\Dbspec;
 
 /**
  * The diff of a plan, shared by Dbspec::diff and the plan statements
- * (docs/plans.md "Diff").
+ * (docs/spec/plans.md "Diff").
  *
  * @internal
  */

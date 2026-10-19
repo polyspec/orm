@@ -103,7 +103,7 @@ async function endSession(driver, dsn) {
   if (driver === 'sqlite') return;
   const env = `ORM_TEST_${driver.toUpperCase()}_SERVER_DSN`;
   const server = process.env[env];
-  if (!server) throw new Error(`${env} is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers`);
+  if (!server) throw new Error(`${env} is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers`);
   // The case database name is the path of the case DSN. The server connection also opens that database.
   const session = relatedDsn(server, new URL(dsn).pathname.slice(1));
   if (driver === 'postgres') {
@@ -213,7 +213,7 @@ async function rollbackFault(driver, dsn) {
 const cases = { rollback_failed: rollbackFailed, savepoint_rollback_failed: savepointRollbackFailed, rollback_fault: rollbackFault };
 const selected = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(cases);
 for (const env of ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_POSTGRES_DSN']) {
-  if (!process.env[env]) throw new Error(`${env} is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers`);
+  if (!process.env[env]) throw new Error(`${env} is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers`);
 }
 for (const name of selected) {
   const run = cases[name];

@@ -1,5 +1,5 @@
 /*
- * Writes a document as canonical text, or as manifest text and schema text (PHP client Emitter, docs/dbspec.md
+ * Writes a document as canonical text, or as manifest text and schema text (PHP client Emitter, docs/spec/dbspec.md
  * "Canonical form", "Manifest and hashes"). The document set check (DocumentSet) and the manifest are also here.
  */
 #include "dbspec.h"
@@ -355,7 +355,7 @@ void dbs_set_check(const documentv *in, documentv *ordered, diags *out)
 
 /* A document holding only the columns, primary key, unique keys, the foreign keys whose referenced table is also one of
  * tables, and the indexes whose leading columns are such a foreign key's columns, of tables from the external document, in
- * document order (docs/dbspec.md "Manifest and hashes"), so the reduced text satisfies the validation of the full
+ * document order (docs/spec/dbspec.md "Manifest and hashes"), so the reduced text satisfies the validation of the full
  * document. NULL if the table does not exist. */
 static document *external_document(const document *d, const strs *tables)
 {

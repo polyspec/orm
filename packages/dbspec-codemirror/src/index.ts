@@ -1,4 +1,4 @@
-// The CodeMirror 6 adapter of the dbspec language service (docs/editor.md "Layers"): it turns the service's results into
+// The CodeMirror 6 adapter of the dbspec language service (docs/spec/editor.md "Layers"): it turns the service's results into
 // CodeMirror's forms and reads nothing of its own.
 import type { Extension } from '@codemirror/state';
 import { dbspecFormatKey } from './commands.js';

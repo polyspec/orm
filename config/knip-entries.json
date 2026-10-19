@@ -6,7 +6,9 @@
     "docs/.vitepress/theme/index.ts": "the VitePress theme of the site under docs/, which VitePress loads by its path",
     "tests/dbspec/compare/check.mts": "the dbspec comparison check, which make runs with node",
     "tests/dbspec/stress.mts": "the writer of the stress documents, which make runs with node",
-    "tests/go-run.mts": "the Go test runner, which the repository checks and the CI spawn"
+    "tests/go-run.mts": "the Go test runner, which the repository checks and the CI spawn",
+    "examples/thin-slice/ts/main.mts": "the TypeScript thin-slice demo, which the usage guide runs with node and the thin-slice checks run",
+    "packages/go/testing/feature-json.mts": "the Go feature runner, which the feature-go-unit target of make runs with node (Makefile)"
   },
   "workspaces": {
     "packages/ts": {
@@ -42,8 +44,7 @@
   "ignoreDependencies": {
     "vue": "the Vue of VitePress, which the site theme (docs/.vitepress/theme/index.ts) imports; vitepress pins it",
     "mysql2": "the MySQL driver of the TypeScript client (packages/ts), which the root's database checks import through the workspace",
-    "pg": "the PostgreSQL driver of the TypeScript client (packages/ts), which the root's database checks import through the workspace",
-    "@polyspec/ordered-json": "the ordered JSON of the TypeScript client (packages/ts), which the conformance result check imports through the workspace"
+    "pg": "the PostgreSQL driver of the TypeScript client (packages/ts), which the root's database checks import through the workspace"
   },
   "binaries": {
     "sqlite3": "the SQLite shell that make decimal-bench-sqlite runs (scripts/decimal-bench-sqlite.mts)",
@@ -56,6 +57,9 @@
     "mysql_tzinfo_to_sql": "the MySQL tool that loads the time zone tables for make test-servers",
     "make": "GNU make, which the tests of scripts/check/run, scripts/repo/python-venv and tests/cargo-test run on the Makefile",
     "php": "the PHP of .php-version, which scripts/ci/php-extension-tools.mts, scripts/php-without-mysql.mts and the interface and repository checks run",
-    "go": "the Go of mise.toml, which tests/go-run.mts, tests/go-test.mts and scripts/docs/markdown-table.mts run"
+    "go": "the Go of mise.toml, which tests/go-run.mts, tests/go-test.mts and scripts/docs/markdown-table.mts run",
+    "psql": "the PostgreSQL client that the test servers of the PostgreSQL database check run against the primary, the replica and the pooler (scripts/test-servers.test.mts)",
+    "initdb": "the PostgreSQL command that creates the cluster of the replica tests (scripts/test-servers.test.mts)",
+    "pg_basebackup": "the PostgreSQL command that copies the primary into the replica (scripts/test-servers.test.mts)"
   }
 }

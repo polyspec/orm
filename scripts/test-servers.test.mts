@@ -1,4 +1,4 @@
-// The stop tests of scripts/test-servers.mts. make test-servers-check builds tests/stop-process and tests/lease and passes
+// The stop tests of scripts/test-servers.mts. make orm-test-servers-check builds tests/stop-process and tests/lease and passes
 // their paths as STOP_PROCESS and LEASE.
 import assert from 'node:assert/strict';
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
@@ -20,7 +20,7 @@ const exited = (pid: number): boolean => { const state = processState(pid); retu
 // from the operating system's exit event (STOP_PROCESS), not by polling. A slow but sound server that ends 1.5 seconds
 // after TERM is reported stopped after that, when its process is already gone.
 caseTest('stopPid waits for the exit event of the server, with no polling', COMPUTE, () => {
-  assert.ok(process.env.STOP_PROCESS, 'STOP_PROCESS is unset; run make test-servers-check, which builds it');
+  assert.ok(process.env.STOP_PROCESS, 'STOP_PROCESS is unset; run make orm-test-servers-check, which builds it');
   const dir = mkdtempSync(join(tmpdir(), 'orm-stop-'));
   try {
     for (const [name, delay] of [['quick', 0], ['slow', 1.5]] as const) {
@@ -48,7 +48,7 @@ read state < ${ready}`], { timeout: 10_000 });
 // event and removes the directory. No database starts.
 caseTest('a start first stops the server an earlier start left on its datadir, by its pid file', COMPUTE, () => {
   const { LEASE: lease, STOP_PROCESS: stopProcess } = process.env;
-  assert.ok(lease && stopProcess, 'LEASE or STOP_PROCESS is unset; run make test-servers-check, which builds them');
+  assert.ok(lease && stopProcess, 'LEASE or STOP_PROCESS is unset; run make orm-test-servers-check, which builds them');
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'orm-earlier-')));
   const p = paths(root, join(root, 'sockets'));
   try {
@@ -73,7 +73,7 @@ read state < ${ready}`], { timeout: 10_000 });
 // stop proceeds once the hold ends. The holder is a shell that waits reading a FIFO; ready and end go through FIFOs.
 caseTest('stopping the test servers is refused while another run holds a lease, naming the holder', COMPUTE, () => {
   const { LEASE: lease, STOP_PROCESS: stopProcess } = process.env;
-  assert.ok(lease && stopProcess, 'LEASE or STOP_PROCESS is unset; run make test-servers-check, which builds them');
+  assert.ok(lease && stopProcess, 'LEASE or STOP_PROCESS is unset; run make orm-test-servers-check, which builds them');
   // The script names its servers by its real path (Node resolves the module path), so the root is a real path too.
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'orm-lease-')));
   const release = join(root, 'release');
@@ -115,7 +115,7 @@ caseTest('stopping the test servers is refused while another run holds a lease, 
 // process ends, so the first hold after an earlier one waits for that release with --wait.
 caseTest('children of an exclusive holder share its lease one exclusive holder at a time', COMPUTE, () => {
   const { LEASE: lease } = process.env;
-  assert.ok(lease, 'LEASE is unset; run make test-servers-check, which builds it');
+  assert.ok(lease, 'LEASE is unset; run make orm-test-servers-check, which builds it');
   const root = mkdtempSync(join(tmpdir(), 'orm-lease-nested-'));
   const leases = join(root, 'leases');
   try {
@@ -159,7 +159,7 @@ function writeHolder(dir: string, name: string, fields: { kind: string; pid: num
 
 caseTest('an ended holder whose releaser still runs is waited for, and taken over when the releaser ends without removing it', COMPUTE, async () => {
   const { LEASE: lease } = process.env;
-  assert.ok(lease, 'LEASE is unset; run make test-servers-check, which builds it');
+  assert.ok(lease, 'LEASE is unset; run make orm-test-servers-check, which builds it');
   const root = mkdtempSync(join(tmpdir(), 'orm-lease-dead-'));
   const releaser = spawn('sleep', ['30'], { stdio: 'ignore' });
   try {
@@ -185,7 +185,7 @@ caseTest('an ended holder whose releaser still runs is waited for, and taken ove
 
 caseTest('a dead shared lease is taken over by any request, a dead exclusive one only by an exclusive request', COMPUTE, () => {
   const { LEASE: lease } = process.env;
-  assert.ok(lease, 'LEASE is unset; run make test-servers-check, which builds it');
+  assert.ok(lease, 'LEASE is unset; run make orm-test-servers-check, which builds it');
   const root = mkdtempSync(join(tmpdir(), 'orm-lease-dead-'));
   try {
     const shared = join(root, 'shared');
@@ -210,7 +210,7 @@ caseTest('a dead shared lease is taken over by any request, a dead exclusive one
 
 caseTest('hold records its releaser in the lease file before it returns', COMPUTE, async () => {
   const { LEASE: lease } = process.env;
-  assert.ok(lease, 'LEASE is unset; run make test-servers-check, which builds it');
+  assert.ok(lease, 'LEASE is unset; run make orm-test-servers-check, which builds it');
   const root = mkdtempSync(join(tmpdir(), 'orm-lease-dead-'));
   const holder = spawn('sleep', ['30'], { stdio: 'ignore' });
   try {
@@ -344,7 +344,7 @@ caseTest('the test PostgreSQL replica streams again after the primary wrote WAL 
     start(replica, replicaPort, '');
     const state = psql(primaryPort, "SELECT coalesce((SELECT state FROM pg_stat_replication WHERE application_name = 'orm_replica'), 'absent')");
     let commit = 'returned';
-    try { psql(primaryPort, "SET synchronous_commit = remote_apply; INSERT INTO t VALUES ('y')", 20_000); } catch (error) { commit = `did not return within 20 s (${(error as Error).message.split('\n')[0]})`; }
+    try { psql(primaryPort, "SET synchronous_commit = remote_apply; INSERT INTO t VALUES ('y')", 20_000); } catch (error) { commit = `did not return within 20 s (${(error instanceof Error ? error.message : String(error)).split('\n')[0]})`; }
     const log = readFileSync(`${replica}.log`, 'utf8').split('\n').filter(line => line.includes('has already been removed')).slice(0, 1).join('');
     assert.ok(commit === 'returned', `a synchronous commit ${commit}; the replica is ${state} in pg_stat_replication${log === '' ? '' : `, and logs: ${log}`}`);
     assert.equal(psql(primaryPort, "SELECT state FROM pg_stat_replication WHERE application_name = 'orm_replica'"), 'streaming');

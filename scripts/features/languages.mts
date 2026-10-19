@@ -1,12 +1,9 @@
-import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { readParityConfig } from '../json/formats.mts';
 
 // The language set of the feature checks is the client profile of config/parity.json, the one source of it; a feature's
 // languages are the client implementations that its parity units bind.
-const parity = JSON.parse(readFileSync(resolve(new URL('../..', import.meta.url).pathname, 'config/parity.json'), 'utf8')) as {
-  profiles: { name: string; implementations: string[] }[];
-  units: { id: string; bindings?: { implementation: string; test?: string }[] }[];
-};
+const parity = readParityConfig(resolve(new URL('../..', import.meta.url).pathname, 'config/parity.json'));
 
 /** The implementations of the client profile, in the order config/parity.json declares them. */
 export function clientLanguages(): string[] {

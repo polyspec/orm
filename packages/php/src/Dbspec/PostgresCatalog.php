@@ -5,7 +5,7 @@ namespace Polyspec\Orm\Dbspec;
 
 /**
  * Reads the current PostgreSQL schema into an intermediate model. Every query reads the whole schema
- * in one go (docs/dialects.md "Introspection").
+ * in one go (docs/spec/dialects.md "Introspection").
  *
  * @internal
  */

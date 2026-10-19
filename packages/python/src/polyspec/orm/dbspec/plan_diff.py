@@ -1,4 +1,4 @@
-# Compares the source and target schemas of a plan (docs/plans.md "Diff").
+# Compares the source and target schemas of a plan (docs/spec/plans.md "Diff").
 # The reference is the other client's plan diff; the diagnostic messages are the same bytes.
 from __future__ import annotations
 
@@ -336,7 +336,7 @@ def plan_diff(source, p: dict) -> dict:
 
 def diff_plan(source: DbspecDocument | None, plan: DbspecPlan) -> dict:
     """Returns the changes from the source schema (an empty schema if None) to the target of the plan
-    (docs/plans.md "Diff"). A source whose schemaHash differs from the plan's `from` is a
+    (docs/spec/plans.md "Diff"). A source whose schemaHash differs from the plan's `from` is a
     diagnostic."""
     result = plan_diff(source, plan)
     if result["diff"] is None:

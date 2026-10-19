@@ -9,7 +9,7 @@ import (
 // Dialect names a database whose statements Render writes.
 type Dialect string
 
-// The dialects of docs/dialects.md "Rendered statements".
+// The dialects of docs/spec/dialects.md "Rendered statements".
 const (
 	DialectMySQL    Dialect = "mysql"
 	DialectPostgres Dialect = "postgres"
@@ -17,7 +17,7 @@ const (
 )
 
 // Render writes the statements that create the tables of the document set
-// in one dialect (docs/dialects.md "Rendered statements"), or returns the
+// in one dialect (docs/spec/dialects.md "Rendered statements"), or returns the
 // diagnostics of an invalid set. A dialect other than the three constants is
 // a programming error and panics.
 func Render(documents []*Document, dialect Dialect) ([]string, []Diagnostic) {
@@ -160,7 +160,7 @@ func (r renderer) table(t *Table) []string {
 
 // createTable is the CREATE TABLE that creates table t with the given name. checkName is the column's
 // renderer CHECK name, and hidden is a nullable column added after t's columns, with no CHECK
-// (SQLite rebuild in docs/plans.md "Steps").
+// (SQLite rebuild in docs/spec/plans.md "Steps").
 func (r renderer) createTable(t *Table, name string, checkName func(column string) string, hidden []Column) string {
 	var parts []string
 	for _, c := range t.Columns {
@@ -595,7 +595,7 @@ func (r renderer) history(t *Table, a *AuditSetting, event, timing, action, prev
 	}
 	body := "INSERT INTO " + r.q(a.History) + " (" + strings.Join(columns, ", ") + ") VALUES (" + strings.Join(values, ", ") + ")"
 	if a.Tables != "" {
-		// The tables table keeps one row per audit record and audited table (docs/dialects.md "Triggers").
+		// The tables table keeps one row per audit record and audited table (docs/spec/dialects.md "Triggers").
 		tables := "INSERT INTO " + r.q(a.Tables) + " (" + r.q(a.TablesRecord) + ", " + r.q(a.TablesName) + ") VALUES (NEW." + r.q(a.Column) + ", '" + t.Name + "')"
 		if r.d == DialectMySQL {
 			tables += " ON DUPLICATE KEY UPDATE " + r.q(a.TablesName) + " = " + r.q(a.TablesName)

@@ -2,7 +2,7 @@
 // the test servers (each case creates its own database there), ORM_TEST_MYSQL_SERVER_DSN and ORM_TEST_POSTGRES_SERVER_DSN
 // name the same servers without a pooler, and ORM_TOOLS_MYSQL_DSN and ORM_TOOLS_POSTGRES_DSN name dedicated databases for
 // the Rust catalog connection tests; a test fails when one it needs is unset. ORM_CLIENT_DB_LANGS selects clients (default:
-// all). ORM_PYTHON names the Python of the venv that make install-python builds. The rollback fault cases run through each client's test entry point: the Go build tag ormtest, the Rust feature
+// all). ORM_PYTHON names the Python of the venv that make orm-install-python builds. The rollback fault cases run through each client's test entry point: the Go build tag ormtest, the Rust feature
 // test-faults and the Node condition orm-test.
 //
 // With ORM_CLIENT_DB_LANES=parallel the clients run together, one lane each. Each case creates and uses its own database,

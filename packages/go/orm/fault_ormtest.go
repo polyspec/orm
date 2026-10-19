@@ -28,7 +28,7 @@ func FailNextStatement(db *DB, code, message string) {
 
 // FixClock fixes the executor clock of the connection of db and of all of its handles
 // to the clock time. The clock is UTC text in the form `YYYY-MM-DD HH:MM:SS.ffffff`.
-// If the format differs, it panics and sets nothing (docs/protocol.md "Test clock").
+// If the format differs, it panics and sets nothing (docs/spec/protocol.md "Test clock").
 // This function exists only in builds with the ormtest build tag.
 func FixClock(db *DB, clock string) {
 	t, err := time.ParseInLocation("2006-01-02 15:04:05.000000", clock, time.UTC)
@@ -39,7 +39,7 @@ func FixClock(db *DB, clock string) {
 }
 
 // LastAffected returns the affected count of the last successful write result on the connection of db and on all of its handles,
-// along with true. If there was no successful write, it returns 0 and false (docs/protocol.md
+// along with true. If there was no successful write, it returns 0 and false (docs/spec/protocol.md
 // "Test write result"). This function exists only in builds with the ormtest build tag.
 func LastAffected(db *DB) (int64, bool) {
 	n := db.m.lastAffected.Load()

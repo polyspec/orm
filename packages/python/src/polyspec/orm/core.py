@@ -1,5 +1,5 @@
 # Query-building state: the query being built, and the state of a row that was read. The Model chain fills this
-# and the planner turns it into IR (docs/protocol.md).
+# and the planner turns it into IR (docs/spec/protocol.md).
 from polyspec.orm import codes
 from polyspec.orm.engine.model import Field, field_of
 from polyspec.orm.errors import OrmError
@@ -35,7 +35,7 @@ SAFE_INTEGER = 9007199254740991
 
 
 def styled_field(f: Field) -> bool:
-    """Whether the column holds a styled value (docs/dbspec.md "Runtime model")."""
+    """Whether the column holds a styled value (docs/spec/dbspec.md "Runtime model")."""
     return any(stage not in PLAIN_STAGES for stage in f.stages)
 
 
@@ -146,7 +146,7 @@ class Core:
         self.possible = None
         self.group_limit = 0
         self.delete_lock = False
-        # the revision column and the expected revision of the next update or delete (docs/dsl.md "Writes").
+        # the revision column and the expected revision of the next update or delete (docs/spec/dsl.md "Writes").
         self.expected_revision = None
         self.key_name = ""
         self.fetch_key = None
@@ -314,7 +314,7 @@ class Core:
             ), 0
         op = _OPERATORS[key.op]
         nullable = key.op in ("", "ne")
-        # contains binds NULL as its value, which matches no row (docs/protocol.md §2).
+        # contains binds NULL as its value, which matches no row (docs/spec/protocol.md §2).
         if value is None and key.op in ("lk", "lb"):
             return p(kind="value", op=op, value=None), 0
         if value is None:
@@ -449,7 +449,7 @@ class Core:
 
     def typed_column(self, name: str, kind: str):
         """The value of column name as its generated getter returns it: a value of the type of its category kind
-        (docs/dbspec.md "Runtime model"), or None for a null column. Another value raises TypeError, as a typed
+        (docs/spec/dbspec.md "Runtime model"), or None for a null column. Another value raises TypeError, as a typed
         getter of the other clients does."""
         value = self.column(name)
         field = field_of(self.ent.entity, name)
@@ -632,7 +632,9 @@ class Frame:
             return path
         if self.outer is not None and core is self.outer:
             return "^"
-        raise OrmError(codes.CONFIG, f"{core.ent.entity.name} is not part of the statement")
+        raise OrmError(
+            codes.CONFIG, f"{core.ent.entity.name} is not part of the statement"
+        )
 
 
 def _pad(values):
@@ -669,7 +671,9 @@ class BuiltRequest:
     def fail(self, error) -> None:
         if self.error is None:
             self.error = (
-                error if isinstance(error, OrmError) else OrmError(codes.CONFIG, str(error))
+                error
+                if isinstance(error, OrmError)
+                else OrmError(codes.CONFIG, str(error))
             )
 
     def finish(self) -> dict:
@@ -704,7 +708,9 @@ class BuiltRequest:
             child_path = f.path_of(join["child"])
             name = child_path[child_path.rfind("/") + 1 :]
             if child_path in self.join_paths:
-                self.fail(OrmError(codes.CONFIG, f"join result name {name} is used twice"))
+                self.fail(
+                    OrmError(codes.CONFIG, f"join result name {name} is used twice")
+                )
                 return None
             self.join_paths.add(child_path)
             child = self.query(join["child"], f, child_path)
@@ -915,7 +921,9 @@ class BuiltRequest:
         c = model.core
         if c.conn is not None:
             self.fail(
-                OrmError(codes.CONFIG, "a subquery model cannot have its own connection")
+                OrmError(
+                    codes.CONFIG, "a subquery model cannot have its own connection"
+                )
             )
             return None
         if c.relations:

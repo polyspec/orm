@@ -1,4 +1,4 @@
-// An update or delete with an expected revision (docs/dsl.md "Writes", expectRevision) on a SQLite file of each
+// An update or delete with an expected revision (docs/spec/dsl.md "Writes", expectRevision) on a SQLite file of each
 // case in a temporary directory that is removed when the case ends: a match updates and bumps the revision or
 // deletes, a mismatch fails with REVISION_CHANGED and changes nothing.
 //

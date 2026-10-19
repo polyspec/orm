@@ -1,5 +1,5 @@
 <?php
-// Identity load and restart (docs/usage.md "Execute a compiled statement"):
+// Identity load and restart (docs/operations/usage.md "Execute a compiled statement"):
 // the shared cases of contracts/fixtures/identity_load.json with the fixture
 // contracts/fixtures/identity_load.dbs. A compile case compiles its request on
 // MySQL, PostgreSQL and SQLite and compares the statements (role, SQL, bind

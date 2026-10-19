@@ -1,6 +1,6 @@
 # SchemaUtils.addTablesAndColumns: an installed set takes a newer schema version by adding its tables
 # and nullable columns; a change that cannot be added is refused with SCHEMA_DIFFERS before any
-# statement (packages/ts/src/utils.ts, docs/schema.md "Adding tables and columns").
+# statement (packages/ts/src/utils.ts, docs/spec/schema.md "Adding tables and columns").
 import os
 import tempfile
 import unittest

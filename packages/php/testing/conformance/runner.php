@@ -54,7 +54,7 @@ for ($i = 1; $i < $argc; $i++) {
 }
 $dsn ?? throw new RuntimeException('--dsn required');
 
-// $log is the vector's statement events (docs/usage.md "Statement events"). A transaction's number within the vector
+// $log is the vector's statement events (docs/operations/usage.md "Statement events"). A transaction's number within the vector
 // is renumbered from 1 in order of first appearance, and is null outside. error is the statement's error code or null.
 $log = [];
 /** @var array<int, int> Maps transaction numbers in the vector to numbers in order of first appearance. */
@@ -299,7 +299,7 @@ vector('relation_null_key', function () use ($db): int|array {
 });
 
 // shared_note is a table of the external document bench_shared: it is read through its entity, and a write fails
-// with CONFIG before any statement (docs/dbspec.md "External documents").
+// with CONFIG before any statement (docs/spec/dbspec.md "External documents").
 vector('external_read', function () use ($db): array {
     $related = array_map(
         static fn(NoteReader $r): array => [$r->getSeq(), $r->getSharedNoteModel()->getTitle()],
@@ -497,7 +497,7 @@ vector('creates_and_save', function () use ($db): array {
 });
 
 // creates(rows, batch) runs each batch of batch rows as one multi-row INSERT in one transaction; a batch that
-// is not a positive integer is CONFIG before any statement (docs/protocol.md).
+// is not a positive integer is CONFIG before any statement (docs/spec/protocol.md).
 vector('creates_batch', function () use ($db): array {
     $rows = [];
     foreach (['a', 'b', 'c', 'd', 'e'] as $i => $name) {
@@ -618,7 +618,7 @@ vector('restore', function () use ($db): array {
 });
 vector('restore_or_create', function () use ($db): array {
     // restoreOrCreate restores the soft-deleted row of its key, refuses a live row with ROW_NOT_DELETED and creates a
-    // missing key (docs/usage.md "Restore or create a row"). The transaction ends with a rollback, so the database is unchanged.
+    // missing key (docs/operations/usage.md "Restore or create a row"). The transaction ends with a rollback, so the database is unchanged.
     $boom = new RuntimeException('boom');
     $result = [];
     try {
@@ -649,7 +649,7 @@ vector('restore_or_create', function () use ($db): array {
 
 vector('expect_revision', function () use ($db): array {
     // expectRevision makes an update or a delete write only while author 42's like_count still holds the expected
-    // revision; an update stores revision + 1, and a mismatch is REVISION_CHANGED and writes nothing (docs/dsl.md "Writes").
+    // revision; an update stores revision + 1, and a mismatch is REVISION_CHANGED and writes nothing (docs/spec/dsl.md "Writes").
     // The transaction ends with a rollback, so the database is unchanged.
     $boom = new RuntimeException('boom');
     $result = [];
@@ -716,7 +716,7 @@ vector('joins_soft_deleted', function () use ($db): array {
 });
 
 vector('column_pairs', function () use ($author): array {
-    // Two compared columns meet as dbspec check operands do (docs/dbspec.md "Checks"): a comparison of two columns, a
+    // Two compared columns meet as dbspec check operands do (docs/spec/dbspec.md "Checks"): a comparison of two columns, a
     // column in a subquery column, a join and a relation run when their columns meet, here i32 with i64 and text with
     // varchar, and fail with OPERATOR_NOT_ALLOWED before any statement when they do not.
     $result = [];
@@ -765,7 +765,7 @@ vector('hex_malformed', fn(): array => [
 ]);
 
 // A datetime(p) or time(p) value is bound with exactly p fraction digits, the form the SQLite CHECK of the column
-// requires (docs/dialects.md); zeros past p are dropped. Each vector inserts, reads the row back by the same parameter
+// requires (docs/spec/dialects.md); zeros past p are dropped. Each vector inserts, reads the row back by the same parameter
 // and deletes it.
 $at = '2026-06-01 12:34:56';
 vector('datetime_p0_roundtrip', function () use ($db, $at): array {
@@ -800,7 +800,7 @@ vector('date_null', function () use ($db): array {
     return dateOnly(picks($rows, 'day', 'at_time'));
 });
 
-// An upsert has exactly one conflict key (docs/protocol.md 1): upsert_cell leaves its identity primary key out, so the
+// An upsert has exactly one conflict key (docs/spec/protocol.md 1): upsert_cell leaves its identity primary key out, so the
 // unique key on code is the one key that can meet the row; an insert that does not assign code is IR_INVALID before any
 // statement.
 vector('upsert_one_key', function () use ($db): array {
@@ -820,11 +820,11 @@ vector('upsert_one_key', function () use ($db): array {
     return ['inserted' => picks($inserted, 'label'), 'updated' => picks($updated, 'label'), 'unassigned' => $unassigned];
 });
 
-// A write counts each written row once (docs/protocol.md "Write"): an upsert is 1 whether it inserts or updates, and an
+// A write counts each written row once (docs/spec/protocol.md "Write"): an upsert is 1 whether it inserts or updates, and an
 // update counts the row it matched even when the row already holds the value. The count is read through the test entry
-// point (docs/protocol.md "Test write result").
+// point (docs/spec/protocol.md "Test write result").
 // A PostgreSQL uuid column is read as its text and a uuid value is bound as text cast to uuid, in one form in every
-// planner (docs/dialects.md); the vector inserts, reads the row back by the same value and deletes it.
+// planner (docs/spec/dialects.md); the vector inserts, reads the row back by the same value and deletes it.
 vector('uuid_roundtrip', function () use ($db): array {
     $created = (new UuidCell)($db)->setId('0f8e2d4c-1a3b-4c5d-8e9f-a0b1c2d3e4f5')->create();
     mask([$created->getSeq()]);
@@ -849,7 +849,7 @@ vector('affected_counts', function () use ($db): array {
     return $out;
 });
 
-// A value outside the logical type of its slot is CODEC_ENCODE before any statement (docs/protocol.md §5 "Parameters").
+// A value outside the logical type of its slot is CODEC_ENCODE before any statement (docs/spec/protocol.md §5 "Parameters").
 // A create that the client lets through is deleted, so the vector leaves the database as it found it.
 $rejected = static function (callable $create): array {
     try {
@@ -865,7 +865,7 @@ vector('datetime_precision_rejected', fn(): array => $rejected(fn() => (new Time
 vector('varchar_length_rejected', fn(): array => $rejected(fn() => (new BindCell)($db)->setLabel('123456789')->create()));
 vector('text_nul_rejected', fn(): array => $rejected(fn() => (new BindCell)($db)->setLabel('nul')->setBody("a\0b")->create()));
 vector('uuid_form_rejected', fn(): array => $rejected(fn() => (new BindCell)($db)->setLabel('uuid')->setToken('123E4567-E89B-12D3-A456-426614174000')->create()));
-// A parameter that assigns NULL to a non-null column is CODEC_ENCODE before any statement (docs/protocol.md §5
+// A parameter that assigns NULL to a non-null column is CODEC_ENCODE before any statement (docs/spec/protocol.md §5
 // "Parameters"); creates binds each row value as a parameter.
 vector('null_into_not_null', function () use ($db): array {
     // The typed setter takes a string, so the row writes NULL through the column writer of the model.
@@ -873,7 +873,7 @@ vector('null_into_not_null', function () use ($db): array {
     (new ReflectionMethod(BindCell::class, 'writeColumn'))->invoke($null, 'label', null);
     return ['code' => caught(fn() => (new BindCell)($db)->creates([(new BindCell)->setLabel('a'), $null], 2))];
 });
-// A contains value NULL binds NULL, so `col LIKE NULL` matches no row (docs/protocol.md §2).
+// A contains value NULL binds NULL, so `col LIKE NULL` matches no row (docs/spec/protocol.md §2).
 vector('contains_null', function () use ($author): array {
     try {
         return ['code' => null, 'count' => $author()->serviceSeq(7)->andLkName(null)->getCount()];
@@ -882,7 +882,7 @@ vector('contains_null', function () use ($author): array {
     }
 });
 
-// One statement has one clock (docs/protocol.md "Clock"): the columns that an insert leaves to `default now` hold that
+// One statement has one clock (docs/spec/protocol.md "Clock"): the columns that an insert leaves to `default now` hold that
 // clock truncated to their digits, and a datetime(p) column compares with a clock at six digits. The executor clock is
 // fixed at .999999 through the test entry point, so a rounding clock shows as the next second; MySQL writes its own
 // clock, CURRENT_TIMESTAMP(p), which truncates. These vectors come last because the fixed clock stays on the connection.

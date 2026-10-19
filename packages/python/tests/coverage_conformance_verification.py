@@ -26,7 +26,14 @@ def conformance_vector(item):
     )
     arguments = [
         sys.executable,
-        str(REPOSITORY_ROOT / "packages" / "python" / "testing" / "conformance" / "runner_python.py"),
+        str(
+            REPOSITORY_ROOT
+            / "packages"
+            / "python"
+            / "testing"
+            / "conformance"
+            / "runner_python.py"
+        ),
     ]
     arguments += ["--models", str(MODELS), "--dsn", dsn]
     for name in SELECTED:

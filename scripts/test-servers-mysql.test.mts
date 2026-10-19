@@ -71,7 +71,7 @@ function fixture(mysqlPort: number, replicaPort: number, earlier = (declared: st
 // naming the holder. The holder is a shell stopped reading a FIFO, ended by a write to it after the check.
 caseTest('the MySQL migration is refused while another run holds a lease of the servers', PROCESS, () => {
   const lease = process.env.LEASE;
-  assert.ok(lease, 'LEASE is unset; run make test-servers-check, which builds it');
+  assert.ok(lease, 'LEASE is unset; run make orm-test-servers-check, which builds it');
   const servers = fixture(39305, 39306);
   const release = join(servers.root, 'release');
   const ready = join(servers.root, 'ready');

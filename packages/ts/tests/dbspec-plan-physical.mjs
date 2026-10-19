@@ -1,4 +1,4 @@
-// dbspec schema plans on MySQL, PostgreSQL and SQLite (docs/plans.md
+// dbspec schema plans on MySQL, PostgreSQL and SQLite (docs/spec/plans.md
 // "Verification"). Every case of tests/dbspec/plans.json is applied to an
 // empty database, schema or file: the source rendered by renderDbspec, the
 // before steps and the planSteps steps before finalize (SQLite with foreign

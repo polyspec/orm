@@ -1,6 +1,6 @@
 package dbspec
 
-// SetDocument is the result of one text of a set (docs/dbspec.md "Parsing a set"): the name that the parser reads
+// SetDocument is the result of one text of a set (docs/spec/dbspec.md "Parsing a set"): the name that the parser reads
 // from its header, empty when the header fails; whether the text is external; and what one parse of the text
 // returns, its document and positions or its diagnostics.
 type SetDocument struct {
@@ -11,7 +11,7 @@ type SetDocument struct {
 	Diagnostics []Diagnostic
 }
 
-// ParseSet parses the texts of one document set (docs/dbspec.md "Parsing a set") and returns one SetDocument per text,
+// ParseSet parses the texts of one document set (docs/spec/dbspec.md "Parsing a set") and returns one SetDocument per text,
 // owned first, each in set order. Each text's name is the name the parser reads from its header; a text whose name an
 // earlier text has is not parsed and carries the diagnostic name.duplicate. Every other text is parsed with the texts
 // of all other named documents as the documents its use lines name.

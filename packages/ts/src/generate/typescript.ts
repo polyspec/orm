@@ -338,7 +338,7 @@ export function renderTypeScript(m: Manifest, outDir: string, scan: readonly str
   }
   // A scanned getter call is refused only when no class the call may be on attaches it: a class of the call that lacks the getter is
   // not an error, since the call runs on a class that has it. A call that nothing attaches would leave the model without the method
-  // the source calls; generation stops naming the model and the method (docs/dsl.md, the scan).
+  // the source calls; generation stops naming the model and the method (docs/spec/dsl.md, the scan).
   const entities = new Map([...m.entities.values()].map(e => [pascal(e.name), e] as const));
   for (const site of sites) {
     if (!site.name.startsWith('get') || site.name.length < 4 || !isUpperAt(site.name, 3)) continue;

@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-// The test statement fault of the PHP client (docs/protocol.md 3.2) on SQLite,
+// The test statement fault of the PHP client (docs/spec/protocol.md 3.2) on SQLite,
 // MySQL and PostgreSQL. A test arms the fault through
 // Polyspec\Orm\Testing\Faults::failNextStatement; the next statement of the
 // connection is not sent and the client reports it as an OrmException with

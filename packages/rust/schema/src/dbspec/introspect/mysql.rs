@@ -284,7 +284,7 @@ fn without_introducers(clause: &str) -> String {
     TIME_FRACTION.replace_all(&clause, r"\'${1}\'").into_owned()
 }
 
-/// The form in which a renderer CHECK remains in CHECK_CLAUSE (docs/dialects.md "Introspection",
+/// The form in which a renderer CHECK remains in CHECK_CLAUSE (docs/spec/dialects.md "Introspection",
 /// "Checks"). A type without a renderer CHECK is an empty string.
 fn renderer_check(column: &str, typ: Type) -> String {
     let c = format!("`{column}`");

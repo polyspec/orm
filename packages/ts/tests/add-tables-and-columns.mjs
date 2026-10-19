@@ -1,4 +1,4 @@
-// Checks addTablesAndColumns on SQLite, MySQL, and PostgreSQL (docs/schema.md "Adding tables and
+// Checks addTablesAndColumns on SQLite, MySQL, and PostgreSQL (docs/spec/schema.md "Adding tables and
 // columns"). The case database holds the addcol_log table of another set and the tables of addcol set version 1, together with their rows.
 // With version 2, calling addTablesAndColumns adds to existing tables the columns that are missing and that are nullable or have a default,
 // keeps the rows, has the audit trigger of the changed audit table record the new column, and creates missing tables
@@ -107,7 +107,7 @@ async function addTablesAndColumns(driver, dsn) {
     check(await countOf(driver, dsn, 'SELECT COUNT(*) AS n FROM addcol_extra') === 1, 'rows of the created table');
     const again = await db.utils().schema().addTablesAndColumns(await fixture('v2'));
     check(same(again, []), `repeated addTablesAndColumns = ${JSON.stringify(again)}`);
-    // All tables exist, so install changes nothing (docs/schema.md "Schema installation").
+    // All tables exist, so install changes nothing (docs/spec/schema.md "Schema installation").
     const install = await thrown(async () => db.utils().schema().install(await fixture('v2')));
     check(install === null, `install of version 2 over its tables: ${install?.message}`);
   } finally { await db.close(); }
@@ -188,7 +188,7 @@ const cases = {
 };
 const selected = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(cases);
 for (const env of ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_POSTGRES_DSN']) {
-  if (!process.env[env]) throw new Error(`${env} is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers`);
+  if (!process.env[env]) throw new Error(`${env} is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers`);
 }
 for (const name of selected) {
   const run = cases[name];

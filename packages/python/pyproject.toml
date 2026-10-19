@@ -8,10 +8,10 @@ version = "0.0.18"
 description = "Python ORM: model generator and native SQL assembly for MySQL, PostgreSQL, and SQLite"
 license = "MIT"
 requires-python = ">=3.14"
-# Wheels support CPython only (docs/packaging.md, Python client release). The toolchain is python-build-standalone CPython.
+# Wheels support CPython only (docs/operations/packaging.md, Python client release). The toolchain is python-build-standalone CPython.
 classifiers = ["Programming Language :: Python :: Implementation :: CPython"]
 dependencies = [
-    # Python wheel of ordered-json (release v0.0.9). The polyspec dependency is a direct reference to the release asset and its sha256 (docs/packaging.md, kit K49).
+    # Python wheel of ordered-json (release v0.0.9). The polyspec dependency is a direct reference to the release asset and its sha256 (docs/operations/packaging.md, kit K49).
     "polyspec-ordered-json @ https://github.com/polyspec/ordered-json/releases/download/v0.0.9/polyspec_ordered_json-0.0.9-py3-none-any.whl#sha256=bc4d26a9d5dcd42a72d7bb40f6b7c7dc749c710d3c60f2e9f4fe3e733102f01d",
     "cryptography==50.0.2",
     "PyMySQL==1.2.3",
@@ -32,7 +32,7 @@ package-dir = {"" = "src"}
 [tool.setuptools.packages.find]
 where = ["src"]
 namespaces = true
-# polyspec.orm.testing is the test entry point (docs/protocol.md "Test faults"). The distribution contains it, while the package entry
+# polyspec.orm.testing is the test entry point (docs/spec/protocol.md "Test faults"). The distribution contains it, while the package entry
 # point polyspec.orm does not import it.
 
 [tool.setuptools.package-data]
@@ -40,7 +40,7 @@ namespaces = true
 
 [dependency-groups]
 # test is what the tests of this repository need beside the client (PEP 735, not part of the released wheel): jsonschema-rs
-# reads the shared dbspec vectors against their JSON Schemas (tests/dbspec/schema). make install-python installs it into the
+# reads the shared dbspec vectors against their JSON Schemas (tests/dbspec/schema). make orm-install-python installs it into the
 # venv; the client never imports it.
 test = ["jsonschema-rs==0.58.6"]
 

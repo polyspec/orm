@@ -1,4 +1,4 @@
-// The neutral intermediate model of introspection and document building (docs/dialects.md "Introspection").
+// The neutral intermediate model of introspection and document building (docs/spec/dialects.md "Introspection").
 // The dialect reader fills the catalog, and the document writes the dbspec text and parses it, so
 // an object on a line that the parse rejects is reported as unsupported and removed.
 import { present } from '../present.js';
@@ -7,7 +7,7 @@ import type { DbspecAction, DbspecDocument, DbspecType } from './model.js';
 import { parseDocument } from './parse.js';
 
 /**
- * An object that introspection cannot read into dbspec (docs/dialects.md
+ * An object that introspection cannot read into dbspec (docs/spec/dialects.md
  * "Introspection", "Unsupported objects"): its kind, its table and name
  * where it has them ('' otherwise), and the reason.
  */

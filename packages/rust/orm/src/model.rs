@@ -260,7 +260,7 @@ fn bind_limit(driver: &str) -> usize {
 }
 
 /// The row counts of the batches of a multi-row insert of `rows` rows in batches of `batch` rows, in row order
-/// (docs/protocol.md §2.1): each batch is `batch` rows, the last one the rows left when fewer.
+/// (docs/spec/protocol.md §2.1): each batch is `batch` rows, the last one the rows left when fewer.
 fn insert_parts(rows: usize, batch: usize) -> Vec<usize> {
     let mut parts = Vec::new();
     let mut left = rows;
@@ -365,7 +365,7 @@ fn val_param_key(p: &Param) -> String {
 }
 
 /// Applies the request hook of the handle the model runs on to req before planning. The handle is the handle the model is bound to, and
-/// if there is no connection, it is the handle that started the transaction (docs/usage.md "Request hook").
+/// if there is no connection, it is the handle that started the transaction (docs/operations/usage.md "Request hook").
 fn hook_request(conn: &Option<Db>, ex: &Executor, req: &mut Req) -> Result<()> {
     apply_request_hook(conn.as_ref().unwrap_or_else(|| ex.db()), req)
 }
@@ -1345,7 +1345,7 @@ pub(crate) async fn insert_audit(ex: &Executor, a: &crate::tx::AuditInsert) -> R
 /// Restores the soft-deleted row that the set values name and returns the
 /// restored row. It sends the set values as the restore request's set; the
 /// planner picks the key after the request hook from the set values and the eq
-/// conditions of the where (docs/protocol.md 1.5): the primary key when they
+/// conditions of the where (docs/spec/protocol.md 1.5): the primary key when they
 /// cover it, otherwise the first unique key in name order. A set value of a key
 /// column is a condition and every other set value is a new value of the
 /// restored row. It clears the soft delete column with an update that, on an
@@ -1360,7 +1360,7 @@ pub async fn restore<M: Model>(m: &M) -> Result<M> {
 
 /// Restores the soft-deleted row of the key that restore picks, or creates it
 /// with the set values when no row holds the key, in one transaction
-/// (docs/usage.md "Restore or create a row"), and returns the row. A row that
+/// (docs/operations/usage.md "Restore or create a row"), and returns the row. A row that
 /// holds the key and is not deleted fails with ROW_NOT_DELETED, and nothing is
 /// written.
 pub async fn restore_or_create<M: Model>(m: &M) -> Result<M> {

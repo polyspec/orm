@@ -7,7 +7,7 @@ import (
 )
 
 // Signature is the first bytes of every dbspec document file. The header `dbspec 1 <document>`
-// starts with it (docs/dbspec.md "Files").
+// starts with it (docs/spec/dbspec.md "Files").
 const Signature = "dbspec "
 
 // ReadFile reads the dbspec document file at path, to parse, and checks its bytes with ReadBytes,

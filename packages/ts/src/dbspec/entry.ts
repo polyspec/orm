@@ -1,4 +1,4 @@
-// The browser-safe entry of dbspec (docs/editor.md "Layers"), exported by @polyspec/orm as the "./dbspec" subpath.
+// The browser-safe entry of dbspec (docs/spec/editor.md "Layers"), exported by @polyspec/orm as the "./dbspec" subpath.
 // Its modules import no `node:` module, read no Node global (Buffer, process, __dirname, require) and load no driver,
 // so it runs in a browser as in Node. The module-graph test packages/ts/tests/browser-entry.mjs checks this.
 export { analyzeDbspec, emitDbspec, formatDbspec, parseDbspec, type DbspecAnalysis, type DbspecFormatResult, type DbspecParseResult, type DbspecPosition, type DbspecToken } from './document.js';

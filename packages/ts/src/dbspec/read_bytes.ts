@@ -1,4 +1,4 @@
-// The byte check of a dbspec document file (docs/dbspec.md "Files"). Every tool that reads a document file checks its
+// The byte check of a dbspec document file (docs/spec/dbspec.md "Files"). Every tool that reads a document file checks its
 // bytes with readDbspecBytes before the parse, so a file without the signature is refused before it is parsed. This
 // module reads no Node global and loads no driver: the bytes come from the caller, as a Uint8Array.
 import { present } from '../present.js';

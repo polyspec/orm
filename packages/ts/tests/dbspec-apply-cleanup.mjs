@@ -1,4 +1,4 @@
-// dbspec apply cleanup errors (docs/plans.md "Apply"): a wrapped SQLite
+// dbspec apply cleanup errors (docs/spec/plans.md "Apply"): a wrapped SQLite
 // database injects a failing lock release after an event stops apply and a
 // failing foreign key restore after a failing BEGIN EXCLUSIVE, and a scripted
 // MySQL connection returns no row for an effect query. Apply must

@@ -1,5 +1,5 @@
 # Statement events show an executor clock bind as $NOW and a bound secret as $SECRET
-# (docs/usage.md "Statement events").
+# (docs/operations/usage.md "Statement events").
 import tempfile
 import unittest
 from pathlib import Path

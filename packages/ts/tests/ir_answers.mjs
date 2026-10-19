@@ -1,4 +1,4 @@
-// The IR answers of contracts/fixtures/ir_answers.json in the TypeScript client (docs/protocol.md section 5, Read). Each case
+// The IR answers of contracts/fixtures/ir_answers.json in the TypeScript client (docs/spec/protocol.md section 5, Read). Each case
 // runs its chain of tests/markdown/cases.json (markdown_cases.mjs) on a connection whose listener answers connect with
 // {"ok":true} and each later request with the answer of the case, and compares the result with the case expect. Each case is
 // one test named by its id. Usage: node --conditions=orm-test packages/ts/tests/ir_answers.mjs (after npm run typescript:build)
@@ -29,7 +29,10 @@ async function keyedServer(answers) {
       try {
         const message = JSON.parse(line);
         key = message.op ?? message.request?.kind ?? key;
-      } catch {}
+      } catch (error) {
+        // An unreadable line keeps the key 'unreadable'; any other error is a defect and is thrown.
+        if (!(error instanceof SyntaxError)) throw error;
+      }
       const answer = Object.hasOwn(answers, key) ? answers[key] : { error: { code: 'IR_INVALID', message: `the case has no answer for ${key}` } };
       socket.write(`${JSON.stringify(answer)}\n`);
     });

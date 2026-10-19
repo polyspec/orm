@@ -1,5 +1,5 @@
 //! The unique keys, indexes, foreign keys, checks and triggers of a plan diff
-//! (docs/plans.md, "Diff"): objects compare by name and definition, with the
+//! (docs/spec/plans.md, "Diff"): objects compare by name and definition, with the
 //! source definition read through the renames.
 
 use super::emit::emit_expr;

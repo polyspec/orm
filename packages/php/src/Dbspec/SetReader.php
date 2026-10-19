@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Dbspec;
 
 /**
- * The set reader of Dbspec::readSet (docs/dbspec.md "Document sets"): the set file, its JSON, each path
+ * The set reader of Dbspec::readSet (docs/spec/dbspec.md "Document sets"): the set file, its JSON, each path
  * and the read with the file identity, in that order.
  *
  * @internal
@@ -386,7 +386,7 @@ final class SetReader
         return null;
     }
 
-    /** Whether $segment is a name that every platform can hold (docs/dbspec.md "Document sets"). */
+    /** Whether $segment is a name that every platform can hold (docs/spec/dbspec.md "Document sets"). */
     private static function segment(string $segment): bool
     {
         if ($segment === '' || $segment === '.' || preg_match('/[\\\\\/:<>"|?*\x00-\x1F]/', $segment) === 1) {

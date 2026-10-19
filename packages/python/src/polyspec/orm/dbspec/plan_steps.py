@@ -1,4 +1,4 @@
-# Writes the plan's steps in one dialect (docs/plans.md "Steps"). The reference is the other client's
+# Writes the plan's steps in one dialect (docs/spec/plans.md "Steps"). The reference is the other client's
 # plan steps; the statements, rollbacks, and effects are the same bytes.
 from __future__ import annotations
 
@@ -32,14 +32,14 @@ from polyspec.orm.dbspec.render import DIALECTS, Renderer
 
 __all__ = ["effect_text", "plan_steps"]
 
-# Reason a step cannot be reversed (docs/plans.md "Irreversible steps").
+# Reason a step cannot be reversed (docs/spec/plans.md "Irreversible steps").
 IRREVERSIBLE_PRECISION = "narrowing the precision rounds the values written since"
 # Work table for the SQLite table rebuild.
 REBUILD_TABLE = "dbspec$rebuild"
 
 
 def effect_text(e: dict) -> str:
-    """The text form of effects in docs/plans.md "Effects", such as `present table users`."""
+    """The text form of effects in docs/spec/plans.md "Effects", such as `present table users`."""
     if e["kind"] == "repeat":
         return "repeat"
     s = f"{'present' if e['present'] else 'absent'} {e['kind']}"
@@ -87,7 +87,7 @@ def _precision_grows(from_, to) -> bool:
 
 
 def plan_steps(source: DbspecDocument | None, plan: DbspecPlan, dialect: str) -> dict:
-    """Writes a plan's steps in one dialect (docs/plans.md "Steps"). The source is the schema the plan
+    """Writes a plan's steps in one dialect (docs/spec/plans.md "Steps"). The source is the schema the plan
     starts from; if None, it is an empty database."""
     if dialect not in DIALECTS:
         raise TypeError(f"unknown dbspec dialect {dialect}")
@@ -124,7 +124,7 @@ class _PlanWriter:
         return self.holds[key]
 
     def _number_holds(self) -> None:
-        """Chooses the keep names in the order of "Hiding instead of dropping" in docs/plans.md.
+        """Chooses the keep names in the order of "Hiding instead of dropping" in docs/spec/plans.md.
         accordingly."""
         d = self.d
 
@@ -419,7 +419,7 @@ class _PlanWriter:
         }
 
     def _rebuild(self, name: str) -> None:
-        """Rebuilds a SQLite table through a work table (docs/plans.md
+        """Rebuilds a SQLite table through a work table (docs/spec/plans.md
         "Steps")."""
         d = self.d
         t = d["target"][name]

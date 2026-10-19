@@ -13,7 +13,7 @@ type runner struct {
 	q  querier
 	tx int64
 	// machinery is the runner for transaction machinery statements. This statement
-	// does not consume the statement fault (docs/protocol.md 3.2).
+	// does not consume the statement fault (docs/spec/protocol.md 3.2).
 	machinery bool
 }
 

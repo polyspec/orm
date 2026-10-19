@@ -1,4 +1,4 @@
-// The set parse (docs/dbspec.md "Parsing a set"): parseDbspecSet parses the texts of one document set, each named by
+// The set parse (docs/spec/dbspec.md "Parsing a set"): parseDbspecSet parses the texts of one document set, each named by
 // the header its parser reads. It reads no file and no Node global, so the browser entry (entry.ts) exports it.
 import { parseDbspec, type DbspecPosition } from './document.js';
 import type { DbspecDiagnostic, DbspecDocument } from './model.js';

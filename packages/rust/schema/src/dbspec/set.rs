@@ -1,4 +1,4 @@
-//! The set reader (`docs/dbspec.md`, "Document sets"). A document set is declared once, in the set
+//! The set reader (`docs/spec/dbspec.md`, "Document sets"). A document set is declared once, in the set
 //! file `dbspec-set.json`, and every tool that takes a set reads it with [`read_set`].
 //!
 //! The reader checks, in this order: the set file and its root (step 1), the JSON (step 2), each
@@ -604,7 +604,7 @@ mod tests {
     }
 }
 
-/// The result of one text of a set (docs/dbspec.md "Parsing a set"): the name that the parser reads
+/// The result of one text of a set (docs/spec/dbspec.md "Parsing a set"): the name that the parser reads
 /// from its header, `None` when the header fails; whether the text is external; and what one parse
 /// of the text returns, its document and positions or its diagnostics.
 #[derive(Clone, Debug)]
@@ -616,7 +616,7 @@ pub struct SetDocument {
     pub diagnostics: Vec<super::Diagnostic>,
 }
 
-/// Parses the texts of one document set (docs/dbspec.md "Parsing a set"). Each text's name is the
+/// Parses the texts of one document set (docs/spec/dbspec.md "Parsing a set"). Each text's name is the
 /// name the parser reads from its header; a text whose name an earlier text has is not parsed, and
 /// its own result carries the `name.duplicate` diagnostic. The results are owned first, each in set
 /// order. Every other text is parsed with the texts of all other named documents

@@ -4,7 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/coverage_cases.php';
 require_once __DIR__ . '/dbspec_plan_cases.php';
 // Applies the plans.json chains through Polyspec\Orm\Dbspec\Dbspec::apply, ::recover,
-// ::rollback and ::finalize on MySQL, PostgreSQL and SQLite (docs/plans.md
+// ::rollback and ::finalize on MySQL, PostgreSQL and SQLite (docs/spec/plans.md
 // "Apply"): the chain of create-from-empty and rename-table-and-column with
 // its history, events and a second apply without events; drift; the lock of
 // a second session; an apply to a second database, schema or file while the
@@ -151,7 +151,7 @@ function apply_stopped(RuntimeException $stop, Closure $operation): void
     throw new RuntimeException('apply did not stop at the event');
 }
 
-// The lock name and key of docs/plans.md "Apply".
+// The lock name and key of docs/spec/plans.md "Apply".
 const MYSQL_APPLY_LOCK = "CONCAT('dbspec\$plans\$', LEFT(SHA2(DATABASE(), 256), 51))";
 const POSTGRES_APPLY_LOCK = "hashtext('dbspec\$plans'), hashtext(current_schema())";
 // The number of tables whose name starts with dbspec$, and of columns, excluding the history table.
@@ -433,7 +433,7 @@ function apply_scenarios(): array
         }
     }
 
-    // apply needs one server session that no other client shares from start to finish (docs/plans.md
+    // apply needs one server session that no other client shares from start to finish (docs/spec/plans.md
     // "Apply"). PgBouncer's transaction pooling chooses a server connection again for each statement, so
     // apply checks the server session at the lock and at each step, and stops with a session error. Each scenario
     // creates its own database on the server and connects to that database through PgBouncer. PgBouncer

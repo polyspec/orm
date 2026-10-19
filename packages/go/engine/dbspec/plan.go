@@ -8,7 +8,7 @@ import (
 )
 
 // RulePlan and RuleChain are the diagnostics of a plan document and a plan chain
-// (docs/plans.md).
+// (docs/spec/plans.md).
 const (
 	RulePlan  = "plan"
 	RuleChain = "chain"

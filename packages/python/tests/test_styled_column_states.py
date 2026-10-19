@@ -1,6 +1,6 @@
 # styled_column_states: every case of contracts/fixtures/styled_column_states.json decodes its stored cell to the
 # getter state and encodes its input state to its write cell with the client's codec, and the model cases refuse an
-# unselected getter and SQL NULL on a non-null column (docs/codec.md "Value model"), as
+# unselected getter and SQL NULL on a non-null column (docs/spec/codec.md "Value model"), as
 # packages/ts/tests/styled-value.mjs and the other clients' tests do. Each case is a test named by its id.
 import json
 import unittest

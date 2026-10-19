@@ -51,7 +51,7 @@ type bindCase struct {
 }
 
 // TestBindMessageVectors writes each message case of tests/bind/vectors.json as an
-// IR executor message parameter (docs/protocol.md §5 "Parameters").
+// IR executor message parameter (docs/spec/protocol.md §5 "Parameters").
 func TestBindMessageVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	raw, err := os.ReadFile("../../../tests/bind/vectors.json")

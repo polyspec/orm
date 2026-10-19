@@ -1,6 +1,6 @@
 // The conformance vectors of one dialect as node:test tests (coverage_conformance_<dialect>.mjs). The file creates a
 // bench database of its own on the server of the test servers (ORM_RUN_<DIALECT>_DSN, ORM_RUN_SQLITE_QUERY), seeds it
-// with scripts/bench-db.mts as make check seeds its bench databases, runs packages/ts/testing/conformance/runner_typescript.mts over
+// with scripts/bench-db.mts as make orm-check seeds its bench databases, runs packages/ts/testing/conformance/runner_typescript.mts over
 // every vector once, and makes each vector of tests/conformance a top-level test named by the vector that compares its
 // output with the recorded expectation of the dialect (tests/conformance/check/main.mts load, exact JSON values). The
 // database is dropped after the tests, also when one fails.
@@ -21,7 +21,7 @@ const RUNNER_TIMEOUT = 600_000;
 /** The value of a required variable of the test-server environment; a database test never skips. */
 function required(name) {
   const value = process.env[name] ?? '';
-  if (value === '') throw new Error(`${name} is required; database tests never skip; run make conformance-ts-suite-check, which reads the environment of make test-servers`);
+  if (value === '') throw new Error(`${name} is required; database tests never skip; run make conformance-ts-suite-check, which reads the environment of make orm-test-servers`);
   return value;
 }
 

@@ -6,7 +6,7 @@ import (
 )
 
 // Analysis is the result of Analyze: the result of Parse, unchanged, and the
-// tokens of the text (docs/dbspec.md "Syntax analysis").
+// tokens of the text (docs/spec/dbspec.md "Syntax analysis").
 type Analysis struct {
 	Document    *Document
 	Positions   []Position
@@ -54,7 +54,7 @@ func lexicalClassName(kind tokenKind) string {
 }
 
 // Analyze parses text as Parse does and returns the result unchanged with the
-// tokens of the text. A limit error yields no tokens (docs/dbspec.md "Syntax
+// tokens of the text. A limit error yields no tokens (docs/spec/dbspec.md "Syntax
 // analysis").
 func Analyze(text string, documents map[string]string) Analysis {
 	tr := &trace{lines: map[int]*traceLine{}}
@@ -71,7 +71,7 @@ func Analyze(text string, documents map[string]string) Analysis {
 
 // Format returns the canonical text of a document with no diagnostic, and
 // otherwise the diagnostics and no text: a document with a diagnostic is never
-// rewritten (docs/dbspec.md "Formatting").
+// rewritten (docs/spec/dbspec.md "Formatting").
 func Format(text string, documents map[string]string) (string, []Diagnostic) {
 	document, _, diagnostics := Parse(text, documents)
 	if len(diagnostics) > 0 {
@@ -122,7 +122,7 @@ func (p *parser) marked() bool {
 }
 
 // lexicalBlock reports whether the current line is inside a block whose
-// opening line failed (docs/dbspec.md "Syntax analysis").
+// opening line failed (docs/spec/dbspec.md "Syntax analysis").
 func (p *parser) lexicalBlock() bool {
 	switch p.state {
 	case stateTable:

@@ -154,7 +154,7 @@ pub(crate) fn validate(parsed: &Syntax, used: &[Option<&Document>], diags: &mut 
 }
 
 /// The renderer names of `table` with the position of the token that writes each: the type CHECK of every column
-/// that has one, and the triggers of immutable and audit (docs/dbspec.md "Names"). A malformed name has none.
+/// that has one, and the triggers of immutable and audit (docs/spec/dbspec.md "Names"). A malformed name has none.
 fn generated_names_of(table: &Table) -> Vec<(String, Pos, String)> {
     if !well_formed(&table.name.text) {
         return Vec::new();
@@ -181,7 +181,7 @@ fn generated_names_of(table: &Table) -> Vec<(String, Pos, String)> {
 }
 
 /// Refuses a generated name that a used table or an earlier table of the document already writes, at the later
-/// token (docs/dbspec.md "Names").
+/// token (docs/spec/dbspec.md "Names").
 fn generated_names_unique(document: &Document, scope: &Scope<'_>, diags: &mut Vec<Diag>) {
     // Generated name => the source that wrote it first.
     let mut seen: HashMap<String, String> = HashMap::new();
@@ -761,7 +761,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
         }
     }
 
-    /// Checks the `state_machine` and `checkbox` lines of the table between them (docs/dbspec.md,
+    /// Checks the `state_machine` and `checkbox` lines of the table between them (docs/spec/dbspec.md,
     /// "Settings"): one column, the initial and terminal states, the transition lines, history and
     /// limit lines, the default of the state column and the checkboxes.
     fn state_machine_consistency(&mut self, settings: &Settings) {
@@ -1013,10 +1013,10 @@ impl<'s, 'd> TableRules<'s, 'd> {
         }
     }
 
-    /// Checks the shape of the audit setting, the audit record table and its foreign key, and the history table (docs/dbspec.md
+    /// Checks the shape of the audit setting, the audit record table and its foreign key, and the history table (docs/spec/dbspec.md
     /// "Audit"). The history table has only an i64 identity primary key, action and previous columns, and columns
     /// with the same names and types as the recorded columns, and reports one diagnostic for each mismatch.
-    #[expect(clippy::too_many_arguments, reason = "each argument is one field of the audit setting, as docs/dbspec.md \"Audit\" names them")]
+    #[expect(clippy::too_many_arguments, reason = "each argument is one field of the audit setting, as docs/spec/dbspec.md \"Audit\" names them")]
     fn audit(
         &mut self,
         setting: &Setting,
@@ -1139,7 +1139,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
     /// Checks the tables table of `tables <table> (<record>, <name>)`: another table than the audited, the history and
     /// the audit record table, not audited itself, with exactly the record and the name column, the name column a
     /// varchar(n) with n >= 63, the primary key (record, name) and the foreign key (record) references the audit record
-    /// table's key with restrict (docs/dbspec.md "Audit").
+    /// table's key with restrict (docs/spec/dbspec.md "Audit").
     fn audit_tables(&mut self, c: &AuditTables, references: &Name, into: &Name) {
         let table = self.own.table;
         let r = &c.table;

@@ -1,5 +1,5 @@
 //! The schema of a generated model: the manifest text of the dbspec document set and `manifestHash`,
-//! and the runtime model made from those two (docs/dbspec.md, "Manifest and hashes",
+//! and the runtime model made from those two (docs/spec/dbspec.md, "Manifest and hashes",
 //! "Runtime model").
 
 use std::sync::{Arc, OnceLock};
@@ -36,7 +36,7 @@ fn documents(text: &str, external: &str, hash: &str) -> Result<Vec<Document>> {
         return Err(invalid("the embedded external text is not the text of the tables that the set uses from external documents".into()));
     }
     if manifest.manifest_hash != hash {
-        // The text is a manifest but does not hash to the declared hash (docs/dbspec.md, "Manifest and hashes").
+        // The text is a manifest but does not hash to the declared hash (docs/spec/dbspec.md, "Manifest and hashes").
         return Err(Error::Engine {
             code: codes::SCHEMA_HASH_MISMATCH.into(),
             msg: format!("models were generated from manifest {hash} but the embedded manifest is {}", manifest.manifest_hash),

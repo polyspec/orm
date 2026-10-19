@@ -1,7 +1,7 @@
 <!-- doc-id: tests-markdown-readme -->
 # Markdown executor conformance
 
-The markdown IR executor ([protocol](../../docs/protocol.md#_5-ir-executors)) runs on a flowmark server, not on
+The markdown IR executor ([protocol](../../docs/spec/protocol.md#_5-ir-executors)) runs on a flowmark server, not on
 a database, so its conformance has no SQL text and no bind list to compare. Each client runs the cases of
 `cases.json` on one corpus that a flowmark server serves and compares the result of each case with its `expect`.
 
@@ -19,11 +19,11 @@ a database, so its conformance has no SQL text and no bind list to compare. Each
 ## Run
 
 ```sh
-make install-flowmark
+make orm-install-flowmark
 make markdown-conformance-check
 ```
 
-`make install-flowmark` installs the pinned `flowmark` at `.runtime/bin/flowmark`, and
+`make orm-install-flowmark` installs the pinned `flowmark` at `.runtime/bin/flowmark`, and
 `make markdown-conformance-check` passes that path as `FLOWMARK` to each runner, each on a server and a corpus of its
 own (`make markdown-conformance-check/<client>` runs one; the TypeScript one builds the package first). A runner
 reads the build information of `FLOWMARK` (the PHP runner and the Python runner with `go version -m`) and fails unless its main module is `github.com/polyspec/flowmark` at the version of
@@ -45,7 +45,7 @@ A case's result is a JSON value compared with `expect` after both are read as JS
 
 - a model is its array form (`toArray`), a collection the list of the array forms in collection order, and a
   grouped count the list of its group rows;
-- a `date` value is its runtime value model text `YYYY-MM-DD` ([protocol](../../docs/protocol.md#_5-ir-executors)),
+- a `date` value is its runtime value model text `YYYY-MM-DD` ([protocol](../../docs/spec/protocol.md#_5-ir-executors)),
   whatever type the client holds it in: a client whose array form writes a date as a datetime writes it as that text;
 - a count, a sum, an average and the row count of a write are numbers, and `paginate` is
   `{"items", "total_count", "total_pages"}`;

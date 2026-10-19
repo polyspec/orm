@@ -10,7 +10,7 @@
     }
   },
   "php": [
-    "8.5"
+    "8.4"
   ],
   "pythonBackend": {
     "requirement": "setuptools==84.0.0",

@@ -21,7 +21,7 @@ type sqlitePathCase struct {
 }
 
 // TestSQLitePathCases checks that the DSN path of each shared case opens the percent-decoded file,
-// and that a wrong path is CONFIG (docs/config.md "Runtime connection").
+// and that a wrong path is CONFIG (docs/spec/config.md "Runtime connection").
 func TestSQLitePathCases(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "tests", "dsn", "sqlite-paths.json"))

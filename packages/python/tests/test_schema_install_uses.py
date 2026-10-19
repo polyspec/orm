@@ -1,6 +1,6 @@
 # SchemaUtils.install of a set whose document has use lines: the schema text of the set keeps the
 # use lines of its external documents, and install compares the database with it like any other
-# set (packages/ts/src/dbspec/compare.ts isSchemaText, docs/schema.md "Schema installation").
+# set (packages/ts/src/dbspec/compare.ts isSchemaText, docs/spec/schema.md "Schema installation").
 import os
 import sqlite3
 import tempfile

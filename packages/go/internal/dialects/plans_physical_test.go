@@ -24,7 +24,7 @@ var hiddenLeft = map[string]string{
 	"sqlite":   "SELECT COUNT(*) FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type = 'table' AND (m.name LIKE 'dbspec$%' OR p.name LIKE 'dbspec$%')",
 }
 
-// planStep is the step object of plans.json (docs/plans.md "Steps").
+// planStep is the step object of plans.json (docs/spec/plans.md "Steps").
 type planStep struct {
 	Statement    string `json:"statement"`
 	Rollback     string `json:"rollback"`

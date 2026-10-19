@@ -1,5 +1,5 @@
 # A SQLite connection refuses a SQLite library older than 3.46 with CAPABILITY_UNSUPPORTED, as every client does
-# (docs/dialects.md). Python links the SQLite of the system, so the version is the module's sqlite_version, which the case
+# (docs/spec/dialects.md). Python links the SQLite of the system, so the version is the module's sqlite_version, which the case
 # replaces to stand for an older library; a supported version connects.
 import sqlite3
 import tempfile

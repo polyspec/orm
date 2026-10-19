@@ -1,4 +1,4 @@
-// Mark decorations of the token classes of syntax analysis (docs/dbspec.md "Syntax analysis").
+// Mark decorations of the token classes of syntax analysis (docs/spec/dbspec.md "Syntax analysis").
 import type { Extension } from '@codemirror/state';
 import { Decoration, EditorView, type DecorationSet } from '@codemirror/view';
 import { dbspecDocument, offsetOf } from './document.js';

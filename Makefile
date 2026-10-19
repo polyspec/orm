@@ -1,15 +1,15 @@
-.PHONY: check check-run databases-create ci-group-needs feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check runner-check version-check comment-language-check repo-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check scripts-typecheck typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-verify-idempotent docs-rules-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check install-cli-check feature-unit-check feature-check feature-coverage feature-verify-rust feature-verify-other feature-docs package-check test-servers test-servers-tls test-servers-stop test-servers-leases test-servers-leases-clear
+.PHONY: orm-check check-run databases-create ci-group-needs feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check runner-check version-check comment-language-check repo-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check scripts-typecheck typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-verify-idempotent docs-rules-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check orm-install-cli-check feature-unit-check feature-check feature-coverage feature-verify-rust feature-verify-other feature-docs package-check orm-test-servers orm-test-servers-tls orm-test-servers-stop orm-test-servers-leases orm-test-servers-leases-clear
 # It is an independent part of the target that does not stop at a failure (scripts/check/run.mts runs it with make -k).
 .PHONY: version-check/unit version-check/run comment-language-check/unit comment-language-check/run repo-check/unit repo-check/run rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces fuzz-check/engine-ir fuzz-check/clients-go-orm dialect-facts-check/probes dialect-facts-check/facts feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners feature-unit-check/select testcase-check/go testcase-check/node testcase-check/runners testcase-check/rust rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults ts-check/hold ts-check/types ts-check/test feature-check/build client-unit-check/dsn client-unit-check/markdown client-unit-check/relation-keys client-unit-check/code-catalog client-unit-check/hostcodec client-unit-check/codec-aes client-unit-check/insert-parts client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/model-methods client-unit-check/orm-gen-scan client-unit-check/orm-gen-scan-parity client-unit-check/client-generics client-unit-check/perf-extensions
 .NOTPARALLEL: check check-run docs-check docs-verify-idempotent
 
 # git runs the tracked hooks (.githooks/commit-msg, .githooks/pre-push) only when core.hooksPath is .githooks, a setting of
 # each clone, which the kit.mk of @polyspec/kit sets at parse time on every make run. Each hook runs a make target: the
-# commit-msg hook runs commit-msg-check, which checks the message being committed against config/commits.json and refuses
+# commit-msg hook runs commit-msg-check, which checks the message being committed against the commit rules of @polyspec/kit and refuses
 # a commit that breaks it, and the pre-push hook runs push-gate-hook, the push gate of kit, which refuses a push while a
 # checklist item is [~] (AGENTS.md). make hooks sets the setting and hooks-check checks it.
 
-# make test-servers starts the MySQL and PostgreSQL primaries, their replicas,
+# make orm-test-servers starts the MySQL and PostgreSQL primaries, their replicas,
 # and the ProxySQL and PgBouncer poolers of the database checks on free ports that it chooses
 # and writes TEST_ENV; the database checks read TEST_ENV and fail when it is
 # missing.
@@ -20,7 +20,7 @@ TEST_ENV = .runtime/servers/env
 # (scripts/features/owners.mts) changes it to the environment file of its own run.
 export ORM_TEST_ENV = $(abspath $(TEST_ENV))
 # DECIMAL_ENV is the file that holds the DSN of the decimal database. The decimal check and the decimal command of feature-check
-# read it. No decimal database is shared: make check, make owner-check, and make run-databases
+# read it. No decimal database is shared: make orm-check, make owner-check, and make run-databases
 # create their own databases and files for each run (scripts/check/databases.mts) and pass them with this variable and TEST_ENV. The bench
 # database DSNs (BENCH_*, ORM_BENCH_MYSQL_DSN) are also in the TEST_ENV of that run only.
 DECIMAL_ENV =
@@ -89,10 +89,10 @@ commit-msg-check:
 # WITH_TEST_ENV sets, through TEST_TZ, the time zone of the process that runs the database client last: it exports TZ and,
 # for PHP, which does not read TZ, adds tests/timezone/date.ini (which sets date.timezone to ${TZ}) to the front of PHP_INI_SCAN_DIR
 # after the separator (PHP's default scan directory is still read).
-WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }; . $(abspath $(TEST_ENV)) && $(BUILD_LEASE) && "$(LEASE)" hold "$${ORM_TEST_SERVERS_LEASES:?$(abspath $(TEST_ENV)) names no lease directory; run make test-servers to rewrite it}" shared --pid $$$$ && export TZ=$(TEST_TZ) PHP_INI_SCAN_DIR=:$(abspath tests/timezone) &&
+WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make orm-test-servers" >&2; exit 1; }; . $(abspath $(TEST_ENV)) && $(BUILD_LEASE) && "$(LEASE)" hold "$${ORM_TEST_SERVERS_LEASES:?$(abspath $(TEST_ENV)) names no lease directory; run make orm-test-servers to rewrite it}" shared --pid $$$$ && export TZ=$(TEST_TZ) PHP_INI_SCAN_DIR=:$(abspath tests/timezone) &&
 # TEST_TZ is the process time zone of the checks that run database clients. It must be a non-UTC zone so that a defect where a client reads a database's
 # zone-less datetime as the process's local time shows up even on a UTC CI runner. Every client reads and writes with the
-# time zone of the connection (+00:00), so the results must not depend on this value (docs/dialects.md).
+# time zone of the connection (+00:00), so the results must not depend on this value (docs/spec/dialects.md).
 TEST_TZ = Asia/Seoul
 
 # GO_TEST runs Go tests so that each case is reported. tests/go-test.mts first runs the build of the same package and build
@@ -161,11 +161,11 @@ TSC_BUILD = $(RUN_LONG) typescript-build -- node scripts/typescript/build.mts
 # dbspec-rust-check, dbspec-ts-check, and dbspec-compare-check run once inside feature-verify-rust or feature-verify-other, so they are not listed again.
 # contracts/check-inputs.json declares a scope for each target: owner targets
 # are also selected by make owner-check, and suite targets run only in the whole suite.
-CHECK_TARGETS = runner-check scripts-typecheck documents-check commits-check release-coverage kit-check owner-validate dependency-policy-check dependency-policy-mutation-check version-check comment-language-check testcase-check repo-check test-servers-check docs-rules-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check install-cli-check markdown-table-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check codec-check bind-check ir-answers-check fuzz-check client-pooler-check case-database-check dialect-facts-check conformance-check conformance-ts-suite-check markdown-conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-python-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-language-check dbspec-plan-php-check dbspec-go-check/engine perf-check dbspec-php-extension-check dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-unit-check feature-coverage feature-verify-rust feature-verify-other feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check go-test-check python-check parity-declarations-check parity-check
-# CI splits make check into one job per CI group and runs them at the same time (the job test, matrix group in .github/workflows/ci.yml).
-# Each job runs `make check GROUP=<group>`, which runs CI_TARGETS_<group>; together the groups run every target of CHECK_TARGETS
+CHECK_TARGETS = runner-check scripts-typecheck docs-check commits-check release-coverage kit-check owner-validate dependency-policy-check dependency-policy-mutation-check version-check comment-language-check testcase-check repo-check orm-test-servers-check docs-rules-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check orm-install-cli-check markdown-table-check docs-verify-idempotent go-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check codec-check bind-check ir-answers-check fuzz-check client-pooler-check case-database-check dialect-facts-check conformance-check conformance-ts-suite-check markdown-conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-python-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-language-check dbspec-plan-php-check dbspec-go-check/engine perf-check dbspec-php-extension-check dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-unit-check feature-coverage feature-verify-rust feature-verify-other feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check go-test-check python-check parity-declarations-check parity-check
+# CI splits make orm-check into one job per CI group and runs them at the same time (the job test, matrix group in .github/workflows/ci.yml).
+# Each job runs `make orm-check GROUP=<group>`, which runs CI_TARGETS_<group>; together the groups run every target of CHECK_TARGETS
 # once each (make repo-check verifies it). The groups are split so that each job, with its setup, finishes within 10 minutes, using the target times measured in CI runs.
-# One MySQL application of the 2000-table plan takes longer than that, so only stress-mysql is excluded. A local make check runs
+# One MySQL application of the 2000-table plan takes longer than that, so only stress-mysql is excluded. A local make orm-check runs
 # every target without GROUP.
 #   static: targets that need no database
 #   clients_db: database tests of clients, Rust driver, examples, dialect facts, and Go tests
@@ -179,7 +179,7 @@ CHECK_TARGETS = runner-check scripts-typecheck documents-check commits-check rel
 #   stress_mysql: MySQL application of the 2000-table plan (feature-stress-mysql-check)
 #   stress_pg_sqlite: bench of the stress document and PostgreSQL and SQLite application (feature-stress-pg-sqlite-check)
 CI_GROUPS = static clients_db clients_pooler conformance dbspec dbspec_apply feature_coverage feature_verify_rust feature_verify_other feature_helpers stress_mysql stress_pg_sqlite python
-CI_TARGETS_static = runner-check documents-check commits-check release-coverage kit-check owner-validate dependency-policy-check dependency-policy-mutation-check version-check comment-language-check testcase-check repo-check test-servers-check docs-rules-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check install-cli-check markdown-table-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check codec-check bind-check ir-answers-check fuzz-check package-check ts-model-check dbspec-language-check feature-unit-check parity-declarations-check
+CI_TARGETS_static = runner-check docs-check commits-check release-coverage kit-check owner-validate dependency-policy-check dependency-policy-mutation-check version-check comment-language-check testcase-check repo-check orm-test-servers-check docs-rules-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check orm-install-cli-check markdown-table-check docs-verify-idempotent go-model-check client-unit-check php-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check codec-check bind-check ir-answers-check fuzz-check package-check ts-model-check dbspec-language-check feature-unit-check parity-declarations-check
 CI_TARGETS_clients_db = perf-check rust-driver-check example-check client-db-check dialect-facts-check go-test-check
 CI_TARGETS_clients_pooler = client-pooler-check
 CI_TARGETS_conformance = ts-check scripts-typecheck ts-min-check conformance-check conformance-ts-suite-check markdown-conformance-check parity-check
@@ -213,16 +213,16 @@ run-databases:
 # (.github/workflows/ci.yml), and a local check is no step required before a push. check-run runs the runner
 # (scripts/check/run.mts): each run creates its own bench and decimal databases, runs the targets one by one and writes the
 # record of the run to .runtime/check/<id>/record.json. The runner reads TEST_ENV as the setup step servers and holds the
-# shared lease of those servers: when the file is missing (make test-servers failed), it records only the targets that need
+# shared lease of those servers: when the file is missing (make orm-test-servers failed), it records only the targets that need
 # a database as not-run and runs the rest.
 # GROUP runs only one CI group (CI_TARGETS_<group>). That run is one part of the whole suite that one GitHub Actions job runs,
 # so it is accepted only when GITHUB_ACTIONS is true.
 CHECK_RUN_TARGETS = $(if $(GROUP),$(CI_TARGETS_$(GROUP)),$(CHECK_TARGETS))
-check:
+orm-check:
 	$(NODE) $(KIT)/full-run.$(KIT_EXT) run check-run
 check-run:
 	$(if $(GROUP),$(if $(filter $(GROUP),$(CI_GROUPS)),,$(error GROUP $(GROUP) names no CI group; give one of CI_GROUPS: $(CI_GROUPS))))
-	$(if $(GROUP),$(if $(filter true,$(GITHUB_ACTIONS)),,$(error GROUP runs one CI group of make check-run on GitHub Actions only; run make check without GROUP, which runs every target of CHECK_TARGETS)))
+	$(if $(GROUP),$(if $(filter true,$(GITHUB_ACTIONS)),,$(error GROUP runs one CI group of make check-run on GitHub Actions only; run make orm-check without GROUP, which runs every target of CHECK_TARGETS)))
 	$(BUILD_LEASE) && $(NODE) scripts/check/run.mts $(abspath $(TEST_ENV)) $(CHECK_RUN_TARGETS)
 
 # ci-group-needs writes the setup steps that the job of CI group GROUP runs as step output lines (`<output>=true|false`): it decides them from the need
@@ -237,7 +237,7 @@ ci-group-needs:
 BENCH_TARGETS = dbspec-stress-bench dbspec-apply-stress-bench dbspec-introspect-compare-bench dbspec-compare-bench timing-check
 .PHONY: bench
 bench:
-	test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }
+	test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make orm-test-servers" >&2; exit 1; }
 	$(NODE) scripts/check/run.mts --job-summary $(abspath $(TEST_ENV)) $(BENCH_TARGETS)
 
 # GO_PACKAGES is every package of the three modules of go.work (packages/go, tests, examples). The root is not a module,
@@ -282,7 +282,7 @@ runner-check:
 # connection.
 #
 # DBSPEC_STRESS_DOCUMENT is the 2000-table document of tests/dbspec/stress.mts. The parse time of that document,
-# application, introspection, and comparison are performance measurements, so make bench runs them. make check's
+# application, introspection, and comparison are performance measurements, so make bench runs them. make orm-check's
 # dbspec-compare-check and dbspec-introspect-compare-check run the same code path with small documents of the same shape
 # (DBSPEC_COMPARE_TABLES and DBSPEC_INTROSPECT_TABLES tables), and make
 # bench runs the same targets with 2000 tables.
@@ -291,7 +291,7 @@ DBSPEC_COMPARE_TABLES ?= 20
 DBSPEC_COMPARE_DOCUMENT = $(RUN_DIR)/stress-$(DBSPEC_COMPARE_TABLES).dbs
 DBSPEC_INTROSPECT_TABLES ?= 20
 DBSPEC_INTROSPECT_DOCUMENT = $(RUN_DIR)/stress-$(DBSPEC_INTROSPECT_TABLES).dbs
-# DBSPEC_INTROSPECT_PROFILE is the cargo profile of the Rust introspection runner. make check uses dev, which shares the test
+# DBSPEC_INTROSPECT_PROFILE is the cargo profile of the Rust introspection runner. make orm-check uses dev, which shares the test
 # build and its dependencies, and make bench uses release, which measures the introspection time.
 DBSPEC_INTROSPECT_PROFILE ?= dev
 DBSPEC_INTROSPECT_DIR = $(if $(filter dev,$(DBSPEC_INTROSPECT_PROFILE)),debug,$(DBSPEC_INTROSPECT_PROFILE))
@@ -354,7 +354,7 @@ dbspec-introspect-python-check: python-venv-check
 
 # dbspec-plan-check applies the steps of every case of tests/dbspec/plans.json to MySQL, PostgreSQL, and SQLite,
 # and requires the plan's target, the source via rollback statements, the target after applying again, and the target after finalize, and
-# no hidden names (docs/plans.md "Verification").
+# no hidden names (docs/spec/plans.md "Verification").
 .PHONY: dbspec-plan-check
 dbspec-plan-check:
 	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./packages/go/internal/dialects -run '^TestPlanApply$$' -count=1
@@ -362,7 +362,7 @@ dbspec-plan-check:
 # dbspec-apply-check applies the plan chain to MySQL, PostgreSQL, and SQLite with history, a second apply, drift,
 # lock, an unlock that releases nothing, verification, recover and rollback at an interruption after every step of a representative plan, row writes between,
 # null checks, and finalize; and it applies the 2000-table document as the first plan
-# to the three databases (docs/plans.md "Apply", "Verification"). The 2000-table plan on MySQL
+# to the three databases (docs/spec/plans.md "Apply", "Verification"). The 2000-table plan on MySQL
 # commits its statements and its 22000 history steps separately, so the deadline of that case is long.
 .PHONY: dbspec-apply-check
 dbspec-apply-check:
@@ -486,25 +486,25 @@ dbspec-compare-check: dbspec-compare-check/unit dbspec-compare-check/runners dbs
 	rm -rf $(RUN_DIR)
 dbspec-compare-check/unit:
 	$(RUN_TESTS) node -- tests/dbspec/compare/check.test.mts
-# PYTHON_VENV is the virtual environment that install-python makes. It holds the Python client installed in editable mode,
+# PYTHON_VENV is the virtual environment that orm-install-python makes. It holds the Python client installed in editable mode,
 # with the pinned dependencies of its pyproject.toml (ordered-json, cryptography, PyMySQL, psycopg, rapidyaml, ruamel.yaml) and
 # of its extra test (jsonschema-rs); the checks
 # take this interpreter as ORM_PYTHON and import the installed package, never a source path.
 PYTHON_VENV = $(abspath packages/python/.venv)
-# install-python installs the tools of mise.toml (install-tools), among them the Python that mise.lock pins, and makes the
+# orm-install-python installs the tools of mise.toml (install-tools), among them the Python that mise.lock pins, and makes the
 # venv of that interpreter with kit's python-venv; no other python3 of PATH is used. The client is installed with that pip as
 # an editable package (pip install --editable) with its extra test, so the tests import the installed package and a source
 # change needs no reinstall. The dependencies come from the wheel lock packages/python/pylock.toml with --require-hashes (kit
 # K54): every file is checked by its sha256, and the editable install adds the package itself with --no-deps, since pip
 # refuses an editable requirement in hash-checking mode. The extra test is installed after it, as before.
-.PHONY: install-python
-install-python:
+.PHONY: orm-install-python
+orm-install-python:
 	$(MAKE) --no-print-directory install-tools
 	$(MAKE) --no-print-directory python-venv DIR=$(PYTHON_VENV)
 	$(ONLINE) $(PYTHON3) -m pip --python $(PYTHON_VENV)/bin/python install --quiet --require-hashes -r packages/python/pylock.toml
 	$(PYTHON3) -m pip --python $(PYTHON_VENV)/bin/python install --quiet --no-deps --editable packages/python
 	$(ONLINE) $(PYTHON3) -m pip --python $(PYTHON_VENV)/bin/python install --quiet --group packages/python/pyproject.toml:test
-# python-venv-check checks that the venv of install-python exists and runs the Python release of mise.toml. A missing venv
+# python-venv-check checks that the venv of orm-install-python exists and runs the Python release of mise.toml. A missing venv
 # or another release fails without a download or a repair, and names the fix: remove the venv and run make install.
 .PHONY: python-venv-check
 python-venv-check:
@@ -513,15 +513,15 @@ python-venv-check:
 	want=$$(mise current python) || { echo "python-venv-check: mise does not name the Python of mise.toml; run make install-tools"; exit 1; }; \
 	test "$$got" = "$$want" || { echo "python-venv-check: $(PYTHON_VENV) runs Python $$got, but mise.toml declares $$want; remove $(PYTHON_VENV) and run make install, which builds it from the Python of mise.toml"; exit 1; }
 
-# php-vendor-check fails when vendor-php/autoload.php or the PHPUnit of packages/php or packages/php-ext, which install-php
+# php-vendor-check fails when vendor-php/autoload.php or the PHPUnit of packages/php or packages/php-ext, which orm-install-php
 # creates with Composer, is missing, and names the make step that creates it; it installs nothing. A target that runs PHP
 # through packages/php/tests/autoload.php or a package's PHPUnit takes it as a prerequisite.
 .PHONY: php-vendor-check
 php-vendor-check:
-	@for file in vendor-php/autoload.php vendor-php/bin/phpunit; do test -f $$file || { echo "php-vendor-check: $$file is missing; run make install-php, which installs it with Composer"; exit 1; }; done
+	@for file in vendor-php/autoload.php vendor-php/bin/phpunit; do test -f $$file || { echo "php-vendor-check: $$file is missing; run make orm-install-php, which installs it with Composer"; exit 1; }; done
 
 # python-check runs the Python client's unit tests, the interface tests of the Python extractor, the generated-model check and
-# the Python conformance result check. The tests import the client and ordered-json installed into the venv (install-python).
+# the Python conformance result check. The tests import the client and ordered-json installed into the venv (orm-install-python).
 .PHONY: python-check python-unit-check python-interface-unit-check
 python-check: python-unit-check python-interface-unit-check python-model-check conformance-result-check/python
 python-unit-check: python-venv-check
@@ -561,7 +561,7 @@ dbspec-compare-bench:
 	$(MAKE) --no-print-directory dbspec-compare-check DBSPEC_COMPARE_TABLES=2000
 
 # dbspec-stress-bench parses and emits the 2000-table stress document twice each in Go, PHP, TypeScript, and Rust,
-# prints the parse time as a ratio to the reference workload (docs/dbspec.md "Verification"), and checks that emit(parse(doc)) == doc and that the two
+# prints the parse time as a ratio to the reference workload (docs/spec/dbspec.md "Verification"), and checks that emit(parse(doc)) == doc and that the two
 # emissions match (Rust uses a release build), and it measures PHP introspection on SQLite.
 .PHONY: dbspec-stress-bench
 # The parts read the stress document in the RUN_DIR of the top target together, and each language's part is independent.
@@ -674,16 +674,16 @@ dbspec-php-check/unicode: php-vendor-check
 	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecUnicodeTest.php
 	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecUnicodeTest.php
 # dbspec-php-check/show-create checks that MysqlCatalog::createChecks reads every case of tests/dbspec/show-create.json with the expected body.
-# dbspec-php-check/analyze checks syntax analysis and format with focused cases and every case of cases.json (docs/dbspec.md "Syntax analysis", "Formatting").
+# dbspec-php-check/analyze checks syntax analysis and format with focused cases and every case of cases.json (docs/spec/dbspec.md "Syntax analysis", "Formatting").
 dbspec-php-check/analyze: php-vendor-check
 	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecAnalyzeTest.php
 dbspec-php-check/show-create: php-vendor-check
 	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecShowCreateTest.php
 # dbspec-php-check/set runs Dbspec::readSet on every case of tests/dbspec/set-files.json and the focused cases, each
-# a temporary file tree with real symbolic and hard links (docs/dbspec.md "Document sets").
+# a temporary file tree with real symbolic and hard links (docs/spec/dbspec.md "Document sets").
 dbspec-php-check/set: php-vendor-check
 	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecSetTest.php
-# dbspec-php-check/set-parse runs Dbspec::parseSet on every case of tests/dbspec/set-parse.json (docs/dbspec.md
+# dbspec-php-check/set-parse runs Dbspec::parseSet on every case of tests/dbspec/set-parse.json (docs/spec/dbspec.md
 # "Parsing a set").
 dbspec-php-check/set-parse: php-vendor-check
 	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecSetParseTest.php
@@ -695,7 +695,7 @@ dbspec-php-check/set-parse: php-vendor-check
 # class, and that the shared dbspec, statement, plan, and Mermaid vectors and the apply cleanup errors (the same cases as the PHP client's plan,
 # Mermaid, and apply cleanup tests) produce the same results as the pure PHP client on SQLite's introspection and application,
 # each checked twice. The build uses the phpize on PATH and
-# php-config, and gen_stub.php is the one that make install-php-extension-tools placed. php-extension-arginfo rewrites the
+# php-config, and gen_stub.php is the one that make orm-install-php-extension-tools placed. php-extension-arginfo rewrites the
 # header from the stub.
 PHP_EXTENSION_LIBRARY = $(RUN_DIR)/php-extension/orm_dbspec.so
 GEN_STUB = $(abspath .runtime/bin/gen-stub/gen_stub.php)
@@ -752,7 +752,7 @@ php-extension-arginfo:
 	php packages/php-ext/scripts/arginfo.php $(GEN_STUB) write
 
 # repo-check checks that the paths that the root npm script uses are tracked files or
-# directories, that the CI workflow starts servers with make test-servers, and that every variable of that environment file is given
+# directories, that the CI workflow starts servers with make orm-test-servers, and that every variable of that environment file is given
 # to the check steps (scripts/repo/ci.mts).
 # version-check checks that the VERSION file and all of orm's version declarations (the Rust manifests and lockfile, PHP composer,
 # TypeScript packages and lockfiles, feature contract, documents) agree.
@@ -776,53 +776,53 @@ repo-check/unit:
 repo-check/run:
 	$(NODE) scripts/repo/check.mts
 
-# test-servers-check checks the MySQL configuration migration of test-servers.mts (scripts/test-servers-mysql.mts) with a temporary
+# orm-test-servers-check checks the MySQL configuration migration of test-servers.mts (scripts/test-servers-mysql.mts) with a temporary
 # root server: it moves other configurations in the same count, does nothing for identical configurations, and refuses colliding names
 # before changing anything.
-.PHONY: test-servers-check
+.PHONY: orm-test-servers-check
 # STOP_PROCESS is the program that waits, when stopping a test server, for the process exit as an operating-system notification
 # (tests/stop-process). Its build is a long-running task, so it runs with no deadline under RUN_LONG.
 STOP_PROCESS = $(abspath .runtime/bin/stop-process)
 BUILD_STOP_PROCESS = $(RUN_LONG) go-build/stop-process -- $(PUBLISH) $(STOP_PROCESS) go build -o @OUT@ ./tests/stop-process
 
-test-servers-check:
+orm-test-servers-check:
 	$(BUILD_STOP_PROCESS)
 	$(BUILD_LEASE)
 	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) --test scripts/test-servers.test.mts scripts/test-servers-mysql.test.mts
 
-test-servers:
+orm-test-servers:
 	$(BUILD_STOP_PROCESS)
 	$(BUILD_LEASE)
 	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts start
 
-# make test-servers-tls loads the TLS files of the MySQL TLS cases into running
-# servers and writes their DSNs into TEST_ENV; make test-servers does it at the
+# make orm-test-servers-tls loads the TLS files of the MySQL TLS cases into running
+# servers and writes their DSNs into TEST_ENV; make orm-test-servers does it at the
 # start.
-test-servers-tls:
+orm-test-servers-tls:
 	$(NODE) scripts/test-servers.mts tls
 
-test-servers-stop:
+orm-test-servers-stop:
 	$(BUILD_STOP_PROCESS)
 	$(BUILD_LEASE)
 	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) $(NODE) scripts/test-servers.mts stop
 
 # worktree-remove WORKTREE=<path> removes a worktree of this repository: it first stops the servers that run from the
-# .runtime/servers of that worktree (its make test-servers-stop, which knows them by their pid files), since a server
+# .runtime/servers of that worktree (its make orm-test-servers-stop, which knows them by their pid files), since a server
 # whose data directory is removed under it never exits, and then runs git worktree remove.
 .PHONY: worktree-remove
 worktree-remove:
 	@test -n "$(WORKTREE)" || { echo "usage: make worktree-remove WORKTREE=<path>" >&2; exit 2; }
-	$(MAKE) -C "$(WORKTREE)" test-servers-stop
+	$(MAKE) -C "$(WORKTREE)" orm-test-servers-stop
 	git worktree remove "$(WORKTREE)"
 
-# test-servers-leases lists the lease holders of the servers, and test-servers-leases-clear, when a holder process is gone,
+# orm-test-servers-leases lists the lease holders of the servers, and orm-test-servers-leases-clear, when a holder process is gone,
 # deletes dead leases (those whose holder and releaser have both ended) and records what it deleted. A dead lease may also be taken by the next request (tests/lease).
 SERVERS_LEASES = $(abspath .runtime/servers.leases)
-test-servers-leases:
+orm-test-servers-leases:
 	$(BUILD_LEASE)
 	$(LEASE) list $(SERVERS_LEASES)
 
-test-servers-leases-clear:
+orm-test-servers-leases-clear:
 	$(BUILD_LEASE)
 	$(LEASE) clear-dead $(SERVERS_LEASES)
 
@@ -876,11 +876,11 @@ feature-rust-unit:
 feature-rust-database:
 	$(WITH_TEST_ENV) cd $(FEATURE_CRATE) && ORM_FEATURE_DATABASE=$(FEATURE_DATABASE) ORM_FEATURE_DSN="$$$(FEATURE_DSN_ENV)" $(CARGO_TEST) feature-rust-database -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline $(FEATURE_CARGO_TARGET) -- --test-threads=1 --exact --include-ignored $(FEATURE_TEST)
 
-# feature-check is the feature coverage and all verification commands, and make check runs them as three targets: feature-coverage is
+# feature-check is the feature coverage and all verification commands, and make orm-check runs them as three targets: feature-coverage is
 # coverage, feature-verify-rust runs the verification commands of shard rust (the commands that build and run Rust with cargo), and feature-verify-other
 # runs the verification commands of shard other (`shard` in contracts/features.json). CI runs the three in different groups at the same time. Features that declare the same
 # command are in the same shard, and that command runs once (scripts/features/check.mts).
-# feature-check is the feature coverage and all verification commands, and make check runs them as three targets: feature-coverage is
+# feature-check is the feature coverage and all verification commands, and make orm-check runs them as three targets: feature-coverage is
 # coverage, feature-verify-rust runs the verification commands of shard rust (the commands that build and run Rust with cargo), and feature-verify-other
 # runs the verification commands of shard other (`shard` in contracts/features.json). CI runs the three in different groups at the same time. Features that declare the same
 # command are in the same shard, and that command runs once (scripts/features/check.mts).
@@ -900,10 +900,10 @@ feature-verify-other: feature-check/build
 # (FEATURE_STRESS_MYSQL_HELPERS) is run by feature-stress-mysql-check, and the bench of the stress document and PostgreSQL and SQLite application
 # (FEATURE_STRESS_PG_SQLITE_HELPERS) by feature-stress-pg-sqlite-check, and the other helpers by feature-helper-check. So
 # the CI groups run the feature verification commands, helpers, and stress benches at the same time.
-# FEATURE_SUITE_HELPERS is the helper that check runs elsewhere in make check: conformance-runners runs conformance-check,
+# FEATURE_SUITE_HELPERS is the helper that check runs elsewhere in make orm-check: conformance-runners runs conformance-check,
 # conformance-result runs its predecessor target conformance-result-check, and case-database runs case-database-check, and bench-database
 # (scripts/bench-db.mts) is run by the setup step databases/create of the runner (scripts/check/databases.mts). feature-helper-check
-# leaves out that helper, so make check runs it once per helper check (make repo-check verifies this). make owner-check runs the helper check as is whenever a helper
+# leaves out that helper, so make orm-check runs it once per helper check (make repo-check verifies this). make owner-check runs the helper check as is whenever a helper
 # file changes.
 FEATURE_STRESS_MYSQL_HELPERS = dbspec-apply-stress-mysql
 FEATURE_STRESS_PG_SQLITE_HELPERS = dbspec-stress dbspec-apply-stress-pg-sqlite
@@ -942,7 +942,7 @@ client-unit-check/markdown: php-vendor-check
 	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/MarkdownTest.php
 client-unit-check/relation-keys: php-vendor-check
 	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RelationKeysTest.php
-# client-unit-check/code-catalog compares the generated Code.php with docs/errors.yaml.
+# client-unit-check/code-catalog compares the generated Code.php with docs/spec/errors.yaml.
 client-unit-check/code-catalog: php-vendor-check
 	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodeCatalogTest.php
 client-unit-check/hostcodec: php-vendor-check
@@ -984,7 +984,7 @@ php-min-check:
 # php-without-mysql-check runs the PHP client on SQLite, on a PHP without the MySQL drivers (mysqlnd, pdo_mysql, mysqli) loaded,
 # naming only the extensions the client uses with `php -n` (N17). The check is one of the declared Linux runner (.github/runner), where the driver is a
 # shared module, and fails for that reason on a PHP with the driver compiled in (macOS
-# Homebrew). feature-check in make check, when not on Linux, does not run this check
+# Homebrew). feature-check in make orm-check, when not on Linux, does not run this check
 # and prints that it runs on the Linux runner.
 php-without-mysql-check:
 	$(RUN_LONG) php-without-mysql -- node scripts/php-without-mysql.mts
@@ -1006,12 +1006,12 @@ python-statement-events-check: python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.statement_events
 # python-mysql-session-check reads the session sql_mode of a Python MySQL connection and compares it with
 # tests/dsn/mysql-session.json (packages/python/tests/mysql_session.py); it needs the database variables of make
-# test-servers (WITH_TEST_ENV).
+# orm-test-servers (WITH_TEST_ENV).
 .PHONY: python-mysql-session-check
 python-mysql-session-check: python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.mysql_session
 # python-statement-fault-check runs the Python statement fault cases on SQLite, MySQL and PostgreSQL; it
-# needs the database variables of make test-servers (WITH_TEST_ENV).
+# needs the database variables of make orm-test-servers (WITH_TEST_ENV).
 .PHONY: python-statement-fault-check
 python-statement-fault-check: python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.statement_fault
@@ -1019,14 +1019,14 @@ python-statement-fault-check: python-venv-check
 
 # python-identity-load-check runs the shared identity load cases (contracts/fixtures/identity_load.json)
 # with the Python client on SQLite, MySQL and PostgreSQL; it needs the database variables of make
-# test-servers (WITH_TEST_ENV).
+# orm-test-servers (WITH_TEST_ENV).
 .PHONY: python-identity-load-check
 python-identity-load-check: python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.identity_load
 
 # python-schema-inspection-check runs schema().empty(), exists and installed, the table privileges and stats
 # of the Python client on SQLite, MySQL and PostgreSQL case databases; it needs the database variables of make
-# test-servers (WITH_TEST_ENV).
+# orm-test-servers (WITH_TEST_ENV).
 .PHONY: python-schema-inspection-check
 python-schema-inspection-check: python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.schema_inspection
@@ -1138,15 +1138,15 @@ conformance-check/run: lease-tool conformance-python-models
 	  [ $$recorded = 1 ] || { echo "conformance-check: the run failed before any comparison, so RECORD=1 has nothing to record" >&2; exit 1; }; \
 	  rm -rf $(RUN_DIR)/out && $(CONFORMANCE_RUN); \
 	else exit 1; fi
-	PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/interfaces/check/main.mts --results $(RUN_DIR)/out --results $(RUN_DIR)/out/postgres --results $(RUN_DIR)/out/sqlite $(CONFORMANCE_VECTORS)
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(NODE) tests/interfaces/check/main.mts --results $(RUN_DIR)/out --results $(RUN_DIR)/out/postgres --results $(RUN_DIR)/out/sqlite $(CONFORMANCE_VECTORS)
 	rm -rf $(RUN_DIR)
 
 # markdown-conformance-check runs the cases of tests/markdown/cases.json for each client against the flowmark server of FLOWMARK
 # (tests/markdown/README.md). FLOWMARK is the build that tests/markdown/flowmark.version pins, and make
-# install-flowmark installs it here. The test fails unless the version matches what the build information pins, so a flowmark checkout
+# orm-install-flowmark installs it here. The test fails unless the version matches what the build information pins, so a flowmark checkout
 # built at the pinned revision can be given as FLOWMARK=<that path>.
 FLOWMARK ?= $(abspath .runtime/bin/flowmark)
-.PHONY: markdown-conformance-check markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/python markdown-conformance-check/rust markdown-conformance-check/typescript install-flowmark
+.PHONY: markdown-conformance-check markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/python markdown-conformance-check/rust markdown-conformance-check/typescript orm-install-flowmark
 # parity-prepare builds what the bindings of config/parity.json load before kit's parity-check runs them, into the
 # directory of this make run: the PHP extension that the php-extension implementation loads
 # (ORM_PARITY_PHP_EXTENSION) and the conformance runner that the Rust conformance bindings start
@@ -1184,9 +1184,9 @@ parity-bench-env-check:
 	@set -a; test -f $(abspath $(TEST_ENV)) && . $(abspath $(TEST_ENV)); set +a; for v in BENCH_MYSQL_DSN BENCH_POSTGRES_DSN BENCH_SQLITE_DSN; do test -n "$$(printenv $$v)" || { echo "parity-bench-env-check: $$v is not set; run make run-databases TARGETS=parity-check, which creates the bench databases and their DSNs"; exit 1; }; done
 
 # flowmark-check names the flowmark binary that the markdown conformance units read (FLOWMARK) before parity-check runs them;
-# install-flowmark builds it from the version pinned in tests/markdown/flowmark.version.
+# orm-install-flowmark builds it from the version pinned in tests/markdown/flowmark.version.
 flowmark-check:
-	test -x $(FLOWMARK) || { echo "flowmark-check: $(FLOWMARK) is missing; run make install-flowmark, which builds the version pinned in tests/markdown/flowmark.version"; exit 1; }
+	test -x $(FLOWMARK) || { echo "flowmark-check: $(FLOWMARK) is missing; run make orm-install-flowmark, which builds the version pinned in tests/markdown/flowmark.version"; exit 1; }
 
 parity-check: parity-bench-env-check flowmark-check interface-check
 parity-check: export FLOWMARK := $(FLOWMARK)
@@ -1238,7 +1238,7 @@ interface-check/tests: php-vendor-check
 # interface-typescript-check names the missing TypeScript checker dependency before the self-test runs it, so a fresh
 # checkout fails with the install step instead of a module resolution error.
 interface-typescript-check:
-	test -f packages/ts/testing/interfaces/typescript/node_modules/typescript/lib/typescript.js || { echo "interface-typescript-check: packages/ts/testing/interfaces/typescript/node_modules/typescript is missing; run make install-interfaces-typescript"; exit 1; }
+	test -f packages/ts/testing/interfaces/typescript/node_modules/typescript/lib/typescript.js || { echo "interface-typescript-check: packages/ts/testing/interfaces/typescript/node_modules/typescript is missing; run make orm-install-interfaces-typescript"; exit 1; }
 
 interface-check/self-test: php-vendor-check lease-tool typescript-build interface-typescript-check
 	$(READ_TYPESCRIPT)
@@ -1322,14 +1322,14 @@ dbspec-vscode-check: lease-tool
 	$(NPM) run --workspace polyspec-dbspec build
 	$(NODE) --test packages/dbspec-vscode/tests/manifest.test.mjs
 
-# install-vscode installs the VS Code of the integration test into var/tools/vscode with kit's VS Code installer, at the
+# orm-install-vscode installs the VS Code of the integration test into var/tools/vscode with kit's VS Code installer, at the
 # minimum release that packages/dbspec-vscode declares (engines.vscode); it downloads once and keeps a complete copy.
-.PHONY: install-vscode
-install-vscode:
+.PHONY: orm-install-vscode
+orm-install-vscode:
 	$(ONLINE) $(NODE) $(KIT)/install-vscode.$(KIT_EXT) packages/dbspec-vscode $(CURDIR)/var/tools/vscode
 
 # dbspec-vscode-integration runs the editor fixtures through vscode.provideDocumentSemanticTokens inside the VS Code that
-# make install-vscode installed; the run reads that copy and never downloads.
+# make orm-install-vscode installed; the run reads that copy and never downloads.
 .PHONY: dbspec-vscode-integration
 dbspec-vscode-integration: dbspec-vscode-check
 	$(NODE) packages/dbspec-vscode/tests/integration/run.mjs --vscode $(CURDIR)/var/tools/vscode
@@ -1346,14 +1346,14 @@ dbspec-language-check: lease-tool
 	$(NPM) run --workspace @polyspec/dbspec-language build
 	$(NODE) --test packages/dbspec-language/tests/module-graph.test.mjs packages/dbspec-language/tests/editor.test.mjs packages/dbspec-language/tests/vectors.test.mjs packages/dbspec-language/tests/resolve-set.test.mjs packages/dbspec-language/tests/cli.test.mjs
 
-# The prefix of `make install-cli`: the copy of dbspec-fmt in $(CLI_PREFIX)/lib and its script in $(CLI_PREFIX)/bin.
+# The prefix of `make orm-install-cli`: the copy of dbspec-fmt in $(CLI_PREFIX)/lib and its script in $(CLI_PREFIX)/bin.
 CLI_PREFIX ?= $(HOME)/.local
 
-# install-cli builds the TypeScript client and @polyspec/dbspec-language and installs the command dbspec-fmt under
+# orm-install-cli builds the TypeScript client and @polyspec/dbspec-language and installs the command dbspec-fmt under
 # CLI_PREFIX without a symbolic link (scripts/install-cli.mts): a copy of both packages and a script that runs node
 # with the copied entry. Put $(CLI_PREFIX)/bin on PATH; uninstall-cli removes the copy and the script.
-.PHONY: install-cli uninstall-cli
-install-cli: lease-tool
+.PHONY: orm-install-cli uninstall-cli
+orm-install-cli: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NPM) run --workspace @polyspec/dbspec-language build
@@ -1362,9 +1362,9 @@ install-cli: lease-tool
 uninstall-cli:
 	$(NODE) scripts/install-cli.mts uninstall --prefix $(CLI_PREFIX)
 
-# install-cli-check installs dbspec-fmt into a temporary prefix with scripts/install-cli.mts, runs it and uninstalls it
+# orm-install-cli-check installs dbspec-fmt into a temporary prefix with scripts/install-cli.mts, runs it and uninstalls it
 # (tests/cli/install-cli.test.mts); the install reads the registry.
-install-cli-check: lease-tool
+orm-install-cli-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NPM) run --workspace @polyspec/dbspec-language build
@@ -1389,14 +1389,17 @@ docs-dev:
 docs-build:
 	$(NPM) run docs:build
 
-# docs-ci runs, as the make check runner, the document checks (docs-verify-idempotent, docs-check) that the docs job of CI (ci.yml) runs
+# docs-ci runs, as the make orm-check runner, the document checks (docs-verify-idempotent, docs-check) that the docs job of CI (ci.yml) runs
 # without a test server (scripts/check/run.mts `-`). It runs the next target even when one fails, and keeps a log and summary for each target
 # in .runtime/check/<run id>/report, which the workflow uploads as the job summary and an artifact.
 docs-ci:
 	$(NODE) scripts/check/run.mts --job-summary - docs-verify-idempotent docs-check
 
-docs-check:
+orm-docs-check:
 	$(NPM) run docs:check
+
+# docs-check is the kit task of the documents (config/documents.json); this repository's site links are checked by orm-docs-check too.
+docs-check: orm-docs-check
 
 docs-verify-idempotent:
 	$(NPM) run docs:verify-idempotent
@@ -1413,9 +1416,9 @@ docs-dbs-check: lease-tool
 	$(RUN_LONG) docs-typecheck -- node_modules/.bin/tsc -p docs/.vitepress/tsconfig.json
 	$(NODE) --test tests/docs/dbs-fence.test.mts
 
-# markdown-table-check compares the table "Markdown IR executor" of docs/dialects.md and docs/dialects.ko.md with the
+# markdown-table-check compares the table "Markdown IR executor" of docs/spec/dialects.md and docs/spec/dialects.ko.md with the
 # capability table of flowmark's docs/spec/60-dialect.md at the version of tests/markdown/flowmark.version, which it
-# downloads as install-flowmark does.
+# downloads as orm-install-flowmark does.
 markdown-table-check:
 	$(NODE) scripts/docs/markdown-table.mts
 
@@ -1487,7 +1490,7 @@ bind-check/python: python-venv-check
 bind-check/php: php-vendor-check
 	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter 'test_bind_(message_)?vectors' packages/php/tests/MarkdownTest.php
 
-# ir-answers-check runs the read answers of contracts/fixtures/ir_answers.json in the five clients (docs/protocol.md
+# ir-answers-check runs the read answers of contracts/fixtures/ir_answers.json in the five clients (docs/spec/protocol.md
 # section 5, Read): each runner runs the chain of the markdown conformance case that a case names on a listener that
 # answers with the case's answer, and compares the result with its expect. No flowmark server runs.
 .PHONY: ir-answers-check ir-answers-check/go ir-answers-check/rust ir-answers-check/typescript ir-answers-check/python ir-answers-check/php
@@ -1537,50 +1540,50 @@ rust-check/clippy-test-faults: lease-tool
 # and the parts are independent (make -k).
 
 .PHONY: docs-ci
-.PHONY: install install-interfaces-typescript install-php install-rust install-rust-toolchain install-rust-crates install-go install-node-min install-server-programs install-php-extension-tools ci-php-min-version downloads-check
-install: install-php install-rust install-go install-node-min install-php-extension-tools install-python install-flowmark install-interfaces-typescript
-# install-interfaces-typescript installs the TypeScript 6.0.3 that packages/ts/testing/interfaces/typescript.mts reads declarations with
+.PHONY: install orm-install-interfaces-typescript orm-install-php orm-install-rust orm-install-rust-toolchain orm-install-rust-crates orm-install-go orm-install-node-min orm-install-server-programs orm-install-php-extension-tools ci-php-min-version downloads-check
+install: orm-install-php orm-install-rust orm-install-go orm-install-node-min orm-install-php-extension-tools orm-install-python orm-install-flowmark orm-install-interfaces-typescript
+# orm-install-interfaces-typescript installs the TypeScript 6.0.3 that packages/ts/testing/interfaces/typescript.mts reads declarations with
 # (config/toolchain.json exceptions): TypeScript 7.0 ships no JavaScript API of its compiler.
 # install-packages also installs the TypeScript of tests/interfaces from its lock, so a fresh install leaves lint-ts with what it reads.
-install-packages: install-interfaces-typescript
+install-packages: orm-install-interfaces-typescript
 
-install-interfaces-typescript:
+orm-install-interfaces-typescript:
 	$(ONLINE) $(NPM) ci --prefix packages/ts/testing/interfaces/typescript --no-audit --no-fund
 # lint-ts reads packages/ts/testing/interfaces/typescript.mts, which imports the TypeScript that this target installs: the recipe of
 # lint-ts is the kit.mk of @polyspec/kit, so the prerequisite is added here.
 lint-ts: typescript-build
-# install-php installs the one Composer project of the repository, the development root (vendor-php): it installs packages/php
+# orm-install-php installs the one Composer project of the repository, the development root (vendor-php): it installs packages/php
 # from its directory with the runtime dependencies of that package, and PHPUnit, which runs the tests of packages/php and
 # packages/php-ext. The released manifests of the two packages declare only what a consumer installs.
-install-php:
+orm-install-php:
 	$(ONLINE) $(COMPOSER) install --no-interaction --no-progress --prefer-dist
-# install-rust installs the toolchain of rust-toolchain.toml, then downloads the crates of every Cargo.lock. CI runs the two
-# halves apart, install-rust-toolchain before its crate cache is restored and install-rust-crates after it, since a
+# orm-install-rust installs the toolchain of rust-toolchain.toml, then downloads the crates of every Cargo.lock. CI runs the two
+# halves apart, orm-install-rust-toolchain before its crate cache is restored and orm-install-rust-crates after it, since a
 # restored registry replaces the crates downloaded before it.
-install-rust: install-rust-toolchain install-rust-crates
-install-rust-toolchain:
+orm-install-rust: orm-install-rust-toolchain orm-install-rust-crates
+orm-install-rust-toolchain:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" rustup toolchain install
 	PATH="$(HOME)/.cargo/bin:$(PATH)" rustc --version
-install-rust-crates:
+orm-install-rust-crates:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path packages/rust/Cargo.toml
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path benchmarks/rust/Cargo.toml
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path packages/rust/testing/interfaces/Cargo.toml
-install-go:
+orm-install-go:
 	$(ONLINE) $(GO) mod download
-# install-flowmark installs, in the FLOWMARK directory, the flowmark that markdown-conformance-check runs, at the module
+# orm-install-flowmark installs, in the FLOWMARK directory, the flowmark that markdown-conformance-check runs, at the module
 # version that tests/markdown/flowmark.version pins.
-install-flowmark:
+orm-install-flowmark:
 	$(ONLINE) GOBIN=$(dir $(FLOWMARK)) $(GO) install github.com/polyspec/flowmark/cmd/flowmark@$$(cat tests/markdown/flowmark.version)
 	$(ONLINE) $(GO) mod download github.com/polyspec/flowmark@$$(cat tests/markdown/flowmark.version)
-install-node-min:
+orm-install-node-min:
 	$(ONLINE) ORM_NODE_MIN_INSTALL=1 $(NODE) scripts/typescript/node-min.mts
-# install-server-programs installs, on the CI Linux runner, the server programs that make test-servers starts
+# orm-install-server-programs installs, on the CI Linux runner, the server programs that make orm-test-servers starts
 # (scripts/ci/server-programs.mts).
-install-server-programs:
+orm-install-server-programs:
 	$(ONLINE) $(NODE) scripts/ci/server-programs.mts
-# install-php-extension-tools checks that the phpize and php-config used by the build of the PHP extension orm_dbspec are the PHP ones on PATH,
+# orm-install-php-extension-tools checks that the phpize and php-config used by the build of the PHP extension orm_dbspec are the PHP ones on PATH,
 # and places that PHP's gen_stub.php and PHP-Parser in .runtime/bin/gen-stub (scripts/ci/php-extension-tools.mts).
-install-php-extension-tools:
+orm-install-php-extension-tools:
 	$(ONLINE) $(NODE) scripts/ci/php-extension-tools.mts
 
 # All setup steps of CI run make targets (make repo-check). ci-php-min-version records the lowest
@@ -1602,7 +1605,7 @@ rust-driver-check: cargo-downloads-check
 
 # example-check runs the Go, PHP and Rust programs of examples/complex and the Go, PHP, Rust, TypeScript and Python programs of
 # examples/thin-slice on the seeded bench database, and compares their stdout byte for byte as the README diff does. The Python
-# program runs on the venv of install-python, so the target requires that venv.
+# program runs on the venv of orm-install-python, so the target requires that venv.
 example-check: cargo-downloads-check python-venv-check
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/examples --cwd packages/rust -- $(CARGO_COPY) debug/complex debug/demo -- cargo build --locked --offline -p polyspec-orm-tests --bin complex --bin demo
 	$(WITH_TEST_ENV) EXAMPLE_RUST_COMPLEX=$(RUN_TARGET)/debug/complex EXAMPLE_RUST_DEMO=$(RUN_TARGET)/debug/demo $(GO_TEST) -tags examples ./examples -run '^TestExampleOutputsAreIdentical$$' -count=1
@@ -1630,14 +1633,14 @@ typescript-build: lease-tool
 # npm 12.2.0 installs no URL dependency by default: the consumer projects of a release read the tarball of
 # @polyspec/ordered-json by its URL, which their locks pin, so the consumer install and the proof run with
 # allow-remote=root, and so does the lock of a release consumer, which resolves that URL; a lock pins every registry package by its integrity, so the install downloads are
-# installation and no remote package enters the tree (the same setting as hyper, H13.5-14 of hyper).
+# installation and no remote package enters the tree.
 release-consumer release-consumer-lock release-proof: export npm_config_allow_remote := root
 
 # The archives of the npm packages hold the builds of the TypeScript client and of the editor packages (the release tool of
 # @polyspec/kit packs each tree as it is). release-assets builds on the installs it declares, the Go modules of the lease
 # tool; the release workflow installs the npm packages of the TypeScript build first with make install-packages. The checks
 # run offline (GOPROXY=off). The consumer projects install the archives, so their targets build the same trees.
-release-assets: install-go typescript-build editor-build
+release-assets: orm-install-go typescript-build editor-build
 release-consumer release-consumer-lock: typescript-build editor-build
 
 # editor-build builds the editor packages that the release publishes: the language service, the language server and the

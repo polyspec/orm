@@ -44,13 +44,13 @@ type Dialect interface {
 	HandlesStyle(style string) bool
 	// DecodesStyle reports whether the read undoes the codec stage in this dialect's SQL (MySQL: ip).
 	// No dialect undoes hex in SQL: UNHEX accepts odd lengths and returns NULL for cells with spaces,
-	// so the executor reads it correctly with HostDecode (docs/codec.md).
+	// so the executor reads it correctly with HostDecode (docs/spec/codec.md).
 	DecodesStyle(style string) bool
 	// HostNow reports that the clock the ORM writes comes from the executor (a `now`
 	// slot truncated to the column's fraction digits): SQLite has no sub-second clock
 	// function, and a PostgreSQL clock rounds into timestamp(p < 6)
 	// (postgres.now.precision_rounds). The update time, soft deletion and every omitted
-	// `default now` column of an insert bind the slot (docs/protocol.md "Clock").
+	// `default now` column of an insert bind the slot (docs/spec/protocol.md "Clock").
 	HostNow() bool
 	// ClockOperand is a datetime(p) column as it compares with the six-digit clock of a
 	// value function: SQLite compares text, so a column with p < 6 is extended with

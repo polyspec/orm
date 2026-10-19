@@ -21,7 +21,7 @@ function command(language: string, database: string): [string, string[]] {
     return ['cargo', ['test', '--offline', '--locked', '--manifest-path', 'packages/rust/Cargo.toml', '-p', 'polyspec-orm-tests', '--test', 'decimal_physical', id, '--', '--exact', '--include-ignored']];
   }
   if (language === 'python') {
-    // ORM_PYTHON is the Python of the venv that make install-python builds.
+    // ORM_PYTHON is the Python of the venv that make orm-install-python builds.
     const python = process.env['ORM_PYTHON'];
     if (!python) throw new Error('ORM_PYTHON is required; run the check through make decimal-physical-check');
     return [python, ['-m', 'packages.python.tests.decimal_model_db', '--dialect', database]];
@@ -63,7 +63,7 @@ await step('decimal/models', TIMEOUT_MS, () => run('node', ['packages/ts/dist/bi
 for (const database of databases) {
   const key = `DECIMAL_${database.toUpperCase()}_DSN`;
   const dsn = process.env[key];
-  if (!dsn) throw new Error(`${key} is required; run the test through its make target, which reads the environment of make test-servers`);
+  if (!dsn) throw new Error(`${key} is required; run the test through its make target, which reads the environment of make orm-test-servers`);
   let before: string|undefined;
   await step(`decimal/${database}/state`, TIMEOUT_MS, async ({ step: progress }) => {
     before = await state(database, dsn);

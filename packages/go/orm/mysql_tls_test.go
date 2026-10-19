@@ -14,7 +14,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// TestParseDSNMySQLTLS checks the MySQL TLS parameters of docs/config.md:
+// TestParseDSNMySQLTLS checks the MySQL TLS parameters of docs/spec/config.md:
 // ssl-mode=VERIFY_IDENTITY with an absolute ssl-ca path and a host name is the only TLS
 // mode; other ssl-mode values, an ssl-ca that is missing or relative, sockets, and an address host
 // are CONFIG.
@@ -46,7 +46,7 @@ func TestParseDSNMySQLTLS(t *testing.T) {
 	}
 }
 
-// TestMySQLTLSConnection connects to the TLS server of make test-servers
+// TestMySQLTLSConnection connects to the TLS server of make orm-test-servers
 // with ssl-mode=VERIFY_IDENTITY to require TLS, and rejects a server whose certificate is signed by another CA or
 // has a different host as its name.
 func TestMySQLTLSConnection(t *testing.T) {
@@ -70,7 +70,7 @@ func TestMySQLTLSConnection(t *testing.T) {
 	dsns := map[string]string{}
 	for _, env := range []string{"ORM_TEST_MYSQL_TLS_DSN", "ORM_TEST_MYSQL_TLS_OTHER_CA_DSN", "ORM_TEST_MYSQL_TLS_MISMATCH_DSN"} {
 		if dsns[env] = os.Getenv(env); dsns[env] == "" {
-			t.Fatalf("%s is required; run make test-servers", env)
+			t.Fatalf("%s is required; run make orm-test-servers", env)
 		}
 	}
 	got, err := version(ctx, dsns["ORM_TEST_MYSQL_TLS_DSN"])
@@ -86,12 +86,12 @@ func TestMySQLTLSConnection(t *testing.T) {
 
 // TestMySQLSessionSQLMode checks the session sql_mode that the client sets per connection
 // against the value in tests/dsn/mysql-session.json: the connection reads the mode it declares,
-// not the server default (docs/config.md "Runtime connection").
+// not the server default (docs/spec/config.md "Runtime connection").
 func TestMySQLSessionSQLMode(t *testing.T) {
 	ctx := testcase.Start(t, testcase.Database).Context()
 	dsn := os.Getenv("ORM_TEST_MYSQL_DSN")
 	if dsn == "" {
-		t.Fatal("ORM_TEST_MYSQL_DSN is required; run make test-servers")
+		t.Fatal("ORM_TEST_MYSQL_DSN is required; run make orm-test-servers")
 	}
 	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "tests", "dsn", "mysql-session.json"))
 	if err != nil {

@@ -1,12 +1,13 @@
-// The API units of config/parity.json (kind api): each code of docs/errors.yaml is one unit, whose symbol each client of its
+// The API units of config/parity.json (kind api): each code of docs/spec/errors.yaml is one unit, whose symbol each client of its
 // profile names. The checker reads the units from that file and refuses a unit, symbol or constant that does not match the
 // catalog and the catalog file of its client. Units of other API symbols (codec, collection, AES) are not declared yet.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { readParityConfig } from '../../../scripts/json/formats.mts';
 
-export type ApiSymbol = { implementation?: string; symbol?: string };
-export type ApiUnit = { id?: string; kind?: string; profile?: string; symbols?: ApiSymbol[] };
-export type ParityImplementation = { name?: string; errors?: { file?: string; pattern?: string } };
+type ApiSymbol = { implementation?: string; symbol?: string };
+type ApiUnit = { id?: string; kind?: string; profile?: string; symbols?: ApiSymbol[] };
+type ParityImplementation = { name?: string; errors?: { file?: string; pattern?: string } };
 export type Parity = {
   implementations?: ParityImplementation[];
   profiles?: { name?: string; implementations?: string[] }[];
@@ -17,11 +18,11 @@ const PREFIX = 'error-code-';
 
 /** readParity reads config/parity.json, the one source of the units. */
 export function readParity(root: string): Parity {
-  return JSON.parse(readFileSync(join(root, 'config/parity.json'), 'utf8')) as Parity;
+  return readParityConfig(join(root, 'config/parity.json'));
 }
 
 /** unitID is the unit of the catalog code `code`: error-code- and the code in lower case with - for _. */
-export function unitID(code: string): string {
+function unitID(code: string): string {
   return `${PREFIX}${code.toLowerCase().replaceAll('_', '-')}`;
 }
 
@@ -42,13 +43,13 @@ export function apiProblems(root: string, parity: Parity, codes: Set<string>, so
     byID.set(id, unit);
   }
   for (const code of codes) {
-    if (!byID.has(unitID(code))) problems.push(`no API unit ${unitID(code)} for the code ${code} of docs/errors.yaml`);
+    if (!byID.has(unitID(code))) problems.push(`no API unit ${unitID(code)} for the code ${code} of docs/spec/errors.yaml`);
   }
   const catalogIDs = new Set([...codes].map(unitID));
   for (const unit of units) {
     const id = unit.id ?? '';
     if (unit.kind !== 'api') problems.push(`${id} is not of kind api`);
-    if (!catalogIDs.has(id)) problems.push(`API unit ${id} names no code of docs/errors.yaml`);
+    if (!catalogIDs.has(id)) problems.push(`API unit ${id} names no code of docs/spec/errors.yaml`);
     const code = [...codes].find(entry => unitID(entry) === id);
     if (code === undefined) continue;
     const members = (parity.profiles ?? []).find(profile => profile.name === unit.profile)?.implementations;

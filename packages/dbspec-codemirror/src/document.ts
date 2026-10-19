@@ -1,4 +1,4 @@
-// The language service document of an editor state: one analysis per document text (docs/editor.md "Layers").
+// The language service document of an editor state: one analysis per document text (docs/spec/editor.md "Layers").
 import { Facet, StateField, type EditorState } from '@codemirror/state';
 import { openDocument, type DocumentAnalysis, type Position } from '@polyspec/dbspec-language';
 

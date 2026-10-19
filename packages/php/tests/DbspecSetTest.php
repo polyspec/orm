@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-// The set reader Dbspec::readSet (docs/dbspec.md "Document sets") through the shared vectors
+// The set reader Dbspec::readSet (docs/spec/dbspec.md "Document sets") through the shared vectors
 // tests/dbspec/set-files.json and the cases they cannot state: a set path without a directory, whose root
 // is the working directory, and a set path with a NUL byte.
 require_once __DIR__ . '/dbspec_set_cases.php';

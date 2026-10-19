@@ -10,8 +10,14 @@ const root = new URL('../../../', import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, root), 'utf8');
 
 type Naming = (camel: string) => string;
+// at returns the line at index, and throws when the file has no such line: a body that a scan reads past its end is a defect.
+const at = (lines: string[], index: number): string => {
+  const line = lines[index];
+  if (line === undefined) throw new Error(`line ${index} is outside the runner source`);
+  return line;
+};
 const camel: Naming = name => name;
-const pascal: Naming = name => name[0]!.toUpperCase() + name.slice(1);
+const pascal: Naming = name => name.charAt(0).toUpperCase() + name.slice(1);
 const snake: Naming = name => name.replace(/[A-Z]/g, c => '_' + c.toLowerCase());
 // Python names a method that is a keyword with a trailing underscore (PEP 8), as its model does: and_, or_, not_.
 const keywords = new Set(['and', 'or', 'not']);
@@ -47,9 +53,9 @@ const runners: Runner[] = [
 // end of its block.
 const python = { name: 'python', naming: pythonic, source: file('packages/python/testing/conformance/runner_python.py') };
 function block(lines: string[], first: number): string {
-  const indent = lines[first]!.search(/\S/);
+  const indent = at(lines, first).search(/\S/);
   let last = first + 1;
-  while (last < lines.length && (lines[last]!.trim() === '' || lines[last]!.search(/\S/) > indent)) last++;
+  while (last < lines.length && (at(lines, last).trim() === '' || at(lines, last).search(/\S/) > indent)) last++;
   return lines.slice(first, last).join('\n');
 }
 function pythonBody(source: string, name: string): string | undefined {
@@ -58,9 +64,9 @@ function pythonBody(source: string, name: string): string | undefined {
   const first = lines.findIndex(line => line.includes(`run("${name}",`));
   if (first < 0) return undefined;
   const registration = block(lines, first);
-  const named = lines[first]!.match(new RegExp(`run\\("${escape(name)}", ([A-Za-z_][A-Za-z0-9_]*)\\)`));
+  const named = at(lines, first).match(new RegExp(`run\\("${escape(name)}", ([A-Za-z_][A-Za-z0-9_]*)\\)`));
   if (named === null) return registration;
-  const def = lines.findIndex(line => new RegExp(`^\\s*def ${escape(named[1]!)}\\(`).test(line));
+  const def = lines.findIndex(line => new RegExp(`^\\s*def ${escape(named[1] ?? '')}\\(`).test(line));
   return def < 0 ? undefined : block(lines, def);
 }
 
@@ -70,12 +76,21 @@ function body(runner: Runner, source: string, name: string): string | undefined 
   const first = lines.findIndex(line => runner.start(name).test(line));
   if (first < 0) return undefined;
   let last = first + 1;
-  while (last < lines.length && !runner.any.test(lines[last]!)) last++;
+  while (last < lines.length && !runner.any.test(at(lines, last))) last++;
   return lines.slice(first, last).join('\n');
 }
 
 interface Vector { name: string; calls: string[] }
-const vectors: Vector[] = JSON.parse(read('tests/conformance/vectors.json')).vectors;
+// vectorsOf reads the vectors of the file text; a vector without a name or a list of calls is refused.
+const vectorsOf = (text: string): Vector[] => {
+  const value: unknown = JSON.parse(text);
+  if (typeof value !== 'object' || value === null || !('vectors' in value) || !Array.isArray(value.vectors)) throw new Error('tests/conformance/vectors.json holds no vectors list');
+  return value.vectors.map((vector: unknown) => {
+    if (typeof vector !== 'object' || vector === null || !('name' in vector) || typeof vector.name !== 'string' || !('calls' in vector) || !Array.isArray(vector.calls)) throw new Error('a vector of tests/conformance/vectors.json has no name and calls');
+    return { name: vector.name, calls: vector.calls.map((call: unknown) => String(call)) };
+  });
+};
+const vectors: Vector[] = vectorsOf(read('tests/conformance/vectors.json'));
 
 caseTest('TestEachRunnerCallsTheMethodsItsVectorNames', COMPUTE, () => {
   const missing: string[] = [];

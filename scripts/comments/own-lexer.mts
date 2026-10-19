@@ -83,7 +83,7 @@ export function commentsOwn(text: string, syntax: Syntax): OwnComment[] {
   };
   let i = 0;
   while (i < text.length) {
-    const ch = text[i] as string;
+    const ch = text.charAt(i);
     // A hash escaped by a backslash is a literal character, as in a Makefile, not a comment.
     const escapedHash = ch === '#' && text[i - 1] === '\\';
     const opener = syntax.lineComments.find(prefix => text.startsWith(prefix, i));
@@ -100,7 +100,7 @@ export function commentsOwn(text: string, syntax: Syntax): OwnComment[] {
       i = end;
       continue;
     }
-    if (syntax.rawStrings && ch === 'r' && (i === 0 || !/\w/.test(text[i - 1] as string))) {
+    if (syntax.rawStrings && ch === 'r' && (i === 0 || !/\w/.test(text.charAt(i - 1)))) {
       const raw = /^r(#*)"/.exec(text.slice(i, i + 40));
       if (raw) {
         const close = `"${raw[1]}`;

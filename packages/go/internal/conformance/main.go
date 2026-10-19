@@ -29,7 +29,7 @@ import (
 	_ "github.com/polyspec/orm/packages/go/orm/sqlite"
 )
 
-// stmt is one statement event (docs/usage.md "Statement events"). transaction is
+// stmt is one statement event (docs/operations/usage.md "Statement events"). transaction is
 // the number counted from 1 again in order of first appearance within the vector, and null outside one. error is
 // the error code of the statement, or null.
 type stmt struct {
@@ -516,7 +516,7 @@ func run() (status int) {
 		return rows.Len(), nil
 	})
 	// shared_note is a table of the external document bench_shared: it is read through its entity, and a write
-	// fails with CONFIG before any statement (docs/dbspec.md "External documents").
+	// fails with CONFIG before any statement (docs/spec/dbspec.md "External documents").
 	run("external_read", func() (any, error) {
 		readers, err := model.NoteReader().Connect(db).
 			Relation(model.SharedNote().MatchSharedNoteSeqWithSeq()).
@@ -902,7 +902,7 @@ func run() (status int) {
 		return map[string]any{"inserted": inserted, "pairs": pairs.ToArray(), "left": left}, err
 	})
 	// creates(rows, batch) runs each batch of batch rows as one multi-row INSERT in one transaction;
-	// a batch that is not a positive integer is CONFIG before any statement (docs/protocol.md).
+	// a batch that is not a positive integer is CONFIG before any statement (docs/spec/protocol.md).
 	run("creates_batch", func() (any, error) {
 		var rows []*model.CompositeAccountModel
 		for i, name := range []string{"a", "b", "c", "d", "e"} {
@@ -1068,7 +1068,7 @@ func run() (status int) {
 	})
 	run("restore_or_create", func() (any, error) {
 		// RestoreOrCreate restores the soft-deleted row of its key, refuses a live row with ROW_NOT_DELETED and
-		// creates a missing key (docs/usage.md "Restore or create a row"). The transaction rolls back at the end.
+		// creates a missing key (docs/operations/usage.md "Restore or create a row"). The transaction rolls back at the end.
 		boom := errors.New("boom")
 		result := map[string]any{}
 		err := db.Transaction(func() error {
@@ -1110,7 +1110,7 @@ func run() (status int) {
 	run("expect_revision", func() (any, error) {
 		// ExpectRevision makes an update or a delete write only while author 42's like_count still holds the
 		// expected revision; an update stores revision + 1, and a mismatch is REVISION_CHANGED and writes nothing
-		// (docs/dsl.md "Writes"). The transaction rolls back at the end, so the database is as it was.
+		// (docs/spec/dsl.md "Writes"). The transaction rolls back at the end, so the database is as it was.
 		boom := errors.New("boom")
 		result := map[string]any{}
 		read := func() (map[string]any, error) {
@@ -1208,7 +1208,7 @@ func run() (status int) {
 		return result, nil
 	})
 	run("column_pairs", func() (any, error) {
-		// Two compared columns meet as dbspec check operands do (docs/dbspec.md "Checks"): a comparison of two
+		// Two compared columns meet as dbspec check operands do (docs/spec/dbspec.md "Checks"): a comparison of two
 		// columns, a column in a subquery column, a join and a relation run when their columns meet, here i32 with i64
 		// and text with varchar, and fail with OPERATOR_NOT_ALLOWED before any statement when they do not.
 		result := map[string]any{}
@@ -1328,7 +1328,7 @@ func run() (status int) {
 	})
 
 	// A datetime(p) or time(p) value is bound with exactly p fraction digits, the
-	// form the SQLite CHECK of the column requires (docs/dialects.md); zeros past p
+	// form the SQLite CHECK of the column requires (docs/spec/dialects.md); zeros past p
 	// are dropped. Each vector inserts, reads the row back by the same parameter and
 	// deletes it.
 	timeCell := func() *model.TimeCellModel { return model.TimeCell().Connect(db) }
@@ -1411,7 +1411,7 @@ func run() (status int) {
 		return dateOnly(picks(rows, "day", "at_time")), nil
 	})
 
-	// An upsert has exactly one conflict key (docs/protocol.md 1): upsert_cell
+	// An upsert has exactly one conflict key (docs/spec/protocol.md 1): upsert_cell
 	// leaves its identity primary key out, so the unique key on code is the one key
 	// that can meet the row; an insert that does not assign code is IR_INVALID
 	// before any statement.
@@ -1445,7 +1445,7 @@ func run() (status int) {
 	})
 
 	// A PostgreSQL uuid column is read as its text and a uuid value is bound as
-	// text cast to uuid, in one form in every planner (docs/dialects.md); the
+	// text cast to uuid, in one form in every planner (docs/spec/dialects.md); the
 	// vector inserts, reads the row back by the same value and deletes it.
 	run("uuid_roundtrip", func() (any, error) {
 		created, err := model.UuidCell().Connect(db).SetId("0f8e2d4c-1a3b-4c5d-8e9f-a0b1c2d3e4f5").Create()
@@ -1464,7 +1464,7 @@ func run() (status int) {
 	})
 
 	// A value outside the logical type of its slot is CODEC_ENCODE before any statement
-	// (docs/protocol.md §5 "Parameters"). A create that the client lets through is deleted,
+	// (docs/spec/protocol.md §5 "Parameters"). A create that the client lets through is deleted,
 	// so the vector leaves the database as it found it.
 	rejected := func(created interface {
 		GetSeq() int64
@@ -1498,7 +1498,7 @@ func run() (status int) {
 		return rejected(bindCell().SetLabel("uuid").SetToken(&token).Create())
 	})
 
-	// A contains value NULL binds NULL, so `col LIKE NULL` matches no row (docs/protocol.md §2).
+	// A contains value NULL binds NULL, so `col LIKE NULL` matches no row (docs/spec/protocol.md §2).
 	run("contains_null", func() (any, error) {
 		q := author().ServiceSeq(7)
 		q.Orm_().Where("and", []orm.ChainKey{{Op: "lk", Column: "name"}}, orm.Null)
@@ -1510,7 +1510,7 @@ func run() (status int) {
 	})
 
 	// A parameter that assigns NULL to a non-null column is CODEC_ENCODE before any statement
-	// (docs/protocol.md §5 "Parameters"); creates binds each row value as a parameter.
+	// (docs/spec/protocol.md §5 "Parameters"); creates binds each row value as a parameter.
 	run("null_into_not_null", func() (any, error) {
 		null := model.BindCell()
 		null.Orm_().SetNull("label")

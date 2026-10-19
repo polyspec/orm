@@ -5,13 +5,13 @@ namespace Polyspec\Orm\Dbspec;
 
 /**
  * Writes the steps of a plan's diff in one dialect, each with its rollback
- * statement and effect (docs/plans.md "Steps").
+ * statement and effect (docs/spec/plans.md "Steps").
  *
  * @internal
  */
 final class PlanSteps
 {
-    /** The reason for a step that cannot be reverted (docs/plans.md "Irreversible steps"). */
+    /** The reason for a step that cannot be reverted (docs/spec/plans.md "Irreversible steps"). */
     public const IRREVERSIBLE_PRECISION = 'narrowing the precision rounds the values written since';
     /** The work table for SQLite rebuilding. */
     public const REBUILD_TABLE = 'dbspec$rebuild';
@@ -68,7 +68,7 @@ final class PlanSteps
         return $this->holds[$key] ?? throw new \LogicException("No holding name for $key");
     }
 
-    /** Decides the stash name in the order of docs/plans.md "Hiding instead of dropping". */
+    /** Decides the stash name in the order of docs/spec/plans.md "Hiding instead of dropping". */
     private function numberHolds(): void
     {
         $d = $this->d;
@@ -382,7 +382,7 @@ final class PlanSteps
         return ($to->name === 'time' || $to->name === 'datetime') && $to->name === $from->name && $to->parameters[0] > $from->parameters[0];
     }
 
-    /** Rebuilds a SQLite table through a work table (docs/plans.md "Steps"). */
+    /** Rebuilds a SQLite table through a work table (docs/spec/plans.md "Steps"). */
     private function rebuild(string $name): void
     {
         $d = $this->d;

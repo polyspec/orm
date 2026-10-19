@@ -98,7 +98,7 @@ func TestPythonTableAgreesWithGo(t *testing.T) {
 		"sys.stdout.write(''.join('1' if module._is_word_rune_code_point(cp) else '0' for cp in range(0x110000)))\n"
 	got, err := exec.Command(python, "-I", "-c", script, module).Output()
 	if err != nil {
-		t.Fatalf("%s failed: %v; set ORM_PYTHON to a Python 3 interpreter or run make install-python", python, err)
+		t.Fatalf("%s failed: %v; set ORM_PYTHON to a Python 3 interpreter or run make orm-install-python", python, err)
 	}
 	compareAll(t, "Python is_word_rune_code_point", got, goWord())
 }

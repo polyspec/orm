@@ -2,7 +2,7 @@
 # runs golangci-lint with --config of this file in each Go module of the repository.
 version: "2"
 linters:
-  # The standard set: errcheck, govet, ineffassign, staticcheck and unused.
+  # The standard set: errcheck, govet, ineffassign, staticcheck and unused; errcheck refuses an unchecked error (K256).
   default: standard
   enable:
     - gomoddirectives

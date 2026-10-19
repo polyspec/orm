@@ -1,4 +1,4 @@
-# Checking and digit alignment of decimal column values (docs/dbspec.md "decimal(p,s)").
+# Checking and digit alignment of decimal column values (docs/spec/dbspec.md "decimal(p,s)").
 import re
 
 from polyspec.orm import codes

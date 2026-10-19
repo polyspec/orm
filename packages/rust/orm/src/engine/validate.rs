@@ -145,7 +145,7 @@ pub(crate) fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
     ) {
         return Err(err(codes::IR_INVALID, format!("unknown kind {:?}", r.kind)));
     }
-    // A table of an external document is written only by the set that owns it (docs/dbspec.md "External documents").
+    // A table of an external document is written only by the set that owns it (docs/spec/dbspec.md "External documents").
     if let Some(ent) = m.model.entity(&r.query.entity) {
         if ent.external && matches!(r.kind.as_str(), "insert" | "update" | "delete" | "restore" | "restart_identity") {
             return Err(err(codes::CONFIG, format!("{} is owned by another document set", ent.table)));
@@ -259,7 +259,7 @@ pub(crate) struct RestoreParts {
     pub soft_delete: String,
 }
 
-/// Picks the key of a restore request (docs/protocol.md 1.5) after the request hook. The set values with a parameter
+/// Picks the key of a restore request (docs/spec/protocol.md 1.5) after the request hook. The set values with a parameter
 /// and the eq conditions with a parameter that the where joins with and give columns their values; the key is the
 /// primary key when they cover it, otherwise the first unique key in name order that they cover. A set value of a key
 /// column becomes a condition, every other set value is a new value, and the where keeps its other conditions, which

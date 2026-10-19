@@ -1,4 +1,4 @@
-// Writes and reads a dbspec document as a standard Mermaid erDiagram (docs/mermaid.md).
+// Writes and reads a dbspec document as a standard Mermaid erDiagram (docs/spec/mermaid.md).
 // The reference is the Go engine (engine/dbspec/mermaid.go), and the text, document, omitted objects and diagnostics are
 // the same bytes as Go. Regex whitespace is written as Go's \s([\t\n\f\r ]).
 import { present } from '../present.js';
@@ -22,7 +22,7 @@ export type DbspecMermaidImport =
 /**
  * Writes one document as a standard Mermaid erDiagram and lists what the
  * diagram cannot hold as [kind, table, name] in table, kind and name order
- * (docs/mermaid.md "Export").
+ * (docs/spec/mermaid.md "Export").
  */
 export function exportMermaid(document: DbspecDocument): DbspecMermaidExport {
   const input: unknown = document;
@@ -169,7 +169,7 @@ interface MermaidRelation {
 
 /**
  * Reads a standard Mermaid erDiagram into a dbspec document named `name` and
- * lists what it does not carry over (docs/mermaid.md "Import"). A line that
+ * lists what it does not carry over (docs/spec/mermaid.md "Import"). A line that
  * does not follow the grammar is a `mermaid` diagnostic at its line.
  */
 export function importMermaid(text: string, name: string): DbspecMermaidImport {

@@ -11,7 +11,7 @@ import (
 
 const parentDocument = `dbspec 1 accounts
 
-# 주석과 diagram은 manifest text에 남지 않는다.
+# Comments and diagrams do not remain in the manifest text.
 table tenant {
   id i64 identity
   name varchar(50)

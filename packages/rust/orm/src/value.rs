@@ -159,7 +159,7 @@ pub enum StyledValue<T> {
 }
 
 /// A value read from a row, positionally. `Ordered` is a column after the `json`
-/// or `jsons` stage; `Json` is a column after another style stage (docs/codec.md).
+/// or `jsons` stage; `Json` is a column after another style stage (docs/spec/codec.md).
 #[derive(Debug, Clone, Default)]
 pub enum Val {
     #[default]

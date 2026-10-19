@@ -1,5 +1,5 @@
 //! Runs the cases of tests/events/vectors.json with this client on MySQL, PostgreSQL, and SQLite and
-//! compares the statement events (docs/usage.md "Statement events"). For each case, its own case
+//! compares the statement events (docs/operations/usage.md "Statement events"). For each case, its own case
 //! database has the fixture contracts/fixtures/statement_events.dbs installed (unless the case's install
 //! is false), registers one recording subscriber, then runs the steps in turn. The record
 //! holds sql, binds, kind, tables, and transaction (a number recounted from 1 in the order first seen within the case,

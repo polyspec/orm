@@ -209,7 +209,7 @@ func (d *DB) register(s *Schema) error {
 	if d.m.schemas[s.Hash] != nil {
 		return nil
 	}
-	// A markdown connection does not plan (docs/protocol.md §5), so it registers only the set, without a dialect engine.
+	// A markdown connection does not plan (docs/spec/protocol.md §5), so it registers only the set, without a dialect engine.
 	if d.md != nil {
 		d.m.schemas[s.Hash] = s
 		return nil
@@ -415,7 +415,7 @@ func (d *DB) WithContext(ctx context.Context) *DB {
 }
 
 // RequestHook receives each request of a handle right before the client plans
-// it (docs/usage.md "Request hook"). It changes r in place; addParam appends a
+// it (docs/operations/usage.md "Request hook"). It changes r in place; addParam appends a
 // value to the request parameters and returns its index, and params is a copy of
 // the parameters that the request binds, which the hook reads. An error it
 // returns fails the operation unchanged before any statement.

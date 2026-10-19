@@ -8,7 +8,7 @@ use serde_json::Value as Json;
 
 fn fixture() -> Json {
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../tests/collection/keys.json");
-    let src = std::fs::read_to_string(path).unwrap_or_else(|e| panic!("read {path}: {e}; run make check from the checkout root"));
+    let src = std::fs::read_to_string(path).unwrap_or_else(|e| panic!("read {path}: {e}; run make orm-check from the checkout root"));
     serde_json::from_str(&src).expect("tests/collection/keys.json is not JSON")
 }
 

@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 // The extension orm_dbspec (Polyspec\Orm\Dbspec\Native) against the PHP client for syntax analysis and formatting
-// (docs/dbspec.md "Syntax analysis", "Formatting"): the focused cases, the shared cases of tests/dbspec/cases.json and a
+// (docs/spec/dbspec.md "Syntax analysis", "Formatting"): the focused cases, the shared cases of tests/dbspec/cases.json and a
 // limit stop give the same tokens, positions, diagnostics, emission and formatted text as the PHP client.
 
 use Polyspec\Orm\Dbspec\Dbspec;

@@ -1,5 +1,5 @@
 //! Plan chains applied to MySQL, PostgreSQL and SQLite through
-//! `polyspec_orm::dbspec::apply`, `recover`, `rollback` and `finalize` (docs/plans.md,
+//! `polyspec_orm::dbspec::apply`, `recover`, `rollback` and `finalize` (docs/spec/plans.md,
 //! "Apply"): the chain of create-from-empty and rename-table-and-column of
 //! tests/dbspec/plans.json with its history and a second apply without
 //! events, drift, the lock of a second session, an apply to a second
@@ -103,7 +103,7 @@ impl<C: ApplyConnection + Send> ApplyConnection for RunAfter<'_, C> {
     }
 }
 
-/// The lock name and key of docs/plans.md "Apply".
+/// The lock name and key of docs/spec/plans.md "Apply".
 const MYSQL_APPLY_LOCK: &str = "CONCAT('dbspec$plans$', LEFT(SHA2(DATABASE(), 256), 51))";
 const POSTGRES_APPLY_LOCK: &str = "hashtext('dbspec$plans'), hashtext(current_schema())";
 
@@ -661,7 +661,7 @@ async fn pooler_connection(dsn: &str, name: &str) -> sqlx::PgConnection {
     sqlx::PgConnection::connect_with(&options.database(name).statement_cache_capacity(0)).await.expect("connection through PgBouncer")
 }
 
-/// apply needs one server session, not shared with another client, from start to finish (docs/plans.md
+/// apply needs one server session, not shared with another client, from start to finish (docs/spec/plans.md
 /// "Apply"). PgBouncer's transaction pooling picks a server connection again per statement, so apply
 /// checks the server session at the lock and at each step, and stops with a session error. Each scenario
 /// creates its own database and connects to it through PgBouncer. PgBouncer reuses idle server connections LIFO

@@ -1,5 +1,5 @@
 # Alias columns: an add-column function named Alias<Name> writes its result under the
-# snake_case name of the alias, and its value is the function result (docs/usage.md).
+# snake_case name of the alias, and its value is the function result (docs/operations/usage.md).
 import tempfile
 import unittest
 from pathlib import Path

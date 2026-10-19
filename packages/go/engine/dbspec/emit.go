@@ -165,7 +165,7 @@ func (s *settingsNode) model() *Settings {
 
 // view selects what an emission writes: the canonical text, the manifest
 // text without comments and diagrams, or the schema text that also keeps only
-// the schema settings (docs/dbspec.md, "Manifest and hashes").
+// the schema settings (docs/spec/dbspec.md, "Manifest and hashes").
 type view int
 
 const (

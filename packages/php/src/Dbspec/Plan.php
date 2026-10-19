@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Dbspec;
 
 /**
- * A parsed plan document (docs/plans.md "Plan document"). `from` is null for
+ * A parsed plan document (docs/spec/plans.md "Plan document"). `from` is null for
  * a plan that starts from an empty database; `to` is the schemaHash of the
  * target schema text.
  */

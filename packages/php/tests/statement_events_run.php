@@ -1,5 +1,5 @@
 <?php
-// Statement events (docs/usage.md "Statement events"), on SQLite, MySQL and
+// Statement events (docs/operations/usage.md "Statement events"), on SQLite, MySQL and
 // PostgreSQL. Every case of the shared vector tests/events/vectors.json runs
 // in a case database of its own (case_database.php) with the fixture
 // contracts/fixtures/statement_events.dbs installed unless the case says

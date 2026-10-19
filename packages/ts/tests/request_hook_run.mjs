@@ -1,4 +1,4 @@
-// Shared cases of the request hook (docs/usage.md "Request hook"). They run on a connection where the shared fixture contracts/fixtures/request_hook.dbs
+// Shared cases of the request hook (docs/operations/usage.md "Request hook"). They run on a connection where the shared fixture contracts/fixtures/request_hook.dbs
 // is installed. The SQLite unit test (request_hook.mjs) and the feature coverage (coverage_request_hook.mjs) use them.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';

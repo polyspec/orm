@@ -1,4 +1,4 @@
-// Package dialects holds the schema dialect fact probes of docs/dialects.md.
+// Package dialects holds the schema dialect fact probes of docs/spec/dialects.md.
 //
 // Each probe states one observable fact about MySQL, PostgreSQL or SQLite,
 // runs DDL, DML and catalog queries in its own disposable database, schema or
@@ -20,7 +20,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-// Probe is one asserted fact. ID is stable and is cited by docs/dialects.md.
+// Probe is one asserted fact. ID is stable and is cited by docs/spec/dialects.md.
 type Probe struct {
 	ID   string
 	DB   string

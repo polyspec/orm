@@ -201,7 +201,7 @@ func (r vectorReader) linesMap(object map[string]any, location, key string) (map
 }
 
 // stepsMap returns an object that holds, per dialect, an array of step objects. A step object
-// has statement and effect strings, and only the keys of docs/plans.md "Steps".
+// has statement and effect strings, and only the keys of docs/spec/plans.md "Steps".
 func (r vectorReader) stepsMap(object map[string]any, location, key string) (map[string][]any, error) {
 	value, err := r.field(object, location, key)
 	if err != nil {

@@ -57,7 +57,7 @@ func dbspecLanguages() []string {
 }
 
 // TestApplyChainAcrossClients checks, for every ordered pair, whether a chain applied by one client is continued
-// by another client (docs/plans.md "Apply"). On three databases
+// by another client (docs/spec/plans.md "Apply"). On three databases
 // client A applies the first plan of the tests/dbspec/plans.json chain and client B applies the rest;
 // the history rows and the introspected schema text afterward must equal the expected ones. When A stops
 // partway, B must reject the interrupted apply and finish it with recover, and when it stops again

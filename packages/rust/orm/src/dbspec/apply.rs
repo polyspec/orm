@@ -1,4 +1,4 @@
-//! Applying plan chains step by step (docs/plans.md, "Apply"): [`apply`]
+//! Applying plan chains step by step (docs/spec/plans.md, "Apply"): [`apply`]
 //! runs the steps of the plans of a chain that the database has not applied,
 //! each statement on its own with its recorded history step in the table
 //! `dbspec$plans`, and verifies each plan by introspection; [`recover`]
@@ -46,7 +46,7 @@ pub enum ApplyEventKind {
 }
 
 impl ApplyEventKind {
-    /// The event name of docs/plans.md.
+    /// The event name of docs/spec/plans.md.
     pub fn as_str(self) -> &'static str {
         match self {
             ApplyEventKind::Plan => "plan",
@@ -61,7 +61,7 @@ impl ApplyEventKind {
     }
 }
 
-/// One occurrence that a command reports (docs/plans.md, "Apply"). `step`
+/// One occurrence that a command reports (docs/spec/plans.md, "Apply"). `step`
 /// and `statement` belong to the step events; the others carry 0 and an
 /// empty statement.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -77,7 +77,7 @@ pub struct ApplyEvent {
 pub type ApplyEventError = Box<dyn std::error::Error + Send + Sync>;
 
 /// The failure of [`apply`], [`recover`], [`rollback`] and [`finalize`]. The
-/// coded failures of docs/plans.md carry their code through
+/// coded failures of docs/spec/plans.md carry their code through
 /// [`ApplyError::code`]: locked, session, interrupted, drift, chain, failed, verify,
 /// irreversible and nulls.
 #[derive(Debug)]
@@ -121,7 +121,7 @@ pub enum ApplyError {
 }
 
 impl ApplyError {
-    /// The code of docs/plans.md, or `None` for a database or event error.
+    /// The code of docs/spec/plans.md, or `None` for a database or event error.
     /// A cleanup failure has the code of the error it followed.
     pub fn code(&self) -> Option<&'static str> {
         match self {
@@ -210,7 +210,7 @@ fn session_query(d: Dialect) -> String {
     }
 }
 
-/// The maximum time a statement waits for another session's lock (lock wait in docs/plans.md "Apply").
+/// The maximum time a statement waits for another session's lock (lock wait in docs/spec/plans.md "Apply").
 const LOCK_WAIT_SECONDS: i64 = 5;
 
 const APPLYING: &str = "applying";
@@ -873,7 +873,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
     }
 
     /// Decides the step of the interrupted row from the catalog's effect. Moves forward if forward, otherwise backward
-    /// to the position to continue from (recover in docs/plans.md "Apply").
+    /// to the position to continue from (recover in docs/spec/plans.md "Apply").
     async fn resolve(&mut self, p: &Plan, state: &str, k: usize, steps: &[PlanStep], forward: bool) -> Result<usize, ApplyError> {
         if k > steps.len() {
             return Err(ApplyError::Chain {
@@ -915,7 +915,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
                 self.q("applied_at"),
                 placeholders.join(", ")
             );
-            // applied_at is the tool clock's UTC time truncated to six fractional digits, as text (docs/plans.md "Apply").
+            // applied_at is the tool clock's UTC time truncated to six fractional digits, as text (docs/spec/plans.md "Apply").
             let applied_at = (self.now)().format("%Y-%m-%dT%H:%M:%S%.6fZ").to_string();
             let args = [
                 CatalogValue::Text(p.name().to_owned()),
@@ -1038,7 +1038,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
     }
 
     /// For the NULL rows of a column that the applied plan's rollback would revert to non-null,
-    /// fills them with the default, or stops with a nulls error if there is no default (docs/plans.md "Steps").
+    /// fills them with the default, or stops with a nulls error if there is no default (docs/spec/plans.md "Steps").
     async fn null_checks(&mut self, p: &Plan, steps: &[PlanStep]) -> Result<(), ApplyError> {
         for (i, s) in steps.iter().enumerate() {
             for c in &s.null_checks {

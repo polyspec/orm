@@ -1,6 +1,6 @@
 /*
  * Writes a dbspec document as a standard Mermaid erDiagram, and reads an erDiagram as a dbspec document (PHP client Mermaid,
- * docs/mermaid.md). Reports what neither side could carry over, in [table, kind, name] order. The PHP client's regular expressions here are a scanner that reads the same
+ * docs/spec/mermaid.md). Reports what neither side could carry over, in [table, kind, name] order. The PHP client's regular expressions here are a scanner that reads the same
  * grammar.
  */
 #include "dbspec.h"

@@ -1,4 +1,4 @@
-# The shared set reader vectors of tests/dbspec/set-files.json (docs/dbspec.md "Document sets"): every
+# The shared set reader vectors of tests/dbspec/set-files.json (docs/spec/dbspec.md "Document sets"): every
 # case builds its file tree in a fresh temporary directory, with real symbolic and hard links, and runs
 # read_dbspec_set on the tree root joined with the case's `set`. The vector file is read strictly: an
 # unknown or missing field is an error, and every case runs.

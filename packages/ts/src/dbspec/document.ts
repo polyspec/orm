@@ -1,4 +1,4 @@
-// The parser functions of dbspec documents (docs/dbspec.md): parseDbspec validates a document against its declared
+// The parser functions of dbspec documents (docs/spec/dbspec.md): parseDbspec validates a document against its declared
 // document set, analyzeDbspec gives the same parse with the tokens of the text, formatDbspec gives the canonical text
 // of a document with no diagnostic, and emitDbspec writes a parsed document in canonical form. This module and the
 // modules it imports read no Node global and load no driver, so the browser entry (entry.ts) can export them.
@@ -7,7 +7,7 @@ import { emitDocument } from './emit.js';
 import { analyzeDocument, parseDocument, type DbspecTokenClass, type ParsedDocument } from './parse.js';
 
 /**
- * A declaration of a parsed document (docs/dbspec.md "Declaration positions"): its kind, its path of enclosing names
+ * A declaration of a parsed document (docs/spec/dbspec.md "Declaration positions"): its kind, its path of enclosing names
  * and its own name, and the 1-based line and column, in Unicode code points, of its name token (of the keyword for a
  * setting and the primary key).
  */
@@ -64,7 +64,7 @@ export function parseDbspec(text: string, documents: Readonly<Record<string, str
   return frozenParse(parseDocument(text, documentSet(text, documents)));
 }
 
-/** A token of a text (docs/dbspec.md "Syntax analysis"): its 1-based line, its start and end in code points, and its class. */
+/** A token of a text (docs/spec/dbspec.md "Syntax analysis"): its 1-based line, its start and end in code points, and its class. */
 export interface DbspecToken {
   readonly line: number;
   readonly start: number;
@@ -87,7 +87,7 @@ export function analyzeDbspec(text: string, documents: Readonly<Record<string, s
   return Object.freeze({ ...result, tokens: Object.freeze(frozenTokens) });
 }
 
-/** The formatted text of a document with no diagnostic, or its diagnostics and no text (docs/dbspec.md "Formatting"). */
+/** The formatted text of a document with no diagnostic, or its diagnostics and no text (docs/spec/dbspec.md "Formatting"). */
 export type DbspecFormatResult =
   | { readonly text: string; readonly diagnostics: readonly [] }
   | { readonly text: null; readonly diagnostics: readonly DbspecDiagnostic[] };

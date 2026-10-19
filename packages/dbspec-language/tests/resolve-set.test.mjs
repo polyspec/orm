@@ -1,4 +1,4 @@
-// resolveSet with the node:fs host of the command line (docs/plans/editor-stack.md ruling 4): the set-files.json
+// resolveSet with the node:fs host of the command line (docs/spec/editor-stack.md ruling 4): the set-files.json
 // vectors where a document discovers the case's set file, the nearest ancestor that lists the document, a document
 // that two set files list, a document that no set file lists, the set given to openDocument and the diagnostics of the
 // set's other files. Every tree is written under a fresh temporary directory with real symbolic and hard links.

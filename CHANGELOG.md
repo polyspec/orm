@@ -40,7 +40,7 @@
 - Names::column states its own TypeError for a column that is not a string, as the extension does (T182-0-2-2).
 - The PHP dbspec behaviours that no shared vector fixes are cases with outcomes recorded from the PHP library, so one test checks either implementation of Polyspec\Orm\Dbspec in its own process (T182-0-1).
 - The PHP library refuses a document, document set, plan list or unsupported list whose array holds another type with the TypeError the extension gives, instead of reading it with warnings (T182-0-1-1).
-- The PHP extension registers the error codes of docs/errors.yaml as Polyspec\Orm\Native\Code, from a stub that `orm-gen errors --lang php-extension` writes (T182-1).
+- The PHP extension registers the error codes of docs/spec/errors.yaml as Polyspec\Orm\Native\Code, from a stub that `orm-gen errors --lang php-extension` writes (T182-1).
 - The PHP extension's mirrored dbspec tests have the same bodies as the PHP client's again (T131-11).
 - The PHP extension's arginfo header is regenerated for its translated stub, so its check passes (T131-10).
 - The owner selection tests expect comment-language-check, which every source change selects (T131-9).
@@ -105,7 +105,7 @@
 - The physical fixture uses a fixed clock on sqlite and postgres, so the day_of_week and days_ago expectations are derived from fixed dates (T77-33, T77-33-1 open for MySQL).
 - The coverage case unit runs its child without the test context (T77-32).
 - The SQLite concurrency unit cleans up after its cases run (T77-31).
-- The TypeScript generate unit expects the text-form setter declared in docs/dbspec.md (T77-30).
+- The TypeScript generate unit expects the text-form setter declared in docs/spec/dbspec.md (T77-30).
 - The vendored kit copies match @polyspec/kit 0.0.53, which carries the K208 trust wrapper (T77-36).
 - Open row T77-35 records that each go-orm parity unit runs the whole orm package twice, and the unit should run only its own tests.
 - TestConnectionsUseUTC sends the spec datetime form in UTC, and a native time.Time is refused with CODEC_ENCODE (T77-34).
@@ -167,10 +167,10 @@
 - The Go conformance runner, the dbspec Go programs, the Go symbol extractor and the dialect physical tests live in packages/go/internal, and no Go adapter stays under tests/ except the cross-language tools. (#T77-9-1)
 
 
-- The error catalogs of TypeScript and Python are exported as `codes`, as Go, PHP and Rust export theirs. The public API of the clients is declared as units in config/parity.json, and interface-check checks the error catalog units of every client against docs/errors.yaml. (#T77-8)
-- The Rust model generator checks its generated files with `Builder::check`, as the Go `orm-gen gen --check` does; the thin-slice demo has TypeScript and Python programs, whose stdout the output comparison checks against Go; and the styled value types of TypeScript and Python are in docs/codec.md and docs/dbspec.md. (#T148-3-7-5)
+- The error catalogs of TypeScript and Python are exported as `codes`, as Go, PHP and Rust export theirs. The public API of the clients is declared as units in config/parity.json, and interface-check checks the error catalog units of every client against docs/spec/errors.yaml. (#T77-8)
+- The Rust model generator checks its generated files with `Builder::check`, as the Go `orm-gen gen --check` does; the thin-slice demo has TypeScript and Python programs, whose stdout the output comparison checks against Go; and the styled value types of TypeScript and Python are in docs/spec/codec.md and docs/spec/dbspec.md. (#T148-3-7-5)
 - Every TypeScript and Python error site uses the generated catalog constants, and a drift test fails on a stale catalog. (#T148-3-7-3)
-- The TypeScript and Python clients name every error code through a generated catalog, which the parity check compares with docs/errors.yaml. (#T77-4)
+- The TypeScript and Python clients name every error code through a generated catalog, which the parity check compares with docs/spec/errors.yaml. (#T77-4)
 - The Rust ir-answers check compiles on main. (#T190)
 - Python reads time and date cells on MySQL and PostgreSQL. (#T117)
 - toArray writes datetime and time with six fraction digits in every client. (#T121)
@@ -242,7 +242,7 @@
 - Python runs every shared suite; its aggregates answer CODEC_DECODE for a value out of range, a SQLite DSN with a broken percent escape is CONFIG, and a MySQL install publishes its statement events. (#T77-3)
 - The Python codec and apply runners run in the shared checks; the Python PostgreSQL apply restores lock_timeout with a $1 marker. (#T77-2)
 - The Python tests report through the shared harness: RUN with a deadline, STEP, PASS, FAIL and SKIP, as the other implementations do. (#T77-1)
-- The PHP client reads YAML through the fork min-0-max/yaml v1.0.0-p1, which resolves the core schema by the YAML 1.2.2 table; a consumer declares the fork's vcs repository, as docs/packaging.md shows. (#T142-1-1)
+- The PHP client reads YAML through the fork min-0-max/yaml v1.0.0-p1, which resolves the core schema by the YAML 1.2.2 table; a consumer declares the fork's vcs repository, as docs/operations/packaging.md shows. (#T142-1-1)
 - The repository checks read the Makefile through one reader that names every target with its prerequisites and recipe. (#T137-1-4-2-2)
 - The repository checks read the run texts of the workflows and the Makefile recipes as shell commands, not lines or patterns. (#T137-1-4-2-1)
 - The Rust show-create vectors run through the public catalog path, each case a trial named by its id. (#T148-2-1)
@@ -303,7 +303,7 @@
 - The conformance vector creates_and_save records the insert parts of T169. (#T169-1)
 - Multi-row inserts run as power-of-two parts capped by the bind limit (999 on SQLite, 65535 on MySQL and PostgreSQL) inside the transaction, so the PHP plan cache holds a bounded number of insert shapes in every client. (#T169)
 - TypeScript types a plain YAML map key by the yaml library's own core-schema tags instead of a case-insensitive regex, so tRUE, nULL and .InF stay string keys. (#T142-10)
-- Every client refuses a YAML anchor with or without an alias, every explicit tag including the core tags, and a text with no document, as docs/codec.md now states. (#T142-9)
+- Every client refuses a YAML anchor with or without an alias, every explicit tag including the core tags, and a text with no document, as docs/spec/codec.md now states. (#T142-9)
 - Go reads YAML with goccy/go-yaml and Python with rapidyaml, both keeping U+0085 as content; Python writes with ruamel.yaml, and PyYAML is removed. The next_line exclusions are gone. (#T142-2)
 - The PHP client reads YAML with purrphp/yaml and its core schema, so 1_000, dates and timestamps stay strings as in every other client. orm refuses documents, aliases, anchors, tags, merge keys and duplicate keys on its node model. Two vectors stay excluded for purrphp defects, tracked by T142-1-1. (#T142-1)
 - The Rust workspaces deny unsafe code and allow attributes without a reason. The planner's lifetime transmute is removed, the thread CPU clock reads through rustix, and only the SQLite authorizer callback keeps unsafe code, with its reason. (#T137-1-3)
@@ -334,7 +334,7 @@
 ## 0.0.13
 
 - T161-2: the model-methods case keeps PHPStan's cache in its own folder, and the runner's parts table names it.
-- T161: PHP generated models declare their query methods as real typed methods (column conditions, orders, aggregates, key-prefix tuples, index hints), so PHPStan sees them; docs/usage.md names what stays on `__call`.
+- T161: PHP generated models declare their query methods as real typed methods (column conditions, orders, aggregates, key-prefix tuples, index hints), so PHPStan sees them; docs/operations/usage.md names what stays on `__call`.
 ## 0.0.12
 
 - T159: the request hook receives the request's bound parameters read-only in every client: Node and Python as the third argument, Go as a copied slice, Rust through `RequestParams::get`; PHP already had `$r->params`.
@@ -343,7 +343,7 @@
 - T156-1: the key-prefix tests follow the installed Python package and the testcase rule, and the markdown fixture models carry the key-prefix methods.
 - T139-1: the Rust codec writes YAML with serde-saphyr and reads it through saphyr-parser, so it stores every string of the common value model (`0o17`, control and C1 characters, U+FEFF, U+FFFE, U+FFFF) as the other clients do; yaml-rust2 is removed.
 - T156: every generator declares a typed method for every prefix of every key (primary key, unique keys, indexes), whether or not a scanned source calls it; Python resolves the same names at run time.
-- T143: docs/dbspec.md states which Windows reparse tags each set reader detects: Go, Rust and the PHP extension every name surrogate, TypeScript and PHP symbolic links and junctions, which Node and PHP `lstat` expose.
+- T143: docs/spec/dbspec.md states which Windows reparse tags each set reader detects: Go, Rust and the PHP extension every name surrogate, TypeScript and PHP symbolic links and junctions, which Node and PHP `lstat` expose.
 - T142-8: the targets whose node scripts run PHP check vendor-php first.
 - T142-7: every make target whose PHP script loads vendor-php checks it first (31 targets).
 - T134-1: the checkout wrapper packages/orm-python/bin/orm-gen is removed; the docs name the installed `orm-gen`.
@@ -364,7 +364,7 @@
 
 ## 0.0.11
 
-- T140-1: the Markdown IR executor table of docs/dialects.md mirrors the flowmark that the markdown conformance pins.
+- T140-1: the Markdown IR executor table of docs/spec/dialects.md mirrors the flowmark that the markdown conformance pins.
 - T153: the Python Collection's get and fetched import key_text and no longer raise NameError.
 - T147: the interface check refuses a public component method that no rule declares.
 - T147-5: Rust's AesKeyring lists its key versions, and the rule AESKeyring.versions is declared.
@@ -372,7 +372,7 @@
 - T147-3: the interface manifest marks its internal components, and the rule check covers the public ones.
 - T147-4: the manifest check refuses a rule whose method its component lacks, and SchemaUtils lists addTablesAndColumns.
 - T147-1: the interface rules declare Db.close, the Collection methods get, first, keys, connect, delete and toArray, and Utils.setLocal and local.
-- T140 (breaking): a restore picks its key after the request hook from the set values and the and-joined eq conditions, so a hook's condition narrows a restore as it narrows an update; the model sends its set only (docs/protocol.md 1.5).
+- T140 (breaking): a restore picks its key after the request hook from the set values and the and-joined eq conditions, so a hook's condition narrows a restore as it narrows an update; the model sends its set only (docs/spec/protocol.md 1.5).
 - T133: every runtime reads tests/dbspec/cases.json with one strict reader that refuses a missing or unknown field in any section.
 - T154: the Python Mermaid test imports only through the declared PYTHONPATH.
 - T149: the feature coverage runs Python owners, and schema_definition covers Python with its seven cases.
@@ -386,7 +386,7 @@
 - T146: the module list of orm-schema's dbspec is formatted, so `make rust-fmt-check` passes.
 - T151: the editor packages are classified as not released until the editor stack release, every new file is owned by the check that reads it, the syntax vector generator has a regeneration test and `make install-cli-check` installs dbspec-fmt into a temporary prefix.
 - T126-2: orm vendors kit v0.0.35 and its PRINCIPLES.md.
-- T150: docs/usage.md names Python's `orm-gen gen --check`, and docs/packaging.md how the Python client takes its schema.
+- T150: docs/operations/usage.md names Python's `orm-gen gen --check`, and docs/operations/packaging.md how the Python client takes its schema.
 - T128-2a (breaking): a document set is declared once, in `dbspec-set.json`, which every client reads and every generator takes.
 - T128-2a-7 (breaking): every document names the set file as the only form of a generator's document set, the interface rule `Dbspec.readSet` declares the set reader of every client, and the parity unit `dbspec-set-files` declares its vectors.
 - T136: `make install-python` installs uv before the Python it installs, so a fresh checkout and CI build the Python venv.
@@ -404,12 +404,12 @@
 - T128-2a-2 (breaking): the Go `orm-gen gen` takes `--set <dbspec-set.json>`; `--document`, `--use` and `runtimemodel.LoadFileSet` are removed. `dbspec.ReadSet` reads a set file and `runtimemodel.LoadSetFile` loads one.
 - T128-2a-3 (breaking): the TypeScript `orm-gen gen` takes `--set <dbspec-set.json>`; `--schema` and `--use` are removed. `readDbspecSet` reads a set file, and `@polyspec/orm/dbspec` exports the pure `parseSet(bytes, path)`.
 - T128-7: the documentation site renders ```` ```dbs ```` fences through the dbspec language service, with a colour per token class in the light and the dark theme; a fence of a set declares `set=` and `document=`, and any diagnostic of a fence fails the docs build.
-- T128-2a-4 (breaking): the Python `orm-gen gen` takes the set file with `--set <dbspec-set.json>`, parsed by argparse; `--schema` and `--use` are removed. `read_dbspec_set` reads a set file by docs/dbspec.md "Document sets".
+- T128-2a-4 (breaking): the Python `orm-gen gen` takes the set file with `--set <dbspec-set.json>`, parsed by argparse; `--schema` and `--use` are removed. `read_dbspec_set` reads a set file by docs/spec/dbspec.md "Document sets".
 - T128-2a-1-2: the set reader refuses a repeated key in any object of the set file and reads `schema` as an IEEE 754 double.
 - T139: the Rust YAML codec reads and writes with yaml-rust2 alone and decodes by the YAML 1.2 core schema (`07` is 7, `0b101` and `tRuE` are strings, integers beyond i64 and `1e400` are `CODEC_DECODE`); serde_yaml_ng and the unmaintained unsafe-libyaml leave both Rust locks. A string that yaml-rust2 cannot write so that it reads back unchanged is `CODEC_ENCODE` (T139-1).
 - T128-2a-1-1: the set reader examines the root without its trailing separator, so a symbolic link at the root is never followed.
-- T141: docs/dbspec.md "Files" names the Python byte check `read_dbspec_bytes` and file reader `read_dbspec_file`.
-- T128-2a-1: docs/dbspec.md "Document sets" specifies the set file `dbspec-set.json` and its reader, and `tests/dbspec/set-files.json` holds its 61 file-tree vectors.
+- T141: docs/spec/dbspec.md "Files" names the Python byte check `read_dbspec_bytes` and file reader `read_dbspec_file`.
+- T128-2a-1: docs/spec/dbspec.md "Document sets" specifies the set file `dbspec-set.json` and its reader, and `tests/dbspec/set-files.json` holds its 61 file-tree vectors.
 - T129-2: the PHP extension has `Native\Names` with `render`, `ofTable` and `column`, the renderer names of the PHP client.
 - T128-3-1: every runtime parses the complete lines before an encoding stop and reports their diagnostics before the encoding diagnostic, as Go does.
 - T128-5-2: the dependency policy states why packages/dbspec-language keeps typescript 6.0.3: its module graph test needs the typescript API that typescript 7 lacks.
@@ -421,10 +421,10 @@
 - T128-2-3: the editor packages are placed by the folder standard S5: `packages/dbspec-language`, `packages/dbspec-lsp`, `packages/dbspec-codemirror` and `packages/dbspec-vscode`, each a component of its own, instead of the nested `packages/dbspec/<part>/` that S5 refuses.
 - T132: the Go generator scan loads a build-tag or platform configuration only for the packages that hold its files, so the model_generation coverage case of Go finishes in about 30 s instead of passing the 120 s deadline under load.
 - T129-1: the interface symbols of the renderer names are recorded: contracts/symbols holds the T129 snapshots, and contracts/interfaces.json holds their hashes, so the interfaces check passes on the T129 tree.
-- T130-3: docs/interfaces.md "Finder chains" states the finder rule per runtime, docs/usage.md points to it, and each T130 code commit records the five symbols that it changed, so the interfaces check passes at every commit of the branch.
-- T130-2: docs/usage.md states the finder rule exactly: PHP resolves a chain at call time, and a TypeScript chain works after model generation scans the code that calls it. The generators are unchanged.
-- T130: an audited table that is also immutable is introspected: each of the immutable and audit settings is recognized by its own recomputed trigger names instead of by a count of triggers, and a table with both settings has the union of their renderer outputs, which its trigger set must equal exactly (docs/dialects.md "Triggers").
-- T129: a renderer-generated name (the CHECK `<table>$<column>`, the triggers and functions `<table>$<event>`) is the plain form when it has at most 63 bytes, otherwise its first 54 bytes, a `$` and the first 8 lowercase hex digits of its SHA-256, so an audited table with a long history name is declared; a declared name is still refused, never shortened (docs/dbspec.md "Names").
+- T130-3: docs/spec/interfaces.md "Finder chains" states the finder rule per runtime, docs/operations/usage.md points to it, and each T130 code commit records the five symbols that it changed, so the interfaces check passes at every commit of the branch.
+- T130-2: docs/operations/usage.md states the finder rule exactly: PHP resolves a chain at call time, and a TypeScript chain works after model generation scans the code that calls it. The generators are unchanged.
+- T130: an audited table that is also immutable is introspected: each of the immutable and audit settings is recognized by its own recomputed trigger names instead of by a count of triggers, and a table with both settings has the union of their renderer outputs, which its trigger set must equal exactly (docs/spec/dialects.md "Triggers").
+- T129: a renderer-generated name (the CHECK `<table>$<column>`, the triggers and functions `<table>$<event>`) is the plain form when it has at most 63 bytes, otherwise its first 54 bytes, a `$` and the first 8 lowercase hex digits of its SHA-256, so an audited table with a long history name is declared; a declared name is still refused, never shortened (docs/spec/dbspec.md "Names").
 - T125-8: the Go request hook tests start their cases with the shared testcase package, the Python interface test counts the fifteenth connection rule, and `docs/features.md` lists the feature `request_hook`.
 - T125-7: the Python identity load test is `identity_load.py`, so `make python-unit-check` no longer runs its server cases; `make python-identity-load-check` runs them.
 - T125-4: the request hook is the feature `request_hook` of `contracts/features.json`, whose Go, PHP, Rust and TypeScript owners pass the five shared cases on MySQL, PostgreSQL and SQLite.
@@ -434,7 +434,7 @@
 - T128-2-2: the syntax analysis rules ground their exclusion of regex grammars on valid column names that are keyword words (`key`, `text`, `references`), instead of the reserved `table`.
 - T128-2-1: the dbspec syntax analysis rules define a number by its form, a word of digits with an optional fraction, and keep its `number` class on a line read only lexically.
 - T128-3s (breaking): a repeated `state_machine` line of one machine is a `setting` error at the later line in every runtime: one `initial` and one `terminal` line per state, and one transition line per `<from> -> <to>` pair whatever its `require` list. Such a document was accepted silently before.
-- T128-2: the dbspec specification states syntax analysis (`analyze` and its token classes, for every implementation, from the one parser) and formatting (`format` as `emit(parse(text))`, refusing a document with a diagnostic, with its three invariants), and docs/editor.md states the editor tools: the browser-safe parser entry, the language service, the adapters, their import rules, results, ecosystem mechanisms and fixtures.
+- T128-2: the dbspec specification states syntax analysis (`analyze` and its token classes, for every implementation, from the one parser) and formatting (`format` as `emit(parse(text))`, refusing a document with a diagnostic, with its three invariants), and docs/spec/editor.md states the editor tools: the browser-safe parser entry, the language service, the adapters, their import rules, results, ecosystem mechanisms and fixtures.
 - T126-1: orm vendors kit from its release tag v0.0.31 instead of a branch, declares its Python through uv (`pythonBuild.version` and `uv` in config/toolchain.json), and its `release-assets` declares the installs it builds on (`install-go`, `install-node`).
 - T128-1: the Go editor tools added after 0.0.9 (`cmd/orm-fmt`, `cmd/orm-lsp`, `cmd/orm-tokens` and the regex classifier `engine/dbspec/tokens.go`) are removed before any release, with the docs bridge that built a Go binary; T128 rebuilds the editor stack as a standard of every runtime.
 
@@ -461,19 +461,19 @@
 - T114: the preparation of 0.0.8, which was never tagged — its bump commit was pushed in a batch and has no check runs, so `make release-verify` cannot pass — so its declarations ship in 0.0.9: the dependency review of 2026-10-11 is recorded and ordered-json 0.0.8 reaches every client.
 - T78-2: the Python statement fault test is named `statement_fault.py`, so `make python-unit-check` (`unittest discover -p 'test_*.py'`) no longer runs a test that needs the databases; `make python-statement-fault-check` runs it.
 - T115: the Python client releases as a PEP 427 wheel, `polyspec_orm-<version>-py3-none-any.whl`. Its `Requires-Dist` pins registry packages as `name==version` and names `polyspec-ordered-json` by its release asset with the sha256; `packages/orm-python/pylock.toml` locks every dependency with hashes, and the release proof installs that lock, then the wheel offline, and imports it.
-- T113: the Python client reads a driver's date-time without a zone (PyMySQL, psycopg) as the wall clock of the connection's zone, so a loaded `datetime` is exact on any machine; every client's tests run in `TEST_TZ` (Asia/Seoul), and docs/dialects.md states the rule.
+- T113: the Python client reads a driver's date-time without a zone (PyMySQL, psycopg) as the wall clock of the connection's zone, so a loaded `datetime` is exact on any machine; every client's tests run in `TEST_TZ` (Asia/Seoul), and docs/spec/dialects.md states the rule.
 - T75: `make dbspec-apply-stress-mysql` and the other helpers read their server environment from a declared source, so they run on macOS as on Linux, and the repository check refuses an undeclared helper environment name.
-- T74: codec decode is exact in every client: `base64` and `hex` text with white space, and lower-case `hex`, fail with `CODEC_DECODE`; MySQL hex cells decode in the client; Go exports `orm.HostDecode`, the counterpart of the other clients' host decode; `tests/codec/decode-vectors.json` pins the stored cells, and docs/codec.md states the rule.
+- T74: codec decode is exact in every client: `base64` and `hex` text with white space, and lower-case `hex`, fail with `CODEC_DECODE`; MySQL hex cells decode in the client; Go exports `orm.HostDecode`, the counterpart of the other clients' host decode; `tests/codec/decode-vectors.json` pins the stored cells, and docs/spec/codec.md states the rule.
 - T73: `ir.Validate` resolves a column-to-column predicate's `ref` path (the root, a joined relation, `^` only inside a subquery) and requires its column, else `COLUMN_UNKNOWN`, and refuses `conn` on the top group and on a group's first item as `IR_INVALID`, in every implementation; `tests/ir/validate.json` pins the cases.
 - T78-1: the checker case of the client test lanes (`scripts/check/continue.test.mjs`) reads the commands it expects from the PHP lane of `scripts/client-db-test.sh` and from `scripts/typescript/sqlite-test.sh` instead of comparing counts written by hand, so a test file added to a lane no longer breaks it; the frame double of the Python driver error test takes the `faultable` argument of `TxFrame.run` and checks that the SQLite row lock does not consume the statement fault.
 - T115-2: the Python venv is built from the pinned interpreter. `make install-python` installs the Python of `config/toolchain.json` `pythonBuild` (`make install-tools TOOLS=python`) and builds `packages/orm-python/.venv` with kit's `make python-venv` from `var/tools/bin/python3`, then installs the pinned packages with that interpreter's pip; the `python3` of PATH is not used. `make python-venv-check` compares the minor of the venv interpreter with `.python-version` and refuses another minor, naming both versions and the fix (remove the venv, run `make install`). CI drops `actions/setup-python`, so CI and a local check run the same interpreter.
 - T119: the dbspec `store` setting takes a time shard clause, `shard <column> year|month|day`, on a non-null `date` or `datetime` column; all six implementations parse, emit, check and hash it alike, SQL backends ignore it, and it is rejected on a block table, a table with a self foreign key, and a table with `order`.
-- T115-1: the Python package declares the Python it is tested with. `requires-python` of `packages/orm-python/pyproject.toml` is `>=3.14`, the minor release of `.python-version` that CI tests, instead of the untested floor `>=3.11`: its dependency polyspec-ordered-json 0.0.8 requires 3.14, so the package cannot install on 3.11–3.13. `packages/orm-python/tests/test_requires_python.py` compares the two. The 3.11 matrix leg of CI, the matrix leg suffix of its run ids, artifacts and report paths, and the repo-check case of that leg are removed; README and `docs/packaging.md` state Python 3.14.
+- T115-1: the Python package declares the Python it is tested with. `requires-python` of `packages/orm-python/pyproject.toml` is `>=3.14`, the minor release of `.python-version` that CI tests, instead of the untested floor `>=3.11`: its dependency polyspec-ordered-json 0.0.8 requires 3.14, so the package cannot install on 3.11–3.13. `packages/orm-python/tests/test_requires_python.py` compares the two. The 3.11 matrix leg of CI, the matrix leg suffix of its run ids, artifacts and report paths, and the repo-check case of that leg are removed; README and `docs/operations/packaging.md` state Python 3.14.
 - T78: every client's test entry point fails the next statement with a given code and message: Go `orm.FailNextStatement`, Rust `polyspec_orm::testing::fail_next_statement`, TypeScript `failNextStatement` of the testing subpath, PHP `Polyspec\Orm\Testing\Faults::failNextStatement`, and Python `polyspec.orm.testing.fail_next_statement`. The statement is not sent; the client reports it as an `OrmException` (ORM error) with the code and message at the statement end of a driver error, and the fault is consumed by that statement. A transaction's own machinery statements do not consume it (protocol 3.2). The dbspec apply and introspection of every implementation, the PHP extension included, run on the driver connection outside `Db` and do not consume the fault (protocol 3.2).
 - T76: AGENTS states the design principles: no backward compatibility (an old path is removed, never kept behind a compatibility layer, a fallback or a migration), the simplest implementation that fully meets the current requirements with no abstraction, setting or indirection for an uncertain future, modular components with separated concerns, and long-term architecture with no stopgap.
 - T62-4-10: the `SHOW CREATE TABLE` reader tests of T62-4-8 belong to the feature `schema_definition` of `contracts/features.json`: `tests/dbspec/show-create.json` is one of its fixtures, the Go, PHP, PHP extension and TypeScript tests are among its tests, and the fixture and each test are inputs of the check that runs them (`dbspec-go-check`, `dbspec-php-check`, `dbspec-php-extension-check`, `dbspec-ts-check`, `dbspec-rust-check` and `python-check`), so `features/contracts` and `feature-unit-check` pass again.
 - T62-4-9: introspection reports a generated column as generated in every client. The MySQL and PostgreSQL readers check the generation before the type and report `a generated column has no dbspec definition`, the wording of the SQLite reader, instead of `type ... has no dbspec type`. The shared cases `mysql-generated-column` and `postgres-generated-column` of `tests/dbspec/introspect.json` pin it; an unsupported entry may now carry a rule that its reason must contain, and the Go, PHP, PHP extension, TypeScript and Rust harnesses check it. `make dbspec-introspect-python-check` runs the shared cases through the Python client on MySQL, PostgreSQL and SQLite, and the Python runner joins `make dbspec-introspect-compare-check`.
-- T62-4-7: dbspec states that it produces no generated column: its column line has no generation clause, and every client reports a MySQL column with a generation expression as unsupported before it reads the expression text, so the double encoding of a non-ASCII literal in `GENERATION_EXPRESSION` reaches no client. `docs/dbspec.md` and `docs/dialects.md` say so; no reader or plan changes.
+- T62-4-7: dbspec states that it produces no generated column: its column line has no generation clause, and every client reports a MySQL column with a generation expression as unsupported before it reads the expression text, so the double encoding of a non-ASCII literal in `GENERATION_EXPRESSION` reaches no client. `docs/spec/dbspec.md` and `docs/spec/dialects.md` say so; no reader or plan changes.
 - T62-4-8: `tests/dbspec/show-create.json` pins the CHECK body that each MySQL reader of `SHOW CREATE TABLE` (Go, PHP, the PHP extension, TypeScript, Python and Rust) reads for a literal with `'`, `\` or parentheses, a non-ASCII literal, two CHECKs in one table and a name the statement lacks; the Go and PHP extension introspections read the same canned catalog to the same checks and unsupported objects. All readers agree, so no reader behaviour changed; TypeScript's `createChecks` is exported for its test.
 - T62-4-6: a CHECK whose string literal holds non-ASCII text round-trips through MySQL in every client. MySQL 8.4.11 writes `information_schema.CHECK_CONSTRAINTS.CHECK_CLAUSE` with the UTF-8 bytes of a non-ASCII literal encoded a second time (`café` reads as `cafÃ©`), while `SHOW CREATE TABLE` writes it correctly; the MySQL introspection of Go, PHP, the PHP extension, TypeScript, Python and Rust reads such a check's body from `SHOW CREATE TABLE` in CHECK_CLAUSE form, and the Rust driver runs those follow-up queries after the catalog queries. `tests/dbspec/plans.json` case `rename-column-check-non-ascii-literal` pins the round trip.
 - T62-4-5: `make feature-unit-check` asserts every negative owner sample of `scripts/features/coverage.test.mjs` by its exact errors and printed FAIL lines, including the second `duplicate observed case first` of `sample/owner/typescript/none` and the mysql and postgres lines of the second sqlite-only check. A passing run prints no FAIL line for them: the test captures the lines of each negative run, so the output of a failed run is asserted instead of printed. An empty set of observed native cases now fails with `observed no cases differ from ...` instead of `observed cases  differ from ...`. No declaration changes.
@@ -500,12 +500,12 @@
 - T62-5-3: the Rust dbspec sources `orm-schema/src/dbspec/parser.rs` and `dbspec/mod.rs` are formatted by rustfmt with the repository's `rustfmt.toml`, so `make rust-fmt-check/clients` passes. The change is layout only; no declaration or behavior changes.
 - T62-6: the TypeScript, PHP, Rust, PHP extension and Python dbspec parsers read a repeated settings block as Go does: its lines get the syntax checks of the first block (unknown settings, name syntax, lex errors) and are never validated, `order` is reported at its keyword only when its header is exactly `settings {`, and a `settings` line without `{` no longer crashes the Python parser or reads as a column in Rust. `tests/dbspec/cases.json` pins these with fourteen cases of repeated and brace-less settings blocks, which every implementation passes in `dbspec-compare-check`.
 - T62-5: the TypeScript, PHP, Rust, PHP extension and Python dbspec parsers check a table whose header failed as Go does: its repeated name is not reported, a foreign key to it checks no referenced column, count, key or type, a failed audit history table or audit record table is not checked for its columns or key, and every body error of it is reported. `tests/dbspec/cases.json` pins these with thirteen `failed-header-*` cases whose errors Go produces.
-- T62-4: the dbspec lexers of Rust, the PHP extension, PHP, TypeScript and Python read a word character as Go's `unicode.IsLetter` or `unicode.IsDigit` does: a symbol such as `€` is a `syntax` error where it stands, a non-ASCII letter or digit is part of a word, a malformed check reference reports `name.format`, and the Rust header name is ASCII as in Go. The C extension and Python read the Go table of Unicode 17.0.0 that `go run ./tests/dbspec/unicode -write` generates into `unicode_word.h`, `unicode_word.rs` and `unicode_word.py`, and `go run ./tests/dbspec/unicode` checks that the files match it; `tests/dbspec/cases.json` pins Go's behaviour with six new invalid cases, and docs/dbspec.md states the word rule.
+- T62-4: the dbspec lexers of Rust, the PHP extension, PHP, TypeScript and Python read a word character as Go's `unicode.IsLetter` or `unicode.IsDigit` does: a symbol such as `€` is a `syntax` error where it stands, a non-ASCII letter or digit is part of a word, a malformed check reference reports `name.format`, and the Rust header name is ASCII as in Go. The C extension and Python read the Go table of Unicode 17.0.0 that `go run ./tests/dbspec/unicode -write` generates into `unicode_word.h`, `unicode_word.rs` and `unicode_word.py`, and `go run ./tests/dbspec/unicode` checks that the files match it; `tests/dbspec/cases.json` pins Go's behaviour with six new invalid cases, and docs/spec/dbspec.md states the word rule.
 - T62-2: the PHP, Rust and PHP extension dbspec parsers keep a dotted name such as `a.b` as one token, as the Go parser does, so a dotted table, column or setting name is one `name.format` error.
 - T62-1: the TypeScript, PHP, Rust, PHP extension and Python dbspec parsers read the `state_machine`, `markdown` and markdown storage settings (T59, T60, T62) as the Go parser does: each parses, validates and emits them with the same rules and rule names, and the shared cases of `tests/dbspec/cases.json` run in every implementation, with `dbspec-compare-check`.
 - T62-3: dbspec exports `CanonicalLiteral(t Type, text string) (string, bool)`, which returns the canonical form of a literal written as a column default and whether it is a valid literal of the type, so a consumer reads column values with the rules of orm instead of a copy of `canonicalDefault`. The function runs the code of `canonicalDefault`; a literal is one token on one line with no space around it, and a text or bytes column has no literal.
 - T62: dbspec gains the markdown storage settings: `store files`, `store document list|table` and `store block <foreign key> list|table` (exactly one per table), `key_prefix '<p>'`, `title <column>`, `body <column>`, `order <column>`, `checkbox <column> <state> '<glyph>'`, and the state machine's `state_machine <column> initial <state>`, `history` and `limit` lines. The validator checks the states, glyphs, columns and the history table's shape, the emitter writes the canonical lines, and the manifest hash covers them.
-- T61: the protocol has section 5, IR executors: a `markdown://` DSN selects an IR executor instead of a SQL dialect; the client validates each request with `ir.Validate` and sends `{ir_version, manifest_hash, request, params, now}`, and the control messages `begin`, `commit`, `rollback`, `savepoint`, `release` and `rollback_to` open, end and nest a session transaction. `docs/errors.yaml` has `WRITE_CONFLICT`, which the generated Go, PHP and Rust constants carry, and `docs/dialects.md` has the capability table of the markdown executor.
+- T61: the protocol has section 5, IR executors: a `markdown://` DSN selects an IR executor instead of a SQL dialect; the client validates each request with `ir.Validate` and sends `{ir_version, manifest_hash, request, params, now}`, and the control messages `begin`, `commit`, `rollback`, `savepoint`, `release` and `rollback_to` open, end and nest a session transaction. `docs/spec/errors.yaml` has `WRITE_CONFLICT`, which the generated Go, PHP and Rust constants carry, and `docs/spec/dialects.md` has the capability table of the markdown executor.
 - T68: the Korean checklist states the Python client in T58 with `명시한다`, a word the writing-style rule allows, so `make docs-rules-check` passes on main.
 - T57-1: the version check reads no version declaration of the root README, whose title names no version; the CI of the README change had failed on it.
 - `make release-consumer TAG=v0.0.7` passes on a machine with npm 12.2.0, PHP 8.5 and Composer 2.10.3, also the Composer project that the machine of the release could not install; the Makefile exports `npm_config_allow_remote=root` for `release-consumer` and `release-proof`, because npm 12 installs no URL dependency by default (T56).
@@ -523,7 +523,7 @@
 - T51.1: the Korean records of the Python test entry point pass the writing-style rule of `make docs-rules-check`.
 - T51: the distribution of the Python client holds the test entry point `polyspec.orm.testing`, which no module of `polyspec.orm` imports, so the tests of a consumer import it from an installed `polyspec-orm`, as the PHP package holds `testing/Faults.php`.
 - T50: a statement event subscriber of the Python client that raises fails the statement with `SUBSCRIBER: statement event subscriber failed: <text of the error>` and the error as `cause`, as the TypeScript client does; an `OrmError` of the subscriber no longer ends in `AttributeError`.
-- T49, T49.3: the Python client has the rollback fault test entry point `polyspec.orm.testing.fail_next_rollback(db)` of docs/protocol.md "Test faults": the next transaction whose callback fails rolls back and raises one `ROLLBACK` error with the callback error as `cause` and a `FAULT` error as `rollback`, a commit and a savepoint rollback leave the fault armed, and the distribution excludes the package `polyspec.orm.testing`; with T49.2 a rollback that fails reports both the callback error and the rollback error instead of the raw rollback error.
+- T49, T49.3: the Python client has the rollback fault test entry point `polyspec.orm.testing.fail_next_rollback(db)` of docs/spec/protocol.md "Test faults": the next transaction whose callback fails rolls back and raises one `ROLLBACK` error with the callback error as `cause` and a `FAULT` error as `rollback`, a commit and a savepoint rollback leave the fault armed, and the distribution excludes the package `polyspec.orm.testing`; with T49.2 a rollback that fails reports both the callback error and the rollback error instead of the raw rollback error.
 - T49.2: the Python client returns every driver error of a statement or a connect as an `OrmError`: the SQLite extended result code, the MySQL error number and the PostgreSQL SQLSTATE select `DUPLICATE_KEY`, `FOREIGN_KEY`, `CONSTRAINT`, `DEADLOCK`, `LOCK_NOT_AVAILABLE`, `CANCELED`, `READ_ONLY` or `CONNECTION_LOST` with the table of the TypeScript client, every other driver error is `DRIVER`, and each has the message `<driver>: <driver message>` and the driver error as its `cause`; a `sqlite3.IntegrityError`, a PyMySQL error or a psycopg error no longer escapes raw.
 - T49.1: the Python client installs a document set whose document has `use` lines: `is_schema_text` builds the use lines of the plain document as `DbspecUse` values, as `isSchemaText` of the TypeScript client does, instead of dicts that made `utils().schema().install(schema)` fail with `AttributeError: 'dict' object has no attribute 'document'`.
 
@@ -538,7 +538,7 @@
 - G5.90, T43.7-5: ordered-json is taken at its release v0.0.7: go.mod requires `github.com/polyspec/ordered-json/packages/ordered-json-go v0.0.7`, the root package.json and composer.json take `polyspec-ordered-json-npm-0.0.7.tgz` and `polyspec-ordered-json-php-0.0.7.zip` of the release, the Rust crate and `Cargo.lock` name the tag `v0.0.7`, and the Python client, the Makefile, ci.yml and the Python tests read `packages/ordered-json-python`.
 - T44.2-1, T44.3: the vendored kit is v0.0.9, which reads the VitePress heading anchors and `{#id}` when `siteLinks` is set, skips a package that the root `overrides` take from a URL in the registry review, and accepts a root composer.json; `config/dependency-policy.json` declares the root composer.json (PHP 8.4.0), the root composer.json requires `polyspec/orm` at `0.0.4`, `config/dependency-review.json` records the review, and `make documents-check`, `make dependency-policy-check` and `make dependency-policy-mutation-check` pass and are targets of `CHECK_TARGETS`.
 - T44.3: `config/dependency-policy.json` declares the Python manifest of the client and the exceptions for `@polyspec/ordered-json`, `typescript` 6 and `@types/node` 22; `config/toolchain.json` declares `cargoAudit` 0.22.2 and `govulncheck` 1.8.0; the dependencies are raised to their latest stable releases (mermaid 12.1.0, mysql2, pg, typescript 6.0.3, the Go modules sys, tools, sqlite, text, mod, sync and libc), the root package.json lists the workspaces as `packages/*` and takes vite 7 for vitepress through `overrides`, so that no lock has an advisory of moderate or higher severity; the root composer.json sets `config.platform.php` to 8.4.0 and its lock is resolved for it. `make dependency-review RECORD=1` still writes no record while the query for `@polyspec/ordered-json` answers 404 (T44.3).
-- T44.2: the repository uses the vendored tools of polyspec/kit v0.0.4 (`scripts/kit`, `tests/kit`, `kit.json`, `.kit/kit.lock.json`) and its own `config/*.json`: the push check, the guard of the full run, the Git hooks, the document check, the commit check (`make commits-check`, `config/commits.json`), the release steps (`make release-verify`, `release-versions`, `release-assets`, `release-publish`, `release-coverage`, `config/release.json` with the Go module of the repository root), the crate download check and the CI result check (`make ci-passed`, input `RESULTS`) are kit's; the copies in `scripts/check`, `scripts/checklist`, `scripts/git`, `scripts/github` and `scripts/release`, the install check of the release assets with `tests/release-install`, `.github/ruleset.json` and the Make targets of the ruleset are removed. `make check` is the guard of kit and runs `make check-run`, the runner of this repository, whose record is `.runtime/check/<run id>/record.json` (`scripts/check/record.mjs`); `make rerun-failed` is kit's. `make owner-check` is kit's and hands the changed paths to `make feature-owner-check` (`config/owner-checks.json`). The checklist moved to `docs/plans/execution-checklist.md`. CI runs on a push to `main` and by hand, `push-gate.yml` runs on every push, and the release assets are named `polyspec-orm-npm-X.Y.Z.tgz`, `polyspec-orm-php-X.Y.Z.zip` and `polyspec-orm-dbspec-php-X.Y.Z.zip`. Every document pair carries a `doc-id` and a `source-sha256` marker, the code blocks of the Korean documents equal the English ones, and `examples/complex`, `examples/thin-slice`, `tests/codec` and the PHP package have Korean READMEs. `make documents-check` reports only the heading anchors of T44.2-1.
+- T44.2: the repository uses the vendored tools of polyspec/kit v0.0.4 (`scripts/kit`, `tests/kit`, `kit.json`, `.kit/kit.lock.json`) and its own `config/*.json`: the push check, the guard of the full run, the Git hooks, the document check, the commit check (`make commits-check`, `config/commits.json`), the release steps (`make release-verify`, `release-versions`, `release-assets`, `release-publish`, `release-coverage`, `config/release.json` with the Go module of the repository root), the crate download check and the CI result check (`make ci-passed`, input `RESULTS`) are kit's; the copies in `scripts/check`, `scripts/checklist`, `scripts/git`, `scripts/github` and `scripts/release`, the install check of the release assets with `tests/release-install`, `.github/ruleset.json` and the Make targets of the ruleset are removed. `make check` is the guard of kit and runs `make check-run`, the runner of this repository, whose record is `.runtime/check/<run id>/record.json` (`scripts/check/record.mjs`); `make rerun-failed` is kit's. `make owner-check` is kit's and hands the changed paths to `make feature-owner-check` (`config/owner-checks.json`). The checklist moved to `docs/plans/execution/checklist.md`. CI runs on a push to `main` and by hand, `push-gate.yml` runs on every push, and the release assets are named `polyspec-orm-npm-X.Y.Z.tgz`, `polyspec-orm-php-X.Y.Z.zip` and `polyspec-orm-dbspec-php-X.Y.Z.zip`. Every document pair carries a `doc-id` and a `source-sha256` marker, the code blocks of the Korean documents equal the English ones, and `examples/complex`, `examples/thin-slice`, `tests/codec` and the PHP package have Korean READMEs. `make documents-check` reports only the heading anchors of T44.2-1.
 - T44.1: the six client packages moved from `clients/<directory>` to `packages/orm-<kind>` (`orm-go`, `orm-npm` for TypeScript, `orm-php`, `orm-php-extension`, `orm-python`, `orm-rust`); the Makefile, the workflows, the scripts, the tests, `contracts/` and the documents name the new directories, `scripts/features/packages.mjs` maps a client language to its directory, and the regenerated symbol snapshots hold the declarations of the old snapshots under the new paths. The Go module `github.com/polyspec/orm` stays at the repository root; its client packages are `github.com/polyspec/orm/packages/orm-go/...`.
 - T43.7-18-2: the row names the check `symbol snapshot check` instead of a word that `make docs-rules-check` rejects, so `make docs-rules-check` passes on the checklist.
 - T9: the PHP extension `orm_dbspec`, written in C, provides every public method of the PHP client's `Dbspec` and the classes of its results, and the Rust extension is gone (T9.1 to T9.13).
@@ -562,7 +562,7 @@
 - T43.7-12: `scripts/check/ci-setup.mjs` declares the ordered-json checkout step as a need of the python group, so the check runner does not stop on it in other groups.
 - T43.7-11: the python group of CI checks out polyspec/ordered-json at its release v0.0.4 into `../ordered-json`, so the Python checks import `polyspec.ordered_json`.
 - T43.7-5: the ordered-json dependency of the Python client is recorded as a bypass row. The pin of `clients/python/pyproject.toml` stays at tag `v0.0.4`, which the tags of ordered-json do not include yet; its retry condition is that tag with its `python/` directory.
-- T43.7-4: `AGENTS.md` (Releases) and `docs/packaging.md` state that the Python client is consumed by its git tag and has no release archive, and that the version-bump pull request sets the `version` of `clients/python/pyproject.toml`, which `make version-check` reads.
+- T43.7-4: `AGENTS.md` (Releases) and `docs/operations/packaging.md` state that the Python client is consumed by its git tag and has no release archive, and that the version-bump pull request sets the `version` of `clients/python/pyproject.toml`, which `make version-check` reads.
 - T43.7-3: the bypass state of the blocked T43 rows is recorded as it stands. Before the commit "Mark the blocked T43 rows as bypassed", T43, T43.5 and T43.6-1 were in progress, and that commit moved them to bypassed; its message also names T43.5-5 and T43.6, whose bypass marks were set by earlier commits, and does not name T43.6-3, which was bypassed by the commit "Block T43.6-3 on the ordered-json checkout". T43.6 was bypassed by "Block T43.6 on the ordered-json checkout", and T43.5-5 by "Bypass T43.5-5 until the PHP extension runs". The checklist holds the bypassed state for T43, T43.5, T43.5-5, T43.6, T43.6-1 and T43.6-3.
 - T43.7-2: `scripts/release/release.mjs` lists `clients/python/pyproject.toml` in `NOT_RELEASED`, because the Python client is consumed by its git tag and has no release archive, so every tracked manifest is released or listed.
 - T43.7-6: the Korean row T43.7-3 of `docs/checklist.ko.md` states its facts without the word that the docs-rules check rejects, so `node scripts/docs/rules.mjs` passes.
@@ -578,9 +578,9 @@
 - T43.5-2-3-3: a subquery column whose callback returns an aggregate model builds without a columns key, and its column name is snake_case (`read_total`), so the vector `subqueries` agrees with the Go output.
 - T43.5-2-3-4: a terminal-by method after other conditions joins its condition to them with AND and runs on a copy of the query, so the vector `terminal_reuse` agrees with the Go output.
 - T43.5-2-3-5: a joined or related model is part of the row output under its relation name, written as its own row output or as a list of them, so the vectors `joins` and `relations` agree with the Go output.
-- T43.5-2-3-6: statement events show an executor clock bind as `$NOW` and a bound secret as `$SECRET`, as docs/usage.md specifies, so the vector `functions` agrees with the Go output.
+- T43.5-2-3-6: statement events show an executor clock bind as `$NOW` and a bound secret as `$SECRET`, as docs/operations/usage.md specifies, so the vector `functions` agrees with the Go output.
 - T43.5-2-3-7: a value attached with new_label is written in the output of the created model, so the vector `write_cycle` agrees with the Go output.
-- T43.5-2-3-8: the Python client keeps the primary and foreign keys after removeAllColumns, as docs/dsl.md and the Go client do; a unit test guards the rule and no client change was needed.
+- T43.5-2-3-8: the Python client keeps the primary and foreign keys after removeAllColumns, as docs/spec/dsl.md and the Go client do; a unit test guards the rule and no client change was needed.
 - T43.5-2-3-9: the SQLite row lock insert event names `orm__row_lock` in its tables, so the full run of the 26 vectors is byte-identical to the Go output.
 - T43.5-2-3: the Python conformance runner runs the 26 SQLite vectors in one process, and its output is byte-identical to the Go runner's output on the same seeded database.
 - T43.5-2-4: the conformance checker requires the python language, runs the Python runner with ORM_PYTHON and ORM_PYTHON_MODELS, and conformance-result-check has a python step.
@@ -639,7 +639,7 @@
 - G5.139: `make package-check` installs the release assets with `npm ci` and `composer install` from the committed consumer projects of tests/release-install with empty caches, and `make install-release-fixtures` writes their locks.
 - G5.138: every released manifest is the manifest of the tree: clients/typescript/package.json requires `@polyspec/ordered-json` `0.0.2`, the Composer manifests declare `version` and no `repositories`, the private root package.json (npm workspace with `overrides`) and composer.json (into vendor-php) take ordered-json from its GitHub release, and the release refuses a packed manifest that differs from its source.
 - G5.137: VERSION, every package file, the lockfile entries of the orm packages, the feature contract and the version statements of the documents declare 0.0.4, and the changelogs record the changes of 0.0.4 under `## 0.0.4`, so `make release-versions` passes for the tag `v0.0.4`.
-- G5.136: the npm tarball and the Composer zips of `make release-assets` declare every polyspec dependency by the exact version of its release, the Composer zips carry the release `version` and no `repositories`, the release refuses a packed manifest that breaks this, and `make package-check` installs the assets of HEAD outside the repository; docs/packaging.md describes the install from release assets.
+- G5.136: the npm tarball and the Composer zips of `make release-assets` declare every polyspec dependency by the exact version of its release, the Composer zips carry the release `version` and no `repositories`, the release refuses a packed manifest that breaks this, and `make package-check` installs the assets of HEAD outside the repository; docs/operations/packaging.md describes the install from release assets.
 
 ## 0.0.3
 
@@ -782,7 +782,7 @@
 
 - G5.78: Go tests find the repository from the working directory instead of `runtime.Caller`, and `make repo-check` refuses `runtime.Caller` in Go code.
 
-- T9.4: docs/dbspec.md describes the PHP extension (its classes, selection by namespace, build and checks), and the PHP client suggests `ext-orm_dbspec`.
+- T9.4: docs/spec/dbspec.md describes the PHP extension (its classes, selection by namespace, build and checks), and the PHP client suggests `ext-orm_dbspec`.
 
 - T9.3: contracts/interfaces.json declares the PHP extension under `extensions` with the `Dbspec` rules and owners it implements, and the interface check compares its stub with those rules, its own symbol snapshot and hash.
 
@@ -850,7 +850,7 @@
 
 - G5.52: every CI setup step and `make check` run after a failed setup step; the runner reads the step results (`ORM_CI_SETUP`) and records the targets that need what a failed step installs as not-run with that step, the docs workflow runs each check that has what it needs, no workflow uses `continue-on-error`, and a repository rule enforces it.
 
-- G5.51: `make owner-check` fails when a changed path selects no behaviour test and declares no scope; `contracts/check-inputs.json` separates the `inputs` of a target from its `lints` and declares `lint` or `suite` scopes with reasons for 16 exact paths, every tracked file is connected to the test that reads it (40 new verification commands, 12 helpers, 27 targets with owner scope), a helper checks the generated error codes against `docs/errors.yaml`, and the database state of the conformance and decimal checks leaves out the ORM's SQLite row lock table.
+- G5.51: `make owner-check` fails when a changed path selects no behaviour test and declares no scope; `contracts/check-inputs.json` separates the `inputs` of a target from its `lints` and declares `lint` or `suite` scopes with reasons for 16 exact paths, every tracked file is connected to the test that reads it (40 new verification commands, 12 helpers, 27 targets with owner scope), a helper checks the generated error codes against `docs/spec/errors.yaml`, and the database state of the conformance and decimal checks leaves out the ORM's SQLite row lock table.
 
 - G5.50: `make codec-check` runs the Go, Rust and TypeScript codec tests itself as independent parts into a directory of its own run, and the PHP checker compares only those outputs; the writers write only when `ORM_CODEC_OUT` is set, through a temporary file and a rename.
 
@@ -930,7 +930,7 @@
 
 - G5.35: `make rust-fmt-check` checks `bench/rust` and `tests/interfaces/rust` as well as `clients/rust`, and both are formatted.
 
-- G5.32-7: negated condition groups `not(fn)`, `andNot(fn)` and `orNot(fn)` render `NOT (…)` in the four clients, and docs/dsl.md states the query expression grammar and its relation to the dbspec `check` grammar.
+- G5.32-7: negated condition groups `not(fn)`, `andNot(fn)` and `orNot(fn)` render `NOT (…)` in the four clients, and docs/spec/dsl.md states the query expression grammar and its relation to the dbspec `check` grammar.
 
 - G5.33-9: Rust tests receive the paths of the package programs they run through `ORM_PROGRAM_<NAME>` from copies taken under the target lease (`orm_testcase::program`), and `make repo-check` fails `env!("CARGO_BIN_EXE_...")`.
 
@@ -1212,7 +1212,7 @@
 
 - T8.6.8: every client applies a plan step by step on MySQL, PostgreSQL and SQLite: each statement commits on its own with its recorded history step, recover continues an interrupted plan from the catalog effect of the next step, and rollback undoes the last plan with the rollback statement of every step. Dropped tables and columns stay hidden under `dbspec$hold$` names until finalize drops them, added columns are hidden on rollback and come back on a second apply, a rollback of an applied plan fills or refuses the NULL rows of columns it makes non-null, lock waits end after 5 seconds, and `PlanSteps` replaces `PlanStatements` with each step's rollback statement, effect and finalize mark.
 
-- T8.8.1: main is merged into the dbspec branch, and its features work on the dbspec paths while the Mermaid source path stays removed. One process loads the generated code of several document sets and a connection plans every request with the model of its manifest hash; a request of a manifest that no loaded code registered, or code whose text does not hash to its declared hash, fails with `SCHEMA_HASH_MISMATCH`, and generated code registers its set, so no `utils().schema().register()` exists. A transaction or savepoint whose rollback fails too, also on a connection the server closed, reports one `ROLLBACK` error `transaction failed (<cause>) and rollback failed (<error>)` in every client, keeps both errors and is not retried. `docs/protocol.md` states one clock rule: the client clock is UTC with microseconds, MySQL writes `CURRENT_TIMESTAMP(p)` and `NOW(6)`, SQLite relative forms keep six fraction digits, SQLite binds the client clock for an omitted `default now` column, and every `now` slot carries the fraction digits of its column. The plan history writes `applied_at` as `YYYY-MM-DDTHH:MM:SS.ffffffZ`, and the TypeScript apply clock is microseconds since the epoch.
+- T8.8.1: main is merged into the dbspec branch, and its features work on the dbspec paths while the Mermaid source path stays removed. One process loads the generated code of several document sets and a connection plans every request with the model of its manifest hash; a request of a manifest that no loaded code registered, or code whose text does not hash to its declared hash, fails with `SCHEMA_HASH_MISMATCH`, and generated code registers its set, so no `utils().schema().register()` exists. A transaction or savepoint whose rollback fails too, also on a connection the server closed, reports one `ROLLBACK` error `transaction failed (<cause>) and rollback failed (<error>)` in every client, keeps both errors and is not retried. `docs/spec/protocol.md` states one clock rule: the client clock is UTC with microseconds, MySQL writes `CURRENT_TIMESTAMP(p)` and `NOW(6)`, SQLite relative forms keep six fraction digits, SQLite binds the client clock for an omitted `default now` column, and every `now` slot carries the fraction digits of its column. The plan history writes `applied_at` as `YYYY-MM-DDTHH:MM:SS.ffffffZ`, and the TypeScript apply clock is microseconds since the epoch.
 
 - T10: all four clients use an ordered-json that keeps one Cargo manifest for its package, so cargo does not warn about a duplicate `ordered-json` package.
 
@@ -1266,7 +1266,7 @@
 
 - T8.6.6: `make dbspec-apply-pairs-check` applies the first plan of a chain with one client and the rest with another, for every ordered pair of the Go, PHP, TypeScript and Rust clients on MySQL, PostgreSQL and SQLite, and finishes on MySQL with one client a plan another one stopped.
 
-- T8.6.2.2: Go, TypeScript and Rust assert the apply cleanup errors like PHP; TypeScript and Rust reject a PostgreSQL unlock that released nothing, Go returns a failure without cleanup errors unchanged, and docs/plans.md states how each client reports a failure with cleanup errors.
+- T8.6.2.2: Go, TypeScript and Rust assert the apply cleanup errors like PHP; TypeScript and Rust reject a PostgreSQL unlock that released nothing, Go returns a failure without cleanup errors unchanged, and docs/spec/plans.md states how each client reports a failure with cleanup errors.
 
 - T8.7: every client exports and imports standard Mermaid erDiagrams with the list of what each leaves out, and the four clients agree byte for byte.
 
@@ -1330,7 +1330,7 @@
 
 - T8.7.2: the Go engine exports dbspec documents to standard Mermaid erDiagrams and imports them with the list of what each leaves out.
 
-- T8.7.1: docs/mermaid.md specifies standard Mermaid export and import with the list of what each leaves out.
+- T8.7.1: docs/spec/mermaid.md specifies standard Mermaid export and import with the list of what each leaves out.
 
 - T17: the Rust client benchmark `client_bench` fails and names `ORM_BENCH_MYSQL_DSN` when the variable is unset or empty instead of connecting to a built-in local socket.
 
@@ -1344,13 +1344,13 @@
 
 - T8.6.2: the Go engine applies plan chains with a lock, history, drift checks, transactions, verification, events and MySQL recovery.
 
-- T8.6.1: docs/plans.md specifies how plans are applied: lock, history, drift, verification, events and MySQL recovery.
+- T8.6.1: docs/spec/plans.md specifies how plans are applied: lock, history, drift, verification, events and MySQL recovery.
 
 - T8.5.2.1: the Go plan writer keeps no dropped result and no unused renderer state.
 
 - T8.5.2: the Go engine parses, chains, diffs and writes schema plans for MySQL, PostgreSQL and SQLite; `make dbspec-plan-check` applies them.
 
-- T8.5.1: docs/plans.md specifies schema plans: the plan document, the chain from an empty database, the diff and the statements of each dialect, with shared cases.
+- T8.5.1: docs/spec/plans.md specifies schema plans: the plan document, the chain from an empty database, the diff and the statements of each dialect, with shared cases.
 
 - T8.4.2.4: MySQL introspection recognizes the time CHECK of a `time(p)` column after `ALTER TABLE` writes its literals with zero fractions.
 
@@ -1394,7 +1394,7 @@
 
 - T8.4.2: the Go engine introspects MySQL, PostgreSQL and SQLite into a dbspec document with a constant number of catalog queries and reports unsupported objects; `make dbspec-introspect-check` runs the round trips and the unsupported cases.
 
-- T8.4.1: docs/dialects.md specifies how MySQL, PostgreSQL and SQLite are introspected into one dbspec document and which objects are reported as unsupported; tests/dbspec/introspect.json holds the unsupported cases.
+- T8.4.1: docs/spec/dialects.md specifies how MySQL, PostgreSQL and SQLite are introspected into one dbspec document and which objects are reported as unsupported; tests/dbspec/introspect.json holds the unsupported cases.
 
 - T13: `make git-check` checks commit subjects against AGENTS.md: `type(scope): Subject (#id)`, types feat, fix, docs, style, refactor, test and chore, a capitalized subject of at most 50 characters without a final period; merge commits keep the subject git writes.
 
@@ -1449,7 +1449,7 @@ in the Go engine (`dbspec.Render`), compared with tests/dbspec/ddl.json
 (T8.3.2).
 
 Specify the statements that dbspec renders for MySQL, PostgreSQL and
-SQLite in docs/dialects.md, and add tests/dbspec/ddl.json with `make
+SQLite in docs/spec/dialects.md, and add tests/dbspec/ddl.json with `make
 dbspec-ddl-check`, which applies every vector to the three databases and
 runs its behavior steps (T8.3.1).
 
@@ -1504,7 +1504,7 @@ Implement dbspec parse, validation and canonical emit in the PHP client
 (T8.2.3): Orm\Dbspec\Dbspec::parse and ::emit pass all 44 shared cases,
 and the 2000-table stress document parses in 218-308 ms within 128 MiB.
 
-State the dbspec parse budgets of every client in docs/dbspec.md and fail
+State the dbspec parse budgets of every client in docs/spec/dbspec.md and fail
 the Go, TypeScript and PHP stress tests above them (T8.2.4.1). Record
 every native Go, PHP and TypeScript symbol in contracts/symbols so
 interface-check passes for those languages.
@@ -1516,13 +1516,13 @@ DbspecDiagnostic. All 44 shared cases and 45 focused cases pass, and the
 Record its 279 symbols in contracts/symbols/typescript.json.
 
 Specify dbspec, the neutral schema language that replaces the Mermaid
-schema source (T8.1). docs/dbspec.md and its Korean pair define documents
+schema source (T8.1). docs/spec/dbspec.md and its Korean pair define documents
 joined by name through a declared document set, the thirteen neutral types,
 keys, indexes, foreign keys, the neutral check expressions, settings with
 their schemaHash or manifestHash membership, audit through an operation
 column and a history table copied by row triggers, diagrams, the canonical
 form, limits and sixteen located diagnostic rules, and decide the fate of
-every Mermaid feature. docs/dialects.md records the audit decision. Shared
+every Mermaid feature. docs/spec/dialects.md records the audit decision. Shared
 vectors in tests/dbspec/cases.json hold 4 canonical, 2 normalization and 17
 invalid cases. No client implements dbspec yet.
 
@@ -1532,7 +1532,7 @@ tests/dialects and the dialect-facts-check target; each probe runs in its
 own disposable database, schema or file with its own deadline, and a SQLite
 file-name case shows that PDO, node:sqlite and the sqlite3 shell keep a DSN
 query in the file name. Two runs pass with no failure on MySQL 8.4.11,
-PostgreSQL 17.11 and SQLite 3.53.4. docs/dialects.md records syntax,
+PostgreSQL 17.11 and SQLite 3.53.4. docs/spec/dialects.md records syntax,
 meaning, probes, the neutral rendering or unsupported reason and the
 catalog source per feature, the decisions for a local datetime with a
 UTC connection rule and executor update-time stamping, and leaves the audit
@@ -1575,7 +1575,7 @@ TypeScript now create `timestamp(6)` columns written with
 `CHECK` for six fraction digits that take the tool clock in UTC. Before
 a command uses an existing ledger, the tool verifies its time columns;
 a ledger with whole-second columns fails with
-`MIGRATION_HISTORY_PRECISION` and stays unchanged. `docs/usage.md`
+`MIGRATION_HISTORY_PRECISION` and stays unchanged. `docs/operations/usage.md`
 states the statements that convert a MySQL or SQLite ledger created
 before this change. The cases `migration_ledger_microseconds`,
 `migration_ledger_whole_seconds` and `migration_ledger_earlier` pass in
@@ -1688,7 +1688,7 @@ paired records pass. Authoritative ownership, full grammar/resource
 acceptance and native/platform proof remain pending.
 
 State the scope of the physical source scanner (T7.17.2.10.3.2).
-docs/schema.md (+ko) states that the scanner does not classify arbitrary
+docs/spec/schema.md (+ko) states that the scanner does not classify arbitrary
 HTML tags or full Markdown containers, and that the document reader
 establishes its own source ownership and validates graph metadata with
 the diagram before imports are enabled. Paired records and diff checks
@@ -2134,9 +2134,9 @@ Add the error code `READ_ONLY` for a write that a read-only server or connection
 
 Make a pool size of zero or unset open at most 10 connections in the Go, TypeScript and Rust clients. The Go client opened an unlimited number of connections, TypeScript `{ poolSize: 0 }` opened an unlimited number on MySQL, and Rust `Db::connect(dsn, 0, config)` panicked. Tests run six concurrent transactions on a pool of two and check that at most two run and at most two connections are open.
 
-Document in `docs/config.md` how a primary and its replicas are used: one connection per server, selected per model or row with `connect`; the ORM does not route statements, and SQLite is single-node only. The database tests of the four clients open a primary and a replica connection side by side on MySQL and PostgreSQL and check that a replica reads committed rows, rejects a write, and is not used by a model connected to the primary or by a model inside a transaction of the primary.
+Document in `docs/spec/config.md` how a primary and its replicas are used: one connection per server, selected per model or row with `connect`; the ORM does not route statements, and SQLite is single-node only. The database tests of the four clients open a primary and a replica connection side by side on MySQL and PostgreSQL and check that a replica reads committed rows, rejects a write, and is not used by a model connected to the primary or by a model inside a transaction of the primary.
 
-Make the four clients work through PgBouncer in transaction mode. The PHP and Rust clients send the PostgreSQL `statement_timeout` of `statementTimeoutMs` as a startup parameter, as Go and TypeScript do, instead of `SET SESSION statement_timeout`, which stayed on the pooled server connection and bounded the statements of other client connections. The Rust client no longer sends the startup parameter `extra_float_digits`, which PgBouncer rejected; float8 values stay exact. The TypeScript client cancels a PostgreSQL statement with the protocol cancel request (process id and secret key) instead of `pg_cancel_backend`, whose process id is not a server process behind a pooler. `make client-pooler-check`, part of `make check`, runs the client database tests through PgBouncer and ProxySQL, and `docs/config.md` lists the pooler settings and states that the schema tools connect to the primary directly.
+Make the four clients work through PgBouncer in transaction mode. The PHP and Rust clients send the PostgreSQL `statement_timeout` of `statementTimeoutMs` as a startup parameter, as Go and TypeScript do, instead of `SET SESSION statement_timeout`, which stayed on the pooled server connection and bounded the statements of other client connections. The Rust client no longer sends the startup parameter `extra_float_digits`, which PgBouncer rejected; float8 values stay exact. The TypeScript client cancels a PostgreSQL statement with the protocol cancel request (process id and secret key) instead of `pg_cancel_backend`, whose process id is not a server process behind a pooler. `make client-pooler-check`, part of `make check`, runs the client database tests through PgBouncer and ProxySQL, and `docs/spec/config.md` lists the pooler settings and states that the schema tools connect to the primary directly.
 
 Make `make test-servers` also start a read-only MySQL replica and a PostgreSQL standby of the primaries, ProxySQL in front of the MySQL primary, and PgBouncer in transaction mode in front of the PostgreSQL primary, on `TEST_MYSQL_REPLICA_PORT` (33181), `TEST_POSTGRES_REPLICA_PORT` (55481), `TEST_PROXYSQL_PORT` (33182) and `TEST_PGBOUNCER_PORT` (55482). The start returns after ProxySQL and PgBouncer log the line they write once they listen. The environment file adds `ORM_TEST_MYSQL_REPLICA_DSN`, `ORM_TEST_POSTGRES_REPLICA_DSN`, `ORM_TEST_PROXYSQL_DSN`, `ORM_TEST_PGBOUNCER_DSN` and `ORM_TEST_PGBOUNCER_SINGLE_DSN`; the last names a PgBouncer database that reaches `orm_test` through one server connection.
 Make SQLite write transactions in the Go, PHP, Rust and TypeScript clients begin with `BEGIN IMMEDIATE` and hold the write lock from their start; a read-only transaction begins with `BEGIN`. Every SQLite connection waits up to 5000 milliseconds for a lock, and the DSN parameter `_pragma=busy_timeout(ms)` sets another time in all four clients; the Go and TypeScript clients waited for no lock unless the DSN set one. A lock that another connection still holds when the wait ends returns `CANCELED` instead of `DEADLOCK`, so a transaction does not run again after the wait; SQLite `LOCKED` remains `DEADLOCK`. A transaction that read and then wrote failed with `DEADLOCK` when another connection wrote at the same time: 8 connections of one Go process committed 20 of 80 such transactions without retries, and after the change several connections and several processes of each client commit all of them. The PHP client runs the `_pragma=name(value)` parameters of a SQLite DSN, which it ignored before, and every client rejects `_txlock` with `CONFIG`. The TypeScript client sets a zero wait for a NOWAIT row lock, as the other clients do. The Go row lock no longer repeats a statement that returned `SQLITE_BUSY`.
@@ -2259,7 +2259,7 @@ Prefix generated MySQL CHECK constraint names with their table name so distinct 
 
 - Rewrite the DSL specification for the model syntax: `connect` binding, unprefixed first conditions, `and`/`or` connectors and groups, chain grammar with operator prefixes, value shapes for one value, lists, and null, fixed two-value `Between` arrays, reads, columns, relations, joins, writes, transactions, and reserved names.
 
-- Replace the initial design, revised design, and DSL v3 notes with one design plan (`docs/plan.md`). The plan defines the model syntax for Go, PHP, Rust, and TypeScript, its rules, and the work order.
+- Replace the initial design, revised design, and DSL v3 notes with one design plan (`docs/spec/plan.md`). The plan defines the model syntax for Go, PHP, Rust, and TypeScript, its rules, and the work order.
 
 - Add the ORM-owned `DB.BackendWaitingForLock` inspection API for bounded PostgreSQL integration orchestration; non-PostgreSQL adapters return `false` without exposing driver-specific paths.
 

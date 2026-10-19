@@ -12,8 +12,12 @@ from polyspec.orm.errors import OrmError
 from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
-FIXTURE = json.loads((ROOT / "contracts" / "fixtures" / "identity_load.json").read_text())
-MODEL = model_of_documents(parse_document_set([(ROOT / FIXTURE["fixture"]).read_text()]))
+FIXTURE = json.loads(
+    (ROOT / "contracts" / "fixtures" / "identity_load.json").read_text()
+)
+MODEL = model_of_documents(
+    parse_document_set([(ROOT / FIXTURE["fixture"]).read_text()])
+)
 
 
 def in_request(n: int) -> tuple[dict, list]:
@@ -22,7 +26,9 @@ def in_request(n: int) -> tuple[dict, list]:
         "ir_version": 1,
         "kind": "all",
         "entity": "load_probe",
-        "where": {"items": [{"pred": {"column": "seq", "op": "in", "ps": list(range(n))}}]},
+        "where": {
+            "items": [{"pred": {"column": "seq", "op": "in", "ps": list(range(n))}}]
+        },
         "n_params": n,
     }
     return request, list(range(n))
@@ -47,7 +53,9 @@ class PlanCacheBoundTest(unittest.TestCase):
             planned, _ = _hooked(db, request, params)
             db.plan(planned)
             self.assertLessEqual(
-                len(db.plans), 10, f"length {n}: plan cache holds {len(db.plans)} entries, want at most 10"
+                len(db.plans),
+                10,
+                f"length {n}: plan cache holds {len(db.plans)} entries, want at most 10",
             )
 
     def test_out_of_range_in_param_is_refused(self):

@@ -1,8 +1,8 @@
-# The DSN parameters and the MySQL TLS connection of the Python client (docs/config.md), the cases of
+# The DSN parameters and the MySQL TLS connection of the Python client (docs/spec/config.md), the cases of
 # packages/php/tests/MysqlTlsTest.php and packages/ts/tests/mysql_tls.mjs: a DSN uses only the parameters of its scheme,
 # `ssl-mode=VERIFY_IDENTITY` with an absolute `ssl-ca` and a host name is the only MySQL TLS mode, and every other
 # parameter and mode is CONFIG. The connection case needs ORM_TEST_MYSQL_TLS_DSN, ORM_TEST_MYSQL_TLS_OTHER_CA_DSN and
-# ORM_TEST_MYSQL_TLS_MISMATCH_DSN of make test-servers, and a missing one fails it.
+# ORM_TEST_MYSQL_TLS_MISMATCH_DSN of make orm-test-servers, and a missing one fails it.
 # Usage: python -m packages.python.tests.mysql_tls
 import os
 import re
@@ -107,7 +107,7 @@ class MysqlTlsConnectionsTest(unittest.TestCase):
         ):
             value = os.environ.get(name)
             if not value:
-                raise AssertionError(f"{name} is not set; run make test-servers")
+                raise AssertionError(f"{name} is not set; run make orm-test-servers")
             dsns.append(value)
         version = ssl_version(dsns[0])
         self.assertRegex(

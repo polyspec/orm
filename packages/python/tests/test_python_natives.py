@@ -31,7 +31,9 @@ def python_table(validate: str, name: str) -> dict:
 
 def signatures():
     """The signature of each symbol of the Python snapshot; the snapshot also holds the exported flag of each."""
-    snapshot = json.loads((ROOT / "contracts" / "symbols" / "python.json").read_text(encoding="utf-8"))
+    snapshot = json.loads(
+        (ROOT / "contracts" / "symbols" / "python.json").read_text(encoding="utf-8")
+    )
     return {key: value["signature"] for key, value in snapshot.items()}
 
 

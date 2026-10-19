@@ -861,7 +861,7 @@ impl<'m> Planner<'m> {
                 None => String::new(),
             };
             // A clock that the ORM compares keeps six fraction digits; a datetime(p < 6) column
-            // compares as its value extended to six digits (docs/protocol.md "Clock").
+            // compares as its value extended to six digits (docs/spec/protocol.md "Clock").
             let mut now = || cell.borrow_mut().now(6);
             let value = self
                 .d

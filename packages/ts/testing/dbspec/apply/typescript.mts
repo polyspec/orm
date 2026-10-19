@@ -1,6 +1,6 @@
 // The chain of plans.json (tests/dbspec/plans.json) (create-from-empty and
 // rename-table-and-column) is applied to one database with the TypeScript client
-// (docs/plans.md "Apply"). The action is apply-first (first plan only), apply (the whole chain),
+// (docs/spec/plans.md "Apply"). The action is apply-first (first plan only), apply (the whole chain),
 // stop (stops after statement 1 of the second plan runs), recover (finishes an interrupted plan),
 // or rollback (reverts the last plan in history). One of these. stdout gets one result line: "ok", "stopped", or
 // "error <code>". Any other error is written to stderr and the process exits with 1.

@@ -16,7 +16,7 @@
 //
 // The run records the creation and removal of databases and the start and result of each target in .runtime/check/<id>/record.json
 // (scripts/check/record.mts). The full suite's guard (in-progress items, uncommitted changes, once per tree)
-// is handled by the @polyspec/kit guard (`make check`) before this runner.
+// is handled by the @polyspec/kit guard (`make orm-check`) before this runner.
 //
 // Usage: [ORM_CHECK_RUN_ID=<id>] node scripts/check/run.mts [--job-summary] <servers env | -> <target>...
 import { spawnSync } from 'node:child_process';
@@ -59,10 +59,10 @@ export const command = (root: string): Run => (program, args, step, spawned = ()
   return runStep(program, args, { cwd: root, env, step, spawned, ...(label === undefined ? {} : { label }), ...(leftovers === undefined ? {} : { leftovers }), ...(guard === undefined ? {} : { guard }), ...(keep === undefined ? {} : { keep: (source: string) => { keepRunDirectory(source, keep); } }) });
 };
 
-// serverEnvironment reads the environment file make test-servers wrote (`export NAME='value'` lines). If the file is missing, the server
+// serverEnvironment reads the environment file make orm-test-servers wrote (`export NAME='value'` lines). If the file is missing, the server
 // was not started, so it throws with that path.
 export function serverEnvironment(path: string): Record<string, string> {
-  if (!existsSync(path)) throw new Error(`${path} is missing: make test-servers did not write the server environment`);
+  if (!existsSync(path)) throw new Error(`${path} is missing: make orm-test-servers did not write the server environment`);
   const env: Record<string, string> = {};
   for (const line of readFileSync(path, 'utf8').split('\n')) {
     const match = /^export ([A-Z0-9_]+)='([^']*)'$/.exec(line);

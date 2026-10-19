@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Dbspec;
 
 /**
- * Writes a document in its canonical text (docs/dbspec.md#canonical-form), or
+ * Writes a document in its canonical text (docs/spec/dbspec.md#canonical-form), or
  * in the manifest or schema text that View names.
  *
  * @internal Use Dbspec::emit.

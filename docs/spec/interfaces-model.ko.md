@@ -1,0 +1,380 @@
+<!-- doc-id: interfaces-model -->
+<!-- source-sha256: f5713c909ce88ede3de3118f103f0d86421185f90afda19e2d5c5fa3ceb6ca4a -->
+# 공통 구성요소
+
+<!-- contracts/interfaces.json에서 생성됨. 직접 수정하지 않는다. -->
+
+```mermaid
+classDiagram
+    class Model {
+        Core core
+        connect()
+        and()
+        or()
+        relation()
+        relations()
+        limit()
+        duplication()
+        get()
+        gets()
+        getsCount()
+        getCount()
+        getSum()
+        getAvg()
+        getsPage()
+        getQuery()
+        create()
+        creates()
+        update()
+        save()
+        delete()
+        restore()
+        restoreOrCreate()
+        expectRevision()
+        toArray()
+    }
+    class Core {
+        <<internal>>
+        Columns columns
+        Group conditions
+        Optional_Db connection
+        List_Model joins
+        Optional_Limit limit
+        Text lock
+        List_Order order
+        List_Model relations
+        Optional_RowState row
+        List_Assignment sets
+        build()
+    }
+    class Request {
+        <<internal>>
+        RequestIR ir
+        List_Value params
+        shape()
+    }
+    class RequestIR {
+        Text kind
+        List_Assignment onDuplicate
+        Optional_Optimistic optimistic
+        Integer parameterCount
+        QueryNode root
+        List_List_Integer rows
+        Text schemaHash
+        List_Assignment set
+        Integer version
+    }
+    class QueryNode {
+        Columns columns
+        Text entity
+        List_Text groupBy
+        List_Join joins
+        Optional_Limit limit
+        Text lock
+        Group on
+        RelationOptions options
+        List_Order order
+        List_Relation relations
+        Group where
+    }
+    class Planner {
+        <<internal>>
+        Dialect dialect
+        SchemaManifest manifest
+        validate()
+        plan()
+    }
+    class Plan {
+        Text kind
+        Text schemaHash
+        List_Step steps
+    }
+    class Step {
+        Optional_Assemble assemble
+        List_BindSlot bindSlots
+        Integer id
+        Optional_ParentRef parent
+        Text role
+        Text sql
+        List_Text tables
+    }
+    class Assemble {
+        List_Child children
+        List_OutputColumn columns
+        Text entity
+    }
+    class Db {
+        Config config
+        Map_SchemaHash_Planner planners
+        Cache_Shape_Plan plans
+        ConnectionPool pool
+        Cache_Sql_Statement statements
+        List_StatementSubscriber subscribers
+        connect()
+        connectSchema()
+        transaction()
+        utils()
+        close()
+        stats()
+        subscribe()
+        execute()
+        withRequestHook()
+    }
+    class TransactionFlow {
+        <<internal>>
+        List_TransactionFrame frames
+        begin()
+        savepoint()
+        commit()
+        rollback()
+    }
+    class Collection {
+        Map_Key_Value fetched
+        Map_Key_Model items
+        List_Key keys
+        get()
+        first()
+        keys()
+        connect()
+        delete()
+        toArray()
+    }
+    class Page {
+        Collection items
+        Integer page
+        Integer perPage
+        Integer totalCount
+        Integer totalPages
+    }
+    class Utils {
+        Db db
+        lock()
+        setLocal()
+        local()
+        schema()
+        privileges()
+        aes()
+        stats()
+    }
+    class SchemaUtils {
+        Db db
+        register()
+        install()
+        addTablesAndColumns()
+        exists()
+        installed()
+        empty()
+    }
+    class AesUtils {
+        Db db
+        status()
+        rotate()
+    }
+    class AESKeyring {
+        Integer currentVersion
+        Map_Integer_Secret versions
+        versions()
+    }
+    class AESRotationStatus {
+        Integer current
+        Integer pending
+        Integer total
+        Map_Integer_Integer versions
+    }
+    class Generator {
+        <<internal>>
+        SchemaManifest manifest
+        List_Path scan
+        generate()
+    }
+    class Error {
+        Optional_Error cause
+        Text code
+        Text message
+    }
+    class Dbspec {
+        readFile()
+        readBytes()
+        readSet()
+        parse()
+        analyze()
+        format()
+        emit()
+        manifest()
+        render()
+        introspect()
+        externalDifferences()
+        parsePlan()
+        emitPlan()
+        chain()
+        diff()
+        compareSchemas()
+        installedDifferences()
+        addTablesAndColumnsSteps()
+        planSteps()
+        apply()
+        recover()
+        rollback()
+        finalize()
+        exportMermaid()
+        importMermaid()
+    }
+    class DbspecDocument {
+    }
+    Model *-- Core : stores chain state
+    Core --> Db : uses connection
+    Core --> TransactionFlow : uses flow transaction
+    Core --> Request : builds
+    Request *-- RequestIR : stores IR
+    RequestIR *-- QueryNode : contains root
+    QueryNode *-- QueryNode : contains child nodes
+    Db *-- Planner : plans per schema
+    Planner --> Plan : returns
+    Plan *-- Step : contains ordered steps
+    Step *-- Assemble : maps results
+    Db --> TransactionFlow : opens
+    Db --> Utils : returns
+    Utils --> SchemaUtils : returns
+    Utils --> AesUtils : returns
+    SchemaUtils --> Planner : registers schema
+    AesUtils --> AESKeyring : uses keys
+    AesUtils --> AESRotationStatus : returns status
+    Collection o-- Model : contains ordered models
+    Page *-- Collection : contains items
+    Model *-- Collection : contains relations
+    Generator --> Model : emits
+```
+
+| 구성요소 | 동작 및 상태 |
+|---|---|
+| Model | 엔티티마다 생성된다. 새 행이나 조회한 행의 컬럼 값과 체인 상태를 Core에 담는다. |
+| Core | 체인 상태를 저장하고 값이 없는 request와 별도의 parameter 목록을 만든다. 내부: 각 client가 자기 model runtime 안에서 request를 만든다. 공통인 것은 build 호출이 아니라 그것이 만드는 request IR이다(docs/spec/interfaces.md §2). |
+| Request | request 모양이 plan cache key이며 값은 parameter 목록에만 있다. 내부: shape는 각 client가 자기 연결 안에서 계산하는 plan cache key다. 공통인 것은 shape 호출이 아니라 request IR과 그 parameter 목록이다(docs/spec/interfaces.md §7). |
+| RequestIR | 모든 client에 공통인 request 모양이다. |
+| QueryNode | root, join child, relation child, subquery 중 하나다. |
+| Planner | client process 안에서 실행된다. manifest로 request를 검증하고 dialect SQL을 만든다. 내부: 각 client가 호출한 process에서 자기 연결 안에서 request를 검증하고 plan한다. 공통인 것은 planner 호출이 아니라 plan과 그 SQL이며 conformance vector가 확인한다(docs/spec/interfaces.md §7). |
+| Plan | request 모양별로 cache하는 불변 statement와 조립 정보다. |
+| Step | plan의 SQL statement 하나다. |
+| Assemble | 결과 컬럼을 위치로 model, join, relation에 대응시킨다. |
+| Db | pool, 자기에게 등록된 schema set의 planner, plan cache, statement cache, statement event subscriber를 가진다. |
+| TransactionFlow | 비공개다. 현재 실행 흐름의 transaction이며 연결 없는 model이 사용한다. 내부: begin, savepoint, commit, rollback은 비공개다. 그 공개 입구는 Db.transaction이다(docs/spec/interfaces.md §6). |
+| Collection | primary key, keyName, fetchKey로 key를 정한 순서 있는 model 목록이다. |
+| Page | getsPage의 행과 개수다. |
+| Utils | 연결 유틸리티다. lock과 local 값은 진행 중인 transaction이 필요하다. |
+| SchemaUtils | generated schema의 set을 데이터베이스를 읽지 않고 연결에 등록한다. client DDL 렌더러로 set을 설치하고 데이터베이스를 확인한 뒤 set을 등록한다. 설치된 set을 데이터베이스에 없는 table과 null이거나 default가 있는 column만큼 upgrade하며, set을 등록하지 않는다. |
+| AesUtils | model 테이블의 AES key version을 조회하고 회전한다. |
+| AESKeyring | version별 key다. 현재 version으로 새 값을 암호화한다. |
+| AESRotationStatus | key version별 행 수다. |
+| Generator | 언어마다 하나다. dbspec document set을 읽어 model을 만든다. Go와 Rust는 소스가 호출하는 체인 메서드만 만든다. 내부: 각 언어가 자기 build 도구와 명령으로 model을 생성한다. 공통인 것은 generate 호출이 아니라 생성된 model이다(docs/spec/interfaces.md §11, docs/operations/usage.md §3). |
+| Error | docs/errors.yaml의 안정적인 code다. |
+| Dbspec | signature와 encoding을 확인한 뒤 dbspec 문서 파일을 읽거나 호출자가 읽은 파일 byte를 확인하고, set 파일을 읽어 그 문서 집합의 파일을 주고, 선언된 문서 집합을 기준으로 dbspec 문서를 parse해 그 선언의 position을 주고, text를 그 parse 결과와 syntax의 token으로 analyze하며, text를 canonical form으로 format하되 diagnostic이 있는 text는 거부하고, parse한 문서를 canonical form으로 emit하며, 문서 집합의 manifest text, schema text, hash를 만들고, 문서 집합을 dialect statement로 렌더링하고, database를 문서로 introspect하고, database를 외부 문서와 집합에 비교하고, plan을 읽고 쓰고 잇고 diff하고 step으로 쓰며, schema text를 비교하고, 연결에서 plan을 적용하고 이어 가고 되돌리고 finalize하며, Mermaid erDiagram을 export하고 import한다(docs/spec/dbspec.md, docs/spec/dialects.md, docs/spec/plans.md, docs/spec/mermaid.md). |
+| DbspecDocument | parse와 검증을 마친 dbspec 문서 하나. 바뀌지 않으며, emit하면 canonical text가 된다. |
+
+`<<internal>>`로 표시한 구성요소는 manifest의 `internal` 필드(`internal_ko`)가 그 근거를 적는다. 각 client가 그 method를 공통 signature 없이 비공개로 구현하므로 그 method에는 interface rule이 없다. 다른 구성요소의 모든 method는 rule을 가지며 모든 rule은 공개 구성요소의 method 하나의 rule이다. `make interface-check`가 두 방향을 모두 확인한다.
+
+| 시작 | 대상 | 관계 |
+|---|---|---|
+| Model | Core | 체인 상태 저장 |
+| Core | Db | 연결 사용 |
+| Core | TransactionFlow | 흐름 transaction 사용 |
+| Core | Request | 생성 |
+| Request | RequestIR | IR 저장 |
+| RequestIR | QueryNode | root 포함 |
+| QueryNode | QueryNode | child node 포함 |
+| Db | Planner | schema별 계획 |
+| Planner | Plan | 반환 |
+| Plan | Step | 순서 있는 step 포함 |
+| Step | Assemble | 결과 대응 |
+| Db | TransactionFlow | 시작 |
+| Db | Utils | 반환 |
+| Utils | SchemaUtils | 반환 |
+| Utils | AesUtils | 반환 |
+| SchemaUtils | Planner | schema 등록 |
+| AesUtils | AESKeyring | key 사용 |
+| AesUtils | AESRotationStatus | 상태 반환 |
+| Collection | Model | 순서 있는 model 포함 |
+| Page | Collection | 항목 포함 |
+| Model | Collection | relation 포함 |
+| Generator | Model | 생성 |
+
+도표의 type 이름에서 `_`는 중첩 type 구분자다. 정확한 type은 다음 표에 정의한다.
+
+| 필드 | 공통 type |
+|---|---|
+| Model.core | `Core` |
+| Core.columns | `Columns` |
+| Core.conditions | `Group` |
+| Core.connection | `Optional<Db>` |
+| Core.joins | `List<Model>` |
+| Core.limit | `Optional<Limit>` |
+| Core.lock | `Text` |
+| Core.order | `List<Order>` |
+| Core.relations | `List<Model>` |
+| Core.row | `Optional<RowState>` |
+| Core.sets | `List<Assignment>` |
+| Request.ir | `RequestIR` |
+| Request.params | `List<Value>` |
+| RequestIR.kind | `Text` |
+| RequestIR.onDuplicate | `List<Assignment>` |
+| RequestIR.optimistic | `Optional<Optimistic>` |
+| RequestIR.parameterCount | `Integer` |
+| RequestIR.root | `QueryNode` |
+| RequestIR.rows | `List<List<Integer>>` |
+| RequestIR.schemaHash | `Text` |
+| RequestIR.set | `List<Assignment>` |
+| RequestIR.version | `Integer` |
+| QueryNode.columns | `Columns` |
+| QueryNode.entity | `Text` |
+| QueryNode.groupBy | `List<Text>` |
+| QueryNode.joins | `List<Join>` |
+| QueryNode.limit | `Optional<Limit>` |
+| QueryNode.lock | `Text` |
+| QueryNode.on | `Group` |
+| QueryNode.options | `RelationOptions` |
+| QueryNode.order | `List<Order>` |
+| QueryNode.relations | `List<Relation>` |
+| QueryNode.where | `Group` |
+| Planner.dialect | `Dialect` |
+| Planner.manifest | `SchemaManifest` |
+| Plan.kind | `Text` |
+| Plan.schemaHash | `Text` |
+| Plan.steps | `List<Step>` |
+| Step.assemble | `Optional<Assemble>` |
+| Step.bindSlots | `List<BindSlot>` |
+| Step.id | `Integer` |
+| Step.parent | `Optional<ParentRef>` |
+| Step.role | `Text` |
+| Step.sql | `Text` |
+| Step.tables | `List<Text>` |
+| Assemble.children | `List<Child>` |
+| Assemble.columns | `List<OutputColumn>` |
+| Assemble.entity | `Text` |
+| Db.config | `Config` |
+| Db.planners | `Map<SchemaHash,Planner>` |
+| Db.plans | `Cache<Shape,Plan>` |
+| Db.pool | `ConnectionPool` |
+| Db.statements | `Cache<Sql,Statement>` |
+| Db.subscribers | `List<StatementSubscriber>` |
+| TransactionFlow.frames | `List<TransactionFrame>` |
+| Collection.fetched | `Map<Key,Value>` |
+| Collection.items | `Map<Key,Model>` |
+| Collection.keys | `List<Key>` |
+| Page.items | `Collection` |
+| Page.page | `Integer` |
+| Page.perPage | `Integer` |
+| Page.totalCount | `Integer` |
+| Page.totalPages | `Integer` |
+| Utils.db | `Db` |
+| SchemaUtils.db | `Db` |
+| AesUtils.db | `Db` |
+| AESKeyring.currentVersion | `Integer` |
+| AESKeyring.versions | `Map<Integer,Secret>` |
+| AESRotationStatus.current | `Integer` |
+| AESRotationStatus.pending | `Integer` |
+| AESRotationStatus.total | `Integer` |
+| AESRotationStatus.versions | `Map<Integer,Integer>` |
+| Generator.manifest | `SchemaManifest` |
+| Generator.scan | `List<Path>` |
+| Error.cause | `Optional<Error>` |
+| Error.code | `Text` |
+| Error.message | `Text` |

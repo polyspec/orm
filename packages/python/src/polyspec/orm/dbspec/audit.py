@@ -1,4 +1,4 @@
-# The columns recorded by the audit setting (docs/dbspec.md "Audit").
+# The columns recorded by the audit setting (docs/spec/dbspec.md "Audit").
 from polyspec.orm.dbspec.model import DbspecSetting, DbspecTable
 
 __all__ = ["audit_excluded", "audit_line", "audit_records"]

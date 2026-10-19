@@ -90,7 +90,7 @@ final class Dialect
 
     /**
      * Whether the read codec stage is decoded in SQL (MySQL: ip). No dialect decodes hex in SQL:
-     * UNHEX accepts odd lengths and gives NULL for a cell with whitespace, so the executor reads it exactly with hostDecode (docs/codec.md).
+     * UNHEX accepts odd lengths and gives NULL for a cell with whitespace, so the executor reads it exactly with hostDecode (docs/spec/codec.md).
      */
     public function decodesStyle(string $style): bool
     {
@@ -99,7 +99,7 @@ final class Dialect
 
     /**
      * The clock the ORM uses is given by the executor (the `now` slot truncated to the column's fractional digits): SQLite has no sub-second clock function,
-     * and the PostgreSQL clock is rounded to timestamp(p < 6) (docs/protocol.md "Clock").
+     * and the PostgreSQL clock is rounded to timestamp(p < 6) (docs/spec/protocol.md "Clock").
      */
     public function hostNow(): bool
     {

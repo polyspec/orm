@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "Each case connects with the DSN sqlite://<directory>/<path>, where <directory> is a new temporary directory without characters that need escaping. A case with file opens the database, runs one statement, and requires the directory to hold file and no other name except its -journal, -wal and -shm files. A case with error must fail to connect with that error code and leave the directory empty. docs/config.md \"Runtime connection\".",
+  "note": "Each case connects with the DSN sqlite://<directory>/<path>, where <directory> is a new temporary directory without characters that need escaping. A case with file opens the database, runs one statement, and requires the directory to hold file and no other name except its -journal, -wal and -shm files. A case with error must fail to connect with that error code and leave the directory empty. docs/spec/config.md \"Runtime connection\".",
   "cases": [
     {
       "id": "plain",

@@ -1,5 +1,5 @@
 // The slot that a request parameter fills. An IR executor message writes each parameter in the form of its slot type, so
-// (docs/protocol.md §5 Parameters) the client reads the type here.
+// (docs/spec/protocol.md §5 Parameters) the client reads the type here.
 import type { Assignment, Group, Predicate, Request, RequestQuery } from '../ir.js';
 import { present } from '../present.js';
 import { valueFunctionUnits } from './dialect.js';

@@ -2,7 +2,7 @@
 <!-- source-sha256: 82f6306233432680f25c85daaf7295d18e5b3cd68e1266def8588146db5e9b69 -->
 # 공통 인터페이스 검사
 
-[contracts/interfaces.json](../../contracts/interfaces.json)이 인터페이스 구조를 정의한다. [인터페이스 구조 문서](../../docs/interfaces.ko.md)와 함께 변경한다.
+[contracts/interfaces.json](../../contracts/interfaces.json)이 인터페이스 구조를 정의한다. [인터페이스 구조 문서](../../docs/spec/interfaces.ko.md)와 함께 변경한다.
 
 검사기는 다음 요구사항을 확인한다.
 
@@ -13,7 +13,7 @@
 - 네이티브 심볼 스냅샷은 공개 및 내부 선언 변경을 보고한다. 매니페스트의 SHA-256 값은 검토하지 않은 스냅샷 교체를 차단한다.
 - 매니페스트 `extensions`의 extension은 다섯 클라이언트 밖에서 공통 인터페이스의 일부를 구현한다. PHP 확장 `php-extension`은 `Dbspec` 규칙과 `DbspecDiagnostic`, `DbspecManifest` 소유자를 구현한다. 그 선언은 stub(`packages/php-ext/stubs`)에서 PHP 추출기로 읽어 자기 스냅샷 `contracts/symbols/php-extension.json`과 hash에 대조하며, extension이 적지 않은 규칙이나 소유자는 그 adapter를 가질 수 없다. load한 확장이 stub과 같은 선언을 가지는지는 `make dbspec-php-extension-check`가 확인한다.
 - 실행 순서 규칙은 conformance 벡터의 결과와 statement 수를 비교한다.
-- 메서드 규칙의 오류 표기와 기록된 `errors` 순서는 `docs/errors.yaml`의 코드와 일치해야 한다. 네이티브 드라이버 오류 범주는 명시적으로 남긴다.
+- 메서드 규칙의 오류 표기와 기록된 `errors` 순서는 `docs/spec/errors.yaml`의 코드와 일치해야 한다. 네이티브 드라이버 오류 범주는 명시적으로 남긴다.
 - 금지 심볼은 취소와 커서 페이지처럼 삭제되었거나 지원하지 않는 동작을 거부한다.
 - 소스 변이 검사는 메서드 누락, 인자 추가, 반환 타입 변경, 필드 타입 변경, receiver 변경, 선언되지 않은 상태를 검사기가 거부하는지 확인한다.
 

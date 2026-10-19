@@ -1,4 +1,4 @@
-// Writes the steps of a plan in one dialect (docs/plans.md "Steps"). The reference is the Go engine
+// Writes the steps of a plan in one dialect (docs/spec/plans.md "Steps"). The reference is the Go engine
 // (engine/dbspec/plan_steps.go), and the statements, rollbacks and effects are the same bytes as Go.
 import { present as known } from '../present.js';
 import { readCheck } from './check.js';
@@ -10,7 +10,7 @@ import { Renderer, type DbspecDialect } from './render.js';import { rendererName
 
 
 /**
- * How a step's statement shows that it took effect (docs/plans.md "Steps",
+ * How a step's statement shows that it took effect (docs/spec/plans.md "Steps",
  * effects). The kind is table, column, index, constraint, trigger, function,
  * sequence, rows or repeat; present is the state after the statement.
  */
@@ -29,7 +29,7 @@ export interface DbspecNullCheck {
 }
 
 /**
- * One step of a plan (docs/plans.md "Steps"): its statement, its rollback
+ * One step of a plan (docs/spec/plans.md "Steps"): its statement, its rollback
  * statement or, without one, the reason in irreversible (empty for a
  * finalize step), its effect, the restore statements that replace the
  * statement and the rollback statement when restoreIf holds, the null
@@ -52,7 +52,7 @@ export type DbspecPlanStepsResult =
   | { readonly steps: readonly DbspecPlanStep[]; readonly diagnostics: readonly [] }
   | { readonly steps: null; readonly diagnostics: readonly DbspecDiagnostic[] };
 
-/** The text form of docs/plans.md "Effects", such as `present table users`. */
+/** The text form of docs/spec/plans.md "Effects", such as `present table users`. */
 export function effectText(e: DbspecEffect): string {
   if (e.kind === 'repeat') return 'repeat';
   let s = `${e.present ? 'present' : 'absent'} ${e.kind}`;
@@ -62,13 +62,13 @@ export function effectText(e: DbspecEffect): string {
 
 const DIALECTS: ReadonlySet<string> = new Set(['mysql', 'postgres', 'sqlite']);
 
-/** The reason a step cannot be reversed (docs/plans.md "Irreversible steps"). */
+/** The reason a step cannot be reversed (docs/spec/plans.md "Irreversible steps"). */
 const IRREVERSIBLE_PRECISION = 'narrowing the precision rounds the values written since';
 /** The work table for a SQLite rebuild. */
 const REBUILD_TABLE = 'dbspec$rebuild';
 
 /**
- * Writes the steps of a plan in one dialect (docs/plans.md "Steps"). The
+ * Writes the steps of a plan in one dialect (docs/spec/plans.md "Steps"). The
  * source is the schema the plan starts from, null for an empty database. An
  * unknown dialect is a TypeError.
  */
@@ -124,7 +124,7 @@ class PlanWriter {
     return h;
   }
 
-  /** Chooses the retained names in the order of docs/plans.md "Hiding instead of dropping". */
+  /** Chooses the retained names in the order of docs/spec/plans.md "Hiding instead of dropping". */
   private numberHolds(): void {
     const d = this.d;
     let n = 0;
@@ -329,7 +329,7 @@ class PlanWriter {
     return Object.freeze({ table, column, default: c.default === null ? null : this.r.defaultText(c.type, c.default) });
   }
 
-  /** Rebuilds a SQLite table through a work table (docs/plans.md "Steps"). */
+  /** Rebuilds a SQLite table through a work table (docs/spec/plans.md "Steps"). */
   private rebuild(name: string): void {
     const d = this.d;
     const t = known(d.target.get(name), 'd.target.get(name)');

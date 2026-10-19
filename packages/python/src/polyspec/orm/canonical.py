@@ -39,14 +39,19 @@ class _Canon:
         self.used = [False] * len(params)
 
     def index(self, p):
-        if not isinstance(p, int) or isinstance(p, bool) or p < 0 or p >= len(self.params):
-            raise OrmError(codes.IR_INVALID, f"param index {p} out of range (n_params {len(self.params)})")
+        if (
+            not isinstance(p, int)
+            or isinstance(p, bool)
+            or p < 0
+            or p >= len(self.params)
+        ):
+            raise OrmError(
+                codes.IR_INVALID,
+                f"param index {p} out of range (n_params {len(self.params)})",
+            )
         self.used[p] = True
         self.out.append(self.params[p])
         return len(self.out) - 1
-
-    def ptr(self, p):
-        return None if p is None else self.index(p)
 
     def ints(self, ps):
         return None if ps is None else [self.index(p) for p in ps]
@@ -137,11 +142,17 @@ def _query_into(c: _Canon, q: dict, out: dict) -> None:
         cols = dict(q["columns"])
         if q["columns"].get("fn") is not None:
             cols["fn"] = {
-                name: {**q["columns"]["fn"][name], "fn": _func(c, q["columns"]["fn"][name].get("fn"))}
+                name: {
+                    **q["columns"]["fn"][name],
+                    "fn": _func(c, q["columns"]["fn"][name].get("fn")),
+                }
                 for name in sorted(q["columns"]["fn"])
             }
         if q["columns"].get("sub") is not None:
-            cols["sub"] = {name: _sub(c, q["columns"]["sub"][name]) for name in sorted(q["columns"]["sub"])}
+            cols["sub"] = {
+                name: _sub(c, q["columns"]["sub"][name])
+                for name in sorted(q["columns"]["sub"])
+            }
         out["columns"] = cols
     if q.get("on") is not None:
         out["on"] = _group(c, q["on"])
@@ -149,15 +160,28 @@ def _query_into(c: _Canon, q: dict, out: dict) -> None:
         out["where"] = _group(c, q["where"])
     if q.get("joins") is not None:
         out["joins"] = [
-            None if j is None else {**j, "query": _query(c, j["query"]) if j.get("query") is not None else None}
+            None
+            if j is None
+            else {
+                **j,
+                "query": _query(c, j["query"]) if j.get("query") is not None else None,
+            }
             for j in q["joins"]
         ]
     if q.get("relations") is not None:
         out["relations"] = [
-            None if r is None else {**r, "query": _query(c, r["query"]) if r.get("query") is not None else None}
+            None
+            if r is None
+            else {
+                **r,
+                "query": _query(c, r["query"]) if r.get("query") is not None else None,
+            }
             for r in q["relations"]
         ]
     if q.get("order") is not None:
-        out["order"] = [{**o, "fn": _func(c, o["fn"])} if o.get("fn") is not None else o for o in q["order"]]
+        out["order"] = [
+            {**o, "fn": _func(c, o["fn"])} if o.get("fn") is not None else o
+            for o in q["order"]
+        ]
     if q.get("if_parent") is not None:
         out["if_parent"] = {**q["if_parent"], "p": c.index(q["if_parent"]["p"])}

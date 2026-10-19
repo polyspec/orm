@@ -1,5 +1,5 @@
 //! dbspec introspection through `polyspec_orm::dbspec::introspect` on MySQL,
-//! PostgreSQL and SQLite (docs/dialects.md, "Introspection"). Every vector of
+//! PostgreSQL and SQLite (docs/spec/dialects.md, "Introspection"). Every vector of
 //! tests/dbspec/ddl.json and every schema document is rendered, applied to an
 //! empty database of each dialect and introspected into the schema text of
 //! its source with no unsupported object and one query count per dialect;

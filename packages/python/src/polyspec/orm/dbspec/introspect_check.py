@@ -1,5 +1,5 @@
 # Reads a dialect catalog's check expression as dbspec predicate text
-# (docs/dialects.md "Introspection", "Checks").
+# (docs/spec/dialects.md "Introspection", "Checks").
 from polyspec.orm.dbspec.introspect_catalog import quote
 
 __all__ = ["CheckDecodeError", "decode_check", "unscaled_decimal"]

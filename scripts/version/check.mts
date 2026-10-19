@@ -43,8 +43,8 @@ export const DECLARATIONS = [
   { file: 'SECURITY.ko.md', read: first(/개발 version은 `([^`]+)`/g) },
   { file: 'AGENTS.md', read: first(/Develop one `([^`]+)` version/g) },
   { file: 'AGENTS.ko.md', read: first(/하나의 `([^`]+)` 버전/g) },
-  { file: 'docs/plan.md', read: first(/product version is `([^`]+)`/g) },
-  { file: 'docs/plan.ko.md', read: first(/제품 버전은 `([^`]+)`이다/g) },
+  { file: 'docs/spec/plan.md', read: first(/product version is `([^`]+)`/g) },
+  { file: 'docs/spec/plan.ko.md', read: first(/제품 버전은 `([^`]+)`이다/g) },
 ];
 
 export async function versionErrors(root: string): Promise<string[]> {

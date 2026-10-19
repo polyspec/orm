@@ -1,8 +1,8 @@
 <!-- doc-id: readme -->
-<!-- source-sha256: 8fc69f752de9ce3c9b61a0ccc73a2400a03c8a6b2133fd79c434ccea769393f9 -->
+<!-- source-sha256: e681f64168954498d0f453d288599daf24c783f81ad27e86c4bba7f530cc4d97 -->
 # orm
 
-**Go, PHP, Python, Rust, TypeScript**를 위한 스키마 기반 모델 query grammar다. 목표 문법은 [docs/dsl.ko.md](docs/dsl.ko.md), 작업 순서는 [docs/plan.ko.md](docs/plan.ko.md)에 명시되어 있다.
+**Go, PHP, Python, Rust, TypeScript**를 위한 스키마 기반 모델 query grammar다. 목표 문법은 [docs/spec/dsl.ko.md](docs/spec/dsl.ko.md), 작업 순서는 [docs/spec/plan.ko.md](docs/spec/plan.ko.md)에 명시되어 있다.
 
 ```php
 $authors = (new Author)->connect($slave1)->serviceSeq(7)->andIsClose(false)
@@ -59,16 +59,16 @@ authors = Author().connect(slave1).gets_by_service_seq_and_is_close(7, False)
 `get`은 행 하나를 반환하며 일치하는 행이 없으면 null을 반환한다. `gets`는 컬렉션, `getCount`는 개수를 반환한다. 모델은 `connect`로 데이터베이스 연결을 받는다. `connection.transaction(fn)` 안에서 `connect`를 호출하지 않은 모델은 활성 트랜잭션을 사용한다. 관계 자식은 `connect`를 호출하지 않으면 부모 연결을 사용한다. 트랜잭션 밖에서 연결 없는 모델은 `CONFIG`를 반환한다.
 
 ## 동작 구조
-- **Schema**: 직접 작성한 dbspec document 집합(`contracts/fixtures/bench/*.dbs`, `docs/dbspec.md`)이다. 생성된 모델이 그 manifest text와 `manifestHash`를 담는다.
+- **Schema**: 직접 작성한 dbspec document 집합(`contracts/fixtures/bench/*.dbs`, `docs/spec/dbspec.md`)이다. 생성된 모델이 그 manifest text와 `manifestHash`를 담는다.
 - **Models**: 각 언어는 자기 빌드 도구로 모델을 생성한다: `go generate`(Go), `vendor/bin/orm-gen`(PHP), `npm run build` 안의 `orm-gen` npm bin(TypeScript), Python package의 `orm-gen` console script(Python), `build.rs`의 `polyspec-orm-build` crate(Rust).
 - **Runtime**: 클라이언트 라이브러리는 담긴 manifest로 만든 runtime model로 각 문장 구조를 검증하고, 호출한 프로세스 안에서 SQL을 조립하고, plan을 캐시하고, 각 언어의 native driver로 실행한다. 호출한 프로세스 옆에서 실행되는 서비스나 데몬은 없다.
-- **Databases**: MySQL 8, PostgreSQL 12+, SQLite 3.46+는 같은 request와 result 규칙을 사용한다(`docs/dialects.md`).
-- **Python**: Python client는 CI가 test하는 Python 3.14(CPython)를 지원한다. 그 release는 `mise.toml`의 Python이며 `requires-python`이 이를 적는다(`docs/packaging.ko.md`).
+- **Databases**: MySQL 8, PostgreSQL 12+, SQLite 3.46+는 같은 request와 result 규칙을 사용한다(`docs/spec/dialects.md`).
+- **Python**: Python client는 CI가 test하는 Python 3.14(CPython)를 지원한다. 그 release는 `mise.toml`의 Python이며 `requires-python`이 이를 적는다(`docs/operations/packaging.ko.md`).
 - **Equality**: `tests/conformance`는 다섯 클라이언트에서 같은 벡터를 실행하고 SQL, bind, 결과를 비교한다.
 
 ## 빠른 시작 (MySQL 8.4와 PostgreSQL 17)
 ```sh
-make test-servers                                                   # servers, databases, bench schema + 100k rows
+make orm-test-servers                                                   # servers, databases, bench schema + 100k rows
 . .runtime/servers/env                                              # the DSN variables of the tests
 (cd packages/go/model && go generate)                                # Go models
 vendor-php/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out packages/php/gen --namespace 'Polyspec\Orm\Tests\Model'
@@ -86,15 +86,15 @@ node tests/conformance/check/main.mts run --out "$(mktemp -d)/out" --dsn "$BENCH
 
 [**English README**](README.md)
 
-[**공통 인터페이스**](docs/interfaces.ko.md) · [구현 대조표](docs/interface-implementation.ko.md) · [자동 검사](tests/interfaces/README.ko.md) — 자료구조·수명·공개 API와 검증 상태.
+[**공통 인터페이스**](docs/spec/interfaces.ko.md) · [구현 대조표](docs/spec/interface-implementation.ko.md) · [자동 검사](tests/interfaces/README.ko.md) — 자료구조·수명·공개 API와 검증 상태.
 
-[**docs/usage.ko.md**](docs/usage.ko.md) — 여기서 시작한다: 스키마, 생성, 연결, 조회, 쓰기, 관계, 세 데이터베이스, 운영.
+[**docs/operations/usage.ko.md**](docs/operations/usage.ko.md) — 여기서 시작한다: 스키마, 생성, 연결, 조회, 쓰기, 관계, 세 데이터베이스, 운영.
 
 [**보안 정책**](SECURITY.ko.md) · [기여 안내](CONTRIBUTING.ko.md) · [행동 강령](CODE_OF_CONDUCT.ko.md) · [변경 이력](CHANGELOG.ko.md)
 
-`examples/thin-slice` · `examples/complex` · `docs/dsl.md` 문법 · `docs/dbspec.md` 스키마 언어 · `docs/schema.md` 스키마 도구 · `docs/protocol.md` IR/Plan ·
-`docs/codec.md` 컬럼 스타일 · `docs/dialects.md` MySQL/PostgreSQL/SQLite ·
-`docs/errors.yaml` 오류 코드 · `docs/perf.md` 측정과 성능 검사 · `docs/plans/execution-checklist.md` 작업 계획.
+`examples/thin-slice` · `examples/complex` · `docs/spec/dsl.md` 문법 · `docs/spec/dbspec.md` 스키마 언어 · `docs/spec/schema.md` 스키마 도구 · `docs/spec/protocol.md` IR/Plan ·
+`docs/spec/codec.md` 컬럼 스타일 · `docs/spec/dialects.md` MySQL/PostgreSQL/SQLite ·
+`docs/spec/errors.yaml` 오류 코드 · `docs/operations/perf.md` 측정과 성능 검사 · `docs/plans/execution/checklist.md` 작업 계획.
 
 ## 도구
 `orm-gen gen --lang go | errors --lang`(Go), `vendor/bin/orm-gen gen`(PHP), `orm-gen gen`(TypeScript), Python package의 `orm-gen gen`(Python), `polyspec-orm-build`(Rust),

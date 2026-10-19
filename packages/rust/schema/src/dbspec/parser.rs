@@ -62,7 +62,7 @@ pub(crate) struct Diag {
 }
 
 /// One declaration that the parser read into the document, recorded where its name token is in hand
-/// (docs/dbspec.md "Declaration positions"). `path` is the enclosing names and the own name; a setting
+/// (docs/spec/dbspec.md "Declaration positions"). `path` is the enclosing names and the own name; a setting
 /// has the table alone in `path` and its keyword and identity words in `setting`.
 #[derive(Clone, Debug)]
 pub(crate) struct Declaration {
@@ -100,7 +100,7 @@ pub(crate) struct Syntax {
     pub marks: Marks,
 }
 
-/// The form and the names of a setting that its repeat identity is made of (docs/dbspec.md "Settings"): the
+/// The form and the names of a setting that its repeat identity is made of (docs/spec/dbspec.md "Settings"): the
 /// column of codec and markdown, the foreign key of navigation, the AES column and the column of blind_index,
 /// the column and state of checkbox, and the form, column and states of a state_machine line. Other settings
 /// have no identity and no words.
@@ -143,7 +143,7 @@ pub(crate) struct FailedKeys {
 
 /// A stopping error (`encoding`, `header` or `limit`) ends parsing with the
 /// errors reported up to it.
-/// The class of a token that the parser read as a word of a given position (docs/dbspec.md "Syntax analysis").
+/// The class of a token that the parser read as a word of a given position (docs/spec/dbspec.md "Syntax analysis").
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Class {
     Keyword,

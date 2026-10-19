@@ -1,4 +1,4 @@
-# Reads PostgreSQL's current schema as a catalog (docs/dialects.md "Introspection").
+# Reads PostgreSQL's current schema as a catalog (docs/spec/dialects.md "Introspection").
 # Every query reads the whole current schema at once.
 import re
 

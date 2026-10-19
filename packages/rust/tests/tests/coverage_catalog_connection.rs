@@ -65,7 +65,7 @@ async fn coverage_catalog_read() {
         assert!(metadata.reliable_row_identity, "{driver}: author row identity");
 
         // In the author page, the datetime(6) column of the three databases reads as the same
-        // DateTime cell in dbspec text form (docs/interfaces.md).
+        // DateTime cell in dbspec text form (docs/spec/interfaces.md).
         let page = catalog.table_page(&author, 3, 0).await.expect("author page");
         assert_eq!(page.order_by, ["seq"], "{driver}: page order");
         assert!(page.has_more, "{driver}: more author rows follow");

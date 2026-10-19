@@ -157,7 +157,7 @@ typedef struct {
 
 typedef VEC(diag) diags;
 
-/* Position of a declaration (docs/dbspec.md "Declaration positions"): kind, name path, line and column (code point). */
+/* Position of a declaration (docs/spec/dbspec.md "Declaration positions"): kind, name path, line and column (code point). */
 typedef struct {
     str kind;
     strs path;
@@ -166,7 +166,7 @@ typedef struct {
 
 typedef VEC(dpos) dposv;
 
-/* A token with its line, column (code point, from 0), end column, and class (docs/dbspec.md "Syntax analysis"). */
+/* A token with its line, column (code point, from 0), end column, and class (docs/spec/dbspec.md "Syntax analysis"). */
 typedef struct {
     zend_long line, start, end;
     str class;

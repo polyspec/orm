@@ -5,7 +5,7 @@ namespace Polyspec\Orm;
 
 /**
  * The declaration of a chain method of a generated model: the @method tag that the class comment gets for a method
- * name that the sources call, or null when no column, chain or operator of docs/dsl.md accepts the name. The rules
+ * name that the sources call, or null when no column, chain or operator of docs/spec/dsl.md accepts the name. The rules
  * are those of Model::__call and Chain, and the declared set is that of the node orm-gen (packages/ts
  * src/generate/typescript.ts).
  */

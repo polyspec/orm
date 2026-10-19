@@ -1,5 +1,5 @@
-# Every connection reads and writes datetime values in UTC whatever the server zone (docs/dialects.md "Date and time",
-# docs/interface-implementation.md IF-02), the case of TestConnectionsUseUTC, connectionUtc of
+# Every connection reads and writes datetime values in UTC whatever the server zone (docs/spec/dialects.md "Date and time",
+# docs/spec/interface-implementation.md IF-02), the case of TestConnectionsUseUTC, connectionUtc of
 # packages/php/tests/ModelTest.php and connectionsUseUtc of packages/ts/tests/model.mjs: the MySQL server of the tests
 # runs in SYSTEM (KST) and the PostgreSQL server in Asia/Seoul. An instant with an offset is stored as its UTC wall
 # clock, the clock default is UTC, and the filters by instant and by text find the row; a DSN timezone other than UTC

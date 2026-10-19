@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 // Polyspec\Orm\Dbspec\Dbspec::introspect on MySQL, PostgreSQL and SQLite
-// (docs/dialects.md "Introspection"). The round trip renders every case of
+// (docs/spec/dialects.md "Introspection"). The round trip renders every case of
 // tests/dbspec/ddl.json and every schema document, applies it to an empty
 // database of each dialect, introspects it and requires the source schema
 // text, no unsupported object and one query count per dialect. The
@@ -30,7 +30,7 @@ final class CountingPdo extends PDO
     }
 }
 
-// The number of catalog queries per dialect, independent of the table count (docs/dialects.md "Introspection").
+// The number of catalog queries per dialect, independent of the table count (docs/spec/dialects.md "Introspection").
 const QUERY_COUNTS = ['mysql' => 9, 'postgres' => 7, 'sqlite' => 3];
 // The statement that every client runs on a new connection.
 const INTROSPECT_CONNECTION_RULES = ['mysql' => ["SET time_zone = '+00:00'"], 'postgres' => ["SET TimeZone = 'UTC'"], 'sqlite' => ['PRAGMA foreign_keys = ON']];

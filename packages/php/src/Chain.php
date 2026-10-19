@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm;
 
 /**
- * Parses model method names with the chain grammar of docs/dsl.md. A name is
+ * Parses model method names with the chain grammar of docs/spec/dsl.md. A name is
  * split into PascalCase words; column names never contain the connector and
  * operator segments, so the split is unambiguous.
  */

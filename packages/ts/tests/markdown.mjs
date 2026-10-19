@@ -1,5 +1,5 @@
 // The DSN of a markdown:// connection, connect and control messages, parsing of error lines, and the SQL-only
-// surface that a markdown connection rejects are checked with a fake server that answers from a script in place of the flowmark server (docs/protocol.md §5, docs/dialects.md
+// surface that a markdown connection rejects are checked with a fake server that answers from a script in place of the flowmark server (docs/spec/protocol.md §5, docs/spec/dialects.md
 // "Markdown IR executor"). These are the same cases as packages/go/orm/markdown_test.go in Go.
 //
 // Usage: node packages/ts/tests/markdown.mjs (after npm run typescript:build)
@@ -149,9 +149,9 @@ caseTest('markdown/rejected-surfaces', COMPUTE, async () => {
   }
 });
 // Message case of tests/bind/vectors.json: the runtime value model JSON of an IR executor message parameter
-// (docs/protocol.md §5 "Parameters"). These are the same cases as TestBindMessageVectors in Go.
+// (docs/spec/protocol.md §5 "Parameters"). These are the same cases as TestBindMessageVectors in Go.
 const bind = JSON.parse(readFileSync(new URL('../../../tests/bind/vectors.json', import.meta.url), 'utf8'));
-// The control cases: the begin control message of a transaction with and without readOnly (docs/protocol.md §5 Session).
+// The control cases: the begin control message of a transaction with and without readOnly (docs/spec/protocol.md §5 Session).
 if (!Array.isArray(bind.control) || bind.control.length === 0) throw new Error('tests/bind/vectors.json has no control cases');
 for (const c of bind.control) {
   caseTest(`markdown/bind-message/control/${c.name}`, COMPUTE, () => {
@@ -174,7 +174,7 @@ for (const c of bind.message) {
     }
   });
 }
-// Bind case of tests/bind/vectors.json: checks a parameter value against the logical type of its slot (docs/protocol.md §5
+// Bind case of tests/bind/vectors.json: checks a parameter value against the logical type of its slot (docs/spec/protocol.md §5
 // "Parameters"). These are the same cases as TestBindVectors in Go.
 function vectorValue(value) {
   if (value === null || typeof value !== 'object') return value;

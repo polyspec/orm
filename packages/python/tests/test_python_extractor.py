@@ -8,7 +8,14 @@ import unittest
 from pathlib import Path
 from packages.python.tests import testcase
 
-EXTRACTOR = Path(__file__).resolve().parents[3] / "packages" / "python" / "testing" / "interfaces" / "python.py"
+EXTRACTOR = (
+    Path(__file__).resolve().parents[3]
+    / "packages"
+    / "python"
+    / "testing"
+    / "interfaces"
+    / "python.py"
+)
 
 
 class PythonExtractorTest(unittest.TestCase):
@@ -26,7 +33,10 @@ class PythonExtractorTest(unittest.TestCase):
                 check=False,
             )
             self.assertEqual(result.returncode, 0, result.stderr)
-            return {key: value["signature"] for key, value in json.loads(result.stdout).items()}
+            return {
+                key: value["signature"]
+                for key, value in json.loads(result.stdout).items()
+            }
 
     def test_public_names_match_the_symbol_file(self):
         # The contract contracts/symbols/python.json lists the public surface of the Python client. A module-level

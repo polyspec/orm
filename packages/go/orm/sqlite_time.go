@@ -17,7 +17,7 @@ var (
 
 // bindTimeValue writes a date, datetime or time value in the text form SQLite stores,
 // so a string value compares equal to the stored value; every driver binds that text
-// (docs/dialects.md). A datetime or time has exactly
+// (docs/spec/dialects.md). A datetime or time has exactly
 // precision fraction digits, as the column's CHECK requires: the digits past precision
 // must be zero (an IR message writes six, protocol.md §5) and are dropped, and a
 // non-zero digit there is no value of the column (CODEC_ENCODE). A datetime string with

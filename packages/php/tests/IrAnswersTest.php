@@ -3,7 +3,7 @@ declare(strict_types=1);
 /*
  * For each case of contracts/fixtures/ir_answers.json, runs its chain (a case of tests/markdown/cases.json). Instead of the flowmark server,
  * markdown_fake_server.php replies {"ok":true} to connect and writes the case's answer to one chain request, and checks that the chain's result
- * matches expect (docs/protocol.md §5 Read). flowmark is not needed.
+ * matches expect (docs/spec/protocol.md §5 Read). flowmark is not needed.
  *
  * Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/IrAnswersTest.php
  */

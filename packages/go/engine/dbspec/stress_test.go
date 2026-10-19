@@ -20,7 +20,7 @@ import (
 // 10000-foreign-key document that node tests/dbspec/stress.mts writes, and
 // parses it five times. It prints the median CPU time of the parsing thread,
 // the median CPU time of the reference work and their ratio, and a warning when
-// the ratio exceeds referenceRatio (docs/dbspec.md, "Verification"); a
+// the ratio exceeds referenceRatio (docs/spec/dbspec.md, "Verification"); a
 // measurement never fails the test. The wall-clock deadline only bounds a hang.
 const (
 	referenceRatio = 63.0
@@ -56,7 +56,7 @@ func TestStressDocument(t *testing.T) {
 		slices.Sort(parses)
 		parseElapsed := parses[parseRuns/2]
 		// The reference work is a loop that updates a checksum for each byte of the same document. It is timed with the same clock in the same process, and it prints the ratio of the parse time to
-		// that work (docs/dbspec.md, Verification).
+		// that work (docs/spec/dbspec.md, Verification).
 		references := make([]time.Duration, parseRuns)
 		for i := range references {
 			clock := startCaseClock(t)
@@ -93,7 +93,7 @@ func TestStressDocument(t *testing.T) {
 		machine := runtime.GOOS + " " + runtime.GOARCH
 		t.Logf("stress parse ratio %.2f to the reference on %s (reference ratio %.0f)", ratio, machine, referenceRatio)
 		if ratio > referenceRatio {
-			testcase.Warn("stress median parse CPU of %s is %.2f times the reference CPU of %s, above the reference ratio %.0f (docs/dbspec.md, Verification); machine %s", parseElapsed, ratio, reference, referenceRatio, machine)
+			testcase.Warn("stress median parse CPU of %s is %.2f times the reference CPU of %s, above the reference ratio %.0f (docs/spec/dbspec.md, Verification); machine %s", parseElapsed, ratio, reference, referenceRatio, machine)
 		}
 		return nil
 	})

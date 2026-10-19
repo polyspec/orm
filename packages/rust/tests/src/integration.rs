@@ -753,7 +753,7 @@ async fn main() {
                 let var = format!("ORM_TEST_{}_REPLICA_DSN", driver.to_uppercase());
                 let replica = std::env::var(&var).ok().filter(|v| !v.is_empty()).unwrap_or_else(|| {
                     panic!(
-                        "{var} is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers"
+                        "{var} is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers"
                     )
                 });
                 primary_and_replica(&t, &replica).await;

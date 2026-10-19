@@ -1,5 +1,5 @@
 <?php
-// Generates tests/codec/vectors.json — the PHP ground truth for every executor codec (docs/codec.md).
+// Generates tests/codec/vectors.json — the PHP ground truth for every executor codec (docs/spec/codec.md).
 // Usage: php tests/codec/gen.php > tests/codec/vectors.json
 declare(strict_types=1);
 
@@ -38,7 +38,7 @@ $styles = [
     'yaml' => ['yaml'],
 ];
 // A list that starts with base64 or gz serializes nothing: the stage takes a string value and stores its UTF-8 text
-// (docs/codec.md, Stage lists). Any other value is CODEC_ENCODE, and SQL NULL stays SQL NULL.
+// (docs/spec/codec.md, Stage lists). Any other value is CODEC_ENCODE, and SQL NULL stays SQL NULL.
 $textStyles = [
     'base64_text' => ['base64'],
     'gz_text' => ['gz'],
@@ -95,7 +95,7 @@ foreach ($textStyles as $name => $chain) {
     }
 }
 // The ip host stage packs only the exact text of an address: white space around or inside it is CODEC_ENCODE, so two
-// inputs never store the same bytes and the stored value reads back as the input (docs/codec.md, Decoding is exact).
+// inputs never store the same bytes and the stored value reads back as the input (docs/spec/codec.md, Decoding is exact).
 $ipWhiteSpace = [
     'leading_space' => ' 192.0.2.1',
     'trailing_space' => '192.0.2.1 ',

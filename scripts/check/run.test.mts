@@ -167,13 +167,13 @@ function recipe(target: string): string[] {
   return body;
 }
 
-// The check case checks that make check runs target check-run through the kit guard (the full-run tool of @polyspec/kit) and that make check-run runs
+// The check case checks that make orm-check runs target check-run through the kit guard (the full-run tool of @polyspec/kit) and that make check-run runs
 // the runner. The first two lines of check-run are a make function that checks GROUP and has no command: without GROUP they expand to an empty line, and a GROUP that does not match
 // or a GROUP outside GitHub Actions stops make before any command (G5.111). `make -n check-run` runs with only the variables the case provides
 // as its environment (tests/environment.mts), so even when a CI group's job runs this case, that GROUP and GITHUB_ACTIONS do not reach it
 // (G5.119).
-caseTest('make check starts the kit guard and make check-run starts the runner', COMPUTE, () => {
-  assert.deepEqual(recipe('check'), ['$(NODE) $(KIT)/full-run.$(KIT_EXT) run check-run']);
+caseTest('make orm-check starts the kit guard and make check-run starts the runner', COMPUTE, () => {
+  assert.deepEqual(recipe('orm-check'), ['$(NODE) $(KIT)/full-run.$(KIT_EXT) run check-run']);
   const run = recipe('check-run');
   assert.ok(run.slice(0, 2).every(line => line.startsWith('$(if $(GROUP),') && line.endsWith(')')), run.join('\n'));
   assert.deepEqual(run.slice(2), ['$(BUILD_LEASE) && $(NODE) scripts/check/run.mts $(abspath $(TEST_ENV)) $(CHECK_RUN_TARGETS)']);
@@ -185,7 +185,7 @@ caseTest('make check starts the kit guard and make check-run starts the runner',
   }
   const local = dry({ GROUP: 'static' });
   assert.notEqual(local.status, 0, local.stdout);
-  assert.match(local.stderr, /GROUP runs one CI group of make check-run on GitHub Actions only; run make check without GROUP/);
+  assert.match(local.stderr, /GROUP runs one CI group of make check-run on GitHub Actions only; run make orm-check without GROUP/);
   const unknown = dry({ GROUP: 'nope', GITHUB_ACTIONS: 'true' });
   assert.notEqual(unknown.status, 0, unknown.stdout);
   assert.match(unknown.stderr, /GROUP nope names no CI group; give one of CI_GROUPS:/);
@@ -509,12 +509,12 @@ caseTest('a FAIL that points at the errors reported above keeps those errors as 
     `${step}--- PASS: TestOther (0.01s)`,
     `${step}=== RUN   TestStressDocument`,
     `${step}RUN TestStressDocument deadline=5m0s`,
-    `${step}    stress_test.go:80: stress median parse used 131ms of CPU, over the 100ms budget (docs/dbspec.md, Verification)`,
+    `${step}    stress_test.go:80: stress median parse used 131ms of CPU, over the 100ms budget (docs/spec/dbspec.md, Verification)`,
     `${step}FAIL TestStressDocument elapsed=10.25s: the errors reported above`,
     `${step}--- FAIL: TestStressDocument (10.25s)`,
   ]) found.line(line);
   assert.deepEqual(found.lines().slice(0, 2), [
-    `${step}    stress_test.go:80: stress median parse used 131ms of CPU, over the 100ms budget (docs/dbspec.md, Verification)`,
+    `${step}    stress_test.go:80: stress median parse used 131ms of CPU, over the 100ms budget (docs/spec/dbspec.md, Verification)`,
     `${step}FAIL TestStressDocument elapsed=10.25s: the errors reported above`,
   ]);
 });
@@ -543,7 +543,7 @@ caseTest('the failure lines of a case that passed are not the first failure line
 caseTest('a WARNING line is kept as a warning, not a failure, and the summary lists it', COMPUTE, async () => {
   const { failureLine, failures, summary } = await import('./report.mts');
   const found = failures();
-  const warned = 'dbspec_stress median parse CPU of 401.000 ms is 11.50 times the reference CPU of 34.870 ms, above the reference ratio 11.0 (docs/dbspec.md, Verification); machine Linux aarch64, PHP 8.5.4';
+  const warned = 'dbspec_stress median parse CPU of 401.000 ms is 11.50 times the reference CPU of 34.870 ms, above the reference ratio 11.0 (docs/spec/dbspec.md, Verification); machine Linux aarch64, PHP 8.5.4';
   for (const line of ['RUN dbspec_stress deadline=10m0s', `STEP features/helpers/dbspec-stress elapsed=2s: WARNING ${warned}`, 'PASS dbspec_stress elapsed=2.5s']) found.line(line);
   assert.equal(failureLine(`STEP features/helpers/dbspec-stress elapsed=2s: WARNING ${warned}`), false, 'a warning is no failure line');
   assert.deepEqual(found.warnings(), [warned]);

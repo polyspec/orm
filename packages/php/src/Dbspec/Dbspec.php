@@ -3,14 +3,14 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Dbspec;
 
-/** Parses, validates and canonically emits dbspec documents (docs/dbspec.md). */
+/** Parses, validates and canonically emits dbspec documents (docs/spec/dbspec.md). */
 final class Dbspec
 {
     /**
      * Parses a document. `$documents` is the declared document set, document
      * name => text, in which `use` lines find the documents they name. The
      * result holds the document, its declaration positions in source order
-     * (docs/dbspec.md "Declaration positions"), and no diagnostics; or every
+     * (docs/spec/dbspec.md "Declaration positions"), and no diagnostics; or every
      * diagnostic in source order, no document and no positions.
      *
      * @param array<string, string> $documents
@@ -23,7 +23,7 @@ final class Dbspec
 
     /**
      * Parses a document as parse does and returns that result unchanged, with the tokens of the text: each with its line,
-     * its start and end in code points and its class (docs/dbspec.md "Syntax analysis"). A limit error gives no tokens.
+     * its start and end in code points and its class (docs/spec/dbspec.md "Syntax analysis"). A limit error gives no tokens.
      *
      * @param array<string, string> $documents
      */
@@ -35,7 +35,7 @@ final class Dbspec
 
     /**
      * The canonical emission of the text when it has no diagnostic; otherwise every diagnostic and no text. A document
-     * with a diagnostic is never rewritten (docs/dbspec.md "Formatting").
+     * with a diagnostic is never rewritten (docs/spec/dbspec.md "Formatting").
      *
      * @param array<string, string> $documents
      */
@@ -67,7 +67,7 @@ final class Dbspec
 
     /**
      * Reads the dbspec document file at $path to parse, and checks its bytes against the path as the name in
-     * readBytes (docs/dbspec.md "Files"). A directory or an unreadable file is a
+     * readBytes (docs/spec/dbspec.md "Files"). A directory or an unreadable file is a
      * RuntimeException "cannot read <path>: <reason>".
      */
     public static function readFile(string $path): ReadResult
@@ -85,7 +85,7 @@ final class Dbspec
     }
 
     /**
-     * Reads the set file at $path and the files it lists (docs/dbspec.md "Document sets"): the set file,
+     * Reads the set file at $path and the files it lists (docs/spec/dbspec.md "Document sets"): the set file,
      * its JSON, each path and the read with the file identity, in that order. The result holds the files
      * of `documents` and `external` with their joined path and their unchecked bytes, or every error by
      * step, then by path; the caller gives each file's bytes to readBytes with its path.
@@ -96,7 +96,7 @@ final class Dbspec
     }
 
     /**
-     * Parses the texts of one document set (docs/dbspec.md "Parsing a set"): $owned, then $external, each in set
+     * Parses the texts of one document set (docs/spec/dbspec.md "Parsing a set"): $owned, then $external, each in set
      * order, and returns one result per text in that order. Each text's name is the name the parser reads from its
      * header; a text whose name an earlier text has is not parsed, and its result carries the one diagnostic
      * `name.duplicate`. Every other text is parsed with the texts of all
@@ -238,8 +238,8 @@ final class Dbspec
 
     /**
      * The statements that create the tables of the document set in one
-     * dialect, `mysql`, `postgres` or `sqlite` (docs/dialects.md "Rendered
-     * statements"), or the diagnostics of the set (docs/dbspec.md "Manifest
+     * dialect, `mysql`, `postgres` or `sqlite` (docs/spec/dialects.md "Rendered
+     * statements"), or the diagnostics of the set (docs/spec/dbspec.md "Manifest
      * and hashes"). An unknown dialect is an InvalidArgumentException.
      *
      * @param list<Document> $documents
@@ -257,7 +257,7 @@ final class Dbspec
     /**
      * Reads the current database (MySQL), the current schema (PostgreSQL) or
      * the main database (SQLite) of the connection into one document named
-     * `$name` and the objects it leaves out (docs/dialects.md
+     * `$name` and the objects it leaves out (docs/spec/dialects.md
      * "Introspection"). The number of catalog queries does not depend on the
      * table count. A failing query, or a catalog that yields no document, is
      * a RuntimeException; an unknown dialect is an InvalidArgumentException.
@@ -275,7 +275,7 @@ final class Dbspec
 
     /**
      * The manifest of the document set, whose documents are taken in document
-     * name order, or the diagnostics of the set (docs/dbspec.md "Manifest and
+     * name order, or the diagnostics of the set (docs/spec/dbspec.md "Manifest and
      * hashes").
      *
      * @param list<Document> $documents
@@ -329,7 +329,7 @@ final class Dbspec
     /**
      * Only the columns, primary key, unique keys, the foreign keys whose referenced table is also one of $tables, and the
      * indexes whose leading columns are such a foreign key's columns, of $tables, from the external document, in document
-     * order (docs/dbspec.md "Manifest and hashes"), so the reduced text satisfies the validation of the full document. If
+     * order (docs/spec/dbspec.md "Manifest and hashes"), so the reduced text satisfies the validation of the full document. If
      * that table is absent, null. Other foreign keys, indexes, checks, and settings are owned by the external document, so
      * they are not included.
      *
@@ -366,7 +366,7 @@ final class Dbspec
     }
 
     /**
-     * Checks that the tables the set uses from external documents are in the database (docs/dbspec.md "External
+     * Checks that the tables the set uses from external documents are in the database (docs/spec/dbspec.md "External
      * documents"). $live is the document of the introspected database. For each table written, if the table is missing,
      * or an external document column is missing, or its type or null differs, or the primary key differs, or the unique key's columns
      * list is missing, returns those differences by table name and column order. With no external document, it is an empty list.
@@ -449,7 +449,7 @@ final class Dbspec
     }
 
     /**
-     * Reads a plan document (docs/plans.md "Plan document"): a plan and no
+     * Reads a plan document (docs/spec/plans.md "Plan document"): a plan and no
      * diagnostics, or one diagnostic located in the plan.
      */
     public static function parsePlan(string $text): PlanParseResult
@@ -466,7 +466,7 @@ final class Dbspec
 
     /**
      * The plans in chain order from the empty database, or the `chain`
-     * diagnostics that name the plans (docs/plans.md "Chain").
+     * diagnostics that name the plans (docs/spec/plans.md "Chain").
      *
      * @param list<Plan> $plans
      */
@@ -478,7 +478,7 @@ final class Dbspec
 
     /**
      * The changes from the source schema, null for the empty database, to the
-     * plan's target, or the `plan` diagnostics (docs/plans.md "Diff").
+     * plan's target, or the `plan` diagnostics (docs/spec/plans.md "Diff").
      */
     public static function diff(?Document $source, Plan $plan): DiffResult
     {
@@ -492,7 +492,7 @@ final class Dbspec
 
     /**
      * All differences from source to target without a plan, or the diagnostic `compare` of the side that is not schema text
-     * (docs/plans.md "Comparison").
+     * (docs/spec/plans.md "Comparison").
      */
     public static function compareSchemas(Document $source, Document $target): ComparisonResult
     {
@@ -502,7 +502,7 @@ final class Dbspec
     }
 
     /**
-     * Checks whether the database matches the document set (docs/schema.md "Schema installation").
+     * Checks whether the database matches the document set (docs/spec/schema.md "Schema installation").
      * $live is the document of the connection's database introspected; $unsupported is the objects introspection could not
      * read; $target is the schema text document of the document set. Tables of the database that are not in the set are
      * not compared. If a table in the set has an unread object, that object is
@@ -570,13 +570,13 @@ final class Dbspec
     }
 
     /**
-     * The steps that the connection's addTablesAndColumns will run (docs/schema.md "Adding tables and
+     * The steps that the connection's addTablesAndColumns will run (docs/spec/schema.md "Adding tables and
      * columns"). `$live` is the document of the connection's introspected database, `$unsupported` is
      * the objects introspection could not read, and `$target` is the schema text document of the document set. For the set
      * tables of the database not in the set are neither compared nor changed. The set's tables that are in the database and
      * differ from the set: a create_table for a table missing from the database, an add_column for a column that is null or has a default,
      * or an add_index for a non-unique index only; the set's tables that are in the database
-     * get plan steps up to the set (docs/plans.md "Steps"), and returns, in table name order, the list of
+     * get plan steps up to the set (docs/spec/plans.md "Steps"), and returns, in table name order, the list of
      * tables as "table", added columns as "table.column" in column order, and then added indexes
      * as "table.index" in index order. Other differences are returned without a step
      * as "<kind> <table>[.<name>]", and since a missing unique key can fail on existing rows,
@@ -650,7 +650,7 @@ final class Dbspec
             }
         }
         // Tables and columns to add are written as one plan. The plan starts from the set's tables that are in the database
-        // (an empty database if there are none), so the steps keep the order and rollback of docs/plans.md
+        // (an empty database if there are none), so the steps keep the order and rollback of docs/spec/plans.md
         // as they are.
         $diagnostics = [];
         $steps = [];
@@ -690,7 +690,7 @@ final class Dbspec
      * database, in one dialect, `mysql`, `postgres` or `sqlite`, each with its
      * statement, rollback statement or irreversible reason, effect, restore
      * statements, null checks and finalize mark, or the diff's diagnostics
-     * (docs/plans.md "Steps"). An unknown dialect is an
+     * (docs/spec/plans.md "Steps"). An unknown dialect is an
      * InvalidArgumentException.
      */
     public static function planSteps(?Document $source, Plan $plan, string $dialect): PlanStepsResult
@@ -706,7 +706,7 @@ final class Dbspec
 
     /**
      * Applies, step by step, the plans of the chain that the database of the
-     * connection has not applied, up to their finalize steps (docs/plans.md
+     * connection has not applied, up to their finalize steps (docs/spec/plans.md
      * "Apply"): it takes the lock, keeps the history table `dbspec$plans`,
      * checks the state, reports the steps without rollback, runs and records
      * each statement and verifies each plan. `$now` gives the time recorded
@@ -735,7 +735,7 @@ final class Dbspec
     /**
      * Continues the interrupted plan forward: it reads in the catalog whether
      * the statement after the recorded step took effect and runs the rest,
-     * up to `applied`, or to `done` for a finalizing plan (docs/plans.md
+     * up to `applied`, or to `done` for a finalizing plan (docs/spec/plans.md
      * "Apply"). Without an interrupted plan nothing changes. Failures and
      * arguments are as for apply.
      *
@@ -750,7 +750,7 @@ final class Dbspec
 
     /**
      * Undoes the last plan of the history with its rollback statements, down
-     * to its first step, and deletes its row (docs/plans.md "Apply"). An
+     * to its first step, and deletes its row (docs/spec/plans.md "Apply"). An
      * applied plan is checked for drift and NULL rows first; a step without
      * rollback stops it with an `irreversible` ApplyError. Without a row
      * nothing changes. Failures and arguments are as for apply.
@@ -767,7 +767,7 @@ final class Dbspec
     /**
      * Runs the finalize steps of every applied plan in chain order, dropping
      * the hidden tables and columns, and records the plans `done`
-     * (docs/plans.md "Apply"). Failures and arguments are as for apply.
+     * (docs/spec/plans.md "Apply"). Failures and arguments are as for apply.
      *
      * @param list<Plan> $plans
      * @param \Closure(): \DateTimeInterface $now
@@ -781,7 +781,7 @@ final class Dbspec
     /**
      * Writes the document as a standard Mermaid erDiagram and lists what the
      * diagram leaves out, as Unsupported in table, kind and name order
-     * (docs/mermaid.md "Export").
+     * (docs/spec/mermaid.md "Export").
      */
     public static function exportMermaid(Document $document): MermaidExportResult
     {
@@ -791,7 +791,7 @@ final class Dbspec
 
     /**
      * Reads a standard Mermaid erDiagram into a document named `$name` and
-     * lists what import leaves out (docs/mermaid.md "Import"), or the
+     * lists what import leaves out (docs/spec/mermaid.md "Import"), or the
      * `mermaid` diagnostic of a line that does not follow the grammar.
      */
     public static function importMermaid(string $text, string $name): MermaidImportResult

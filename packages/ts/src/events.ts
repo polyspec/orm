@@ -1,4 +1,4 @@
-// A statement event (docs/usage.md "Statement events"). A connection, for every statement it sends,
+// A statement event (docs/operations/usage.md "Statement events"). A connection, for every statement it sends,
 // publishes an event to the subscribers that registered for it.
 import type { SentOrigin, StatementDone } from './driver.js';
 import { present } from './present.js';

@@ -2,7 +2,7 @@
 //! (`node tests/dbspec/stress.mts`, 2000 tables, 60000 columns, 10000 foreign
 //! keys). Run in release mode: the document is parsed five times, and the
 //! median parse CPU time of the main thread and its ratio to the reference
-//! work are printed, with a warning above the reference ratio (docs/dbspec.md,
+//! work are printed, with a warning above the reference ratio (docs/spec/dbspec.md,
 //! "Verification"); a measurement never fails the run,
 //! emission must reproduce the canonical document, and two emissions must be
 //! identical.
@@ -15,7 +15,7 @@ use std::process::ExitCode;
 use std::time::Duration;
 
 /// The documented reference value of the ratio of the median parse CPU time to the median CPU time of the reference
-/// work (docs/dbspec.md, "Verification"). A ratio above it prints a warning; a measurement never fails the run.
+/// work (docs/spec/dbspec.md, "Verification"). A ratio above it prints a warning; a measurement never fails the run.
 const REFERENCE_RATIO: f64 = 34.0;
 const PARSES: usize = 5;
 const RUN_DEADLINE: Duration = Duration::from_secs(10);
@@ -66,7 +66,7 @@ fn main() -> ExitCode {
     let ms = |d: Duration| d.as_secs_f64() * 1000.0;
     case.step(format_args!("parse cpu min {:.3} median {:.3} max {:.3} ms", ms(parses[0]), ms(parse_time), ms(parses[PARSES - 1])));
     // The baseline job is a loop that updates a checksum for each byte of the same document. The four clients time the same computation with the same clock, parse
-    // time against it and records the ratio. The ratio is not yet used for judgment (docs/dbspec.md, Verification).
+    // time against it and records the ratio. The ratio is not yet used for judgment (docs/spec/dbspec.md, Verification).
     let mut references = Vec::with_capacity(PARSES);
     let mut sum = 0;
     for _ in 0..PARSES {
@@ -91,7 +91,7 @@ fn main() -> ExitCode {
     ));
     if ratio > REFERENCE_RATIO {
         polyspec_orm_testcase::warning(format_args!(
-            "median parse cpu {:.3} ms is {ratio:.2} times the reference cpu {:.3} ms, above the reference ratio {REFERENCE_RATIO} (docs/dbspec.md, Verification)",
+            "median parse cpu {:.3} ms is {ratio:.2} times the reference cpu {:.3} ms, above the reference ratio {REFERENCE_RATIO} (docs/spec/dbspec.md, Verification)",
             ms(parse_time),
             ms(reference_time)
         ));

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Applies the chain of plans.json (tests/dbspec/plans.json), create-from-empty and
 // rename-table-and-column, to one database with the PHP extension orm_dbspec (Polyspec\Orm\Dbspec\Native)
-// (docs/plans.md "Apply"). action is one of apply-first (first plan only), apply (whole chain),
+// (docs/spec/plans.md "Apply"). action is one of apply-first (first plan only), apply (whole chain),
 // stop (stops after statement 1 of the second plan runs), recover (finishes the interrupted plan),
 // rollback (reverts the last plan in history). stdout gets one result line: "ok", "stopped", or
 // "error <code>". Any other error is written to stderr and exits with 1.

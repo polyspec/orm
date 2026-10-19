@@ -1,4 +1,4 @@
-# A parameter is checked against the logical type of each slot it fills before any statement (docs/protocol.md §5
+# A parameter is checked against the logical type of each slot it fills before any statement (docs/spec/protocol.md §5
 # "Parameters"): the SQL bind path reads the slot of the plan step, an IR executor the uses of param_uses.
 from __future__ import annotations
 
@@ -80,7 +80,8 @@ def check_assign(i: int, value, slot: ParamSlot) -> None:
     statement."""
     if value is None and slot.not_null:
         raise OrmError(
-            codes.CODEC_ENCODE, f"parameter {i} assigns NULL to the non-null {slot.column}"
+            codes.CODEC_ENCODE,
+            f"parameter {i} assigns NULL to the non-null {slot.column}",
         )
 
 
@@ -107,7 +108,9 @@ def check_param(i: int, value, slot: ParamSlot, zone: str) -> None:
             raise kind()
         low, high = _INTEGER_RANGES[t]
         if not low <= value <= high:
-            raise OrmError(codes.CODEC_ENCODE, f"parameter {i} ({value}) is outside {t}")
+            raise OrmError(
+                codes.CODEC_ENCODE, f"parameter {i} ({value}) is outside {t}"
+            )
     elif t == "f64":
         if not isinstance(value, (int, float)) or isinstance(value, bool):
             raise kind()
@@ -130,7 +133,8 @@ def check_param(i: int, value, slot: ParamSlot, zone: str) -> None:
             raise kind()
         if "\0" in value:
             raise OrmError(
-                codes.CODEC_ENCODE, f"parameter {i} holds U+0000, which no {t} value holds"
+                codes.CODEC_ENCODE,
+                f"parameter {i} holds U+0000, which no {t} value holds",
             )
         if t == "varchar" and slot.length > 0 and len(value) > slot.length:
             raise OrmError(

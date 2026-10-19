@@ -230,7 +230,7 @@ final class Generator
         $problems = [];
         $tags = [];
         // A getter that a scanned call names is refused only when no class the call may be on attaches it: a class of the call
-        // that lacks the getter is not an error, since the call runs on the class that has it (docs/dsl.md, the scan).
+        // that lacks the getter is not an error, since the call runs on the class that has it (docs/spec/dsl.md, the scan).
         $entities = array_column($metas, 'entity');
         foreach ($sites as $site) {
             $name = $site['name'];

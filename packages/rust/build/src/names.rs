@@ -1,4 +1,4 @@
-//! The method-name grammar of docs/dsl.md. A name is split into words;
+//! The method-name grammar of docs/spec/dsl.md. A name is split into words;
 //! column names never contain connector or operator segments, so the split is
 //! unambiguous.
 

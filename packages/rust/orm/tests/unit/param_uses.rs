@@ -1,4 +1,4 @@
-//! param_uses: for each parameter of the validated request, the type and column of the slot the parameter fills (docs/protocol.md §5
+//! param_uses: for each parameter of the validated request, the type and column of the slot the parameter fills (docs/spec/protocol.md §5
 //! "Parameters"). The request and expected values are the same as Go engine/ir/params_test.go's TestParamUses. The engine's function is
 //! visible only inside the crate, so src/engine/mod.rs makes this file a unit test module.
 use super::{param_uses, validate, ParamUse};

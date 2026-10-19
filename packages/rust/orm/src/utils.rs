@@ -223,7 +223,7 @@ impl SchemaUtils<'_> {
     /// text hashes to the declared hash (otherwise CONFIG) and registers the set. Registering the same set
     /// again changes nothing. Whether the database matches the set is checked by `install` and
     /// `add_tables_and_columns` at install and upgrade time; connections opened per request do not check it either, and
-    /// `register` registers the set without statements (docs/schema.md, "Schema registration").
+    /// `register` registers the set without statements (docs/spec/schema.md, "Schema registration").
     pub fn register(&self, schema: &Schema) -> Result<()> {
         self.u.db.register(schema)
     }
@@ -232,9 +232,9 @@ impl SchemaUtils<'_> {
     /// registers that set on this connection. If the manifest text does not hash to the declared hash,
     /// it is CONFIG before any statement. It introspects the connection's database; if a table the set writes from an external document
     /// differs from the external document, it is CONFIG. If the set owns no tables, the connection's
-    /// dialect renders all of its tables as statements (docs/dialects.md, "Rendered statements"), and if all
+    /// dialect renders all of its tables as statements (docs/spec/dialects.md, "Rendered statements"), and if all
     /// exist, it creates nothing; if only some exist, it is CONFIG. Then it reads the database again to check that the set's
-    /// owned tables match the set; if there is a difference, it is CONFIG holding all differences (docs/schema.md,
+    /// owned tables match the set; if there is a difference, it is CONFIG holding all differences (docs/spec/schema.md,
     /// "Schema installation"). PostgreSQL and SQLite apply it in the active transaction or a new one, so a failed install leaves nothing behind. MySQL
     /// implicitly commits schema statements, so
     /// it applies them outside a transaction, and inside one it is CONFIG.
@@ -278,7 +278,7 @@ impl SchemaUtils<'_> {
         self.u.db.register(schema)
     }
 
-    /// Upgrades an installed document set only by adding it as a new version of the generated schema (docs/schema.md,
+    /// Upgrades an installed document set only by adding it as a new version of the generated schema (docs/spec/schema.md,
     /// "Adding tables and columns"). It introspects the connection's database and compares the set's tables present in the database
     /// with the set, and creates the set's tables missing from the database together with their indexes, foreign keys, checks, and triggers,
     /// and adds to existing tables the missing columns that are nullable or have a default.
@@ -737,7 +737,7 @@ async fn fetch_catalog<C: CatalogFetch>(on: Observed<'_>, conn: &mut C, query: &
 }
 
 /// Introspects the connection's database; if a table the set uses from an external document differs from that document,
-/// it is CONFIG (docs/dbspec.md "External documents").
+/// it is CONFIG (docs/spec/dbspec.md "External documents").
 async fn introspect_set<C: CatalogFetch>(
     on: Observed<'_>,
     conn: &mut C,
@@ -772,7 +772,7 @@ fn invalid(errors: Vec<dbspec::Diagnostic>) -> Error {
 }
 
 /// Turns off foreign keys on the SQLite connection, adds tables and columns in a BEGIN IMMEDIATE transaction, then checks the foreign
-/// key check returns no rows; only then it commits and turns foreign keys back on (docs/plans.md,
+/// key check returns no rows; only then it commits and turns foreign keys back on (docs/spec/plans.md,
 /// "Apply", SQLite rebuild).
 async fn without_foreign_keys(db: &Db, conn: &mut sqlx::SqliteConnection, target: &Document, documents: &[&Document]) -> Result<Vec<String>> {
     let outside = |sql| Sent::bare(KIND_UTILITY, &[], None, sql);

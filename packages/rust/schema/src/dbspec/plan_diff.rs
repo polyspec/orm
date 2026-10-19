@@ -1,4 +1,4 @@
-//! The diff of a plan (docs/plans.md, "Diff"): the changes from the source
+//! The diff of a plan (docs/spec/plans.md, "Diff"): the changes from the source
 //! schema to the plan's target and the changes it refuses.
 
 use super::model::{Column, DefaultValue, Table, Type};

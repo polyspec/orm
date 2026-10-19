@@ -129,7 +129,7 @@ func (b *builder) config(name, typ string) string {
 	return b.slot(plan.BindSlot{From: "config", Name: name, ColType: typ})
 }
 
-// now is the statement time given by the executor (docs/protocol.md "Clock"). precision is
+// now is the statement time given by the executor (docs/spec/protocol.md "Clock"). precision is
 // the fractional digits of the datetime column that writes the time; the clock compared is 6.
 func (b *builder) now(precision int) string {
 	return b.slot(plan.BindSlot{From: "now", Precision: precision, ColType: "datetime"})
@@ -839,7 +839,7 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 	if pr.Value != nil {
 		arg := func() string { return b.param(pr.Value.Ps[0], ir.IntervalType(pr.Value.Name)) }
 		// A clock that the ORM compares keeps six fraction digits; a datetime(p < 6)
-		// column compares as its value extended to six digits (docs/protocol.md "Clock").
+		// column compares as its value extended to six digits (docs/spec/protocol.md "Clock").
 		value, ok := p.D.ValueFunction(pr.Value.Name, arg, func() string { return b.now(6) })
 		if !ok {
 			return "", &ir.Error{Code: "CAPABILITY_UNSUPPORTED", Msg: pr.Value.Name + " is not available on " + p.D.Name()}
@@ -1479,7 +1479,7 @@ func cmp(op string) string {
 }
 
 // sqlStyles keeps only the stages the dialect applies in SQL on write
-// (docs/codec.md).
+// (docs/spec/codec.md).
 func (p *Planner) sqlStyles(styles []string) []string {
 	var out []string
 	for _, s := range styles {

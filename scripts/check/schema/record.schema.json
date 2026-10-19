@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "record.json of a run of make check (scripts/check/record.mts)",
+  "title": "record.json of a run of make orm-check (scripts/check/record.mts)",
   "description": "The record that the runner writes for one run: its identity, its result, its setup steps and its targets, each step with its status and what it reported.",
   "type": "object",
   "additionalProperties": false,

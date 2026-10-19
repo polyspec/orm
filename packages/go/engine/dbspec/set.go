@@ -14,7 +14,7 @@ import (
 	"unicode/utf8"
 )
 
-// The rules of the set reader (docs/dbspec.md "Document sets").
+// The rules of the set reader (docs/spec/dbspec.md "Document sets").
 const (
 	RuleSetFile      = "set.file"
 	RuleSetSymlink   = "set.symlink"
@@ -65,7 +65,7 @@ const (
 	kindSymlink
 )
 
-// ReadSet reads the set file at path (docs/dbspec.md "Document sets"): the set
+// ReadSet reads the set file at path (docs/spec/dbspec.md "Document sets"): the set
 // file, its JSON, the normal form and the components of each listed path, and
 // the bytes and identity of each listed file, in that order. It returns the
 // listed files, or the errors ordered by step, then by path. It never checks the

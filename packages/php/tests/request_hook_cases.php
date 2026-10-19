@@ -1,5 +1,5 @@
 <?php
-// The shared cases of the request hook (docs/usage.md "Request hook") with the
+// The shared cases of the request hook (docs/operations/usage.md "Request hook") with the
 // fixture contracts/fixtures/request_hook.dbs: without_hook, read_filter,
 // insert_assign, loaded_row_writes, invalid_param, restore_key,
 // restore_condition, restore_no_key, restore_rewritten_key and

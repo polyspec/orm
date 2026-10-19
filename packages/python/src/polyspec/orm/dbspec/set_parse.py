@@ -1,4 +1,4 @@
-# The set parse (docs/dbspec.md "Parsing a set"): every text of one document set is named by the
+# The set parse (docs/spec/dbspec.md "Parsing a set"): every text of one document set is named by the
 # header its parse reads and parsed with the texts of all other named documents as its use documents.
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ def _header_name(text: str) -> str:
 
 
 def parse_dbspec_set(owned, external) -> tuple[DbspecSetDocument, ...]:
-    """Parses the texts of one document set (docs/dbspec.md "Parsing a set"), one result per text,
+    """Parses the texts of one document set (docs/spec/dbspec.md "Parsing a set"), one result per text,
     owned first, each in set order. A text whose name an earlier text has is not parsed and its
     result carries name.duplicate; every other text is parsed with
     the texts of all other named documents as the documents its use lines name."""

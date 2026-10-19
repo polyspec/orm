@@ -1,5 +1,5 @@
 # engine: planner, dialect, schema, and checking behavior shared by all clients
-# (docs/protocol.md).
+# (docs/spec/protocol.md).
 from polyspec.orm import codes
 from polyspec.orm.engine.dialect import dialect_of
 from polyspec.orm.engine.model import (

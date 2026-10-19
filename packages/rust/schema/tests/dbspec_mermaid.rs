@@ -1,5 +1,5 @@
 //! The cases of tests/dbspec/mermaid.json through `export_mermaid` and
-//! `import_mermaid` of `polyspec_orm_schema::dbspec` (docs/mermaid.md): every export
+//! `import_mermaid` of `polyspec_orm_schema::dbspec` (docs/spec/mermaid.md): every export
 //! case writes its Mermaid text and its dropped objects, every import case
 //! reads its document and its dropped objects, every invalid case reports
 //! exactly its `[rule, line, column]` diagnostics, and every round trip case

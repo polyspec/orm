@@ -1,7 +1,7 @@
-// Names that the renderer writes (docs/dbspec.md "Names"): the plain form
+// Names that the renderer writes (docs/spec/dbspec.md "Names"): the plain form
 // <table>$<suffix> when it has at most 63 bytes, otherwise its first 54 bytes,
 // a $ and the first 8 lowercase hexadecimal digits of its SHA-256. The module is
-// reached from the browser-safe entry (docs/editor.md "Layers"), so it reads no
+// reached from the browser-safe entry (docs/spec/editor.md "Layers"), so it reads no
 // Node module or global: SHA-256 comes from @noble/hashes and the byte length
 // from TextEncoder.
 

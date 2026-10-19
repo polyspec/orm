@@ -1,6 +1,6 @@
 # SchemaUtils.install: creates the set's tables on an empty SQLite database, creates nothing when
 # they all exist, refuses a partial set, and refuses a database that differs from the set
-# (packages/ts/src/utils.ts, docs/schema.md "Schema installation").
+# (packages/ts/src/utils.ts, docs/spec/schema.md "Schema installation").
 import os
 import sqlite3
 import tempfile

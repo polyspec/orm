@@ -6,7 +6,7 @@ use std::time::Instant;
 // fail.
 fn run_seeded(program: &str, iterations: &str) -> String {
     let dsn = std::env::var("ORM_BENCH_MYSQL_DSN")
-        .expect("ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database; run it through make check or make run-databases TARGETS=<target>, which create the bench database of the run");
+        .expect("ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database; run it through make orm-check or make run-databases TARGETS=<target>, which create the bench database of the run");
     assert!(
         !dsn.is_empty(),
         "ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database"

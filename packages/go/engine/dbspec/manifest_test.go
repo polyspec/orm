@@ -211,7 +211,7 @@ func TestDocumentSets(t *testing.T) {
 				}
 				if want := c.Manifest; want != nil {
 					// The runtime model is built from the manifest text and the external text, so they parse
-					// back as a set without diagnostics (docs/dbspec.md "Manifest and hashes").
+					// back as a set without diagnostics (docs/spec/dbspec.md "Manifest and hashes").
 					for _, r := range ParseSet(splitManifest(manifest.ManifestText), splitManifest(manifest.ExternalText)) {
 						if len(r.Diagnostics) > 0 {
 							return fmt.Errorf("manifest and external text of %s: %v", r.Name, r.Diagnostics)

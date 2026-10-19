@@ -1,4 +1,4 @@
-# Collection lookups by key (docs/interfaces.md "Collection, key, and page"): get, has and fetched read
+# Collection lookups by key (docs/spec/interfaces.md "Collection, key, and page"): get, has and fetched read
 # the item that put stored under the same key text, and a missing key reads as None.
 import unittest
 

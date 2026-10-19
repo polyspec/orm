@@ -34,7 +34,7 @@ use crate::{codes, Error, Result};
 /// audit value of its own.
 pub type AuditSource = Arc<dyn Fn() -> Result<Vec<(String, Param)>> + Send + Sync>;
 
-/// The request hook of a handle (docs/usage.md "Request hook"): it receives each
+/// The request hook of a handle (docs/operations/usage.md "Request hook"): it receives each
 /// request of the handle right before the client plans it, changes it in place
 /// and adds parameters with [`RequestParams::add`]. An error it returns fails the
 /// operation unchanged, before any statement.
@@ -115,7 +115,7 @@ impl Default for Config {
 const SQLITE_DATETIME: &str = "%Y-%m-%d %H:%M:%S%.6f";
 
 /// The time zone of a connection. Every connection reads and writes datetime
-/// values in UTC (docs/dialects.md "Date and time").
+/// values in UTC (docs/spec/dialects.md "Date and time").
 #[derive(Clone, Copy, Debug)]
 pub struct Zone;
 
@@ -154,7 +154,7 @@ pub enum ConnectOptions {
     MySql(MySqlConnectOptions),
     Postgres(PgConnectOptions),
     Sqlite(SqliteConnectOptions),
-    /// A corpus that a flowmark server serves (docs/protocol.md §5 "IR executors").
+    /// A corpus that a flowmark server serves (docs/spec/protocol.md §5 "IR executors").
     Markdown(MarkdownDsn),
 }
 
@@ -279,7 +279,7 @@ pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
 
 /// The session sql_mode of every MySQL connection, so that a coercion, truncation
 /// or grouping result does not depend on the server's setting
-/// (tests/dsn/mysql-session.json, docs/config.md "Runtime connection").
+/// (tests/dsn/mysql-session.json, docs/spec/config.md "Runtime connection").
 const MYSQL_SQL_MODE: &str = "STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION";
 
 /// The connection pool of a database, or of the flowmark server connections of
@@ -526,7 +526,7 @@ impl Db {
     }
 
     /// Returns a handle on the same connection whose hook receives each request
-    /// of the handle right before the client plans it (docs/usage.md "Request
+    /// of the handle right before the client plans it (docs/operations/usage.md "Request
     /// hook"). The handle shares the pool, the caches, the subscribers and the
     /// active transactions of the connection; it carries one hook, so this
     /// replaces the hook of a hooked handle.
@@ -626,7 +626,7 @@ impl Db {
 
     /// Writes a datetime or date value in the text form SQLite stores, so a
     /// string value compares equal to the stored value; every driver binds that
-    /// text (docs/dialects.md). A datetime string with
+    /// text (docs/spec/dialects.md). A datetime string with
     /// an offset is converted to the connection time zone. The `datetime(p)` text
     /// is written with p fractional digits; if a nonzero digit follows the p digits, it is CODEC_ENCODE.
     fn bind_time_value(&self, v: Param, col_type: &str, precision: i64) -> Result<Param> {
@@ -895,7 +895,7 @@ impl Db {
     /// are resolved as a model statement's are: host styles, decimals, SQLite time values, the AES
     /// key and key version, the clock and the audit of the transaction. A step that reads rows (it
     /// has an assemble) and a param slot past `params` fail with IR_INVALID before any statement
-    /// runs (docs/usage.md "Execute a compiled statement").
+    /// runs (docs/operations/usage.md "Execute a compiled statement").
     pub async fn execute(&self, step: &Step, params: &[Param]) -> Result<()> {
         let ex = crate::tx::resolve(&Some(self.clone()))?;
         if matches!(ex, Executor::Db(_)) && self.inner.closed.load(Ordering::Acquire) {
@@ -1106,7 +1106,7 @@ fn sqlite_datetime_text(text: &str, zone: &Zone) -> Option<String> {
     }
 }
 
-/// The date, time, and datetime text of an IR executor message (docs/protocol.md §5 "Parameters"): date is `YYYY-MM-DD`,
+/// The date, time, and datetime text of an IR executor message (docs/spec/protocol.md §5 "Parameters"): date is `YYYY-MM-DD`,
 /// time is `HH:MM:SS.ffffff`, and datetime is `YYYY-MM-DD HH:MM:SS.ffffff` in the connection time zone; fractional digits the value lacks are 0.
 /// Text in any other form is CODEC_ENCODE.
 pub(crate) fn message_time_text(text: &str, col_type: &str, zone: &Zone) -> Result<String> {
@@ -1164,7 +1164,7 @@ fn clock_digits(text: &str, precision: i64) -> String {
     }
 }
 
-/// A `time(p)` value is `HH:MM:SS` text with exactly p fractional digits (docs/dbspec.md, "Runtime model"). The value is `HH:MM:SS[.f{1,6}]`
+/// A `time(p)` value is `HH:MM:SS` text with exactly p fractional digits (docs/spec/dbspec.md, "Runtime model"). The value is `HH:MM:SS[.f{1,6}]`
 /// text; zeros after the p digits are dropped, and a nonzero digit is CODEC_ENCODE.
 pub(crate) fn time_value(v: Param, precision: i64) -> Result<Param> {
     let text = match v {

@@ -7,7 +7,7 @@ declare(strict_types=1);
 //
 // Usage: php packages/php-ext/scripts/arginfo.php <gen_stub.php> write|check
 // write rewrites the header, and check exits with 1 if the regenerated header differs from the saved one. gen_stub.php uses the
-// PHP-Parser in the same directory, and downloads it if it is absent, so check that it is present first (make install-php-extension-tools).
+// PHP-Parser in the same directory, and downloads it if it is absent, so check that it is present first (make orm-install-php-extension-tools).
 
 [, $genStub, $mode] = $argv + [null, '', ''];
 if ($genStub === '' || !in_array($mode, ['write', 'check'], true)) {
@@ -15,11 +15,11 @@ if ($genStub === '' || !in_array($mode, ['write', 'check'], true)) {
     exit(2);
 }
 if (!is_file($genStub)) {
-    fwrite(STDERR, "$genStub does not exist; run make install-php-extension-tools, which copies gen_stub.php of the PHP installation and its PHP-Parser\n");
+    fwrite(STDERR, "$genStub does not exist; run make orm-install-php-extension-tools, which copies gen_stub.php of the PHP installation and its PHP-Parser\n");
     exit(1);
 }
 if (glob(dirname($genStub) . '/PHP-Parser-*', GLOB_ONLYDIR) === []) {
-    fwrite(STDERR, dirname($genStub) . " has no PHP-Parser, which gen_stub.php would download; run make install-php-extension-tools\n");
+    fwrite(STDERR, dirname($genStub) . " has no PHP-Parser, which gen_stub.php would download; run make orm-install-php-extension-tools\n");
     exit(1);
 }
 $root = dirname(__DIR__);

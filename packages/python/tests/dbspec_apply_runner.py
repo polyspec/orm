@@ -1,5 +1,5 @@
 # Applies the chain of tests/dbspec/plans.json (create-from-empty and rename-table-and-column) to one database with the
-# Python client (docs/plans.md "Apply"), the Python runner of the apply pair comparison (packages/go/internal/dialects
+# Python client (docs/spec/plans.md "Apply"), the Python runner of the apply pair comparison (packages/go/internal/dialects
 # TestApplyChainAcrossClients, make dbspec-apply-pairs-check), in the form of packages/ts/testing/dbspec/apply/typescript.mts. The
 # action is apply-first (the first plan), apply (the whole chain), stop (stop after statement 1 of the second plan ran),
 # recover (finish the interrupted plan) or rollback (undo the last plan of the history). stdout holds one result line:

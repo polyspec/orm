@@ -1,5 +1,5 @@
 # The schema tools of a connection: db.utils().schema() returns the SchemaUtils of that connection
-# (docs/schema.md "Schema registration"; packages/ts/src/utils.ts).
+# (docs/spec/schema.md "Schema registration"; packages/ts/src/utils.ts).
 import tempfile
 import unittest
 from pathlib import Path

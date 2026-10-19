@@ -68,7 +68,7 @@ caseTest('a fixture selects the units whose declared data names it', 5000, async
 });
 
 caseTest('a path that no unit declares selects nothing', 5000, async () => {
-  assert.deepEqual(await selectOwners(manifest, root, ['README.md', 'docs/plans/execution-checklist.md']), []);
+  assert.deepEqual(await selectOwners(manifest, root, ['README.md', 'docs/plans/execution/checklist.md']), []);
   assert.deepEqual(await helperIds(['README.md']), []);
 });
 
@@ -97,8 +97,8 @@ const inputs = readCheckInputs(root).targets;
 const targets = (selected: { target: string }[]) => selected.map(item => item.target);
 
 caseTest('a changed document selects the documentation checks', 5000, async () => {
-  const selected = targets(selectTargets(inputs, ['docs/plans/execution-checklist.md']));
-  for (const target of ['documents-check', 'docs-rules-check', 'docs-check', 'docs-verify-idempotent'])
+  const selected = targets(selectTargets(inputs, ['docs/plans/execution/checklist.md']));
+  for (const target of ['docs-check', 'docs-rules-check', 'docs-verify-idempotent'])
     assert.ok(selected.includes(target), `selected ${selected.join(', ')}`);
   assert.ok(!selected.includes('rust-check'), `selected ${selected.join(', ')}`);
 });
@@ -135,7 +135,7 @@ caseTest('a selected make target runs with the environments of owner-check and t
 });
 
 // T42 was a change across four clients. A change of that shape selects only the changed features' checks and the file-level owner target,
-// and the full suite target (scope suite) is run only by make check.
+// and the full suite target (scope suite) is run only by make orm-check.
 const t42 = [
   'packages/go/orm/statement_events_test.go', 'packages/go/orm/events.go',
   'packages/php/src/StatementEvent.php', 'packages/php/tests/StatementEventsTest.php',

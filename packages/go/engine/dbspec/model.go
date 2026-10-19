@@ -13,7 +13,7 @@ type Document struct {
 	Name string
 	// External means the document is not owned by the set; it is an external document that the owning document uses through use.
 	// External documents are parsed and checked, but not rendered, installed, compared, or generated
-	// (docs/dbspec.md "Documents and use"). They do not appear in document text.
+	// (docs/spec/dbspec.md "Documents and use"). They do not appear in document text.
 	External bool
 	Uses     []Use
 	Tables   []Table
@@ -316,7 +316,7 @@ type ImmutableSetting struct {
 // empty without the clause. Column is the column that holds the primary key of the audit record table that References names.
 // It is the column that holds the key.
 // If there is no list, Exclude and Include are nil, and a parsed setting has only one of them
-// (docs/dbspec.md "Audit").
+// (docs/spec/dbspec.md "Audit").
 type AuditSetting struct {
 	Comments     []string
 	History      string

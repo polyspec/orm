@@ -6,18 +6,18 @@ a test in its own package, and every case must give the same answer in all of th
 runs the five runners.
 
 `bind` cases check one parameter against the logical type of its slot before any statement
-(docs/protocol.md §5 "Parameters"): a `slot` with its `type` and, where the type has them, its
+(docs/spec/protocol.md §5 "Parameters"): a `slot` with its `type` and, where the type has them, its
 `precision`, `scale` and `length`, a client `value`, and either the `bound` value or the error
 `code`. A value is plain JSON, or a tagged object for a host value that JSON does not carry:
 `{"int": text}` an integer past the exact range of a JSON number, `{"f64": "NaN" | "Infinity" |
 "-Infinity"}` a non-finite float and `{"bytes": base64}` bytes. Each rule has an accepting and a
 rejecting case.
 
-`message` cases write one parameter as an IR executor message value (docs/protocol.md §5
+`message` cases write one parameter as an IR executor message value (docs/spec/protocol.md §5
 "Parameters"): a slot `type` and `precision`, a client `value`, and either the `json` value the
 message carries or the error `code`. `zone` is the connection time zone the cases assume.
 
-`control` cases write the `begin` control message of a transaction (docs/protocol.md §5 "Session"): the
+`control` cases write the `begin` control message of a transaction (docs/spec/protocol.md §5 "Session"): the
 transaction's `read_only` option and the `json` object of the message, `{"op": "begin", "read_only": true}` for a
 read-only transaction and `{"op": "begin"}` without the member otherwise. The message runners of the table run them.
 

@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Dbspec;
 
 /**
- * Orders plans into one chain from the empty database (docs/plans.md "Chain").
+ * Orders plans into one chain from the empty database (docs/spec/plans.md "Chain").
  *
  * @internal
  */

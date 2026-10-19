@@ -9,7 +9,7 @@ import (
 )
 
 // codecStages maps each codec stage to the storage it produces
-// (docs/dbspec.md "Settings"): true for bytes, false for text.
+// (docs/spec/dbspec.md "Settings"): true for bytes, false for text.
 var codecStages = map[string]bool{
 	"hex": false, "base64": false, "ordered_json": false, "yaml": false, "serialize": false,
 	"aes": true, "gz": true, "ip": true,
@@ -147,7 +147,7 @@ func (v *validator) foreignKeyName(t *tableNode, ref token) {
 
 // stateMachine checks one `state_machine <column> ...` line: the column is a
 // non-null varchar or text column of the table and the require list names
-// columns of the table (docs/dbspec.md "Settings").
+// columns of the table (docs/spec/dbspec.md "Settings").
 func (v *validator) stateMachine(t *tableNode, s *settingNode) {
 	columnRef := s.args[0]
 	column := v.columnRef(t, columnRef, RuleSetting)
@@ -163,7 +163,7 @@ func (v *validator) stateMachine(t *tableNode, s *settingNode) {
 
 // stateMachineConsistency checks the machine's lines against each other: one column per table,
 // consistency among the initial, transition, and terminal lines, the history and limit lines, the default of the state column,
-// and the checkbox lines (docs/dbspec.md "Settings").
+// and the checkbox lines (docs/spec/dbspec.md "Settings").
 func (v *validator) stateMachineConsistency(t *tableNode) {
 	column := ""
 	states := map[string]bool{}
@@ -535,7 +535,7 @@ func (v *validator) onlyIndexColumn(t *tableNode, column string) bool {
 // audit checks `audit into <history> column <c> references <table> action <c>
 // previous <c> [exclude (<c>, ...) | include (<c>, ...)]`, the audit record
 // table and its foreign key, and the shape of the history table, which holds
-// exactly the recorded columns (docs/dbspec.md "Audit").
+// exactly the recorded columns (docs/spec/dbspec.md "Audit").
 func (v *validator) audit(t *tableNode, s *settingNode) {
 	historyRef, columnRef, referencesRef, actionRef, previousRef := s.args[0], s.args[1], s.args[2], s.args[3], s.args[4]
 	if v.propagatedChild(t) {
@@ -647,7 +647,7 @@ func (v *validator) audit(t *tableNode, s *settingNode) {
 // auditTables checks the tables table of `tables <table> (<record>, <name>)`: another table than the
 // audited, the history and the audit record table, not audited itself, with exactly the record and the
 // name column, the name column a varchar(n) with n >= 63, the primary key (record, name) and the foreign key
-// (record) references the audit record table's key with restrict (docs/dbspec.md "Audit").
+// (record) references the audit record table's key with restrict (docs/spec/dbspec.md "Audit").
 func (v *validator) auditTables(t *tableNode, tablesRef, recordRef, nameRef, referencesRef, historyRef token) {
 	if !v.ref(tablesRef) {
 		return
@@ -764,7 +764,7 @@ func (v *validator) auditRecord(t *tableNode, column *columnNode, columnRef, ref
 }
 
 // auditLists checks the audit's exclude or include lists, and returns a function that reports whether a column is recorded
-// (docs/dbspec.md "Audit"). If both lists are used, the second
+// (docs/spec/dbspec.md "Audit"). If both lists are used, the second
 // list's keyword is rejected and nil is returned. A column in a list belongs to the table,
 // appears only once, and is not an audit column. Audit columns are always
 // recorded, so they do not appear in either list.
@@ -812,7 +812,7 @@ func coordinate(t token) (int64, bool) {
 
 // machineLine returns the identity of the initial, terminal or transition line s of a state_machine and its
 // description: a line of the same identity adds no meaning, and one with another require list contradicts it, so a
-// repeat is a `setting` error (docs/dbspec.md "Settings").
+// repeat is a `setting` error (docs/spec/dbspec.md "Settings").
 func machineLine(s *settingNode) (string, string) {
 	switch s.form {
 	case "initial", "terminal":

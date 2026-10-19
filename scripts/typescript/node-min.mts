@@ -1,5 +1,5 @@
 // Prints the bin directory of the lowest Node release that package.json declares in engines.node (">=x.y.z"), from
-// ${ORM_NODE_CACHE:-$HOME/.cache/orm-node}, into which make install-node-min downloads the official build.
+// ${ORM_NODE_CACHE:-$HOME/.cache/orm-node}, into which make orm-install-node-min downloads the official build.
 import { spawnSync } from 'node:child_process';
 import { accessSync, constants, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -21,7 +21,7 @@ const node = join(cache, name, 'bin', 'node');
 const present = (): boolean => {
   try { accessSync(node, constants.X_OK); return true; } catch { return false; }
 };
-// Only make install-node-min (ORM_NODE_MIN_INSTALL=1) downloads; a check reads no network, so a missing Node fails
+// Only make orm-install-node-min (ORM_NODE_MIN_INSTALL=1) downloads; a check reads no network, so a missing Node fails
 // with the make step that downloads it.
 if (!present()) {
   if (process.env['ORM_NODE_MIN_INSTALL'] !== '1') fail(`node-min: Node ${version} is not in ${cache}; run make install, which downloads it`, 1);

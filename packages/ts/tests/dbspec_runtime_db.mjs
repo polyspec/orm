@@ -73,8 +73,8 @@ async function code(promise) {
   try { await promise; return null; } catch (error) { return error instanceof OrmError ? error.code : String(error); }
 }
 
-if (!process.env.ORM_TEST_MYSQL_DSN) throw new Error('ORM_TEST_MYSQL_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers');
-if (!process.env.ORM_TEST_POSTGRES_DSN) throw new Error('ORM_TEST_POSTGRES_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers');
+if (!process.env.ORM_TEST_MYSQL_DSN) throw new Error('ORM_TEST_MYSQL_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers');
+if (!process.env.ORM_TEST_POSTGRES_DSN) throw new Error('ORM_TEST_POSTGRES_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers');
 
 // Deadline of each case: a few connections or statements take 30 s, and writes that go through schema install and the audit trigger
 // run DDL, so they take 60 s.

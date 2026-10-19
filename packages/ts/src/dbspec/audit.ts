@@ -1,4 +1,4 @@
-// The columns that the audit setting records (docs/dbspec.md "Audit").
+// The columns that the audit setting records (docs/spec/dbspec.md "Audit").
 import type { DbspecSetting, DbspecTable } from './model.js';
 
 export type DbspecAuditSetting = Extract<DbspecSetting, { readonly kind: 'audit' }>;

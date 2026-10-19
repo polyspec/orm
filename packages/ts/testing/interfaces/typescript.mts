@@ -2,13 +2,17 @@ import { readFile, readdir } from 'node:fs/promises';
 import { relative, resolve } from 'node:path';
 
 // typescript is a dependency of the packages/ts/testing/interfaces/typescript project (TypeScript 6.0.3, an exception in config/toolchain.json): it is found from that project.
-// make install-interfaces-typescript installs it; the import of its file gives the compiler API with its declarations.
+// make orm-install-interfaces-typescript installs it; the import of its file gives the compiler API with its declarations.
 const ts = (await import('./typescript/node_modules/typescript/lib/typescript.js')).default;
 type Node = import('./typescript/node_modules/typescript/lib/typescript.js').Node;
 type SourceFile = import('./typescript/node_modules/typescript/lib/typescript.js').SourceFile;
 type TypeNode = import('./typescript/node_modules/typescript/lib/typescript.js').TypeNode;
 type MethodLike = import('./typescript/node_modules/typescript/lib/typescript.js').MethodDeclaration | import('./typescript/node_modules/typescript/lib/typescript.js').MethodSignature;
 type FunctionDeclaration = import('./typescript/node_modules/typescript/lib/typescript.js').FunctionDeclaration;
+type Declaration = import('./typescript/node_modules/typescript/lib/typescript.js').Declaration;
+// isDeclaration is a node whose modifiers the compiler combines: a declaration statement, a class element, or a variable,
+// parameter, enum member, type parameter or binding element.
+const isDeclaration = (node: Node): node is Declaration => ts.isDeclarationStatement(node) || ts.isClassElement(node) || ts.isVariableDeclaration(node) || ts.isParameter(node) || ts.isEnumMember(node) || ts.isTypeParameterDeclaration(node) || ts.isBindingElement(node);
 
 const root = resolve(process.argv[2] ?? '.');
 const roots = process.argv.slice(3);
@@ -28,8 +32,10 @@ files.sort();
 type Entry = { signature: string; exported: boolean };
 const symbols: Record<string, Entry> = {};
 const put = (key: string, signature: string, exported: boolean) => { symbols[key] = { signature, exported }; };
-const hasExport = (node: Node): boolean => (ts.getCombinedModifierFlags(node as import('./typescript/node_modules/typescript/lib/typescript.js').Declaration) & ts.ModifierFlags.Export) !== 0;
-const hidden = (node: Node): boolean => (ts.getCombinedModifierFlags(node as import('./typescript/node_modules/typescript/lib/typescript.js').Declaration) & (ts.ModifierFlags.Private | ts.ModifierFlags.Protected)) !== 0;
+// modifierFlags are the combined modifiers of a declaration; a node that is no declaration carries none.
+const modifierFlags = (node: Node): number => (isDeclaration(node) ? ts.getCombinedModifierFlags(node) : 0);
+const hasExport = (node: Node): boolean => (modifierFlags(node) & ts.ModifierFlags.Export) !== 0;
+const hidden = (node: Node): boolean => (modifierFlags(node) & (ts.ModifierFlags.Private | ts.ModifierFlags.Protected)) !== 0;
 const printer = ts.createPrinter({ removeComments: true, newLine: ts.NewLineKind.LineFeed });
 const compact = (text: string) => text.replace(/\s+/g, ' ').trim().replace(/ ;$/, ';');
 function methodSignature(node: MethodLike, source: SourceFile): string {

@@ -5,7 +5,7 @@ namespace Polyspec\Orm\Dbspec;
 
 /**
  * Applies a plan chain to one connection, one step at a time; resumes or undoes an interrupted plan,
- * and finalizes an applied plan (docs/plans.md "Apply"). One object is the state of one command
+ * and finalizes an applied plan (docs/spec/plans.md "Apply"). One object is the state of one command
  * per command.
  *
  * @internal
@@ -30,7 +30,7 @@ final class PlanApply
         'postgres' => "SELECT pg_backend_pid(), EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND pid = pg_backend_pid() AND objsubid = 2"
             . " AND classid = (hashtext('dbspec\$plans')::bigint & 4294967295)::oid AND objid = (hashtext(current_schema())::bigint & 4294967295)::oid)",
     ];
-    // The maximum time a statement waits for another session's lock (the lock wait in docs/plans.md "Apply").
+    // The maximum time a statement waits for another session's lock (the lock wait in docs/spec/plans.md "Apply").
     private const LOCK_WAIT_SECONDS = 5;
 
     private const APPLYING = 'applying';
@@ -553,7 +553,7 @@ final class PlanApply
 
     /**
      * Decides the step of an interrupted row by the catalog's effect: going forward if forward, otherwise going backward,
-     * is where to resume (docs/plans.md "Apply"'s recover).
+     * is where to resume (docs/spec/plans.md "Apply"'s recover).
      *
      * @param array{from: string, to: string, state: string, step: int} $row
      * @param list<PlanStep> $steps
@@ -585,7 +585,7 @@ final class PlanApply
         $q = $this->r->q(...);
         if (!isset($this->history[$plan->name])) {
             $steps = count($this->steps($plan));
-            // applied_at is the UTC time of the tool clock, truncated to six fractional digits as text (docs/plans.md "Apply").
+            // applied_at is the UTC time of the tool clock, truncated to six fractional digits as text (docs/spec/plans.md "Apply").
             $appliedAt = \DateTimeImmutable::createFromInterface(($this->now)())->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d\TH:i:s.u\Z');
             $this->c->prepare('INSERT INTO ' . $q(self::HISTORY) . ' (' . $q('name') . ', ' . $q('from_hash') . ', ' . $q('to_hash') . ', ' .
                 $q('state') . ', ' . $q('step') . ', ' . $q('steps') . ', ' . $q('applied_at') . ') VALUES (?, ?, ?, ?, ?, ?, ?)')
@@ -724,7 +724,7 @@ final class PlanApply
 
     /**
      * Fills the NULL rows of a column that the rollback of an applied plan would restore to non-null with the default,
-     * or stops with a nulls error if there is no default (docs/plans.md "Steps").
+     * or stops with a nulls error if there is no default (docs/spec/plans.md "Steps").
      *
      * @param list<PlanStep> $steps
      */

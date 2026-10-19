@@ -1,6 +1,6 @@
 // Unit test of the feature coverage case runner (packages/ts/tests/coverage_case.mjs). The runner
 // is shared with the TypeScript coverage test, so a change to it is checked by this test,
-// not by the coverage of every feature (the helpers in contracts/features.json). make check runs the full coverage.
+// not by the coverage of every feature (the helpers in contracts/features.json). make orm-check runs the full coverage.
 // Usage: node packages/ts/tests/coverage-case-unit.mjs
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';

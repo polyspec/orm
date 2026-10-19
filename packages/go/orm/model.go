@@ -1076,7 +1076,7 @@ func batchFits(driver string, parts []int, columns int) error {
 	return nil
 }
 
-// insertParts splits n rows into the batches of a multi-row insert (docs/protocol.md): in row
+// insertParts splits n rows into the batches of a multi-row insert (docs/spec/protocol.md): in row
 // order, each batch is batch rows, the last one the rows left when fewer.
 func insertParts(n, batch int) []int {
 	var parts []int
@@ -1261,7 +1261,7 @@ func (c *Core) Save() (Model, error) {
 // Restore restores the soft-deleted row that the set values name and returns
 // the restored row. It sends the set values as the restore request's set; the
 // planner picks the key after the request hook from the set values and the eq
-// conditions of the where (docs/protocol.md 1.5): the primary key when they
+// conditions of the where (docs/spec/protocol.md 1.5): the primary key when they
 // cover it, otherwise the first unique key in name order. A set value of a key
 // column is a condition and every other set value is a new value written with
 // the restore. It clears the soft delete column with one update that, on an
@@ -1283,7 +1283,7 @@ func (c *Core) Restore() (Model, error) {
 
 // RestoreOrCreate restores the soft-deleted row of the key that Restore picks,
 // or creates it with the set values when no row holds the key, in one
-// transaction (docs/usage.md "Restore or create a row"), and returns the row.
+// transaction (docs/operations/usage.md "Restore or create a row"), and returns the row.
 // A row that holds the key and is not deleted returns CodeRowNotDeleted, and
 // nothing is written.
 func (c *Core) RestoreOrCreate() (Model, error) {
@@ -1594,7 +1594,7 @@ func (c *Core) columnType(name string) string {
 
 // columnArrayValue writes a column value of the array form. A date, datetime
 // and time column each has one temporal form, the runtime value model text of
-// docs/protocol.md section 5 (Read): YYYY-MM-DD, YYYY-MM-DD HH:MM:SS.ffffff and
+// docs/spec/protocol.md section 5 (Read): YYYY-MM-DD, YYYY-MM-DD HH:MM:SS.ffffff and
 // HH:MM:SS.ffffff.
 func (c *Core) columnArrayValue(name string, v any) any {
 	typ := c.columnType(name)

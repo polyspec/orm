@@ -101,7 +101,7 @@ const MYSQLD_FILES = '--secure-file-priv=NULL';
 export const MYSQL_LOWER_CASE = 1;
 // MYSQLD_BINLOG is the binary log retention of both mysqld. The server removes expired logs only at start and when it
 // rotates a log, so an expiry time (one hour) alone keeps a log that never reaches the default size (1 GB) to rotate.
-// Rotating every 64 MiB makes the expiry take effect. The options apply when the next `make test-servers` starts the
+// Rotating every 64 MiB makes the expiry take effect. The options apply when the next `make orm-test-servers` starts the
 // servers.
 export const MYSQLD_BINLOG = ['--binlog-expire-logs-seconds=3600', '--max-binlog-size=67108864'];
 
@@ -164,7 +164,7 @@ function writeEnvironment(p: Paths, ports: Ports): void {
 export function environmentPorts(text: string, file: string): Ports {
   const port = (name: string): number => {
     const match = new RegExp(`^export ${name}='[^@]*@127\\.0\\.0\\.1:(\\d+)/`, 'm').exec(text);
-    if (!match) throw new TestServerError(`test-servers: ${file} records no port in ${name}; run make test-servers-stop and make test-servers, which rewrite it`);
+    if (!match) throw new TestServerError(`test-servers: ${file} records no port in ${name}; run make orm-test-servers-stop and make orm-test-servers, which rewrite it`);
     return checkedPort(match[1] ?? '');
   };
   return { mysql: port('ORM_TEST_MYSQL_SERVER_DSN'), postgres: port('ORM_TEST_POSTGRES_SERVER_DSN'), mysqlReplica: port('ORM_TEST_MYSQL_REPLICA_DSN'),
@@ -367,7 +367,7 @@ async function startPostgres(p: Paths, ports: Ports): Promise<void> {
 // INSTANCE RELOAD TLS, which keeps the running sessions: a test CA, a certificate of the primary that names localhost, a
 // certificate of the replica, signed by the same CA, that names only orm-mismatch.invalid, so that a client that checks
 // the host name refuses it, and a second CA that signed neither. The MySQL TLS cases of the clients connect with
-// ssl-mode=VERIFY_IDENTITY (docs/config.md); their DSNs are in the environment file.
+// ssl-mode=VERIFY_IDENTITY (docs/spec/config.md); their DSNs are in the environment file.
 function tls(p: Paths, ports: Pick<Ports, 'mysql' | 'mysqlReplica'>): void {
   const dir = join(p.dir, 'tls');
   if (!existsSync(join(dir, 'other-ca.pem'))) {
@@ -478,8 +478,8 @@ async function start(p: Paths): Promise<void> {
   const [socketError] = socketPathErrors(p.sockets);
   if (socketError) throw new TestServerError(socketError);
   for (const tool of TOOLS)
-    if (!onPath(tool)) throw new TestServerError(`test-servers: ${tool} is not installed; run make install-server-programs, or install it with the package manager of the machine`);
-  if (!onPath('openssl')) throw new TestServerError('test-servers: openssl is not installed; run make install-server-programs, or install it with the package manager of the machine');
+    if (!onPath(tool)) throw new TestServerError(`test-servers: ${tool} is not installed; run make orm-install-server-programs, or install it with the package manager of the machine`);
+  if (!onPath('openssl')) throw new TestServerError('test-servers: openssl is not installed; run make orm-install-server-programs, or install it with the package manager of the machine');
   const chosen = spawnSync(process.execPath, [join(ROOT, 'scripts/free-ports.mts'), '6'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] });
   const free = chosen.status === 0 ? chosen.stdout.trim().split(/\s+/).filter(Boolean) : [];
   if (free.length !== 6) throw new TestServerError(`test-servers: scripts/free-ports.mts chose ${free.length} ports, not 6; run node scripts/free-ports.mts 6 to see why`);
@@ -510,7 +510,7 @@ async function start(p: Paths): Promise<void> {
   console.log(`test-servers: started; environment ${p.env}`);
 }
 
-const USAGE = 'usage: test-servers.mts start | tls | stop; run it through make test-servers, make test-servers-tls or make test-servers-stop';
+const USAGE = 'usage: test-servers.mts start | tls | stop; run it through make orm-test-servers, make orm-test-servers-tls or make orm-test-servers-stop';
 
 export async function main(args: string[], p: Paths = paths(ROOT)): Promise<void> {
   const [action, ...rest] = args;
@@ -522,7 +522,7 @@ export async function main(args: string[], p: Paths = paths(ROOT)): Promise<void
     case 'tls': {
       // tls loads the TLS files into the running servers, on the ports of their environment file.
       arity(0);
-      if (!existsSync(p.env)) throw new TestServerError(`test-servers: ${p.env} is missing; run make test-servers, which starts the servers`);
+      if (!existsSync(p.env)) throw new TestServerError(`test-servers: ${p.env} is missing; run make orm-test-servers, which starts the servers`);
       const ports = environmentPorts(readFileSync(p.env, 'utf8'), p.env);
       tls(p, ports);
       return writeEnvironment(p, ports);

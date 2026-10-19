@@ -28,7 +28,7 @@ table typed_value {
 `
 
 // TestRuntimeValueTypes writes i16, uuid, time(p), date, and ip codec values,
-// gz codec values, and a text column without select explicit in three databases, and reads them back as the Go value types of docs/dbspec.md "Runtime
+// gz codec values, and a text column without select explicit in three databases, and reads them back as the Go value types of docs/spec/dbspec.md "Runtime
 // model" Go value types.
 func TestRuntimeValueTypes(t *testing.T) {
 	testcase.Start(t, testcase.Database)

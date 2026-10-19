@@ -14,7 +14,7 @@ import (
 	"github.com/polyspec/orm/packages/go/orm"
 )
 
-// A shared case for the request hook (docs/usage.md "Request hook"). It installs contracts/fixtures/request_hook.dbs in a SQLite
+// A shared case for the request hook (docs/operations/usage.md "Request hook"). It installs contracts/fixtures/request_hook.dbs in a SQLite
 // temp file and checks hook_item(id identity, part, label) and the soft delete table hook_entry(unique key part,
 // label). The hook receives the request just before it is planned, and the client does not know what the hook does.
 
@@ -545,7 +545,7 @@ func TestRequestHook(t *testing.T) {
 	}
 }
 
-// TestCreatesParts checks the multi-row insert rules of docs/protocol.md through the model path. creates splits the rows
+// TestCreatesParts checks the multi-row insert rules of docs/spec/protocol.md through the model path. creates splits the rows
 // into batches of the given size and runs them in the given order in one transaction: each batch is one INSERT,
 // rows, keys, and statement events keep the given order, a batch that is not positive is CONFIG and a batch over the
 // bind limit is BATCH_TOO_LARGE before any statement, and if any batch fails, no rows remain.

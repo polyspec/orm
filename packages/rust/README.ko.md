@@ -32,7 +32,7 @@ fn main() {
 }
 ```
 
-set 파일 `contracts/fixtures/bench/dbspec-set.json`이 set의 문서를 나열한다(`{"schema": 1, "documents": ["example.dbs"]}`, [문서 집합](../../docs/dbspec.ko.md#document-sets)). 그 파일이나 나열된 문서가 바뀌면 cargo가 build script를 다시 실행한다.
+set 파일 `contracts/fixtures/bench/dbspec-set.json`이 set의 문서를 나열한다(`{"schema": 1, "documents": ["example.dbs"]}`, [문서 집합](../../docs/spec/dbspec.ko.md#document-sets)). 그 파일이나 나열된 문서가 바뀌면 cargo가 build script를 다시 실행한다.
 
 ```rust
 // src/main.rs
@@ -44,14 +44,14 @@ let db = model::connect(&dsn, 8, polyspec_orm::Config::default()).await?;
 let rows = Author::new().connect(&db).service_seq(7).and_is_close(false).order_by_seq_desc().gets().await?;
 ```
 
-모든 모델에는 고정 메서드(`connect`, `get`, `gets`, `set_<col>`, `order_by_<col>_asc` 등)가 있다. [DSL](../../docs/dsl.ko.md)의 체인, join, relation, 열 및 getter 메서드는 검사한 소스의 호출에 맞춰 생성한다. 소스에 등장하는 모델에 알 수 없는 열·연산자·인수 개수가 있으면 파일 위치를 표시하고 빌드를 실패시킨다. 생성 모듈에는 document set의 manifest text와 `manifestHash`(`model::SCHEMA`, `model::MANIFEST_HASH`)와 connect helper `model::connect`가 포함된다. `model::connect`는 `Db::connect_schema`로 연결을 열고 그 set을 등록한다. 연결은 자기에게 등록된 set만 계획한다([protocol](../../docs/protocol.ko.md)).
+모든 모델에는 고정 메서드(`connect`, `get`, `gets`, `set_<col>`, `order_by_<col>_asc` 등)가 있다. [DSL](../../docs/spec/dsl.ko.md)의 체인, join, relation, 열 및 getter 메서드는 검사한 소스의 호출에 맞춰 생성한다. 소스에 등장하는 모델에 알 수 없는 열·연산자·인수 개수가 있으면 파일 위치를 표시하고 빌드를 실패시킨다. 생성 모듈에는 document set의 manifest text와 `manifestHash`(`model::SCHEMA`, `model::MANIFEST_HASH`)와 connect helper `model::connect`가 포함된다. `model::connect`는 `Db::connect_schema`로 연결을 열고 그 set을 등록한다. 연결은 자기에게 등록된 set만 계획한다([protocol](../../docs/spec/protocol.ko.md)).
 
 ## 연결
 
-`model::connect(dsn, pool_size, config)`와 `Db::connect(dsn, pool_size, config)`는 DSN URI를 받는다. `Db::connect`는 등록된 set 없이 연결을 연다. scheme은 `mysql`, `postgres`, `sqlite`, 또는 markdown IR executor로 flowmark server가 제공하는 corpus인 `markdown`(`markdown://127.0.0.1:<port>/<corpus>?token=<token>`, [docs/protocol.ko.md](../../docs/protocol.ko.md#_5-ir-executors)) 중 하나를 선택하고 `timezone` 매개변수는 연결 시간대를 정한다. 인증 정보는 DSN으로, AES 키는 `Config`로 전달한다. `caching_sha2_password`를 쓰는 MySQL 연결에는 TLS가 필요하다. DSN에 `ssl-mode=verify_ca`와 `ssl-ca`를 지정한다. 클라이언트는 암호화하지 않은 연결의 RSA 인증을 켜지 않는다.
+`model::connect(dsn, pool_size, config)`와 `Db::connect(dsn, pool_size, config)`는 DSN URI를 받는다. `Db::connect`는 등록된 set 없이 연결을 연다. scheme은 `mysql`, `postgres`, `sqlite`, 또는 markdown IR executor로 flowmark server가 제공하는 corpus인 `markdown`(`markdown://127.0.0.1:<port>/<corpus>?token=<token>`, [docs/spec/protocol.ko.md](../../docs/spec/protocol.ko.md#_5-ir-executors)) 중 하나를 선택하고 `timezone` 매개변수는 연결 시간대를 정한다. 인증 정보는 DSN으로, AES 키는 `Config`로 전달한다. `caching_sha2_password`를 쓰는 MySQL 연결에는 TLS가 필요하다. DSN에 `ssl-mode=verify_ca`와 `ssl-ca`를 지정한다. 클라이언트는 암호화하지 않은 연결의 RSA 인증을 켜지 않는다.
 
 `db.utils().schema().install(&model::SCHEMA)`는 document set을 연결의 데이터베이스에 맞게 render하고 statement를 적용한 뒤 그 set을 연결에 등록한다. manifest text가 `manifestHash`로 hash되지 않으면 `CONFIG`를 반환한다. set의 테이블이 모두 있으면 아무것도 만들지 않고 일부만 있으면 `CONFIG`를 반환하며, 그다음 set의 테이블이 set과 다르면 각 차이를 적은 `CONFIG`를 반환한다. `db.utils().schema().register(&model::SCHEMA)`는 데이터베이스를 읽지 않고 열린 연결에 set을 등록한다.
-`db.utils().schema().add_tables_and_columns(&model::SCHEMA).await`는 설치한 set을 올린다: 데이터베이스에 없는 테이블을 만들고 기존 테이블에 빠진 컬럼 가운데 null이거나 default가 있는 컬럼을 dialect의 plan step(`polyspec_orm_schema::dbspec::add_tables_and_columns_steps`)으로 추가하며, 그 step은 각 테이블을 index, foreign key, check, 트리거와 함께 만들고 바뀐 각 테이블의 audit 트리거를 바꾼다. 만든 테이블을 `table`, 추가한 컬럼을 `table.column`으로 반환한다. 다른 모든 차이는 어떤 statement보다 먼저 `SCHEMA_DIFFERS`를 반환한다(docs/schema.md, "Adding tables and columns"). MySQL과 SQLite는 트랜잭션 밖에서 추가한다.
+`db.utils().schema().add_tables_and_columns(&model::SCHEMA).await`는 설치한 set을 올린다: 데이터베이스에 없는 테이블을 만들고 기존 테이블에 빠진 컬럼 가운데 null이거나 default가 있는 컬럼을 dialect의 plan step(`polyspec_orm_schema::dbspec::add_tables_and_columns_steps`)으로 추가하며, 그 step은 각 테이블을 index, foreign key, check, 트리거와 함께 만들고 바뀐 각 테이블의 audit 트리거를 바꾼다. 만든 테이블을 `table`, 추가한 컬럼을 `table.column`으로 반환한다. 다른 모든 차이는 어떤 statement보다 먼저 `SCHEMA_DIFFERS`를 반환한다(docs/spec/schema.md, "Adding tables and columns"). MySQL과 SQLite는 트랜잭션 밖에서 추가한다.
 
 ## 필수 호출
 
@@ -69,7 +69,7 @@ let rows = Author::new().connect(&db).service_seq(7).and_is_close(false).order_b
 | 0을 포함한 deadlock 재시도 횟수 | `db.transaction(callback).retry(count).await` |
 | 문장 또는 트랜잭션 callback 취소 | 해당 Future를 drop한다. |
 | 모델 열 암호화 | 스키마에 `aes` codec stage와 `aes_version` setting을 선언하고 `Config::aes_key` 또는 `Config::aes_keys`와 `Config::aes_version`을 전달한다. |
-| 감사 쓰기 기록 | 스키마에 `audit` setting을 선언하고, 연결할 때 `Config::audit_source`를 한 번 주고, `transaction`, `transaction_send`, `transaction_once`의 `.audit([("action", …)])`로 작업 단위의 값을 준다([사용법](../../docs/usage.ko.md#audited-writes)). |
+| 감사 쓰기 기록 | 스키마에 `audit` setting을 선언하고, 연결할 때 `Config::audit_source`를 한 번 주고, `transaction`, `transaction_send`, `transaction_once`의 `.audit([("action", …)])`로 작업 단위의 값을 준다([사용법](../../docs/operations/usage.ko.md#audited-writes)). |
 
 Rust 연결에서 `aes_version`은 양수여야 한다. 선언한 모든 키 버전은 양수이며 키는 비어 있지 않아야 한다. `aes_keys`가 있으면 현재 버전을 포함해야 한다. 함께 제공한 `aes_key`는 그 버전의 키와 같아야 한다. 잘못된 키 설정이면 연결을 열기 전에 `Db::connect`가 `CONFIG`를 반환한다. AES 열이 없는 연결에는 두 키 필드를 비워 둘 수 있다.
 
@@ -98,11 +98,11 @@ MySQL/PostgreSQL 테스트 DSN과 이 URI를 명시해야 한다. 테스트 테�
 
 ## 오류
 
-`polyspec_orm::codes`는 `docs/errors.yaml`에서 생성한다(`orm-gen errors --lang rust --out packages/rust/orm/src/codes.rs`). 요청 오류는 `Error::Engine { code, msg }`다. 실행기는 `Error::Config`(`CONFIG`)와 `Error::OptimisticLock`을 발생시킨다. 모든 드라이버 오류는 `Error::Driver { code, msg, source }`가 된다. deadlock, 중복 키, foreign key, CHECK 위반처럼 `docs/errors.yaml`에 있는 조건은 공통 코드를, trigger가 거부한 쓰기 같은 그 밖의 드라이버 오류는 `DRIVER`를 가지며, `source`는 드라이버 오류다. 다른 연결이 SQLite lock을 `busy_timeout` 종료 시점까지 보유하면 `CANCELED`가 된다. `Db::transaction`은 `DEADLOCK`에서 callback을 다시 실행하며 기본 재시도는 세 번이다. callback이 실패하고 트랜잭션이나 savepoint의 rollback도 실패하면 `Error::Rollback { callback, rollback }`(`ROLLBACK`)을 반환한다. 메시지는 `transaction failed (<callback 오류>) and rollback failed (<rollback 오류>)`이고 두 오류를 모두 담으며 재시도하지 않는다.
+`polyspec_orm::codes`는 `docs/spec/errors.yaml`에서 생성한다(`orm-gen errors --lang rust --out packages/rust/orm/src/codes.rs`). 요청 오류는 `Error::Engine { code, msg }`다. 실행기는 `Error::Config`(`CONFIG`)와 `Error::OptimisticLock`을 발생시킨다. 모든 드라이버 오류는 `Error::Driver { code, msg, source }`가 된다. deadlock, 중복 키, foreign key, CHECK 위반처럼 `docs/spec/errors.yaml`에 있는 조건은 공통 코드를, trigger가 거부한 쓰기 같은 그 밖의 드라이버 오류는 `DRIVER`를 가지며, `source`는 드라이버 오류다. 다른 연결이 SQLite lock을 `busy_timeout` 종료 시점까지 보유하면 `CANCELED`가 된다. `Db::transaction`은 `DEADLOCK`에서 callback을 다시 실행하며 기본 재시도는 세 번이다. callback이 실패하고 트랜잭션이나 savepoint의 rollback도 실패하면 `Error::Rollback { callback, rollback }`(`ROLLBACK`)을 반환한다. 메시지는 `transaction failed (<callback 오류>) and rollback failed (<rollback 오류>)`이고 두 오류를 모두 담으며 재시도하지 않는다.
 
 ## Statement event
 
-`db.subscribe(|e: &polyspec_orm::StatementEvent<'_>| Ok(()))`는 연결과 그 clone이 실행하는 모든 statement의 subscriber를 등록한다: model statement, transaction 제어, savepoint, utility와 schema utility의 statement다. event는 `sql`, `binds`(비밀 bind는 `$SECRET`, 실행기 시계 bind는 `$NOW`로 표시한다), `kind`, `tables`, `elapsed`, `transaction`(연결에서의 transaction 번호, 밖이면 `None`), `error`를 가진다. subscriber는 statement가 끝난 뒤 등록 순서로 동기 실행되며, subscriber가 돌려준 오류는 operation을 `Error::Subscriber`(`SUBSCRIBER`)로 실패시키고 그 오류를 source로 가진다. `subscription.unsubscribe()`가 subscriber를 지운다. `subscribe`는 `Result`를 돌려준다: markdown 연결은 statement를 보내지 않으므로 subscriber를 `CAPABILITY_UNSUPPORTED`로 거절한다. 모든 client의 event는 [docs/usage.ko.md](../../docs/usage.ko.md#statement-events)가 적는다.
+`db.subscribe(|e: &polyspec_orm::StatementEvent<'_>| Ok(()))`는 연결과 그 clone이 실행하는 모든 statement의 subscriber를 등록한다: model statement, transaction 제어, savepoint, utility와 schema utility의 statement다. event는 `sql`, `binds`(비밀 bind는 `$SECRET`, 실행기 시계 bind는 `$NOW`로 표시한다), `kind`, `tables`, `elapsed`, `transaction`(연결에서의 transaction 번호, 밖이면 `None`), `error`를 가진다. subscriber는 statement가 끝난 뒤 등록 순서로 동기 실행되며, subscriber가 돌려준 오류는 operation을 `Error::Subscriber`(`SUBSCRIBER`)로 실패시키고 그 오류를 source로 가진다. `subscription.unsubscribe()`가 subscriber를 지운다. `subscribe`는 `Result`를 돌려준다: markdown 연결은 statement를 보내지 않으므로 subscriber를 `CAPABILITY_UNSUPPORTED`로 거절한다. 모든 client의 event는 [docs/operations/usage.ko.md](../../docs/operations/usage.ko.md#statement-events)가 적는다.
 
 ## 빌드와 테스트
 

@@ -1,4 +1,4 @@
-# dbspec Mermaid diagrams (tests/dbspec/mermaid.json, docs/mermaid.md): the same checks as
+# dbspec Mermaid diagrams (tests/dbspec/mermaid.json, docs/spec/mermaid.md): the same checks as
 # packages/ts/tests/dbspec-mermaid.mjs. Every export case writes exactly its Mermaid
 # text (with the trailing line end) and dropped objects; every import case reads its Mermaid
 # lines into exactly its document (with the trailing line end) and dropped objects; every

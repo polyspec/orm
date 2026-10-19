@@ -24,7 +24,7 @@ func init() {
 	orm.RegisterSQLiteVersion(sqlite3.SQLITE_VERSION)
 }
 
-// mapErr names the conditions that docs/errors.yaml maps, and the executor
+// mapErr names the conditions that docs/spec/errors.yaml maps, and the executor
 // reports the remaining driver errors as DRIVER. SQLITE_BUSY reports a lock that another connection
 // still held when the busy_timeout wait ended, so it is CANCELED.
 func mapErr(err error) error {

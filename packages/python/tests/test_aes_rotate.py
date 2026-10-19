@@ -1,5 +1,5 @@
 # AesUtils.rotate: the rows whose key version is not the current one are encrypted again with the
-# current key and get the current version; the number of rotated rows is returned (docs/schema.md
+# current key and get the current version; the number of rotated rows is returned (docs/spec/schema.md
 # "AES key rotation"; packages/ts/src/utils.ts).
 import tempfile
 import unittest

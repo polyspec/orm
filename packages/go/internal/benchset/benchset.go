@@ -1,7 +1,7 @@
 // Package benchset installs the bench set for the tests that use its generated model.
 //
 // The bench set (contracts/fixtures/bench/dbspec-set.json) uses the table shared_note of its external document
-// bench_shared.dbs, which must exist before the set installs (docs/dbspec.md "External documents"), so Install
+// bench_shared.dbs, which must exist before the set installs (docs/spec/dbspec.md "External documents"), so Install
 // installs the external document first as its own set, as scripts/bench-db.mts does, and then the bench set.
 package benchset
 

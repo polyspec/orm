@@ -361,7 +361,7 @@ final class SchemaSetTest extends TestCase
     }
 
     /**
-     * Registration sends no statement to the database (docs/schema.md "Schema registration").
+     * Registration sends no statement to the database (docs/spec/schema.md "Schema registration").
      * On a connection opened with StatementCountingPdo, register does not read the database, even for a set that uses external documents,
      * and text that does not hash to the declared hash is CONFIG with no statement. A request for a registered bench set runs on that
      * connection. connectSchema sends only the statements that connect sends.
@@ -411,7 +411,7 @@ final class SchemaSetTest extends TestCase
     }
 
     /**
-     * install compares the whole database with the set, not only the table names (docs/schema.md "Schema
+     * install compares the whole database with the set, not only the table names (docs/spec/schema.md "Schema
      * installation"). For each case of contracts/fixtures/install/changed_database.json, a database changed by a statement outside the ORM
      * is installed again with the same set: it is CONFIG, the dialect's message, and the database stays as it is.
      */

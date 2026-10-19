@@ -1,6 +1,6 @@
 # The Python support range of the package states the minor release that CI tests (T115-1).
 #
-# CI runs the package only under the pinned interpreter of make install-python, the Python release of mise.toml, so
+# CI runs the package only under the pinned interpreter of make orm-install-python, the Python release of mise.toml, so
 # requires-python of packages/python/pyproject.toml is its minor release and nothing older: its dependency
 # polyspec-ordered-json 0.0.9 requires 3.14, so a floor such as >=3.11 declares a range that the package cannot install on.
 import tomllib

@@ -13,7 +13,9 @@ from packages.python.tests.dbspec_cases_reader import check_cases as check_share
 from packages.python.tests.dbspec_vectors_reader import VectorError, check_vectors
 
 ROOT = os.path.normpath(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "..", "..")
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "..", ".."
+    )
 )
 
 try:
@@ -34,7 +36,7 @@ try:
     from polyspec.orm.dbspec.compare import compare_schemas
 except ImportError as error:
     print(
-        f"{sys.executable}: {error}; the Python client needs cryptography and PyYAML, so run make install-python "
+        f"{sys.executable}: {error}; the Python client needs cryptography and PyYAML, so run make orm-install-python "
         "and set ORM_PYTHON to the interpreter it creates (packages/python/.venv/bin/python)",
         file=sys.stderr,
     )

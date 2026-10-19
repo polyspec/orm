@@ -1,5 +1,5 @@
 // Method names of generated models are parsed with the grammar of
-// docs/dsl.md. Generation rejects names whose operator does not fit the
+// docs/spec/dsl.md. Generation rejects names whose operator does not fit the
 // column type.
 import { type Entity, type Field as Column, type RuntimeModel as Manifest } from '../engine/model.js';
 import { opAllowed } from '../engine/validate.js';
@@ -46,7 +46,7 @@ export function functionColumn(c: Column): boolean {
 }
 
 /**
- * The value category of a column (docs/dbspec.md "Runtime model"): a styled
+ * The value category of a column (docs/spec/dbspec.md "Runtime model"): a styled
  * value, or the value of its type; a column of aes, hex and ip stages holds a
  * string.
  */

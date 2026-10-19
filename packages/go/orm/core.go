@@ -137,7 +137,7 @@ type Core struct {
 	sets        []setSpec
 	news        []string
 	// expected is the revision column and the expected revision of the next
-	// update or delete (docs/dsl.md "Writes"); nil when none is expected.
+	// update or delete (docs/spec/dsl.md "Writes"); nil when none is expected.
 	expected *expectedRevision
 	newValues   map[string]any
 	duplication *Core
@@ -406,7 +406,7 @@ func (c *Core) predicate(key ChainKey, value any, rest []any, single bool) (*pre
 	op := operators[key.Op]
 	switch v := value.(type) {
 	case NullType:
-		// contains binds NULL as its value, which matches no row (docs/protocol.md §2).
+		// contains binds NULL as its value, which matches no row (docs/spec/protocol.md §2).
 		if key.Op == "lk" || key.Op == "lb" {
 			p.op, p.value = op, nil
 			return p, 0, nil
@@ -577,7 +577,7 @@ type expectedRevision struct {
 
 // ExpectRevision makes the next Update or Delete write only while the integer
 // column holds revision; Update also stores revision + 1. A mismatch fails with
-// REVISION_CHANGED and changes nothing (docs/dsl.md "Writes").
+// REVISION_CHANGED and changes nothing (docs/spec/dsl.md "Writes").
 func (c *Core) ExpectRevision(column string, revision int64) {
 	c.expected = &expectedRevision{column: column, revision: revision}
 }

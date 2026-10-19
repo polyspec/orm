@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Dbspec;
 
 /**
- * One step of a plan (docs/plans.md "Steps"): its statement, its rollback
+ * One step of a plan (docs/spec/plans.md "Steps"): its statement, its rollback
  * statement or, without one, the reason in `irreversible` (empty for a
  * finalize step), its effect, the restore statements that replace the
  * statement and the rollback statement when `restoreIf` holds, the null

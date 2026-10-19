@@ -6,7 +6,7 @@ use polyspec_orm::{Db, Val};
 
 fn required_dsn(name: &str) -> String {
     std::env::var(name).ok().filter(|dsn| !dsn.is_empty()).unwrap_or_else(|| {
-        panic!("{name} is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers")
+        panic!("{name} is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers")
     })
 }
 

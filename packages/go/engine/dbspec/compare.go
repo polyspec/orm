@@ -5,10 +5,10 @@ import (
 	"strings"
 )
 
-// RuleCompare is the diagnostic for a comparison target that is not schema text (docs/plans.md "Comparison").
+// RuleCompare is the diagnostic for a comparison target that is not schema text (docs/spec/plans.md "Comparison").
 const RuleCompare = "compare"
 
-// Difference is one difference between two schemas (docs/plans.md "Comparison"). Name is
+// Difference is one difference between two schemas (docs/spec/plans.md "Comparison"). Name is
 // the name of a column or object, and is an empty string for a table-level difference.
 type Difference struct {
 	Kind  string

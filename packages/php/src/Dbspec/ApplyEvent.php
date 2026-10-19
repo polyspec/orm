@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Dbspec;
 
 /**
- * One occurrence of apply or recover (docs/plans.md "Apply"). The kind is
+ * One occurrence of apply or recover (docs/spec/plans.md "Apply"). The kind is
  * plan, statement, applied, verified or done; `step` is the statement index
  * of statement and applied, `steps` the plan's number of statements, and
  * `statement` the text of statement and applied.

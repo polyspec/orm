@@ -295,7 +295,7 @@ async fn main() {
         ..Default::default()
     };
     let db = model::connect(&args.dsn, 4, config).await.expect("connect");
-    // Records each statement as that event (docs/usage.md "Statement events"). A transaction's
+    // Records each statement as that event (docs/operations/usage.md "Statement events"). A transaction's
     // number is counted from 1 in order of first appearance within the vector, and is null outside a transaction. error is the statement's error
     // code, or null.
     let _recording = db
@@ -501,7 +501,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         }
     });
     // shared_note is a table of the external document bench_shared: it is read through its entity, and a write fails
-    // with CONFIG before any statement (docs/dbspec.md "External documents").
+    // with CONFIG before any statement (docs/spec/dbspec.md "External documents").
     run!("external_read", async {
         let readers = NoteReader::new().connect(db).relation(SharedNote::new().match_shared_note_seq_with_seq()).order_by_seq_asc().gets().await?;
         let mut related = Vec::new();
@@ -747,7 +747,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         .retry(0)
     );
     // creates(rows, batch) runs each batch of batch rows as one multi-row INSERT in one transaction; a batch that is
-    // not a positive integer is CONFIG before any statement (docs/protocol.md).
+    // not a positive integer is CONFIG before any statement (docs/spec/protocol.md).
     run!("creates_batch", async {
         let rows = || {
             ["a", "b", "c", "d", "e"]
@@ -863,7 +863,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
     });
     run!("restore_or_create", async {
         // restore_or_create restores the soft-deleted row of its key, refuses a live row with ROW_NOT_DELETED and creates a
-        // missing key (docs/usage.md "Restore or create a row"). The transaction rolls back at the end.
+        // missing key (docs/operations/usage.md "Restore or create a row"). The transaction rolls back at the end.
         let result = Mutex::new(Map::new());
         let ended: polyspec_orm::Result<()> = db
             .transaction(async || {
@@ -897,7 +897,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
     });
     run!("expect_revision", async {
         // expect_revision makes an update or a delete write only while author 42's like_count still holds the expected
-        // revision; an update stores revision + 1, and a mismatch is REVISION_CHANGED and writes nothing (docs/dsl.md
+        // revision; an update stores revision + 1, and a mismatch is REVISION_CHANGED and writes nothing (docs/spec/dsl.md
         // "Writes"). The transaction rolls back at the end, so the database is as it was.
         let result = Mutex::new(Map::new());
         let read = async || -> polyspec_orm::Result<(Value, i64)> {
@@ -971,7 +971,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         Ok::<Value, polyspec_orm::Error>(Value::Object(result.into_inner().unwrap()))
     });
     run!("column_pairs", async {
-        // Two compared columns meet as dbspec check operands do (docs/dbspec.md "Checks"): a comparison of two
+        // Two compared columns meet as dbspec check operands do (docs/spec/dbspec.md "Checks"): a comparison of two
         // columns, a column in a subquery column, a join and a relation run when their columns meet, here i32 with
         // i64 and text with varchar, and fail with OPERATOR_NOT_ALLOWED before any statement when they do not.
         let mut result = Map::new();
@@ -1022,7 +1022,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         Ok::<Value, polyspec_orm::Error>(json!({"white_space": white_space, "odd_length": odd_length}))
     });
     // A datetime(p) or time(p) value is bound with exactly p fraction digits, the form the SQLite CHECK of the column
-    // requires (docs/dialects.md); zeros past p are dropped. Each vector inserts, reads the row back by the same
+    // requires (docs/spec/dialects.md); zeros past p are dropped. Each vector inserts, reads the row back by the same
     // parameter and deletes it.
     let at = chrono::NaiveDate::from_ymd_opt(2026, 6, 1).unwrap().and_hms_opt(12, 34, 56).unwrap();
     run!(
@@ -1070,7 +1070,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         })
         .retry(0)
     );
-    // An upsert has exactly one conflict key (docs/protocol.md 1): upsert_cell leaves its identity primary key out, so
+    // An upsert has exactly one conflict key (docs/spec/protocol.md 1): upsert_cell leaves its identity primary key out, so
     // the unique key on code is the one key that can meet the row; an insert that does not assign code is IR_INVALID
     // before any statement.
     run!(
@@ -1090,7 +1090,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         .retry(0)
     );
     // A PostgreSQL uuid column is read as its text and a uuid value is bound as text cast to uuid, in one form in every
-    // planner (docs/dialects.md); the vector inserts, reads the row back by the same value and deletes it.
+    // planner (docs/spec/dialects.md); the vector inserts, reads the row back by the same value and deletes it.
     run!(
         "uuid_roundtrip",
         db.transaction(async || {
@@ -1102,9 +1102,9 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         })
         .retry(0)
     );
-    // A write counts each written row once (docs/protocol.md "Write"): an upsert is 1 whether it inserts or updates,
+    // A write counts each written row once (docs/spec/protocol.md "Write"): an upsert is 1 whether it inserts or updates,
     // and an update counts the row it matched even when the row already holds the value. The count is read through the
-    // test entry point (docs/protocol.md "Test write result").
+    // test entry point (docs/spec/protocol.md "Test write result").
     run!(
         "affected_counts",
         db.transaction(async || {
@@ -1130,7 +1130,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         })
         .retry(0)
     );
-    // A value outside the logical type of its slot is CODEC_ENCODE before any statement (docs/protocol.md §5
+    // A value outside the logical type of its slot is CODEC_ENCODE before any statement (docs/spec/protocol.md §5
     // "Parameters"). A create that the client lets through is deleted, so the vector leaves the database as it found it.
     macro_rules! rejected {
         ($create:expr) => {
@@ -1153,7 +1153,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
     run!("varchar_length_rejected", rejected!(BindCell::new().connect(db).set_label("123456789").create()));
     run!("text_nul_rejected", rejected!(BindCell::new().connect(db).set_label("nul").set_body("a\u{0}b").create()));
     run!("uuid_form_rejected", rejected!(BindCell::new().connect(db).set_label("uuid").set_token("123E4567-E89B-12D3-A456-426614174000").create()));
-    // A parameter that assigns NULL to a non-null column is CODEC_ENCODE before any statement (docs/protocol.md §5
+    // A parameter that assigns NULL to a non-null column is CODEC_ENCODE before any statement (docs/spec/protocol.md §5
     // "Parameters"); creates binds each row value as a parameter.
     run!("null_into_not_null", async {
         let mut null_row = BindCell::new();
@@ -1161,7 +1161,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         let created = BindCell::new().connect(db).creates(vec![BindCell::new().set_label("a"), null_row], 2).await;
         Ok::<Value, polyspec_orm::Error>(json!({"code": code_of(created)}))
     });
-    // A contains value NULL binds NULL, so `col LIKE NULL` matches no row (docs/protocol.md §2).
+    // A contains value NULL binds NULL, so `col LIKE NULL` matches no row (docs/spec/protocol.md §2).
     run!("contains_null", async {
         let mut q = author().service_seq(7);
         polyspec_orm::core::Core::chain(
@@ -1175,7 +1175,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
             Err(e) => json!({"code": code(&e), "count": null}),
         })
     });
-    // One statement has one clock (docs/protocol.md "Clock"): the columns that an insert leaves to `default now` hold
+    // One statement has one clock (docs/spec/protocol.md "Clock"): the columns that an insert leaves to `default now` hold
     // that clock truncated to their digits, and a datetime(p) column compares with a clock at six digits. The executor
     // clock is fixed at .999999 through the test entry point, so a rounding clock shows as the next second; MySQL writes
     // its own clock, CURRENT_TIMESTAMP(p), which truncates. These vectors come last because the fixed clock stays on

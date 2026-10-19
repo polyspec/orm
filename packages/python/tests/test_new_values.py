@@ -1,5 +1,5 @@
 # A value attached with NewLabel stays on the created model and is written in its output, as the
-# Go client writes it (docs/usage.md "Model writes").
+# Go client writes it (docs/operations/usage.md "Model writes").
 import tempfile
 import unittest
 from pathlib import Path

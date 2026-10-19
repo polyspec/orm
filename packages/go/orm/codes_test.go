@@ -9,14 +9,14 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// catalogCode is one code of docs/errors.yaml with the note that its generated constant carries: the origin, then
+// catalogCode is one code of docs/spec/errors.yaml with the note that its generated constant carries: the origin, then
 // ": " and the comment of the code when it has one.
 type catalogCode struct{ code, note string }
 
-// readCatalog reads docs/errors.yaml, a flat list of "- code: X  # comment" lines each followed by "origin: Y".
+// readCatalog reads docs/spec/errors.yaml, a flat list of "- code: X  # comment" lines each followed by "origin: Y".
 func readCatalog(t *testing.T) []catalogCode {
 	t.Helper()
-	src, err := os.ReadFile("../../../docs/errors.yaml")
+	src, err := os.ReadFile("../../../docs/spec/errors.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,12 +38,12 @@ func readCatalog(t *testing.T) []catalogCode {
 		}
 	}
 	if len(out) == 0 {
-		t.Fatal("docs/errors.yaml lists no codes")
+		t.Fatal("docs/spec/errors.yaml lists no codes")
 	}
 	return out
 }
 
-// TestCodeCatalog compares codes.go, which orm-gen errors generates, with docs/errors.yaml: every code is a constant
+// TestCodeCatalog compares codes.go, which orm-gen errors generates, with docs/spec/errors.yaml: every code is a constant
 // with the note of the catalog, and the file holds no other code.
 func TestCodeCatalog(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
@@ -58,10 +58,10 @@ func TestCodeCatalog(t *testing.T) {
 		case line == nil:
 			t.Errorf("codes.go has no constant for %s", c.code)
 		case string(line[1]) != c.note:
-			t.Errorf("codes.go %s: %q, docs/errors.yaml: %q; run orm-gen errors --lang go", c.code, line[1], c.note)
+			t.Errorf("codes.go %s: %q, docs/spec/errors.yaml: %q; run orm-gen errors --lang go", c.code, line[1], c.note)
 		}
 	}
 	if got := len(regexp.MustCompile(`(?m)^\s*Code\w+\s*=`).FindAll(src, -1)); got != len(codes) {
-		t.Errorf("codes.go holds %d codes, docs/errors.yaml %d", got, len(codes))
+		t.Errorf("codes.go holds %d codes, docs/spec/errors.yaml %d", got, len(codes))
 	}
 }

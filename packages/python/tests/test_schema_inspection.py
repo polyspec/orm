@@ -1,4 +1,4 @@
-# Connection statistics, schema inspection and table privileges on SQLite (docs/interfaces.md "Utilities"):
+# Connection statistics, schema inspection and table privileges on SQLite (docs/spec/interfaces.md "Utilities"):
 # Db.stats and Utils.stats, SchemaUtils.exists, installed and empty, and the PrivilegeUtils that only
 # PostgreSQL supports. The MySQL and PostgreSQL forms run in schema_inspection.py (make
 # python-schema-inspection-check), as packages/ts/tests/model.mjs and packages/php/tests/ModelTest.php

@@ -1,4 +1,4 @@
-// The `dbs` fence of the documentation site (docs/editor.md "Ecosystem mechanisms"): a fenced block whose info string
+// The `dbs` fence of the documentation site (docs/spec/editor.md "Ecosystem mechanisms"): a fenced block whose info string
 // is `dbs` holds one dbspec document, and the language service gives its tokens and diagnostics. A document of a set
 // is written `dbs set=<set> document=<name>`; every fence of the page with the same set is the set of the others, keyed
 // by its declared name, which the parser checks against the header through its `use` rule. A fence with a diagnostic

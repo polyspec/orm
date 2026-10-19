@@ -1,4 +1,4 @@
-# The statement timeout of the Python client's connection configuration (docs/config.md "Runtime connection"), the
+# The statement timeout of the Python client's connection configuration (docs/spec/config.md "Runtime connection"), the
 # cases of test_statement_timeout and test_statement_timeout_through_a_pooler of packages/php/tests/ModelTest.php:
 # statementTimeoutMs bounds the statements of its connection on MySQL and PostgreSQL, and a locking read past the bound
 # returns CANCELED. The pool options are the cases of connection_pool.py. MySQL and PostgreSQL need
@@ -129,7 +129,7 @@ class ConnectionConfigTest(unittest.TestCase):
         single = os.environ.get("ORM_TEST_PGBOUNCER_SINGLE_DSN")
         if not single:
             raise AssertionError(
-                "ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip; run make test-servers"
+                "ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip; run make orm-test-servers"
             )
         direct = required_dsn("postgres")
         table = f"pooler_{uuid.uuid4().hex[:8]}"

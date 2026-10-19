@@ -37,16 +37,19 @@ const cases: Array<{ name: string; path: string; text: string; lines: number[] }
 
 // Every case is written to its own directory, so one batch run of each tokenizer covers all of them.
 const dir = await mkdtemp(join(tmpdir(), 'orm-comments-'));
-const paths = cases.map((c, i) => join(String(i), c.path));
-for (const [i, c] of cases.entries()) {
-  await mkdir(dirname(join(dir, paths[i] as string)), { recursive: true });
-  await writeFile(join(dir, paths[i] as string), c.text);
+const placed = cases.map((c, i) => ({ ...c, path: join(String(i), c.path) }));
+for (const c of placed) {
+  await mkdir(dirname(join(dir, c.path)), { recursive: true });
+  await writeFile(join(dir, c.path), c.text);
 }
-const byFile = await commentsByFile(dir, paths);
+const byFile = await commentsByFile(dir, placed.map(c => c.path));
 
-cases.forEach(({ name, lines }, i) => {
+placed.forEach(({ name, lines, path }) => {
   caseTest(name, COMPUTE, () => {
-    assert.deepEqual(hangulComments(byFile.get(paths[i] as string) ?? []).map(comment => comment.line), lines);
+    // A case whose file the tokenizer did not read is a defect, not an empty result.
+    const comments = byFile.get(path);
+    if (comments === undefined) throw new Error(`${path} was not read by its tokenizer`);
+    assert.deepEqual(hangulComments(comments).map(comment => comment.line), lines);
   });
 });
 

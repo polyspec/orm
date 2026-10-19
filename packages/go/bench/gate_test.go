@@ -1,6 +1,6 @@
 // The hot-path regression gate compares the generated client with this
 // package's native statements (same SQL, same typed scan), in one
-// process, so the ratio is comparable on any machine. docs/perf.md §6d records
+// process, so the ratio is comparable on any machine. docs/operations/perf.md §6d records
 // the absolute numbers; this test warns when a client drifts past the bound, and never fails on it (AGENTS.md).
 //
 //	make perf-check
@@ -164,7 +164,7 @@ func hotPathGate(t *testing.T) {
 		fmt.Printf("%-8s native %6.1fµs  client %6.1fµs  ratio %.2f (bound %.2f)\n",
 			c.name, float64(na.Microseconds()), float64(cl.Microseconds()), ratio, c.bound)
 		if ratio > c.bound {
-			testcase.Warn("%s: client/native ratio %.2f is above its reference %.2f (docs/perf.md); machine %s %s", c.name, ratio, c.bound, runtime.GOOS, runtime.GOARCH)
+			testcase.Warn("%s: client/native ratio %.2f is above its reference %.2f (docs/operations/perf.md); machine %s %s", c.name, ratio, c.bound, runtime.GOOS, runtime.GOARCH)
 		}
 	}
 }

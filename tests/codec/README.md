@@ -9,7 +9,7 @@ the reference vectors for each style stack and value, with stored bytes (base64)
 | `go test ./packages/go/orm -run TestCodecVectors` | decodes every vector to the value; deterministic styles re-encode byte-identically; round trip | `$ORM_CODEC_OUT/go.json` |
 | `cargo test -p polyspec-orm --lib codec::tests::vectors` (in `packages/rust`) | same | `$ORM_CODEC_OUT/rust.json` |
 | `node packages/ts/tests/codec-vector.mjs` | same | `$ORM_CODEC_OUT/typescript.json` |
-| `python -m packages.python.tests.test_codec_vectors` (the venv of `make install-python`) | same | `$ORM_CODEC_OUT/python.json` |
+| `python -m packages.python.tests.test_codec_vectors` (the venv of `make orm-install-python`) | same | `$ORM_CODEC_OUT/python.json` |
 | `vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecVectorsTest.php` | same for PHP, then decodes the outputs in `$ORM_CODEC_OUT` — what Go, Rust, TypeScript and Python wrote must read back as the same value | — |
 
 `make codec-check` runs all five in that order with `ORM_CODEC_OUT` set to a directory of its own run,
@@ -19,7 +19,7 @@ rename.
 
 A vector with `encode_error` instead of `encoded_b64` has no stored cell: encoding its value fails with that code
 in every runner, and no runner writes an output for it (the `base64_text.*` and `gz_text.*` vectors of a value that
-is not a string, docs/codec.md, Stage lists).
+is not a string, docs/spec/codec.md, Stage lists).
 
 `gz` and `json` are not byte-deterministic across implementations (compression, map key order);
-they are checked by value. Spec: `docs/codec.md`.
+they are checked by value. Spec: `docs/spec/codec.md`.

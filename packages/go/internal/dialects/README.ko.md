@@ -1,11 +1,11 @@
 <!-- doc-id: tests-dialects-readme -->
-<!-- source-sha256: 00c5b881ed800aa6083c1ed0addcb204e0250a6fc308b3228e78d0f38366720f -->
+<!-- source-sha256: fa2d2a65a7f7cfb3af1f9db8119b831245359394c2571d5c6852f0105860ab7f -->
 # 스키마 dialect 사실 probe
 
 [English](README.md)
 
 이 probe는 MySQL, PostgreSQL, SQLite가 스키마 객체를 정의하고 적용하는
-방식을 기록한다. `docs/dialects.md`의 schema definition 표는 각 probe ID를
+방식을 기록한다. `docs/spec/dialects.md`의 schema definition 표는 각 probe ID를
 인용한다. 중립 dbspec 기능은 probe가 세 데이터베이스에서 같은 의미와 그
 정의를 복원하는 catalog 출처를 보여 줄 때만 지원한다.
 
@@ -29,7 +29,7 @@ catalog 질의로 된 본문을 가진다. 성공해야 하는 단계, 지정한
 ## 실행
 
 ```sh
-make dialect-facts-check TEST_ENV=<path of the environment file of make test-servers>
+make dialect-facts-check TEST_ENV=<path of the environment file of make orm-test-servers>
 ```
 
 Target은 먼저 데이터베이스 없이 probe ID를 검사하고, `TEST_ENV`의
@@ -61,4 +61,4 @@ Probe는 공통 `tests/`의 Go test다. 적합성 검사기(`tests/conformance/c
 기록한다. 모듈은 이미 MySQL(`go-sql-driver/mysql`), PostgreSQL(`pgx`),
 SQLite(`modernc.org/sqlite`) driver를 링크하며 Go 오류 타입은 확인에 쓰는
 MySQL 오류 번호와 PostgreSQL SQLSTATE를 제공한다. SQLite library는
-클라이언트마다 다르며 버전은 `docs/dialects.md`에 기록한다.
+클라이언트마다 다르며 버전은 `docs/spec/dialects.md`에 기록한다.

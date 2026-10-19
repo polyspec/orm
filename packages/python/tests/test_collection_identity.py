@@ -13,7 +13,9 @@ from polyspec.orm.model import Collection  # noqa: E402
 
 
 def load_fixture():
-    return json.loads((ROOT / "tests" / "collection" / "keys.json").read_text(encoding="utf-8"))
+    return json.loads(
+        (ROOT / "tests" / "collection" / "keys.json").read_text(encoding="utf-8")
+    )
 
 
 def value_of(entry):
@@ -41,14 +43,19 @@ class CollectionIdentityTest(unittest.TestCase):
             "two keys of the fixture share an identity",
         )
         for entry in fixture["keys"]:
-            self.assertEqual(collection.get(value_of(entry))["name"], entry.get("same_as", entry["name"]))
+            self.assertEqual(
+                collection.get(value_of(entry))["name"],
+                entry.get("same_as", entry["name"]),
+            )
 
     def test_a_null_key_is_codec_decode(self):
         expected = load_fixture()["null"]
         with self.assertRaises(OrmError) as raised:
             Collection().put(None, {})
         self.assertEqual(raised.exception.code, expected["code"])
-        self.assertEqual(str(raised.exception), f"{expected['code']}: {expected['message']}")
+        self.assertEqual(
+            str(raised.exception), f"{expected['code']}: {expected['message']}"
+        )
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 // The language service's results in the forms of the Language Server Protocol. Positions are already UTF-16 (the
-// language service converts them; docs/editor.md "Layers").
+// language service converts them; docs/spec/editor.md "Layers").
 import { TOKEN_CLASSES, type DocumentAnalysis } from '@polyspec/dbspec-language';
 import { DiagnosticSeverity, type Diagnostic, type FoldingRange, type TextEdit } from 'vscode-languageserver';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
@@ -38,7 +38,7 @@ export function foldingRangesOf(analysis: DocumentAnalysis): FoldingRange[] {
 
 /**
  * The formatting edits: none for a canonical document, one edit of the whole text otherwise, and null for a document
- * with a diagnostic, which is refused and never rewritten (docs/dbspec.md "Formatting"); its diagnostics are published.
+ * with a diagnostic, which is refused and never rewritten (docs/spec/dbspec.md "Formatting"); its diagnostics are published.
  */
 export function formatEditsOf(text: TextDocument, analysis: DocumentAnalysis): TextEdit[] | null {
   const result = analysis.format();

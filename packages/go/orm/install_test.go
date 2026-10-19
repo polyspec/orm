@@ -187,7 +187,7 @@ type changedDatabase struct {
 }
 
 // TestInstallVerifiesTheDatabase checks that install compares the whole database, not only the table names,
-// with the set (docs/schema.md "Schema installation"). Installing the same set again on a database changed outside the ORM
+// with the set (docs/spec/schema.md "Schema installation"). Installing the same set again on a database changed outside the ORM
 // gives CONFIG that carries the differences, and the database is left as it is.
 func TestInstallVerifiesTheDatabase(t *testing.T) {
 	testcase.Start(t, testcase.Database)

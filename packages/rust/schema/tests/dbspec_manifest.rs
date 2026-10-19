@@ -159,7 +159,7 @@ fn set_vectors_case(case: &Value) {
             assert!(want.is_empty(), "{id}: manifest gave no errors, want {want:?}");
             if let Some(m) = expected {
                 // The runtime model is built from the manifest text and the external text, so they parse back as a set
-                // without diagnostics (docs/dbspec.md "Manifest and hashes").
+                // without diagnostics (docs/spec/dbspec.md "Manifest and hashes").
                 let split = |text: &str| -> Vec<String> {
                     let mut out: Vec<String> = Vec::new();
                     for line in text.split_inclusive('\n') {

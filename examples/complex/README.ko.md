@@ -22,5 +22,5 @@ member는 선언한 순서 하나로 나타나고, `read_sum`과 `like_avg`는 �
 
 각 client는 자기 process에서 문장을 계획한다. Rust 모델은 binary를 build할 때 `polyspec-orm-build`가 생성한다.
 
-`docs/examples/complex-query.md`는 제품 도메인의 다른 모양을 보여 준다. 그 예제 table은 이 저장소의 benchmark schema에 없으므로
+`docs/spec/complex-query.md`는 제품 도메인의 다른 모양을 보여 준다. 그 예제 table은 이 저장소의 benchmark schema에 없으므로
 설명용으로만 남는다.

@@ -30,6 +30,14 @@ export const parseNpmLock = (text: string, source: string): NpmLock => parseJson
 export const readComposer = (file: string): ComposerManifest => readJsonFile<ComposerManifest>(file, schema('composer'));
 /** parseComposer reads the text of a composer.json; source names it in the errors. */
 export const parseComposer = (text: string, source: string): ComposerManifest => parseJson<ComposerManifest>(text, schema('composer'), source);
+/** The fields of config/parity.json that the scripts read: the profiles, the units and the implementations. */
+export type ParityConfig = {
+  profiles: { name: string; implementations: string[] }[];
+  implementations?: { name?: string; errors?: { file?: string; pattern?: string } }[];
+  units: { id: string; kind?: string; profile?: string; bindings?: { implementation: string; test?: string }[]; symbols?: { implementation?: string; symbol?: string }[] }[];
+};
+/** readParityConfig reads config/parity.json, the one source of the parity units. */
+export const readParityConfig = (file: string): ParityConfig => readJsonFile<ParityConfig>(file, schema('parity'));
 /** readComposerPackages reads a composer.lock or a vendor/composer/installed.json. */
 export const readComposerPackages = (file: string): ComposerPackages => readJsonFile<ComposerPackages>(file, schema('composer-lock'));
 

@@ -59,10 +59,10 @@ count = Author().connect(slave1).get_count_by_service_seq(7)
 
 Go `model.Author()` returns `*model.AuthorModel`. Rust and TypeScript use asynchronous results, and Python a synchronous one. Syntax follows each language; argument meaning, data structure roles, and execution rules are shared.
 
-[Read the guide](usage.md) for binding, reads, writes, and relations. See the [component diagram](interfaces-model.md) for ownership rules.
+[Read the guide](operations/usage.md) for binding, reads, writes, and relations. See the [component diagram](spec/interfaces-model.md) for ownership rules.
 
 ## Implementation status
 
-The implemented clients are **Go, PHP, Rust, TypeScript, and Python**. All five clients generate their models with their own build tool, plan statements in the calling process, and execute them through the native database driver. No service runs beside the calling process. See the [implementation matrix](interface-implementation.md) and the [checklist](plans/execution-checklist.md) for verification scope and remaining work.
+The implemented clients are **Go, PHP, Rust, TypeScript, and Python**. All five clients generate their models with their own build tool, plan statements in the calling process, and execute them through the native database driver. No service runs beside the calling process. See the [implementation matrix](spec/interface-implementation.md) and the [checklist](plans/execution/checklist.md) for verification scope and remaining work.
 
-[DSL](dsl.md) · [Schema](schema.md) · [IR / Plan](protocol.md) · [Complex query example](examples/complex-query.md) · [Documentation build and deployment](docs-development.md) · [한국어 문서](index.ko.md)
+[DSL](spec/dsl.md) · [Schema](spec/schema.md) · [IR / Plan](spec/protocol.md) · [Complex query example](spec/complex-query.md) · [Documentation build and deployment](operations/docs-development.md) · [한국어 문서](index.ko.md)

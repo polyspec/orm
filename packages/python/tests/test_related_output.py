@@ -1,5 +1,5 @@
 # A related model is part of the row output under its relation name, as the Go client writes it
-# (docs/usage.md "Relations").
+# (docs/operations/usage.md "Relations").
 import tempfile
 import unittest
 from pathlib import Path

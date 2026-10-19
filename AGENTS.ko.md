@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: dfa96b72e2784b3fd5ace1a7021dcc8a8b9166a72e60dda8accafc9104de1756 -->
+<!-- source-sha256: 86e328a39a3320b14f0219c6477d6a026e56b7ae327b2a06f4c8b6675369d192 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -8,14 +8,14 @@
 orm 자신의 규칙만 적는다.
 
 - 사용자 지시가 우선이다. 로컬에서 개발하고, GitHub 원격 저장소에는 아래 push 규칙이 허용할 때만 push한다.
-- 기본은 `main`에서 바로 작업한다. 에이전트나 병렬 작업에 필요할 때 브랜치와 워크트리를 쓴다. merge 뒤 남은
-  브랜치나 워크트리는 디스크를 차지하고 폴더를 흩뜨리며 merge 여부를 헷갈리게 한다.
+  Enforced by: `.githooks/pre-push`
 - 0.x workflow에는 pull request, merge queue, ruleset이 없다. 항목마다 로컬에서 작업한다: 항목은 commit한 tree에서 그
   unit test가 통과하면 `[o]`가 된다. `main`에는 `[~]`인 항목이 없고 그 push의 작업이 끝났을 때 한 번 push한다. 그
   push의 CI(`push-gate`와 `.github/workflows/ci.yml`의 job `ci-passed`)가 성공해야 version을 올리는 commit과 tag를
   만든다. tag를 만들고 옮기고 push하는 것은 maintainer뿐이며, tag의 push가 release workflow를 실행한다. release
   asset의 이름은 `<package>-<language>-<version>.<ext>`이다(예: `polyspec-orm-npm-X.Y.Z.tgz`). Python wheel은 PEP 427 이름
   `polyspec_orm-X.Y.Z-py3-none-any.whl`을 유지한다.
+  Enforced by: `.githooks/pre-push`
 - 공유 도구는 npm package `@polyspec/kit`이며, `package.json`의 devDependency로 그 release의 asset과 integrity에
   고정한다. checkout은 그것을 `make install-tools TOOLS=npm`(`packageManager`의 npm)과 `make install-packages`로
   설치하고, Makefile은 설치된 package의 `kit.mk`를 include하는 `scripts/kit/kit-bootstrap.mk`를 include한다. 그
@@ -26,6 +26,7 @@ orm 자신의 규칙만 적는다.
   kit에 없거나 잘못된 도구는 kit에 알리고, 여기서 복사하거나 고치지 않는다. 이 저장소의 규칙은 사본을 읽지 않는다.
   polyspec 버전이 0.0.x인 동안 개발 checkout은 kit `docs/plans/local-links.md`가 설명하는 대로 설치된 polyspec
   package를 그 source에 link하며, link는 commit하지 않는다.
+  Enforced by: `make kit-check`
 - client package는 `packages/<runtime>`이고 runtime은 `go`, `ts`(TypeScript client), `php`, `php-ext`(PHP 확장),
   `python`, `rust`다(PRINCIPLES.md의 S5): folder 이름은 저장소 prefix를 갖지 않고, 배포 이름(`@polyspec/orm`,
   `polyspec/orm`, `polyspec-orm`)은 그것을 유지한다. Go module은 `github.com/polyspec/orm/packages/go`
@@ -34,18 +35,20 @@ orm 자신의 규칙만 적는다.
   `procevent`, 그리고 `internal/testdb`를 가진다. `tests/`의 Go runner, physical test, 도구 program은 module
   `github.com/polyspec/orm/tests`(`tests/go.mod`)이고, example은 `github.com/polyspec/orm/examples`(`examples/go.mod`)이며,
   root의 `go.work`가 셋을 묶으므로 replace directive 없이 checkout의 `packages/go`를 쓴다.
+  Enforced by: none, `make layout-check`는 발견 사항을 고칠 때까지 손으로 실행한다
 - dbspec의 editor package는 `packages/dbspec-language`(language service와 `dbspec-fmt` 명령),
   `packages/dbspec-lsp`(language server), `packages/dbspec-codemirror`(CodeMirror extension),
   `packages/dbspec-vscode`(VS Code extension)다. 앞의 셋은 client와 함께 npm archive
   `@polyspec/dbspec-language`, `@polyspec/dbspec-lsp`, `@polyspec/dbspec-codemirror`로 릴리스되고, VS Code
-  extension은 릴리스 버전을 유지하며 `.vsix`로 빌드된다(docs/editor.md).
-- 브랜치는 `{type}/{shortname}-{체크리스트 ID}`, 워크트리는 `{프로젝트}-{shortname}-{체크리스트 ID}`로
-  이름 짓는다. 브랜치를 `main`에 통합한 뒤 커밋이나 동등한 변경이 반영됐고 워크트리가 깨끗한지 확인한다.
+  extension은 릴리스 버전을 유지하며 `.vsix`로 빌드된다(docs/spec/editor.md).
+  Enforced by: none, 편집기 package 목록을 package와 대조하는 검사가 없다
+- 브랜치를 `main`에 통합한 뒤 커밋이나 동등한 변경이 반영됐고 워크트리가 깨끗한지 확인한다.
   삭제할 워크트리에만 있는 `.gitignore` 제외 파일 중 계속 필요한 파일은 먼저 다른 곳에 보존한다. 그런 다음
   `make worktree-remove WORKTREE=<path>`로 워크트리를 제거하고 로컬 브랜치를 즉시 지운다. 이 target은 먼저
   그 `.runtime/servers`의 server를 멈추고(data directory가 지워진 server는 끝나지 않는다) `git worktree
   remove`를 실행한다.
   미통합 작업이나 진행 중인 작업은 보존한다.
+  Enforced by: none, 워크트리와 그 제거를 보는 검사가 없다
 - 각 checkout은 Rust를 자기 target directory(그 checkout의 `packages/rust/target`)에 build하고, 어떤 checkout도
   `CARGO_TARGET_DIR`을 다른 checkout의 target directory로 정하지 않는다. command line이 checkout 밖의 것을
   정하면 `make`가 멈춘다. cargo는 artifact가 fresh인지를 package 기준 source 경로와 그 수정 시각으로 판단하고
@@ -53,16 +56,18 @@ orm 자신의 규칙만 적는다.
   다른 checkout의 code를 test하게 된다. 공유하지 않으면 그 원인을 감지하는 대신 없앤다. target directory의
   lease는 여전히 한 checkout의 실행들의 build 순서를 정한다. worktree를 지우면 그 target directory도 함께
   지워진다. worktree에서 build하기 전에 남은 disk를 확인한다.
-- `docs/plans/execution-checklist.md`가 유일한 작업 목록이다. 한국어 문서의 항목 ID와 상태는 같다. 항목 상태를 변경하기 전에 `make documents-check`를 실행한다. 체크리스트에는 항목만 둔다: 상태 표시는 항목이나 하위 항목 맨 앞의 상태로만 쓰고 범례, 제목, 항목의 글에는 쓰지 않으며, `make documents-check`는 그 밖의 표시를 file, 줄, 열과 함께 실패로 본다.
-- `[ ]`는 대기, `[~]`는 진행 중, `[o]`는 구현·테스트·기록을 함께 커밋했을 때만 완료, `[!]`는 미완료 항목을 우회해야 다음으로 진행할 수 있을 때만 쓰고, `[-]`는 그 항목이 불가능할 때 쓴다: 완료될 수 없으므로 재개도 없고 우회도 아니다. `[!]` 항목에는 `원인:`과 `재시도:`를 적고 재시도 조건이 충족되면 재개하며 우회는 완료가 아니다. `[-]` 항목에는 `원인:`을 적으며 `[o]`처럼 종결 상태다.
-- `[o]` 표시는 변경 기록 항목도 같은 커밋에서 CHANGELOG.md와 CHANGELOG.ko.md 맨 위의 `## Unreleased` 아래에 남기며
-  (`make version-check`), 커밋되지 않은 변경은 항목 하나만 다룬다.
-  받은 지시는 먼저 분류한다: 지시가 명시적이고 긴급하지 않으면 진행 중 항목을 완료하고, 새 작업은
-  우선순위에 따라 배치한 뒤 시작한다.
+  Enforced by: `make rust-check`
+- `docs/plans/execution/checklist.md`가 유일한 작업 목록이다. 한국어 문서의 항목 ID와 상태는 같다. 항목 상태를 변경하기 전에 `make docs-check`를 실행한다. 체크리스트에는 항목만 둔다: 상태 표시는 항목이나 하위 항목 맨 앞의 상태로만 쓰고 범례, 제목, 항목의 글에는 쓰지 않으며, `make docs-check`는 그 밖의 표시를 file, 줄, 열과 함께 실패로 본다.
+  Enforced by: `make docs-check`
+- `[o]` 표시는 변경 기록 항목도 같은 커밋에서 CHANGELOG.md와 CHANGELOG.ko.md 맨 위의 `## Unreleased` 아래에 남긴다
+  (`make version-check`).
+  Enforced by: `make version-check`
+- 받은 지시는 먼저 분류한다: 지시가 명시적이고 긴급하지 않으면 진행 중 항목을 완료하고, 새 작업은 우선순위에 따라 배치한 뒤 시작한다.
+  Enforced by: none, 작업 순서는 에이전트의 판단이다
 - 저장소의 전체 테스트 묶음은 `main`으로의 push 뒤 GitHub CI에서 실행한다: 수동 실행에서도 실행한다.
   CI는 그것을 Makefile의 CI group(`CI_GROUPS`, `CI_TARGETS_<group>`)으로 나눈다: group마다 job
   하나가 모두 동시에, 그 target이 필요로 하는 setup step만 실행한 뒤 `make check-run GROUP=<group>`을 실행한다. group들은 함께
-  `CHECK_TARGETS`의 모든 target을 정확히 한 번 실행하고(`make repo-check`), 로컬 `make check`는 guard를 거쳐 모든 target을 실행한다.
+  `CHECK_TARGETS`의 모든 target을 정확히 한 번 실행하고(`make repo-check`), 로컬 `make orm-check`는 guard를 거쳐 모든 target을 실행한다.
   CI 실행 한 번은 다음 CI 실행 전에
   그 실행이 찾은 모든 실패를 고칠 수 있을 만큼의 정보를 모아야 한다. 실행은 실패에서 멈추지 않는다: 필요한
   setup 단계가 실패한 target은 그 단계와 첫 실패 줄과 함께 `not-run`으로 기록하고 나머지 target은 모두
@@ -76,6 +81,7 @@ orm 자신의 규칙만 적는다.
   수 있게 하며, 실패한 case는 무엇이, 어디서, 왜 실패했는지 적는다. 실행은 모든 target의 상태, 시간, 첫 실패
   줄을 담은 summary로 끝나고, CI는 그것을 job summary로 내고 그 실행 id의 보고서와 함께 올리며, target이
   실패하거나 실행되지 않으면 job은 실패한다.
+  Enforced by: `make repo-check`
 - test 단계는 아무것도 남기지 않는다. check runner와 `make feature-owner-check`는 단계마다 자기 임시 directory(`TMPDIR`)와
   자기 process group에서 실행한다. 통과한 단계가 그 directory의 entry, `.runtime/run`의 실행 directory, group의
   process를 남기면 그 단계는 남긴 것을 적고 실패하며, 실패한 단계가 남긴 것은 보고서에 들어간다. 어느 쪽이든
@@ -83,67 +89,73 @@ orm 자신의 규칙만 적는다.
   Go `main`은 `os.Exit(run())`으로 끝나고 `defer` 뒤에 `os.Exit`를 부르지 않으며(`make go-vet-check`), Rust test는
   임시 directory를 drop할 때 지우는 값으로 가진다. 자기 session을 새로 여는 process는 group을 떠나 보이지 않으므로,
   단계보다 오래 사는 server는 setup 단계만 시작한다.
+  Enforced by: `make repo-check`
 - test의 결과는 그것을 실행한 쪽의 환경에 달리지 않는다. JavaScript test는 하위 process(make, check script, 가짜
   도구)를 tests/environment.mts의 `isolatedEnvironment`로 시작한다: `PATH`, `HOME`, `TMPDIR`과 case가 주는 변수뿐이므로
   CI job의 `GROUP`, `GITHUB_ACTIONS`, `ORM_CHECK_RUN_ID`, 상위 make의 `MAKEFLAGS`와 Makefile이 export하는 변수는 그
   process에 닿지 않는다(`make repo-check`).
+  Enforced by: `make repo-check`
 - 성능은 측정하고 보고할 뿐 test를 실패시키지 않는다. test는 측정(CPU 시간과 wall-clock 시간, 기준, 비율, 기계)을
   출력하고, 측정이 문서의 기준값을 넘으면 측정값, 기준값, 기계를 담은 `WARNING` 줄을 출력한다. check runner는 그 줄을
   실행 기록과 summary에 남기고 GitHub `::warning::` annotation으로 쓴다. test는 그래도 통과한다. test는 정확성으로만
   실패하고, 기한은 멈추지 않는 case를 끝낼 뿐이다. `make repo-check`(Go는 `make go-vet-check`)는 측정한 시간이 한도를
   넘었다고 실패하는 test를 거부한다. 경고를 없애려고 기준값을 올리지 않는다. 바꾸려면 CI runner에서 얻은 같은 종류의 새 증거가 필요하다.
+  Enforced by: `make repo-check`
 - 검사는 결과가 시간에 따라 달라지는 registry 조회를 하지 않는다: 최신 version 조회, version 범위의 해석, 오래된
   package나 새 release의 조회가 없다. lock이 정확한 version과 integrity로 고정한 package의 download는 설치이며
   허용한다. `make install`이 검사가 읽는 것을 download하고, Makefile은 cargo, go, npm, Composer를 offline으로
   실행하며(`CARGO_NET_OFFLINE`, `GOPROXY=off`, `npm_config_offline`, `COMPOSER_DISABLE_NETWORK`), install target만
   `$(ONLINE)`으로 version을 푼다. 빠진 download는 online으로 다시 시도하라는 말이 아니라 `run make install`과 함께
   실패한다.
+  Enforced by: `make dependency-policy-check`
 - dependency는 최신 stable release로 올리거나, 재현 가능한 이유, 그것을 없애는 조건, 확인하는 명령을 적은
   `config/dependency-policy.json`의 예외로 둔다. `make dependency-review UPDATE=1 RECORD=1`(online이며
   `make install-tools`가 설치하는 `config/toolchain.json`의 `cargoAudit`와 `govulncheck`가 필요하다)은
   registry와 advisory database에 묻고 `config/dependency-review.json`을 쓴다.
   `make dependency-policy-check`와 `make dependency-policy-mutation-check`는 그 기록과 manifest와 lock을 읽고
   registry에 묻지 않는다.
+  Enforced by: `make dependency-policy-check`
 - 검사가 쓰는 모든 toolchain은 선언 하나로 고정하고 확인한다: `mise.toml`의 node, `packages/go/go.mod`의 `go` 줄,
   `mise.toml`의 Composer, `rust-toolchain.toml`은 정확한 release를, `.php-version`과 PostgreSQL major release는
   설치 도구가 허용하는 만큼 정확한 release를 적고, CI는 선언한 것을 설치하며, 실행 중인 도구가 다르면
   `make toolchain-check`와 `make repo-check`가 실패한다. 새 release는 그 release의 CI 증거와 함께 선언을 바꾸어 들인다.
+  Enforced by: `make repo-check`
 - 다른 실행이나 뒤의 단계가 읽는 build 출력은 원자적으로 publish한다: 옆의 임시 file이나 directory에
   build하고 rename으로 최종 경로에 놓으므로(`$(PUBLISH)`, scripts/typescript/build.mts) 멈춘 build가 반쪽
   출력을 남기지 않는다.
+  Enforced by: none, build가 출력을 어떻게 쓰는지 보는 검사가 없다
 - 실패 message는 원인과 고치는 방법을 적는다: 빠진 변수, 인자, file, 도구는 무엇이 빠졌는지와 그것을 주는
   방법(`; run make <target>, which ...`)을 적는다. `make repo-check`는 고치는 방법이 없는 빠진 조건의
   message를 거부한다.
+  Enforced by: `make repo-check`
 - 실행들이 함께 쓰는 port와 database는 lease로 갖거나 한 실행이 소유한다: checkout의 server는
-  `make test-servers`가 고른 빈 port에서 listen하고, 실행마다 자기 bench와 decimal database를, database
+  `make orm-test-servers`가 고른 빈 port에서 listen하고, 실행마다 자기 bench와 decimal database를, database
   case마다 자기 database를 만들며, test는 공유 database에 만드는 것의 이름에 자기 process를 넣는다. 어떤
   code도 TCP port를 고정하지 않는다.
+  Enforced by: `make orm-test-servers-check`
 - code는 file을 working directory나 Makefile이 준 경로에서 찾고, binary가 compile된 경로(Go의
   `runtime.Caller`)에서 찾지 않는다: 그 경로는 실행하는 checkout이 아니라 binary를 build한 checkout을 가리킨다.
-- 개발하는 동안에는 unit test만 실행한다: 바뀐 것의 Red/Green unit case다. end-to-end 실행(실제 database
+  Enforced by: none, code가 파일을 찾는 방식을 읽는 검사가 없다
+- 개발하는 동안에는 unit test만 실행한다: 바뀐 것의 unit case다. end-to-end 실행(실제 database
   server, 언어 사이의 conformance, container, 전체 build), `make owner-check`, 전체 묶음은 push 뒤
   CI에서 실행하며, push 전에 필요한 로컬 검사는 없다. CI 보고서를 하나씩 읽고 찾은 것을 고친다. push는 `[~]`인 체크리스트 항목이 없을
   때만 한다. pre-push hook `.githooks/pre-push`는 `make push-gate-hook`으로 kit의 push gate를 실행하고, gate는 push하는
   commit이나 working tree에 `[~]` 항목이 있으면 push를 거부하며, CI workflow `push-gate`가 모든 push에서 그 commit을
   다시 검사한다(`make push-gate-commit`). `make hooks`는 `core.hooksPath`를 두고, `make hooks-check`와 전체 묶음의 guard는
   hook이 없는 checkout을 거부한다. CI 실패는 체크리스트 항목으로 고친다. CI 실행이 진행 중일 때 그것에 대응하려고 다시 push하지 않는다.
+  Enforced by: `.githooks/pre-push`
 - `.github/workflows/ci.yml`이 저장소의 모든 검사를 가지고 `main`으로의 push와 수동 실행에서 실행된다. 마지막 job
   `ci-passed`는 job `test`(CI group마다 job 하나)와 `docs`가 실패해도 그 뒤에 실행되고 그 모두가 성공했을 때만
   통과한다(`make ci-passed`). `.github/workflows/push-gate.yml`은 모든 push에서 push gate를 실행하고,
   `.github/workflows/docs-pages.yml`은 `main`의 site를 build하고 deploy만 한다.
-- `make check`는 어떤 단계보다 먼저 kit의 guard(`full-run`)를 실행한다: 체크리스트 항목(하위 항목 포함)이
+  Enforced by: `make repo-check`
+- `make orm-check`는 어떤 단계보다 먼저 kit의 guard(`full-run`)를 실행한다: 체크리스트 항목(하위 항목 포함)이
   `[~]`인 동안, 추적하는 file에 commit하지 않은 변경이 있는 동안, Git hook이 설치되지 않은 동안, 그리고
   `var/full-run.json`이 같은 tree의 전체 실행을 기록하고 있을 때 거부하며, 그렇지 않으면 target `check-run`을 실행하고
   결과를 기록한다. `make rerun-failed`는 같은 tree에서 그 기록의 통과하지 못한 target을 다시 실행한다: 원인이 tree
   밖(환경이나 machine 자원)에 있는 실패에 쓴다. 다시 실행하려고 기록을 지우거나 고치지 않는다. 새 checkout에는 기록이
   없으므로 CI는 guard가 없는 `make check-run GROUP=<group>`을 실행한다.
-- 커밋 로그는 영문으로 `type(scope): subject (#issue)` 형식으로 쓴다: 50자 이내 명령조 대문자 시작
-  제목(끝 마침표 없음), 빈 줄, 72자 부근 개행한 본문(무엇을·왜 변경했는지), 선택적 꼬리말. 타입은
-  feat, fix, docs, style, refactor, test, chore 중 하나다. merge commit은 git이 쓰는 제목을 그대로 둔다.
-  추적하는 `commit-msg` hook(`.githooks/commit-msg`, `make`가 `core.hooksPath`로 설치)은 `make commit-msg-check`를 실행해 이 규칙을 어긴 제목의
-  커밋을 거부한다. push된 커밋은 바꿀 수 없기 때문이다. `make commits-check`(kit의 `check-commits`, `config/commits.json`)는
-  `RANGE`(`<base>..<head>`)의 message를, 없으면 HEAD의 message를 검사한다. type과 한도는 `config/commits.json`의 data다.
-  추적하는 file은 commit id를 기록하지 않는다.
+  Enforced by: none, guard는 로컬 `make orm-check`에서만 실행되고 어떤 검사도 이를 실행하지 않는다
 - 소유 검사: `make owner-check`(또는 `make owner-check PATHS="<paths>"`)는 바뀐 file을 소유한 검사를 실행하는
   도구다(`config/owner-checks.json`이 path를 `make feature-owner-check`에 넘기고, 그것이
   `scripts/features/owners.mts`로 검사를 고른다). CI가 push 뒤에 전체 묶음을 실행하므로, commit이나 push 전에 그것을 요구하는 규칙은 없다.
@@ -151,23 +163,26 @@ orm 자신의 규칙만 적는다.
   `tests`와 선택적 `inputs`를 선언한다. 이 명령은 바뀐 file이 그 입력이거나 선언한 fixture data가 그 file을
   적는 명령과 단위, 그리고 `contracts/features.json`의 자기 항목이 바뀐 기능의 명령과 단위만 실행한다.
   여러 기능이 쓰는 helper는 `helpers`에 자기 check와 함께 선언하고 어떤 입력에도 넣지 않는다. helper의
-  변경은 그 check만 실행하며, helper를 쓰는 모든 기능의 실행은 `make check`가 맡는다. `make check`는 helper check마다 한 번
-  실행한다: `make feature-helper-check`에서, stress target에서, 또는 check가 `make check`의 target이나 setup 단계인
+  변경은 그 check만 실행하며, helper를 쓰는 모든 기능의 실행은 `make orm-check`가 맡는다. `make orm-check`는 helper check마다 한 번
+  실행한다: `make feature-helper-check`에서, stress target에서, 또는 check가 `make orm-check`의 target이나 setup 단계인
   helper(`FEATURE_SUITE_HELPERS`)는 그곳에서다(`make repo-check`). 입력이 없는 검증
   명령, 추적되는 file을 맞추지 않는 입력, 입력으로 쓰인 helper는 검증이 실패시킨다. 또 `contracts/check-inputs.json`이 scope `owner`로 선언하고 입력이 바뀐
   path를 맞추는 make target(예: 바뀐 문서에 대한 `docs-check`와 `docs-verify-idempotent`)을 실행한다.
   owner target은 file 단위 검사다: format, checklist, 문서, 검사기의 unit test. client, database,
-  conformance 묶음 전체를 실행하는 target은 scope `suite`이며 `make check`에서만 실행한다.
+  conformance 묶음 전체를 실행하는 target은 scope `suite`이며 `make orm-check`에서만 실행한다.
   `CHECK_TARGETS`의 모든 target은 scope를 선언하고, 선언하지 않은 target이 있으면 `make owner-check`와
   `make repo-check`가 실패한다. 소유 검사를 직접 고르지 않는다. 어떤 입력도 아닌 바뀐 file은 아무것도 고르지 않고
   `make owner-check`가 그 사실을 출력한다. 그 file을 실행하는 명령의 입력에 선언하고, 새 make target의
   scope도 선언한다. 커밋 전에는 바뀐 모든 file의 이름을 test와 script에서 찾아 그 file을 읽는 것 가운데 unit test를 실행한다.
   항목의 증거에 명령과 통과 수를 적는다.
+  Enforced by: `make owner-validate`
 - 시험 파일은 자기를 실행하는 owner target의 레시피가 `contracts/check-inputs.json`의 `paths`나 `inputs`로 고른다. `scope` 선언(`suite`나 `lint`)은 어떤 owner target도 실행하지 않는 헬퍼나 도구에만 쓴다. 시험 파일의 scope 선언은 시험이 돌지 않는데 검사가 통과하게 하므로, 이 규칙이 금지하는 우회다. `contracts/check-inputs.json`에 선언된 target은 모두 `CHECK_TARGETS`에 있다.
+  Enforced by: `make owner-validate`
 - `contracts/features.json`이 `environment: linux-runner`로 선언한 검증(예:
   `make php-without-mysql-check`)은 `.github/runner`의 Linux runner에서 실행한다. 다른 machine의
-  `make check`는 그것을 RUNNER 줄로 출력하고 통과로 세지 않는다. CI가 그것을 실행한다.
-- 항목을 진행하는 동안에는 바뀐 것의 Red/Green unit test만 실행하고, 수정할
+  `make orm-check`는 그것을 RUNNER 줄로 출력하고 통과로 세지 않는다. CI가 그것을 실행한다.
+  Enforced by: `make repo-check`
+- 항목을 진행하는 동안에는 바뀐 것의 unit test만 실행하고, 수정할
   때마다 테스트를 기계적으로 다시 실행하지 않는다. 짧은 검증 단위인 모든 테스트 case는 자신의
   실행·완료·성공·실패와 경과 시간을 출력하고 자기 타임아웃을 가지며, 전체 일괄 타임아웃은 쓰지
   않는다. 장기 작업(build, 설치, `tsc`, `go build`, `go generate`, `go vet`, `cargo build`,
@@ -177,36 +192,62 @@ orm 자신의 규칙만 적는다.
   잰다. 공유 machine에서 wall-clock 시간은 다른 process가 processor를 쓰는 시간도 담기 때문이다.
   멈춘 case를 끊는 timer, database나 다른 process가 하는 일의 제한, 시간 동작 자체를 확인하는
   테스트는 wall-clock 시간을 잰다.
+  Enforced by: none, 이 규칙은 에이전트의 작업을 다스리며 어떤 도구도 실행한 test를 보지 않는다
 - 완료 결과 없이 미완료 항목 수를 늘리기 전에 진행 중인 작업을 완료한다. 지속 적용할 개발 규칙은 이 파일에 두고 구체 산출물과 증거는 체크리스트에 둔다. 체크리스트 검사는 번호 없는 정책·상태 서술을 거부한다.
+  Enforced by: `make docs-check`
 - Go, PHP, Rust, TypeScript, Python은 하나의 동작 계약을 공유한다. 데이터베이스 의존 기능은 모든 클라이언트의 MySQL, PostgreSQL, SQLite 실행 증거가 필요하다. 데이터베이스 비의존 기능은 모든 클라이언트의 동등한 실행 사례가 필요하다. 환경 부재나 실행되지 않은 사례는 실패다.
+  Enforced by: `make conformance-check`
 - Go, PHP, Rust, TypeScript, Python 출력에 선언된 벡터만 정확히 들어 있고 각 결과가 같을 때만 적합성 기대값을 기록한다. 거부된 기록은 기대값 파일을 변경하지 않는다.
+  Enforced by: `make conformance-check`
 - 적합성 비교와 기록은 비어 있지 않고 중복 없는 벡터 이름 및 각 데이터베이스 기대값 파일에서 정확히 같은 벡터 이름을 요구한다. 누락되거나 추가된 이름은 오류다.
+  Enforced by: `make conformance-check`
 - 공통 계획·방언·스키마·오류 동작은 `packages/go/engine/*`, `packages/go/cmd/orm-gen`, 계약 문서에서 정의한다. 클라이언트 동작은 소유하는 `packages/<runtime>/*` 폴더에 구현하고 공통 검증은 `tests/*`, `schema/*`, `scripts/*`에 둔다. 지원하는 모든 클라이언트에서 필요한 실행 사례가 통과하기 전에는 기능을 완료하지 않는다.
-- 기능 coverage 증거는 현재 검사에서 실행한 명령의 정확한 사례 ID와 결과·데이터베이스 상태가 같은 두 번의 실행에서 얻는다. 이름만 있는 테스트 파일이나 저장된 출력은 실행 증거가 아니다. coverage 검사기는 `make feature-coverage`에서, 그 변경 반례 테스트는 `make feature-unit-check`에서 실행한다. `make check`는 검증 명령을 각 명령이 선언한 `shard`(cargo로 Rust를 build하고 실행하는 명령은 `rust`)에 따라 `make feature-verify-rust`와 `make feature-verify-other`에서 실행하고, `make feature-check`는 그 셋을 실행한다.
+  Enforced by: `make parity-declarations-check`
+- 기능 coverage 증거는 현재 검사에서 실행한 명령의 정확한 사례 ID와 결과·데이터베이스 상태가 같은 두 번의 실행에서 얻는다. 이름만 있는 테스트 파일이나 저장된 출력은 실행 증거가 아니다. coverage 검사기는 `make feature-coverage`에서, 그 변경 반례 테스트는 `make feature-unit-check`에서 실행한다. `make orm-check`는 검증 명령을 각 명령이 선언한 `shard`(cargo로 Rust를 build하고 실행하는 명령은 `rust`)에 따라 `make feature-verify-rust`와 `make feature-verify-other`에서 실행하고, `make feature-check`는 그 셋을 실행한다.
+  Enforced by: `make feature-coverage`
 - coverage 검사기는 선언된 각 언어의 테스트 파일과 정확한 사례 필터를 직접 실행하고 종료 코드와 관찰한 테스트 이벤트에서 성공을 판단한다. 테스트 출력은 성공 보고서나 데이터베이스 상태 digest를 제공할 수 없다. 데이터베이스 사례에서는 검사기 자체 상태 판독기로 매 실행 전후의 선언된 데이터베이스 상태를 읽는다.
+  Enforced by: `make feature-unit-check`
 - coverage 사례 ID는 언어에 공통인 동작을 가리킨다. Go와 Rust 명령은 해당 ID를 소유 파일의 정확한 실제 테스트 심볼에 연결하며, 검사기는 그 심볼의 통과를 확인한 뒤에만 ID를 수용한다. 데이터베이스 사례에서 검사기는 선택한 데이터베이스와 DSN을 실제 테스트 프로세스에 전달한다.
+  Enforced by: `make feature-coverage`
 - 소유 client는 `packages/<runtime>` 아래에 있는 테스트로 자기 동작 사례를 실행한다. 선언된 각 사용 부분은 자기 디렉터리의 테스트로 별도의 통합 사례를 실행한다. 기능 계약은 두 부분, 테스트 경로, 명령을 지정하며 소유자·사용자 증거가 없거나 테스트가 해당 부분 밖에 있으면 coverage 검사가 실패한다. 중앙 conformance는 client 결과를 비교하며 소유자 테스트를 대신하지 않는다.
+  Enforced by: `make feature-coverage`
 - 관찰할 이벤트가 있으면 폴링이나 타이머 대신 그 이벤트를 사용한다. 선언된 기한에는 타이머를 사용할 수 있다. 이 저장소가 만드는 것에 심볼릭 링크를 쓰지 않고 대체 실행 경로를 쓰지 않는다. 다이어그램의 원본은 Mermaid 정의이며 생성물은 원본 정의와 분리해 보관한다.
-- 기존 외부 도구나 라이브러리가 이미 하는 일을 다시 만들지 않는다. 그 생태계의 표준 도구를 있는 그대로 사용하고(예: Python interpreter, 환경, lock은 uv, PHP 의존성은 Composer), 그 도구가 만드는 symbolic link처럼 자기 동작을 받아들인다. 이 저장소의 규칙은 이 저장소가 만드는 것을 다스린다.
+  Enforced by: none, polling, timer, symbolic link를 검사하는 도구가 없다
 - 경로는 선언적으로(추적 파일에 이름을 적어) 또는 발견(discovery)으로(문서나 script가 밝힌 발견 규칙에 따라) 정하며, 상대 경로로 정하지 않는다.
+  Enforced by: none, code가 경로를 해석하는 방식을 읽는 검사가 없다
 - 하나의 `0.0.18` 버전을 개발한다. 공개 클라이언트는 드라이버 인자를 따로 받지 않고 URI scheme이 데이터베이스를 선택하는 DSN URI 하나를 받는다. 실행 시 orm은 클라이언트 라이브러리뿐이며 계획과 실행은 그것을 부르는 프로세스 안에서 이뤄진다.
+  Enforced by: `make version-check`
 - 각 dbspec parser는 `identity` 컬럼이 유일한 기본 키 컬럼이고 type이 `i64`가 아니면 거부한다. 모든 dbspec 구현(Go, PHP, PHP extension, TypeScript, Python, Rust)은 동일한 허용·거부 스키마 사례를 실행한다.
+  Enforced by: `make conformance-check`
 - SQLite 실제 스키마 가져오기는 `INTEGER PRIMARY KEY AUTOINCREMENT`만 부호 있는 `i64` 자동 키로 바꾸고 일반 `INTEGER`는 `i32`로 유지한다.
+  Enforced by: `make dbspec-introspect-check`
 - 모든 변환은 idempotent하다. parse한 canonical source를 emit하면 byte 단위로 같고, 같은 입력으로 operation을 반복하면 같은 결과와 상태가 된다.
+  Enforced by: `make dbspec-apply-check`
 - 이름은 그것이 하는 일을 말하고, 한 개념은 모든 client에서 한 이름을 쓴다. 이름, prefix, suffix가 동작을 고르지 않는다. 동작은 명시적으로 선언한다.
+  Enforced by: none, 이름은 검토의 판단이며 언어 사이의 이름을 비교하는 검사가 없다
 - code 주석과 commit message는 영어다. tracked code 파일의 주석에는 한글이 없으며, `make comment-language-check`(T131)가 한글 주석을 파일과 줄을 대며 실패시킨다. commit message에도 한글을 쓰지 않는다. 새로 쓰거나 바꾸는 주석은 영어다(PRINCIPLES.md).
+  Enforced by: `make comment-language-check`
 - Go 값 변환, host 인코딩, 생성 모델 대입은 잘못된 값에 오류를 반환한다. 행을 쓰기 전에 insert 필드 대입을 검증하고 행 조립 오류를 호출자에게 전파한다.
+  Enforced by: `make go-test-check`
 - Go collection 식별자와 scalar 비교는 지원하는 값의 타입을 보존한다. 지원하지 않거나 손실되는 key는 실패하고 collection, relation, 분할 질의 호출자는 오류를 전파한다.
+  Enforced by: `make go-test-check`
 - 값 스타일 컬럼의 setter와 getter는 SQL NULL, 인코딩된 null 값, 조회하지 않은 컬럼을 명시적 값 타입으로 구분한다. setter는 모델을 변경하기 전에 잘못된 입력을 거부하고, 명시적으로 요청한 미조회 컬럼은 `COLUMN_UNSELECTED`를 반환한다.
+  Enforced by: `make go-test-check`
 - 생성 typed 모델 필드는 비공개다. 조회하거나 대입하지 않은 필드 접근은 `COLUMN_UNSELECTED`로 실패하며 그룹 개수는 일부 필드만 채운 모델 대신 전용 결과를 쓴다.
+  Enforced by: `make go-model-check`
 - 그룹 결과는 선택한 각 컬럼의 선언된 값 타입을 보존한다. 불리언 그룹 컬럼은 모든 데이터베이스에서 불리언을 반환하며 저장된 불리언 값이 잘못되면 숫자나 기본값으로 바꾸지 않고 실패한다.
-- 영문과 국문 문서를 동등하게 유지한다. 추가 작성자 표기 없이 `min-0-max <max@blue.tools>`로 로컬 커밋한다. 기록은 이 저장소의 동작을 설명하며 외부 출처의 이력을 담지 않는다.
+  Enforced by: `make conformance-check`
+- 영문과 국문 문서를 동등하게 유지한다. 기록은 이 저장소의 동작을 설명하며 외부 출처의 이력을 담지 않는다.
+  Enforced by: `make docs-check`
 
 ## 생성 파일
 
 - 생성 파일은 git에 추적하지 않는다. 여기에는 의존성 설치물(`node_modules/`, `vendor/`, `vendor-php/`, `.venv/`, `venv/`), 빌드 산출물(`dist/`, `target/`, `*.egg-info/`, `*.vsix`), 캐시(`__pycache__/`, `*.pyc`, `docs/.vitepress/cache/`), 테스트 실행 산출물(`.runtime/`, `var/`, `*.test`), 도구 다운로드(`var/tools/`)가 포함된다.
+  Enforced by: `.githooks/pre-commit`
 - 예외는 저장소가 의도적으로 필요로 하는 파일뿐이며 여기에 이름을 적는다. 커밋된 lock `.kit/kit.lock.json`과 `tests/*/fixtures/` 아래의 테스트 fixture다.
+  Enforced by: `.githooks/pre-commit`
 - 덮이는 각 경로에는 `.gitignore` 항목이 있다. kit의 pre-commit hook이 생성 경로의 staged 추가를 거절하며, 저장소는 자기 패턴과 명명된 예외를 `config/generated.json`에 선언한다.
+  Enforced by: `.githooks/pre-commit`
 
 ## Release
 
@@ -216,8 +257,10 @@ orm 자신의 규칙만 적는다.
   `composer update --lock`으로 다시 lock하며(lock의 content-hash가 `version`을 덮는다), 이어 `make dependency-review RECORD=1`을
   실행하고(`make dependency-policy-check`는 낡은 lock을 실패시킨다), CHANGELOG.md와 CHANGELOG.ko.md에서 `## Unreleased`를 새 빈 `## Unreleased`
   아래의 `## X.Y.Z`로 바꾼다.
+  Enforced by: `make version-check`
 - 그 commit의 CI(`push-gate`와 `ci-passed`)가 성공한 뒤 maintainer가 그 commit에 `vX.Y.Z`를 tag하고 같은 commit의 Go module
   tag `packages/go/vX.Y.Z`와 함께 push한다. 그 tag가 Go module `github.com/polyspec/orm/packages/go`를 release한다. tag를 만들고 옮기고 push하는 것은 maintainer뿐이다.
+  Enforced by: none, 누가 tag를 만드는지 보는 검사가 없다. tag push는 release workflow를 실행한다
 - tag의 push는 `.github/workflows/release.yml`을 실행하고, 그것이 GitHub Release를 게시한다: `make release-verify`
   (commit이 `main`에 있고 그 check `push-gate`와 `ci-passed`가 성공했다), `make release-versions`(release하는 모든
   manifest가 X.Y.Z를 가지고, `packages/go/go.mod`의 module path가 `github.com/polyspec/orm/packages/go`이며, 변경 이력에 그 section이 있다),
@@ -226,7 +269,9 @@ orm 자신의 규칙만 적는다.
   release이며, GitHub release 본문의 한도인 125000자를 넘는 section은 tag의 CHANGELOG.md에서 그 section을 가리키는 한 줄이
   된다)다. test는 다시 실행하지 않는다. `make release-coverage`는 checkout의 모든 manifest가 `config/release.json`에
   분류되어 있기를 요구한다.
+  Enforced by: `make release-coverage`
 - Python client(`packages/python/pyproject.toml`)는 wheel `polyspec_orm-X.Y.Z-py3-none-any.whl`로 release된다(`config/release.json`의
   `wheel`, 고정된 `buildBackend`와 함께). Rust crate `polyspec-orm`, `polyspec-orm-schema`, `polyspec-orm-build`는 git tag로 소비되고
   release archive가 없다(`config/release.json`의 `git-tag`). version을 올리는 commit이 다른 manifest와 함께 그
   모든 `version`을 설정한다.
+  Enforced by: `make release-coverage`

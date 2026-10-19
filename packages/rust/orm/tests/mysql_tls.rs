@@ -1,7 +1,7 @@
-//! The MySQL TLS mode of docs/config.md: ssl-mode=VERIFY_IDENTITY with ssl-ca checks the server certificate against the CA and
+//! The MySQL TLS mode of docs/spec/config.md: ssl-mode=VERIFY_IDENTITY with ssl-ca checks the server certificate against the CA and
 //! connects over TLS that checks the host name, and rejects a server whose certificate was signed by another CA or names another host.
 //! The Rust client passes ssl-mode and ssl-ca to sqlx as it does the other MySQL parameters
-//! unchanged. The DSNs from `make test-servers` are ORM_TEST_MYSQL_TLS_DSN, ORM_TEST_MYSQL_TLS_OTHER_CA_DSN,
+//! unchanged. The DSNs from `make orm-test-servers` are ORM_TEST_MYSQL_TLS_DSN, ORM_TEST_MYSQL_TLS_OTHER_CA_DSN,
 //! and ORM_TEST_MYSQL_TLS_MISMATCH_DSN; the test fails if one is missing.
 
 use polyspec_orm::db::Pool;
@@ -11,7 +11,7 @@ use polyspec_orm::Db;
 fn require_dsn(var: &str) -> String {
     match std::env::var(var) {
         Ok(dsn) if !dsn.is_empty() => dsn,
-        _ => panic!("{var} is required; run make test-servers"),
+        _ => panic!("{var} is required; run make orm-test-servers"),
     }
 }
 
@@ -41,7 +41,7 @@ async fn verify_identity_refuses_another_ca_and_another_host() {
 
 /// The session sql_mode that the client sets on every MySQL connection equals
 /// `sql_mode.session` of tests/dsn/mysql-session.json, not the server default or
-/// the modes sqlx adds (docs/config.md "Runtime connection").
+/// the modes sqlx adds (docs/spec/config.md "Runtime connection").
 #[tokio::test]
 async fn session_sql_mode_is_the_declared_one() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);

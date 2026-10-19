@@ -1,4 +1,4 @@
-// The language service of one dbspec document (docs/editor.md "Layers"): the diagnostics with their ranges, the tokens,
+// The language service of one dbspec document (docs/spec/editor.md "Layers"): the diagnostics with their ranges, the tokens,
 // the folding ranges and the formatted text. All of it is the output of the parser entry of @polyspec/orm/dbspec, and
 // the positions are the language service's own (utf16.ts).
 import { analyzeDbspec, formatDbspec, type DbspecDiagnostic, type DbspecToken, type DbspecTokenClass } from '@polyspec/orm/dbspec';
@@ -86,7 +86,7 @@ function diagnosticOf(d: DbspecDiagnostic, lines: readonly string[], tokenAt: Re
 }
 
 /**
- * The folding ranges: each `{` token and its matching `}` token on a later line (docs/editor.md "Results"). Only a block
+ * The folding ranges: each `{` token and its matching `}` token on a later line (docs/spec/editor.md "Results"). Only a block
  * spans lines in dbspec, so the pairs are the blocks, read from the punctuation tokens without a keyword or a line shape.
  * An unmatched brace is a parse diagnostic and pairs with nothing.
  */

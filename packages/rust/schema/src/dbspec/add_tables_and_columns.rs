@@ -1,4 +1,4 @@
-//! Writes the steps that addTablesAndColumns of a connection runs (docs/schema.md, "Adding tables and columns").
+//! Writes the steps that addTablesAndColumns of a connection runs (docs/spec/schema.md, "Adding tables and columns").
 
 use super::model::{Name, Pos, Table};
 use super::plan::plan_to;
@@ -50,7 +50,7 @@ fn set_source(live: &Document, unsupported: &[Unsupported], target: &Document) -
     Ok(schema_document(live.tables.iter().filter(|t| declared.contains(t.name.text.as_str())).cloned().collect()))
 }
 
-/// Checks whether the database equals the document set (docs/schema.md, "Schema installation"). `live`
+/// Checks whether the database equals the document set (docs/spec/schema.md, "Schema installation"). `live`
 /// is the document introspected from the connection's database, `unsupported` is the objects introspection could not read,
 /// `target` is the schema text document of the document set. Tables of the database that are not in the set are not compared.
 /// If a set's table has an unreadable object, that object is reported as "unsupported_<kind> <table>[.<name>]: <reason>",
@@ -71,7 +71,7 @@ pub fn installed_differences(live: &Document, unsupported: &[Unsupported], targe
 /// `target` is the schema text document of the document set. Tables of the database that are not in the set
 /// are neither compared nor changed. A difference between a set's table in the database and the set that is missing from the database
 /// table's create_table, add_column for a nullable or defaulted column, and add_index for a non-unique index
-/// only, the plan step from the set's table in the database to the set (docs/plans.md,
+/// only, the plan step from the set's table in the database to the set (docs/spec/plans.md,
 /// "Steps"), with tables to create in table name order as "table" and columns to add in column order
 /// as "table.column", then indexes to add in index order as "table.index", and returns that list. Other
 /// differences are returned without a step as "<kind> <table>[.<name>]", and a missing unique key, which could fail on existing rows,
@@ -135,7 +135,7 @@ pub fn add_tables_and_columns_steps(live: &Document, unsupported: &[Unsupported]
         })
         .collect();
     // Tables and columns to add are written as one plan. The plan starts from the set's table in the database
-    // (an empty database if there are none), so the steps keep the order and rollback of docs/plans.md
+    // (an empty database if there are none), so the steps keep the order and rollback of docs/spec/plans.md
     // as is.
     let start = (!source.tables.is_empty()).then_some(&source);
     let from = match start {

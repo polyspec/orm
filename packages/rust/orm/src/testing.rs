@@ -41,7 +41,7 @@ pub(crate) fn take_statement_fault(db: &Db) -> Option<Error> {
 }
 
 /// Pins the executor clock of the connection of `db` and all its clones to the time `clock`. `clock` is UTC
-/// `YYYY-MM-DD HH:MM:SS.ffffff` text (docs/protocol.md "Test clock").
+/// `YYYY-MM-DD HH:MM:SS.ffffff` text (docs/spec/protocol.md "Test clock").
 ///
 /// If the format differs, it panics and sets nothing.
 pub fn fix_clock(db: &Db, clock: &str) {
@@ -51,7 +51,7 @@ pub fn fix_clock(db: &Db, clock: &str) {
 }
 
 /// The affected count of the last successful write result on the connection of `db` and all its clones. If no successful write
-/// has occurred, it is None (docs/protocol.md "Test write result").
+/// has occurred, it is None (docs/spec/protocol.md "Test write result").
 pub fn last_affected(db: &Db) -> Option<u64> {
     *db.inner.last_affected.lock().unwrap()
 }

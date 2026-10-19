@@ -1,4 +1,4 @@
-# The method names of a model follow the chain syntax of docs/dsl.md. A PascalCase name is split
+# The method names of a model follow the chain syntax of docs/spec/dsl.md. A PascalCase name is split
 # into words. Column names have no connector or operator words, so the split
 # is unambiguous.
 from polyspec.orm import codes
@@ -19,7 +19,7 @@ __all__ = [
     "words",
 ]
 
-# The table that decides which operators fit a column type (docs/dbspec.md "Runtime model").
+# The table that decides which operators fit a column type (docs/spec/dbspec.md "Runtime model").
 COMPARABLE = (
     "eq",
     "not_eq",
@@ -187,7 +187,7 @@ def function_column(c: Field) -> bool:
 
 
 def category(c: Field) -> str:
-    """The value category of a column (docs/dbspec.md "Runtime model")."""
+    """The value category of a column (docs/spec/dbspec.md "Runtime model")."""
     if client_styles(c):
         return "styled"
     if c.stages:

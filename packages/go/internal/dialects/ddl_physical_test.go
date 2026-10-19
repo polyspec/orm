@@ -17,7 +17,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// ddlVectors is tests/dbspec/ddl.json (docs/dialects.md "Rendered
+// ddlVectors is tests/dbspec/ddl.json (docs/spec/dialects.md "Rendered
 // statements").
 type ddlVectors struct {
 	Version int `json:"version"`
@@ -39,8 +39,8 @@ type ddlStep struct {
 }
 
 // connectionRules are the statements every client runs on a new connection:
-// UTC on MySQL and PostgreSQL and foreign keys on SQLite (docs/dbspec.md
-// "Types", docs/dialects.md "Foreign keys").
+// UTC on MySQL and PostgreSQL and foreign keys on SQLite (docs/spec/dbspec.md
+// "Types", docs/spec/dialects.md "Foreign keys").
 var connectionRules = map[string][]string{
 	"mysql":    {"SET time_zone = '+00:00'"},
 	"postgres": {"SET TimeZone = 'UTC'"},

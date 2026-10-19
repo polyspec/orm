@@ -1,5 +1,5 @@
 # The session sql_mode that the client sets on every MySQL connection equals sql_mode.session of
-# tests/dsn/mysql-session.json, not the server default (docs/config.md "Runtime connection").
+# tests/dsn/mysql-session.json, not the server default (docs/spec/config.md "Runtime connection").
 # The case connects with ORM_TEST_MYSQL_DSN through the client's own connection setup, and a
 # missing variable fails it.
 import json
@@ -18,7 +18,7 @@ class MysqlSessionTest(unittest.TestCase):
     def test_session_sql_mode(self):
         dsn = os.environ.get("ORM_TEST_MYSQL_DSN", "")
         if not dsn:
-            self.fail("ORM_TEST_MYSQL_DSN is not set; run make test-servers")
+            self.fail("ORM_TEST_MYSQL_DSN is not set; run make orm-test-servers")
         connection = _MysqlConnection(parse_dsn(dsn))
         try:
             rows = connection.execute("SELECT @@SESSION.sql_mode", [])["rows"]

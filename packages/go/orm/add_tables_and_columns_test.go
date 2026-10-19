@@ -204,7 +204,7 @@ func addTablesAndColumnsCase(t *testing.T, driver string) {
 	if again, err := db.Utils().Schema().AddTablesAndColumns(v2); err != nil || len(again) != 0 {
 		t.Fatalf("repeated AddTablesAndColumns = %v, %v", again, err)
 	}
-	// All tables exist, so install changes nothing (docs/schema.md "Schema installation").
+	// All tables exist, so install changes nothing (docs/spec/schema.md "Schema installation").
 	if err := db.Utils().Schema().Install(v2); err != nil {
 		t.Fatalf("install of version 2 over its tables = %v", err)
 	}

@@ -9,7 +9,7 @@ pub fn required(variable: &str) -> String {
     match std::env::var(variable) {
         Ok(value) if !value.is_empty() => value,
         _ => {
-            panic!("{variable} is required; coverage cases never skip; run the test through its make target, which reads the environment of make test-servers")
+            panic!("{variable} is required; coverage cases never skip; run the test through its make target, which reads the environment of make orm-test-servers")
         }
     }
 }

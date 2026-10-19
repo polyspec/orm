@@ -11,7 +11,7 @@ final class Orm
     /** The session sql_mode decided per MySQL connection. The result does not depend on server settings (tests/dsn/mysql-session.json). */
     private const MYSQL_SQL_MODE = 'STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
 
-    /** The parameters that each scheme's DSN accepts (docs/config.md). Other parameters are CONFIG. */
+    /** The parameters that each scheme's DSN accepts (docs/spec/config.md). Other parameters are CONFIG. */
     private const DSN_PARAMETERS = [
         'mysql' => ['timezone', 'socket', 'ssl-mode', 'ssl-ca'],
         'postgres' => ['timezone', 'host', 'sslmode'],
@@ -37,7 +37,7 @@ final class Orm
      * Opens the database that the DSN URI (mysql://, postgres://, sqlite://) selects. The connection
      * has no registered set, so a model request gives SCHEMA_HASH_MISMATCH until install registers that set.
      * All connections read and write datetime as UTC
-     * (docs/dialects.md): the time zone of MySQL and PostgreSQL sessions is UTC. A connection
+     * (docs/spec/dialects.md): the time zone of MySQL and PostgreSQL sessions is UTC. A connection
      * is one per Db and ends with the Db. The PHP client has no pool.
      */
     public static function connect(string $dsn, Config $config): Db
@@ -90,7 +90,7 @@ final class Orm
     private static function checkConnectionConfig(Config $config): void
     {
         if ($config->poolSize !== 0 || $config->poolIdleSize !== 0 || $config->poolLifetimeMs !== 0) {
-            throw new OrmException(Code::CONFIG, 'poolSize, poolIdleSize and poolLifetimeMs configure a connection pool, and the PHP client opens one connection per Db and keeps no pool; pool PHP connections with PgBouncer or ProxySQL (docs/config.md "Connection poolers")');
+            throw new OrmException(Code::CONFIG, 'poolSize, poolIdleSize and poolLifetimeMs configure a connection pool, and the PHP client opens one connection per Db and keeps no pool; pool PHP connections with PgBouncer or ProxySQL (docs/spec/config.md "Connection poolers")');
         }
         if ($config->statementTimeoutMs < 0) {
             throw new OrmException(Code::CONFIG, 'statement timeout must not be negative');
@@ -99,7 +99,7 @@ final class Orm
 
     /**
      * Connects to the flowmark server that markdown://127.0.0.1:<port>/<corpus>?token=<token> points at
-     * (docs/protocol.md §5). Opens one connection and sends the corpus and token in a connect message: if the server
+     * (docs/spec/protocol.md §5). Opens one connection and sends the corpus and token in a connect message: if the server
      * rejects the corpus or token, it is CONFIG. The markdown executor does not accept a statement timeout.
      */
     private static function connectMarkdown(string $dsn, Config $config): Db

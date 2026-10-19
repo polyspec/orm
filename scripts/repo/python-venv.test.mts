@@ -1,5 +1,5 @@
-// python-venv-check and install-python accept only the venv of the Python release of mise.toml, never the python3 of PATH.
-// The interpreter of the venv is a stub, and install-python is read through make -n.
+// python-venv-check and orm-install-python accept only the venv of the Python release of mise.toml, never the python3 of PATH.
+// The interpreter of the venv is a stub, and orm-install-python is read through make -n.
 import assert from 'node:assert/strict';
 import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -47,14 +47,14 @@ caseTest('python-venv-check accepts a venv of the release that mise.toml declare
   }
 });
 
-caseTest('install-python builds its venv with the pinned interpreter, never the python3 of PATH', PROCESS, async () => {
+caseTest('orm-install-python builds its venv with the pinned interpreter, never the python3 of PATH', PROCESS, async () => {
   const dir = await mkdtemp(join(tmpdir(), 'orm-venv-'));
   try {
     const bin = join(dir, 'bin');
     await mkdir(bin);
     await writeFile(join(bin, 'python3'), '#!/bin/sh\necho 3.9.6\nexit 1\n');
     await chmod(join(bin, 'python3'), 0o755);
-    const result = make(['-n', 'install-python', `PYTHON_VENV=${join(dir, '.venv')}`], { path: `${bin}:${process.env.PATH}` });
+    const result = make(['-n', 'orm-install-python', `PYTHON_VENV=${join(dir, '.venv')}`], { path: `${bin}:${process.env.PATH}` });
     assert.equal(result.status, 0, result.stdout + result.stderr);
     assert.doesNotMatch(result.stdout, /(^|[\s/])python3 -m venv/m);
     // install-tools installs every tool of mise.lock, the Python among them; it takes no tool names.

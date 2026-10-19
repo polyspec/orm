@@ -1,5 +1,5 @@
-// The document set of a document (docs/plans/editor-stack.md ruling 4): resolveSet finds the dbspec-set.json in the
-// nearest ancestor directory that lists the document in `documents`, reads it by the four steps of docs/dbspec.md
+// The document set of a document (docs/spec/editor-stack.md ruling 4): resolveSet finds the dbspec-set.json in the
+// nearest ancestor directory that lists the document in `documents`, reads it by the four steps of docs/spec/dbspec.md
 // "Document sets" and gives the other documents of the set, by name, for openDocument. The rules that read no file are
 // parseSet's; the steps that read the file tree run here through an injected host, so this module reads no Node
 // module and no Node global and runs in a browser as in Node. The command line passes a node:fs host (cli/host.ts).
@@ -280,7 +280,7 @@ function readListed(host: SetHost, owner: Owner): { files: ListedFile[] } | { er
 }
 
 /**
- * The name that the parser reads from the header of a document text (docs/dbspec.md "Parsing a set"), or the
+ * The name that the parser reads from the header of a document text (docs/spec/dbspec.md "Parsing a set"), or the
  * diagnostic of a header that names none.
  */
 function headerName(text: string, path: string): string | SetFileDiagnostic {

@@ -13,7 +13,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// mermaidVectors is tests/dbspec/mermaid.json (docs/mermaid.md).
+// mermaidVectors is tests/dbspec/mermaid.json (docs/spec/mermaid.md).
 type mermaidVectors struct {
 	Export    []mermaidExportCase
 	Import    []mermaidImportCase
@@ -136,7 +136,7 @@ func mermaidDrops(us []Unsupported) [][3]string {
 
 // TestMermaidExportVectors, TestMermaidImportVectors, TestMermaidInvalidVectors and
 // TestMermaidRoundTripVectors check the export, import, invalid and round_trip
-// cases of tests/dbspec/mermaid.json (docs/mermaid.md), one suite each.
+// cases of tests/dbspec/mermaid.json (docs/spec/mermaid.md), one suite each.
 func TestMermaidExportVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, c := range loadMermaidVectors(t).Export {

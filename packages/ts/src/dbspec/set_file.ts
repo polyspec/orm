@@ -1,5 +1,5 @@
 import { present } from '../present.js';
-// The rules of a set file that read no file (docs/dbspec.md "Document sets"): the name dbspec-set.json of the last
+// The rules of a set file that read no file (docs/spec/dbspec.md "Document sets"): the name dbspec-set.json of the last
 // segment of the set file's path (step 1), the JSON of step 2 and the normal form of each path (step 3). This module
 // reads no Node global and loads no driver: the bytes come from the caller, as a Uint8Array, so it runs in a browser
 // as in Node. readDbspecSet (set_read.ts) runs it between the checks of the file tree.

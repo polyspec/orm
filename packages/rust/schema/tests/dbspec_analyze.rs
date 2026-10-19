@@ -1,4 +1,4 @@
-//! Token classes of `dbspec::analyze`, derived by hand from docs/dbspec.md "Syntax analysis" and the rulings
+//! Token classes of `dbspec::analyze`, derived by hand from docs/spec/dbspec.md "Syntax analysis" and the rulings
 //! R1-R19 of the T128-3 brief. Each row is (case, text, expected tokens as line, start, end, class).
 
 use polyspec_orm_schema::dbspec::analyze;

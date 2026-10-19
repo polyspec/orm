@@ -1,4 +1,4 @@
-//! The value types and select sets of the runtime model (docs/dbspec.md, "Runtime model"): `i16`,
+//! The value types and select sets of the runtime model (docs/spec/dbspec.md, "Runtime model"): `i16`,
 //! `uuid`, `time(p)`, and `date` values come back unchanged; a `select explicit` column is left out of the default
 //! select set; leaving out a column that has a default uses the database default, and leaving out a NOT NULL column that has no default
 //! fails. On SQLite, MySQL, and PostgreSQL, each database uses its own

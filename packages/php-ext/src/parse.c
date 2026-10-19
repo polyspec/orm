@@ -1,5 +1,5 @@
 /*
- * Reads and checks one dbspec document line by line (PHP client Parser, docs/dbspec.md). Rules within a line are checked on that line, and table-wide
+ * Reads and checks one dbspec document line by line (PHP client Parser, docs/spec/dbspec.md). Rules within a line are checked on that line, and table-wide
  * rules when the block closes; rules between tables (foreign key targets, audit history and record tables) are checked
  * after the last line. Diagnostics carry the token's line and column (Unicode code points) and are sorted by line, column, then rule table order. Encoding,
  * header, and limit errors stop parsing and come after the diagnostics found before them.
@@ -309,7 +309,7 @@ static void declare(parser *p, str kind, zend_long line, zend_long column, strs 
     PUSH(p->decls, d);
 }
 
-/* Identifying arguments of a setting (docs/dbspec.md "Declaration positions"): for codec, markdown, navigation, and blind_index, the first argument,
+/* Identifying arguments of a setting (docs/spec/dbspec.md "Declaration positions"): for codec, markdown, navigation, and blind_index, the first argument,
  * for checkbox, column and state; for state_machine, form and state (column excluded); the rest have none. */
 static void declare_setting(parser *p, str keyword, zend_long column, str form, const strs *args)
 {
@@ -1148,8 +1148,8 @@ static ctype *read_type(parser *p, size_t i, size_t *next)
     return intern_type(p, name, params.v, params.n);
 }
 
-/* If a preceding table or a table in the document being written already uses the same renderer name, reports it at the later position (docs/dbspec.md "Names"). */
-/* If the table of the document being written, or a preceding table, already wrote this renderer name, reports both sources at the later position (docs/dbspec.md "Names"). */
+/* If a preceding table or a table in the document being written already uses the same renderer name, reports it at the later position (docs/spec/dbspec.md "Names"). */
+/* If the table of the document being written, or a preceding table, already wrote this renderer name, reports both sources at the later position (docs/spec/dbspec.md "Names"). */
 static void record_generated(parser *p, str name, str source)
 {
     str *own = dbs_alloc(sizeof *own);
@@ -3262,7 +3262,7 @@ static void check_audit_records(parser *p)
 /* Checks the tables table of `tables <table> (<record>, <name>)`: another table than the audited, the history and the
  * audit record table, not audited itself, with exactly the record and the name column, the name column a varchar(n)
  * with n >= 63, the primary key (record, name) and the foreign key (record) references the audit record table's key
- * with restrict (docs/dbspec.md "Audit"). */
+ * with restrict (docs/spec/dbspec.md "Audit"). */
 static void check_audit_tables(parser *p)
 {
     for (size_t i = 0; i < p->deferred_records.n; i++) {
@@ -3565,7 +3565,7 @@ static int cmp_decl(const void *a, const void *b, void *ctx)
     return 0;
 }
 
-/* The class of a token whose line gives it none (docs/dbspec.md "Syntax analysis"). */
+/* The class of a token whose line gives it none (docs/spec/dbspec.md "Syntax analysis"). */
 static const char *lexical_class(str text)
 {
     if (text.n > 0 && text.s[0] == '\'') {
@@ -3584,7 +3584,7 @@ static const char *lexical_class(str text)
     return "word";
 }
 
-/* The tokens of every line of the source in source order (docs/dbspec.md "Syntax analysis"). Each line is split and
+/* The tokens of every line of the source in source order (docs/spec/dbspec.md "Syntax analysis"). Each line is split and
  * lexed as read_source reads it, so a line the parser did not read gets the same tokens. */
 static void analysis_tokens(parser *p, str source, dtokv *out)
 {
@@ -3730,7 +3730,7 @@ document *dbs_analyze(str text, const smap *documents, diags *out, dposv *pos, d
     return run(p, text, out, pos, tokens);
 }
 
-/* The name that the header step reads from the text, empty when the header fails (docs/dbspec.md "Parsing a set"):
+/* The name that the header step reads from the text, empty when the header fails (docs/spec/dbspec.md "Parsing a set"):
  * the read runs without used documents, as Go's parseStructure(text, nil), and its diagnostics are dropped. */
 str dbs_header_name(str text)
 {

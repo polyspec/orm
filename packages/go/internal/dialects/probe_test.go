@@ -37,7 +37,7 @@ func TestProbeIDs(t *testing.T) {
 // citedProbe is a probe ID written as inline code in a dialects page.
 var citedProbe = regexp.MustCompile("`((?:mysql|postgres|sqlite)\\.[a-z0-9_]+\\.[a-z0-9_]+)`")
 
-// TestProbeCitations verifies that docs/dialects.md and its Korean twin cite
+// TestProbeCitations verifies that docs/spec/dialects.md and its Korean twin cite
 // every fact probe and cite no probe ID that neither a fact probe nor a DDL
 // vector of tests/dbspec/ddl.json runs, so a probed fact has its rule and a
 // rule cites only probes that run.
@@ -85,7 +85,7 @@ func TestProbeCitations(t *testing.T) {
 	}
 }
 
-// TestRestrictRowOrder verifies that docs/dialects.md and its Korean twin
+// TestRestrictRowOrder verifies that docs/spec/dialects.md and its Korean twin
 // state the RESTRICT timing of one multi-row delete: MySQL and SQLite refuse
 // it when the referenced row comes first, PostgreSQL accepts it, and portable
 // code deletes the referencing rows first.

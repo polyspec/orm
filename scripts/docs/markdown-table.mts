@@ -1,4 +1,4 @@
-// markdown-table check: the table "Markdown IR executor" of docs/dialects.md and docs/dialects.ko.md holds one row per
+// markdown-table check: the table "Markdown IR executor" of docs/spec/dialects.md and docs/spec/dialects.ko.md holds one row per
 // row of the capability table of flowmark's docs/spec/60-dialect.md (and its Korean twin) at the version pinned in
 // tests/markdown/flowmark.version, with the same surface and the same ruling text, the ruling split into a Result and
 // a Rule. `node scripts/docs/markdown-table.mts` checks both files; `--write` rewrites the table in both.
@@ -15,11 +15,11 @@ import { root } from './lib.mts';
 
 const version = (await readFile(path.join(root, 'tests/markdown/flowmark.version'), 'utf8')).trim();
 const revision = version.split('-').pop();
-// The module source of the pinned flowmark, which make install-flowmark downloads into the module cache; a check
+// The module source of the pinned flowmark, which make orm-install-flowmark downloads into the module cache; a check
 // downloads nothing, so a missing module names the install target instead of fetching.
 const cache = execFileSync('go', ['env', 'GOMODCACHE'], { cwd: root, encoding: 'utf8' }).trim();
 const module = { Dir: path.join(cache, 'github.com', `polyspec/flowmark@${version}`) };
-if (!existsSync(module.Dir)) throw new Error(`${module.Dir} is missing; run make install-flowmark, which downloads the module of tests/markdown/flowmark.version`);
+if (!existsSync(module.Dir)) throw new Error(`${module.Dir} is missing; run make orm-install-flowmark, which downloads the module of tests/markdown/flowmark.version`);
 
 const absolute = (text: string) => text.replace(/\]\((\d\d-[a-z-]+(?:\.ko)?\.md)(#[^)]*)?\)/g,
   (_, file: string) => `](https://github.com/polyspec/flowmark/blob/${revision}/docs/spec/${file.replace('.ko.md', '.md')})`);
@@ -74,8 +74,8 @@ function rows(text: string) {
 }
 
 const targets = [
-  { file: 'docs/dialects.md', spec: 'docs/spec/60-dialect.md', heading: '## Markdown IR executor', header: '| Surface | Result | Rule |' },
-  { file: 'docs/dialects.ko.md', spec: 'docs/spec/60-dialect.ko.md', heading: '## Markdown IR executor', header: '| 표면 | 결과 | 규칙 |' },
+  { file: 'docs/spec/dialects.md', spec: 'docs/spec/60-dialect.md', heading: '## Markdown IR executor', header: '| Surface | Result | Rule |' },
+  { file: 'docs/spec/dialects.ko.md', spec: 'docs/spec/60-dialect.ko.md', heading: '## Markdown IR executor', header: '| 표면 | 결과 | 규칙 |' },
 ];
 
 const write = process.argv.includes('--write');

@@ -1,6 +1,6 @@
 # model JSON output: to_json_text() writes the same text as TypeScript toJSONText(). Members are in row order, and
 # value-style columns carry the ordered-json stored text as is inside the outer expression, while other values are written
-# as JSON.stringify writes them (docs/codec.md "Value model"; the toJSONText expected values of packages/ts/tests/model.mjs).
+# as JSON.stringify writes them (docs/spec/codec.md "Value model"; the toJSONText expected values of packages/ts/tests/model.mjs).
 import json
 import tempfile
 import unittest

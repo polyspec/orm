@@ -115,7 +115,7 @@ def _hint(c: Field, setter: bool) -> str:
     return text
 
 
-# The value type of each column category (docs/dbspec.md "Runtime model"): the annotation of the getter and the
+# The value type of each column category (docs/spec/dbspec.md "Runtime model"): the annotation of the getter and the
 # setter, the latter when it takes more than the getter returns.
 _ANNOTATIONS = {
     "styled": ("StyledValue", "StyledValue"),
@@ -140,7 +140,9 @@ def _annotation(c: Field, setter: bool) -> str:
 # The public methods of the runtime Model, which every generated model inherits. They are read from the class, so
 # a method added to Model is a model method here without a second list.
 _BASE_METHODS = frozenset(
-    name for name in dir(Model) if not name.startswith("_") and callable(getattr(Model, name))
+    name
+    for name in dir(Model)
+    if not name.startswith("_") and callable(getattr(Model, name))
 )
 
 
@@ -169,7 +171,7 @@ def _static_names(e: Entity) -> set:
 
 def _tuple_names(m: RuntimeModel, e: Entity) -> list:
     """The tuple method names of every key prefix of two or more columns of e: its primary key, unique keys and
-    indexes, read from the table of its document. An external entity has no index (docs/dbspec.md "External
+    indexes, read from the table of its document. An external entity has no index (docs/spec/dbspec.md "External
     documents")."""
     table = next(
         t
@@ -266,13 +268,15 @@ def _resolved_prefix(model: RuntimeModel, e: Entity, name: str) -> str | None:
 def _named_getter(m: RuntimeModel, key: str, used: set) -> bool:
     """Whether get_<key> reads a value that the scanned calls name: the relation result <entity>_model or
     <entity>_models of an entity of the set (the used tables of external documents included), or a name that an alias_,
-    new_ or add_column_ call adds (docs/dsl.md, the scan)."""
+    new_ or add_column_ call adds (docs/spec/dsl.md, the scan)."""
     for entity in m.entities:
         if key in (f"{snake(entity)}_model", f"{snake(entity)}_models"):
             return True
     if f"alias_{key}" in used or f"new_{key}" in used or f"add_column_{key}" in used:
         return True
-    return any(n.startswith("add_column_") and n.endswith(f"_alias_{key}") for n in used)
+    return any(
+        n.startswith("add_column_") and n.endswith(f"_alias_{key}") for n in used
+    )
 
 
 def render_models(m: RuntimeModel, out_dir: str, scan) -> str:
@@ -292,15 +296,23 @@ def render_models(m: RuntimeModel, out_dir: str, scan) -> str:
                 continue
             if _resolved_prefix(m, entity, name) is not None:
                 continue
-            if name.startswith("get_") and len(name) > 4 and not name.startswith(("get_by_", "gets_by_", "get_count_by_")):
+            if (
+                name.startswith("get_")
+                and len(name) > 4
+                and not name.startswith(("get_by_", "gets_by_", "get_count_by_"))
+            ):
                 # A getter that this class lacks is refused by the group check below, when no class of the call attaches it.
                 continue
     # A name that a scanned call makes is refused only when no class the call may be on accepts it: a class that lacks it is not an
-    # error, since the call runs on a class that has it (docs/dsl.md, the scan).
+    # error, since the call runs on a class that has it (docs/spec/dsl.md, the scan).
     for site in sites:
         name = site["name"]
         key = name[4:]
-        is_getter = name.startswith("get_") and len(name) > 4 and not name.startswith(("get_by_", "gets_by_", "get_count_by_"))
+        is_getter = (
+            name.startswith("get_")
+            and len(name) > 4
+            and not name.startswith(("get_by_", "gets_by_", "get_count_by_"))
+        )
         if name.startswith("_"):
             continue
         attached = False
@@ -308,14 +320,22 @@ def render_models(m: RuntimeModel, out_dir: str, scan) -> str:
             entity = m.entities.get(snake(class_name))
             if entity is None:
                 continue
-            if name in _static_names(entity) or _resolved_prefix(m, entity, name) is not None or (is_getter and _named_getter(m, key, used)):
+            if (
+                name in _static_names(entity)
+                or _resolved_prefix(m, entity, name) is not None
+                or (is_getter and _named_getter(m, key, used))
+            ):
                 attached = True
                 break
         if not attached:
             if is_getter:
-                problems.append(f"{site['classes'][0]}.{name} is called, but no alias_{key}, new_{key} or add_column call attaches it")
+                problems.append(
+                    f"{site['classes'][0]}.{name} is called, but no alias_{key}, new_{key} or add_column call attaches it"
+                )
             else:
-                problems.append(f"{site['classes'][0]}.{name} is not a model method: no column, chain or operator accepts it")
+                problems.append(
+                    f"{site['classes'][0]}.{name} is not a model method: no column, chain or operator accepts it"
+                )
     if problems:
         raise OrmError(codes.CONFIG, "; ".join(problems))
     kinds = {category(c) for e in m.entities.values() for c in e.fields}

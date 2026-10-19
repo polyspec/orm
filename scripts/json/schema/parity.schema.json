@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "config/parity.json: the fields that the scripts read",
+  "description": "The profiles, units and implementations of config/parity.json that the scripts of orm read. The parity check reads the rest of the file.",
+  "type": "object",
+  "required": ["profiles", "units"],
+  "properties": {
+    "profiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "implementations"],
+        "properties": {
+          "name": { "type": "string" },
+          "implementations": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "implementations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "errors": {
+            "type": "object",
+            "properties": { "file": { "type": "string" }, "pattern": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "units": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string" },
+          "kind": { "type": "string" },
+          "profile": { "type": "string" },
+          "bindings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["implementation"],
+              "properties": { "implementation": { "type": "string" }, "test": { "type": "string" } }
+            }
+          },
+          "symbols": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": { "implementation": { "type": "string" }, "symbol": { "type": "string" } }
+            }
+          }
+        }
+      }
+    }
+  }
+}

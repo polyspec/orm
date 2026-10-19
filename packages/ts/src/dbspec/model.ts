@@ -1,4 +1,4 @@
-// The parsed dbspec document (docs/dbspec.md). Every object of a parsed
+// The parsed dbspec document (docs/spec/dbspec.md). Every object of a parsed
 // document is frozen. Comment lines (`#` to the end of the line) are kept on
 // the line that follows them; `closingComments` belong to the closing brace
 // of a block, or to the end of the document.
@@ -150,7 +150,7 @@ export type DbspecSetting = { readonly comments: readonly string[] } & (
       readonly references: string;
       readonly action: string;
       readonly previous: string;
-      /** The tables table and its record and name columns, or null without the `tables` clause (docs/dbspec.md "Audit"). */
+      /** The tables table and its record and name columns, or null without the `tables` clause (docs/spec/dbspec.md "Audit"). */
       readonly tables: { readonly table: string; readonly record: string; readonly name: string } | null;
       /** The list of columns that are not recorded. Null if there is no list. */
       readonly exclude: readonly string[] | null;
@@ -203,7 +203,7 @@ export interface DbspecDocument {
   /**
    * The document belongs to another set: a document of the set uses its tables but the set does not own
    * them, so it is parsed and validated but never rendered, installed, altered, compared or generated
-   * (docs/dbspec.md "Documents and use"). The flag is not part of the text.
+   * (docs/spec/dbspec.md "Documents and use"). The flag is not part of the text.
    */
   readonly external?: boolean;
   readonly uses: readonly DbspecUse[];

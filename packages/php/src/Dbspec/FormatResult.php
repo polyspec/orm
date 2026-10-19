@@ -5,7 +5,7 @@ namespace Polyspec\Orm\Dbspec;
 
 /**
  * The result of Dbspec::format: the canonical text when the text has no diagnostic, else null with every diagnostic
- * (docs/dbspec.md "Formatting").
+ * (docs/spec/dbspec.md "Formatting").
  */
 final readonly class FormatResult
 {

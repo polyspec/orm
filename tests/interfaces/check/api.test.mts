@@ -1,4 +1,4 @@
-// The API units of config/parity.json (kind api) that carry the error catalog: each code of docs/errors.yaml is one unit whose
+// The API units of config/parity.json (kind api) that carry the error catalog: each code of docs/spec/errors.yaml is one unit whose
 // symbol each client of its profile names, and the checker refuses a unit, a symbol or a constant that does not match the catalog.
 import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
@@ -39,10 +39,10 @@ caseTest('the API units of the error catalog cover every code of errors.yaml onc
   for (const code of codes) {
     const id = `error-code-${code.toLowerCase().replaceAll('_', '-')}`;
     const unit = units.find(entry => entry.id === id);
-    assert.ok(unit, `no API unit ${id} for the code ${code} of docs/errors.yaml`);
+    assert.ok(unit, `no API unit ${id} for the code ${code} of docs/spec/errors.yaml`);
     assert.deepEqual(unit.symbols?.map(entry => entry.implementation).sort(), [...CLIENTS].sort(), `${id} names other implementations than the client profile`);
   }
-  assert.deepEqual(apiProblems(root, parity, codes), [], 'the API units of the error catalog do not match docs/errors.yaml and the catalog files');
+  assert.deepEqual(apiProblems(root, parity, codes), [], 'the API units of the error catalog do not match docs/spec/errors.yaml and the catalog files');
 });
 
 caseTest('the API unit check accepts a unit that names each client of its profile', COMPUTE, () => {

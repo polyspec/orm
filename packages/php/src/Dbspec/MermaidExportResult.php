@@ -5,7 +5,7 @@ namespace Polyspec\Orm\Dbspec;
 
 /**
  * The outcome of Dbspec::exportMermaid: the erDiagram text and what export
- * leaves out, ordered by table, kind and name (docs/mermaid.md "Export").
+ * leaves out, ordered by table, kind and name (docs/spec/mermaid.md "Export").
  */
 final readonly class MermaidExportResult
 {

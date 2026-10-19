@@ -8,11 +8,11 @@ import (
 	"strings"
 )
 
-// RuleMermaid is the diagnostic for a Mermaid line that import could not read (docs/mermaid.md).
+// RuleMermaid is the diagnostic for a Mermaid line that import could not read (docs/spec/mermaid.md).
 const RuleMermaid = "mermaid"
 
 // ExportMermaid writes one document as a standard erDiagram, and returns what the diagram could not hold and so left out,
-// as [kind, table, name] (docs/mermaid.md "Export").
+// as [kind, table, name] (docs/spec/mermaid.md "Export").
 func ExportMermaid(d *Document) (string, []Unsupported) {
 	var dropped []Unsupported
 	report := func(kind, table, name, reason string) {
@@ -207,7 +207,7 @@ type mermaidRel struct {
 }
 
 // ImportMermaid reads a standard erDiagram as a dbspec document named name, and returns
-// what it could not carry over (docs/mermaid.md "Import"). A line that does not match the syntax is a diagnostic.
+// what it could not carry over (docs/spec/mermaid.md "Import"). A line that does not match the syntax is a diagnostic.
 func ImportMermaid(text, name string) (*Document, []Unsupported, []Diagnostic) {
 	lines := strings.Split(strings.TrimSuffix(text, "\n"), "\n")
 	var entities []*mermaidEntity

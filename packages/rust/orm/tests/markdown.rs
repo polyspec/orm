@@ -1,4 +1,4 @@
-//! Unit cases for the markdown IR executor connection (docs/protocol.md §5, docs/dialects.md "Markdown IR executor"):
+//! Unit cases for the markdown IR executor connection (docs/spec/protocol.md §5, docs/spec/dialects.md "Markdown IR executor"):
 //! the connect and control messages sent to a fake server that records messages in place of a markdown DSN and the flowmark server,
 //! the interpretation of error lines, and the SQL-only surface that the markdown connection rejects. These are the same cases as Go's markdown_test.go.
 
@@ -75,7 +75,7 @@ impl FakeServer {
     }
 }
 
-/// Checks the connect and control messages the client sends, and the interpretation of error lines (docs/protocol.md §5).
+/// Checks the connect and control messages the client sends, and the interpretation of error lines (docs/spec/protocol.md §5).
 #[tokio::test]
 async fn markdown_session_messages() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -123,7 +123,7 @@ async fn markdown_connect_refused() {
     assert_eq!(server.received.await.unwrap(), [CONNECT_LINE]);
 }
 
-/// Checks that the markdown connection rejects the SQL-only surface with CAPABILITY_UNSUPPORTED (docs/dialects.md
+/// Checks that the markdown connection rejects the SQL-only surface with CAPABILITY_UNSUPPORTED (docs/spec/dialects.md
 /// "Markdown IR executor").
 #[tokio::test]
 async fn markdown_rejected_surfaces() {

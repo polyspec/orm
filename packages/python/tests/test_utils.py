@@ -1,4 +1,4 @@
-# db.utils(): transaction-local values, the lock and the AES key version status (docs/usage.md).
+# db.utils(): transaction-local values, the lock and the AES key version status (docs/operations/usage.md).
 # The SQLite checks run here; the MySQL and PostgreSQL forms of lock and set_local run in CI.
 import tempfile
 import unittest

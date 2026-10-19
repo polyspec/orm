@@ -1,6 +1,6 @@
 //! The install of the bench set for the programs and tests of this crate: the bench set
 //! (contracts/fixtures/bench/dbspec-set.json) uses the table shared_note of its external document
-//! bench_shared.dbs, which must exist before the set installs (docs/dbspec.md "External documents"), so
+//! bench_shared.dbs, which must exist before the set installs (docs/spec/dbspec.md "External documents"), so
 //! the external document is installed first as its own set, as scripts/bench-db.mts does.
 
 use polyspec_orm::dbspec;

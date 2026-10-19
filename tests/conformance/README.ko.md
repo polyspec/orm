@@ -1,5 +1,5 @@
 <!-- doc-id: tests-conformance-readme -->
-<!-- source-sha256: 7324baa956a2494800f81d376ec363899cda8c2b13dc8589f048ad796543fbe4 -->
+<!-- source-sha256: 3c7bc0d75af951be1c24df7adf22c0563d9c9e0782261ec90ec6096c054fd47e -->
 # 적합성 벡터
 
 한 문서와 다섯 실행기를 사용한다. 각 벡터는 Go, PHP, Rust, TypeScript, Python으로 같은 체인을 작성한다. 각 실행기는 데이터베이스에서 체인을 실행하고 다음 JSON을 출력한다.
@@ -8,12 +8,12 @@
 {"<vector>": {"statements": [{"sql": "...", "binds": [...], "kind": "...", "tables": [...], "transaction": 1, "error": null}], "result": ...}}
 ```
 
-각 statement는 연결의 statement event다([사용법](../../docs/usage.md#statement-events)): 실행기의 연결이 실행하는 모든 statement를 kind, table, 오류 code와 함께 기록한다. `transaction`은 벡터 안에서 처음 나온 순서로 1부터 다시 센 번호이고 transaction 밖에서는 null이다.
+각 statement는 연결의 statement event다([사용법](../../docs/operations/usage.md#statement-events)): 실행기의 연결이 실행하는 모든 statement를 kind, table, 오류 code와 함께 기록한다. `transaction`은 벡터 안에서 처음 나온 순서로 1부터 다시 센 번호이고 transaction 밖에서는 null이다.
 
 `check`는 JSON 숫자를 정확한 유리수 값으로 비교하고 기록할 때 원래 십진 표현을 보존한다. 객체 키는 출력에서 정렬한다. SQL, bind 순서와 타입, 결과를 `vectors.json`과 비교한다. 2^53을 넘는 서로 다른 정수도 구분하며 동등한 십진 표현은 같은 값으로 처리한다. 날짜 형식은 `YYYY-MM-DD HH:MM:SS[.ffffff]`다.
 어느 깊이의 객체든 중복 키가 있거나 데이터베이스 기대값 파일이 없으면 실패한다.
 기본 파일과 데이터베이스 기대값 파일에는 비어 있지 않은 고유 벡터 이름과 정확히 같은 벡터 집합이 필요하다. 기대값 이름이 누락되거나 추가되면 비교와 기록이 실패한다.
-벡터 `clock_truncate_write`와 `clock_compare_six_digits`는 각 클라이언트의 test entry point로 executor clock을 고정한다([protocol](../../docs/protocol.ko.md) 3.3). `check run`은 Go 실행기를 tag `ormtest`로 build하며 그 파일 `packages/go/internal/conformance/clock_ormtest.go`가 두 벡터를 선언하고, Rust 실행기의 crate는 feature `test-faults`를 켠다. TypeScript 실행기는 `dist/testing.js`를 import하고, PHP 실행기는 `testing/Faults.php`를 require하며, Python 실행기는 `polyspec.orm.testing`을 import한다.
+벡터 `clock_truncate_write`와 `clock_compare_six_digits`는 각 클라이언트의 test entry point로 executor clock을 고정한다([protocol](../../docs/spec/protocol.ko.md) 3.3). `check run`은 Go 실행기를 tag `ormtest`로 build하며 그 파일 `packages/go/internal/conformance/clock_ormtest.go`가 두 벡터를 선언하고, Rust 실행기의 crate는 feature `test-faults`를 켠다. TypeScript 실행기는 `dist/testing.js`를 import하고, PHP 실행기는 `testing/Faults.php`를 require하며, Python 실행기는 `polyspec.orm.testing`을 import한다.
 `write_cycle` 기대값은 생성한 행과 갱신한 행의 `json_setting`, `serialize_data`에 값 스타일 컬럼의 태그 값을 사용한다.
 
 | 파일 | 역할 |
@@ -30,11 +30,11 @@
 ## 실행
 
 ```sh
-make test-servers
+make orm-test-servers
 make conformance-check
 ```
 
-`make conformance-check`는 자기 실행(`make check`나 `make run-databases`)의 bench database인 `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`을 읽고 다음을 실행한다.
+`make conformance-check`는 자기 실행(`make orm-check`나 `make run-databases`)의 bench database인 `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`을 읽고 다음을 실행한다.
 
 ```sh
 node tests/conformance/check/main.mts run --out "$RUN_DIR/out" --driver mysql --dsn "$BENCH_MYSQL_DSN" --driver postgres --dsn "$BENCH_POSTGRES_DSN" --driver sqlite --dsn "$BENCH_SQLITE_DSN"
@@ -49,13 +49,13 @@ node tests/interfaces/check/main.mts --results "$RUN_DIR/out" --results "$RUN_DI
 
 각 실행기는 반복할 수 있는 vector 선택(Go는 `-vector NAME`, PHP, Rust, TypeScript, Python은 `--vector NAME`)을 받아 이름이 지정된 vector만 선언 순서로 실행한다. 알 수 없거나 반복된 이름은 vector를 실행하기 전에 실패한다. `check run`, `check compare`, `check record`는 같은 반복 가능한 `--vector NAME`을 받는다: `run`은 그것을 다섯 실행기에 넘기고 `compare`와 `record`는 이름이 지정된 vector만 비교하고 기록하므로, 일부 vector를 바꾸면 그 vector만 실행하고 기록한다.
 
-그 선택의 make 형식은 이름을 공백으로 나눈 변수 `VECTOR`이며, `make test-servers`의 server 환경에는 bench database가 없으므로 `make run-databases`가 자기 실행에 만드는 bench database(scripts/check/databases.mts)에서 실행한다.
+그 선택의 make 형식은 이름을 공백으로 나눈 변수 `VECTOR`이며, `make orm-test-servers`의 server 환경에는 bench database가 없으므로 `make run-databases`가 자기 실행에 만드는 bench database(scripts/check/databases.mts)에서 실행한다.
 
 ```sh
-make test-servers
+make orm-test-servers
 make run-databases TARGETS=conformance-check VECTOR="creates_and_save write_cycle"
 make run-databases TARGETS=conformance-check RECORD=1
-make test-servers-stop
+make orm-test-servers-stop
 ```
 `conformance-check`는 이름마다 `--vector NAME`을 `check run`에 넘긴다(그래서 다섯 실행기와 그 비교에도 넘어간다). `RECORD=1`이면 비교가 실패한 데이터베이스의 다섯 진단 출력을 같은 이름으로 `check record`에 넘긴다. 출력이 서로 다르거나 비교 전에 실행기가 실패했으면 기록은 실패하고, 기록한 뒤 target은 같은 vector를 새 기대값으로 다시 실행한다. `contracts/interfaces.json`의 state contract는 실행이 만든 vector에 대해 검사한다. `VECTOR`가 있는 실행은 이름 붙은 vector의 contract만 검사한다. `VECTOR`와 함께 쓴 `RECORD=1`은 이름 붙은 vector만 기록한다. SQLite의 `orm__row_lock` table처럼 전체 실행이라면 앞의 vector가 만드는 연결의 첫 사용 statement를 만드는 vector는 그것만 실행하면 그 statement도 기록하고, 전체 실행이 그 vector에서 실패한다. 그 기록된 기대값에서 그 statement 하나를 빼고, 모든 vector를 한 번에 실행하는 Python conformance case가 그 결과를 확인한다. 그러면 그 vector만의 실행은 정확히 그 statement만큼 다르다. 기대값 파일의 diff는 커밋 전에 검토한다.
 

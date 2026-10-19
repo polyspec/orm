@@ -133,7 +133,7 @@ caseTest('generate', PROCESS, async () => {
     checked = run(...genCheck);
     check(checked.status === 1 && checked.stdout === `missing: ${out}/models.ts\n`, `gen --check on missing models: ${checked.status} ${checked.stdout}${checked.stderr}`);
     // A set that uses external documents creates models for the tables it owns and read-only models for the tables it uses
-    // from external documents, documents in name order (docs/dbspec.md "Runtime model"), and puts the text of the tables
+    // from external documents, documents in name order (docs/spec/dbspec.md "Runtime model"), and puts the text of the tables
     // used from external documents into the schema value.
     const external = join(root, 'contracts/fixtures/external');
     const memberOut = join(work, 'member');

@@ -16,8 +16,8 @@ use function Polyspec\OrderedJson\parse as orderedJsonParse;
 use function Polyspec\OrderedJson\stringify as orderedJsonStringify;
 
 /**
- * Column-style codecs (docs/codec.md). Styles are in write order; decode applies them in reverse.
- * The host stages (aes/hex/ip) are the ones a dialect leaves to the executor (docs/dialects.md):
+ * Column-style codecs (docs/spec/codec.md). Styles are in write order; decode applies them in reverse.
+ * The host stages (aes/hex/ip) are the ones a dialect leaves to the executor (docs/spec/dialects.md):
  * MySQL runs them in SQL, PostgreSQL asks for aes/hex, SQLite for all three. They come first on
  * write (before the codec stages already applied by the builder) and last on read.
  */
@@ -41,7 +41,7 @@ final class Codec
             return StyledValue::sqlNull();
         }
         // An empty cell is CODEC_DECODE, except under a last base64 stage, whose encoder writes an empty cell for
-        // empty bytes (docs/codec.md, Stage lists).
+        // empty bytes (docs/spec/codec.md, Stage lists).
         if ($raw === '' && end($styles) !== 'base64') {
             throw new OrmException(Code::CODEC_DECODE, 'styled cell is empty');
         }
@@ -59,7 +59,7 @@ final class Codec
                     break;
                 case 'base64':
                     // A stored cell is decoded only in the form the encoder writes: no whitespace, no line breaks, no missing padding, no non-zero padding
-                    // bit is CODEC_DECODE (docs/codec.md). PHP's strict mode also accepts whitespace and missing padding, so re-
+                    // bit is CODEC_DECODE (docs/spec/codec.md). PHP's strict mode also accepts whitespace and missing padding, so re-
                     // encode the text and check that it is the same.
                     $decoded = base64_decode($v, true);
                     $v = $decoded !== false && base64_encode($decoded) === $v ? $decoded : false;
@@ -196,7 +196,7 @@ final class Codec
 
     /**
      * Reads one YAML 1.2 document with purrphp/yaml and resolves its plain scalars by the library's
-     * core schema. The codec's own rules (docs/codec.md, yaml) apply on the node model: one document,
+     * core schema. The codec's own rules (docs/spec/codec.md, yaml) apply on the node model: one document,
      * no aliases, anchors, explicit tags or merge keys, no duplicate keys, string or integral keys.
      * A text without a document (empty or only comments) is not a YAML value and is refused.
      */
@@ -378,7 +378,7 @@ final class Codec
     /** INET6_ATON: 4 bytes for IPv4 (an IPv4-mapped IPv6 address included), 16 for IPv6. */
     private static function packIp(string $s): string
     {
-        // The exact text only: white space around the address is CODEC_ENCODE (docs/codec.md).
+        // The exact text only: white space around the address is CODEC_ENCODE (docs/spec/codec.md).
         // inet_pton throws a ValueError on a NUL byte, which is not an address either.
         $b = str_contains($s, "\0") ? false : @inet_pton($s);
         if ($b === false) {

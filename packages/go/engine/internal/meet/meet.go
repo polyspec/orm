@@ -1,5 +1,5 @@
 // Package meet holds the one table of which two columns compare alike on the three databases. dbspec's check
-// validation and the IR validator both read it, so the two cannot drift (docs/dbspec.md "Checks").
+// validation and the IR validator both read it, so the two cannot drift (docs/spec/dbspec.md "Checks").
 package meet
 
 import "fmt"

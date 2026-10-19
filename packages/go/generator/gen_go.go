@@ -204,7 +204,7 @@ func (g *goGen) staticNames(gm *goModel) map[string]bool {
 	return out
 }
 
-// goType is the Go type of a field (docs/dbspec.md "Runtime model"). styled
+// goType is the Go type of a field (docs/spec/dbspec.md "Runtime model"). styled
 // The value codec is orm.StyledValue; a codec with only aes, hex, or ip is string.
 func goType(c *runtimemodel.Field) string {
 	if c.Styled() {

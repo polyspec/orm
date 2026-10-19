@@ -1,4 +1,4 @@
-// The set reader vectors (tests/dbspec/set-files.json, docs/dbspec.md "Document sets"). Every case builds its file
+// The set reader vectors (tests/dbspec/set-files.json, docs/spec/dbspec.md "Document sets"). Every case builds its file
 // tree in a fresh temporary directory, with real symbolic and hard links, and calls readDbspecSet with the tree root
 // joined with the case's `set`. The cases that need no file tree also run through parseSet, from the Node entry and
 // from the browser-safe `@polyspec/orm/dbspec` entry. The vector file is read strictly: an unknown or a missing

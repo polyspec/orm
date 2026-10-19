@@ -2,7 +2,7 @@
 //!
 //! A crate that uses models calls the generator from its `build.rs`. The
 //! generator reads a dbspec document set from its set file `dbspec-set.json`
-//! (docs/dbspec.md, "Document sets"), scans the crate's source for model
+//! (docs/spec/dbspec.md, "Document sets"), scans the crate's source for model
 //! method calls, and writes the models and the manifest text into `OUT_DIR`;
 //! `polyspec_orm::models!()` includes them as the module `model`.
 //!

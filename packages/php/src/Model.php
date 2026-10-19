@@ -6,7 +6,7 @@ namespace Polyspec\Orm;
 /**
  * A model is both the query under construction and a loaded row. Generated
  * classes add typed column getters and setters and the model metadata; every
- * other method name is resolved at call time with the grammar of docs/dsl.md.
+ * other method name is resolved at call time with the grammar of docs/spec/dsl.md.
  */
 abstract class Model implements \JsonSerializable
 {
@@ -314,7 +314,7 @@ abstract class Model implements \JsonSerializable
 
     /**
      * Makes the next update() or delete() write only while the integer column holds $revision; update() also stores
-     * $revision + 1. A mismatch fails with REVISION_CHANGED and changes nothing (docs/dsl.md "Writes").
+     * $revision + 1. A mismatch fails with REVISION_CHANGED and changes nothing (docs/spec/dsl.md "Writes").
      */
     public function expectRevision(string $column, int $revision): static
     {
@@ -812,7 +812,7 @@ abstract class Model implements \JsonSerializable
         }
         $op = self::OPERATORS[$key['op']];
         $eq = $key['op'] === '' || $key['op'] === 'ne';
-        // contains binds NULL as its value, which matches no row (docs/protocol.md §2).
+        // contains binds NULL as its value, which matches no row (docs/spec/protocol.md §2).
         if ($value === null && ($key['op'] === 'lk' || $key['op'] === 'lb')) {
             return [$p + ['op' => $op, 'value' => null, 'kind' => 'value'], 0];
         }
@@ -1819,7 +1819,7 @@ abstract class Model implements \JsonSerializable
             }
         }
         $meta = static::meta();
-        // Rows run as batches of $batch rows in the given order in one transaction (docs/protocol.md).
+        // Rows run as batches of $batch rows in the given order in one transaction (docs/spec/protocol.md).
         $parts = Db::insertParts(count($rows), $batch);
         $limit = Db::bindLimit($db->driver());
         foreach ($parts as $i => $part) {
@@ -2023,7 +2023,7 @@ abstract class Model implements \JsonSerializable
     /**
      * Restores the soft-deleted row that the set values name and returns the restored row. It sends the set
      * values as the restore request's set; the planner picks the key after the request hook from the set values
-     * and the eq conditions of the where (docs/protocol.md 1.5): the primary key when they cover it, otherwise
+     * and the eq conditions of the where (docs/spec/protocol.md 1.5): the primary key when they cover it, otherwise
      * the first unique key in name order. A set value of a key column is a condition and every other set value is
      * a new value written with the restore. It clears the soft delete column with an update that, on an audited
      * table, writes the audit of the transaction like any other update, and then reads the row by the values of
@@ -2037,7 +2037,7 @@ abstract class Model implements \JsonSerializable
 
     /**
      * Restores the soft-deleted row of the key that restore() picks, or creates it with the set values when no row holds the
-     * key, in one transaction (docs/usage.md "Restore or create a row"), and returns the row. A row that holds the key and is
+     * key, in one transaction (docs/operations/usage.md "Restore or create a row"), and returns the row. A row that holds the key and is
      * not deleted fails with ROW_NOT_DELETED, and nothing is written.
      */
     public function restoreOrCreate(): static
@@ -2168,7 +2168,7 @@ abstract class Model implements \JsonSerializable
 
     /**
      * A column value of the array form. A date, datetime and time column each has one temporal form, the runtime
-     * value model text of docs/protocol.md section 5 (Read): YYYY-MM-DD, YYYY-MM-DD HH:MM:SS.ffffff and HH:MM:SS.ffffff.
+     * value model text of docs/spec/protocol.md section 5 (Read): YYYY-MM-DD, YYYY-MM-DD HH:MM:SS.ffffff and HH:MM:SS.ffffff.
      */
     private static function columnArrayValue(string $type, mixed $v): mixed
     {

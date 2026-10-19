@@ -2,12 +2,11 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { test } from 'node:test';
+import { readParityConfig } from '../json/formats.mts';
 import { featureLanguages, unknownParityUnits, unitTests } from './languages.mts';
 
 const root = resolve(new URL('../..', import.meta.url).pathname);
-const parity = JSON.parse(await readFile(resolve(root, 'config/parity.json'), 'utf8')) as {
-  profiles: { name: string; implementations: string[] }[];
-};
+const parity = readParityConfig(resolve(root, 'config/parity.json'));
 const profile = (name: string) => parity.profiles.find(entry => entry.name === name)?.implementations ?? [];
 
 test('the client profile of config/parity.json is the feature language set', () => {

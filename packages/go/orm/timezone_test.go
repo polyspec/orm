@@ -45,7 +45,7 @@ func zoneEntity(s *orm.Schema) *orm.Entity {
 }
 
 // TestConnectionsUseUTC checks that every connection reads and writes datetime as UTC,
-// regardless of the server's time zone (docs/dialects.md "Date and time"). The test
+// regardless of the server's time zone (docs/spec/dialects.md "Date and time"). The test
 // server's MySQL is SYSTEM (KST) and PostgreSQL is Asia/Seoul. A value with an offset is
 // stored as UTC wall clock, read back in the UTC location, and the clock default is also UTC.
 func TestConnectionsUseUTC(t *testing.T) {

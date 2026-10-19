@@ -1,4 +1,4 @@
-//! install compares the whole database with the set, not just table names (docs/schema.md "Schema installation").
+//! install compares the whole database with the set, not just table names (docs/spec/schema.md "Schema installation").
 //! For each case of contracts/fixtures/install/changed_database.json, the case installs the document on SQLite, MySQL, and PostgreSQL;
 //! if the database is changed outside the ORM with statements, install of the same set is CONFIG (the dialect's message), and the remaining query
 //! reads the changed database. It fails if ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is missing.

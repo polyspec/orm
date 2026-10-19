@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Dbspec;
 
 /**
- * A column that a rollback statement makes non-null again (docs/plans.md
+ * A column that a rollback statement makes non-null again (docs/spec/plans.md
  * "Steps", restoring non-null columns): its table, its name in the applied
  * plan and the SQL text of its source default, or null without one.
  */

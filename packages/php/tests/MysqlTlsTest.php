@@ -1,7 +1,7 @@
 <?php
-// The DSN parameters of the PHP client and the MySQL TLS connection (docs/config.md): the DSN uses only the parameters of the scheme,
+// The DSN parameters of the PHP client and the MySQL TLS connection (docs/spec/config.md): the DSN uses only the parameters of the scheme,
 // and `ssl-mode=VERIFY_IDENTITY` with an absolute `ssl-ca` path and a host name is the only MySQL TLS
-// mode; every other parameter and mode is CONFIG. Connection cases need the ORM_TEST_MYSQL_TLS_DSN from `make test-servers`,
+// mode; every other parameter and mode is CONFIG. Connection cases need the ORM_TEST_MYSQL_TLS_DSN from `make orm-test-servers`,
 // ORM_TEST_MYSQL_TLS_OTHER_CA_DSN, and ORM_TEST_MYSQL_TLS_MISMATCH_DSN,
 // and the test fails if any of them is missing.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/MysqlTlsTest.php
@@ -77,7 +77,7 @@ final class MysqlTlsTest extends TestCase
         foreach (['ORM_TEST_MYSQL_TLS_DSN', 'ORM_TEST_MYSQL_TLS_OTHER_CA_DSN', 'ORM_TEST_MYSQL_TLS_MISMATCH_DSN'] as $name) {
             $value = requiredDsn($name);
             if (!is_string($value) || $value === '') {
-                throw new RuntimeException("$name is not set; run make test-servers");
+                throw new RuntimeException("$name is not set; run make orm-test-servers");
             }
             $dsns[] = $value;
         }
@@ -95,13 +95,13 @@ final class MysqlTlsTest extends TestCase
 
     /**
      * The session sql_mode that the client sets on every MySQL connection equals sql_mode.session of
-     * tests/dsn/mysql-session.json, not the server default (docs/config.md "Runtime connection").
+     * tests/dsn/mysql-session.json, not the server default (docs/spec/config.md "Runtime connection").
      */
     public function test_session_sql_mode(): void
     {
         $dsn = requiredDsn('ORM_TEST_MYSQL_DSN');
         if (!is_string($dsn) || $dsn === '') {
-            throw new RuntimeException('ORM_TEST_MYSQL_DSN is not set; run make test-servers');
+            throw new RuntimeException('ORM_TEST_MYSQL_DSN is not set; run make orm-test-servers');
         }
         $vector = json_decode((string) file_get_contents(__DIR__ . '/../../../tests/dsn/mysql-session.json'), true, 512, JSON_THROW_ON_ERROR);
         $db = Orm::connect($dsn, new Config());

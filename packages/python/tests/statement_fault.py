@@ -1,6 +1,6 @@
 # The next statement of a connection fails deterministically with the code and message of the
 # fixture contracts/fixtures/statement_fault.json through the test entry point
-# polyspec.orm.testing.fail_next_statement (docs/protocol.md "3.2 Test statement fault"). Each case
+# polyspec.orm.testing.fail_next_statement (docs/spec/protocol.md "3.2 Test statement fault"). Each case
 # runs on SQLite, MySQL and PostgreSQL; MySQL and PostgreSQL need ORM_TEST_MYSQL_DSN and
 # ORM_TEST_POSTGRES_DSN, and a missing variable fails the case.
 import contextlib

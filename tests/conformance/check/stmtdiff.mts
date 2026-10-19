@@ -61,7 +61,7 @@ export function summary(changes: Change[], group: (kind: string) => string): str
 }
 
 /**
- * statementGroup divides the kinds of statement events into groups (docs/usage.md "Statement events"): model,
+ * statementGroup divides the kinds of statement events into groups (docs/operations/usage.md "Statement events"): model,
  * transaction-control, schema, utility. Other kinds are left as they are.
  */
 export function statementGroup(kind: string): string {

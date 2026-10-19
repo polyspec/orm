@@ -1,4 +1,4 @@
-//! The dbspec document file reader (`docs/dbspec.md`, "Files"). Every tool that reads a file
+//! The dbspec document file reader (`docs/spec/dbspec.md`, "Files"). Every tool that reads a file
 //! reads it with [`read_file`], which rejects a file without a signature before parsing.
 
 use super::Diagnostic;

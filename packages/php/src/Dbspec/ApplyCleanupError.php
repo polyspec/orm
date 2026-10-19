@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Dbspec;
 
 /**
- * A failure of apply or recover after which cleanup failed too (docs/plans.md
+ * A failure of apply or recover after which cleanup failed too (docs/spec/plans.md
  * "Apply"): the previous throwable is the first failure, unchanged (an
  * ApplyError, a database error or the exception of an event handler), and
  * `cleanup` lists in order the errors of releasing the lock, ending the

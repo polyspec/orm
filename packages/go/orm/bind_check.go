@@ -13,7 +13,7 @@ import (
 
 // paramSlot is the logical type of a slot that a parameter fills: a dbspec type kind with the
 // precision of a decimal, time or datetime, the scale of a decimal and the length of a varchar
-// (docs/protocol.md §5 "Parameters").
+// (docs/spec/protocol.md §5 "Parameters").
 type paramSlot struct {
 	Type                     string
 	Precision, Scale, Length int

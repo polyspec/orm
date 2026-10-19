@@ -1,4 +1,4 @@
-// Package ir defines the wire form clients send (JSON, docs/protocol.md) and
+// Package ir defines the wire form clients send (JSON, docs/spec/protocol.md) and
 // validates it against the manifest. Validation is the only place the DSL's
 // rules live; every client renders the same IR.
 package ir
@@ -194,7 +194,7 @@ type Optimist struct {
 	P      int    `json:"p"`
 }
 
-// Error is a compile error with a stable code (docs/errors.yaml).
+// Error is a compile error with a stable code (docs/spec/errors.yaml).
 type Error struct {
 	Code string `json:"code"`
 	Msg  string `json:"msg"`
@@ -316,7 +316,7 @@ func Validate(m *runtimemodel.Model, r *Request) error {
 	default:
 		return errf("IR_INVALID", "unknown kind %q", r.Kind)
 	}
-	// A table of an external document is written only by the set that owns it (docs/dbspec.md "External documents").
+	// A table of an external document is written only by the set that owns it (docs/spec/dbspec.md "External documents").
 	if ent := m.Entities[r.Entity]; ent != nil && ent.External {
 		switch r.Kind {
 		case "insert", "update", "delete", "restore", "restart_identity":
@@ -549,7 +549,7 @@ type RestoreParts struct {
 	Set []Assign
 }
 
-// RestoreKey picks the key of a restore request (docs/protocol.md 1.5) after the request hook. The set
+// RestoreKey picks the key of a restore request (docs/spec/protocol.md 1.5) after the request hook. The set
 // values with a parameter and the eq conditions with a parameter that the where joins with and give
 // columns their values; the key is the primary key when they cover it, otherwise the first unique key
 // in name order that they cover. A set value of a key column becomes a condition, every other set value

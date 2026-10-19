@@ -5,14 +5,14 @@
 // Without a path, it uses the changed files against HEAD and the untracked files. The verify commands in contracts/features.json
 // declare `inputs`, and coverage units (owner client and dependent) declare `tests` and `inputs`; when a changed path is one of those inputs or
 // a file that declared fixture data writes, only that command and unit are selected. A helper (`helpers`) used by several features is neither
-// an input, and its change runs only the helper's own check. Running all features that use the helper is left to make check.
+// an input, and its change runs only the helper's own check. Running all features that use the helper is left to make orm-check.
 // When contracts/features.json changes, it selects the features and helper entries that differ from HEAD's manifest.
 // The selected command runs as features/check.mts --run --feature <id> --command <id>, a unit as features/coverage.mts --feature <id>
 // --part <part>, and a helper as features/check.mts --run --helper <id>, reporting RUN, STEP, PASS, FAIL and the elapsed time
 // It reports. A deadline applies to each case within it, and there is no deadline over the whole step.
 // Also, among the make targets that contracts/check-inputs.json declares as scope owner, the ones whose input paths changed
 // target (e.g. docs-check and docs-verify-idempotent for docs/*.md) is run first. A target that is scope suite
-// runs only in the full suite (make check) and is not selected here. contracts/check-inputs.json is read
+// runs only in the full suite (make orm-check) and is not selected here. contracts/check-inputs.json is read
 // with its schema (scripts/check/schema/check-inputs.schema.json), and if a declaration differs from the schema or rules, it fails without running anything.
 import { spawn, spawnSync, execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -136,7 +136,7 @@ export async function selectOwners(manifest: OwnersManifest, root: string, chang
 }
 
 // selectHelpers returns the helpers (manifest.helpers) whose path is in changed, with the reasons. A change to a helper
-// runs only the helper's check; running every feature that uses the helper is left to the full suite (make check).
+// runs only the helper's check; running every feature that uses the helper is left to the full suite (make orm-check).
 export async function selectHelpers(manifest: OwnersManifest, root: string, changed: string[], change?: ManifestChange): Promise<(Reasoned & { helper: Helper })[]> {
   const out: (Reasoned & { helper: Helper })[] = [];
   for (const helper of manifest.helpers ?? []) {
@@ -222,7 +222,7 @@ export function selectTargets(declared: Record<string, TargetDeclaration>, chang
 // pathScopes is the declaration of paths with no behavior test (paths in contracts/check-inputs.json). Each exact path has a scope and
 // a reason: a lint is for files that have only form checks by nature (LICENSE, a rustfmt config and the like), a suite is for files whose effect
 // reaches the whole suite, so owner-check cannot select part of them (lockfile, toolchain pin, workflows, files several targets write,
-// test-based), and that test is handled by make check. Paths that are not a scope, reason, or pattern are checked by the schema;
+// test-based), and that test is handled by make orm-check. Paths that are not a scope, reason, or pattern are checked by the schema;
 // here it only checks whether the path is a tracked file.
 export function pathScopeErrors(paths: Record<string, PathDeclaration>, tracked: string[]): string[] {
   return Object.keys(paths).filter(path => !tracked.includes(path)).map(path => `contracts/check-inputs.json paths: ${path} is not a tracked file`);
@@ -368,7 +368,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     const declared = Object.hasOwn(declarations.paths, path) ? declarations.paths[path] : undefined;
     if (declared) console.log(`owners: ${path} is declared ${declared.scope}: ${declared.reason}`);
   }
-  if (change?.whole) console.log('owners: contracts/features.json changed outside a feature or helper entry; make check runs every feature');
+  if (change?.whole) console.log('owners: contracts/features.json changed outside a feature or helper entry; make orm-check runs every feature');
   const untested = untestedPaths(changed, { owners, helpers, targets, paths: declarations.paths, exists: (path: string) => existsSync(resolve(root, path)) });
   if (untested.length) {
     for (const path of untested)
@@ -384,7 +384,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     }
     let failed = 0;
     // A feature, helper, or make target that reads the server environment uses this run's own bench database and decimal database
-    // (scripts/check/databases.mts, the same as make check). There is no shared bench or decimal database.
+    // (scripts/check/databases.mts, the same as make orm-check). There is no shared bench or decimal database.
     // The databases it creates are deleted at the end.
     const makefile = readFileSync(resolve(root, 'Makefile'), 'utf8');
     const needsDatabases = owners.length > 0 || helpers.length > 0 || targets.some(({ target }) => usesTestEnv(makefile, target));

@@ -551,12 +551,12 @@ class SqliteSession implements DriverSession {
 /** A DSN of a SQL database: the driver, the connection time zone and the MySQL TLS CA. */
 export interface SqlDsn { driver: DriverName; zone: string; sslCa?: string; }
 
-/** A markdown:// DSN: the flowmark server address, the corpus and the token of the markdown IR executor (docs/protocol.md §5). */
+/** A markdown:// DSN: the flowmark server address, the corpus and the token of the markdown IR executor (docs/spec/protocol.md §5). */
 interface MarkdownParsedDsn { driver: 'markdown'; zone: string; markdown: MarkdownDsn; }
 
 export type ParsedDsn = SqlDsn | MarkdownParsedDsn;
 
-/** The parameters a DSN accepts for each scheme (docs/config.md). Any other parameter is CONFIG. */
+/** The parameters a DSN accepts for each scheme (docs/spec/config.md). Any other parameter is CONFIG. */
 const DSN_PARAMETERS: Record<string, readonly string[]> = {
   'mysql:': ['timezone', 'socket', 'ssl-mode', 'ssl-ca'],
   'postgres:': ['timezone', 'host', 'sslmode'],
@@ -593,7 +593,7 @@ function mysqlSsl(parsed: SqlDsn): { ca: string; rejectUnauthorized: true; verif
 
 /**
  * Splits a DSN URI into the dialect and the connection time zone. Every
- * connection reads and writes datetime values in UTC (docs/dialects.md "Date
+ * connection reads and writes datetime values in UTC (docs/spec/dialects.md "Date
  * and time"), so the timezone parameter accepts only UTC or +00:00.
  */
 export function parseDsn(dsn: string): ParsedDsn {
@@ -722,7 +722,7 @@ function boundMySqlPool(pool: MySqlCorePool, bounds: PoolBounds): void {
 /**
  * The session sql_mode of every MySQL connection, so that a coercion, truncation or grouping result does not depend on
  * the server's setting; it also replaces the IGNORE_SPACE that mysql2's default client flags add
- * (tests/dsn/mysql-session.json, docs/config.md "Runtime connection").
+ * (tests/dsn/mysql-session.json, docs/spec/config.md "Runtime connection").
  */
 const MYSQL_SQL_MODE = 'STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
 

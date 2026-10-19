@@ -1,6 +1,6 @@
 // Collects the method names that the scanned sources call on generated models.
 // A call counts only when its receiver resolves to a model of the generated
-// classes; docs/usage.md states the receivers the scan resolves. A call on
+// classes; docs/operations/usage.md states the receivers the scan resolves. A call on
 // any other receiver adds no method.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { extname, join } from 'node:path';
@@ -464,7 +464,8 @@ class Scanner {
         if (c.test !== null) this.visit(c.test);
         for (const statement of c.consequent) this.visit(statement);
         end = this.snapshot();
-        endExits = c.consequent.length > 0 && exits(c.consequent[c.consequent.length - 1] as Node);
+        const last = c.consequent[c.consequent.length - 1];
+        endExits = last !== undefined && exits(last);
       }
       if (end !== undefined && !endExits) ends.push(end);
       if (!hasDefault) ends.push(base);

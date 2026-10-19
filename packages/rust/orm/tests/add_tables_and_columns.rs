@@ -1,4 +1,4 @@
-//! Checks addTablesAndColumns on SQLite, MySQL, and PostgreSQL (docs/schema.md, "Adding tables
+//! Checks addTablesAndColumns on SQLite, MySQL, and PostgreSQL (docs/spec/schema.md, "Adding tables
 //! and columns"). The case database holds the tables of another set, addcol_log, and the tables of addcol set version 1,
 //! with rows. Calling add_tables_and_columns with version 2 adds to existing tables
 //! the columns that are nullable or have a default, keeps the rows, and the trigger of the changed audit table records the new column,
@@ -135,7 +135,7 @@ async fn add_tables_and_columns() {
         }
         assert_eq!(count(&db, "SELECT COUNT(*) FROM addcol_extra").await.unwrap(), 1, "{driver}: rows of the created table");
         assert!(added(db.utils().schema().add_tables_and_columns(fixture("v2")).await).is_empty(), "{driver}: repeated add_tables_and_columns");
-        // All tables exist, so install changes nothing (docs/schema.md, "Schema installation").
+        // All tables exist, so install changes nothing (docs/spec/schema.md, "Schema installation").
         db.utils().schema().install(fixture("v2")).await.unwrap_or_else(|e| panic!("{driver}: install of version 2 over its tables: {e}"));
         db.close().await;
         database.drop().await;

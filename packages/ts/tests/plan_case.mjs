@@ -1,4 +1,4 @@
-// plan_case.mjs holds the dbspec schema plan vectors (tests/dbspec/plans.json, docs/plans.md) for the TypeScript
+// plan_case.mjs holds the dbspec schema plan vectors (tests/dbspec/plans.json, docs/spec/plans.md) for the TypeScript
 // client: the helpers and one function per section of plans.json; each dbspec-plan-<section>.mjs calls one.
 import { caseTest } from '../../../tests/testcase.mts';
 import assert from 'node:assert/strict';
@@ -11,7 +11,7 @@ export const vectors = JSON.parse(readFileSync(new URL('tests/dbspec/plans.json'
 const TIMEOUT = 5000;
 const DIALECTS = ['mysql', 'postgres', 'sqlite'];
 
-// stepFields is the plans.json object of a step (docs/plans.md "Steps").
+// stepFields is the plans.json object of a step (docs/spec/plans.md "Steps").
 function stepFields(s) {
   const out = { statement: s.statement, effect: effectText(s.effect) };
   if (s.rollback !== '') out.rollback = s.rollback;

@@ -50,7 +50,7 @@ final class DsnTest extends TestCase
     }
 
     // A SQLite DSN with a query makes the file from the path only. The query is not put in the file name.
-    // The opener makes a file like `named.sqlite?_pragma=…` (docs/dialects.md "Probe environment").
+    // The opener makes a file like `named.sqlite?_pragma=…` (docs/spec/dialects.md "Probe environment").
     public function test_sqlite_file_name(): void
     {
         $directory = sys_get_temp_dir() . '/orm-php-sqlite-name-' . getmypid();
@@ -80,7 +80,7 @@ final class DsnTest extends TestCase
     }
 
     // tests/dsn/sqlite-paths.json: a DSN path opens the percent-decoded file, and a wrong path is
-    // CONFIG (docs/config.md "Runtime connection").
+    // CONFIG (docs/spec/config.md "Runtime connection").
     /** @param array<string, mixed> $case */
     #[DataProvider('sqlitePaths')]
     public function test_sqlite_path(array $case): void

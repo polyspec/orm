@@ -1,5 +1,5 @@
 // Package dbspec parses, validates and emits dbspec documents, the schema
-// language that docs/dbspec.md specifies.
+// language that docs/spec/dbspec.md specifies.
 //
 // Parse reads one document together with the declared document set that its
 // `use` lines name, validates every rule of the specification and returns
@@ -19,7 +19,7 @@ import (
 // Code is the error code of every dbspec diagnostic.
 const Code = "SCHEMA_INVALID"
 
-// Rules of a diagnostic, as listed in docs/dbspec.md "Limits and errors".
+// Rules of a diagnostic, as listed in docs/spec/dbspec.md "Limits and errors".
 const (
 	RuleSignature     = "signature"
 	RuleHeader        = "header"
@@ -53,7 +53,7 @@ type Diagnostic struct {
 // Parse parses and validates text. documents is the declared document set:
 // each document name that a `use` line may name, mapped to its text. Parse
 // returns the document, the positions of its declarations in source order
-// (docs/dbspec.md "Declaration positions") and nil diagnostics, or nil, nil
+// (docs/spec/dbspec.md "Declaration positions") and nil diagnostics, or nil, nil
 // and every diagnostic of the document ordered by line, column and rule;
 // never both. An encoding, header or limit error stops parsing: it follows
 // the diagnostics found before it, and later lines are not diagnosed.
@@ -100,7 +100,7 @@ func sortDiagnostics(diagnostics []Diagnostic) {
 	})
 }
 
-// Emit writes document in canonical form (docs/dbspec.md "Canonical form").
+// Emit writes document in canonical form (docs/spec/dbspec.md "Canonical form").
 // It writes the model as given and does not validate it; a document returned
 // by Parse is valid and its literals are already in canonical form.
 func Emit(document *Document) string {
@@ -108,7 +108,7 @@ func Emit(document *Document) string {
 }
 
 // Manifest holds the manifest and schema texts of a document set and their
-// hashes (docs/dbspec.md, "Manifest and hashes").
+// hashes (docs/spec/dbspec.md, "Manifest and hashes").
 type Manifest struct {
 	ManifestText string
 	// ExternalText is the canonical text holding, for each external document, the tables that owned documents use,
@@ -123,7 +123,7 @@ type Manifest struct {
 // checkSet reports a document name that repeats, a used document missing
 // from the set and an external document that no owned document reaches through
 // use, at the header name of the later, the using or the external document
-// (docs/dbspec.md, "Manifest and hashes"). It returns the documents in name
+// (docs/spec/dbspec.md, "Manifest and hashes"). It returns the documents in name
 // order.
 func checkSet(documents []*Document) ([]*Document, []Diagnostic) {
 	ordered := slices.Clone(documents)
@@ -229,7 +229,7 @@ func ManifestOf(documents []*Document) (*Manifest, []Diagnostic) {
 
 // externalDocument is a document holding, from an external document's tables, only the columns, primary key, unique keys,
 // the foreign keys whose referenced table is also one of the tables, and the indexes whose leading columns are such a
-// foreign key's columns, in document order (docs/dbspec.md "Manifest and hashes"), so the reduced text satisfies the
+// foreign key's columns, in document order (docs/spec/dbspec.md "Manifest and hashes"), so the reduced text satisfies the
 // validation of the full document. It is nil if no table exists. Other foreign keys, indexes, checks, and settings are
 // owned by the external document, so they are not held.
 func externalDocument(d *Document, tables []string) *Document {
@@ -271,7 +271,7 @@ func leadsWith(index []IndexColumn, columns []string) bool {
 }
 
 // ExternalDifferences checks that the tables the set uses from external documents exist in the database
-// (docs/dbspec.md "External documents"). live is the database introspected into
+// (docs/spec/dbspec.md "External documents"). live is the database introspected into
 // a document. For each table used: it is a difference if the table is missing, if an external document's column is missing, if the type or null differs,
 // if the primary key differs, or if a unique key has no column list,
 // and the differences are returned in table, column order. It is nil if there are no external documents.

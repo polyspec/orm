@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /*
- * markdown IR executor unit case (docs/protocol.md §5): the markdown DSN, the connect the client sends,
+ * markdown IR executor unit case (docs/spec/protocol.md §5): the markdown DSN, the connect the client sends,
  * the reading of control messages and error lines, the connect the server refuses, the SQL-only surface that a markdown connection refuses,
  * and Validator::paramUses, which reads the slot form for each parameter in the message encoder.
  * The size of a class is Large, that of the largest case (a child process).
@@ -186,7 +186,7 @@ final class MarkdownTest extends TestCase
     public function test_bind_message_vectors(): void
     {
         // Message case of tests/bind/vectors.json: the runtime value model JSON of an IR executor message parameter
-        // (docs/protocol.md §5 "Parameters"). It is the same case as Go's TestBindMessageVectors.
+        // (docs/spec/protocol.md §5 "Parameters"). It is the same case as Go's TestBindMessageVectors.
         $vectors = json_decode((string) file_get_contents(__DIR__ . '/../../../tests/bind/vectors.json'), true, flags: JSON_THROW_ON_ERROR);
         $server = markdown_fake_server(['{"ok":true}']);
         $db = Orm::connect($server[2], new Config());
@@ -214,7 +214,7 @@ final class MarkdownTest extends TestCase
 
     public function test_bind_vectors(): void
     {
-        // Bind case of tests/bind/vectors.json: checks the parameter value against the logical type of its slot (docs/protocol.md §5
+        // Bind case of tests/bind/vectors.json: checks the parameter value against the logical type of its slot (docs/spec/protocol.md §5
         // "Parameters"). It is the same case as Go's TestBindVectors.
         $vectors = json_decode((string) file_get_contents(__DIR__ . '/../../../tests/bind/vectors.json'), true, flags: JSON_THROW_ON_ERROR);
         $zone = new \DateTimeZone($vectors['zone']);
@@ -330,7 +330,7 @@ final class MarkdownTest extends TestCase
 
     public function test_bind_offsetless_datetime_uses_the_connection_zone_under_dst(): void
     {
-        // An offset-less datetime is a wall clock in the connection zone (docs/protocol.md §5). The process
+        // An offset-less datetime is a wall clock in the connection zone (docs/spec/protocol.md §5). The process
         // date.timezone has daylight saving, and 2026-03-08 02:30 does not exist in America/New_York: the
         // connection zone is UTC, so the value must bind unchanged whatever the process zone is.
         $default = date_default_timezone_get();

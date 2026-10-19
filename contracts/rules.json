@@ -15,7 +15,7 @@
     },
     {
       "id": "aes.version-column",
-      "source": "docs/dbspec.md",
+      "source": "docs/spec/dbspec.md",
       "checker": "dbspec-go-check, dbspec-php-check, dbspec-ts-check and dbspec-rust-check",
       "failure": "a table whose column has the aes codec stage parses without an aes_version setting naming a non-null integer column"
     },
@@ -33,7 +33,7 @@
     },
     {
       "id": "docs.writing-style",
-      "source": "docs/document-rules.md",
+      "source": "docs/operations/document-rules.md",
       "checker": "docs-rules-check",
       "failure": "configured informal, figurative, personifying, or ambiguous wording appears in a manual",
       "forbidden_ko": [
@@ -122,8 +122,8 @@
     },
     {
       "id": "status.evidence",
-      "source": "docs/plans/execution-checklist.md",
-      "checker": "documents-check",
+      "source": "docs/plans/execution/checklist.md",
+      "checker": "docs-check",
       "failure": "a checklist item is marked complete without implementation, test, documentation, and publication evidence"
     },
     {

@@ -5,7 +5,7 @@ namespace Polyspec\Orm\Dbspec;
 
 /**
  * The neutral intermediate model that the dialect reader fills. document() turns it into the dbspec
- * document (docs/dialects.md "Introspection").
+ * document (docs/spec/dialects.md "Introspection").
  *
  * @internal
  */

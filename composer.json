@@ -4,7 +4,7 @@
     "type": "project",
     "license": "MIT",
     "require": {
-        "php": ">=8.5",
+        "php": ">=8.4",
         "polyspec/orm": "0.0.18"
     },
     "autoload-dev": {
@@ -31,7 +31,7 @@
                 "version": "0.0.9",
                 "type": "library",
                 "require": {
-                    "php": ">=8.5",
+                    "php": ">=8.4",
                     "ext-json": "*",
                     "ext-pcre": "*"
                 },
@@ -68,7 +68,7 @@
         "vendor-dir": "vendor-php",
         "optimize-autoloader": true,
         "platform": {
-            "php": "8.5.0"
+            "php": "8.4.1"
         }
     },
     "require-dev": {

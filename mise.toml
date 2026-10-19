@@ -5,11 +5,13 @@
 node = "26.12.0"
 go = "1.27.2"
 python = "3.14.8"
-uv = "0.12.24"
-ruff = "0.17.0"
+uv = "0.13.0"
+ruff = "0.17.1"
+golangci-lint = "2.14.0"
+"go:golang.org/x/tools/cmd/deadcode" = "0.52.0"
 "pypi:vulture" = "2.16"
 "github:asamarts/alint" = "0.18.2"
-"go:golang.org/x/vuln/cmd/govulncheck" = "1.8.0"
+"go:golang.org/x/vuln/cmd/govulncheck" = "1.9.0"
 "github:rustsec/rustsec" = { version = "0.22.2", version_prefix = "cargo-audit/v" }
 # composer.phar is one file, so its sha256 is declared here, from getcomposer.org/download/<version>/composer.phar.sha256sum,
 # and mise.lock records it.

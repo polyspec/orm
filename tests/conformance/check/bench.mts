@@ -13,7 +13,7 @@ export const benchDatabases = [
 /** benchDsn is the DSN of a bench database; it is required, so a test run outside its make target fails naming it. */
 export function benchDsn(env: string): string {
   const dsn = process.env[env] ?? '';
-  if (dsn === '') throw new Error(`${env} is required; run the test through its make target, which reads the environment of make test-servers`);
+  if (dsn === '') throw new Error(`${env} is required; run the test through its make target, which reads the environment of make orm-test-servers`);
   return dsn;
 }
 

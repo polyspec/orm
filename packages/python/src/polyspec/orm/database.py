@@ -1,5 +1,5 @@
 # Db: the connection that selects a database by one DSN URI, plus the plan cache and transactions
-# (docs/config.md, docs/usage.md). Execution is synchronous.
+# (docs/spec/config.md, docs/operations/usage.md). Execution is synchronous.
 from __future__ import annotations
 
 import contextlib
@@ -71,7 +71,7 @@ __all__ = [
     "time_value",
 ]
 
-# Parameters a DSN accepts for each scheme (docs/config.md). Any other parameter is CONFIG.
+# Parameters a DSN accepts for each scheme (docs/spec/config.md). Any other parameter is CONFIG.
 DSN_PARAMETERS = {
     "mysql": ("timezone", "socket", "ssl-mode", "ssl-ca"),
     "postgres": ("timezone", "host", "sslmode"),
@@ -80,7 +80,7 @@ DSN_PARAMETERS = {
 
 SQLITE_BUSY_TIMEOUT_MS = 5000
 # The session sql_mode of every MySQL connection, so that a result does not depend on the
-# server's setting (tests/dsn/mysql-session.json, docs/config.md "Runtime connection").
+# server's setting (tests/dsn/mysql-session.json, docs/spec/config.md "Runtime connection").
 MYSQL_SQL_MODE = "STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"
 ROW_LOCK_TABLES = ["orm__row_lock"]
 ROW_LOCK_DDL = (
@@ -121,7 +121,7 @@ class ParsedDsn:
 
 
 def _mysql_tls(parameters: dict, host: str) -> str | None:
-    """Checks the MySQL TLS parameters (docs/config.md "DSN parameters and MySQL TLS"): `ssl-ca` with the absolute
+    """Checks the MySQL TLS parameters (docs/spec/config.md "DSN parameters and MySQL TLS"): `ssl-ca` with the absolute
     path of the CA file plus `ssl-mode=VERIFY_IDENTITY` connects over TCP to a host name, or neither is present. Returns the CA path or None."""
     mode = parameters.get("ssl-mode")
     ca = parameters.get("ssl-ca")
@@ -142,7 +142,8 @@ def _mysql_tls(parameters: dict, host: str) -> str | None:
         raise OrmError(codes.CONFIG, f"mysql DSN ssl-ca {ca} is not an absolute path")
     if "socket" in parameters:
         raise OrmError(
-            codes.CONFIG, "mysql DSN ssl-mode connects over TCP and does not accept socket"
+            codes.CONFIG,
+            "mysql DSN ssl-mode connects over TCP and does not accept socket",
         )
     # The identity check compares the host name with the certificate.
     try:
@@ -184,7 +185,7 @@ def _sqlite_path(url) -> str:
 
 def parse_dsn(dsn: str) -> ParsedDsn:
     """Splits a DSN URI into the dialect and the connection time zone. Every connection reads and writes datetime
-    values as UTC (docs/dialects.md "Date and time"), so the timezone parameter
+    values as UTC (docs/spec/dialects.md "Date and time"), so the timezone parameter
     accepts only UTC and +00:00."""
     try:
         url = urlsplit(dsn)
@@ -309,7 +310,7 @@ def _native_time_text(value):
 
 
 def _time_form(value, col_type: str, zone: str, precision: int):
-    """Reads date, time, and datetime text as value forms (docs/dbspec.md "Runtime model"):
+    """Reads date, time, and datetime text as value forms (docs/spec/dbspec.md "Runtime model"):
     `YYYY-MM-DD`, `HH:MM:SS`, and `YYYY-MM-DD HH:MM:SS` with p fractional digits. A datetime with an offset
     is converted to the connection time zone. Any other value is None."""
     import datetime
@@ -482,7 +483,7 @@ _INTEGER_RANGES = {
 
 
 def convert(type_: str, value, zone: str, declared: Field | None = None):
-    """Converts a cell to a value of its column type (docs/dbspec.md "Runtime model")."""
+    """Converts a cell to a value of its column type (docs/spec/dbspec.md "Runtime model")."""
 
     if value is None:
         return None
@@ -517,7 +518,9 @@ def convert(type_: str, value, zone: str, declared: Field | None = None):
         try:
             return normalize_decimal(value, declared.precision, declared.scale)
         except OrmError as cause:
-            raise OrmError(codes.CODEC_DECODE, f"invalid decimal cell: {cause}") from None
+            raise OrmError(
+                codes.CODEC_DECODE, f"invalid decimal cell: {cause}"
+            ) from None
     if type_ == "bool":
         return value in (True, 1, "1", "t", "true")
     if type_ in ("date", "time", "datetime"):
@@ -558,7 +561,7 @@ def _driver_limit(driver: str) -> int:
     return 999 if driver == "sqlite" else 65535
 
 
-# The table of driver error codes (docs/protocol.md "Errors", docs/errors.yaml). It uses the same conditions as driverError in the TypeScript client
+# The table of driver error codes (docs/spec/protocol.md "Errors", docs/spec/errors.yaml). It uses the same conditions as driverError in the TypeScript client
 # (packages/ts/src/driver.ts) and OrmException::fromDriver in the PHP client. A driver error that is not in the table
 # is DRIVER. A write rejected by an audit or immutable trigger is also DRIVER.
 _MYSQL_CODES = {
@@ -666,6 +669,11 @@ def _driver_error(
     return OrmError(_postgres_code(error.sqlstate, lost), f"postgres: {message}", error)
 
 
+def _is_driver_error(driver: str, error: Exception) -> bool:
+    """Whether the error is an error class of the driver, which the handlers map; any other error is raised as it is."""
+    return _driver_error(driver, error) is not error
+
+
 def _raise_driver_error(driver: str, error: Exception, lost: bool = False):
     """Call inside an except clause: a driver error is re-raised as an ORM error, and any other error is re-raised as is."""
     mapped = _driver_error(driver, error, lost)
@@ -705,12 +713,12 @@ class _SqliteConnection:
                 # A pooled connection serves one thread at a time, but not always the thread that opened it.
                 check_same_thread=False,
             )
-        except Exception as error:
+        except sqlite3.Error as error:
             _raise_driver_error("sqlite", error)
         try:
             for statement in ["PRAGMA foreign_keys = ON", *pragmas]:
                 self.connection.execute(statement)
-        except Exception as error:
+        except sqlite3.Error as error:
             self.connection.close()
             _raise_driver_error("sqlite", error)
 
@@ -718,7 +726,7 @@ class _SqliteConnection:
         try:
             cursor = self.connection.execute(sql, tuple(values))
             rows = cursor.fetchall()
-        except Exception as error:
+        except sqlite3.Error as error:
             _raise_driver_error("sqlite", error)
         insert_id = cursor.lastrowid if cursor.lastrowid is not None else None
         affected = cursor.rowcount if cursor.rowcount is not None else 0
@@ -793,7 +801,8 @@ class _MysqlConnection:
                 parsed.ssl_ca, os.R_OK
             ):
                 raise OrmError(
-                    codes.CONFIG, f"mysql DSN ssl-ca {parsed.ssl_ca} is not a readable file"
+                    codes.CONFIG,
+                    f"mysql DSN ssl-ca {parsed.ssl_ca} is not a readable file",
                 )
             # The server certificate is checked against the CA and the host name, and the password travels only
             # inside TLS: the client keeps no server public key, so it makes no RSA password exchange.
@@ -818,6 +827,8 @@ class _MysqlConnection:
                 raise OrmError(
                     codes.CONFIG, f"mysql TLS connection failed: SSL: {error}"
                 ) from error
+            if not _is_driver_error("mysql", error):
+                raise
             _raise_driver_error("mysql", error)
         # The session settings are one statement: MySQL bounds SELECT statements with max_execution_time.
         self.execute(
@@ -837,6 +848,8 @@ class _MysqlConnection:
             cursor.execute(text, args)
             rows = [list(row) for row in cursor.fetchall()]
         except Exception as error:
+            if not _is_driver_error("mysql", error):
+                raise
             _raise_driver_error("mysql", error)
         insert_id = cursor.lastrowid
         affected = cursor.rowcount
@@ -879,6 +892,8 @@ class _PostgresConnection:
                 ),
             )
         except Exception as error:
+            if not _is_driver_error("postgres", error):
+                raise
             _raise_driver_error("postgres", error)
         postgres_loaders(self.connection.adapters)
         self.connection.autocommit = True
@@ -892,6 +907,8 @@ class _PostgresConnection:
                 [list(row) for row in cursor.fetchall()] if cursor.description else []
             )
         except Exception as error:
+            if not _is_driver_error("postgres", error):
+                raise
             # psycopg marks a connection that the server ended or that was dropped as closed.
             _raise_driver_error("postgres", error, bool(self.connection.closed))
         insert_id = None
@@ -1018,7 +1035,7 @@ def _active_for(db: "Db") -> TxFrame | None:
 
 # Request hook: receives each request of a handle just before it is planned and returns the request to plan. The second argument, add_param(value),
 # appends value to the end of the request parameters and returns its index; the third argument is a read-only
-# tuple of the parameters the request bound (docs/usage.md "Request hook").
+# tuple of the parameters the request bound (docs/operations/usage.md "Request hook").
 RequestHook = Callable[[IRRequest, Callable[[object], int], tuple], IRRequest]
 
 
@@ -1066,7 +1083,7 @@ class _PoolConfig:
 
 
 def _connection_config(options: dict) -> _PoolConfig:
-    """Checks the pool options and the statement timeout of the connection configuration (docs/config.md "Runtime
+    """Checks the pool options and the statement timeout of the connection configuration (docs/spec/config.md "Runtime
     connection"), as the Go, TypeScript and Rust clients do: zero or unset poolSize opens at most 10 connections,
     zero or unset poolIdleSize keeps up to the pool size idle, zero or unset poolLifetimeMs keeps connections without
     a lifetime, and a negative value or an idle size above the pool size is CONFIG."""
@@ -1093,7 +1110,7 @@ def _connection_config(options: dict) -> _PoolConfig:
 
 
 class _Pool:
-    """The connections of a Db (docs/config.md "Runtime connection"). It never opens more than its size; a caller
+    """The connections of a Db (docs/spec/config.md "Runtime connection"). It never opens more than its size; a caller
     that needs a connection while all of them are in use waits for one. A released connection is closed when the pool
     already keeps its idle size, when its lifetime has passed or when it was lost; an idle connection past its
     lifetime is closed when it would be taken."""
@@ -1211,7 +1228,7 @@ class _Leased:
 
 @dataclass(frozen=True)
 class DbStats:
-    """The connection statistics of a Db (docs/interfaces.md "Utilities", stats())."""
+    """The connection statistics of a Db (docs/spec/interfaces.md "Utilities", stats())."""
 
     max_open_connections: int
     open_connections: int
@@ -1227,7 +1244,7 @@ class Db:
         self.dsn = dsn
         self.parsed = parse_dsn(dsn)
         self.driver = self.parsed.driver
-        # A markdown connection does not plan (docs/protocol.md §5), so it has no dialect.
+        # A markdown connection does not plan (docs/spec/protocol.md §5), so it has no dialect.
         self.dialect = None
         if self.driver != "markdown":
             dialect_class = dialect_of(self.driver)
@@ -1255,7 +1272,7 @@ class Db:
         self._root: Db | None = None
         self.request_hook: RequestHook | None = None
         if self.driver == "markdown":
-            # A markdown connection keeps one server session (docs/protocol.md §5).
+            # A markdown connection keeps one server session (docs/spec/protocol.md §5).
             self._connection = self._open()
         else:
             self._shared.pool = _Pool(self._open, self.pool_config)
@@ -1270,7 +1287,7 @@ class Db:
         return Utils(self)
 
     def stats(self) -> DbStats:
-        """The connection statistics of the pool (docs/interfaces.md "Utilities", stats())."""
+        """The connection statistics of the pool (docs/spec/interfaces.md "Utilities", stats())."""
         pool = self._shared.pool
         if pool is None:
             # The one server session of a markdown connection, in use while a transaction holds it.
@@ -1352,7 +1369,7 @@ class Db:
 
     def with_request_hook(self, hook: RequestHook) -> Db:
         """Returns a handle on the same connection whose hook receives each request of the handle
-        right before it is planned (docs/usage.md "Request hook"). The handle shares the connection,
+        right before it is planned (docs/operations/usage.md "Request hook"). The handle shares the connection,
         the plan cache, the subscribers and the active transactions; withRequestHook on a hooked
         handle replaces its hook."""
         if not callable(hook):
@@ -1370,7 +1387,7 @@ class Db:
         self, subscriber: Callable[[StatementEvent], None]
     ) -> Callable[[], None]:
         """Registers a subscriber that receives the event of every statement sent by this connection
-        and its derived handles (docs/usage.md "Statement events"). A subscriber
+        and its derived handles (docs/operations/usage.md "Statement events"). A subscriber
         is called in registration order after the statement ends and before work continues, and must not throw.
         A markdown connection sends no statement, so it is CAPABILITY_UNSUPPORTED."""
         unsupported_on_markdown(self, "statement events")
@@ -1473,7 +1490,9 @@ class Db:
                 push(_audit_value(slot, audit))
             elif source == "secret":
                 if slot["name"] != "aes" or self.aes_key == "":
-                    raise OrmError(codes.CONFIG, f"secret {slot['name']} is not configured")
+                    raise OrmError(
+                        codes.CONFIG, f"secret {slot['name']} is not configured"
+                    )
                 push(self.aes_key, "$SECRET")
             elif source == "config":
                 if slot["name"] != "aes_version":
@@ -1499,7 +1518,7 @@ class Db:
         as a model statement's are: host styles, decimals, SQLite time values, the AES key and key
         version, the clock and the audit of the transaction. A step that reads rows (it has an
         assemble) and a param slot past params fail with IR_INVALID before any statement runs
-        (docs/usage.md "Execute a compiled statement")."""
+        (docs/operations/usage.md "Execute a compiled statement")."""
         if self._shared.closed:
             raise OrmError(codes.CONFIG, "database is closed")
         ex = Executor(self, self.active_frame())
@@ -1560,7 +1579,9 @@ class Db:
         options = dict(options or {})
         retry = options.get("retry", 3)
         if isinstance(retry, bool) or not isinstance(retry, int) or retry < 0:
-            raise OrmError(codes.CONFIG, "transaction retry must be a non-negative integer")
+            raise OrmError(
+                codes.CONFIG, "transaction retry must be a non-negative integer"
+            )
         timeout_ms = options.get("timeoutMs", 0)
         if (
             isinstance(timeout_ms, bool)
@@ -1657,6 +1678,7 @@ class Db:
 
         if frame is None or frame.audit is not None or frame.pending_audit is None:
             return none
+
         def insert():
             # The audit insert is a statement of the write that needs it: it runs while that write
             # holds the transaction connection.
@@ -1714,7 +1736,9 @@ class Db:
         and the set that has that table as an entity
         must be registered on this connection."""
         if not isinstance(values, dict):
-            raise OrmError(codes.CONFIG, "transaction audit is an object of column values")
+            raise OrmError(
+                codes.CONFIG, "transaction audit is an object of column values"
+            )
         if self.audit_source is None:
             raise OrmError(
                 codes.CONFIG,
@@ -1817,7 +1841,7 @@ class Db:
 
     def _row_lock_table(self) -> None:
         """Creates the SQLite row lock table once, outside any transaction, before the first transaction
-        (docs/usage.md "Statement events")."""
+        (docs/operations/usage.md "Statement events")."""
         if self._shared.row_lock_ready:
             return
         self.events.send(
@@ -1852,7 +1876,9 @@ class Db:
         except OrmError as error:
             # SQLITE_BUSY from a NOWAIT request is LOCK_NOT_AVAILABLE, not CANCELED.
             if no_wait and _sqlite_busy(error.cause):
-                raise OrmError(codes.LOCK_NOT_AVAILABLE, str(error), error.cause) from None
+                raise OrmError(
+                    codes.LOCK_NOT_AVAILABLE, str(error), error.cause
+                ) from None
             raise
         finally:
             if no_wait:
@@ -1974,7 +2000,9 @@ class Db:
             # If it is not 1, this connection did not hold the lock.
             if released is not None and int((released["rows"] or [[0]])[0][0]) != 1:
                 errors.append(
-                    OrmError(codes.CONFIG, f"lock {key} was not held at transaction end")
+                    OrmError(
+                        codes.CONFIG, f"lock {key} was not held at transaction end"
+                    )
                 )
         if self.driver == "mysql":
             # Statements that delete values are sent in key order.
@@ -2194,7 +2222,7 @@ def _decode_assembly(row, assemble: dict, db: Db) -> None:
             version = int(at)
     for column in assemble["columns"]:
         value = row[column["index"]]
-        # SQL NULL also goes through the client codec stages and becomes StyledValue.sql_null() (docs/codec.md
+        # SQL NULL also goes through the client codec stages and becomes StyledValue.sql_null() (docs/spec/codec.md
         # "Value model"). The NULL of a column with only host stages stays None.
         if not column["styles"]:
             continue

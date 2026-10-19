@@ -29,7 +29,7 @@ const (
 )
 
 // StatementEvent describes one statement that the connection sent to the
-// database (docs/usage.md, statement events).
+// database (docs/operations/usage.md, statement events).
 type StatementEvent struct {
 	SQL string
 	// Binds are the bound values; secret and clock slots are replaced by

@@ -19,7 +19,7 @@ import (
 
 // TestIRAnswers runs the chain of each case in contracts/fixtures/ir_answers.json: the server
 // instead writes {"ok": true} for connect and the case's answer for one request of the chain, and connects to a listener
-// and checks that the result of the chain equals expect (see Read in docs/protocol.md §5). flowmark
+// and checks that the result of the chain equals expect (see Read in docs/spec/protocol.md §5). flowmark
 // is not needed.
 func TestIRAnswers(t *testing.T) {
 	testcase.Start(t, testcase.Compute)

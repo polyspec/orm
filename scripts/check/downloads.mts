@@ -95,11 +95,11 @@ const DOWNLOAD = /\b(?:npm (?:ci|install)|composer (?:install|update|require)|ca
 const OFFLINE = ['CARGO_NET_OFFLINE := true', 'GOPROXY := off', 'npm_config_offline := true', 'COMPOSER_DISABLE_NETWORK := 1'];
 
 // offlineMakeErrors checks whether the Makefile runs check offline: it exports the four offline settings, and the download
-// command and $(ONLINE) appear only in the recipes of the install targets (install, install-*).
+// command and $(ONLINE) appear only in the recipes of the install targets (install, install-*, orm-install-*).
 export function offlineMakeErrors(makefile: string) {
   const errors = OFFLINE.filter(setting => !makefile.split('\n').includes(`export ${setting}`)).map(setting => `Makefile does not export ${setting}`);
   for (const { target, commands } of makeTargets(makefile)) {
-    if (/^install(?:-[\w-]+)?$/.test(target)) continue;
+    if (/^(?:orm-)?install(?:-[\w-]+)?$/.test(target)) continue;
     for (const recipe of commands) {
       const command = recipe.trim();
       if (command.includes('$(ONLINE)')) errors.push(`Makefile ${target} runs $(ONLINE) outside an install target: ${command}`);

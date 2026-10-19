@@ -1,4 +1,4 @@
-// The browser-safe dbspec entry (docs/editor.md "Layers"): the module that the package's "./dbspec" subpath
+// The browser-safe dbspec entry (docs/spec/editor.md "Layers"): the module that the package's "./dbspec" subpath
 // exports must reach no `node:` module, no Node builtin, no package outside BROWSER_PACKAGES (such as a driver),
 // no Node global (Buffer, process, __dirname, require), and must export exactly the parser functions. The test
 // starts at the subpath's built module, read from package.json, and follows every static import, re-export and

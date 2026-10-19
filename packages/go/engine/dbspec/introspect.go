@@ -21,7 +21,7 @@ type QueryObserver interface {
 	QueryEnded(query string, err error) error
 }
 
-// Unsupported is an object that introspection could not read as dbspec (docs/dialects.md
+// Unsupported is an object that introspection could not read as dbspec (docs/spec/dialects.md
 // "Introspection"). Kind is one of column, index, unique, foreign_key, check, trigger,
 // view, routine, sequence, event, partition, or table.
 type Unsupported struct {

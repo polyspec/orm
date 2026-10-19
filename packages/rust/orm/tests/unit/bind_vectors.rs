@@ -1,4 +1,4 @@
-//! bind_vectors: the bind cases of tests/bind/vectors.json, checking parameter values against their slot's logical type (docs/protocol.md
+//! bind_vectors: the bind cases of tests/bind/vectors.json, checking parameter values against their slot's logical type (docs/spec/protocol.md
 //! §5 "Parameters"). These are the same cases as Go's TestBindVectors. check_param is visible only inside the crate, so src/bind_check.rs makes this
 //! file a unit test module.
 use super::{check_assign, check_param, transform_param, ParamSlot};

@@ -3,12 +3,12 @@ package dbspec
 import "strings"
 
 // AddTablesAndColumnsSteps writes the steps that the connection's addTablesAndColumns runs
-// (docs/schema.md "Adding tables and columns"). live is the connection's database, introspected
+// (docs/spec/schema.md "Adding tables and columns"). live is the connection's database, introspected
 // document, unsupported is an object that introspection could not read, target is the document set's schema
 // text document. Tables of the database that are not in the set are neither compared nor changed. For the database
 // tables that exist in the database, the set's differences where the database lacks a table: create_table, and
 // add_column for a column that is null or has a default, and add_index for non-unique indexes only, when
-// the plan steps from the database's tables up to the set (docs/plans.md "Steps"), ordered by table name
+// the plan steps from the database's tables up to the set (docs/spec/plans.md "Steps"), ordered by table name
 // Tables it creates are listed as "table", added columns as "table.column" in column order, then the added
 // indexes are listed in index order as "table.index". Other differences are returned without a step
 // in differences as "<kind> <table>[.<name>]", and a missing unique key can fail on existing rows,
@@ -62,7 +62,7 @@ func AddTablesAndColumnsSteps(live *Document, unsupported []Unsupported, target 
 		}
 	}
 	// The tables and columns to add are written as one plan. The plan starts from the set's tables that exist in the database
-	// (an empty database if there are none), so its steps keep the order and rollback of docs/plans.md
+	// (an empty database if there are none), so its steps keep the order and rollback of docs/spec/plans.md
 	// as they are.
 	from, start := "", (*Document)(nil)
 	var diagnostics []Diagnostic
@@ -89,7 +89,7 @@ func AddTablesAndColumnsSteps(live *Document, unsupported []Unsupported, target 
 	return added, steps, nil
 }
 
-// InstalledDifferences checks that the database equals the document set (docs/schema.md "Schema
+// InstalledDifferences checks that the database equals the document set (docs/spec/schema.md "Schema
 // installation"). live is the database of the connection, introspected into a document; unsupported is the objects
 // that introspection could not read; target is the schema text document of the document set. Tables of the database
 // that are not in the set are not compared. If a table of the set has an object that could not be read, that object

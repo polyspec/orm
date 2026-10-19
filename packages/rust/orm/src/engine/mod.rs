@@ -19,13 +19,13 @@ pub(crate) fn err(code: &str, msg: impl Into<String>) -> Error {
 }
 
 /// Validates a request against the manifest and plans it for a dialect. A step of the plan that
-/// reads no rows runs with [`crate::Db::execute`] (docs/usage.md "Execute a compiled statement").
+/// reads no rows runs with [`crate::Db::execute`] (docs/operations/usage.md "Execute a compiled statement").
 pub fn compile(m: &Manifest, d: Dialect, r: &ir::Request) -> Result<Plan> {
     validate::validate(m, r)?;
     planner::Planner { m, d }.compile(r)
 }
 
-/// Validates the request. An IR executor connection does not plan; it sends the validated request (docs/protocol.md §5).
+/// Validates the request. An IR executor connection does not plan; it sends the validated request (docs/spec/protocol.md §5).
 pub fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
     validate::validate(m, r)
 }

@@ -1,7 +1,7 @@
 <?php
 // Unit test of the feature coverage helper (packages/php/tests/coverage_cases.php). The helper
 // is shared by packages/php/tests/Coverage*Test.php, so a change to it is checked by this
-// test (the helpers in contracts/features.json), not by the coverage of all features. Full coverage is run by make check.
+// test (the helpers in contracts/features.json), not by the coverage of all features. Full coverage is run by make orm-check.
 declare(strict_types=1);
 
 require_once __DIR__ . '/coverage_cases.php';

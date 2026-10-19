@@ -297,7 +297,7 @@ func writeDiagnostics(out *bufio.Writer, diagnostics []dbspec.Diagnostic) {
 	}
 }
 
-// planVectors is tests/dbspec/plans.json (docs/plans.md).
+// planVectors is tests/dbspec/plans.json (docs/spec/plans.md).
 type planVectors struct {
 	Cases   []planCase  `json:"cases"`
 	Invalid []planCase  `json:"invalid"`
@@ -474,7 +474,7 @@ func writePlans(out *bufio.Writer, v planVectors) {
 	}
 }
 
-// mermaidVectors is tests/dbspec/mermaid.json (docs/mermaid.md).
+// mermaidVectors is tests/dbspec/mermaid.json (docs/spec/mermaid.md).
 type mermaidVectors struct {
 	Export    []exportCase    `json:"export"`
 	Import    []importCase    `json:"import"`

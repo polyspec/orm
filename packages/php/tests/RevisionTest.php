@@ -1,5 +1,5 @@
 <?php
-// An update or delete with an expected revision (docs/dsl.md "Writes", expectRevision) on a SQLite file of
+// An update or delete with an expected revision (docs/spec/dsl.md "Writes", expectRevision) on a SQLite file of
 // each case: a match updates and bumps the revision or deletes, a mismatch fails with REVISION_CHANGED and
 // changes nothing.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RevisionTest.php [--filter <case>]

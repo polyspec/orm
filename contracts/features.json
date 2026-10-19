@@ -5,8 +5,8 @@
     "read_order": [
       "contracts/features.json",
       "contracts/interfaces.json",
-      "docs/protocol.md",
-      "docs/dsl.md",
+      "docs/spec/protocol.md",
+      "docs/spec/dsl.md",
       "docs/features.md"
     ],
     "path_rule": "All paths in this file are repository-relative. Read every referenced fixture, test, document, and verification command before changing a feature."
@@ -119,10 +119,10 @@
         "packages/python/tests/mysql_session.py"
       ],
       "docs": [
-        "docs/config.md",
-        "docs/usage.md",
-        "docs/errors.yaml",
-        "docs/protocol.md"
+        "docs/spec/config.md",
+        "docs/operations/usage.md",
+        "docs/spec/errors.yaml",
+        "docs/spec/protocol.md"
       ],
       "verification": [
         {
@@ -878,9 +878,9 @@
         "packages/python/tests/test_collection_identity.py"
       ],
       "docs": [
-        "docs/dsl.md",
-        "docs/usage.md",
-        "docs/protocol.md"
+        "docs/spec/dsl.md",
+        "docs/operations/usage.md",
+        "docs/spec/protocol.md"
       ],
       "verification": [
         {
@@ -1562,9 +1562,9 @@
         "packages/python/tests/coverage_model_writes.py"
       ],
       "docs": [
-        "docs/dsl.md",
-        "docs/usage.md",
-        "docs/protocol.md"
+        "docs/spec/dsl.md",
+        "docs/operations/usage.md",
+        "docs/spec/protocol.md"
       ],
       "verification": [
         {
@@ -2160,10 +2160,10 @@
         "packages/python/tests/coverage_transactions.py"
       ],
       "docs": [
-        "docs/config.md",
-        "docs/dsl.md",
-        "docs/errors.yaml",
-        "docs/protocol.md"
+        "docs/spec/config.md",
+        "docs/spec/dsl.md",
+        "docs/spec/errors.yaml",
+        "docs/spec/protocol.md"
       ],
       "verification": [
         {
@@ -2658,9 +2658,9 @@
         "packages/python/tests/coverage_statement_events.py"
       ],
       "docs": [
-        "docs/usage.md",
-        "docs/protocol.md",
-        "docs/errors.yaml"
+        "docs/operations/usage.md",
+        "docs/spec/protocol.md",
+        "docs/spec/errors.yaml"
       ],
       "verification": [
         {
@@ -3056,8 +3056,8 @@
         "packages/python/tests/coverage_model_generation.py"
       ],
       "docs": [
-        "docs/dsl.md",
-        "docs/usage.md"
+        "docs/spec/dsl.md",
+        "docs/operations/usage.md"
       ],
       "verification": [
         {
@@ -3506,11 +3506,11 @@
         "packages/php/tests/DbspecPlanReaderTest.php"
       ],
       "docs": [
-        "docs/dbspec.md",
-        "docs/dialects.md",
-        "docs/plans.md",
-        "docs/mermaid.md",
-        "docs/schema.md"
+        "docs/spec/dbspec.md",
+        "docs/spec/dialects.md",
+        "docs/spec/plans.md",
+        "docs/spec/mermaid.md",
+        "docs/spec/schema.md"
       ],
       "verification": [
         {
@@ -4118,13 +4118,13 @@
         "packages/python/tests/coverage_schema_install.py"
       ],
       "docs": [
-        "docs/schema.md",
-        "docs/usage.md",
-        "docs/dbspec.md"
+        "docs/spec/schema.md",
+        "docs/operations/usage.md",
+        "docs/spec/dbspec.md"
       ],
       "verification": [
         {
-          "id": "install-go",
+          "id": "orm-install-go",
           "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run 'SQLKeywordNames|ConnectionsUseUTC' -count=1",
           "shard": "other",
           "inputs": [
@@ -4133,7 +4133,7 @@
           ]
         },
         {
-          "id": "install-php",
+          "id": "orm-install-php",
           "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/EngineTest.php",
           "shard": "other",
           "inputs": [
@@ -4233,7 +4233,7 @@
           ]
         },
         {
-          "id": "install-python",
+          "id": "orm-install-python",
           "command": "packages/python/.venv/bin/python -m packages.python.tests.test_schema_install && packages/python/.venv/bin/python -m packages.python.tests.test_schema_install_uses && packages/python/.venv/bin/python -m packages.python.tests.test_add_tables_and_columns && packages/python/.venv/bin/python -m packages.python.tests.test_add_tables_steps && packages/python/.venv/bin/python -m packages.python.tests.test_installed_differences && packages/python/.venv/bin/python -m packages.python.tests.test_schema_inspection && packages/python/.venv/bin/python -m packages.python.tests.test_schema_utils && packages/python/.venv/bin/python -m packages.python.tests.test_load_set",
           "shard": "other",
           "inputs": [
@@ -4619,8 +4619,8 @@
         "packages/python/tests/test_plan_cache_bound.py"
       ],
       "docs": [
-        "docs/protocol.md",
-        "docs/dialects.md"
+        "docs/spec/protocol.md",
+        "docs/spec/dialects.md"
       ],
       "verification": [
         {
@@ -5517,8 +5517,8 @@
         "packages/python/tests/coverage_composite_keys.py"
       ],
       "docs": [
-        "docs/schema.md",
-        "docs/dsl.md"
+        "docs/spec/schema.md",
+        "docs/spec/dsl.md"
       ],
       "verification": [
         {
@@ -5849,8 +5849,8 @@
         "packages/python/tests/coverage_authenticated_encryption.py"
       ],
       "docs": [
-        "docs/codec.md",
-        "docs/config.md"
+        "docs/spec/codec.md",
+        "docs/spec/config.md"
       ],
       "verification": [
         {
@@ -6207,8 +6207,8 @@
         "packages/python/tests/coverage_parameter_chunking.py"
       ],
       "docs": [
-        "docs/protocol.md",
-        "docs/dialects.md"
+        "docs/spec/protocol.md",
+        "docs/spec/dialects.md"
       ],
       "verification": [
         {
@@ -6559,8 +6559,8 @@
         "packages/python/tests/coverage_constraints_and_relations.py"
       ],
       "docs": [
-        "docs/schema.md",
-        "docs/dsl.md"
+        "docs/spec/schema.md",
+        "docs/spec/dsl.md"
       ],
       "verification": [
         {
@@ -6944,8 +6944,8 @@
         "packages/python/tests/coverage_audit_triggers.py"
       ],
       "docs": [
-        "docs/dbspec.md",
-        "docs/dialects.md"
+        "docs/spec/dbspec.md",
+        "docs/spec/dialects.md"
       ],
       "verification": [
         {
@@ -7381,8 +7381,8 @@
         "packages/python/tests/test_python_natives.py"
       ],
       "docs": [
-        "docs/interfaces.md",
-        "docs/interface-implementation.md"
+        "docs/spec/interfaces.md",
+        "docs/spec/interface-implementation.md"
       ],
       "verification": [
         {
@@ -7611,9 +7611,9 @@
         "rust-coverage-hot-path-gate"
       ],
       "fixtures": [
-        "docs/perf-raw-go-native.txt",
-        "docs/perf-raw-rust-native.txt",
-        "docs/perf-raw-rust-native-2.txt",
+        "docs/operations/perf-raw-go-native.txt",
+        "docs/operations/perf-raw-rust-native.txt",
+        "docs/operations/perf-raw-rust-native-2.txt",
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/tests/common/mod.rs"
       ],
@@ -7635,7 +7635,7 @@
         "tests/timing/preempted.test.mts"
       ],
       "docs": [
-        "docs/perf.md"
+        "docs/operations/perf.md"
       ],
       "verification": [
         {
@@ -7819,7 +7819,7 @@
       "docs": [
         "tests/conformance/README.md",
         "tests/markdown/README.md",
-        "docs/protocol.md"
+        "docs/spec/protocol.md"
       ],
       "verification": [
         {
@@ -8255,8 +8255,8 @@
         "packages/rust/tests/tests/coverage_catalog_connection.rs"
       ],
       "docs": [
-        "docs/schema.md",
-        "docs/interfaces.md"
+        "docs/spec/schema.md",
+        "docs/spec/interfaces.md"
       ],
       "verification": [
         {
@@ -8474,8 +8474,8 @@
         "packages/python/tests/coverage_request_hook.py"
       ],
       "docs": [
-        "docs/usage.md",
-        "docs/protocol.md"
+        "docs/operations/usage.md",
+        "docs/spec/protocol.md"
       ],
       "verification": [
         {
@@ -9068,7 +9068,7 @@
     {
       "id": "error-codes",
       "paths": [
-        "docs/errors.yaml",
+        "docs/spec/errors.yaml",
         "packages/go/orm/codes.go",
         "packages/php/src/Code.php",
         "packages/php-ext/stubs/code.stub.php",

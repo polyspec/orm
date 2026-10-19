@@ -23,7 +23,7 @@ import (
 )
 
 // markdownDSN is the flowmark server address, corpus name, and token of a markdown:// DSN
-// (docs/protocol.md §5 "IR executors").
+// (docs/spec/protocol.md §5 "IR executors").
 type markdownDSN struct {
 	address string
 	corpus  string
@@ -59,7 +59,7 @@ func parseMarkdownDSN(u *url.URL, q url.Values) (markdownDSN, error) {
 	return markdownDSN{address: u.Host, corpus: corpus, token: tokens[0]}, nil
 }
 
-// unsupportedOnMarkdown is the error that SQL-only surfaces receive on a markdown connection (docs/dialects.md
+// unsupportedOnMarkdown is the error that SQL-only surfaces receive on a markdown connection (docs/spec/dialects.md
 // "Markdown IR executor"). On other connections it is nil.
 func (d *DB) unsupportedOnMarkdown(surface string) error {
 	if d.md == nil {
@@ -630,7 +630,7 @@ func (n *mdNode) row(raw json.RawMessage) ([]any, error) {
 		vals[k] = v
 		k++
 	}
-	// The corpus catalog rejects aes columns, so it has no keyring (docs/dialects.md).
+	// The corpus catalog rejects aes columns, so it has no keyring (docs/spec/dialects.md).
 	if err := decodeSelectedRow(vals[:len(outputs)], n.scan, n.flat, AESKeyring{}); err != nil {
 		return nil, err
 	}
@@ -863,7 +863,7 @@ func markdownLinks(row []any) *mdLinks {
 }
 
 // beginMessage is the begin control message of a transaction: a read-only transaction sends read_only true, any
-// other leaves the member out (docs/protocol.md §5 Session, the control cases of tests/bind/vectors.json).
+// other leaves the member out (docs/spec/protocol.md §5 Session, the control cases of tests/bind/vectors.json).
 func beginMessage(readOnly bool) mdControl {
 	return mdControl{Op: "begin", ReadOnly: readOnly}
 }

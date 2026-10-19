@@ -93,7 +93,7 @@ func (g *goGen) scan(patterns []string) error {
 			pkgs = append(pkgs, loaded...)
 		}
 		// A scanned getter call that no alias, new or addColumn call
-		// attaches stops generation (docs/dsl.md, the scan).
+		// attaches stops generation (docs/spec/dsl.md, the scan).
 		for _, c := range g.getterCalls {
 			if _, ok := c.gm.getters[c.name]; !ok && !c.gm.static[c.name] {
 				rest := strings.TrimPrefix(c.name, "Get")

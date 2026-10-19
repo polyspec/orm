@@ -34,7 +34,7 @@ export function nodeTestErrors(files: Record<string, string>) {
 
 // callerEnvironmentErrors returns one error for each line of a JavaScript test file (`.test.mjs`) that passes the environment of the process that ran it to child processes:
 // `...process.env`, `env: process.env`, or a make run without `env: isolatedEnvironment(`.
-// The result of such a case depends on GROUP, GITHUB_ACTIONS and ORM_CHECK_RUN_ID that CI's `make check GROUP=<group>` sets in the environment, and on the upper
+// The result of such a case depends on GROUP, GITHUB_ACTIONS and ORM_CHECK_RUN_ID that CI's `make orm-check GROUP=<group>` sets in the environment, and on the upper
 // make's MAKEFLAGS and the variables the Makefile exports. A child process receives, under isolatedEnvironment in tests/environment.mts,
 // only the variables that the case gives. files is {path: text}.
 export function callerEnvironmentErrors(files: Record<string, string>) {
@@ -337,7 +337,7 @@ export function reachedScripts(commands: { command: string; dialect: Dialect }[]
 
 // generateRuns returns the directory in which a command runs `go generate`. It also reads inside `sh -c '...'`, and sets the directory with
 // `cd <dir>` before it and run-long's `--cwd <dir>`. Generation rewrites tracked files and compares them with `git diff`,
-// so generation in the same directory runs only once in make check.
+// so generation in the same directory runs only once in make orm-check.
 export function generateRuns(command: string, dialect: Dialect): string[] {
   const out: string[] = [];
   const visit = (text: string, language: Dialect, cwd: string) => {
@@ -356,7 +356,7 @@ export function generateRuns(command: string, dialect: Dialect): string[] {
   return out;
 }
 
-// repeatedGenerateErrors returns one error each time a unit of make check (the recipe of CHECK_TARGETS and the verification command of feature-check) runs
+// repeatedGenerateErrors returns one error each time a unit of make orm-check (the recipe of CHECK_TARGETS and the verification command of feature-check) runs
 // `go generate` in the same directory two or more times.
 export function repeatedGenerateErrors(units: Unit[]): string[] {
   const seen = new Map<string, string[]>();
@@ -366,7 +366,7 @@ export function repeatedGenerateErrors(units: Unit[]): string[] {
         seen.set(directory, [...(seen.get(directory) ?? []), name]);
       }
   return [...seen].filter(([, names]) => names.length > 1)
-    .map(([directory, names]) => `go generate of ${directory} runs ${names.length} times in make check: ${names.join(', ')}`);
+    .map(([directory, names]) => `go generate of ${directory} runs ${names.length} times in make orm-check: ${names.join(', ')}`);
 }
 
 // rawGoTestErrors returns one error for each segment in units that runs `go test` without tests/go-test.mts or RUN_LONG, or under a deadline.
@@ -434,14 +434,14 @@ export function runtimePathErrors(makefile: string): string[] {
 
 // fixedPortErrors returns one error for each line that sets a fixed TCP port (files is the {path: text} of the Makefile and the shell scripts):
 // an assignment such as `<NAME>PORT = <number>`, and `test-servers.mts start` given a port as an argument. Servers of two checkouts
-// contend for the same fixed port, so make test-servers picks an empty port (scripts/free-ports.mts) and records it in the environment file. Comment lines are not checked.
+// contend for the same fixed port, so make orm-test-servers picks an empty port (scripts/free-ports.mts) and records it in the environment file. Comment lines are not checked.
 export function fixedPortErrors(files: Record<string, string>) {
   const errors: string[] = [];
   for (const [path, text] of Object.entries(files)) {
     text.split('\n').forEach((line: string, index: number) => {
       if (/^\s*#/.test(line)) return;
       if (/^\s*(?:export\s+)?\w*PORT\s*[:?]?=\s*\d+\b/.test(line) || /test-servers\.mts start\s+(?:\$|\d)/.test(line))
-        errors.push(`${path}:${index + 1} fixes a TCP port that the servers of another checkout can hold; let make test-servers choose free ports (scripts/free-ports.mts) and read them from its environment file: ${line.trim()}`);
+        errors.push(`${path}:${index + 1} fixes a TCP port that the servers of another checkout can hold; let make orm-test-servers choose free ports (scripts/free-ports.mts) and read them from its environment file: ${line.trim()}`);
     });
   }
   return errors;

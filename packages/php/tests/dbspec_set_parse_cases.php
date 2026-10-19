@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 use PHPUnit\Framework\Assert;
 
-// The shared vectors tests/dbspec/set-parse.json of the set parse (docs/dbspec.md "Parsing a set"), run against a
+// The shared vectors tests/dbspec/set-parse.json of the set parse (docs/spec/dbspec.md "Parsing a set"), run against a
 // parseSet of the PHP client or of the extension. Each case is one data set; $check, when given, sees every result too.
 
 /**

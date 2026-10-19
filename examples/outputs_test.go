@@ -19,7 +19,7 @@ import (
 func TestExampleOutputsAreIdentical(t *testing.T) {
 	testcase.Group(t)
 	if os.Getenv("ORM_BENCH_MYSQL_DSN") == "" {
-		t.Fatal("ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database; run it through make check or make run-databases TARGETS=<target>, which create the bench database of the run")
+		t.Fatal("ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database; run it through make orm-check or make run-databases TARGETS=<target>, which create the bench database of the run")
 	}
 	examples := map[string]string{"complex": "EXAMPLE_RUST_COMPLEX", "thin-slice": "EXAMPLE_RUST_DEMO"}
 	for name, rustVar := range examples {
@@ -41,7 +41,7 @@ func TestExampleOutputsAreIdentical(t *testing.T) {
 				t.Errorf("%s: go and php outputs differ\n--- go\n%s\n--- php\n%s", name, goOut, phpOut)
 			}
 			if name == "thin-slice" {
-				// The TypeScript and Python programs run on the Node and the venv interpreter that install-python makes.
+				// The TypeScript and Python programs run on the Node and the venv interpreter that orm-install-python makes.
 				tsOut := runExample(t, c, "ts", "node", filepath.Join(name, "ts", "main.mts"))
 				pyOut := runExample(t, c, "python", filepath.Join("..", "packages", "python", ".venv", "bin", "python"), filepath.Join("..", "packages", "python", "examples", "thin_slice", "main.py"))
 				if !bytes.Equal(goOut, tsOut) {

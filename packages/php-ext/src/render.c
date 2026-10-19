@@ -1,5 +1,5 @@
 /*
- * Writes the statements that create the document set's tables in one dialect (PHP client Renderer, docs/dialects.md "Rendered
+ * Writes the statements that create the document set's tables in one dialect (PHP client Renderer, docs/spec/dialects.md "Rendered
  * statements"). A failure is an InvalidArgumentException, and the caller discards any computed result after a failure.
  */
 #include "dbspec.h"
@@ -684,7 +684,7 @@ static void history(renderer *r, const table *t, const setting *audit, const cha
     }
     str body = fmt("INSERT INTO %S (%S) VALUES (%S)", r_q(r, audit->args.v[0]), strs_join(&columns, ", "), strs_join(&values, ", "));
     if (audit->args.n == 8) {
-        /* The tables table keeps one row per audit record and audited table (docs/dialects.md "Triggers"). */
+        /* The tables table keeps one row per audit record and audited table (docs/spec/dialects.md "Triggers"). */
         str name = r_q(r, audit->args.v[7]);
         str tables = fmt("INSERT INTO %S (%S, %S) VALUES (NEW.%S, '%S')", r_q(r, audit->args.v[5]), r_q(r, audit->args.v[6]), name,
             r_q(r, audit->args.v[1]), t->name);

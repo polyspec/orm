@@ -32,7 +32,7 @@ const stressTables = 100
 const stressReportEvery = 200
 
 // TestApplyStressPlan applies the stressTables-table document of tests/dbspec/stress.mts as the first plan to the
-// database (docs/plans.md "Verification"). It proves that each statement commits separately: on PostgreSQL, with the
+// database (docs/spec/plans.md "Verification"). It proves that each statement commits separately: on PostgreSQL, with the
 // default max_locks_per_transaction 64, the applying session holds no relation lock after any applied step, so the lock
 // count does not depend on the plan size. Every database records each step in its history.
 func TestApplyStressPlan(t *testing.T) {

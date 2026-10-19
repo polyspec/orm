@@ -1,6 +1,6 @@
 /*
  * Writes the steps of a plan diff in one dialect. Each step has a rollback statement and an effect (PHP client PlanSteps,
- * docs/plans.md "Steps").
+ * docs/spec/plans.md "Steps").
  */
 #include "dbspec.h"
 #include "plandiff.h"
@@ -547,7 +547,7 @@ static str join(const strs *l)
     return strs_join(l, ", ");
 }
 
-/* Rebuilds a SQLite table through a work table (docs/plans.md "Steps"). */
+/* Rebuilds a SQLite table through a work table (docs/spec/plans.md "Steps"). */
 static void rebuild(writer *w, str name)
 {
     pdiff *d = w->d;

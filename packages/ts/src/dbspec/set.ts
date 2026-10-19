@@ -1,4 +1,4 @@
-// Checks a dbspec document set (docs/dbspec.md "Manifest and hashes"). The manifest and
+// Checks a dbspec document set (docs/spec/dbspec.md "Manifest and hashes"). The manifest and
 // the rendering use the same checks. The reference is the Go engine (engine/dbspec/dbspec.go checkSet).
 import { present } from '../present.js';
 import type { DbspecDiagnostic, DbspecDocument } from './model.js';

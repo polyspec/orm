@@ -1,4 +1,4 @@
-//! The parsed dbspec model (`docs/dbspec.md`). Every name keeps the position of
+//! The parsed dbspec model (`docs/spec/dbspec.md`). Every name keeps the position of
 //! its token so that validation can point at it; emission ignores positions.
 //! Tools read a parsed document, change it and emit it again.
 
@@ -27,7 +27,7 @@ pub struct Document {
     /// Comment lines after the last line of the document.
     pub trailing: Vec<String>,
     /// Means the document is not owned by the set but is an external document that an owning document uses. An external document is parsed
-    /// and checked, but not rendered, installed, compared, or generated (docs/dbspec.md "Documents and use"). It
+    /// and checked, but not rendered, installed, compared, or generated (docs/spec/dbspec.md "Documents and use"). It
     /// does not appear in the document text.
     pub external: bool,
 }
@@ -60,7 +60,7 @@ impl Table {
     }
 }
 
-/// column type (docs/dbspec.md, "Types").
+/// column type (docs/spec/dbspec.md, "Types").
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Type {
     I16,
@@ -82,7 +82,7 @@ impl Type {
     /// The class of a column type in the one table of which two columns compare alike on the three databases: two
     /// columns meet when their kinds are equal. Integers share a class and so do varchar and text; a decimal carries its
     /// scale and a time or datetime its precision; every other type is its own class. dbspec's check validation and the
-    /// IR validator of polyspec-orm both read it, so the two cannot drift (docs/dbspec.md "Checks").
+    /// IR validator of polyspec-orm both read it, so the two cannot drift (docs/spec/dbspec.md "Checks").
     /// Internal to polyspec-orm: it is not part of the schema crate's API, and nothing outside polyspec-orm may use it.
     #[doc(hidden)]
     pub fn meet_kind(&self) -> String {
@@ -219,7 +219,7 @@ pub struct Check {
     pub expr: Expr,
 }
 
-/// A check predicate (docs/dbspec.md, "Checks").
+/// A check predicate (docs/spec/dbspec.md, "Checks").
 #[derive(Clone, Debug)]
 pub enum Expr {
     /// `and` or `or`.
@@ -345,7 +345,7 @@ pub enum Setting {
         line: StateLine,
     },
     Immutable,
-    /// `lists` are the exclude and include lists. A valid document has at most one (docs/dbspec.md "Audit").
+    /// `lists` are the exclude and include lists. A valid document has at most one (docs/spec/dbspec.md "Audit").
     /// `column` is the column holding the primary key of the audit record table `references`.
     Audit {
         into: Name,
@@ -359,7 +359,7 @@ pub enum Setting {
     },
 }
 
-/// The tables table of an `audit` setting and its record and name columns (docs/dbspec.md "Audit").
+/// The tables table of an `audit` setting and its record and name columns (docs/spec/dbspec.md "Audit").
 #[derive(Clone, Debug)]
 pub struct AuditTables {
     pub table: Name,
@@ -409,7 +409,7 @@ pub struct AuditList {
 }
 
 /// The audit setting line. If the `list` columns are empty, no list is written; otherwise the list keyword and its columns are written.
-#[expect(clippy::too_many_arguments, reason = "each argument is one field of the audit setting line, as docs/dbspec.md \"Audit\" names them")]
+#[expect(clippy::too_many_arguments, reason = "each argument is one field of the audit setting line, as docs/spec/dbspec.md \"Audit\" names them")]
 pub fn audit_line(
     into: &str,
     column: &str,

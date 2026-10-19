@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// PlanStep is one step of a plan (docs/plans.md "Steps"). If Rollback is empty,
+// PlanStep is one step of a plan (docs/spec/plans.md "Steps"). If Rollback is empty,
 // it is a finalize step, or Irreversible gives the reason.
 type PlanStep struct {
 	Statement    string
@@ -32,7 +32,7 @@ type Effect struct {
 	Present bool
 }
 
-// String is the text form of docs/plans.md "Effects".
+// String is the text form of docs/spec/plans.md "Effects".
 func (e Effect) String() string {
 	if e.Kind == "repeat" {
 		return "repeat"
@@ -59,13 +59,13 @@ type NullCheck struct {
 	HasDefault bool
 }
 
-// The reason a step cannot be reversed (docs/plans.md "Irreversible steps").
+// The reason a step cannot be reversed (docs/spec/plans.md "Irreversible steps").
 const irreversiblePrecision = "narrowing the precision rounds the values written since"
 
 // rebuildTable is the work table for a SQLite rebuild.
 const rebuildTable = "dbspec$rebuild"
 
-// PlanSteps writes the plan's steps per dialect (docs/plans.md "Steps"). source is the schema
+// PlanSteps writes the plan's steps per dialect (docs/spec/plans.md "Steps"). source is the schema
 // that the plan starts from; it is nil if the database is empty.
 func PlanSteps(source *Document, p *Plan, dialect Dialect) ([]PlanStep, []Diagnostic) {
 	switch dialect {
@@ -104,7 +104,7 @@ var repeat = Effect{Kind: "repeat"}
 
 func (w *planWriter) hold(key string) string { return w.holds[key] }
 
-// numberHolds picks the kept names in the order of docs/plans.md "Hiding instead of dropping".
+// numberHolds picks the kept names in the order of docs/spec/plans.md "Hiding instead of dropping".
 func (w *planWriter) numberHolds() {
 	d := w.d
 	w.holds = map[string]string{}
@@ -422,7 +422,7 @@ func precisionGrows(from, to Type) bool {
 	return (to.Kind == TypeTime || to.Kind == TypeDatetime) && to.Precision > from.Precision
 }
 
-// rebuild rebuilds a SQLite table through a work table (docs/plans.md "Steps").
+// rebuild rebuilds a SQLite table through a work table (docs/spec/plans.md "Steps").
 func (w *planWriter) rebuild(name string) {
 	d := w.d
 	t := d.target[name]

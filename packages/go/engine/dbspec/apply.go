@@ -16,7 +16,7 @@ type Execer interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 }
 
-// ApplyEvent is what apply, recover, rollback, and finalize report (docs/plans.md
+// ApplyEvent is what apply, recover, rollback, and finalize report (docs/spec/plans.md
 // "Apply"). Kind is one of plan, rollback, finalize, irreversible, statement, applied,
 // verified, or done.
 type ApplyEvent struct {
@@ -86,7 +86,7 @@ const (
 		" AND classid = (hashtext('" + historyTable + "')::bigint & 4294967295)::oid AND objid = (hashtext(current_schema())::bigint & 4294967295)::oid)"
 )
 
-// lockWait is the maximum time a statement waits for another session's lock (docs/plans.md
+// lockWait is the maximum time a statement waits for another session's lock (docs/spec/plans.md
 // "Apply" lock wait).
 const (
 	lockWaitSeconds = 5
@@ -527,7 +527,7 @@ func (a *applier) queryRowArgs(query string, args []any, dest ...any) error {
 }
 
 // appliedAt is the applied_at text of history: the UTC time of the tool clock, truncated to six
-// fractional digits, as YYYY-MM-DDTHH:MM:SS.ffffffZ (docs/plans.md "Apply").
+// fractional digits, as YYYY-MM-DDTHH:MM:SS.ffffffZ (docs/spec/plans.md "Apply").
 func appliedAt(t time.Time) string {
 	return t.UTC().Format("2006-01-02T15:04:05.000000Z")
 }
@@ -661,7 +661,7 @@ func (a *applier) steps(p *Plan) ([]PlanStep, error) {
 }
 
 // resolve decides the step of an interrupted row from the effects in the catalog. It carries on forward if forward, otherwise
-// backward (docs/plans.md "Apply" recover).
+// backward (docs/spec/plans.md "Apply" recover).
 func (a *applier) resolve(p *Plan, row historyRow, steps []PlanStep, forward bool) (int, error) {
 	k := row.step
 	if k < 0 || k > len(steps) {
@@ -829,7 +829,7 @@ func (a *applier) foreignKeyCheck(p *Plan) error {
 }
 
 // nullChecks finds the NULL rows of the columns that the rollback of the applied plan returns to non-null, and
-// fills them with the default, or stops with a nulls error if there is no default (docs/plans.md "Steps").
+// fills them with the default, or stops with a nulls error if there is no default (docs/spec/plans.md "Steps").
 func (a *applier) nullChecks(p *Plan, steps []PlanStep) error {
 	q := a.r.q
 	for i, s := range steps {

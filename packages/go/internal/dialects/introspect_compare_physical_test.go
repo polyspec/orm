@@ -25,7 +25,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// introspectReference is the documented reference value for the time to introspect the 2000-table stress database (docs/dialects.md
+// introspectReference is the documented reference value for the time to introspect the 2000-table stress database (docs/spec/dialects.md
 // "Introspection"). Exceeding it only warns and does not fail the test (AGENTS.md).
 const introspectReference = 5 * time.Second
 
@@ -117,7 +117,7 @@ func TestIntrospectCompare(t *testing.T) {
 				}
 				c.Step("%s %s: %d bytes, introspected in %s", dialect, r.client, stdout.Len(), elapsed)
 				if elapsed > introspectReference {
-					testcase.Warn("%s %s: introspection took %s, above the %s reference (docs/dialects.md, Introspection); machine %s %s", dialect, r.client, elapsed, introspectReference, runtime.GOOS, runtime.GOARCH)
+					testcase.Warn("%s %s: introspection took %s, above the %s reference (docs/spec/dialects.md, Introspection); machine %s %s", dialect, r.client, elapsed, introspectReference, runtime.GOOS, runtime.GOARCH)
 				}
 				if reference == "" {
 					reference = stdout.String()

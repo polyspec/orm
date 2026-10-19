@@ -1,4 +1,4 @@
-//! Introspection (docs/dialects.md, "Introspection"): the fixed catalog
+//! Introspection (docs/spec/dialects.md, "Introspection"): the fixed catalog
 //! queries of each dialect and the reading of their rows into one dbspec
 //! document and the objects it cannot express. The client that owns the
 //! connection runs [`catalog_queries`] in order, then the [`catalog_followups`]

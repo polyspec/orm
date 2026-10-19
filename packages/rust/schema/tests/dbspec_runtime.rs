@@ -1,5 +1,5 @@
 //! The runtime model of a document set made with `dbspec::runtime_model`
-//! (docs/dbspec.md, "Runtime model"), using `dbspec::parse_manifest` on the manifest text,
+//! (docs/spec/dbspec.md, "Runtime model"), using `dbspec::parse_manifest` on the manifest text,
 //! checks the documents read back.
 
 use polyspec_orm_case_clock::CaseClock;

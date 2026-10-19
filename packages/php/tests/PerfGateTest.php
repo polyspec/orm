@@ -38,7 +38,7 @@ final class PerfGateTest extends TestCase
         }
         $benchDsn = requiredDsn('ORM_BENCH_MYSQL_DSN');
         if ($benchDsn === false || $benchDsn === '') {
-            throw new RuntimeException('ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database, and the gate never skips; run it through make check or make run-databases TARGETS=<target>, which create the bench database of the run');
+            throw new RuntimeException('ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database, and the gate never skips; run it through make orm-check or make run-databases TARGETS=<target>, which create the bench database of the run');
         }
         self::$db = \Polyspec\Orm\Tests\Model\connect($benchDsn, new Config(
             aesKey: 'bench-salt',
@@ -77,7 +77,7 @@ final class PerfGateTest extends TestCase
         [$clientNs, $nativeNs, $ratio] = self::pairedRatio(static fn() => self::query($name)->gets(), $native);
         fwrite(STDERR, sprintf("perf_gate %s: native %.1fµs client %.1fµs ratio %.2f (bound %.2f)\n", $name, $nativeNs / 1000, $clientNs / 1000, $ratio, $bound));
         if ($ratio > $bound) {
-            fwrite(STDERR, sprintf("WARNING perf_gate %s: client/native ratio %.2f is above its reference %.2f (docs/perf.md); machine %s %s, PHP %s\n", $name, $ratio, $bound, PHP_OS_FAMILY, php_uname('m'), PHP_VERSION));
+            fwrite(STDERR, sprintf("WARNING perf_gate %s: client/native ratio %.2f is above its reference %.2f (docs/operations/perf.md); machine %s %s, PHP %s\n", $name, $ratio, $bound, PHP_OS_FAMILY, php_uname('m'), PHP_VERSION));
         }
     }
 

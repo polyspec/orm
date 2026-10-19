@@ -1,4 +1,4 @@
-// dbspec introspection cases (tests/dbspec/introspect.json, docs/dialects.md "Introspection"): every case is applied
+// dbspec introspection cases (tests/dbspec/introspect.json, docs/spec/dialects.md "Introspection"): every case is applied
 // with its statements to an empty database, schema or file and expects its document and unsupported objects. Each case
 // is a top-level test named by its id; the round trips of the schema documents run in dbspec-introspect-round-trip.mjs.
 //

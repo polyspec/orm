@@ -1,4 +1,4 @@
-# Runtime model made from the dbspec document set (docs/dbspec.md "Runtime model").
+# Runtime model made from the dbspec document set (docs/spec/dbspec.md "Runtime model").
 # The generated code holds the manifest text and manifestHash; the runtime parses the text once
 # and obtains the entities, fields, keys, codec stages, and settings.
 import dataclasses
@@ -80,7 +80,7 @@ class Entity:
     # Audit record table of the `audit` setting (the references table), or ''.
     audit_record: str
     # True for a used table of an external document: it is read like any entity, and every
-    # write fails with CONFIG before any statement (docs/dbspec.md "External documents").
+    # write fails with CONFIG before any statement (docs/spec/dbspec.md "External documents").
     external: bool = False
 
 

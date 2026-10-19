@@ -226,7 +226,7 @@ func Bad() *model.ProductModel { return model.Product().LkPrice("x") }
 }
 
 // TestGeneratedFieldTypes checks that the Go type of a generated field for each dbspec type and codec
-// follows the "Runtime model" table of docs/dbspec.md.
+// follows the "Runtime model" table of docs/spec/dbspec.md.
 func TestGeneratedFieldTypes(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	m := namesManifest(t, `dbspec 1 typed

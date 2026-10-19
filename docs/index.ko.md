@@ -60,10 +60,10 @@ count = Author().connect(slave1).get_count_by_service_seq(7)
 
 Go `model.Author()`은 `*model.AuthorModel`을 반환한다. Rust와 TypeScript는 비동기 결과를, Python은 동기 결과를 사용한다. 문법은 언어 관례를 따르지만 인자 의미, 자료 구조 역할, 실행 규칙은 같다.
 
-[사용법](usage.md)에서 연결, 조회, 쓰기, relation을 확인한다. [구성요소 도표](interfaces-model.md)에서 소유 규칙을 확인한다.
+[사용법](operations/usage.md)에서 연결, 조회, 쓰기, relation을 확인한다. [구성요소 도표](spec/interfaces-model.md)에서 소유 규칙을 확인한다.
 
 ## 구현 상태
 
-구현 클라이언트는 **Go, PHP, Rust, TypeScript, Python**이다. 다섯 클라이언트는 자기 빌드 도구로 모델을 생성하고, 호출한 프로세스 안에서 문장을 계획하고, 네이티브 데이터베이스 드라이버로 실행한다. 호출한 프로세스 옆에서 실행되는 서비스는 없다. 검사 범위와 잔여 작업은 [구현 대조표](interface-implementation.md)와 [체크리스트](plans/execution-checklist.md)에 기록한다.
+구현 클라이언트는 **Go, PHP, Rust, TypeScript, Python**이다. 다섯 클라이언트는 자기 빌드 도구로 모델을 생성하고, 호출한 프로세스 안에서 문장을 계획하고, 네이티브 데이터베이스 드라이버로 실행한다. 호출한 프로세스 옆에서 실행되는 서비스는 없다. 검사 범위와 잔여 작업은 [구현 대조표](spec/interface-implementation.md)와 [체크리스트](plans/execution/checklist.md)에 기록한다.
 
-[DSL](dsl.md) · [스키마](schema.md) · [IR / Plan](protocol.md) · [복합 query 예제](examples/complex-query.md) · [문서 빌드와 배포](docs-development.md) · [English](index.md)
+[DSL](spec/dsl.md) · [스키마](spec/schema.md) · [IR / Plan](spec/protocol.md) · [복합 query 예제](spec/complex-query.md) · [문서 빌드와 배포](operations/docs-development.md) · [English](index.md)

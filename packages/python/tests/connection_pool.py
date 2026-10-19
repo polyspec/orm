@@ -1,4 +1,4 @@
-# The connection pool of the Python client (docs/config.md "Runtime connection"), as the Go, TypeScript and Rust clients
+# The connection pool of the Python client (docs/spec/config.md "Runtime connection"), as the Go, TypeScript and Rust clients
 # keep one: poolSize bounds the open connections (10 when zero or unset), transactions of different threads run on
 # connections of their own at the same time, a transaction that needs a connection while all of them are in use waits
 # for one, poolIdleSize bounds the idle connections, poolLifetimeMs closes a connection whose lifetime passed, and a

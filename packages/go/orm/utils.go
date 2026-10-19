@@ -219,7 +219,7 @@ func (u *Utils) Schema() *SchemaUtils { return &SchemaUtils{u: u} }
 // it checks that the manifest text hashes to the declared hash (otherwise CONFIG) and only registers
 // the set as a runtime model. Registering the same set again changes nothing. Whether the database matches the set
 // is checked by Install and AddTablesAndColumns at install and upgrade time, and on connections opened for each request too,
-// since Register registers the set without any statement (docs/schema.md "Schema registration").
+// since Register registers the set without any statement (docs/spec/schema.md "Schema registration").
 func (s *SchemaUtils) Register(schema *Schema) error {
 	return s.u.db.register(schema)
 }
@@ -230,7 +230,7 @@ func (s *SchemaUtils) Register(schema *Schema) error {
 // database; if a table that an external document uses differs from that document, it is CONFIG. If none of the set's
 // owned tables exist, it creates them all; if all exist, it creates nothing; if only some exist,
 // it is CONFIG. Then it reads the database again, compares the set's owned tables with the set, and if there is any
-// difference, it is CONFIG with all the differences (docs/schema.md "Schema installation").
+// difference, it is CONFIG with all the differences (docs/spec/schema.md "Schema installation").
 // PostgreSQL and SQLite apply in an ongoing transaction or a new one, so a failed
 // install leaves nothing behind. MySQL implicitly commits schema statements, so it applies them
 // outside a transaction, and it is CONFIG inside one.
@@ -304,7 +304,7 @@ func (s *SchemaUtils) Install(schema *Schema) error {
 }
 
 // AddTablesAndColumns upgrades an installed document set to a new version of the generated schema,
-// only by adding (docs/schema.md "Adding tables and columns"). It introspects the connection's database and compares the
+// only by adding (docs/spec/schema.md "Adding tables and columns"). It introspects the connection's database and compares the
 // set's tables present in the database with the set. It creates the set's tables that are absent from the database,
 // with their index, foreign key, check, and trigger, and adds to existing tables the columns that are missing
 // and are nullable or have a default. It runs the plan steps of dbspec.AddTablesAndColumnsSteps, so the audit triggers
@@ -380,7 +380,7 @@ func (s *SchemaUtils) AddTablesAndColumns(schema *Schema) ([]string, error) {
 }
 
 // introspectSet introspects the connection's database, and if the set uses a table from an external document
-// and that table differs from the external document, it is CONFIG (docs/dbspec.md "External documents").
+// and that table differs from the external document, it is CONFIG (docs/spec/dbspec.md "External documents").
 func introspectSet(ctx context.Context, q dbspec.Querier, dialect dbspec.Dialect, m *runtimemodel.Model) (*dbspec.Document, []dbspec.Unsupported, error) {
 	live, unsupported, err := dbspec.Introspect(ctx, q, dialect, "schema")
 	if err != nil {
@@ -431,7 +431,7 @@ func externalTexts(m *runtimemodel.Model) map[string]string {
 
 // sqliteWithoutForeignKeys turns off foreign keys on one connection, runs fn in a BEGIN IMMEDIATE
 // transaction, and commits only when the foreign key check returns no rows; then it turns foreign keys back on
-// (the SQLite table rebuild in docs/plans.md "Apply").
+// (the SQLite table rebuild in docs/spec/plans.md "Apply").
 // A connection that cannot turn foreign keys back on is closed rather than returned to the pool.
 func sqliteWithoutForeignKeys(d *DB, fn func(ctx context.Context, r runner) error) (err error) {
 	ctx := d.ctx

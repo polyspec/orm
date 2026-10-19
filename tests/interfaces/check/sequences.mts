@@ -8,7 +8,7 @@ import type { Sequence } from './manifest.mts';
 
 const outputSchema = resolve(import.meta.dirname, '../../../scripts/schema/interfaces-results.schema.json');
 
-/** SequenceOutput is one vector of conformance output. Each statement has its statement event kind (docs/usage.md "Statement events"). */
+/** SequenceOutput is one vector of conformance output. Each statement has its statement event kind (docs/operations/usage.md "Statement events"). */
 export type SequenceOutput = { result?: unknown; statements?: { kind?: string | null; sql?: string }[] | null } | null;
 
 // STATEMENT_KINDS is all kinds of statement event.
@@ -53,7 +53,7 @@ function diffStatements(expected: Statement[], got: Statement[]): Change[] {
   return changes;
 }
 
-/** group divides statement event kinds into groups (docs/usage.md "Statement events"): model, transaction-control, schema, utility. */
+/** group divides statement event kinds into groups (docs/operations/usage.md "Statement events"): model, transaction-control, schema, utility. */
 function group(kind: string): string {
   if (['select', 'insert', 'update', 'delete'].includes(kind)) return 'model';
   if (['begin', 'commit', 'rollback', 'savepoint', 'release', 'rollback_to'].includes(kind)) return 'transaction-control';

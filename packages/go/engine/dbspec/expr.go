@@ -2,7 +2,7 @@ package dbspec
 
 import "strings"
 
-// Expr is a check predicate or its operand (docs/dbspec.md "Checks"). The tree holds no
+// Expr is a check predicate or its operand (docs/spec/dbspec.md "Checks"). The tree holds no
 // parentheses; emission writes only the parentheses that an or inside an and requires.
 type Expr interface{ expr() }
 

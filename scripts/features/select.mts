@@ -10,7 +10,7 @@ import { parseArgs } from 'node:util';
 
 export const USAGE = 'usage: check.mts [--run] [--feature <id> [--command <id>]... | --features [--shard <shard>] | --helpers [--without-helper <id>]...] [--helper <id>]...';
 
-// SHARDS is the `shard` that verify commands declare. rust is the command that builds and runs Rust with cargo, and other is the rest. make check
+// SHARDS is the `shard` that verify commands declare. rust is the command that builds and runs Rust with cargo, and other is the rest. make orm-check
 // runs the two shards in different CI groups: because a cargo build in one job runs one at a time under the Rust target directory's lease,
 // it gathers the cargo commands into one job and runs the rest in another job together.
 export const SHARDS = ['rust', 'other'];

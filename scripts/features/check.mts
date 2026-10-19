@@ -178,7 +178,7 @@ log.end(errors.length ? `${errors.length} error(s); each is listed at the end` :
 if (runVerification && errors.length === 0) {
   // Verify commands are independent of each other (a test that uses a database makes its own database for each case). So
   // they run together with ORM_FEATURE_LANES (default 4). A generation check that rewrites a tracked file (go-model-check)
-  // is a target of make check, not a verify command.
+  // is a target of make orm-check, not a verify command.
   // When several features verify with the same command in the same directory (decimal, styled value, engine checks),
   // the command runs only once, the first time, and the next feature reports that run's result as its own. The same
   // command run again in the same tree only does the same work again.
@@ -187,7 +187,7 @@ if (runVerification && errors.length === 0) {
   const checks = selectChecks(manifest, selection);
   const executed = new Map<string, { name: string; done: Promise<boolean> }>();
   // A command whose environment is linux-runner is a check of the declared Linux runner (.github/runner): CI
-  // runs make check on that runner's Linux.
+  // runs make orm-check on that runner's Linux.
   // On a machine that is not Linux, it does not run and prints that fact as a RUNNER line. It is not counted as a pass.
   const runner = (await readFile(resolve(root, '.github/runner'), 'utf8')).trim();
   const verify = async ({ feature, check }: { feature: { id: string }; check: Check & { environment?: string } }) => {

@@ -88,7 +88,7 @@ class Builder {
   public secret(name: string): string { return this.typed(slot({ from: 'secret', name, col_type: 'text' })); }
   /** A value of the executor configuration; type is the type of the column it is written to. */
   public config(name: string, type: string): string { return this.typed(slot({ from: 'config', name, col_type: type })); }
-  /** The executor clock with p fraction digits (docs/protocol.md "Clock"). */
+  /** The executor clock with p fraction digits (docs/spec/protocol.md "Clock"). */
   public now(precision: number): string { return this.typed(slot({ from: 'now', precision, col_type: 'datetime' })); }
   /**
    * The key of the transaction's audit record, written to the audit column of an audited table. name is the
@@ -594,7 +594,7 @@ export class Planner {
     if (pr.value) {
       const fn = pr.value;
       // A clock that the ORM compares keeps six fraction digits; a datetime(p < 6) column compares as its value
-      // extended to six digits (docs/protocol.md "Clock").
+      // extended to six digits (docs/spec/protocol.md "Clock").
       const value = this.d.valueFunction(fn.name, () => b.param(present(fn.ps?.[0], `the argument of ${fn.name}`), intervalType(fn.name)), () => b.now(6));
       if (value === undefined) fail(codes.CAPABILITY_UNSUPPORTED, `${fn.name} is not available on ${this.d.name}`);
       if (col.type === 'datetime' && fn.name !== 'today') lhs = this.d.clockOperand(lhs, col.precision);

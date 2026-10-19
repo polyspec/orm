@@ -16,7 +16,7 @@ final class CollectionIdentityTest extends TestCase
     private static function fixture(): array
     {
         $src = file_get_contents(__DIR__ . '/../../../tests/collection/keys.json');
-        self::assertIsString($src, 'tests/collection/keys.json is unreadable; run make check from the checkout root');
+        self::assertIsString($src, 'tests/collection/keys.json is unreadable; run make orm-check from the checkout root');
         $fixture = json_decode($src, true, 512, JSON_THROW_ON_ERROR);
         self::assertIsArray($fixture);
         return $fixture;

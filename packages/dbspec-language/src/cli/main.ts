@@ -1,4 +1,4 @@
-// The command line dbspec-fmt (docs/plans/editor-stack.md T128-5): it prints, rewrites or checks the formatted text of
+// The command line dbspec-fmt (docs/spec/editor-stack.md T128-5): it prints, rewrites or checks the formatted text of
 // the dbspec documents it is given, each analyzed with the document set that resolveSet gives. It follows the rules of
 // template-fmt (polyspec/template docs/operations/editor-tools.md), except that it takes the paths it is given and
 // walks no directory: a set file declares the documents of a set (ruling 4).

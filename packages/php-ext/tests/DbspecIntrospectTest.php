@@ -31,7 +31,7 @@ final class CountingPdo extends PDO
     }
 }
 
-// Number of catalog queries per dialect that do not depend on the number of tables (docs/dialects.md "Introspection").
+// Number of catalog queries per dialect that do not depend on the number of tables (docs/spec/dialects.md "Introspection").
 const QUERY_COUNTS = ['mysql' => 9, 'postgres' => 7, 'sqlite' => 3];
 // The statement that every client runs on a new connection.
 const INTROSPECT_CONNECTION_RULES = ['mysql' => ["SET time_zone = '+00:00'"], 'postgres' => ["SET TimeZone = 'UTC'"], 'sqlite' => ['PRAGMA foreign_keys = ON']];

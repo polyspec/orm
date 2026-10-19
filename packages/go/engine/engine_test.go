@@ -65,7 +65,7 @@ func TestSelectAll(t *testing.T) {
 	sql := p.Steps[0].SQL
 	wantParts := []string{
 		"SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, ",
-		// MySQL also does not decode hex in SQL: the executor reads it correctly with HostDecode (docs/codec.md).
+		// MySQL also does not decode hex in SQL: the executor reads it correctly with HostDecode (docs/spec/codec.md).
 		"`a`.`aes_hex_email` AS `a__aes_hex_email`",
 		" FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? AND (`a`.`is_display` = ? OR (`a`.`is_display` = ? AND `a`.`display_start_dt` < ?)) AND `a`.`seq` IN (?, ?, ?) AND `a`.`email_blind_index` = ? AND " + dialect.MySQL{}.Like("`a`.`name`", "?") + " ORDER BY `a`.`seq` DESC LIMIT 0, 100",
 	}

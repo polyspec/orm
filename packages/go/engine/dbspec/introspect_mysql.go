@@ -271,7 +271,7 @@ func mysqlType(columnType, charset, collation string) (typ Type, needsCheck stri
 }
 
 // mysqlRendererCheck is the form in which a renderer CHECK remains in CHECK_CLAUSE
-// (docs/dialects.md "Introspection", "Checks").
+// (docs/spec/dialects.md "Introspection", "Checks").
 func mysqlRendererCheck(col icolumn) string {
 	c := "`" + col.name + "`"
 	switch col.typ.Kind {

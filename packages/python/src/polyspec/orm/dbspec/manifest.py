@@ -1,4 +1,4 @@
-# Manifest and hash of a dbspec document set (docs/dbspec.md "Manifest and hashes").
+# Manifest and hash of a dbspec document set (docs/spec/dbspec.md "Manifest and hashes").
 # The reference is the Go engine (engine/dbspec).
 from __future__ import annotations
 
@@ -103,7 +103,7 @@ def _text_hash(text: str) -> str:
 def _external_document(document: DbspecDocument, tables):
     """An external document that keeps only the columns, primary key, unique keys, the foreign keys whose referenced
     table is also one of tables, and the indexes whose leading columns are such a foreign key's columns, of tables in
-    document order (docs/dbspec.md "Manifest and hashes"), so the reduced text satisfies the validation of the full
+    document order (docs/spec/dbspec.md "Manifest and hashes"), so the reduced text satisfies the validation of the full
     document. If the table is missing, None is returned. Other foreign keys, indexes, checks, and settings are not
     kept, because the external document owns them."""
     import dataclasses
@@ -111,15 +111,22 @@ def _external_document(document: DbspecDocument, tables):
     from polyspec.orm.dbspec.model import DbspecPrimaryKey, DbspecTable
 
     def reduced(t):
-        fks = tuple(dataclasses.replace(f, comments=()) for f in t.foreign_keys if f.table in tables)
+        fks = tuple(
+            dataclasses.replace(f, comments=())
+            for f in t.foreign_keys
+            if f.table in tables
+        )
 
         def leads(columns):
             return any(
-                len(columns) >= len(f.columns) and all(columns[i].name == c for i, c in enumerate(f.columns))
+                len(columns) >= len(f.columns)
+                and all(columns[i].name == c for i, c in enumerate(f.columns))
                 for f in fks
             )
 
-        indexes = tuple(dataclasses.replace(x, comments=()) for x in t.indexes if leads(x.columns))
+        indexes = tuple(
+            dataclasses.replace(x, comments=()) for x in t.indexes if leads(x.columns)
+        )
         return DbspecTable(
             (),
             t.name,
@@ -190,7 +197,7 @@ def dbspec_manifest(
 def external_differences(
     live: DbspecDocument, documents: list[DbspecDocument]
 ) -> list[str]:
-    """Compares the tables the document set uses from external documents with the database (docs/dbspec.md "External
+    """Compares the tables the document set uses from external documents with the database (docs/spec/dbspec.md "External
     documents"). `live` is the introspected database. For each table used, in name order,
     it returns the differences: a missing table, and for each column of the external document, a missing column, a different
     type, a different nullability, a different primary key, and a unique key that the live unique keys do not hold.

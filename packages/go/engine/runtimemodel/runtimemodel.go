@@ -1,5 +1,5 @@
 // Package runtimemodel builds the runtime model of a dbspec document set
-// (docs/dbspec.md, "Runtime model"). It is read by the planner, executor, and generator.
+// (docs/spec/dbspec.md, "Runtime model"). It is read by the planner, executor, and generator.
 // It holds the entities, fields, keys, default select set, codecs, and executor settings.
 // A model is built from a parsed document or from the manifest text that generated code holds.
 package runtimemodel
@@ -25,7 +25,7 @@ type Model struct {
 	Documents []*dbspec.Document
 	// Order is the list of entity names of the set: documents in name order, tables in document
 	// order. A table of an external document that an owned document uses is an external entity,
-	// reduced to its columns, primary key and unique keys (docs/dbspec.md "External documents").
+	// reduced to its columns, primary key and unique keys (docs/spec/dbspec.md "External documents").
 	Order    []string
 	Entities map[string]*Entity
 }
@@ -227,7 +227,7 @@ func LoadDocumentSet(owned, external []string) (*Model, []dbspec.Diagnostic) {
 }
 
 // splitDocuments splits a manifest text, the documents joined in name order, into its document texts: a document
-// begins at each line that begins with "dbspec ", the header line of the manifest form (docs/dbspec.md "Manifest and
+// begins at each line that begins with "dbspec ", the header line of the manifest form (docs/spec/dbspec.md "Manifest and
 // hashes"). The names are the parser's, through dbspec.ParseSet.
 func splitDocuments(text string) ([]string, []dbspec.Diagnostic) {
 	if text == "" {
@@ -357,7 +357,7 @@ type SetLoadError struct {
 
 func (e *SetLoadError) Error() string { return "SCHEMA_INVALID: " + strings.Join(e.Problems, "; ") }
 
-// LoadSetFile reads the set file at path with dbspec.ReadSet (docs/dbspec.md
+// LoadSetFile reads the set file at path with dbspec.ReadSet (docs/spec/dbspec.md
 // "Document sets"), gives the bytes of each listed file to dbspec.ReadBytes with
 // its joined path and loads the documents and the external documents as one
 // document set. Any error or diagnostic is a *SetLoadError that holds all of

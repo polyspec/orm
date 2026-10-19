@@ -5,7 +5,7 @@ namespace Polyspec\Orm\Dbspec;
 
 /**
  * Writes the statements that create the tables of a document set in one
- * dialect (docs/dialects.md "Rendered statements").
+ * dialect (docs/spec/dialects.md "Rendered statements").
  *
  * @internal
  */
@@ -177,7 +177,7 @@ final class Renderer
     /**
      * Writes the CREATE TABLE that creates table t with the given name. checkName is the column's renderer
      * CHECK name; hidden is a nullable column placed after t's columns, added without a CHECK
-     * column (the SQLite rebuild in docs/plans.md "Steps").
+     * column (the SQLite rebuild in docs/spec/plans.md "Steps").
      *
      * @param \Closure(string): string $checkName
      * @param list<Column> $hidden
@@ -660,7 +660,7 @@ final class Renderer
         }
         $body = 'INSERT INTO ' . $this->q($history) . ' (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $values) . ')';
         if (count($audit->arguments) === 8) {
-            // The tables table keeps one row per audit record and audited table (docs/dialects.md "Triggers").
+            // The tables table keeps one row per audit record and audited table (docs/spec/dialects.md "Triggers").
             [, $column, , , , $tablesTable, $record, $name] = $audit->arguments;
             $tables = 'INSERT INTO ' . $this->q($tablesTable) . ' (' . $this->q($record) . ', ' . $this->q($name) . ') VALUES (NEW.' . $this->q($column) . ", '{$t->name}')";
             $body = $this->dialect === 'mysql'

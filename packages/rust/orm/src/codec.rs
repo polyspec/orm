@@ -1,6 +1,6 @@
-//! Column-style codecs (docs/codec.md): ordered_json, serialize, base64, gz, yaml.
+//! Column-style codecs (docs/spec/codec.md): ordered_json, serialize, base64, gz, yaml.
 //! Styles are listed in write order; `decode` applies them in reverse. A first `gz` or
-//! `base64` stage takes a string value and stores its UTF-8 text (docs/codec.md, Stage lists).
+//! `base64` stage takes a string value and stores its UTF-8 text (docs/spec/codec.md, Stage lists).
 
 use std::io::{Read, Write};
 use std::sync::LazyLock;
@@ -43,7 +43,7 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
             }
             "base64" => {
                 let text = std::str::from_utf8(&cur).map_err(|_| err(CODEC_DECODE, "base64 input is not UTF-8"))?;
-                // A stored cell is decoded only in the form the encoder writes (docs/codec.md). STANDARD rejects whitespace, missing padding,
+                // A stored cell is decoded only in the form the encoder writes (docs/spec/codec.md). STANDARD rejects whitespace, missing padding,
                 // and nonzero padding bits.
                 cur = base64::engine::general_purpose::STANDARD.decode(text).map_err(|e| err(CODEC_DECODE, format!("base64: {e}")))?;
             }
@@ -155,7 +155,7 @@ enum YamlFrame {
 }
 
 /// Builds the common value of one YAML document from the parser events, and refuses
-/// in the same pass every form that docs/codec.md (yaml) refuses.
+/// in the same pass every form that docs/spec/codec.md (yaml) refuses.
 #[derive(Default)]
 struct YamlReader {
     documents: usize,
@@ -518,7 +518,7 @@ impl<'a> Parser<'a> {
     }
 }
 
-/// A positional column with executor-side stages: the codec stages (docs/codec.md) and the
+/// A positional column with executor-side stages: the codec stages (docs/spec/codec.md) and the
 /// host stages a dialect left to us (aes/hex/ip); on read, host runs before codec.
 pub struct StyledCol {
     pub index: usize,
@@ -558,7 +558,7 @@ pub fn executor_stages(stages: &[String]) -> Vec<&str> {
     stages.iter().map(String::as_str).filter(|s| !is_host(s)).collect()
 }
 
-// ---- host stages (docs/dialects.md): what MySQL does in SQL, PostgreSQL/SQLite leave to the executor ----
+// ---- host stages (docs/spec/dialects.md): what MySQL does in SQL, PostgreSQL/SQLite leave to the executor ----
 
 use aes_gcm::{
     aead::{Aead, Payload},
@@ -629,7 +629,7 @@ pub fn hex_upper(b: &[u8]) -> String {
 
 /// Reads the upper-case hex text that `hex_upper` writes. The
 /// text is decoded exactly: a lower-case letter, white space or any other byte
-/// outside the upper-case hex digits is `CODEC_DECODE` (docs/codec.md).
+/// outside the upper-case hex digits is `CODEC_DECODE` (docs/spec/codec.md).
 pub fn hex_decode(s: &str) -> Result<Vec<u8>> {
     let s = s.as_bytes();
     if !s.len().is_multiple_of(2) {
@@ -647,7 +647,7 @@ pub fn hex_decode(s: &str) -> Result<Vec<u8>> {
 
 /// `INET6_ATON`: 4 bytes for IPv4, 16 for IPv6.
 fn pack_ip(s: &str) -> Result<Vec<u8>> {
-    // The exact text only: white space around the address is CODEC_ENCODE (docs/codec.md).
+    // The exact text only: white space around the address is CODEC_ENCODE (docs/spec/codec.md).
     match s.parse::<std::net::IpAddr>() {
         Ok(std::net::IpAddr::V4(a)) => Ok(a.octets().to_vec()),
         Ok(std::net::IpAddr::V6(a)) => Ok(a.octets().to_vec()),
@@ -795,7 +795,7 @@ mod tests {
     }
 
     /// The yaml stage reads one YAML 1.2 document with the core schema into the common value
-    /// model (docs/codec.md, yaml): plain scalars resolve by the core schema tags, integral keys
+    /// model (docs/spec/codec.md, yaml): plain scalars resolve by the core schema tags, integral keys
     /// become decimal strings, and the refused forms return CODEC_DECODE instead of a string.
     #[test]
     fn yaml_reads_the_core_schema() {
@@ -964,7 +964,7 @@ mod tests {
     }
 
     /// A first `gz` or `base64` stage serializes nothing: it stores the UTF-8 text of a string value and refuses any
-    /// other value (docs/codec.md, Stage lists).
+    /// other value (docs/spec/codec.md, Stage lists).
     #[test]
     fn leading_gz_and_base64_store_the_text() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

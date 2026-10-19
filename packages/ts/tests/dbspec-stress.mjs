@@ -4,7 +4,7 @@
 // The document is parsed five times; the shortest, median and longest main
 // thread CPU time of a parse are printed with the ratio of the median to the
 // reference work, and a ratio above REFERENCE_RATIO prints a warning
-// (docs/dbspec.md, "Verification"); a measurement never fails the test.
+// (docs/spec/dbspec.md, "Verification"); a measurement never fails the test.
 //
 // The time limit is measured as the CPU time of the main thread that ran parse (process.threadCpuUsage). On a shared
 // machine, wall-clock time also includes the time spent waiting while other processes use the CPU, and process
@@ -23,7 +23,7 @@ const root = new URL('../../../', import.meta.url);
 const generator = fileURLToPath(new URL('tests/dbspec/stress.mts', root));
 const TIMEOUT = 60000;
 // REFERENCE_RATIO is the documented reference value of the ratio of the median parse CPU time to the median CPU time of
-// the reference work (docs/dbspec.md, "Verification"). A ratio above it prints a warning; a measurement never fails the
+// the reference work (docs/spec/dbspec.md, "Verification"). A ratio above it prints a warning; a measurement never fails the
 // test.
 const REFERENCE_RATIO = 185;
 const PARSES = 5;
@@ -54,7 +54,7 @@ caseTest('dbspec stress document parses and emits canonically', TIMEOUT, async (
     parses.sort((a, b) => a - b);
     const parseMs = parses[Math.floor(PARSES / 2)];
     // The baseline work is a loop that updates a checksum for each byte of the same document. It is measured on the same thread with the same clock, and the ratio to the parse time
-    // is printed (docs/dbspec.md, Verification).
+    // is printed (docs/spec/dbspec.md, Verification).
     const bytes = Buffer.from(text);
     const references = [];
     let sum = 0;
@@ -83,7 +83,7 @@ caseTest('dbspec stress document parses and emits canonically', TIMEOUT, async (
     const machine = `${process.platform} ${process.arch}, Node ${process.version}`;
     step(`parse ratio ${ratio.toFixed(2)} to the reference on ${machine} (reference ratio ${REFERENCE_RATIO})`);
     if (ratio > REFERENCE_RATIO)
-      warning(`median parse CPU of ${parseMs.toFixed(3)} ms is ${ratio.toFixed(2)} times the reference CPU of ${referenceMs.toFixed(3)} ms, above the reference ratio ${REFERENCE_RATIO} (docs/dbspec.md, Verification); machine ${machine}`);
+      warning(`median parse CPU of ${parseMs.toFixed(3)} ms is ${ratio.toFixed(2)} times the reference CPU of ${referenceMs.toFixed(3)} ms, above the reference ratio ${REFERENCE_RATIO} (docs/spec/dbspec.md, Verification); machine ${machine}`);
 });
 
 // referenceScan is the baseline work for the stress document: for each byte in turn, it computes h = h*31 + b (mod 2^32).

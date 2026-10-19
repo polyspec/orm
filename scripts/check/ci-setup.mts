@@ -1,10 +1,10 @@
-// ci-setup is the setup step that the CI workflow runs before make check, and the needs it prepares.
+// ci-setup is the setup step that the CI workflow runs before make orm-check, and the needs it prepares.
 // The runner (scripts/check/run.mts) reads the step results the workflow passes as ORM_CI_SETUP (`${{ toJSON(steps) }}`), and for a failed
 // step, a target that declares a need the step prepares (`needs` in contracts/check-inputs.json) is not run; it is recorded together with that step as
 // not-run. All other targets run. The repository check (scripts/repo/ci.mts) confirms that the workflow's setup steps
 // are all listed here.
 //
-// CI runs make check as one job per CI group (CI_GROUPS and CI_TARGETS_<group> in the Makefile). The job's step group-needs
+// CI runs make orm-check as one job per CI group (CI_GROUPS and CI_TARGETS_<group> in the Makefile). The job's step group-needs
 // (make ci-group-needs) writes the GROUP_OUTPUTS values, taken from the needs the group's targets declare, as step outputs, and a setup step
 // runs only when the output named by its STEP_OUTPUT is true. So each group performs only the setup its own targets need.
 import { resolve } from 'node:path';
@@ -33,11 +33,11 @@ export const CI_SETUP: Record<string, string | null> = {
   'php-extension-tools': 'php-extension-tools',
   'server-programs': 'server-programs',
   servers: 'databases',
-  'install-python': 'python',
+  'orm-install-python': 'python',
   flowmark: 'flowmark',
 };
 
-// RUNNER_STEPS are the steps the runner itself needs: without the repository and Node, neither make check nor the summary runs, so
+// RUNNER_STEPS are the steps the runner itself needs: without the repository and Node, neither make orm-check nor the summary runs, so
 // that failure is a job failure, and the log of that step is the cause.
 export const RUNNER_STEPS = ['checkout', 'node'];
 
@@ -46,7 +46,7 @@ export const RUNNER_STEPS = ['checkout', 'node'];
 export const NEEDS = ['databases', ...new Set(Object.values(CI_SETUP).filter(Boolean).filter(need => need !== 'databases'))];
 
 // GROUP_OUTPUTS maps each output that step group-needs writes to the need that makes that output true. php installs two PHP releases (the lowest
-// release and .php-version) together with Composer: Composer and the PHP extension tools run with the PHP on PATH. server-programs is the program make test-servers uses to start the servers, and node-modules is
+// release and .php-version) together with Composer: Composer and the PHP extension tools run with the PHP on PATH. server-programs is the program make orm-test-servers uses to start the servers, and node-modules is
 // a dependency of the TypeScript client that make databases-create builds, so databases needs both of them as well.
 export const GROUP_OUTPUTS: Record<string, string[]> = {
   'node-modules': ['node-modules', 'databases'],
@@ -60,7 +60,7 @@ export const GROUP_OUTPUTS: Record<string, string[]> = {
 };
 
 // STEP_OUTPUT is, for each setup step, the group-needs output that makes that step run. A step whose value is null runs in every group:
-// make check builds the lease program in Go (BUILD_LEASE), and group-needs is itself the step that decides which steps run.
+// make orm-check builds the lease program in Go (BUILD_LEASE), and group-needs is itself the step that decides which steps run.
 export const STEP_OUTPUT: Record<string, string | null> = {
   'group-needs': null,
   go: null,
@@ -79,9 +79,9 @@ export const STEP_OUTPUT: Record<string, string | null> = {
   'php-extension-tools': 'php-extension-tools',
   'server-programs': 'server-programs',
   servers: 'databases',
-  // install-python installs the tools of mise.toml and makes the venv from their Python (make python-venv).
-  'install-python': 'python',
-  // flowmark installs the flowmark build that markdown-conformance-check runs (make install-flowmark).
+  // orm-install-python installs the tools of mise.toml and makes the venv from their Python (make python-venv).
+  'orm-install-python': 'python',
+  // flowmark installs the flowmark build that markdown-conformance-check runs (make orm-install-flowmark).
   flowmark: 'flowmark',
 };
 
@@ -91,7 +91,7 @@ export const stepCondition = (id: string): string => STEP_OUTPUT[id]
   : '${{ !cancelled() }}';
 
 // SETUP_NEEDS maps each need the runner's setup phase prepares to the needs that phase itself requires. databases (the setup phase
-// servers and databases/create (scripts/check/databases.mts) prepare: a server is started by make test-servers from server-programs,
+// servers and databases/create (scripts/check/databases.mts) prepare: a server is started by make orm-test-servers from server-programs,
 // and is managed by the lease and stop-process tools built in Go, and databases.mts sets up the bench database (scripts/bench-db.mts) and
 // the decimal database through the TypeScript client, which make databases-create builds. So a target that needs databases
 // also needs this need (expandNeeds).

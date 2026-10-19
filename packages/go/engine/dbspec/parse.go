@@ -520,7 +520,7 @@ func (c *cursor) member(what string, isMember func(string) bool) (token, bool) {
 var valueKeywords = map[string]bool{"true": true, "false": true, "null": true, "now": true}
 
 // value reads one literal of a value position: a default, a check literal, a
-// diagram coordinate or a count (docs/dbspec.md "Syntax analysis").
+// diagram coordinate or a count (docs/spec/dbspec.md "Syntax analysis").
 func (c *cursor) value(what string, allowString bool) (token, bool) {
 	i := c.i
 	t, ok := c.readValue(what, allowString)

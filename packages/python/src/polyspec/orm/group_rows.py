@@ -9,7 +9,9 @@ _SAFE_INTEGER = 9007199254740991
 
 def _checked_count(value) -> int:
     if isinstance(value, bool):
-        raise OrmError(codes.CODEC_DECODE, "group result row_count is not an exact integer")
+        raise OrmError(
+            codes.CODEC_DECODE, "group result row_count is not an exact integer"
+        )
     if isinstance(value, int):
         if not 0 <= value <= _SAFE_INTEGER:
             raise OrmError(
@@ -48,7 +50,9 @@ class GroupRow:
                 )
             name, value = entry
             if not name or name in self._values:
-                raise OrmError(codes.CONFIG, f"group result repeats or omits column {name}")
+                raise OrmError(
+                    codes.CONFIG, f"group result repeats or omits column {name}"
+                )
             self._values[name] = value
         if "row_count" not in self._values:
             raise OrmError(codes.INTERNAL, "group result has no row_count")
@@ -57,7 +61,9 @@ class GroupRow:
 
     def value(self, name: str):
         if name not in self._values:
-            raise OrmError(codes.COLUMN_UNSELECTED, f"group column {name} was not selected")
+            raise OrmError(
+                codes.COLUMN_UNSELECTED, f"group column {name} was not selected"
+            )
         return self._values[name]
 
     def to_array(self) -> dict:

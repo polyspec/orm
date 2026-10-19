@@ -1,4 +1,4 @@
-// Writes the steps that the connection's addTablesAndColumns runs (docs/schema.md "Adding tables and columns").
+// Writes the steps that the connection's addTablesAndColumns runs (docs/spec/schema.md "Adding tables and columns").
 import { present } from '../present.js';
 import { compareSchemas } from './compare.js';
 import { emitDocument } from './emit.js';
@@ -25,7 +25,7 @@ function schemaDocument(tables: readonly DbspecTable[]): DbspecDocument {
 }
 
 /**
- * Checks whether the database is the same as the document set (docs/schema.md "Schema installation"). live is the
+ * Checks whether the database is the same as the document set (docs/spec/schema.md "Schema installation"). live is the
  * document of the database introspected through the connection, unsupported is the objects that introspection could not read, target is the
  * schema text document of the set. Tables of the database that are not in the set are not compared. A table of the set that has an unread
  * object is reported as "unsupported_<kind> <table>[.<name>]: <reason>"; otherwise, the
@@ -66,7 +66,7 @@ function compareSet(live: DbspecDocument, unsupported: readonly DbspecUnsupporte
  * target is the schema text document of the document set. Tables of the database that are not in the set are neither compared nor changed
  * The only differences between the set's tables in the database and the set are create_table for a table not in the database, add_column for a null or defaulted column,
  * or add_index for an index that is not unique: then the plan steps run from the set's table in the database
- * to the set (docs/plans.md "Steps"), and the tables created in table name order are "table",
+ * to the set (docs/spec/plans.md "Steps"), and the tables created in table name order are "table",
  * the columns added in column order are "table.column", and the indexes added after them in index order are "table.index"
  * list. Other differences are returned as "<kind> <table>[.<name>]" without steps, and a missing unique key that exists
  * in a row may fail, so it is returned together with its reason.
@@ -108,7 +108,7 @@ export function addTablesAndColumnsSteps(live: DbspecDocument, unsupported: read
     ? [t.name]
     : [...t.columns.map(c => qualified(t.name, c.name)), ...t.indexes.map(i => qualified(t.name, i.name))].filter(name => adding.has(name)));
   // Columns to add and tables are written as one plan. The plan starts from the set's table in the database, so
-  // (if there are none, an empty database) the steps keep the order and rollback of docs/plans.md.
+  // (if there are none, an empty database) the steps keep the order and rollback of docs/spec/plans.md.
   let failed: readonly DbspecDiagnostic[] = [];
   let from: string | null = null;
   if (source.tables.length > 0) {

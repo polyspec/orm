@@ -721,7 +721,7 @@ str dbs_sha256(str text)
     return str_of(out, sizeof out);
 }
 
-/* The name that the renderer writes for <table>$<suffix> (docs/dbspec.md "Names"): the plain form when it has at most 63
+/* The name that the renderer writes for <table>$<suffix> (docs/spec/dbspec.md "Names"): the plain form when it has at most 63
  * bytes, otherwise its first 54 bytes, a $ and the first 8 lowercase hex digits of its SHA-256. */
 str dbs_renderer_name(str table, str suffix)
 {

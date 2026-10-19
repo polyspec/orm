@@ -1,4 +1,4 @@
-// The VS Code extension without VS Code (docs/editor.md): the manifest contributes the language `dbspec` with no
+// The VS Code extension without VS Code (docs/spec/editor.md): the manifest contributes the language `dbspec` with no
 // TextMate grammar, one semantic token type and one TextMate scope for each class of the language service, semantic
 // highlighting enabled by default; the bundle starts the bundled server, whose legend is the classes in their order.
 // VS Code itself runs in tests/integration.

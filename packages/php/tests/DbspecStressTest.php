@@ -55,7 +55,7 @@ final class DbspecStressTest extends TestCase
         sort($parses);
         $parseMs = $parses[2];
         // The base work is a loop that updates a checksum for each byte of the same document. It is measured in the same process with the same clock, and
-        // prints the ratio to the parse time (docs/dbspec.md, Verification).
+        // prints the ratio to the parse time (docs/spec/dbspec.md, Verification).
         $references = [];
         for ($i = 0; $i < 5; $i++) {
             $referenceStarted = caseClockStart();
@@ -87,7 +87,7 @@ final class DbspecStressTest extends TestCase
         Assert::assertSame($first, $second, 'Two emissions differ');
         fwrite(STDERR, "emitted emitMs=$emitMs" . "\n");
 
-        // docs/dbspec.md, "Verification": the ratio of the median parse CPU time to the median CPU time of the reference work
+        // docs/spec/dbspec.md, "Verification": the ratio of the median parse CPU time to the median CPU time of the reference work
         // is printed, and a ratio above the documented reference value prints a warning. A measurement never fails the test.
         $referenceRatio = 11.0;
         $ratio = $parseMs / $references[2];
@@ -95,7 +95,7 @@ final class DbspecStressTest extends TestCase
         fwrite(STDERR, sprintf('parse ratio %.2f to the reference on %s (reference ratio %.1f)', $ratio, $machine, $referenceRatio) . "\n");
         if ($ratio > $referenceRatio) {
             fwrite(STDERR, 'WARNING ' . sprintf(
-                'dbspec_stress median parse CPU of %.3f ms is %.2f times the reference CPU of %.3f ms, above the reference ratio %.1f (docs/dbspec.md, Verification); machine %s',
+                'dbspec_stress median parse CPU of %.3f ms is %.2f times the reference CPU of %.3f ms, above the reference ratio %.1f (docs/spec/dbspec.md, Verification); machine %s',
                 $parseMs, $ratio, $references[2], $referenceRatio, $machine,
             ) . "\n");
         }

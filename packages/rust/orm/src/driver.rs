@@ -84,7 +84,7 @@ pub(crate) fn parent_values<'a>(pr: &ParentRef, parents: impl Iterator<Item = &'
 /// rounded up to a power of two (values padded by repetition) so the prepared
 /// statement cache holds one statement per size class. On PostgreSQL the plan has one
 /// `$k` per slot in slot order: the parent slot becomes n placeholders and every later
-/// number shifts by n-1 (docs/dialects.md).
+/// number shifts by n-1 (docs/spec/dialects.md).
 pub(crate) fn expand_in(st: &Step, mut vals: Vec<Param>, numbered: bool) -> (String, Vec<Param>) {
     let width = st.parent.as_ref().map(|p| p.keys.len()).unwrap_or(0);
     assert!(width > 0 && vals.len().is_multiple_of(width), "invalid relation parent key values");

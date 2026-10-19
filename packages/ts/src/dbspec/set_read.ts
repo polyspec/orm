@@ -1,4 +1,4 @@
-// The set reader (docs/dbspec.md "Document sets"): readDbspecSet reads the set file dbspec-set.json and the files it
+// The set reader (docs/spec/dbspec.md "Document sets"): readDbspecSet reads the set file dbspec-set.json and the files it
 // lists, in the four steps of the specification, without following a symbolic link. The rules that read no file run
 // through parseSet (set_file.ts). It is Node-only, so the browser entry (entry.ts) does not reach it.
 import { present } from '../present.js';
@@ -167,7 +167,7 @@ function examinePath(entry: DbspecSetPath, prefix: string, external: boolean): D
 }
 
 /**
- * Reads the set file at `path` and the files it lists (docs/dbspec.md "Document sets"). The first two steps stop at
+ * Reads the set file at `path` and the files it lists (docs/spec/dbspec.md "Document sets"). The first two steps stop at
  * their first error; steps 3 and 4 report every path that breaks them, each with its first error. The bytes of the
  * listed files are not checked: the caller gives each to readDbspecBytes with its path.
  */

@@ -1,4 +1,4 @@
-# orm value functions and column functions (docs/protocol.md "Functions").
+# orm value functions and column functions (docs/spec/protocol.md "Functions").
 # A value function is the comparison value itself; a column function wraps the column being compared, and the comparison value follows it.
 from typing import Any, Callable
 

@@ -43,7 +43,7 @@ export async function snapshotDatabase(db: StateDatabase, driver: string): Promi
       throw new Error(`unsupported state database ${JSON.stringify(driver)}`);
   }
   // orm__row_lock is the ORM's row lock table, which the SQLite client creates outside a transaction before its first transaction on the connection
-  // (docs/usage.md). That table is a trace of the client opening its first transaction, not a database state changed by the test, so it is not
+  // (docs/operations/usage.md). That table is a trace of the client opening its first transaction, not a database state changed by the test, so it is not
   // included in the state.
   const tables = (await db.query(namesQuery)).rows.map(row => {
     const name = row[0];

@@ -441,7 +441,7 @@ export function conflictKey(ent: Entity, set: readonly Assignment[]): readonly s
   return candidate.columns;
 }
 
-// The member types of every request record (docs/protocol.md): int, string, bool, list<T>, map<T>, or a record name.
+// The member types of every request record (docs/spec/protocol.md): int, string, bool, list<T>, map<T>, or a record name.
 // The table is the same as PHP's Validator::RECORDS and the fields of Go's ir.Request.
 const queryShape: Readonly<Record<string, string>> = {
   entity: 'string', columns: 'Columns', on: 'Group', where: 'Group', joins: 'list<Join>', relations: 'list<Relation>',
@@ -554,7 +554,7 @@ export function validate(m: RuntimeModel, r: Request): void {
   if (r.ir_version !== IR_VERSION) fail(codes.VERSION_MISMATCH, `ir_version ${String(r.ir_version)}, engine ${String(IR_VERSION)}`);
   if (r.manifest_hash !== m.manifestHash) fail(codes.SCHEMA_HASH_MISMATCH, `client ${r.manifest_hash}, engine ${m.manifestHash}`);
   if (!kinds.has(r.kind)) fail(codes.IR_INVALID, `unknown kind "${r.kind}"`);
-  // A table of an external document is written only by the set that owns it (docs/dbspec.md "External documents").
+  // A table of an external document is written only by the set that owns it (docs/spec/dbspec.md "External documents").
   const target = m.entities.get(r.entity);
   if (target?.external === true && ['insert', 'update', 'delete', 'restore', 'restart_identity'].includes(r.kind)) {
     fail(codes.CONFIG, `${target.table} is owned by another document set`);
@@ -629,7 +629,7 @@ export interface RestoreParts {
 }
 
 /**
- * Picks the key of a restore request (docs/protocol.md 1.5) after the request hook. The set values with a parameter
+ * Picks the key of a restore request (docs/spec/protocol.md 1.5) after the request hook. The set values with a parameter
  * and the eq conditions with a parameter that the where joins with and give columns their values; the key is the
  * primary key when they cover it, otherwise the first unique key in name order that they cover. A set value of a key
  * column becomes a condition, every other set value is a new value, and the where keeps its other conditions, which

@@ -5,7 +5,7 @@ namespace Polyspec\Orm\Dbspec;
 
 /**
  * Reads the current MySQL database into an intermediate model. Every query reads the whole database
- * in one go (docs/dialects.md "Introspection").
+ * in one go (docs/spec/dialects.md "Introspection").
  *
  * @internal
  */
@@ -262,7 +262,7 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
         return $checks;
     }
 
-    /** The form in which a renderer CHECK stays in CHECK_CLAUSE (docs/dialects.md "Introspection", "Checks"). */
+    /** The form in which a renderer CHECK stays in CHECK_CLAUSE (docs/spec/dialects.md "Introspection", "Checks"). */
     private static function rendererCheck(array $column): string
     {
         $c = "`{$column['name']}`";

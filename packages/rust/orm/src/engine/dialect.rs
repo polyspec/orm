@@ -128,7 +128,7 @@ impl Dialect {
 
     /// Decides whether the codec stage is decoded in SQL on reads (MySQL: `ip`). `hex` is not decoded in SQL by any dialect
     /// because `UNHEX` accepts odd lengths and returns NULL for cells with whitespace, so the executor decodes with `host_decode`
-    /// to read it exactly (docs/codec.md).
+    /// to read it exactly (docs/spec/codec.md).
     pub fn decodes_style(self, style: &str) -> bool {
         match self {
             Dialect::MySql => style == "ip",
@@ -138,7 +138,7 @@ impl Dialect {
 
     /// Whether ORM-written timestamps come from the executor clock (a `now` slot truncated to the
     /// column's fraction digits): SQLite has no sub-second clock function, and a PostgreSQL clock
-    /// rounds into timestamp(p < 6) (docs/protocol.md "Clock").
+    /// rounds into timestamp(p < 6) (docs/spec/protocol.md "Clock").
     pub fn host_now(self) -> bool {
         self != Dialect::MySql
     }

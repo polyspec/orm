@@ -49,7 +49,7 @@ pub use value::{Param, StyledValue, Val};
 /// Every failure surfaces as one of these; engine codes pass through unchanged.
 #[derive(Debug)]
 pub enum Error {
-    /// An error with a code from docs/errors.yaml.
+    /// An error with a code from docs/spec/errors.yaml.
     Engine { code: String, msg: String },
     /// A driver error: the code the error catalog names for it, or DRIVER,
     /// with the driver message and the driver error.
@@ -96,7 +96,7 @@ impl std::error::Error for Error {
     }
 }
 
-/// Driver errors: the codes the catalog names (docs/errors.yaml, origin driver) map to a
+/// Driver errors: the codes the catalog names (docs/spec/errors.yaml, origin driver) map to a
 /// shared code keeping the driver's message — MySQL 1213 / SQLSTATE 40001 → DEADLOCK, 1062 →
 /// DUPLICATE_KEY; PostgreSQL 40P01 / 40001 → DEADLOCK, 23505 → DUPLICATE_KEY, 23503 → FOREIGN_KEY; SQLite LOCKED
 /// (6, primary code of any extended form) → DEADLOCK, 2067 / 1555 (CONSTRAINT_UNIQUE / _PRIMARYKEY) →

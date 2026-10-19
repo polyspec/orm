@@ -172,7 +172,7 @@ pub struct Core {
     pub(crate) possible: Option<(String, Param)>,
     pub(crate) group_limit: u32,
     pub(crate) delete_lock: bool,
-    /// The revision column and the expected revision of the next update or delete (docs/dsl.md "Writes").
+    /// The revision column and the expected revision of the next update or delete (docs/spec/dsl.md "Writes").
     pub(crate) expected_revision: Option<(String, i64)>,
     pub(crate) key_name: String,
     pub(crate) fetch_key: Option<KeyFn>,
@@ -476,7 +476,7 @@ impl Core {
     }
 
     /// Makes the next update or delete write only while the integer column holds `revision`; update also stores
-    /// `revision + 1`. A mismatch fails with REVISION_CHANGED and changes nothing (docs/dsl.md "Writes").
+    /// `revision + 1`. A mismatch fails with REVISION_CHANGED and changes nothing (docs/spec/dsl.md "Writes").
     pub fn expect_revision(&mut self, column: &str, revision: i64) {
         self.expected_revision = Some((column.to_owned(), revision));
     }
@@ -713,7 +713,7 @@ fn predicate(key: &ChainKey, arg: Arg, single: bool) -> crate::Result<PredSpec> 
             }
             Ok(pred(op_of(key.op), PredValue::ValueFn(f)))
         }
-        // contains binds NULL as its value, which matches no row (docs/protocol.md §2).
+        // contains binds NULL as its value, which matches no row (docs/spec/protocol.md §2).
         Arg::Value(Value::Null) if key.op == "lk" || key.op == "lb" => Ok(pred(op_of(key.op), PredValue::One(Param::Null))),
         Arg::Value(Value::Null) => {
             if !eq {

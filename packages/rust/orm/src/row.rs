@@ -64,7 +64,7 @@ pub trait Src {
     fn string(&mut self, i: usize) -> Result<String>;
     fn datetime(&mut self, i: usize) -> Result<NaiveDateTime>;
     fn date(&mut self, i: usize) -> Result<NaiveDate>;
-    /// A styled cell after decoding (docs/codec.md): `Val::Json`, `Val::Str`, or `Val::Null` for SQL NULL.
+    /// A styled cell after decoding (docs/spec/codec.md): `Val::Json`, `Val::Str`, or `Val::Null` for SQL NULL.
     fn styled(&mut self, i: usize, styles: &[String]) -> Result<Val>;
     /// A styled cell's decoded value; None for NULL/empty.
     fn json(&mut self, i: usize, styles: &[String]) -> Result<Option<serde_json::Value>> {
@@ -295,7 +295,7 @@ pub fn read_row(row: &DriverRow, n: usize, zone: Zone) -> Result<Vec<Val>> {
 
 /// Decodes styled cells of every positional row of a step in place: the host stages a
 /// dialect left to the executor (aes/hex/ip, with the AES secret) first, then the codec
-/// stages (docs/codec.md).
+/// stages (docs/spec/codec.md).
 pub fn decode_styled(asm: &crate::plan::Assemble, data: &mut [Vec<Val>], aes_keys: &std::collections::BTreeMap<i32, String>) -> Result<()> {
     let styled = crate::codec::styled_cols(asm);
     if styled.is_empty() {

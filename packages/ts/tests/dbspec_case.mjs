@@ -204,7 +204,7 @@ export function setCases() {
       assert.equal(manifest.manifest === null, c.errors.length > 0);
       if (c.manifest !== undefined) {
         // The runtime model is built from the manifest text and the external text, so they parse back as a set
-        // without diagnostics (docs/dbspec.md "Manifest and hashes").
+        // without diagnostics (docs/spec/dbspec.md "Manifest and hashes").
         const split = text => (text === '' ? [] : text.split(/(?<=\n)(?=dbspec )/));
         for (const r of parseDbspecSet(split(manifest.manifest.manifestText), split(manifest.manifest.externalText))) {
           assert.deepEqual(r.diagnostics, [], `manifest and external text of ${r.name}`);

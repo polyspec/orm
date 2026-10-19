@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-// Runtime model behavior on SQLite, MySQL and PostgreSQL (docs/dbspec.md
+// Runtime model behavior on SQLite, MySQL and PostgreSQL (docs/spec/dbspec.md
 // "Runtime model" and "Audit"): installing a dbspec document set, i16, uuid,
 // date and time values, database defaults for omitted columns, the required
 // column rule, the audit record of a transaction, and the restore of

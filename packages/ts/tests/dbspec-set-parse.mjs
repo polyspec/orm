@@ -1,4 +1,4 @@
-// The set parse vectors (tests/dbspec/set-parse.json, docs/dbspec.md "Parsing a set"). Every case runs through
+// The set parse vectors (tests/dbspec/set-parse.json, docs/spec/dbspec.md "Parsing a set"). Every case runs through
 // parseDbspecSet from the Node entry and from the browser-safe `@polyspec/orm/dbspec` entry: the name, the external
 // mark, whether the text parsed and the diagnostics of each text. The vector file is
 // read strictly: an unknown or a missing field is an error, and no case is skipped.

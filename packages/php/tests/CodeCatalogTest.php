@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-// Code.php, which orm-gen errors generates, compared with docs/errors.yaml: every code is a constant whose doc comment
+// Code.php, which orm-gen errors generates, compared with docs/spec/errors.yaml: every code is a constant whose doc comment
 // is the note of the catalog (the origin, then ": " and the comment of the code), and the class holds no other code.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CodeCatalogTest.php
 
@@ -10,12 +10,12 @@ use PHPUnit\Framework\TestCase;
 #[Small]
 final class CodeCatalogTest extends TestCase
 {
-    /** @return list<array{string, string}> each code of docs/errors.yaml with its note */
+    /** @return list<array{string, string}> each code of docs/spec/errors.yaml with its note */
     private static function catalog(): array
     {
         $out = [];
         $comment = '';
-        foreach (explode("\n", (string) file_get_contents(__DIR__ . '/../../../docs/errors.yaml')) as $line) {
+        foreach (explode("\n", (string) file_get_contents(__DIR__ . '/../../../docs/spec/errors.yaml')) as $line) {
             $text = trim($line);
             if (str_starts_with($text, '- code:')) {
                 $parts = explode('#', trim(substr($text, strlen('- code:'))), 2);
@@ -26,7 +26,7 @@ final class CodeCatalogTest extends TestCase
                 $out[count($out) - 1][1] = $comment === '' ? $note : "$note: $comment";
             }
         }
-        self::assertNotSame([], $out, 'docs/errors.yaml lists no codes');
+        self::assertNotSame([], $out, 'docs/spec/errors.yaml lists no codes');
         return $out;
     }
 
@@ -37,8 +37,8 @@ final class CodeCatalogTest extends TestCase
         foreach ($codes as [$code, $note]) {
             $found = preg_match('/\/\*\* (.*) \*\/\n\s*public const ' . preg_quote($code, '/') . " = '" . preg_quote($code, '/') . "';/", $source, $m);
             self::assertSame(1, $found, "Code.php has no constant for $code");
-            self::assertSame($note, $m[1], "Code.php $code differs from docs/errors.yaml; run orm-gen errors --lang php");
+            self::assertSame($note, $m[1], "Code.php $code differs from docs/spec/errors.yaml; run orm-gen errors --lang php");
         }
-        self::assertSame(count($codes), preg_match_all('/public const \w+ = /', $source), 'Code.php holds other codes than docs/errors.yaml');
+        self::assertSame(count($codes), preg_match_all('/public const \w+ = /', $source), 'Code.php holds other codes than docs/spec/errors.yaml');
     }
 }

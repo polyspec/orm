@@ -1,4 +1,4 @@
-"""db.utils(): the transaction tools of a connection (docs/usage.md): the named lock, the
+"""db.utils(): the transaction tools of a connection (docs/operations/usage.md): the named lock, the
 transaction-local values and the AES key version status. Each tool follows the Go client
 (packages/go/orm/utils.go) and runs its statements through the statement events."""
 
@@ -136,7 +136,7 @@ class SchemaUtils:
     def register(self, schema: Schema) -> None:
         """Registers the generated set on this connection. A text that does not hash to its declared
         hash fails with CONFIG before anything is registered; a set that is registered already changes
-        nothing (docs/schema.md "Schema registration")."""
+        nothing (docs/spec/schema.md "Schema registration")."""
         self.db._register_set(schema.manifest_hash, _schema_model(schema))
 
     def add_tables_and_columns(self, schema: Schema) -> list[str]:
@@ -144,7 +144,7 @@ class SchemaUtils:
         are null or have a default, with the steps of the plan. Other differences are SCHEMA_DIFFERS
         before any statement. PostgreSQL runs in a transaction; SQLite rebuilds tables with foreign keys
         off, so it runs outside a transaction with them off; MySQL commits schema statements implicitly
-        and runs outside a transaction too (docs/schema.md "Adding tables and columns")."""
+        and runs outside a transaction too (docs/spec/schema.md "Adding tables and columns")."""
         from polyspec.orm.dbspec import (
             add_tables_and_columns_steps,
             installed_differences,
@@ -204,7 +204,7 @@ class SchemaUtils:
     def install(self, schema: Schema) -> None:
         """Installs the set's tables on this connection and then registers the set. The statements
         run in the active transaction or a new one; MySQL commits schema statements implicitly, so it
-        refuses a transaction (docs/schema.md "Schema installation")."""
+        refuses a transaction (docs/spec/schema.md "Schema installation")."""
         from polyspec.orm.dbspec import installed_differences, render_dbspec_statements
 
         unsupported_on_markdown(
@@ -452,7 +452,7 @@ class AesUtils:
     def rotate(self, model: Model, keyring: AesKeyring) -> int:
         """Encrypts again, with the current key of the keyring, every row of the model whose key version
         is not the current one, and gives the row the current version; returns the number of rows. The
-        rows are read 1000 at a time until none is left, in one transaction (docs/schema.md "AES key
+        rows are read 1000 at a time until none is left, in one transaction (docs/spec/schema.md "AES key
         rotation")."""
         from polyspec.orm.errors import OrmError
 
@@ -460,7 +460,8 @@ class AesUtils:
         entity = model.entity_def.entity
         if not entity.aes_version:
             raise OrmError(
-                codes.CONFIG, f"entity {entity.name} has no AES columns with a key version"
+                codes.CONFIG,
+                f"entity {entity.name} has no AES columns with a key version",
             )
         columns = [
             _AesColumn(f.name, [st for st in f.stages if st in ("aes", "hex")])
@@ -469,7 +470,8 @@ class AesUtils:
         ]
         if not columns:
             raise OrmError(
-                codes.CONFIG, f"entity {entity.name} has no AES columns with a key version"
+                codes.CONFIG,
+                f"entity {entity.name} has no AES columns with a key version",
             )
         db = self.utils.db
         driver = db.driver
@@ -536,7 +538,8 @@ class AesUtils:
         entity = model.entity_def.entity
         if not entity.aes_version:
             raise OrmError(
-                codes.CONFIG, f"entity {entity.name} has no AES columns with a key version"
+                codes.CONFIG,
+                f"entity {entity.name} has no AES columns with a key version",
             )
         db = self.utils.db
         version = _quote(db.driver, entity.aes_version)
@@ -674,7 +677,7 @@ def _frame_runner(db):
 
 def _session_runner(db):
     """Runs a statement outside any transaction (MySQL schema statements) and publishes its statement event, as
-    every statement of the connection does (docs/usage.md "Statement events")."""
+    every statement of the connection does (docs/operations/usage.md "Statement events")."""
 
     def run(kind, tables, sql, values):
         return db.events.send(
@@ -711,7 +714,8 @@ def _sqlite_without_foreign_keys(db, apply):
                 )[0][0]
                 if int(broken) != 0:
                     raise OrmError(
-                        codes.INTERNAL, f"the rebuilt tables break {broken} foreign keys"
+                        codes.INTERNAL,
+                        f"the rebuilt tables break {broken} foreign keys",
                     )
                 db._connection.execute("COMMIT", [])
             except BaseException:

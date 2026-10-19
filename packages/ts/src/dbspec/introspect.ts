@@ -1,4 +1,4 @@
-// Reads the connection's database as a dbspec document (docs/dialects.md "Introspection").
+// Reads the connection's database as a dbspec document (docs/spec/dialects.md "Introspection").
 // The dialect reader fills the neutral catalog with a fixed number of catalog queries, and the catalog
 // makes a document and parses it.
 import { isMySqlConnection, isPostgresConnection, isSqliteConnection, rowArrays, type DbspecMySqlConnection, type DbspecPostgresConnection, type DbspecSqliteConnection } from './connections.js';
@@ -23,7 +23,7 @@ export interface DbspecIntrospection {
  * Reads the current database (MySQL), the current schema (PostgreSQL) or the
  * main database (SQLite) of a connection into one dbspec document named
  * `name`, with a number of catalog queries that does not depend on the table
- * count (docs/dialects.md "Introspection"). A failing query rejects with the
+ * count (docs/spec/dialects.md "Introspection"). A failing query rejects with the
  * driver's error; an unknown dialect, a connection without its query method
  * and a catalog that yields no document reject with an Error.
  */

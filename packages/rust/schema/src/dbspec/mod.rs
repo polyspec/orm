@@ -1,4 +1,4 @@
-//! dbspec, the schema language (`docs/dbspec.md`): parsing with every
+//! dbspec, the schema language (`docs/spec/dbspec.md`): parsing with every
 //! validation rule, and canonical emission.
 //!
 //! [`read_set`] reads a set file and the files it lists. [`read_file`] reads a document file
@@ -55,7 +55,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt;
 use std::rc::Rc;
 
-/// One `SCHEMA_INVALID` error: the rule of `docs/dbspec.md` that the document
+/// One `SCHEMA_INVALID` error: the rule of `docs/spec/dbspec.md` that the document
 /// breaks, the 1-based line and character column of the offending token, and a
 /// message.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -74,7 +74,7 @@ impl fmt::Display for Diagnostic {
 
 impl std::error::Error for Diagnostic {}
 
-/// The declaration of one name of a parsed document (docs/dbspec.md "Declaration positions"): its kind, its
+/// The declaration of one name of a parsed document (docs/spec/dbspec.md "Declaration positions"): its kind, its
 /// path of enclosing names and its own name, and the 1-based line and column, in Unicode code points, of its
 /// name token or, for a setting and the primary key, of its keyword.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -133,7 +133,7 @@ pub fn parse(text: &str, documents: &BTreeMap<String, String>) -> Result<Parsed,
     parse_marked(text, documents).0
 }
 
-/// `parse`, also returning the classes of the words that the parser read (docs/dbspec.md, "Syntax analysis").
+/// `parse`, also returning the classes of the words that the parser read (docs/spec/dbspec.md, "Syntax analysis").
 pub(crate) fn parse_marked(text: &str, documents: &BTreeMap<String, String>) -> (Result<Parsed, Vec<Diagnostic>>, parser::Marks) {
     let mut session = Session { documents, parsed: HashMap::new(), valid: HashMap::new(), validating: Vec::new() };
     let parsed = match parser::parse(text) {
@@ -160,7 +160,7 @@ pub fn emit(document: &Document) -> String {
 }
 
 /// The manifest and schema texts of a document set and their hashes
-/// (docs/dbspec.md, "Manifest and hashes").
+/// (docs/spec/dbspec.md, "Manifest and hashes").
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Manifest {
     pub manifest_text: String,
@@ -185,7 +185,7 @@ fn text_hash(text: &str) -> String {
     out
 }
 
-/// Checks that `documents` is one document set (docs/dbspec.md, "Manifest and
+/// Checks that `documents` is one document set (docs/spec/dbspec.md, "Manifest and
 /// hashes") and returns its documents in document name order. A document name
 /// that repeats is a `name.duplicate` diagnostic and a used document missing
 /// from the set is a `use` diagnostic, both at the header name of the later or
@@ -302,7 +302,7 @@ pub fn manifest(documents: &[&Document]) -> Result<Manifest, Vec<Diagnostic>> {
 
 /// A document holding only the columns, primary key, unique keys, the foreign keys whose referenced table is also one of
 /// `tables`, and the indexes whose leading columns are such a foreign key's columns, of `tables` from an external document,
-/// in document order (docs/dbspec.md "Manifest and hashes"), so the reduced text satisfies the validation of the full
+/// in document order (docs/spec/dbspec.md "Manifest and hashes"), so the reduced text satisfies the validation of the full
 /// document. If the table does not exist, it is None. Other foreign keys, indexes, checks, settings, and comments are
 /// owned by the external document, so they are not included.
 fn external_document(document: &Document, tables: &[&str]) -> Option<Document> {
@@ -341,7 +341,7 @@ fn external_document(document: &Document, tables: &[&str]) -> Option<Document> {
     Some(Document { name: document.name.clone(), uses: Vec::new(), tables: kept, diagrams: Vec::new(), trailing: Vec::new(), external: true })
 }
 
-/// Checks that the tables the set uses from external documents exist in the database (docs/dbspec.md "External documents").
+/// Checks that the tables the set uses from external documents exist in the database (docs/spec/dbspec.md "External documents").
 /// `live` is the document introspected from the database. For each table used, if the table is missing, or an external column is missing, or its type or
 /// nullability differs, the primary key differs, or a unique key's column list is missing, that difference is
 /// returned in table, column order. With no external documents, the list is empty.
@@ -393,7 +393,7 @@ pub fn external_differences(live: &Document, documents: &[&Document]) -> Vec<Str
     out
 }
 
-/// The rules in the order of the rule table of docs/dbspec.md, which orders
+/// The rules in the order of the rule table of docs/spec/dbspec.md, which orders
 /// diagnostics at one position.
 const RULES: [&str; 16] = [
     "header",

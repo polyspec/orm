@@ -1,4 +1,4 @@
-//! The set reader vectors (tests/dbspec/set-files.json, docs/dbspec.md "Document sets").
+//! The set reader vectors (tests/dbspec/set-files.json, docs/spec/dbspec.md "Document sets").
 //!
 //! Each case builds its file tree with real directories, files, symbolic links and hard links in a
 //! fresh temporary directory and calls `dbspec::read_set` with the tree root joined with `set`.

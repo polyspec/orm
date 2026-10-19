@@ -1,4 +1,4 @@
-# Canonical output of a dbspec document (docs/dbspec.md "Canonical form"). A comment takes the indentation of the line it
+# Canonical output of a dbspec document (docs/spec/dbspec.md "Canonical form"). A comment takes the indentation of the line it
 # attaches to, and a comment before a closing brace takes the indentation of the block line.
 from polyspec.orm.dbspec.model import (
     DbspecDefault,
@@ -80,7 +80,9 @@ def _audit_line(setting, kind: str, columns) -> str:
         f"references {setting.references} action {setting.action} previous {setting.previous}"
     )
     if setting.tables is not None:
-        head += f" tables {setting.tables[0]} ({setting.tables[1]}, {setting.tables[2]})"
+        head += (
+            f" tables {setting.tables[0]} ({setting.tables[1]}, {setting.tables[2]})"
+        )
     if columns is None or len(columns) == 0:
         return head
     return f"{head} {kind} ({', '.join(columns)})"

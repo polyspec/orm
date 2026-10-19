@@ -1,5 +1,5 @@
 # Model execution: sends the query of the assembled chain and assembles the results into models
-# (docs/usage.md).
+# (docs/operations/usage.md).
 import math
 import re
 from decimal import Decimal
@@ -39,13 +39,17 @@ __all__ = ["execute_query", "load"]
 
 def _terminal(c: Core) -> Executor:
     if c.group:
-        raise OrmError(codes.CONFIG, "a terminal is not allowed inside a group callback")
+        raise OrmError(
+            codes.CONFIG, "a terminal is not allowed inside a group callback"
+        )
     if c.error is not None:
         raise c.error
     if c.conn is None:
-        # A model without connect uses the active transaction (docs/usage.md).
+        # A model without connect uses the active transaction (docs/operations/usage.md).
         if not _ACTIVE:
-            raise OrmError(codes.CONFIG, "the model has no connection: connect(db) first")
+            raise OrmError(
+                codes.CONFIG, "the model has no connection: connect(db) first"
+            )
         frame = next(reversed(_ACTIVE.values()))
         return Executor(frame.db, frame)
     return Executor(c.conn, c.conn.active_frame())
@@ -491,7 +495,9 @@ def creates(c: Core, models, batch: int) -> int:
     transaction (a savepoint inside an active one), and counts the rows. batch is a positive integer, otherwise
     CONFIG; a batch whose binds exceed the bind limit is BATCH_TOO_LARGE; both before any statement."""
     if isinstance(batch, bool) or not isinstance(batch, int) or batch < 1:
-        raise OrmError(codes.CONFIG, f"creates batch must be a positive integer, got {batch!r}")
+        raise OrmError(
+            codes.CONFIG, f"creates batch must be a positive integer, got {batch!r}"
+        )
     ex = _terminal(c)
     if len(models) == 0:
         return 0
@@ -559,7 +565,7 @@ def creates(c: Core, models, batch: int) -> int:
 
 
 def _insert_parts(rows: int, batch: int) -> list:
-    """The row counts of the batches of a multi-row insert, in row order (docs/protocol.md 2.1): each batch is
+    """The row counts of the batches of a multi-row insert, in row order (docs/spec/protocol.md 2.1): each batch is
     batch rows, the last one the rows left when fewer."""
     parts = []
     while rows > 0:
@@ -585,7 +591,8 @@ def _key_values(c: Core, schema: Entity) -> dict:
         )
         if spec is None:
             raise OrmError(
-                codes.CONFIG, f"{schema.name} requires a loaded row or set primary key {pk}"
+                codes.CONFIG,
+                f"{schema.name} requires a loaded row or set primary key {pk}",
             )
         keys[pk] = spec.value
     return keys
@@ -649,15 +656,21 @@ def _revision_guard(c: Core, schema: Entity, r: dict, update: bool, optimistic: 
             f"expectRevision: {column} is not an integer column of {schema.name} outside its primary key",
         )
     if any(s.column == column for s in c.sets):
-        raise OrmError(codes.CONFIG, f"expectRevision: {column} is also set in the write")
+        raise OrmError(
+            codes.CONFIG, f"expectRevision: {column} is also set in the write"
+        )
     if optimistic:
-        raise OrmError(codes.CONFIG, "expectRevision does not combine with update(true)")
+        raise OrmError(
+            codes.CONFIG, "expectRevision does not combine with update(true)"
+        )
     r["ir"]["where"]["items"].append(
         {"pred": {"conn": "and", "column": column, "op": "eq", "p": len(r["params"])}}
     )
     r["params"].append(revision)
     if update:
-        r["ir"].setdefault("set", []).append({"column": column, "plus_p": len(r["params"])})
+        r["ir"].setdefault("set", []).append(
+            {"column": column, "plus_p": len(r["params"])}
+        )
         r["params"].append(1)
     return column
 
@@ -752,7 +765,7 @@ def _delete_one(c: Core, recursive: bool) -> None:
 
 def restore(c: Core):
     """Reverts one soft-deleted row (an update that writes NULL to the soft delete column), and reads and returns that row. The set value is sent as the restore
-    request's set, and the planner picks the key after the request hook, from the set values and the eq conditions in where (docs/protocol.md
+    request's set, and the planner picks the key after the request hook, from the set values and the eq conditions in where (docs/spec/protocol.md
     1.5): if those cover a primary key, it is used; otherwise, the first unique key in name order. The key column's set value is the condition, and other set
     values are written as new values into the restored row, as in an update. The row is then read by that key's value. A row that was not deleted
     is returned unchanged without writing anything, and a missing row is NO_ROWS."""
@@ -764,7 +777,7 @@ def restore(c: Core):
 
 def restore_or_create(c: Core):
     """Restores the soft-deleted row of the key that restore picks, or creates it with the set values when no row holds the
-    key, in one transaction (docs/usage.md "Restore or create a row"), and returns the row. A row that holds the key and is
+    key, in one transaction (docs/operations/usage.md "Restore or create a row"), and returns the row. A row that holds the key and is
     not deleted fails with ROW_NOT_DELETED, and nothing is written."""
     found = {}
 
@@ -805,7 +818,9 @@ def _restore_step(c: Core):
         # The key is read from the request as the hook left it, before the planner renumbers its parameters, as Go reads it.
         written = {"request": hooked, "params": hooked_params}
         found["key"] = restore_key(schema, hooked)["key"]
-        found["args"] = [_restore_key_value(own, written, column) for column in found["key"]]
+        found["args"] = [
+            _restore_key_value(own, written, column) for column in found["key"]
+        ]
 
     restored = write(ex, request.ir, request.params, read_key)["affected"]
     key = found["key"]
@@ -916,7 +931,9 @@ def _group_value(db, column: dict, raw, schema: Entity):
         return raw
     if raw is None:
         if declared is not None and not declared.nullable:
-            raise OrmError(codes.CODEC_DECODE, f"group column {column['name']} is SQL NULL")
+            raise OrmError(
+                codes.CODEC_DECODE, f"group column {column['name']} is SQL NULL"
+            )
         return None
     type_ = column_type(declared) if declared is not None else column["type"]
     if type_ == "styled":
@@ -932,11 +949,14 @@ def _group_value(db, column: dict, raw, schema: Entity):
             return True
         if raw in (False, 0, "0", "f", "false"):
             return False
-        raise OrmError(codes.CODEC_DECODE, f"group column {column['name']} is not boolean")
+        raise OrmError(
+            codes.CODEC_DECODE, f"group column {column['name']} is not boolean"
+        )
     if type_ in ("i16", "i32", "i64"):
         if isinstance(raw, bool):
             raise OrmError(
-                codes.CODEC_DECODE, f"group column {column['name']} is not an exact integer"
+                codes.CODEC_DECODE,
+                f"group column {column['name']} is not an exact integer",
             )
         if isinstance(raw, str) and re.fullmatch(r"-?(0|[1-9][0-9]*)", raw):
             value = int(raw)
@@ -944,7 +964,8 @@ def _group_value(db, column: dict, raw, schema: Entity):
             value = raw
         else:
             raise OrmError(
-                codes.CODEC_DECODE, f"group column {column['name']} is not an exact integer"
+                codes.CODEC_DECODE,
+                f"group column {column['name']} is not an exact integer",
             )
         low, high = _INTEGER_RANGES[type_]
         if not low <= value <= high:

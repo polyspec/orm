@@ -1,4 +1,4 @@
-# Lists all differences between two schemas without a plan (docs/plans.md "Comparison").
+# Lists all differences between two schemas without a plan (docs/spec/plans.md "Comparison").
 # The reference is the other client's compare, and the diagnostic messages are the same bytes.
 from __future__ import annotations
 

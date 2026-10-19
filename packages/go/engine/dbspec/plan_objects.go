@@ -6,7 +6,7 @@ import (
 )
 
 // objects compares unique, index, foreign key, and check by name and definition. The source
-// definitions are read under the rename, with the target name (docs/plans.md "Diff").
+// definitions are read under the rename, with the target name (docs/spec/plans.md "Diff").
 func (d *planDiff) objects(renamedFrom map[string]string, renamedColumn map[string]map[string]string) {
 	targetTable := func(s string) string { return renamedOr(renamedFrom, s) }
 	// source definition with the column rename applied

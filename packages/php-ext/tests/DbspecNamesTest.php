@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-// The extension's Polyspec\Orm\Dbspec\Native\Names against the PHP client's Names (docs/dbspec.md "Names"): render,
+// The extension's Polyspec\Orm\Dbspec\Native\Names against the PHP client's Names (docs/spec/dbspec.md "Names"): render,
 // ofTable and column give the same results, and the same exception classes, for the same inputs.
 
 use Polyspec\Orm\Dbspec\Dbspec;

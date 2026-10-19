@@ -1,7 +1,7 @@
 // CI's summary step (.github/workflows/ci.yml, runs after make check-run with `if: always()`). It finds the run record of ORM_CHECK_RUN_ID
 // (.runtime/check/<id>/record.json) and writes that summary to GITHUB_STEP_SUMMARY and to the report's summary.md. If the runner
 // did not finish (the process died or stopped with an error), it writes that fact and the step the runner last recorded, and, in the record,
-// if there is no run at all, it writes that make check stopped before the runner's record. So the upload step always carries this run's report
+// if there is no run at all, it writes that make orm-check stopped before the runner's record. So the upload step always carries this run's report
 // directory and the partial record.
 //
 // Usage: ORM_CHECK_RUN_ID=<id> node scripts/check/summary.mts
@@ -22,7 +22,7 @@ export function runSummary(root: string, id: string, servers = resolve(root, '.r
   if (record) writeFileSync(resolve(report, 'record.json'), `${JSON.stringify(record, null, 2)}\n`);
   keepLogs(servers, resolve(report, 'servers'));
   if (!record) {
-    const text = `# make check ${name}\n\n**make check-run recorded no run ${name}** in ${path}: it stopped before the runner recorded the run (a command before the runner failed). The log of the make check step shows why.\n`;
+    const text = `# make orm-check ${name}\n\n**make check-run recorded no run ${name}** in ${path}: it stopped before the runner recorded the run (a command before the runner failed). The log of the make orm-check step shows why.\n`;
     publish(text, report, { step: true });
     return { text, passed: false };
   }
@@ -38,7 +38,7 @@ export function runSummary(root: string, id: string, servers = resolve(root, '.r
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const id = process.env.ORM_CHECK_RUN_ID;
   if (!id) {
-    console.error('ORM_CHECK_RUN_ID is unset: the summary names the run of make check by it; set it to the run id that make check used (CI sets it from the run id and attempt)');
+    console.error('ORM_CHECK_RUN_ID is unset: the summary names the run of make orm-check by it; set it to the run id that make orm-check used (CI sets it from the run id and attempt)');
     process.exit(2);
   }
   const { text } = runSummary(resolve(fileURLToPath(new URL('../..', import.meta.url))), id);

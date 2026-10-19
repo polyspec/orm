@@ -1,4 +1,4 @@
-// Database-specific SQL pieces (docs/dialects.md). The planner never writes a
+// Database-specific SQL pieces (docs/spec/dialects.md). The planner never writes a
 // quote or a placeholder itself.
 
 /** Column types each column function accepts. */
@@ -84,12 +84,12 @@ export interface Dialect {
   /**
    * On read, the codec stage is decoded in SQL (MySQL: ip). No dialect decodes hex in SQL:
    * UNHEX takes odd-length text and yields NULL for white space, so the executor decodes
-   * hex exactly (docs/codec.md).
+   * hex exactly (docs/spec/codec.md).
    */
   decodesStage(stage: string): boolean;
   /**
    * The clock the ORM writes comes from the executor (a `now` slot truncated to the column's fraction digits): SQLite
-   * has no sub-second clock function, and a PostgreSQL clock rounds into timestamp(p < 6) (docs/protocol.md "Clock").
+   * has no sub-second clock function, and a PostgreSQL clock rounds into timestamp(p < 6) (docs/spec/protocol.md "Clock").
    */
   hostNow: boolean;
   /**

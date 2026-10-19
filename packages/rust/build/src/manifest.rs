@@ -1,5 +1,5 @@
 //! The dbspec document set read by the generator: manifest text, `manifestHash`, runtime model
-//! (docs/dbspec.md, "Manifest and hashes", "Runtime model").
+//! (docs/spec/dbspec.md, "Manifest and hashes", "Runtime model").
 
 use polyspec_orm_schema::dbspec::{self, Document, Field, RuntimeModel};
 

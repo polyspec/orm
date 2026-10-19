@@ -1,5 +1,5 @@
 //! Every case of tests/dbspec/plans.json applied to MySQL, PostgreSQL and
-//! SQLite through the Rust client (docs/plans.md, "Verification"): the source
+//! SQLite through the Rust client (docs/spec/plans.md, "Verification"): the source
 //! rendered by `dbspec::render`, the `before` steps and the `dbspec::plan_steps`
 //! steps before finalize, after which `polyspec_orm::dbspec::introspect` reads the
 //! plan's target schema text with no unsupported object; without an

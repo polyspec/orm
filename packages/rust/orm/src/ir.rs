@@ -1,4 +1,4 @@
-//! Value-free IR (docs/protocol.md). The serialized form is the plan-cache
+//! Value-free IR (docs/spec/protocol.md). The serialized form is the plan-cache
 //! key.
 
 use serde::Serialize;

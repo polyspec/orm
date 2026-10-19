@@ -1,5 +1,5 @@
 /*
- * The set reader Dbspec::readSet of the extension (docs/dbspec.md "Document sets"), the twin of the PHP client's
+ * The set reader Dbspec::readSet of the extension (docs/spec/dbspec.md "Document sets"), the twin of the PHP client's
  * SetReader (packages/php/src/Dbspec/SetReader.php): the set file, its JSON, each path and the read with the
  * file identity, in that order, with the same rules, paths and messages. The file system is examined with the
  * platform's calls: lstat, opendir and open with fstat on POSIX; on Windows CreateFileW without following a
@@ -576,7 +576,7 @@ done:
 #undef FAIL
 }
 
-/* Whether segment is a name that every platform can hold (docs/dbspec.md "Document sets"). */
+/* Whether segment is a name that every platform can hold (docs/spec/dbspec.md "Document sets"). */
 static bool segment_ok(str s)
 {
     if (s.n == 0 || str_eqc(s, ".")) {

@@ -1,4 +1,4 @@
-// mermaid_case.mjs holds the dbspec Mermaid vectors (tests/dbspec/mermaid.json, docs/mermaid.md) for the TypeScript
+// mermaid_case.mjs holds the dbspec Mermaid vectors (tests/dbspec/mermaid.json, docs/spec/mermaid.md) for the TypeScript
 // client: the helpers and one function per section; each dbspec-mermaid-<section>.mjs calls one. After the cases of a
 // section ran, the section checks that every one of its cases ran.
 import { caseTest } from '../../../tests/testcase.mts';

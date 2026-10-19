@@ -4,7 +4,7 @@
 [Korean](README.ko.md)
 
 These probes record how MySQL, PostgreSQL and SQLite define and enforce
-schema objects. `docs/dialects.md` cites each probe ID in its schema
+schema objects. `docs/spec/dialects.md` cites each probe ID in its schema
 definition tables; a neutral dbspec feature is supported only when the
 probes show one meaning on all three databases and a catalog source that
 restores it.
@@ -29,7 +29,7 @@ Each probe runs in its own disposable object:
 ## Run
 
 ```sh
-make dialect-facts-check TEST_ENV=<path of the environment file of make test-servers>
+make dialect-facts-check TEST_ENV=<path of the environment file of make orm-test-servers>
 ```
 
 The target first checks probe IDs without a database, then runs
@@ -63,4 +63,4 @@ them once. The module already links the MySQL (`go-sql-driver/mysql`),
 PostgreSQL (`pgx`) and SQLite (`modernc.org/sqlite`) drivers, and Go's
 error types expose the MySQL error number and PostgreSQL SQLSTATE that the
 assertions compare. The SQLite library differs per client; the versions are
-listed in `docs/dialects.md`.
+listed in `docs/spec/dialects.md`.

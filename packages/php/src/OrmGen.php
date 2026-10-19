@@ -9,7 +9,7 @@ namespace Polyspec\Orm;
  *   orm-gen gen --set <dbspec-set.json> --out <dir> --namespace <Php\Namespace> [--scan <file or directory>]... [--check]
  *
  * `--scan` names a PHP file or directory, and may repeat: the chain methods it calls on the models are declared as @method
- * tags (docs/dsl.md). `--set` names the set file (docs/dbspec.md "Document sets"): its `documents` get models, and its
+ * tags (docs/spec/dsl.md). `--set` names the set file (docs/spec/dbspec.md "Document sets"): its `documents` get models, and its
  * `external` documents are parsed with the set and get none.
  */
 final class OrmGen

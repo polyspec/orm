@@ -13,7 +13,7 @@ namespace Polyspec\Orm\Dbspec;
  *
  * The audit's exclude and include are lists of columns, other than the unrecorded columns and the audit
  * columns, or null if there are no lists. A parsed setting has only one of the two.
- * (docs/dbspec.md "Audit").
+ * (docs/spec/dbspec.md "Audit").
  */
 final class Setting
 {

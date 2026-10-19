@@ -1,6 +1,6 @@
 # A statement event subscriber that raises fails the statement with SUBSCRIBER, whose message holds the
 # text of the subscriber error and whose cause is that error, as the TypeScript client gives it
-# (packages/ts/src/events.ts, docs/usage.md "Statement events").
+# (packages/ts/src/events.ts, docs/operations/usage.md "Statement events").
 import tempfile
 import unittest
 from pathlib import Path

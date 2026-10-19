@@ -1,4 +1,4 @@
-// dbspec: the schema language of this repository (docs/dbspec.md). readDbspecSet reads
+// dbspec: the schema language of this repository (docs/spec/dbspec.md). readDbspecSet reads
 // a set file and the files it lists, parseSet its rules that read no file; readDbspecFile
 // reads a document file after checking its signature; parseDbspec
 // validates a document against its declared document set; emitDbspec writes a
@@ -9,8 +9,8 @@
 // emitPlan, chainPlans, diffPlan and planSteps read, write, order, diff
 // and render schema plans, applyPlans, recoverPlans, rollbackPlans and
 // finalizePlans apply, continue, undo and finalize them on a database, and compareSchemas lists every difference of two schemas
-// (docs/plans.md). exportMermaid and importMermaid write and read
-// standard Mermaid erDiagrams (docs/mermaid.md).
+// (docs/spec/plans.md). exportMermaid and importMermaid write and read
+// standard Mermaid erDiagrams (docs/spec/mermaid.md).
 import { present } from '../present.js';
 import { createHash } from 'node:crypto';
 import type { DbspecColumn, DbspecDiagnostic, DbspecDocument, DbspecTable, DbspecUse } from './model.js';
@@ -78,7 +78,7 @@ export { planSteps, effectText, type DbspecPlanStepsResult, type DbspecPlanStep,
 
 export type * from './model.js';
 
-/** The manifest and schema texts of a document set and their hashes (docs/dbspec.md, "Manifest and hashes"). */
+/** The manifest and schema texts of a document set and their hashes (docs/spec/dbspec.md, "Manifest and hashes"). */
 export interface DbspecManifest {
   readonly manifestText: string;
   /**
@@ -103,7 +103,7 @@ function textHash(text: string): string {
 
 /**
  * Returns the manifest of the document set, whose documents are taken in
- * document name order, or the diagnostics of an invalid set (docs/dbspec.md,
+ * document name order, or the diagnostics of an invalid set (docs/spec/dbspec.md,
  * "Manifest and hashes"). The manifest text holds the owned documents; the
  * external text holds, for each external document, the tables that owned
  * documents use, with their columns, primary key, unique keys and the foreign
@@ -158,7 +158,7 @@ function compareText(a: string, b: string): number {
 /**
  * A document of only the columns, primary key, unique keys, the foreign keys whose referenced table is also one of
  * the tables, and the indexes whose leading columns are such a foreign key's columns, of the tables in document order,
- * from the external document (docs/dbspec.md "Manifest and hashes"), so the reduced text satisfies the validation of
+ * from the external document (docs/spec/dbspec.md "Manifest and hashes"), so the reduced text satisfies the validation of
  * the full document. If no table exists, null. Other foreign keys, indexes, checks and settings are owned by the
  * external document, so they are not included.
  */
@@ -178,7 +178,7 @@ function externalDocument(document: DbspecDocument, tables: readonly string[]): 
 }
 
 /**
- * Checks the tables that a document set uses from external documents against the database (docs/dbspec.md
+ * Checks the tables that a document set uses from external documents against the database (docs/spec/dbspec.md
  * "External documents"). `live` is the introspected database. For every used table, in table name order, it
  * returns the differences: a missing table; per column of the external document in column order a missing
  * column, another type or another nullability; another primary key; and a unique key whose columns no live

@@ -1,4 +1,4 @@
-// The CodeMirror adapter over the editor fixtures of tests/editor (docs/editor.md "Fixtures"): each .dbs read into an
+// The CodeMirror adapter over the editor fixtures of tests/editor (docs/spec/editor.md "Fixtures"): each .dbs read into an
 // EditorState with the dbspec extension gives the fixture's tokens as marks, its diagnostics as lint diagnostics, its
 // folding ranges through the fold service, and its formatted text through the format command. No DOM is used.
 //

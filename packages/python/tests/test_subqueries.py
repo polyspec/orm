@@ -1,5 +1,5 @@
 # A subquery column: a column function whose callback returns an aggregate model, which is
-# written as a correlated scalar subquery of the outer rows (docs/usage.md "Subqueries").
+# written as a correlated scalar subquery of the outer rows (docs/operations/usage.md "Subqueries").
 import tempfile
 import unittest
 from pathlib import Path

@@ -1,4 +1,4 @@
-// The dbspec-fmt command line (docs/plans/editor-stack.md T128-5): one path without a mode prints the formatted text,
+// The dbspec-fmt command line (docs/spec/editor-stack.md T128-5): one path without a mode prints the formatted text,
 // `-` and no path read standard input, several paths need --write or --check, stderr lines are
 // `path:line:col: LABEL: message`, every path is processed and the highest exit code wins, and each file's document
 // set comes from resolveSet. The editor fixtures of tests/editor run through --check and --write.

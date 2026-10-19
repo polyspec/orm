@@ -1,7 +1,7 @@
 <!-- doc-id: tests-interfaces-readme -->
 # Common interface checks
 
-[contracts/interfaces.json](../../contracts/interfaces.json) defines the interface structure. Update it together with the [interface structure document](../../docs/interfaces.md).
+[contracts/interfaces.json](../../contracts/interfaces.json) defines the interface structure. Update it together with the [interface structure document](../../docs/spec/interfaces.md).
 
 The checker verifies these requirements:
 
@@ -12,7 +12,7 @@ The checker verifies these requirements:
 - Native symbol snapshots report public and internal declaration changes. SHA-256 values in the manifest prevent an unchecked snapshot replacement.
 - An extension of `extensions` in the manifest implements part of the shared interface outside the five clients: the PHP extension `php-extension` implements the `Dbspec` rules and the `DbspecDiagnostic` and `DbspecManifest` owners. Its declarations are read from its stub (`packages/php-ext/stubs`) with the PHP parser and compared with its own snapshot `contracts/symbols/php-extension.json` and hash; a rule or owner that the extension does not list must not have its adapter. `make dbspec-php-extension-check` checks that the loaded extension declares what the stub declares.
 - Sequence rules compare the results and statement counts of conformance vectors.
-- Error labels in method rules and the recorded `errors` sequence must match the codes in `docs/errors.yaml`. Native driver error categories remain explicit.
+- Error labels in method rules and the recorded `errors` sequence must match the codes in `docs/spec/errors.yaml`. Native driver error categories remain explicit.
 - Prohibited symbols reject removed or unsupported operations such as cancellation and cursor pages.
 - Source mutations verify that the checker rejects missing methods, additional parameters, changed return types, changed field types, changed receivers, and undeclared state.
 

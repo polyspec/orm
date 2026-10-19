@@ -1,4 +1,4 @@
-// The runtime model made from a dbspec document set (docs/dbspec.md "Runtime model").
+// The runtime model made from a dbspec document set (docs/spec/dbspec.md "Runtime model").
 // Generated code holds the manifest text and manifestHash, and the runtime
 // parses the text once to get the entities, fields, keys, codec stages and settings.
 import { dbspecManifest, parseDbspecSet } from '../dbspec/index.js';
@@ -65,7 +65,7 @@ export interface Entity {
   readonly auditRecord: string;
   /**
    * True for a used table of an external document: it is read like any entity, and every write fails with CONFIG
-   * before any statement (docs/dbspec.md "External documents").
+   * before any statement (docs/spec/dbspec.md "External documents").
    */
   readonly external: boolean;
 }
@@ -222,7 +222,7 @@ export function modelOfDocuments(documents: readonly DbspecDocument[]): RuntimeM
 }
 
 /**
- * Parses dbspec texts of one document set with the set parse (docs/dbspec.md "Parsing a set"): the documents the set
+ * Parses dbspec texts of one document set with the set parse (docs/spec/dbspec.md "Parsing a set"): the documents the set
  * owns and the external documents it uses, the external documents marked external. A text that fails, or repeats a
  * name, is SCHEMA_INVALID naming its document and the first diagnostic.
  */

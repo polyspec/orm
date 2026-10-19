@@ -60,7 +60,7 @@ class DecimalModelDbTest(unittest.TestCase):
         if not dsn:
             raise AssertionError(
                 f"{variable} is required; run the test through its make target, which reads the environment of "
-                f"make test-servers"
+                f"make orm-test-servers"
             )
         models = self.models
         case = models.DecimalCase

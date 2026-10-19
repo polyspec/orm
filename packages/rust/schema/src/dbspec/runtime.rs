@@ -1,5 +1,5 @@
 //! The runtime model of a document set, shared by the ORM runtime and the model generator
-//! (docs/dbspec.md, "Runtime model") and documents read again from manifest text.
+//! (docs/spec/dbspec.md, "Runtime model") and documents read again from manifest text.
 
 use super::model::{DefaultValue, Document, Setting, Table, Type};
 use super::Diagnostic;
@@ -34,7 +34,7 @@ pub struct Entity {
     pub audit: Option<Audit>,
     pub immutable: bool,
     /// A used table of an external document: it is read like any entity, and every write fails with `CONFIG` before
-    /// any statement (docs/dbspec.md "External documents").
+    /// any statement (docs/spec/dbspec.md "External documents").
     pub external: bool,
 }
 
@@ -81,7 +81,7 @@ pub struct ForeignKey {
     pub references: Vec<String>,
 }
 
-/// `audit` setting (docs/dbspec.md, "Audit").
+/// `audit` setting (docs/spec/dbspec.md, "Audit").
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Audit {
     pub history: String,
@@ -109,7 +109,7 @@ impl Entity {
 
 impl Field {
     /// The field holds a styled value of the common value model: one of its codec stages
-    /// is `ordered_json`, `serialize`, `yaml`, `gz`, or `base64` (docs/dbspec.md, "Runtime model").
+    /// is `ordered_json`, `serialize`, `yaml`, `gz`, or `base64` (docs/spec/dbspec.md, "Runtime model").
     pub fn styled_value(&self) -> bool {
         self.codec.iter().any(|s| matches!(s.as_str(), "ordered_json" | "serialize" | "yaml" | "gz" | "base64"))
     }
@@ -215,7 +215,7 @@ fn entity(table: &Table) -> Entity {
     }
 }
 
-/// Reads the documents of the manifest text (docs/dbspec.md, "Manifest and hashes").
+/// Reads the documents of the manifest text (docs/spec/dbspec.md, "Manifest and hashes").
 /// A document starts at its header line, and each document treats the remaining documents as declared
 /// document set when parsed. A diagnostic has the manifest text's line
 /// and names the document in its message. Text before the first header is a `header` error.

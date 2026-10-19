@@ -38,7 +38,7 @@ function versionOf(value: unknown): number {
 
 /**
  * Turns off foreign keys on a SQLite connection, runs fn in a BEGIN IMMEDIATE transaction, and then, only if the foreign key check
- * returns no rows, commits and turns foreign keys back on (docs/plans.md "Apply", SQLite rebuild).
+ * returns no rows, commits and turns foreign keys back on (docs/spec/plans.md "Apply", SQLite rebuild).
  * The transaction takes the connection's next number, and the statements that change foreign keys are outside the transaction.
  */
 async function withoutForeignKeys<T>(db: Db, session: DriverSession, fn: (run: Runner) => Promise<T>): Promise<T> {
@@ -82,7 +82,7 @@ async function introspect(run: Runner, driver: DriverName): Promise<DbspecIntros
 }
 
 /**
- * Introspects the connection's database, and if a table that the set writes through an external document differs from that document, it is CONFIG (docs/dbspec.md
+ * Introspects the connection's database, and if a table that the set writes through an external document differs from that document, it is CONFIG (docs/spec/dbspec.md
  * "External documents").
  */
 async function introspectSet(run: Runner, driver: DriverName, model: RuntimeModel): Promise<DbspecIntrospection> {
@@ -225,7 +225,7 @@ export class SchemaUtils {
    * Registers the generated schema's set on this connection. It reads and writes no database: the manifest text declares a
    * hash, and it checks that the text hashes to it (otherwise CONFIG), then only registers the set. Registering the same set again changes nothing.
    * Whether the database equals the set is checked by install and addTablesAndColumns at install and upgrade time,
-   * and register also registers the set, without a statement, on connections opened per request (docs/schema.md "Schema
+   * and register also registers the set, without a statement, on connections opened per request (docs/spec/schema.md "Schema
    * registration").
    */
   public register(schema: Schema): void {
@@ -236,9 +236,9 @@ export class SchemaUtils {
    * Installs the generated schema's document set on the connection's database, then checks that the database equals the set and
    * registers the set on this connection. If the text does not hash to the declared hash, it is CONFIG before any statement.
    * CONFIG. The connection's database is introspected, and if a table that an external document writes differs from that document, it is CONFIG.
-   * If the set owns no table at all, it creates all of them with the rendered statements (docs/dialects.md "Rendered statements"),
+   * If the set owns no table at all, it creates all of them with the rendered statements (docs/spec/dialects.md "Rendered statements"),
    * if all of them exist it creates nothing, and if only some exist it is CONFIG. Then the database is read again and the set's
-   * owned tables are compared with the set, and if there is any difference, it is CONFIG holding all the differences (docs/schema.md "Schema
+   * owned tables are compared with the set, and if there is any difference, it is CONFIG holding all the differences (docs/spec/schema.md "Schema
    * installation"). PostgreSQL and SQLite apply in an ongoing or a new transaction, so a failed
    * install leaves nothing behind. MySQL implicitly commits schema statements, so it applies them outside a transaction
    * and is CONFIG inside one.
@@ -274,7 +274,7 @@ export class SchemaUtils {
   }
 
   /**
-   * Only raises the installed document set by adding it as a new version of the generated schema (docs/schema.md "Adding
+   * Only raises the installed document set by adding it as a new version of the generated schema (docs/spec/schema.md "Adding
    * tables and columns"). It introspects the connection's database and compares the set's tables in the database with the set,
    * creates the set's tables that are not in the database with their indexes, foreign keys, checks and triggers, and adds to existing tables the missing
    * columns that are null or have a default, by running the plan steps of addTablesAndColumnsSteps, so the audit triggers of changed tables record the new columns.

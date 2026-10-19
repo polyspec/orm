@@ -1,5 +1,5 @@
 # statement-events: every case of tests/events/vectors.json runs with the Python client on SQLite, MySQL and PostgreSQL
-# and its recorded events equal the expected events of the dialect (docs/usage.md "Statement events"), as
+# and its recorded events equal the expected events of the dialect (docs/operations/usage.md "Statement events"), as
 # packages/ts/tests/statement-events-run.mjs and the other clients' tests do. Each case runs on a new case database
 # with the fixture installed (unless install is false), opens a new connection, registers one recording subscriber and
 # runs its steps in order; transaction numbers count from 1 in their order of appearance within the case, and a case

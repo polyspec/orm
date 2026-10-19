@@ -1,4 +1,4 @@
-# Reads the connection's database as a dbspec document (docs/dialects.md "Introspection").
+# Reads the connection's database as a dbspec document (docs/spec/dialects.md "Introspection").
 # The dialect reader fills the neutral catalog with a fixed number of catalog queries, and the catalog
 # builds and parses the document.
 from __future__ import annotations

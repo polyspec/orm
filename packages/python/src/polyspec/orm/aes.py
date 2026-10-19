@@ -1,4 +1,4 @@
-# Key management for AES columns: one key per version, updated per row (docs/codec.md "AES").
+# Key management for AES columns: one key per version, updated per row (docs/spec/codec.md "AES").
 from typing import Mapping
 
 from polyspec.orm import codes
@@ -38,7 +38,9 @@ class AesKeyring:
             or current_version < 1
             or current_version not in keys
         ):
-            raise OrmError(codes.CONFIG, f"AES version {current_version} is not declared")
+            raise OrmError(
+                codes.CONFIG, f"AES version {current_version} is not declared"
+            )
         for version, key in keys.items():
             if not _is_safe_integer(version) or version < 1 or len(key) == 0:
                 raise OrmError(codes.CONFIG, f"AES version {version} has no key")

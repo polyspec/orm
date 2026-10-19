@@ -179,7 +179,9 @@ def extract(root: str, roots: list) -> dict:
 
 def main() -> None:
     if len(sys.argv) < 3:
-        sys.exit("usage: python3 packages/python/testing/interfaces/python.py <root> <source-root>...")
+        sys.exit(
+            "usage: python3 packages/python/testing/interfaces/python.py <root> <source-root>..."
+        )
     root = os.path.abspath(sys.argv[1])
     sys.stdout.write(
         json.dumps(extract(root, sys.argv[2:]), indent=2, ensure_ascii=False) + "\n"

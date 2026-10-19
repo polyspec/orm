@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Dbspec;
 
 /**
- * Reads one dbspec document line by line and validates it (docs/dbspec.md).
+ * Reads one dbspec document line by line and validates it (docs/spec/dbspec.md).
  * Rules local to a line are checked on the line, rules of a whole table when
  * its block closes, and rules across tables (foreign key targets and audit
  * history tables) after the last line. Every diagnostic carries the line and
@@ -26,7 +26,7 @@ final class Parser
     private const MAX_TABLE_COLUMNS = 1000;
     private const MAX_KEY_COLUMNS = 16;
     private const MAX_KEY_VARCHAR = 640;
-    /** The rule table of docs/dbspec.md, in its order, which orders diagnostics at one position. */
+    /** The rule table of docs/spec/dbspec.md, in its order, which orders diagnostics at one position. */
     private const RULES = ['header', 'syntax', 'order', 'name.format', 'name.length', 'name.duplicate', 'type', 'column', 'key', 'foreign_key', 'check', 'setting', 'use', 'diagram', 'limit', 'encoding'];
     public const RESERVED = ['dbspec', 'use', 'table', 'diagram', 'primary', 'unique', 'index', 'foreign', 'check', 'settings', 'null', 'identity', 'default', 'true', 'false', 'and', 'or', 'not', 'in', 'between', 'is'];
     /** Codec stages that produce text; the others produce bytes. */
@@ -35,7 +35,7 @@ final class Parser
     private const STORAGE_KEYWORDS = ['markdown', 'store', 'key_prefix', 'title', 'body', 'order', 'checkbox', 'state_machine'];
     /** A storage keyword written only once per table. Repeating it is a setting error at the keyword's position. */
     private const ONCE_STORAGE = ['store', 'key_prefix', 'title', 'body', 'order'];
-    /** The codec stages, the fixed words after a codec column (docs/dbspec.md "Keep, move or remove"; R12). */
+    /** The codec stages, the fixed words after a codec column (docs/spec/dbspec.md "Keep, move or remove"; R12). */
     private const CODEC_STAGES = ['ordered_json', 'aes', 'hex', 'gz', 'base64', 'serialize', 'yaml', 'ip'];
     /** A character of valid UTF-8, or one invalid byte (R15): the code points of a line. */
     private const UTF8_CHAR = '(?:[\x00-\x7F]|[\xC2-\xDF][\x80-\xBF]|\xE0[\xA0-\xBF][\x80-\xBF]|[\xE1-\xEC\xEE\xEF][\x80-\xBF]{2}|\xED[\x80-\x9F][\x80-\xBF]|\xF0[\x90-\xBF][\x80-\xBF]{2}|[\xF1-\xF3][\x80-\xBF]{3}|\xF4[\x80-\x8F][\x80-\xBF]{2}|[\s\S])';
@@ -169,7 +169,7 @@ final class Parser
 
     /**
      * @return array{0: ?Document, 1: list<Diagnostic>, 2: ?list<Position>, 3: list<Token>} the tokens are read only when
-     *         $withTokens is set, and are empty after a limit stop (docs/dbspec.md "Syntax analysis")
+     *         $withTokens is set, and are empty after a limit stop (docs/spec/dbspec.md "Syntax analysis")
      */
     public function run(string $source, bool $withTokens = false): array
     {
@@ -195,7 +195,7 @@ final class Parser
     }
 
     /**
-     * The name that the header step reads from the source, or '' when the header fails (docs/dbspec.md "Parsing a
+     * The name that the header step reads from the source, or '' when the header fails (docs/spec/dbspec.md "Parsing a
      * set"): the read runs without used documents, as Go's parseStructure(text, nil), and its other diagnostics are
      * dropped.
      */
@@ -211,7 +211,7 @@ final class Parser
 
     /**
      * The tokens of every line of the source in source order, each with its class: the class a reader set, unless the
-     * line is lexical, else the lexical class (docs/dbspec.md "Syntax analysis"). The lines are split and lexed as the
+     * line is lexical, else the lexical class (docs/spec/dbspec.md "Syntax analysis"). The lines are split and lexed as the
      * parser reads them, so a line the parser did not read gets the same tokens.
      *
      * @return list<Token>
@@ -248,7 +248,7 @@ final class Parser
         return $tokens;
     }
 
-    /** The lexical class of a token of a line (docs/dbspec.md "Syntax analysis"). */
+    /** The lexical class of a token of a line (docs/spec/dbspec.md "Syntax analysis"). */
     private static function lexicalClass(string $text): string
     {
         return match (true) {
@@ -336,7 +336,7 @@ final class Parser
     }
 
     /**
-     * The identity of a setting line that the repeat rule makes unique, as docs/dbspec.md
+     * The identity of a setting line that the repeat rule makes unique, as docs/spec/dbspec.md
      * "Declaration positions" states it: the column of codec, markdown, navigation and
      * blind_index, the column and state of checkbox, and for state_machine the form and states
      * (the column is left out). Every other setting has no identity.
@@ -824,7 +824,7 @@ final class Parser
 
     /**
      * Refuses a renderer name that an earlier table or a used table of the document already
-     * writes, at the later token (docs/dbspec.md "Names").
+     * writes, at the later token (docs/spec/dbspec.md "Names").
      */
     private function claimGenerated(string $name, string $source, int $line, int $column): void
     {
@@ -2012,7 +2012,7 @@ final class Parser
 
     /**
      * Checks the audit's exclude or include list, and returns a function telling whether a column is recorded
-     * (docs/dbspec.md "Audit"). If both lists are used, it rejects at the keyword of the second list and returns null
+     * (docs/spec/dbspec.md "Audit"). If both lists are used, it rejects at the keyword of the second list and returns null
      * . The columns in the list are table columns, appear only once, and are not audit columns.
      * Audit columns are always recorded, so they are not used in either list.
      *
@@ -2119,7 +2119,7 @@ final class Parser
      * Checks the tables table of `tables <table> (<record>, <name>)`: another table than the audited, the history and the
      * audit record table, not audited itself, with exactly the record and the name column, the name column a varchar(n)
      * with n >= 63, the primary key (record, name) and the foreign key (record) references the audit record table's key
-     * with restrict (docs/dbspec.md "Audit").
+     * with restrict (docs/spec/dbspec.md "Audit").
      */
     private function checkAuditTables(): void
     {

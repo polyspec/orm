@@ -5,7 +5,7 @@ namespace Polyspec\Orm\Dbspec;
 
 /**
  * Reads a dialect catalog check expression as dbspec predicate text
- * (docs/dialects.md "Introspection", "Checks"). A literal is read as the value of the column
+ * (docs/spec/dialects.md "Introspection", "Checks"). A literal is read as the value of the column
  * it meets. An expression that cannot be read is a CheckDecodeFailure.
  *
  * operand node is ['node' => 'operand', 'kind' => column|number|string|bool,

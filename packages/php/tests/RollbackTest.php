@@ -12,7 +12,7 @@ require_once __DIR__ . '/coverage_cases.php';
 // test connection ends the server session that holds the transaction, so the
 // next statement and the rollback fail; that connection reaches the server
 // through ORM_TEST_MYSQL_SERVER_DSN or ORM_TEST_POSTGRES_SERVER_DSN (the server
-// DSNs that make test-servers writes into TEST_ENV), not through a pooler.
+// DSNs that make orm-test-servers writes into TEST_ENV), not through a pooler.
 // Each case runs in a case database of its own (case_database.php) created
 // through ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN; the test fails when
 // one of the four is unset. The case first_statement_lost ends the session of
@@ -118,7 +118,7 @@ final class RollbackTest extends TestCase
         $env = 'ORM_TEST_' . strtoupper($driver) . '_SERVER_DSN';
         $server = requiredDsn($env);
         if ($server === false || $server === '') {
-            throw new RuntimeException("$env is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers");
+            throw new RuntimeException("$env is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers");
         }
         // The case database name is the path of the case DSN. The server connection opens that database too.
         $database = ltrim((string) parse_url($dsn, PHP_URL_PATH), '/');
@@ -247,7 +247,7 @@ final class RollbackTest extends TestCase
         $env = 'ORM_TEST_' . strtoupper($driver) . '_SERVER_DSN';
         $server = requiredDsn($env);
         if ($server === false || $server === '') {
-            throw new RuntimeException("$env is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers");
+            throw new RuntimeException("$env is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers");
         }
         $direct = case_dsn_with_database($server, ltrim((string) parse_url($dsn, PHP_URL_PATH), '/'));
         [, $pdo] = self::native($direct);

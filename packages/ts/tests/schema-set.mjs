@@ -249,7 +249,7 @@ function countStatements(db) {
 }
 
 /**
- * Registration sends no statement to the database (docs/schema.md "Schema registration"). register does not read
+ * Registration sends no statement to the database (docs/spec/schema.md "Schema registration"). register does not read
  * external documents, and a set that writes them does not read the database either; text that does not hash to the declared hash is CONFIG without any statement. The requests of a registered bench
  * set run on that connection. connectSchema also connects to a database without the external tables.
  */
@@ -285,7 +285,7 @@ const cases = {
 };
 const selected = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(cases);
 for (const env of ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_POSTGRES_DSN']) {
-  if (!process.env[env]) throw new Error(`${env} is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers`);
+  if (!process.env[env]) throw new Error(`${env} is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers`);
 }
 for (const name of selected) {
   const run = cases[name];

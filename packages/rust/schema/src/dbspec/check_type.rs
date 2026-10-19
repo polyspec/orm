@@ -1,4 +1,4 @@
-//! The types of a check predicate (docs/dbspec.md, "Checks"): which operands
+//! The types of a check predicate (docs/spec/dbspec.md, "Checks"): which operands
 //! meet, which operators a `bool` operand takes, and the canonical text of each
 //! literal in the default form of the column it meets.
 

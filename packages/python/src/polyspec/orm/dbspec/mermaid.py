@@ -1,4 +1,4 @@
-# Writes and reads dbspec documents as standard Mermaid erDiagram (docs/mermaid.md).
+# Writes and reads dbspec documents as standard Mermaid erDiagram (docs/spec/mermaid.md).
 # The reference is the other client's mermaid; the text, document, dropped objects, and diagnostics are the same
 # bytes. Regex whitespace is written as [\t\n\f\r ].
 from __future__ import annotations
@@ -34,7 +34,7 @@ def _mermaid_type(t: DbspecType) -> str:
 
 def export_mermaid(document: DbspecDocument) -> dict:
     """Writes one document as a standard Mermaid erDiagram, and records what the diagram cannot hold
-    in [kind, table, name] order (docs/mermaid.md "Export")."""
+    in [kind, table, name] order (docs/spec/mermaid.md "Export")."""
     if document is None or not isinstance(document.tables, (list, tuple)):
         raise TypeError("export_mermaid takes a parsed dbspec document")
     dropped: list = []
@@ -198,7 +198,7 @@ def _trim_quotes(s: str) -> str:
 
 def import_mermaid(text: str, name: str) -> dict:
     """Reads a standard Mermaid erDiagram as the dbspec document `name`, and records what it cannot carry over
-    (docs/mermaid.md "Import"). A line outside the grammar is recorded with its `mermaid`
+    (docs/spec/mermaid.md "Import"). A line outside the grammar is recorded with its `mermaid`
     diagnostic."""
     if not isinstance(text, str):
         raise TypeError("Mermaid text must be a string")

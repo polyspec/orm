@@ -7,7 +7,7 @@ import (
 	"unicode/utf8"
 )
 
-// Document limits (docs/dbspec.md "Limits and errors").
+// Document limits (docs/spec/dbspec.md "Limits and errors").
 const (
 	maxDocumentBytes   = 32 << 20
 	maxTables          = 4096
@@ -241,7 +241,7 @@ func nameDiagnostics(t token) []Diagnostic {
 	return out
 }
 
-// reservedWords are not valid names (docs/dbspec.md "Names").
+// reservedWords are not valid names (docs/spec/dbspec.md "Names").
 var reservedWords = map[string]bool{
 	"dbspec": true, "use": true, "table": true, "diagram": true, "primary": true,
 	"unique": true, "index": true, "foreign": true, "check": true, "settings": true,

@@ -80,10 +80,44 @@ url = "https://dl.google.com/go/go1.27.2.darwin-arm64.tar.gz"
 checksum = "sha256:587b59182488b23aa6e5fc25110405a3e0e5b38ed2f5b2f46ed13c32aee356fe"
 url = "https://dl.google.com/go/go1.27.2.darwin-amd64.tar.gz"
 
+[[tools."go:golang.org/x/tools/cmd/deadcode"]]
+version = "0.52.0"
+backend = "go:golang.org/x/tools/cmd/deadcode"
+specifiers = ["0.52.0"]
+
 [[tools."go:golang.org/x/vuln/cmd/govulncheck"]]
-version = "1.8.0"
+version = "1.9.0"
 backend = "go:golang.org/x/vuln/cmd/govulncheck"
-specifiers = ["1.8.0"]
+specifiers = ["1.9.0"]
+
+[[tools.golangci-lint]]
+version = "2.14.0"
+backend = "aqua:golangci/golangci-lint"
+specifiers = ["2.14.0"]
+
+[tools.golangci-lint."platforms.linux-arm64"]
+checksum = "sha256:ee7ec5f3453d15ddf106fae5a4d6c71737712348a979d1fe9cd52ec7ea299bae"
+url = "https://github.com/golangci/golangci-lint/releases/download/v2.14.0/golangci-lint-2.14.0-linux-arm64.tar.gz"
+url_api = "https://api.github.com/repos/golangci/golangci-lint/releases/assets/585813674"
+provenance = "github-attestations"
+
+[tools.golangci-lint."platforms.linux-x64"]
+checksum = "sha256:ab90aeb7b066f92a33415b638a50fe5344bbb75a0d32ad30cc248d88f81032ab"
+url = "https://github.com/golangci/golangci-lint/releases/download/v2.14.0/golangci-lint-2.14.0-linux-amd64.tar.gz"
+url_api = "https://api.github.com/repos/golangci/golangci-lint/releases/assets/585813815"
+provenance = "github-attestations"
+
+[tools.golangci-lint."platforms.macos-arm64"]
+checksum = "sha256:5ef5f36a7147e91dc58ef9ef4d11bb7bad5ead0c76eb6c01327a73c641d1dcc3"
+url = "https://github.com/golangci/golangci-lint/releases/download/v2.14.0/golangci-lint-2.14.0-darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/golangci/golangci-lint/releases/assets/585813591"
+provenance = "github-attestations"
+
+[tools.golangci-lint."platforms.macos-x64"]
+checksum = "sha256:a5667c1c3536be1740133213e1e822bfb8f0d98ea12903174d6d5f635e4ed68d"
+url = "https://github.com/golangci/golangci-lint/releases/download/v2.14.0/golangci-lint-2.14.0-darwin-amd64.tar.gz"
+url_api = "https://api.github.com/repos/golangci/golangci-lint/releases/assets/585813755"
+provenance = "github-attestations"
 
 [[tools."http:composer"]]
 version = "2.10.3"
@@ -159,59 +193,59 @@ url = "https://github.com/astral-sh/python-build-standalone/releases/download/20
 provenance = "github-attestations"
 
 [[tools.ruff]]
-version = "0.17.0"
+version = "0.17.1"
 backend = "aqua:astral-sh/ruff"
-specifiers = ["0.17.0"]
+specifiers = ["0.17.1"]
 
 [tools.ruff."platforms.linux-arm64"]
-checksum = "sha256:294e181ba6ccb0c2ffd778580e3c42b19f038bdbcb844f39fd9a6a26e8148804"
-url = "https://github.com/astral-sh/ruff/releases/download/0.17.0/ruff-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/ruff/releases/assets/625999236"
+checksum = "sha256:d3ead1f0ed779e777a034ccd9286be6bd9bd3cdaba732ff9797f8288a283e9e2"
+url = "https://github.com/astral-sh/ruff/releases/download/0.17.1/ruff-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/ruff/releases/assets/644283344"
 provenance = "github-attestations"
 
 [tools.ruff."platforms.linux-x64"]
-checksum = "sha256:c94fc1dc71f054d06d9f1149442dcb471516aa2b7d4b7e8124e05d082d4c91d3"
-url = "https://github.com/astral-sh/ruff/releases/download/0.17.0/ruff-x86_64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/ruff/releases/assets/625999382"
+checksum = "sha256:a293ac937715ae6fb6b64da86761598379e6149f40fbc00fde9ba8a2a562ac65"
+url = "https://github.com/astral-sh/ruff/releases/download/0.17.1/ruff-x86_64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/ruff/releases/assets/644283613"
 provenance = "github-attestations"
 
 [tools.ruff."platforms.macos-arm64"]
-checksum = "sha256:59afe64c227e5f9a39d85c4d6be6e2d8e9a85c55f0887baad9c9e2f775a1c119"
-url = "https://github.com/astral-sh/ruff/releases/download/0.17.0/ruff-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/ruff/releases/assets/625999213"
+checksum = "sha256:1c8e6e36538eaa0b996378a20c226403c4ca6369ac24884751b024d3a9530b86"
+url = "https://github.com/astral-sh/ruff/releases/download/0.17.1/ruff-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/ruff/releases/assets/644283324"
 provenance = "github-attestations"
 
 [tools.ruff."platforms.macos-x64"]
-checksum = "sha256:1b6a10f57aa06f0de2d90666878dd875836e3e2d04f61868fa175a74149fb2ad"
-url = "https://github.com/astral-sh/ruff/releases/download/0.17.0/ruff-x86_64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/ruff/releases/assets/625999365"
+checksum = "sha256:88ee16f88dba9d440e06375f46898ec85baf578042ad086764d5a33558bb6e17"
+url = "https://github.com/astral-sh/ruff/releases/download/0.17.1/ruff-x86_64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/ruff/releases/assets/644283566"
 provenance = "github-attestations"
 
 [[tools.uv]]
-version = "0.12.24"
+version = "0.13.0"
 backend = "aqua:astral-sh/uv"
-specifiers = ["0.12.24"]
+specifiers = ["0.13.0"]
 
 [tools.uv."platforms.linux-arm64"]
-checksum = "sha256:5231be65f496304623895dacdbf1de8504fec90303684bdf05805aa34414dd21"
-url = "https://github.com/astral-sh/uv/releases/download/0.12.24/uv-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/622872824"
+checksum = "sha256:3ccfb6af6e242433eb552f7d9676abd5412c6595c497e990d9c8cb7b5bd4d2c3"
+url = "https://github.com/astral-sh/uv/releases/download/0.13.0/uv-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/626003012"
 provenance = "github-attestations"
 
 [tools.uv."platforms.linux-x64"]
-checksum = "sha256:b4dfaef47d491a7296981f8374a4595f55dbf84e8937c8ecd2983574d8bb3da6"
-url = "https://github.com/astral-sh/uv/releases/download/0.12.24/uv-x86_64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/622873043"
+checksum = "sha256:1468ebd5a5541121837c5a2817b9972ba6090fa6caa3d142620850a47fb75154"
+url = "https://github.com/astral-sh/uv/releases/download/0.13.0/uv-x86_64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/626003332"
 provenance = "github-attestations"
 
 [tools.uv."platforms.macos-arm64"]
-checksum = "sha256:0c4346de7abdb49495b393b9ec809fe387aa43e586be20fecb972216c1e71732"
-url = "https://github.com/astral-sh/uv/releases/download/0.12.24/uv-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/622872807"
+checksum = "sha256:a9c1b29002cf3c83f07fa9cd8a887a3be0107d90e23189721221e7257db8e3d6"
+url = "https://github.com/astral-sh/uv/releases/download/0.13.0/uv-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/626002972"
 provenance = "github-attestations"
 
 [tools.uv."platforms.macos-x64"]
-checksum = "sha256:4fa82e37cb94767661f532b001e470b67a186c7260e305bd84ddb78fd545c0b6"
-url = "https://github.com/astral-sh/uv/releases/download/0.12.24/uv-x86_64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/622873012"
+checksum = "sha256:5f44dcbde809b632f47c36fadb241cb4d6f9af71d0c8f172b5d2026d3dde742c"
+url = "https://github.com/astral-sh/uv/releases/download/0.13.0/uv-x86_64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/626003261"
 provenance = "github-attestations"

@@ -11,13 +11,13 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// planVectors is tests/dbspec/plans.json (docs/plans.md).
+// planVectors is tests/dbspec/plans.json (docs/spec/plans.md).
 type planVectors struct {
 	Cases   []planCase
 	Invalid []planInvalidCase
 	Chains  []planChainCase
 	Parse   []planParseCase
-	// Comparisons are the cases that compare two schemas without a plan (docs/plans.md "Comparison").
+	// Comparisons are the cases that compare two schemas without a plan (docs/spec/plans.md "Comparison").
 	Comparisons []comparisonCase
 }
 
@@ -27,7 +27,7 @@ type planCase struct {
 	Source  []string
 	Plan    []string
 	Changes [][3]string
-	// Steps is an array of step objects per dialect (docs/plans.md "Steps").
+	// Steps is an array of step objects per dialect (docs/spec/plans.md "Steps").
 	Steps map[string][]any
 }
 
@@ -378,7 +378,7 @@ func checkComparison(t *testing.T, c comparisonCase) {
 	})
 }
 
-// stepFields is the plans.json object of a step (docs/plans.md "Steps").
+// stepFields is the plans.json object of a step (docs/spec/plans.md "Steps").
 func stepFields(s PlanStep) map[string]any {
 	out := map[string]any{"statement": s.Statement, "effect": s.Effect.String()}
 	switch {

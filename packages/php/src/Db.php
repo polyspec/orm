@@ -27,7 +27,7 @@ final class Db
 
     /**
      * @internal Orm::connect creates connections. A SQL connection has its PDO handle; a markdown
-     * connection has no PDO handle and its flowmark session $md instead (docs/protocol.md §5).
+     * connection has no PDO handle and its flowmark session $md instead (docs/spec/protocol.md §5).
      */
     public function __construct(
         ?\PDO $pdo,
@@ -84,7 +84,7 @@ final class Db
 
     /**
      * @internal On a markdown connection, rejects the SQL-only surface $surface with CAPABILITY_UNSUPPORTED
-     * (docs/dialects.md "Markdown IR executor"). On other connections it does nothing.
+     * (docs/spec/dialects.md "Markdown IR executor"). On other connections it does nothing.
      */
     public function unsupportedOnMarkdown(string $surface): void
     {
@@ -189,7 +189,7 @@ final class Db
 
     /**
      * Returns a handle on the same connection whose hook receives each request of the handle right
-     * before the client plans it (docs/usage.md "Request hook"). The handle shares the PDO connection,
+     * before the client plans it (docs/operations/usage.md "Request hook"). The handle shares the PDO connection,
      * the statement cache, the registered sets, the statement event subscribers and the active
      * transactions; closing either closes the connection. The hook changes $r->ir in place and adds a
      * parameter with $r->param($value); the planner then validates the request as any other. A
@@ -219,7 +219,7 @@ final class Db
 
     /**
      * Registers $subscriber for the event of every statement the connection
-     * sends (docs/usage.md "Statement events"). Subscribers run in
+     * sends (docs/operations/usage.md "Statement events"). Subscribers run in
      * registration order, after the statement and before the operation
      * continues. A subscriber must not throw: an exception fails the
      * operation with SUBSCRIBER, whose previous exception it is, and the
@@ -319,7 +319,7 @@ final class Db
      * Sends one statement and publishes its event. $send sends the statement and returns the result, and
      * $done publishes the event with the hrtime before the statement was sent and the error. A driver error is mapped to an
      * OrmException, attached to the event, and thrown. A statement whose $control is false consumes an armed statement fault:
-     * it is not sent, and ends with that error (docs/protocol.md 3.2).
+     * it is not sent, and ends with that error (docs/spec/protocol.md 3.2).
      *
      * @template T
      * @param \Closure(): T $send
@@ -402,7 +402,7 @@ final class Db
     }
 
     /**
-     * @internal The row counts of the batches a multi-row insert of $rows rows runs as (docs/protocol.md
+     * @internal The row counts of the batches a multi-row insert of $rows rows runs as (docs/spec/protocol.md
      * "Relation steps"): each batch is $batch rows, the last one the rows left when fewer.
      *
      * @return list<int>
@@ -494,7 +494,7 @@ final class Db
      * the connection. A transaction that writes no audited row inserts no record: a first update, delete, or restore that matches no
      * row undoes the record with a savepoint, and a rolled back savepoint undoes the record with the write that inserted it.
      * Every audited insert, update, soft delete, and restore in the transaction writes its primary key to the audit
-     * column (docs/dbspec.md "Audit"). If there is no source, or the record table is not one table, or a value's
+     * column (docs/spec/dbspec.md "Audit"). If there is no source, or the record table is not one table, or a value's
      * key is not a column of that table, it is CONFIG before the transaction starts.
      * A nested transaction uses the outer transaction's audit and does not accept $audit.
      *
@@ -646,7 +646,7 @@ final class Db
             try {
                 $this->finish($frame, false);
             } catch (\Throwable $cleanup) {
-                // Reports both the callback error and the error at the end of the transaction (docs/interfaces.md).
+                // Reports both the callback error and the error at the end of the transaction (docs/spec/interfaces.md).
                 throw OrmException::rollback($failure, $cleanup);
             }
             if ($this->state->rollbackFault) {
@@ -677,7 +677,7 @@ final class Db
             $this->ensureRowLockTable();
         }
         $frame = new TxFrame($this, $readOnly, $isolation, $this->nextTransaction());
-        // The statement that opens a transaction (docs/usage.md "Statement events"). Instead of the driver's transaction
+        // The statement that opens a transaction (docs/operations/usage.md "Statement events"). Instead of the driver's transaction
         // API, the client sends this text as is.
         // Each step is [kind, sql, control]. A step whose control is true is a transaction control statement.
         $steps = [];
@@ -1138,7 +1138,7 @@ final class Db
      * slots are resolved as a model statement's are: host styles, decimals, SQLite time values,
      * the AES key and key version, the clock and the audit of the transaction. A step that reads
      * rows (it has an assemble) and a param slot past $params fail with IR_INVALID before any
-     * statement runs (docs/usage.md "Execute a compiled statement").
+     * statement runs (docs/operations/usage.md "Execute a compiled statement").
      *
      * @param list<mixed> $params
      */
@@ -1220,7 +1220,7 @@ final class Db
     /**
      * Writes a datetime or date value as text with no offset. A datetime is converted to UTC and
      * has fractional digits of the column precision, so it matches the text stored in SQLite, and
-     * MySQL and PostgreSQL do not accept offset literals (docs/dialects.md). A date is
+     * MySQL and PostgreSQL do not accept offset literals (docs/spec/dialects.md). A date is
      * the calendar date of the value.
      */
     private function bindTimeValue(mixed $v, string $colType, int $precision): mixed
@@ -1230,7 +1230,7 @@ final class Db
 
     /**
      * Writes date, time, and datetime values as text with no offset (bindTimeValue). A time is `HH:MM:SS` followed by
-     * fractional digits of the precision. The IR executor message writes precision 6 (docs/protocol.md §5).
+     * fractional digits of the precision. The IR executor message writes precision 6 (docs/spec/protocol.md §5).
      *
      * @internal
      */

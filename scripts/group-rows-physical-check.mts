@@ -8,7 +8,7 @@ const databases = ['mysql', 'postgres', 'sqlite'];
 for (const database of databases) {
   const key = `BENCH_${database.toUpperCase()}_DSN`;
   const dsn = process.env[key];
-  if (!dsn) throw new Error(`${key} is required; run the test through its make target, which reads the environment of make test-servers`);
+  if (!dsn) throw new Error(`${key} is required; run the test through its make target, which reads the environment of make orm-test-servers`);
   let before: string|undefined;
   await step(`group-rows/${database}/state`, TIMEOUT_MS, async ({ step: progress }) => {
     before = await state(database, dsn);

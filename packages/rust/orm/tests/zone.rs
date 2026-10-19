@@ -1,5 +1,5 @@
 //! Connection time zones: every connection reads and writes datetime values in
-//! UTC on SQLite, MySQL and PostgreSQL, whatever the server zone (docs/dialects.md
+//! UTC on SQLite, MySQL and PostgreSQL, whatever the server zone (docs/spec/dialects.md
 //! "Date and time"); a wall-clock value round-trips and `default now` writes the
 //! UTC statement time. A test that installs zone_event does so in a case
 //! database of its own (polyspec-orm-case-database). A test fails when
@@ -15,11 +15,11 @@ use polyspec_orm_case_database::{CaseDatabase, CaseTable};
 fn require_dsn(var: &str) -> String {
     match std::env::var(var) {
         Ok(dsn) if !dsn.is_empty() => dsn,
-        _ => panic!("{var} is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers"),
+        _ => panic!("{var} is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers"),
     }
 }
 
-/// A datetime parameter is its canonical text, `YYYY-MM-DD HH:MM:SS.ffffff` in UTC (docs/protocol.md): a native chrono
+/// A datetime parameter is its canonical text, `YYYY-MM-DD HH:MM:SS.ffffff` in UTC (docs/spec/protocol.md): a native chrono
 /// value is refused as CODEC_ENCODE in every client (#T89-3).
 fn datetime_param(t: NaiveDateTime) -> Param {
     Param::Str(t.format("%Y-%m-%d %H:%M:%S%.6f").to_string())

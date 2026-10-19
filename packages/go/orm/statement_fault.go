@@ -12,7 +12,7 @@ type stmtFault struct {
 
 // fault checks the statement fault set before sending a statement of the kind. Transaction
 // machinery and transaction control statements do not consume the fault
-// (docs/protocol.md 3.2). For other statements, if a fault is set, it is consumed
+// (docs/spec/protocol.md 3.2). For other statements, if a fault is set, it is consumed
 // and its error is returned, and in that case nothing is sent to the database.
 func (r runner) fault(kind string) error {
 	if r.machinery || isTransactionControl(kind) {

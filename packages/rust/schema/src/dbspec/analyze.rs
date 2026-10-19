@@ -1,11 +1,11 @@
-//! The tokens of a text for syntax analysis (docs/dbspec.md, "Syntax analysis").
+//! The tokens of a text for syntax analysis (docs/spec/dbspec.md, "Syntax analysis").
 
 use super::lexer::{tokenize, Kind};
 use super::parser::{Class, Marks};
 use super::Token;
 use std::collections::HashMap;
 
-/// The tokens of `text` (docs/dbspec.md, "Syntax analysis"): the lexical class of each token, and the class the parser
+/// The tokens of `text` (docs/spec/dbspec.md, "Syntax analysis"): the lexical class of each token, and the class the parser
 /// read for a word where the marks give one and the line is not lexical only.
 pub(super) fn tokens(text: &str, marks: &Marks) -> Vec<Token> {
     if marks.no_tokens {

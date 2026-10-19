@@ -11,7 +11,7 @@ import (
 
 func init() {
 	clockVectors = func(run func(string, func() (any, error)), db *orm.DB) {
-		// One statement has one clock (docs/protocol.md "Clock"): the columns that an
+		// One statement has one clock (docs/spec/protocol.md "Clock"): the columns that an
 		// insert leaves to `default now` hold that clock truncated to their digits, and a
 		// datetime(p) column compares with a clock at six digits. The executor clock is
 		// fixed at .999999 through the test entry point, so a rounding clock shows as the

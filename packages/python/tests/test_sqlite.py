@@ -1,4 +1,4 @@
-# SQLite e2e: creates, reads, updates and deletes rows with the generated model (docs/usage.md).
+# SQLite e2e: creates, reads, updates and deletes rows with the generated model (docs/operations/usage.md).
 # The conformance runner checks the three databases, so only SQLite is checked here.
 import types
 import json
@@ -82,7 +82,7 @@ table audited_row {
 
 def generate_document(out: str, document: Path):
     """Generates the models of one document alone: the document is copied beside its own set file, in a directory
-    next to `out`, since a set file lists the documents of its own directory tree (docs/dbspec.md "Document sets")."""
+    next to `out`, since a set file lists the documents of its own directory tree (docs/spec/dbspec.md "Document sets")."""
     root = Path(f"{out}-set")
     root.mkdir(parents=True)
     (root / document.name).write_bytes(document.read_bytes())

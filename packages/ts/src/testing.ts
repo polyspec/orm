@@ -28,7 +28,7 @@ export function failNextStatement(db: Db, code: string, message: string): void {
 
 /**
  * Fixes the executor clock of the connection of db to the clock time. clock is UTC text in the form YYYY-MM-DD HH:MM:SS.ffffff.
- * If the form differs, it throws a TypeError and sets nothing (docs/protocol.md "Test clock").
+ * If the form differs, it throws a TypeError and sets nothing (docs/spec/protocol.md "Test clock").
  */
 export function fixClock(db: Db, clock: string): void {
   const m = typeof clock === 'string' ? /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})\.(\d{6})$/.exec(clock) : null;
@@ -39,7 +39,7 @@ export function fixClock(db: Db, clock: string): void {
 
 /**
  * The affected count of the last successful write result on the connection of db. If there has been no successful write, null.
- * (docs/protocol.md "Test write result").
+ * (docs/spec/protocol.md "Test write result").
  */
 export function lastAffected(db: Db): number | null {
   return readLastAffected(db);

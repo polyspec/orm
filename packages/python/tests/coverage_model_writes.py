@@ -3,7 +3,6 @@
 # no identity column, and deletes every row it wrote, so the database state stays as it was.
 from polyspec.orm.models import models
 from .coverage_case import (
-    error_code,
     expect_equal,
     CoverageCase,
     coverage_main,

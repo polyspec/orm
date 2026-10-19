@@ -1,5 +1,5 @@
 # Applies the plan chain to one database one step at a time, resumes an interrupted plan or
-# rolls it back, and finalizes an applied plan (docs/plans.md "Apply"). The reference is the other
+# rolls it back, and finalizes an applied plan (docs/spec/plans.md "Apply"). The reference is the other
 # client's apply; the lock, session settings, history table, steps, and the verification and effect queries
 # produce the same bytes. Execution is synchronous.
 from __future__ import annotations
@@ -56,7 +56,7 @@ SESSION_QUERIES = {
         "4294967295)::oid)"
     ),
 }
-# The maximum time a statement waits for a lock held by another session (docs/plans.md
+# The maximum time a statement waits for a lock held by another session (docs/spec/plans.md
 # "Apply" lock waits).
 LOCK_WAIT_SECONDS = 5
 
@@ -829,7 +829,7 @@ def apply_plans(
     events: DbspecApplyHandler | None = None,
 ) -> None:
     """Applies the unapplied plans in chain order, one step at a time up to the finalize step, using the dialect's
-    lock on one connection (docs/plans.md "Apply"). If the whole chain is applied,
+    lock on one connection (docs/spec/plans.md "Apply"). If the whole chain is applied,
     the database is left as is. `now` is the epoch microseconds recorded in applied_at
     (the same unit as wall_micros), and `events` is called for each event. A failure
     remains as DbspecApplyError, a handler error, or a database error."""
@@ -883,7 +883,7 @@ def rollback_plans(
     events: DbspecApplyHandler | None = None,
 ) -> None:
     """Rolls the last plan in the history back to the first step with its rollback statements, and removes the row
-    (docs/plans.md "Apply"). An applied plan first checks for drift and NULL rows,
+    (docs/spec/plans.md "Apply"). An applied plan first checks for drift and NULL rows,
     and a step without a rollback stops with an irreversible DbspecApplyError."""
     a = _new_applier(connection, dialect, plans, now, events)
 
@@ -955,7 +955,7 @@ def finalize_plans(
     events: DbspecApplyHandler | None = None,
 ) -> None:
     """Runs the finalize steps of all applied plans in chain order, removing the hidden tables and columns
-    and records each plan as done (docs/plans.md "Apply")."""
+    and records each plan as done (docs/spec/plans.md "Apply")."""
     a = _new_applier(connection, dialect, plans, now, events)
 
     def run():

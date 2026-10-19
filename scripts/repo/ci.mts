@@ -6,7 +6,7 @@ import { CI_SETUP, stepCondition } from '../check/ci-setup.mts';
 import { parseSelection, selectChecks } from '../features/select.mts';
 import { runName } from '../check/report.mts';
 
-// The database server check of the CI workflow. The database check of make check reads the variables in .runtime/servers/env that make test-servers
+// The database server check of the CI workflow. The database check of make orm-check reads the variables in .runtime/servers/env that make orm-test-servers
 // (scripts/test-servers.mts) wrote, so the workflow starts the servers with the same definition
 // and gives all of those variables to the check step.
 
@@ -28,13 +28,13 @@ const links = (command: SimpleCommand): boolean => {
 
 // A repository make target is a command that a step runs. A make that builds in another directory
 // (e.g. `(cd /tmp/sqlite && make)`) is not a check.
-const startsServers = (step: WorkflowStep): boolean => runSegments(step).some(segment => /^make test-servers$/.test(segment));
+const startsServers = (step: WorkflowStep): boolean => runSegments(step).some(segment => /^make orm-test-servers$/.test(segment));
 // make install and that part (install-*) only download without a server, so they may come before the server.
-const runsMake = (step: WorkflowStep): boolean => runSegments(step).some(segment => /^make\s+(?!install(?:-[\w-]+)?(?:\s+install(?:-[\w-]+)?)*$)/.test(segment)) && !startsServers(step);
+const runsMake = (step: WorkflowStep): boolean => runSegments(step).some(segment => /^make\s+(?!(?:orm-)?install(?:-[\w-]+)?(?:\s+(?:orm-)?install(?:-[\w-]+)?)*$)/.test(segment)) && !startsServers(step);
 
 // ciServerErrors returns one error at each place where the workflow does not give the database check's servers and variables with the same definition as test-servers.mts,
 // or where it creates a symbolic link.
-//   - If no step runs make test-servers, each variable the workflow does not set is an error.
+//   - If no step runs make orm-test-servers, each variable the workflow does not set is an error.
 //   - If another step that runs make comes before that step, it is an error.
 //   - If the workflow defines that variable directly or writes .runtime/servers/env directly, it is an error.
 //   - A step that creates a symbolic link (ln -s, symlink) is an error.
@@ -49,18 +49,18 @@ export function ciServerErrors(workflow: string, variables: readonly string[]): 
       if (!defined.has(variable) && !steps.some(step => runCommands(step).some(command => provides(command, variable))))
         errors.push(`ci.yml does not provide ${variable}, which the database checks read`);
     }
-    errors.push('ci.yml does not start the database servers with make test-servers');
+    errors.push('ci.yml does not start the database servers with make orm-test-servers');
   } else {
     // The CI setup step (scripts/check/ci-setup.mts) is installation and environment checking that needs no server.
     steps.slice(0, server).filter(step => runsMake(step) && !Object.hasOwn(CI_SETUP, step.id ?? '')).forEach(step =>
-      errors.push(`ci.yml step "${step.name}" runs make before make test-servers starts the servers`));
+      errors.push(`ci.yml step "${step.name}" runs make before make orm-test-servers starts the servers`));
   }
   for (const variable of variables) {
     if (defined.has(variable))
-      errors.push(`ci.yml defines ${variable}; make test-servers defines it`);
+      errors.push(`ci.yml defines ${variable}; make orm-test-servers defines it`);
   }
   if (steps.some(step => step.run && writtenFiles(step.run, 'workflow').includes('.runtime/servers/env')))
-    errors.push('ci.yml writes .runtime/servers/env; make test-servers writes it');
+    errors.push('ci.yml writes .runtime/servers/env; make orm-test-servers writes it');
   // Symbolic links are not used (AGENTS.md): the server program is found from its own package path.
   for (const step of steps) {
     if (runCommands(step).some(links))
@@ -69,7 +69,7 @@ export function ciServerErrors(workflow: string, variables: readonly string[]): 
   return errors;
 }
 
-// checkTargets returns the Makefile's CHECK_TARGETS, that is, the targets that make check runs.
+// checkTargets returns the Makefile's CHECK_TARGETS, that is, the targets that make orm-check runs.
 export function checkTargets(makefile: string): string[] {
   return /^CHECK_TARGETS = (.*)$/m.exec(makefile)?.[1]?.trim().split(/\s+/) ?? [];
 }
@@ -77,8 +77,8 @@ export function checkTargets(makefile: string): string[] {
 // GROUP_CHECK is the line that a CI group's job runs for the runner (make check-run): it runs the target (CI_TARGETS_<group>) of one group in the matrix.
 export const GROUP_CHECK = 'make check-run GROUP=${{ matrix.group }}';
 
-// runsCheck is whether a command fragment runs the full suite: all targets (`make check`, `make check-run`) or one CI group (GROUP_CHECK).
-export const runsCheck = (segment: string) => /^make\s+check(?:-run)?\s*$/.test(segment.trim()) || segment.trim() === GROUP_CHECK;
+// runsCheck is whether a command fragment runs the full suite: all targets (`make orm-check`, `make check-run`) or one CI group (GROUP_CHECK).
+export const runsCheck = (segment: string) => /^make\s+(?:orm-check|check-run)\s*$/.test(segment.trim()) || segment.trim() === GROUP_CHECK;
 const checkStep = (step: WorkflowStep): boolean => runSegments(step).some(runsCheck);
 const groupStep = (step: WorkflowStep): boolean => runSegments(step).some((segment: string) => segment === GROUP_CHECK);
 
@@ -99,7 +99,7 @@ export function matrixGroups(job: WorkflowJob): string[] | null {
 
 // ciGroupErrors returns one error at each place where the CI groups do not split CHECK_TARGETS. For a job that runs GROUP_CHECK,
 // the matrix groups equal CI_GROUPS, each CI group has a CI_TARGETS_<group>, the targets of all groups together equal CHECK_TARGETS,
-// and no target is in two groups. So the jobs together run every target of make check once.
+// and no target is in two groups. So the jobs together run every target of make orm-check once.
 export function ciGroupErrors(workflow: string, makefile: string): string[] {
   const errors: string[] = [];
   const { groups, targets } = ciGroups(makefile);
@@ -150,11 +150,11 @@ export function ciReportPathErrors(workflow: string, makefile: string): string[]
   return errors;
 }
 
-// ciCheckTargetErrors returns one error for each place where the CI workflow omits a make check target (CHECK_TARGETS) or
+// ciCheckTargetErrors returns one error for each place where the CI workflow omits a make orm-check target (CHECK_TARGETS) or
 // runs it twice. It reads the target that the `make` at the start of a line in a step's run text runs.
-// `make check` runs every CHECK_TARGETS entry through the make check runner (scripts/check/run.mts), so
+// `make orm-check` runs every CHECK_TARGETS entry through the make orm-check runner (scripts/check/run.mts), so
 // running that target separately runs it twice. `make check-run GROUP=...` runs one CI group, so the groups
-// must divide CHECK_TARGETS exactly (ciGroupErrors). Without `make check`, each target must be in some step.
+// must divide CHECK_TARGETS exactly (ciGroupErrors). Without `make orm-check`, each target must be in some step.
 export function ciCheckTargetErrors(workflow: string, makefile: string): string[] {
   const targets = checkTargets(makefile);
   if (targets.length === 0) return ['Makefile declares no CHECK_TARGETS'];
@@ -169,16 +169,16 @@ export function ciCheckTargetErrors(workflow: string, makefile: string): string[
       }
     }
   }
-  if (ran.has('check') || ran.has('check-run'))
+  if (ran.has('orm-check') || ran.has('check-run'))
     return [...targets.filter(target => ran.has(target)).map(target =>
-      `ci.yml step "${ran.get(target)}" runs ${target}, which make check runs`),
+      `ci.yml step "${ran.get(target)}" runs ${target}, which make orm-check runs`),
     ...(workflowSteps(workflow).some(groupStep) ? ciGroupErrors(workflow, makefile) : [])];
   return targets.filter(target => !ran.has(target)).map(target =>
     `ci.yml does not run ${target} of CHECK_TARGETS`);
 }
 
 // featureCommands returns the verification commands in contracts/features.json that run at the repository root (their `command`
-// value, with `cwd` missing or `.`). The feature-check of make check runs all of them.
+// value, with `cwd` missing or `.`). The feature-check of make orm-check runs all of them.
 // (scripts/features/check.mts --run).
 export function featureCommands(features: unknown): string[] {
   const commands: string[] = [];
@@ -207,7 +207,7 @@ function shellCommand(command: string, fromMakefile: boolean): string {
   return text.replace(/^\$WITH_TEST_ENV\s+/, '').replace(/\s+/g, ' ');
 }
 
-// ciDuplicateCommandErrors covers the verification commands that feature-check runs inside make check: each CI workflow step that
+// ciDuplicateCommandErrors covers the verification commands that feature-check runs inside make orm-check: each CI workflow step that
 // runs such a command again gets one error. The step's command (scripts/repo/shell.mts) equals it, or the make
 // target (outside CHECK_TARGETS) that it runs has only that command, which means it runs the command twice.
 export function ciDuplicateCommandErrors(workflow: string, makefile: string, commands: string[]): string[] {
@@ -217,14 +217,14 @@ export function ciDuplicateCommandErrors(workflow: string, makefile: string, com
   for (const step of workflowSteps(workflow)) {
     for (const command of runCommands(step)) {
       if (known.has(shellCommand(command.text, false))) {
-        errors.push(`ci.yml step "${step.name}" runs ${command.text}, which make check runs in feature-check`);
+        errors.push(`ci.yml step "${step.name}" runs ${command.text}, which make orm-check runs in feature-check`);
         continue;
       }
       if (command.name !== 'make') continue;
-      for (const target of command.args.filter(word => /^[a-z0-9][a-z0-9/-]*$/.test(word) && !targets.has(word) && word !== 'check')) {
+      for (const target of command.args.filter(word => /^[a-z0-9][a-z0-9/-]*$/.test(word) && !targets.has(word) && word !== 'orm-check')) {
         const body = recipe(makefile, target);
         if (body !== undefined && body.length > 0 && body.every(line => known.has(shellCommand(line, true))))
-          errors.push(`ci.yml step "${step.name}" runs make ${target}, whose commands make check runs in feature-check`);
+          errors.push(`ci.yml step "${step.name}" runs make ${target}, whose commands make orm-check runs in feature-check`);
       }
     }
   }
@@ -272,12 +272,12 @@ export function helperEnvironmentErrors(manifest: HelperManifest, makefile: stri
   return errors;
 }
 
-// helperRunErrors returns one error for each helper that make check runs more than once among the helper checks of contracts/features.json,
+// helperRunErrors returns one error for each helper that make orm-check runs more than once among the helper checks of contracts/features.json,
 // returning one error. There are three places that run a helper check: the CHECK_TARGETS recipe runs `node scripts/features/check.mts --run`, which
-// selects the helper: a target whose helper command is `make ... <target>` where that target is a make check target or one of its prerequisites,
+// selects the helper: a target whose helper command is `make ... <target>` where that target is a make orm-check target or one of its prerequisites,
 // or whose helper command is `sh <script>` where the runner's setup step databases/create (setupScript, the commands of scripts/check/databases.mts) is
 // the setup step run when that script runs. A run that repeats the same work only wastes time, and a helper that never runs
-// is not checked by make check.
+// is not checked by make orm-check.
 export function helperRunErrors(manifest: HelperManifest & Parameters<typeof selectChecks>[0], makefile: string, setupScript: string): string[] {
   const variables = makeVariables(makefile);
   const rules = makeRules(makefile);
@@ -300,17 +300,17 @@ export function helperRunErrors(manifest: HelperManifest & Parameters<typeof sel
   for (const helper of manifest.helpers ?? []) {
     const make = /^make\s+(.*)$/.exec(helper.command.trim())?.[1];
     for (const word of make?.split(/\s+/) ?? [])
-      if (!word.startsWith('-') && !word.includes('=') && reached.has(word)) places.get(helper.id)?.push(`make ${word}, a target of make check`);
+      if (!word.startsWith('-') && !word.includes('=') && reached.has(word)) places.get(helper.id)?.push(`make ${word}, a target of make orm-check`);
     // A helper that is a script (sh <file>.sh or node <file>.mts) is run by the setup step when that step runs the script.
     const script = /^(?:sh\s+(\S+\.sh)|node\s+(\S+\.mts))$/.exec(helper.command.trim())?.slice(1).find(Boolean);
-    if (script && setupScript.includes(script)) places.get(helper.id)?.push(`the setup step databases/create of make check (scripts/check/databases.mts runs ${script})`);
+    if (script && setupScript.includes(script)) places.get(helper.id)?.push(`the setup step databases/create of make orm-check (scripts/check/databases.mts runs ${script})`);
   }
   const errors: string[] = [];
   for (const [id, runs] of places) {
     if (runs.length === 0)
-      errors.push(`make check runs no check of helper ${id}: no target of CHECK_TARGETS selects it and its command is no target or setup step of make check; leave it out of FEATURE_STRESS_HELPERS and FEATURE_SUITE_HELPERS so that make feature-helper-check runs it`);
+      errors.push(`make orm-check runs no check of helper ${id}: no target of CHECK_TARGETS selects it and its command is no target or setup step of make orm-check; leave it out of FEATURE_STRESS_HELPERS and FEATURE_SUITE_HELPERS so that make feature-helper-check runs it`);
     else if (runs.length > 1)
-      errors.push(`make check runs the check of helper ${id} ${runs.length} times: ${runs.join('; ')}; run it once, and add a helper whose check a target or setup step of make check runs to FEATURE_SUITE_HELPERS, which make feature-helper-check leaves out`);
+      errors.push(`make orm-check runs the check of helper ${id} ${runs.length} times: ${runs.join('; ')}; run it once, and add a helper whose check a target or setup step of make orm-check runs to FEATURE_SUITE_HELPERS, which make feature-helper-check leaves out`);
   }
   return errors;
 }
@@ -331,7 +331,7 @@ export function runnerErrors(declared: string, workflows: Record<string, string>
   const runner = declared.trim();
   if (!/^[a-z0-9][a-z0-9.-]*$/.test(runner) || declared !== `${runner}\n`)
     return [`.github/runner must hold one runner label and a newline, found ${JSON.stringify(declared)}`];
-  // The environment linux-runner verification command in contracts/features.json runs only make check on this runner.
+  // The environment linux-runner verification command in contracts/features.json runs only make orm-check on this runner.
   if (!runner.startsWith('ubuntu-'))
     return [`.github/runner ${runner} is not a Linux runner; the linux-runner checks of contracts/features.json run only there`];
   const errors: string[] = [];
@@ -402,9 +402,9 @@ export function runnerIdentity(segment: string): string | undefined {
   return undefined;
 }
 
-// ciRerunErrors returns one error for each place where a workflow that runs make check runs a test runner outside make check.
-// make check runs every Go package, Rust crate, and PHP and TypeScript test once, so a step that runs part of it again
-// (a target other than go-test-check, client-db-check, feature-check), or that places a check outside make check,
+// ciRerunErrors returns one error for each place where a workflow that runs make orm-check runs a test runner outside make orm-check.
+// make orm-check runs every Go package, Rust crate, and PHP and TypeScript test once, so a step that runs part of it again
+// (a target other than go-test-check, client-db-check, feature-check), or that places a check outside make orm-check,
 // is an error. It judges by the runner's identity, not the command text. The make target that the step runs (outside CHECK_TARGETS)
 // has its recipe judged the same way, with make variables expanded.
 export function ciRerunErrors(workflow: string, makefile: string): string[] {
@@ -413,7 +413,7 @@ export function ciRerunErrors(workflow: string, makefile: string): string[] {
   const targets = new Set(checkTargets(makefile));
   const variables = makeVariables(makefile);
   const errors: string[] = [];
-  const report = (step: WorkflowStep, identity: string, via: string) => errors.push(`ci.yml step "${step.name}" runs ${identity}${via} outside make check; make check runs every test once, and a check it lacks belongs in a target of CHECK_TARGETS`);
+  const report = (step: WorkflowStep, identity: string, via: string) => errors.push(`ci.yml step "${step.name}" runs ${identity}${via} outside make orm-check; make orm-check runs every test once, and a check it lacks belongs in a target of CHECK_TARGETS`);
   for (const step of steps) {
     // The CI setup step (scripts/check/ci-setup.mts) installs tools and checks the environment, and does not run any test.
     if (Object.hasOwn(CI_SETUP, step.id ?? '')) continue;
@@ -423,7 +423,7 @@ export function ciRerunErrors(workflow: string, makefile: string): string[] {
       if (identity) { report(step, identity, ''); continue; }
       const make = /^make\s+(.*)$/.exec(segment)?.[1];
       if (!make) continue;
-      for (const target of make.split(/\s+/).filter(word => /^[a-z0-9-]+$/.test(word) && word !== 'check' && !targets.has(word))) {
+      for (const target of make.split(/\s+/).filter(word => /^[a-z0-9-]+$/.test(word) && word !== 'orm-check' && !targets.has(word))) {
         for (const line of recipe(makefile, target) ?? [])
           for (const part of segments(expand(line, variables), 'make')) {
             const inner = runnerIdentity(part);
@@ -459,7 +459,7 @@ function leaseProgram(segment: string, tracked: string[]): { name: string; files
 
 // ciLeaseErrors returns one error at each place where a workflow step runs, outside make, a repository program that reads the lease variable
 // . Such a program (e.g. the Rust extractor built under a lease of the shared target directory
-// tests/interfaces/check) fails without the LEASE and lease directory that make exports, so CI also runs it as a make target, as make check does.
+// tests/interfaces/check) fails without the LEASE and lease directory that make exports, so CI also runs it as a make target, as make orm-check does.
 // workflows is {path: text}, tracked lists the tracked files, and read
 // is a function that returns the content of a file.
 export function ciLeaseErrors(workflows: Record<string, string>, tracked: string[], read: (path: string) => string | undefined): string[] {
@@ -477,7 +477,7 @@ export function ciLeaseErrors(workflows: Record<string, string>, tracked: string
   return errors;
 }
 
-// AFTER_CHECK is the steps that come after make check. The full suite runs in CI after push and does not stop at a failure, so after it
+// AFTER_CHECK is the steps that come after make orm-check. The full suite runs in CI after push and does not stop at a failure, so after it
 // only two steps that record the run's information come, not checks: the summary, which writes to the job summary and the
 // report even if the runner has not finished, and report, which uploads only the report directory of that run id. Both have `if: ${{ !cancelled() }}`.
 // AFTER_GROUP_CHECK is the same two steps of a CI group job: since the run id, artifact name and report directory carry the matrix group,
@@ -496,8 +496,8 @@ export const AFTER_GROUP_CHECK: Record<string, unknown>[] = [
     with: { name: 'check-${{ matrix.group }}-${{ github.run_id }}-${{ github.run_attempt }}', path: '.runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}_${{ matrix.group }}/report/', 'if-no-files-found': 'error' } },
 ];
 
-// ciAfterCheckErrors returns one error at each place where, in each job of a workflow that runs make check, the make check step does not give ORM_CHECK_RUN_ID, or the steps after it
-// are not exactly the same as AFTER_CHECK's summary and report. All the checks are in make check's
+// ciAfterCheckErrors returns one error at each place where, in each job of a workflow that runs make orm-check, the make orm-check step does not give ORM_CHECK_RUN_ID, or the steps after it
+// are not exactly the same as AFTER_CHECK's summary and report. All the checks are in make orm-check's
 // targets (CHECK_TARGETS), and the steps after it only leave that run's summary and report.
 export function ciAfterCheckErrors(workflows: Record<string, string>): string[] {
   const errors: string[] = [];
@@ -509,17 +509,17 @@ export function ciAfterCheckErrors(workflows: Record<string, string>): string[] 
     const declared = grouped ? AFTER_GROUP_CHECK : AFTER_CHECK;
     const runId = grouped ? GROUP_RUN_ID : RUN_ID;
     if (checkStepOf.env['ORM_CHECK_RUN_ID'] !== runId)
-      errors.push(`${path} step "${checkStepOf.name}" gives make check no ORM_CHECK_RUN_ID: ${runId}, which names the report of the run`);
+      errors.push(`${path} step "${checkStepOf.name}" gives make orm-check no ORM_CHECK_RUN_ID: ${runId}, which names the report of the run`);
     const after = steps.slice(check + 1);
     for (const [index, step] of after.entries()) {
       const want = declared[index];
       if (want && isDeepStrictEqual(step.value, want)) continue;
       errors.push(want
-        ? `${path} step "${step.name}" after make check is not the declared ${String(want['name'])} step: ${JSON.stringify(step.value)} instead of ${JSON.stringify(want)}`
-        : `${path} step "${step.name}" runs ${step.run.split('\n')[0] || JSON.stringify(step.value)} after make check; make check runs every check, and only the summary and the report upload follow it, so a check it lacks belongs in a target of CHECK_TARGETS`);
+        ? `${path} step "${step.name}" after make orm-check is not the declared ${String(want['name'])} step: ${JSON.stringify(step.value)} instead of ${JSON.stringify(want)}`
+        : `${path} step "${step.name}" runs ${step.run.split('\n')[0] || JSON.stringify(step.value)} after make orm-check; make orm-check runs every check, and only the summary and the report upload follow it, so a check it lacks belongs in a target of CHECK_TARGETS`);
     }
     for (const want of declared.slice(after.length))
-      errors.push(`${path} has no ${String(want['name'])} step after make check: ${JSON.stringify(want)}`);
+      errors.push(`${path} has no ${String(want['name'])} step after make orm-check: ${JSON.stringify(want)}`);
   }
   return errors;
 }
@@ -529,11 +529,11 @@ export function ciAfterCheckErrors(workflows: Record<string, string>): string[] 
 export const FULL_SUITE_RULE: Record<string, { required: string[]; removed: string[] }> = {
   'AGENTS.md': {
     required: ['runs on GitHub CI after a push', 'collect enough information to fix every failure it found before the next CI run', 'no local check is required', 'do not push again to react to it'],
-    removed: ['runs exactly once, when every active checklist\n  item is complete', 'then run `make check` once'],
+    removed: ['runs exactly once, when every active checklist\n  item is complete', 'then run `make orm-check` once'],
   },
   'AGENTS.ko.md': {
     required: ['push 뒤 GitHub CI에서 실행한다', '모든 실패를 고칠 수 있을 만큼의 정보를 모아야 한다', 'push 전에 필요한 로컬 검사는 없다', '다시 push하지 않는다'],
-    removed: ['완료되었을 때 정확히 한 번\n  실행한다', '`make check`를 한 번 실행한다'],
+    removed: ['완료되었을 때 정확히 한 번\n  실행한다', '`make orm-check`를 한 번 실행한다'],
   },
 };
 
@@ -550,10 +550,10 @@ export function fullSuiteRuleErrors(documents: Record<string, string>): string[]
 }
 
 // ciSetupErrors returns one error at each place where a workflow's setup step fails, yet the steps after it still run and that failure is not recorded.
-// In a job that runs make check, every step before make check has an id, and that id is a step the runner needs (RUNNER_STEPS)
+// In a job that runs make orm-check, every step before make orm-check has an id, and that id is a step the runner needs (RUNNER_STEPS)
 // or a step that records what that step provides in CI_SETUP of scripts/check/ci-setup.mts. The steps of the table
-// are all in the workflow. A step after the first step, and make check, run even if an earlier step fails, via `if: ${{ !cancelled() }}`,
-// and make check receives the step results as ORM_CI_SETUP: ${{ toJSON(steps) }}. A `run:` step in another job also has, for the
+// are all in the workflow. A step after the first step, and make orm-check, run even if an earlier step fails, via `if: ${{ !cancelled() }}`,
+// and make orm-check receives the step results as ORM_CI_SETUP: ${{ toJSON(steps) }}. A `run:` step in another job also has, for the
 // earlier steps of its job, a condition that it runs even if they fail (starting with `if: ${{ !cancelled()`). continue-on-error removes the failure from the job, so it
 // appears nowhere.
 // GROUP_NEEDS is the line that the group-needs step of a CI group job runs.
@@ -574,7 +574,7 @@ export function ciSetupErrors(workflows: Record<string, string>, { setup, runner
         continue;
       }
       for (const [index, step] of steps.slice(0, check).entries()) {
-        if (!step.id) errors.push(`${path} step "${step.name}" before make check has no id; give it the id of what it installs in scripts/check/ci-setup.mts`);
+        if (!step.id) errors.push(`${path} step "${step.name}" before make orm-check has no id; give it the id of what it installs in scripts/check/ci-setup.mts`);
         else if (!runner.includes(step.id) && !Object.hasOwn(setup, step.id)) errors.push(`${path} step "${step.name}" has the id ${step.id}, which scripts/check/ci-setup.mts does not map to what it installs`);
         if (index > 0 && !guarded(index)) errors.push(`${path} step "${step.name}" does not run after a failed earlier setup step; give it if: \${{ !cancelled() }}`);
       }
@@ -594,7 +594,7 @@ export function ciSetupErrors(workflows: Record<string, string>, { setup, runner
       const ids = new Set(steps.slice(0, check).map(step => step.id));
       for (const id of [...runner, ...Object.keys(setup)]) if (!ids.has(id)) errors.push(`${path} has no setup step with the id ${id} of scripts/check/ci-setup.mts`);
       if (!guarded(check)) errors.push(`${path} step "${checkStepOf.name}" does not run after a failed setup step; give it if: \${{ !cancelled() }}`);
-      if (checkStepOf.env['ORM_CI_SETUP'] !== '${{ toJSON(steps) }}') errors.push(`${path} step "${checkStepOf.name}" gives make check no ORM_CI_SETUP: \${{ toJSON(steps) }}, which tells the runner the failed setup steps`);
+      if (checkStepOf.env['ORM_CI_SETUP'] !== '${{ toJSON(steps) }}') errors.push(`${path} step "${checkStepOf.name}" gives make orm-check no ORM_CI_SETUP: \${{ toJSON(steps) }}, which tells the runner the failed setup steps`);
     }
   }
   return errors;
@@ -654,7 +654,7 @@ export function chainedCommandErrors(features: { features?: { id: string; verifi
   return errors;
 }
 
-// CI_RUN_EXCEPTIONS are the steps that may run a command that is not a make target: summary runs even when make check has not finished,
+// CI_RUN_EXCEPTIONS are the steps that may run a command that is not a make target: summary runs even when make orm-check has not finished,
 // and it writes that run's summary, so it does not go through make.
 export const CI_RUN_EXCEPTIONS: Record<string, Record<string, string>> = { '.github/workflows/ci.yml': { summary: 'node scripts/check/summary.mts' } };
 

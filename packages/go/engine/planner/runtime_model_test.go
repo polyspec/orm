@@ -118,7 +118,7 @@ func TestI16FieldPlansAsI16(t *testing.T) {
 
 // A default column that the insert omitted receives the database default. But dialects that use the executor clock
 // (PostgreSQL, SQLite) bind the executor clock to a `default now` column as the now
-// slot (docs/protocol.md "Clock").
+// slot (docs/spec/protocol.md "Clock").
 func TestInsertLeavesDefaultsToTheDatabase(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, d := range []dialect.Dialect{dialect.MySQL{}, dialect.Postgres{}, dialect.SQLite{}} {

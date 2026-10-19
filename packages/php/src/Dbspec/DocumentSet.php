@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Dbspec;
 
 /**
- * Checks the parsed documents of one set (docs/dbspec.md "Manifest and
+ * Checks the parsed documents of one set (docs/spec/dbspec.md "Manifest and
  * hashes"): a repeated document name, a used document missing from the set
  * and an external document that no owned document reaches through `use` are
  * diagnostics at the header name.

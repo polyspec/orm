@@ -18,7 +18,7 @@ final class SchemaUtils
      * text is checked to hash to its declared hash (otherwise CONFIG), and the set is only registered. Registering the same set
      * again changes nothing. Whether the database matches the set is checked by install and
      * addTablesAndColumns at setup and upgrade, and by the connection opened for each request as well.
-     * register sets the set without any statement (docs/schema.md "Schema registration").
+     * register sets the set without any statement (docs/spec/schema.md "Schema registration").
      */
     public function register(Schema $schema): void
     {
@@ -30,10 +30,10 @@ final class SchemaUtils
      * registers that set on this connection. If the manifest text does not hash to its declared hash, it is CONFIG before any statement.
      * If the set has a diagnostic, it is SCHEMA_INVALID.
      * Introspects the connection's database; if a table that external documents use differs from the external document, it is CONFIG.
-     * If the set owns no tables, the client's renderer creates all the statements (docs/dialects.md
+     * If the set owns no tables, the client's renderer creates all the statements (docs/spec/dialects.md
      * "Rendered statements"); if all of them exist, nothing is created; if only some exist, it is
      * CONFIG. Then it rereads the database and compares the tables the set owns with the set; if there is a difference,
-     * it is CONFIG with all of those differences (docs/schema.md "Schema installation"). On PostgreSQL and
+     * it is CONFIG with all of those differences (docs/spec/schema.md "Schema installation"). On PostgreSQL and
      * SQLite, it runs inside a transaction (in progress or new), so a failed install leaves
      * nothing behind. MySQL commits each DDL by itself, so it runs outside a transaction, and
      * inside one it is CONFIG.
@@ -100,7 +100,7 @@ final class SchemaUtils
     }
 
     /**
-     * Upgrades the installed document set only by adding it as a new version of the generated schema (docs/schema.md
+     * Upgrades the installed document set only by adding it as a new version of the generated schema (docs/spec/schema.md
      * "Adding tables and columns"). Introspects the connection's database and compares the set's tables that are in the database with the set,
      * creates tables of the set that are not in the database, together with their indexes, foreign keys, checks,
      * and triggers, and adds to existing tables the missing columns that are null or have a default.
@@ -180,7 +180,7 @@ final class SchemaUtils
 
     /**
      * Introspects the connection's database; if a table the set uses from an external document differs from that external document,
-     * it is CONFIG (docs/dbspec.md "External documents").
+     * it is CONFIG (docs/spec/dbspec.md "External documents").
      *
      * @param list<\Polyspec\Orm\Dbspec\Document> $documents
      */
@@ -245,7 +245,7 @@ final class SchemaUtils
     /**
      * Runs $fn inside a BEGIN IMMEDIATE transaction with SQLite's foreign keys turned off,
      * and commits only if the foreign key check returns no rows, then turns foreign keys back
-     * on (docs/plans.md "Apply"'s SQLite rebuild).
+     * on (docs/spec/plans.md "Apply"'s SQLite rebuild).
      *
      * This transaction also takes one transaction number of the connection.
      *

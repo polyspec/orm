@@ -336,7 +336,7 @@ func getQuery(ex executor, r *request) (*Statement, error) {
 // slots are resolved as a model statement's are: host styles, decimals,
 // SQLite time values, the AES key and key version, the clock and the audit of
 // the transaction. A step that reads rows (it has an assemble) and a param slot
-// past params fail with IR_INVALID before any statement runs (docs/usage.md
+// past params fail with IR_INVALID before any statement runs (docs/operations/usage.md
 // "Execute a compiled statement").
 func (d *DB) Execute(st *plan.Step, params []any) error {
 	ex, err := resolve(d)
@@ -451,7 +451,7 @@ func (res *result) related(ch *plan.Child, parent []any) ([][]any, error) {
 	return out, nil
 }
 
-// applyRequestHook applies the request hook of the handle that ex passes through to r just before planning (docs/usage.md
+// applyRequestHook applies the request hook of the handle that ex passes through to r just before planning (docs/operations/usage.md
 // "Request hook"). The hook changes r.ir in place and adds parameters with r.param. Since r is a new request for each terminal call,
 // it is not shared with other calls. A handle without a hook does nothing, and the hook's
 // error is returned as is. The changed request is validated by d.plan like any other request.

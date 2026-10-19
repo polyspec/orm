@@ -126,7 +126,7 @@ func countsOf(t *testing.T, plans []*dbspec.Plan) chainCounts {
 
 var fixedNow = func() time.Time { return time.Date(2026, 10, 1, 0, 0, 0, 123456789, time.UTC) }
 
-// mysqlApplyLock and postgresApplyLock are the lock name and key of "Apply" in docs/plans.md.
+// mysqlApplyLock and postgresApplyLock are the lock name and key of "Apply" in docs/spec/plans.md.
 const (
 	mysqlApplyLock    = "CONCAT('dbspec$plans$', LEFT(SHA2(DATABASE(), 256), 51))"
 	postgresApplyLock = "hashtext('dbspec$plans'), hashtext(current_schema())"
@@ -162,7 +162,7 @@ func stopAfter(plan string, step int, stop error) func(dbspec.ApplyEvent) error 
 	}
 }
 
-// TestApplyChain checks "Apply" of docs/plans.md on three databases: applying the chain and its
+// TestApplyChain checks "Apply" of docs/spec/plans.md on three databases: applying the chain and its
 // history, that re-applying leaves it unchanged, drift, the lock, an unlock that releases nothing, verification,
 // recover and rollback after a stop after every step of the representative plan, continuing an interrupted rollback,
 // rollback and re-apply keeping rows written in between, null checks, and finalize.
@@ -438,7 +438,7 @@ func TestApplyChain(t *testing.T) {
 	t.Logf("apply runs: %d", index)
 }
 
-// TestApplyThroughTransactionPooler checks the server session requirement of "Apply" in docs/plans.md
+// TestApplyThroughTransactionPooler checks the server session requirement of "Apply" in docs/spec/plans.md
 // with PgBouncer transaction pooling. A transaction pooler picks a server connection again for every statement,
 // so the lock cannot cover the whole command. Apply checks the server session when taking the lock and at every step,
 // and if it changed or is shared with another client, it stops with a session error before the next statement.

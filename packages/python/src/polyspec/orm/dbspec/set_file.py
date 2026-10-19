@@ -1,4 +1,4 @@
-# The dbspec set reader (docs/dbspec.md "Document sets"). Every tool that takes a document set reads
+# The dbspec set reader (docs/spec/dbspec.md "Document sets"). Every tool that takes a document set reads
 # its set file `dbspec-set.json` with read_dbspec_set, which checks the file, its JSON and every listed
 # path in four steps and gives the listed files with their joined paths and bytes.
 from __future__ import annotations

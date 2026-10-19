@@ -1,4 +1,4 @@
-//! Statement events (docs/usage.md, "Statement events"): every statement the
+//! Statement events (docs/operations/usage.md, "Statement events"): every statement the
 //! connection sends publishes one event to the subscribers registered on it.
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};

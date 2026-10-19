@@ -16,7 +16,7 @@ export const root = new URL('../../../', import.meta.url);
 // TIMEOUT is the deadline (ms) of one case. One round trip applies one document set to one database, introspects it, then drops it.
 const TIMEOUT = 30000;
 export const DIALECTS = ['mysql', 'postgres', 'sqlite'];
-// The number of catalog queries that must be the same for each dialect in every set (docs/dialects.md "Introspection").
+// The number of catalog queries that must be the same for each dialect in every set (docs/spec/dialects.md "Introspection").
 export const QUERIES = { mysql: 9, postgres: 7, sqlite: 3 };
 // The statements that every client runs on a new connection (packages/go/internal/dialects connectionRules).
 export const CONNECTION_RULES = {

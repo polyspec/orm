@@ -5,7 +5,7 @@ namespace Polyspec\Orm;
 
 /**
  * Turns a validated request into a plan: SQL text with bind slots and the
- * assembly of the result (docs/protocol.md §2).
+ * assembly of the result (docs/spec/protocol.md §2).
  */
 final class Planner
 {
@@ -510,7 +510,7 @@ final class Planner
         if (isset($p['value'])) {
             $fn = $p['value']['name'];
             // The clock the ORM compares has six fractional digits, and a datetime(p < 6) column is compared with the value extended to six digits
-            // (docs/protocol.md "Clock").
+            // (docs/spec/protocol.md "Clock").
             $value = $this->d->valueFunction($fn, static fn(): string => $b->param($p['value']['ps'][0], Validator::intervalType($fn)), static fn(): string => $b->now(6))
                 ?? throw self::err(Code::CAPABILITY_UNSUPPORTED, "$fn is not available on {$this->d->name}");
             if (($col['type'] ?? '') === 'datetime' && $fn !== 'today') {
@@ -810,7 +810,7 @@ final class Planner
         $versioned = self::hasAes($ent);
         $audited = $ent['audit'] !== '';
         // A dialect that uses the executor clock (hostNow) uses the executor clock, truncated to the column's fractional digits, for a `default now` column the user did not assign
-        // (docs/protocol.md "Clock").
+        // (docs/spec/protocol.md "Clock").
         $clocked = [];
         if ($this->d->hostNow()) {
             foreach ($ent['columns'] as $c) {

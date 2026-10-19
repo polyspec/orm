@@ -125,7 +125,7 @@ def required_dsn(dialect: str) -> str:
     if not value:
         raise AssertionError(
             f"{DSN_VARIABLES[dialect]} is required for the {dialect} identity load cases; "
-            f"run make test-servers and source its env file, which exports it"
+            f"run make orm-test-servers and source its env file, which exports it"
         )
     return value
 

@@ -6,7 +6,7 @@ namespace Polyspec\Orm\Dbspec;
 /**
  * The outcome of Dbspec::importMermaid: a document and what import leaves
  * out, ordered by table, kind and name, and no diagnostics; or the `mermaid`
- * diagnostic and no document (docs/mermaid.md "Import").
+ * diagnostic and no document (docs/spec/mermaid.md "Import").
  */
 final readonly class MermaidImportResult
 {

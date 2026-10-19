@@ -1,7 +1,7 @@
 // Conformance runner (TypeScript). Runs every vector against the bench
 // database and prints {"<vector>": {"statements": [{"sql", "binds", "kind", "tables",
 // "transaction", "error"}], "result": …}} with the same chains, result shapes, and masking
-// as runner_go. Each statement is its statement event (docs/usage.md "Statement events"):
+// as runner_go. Each statement is its statement event (docs/operations/usage.md "Statement events"):
 // transaction is renumbered from 1 in order of appearance within the vector, null outside
 // a transaction, and error is the code of the statement's error or null.
 //
@@ -298,7 +298,7 @@ async function main() {
     }
   });
   // shared_note is a table of the external document bench_shared: it is read through its entity, and a write fails
-  // with CONFIG before any statement (docs/dbspec.md "External documents").
+  // with CONFIG before any statement (docs/spec/dbspec.md "External documents").
   await run('external_read', async () => {
     const readers = await new NoteReader().connect(db).relation(new SharedNote().matchSharedNoteSeqWithSeq()).orderBySeqAsc().gets();
     const related = readers.values().map(r => [r.getSeq(), r.getSharedNoteModel<SharedNote>().getTitle()]);
@@ -441,7 +441,7 @@ async function main() {
     return { inserted, pairs: pairs.toArray(), left };
   });
   // creates(rows, batch) runs each batch of batch rows as one multi-row INSERT in one transaction; a batch that is not
-  // a positive integer is CONFIG before any statement (docs/protocol.md).
+  // a positive integer is CONFIG before any statement (docs/spec/protocol.md).
   await run('creates_batch', async () => {
     const rows = ['a', 'b', 'c', 'd', 'e'].map((name, i) => new CompositeAccount().setTenantId(903).setAccountId(i + 1).setName(name));
     const inserted = await new CompositeAccount().connect(db).creates(rows, 2);
@@ -542,7 +542,7 @@ async function main() {
   });
   await run('restore_or_create', async () => {
     // restoreOrCreate restores the soft-deleted row of its key, refuses a live row with ROW_NOT_DELETED and creates a
-    // missing key (docs/usage.md "Restore or create a row"). The transaction rolls back at the end, so the database is as it was.
+    // missing key (docs/operations/usage.md "Restore or create a row"). The transaction rolls back at the end, so the database is as it was.
     const boom = new Error('boom');
     const result: Record<string, unknown> = {};
     let failed: unknown;
@@ -569,7 +569,7 @@ async function main() {
   });
   await run('expect_revision', async () => {
     // expectRevision makes an update or a delete write only while author 42's like_count still holds the expected
-    // revision; an update stores revision + 1, and a mismatch is REVISION_CHANGED and writes nothing (docs/dsl.md
+    // revision; an update stores revision + 1, and a mismatch is REVISION_CHANGED and writes nothing (docs/spec/dsl.md
     // "Writes"). The transaction rolls back at the end, so the database is as it was.
     const boom = new Error('boom');
     const result: Record<string, unknown> = {};
@@ -624,7 +624,7 @@ async function main() {
     return result;
   });
   await run('column_pairs', async () => {
-    // Two compared columns meet as dbspec check operands do (docs/dbspec.md "Checks"): a comparison of two columns, a
+    // Two compared columns meet as dbspec check operands do (docs/spec/dbspec.md "Checks"): a comparison of two columns, a
     // column in a subquery column, a join and a relation run when their columns meet, here i32 with i64 and text with
     // varchar, and fail with OPERATOR_NOT_ALLOWED before any statement when they do not.
     const result: Record<string, unknown> = {};
@@ -666,7 +666,7 @@ async function main() {
     odd_length: await caught(new HexCell().connect(db).getBySeq(2)),
   }));
   // A datetime(p) or time(p) value is bound with exactly p fraction digits, the form the SQLite CHECK of the column
-  // requires (docs/dialects.md); zeros past p are dropped. Each vector inserts, reads the row back by the same
+  // requires (docs/spec/dialects.md); zeros past p are dropped. Each vector inserts, reads the row back by the same
   // parameter and deletes it.
   const at = '2026-06-01 12:34:56.000000';
   await run('datetime_p0_roundtrip', async () => {
@@ -698,7 +698,7 @@ async function main() {
     await created.delete();
     return picks(rows, 'day', 'at_time');
   });
-  // An upsert has exactly one conflict key (docs/protocol.md 1): upsert_cell leaves its identity primary key out, so the
+  // An upsert has exactly one conflict key (docs/spec/protocol.md 1): upsert_cell leaves its identity primary key out, so the
   // unique key on code is the one key that can meet the row; an insert that does not assign code is IR_INVALID before
   // any statement.
   await run('upsert_one_key', async () => {
@@ -718,7 +718,7 @@ async function main() {
     return { inserted: picks(inserted, 'label'), updated: picks(updated, 'label'), unassigned };
   });
   // A PostgreSQL uuid column is read as its text and a uuid value is bound as text cast to uuid, in one form in every
-  // planner (docs/dialects.md); the vector inserts, reads the row back by the same value and deletes it.
+  // planner (docs/spec/dialects.md); the vector inserts, reads the row back by the same value and deletes it.
   await run('uuid_roundtrip', async () => {
     const created = await new UuidCell().connect(db).setId('0f8e2d4c-1a3b-4c5d-8e9f-a0b1c2d3e4f5').create();
     mask([created.getSeq()]);
@@ -726,9 +726,9 @@ async function main() {
     await created.delete();
     return picks(rows, 'id');
   });
-  // A write counts each written row once (docs/protocol.md "Write"): an upsert is 1 whether it inserts or updates, and an
+  // A write counts each written row once (docs/spec/protocol.md "Write"): an upsert is 1 whether it inserts or updates, and an
   // update counts the row it matched even when the row already holds the value. The count is read through the test
-  // entry point (docs/protocol.md "Test write result").
+  // entry point (docs/spec/protocol.md "Test write result").
   await run('affected_counts', async () => {
     const out: Record<string, number | null> = {};
     const upsert = () => new UpsertCell().connect(db).setCode('c1').setLabel('x').duplication(new UpsertCell().setLabel('y')).create();
@@ -746,7 +746,7 @@ async function main() {
     return out;
   });
 
-  // A value outside the logical type of its slot is CODEC_ENCODE before any statement (docs/protocol.md §5
+  // A value outside the logical type of its slot is CODEC_ENCODE before any statement (docs/spec/protocol.md §5
   // "Parameters"). A create that the client lets through is deleted, so the vector leaves the database as it found it.
   const rejected = async (create: () => Promise<{ getSeq(): number | bigint; delete(): Promise<unknown> }>) => {
     try {
@@ -762,8 +762,8 @@ async function main() {
   await run('varchar_length_rejected', () => rejected(() => new BindCell().connect(db).setLabel('123456789').create()));
   await run('text_nul_rejected', () => rejected(() => new BindCell().connect(db).setLabel('nul').setBody('a\u0000b').create()));
   await run('uuid_form_rejected', () => rejected(() => new BindCell().connect(db).setLabel('uuid').setToken('123E4567-E89B-12D3-A456-426614174000').create()));
-  // A contains value NULL binds NULL, so `col LIKE NULL` matches no row (docs/protocol.md §2).
-  // A parameter that assigns NULL to a non-null column is CODEC_ENCODE before any statement (docs/protocol.md §5
+  // A contains value NULL binds NULL, so `col LIKE NULL` matches no row (docs/spec/protocol.md §2).
+  // A parameter that assigns NULL to a non-null column is CODEC_ENCODE before any statement (docs/spec/protocol.md §5
   // "Parameters"); creates binds each row value as a parameter.
   await run('null_into_not_null', async () => {
     const nullRow = new BindCell();
@@ -780,7 +780,7 @@ async function main() {
     }
   });
 
-  // One statement has one clock (docs/protocol.md "Clock"): the columns that an insert leaves to `default now` hold that
+  // One statement has one clock (docs/spec/protocol.md "Clock"): the columns that an insert leaves to `default now` hold that
   // clock truncated to their digits, and a datetime(p) column compares with a clock at six digits. The executor clock is
   // fixed at .999999 through the test entry point, so a rounding clock shows as the next second; MySQL writes its own
   // clock, CURRENT_TIMESTAMP(p), which truncates. These vectors come last because the fixed clock stays on the connection.

@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm;
 
 /**
- * One statement that the connection sent to the database (docs/usage.md
+ * One statement that the connection sent to the database (docs/operations/usage.md
  * "Statement events"). Db::subscribe registers the subscribers that receive
  * it after the statement ends and before the operation continues.
  */

@@ -1,5 +1,5 @@
 // Recognizes the trigger set the renderer wrote as the immutable or audit setting
-// (docs/dialects.md "Introspection", "Triggers").
+// (docs/spec/dialects.md "Introspection", "Triggers").
 import { present } from '../present.js';
 import { byteOrder, type Catalog, type ITable } from './introspect_catalog.js';
 import type { DbspecSetting, DbspecTable } from './model.js';
@@ -42,7 +42,7 @@ export function recognizeTriggers(c: Catalog, dialect: DbspecDialect, triggers: 
 
 /**
  * Recognizes each setting by its own trigger name (the recomputed renderer name), and only when the trigger set's
- * names and contents both match the renderer output of the recognized settings does it return those setting lines; otherwise null (docs/dialects.md
+ * names and contents both match the renderer output of the recognized settings does it return those setting lines; otherwise null (docs/spec/dialects.md
  * "Triggers"). A table with two settings written together is the sum of the two outputs and is not judged by count.
  */
 function triggerSetting(dialect: DbspecDialect, t: ITable, list: readonly ITrigger[]): string[] | null {

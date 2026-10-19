@@ -30,7 +30,7 @@ func loadCollectionKeys(t *testing.T) collectionKeysFixture {
 	t.Helper()
 	src, err := os.ReadFile("../../../tests/collection/keys.json")
 	if err != nil {
-		t.Fatalf("read tests/collection/keys.json: %v; run make check from the checkout root", err)
+		t.Fatalf("read tests/collection/keys.json: %v; run make orm-check from the checkout root", err)
 	}
 	var fixture collectionKeysFixture
 	if err := json.Unmarshal(src, &fixture); err != nil {

@@ -17,12 +17,12 @@ INSERT INTO "service_region" ("seq", "service_seq", "name") SELECT "service_regi
 INSERT INTO "service_member" ("seq", "service_seq", "user_seq") SELECT "service_member_seq", MIN("service_seq"), MIN("user_seq") FROM "author" GROUP BY "service_member_seq";
 
 -- hex_cell holds raw hex cells that no encoder writes: decoding each one is CODEC_DECODE
--- (vector hex_malformed, docs/codec.md "Decoding is exact").
+-- (vector hex_malformed, docs/spec/codec.md "Decoding is exact").
 INSERT INTO "hex_cell" ("seq", "label", "value") VALUES (1, 'white-space', ' 4F'), (2, 'odd-length', '686');
 
 -- The authors of service 100 hold a price unless their seq is a multiple of 3, so an order
--- on price meets NULL and values (vector order_nulls, docs/dialects.md). DECIMALINT(13,3)
--- stores the value times 1000 (docs/dialects.md).
+-- on price meets NULL and values (vector order_nulls, docs/spec/dialects.md). DECIMALINT(13,3)
+-- stores the value times 1000 (docs/spec/dialects.md).
 UPDATE "author" SET "price" = "seq" % 7 * 1000 WHERE "service_seq" = 100 AND "seq" % 3 <> 0;
 
 -- The external table shared_note, which bench_shared.dbs owns, and the owned note_reader rows that reference it.

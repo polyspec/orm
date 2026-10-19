@@ -1,4 +1,4 @@
-# Plan diff objects, triggers, and change list (docs/plans.md "Diff").
+# Plan diff objects, triggers, and change list (docs/spec/plans.md "Diff").
 # The reference is the other client's plan object comparison.
 from polyspec.orm.dbspec.check import read_check
 from polyspec.orm.dbspec.plan_diff import append, renamed_or, sorted_keys

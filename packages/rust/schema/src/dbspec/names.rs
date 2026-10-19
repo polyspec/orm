@@ -1,4 +1,4 @@
-//! The names that the renderer writes (docs/dbspec.md "Names"): the plain form when it has at most 63
+//! The names that the renderer writes (docs/spec/dbspec.md "Names"): the plain form when it has at most 63
 //! bytes, otherwise its first 54 bytes, a `$` and the first 8 lowercase hexadecimal digits of its SHA-256.
 
 use super::parser::MAX_NAME_BYTES;

@@ -259,7 +259,7 @@ func generatedNames(t *tableNode) []generatedName {
 
 // generatedNamesUnique refuses a generated name of a table of the document
 // that equals a generated name of a used table or of an earlier table of the
-// document, with name.duplicate at the later name (docs/dbspec.md "Names").
+// document, with name.duplicate at the later name (docs/spec/dbspec.md "Names").
 func (v *validator) generatedNamesUnique() {
 	seen := map[string]string{} // generated name => the source that wrote it first
 	for _, t := range v.used {

@@ -81,7 +81,7 @@ function dbspec_sets_check(string $dbspec, array $case): void
     if ($expected !== null) {
         $m = $result->manifest;
         // The runtime model is built from the manifest text and the external text, so they parse back as a set
-        // without diagnostics (docs/dbspec.md "Manifest and hashes").
+        // without diagnostics (docs/spec/dbspec.md "Manifest and hashes").
         $split = static fn(string $text): array => $text === '' ? [] : preg_split('/(?<=\n)(?=dbspec )/', $text);
         foreach ($dbspec::parseSet($split($m->manifestText), $split($m->externalText)) as $r) {
             $messages = array_map(static fn($d): string => "{$d->rule} {$d->line}:{$d->column} {$d->message}", $r->diagnostics);

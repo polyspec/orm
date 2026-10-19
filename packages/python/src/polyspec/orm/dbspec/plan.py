@@ -1,4 +1,4 @@
-# Schema plan document and plan chain (docs/plans.md "Plan document", "Chain").
+# Schema plan document and plan chain (docs/spec/plans.md "Plan document", "Chain").
 # The reference is the other client's plan; the diagnostic messages are the same bytes.
 from __future__ import annotations
 
@@ -52,7 +52,7 @@ def _plan_names(names) -> str:
 
 
 def parse_plan(text: str) -> dict:
-    """Parses a plan document (docs/plans.md "Plan document"). A document that cannot be written gives a `plan` diagnostic
+    """Parses a plan document (docs/spec/plans.md "Plan document"). A document that cannot be written gives a `plan` diagnostic
     at that line. A diagnostic of the target schema text is located inside the plan."""
     if not isinstance(text, str):
         raise TypeError("plan text must be a string")
@@ -220,7 +220,7 @@ def emit_plan(plan: DbspecPlan) -> str:
 
 
 def chain_plans(plans: list[DbspecPlan]) -> dict:
-    """Joins the plans into one chain starting from the plan with `from empty` (docs/plans.md
+    """Joins the plans into one chain starting from the plan with `from empty` (docs/spec/plans.md
     "Chain"). If they cannot be joined, gives a `chain` diagnostic that names the plan."""
     if not isinstance(plans, (list, tuple)):
         raise TypeError("plans must be a list of parsed plans")

@@ -1,4 +1,4 @@
-// Reads SQLite's main database as a catalog (docs/dialects.md "Introspection").
+// Reads SQLite's main database as a catalog (docs/spec/dialects.md "Introspection").
 // Joins sqlite_master and the table-valued pragmas to read all tables at once.
 import { present } from '../present.js';
 import { actionName, Catalog, tableTypes, type CatalogQuery, type DbspecUnsupported, type IForeignKey } from './introspect_catalog.js';

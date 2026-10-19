@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Dbspec;
 
 /**
- * Lists all differences between two schemas without a plan (docs/plans.md "Comparison"). Since there is no
+ * Lists all differences between two schemas without a plan (docs/spec/plans.md "Comparison"). Since there is no
  * rename, tables and columns are matched by name only.
  *
  * @internal

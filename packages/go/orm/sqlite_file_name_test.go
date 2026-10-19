@@ -15,7 +15,7 @@ import (
 
 // TestSQLiteFileNameIsThePath checks that a SQLite DSN with a query creates the file from the
 // path alone. An opener that puts the query in the file name makes a file such as `named.sqlite?_pragma=…`
-// (docs/dialects.md "Probe environment").
+// (docs/spec/dialects.md "Probe environment").
 func TestSQLiteFileNameIsThePath(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	dir := t.TempDir()

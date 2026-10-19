@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Dbspec;
 
 /**
- * A failure of apply or recover (docs/plans.md "Apply"). The code is locked,
+ * A failure of apply or recover (docs/spec/plans.md "Apply"). The code is locked,
  * session, interrupted, drift, chain, failed or verify; `plan` is empty when no plan
  * is named, `step` is the statement index of failed, interrupted and a session
  * error before a step, and

@@ -5,7 +5,7 @@ namespace Polyspec\Orm;
 
 use Polyspec\Orm\Dbspec\Meet;
 
-/** Validates a request (docs/protocol.md) against the runtime model. */
+/** Validates a request (docs/spec/protocol.md) against the runtime model. */
 final class Validator
 {
     public const IR_VERSION = 1;
@@ -101,7 +101,7 @@ final class Validator
         if (!in_array($kind, ['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate', 'insert', 'update', 'delete', 'restore', 'restart_identity'], true)) {
             throw self::err(Code::IR_INVALID, "unknown kind \"$kind\"");
         }
-        // A table of an external document is written only by the set that owns it (docs/dbspec.md "External documents").
+        // A table of an external document is written only by the set that owns it (docs/spec/dbspec.md "External documents").
         $target = $this->m->entities[$r['entity'] ?? ''] ?? null;
         if (($target['external'] ?? false) && in_array($kind, ['insert', 'update', 'delete', 'restore', 'restart_identity'], true)) {
             throw self::err(Code::CONFIG, "{$target['table']} is owned by another document set");
@@ -204,7 +204,7 @@ final class Validator
     }
 
     /**
-     * The parts of the statement of a restore request (docs/protocol.md 1.5), picked after the request hook. The set
+     * The parts of the statement of a restore request (docs/spec/protocol.md 1.5), picked after the request hook. The set
      * values with a parameter and the eq conditions with a parameter that the where joins with and give columns their
      * values; the key is the primary key when they cover it, otherwise the first unique key in name order that they
      * cover. A set value of a key column becomes a condition, every other set value is a new value, and the where
@@ -284,7 +284,7 @@ final class Validator
      * seconds, for the interval of a relative time function; text for contains and
      * contains_binary; the parent column for if_parent; the column for optimistic. An IR
      * executor message writes each parameter in the form of its slot's type
-     * (docs/protocol.md §5), so the client reads the type here.
+     * (docs/spec/protocol.md §5), so the client reads the type here.
      *
      * @return list<list<array{type: string, column: ?array}>>
      */

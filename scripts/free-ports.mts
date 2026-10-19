@@ -1,5 +1,5 @@
 // Chooses <count> free TCP ports on 127.0.0.1 and prints them separated by spaces. Opens all ports at the same time so they differ from each other,
-// then closes them after taking them. make test-servers gives this checkout's servers these ports, so two checkouts' servers do not contend
+// then closes them after taking them. make orm-test-servers gives this checkout's servers these ports, so two checkouts' servers do not contend
 // for the same fixed port. Once a server listens, that port belongs to that server.
 //
 // Usage: node scripts/free-ports.mts <count>

@@ -1,4 +1,4 @@
-// The format command (docs/dbspec.md "Formatting"): a document with a diagnostic is refused, never rewritten.
+// The format command (docs/spec/dbspec.md "Formatting"): a document with a diagnostic is refused, never rewritten.
 import type { StateCommand } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { dbspecDocument } from './document.js';

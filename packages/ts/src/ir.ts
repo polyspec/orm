@@ -1,4 +1,4 @@
-// Value-free request and plan types (docs/protocol.md).
+// Value-free request and plan types (docs/spec/protocol.md).
 
 export type QueryKind = 'one' | 'all' | 'count' | 'group_count' | 'sum' | 'avg' | 'paginate' | 'insert' | 'update' | 'delete' | 'restore' | 'restart_identity';
 

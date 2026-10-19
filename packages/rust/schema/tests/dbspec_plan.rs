@@ -1,5 +1,5 @@
 //! The cases of tests/dbspec/plans.json through the plan functions of
-//! `polyspec_orm_schema::dbspec` (docs/plans.md): every case diffs to its changes,
+//! `polyspec_orm_schema::dbspec` (docs/spec/plans.md): every case diffs to its changes,
 //! writes its steps for MySQL, PostgreSQL and SQLite and emits its plan
 //! text again; every invalid case reports its `plan` diagnostics; every chain
 //! case orders its plans or reports its `chain` diagnostics; every parse case
@@ -12,7 +12,7 @@ use polyspec_orm_schema::dbspec::{self, chain, compare_schemas, diff, emit_plan,
 use polyspec_orm_testcase::Trial;
 use serde_json::Value;
 
-/// The plans.json object of a step (docs/plans.md "Steps").
+/// The plans.json object of a step (docs/spec/plans.md "Steps").
 fn step_fields(s: &PlanStep) -> Value {
     let mut out = serde_json::Map::new();
     out.insert("statement".into(), Value::from(s.statement.clone()));

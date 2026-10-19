@@ -1,4 +1,4 @@
-// Lists every difference between two schemas without a plan (docs/plans.md "Comparison").
+// Lists every difference between two schemas without a plan (docs/spec/plans.md "Comparison").
 // The reference is the Go engine (engine/dbspec/compare.go), and the diagnostic messages are the same bytes as Go.
 import { emitDbspec } from './index.js';
 import { emitDocument } from './emit.js';

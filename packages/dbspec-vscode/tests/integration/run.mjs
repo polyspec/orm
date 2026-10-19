@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // Runs the integration suite (suite/index.cjs) inside VS Code with @vscode/test-electron's runTests: the extension
 // of this package is the development extension, and the folder tests/editor is the opened workspace, whose fixtures
-// the suite reads through `vscode.provideDocumentSemanticTokens` (docs/editor.md "Fixtures").
+// the suite reads through `vscode.provideDocumentSemanticTokens` (docs/spec/editor.md "Fixtures").
 // The VS Code build is the one that kit's installer (@polyspec/kit/install-vscode, from kit 0.0.39; T165) put into the
 // tools directory of the required option --vscode; the run only reads it with installedExecutable and never downloads.
-// Without that copy, installedExecutable fails and names `make install-vscode`.
+// Without that copy, installedExecutable fails and names `make orm-install-vscode`.
 //
 // Usage: node packages/dbspec-vscode/tests/integration/run.mjs --vscode <tools directory> (after the build of this package)
 import { mkdtempSync, rmSync } from 'node:fs';

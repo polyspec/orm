@@ -1,6 +1,6 @@
 /**
  * The one table of which two columns compare alike on the three databases. dbspec's check validation and the IR
- * validator both read it, so the two cannot drift (docs/dbspec.md "Checks").
+ * validator both read it, so the two cannot drift (docs/spec/dbspec.md "Checks").
  */
 
 /** The class of the types that share one: integers meet integers, and varchar meets text. */

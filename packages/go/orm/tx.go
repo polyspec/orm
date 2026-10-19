@@ -510,7 +510,7 @@ func (d *DB) runTransaction(fn func() error, o txOptions) (err error) {
 }
 
 // rollbackFailed reports the cause that ended the transaction or savepoint and the failed rollback
-// as one ROLLBACK error (docs/errors.yaml, docs/interfaces.md). The error's
+// as one ROLLBACK error (docs/spec/errors.yaml, docs/spec/interfaces.md). The error's
 // Cause is the errors.Join of the cause and the rollback error, so errors.Is and errors.As find both
 // of them. A cause that is not an error, such as a panic value, becomes an error with that text.
 func rollbackFailed(cause any, rollbackErr error) error {
@@ -573,7 +573,7 @@ func (d *DB) begin(o txOptions) (*txConn, error) {
 		return nil, mapDriverErr(err)
 	}
 	t := &txConn{db: d, conn: conn, ctx: ctx, cancel: cancel, readOnly: o.readOnly, isolation: o.isolation, number: d.nextTransaction()}
-	// Statements that open a transaction (docs/usage.md "Statement events"). If any one of them
+	// Statements that open a transaction (docs/operations/usage.md "Statement events"). If any one of them
 	// fails, the connection is closed so that settings left in the session do not reach the next user.
 	type opening struct{ kind, sql string }
 	var steps []opening
@@ -683,7 +683,7 @@ func (t *txConn) closeSession() error {
 // rollbackNative rolls back the native transaction. If the transaction's context
 // was canceled, database/sql has already rolled back, so sql.ErrTxDone is not a failure.
 // Other failures, including a failed rollback after the driver or server closed the connection, are reported
-// as failures (docs/interfaces.md).
+// as failures (docs/spec/interfaces.md).
 // commitNative commits the transaction.
 func (t *txConn) commitNative() error {
 	_, err := t.run().exec(t.ctx, KindCommit, nil, "COMMIT")

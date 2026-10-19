@@ -1,6 +1,6 @@
 # Driver errors are ORM errors: a condition of the error catalog has its code, every other driver
 # error is DRIVER, and each keeps the driver message and the driver error as its cause
-# (docs/protocol.md "Errors", packages/ts/src/driver.ts driverError, packages/php/src/Orm.php
+# (docs/spec/protocol.md "Errors", packages/ts/src/driver.ts driverError, packages/php/src/Orm.php
 # OrmException::fromDriver). The SQLite cases run statements on a database file; the MySQL and
 # PostgreSQL cases run the statement path of the connection on the error values of PyMySQL and
 # psycopg without a server.

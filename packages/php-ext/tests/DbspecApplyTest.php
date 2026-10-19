@@ -6,7 +6,7 @@ require_once dirname(__DIR__, 2) . '/php/tests/dbspec_plan_cases.php';
 // Applies the plans.json chains through Polyspec\Orm\Dbspec\Native\Dbspec::apply,
 // ::recover, ::rollback and ::finalize of the PHP extension orm_dbspec on
 // MySQL, PostgreSQL and SQLite, the same scenarios as the PHP client's
-// packages/php/tests/DbspecApplyTest.php (docs/plans.md "Apply"). Every run
+// packages/php/tests/DbspecApplyTest.php (docs/spec/plans.md "Apply"). Every run
 // gets a fresh database, schema or file. ORM_TEST_MYSQL_SERVER_DSN and
 // ORM_TEST_POSTGRES_SERVER_DSN name the servers and ORM_TEST_PGBOUNCER_DSN the
 // transaction pooler; the test fails when one is unset. The DSN is parsed by
@@ -145,7 +145,7 @@ function apply_stopped(RuntimeException $stop, Closure $operation): void
     throw new RuntimeException('apply did not stop at the event');
 }
 
-// The lock name and key of docs/plans.md "Apply".
+// The lock name and key of docs/spec/plans.md "Apply".
 const MYSQL_APPLY_LOCK = "CONCAT('dbspec\$plans\$', LEFT(SHA2(DATABASE(), 256), 51))";
 const POSTGRES_APPLY_LOCK = "hashtext('dbspec\$plans'), hashtext(current_schema())";
 // The number of tables whose name starts with dbspec$, and of columns, excluding the history table.
@@ -427,7 +427,7 @@ function apply_scenarios(): array
         }
     }
 
-    // apply needs one server session that no other client shares from start to finish (docs/plans.md
+    // apply needs one server session that no other client shares from start to finish (docs/spec/plans.md
     // "Apply"). PgBouncer's transaction pooling chooses a server connection again for each statement, so
     // apply checks the server session at the lock and at each step, and stops with a session error. Each scenario
     // creates its own database on the server and connects to that database through PgBouncer. PgBouncer

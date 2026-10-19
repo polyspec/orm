@@ -35,7 +35,7 @@
           ]
         },
         {
-          "description": "A suite target: make check runs it whole, so it declares no inputs and no lints.",
+          "description": "A suite target: make orm-check runs it whole, so it declares no inputs and no lints.",
           "type": "object",
           "additionalProperties": false,
           "required": ["scope", "needs"],

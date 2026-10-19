@@ -1,5 +1,5 @@
 //! The cases of tests/dbspec/show-create.json through the public MySQL
-//! introspection of `polyspec_orm_schema::dbspec` (docs/dialects.md,
+//! introspection of `polyspec_orm_schema::dbspec` (docs/spec/dialects.md,
 //! "Introspection"): `catalog_queries`, `catalog_followups` and `read_catalog`
 //! read the canned catalog of the file with the SHOW CREATE TABLE of each case,
 //! and give the check lines and the unsupported objects that the case expects,

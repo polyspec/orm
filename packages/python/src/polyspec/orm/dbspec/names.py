@@ -1,4 +1,4 @@
-"""The names that the renderer writes (docs/dbspec.md "Names"): the plain form
+"""The names that the renderer writes (docs/spec/dbspec.md "Names"): the plain form
 <table>$<suffix> when it has at most 63 bytes, otherwise its first 54 bytes, a $
 and the first 8 lowercase hexadecimal digits of its SHA-256."""
 

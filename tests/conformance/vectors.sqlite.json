@@ -978,7 +978,7 @@
     },
     {
       "name": "external_read",
-      "chain": "NoteReader relation(SharedNote-\u003ematchSharedNoteSeqWithSeq())-\u003eorderBySeqAsc()-\u003egets() reading getSharedNoteModel()-\u003egetTitle(); SharedNote seq(NoteReader-\u003eaddColumnSharedNoteSeq())-\u003eorderBySeqAsc()-\u003egets(); SharedNote setSeq(9)-\u003esetTitle('written')-\u003ecreate(): shared_note is a table of the external document bench_shared, read through its entity, and the write fails with CONFIG before any statement (docs/dbspec.md \"External documents\")",
+      "chain": "NoteReader relation(SharedNote-\u003ematchSharedNoteSeqWithSeq())-\u003eorderBySeqAsc()-\u003egets() reading getSharedNoteModel()-\u003egetTitle(); SharedNote seq(NoteReader-\u003eaddColumnSharedNoteSeq())-\u003eorderBySeqAsc()-\u003egets(); SharedNote setSeq(9)-\u003esetTitle('written')-\u003ecreate(): shared_note is a table of the external document bench_shared, read through its entity, and the write fails with CONFIG before any statement (docs/spec/dbspec.md \"External documents\")",
       "calls": [
         "relation",
         "matchSharedNoteSeqWithSeq",
@@ -5273,7 +5273,7 @@
     },
     {
       "name": "relation_null_key",
-      "chain": "relation keyed by the nullable column price (keyNamePrice) over the authors of user 100: key_by names a nullable column, which the IR refuses as IR_INVALID (docs/dialects.md key_by row: key_by names a non-null column, IR_INVALID otherwise)",
+      "chain": "relation keyed by the nullable column price (keyNamePrice) over the authors of user 100: key_by names a nullable column, which the IR refuses as IR_INVALID (docs/spec/dialects.md key_by row: key_by names a non-null column, IR_INVALID otherwise)",
       "calls": [
         "relations",
         "keyNamePrice",
@@ -5290,7 +5290,7 @@
     },
     {
       "name": "empty_reads",
-      "chain": "author seq(-1): get(), getBySeq(-1), gets() length, groupByIsClose()-\u003egetsCount(), removeAllColumns()-\u003eorderBySeqAsc()-\u003egetsPage(1, 10), getCount(), sumReadCount()-\u003egetSum(), avgLikeCount()-\u003egetAvg(); author price(null): getCount(), sumPrice()-\u003egetSum(), avgPrice()-\u003egetAvg() (docs/dsl.md Reads: no read raises an error for an empty result; getSum is 0 and getAvg null when no value is left)",
+      "chain": "author seq(-1): get(), getBySeq(-1), gets() length, groupByIsClose()-\u003egetsCount(), removeAllColumns()-\u003eorderBySeqAsc()-\u003egetsPage(1, 10), getCount(), sumReadCount()-\u003egetSum(), avgLikeCount()-\u003egetAvg(); author price(null): getCount(), sumPrice()-\u003egetSum(), avgPrice()-\u003egetAvg() (docs/spec/dsl.md Reads: no read raises an error for an empty result; getSum is 0 and getAvg null when no value is left)",
       "calls": [
         "get",
         "getBySeq",

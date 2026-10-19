@@ -1,6 +1,6 @@
-// The DSN parameters of the TypeScript client and the MySQL TLS connection (docs/config.md): the DSN uses only the scheme's
+// The DSN parameters of the TypeScript client and the MySQL TLS connection (docs/spec/config.md): the DSN uses only the scheme's
 // parameters, and `ssl-mode=VERIFY_IDENTITY` with an absolute path `ssl-ca` is the only MySQL TLS
-// mode; any other parameter or mode is CONFIG. The connection cases use the DSNs of `make test-servers`:
+// mode; any other parameter or mode is CONFIG. The connection cases use the DSNs of `make orm-test-servers`:
 // ORM_TEST_MYSQL_TLS_DSN, ORM_TEST_MYSQL_TLS_OTHER_CA_DSN, and ORM_TEST_MYSQL_TLS_MISMATCH_DSN
 // are required, and the test fails if any of them is missing.
 // Usage: node packages/ts/tests/mysql_tls.mjs
@@ -62,7 +62,7 @@ caseTest('mysql_tls/connections', DATABASE, async ({ step }) => {
   const failures = [];
   const dsns = ['ORM_TEST_MYSQL_TLS_DSN', 'ORM_TEST_MYSQL_TLS_OTHER_CA_DSN', 'ORM_TEST_MYSQL_TLS_MISMATCH_DSN'].map(name => {
     const value = process.env[name];
-    if (!value) throw new Error(`${name} is not set; run make test-servers`);
+    if (!value) throw new Error(`${name} is not set; run make orm-test-servers`);
     return value;
   });
   const version = await sslVersion(dsns[0]);
@@ -79,10 +79,10 @@ caseTest('mysql_tls/connections', DATABASE, async ({ step }) => {
   check(failures);
 });
 // The session sql_mode that the client sets on every MySQL connection equals sql_mode.session of
-// tests/dsn/mysql-session.json, not the server default (docs/config.md "Runtime connection").
+// tests/dsn/mysql-session.json, not the server default (docs/spec/config.md "Runtime connection").
 caseTest('mysql_tls/session_sql_mode', DATABASE, async ({ step }) => {
   const dsn = process.env.ORM_TEST_MYSQL_DSN;
-  if (!dsn) throw new Error('ORM_TEST_MYSQL_DSN is not set; run make test-servers');
+  if (!dsn) throw new Error('ORM_TEST_MYSQL_DSN is not set; run make orm-test-servers');
   const vector = JSON.parse(await readFile(new URL('../../../tests/dsn/mysql-session.json', import.meta.url), 'utf8'));
   const db = await Db.connect(dsn);
   try {

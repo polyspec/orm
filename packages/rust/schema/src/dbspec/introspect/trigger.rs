@@ -49,7 +49,7 @@ impl Catalog {
 
 /// The setting line whose trigger set gives the same renderer output. None if there is none.
 /// Recognizes each setting by its own trigger name (the recomputed renderer name), and the trigger set must match the union of the recognized settings'
-/// renderer output, equal in both name and content, and returns those setting lines only then; otherwise None (docs/dialects.md
+/// renderer output, equal in both name and content, and returns those setting lines only then; otherwise None (docs/spec/dialects.md
 /// "Triggers"). A table that writes two settings together is the sum of the two outputs; it is not judged by count.
 fn trigger_setting(dialect: Dialect, t: &ITable, list: &[ITrigger]) -> Option<Vec<String>> {
     let names: BTreeMap<&str, &ITrigger> = list.iter().map(|tr| (tr.name.as_str(), tr)).collect();

@@ -1,5 +1,5 @@
 // Applies a plan chain to a database one step at a time, continues an interrupted plan or
-// rolls it back, and finalizes an applied plan (docs/plans.md "Apply"). The reference is the Go engine
+// rolls it back, and finalizes an applied plan (docs/spec/plans.md "Apply"). The reference is the Go engine
 // (engine/dbspec/apply.go); the lock, session settings, history table, steps, validation and effects
 // queries are the same as Go.
 import { present } from '../present.js';
@@ -22,7 +22,7 @@ export type DbspecApplyPostgresConnection = DbspecPostgresConnection;
 /** A node:sqlite database. */
 export type DbspecApplySqliteConnection = DbspecSqliteConnection;
 
-/** What apply, recover, rollback and finalize report (docs/plans.md "Apply"). */
+/** What apply, recover, rollback and finalize report (docs/spec/plans.md "Apply"). */
 export type DbspecApplyEventKind = 'plan' | 'rollback' | 'finalize' | 'irreversible' | 'statement' | 'applied' | 'verified' | 'done';
 
 /**
@@ -93,7 +93,7 @@ const SESSION_QUERIES: Readonly<Record<'mysql' | 'postgres', string>> = Object.f
   postgres: "SELECT pg_backend_pid(), EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND pid = pg_backend_pid() AND objsubid = 2"
     + ` AND classid = (hashtext('${HISTORY_TABLE}')::bigint & 4294967295)::oid AND objid = (hashtext(current_schema())::bigint & 4294967295)::oid)`,
 });
-// The maximum time a statement waits for another session's lock (the lock wait in docs/plans.md "Apply").
+// The maximum time a statement waits for another session's lock (the lock wait in docs/spec/plans.md "Apply").
 const LOCK_WAIT_SECONDS = 5;
 
 const APPLYING = 'applying';
@@ -713,7 +713,7 @@ type Connection = DbspecApplyMySqlConnection | DbspecApplyPostgresConnection | D
 /**
  * Applies, step by step and in chain order, the plans that the database has
  * not applied, up to their finalize steps, on one connection under the
- * dialect's lock (docs/plans.md "Apply"). A database that has applied the
+ * dialect's lock (docs/spec/plans.md "Apply"). A database that has applied the
  * whole chain is left unchanged. `now` gives the microseconds since the
  * epoch recorded in `applied_at` (as wallMicros returns them); `events`
  * receives each event. A failure rejects unchanged with a DbspecApplyError,
@@ -737,7 +737,7 @@ export async function applyPlans(connection: Connection, dialect: DbspecDialect,
 /**
  * Continues the interrupted plan forward from the catalog effect of the step
  * after its recorded one, up to applied, or to done for a finalizing plan
- * (docs/plans.md "Apply"). Without an interrupted plan nothing changes.
+ * (docs/spec/plans.md "Apply"). Without an interrupted plan nothing changes.
  * Failures are reported as for applyPlans.
  */
 export function recoverPlans(connection: DbspecApplyMySqlConnection, dialect: 'mysql', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
@@ -766,7 +766,7 @@ export async function recoverPlans(connection: Connection, dialect: DbspecDialec
 
 /**
  * Undoes the last plan of the history with its rollback statements down to
- * its first step and deletes its row (docs/plans.md "Apply"). An applied
+ * its first step and deletes its row (docs/spec/plans.md "Apply"). An applied
  * plan is checked for drift and NULL rows first; a step without rollback
  * stops it with an irreversible DbspecApplyError. Without a row nothing
  * changes. Failures are reported as for applyPlans.
@@ -820,7 +820,7 @@ export async function rollbackPlans(connection: Connection, dialect: DbspecDiale
 
 /**
  * Runs the finalize steps of every applied plan in chain order, dropping the
- * hidden tables and columns, and records the plans done (docs/plans.md
+ * hidden tables and columns, and records the plans done (docs/spec/plans.md
  * "Apply"). Failures are reported as for applyPlans.
  */
 export function finalizePlans(connection: DbspecApplyMySqlConnection, dialect: 'mysql', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;

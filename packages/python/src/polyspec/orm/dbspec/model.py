@@ -1,4 +1,4 @@
-# Data model of a parsed dbspec document (docs/dbspec.md). All values are treated as immutable.
+# Data model of a parsed dbspec document (docs/spec/dbspec.md). All values are treated as immutable.
 # A comment line (from `#` to the end of the line) attaches to the next line, and `closing_comments` belongs to the block's
 # closing brace or to the end of the document.
 from __future__ import annotations
@@ -55,7 +55,7 @@ RULES = (
 
 @dataclass(frozen=True)
 class DbspecPosition:
-    """One declaration position (docs/dbspec.md "Declaration positions"): its kind, its path of enclosing
+    """One declaration position (docs/spec/dbspec.md "Declaration positions"): its kind, its path of enclosing
     names and its own name, and the 1-based line and column (the column counts code points). Positions are
     never part of the document model."""
 
@@ -67,7 +67,7 @@ class DbspecPosition:
 
 @dataclass(frozen=True)
 class DbspecToken:
-    """One token of a text (docs/dbspec.md "Syntax analysis"): the 1-based line, the code points before the
+    """One token of a text (docs/spec/dbspec.md "Syntax analysis"): the 1-based line, the code points before the
     token on its line (start) and before the code point after it (end), and its class. `token_class` is
     the field of the `class` token: `class` is a Python keyword."""
 
@@ -79,7 +79,7 @@ class DbspecToken:
 
 @dataclass(frozen=True)
 class DbspecAnalysis:
-    """The parse result of a text, unchanged, and its tokens in source order (docs/dbspec.md
+    """The parse result of a text, unchanged, and its tokens in source order (docs/spec/dbspec.md
     "Syntax analysis"). The document and the positions are None on failure."""
 
     document: DbspecDocument | None

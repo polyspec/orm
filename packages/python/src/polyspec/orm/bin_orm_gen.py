@@ -2,7 +2,7 @@
 #
 #   orm-gen gen --set <dbspec-set.json> --out <directory> [--scan <file or directory>]... [--check]
 #
-# The document set is read from its set file (docs/dbspec.md "Document sets"). A set file with an
+# The document set is read from its set file (docs/spec/dbspec.md "Document sets"). A set file with an
 # error, or a listed file with a diagnostic, prints every error and diagnostic, exits with status 1
 # and writes nothing.
 import argparse

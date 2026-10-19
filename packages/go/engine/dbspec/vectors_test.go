@@ -23,7 +23,7 @@ type vectorFile struct {
 }
 
 // positionCase is a positions case of cases.json: the declaration positions that Parse returns for its main document
-// (docs/dbspec.md "Declaration positions").
+// (docs/spec/dbspec.md "Declaration positions").
 type positionCase struct {
 	ID        string
 	Documents map[string][]string
@@ -421,7 +421,7 @@ func TestInvalidVectors(t *testing.T) {
 }
 
 // TestPositionVectors requires Parse to return exactly the declaration positions of every positions case
-// (docs/dbspec.md "Declaration positions").
+// (docs/spec/dbspec.md "Declaration positions").
 func TestPositionVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	vectors := loadVectors(t)

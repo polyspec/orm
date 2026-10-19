@@ -1,5 +1,5 @@
-// The token classes of syntax analysis in the order of their table in docs/dbspec.md "Syntax analysis": the legend of
-// the language server's semantic tokens (docs/editor.md "Results").
+// The token classes of syntax analysis in the order of their table in docs/spec/dbspec.md "Syntax analysis": the legend of
+// the language server's semantic tokens (docs/spec/editor.md "Results").
 import type { DbspecTokenClass } from '@polyspec/orm/dbspec';
 
 export const TOKEN_CLASSES = ['keyword', 'type', 'name', 'setting', 'number', 'string', 'operator', 'punctuation', 'comment', 'word'] as const satisfies readonly DbspecTokenClass[];

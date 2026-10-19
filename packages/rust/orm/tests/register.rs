@@ -1,4 +1,4 @@
-//! Registration sends no statement to the database (docs/schema.md "Schema registration"). sqlx writes a log record with target `sqlx::query`
+//! Registration sends no statement to the database (docs/spec/schema.md "Schema registration"). sqlx writes a log record with target `sqlx::query`
 //! for each statement the connection sends, so this test installs a logger in the process that counts those records,
 //! and checks that `utils().schema().register` leaves no record in the case databases of SQLite, MySQL, and PostgreSQL.
 //! The same holds for a set that uses external documents (a member of contracts/fixtures/external): it does not read the database, and text that does not hash to the declared hash

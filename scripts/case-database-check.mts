@@ -25,7 +25,7 @@ const root = resolve(new URL('..', import.meta.url).pathname);
 // required is the value of an environment variable that the check needs; database checks never skip.
 function required(name: string): string {
   const value = process.env[name];
-  if (!value) throw new Error(`${name} is required; database checks never skip; run the test through its make target, which reads the environment of make test-servers`);
+  if (!value) throw new Error(`${name} is required; database checks never skip; run the test through its make target, which reads the environment of make orm-test-servers`);
   return value;
 }
 const mysqlDsn = required('ORM_TEST_MYSQL_DSN');

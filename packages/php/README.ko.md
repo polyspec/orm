@@ -3,7 +3,7 @@
 # orm — PHP 클라이언트
 
 PHP 클라이언트: PDO(`pdo_mysql`, `pdo_pgsql`, `pdo_sqlite`) 위의 생성 모델(`Polyspec\Orm\Tests\Model\Author`, …). 라이브러리가
-SQL을 직접 조립한다. 문장 모양마다 dbspec 문서 묶음의 runtime model(docs/dbspec.md)로 검증하고, 한 번 계획하며,
+SQL을 직접 조립한다. 문장 모양마다 dbspec 문서 묶음의 runtime model(docs/spec/dbspec.md)로 검증하고, 한 번 계획하며,
 크기가 제한된 process 내부 plan cache에 보관한다. 옆에서 실행되는 service나
 extension은 없다. PHP 8.4 이상. Version 0.0.18. DSN의 scheme이 PDO driver를 고르므로
 `composer.json`은 세 가지 중 어느 것도 require하지 않고 각각을 suggest한다. `scripts/php-without-mysql.sh`는
@@ -17,13 +17,13 @@ extension은 없다. PHP 8.4 이상. Version 0.0.18. DSN의 scheme이 PDO driver
   dbspec 문서(`Dbspec/`)에서 runtime model을 만들고, `Generator.php`는 그것을
   모델 class로 쓴다. `OrmGen.php`는 command line이다. `Dbspec/`는 또 문서 묶음의 문장을 render하고,
   database를 introspect하며, migration plan을 diff, apply, recover한다
-  (docs/plans.md). `Code.php`는 `docs/errors.yaml`에서 `orm-gen errors --lang php`가 생성하므로
+  (docs/spec/plans.md). `Code.php`는 `docs/spec/errors.yaml`에서 `orm-gen errors --lang php`가 생성하므로
   고치지 않는다.
 - `bin/orm-gen` — 모델 생성기이며 `vendor/bin/orm-gen`으로 설치된다.
 - `gen/` — `contracts/fixtures/bench/bench.dbs`의 생성 모델이고 namespace는 `Polyspec\Orm\Tests\Model`이다. 각 모델 class는
   runtime model의 자기 entity를 PHP 배열(`meta()`)로, 그리고 typed 컬럼 getter와
   setter를 가진다. 그 밖의 모든 method 이름(조건, join, relation, 컬럼, finder)은
-  호출할 때 `docs/dsl.md`의 문법으로 해석된다. orm은 생성 namespace를 autoload하지 않는다.
+  호출할 때 `docs/spec/dsl.md`의 문법으로 해석된다. orm은 생성 namespace를 autoload하지 않는다.
   runtime은 `gen/bootstrap.php`를 한 번 require해야 한다. 그것이 모델을
   생성한 문서 묶음의 manifest text와 `manifestHash`로 등록하고,
   schema 값 `schema()`와 연결 helper `connect()`를 정의한다.
@@ -48,7 +48,7 @@ vendor/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out src/
 ```
 
 schema가 바뀐 뒤 Composer script로 실행한다(`"scripts": {"orm-gen": "orm-gen gen --set
-contracts/fixtures/bench/dbspec-set.json --out src/Model --namespace Example\\Model"}`). set file이 묶음의 모든 문서를 나열한다(docs/dbspec.md "Document sets").
+contracts/fixtures/bench/dbspec-set.json --out src/Model --namespace Example\\Model"}`). set file이 묶음의 모든 문서를 나열한다(docs/spec/dbspec.md "Document sets").
 생성기는 diagnostic이 있는 문서 묶음과 모델 method와 겹치는 컬럼 이름을 거부하고,
 앞서 생성한 file을 바꿔 쓰며, `bootstrap.php`는 한 번 require해야 한다. `--check`를 주면 `gen`은 아무것도 쓰지 않고,
 최신이 아닌 출력 file마다 `differs:`, `missing:`, `extra:`를 출력하며, 줄을 출력하면
@@ -78,7 +78,7 @@ DSN scheme(`mysql://`, `postgres://`, `sqlite:///abs/path`)이 PDO driver를 고
 `timezone` parameter는 `+00:00`과 `UTC`만 받고, 다른 zone은 `CONFIG` 오류다. MySQL은
 `?socket=`, PostgreSQL은 `?host=`(socket directory)와 `?sslmode=`를 받는다.
 
-연결은 그 연결에 등록한 문서 묶음만 계획한다(docs/protocol.md). 생성 모델의 연결 helper
+연결은 그 연결에 등록한 문서 묶음만 계획한다(docs/spec/protocol.md). 생성 모델의 연결 helper
 `connect($dsn, $config)`는 `Orm::connectSchema`로 연결을 열고 그 묶음을 등록한다.
 `utils()->schema()->register($schema)`는 열린 연결에 묶음을 등록하고, `utils()->schema()->install($schema)`는
 설치하는 묶음을 등록한다. 등록은 database에서 아무것도 읽지 않으므로, 요청마다 연결을 여는 server는
@@ -88,7 +88,7 @@ DSN scheme(`mysql://`, `postgres://`, `sqlite:///abs/path`)이 PDO driver를 고
 `SCHEMA_HASH_MISMATCH`로 실패한다.
 
 `$db->subscribe(function (Polyspec\Orm\StatementEvent $e): void { … })`는 연결이 보내는 모든 문장의
-subscriber를 등록하고, 그것을 제거하는 closure를 돌려준다([statement event](../../docs/usage.ko.md#statement-events)). event는 `sql`, `binds`, `kind`, `tables`, 초 단위
+subscriber를 등록하고, 그것을 제거하는 closure를 돌려준다([statement event](../../docs/operations/usage.ko.md#statement-events)). event는 `sql`, `binds`, `kind`, `tables`, 초 단위
 `elapsed`, `transaction`(`?int`), `error`(`?OrmException`)를 가진다. secret bind는
 `"$SECRET"`로, SQLite clock bind는 `"$NOW"`로 읽힌다. clock bind는 client의 wall clock이며 UTC이고
 소수부 여섯 자리이며, 문장마다 한 번 읽는다. SQLite에서는 insert가 생략한 기본값 `now` 컬럼에도
@@ -110,14 +110,14 @@ deadlock이나 `Orm::transactionConflict()`는 closure를 최대 `retry`번 다�
 
 `Config(auditSource: fn (): array => [...])`는 연결의 audit record 값, 예를 들어 계정과 요청을 준다.
 `audit:`(컬럼 => 값)를 가진 transaction은 시작하기 전에 그것을 한 번 호출하고, 그 값과 이 값들로 audit record
-table의 행 하나를 insert한다. 둘이 겹치면 transaction의 값이 이긴다. transaction 안의 audit 대상 쓰기는 모두 그 행을 가리킨다(docs/usage.md).
+table의 행 하나를 insert한다. 둘이 겹치면 transaction의 값이 이긴다. transaction 안의 audit 대상 쓰기는 모두 그 행을 가리킨다(docs/operations/usage.md).
 
 ## Database
 - PostgreSQL plan은 `$n` placeholder를 가진다. 문장은 `?` 형식에서 prepare한다. boolean은
   `PARAM_BOOL`로, binary 값은 `PARAM_LOB`로 바인드한다.
 - SQLite는 정수를 `PARAM_INT`로, boolean을 0/1로 바인드한다. transaction 안의 row lock은
   `orm__row_lock` 행을 잡는다. 쓰기 transaction은 `BEGIN IMMEDIATE`로, 읽기 전용 transaction은
-  `BEGIN`으로 시작한다. 연결은 `busy_timeout`까지 lock을 기다린다(docs/config.md).
+  `BEGIN`으로 시작한다. 연결은 `busy_timeout`까지 lock을 기다린다(docs/spec/config.md).
 - host 단계(aes, hex, ip)는 바인드 전과 fetch 후에 적용한다. `tests/codec/`가
   바이트 단위로 검사한다.
 - `utils()->schema()->install($schema)`는 생성된 schema 값(`schema()`, `Polyspec\Orm\Schema`)을 받고,
@@ -134,7 +134,7 @@ table의 행 하나를 insert한다. 둘이 겹치면 transaction의 값이 이�
   check, trigger와 함께 만들고 바뀐 table의 audit trigger를 바꾸며, 만든
   table은 `table`로, 더한 컬럼은 `table.column`으로, 만든 index는
   `table.index`로 돌려준다. 그 밖의 모든 차이, 빠진 unique key도, 변경 전에
-  `SCHEMA_DIFFERS` 오류다(docs/schema.md "Adding tables and columns"). MySQL과
+  `SCHEMA_DIFFERS` 오류다(docs/spec/schema.md "Adding tables and columns"). MySQL과
   SQLite는 transaction 밖에서 더한다.
 
 ## 오류

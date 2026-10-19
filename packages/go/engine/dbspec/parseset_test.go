@@ -33,7 +33,7 @@ func TestParseSet(t *testing.T) {
 	}
 }
 
-// TestParseSetVectors runs the shared vectors of tests/dbspec/set-parse.json (docs/dbspec.md "Parsing a set"): the
+// TestParseSetVectors runs the shared vectors of tests/dbspec/set-parse.json (docs/spec/dbspec.md "Parsing a set"): the
 // name, the external mark, whether the text parsed and the rule, place and, when given, the message of each diagnostic.
 func TestParseSetVectors(t *testing.T) {
 	testcase.Start(t, testcase.Process)

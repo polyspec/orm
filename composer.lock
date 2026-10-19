@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e7a48724a664b86687425f9152877f98",
+    "content-hash": "75e19ef2e33d8e5d44633abe343ca71b",
     "packages": [
         {
             "name": "nikic/php-parser",
@@ -74,7 +74,7 @@
             "require": {
                 "ext-json": "*",
                 "ext-pcre": "*",
-                "php": ">=8.5"
+                "php": ">=8.4"
             },
             "suggest": {
                 "ext-ordered_json": "Native backend from the polyspec/ordered-json-extension PIE package"
@@ -95,7 +95,7 @@
             "dist": {
                 "type": "path",
                 "url": "packages/php",
-                "reference": "517d0f320bd80e142d1b42f5913f7e492c3f5cde"
+                "reference": "6d8045ccfed2c30197e2f945f31643b3d0362b81"
             },
             "require": {
                 "composer-runtime-api": "^2.2",
@@ -103,7 +103,7 @@
                 "ext-pdo": "*",
                 "ext-zlib": "*",
                 "nikic/php-parser": "^5.9.0",
-                "php": ">=8.5",
+                "php": ">=8.4",
                 "polyspec/ordered-json": "0.0.9",
                 "purrphp/yaml": "1.0.0-p1",
                 "symfony/yaml": "^8.1"
@@ -2575,11 +2575,11 @@
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
-        "php": ">=8.5"
+        "php": ">=8.4"
     },
     "platform-dev": {},
     "platform-overrides": {
-        "php": "8.5.0"
+        "php": "8.4.1"
     },
     "plugin-api-version": "2.9.0"
 }

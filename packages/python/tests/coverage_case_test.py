@@ -1,6 +1,6 @@
 # The unit test of the feature coverage case runner (packages/python/tests/coverage_case.py). The Python
 # coverage tests share the runner, so its change runs this test instead of every feature's coverage
-# (the helpers of contracts/features.json); make check runs the whole coverage.
+# (the helpers of contracts/features.json); make orm-check runs the whole coverage.
 # Usage: python packages/python/tests/coverage_case_test.py
 import contextlib
 import io

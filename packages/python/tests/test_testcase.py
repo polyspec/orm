@@ -104,10 +104,15 @@ class ReportTest(unittest.TestCase):
             rf"^test_skip \({name}test_skip\) \.\.\. skipped 'not here'$",
             rf"^\s*test_sub \({name}test_sub\) \(value=2\) \.\.\. FAIL$",
         ):
-            self.assertTrue(any(re.search(pattern, line) for line in report), (pattern, result.stderr))
+            self.assertTrue(
+                any(re.search(pattern, line) for line in report),
+                (pattern, result.stderr),
+            )
         self.assertIn("ValueError: broken", result.stderr)
         self.assertIn("(value=2)", result.stderr)
-        self.assertNotRegex(result.stdout + result.stderr, r"(?m)^(RUN|PASS|FAIL|SKIP|STEP) sample\.")
+        self.assertNotRegex(
+            result.stdout + result.stderr, r"(?m)^(RUN|PASS|FAIL|SKIP|STEP) sample\."
+        )
 
     def test_stalled_case_ends_the_process(self) -> None:
         result = run_sample("Stalled")

@@ -1,4 +1,4 @@
-//! Mermaid diagrams (docs/mermaid.md): [`export_mermaid`] writes a standard
+//! Mermaid diagrams (docs/spec/mermaid.md): [`export_mermaid`] writes a standard
 //! `erDiagram` from one document and [`import_mermaid`] reads one into a
 //! document, each with the list of what it leaves out.
 
@@ -19,7 +19,7 @@ fn report(dropped: &mut Vec<Unsupported>, kind: &str, table: &str, name: &str, r
 
 /// Writes `document` as a standard `erDiagram` and returns the text and what
 /// the diagram cannot hold, as `[kind, table, name]` in table, kind and name
-/// order (docs/mermaid.md, "Export").
+/// order (docs/spec/mermaid.md, "Export").
 pub fn export_mermaid(document: &Document) -> (String, Vec<Unsupported>) {
     let mut dropped = Vec::new();
     for u in &document.uses {
@@ -231,7 +231,7 @@ impl Entities {
 }
 
 /// Reads a standard `erDiagram` into the dbspec document `name` and returns
-/// it with what it does not carry over (docs/mermaid.md, "Import"). A line
+/// it with what it does not carry over (docs/spec/mermaid.md, "Import"). A line
 /// that does not follow the grammar is a `mermaid` diagnostic.
 pub fn import_mermaid(text: &str, name: &str) -> Result<(Document, Vec<Unsupported>), Vec<Diagnostic>> {
     let body = text.strip_suffix('\n').unwrap_or(text);

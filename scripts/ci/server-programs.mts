@@ -1,7 +1,7 @@
-// make install-server-programs installs, on the Linux runner of CI, the programs from which make test-servers starts the
+// make orm-install-server-programs installs, on the Linux runner of CI, the programs from which make orm-test-servers starts the
 // servers of the database checks, as it does locally: MySQL 8.4.11 from the Ubuntu packages, PostgreSQL 17 and PgBouncer
 // from the PostgreSQL apt repository, and ProxySQL 3.0.9 from its Ubuntu 24.04 arm64 package, checked by its sha256,
-// whose dependencies Ubuntu 26.04 provides. make test-servers finds mysqld at its package path /usr/sbin/mysqld on PATH.
+// whose dependencies Ubuntu 26.04 provides. make orm-test-servers finds mysqld at its package path /usr/sbin/mysqld on PATH.
 // The image loads an AppArmor profile for /usr/sbin/mysqld that allows only /var/lib/mysql; it is removed because the
 // servers keep their data in .runtime/servers. In a GitHub Actions job the PostgreSQL bin directory is added to GITHUB_PATH.
 import { spawnSync } from 'node:child_process';

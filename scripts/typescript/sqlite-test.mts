@@ -1,6 +1,6 @@
 // Runs the TypeScript model, dbspec runtime, schema set, add columns, clock, driver error and rollback integration tests on
 // SQLite, MySQL and PostgreSQL, the SQLite locking test and the MySQL TLS test; ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN
-// name test databases, and ORM_TEST_MYSQL_TLS_* the TLS server of make test-servers. The tests do not read one another's
+// name test databases, and ORM_TEST_MYSQL_TLS_* the TLS server of make orm-test-servers. The tests do not read one another's
 // results, so a failed test does not stop the next, and the script lists every failed test at the end.
 import { resolve } from 'node:path';
 import { keepAll, render, run, type Command } from '../check/commands.mts';

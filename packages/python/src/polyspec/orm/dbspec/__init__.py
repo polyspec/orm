@@ -1,4 +1,4 @@
-# dbspec: this repository's schema language (docs/dbspec.md). read_dbspec_file checks the signature
+# dbspec: this repository's schema language (docs/spec/dbspec.md). read_dbspec_file checks the signature
 # and reads the document file. parse_dbspec checks the document together with its declared document set,
 # emit_dbspec writes a parsed document in canonical form. dbspec_manifest produces the manifest text of the document set,
 # the schema text, and their hashes.

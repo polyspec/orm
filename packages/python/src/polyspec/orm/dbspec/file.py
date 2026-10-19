@@ -1,4 +1,4 @@
-# dbspec document file reader (docs/dbspec.md "Files"). Every tool that reads a file does so with this,
+# dbspec document file reader (docs/spec/dbspec.md "Files"). Every tool that reads a file does so with this,
 # and rejects a file without the signature before parsing.
 from __future__ import annotations
 

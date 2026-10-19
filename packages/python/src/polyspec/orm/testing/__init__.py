@@ -1,4 +1,4 @@
-# The test entry point of the Python client (docs/protocol.md "Test faults"). Because
+# The test entry point of the Python client (docs/spec/protocol.md "Test faults"). Because
 # [tool.setuptools.packages.find] in pyproject.toml leaves this package out of the distribution, the process imports it
 # only when the client's source tree (packages/python/src) is on the path. The package entry point
 # does not export it, so polyspec.orm does not export it.
@@ -37,7 +37,7 @@ def fail_next_statement(db: Db, code: str, message: str) -> None:
 
 def fix_clock(db: Db, clock: str) -> None:
     """Pins the executor clock of db's connection to the clock time. The clock is UTC text in the form `YYYY-MM-DD HH:MM:SS.ffffff`
-    (docs/protocol.md "Test clock"). A different form raises ValueError, and nothing is set."""
+    (docs/spec/protocol.md "Test clock"). A different form raises ValueError, and nothing is set."""
     if not isinstance(clock, str) or not re.fullmatch(
         r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{6}", clock
     ):
@@ -53,5 +53,5 @@ def fix_clock(db: Db, clock: str) -> None:
 
 def last_affected(db: Db) -> int | None:
     """The affected count of the last successful write on db's connection. If there was no successful write, it is None.
-    (docs/protocol.md "Test write result")."""
+    (docs/spec/protocol.md "Test write result")."""
     return _read_last_affected(db)

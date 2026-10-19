@@ -9,7 +9,7 @@ PHP, Rust, TypeScript, and Python; each runner executes it against the seeded be
 {"<vector>": {"statements": [{"sql": "...", "binds": [...], "kind": "...", "tables": [...], "transaction": 1, "error": null}], "result": ...}}
 ```
 
-Each statement is a statement event of the connection ([usage](../../docs/usage.md#statement-events)): every statement the runner's connection sends, with its kind, tables and error code; `transaction` is renumbered from 1 in the order of appearance within the vector and is null outside a transaction.
+Each statement is a statement event of the connection ([usage](../../docs/operations/usage.md#statement-events)): every statement the runner's connection sends, with its kind, tables and error code; `transaction` is renumbered from 1 in the order of appearance within the vector and is null outside a transaction.
 
 `check` compares JSON numbers as exact rational values and records their original
 decimal representation. It sorts object keys for readable output and compares
@@ -20,7 +20,7 @@ beyond 2^53 remain distinct; equivalent decimal forms compare equal.
 Duplicate object keys at any depth and a missing database expectation file are errors.
 The base and database expectation files require nonempty, unique vector names and exactly the same vector set. A missing or extra expectation name fails comparison and recording.
 The vectors `clock_truncate_write` and `clock_compare_six_digits` fix the executor clock through the test entry
-point of each client ([protocol](../../docs/protocol.md) 3.3): `check run` builds the Go runner with the tag
+point of each client ([protocol](../../docs/spec/protocol.md) 3.3): `check run` builds the Go runner with the tag
 `ormtest`, whose file `packages/go/internal/conformance/clock_ormtest.go` declares them, and the Rust runner's crate enables the feature
 `test-faults`; the TypeScript runner imports `dist/testing.js`, the PHP runner requires `testing/Faults.php`, and the
 Python runner imports `polyspec.orm.testing`.
@@ -41,11 +41,11 @@ The `write_cycle` expectation uses tagged styled-column values for
 ## Run
 
 ```sh
-make test-servers
+make orm-test-servers
 make conformance-check
 ```
 `make conformance-check` reads `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN` and
-`BENCH_SQLITE_DSN`, the bench databases of its run (`make check` or
+`BENCH_SQLITE_DSN`, the bench databases of its run (`make orm-check` or
 `make run-databases`), and runs
 
 ```sh
@@ -84,13 +84,13 @@ records only them.
 The make form of that selection is the variable `VECTOR`, a space-separated list
 of names, on the bench databases that `make run-databases` provisions for its
 run (scripts/check/databases.mts), since the server environment of
-`make test-servers` holds no bench database:
+`make orm-test-servers` holds no bench database:
 
 ```sh
-make test-servers
+make orm-test-servers
 make run-databases TARGETS=conformance-check VECTOR="creates_and_save write_cycle"
 make run-databases TARGETS=conformance-check RECORD=1
-make test-servers-stop
+make orm-test-servers-stop
 ```
 `conformance-check` passes `--vector NAME` for each name to `check run` (and so
 to the five runners and their comparison). With `RECORD=1`, a database whose

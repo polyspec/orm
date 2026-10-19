@@ -279,7 +279,7 @@ function fraction(digits: string | undefined, precision: number): string | undef
 }
 
 /**
- * Reads a date, time or datetime text in its value form (docs/dbspec.md
+ * Reads a date, time or datetime text in its value form (docs/spec/dbspec.md
  * "Runtime model"): `YYYY-MM-DD`, `HH:MM:SS` and `YYYY-MM-DD HH:MM:SS` with
  * p fraction digits. A datetime with an offset is converted to the connection
  * time zone. Returns undefined for any other value.
@@ -446,7 +446,7 @@ export class Db {
   private readonly auditSource: (() => Record<string, unknown>) | undefined;
   private readonly plans = new Map<string, Cached>();
   private readonly engines = new Map<string, Engine>();
-  // A markdown connection is not planned (docs/protocol.md §5), so it keeps only the models of the registered set, with no dialect engine.
+  // A markdown connection is not planned (docs/spec/protocol.md §5), so it keeps only the models of the registered set, with no dialect engine.
   private readonly markdownModels = new Map<string, RuntimeModel>();
   public readonly aesKey: string;
   public readonly blindIndexKey: string;
@@ -523,7 +523,7 @@ export class Db {
   }
 
   public [REGISTER](model: RuntimeModel): void {
-    // A markdown connection is not planned (docs/protocol.md §5), so it registers only the set, with no dialect engine.
+    // A markdown connection is not planned (docs/spec/protocol.md §5), so it registers only the set, with no dialect engine.
     if (this.md !== undefined) {
       if (!this.markdownModels.has(model.manifestHash)) this.markdownModels.set(model.manifestHash, model);
       return;
@@ -569,7 +569,7 @@ export class Db {
   }
 
   /**
-   * Throws CAPABILITY_UNSUPPORTED, which a SQL-only surface receives on a markdown connection (docs/dialects.md "Markdown IR
+   * Throws CAPABILITY_UNSUPPORTED, which a SQL-only surface receives on a markdown connection (docs/spec/dialects.md "Markdown IR
    * executor"). On other connections it does nothing.
    *
    * @internal
@@ -593,7 +593,7 @@ export class Db {
 
   /**
    * Returns a handle on the same connection whose hook receives each request of the handle right
-   * before it is planned (docs/usage.md "Request hook"). The hook returns the request to plan and adds
+   * before it is planned (docs/operations/usage.md "Request hook"). The hook returns the request to plan and adds
    * a parameter with addParam, which returns its index; the client then plans the request as any
    * other, so the planner validates what the hook changed. The handle keeps the signal of this
    * handle, and transactions started on it keep the hook for the models of their callback.
@@ -632,7 +632,7 @@ export class Db {
 
   /**
    * Registers subscriber for the event of every statement that the connection
-   * and every handle derived from it send (docs/usage.md "Statement events").
+   * and every handle derived from it send (docs/operations/usage.md "Statement events").
    * Subscribers run synchronously in registration order after the statement
    * ends and before the operation continues; one that throws fails the
    * operation with SUBSCRIBER. The returned function removes the subscription. A markdown connection sends no
@@ -861,7 +861,7 @@ export class Db {
   }
 
   /**
-   * Creates the SQLite row lock table outside a transaction, once, before the connection's first transaction (docs/usage.md
+   * Creates the SQLite row lock table outside a transaction, once, before the connection's first transaction (docs/operations/usage.md
    * "Statement events").
    */
   private async rowLockTable(): Promise<void> {
@@ -872,7 +872,7 @@ export class Db {
 
   /**
    * Takes one connection and opens the outer transaction. The transaction takes the connection's next number. Opening the transaction
-   * statement is docs/usage.md "Statement events". If it fails before BEGIN, the connection is closed so that settings left in the session
+   * statement is docs/operations/usage.md "Statement events". If it fails before BEGIN, the connection is closed so that settings left in the session
    * do not reach the next user; if it fails after BEGIN, the transaction is rolled back.
    */
   private async begin(options: BeginOptions): Promise<TxFrame> {
@@ -1183,7 +1183,7 @@ export class Db {
    * bind slots are resolved as a model statement's are: host styles, decimals, SQLite time values,
    * the AES key and key version, the clock and the audit of the transaction. A step that reads rows
    * (it has an assemble) and a param slot past PARAMS fail with IR_INVALID before any statement runs
-   * (docs/usage.md "Execute a compiled statement").
+   * (docs/operations/usage.md "Execute a compiled statement").
    */
   public async execute(step: PlanStep, params: readonly unknown[]): Promise<void> {
     const ex = resolve(this);

@@ -1,5 +1,5 @@
 # The SQL NULL of a styled column is read as StyledValue.sql_null() in root rows, join rows and relation rows,
-# and the value read can be passed as is to the setter to write it again (docs/codec.md "Value model": every getter returns
+# and the value read can be passed as is to the setter to write it again (docs/spec/codec.md "Value model": every getter returns
 # StyledValue, SqlNull reports SQL NULL; the same as TypeScript decode returning StyledValue.sqlNull()).
 import tempfile
 import unittest

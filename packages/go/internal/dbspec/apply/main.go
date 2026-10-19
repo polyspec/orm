@@ -1,6 +1,6 @@
 // Command go applies the chain of plans.json (tests/dbspec/plans.json; create-from-empty and
 // rename-table-and-column) to one database with the Go engine
-// (docs/plans.md "Apply"). action is one of the following:
+// (docs/spec/plans.md "Apply"). action is one of the following:
 //
 //   - apply-first: applies only the first plan of the chain.
 //   - apply: applies the whole chain.

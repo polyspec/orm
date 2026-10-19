@@ -1,4 +1,4 @@
-// Method names of models follow the chain grammar of docs/dsl.md. A name is
+// Method names of models follow the chain grammar of docs/spec/dsl.md. A name is
 // split into PascalCase words; column names never contain connector or
 // operator segments, so the split is unambiguous.
 import type { Entity, RuntimeModel } from './engine/model.js';

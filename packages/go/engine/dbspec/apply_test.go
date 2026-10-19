@@ -134,7 +134,7 @@ func TestEffectRequiresRow(t *testing.T) {
 }
 
 // TestRollbackRejectsRecordedStepOutsidePlan checks that when the step of an applied row is outside the plan's steps, rollback stops without reading the step
-// with a chain error (docs/plans.md "Apply").
+// with a chain error (docs/spec/plans.md "Apply").
 func TestRollbackRejectsRecordedStepOutsidePlan(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	start := time.Now()

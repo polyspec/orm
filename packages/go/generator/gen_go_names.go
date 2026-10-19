@@ -10,12 +10,12 @@ import (
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 )
 
-// Method names of generated models are parsed with the grammar of docs/dsl.md.
+// Method names of generated models are parsed with the grammar of docs/spec/dsl.md.
 // A name is split into PascalCase words; column names never contain the
 // connector and operator segments, so the split is unambiguous.
 
 // The method name grammar splits a column name into connector and operator words, so
-// a column name cannot contain the following words (docs/dsl.md §9). In addition to the dbspec name rules,
+// a column name cannot contain the following words (docs/spec/dsl.md §9). In addition to the dbspec name rules,
 // these are the rules the generator applies.
 var (
 	// reservedSegments cannot come as a segment split by underscore.

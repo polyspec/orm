@@ -1,0 +1,98 @@
+# Error codes shared by the planner and every executor. `orm-gen errors --lang go|php|php-extension|rust|typescript|python`
+# generates one constants file per language from this file; codes are the stable `error.code`.
+# origin: engine = raised while planning a request in the client process;
+#         executor = raised by the language runtime; driver = reported by the DB driver: the listed
+#         conditions map to their code, every other driver error maps to DRIVER; each keeps the
+#         driver message and the driver error as its cause.
+codes:
+  # ---- request ----
+  - code: VERSION_MISMATCH        # ir_version the engine does not speak
+    origin: engine
+  - code: SCHEMA_HASH_MISMATCH    # client generated from another dbspec document set than the engine loaded
+    origin: engine
+  - code: SCHEMA_INVALID          # the dbspec document set failed validation at load
+    origin: engine
+  - code: DIALECT_UNKNOWN
+    origin: engine
+  - code: IR_INVALID              # structural: missing fields, wrong combination, param index out of range
+    origin: engine
+  - code: CAPABILITY_UNSUPPORTED  # requested operation is not supported by the selected dialect
+    origin: engine
+  # ---- schema references ----
+  - code: ENTITY_UNKNOWN
+    origin: engine
+  - code: COLUMN_UNKNOWN
+    origin: engine
+  - code: RELATION_UNKNOWN
+    origin: engine
+  - code: INDEX_UNKNOWN           # force_index name not declared
+    origin: engine
+  - code: COLUMN_ALIAS_CONFLICT   # select<Col>As name collides with a column
+    origin: engine
+  # ---- predicates ----
+  - code: OPERATOR_UNKNOWN
+    origin: engine
+  - code: FUNCTION_UNKNOWN        # ORM function name outside the column or value function catalog
+    origin: engine
+  - code: OPERATOR_NOT_ALLOWED    # op not valid for the column's type/style (ir.OpAllowed)
+    origin: engine
+  - code: OR_AT_GROUP_START       # or() as the first item of a group
+    origin: engine
+  - code: EMPTY_IN                # in()/notIn() with no values
+    origin: engine
+  - code: ENTITY_NOT_JOINED       # joined placement or column reference to a join missing from this statement
+    origin: engine
+  - code: LIMIT_IN_RELATION       # limit() on a relation child (use limitPerParent)
+    origin: engine
+  # ---- executor ----
+  - code: NO_ROWS                # strict one-row query matched no row
+    origin: executor
+  - code: ROW_NOT_DELETED        # restoreOrCreate found its key on a row that is not deleted; nothing was written
+    origin: executor
+  - code: BATCH_TOO_LARGE        # a batch of creates binds more parameters than the dialect allows; names the batch, its bind count and the limit; nothing was written
+    origin: executor
+  - code: REVISION_CHANGED       # an update or delete given an expected revision found the row at another revision, or no row; nothing was written
+    origin: executor
+  - code: COLUMN_UNSELECTED      # a requested column was not included in the loaded row
+    origin: executor
+  - code: OPTIMISTIC_LOCK         # updateOptimistic matched no row (updated_ts changed)
+    origin: executor
+  - code: WRITE_CONFLICT          # a target changed since it was read, or a change since the read makes the transaction's writes other writes; names the file and line; the client never retries it
+    origin: executor
+  - code: CODEC_DECODE            # styled column bytes could not be decoded (docs/spec/codec.md)
+    origin: executor
+  - code: CODEC_ENCODE           # a parameter outside its slot's logical type, before any statement (kind, range, scale and precision, time precision, length, U+0000, uuid form), or a styled input that cannot be encoded, including SQL NULL for a non-null column (a NULL parameter assigned to a non-null column; raw SQL keeps DRIVER)
+    origin: executor
+  - code: CODEC_UNSUPPORTED       # PHP objects/references in serialize, unknown style
+    origin: executor
+  - code: CONFIG                  # missing secret, bad DSN/paths, transaction misuse
+    origin: executor
+  - code: CANCELED                # the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout); a lock wait of the markdown executor that ends is CANCELED too
+    origin: executor
+  - code: ROLLBACK                # a transaction or savepoint callback failed and its rollback failed too; the error keeps both errors
+    origin: executor
+  - code: FAULT                   # a test fault armed through the test entry point of the client reported the rollback of a transaction as failed after the rollback ran
+    origin: executor
+  - code: SUBSCRIBER              # a statement event subscriber of the connection failed; the operation fails with its error as the cause
+    origin: executor
+  - code: SCHEMA_DIFFERS          # addTablesAndColumns found a difference between the existing tables of a document set and the set other than a missing table, a missing column that is null or has a default or a missing index; a missing unique key is one, because it can fail on the existing rows
+    origin: executor
+  - code: INTERNAL
+    origin: executor
+  # ---- driver (mapped) ----
+  - code: LOCK_NOT_AVAILABLE      # a NOWAIT lock could not be acquired immediately
+    origin: driver
+  - code: DEADLOCK                # MySQL 1213 / SQLSTATE 40001 / PostgreSQL 40P01 / SQLite LOCKED; retries require TransactionOptions
+    origin: driver
+  - code: DUPLICATE_KEY           # MySQL 1062 / SQLSTATE 23000
+    origin: driver
+  - code: FOREIGN_KEY             # MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787, and SQLite 1811 "FOREIGN KEY constraint failed" of a RESTRICT action
+    origin: driver
+  - code: CONSTRAINT              # MySQL 3819/4025 / PostgreSQL 23514 / SQLite 275
+    origin: driver
+  - code: READ_ONLY               # a write rejected because the server or connection is read-only: MySQL 1290/1792 / PostgreSQL 25006 / SQLite 8 and its extended codes
+    origin: driver
+  - code: CONNECTION_LOST         # the server ended the connection or the connection broke (a killed session, a restart, an idle limit): MySQL 2006/2013/4031 / PostgreSQL SQLSTATE class 08 and 57P01/57P02/57P05, or a client library error on a connection that is no longer open; SQLite has no server connection
+    origin: driver
+  - code: DRIVER                  # any other driver error, such as a write that a trigger refuses: MySQL 1644 / PostgreSQL P0001 / SQLite 1811 of a trigger RAISE
+    origin: driver

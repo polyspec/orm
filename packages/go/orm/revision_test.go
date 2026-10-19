@@ -9,7 +9,7 @@ import (
 )
 
 // openRevision installs a table with a revision column in a new SQLite file and
-// creates one row at revision 3 (docs/dsl.md "Writes", expectRevision).
+// creates one row at revision 3 (docs/spec/dsl.md "Writes", expectRevision).
 func openRevision(t *testing.T) (*orm.DB, func() *orm.Core, int64) {
 	t.Helper()
 	s := documentSchema(t, "dbspec 1 revision\n\ntable note {\n  seq i64 identity\n  label varchar(32)\n  revision i64\n  primary key (seq)\n}\n")

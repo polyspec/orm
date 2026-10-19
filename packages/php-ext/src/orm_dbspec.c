@@ -1,7 +1,7 @@
 /*
  * Module of the orm_dbspec extension. It uses the arginfo generated from stubs/orm_dbspec.stub.php to
  * register the classes of Polyspec\Orm\Dbspec\Native, and implements their constructors, methods, and Dbspec's static methods the same as the PHP client (packages/php/src/Dbspec).
- * The arginfo generated from stubs/code.stub.php (orm-gen errors) registers Polyspec\Orm\Native\Code, the error codes of docs/errors.yaml.
+ * The arginfo generated from stubs/code.stub.php (orm-gen errors) registers Polyspec\Orm\Native\Code, the error codes of docs/spec/errors.yaml.
  */
 #include "dbspec.h"
 #include "ext/pdo/php_pdo_driver.h"
@@ -1601,7 +1601,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_SetDocument, __construct)
     init_array(ZEND_THIS, "diagnostics", diagnostics);
 }
 
-/* Dbspec::parseSet (docs/dbspec.md "Parsing a set"), the twin of the PHP client's: each text's name is the name the
+/* Dbspec::parseSet (docs/spec/dbspec.md "Parsing a set"), the twin of the PHP client's: each text's name is the name the
  * parser's header step reads; a text whose name an earlier text has is not parsed and carries `name.duplicate`;
  * every other text is parsed with the texts of all other named documents, an external one marked external. */
 ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, parseSet)

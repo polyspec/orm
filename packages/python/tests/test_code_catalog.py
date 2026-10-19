@@ -1,4 +1,4 @@
-# The generated error catalog of the Python client, polyspec/orm/codes.py, against docs/errors.yaml: every code of the
+# The generated error catalog of the Python client, polyspec/orm/codes.py, against docs/spec/errors.yaml: every code of the
 # catalog is a constant whose value is the code and whose comment is the note of the catalog, and the file holds no other
 # code.
 import re
@@ -13,7 +13,7 @@ CODES = ROOT / "packages" / "python" / "src" / "polyspec" / "orm" / "codes.py"
 
 
 def read_catalog() -> list[tuple[str, str]]:
-    """Read docs/errors.yaml, a flat list of "- code: X  # comment" lines each followed by "origin: Y", and return each
+    """Read docs/spec/errors.yaml, a flat list of "- code: X  # comment" lines each followed by "origin: Y", and return each
     code with the note that its generated constant carries: the origin, then ": " and the comment when it has one."""
     out: list[tuple[str, str]] = []
     comment = ""
@@ -27,7 +27,7 @@ def read_catalog() -> list[tuple[str, str]]:
             origin = text[len("origin:") :].strip()
             out[-1] = (out[-1][0], origin if comment == "" else f"{origin}: {comment}")
     if not out:
-        raise ValueError("docs/errors.yaml lists no codes")
+        raise ValueError("docs/spec/errors.yaml lists no codes")
     return out
 
 
@@ -44,12 +44,12 @@ class CodeCatalogTest(unittest.TestCase):
                 problems.append(f"codes.py has no constant for {code}")
             elif line.group(1) != note:
                 problems.append(
-                    f"codes.py {code}: {line.group(1)!r}, docs/errors.yaml: {note!r}"
+                    f"codes.py {code}: {line.group(1)!r}, docs/spec/errors.yaml: {note!r}"
                 )
         constants = re.findall(r'^\w+ = "\w+"$', source, re.M)
         if len(constants) != len(catalog):
             problems.append(
-                f"codes.py holds {len(constants)} codes, docs/errors.yaml {len(catalog)}"
+                f"codes.py holds {len(constants)} codes, docs/spec/errors.yaml {len(catalog)}"
             )
         self.assertEqual(
             problems,
@@ -62,11 +62,13 @@ class CodeCatalogTest(unittest.TestCase):
         from polyspec.orm import codes
 
         self.assertIn("codes", orm.__all__)
-        missing = [code for code, _ in read_catalog() if getattr(codes, code, None) != code]
+        missing = [
+            code for code, _ in read_catalog() if getattr(codes, code, None) != code
+        ]
         self.assertEqual(
             missing,
             [],
-            "polyspec.orm.codes lacks a constant whose value is the code of docs/errors.yaml",
+            "polyspec.orm.codes lacks a constant whose value is the code of docs/spec/errors.yaml",
         )
 
 

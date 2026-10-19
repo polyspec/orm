@@ -3,11 +3,11 @@
 // and compares the statements or errors. An execute case runs on a new case
 // database (case-database.mjs) for each of MySQL, PostgreSQL, and SQLite, installs the fixture, then compiles each step's request with that database's Engine
 // and runs it with Db.execute. At the end, it runs the file's read SQL over a native connection and
-// compares the load_probe rows (docs/usage.md "Execute a compiled statement"). Even if one dialect fails, the rest of the dialects
+// compares the load_probe rows (docs/operations/usage.md "Execute a compiled statement"). Even if one dialect fails, the rest of the dialects
 // still run, and all failures are reported.
 //
 // Usage: node packages/ts/tests/identity-load.mjs [case ...]
-// (after npm run typescript:build; it reads ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN of make test-servers)
+// (after npm run typescript:build; it reads ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN of make orm-test-servers)
 import { readFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { Db, Engine, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
@@ -28,7 +28,7 @@ const cases = doc.cases.filter(c => selected.length === 0 || selected.includes(c
 for (const c of cases) if (c.operation !== 'compile' && c.operation !== 'execute') throw new Error(`case ${c.id}: unknown operation ${c.operation}`);
 if (cases.some(c => c.operation === 'execute')) {
   for (const env of ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_POSTGRES_DSN']) {
-    if (!process.env[env]) throw new Error(`${env} is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers`);
+    if (!process.env[env]) throw new Error(`${env} is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers`);
   }
 }
 
@@ -109,7 +109,7 @@ function compileCase(c, dialect, step, problems) {
   else step(`${dialect}: ${plan.steps.length} statement(s) equal`);
 }
 
-/** The kind of a statement event: the SQL verb, and the ALTER of a MySQL identity restart is schema (docs/usage.md "Statement events"). */
+/** The kind of a statement event: the SQL verb, and the ALTER of a MySQL identity restart is schema (docs/operations/usage.md "Statement events"). */
 function eventKind(sql) {
   const kinds = { ALTER: 'schema', INSERT: 'insert', UPDATE: 'update', DELETE: 'delete', SELECT: 'select' };
   const verb = sql.split(' ', 1)[0];

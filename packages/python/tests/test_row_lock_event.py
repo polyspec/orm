@@ -1,5 +1,5 @@
 # The SQLite row lock statement names the row lock table in the tables of its statement event
-# (docs/usage.md "Statement events").
+# (docs/operations/usage.md "Statement events").
 import tempfile
 import unittest
 from pathlib import Path

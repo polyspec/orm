@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-// The shared syntax vectors (tests/dbspec/syntax.json, docs/dbspec.md "Syntax analysis"): a strict reader, and the
+// The shared syntax vectors (tests/dbspec/syntax.json, docs/spec/dbspec.md "Syntax analysis"): a strict reader, and the
 // analyses the vectors need, built as scripts/dbspec/syntax-vectors.mts builds them (vectorInputs). Shared by the PHP
 // client test and the extension test; every runtime matches the same tokens exactly.
 

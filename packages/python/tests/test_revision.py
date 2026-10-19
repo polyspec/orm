@@ -1,4 +1,4 @@
-# An update or delete with an expected revision (docs/dsl.md "Writes", expect_revision) on a SQLite file of each
+# An update or delete with an expected revision (docs/spec/dsl.md "Writes", expect_revision) on a SQLite file of each
 # case: a match updates and bumps the revision or deletes, a mismatch fails with REVISION_CHANGED and changes nothing.
 import tempfile
 import unittest
@@ -24,13 +24,25 @@ class RevisionTest(unittest.TestCase):
         cls.models = generate_document(str(cls.work / "models"), document)
 
     def setUp(self):
-        self.db = self.models.connect(f"sqlite://{self.work}/{self._testMethodName}.sqlite3")
+        self.db = self.models.connect(
+            f"sqlite://{self.work}/{self._testMethodName}.sqlite3"
+        )
         self.addCleanup(self.db.close)
         self.db.utils().schema().install(self.models.SCHEMA)
-        self.seq = self.models.Note().connect(self.db).set_label("first").set_revision(3).create().get_seq()
+        self.seq = (
+            self.models.Note()
+            .connect(self.db)
+            .set_label("first")
+            .set_revision(3)
+            .create()
+            .get_seq()
+        )
 
     def stored(self):
-        return [(row.get_label(), row.get_revision()) for row in self.models.Note().connect(self.db).gets()]
+        return [
+            (row.get_label(), row.get_revision())
+            for row in self.models.Note().connect(self.db).gets()
+        ]
 
     def code(self, fn):
         try:
@@ -40,21 +52,31 @@ class RevisionTest(unittest.TestCase):
         return None
 
     def test_update_match_bumps_the_revision(self):
-        self.models.Note().connect(self.db).set_seq(self.seq).set_label("second").expect_revision("revision", 3).update()
+        self.models.Note().connect(self.db).set_seq(self.seq).set_label(
+            "second"
+        ).expect_revision("revision", 3).update()
         self.assertEqual(self.stored(), [("second", 4)])
 
     def test_update_mismatch_changes_nothing(self):
         note = self.models.Note().connect(self.db).set_seq(self.seq).set_label("stale")
-        self.assertEqual(self.code(lambda: note.expect_revision("revision", 2).update()), codes.REVISION_CHANGED)
+        self.assertEqual(
+            self.code(lambda: note.expect_revision("revision", 2).update()),
+            codes.REVISION_CHANGED,
+        )
         self.assertEqual(self.stored(), [("first", 3)])
 
     def test_delete_match_deletes(self):
-        self.models.Note().connect(self.db).set_seq(self.seq).expect_revision("revision", 3).delete()
+        self.models.Note().connect(self.db).set_seq(self.seq).expect_revision(
+            "revision", 3
+        ).delete()
         self.assertEqual(self.stored(), [])
 
     def test_delete_mismatch_changes_nothing(self):
         note = self.models.Note().connect(self.db).set_seq(self.seq)
-        self.assertEqual(self.code(lambda: note.expect_revision("revision", 4).delete()), codes.REVISION_CHANGED)
+        self.assertEqual(
+            self.code(lambda: note.expect_revision("revision", 4).delete()),
+            codes.REVISION_CHANGED,
+        )
         self.assertEqual(self.stored(), [("first", 3)])
 
 

@@ -3,7 +3,7 @@
   "comment": "The owners of the paths are selected by scripts/features/owners.mts from contracts/check-inputs.json and contracts/features.json: the checks that need the database servers run with a bench and a decimal database of their own, which only that script creates. One rule hands every changed path to it.",
   "fullSuite": ["check-run"],
   "ciExempt": [
-    { "target": "feature-owner-check", "reason": "it runs the owners of the changed paths, each a target of CHECK_TARGETS; the CI workflow runs make check, which runs every target of CHECK_TARGETS, so a step of the selection would run them twice" }
+    { "target": "feature-owner-check", "reason": "it runs the owners of the changed paths, each a target of CHECK_TARGETS; the CI workflow runs make orm-check, which runs every target of CHECK_TARGETS, so a step of the selection would run them twice" }
   ],
   "owners": [
     { "paths": ["**"], "targets": ["feature-owner-check"], "variable": "PATHS" }

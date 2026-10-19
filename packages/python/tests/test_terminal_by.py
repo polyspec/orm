@@ -1,5 +1,5 @@
 # A terminal-by method (getCountBy<Column>) after other conditions joins its condition with AND
-# to them, as the chain of a query does (docs/usage.md "Terminal methods").
+# to them, as the chain of a query does (docs/operations/usage.md "Terminal methods").
 import tempfile
 import unittest
 from pathlib import Path

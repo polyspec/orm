@@ -1,6 +1,6 @@
 {
   "feature": "model_writes",
-  "rule": "docs/protocol.md \"Multi-row inserts\": creates(rows, batch) runs rows as batches in the given row order; each batch is batch rows, the last one the rows left when fewer, and each batch is one multi-row INSERT.",
+  "rule": "docs/spec/protocol.md \"Multi-row inserts\": creates(rows, batch) runs rows as batches in the given row order; each batch is batch rows, the last one the rows left when fewer, and each batch is one multi-row INSERT.",
   "cases": [
     {
       "id": "empty",

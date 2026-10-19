@@ -1,4 +1,4 @@
-# CI: every check of the repository. The job test runs make check, the targets
+# CI: every check of the repository. The job test runs make orm-check, the targets
 # of the local checks, against MySQL, PostgreSQL, and SQLite, with the common
 # interfaces and the hot-path regression check of the feature verification, the decoder
 # fuzz checks and the common state contracts of the conformance results, split
@@ -11,9 +11,9 @@
 # runs: on every push to main and on a manual run, never stopping at a failure, and
 # recording enough to fix every failure before the next run. A check it lacks
 # belongs in a target of CHECK_TARGETS, and make repo-check fails a step after
-# make check other than the summary and the report upload, and a group set that
+# make orm-check other than the summary and the report upload, and a group set that
 # omits or repeats a target of CHECK_TARGETS.
-# make test-servers starts the database servers and writes their DSNs, as it
+# make orm-test-servers starts the database servers and writes their DSNs, as it
 # does for the local checks. No step or job has timeout-minutes: every step
 # (a checkout, an install, a server start, a tool run or a whole suite) is a
 # long operation, which the runner logs line by line and judges by its exit
@@ -49,7 +49,7 @@ jobs:
     # needs of the targets of the group (contracts/check-inputs.json) as step
     # outputs, and a setup step runs only when the group needs what it
     # installs; make repo-check requires the condition of each step that
-    # scripts/check/ci-setup.mts declares. make check runs after all of them
+    # scripts/check/ci-setup.mts declares. make orm-check runs after all of them
     # and reads their results (ORM_CI_SETUP): a target that needs what a
     # failed or skipped step installs is recorded as not-run with that step,
     # and every other target runs. A failed step fails the job. The checkout
@@ -82,39 +82,39 @@ jobs:
         if: ${{ !cancelled() }}
         # The interface checks read the TypeScript declarations with the TypeScript 6 of packages/ts/testing/interfaces/typescript; it is
         # a second make, since a make that names other targets reads kit.mk, which install-packages installs.
-        run: make install-packages && make install-interfaces-typescript
+        run: make install-packages && make orm-install-interfaces-typescript
       - name: setup of the CI group
         id: group-needs
         if: ${{ !cancelled() }}
         run: make --no-print-directory ci-group-needs GROUP=${{ matrix.group }} >> "$GITHUB_OUTPUT"
-      # make check builds the lease program with Go in every group. make install-tools installs the tools of mise.toml
+      # make orm-check builds the lease program with Go in every group. make install-tools installs the tools of mise.toml
       # (Go, Python, uv, Composer, alint, govulncheck, cargo-audit) at the releases and digests of mise.lock.
       - name: tools of mise.toml
         id: go
         if: ${{ !cancelled() }}
         run: make install-tools
-      # make check runs go with GOPROXY=off; make install-go downloads the
+      # make orm-check runs go with GOPROXY=off; make orm-install-go downloads the
       # modules of go.work.
       - name: Go modules
         id: go-modules
         if: ${{ !cancelled() }}
-        run: make install-go
+        run: make orm-install-go
       # make markdown-conformance-check runs the Go client on the flowmark
-      # build that tests/markdown/flowmark.version pins; make install-flowmark
+      # build that tests/markdown/flowmark.version pins; make orm-install-flowmark
       # installs it.
       - name: flowmark build of tests/markdown/flowmark.version
         id: flowmark
         if: ${{ !cancelled() && steps.group-needs.outputs.flowmark == 'true' }}
-        run: make install-flowmark
+        run: make orm-install-flowmark
       - name: lowest Node release of the TypeScript client
         id: node-min
         if: ${{ !cancelled() && steps.group-needs.outputs.node-modules == 'true' }}
-        run: make install-node-min
+        run: make orm-install-node-min
       - name: Rust toolchain of rust-toolchain.toml
         id: rust
         if: ${{ !cancelled() && steps.group-needs.outputs.rust == 'true' }}
         # rustup installs the channel and components of rust-toolchain.toml.
-        run: make install-rust-toolchain
+        run: make orm-install-rust-toolchain
       - uses: Swatinem/rust-cache@v2
         id: rust-cache
         if: ${{ !cancelled() && steps.group-needs.outputs.rust == 'true' }}
@@ -123,18 +123,18 @@ jobs:
             packages/rust -> target
             benchmarks/rust -> target
             packages/rust/testing/interfaces -> target
-      # make check runs cargo offline on the crates of every Cargo.lock that make install-rust-crates downloads; it runs
+      # make orm-check runs cargo offline on the crates of every Cargo.lock that make orm-install-rust-crates downloads; it runs
       # after the cache is restored, since the restored registry replaces crates downloaded before it.
       - name: Rust crates
         id: rust-crates
         if: ${{ !cancelled() && steps.group-needs.outputs.rust == 'true' }}
-        run: make install-rust-crates
-      # make install-python builds the venv from the Python of mise.toml (the interpreter of make python-venv), so CI and a
+        run: make orm-install-rust-crates
+      # make orm-install-python builds the venv from the Python of mise.toml (the interpreter of make python-venv), so CI and a
       # local check use the same interpreter; setup-python is not used.
       - name: Python client dependencies
-        id: install-python
+        id: orm-install-python
         if: ${{ !cancelled() && steps.group-needs.outputs.python == 'true' }}
-        run: make install-python
+        run: make orm-install-python
       - name: lowest PHP release of the PHP client
         # make php-min-check runs the PHP client unit tests on the lowest release
         # of require.php in packages/php/composer.json; setup-php installs it
@@ -165,7 +165,7 @@ jobs:
       - name: install PHP dependencies
         id: composer
         if: ${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}
-        run: make install-php
+        run: make orm-install-php
       - name: tools of the PHP extension build
         id: php-extension-tools
         if: ${{ !cancelled() && steps.group-needs.outputs.php-extension-tools == 'true' }}
@@ -173,23 +173,23 @@ jobs:
         # the PHP extension orm_dbspec with phpize and check its arginfo with
         # gen_stub.php; scripts/ci/php-extension-tools.mts checks phpize and
         # php-config and installs gen_stub.php with its PHP-Parser.
-        run: make install-php-extension-tools
+        run: make orm-install-php-extension-tools
       - name: programs of the database servers
         id: server-programs
         if: ${{ !cancelled() && steps.group-needs.outputs.server-programs == 'true' }}
         # scripts/ci/server-programs.mts installs the programs from which make
-        # test-servers starts the servers.
-        run: make install-server-programs
+        # orm-test-servers starts the servers.
+        run: make orm-install-server-programs
       - name: database servers
         # The MySQL and PostgreSQL primaries and replicas, ProxySQL and PgBouncer,
         # the databases orm_test, orm_tools and orm_bench, and the environment
-        # file .runtime/servers/env that the database checks read. make check
+        # file .runtime/servers/env that the database checks read. make orm-check
         # records the targets that need the servers as not-run with this failure
         # and runs every other target.
         id: servers
         if: ${{ !cancelled() && steps.group-needs.outputs.databases == 'true' }}
-        run: make test-servers
-      - name: make check
+        run: make orm-test-servers
+      - name: make orm-check
         # The targets CI_TARGETS_<group> of the group through the runner of the
         # local checks, with its own bench and decimal databases when a target
         # needs them; make repo-check fails when the groups omit or repeat a
@@ -251,7 +251,7 @@ jobs:
         run: make install-packages
       # docs-verify-idempotent builds docs/.vitepress/dist twice and compares
       # every byte, and docs-check builds it and reads its pages and links
-      # with Node. make docs-ci runs the two through the runner of make check,
+      # with Node. make docs-ci runs the two through the runner of make orm-check,
       # also after a failed one, and writes the log of each and a summary to
       # the report of this run id, which the next step uploads whatever the
       # result.
@@ -271,7 +271,7 @@ jobs:
           if-no-files-found: error
 
   # The VS Code integration test of the dbspec extension: the editor fixtures through
-  # vscode.provideDocumentSemanticTokens inside the VS Code that make install-vscode installs (kit's installer, at the
+  # vscode.provideDocumentSemanticTokens inside the VS Code that make orm-install-vscode installs (kit's installer, at the
   # minimum release of packages/dbspec-vscode). VS Code needs a display, so the test runs on a virtual X server.
   editor:
     runs-on: ubuntu-26.04-arm
@@ -297,15 +297,15 @@ jobs:
         id: go
         if: ${{ !cancelled() }}
         run: make install-tools
-      # make check runs go with GOPROXY=off; make install-go downloads the modules of go.work for the lease program.
+      # make orm-check runs go with GOPROXY=off; make orm-install-go downloads the modules of go.work for the lease program.
       - name: Go modules
         id: go-modules
         if: ${{ !cancelled() }}
-        run: make install-go
+        run: make orm-install-go
       - name: VS Code of the integration test
         id: vscode
         if: ${{ !cancelled() }}
-        run: make install-vscode
+        run: make orm-install-vscode
       - name: VS Code integration test
         id: integration
         if: ${{ !cancelled() }}

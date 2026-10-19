@@ -1,5 +1,5 @@
 // Format of contracts/interfaces.json (the common interface manifest) and its own checks: manifest structure, component methods and
-// the correspondence of rules, the prohibited symbol list, error labels, and the code list of docs/errors.yaml.
+// the correspondence of rules, the prohibited symbol list, error labels, and the code list of docs/spec/errors.yaml.
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { parse as parseYaml } from 'yaml';
@@ -98,7 +98,7 @@ export function validateManifest(m: Manifest): void {
 }
 
 /**
- * checkComponentMethods makes the component diagram (docs/interfaces-model.md) and the rules have the same methods: the public component's
+ * checkComponentMethods makes the component diagram (docs/spec/interfaces-model.md) and the rules have the same methods: the public component's
  * method is common API only through its rule, so a method with no rule is compared with no language, and no public component may leave out
  * a method. A method's rule is common API the diagram omitted. A component marked internal states why each client implements that method privately, without a common signature, in both languages,
  * so that method has no rule.
@@ -137,9 +137,9 @@ export function validateProhibitions(prohibited: string[]): void {
   if (!seen.has('multi_statement')) throw new Error('interface manifest must prohibit multi_statement');
 }
 
-/** readErrorCatalog is the code list of docs/errors.yaml. A code is an uppercase name and is not duplicated. */
+/** readErrorCatalog is the code list of docs/spec/errors.yaml. A code is an uppercase name and is not duplicated. */
 export function readErrorCatalog(root: string): Set<string> {
-  const document: unknown = parseYaml(readFileSync(join(root, 'docs/errors.yaml'), 'utf8'));
+  const document: unknown = parseYaml(readFileSync(join(root, 'docs/spec/errors.yaml'), 'utf8'));
   const entries: unknown[] = document !== null && typeof document === 'object' && 'codes' in document && Array.isArray(document.codes) ? document.codes : [];
   if (entries.length === 0) throw new Error('error catalog has no codes');
   const codes = new Set<string>();

@@ -9,7 +9,7 @@ import (
 )
 
 // caseClock measures a case's wall-clock time and the CPU time of the OS thread that ran the case
-// together. A test's time limit on its own computation is measured in CPU time (docs/dbspec.md,
+// together. A test's time limit on its own computation is measured in CPU time (docs/spec/dbspec.md,
 // "Verification"). On a shared machine wall-clock time includes the time spent waiting while other processes use the CPU,
 // so it does not measure what the code did. Process CPU time includes the time of parallel work on other cores,
 // and garbage collector worker time too, so, as with the Rust and TypeScript clients, it measures the case's thread.

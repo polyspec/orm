@@ -21,7 +21,7 @@ function errorText(error: unknown): string {
 
 /**
  * Reports the cause that ended the transaction or savepoint, and a failed rollback, as a single ROLLBACK error
- * (docs/interfaces.md). cause is the cause, and rollback is the rollback error. A ROLLBACK error is not retried.
+ * (docs/spec/interfaces.md). cause is the cause, and rollback is the rollback error. A ROLLBACK error is not retried.
  */
 export function rollbackFailed(cause: unknown, rollback: unknown): OrmError {
   return new OrmError(codes.ROLLBACK, `transaction failed (${errorText(cause)}) and rollback failed (${errorText(rollback)})`, cause, rollback);

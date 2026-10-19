@@ -1,5 +1,5 @@
 // The server: declares its capabilities and answers every request from the analysis of the current state. A document's
-// set comes from set resolution (docs/editor.md "Set resolution") on the Node file system, where an open buffer wins
+// set comes from set resolution (docs/spec/editor.md "Set resolution") on the Node file system, where an open buffer wins
 // over the disk; a change of any open buffer or of a watched file analyzes every open document again, so a document
 // whose set holds the changed file is never stale.
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -57,7 +57,7 @@ export function startServer(connection: Connection): void {
         const resolved = resolveSet(path, host);
         if (resolved.set === null) {
           // The set is not resolved: its errors are shown, and the document is analyzed alone, so its use lines report
-          // their diagnostic beside them (docs/editor.md "Set resolution").
+          // their diagnostic beside them (docs/spec/editor.md "Set resolution").
           for (const e of resolved.errors) void connection.sendNotification('window/showMessage', { type: MessageType.Error, message: `${e.rule}: ${e.message}` });
         } else {
           set = resolved.set;

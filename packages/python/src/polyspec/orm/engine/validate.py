@@ -77,7 +77,10 @@ class _Validator:
     def params(self, ps) -> None:
         for i in ps or []:
             if not _is_safe(i) or i >= self.n:
-                _fail(codes.IR_INVALID, f"param index {i} out of range (n_params {self.n})")
+                _fail(
+                    codes.IR_INVALID,
+                    f"param index {i} out of range (n_params {self.n})",
+                )
 
     def entity(self, name: str) -> Entity:
         entity = entity_of(self.m, name)
@@ -97,7 +100,8 @@ class _Validator:
         ]
         if sum(1 for present, _ in given if present) != 1:
             _fail(
-                codes.IR_INVALID, f"set {a['column']}: exactly one of p/null/plus_p/minus_p"
+                codes.IR_INVALID,
+                f"set {a['column']}: exactly one of p/null/plus_p/minus_p",
             )
         if a.get("null") and not c.nullable:
             _fail(
@@ -201,10 +205,13 @@ class _Validator:
             if j["kind"] not in ("inner", "left"):
                 _fail(codes.IR_INVALID, f'join kind "{j["kind"]}"')
             if j["rel"] == "" or j["rel"] in joined:
-                _fail(codes.IR_INVALID, f'join name "{j["rel"]}" is empty or used twice')
+                _fail(
+                    codes.IR_INVALID, f'join name "{j["rel"]}" is empty or used twice'
+                )
             if not j.get("left") or not j.get("right") or "query" not in j:
                 _fail(
-                    codes.IR_INVALID, f"join {j['rel']}: left, right and query are required"
+                    codes.IR_INVALID,
+                    f"join {j['rel']}: left, right and query are required",
                 )
             target = self.entity(j["query"]["entity"])
             if field_of(ent, j["left"]) is None:
@@ -285,7 +292,9 @@ class _Validator:
                 lefts.add(k["left"])
                 rights.add(k["right"])
             if relation["query"].get("limit"):
-                _fail(codes.LIMIT_IN_RELATION, f"{relation['rel']}: use limit_per_parent")
+                _fail(
+                    codes.LIMIT_IN_RELATION, f"{relation['rel']}: use limit_per_parent"
+                )
             if relation["query"].get("flatten") and kind != "one":
                 _fail(
                     codes.IR_INVALID,
@@ -299,7 +308,8 @@ class _Validator:
             if_parent = relation["query"].get("if_parent")
             if if_parent is not None and field_of(ent, if_parent["column"]) is None:
                 _fail(
-                    codes.COLUMN_UNKNOWN, f"{q['entity']}.{if_parent['column']} (if_parent)"
+                    codes.COLUMN_UNKNOWN,
+                    f"{q['entity']}.{if_parent['column']} (if_parent)",
                 )
             scope = self.scopes(relation["query"])
             self.query(
@@ -308,7 +318,7 @@ class _Validator:
                 False,
                 True,
             )
-        # An empty key_by is absent, as an omitted one is (docs/protocol.md 1.2).
+        # An empty key_by is absent, as an omitted one is (docs/spec/protocol.md 1.2).
         if q.get("key_by") not in (None, ""):
             key_column = field_of(ent, q["key_by"])
             if key_column is None:
@@ -349,7 +359,8 @@ class _Validator:
             # The request's own query is the only one that may group: a join, a relation and a subquery have an outer.
             if is_join or is_relation or at["outer"] is not None:
                 _fail(
-                    codes.IR_INVALID, "group_by is only valid on the request's root query"
+                    codes.IR_INVALID,
+                    "group_by is only valid on the request's root query",
                 )
             # An order item of a grouped query sorts the groups: only a group column (or random) has a value per group.
             for o in q.get("order") or []:
@@ -396,7 +407,8 @@ class _Validator:
             ]
             if len(present) != 1:
                 _fail(
-                    codes.IR_INVALID, "where item must be exactly one of pred/group/joined"
+                    codes.IR_INVALID,
+                    "where item must be exactly one of pred/group/joined",
                 )
             conn = present[0].get("conn") or ""
             if conn not in ("", "and", "or"):
@@ -406,7 +418,8 @@ class _Validator:
             # The first item of a group has no preceding sibling, so it does not have conn.
             if i == 0 and conn != "":
                 _fail(
-                    codes.IR_INVALID, f'the first item of a group takes no conn ("{conn}")'
+                    codes.IR_INVALID,
+                    f'the first item of a group takes no conn ("{conn}")',
                 )
             if item.get("joined"):
                 if item["joined"]["join"] not in joined:
@@ -447,7 +460,9 @@ class _Validator:
             if not ps:
                 _fail(codes.EMPTY_IN, f"{ent.name}({','.join(cols)})")
             if len(ps) % len(cols) != 0:
-                _fail(codes.IR_INVALID, f"{op}: {len(ps)} values for {len(cols)} columns")
+                _fail(
+                    codes.IR_INVALID, f"{op}: {len(ps)} values for {len(cols)} columns"
+                )
             return
         if p.get("cols") or []:
             _fail(codes.IR_INVALID, "cols is only valid with tuple_in or tuple_not_in")
@@ -546,7 +561,8 @@ class _Validator:
             _fail(codes.FUNCTION_UNKNOWN, f["name"])
         if c.type not in types:
             _fail(
-                codes.OPERATOR_NOT_ALLOWED, f"{f['name']} on {ent.name}.{c.name} ({c.type})"
+                codes.OPERATOR_NOT_ALLOWED,
+                f"{f['name']} on {ent.name}.{c.name} ({c.type})",
             )
         if len(f.get("ps") or []) != column_function_arity[f["name"]]:
             _fail(
@@ -573,7 +589,8 @@ class _Validator:
                 _fail(codes.COLUMN_UNKNOWN, f"{ent.name}.{column}")
             if c.type not in NUMERIC_TYPES:
                 _fail(
-                    codes.OPERATOR_NOT_ALLOWED, f"{agg} on {ent.name}.{column} ({c.type})"
+                    codes.OPERATOR_NOT_ALLOWED,
+                    f"{agg} on {ent.name}.{column} ({c.type})",
                 )
         elif agg == "count":
             if not scalar:
@@ -594,14 +611,20 @@ class _Validator:
             or (query.get("limit") and not scalar_column)
         ):
             _fail(
-                codes.IR_INVALID, "subquery may not use limit, relations, lock or columns"
+                codes.IR_INVALID,
+                "subquery may not use limit, relations, lock or columns",
             )
         if scalar_column:
             if not query.get("limit") or query["limit"]["count"] != 1:
-                _fail(codes.IR_INVALID, "a scalar column subquery needs limit with count 1")
+                _fail(
+                    codes.IR_INVALID,
+                    "a scalar column subquery needs limit with count 1",
+                )
             order = query.get("order") or []
             if any(o.get("random") for o in order):
-                _fail(codes.IR_INVALID, "a scalar column subquery may not order by random")
+                _fail(
+                    codes.IR_INVALID, "a scalar column subquery may not order by random"
+                )
             for pk in ent.primary_key:
                 if not any(o.get("column") == pk and not o.get("fn") for o in order):
                     _fail(
@@ -619,7 +642,9 @@ def _joined_refs(g: dict, seen: set) -> None:
     for item in g["items"]:
         if item.get("joined"):
             if item["joined"]["join"] in seen:
-                _fail(codes.IR_INVALID, f"joined {item['joined']['join']} is placed twice")
+                _fail(
+                    codes.IR_INVALID, f"joined {item['joined']['join']} is placed twice"
+                )
             seen.add(item["joined"]["join"])
         if item.get("group"):
             _joined_refs(item["group"], seen)
@@ -661,7 +686,7 @@ def conflict_key(ent: Entity, assignments) -> list:
     return columns
 
 
-# The member types of every request record (docs/protocol.md): int, string, bool, list<T>, map<T>, or a
+# The member types of every request record (docs/spec/protocol.md): int, string, bool, list<T>, map<T>, or a
 # record name. The table is the same as PHP's Validator::RECORDS and the fields of Go's ir.Request.
 _QUERY_SHAPE = {
     "entity": "string",
@@ -753,7 +778,9 @@ _RECORDS = {
 def _shape(record: str, value, path: str) -> None:
     """Refuses an unknown member and a member of the wrong type with IR_INVALID, like a strict decoder."""
     if not isinstance(value, dict):
-        _fail(codes.IR_INVALID, f"{path}: object required" if path else "object required")
+        _fail(
+            codes.IR_INVALID, f"{path}: object required" if path else "object required"
+        )
     fields = _RECORDS[record]
     for key, member in value.items():
         if key not in fields:
@@ -795,7 +822,8 @@ def validate(m: RuntimeModel, r: dict) -> None:
     _shape("Request", r, "")
     if r.get("ir_version") != IR_VERSION:
         _fail(
-            codes.VERSION_MISMATCH, f"ir_version {r.get('ir_version')}, engine {IR_VERSION}"
+            codes.VERSION_MISMATCH,
+            f"ir_version {r.get('ir_version')}, engine {IR_VERSION}",
         )
     if r.get("manifest_hash") != m.manifest_hash:
         _fail(
@@ -804,7 +832,7 @@ def validate(m: RuntimeModel, r: dict) -> None:
         )
     if r["kind"] not in _KINDS:
         _fail(codes.IR_INVALID, f'unknown kind "{r["kind"]}"')
-    # A table of an external document is written only by the set that owns it (docs/dbspec.md "External documents").
+    # A table of an external document is written only by the set that owns it (docs/spec/dbspec.md "External documents").
     target = entity_of(m, r.get("entity", ""))
     if (
         target is not None
@@ -858,7 +886,8 @@ def validate(m: RuntimeModel, r: dict) -> None:
                 a.get("plus_p") is not None or a.get("minus_p") is not None
             ):
                 _fail(
-                    codes.IR_INVALID, f"insert cannot assign {a['column']} by plus or minus"
+                    codes.IR_INVALID,
+                    f"insert cannot assign {a['column']} by plus or minus",
                 )
             # The key is the table's own. A restore checks its set with its key below.
             if r["kind"] == "update":
@@ -867,7 +896,9 @@ def validate(m: RuntimeModel, r: dict) -> None:
                     _fail(codes.IR_INVALID, f"cannot update {a['column']}")
     if r.get("rows"):
         if r["kind"] != "insert" or r.get("on_duplicate"):
-            _fail(codes.IR_INVALID, "rows are only valid on insert without on_duplicate")
+            _fail(
+                codes.IR_INVALID, "rows are only valid on insert without on_duplicate"
+            )
         for a in r.get("set") or []:
             if "p" not in a:
                 _fail(
@@ -909,7 +940,7 @@ def validate(m: RuntimeModel, r: dict) -> None:
 
 
 def restore_key(ent: Entity, r: dict) -> dict:
-    """The parts of the statement of a restore request (docs/protocol.md 1.5), picked after the request
+    """The parts of the statement of a restore request (docs/spec/protocol.md 1.5), picked after the request
     hook. The set values with a parameter and the eq conditions with a parameter that the where joins with
     and give columns their values; the key is the primary key when they cover it, otherwise the first unique
     key in name order that they cover. A set value of a key column becomes a condition, every other set value
@@ -917,7 +948,9 @@ def restore_key(ent: Entity, r: dict) -> dict:
     names at most one row. It returns {'key': the key, 'where': the where with an eq condition for each set
     value of a key column, 'set': the new values}."""
     if ent.soft_delete == "":
-        _fail(codes.IR_INVALID, f"restore of {ent.name}, which has no soft_delete setting")
+        _fail(
+            codes.IR_INVALID, f"restore of {ent.name}, which has no soft_delete setting"
+        )
     items = list((r.get("where") or {}).get("items") or [])
     valued = set()
     for i, item in enumerate(items):

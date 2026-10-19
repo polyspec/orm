@@ -1,5 +1,5 @@
 # markdown IR executor: a markdown:// DSN connection sends IR requests to the flowmark server and assembles the answer rows into models
-# (docs/protocol.md §5 "IR executors", docs/dialects.md "Markdown IR executor"). The rules are the same as the Go client's markdown.go.
+# (docs/spec/protocol.md §5 "IR executors", docs/spec/dialects.md "Markdown IR executor"). The rules are the same as the Go client's markdown.go.
 # The Python client uses one server connection, as SQL connections do.
 from __future__ import annotations
 
@@ -74,7 +74,7 @@ def parse_markdown_dsn(url) -> MarkdownDsn:
 
 
 def unsupported_on_markdown(db, surface: str) -> None:
-    """Raises the error that SQL-only surfaces receive on a markdown connection (docs/dialects.md "Markdown IR executor"). On other
+    """Raises the error that SQL-only surfaces receive on a markdown connection (docs/spec/dialects.md "Markdown IR executor"). On other
     connections it does nothing."""
     if db.driver == "markdown":
         raise OrmError(
@@ -112,7 +112,9 @@ class MdSession:
         try:
             line = _plain(msg)
         except (TypeError, ValueError) as error:
-            raise OrmError(codes.INTERNAL, f"writing the message: {error}", error) from None
+            raise OrmError(
+                codes.INTERNAL, f"writing the message: {error}", error
+            ) from None
         try:
             answer = self.exchange(line.encode("utf-8") + b"\n")
         except OSError as error:
@@ -427,7 +429,7 @@ class MdNode:
             values.append(answer_value(col["type"], value, f"{self.ent.name}.{name}"))
         from polyspec.orm.database import _decode_assembly
 
-        # The corpus catalog rejects aes columns, so there is no keyring (docs/dialects.md).
+        # The corpus catalog rejects aes columns, so there is no keyring (docs/spec/dialects.md).
         _decode_assembly(values, {"columns": columns, "children": []}, db)
         values.append(links)
         return values
@@ -573,7 +575,7 @@ def markdown_links(row: list) -> MdLinks:
 
 def begin_message(read_only: bool) -> dict:
     """The begin control message of a transaction: a read-only transaction sends read_only true, any other leaves the
-    member out (docs/protocol.md section 5 Session, the control cases of tests/bind/vectors.json)."""
+    member out (docs/spec/protocol.md section 5 Session, the control cases of tests/bind/vectors.json)."""
     return {"op": "begin", "read_only": True} if read_only else {"op": "begin"}
 
 

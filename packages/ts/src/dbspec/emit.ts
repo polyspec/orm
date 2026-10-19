@@ -1,4 +1,4 @@
-// Canonical dbspec emission (docs/dbspec.md, "Canonical form"). A comment
+// Canonical dbspec emission (docs/spec/dbspec.md, "Canonical form"). A comment
 // takes the indentation of the line it attaches to; a comment before a
 // closing brace takes the indentation of the block's lines.
 import type {
@@ -45,7 +45,7 @@ function sorted<T>(items: readonly T[], key: (item: T) => string): T[] {
 /**
  * What an emission writes: the canonical text, the manifest text without
  * comments and diagrams, or the schema text that also keeps only the schema
- * settings (docs/dbspec.md, "Manifest and hashes").
+ * settings (docs/spec/dbspec.md, "Manifest and hashes").
  */
 export type View = 'canonical' | 'manifest' | 'schema';
 

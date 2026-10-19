@@ -27,7 +27,11 @@ def docstring_entries(source: str):
         if not body:
             continue
         first = body[0]
-        if not (isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant) and isinstance(first.value.value, str)):
+        if not (
+            isinstance(first, ast.Expr)
+            and isinstance(first.value, ast.Constant)
+            and isinstance(first.value.value, str)
+        ):
             continue
         start_line, start_col = first.value.lineno, first.value.col_offset
         end_line, end_col = first.value.end_lineno, first.value.end_col_offset
@@ -35,7 +39,7 @@ def docstring_entries(source: str):
             text = lines[start_line - 1][start_col:end_col]
         else:
             parts = [lines[start_line - 1][start_col:]]
-            parts += lines[start_line:end_line - 1]
+            parts += lines[start_line : end_line - 1]
             parts.append(lines[end_line - 1][:end_col])
             text = "\n".join(parts)
         yield start_line, start_col, text
@@ -48,7 +52,9 @@ def comments_of(path: str):
     entries = []
     for token in tokenize.tokenize(io.BytesIO(data).readline):
         if token.type == tokenize.COMMENT:
-            entries.append({"line": token.start[0], "col": token.start[1], "text": token.string})
+            entries.append(
+                {"line": token.start[0], "col": token.start[1], "text": token.string}
+            )
     for line, col, text in docstring_entries(source):
         entries.append({"line": line, "col": col, "text": text})
     entries.sort(key=lambda entry: (entry["line"], entry["col"]))

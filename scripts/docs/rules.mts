@@ -150,7 +150,7 @@ const runnersFromProfile = /export const requiredLanguages = clientLanguages\(\)
 if (!runnersFromProfile && JSON.stringify([...clients].sort()) !== JSON.stringify([...runners].sort()))
   fail('docs.implementation-count', `tests/conformance/check/main.mts requiredLanguages (${runners.join(', ')}) differs from the client profile of config/parity.json (${clients.join(', ')})`);
 const numberWords: Record<string, number> = { two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
-const koreanNumbers: Record<string, number> = { 두: 2, 세: 3, 네: 4, 다섯: 5, 여섯: 6, 일곱: 7, 여덟: 8, 아홉: 9, 열: 10 };
+const koreanNumbers: Record<string, number> = { '두': 2, '세': 3, '네': 4, '다섯': 5, '여섯': 6, '일곱': 7, '여덟': 8, '아홉': 9, '열': 10 };
 const countedEnglish = /\b(two|three|four|five|six|seven|eight|nine|ten|\d+)\b(?:[ -]+[\w-]+){0,2}?[ -]+(clients?|implementations?|runners?|planners?)\b|\b(two|three|four|five|six|seven|eight|nine|ten|\d+)[ -]+(outputs?)\b/gi;
 const countedKorean = /(?<![가-힣])(두|세|네|다섯|여섯|일곱|여덟|아홉|열|\d+)[ \t]*(?:개[ \t]*)?(클라이언트|구현|러너|플래너)/g;
 for (const file of [...sources, ...translations.values()]) {
@@ -166,7 +166,7 @@ for (const file of [...sources, ...translations.values()]) {
 
 // The planning table of protocol section 4 names every client of the profile, one row each.
 const clientNames: Record<string, string> = { go: 'Go', php: 'PHP', rust: 'Rust', typescript: 'TypeScript', python: 'Python' };
-for (const file of ['docs/protocol.md', 'docs/protocol.ko.md']) {
+for (const file of ['docs/spec/protocol.md', 'docs/spec/protocol.ko.md']) {
   const text = await readFile(path.join(root, file), 'utf8');
   const section = text.slice(text.search(/^## 4\./m), text.search(/^## 5\./m));
   const rows = section.split('\n').filter(line => line.startsWith('|')).map(line => (line.split('|')[1] ?? '').trim());

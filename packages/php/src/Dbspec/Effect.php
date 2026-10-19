@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Dbspec;
 
 /**
- * How a step's statement shows that it took effect (docs/plans.md "Steps",
+ * How a step's statement shows that it took effect (docs/spec/plans.md "Steps",
  * effects). The kind is table, column, index, constraint, trigger, function,
  * sequence, rows or repeat; `present` is the state after the statement.
  */
@@ -19,7 +19,7 @@ final readonly class Effect
         return new self('repeat', '', '', true);
     }
 
-    /** The text form of docs/plans.md "Effects", such as `present table users`. */
+    /** The text form of docs/spec/plans.md "Effects", such as `present table users`. */
     public function text(): string
     {
         if ($this->kind === 'repeat') {

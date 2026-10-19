@@ -1,6 +1,6 @@
 """add_tables_and_columns_steps: the add-only steps that take an installed set to a newer schema
 version, as packages/ts/src/dbspec/add_tables_and_columns.ts computes them. Tables are created
-and columns and indexes added; anything else is a difference and no step (docs/schema.md "Adding
+and columns and indexes added; anything else is a difference and no step (docs/spec/schema.md "Adding
 tables and columns")."""
 
 from __future__ import annotations

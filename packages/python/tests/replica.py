@@ -1,4 +1,4 @@
-# A connection to the primary and one to its replica work side by side (docs/config.md "Primary and replicas"), the
+# A connection to the primary and one to its replica work side by side (docs/spec/config.md "Primary and replicas"), the
 # cases of test_primary_and_replica and test_read_only of packages/php/tests/ModelTest.php: a model uses the
 # connection it is connected to and no other, a model without a connection inside a transaction uses the transaction,
 # a write through the replica returns READ_ONLY, and so does a write to a SQLite file opened read-only. MySQL and
@@ -91,7 +91,7 @@ class ReplicaTest(unittest.TestCase):
         replica = os.environ.get(variable)
         if not replica:
             raise AssertionError(
-                f"{variable} is required; database tests never skip; run make test-servers"
+                f"{variable} is required; database tests never skip; run make orm-test-servers"
             )
         models, probe = TEMP["models"]
         with case_database(dialect, TEMP["dir"].name, "orm_replica") as primary:

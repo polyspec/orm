@@ -142,7 +142,7 @@ func registerTexts(t *testing.T, names ...string) []string {
 }
 
 // TestRegisterSendsNoStatement checks that registration sends no statement to the database,
-// by wrapping the driver and counting (docs/schema.md "Schema registration"). Register and ConnectSchema
+// by wrapping the driver and counting (docs/spec/schema.md "Schema registration"). Register and ConnectSchema
 // registration does not read the database even for a set that uses external documents, and a request for a registered set is planned.
 // Manifest text that does not hash to the declared hash is CONFIG with no statement.
 func TestRegisterSendsNoStatement(t *testing.T) {

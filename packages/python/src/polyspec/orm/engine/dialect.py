@@ -1,4 +1,4 @@
-# Per-database SQL fragments (docs/dialects.md). The planner does not write quotes or placeholders
+# Per-database SQL fragments (docs/spec/dialects.md). The planner does not write quotes or placeholders
 # directly.
 __all__ = [
     "MysqlDialect",
@@ -172,7 +172,7 @@ class _Dialect:
     def decodes_stage(self, stage: str) -> bool:
         """Whether the dialect decodes the codec stage in SQL when reading (MySQL: ip). hex is not decoded in SQL by any dialect
         because UNHEX takes odd lengths and returns NULL for cells with spaces, so the executor
-        reads exactly with host_decode (docs/codec.md)."""
+        reads exactly with host_decode (docs/spec/codec.md)."""
         return False
 
     def row_lock(self, mode: str):

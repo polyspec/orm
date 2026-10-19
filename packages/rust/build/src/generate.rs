@@ -111,7 +111,7 @@ fn index_method(name: &str) -> String {
     out
 }
 
-/// The Rust value type of a column without null (docs/dbspec.md, "Runtime model"). If the column has a codec
+/// The Rust value type of a column without null (docs/spec/dbspec.md, "Runtime model"). If the column has a codec
 /// first stage is `ordered_json`, it is an ordered-JSON styled value; otherwise
 /// if there is a styled-value stage, it is a styled value of the common value model; with `aes`, `hex`,
 /// with only `ip`, it is a string.

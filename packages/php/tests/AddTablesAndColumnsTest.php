@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-// Checks addTablesAndColumns on SQLite, MySQL, and PostgreSQL (docs/schema.md "Adding tables and
+// Checks addTablesAndColumns on SQLite, MySQL, and PostgreSQL (docs/spec/schema.md "Adding tables and
 // columns"). The case database holds the table of the other set addcol_log and the table of addcol set version 1, together with rows.
 // Calling addTablesAndColumns with version 2 adds to existing tables the missing columns that are nullable or have a default,
 // keeps the rows, the trigger of the changed audit table records the new column, and a missing
@@ -141,7 +141,7 @@ final class AddTablesAndColumnsTest extends TestCase
             self::check(self::count_of($db, 'SELECT COUNT(*) FROM addcol_extra') === 1, 'rows of the created table');
             $again = $db->utils()->schema()->addTablesAndColumns(self::fixture('v2'));
             self::check($again === [], 'repeated addTablesAndColumns = ' . json_encode($again));
-            // Every table exists, so install changes nothing (docs/schema.md "Schema installation").
+            // Every table exists, so install changes nothing (docs/spec/schema.md "Schema installation").
             $install = self::thrown(fn() => $db->utils()->schema()->install(self::fixture('v2')));
             self::check($install === null, 'install of version 2 over its tables: ' . ($install?->getMessage() ?? ''));
         } finally {

@@ -135,7 +135,7 @@ export abstract class Model implements ModelLike {
   public deleteLock(): this { this[CORE].deleteLock = true; return this; }
   /**
    * Makes the next update() or delete() write only while the integer column holds revision; update() also stores
-   * revision + 1. A mismatch fails with REVISION_CHANGED and changes nothing (docs/dsl.md "Writes").
+   * revision + 1. A mismatch fails with REVISION_CHANGED and changes nothing (docs/spec/dsl.md "Writes").
    */
   public expectRevision(column: string, revision: number | bigint): this { this[CORE].expectedRevision = { column, revision }; return this; }
   public fetchKey(fn: (row: this) => Key): this { this[CORE].fetchKey = m => fn(modelOf(this, m)); return this; }
@@ -192,7 +192,7 @@ export abstract class Model implements ModelLike {
   public async restore(): Promise<this> { return modelOf(this, await restore(this[CORE])); }
   /**
    * Restores the soft-deleted row of the key that restore() picks, or creates it with the set values when no row holds the
-   * key, in one transaction (docs/usage.md "Restore or create a row"), and returns the row. A row that holds the key and is
+   * key, in one transaction (docs/operations/usage.md "Restore or create a row"), and returns the row. A row that holds the key and is
    * not deleted fails with ROW_NOT_DELETED, and nothing is written.
    */
   public async restoreOrCreate(): Promise<this> { return modelOf(this, await restoreOrCreate(this[CORE])); }
@@ -252,7 +252,7 @@ const integerRanges: Readonly<Record<string, readonly [number, number]>> = {
   i64: [Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
 };
 
-/** Converts a cell to the value type of its column type (docs/dbspec.md "Runtime model"). */
+/** Converts a cell to the value type of its column type (docs/spec/dbspec.md "Runtime model"). */
 function convert(type: string, value: unknown, zone: string, declared?: Field): unknown {
   if (value === null || value === undefined) return null;
   switch (type) {
@@ -756,7 +756,7 @@ function batchFits(driver: string, parts: readonly number[], columns: number): v
 }
 
 /**
- * The row counts of the batches a multi-row insert of rows rows runs as, in row order (docs/protocol.md "Relation
+ * The row counts of the batches a multi-row insert of rows rows runs as, in row order (docs/spec/protocol.md "Relation
  * steps"): each batch rows, the last one the rows left when fewer.
  */
 export function insertParts(rows: number, batch: number): number[] {
@@ -885,7 +885,7 @@ async function deleteOne(c: Core, recursive: boolean): Promise<void> {
 
 /**
  * Restores a soft-deleted row (an update that writes NULL to the soft delete column) and reads the row back to return it. The set values are sent as the set of the restore request,
- * and the planner picks the key from the set values and the where's eq conditions after the request hook (docs/protocol.md 1.5): if they
+ * and the planner picks the key from the set values and the where's eq conditions after the request hook (docs/spec/protocol.md 1.5): if they
  * cover it, the primary key; otherwise the first unique key in name order. The key column's set value is a condition, and the other set values are new values written to the restored row
  * as in an update. An update of the audit table uses the transaction's audit record key, as other updates do. After that
  * the row is read by the value of that key. A row that was not deleted is returned unchanged without writing anything; a missing row is NO_ROWS. The default read
@@ -995,7 +995,7 @@ function toArray(c: Core): Record<string, unknown> {
 
 /**
  * A time or datetime text of the array form has six fraction digits, zeros past the column precision: the
- * text the database gives has the column precision (docs/protocol.md section 5, Read).
+ * text the database gives has the column precision (docs/spec/protocol.md section 5, Read).
  */
 function temporalOutput(columnType: string, value: unknown): unknown {
   if (typeof value !== 'string' || (columnType !== 'time' && columnType !== 'datetime')) return value;

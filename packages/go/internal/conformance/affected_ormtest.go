@@ -9,10 +9,10 @@ import (
 
 func init() {
 	affectedVectors = func(run func(string, func() (any, error)), db *orm.DB) {
-		// A write counts each written row once (docs/protocol.md "Write"): an upsert is
+		// A write counts each written row once (docs/spec/protocol.md "Write"): an upsert is
 		// 1 whether it inserts or updates, and an update counts the row it matched even
 		// when the row already holds the value. The count is read through the test
-		// entry point (docs/protocol.md "Test write result").
+		// entry point (docs/spec/protocol.md "Test write result").
 		upsertCell := func() *model.UpsertCellModel { return model.UpsertCell().Connect(db) }
 		run("affected_counts", func() (any, error) {
 			affected := func() any {

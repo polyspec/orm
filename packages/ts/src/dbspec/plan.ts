@@ -1,4 +1,4 @@
-// The schema plan document and the plan chain (docs/plans.md "Plan document", "Chain").
+// The schema plan document and the plan chain (docs/spec/plans.md "Plan document", "Chain").
 // The reference is the Go engine (engine/dbspec/plan.go), and the diagnostic messages are the same bytes as Go.
 import { present } from '../present.js';
 import { createHash } from 'node:crypto';
@@ -84,7 +84,7 @@ function planNames(names: readonly string[]): string {
 }
 
 /**
- * Parses a plan document (docs/plans.md "Plan document"). An invalid document
+ * Parses a plan document (docs/spec/plans.md "Plan document"). An invalid document
  * gives `plan` diagnostics at its line; a diagnostic of the target schema text
  * is located in the plan.
  */
@@ -207,7 +207,7 @@ export function emitPlan(plan: DbspecPlan): string {
 }
 
 /**
- * Orders plans into one chain from the plan `from empty` (docs/plans.md
+ * Orders plans into one chain from the plan `from empty` (docs/spec/plans.md
  * "Chain"), or gives the `chain` diagnostics that name the plans.
  */
 export function chainPlans(plans: readonly DbspecPlan[]): DbspecChainResult {

@@ -86,7 +86,7 @@ func (s *fakeServer) dsn() string {
 const connectLine = `{"op":"connect","corpus":"tracker","token":"0123456789abcdef0123456789abcdef"}`
 
 // TestMarkdownSessionMessages checks the connect and control messages the client sends, and the interpretation of error lines
-// (docs/protocol.md §5).
+// (docs/spec/protocol.md §5).
 func TestMarkdownSessionMessages(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	s := startFakeServer(t,
@@ -142,7 +142,7 @@ func TestMarkdownConnectRefused(t *testing.T) {
 }
 
 // TestMarkdownRejectedSurfaces checks that a markdown connection refuses SQL-only surfaces with CAPABILITY_UNSUPPORTED
-// (docs/dialects.md "Markdown IR executor").
+// (docs/spec/dialects.md "Markdown IR executor").
 func TestMarkdownRejectedSurfaces(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	s := startFakeServer(t, `{"ok":true}`)

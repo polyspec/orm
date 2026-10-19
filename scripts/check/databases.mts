@@ -1,4 +1,4 @@
-// The databases of one run (make check, make owner-check, make run-databases): created for the run and dropped at its end.
+// The databases of one run (make orm-check, make owner-check, make run-databases): created for the run and dropped at its end.
 // No bench or decimal database is shared: one that another run or session uses and changes would make the results depend
 // on it, so each run creates, seeds and drops a bench and a decimal database of its own name. The environment file of the
 // servers names no such database; it gives the DSNs to rename (ORM_RUN_*).
@@ -7,7 +7,7 @@
 //   databases.mts drop <servers env> <directory> <name>
 //   databases.mts drop-dead <servers env> <directory> <name>
 //
-// create makes, on the servers of <servers env> (the file that make test-servers writes), the MySQL and PostgreSQL databases
+// create makes, on the servers of <servers env> (the file that make orm-test-servers writes), the MySQL and PostgreSQL databases
 // <name>_bench and <name>_decimal and the SQLite files of <directory>, installs them with scripts/bench-db.mts and the
 // TypeScript decimal model (createDecimal; make databases-create builds it first), and writes <directory>/env (<servers env> with the BENCH_*, ORM_BENCH_MYSQL_DSN and the
 // send-savepoint SQLite file ORM_SEND_SQLITE_DSN of this run) and <directory>/decimal-env. create first drops the databases
@@ -23,7 +23,7 @@ import { errorCode, errorMessage } from '../../tests/errors.mts';
 const root = resolve(import.meta.dirname, '../..');
 const USAGE = 'usage: databases.mts create|drop|drop-dead <servers env> <directory> <name>';
 
-/** environmentFile is the variables of an environment file that test-servers and this script write: export NAME='value' lines. */
+/** environmentFile is the variables of an environment file that orm-test-servers and this script write: export NAME='value' lines. */
 export function environmentFile(text: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const line of text.split('\n').filter((line: string) => line.trim() !== '')) {
@@ -66,7 +66,7 @@ const postgresServer = (dsn: string): string => {
 };
 
 // deadRuns names, among database names, those that a run of this host left after its process ended (orm_owner_<pid>_<hex>
-// of make owner-check, orm_check_<pid>_<hex> of make check), each with its pid. Such a run was killed before its drop. A
+// of make owner-check, orm_check_<pid>_<hex> of make orm-check), each with its pid. Such a run was killed before its drop. A
 // run whose process lives and the names of CI (ci_<id>) are left; the test servers listen on 127.0.0.1 only, so every run
 // is a process of this host.
 export function deadRuns(names: string[], alive: (pid: number) => boolean): { database: string; pid: number }[] {
@@ -107,7 +107,7 @@ function dropDeadRuns(servers: Record<string, string>, env: NodeJS.ProcessEnv): 
 function purgeBinlogs(serversPath: string, servers: Record<string, string>, env: NodeJS.ProcessEnv): boolean {
   const replica = env['ORM_TEST_MYSQL_REPLICA_DSN'];
   if (!replica) {
-    console.error(`databases: ${serversPath} names no ORM_TEST_MYSQL_REPLICA_DSN; run make test-servers to rewrite it`);
+    console.error(`databases: ${serversPath} names no ORM_TEST_MYSQL_REPLICA_DSN; run make orm-test-servers to rewrite it`);
     return false;
   }
   const primary = servers['ORM_RUN_MYSQL_DSN'] ?? '';
@@ -197,7 +197,7 @@ if (import.meta.main) {
   const env: NodeJS.ProcessEnv = { ...process.env, ...servers };
   const runMysql = servers['ORM_RUN_MYSQL_DSN'];
   if (!runMysql) {
-    console.error(`databases: ${serversPath} names no ORM_RUN_MYSQL_DSN; run make test-servers to rewrite it`);
+    console.error(`databases: ${serversPath} names no ORM_RUN_MYSQL_DSN; run make orm-test-servers to rewrite it`);
     process.exit(1);
   }
   const mysqlBench = withDatabase(runMysql, `${name}_bench`);

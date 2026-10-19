@@ -1,4 +1,4 @@
-// Language server sessions over standard input and output (docs/editor.md): the built `dbspec-lsp` is started as a
+// Language server sessions over standard input and output (docs/spec/editor.md): the built `dbspec-lsp` is started as a
 // child process and spoken to over JSON-RPC. The editor fixtures of tests/editor give the expected diagnostics, semantic
 // tokens, folding ranges and formatting; set resolution, an open buffer winning over the disk, and a watched file
 // change are checked on real file trees.

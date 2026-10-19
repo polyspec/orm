@@ -5,7 +5,7 @@ namespace Polyspec\Orm\Dbspec;
 
 /**
  * The result of Dbspec::analyze: the parse result unchanged, and the tokens of the text in source order
- * (docs/dbspec.md "Syntax analysis"). The document and the positions are null when the parse has a diagnostic.
+ * (docs/spec/dbspec.md "Syntax analysis"). The document and the positions are null when the parse has a diagnostic.
  */
 final readonly class Analysis
 {

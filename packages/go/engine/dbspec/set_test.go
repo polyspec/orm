@@ -15,7 +15,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// setVectors is tests/dbspec/set-files.json (docs/dbspec.md "Document sets").
+// setVectors is tests/dbspec/set-files.json (docs/spec/dbspec.md "Document sets").
 type setVectors struct {
 	Version *int             `json:"version"`
 	Note    *string          `json:"note"`

@@ -1,4 +1,4 @@
-//! dbspec introspection over a sqlx connection (docs/dialects.md,
+//! dbspec introspection over a sqlx connection (docs/spec/dialects.md,
 //! "Introspection"): [`introspect`] runs the fixed catalog queries of
 //! `polyspec_orm_schema::dbspec` on the connection and reads their rows into one dbspec
 //! document and the objects it cannot express. The module also re-exports

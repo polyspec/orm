@@ -113,7 +113,7 @@ func BlindIndex(v any, key string) (string, error) {
 
 // packIP is INET6_ATON: 4 bytes for IPv4, 16 for IPv6.
 func packIP(s string) ([]byte, error) {
-	// The exact text only: white space around the address is CODEC_ENCODE (docs/codec.md).
+	// The exact text only: white space around the address is CODEC_ENCODE (docs/spec/codec.md).
 	ip := net.ParseIP(s)
 	if ip == nil {
 		return nil, codecErr(CodeCodecEncode, "ip: %q is not an address", s)
@@ -189,7 +189,7 @@ func HostEncode(v any, styles []string, aesKey string) (any, error) {
 // HostDecode undoes HostEncode on a read cell: styles are the host stages in
 // write order, applied in reverse. A list without aes needs no key. A cell
 // decodes only in the form HostEncode writes; anything else, surrounding white
-// space included, is CODEC_DECODE (docs/codec.md).
+// space included, is CODEC_DECODE (docs/spec/codec.md).
 func HostDecode(raw any, styles []string, aesKey string) (any, error) {
 	var cur []byte
 	switch x := raw.(type) {
@@ -233,7 +233,7 @@ func HostDecode(raw any, styles []string, aesKey string) (any, error) {
 	return string(cur), nil
 }
 
-// splitHost separates the executor codec stages (docs/codec.md) from the
+// splitHost separates the executor codec stages (docs/spec/codec.md) from the
 // host stages a dialect left to us (aes/hex/ip); read order is codec after host.
 func splitHost(styles []string) (codec, host []string) {
 	for _, s := range styles {

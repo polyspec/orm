@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /*
- * The time limit the test puts on its own computation is measured in the CPU time the PHP process used (docs/dbspec.md,
+ * The time limit the test puts on its own computation is measured in the CPU time the PHP process used (docs/spec/dbspec.md,
  * "Verification"). On a shared machine, wall-clock time includes the time spent waiting while other processes use the CPU, so it does not measure what
  * the code did. The PHP test process runs on one thread.
  * Wall-clock time is only printed alongside.

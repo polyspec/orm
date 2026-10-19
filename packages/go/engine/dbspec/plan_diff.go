@@ -5,7 +5,7 @@ import (
 	"slices"
 )
 
-// Change is one change of the diff (docs/plans.md "Diff"). Table is the target name,
+// Change is one change of the diff (docs/spec/plans.md "Diff"). Table is the target name,
 // and drop_table and drop_* objects use the source name.
 type Change struct {
 	Kind  string

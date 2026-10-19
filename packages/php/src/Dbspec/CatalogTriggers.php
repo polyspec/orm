@@ -5,7 +5,7 @@ namespace Polyspec\Orm\Dbspec;
 
 /**
  * The immutable and audit settings are recognized from the catalog triggers, rewritten in the renderer's statement form,
- * (docs/dialects.md "Introspection", "Triggers").
+ * (docs/spec/dialects.md "Introspection", "Triggers").
  *
  * @internal
  */
@@ -48,7 +48,7 @@ final class CatalogTriggers
     /**
      * Recognizes each setting by its own trigger name (recomputed by the renderer), and returns those setting lines only when
      * the trigger set matches the recognized settings' renderer output in both name and content. Otherwise returns null
-     * (docs/dialects.md "Triggers"). A table with both settings is the sum of the two outputs, and is not judged by count.
+     * (docs/spec/dialects.md "Triggers"). A table with both settings is the sum of the two outputs, and is not judged by count.
      *
      * @param list<array{name: string, statements: list<string>}> $list
      * @return ?list<string>

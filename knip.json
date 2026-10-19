@@ -7,5 +7,10 @@
       "tests/kit/record-*.mts"
     ]
   },
-  "ignoreDependencies": ["@polyspec/kit", "oxlint", "oxlint-tsgolint", "jscpd"]
+  "ignoreDependencies": [
+    "@polyspec/kit",
+    "oxlint",
+    "oxlint-tsgolint",
+    "jscpd"
+  ]
 }

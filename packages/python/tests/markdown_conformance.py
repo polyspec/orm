@@ -83,13 +83,13 @@ def pinned_flowmark() -> str:
     if info.returncode != 0 or main is None:
         raise AssertionError(
             f"FLOWMARK {binary} is no Go build of a module ({info.stderr.strip()}); run make "
-            f"install-flowmark, which installs the flowmark {pin} pinned in "
+            f"orm-install-flowmark, which installs the flowmark {pin} pinned in "
             f"tests/markdown/flowmark.version"
         )
     if main[2] != FLOWMARK_MODULE or main[3] != pin:
         raise AssertionError(
             f"FLOWMARK {binary} is {main[2]!r} {main[3]!r}, not the pinned {FLOWMARK_MODULE} {pin}; "
-            f"run make install-flowmark, or give FLOWMARK a build of a flowmark checkout at that "
+            f"run make orm-install-flowmark, or give FLOWMARK a build of a flowmark checkout at that "
             f"revision"
         )
     return binary

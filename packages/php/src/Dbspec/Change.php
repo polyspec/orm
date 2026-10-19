@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Dbspec;
 
 /**
- * One change of a plan's diff (docs/plans.md "Diff"). The table is its
+ * One change of a plan's diff (docs/spec/plans.md "Diff"). The table is its
  * target name; `drop_table` and the dropped objects name the source table.
  */
 final readonly class Change

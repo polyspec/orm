@@ -1,4 +1,4 @@
-// dbspec plan apply on MySQL, PostgreSQL and SQLite (docs/plans.md "Apply"):
+// dbspec plan apply on MySQL, PostgreSQL and SQLite (docs/spec/plans.md "Apply"):
 // the chain of create-from-empty and rename-table-and-column of
 // tests/dbspec/plans.json with its history and a second apply, drift, the
 // lock of a second session, an apply to a second database, schema or file
@@ -237,7 +237,7 @@ async function applyCode(promise) {
 }
 
 const historyTable = dialect => (dialect === 'mysql' ? '`dbspec$plans`' : '"dbspec$plans"');
-// The lock name and key of docs/plans.md "Apply".
+// The lock name and key of docs/spec/plans.md "Apply".
 const MYSQL_APPLY_LOCK = "CONCAT('dbspec$plans$', LEFT(SHA2(DATABASE(), 256), 51))";
 const POSTGRES_APPLY_LOCK = "hashtext('dbspec$plans'), hashtext(current_schema())";
 // The number of tables and columns whose name starts with dbspec$, excluding history tables.
@@ -443,7 +443,7 @@ vector('every apply scenario runs on its dialects', () => {
   console.log(`apply runs: ${runs}`);
 });
 
-// apply needs one server session that is not shared with other clients from start to end (docs/plans.md
+// apply needs one server session that is not shared with other clients from start to end (docs/spec/plans.md
 // "Apply"). PgBouncer's transaction pooling picks a server connection again for each statement, so
 // apply checks the server session at the lock and at each step, and stops on a session error. Each scenario
 // creates its own database on the server and connects to that database through PgBouncer. PgBouncer reuses idle server

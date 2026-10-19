@@ -1,4 +1,4 @@
-//! The declaration positions of a parsed document (docs/dbspec.md "Declaration positions"). The parser
+//! The declaration positions of a parsed document (docs/spec/dbspec.md "Declaration positions"). The parser
 //! records each declaration where its name token is read; this module turns the records into the sorted
 //! positions and gives each setting its identity.
 
@@ -25,7 +25,7 @@ pub(crate) fn positions(declarations: &[Declaration]) -> Vec<Position> {
     out
 }
 
-/// The words that make a setting's repeat unique (docs/dbspec.md "Settings"): the column of codec and
+/// The words that make a setting's repeat unique (docs/spec/dbspec.md "Settings"): the column of codec and
 /// markdown, the foreign key of navigation, the AES column of blind_index, the column and state of checkbox,
 /// and the form and states of a state_machine line, whose column is left out since a table holds one
 /// machine. Every other setting appears at most once and has no identity.

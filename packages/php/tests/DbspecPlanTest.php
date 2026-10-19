@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 // The plan vectors of tests/dbspec/plans.json through Polyspec\Orm\Dbspec\Dbspec
-// (docs/plans.md): every case's canonical emission, changes and steps of
+// (docs/spec/plans.md): every case's canonical emission, changes and steps of
 // three dialects, every invalid case's `plan` diagnostics, every chain
 // case's order or `chain` diagnostics, every parse case's diagnostics with
 // rule, line, column and the message of a `plan` diagnostic, every
@@ -26,7 +26,7 @@ use PHPUnit\Framework\TestCase;
 const PLAN_CASE_CPU_SECONDS = 5.0;
 
 /**
- * The plans.json object of the step (docs/plans.md "Steps"). Keys are in name order.
+ * The plans.json object of the step (docs/spec/plans.md "Steps"). Keys are in name order.
  *
  * @return array<string, mixed>
  */
