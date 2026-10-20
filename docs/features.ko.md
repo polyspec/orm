@@ -1,30 +1,30 @@
 <!-- doc-id: features -->
-<!-- source-sha256: 76ddfc62174794618f267f943606bc72197cfa5217f6b28da96862f8f71f3a70 -->
+<!-- source-sha256: fb1cecf91eeb03380dbe717225f13ba01ddfb5a6b7ec539ce0e4afb64eeeaf50 -->
 # 기능 정의
 
 실행 기준은 저장소의 기능 manifest이다. 먼저 manifest의 `source.read_order` 경로를 읽고 선택한 기능의 모든 참조 경로를 읽는다. 각 항목은 input, output, 상태 전이, 오류, parity unit, fixture, test, paired document, 실제 검증 명령을 정의한다.
 
 | ID | 기능 | 상태 | 언어 |
 |---|---|---|---|
-| dsn_connection | DSN URI 연결 | implemented | go, php, typescript, python, rust |
-| model_queries | 모델 조회 | implemented | go, php, typescript, python, rust |
-| model_writes | 모델 쓰기 | implemented | go, php, typescript, python, rust |
-| transactions | 트랜잭션 | implemented | go, php, typescript, python, rust |
-| statement_events | Statement event | implemented | go, php, typescript, python, rust |
-| model_generation | 모델 생성 | implemented | go, php, typescript, python, rust |
-| schema_definition | 스키마 정의와 마이그레이션 | implemented | go, php, typescript, python, rust |
-| schema_install | 스키마 설치 | implemented | go, php, typescript, python, rust |
-| planner | 프로세스 내 planner | implemented | go, php, typescript, python, rust |
-| composite_keys | 복합 key | implemented | go, php, typescript, python, rust |
-| authenticated_encryption | 인증 암호화 | implemented | go, php, typescript, python, rust |
-| parameter_chunking | 파라미터 분할 | implemented | go, php, typescript, python, rust |
-| constraints_and_relations | 제약과 관계 | implemented | go, php, typescript, python, rust |
-| audit_triggers | 감사 트리거 | implemented | go, php, typescript, python, rust |
-| interface_contract | 공통 인터페이스 검증 | implemented | go, php, typescript, python, rust |
+| dsn_connection | DSN URI 연결 | partial | go, php, typescript, python, rust |
+| model_queries | 모델 조회 | partial | go, php, typescript, python, rust |
+| model_writes | 모델 쓰기 | partial | go, php, typescript, python, rust |
+| transactions | 트랜잭션 | partial | go, php, typescript, python, rust |
+| statement_events | Statement event | partial | go, php, typescript, python, rust |
+| model_generation | 모델 생성 | partial | go, php, typescript, python, rust |
+| schema_definition | 스키마 정의와 마이그레이션 | implemented | go, php, php-extension, typescript, python, rust |
+| schema_install | 스키마 설치 | partial | go, php, typescript, python, rust |
+| planner | 프로세스 내 planner | partial | go, php, typescript, python, rust |
+| composite_keys | 복합 key | partial | go, php, typescript, python, rust |
+| authenticated_encryption | 인증 암호화 | partial | go, php, typescript, python, rust |
+| parameter_chunking | 파라미터 분할 | partial | go, php, typescript, python, rust |
+| constraints_and_relations | 제약과 관계 | partial | go, php, typescript, python, rust |
+| audit_triggers | 감사 트리거 | partial | go, php, typescript, python, rust |
+| interface_contract | 공통 인터페이스 검증 | partial | go, php, typescript, python, rust |
 | performance_gate | hot-path 성능 기준 | partial | php, rust |
-| conformance_verification | 적합성 검증 | implemented | go, php, typescript, python, rust |
+| conformance_verification | 적합성 검증 | partial | go, php, typescript, python, rust |
 | catalog_connection | Rust catalog 연결 | partial | rust |
-| request_hook | Request hook | implemented | go, php, typescript, python, rust |
+| request_hook | Request hook | partial | go, php, typescript, python, rust |
 
 ## 현재 동작
 

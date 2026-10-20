@@ -104,7 +104,7 @@
         "minimum_vectors": { "type": "integer", "minimum": 1 }
       }
     },
-    "language": { "enum": ["go", "php", "rust", "typescript", "python"] },
+    "language": { "enum": ["go", "php", "php-extension", "rust", "typescript", "python"] },
     "cases": { "type": "array", "items": { "$ref": "#/$defs/text" } },
     "commands": {
       "type": "object",

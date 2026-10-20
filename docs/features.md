@@ -5,25 +5,25 @@ The executable source is the repository feature manifest. Read the manifest, the
 
 | ID | Feature | Status | Languages |
 |---|---|---|---|
-| dsn_connection | DSN URI connection | implemented | go, php, typescript, python, rust |
-| model_queries | Model queries | implemented | go, php, typescript, python, rust |
-| model_writes | Model writes | implemented | go, php, typescript, python, rust |
-| transactions | Transactions | implemented | go, php, typescript, python, rust |
-| statement_events | Statement events | implemented | go, php, typescript, python, rust |
-| model_generation | Model generation | implemented | go, php, typescript, python, rust |
-| schema_definition | Schema definition and migration | implemented | go, php, typescript, python, rust |
-| schema_install | Schema installation | implemented | go, php, typescript, python, rust |
-| planner | In-process planner | implemented | go, php, typescript, python, rust |
-| composite_keys | Composite keys | implemented | go, php, typescript, python, rust |
-| authenticated_encryption | Authenticated encryption | implemented | go, php, typescript, python, rust |
-| parameter_chunking | Parameter chunking | implemented | go, php, typescript, python, rust |
-| constraints_and_relations | Constraints and relations | implemented | go, php, typescript, python, rust |
-| audit_triggers | Audit triggers | implemented | go, php, typescript, python, rust |
-| interface_contract | Common interface verification | implemented | go, php, typescript, python, rust |
+| dsn_connection | DSN URI connection | partial | go, php, typescript, python, rust |
+| model_queries | Model queries | partial | go, php, typescript, python, rust |
+| model_writes | Model writes | partial | go, php, typescript, python, rust |
+| transactions | Transactions | partial | go, php, typescript, python, rust |
+| statement_events | Statement events | partial | go, php, typescript, python, rust |
+| model_generation | Model generation | partial | go, php, typescript, python, rust |
+| schema_definition | Schema definition and migration | implemented | go, php, php-extension, typescript, python, rust |
+| schema_install | Schema installation | partial | go, php, typescript, python, rust |
+| planner | In-process planner | partial | go, php, typescript, python, rust |
+| composite_keys | Composite keys | partial | go, php, typescript, python, rust |
+| authenticated_encryption | Authenticated encryption | partial | go, php, typescript, python, rust |
+| parameter_chunking | Parameter chunking | partial | go, php, typescript, python, rust |
+| constraints_and_relations | Constraints and relations | partial | go, php, typescript, python, rust |
+| audit_triggers | Audit triggers | partial | go, php, typescript, python, rust |
+| interface_contract | Common interface verification | partial | go, php, typescript, python, rust |
 | performance_gate | Hot-path performance standard | partial | php, rust |
-| conformance_verification | Conformance verification | implemented | go, php, typescript, python, rust |
+| conformance_verification | Conformance verification | partial | go, php, typescript, python, rust |
 | catalog_connection | Rust catalog connection | partial | rust |
-| request_hook | Request hook | implemented | go, php, typescript, python, rust |
+| request_hook | Request hook | partial | go, php, typescript, python, rust |
 
 ## Current behavior
 

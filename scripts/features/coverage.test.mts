@@ -29,7 +29,8 @@ type Reports = Record<string, Report[]>;
 delete process.env.ORM_RUST_TEST_FEATURES;
 
 const ownerTests: Record<string, string> = {
-  go: 'packages/go/orm/dsn_test.go', php: 'packages/php/tests/DsnTest.php', python: 'packages/python/tests/test_utils.py',
+  go: 'packages/go/orm/dsn_test.go', php: 'packages/php/tests/DsnTest.php',
+  'php-extension': 'packages/php-ext/tests/CoverageSchemaDefinitionTest.php', python: 'packages/python/tests/test_utils.py',
   rust: 'packages/rust/orm/tests/zone.rs', typescript: 'packages/ts/tests/typecheck.ts',
 };
 const dependentTest = 'packages/go/model/model_test.go';
@@ -164,7 +165,7 @@ async function negative(manifest: Manifest, root: string, timeoutMs: number): Pr
   return { errors: value.toSorted(), failures: tapFailures(lines) };
 }
 
-caseTest('owner and dependent cases execute in five languages and three databases', 1000, () => {
+caseTest('owner and dependent cases execute in every client language and three databases', 1000, () => {
   assert.deepEqual(checkCoverage(contract(), complete()), []);
   assert.deepEqual(checkCoverage(contract('independent'), complete('independent')), []);
 });

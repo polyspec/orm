@@ -15,10 +15,10 @@
     {
       "id": "dsn_connection",
       "title": "DSN URI connection",
-      "title_ko": "DSN URI 연결",
-      "status": "implemented",
+      "title_ko": "DSN URI \uc5f0\uacb0",
+      "status": "partial",
       "description": "Open a database from one URI DSN. The URI scheme selects the driver, every connection reads and writes datetime values in UTC, and the client plans statements in its own process. The PHP client requires no PDO driver extension, so a PHP without pdo_mysql runs it on SQLite. A MySQL DSN connects with TLS through ssl-mode=VERIFY_IDENTITY and an absolute ssl-ca, which checks the server certificate against the CA and the host name; the PHP client and the TypeScript client refuse a parameter outside the set of each scheme. The PHP client opens one connection per Db and keeps none across requests; it refuses poolSize, poolIdleSize and poolLifetimeMs with CONFIG, and PgBouncer or ProxySQL pool PHP connections. Every client reports a connection that the server ended or that broke with CONNECTION_LOST.",
-      "description_ko": "하나의 URI DSN으로 데이터베이스를 연다. URI scheme이 driver를 정하고 모든 연결이 datetime을 UTC로 읽고 쓰며, client는 자기 process에서 statement를 계획한다. PHP client는 PDO driver 확장을 요구하지 않으므로 pdo_mysql이 없는 PHP도 SQLite로 실행한다. MySQL DSN은 ssl-mode=VERIFY_IDENTITY와 절대 경로 ssl-ca로 TLS 연결하며, 이는 server 인증서를 CA와 host 이름에 대조한다. PHP와 TypeScript client는 scheme마다 정한 parameter 밖의 parameter를 거부한다. PHP client는 Db마다 연결 하나를 열고 요청을 넘어 유지하지 않는다. poolSize, poolIdleSize, poolLifetimeMs는 CONFIG로 거부하며, PHP 연결의 pool은 PgBouncer나 ProxySQL이 맡는다. 모든 client는 server가 끝냈거나 끊긴 연결을 CONNECTION_LOST로 보고한다.",
+      "description_ko": "\ud558\ub098\uc758 URI DSN\uc73c\ub85c \ub370\uc774\ud130\ubca0\uc774\uc2a4\ub97c \uc5f0\ub2e4. URI scheme\uc774 driver\ub97c \uc815\ud558\uace0 \ubaa8\ub4e0 \uc5f0\uacb0\uc774 datetime\uc744 UTC\ub85c \uc77d\uace0 \uc4f0\uba70, client\ub294 \uc790\uae30 process\uc5d0\uc11c statement\ub97c \uacc4\ud68d\ud55c\ub2e4. PHP client\ub294 PDO driver \ud655\uc7a5\uc744 \uc694\uad6c\ud558\uc9c0 \uc54a\uc73c\ubbc0\ub85c pdo_mysql\uc774 \uc5c6\ub294 PHP\ub3c4 SQLite\ub85c \uc2e4\ud589\ud55c\ub2e4. MySQL DSN\uc740 ssl-mode=VERIFY_IDENTITY\uc640 \uc808\ub300 \uacbd\ub85c ssl-ca\ub85c TLS \uc5f0\uacb0\ud558\uba70, \uc774\ub294 server \uc778\uc99d\uc11c\ub97c CA\uc640 host \uc774\ub984\uc5d0 \ub300\uc870\ud55c\ub2e4. PHP\uc640 TypeScript client\ub294 scheme\ub9c8\ub2e4 \uc815\ud55c parameter \ubc16\uc758 parameter\ub97c \uac70\ubd80\ud55c\ub2e4. PHP client\ub294 Db\ub9c8\ub2e4 \uc5f0\uacb0 \ud558\ub098\ub97c \uc5f4\uace0 \uc694\uccad\uc744 \ub118\uc5b4 \uc720\uc9c0\ud558\uc9c0 \uc54a\ub294\ub2e4. poolSize, poolIdleSize, poolLifetimeMs\ub294 CONFIG\ub85c \uac70\ubd80\ud558\uba70, PHP \uc5f0\uacb0\uc758 pool\uc740 PgBouncer\ub098 ProxySQL\uc774 \ub9e1\ub294\ub2e4. \ubaa8\ub4e0 client\ub294 server\uac00 \ub05d\ub0c8\uac70\ub098 \ub04a\uae34 \uc5f0\uacb0\uc744 CONNECTION_LOST\ub85c \ubcf4\uace0\ud55c\ub2e4.",
       "inputs": {
         "type": "DsnConnectionRequest",
         "fields": [
@@ -736,10 +736,10 @@
     {
       "id": "model_queries",
       "title": "Model queries",
-      "title_ko": "모델 조회",
-      "status": "implemented",
+      "title_ko": "\ubaa8\ub378 \uc870\ud68c",
+      "status": "partial",
       "description": "Build conditions, joins, relations, columns, subqueries, aggregates, and pages with the generated model methods and read the rows as models and collections.",
-      "description_ko": "생성된 모델 메서드로 조건, 조인, 관계, 컬럼, 서브쿼리, 집계, 페이지를 만들고 행을 모델과 컬렉션으로 읽는다.",
+      "description_ko": "\uc0dd\uc131\ub41c \ubaa8\ub378 \uba54\uc11c\ub4dc\ub85c \uc870\uac74, \uc870\uc778, \uad00\uacc4, \uceec\ub7fc, \uc11c\ube0c\ucffc\ub9ac, \uc9d1\uacc4, \ud398\uc774\uc9c0\ub97c \ub9cc\ub4e4\uace0 \ud589\uc744 \ubaa8\ub378\uacfc \uceec\ub809\uc158\uc73c\ub85c \uc77d\ub294\ub2e4.",
       "inputs": {
         "type": "Model",
         "fields": [
@@ -1447,10 +1447,10 @@
     {
       "id": "model_writes",
       "title": "Model writes",
-      "title_ko": "모델 쓰기",
-      "status": "implemented",
+      "title_ko": "\ubaa8\ub378 \uc4f0\uae30",
+      "status": "partial",
       "description": "Create, create many, update with optional optimistic locking, save, delete with optional recursive relation deletion, including the duplication assignments of an upsert, and restore a soft-deleted row named by its primary key or one unique key, with new values of its other columns, returning the restored row.",
-      "description_ko": "생성, 다건 생성, 선택적 낙관적 잠금 갱신, 저장, 선택적 관계 재귀 삭제를 수행하며 upsert의 duplication 할당을 포함한다. primary key나 unique key 하나의 값으로 찾은 soft delete한 행을 다른 컬럼의 새 값과 함께 restore하고 되돌린 행을 반환한다.",
+      "description_ko": "\uc0dd\uc131, \ub2e4\uac74 \uc0dd\uc131, \uc120\ud0dd\uc801 \ub099\uad00\uc801 \uc7a0\uae08 \uac31\uc2e0, \uc800\uc7a5, \uc120\ud0dd\uc801 \uad00\uacc4 \uc7ac\uadc0 \uc0ad\uc81c\ub97c \uc218\ud589\ud558\uba70 upsert\uc758 duplication \ud560\ub2f9\uc744 \ud3ec\ud568\ud55c\ub2e4. primary key\ub098 unique key \ud558\ub098\uc758 \uac12\uc73c\ub85c \ucc3e\uc740 soft delete\ud55c \ud589\uc744 \ub2e4\ub978 \uceec\ub7fc\uc758 \uc0c8 \uac12\uacfc \ud568\uaed8 restore\ud558\uace0 \ub418\ub3cc\ub9b0 \ud589\uc744 \ubc18\ud658\ud55c\ub2e4.",
       "inputs": {
         "type": "Model",
         "fields": [
@@ -2045,10 +2045,10 @@
     {
       "id": "transactions",
       "title": "Transactions",
-      "title_ko": "트랜잭션",
-      "status": "implemented",
+      "title_ko": "\ud2b8\ub79c\uc7ad\uc158",
+      "status": "partial",
       "description": "Run a callback in a transaction shared by the current execution flow, with savepoints for nested calls, deadlock retry, isolation, read-only mode, timeoutMs, row locks, named locks, and transaction-local values. A SQLite write transaction takes the write lock at its start and waits for it up to busy_timeout. A test entry point of each client arms a rollback fault: the next rollback of a transaction whose callback failed runs and is reported as FAULT, so the transaction returns ROLLBACK.",
-      "description_ko": "현재 실행 흐름이 공유하는 트랜잭션에서 콜백을 실행한다. 중첩 호출은 savepoint를 쓰고, 교착 재시도, 격리 수준, 읽기 전용, timeoutMs, 행 잠금, 이름 잠금, 트랜잭션 지역 값을 제공한다. SQLite 쓰기 트랜잭션은 시작할 때 쓰기 잠금을 얻고 busy_timeout까지 잠금을 기다린다. 각 클라이언트의 test entry point는 rollback fault를 설정한다. callback이 실패한 다음 트랜잭션의 rollback은 실행된 뒤 FAULT로 보고되어 트랜잭션이 ROLLBACK을 반환한다.",
+      "description_ko": "\ud604\uc7ac \uc2e4\ud589 \ud750\ub984\uc774 \uacf5\uc720\ud558\ub294 \ud2b8\ub79c\uc7ad\uc158\uc5d0\uc11c \ucf5c\ubc31\uc744 \uc2e4\ud589\ud55c\ub2e4. \uc911\ucca9 \ud638\ucd9c\uc740 savepoint\ub97c \uc4f0\uace0, \uad50\ucc29 \uc7ac\uc2dc\ub3c4, \uaca9\ub9ac \uc218\uc900, \uc77d\uae30 \uc804\uc6a9, timeoutMs, \ud589 \uc7a0\uae08, \uc774\ub984 \uc7a0\uae08, \ud2b8\ub79c\uc7ad\uc158 \uc9c0\uc5ed \uac12\uc744 \uc81c\uacf5\ud55c\ub2e4. SQLite \uc4f0\uae30 \ud2b8\ub79c\uc7ad\uc158\uc740 \uc2dc\uc791\ud560 \ub54c \uc4f0\uae30 \uc7a0\uae08\uc744 \uc5bb\uace0 busy_timeout\uae4c\uc9c0 \uc7a0\uae08\uc744 \uae30\ub2e4\ub9b0\ub2e4. \uac01 \ud074\ub77c\uc774\uc5b8\ud2b8\uc758 test entry point\ub294 rollback fault\ub97c \uc124\uc815\ud55c\ub2e4. callback\uc774 \uc2e4\ud328\ud55c \ub2e4\uc74c \ud2b8\ub79c\uc7ad\uc158\uc758 rollback\uc740 \uc2e4\ud589\ub41c \ub4a4 FAULT\ub85c \ubcf4\uace0\ub418\uc5b4 \ud2b8\ub79c\uc7ad\uc158\uc774 ROLLBACK\uc744 \ubc18\ud658\ud55c\ub2e4.",
       "inputs": {
         "type": "TransactionRequest",
         "fields": [
@@ -2595,9 +2595,9 @@
       "id": "statement_events",
       "title": "Statement events",
       "title_ko": "Statement event",
-      "status": "implemented",
+      "status": "partial",
       "description": "Publish an event for every statement the client sends to the subscribers registered on the connection: the statement, its masked binds, its kind by origin, the tables it names, its elapsed time, the number of its transaction on the connection, and its error. Subscribers run synchronously after the statement and before the operation continues; a failing subscriber fails the operation with SUBSCRIBER. Every client sends the same transaction control statements.",
-      "description_ko": "client가 보내는 모든 statement에 대해 연결에 등록한 subscriber에게 event를 publish한다: statement, 가린 bind, 출처에 따른 kind, statement가 가리키는 table, 경과 시간, 연결에서의 transaction 번호, 오류다. subscriber는 statement 뒤 operation이 이어지기 전에 동기로 실행되고, 실패한 subscriber는 operation을 SUBSCRIBER로 실패시킨다. 모든 client는 같은 transaction 제어 statement를 실행한다.",
+      "description_ko": "client\uac00 \ubcf4\ub0b4\ub294 \ubaa8\ub4e0 statement\uc5d0 \ub300\ud574 \uc5f0\uacb0\uc5d0 \ub4f1\ub85d\ud55c subscriber\uc5d0\uac8c event\ub97c publish\ud55c\ub2e4: statement, \uac00\ub9b0 bind, \ucd9c\ucc98\uc5d0 \ub530\ub978 kind, statement\uac00 \uac00\ub9ac\ud0a4\ub294 table, \uacbd\uacfc \uc2dc\uac04, \uc5f0\uacb0\uc5d0\uc11c\uc758 transaction \ubc88\ud638, \uc624\ub958\ub2e4. subscriber\ub294 statement \ub4a4 operation\uc774 \uc774\uc5b4\uc9c0\uae30 \uc804\uc5d0 \ub3d9\uae30\ub85c \uc2e4\ud589\ub418\uace0, \uc2e4\ud328\ud55c subscriber\ub294 operation\uc744 SUBSCRIBER\ub85c \uc2e4\ud328\uc2dc\ud0a8\ub2e4. \ubaa8\ub4e0 client\ub294 \uac19\uc740 transaction \uc81c\uc5b4 statement\ub97c \uc2e4\ud589\ud55c\ub2e4.",
       "inputs": {
         "type": "StatementSubscriber",
         "fields": [
@@ -2977,10 +2977,10 @@
     {
       "id": "model_generation",
       "title": "Model generation",
-      "title_ko": "모델 생성",
-      "status": "implemented",
+      "title_ko": "\ubaa8\ub378 \uc0dd\uc131",
+      "status": "partial",
       "description": "Generate the models from the dbspec document set with the generator of each language. Go and Rust scan the sources and generate the chain methods they call; TypeScript and PHP (`--scan`) type the scanned chains, and PHP otherwise resolves chains at run time. With `--check`, the Go, PHP, TypeScript, Python, and Rust generators compare the models with the output directory without writing.",
-      "description_ko": "언어별 생성기로 dbspec document set에서 모델을 만든다. Go와 Rust는 소스를 읽어 호출한 체인 메서드를 만들고, TypeScript와 PHP(`--scan`)는 읽은 체인에 타입을 붙이며 PHP는 그 밖에는 실행 시 체인을 해석한다. `--check`를 붙이면 Go, PHP, TypeScript, Python, Rust 생성기는 쓰지 않고 모델을 출력 디렉터리와 비교한다.",
+      "description_ko": "\uc5b8\uc5b4\ubcc4 \uc0dd\uc131\uae30\ub85c dbspec document set\uc5d0\uc11c \ubaa8\ub378\uc744 \ub9cc\ub4e0\ub2e4. Go\uc640 Rust\ub294 \uc18c\uc2a4\ub97c \uc77d\uc5b4 \ud638\ucd9c\ud55c \uccb4\uc778 \uba54\uc11c\ub4dc\ub97c \ub9cc\ub4e4\uace0, TypeScript\uc640 PHP(`--scan`)\ub294 \uc77d\uc740 \uccb4\uc778\uc5d0 \ud0c0\uc785\uc744 \ubd99\uc774\uba70 PHP\ub294 \uadf8 \ubc16\uc5d0\ub294 \uc2e4\ud589 \uc2dc \uccb4\uc778\uc744 \ud574\uc11d\ud55c\ub2e4. `--check`\ub97c \ubd99\uc774\uba74 Go, PHP, TypeScript, Python, Rust \uc0dd\uc131\uae30\ub294 \uc4f0\uc9c0 \uc54a\uace0 \ubaa8\ub378\uc744 \ucd9c\ub825 \ub514\ub809\ud130\ub9ac\uc640 \ube44\uad50\ud55c\ub2e4.",
       "inputs": {
         "type": "GeneratorRequest",
         "fields": [
@@ -3118,7 +3118,10 @@
           "inputs": [
             "packages/php/tests/OrmGenScanTest.php",
             "tests/generator/php-scan-vectors.json",
-            "contracts/fixtures/bench/dbspec-set.json"
+            "contracts/fixtures/bench/dbspec-set.json",
+            "contracts/fixtures/bench/bench.dbs",
+            "contracts/fixtures/bench/bench_reader.dbs",
+            "contracts/fixtures/bench/bench_shared.dbs"
           ]
         },
         {
@@ -3272,10 +3275,10 @@
     {
       "id": "schema_definition",
       "title": "Schema definition and migration",
-      "title_ko": "스키마 정의와 마이그레이션",
+      "title_ko": "\uc2a4\ud0a4\ub9c8 \uc815\uc758\uc640 \ub9c8\uc774\uadf8\ub808\uc774\uc158",
       "status": "implemented",
       "description": "Read a set file into the files of its document set, parse and emit dbspec documents with the positions of their declarations, analyze a document into the tokens of its syntax, format a document canonically and refuse one with a diagnostic, compute the manifest and schema hashes of a document set, render the DDL of each dialect, introspect a database into a document, diff two schemas into plans and apply them with verification and recovery, and export and import Mermaid diagrams. The TypeScript declarations of apply and introspection name their connections with types of their own, so code that calls them type-checks without the pg, mysql2 or node:sqlite types.",
-      "description_ko": "set 파일을 읽어 그 문서 집합의 파일을 주고, dbspec document를 선언의 position과 함께 parse하고 emit하며, document를 syntax의 token으로 analyze하고, document를 canonical form으로 format하되 diagnostic이 있는 document는 거부하며, document set의 manifest와 schema hash를 계산하고, dialect별 DDL을 렌더링하고, 데이터베이스를 document로 introspect하며, 두 schema의 차이를 plan으로 만들어 검증과 복구를 갖춰 적용하고, Mermaid 다이어그램을 export하고 import한다. apply와 introspection의 TypeScript 선언은 connection을 자체 type으로 적으므로, 그것을 부르는 code는 pg, mysql2, node:sqlite type 없이 type 검사를 통과한다.",
+      "description_ko": "set \ud30c\uc77c\uc744 \uc77d\uc5b4 \uadf8 \ubb38\uc11c \uc9d1\ud569\uc758 \ud30c\uc77c\uc744 \uc8fc\uace0, dbspec document\ub97c \uc120\uc5b8\uc758 position\uacfc \ud568\uaed8 parse\ud558\uace0 emit\ud558\uba70, document\ub97c syntax\uc758 token\uc73c\ub85c analyze\ud558\uace0, document\ub97c canonical form\uc73c\ub85c format\ud558\ub418 diagnostic\uc774 \uc788\ub294 document\ub294 \uac70\ubd80\ud558\uba70, document set\uc758 manifest\uc640 schema hash\ub97c \uacc4\uc0b0\ud558\uace0, dialect\ubcc4 DDL\uc744 \ub80c\ub354\ub9c1\ud558\uace0, \ub370\uc774\ud130\ubca0\uc774\uc2a4\ub97c document\ub85c introspect\ud558\uba70, \ub450 schema\uc758 \ucc28\uc774\ub97c plan\uc73c\ub85c \ub9cc\ub4e4\uc5b4 \uac80\uc99d\uacfc \ubcf5\uad6c\ub97c \uac16\ucdb0 \uc801\uc6a9\ud558\uace0, Mermaid \ub2e4\uc774\uc5b4\uadf8\ub7a8\uc744 export\ud558\uace0 import\ud55c\ub2e4. apply\uc640 introspection\uc758 TypeScript \uc120\uc5b8\uc740 connection\uc744 \uc790\uccb4 type\uc73c\ub85c \uc801\uc73c\ubbc0\ub85c, \uadf8\uac83\uc744 \ubd80\ub974\ub294 code\ub294 pg, mysql2, node:sqlite type \uc5c6\uc774 type \uac80\uc0ac\ub97c \ud1b5\uacfc\ud55c\ub2e4.",
       "inputs": {
         "type": "DbspecDocumentSet",
         "fields": [
@@ -3903,6 +3906,32 @@
               ]
             }
           },
+          "php-extension": {
+            "part": "packages/php-ext/tests",
+            "tests": [
+              "packages/php-ext/tests/CoverageSchemaDefinitionTest.php"
+            ],
+            "inputs": [
+              "contracts/fixtures/schema_definition.json"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageSchemaDefinitionTest.php",
+                  "cases": [
+                    "dbspec_emit_round_trip",
+                    "dbspec_manifest_hash",
+                    "dbspec_render_ddl",
+                    "dbspec_analyze_tokens",
+                    "dbspec_format",
+                    "dbspec_format_refusal",
+                    "dbspec_parse_positions"
+                  ]
+                }
+              ]
+            }
+          },
           "rust": {
             "part": "packages/rust/schema",
             "tests": [
@@ -3997,10 +4026,10 @@
     {
       "id": "schema_install",
       "title": "Schema installation",
-      "title_ko": "스키마 설치",
-      "status": "implemented",
+      "title_ko": "\uc2a4\ud0a4\ub9c8 \uc124\uce58",
+      "status": "partial",
       "description": "Install a dbspec document set through a connection: every client renders the statements of its dialect, creates every table when no table of the set exists, changes nothing when every table exists, and fails with CONFIG when only some exist; it then compares the tables of the set in the database with the set and fails with CONFIG naming each difference. Registering a set on a connection, with utils().schema().register or the connect helper of generated code, reads and writes nothing in the database; install and addTablesAndColumns verify the database. A process loads the generated code of several document sets, and one connection serves all of them, each request with the model of its manifest hash. addTablesAndColumns upgrades an installed document set by the tables the database lacks the missing columns of the existing tables that are null or have a default and the missing indexes of the existing tables with the plan steps of the dialect, which create each table with its indexes, foreign keys, checks and triggers and replace the audit triggers of each changed table; it leaves the tables of other sets unchanged and returns SCHEMA_DIFFERS before any change for every other difference, a missing unique key included, because it can fail on the existing rows. A set that uses external documents of another set owns only its own tables: install and addTablesAndColumns require the used external tables in the database as declared and fail with CONFIG otherwise, and never create or change them.",
-      "description_ko": "연결로 dbspec document set을 설치한다. 모든 client가 자기 dialect의 문장을 렌더링해 set의 table이 하나도 없으면 모두 만들고, 모두 있으면 아무것도 바꾸지 않으며, 일부만 있으면 CONFIG로 실패한다. 그다음 database의 set table을 set과 비교하고 각 차이를 적은 CONFIG로 실패한다. utils().schema().register나 generated code의 connect helper로 연결에 set을 등록하는 것은 database를 읽거나 쓰지 않으며, install과 addTablesAndColumns가 database를 확인한다. 한 process가 여러 document set의 generated code를 읽고, 한 연결이 그 모두를 각 요청의 manifest hash에 맞는 model로 처리한다. addTablesAndColumns는 설치한 document set에 database에 없는 table과, 기존 table에 빠진 column 가운데 null이거나 default가 있는 column과, 기존 table에 빠진 index를 dialect의 plan step으로 더하며, 그 step은 각 table을 index, foreign key, check, trigger와 함께 만들고 바뀐 table의 audit trigger를 바꾼다. 다른 set의 table은 바꾸지 않고, 다른 모든 차이에는 변경 전에 SCHEMA_DIFFERS를 반환하며, 빠진 unique key는 있는 row에서 실패할 수 있으므로 그 차이에 든다. 다른 set의 외부 문서를 쓰는 set은 자기 table만 소유한다. install과 addTablesAndColumns는 쓰는 외부 table이 선언대로 database에 있기를 요구하고 아니면 CONFIG로 실패하며, 그 table을 만들거나 바꾸지 않는다.",
+      "description_ko": "\uc5f0\uacb0\ub85c dbspec document set\uc744 \uc124\uce58\ud55c\ub2e4. \ubaa8\ub4e0 client\uac00 \uc790\uae30 dialect\uc758 \ubb38\uc7a5\uc744 \ub80c\ub354\ub9c1\ud574 set\uc758 table\uc774 \ud558\ub098\ub3c4 \uc5c6\uc73c\uba74 \ubaa8\ub450 \ub9cc\ub4e4\uace0, \ubaa8\ub450 \uc788\uc73c\uba74 \uc544\ubb34\uac83\ub3c4 \ubc14\uafb8\uc9c0 \uc54a\uc73c\uba70, \uc77c\ubd80\ub9cc \uc788\uc73c\uba74 CONFIG\ub85c \uc2e4\ud328\ud55c\ub2e4. \uadf8\ub2e4\uc74c database\uc758 set table\uc744 set\uacfc \ube44\uad50\ud558\uace0 \uac01 \ucc28\uc774\ub97c \uc801\uc740 CONFIG\ub85c \uc2e4\ud328\ud55c\ub2e4. utils().schema().register\ub098 generated code\uc758 connect helper\ub85c \uc5f0\uacb0\uc5d0 set\uc744 \ub4f1\ub85d\ud558\ub294 \uac83\uc740 database\ub97c \uc77d\uac70\ub098 \uc4f0\uc9c0 \uc54a\uc73c\uba70, install\uacfc addTablesAndColumns\uac00 database\ub97c \ud655\uc778\ud55c\ub2e4. \ud55c process\uac00 \uc5ec\ub7ec document set\uc758 generated code\ub97c \uc77d\uace0, \ud55c \uc5f0\uacb0\uc774 \uadf8 \ubaa8\ub450\ub97c \uac01 \uc694\uccad\uc758 manifest hash\uc5d0 \ub9de\ub294 model\ub85c \ucc98\ub9ac\ud55c\ub2e4. addTablesAndColumns\ub294 \uc124\uce58\ud55c document set\uc5d0 database\uc5d0 \uc5c6\ub294 table\uacfc, \uae30\uc874 table\uc5d0 \ube60\uc9c4 column \uac00\uc6b4\ub370 null\uc774\uac70\ub098 default\uac00 \uc788\ub294 column\uacfc, \uae30\uc874 table\uc5d0 \ube60\uc9c4 index\ub97c dialect\uc758 plan step\uc73c\ub85c \ub354\ud558\uba70, \uadf8 step\uc740 \uac01 table\uc744 index, foreign key, check, trigger\uc640 \ud568\uaed8 \ub9cc\ub4e4\uace0 \ubc14\ub010 table\uc758 audit trigger\ub97c \ubc14\uafbc\ub2e4. \ub2e4\ub978 set\uc758 table\uc740 \ubc14\uafb8\uc9c0 \uc54a\uace0, \ub2e4\ub978 \ubaa8\ub4e0 \ucc28\uc774\uc5d0\ub294 \ubcc0\uacbd \uc804\uc5d0 SCHEMA_DIFFERS\ub97c \ubc18\ud658\ud558\uba70, \ube60\uc9c4 unique key\ub294 \uc788\ub294 row\uc5d0\uc11c \uc2e4\ud328\ud560 \uc218 \uc788\uc73c\ubbc0\ub85c \uadf8 \ucc28\uc774\uc5d0 \ub4e0\ub2e4. \ub2e4\ub978 set\uc758 \uc678\ubd80 \ubb38\uc11c\ub97c \uc4f0\ub294 set\uc740 \uc790\uae30 table\ub9cc \uc18c\uc720\ud55c\ub2e4. install\uacfc addTablesAndColumns\ub294 \uc4f0\ub294 \uc678\ubd80 table\uc774 \uc120\uc5b8\ub300\ub85c database\uc5d0 \uc788\uae30\ub97c \uc694\uad6c\ud558\uace0 \uc544\ub2c8\uba74 CONFIG\ub85c \uc2e4\ud328\ud558\uba70, \uadf8 table\uc744 \ub9cc\ub4e4\uac70\ub098 \ubc14\uafb8\uc9c0 \uc54a\ub294\ub2e4.",
       "inputs": {
         "type": "DbspecDocumentSet",
         "fields": [
@@ -4532,10 +4561,10 @@
     {
       "id": "planner",
       "title": "In-process planner",
-      "title_ko": "프로세스 내 planner",
-      "status": "implemented",
+      "title_ko": "\ud504\ub85c\uc138\uc2a4 \ub0b4 planner",
+      "status": "partial",
       "description": "Validate a value-free request against the manifest and render the dialect SQL, bind slots, assembly metadata, and the tables each statement names in the client process. The five planners produce identical statements.",
-      "description_ko": "값이 없는 request를 manifest로 검증하고 dialect SQL, bind slot, 조립 정보, 각 statement가 가리키는 table을 client process에서 만든다. 다섯 planner는 같은 statement를 만든다.",
+      "description_ko": "\uac12\uc774 \uc5c6\ub294 request\ub97c manifest\ub85c \uac80\uc99d\ud558\uace0 dialect SQL, bind slot, \uc870\ub9bd \uc815\ubcf4, \uac01 statement\uac00 \uac00\ub9ac\ud0a4\ub294 table\uc744 client process\uc5d0\uc11c \ub9cc\ub4e0\ub2e4. \ub2e4\uc12f planner\ub294 \uac19\uc740 statement\ub97c \ub9cc\ub4e0\ub2e4.",
       "inputs": {
         "type": "RequestIR",
         "fields": [
@@ -5508,10 +5537,10 @@
     {
       "id": "composite_keys",
       "title": "Composite keys",
-      "title_ko": "복합 key",
-      "status": "implemented",
+      "title_ko": "\ubcf5\ud569 key",
+      "status": "partial",
       "description": "Preserve every declared primary and foreign key component in identity, writes, relations, tuple conditions, and pages.",
-      "description_ko": "선언된 모든 primary key와 foreign key 구성 요소를 식별, 쓰기, 관계, tuple 조건, 페이지에서 유지한다.",
+      "description_ko": "\uc120\uc5b8\ub41c \ubaa8\ub4e0 primary key\uc640 foreign key \uad6c\uc131 \uc694\uc18c\ub97c \uc2dd\ubcc4, \uc4f0\uae30, \uad00\uacc4, tuple \uc870\uac74, \ud398\uc774\uc9c0\uc5d0\uc11c \uc720\uc9c0\ud55c\ub2e4.",
       "inputs": {
         "type": "SchemaManifest",
         "fields": [
@@ -5808,10 +5837,10 @@
     {
       "id": "authenticated_encryption",
       "title": "Authenticated encryption",
-      "title_ko": "인증 암호화",
-      "status": "implemented",
+      "title_ko": "\uc778\uc99d \uc554\ud638\ud654",
+      "status": "partial",
       "description": "Encode authenticated versioned AES values and blind indexes, read mixed key versions, and rotate every encrypted column of a table in batches.",
-      "description_ko": "인증과 버전이 있는 AES 값과 blind index를 인코딩하고, 섞인 key version을 읽으며, 테이블의 모든 암호화 컬럼을 배치로 회전한다.",
+      "description_ko": "\uc778\uc99d\uacfc \ubc84\uc804\uc774 \uc788\ub294 AES \uac12\uacfc blind index\ub97c \uc778\ucf54\ub529\ud558\uace0, \uc11e\uc778 key version\uc744 \uc77d\uc73c\uba70, \ud14c\uc774\ube14\uc758 \ubaa8\ub4e0 \uc554\ud638\ud654 \uceec\ub7fc\uc744 \ubc30\uce58\ub85c \ud68c\uc804\ud55c\ub2e4.",
       "inputs": {
         "type": "AESKeyring",
         "fields": [
@@ -6191,10 +6220,10 @@
     {
       "id": "parameter_chunking",
       "title": "Parameter chunking",
-      "title_ko": "파라미터 분할",
-      "status": "implemented",
+      "title_ko": "\ud30c\ub77c\ubbf8\ud130 \ubd84\ud560",
+      "status": "partial",
       "description": "Pad relation key lists to size classes, split relation keys and oversized root IN lists at the driver bind limit, merge the results, and reject root shapes that a merge would change.",
-      "description_ko": "관계 key 목록을 크기 등급으로 채우고, 관계 key와 큰 root IN 목록을 driver bind 한도에서 나누어 결과를 합치며, 병합이 결과를 바꾸는 root 모양은 거부한다.",
+      "description_ko": "\uad00\uacc4 key \ubaa9\ub85d\uc744 \ud06c\uae30 \ub4f1\uae09\uc73c\ub85c \ucc44\uc6b0\uace0, \uad00\uacc4 key\uc640 \ud070 root IN \ubaa9\ub85d\uc744 driver bind \ud55c\ub3c4\uc5d0\uc11c \ub098\ub204\uc5b4 \uacb0\uacfc\ub97c \ud569\uce58\uba70, \ubcd1\ud569\uc774 \uacb0\uacfc\ub97c \ubc14\uafb8\ub294 root \ubaa8\uc591\uc740 \uac70\ubd80\ud55c\ub2e4.",
       "inputs": {
         "type": "RequestIR",
         "fields": [
@@ -6274,9 +6303,14 @@
           "inputs": [
             "packages/rust/tests/src/integration.rs",
             "contracts/fixtures/bench/bench.dbs",
+            "contracts/fixtures/bench/bench_reader.dbs",
+            "contracts/fixtures/bench/bench_shared.dbs",
             "packages/rust/tests/tests/integration/result_chains.rs",
             "packages/rust/tests/build.rs",
-            "packages/rust/tests/nonnull.dbs"
+            "packages/rust/tests/nonnull.dbs",
+            "packages/rust/tests/external/dbspec-set.json",
+            "packages/rust/tests/external/member.dbs",
+            "packages/rust/tests/external/core/core.dbs"
           ]
         },
         {
@@ -6527,10 +6561,10 @@
     {
       "id": "constraints_and_relations",
       "title": "Constraints and relations",
-      "title_ko": "제약과 관계",
-      "status": "implemented",
+      "title_ko": "\uc81c\uc57d\uacfc \uad00\uacc4",
+      "status": "partial",
       "description": "Keep CHECK constraints, indexes, internal and external foreign keys, soft delete, immutable tables, and relation delete actions in the planner and the migration system.",
-      "description_ko": "CHECK 제약, index, 내부와 외부 foreign key, soft delete, 변경 불가 테이블, 관계 삭제 동작을 planner와 migration 시스템에서 유지한다.",
+      "description_ko": "CHECK \uc81c\uc57d, index, \ub0b4\ubd80\uc640 \uc678\ubd80 foreign key, soft delete, \ubcc0\uacbd \ubd88\uac00 \ud14c\uc774\ube14, \uad00\uacc4 \uc0ad\uc81c \ub3d9\uc791\uc744 planner\uc640 migration \uc2dc\uc2a4\ud15c\uc5d0\uc11c \uc720\uc9c0\ud55c\ub2e4.",
       "inputs": {
         "type": "DbspecDocumentSet",
         "fields": [
@@ -6903,10 +6937,10 @@
     {
       "id": "audit_triggers",
       "title": "Audit triggers",
-      "title_ko": "감사 트리거",
-      "status": "implemented",
+      "title_ko": "\uac10\uc0ac \ud2b8\ub9ac\uac70",
+      "status": "partial",
       "description": "The audit setting of a table names its audit column and the audit record table that the column refers to through a declared restrict foreign key, and installs row triggers that copy every inserted and updated row into the declared history table; the setting records every column, or only the columns that an exclude or include list selects, and the history table holds exactly the recorded columns. The connection configuration takes an audit source, a function that returns the audit values of the current request, and a transaction with audit values calls it once and inserts one audit record from its values and the transaction's into the table that the audited tables reference, before the callback; every audited insert, update, soft delete and restore in the transaction writes the record's key, on every transaction entry point: Go Transaction, PHP transaction and TypeScript transaction through the connection or its context or signal handle, and Rust transaction, transaction_send and transaction_once. A nested transaction keeps the outer audit.",
-      "description_ko": "테이블의 audit 설정은 audit column과, 그 column의 선언한 restrict foreign key의 대상인 audit 기록 테이블을 정하고, 삽입·갱신된 모든 행을 선언한 history 테이블에 복사하는 행 trigger를 설치한다. 설정은 모든 column을, 또는 exclude나 include 목록이 고른 column만 기록하며, history 테이블은 기록하는 column만 가진다. 연결 설정은 현재 요청의 audit 값을 돌려주는 audit source를 받고, audit 값을 가진 트랜잭션은 이를 한 번 불러 callback 전에 그 값과 트랜잭션의 값으로 감사 대상 테이블이 references로 정한 테이블에 audit 기록 하나를 삽입한다. 트랜잭션 안의 모든 감사 대상 insert, update, soft delete, restore는 그 기록의 key를 쓰며, 이는 모든 트랜잭션 진입점에서 같다: 연결이나 그 context, signal handle을 통한 Go Transaction, PHP transaction, TypeScript transaction, 그리고 Rust transaction, transaction_send, transaction_once다. 중첩 트랜잭션은 바깥 audit을 유지한다.",
+      "description_ko": "\ud14c\uc774\ube14\uc758 audit \uc124\uc815\uc740 audit column\uacfc, \uadf8 column\uc758 \uc120\uc5b8\ud55c restrict foreign key\uc758 \ub300\uc0c1\uc778 audit \uae30\ub85d \ud14c\uc774\ube14\uc744 \uc815\ud558\uace0, \uc0bd\uc785\u00b7\uac31\uc2e0\ub41c \ubaa8\ub4e0 \ud589\uc744 \uc120\uc5b8\ud55c history \ud14c\uc774\ube14\uc5d0 \ubcf5\uc0ac\ud558\ub294 \ud589 trigger\ub97c \uc124\uce58\ud55c\ub2e4. \uc124\uc815\uc740 \ubaa8\ub4e0 column\uc744, \ub610\ub294 exclude\ub098 include \ubaa9\ub85d\uc774 \uace0\ub978 column\ub9cc \uae30\ub85d\ud558\uba70, history \ud14c\uc774\ube14\uc740 \uae30\ub85d\ud558\ub294 column\ub9cc \uac00\uc9c4\ub2e4. \uc5f0\uacb0 \uc124\uc815\uc740 \ud604\uc7ac \uc694\uccad\uc758 audit \uac12\uc744 \ub3cc\ub824\uc8fc\ub294 audit source\ub97c \ubc1b\uace0, audit \uac12\uc744 \uac00\uc9c4 \ud2b8\ub79c\uc7ad\uc158\uc740 \uc774\ub97c \ud55c \ubc88 \ubd88\ub7ec callback \uc804\uc5d0 \uadf8 \uac12\uacfc \ud2b8\ub79c\uc7ad\uc158\uc758 \uac12\uc73c\ub85c \uac10\uc0ac \ub300\uc0c1 \ud14c\uc774\ube14\uc774 references\ub85c \uc815\ud55c \ud14c\uc774\ube14\uc5d0 audit \uae30\ub85d \ud558\ub098\ub97c \uc0bd\uc785\ud55c\ub2e4. \ud2b8\ub79c\uc7ad\uc158 \uc548\uc758 \ubaa8\ub4e0 \uac10\uc0ac \ub300\uc0c1 insert, update, soft delete, restore\ub294 \uadf8 \uae30\ub85d\uc758 key\ub97c \uc4f0\uba70, \uc774\ub294 \ubaa8\ub4e0 \ud2b8\ub79c\uc7ad\uc158 \uc9c4\uc785\uc810\uc5d0\uc11c \uac19\ub2e4: \uc5f0\uacb0\uc774\ub098 \uadf8 context, signal handle\uc744 \ud1b5\ud55c Go Transaction, PHP transaction, TypeScript transaction, \uadf8\ub9ac\uace0 Rust transaction, transaction_send, transaction_once\ub2e4. \uc911\ucca9 \ud2b8\ub79c\uc7ad\uc158\uc740 \ubc14\uae65 audit\uc744 \uc720\uc9c0\ud55c\ub2e4.",
       "inputs": {
         "type": "DbspecDocumentSet",
         "fields": [
@@ -7366,10 +7400,10 @@
     {
       "id": "interface_contract",
       "title": "Common interface verification",
-      "title_ko": "공통 인터페이스 검증",
-      "status": "implemented",
+      "title_ko": "\uacf5\ud1b5 \uc778\ud130\ud398\uc774\uc2a4 \uac80\uc99d",
+      "status": "partial",
       "description": "Every client exposes the public symbols declared in contracts/interfaces.json. Each language extracts its declarations from real syntax trees without running model code, and the comparator fails when a symbol, field, return, or error differs from the common interface.",
-      "description_ko": "모든 클라이언트는 contracts/interfaces.json에 선언한 공개 심볼을 노출한다. 각 언어는 모델 코드를 실행하지 않고 실제 구문 트리에서 선언을 뽑고, 비교 도구는 심볼, 필드, 반환, 오류가 공통 인터페이스와 다르면 실패한다.",
+      "description_ko": "\ubaa8\ub4e0 \ud074\ub77c\uc774\uc5b8\ud2b8\ub294 contracts/interfaces.json\uc5d0 \uc120\uc5b8\ud55c \uacf5\uac1c \uc2ec\ubcfc\uc744 \ub178\ucd9c\ud55c\ub2e4. \uac01 \uc5b8\uc5b4\ub294 \ubaa8\ub378 \ucf54\ub4dc\ub97c \uc2e4\ud589\ud558\uc9c0 \uc54a\uace0 \uc2e4\uc81c \uad6c\ubb38 \ud2b8\ub9ac\uc5d0\uc11c \uc120\uc5b8\uc744 \ubf51\uace0, \ube44\uad50 \ub3c4\uad6c\ub294 \uc2ec\ubcfc, \ud544\ub4dc, \ubc18\ud658, \uc624\ub958\uac00 \uacf5\ud1b5 \uc778\ud130\ud398\uc774\uc2a4\uc640 \ub2e4\ub974\uba74 \uc2e4\ud328\ud55c\ub2e4.",
       "inputs": {
         "type": "InterfaceManifest",
         "fields": [
@@ -7625,10 +7659,10 @@
     {
       "id": "performance_gate",
       "title": "Hot-path performance standard",
-      "title_ko": "hot-path 성능 기준",
+      "title_ko": "hot-path \uc131\ub2a5 \uae30\uc900",
       "status": "partial",
       "description": "The PHP client measures hot-path latency as a ratio to the raw driver on the seeded MySQL bench database, and make perf-check prints each ratio and warns when a workload exceeds its recorded reference; a measurement never fails it. The Rust bench harness measures without a reference, and the TypeScript standard is not built.",
-      "description_ko": "PHP 클라이언트는 seed한 MySQL 벤치 데이터베이스에서 hot-path 지연 시간을 순수 드라이버와의 비율로 재며, make perf-check는 비율을 출력하고 작업량이 기록한 기준값을 넘으면 경고한다. 측정은 그것을 실패시키지 않는다. Rust 벤치 도구는 기준값 없이 측정만 하고 TypeScript 기준은 만들지 않았다.",
+      "description_ko": "PHP \ud074\ub77c\uc774\uc5b8\ud2b8\ub294 seed\ud55c MySQL \ubca4\uce58 \ub370\uc774\ud130\ubca0\uc774\uc2a4\uc5d0\uc11c hot-path \uc9c0\uc5f0 \uc2dc\uac04\uc744 \uc21c\uc218 \ub4dc\ub77c\uc774\ubc84\uc640\uc758 \ube44\uc728\ub85c \uc7ac\uba70, make perf-check\ub294 \ube44\uc728\uc744 \ucd9c\ub825\ud558\uace0 \uc791\uc5c5\ub7c9\uc774 \uae30\ub85d\ud55c \uae30\uc900\uac12\uc744 \ub118\uc73c\uba74 \uacbd\uace0\ud55c\ub2e4. \uce21\uc815\uc740 \uadf8\uac83\uc744 \uc2e4\ud328\uc2dc\ud0a4\uc9c0 \uc54a\ub294\ub2e4. Rust \ubca4\uce58 \ub3c4\uad6c\ub294 \uae30\uc900\uac12 \uc5c6\uc774 \uce21\uc815\ub9cc \ud558\uace0 TypeScript \uae30\uc900\uc740 \ub9cc\ub4e4\uc9c0 \uc54a\uc558\ub2e4.",
       "inputs": {
         "type": "BenchmarkDatabase",
         "fields": [
@@ -7777,10 +7811,10 @@
     {
       "id": "conformance_verification",
       "title": "Conformance verification",
-      "title_ko": "적합성 검증",
-      "status": "implemented",
+      "title_ko": "\uc801\ud569\uc131 \uac80\uc99d",
+      "status": "partial",
       "description": "Run the same model chains in Go, PHP, Rust, TypeScript, and Python on MySQL, PostgreSQL, and SQLite and compare the statements and results with the recorded vectors.",
-      "description_ko": "같은 모델 체인을 Go, PHP, Rust, TypeScript, Python에서 MySQL, PostgreSQL, SQLite로 실행하고 statement와 결과를 기록된 벡터와 비교한다.",
+      "description_ko": "\uac19\uc740 \ubaa8\ub378 \uccb4\uc778\uc744 Go, PHP, Rust, TypeScript, Python\uc5d0\uc11c MySQL, PostgreSQL, SQLite\ub85c \uc2e4\ud589\ud558\uace0 statement\uc640 \uacb0\uacfc\ub97c \uae30\ub85d\ub41c \ubca1\ud130\uc640 \ube44\uad50\ud55c\ub2e4.",
       "inputs": {
         "type": "ConformanceVector",
         "fields": [
@@ -8230,10 +8264,10 @@
     {
       "id": "catalog_connection",
       "title": "Rust catalog connection",
-      "title_ko": "Rust catalog 연결",
+      "title_ko": "Rust catalog \uc5f0\uacb0",
       "status": "partial",
       "description": "With the live-db feature, polyspec-orm-build opens a catalog connection from one DSN, reads table metadata and bounded table pages, runs dialect-parsed read-only queries, and inserts, updates and deletes rows with verified snapshots. Only the Rust client provides it.",
-      "description_ko": "live-db feature가 켜진 polyspec-orm-build는 하나의 DSN으로 catalog 연결을 열고, table metadata와 제한된 table page를 읽고, dialect로 parse한 read-only query를 실행하며, 검증된 snapshot으로 row를 insert, update, delete한다. Rust client만 제공한다.",
+      "description_ko": "live-db feature\uac00 \ucf1c\uc9c4 polyspec-orm-build\ub294 \ud558\ub098\uc758 DSN\uc73c\ub85c catalog \uc5f0\uacb0\uc744 \uc5f4\uace0, table metadata\uc640 \uc81c\ud55c\ub41c table page\ub97c \uc77d\uace0, dialect\ub85c parse\ud55c read-only query\ub97c \uc2e4\ud589\ud558\uba70, \uac80\uc99d\ub41c snapshot\uc73c\ub85c row\ub97c insert, update, delete\ud55c\ub2e4. Rust client\ub9cc \uc81c\uacf5\ud55c\ub2e4.",
       "inputs": {
         "type": "CatalogRequest",
         "fields": [
@@ -8427,9 +8461,9 @@
       "id": "request_hook",
       "title": "Request hook",
       "title_ko": "Request hook",
-      "status": "implemented",
+      "status": "partial",
       "description": "A connection handle carries one hook that receives each request of the handle right before planning: reads, counts, pages, inserts with one row or rows, updates, deletes, restores and getQuery. The hook may add predicates, assignments and parameters through the client's add-parameter call; the client sets n_params and plans the request as any other, so the planner validates it and the plan cache keys on it. Rows and transactions of the handle keep the hook, and the client gives the hook no meaning of its own.",
-      "description_ko": "연결 handle은 hook 하나를 가지며, 그 hook은 handle의 각 request를 plan 직전에 받는다: 읽기, count, page, 행 하나나 여러 행의 insert, update, delete, restore, getQuery다. hook은 client의 매개변수 추가 호출로 predicate, assignment, 매개변수를 더할 수 있다. client는 n_params를 쓰고 request를 다른 request처럼 plan하므로 planner가 검증하고 plan cache는 그 request로 key를 정한다. handle의 행과 transaction은 hook을 지키며, client는 hook에 자기 의미를 붙이지 않는다.",
+      "description_ko": "\uc5f0\uacb0 handle\uc740 hook \ud558\ub098\ub97c \uac00\uc9c0\uba70, \uadf8 hook\uc740 handle\uc758 \uac01 request\ub97c plan \uc9c1\uc804\uc5d0 \ubc1b\ub294\ub2e4: \uc77d\uae30, count, page, \ud589 \ud558\ub098\ub098 \uc5ec\ub7ec \ud589\uc758 insert, update, delete, restore, getQuery\ub2e4. hook\uc740 client\uc758 \ub9e4\uac1c\ubcc0\uc218 \ucd94\uac00 \ud638\ucd9c\ub85c predicate, assignment, \ub9e4\uac1c\ubcc0\uc218\ub97c \ub354\ud560 \uc218 \uc788\ub2e4. client\ub294 n_params\ub97c \uc4f0\uace0 request\ub97c \ub2e4\ub978 request\ucc98\ub7fc plan\ud558\ubbc0\ub85c planner\uac00 \uac80\uc99d\ud558\uace0 plan cache\ub294 \uadf8 request\ub85c key\ub97c \uc815\ud55c\ub2e4. handle\uc758 \ud589\uacfc transaction\uc740 hook\uc744 \uc9c0\ud0a4\uba70, client\ub294 hook\uc5d0 \uc790\uae30 \uc758\ubbf8\ub97c \ubd99\uc774\uc9c0 \uc54a\ub294\ub2e4.",
       "inputs": {
         "type": "RequestHook",
         "fields": [
@@ -9239,7 +9273,9 @@
         "packages/php/testing/conformance/runner.php",
         "packages/ts/testing/conformance/runner_typescript.mts"
       ],
-      "tests": ["tests/conformance/check/chain-methods.test.mts"],
+      "tests": [
+        "tests/conformance/check/chain-methods.test.mts"
+      ],
       "command": "make --no-print-directory TEST_ENV=\"$ORM_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" conformance-check"
     },
     {

@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { endGroup } from '../check/step.mts';
-import { packageDirectory, packageDirectoryOf } from './packages.mts';
+import { packageDirectoryOf } from './packages.mts';
 import { mkdir, mkdtemp, readFile, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, extname, join, relative, resolve, sep } from 'node:path';
@@ -319,7 +319,7 @@ async function nativeTest(item: Item, command: NativeCommand, root: string): Pro
       command.cases.some((id: string) => !item.cases.includes(id)) ||
       !['node', 'php', 'python', 'go', 'cargo'].includes(command.runner) ||
       (item.language === 'typescript' && command.runner !== 'node') ||
-      (item.language === 'php' && command.runner !== 'php') ||
+      ((item.language === 'php' || item.language === 'php-extension') && command.runner !== 'php') ||
       (item.language === 'python' && command.runner !== 'python') ||
       (item.language === 'go' && command.runner !== 'go') ||
       (item.language === 'rust' && command.runner !== 'cargo') ||
@@ -340,13 +340,20 @@ async function nativeTest(item: Item, command: NativeCommand, root: string): Pro
     throw new Error('invalid native test file extension');
   if (command.runner === 'node')
     return { format: 'case', program: command.runner, args: [testPath, ...command.cases] };
-  // PHP runs on PHPUnit (packages/php/phpunit.xml.dist): a case <id> is the test method test_<id> of the test file's class,
-  // selected with an anchored filter and read from the TeamCity events that PHPUnit writes to stdout.
+  // PHP runs on PHPUnit with the phpunit.xml.dist of the package of the item's language (packages/php, or packages/php-ext
+  // for the PHP extension): a case <id> is the test method test_<id> of the test file's class, selected with an anchored
+  // filter and read from the TeamCity events that PHPUnit writes to stdout. The extension's tests run on a PHP that loads
+  // the built extension library that make names in ORM_DBSPEC_EXTENSION.
   if (command.runner === 'php') {
-    const phpPackage = resolve(root, packageDirectory.php);
-    if (!testPath.startsWith(`${phpPackage}/`)) throw new Error(`PHP test ${command.test} is outside ${packageDirectory.php}`);
+    const directory = packageDirectoryOf(item.language);
+    const phpPackage = resolve(root, directory);
+    if (!testPath.startsWith(`${phpPackage}/`)) throw new Error(`PHP test ${command.test} is outside ${directory}`);
+    const extension = item.language === 'php-extension' ? process.env.ORM_DBSPEC_EXTENSION : undefined;
+    if (item.language === 'php-extension' && !extension)
+      throw new Error('ORM_DBSPEC_EXTENSION is unset; run this through make, which builds the extension and exports it');
     return { format: 'phpunit', program: 'php', cwd: root,
-      args: [resolve(root, 'vendor-php/bin/phpunit'), '--teamcity', '--configuration', resolve(phpPackage, 'phpunit.xml.dist'),
+      args: [...(extension ? ['-d', `extension=${extension}`] : []),
+        resolve(root, 'vendor-php/bin/phpunit'), '--teamcity', '--configuration', resolve(phpPackage, 'phpunit.xml.dist'),
         '--filter', `/::(${command.cases.map(id => `test_${id}`).join('|')})$/`, testPath],
       symbols: command.cases.map(id => `test_${id}`) };
   }

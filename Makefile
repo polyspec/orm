@@ -889,8 +889,13 @@ feature-check/build: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(RUN_LONG) typescript-build -- npm run typescript:build
 # The Python owners of the coverage run on the client's venv (ORM_PYTHON), which imports the installed client (scripts/features/coverage.mts).
+# The php-extension owners run on a PHP that loads the extension orm_dbspec built into the run directory of this target
+# (ORM_DBSPEC_EXTENSION).
+feature-coverage: RUN_DIR = $(abspath .runtime/run)/feature-coverage-$$PPID
 feature-coverage: feature-check/build python-venv-check
-	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python node scripts/features/coverage.mts
+	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
+	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) node scripts/features/coverage.mts
+	rm -rf $(RUN_DIR)
 feature-verify-rust: feature-check/build
 	$(WITH_TEST_ENV) node scripts/features/check.mts --run --features --shard rust
 feature-verify-other: feature-check/build
