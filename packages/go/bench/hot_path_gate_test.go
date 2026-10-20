@@ -6,6 +6,7 @@
 package bench
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"runtime"
@@ -35,9 +36,17 @@ func TestHotPathGateUnderLoad(t *testing.T) {
 		load = append(load, cmd)
 	}
 	defer func() {
+		// Every busy process is ended even when one of them fails to end, so the errors are reported
+		// one by one and not with t.Fatal, which would leave the rest running.
 		for _, cmd := range load {
-			_ = cmd.Process.Kill()
-			_ = cmd.Wait()
+			if err := cmd.Process.Kill(); err != nil {
+				t.Errorf("kill the CPU load process: %v", err)
+			}
+			// A killed process ends by a signal, which Wait reports as an ExitError with exit code -1.
+			var exit *exec.ExitError
+			if err := cmd.Wait(); err != nil && (!errors.As(err, &exit) || exit.ExitCode() != -1) {
+				t.Errorf("wait for the CPU load process: %v", err)
+			}
 		}
 	}()
 	hotPathGate(t)
