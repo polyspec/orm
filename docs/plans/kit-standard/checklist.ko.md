@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: a1b3845bd014e130eded5e82f270d777c637c399bf0fae68ae3776d8e7f6ccb3 -->
+<!-- source-sha256: 1a292e5d61b50cfa4b7d62ba96cbe3c8be260fd6ad0990cd2025335e2a33f5df -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -28,7 +28,7 @@
 | KSTD-2-9-11 | DIA-21이 Go 진입점을 orm.Connect로 적는다 (KSTD-2-9 후속). Cause: Go client에 없는 orm.Open이라 적는다 | docs/spec/dialects.md and its Korean twin | `make docs-check` | [ ] |
 | KSTD-2-9-12 | COD-9와 COD-31이 codec stage를 ordered_json으로 적는다 (KSTD-2-9 후속). Cause: style을 json과 jsons로 적으나 stage는 ordered_json이고 Go와 Rust는 json에 CODEC_UNSUPPORTED를 답한다 | docs/spec/codec.md and its Korean twin | `make docs-check` | [ ] |
 | KSTD-2-9-13 | CPX-2는 모든 구현이 돌리는 fixture 위에서 complex query 예제의 규칙을 적는다 (KSTD-2-9 후속). Cause: schema가 fixture가 아니고 full text를 쓰는 제품 예제를 적어 어떤 test도 검사할 수 없다 | docs/spec, contracts/fixtures | `make parity-declarations-check` | [ ] |
-| KSTD-2-10 | dbspec 영역과 query 영역의 requirement id 중 어떤 test도 이름으로 가리키지 않는 id는 모든 구현에 test를 갖는다 (KSTD-2-5, KSTD-2-6 후속). Cause: CPX-2, DBS-95, DSL-49, DSL-50, DSL-52, DSL-87, DSL-120, DSL-121, DSL-122, DSL-124, DSL-142, DIA-20, DIA-21, DIA-71, DIA-97, COD-21, COD-31은 test가 없다; DSL-32, DSL-33, DIA-6, DIA-187은 두 dialect의 SQL과 SQLite의 거부를 담는 conformance vector가 필요하다; DIA-156, 164, 168~173, 175~179, 182, 186, 190은 markdown conformance case가 필요하다; DBS-59, 87, 109, 113, 117, CPX-3, DSL-113, DIA-108은 그 id를 인용하지 않는 vector나 unit만 가리킨다 | tests/conformance, tests/markdown, config/parity.json, tests of every implementation | `make parity-declarations-check` | [ ] |
+| KSTD-2-10 | dbspec 영역과 query 영역의 requirement id 중 어떤 test도 이름으로 가리키지 않는 id는 모든 구현에 test를 갖는다 (KSTD-2-5, KSTD-2-6 후속). Cause: CPX-2, DBS-95, DSL-49, DSL-50, DSL-52, DSL-87, DSL-120, DSL-121, DSL-122, DSL-124, DSL-142, DIA-20, DIA-21, DIA-71, DIA-97, COD-21, COD-31은 test가 없다; DSL-32, DSL-33, DIA-6, DIA-187은 두 dialect의 SQL과 SQLite의 거부를 담는 conformance vector가 필요하다; DIA-156, 164, 168~173, 175~179, 182, 186, 190은 markdown conformance case가 필요하다; DBS-59, 87, 109, 113, 117, CPX-3, DSL-113, DIA-108은 그 id를 인용하지 않는 vector나 unit만 가리킨다 | tests/conformance, tests/markdown, config/parity.json, tests of every implementation | `make parity-declarations-check` | [o] |
 | KSTD-2-10-1 | DSL-87을 세 database의 conformance vector delete_lock이 검사한다 (KSTD-2-10 후속). Cause: vector는 다섯 runner에 쓰였으나 disk가 conformance 하한 아래로 떨어져 기록되지 못했다; 그 patch는 repository 밖에 보관되어 있다 | tests/conformance, the five runners, config/parity.json | `make parity-declarations-check` | [ ] |
 | KSTD-2-10-2 | full-text search를 모든 구현에 구현하고 그 규칙 DSL-32, DSL-33, DIA-6, DIA-187을 검사한다 (KSTD-2-10 후속). Cause: spec은 full-text match를 규정하지만 IR에는 match 연산자가 없고 어떤 client도 이를 보내지 않아 test는 red일 수밖에 없다 | docs/spec/protocol.md, the IR, every planner and client, tests/conformance | `make parity-declarations-check` | [ ] |
 | KSTD-2-10-3 | DIA-175와 DIA-177을 codec column과 select explicit이 있는 corpus의 markdown case가 검사한다 (KSTD-2-10 후속). Cause: markdown corpus catalog에 둘 다 없고, 이를 더하면 다섯 client의 생성 model이 바뀐다 | tests/markdown, the generated models | `make parity-declarations-check` | [ ] |

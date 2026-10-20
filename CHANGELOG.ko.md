@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c89e4e5d02bd96f6e6c012b60b70679b1dae944db04b07c006b8cd1f646e1b1a -->
+<!-- source-sha256: e8e997c697efbab11d0cdaf923f73e7b166a817825f44e288a446b4af6d5fb39 -->
 # 변경 이력
 
 ## Unreleased
+- 어떤 test도 이름으로 가리키지 않던 dbspec과 query 영역 id에 test나 인용이 생겼다: markdown case 15개(DIA-156~DIA-190), DIA-97의 hashes case, DBS-95와 DIA-71의 암호화 history와 full-text introspection case, DSL-142의 month-end probe, DIA-20과 DIA-21의 Go MySQL 전용 build, DSL-49, DSL-50, DSL-52의 chain 인자 type, DSL-121, DSL-122, DSL-124의 transaction 흐름, COD-21과 COD-31의 styled value 검사다; 각각 먼저 실패한 뒤 통과했다. 추적되지 않은 id가 207개에서 174개로 줄었고, 나머지는 KSTD-2-10-1~-6과 KSTD-2-9-10~-13이다(KSTD-2-10).
 - 변수에 담긴 scan receiver는 그 initializer와 모든 재할당을 따라 class와 그 class의 import로 풀린다(DSL-151). 그래서 조건식에서 자기 chain으로 재할당한 model도 chain method를 유지한다. red: TypeScript, PHP, Python scan이 limepie의 console/audit.ts처럼 `page = c ? page.ltSeq(x) : page.andLtSeq(x)` 뒤 class를 잃어 `ltSeq`, `andLtSeq`를 생성하지 않았다; Go와 Rust는 이미 변수의 type을 알았고, 그 새 case는 풀이를 깨면 실패한다(T226-1).
 - `make feature-unit-check`가 통과한다: PHP extension이 package, PHPUnit 실행, `schema_definition` owner를 갖춘 feature coverage의 client 언어다; 아직 구현하지 않은 feature 16개는 `partial`이고 `docs/features.md`를 다시 생성했다. red: coverage case 8개가 "no package implements the client language php-extension"으로 실패했고 생성 문서가 낡았다(KSTD-7).
 - 구현 내부 test 64개(dbspec harness와 loader, unicode와 vector 자가 검사, generator scan 기계 장치, test harness, bench, example)를 더는 parity unit으로 선언하지 않는다; 이들은 package test로 남아 돈다. `make parity-declarations-check`가 576개에서 512개 finding이 되었다(KSTD-2-11-5).
