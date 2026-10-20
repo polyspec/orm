@@ -2215,11 +2215,9 @@ def _select(ex: Executor, cached: dict, step: dict, params, parents=None):
 
 
 def _decode_assembly(row, assemble: dict, db: Db) -> None:
-    version = db.aes_keyring.current_version if db.aes_keyring is not None else 1
+    version_cell = None
     if "aes_version" in assemble:
-        at = row[assemble["columns"][assemble["aes_version"]]["index"]]
-        if at is not None:
-            version = stored_version(at)
+        version_cell = row[assemble["columns"][assemble["aes_version"]]["index"]]
     elif any("aes" in column["styles"] for column in assemble["columns"]):
         # The planner selects the version column of every AES column, so a plan without one is broken: no version is assumed.
         raise OrmError(codes.INTERNAL, "an AES column of an assembly has no version column")
@@ -2233,12 +2231,13 @@ def _decode_assembly(row, assemble: dict, db: Db) -> None:
         client = [s for s in column["styles"] if s not in ("aes", "hex", "ip")]
         from polyspec.orm.codec import host_decode
 
-        key = (
-            db.aes_keyring.key(version)
-            if host and "aes" in host and db.aes_keyring is not None
-            else db.aes_key
-        )
+        # The version is read only for a non-NULL value. With a keyring, a version it does not declare is CONFIG; the
+        # single key is used only without a keyring (COD-8).
         if value is not None and host:
+            if "aes" in host and db.aes_keyring is not None:
+                key = db.aes_keyring.key(stored_version(version_cell))
+            else:
+                key = db.aes_key
             value = host_decode(value, host, key)
         if client:
             value = codec_decode(client, value)

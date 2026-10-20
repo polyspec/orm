@@ -873,14 +873,7 @@ func runSelect(ctx context.Context, ex executor, c *cached, st *plan.Step, r *re
 }
 
 func decodeSelectedRow(vals []any, si *scanInfo, st *plan.Step, keyring AESKeyring) error {
-	var version int32
-	if at := st.Assemble.AESVersion; at != nil {
-		col := st.Assemble.Columns[*at]
-		var err error
-		if version, err = rowVersion(vals[col.Index]); err != nil {
-			return fmt.Errorf("%s.%s: %w", st.Assemble.Entity, col.Name, err)
-		}
-	} else if slices.ContainsFunc(si.styled, func(sc styledScanCol) bool { return slices.Contains(sc.host, "aes") }) {
+	if st.Assemble.AESVersion == nil && slices.ContainsFunc(si.styled, func(sc styledScanCol) bool { return slices.Contains(sc.host, "aes") }) {
 		// The planner selects the version column of every AES column, so a plan without one is broken: no version is assumed.
 		return codecErr(CodeInternal, "%s has an AES column and no version column", st.Assemble.Entity)
 	}
@@ -896,6 +889,11 @@ func decodeSelectedRow(vals []any, si *scanInfo, st *plan.Step, keyring AESKeyri
 		// A host stage without aes (hex, ip) is decoded without a key.
 		switch {
 		case slices.Contains(sc.host, "aes"):
+			// The version is read only for a non-NULL AES cell: a NULL cell with a NULL version stays NULL.
+			version, verr := selectedRowVersion(vals, st.Assemble)
+			if verr != nil {
+				return verr
+			}
 			v, err = HostDecodeVersioned(v, sc.host, version, keyring)
 		case len(sc.host) > 0:
 			v, err = HostDecode(v, sc.host, "")
@@ -911,6 +909,16 @@ func decodeSelectedRow(vals []any, si *scanInfo, st *plan.Step, keyring AESKeyri
 		vals[sc.index] = v
 	}
 	return restoreByteColumns(vals, st.Assemble)
+}
+
+// selectedRowVersion reads the key version of a row from the version column of its assembly (COD-44).
+func selectedRowVersion(vals []any, asm *plan.Assemble) (int32, error) {
+	col := asm.Columns[*asm.AESVersion]
+	version, err := rowVersion(vals[col.Index])
+	if err != nil {
+		return 0, fmt.Errorf("%s.%s: %w", asm.Entity, col.Name, err)
+	}
+	return version, nil
 }
 
 func restoreByteColumns(vals []any, asm *plan.Assemble) error {

@@ -1621,7 +1621,8 @@ bool codec_decode_rows(HashTable *rows, HashTable *cells, zval *config)
                 zend_error(E_WARNING, "Undefined array key " ZEND_LONG_FMT, sc.index);
                 ZVAL_NULL(&v);
             }
-            if (zend_hash_num_elements(sc.host) > 0) {
+            /* COD-44: the version is read only for a non-NULL value, so a NULL cell with a NULL version stays NULL. */
+            if (zend_hash_num_elements(sc.host) > 0 && Z_TYPE(v) != IS_NULL) {
                 zend_string *key = NULL;
                 if (!sc.aes) {
                     zval rv;

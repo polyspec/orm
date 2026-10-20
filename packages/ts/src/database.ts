@@ -1348,11 +1348,10 @@ async function select(ex: Executor, cached: Cached, step: PlanStep, params: read
  * @internal
  */
 export function decodeAssembly(row: unknown[], assemble: Assemble, db: Db): void {
-  let version = db.aesKeyring?.currentVersion ?? 1;
+  let versionCell: unknown;
   if (assemble.aes_version !== undefined) {
-    const at = row[present(assemble.columns[assemble.aes_version], 'the AES version column of an assembly').index];
-    if (at === undefined) throw new OrmError(codes.INTERNAL, 'the AES version cell of an assembly is missing from the row');
-    if (at !== null) version = storedVersion(at);
+    versionCell = row[present(assemble.columns[assemble.aes_version], 'the AES version column of an assembly').index];
+    if (versionCell === undefined) throw new OrmError(codes.INTERNAL, 'the AES version cell of an assembly is missing from the row');
   } else if (assemble.columns.some(column => column.styles.includes('aes'))) {
     // The planner selects the version column of every AES column, so a plan without one is broken: no version is assumed.
     throw new OrmError(codes.INTERNAL, 'an AES column of an assembly has no version column');
@@ -1362,8 +1361,11 @@ export function decodeAssembly(row: unknown[], assemble: Assemble, db: Db): void
     if (value === undefined || column.styles.length === 0) continue;
     const host = column.styles.filter(style => style === 'aes' || style === 'hex' || style === 'ip');
     const client = column.styles.filter(style => style !== 'aes' && style !== 'hex' && style !== 'ip');
-    const key = host.includes('aes') ? db.aesKeyring?.key(version) ?? db.aesKey : db.aesKey;
-    if (value !== null && host.length > 0) value = hostDecode(cellBytes(value, column.index), host, key);
+    // The version is read only for a non-NULL value. With a keyring, a version it does not declare is CONFIG; the single key is used only without a keyring (COD-8).
+    if (value !== null && host.length > 0) {
+      const key = host.includes('aes') && db.aesKeyring !== undefined ? db.aesKeyring.key(storedVersion(versionCell)) : db.aesKey;
+      value = hostDecode(cellBytes(value, column.index), host, key);
+    }
     if (client.length > 0) value = decode(client, value === null ? null : cellBytes(value, column.index));
     row[column.index] = value;
   }

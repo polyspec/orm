@@ -60,6 +60,38 @@ final class AesVersionCodesTest extends TestCase
         $this->assertSame('INTERNAL', $got);
     }
 
+    public function test_read_keyring_lacks_stored_version_is_config(): void
+    {
+        // The single key is new-key: a fallback to it would decrypt the value, so the CONFIG shows the keyring is used.
+        $config = new Config('', 'new-key', 2, [1 => 'old-key', 2 => 'new-key']);
+        $rows = [[Codec::hostEncode('value', ['aes', 'hex'], 'new-key'), 9]];
+        $got = $this->codeOf(function () use (&$rows, $config): void {
+            Codec::decodeRows($rows, [[0, ['aes', 'hex'], [], true, 1]], $config);
+        });
+        $this->assertSame('CONFIG', $got);
+    }
+
+    public function test_read_null_version_with_aes_value_is_codec_decode(): void
+    {
+        $config = new Config('', '', 2, [1 => 'old-key', 2 => 'new-key']);
+        $rows = [[Codec::hostEncode('value', ['aes', 'hex'], 'old-key'), null]];
+        $got = $this->codeOf(function () use (&$rows, $config): void {
+            Codec::decodeRows($rows, [[0, ['aes', 'hex'], [], true, 1]], $config);
+        });
+        $this->assertSame('CODEC_DECODE', $got);
+    }
+
+    public function test_read_null_aes_with_null_version_stays_null(): void
+    {
+        $config = new Config('', '', 2, [1 => 'old-key', 2 => 'new-key']);
+        $rows = [[null, null]];
+        $got = $this->codeOf(function () use (&$rows, $config): void {
+            Codec::decodeRows($rows, [[0, ['aes', 'hex'], [], true, 1]], $config);
+        });
+        $this->assertSame('', $got);
+        $this->assertNull($rows[0][0]);
+    }
+
     public function test_rotation_codes(): void
     {
         $keyring = new AesKeyring([1 => 'old-key', 2 => 'new-key'], 2);

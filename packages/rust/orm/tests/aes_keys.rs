@@ -167,3 +167,60 @@ fn aes_read_plan_without_version_column_is_internal() {
     };
     assert_eq!(got, "INTERNAL");
 }
+
+// Requirements: COD-44.
+#[test]
+fn aes_read_keyring_lacks_stored_version_is_config() {
+    let asm = aes_read_assemble();
+    let keys = keys(&[(1, "old-key"), (2, "new-key")]);
+    let mut data = vec![vec![Val::Str("00".into()), Val::I64(9)]];
+    let got = match polyspec_orm::row::decode_styled(&asm, &mut data, &keys) {
+        Ok(()) => String::new(),
+        Err(error) => error.code().to_owned(),
+    };
+    assert_eq!(got, "CONFIG");
+}
+
+// Requirements: COD-44.
+#[test]
+fn aes_read_null_version_with_aes_value_is_codec_decode() {
+    let asm = aes_read_assemble();
+    let keys = keys(&[(1, "old-key"), (2, "new-key")]);
+    let mut data = vec![vec![Val::Str("00".into()), Val::Null]];
+    let got = match polyspec_orm::row::decode_styled(&asm, &mut data, &keys) {
+        Ok(()) => String::new(),
+        Err(error) => error.code().to_owned(),
+    };
+    assert_eq!(got, "CODEC_DECODE");
+}
+
+// Requirements: COD-44.
+#[test]
+fn aes_read_null_aes_with_null_version_stays_null() {
+    let asm = aes_read_assemble();
+    let keys = keys(&[(1, "old-key"), (2, "new-key")]);
+    let mut data = vec![vec![Val::Null, Val::Null]];
+    polyspec_orm::row::decode_styled(&asm, &mut data, &keys).expect("NULL AES value with NULL version");
+    assert_eq!(data[0][0], Val::Null);
+}
+
+/// The assembly of an AES column at index 0 read with its version column at index 1.
+fn aes_read_assemble() -> polyspec_orm::plan::Assemble {
+    use polyspec_orm::plan::{Assemble, OutCol};
+    Assemble {
+        entity: "secret_config".to_owned(),
+        columns: vec![
+            OutCol {
+                index: 0,
+                name: "config".into(),
+                column: "config".into(),
+                typ: "longblob".into(),
+                styles: vec!["aes".into(), "hex".into()],
+                hidden: false,
+            },
+            OutCol { index: 1, name: "aes_key_version".into(), column: "aes_key_version".into(), typ: "int".into(), styles: vec![], hidden: false },
+        ],
+        aes_version: Some(1),
+        ..Default::default()
+    }
+}

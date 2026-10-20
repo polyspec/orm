@@ -127,3 +127,67 @@ func TestAESReadWithoutVersionColumnIsInternal(t *testing.T) {
 		t.Fatalf("plan without a version column: code = %q, want %s (err %v)", got, CodeInternal, err)
 	}
 }
+
+// Requirements: COD-44.
+func TestAESReadKeyringLacksStoredVersionIsConfig(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	enc, err := HostEncode("email@example.test", []string{"aes", "hex"}, "single-key")
+	if err != nil {
+		t.Fatal(err)
+	}
+	keys, err := NewAESKeyring(map[int32]string{1: "old-key", 2: "new-key"}, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	step, si := aesReadStep()
+	err = decodeSelectedRow([]any{enc, int32(9)}, si, step, keys)
+	if got := ErrorCode(err); got != CodeConfig {
+		t.Fatalf("stored version missing from the keyring: code = %q, want %s (err %v)", got, CodeConfig, err)
+	}
+}
+
+// Requirements: COD-44.
+func TestAESReadNullVersionWithAESValueIsCodecDecode(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	enc, err := HostEncode("email@example.test", []string{"aes", "hex"}, "new-key")
+	if err != nil {
+		t.Fatal(err)
+	}
+	keys, err := NewAESKeyring(map[int32]string{1: "old-key", 2: "new-key"}, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	step, si := aesReadStep()
+	err = decodeSelectedRow([]any{enc, nil}, si, step, keys)
+	if got := ErrorCode(err); got != CodeCodecDecode {
+		t.Fatalf("NULL stored version with an AES value: code = %q, want %s (err %v)", got, CodeCodecDecode, err)
+	}
+}
+
+// Requirements: COD-44.
+func TestAESReadNullAESWithNullVersionStaysNull(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	keys, err := NewAESKeyring(map[int32]string{1: "old-key", 2: "new-key"}, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	step, si := aesReadStep()
+	vals := []any{nil, nil}
+	if err := decodeSelectedRow(vals, si, step, keys); err != nil {
+		t.Fatalf("NULL AES value with NULL version: %v", err)
+	}
+	if vals[0] != nil {
+		t.Fatalf("NULL AES value decoded to %v, want NULL", vals[0])
+	}
+}
+
+// aesReadStep is the step of an assembly with an AES column at index 0 and its version column at index 1.
+func aesReadStep() (*plan.Step, *scanInfo) {
+	at := 1
+	step := &plan.Step{Assemble: &plan.Assemble{Entity: "user", AESVersion: &at, Columns: []plan.OutCol{
+		{Index: 0, Name: "aes_hex_email", Type: "string"},
+		{Index: 1, Name: "aes_key_version", Type: "int"},
+	}}}
+	si := &scanInfo{styled: []styledScanCol{{index: 0, name: "aes_hex_email", host: []string{"aes", "hex"}}}}
+	return step, si
+}

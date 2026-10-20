@@ -5,6 +5,7 @@
 import unittest
 from types import SimpleNamespace
 
+from . import testcase
 from polyspec.orm.aes import AesKeyring, stored_version
 from polyspec.orm.codec import host_encode
 from polyspec.orm.database import _decode_assembly
@@ -60,6 +61,21 @@ class AesVersionCodesTest(unittest.TestCase):
         row = [CIPHER, 1]
         self.assertEqual(code_of(lambda: _decode_assembly(row, no_version, DB)), "INTERNAL")
 
+    def test_read_keyring_lacks_stored_version_is_config(self):
+        single = host_encode("value", ["aes", "hex"], "single-key")
+        db = SimpleNamespace(aes_keyring=KEYRING, aes_key="single-key")
+        row = [single, 9]
+        self.assertEqual(code_of(lambda: _decode_assembly(row, ASSEMBLE, db)), "CONFIG")
+
+    def test_read_null_version_with_aes_value_is_codec_decode(self):
+        row = [CIPHER, None]
+        self.assertEqual(code_of(lambda: _decode_assembly(row, ASSEMBLE, DB)), "CODEC_DECODE")
+
+    def test_read_null_aes_with_null_version_stays_null(self):
+        row = [None, None]
+        self.assertEqual(code_of(lambda: _decode_assembly(row, ASSEMBLE, DB)), "")
+        self.assertIsNone(row[0])
+
     def test_rotation_codes(self):
         cases = [
             ({"aes_key_version": 0, "email": CIPHER}, "CODEC_DECODE"),
@@ -74,4 +90,4 @@ class AesVersionCodesTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    testcase.main()

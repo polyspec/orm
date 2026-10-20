@@ -443,8 +443,11 @@ final class Codec
                         // The planner selects the version column of every AES column, so a plan without one is broken: no version is assumed.
                         throw new OrmException(Code::INTERNAL, 'an AES column has no version column');
                     }
-                    $key = !$aes ? $config->aesKey : $keyring->key(self::rowVersion($vals, $versionIndex));
-                    $v = self::hostDecode($v, $host, $key);
+                    // The version is read only for a non-NULL value: a NULL cell with a NULL version stays NULL (COD-44).
+                    if ($v !== null) {
+                        $key = !$aes ? $config->aesKey : $keyring->key(self::rowVersion($vals, $versionIndex));
+                        $v = self::hostDecode($v, $host, $key);
+                    }
                 }
                 if ($codec !== []) {
                     $v = self::decode($codec, $v);

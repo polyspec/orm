@@ -42,6 +42,20 @@ check('aes version codes: read: plan has an AES column and no version column', w
   const got = codeOf(() => decodeAssembly([cipher, 1], noVersion, db));
   if (got !== 'INTERNAL') wrong.push(`got ${got || 'no error'}, want INTERNAL`);
 });
+check('aes version codes: read: keyring lacks the stored version is CONFIG, not the single key', wrong => {
+  const single = hostEncode('value', ['aes', 'hex'], 'single-key');
+  const got = codeOf(() => decodeAssembly([single, 9], assemble, { aesKeyring: keyring, aesKey: 'single-key' }));
+  if (got !== 'CONFIG') wrong.push(`got ${got || 'no error'}, want CONFIG`);
+});
+check('aes version codes: read: NULL stored version with an AES value is CODEC_DECODE', wrong => {
+  const got = codeOf(() => decodeAssembly([cipher, null], assemble, db));
+  if (got !== 'CODEC_DECODE') wrong.push(`got ${got || 'no error'}, want CODEC_DECODE`);
+});
+check('aes version codes: read: NULL AES value with NULL version stays NULL', wrong => {
+  const row = [null, null];
+  const got = codeOf(() => decodeAssembly(row, assemble, db));
+  if (got !== '' || row[0] !== null) wrong.push(`got ${got || 'no error'} and ${row[0]}, want NULL`);
+});
 check('aes version codes: rotation: stored version is zero', wrong => {
   const got = codeOf(() => keyring.rotateRow({ aes_key_version: 0, email: cipher }, 'aes_key_version', [{ name: 'email', styles: ['aes', 'hex'] }], 2, undefined));
   if (got !== 'CODEC_DECODE') wrong.push(`got ${got || 'no error'}, want CODEC_DECODE`);

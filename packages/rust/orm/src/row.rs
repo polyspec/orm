@@ -301,28 +301,28 @@ pub fn decode_styled(asm: &crate::plan::Assemble, data: &mut [Vec<Val>], aes_key
     if styled.is_empty() {
         return Ok(());
     }
+    let has_aes = styled.iter().any(|c| c.host.iter().any(|style| style == "aes"));
+    let version_index = if has_aes {
+        // COD-44: the planner selects the version column of every AES column, so a plan without one is broken: no version is assumed.
+        let column = asm.aes_version.map(|at| &asm.columns[at]).ok_or_else(|| Error::Engine {
+            code: crate::codes::INTERNAL.into(),
+            msg: format!("{}: the plan reads an AES column without its key version column", asm.entity),
+        })?;
+        Some(column.index)
+    } else {
+        None
+    };
     for row in data.iter_mut() {
-        let version = if styled.iter().any(|c| c.host.iter().any(|style| style == "aes")) {
-            let column = asm
-                .aes_version
-                .map(|at| &asm.columns[at])
-                // COD-44: the planner selects the version column of every AES column, so a plan without one is broken: no version is assumed.
-                .ok_or_else(|| Error::Engine {
-                    code: crate::codes::INTERNAL.into(),
-                    msg: format!("{}: the plan reads an AES column without its key version column", asm.entity),
-                })?;
-            let stored = row[column.index].as_i64()?;
-            i32::try_from(stored).ok().filter(|version| *version >= 1).ok_or_else(|| Error::Engine {
-                code: crate::codes::CODEC_DECODE.into(),
-                msg: format!("aes version {stored} is not a positive 32-bit integer"),
-            })?
-        } else {
-            0
-        };
         for sc in &styled {
             let mut v = std::mem::take(&mut row[sc.index]);
-            if !sc.host.is_empty() {
+            // A NULL value stays NULL: its version is not read, so a NULL version with a NULL value is not an error (COD-44).
+            if !sc.host.is_empty() && !matches!(v, Val::Null) {
                 let key = if sc.host.iter().any(|style| style == "aes") {
+                    let index = version_index.ok_or_else(|| Error::Engine {
+                        code: crate::codes::INTERNAL.into(),
+                        msg: format!("{}: the AES version column is not selected", asm.entity),
+                    })?;
+                    let version = aes_row_version(row, index)?;
                     aes_keys.get(&version).map(String::as_str).ok_or_else(|| Error::Config(format!("AES version {version} is not declared")))?
                 } else {
                     // Non-AES host stages do not consume an AES key.
@@ -337,6 +337,15 @@ pub fn decode_styled(asm: &crate::plan::Assemble, data: &mut [Vec<Val>], aes_key
         }
     }
     Ok(())
+}
+
+/// The key version a row stores in its version column: a positive 32-bit integer, otherwise CODEC_DECODE (COD-44).
+fn aes_row_version(row: &[Val], index: usize) -> Result<i32> {
+    let stored = row[index].as_i64()?;
+    i32::try_from(stored)
+        .ok()
+        .filter(|version| *version >= 1)
+        .ok_or_else(|| Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("aes version {stored} is not a positive 32-bit integer") })
 }
 
 /// Applies declared boolean column types to positional rows, including joined rows.
