@@ -307,7 +307,11 @@ pub fn decode_styled(asm: &crate::plan::Assemble, data: &mut [Vec<Val>], aes_key
                 .aes_version
                 .map(|at| &asm.columns[at])
                 .ok_or_else(|| Error::Config(format!("{}: the plan reads an AES column without its key version column", asm.entity)))?;
-            i32::try_from(row[column.index].as_i64()?).map_err(|_| Error::Config("AES key version is outside i32 range".into()))?
+            let stored = row[column.index].as_i64()?;
+            i32::try_from(stored)
+                .ok()
+                .filter(|version| *version >= 1)
+                .ok_or_else(|| Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("aes version {stored} is not a positive 32-bit integer") })?
         } else {
             0
         };

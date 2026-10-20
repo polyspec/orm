@@ -62,3 +62,48 @@ func TestRotateAESRowDoesNotReturnPartialResult(t *testing.T) {
 		t.Fatal("input row was changed")
 	}
 }
+
+// Requirements: COD-44.
+func TestAESVersionCodesAreTheSameInEveryClient(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	keys, err := NewAESKeyring(map[int32]string{1: "old", 2: "new"}, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cols := []AESRotationColumn{{Name: "aes_hex_email", Styles: []string{"aes", "hex"}}}
+	row := func(version any) map[string]any {
+		return map[string]any{"aes_key_version": version, "aes_hex_email": "00"}
+	}
+	cases := []struct {
+		name string
+		err  func() error
+		code string
+	}{
+		{"undeclared stored version", func() error { _, err := RotateAESRow(row(int32(9)), "aes_key_version", cols, 2, keys); return err }, CodeConfig},
+		{"undeclared read version", func() error { _, err := HostDecodeVersioned("00", []string{"aes"}, 9, keys); return err }, CodeConfig},
+		{"empty key", func() error { _, err := NewAESKeyring(map[int32]string{1: ""}, 1); return err }, CodeConfig},
+		{"current version undeclared", func() error { _, err := NewAESKeyring(map[int32]string{1: "k"}, 2); return err }, CodeConfig},
+		{"stored version not an integer", func() error { _, err := RotateAESRow(row("abc"), "aes_key_version", cols, 2, keys); return err }, CodeCodecDecode},
+		{"stored version zero", func() error { _, err := RotateAESRow(row(int64(0)), "aes_key_version", cols, 2, keys); return err }, CodeCodecDecode},
+		{"stored version above i32", func() error { _, err := RotateAESRow(row(int64(1)<<31), "aes_key_version", cols, 2, keys); return err }, CodeCodecDecode},
+		{"read version not an integer", func() error { _, err := rowVersion("1x"); return err }, CodeCodecDecode},
+		{"read version above i32", func() error { _, err := rowVersion(uint64(1) << 31); return err }, CodeCodecDecode},
+		{"AES column missing from rotation row", func() error {
+			r := row(int32(1))
+			delete(r, "aes_hex_email")
+			_, err := RotateAESRow(r, "aes_key_version", cols, 2, keys)
+			return err
+		}, CodeInternal},
+		{"version column missing from rotation row", func() error {
+			r := row(int32(1))
+			delete(r, "aes_key_version")
+			_, err := RotateAESRow(r, "aes_key_version", cols, 2, keys)
+			return err
+		}, CodeInternal},
+	}
+	for _, c := range cases {
+		if got := ErrorCode(c.err()); got != c.code {
+			t.Errorf("%s: code = %q, want %s", c.name, got, c.code)
+		}
+	}
+}

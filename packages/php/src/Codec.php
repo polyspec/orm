@@ -440,7 +440,7 @@ final class Codec
                 $v = $vals[$index];
                 if ($host !== []) {
                     $key = !$aes ? $config->aesKey
-                        : $keyring->key($versionIndex === null ? $config->aesVersion : (int) $vals[$versionIndex]);
+                        : $keyring->key($versionIndex === null ? $config->aesVersion : self::rowVersion($vals, $versionIndex));
                     $v = self::hostDecode($v, $host, $key);
                 }
                 if ($codec !== []) {
@@ -451,6 +451,19 @@ final class Codec
                 $vals[$index] = $v;
             }
         }
+    }
+
+    /**
+     * The key version of a read row's version cell (COD-44): a missing cell is INTERNAL, a stored version that is not a
+     * positive 32-bit integer is CODEC_DECODE.
+     * @param array<array-key, mixed> $vals
+     */
+    private static function rowVersion(array $vals, int $index): int
+    {
+        if (!array_key_exists($index, $vals)) {
+            throw new OrmException(Code::INTERNAL, "the AES version cell $index is missing from the row");
+        }
+        return AesKeyring::storedVersion($vals[$index]);
     }
 
     /** unserialize gives PHP arrays as-is; nothing to change in the value model (int keys stay int keys). */

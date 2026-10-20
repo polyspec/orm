@@ -109,3 +109,35 @@ async fn aes_write_uses_key_of_current_version() {
     }
     std::fs::remove_dir_all(&tmp).unwrap();
 }
+
+/// The codes of a read row's key version (COD-44): an undeclared version is CONFIG, a stored version that is not a
+/// positive 32-bit integer is CODEC_DECODE, and the row is read before any cipher is decoded.
+// Requirements: COD-44.
+#[test]
+fn aes_read_version_codes_match_the_other_clients() {
+    use polyspec_orm::plan::{Assemble, OutCol};
+    let asm = Assemble {
+        entity: "secret_config".to_owned(),
+        columns: vec![
+            OutCol { index: 0, name: "config".into(), column: "config".into(), typ: "longblob".into(), styles: vec!["aes".into(), "hex".into()], hidden: false },
+            OutCol { index: 1, name: "aes_key_version".into(), column: "aes_key_version".into(), typ: "int".into(), styles: vec![], hidden: false },
+        ],
+        aes_version: Some(1),
+        ..Default::default()
+    };
+    let keys = keys(&[(1, "old-key"), (2, "new-key")]);
+    let cases = [
+        (Val::Str("abc".into()), "CODEC_DECODE"),
+        (Val::I64(0), "CODEC_DECODE"),
+        (Val::I64(2_147_483_648), "CODEC_DECODE"),
+        (Val::I64(9), "CONFIG"),
+    ];
+    for (version, want) in cases {
+        let mut data = vec![vec![Val::Str("00".into()), version.clone()]];
+        let got = match polyspec_orm::row::decode_styled(&asm, &mut data, &keys) {
+            Ok(()) => String::new(),
+            Err(error) => error.code().to_owned(),
+        };
+        assert_eq!(got, want, "stored version {version:?}");
+    }
+}

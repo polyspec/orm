@@ -11,6 +11,16 @@ export interface AesRowCodec {
   encode(value: unknown, styles: readonly string[], key: string): unknown;
 }
 
+/**
+ * The key version that a stored row holds: a positive 32-bit integer, as a number or as its decimal text. Any other value
+ * is CODEC_DECODE; it is never coerced.
+ */
+export function storedVersion(value: unknown): number {
+  const version = typeof value === 'number' ? value : typeof value === 'string' && /^[0-9]+$/.test(value) ? Number(value) : Number.NaN;
+  if (!Number.isInteger(version) || version < 1 || version > 2147483647) throw new OrmError(codes.CODEC_DECODE, `aes version ${String(value)} is not a positive 32-bit integer`);
+  return version;
+}
+
 /** The keys that decode stored AES values, by version. */
 export class AesKeyring {
   private readonly keys: ReadonlyMap<number, string>;
@@ -32,13 +42,12 @@ export class AesKeyring {
 
   /** Re-encrypts every AES column of a row with the target version. */
   public rotateRow(row: Readonly<Record<string, unknown>>, versionColumn: string, columns: readonly AesRotationColumn[], targetVersion: number, codec: AesRowCodec): Record<string, unknown> {
-    const oldVersion = row[versionColumn];
-    if (typeof oldVersion !== 'number' || !Number.isInteger(oldVersion)) throw new OrmError(codes.CODEC_DECODE, 'AES row version must be an integer');
-    const oldKey = this.key(oldVersion);
+    if (!(versionColumn in row)) throw new OrmError(codes.INTERNAL, `AES version column ${versionColumn} is missing`);
+    const oldKey = this.key(storedVersion(row[versionColumn]));
     const newKey = this.key(targetVersion);
     const out = { ...row };
     for (const column of columns) {
-      if (!(column.name in row)) throw new OrmError(codes.CONFIG, `AES column ${column.name} is missing`);
+      if (!(column.name in row)) throw new OrmError(codes.INTERNAL, `AES column ${column.name} is missing`);
       out[column.name] = codec.encode(codec.decode(row[column.name], column.styles, oldKey), column.styles, newKey);
     }
     out[versionColumn] = targetVersion;

@@ -32,7 +32,7 @@ func (d *DB) aesKeyring() (AESKeyring, error) {
 func HostDecodeVersioned(raw any, styles []string, version int32, keyring AESKeyring) (any, error) {
 	key, ok := keyring.keys[version]
 	if !ok {
-		return nil, fmt.Errorf("aes key version %d is not declared", version)
+		return nil, configErr("aes key version %d is not declared", version)
 	}
 	return HostDecode(raw, styles, key)
 }
@@ -43,12 +43,12 @@ func NewAESKeyring(keys map[int32]string, current int32) (AESKeyring, error) {
 	copyKeys := make(map[int32]string, len(keys))
 	for version, key := range keys {
 		if version < 1 || key == "" {
-			return AESKeyring{}, fmt.Errorf("aes key version %d has an empty key or is invalid", version)
+			return AESKeyring{}, configErr("aes key version %d has an empty key or is invalid", version)
 		}
 		copyKeys[version] = key
 	}
 	if current < 1 || copyKeys[current] == "" {
-		return AESKeyring{}, fmt.Errorf("aes current version %d is not declared", current)
+		return AESKeyring{}, configErr("aes current version %d is not declared", current)
 	}
 	return AESKeyring{keys: copyKeys, current: current}, nil
 }
@@ -70,17 +70,20 @@ func (k AESKeyring) AESVersions() []int32 {
 // row is unchanged until all columns decode and encode successfully. A caller
 // must persist the returned columns and version in one database transaction.
 func RotateAESRow(row map[string]any, versionColumn string, columns []AESRotationColumn, targetVersion int32, keyring AESKeyring) (map[string]any, error) {
+	if _, ok := row[versionColumn]; !ok {
+		return nil, internalErr("aes version column %s is missing", versionColumn)
+	}
 	oldVersion, err := rowVersion(row[versionColumn])
 	if err != nil {
 		return nil, err
 	}
 	oldKey, ok := keyring.keys[oldVersion]
 	if !ok {
-		return nil, fmt.Errorf("aes key version %d is not declared", oldVersion)
+		return nil, configErr("aes key version %d is not declared", oldVersion)
 	}
 	newKey, ok := keyring.keys[targetVersion]
 	if !ok {
-		return nil, fmt.Errorf("aes target version %d is not declared", targetVersion)
+		return nil, configErr("aes target version %d is not declared", targetVersion)
 	}
 	out := make(map[string]any, len(row)+1)
 	for name, value := range row {
@@ -89,7 +92,7 @@ func RotateAESRow(row map[string]any, versionColumn string, columns []AESRotatio
 	for _, column := range columns {
 		value, exists := row[column.Name]
 		if !exists {
-			return nil, fmt.Errorf("aes column %s is missing", column.Name)
+			return nil, internalErr("aes column %s is missing", column.Name)
 		}
 		plain, err := HostDecode(value, column.Styles, oldKey)
 		if err != nil {
@@ -130,7 +133,7 @@ func rowVersion(value any) (int32, error) {
 		version = v
 	case uint:
 		if uint64(v) > math.MaxInt32 {
-			return 0, fmt.Errorf("aes version %d is out of range", v)
+			return 0, codecErr(CodeCodecDecode, "aes version %d is out of range", v)
 		}
 		version = int64(v)
 	case uint8:
@@ -141,20 +144,20 @@ func rowVersion(value any) (int32, error) {
 		version = int64(v)
 	case uint64:
 		if v > math.MaxInt32 {
-			return 0, fmt.Errorf("aes version %d is out of range", v)
+			return 0, codecErr(CodeCodecDecode, "aes version %d is out of range", v)
 		}
 		version = int64(v)
 	case string:
 		n, err := strconv.ParseInt(v, 10, 64)
 		if err != nil {
-			return 0, fmt.Errorf("aes version %q is not an integer", v)
+			return 0, codecErr(CodeCodecDecode, "aes version %q is not an integer", v)
 		}
 		version = n
 	default:
-		return 0, fmt.Errorf("aes version has type %T", value)
+		return 0, codecErr(CodeCodecDecode, "aes version has type %T", value)
 	}
 	if version < 1 || version > math.MaxInt32 {
-		return 0, fmt.Errorf("aes version %d is out of range", version)
+		return 0, codecErr(CodeCodecDecode, "aes version %d is out of range", version)
 	}
 	return int32(version), nil
 }

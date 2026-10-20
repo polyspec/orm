@@ -3,7 +3,7 @@ import { CORE, isModel } from './core.js';
 import { activeFor, registerSet, schemaModel, type Db, type Runner, type Schema, type TxFrame } from './database.js';
 import { driverValue, type DriverName, type DriverSession, type DriverValue, type PoolStats } from './driver.js';
 import type { StatementKind } from './events.js';
-import { AesKeyring } from './aes.js';
+import { AesKeyring, storedVersion } from './aes.js';
 import { addTablesAndColumnsSteps, dbspecManifest, emitDbspec, externalDifferences, installedDifferences, parseDbspec, renderDbspecStatements, type DbspecDocument } from './dbspec/index.js';
 import { introspectCatalog, type DbspecIntrospection } from './dbspec/introspect.js';
 import { CatalogRow } from './dbspec/introspect_catalog.js';
@@ -30,11 +30,7 @@ function quote(driver: string, name: string): string {
   return driver === 'mysql' ? `\`${name}\`` : `"${name}"`;
 }
 
-function versionOf(value: unknown): number {
-  const version = typeof value === 'string' ? Number.parseInt(value, 10) : Number(value);
-  if (!Number.isSafeInteger(version) || version < 1) throw new OrmError(codes.CODEC_DECODE, `aes version ${String(value)} is out of range`);
-  return version;
-}
+function versionOf(value: unknown): number { return storedVersion(value); }
 
 /**
  * Turns off foreign keys on a SQLite connection, runs fn in a BEGIN IMMEDIATE transaction, and then, only if the foreign key check

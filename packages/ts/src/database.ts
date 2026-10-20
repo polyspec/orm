@@ -8,7 +8,7 @@ import { present } from './present.js';
 import { OrmError, joinedErrors, rollbackFailed } from './runtime_error.js';
 import { Utils } from './utils.js';
 import { wallMicros } from './clock.js';
-import { AesKeyring } from './aes.js';
+import { AesKeyring, storedVersion } from './aes.js';
 import { Engine } from './engine/index.js';
 import { canonicalize } from './engine/canonical.js';
 import { modelOfManifest, type RuntimeModel } from './engine/model.js';
@@ -1351,7 +1351,8 @@ export function decodeAssembly(row: unknown[], assemble: Assemble, db: Db): void
   let version = db.aesKeyring?.currentVersion ?? 1;
   if (assemble.aes_version !== undefined) {
     const at = row[present(assemble.columns[assemble.aes_version], 'the AES version column of an assembly').index];
-    if (at !== null) version = Number(at);
+    if (at === undefined) throw new OrmError(codes.INTERNAL, 'the AES version cell of an assembly is missing from the row');
+    if (at !== null) version = storedVersion(at);
   }
   for (const column of assemble.columns) {
     let value = row[column.index];

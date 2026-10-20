@@ -29,6 +29,7 @@ from polyspec.orm.decimal import decimal_scaled, normalize_decimal
 from polyspec.orm.engine.dialect import dialect_of
 from polyspec.orm.engine.model import Field, RuntimeModel, field_of
 from polyspec.orm.engine import Engine
+from polyspec.orm.aes import stored_version
 from polyspec.orm.errors import OrmError, rollback_failed
 from polyspec.orm.events import StatementEvent, Subscribers, statement_kind
 from polyspec.orm.markdown import (
@@ -2218,7 +2219,7 @@ def _decode_assembly(row, assemble: dict, db: Db) -> None:
     if "aes_version" in assemble:
         at = row[assemble["columns"][assemble["aes_version"]]["index"]]
         if at is not None:
-            version = int(at)
+            version = stored_version(at)
     for column in assemble["columns"]:
         value = row[column["index"]]
         # SQL NULL also goes through the client codec stages and becomes StyledValue.sql_null() (docs/spec/codec.md

@@ -1,10 +1,11 @@
 # Key management for AES columns: one key per version, updated per row (docs/spec/codec.md "AES").
+import re
 from typing import Mapping
 
 from polyspec.orm import codes
 from polyspec.orm.errors import OrmError
 
-__all__ = ["AesKeyring"]
+__all__ = ["AesKeyring", "stored_version"]
 
 
 def _is_safe_integer(value: object) -> bool:
@@ -13,6 +14,16 @@ def _is_safe_integer(value: object) -> bool:
         and not isinstance(value, bool)
         and -9007199254740991 <= value <= 9007199254740991
     )
+
+
+def stored_version(value) -> int:
+    """The key version a stored row holds: a positive 32-bit integer, as an int or as its decimal text. Any other
+    value is CODEC_DECODE; it is never coerced."""
+    if isinstance(value, str) and re.fullmatch(r"[0-9]+", value):
+        value = int(value)
+    if not isinstance(value, int) or isinstance(value, bool) or not 1 <= value <= 2147483647:
+        raise OrmError(codes.CODEC_DECODE, f"aes version {value!r} is not a positive 32-bit integer")
+    return value
 
 
 class _RowCodec:
@@ -66,15 +77,14 @@ class AesKeyring:
     ) -> dict:
         """Re-encrypts every AES column of the row to the target version."""
         codec = codec or _RowCodec()
-        old_version = row.get(version_column)
-        if not _is_safe_integer(old_version):
-            raise OrmError(codes.CODEC_DECODE, "AES row version must be an integer")
-        old_key = self.key(old_version)
+        if version_column not in row:
+            raise OrmError(codes.INTERNAL, f"AES version column {version_column} is missing")
+        old_key = self.key(stored_version(row[version_column]))
         new_key = self.key(target_version)
         out = dict(row)
         for column in columns:
             if column.name not in row:
-                raise OrmError(codes.CONFIG, f"AES column {column.name} is missing")
+                raise OrmError(codes.INTERNAL, f"AES column {column.name} is missing")
             out[column.name] = codec.encode(
                 codec.decode(row[column.name], column.styles, old_key),
                 column.styles,

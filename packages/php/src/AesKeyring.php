@@ -38,6 +38,21 @@ final class AesKeyring
     }
 
     /**
+     * The key version that a stored row holds: a positive 32-bit integer, as an int or as its decimal text. Any other
+     * value is CODEC_DECODE; it is never coerced.
+     */
+    public static function storedVersion(mixed $value): int
+    {
+        if (is_string($value) && preg_match('/^[0-9]+$/', $value) === 1) {
+            $value = (int) $value;
+        }
+        if (!is_int($value) || $value < 1 || $value > 2147483647) {
+            throw new OrmException(Code::CODEC_DECODE, 'aes version ' . var_export($value, true) . ' is not a positive 32-bit integer');
+        }
+        return $value;
+    }
+
+    /**
      * Returns a copy after every AES column succeeds. The database caller
      * must persist the returned columns and version in one transaction.
      * @param array<string, mixed> $row
@@ -46,10 +61,10 @@ final class AesKeyring
      */
     public function rotateRow(array $row, string $versionColumn, array $columns, int $targetVersion): array
     {
-        $oldVersion = $row[$versionColumn] ?? null;
-        if (!is_int($oldVersion)) {
-            throw new OrmException(Code::CODEC_DECODE, 'AES row version must be an integer');
+        if (!array_key_exists($versionColumn, $row)) {
+            throw new OrmException(Code::INTERNAL, "AES version column $versionColumn is missing");
         }
+        $oldVersion = self::storedVersion($row[$versionColumn]);
         $oldKey = $this->keys[$oldVersion]
             ?? throw new OrmException(Code::CONFIG, "AES version $oldVersion is not declared");
         $newKey = $this->keys[$targetVersion]
@@ -57,7 +72,7 @@ final class AesKeyring
         $out = $row;
         foreach ($columns as $column) {
             if (!array_key_exists($column['name'], $row)) {
-                throw new OrmException(Code::CODEC_DECODE, "AES column {$column['name']} is missing");
+                throw new OrmException(Code::INTERNAL, "AES column {$column['name']} is missing");
             }
             $plain = Codec::hostDecode($row[$column['name']], $column['styles'], $oldKey);
             $out[$column['name']] = Codec::hostEncode($plain, $column['styles'], $newKey);

@@ -1494,6 +1494,31 @@ bool codec_host_decode(zval *raw, HashTable *styles, zend_string *aes_key, zval 
     return true;
 }
 
+/* COD-44: a stored key version is a positive 32-bit integer, as an int or as its decimal text; any other value is CODEC_DECODE and is never coerced. */
+static bool stored_version(zval *v, zend_long *out)
+{
+    ZVAL_DEREF(v);
+    zend_long n = 0;
+    if (Z_TYPE_P(v) == IS_LONG) {
+        n = Z_LVAL_P(v);
+    } else if (Z_TYPE_P(v) == IS_STRING && ZSTR_LEN(Z_STR_P(v)) > 0) {
+        const char *d = ZSTR_VAL(Z_STR_P(v));
+        for (size_t i = 0; i < ZSTR_LEN(Z_STR_P(v)); i++) {
+            if (d[i] < '0' || d[i] > '9' || n > 214748364) {
+                return orm_failf("CODEC_DECODE", "aes version is not a positive 32-bit integer");
+            }
+            n = n * 10 + (d[i] - '0');
+        }
+    } else {
+        return orm_failf("CODEC_DECODE", "aes version is not a positive 32-bit integer");
+    }
+    if (n < 1 || n > 2147483647) {
+        return orm_failf("CODEC_DECODE", "aes version " ZEND_LONG_FMT " is not a positive 32-bit integer", n);
+    }
+    *out = n;
+    return true;
+}
+
 /* One entry of decodeRows' $cells: [index, host stages, codec stages, whether the host stages include aes, aes_key_version index or null]. */
 typedef struct {
     zend_long index;
@@ -1609,9 +1634,17 @@ bool codec_decode_rows(HashTable *rows, HashTable *cells, zval *config)
                     } else {
                         zval *vi = zend_hash_index_find(vals, (zend_ulong)Z_LVAL_P(sc.version));
                         if (vi == NULL) {
-                            zend_error(E_WARNING, "Undefined array key " ZEND_LONG_FMT, Z_LVAL_P(sc.version));
+                            /* COD-44: the version cell of a row the client selected is missing: a broken invariant, INTERNAL. */
+                            (void)orm_fail("INTERNAL", zend_string_init(ZEND_STRL("the AES version cell is missing from the row"), 0));
+                            zval_ptr_dtor(&v);
+                            ok = false;
+                            break;
                         }
-                        version = vi != NULL ? zval_get_long(vi) : 0;
+                        if (!stored_version(vi, &version)) {
+                            zval_ptr_dtor(&v);
+                            ok = false;
+                            break;
+                        }
                     }
                     zval arg, kv;
                     ZVAL_LONG(&arg, version);
