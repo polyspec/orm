@@ -1,5 +1,5 @@
 <!-- doc-id: plans-editor-stack -->
-<!-- source-sha256: 15c7b60a3e5df74cb7f7cd570ebb090803efcf627cde724c23f38dc00a1228d8 -->
+<!-- source-sha256: 475716d11280904a4ac809f8de3a82129c1752798835c80d13828e306fe6e608 -->
 # 계획: 표준으로서의 dbspec editor stack
 
 [English](editor-stack.md)
@@ -39,119 +39,119 @@ owner 판정:
 
 ## Rulings (명세에 먼저 적고, 근거를 함께 적는다)
 1. **runtime마다 문법 하나.**
-   - 각 runtime은 dbspec lexer와 parser를 하나만 가진다. 분석은 parser 출력 중 하나다.
-   - 어떤 editor layer, 생성 파일, regex도 문법 규칙을 담지 않는다. 그래서 TextMate 문법을 제외한다:
+   - **ORES-1** 각 runtime은 dbspec lexer와 parser를 하나만 가진다. 분석은 parser 출력 중 하나다.
+   - **ORES-2** 어떤 editor layer, 생성 파일, regex도 문법 규칙을 담지 않는다. 그래서 TextMate 문법을 제외한다:
      regex 문법에는 parser 문맥이 없고, `NAME`은 `key`, `text`, `references`처럼 예약되지 않은 keyword 단어를 column의 이름에 허용하므로(`table`은 예약어다; T128-2-2에서 바로잡음)
      `analyze`와 어긋난다.
 2. **구문 분석: 여섯 구현 모두의 `analyze(text, set)`.**
-   - parse 결과(그대로)와 token `{line, start, end, class}`를 돌려준다.
-   - line은 1에서 시작한다; start와 end는 code point이며 end는 포함하지 않는다.
-   - class: `keyword`, `type`, `name`, `setting`, `number`, `string`, `operator`,
+   - **ORES-3** parse 결과(그대로)와 token `{line, start, end, class}`를 돌려준다.
+   - **ORES-4** line은 1에서 시작한다; start와 end는 code point이며 end는 포함하지 않는다.
+   - **ORES-5** class: `keyword`, `type`, `name`, `setting`, `number`, `string`, `operator`,
      `punctuation`, `comment`, `word`.
    - 경우마다 정의한다:
-     - `limit` 오류는 token을 내지 않는다. 검사가 할당보다 먼저이기 때문이다
+     - **ORES-6** `limit` 오류는 token을 내지 않는다. 검사가 할당보다 먼저이기 때문이다
        (docs/spec/dbspec.md:301);
-     - `header`나 `encoding` 중단 뒤에는 중단 줄과 그 뒤 모든 줄이 lexical token을 만든다;
-     - 그런 lexical 전용 줄에서 단어는 `word`이고, 숫자, 문자열, operator, punctuation, comment 줄은
+     - **ORES-7** `header`나 `encoding` 중단 뒤에는 중단 줄과 그 뒤 모든 줄이 lexical token을 만든다;
+     - **ORES-8** 그런 lexical 전용 줄에서 단어는 `word`이고, 숫자, 문자열, operator, punctuation, comment 줄은
        그 class를 유지한다. 숫자는 Go lexer가 읽는 대로 숫자와 선택적 소수부로 된 단어다(TS lexer만
        보고 숫자를 `word`로 만든 T128-2의 수정은 틀렸으며 T128-2-1이 되돌린다);
-     - `encoding`에서 단독 CR은 줄 끝이 아니며, lexing은 그 뒤에서 이어진다;
-     - 잘못된 문자는 token을 내지 않는다;
-     - parser가 포기한 줄(복구 경로)의 단어도 `word`다. 의미 진단만 가진 줄은 parser가 정한 class를
+     - **ORES-9** `encoding`에서 단독 CR은 줄 끝이 아니며, lexing은 그 뒤에서 이어진다;
+     - **ORES-10** 잘못된 문자는 token을 내지 않는다;
+     - **ORES-11** parser가 포기한 줄(복구 경로)의 단어도 `word`다. 의미 진단만 가진 줄은 parser가 정한 class를
        유지한다.
-   - comment 위치는 token에만 있고 `DbspecDocument`에는 없다. token은 highlight에 쓰이고, 선언
+   - **ORES-12** comment 위치는 token에만 있고 `DbspecDocument`에는 없다. token은 highlight에 쓰이고, 선언
      위치는 parse 결과에서 문서와 나란히 있다(T128-3p).
-   - vector: `tests/dbspec/syntax.json`이 `cases.json`의 canonical, normalize, invalid, sets, hashes
+   - **ORES-13** vector: `tests/dbspec/syntax.json`이 `cases.json`의 canonical, normalize, invalid, sets, hashes
      case를 다룬다. `files` case(byte)는 readFile과 readBytes에 남는다. vector는 TS로 한 번 생성해
      검토한 뒤 고정한다; 여섯 구현 모두 정확히 일치해야 한다.
 3. **formatting: 여섯 구현 모두의 `format(text, set)` = `emit(parse(text, set))`.**
-   - 진단이 있는 문서는 거절하며, 다시 쓰지 않는다.
+   - **ORES-14** 진단이 있는 문서는 거절하며, 다시 쓰지 않는다.
    - 불변식:
-     - `emit(parse(format(x))) == emit(parse(x))`;
-     - manifest와 schema hash가 같다;
-     - `format(format(x)) == format(x)`.
+     - **ORES-15** `emit(parse(format(x))) == emit(parse(x))`;
+     - **ORES-16** manifest와 schema hash가 같다;
+     - **ORES-17** `format(format(x)) == format(x)`.
      - model 동등성은 요구하지 않는다: emit은 제약과 `use` 줄을 정렬한다.
-   - canonical text에 대해 LSP formatting은 edit을 내지 않는다.
-   - vector: normalize와 canonical은 canonical text를 기대하고, invalid는 거절을 기대한다.
+   - **ORES-18** canonical text에 대해 LSP formatting은 edit을 내지 않는다.
+   - **ORES-19** vector: normalize와 canonical은 canonical text를 기대하고, invalid는 거절을 기대한다.
 4. **문서 묶음은 set 파일 하나에 한 번 선언한다(owner 판정).**
-   - 표준 파일 하나 `dbspec-set.json`: `{"schema": 1, "documents": [...], "external": [...]}`.
+   - **ORES-20** 표준 파일 하나 `dbspec-set.json`: `{"schema": 1, "documents": [...], "external": [...]}`.
      경로는 그 파일 자신의 directory, 곧 선언된 root에 상대적이다.
-   - 모든 소비자가 이것을 읽는다: 모든 runtime의 생성기(`orm-gen gen --set <file>`)와 LSP. 명령 인자
+   - **ORES-21** 모든 소비자가 이것을 읽는다: 모든 runtime의 생성기(`orm-gen gen --set <file>`)와 LSP. 명령 인자
      형식(`--document`, `--use`)은 호환 없이 제거한다.
    - 근거: 묶음의 소비자가 이미 둘이다. 선언이 둘이면 어긋난다.
-   - 묶음 결정, `tsconfig.json`의 생태계 방식: 문서의 묶음은 `documents`에 그 문서를 나열한, 가장
+   - **ORES-22** 묶음 결정, `tsconfig.json`의 생태계 방식: 문서의 묶음은 `documents`에 그 문서를 나열한, 가장
      가까운 상위 directory의 `dbspec-set.json`이다. 모든 소비자는 같은 끝, 곧 tsserver처럼 파일
      시스템 root에서 멈춘다. 두 묶음 검사는 그 끝까지의 모든 상위를 읽는다. 이것은 문서 자신의
      경로를 따른 발견이며 disk 전체를 훑는 것이 아니다. 파일 감시는 이후의 변경만 다룬다: set 파일과
      나열된 파일의 생성, 변경, 삭제.
-   - 규칙은 한 곳에만 있다. browser-safe subpath가 I/O 아닌 모든 규칙을 적용하는 순수 함수
+   - **ORES-23** 규칙은 한 곳에만 있다. browser-safe subpath가 I/O 아닌 모든 규칙을 적용하는 순수 함수
      `parseSet(bytes, path)`를 export한다. language service는 `lstat`, directory 나열, 파일을 한 번 열어 byte와
      identity를 주는 host를 주입받는
      `resolveSet(path, host)`를 가진다; LSP와 CLI는 `node:fs` host를 넘긴다. 모든 runtime의 set reader가
      file tree set vector를 실행하고, TS `parseSet`은 file tree가 필요 없는 vector도 실행한다(T128-2a-1의
      review가 정정: 순수 함수는 symbolic link와 hard link의 vector를 실행할 수 없다).
-   - 두 set 파일의 `documents`에 든 문서는 진단이다. `external` 나열은 세지 않는다: 한 묶음의 외부
+   - **ORES-24** 두 set 파일의 `documents`에 든 문서는 진단이다. `external` 나열은 세지 않는다: 한 묶음의 외부
      문서는 정의상 다른 묶음의 소유다(docs/spec/dbspec.md:245).
-   - 어떤 set 파일도 나열하지 않은 문서는 그 자신만으로 된 묶음이 되며, 그 `use` 줄은 "is not in the
+   - **ORES-25** 어떤 set 파일도 나열하지 않은 문서는 그 자신만으로 된 묶음이 되며, 그 `use` 줄은 "is not in the
      declared document set"을 보고한다: fallback이 아니라 사실 그대로의 서술이다.
-   - language service와 CodeMirror는 묶음을 option으로 받는다.
-   - docs fence: 한 page에서 묶음을 이루는 fence들은 info string에 그것을 선언한다(예:
+   - **ORES-26** language service와 CodeMirror는 묶음을 option으로 받는다.
+   - **ORES-27** docs fence: 한 page에서 묶음을 이루는 fence들은 info string에 그것을 선언한다(예:
      `dbs set=shop`). page는 묶음의 모든 문서를 각각의 fence로 담는다. docs build는 `dbs` fence의
      진단이 하나라도 있으면 실패하므로, 공개된 모든 예제는 검증된 문서이며 진단은 버려지지 않는다.
-   - set 파일 검증. 각 규칙은 모든 runtime의 set reader가 돌리는 수락 vector와 거부 vector를 가진다:
-     - 잘못된 JSON은 오류다;
-     - `schema`는 1이어야 하며, 알 수 없는 key는 오류다;
-     - `documents`는 비어 있으면 안 된다;
-     - 경로는 정규형이거나 거부된다: 상대 경로, `/` 구분자만, `.`이나 빈 segment 없음, 끝 `/` 없음.
+   - **ORES-28** set 파일 검증. 각 규칙은 모든 runtime의 set reader가 돌리는 수락 vector와 거부 vector를 가진다:
+     - **ORES-29** 잘못된 JSON은 오류다;
+     - **ORES-30** `schema`는 1이어야 하며, 알 수 없는 key는 오류다;
+     - **ORES-31** `documents`는 비어 있으면 안 된다;
+     - **ORES-32** 경로는 정규형이거나 거부된다: 상대 경로, `/` 구분자만, `.`이나 빈 segment 없음, 끝 `/` 없음.
        절대 경로는 오류다.
-     - `documents` 경로는 set 파일의 directory 아래에 있으며 `..`가 없다. `..`는 `external` 경로의
+     - **ORES-33** `documents` 경로는 set 파일의 directory 아래에 있으며 `..`가 없다. `..`는 `external` 경로의
        앞쪽 segment로만 허용한다. 외부 문서가 형제 directory에 있기 때문이다(flowmark의 board는
        `../block/...`을 쓴다).
-     - 경로의 모든 구성 요소를 `lstat`하며, 경로는 일반 파일로 끝나야 한다. 파일이든 어떤 directory든
+     - **ORES-34** 경로의 모든 구성 요소를 `lstat`하며, 경로는 일반 파일로 끝나야 한다. 파일이든 어떤 directory든
        symlink는 오류이며 결코 따라가지 않는다.
-     - 중복은 파일 실체로 판정한다: device와 inode, 또는 Windows file ID. 어떤 두 철자로든, 또는 두
+     - **ORES-35** 중복은 파일 실체로 판정한다: device와 inode, 또는 Windows file ID. 어떤 두 철자로든, 또는 두
        목록에 걸쳐 두 번 나열된 파일은 모든 platform에서 오류다. 대소문자를 구분하지 않는 파일
        시스템도 포함한다;
-     - 없는 파일은 경로를 밝힌 오류다. 생성기는 오류 status로 끝나며 아무것도 쓰지 않는다.
+     - **ORES-36** 없는 파일은 경로를 밝힌 오류다. 생성기는 오류 status로 끝나며 아무것도 쓰지 않는다.
    - 실패:
-     - signature나 encoding 검사에 실패한 나열 파일은 `readBytes` 진단과 함께 그 파일의 URI에
+     - **ORES-37** signature나 encoding 검사에 실패한 나열 파일은 `readBytes` 진단과 함께 그 파일의 URI에
        게시한다;
-     - 없거나 읽을 수 없는 파일은 docs/spec/dbspec.md "Document sets"의 set 오류이며, 경로와 OS 오류를
+     - **ORES-38** 없거나 읽을 수 없는 파일은 docs/spec/dbspec.md "Document sets"의 set 오류이며, 경로와 OS 오류를
        담은 `window/showMessage`로 보인다; reader는 실패한 집합의 파일을 하나도 돌려주지 않으므로
        집합은 해석되지 않고 문서는 단독으로 분석되며, 그 `use` 줄이 자기 진단을 보고한다. 둘 다
        보인다(T128-5-1이 정정: 이전 글은 나머지 파일을 부분 집합으로 두었는데 reader 명세가 이를 거부한다).
-   - LSP는 `node:fs`로 byte를 읽어 language service에 넘기고, language service는 판정 8의 subpath에
+   - **ORES-39** LSP는 `node:fs`로 byte를 읽어 language service에 넘기고, language service는 판정 8의 subpath에
      있는 `readDbspecBytes`로 그것을 검사한다.
    - 변경은 polling이 아니라 event다:
-     - set 파일과 나열 파일에 대한 `workspace/didChangeWatchedFiles`가 다시 분석하게 한다;
-     - 열린 buffer가 disk보다 우선한다.
+     - **ORES-40** set 파일과 나열 파일에 대한 `workspace/didChangeWatchedFiles`가 다시 분석하게 한다;
+     - **ORES-41** 열린 buffer가 disk보다 우선한다.
 5. **LSP 범위.**
-   - 진단의 범위는 그 위치에서 그곳에서 시작하는 token의 끝까지다. 그런 token이 없으면 code point
+   - **ORES-42** 진단의 범위는 그 위치에서 그곳에서 시작하는 token의 끝까지다. 그런 token이 없으면 code point
      하나이고, 줄 끝이나 text 끝에서는 길이 0이다.
-   - code point를 UTF-16으로 바꾸는 일은 language service에서만 한다.
+   - **ORES-43** code point를 UTF-16으로 바꾸는 일은 language service에서만 한다.
 6. **editor 명세 `docs/spec/editor.md`(+ko).**
    - layer: `@polyspec/orm`의 browser-safe parser subpath(판정 8), language service, adapter(LSP,
      CodeMirror, VS Code).
-   - layer 규칙. import를 전이적으로 따라가며 검사한다:
-     - adapter는 `@polyspec/orm`을 import하지 않는다;
-     - language service는 CLI 밖에서 `node:` module, Node global(`Buffer`, `process`, `__dirname`,
+   - **ORES-44** layer 규칙. import를 전이적으로 따라가며 검사한다:
+     - **ORES-45** adapter는 `@polyspec/orm`을 import하지 않는다;
+     - **ORES-46** language service는 CLI 밖에서 `node:` module, Node global(`Buffer`, `process`, `__dirname`,
        `require`), driver에 닿지 않는다. template의 EDT-3와 같다.
-     - adapter는 host가 요구하는 대로 Node나 browser에서 실행된다.
+     - **ORES-47** adapter는 host가 요구하는 대로 Node나 browser에서 실행된다.
    - 그 밖에: 결과와 editor fixture.
 7. **생태계 장치만 쓴다.**
-   - LSP: `vscode-languageserver`. CLI 인자: `node:util` `parseArgs`. editor: CodeMirror 6 extension.
-   - VS Code: `semanticTokenScopes`를 가진 semantic token이며 문법 파일은 없다.
+   - **ORES-48** LSP: `vscode-languageserver`. CLI 인자: `node:util` `parseArgs`. editor: CodeMirror 6 extension.
+   - **ORES-49** VS Code: `semanticTokenScopes`를 가진 semantic token이며 문법 파일은 없다.
      `configurationDefaults`가 `"[dbspec]": {"editor.semanticHighlighting.enabled": true}`를 설정한다.
      기본값 `configuredByTheme`는 일부 theme에서 색을 입히지 않기 때문이다.
-   - docs: mermaid가 쓰는 방식 그대로 VitePress `markdown.config`의 markdown-it fence hook을 쓴다
+   - **ORES-50** docs: mermaid가 쓰는 방식 그대로 VitePress `markdown.config`의 markdown-it fence hook을 쓴다
      (config.mts:149). Shiki는 쓰지 않는다. Shiki는 TextMate 문법만 받으며 판정 1이 그것을 제외한다.
-   - 표준 class마다 site의 밝은 theme와 어두운 theme 모두에 색을 둔다.
+   - **ORES-51** 표준 class마다 site의 밝은 theme와 어두운 theme 모두에 색을 둔다.
 8. **browser-safe parser 진입점.**
-   - `@polyspec/orm`에 subpath export를 더한다: parse, emit, analyze, format, readDbspecBytes.
-   - 그 module들은 `node:` module, Node global, driver를 갖지 않는다.
+   - **ORES-52** `@polyspec/orm`에 subpath export를 더한다: parse, emit, analyze, format, readDbspecBytes.
+   - **ORES-53** 그 module들은 `node:` module, Node global, driver를 갖지 않는다.
    - `parseDbspec`과 `emitDbspec`은 `node:crypto`를 import하는 `dbspec/index.ts` 밖으로 옮긴다.
-   - `readDbspecBytes`는 `Buffer` 대신 `TextEncoder`를 쓴다.
-   - module graph test가 `node:` import와 Node global을 거부한다.
+   - **ORES-54** `readDbspecBytes`는 `Buffer` 대신 `TextEncoder`를 쓴다.
+   - **ORES-55** module graph test가 `node:` import와 Node global을 거부한다.
 
 ## orm: 단일 checklist `docs/plans/execution/checklist.md`(+ko)의 T128
 T128을 다시 쓰고 하위 항목 T128-1부터 T128-9까지를 더한다. 각 항목은 commit 하나다: RED, GREEN,
@@ -207,52 +207,52 @@ Cause, Acceptance, 그리고 `docs/spec/editor.md`에 있다.
   - 발견: parser는 한 machine의 반복된 `initial <state>`, 반복된 `terminal <state>`, 반복된
     `<from> -> <to>`를 `require` 목록이 달라도 아무 말 없이 받아들인다(parse.ts:2249-2284;
     `docs/spec/dbspec.md:164,172`). 그것들을 거부하는 vector가 없다.
-  - 판정: 그런 반복은 뒤쪽 줄의 keyword 위치에서 `setting` 오류이며, `require` 목록은 판정에 관여하지
+  - **ORES-56** 판정: 그런 반복은 뒤쪽 줄의 keyword 위치에서 `setting` 오류이며, `require` 목록은 판정에 관여하지
     않는다. 근거: 반복은 의미를 더하지 않으며, `require` 목록이 다른 반복은 문서가 품어서는 안 되는
     모순이다.
   - `docs/spec/dbspec.md`(+ko)와 각 runtime의 parser 검사.
   - `cases.json`의 거부 vector 세 개. 모든 runtime에서 `dbspec-compare-check`로 실행된다.
   - changelog 항목이 새로 거부되는 입력을 기록한다.
 - **T128-3p parse 결과의 선언 위치, 모든 runtime에서.**
-  - 위치는 parse 결과에서 문서와 나란히 있으며 `DbspecDocument`에는 결코 들어가지 않는다. 이유: 문서는
+  - **ORES-57** 위치는 parse 결과에서 문서와 나란히 있으며 `DbspecDocument`에는 결코 들어가지 않는다. 이유: 문서는
     source text 없이도 만들어진다. introspection(`introspect_catalog.ts:106`)과 `importMermaid`가
     그렇고, 같은 type이 compare, diff, render, emit에 쓰인다. model 안의 위치는 지어낸 값이나 위치에
     민감한 비교를 강요한다.
-  - 성공한 `DbspecParseResult`에 `positions`를 더한다: source 순서의 `{kind, path, line, column}`
+  - **ORES-58** 성공한 `DbspecParseResult`에 `positions`를 더한다: source 순서의 `{kind, path, line, column}`
     목록이며, line과 column은 진단과 같은 단위인 code point다.
-    - `kind`는 `document`, `table`, `column`, `constraint`, `setting`, `use`, `use_table`, `diagram`,
+    - **ORES-59** `kind`는 `document`, `table`, `column`, `constraint`, `setting`, `use`, `use_table`, `diagram`,
       `diagram_entry` 중 하나다. 이것들은 모든 선언(document, table, column, constraint, setting, use,
       diagram)과 `use` 줄 및 diagram 항목의 table 참조를 다룬다. 다른 참조(foreign key의 `references`
       table, key의 column 목록, check 피연산자)의 위치가 필요한 도구는 먼저 그 kind를 모든 runtime과
       vector와 함께 이 표준에 더한다. 지금 어떤 도구도 필요로 하지 않는 kind 없이도 훑기 금지 규칙은
       지켜진다. header의 `document`는 `path` `[<document>]`이며 이름 token 위치다.
-    - `path`는 감싸는 이름들 다음에 선언 자신의 이름이다. 예: column은 `["users", "email"]`, diagram
+    - **ORES-60** `path`는 감싸는 이름들 다음에 선언 자신의 이름이다. 예: column은 `["users", "email"]`, diagram
       항목은 `["main", "users"]`. setting은 자기 이름이 없고 형식이 서로 너무 달라 "대상"을 정의할 수
       없다(`entity`, `select explicit`, `navigation`, `state_machine`, `immutable` …). 그래서 그 `path`는
       `[<table>, <keyword>, ...identity]`다. identity는 runtime model의 순서가 아니라 명세 자신의 반복
       규칙(dbspec.md:150)에서 온다. model은 서로 다르기 때문이다: Go는 `state_machine` 줄을 한
       struct에 접어 넣는다(`model.go:167-188`).
-      - `codec`, `markdown`: column;
-      - `navigation`: foreign key;
-      - `blind_index`: AES column;
-      - `checkbox`: column과 state;
-      - `state_machine`: 줄의 형식과 피연산자 — `["transition", from, to]`, `["terminal", state]`,
+      - **ORES-61** `codec`, `markdown`: column;
+      - **ORES-62** `navigation`: foreign key;
+      - **ORES-63** `blind_index`: AES column;
+      - **ORES-64** `checkbox`: column과 state;
+      - **ORES-65** `state_machine`: 줄의 형식과 피연산자 — `["transition", from, to]`, `["terminal", state]`,
         `["initial", state]`, `["history"]`, `["limit", state]`. column은 뺀다. table 하나가 machine
         하나를 가지기 때문이다(parse.ts:2257).
-      - 많아야 한 번 나오는 setting: 없음.
+      - **ORES-66** 많아야 한 번 나오는 setting: 없음.
       각 identity는 유일하다: 그 반복은 `setting` 오류이며, 오늘 받아들여지는 세 state machine 형식에
       대해서는 T128-3s가 이것을 참으로 만든다. identity 표는 `docs/spec/dbspec.md`(+ko)에 적는다.
-    - 반복되는 setting(dbspec.md:150)은 줄마다 항목 하나이며 source 순서를 따르고 각자의 identity를
+    - **ORES-67** 반복되는 setting(dbspec.md:150)은 줄마다 항목 하나이며 source 순서를 따르고 각자의 identity를
       가진다. 아무것도 합치거나 버리지 않는다.
-    - 위치는 선언의 이름 token이거나 setting의 keyword다.
-    - 이름 없는 선언인 primary key(dbspec.md:99, "exactly one per table, unnamed")는 `path`
+    - **ORES-68** 위치는 선언의 이름 token이거나 setting의 keyword다.
+    - **ORES-69** 이름 없는 선언인 primary key(dbspec.md:99, "exactly one per table, unnamed")는 `path`
       `[<table>, "primary key"]`이며 그 `primary` keyword 위치다.
     - 모양은 `docs/spec/dbspec.md`(+ko)에 적는다. vector는 반복된 `codec`, `checkbox`, 다섯 `state_machine`
       형식 각각, `use` table, diagram 항목, primary key, document 이름을 담는다.
-  - introspection, Mermaid import, emit, compare, diff, render, hash는 위치를 받지도 내지도 않는다.
-  - 모든 runtime의 parse 결과는 같은 모양이며, kind마다 parity와 vector를 가진다.
+  - **ORES-70** introspection, Mermaid import, emit, compare, diff, render, hash는 위치를 받지도 내지도 않는다.
+  - **ORES-71** 모든 runtime의 parse 결과는 같은 모양이며, kind마다 parity와 vector를 가진다.
   - cases.json의 vector, interfaces, symbol, parity 연결, `docs/spec/dbspec.md`(+ko)의 서술이 필요하다.
-  - 분석 token은 highlight에만 쓰인다. 도구는 token이나 text를 훑지 않고 이 위치로 선언을 찾는다.
+  - **ORES-72** 분석 token은 highlight에만 쓰인다. 도구는 token이나 text를 훑지 않고 이 위치로 선언을 찾는다.
 - **T128-3 모든 runtime의 `analyze`와 `format`.**
   - TS `parse.ts`: 문맥으로 `Tk`를 분류하고 comment token을 기록한다.
   - Go `engine/dbspec`, PHP `Dbspec/Parser.php`, PHP extension `parse.c`, Python `dbspec/parse.py`,
@@ -273,18 +273,18 @@ Cause, Acceptance, 그리고 `docs/spec/editor.md`에 있다.
   - `openDocument(text, {set})`: 범위를 가진 진단, token, folding(table, settings, diagram block),
     `format()`.
   - `dbspec-fmt` CLI는 template-fmt의 규칙을 따른다(editor-tools.md:105-126):
-    - `node:util` `parseArgs`로 인자를 읽고 `readDbspecFile`로 파일을 읽는다;
-    - mode 없는 경로 하나는 stdout으로 쓰고, `-`는 stdin을 읽는다;
-    - 경로가 여럿이면 `--write`나 `--check`가 필요하다;
-    - stderr 줄은 `path:line:col: LABEL: message`다;
-    - 모든 경로를 처리하며, 가장 높은 종료 코드가 이긴다;
-    - `make orm-install-cli`는 symlink 없이 설치한다;
-    - 받은 경로만 처리한다. directory를 훑지 않는 근거는 판정 4이며, template의 directory 탐색과
+    - **ORES-73** `node:util` `parseArgs`로 인자를 읽고 `readDbspecFile`로 파일을 읽는다;
+    - **ORES-74** mode 없는 경로 하나는 stdout으로 쓰고, `-`는 stdin을 읽는다;
+    - **ORES-75** 경로가 여럿이면 `--write`나 `--check`가 필요하다;
+    - **ORES-76** stderr 줄은 `path:line:col: LABEL: message`다;
+    - **ORES-77** 모든 경로를 처리하며, 가장 높은 종료 코드가 이긴다;
+    - **ORES-78** `make orm-install-cli`는 symlink 없이 설치한다;
+    - **ORES-79** 받은 경로만 처리한다. directory를 훑지 않는 근거는 판정 4이며, template의 directory 탐색과
       다른 점으로 명시한다.
   - 종료 코드:
-    - 0: format했거나 바꿀 것이 없음;
-    - 1: `--check`가 format되지 않은 파일을 찾음;
-    - 2: parse 진단, 읽을 수 없는 파일, 잘못된 인자.
+    - **ORES-80** 0: format했거나 바꿀 것이 없음;
+    - **ORES-81** 1: `--check`가 format되지 않은 파일을 찾음;
+    - **ORES-82** 2: parse 진단, 읽을 수 없는 파일, 잘못된 인자.
   - test: cases.json과 syntax.json, 불변식, 멱등성, editor fixture(`tests/editor/*.dbs` + `.json`,
     `--write|--check` script 포함).
 - **T128-6 `vscode-languageserver` 위의 `packages/dbspec-lsp`.**

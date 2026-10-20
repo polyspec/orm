@@ -39,134 +39,134 @@ Owner rulings:
 
 ## Rulings (written into the specs first, with their grounding)
 1. **One grammar per runtime.**
-   - Each runtime has one dbspec lexer and parser. Analysis is one of the parser's outputs.
-   - No editor layer, generated file or regex holds a grammar rule. That excludes TextMate
+   - **ORES-1** Each runtime has one dbspec lexer and parser. Analysis is one of the parser's outputs.
+   - **ORES-2** No editor layer, generated file or regex holds a grammar rule. That excludes TextMate
      grammars: a regex grammar has no parser context, and `NAME` admits keyword words that are
      not reserved, such as `key`, `text` and `references`, as column names, so it would disagree
      with `analyze` (`table` is reserved; corrected by T128-2-2).
 2. **Syntax analysis: `analyze(text, set)` in all six implementations.**
-   - It returns the parse result (unchanged) and tokens `{line, start, end, class}`.
-   - Line is 1-based; start and end are code points, end exclusive.
-   - Classes: `keyword`, `type`, `name`, `setting`, `number`, `string`, `operator`,
+   - **ORES-3** It returns the parse result (unchanged) and tokens `{line, start, end, class}`.
+   - **ORES-4** Line is 1-based; start and end are code points, end exclusive.
+   - **ORES-5** Classes: `keyword`, `type`, `name`, `setting`, `number`, `string`, `operator`,
      `punctuation`, `comment`, `word`.
    - Defined per case:
-     - a `limit` error yields no tokens, because the check precedes allocation
+     - **ORES-6** a `limit` error yields no tokens, because the check precedes allocation
        (docs/spec/dbspec.md:301);
-     - after a `header` or `encoding` stop, the stop line and every later line yield lexical
+     - **ORES-7** after a `header` or `encoding` stop, the stop line and every later line yield lexical
        tokens;
-     - in such a lexical-only line a word is `word`, and numbers, strings, operators, punctuation
+     - **ORES-8** in such a lexical-only line a word is `word`, and numbers, strings, operators, punctuation
        and comment lines keep their class; a number is a word of digits with an optional fraction,
        as Go's lexer reads it (a T128-2 edit that made numbers `word` from the TS lexer alone was
        wrong and is undone by T128-2-1);
-     - for `encoding`, a bare CR is not a line end, and lexing resumes after it;
-     - an invalid character yields no token;
-     - `word` is also a word on a line the parser abandoned (the recovery path). A line that
+     - **ORES-9** for `encoding`, a bare CR is not a line end, and lexing resumes after it;
+     - **ORES-10** an invalid character yields no token;
+     - **ORES-11** `word` is also a word on a line the parser abandoned (the recovery path). A line that
        carries only a semantic diagnostic keeps its parser-assigned classes.
-   - Comment positions live only in the tokens, never in `DbspecDocument`. Tokens serve
+   - **ORES-12** Comment positions live only in the tokens, never in `DbspecDocument`. Tokens serve
      highlighting; declaration positions are in the parse result beside the document
      (T128-3p).
-   - Vectors: `tests/dbspec/syntax.json` covers the canonical, normalize, invalid, sets and
+   - **ORES-13** Vectors: `tests/dbspec/syntax.json` covers the canonical, normalize, invalid, sets and
      hashes cases of `cases.json`. `files` cases (bytes) stay with readFile and readBytes.
      The vectors are generated once from TS, reviewed, then fixed; all six match them exactly.
 3. **Formatting: `format(text, set)` = `emit(parse(text, set))` in all six.**
-   - A document with diagnostics is refused, never rewritten.
+   - **ORES-14** A document with diagnostics is refused, never rewritten.
    - Invariants:
-     - `emit(parse(format(x))) == emit(parse(x))`;
-     - equal manifest and schema hashes;
-     - `format(format(x)) == format(x)`.
+     - **ORES-15** `emit(parse(format(x))) == emit(parse(x))`;
+     - **ORES-16** equal manifest and schema hashes;
+     - **ORES-17** `format(format(x)) == format(x)`.
      - No model equality: emit sorts constraints and `use` lines.
-   - On canonical text, LSP formatting answers no edit.
-   - Vectors: normalize and canonical expect the canonical text; invalid expects refusal.
+   - **ORES-18** On canonical text, LSP formatting answers no edit.
+   - **ORES-19** Vectors: normalize and canonical expect the canonical text; invalid expects refusal.
 4. **The document set is declared once, in a set file (owner ruling).**
-   - One standard file, `dbspec-set.json`: `{"schema": 1, "documents": [...], "external": [...]}`.
+   - **ORES-20** One standard file, `dbspec-set.json`: `{"schema": 1, "documents": [...], "external": [...]}`.
      Paths are relative to the file's own directory, which is the declared root.
-   - Every consumer reads it: the generators of every runtime (`orm-gen gen --set <file>`)
+   - **ORES-21** Every consumer reads it: the generators of every runtime (`orm-gen gen --set <file>`)
      and the LSP. The command-argument form (`--document`, `--use`) is removed, with no
      compatibility.
    - Grounding: the set has two consumers today. Two declarations drift.
-   - Set resolution, the ecosystem pattern of `tsconfig.json`: a document's set is the
+   - **ORES-22** Set resolution, the ecosystem pattern of `tsconfig.json`: a document's set is the
      `dbspec-set.json` in its nearest ancestor directory that lists it in `documents`. Every
      consumer stops at the same bound, the filesystem root, as tsserver does. The two-set check
      reads every ancestor up to that bound. This is discovery along the document's own path,
      never a walk of the disk. File watching handles only later changes: create, change and
      delete of set files and listed files.
-   - The rules exist once. The browser-safe subpath exports a pure `parseSet(bytes, path)` that
+   - **ORES-23** The rules exist once. The browser-safe subpath exports a pure `parseSet(bytes, path)` that
      applies every non-I/O rule. The language service gets `resolveSet(path, host)` with an
      injected host for `lstat`, listing a directory, and opening a file once to give its bytes
      and its identity; the LSP and the CLI pass a `node:fs` host.
      Every runtime's set reader runs the file-tree set vectors; TS `parseSet` also runs the
      vectors that need no file tree (corrected by the review of T128-2a-1: a pure function
      cannot run vectors of symbolic and hard links).
-   - A document in the `documents` of two set files is a diagnostic. `external` listings do not
+   - **ORES-24** A document in the `documents` of two set files is a diagnostic. `external` listings do not
      count: an external document of one set is, by definition, owned by another
      (docs/spec/dbspec.md:245).
-   - A document that no set file lists forms the set of itself alone, and its `use` lines report
+   - **ORES-25** A document that no set file lists forms the set of itself alone, and its `use` lines report
      "is not in the declared document set": a true statement, not a fallback.
-   - The language service and CodeMirror take the set as an option.
-   - Docs fences: fences on one page that form a set declare it in the info string, for example
+   - **ORES-26** The language service and CodeMirror take the set as an option.
+   - **ORES-27** Docs fences: fences on one page that form a set declare it in the info string, for example
      `dbs set=shop`, and the page carries every document of the set as its own fence. The docs
      build fails on any diagnostic of a `dbs` fence, so every published example is a verified
      document and no diagnostic is dropped.
-   - Validation of the set file, each rule with accepting and rejecting vectors that every
+   - **ORES-28** Validation of the set file, each rule with accepting and rejecting vectors that every
      runtime's set reader runs:
-     - invalid JSON is an error;
-     - `schema` must be 1, and an unknown key is an error;
-     - `documents` must not be empty;
-     - paths are in normal form or rejected: relative, `/` separators only, no `.` or empty
+     - **ORES-29** invalid JSON is an error;
+     - **ORES-30** `schema` must be 1, and an unknown key is an error;
+     - **ORES-31** `documents` must not be empty;
+     - **ORES-32** paths are in normal form or rejected: relative, `/` separators only, no `.` or empty
        segment, no trailing `/`. An absolute path is an error.
-     - `documents` paths lie under the set file's directory, with no `..`. `..` is allowed only
+     - **ORES-33** `documents` paths lie under the set file's directory, with no `..`. `..` is allowed only
        as leading segments of `external` paths, because external documents live in sibling
        directories (flowmark's board uses `../block/...`).
-     - every path component is `lstat`-ed, and the path must end in a regular file. A symlink,
+     - **ORES-34** every path component is `lstat`-ed, and the path must end in a regular file. A symlink,
        at the file or in any directory, is an error and is never followed.
-     - duplicates are judged by file identity: device and inode, or the Windows file ID. A
+     - **ORES-35** duplicates are judged by file identity: device and inode, or the Windows file ID. A
        file listed twice, under any two spellings or in both lists, is an error on every
        platform, case-folding file systems included;
-     - a missing file is an error naming the path. A generator exits with its error status and
+     - **ORES-36** a missing file is an error naming the path. A generator exits with its error status and
        writes nothing.
    - Failures:
-     - a listed file that fails the signature or encoding check is published on its own URI,
+     - **ORES-37** a listed file that fails the signature or encoding check is published on its own URI,
        with the `readBytes` diagnostic;
-     - a missing or unreadable file is a set error of docs/spec/dbspec.md "Document sets", shown by
+     - **ORES-38** a missing or unreadable file is a set error of docs/spec/dbspec.md "Document sets", shown by
        `window/showMessage` with the path and the OS error; the reader returns no file of a set
        that fails, so the set is not resolved and the document is analyzed alone, its `use`
        lines reporting their diagnostic. Both stay visible (corrected by T128-5-1: an earlier
        text kept the other files as a partial set, which the reader specification refuses).
-   - The LSP reads bytes with `node:fs` and passes them to the language service, which checks
+   - **ORES-39** The LSP reads bytes with `node:fs` and passes them to the language service, which checks
      them with `readDbspecBytes` from the subpath of ruling 8.
    - Changes are events, not polling:
-     - `workspace/didChangeWatchedFiles` for set files and listed files re-analyzes;
-     - an open buffer wins over the disk.
+     - **ORES-40** `workspace/didChangeWatchedFiles` for set files and listed files re-analyzes;
+     - **ORES-41** an open buffer wins over the disk.
 5. **LSP ranges.**
-   - A diagnostic's range runs from its position to the end of the token that starts there.
+   - **ORES-42** A diagnostic's range runs from its position to the end of the token that starts there.
      Elsewhere it is one code point; at end of line or end of text it is zero-length.
-   - Code points convert to UTF-16 in the language service only.
+   - **ORES-43** Code points convert to UTF-16 in the language service only.
 6. **Editor spec `docs/spec/editor.md` (+ko).**
    - Layers: the browser-safe parser subpath of `@polyspec/orm` (ruling 8), the language
      service, and the adapters (LSP, CodeMirror, VS Code).
-   - Boundaries, checked by following imports transitively:
-     - adapters never import `@polyspec/orm`;
-     - the language service, outside its CLI, reaches no `node:` module, Node global
+   - **ORES-44** Boundaries, checked by following imports transitively:
+     - **ORES-45** adapters never import `@polyspec/orm`;
+     - **ORES-46** the language service, outside its CLI, reaches no `node:` module, Node global
        (`Buffer`, `process`, `__dirname`, `require`) or driver. This matches template's EDT-3.
-     - Adapters run in Node or the browser, as their hosts require.
+     - **ORES-47** Adapters run in Node or the browser, as their hosts require.
    - Also: the results and the editor fixtures.
 7. **Ecosystem mechanisms only.**
-   - LSP: `vscode-languageserver`. CLI arguments: `node:util` `parseArgs`. Editor: CodeMirror 6
+   - **ORES-48** LSP: `vscode-languageserver`. CLI arguments: `node:util` `parseArgs`. Editor: CodeMirror 6
      extensions.
-   - VS Code: semantic tokens with `semanticTokenScopes` and no grammar file.
+   - **ORES-49** VS Code: semantic tokens with `semanticTokenScopes` and no grammar file.
      `configurationDefaults` sets `"[dbspec]": {"editor.semanticHighlighting.enabled": true}`,
      because the default `configuredByTheme` leaves some themes uncoloured.
-   - Docs: the markdown-it fence hook of VitePress `markdown.config`, as mermaid uses it
+   - **ORES-50** Docs: the markdown-it fence hook of VitePress `markdown.config`, as mermaid uses it
      (config.mts:149). Shiki is not used, because it accepts only TextMate grammars, which
      ruling 1 excludes.
-   - Each standard class has a colour in both the light and the dark site theme.
+   - **ORES-51** Each standard class has a colour in both the light and the dark site theme.
 8. **A browser-safe parser entry.**
-   - `@polyspec/orm` gains a subpath export: parse, emit, analyze, format, readDbspecBytes.
-   - Its modules hold no `node:` module, no Node global and no driver.
+   - **ORES-52** `@polyspec/orm` gains a subpath export: parse, emit, analyze, format, readDbspecBytes.
+   - **ORES-53** Its modules hold no `node:` module, no Node global and no driver.
    - `parseDbspec` and `emitDbspec` move out of `dbspec/index.ts`, which imports
      `node:crypto`.
-   - `readDbspecBytes` uses `TextEncoder` instead of `Buffer`.
-   - The module-graph test rejects `node:` imports and the Node globals.
+   - **ORES-54** `readDbspecBytes` uses `TextEncoder` instead of `Buffer`.
+   - **ORES-55** The module-graph test rejects `node:` imports and the Node globals.
 
 ## orm: T128 in the single checklist `docs/plans/execution/checklist.md` (+ko)
 T128 is rewritten, and sub-items T128-1 to T128-9 are added. Each is one commit: RED, GREEN, the
@@ -227,7 +227,7 @@ text lives in T128's Cause and Acceptance, plus `docs/spec/editor.md`.
   - Found: the parser accepts, silently, a repeated `initial <state>`, a repeated
     `terminal <state>` and a repeated `<from> -> <to>` of one machine, even with different
     `require` lists (parse.ts:2249-2284; `docs/spec/dbspec.md:164,172`). No vector rejects them.
-  - Ruling: such a repeat is a `setting` error at the later line's keyword, and the `require`
+  - **ORES-56** Ruling: such a repeat is a `setting` error at the later line's keyword, and the `require`
     lists play no part. Ground: a repeat adds no meaning, and a repeat with a different `require`
     list is a contradiction the document must not hold.
   - In `docs/spec/dbspec.md` (+ko), and the parser check in each runtime.
@@ -235,15 +235,15 @@ text lives in T128's Cause and Acceptance, plus `docs/spec/editor.md`.
     `dbspec-compare-check`.
   - A changelog entry records the newly rejected input.
 - **T128-3p Declaration positions in the parse result, in every runtime.**
-  - Positions sit in the parse result beside the document, never in `DbspecDocument`. The
+  - **ORES-57** Positions sit in the parse result beside the document, never in `DbspecDocument`. The
     reason: a document is also built without source text, by introspection
     (`introspect_catalog.ts:106`) and by `importMermaid`, and the same type feeds compare,
     diff, render and emit. Positions in the model would force either invented values or
     position-sensitive comparisons.
-  - The successful `DbspecParseResult` gains `positions`: a list, in source order, of
+  - **ORES-58** The successful `DbspecParseResult` gains `positions`: a list, in source order, of
     `{kind, path, line, column}`, with line and column in code points, the unit diagnostics
     use.
-    - `kind` is one of `document`, `table`, `column`, `constraint`, `setting`, `use`,
+    - **ORES-59** `kind` is one of `document`, `table`, `column`, `constraint`, `setting`, `use`,
       `use_table`, `diagram`, `diagram_entry`. They cover every declaration (document, table, column,
       constraint, setting, use, diagram) and the table references of `use` lines and diagram
       entries. A tool that needs the position of any other reference (a foreign key's
@@ -251,38 +251,38 @@ text lives in T128's Cause and Acceptance, plus `docs/spec/editor.md`.
       standard, in every runtime with vectors. The no-scanning rule holds without kinds no tool
       needs today. The header's `document` has `path` `[<document>]`, at its name
       token.
-    - `path` is the enclosing names, then the declaration's own name. For example:
+    - **ORES-60** `path` is the enclosing names, then the declaration's own name. For example:
       `["users", "email"]` for a column; `["main", "users"]` for a diagram entry. A setting has no name of its own, and its
       forms differ too much for a "target" to be defined (`entity`, `select explicit`,
       `navigation`, `state_machine`, `immutable` …). So its `path` is `[<table>, <keyword>, ...identity]`. The identity comes from the spec's
       own repeat rule (dbspec.md:150), never from the order of a runtime's model, because the
       models differ: Go folds `state_machine` lines into one struct (`model.go:167-188`).
-      - `codec`, `markdown`: the column;
-      - `navigation`: the foreign key;
-      - `blind_index`: the AES column;
-      - `checkbox`: the column and the state;
-      - `state_machine`: the line's form and operands — `["transition", from, to]`,
+      - **ORES-61** `codec`, `markdown`: the column;
+      - **ORES-62** `navigation`: the foreign key;
+      - **ORES-63** `blind_index`: the AES column;
+      - **ORES-64** `checkbox`: the column and the state;
+      - **ORES-65** `state_machine`: the line's form and operands — `["transition", from, to]`,
         `["terminal", state]`, `["initial", state]`, `["history"]`, `["limit", state]`. The
         column is left out, because a table holds one machine (parse.ts:2257).
-      - a setting that appears at most once: nothing.
+      - **ORES-66** a setting that appears at most once: nothing.
       Each identity is unique: a repeat of it is the `setting` error, which T128-3s makes true
       for the three state-machine forms that are accepted today. The identity table is stated
       in `docs/spec/dbspec.md` (+ko).
-    - A setting that repeats (dbspec.md:150) is one entry per line, in source order, each with
+    - **ORES-67** A setting that repeats (dbspec.md:150) is one entry per line, in source order, each with
       its own identity. Nothing is merged or dropped.
-    - The position is the declaration's name token, or the keyword of a setting.
-    - The unnamed declaration, the primary key (dbspec.md:99, "exactly one per table,
+    - **ORES-68** The position is the declaration's name token, or the keyword of a setting.
+    - **ORES-69** The unnamed declaration, the primary key (dbspec.md:99, "exactly one per table,
       unnamed"), has `path` `[<table>, "primary key"]` and the position of its `primary`
       keyword.
     - The shape is stated in `docs/spec/dbspec.md` (+ko). The vectors include a repeated `codec`, a
       `checkbox`, each of the five `state_machine` forms, a `use` table, a diagram entry, the
       primary key and the document name.
-  - Introspection, Mermaid import, emit, compare, diff, render and the hashes neither take nor
+  - **ORES-70** Introspection, Mermaid import, emit, compare, diff, render and the hashes neither take nor
     produce positions.
-  - Every runtime's parse result has the same shape, with parity and vectors for each kind.
+  - **ORES-71** Every runtime's parse result has the same shape, with parity and vectors for each kind.
   - It needs vectors in cases.json; the interfaces, symbols and parity wiring; and a statement
     in `docs/spec/dbspec.md` (+ko).
-  - Analysis tokens serve highlighting only. Tools locate declarations through these positions,
+  - **ORES-72** Analysis tokens serve highlighting only. Tools locate declarations through these positions,
     never by scanning tokens or text.
 - **T128-3 `analyze` and `format` in every runtime.**
   - TS `parse.ts`: classify `Tk` by context and record comment tokens.
@@ -304,18 +304,18 @@ text lives in T128's Cause and Acceptance, plus `docs/spec/editor.md`.
   - `openDocument(text, {set})`: diagnostics with ranges, tokens, folding (table, settings and
     diagram blocks), `format()`.
   - The `dbspec-fmt` CLI follows template-fmt's rules (editor-tools.md:105-126):
-    - it parses arguments with `node:util` `parseArgs` and reads files with `readDbspecFile`;
-    - one path without a mode writes to stdout, and `-` reads stdin;
-    - several paths require `--write` or `--check`;
-    - stderr lines are `path:line:col: LABEL: message`;
-    - every path is processed, and the highest exit code wins;
-    - `make orm-install-cli` installs it without a symlink;
-    - it takes the paths it is given. Ruling 4 is the ground for not walking directories, a
+    - **ORES-73** it parses arguments with `node:util` `parseArgs` and reads files with `readDbspecFile`;
+    - **ORES-74** one path without a mode writes to stdout, and `-` reads stdin;
+    - **ORES-75** several paths require `--write` or `--check`;
+    - **ORES-76** stderr lines are `path:line:col: LABEL: message`;
+    - **ORES-77** every path is processed, and the highest exit code wins;
+    - **ORES-78** `make orm-install-cli` installs it without a symlink;
+    - **ORES-79** it takes the paths it is given. Ruling 4 is the ground for not walking directories, a
       stated difference from template's walk.
   - Exit codes:
-    - 0: formatted, or nothing to change;
-    - 1: `--check` found an unformatted file;
-    - 2: a parse diagnostic, an unreadable file, or bad arguments.
+    - **ORES-80** 0: formatted, or nothing to change;
+    - **ORES-81** 1: `--check` found an unformatted file;
+    - **ORES-82** 2: a parse diagnostic, an unreadable file, or bad arguments.
   - Tests: cases.json and syntax.json, the invariants, idempotence, and the editor fixtures
     (`tests/editor/*.dbs` + `.json`, with a `--write|--check` script).
 - **T128-6 `packages/dbspec-lsp`** on `vscode-languageserver`.
