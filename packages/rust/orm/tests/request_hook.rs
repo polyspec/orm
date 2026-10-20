@@ -6,7 +6,8 @@
 //! restore_hook_set_key. `coverage_request_hook_<case>` runs the same case on the database that feature-check chose,
 //! in that database's case database (docs/spec/feature-coverage.md).
 //!
-//! `cargo test -p polyspec-orm --test request_hook`
+//! `cargo test -p polyspec-orm --test request_hook -- --exact <case>` runs a SQLite case; a coverage case needs the
+//! database of make feature-check, which runs it by its exact name.
 
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
@@ -575,7 +576,6 @@ async fn restore_rewritten_key_set_scope() {
 }
 
 #[tokio::test]
-#[ignore = "run by feature-check"]
 async fn coverage_request_hook_restore_rewritten_key_set_scope() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     restore_rewritten_key_set_scope_case(feature_database()).await;
@@ -599,7 +599,6 @@ async fn without_hook() {
 }
 
 #[tokio::test]
-#[ignore = "run by feature-check"]
 async fn coverage_request_hook_without_hook() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     without_hook_case(feature_database()).await;
@@ -612,7 +611,6 @@ async fn read_filter() {
 }
 
 #[tokio::test]
-#[ignore = "run by feature-check"]
 async fn coverage_request_hook_read_filter() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     read_filter_case(feature_database()).await;
@@ -631,7 +629,6 @@ async fn insert_assign() {
 }
 
 #[tokio::test]
-#[ignore = "run by feature-check"]
 async fn coverage_request_hook_insert_assign() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     insert_assign_case(feature_database()).await;
@@ -644,7 +641,6 @@ async fn loaded_row_writes() {
 }
 
 #[tokio::test]
-#[ignore = "run by feature-check"]
 async fn coverage_request_hook_loaded_row_writes() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     loaded_row_writes_case(feature_database()).await;
@@ -663,7 +659,6 @@ async fn invalid_param() {
 }
 
 #[tokio::test]
-#[ignore = "run by feature-check"]
 async fn coverage_request_hook_invalid_param() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     invalid_param_case(feature_database()).await;
@@ -676,7 +671,6 @@ async fn restore_key() {
 }
 
 #[tokio::test]
-#[ignore = "run by feature-check"]
 async fn coverage_request_hook_restore_key() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     restore_key_case(feature_database()).await;
@@ -689,7 +683,6 @@ async fn restore_condition() {
 }
 
 #[tokio::test]
-#[ignore = "run by feature-check"]
 async fn coverage_request_hook_restore_condition() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     restore_condition_case(feature_database()).await;
@@ -702,7 +695,6 @@ async fn restore_no_key() {
 }
 
 #[tokio::test]
-#[ignore = "run by feature-check"]
 async fn coverage_request_hook_restore_no_key() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     restore_no_key_case(feature_database()).await;
@@ -715,7 +707,6 @@ async fn restore_rewritten_key() {
 }
 
 #[tokio::test]
-#[ignore = "run by feature-check"]
 async fn coverage_request_hook_restore_rewritten_key() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     restore_rewritten_key_case(feature_database()).await;
@@ -728,7 +719,6 @@ async fn restore_hook_set_key() {
 }
 
 #[tokio::test]
-#[ignore = "run by feature-check"]
 async fn coverage_request_hook_restore_hook_set_key() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     restore_hook_set_key_case(feature_database()).await;

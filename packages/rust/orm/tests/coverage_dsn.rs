@@ -1,8 +1,7 @@
 use polyspec_orm::db::Pool;
 
-// feature-check runs it with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN and with --include-ignored.
+// feature-check runs it by its exact name with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN, the database it started.
 #[tokio::test]
-#[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 // Requirements: CFG-1.
 async fn coverage_dsn_connection() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);

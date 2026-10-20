@@ -71,7 +71,6 @@ use polyspec_orm::{AesKeyring, Collection, Db, Isolation, Null};
 use polyspec_orm_case_database::CaseDatabase;
 
 #[tokio::test]
-#[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_generated_model_connection() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let driver = std::env::var("ORM_FEATURE_DATABASE")

@@ -45,7 +45,6 @@ fn column(page: &polyspec_orm_build::catalog::TablePage, column: &str) -> usize 
 }
 
 #[tokio::test]
-#[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_catalog_read() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     within("catalog_read", async {
@@ -86,7 +85,6 @@ async fn coverage_catalog_read() {
 }
 
 #[tokio::test]
-#[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_catalog_row_mutation() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     within("catalog_row_mutation", async {

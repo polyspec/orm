@@ -4,7 +4,6 @@ use super::coverage_env::{connect, run};
 use super::model::{Author, User};
 
 #[tokio::test]
-#[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_model_query_rows() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("model_query_rows", async {

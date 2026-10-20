@@ -11,7 +11,6 @@ const DEADLINE: Duration = Duration::from_secs(300);
 
 // Requirements: INT-17, INT-18, INT-19, INT-57, INT-61, INT-64.
 #[test]
-#[ignore = "run by feature-check"]
 fn coverage_interface_symbols() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
     let started = Instant::now();

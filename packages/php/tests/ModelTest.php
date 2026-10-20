@@ -492,10 +492,6 @@ final class ModelTest extends TestCase
 
     private static function case_deadlock_retry(Db $db, string $dsn): void
     {
-        $driver = $db->driver();
-        if ($driver === 'sqlite') {
-            \PHPUnit\Framework\Assert::markTestSkipped('one writer: two transactions cannot hold row locks at the same time');
-        }
         $f = self::seed($db);
         [$a, $b] = [$f['authors'][0]->getSeq(), $f['authors'][1]->getSeq()];
         $children = [];
@@ -1153,9 +1149,10 @@ final class ModelTest extends TestCase
         self::case_utilities($db, $dsn);
     }
 
-    // deadlock retry
+    // deadlock retry, on the server drivers: SQLite has one writer, so two transactions cannot hold row locks at the
+    // same time and no deadlock can arise.
     // Requirements: PLN-24.
-    #[DataProvider('drivers')]
+    #[DataProvider('serverDrivers')]
     public function test_deadlock_retry(string $driver): void
     {
         $dsn = self::caseDsn($driver);

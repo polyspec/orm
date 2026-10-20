@@ -3,108 +3,22 @@ package testcase
 import (
 	"errors"
 	"fmt"
-	"os"
 	"os/exec"
 	"regexp"
 	"strings"
 	"testing"
-	"time"
 )
 
-// fixtureVariable is the environment variable that makes the fixture test below run. Only TestReportForm
-// runs as a subprocess with this variable given.
-const fixtureVariable = "TESTCASE_FIXTURE"
-
-func fixture(t *testing.T, name string) {
-	if os.Getenv(fixtureVariable) != name {
-		t.Skipf("runs only as the child process of TestReportForm (%s=%s)", fixtureVariable, name)
-	}
+// fixtures maps each fixture run to the fixture tests it selects. The fixtures (testcase_fixture_test.go) build only with
+// the tag testcasefixture, which only runFixture gives to the child go test.
+var fixtures = map[string]string{
+	"report":   "^TestFixture(Pass|Fail|Skip|Group|Run)$",
+	"deadline": "^TestFixtureDeadline$",
 }
 
-func TestFixturePass(t *testing.T) {
-	fixture(t, "report")
-	c := Start(t, Compute)
-	c.Step("first step of %d", 2)
-	// Of finds, in a subtest that did not start a case, the case wrapping that subtest.
-	t.Run("inner", func(t *testing.T) { Of(t).Step("step of the enclosing case") })
-}
-
-func TestFixtureFail(t *testing.T) {
-	fixture(t, "report")
-	Start(t, Compute)
-	t.Error("fixture failure reason")
-}
-
-func TestFixtureSkip(t *testing.T) {
-	fixture(t, "report")
-	Start(t, Compute)
-	t.Skip("fixture skip reason")
-}
-
-func TestFixtureGroup(t *testing.T) {
-	fixture(t, "report")
-	Group(t)
-	for _, name := range []string{"one", "two"} {
-		t.Run(name, func(t *testing.T) { Start(t, Database) })
-	}
-}
-
-// TestFixtureRun shows the non-test runner's Run returning pass, failure, and deadline-exceeded. Steps are lines on stdout.
-func TestFixtureRun(t *testing.T) {
-	fixture(t, "report")
-	if err := Run("runner/pass", time.Minute, func(c *Case) error {
-		c.Step("built %s", "runner")
-		w := c.StepWriter()
-		if _, err := fmt.Fprint(w, "child line one\n\nchild "); err != nil {
-			return err
-		}
-		if _, err := fmt.Fprint(w, "line two\nchild tail"); err != nil {
-			return err
-		}
-		w.Flush()
-		return nil
-	}); err != nil {
-		t.Errorf("runner/pass: %v", err)
-	}
-	if err := Run("runner/fail", time.Minute, func(*Case) error { return errors.New("runner failure reason") }); err == nil {
-		t.Error("runner/fail returned no error")
-	}
-	if err := Run("runner/context", 100*time.Millisecond, func(c *Case) error {
-		<-c.Context().Done()
-		return c.Context().Err()
-	}); err == nil {
-		t.Error("runner/context returned no error")
-	}
-	// A slow but normal long job runs to the end without a deadline.
-	if err := RunLong("runner/long", func(c *Case) error {
-		c.Step("building")
-		time.Sleep(1500 * time.Millisecond)
-		c.Step("exit 0")
-		return nil
-	}); err != nil {
-		t.Errorf("runner/long: %v", err)
-	}
-	if err := RunLong("runner/long-fail", func(*Case) error { return errors.New("build exited with 3") }); err == nil {
-		t.Error("runner/long-fail returned no error")
-	}
-	if err := Run("runner/stuck", 100*time.Millisecond, func(*Case) error {
-		time.Sleep(time.Minute)
-		return nil
-	}); err == nil {
-		t.Error("runner/stuck returned no error")
-	}
-}
-
-func TestFixtureDeadline(t *testing.T) {
-	fixture(t, "deadline")
-	Start(t, 200*time.Millisecond)
-	time.Sleep(time.Minute)
-}
-
-// runFixture runs the fixture test with a child `go test -v` and returns its output and exit error.
+// runFixture runs the fixture tests of name with a child `go test -v` and returns its output and exit error.
 func runFixture(name string) (string, error) {
-	command := exec.Command("go", "test", "-run", "^TestFixture", "-count=1", "-v", ".")
-	command.Env = append(os.Environ(), fixtureVariable+"="+name)
+	command := exec.Command("go", "test", "-tags", "testcasefixture", "-run", fixtures[name], "-count=1", "-v", ".")
 	output, err := command.CombinedOutput()
 	return string(output), err
 }

@@ -18,7 +18,7 @@ function command(language: string, database: string): [string, string[]] {
       '--filter', `with data set "${database}"$`, 'packages/php/tests/DecimalModelDbTest.php']];
   }
   if (language === 'rust') {
-    return ['cargo', ['test', '--offline', '--locked', '--manifest-path', 'packages/rust/Cargo.toml', '-p', 'polyspec-orm-tests', '--test', 'decimal_physical', id, '--', '--exact', '--include-ignored']];
+    return ['cargo', ['test', '--offline', '--locked', '--manifest-path', 'packages/rust/Cargo.toml', '-p', 'polyspec-orm-tests', '--test', 'decimal_physical', id, '--', '--exact']];
   }
   if (language === 'python') {
     // ORM_PYTHON is the Python of the venv that make orm-install-python builds.

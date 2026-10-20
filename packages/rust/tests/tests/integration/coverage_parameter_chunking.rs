@@ -4,7 +4,6 @@ use super::coverage_env::{code, connect, run};
 use super::model::Author;
 
 #[tokio::test]
-#[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_root_in_chunking() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("root_in_chunking", async {

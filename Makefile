@@ -855,22 +855,24 @@ feature-unit-check/select:
 feature-go-unit:
 	$(NODE) packages/go/testing/feature-json.mts --database $(FEATURE_DATABASE) --dsn-env $(FEATURE_DSN_ENV) --test $(FEATURE_TEST) $(FEATURE_PACKAGE)
 
-# feature-rust-unit runs one Rust test target of a feature, as a parity binding names it: the make variables FEATURE_CRATE
-# (the directory of the crate's Cargo.toml, from the checkout root) and FEATURE_CARGO_TARGET (the cargo target option, such as
-# `--test client_bench_dsn` or `--bin conformance`) are passed by config/parity.json. It runs through tests/cargo-test.mts,
+# feature-rust-unit runs one Rust test of a feature, as a parity binding names it: the make variables FEATURE_CRATE
+# (the directory of the crate's Cargo.toml, from the checkout root), FEATURE_CARGO_TARGET (the cargo target option, such as
+# `--test client_bench_dsn` or `--bin conformance`) and FEATURE_TEST (the exact name of the test) are passed by
+# config/parity.json. The test is selected by its exact name, since a target also holds the database tests that
+# feature-rust-database runs. It runs through tests/cargo-test.mts,
 # the runner of every Rust test, which gives the test binaries the copied programs they read (polyspec_orm_testcase::program).
 .PHONY: feature-rust-unit
 feature-rust-unit:
-	$(WITH_TEST_ENV) cd $(FEATURE_CRATE) && $(CARGO_TEST) feature-rust-unit -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline $(FEATURE_CARGO_TARGET) -- --test-threads=1
+	$(WITH_TEST_ENV) cd $(FEATURE_CRATE) && $(CARGO_TEST) feature-rust-unit -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline $(FEATURE_CARGO_TARGET) -- --test-threads=1 --exact $(FEATURE_TEST)
 
-# feature-rust-database runs one ignored Rust test of a feature against one database, as a parity binding names it: FEATURE_CRATE
-# and FEATURE_CARGO_TARGET as feature-rust-unit, FEATURE_TEST (the exact name of the test), and FEATURE_DATABASE with
-# FEATURE_DSN_ENV (the database, and the variable that holds its DSN). The test is ignored by default: the feature checker runs it
-# with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN set for each database of its coverage item (scripts/features/coverage.mts), and
-# this target does the same for the one database that the binding names.
+# feature-rust-database runs one Rust database test of a feature against one database, as a parity binding names it:
+# FEATURE_CRATE, FEATURE_CARGO_TARGET and FEATURE_TEST as feature-rust-unit, and FEATURE_DATABASE with FEATURE_DSN_ENV (the
+# database, and the variable that holds its DSN). The test needs that database, so it is selected by its exact name only where
+# the database is given: the feature checker runs it with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN set for each database of its
+# coverage item (scripts/features/coverage.mts), and this target does the same for the one database that the binding names.
 .PHONY: feature-rust-database
 feature-rust-database:
-	$(WITH_TEST_ENV) cd $(FEATURE_CRATE) && ORM_FEATURE_DATABASE=$(FEATURE_DATABASE) ORM_FEATURE_DSN="$$$(FEATURE_DSN_ENV)" $(CARGO_TEST) feature-rust-database -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline $(FEATURE_CARGO_TARGET) -- --test-threads=1 --exact --include-ignored $(FEATURE_TEST)
+	$(WITH_TEST_ENV) cd $(FEATURE_CRATE) && ORM_FEATURE_DATABASE=$(FEATURE_DATABASE) ORM_FEATURE_DSN="$$$(FEATURE_DSN_ENV)" $(CARGO_TEST) feature-rust-database -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline $(FEATURE_CARGO_TARGET) -- --test-threads=1 --exact $(FEATURE_TEST)
 
 # feature-check is the feature coverage and all verification commands, and make orm-check runs them as three targets: feature-coverage is
 # coverage, feature-verify-rust runs the verification commands of shard rust (the commands that build and run Rust with cargo), and feature-verify-other

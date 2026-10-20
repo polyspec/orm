@@ -16,7 +16,6 @@ fn is_failure(r: &polyspec_orm::Result<()>, message: &str) -> bool {
 // Requirements: PLN-13, PLN-20.
 // Requirements: INT-45.
 #[tokio::test]
-#[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_transaction_rollback() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("transaction_rollback", async {
@@ -38,7 +37,6 @@ async fn coverage_transaction_rollback() {
 // Requirements: PLN-17.
 // Requirements: INT-45, INT-46.
 #[tokio::test]
-#[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_transaction_savepoint() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("transaction_savepoint", async {

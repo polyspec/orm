@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -55,9 +54,9 @@ func runTimed(t *testing.T, name string, deadline time.Duration, work func() err
 	}
 }
 
-// failingCaseFixture is the environment variable that makes TestFailingCaseFixture run.
-// Only TestCaseHarnessReportsOnlyFailure sets this variable and runs it as a subprocess.
-const failingCaseFixture = "DBSPEC_FAILING_CASE_FIXTURE"
+// failingCaseFixture is the build tag that makes TestFailingCaseFixture (harness_fixture_test.go) build.
+// Only TestCaseHarnessReportsOnlyFailure gives this tag, to the go test that it runs as a subprocess.
+const failingCaseFixture = "dbspecfixture"
 
 // failingCaseNames is the name of the case that TestFailingCaseFixture runs with a wrong expected value.
 func failingCaseNames(t *testing.T) []string {
@@ -77,53 +76,13 @@ func failingCaseNames(t *testing.T) []string {
 	}
 }
 
-// TestFailingCaseFixture runs each case check with a vector that is wrong in only one expected value.
-// Every case must fail, so it is skipped if failingCaseFixture is absent.
-func TestFailingCaseFixture(t *testing.T) {
-	testcase.Start(t, testcase.Process)
-	if os.Getenv(failingCaseFixture) != "1" {
-		t.Skipf("runs only as the child process of TestCaseHarnessReportsOnlyFailure (%s=1)", failingCaseFixture)
-	}
-	m := loadMermaidVectors(t)
-	p := loadPlanVectors(t)
-	export := m.Export[0]
-	export.Mermaid = append(slices.Clone(export.Mermaid), "%% wrong")
-	imported := m.Import[0]
-	imported.Document = append(slices.Clone(imported.Document), "wrong")
-	invalid := m.Invalid[0]
-	invalid.Errors = nil
-	roundTrip := m.RoundTrip[0]
-	roundTrip.Dropped = nil
-	planCase := p.Cases[0]
-	planCase.Changes = nil
-	planInvalid := p.Invalid[0]
-	planInvalid.Errors = nil
-	chain := p.Chains[0]
-	chain.Order = []string{"wrong"}
-	parse := p.Parse[0]
-	parse.Errors = nil
-	// The first comparison has no differences, so the second case, which has differences, is emptied.
-	comparison := p.Comparisons[1]
-	comparison.Differences = nil
-	t.Run("export", func(t *testing.T) { checkMermaidExport(t, export) })
-	t.Run("import", func(t *testing.T) { checkMermaidImport(t, imported) })
-	t.Run("invalid", func(t *testing.T) { checkMermaidInvalid(t, invalid) })
-	t.Run("round_trip", func(t *testing.T) { checkMermaidRoundTrip(t, roundTrip) })
-	t.Run("plan", func(t *testing.T) { checkPlanCase(t, planCase) })
-	t.Run("plan_invalid", func(t *testing.T) { checkPlanInvalid(t, planInvalid) })
-	t.Run("chain", func(t *testing.T) { checkPlanChain(t, chain) })
-	t.Run("parse", func(t *testing.T) { checkPlanParse(t, parse) })
-	t.Run("comparison", func(t *testing.T) { checkComparison(t, comparison) })
-}
-
 // TestCaseHarnessReportsOnlyFailure checks that a failed case prints only FAIL lines and not PASS lines,
 // by running TestFailingCaseFixture as a subprocess.
 func TestCaseHarnessReportsOnlyFailure(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	names := failingCaseNames(t)
 	runTimed(t, "harness-only-failure", 2*time.Minute, func() error {
-		command := exec.Command("go", "test", "-run", "^TestFailingCaseFixture$", "-count=1", "-v", ".")
-		command.Env = append(os.Environ(), failingCaseFixture+"=1")
+		command := exec.Command("go", "test", "-tags", failingCaseFixture, "-run", "^TestFailingCaseFixture$", "-count=1", "-v", ".")
 		output, err := command.CombinedOutput()
 		var exit *exec.ExitError
 		if !errors.As(err, &exit) {

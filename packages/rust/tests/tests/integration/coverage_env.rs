@@ -1,5 +1,5 @@
 //! The database and DSN that feature-check chose, and the coverage case's deadline and progress output.
-//! feature-check gives ORM_FEATURE_DATABASE and ORM_FEATURE_DSN, and runs the ignored coverage tests with --include-ignored on the seeded bench
+//! feature-check gives ORM_FEATURE_DATABASE and ORM_FEATURE_DSN, and runs each coverage test by its exact name on the seeded bench
 //! database.
 use polyspec_orm::Db;
 use std::future::Future;

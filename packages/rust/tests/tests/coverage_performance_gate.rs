@@ -12,7 +12,6 @@ const ITERATIONS: usize = 100;
 const DEADLINE: Duration = Duration::from_secs(300);
 
 #[test]
-#[ignore = "run by feature-check with ORM_BENCH_MYSQL_DSN"]
 fn coverage_hot_path_gate() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
     let dsn = common::required("ORM_BENCH_MYSQL_DSN");

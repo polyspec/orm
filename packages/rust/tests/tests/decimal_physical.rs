@@ -46,7 +46,6 @@ async fn decimal_physical(env: &str) {
 
 #[cfg(test)]
 #[tokio::test]
-#[ignore = "run by decimal-physical-check with the DECIMAL_*_DSN variables"]
 // The test of DIA-25, COD-2 (docs/spec).
 async fn decimal_mysql() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -55,7 +54,6 @@ async fn decimal_mysql() {
 
 #[cfg(test)]
 #[tokio::test]
-#[ignore = "run by decimal-physical-check with the DECIMAL_*_DSN variables"]
 // The test of DIA-25, COD-2 (docs/spec).
 async fn decimal_postgres() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -64,7 +62,6 @@ async fn decimal_postgres() {
 
 #[cfg(test)]
 #[tokio::test]
-#[ignore = "run by decimal-physical-check with the DECIMAL_*_DSN variables"]
 // The test of DIA-25, COD-2 (docs/spec).
 async fn decimal_sqlite() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
