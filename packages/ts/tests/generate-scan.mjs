@@ -207,16 +207,17 @@ export {};
  * Generates models.ts of member.dbs, which uses core.dbs as an external document, with --scan of one source; returns the
  * declared chain methods of each model class, as generate does.
  */
-async function generateExternal(source) {
+async function generateExternal(source, owned) {
   const work = await mkdtemp(join(tmpdir(), 'orm-ts-scan-external-'));
   try {
     const external = join(root, 'contracts/fixtures/external');
+    const name = owned === undefined ? 'member.dbs' : 'note.dbs';
     await mkdir(join(work, 'external/app'), { recursive: true });
     await mkdir(join(work, 'external/core'), { recursive: true });
-    await writeFile(join(work, 'external/app/member.dbs'), await readFile(join(external, 'member.dbs'), 'utf8'));
+    await writeFile(join(work, 'external/app', name), owned ?? (await readFile(join(external, 'member.dbs'), 'utf8')));
     await writeFile(join(work, 'external/core/core.dbs'), await readFile(join(external, 'core.dbs'), 'utf8'));
     const set = join(work, 'external/app/dbspec-set.json');
-    await writeFile(set, JSON.stringify({ schema: 1, documents: ['member.dbs'], external: ['../core/core.dbs'] }) + '\n');
+    await writeFile(set, JSON.stringify({ schema: 1, documents: [name], external: ['../core/core.dbs'] }) + '\n');
     const usage = join(work, 'usage.ts');
     await writeFile(usage, source);
     const out = join(work, 'models');
@@ -231,6 +232,30 @@ async function generateExternal(source) {
   } finally {
     await rm(work, { recursive: true, force: true });
   }
+}
+
+/**
+ * Requirements: DBS-173. The used table of an external document keeps its model when no scanned source calls it and no
+ * owned table references it: note.dbs uses ext_session of core.dbs and its own table ext_note has no foreign key to it, and
+ * the source calls ExtNote only.
+ */
+async function unusedExternalModels() {
+  const { text } = await generateExternal(`
+import { ExtNote } from './models/models.js';
+declare const db: unknown;
+const rows = await new ExtNote().connect(db).get();
+export {};
+`, `dbspec 1 ext_note
+
+use ext_core { ext_session }
+
+table ext_note {
+  seq i64 identity
+  title varchar(191)
+  primary key (seq)
+}
+`);
+  check(text.includes('export class ExtSession extends Model'), 'no model for the used external table ext_session that no source calls');
 }
 
 /** A relation to an entity of a used external document attaches its getter, as a relation to an entity of the set does. */
@@ -430,7 +455,7 @@ async function unparsableFile() {
   }
 }
 
-const cases = { non_model_call: nonModelCall, base_methods_match_model: baseMethodsMatchModel, model_calls: modelCalls, scan_path_spelling: scanPathSpelling, alias_match_getter: aliasMatchGetter, nested_alias_getter: nestedAliasGetter, unattached_getter: unattachedGetter, external_getter: externalGetter, scope_binding: scopeBinding, may_hold_two_models: mayHoldTwoModels, possible_classes: possibleClasses, callback_parameters: callbackParameters, imported_set: importedSet, reassigned_variable: reassignedVariable, unparsable_file: unparsableFile };
+const cases = { unused_external_models: unusedExternalModels, non_model_call: nonModelCall, base_methods_match_model: baseMethodsMatchModel, model_calls: modelCalls, scan_path_spelling: scanPathSpelling, alias_match_getter: aliasMatchGetter, nested_alias_getter: nestedAliasGetter, unattached_getter: unattachedGetter, external_getter: externalGetter, scope_binding: scopeBinding, may_hold_two_models: mayHoldTwoModels, possible_classes: possibleClasses, callback_parameters: callbackParameters, imported_set: importedSet, reassigned_variable: reassignedVariable, unparsable_file: unparsableFile };
 const selected = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(cases);
 for (const name of selected) {
   const run = cases[name];

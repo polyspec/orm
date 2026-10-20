@@ -420,16 +420,24 @@ class OrmGenTest(unittest.TestCase):
             "Author.set_ghost_column is not a model method",
         )
 
-    def _scan_external(self, text):
-        """Runs orm-gen with --scan of one source, for the set of member.dbs that uses core.dbs as an external document."""
+    def _scan_external(self, text, written=None, owned=None):
+        """Runs orm-gen with --scan of one source, for the set of member.dbs (or of owned, as note.dbs, when given) that
+        uses core.dbs as an external document.
+
+        When written is a dict, it receives the text of each file that the run wrote, by name, before the folder is removed.
+        """
         external = ROOT / "contracts" / "fixtures" / "external"
         with tempfile.TemporaryDirectory(prefix="orm-gen-scan-external-") as work:
             work_path = Path(work)
             (work_path / "app").mkdir()
             (work_path / "core").mkdir()
             (work_path / "out").mkdir()
-            (work_path / "app" / "member.dbs").write_text(
-                (external / "member.dbs").read_text(encoding="utf-8"), encoding="utf-8"
+            owned_name = "app/member.dbs" if owned is None else "app/note.dbs"
+            (work_path / owned_name).write_text(
+                (external / "member.dbs").read_text(encoding="utf-8")
+                if owned is None
+                else owned,
+                encoding="utf-8",
             )
             (work_path / "core" / "core.dbs").write_text(
                 (external / "core.dbs").read_text(encoding="utf-8"), encoding="utf-8"
@@ -439,7 +447,7 @@ class OrmGenTest(unittest.TestCase):
                 json.dumps(
                     {
                         "schema": 1,
-                        "documents": ["app/member.dbs"],
+                        "documents": [owned_name],
                         "external": ["core/core.dbs"],
                     }
                 ),
@@ -447,7 +455,7 @@ class OrmGenTest(unittest.TestCase):
             )
             source = work_path / "usage.py"
             source.write_text(text, encoding="utf-8")
-            return subprocess.run(
+            result = subprocess.run(
                 args=ORM_GEN
                 + [
                     "gen",
@@ -461,6 +469,26 @@ class OrmGenTest(unittest.TestCase):
                 capture_output=True,
                 text=True,
             )
+            if written is not None:
+                for path in (work_path / "out").iterdir():
+                    written[path.name] = path.read_text(encoding="utf-8")
+            return result
+
+    # Requirements: DBS-173.
+    def test_a_used_external_table_that_no_source_calls_keeps_its_model(self):
+        # note.dbs uses ext_session of core.dbs, and its own table ext_note has no foreign key to it; the source calls
+        # ExtNote only, so the model of ExtSession is written anyway.
+        owned = "dbspec 1 ext_note\n\nuse ext_core { ext_session }\n\ntable ext_note {\n  seq i64 identity\n  title varchar(191)\n  primary key (seq)\n}\n"
+        written = {}
+        result = self._scan_external(
+            "from models import ExtNote\nExtNote().connect(db).get()\n", written, owned
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(
+            "class ExtSession",
+            written.get("models.py", ""),
+            "no model for the used external table ext_session that no source calls",
+        )
 
     def test_an_alias_named_match_is_accepted_with_its_getter(self):
         result = self._scan(

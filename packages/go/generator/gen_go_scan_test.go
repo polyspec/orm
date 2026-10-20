@@ -462,6 +462,47 @@ func Audit(row *model.ExtPostModel) (*model.ExtAuditModel, error) { return row.G
 	buildScannedModule(t)
 }
 
+// TestGoExternalModelsWithoutCallsAreWritten checks that a used external table keeps its model when no scanned source
+// calls it: note.dbs uses ext_session of core.dbs and its own table ext_note has no foreign key to it, and the source
+// calls ExtNote only.
+// Requirements: DBS-173.
+func TestGoExternalModelsWithoutCallsAreWritten(t *testing.T) {
+	testcase.Start(t, testcase.Process)
+	note := `dbspec 1 ext_note
+
+use ext_core { ext_session }
+
+table ext_note {
+  seq i64 identity
+  title varchar(191)
+  primary key (seq)
+}
+`
+	core := fixtureDocument(t, "core.dbs")
+	write := scannedModule(t)
+	m, diagnostics := runtimemodel.LoadSet(note, core)
+	if len(diagnostics) > 0 {
+		t.Fatal(runtimemodel.DiagnosticsError(diagnostics))
+	}
+	write("example/example.go", `package example
+
+import "example.com/ormexample/model"
+
+func Load() {
+	_ = model.ExtNote()
+}
+`)
+	if err := generateGo(m, "model", "", []string{"./example"}); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"ext_session.go"} {
+		if _, err := os.Stat(filepath.Join("model", name)); err != nil {
+			t.Errorf("no model for the used external table of %s that no source calls: %v", name, err)
+		}
+	}
+	buildScannedModule(t)
+}
+
 // TestGoGetterOfNestedRebindingUsesItsOwnModel checks that a getter called on a
 // variable that a nested scope rebinds to another model is attributed to the
 // model of that inner binding, not to the model of the outer one.

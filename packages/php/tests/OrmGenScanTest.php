@@ -61,20 +61,25 @@ final class OrmGenScanTest extends TestCase
     }
 
     /**
-     * Generates the models of member.dbs, which uses core.dbs as an external document, with --scan of $sources in a new
-     * folder; returns the code, stderr and the folder.
+     * Generates the models of member.dbs (or of $owned as note.dbs when given), which uses core.dbs as an external document,
+     * with --scan of $sources in a new folder; returns the code, stderr and the folder.
      */
-    private static function generateExternal(string $name, array $sources): array
+    private static function generateExternal(string $name, array $sources, ?string $owned = null): array
     {
         $root = dirname(__DIR__, 3);
         $dir = self::$work . '/' . $name;
         @mkdir("$dir/set/app", 0o700, true);
         @mkdir("$dir/set/core", 0o700, true);
         @mkdir("$dir/src", 0o700, true);
-        copy("$root/contracts/fixtures/external/member.dbs", "$dir/set/app/member.dbs");
+        $document = $owned === null ? 'member.dbs' : 'note.dbs';
+        if ($owned === null) {
+            copy("$root/contracts/fixtures/external/member.dbs", "$dir/set/app/$document");
+        } else {
+            file_put_contents("$dir/set/app/$document", $owned);
+        }
         copy("$root/contracts/fixtures/external/core.dbs", "$dir/set/core/core.dbs");
         $set = "$dir/set/app/dbspec-set.json";
-        file_put_contents($set, json_encode(['schema' => 1, 'documents' => ['member.dbs'], 'external' => ['../core/core.dbs']], JSON_UNESCAPED_SLASHES));
+        file_put_contents($set, json_encode(['schema' => 1, 'documents' => [$document], 'external' => ['../core/core.dbs']], JSON_UNESCAPED_SLASHES));
         $scan = [];
         foreach ($sources as $file => $text) {
             file_put_contents("$dir/src/$file", $text);
@@ -322,6 +327,26 @@ foreach (\$rows as \$row) {
 PHP;
         [$code, $err] = self::generateExternal('external-getter', ['usage.php' => $source]);
         self::assertSame(0, $code, $err);
+    }
+
+    // Requirements: DBS-173.
+    public function test_a_used_external_table_that_no_source_calls_keeps_its_model(): void
+    {
+        // note.dbs uses ext_session of core.dbs, and its own table ext_note has no foreign key to it; the source calls
+        // ExtNote only, so the model of ExtSession is written anyway.
+        $ns = self::NS;
+        $source = <<<PHP
+<?php
+namespace App;
+
+use $ns\\ExtNote;
+
+\$rows = (new ExtNote())->connect(\$db)->get();
+PHP;
+        $owned = "dbspec 1 ext_note\n\nuse ext_core { ext_session }\n\ntable ext_note {\n  seq i64 identity\n  title varchar(191)\n  primary key (seq)\n}\n";
+        [$code, $err, $dir] = self::generateExternal('external-unused-models', ['usage.php' => $source], $owned);
+        self::assertSame(0, $code, $err);
+        self::assertFileExists("$dir/model/ExtSession.php");
     }
 
     public function test_a_name_is_typed_by_its_binding_in_its_own_scope(): void

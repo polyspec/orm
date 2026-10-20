@@ -631,6 +631,28 @@ fn main() { page(None); }"#,
     assert!(err.contains("Author has no method get_ghost"), "{err}");
 }
 
+/// Requirements: DBS-173. The used table of an external document keeps its model when no scanned source calls it and no
+/// owned table references it: note.dbs uses ext_session of core.dbs and its own table ext_note has no foreign key to it,
+/// and the source calls ExtNote only.
+#[test]
+fn unused_external_tables_keep_their_models() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let dir = std::env::temp_dir().join(format!("orm-build-test-{}-{n}", std::process::id()));
+    let src = dir.join("src");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::write(src.join("main.rs"), "fn main() { let _ = ExtNote::new(); }").unwrap();
+    let note = dir.join("note.dbs");
+    std::fs::write(&note, "dbspec 1 ext_note\n\nuse ext_core { ext_session }\n\ntable ext_note {\n  seq i64 identity\n  title varchar(191)\n  primary key (seq)\n}\n").unwrap();
+    let external = polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/external");
+    let set = set_file(&dir, &[note], &[external.join("core.dbs")]);
+    let out = polyspec_orm_build::Builder::set(set).scan(&src).out_dir(dir.join("out")).try_generate();
+    let text = out.map(|p| std::fs::read_to_string(p).unwrap());
+    let _ = std::fs::remove_dir_all(&dir);
+    let text = text.unwrap_or_else(|e| panic!("generate: {e}"));
+    assert!(text.contains("pub struct ExtSession "), "a used external table that no source calls has no model");
+}
+
 /// A relation to an entity of a used external document attaches its getter, as a relation to an entity of the set does.
 #[test]
 fn relation_to_an_external_entity_attaches_its_getter() {

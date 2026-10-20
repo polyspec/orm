@@ -92,7 +92,8 @@ function readSet(path: string): { documents: string[]; external: string[] } {
 
 /**
  * Generates models.ts from the dbspec documents of the document set that the set file names with --set: the
- * documents it owns and the external documents they use. Only the owned tables get models. Nothing is written when
+ * documents it owns and the external documents they use. Each used table of an external document gets a read-only model
+ * whether or not a scanned source calls it (DBS-173). Nothing is written when
  * the set file or a listed file has an error or a diagnostic.
  */
 function gen(args: readonly string[]): number {
