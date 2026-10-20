@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- A generated PHP model agrees with its manifest whatever order its unique keys and indexes are declared in: the runtime model keeps them in name order, the order of the canonical manifest text. Red: `phpunit --filter test_a_generated_model_agrees_with_its_manifest_whatever_its_key_order` failed with `CONFIG: generated model ... of entity item differs from its manifest`; green: RuntimeModelTest OK (12 tests, 47 assertions), and the regenerated bench models are unchanged (T224).
 - A Korean page links to an English page from the site root, so the nested plans have no dead link; the index pages and seven Korean links follow the moved documents, and the Names heading of dbspec has the id `names`. Red: `make docs-check` failed with `[vitepress] 2 dead link(s) found` (./../plans/execution/plan, ./../plans/kit-standard/plan); green: `make docs-check` exits 0 with docs-site/links ok and 50 document pairs passed (T223).
 - T148-4 closes on its four done children: the Python decimal model, the PHP performance gates, the extension declaration environment and the TypeScript AesKeyring symbols (T148-4).
 - The checklist no longer holds T77-8-1-6, a row that only awaited the full parity run; a full run is not checklist content (T77-8-1-6).

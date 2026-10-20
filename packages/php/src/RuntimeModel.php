@@ -374,14 +374,18 @@ final class RuntimeModel
             }
             $columns[$c->name] = $column;
         }
+        // The unique keys and indexes are in name order, the order of the canonical manifest text (Dbspec\Emitter), so a
+        // model built from the documents equals the model of its manifest whatever order the documents declare them in.
         $unique = [];
         foreach ($table->uniqueKeys as $uk) {
             $unique[$uk->name] = $uk->columns;
         }
+        uksort($unique, strcmp(...));
         $indexes = [];
         foreach ($table->indexes as $ix) {
             $indexes[$ix->name] = array_map(static fn($c): string => $c->name, $ix->columns);
         }
+        uksort($indexes, strcmp(...));
         return [
             'entity' => $one('entity') !== '' ? $one('entity') : $table->name,
             'table' => $table->name,

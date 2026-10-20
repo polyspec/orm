@@ -75,6 +75,26 @@ final class RuntimeModelTest extends TestCase
         self::assertTrue(Registry::model($hash)->entities === $bench->entities, 'generated model differs from the document model');
     }
 
+    public function test_a_generated_model_agrees_with_its_manifest_whatever_its_key_order(): void
+    {
+        // The unique keys and indexes are declared out of name order; the manifest text sorts them by name.
+        $source = "dbspec 1 order\n\ntable item {\n  id i64 identity\n  b i32\n  a i32\n  primary key (id)\n  unique uq_b (b)\n  unique uq_a (a)\n  index ix_b (b)\n  index ix_a (a)\n}\n";
+        // orm-gen builds the meta from the documents (OrmGen gen: RuntimeModel::build of the set).
+        $model = RuntimeModel::build(RuntimeModel::loadSet($source, ''));
+        $meta = $model->entities['item'] + ['manifest_hash' => $model->manifestHash];
+        $generated = new class extends \Polyspec\Orm\Model {
+            /** @var array<string, mixed> */
+            public static array $meta = [];
+            public static function meta(): array
+            {
+                return self::$meta;
+            }
+        };
+        $generated::$meta = $meta;
+        $runtime = RuntimeModel::fromModels($model->manifestHash, $model->manifestText, [$generated::class], '');
+        self::assertTrue($runtime->entities['item']['unique'] === ['uq_a' => ['a'], 'uq_b' => ['b']], 'the unique keys in name order');
+    }
+
     public function test_a_generated_model_that_its_manifest_contradicts_is_refused(): void
     {
         // A model generated before orm-gen wrote the varchar length: its meta() lacks columns.name.length.
