@@ -61,7 +61,7 @@
 | KSTD-5-3 | rules-check passes (follows KSTD-5). Cause: 58 rules of AGENTS.md begin with neither `Own:` nor `Refines <id>:`, so none says whether it is the repository's own or refines a principle (kit K279) | AGENTS.md and its Korean twin | `make rules-check` | [o] |
 | KSTD-5-4 | rebuild-check passes (follows KSTD-5). Cause: config/rebuild.json does not exist, so no tool of the repository declares its class | config/rebuild.json | `make rebuild-check` | [ ] |
 | KSTD-5-5 | duplication-check passes (follows KSTD-5). Cause: jscpd finds 988 clones (4.29 percent of the lines) across the implementations; repeated code moves into one module that both use | the code of every implementation | `make duplication-check` | [ ] |
-| KSTD-5-6 | lint-ts passes (follows KSTD-5). Cause: oxlint and knip fail on the TypeScript of the repository | the TypeScript of the repository | `make lint-ts` | [ ] |
+| KSTD-5-6 | lint-ts passes (follows KSTD-5). Cause: oxlint and knip fail on the TypeScript of the repository | the TypeScript of the repository | `make lint-ts` | [o] |
 | KSTD-5-7 | lint-go passes (follows KSTD-5). Cause: golangci-lint fails on examples, packages/go and tests, and deadcode on packages/go | the Go of the repository | `make lint-go` | [o] |
 | KSTD-5-8 | lint-python passes (follows KSTD-5). Cause: ruff format --check fails on the Python of the repository | the Python of the repository | `make lint-python` | [o] |
 | KSTD-5-9 | lint-php passes (follows KSTD-5). Cause: phpcs and phpstan of the root, packages/php and packages/php-ext fail | the PHP of the repository | `make lint-php` | [ ] |

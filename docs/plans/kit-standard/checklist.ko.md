@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 60fd76721db4cf8cde59c376f6e54de18317b3ae32625e5e1ec318918e486519 -->
+<!-- source-sha256: 5ee5d13d87141b408cba41b548f47eb40b21fde2ff6a2c8ebdd66878b3798f1e -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -62,7 +62,7 @@
 | KSTD-5-3 | rules-check가 통과한다 (KSTD-5 후속). Cause: AGENTS.md의 규칙 58개가 `Own:`이나 `Refines <id>:`로 시작하지 않아, 이 repository의 규칙인지 원칙을 다듬는지 밝히지 않는다 (kit K279) | AGENTS.md and its Korean twin | `make rules-check` | [o] |
 | KSTD-5-4 | rebuild-check가 통과한다 (KSTD-5 후속). Cause: config/rebuild.json이 없어 repository의 어떤 도구도 그 class를 선언하지 않는다 | config/rebuild.json | `make rebuild-check` | [ ] |
 | KSTD-5-5 | duplication-check가 통과한다 (KSTD-5 후속). Cause: jscpd가 구현 전체에서 clone 988개(줄의 4.29 percent)를 찾는다; 반복된 code는 둘이 함께 쓰는 한 module로 옮긴다 | the code of every implementation | `make duplication-check` | [ ] |
-| KSTD-5-6 | lint-ts가 통과한다 (KSTD-5 후속). Cause: oxlint와 knip이 repository의 TypeScript에서 실패한다 | the TypeScript of the repository | `make lint-ts` | [ ] |
+| KSTD-5-6 | lint-ts가 통과한다 (KSTD-5 후속). Cause: oxlint와 knip이 repository의 TypeScript에서 실패한다 | the TypeScript of the repository | `make lint-ts` | [o] |
 | KSTD-5-7 | lint-go가 통과한다 (KSTD-5 후속). Cause: golangci-lint가 examples, packages/go, tests에서, deadcode가 packages/go에서 실패한다 | the Go of the repository | `make lint-go` | [o] |
 | KSTD-5-8 | lint-python이 통과한다 (KSTD-5 후속). Cause: ruff format --check가 repository의 Python에서 실패한다 | the Python of the repository | `make lint-python` | [o] |
 | KSTD-5-9 | lint-php가 통과한다 (KSTD-5 후속). Cause: 루트, packages/php, packages/php-ext의 phpcs와 phpstan이 실패한다 | the PHP of the repository | `make lint-php` | [ ] |
