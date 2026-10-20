@@ -281,6 +281,9 @@ export class Core {
     if (value === null && (key.op === 'lk' || key.op === 'lb')) return [p({ kind: 'value', op, value }), 0];
     if (value === null) {
       if (!nullable) throw configError(`null is not accepted by the ${key.op} operator`);
+      // DSL-49: null is accepted only for a nullable column; a missing column is refused the same way.
+      const field = fieldOf(this.ent.entity, key.column);
+      if (field === undefined || !field.nullable) throw configError(`${this.ent.entity.name}.${key.column} is not nullable`);
       return [p({ kind: 'null', op: key.op === 'ne' ? 'is_not_null' : 'is_null' }), 0];
     }
     if (value === undefined) throw configError(`${key.column} received undefined; use null`);
