@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e38429d07b02559675a25359f620bcdfdd0345e8846f875789ff793cce17ce5b -->
+<!-- source-sha256: f9d6b14ac171c421bd535924efc81b7edf0367cddc28cd2952f3cdf1f78a8862 -->
 # 변경 이력
 
 ## Unreleased
+- `Polyspec\Orm\Db`의 모든 public member가 PHP extension의 것이다: request hook은 statement 경로와 함께, `utils`와 `stats`는 transaction과 함께 들어왔고, declaration check가 이를 확인한다 (T182-5-3).
 - PHP extension이 `Polyspec\Orm\Db`의 transaction, savepoint, audit, fault injection, frame과 `utils`, `stats`를 구현하므로 statement-events, statement-fault와 IrAnswersTest case 18개 모두가 extension으로 돈다; PostgreSQL 연결은 이제 `ATTR_DISABLE_PREPARES`를 설정한다. red: transaction 경로가 없는 동안 transaction vector가 실패했다 (T182-5-2).
 - PHP extension이 `Polyspec\Orm\Db`의 연결과 statement 경로를 `execute`를 포함해 PDO 위에서 C로 구현하므로 sqlite-paths와 mysql-session이 extension으로 돈다. red: extension을 켜도 `Db`는 PHP library의 class였다 (T182-5-1).
 - identity column이 없는 table의 Go insert가 PostgreSQL에서 다시 성공한다: pgx는 insert id를 보고하지 않으므로, 이를 보고하는 driver(MySQL, SQLite)에만 묻는다. red: KSTD-5-7-2가 버려진 오류를 반환한 뒤 TestInsertWithoutIdentityOnEveryDatabase와 TestColumnsAndSubqueries가 PostgreSQL에서 "LastInsertId is not supported by this driver"로 실패했다(KSTD-5-7-8).
