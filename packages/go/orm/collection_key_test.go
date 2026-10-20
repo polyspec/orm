@@ -225,3 +225,25 @@ func TestSplitQueryRetainsDistinctTypedValues(t *testing.T) {
 		}
 	}
 }
+
+// TestExpandInKeepsBareDollar checks that expanding a parent slot renumbers only the $n placeholders: a '$' that does not
+// start a number is text and is written as it is (docs/spec/dsl.md DSL-153), so the literal keeps its '$' and gains no number.
+func TestExpandInKeepsBareDollar(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	st := &plan.Step{
+		SQL:       "SELECT '$' AS sign, id FROM items WHERE key IN ($1)",
+		BindSlots: []plan.BindSlot{{From: "parent"}},
+		Parent:    &plan.ParentRef{Keys: []plan.KeyRef{{Column: "key", Index: 0}}},
+	}
+	sql, args, err := expandIn(st, []any{int64(1), int64(2), int64(3)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	const want = "SELECT '$' AS sign, id FROM items WHERE key IN ($1, $2, $3, $4)"
+	if sql != want {
+		t.Fatalf("expanded statement = %q, want %q", sql, want)
+	}
+	if len(args) != 4 {
+		t.Fatalf("expanded to %d arguments, want 4 (three keys padded to a power of two)", len(args))
+	}
+}

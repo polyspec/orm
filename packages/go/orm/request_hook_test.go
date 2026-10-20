@@ -645,3 +645,27 @@ func TestCreatesParts(t *testing.T) {
 func cmpInt(a, b any) int {
 	return cmp.Compare(mustAs[int64](a), mustAs[int64](b))
 }
+
+// TestRequestBuilderErrorBeforeLockIsKept checks that a request whose builder already failed reports that error, and not the
+// error of a later check such as the row-lock rule, with or without a request hook. The condition on an entity that is not
+// joined leaves the query built with its lock, so only the builder's own error keeps the statement from the lock check.
+func TestRequestBuilderErrorBeforeLockIsKept(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	db, e, entry := hookFixture(t, "sqlite://"+filepath.Join(t.TempDir(), "request_builder_error.sqlite"))
+	for _, tc := range []struct {
+		name string
+		conn *orm.DB
+	}{
+		{"without a hook", db},
+		{"with a hook", db.WithRequestHook(partFilter("a"))},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c := hookItem(e, tc.conn, nil)
+			c.Connector("and", []any{entry.New(orm.NewCore(entry))})
+			c.Lock("update")
+			if _, err := orm.Gets[*keywordRow](c); err == nil || !strings.Contains(err.Error(), "is not joined in the statement") {
+				t.Fatalf("got %v, want the builder error that the entity is not joined in the statement", err)
+			}
+		})
+	}
+}

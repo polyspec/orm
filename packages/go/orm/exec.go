@@ -454,14 +454,16 @@ func (res *result) related(ch *plan.Child, parent []any) ([][]any, error) {
 // applyRequestHook applies the request hook of the handle that ex passes through to r just before planning (docs/operations/usage.md
 // "Request hook"). The hook changes r.ir in place and adds parameters with r.param. Since r is a new request for each terminal call,
 // it is not shared with other calls. A handle without a hook does nothing, and the hook's
-// error is returned as is. The changed request is validated by d.plan like any other request.
+// error is returned as is; a request whose builder already failed returns the builder's error first. The changed request
+// is validated by d.plan like any other request.
 func applyRequestHook(ex executor, r *request) error {
+	// The error of the builder comes before the hook and before any later check of the statement.
+	if r.err != nil {
+		return r.err
+	}
 	hook := ex.requestHook()
 	if hook == nil {
 		return nil
-	}
-	if r.err != nil {
-		return r.err
 	}
 	if err := hook(&r.ir, r.param, slices.Clone(r.params)); err != nil {
 		return err
