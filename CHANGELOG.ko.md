@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 8a54050355b23d5e5cb464cef925ee5621a6d3cc23de71a7799108b989d326dd -->
+<!-- source-sha256: 1de0b8142654c189d16e92c2a46aa3822f85374b86de7c1d771898a817f5be50 -->
 # 변경 이력
 
 ## Unreleased
+- `make interface-check/self-test`가 모든 언어에서 통과한다: plan spec이 Go Apply의 반환을 적고, PHP 저장 version reader를 internal로 표시하며, symbol contract가 앞선 row들이 바꾼 표면을 기록하고 항목마다 그 commit과 대조해 검토했다. red: self-test가 Go, PHP, TypeScript, Python, Rust에서 실패했다 (KSTD-5-16).
 - CI interface test가 workflow가 실제로 돌리는 `make check-run GROUP=` step을 검사하고, mutation은 workflow에 없던 step 대신 그 step을 지운다. red: test가 mutation 대상이 없다며 실패했다 (KSTD-5-15).
 - `make rust-fmt-check`가 통과한다: Rust code를 고정된 rustfmt와 선언된 packages/rust/rustfmt.toml로 formatting한다. red: cargo fmt --check가 file 12개를 보고했다 (KSTD-5-14).
 - TypeScript client가 SQLite가 bigint로 돌려주는 AES 저장 version을 읽으므로 SQLite에서 AES 읽기와 rotation이 다시 동작한다. red: 모든 SQLite AES 읽기가 CODEC_DECODE로 실패했다(KSTD-2-11-7-2-4).

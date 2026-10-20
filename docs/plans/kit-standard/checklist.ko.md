@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: f951c7ac2b51b6c6b241c2e957289bccc8643ec2f3de3a68965eac524eb40503 -->
+<!-- source-sha256: 4e83227b8643789e4801ae0481b20974a8bcc2c3e6d49922e09227a7ec5efc48 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -104,7 +104,7 @@
 | KSTD-5-13 | bypass-check가 통과한다: 어떤 local 실행도 CI identity를 설정하지 않는다 (KSTD-5 후속). Cause: scripts/check/run.test.mts:181과 :189가 workflow 밖에서 CI identity를 설정한다 | scripts/check | `make bypass-check` | [~] |
 | KSTD-5-14 | rust-fmt-check가 통과한다 (KSTD-5 후속). Cause: main에서 packages/rust(build, orm/tests, schema, testcase, tests)의 cargo fmt --all --check가 실패한다 | packages/rust | `make rust-fmt-check` | [o] |
 | KSTD-5-15 | CI interface test가 workflow와 일치한다 (KSTD-5 후속). Cause: tests/interfaces/check/ci.test.mts가 .github/workflows/ci.yml에 문자 그대로의 `run: make orm-check` step을 요구하지만 workflow에 없어, main에서 interface-check/tests가 실패한다 | tests/interfaces/check/ci.test.mts or .github/workflows/ci.yml | `node --test tests/interfaces/check/ci.test.mts` | [o] |
-| KSTD-5-16 | make interface-check/self-test가 모든 언어에서 통과한다 (KSTD-5 후속). Cause: 이를 돌리지 않고 land한 row들이 public 표면을 바꿨는데 symbol contract는 그대로다: Go Apply가 ApplyResult를 돌려주고(KSTD-5-7-5), PHP AesKeyring::storedVersion과 Codec::rowVersion은 새 public helper이며(KSTD-2-11-7-2), TypeScript scanModelCalls와 Python scan_model_calls의 signature가 바뀌었고(T226) TypeScript dbspec sort helper가 옮겨졌으며(KSTD-5-5), Rust build scan.rs가 바뀌었다(T226) | contracts/symbols, contracts/interfaces.json, the changed sources | `make interface-check/self-test` | [~] |
+| KSTD-5-16 | make interface-check/self-test가 모든 언어에서 통과한다 (KSTD-5 후속). Cause: 이를 돌리지 않고 land한 row들이 public 표면을 바꿨는데 symbol contract는 그대로다: Go Apply가 ApplyResult를 돌려주고(KSTD-5-7-5), PHP AesKeyring::storedVersion과 Codec::rowVersion은 새 public helper이며(KSTD-2-11-7-2), TypeScript scanModelCalls와 Python scan_model_calls의 signature가 바뀌었고(T226) TypeScript dbspec sort helper가 옮겨졌으며(KSTD-5-5), Rust build scan.rs가 바뀌었다(T226) | contracts/symbols, contracts/interfaces.json, the changed sources | `make interface-check/self-test` | [o] |
 | KSTD-6 | link rebuild는 repository layout을 읽고 자기 paths를 두지 않는다 (kit K286). Cause: kit은 link된 checkout을 layout으로 rebuild하며 link 선언의 paths key는 없어진다 | kit.json, the link declaration | `make kit-check` | [ ] |
 | KSTD-7 | main에서 feature-unit-check가 통과한다. Cause: docs/features.md가 그것이 그리는 coverage와 맞지 않고, scripts/features/coverage.test.mts의 8개 case가 "no package implements the client language php-extension"으로 실패한다 | docs/features.md, scripts/features | `make feature-unit-check` | [o] |
 | KSTD-7-1 | PHP extension이 the features schema_install, model_generation and interface_contract를 구현하고 PHP library의 test가 extension으로 이를 돌리며, 그 partial 상태를 지운다 (KSTD-7, T182-0 후속). Cause: S6와 S10은 partial feature를 받지 않고, kit K315는 contracts/features.json의 partial과 unsupported를 실패시킨다 | packages/php-ext, contracts/features.json | `make feature-unit-check` | [ ] |
