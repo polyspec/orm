@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: ad0504f27fb599221384a80d1df732520c2c63c5ebc91b45cf4ad16058f8668f -->
+<!-- source-sha256: af82d946f8eebadbe487a26a3ddde12e692c8050d5da2aeebcd0de4ab7f890a0 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -27,7 +27,7 @@
 | KSTD-2-10 | dbspec 영역과 query 영역의 requirement id 중 어떤 test도 이름으로 가리키지 않는 id는 모든 구현에 test를 갖는다 (KSTD-2-5, KSTD-2-6 후속). Cause: CPX-2, DBS-95, DSL-49, DSL-50, DSL-52, DSL-87, DSL-120, DSL-121, DSL-122, DSL-124, DSL-142, DIA-20, DIA-21, DIA-71, DIA-97, COD-21, COD-31은 test가 없다; DSL-32, DSL-33, DIA-6, DIA-187은 두 dialect의 SQL과 SQLite의 거부를 담는 conformance vector가 필요하다; DIA-156, 164, 168~173, 175~179, 182, 186, 190은 markdown conformance case가 필요하다; DBS-59, 87, 109, 113, 117, CPX-3, DSL-113, DIA-108은 그 id를 인용하지 않는 vector나 unit만 가리킨다 | tests/conformance, tests/markdown, config/parity.json, tests of every implementation | `make parity-declarations-check` | [ ] |
 | KSTD-2-11 | config/parity.json의 모든 unit은 requirement를 인용하고, spec 규칙을 검사하지 않는 test의 unit은 parity unit이 아니다 (KSTD-2 후속). Cause: 영역 항목 뒤에도 702개 unit이 아무것도 인용하지 않는다; 대부분은 내부 동작(unicode table, reader, generator 기계 장치, 도구)의 단일 구현 feature unit이며 S6은 이를 parity unit으로 받지 않으므로, 각각 검사하는 규칙에 모든 구현으로 묶이거나 그 구현의 feature scope로 옮겨진다 | config/parity.json, contracts/features.json, tests of every implementation | `make parity-declarations-check` | [ ] |
 | KSTD-2-11-1 | spec은 모든 구현이 errors.yaml의 모든 code를 native 상수로 노출하고 그 catalog가 errors.yaml과 같다고 규정한다 (KSTD-2-11 후속). Cause: error-code api unit 43개와 catalog unit 5개가 이를 검사하는데 이를 적은 requirement가 없다 | docs/spec and the Korean twins | `make docs-check` | [o] |
-| KSTD-2-11-2 | spec은 connection pool의 idle 크기와 수명을 CFG에 규정한다 (KSTD-2-11 후속). Cause: pool unit이 이를 검사하는데 CFG-4와 CFG-5는 pool 크기와 대기만 적는다 | docs/spec/config.md and its Korean twin | `make docs-check` | [ ] |
+| KSTD-2-11-2 | spec은 connection pool의 idle 크기와 수명을 CFG에 규정한다 (KSTD-2-11 후속). Cause: pool unit이 이를 검사하는데 CFG-4와 CFG-5는 pool 크기와 대기만 적는다 | docs/spec/config.md and its Korean twin | `make docs-check` | [-] 원인: CFG-5가 이미 poolIdleSize와 poolLifetimeMs를 규정하므로 빠진 규칙이 없다; pool unit은 KSTD-2-11-13에서 이를 인용한다 |
 | KSTD-2-11-3 | spec은 생성된 code가 그 언어의 표준 compiler와 linter를 억제 없이 통과한다고 규정한다 (KSTD-2-11 후속). Cause: generator unit이 allow attribute 없는 Rust code 같은 native 출력을 검사하는데 그것이 묶일 중립 규칙이 없다 | docs/spec and the Korean twins | `make docs-check` | [o] |
 | KSTD-2-11-4 | spec은 query나 connection handle을 버리면 그 query가 취소되고 connection이 반환된다고 각 언어의 폐기 형식으로 규정한다 (KSTD-2-11 후속). Cause: Rust drop unit이 이를 검사하는데 그 규칙과 Go, Python, TypeScript, PHP 형식이 적혀 있지 않다 | docs/spec and the Korean twins | `make docs-check` | [o] |
 | KSTD-2-11-5 | 구현 내부 test는 parity unit이 아닌 일반 package test다 (KSTD-2-11 후속). Cause: dbspec harness와 loader, unicode와 vector 자가 검사, generator scan과 extractor, test harness, bench, example, case clock unit(142개)은 spec 규칙을 검사하지 않는다 | config/parity.json, contracts/features.json | `make parity-declarations-check` | [ ] |
