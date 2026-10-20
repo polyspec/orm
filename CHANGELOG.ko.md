@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 411a1f7cba2326b6e7117843a6adfd4116c5fcd0521b71234680d7b184031905 -->
+<!-- source-sha256: f6be43dc1ab66961dadbe24229cd59305fdcc470b9eec4f55c0b605598608d5d -->
 # 변경 이력
 
 ## Unreleased
+- TypeScript client가 SQLite가 bigint로 돌려주는 AES 저장 version을 읽으므로 SQLite에서 AES 읽기와 rotation이 다시 동작한다. red: 모든 SQLite AES 읽기가 CODEC_DECODE로 실패했다(KSTD-2-11-7-2-4).
 - Python dbspec parser의 negative-word helper가 private이어서 `test_python_extractor`가 통과한다. red: 이 test가 `is_negative_word`를 지목했다 (KSTD-2-11-7-2-3).
 - Python AES module의 저장 version helper가 private이어서 public 이름이 다시 symbol contract와 맞는다. red: extractor test가 `stored_version`을 지목했다 (KSTD-2-11-7-2-2).
 - AES column decode가 기본 version으로 fallback하지 않는다: version column이 없는 plan은 INTERNAL, NULL이 아닌 AES 값의 NULL 저장 version은 CODEC_DECODE, NULL AES 값은 NULL이고 그 version은 읽지 않으며, rotation은 NULL AES cell을 그대로 둔다. 여섯 구현 모두 같다(COD-44). red: client가 version을 가정했고, rotation이 NULL AES cell에서 실패했다 (KSTD-2-11-7-2-1).
