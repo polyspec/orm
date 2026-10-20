@@ -177,19 +177,29 @@ caseTest('make orm-check starts the kit guard and make check-run starts the runn
   const run = recipe('check-run');
   assert.ok(run.slice(0, 2).every(line => line.startsWith('$(if $(GROUP),') && line.endsWith(')')), run.join('\n'));
   assert.deepEqual(run.slice(2), ['$(BUILD_LEASE) && $(NODE) scripts/check/run.mts $(abspath $(TEST_ENV)) $(CHECK_RUN_TARGETS)']);
-  const dry = (variables: Record<string, string>) => spawnSync('make', ['-n', '--no-print-directory', 'check-run'], { cwd: repo, encoding: 'utf8', env: isolatedEnvironment(variables) });
-  for (const variables of [{}, { GROUP: 'static', GITHUB_ACTIONS: 'true' }]) {
-    const result = dry(variables);
-    assert.equal(result.status, 0, `${JSON.stringify(variables)}: ${result.stdout}${result.stderr}`);
-    assert.match(result.stdout, /node scripts\/check\/run\.mts /, `${JSON.stringify(variables)}: ${result.stdout}`);
-  }
+  // dry runs make -n check-run with only the variables given (isolatedEnvironment: GITHUB_ACTIONS is never inherited), so the case is a local run.
+  const dry = (variables: Record<string, string>, environment: Record<string, string> = isolatedEnvironment(variables)) => spawnSync('make', ['-n', '--no-print-directory', 'check-run'], { cwd: repo, encoding: 'utf8', env: environment });
+  const plain = dry({});
+  assert.equal(plain.status, 0, `${plain.stdout}${plain.stderr}`);
+  assert.match(plain.stdout, /node scripts\/check\/run\.mts /, plain.stdout);
   const local = dry({ GROUP: 'static' });
   assert.notEqual(local.status, 0, local.stdout);
   assert.match(local.stderr, /GROUP runs one CI group of make check-run on GitHub Actions only; run make orm-check without GROUP/);
-  const unknown = dry({ GROUP: 'nope', GITHUB_ACTIONS: 'true' });
+  const unknown = dry({ GROUP: 'nope' });
   assert.notEqual(unknown.status, 0, unknown.stdout);
   assert.match(unknown.stderr, /GROUP nope names no CI group; give one of CI_GROUPS:/);
 });
+
+// The accepting case needs GitHub Actions, which sets GITHUB_ACTIONS=true in every job. It is registered only in a process that GitHub
+// Actions started, so a local run never reads a CI identity as set and never sets one: the case passes the value of its own process
+// to make. runner-check runs this file in the static CI group (CI_TARGETS_static), so the case runs in CI.
+if (process.env.GITHUB_ACTIONS === 'true') {
+  caseTest('make check-run accepts a CI group on GitHub Actions', COMPUTE, () => {
+    const result = spawnSync('make', ['-n', '--no-print-directory', 'check-run', 'GROUP=static'], { cwd: repo, encoding: 'utf8', env: { ...isolatedEnvironment(), GITHUB_ACTIONS: process.env.GITHUB_ACTIONS } });
+    assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
+    assert.match(result.stdout, /node scripts\/check\/run\.mts /, result.stdout);
+  });
+}
 
 caseTest('a run records its setup steps and its targets', PROCESS, () => {
   const c = checkout(scope);
