@@ -10,83 +10,83 @@ in kit, with its grounding.
 
 ## Responsibility
 
-- Everything is the responsibility of whoever works on it: the code, its tests, its documents, AGENTS and the memory. A task
+- P1 Everything is the responsibility of whoever works on it: the code, its tests, its documents, AGENTS and the memory. A task
   is not done while one of them is missing.
   Enforced by: `make commits-check`, `make docs-check`
-- A rule is followed because it is right, never because it exists. "It was there before" is no ground. A rule, a code path
+- P2 A rule is followed because it is right, never because it exists. "It was there before" is no ground. A rule, a code path
   or a document found wrong is reported and corrected; a found oddity is reported at once, with the question whether a rule
   must be made or corrected, and it is fixed or confirmed convincingly before the work moves on.
   Enforced by: none, whether a rule is right and an oddity was reported is a judgement that no tool makes.
-- Rules first: development states logical rules and keeps them. Behaviour that follows no stated rule is a defect. When no
+- P3 Rules first: development states logical rules and keeps them. Behaviour that follows no stated rule is a defect. When no
   rule exists for what the work needs, the rule is made, never skipped.
   Enforced by: `make rules-check`
-- A settled ruling is written into its specification, with its grounding, before work that depends on it. A ruling that
+- P4 A settled ruling is written into its specification, with its grounding, before work that depends on it. A ruling that
   lives only in a conversation, a commit message or an agent's report is not settled.
   Enforced by: none, no tool sees whether a ruling lives only in a conversation.
-- A wrong change is judged by its harm and its correctness, not by its intent. A harmful change is reverted at once; a
+- P5 A wrong change is judged by its harm and its correctness, not by its intent. A harmful change is reverted at once; a
   harmless change that is wrong or unneeded is removed; a correct change unrelated to the work is kept and committed on
   its own with its real reason, never recorded as part of the work it did not belong to.
   Enforced by: `make commits-check`
 
 ## Standards
 
-- A standard is never lowered because it is hard to meet; lowering it while testing is betrayal of the standard. A standard
+- P6 A standard is never lowered because it is hard to meet; lowering it while testing is betrayal of the standard. A standard
   that is wrong is raised as a problem and corrected, with the reason.
   Enforced by: `make test-markers-check`
-- No tricks, in any case. A goal reached by an abnormal method is not reached. When a requirement can be met only by a
+- P7 No tricks, in any case. A goal reached by an abnormal method is not reached. When a requirement can be met only by a
   trick, that is stated exactly instead of done.
   Enforced by: `.claude/settings.json`
-- Errors are never hidden: no fallback that turns a wrong input into a plausible one, no silent drop of an input or an
+- P8 Errors are never hidden: no fallback that turns a wrong input into a plausible one, no silent drop of an input or an
   output, no swallowed error. A fallback stands only where it is truly needed, with that need stated.
   Enforced by: `make lint-ts`, `make lint-python`, `make lint-go`, `make lint-php`
-- Correct first; fast only when it stays correct.
+- P9 Correct first; fast only when it stays correct.
   Enforced by: none, the order of correctness and speed is a judgement.
-- Work may go straight to main. A branch or worktree, when an agent or the situation needs one, is named
+- P10 Work may go straight to main. A branch or worktree, when an agent or the situation needs one, is named
   `{type}/{shortname}-{checklist id}` and `{project}-{shortname}-{checklist id}`, and is deleted as soon as it is merged
   into main. Test or experiment code that cannot merge is cherry-picked when it is worth keeping and otherwise discarded,
   always before the commit; when it cannot be removed at once, a checklist sub-item states the condition of its removal.
   Enforced by: `.githooks/pre-push`
-- Code comments, identifiers, logs, error messages, test names and commit messages are written in English. Documents are
+- P11 Code comments, identifiers, logs, error messages, test names and commit messages are written in English. Documents are
   English, each with a Korean twin that writes technical terms in English.
   Enforced by: `make commits-check` for the commit messages, `make language-check` for the code
 
 ## Design
 
-- No backward compatibility before a release says otherwise: an old path is removed, never kept behind a compatibility
+- P12 No backward compatibility before a release says otherwise: an old path is removed, never kept behind a compatibility
   layer, a fallback or a migration.
   Enforced by: none, whether a path is kept for compatibility is a design judgement.
-- The simplest implementation that fully meets the current requirements: no abstraction, setting or indirection for an
+- P13 The simplest implementation that fully meets the current requirements: no abstraction, setting or indirection for an
   uncertain future.
   Enforced by: `make lint-ts`, `make lint-python`, `make lint-go`
-- What an outside ecosystem already provides is used as it is, never redeveloped: its standard tool, library or protocol.
+- P14 What an outside ecosystem already provides is used as it is, never redeveloped: its standard tool, library or protocol.
   Enforced by: `make rebuild-check`
-- Components are modular, each concern clearly separated.
+- P15 Components are modular, each concern clearly separated.
   Enforced by: `make duplication-check`
-- Architecture is decided for the long term: a stopgap that works now and must be replaced later is not accepted. A
+- P16 Architecture is decided for the long term: a stopgap that works now and must be replaced later is not accepted. A
   problem is never solved by creating another problem.
   Enforced by: none, whether a measure is a stopgap is a design judgement.
-- Recovery, apply and transformation are idempotent; a change is published as an event, never found by polling; paths are
+- P17 Recovery, apply and transformation are idempotent; a change is published as an event, never found by polling; paths are
   resolved declaratively from a declared root; and multi-platform is a hard requirement, met without platform tricks.
   Enforced by: `.claude/settings.json`
-- No script polls in a loop with no known end: no `until` or `while` with a sleep, no loop around `gh run list`, no
+- P18 No script polls in a loop with no known end: no `until` or `while` with a sleep, no loop around `gh run list`, no
   watchdog. A wait is one command that its own work bounds, such as `gh run watch <id> --exit-status`, a background
   command whose completion is notified, or a message from the session that does the work.
   Enforced by: `.claude/settings.json`
 
 ## Verification
 
-- A defect starts as a test that reproduces it and fails for the intended reason; the fix follows; the same test passes.
+- P19 A defect starts as a test that reproduces it and fails for the intended reason; the fix follows; the same test passes.
   A test that cannot fail proves nothing, and a test that passes without running is a defect.
   Enforced by: `make commits-check`
-- An item is completed by its own unit tests: red, implementation, green. Only the checks that own what changed run; the
+- P20 An item is completed by its own unit tests: red, implementation, green. Only the checks that own what changed run; the
   full suite is not run, neither per fix, per item nor at the end.
   Enforced by: `.claude/settings.json`
-- A hard judgement or a new line of reasoning is verified adversarially, in rounds, until a round finds nothing. The scope
+- P21 A hard judgement or a new line of reasoning is verified adversarially, in rounds, until a round finds nothing. The scope
   of the review is fixed before the first round; a question beside it becomes its own item. The review is asked for
   solutions as well as objections, and a finding counts only when it shows a proposition wrong, shows it contradicted by
   another document, or shows a case missing that the proposition claims to cover.
   Enforced by: none, an adversarial review is a judgement.
-- Work handed to an agent carries everything the one handing it knows: the history, why earlier attempts were wrong, the
+- P22 Work handed to an agent carries everything the one handing it knows: the history, why earlier attempts were wrong, the
   measurements, these principles, the state of shared resources and the completion conditions. The agent first answers
   how it will judge right and wrong; the two agree before the work starts. An agent's report that something does not exist,
   is impossible or does not apply is checked in the code before it is accepted.
@@ -94,7 +94,7 @@ in kit, with its grounding.
 
 ## Questions
 
-- A question is asked only when it is needed: not already decided or evident, not asked by habit, not a way to leave
+- P23 A question is asked only when it is needed: not already decided or evident, not asked by habit, not a way to leave
   something out, never confusing; and a needed question is never left out. A decision that a new milestone reopens is
   asked again.
   Enforced by: none, whether a question is needed is a judgement.
@@ -104,26 +104,26 @@ in kit, with its grounding.
 The rules of work that every repository follows, stated once here (K243); an AGENTS.md holds only the rules of its own
 repository.
 
-- A plan is the folder `docs/plans/<plan>/` with `plan.md`, `checklist.md` and their Korean twins. A checklist is one table
+- P24 A plan is the folder `docs/plans/<plan>/` with `plan.md`, `checklist.md` and their Korean twins. A checklist is one table
   with the columns ID, Task, Deliverables, Verification and State; an item ID is unique among the checklists, and a
   sub-item `<id>-<n>` follows its item in one plan. `make plan-new` and `make item-new` write them, and `make plan-split` moves items to another plan.
   Enforced by: `make docs-check`
-- An item is `[ ]` waiting, `[~]` active, `[o]` done, `[!] cause: <cause>; retry: <condition>` bypassed or
+- P25 An item is `[ ]` waiting, `[~]` active, `[o]` done, `[!] cause: <cause>; retry: <condition>` bypassed or
   `[-] cause: <cause>` impossible, and moves only along the transitions of `make item-state`. A new finding on a done item
   is a sub-item of its own; the done item keeps its state.
   Enforced by: `make docs-check`, `make commits-check`
-- An open item names, in its Verification cell, the commands of its own unit tests; no item is verified by a suite, which
+- P26 An open item names, in its Verification cell, the commands of its own unit tests; no item is verified by a suite, which
   runs only in CI. `make item-test` runs the commands.
   Enforced by: `make docs-check`, `.claude/settings.json`
-- A commit completes at most one item: it moves at most one state, and the commit that moves an item to done records it in
+- P27 A commit completes at most one item: it moves at most one state, and the commit that moves an item to done records it in
   CHANGELOG.md and its Korean twin. The uncommitted work is at most one item.
   Enforced by: `make commits-check`
-- A commit message is `type(scope): Subject (#id)` with a type of feat, fix, docs, style, refactor, test or chore, a Subject
+- P28 A commit message is `type(scope): Subject (#id)` with a type of feat, fix, docs, style, refactor, test or chore, a Subject
   of at most 50 characters that starts with a capital letter and ends without a period, a blank line and a body wrapped at
   72 characters, with no footer of an AI tool: no co-author or session trailer of one. Its author and committer are a
   person, never an AI tool. `make commit` writes it.
   Enforced by: `make commits-check`
-- The make targets of a task have fixed names: `install`, `build`, `test`, `lint`, `docs-check`, and `build-<runtime>`,
+- P29 The make targets of a task have fixed names: `install`, `build`, `test`, `lint`, `docs-check`, and `build-<runtime>`,
   `test-<runtime>` and `lint-<runtime>` for each runtime of `packages/`, all defined by kit. A repository joins a task by a
   prerequisite of its own, such as `build: kit-build`, never by another target that starts with a task's name (K246).
   Enforced by: `make kit-check`
@@ -163,7 +163,7 @@ tool lands, a standard binds the work as written here.
   each exception there carries its reason.
   Enforced by: `make layout-check`
 - S6 Language parity: every implementation of a repository tests the same feature units, vectors and API at the same
-  level, and each requirement that docs/spec defines (a bullet `**<id>**` or a heading `<id>`) is cited by a unit, so
+  level, and each requirement that docs/spec defines (a list item, bulleted or numbered, `**<id>**` or a heading `<id>`) is cited by a unit, so
   every implementation tests it. Every unit holds in every implementation: no profile, no exclusion and no native-only symbol. A case of a directory suite lists the requirements it tests in its `case.json`.
   Enforced by: `make parity-declarations-check`, `make parity-check`
 - S7 Test placement: a test of a basic feature lives in the package and repository that own the feature; a consumer keeps
