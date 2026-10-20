@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e89927debaccae400b01c2d588d608611f4ff275c5973f75f483249fc124d41e -->
+<!-- source-sha256: 8bdeadbf1e038f28cbe4b348c447735c7c28c5cef807717a2014f4e0a818eb05 -->
 # 변경 이력
 
 ## Unreleased
+- dependency policy가 하나의 PHP platform 8.4.1, 즉 `.php-version`의 minor에 patch 1을 선언하며, Composer manifest와 lock은 이미 이를 쓴다. red: `make dependency-policy-check`가 두 manifest와 두 lock을 8.4.0과 다르다고 보고했다(KSTD-4).
 - query 영역의 unit이 그 test가 이름으로 가리키는 requirement id를 인용한다: DSL, DIA, COD id 383개 중 342개다; 새 planner case 6개(force index, today, date, varchar의 column function, styled 비교, styled is null)는 Go, PHP, Rust, TypeScript, Python에서 실패한 뒤 통과했고, conformance recorder가 vector 파일의 requirements를 보존한다. 나머지 id는 KSTD-2-9와 KSTD-2-10이다(KSTD-2-6).
 - dbspec 영역의 unit이 그 test가 이름으로 가리키는 requirement id를 인용한다: DBS, MER, SCH, CPX id 202개 중 191개를 각 vector 파일의 최상위 `requirements`나 묶인 test의 주석으로 인용한다; 새 vector `import/cardinality-differs`(MER-12)와 `positions/positions-skip-comments`(DBS-140)는 모든 구현에서 실패한 뒤 통과했다. 나머지 id는 KSTD-2-9와 KSTD-2-10이다(KSTD-2-5).
 - TypeScript build가 package가 선언한 bin을 실행 가능하게 만들어, 소비자가 `node_modules/.bin/orm-gen`을 실행한다. red: `node --test packages/ts/tests/bin-mode.mjs`가 `orm-gen (./dist/bin/orm-gen.js) has mode 644`로 실패했다. green: `npm run typescript:build` 뒤 pass 1(T225).

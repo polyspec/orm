@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 04353352f8998ac365fca4f9e834bee417720db8d04bab77489b0d20335778c3 -->
+<!-- source-sha256: 41e7eabff543fa91c207428a777020b733c790588edfebe443cfee7d8c2a46df -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -18,6 +18,6 @@
 | KSTD-2-10 | dbspec 영역과 query 영역의 requirement id 중 어떤 test도 이름으로 가리키지 않는 id는 모든 구현에 test를 갖는다 (KSTD-2-5, KSTD-2-6 후속). Cause: CPX-2, DBS-95, DSL-49, DSL-50, DSL-52, DSL-87, DSL-120, DSL-121, DSL-122, DSL-124, DSL-142, DIA-20, DIA-21, DIA-71, DIA-97, COD-21, COD-31은 test가 없다; DSL-32, DSL-33, DIA-6, DIA-187은 두 dialect의 SQL과 SQLite의 거부를 담는 conformance vector가 필요하다; DIA-156, 164, 168~173, 175~179, 182, 186, 190은 markdown conformance case가 필요하다; DBS-59, 87, 109, 113, 117, CPX-3, DSL-113, DIA-108은 그 id를 인용하지 않는 vector나 unit만 가리킨다 | tests/conformance, tests/markdown, config/parity.json, tests of every implementation | `make parity-declarations-check` | [ ] |
 | KSTD-2-11 | config/parity.json의 모든 unit은 requirement를 인용하고, spec 규칙을 검사하지 않는 test의 unit은 parity unit이 아니다 (KSTD-2 후속). Cause: 영역 항목 뒤에도 702개 unit이 아무것도 인용하지 않는다; 대부분은 내부 동작(unicode table, reader, generator 기계 장치, 도구)의 단일 구현 feature unit이며 S6은 이를 parity unit으로 받지 않으므로, 각각 검사하는 규칙에 모든 구현으로 묶이거나 그 구현의 feature scope로 옮겨진다 | config/parity.json, contracts/features.json, tests of every implementation | `make parity-declarations-check` | [ ] |
 | KSTD-3 | orm-gen이 생성하는 code가 그 ecosystem의 formatter와 linter를 통과한다(fsm adoption). 원인: orm-gen의 Python 출력인 fsm의 examples/model/models.py가 ruff format --check에 실패하고 vulture 지적이 25건이며, 생성된 PHP model은 phpcs의 PSR12 header 규칙에 실패한다 | the generators of the five clients and their generated fixture models | `make python-model-check`, `make lint-python`, `make lint-php` | [ ] |
-| KSTD-4 | repository의 모든 composer platform은 .php-version의 PHP minor에 patch 1이다 (kit K282). Cause: kit은 모든 composer config.platform.php와 composerPlatforms가 8.4.1이기를 요구하는데 orm은 두 곳에 8.4.0을 선언한다 | the composer.json files, kit.json | `make kit-check` | [ ] |
+| KSTD-4 | repository의 모든 composer platform은 .php-version의 PHP minor에 patch 1이다 (kit K282). Cause: kit은 모든 composer config.platform.php와 composerPlatforms가 8.4.1이기를 요구하는데 orm은 두 곳에 8.4.0을 선언한다 | the composer.json files, kit.json | `make kit-check` | [o] |
 | KSTD-5 | CHECK_TARGETS가 kit-gates의 모든 gate에 닿는다 (kit K289). Cause: kit-check가 CHECK_TARGETS에 toolchain-check, test-markers-check, rules-check, rebuild-check, layout-check, language-check, duplication-check, lint-ts, lint-go, lint-python, lint-php, lint-php-ext, test-php-ext가 없다고 보고한다; 각각을 추가하고 그 finding을 고쳐 통과시킨다 | Makefile, the files each gate reports | `make kit-check` | [ ] |
 | KSTD-6 | link rebuild는 repository layout을 읽고 자기 paths를 두지 않는다 (kit K286). Cause: kit은 link된 checkout을 layout으로 rebuild하며 link 선언의 paths key는 없어진다 | kit.json, the link declaration | `make kit-check` | [ ] |
