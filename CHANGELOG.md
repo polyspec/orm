@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The set file reader's statement about a tree changed while it reads is a note, not a requirement (KSTD-2-9-6).
 - The bench database procedure moves from the dialect spec to the performance guide (KSTD-2-9-5).
 - DIA-128 names the `types-and-defaults` case of `tests/dbspec/ddl.json` that checks it, instead of probes that do not exist (KSTD-2-9-4).
 - DIA-16 states that PostgreSQL packs an `ip` value on the client into `bytea`, as every planner does, instead of `(?)::inet` and `host(col)` (KSTD-2-9-3).

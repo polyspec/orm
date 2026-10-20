@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0e635c15ba3c15c3cb7799bbe3f7397d073564b597bb56d3d4f3613a307d4802 -->
+<!-- source-sha256: 0b270de944cff7bdc8b2dcba388b4af3def20aeb74b1cacd26db4cfdf06c2a57 -->
 # 변경 이력
 
 ## Unreleased
+- 읽는 동안 바뀐 tree에 대한 set file reader의 문장은 requirement가 아니라 참고다 (KSTD-2-9-6).
 - bench database 절차가 dialect spec에서 성능 문서로 옮겨졌다 (KSTD-2-9-5).
 - DIA-128이 존재하지 않는 probe 대신 자신을 검사하는 `tests/dbspec/ddl.json`의 `types-and-defaults` case를 가리킨다 (KSTD-2-9-4).
 - DIA-16이 PostgreSQL에서 `ip` 값을 모든 planner처럼 client에서 `bytea`로 pack한다고 적는다. 이전에는 `(?)::inet`과 `host(col)`이라 적었다 (KSTD-2-9-3).

@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: 7154d37fbfcba8f956ca7cf44d3555d40baea3fb5b986423fa590c27a3e78b1b -->
+<!-- source-sha256: f3f94b8bd9903cd09e00c6faab590bb5ed54cdc85dd84b61bc28d9b23020a28d -->
 # dbspec
 
 [English](dbspec.md)
@@ -82,7 +82,7 @@ table users {
 3. **DBS-14** 각 경로를 `documents` 먼저, 그다음 `external`, 적은 순서로. 먼저 그 정규형. 그다음 결합 경로: 단계 1의 prefix 뒤에 적은 경로를 그대로 붙인 것이다. 결합 경로는 정리하지 않으므로 platform이 각 `..`을 root로부터 해석한다; root는 symbolic link가 아니므로 root로부터의 `..`은 platform이 물리적으로(POSIX) 해석하든 어휘적으로(Windows) 해석하든 같은 directory다. 결합 경로에서 적은 경로의 segment 뒤에서 끝나는 각 prefix를 `lstat`으로 조사한다: `../core/core.dbs`라면 `<root>/..`, `<root>/../core`, `<root>/../core/core.dbs`다. 마지막을 뺀 모든 prefix는 directory이고 마지막은 일반 파일이다. 어느 것도 symbolic link가 아니되, `external` 경로의 마지막을 뺀 prefix는 symbolic link일 수 있다: reader는 그것을 따라가(`stat`) 얻은 것이 directory여야 하며, platform은 적은 대로 해석한다. 마지막 prefix가 symbolic link이면, 그리고 `documents` 경로의 어느 prefix든 symbolic link이면 오류다. `..` 밖의 각 segment는 그 directory가 나열하는 이름과 같다: POSIX에서는 segment의 UTF-8 byte가 나열된 byte와 같고(Node는 `{encoding: 'buffer'}`로 나열한다), Windows에서는 UTF-16 code unit이 나열된 것과 같다; `..` segment는 directory로 조사하며 이름은 비교하지 않는다. 그러므로 대소문자를 접는 file system, short name, 이름 정규화만이 해석하는 철자는 모든 platform에서 오류다. Windows에서 symbolic link는 tag가 name surrogate(`IsReparseTagNameSurrogate`)인 모든 reparse point, 곧 symbolic link나 junction이다. Go, Rust, Python, PHP extension은 tag를 읽어 모든 name surrogate tag에 이 규칙을 적용하고, Node의 `lstat`(libuv)과 PHP의 `lstat`은 reparse tag를 내주지 않고 symbolic link와 junction tag만 link로 보고하므로, TypeScript와 PHP reader는 그 둘을 감지한다. 다른 name surrogate tag(WSL symbolic link 등)는 그곳에서 대상이 아니라 그 항목 자체로 읽히며, file system filter가 처리하지 않는 tag는 Win32가 열기를 거부하므로 따라가지 않고 읽기가 실패한다.
 4. **DBS-15** 읽기와 파일 identity. reader는 단계 3을 통과한 각 파일을 한 번 열어 그 handle에서 byte를 읽고, 같은 handle에서 identity를 얻는다: POSIX `fstat`의 device와 inode, 또는 Windows에서 handle이 주는 volume serial number와 64-bit file index(Go `File.Stat`와 `os.SameFile`, Node `bigint`를 준 `fstat`, Python `os.fstat().st_ino`의 하위 64 bit, PHP `fstat`, Rust `same_file::Handle::from_file`). 64-bit file index가 유일하지 않은 file system, 예컨대 ReFS는 symbolic link 없는 file system처럼 지원하지 않는다. 한 목록 안에서든 두 목록에 걸쳐서든 파일의 identity가 같은 두 경로는 뒤 경로에서 `set.duplicate` 오류다.
 
-- **DBS-16** reader는 읽는 동안 바뀌지 않는 file tree를 읽는다. 각 component를 한 번 조사하며, 조사와 열기 사이에 바뀐 파일이나 directory는 감지하지 않으므로, 그 사이에 나타난 symbolic link를 열기가 따를 수 있다; 읽는 동안 다른 process가 바꾼 tree는 reader가 판정하는 범위 밖이며, 바뀌지 않은 tree를 다시 읽으면 결과가 나온다.
+참고: reader는 읽는 동안 바뀌지 않는 file tree를 읽는다. 각 component를 한 번 조사하며, 조사와 열기 사이에 바뀐 파일이나 directory는 감지하지 않으므로, 그 사이에 나타난 symbolic link를 열기가 따를 수 있다; 읽는 동안 다른 process가 바꾼 tree는 reader가 판정하는 범위 밖이며, 바뀌지 않은 tree를 다시 읽으면 결과가 나온다.
 
 - **DBS-17** 처음 두 단계는 그 뒤를 읽을 수 없으므로 첫 오류에서 멈추고 오류 하나를 보고한다. 단계 3과 4는 어기는 모든 경로를 각각 그 첫 오류와 함께 보고한다; 단계 4는 단계 3을 통과한 경로만 판정한다. 오류는 단계 순, 그다음 경로 순으로 `documents` 먼저, 그다음 `external`, 적은 순서로 나열하며, `set.duplicate`의 뒤 경로는 그 순서에서 뒤의 것이다. 읽는 동안 바뀌지 않는 tree에서 symbolic link는 `external` 경로의 마지막을 뺀 prefix(단계 3)를 제외하고 결코 따르지 않는다: set 파일, root, document 파일, 또는 `documents` 경로의 어느 prefix에서 찾은 symbolic link든 오류다.
 
