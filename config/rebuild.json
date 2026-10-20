@@ -22,10 +22,6 @@
       "kind": "policy",
       "reason": "the command entry of the dbspec language server that this repository defines, over vscode-languageserver; no ecosystem server knows dbspec"
     },
-    "packages/php-ext/scripts/arginfo.php": {
-      "kind": "ecosystem",
-      "tool": "gen_stub.php of php-src"
-    },
     "packages/php-ext/scripts/build.sh": {
       "kind": "ecosystem",
       "tool": "phpize, configure and make of php-src"
@@ -100,7 +96,7 @@
     },
     "scripts/ci/php-extension-tools.mts": {
       "kind": "ecosystem",
-      "tool": "phpize, php-config and gen_stub.php of the PHP on PATH"
+      "tool": "phpize and php-config of the PHP on PATH"
     },
     "scripts/ci/server-programs.mts": {
       "kind": "ecosystem",
