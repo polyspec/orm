@@ -3,6 +3,38 @@
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Code extends  implements  uses "
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Codec": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Codec extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Codec::blindIndex": {
+    "exported": true,
+    "signature": "public static function blindIndex(mixed $v, string $key): ?string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Codec::decode": {
+    "exported": true,
+    "signature": "public static function decode(array $styles, mixed $raw): Polyspec\\Orm\\StyledValue"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Codec::decodeRows": {
+    "exported": true,
+    "signature": "public static function decodeRows(array \u0026$rows, array $cells, Polyspec\\Orm\\Config $config): void"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Codec::encode": {
+    "exported": true,
+    "signature": "public static function encode(array $styles, Polyspec\\Orm\\StyledValue $v): Polyspec\\Orm\\Bytes|string|null"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Codec::hostDecode": {
+    "exported": true,
+    "signature": "public static function hostDecode(mixed $raw, array $styles, string $aesKey): ?string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Codec::hostEncode": {
+    "exported": true,
+    "signature": "public static function hostEncode(mixed $v, array $styles, string $aesKey): Polyspec\\Orm\\Bytes|string|null"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Codec::isHostStyle": {
+    "exported": true,
+    "signature": "public static function isHostStyle(string $style): bool"
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Analysis": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Analysis extends  implements  uses "

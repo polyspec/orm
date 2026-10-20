@@ -9,14 +9,14 @@ declare(strict_types=1);
 //        php declarations.php client
 // The stub reads the classes that the one stub of the extension (src/polyspec_orm.stub.php) declares, in a PHP without the
 // extension, which registers the same names. The client reads the PHP client classes that the extension implements, the
-// Polyspec\Orm\Dbspec classes that are not @internal and Polyspec\Orm\Code, through the Composer autoloader of the development
+// Polyspec\Orm\Dbspec classes that are not @internal, Polyspec\Orm\Code and Polyspec\Orm\Codec, through the Composer autoloader of the development
 // root, also in a PHP without the extension, which would take their place: only their public declarations are kept. Each prints
 // its map as JSON. DeclarationsTest.php reads the classes of the loaded extension in its own process with declarations() and
 // compares them with both.
 
 /** The namespace and the class outside it that the extension registers, which are those of the PHP client. */
 const EXTENSION_NAMESPACE = 'Polyspec\\Orm\\Dbspec\\';
-const CLIENT_CLASSES = ['Polyspec\\Orm\\Code'];
+const CLIENT_CLASSES = ['Polyspec\\Orm\\Code', 'Polyspec\\Orm\\Codec'];
 
 /**
  * The declarations of $classes, keyed by class, constant, property and method; with $public only the public members, as the

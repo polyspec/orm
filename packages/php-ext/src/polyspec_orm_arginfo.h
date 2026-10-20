@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 3bf06a6141484fa36d8c4dbffff5e57444a51414 */
+ * Stub hash: 3ec704d1e3863e501718428b0fd175fc58b10596 */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Diagnostic___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, rule, IS_STRING, 0)
@@ -572,6 +572,43 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_PlanAp
 	ZEND_ARG_OBJ_INFO(0, e, Polyspec\\Orm\\Dbspec\\Effect, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Codec_blindIndex, 0, 2, IS_STRING, 1)
+	ZEND_ARG_TYPE_INFO(0, v, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, key, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Codec_decode, 0, 2, Polyspec\\Orm\\StyledValue, 0)
+	ZEND_ARG_TYPE_INFO(0, styles, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, raw, IS_MIXED, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_TYPE_MASK_EX(arginfo_class_Polyspec_Orm_Codec_encode, 0, 2, Polyspec\\Orm\\Bytes, MAY_BE_STRING|MAY_BE_NULL)
+	ZEND_ARG_TYPE_INFO(0, styles, IS_ARRAY, 0)
+	ZEND_ARG_OBJ_INFO(0, v, Polyspec\\Orm\\StyledValue, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Codec_isHostStyle, 0, 1, _IS_BOOL, 0)
+	ZEND_ARG_TYPE_INFO(0, style, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_TYPE_MASK_EX(arginfo_class_Polyspec_Orm_Codec_hostEncode, 0, 3, Polyspec\\Orm\\Bytes, MAY_BE_STRING|MAY_BE_NULL)
+	ZEND_ARG_TYPE_INFO(0, v, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, styles, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, aesKey, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Codec_hostDecode, 0, 3, IS_STRING, 1)
+	ZEND_ARG_TYPE_INFO(0, raw, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, styles, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, aesKey, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Codec_decodeRows, 0, 3, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(1, rows, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, cells, IS_ARRAY, 0)
+	ZEND_ARG_OBJ_INFO(0, config, Polyspec\\Orm\\Config, 0)
+ZEND_END_ARG_INFO()
+
 ZEND_METHOD(Polyspec_Orm_Dbspec_Diagnostic, __construct);
 ZEND_METHOD(Polyspec_Orm_Dbspec_Position, __construct);
 ZEND_METHOD(Polyspec_Orm_Dbspec_Document, __construct);
@@ -687,6 +724,13 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_PlanApply, recover);
 ZEND_METHOD(Polyspec_Orm_Dbspec_PlanApply, rollback);
 ZEND_METHOD(Polyspec_Orm_Dbspec_PlanApply, finalize);
 ZEND_METHOD(Polyspec_Orm_Dbspec_PlanApply, effectOn);
+ZEND_METHOD(Polyspec_Orm_Codec, blindIndex);
+ZEND_METHOD(Polyspec_Orm_Codec, decode);
+ZEND_METHOD(Polyspec_Orm_Codec, encode);
+ZEND_METHOD(Polyspec_Orm_Codec, isHostStyle);
+ZEND_METHOD(Polyspec_Orm_Codec, hostEncode);
+ZEND_METHOD(Polyspec_Orm_Codec, hostDecode);
+ZEND_METHOD(Polyspec_Orm_Codec, decodeRows);
 
 static const zend_function_entry class_Polyspec_Orm_Dbspec_Diagnostic_methods[] = {
 	ZEND_ME(Polyspec_Orm_Dbspec_Diagnostic, __construct, arginfo_class_Polyspec_Orm_Dbspec_Diagnostic___construct, ZEND_ACC_PUBLIC)
@@ -1012,6 +1056,17 @@ static const zend_function_entry class_Polyspec_Orm_Dbspec_PlanApply_methods[] =
 	ZEND_ME(Polyspec_Orm_Dbspec_PlanApply, rollback, arginfo_class_Polyspec_Orm_Dbspec_PlanApply_rollback, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_ME(Polyspec_Orm_Dbspec_PlanApply, finalize, arginfo_class_Polyspec_Orm_Dbspec_PlanApply_finalize, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_ME(Polyspec_Orm_Dbspec_PlanApply, effectOn, arginfo_class_Polyspec_Orm_Dbspec_PlanApply_effectOn, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Polyspec_Orm_Codec_methods[] = {
+	ZEND_ME(Polyspec_Orm_Codec, blindIndex, arginfo_class_Polyspec_Orm_Codec_blindIndex, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Codec, decode, arginfo_class_Polyspec_Orm_Codec_decode, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Codec, encode, arginfo_class_Polyspec_Orm_Codec_encode, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Codec, isHostStyle, arginfo_class_Polyspec_Orm_Codec_isHostStyle, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Codec, hostEncode, arginfo_class_Polyspec_Orm_Codec_hostEncode, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Codec, hostDecode, arginfo_class_Polyspec_Orm_Codec_hostDecode, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Codec, decodeRows, arginfo_class_Polyspec_Orm_Codec_decodeRows, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_FE_END
 };
 
@@ -2882,6 +2937,16 @@ static zend_class_entry *register_class_Polyspec_Orm_Code(void)
 	zend_string *const_DRIVER_name = zend_string_init_interned("DRIVER", sizeof("DRIVER") - 1, 1);
 	zend_declare_typed_class_constant(class_entry, const_DRIVER_name, &const_DRIVER_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
 	zend_string_release(const_DRIVER_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Polyspec_Orm_Codec(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm", "Codec", class_Polyspec_Orm_Codec_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
 
 	return class_entry;
 }

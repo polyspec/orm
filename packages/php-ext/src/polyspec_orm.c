@@ -11,6 +11,7 @@
 #include "Zend/zend_exceptions.h"
 #include "Zend/zend_interfaces.h"
 #include "Zend/zend_closures.h"
+#include "codec.h"
 #include "polyspec_orm_arginfo.h"
 
 /* Holds one method's arena. */
@@ -1703,6 +1704,86 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, readBytes)
     LEAVE();
 }
 
+/* Polyspec\Orm\Codec (packages/php-ext/src/codec.c). The methods that codec.c does not implement yet throw CODEC_UNSUPPORTED. */
+ZEND_METHOD(Polyspec_Orm_Codec, blindIndex)
+{
+    zval *v;
+    zend_string *key;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_ZVAL(v)
+        Z_PARAM_STR(key)
+    ZEND_PARSE_PARAMETERS_END();
+    codec_unsupported("blindIndex", "AES and the blind index, T182-2-3");
+}
+
+ZEND_METHOD(Polyspec_Orm_Codec, decode)
+{
+    HashTable *styles;
+    zval *raw;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_ARRAY_HT(styles)
+        Z_PARAM_ZVAL(raw)
+    ZEND_PARSE_PARAMETERS_END();
+    codec_decode(styles, raw, return_value);
+}
+
+ZEND_METHOD(Polyspec_Orm_Codec, encode)
+{
+    HashTable *styles;
+    zval *styled;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_ARRAY_HT(styles)
+        Z_PARAM_OBJECT(styled)
+    ZEND_PARSE_PARAMETERS_END();
+    codec_encode(styles, styled, return_value);
+}
+
+ZEND_METHOD(Polyspec_Orm_Codec, isHostStyle)
+{
+    zend_string *style;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_STR(style)
+    ZEND_PARSE_PARAMETERS_END();
+    RETURN_BOOL(codec_is_host_style(style));
+}
+
+ZEND_METHOD(Polyspec_Orm_Codec, hostEncode)
+{
+    zval *v;
+    HashTable *styles;
+    zend_string *aes_key;
+    ZEND_PARSE_PARAMETERS_START(3, 3)
+        Z_PARAM_ZVAL(v)
+        Z_PARAM_ARRAY_HT(styles)
+        Z_PARAM_STR(aes_key)
+    ZEND_PARSE_PARAMETERS_END();
+    codec_host_encode(v, styles, aes_key, return_value);
+}
+
+ZEND_METHOD(Polyspec_Orm_Codec, hostDecode)
+{
+    zval *raw;
+    HashTable *styles;
+    zend_string *aes_key;
+    ZEND_PARSE_PARAMETERS_START(3, 3)
+        Z_PARAM_ZVAL(raw)
+        Z_PARAM_ARRAY_HT(styles)
+        Z_PARAM_STR(aes_key)
+    ZEND_PARSE_PARAMETERS_END();
+    codec_unsupported("hostDecode", "the host-style decode, T182-2-2");
+}
+
+ZEND_METHOD(Polyspec_Orm_Codec, decodeRows)
+{
+    zval *rows, *cells, *config;
+    ZEND_PARSE_PARAMETERS_START(3, 3)
+        Z_PARAM_ZVAL(rows)
+        Z_PARAM_ZVAL(cells)
+        Z_PARAM_ZVAL(config)
+    ZEND_PARSE_PARAMETERS_END();
+    codec_unsupported("decodeRows", "the row decode of the host styles, T182-2-2");
+}
+
 /* Calls a PHP function by name. On failure (exception), false. */
 static bool call_function(const char *name, zval *ret, uint32_t argc, zval *argv)
 {
@@ -2256,6 +2337,7 @@ static void array_constant(zend_class_entry *ce, const char *name, const char *c
 static PHP_MINIT_FUNCTION(polyspec_orm)
 {
     register_class_Polyspec_Orm_Code();
+    register_class_Polyspec_Orm_Codec();
     dbs_ce_Diagnostic = register_class_Polyspec_Orm_Dbspec_Diagnostic();
     dbs_ce_Document = register_class_Polyspec_Orm_Dbspec_Document();
     dbs_ce_UseLine = register_class_Polyspec_Orm_Dbspec_UseLine();

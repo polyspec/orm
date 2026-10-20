@@ -327,6 +327,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/orm/codec_test.go", "symbol": "TestCodecVectors" },
         { "implementation": "php", "test": "packages/php/tests/CodecVectorsTest.php", "symbol": "CodecVectorsTest::test_php_vector" },
+        { "implementation": "php-extension", "test": "packages/php/tests/CodecVectorsTest.php", "symbol": "CodecVectorsTest::test_php_vector" },
         { "implementation": "typescript", "test": "packages/ts/tests/codec-vector.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_codec_vectors.py" },
         { "implementation": "rust", "test": "packages/rust/orm/tests/codec_vectors.rs", "symbol": "vectors" }
