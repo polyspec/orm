@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1f4f31f49ff9f12f49722921fdccabf11be32ee7d7a1dba71a5524da84dc106d -->
+<!-- source-sha256: 84ec5050486886355a7d6d3e2e7be5fd128a35da0596ff7a5b4619dc4524d217 -->
 # 변경 이력
 
 ## Unreleased
+- identity column이 없는 table의 Go insert가 PostgreSQL에서 다시 성공한다: pgx는 insert id를 보고하지 않으므로, 이를 보고하는 driver(MySQL, SQLite)에만 묻는다. red: KSTD-5-7-2가 버려진 오류를 반환한 뒤 TestInsertWithoutIdentityOnEveryDatabase와 TestColumnsAndSubqueries가 PostgreSQL에서 "LastInsertId is not supported by this driver"로 실패했다(KSTD-5-7-8).
 - PHP extension이 library 이름으로 `Polyspec\Orm\Planner`를 C로 구현하므로, planner, insert-parts, ir-answers suite가 `make dbspec-php-extension-check/planner`에서 extension으로 돈다(case 81, 6, 18개). red: extension을 켜도 planner는 PHP library의 것이었다(T182-4).
 - `go build`가 command 옆에 쓰는 `orm-gen` binary를 더는 추적하지 않고, `packages/go/cmd`의 command folder가 build 출력을 ignore한다. red: `make feature-unit-check`의 추적 파일 test가 0b3426809에서 commit된 Mach-O 실행 파일 `packages/go/cmd/orm-gen/orm-gen`을 가리켰다(KSTD-5-7-7).
 - 나머지 Go code가 K334 lint 규칙이 찾는 모든 오류(42개)를 처리하고 도달할 수 없는 함수를 두지 않는다; planner는 버리던 conflict key 오류를 반환하고, bench gate helper는 그것을 쓰는 test의 tag로 build된다 (KSTD-5-7-4).
