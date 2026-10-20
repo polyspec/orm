@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 3ec704d1e3863e501718428b0fd175fc58b10596 */
+ * Stub hash: faaf206660349d7248fe992d5147ecfb9899c2c5 */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Diagnostic___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, rule, IS_STRING, 0)
@@ -609,6 +609,42 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Codec_decodeR
 	ZEND_ARG_OBJ_INFO(0, config, Polyspec\\Orm\\Config, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Validator___construct, 0, 0, 1)
+	ZEND_ARG_OBJ_INFO(0, m, Polyspec\\Orm\\RuntimeModel, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Validator_opAllowed, 0, 2, _IS_BOOL, 0)
+	ZEND_ARG_TYPE_INFO(0, c, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, op, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Validator_validate, 0, 1, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, r, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Validator_restoreKey, 0, 2, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, ent, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, r, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Validator_paramUses, 0, 1, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, r, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Validator_functionType, 0, 2, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, col, IS_ARRAY, 1)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Validator_intervalType, 0, 1, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Validator_conflictKey, 0, 2, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, ent, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, set, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
 ZEND_METHOD(Polyspec_Orm_Dbspec_Diagnostic, __construct);
 ZEND_METHOD(Polyspec_Orm_Dbspec_Position, __construct);
 ZEND_METHOD(Polyspec_Orm_Dbspec_Document, __construct);
@@ -731,6 +767,14 @@ ZEND_METHOD(Polyspec_Orm_Codec, isHostStyle);
 ZEND_METHOD(Polyspec_Orm_Codec, hostEncode);
 ZEND_METHOD(Polyspec_Orm_Codec, hostDecode);
 ZEND_METHOD(Polyspec_Orm_Codec, decodeRows);
+ZEND_METHOD(Polyspec_Orm_Validator, __construct);
+ZEND_METHOD(Polyspec_Orm_Validator, opAllowed);
+ZEND_METHOD(Polyspec_Orm_Validator, validate);
+ZEND_METHOD(Polyspec_Orm_Validator, restoreKey);
+ZEND_METHOD(Polyspec_Orm_Validator, paramUses);
+ZEND_METHOD(Polyspec_Orm_Validator, functionType);
+ZEND_METHOD(Polyspec_Orm_Validator, intervalType);
+ZEND_METHOD(Polyspec_Orm_Validator, conflictKey);
 
 static const zend_function_entry class_Polyspec_Orm_Dbspec_Diagnostic_methods[] = {
 	ZEND_ME(Polyspec_Orm_Dbspec_Diagnostic, __construct, arginfo_class_Polyspec_Orm_Dbspec_Diagnostic___construct, ZEND_ACC_PUBLIC)
@@ -1067,6 +1111,18 @@ static const zend_function_entry class_Polyspec_Orm_Codec_methods[] = {
 	ZEND_ME(Polyspec_Orm_Codec, hostEncode, arginfo_class_Polyspec_Orm_Codec_hostEncode, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_ME(Polyspec_Orm_Codec, hostDecode, arginfo_class_Polyspec_Orm_Codec_hostDecode, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_ME(Polyspec_Orm_Codec, decodeRows, arginfo_class_Polyspec_Orm_Codec_decodeRows, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Polyspec_Orm_Validator_methods[] = {
+	ZEND_ME(Polyspec_Orm_Validator, __construct, arginfo_class_Polyspec_Orm_Validator___construct, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Validator, opAllowed, arginfo_class_Polyspec_Orm_Validator_opAllowed, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Validator, validate, arginfo_class_Polyspec_Orm_Validator_validate, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Validator, restoreKey, arginfo_class_Polyspec_Orm_Validator_restoreKey, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Validator, paramUses, arginfo_class_Polyspec_Orm_Validator_paramUses, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Validator, functionType, arginfo_class_Polyspec_Orm_Validator_functionType, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Validator, intervalType, arginfo_class_Polyspec_Orm_Validator_intervalType, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Validator, conflictKey, arginfo_class_Polyspec_Orm_Validator_conflictKey, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_FE_END
 };
 
@@ -2947,6 +3003,35 @@ static zend_class_entry *register_class_Polyspec_Orm_Codec(void)
 
 	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm", "Codec", class_Polyspec_Orm_Codec_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Polyspec_Orm_Validator(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm", "Validator", class_Polyspec_Orm_Validator_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
+
+	zval const_IR_VERSION_value;
+	ZVAL_LONG(&const_IR_VERSION_value, 1);
+	zend_string *const_IR_VERSION_name = zend_string_init_interned("IR_VERSION", sizeof("IR_VERSION") - 1, 1);
+	zend_declare_class_constant_ex(class_entry, const_IR_VERSION_name, &const_IR_VERSION_value, ZEND_ACC_PUBLIC, NULL);
+	zend_string_release(const_IR_VERSION_name);
+
+	zval property_m_default_value;
+	ZVAL_UNDEF(&property_m_default_value);
+	zend_string *property_m_name = zend_string_init("m", sizeof("m") - 1, 1);
+	zend_string *property_m_class_Polyspec_Orm_RuntimeModel = zend_string_init("Polyspec\\Orm\\RuntimeModel", sizeof("Polyspec\\Orm\\RuntimeModel")-1, 1);
+	zend_declare_typed_property(class_entry, property_m_name, &property_m_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_m_class_Polyspec_Orm_RuntimeModel, 0, 0));
+	zend_string_release(property_m_name);
+
+	zval property_n_default_value;
+	ZVAL_LONG(&property_n_default_value, 0);
+	zend_string *property_n_name = zend_string_init("n", sizeof("n") - 1, 1);
+	zend_declare_typed_property(class_entry, property_n_name, &property_n_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
+	zend_string_release(property_n_name);
 
 	return class_entry;
 }

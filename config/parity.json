@@ -363,6 +363,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/ir/validate_test.go", "symbol": "TestValidateVectors" },
         { "implementation": "php", "test": "packages/php/tests/EngineTest.php", "symbol": "EngineTest::test_validate" },
+        { "implementation": "php-extension", "test": "packages/php/tests/EngineTest.php", "symbol": "EngineTest::test_validate" },
         { "implementation": "typescript", "test": "packages/ts/tests/engine.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_ir_validate.py" },
         { "implementation": "rust", "test": "packages/rust/orm/tests/ir_validate.rs", "symbol": "validate_vectors" }

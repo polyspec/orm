@@ -857,3 +857,23 @@ final class Codec
     public static function hostDecode(mixed $raw, array $styles, string $aesKey): ?string {}
     public static function decodeRows(array &$rows, array $cells, Config $config): void {}
 }
+
+/**
+ * The request validator (docs/spec/protocol.md), the Validator of the PHP library. The extension implements it in C (validator.c); its
+ * checks and error codes are those of packages/php/src/Validator.php. The members of the class are the PHP client's public members,
+ * and its two private members are the model and n_params of the validation in progress.
+ */
+final class Validator
+{
+    public const IR_VERSION = 1;
+    private RuntimeModel $m;
+    private int $n = 0;
+    public function __construct(RuntimeModel $m) {}
+    public static function opAllowed(array $c, string $op): bool {}
+    public function validate(array $r): void {}
+    public static function restoreKey(array $ent, array $r): array {}
+    public function paramUses(array $r): array {}
+    public static function functionType(string $name, ?array $col): string {}
+    public static function intervalType(string $name): string {}
+    public static function conflictKey(array $ent, array $set): array {}
+}

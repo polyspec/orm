@@ -12,6 +12,7 @@
 #include "Zend/zend_interfaces.h"
 #include "Zend/zend_closures.h"
 #include "codec.h"
+#include "validator.h"
 #include "polyspec_orm_arginfo.h"
 
 /* Holds one method's arena. */
@@ -1785,6 +1786,85 @@ ZEND_METHOD(Polyspec_Orm_Codec, decodeRows)
     codec_decode_rows(Z_ARRVAL_P(rows_zv), cells, config);
 }
 
+/* Polyspec\Orm\Validator (packages/php-ext/src/validator.c). */
+ZEND_METHOD(Polyspec_Orm_Validator, __construct)
+{
+    zval *model;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_OBJECT(model)
+    ZEND_PARSE_PARAMETERS_END();
+    validator_construct(ZEND_THIS, model);
+}
+
+ZEND_METHOD(Polyspec_Orm_Validator, opAllowed)
+{
+    HashTable *col;
+    zend_string *op;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_ARRAY_HT(col)
+        Z_PARAM_STR(op)
+    ZEND_PARSE_PARAMETERS_END();
+    RETURN_BOOL(validator_op_allowed(col, op));
+}
+
+ZEND_METHOD(Polyspec_Orm_Validator, validate)
+{
+    HashTable *r;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_ARRAY_HT(r)
+    ZEND_PARSE_PARAMETERS_END();
+    validator_validate(ZEND_THIS, r);
+}
+
+ZEND_METHOD(Polyspec_Orm_Validator, restoreKey)
+{
+    HashTable *ent, *r;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_ARRAY_HT(ent)
+        Z_PARAM_ARRAY_HT(r)
+    ZEND_PARSE_PARAMETERS_END();
+    validator_restore_key(ent, r, return_value);
+}
+
+ZEND_METHOD(Polyspec_Orm_Validator, paramUses)
+{
+    HashTable *r;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_ARRAY_HT(r)
+    ZEND_PARSE_PARAMETERS_END();
+    validator_param_uses(ZEND_THIS, r, return_value);
+}
+
+ZEND_METHOD(Polyspec_Orm_Validator, functionType)
+{
+    zend_string *name;
+    HashTable *col;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_STR(name)
+        Z_PARAM_ARRAY_HT_OR_NULL(col)
+    ZEND_PARSE_PARAMETERS_END();
+    validator_function_type(name, col, return_value);
+}
+
+ZEND_METHOD(Polyspec_Orm_Validator, intervalType)
+{
+    zend_string *name;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_STR(name)
+    ZEND_PARSE_PARAMETERS_END();
+    validator_interval_type(name, return_value);
+}
+
+ZEND_METHOD(Polyspec_Orm_Validator, conflictKey)
+{
+    HashTable *ent, *set;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_ARRAY_HT(ent)
+        Z_PARAM_ARRAY_HT(set)
+    ZEND_PARSE_PARAMETERS_END();
+    validator_conflict_key(ent, set, return_value);
+}
+
 /* Calls a PHP function by name. On failure (exception), false. */
 static bool call_function(const char *name, zval *ret, uint32_t argc, zval *argv)
 {
@@ -2339,6 +2419,7 @@ static PHP_MINIT_FUNCTION(polyspec_orm)
 {
     register_class_Polyspec_Orm_Code();
     register_class_Polyspec_Orm_Codec();
+    register_class_Polyspec_Orm_Validator();
     dbs_ce_Diagnostic = register_class_Polyspec_Orm_Dbspec_Diagnostic();
     dbs_ce_Document = register_class_Polyspec_Orm_Dbspec_Document();
     dbs_ce_UseLine = register_class_Polyspec_Orm_Dbspec_UseLine();
