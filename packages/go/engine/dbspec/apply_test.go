@@ -97,13 +97,13 @@ func TestApplyReportsCleanupErrors(t *testing.T) {
 		return nil
 	}
 	// Without a cleanup error, it returns the failure unwrapped.
-	if err := Apply(ctx, applyTestConn(t), DialectSQLite, plans, now, stopAt); !errors.Is(err, stop) || errors.Unwrap(err) != nil {
-		t.Errorf("apply stopped by an event without a cleanup error: %#v, want the event error itself", err)
+	if res, err := Apply(ctx, applyTestConn(t), DialectSQLite, plans, now, stopAt); err != nil || !res.Stopped || !errors.Is(res.Stop, stop) {
+		t.Errorf("apply stopped by an event without a cleanup error: %+v, %v, want stopped by the event error", res, err)
 	}
 
 	release := errors.New("release failed")
 	c := &failing{conn: applyTestConn(t), fail: map[string]error{"PRAGMA locking_mode = normal": release}}
-	err := Apply(ctx, c, DialectSQLite, plans, now, stopAt)
+	_, err := Apply(ctx, c, DialectSQLite, plans, now, stopAt)
 	if !errors.Is(err, stop) || !errors.Is(err, release) {
 		t.Errorf("apply stopped by an event with a failing lock release: %v, want both errors", err)
 	}
@@ -111,11 +111,39 @@ func TestApplyReportsCleanupErrors(t *testing.T) {
 	begin := errors.New("begin failed")
 	restore := errors.New("restore failed")
 	c = &failing{conn: applyTestConn(t), fail: map[string]error{"BEGIN EXCLUSIVE": begin, "PRAGMA foreign_keys = 0": restore}}
-	err = Apply(ctx, c, DialectSQLite, plans, now, nil)
+	_, err = Apply(ctx, c, DialectSQLite, plans, now, nil)
 	if applyErr := (*ApplyError)(nil); !errors.As(err, &applyErr) || applyErr.Code != "locked" || !errors.Is(err, restore) {
 		t.Errorf("apply with a failing BEGIN EXCLUSIVE and foreign key restore: %v, want locked and the restore error", err)
 	}
 	logResult(t, "apply/cleanup-errors", start)
+}
+
+// TestApplyStopWithCleanupFailureReturnsJoin checks that when an event stops apply and a cleanup step then fails,
+// the result is the joined error of the stop and the cleanup failure, not a stop by itself.
+// Requirements: PLN-97.
+func TestApplyStopWithCleanupFailureReturnsJoin(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	start := time.Now()
+	t.Log("RUN apply/stop-join deadline=20s")
+	now := func() time.Time { return time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC) }
+	plans := applyTestPlans(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	stop := errors.New("stop")
+	stopAt := func(ev ApplyEvent) error {
+		if ev.Kind == "applied" {
+			return stop
+		}
+		return nil
+	}
+	release := errors.New("release failed")
+	c := &failing{conn: applyTestConn(t), fail: map[string]error{"PRAGMA locking_mode = normal": release}}
+	_, err := Apply(ctx, c, DialectSQLite, plans, now, stopAt)
+	if want := stop.Error() + "\n" + release.Error(); err == nil || err.Error() != want {
+		t.Errorf("apply stopped by an event with a failing lock release: %v, want %q", err, want)
+	}
+	logResult(t, "apply/stop-join", start)
 }
 
 // TestEffectRequiresRow checks that when an effect query returns no row, it is reported as an error
@@ -145,7 +173,7 @@ func TestRollbackRejectsRecordedStepOutsidePlan(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	conn := applyTestConn(t)
-	if err := Apply(ctx, conn, DialectSQLite, plans, now, nil); err != nil {
+	if _, err := Apply(ctx, conn, DialectSQLite, plans, now, nil); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := conn.ExecContext(ctx, `UPDATE "dbspec$plans" SET step = 99`); err != nil {
@@ -171,7 +199,7 @@ func TestFinalizeMarksPlanDone(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	conn := applyTestConn(t)
-	if err := Apply(ctx, conn, DialectSQLite, plans, now, nil); err != nil {
+	if _, err := Apply(ctx, conn, DialectSQLite, plans, now, nil); err != nil {
 		t.Fatal(err)
 	}
 	var kinds []string

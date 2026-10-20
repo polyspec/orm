@@ -151,6 +151,21 @@ func applyCode(err error) string {
 
 type command func(ctx context.Context, c dbspec.Execer, dialect dbspec.Dialect, plans []*dbspec.Plan, now func() time.Time, events func(dbspec.ApplyEvent) error) error
 
+// applyCommand runs dbspec.Apply and reports its result as the error the command had before the result was split:
+// the stop, the ApplyError, or the error itself.
+func applyCommand(ctx context.Context, c dbspec.Execer, dialect dbspec.Dialect, plans []*dbspec.Plan, now func() time.Time, events func(dbspec.ApplyEvent) error) error {
+	res, err := dbspec.Apply(ctx, c, dialect, plans, now, events)
+	switch {
+	case err != nil:
+		return err
+	case res.Failure != nil:
+		return res.Failure
+	case res.Stopped:
+		return res.Stop
+	}
+	return nil
+}
+
 // stopAfter is an event handler that, after the plan's step-th statement has run and before the step is recorded, stops the command
 // there.
 func stopAfter(plan string, step int, stop error) func(dbspec.ApplyEvent) error {
@@ -249,7 +264,7 @@ func TestApplyChain(t *testing.T) {
 				events = append(events, ev.Kind)
 				return nil
 			}
-			run(e, db, "apply", dbspec.Apply, plans, record, "", nil)
+			run(e, db, "apply", applyCommand, plans, record, "", nil)
 			schemaIs(e, db, target.SchemaText)
 			c := planCounts[db]
 			historyIs(e, db, fmt.Sprintf("create_from_empty|applied|%d,rename_table_and_column|applied|%d", c[0][1], c[1][1]))
@@ -259,13 +274,13 @@ func TestApplyChain(t *testing.T) {
 			}
 			e.Check(counts["plan"] == 2 && counts["verified"] == 2 && counts["done"] == 2 && counts["statement"] == counts["applied"] && counts["statement"] == c[0][1]+c[1][1], "events %v", counts)
 			events = nil
-			run(e, db, "apply again", dbspec.Apply, plans, record, "", nil)
+			run(e, db, "apply again", applyCommand, plans, record, "", nil)
 			e.Check(len(events) == 0, "apply again: events %v", events)
 		}},
 		{"drift", all, func(e *Env, db string) {
-			run(e, db, "apply", dbspec.Apply, plans[:1], nil, "", nil)
+			run(e, db, "apply", applyCommand, plans[:1], nil, "", nil)
 			e.Exec(`CREATE TABLE extra (id integer PRIMARY KEY)`)
-			run(e, db, "apply after a change outside plans", dbspec.Apply, plans, nil, "drift", nil)
+			run(e, db, "apply after a change outside plans", applyCommand, plans, nil, "drift", nil)
 		}},
 		{"lock", all, func(e *Env, db string) {
 			other, err := e.Session()
@@ -279,7 +294,7 @@ func TestApplyChain(t *testing.T) {
 				e.fail("hold: %v", err)
 				return
 			}
-			run(e, db, "apply under another session's lock", dbspec.Apply, plans, nil, "locked", nil)
+			run(e, db, "apply under another session's lock", applyCommand, plans, nil, "locked", nil)
 			if db == "sqlite" {
 				other.Conn.ExecContext(e.Ctx, "ROLLBACK")
 			}
@@ -299,11 +314,11 @@ func TestApplyChain(t *testing.T) {
 			during := func(ev dbspec.ApplyEvent) error {
 				if ev.Kind == "plan" && ev.Plan == plans[0].Name && !applied {
 					applied = true
-					otherErr = dbspec.Apply(other.Ctx, other.Conn, dbspec.Dialect(db), plans, fixedNow, nil)
+					otherErr = applyCommand(other.Ctx, other.Conn, dbspec.Dialect(db), plans, fixedNow, nil)
 				}
 				return nil
 			}
-			run(e, db, "apply", dbspec.Apply, plans, during, "", nil)
+			run(e, db, "apply", applyCommand, plans, during, "", nil)
 			e.Check(applied && otherErr == nil, "apply to %s while %s applies: ran %v, error %v", other.Name, e.Name, applied, otherErr)
 			schemaIs(e, db, target.SchemaText)
 			schemaIs(other, db, target.SchemaText)
@@ -321,14 +336,14 @@ func TestApplyChain(t *testing.T) {
 			for _, c := range []struct {
 				name string
 				f    command
-			}{{"apply", dbspec.Apply}, {"recover", dbspec.Recover}, {"rollback", dbspec.Rollback}, {"finalize", dbspec.Finalize}} {
+			}{{"apply", applyCommand}, {"recover", dbspec.Recover}, {"rollback", dbspec.Rollback}, {"finalize", dbspec.Finalize}} {
 				run(e, db, c.name+" of the empty chain", c.f, []*dbspec.Plan{}, record, "", nil)
 			}
 			e.Check(len(events) == 0, "events of the empty chain: %v", events)
 			schemaIs(e, db, "")
 			e.Want("SELECT COUNT(*) FROM "+historyOf(db), "0")
 			e.Exec(`CREATE TABLE extra (id integer PRIMARY KEY)`)
-			run(e, db, "apply of the empty chain to a database with a table", dbspec.Apply, []*dbspec.Plan{}, nil, "drift", nil)
+			run(e, db, "apply of the empty chain to a database with a table", applyCommand, []*dbspec.Plan{}, nil, "drift", nil)
 		}},
 		{"unlock_not_held", []string{"postgres"}, func(e *Env, db string) {
 			// If the advisory lock is released first in an event, the unlock at the end of the command releases nothing.
@@ -340,7 +355,7 @@ func TestApplyChain(t *testing.T) {
 				return nil
 			}
 			want := "the advisory lock of dbspec$plans was not held at unlock"
-			if err := dbspec.Apply(e.Ctx, e.Conn, dbspec.Dialect(db), plans, fixedNow, release); err == nil || err.Error() != want {
+			if err := applyCommand(e.Ctx, e.Conn, dbspec.Dialect(db), plans, fixedNow, release); err == nil || err.Error() != want {
 				e.fail("apply after the lock was released by another statement: %v, want %q", err, want)
 			}
 		}},
@@ -355,7 +370,7 @@ func TestApplyChain(t *testing.T) {
 				}
 				return nil
 			}
-			run(e, db, "apply with a table outside the plan", dbspec.Apply, plans, sneak, "verify", nil)
+			run(e, db, "apply with a table outside the plan", applyCommand, plans, sneak, "verify", nil)
 			historyIs(e, db, fmt.Sprintf("%s|applying|%d", plans[0].Name, n))
 		}},
 		{"rows_between", all, func(e *Env, db string) {
@@ -363,15 +378,15 @@ func TestApplyChain(t *testing.T) {
 			// come back, and re-applying brings back the values of the added column. Rollback after finalize
 			// cannot be undone.
 			chain, c := representative, repCounts[db]
-			run(e, db, "apply base", dbspec.Apply, chain[:1], nil, "", nil)
+			run(e, db, "apply base", applyCommand, chain[:1], nil, "", nil)
 			e.Exec("INSERT INTO users (mail, legacy_code, age, nick) VALUES ('a@x', 7, 3, 'n1')")
-			run(e, db, "apply", dbspec.Apply, chain, nil, "", nil)
+			run(e, db, "apply", applyCommand, chain, nil, "", nil)
 			e.Exec("INSERT INTO clients (email, age) VALUES ('b@x', 5)", "UPDATE clients SET status = 'vip' WHERE email = 'a@x'")
 			run(e, db, "rollback", dbspec.Rollback, chain, nil, "", nil)
 			schemaIs(e, db, repSource.SchemaText)
 			historyIs(e, db, fmt.Sprintf("base|applied|%d", c[0][1]))
 			e.WantRows("SELECT mail, legacy_code, nick FROM users ORDER BY mail", "a@x|7|n1,b@x|0|x")
-			run(e, db, "apply again", dbspec.Apply, chain, nil, "", nil)
+			run(e, db, "apply again", applyCommand, chain, nil, "", nil)
 			schemaIs(e, db, repTarget.SchemaText)
 			e.WantRows("SELECT email, status FROM clients ORDER BY email", "a@x|vip,b@x|new")
 			historyIs(e, db, fmt.Sprintf("base|applied|%d,representative|applied|%d", c[0][1], c[1][1]))
@@ -386,7 +401,7 @@ func TestApplyChain(t *testing.T) {
 			// If a NULL row appears in between in a hidden column with no non-null default, rollback changes nothing
 			// and stops with a nulls error that reports the row count.
 			chain, c := required, requiredCounts[db]
-			run(e, db, "apply", dbspec.Apply, chain, nil, "", nil)
+			run(e, db, "apply", applyCommand, chain, nil, "", nil)
 			e.Exec("INSERT INTO t (a) VALUES ('y')")
 			err := run(e, db, "rollback with a NULL row", dbspec.Rollback, chain, nil, "nulls", nil)
 			e.Check(err != nil && strings.Contains(err.Error(), "has 1 NULL rows"), "rollback with a NULL row: %v, want the count", err)
@@ -405,14 +420,14 @@ func TestApplyChain(t *testing.T) {
 				stop := errors.New("stop")
 				chain := representative
 				name := chain[1].Name
-				run(e, db, "apply base", dbspec.Apply, chain[:1], nil, "", nil)
-				run(e, db, "apply stopped", dbspec.Apply, chain, stopAfter(name, k, stop), "", stop)
+				run(e, db, "apply base", applyCommand, chain[:1], nil, "", nil)
+				run(e, db, "apply stopped", applyCommand, chain, stopAfter(name, k, stop), "", stop)
 				historyIs(e, db, fmt.Sprintf("%s,representative|applying|%d", baseRow, k))
-				run(e, db, "apply over an interrupted plan", dbspec.Apply, chain, nil, "interrupted", nil)
+				run(e, db, "apply over an interrupted plan", applyCommand, chain, nil, "interrupted", nil)
 				run(e, db, "rollback of the interrupted plan", dbspec.Rollback, chain, nil, "", nil)
 				schemaIs(e, db, repSource.SchemaText)
 				historyIs(e, db, baseRow)
-				run(e, db, "apply stopped again", dbspec.Apply, chain, stopAfter(name, k, stop), "", stop)
+				run(e, db, "apply stopped again", applyCommand, chain, stopAfter(name, k, stop), "", stop)
 				run(e, db, "recover", dbspec.Recover, chain, nil, "", nil)
 				schemaIs(e, db, repTarget.SchemaText)
 				historyIs(e, db, fmt.Sprintf("%s,representative|applied|%d", baseRow, c[1][1]))
@@ -460,7 +475,7 @@ func TestApplyThroughTransactionPooler(t *testing.T) {
 			if _, err := other.ExecContext(ctx, "SELECT pg_advisory_lock("+postgresApplyLock+")"); err != nil {
 				return err
 			}
-			return dbspec.Apply(ctx, apply, dbspec.DialectPostgres, plans, fixedNow, nil)
+			return applyCommand(ctx, apply, dbspec.DialectPostgres, plans, fixedNow, nil)
 		}},
 		// Before the first step, another client takes apply's server connection in a transaction,
 		// so the next statement of apply runs on a different server connection.
@@ -482,7 +497,7 @@ func TestApplyThroughTransactionPooler(t *testing.T) {
 				_, err = tx.ExecContext(ctx, "SELECT 1")
 				return err
 			}
-			return dbspec.Apply(ctx, apply, dbspec.DialectPostgres, plans, fixedNow, hold)
+			return applyCommand(ctx, apply, dbspec.DialectPostgres, plans, fixedNow, hold)
 		}},
 	}
 	for _, s := range scenarios {

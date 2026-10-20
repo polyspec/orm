@@ -133,25 +133,71 @@ func newApplier(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, n
 	return &applier{ctx: ctx, c: c, r: renderer{d: dialect}, now: now, events: events, chain: chain}, nil
 }
 
+// ApplyResult is how an Apply run ended, apart from the error Apply returns.
+type ApplyResult struct {
+	// Stopped is true when the events callback returned an error, which ended the run there. Stop is that error.
+	Stopped bool
+	Stop    error
+	// Failure is the ApplyError that ended the run, when that error is the only failure of the run.
+	Failure *ApplyError
+}
+
 // Apply applies, in chain order, the plans the database has not yet applied, up to the finalize step.
 // It changes nothing on a database that is already applied to the end.
-func Apply(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error {
-	a, err := newApplier(ctx, c, dialect, plans, now, events)
-	if err != nil {
-		return err
-	}
-	return a.session(func() error {
-		position, err := a.settled()
-		if err != nil {
+//
+// A stop by an event alone is reported by Stopped with a nil error, and an ApplyError alone is reported by Failure
+// with a nil error. The error is non-nil for any other failure, and for a cleanup failure after a stop or a failure,
+// which is returned joined with it.
+func Apply(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) (ApplyResult, error) {
+	var res ApplyResult
+	if events != nil {
+		callback := events
+		events = func(ev ApplyEvent) error {
+			err := callback(ev)
+			if err != nil && !res.Stopped {
+				res.Stopped, res.Stop = true, err
+			}
 			return err
 		}
-		for _, p := range a.chain[position:] {
-			if err := a.applyPlan(p); err != nil {
+	}
+	a, err := newApplier(ctx, c, dialect, plans, now, events)
+	if err == nil {
+		err = a.session(func() error {
+			position, err := a.settled()
+			if err != nil {
 				return err
 			}
+			for _, p := range a.chain[position:] {
+				if err := a.applyPlan(p); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+	}
+	if isOnly(err, res.Stop) {
+		err = nil
+	}
+	if err != nil && unjoined(err) {
+		var applyErr *ApplyError
+		if errors.As(err, &applyErr) {
+			res.Failure = applyErr
+			err = nil
 		}
-		return nil
-	})
+	}
+	return res, err
+}
+
+// unjoined reports whether err is not an errors.Join of several errors, which is how a cleanup failure is returned
+// together with the failure before it.
+func unjoined(err error) bool {
+	_, joined := err.(interface{ Unwrap() []error })
+	return !joined
+}
+
+// isOnly reports whether err is the target error by itself, with no cleanup failure joined to it.
+func isOnly(err, target error) bool {
+	return target != nil && err != nil && unjoined(err) && errors.Is(err, target)
 }
 
 // Recover judges an interrupted plan from the effects in the catalog and carries it forward. If there is no

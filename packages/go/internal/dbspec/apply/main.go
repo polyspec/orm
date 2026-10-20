@@ -81,26 +81,24 @@ func run(action, dialect, uri, vectors string) (_ string, err error) {
 	}
 	now := func() time.Time { return time.Date(2026, 10, 1, 0, 0, 0, 123456789, time.UTC) }
 	d := dbspec.Dialect(dialect)
+	var res dbspec.ApplyResult
 	switch action {
 	case "apply-first":
-		err = dbspec.Apply(ctx, conn, d, plans[:1], now, nil)
+		res, err = dbspec.Apply(ctx, conn, d, plans[:1], now, nil)
 	case "apply":
-		err = dbspec.Apply(ctx, conn, d, plans, now, nil)
+		res, err = dbspec.Apply(ctx, conn, d, plans, now, nil)
 	case "recover":
 		err = dbspec.Recover(ctx, conn, d, plans, now, nil)
 	case "rollback":
 		err = dbspec.Rollback(ctx, conn, d, plans, now, nil)
 	case "stop":
-		err = dbspec.Apply(ctx, conn, d, plans, now, func(ev dbspec.ApplyEvent) error {
+		res, err = dbspec.Apply(ctx, conn, d, plans, now, func(ev dbspec.ApplyEvent) error {
 			if ev.Kind == "applied" && ev.Plan == plans[1].Name && ev.Step == 1 {
 				return errStop
 			}
 			return nil
 		})
-		if err == errStop {
-			return "stopped", nil
-		}
-		if err == nil {
+		if err == nil && !res.Stopped && res.Failure == nil {
 			return "", errors.New("stop: apply did not stop")
 		}
 	default:
@@ -108,12 +106,23 @@ func run(action, dialect, uri, vectors string) (_ string, err error) {
 	}
 	var applyErr *dbspec.ApplyError
 	switch {
+	case err == nil && res.Stopped:
+		return "stopped", nil
+	case err == nil && res.Failure != nil:
+		return "error " + res.Failure.Code, nil
 	case err == nil:
 		return "ok", nil
-	case errors.As(err, &applyErr) && error(applyErr) == err:
+	case errors.As(err, &applyErr) && unjoined(err):
 		return "error " + applyErr.Code, nil
 	}
 	return "", err
+}
+
+// unjoined reports whether err is not an errors.Join of several errors, so a failure returned alone is told apart
+// from one returned with a cleanup failure.
+func unjoined(err error) bool {
+	_, joined := err.(interface{ Unwrap() []error })
+	return !joined
 }
 
 // chain is create-from-empty and rename-table-and-column from the plans.json at path.

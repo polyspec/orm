@@ -134,7 +134,7 @@ func TestApplyStressPlan(t *testing.T) {
 				}
 				return nil
 			}
-			if err := dbspec.Apply(ctx, conn, dbspec.Dialect(db), []*dbspec.Plan{plan}, fixedNow, progress); err != nil {
+			if err := applyCommand(ctx, conn, dbspec.Dialect(db), []*dbspec.Plan{plan}, fixedNow, progress); err != nil {
 				t.Fatalf("apply: %v (%v)", err, context.Cause(ctx))
 			}
 			var row string
