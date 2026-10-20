@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The PHP extension implements the AES host stage in the ORM-AES2 format, the blind index and the hex encode with the crypto functions of PHP called from C, so `tests/codec/aes-vectors.json` and the whole HostcodecTest run with it. Red: the aes stage answered `CODEC_UNSUPPORTED` with the extension loaded (T182-2-3).
 - The PHP extension decodes the hex and ip host stages and decodes rows in C, so the 68 vectors of `tests/codec/decode-vectors.json` run with it under `make dbspec-php-extension-check/decode`. Red: `hostDecode` answered `CODEC_UNSUPPORTED` with the extension loaded (T182-2-2).
 - The Rust integration binary compiles its generated models `nonnull_model` and `external_member` with no `#[cfg(test)]`, so the binary and its tests compile the same code (KSTD-5-12-3).
 - The Rust fault tests carry no `#[cfg(feature = "test-faults")]`: the crate enables the feature for its own tests through its dev-dependency, so every build runs the 17 statement-fault cases the other implementations run; divergence-check went from 77 to 49 findings (KSTD-5-12-2).

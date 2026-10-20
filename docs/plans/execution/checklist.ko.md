@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: af385367a0693eef4c6284a4df8ae36ede24a29fec27d8353f64d8a79a30a5ed -->
+<!-- source-sha256: e7380e65068f3b6f010d07be34483a715029def0c740ba008eb2db8d2ccf9491 -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1222,7 +1222,7 @@
 | T182-2 | extension의 codec (T182-1에 이어). 완료 기준: 모든 logical type의 encode와 decode, AES와 decode vector. codec, codec-aes, codec-decode suite가 id로 실행된다. | — | Commands: `make dbspec-php-extension-check/declarations` | [ ] |
 | T182-2-1 | extension이 모든 logical type의 codec을 구현하고 codec suite(tests/codec/vectors.json)가 그 id로 extension에서 돈다 (T182-2 후속). Cause: packages/php-ext에 codec이 없어 extension을 켜도 PHP library test가 Codec을 PHP로 돌린다 | packages/php-ext/src, the stub, config/parity.json | `make dbspec-php-extension-check/codec`, `make dbspec-php-extension-check/declarations` | [o] |
 | T182-2-2 | extension이 host style을 decode하고 codec-decode suite(tests/codec/decode-vectors.json)가 그 id로 extension에서 돈다 (T182-2-1 후속) | packages/php-ext/src, the stub, config/parity.json | `make dbspec-php-extension-check/decode` | [o] |
-| T182-2-3 | extension이 AES와 blind index를 구현하고 codec-aes suite(tests/codec/aes-vectors.json)가 그 id로 extension에서 돈다 (T182-2-2 후속) | packages/php-ext/src, the stub, config/parity.json | `make dbspec-php-extension-check/declarations`, the CodecAesVectorsTest run with the extension | [ ] |
+| T182-2-3 | extension이 AES와 blind index를 구현하고 codec-aes suite(tests/codec/aes-vectors.json)가 그 id로 extension에서 돈다 (T182-2-2 후속) | packages/php-ext/src, the stub, config/parity.json | `make dbspec-php-extension-check/aes`, `make dbspec-php-extension-check/hostcodec` | [o] |
 | T182-3 | extension의 IR validator (T182-1에 이어). 완료 기준: tests/ir/validate.json이 case 이름으로 실행되고 다른 client와 같은 code를 낸다. | — | Commands: `make dbspec-php-extension-check/declarations` | [~] |
 | T182-4 | extension의 planner (T182-3에 이어). 완료 기준: planner, insert-parts, ir-answers가 id로 실행된다. | — | Commands: `make dbspec-php-extension-check/declarations` | [ ] |
 | T182-5 | PHP 자체 database 계층 위의 extension executor (T182-2, T182-4에 이어). 완료 기준: statement는 새 driver가 아니라 PHP가 이미 제공하는 database API를 C에서 호출해 실행한다. statement-events, statement-fault, sqlite-paths, mysql-session이 실행된다. | — | Commands: `make dbspec-php-extension-check/declarations` | [ ] |
