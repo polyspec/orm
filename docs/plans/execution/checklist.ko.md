@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: a4d0d98d1f464d534971777cb0508af5b0e2fd42076b6ac0bbfae25e1e944400 -->
+<!-- source-sha256: 85c81a70e6388fd4754269c0c98fa4797f290f55b8af5f0eed75db4dfc22899f -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1223,7 +1223,7 @@
 | T182-2-1 | extension이 모든 logical type의 codec을 구현하고 codec suite(tests/codec/vectors.json)가 그 id로 extension에서 돈다 (T182-2 후속). Cause: packages/php-ext에 codec이 없어 extension을 켜도 PHP library test가 Codec을 PHP로 돌린다 | packages/php-ext/src, the stub, config/parity.json | `make dbspec-php-extension-check/codec`, `make dbspec-php-extension-check/declarations` | [o] |
 | T182-2-2 | extension이 host style을 decode하고 codec-decode suite(tests/codec/decode-vectors.json)가 그 id로 extension에서 돈다 (T182-2-1 후속) | packages/php-ext/src, the stub, config/parity.json | `make dbspec-php-extension-check/declarations`, the HostcodecTest run with the extension | [~] |
 | T182-2-3 | extension이 AES와 blind index를 구현하고 codec-aes suite(tests/codec/aes-vectors.json)가 그 id로 extension에서 돈다 (T182-2-2 후속) | packages/php-ext/src, the stub, config/parity.json | `make dbspec-php-extension-check/declarations`, the CodecAesVectorsTest run with the extension | [ ] |
-| T182-3 | extension의 IR validator (T182-1에 이어). 완료 기준: tests/ir/validate.json이 case 이름으로 실행되고 다른 client와 같은 code를 낸다. | — | Commands: `make dbspec-php-extension-check/declarations` | [ ] |
+| T182-3 | extension의 IR validator (T182-1에 이어). 완료 기준: tests/ir/validate.json이 case 이름으로 실행되고 다른 client와 같은 code를 낸다. | — | Commands: `make dbspec-php-extension-check/declarations` | [~] |
 | T182-4 | extension의 planner (T182-3에 이어). 완료 기준: planner, insert-parts, ir-answers가 id로 실행된다. | — | Commands: `make dbspec-php-extension-check/declarations` | [ ] |
 | T182-5 | PHP 자체 database 계층 위의 extension executor (T182-2, T182-4에 이어). 완료 기준: statement는 새 driver가 아니라 PHP가 이미 제공하는 database API를 C에서 호출해 실행한다. statement-events, statement-fault, sqlite-paths, mysql-session이 실행된다. | — | Commands: `make dbspec-php-extension-check/declarations` | [ ] |
 | T182-6 | extension의 query, model, collection client (T182-5에 이어. T199는 이 항목의 표면이다). 완료 기준: 생성된 model이 extension에서 실행된다. MySQL, PostgreSQL, SQLite conformance, identity-load, aggregate-numeric, decimal-model, styled-column-states, authenticated-encryption, install-changed-database가 실행된다. client profile이 php-extension을 나열하고 parity가 모든 unit에서 이것을 센다. | — | Commands: `make dbspec-php-extension-check/declarations`, `make dbspec-php-extension-check/names` | [ ] |
