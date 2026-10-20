@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 95c2ef9ff4371e62a0cea22df34f1d574d5683083bb3bbac9ce32176e84eed7d -->
+<!-- source-sha256: 3144dc24188258887ec844ab171c33da086d39fe5473443e9b2ddad352564625 -->
 # 변경 이력
 
 ## Unreleased
+- Rust integration binary가 생성 model `nonnull_model`과 `external_member`를 `#[cfg(test)]` 없이 compile하므로 binary와 그 test가 같은 code를 compile한다 (KSTD-5-12-3).
 - Rust fault test에 `#[cfg(feature = "test-faults")]`가 없다: crate가 dev-dependency로 자기 test에 feature를 켜므로 모든 build가 다른 구현이 도는 statement-fault case 17개를 돈다; divergence-check finding이 77개에서 49개가 되었다 (KSTD-5-12-2).
 - TypeScript chain이 DSL-49대로 non-null column의 null 인자를 조건 없음, `and`, `ne`에서 `CONFIG`로 거부한다; test는 TypeScript test script에서 돈다. red: `serviceSeq(null)`이 database에 닿아 `DRIVER`로 실패했다 (KSTD-2-10-7).
 - parse할 수 없는 scan의 Python test가 ruff format을 지키고, TypeScript scan은 non-null assertion도 기본 위치 0도 없이 parse 오류를 그 label의 정확한 줄과 열로 밝힌다; label 없는 오류는 위치를 밝히지 않는다 (T227-1).
