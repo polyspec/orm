@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- A group row with a negative or non-integer row count fails with CODEC_DECODE in every client, as INT-90 rules; a missing count stays INTERNAL. Red: Go, PHP and TypeScript gave INTERNAL and Rust panicked (KSTD-2-11-7-6).
 - `make feature-unit-check` passes: the feature document is regenerated, moved test files are declared at their new paths, helper files are no longer inputs of checks, and statement events have their PHP extension coverage owner. Red: the stale document and the helper inputs failed the check (KSTD-7-9).
 - Python `Db.register` and `Db.connect_schema` refuse a manifest text that does not hash to its declared hash with CONFIG, as INT-54 rules and the other clients do. Red: they raised SCHEMA_HASH_MISMATCH (KSTD-2-11-7-3).
 - The PHP extension runs the executor of the PHP library over PHP's own PDO, in three parts (T182-5-1 to -3) (T182-5).

@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 573140cf8156b1ece4dc95f81ac506461b07ed8fb713790091dcba588395d28b -->
+<!-- source-sha256: 8a4f59158b1443258cd931662d20b2517050ec38b4e65aea49bc7c2e8ec8f1e6 -->
 # 변경 이력
 
 ## Unreleased
+- 음수이거나 정수가 아닌 row count를 가진 group row는 INT-90대로 모든 client에서 CODEC_DECODE로 실패하고, 없는 count는 INTERNAL로 남는다. red: Go, PHP, TypeScript는 INTERNAL을 냈고 Rust는 panic했다 (KSTD-2-11-7-6).
 - `make feature-unit-check`가 통과한다: feature 문서를 다시 생성하고, 옮긴 test file을 새 경로로 선언하며, helper file은 더는 check의 input이 아니고, statement event가 PHP extension coverage owner를 가진다. red: 낡은 문서와 helper input이 check를 실패시켰다 (KSTD-7-9).
 - Python `Db.register`와 `Db.connect_schema`가 선언한 hash로 hash되지 않는 manifest text를 INT-54와 다른 client대로 CONFIG로 거부한다. red: SCHEMA_HASH_MISMATCH를 냈다(KSTD-2-11-7-3).
 - PHP extension이 PHP library의 executor를 PHP 자신의 PDO 위에서 세 부분(T182-5-1~-3)으로 돌린다 (T182-5).
