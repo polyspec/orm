@@ -3,7 +3,8 @@
 import { present as known } from '../present.js';
 import { readCheck } from './check.js';
 import type { DbspecColumn, DbspecDiagnostic, DbspecDocument, DbspecForeignKey, DbspecIndex, DbspecTable, DbspecType, DbspecUnique } from './model.js';
-import { sortedBy, type DbspecPlan } from './plan.js';
+import type { DbspecPlan } from './plan.js';
+import { sortedBy } from './sort.js';
 import { columnOf, planDiff, sameDefault, sameType, sortedKeys, type PlanDiff } from './plan_diff.js';
 import { checkOf, foreignKeyOf, hasTriggers, indexOf, renameCheck, uniqueOf, type ObjectRef } from './plan_objects.js';
 import { Renderer, type DbspecDialect } from './render.js';import { rendererName } from './names.js';

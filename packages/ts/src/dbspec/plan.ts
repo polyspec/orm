@@ -6,6 +6,7 @@ import { isSchemaText } from './compare.js';
 import { emitDbspec, parseDbspec } from './index.js';
 import type { DbspecDiagnostic, DbspecDocument } from './model.js';
 import { RESERVED } from './parse.js';
+import { compareText, sortedBy } from './sort.js';
 
 /** `rename table <old> <new>`. */
 export interface DbspecTableRename {
@@ -58,15 +59,6 @@ const PLAN_DROP_TABLE = new RegExp(`^allow drop table ${NAME}$`);
 const PLAN_DROP_COLUMN = new RegExp(`^allow drop column ${NAME}\\.${NAME}$`);
 
 const NO_DIAGNOSTICS: readonly [] = Object.freeze([]);
-
-function compare(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0;
-}
-
-/** A stable copy of items in key order. */
-export function sortedBy<T>(items: readonly T[], key: (item: T) => string): T[] {
-  return [...items].sort((a, b) => compare(key(a), key(b)));
-}
 
 export function planDiagnostic(rule: 'plan' | 'chain', line: number, message: string): DbspecDiagnostic {
   return Object.freeze({ rule, line, column: 1, message });
@@ -224,10 +216,10 @@ export function chainPlans(plans: readonly DbspecPlan[]): DbspecChainResult {
     else list.push(p);
   }
   const out: DbspecDiagnostic[] = [];
-  for (const from of [...byFrom.keys()].sort(compare)) {
+  for (const from of [...byFrom.keys()].sort(compareText)) {
     const ps = present(byFrom.get(from), 'byFrom.get(from)');
     if (ps.length > 1) {
-      const names = ps.map(p => p.name).sort(compare);
+      const names = ps.map(p => p.name).sort(compareText);
       out.push(planDiagnostic('chain', 1, `plans ${names.join(', ')} start from the same schema`));
     }
   }
@@ -242,7 +234,7 @@ export function chainPlans(plans: readonly DbspecPlan[]): DbspecChainResult {
     visited.add(p);
     chain.push(p);
   }
-  const unreached = plans.filter(p => !visited.has(p)).map(p => p.name).sort(compare);
+  const unreached = plans.filter(p => !visited.has(p)).map(p => p.name).sort(compareText);
   if (unreached.length > 0) {
     return Object.freeze({ plans: null, diagnostics: Object.freeze([planDiagnostic('chain', 1, `no chain reaches plans ${unreached.join(', ')}`)]) });
   }

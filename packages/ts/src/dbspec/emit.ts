@@ -12,6 +12,7 @@ import type {
   DbspecType,
 } from './model.js';
 import { auditExcluded, auditLine } from './audit.js';
+import { compareText, sortedBy } from './sort.js';
 
 const SETTING_ORDER: readonly DbspecSetting['kind'][] = [
   'entity',
@@ -33,14 +34,6 @@ const SETTING_ORDER: readonly DbspecSetting['kind'][] = [
   'immutable',
   'audit',
 ];
-
-function compare(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0;
-}
-
-function sorted<T>(items: readonly T[], key: (item: T) => string): T[] {
-  return [...items].sort((a, b) => compare(key(a), key(b)));
-}
 
 /**
  * What an emission writes: the canonical text, the manifest text without
@@ -180,19 +173,19 @@ function table(out: string[], t: DbspecTable, view: View): void {
   }
   comments(out, t.primaryKey.comments, '  ', view);
   out.push(`  primary key (${t.primaryKey.columns.join(', ')})`);
-  for (const u of sorted(t.uniques, u => u.name)) {
+  for (const u of sortedBy(t.uniques, u => u.name)) {
     comments(out, u.comments, '  ', view);
     out.push(`  unique ${u.name} (${u.columns.join(', ')})`);
   }
-  for (const i of sorted(t.indexes, i => i.name)) {
+  for (const i of sortedBy(t.indexes, i => i.name)) {
     comments(out, i.comments, '  ', view);
     out.push(`  ${indexText(i)}`);
   }
-  for (const fk of sorted(t.foreignKeys, fk => fk.name)) {
+  for (const fk of sortedBy(t.foreignKeys, fk => fk.name)) {
     comments(out, fk.comments, '  ', view);
     out.push(`  ${foreignKeyText(fk)}`);
   }
-  for (const c of sorted(t.checks, c => c.name)) {
+  for (const c of sortedBy(t.checks, c => c.name)) {
     comments(out, c.comments, '  ', view);
     out.push(`  check ${c.name} (${c.expression})`);
   }
@@ -206,7 +199,7 @@ function table(out: string[], t: DbspecTable, view: View): void {
       (a, b) =>
         SETTING_ORDER.indexOf(a.kind) - SETTING_ORDER.indexOf(b.kind) ||
         formOrder(a) - formOrder(b) ||
-        compare(settingKey(a), settingKey(b)),
+        compareText(settingKey(a), settingKey(b)),
     );
     for (const s of settings) {
       comments(out, s.comments, '    ', view);
@@ -225,7 +218,7 @@ function table(out: string[], t: DbspecTable, view: View): void {
 
 export function emitDocument(document: DbspecDocument, view: View): string {
   const out: string[] = [`dbspec 1 ${document.name}`];
-  const uses = sorted(document.uses, u => u.document);
+  const uses = sortedBy(document.uses, u => u.document);
   if (uses.length > 0) out.push('');
   for (const u of uses) {
     comments(out, u.comments, '', view);

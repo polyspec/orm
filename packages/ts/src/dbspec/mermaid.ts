@@ -6,7 +6,7 @@ import { typeText } from './emit.js';
 import { byteOrder, Catalog, type DbspecUnsupported, type ITable } from './introspect_catalog.js';
 import type { DbspecDiagnostic, DbspecDocument, DbspecSettings, DbspecTable, DbspecType } from './model.js';
 import { validName } from './parse.js';
-import { sortedBy } from './plan.js';
+import { sortedBy } from './sort.js';
 
 /** The Mermaid text and what export left out, ordered by table, kind and name. */
 export interface DbspecMermaidExport {

@@ -3,7 +3,7 @@
 import { present } from '../present.js';
 import { readCheck, type CheckExpr, type CheckOperand } from './check.js';
 import type { DbspecCheck, DbspecForeignKey, DbspecIndex, DbspecTable, DbspecUnique } from './model.js';
-import { sortedBy } from './plan.js';
+import { sortedBy } from './sort.js';
 import { append, renamedOr, sortedKeys, type PlanDiff } from './plan_diff.js';
 import { Renderer } from './render.js';
 

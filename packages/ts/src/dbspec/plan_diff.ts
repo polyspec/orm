@@ -4,7 +4,8 @@ import { present } from '../present.js';
 import { typeText } from './emit.js';
 import { dbspecManifest } from './index.js';
 import type { DbspecColumn, DbspecDefault, DbspecDiagnostic, DbspecDocument, DbspecTable, DbspecType } from './model.js';
-import { planDiagnostic, sortedBy, type DbspecColumnRename, type DbspecPlan, type DbspecTableRename } from './plan.js';
+import { planDiagnostic, type DbspecColumnRename, type DbspecPlan, type DbspecTableRename } from './plan.js';
+import { sortedBy } from './sort.js';
 import { collectChanges, diffObjects, diffTriggers, type ObjectRef } from './plan_objects.js';
 
 /** One change of a diff: `table` is the target name, and the source name for drop_table and dropped objects. */

@@ -4,6 +4,7 @@ import { present } from '../present.js';
 import { readCheck, type CheckExpr, type CheckOperand } from './check.js';
 import { checkSet } from './set.js';
 import { auditRecords, type DbspecAuditSetting } from './audit.js';import { rendererName } from './names.js';
+import { sortedBy } from './sort.js';
 
 import type { DbspecAction, DbspecColumn, DbspecDefault, DbspecDiagnostic, DbspecDocument, DbspecForeignKey, DbspecTable, DbspecType } from './model.js';
 
@@ -15,14 +16,6 @@ export type DbspecRenderResult =
   | { readonly statements: null; readonly diagnostics: readonly DbspecDiagnostic[] };
 
 const DIALECTS: ReadonlySet<string> = new Set(['mysql', 'postgres', 'sqlite']);
-
-function compare(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0;
-}
-
-function sorted<T>(items: readonly T[], key: (item: T) => string): T[] {
-  return [...items].sort((a, b) => compare(key(a), key(b)));
-}
 
 /**
  * Orders the documents of a checked set (set.ts checkSet) so that a used
@@ -36,12 +29,12 @@ function useOrder(documents: readonly DbspecDocument[]): DbspecDocument[] {
   const visit = (document: DbspecDocument): void => {
     if (done.has(document.name)) return;
     done.add(document.name);
-    for (const name of sorted(document.uses.map(u => u.document), n => n)) {
+    for (const name of sortedBy(document.uses.map(u => u.document), n => n)) {
       visit(present(byName.get(name), 'byName.get(name)'));
     }
     out.push(document);
   };
-  for (const name of sorted([...byName.keys()], n => n)) visit(present(byName.get(name), 'byName.get(name)'));
+  for (const name of sortedBy([...byName.keys()], n => n)) visit(present(byName.get(name), 'byName.get(name)'));
   return out;
 }
 
@@ -61,11 +54,11 @@ export class Renderer {
     const create = this.createTable(t, t.name, c => rendererName(t.name, c), []);
     const out = [create];
     if (this.d === 'sqlite') {
-      for (const u of sorted(t.uniques, u => u.name)) {
+      for (const u of sortedBy(t.uniques, u => u.name)) {
         out.push(`CREATE UNIQUE INDEX ${this.q(u.name)} ON ${this.q(t.name)} (${this.list(u.columns)})`);
       }
     }
-    for (const x of sorted(t.indexes, x => x.name)) {
+    for (const x of sortedBy(t.indexes, x => x.name)) {
       const columns = x.columns.map(c => this.q(c.name) + (c.descending ? ' DESC' : ''));
       out.push(`CREATE INDEX ${this.q(x.name)} ON ${this.q(t.name)} (${columns.join(', ')})`);
     }
@@ -82,15 +75,15 @@ export class Renderer {
     for (const c of hidden) parts.push(this.column({ ...c, nullable: true, identity: false }));
     if (!(this.d === 'sqlite' && t.columns.some(c => c.identity))) parts.push(`PRIMARY KEY (${this.list(t.primaryKey.columns)})`);
     if (this.d !== 'sqlite') {
-      for (const u of sorted(t.uniques, u => u.name)) parts.push(`CONSTRAINT ${this.q(u.name)} UNIQUE (${this.list(u.columns)})`);
+      for (const u of sortedBy(t.uniques, u => u.name)) parts.push(`CONSTRAINT ${this.q(u.name)} UNIQUE (${this.list(u.columns)})`);
     } else {
-      for (const f of sorted(t.foreignKeys, f => f.name)) parts.push(this.foreignKey(f));
+      for (const f of sortedBy(t.foreignKeys, f => f.name)) parts.push(this.foreignKey(f));
     }
     for (const c of t.columns) {
       const check = this.typeCheck(c);
       if (check !== '') parts.push(`CONSTRAINT ${this.q(checkName(c.name))} CHECK (${check})`);
     }
-    for (const k of sorted(t.checks, k => k.name)) {
+    for (const k of sortedBy(t.checks, k => k.name)) {
       parts.push(`CONSTRAINT ${this.q(k.name)} CHECK (${this.predicate(t, readCheck(k.expression, k.name))})`);
     }
     let create = `CREATE TABLE ${this.q(name)} (${parts.join(', ')})`;
@@ -480,7 +473,7 @@ export function renderDbspecStatements(documents: readonly DbspecDocument[], dia
   if (dialect !== 'sqlite') {
     for (const document of ordered) {
       for (const t of document.tables) {
-        for (const f of sorted(t.foreignKeys, f => f.name)) add(t.name, [`ALTER TABLE ${r.q(t.name)} ADD ${r.foreignKey(f)}`]);
+        for (const f of sortedBy(t.foreignKeys, f => f.name)) add(t.name, [`ALTER TABLE ${r.q(t.name)} ADD ${r.foreignKey(f)}`]);
       }
     }
   }
