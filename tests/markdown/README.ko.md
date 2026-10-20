@@ -1,5 +1,5 @@
 <!-- doc-id: tests-markdown-readme -->
-<!-- source-sha256: df2c7878c85e70b5d2b2a43f6a26898df6472a82dad8f653b151a9e9bb59968e -->
+<!-- source-sha256: beeec15a96724a9f0d9346c14195e84534c68df0abecc7bdf2221ed20bff58ba -->
 # Markdown executor 적합성
 
 markdown IR executor([프로토콜](../../docs/spec/protocol.ko.md#_5-ir-executors))는 데이터베이스가 아니라 flowmark
@@ -10,6 +10,7 @@ corpus 하나에서 `cases.json`의 case를 실행하고, case마다 결과를 �
 |---|---|
 | `cases.json` | case ID의 순서와 각 case의 기대 결과. case를 선언하는 유일한 곳이다 |
 | `corpus/dbspec/conformance.dbs` | corpus의 catalog: `people`(`key_prefix`, soft delete column, 수정 시각 column, unique key를 가진 `document` table), `tasks`(`people`로 가는 foreign key), `logs`(`identity` key) |
+| `refused/aes.dbs`, `refused/audit.dbs` | corpus가 거절하는 catalog: `aes` column과 `audit` setting이며, `install_refuses_aes`와 `install_refuses_audit`가 각자의 새 corpus로 install하고 `flowmark install`이 출력한 code를 `{"error": <code>}`로 답한다 |
 | `flowmark.version` | case를 실행하는 `flowmark`의 `github.com/polyspec/flowmark` Go module 판 |
 | `packages/go/markdownmodel` | catalog에서 생성한 Go model과 Go 실행기 `TestMarkdownConformance` |
 | `packages/php/markdownmodel` | catalog에서 생성한 PHP model. PHP 실행기는 PHPUnit test `packages/php/tests/MarkdownConformanceTest.php`이며 case마다 그 id로 이름 붙은 data set으로 실행한다 |
@@ -56,4 +57,11 @@ case의 결과는 JSON 값이며, 결과와 `expect`를 모두 JSON으로 읽은
 `paginate`, 행 하나와 여러 행과 `identity` key와 `on_duplicate`의 `insert`, `optimistic`이 있고 없는 `update`,
 foreign key 거절과 soft delete의 `delete`, `restore`), join과 relation, commit, rollback, savepoint rollback의
 트랜잭션, 읽기 전용 트랜잭션, row lock `update`와 거절되는 `update_nowait`, 거절되는 `getQuery()`와 `isolation`,
-engine 밖의 편집을 만난 commit(`WRITE_CONFLICT`, 재시도하지 않는다), retry option으로 commit하는 transaction(`transaction_retry_commit`, `{"error", "runs"}`: commit의 code나 null과 callback이 실행된 횟수이며, `contracts/fixtures/ir_answers.json`이 이를 `WRITE_CONFLICT`와 `DEADLOCK`으로 답한 commit으로도 실행한다), corpus나 token이 다른 연결(`CONFIG`)이다.
+engine 밖의 편집을 만난 commit(`WRITE_CONFLICT`, 재시도하지 않는다), retry option으로 commit하는 transaction(`transaction_retry_commit`, `{"error", "runs"}`: commit의 code나 null과 callback이 실행된 횟수이며, `contracts/fixtures/ir_answers.json`이 이를 `WRITE_CONFLICT`와 `DEADLOCK`으로 답한 commit으로도 실행한다), corpus나 token이 다른 연결(`CONFIG`),
+오름차순과 내림차순의 NULL 순서와 `orderByRandom`, 대소문자를 가리지 않으면 다른 key와 같은 primary key(`DUPLICATE_KEY`와
+`on_duplicate` insert가 만나는 행), tuple 조건, scalar `Sub` aggregate와 `IN` subquery, limit이 있고 없는 scalar column
+subquery(`IR_INVALID`), 만나는 column 비교와 만나지 않는 column 비교(`OPERATOR_NOT_ALLOWED`), `contains`와
+`contains_binary`, `datetime(0)` column의 `default now`와 9999-12-31을 넘는 상대 시각 함수, index된 column을 통한 읽기,
+거절되는 `force_index`(`CAPABILITY_UNSUPPORTED`), 파일 편집으로 쓸 수 없게 된 table(파일을 되돌릴 때까지 파일을 밝히는
+`CONSTRAINT`), `refused/`의 catalog(`SCHEMA_INVALID`)이다. code와 다른 member를 함께 담는 결과는 code만 쓴다. 예를 들어
+`{"broken": "CONSTRAINT", "names_file": true, "restored": 2}`이다.

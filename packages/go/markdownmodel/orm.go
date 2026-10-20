@@ -92,8 +92,28 @@ type argStringEqNull interface {
 	~string | ~[]string | orm.Func | ormModel | orm.NullType
 }
 
+type argStringLike interface {
+	~string
+}
+
+type argTimeCmp interface {
+	time.Time | ~string | orm.Func
+}
+
 // hasId is a model with the column id.
 type hasId interface {
 	*PeopleModel | *TasksModel | *LogsModel
 	Orm_() *orm.Core
+}
+
+// hasName is a model with the column name.
+type hasName interface {
+	*PeopleModel
+	Orm_() *orm.Core
+}
+
+// TasksIdWithOwner is one value group of id, owner.
+type TasksIdWithOwner struct {
+	Id    string
+	Owner string
 }

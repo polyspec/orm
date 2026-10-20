@@ -1,0 +1,14 @@
+dbspec 1 aes
+
+table secrets {
+  id varchar(32)
+  secret varchar(255)
+  key_version i32
+  primary key (id)
+  settings {
+    key_prefix 'S'
+    store document table
+    codec secret aes hex
+    aes_version key_version
+  }
+}

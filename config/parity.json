@@ -684,7 +684,7 @@
       ]
     },
     {
-      "id": "markdown-conformance", "kind": "suite", "requirements": ["DIA-154", "DIA-155", "DIA-157", "DIA-158", "DIA-159", "DIA-160", "DIA-161", "DIA-162", "DIA-163", "DIA-165", "DIA-166", "DIA-167", "DIA-174", "DIA-180", "DIA-181", "DIA-184", "DIA-185", "PRT-2", "PRT-5", "PRT-7", "PRT-42", "PRT-63", "PRT-64", "PRT-66", "PRT-67", "PRT-70", "PRT-73"],
+      "id": "markdown-conformance", "kind": "suite", "requirements": ["DIA-154", "DIA-155", "DIA-157", "DIA-158", "DIA-159", "DIA-160", "DIA-161", "DIA-162", "DIA-163", "DIA-165", "DIA-166", "DIA-167", "DIA-174", "DIA-180", "DIA-181", "DIA-184", "DIA-185", "PRT-2", "PRT-5", "PRT-7", "PRT-42", "PRT-63", "PRT-64", "PRT-66", "PRT-67", "PRT-70", "PRT-73", "DIA-156", "DIA-164", "DIA-168", "DIA-169", "DIA-170", "DIA-171", "DIA-172", "DIA-173", "DIA-176", "DIA-178", "DIA-179", "DIA-182", "DIA-186", "DIA-190"],
       "file": "tests/markdown/cases.json", "cases": "$.cases[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/markdownmodel/conformance_test.go", "symbol": "TestMarkdownConformance" },

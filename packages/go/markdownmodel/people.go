@@ -602,6 +602,26 @@ func (x *PeopleModel) OrderByUpdatedAtDesc(fn ...orm.Func) *PeopleModel {
 	return x
 }
 
+func (x *PeopleModel) AddColumnFirstTask(fn func(*PeopleModel) orm.Model) *PeopleModel {
+	x.m.AddColumnSub("first_task", func(m orm.Model) orm.Model { return fn(m.(*PeopleModel)) })
+	return x
+}
+
+func (x *PeopleModel) AddColumnTaskPoints(fn func(*PeopleModel) orm.Model) *PeopleModel {
+	x.m.AddColumnSub("task_points", func(m orm.Model) orm.Model { return fn(m.(*PeopleModel)) })
+	return x
+}
+
+func (x *PeopleModel) AndGtJoined[T0 argTimeCmp](v0 T0, compared ...any) *PeopleModel {
+	x.m.Where("and", chainPeopleAndGtJoined, append([]any{v0}, compared...)...)
+	return x
+}
+
+func (x *PeopleModel) AndLeJoined[T0 argTimeCmp](v0 T0, compared ...any) *PeopleModel {
+	x.m.Where("and", chainPeopleAndLeJoined, append([]any{v0}, compared...)...)
+	return x
+}
+
 func (x *PeopleModel) Email[T0 argStringEqNull](v0 T0) *PeopleModel {
 	x.m.Where("", chainPeopleEmail, v0)
 	return x
@@ -612,11 +632,35 @@ func (x *PeopleModel) Id[T0 argStringEq](v0 T0) *PeopleModel {
 	return x
 }
 
+func (x *PeopleModel) LbName[T0 argStringLike](v0 T0) *PeopleModel {
+	x.m.Where("", chainPeopleLbName, v0)
+	return x
+}
+
+func (x *PeopleModel) LkName[T0 argStringLike](v0 T0) *PeopleModel {
+	x.m.Where("", chainPeopleLkName, v0)
+	return x
+}
+
 func (x *PeopleModel) MatchOwnerWithId() *PeopleModel { x.m.Match("owner", "id"); return x }
+
+var chainPeopleAndGtJoined = []orm.ChainKey{{Op: "gt", Column: "joined"}}
+
+var chainPeopleAndLeJoined = []orm.ChainKey{{Op: "le", Column: "joined"}}
 
 var chainPeopleEmail = []orm.ChainKey{{Column: "email"}}
 
 var chainPeopleId = []orm.ChainKey{{Column: "id"}}
+
+var chainPeopleLbName = []orm.ChainKey{{Op: "lb", Column: "name"}}
+
+var chainPeopleLkName = []orm.ChainKey{{Op: "lk", Column: "name"}}
+
+// GetFirstTask returns the column added with AddColumnFirstTask.
+func (x *PeopleModel) GetFirstTask() any { return x.m.NewValue("first_task") }
+
+// GetTaskPoints returns the column added with AddColumnTaskPoints.
+func (x *PeopleModel) GetTaskPoints() any { return x.m.NewValue("task_points") }
 
 // GetTasksModels returns the tasks relation result.
 func (x *PeopleModel) GetTasksModels() (*orm.Collection[*TasksModel], error) {

@@ -9,6 +9,7 @@ a database, so its conformance has no SQL text and no bind list to compare. Each
 |---|---|
 | `cases.json` | the case IDs in their order and the expected result of each, the only place a case is declared |
 | `corpus/dbspec/conformance.dbs` | the catalog of the corpus: `people` (a `document` table with `key_prefix`, a soft delete column, an update time column and a unique key), `tasks` (with a foreign key to `people`) and `logs` (with an `identity` key) |
+| `refused/aes.dbs`, `refused/audit.dbs` | catalogs that a corpus refuses: an `aes` column and an `audit` setting, which `install_refuses_aes` and `install_refuses_audit` install as a new corpus of their own and answer the code that `flowmark install` prints, `{"error": <code>}` |
 | `flowmark.version` | the Go module version of `github.com/polyspec/flowmark` whose `flowmark` the cases run on |
 | `packages/go/markdownmodel` | the Go models generated from the catalog and the Go runner, `TestMarkdownConformance` |
 | `packages/php/markdownmodel` | the PHP models generated from the catalog; the PHP runner is the PHPUnit test `packages/php/tests/MarkdownConformanceTest.php`, which runs each case as a data set named by its id |
@@ -58,4 +59,12 @@ Each case covers one surface of the capability table: every IR kind (`one`, `all
 with and without `optimistic`, `delete` with its foreign key refusal and the soft delete, `restore`), joins and
 relations, transactions with their commit, rollback and savepoint rollback, a read-only transaction, the row lock
 `update` and the refused `update_nowait`, the refused `getQuery()` and `isolation`, a commit that meets an edit
-outside the engine (`WRITE_CONFLICT`, not retried), a transaction with retry options that commits (`transaction_retry_commit`, `{"error", "runs"}`: the commit's code or null and how many times its callback ran, which `contracts/fixtures/ir_answers.json` also runs with a commit answered `WRITE_CONFLICT` and `DEADLOCK`), and a connection whose corpus or token differs (`CONFIG`).
+outside the engine (`WRITE_CONFLICT`, not retried), a transaction with retry options that commits (`transaction_retry_commit`, `{"error", "runs"}`: the commit's code or null and how many times its callback ran, which `contracts/fixtures/ir_answers.json` also runs with a commit answered `WRITE_CONFLICT` and `DEADLOCK`), a connection whose corpus or token differs (`CONFIG`), the order of NULL ascending and descending and `orderByRandom`,
+a primary key that equals another without regard to case (`DUPLICATE_KEY`, and the row an `on_duplicate` insert
+meets), tuple conditions, a scalar `Sub` aggregate and an `IN` subquery, a scalar column subquery with and without
+its limit (`IR_INVALID`), a column comparison that meets and one that does not (`OPERATOR_NOT_ALLOWED`), `contains`
+and `contains_binary`, the `default now` of a `datetime(0)` column and a relative time function past 9999-12-31, a
+read through an indexed column, the refused `force_index` (`CAPABILITY_UNSUPPORTED`), a table made unavailable by an
+edit of its file (`CONSTRAINT`, naming the file, until the file is restored), and the catalogs of `refused/`
+(`SCHEMA_INVALID`). A result that holds a code next to other members writes the code alone, such as
+`{"broken": "CONSTRAINT", "names_file": true, "restored": 2}`.

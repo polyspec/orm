@@ -2,6 +2,7 @@
   "requirements": [
     "DIA-154",
     "DIA-155",
+    "DIA-156",
     "DIA-157",
     "DIA-158",
     "DIA-159",
@@ -9,12 +10,23 @@
     "DIA-161",
     "DIA-162",
     "DIA-163",
+    "DIA-164",
     "DIA-165",
     "DIA-166",
     "DIA-167",
+    "DIA-168",
+    "DIA-169",
+    "DIA-170",
+    "DIA-171",
+    "DIA-172",
+    "DIA-173",
     "DIA-174",
+    "DIA-176",
+    "DIA-178",
+    "DIA-179",
     "DIA-180",
     "DIA-181",
+    "DIA-182",
     "DIA-184",
     "DIA-185",
     "PRT-2",
@@ -26,7 +38,9 @@
     "PRT-66",
     "PRT-67",
     "PRT-70",
-    "PRT-73"
+    "PRT-73",
+    "DIA-186",
+    "DIA-190"
   ],
   "comment": "The markdown IR executor conformance (README.md): each client runs every case, in this order, on one corpus installed from corpus/ and served by the flowmark build that flowmark.version pins; a case's result is the JSON value the README defines for it, compared with expect.",
   "cases": [
@@ -94,6 +108,33 @@
     { "id": "write_conflict", "expect": { "error": "WRITE_CONFLICT", "name": "Ann B" } },
     { "id": "connect_corpus_mismatch", "expect": { "error": "CONFIG" } },
     { "id": "connect_token_mismatch", "expect": { "error": "CONFIG" } },
-    { "id": "transaction_retry_commit", "expect": { "error": null, "runs": 1 } }
+    { "id": "transaction_retry_commit", "expect": { "error": null, "runs": 1 } },
+    {
+      "id": "order_nulls",
+      "expect": {
+        "asc": [{ "id": "P3", "age": null }, { "id": "P2", "age": 26 }, { "id": "P1", "age": 30 }],
+        "desc": [{ "id": "P1", "age": 30 }, { "id": "P2", "age": 26 }, { "id": "P3", "age": null }]
+      }
+    },
+    { "id": "order_random", "expect": ["P1", "P2", "P3"] },
+    { "id": "primary_key_case", "expect": { "duplicate": "DUPLICATE_KEY", "met": { "id": "T3", "owner": "P2", "title": "ship it" }, "count": 2 } },
+    { "id": "tuple_in", "expect": { "in": [{ "id": "T1", "owner": "P1" }], "not_in": [{ "id": "T3", "owner": "P2" }] } },
+    {
+      "id": "subquery_aggregate",
+      "expect": { "sums": [["P1", 3], ["P2", 8], ["P3", 0]], "owners": [{ "id": "P1" }, { "id": "P2" }] }
+    },
+    {
+      "id": "scalar_column_subquery",
+      "expect": { "first": [["P1", "write spec"], ["P2", "ship it"], ["P3", null]], "unlimited": "IR_INVALID" }
+    },
+    { "id": "column_pairs", "expect": { "meet": 2, "refused": "OPERATOR_NOT_ALLOWED" } },
+    { "id": "contains", "expect": { "fold": [{ "id": "P1" }], "literal": [] } },
+    { "id": "contains_binary", "expect": { "exact": [{ "id": "P1" }], "folded": [] } },
+    { "id": "now_truncated", "expect": { "fraction": 0, "out_of_range": [0, 0] } },
+    { "id": "index_read", "expect": [{ "id": "T3", "owner": "P2" }] },
+    { "id": "force_index", "expect": { "error": "CAPABILITY_UNSUPPORTED" } },
+    { "id": "unavailable_table", "expect": { "broken": "CONSTRAINT", "names_file": true, "restored": 2 } },
+    { "id": "install_refuses_aes", "expect": { "error": "SCHEMA_INVALID" } },
+    { "id": "install_refuses_audit", "expect": { "error": "SCHEMA_INVALID" } }
   ]
 }

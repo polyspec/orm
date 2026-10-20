@@ -1,12 +1,49 @@
 // The cases of the markdown conformance (tests/markdown/cases.json) as functions of the TypeScript client. Each takes a served
 // corpus (markdown_conformance.mjs, the flowmark server) or a connection (ir_answers.mjs, the IR answers of
 // contracts/fixtures/ir_answers.json) and returns the result that tests/markdown/README.md defines.
-import { readFile, writeFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { OrmError, StyledValue } from '../dist/index.js';
+import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
+import { OrmError, StyledValue, orm } from '../dist/index.js';
 import { Logs, People, Tasks, connect } from '../dist/models/markdown_fixture/models.js';
 /** The error that the callback throws to roll back the transaction. */
 export const stop = new Error('stop');
+
+const refusedDir = fileURLToPath(new URL('../../../tests/markdown/refused/', import.meta.url));
+
+/** The orm code of the error that the promise rejects with, or null when it resolves; another error is thrown again. */
+async function codeOf(promise) {
+  try {
+    await promise;
+    return null;
+  } catch (error) {
+    if (error instanceof OrmError) return error.code;
+    throw error;
+  }
+}
+
+/** The code that flowmark install prints when it refuses tests/markdown/refused/<name>.dbs, {error: code}; an install that succeeds is {error: null}. */
+async function refusedInstall(s, name) {
+  const root = await mkdtemp(path.join(tmpdir(), 'orm-markdown-refused-'));
+  try {
+    const dir = path.join(root, name);
+    await mkdir(path.join(dir, 'dbspec'), { recursive: true });
+    await writeFile(path.join(dir, 'dbspec', `${name}.dbs`), await readFile(path.join(refusedDir, `${name}.dbs`)));
+    try {
+      await promisify(execFile)(s.bin, ['install', dir]);
+      return { error: null };
+    } catch (error) {
+      const m = /^flowmark install: ([A-Z_]+):/m.exec(`${error.stdout ?? ''}${error.stderr ?? ''}`);
+      if (m === null) throw new Error(`flowmark install ${dir}: ${error.message}, without a refusal code`);
+      return { error: m[1] };
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+}
 
 /** A function that runs the case for each id in cases.json and returns the result value that README defines. A thrown OrmError becomes {"error": code} with its code. */
 export const conformanceCases = {
@@ -142,6 +179,99 @@ export const conformanceCases = {
   },
   connect_corpus_mismatch: async s => (await connect(s.dsn('other', s.token))).close(),
   connect_token_mismatch: async s => (await connect(s.dsn(s.corpus, '0'.repeat(32)))).close(),
+  // NULL sorts before every value ascending and after every value descending (docs/spec/dialects.md DIA-156).
+  order_nulls: async s => ({
+    asc: (await new People().connect(s.db).removeAllColumns().addColumnAge().orderByAgeAsc().gets()).toArray(),
+    desc: (await new People().connect(s.db).removeAllColumns().addColumnAge().orderByAgeDesc().gets()).toArray(),
+  }),
+  // orderByRandom is supported and not seeded, so the case answers the keys sorted (DIA-182).
+  order_random: async s => (await new People().connect(s.db).removeAllColumns().orderByRandom().gets()).values().map(m => m.getId()).sort(),
+  // The key t3 equals T3 without regard to case: a plain insert is DUPLICATE_KEY, and an on_duplicate insert meets T3,
+  // which keeps its key (DIA-164).
+  primary_key_case: async s => {
+    const duplicate = await codeOf(new Tasks().connect(s.db).setId('t3').setOwner('P2').setTitle('dup').setPoints(1).create());
+    await new Tasks().connect(s.db).setId('t3').setOwner('P2').setTitle('ship it').setPoints(8)
+      .duplication(new Tasks().setTitle('ship it')).create();
+    const met = (await new Tasks().connect(s.db).removeAllColumns().addColumnTitle().id('T3').get()).toArray();
+    return { duplicate, met, count: await new Tasks().connect(s.db).getCount() };
+  },
+  // Two columns compared with a list of value groups, IN and NOT IN (DIA-168).
+  tuple_in: async s => {
+    const pairs = [['T1', 'P1'], ['T3', 'P1']];
+    return {
+      in: (await new Tasks().connect(s.db).removeAllColumns().tupleIdWithOwner(pairs).orderByIdAsc().gets()).toArray(),
+      not_in: (await new Tasks().connect(s.db).removeAllColumns().neTupleIdWithOwner(pairs).orderByIdAsc().gets()).toArray(),
+    };
+  },
+  // The sum of each person's task points as a scalar Sub aggregate, and the owners of a task through an IN subquery (DIA-168).
+  subquery_aggregate: async s => {
+    const rows = await new People().connect(s.db).removeAllColumns()
+      .addColumnTaskPoints(p => new Tasks().sumPoints().ownerEqId(p)).orderByIdAsc().gets();
+    const owners = await new People().connect(s.db).removeAllColumns().id(new Tasks().addColumnOwner()).orderByIdAsc().gets();
+    return { sums: rows.values().map(m => [m.getId(), m.getTaskPoints() === null ? null : Number(m.getTaskPoints())]), owners: owners.toArray() };
+  },
+  // The title of each person's first task, a column subquery with limit 1 and an order by the primary key; without the
+  // limit it is IR_INVALID (DIA-169).
+  scalar_column_subquery: async s => {
+    const rows = await new People().connect(s.db).removeAllColumns()
+      .addColumnFirstTask(p => new Tasks().removeAllColumns().addColumnTitle().ownerEqId(p).orderByIdAsc().limit(0, 1)).orderByIdAsc().gets();
+    const unlimited = await codeOf(new People().connect(s.db).removeAllColumns()
+      .addColumnFirstTask(p => new Tasks().removeAllColumns().addColumnTitle().ownerEqId(p).orderByIdAsc()).orderByIdAsc().gets());
+    return { first: rows.values().map(m => [m.getId(), m.getFirstTask()]), unlimited };
+  },
+  // varchar with varchar meet; i32 with varchar do not and are OPERATOR_NOT_ALLOWED (DIA-170).
+  column_pairs: async s => {
+    const p = new People();
+    const meet = await new Tasks().connect(s.db).joinOwnerWithId(p).titleNeName(p).getCount();
+    const q = new People();
+    return { meet, refused: await codeOf(new Tasks().connect(s.db).joinOwnerWithId(q).pointsEqName(q).getCount()) };
+  },
+  // Lk: A-Z and a-z without regard to case, % literal (DIA-171).
+  contains: async s => ({
+    fold: (await new People().connect(s.db).removeAllColumns().lkName('ANN').orderByIdAsc().gets()).toArray(),
+    literal: (await new People().connect(s.db).removeAllColumns().lkName('%').orderByIdAsc().gets()).toArray(),
+  }),
+  // Lb: compared by code point (DIA-172).
+  contains_binary: async s => ({
+    exact: (await new People().connect(s.db).removeAllColumns().lbName('Ann').orderByIdAsc().gets()).toArray(),
+    folded: (await new People().connect(s.db).removeAllColumns().lbName('ann').orderByIdAsc().gets()).toArray(),
+  }),
+  // The default now of joined, a datetime(0), holds no fraction, and a relative time function past 9999-12-31 is NULL and
+  // matches no row (DIA-173).
+  now_truncated: async s => {
+    const joined = (await new People().connect(s.db).id('P1').get()).getJoined();
+    const far = orm.secondsLater(1000000000000000);
+    return {
+      fraction: Number(joined.split('.')[1] ?? '0'),
+      out_of_range: [await new People().connect(s.db).andGtJoined(far).getCount(), await new People().connect(s.db).andLeJoined(far).getCount()],
+    };
+  },
+  // A read through the column of the index ix_tasks_owner, which the corpus derives in memory (DIA-176).
+  index_read: async s => (await new Tasks().connect(s.db).removeAllColumns().owner('P2').gets()).toArray(),
+  // An index hint, which the corpus does not name: CAPABILITY_UNSUPPORTED (DIA-186).
+  force_index: async s => new Tasks().connect(s.db).forceIndexIxTasksOwner().owner('P1').gets(),
+  // A heading of another table in tasks.flowmark.md is format.block: a read of tasks fails CONSTRAINT naming the file,
+  // and reads again once the file is restored (DIA-190).
+  unavailable_table: async s => {
+    const file = path.join(s.dir, 'tasks.flowmark.md');
+    const text = await readFile(file);
+    await writeFile(file, Buffer.concat([text, Buffer.from('\n## people row P1\n')]));
+    let broken = null;
+    let namesFile = false;
+    try {
+      await new Tasks().connect(s.db).getCount();
+    } catch (error) {
+      if (!(error instanceof OrmError)) throw error;
+      broken = error.code;
+      namesFile = error.message.includes('tasks.flowmark.md');
+    }
+    await writeFile(file, text);
+    return { broken, names_file: namesFile, restored: await new Tasks().connect(s.db).getCount() };
+  },
+  // A catalog with an aes column is a schema error on a corpus (DIA-178).
+  install_refuses_aes: async s => refusedInstall(s, 'aes'),
+  // A catalog with an audit setting is a schema error on a corpus (DIA-179).
+  install_refuses_audit: async s => refusedInstall(s, 'audit'),
 };
 
 /** The result, written as JSON and read back: it has the same form as expect in cases.json. The TypeScript model holds dates as the YYYY-MM-DD text that README

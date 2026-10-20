@@ -159,9 +159,19 @@ export class People extends Model {
   public orderByUpdatedAtDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('updated_at', true, fn); return this; }
   public forceIndexUqPeopleEmail(): this { this[CORE].index = 'uq_people_email'; return this; }
 
+  declare addColumnFirstTask: (fn: (model: this) => Model) => this;
+  declare addColumnTaskPoints: (fn: (model: this) => Model) => this;
+  declare andGtJoined: (...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]) => this;
+  declare andLeJoined: (...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]) => this;
   declare email: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;
   declare id: (v0: string | readonly (string)[] | ValueFunction | Model) => this;
+  declare lbName: (v0: string) => this;
+  declare lkName: (v0: string) => this;
   declare matchOwnerWithId: () => this;
+  /** Returns the value or relation result named FirstTask. */
+  declare getFirstTask: <T = unknown>() => T;
+  /** Returns the value or relation result named TaskPoints. */
+  declare getTaskPoints: <T = unknown>() => T;
 }
 
 /** A tasks model or row. */
@@ -224,9 +234,18 @@ export class Tasks extends Model {
   declare id: (v0: string | readonly (string)[] | ValueFunction | Model) => this;
   declare joinOwnerWithId: (child: People | Tasks | Logs) => this;
   declare matchIdWithOwner: () => this;
+  declare neTupleIdWithOwner: (v0: ReadonlyArray<readonly [string, string]>) => this;
   declare owner: (v0: string | readonly (string)[] | ValueFunction | Model) => this;
+  declare ownerEqId: (v0: People | Tasks | Logs) => this;
+  declare pointsEqName: (v0: People) => this;
+  declare titleNeName: (v0: People) => this;
+  declare tupleIdWithOwner: (v0: ReadonlyArray<readonly [string, string]>) => this;
+  /** Returns the value or relation result named FirstTask. */
+  declare getFirstTask: <T = unknown>() => T;
   /** Returns the value or relation result named Name. */
   declare getName: <T = unknown>() => T;
+  /** Returns the value or relation result named TaskPoints. */
+  declare getTaskPoints: <T = unknown>() => T;
 }
 
 /** A logs model or row. */
@@ -264,6 +283,10 @@ export class Logs extends Model {
 
   declare id: (v0: number | readonly (number)[] | ValueFunction | Model) => this;
   declare task: (v0: string | readonly (string)[] | ValueFunction | Model) => this;
+  /** Returns the value or relation result named FirstTask. */
+  declare getFirstTask: <T = unknown>() => T;
   /** Returns the value or relation result named Name. */
   declare getName: <T = unknown>() => T;
+  /** Returns the value or relation result named TaskPoints. */
+  declare getTaskPoints: <T = unknown>() => T;
 }

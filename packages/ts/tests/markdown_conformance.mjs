@@ -68,7 +68,7 @@ const listening = /^\[serve\] listening on 127\.0\.0\.1:([0-9]+) for the corpus 
  * and waits for it to end, then deletes the directory.
  */
 async function serve(bin, step) {
-  const s = { corpus: 'conformance', root: await mkdtemp(path.join(tmpdir(), 'orm-markdown-')), db: undefined, server: undefined, stderr: '' };
+  const s = { bin, corpus: 'conformance', root: await mkdtemp(path.join(tmpdir(), 'orm-markdown-')), db: undefined, server: undefined, stderr: '' };
   s.dir = path.join(s.root, s.corpus);
   s.stop = async () => {
     if (s.db !== undefined) await s.db.close();

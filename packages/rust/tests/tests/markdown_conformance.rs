@@ -64,6 +64,21 @@ const CASES: &[&str] = &[
     "transaction_retry_commit",
     "connect_corpus_mismatch",
     "connect_token_mismatch",
+    "order_nulls",
+    "order_random",
+    "primary_key_case",
+    "tuple_in",
+    "subquery_aggregate",
+    "scalar_column_subquery",
+    "column_pairs",
+    "contains",
+    "contains_binary",
+    "now_truncated",
+    "index_read",
+    "force_index",
+    "unavailable_table",
+    "install_refuses_aes",
+    "install_refuses_audit",
 ];
 
 /// The directory of the shared suite: cases.json, flowmark.version, corpus/.
@@ -92,6 +107,7 @@ impl Drop for Server {
 
 /// The flowmark server the test started, and its corpus.
 struct Served {
+    bin: PathBuf,
     db: Db,
     dir: PathBuf,
     corpus: String,
@@ -195,7 +211,7 @@ fn ir_answer_case(chain: &str, answer: &Value, answers: &Value, expect: &Value) 
     let got = runtime.block_on(async {
         let dsn = format!("markdown://127.0.0.1:{port}/conformance?token={token}");
         let db = markdown_model::connect(&dsn, 1, Config::default()).await.expect("connect");
-        let s = Served { db, dir: PathBuf::new(), corpus: "conformance".to_owned(), port, token };
+        let s = Served { bin: PathBuf::new(), db, dir: PathBuf::new(), corpus: "conformance".to_owned(), port, token };
         let got = match run_case(chain, &s).await {
             Ok(value) => value,
             Err(error) => json!({ "error": error.code() }),
@@ -326,7 +342,7 @@ async fn serve(bin: &Path, scratch: &Path) -> (Served, Server) {
     let token = file["token"].as_str().expect("server.json has a token").to_owned();
     let dsn = format!("markdown://127.0.0.1:{port}/{corpus}?token={token}");
     let db = markdown_model::connect(&dsn, 0, Config::default()).await.unwrap_or_else(|e| panic!("connect: {e}"));
-    (Served { db, dir, corpus, port, token }, server)
+    (Served { bin: bin.to_path_buf(), db, dir, corpus, port, token }, server)
 }
 
 /// Two JSON values are equal: numbers are equal if their values are equal (16 and 16.0).
@@ -350,6 +366,40 @@ fn stop() -> Error {
 
 fn is_stop(error: &Error) -> bool {
     matches!(error, Error::Config(message) if message == "stop")
+}
+
+/// The orm code of the error of `r`, or null when it holds a value.
+fn code_of<T>(r: polyspec_orm::Result<T>) -> Value {
+    r.err().map_or(Value::Null, |e| Value::from(e.code().to_owned()))
+}
+
+/// An integer result value, which a client may hold as a number or as its text; an absent or null value is null.
+fn integer(v: Option<Value>) -> Value {
+    match v {
+        Some(Value::String(text)) => json!(text.parse::<i64>().unwrap_or_else(|_| panic!("invalid integer text: {text}"))),
+        Some(other) => other,
+        None => Value::Null,
+    }
+}
+
+/// The code that flowmark install prints when it refuses tests/markdown/refused/<name>.dbs, {"error": code}; an install
+/// that succeeds is {"error": null}.
+fn refused_install(s: &Served, name: &str) -> Value {
+    let scratch = Scratch(std::env::temp_dir().join(format!("orm-markdown-refused-{}-{}", std::process::id(), unique())));
+    let dir = scratch.0.join(name);
+    std::fs::create_dir_all(dir.join("dbspec")).unwrap();
+    std::fs::copy(conformance_dir().join(format!("refused/{name}.dbs")), dir.join(format!("dbspec/{name}.dbs"))).unwrap();
+    let install = Command::new(&s.bin).arg("install").arg(&dir).output().unwrap();
+    if install.status.success() {
+        return json!({ "error": null });
+    }
+    let out = format!("{}{}", String::from_utf8_lossy(&install.stdout), String::from_utf8_lossy(&install.stderr));
+    let code = out
+        .lines()
+        .find_map(|line| line.strip_prefix("flowmark install: ")?.split_once(':').map(|(code, _)| code.to_owned()))
+        .filter(|code| !code.is_empty() && code.bytes().all(|b| b.is_ascii_uppercase() || b == b'_'))
+        .unwrap_or_else(|| panic!("flowmark install {}: {} without a refusal code\n{out}", dir.display(), install.status));
+    json!({ "error": code })
 }
 
 /// Runs case `id` and returns the result value that the README defines. An error becomes the {"error": code} result for that code.
@@ -568,6 +618,135 @@ async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             markdown_model::connect(&s.dsn(&s.corpus, &"0".repeat(32)), 0, Config::default()).await?.close().await;
             Value::Null
         }
+        // NULL sorts before every value ascending and after every value descending (docs/spec/dialects.md DIA-156).
+        "order_nulls" => json!({
+            "asc": People::new().connect(db).remove_all_columns().add_column_age().order_by_age_asc().gets().await?.to_array()?,
+            "desc": People::new().connect(db).remove_all_columns().add_column_age().order_by_age_desc().gets().await?.to_array()?,
+        }),
+        // orderByRandom is supported and not seeded, so the case answers the keys sorted (DIA-182).
+        "order_random" => {
+            let rows = People::new().connect(db).remove_all_columns().order_by_random().gets().await?;
+            let mut keys = rows.models().map(|m| m.get_id().map(str::to_owned)).collect::<polyspec_orm::Result<Vec<String>>>()?;
+            keys.sort();
+            json!(keys)
+        }
+        // The key t3 equals T3 without regard to case: a plain insert is DUPLICATE_KEY, and an on_duplicate insert meets
+        // T3, which keeps its key (DIA-164).
+        "primary_key_case" => {
+            let duplicate = code_of(Tasks::new().connect(db).set_id("t3").set_owner("P2").set_title("dup").set_points(1).create().await);
+            Tasks::new()
+                .connect(db)
+                .set_id("t3")
+                .set_owner("P2")
+                .set_title("ship it")
+                .set_points(8)
+                .duplication(Tasks::new().set_title("ship it"))
+                .create()
+                .await?;
+            let met = Tasks::new().connect(db).remove_all_columns().add_column_title().id("T3").get().await?.ok_or(polyspec_orm::Error::NoRows)?.to_array()?;
+            json!({ "duplicate": duplicate, "met": met, "count": Tasks::new().connect(db).get_count().await? })
+        }
+        // Two columns compared with a list of value groups, IN and NOT IN (DIA-168).
+        "tuple_in" => {
+            let pairs = || vec![("T1".to_owned(), "P1".to_owned()), ("T3".to_owned(), "P1".to_owned())];
+            json!({
+                "in": Tasks::new().connect(db).remove_all_columns().tuple_id_with_owner(pairs()).order_by_id_asc().gets().await?.to_array()?,
+                "not_in": Tasks::new().connect(db).remove_all_columns().ne_tuple_id_with_owner(pairs()).order_by_id_asc().gets().await?.to_array()?,
+            })
+        }
+        // The sum of each person's task points as a scalar Sub aggregate, and the owners of a task through an IN subquery
+        // (DIA-168).
+        "subquery_aggregate" => {
+            let rows = People::new()
+                .connect(db)
+                .remove_all_columns()
+                .add_column_task_points(|p: &People| Tasks::new().sum_points().owner_eq_id(p))
+                .order_by_id_asc()
+                .gets()
+                .await?;
+            let mut sums = Vec::new();
+            for m in rows.models() {
+                sums.push(json!([m.get_id()?, integer(m.get_task_points()?)]));
+            }
+            let owners = People::new().connect(db).remove_all_columns().id(Tasks::new().add_column_owner()).order_by_id_asc().gets().await?.to_array()?;
+            json!({ "sums": sums, "owners": owners })
+        }
+        // The title of each person's first task, a column subquery with limit 1 and an order by the primary key; without
+        // the limit it is IR_INVALID (DIA-169).
+        "scalar_column_subquery" => {
+            let rows = People::new()
+                .connect(db)
+                .remove_all_columns()
+                .add_column_first_task(|p: &People| Tasks::new().remove_all_columns().add_column_title().owner_eq_id(p).order_by_id_asc().limit(0, 1))
+                .order_by_id_asc()
+                .gets()
+                .await?;
+            let mut first = Vec::new();
+            for m in rows.models() {
+                first.push(json!([m.get_id()?, m.get_first_task()?]));
+            }
+            let unlimited = code_of(
+                People::new()
+                    .connect(db)
+                    .remove_all_columns()
+                    .add_column_first_task(|p: &People| Tasks::new().remove_all_columns().add_column_title().owner_eq_id(p).order_by_id_asc())
+                    .order_by_id_asc()
+                    .gets()
+                    .await,
+            );
+            json!({ "first": first, "unlimited": unlimited })
+        }
+        // varchar with varchar meet; i32 with varchar do not and are OPERATOR_NOT_ALLOWED (DIA-170).
+        "column_pairs" => {
+            let p = People::new();
+            let meet = Tasks::new().connect(db).join_owner_with_id(p.clone()).title_ne_name(&p).get_count().await?;
+            let q = People::new();
+            let refused = code_of(Tasks::new().connect(db).join_owner_with_id(q.clone()).points_eq_name(&q).get_count().await);
+            json!({ "meet": meet, "refused": refused })
+        }
+        // Lk: A-Z and a-z without regard to case, % literal (DIA-171).
+        "contains" => json!({
+            "fold": People::new().connect(db).remove_all_columns().lk_name("ANN").order_by_id_asc().gets().await?.to_array()?,
+            "literal": People::new().connect(db).remove_all_columns().lk_name("%").order_by_id_asc().gets().await?.to_array()?,
+        }),
+        // Lb: compared by code point (DIA-172).
+        "contains_binary" => json!({
+            "exact": People::new().connect(db).remove_all_columns().lb_name("Ann").order_by_id_asc().gets().await?.to_array()?,
+            "folded": People::new().connect(db).remove_all_columns().lb_name("ann").order_by_id_asc().gets().await?.to_array()?,
+        }),
+        // The default now of joined, a datetime(0), holds no fraction, and a relative time function past 9999-12-31 is
+        // NULL and matches no row (DIA-173).
+        "now_truncated" => {
+            use polyspec_orm::chrono::Timelike;
+            let joined = People::new().connect(db).id("P1").get().await?.ok_or(polyspec_orm::Error::NoRows)?.get_joined()?;
+            let far = || polyspec_orm::seconds_later(1000000000000000);
+            json!({
+                "fraction": joined.nanosecond(),
+                "out_of_range": [People::new().connect(db).and_gt_joined(far()).get_count().await?, People::new().connect(db).and_le_joined(far()).get_count().await?],
+            })
+        }
+        // A read through the column of the index ix_tasks_owner, which the corpus derives in memory (DIA-176).
+        "index_read" => Tasks::new().connect(db).remove_all_columns().owner("P2").gets().await?.to_array()?,
+        // An index hint, which the corpus does not name: CAPABILITY_UNSUPPORTED (DIA-186).
+        "force_index" => Tasks::new().connect(db).force_index_ix_tasks_owner().owner("P1").gets().await?.to_array()?,
+        // A heading of another table in tasks.flowmark.md is format.block: a read of tasks fails CONSTRAINT naming the
+        // file, and reads again once the file is restored (DIA-190).
+        "unavailable_table" => {
+            let path = s.dir.join("tasks.flowmark.md");
+            let io = |e: std::io::Error| Error::Config(format!("{}: {e}", path.display()));
+            let text = std::fs::read(&path).map_err(io)?;
+            let mut broken_text = text.clone();
+            broken_text.extend_from_slice(b"\n## people row P1\n");
+            std::fs::write(&path, &broken_text).map_err(io)?;
+            let broken = Tasks::new().connect(db).get_count().await;
+            std::fs::write(&path, &text).map_err(io)?;
+            let names_file = broken.as_ref().is_err_and(|e| e.to_string().contains("tasks.flowmark.md"));
+            json!({ "broken": code_of(broken), "names_file": names_file, "restored": Tasks::new().connect(db).get_count().await? })
+        }
+        // A catalog with an aes column is a schema error on a corpus (DIA-178).
+        "install_refuses_aes" => refused_install(s, "aes"),
+        // A catalog with an audit setting is a schema error on a corpus (DIA-179).
+        "install_refuses_audit" => refused_install(s, "audit"),
         other => unreachable!("case {other} is not in CASES"),
     })
 }

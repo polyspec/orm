@@ -18,6 +18,7 @@ from .test_sqlite import generate  # noqa: E402
 from .vector_case import VectorCase, vector_tests  # noqa: E402
 
 from polyspec.orm import Collection, Model, OrmError  # noqa: E402
+from polyspec.orm.values import orm  # noqa: E402
 
 CONFORMANCE_DIR = ROOT / "tests" / "markdown"
 FLOWMARK_MODULE = "github.com/polyspec/flowmark"
@@ -173,6 +174,7 @@ def serve(binary: str, workdir: Path, models, cleanups: list) -> Served:
         )
     token = json.loads((directory / ".flowmark" / "server.json").read_text())["token"]
     s = Served(models, directory, match.group(1), token)
+    s.binary = binary
     s.server = server
     try:
         s.db = models.connect(s.dsn(CORPUS, token))
@@ -181,6 +183,40 @@ def serve(binary: str, workdir: Path, models, cleanups: list) -> Served:
         raise AssertionError(f"connect: {error}; stderr:\n{stderr.read()}") from None
     cleanups.append(s.db.close)
     return s
+
+
+def code_of(run) -> str | None:
+    """The orm code of the error that run raises, or None when it returns."""
+    try:
+        run()
+    except OrmError as error:
+        return error.code
+    return None
+
+
+def refused_install(s: Served, name: str) -> dict:
+    """The code that flowmark install prints when it refuses tests/markdown/refused/<name>.dbs, {"error": code}; an
+    install that succeeds is {"error": None}."""
+    with tempfile.TemporaryDirectory(prefix="orm-markdown-refused-") as root:
+        directory = Path(root) / name
+        (directory / "dbspec").mkdir(parents=True)
+        shutil.copyfile(
+            CONFORMANCE_DIR / "refused" / f"{name}.dbs",
+            directory / "dbspec" / f"{name}.dbs",
+        )
+        installed = subprocess.run(
+            [s.binary, "install", str(directory)], capture_output=True, text=True
+        )
+    if installed.returncode == 0:
+        return {"error": None}
+    match = re.search(
+        r"^flowmark install: ([A-Z_]+):", installed.stdout + installed.stderr, re.M
+    )
+    if match is None:
+        raise AssertionError(
+            f"flowmark install {directory}: exit {installed.returncode} without a refusal code\n{installed.stdout}{installed.stderr}"
+        )
+    return {"error": match.group(1)}
 
 
 def conformance_cases() -> dict:
@@ -502,6 +538,152 @@ def conformance_cases() -> dict:
             code = error.code
         return {"error": code, "runs": len(runs)}
 
+    def order_nulls(s):
+        # NULL sorts before every value ascending and after every value descending (docs/spec/dialects.md DIA-156).
+        people = lambda: s.models.People().connect(s.db).remove_all_columns().add_column_age()
+        return {
+            "asc": [array_form(m) for m in people().order_by_age_asc().gets().values()],
+            "desc": [array_form(m) for m in people().order_by_age_desc().gets().values()],
+        }
+
+    def order_random(s):
+        # orderByRandom is supported and not seeded, so the case answers the keys sorted (DIA-182).
+        rows = s.models.People().connect(s.db).remove_all_columns().order_by_random().gets()
+        return sorted(m.get_id() for m in rows.values())
+
+    def primary_key_case(s):
+        # The key t3 equals T3 without regard to case: a plain insert is DUPLICATE_KEY, and an on_duplicate insert
+        # meets T3, which keeps its key (DIA-164).
+        tasks = lambda: s.models.Tasks().connect(s.db)
+        duplicate = code_of(
+            lambda: tasks().set_id("t3").set_owner("P2").set_title("dup").set_points(1).create()
+        )
+        tasks().set_id("t3").set_owner("P2").set_title("ship it").set_points(8).duplication(
+            s.models.Tasks().set_title("ship it")
+        ).create()
+        met = array_form(tasks().remove_all_columns().add_column_title().id("T3").get())
+        return {"duplicate": duplicate, "met": met, "count": tasks().get_count()}
+
+    def tuple_in(s):
+        # Two columns compared with a list of value groups, IN and NOT IN (DIA-168).
+        pairs = [("T1", "P1"), ("T3", "P1")]
+        tasks = lambda: s.models.Tasks().connect(s.db).remove_all_columns()
+        return {
+            "in": [array_form(m) for m in tasks().tuple_id_with_owner(pairs).order_by_id_asc().gets().values()],
+            "not_in": [array_form(m) for m in tasks().ne_tuple_id_with_owner(pairs).order_by_id_asc().gets().values()],
+        }
+
+    def subquery_aggregate(s):
+        # The sum of each person's task points as a scalar Sub aggregate, and the owners of a task through an IN
+        # subquery (DIA-168).
+        rows = (
+            s.models.People()
+            .connect(s.db)
+            .remove_all_columns()
+            .add_column_task_points(lambda p: s.models.Tasks().sum_points().owner_eq_id(p))
+            .order_by_id_asc()
+            .gets()
+        )
+        sums = [
+            [m.get_id(), None if m.get_task_points() is None else int(m.get_task_points())]
+            for m in rows.values()
+        ]
+        owners = (
+            s.models.People()
+            .connect(s.db)
+            .remove_all_columns()
+            .id(s.models.Tasks().add_column_owner())
+            .order_by_id_asc()
+            .gets()
+        )
+        return {"sums": sums, "owners": [array_form(m) for m in owners.values()]}
+
+    def scalar_column_subquery(s):
+        # The title of each person's first task, a column subquery with limit 1 and an order by the primary key;
+        # without the limit it is IR_INVALID (DIA-169).
+        def first(limited):
+            def sub(p):
+                q = s.models.Tasks().remove_all_columns().add_column_title().owner_eq_id(p).order_by_id_asc()
+                return q.limit(0, 1) if limited else q
+
+            return (
+                s.models.People()
+                .connect(s.db)
+                .remove_all_columns()
+                .add_column_first_task(sub)
+                .order_by_id_asc()
+                .gets()
+            )
+
+        rows = first(True)
+        return {
+            "first": [[m.get_id(), m.get_first_task()] for m in rows.values()],
+            "unlimited": code_of(lambda: first(False)),
+        }
+
+    def column_pairs(s):
+        # varchar with varchar meet; i32 with varchar do not and are OPERATOR_NOT_ALLOWED (DIA-170).
+        p = s.models.People()
+        meet = s.models.Tasks().connect(s.db).join_owner_with_id(p).title_ne_name(p).get_count()
+        q = s.models.People()
+        refused = code_of(
+            lambda: s.models.Tasks().connect(s.db).join_owner_with_id(q).points_eq_name(q).get_count()
+        )
+        return {"meet": meet, "refused": refused}
+
+    def contains(s):
+        # Lk: A-Z and a-z without regard to case, % literal (DIA-171).
+        people = lambda: s.models.People().connect(s.db).remove_all_columns()
+        return {
+            "fold": [array_form(m) for m in people().lk_name("ANN").order_by_id_asc().gets().values()],
+            "literal": [array_form(m) for m in people().lk_name("%").order_by_id_asc().gets().values()],
+        }
+
+    def contains_binary(s):
+        # Lb: compared by code point (DIA-172).
+        people = lambda: s.models.People().connect(s.db).remove_all_columns()
+        return {
+            "exact": [array_form(m) for m in people().lb_name("Ann").order_by_id_asc().gets().values()],
+            "folded": [array_form(m) for m in people().lb_name("ann").order_by_id_asc().gets().values()],
+        }
+
+    def now_truncated(s):
+        # The default now of joined, a datetime(0), holds no fraction, and a relative time function past 9999-12-31 is
+        # NULL and matches no row (DIA-173).
+        joined = s.models.People().connect(s.db).id("P1").get().get_joined()
+        far = orm.seconds_later(1000000000000000)
+        people = lambda: s.models.People().connect(s.db)
+        return {
+            "fraction": int(joined.partition(".")[2] or "0"),
+            "out_of_range": [people().and_gt_joined(far).get_count(), people().and_le_joined(far).get_count()],
+        }
+
+    def index_read(s):
+        # A read through the column of the index ix_tasks_owner, which the corpus derives in memory (DIA-176).
+        rows = s.models.Tasks().connect(s.db).remove_all_columns().owner("P2").gets()
+        return [array_form(m) for m in rows.values()]
+
+    def force_index(s):
+        # An index hint, which the corpus does not name: CAPABILITY_UNSUPPORTED (DIA-186).
+        return s.models.Tasks().connect(s.db).force_index_ix_tasks_owner().owner("P1").gets()
+
+    def unavailable_table(s):
+        # A heading of another table in tasks.flowmark.md is format.block: a read of tasks fails CONSTRAINT naming the
+        # file, and reads again once the file is restored (DIA-190).
+        path = s.dir / "tasks.flowmark.md"
+        text = path.read_bytes()
+        path.write_bytes(text + b"\n## people row P1\n")
+        broken = None
+        names_file = False
+        try:
+            s.models.Tasks().connect(s.db).get_count()
+        except OrmError as error:
+            broken = error.code
+            names_file = "tasks.flowmark.md" in str(error)
+        path.write_bytes(text)
+        restored = s.models.Tasks().connect(s.db).get_count()
+        return {"broken": broken, "names_file": names_file, "restored": restored}
+
     def connect_mismatch(corpus_of, token_of):
         def run(s):
             db = s.models.connect(s.dsn(corpus_of(s), token_of(s)))
@@ -549,6 +731,23 @@ def conformance_cases() -> dict:
         "connect_token_mismatch": connect_mismatch(
             lambda s: CORPUS, lambda s: "0" * 32
         ),
+        "order_nulls": order_nulls,
+        "order_random": order_random,
+        "primary_key_case": primary_key_case,
+        "tuple_in": tuple_in,
+        "subquery_aggregate": subquery_aggregate,
+        "scalar_column_subquery": scalar_column_subquery,
+        "column_pairs": column_pairs,
+        "contains": contains,
+        "contains_binary": contains_binary,
+        "now_truncated": now_truncated,
+        "index_read": index_read,
+        "force_index": force_index,
+        "unavailable_table": unavailable_table,
+        # A catalog with an aes column is a schema error on a corpus (DIA-178).
+        "install_refuses_aes": lambda s: refused_install(s, "aes"),
+        # A catalog with an audit setting is a schema error on a corpus (DIA-179).
+        "install_refuses_audit": lambda s: refused_install(s, "audit"),
     }
 
 

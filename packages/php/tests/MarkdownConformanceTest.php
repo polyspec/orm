@@ -13,6 +13,7 @@ require_once dirname(__DIR__) . '/markdownmodel/bootstrap.php';
 
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
+use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
 use Polyspec\Orm\Tests\MarkdownModel\Logs;
 use Polyspec\Orm\Tests\MarkdownModel\People;
@@ -25,6 +26,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 /** The flowmark server the test started, and its corpus. */
 final class Served
 {
+    public string $bin = '';
     public ?Db $db = null;
     /** @var resource|null flowmark serve process */
     public $process = null;
@@ -141,6 +143,7 @@ final class MarkdownConformanceTest extends TestCase
      */
     private static function serve(Served $s, string $bin, callable $step): void
     {
+        $s->bin = $bin;
         $s->root = sys_get_temp_dir() . '/markdown-conformance-' . getmypid() . '-' . bin2hex(random_bytes(4));
         $s->dir = "{$s->root}/{$s->corpus}";
         if (!mkdir("{$s->dir}/dbspec", 0o755, true)) {
@@ -411,7 +414,180 @@ final class MarkdownConformanceTest extends TestCase
                 connect($s->dsn($s->corpus, str_repeat('0', 32)), new Config())->close();
                 return null;
             },
+            // NULL sorts before every value ascending and after every value descending (docs/spec/dialects.md DIA-156).
+            'order_nulls' => static function (Served $s): mixed {
+                return [
+                    'asc' => (new People())->connect($s->db)->removeAllColumns()->addColumnAge()->orderByAgeAsc()->gets()->toArray(),
+                    'desc' => (new People())->connect($s->db)->removeAllColumns()->addColumnAge()->orderByAgeDesc()->gets()->toArray(),
+                ];
+            },
+            // orderByRandom is supported and not seeded, so the case answers the keys sorted (DIA-182).
+            'order_random' => static function (Served $s): mixed {
+                $keys = [];
+                foreach ((new People())->connect($s->db)->removeAllColumns()->orderByRandom()->gets() as $m) {
+                    $keys[] = $m->getId();
+                }
+                sort($keys, SORT_STRING);
+                return $keys;
+            },
+            // The key t3 equals T3 without regard to case: a plain insert is DUPLICATE_KEY, and an on_duplicate insert
+            // meets T3, which keeps its key (DIA-164).
+            'primary_key_case' => static function (Served $s): mixed {
+                $duplicate = self::code_of(static fn () => (new Tasks())->connect($s->db)->setId('t3')->setOwner('P2')->setTitle('dup')->setPoints(1)->create());
+                (new Tasks())->connect($s->db)->setId('t3')->setOwner('P2')->setTitle('ship it')->setPoints(8)
+                    ->duplication((new Tasks())->setTitle('ship it'))->create();
+                $met = (new Tasks())->connect($s->db)->removeAllColumns()->addColumnTitle()->id('T3')->get()->toArray();
+                return ['duplicate' => $duplicate, 'met' => $met, 'count' => (new Tasks())->connect($s->db)->getCount()];
+            },
+            // Two columns compared with a list of value groups, IN and NOT IN (DIA-168).
+            'tuple_in' => static function (Served $s): mixed {
+                $pairs = [['T1', 'P1'], ['T3', 'P1']];
+                return [
+                    'in' => (new Tasks())->connect($s->db)->removeAllColumns()->tupleIdWithOwner($pairs)->orderByIdAsc()->gets()->toArray(),
+                    'not_in' => (new Tasks())->connect($s->db)->removeAllColumns()->neTupleIdWithOwner($pairs)->orderByIdAsc()->gets()->toArray(),
+                ];
+            },
+            // The sum of each person's task points as a scalar Sub aggregate, and the owners of a task through an IN
+            // subquery (DIA-168).
+            'subquery_aggregate' => static function (Served $s): mixed {
+                $sums = [];
+                foreach ((new People())->connect($s->db)->removeAllColumns()
+                    ->addColumnTaskPoints(static fn (People $p) => (new Tasks())->sumPoints()->ownerEqId($p))->orderByIdAsc()->gets() as $m) {
+                    $v = $m->getTaskPoints();
+                    $sums[] = [$m->getId(), $v === null ? null : (int) $v];
+                }
+                $owners = (new People())->connect($s->db)->removeAllColumns()->id((new Tasks())->addColumnOwner())->orderByIdAsc()->gets()->toArray();
+                return ['sums' => $sums, 'owners' => $owners];
+            },
+            // The title of each person's first task, a column subquery with limit 1 and an order by the primary key;
+            // without the limit it is IR_INVALID (DIA-169).
+            'scalar_column_subquery' => static function (Served $s): mixed {
+                $first = [];
+                foreach ((new People())->connect($s->db)->removeAllColumns()
+                    ->addColumnFirstTask(static fn (People $p) => (new Tasks())->removeAllColumns()->addColumnTitle()->ownerEqId($p)->orderByIdAsc()->limit(0, 1))
+                    ->orderByIdAsc()->gets() as $m) {
+                    $first[] = [$m->getId(), $m->getFirstTask()];
+                }
+                $unlimited = self::code_of(static fn () => (new People())->connect($s->db)->removeAllColumns()
+                    ->addColumnFirstTask(static fn (People $p) => (new Tasks())->removeAllColumns()->addColumnTitle()->ownerEqId($p)->orderByIdAsc())
+                    ->orderByIdAsc()->gets());
+                return ['first' => $first, 'unlimited' => $unlimited];
+            },
+            // varchar with varchar meet; i32 with varchar do not and are OPERATOR_NOT_ALLOWED (DIA-170).
+            'column_pairs' => static function (Served $s): mixed {
+                $p = new People();
+                $meet = (new Tasks())->connect($s->db)->joinOwnerWithId($p)->titleNeName($p)->getCount();
+                $q = new People();
+                return ['meet' => $meet, 'refused' => self::code_of(static fn () => (new Tasks())->connect($s->db)->joinOwnerWithId($q)->pointsEqName($q)->getCount())];
+            },
+            // Lk: A-Z and a-z without regard to case, % literal (DIA-171).
+            'contains' => static function (Served $s): mixed {
+                return [
+                    'fold' => (new People())->connect($s->db)->removeAllColumns()->lkName('ANN')->orderByIdAsc()->gets()->toArray(),
+                    'literal' => (new People())->connect($s->db)->removeAllColumns()->lkName('%')->orderByIdAsc()->gets()->toArray(),
+                ];
+            },
+            // Lb: compared by code point (DIA-172).
+            'contains_binary' => static function (Served $s): mixed {
+                return [
+                    'exact' => (new People())->connect($s->db)->removeAllColumns()->lbName('Ann')->orderByIdAsc()->gets()->toArray(),
+                    'folded' => (new People())->connect($s->db)->removeAllColumns()->lbName('ann')->orderByIdAsc()->gets()->toArray(),
+                ];
+            },
+            // The default now of joined, a datetime(0), holds no fraction, and a relative time function past 9999-12-31
+            // is NULL and matches no row (DIA-173).
+            'now_truncated' => static function (Served $s): mixed {
+                $joined = (new People())->connect($s->db)->id('P1')->get()->getJoined();
+                $far = Orm::secondsLater(1000000000000000);
+                return [
+                    'fraction' => (int) $joined->format('u'),
+                    'out_of_range' => [(new People())->connect($s->db)->andGtJoined($far)->getCount(), (new People())->connect($s->db)->andLeJoined($far)->getCount()],
+                ];
+            },
+            // A read through the column of the index ix_tasks_owner, which the corpus derives in memory (DIA-176).
+            'index_read' => static function (Served $s): mixed {
+                return (new Tasks())->connect($s->db)->removeAllColumns()->owner('P2')->gets()->toArray();
+            },
+            // An index hint, which the corpus does not name: CAPABILITY_UNSUPPORTED (DIA-186).
+            'force_index' => static function (Served $s): mixed {
+                return (new Tasks())->connect($s->db)->forceIndexIxTasksOwner()->owner('P1')->gets()->toArray();
+            },
+            // A heading of another table in tasks.flowmark.md is format.block: a read of tasks fails CONSTRAINT naming
+            // the file, and reads again once the file is restored (DIA-190).
+            'unavailable_table' => static function (Served $s): mixed {
+                $path = "{$s->dir}/tasks.flowmark.md";
+                $text = (string) file_get_contents($path);
+                file_put_contents($path, $text . "\n## people row P1\n");
+                $broken = null;
+                $namesFile = false;
+                try {
+                    (new Tasks())->connect($s->db)->getCount();
+                } catch (OrmException $e) {
+                    $broken = $e->code_;
+                    $namesFile = str_contains($e->getMessage(), 'tasks.flowmark.md');
+                }
+                file_put_contents($path, $text);
+                return ['broken' => $broken, 'names_file' => $namesFile, 'restored' => (new Tasks())->connect($s->db)->getCount()];
+            },
+            // A catalog with an aes column is a schema error on a corpus (DIA-178).
+            'install_refuses_aes' => static function (Served $s): mixed {
+                return self::refused_install($s, 'aes');
+            },
+            // A catalog with an audit setting is a schema error on a corpus (DIA-179).
+            'install_refuses_audit' => static function (Served $s): mixed {
+                return self::refused_install($s, 'audit');
+            },
         ];
+    }
+
+    /** The orm code of the error that $f throws, or null when it returns. */
+    private static function code_of(callable $f): ?string
+    {
+        try {
+            $f();
+            return null;
+        } catch (OrmException $e) {
+            return $e->code_;
+        }
+    }
+
+    /**
+     * The code that flowmark install prints when it refuses tests/markdown/refused/<name>.dbs, ['error' => code]; an
+     * install that succeeds is ['error' => null].
+     *
+     * @return array{error: ?string}
+     */
+    private static function refused_install(Served $s, string $name): array
+    {
+        $root = sys_get_temp_dir() . '/markdown-refused-' . getmypid() . '-' . bin2hex(random_bytes(4));
+        $dir = "$root/$name";
+        try {
+            if (!mkdir("$dir/dbspec", 0o755, true) || !copy(self::MARKDOWN_CONFORMANCE_DIR . "/refused/$name.dbs", "$dir/dbspec/$name.dbs")) {
+                throw new RuntimeException("cannot write the catalog $dir/dbspec/$name.dbs");
+            }
+            $process = proc_open([$s->bin, 'install', $dir], [1 => ['pipe', 'w'], 2 => ['redirect', 1]], $pipes);
+            if (!is_resource($process)) {
+                throw new RuntimeException("cannot run {$s->bin} install $dir");
+            }
+            $out = (string) stream_get_contents($pipes[1]);
+            fclose($pipes[1]);
+            if (proc_close($process) === 0) {
+                return ['error' => null];
+            }
+            if (preg_match('/^flowmark install: ([A-Z_]+):/m', $out, $m) !== 1) {
+                throw new RuntimeException("flowmark install $dir failed without a refusal code:\n$out");
+            }
+            return ['error' => $m[1]];
+        } finally {
+            if (is_file("$dir/dbspec/$name.dbs")) {
+                unlink("$dir/dbspec/$name.dbs");
+            }
+            foreach (["$dir/dbspec", $dir, $root] as $d) {
+                if (is_dir($d)) {
+                    rmdir($d);
+                }
+            }
+        }
     }
 
     /** The result, written as JSON and read back, with the object's members in name order: the same shape as expect in cases.json. */

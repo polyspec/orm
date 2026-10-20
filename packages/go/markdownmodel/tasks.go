@@ -460,14 +460,49 @@ func (x *TasksModel) JoinOwnerWithId[C hasId](child C) *TasksModel {
 
 func (x *TasksModel) MatchIdWithOwner() *TasksModel { x.m.Match("id", "owner"); return x }
 
+func (x *TasksModel) NeTupleIdWithOwner(v0 []TasksIdWithOwner) *TasksModel {
+	x.m.Where("", chainTasksNeTupleIdWithOwner, v0)
+	return x
+}
+
 func (x *TasksModel) Owner[T0 argStringEq](v0 T0) *TasksModel {
 	x.m.Where("", chainTasksOwner, v0)
 	return x
 }
 
+func (x *TasksModel) OwnerEqId[T0 hasId](v0 T0) *TasksModel {
+	x.m.Where("", chainTasksOwnerEqId, v0)
+	return x
+}
+
+func (x *TasksModel) PointsEqName[T0 hasName](v0 T0) *TasksModel {
+	x.m.Where("", chainTasksPointsEqName, v0)
+	return x
+}
+
+func (x *TasksModel) TitleNeName[T0 hasName](v0 T0) *TasksModel {
+	x.m.Where("", chainTasksTitleNeName, v0)
+	return x
+}
+
+func (x *TasksModel) TupleIdWithOwner(v0 []TasksIdWithOwner) *TasksModel {
+	x.m.Where("", chainTasksTupleIdWithOwner, v0)
+	return x
+}
+
 var chainTasksId = []orm.ChainKey{{Column: "id"}}
 
+var chainTasksNeTupleIdWithOwner = []orm.ChainKey{{Op: "ne_tuple", Columns: []string{"id", "owner"}}}
+
 var chainTasksOwner = []orm.ChainKey{{Column: "owner"}}
+
+var chainTasksOwnerEqId = []orm.ChainKey{{Column: "owner", Compare: "id"}}
+
+var chainTasksPointsEqName = []orm.ChainKey{{Column: "points", Compare: "name"}}
+
+var chainTasksTitleNeName = []orm.ChainKey{{Op: "ne", Column: "title", Compare: "name"}}
+
+var chainTasksTupleIdWithOwner = []orm.ChainKey{{Op: "tuple", Columns: []string{"id", "owner"}}}
 
 // GetPeopleModel returns the people relation result.
 func (x *TasksModel) GetPeopleModel() (*PeopleModel, error) {

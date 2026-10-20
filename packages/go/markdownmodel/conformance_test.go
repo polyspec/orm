@@ -37,6 +37,7 @@ const flowmarkModule = "github.com/polyspec/flowmark"
 
 // served is the flowmark server that the test started and its corpus.
 type served struct {
+	bin    string
 	db     *orm.DB
 	dir    string
 	corpus string
@@ -156,7 +157,7 @@ var listening = regexp.MustCompile(`^\[serve\] listening on 127\.0\.0\.1:([0-9]+
 func serve(t *testing.T, bin string) *served {
 	t.Helper()
 	c := testcase.Of(t)
-	s := &served{corpus: "conformance"}
+	s := &served{bin: bin, corpus: "conformance"}
 	s.dir = filepath.Join(t.TempDir(), s.corpus)
 	if err := os.MkdirAll(filepath.Join(s.dir, "dbspec"), 0o755); err != nil {
 		t.Fatal(err)
@@ -567,7 +568,248 @@ func conformanceCases() map[string]caseFunc {
 			}
 			return nil, err
 		},
+		// order_nulls reads the age of every person in both orders: NULL sorts before every value ascending and
+		// after every value descending (docs/spec/dialects.md DIA-156).
+		"order_nulls": func(s *served) (any, error) {
+			out := map[string]any{}
+			for _, order := range []string{"asc", "desc"} {
+				q := markdownmodel.People().Connect(s.db).RemoveAllColumns().AddColumnAge()
+				if order == "asc" {
+					q.OrderByAgeAsc()
+				} else {
+					q.OrderByAgeDesc()
+				}
+				rows, err := q.Gets()
+				if err != nil {
+					return nil, err
+				}
+				out[order] = rows.ToArray()
+			}
+			return out, nil
+		},
+		// order_random reads every key with orderByRandom, which is supported and not seeded, so the case answers
+		// the keys sorted (DIA-182).
+		"order_random": func(s *served) (any, error) {
+			rows, err := markdownmodel.People().Connect(s.db).RemoveAllColumns().OrderByRandom().Gets()
+			if err != nil {
+				return nil, err
+			}
+			var keys []string
+			for _, m := range rows.All() {
+				keys = append(keys, m.GetId())
+			}
+			slices.Sort(keys)
+			return keys, nil
+		},
+		// primary_key_case inserts the key t3, which equals T3 without regard to case: a plain insert is
+		// DUPLICATE_KEY, and an on_duplicate insert meets T3, which keeps its key (DIA-164).
+		"primary_key_case": func(s *served) (any, error) {
+			_, dup := markdownmodel.Tasks().Connect(s.db).SetId("t3").SetOwner("P2").SetTitle("dup").SetPoints(1).Create()
+			if _, err := markdownmodel.Tasks().Connect(s.db).SetId("t3").SetOwner("P2").SetTitle("ship it").SetPoints(8).
+				Duplication(markdownmodel.Tasks().SetTitle("ship it")).Create(); err != nil {
+				return nil, err
+			}
+			met, err := markdownmodel.Tasks().Connect(s.db).RemoveAllColumns().AddColumnTitle().Id("T3").Get()
+			if err != nil {
+				return nil, err
+			}
+			n, err := markdownmodel.Tasks().Connect(s.db).GetCount()
+			if err != nil {
+				return nil, err
+			}
+			return map[string]any{"duplicate": orm.ErrorCode(dup), "met": met.ToArray(), "count": n}, nil
+		},
+		// tuple_in compares two columns with a list of value groups, IN and NOT IN (DIA-168).
+		"tuple_in": func(s *served) (any, error) {
+			pairs := []markdownmodel.TasksIdWithOwner{{Id: "T1", Owner: "P1"}, {Id: "T3", Owner: "P1"}}
+			in, err := markdownmodel.Tasks().Connect(s.db).RemoveAllColumns().TupleIdWithOwner(pairs).OrderByIdAsc().Gets()
+			if err != nil {
+				return nil, err
+			}
+			notIn, err := markdownmodel.Tasks().Connect(s.db).RemoveAllColumns().NeTupleIdWithOwner(pairs).OrderByIdAsc().Gets()
+			if err != nil {
+				return nil, err
+			}
+			return map[string]any{"in": in.ToArray(), "not_in": notIn.ToArray()}, nil
+		},
+		// subquery_aggregate adds the sum of each person's task points as a scalar Sub aggregate, and reads the
+		// people that own a task through an IN subquery (DIA-168).
+		"subquery_aggregate": func(s *served) (any, error) {
+			rows, err := markdownmodel.People().Connect(s.db).RemoveAllColumns().
+				AddColumnTaskPoints(func(p *markdownmodel.PeopleModel) orm.Model {
+					return markdownmodel.Tasks().SumPoints().OwnerEqId(p)
+				}).OrderByIdAsc().Gets()
+			if err != nil {
+				return nil, err
+			}
+			sums := []any{}
+			for _, m := range rows.All() {
+				v := m.GetTaskPoints()
+				if v != nil {
+					n, err := orm.AsInt64(v)
+					if err != nil {
+						return nil, err
+					}
+					v = n
+				}
+				sums = append(sums, []any{m.GetId(), v})
+			}
+			owners, err := markdownmodel.People().Connect(s.db).RemoveAllColumns().
+				Id(markdownmodel.Tasks().AddColumnOwner()).OrderByIdAsc().Gets()
+			if err != nil {
+				return nil, err
+			}
+			return map[string]any{"sums": sums, "owners": owners.ToArray()}, nil
+		},
+		// scalar_column_subquery adds the title of each person's first task, a column subquery with limit 1 and
+		// an order by the primary key; without the limit it is IR_INVALID (DIA-169).
+		"scalar_column_subquery": func(s *served) (any, error) {
+			rows, err := markdownmodel.People().Connect(s.db).RemoveAllColumns().
+				AddColumnFirstTask(func(p *markdownmodel.PeopleModel) orm.Model {
+					return markdownmodel.Tasks().RemoveAllColumns().AddColumnTitle().OwnerEqId(p).OrderByIdAsc().Limit(0, 1)
+				}).OrderByIdAsc().Gets()
+			if err != nil {
+				return nil, err
+			}
+			firsts := []any{}
+			for _, m := range rows.All() {
+				firsts = append(firsts, []any{m.GetId(), m.GetFirstTask()})
+			}
+			_, unlimited := markdownmodel.People().Connect(s.db).RemoveAllColumns().
+				AddColumnFirstTask(func(p *markdownmodel.PeopleModel) orm.Model {
+					return markdownmodel.Tasks().RemoveAllColumns().AddColumnTitle().OwnerEqId(p).OrderByIdAsc()
+				}).OrderByIdAsc().Gets()
+			return map[string]any{"first": firsts, "unlimited": orm.ErrorCode(unlimited)}, nil
+		},
+		// column_pairs compares two columns: varchar with varchar meet, i32 with varchar do not and are
+		// OPERATOR_NOT_ALLOWED (DIA-170).
+		"column_pairs": func(s *served) (any, error) {
+			p := markdownmodel.People()
+			meet, err := markdownmodel.Tasks().Connect(s.db).JoinOwnerWithId(p).TitleNeName(p).GetCount()
+			if err != nil {
+				return nil, err
+			}
+			q := markdownmodel.People()
+			_, refused := markdownmodel.Tasks().Connect(s.db).JoinOwnerWithId(q).PointsEqName(q).GetCount()
+			return map[string]any{"meet": meet, "refused": orm.ErrorCode(refused)}, nil
+		},
+		// contains is Lk: A-Z and a-z without regard to case, % literal (DIA-171).
+		"contains": func(s *served) (any, error) {
+			out := map[string]any{}
+			for name, p := range map[string]string{"fold": "ANN", "literal": "%"} {
+				rows, err := markdownmodel.People().Connect(s.db).RemoveAllColumns().LkName(p).OrderByIdAsc().Gets()
+				if err != nil {
+					return nil, err
+				}
+				out[name] = rows.ToArray()
+			}
+			return out, nil
+		},
+		// contains_binary is Lb: compared by code point (DIA-172).
+		"contains_binary": func(s *served) (any, error) {
+			out := map[string]any{}
+			for name, p := range map[string]string{"exact": "Ann", "folded": "ann"} {
+				rows, err := markdownmodel.People().Connect(s.db).RemoveAllColumns().LbName(p).OrderByIdAsc().Gets()
+				if err != nil {
+					return nil, err
+				}
+				out[name] = rows.ToArray()
+			}
+			return out, nil
+		},
+		// now_truncated reads the default now of joined, a datetime(0), which holds no fraction, and compares
+		// it with a relative time function past 9999-12-31, which is NULL and matches no row (DIA-173).
+		"now_truncated": func(s *served) (any, error) {
+			m, err := markdownmodel.People().Connect(s.db).Id("P1").Get()
+			if err != nil {
+				return nil, err
+			}
+			far := orm.SecondsLater(1000000000000000)
+			gt, err := markdownmodel.People().Connect(s.db).AndGtJoined(far).GetCount()
+			if err != nil {
+				return nil, err
+			}
+			le, err := markdownmodel.People().Connect(s.db).AndLeJoined(far).GetCount()
+			if err != nil {
+				return nil, err
+			}
+			return map[string]any{"fraction": m.GetJoined().Nanosecond(), "out_of_range": []any{gt, le}}, nil
+		},
+		// index_read reads through the column of the index ix_tasks_owner, which the corpus derives in memory (DIA-176).
+		"index_read": func(s *served) (any, error) {
+			rows, err := markdownmodel.Tasks().Connect(s.db).RemoveAllColumns().Owner("P2").Gets()
+			if err != nil {
+				return nil, err
+			}
+			return rows.ToArray(), nil
+		},
+		// force_index names an index, which the corpus does not name: CAPABILITY_UNSUPPORTED (DIA-186).
+		"force_index": func(s *served) (any, error) {
+			return markdownmodel.Tasks().Connect(s.db).ForceIndexIxTasksOwner().Owner("P1").Gets()
+		},
+		// unavailable_table writes a heading of another table into tasks.flowmark.md, which is format.block:
+		// a read of tasks fails CONSTRAINT naming the file, and reads again once the file is restored (DIA-190).
+		"unavailable_table": func(s *served) (any, error) {
+			path := filepath.Join(s.dir, "tasks.flowmark.md")
+			b, err := os.ReadFile(path)
+			if err != nil {
+				return nil, err
+			}
+			if err := os.WriteFile(path, append(bytes.Clone(b), []byte("\n## people row P1\n")...), 0o644); err != nil {
+				return nil, err
+			}
+			_, broken := markdownmodel.Tasks().Connect(s.db).GetCount()
+			if err := os.WriteFile(path, b, 0o644); err != nil {
+				return nil, err
+			}
+			n, err := markdownmodel.Tasks().Connect(s.db).GetCount()
+			if err != nil {
+				return nil, err
+			}
+			return map[string]any{"broken": orm.ErrorCode(broken), "names_file": broken != nil && strings.Contains(broken.Error(), "tasks.flowmark.md"), "restored": n}, nil
+		},
+		// install_refuses_aes installs a catalog with an aes column, a schema error on a corpus (DIA-178).
+		"install_refuses_aes": func(s *served) (any, error) {
+			return refusedInstall(s, "aes")
+		},
+		// install_refuses_audit installs a catalog with an audit setting, a schema error on a corpus (DIA-179).
+		"install_refuses_audit": func(s *served) (any, error) {
+			return refusedInstall(s, "audit")
+		},
 	}
+}
+
+// installRefusal is the code that flowmark install prints when it refuses a catalog: "flowmark install: <CODE>: ...".
+var installRefusal = regexp.MustCompile(`^flowmark install: ([A-Z_]+):`)
+
+// refusedInstall installs tests/markdown/refused/<name>.dbs as the catalog of a new corpus and answers the code of
+// its refusal, {"error": code}; an install that succeeds answers {"error": null}.
+func refusedInstall(s *served, name string) (any, error) {
+	catalog, err := os.ReadFile(filepath.Join(conformanceDir, "refused", name+".dbs"))
+	if err != nil {
+		return nil, err
+	}
+	root, err := os.MkdirTemp("", "orm-markdown-refused-")
+	if err != nil {
+		return nil, err
+	}
+	defer os.RemoveAll(root)
+	dir := filepath.Join(root, name)
+	if err := os.MkdirAll(filepath.Join(dir, "dbspec"), 0o755); err != nil {
+		return nil, err
+	}
+	if err := os.WriteFile(filepath.Join(dir, "dbspec", name+".dbs"), catalog, 0o644); err != nil {
+		return nil, err
+	}
+	out, err := exec.Command(s.bin, "install", dir).CombinedOutput()
+	if err == nil {
+		return map[string]any{"error": nil}, nil
+	}
+	m := installRefusal.FindSubmatch(out)
+	if m == nil {
+		return nil, fmt.Errorf("flowmark install %s: %v, without a refusal code:\n%s", dir, err, out)
+	}
+	return map[string]any{"error": string(m[1])}, nil
 }
 
 // normalize is the value read back after the result was written as JSON: it has the same shape as expect in cases.json.
