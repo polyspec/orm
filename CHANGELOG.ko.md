@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 8f67a84183c56e7eeee1ca9075ff6bbc4ea8b6cdd2c1bfd993c448605c1270b3 -->
+<!-- source-sha256: cc8195c90aadf38c92f724bc401565324f195f18ab998525b92e47a0cc741a17 -->
 # 변경 이력
 
 ## Unreleased
+- PHP extension이 library 이름으로 `Polyspec\Orm\Validator`를 C로 구현하므로 `tests/ir/validate.json`의 case 125개가 `make dbspec-php-extension-check/ir`에서 extension으로 돌고, interface 기록이 그 class를 담는다. red: extension을 켜도 validator는 PHP library의 것이었다(T182-3).
 - PHP extension이 ORM-AES2 형식의 AES host stage, blind index, hex encode를 C에서 PHP의 crypto 함수를 불러 구현하므로 `tests/codec/aes-vectors.json`과 HostcodecTest 전체가 extension으로 돈다. red: extension을 켜면 aes stage가 `CODEC_UNSUPPORTED`를 답했다 (T182-2-3).
 - PHP extension이 hex와 ip host stage와 row decode를 C로 하므로 `tests/codec/decode-vectors.json`의 vector 68개가 `make dbspec-php-extension-check/decode`에서 extension으로 돈다. red: extension을 켜면 `hostDecode`가 `CODEC_UNSUPPORTED`를 답했다 (T182-2-2).
 - Rust integration binary가 생성 model `nonnull_model`과 `external_member`를 `#[cfg(test)]` 없이 compile하므로 binary와 그 test가 같은 code를 compile한다 (KSTD-5-12-3).

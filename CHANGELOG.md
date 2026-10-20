@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The PHP extension implements `Polyspec\Orm\Validator` in C under the library's name, so the 125 cases of `tests/ir/validate.json` run with it under `make dbspec-php-extension-check/ir`, and the interface record holds the class. Red: with the extension loaded the validator was the PHP library's (T182-3).
 - The PHP extension implements the AES host stage in the ORM-AES2 format, the blind index and the hex encode with the crypto functions of PHP called from C, so `tests/codec/aes-vectors.json` and the whole HostcodecTest run with it. Red: the aes stage answered `CODEC_UNSUPPORTED` with the extension loaded (T182-2-3).
 - The PHP extension decodes the hex and ip host stages and decodes rows in C, so the 68 vectors of `tests/codec/decode-vectors.json` run with it under `make dbspec-php-extension-check/decode`. Red: `hostDecode` answered `CODEC_UNSUPPORTED` with the extension loaded (T182-2-2).
 - The Rust integration binary compiles its generated models `nonnull_model` and `external_member` with no `#[cfg(test)]`, so the binary and its tests compile the same code (KSTD-5-12-3).
