@@ -55,15 +55,10 @@
         }
       ],
       "parity": [
-        "go-internal-packages-go-model-coverage-dsn",
-        "go-internal-packages-go-orm-coverage-dsn",
-        "php-internal-coverage-dsn-dsn-connection",
-        "py-cov-dsn-dsn-connection",
-        "rust-coverage-dsn-connection",
-        "rust-integration-coverage-generated-model-connection",
-        "rust-integration-generated-fields-require-selection-or-assignment",
-        "rust-integration-generated-nonnull-styled-setter-rejects-sql-null",
-        "ts-coverage_dsn"
+        "coverage-dsn-connection",
+        "coverage-generated-model-connection",
+        "generated-fields-require-selection-or-assignment",
+        "generated-nonnull-styled-setter-rejects-sql-null"
       ],
       "fixtures": [
         "packages/go/orm/test_helpers_test.go",

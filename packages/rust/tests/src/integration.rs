@@ -40,7 +40,7 @@ fn external_relation_getter_returns_the_external_entity_model() {
 }
 
 #[test]
-// The test of COD-20 (docs/spec).
+// Requirements: COD-20.
 fn generated_nonnull_styled_setter_rejects_sql_null() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let err = match nonnull_model::NonnullDocument::new().set_body(polyspec_orm::StyledValue::SqlNull) {
@@ -69,6 +69,7 @@ use polyspec_orm::{AesKeyring, Collection, Db, Isolation, Null};
 use polyspec_orm_case_database::CaseDatabase;
 
 #[tokio::test]
+// Requirements: CFG-1.
 async fn coverage_generated_model_connection() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let driver = std::env::var("ORM_FEATURE_DATABASE")
