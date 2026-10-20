@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 692c17b49ebea2696ecd0291df3af7bd83913625d29dfdca701f48fd49d373f9 -->
+<!-- source-sha256: e6a5673715a1356989b3562b3605582bdd327fd9ccf3fe08fcccf1e0acbb423e -->
 # 변경 이력
 
 ## Unreleased
+- dbspec 영역의 unit이 그 test가 이름으로 가리키는 requirement id를 인용한다: DBS, MER, SCH, CPX id 202개 중 191개를 각 vector 파일의 최상위 `requirements`나 묶인 test의 주석으로 인용한다; 새 vector `import/cardinality-differs`(MER-12)와 `positions/positions-skip-comments`(DBS-140)는 모든 구현에서 실패한 뒤 통과했다. 나머지 id는 KSTD-2-9와 KSTD-2-10이다(KSTD-2-5).
 - TypeScript build가 package가 선언한 bin을 실행 가능하게 만들어, 소비자가 `node_modules/.bin/orm-gen`을 실행한다. red: `node --test packages/ts/tests/bin-mode.mjs`가 `orm-gen (./dist/bin/orm-gen.js) has mode 644`로 실패했다. green: `npm run typescript:build` 뒤 pass 1(T225).
 - spec의 시험 가능한 규칙마다 requirement id `**PFX-n**`이 있고(960개: DBS, MER, SCH, CPX, DSL, DIA, COD, CFG, PAR, ORE, PLN, PRT, INT, ORES), 한국어 쌍에도 같다. `make docs-check`가 통과한다(KSTD-2-1).
 - PHP 생성기 test가 T209가 생성하는 사용되는 external table의 읽기 전용 model을 기대한다. red: `phpunit packages/php/tests/OrmGenTest.php`가 generated files ExtAccount.php, ExtAudit.php, ExtPost.php, ExtPostHistory.php, bootstrap.php로 실패했다. green: OK (10 tests, 34 assertions)(T209-1).
