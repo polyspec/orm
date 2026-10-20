@@ -30,6 +30,8 @@ const cases = [
   ['read: stored version is above i32', [cipher, 2147483648], 'CODEC_DECODE'],
   ['read: stored version is an undeclared integer', [cipher, 9], 'CONFIG'],
   ['read: stored version written as text decodes', [cipher, '1'], ''],
+  ['read: stored version read as a bigint decodes', [cipher, 1n], ''],
+  ['read: stored version read as a bigint above i32', [cipher, 2147483648n], 'CODEC_DECODE'],
 ];
 for (const [name, row, want] of cases) {
   check(`aes version codes: ${name}`, wrong => {

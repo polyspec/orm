@@ -12,11 +12,12 @@ export interface AesRowCodec {
 }
 
 /**
- * The key version that a stored row holds: a positive 32-bit integer, as a number or as its decimal text. Any other value
+ * The key version that a stored row holds: a positive 32-bit integer, as a number, a bigint (as SQLite reads it) or its decimal text. Any other value
  * is CODEC_DECODE; it is never coerced.
  */
 export function storedVersion(value: unknown): number {
-  const version = typeof value === 'number' ? value : typeof value === 'string' && /^[0-9]+$/.test(value) ? Number(value) : Number.NaN;
+  const version = typeof value === 'number' || typeof value === 'bigint' ? Number(value)
+    : typeof value === 'string' && /^[0-9]+$/.test(value) ? Number(value) : Number.NaN;
   if (!Number.isInteger(version) || version < 1 || version > 2147483647) throw new OrmError(codes.CODEC_DECODE, `aes version ${String(value)} is not a positive 32-bit integer`);
   return version;
 }
