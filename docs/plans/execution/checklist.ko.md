@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: e9147a3a773a5fa139377ab79a54caf98a7b3260601935252abf424470599755 -->
+<!-- source-sha256: 4360283d245c7e0a2dd7db10f2689d71e9e0b10d9d34e486c38d046bef2d9956 -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1280,4 +1280,4 @@
 | T224 | 생성된 PHP model이 unique key와 index를 어떤 순서로 선언하든 manifest와 맞는다(limepie: CONFIG generated model Limepie\Model\CommandRun of entity command_run differs from its manifest at unique). 원인: orm-gen은 meta를 문서의 선언 순서로 만들고(OrmGen.php, RuntimeModel::tableEntity) manifest text는 canonical이라 unique key와 index를 이름으로 정렬하므로(Dbspec/Emitter.php), fromModels가 한 table의 두 순서를 비교해 거부한다 | packages/php/src/RuntimeModel.php, packages/php/src/OrmGen.php, packages/php/tests/RuntimeModelTest.php | `vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RuntimeModelTest.php` | [o] |
 | T225 | TypeScript package의 빌드된 orm-gen bin이 실행 가능하다(fsm). 원인: scripts/typescript/build.mts가 tsc 출력을 그대로 게시하고 tsc는 dist/bin/orm-gen.js를 mode 644로 쓰므로, 소비자의 node_modules/.bin/orm-gen이 Permission denied로 실패한다. dbspec bin은 mode 755로 commit되어 있어 해당하지 않는다 | scripts/typescript/build.mts, packages/ts/tests/bin-mode.mjs | `npm run -s typescript:build && node --test packages/ts/tests/bin-mode.mjs` | [o] |
 | T226 | scan한 model 호출은 모든 generator에서 그 class를 import한 생성 module의 set에 속한다. Cause: TypeScript scan이 class 이름으로만 호출을 귀속시켜, limepie에서 orm-gen gen --set requests가 main set의 Account.getEnabledTotps()(node/src/accounts/store.ts:79)에서 실패한다. requests set도 그 Account를 use한다 | docs/spec, the scanners of the five generators, their tests, config/parity.json | `node --test packages/ts/tests/generate-scan.mjs`, `go test -run Scan ./packages/go/generator`, the scan tests of PHP, Python and Rust | [o] |
-| T226-1 | TypeScript scan은 재할당된 변수에 담긴 receiver를 그 initializer와 재할당을 따라 class와 그 class의 import로 푼다 (T226 후속). Cause: T226 뒤 limepie models.ts에 ltSeq와 andLtSeq가 없다; modules/core/node/src/console/audit.ts:130이 자기 chain으로 재할당한 let page = new Audit()...에서 이들을 부른다 | the scanners of every generator, their tests | `node --test packages/ts/tests/generate-scan.mjs` | [~] |
+| T226-1 | TypeScript scan은 재할당된 변수에 담긴 receiver를 그 initializer와 재할당을 따라 class와 그 class의 import로 푼다 (T226 후속). Cause: T226 뒤 limepie models.ts에 ltSeq와 andLtSeq가 없다; modules/core/node/src/console/audit.ts:130이 자기 chain으로 재할당한 let page = new Audit()...에서 이들을 부른다 | the scanners of every generator, their tests | `node --test packages/ts/tests/generate-scan.mjs` | [o] |

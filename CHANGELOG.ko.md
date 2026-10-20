@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7fb1cf4c0389399b38ef7b53a941d20c7805c6855ae5f7fe231a171b5c4d17c6 -->
+<!-- source-sha256: c89e4e5d02bd96f6e6c012b60b70679b1dae944db04b07c006b8cd1f646e1b1a -->
 # 변경 이력
 
 ## Unreleased
+- 변수에 담긴 scan receiver는 그 initializer와 모든 재할당을 따라 class와 그 class의 import로 풀린다(DSL-151). 그래서 조건식에서 자기 chain으로 재할당한 model도 chain method를 유지한다. red: TypeScript, PHP, Python scan이 limepie의 console/audit.ts처럼 `page = c ? page.ltSeq(x) : page.andLtSeq(x)` 뒤 class를 잃어 `ltSeq`, `andLtSeq`를 생성하지 않았다; Go와 Rust는 이미 변수의 type을 알았고, 그 새 case는 풀이를 깨면 실패한다(T226-1).
 - `make feature-unit-check`가 통과한다: PHP extension이 package, PHPUnit 실행, `schema_definition` owner를 갖춘 feature coverage의 client 언어다; 아직 구현하지 않은 feature 16개는 `partial`이고 `docs/features.md`를 다시 생성했다. red: coverage case 8개가 "no package implements the client language php-extension"으로 실패했고 생성 문서가 낡았다(KSTD-7).
 - 구현 내부 test 64개(dbspec harness와 loader, unicode와 vector 자가 검사, generator scan 기계 장치, test harness, bench, example)를 더는 parity unit으로 선언하지 않는다; 이들은 package test로 남아 돈다. `make parity-declarations-check`가 576개에서 512개 finding이 되었다(KSTD-2-11-5).
 - AGENTS.md의 모든 규칙이 이 repository의 규칙인지(`Own:`, 50개) PRINCIPLES.md의 원칙을 그 id로 다듬는지(`Refines <id>:`, 8개)를 밝히며, 한국어 쌍에도 같은 접두사가 있다. red: `make rules-check`가 둘 다 없는 규칙 58개를 보고했다(KSTD-5-3).

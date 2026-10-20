@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- A scanned receiver held in a variable resolves through its initializer and every reassignment to its class and that class's import (DSL-151), so a model reassigned from its own chain in a conditional expression keeps its chain methods. Red: the TypeScript, PHP and Python scans lost the class after `page = c ? page.ltSeq(x) : page.andLtSeq(x)` and generated no `ltSeq` or `andLtSeq`, as in limepie's console/audit.ts; Go and Rust already typed the variable, and their new cases fail when the resolution is broken (T226-1).
 - `make feature-unit-check` passes: the PHP extension is a client language of the feature coverage, with its package, its PHPUnit run and its owner of `schema_definition`; the 16 features it does not implement yet are `partial`, and `docs/features.md` is regenerated. Red: 8 coverage cases failed with "no package implements the client language php-extension" and the generated document was stale (KSTD-7).
 - 64 implementation-internal tests (dbspec harness and loaders, unicode and vector self-checks, generator scan mechanics, test harness, bench and examples) are no longer declared as parity units; they stay and run as package tests. `make parity-declarations-check` went from 576 to 512 findings (KSTD-2-11-5).
 - Every rule of AGENTS.md says whether it is the repository's own (`Own:`, 50) or refines a principle of PRINCIPLES.md by its id (`Refines <id>:`, 8), with the same prefixes in the Korean twin. Red: `make rules-check` reported 58 rules with neither (KSTD-5-3).
