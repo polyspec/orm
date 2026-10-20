@@ -60,7 +60,7 @@ func testPhysicalQueryForms(t *testing.T, driver, dsn string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() { testcase.Close(t, db) })
 	exec := func(query string) {
 		t.Helper()
 		if _, err := db.ExecContext(ctx, query); err != nil {
@@ -69,7 +69,11 @@ func testPhysicalQueryForms(t *testing.T, driver, dsn string) {
 	}
 	for _, table := range []string{"place", "owner", "visit", "membership"} {
 		exec("DROP TABLE IF EXISTS " + table)
-		t.Cleanup(func() { _, _ = db.ExecContext(ctx, "DROP TABLE IF EXISTS "+table) })
+		t.Cleanup(func() {
+			if _, err := db.ExecContext(ctx, "DROP TABLE IF EXISTS "+table); err != nil {
+				t.Errorf("drop %s: %v", table, err)
+			}
+		})
 	}
 	point, datetime := "POINT", "DATETIME(6)"
 	switch driver {
@@ -124,7 +128,7 @@ func testPhysicalQueryForms(t *testing.T, driver, dsn string) {
 		5, 2)
 	// Seq 2 is dated relative to the run clock, so its weekday changes by day; it is excluded. Seq 1 (created 2020-01-02,
 	// a Thursday, DAYOFWEEK 5) is the only fixed-date row, so the expected result is seq 1 on any run day.
-	if len(rows) != 1 || asInt(rows[0][0]) != 1 {
+	if len(rows) != 1 || asInt(t, rows[0][0]) != 1 {
 		t.Fatalf("day_of_week rows %v, want seq 1 only", rows)
 	}
 
@@ -132,7 +136,7 @@ func testPhysicalQueryForms(t *testing.T, driver, dsn string) {
 	rows = run(`"kind":"all","entity":"place","columns":{"mode":"none"},
 	 "where":{"items":[{"pred":{"column":"created_ts","op":"gt","value":{"name":"days_ago","ps":[0]}}},
 	   {"pred":{"conn":"and","column":"created_ts","op":"lte","value":{"name":"now"}}}]}`, 3)
-	if len(rows) != 1 || asInt(rows[0][0]) != 2 {
+	if len(rows) != 1 || asInt(t, rows[0][0]) != 2 {
 		t.Fatalf("days_ago rows %v", rows)
 	}
 
@@ -146,7 +150,7 @@ func testPhysicalQueryForms(t *testing.T, driver, dsn string) {
 	   "where":{"items":[{"pred":{"column":"place_seq","op":"eq_col","ref":{"path":"^","column":"seq"}}},{"pred":{"conn":"and","column":"status","op":"eq","p":0}}]}}}}},
 	 "where":{"items":[{"pred":{"column":"owner_seq","op":"in","sub":{"column":"seq","query":{"entity":"owner",
 	   "where":{"items":[{"pred":{"column":"min_price","op":"gt","p":1}}]}}}}}]}`, 1, 500)
-	if len(rows) != 1 || asInt(rows[0][0]) != 1 || asInt(rows[0][len(rows[0])-1]) != 50 {
+	if len(rows) != 1 || asInt(t, rows[0][0]) != 1 || asInt(t, rows[0][len(rows[0])-1]) != 50 {
 		t.Fatalf("subquery rows %v", rows)
 	}
 
@@ -156,7 +160,7 @@ func testPhysicalQueryForms(t *testing.T, driver, dsn string) {
 	 "where":{"items":[{"pred":{"column":"price","op":"gt_col","ref":{"path":"owner","column":"min_price"}}},
 	   {"group":{"conn":"and","items":[{"pred":{"column":"name","op":"contains","p":1}},{"joined":{"conn":"or","join":"owner"}}]}}]},
 	 "order":[{"column":"seq"}]`, "bakery", "busan")
-	if len(rows) != 1 || asInt(rows[0][0]) != 1 {
+	if len(rows) != 1 || asInt(t, rows[0][0]) != 1 {
 		t.Fatalf("placed join rows %v", rows)
 	}
 
@@ -187,8 +191,11 @@ func physicalRows(t *testing.T, db *sql.DB, driver string, st plan.Step, clock t
 	if err != nil {
 		t.Fatalf("%s: %s: %v", driver, st.SQL, err)
 	}
-	defer rs.Close()
-	cols, _ := rs.Columns()
+	defer testcase.Close(t, rs)
+	cols, err := rs.Columns()
+	if err != nil {
+		t.Fatal(err)
+	}
 	var out [][]any
 	for rs.Next() {
 		row := make([]any, len(cols))
@@ -207,7 +214,8 @@ func physicalRows(t *testing.T, db *sql.DB, driver string, st plan.Step, clock t
 	return out
 }
 
-func asInt(v any) int64 {
+func asInt(t *testing.T, v any) int64 {
+	t.Helper()
 	switch x := v.(type) {
 	case int64:
 		return x
@@ -216,29 +224,20 @@ func asInt(v any) int64 {
 	case float64:
 		return int64(x)
 	case []byte:
-		var n int64
-		fmt.Sscan(string(x), &n)
-		return n
+		return scanInt(t, string(x))
 	case string:
-		var n int64
-		fmt.Sscan(x, &n)
-		return n
+		return scanInt(t, x)
 	}
-	panic(fmt.Sprintf("asInt %T", v))
+	t.Fatalf("asInt %T", v)
+	return 0
 }
 
-func asFloat(v any) float64 {
-	switch x := v.(type) {
-	case float64:
-		return x
-	case []byte:
-		var n float64
-		fmt.Sscan(string(x), &n)
-		return n
-	case string:
-		var n float64
-		fmt.Sscan(x, &n)
-		return n
+// scanInt parses the integer text of a database value, which fails the test when the text is not an integer.
+func scanInt(t *testing.T, text string) int64 {
+	t.Helper()
+	var n int64
+	if _, err := fmt.Sscan(text, &n); err != nil {
+		t.Fatalf("scan %q as an integer: %v", text, err)
 	}
-	return float64(asInt(v))
+	return n
 }
