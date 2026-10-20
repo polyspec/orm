@@ -3,6 +3,7 @@
 // nothing for a call whose receiver is not a model.
 // Usage: node packages/ts/tests/generate-scan.mjs [case ...] (after npm run typescript:build)
 import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -408,7 +409,24 @@ async function baseMethodsMatchModel() {
   check(missing.length === 0 && extra.length === 0, `baseMethods differs from the Model methods: missing ${JSON.stringify(missing)}, extra ${JSON.stringify(extra)}`);
 }
 
-const cases = { non_model_call: nonModelCall, base_methods_match_model: baseMethodsMatchModel, model_calls: modelCalls, scan_path_spelling: scanPathSpelling, alias_match_getter: aliasMatchGetter, nested_alias_getter: nestedAliasGetter, unattached_getter: unattachedGetter, external_getter: externalGetter, scope_binding: scopeBinding, may_hold_two_models: mayHoldTwoModels, possible_classes: possibleClasses, callback_parameters: callbackParameters, imported_set: importedSet, reassigned_variable: reassignedVariable };
+/** A file of a scanned directory that does not parse stops the generation, writes nothing, and names the file and position. */
+// Requirements: DSL-152.
+async function unparsableFile() {
+  const work = await mkdtemp(join(tmpdir(), 'orm-ts-scan-parse-'));
+  try {
+    await mkdir(join(work, 'src'));
+    await writeFile(join(work, 'src/usage.ts'), 'export const x = 1;\n');
+    await writeFile(join(work, 'src/broken.ts'), 'export const x = 1;\nfunction (\n');
+    const result = spawnSync(process.execPath, [bin, 'gen', '--set', join(root, 'contracts/fixtures/bench/dbspec-set.json'), '--out', 'out', '--scan', 'src'], { cwd: work, encoding: 'utf8', timeout: CASE_DEADLINE_MS });
+    check(result.status !== 0, `an unparsable file is skipped: status ${result.status}`);
+    check(/broken\.ts:2:\d+:/.test(result.stderr), `the error does not name the file and position: ${result.stderr}`);
+    check(!existsSync(join(work, 'out')), 'the failed generation wrote its output');
+  } finally {
+    await rm(work, { recursive: true, force: true });
+  }
+}
+
+const cases = { non_model_call: nonModelCall, base_methods_match_model: baseMethodsMatchModel, model_calls: modelCalls, scan_path_spelling: scanPathSpelling, alias_match_getter: aliasMatchGetter, nested_alias_getter: nestedAliasGetter, unattached_getter: unattachedGetter, external_getter: externalGetter, scope_binding: scopeBinding, may_hold_two_models: mayHoldTwoModels, possible_classes: possibleClasses, callback_parameters: callbackParameters, imported_set: importedSet, reassigned_variable: reassignedVariable, unparsable_file: unparsableFile };
 const selected = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(cases);
 for (const name of selected) {
   const run = cases[name];

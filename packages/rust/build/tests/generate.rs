@@ -584,6 +584,25 @@ fn read(row: &main_set::Author, user: MainUser) { let _ = row.get_phantom(); let
     assert!(text.contains("pub fn ne_name"), "the call on this set's User is not generated");
 }
 
+/// A file of a scanned directory that does not parse stops the generation, writes nothing, and names the file and position.
+#[test]
+// Requirements: DSL-152.
+fn a_file_that_does_not_parse_stops_the_generation() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let dir = std::env::temp_dir().join(format!("orm-build-test-{}-{n}", std::process::id()));
+    let src = dir.join("src");
+    std::fs::create_dir_all(&src).unwrap();
+    std::fs::write(src.join("main.rs"), "fn main() {}\n").unwrap();
+    std::fs::write(src.join("broken.rs"), "fn main() {}\nfn (\n").unwrap();
+    let out = polyspec_orm_build::Builder::set(set_file(&dir, &[bench()], &[])).scan(&src).out_dir(dir.join("out")).try_generate();
+    let wrote = dir.join("out").exists();
+    let _ = std::fs::remove_dir_all(&dir);
+    let err = out.expect_err("an unparsable file is skipped");
+    assert!(err.contains("broken.rs:2:"), "the error does not name the file and position: {err}");
+    assert!(!wrote, "the failed generation wrote its output");
+}
+
 /// A receiver held in a variable resolves through its initializer and its reassignments to its class, as the checker types it: a
 /// `let mut` initialized from a chain on an imported class and reassigned from its own chain in an `if` expression still holds
 /// that class, so a getter called on it after each reassignment is checked as that class's call. An untyped call is offered to

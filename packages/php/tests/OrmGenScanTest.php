@@ -817,6 +817,24 @@ PHP;
         self::assertStringContainsString('broken.php', $err);
     }
 
+    public function test_a_file_that_does_not_parse_stops_the_generation_and_names_its_position(): void
+    {
+        // Requirements: DSL-152.
+        $dir = self::$work . '/unparsable';
+        @mkdir("$dir/src", 0o700, true);
+        file_put_contents("$dir/src/usage.php", "<?php\n\$x = 1;\n");
+        file_put_contents("$dir/src/broken.php", "<?php\n\$a = new (;\n");
+        $stderr = fopen('php://memory', 'w+');
+        ob_start();
+        $code = OrmGen::run(['gen', '--set', dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json', '--out', "$dir/model", '--namespace', self::NS, '--scan', "$dir/src"], $stderr);
+        ob_end_clean();
+        rewind($stderr);
+        $err = (string) stream_get_contents($stderr);
+        self::assertSame(1, $code, $err);
+        self::assertMatchesRegularExpression('~broken\.php:2:\d+: does not parse: ~', $err);
+        self::assertDirectoryDoesNotExist("$dir/model");
+    }
+
     public function test_a_scanned_directory_skips_its_dependencies_and_refuses_a_symlink(): void
     {
         // The test of DSL-42 (docs/spec).

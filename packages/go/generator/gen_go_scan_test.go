@@ -1,10 +1,12 @@
 package generator
 
 import (
+	"errors"
 	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -530,6 +532,32 @@ func Cheap() *model.ProductModel { return model.Product().LtPrice(1) }
 		t.Error("model/product.go declares a method that only another set's model is called with")
 	}
 	buildScannedModule(t)
+}
+
+// TestGoScanFailsOnAFileThatDoesNotParse checks that a scanned file that does
+// not parse stops the generation: nothing is written, and the error names the
+// file with the parser's position and message.
+func TestGoScanFailsOnAFileThatDoesNotParse(t *testing.T) {
+	// Requirements: DSL-152.
+	testcase.Start(t, testcase.Process)
+	write := scannedModule(t)
+	write("example/example.go", "package example\n\nconst X = 1\n")
+	write("example/broken.go", "package example\n\nfunc (\n")
+	m := namesManifest(t, namesDiagram)
+	err := generateGo(m, "model", "", []string{"./..."})
+	if err == nil {
+		t.Fatal("an unparsable file is skipped")
+	}
+	var scanned *ScannedSourceError
+	if errors.As(err, &scanned) {
+		t.Errorf("an unparsable file is reported after the models are written: %v", err)
+	}
+	if !regexp.MustCompile(`broken\.go:3:\d+: `).MatchString(err.Error()) {
+		t.Errorf("the error does not name the file and position: %v", err)
+	}
+	if _, statErr := os.Stat("model"); !errors.Is(statErr, os.ErrNotExist) {
+		t.Errorf("the failed generation wrote its output: %v", statErr)
+	}
 }
 
 // TestGoScanResolvesAReassignedVariable checks that a receiver held in a

@@ -68,6 +68,12 @@ func (g *goGen) scan(patterns []string) error {
 			if err != nil {
 				return err
 			}
+			// A scanned file that does not parse would hide its calls, so it
+			// stops the generation before anything is written
+			// (docs/spec/dsl.md, DSL-152).
+			if err := parseErrors(loaded, overlay); err != nil {
+				return err
+			}
 			for _, p := range loaded {
 				for _, f := range p.Syntax {
 					name := p.Fset.File(f.Pos()).Name()
@@ -199,6 +205,26 @@ func compileErrors(dir string, pkgs []*packages.Package, overlay map[string][]by
 		return &ScannedSourceError{Errors: scanned}
 	}
 	return nil
+}
+
+// parseErrors returns the parse errors of the scanned files, each with its
+// file, position and message, or nil when every scanned file parses. A parse
+// error of a generated file is not the scanned source's and is left to the
+// compile check.
+func parseErrors(pkgs []*packages.Package, overlay map[string][]byte) error {
+	var failed []string
+	for _, p := range pkgs {
+		for _, e := range p.Errors {
+			if e.Kind == packages.ParseError && overlay[errorFile(e.Pos)] == nil {
+				failed = append(failed, e.Error())
+			}
+		}
+	}
+	if len(failed) == 0 {
+		return nil
+	}
+	sort.Strings(failed)
+	return fmt.Errorf("the scanned files do not parse:\n%s", listErrors(slices.Compact(failed)))
 }
 
 // errorFile returns the file of an error position of the form file:line:col.

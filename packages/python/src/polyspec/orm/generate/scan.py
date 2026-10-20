@@ -3,6 +3,9 @@
 import ast
 import os
 
+from polyspec.orm import codes
+from polyspec.orm.errors import OrmError
+
 __all__ = ["scan_model_calls"]
 
 _SKIPPED = frozenset({"node_modules", "__pycache__", ".venv"})
@@ -558,8 +561,12 @@ def _scan_file(path: str, classes: dict, out: dict, sites, set_module: list) -> 
     try:
         with open(path, encoding="utf-8") as handle:
             tree = ast.parse(handle.read(), filename=path)
-    except SyntaxError:
-        return
+    except SyntaxError as error:
+        # A file that does not parse would hide its calls, so it fails the scan (docs/spec/dsl.md, DSL-152).
+        raise OrmError(
+            codes.CONFIG,
+            f"--scan: {path}:{error.lineno}:{error.offset}: does not parse: {error.msg}",
+        ) from error
     _scan_tree(tree, classes, out, sites, path, set_module)
 
 

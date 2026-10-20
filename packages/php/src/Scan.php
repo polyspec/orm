@@ -55,12 +55,14 @@ final class Scan
             if (!str_ends_with($file, '.php')) {
                 continue;
             }
+            // A file that does not parse would hide its calls, so it fails the scan with its position (docs/spec/dsl.md, DSL-152).
+            $code = (string) file_get_contents($file);
             try {
-                $tree = $parser->parse((string) file_get_contents($file));
+                $tree = $parser->parse($code);
             } catch (Error $e) {
-                throw new \RuntimeException("--scan: $file does not parse: " . $e->getMessage());
+                $at = $e->getStartLine() . ($e->hasColumnInfo() ? ':' . $e->getStartColumn($code) : '');
+                throw new \RuntimeException("--scan: $file:$at: does not parse: " . $e->getRawMessage());
             }
-            // A file that does not parse would hide its calls, so it fails the scan.
             $traverser = new NodeTraverser(new NameResolver());
             $tree = $traverser->traverse($tree ?? []);
             $visitor = new ScanVisitor($models, $out, $siteList);

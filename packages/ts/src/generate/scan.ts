@@ -531,7 +531,6 @@ function boundNames(node: Node): string[] {
   return [];
 }
 
-/** Parses a source file; a syntax error fails the scan with the file and the errors, since an unparsed file would hide its calls. */
 /** The generated module of the set: its path without the extension and the manifest hash it is generated from. */
 interface SetModule { readonly module: string; readonly hash: string }
 
@@ -565,11 +564,18 @@ function ownModule(set: SetModule, file: string, specifier: string): boolean {
   return hash === undefined || hash === set.hash;
 }
 
+/** Parses a source file; a syntax error fails the scan with the file, its position and the errors, since an unparsed file would hide its calls. */
 function visitFile(path: string, models: ReadonlySet<string>, out: Map<string, Set<string>>, sites: ScanSite[], module: SetModule): void {
   if (!extensions.has(extname(path))) return;
-  const parsed = parseSync(path, readFileSync(path, 'utf8'));
+  const text = readFileSync(path, 'utf8');
+  const parsed = parseSync(path, text);
   const errors = parsed.errors.filter(error => error.severity === 'Error');
-  if (errors.length > 0) throw new Error(`orm-gen --scan: ${path} does not parse: ${errors.map(error => error.message).join('; ')}`);
+  if (errors.length > 0) {
+    // The position is the first label of the first error, as line:column (docs/spec/dsl.md, DSL-152).
+    const start = errors[0]!.labels[0]?.start ?? 0;
+    const before = text.slice(0, start).split('\n');
+    throw new Error(`orm-gen --scan: ${path}:${before.length}:${before[before.length - 1]!.length + 1}: does not parse: ${errors.map(error => error.message).join('; ')}`);
+  }
   new Scanner(models, out, sites, resolve(path), module).visit(parsed.program);
 }
 

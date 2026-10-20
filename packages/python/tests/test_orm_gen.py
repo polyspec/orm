@@ -574,6 +574,33 @@ class OrmGenTest(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn("Author.get_ghost is called", result.stderr)
 
+    def test_a_file_that_does_not_parse_fails_the_scan(self):
+        # Requirements: DSL-152.
+        # An unparsable file of a scanned directory stops the generation, writes nothing, and names the file and position.
+        with tempfile.TemporaryDirectory(prefix="orm-gen-scan-parse-") as work:
+            work_path = Path(work)
+            (work_path / "src").mkdir()
+            (work_path / "src" / "usage.py").write_text("x = 1\n", encoding="utf-8")
+            (work_path / "src" / "broken.py").write_text("x = 1\ndef (:\n", encoding="utf-8")
+            out = work_path / "model"
+            result = subprocess.run(
+                args=ORM_GEN
+                + [
+                    "gen",
+                    "--set",
+                    str(ROOT / "contracts" / "fixtures" / "bench" / "dbspec-set.json"),
+                    "--out",
+                    str(out),
+                    "--scan",
+                    str(work_path / "src"),
+                ],
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(result.returncode, 0, result.stderr)
+            self.assertIn("broken.py:2:", result.stderr)
+            self.assertFalse(out.exists())
+
     def test_a_receiver_held_in_a_reassigned_name_resolves_to_its_class(self):
         # Requirements: DSL-151.
         # A name bound from a chain on an imported class and rebound from its own chain in a conditional expression still
