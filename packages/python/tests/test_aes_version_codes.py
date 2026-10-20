@@ -6,7 +6,7 @@ import unittest
 from types import SimpleNamespace
 
 from . import testcase
-from polyspec.orm.aes import AesKeyring, stored_version
+from polyspec.orm.aes import AesKeyring, _stored_version
 from polyspec.orm.codec import host_encode
 from polyspec.orm.database import _decode_assembly
 from polyspec.orm.errors import OrmError
@@ -50,11 +50,11 @@ class AesVersionCodesTest(unittest.TestCase):
                 self.assertEqual(got, want)
 
     def test_stored_version_accepts_only_positive_i32(self):
-        self.assertEqual(stored_version("2"), 2)
-        self.assertEqual(stored_version(2147483647), 2147483647)
+        self.assertEqual(_stored_version("2"), 2)
+        self.assertEqual(_stored_version(2147483647), 2147483647)
         for bad in ["1x", "", True, -1, 0, 2**31, 1.0, None]:
             with self.subTest(value=bad):
-                self.assertEqual(code_of(lambda: stored_version(bad)), "CODEC_DECODE")
+                self.assertEqual(code_of(lambda: _stored_version(bad)), "CODEC_DECODE")
 
     def test_read_plan_without_version_column_is_internal(self):
         no_version = {key: value for key, value in ASSEMBLE.items() if key != "aes_version"}

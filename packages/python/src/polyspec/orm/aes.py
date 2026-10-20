@@ -5,7 +5,7 @@ from typing import Mapping
 from polyspec.orm import codes
 from polyspec.orm.errors import OrmError
 
-__all__ = ["AesKeyring", "stored_version"]
+__all__ = ["AesKeyring"]
 
 
 def _is_safe_integer(value: object) -> bool:
@@ -16,7 +16,7 @@ def _is_safe_integer(value: object) -> bool:
     )
 
 
-def stored_version(value) -> int:
+def _stored_version(value) -> int:
     """The key version a stored row holds: a positive 32-bit integer, as an int or as its decimal text. Any other
     value is CODEC_DECODE; it is never coerced."""
     if isinstance(value, str) and re.fullmatch(r"[0-9]+", value):
@@ -79,7 +79,7 @@ class AesKeyring:
         codec = codec or _RowCodec()
         if version_column not in row:
             raise OrmError(codes.INTERNAL, f"AES version column {version_column} is missing")
-        old_key = self.key(stored_version(row[version_column]))
+        old_key = self.key(_stored_version(row[version_column]))
         new_key = self.key(target_version)
         out = dict(row)
         for column in columns:

@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from polyspec.orm import codes
-from polyspec.orm.aes import AesKeyring, stored_version
+from polyspec.orm.aes import AesKeyring, _stored_version
 from polyspec.orm.errors import OrmError
 from polyspec.orm.markdown import unsupported_on_markdown
 from polyspec.orm.model import Model
@@ -557,7 +557,7 @@ class AesUtils:
             lambda: db._sent(lambda: db._connection.execute(query, [])["rows"]),
         )
         for stored, count in rows:
-            version = stored_version(stored)
+            version = _stored_version(stored)
             status.versions[version] = count
             status.total += count
             if version != status.current:
