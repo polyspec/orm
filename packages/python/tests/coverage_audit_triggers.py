@@ -43,6 +43,24 @@ def audit_source(actor: str):
     return lambda: {"actor": actor}
 
 
+def item_history(m, db):
+    """The item_history rows in history_id order, each as change, previous audit seq, seq, title, audit seq and whether it is deleted."""
+    history = (
+        m.ItemHistory().connect(db).add_all_columns().order_by_history_id_asc().gets()
+    )
+    return [
+        [
+            h.get_change(),
+            h.get_previous_audit_seq(),
+            h.get_seq(),
+            h.get_title(),
+            h.get_audit_seq(),
+            h.get_deleted_at() is not None,
+        ]
+        for h in history.values()
+    ]
+
+
 def code_of(run):
     try:
         run()
@@ -212,25 +230,8 @@ def audit_history(item):
             [[1, "create"], [2, "default"]],
             "audit records",
         )
-        history = (
-            m.ItemHistory()
-            .connect(db)
-            .add_all_columns()
-            .order_by_history_id_asc()
-            .gets()
-        )
         expect_equal(
-            [
-                [
-                    h.get_change(),
-                    h.get_previous_audit_seq(),
-                    h.get_seq(),
-                    h.get_title(),
-                    h.get_audit_seq(),
-                    h.get_deleted_at() is not None,
-                ]
-                for h in history.values()
-            ],
+            item_history(m, db),
             [
                 ["insert", None, seq[0], "first", 1, False],
                 ["update", 1, seq[0], "second", 1, False],
@@ -272,25 +273,8 @@ def audit_transaction_entry_points(item):
             "CONFIG",
             "a nested transaction with an audit",
         )
-        history = (
-            m.ItemHistory()
-            .connect(db)
-            .add_all_columns()
-            .order_by_history_id_asc()
-            .gets()
-        )
         expect_equal(
-            [
-                [
-                    h.get_change(),
-                    h.get_previous_audit_seq(),
-                    h.get_seq(),
-                    h.get_title(),
-                    h.get_audit_seq(),
-                    h.get_deleted_at() is not None,
-                ]
-                for h in history.values()
-            ],
+            item_history(m, db),
             [
                 ["insert", None, seq, "first", 1, False],
                 ["update", 1, seq, "second", 2, False],

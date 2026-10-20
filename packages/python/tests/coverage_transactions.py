@@ -2,7 +2,13 @@
 # nested transaction rolls back only its own write through a savepoint, as the transactions coverage of Go, PHP,
 # TypeScript and Rust does. The rows are written only to composite_account and removed when the case ends.
 from polyspec.orm.models import models
-from .coverage_case import expect_equal, CoverageCase, coverage_main, with_cleanup
+from .coverage_case import (
+    expect_equal,
+    CoverageCase,
+    coverage_main,
+    run_on_empty_tenant,
+    with_cleanup,
+)
 
 TENANT = 990003
 
@@ -13,21 +19,13 @@ class Requested(Exception):
 
 def with_tenant(item, body):
     """Opens the selected database, runs the case and removes every row of the tenant afterwards."""
-    driver, dsn = item
-    db = models.connect(dsn)
-    try:
-        expect_equal(db.driver, driver, "the driver")
-        account = lambda: models.CompositeAccount().connect(db)  # noqa: E731
-        expect_equal(
-            account().tenant_id(TENANT).get_count(),
-            0,
-            f"composite_account rows of tenant {TENANT} before the case",
-        )
+
+    def case(db, account):
         with_cleanup(
             lambda: body(db), lambda: account().tenant_id(TENANT).gets().delete()
         )
-    finally:
-        db.close()
+
+    run_on_empty_tenant(models, item, TENANT, case)
 
 
 def exists(db, account_id) -> bool:

@@ -6,6 +6,7 @@ from .coverage_case import (
     expect_equal,
     CoverageCase,
     coverage_main,
+    run_on_empty_tenant,
     with_cleanup,
 )
 
@@ -13,17 +14,7 @@ TENANT = 990002
 
 
 def model_write_cycle(item):
-    driver, dsn = item
-    db = models.connect(dsn)
-    try:
-        expect_equal(db.driver, driver, "the driver")
-        account = lambda: models.CompositeAccount().connect(db)  # noqa: E731
-        expect_equal(
-            account().tenant_id(TENANT).get_count(),
-            0,
-            f"composite_account rows of tenant {TENANT} before the case",
-        )
-
+    def case(_db, account):
         def body():
             created = (
                 account()
@@ -90,8 +81,8 @@ def model_write_cycle(item):
 
         # A failed run leaves no row of this case either.
         with_cleanup(body, lambda: account().tenant_id(TENANT).gets().delete())
-    finally:
-        db.close()
+
+    run_on_empty_tenant(models, item, TENANT, case)
 
 
 class CoverageTest(CoverageCase):

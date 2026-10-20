@@ -239,3 +239,21 @@ def expect_equal(got, want, what: str) -> None:
     """Raises with both values when they differ; an assert statement would vanish under python -O."""
     if got != want:
         raise AssertionError(f"{what}: got {got!r}, want {want!r}")
+
+
+def run_on_empty_tenant(models, item, tenant, run) -> None:
+    """Opens the database of item with models, checks its driver and that composite_account has no row of tenant, then
+    calls run(db, account), where account() starts a composite_account query on db; db is closed when run ends."""
+    driver, dsn = item
+    db = models.connect(dsn)
+    try:
+        expect_equal(db.driver, driver, "the driver")
+        account = lambda: models.CompositeAccount().connect(db)  # noqa: E731
+        expect_equal(
+            account().tenant_id(tenant).get_count(),
+            0,
+            f"composite_account rows of tenant {tenant} before the case",
+        )
+        run(db, account)
+    finally:
+        db.close()
