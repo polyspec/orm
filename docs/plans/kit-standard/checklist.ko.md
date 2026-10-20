@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 4d1616ec1594b5c5c840a8727702d451e7adac2d667284c18c2208bb44eb7f34 -->
+<!-- source-sha256: bd42ff383aeede32a5f89e0ea10a27ac8e541576171092d6e45605160c326689 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -103,7 +103,7 @@
 | KSTD-5-12-3 | Rust integration binary가 #[cfg(test)] 없이 생성 model을 받는다 (KSTD-5-12-1 후속). Cause: packages/rust/tests/src/integration.rs는 bin target이며 13행과 24행의 #[cfg(test)]가 build.rs가 생성한 code를 include하는 module nonnull_model과 external_member를 막아, binary와 그 test가 다른 code를 compile한다 | packages/rust/tests | `cargo build --offline --manifest-path packages/rust/tests/Cargo.toml --bins` | [o] |
 | KSTD-5-13 | bypass-check가 통과한다: 어떤 local 실행도 CI identity를 설정하지 않는다 (KSTD-5 후속). Cause: scripts/check/run.test.mts:181과 :189가 workflow 밖에서 CI identity를 설정한다 | scripts/check | `make bypass-check` | [~] |
 | KSTD-5-14 | rust-fmt-check가 통과한다 (KSTD-5 후속). Cause: main에서 packages/rust(build, orm/tests, schema, testcase, tests)의 cargo fmt --all --check가 실패한다 | packages/rust | `make rust-fmt-check` | [o] |
-| KSTD-5-15 | CI interface test가 workflow와 일치한다 (KSTD-5 후속). Cause: tests/interfaces/check/ci.test.mts가 .github/workflows/ci.yml에 문자 그대로의 `run: make orm-check` step을 요구하지만 workflow에 없어, main에서 interface-check/tests가 실패한다 | tests/interfaces/check/ci.test.mts or .github/workflows/ci.yml | `node --test tests/interfaces/check/ci.test.mts` | [ ] |
+| KSTD-5-15 | CI interface test가 workflow와 일치한다 (KSTD-5 후속). Cause: tests/interfaces/check/ci.test.mts가 .github/workflows/ci.yml에 문자 그대로의 `run: make orm-check` step을 요구하지만 workflow에 없어, main에서 interface-check/tests가 실패한다 | tests/interfaces/check/ci.test.mts or .github/workflows/ci.yml | `node --test tests/interfaces/check/ci.test.mts` | [~] |
 | KSTD-6 | link rebuild는 repository layout을 읽고 자기 paths를 두지 않는다 (kit K286). Cause: kit은 link된 checkout을 layout으로 rebuild하며 link 선언의 paths key는 없어진다 | kit.json, the link declaration | `make kit-check` | [ ] |
 | KSTD-7 | main에서 feature-unit-check가 통과한다. Cause: docs/features.md가 그것이 그리는 coverage와 맞지 않고, scripts/features/coverage.test.mts의 8개 case가 "no package implements the client language php-extension"으로 실패한다 | docs/features.md, scripts/features | `make feature-unit-check` | [o] |
 | KSTD-7-1 | PHP extension이 the features schema_install, model_generation and interface_contract를 구현하고 PHP library의 test가 extension으로 이를 돌리며, 그 partial 상태를 지운다 (KSTD-7, T182-0 후속). Cause: S6와 S10은 partial feature를 받지 않고, kit K315는 contracts/features.json의 partial과 unsupported를 실패시킨다 | packages/php-ext, contracts/features.json | `make feature-unit-check` | [ ] |
