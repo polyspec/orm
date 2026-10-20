@@ -301,6 +301,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/orm/coverage_planner_test.go", "symbol": "TestCoveragePlanner" },
         { "implementation": "php", "test": "packages/php/tests/CoveragePlannerTest.php" },
+        { "implementation": "php-extension", "test": "packages/php/tests/CoveragePlannerTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/coverage_planner.mjs" },
         { "implementation": "python", "test": "packages/python/tests/coverage_planner.py" },
         { "implementation": "rust", "test": "packages/rust/orm/tests/unit/coverage_planner.rs", "symbol": "engine::coverage_planner::planner" }
@@ -723,6 +724,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/orm/shape_test.go", "symbol": "TestInsertPartsFixture" },
         { "implementation": "php", "test": "packages/php/tests/InsertPartsTest.php", "symbol": "InsertPartsTest::test_case" },
+        { "implementation": "php-extension", "test": "packages/php/tests/InsertPartsTest.php", "symbol": "InsertPartsTest::test_case" },
         { "implementation": "typescript", "test": "packages/ts/tests/insert-parts.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_insert_parts.py" },
         { "implementation": "rust", "test": "packages/rust/orm/src/model.rs", "symbol": "model::insert_parts_cases" }
@@ -1694,6 +1696,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/markdownmodel/ir_answers_test.go", "symbol": "TestIRAnswers" },
         { "implementation": "php", "test": "packages/php/tests/IrAnswersTest.php", "symbol": "IrAnswersTest::test_ir_answer" },
+        { "implementation": "php-extension", "test": "packages/php/tests/IrAnswersTest.php", "symbol": "IrAnswersTest::test_ir_answer" },
         { "implementation": "typescript", "test": "packages/ts/tests/ir_answers.mjs" },
         { "implementation": "python", "test": "packages/python/tests/ir_answers.py" },
         { "implementation": "rust", "test": "packages/rust/tests/tests/markdown_conformance.rs", "symbol": "ir_answers" }

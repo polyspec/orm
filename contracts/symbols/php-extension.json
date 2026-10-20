@@ -1419,6 +1419,26 @@
     "exported": true,
     "signature": "public function __construct(string $document, array $tables, array $comments=[]): "
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Planner": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Planner extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Planner::$d": {
+    "exported": false,
+    "signature": "private readonly Polyspec\\Orm\\Dialect"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Planner::$m": {
+    "exported": false,
+    "signature": "private readonly Polyspec\\Orm\\RuntimeModel"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Planner::__construct": {
+    "exported": true,
+    "signature": "public function __construct(Polyspec\\Orm\\RuntimeModel $m, Polyspec\\Orm\\Dialect $d): "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Planner::compile": {
+    "exported": true,
+    "signature": "public function compile(array $r): array"
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Validator": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Validator extends  implements  uses "
