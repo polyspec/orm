@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d3bc6a08c73cdbe3bf6486559a19d8ff1b042b334e9c81e1a18d3603c99be831 -->
+<!-- source-sha256: 95c2ef9ff4371e62a0cea22df34f1d574d5683083bb3bbac9ce32176e84eed7d -->
 # 변경 이력
 
 ## Unreleased
+- Rust fault test에 `#[cfg(feature = "test-faults")]`가 없다: crate가 dev-dependency로 자기 test에 feature를 켜므로 모든 build가 다른 구현이 도는 statement-fault case 17개를 돈다; divergence-check finding이 77개에서 49개가 되었다 (KSTD-5-12-2).
 - TypeScript chain이 DSL-49대로 non-null column의 null 인자를 조건 없음, `and`, `ne`에서 `CONFIG`로 거부한다; test는 TypeScript test script에서 돈다. red: `serviceSeq(null)`이 database에 닿아 `DRIVER`로 실패했다 (KSTD-2-10-7).
 - parse할 수 없는 scan의 Python test가 ruff format을 지키고, TypeScript scan은 non-null assertion도 기본 위치 0도 없이 parse 오류를 그 label의 정확한 줄과 열로 밝힌다; label 없는 오류는 위치를 밝히지 않는다 (T227-1).
 - PHP extension이 library 이름으로 `Polyspec\Orm\Codec`을 C로 구현한다: `tests/codec/vectors.json`의 모든 logical type stage(ordered_json, yaml, serialize, gz, base64, ip)가 extension에서 돌고, `make dbspec-php-extension-check/codec`이 extension으로 vector를 돌린다. red: extension을 켜도 class는 PHP library의 것이었다; host decode와 AES는 T182-2-2와 T182-2-3에서 따른다(T182-2-1).

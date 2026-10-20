@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: bcb994a07174940e306b6b38e30f39484ef35c671e331d295ae421c3478403d2 -->
+<!-- source-sha256: f90fd691eb1355a7f6c0de06f645306802ba115677e3a41fc67ee80da6229dac -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -74,7 +74,7 @@
 | KSTD-5-11 | CHECK_TARGETS가 kit-gates의 모든 gate를 돌린다 (KSTD-5 후속). Cause: kit-check가 CHECK_TARGETS가 돌리지 않는 gate 13개를 보고한다; 각 gate는 그 sub-item이 통과하면 추가된다 | Makefile | `make kit-check` | [ ] |
 | KSTD-5-12 | divergence-check가 통과한다: 어떤 test도 구현, runtime, platform으로 분기하지 않는다 (KSTD-5 후속). Cause: test 83개가 decimal_physical, statement_fault, rollback, integration, dbspec_set의 Rust test에서 #[cfg(...)]로, PHP와 php-ext test에서 extension_loaded로, stress test에서 platform으로 분기해 한 구현이 다른 구현과 다르게 검사된다; contracts/features.json의 partial feature는 KSTD-7-1~-8이다 | the tests of every implementation, config/parity.json | `make divergence-check` | [ ] |
 | KSTD-5-12-1 | Rust integration test에 #[cfg(test)]가 없다 (KSTD-5-12 후속). Cause: decimal_physical.rs, rollback.rs, integration.rs, dbspec_set.rs가 test로만 compile되는 파일에서 item에 #[cfg(test)]를 달아 marker가 아무 뜻도 없으며 divergence-check는 이를 분기로 읽는다 | packages/rust/tests, packages/rust/orm/tests, packages/rust/schema/tests | `cargo test --offline --manifest-path packages/rust/tests/Cargo.toml --test decimal_physical --no-run` | [o] |
-| KSTD-5-12-2 | Rust fault test는 Cargo가 test에 켜는 test-faults feature로 돌며 test code에 #[cfg]가 없다 (KSTD-5-12 후속). Cause: statement_fault.rs와 rollback.rs가 fault case를 #[cfg(feature = "test-faults")]로 막아, feature 없는 build는 다른 구현보다 적은 case를 돈다 | packages/rust/orm/Cargo.toml, packages/rust/orm/tests | `make divergence-check` | [ ] |
+| KSTD-5-12-2 | Rust fault test는 Cargo가 test에 켜는 test-faults feature로 돌며 test code에 #[cfg]가 없다 (KSTD-5-12 후속). Cause: statement_fault.rs와 rollback.rs가 fault case를 #[cfg(feature = "test-faults")]로 막아, feature 없는 build는 다른 구현보다 적은 case를 돈다 | packages/rust/orm/Cargo.toml, packages/rust/orm/tests | `cargo test --offline --manifest-path packages/rust/orm/Cargo.toml --test statement_fault --no-run` | [o] |
 | KSTD-5-12-3 | Rust integration binary가 #[cfg(test)] 없이 생성 model을 받는다 (KSTD-5-12-1 후속). Cause: packages/rust/tests/src/integration.rs는 bin target이며 13행과 24행의 #[cfg(test)]가 build.rs가 생성한 code를 include하는 module nonnull_model과 external_member를 막아, binary와 그 test가 다른 code를 compile한다 | packages/rust/tests | `make divergence-check` | [ ] |
 | KSTD-5-13 | bypass-check가 통과한다: 어떤 local 실행도 CI identity를 설정하지 않는다 (KSTD-5 후속). Cause: scripts/check/run.test.mts:181과 :189가 workflow 밖에서 CI identity를 설정한다 | scripts/check | `make bypass-check` | [ ] |
 | KSTD-6 | link rebuild는 repository layout을 읽고 자기 paths를 두지 않는다 (kit K286). Cause: kit은 link된 checkout을 layout으로 rebuild하며 link 선언의 paths key는 없어진다 | kit.json, the link declaration | `make kit-check` | [ ] |

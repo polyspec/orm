@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The Rust fault tests carry no `#[cfg(feature = "test-faults")]`: the crate enables the feature for its own tests through its dev-dependency, so every build runs the 17 statement-fault cases the other implementations run; divergence-check went from 77 to 49 findings (KSTD-5-12-2).
 - The TypeScript chain refuses a null argument on a non-null column with `CONFIG` for a bare, `and` and `ne` condition, as DSL-49 rules; the test runs in the TypeScript test script. Red: `serviceSeq(null)` reached the database and failed with `DRIVER` (KSTD-2-10-7).
 - The unparsable-scan test of Python keeps the ruff format, and the TypeScript scan names a parse error at the exact line and column of its label with no non-null assertion and no default position of 0; an error without a label names no position (T227-1).
 - The PHP extension implements `Polyspec\Orm\Codec` in C under the library's name: every logical-type stage of `tests/codec/vectors.json` (ordered_json, yaml, serialize, gz, base64, ip) runs in it, and `make dbspec-php-extension-check/codec` runs the vectors with the extension. Red: with the extension loaded the class was the PHP library's; host decode and AES follow in T182-2-2 and T182-2-3 (T182-2-1).
