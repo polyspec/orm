@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- Python `Db.register` and `Db.connect_schema` refuse a manifest text that does not hash to its declared hash with CONFIG, as INT-54 rules and the other clients do. Red: they raised SCHEMA_HASH_MISMATCH (KSTD-2-11-7-3).
 - The PHP extension runs the executor of the PHP library over PHP's own PDO, in three parts (T182-5-1 to -3) (T182-5).
 - Every public member of `Polyspec\Orm\Db` is the PHP extension's: the request hook came with the statement path and `utils` and `stats` with the transactions, which the declaration check confirms (T182-5-3).
 - The PHP extension implements the transactions, savepoints, audit, fault injection and frames of `Polyspec\Orm\Db`, plus `utils` and `stats`, so statement-events, statement-fault and all 18 IrAnswersTest cases run with it; PostgreSQL connections now set `ATTR_DISABLE_PREPARES`. Red: the transaction vectors failed while the transaction path was missing (T182-5-2).
