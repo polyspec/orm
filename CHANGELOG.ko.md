@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ce7de89f88180389eca03f39b4f48a7b016f24cb2b205bde76d7710b0cf89e42 -->
+<!-- source-sha256: 573140cf8156b1ece4dc95f81ac506461b07ed8fb713790091dcba588395d28b -->
 # 변경 이력
 
 ## Unreleased
+- `make feature-unit-check`가 통과한다: feature 문서를 다시 생성하고, 옮긴 test file을 새 경로로 선언하며, helper file은 더는 check의 input이 아니고, statement event가 PHP extension coverage owner를 가진다. red: 낡은 문서와 helper input이 check를 실패시켰다 (KSTD-7-9).
 - Python `Db.register`와 `Db.connect_schema`가 선언한 hash로 hash되지 않는 manifest text를 INT-54와 다른 client대로 CONFIG로 거부한다. red: SCHEMA_HASH_MISMATCH를 냈다(KSTD-2-11-7-3).
 - PHP extension이 PHP library의 executor를 PHP 자신의 PDO 위에서 세 부분(T182-5-1~-3)으로 돌린다 (T182-5).
 - `Polyspec\Orm\Db`의 모든 public member가 PHP extension의 것이다: request hook은 statement 경로와 함께, `utils`와 `stats`는 transaction과 함께 들어왔고, declaration check가 이를 확인한다 (T182-5-3).
