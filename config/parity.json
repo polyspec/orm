@@ -263,7 +263,7 @@
       ]
     },
     {
-      "id": "identity-load", "kind": "suite",
+      "id": "identity-load", "kind": "suite", "requirements": ["PRT-3", "PRT-26", "PRT-27", "PRT-28", "PRT-29", "PRT-30"],
       "file": "contracts/fixtures/identity_load.json", "cases": "$.cases[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/orm/identity_load_test.go", "symbol": "TestIdentityLoad" },
@@ -274,7 +274,7 @@
       ]
     },
     {
-      "id": "planner", "kind": "suite",
+      "id": "planner", "kind": "suite", "requirements": ["PRT-6", "PRT-13", "PRT-14", "PRT-16", "PRT-17", "PRT-20", "PRT-21", "PRT-22", "PRT-23", "PRT-25", "PRT-31", "PRT-32", "PRT-33"],
       "file": "contracts/fixtures/planner.json", "cases": "$.cases[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/orm/coverage_planner_test.go", "symbol": "TestCoveragePlanner" },
@@ -352,7 +352,7 @@
       ]
     },
     {
-      "id": "ir-validate", "kind": "suite",
+      "id": "ir-validate", "kind": "suite", "requirements": ["PRT-4", "PRT-6", "PRT-14", "PRT-16", "PRT-17", "PRT-18", "PRT-20", "PRT-21", "PRT-22", "PRT-24"],
       "file": "tests/ir/validate.json", "cases": "$.cases[*].name",
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/ir/validate_test.go", "symbol": "TestValidateVectors" },
@@ -588,7 +588,7 @@
       ]
     },
     {
-      "id": "dbspec-plans", "kind": "suite",
+      "id": "dbspec-plans", "kind": "suite", "requirements": ["PLN-45", "PLN-46", "PLN-47", "PLN-48", "PLN-49", "PLN-50", "PLN-51", "PLN-52", "PLN-53", "PLN-54", "PLN-55", "PLN-56", "PLN-57", "PLN-58", "PLN-59", "PLN-60", "PLN-61", "PLN-62", "PLN-63", "PLN-64", "PLN-65", "PLN-66", "PLN-67", "PLN-68", "PLN-69", "PLN-70", "PLN-71", "PLN-72", "PLN-84", "PLN-85", "PLN-86", "PLN-87", "PLN-88"],
       "file": "tests/dbspec/plans.json", "cases": "$.cases[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/plan_test.go", "symbol": "TestPlanVectors" },
@@ -600,7 +600,7 @@
       ]
     },
     {
-      "id": "dbspec-plans-invalid", "kind": "suite",
+      "id": "dbspec-plans-invalid", "kind": "suite", "requirements": ["PLN-45", "PLN-46", "PLN-47", "PLN-48", "PLN-49", "PLN-50", "PLN-51", "PLN-52", "PLN-53", "PLN-54", "PLN-55", "PLN-56", "PLN-57", "PLN-58", "PLN-59", "PLN-60", "PLN-61", "PLN-62", "PLN-63", "PLN-64", "PLN-65", "PLN-66", "PLN-67", "PLN-68", "PLN-69", "PLN-70", "PLN-71", "PLN-72", "PLN-84", "PLN-85", "PLN-86", "PLN-87", "PLN-88"],
       "file": "tests/dbspec/plans.json", "cases": "$.invalid[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/plan_test.go", "symbol": "TestPlanInvalidVectors" },
@@ -612,7 +612,7 @@
       ]
     },
     {
-      "id": "dbspec-plan-chains", "kind": "suite",
+      "id": "dbspec-plan-chains", "kind": "suite", "requirements": ["PLN-45", "PLN-46", "PLN-47", "PLN-48", "PLN-49", "PLN-50", "PLN-51", "PLN-52", "PLN-53", "PLN-54", "PLN-55", "PLN-56", "PLN-57", "PLN-58", "PLN-59", "PLN-60", "PLN-61", "PLN-62", "PLN-63", "PLN-64", "PLN-65", "PLN-66", "PLN-67", "PLN-68", "PLN-69", "PLN-70", "PLN-71", "PLN-72", "PLN-84", "PLN-85", "PLN-86", "PLN-87", "PLN-88"],
       "file": "tests/dbspec/plans.json", "cases": "$.chains[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/plan_test.go", "symbol": "TestPlanChains" },
@@ -624,7 +624,7 @@
       ]
     },
     {
-      "id": "dbspec-plan-parse", "kind": "suite",
+      "id": "dbspec-plan-parse", "kind": "suite", "requirements": ["PLN-45", "PLN-46", "PLN-47", "PLN-48", "PLN-49", "PLN-50", "PLN-51", "PLN-52", "PLN-53", "PLN-54", "PLN-55", "PLN-56", "PLN-57", "PLN-58", "PLN-59", "PLN-60", "PLN-61", "PLN-62", "PLN-63", "PLN-64", "PLN-65", "PLN-66", "PLN-67", "PLN-68", "PLN-69", "PLN-70", "PLN-71", "PLN-72", "PLN-84", "PLN-85", "PLN-86", "PLN-87", "PLN-88"],
       "file": "tests/dbspec/plans.json", "cases": "$.parse[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/plan_test.go", "symbol": "TestPlanParseErrors" },
@@ -636,7 +636,7 @@
       ]
     },
     {
-      "id": "dbspec-plan-comparisons", "kind": "suite",
+      "id": "dbspec-plan-comparisons", "kind": "suite", "requirements": ["PLN-45", "PLN-46", "PLN-47", "PLN-48", "PLN-49", "PLN-50", "PLN-51", "PLN-52", "PLN-53", "PLN-54", "PLN-55", "PLN-56", "PLN-57", "PLN-58", "PLN-59", "PLN-60", "PLN-61", "PLN-62", "PLN-63", "PLN-64", "PLN-65", "PLN-66", "PLN-67", "PLN-68", "PLN-69", "PLN-70", "PLN-71", "PLN-72", "PLN-84", "PLN-85", "PLN-86", "PLN-87", "PLN-88"],
       "file": "tests/dbspec/plans.json", "cases": "$.comparisons[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/plan_test.go", "symbol": "TestCompareSchemas" },
@@ -648,7 +648,7 @@
       ]
     },
     {
-      "id": "sqlite-paths", "kind": "suite",
+      "id": "sqlite-paths", "kind": "suite", "requirements": ["CFG-11"],
       "file": "tests/dsn/sqlite-paths.json", "cases": "$.cases[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/orm/sqlite_path_test.go", "symbol": "TestSQLitePathCases" },
@@ -670,7 +670,7 @@
       ]
     },
     {
-      "id": "statement-fault", "kind": "suite",
+      "id": "statement-fault", "kind": "suite", "requirements": ["PRT-48", "PRT-49", "PRT-50", "PRT-51", "PRT-52"],
       "file": "contracts/fixtures/statement_fault.json", "cases": "$.cases[*]",
       "bindings": [
         { "implementation": "go", "test": "packages/go/orm/statement_fault_test.go", "symbol": "TestStatementFaultSQLite" },
@@ -692,7 +692,7 @@
       ]
     },
     {
-      "id": "insert-parts", "kind": "suite",
+      "id": "insert-parts", "kind": "suite", "requirements": ["PRT-41"],
       "file": "contracts/fixtures/insert_parts.json", "cases": "$.cases[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/orm/shape_test.go", "symbol": "TestInsertPartsFixture" },
@@ -1761,7 +1761,7 @@
     {"id": "php-extension-internal-declarations-package", "kind": "feature", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DeclarationsTest.php", "id": "DeclarationsTest::test_package"}]},
     {"id": "php-extension-internal-declarations-mirrors", "kind": "feature", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DeclarationsTest.php", "id": "DeclarationsTest::test_mirrors"}]},
     {
-      "id": "ir-answers", "kind": "suite",
+      "id": "ir-answers", "kind": "suite", "requirements": ["PRT-69", "PRT-71", "PRT-72"],
       "file": "contracts/fixtures/ir_answers.json", "cases": "$.cases[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/markdownmodel/ir_answers_test.go", "symbol": "TestIRAnswers" },
@@ -1772,7 +1772,7 @@
       ]
     },
     {
-      "id": "mysql-session", "kind": "suite",
+      "id": "mysql-session", "kind": "suite", "requirements": ["CFG-3"],
       "file": "tests/dsn/mysql-session.json", "cases": "$.sql_mode.~",
       "bindings": [
         { "implementation": "go", "test": "packages/go/orm/mysql_tls_test.go", "symbol": "TestMySQLSessionSQLMode" },
