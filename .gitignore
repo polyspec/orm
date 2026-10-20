@@ -19,7 +19,14 @@
 /packages/*/node_modules/
 /packages/ts/testing/interfaces/typescript/node_modules/
 /tests/interfaces/typescript/node_modules/
+/tests/release-consumer/npm/node_modules/
 /vendor-php/
+/packages/php/vendor/
+/packages/php-ext/vendor/
+/config/php-lint/vendor/
+/tests/release-consumer/composer/vendor/
+# The environment that mise installs beside the lock of a pypi tool.
+/.mise/locks/*/*/.venv/
 /docs/.vitepress/cache/
 /docs/.vitepress/dist/
 /.runtime/
