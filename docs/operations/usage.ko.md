@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 9780aaafde2507f420747957a6d76f4f0a0f91b5dffb3219da9bae0ee817e566 -->
+<!-- source-sha256: 319c159ef42e3ac02b70b29221420742e80b2e2eac1f5f4ef187e9e3c2580458 -->
 # 사용법
 
 하나의 dbspec document set에서 Go·PHP·Rust·TypeScript·Python 클라이언트를 생성하고, 각 클라이언트에서 같은 문장을 같은 SQL로 실행한다.
@@ -563,6 +563,6 @@ node tests/conformance/check/main.mts run --out "$(mktemp -d)/out" --dsn "$BENCH
 node tests/conformance/check/main.mts run --out "$(mktemp -d)/out" --driver postgres --dsn "$BENCH_POSTGRES_DSN"
 ```
 
-예제: [`examples/thin-slice`](../examples/thin-slice)(Go·PHP·Rust, 같은 JSON), [`examples/complex`](../examples/complex)(조인·그룹·2단 관계·집계).
+예제: [`examples/thin-slice`](../../examples/thin-slice)(Go·PHP·Rust, 같은 JSON), [`examples/complex`](../../examples/complex)(조인·그룹·2단 관계·집계).
 
 Rust 소스 분석은 실패 가능한 모델 setter의 결과와 모델을 구분한다. 오류 변환과 검사 후 추출은 모델을 유지하고 성공 값 변환은 다른 형식을 반환할 수 있다. Result 연산은 컬럼 메서드를 만들지 않으며 알려진 모델의 알 수 없는 호출은 계속 생성에 실패한다.

@@ -1,8 +1,8 @@
 <!-- doc-id: interface-implementation -->
-<!-- source-sha256: 2caea1cde53f0d60e8ad4576a060786136ebcff019e9365e47e94e97658ad025 -->
+<!-- source-sha256: f35dd792a8bfdadd72e5095be38fb8f9862e8bf807564a94269c65a062301a91 -->
 # 공통 인터페이스 구현 대조표
 
-기준: [공통 인터페이스 v1](interfaces.md), [기계 명세](../contracts/interfaces.json), [생성 도표](interfaces-model.md). 재현 명령과 검사 범위는 [검사 안내](../tests/interfaces/README.md)에 있다.
+기준: [공통 인터페이스 v1](interfaces.md), [기계 명세](../../contracts/interfaces.json), [생성 도표](interfaces-model.md). 재현 명령과 검사 범위는 [검사 안내](../../tests/interfaces/README.md)에 있다.
 
 로컬 검증: **conformance 벡터 36개 × Go·PHP·Rust·TypeScript·Python × MySQL·PostgreSQL·SQLite에서 문장, bind, 결과가 같다**. 생성 인터페이스, 네이티브 심볼, 레코드 검사는 `make interface-check`에서 실행한다.
 

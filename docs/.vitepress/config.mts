@@ -2,6 +2,7 @@ import { defineConfig, type UserConfig } from 'vitepress';
 import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { dbsFences, dbsInfo, renderDbs } from './dbs';
+import { englishHref } from './links.ts';
 
 /** The markdown-it instance that VitePress gives markdown.config, and the token of its token streams. */
 type Markdown = Parameters<NonNullable<NonNullable<UserConfig['markdown']>['config']>>[0];
@@ -160,8 +161,7 @@ export default defineConfig({
               continue;
             }
             if (koreanPage && target.startsWith(docs + path.sep) && target.endsWith('.md')) {
-              const relative = path.relative(docs, target).split(path.sep).map(encodeURIComponent).join('/');
-              token.attrSet('href', `../${relative.replace(/\.md$/, '.html')}${suffix}`);
+              token.attrSet('href', englishHref(docs, target, suffix));
               continue;
             }
             if (target.startsWith(docs + path.sep) && (target.endsWith('.md') || !path.extname(target))) continue;

@@ -1,5 +1,5 @@
 <!-- doc-id: perf -->
-<!-- source-sha256: 843f1b2be4dcdea3e9e3b5ddca790b31bc2c16a9d1f8bfb83481a139d859fbf8 -->
+<!-- source-sha256: 85c3a8cfaf9ea25e2b6e4b0efaaf598e9709ff777c7722fdfdc75f0889769384 -->
 # 성능
 
 모든 클라이언트는 호출한 프로세스 안에서 문장을 계획하고 네이티브 드라이버로 실행한다. 현재 클라이언트 오버헤드 기준은 아래 Go·PHP 실행 경로를 `make perf-check`로 측정하며 필수 데이터베이스 환경이 없으면 명령이 실패한다.

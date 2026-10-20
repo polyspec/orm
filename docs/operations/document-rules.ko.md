@@ -1,5 +1,5 @@
 <!-- doc-id: document-rules -->
-<!-- source-sha256: f5cb22ce02341652a731810712fc737dc1ac8c6d3e8b5b063ef50aaf6d8b5a5b -->
+<!-- source-sha256: 4101ded045fd8b8e2d5f55c39fcbf2b344503ad4068e01d4797c5f17dd9a5541 -->
 # 문서 및 변경 규칙
 
 영어 페이지와 한국어 페이지를 한 쌍으로 제공한다. 한국어 페이지는 같은 경로에서 `.md` 앞에 `.ko`를 추가한다.

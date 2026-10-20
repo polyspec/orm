@@ -1,5 +1,5 @@
 <!-- doc-id: docs-development -->
-<!-- source-sha256: f1e449d9dd3e45158829de25221a90cf6132ef7f128dcca568b0a933cba11452 -->
+<!-- source-sha256: a6026217514a384d1c74b27e320b7c1518b0cfed251bc1bb399800fb42f21ce8 -->
 # 문서 빌드와 배포
 
 온라인 문서는 [polyspec.github.io/orm](https://polyspec.github.io/orm/)에서 제공한다. VitePress는 `docs/*.md`와 하위 Markdown 파일을 직접 읽는다. 별도의 문서 복사본은 사용하지 않는다. 구성요소 도표는 `contracts/interfaces.json`에서 생성한다.
@@ -36,10 +36,10 @@ VITEPRESS_BASE=/ make docs-check
 
 ## GitHub Pages
 
-[문서 배포 workflow](../.github/workflows/docs-pages.yml)는 `main` push와 수동 실행에서 정적 결과를 빌드해 Pages에 게시한다. 문서 검사(`make docs-ci`: idempotence 검사와 `docs-check`)는 모든 pull request와 merge group에서 [CI workflow](../.github/workflows/ci.yml)의 `docs` job이 실행하고, `main`은 그 검사를 요구한다. Pages 빌드 방식은 **GitHub Actions**다.
+[문서 배포 workflow](../../.github/workflows/docs-pages.yml)는 `main` push와 수동 실행에서 정적 결과를 빌드해 Pages에 게시한다. 문서 검사(`make docs-ci`: idempotence 검사와 `docs-check`)는 모든 pull request와 merge group에서 [CI workflow](../../.github/workflows/ci.yml)의 `docs` job이 실행하고, `main`은 그 검사를 요구한다. Pages 빌드 방식은 **GitHub Actions**다.
 
 `build` 작업은 `docs/.vitepress/dist`를 Pages 아티팩트로 업로드하고 `deploy` 작업은 `github-pages` 환경에 게시한다. 배포 주소와 실행 결과는 [Actions](https://github.com/polyspec/orm/actions/workflows/docs-pages.yml)에서 확인한다.
 
 ## 명세 변경 후 동기화
 
-명세를 변경하면 [자동 검사 안내](../tests/interfaces/README.md)에 따라 네이티브 코드, 심볼, 생성 도표를 갱신한다. 사용법, 구현 대조표, 체크리스트를 갱신한 후 `make docs-check`로 링크와 정적 출력을 검사한다. Markdown, 설정, 검사기는 커밋한다. `dist`와 캐시는 커밋하지 않는다.
+명세를 변경하면 [자동 검사 안내](../../tests/interfaces/README.md)에 따라 네이티브 코드, 심볼, 생성 도표를 갱신한다. 사용법, 구현 대조표, 체크리스트를 갱신한 후 `make docs-check`로 링크와 정적 출력을 검사한다. Markdown, 설정, 검사기는 커밋한다. `dist`와 캐시는 커밋하지 않는다.

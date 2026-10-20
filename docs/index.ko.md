@@ -8,23 +8,23 @@ hero:
   actions:
     - theme: brand
       text: 사용법 보기
-      link: /usage
+      link: /operations/usage
     - theme: alt
       text: 공통 인터페이스
-      link: /interfaces
+      link: /spec/interfaces
 features:
   - title: 공통 문법과 구조
     details: 모델 타입 하나가 조회를 만들고 읽은 행을 담는다. Go, PHP, Rust, TypeScript는 메서드 명칭, 값 규칙, 결과를 공유한다.
-    link: /interfaces
+    link: /spec/interfaces
   - title: connect 후 실행
     details: 모델은 connect로 연결을 받는다. 트랜잭션 콜백 안의 모델은 활성 트랜잭션을 사용하고 관계 자식은 부모 연결을 사용한다.
-    link: /dsl
+    link: /spec/dsl
   - title: 세 데이터베이스
     details: MySQL, PostgreSQL, SQLite는 query 의미를 유지한다. SQL 차이와 지원 기능은 방언 문서에 기록한다.
-    link: /dialects
+    link: /spec/dialects
 ---
 <!-- doc-id: index -->
-<!-- source-sha256: 56e2df7cc3c0558c97cf964332ede24ca93067ff4ded7420ad913536e6c27627 -->
+<!-- source-sha256: 6f2ed6eb14b3cd1d96a32a5ad7525f28bfab92e88df417d61e3e5507aea4249c -->
 
 ## 다섯 클라이언트의 같은 query
 

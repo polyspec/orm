@@ -8,20 +8,20 @@ hero:
   actions:
     - theme: brand
       text: Read the guide
-      link: /usage
+      link: /operations/usage
     - theme: alt
       text: Common interface
-      link: /interfaces
+      link: /spec/interfaces
 features:
   - title: Common syntax and structure
     details: One model type builds the query and holds the loaded row. Go, PHP, Rust, and TypeScript share its method names, value rules, and results.
-    link: /interfaces
+    link: /spec/interfaces
   - title: Connect, then execute
     details: A model receives its connection through connect. Inside a transaction callback, models use the active transaction, and relation children use the parent connection.
-    link: /dsl
+    link: /spec/dsl
   - title: Three databases
     details: MySQL, PostgreSQL, and SQLite preserve query semantics. SQL differences and supported features are documented by dialect.
-    link: /dialects
+    link: /spec/dialects
 ---
 <!-- doc-id: index -->
 

@@ -1,5 +1,5 @@
 <!-- doc-id: schema -->
-<!-- source-sha256: 159b2b8ad24446b7bb8e5774b83d327a88d1f8350cdb958c871ba0b39966512b -->
+<!-- source-sha256: 4b72122cc51a105d61b4959a3d64f39f1eb43866eae17edf3e37c450edcad822 -->
 # 스키마
 
 스키마 source는 dbspec document(`.dbs`)의 집합이다. [dbspec.md](dbspec.md)가 언어, 검증 규칙, manifest text와 두 hash를 정의한다. `contracts/fixtures/bench/bench.dbs`는 테스트와 벤치마크의 스키마다. 다른 스키마 파일은 없으며 모든 generator, runtime, 스키마 작업이 document set을 읽는다.

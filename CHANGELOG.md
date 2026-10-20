@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- A Korean page links to an English page from the site root, so the nested plans have no dead link; the index pages and seven Korean links follow the moved documents, and the Names heading of dbspec has the id `names`. Red: `make docs-check` failed with `[vitepress] 2 dead link(s) found` (./../plans/execution/plan, ./../plans/kit-standard/plan); green: `make docs-check` exits 0 with docs-site/links ok and 50 document pairs passed (T223).
 - T148-4 closes on its four done children: the Python decimal model, the PHP performance gates, the extension declaration environment and the TypeScript AesKeyring symbols (T148-4).
 - The checklist no longer holds T77-8-1-6, a row that only awaited the full parity run; a full run is not checklist content (T77-8-1-6).
 - The interface contracts follow the nullable reads, the creates batch and the revision write, and a conformance run of selected vectors checks their state contracts (T204-1).

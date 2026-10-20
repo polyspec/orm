@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: cd9dbfde10a5ab3c1c343d12fa7bebc6ac1be2cacb1e572539455910c6bf25bd -->
+<!-- source-sha256: 27e6f448d019bfed320350e3279ca50c84f6965da1456f60b0f85da9301be030 -->
 # 변경 이력
 
 ## Unreleased
+- 한국어 page가 site root에서 영어 page로 연결해, 중첩된 plan에 dead link가 없다. index page와 한국어 link 일곱 개가 옮겨진 문서를 따르고, dbspec의 Names heading이 id `names`를 갖는다. red: `make docs-check`가 `[vitepress] 2 dead link(s) found`(./../plans/execution/plan, ./../plans/kit-standard/plan)로 실패했다. green: `make docs-check`가 docs-site/links ok, 50 document pairs passed로 0을 낸다(T223).
 - T148-4가 완료된 네 하위 항목으로 닫힌다: Python decimal model, PHP performance gate, extension 선언 환경, TypeScript AesKeyring symbol(T148-4).
 - checklist가 전체 parity 실행만 기다리던 행 T77-8-1-6을 더 두지 않는다. 전체 실행은 checklist 내용이 아니다(T77-8-1-6).
 - interface contract가 nullable 읽기, creates batch, revision 쓰기를 따르고, 선택한 vector의 conformance 실행이 그 state contract를 검사한다(T204-1).

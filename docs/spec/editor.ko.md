@@ -1,5 +1,5 @@
 <!-- doc-id: editor -->
-<!-- source-sha256: 1736ac5e541e5a585bcba75d95e94a2e69238578b3dc2a616ca5cf3ec0ae61bd -->
+<!-- source-sha256: 4c44b92ae529d9ff9ee25c7c5a367cc50bc769b40accaf9b62a854ff2d224142 -->
 # dbspec editor 도구
 
 [English](editor.md)

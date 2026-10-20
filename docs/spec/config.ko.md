@@ -1,5 +1,5 @@
 <!-- doc-id: config -->
-<!-- source-sha256: e9f99361835fdcc7216fcdaa3a9a934defcfe0773368d5c9c8d07461e698c9f8 -->
+<!-- source-sha256: 846eda49a2871545b1168d942db8b44a13b70729ac45c3bead9e8e68a1c91bdd -->
 # 런타임 연결
 
 클라이언트는 연결 값을 인자로 받으며 환경 변수나 비밀 저장소를 스스로 읽지 않는다. 클라이언트는 설정 파일을 읽지 않는다.

@@ -1,5 +1,5 @@
 <!-- doc-id: examples-complex-query -->
-<!-- source-sha256: 301ce6e852a4a1a733a6fa5210ffb356968297eaafff9f80094d7636ec497da8 -->
+<!-- source-sha256: b5a3794a1b95df9d9802b5bca5b2b189df6a4ca556916365be2d65e0b82e84f9 -->
 # 복잡한 쿼리 예 — 상품 검색 목록
 
 이 예는 [dsl.md](dsl.ko.md)의 문법을 사용하며 여러 관계와 조건 패턴을 함께 사용한다.

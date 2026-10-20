@@ -110,7 +110,7 @@ A tool parses the texts of a set with the set parse, never by keying the texts i
 
 The shared vectors `tests/dbspec/set-parse.json` hold sets with their names, the duplicate and a failed header, and every client runs them.
 
-## Names
+## Names {#names}
 
 Every name of a document, table, column, index, key, foreign key, check, setting target and diagram matches `[a-z][a-z0-9_]*` and has at most 63 bytes. A longer name is an error; it is never shortened. Upper case is an error, so every database's case folding gives the same name.
 

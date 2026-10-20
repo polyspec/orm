@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces-model -->
-<!-- source-sha256: f5713c909ce88ede3de3118f103f0d86421185f90afda19e2d5c5fa3ceb6ca4a -->
+<!-- source-sha256: 978475837128ba763c84f74781385bfb2dbed7ae5d28b85c3a718fa8b62e94af -->
 # 공통 구성요소
 
 <!-- contracts/interfaces.json에서 생성됨. 직접 수정하지 않는다. -->
