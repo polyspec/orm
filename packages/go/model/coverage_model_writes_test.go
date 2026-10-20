@@ -16,6 +16,7 @@ const writeTenant = 990002
 // TestCoverageModelWriteCycle creates rows with the generated CompositeAccount model,
 // creates several rows, updates them, upserts with duplication, counts, and deletes.
 // Deleting all the rows written returns the database to its initial state.
+// Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110.
 func TestCoverageModelWriteCycle(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, _, _ := connectFeature(t)

@@ -95,6 +95,7 @@ def model_write_cycle(item):
 
 
 class CoverageTest(CoverageCase):
+    # Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110.
     def test_model_write_cycle(self):
         self.each_item("model_write_cycle", model_write_cycle)
 

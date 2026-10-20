@@ -1483,11 +1483,7 @@
         }
       ],
       "parity": [
-        "go-internal-packages-go-model-coverage-model-writes",
-        "php-internal-coverage-model-writes-model-write-cycle",
-        "py-cov-model-writes-model-write-cycle",
-        "rust-integration-coverage-model-writes-coverage-model-write-cycle",
-        "ts-coverage_model_writes"
+        "coverage-model-write-cycle"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",

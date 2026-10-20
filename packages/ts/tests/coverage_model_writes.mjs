@@ -8,6 +8,7 @@ import { runCases, withCleanup } from './coverage_case.mjs';
 const tenant = 990002;
 
 await runCases('coverage_model_writes.mjs', {
+  // Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110.
   async model_write_cycle({ driver, dsn }) {
     const db = await connect(dsn);
     try {

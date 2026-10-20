@@ -6,6 +6,7 @@ use super::model::CompositeAccount;
 const TENANT: i64 = 990002;
 
 #[tokio::test]
+// Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110.
 async fn coverage_model_write_cycle() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("model_write_cycle", async {
