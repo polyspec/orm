@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 8830c56ba7d6a58a66c1a6c6a4f37568ab0268f70182ee28b5ec2ec6c44b54ab -->
+<!-- source-sha256: 88b5a670dcd269437f24ca48ade93480eac9a0e868a3d1c458c8b095bd361647 -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -33,7 +33,7 @@ import (
 )
 ```
 
-- **DIA-21** import하지 않으면 `orm.Open`은 필요한 import를 포함한 `CONFIG`를 반환한다. Rust는 sqlx feature를 사용하고 PHP는 설치된 PDO extension을 사용한다.
+- **DIA-21** import하지 않으면 `orm.Connect`는 필요한 import를 포함한 `CONFIG`를 반환한다. Rust는 sqlx feature를 사용하고 PHP는 설치된 PDO extension을 사용한다.
 
 ## 세 database의 같은 결과를 유지하는 규칙
 - **DIA-22** `UPDATE`는 updated timestamp를 항상 명시한다(MySQL은 `mysql.go`가 render하는 대로 `updated_ts = CURRENT_TIMESTAMP(p)`, PostgreSQL과 SQLite는 `now` bind slot으로 executor가 bind한, p로 자른 텍스트). soft delete도 같은 방식으로 column에 clock을 대입한다. MySQL의 `ON UPDATE`는 다른 database에 대응하지 않는다.

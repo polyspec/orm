@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- DIA-21 names `orm.Connect`, the Go entry, instead of `orm.Open` (KSTD-2-9-11).
 - The two-connection procedure for lock contention moves from the DSL spec to the usage guide; DSL-119 keeps the savepoint rule (KSTD-2-9-10).
 - `make toolchain-check` passes: the kit link run installs polyspec/ordered-json from its linked folder, so the platform check of `vendor-php` follows its requirement PHP 8.4 and phpstan starts. Red: phpstan failed with "Your Composer dependencies require a PHP version >= 8.5.0", taken from the release metadata of 0.0.9 (KSTD-5-1).
 - The dbspec and query area ids that no test named have tests or citations: 15 markdown cases (DIA-156 to DIA-190), the hashes cases of DIA-97, the encrypted history and full-text introspection cases of DBS-95 and DIA-71, the month-end probes of DSL-142, the Go MySQL-only build of DIA-20 and DIA-21, the chain argument types of DSL-49, DSL-50 and DSL-52, the transaction flow of DSL-121, DSL-122 and DSL-124, and the styled value checks of COD-21 and COD-31; each failed first and then passed. The untraced ids fell from 207 to 174; the rest are KSTD-2-10-1 to -6 and KSTD-2-9-10 to -13 (KSTD-2-10).

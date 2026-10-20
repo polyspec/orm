@@ -36,7 +36,7 @@ import (
 )
 ```
 
-- **DIA-21** Without it `orm.Open` returns `CONFIG` naming the import. The split keeps a MySQL-only binary at
+- **DIA-21** Without it `orm.Connect` returns `CONFIG` naming the import. The split keeps a MySQL-only binary at
   4.6MB instead of 11MB and avoids SQLite's package init (it parses `/etc/services`). Rust does the
   same with sqlx features, PHP with the PDO extension that is installed.
 

@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 23e83202c2b010ceff071cf8306fd68149eb2e1a64d1ec55f2ed54696a223acb -->
+<!-- source-sha256: 693cc958e63ce4ddbbf24664dd2a7a017eba0d95458f1bef41c425574592c2f7 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -25,7 +25,7 @@
 | KSTD-2-9-8 | DBS-172는 PHP extension이 repository의 모든 PHP library를 구현하며 dbspec surface는 그중 하나라고 적는다 (KSTD-2-9 후속). Cause: extension이 dbspec surface를 구현한다고만 적어 그것이 전체 범위로 읽히는데, S10은 extension이 모든 PHP library를 구현하고 그 class를 등록하게 한다 | docs/spec/dbspec.md and its Korean twin | `make docs-check` | [o] |
 | KSTD-2-9-9 | INT-7은 각 generator가 내보내는 JSON 값의 native type을 적는다 (KSTD-2-9 후속). Cause: Go가 JSON 값을 any로 대응한다고 하나 Go generator는 orm.StyledValue를 내보내고 Rust type은 codec을 따른다 | docs/spec/interfaces.md and its Korean twin | `make docs-check` | [o] |
 | KSTD-2-9-10 | lock test 작성법을 적은 DSL-120을 spec 밖으로 옮긴다 (KSTD-2-9 후속). Cause: 규칙이 아니라 절차이며, test 가능한 부분은 DSL-119다 | docs/spec/dsl.md, docs/operations and their Korean twins | `make docs-check` | [o] |
-| KSTD-2-9-11 | DIA-21이 Go 진입점을 orm.Connect로 적는다 (KSTD-2-9 후속). Cause: Go client에 없는 orm.Open이라 적는다 | docs/spec/dialects.md and its Korean twin | `make docs-check` | [ ] |
+| KSTD-2-9-11 | DIA-21이 Go 진입점을 orm.Connect로 적는다 (KSTD-2-9 후속). Cause: Go client에 없는 orm.Open이라 적는다 | docs/spec/dialects.md and its Korean twin | `make docs-check` | [o] |
 | KSTD-2-9-12 | COD-9와 COD-31이 codec stage를 ordered_json으로 적는다 (KSTD-2-9 후속). Cause: style을 json과 jsons로 적으나 stage는 ordered_json이고 Go와 Rust는 json에 CODEC_UNSUPPORTED를 답한다 | docs/spec/codec.md and its Korean twin | `make docs-check` | [ ] |
 | KSTD-2-9-13 | CPX-2는 모든 구현이 돌리는 fixture 위에서 complex query 예제의 규칙을 적는다 (KSTD-2-9 후속). Cause: schema가 fixture가 아니고 full text를 쓰는 제품 예제를 적어 어떤 test도 검사할 수 없다 | docs/spec, contracts/fixtures | `make parity-declarations-check` | [ ] |
 | KSTD-2-10 | dbspec 영역과 query 영역의 requirement id 중 어떤 test도 이름으로 가리키지 않는 id는 모든 구현에 test를 갖는다 (KSTD-2-5, KSTD-2-6 후속). Cause: CPX-2, DBS-95, DSL-49, DSL-50, DSL-52, DSL-87, DSL-120, DSL-121, DSL-122, DSL-124, DSL-142, DIA-20, DIA-21, DIA-71, DIA-97, COD-21, COD-31은 test가 없다; DSL-32, DSL-33, DIA-6, DIA-187은 두 dialect의 SQL과 SQLite의 거부를 담는 conformance vector가 필요하다; DIA-156, 164, 168~173, 175~179, 182, 186, 190은 markdown conformance case가 필요하다; DBS-59, 87, 109, 113, 117, CPX-3, DSL-113, DIA-108은 그 id를 인용하지 않는 vector나 unit만 가리킨다 | tests/conformance, tests/markdown, config/parity.json, tests of every implementation | `make parity-declarations-check` | [o] |

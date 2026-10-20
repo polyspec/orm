@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d396de2e536f881326650d5f353036edb166b15ae5db1d770c471c1e42e84083 -->
+<!-- source-sha256: 079570a6f2f8a96e979f1d7391b902ee229b4dc96fc25dcd655e1632d98c6c71 -->
 # 변경 이력
 
 ## Unreleased
+- DIA-21이 `orm.Open` 대신 Go 진입점 `orm.Connect`를 적는다 (KSTD-2-9-11).
 - 잠금 경합을 두 연결로 쓰는 절차가 DSL spec에서 사용법 문서로 옮겨졌다; savepoint 규칙은 DSL-119에 남는다 (KSTD-2-9-10).
 - `make toolchain-check`가 통과한다: kit link 실행이 polyspec/ordered-json을 link된 folder에서 설치하므로 `vendor-php`의 platform check가 그 요구 PHP 8.4를 따르고 phpstan이 시작한다. red: phpstan이 0.0.9 release metadata에서 온 "Your Composer dependencies require a PHP version >= 8.5.0"으로 실패했다(KSTD-5-1).
 - 어떤 test도 이름으로 가리키지 않던 dbspec과 query 영역 id에 test나 인용이 생겼다: markdown case 15개(DIA-156~DIA-190), DIA-97의 hashes case, DBS-95와 DIA-71의 암호화 history와 full-text introspection case, DSL-142의 month-end probe, DIA-20과 DIA-21의 Go MySQL 전용 build, DSL-49, DSL-50, DSL-52의 chain 인자 type, DSL-121, DSL-122, DSL-124의 transaction 흐름, COD-21과 COD-31의 styled value 검사다; 각각 먼저 실패한 뒤 통과했다. 추적되지 않은 id가 207개에서 174개로 줄었고, 나머지는 KSTD-2-10-1~-6과 KSTD-2-9-10~-13이다(KSTD-2-10).
