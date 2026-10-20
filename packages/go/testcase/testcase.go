@@ -141,6 +141,20 @@ func Run(name string, deadline time.Duration, work func(c *Case) error) error {
 	c := &Case{name: name, deadline: deadline, log: func(line string) { emit("%s", line) }}
 	c.ctx, c.cancel = context.WithTimeout(context.Background(), deadline)
 	defer c.cancel()
+	ok, err := Bounded(deadline+Grace, func() error { return work(c) })
+	if !ok {
+		err = fmt.Errorf("deadline %s exceeded", deadline)
+	}
+	if err != nil {
+		return fmt.Errorf("%s: %w", name, err)
+	}
+	return nil
+}
+
+// Bounded runs work in its own goroutine and waits for its result for at most
+// wait. A panic of work is its error. ok is false when work has not returned by
+// then, and its result is dropped.
+func Bounded(wait time.Duration, work func() error) (ok bool, err error) {
 	done := make(chan error, 1)
 	go func() {
 		defer func() {
@@ -148,20 +162,16 @@ func Run(name string, deadline time.Duration, work func(c *Case) error) error {
 				done <- fmt.Errorf("panic: %v", recovered)
 			}
 		}()
-		done <- work(c)
+		done <- work()
 	}()
-	timer := time.NewTimer(deadline + Grace)
+	timer := time.NewTimer(wait)
 	defer timer.Stop()
-	var err error
 	select {
-	case err = <-done:
+	case err := <-done:
+		return true, err
 	case <-timer.C:
-		err = fmt.Errorf("deadline %s exceeded", deadline)
+		return false, nil
 	}
-	if err != nil {
-		return fmt.Errorf("%s: %w", name, err)
-	}
-	return nil
 }
 
 // RunLong runs one long job (build, install, tool run) for a non-test runner without a deadline. So that a slow but normal

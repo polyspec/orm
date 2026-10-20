@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -28,10 +27,7 @@ type planCaseText struct {
 
 func planCases(t *testing.T) map[string]planCaseText {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join(repoRoot, "tests", "dbspec", "plans.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	raw := readDBSpecFile(t, "plans.json")
 	var vectors struct {
 		Cases []struct {
 			ID     string   `json:"id"`
@@ -198,17 +194,7 @@ func TestApplyChain(t *testing.T) {
 	required := caseChain(t, "drop-required-column")
 	requiredTarget, _ := dbspec.ManifestOf([]*dbspec.Document{required[1].Schema})
 	requiredCounts := countsOf(t, required)
-	connect, cancel := context.WithTimeout(context.Background(), probeDeadline)
-	servers, err := OpenServers(connect, mysqlDSN, postgresDSN, t.TempDir(), "apply"+strconv.Itoa(os.Getpid()))
-	cancel()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := servers.Close(); err != nil {
-			t.Error(err)
-		}
-	})
+	servers := openTestServers(t, mysqlDSN, postgresDSN, "apply"+strconv.Itoa(os.Getpid()))
 	// schemaIs checks that the introspected schema text is want.
 	schemaIs := func(e *Env, db string, want string) {
 		if e.Err != nil {
@@ -219,11 +205,7 @@ func TestApplyChain(t *testing.T) {
 			e.fail("introspect: %v %+v", err, unsupported)
 			return
 		}
-		got := ""
-		if len(document.Tables) > 0 {
-			m, _ := dbspec.ManifestOf([]*dbspec.Document{document})
-			got = m.SchemaText
-		}
+		got := schemaTextOf(document)
 		if got != want {
 			e.fail("schema text\n--- want\n%s--- got\n%s", want, got)
 		}

@@ -128,13 +128,19 @@ func (e *Env) ExecArgs(statement string, args ...any) {
 	}
 }
 
+// exec runs a statement on the connection of the probe and returns its error.
+func (e *Env) exec(statement string, args ...any) error {
+	_, err := e.Conn.ExecContext(e.Ctx, statement, args...)
+	return err
+}
+
 // Fails runs a statement that must fail with the given error: a MySQL error
 // number, a PostgreSQL SQLSTATE, or a substring of the SQLite message.
 func (e *Env) Fails(statement, want string, args ...any) {
 	if e.Err != nil {
 		return
 	}
-	_, err := e.Conn.ExecContext(e.Ctx, statement, args...)
+	err := e.exec(statement, args...)
 	if err == nil {
 		e.fail("%s: succeeded; want error %s", statement, want)
 		return
@@ -156,7 +162,7 @@ func (e *Env) FailsAny(statement string, args ...any) {
 	if e.Err != nil {
 		return
 	}
-	_, err := e.Conn.ExecContext(e.Ctx, statement, args...)
+	err := e.exec(statement, args...)
 	if err == nil {
 		e.fail("%s: succeeded; want an error", statement)
 		return
@@ -216,21 +222,10 @@ func (e *Env) Column(query string, args ...any) string {
 	}
 	var out []string
 	for rows.Next() {
-		values := make([]sql.NullString, len(columns))
-		targets := make([]any, len(columns))
-		for i := range values {
-			targets[i] = &values[i]
-		}
-		if err := rows.Scan(targets...); err != nil {
+		cells, err := ScanCells(rows, len(columns))
+		if err != nil {
 			e.fail("%s: %v", query, err)
 			return ""
-		}
-		cells := make([]string, len(values))
-		for i, v := range values {
-			cells[i] = "NULL"
-			if v.Valid {
-				cells[i] = v.String
-			}
 		}
 		out = append(out, strings.Join(cells, "|"))
 	}
@@ -287,4 +282,25 @@ func (e *Env) Merge(other *Env) {
 		}
 		other.Conn = nil
 	}
+}
+
+// ScanCells scans the current row of rows, which has n columns, as text: a NULL
+// is "NULL".
+func ScanCells(rows *sql.Rows, n int) ([]string, error) {
+	values := make([]sql.NullString, n)
+	targets := make([]any, n)
+	for i := range values {
+		targets[i] = &values[i]
+	}
+	if err := rows.Scan(targets...); err != nil {
+		return nil, err
+	}
+	cells := make([]string, n)
+	for i, v := range values {
+		cells[i] = "NULL"
+		if v.Valid {
+			cells[i] = v.String
+		}
+	}
+	return cells, nil
 }

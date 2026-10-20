@@ -17,11 +17,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "modernc.org/sqlite"
 
 	"github.com/polyspec/orm/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/packages/go/internal/dbspec/database"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
@@ -202,15 +202,11 @@ func openURI(t *testing.T, dialect, uri string) *sql.DB {
 	var db *sql.DB
 	switch dialect {
 	case "mysql":
-		cfg := mysql.NewConfig()
-		cfg.User = u.User.Username()
-		cfg.Passwd, _ = u.User.Password()
-		cfg.Net, cfg.Addr, cfg.DBName = "tcp", u.Host, strings.TrimPrefix(u.Path, "/")
-		connector, err := mysql.NewConnector(cfg)
+		opened, err := database.MySQLDB(u)
 		if err != nil {
 			t.Fatal(err)
 		}
-		db = sql.OpenDB(connector)
+		db = opened
 	case "postgres":
 		db, err = sql.Open("pgx", uri)
 	case "sqlite":

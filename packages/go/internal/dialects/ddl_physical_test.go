@@ -3,12 +3,9 @@
 package dialects
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -52,14 +49,8 @@ var connectionRules = map[string][]string{
 // SQLite file of TEST_ENV, then runs the vector's behavior steps.
 func TestDDLVectors(t *testing.T) {
 	testcase.Group(t)
-	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_DSN"), os.Getenv("ORM_TEST_POSTGRES_DSN")
-	if mysqlDSN == "" || postgresDSN == "" {
-		t.Fatal("ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; pass TEST_ENV")
-	}
-	raw, err := os.ReadFile(filepath.Join(repoRoot, "tests", "dbspec", "ddl.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	mysqlDSN, postgresDSN := testDSNs(t)
+	raw := readDBSpecFile(t, "ddl.json")
 	var vectors ddlVectors
 	if err := json.Unmarshal(raw, &vectors); err != nil {
 		t.Fatal(err)
@@ -67,17 +58,7 @@ func TestDDLVectors(t *testing.T) {
 	if vectors.Version != 1 || len(vectors.Cases) == 0 {
 		t.Fatalf("tests/dbspec/ddl.json has version %d and %d cases", vectors.Version, len(vectors.Cases))
 	}
-	connect, cancel := context.WithTimeout(context.Background(), probeDeadline)
-	servers, err := OpenServers(connect, mysqlDSN, postgresDSN, t.TempDir(), "ddl"+strconv.Itoa(os.Getpid()))
-	cancel()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := servers.Close(); err != nil {
-			t.Error(err)
-		}
-	})
+	servers := openTestServers(t, mysqlDSN, postgresDSN, "ddl"+strconv.Itoa(os.Getpid()))
 	started := time.Now()
 	index := 0
 	for _, c := range vectors.Cases {
@@ -94,19 +75,7 @@ func TestDDLVectors(t *testing.T) {
 				Run: func(e *Env) {
 					e.Exec(connectionRules[db]...)
 					e.Exec(statements...)
-					for _, step := range steps {
-						if len(step.Dialects) > 0 && !slices.Contains(step.Dialects, db) {
-							continue
-						}
-						switch {
-						case step.Query != "":
-							e.Want(step.Query, step.Want)
-						case step.Fails:
-							e.FailsAny(step.SQL)
-						default:
-							e.Exec(step.SQL)
-						}
-					}
+					runDDLSteps(e, db, steps)
 				},
 			}
 			index++

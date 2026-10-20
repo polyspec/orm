@@ -3,7 +3,6 @@
 package dialects
 
 import (
-	"context"
 	"fmt"
 	"maps"
 	"os"
@@ -84,22 +83,9 @@ func schemaDocumentSets(t *testing.T) []schemaDocument {
 // schema or file of TEST_ENV.
 func TestSchemaDocumentsApply(t *testing.T) {
 	testcase.Group(t)
-	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_DSN"), os.Getenv("ORM_TEST_POSTGRES_DSN")
-	if mysqlDSN == "" || postgresDSN == "" {
-		t.Fatal("ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; pass TEST_ENV")
-	}
+	mysqlDSN, postgresDSN := testDSNs(t)
 	documents := schemaDocumentSets(t)
-	connect, cancel := context.WithTimeout(context.Background(), probeDeadline)
-	servers, err := OpenServers(connect, mysqlDSN, postgresDSN, t.TempDir(), "doc"+strconv.Itoa(os.Getpid()))
-	cancel()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := servers.Close(); err != nil {
-			t.Error(err)
-		}
-	})
+	servers := openTestServers(t, mysqlDSN, postgresDSN, "doc"+strconv.Itoa(os.Getpid()))
 	started := time.Now()
 	index := 0
 	for _, sd := range documents {

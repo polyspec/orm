@@ -5,9 +5,6 @@ package dialects
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
-	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -35,23 +32,7 @@ var applyClients = dbspecLanguages()
 // dbspecLanguages reads the declared implementations of config/parity.json. This test runs from the package directory,
 // so the paths are relative to packages/go/internal/dialects.
 func dbspecLanguages() []string {
-	raw, err := os.ReadFile(filepath.Join(repoRoot, "config", "parity.json"))
-	if err != nil {
-		panic(err)
-	}
-	var parity struct {
-		Implementations []struct {
-			Name string `json:"name"`
-		} `json:"implementations"`
-	}
-	if err := json.Unmarshal(raw, &parity); err != nil {
-		panic(err)
-	}
-	names := make([]string, 0, len(parity.Implementations))
-	for _, implementation := range parity.Implementations {
-		names = append(names, implementation.Name)
-	}
-	return names
+	return testcase.ParityImplementations(repoRoot)
 }
 
 // TestApplyChainAcrossClients checks, for every ordered pair, whether a chain applied by one client is continued
@@ -100,11 +81,7 @@ func TestApplyChainAcrossClients(t *testing.T) {
 		"python":        {python, "packages/python/tests/dbspec_apply_runner.py"},
 	}
 	// The database name includes the pid and a random value so that it does not overlap with another test run at the same time.
-	random := make([]byte, 4)
-	if _, err := rand.Read(random); err != nil {
-		t.Fatal(err)
-	}
-	token := strconv.Itoa(os.Getpid()) + "_" + hex.EncodeToString(random)
+	token := uniqueToken(t)
 
 	// step runs the action with the client's runner and checks that the result line is want.
 	step := func(t *testing.T, c *testcase.Case, client, action, dialect, uri, want string) {

@@ -3,12 +3,9 @@
 package dialects
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -42,14 +39,8 @@ type planStep struct {
 // and after running the after steps and the finalize step, checks the target and that no hidden names remain.
 func TestPlanApply(t *testing.T) {
 	testcase.Group(t)
-	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_DSN"), os.Getenv("ORM_TEST_POSTGRES_DSN")
-	if mysqlDSN == "" || postgresDSN == "" {
-		t.Fatal("ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; pass TEST_ENV")
-	}
-	raw, err := os.ReadFile(filepath.Join(repoRoot, "tests", "dbspec", "plans.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	mysqlDSN, postgresDSN := testDSNs(t)
+	raw := readDBSpecFile(t, "plans.json")
 	var vectors struct {
 		Cases []struct {
 			ID     string                `json:"id"`
@@ -63,17 +54,7 @@ func TestPlanApply(t *testing.T) {
 	if err := json.Unmarshal(raw, &vectors); err != nil {
 		t.Fatal(err)
 	}
-	connect, cancel := context.WithTimeout(context.Background(), probeDeadline)
-	servers, err := OpenServers(connect, mysqlDSN, postgresDSN, t.TempDir(), "plan"+strconv.Itoa(os.Getpid()))
-	cancel()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := servers.Close(); err != nil {
-			t.Error(err)
-		}
-	})
+	servers := openTestServers(t, mysqlDSN, postgresDSN, "plan"+strconv.Itoa(os.Getpid()))
 	index := 0
 	for _, c := range vectors.Cases {
 		p, diagnostics := dbspec.ParsePlan(strings.Join(c.Plan, "\n") + "\n")
@@ -108,19 +89,7 @@ func TestPlanApply(t *testing.T) {
 				}
 			}
 			steps := func(e *Env, steps []ddlStep) {
-				for _, step := range steps {
-					if len(step.Dialects) > 0 && !slices.Contains(step.Dialects, db) {
-						continue
-					}
-					switch {
-					case step.Query != "":
-						e.Want(step.Query, step.Want)
-					case step.Fails:
-						e.FailsAny(step.SQL)
-					default:
-						e.Exec(step.SQL)
-					}
-				}
+				runDDLSteps(e, db, steps)
 			}
 			// schemaIs checks that the introspected schema text is want.
 			schemaIs := func(e *Env, what, want string) {
@@ -136,11 +105,7 @@ func TestPlanApply(t *testing.T) {
 					e.fail("unsupported %s: %+v", what, unsupported)
 					return
 				}
-				got := ""
-				if len(document.Tables) > 0 {
-					m, _ := dbspec.ManifestOf([]*dbspec.Document{document})
-					got = m.SchemaText
-				}
+				got := schemaTextOf(document)
 				if got != want {
 					e.fail("%s schema text differs\n--- want\n%s--- got\n%s", what, want, got)
 				}

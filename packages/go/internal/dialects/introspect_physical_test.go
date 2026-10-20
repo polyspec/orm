@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -39,10 +38,7 @@ type roundTripSet struct {
 // roundTripSets is every case of tests/dbspec/ddl.json and every schema document.
 func roundTripSets(t *testing.T) []roundTripSet {
 	var out []roundTripSet
-	raw, err := os.ReadFile(filepath.Join(repoRoot, "tests", "dbspec", "ddl.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	raw := readDBSpecFile(t, "ddl.json")
 	var vectors struct {
 		Cases []struct {
 			ID        string              `json:"id"`
@@ -104,21 +100,8 @@ func expectedSchemaText(t *testing.T, documents []*dbspec.Document) string {
 // is the same regardless of the table count of the set.
 func TestIntrospectRoundTrip(t *testing.T) {
 	testcase.Group(t)
-	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_DSN"), os.Getenv("ORM_TEST_POSTGRES_DSN")
-	if mysqlDSN == "" || postgresDSN == "" {
-		t.Fatal("ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; pass TEST_ENV")
-	}
-	connect, cancel := context.WithTimeout(context.Background(), probeDeadline)
-	servers, err := OpenServers(connect, mysqlDSN, postgresDSN, t.TempDir(), "rt"+strconv.Itoa(os.Getpid()))
-	cancel()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := servers.Close(); err != nil {
-			t.Error(err)
-		}
-	})
+	mysqlDSN, postgresDSN := testDSNs(t)
+	servers := openTestServers(t, mysqlDSN, postgresDSN, "rt"+strconv.Itoa(os.Getpid()))
 	started := time.Now()
 	index := 0
 	sets := roundTripSets(t)
@@ -179,14 +162,8 @@ func TestIntrospectRoundTrip(t *testing.T) {
 // to an empty database of the dialect, and checks the introspected document and the unsupported list.
 func TestIntrospectUnsupported(t *testing.T) {
 	testcase.Group(t)
-	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_DSN"), os.Getenv("ORM_TEST_POSTGRES_DSN")
-	if mysqlDSN == "" || postgresDSN == "" {
-		t.Fatal("ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; pass TEST_ENV")
-	}
-	raw, err := os.ReadFile(filepath.Join(repoRoot, "tests", "dbspec", "introspect.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	mysqlDSN, postgresDSN := testDSNs(t)
+	raw := readDBSpecFile(t, "introspect.json")
 	var vectors struct {
 		Cases []struct {
 			ID          string              `json:"id"`
@@ -200,17 +177,7 @@ func TestIntrospectUnsupported(t *testing.T) {
 	if err := json.Unmarshal(raw, &vectors); err != nil {
 		t.Fatal(err)
 	}
-	connect, cancel := context.WithTimeout(context.Background(), probeDeadline)
-	servers, err := OpenServers(connect, mysqlDSN, postgresDSN, t.TempDir(), "iu"+strconv.Itoa(os.Getpid()))
-	cancel()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := servers.Close(); err != nil {
-			t.Error(err)
-		}
-	})
+	servers := openTestServers(t, mysqlDSN, postgresDSN, "iu"+strconv.Itoa(os.Getpid()))
 	for index, c := range vectors.Cases {
 		set := roundTripSet{id: c.ID, documents: map[string]string{}}
 		for name, lines := range c.Documents {

@@ -4,10 +4,7 @@ package dialects
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -37,10 +34,7 @@ const stressReportEvery = 200
 // count does not depend on the plan size. Every database records each step in its history.
 func TestApplyStressPlan(t *testing.T) {
 	testcase.Group(t)
-	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_DSN"), os.Getenv("ORM_TEST_POSTGRES_DSN")
-	if mysqlDSN == "" || postgresDSN == "" {
-		t.Fatal("ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; pass TEST_ENV")
-	}
+	mysqlDSN, postgresDSN := testDSNs(t)
 	// Creating the stress document is one node process, so it has the testcase.Process deadline.
 	generating, cancelGenerate := context.WithTimeout(context.Background(), testcase.Process)
 	out, err := exec.CommandContext(generating, "node", filepath.Join(repoRoot, "tests", "dbspec", "stress.mts"), strconv.Itoa(stressTables)).Output()
@@ -50,11 +44,7 @@ func TestApplyStressPlan(t *testing.T) {
 	}
 	text := strings.Replace(string(out), "dbspec 1 stress\n", "dbspec 1 schema\n", 1)
 	plan := parsePlan(t, "dbplan 1 stress\nfrom empty\n\n"+text)
-	random := make([]byte, 4)
-	if _, err := rand.Read(random); err != nil {
-		t.Fatal(err)
-	}
-	token := strconv.Itoa(os.Getpid()) + "_" + hex.EncodeToString(random)
+	token := uniqueToken(t)
 	for _, db := range []string{"mysql", "postgres", "sqlite"} {
 		t.Run(db, func(t *testing.T) {
 			// The deadline of a case is set by the plan's step count (testcase.StepBudget). A stalled step is found first by the stall guard.

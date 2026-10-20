@@ -48,10 +48,7 @@ func TestProbeCitations(t *testing.T) {
 	for _, p := range probes {
 		known[p.ID] = true
 	}
-	raw, err := os.ReadFile(filepath.Join(repoRoot, "tests", "dbspec", "ddl.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	raw := readDBSpecFile(t, "ddl.json")
 	var vectors struct {
 		Cases []struct {
 			ID string `json:"id"`
@@ -103,5 +100,24 @@ func TestRestrictRowOrder(t *testing.T) {
 		if !strings.Contains(string(text), rule) {
 			t.Errorf("docs/%s does not state the RESTRICT row order rule: %s", page, rule)
 		}
+	}
+}
+
+// readDBSpecFile reads the file name of tests/dbspec in the repository; a failure fails the test.
+func readDBSpecFile(t *testing.T, name string) []byte {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join(repoRoot, "tests", "dbspec", name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
+}
+
+// TestParityDeclaresImplementations checks that config/parity.json declares the
+// implementations that the physical tests and the contract tests run.
+func TestParityDeclaresImplementations(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	if len(testcase.ParityImplementations(repoRoot)) == 0 {
+		t.Fatal("config/parity.json declares no implementation")
 	}
 }

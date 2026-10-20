@@ -16,13 +16,7 @@ func TestLogicalContractRejectsNativeDrift(t *testing.T) {
 		t.Fatal(err)
 	}
 	find := func(d *document, id string) *rule {
-		for i := range d.Rules {
-			if d.Rules[i].ID == id {
-				return &d.Rules[i]
-			}
-		}
-		t.Fatalf("rule %s is missing", id)
-		return nil
+		return findRule(t, d, id)
 	}
 	for _, lang := range languages {
 		t.Run(lang, func(t *testing.T) {
@@ -112,13 +106,7 @@ func TestGroupedResultCannotBecomeModelCollection(t *testing.T) {
 func TestExtensionContractRejectsDrift(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	find := func(d *document, id string) *rule {
-		for i := range d.Rules {
-			if d.Rules[i].ID == id {
-				return &d.Rules[i]
-			}
-		}
-		t.Fatalf("rule %s is missing", id)
-		return nil
+		return findRule(t, d, id)
 	}
 	for name, mutate := range map[string]func(*document){
 		"return type": func(d *document) {
@@ -177,4 +165,16 @@ func TestLanguagesAreTheDeclaredImplementations(t *testing.T) {
 	if strings.Join(languages, ",") != strings.Join(want, ",") {
 		t.Fatalf("languages %v, want the declared implementations %v", languages, want)
 	}
+}
+
+// findRule returns the rule of d with the id; a missing rule fails the test.
+func findRule(t *testing.T, d *document, id string) *rule {
+	t.Helper()
+	for i := range d.Rules {
+		if d.Rules[i].ID == id {
+			return &d.Rules[i]
+		}
+	}
+	t.Fatalf("rule %s is missing", id)
+	return nil
 }

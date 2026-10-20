@@ -23,6 +23,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/polyspec/orm/packages/go/internal/stmtevent"
 	"github.com/polyspec/orm/packages/go/model"
 	"github.com/polyspec/orm/packages/go/orm"
 	_ "github.com/polyspec/orm/packages/go/orm/pg"
@@ -32,14 +33,7 @@ import (
 // stmt is one statement event (docs/operations/usage.md "Statement events"). transaction is
 // the number counted from 1 again in order of first appearance within the vector, and null outside one. error is
 // the error code of the statement, or null.
-type stmt struct {
-	SQL         string   `json:"sql"`
-	Binds       []any    `json:"binds"`
-	Kind        string   `json:"kind"`
-	Tables      []string `json:"tables"`
-	Transaction *int64   `json:"transaction"`
-	Error       *string  `json:"error"`
-}
+type stmt = stmtevent.Record
 
 type vector struct {
 	Statements []stmt `json:"statements"`
@@ -164,6 +158,66 @@ func pick(m orm.Model, names ...string) map[string]any {
 }
 
 // dateOnly writes a date cell as its YYYY-MM-DD text, whether the driver gave a time or the datetime text of it, the form every other runner returns for a date column.
+// rowModel is a model whose created row is masked by its sequence and deleted when
+// the round trip ends.
+type rowModel[R any] interface {
+	Create() (R, error)
+}
+
+// createdRow is a row that the round trip masks and deletes.
+type createdRow interface {
+	GetSeq() int64
+	Delete(...bool) error
+}
+
+// roundTripRow creates the row that build makes, masks its sequence, reads the rows
+// of gets, and returns what finish picks from the created row and the rows.
+func roundTripRow[M rowModel[C], C createdRow, T orm.Model](build func() (M, error), gets func() (*orm.Collection[T], error), finish func(created C, rows *orm.Collection[T]) ([]any, error)) (any, error) {
+	row, err := build()
+	if err != nil {
+		return nil, err
+	}
+	created, err := row.Create()
+	if err != nil {
+		return nil, err
+	}
+	mask([]int64{created.GetSeq()})
+	rows, err := gets()
+	if err != nil {
+		return nil, err
+	}
+	return finish(created, rows)
+}
+
+// pickClock finishes a time round trip: the clock of the rows, and the deleted created row.
+func pickClock(created *model.TimeCellModel, rows *orm.Collection[*model.TimeCellModel]) ([]any, error) {
+	return deleteThen(created, rows, "clock")
+}
+
+// pickDay finishes a date round trip: the day and time of the rows, and the deleted created row.
+func pickDay(created *model.DayCellModel, rows *orm.Collection[*model.DayCellModel]) ([]any, error) {
+	return dateOnlyThen(created, rows)
+}
+
+// deleteThen deletes the created row, which the rows were read before, and returns
+// the picked columns of the rows.
+func deleteThen[T orm.Model](created interface{ Delete(...bool) error }, rows *orm.Collection[T], names ...string) ([]any, error) {
+	if err := created.Delete(); err != nil {
+		return nil, err
+	}
+	return picks(rows, names...), nil
+}
+
+// dateOnlyThen is deleteThen for the day and time of a date row, as dateOnly
+// reads them.
+func dateOnlyThen[T orm.Model](created interface{ Delete(...bool) error }, rows *orm.Collection[T]) ([]any, error) {
+	out, err := deleteThen(created, rows, "day", "at_time")
+	if err != nil {
+		return nil, err
+	}
+	return dateOnly(out), nil
+}
+
 func dateOnly(rows []any) []any {
 	for _, r := range rows {
 		m, ok := r.(map[string]any)
@@ -1338,42 +1392,18 @@ func run() (status int) {
 	timeCell := func() *model.TimeCellModel { return model.TimeCell().Connect(db) }
 	at := time.Date(2026, 6, 1, 12, 34, 56, 0, time.UTC)
 	run("datetime_p0_roundtrip", func() (any, error) {
-		row, err := timeCell().SetAt(dateTimeText(at)).SetClock("10:11:12")
-		if err != nil {
-			return nil, err
-		}
-		created, err := row.Create()
-		if err != nil {
-			return nil, err
-		}
-		mask([]int64{created.GetSeq()})
-		rows, err := timeCell().At(dateTimeText(at)).Gets()
-		if err != nil {
-			return nil, err
-		}
-		if err := created.Delete(); err != nil {
-			return nil, err
-		}
-		return picks(rows, "clock"), nil
+		return roundTripRow(func() (*model.TimeCellModel, error) {
+			return timeCell().SetAt(dateTimeText(at)).SetClock("10:11:12")
+		}, func() (*orm.Collection[*model.TimeCellModel], error) {
+			return timeCell().At(dateTimeText(at)).Gets()
+		}, pickClock)
 	})
 	run("time_p3_roundtrip", func() (any, error) {
-		row, err := timeCell().SetAt(dateTimeText(at)).SetClock("10:11:12.345000")
-		if err != nil {
-			return nil, err
-		}
-		created, err := row.Create()
-		if err != nil {
-			return nil, err
-		}
-		mask([]int64{created.GetSeq()})
-		rows, err := timeCell().Clock("10:11:12.345").Gets()
-		if err != nil {
-			return nil, err
-		}
-		if err := created.Delete(); err != nil {
-			return nil, err
-		}
-		return picks(rows, "clock"), nil
+		return roundTripRow(func() (*model.TimeCellModel, error) {
+			return timeCell().SetAt(dateTimeText(at)).SetClock("10:11:12.345000")
+		}, func() (*orm.Collection[*model.TimeCellModel], error) {
+			return timeCell().Clock("10:11:12.345").Gets()
+		}, pickClock)
 	})
 
 	// A date and a time(0) column read back as their text form (the driver's date and time values are the codec's input).
@@ -1381,38 +1411,18 @@ func run() (status int) {
 	run("date_roundtrip", func() (any, error) {
 		day := "2026-06-01"
 		atTime := "10:11:12"
-		row, err := dayCell().SetLabel("date").SetDay(&day).SetAtTime(&atTime)
-		if err != nil {
-			return nil, err
-		}
-		created, err := row.Create()
-		if err != nil {
-			return nil, err
-		}
-		mask([]int64{created.GetSeq()})
-		rows, err := dayCell().Label("date").Gets()
-		if err != nil {
-			return nil, err
-		}
-		if err := created.Delete(); err != nil {
-			return nil, err
-		}
-		return dateOnly(picks(rows, "day", "at_time")), nil
+		return roundTripRow(func() (*model.DayCellModel, error) {
+			return dayCell().SetLabel("date").SetDay(&day).SetAtTime(&atTime)
+		}, func() (*orm.Collection[*model.DayCellModel], error) {
+			return dayCell().Label("date").Gets()
+		}, pickDay)
 	})
 	run("date_null", func() (any, error) {
-		created, err := dayCell().SetLabel("nil").Create()
-		if err != nil {
-			return nil, err
-		}
-		mask([]int64{created.GetSeq()})
-		rows, err := dayCell().Label("nil").Gets()
-		if err != nil {
-			return nil, err
-		}
-		if err := created.Delete(); err != nil {
-			return nil, err
-		}
-		return dateOnly(picks(rows, "day", "at_time")), nil
+		return roundTripRow(func() (*model.DayCellModel, error) {
+			return dayCell().SetLabel("nil"), nil
+		}, func() (*orm.Collection[*model.DayCellModel], error) {
+			return dayCell().Label("nil").Gets()
+		}, pickDay)
 	})
 
 	// An upsert has exactly one conflict key (docs/spec/protocol.md 1): upsert_cell

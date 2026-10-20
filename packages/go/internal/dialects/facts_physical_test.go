@@ -4,18 +4,91 @@ package dialects
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"testing"
 	"time"
 
+	"github.com/polyspec/orm/packages/go/engine/dbspec"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // probeDeadline bounds one probe, including its DDL and catalog queries.
 const probeDeadline = 30 * time.Second
+
+// schemaTextOf returns the schema text of an introspected document, or the empty
+// text when the document has no table.
+func schemaTextOf(document *dbspec.Document) string {
+	if len(document.Tables) == 0 {
+		return ""
+	}
+	m, _ := dbspec.ManifestOf([]*dbspec.Document{document})
+	return m.SchemaText
+}
+
+// uniqueToken returns a token that names a physical test run: the process id and
+// a random value, so that the names do not overlap with another run at the same time.
+func uniqueToken(t *testing.T) string {
+	t.Helper()
+	random := make([]byte, 4)
+	if _, err := rand.Read(random); err != nil {
+		t.Fatal(err)
+	}
+	return strconv.Itoa(os.Getpid()) + "_" + hex.EncodeToString(random)
+}
+
+// testDSNs returns the MySQL and PostgreSQL DSNs of the physical tests from the
+// environment; an unset DSN fails the test.
+func testDSNs(t *testing.T) (string, string) {
+	t.Helper()
+	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_DSN"), os.Getenv("ORM_TEST_POSTGRES_DSN")
+	if mysqlDSN == "" || postgresDSN == "" {
+		t.Fatal("ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; pass TEST_ENV")
+	}
+	return mysqlDSN, postgresDSN
+}
+
+// runDDLSteps runs the steps of a DDL vector on the database db: a step of other
+// dialects is skipped, a query is compared with its wanted value, a failing
+// statement is noted, and any other statement is run.
+func runDDLSteps(e *Env, db string, steps []ddlStep) {
+	for _, step := range steps {
+		if len(step.Dialects) > 0 && !slices.Contains(step.Dialects, db) {
+			continue
+		}
+		switch {
+		case step.Query != "":
+			e.Want(step.Query, step.Want)
+		case step.Fails:
+			e.FailsAny(step.SQL)
+		default:
+			e.Exec(step.SQL)
+		}
+	}
+}
+
+// openTestServers opens the MySQL and PostgreSQL servers of a physical test
+// run, named by run; the servers are closed when the test ends.
+func openTestServers(t *testing.T, mysqlDSN, postgresDSN, run string) *Servers {
+	t.Helper()
+	connect, cancel := context.WithTimeout(context.Background(), probeDeadline)
+	servers, err := OpenServers(connect, mysqlDSN, postgresDSN, t.TempDir(), run)
+	cancel()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := servers.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	return servers
+}
 
 // cleanupDeadline bounds dropping one probe's database, schema or file.
 const cleanupDeadline = 30 * time.Second
@@ -33,25 +106,12 @@ func TestDialectFacts(t *testing.T) {
 	// DIA-100, DIA-101, DIA-102, DIA-103, DIA-104, DIA-105, DIA-106, DIA-107, DIA-109, DIA-110, DIA-111, DIA-144
 	// and DSL-142 (docs/spec).
 	testcase.Group(t)
-	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_DSN"), os.Getenv("ORM_TEST_POSTGRES_DSN")
-	if mysqlDSN == "" || postgresDSN == "" {
-		t.Fatal("ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; pass TEST_ENV")
-	}
+	mysqlDSN, postgresDSN := testDSNs(t)
 	probes := All()
 	if err := Validate(probes); err != nil {
 		t.Fatal(err)
 	}
-	connect, cancel := context.WithTimeout(context.Background(), probeDeadline)
-	servers, err := OpenServers(connect, mysqlDSN, postgresDSN, t.TempDir(), strconv.Itoa(os.Getpid()))
-	cancel()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := servers.Close(); err != nil {
-			t.Error(err)
-		}
-	})
+	servers := openTestServers(t, mysqlDSN, postgresDSN, strconv.Itoa(os.Getpid()))
 	for _, db := range []string{"mysql", "postgres"} {
 		if err := servers.Unreachable(db); err != nil {
 			t.Errorf("%s is unreachable; each of its probes fails: %v", db, err)

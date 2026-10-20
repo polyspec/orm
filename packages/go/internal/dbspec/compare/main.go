@@ -80,17 +80,9 @@ type syntaxInput struct {
 // ("hashes.<id>.<name>").
 func syntaxInputs(all sharedCases) map[string]syntaxInput {
 	inputs := map[string]syntaxInput{}
-	for _, kind := range []struct {
-		name  string
-		cases []testCase
-	}{{"canonical", all.Canonical}, {"normalize", all.Normalize}, {"invalid", all.Invalid}} {
+	for _, kind := range caseKinds(all) {
 		for _, c := range kind.cases {
-			set := map[string]string{}
-			for name, lines := range c.Documents {
-				if name != c.Main {
-					set[name] = join(lines, c.CRLF, c.Mixed)
-				}
-			}
+			set := documentsExcept(c.Documents, c.Main, func(lines []string) string { return join(lines, c.CRLF, c.Mixed) })
 			inputs[kind.name+"."+c.ID] = syntaxInput{Text: join(c.Documents[c.Main], c.CRLF, c.Mixed), Documents: set}
 		}
 	}
@@ -208,27 +200,9 @@ func write(out *output, text string, set map[string]string, stress bool) {
 
 // writeManifest prints the hash and text of the case document set, or the diagnostic of a document or set.
 func writeManifest(out *output, c hashCase) {
-	names := make([]string, 0, len(c.Documents))
-	for name := range c.Documents {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	var documents []*dbspec.Document
-	for _, name := range names {
-		set := map[string]string{}
-		for other, lines := range c.Documents {
-			if other != name {
-				set[other] = join(lines, false, false)
-			}
-		}
-		document, _, diagnostics := dbspec.Parse(join(c.Documents[name], false, false), set)
-		if len(diagnostics) > 0 {
-			for _, d := range diagnostics {
-				out.printf("! %s %d %d\n", d.Rule, d.Line, d.Column)
-			}
-			return
-		}
-		documents = append(documents, document)
+	documents, ok := parseCaseDocuments(out, c, "")
+	if !ok {
+		return
 	}
 	manifest, diagnostics := dbspec.ManifestOf(documents)
 	if len(diagnostics) > 0 {
@@ -250,28 +224,9 @@ func writeManifest(out *output, c hashCase) {
 // writeRender prints the statements of the case document set per dialect, or the diagnostic of a document
 // or set.
 func writeRender(out *output, c hashCase) {
-	names := make([]string, 0, len(c.Documents))
-	for name := range c.Documents {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	var documents []*dbspec.Document
-	for _, name := range names {
-		set := map[string]string{}
-		for other, lines := range c.Documents {
-			if other != name {
-				set[other] = join(lines, false, false)
-			}
-		}
-		document, _, diagnostics := dbspec.Parse(join(c.Documents[name], false, false), set)
-		if len(diagnostics) > 0 {
-			out.printf("render/%s\n", c.ID)
-			for _, d := range diagnostics {
-				out.printf("! %s %d %d\n", d.Rule, d.Line, d.Column)
-			}
-			return
-		}
-		documents = append(documents, document)
+	documents, ok := parseCaseDocuments(out, c, fmt.Sprintf("render/%s\n", c.ID))
+	if !ok {
+		return
 	}
 	for _, dialect := range []dbspec.Dialect{dbspec.DialectMySQL, dbspec.DialectPostgres, dbspec.DialectSQLite} {
 		out.printf("render/%s/%s\n", c.ID, dialect)
@@ -391,14 +346,11 @@ func writePlans(out *output, v planVectors) {
 		if !ok {
 			continue
 		}
-		p, diagnostics := dbspec.ParsePlan(join(c.Plan, false, false))
-		if len(diagnostics) > 0 {
-			writeDiagnostics(out, diagnostics)
+		p, ok := parsePlanCase(out, c.Plan)
+		if !ok {
 			continue
 		}
-		for _, line := range strings.Split(dbspec.EmitPlan(p), "\n") {
-			out.printf("| %s\n", line)
-		}
+		writeEmittedPlan(out, p)
 		out.printf("plans/cases/%s/changes\n", c.ID)
 		changes, diagnostics := dbspec.Diff(source, p)
 		writeDiagnostics(out, diagnostics)
@@ -418,9 +370,8 @@ func writePlans(out *output, v planVectors) {
 		if !ok {
 			continue
 		}
-		p, diagnostics := dbspec.ParsePlan(join(c.Plan, false, false))
-		if len(diagnostics) > 0 {
-			writeDiagnostics(out, diagnostics)
+		p, ok := parsePlanCase(out, c.Plan)
+		if !ok {
 			continue
 		}
 		changes, diagnostics := dbspec.Diff(source, p)
@@ -448,14 +399,11 @@ func writePlans(out *output, v planVectors) {
 	}
 	for _, c := range v.Parse {
 		out.printf("plans/parse/%s\n", c.ID)
-		p, diagnostics := dbspec.ParsePlan(join(c.Plan, false, false))
-		if len(diagnostics) > 0 {
-			writeDiagnostics(out, diagnostics)
+		p, ok := parsePlanCase(out, c.Plan)
+		if !ok {
 			continue
 		}
-		for _, line := range strings.Split(dbspec.EmitPlan(p), "\n") {
-			out.printf("| %s\n", line)
-		}
+		writeEmittedPlan(out, p)
 	}
 	for _, c := range v.Comparisons {
 		out.printf("plans/comparisons/%s\n", c.ID)
@@ -631,17 +579,9 @@ func main() {
 		os.Exit(1)
 	}
 	out := &output{w: bufio.NewWriter(os.Stdout)}
-	for _, kind := range []struct {
-		name  string
-		cases []testCase
-	}{{"canonical", all.Canonical}, {"normalize", all.Normalize}, {"invalid", all.Invalid}} {
+	for _, kind := range caseKinds(all) {
 		for _, c := range kind.cases {
-			set := map[string]string{}
-			for name, lines := range c.Documents {
-				if name != c.Main {
-					set[name] = join(lines, c.CRLF, c.Mixed)
-				}
-			}
+			set := documentsExcept(c.Documents, c.Main, func(lines []string) string { return join(lines, c.CRLF, c.Mixed) })
 			out.printf("%s/%s\n", kind.name, c.ID)
 			write(out, join(c.Documents[c.Main], c.CRLF, c.Mixed), set, false)
 		}
@@ -726,4 +666,84 @@ func (o *output) flush() error {
 		return o.err
 	}
 	return o.w.Flush()
+}
+
+// documentsExcept returns the documents of a case other than name, each as the
+// text that text makes of its lines.
+func documentsExcept(docs map[string][]string, name string, text func([]string) string) map[string]string {
+	set := map[string]string{}
+	for other, lines := range docs {
+		if other != name {
+			set[other] = text(lines)
+		}
+	}
+	return set
+}
+
+// caseKind is one kind of the shared cases, with its name in the output.
+type caseKind struct {
+	name  string
+	cases []testCase
+}
+
+// caseKinds returns the kinds of the shared cases in output order.
+func caseKinds(all sharedCases) []caseKind {
+	return []caseKind{{"canonical", all.Canonical}, {"normalize", all.Normalize}, {"invalid", all.Invalid}}
+}
+
+// sortedNames returns the names of the documents of a case, sorted.
+func sortedNames(docs map[string][]string) []string {
+	names := make([]string, 0, len(docs))
+	for name := range docs {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// parsePlanCase parses the lines of a plan; a plan with diagnostics writes them
+// and reports false.
+func parsePlanCase(out *output, lines []string) (*dbspec.Plan, bool) {
+	p, diagnostics := dbspec.ParsePlan(join(lines, false, false))
+	if len(diagnostics) > 0 {
+		writeDiagnostics(out, diagnostics)
+		return nil, false
+	}
+	return p, true
+}
+
+// writeEmittedPlan writes the emitted text of a plan, line by line.
+func writeEmittedPlan(out *output, p *dbspec.Plan) {
+	for _, line := range strings.Split(dbspec.EmitPlan(p), "\n") {
+		out.printf("| %s\n", line)
+	}
+}
+
+// parseNamedDocument parses the document of a case named name against the other
+// documents of the case, and returns it with its diagnostics.
+func parseNamedDocument(c hashCase, name string) (*dbspec.Document, []dbspec.Diagnostic) {
+	set := documentsExcept(c.Documents, name, func(lines []string) string { return join(lines, false, false) })
+	document, _, diagnostics := dbspec.Parse(join(c.Documents[name], false, false), set)
+	return document, diagnostics
+}
+
+// parseCaseDocuments parses the documents of a case in name order. When one has
+// diagnostics, it writes header (when it is not empty) and the diagnostics, and
+// reports false.
+func parseCaseDocuments(out *output, c hashCase, header string) ([]*dbspec.Document, bool) {
+	var documents []*dbspec.Document
+	for _, name := range sortedNames(c.Documents) {
+		document, diagnostics := parseNamedDocument(c, name)
+		if len(diagnostics) > 0 {
+			if header != "" {
+				out.printf("%s", header)
+			}
+			for _, d := range diagnostics {
+				out.printf("! %s %d %d\n", d.Rule, d.Line, d.Column)
+			}
+			return nil, false
+		}
+		documents = append(documents, document)
+	}
+	return documents, true
 }

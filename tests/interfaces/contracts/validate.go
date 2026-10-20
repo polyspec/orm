@@ -1,13 +1,13 @@
 package contracts
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"unicode"
+
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 func compact(s string) string {
@@ -23,23 +23,7 @@ func compact(s string) string {
 var languages = implementationLanguages()
 
 func implementationLanguages() []string {
-	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "config", "parity.json"))
-	if err != nil {
-		panic(err)
-	}
-	var parity struct {
-		Implementations []struct {
-			Name string `json:"name"`
-		} `json:"implementations"`
-	}
-	if err := json.Unmarshal(raw, &parity); err != nil {
-		panic(err)
-	}
-	names := make([]string, 0, len(parity.Implementations))
-	for _, implementation := range parity.Implementations {
-		names = append(names, implementation.Name)
-	}
-	return names
+	return testcase.ParityImplementations(filepath.Join("..", "..", ".."))
 }
 
 // outputs maps a common result to the native return type of each language and

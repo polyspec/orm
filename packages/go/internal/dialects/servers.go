@@ -170,14 +170,7 @@ func (s *Servers) openMySQL(ctx, cleanup context.Context, e *Env) (func() error,
 		return &Env{Ctx: ctx, Conn: conn, DB: e.DB, Name: e.Name + "_b"}, err
 	}
 	drop := func() error {
-		var errs []error
-		if e.Conn != nil {
-			errs = append(errs, e.Conn.Close())
-		}
-		errs = append(errs, db.Close())
-		if second != nil {
-			errs = append(errs, second.Close())
-		}
+		errs := closeProbe(e.Conn, db, second)
 		// A probe that creates a login names it after its database.
 		_, err := s.mysqlAdmin.ExecContext(cleanup, "DROP USER IF EXISTS '"+e.Name+"'@'127.0.0.1'")
 		errs = append(errs, err)
@@ -233,11 +226,7 @@ func (s *Servers) openPostgres(ctx, cleanup context.Context, e *Env) (func() err
 		return &Env{Ctx: ctx, Conn: conn, DB: e.DB, Name: e.Name + "_b"}, err
 	}
 	drop := func() error {
-		var errs []error
-		if e.Conn != nil {
-			errs = append(errs, e.Conn.Close())
-		}
-		errs = append(errs, db.Close())
+		errs := closeProbe(e.Conn, db, nil)
 		// A probe that needs a second schema names it <schema>_b.
 		_, err := s.postgres.ExecContext(cleanup, `DROP SCHEMA IF EXISTS "`+e.Name+`_b" CASCADE`)
 		errs = append(errs, err)
@@ -291,14 +280,7 @@ func (s *Servers) openSQLite(ctx context.Context, e *Env) (func() error, error) 
 		return &Env{Ctx: ctx, Conn: conn, DB: e.DB, Name: e.Name + "_b"}, err
 	}
 	drop := func() error {
-		var errs []error
-		if e.Conn != nil {
-			errs = append(errs, e.Conn.Close())
-		}
-		errs = append(errs, db.Close())
-		if second != nil {
-			errs = append(errs, second.Close())
-		}
+		errs := closeProbe(e.Conn, db, second)
 		for _, file := range []string{path, secondPath} {
 			for _, suffix := range []string{"", "-journal", "-wal", "-shm"} {
 				if err := os.Remove(file + suffix); err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -317,4 +299,18 @@ func (s *Servers) openSQLite(ctx context.Context, e *Env) (func() error, error) 
 	}
 	e.Conn = conn
 	return drop, nil
+}
+
+// closeProbe closes the connection of a probe when it has one, the database
+// handle db, and second when it is open; it returns the errors of the closes.
+func closeProbe(conn *sql.Conn, db, second *sql.DB) []error {
+	var errs []error
+	if conn != nil {
+		errs = append(errs, conn.Close())
+	}
+	errs = append(errs, db.Close())
+	if second != nil {
+		errs = append(errs, second.Close())
+	}
+	return errs
 }

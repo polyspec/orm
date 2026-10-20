@@ -16,20 +16,18 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/url"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "modernc.org/sqlite"
 
 	"github.com/polyspec/orm/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/packages/go/internal/dbspec/database"
 )
 
 // connectionRules is the statements that every client runs on a new connection
@@ -64,7 +62,7 @@ func run(action, dialect, uri, vectors string) (_ string, err error) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	db, err := open(dialect, uri)
+	db, err := database.Open(dialect, uri)
 	if err != nil {
 		return "", err
 	}
@@ -155,38 +153,4 @@ func chain(path string) ([]*dbspec.Plan, error) {
 		return nil, errors.New("plans.json does not chain create-from-empty and rename-table-and-column")
 	}
 	return plans, nil
-}
-
-// open opens the URI with the dialect's database/sql driver.
-func open(dialect, uri string) (*sql.DB, error) {
-	u, err := url.Parse(uri)
-	if err != nil {
-		return nil, err
-	}
-	switch dialect {
-	case "mysql":
-		if u.Scheme != "mysql" || u.RawQuery != "" {
-			return nil, fmt.Errorf("a MySQL URI is mysql://user@host:port/database without a query: %s", uri)
-		}
-		cfg := mysql.NewConfig()
-		cfg.User = u.User.Username()
-		cfg.Passwd, _ = u.User.Password()
-		cfg.Net, cfg.Addr, cfg.DBName = "tcp", u.Host, strings.TrimPrefix(u.Path, "/")
-		connector, err := mysql.NewConnector(cfg)
-		if err != nil {
-			return nil, err
-		}
-		return sql.OpenDB(connector), nil
-	case "postgres":
-		if u.Scheme != "postgres" {
-			return nil, fmt.Errorf("a PostgreSQL URI starts with postgres://: %s", uri)
-		}
-		return sql.Open("pgx", uri)
-	case "sqlite":
-		if u.Scheme != "sqlite" || u.RawQuery != "" {
-			return nil, fmt.Errorf("a SQLite URI is sqlite:///path without a query: %s", uri)
-		}
-		return sql.Open("sqlite", "file:"+u.Path)
-	}
-	return nil, fmt.Errorf("unknown dialect %s", dialect)
 }

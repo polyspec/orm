@@ -3,9 +3,9 @@
 package model_test
 
 import (
-	"os"
 	"testing"
 
+	"github.com/polyspec/orm/packages/go/internal/testdb"
 	"github.com/polyspec/orm/packages/go/model"
 	"github.com/polyspec/orm/packages/go/orm"
 	"github.com/polyspec/orm/packages/go/testcase"
@@ -14,19 +14,12 @@ import (
 // Requirements: CFG-1.
 func TestCoverageGeneratedModelConnection(t *testing.T) {
 	testcase.Start(t, testcase.Database)
-	driver, dsn := os.Getenv("ORM_FEATURE_DATABASE"), os.Getenv("ORM_FEATURE_DSN")
-	if dsn == "" || (driver != "mysql" && driver != "postgres" && driver != "sqlite") {
-		t.Fatal("selected database and DSN are required")
-	}
+	driver, dsn := testdb.FeatureDatabase(t)
 	db, err := model.Connect(dsn, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() {
-		if err := db.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
+	defer testcase.Close(t, db)
 	if db.Driver() != driver {
 		t.Fatalf("model connected to %s, want %s", db.Driver(), driver)
 	}

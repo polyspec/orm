@@ -28,19 +28,7 @@ func TestCoverageConformanceVector(t *testing.T) {
 		"postgres": "vectors.postgres.json",
 		"sqlite":   "vectors.sqlite.json",
 	}[driver]
-	raw, err := os.ReadFile(filepath.Join(root, "tests", "conformance", expectFile))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var recorded struct {
-		Vectors []struct {
-			Name   string `json:"name"`
-			Expect any    `json:"expect"`
-		} `json:"vectors"`
-	}
-	if err := json.Unmarshal(raw, &recorded); err != nil {
-		t.Fatalf("%s: %v", expectFile, err)
-	}
+	recorded := readRecorded(t, root, expectFile)
 	expect := map[string]any{}
 	for _, v := range recorded.Vectors {
 		if slices.Contains(names, v.Name) {
@@ -51,17 +39,7 @@ func TestCoverageConformanceVector(t *testing.T) {
 		}
 	}
 
-	cmd := exec.Command("go", "run", "./packages/go/internal/conformance", "-dsn", dsn, "-vector", names[0], "-vector", names[1])
-	cmd.Dir = root
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout, cmd.Stderr = &stdout, &stderr
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("runner_go: %v\n%s", err, bytes.ReplaceAll(stderr.Bytes(), []byte(dsn), []byte("[redacted]")))
-	}
-	var output map[string]any
-	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
-		t.Fatalf("runner_go output: %v", err)
-	}
+	output := runConformanceGo(t, root, dsn, "./packages/go/internal/conformance", "-dsn", dsn, "-vector", names[0], "-vector", names[1])
 	if len(output) != len(names) {
 		t.Fatalf("runner_go printed %d vectors, want %v", len(output), names)
 	}
@@ -112,30 +90,8 @@ func runConformanceVectors(t *testing.T, dsnVariable, expectFile string) {
 		t.Fatalf("%s is required: the bench database that the conformance check runs on; run make databases-create, which seeds the bench databases and writes their DSNs", dsnVariable)
 	}
 	root := filepath.Join("..", "..", "..")
-	raw, err := os.ReadFile(filepath.Join(root, "tests", "conformance", expectFile))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var recorded struct {
-		Vectors []struct {
-			Name   string `json:"name"`
-			Expect any    `json:"expect"`
-		} `json:"vectors"`
-	}
-	if err := json.Unmarshal(raw, &recorded); err != nil {
-		t.Fatalf("%s: %v", expectFile, err)
-	}
-	cmd := exec.Command("go", "run", "-tags", "ormtest", "./packages/go/internal/conformance", "-dsn", dsn)
-	cmd.Dir = root
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout, cmd.Stderr = &stdout, &stderr
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("runner_go: %v\n%s", err, bytes.ReplaceAll(stderr.Bytes(), []byte(dsn), []byte("[redacted]")))
-	}
-	var output map[string]any
-	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
-		t.Fatalf("runner_go output: %v", err)
-	}
+	recorded := readRecorded(t, root, expectFile)
+	output := runConformanceGo(t, root, dsn, "-tags", "ormtest", "./packages/go/internal/conformance", "-dsn", dsn)
 	if len(output) != len(recorded.Vectors) {
 		t.Errorf("runner_go printed %d vectors, %s has %d", len(output), expectFile, len(recorded.Vectors))
 	}
@@ -153,4 +109,46 @@ func runConformanceVectors(t *testing.T, dsnVariable, expectFile string) {
 			}
 		})
 	}
+}
+
+// readRecorded reads the recorded vectors of the conformance file expectFile under
+// tests/conformance of the repository root; a failure fails the test.
+func readRecorded(t *testing.T, root, expectFile string) recordedVectors {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join(root, "tests", "conformance", expectFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var recorded recordedVectors
+	if err := json.Unmarshal(raw, &recorded); err != nil {
+		t.Fatalf("%s: %v", expectFile, err)
+	}
+	return recorded
+}
+
+// recordedVectors is the vectors of a recorded conformance file.
+type recordedVectors struct {
+	Vectors []struct {
+		Name   string `json:"name"`
+		Expect any    `json:"expect"`
+	} `json:"vectors"`
+}
+
+// runConformanceGo runs the Go conformance runner with the arguments in the
+// repository root and returns its output, a JSON object of results. The dsn is
+// redacted from a failure's output.
+func runConformanceGo(t *testing.T, root, dsn string, args ...string) map[string]any {
+	t.Helper()
+	cmd := exec.Command("go", append([]string{"run"}, args...)...)
+	cmd.Dir = root
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("runner_go: %v\n%s", err, bytes.ReplaceAll(stderr.Bytes(), []byte(dsn), []byte("[redacted]")))
+	}
+	var output map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
+		t.Fatalf("runner_go output: %v", err)
+	}
+	return output
 }

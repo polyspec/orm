@@ -11,7 +11,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"reflect"
 	"syscall"
 	"testing"
 
@@ -63,17 +62,7 @@ func TestIRAnswers(t *testing.T) {
 			}
 			defer testcase.Close(t, db)
 			got, err := run(&served{db: db})
-			if err != nil {
-				code := orm.ErrorCode(err)
-				if code == "" {
-					t.Fatalf("%s failed without an orm code: %v", c.ID, err)
-				}
-				got = map[string]any{"error": code}
-			}
-			actual := normalize(t, got)
-			if !reflect.DeepEqual(actual, c.Expect) {
-				t.Fatalf("%s: got %s, want %s (error %v)", c.ID, jsonText(t, actual), jsonText(t, c.Expect), err)
-			}
+			checkCaseResult(t, c.ID, got, err, c.Expect)
 		})
 	}
 }
@@ -82,10 +71,7 @@ func TestIRAnswers(t *testing.T) {
 // listener's DSN.
 func answeringServer(t *testing.T, answer string) string {
 	t.Helper()
-	ln, err := net.Listen("tcp4", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
+	ln := listenLocal(t)
 	serveListener(t, ln, func(conn net.Conn) error {
 		r := bufio.NewReader(conn)
 		for _, line := range []string{`{"ok":true}`, answer} {
@@ -106,10 +92,7 @@ func answeringServer(t *testing.T, answer string) string {
 // kind of the request. A message with no answer gets IR_INVALID.
 func keyedServer(t *testing.T, answers map[string]json.RawMessage) string {
 	t.Helper()
-	ln, err := net.Listen("tcp4", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
+	ln := listenLocal(t)
 	serveListener(t, ln, func(conn net.Conn) error {
 		r := bufio.NewReader(conn)
 		for first := true; ; first = false {
@@ -182,4 +165,14 @@ func clientEnded(err error) error {
 		return nil
 	}
 	return err
+}
+
+// listenLocal listens on a free local TCP port; a failure fails the test.
+func listenLocal(t *testing.T) net.Listener {
+	t.Helper()
+	ln, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return ln
 }

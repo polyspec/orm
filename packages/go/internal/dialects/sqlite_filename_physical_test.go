@@ -5,13 +5,13 @@ package dialects
 import (
 	"context"
 	"database/sql"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
 
+	"github.com/polyspec/orm/packages/go/internal/testdb"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
@@ -60,14 +60,7 @@ func TestSQLiteFileNameWithQuery(t *testing.T) {
 			if err := c.open(ctx, filepath.Join(dir, "bench.sqlite")+sqliteQuery); err != nil {
 				t.Fatalf("open: %v", err)
 			}
-			entries, err := os.ReadDir(dir)
-			if err != nil {
-				t.Fatal(err)
-			}
-			var names []string
-			for _, entry := range entries {
-				names = append(names, entry.Name())
-			}
+			names := testdb.DirNames(t, dir)
 			sort.Strings(names)
 			want := "bench.sqlite"
 			if c.literal {

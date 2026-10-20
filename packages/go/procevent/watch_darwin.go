@@ -24,19 +24,7 @@ func WatchExit(pid int) (func() error, error) {
 	return func() (err error) {
 		defer func() { err = errors.Join(err, unix.Close(queue)) }()
 		events := make([]unix.Kevent_t, 1)
-		for {
-			// A nil timeout waits until a notification arrives. If interrupted by a signal (EINTR), it waits again.
-			n, err := unix.Kevent(queue, nil, events, nil)
-			if errors.Is(err, unix.EINTR) {
-				continue
-			}
-			if err != nil {
-				return err
-			}
-			if n == 1 {
-				return nil
-			}
-		}
+		return waitKevent(queue, events)
 	}, nil
 }
 
@@ -63,17 +51,23 @@ func WatchDir(path string) (func() error, func() error, error) {
 	}
 	return func() error {
 		events := make([]unix.Kevent_t, 1)
-		for {
-			n, err := unix.Kevent(queue, nil, events, nil)
-			if errors.Is(err, unix.EINTR) {
-				continue
-			}
-			if err != nil {
-				return err
-			}
-			if n == 1 {
-				return nil
-			}
-		}
+		return waitKevent(queue, events)
 	}, closeAll, nil
+}
+
+// waitKevent waits for the one event of the queue, which a nil timeout leaves to
+// the notification; an interrupt by a signal (EINTR) waits again.
+func waitKevent(queue int, events []unix.Kevent_t) error {
+	for {
+		n, err := unix.Kevent(queue, nil, events, nil)
+		if errors.Is(err, unix.EINTR) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		if n == 1 {
+			return nil
+		}
+	}
 }

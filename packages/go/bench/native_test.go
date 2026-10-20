@@ -12,14 +12,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"net/url"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
 
-	"github.com/go-sql-driver/mysql"
 	"github.com/polyspec/orm/packages/go/orm"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
@@ -47,17 +45,9 @@ func dsn(tb testing.TB) string {
 // nativeDSN converts the DSN URI to the go-sql-driver form used by the
 // native baseline.
 func nativeDSN(raw string) (string, error) {
-	u, err := url.Parse(raw)
+	cfg, err := testcase.MySQLConfig(raw)
 	if err != nil {
 		return "", err
-	}
-	cfg := mysql.NewConfig()
-	cfg.User = u.User.Username()
-	cfg.Passwd, _ = u.User.Password()
-	cfg.DBName = strings.TrimPrefix(u.Path, "/")
-	cfg.Net, cfg.Addr = "tcp", u.Host
-	if socket := u.Query().Get("socket"); socket != "" {
-		cfg.Net, cfg.Addr = "unix", socket
 	}
 	cfg.ParseTime = true
 	cfg.ClientFoundRows = true
@@ -208,15 +198,7 @@ func list100(ctx context.Context, db *sql.DB, serviceSeq int64) (_ []author, err
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, rows.Close()) }()
-	out := make([]author, 0, 100)
-	for rows.Next() {
-		var b author
-		if err := scan(rows, &b); err != nil {
-			return nil, err
-		}
-		out = append(out, b)
-	}
-	return out, rows.Err()
+	return scanAuthors(rows, 100)
 }
 
 // relation4: parent list (20 rows) then three IN-batched child lookups on the
@@ -261,15 +243,7 @@ func listN(ctx context.Context, db *sql.DB, serviceSeq int64, n int) (_ []author
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, rows.Close()) }()
-	out := make([]author, 0, n)
-	for rows.Next() {
-		var b author
-		if err := scan(rows, &b); err != nil {
-			return nil, err
-		}
-		out = append(out, b)
-	}
-	return out, rows.Err()
+	return scanAuthors(rows, n)
 }
 
 func insertOne(ctx context.Context, db *sql.DB, i int) (int64, error) {
@@ -286,10 +260,8 @@ func insertOne(ctx context.Context, db *sql.DB, i int) (int64, error) {
 }
 
 func BenchmarkPKGet(b *testing.B) {
-	db := open(b)
+	db, ctx := benchStart(b)
 	defer testcase.Close(b, db)
-	ctx := context.Background()
-	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		if _, err := pkGet(ctx, db, int64(i%100000+1)); err != nil {
 			b.Fatal(err)
@@ -298,10 +270,8 @@ func BenchmarkPKGet(b *testing.B) {
 }
 
 func BenchmarkList100(b *testing.B) {
-	db := open(b)
+	db, ctx := benchStart(b)
 	defer testcase.Close(b, db)
-	ctx := context.Background()
-	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		rows, err := list100(ctx, db, int64(i%100+1))
 		if err != nil || len(rows) == 0 {
@@ -311,10 +281,8 @@ func BenchmarkList100(b *testing.B) {
 }
 
 func BenchmarkInsert(b *testing.B) {
-	db := open(b)
+	db, ctx := benchStart(b)
 	defer testcase.Close(b, db)
-	ctx := context.Background()
-	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		if _, err := insertOne(ctx, db, i); err != nil {
 			b.Fatal(err)
@@ -327,10 +295,8 @@ func BenchmarkInsert(b *testing.B) {
 }
 
 func BenchmarkRelation4(b *testing.B) {
-	db := open(b)
+	db, ctx := benchStart(b)
 	defer testcase.Close(b, db)
-	ctx := context.Background()
-	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		if _, err := relation4(ctx, db, int64(i%100+1)); err != nil {
 			b.Fatal(err)
@@ -339,31 +305,51 @@ func BenchmarkRelation4(b *testing.B) {
 }
 
 func BenchmarkPKGetPar(b *testing.B) {
-	db := open(b)
+	db, ctx := benchStart(b)
 	defer testcase.Close(b, db)
-	ctx := context.Background()
-	b.ReportAllocs()
-	b.RunParallel(func(pb *testing.PB) {
-		i := 0
-		for pb.Next() {
-			i++
-			if _, err := pkGet(ctx, db, int64(i%100000+1)); err != nil {
-				b.Fatal(err)
-			}
-		}
+	runParallel(b, func(i int) error {
+		_, err := pkGet(ctx, db, int64(i%100000+1))
+		return err
 	})
 }
 
 func BenchmarkList100Par(b *testing.B) {
-	db := open(b)
+	db, ctx := benchStart(b)
 	defer testcase.Close(b, db)
-	ctx := context.Background()
+	runParallel(b, func(i int) error {
+		_, err := list100(ctx, db, int64(i%100+1))
+		return err
+	})
+}
+
+// benchStart opens the benchmark database and reports the allocations of the benchmark.
+func benchStart(b *testing.B) (*sql.DB, context.Context) {
+	db := open(b)
 	b.ReportAllocs()
+	return db, context.Background()
+}
+
+// scanAuthors scans all rows of the author query into a slice of capacity capacity.
+func scanAuthors(rows *sql.Rows, capacity int) ([]author, error) {
+	out := make([]author, 0, capacity)
+	for rows.Next() {
+		var b author
+		if err := scan(rows, &b); err != nil {
+			return nil, err
+		}
+		out = append(out, b)
+	}
+	return out, rows.Err()
+}
+
+// runParallel runs op in parallel, with the number i of each call, until the
+// benchmark stops; a failed call fails the benchmark.
+func runParallel(b *testing.B, op func(i int) error) {
 	b.RunParallel(func(pb *testing.PB) {
 		i := 0
 		for pb.Next() {
 			i++
-			if _, err := list100(ctx, db, int64(i%100+1)); err != nil {
+			if err := op(i); err != nil {
 				b.Fatal(err)
 			}
 		}

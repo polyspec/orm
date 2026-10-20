@@ -10,6 +10,7 @@ import (
 
 	"github.com/polyspec/orm/packages/go/model"
 	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // main ends with the exit code of run. Since os.Exit does not run defers, it is not called inside run: a failed
@@ -18,19 +19,8 @@ func main() {
 	os.Exit(run())
 }
 
-// exit is the panic by which check/dsn ends run, and its value is the exit code.
-type exit int
-
 func run() (code int) {
-	defer func() {
-		if recovered := recover(); recovered != nil {
-			value, ok := recovered.(exit)
-			if !ok {
-				panic(recovered)
-			}
-			code = int(value)
-		}
-	}()
+	defer testcase.CatchExit(&code)
 	db, err := model.Connect(dsn(), orm.Config{AESKey: "bench-salt", BlindIndexKey: "bench-blind-index"})
 	check(err)
 	defer func() { check(db.Close()) }()
@@ -97,7 +87,7 @@ func dsn() string {
 	v := os.Getenv("ORM_BENCH_MYSQL_DSN")
 	if v == "" {
 		fmt.Fprintln(os.Stderr, "ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database; run it through make orm-check or make run-databases TARGETS=<target>, which create the bench database of the run")
-		panic(exit(1))
+		panic(testcase.Exit(1))
 	}
 	return v
 }
@@ -105,6 +95,6 @@ func dsn() string {
 func check(err error) {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "complex:", err)
-		panic(exit(1))
+		panic(testcase.Exit(1))
 	}
 }

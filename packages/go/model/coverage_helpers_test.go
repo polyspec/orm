@@ -4,10 +4,10 @@ package model_test
 
 import (
 	"database/sql"
-	"os"
 	"strings"
 	"testing"
 
+	"github.com/polyspec/orm/packages/go/internal/testdb"
 	"github.com/polyspec/orm/packages/go/model"
 	"github.com/polyspec/orm/packages/go/orm"
 )
@@ -16,11 +16,7 @@ import (
 // If either one is missing, the test fails.
 func featureDatabase(t *testing.T) (string, string) {
 	t.Helper()
-	driver, dsn := os.Getenv("ORM_FEATURE_DATABASE"), os.Getenv("ORM_FEATURE_DSN")
-	if dsn == "" || (driver != "mysql" && driver != "postgres" && driver != "sqlite") {
-		t.Fatal("ORM_FEATURE_DATABASE (mysql, postgres or sqlite) and ORM_FEATURE_DSN are required")
-	}
-	return driver, dsn
+	return testdb.FeatureDatabase(t)
 }
 
 // connectFeature connects to the chosen seed bench database with the generated model.

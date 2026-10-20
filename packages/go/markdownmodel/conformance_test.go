@@ -81,17 +81,7 @@ func TestMarkdownConformance(t *testing.T) {
 		ok := t.Run(c.ID, func(t *testing.T) {
 			testcase.Start(t, testcase.Database)
 			got, err := funcs[c.ID](s)
-			if err != nil {
-				code := orm.ErrorCode(err)
-				if code == "" {
-					t.Fatalf("%s failed without an orm code: %v", c.ID, err)
-				}
-				got = map[string]any{"error": code}
-			}
-			actual := normalize(t, got)
-			if !reflect.DeepEqual(actual, c.Expect) {
-				t.Fatalf("%s: got %s, want %s (error %v)", c.ID, jsonText(t, actual), jsonText(t, c.Expect), err)
-			}
+			checkCaseResult(t, c.ID, got, err, c.Expect)
 		})
 		if !ok {
 			// Later cases read the corpus state that earlier cases produced, so it stops at the first failure.
@@ -830,6 +820,23 @@ func refusedInstall(s *served, name string) (answer any, err error) {
 }
 
 // normalize is the value read back after the result was written as JSON: it has the same shape as expect in cases.json.
+// checkCaseResult checks the result of a conformance case: an error must carry an
+// orm code, which is the result, and the normalized result must equal expect.
+func checkCaseResult(t *testing.T, id string, got any, err error, expect any) {
+	t.Helper()
+	if err != nil {
+		code := orm.ErrorCode(err)
+		if code == "" {
+			t.Fatalf("%s failed without an orm code: %v", id, err)
+		}
+		got = map[string]any{"error": code}
+	}
+	actual := normalize(t, got)
+	if !reflect.DeepEqual(actual, expect) {
+		t.Fatalf("%s: got %s, want %s (error %v)", id, jsonText(t, actual), jsonText(t, expect), err)
+	}
+}
+
 func normalize(t *testing.T, v any) any {
 	t.Helper()
 	b, err := json.Marshal(v)

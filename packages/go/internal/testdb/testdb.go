@@ -19,7 +19,6 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/polyspec/orm/packages/go/testcase"
@@ -120,17 +119,9 @@ func Open(t testing.TB, driver, dsn string) *sql.DB {
 	t.Helper()
 	sqlDriver, native := "pgx", dsn
 	if driver == "mysql" {
-		u, err := url.Parse(dsn)
+		cfg, err := testcase.MySQLConfig(dsn)
 		if err != nil {
 			t.Fatalf("parse DSN: %v", err)
-		}
-		cfg := mysql.NewConfig()
-		cfg.User = u.User.Username()
-		cfg.Passwd, _ = u.User.Password()
-		cfg.DBName = strings.TrimPrefix(u.Path, "/")
-		cfg.Net, cfg.Addr = "tcp", u.Host
-		if socket := u.Query().Get("socket"); socket != "" {
-			cfg.Net, cfg.Addr = "unix", socket
 		}
 		sqlDriver, native = "mysql", cfg.FormatDSN()
 	}
@@ -143,4 +134,19 @@ func Open(t testing.TB, driver, dsn string) *sql.DB {
 		t.Fatalf("open %s: %v", driver, err)
 	}
 	return raw
+}
+
+// DirNames returns the entry names of dir in the order of os.ReadDir; a failure
+// fails the test.
+func DirNames(t testing.TB, dir string) []string {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, entry := range entries {
+		names = append(names, entry.Name())
+	}
+	return names
 }

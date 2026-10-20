@@ -10,16 +10,13 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"os"
 	"sort"
-	"strings"
 	"time"
-
-	"github.com/go-sql-driver/mysql"
 
 	"github.com/polyspec/orm/packages/go/model"
 	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 const iterations = 500
@@ -30,19 +27,8 @@ func main() {
 	os.Exit(run())
 }
 
-// exit is the panic by which check/dsn ends run, and its value is the exit code.
-type exit int
-
 func run() (code int) {
-	defer func() {
-		if recovered := recover(); recovered != nil {
-			value, ok := recovered.(exit)
-			if !ok {
-				panic(recovered)
-			}
-			code = int(value)
-		}
-	}()
+	defer testcase.CatchExit(&code)
 	const aesKey = "bench-salt"
 	var lastSQL string
 	var lastArgs []any
@@ -122,22 +108,14 @@ func dsn() string {
 	v := os.Getenv("ORM_BENCH_MYSQL_DSN")
 	if v == "" {
 		fmt.Fprintln(os.Stderr, "ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database; run it through make orm-check or make run-databases TARGETS=<target>, which create the bench database of the run")
-		panic(exit(1))
+		panic(testcase.Exit(1))
 	}
 	return v
 }
 
 func nativeDSN(raw string) string {
-	u, err := url.Parse(raw)
+	cfg, err := testcase.MySQLConfig(raw)
 	check(err)
-	cfg := mysql.NewConfig()
-	cfg.User = u.User.Username()
-	cfg.Passwd, _ = u.User.Password()
-	cfg.DBName = strings.TrimPrefix(u.Path, "/")
-	cfg.Net, cfg.Addr = "tcp", u.Host
-	if socket := u.Query().Get("socket"); socket != "" {
-		cfg.Net, cfg.Addr = "unix", socket
-	}
 	return cfg.FormatDSN()
 }
 
@@ -155,6 +133,6 @@ func p50(f func()) int64 {
 func check(err error) {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "demo:", err)
-		panic(exit(1))
+		panic(testcase.Exit(1))
 	}
 }
