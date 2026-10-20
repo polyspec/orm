@@ -40,7 +40,7 @@ func TestOpenWithoutDriverPackageNamesTheImport(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for dsn, pkg := range map[string]string{
 		"postgres://user:secret@127.0.0.1:1/orm": "pg",
-		"sqlite:///tmp/orm-mysqlonly.db":        "sqlite",
+		"sqlite:///tmp/orm-mysqlonly.db":         "sqlite",
 	} {
 		db, err := orm.Connect(dsn, orm.Config{})
 		if err == nil {

@@ -222,7 +222,12 @@ final class ModelTest extends TestCase
         self::check(self::code(fn() => (new Author)($db)->name('a')->isClose(true)->gets()) === Code::CONFIG, 'missing connector');
         self::check(self::code(fn() => (new Author)($db)->name('a')->and()->gets()) === Code::CONFIG, 'dangling connector');
         self::check(self::code(fn() => (new Author)($db)->seq([])->gets()) === Code::EMPTY_IN, 'empty list');
+        // The test of DSL-49 (null only for a nullable column) and DSL-50 (a list and null only without an operator, with Eq
+        // and with Ne) (docs/spec/dsl.md).
         self::check(self::code(fn() => (new Author)($db)->photoUrl(null)->andName(null)->gets()) === Code::CONFIG, 'null on a non-null column');
+        self::check(self::code(fn() => (new Author)($db)->gtReadCount([10, 20])->gets()) === Code::CONFIG, 'a list with an operator');
+        self::check(self::code(fn() => (new Author)($db)->gtReadCount(null)->gets()) === Code::CONFIG, 'null with an operator');
+        self::check((new Author)($db)->neReadCount([10, 20])->andServiceSeq($svc)->getCount() === 2, 'a list with Ne');
         self::check(self::code(fn() => (new Author)($db)->betweenSeq([1])->gets()) === Code::CONFIG, 'between with one value');
         self::check(self::code(fn() => (new Author)($db)->lkSeq('x')) === Code::CONFIG, 'operator not allowed');
         self::check(self::code(fn() => (new Author)($db)->unknownColumn(1)) === Code::CONFIG, 'unknown column');
