@@ -3,11 +3,9 @@
 
 polyspec_orm::models!();
 
-#[cfg(test)]
 #[path = "../src/bench_set.rs"]
 mod bench_set;
 
-#[cfg(test)]
 #[allow(
     dead_code,
     unused_imports,
@@ -18,7 +16,6 @@ mod decimal_model {
     include!(concat!(env!("OUT_DIR"), "/decimal/orm_model.rs"));
 }
 
-#[cfg(test)]
 async fn decimal_physical(env: &str) {
     use decimal_model::DecimalCase;
 
@@ -44,7 +41,6 @@ async fn decimal_physical(env: &str) {
     db.close().await;
 }
 
-#[cfg(test)]
 #[tokio::test]
 // The test of DIA-25, COD-2 (docs/spec).
 async fn decimal_mysql() {
@@ -52,7 +48,6 @@ async fn decimal_mysql() {
     decimal_physical("DECIMAL_MYSQL_DSN").await;
 }
 
-#[cfg(test)]
 #[tokio::test]
 // The test of DIA-25, COD-2 (docs/spec).
 async fn decimal_postgres() {
@@ -60,7 +55,6 @@ async fn decimal_postgres() {
     decimal_physical("DECIMAL_POSTGRES_DSN").await;
 }
 
-#[cfg(test)]
 #[tokio::test]
 // The test of DIA-25, COD-2 (docs/spec).
 async fn decimal_sqlite() {
@@ -73,7 +67,6 @@ async fn decimal_sqlite() {
 /// SQLite uses a new file. The database is created and dropped through
 /// ORM_TEST_<DRIVER>_SERVER_DSN: administration is server work, and the raw
 /// sqlx connection sends startup parameters that a pooler rejects.
-#[cfg(test)]
 async fn schema_set_database(driver: &str) -> (String, String) {
     // Parallel tests may create names in the same microsecond, so names are told apart by process id and counter.
     static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
@@ -94,7 +87,6 @@ async fn schema_set_database(driver: &str) -> (String, String) {
     (dsn, name)
 }
 
-#[cfg(test)]
 async fn schema_set_server(driver: &str, statement: &str) {
     let env = format!("ORM_TEST_{}_SERVER_DSN", driver.to_uppercase());
     let base = std::env::var(&env).unwrap_or_else(|_| {
@@ -117,7 +109,6 @@ async fn schema_set_server(driver: &str, statement: &str) {
 /// (the decimal set twice; the second installation changes nothing), and uses
 /// the generated models of both sets on the connection inside and outside a
 /// transaction.
-#[cfg(test)]
 async fn schema_set(driver: &str) {
     use decimal_model::DecimalCase;
     use model::User;
@@ -145,7 +136,6 @@ async fn schema_set(driver: &str) {
 }
 
 // Requirements: SCH-7, DBS-108.
-#[cfg(test)]
 #[tokio::test]
 async fn schema_set_mysql() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -153,7 +143,6 @@ async fn schema_set_mysql() {
 }
 
 // Requirements: SCH-7, DBS-108.
-#[cfg(test)]
 #[tokio::test]
 async fn schema_set_postgres() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -161,7 +150,6 @@ async fn schema_set_postgres() {
 }
 
 // Requirements: SCH-7, DBS-108.
-#[cfg(test)]
 #[tokio::test]
 async fn schema_set_sqlite() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -170,7 +158,6 @@ async fn schema_set_sqlite() {
 
 /// Counts the statements a connection sends in `runs` with a statement event
 /// subscriber.
-#[cfg(test)]
 fn counted(db: &polyspec_orm::Db, runs: &std::sync::Arc<std::sync::atomic::AtomicUsize>) -> polyspec_orm::Subscription {
     let runs = runs.clone();
     db.subscribe(move |_: &polyspec_orm::StatementEvent<'_>| {
@@ -185,7 +172,6 @@ fn counted(db: &polyspec_orm::Db, runs: &std::sync::Arc<std::sync::atomic::Atomi
 /// connection registers no set, and a connection of the bench helper does not
 /// register the decimal set that another connection installed. A connection
 /// of the decimal helper uses it.
-#[cfg(test)]
 async fn schema_set_unregistered(driver: &str) {
     use decimal_model::DecimalCase;
     use model::User;
@@ -221,7 +207,6 @@ async fn schema_set_unregistered(driver: &str) {
 /// and creates nothing. A model of that text is rejected with
 /// SCHEMA_HASH_MISMATCH before execution, also after a model with the same
 /// hash planned the same request.
-#[cfg(test)]
 async fn schema_set_edited_manifest(driver: &str) {
     use decimal_model::DecimalCase;
 
@@ -260,7 +245,6 @@ async fn schema_set_edited_manifest(driver: &str) {
     drop_schema_set_database(driver, &dsn, &name).await;
 }
 
-#[cfg(test)]
 async fn drop_schema_set_database(driver: &str, dsn: &str, name: &str) {
     if driver == "sqlite" {
         std::fs::remove_file(dsn.trim_start_matches("sqlite://")).unwrap();
@@ -271,7 +255,6 @@ async fn drop_schema_set_database(driver: &str, dsn: &str, name: &str) {
 }
 
 // Requirements: SCH-11, DBS-119.
-#[cfg(test)]
 #[tokio::test]
 async fn schema_set_unregistered_mysql() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -279,7 +262,6 @@ async fn schema_set_unregistered_mysql() {
 }
 
 // Requirements: SCH-11, DBS-119.
-#[cfg(test)]
 #[tokio::test]
 async fn schema_set_unregistered_postgres() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -287,7 +269,6 @@ async fn schema_set_unregistered_postgres() {
 }
 
 // Requirements: SCH-11, DBS-119.
-#[cfg(test)]
 #[tokio::test]
 async fn schema_set_unregistered_sqlite() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -295,7 +276,6 @@ async fn schema_set_unregistered_sqlite() {
 }
 
 // Requirements: SCH-7.
-#[cfg(test)]
 #[tokio::test]
 async fn schema_set_edited_manifest_mysql() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -303,7 +283,6 @@ async fn schema_set_edited_manifest_mysql() {
 }
 
 // Requirements: SCH-7.
-#[cfg(test)]
 #[tokio::test]
 async fn schema_set_edited_manifest_postgres() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -311,7 +290,6 @@ async fn schema_set_edited_manifest_postgres() {
 }
 
 // Requirements: SCH-7.
-#[cfg(test)]
 #[tokio::test]
 async fn schema_set_edited_manifest_sqlite() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
