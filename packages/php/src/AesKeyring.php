@@ -40,6 +40,7 @@ final class AesKeyring
     /**
      * The key version that a stored row holds: a positive 32-bit integer, as an int or as its decimal text. Any other
      * value is CODEC_DECODE; it is never coerced.
+     * @internal Codec and the rotation of this class read the version column with it; it is not a public API.
      */
     public static function storedVersion(mixed $value): int
     {
