@@ -11,9 +11,9 @@
 //! of TEST_ENV), not through a pooler. Each case runs in a case database of its
 //! own (polyspec-orm-case-database). The test fails when one of the four DSNs is unset.
 //!
-//! The `rollback_fault_*` cases set the rollback fault of the test entry point `polyspec_orm::testing`
-//! and run with feature `test-faults`:
-//! `cargo test -p polyspec-orm --features test-faults --test rollback`.
+//! The `rollback_fault_*` cases set the rollback fault of the test entry point `polyspec_orm::testing`.
+//! That entry point is built with feature `test-faults`, which the dev-dependency of this crate on
+//! itself enables for every test target (Cargo.toml): `cargo test -p polyspec-orm --test rollback`.
 
 use std::time::Duration;
 
@@ -202,14 +202,12 @@ async fn savepoint_rollback_failed(driver: &str, dsn: &str, session: &str) {
 }
 
 /// The callback error of a rollback fault case.
-#[cfg(feature = "test-faults")]
 fn fault_callback() -> polyspec_orm::Error {
     polyspec_orm::Error::Config("rollback fault callback failed".into())
 }
 
 /// The ROLLBACK error of a rollback fault carries the callback error and the FAULT error;
 /// this is checked.
-#[cfg(feature = "test-faults")]
 fn check_fault(driver: &str, error: &polyspec_orm::Error, subject: &str) {
     let callback = check_rollback(driver, error, subject);
     assert_eq!(callback.to_string(), fault_callback().to_string(), "{driver}: {subject}: callback error");
@@ -223,7 +221,6 @@ fn check_fault(driver: &str, error: &polyspec_orm::Error, subject: &str) {
 /// The fault is consumed: afterwards, the transaction returns only the callback error.
 /// `transaction_send` and `transaction_once` also consume the configured fault in the same way
 /// , and the connection handles later requests.
-#[cfg(feature = "test-faults")]
 async fn rollback_fault(driver: &str, dsn: &str) {
     let db = installed(driver, dsn).await;
     polyspec_orm::testing::fail_next_rollback(&db);
@@ -282,7 +279,6 @@ async fn bounded(driver: &str, case: &str) {
         match case {
             "rollback_failed" => rollback_failed(driver, dsn, &session).await,
             "savepoint_rollback_failed" => savepoint_rollback_failed(driver, dsn, &session).await,
-            #[cfg(feature = "test-faults")]
             "rollback_fault" => rollback_fault(driver, dsn).await,
             other => unreachable!("unknown case {other}"),
         }
@@ -330,21 +326,18 @@ async fn savepoint_rollback_failed_postgres() {
     bounded("postgres", "savepoint_rollback_failed").await;
 }
 
-#[cfg(feature = "test-faults")]
 #[tokio::test]
 async fn rollback_fault_sqlite() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("sqlite", "rollback_fault").await;
 }
 
-#[cfg(feature = "test-faults")]
 #[tokio::test]
 async fn rollback_fault_mysql() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("mysql", "rollback_fault").await;
 }
 
-#[cfg(feature = "test-faults")]
 #[tokio::test]
 async fn rollback_fault_postgres() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);

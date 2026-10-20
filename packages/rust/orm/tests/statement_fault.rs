@@ -9,9 +9,9 @@
 //! reached through ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN. The test fails
 //! when one of those variables is unset; no case skips.
 //!
-//! The entry point `polyspec_orm::testing::fail_next_statement` exists only with
-//! the feature `test-faults`:
-//! `cargo test -p polyspec-orm --features test-faults --test statement_fault`.
+//! The entry point `polyspec_orm::testing::fail_next_statement` is built with the
+//! feature `test-faults`, which the dev-dependency of this crate on itself enables
+//! for every test target (Cargo.toml), so `cargo test -p polyspec-orm --test statement_fault` runs the cases.
 
 use std::time::Duration;
 
@@ -112,7 +112,6 @@ async fn count(db: &Db) -> i64 {
 }
 
 /// Checks the error of a refused statement: its code and message are the fixture's.
-#[cfg(feature = "test-faults")]
 fn check_fault(driver: &str, error: &polyspec_orm::Error, subject: &str) {
     let fixture = fixture();
     assert_eq!(error.code(), fixture.code, "{driver}: {subject}: code of {error}");
@@ -120,7 +119,6 @@ fn check_fault(driver: &str, error: &polyspec_orm::Error, subject: &str) {
 }
 
 /// The next insert is refused: the client reports the fixture error and the table is unchanged.
-#[cfg(feature = "test-faults")]
 async fn refused_insert(driver: &str, dsn: &str) {
     let fixture = fixture();
     let db = installed(driver, dsn).await;
@@ -132,7 +130,6 @@ async fn refused_insert(driver: &str, dsn: &str) {
 }
 
 /// The fault is consumed by one statement: the insert after the refused one runs.
-#[cfg(feature = "test-faults")]
 async fn consumed_by_one_statement(driver: &str, dsn: &str) {
     let fixture = fixture();
     let db = installed(driver, dsn).await;
@@ -148,7 +145,6 @@ async fn consumed_by_one_statement(driver: &str, dsn: &str) {
 /// Inside a transaction the fault refuses the insert; the transaction control
 /// statements before it do not consume the fault. The rollback succeeds, so the
 /// error is the fixture error and not ROLLBACK.
-#[cfg(feature = "test-faults")]
 async fn refused_in_transaction(driver: &str, dsn: &str) {
     let fixture = fixture();
     let db = installed(driver, dsn).await;
@@ -162,7 +158,6 @@ async fn refused_in_transaction(driver: &str, dsn: &str) {
 
 /// An empty code or an empty message panics (the programmer-error signal of
 /// Rust) and arms nothing: the next insert runs.
-#[cfg(feature = "test-faults")]
 async fn empty_argument_refused(driver: &str, dsn: &str) {
     let fixture = fixture();
     let db = installed(driver, dsn).await;
@@ -176,7 +171,6 @@ async fn empty_argument_refused(driver: &str, dsn: &str) {
 }
 
 /// Runs one case in its own case database within its deadline, then drops the database.
-#[cfg(feature = "test-faults")]
 async fn bounded(driver: &str, case: &str) {
     let case = named_case(case);
     let database = CaseDatabase::create(driver).await;
@@ -208,7 +202,6 @@ fn every_fixture_case_has_a_test_per_driver() {
 
 /// Every fixture case on SQLite, MySQL and PostgreSQL, each the trial `statement_fault_cases::<case>`: a case
 /// passes when it passes on every database. A panic in one database run is caught, and its message fails the case.
-#[cfg(feature = "test-faults")]
 fn statement_fault_cases() -> Vec<polyspec_orm_testcase::Trial> {
     fixture()
         .cases
@@ -227,7 +220,6 @@ fn statement_fault_cases() -> Vec<polyspec_orm_testcase::Trial> {
 }
 
 /// The reason of a caught panic: its message.
-#[cfg(feature = "test-faults")]
 fn panic_reason(payload: Box<dyn std::any::Any + Send>) -> String {
     payload
         .downcast_ref::<String>()
@@ -236,92 +228,72 @@ fn panic_reason(payload: Box<dyn std::any::Any + Send>) -> String {
         .unwrap_or_else(|| "the run panicked".to_string())
 }
 
-#[cfg(feature = "test-faults")]
 async fn refused_insert_sqlite() {
     bounded("sqlite", "refused_insert").await;
 }
 
-#[cfg(feature = "test-faults")]
 async fn refused_insert_mysql() {
     bounded("mysql", "refused_insert").await;
 }
 
-#[cfg(feature = "test-faults")]
 async fn refused_insert_postgres() {
     bounded("postgres", "refused_insert").await;
 }
 
-#[cfg(feature = "test-faults")]
 async fn consumed_by_one_statement_sqlite() {
     bounded("sqlite", "consumed_by_one_statement").await;
 }
 
-#[cfg(feature = "test-faults")]
 async fn consumed_by_one_statement_mysql() {
     bounded("mysql", "consumed_by_one_statement").await;
 }
 
-#[cfg(feature = "test-faults")]
 async fn consumed_by_one_statement_postgres() {
     bounded("postgres", "consumed_by_one_statement").await;
 }
 
-#[cfg(feature = "test-faults")]
 async fn refused_in_transaction_sqlite() {
     bounded("sqlite", "refused_in_transaction").await;
 }
 
-#[cfg(feature = "test-faults")]
 async fn refused_in_transaction_mysql() {
     bounded("mysql", "refused_in_transaction").await;
 }
 
-#[cfg(feature = "test-faults")]
 async fn refused_in_transaction_postgres() {
     bounded("postgres", "refused_in_transaction").await;
 }
 
-#[cfg(feature = "test-faults")]
 async fn empty_argument_refused_sqlite() {
     bounded("sqlite", "empty_argument_refused").await;
 }
 
-#[cfg(feature = "test-faults")]
 async fn empty_argument_refused_mysql() {
     bounded("mysql", "empty_argument_refused").await;
 }
 
-#[cfg(feature = "test-faults")]
 async fn empty_argument_refused_postgres() {
     bounded("postgres", "empty_argument_refused").await;
 }
 
 fn main() {
-    #[cfg_attr(not(feature = "test-faults"), expect(unused_mut, reason = "the fault cases exist only with the feature test-faults"))]
     let mut trials = vec![polyspec_orm_testcase::trial(
         "every_fixture_case_has_a_test_per_driver",
         polyspec_orm_testcase::DATABASE,
         every_fixture_case_has_a_test_per_driver,
     )];
-    #[cfg(feature = "test-faults")]
-    {
-        trials.extend(statement_fault_cases());
-        trials.push(polyspec_orm_testcase::async_trial("refused_insert_sqlite", polyspec_orm_testcase::DATABASE, refused_insert_sqlite));
-        trials.push(polyspec_orm_testcase::async_trial("refused_insert_mysql", polyspec_orm_testcase::DATABASE, refused_insert_mysql));
-        trials.push(polyspec_orm_testcase::async_trial("refused_insert_postgres", polyspec_orm_testcase::DATABASE, refused_insert_postgres));
-        trials.push(polyspec_orm_testcase::async_trial("consumed_by_one_statement_sqlite", polyspec_orm_testcase::DATABASE, consumed_by_one_statement_sqlite));
-        trials.push(polyspec_orm_testcase::async_trial("consumed_by_one_statement_mysql", polyspec_orm_testcase::DATABASE, consumed_by_one_statement_mysql));
-        trials.push(polyspec_orm_testcase::async_trial(
-            "consumed_by_one_statement_postgres",
-            polyspec_orm_testcase::DATABASE,
-            consumed_by_one_statement_postgres,
-        ));
-        trials.push(polyspec_orm_testcase::async_trial("refused_in_transaction_sqlite", polyspec_orm_testcase::DATABASE, refused_in_transaction_sqlite));
-        trials.push(polyspec_orm_testcase::async_trial("refused_in_transaction_mysql", polyspec_orm_testcase::DATABASE, refused_in_transaction_mysql));
-        trials.push(polyspec_orm_testcase::async_trial("refused_in_transaction_postgres", polyspec_orm_testcase::DATABASE, refused_in_transaction_postgres));
-        trials.push(polyspec_orm_testcase::async_trial("empty_argument_refused_sqlite", polyspec_orm_testcase::DATABASE, empty_argument_refused_sqlite));
-        trials.push(polyspec_orm_testcase::async_trial("empty_argument_refused_mysql", polyspec_orm_testcase::DATABASE, empty_argument_refused_mysql));
-        trials.push(polyspec_orm_testcase::async_trial("empty_argument_refused_postgres", polyspec_orm_testcase::DATABASE, empty_argument_refused_postgres));
-    }
+    trials.extend(statement_fault_cases());
+    trials.push(polyspec_orm_testcase::async_trial("refused_insert_sqlite", polyspec_orm_testcase::DATABASE, refused_insert_sqlite));
+    trials.push(polyspec_orm_testcase::async_trial("refused_insert_mysql", polyspec_orm_testcase::DATABASE, refused_insert_mysql));
+    trials.push(polyspec_orm_testcase::async_trial("refused_insert_postgres", polyspec_orm_testcase::DATABASE, refused_insert_postgres));
+    trials.push(polyspec_orm_testcase::async_trial("consumed_by_one_statement_sqlite", polyspec_orm_testcase::DATABASE, consumed_by_one_statement_sqlite));
+    trials.push(polyspec_orm_testcase::async_trial("consumed_by_one_statement_mysql", polyspec_orm_testcase::DATABASE, consumed_by_one_statement_mysql));
+    trials.push(polyspec_orm_testcase::async_trial("consumed_by_one_statement_postgres", polyspec_orm_testcase::DATABASE, consumed_by_one_statement_postgres));
+    trials.push(polyspec_orm_testcase::async_trial("refused_in_transaction_sqlite", polyspec_orm_testcase::DATABASE, refused_in_transaction_sqlite));
+    trials.push(polyspec_orm_testcase::async_trial("refused_in_transaction_mysql", polyspec_orm_testcase::DATABASE, refused_in_transaction_mysql));
+    trials.push(polyspec_orm_testcase::async_trial("refused_in_transaction_postgres", polyspec_orm_testcase::DATABASE, refused_in_transaction_postgres));
+    trials.push(polyspec_orm_testcase::async_trial("empty_argument_refused_sqlite", polyspec_orm_testcase::DATABASE, empty_argument_refused_sqlite));
+    trials.push(polyspec_orm_testcase::async_trial("empty_argument_refused_mysql", polyspec_orm_testcase::DATABASE, empty_argument_refused_mysql));
+    trials.push(polyspec_orm_testcase::async_trial("empty_argument_refused_postgres", polyspec_orm_testcase::DATABASE, empty_argument_refused_postgres));
     polyspec_orm_testcase::run_in_order(trials);
 }
