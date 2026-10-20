@@ -149,7 +149,7 @@ func compareDatabase(t *testing.T, dialect, name, mysqlDSN, postgresDSN string) 
 		u.Path = "/" + name
 		return u.String(), func() {
 			mustExec(t, admin, "DROP DATABASE `"+name+"`")
-			admin.Close()
+			testcase.Close(t, admin)
 		}
 	}
 	u, err := url.Parse(postgresDSN)
@@ -161,7 +161,7 @@ func compareDatabase(t *testing.T, dialect, name, mysqlDSN, postgresDSN string) 
 	u.Path = "/" + name
 	return u.String(), func() {
 		mustExec(t, admin, `DROP DATABASE "`+name+`" WITH (FORCE)`)
-		admin.Close()
+		testcase.Close(t, admin)
 	}
 }
 
