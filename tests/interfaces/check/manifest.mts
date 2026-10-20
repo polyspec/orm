@@ -22,7 +22,7 @@ export type Rule = {
 };
 /**
  * Extension is what implements part of the contract outside the five client languages (extensions in contracts/interfaces.json, PHP extension
- * orm_dbspec). Its declarations are read from roots by a syntax language's extractor, only rules and owners are checked, and it holds its symbol snapshot and its hash
+ * polyspec_orm). Its declarations are read from roots by a syntax language's extractor, only rules and owners are checked, and it holds its symbol snapshot and its hash
  * separately.
  */
 export type Extension = {

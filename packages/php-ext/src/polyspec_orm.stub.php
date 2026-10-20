@@ -5,12 +5,16 @@
  */
 
 /*
- * Declarations of the classes that the PHP extension orm_dbspec registers. Not loaded at runtime: if the extension is present, it
- * registers the class of the same name. The declarations are the inventory of the interface check (contracts/interfaces.json's php-extension),
- * packages/php-ext/scripts/arginfo.php makes src/orm_dbspec_arginfo.h with gen_stub.php,
- * and checks that the Reflection of the extension loaded by packages/php-ext/tests/DeclarationsTest.php is the same as this file's Reflection.
- * The class, its properties and methods are the same as the same-named classes of the PHP client (packages/php/src/Dbspec). gen_stub
- * cannot write array constants, so src/orm_dbspec.c registers them, and the return type uses the class name instead of `self`.
+ * The one stub of the PHP extension polyspec_orm: the declarations of the classes it registers. Not loaded at runtime: if the
+ * extension is present, it registers the class of the same name. The declarations are the inventory of the interface check
+ * (contracts/interfaces.json's php-extension); make php-ext-arginfo writes src/polyspec_orm_arginfo.h from this file with
+ * gen_stub.php, and make lint-php-ext checks that the header records this file's hash. packages/php-ext/tests/DeclarationsTest.php
+ * checks that the Reflection of the loaded extension is the same as this file's Reflection.
+ * The classes, their properties and methods are the same as the same-named classes of the PHP client (packages/php/src/Dbspec).
+ * gen_stub cannot write array constants, so this file declares none: src/polyspec_orm.c registers ColumnType::SIMPLE,
+ * ColumnType::PARAMETERIZED, ForeignKey::ACTIONS, Setting::KINDS, Setting::CODEC_STAGES, Setting::STORE_ARGUMENTS and
+ * PlanApply::EFFECT_QUERIES, which DeclarationsTest compares with the PHP client. The return type uses the class name instead of `self`.
+ * The last namespace, Polyspec\Orm\Native, holds Code, the block that orm-gen errors writes.
  */
 
 namespace Polyspec\Orm\Dbspec\Native;
@@ -93,9 +97,6 @@ final class Column
 /** A dbspec type: `i16`, `decimal(13,2)`, `varchar(64)`, `time(0)` and the others of the type table. */
 final readonly class ColumnType
 {
-    public const array SIMPLE = ['i16', 'i32', 'i64', 'bool', 'f64', 'text', 'bytes', 'uuid', 'date'];
-    public const array PARAMETERIZED = ['decimal' => 2, 'varchar' => 1, 'time' => 1, 'datetime' => 1];
-
     public string $name;
     public array $parameters;
 
@@ -143,8 +144,6 @@ final readonly class IndexColumn
 /** A named foreign key; actions are `restrict`, `cascade` or `set_null`. */
 final class ForeignKey
 {
-    public const array ACTIONS = ['restrict', 'cascade', 'set_null'];
-
     public string $name;
     public array $columns;
     public string $table;
@@ -185,10 +184,6 @@ final class Settings
  */
 final class Setting
 {
-    public const array KINDS = ['entity', 'updated', 'soft_delete', 'select_explicit', 'codec', 'aes_version', 'blind_index', 'navigation', 'markdown', 'store', 'key_prefix', 'title', 'body', 'order', 'checkbox', 'state_machine', 'immutable', 'audit'];
-    public const array CODEC_STAGES = ['ordered_json', 'aes', 'hex', 'gz', 'base64', 'serialize', 'yaml', 'ip'];
-    public const array STORE_ARGUMENTS = ['files' => 1, 'document' => 2, 'block' => 3];
-
     public string $kind;
     public array $arguments;
     public array $comments;
@@ -730,10 +725,104 @@ final class Dbspec
  */
 final class PlanApply
 {
-    public const array EFFECT_QUERIES = ['mysql' => ['table' => 'SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?', 'column' => 'SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?', 'index' => 'SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?', 'constraint' => 'SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = ? AND CONSTRAINT_NAME = ?', 'trigger' => 'SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() AND EVENT_OBJECT_TABLE = ? AND TRIGGER_NAME = ?'], 'postgres' => ['table' => 'SELECT COUNT(*) FROM pg_class WHERE relnamespace = current_schema()::regnamespace AND relkind IN (\'r\', \'p\') AND relname = ?', 'column' => 'SELECT COUNT(*) FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid WHERE c.relnamespace = current_schema()::regnamespace AND c.relname = ? AND a.attname = ? AND a.attnum > 0 AND NOT a.attisdropped', 'index' => 'SELECT COUNT(*) FROM pg_index x JOIN pg_class i ON i.oid = x.indexrelid JOIN pg_class c ON c.oid = x.indrelid WHERE c.relnamespace = current_schema()::regnamespace AND c.relname = ? AND i.relname = ?', 'constraint' => 'SELECT COUNT(*) FROM pg_constraint k JOIN pg_class c ON c.oid = k.conrelid WHERE c.relnamespace = current_schema()::regnamespace AND c.relname = ? AND k.conname = ?', 'trigger' => 'SELECT COUNT(*) FROM pg_trigger g JOIN pg_class c ON c.oid = g.tgrelid WHERE c.relnamespace = current_schema()::regnamespace AND c.relname = ? AND g.tgname = ? AND NOT g.tgisinternal', 'function' => 'SELECT COUNT(*) FROM pg_proc WHERE pronamespace = current_schema()::regnamespace AND proname = ?'], 'sqlite' => ['table' => 'SELECT COUNT(*) FROM sqlite_master WHERE type = \'table\' AND name = ?', 'column' => 'SELECT COUNT(*) FROM pragma_table_info(?) WHERE name = ?', 'index' => 'SELECT COUNT(*) FROM sqlite_master WHERE type = \'index\' AND tbl_name = ? AND name = ?', 'trigger' => 'SELECT COUNT(*) FROM sqlite_master WHERE type = \'trigger\' AND tbl_name = ? AND name = ?', 'sequence' => 'SELECT COUNT(*) FROM sqlite_sequence WHERE name = ?']];
-
     private function __construct() {}
 
     /** Reads whether one effect holds in the database of the connection. */
     public static function effectOn(\PDO $c, string $dialect, Effect $e): bool {}
 }
+
+// Code generated by orm-gen errors from docs/spec/errors.yaml; DO NOT EDIT.
+
+namespace Polyspec\Orm\Native;
+
+/** Error codes shared by the engine and every executor (docs/spec/errors.yaml). */
+final class Code
+{
+    /** engine: ir_version the engine does not speak */
+    public const string VERSION_MISMATCH = 'VERSION_MISMATCH';
+    /** engine: client generated from another dbspec document set than the engine loaded */
+    public const string SCHEMA_HASH_MISMATCH = 'SCHEMA_HASH_MISMATCH';
+    /** engine: the dbspec document set failed validation at load */
+    public const string SCHEMA_INVALID = 'SCHEMA_INVALID';
+    /** engine */
+    public const string DIALECT_UNKNOWN = 'DIALECT_UNKNOWN';
+    /** engine: structural: missing fields, wrong combination, param index out of range */
+    public const string IR_INVALID = 'IR_INVALID';
+    /** engine: requested operation is not supported by the selected dialect */
+    public const string CAPABILITY_UNSUPPORTED = 'CAPABILITY_UNSUPPORTED';
+    /** engine */
+    public const string ENTITY_UNKNOWN = 'ENTITY_UNKNOWN';
+    /** engine */
+    public const string COLUMN_UNKNOWN = 'COLUMN_UNKNOWN';
+    /** engine */
+    public const string RELATION_UNKNOWN = 'RELATION_UNKNOWN';
+    /** engine: force_index name not declared */
+    public const string INDEX_UNKNOWN = 'INDEX_UNKNOWN';
+    /** engine: select<Col>As name collides with a column */
+    public const string COLUMN_ALIAS_CONFLICT = 'COLUMN_ALIAS_CONFLICT';
+    /** engine */
+    public const string OPERATOR_UNKNOWN = 'OPERATOR_UNKNOWN';
+    /** engine: ORM function name outside the column or value function catalog */
+    public const string FUNCTION_UNKNOWN = 'FUNCTION_UNKNOWN';
+    /** engine: op not valid for the column's type/style (ir.OpAllowed) */
+    public const string OPERATOR_NOT_ALLOWED = 'OPERATOR_NOT_ALLOWED';
+    /** engine: or() as the first item of a group */
+    public const string OR_AT_GROUP_START = 'OR_AT_GROUP_START';
+    /** engine: in()/notIn() with no values */
+    public const string EMPTY_IN = 'EMPTY_IN';
+    /** engine: joined placement or column reference to a join missing from this statement */
+    public const string ENTITY_NOT_JOINED = 'ENTITY_NOT_JOINED';
+    /** engine: limit() on a relation child (use limitPerParent) */
+    public const string LIMIT_IN_RELATION = 'LIMIT_IN_RELATION';
+    /** executor: strict one-row query matched no row */
+    public const string NO_ROWS = 'NO_ROWS';
+    /** executor: restoreOrCreate found its key on a row that is not deleted; nothing was written */
+    public const string ROW_NOT_DELETED = 'ROW_NOT_DELETED';
+    /** executor: a batch of creates binds more parameters than the dialect allows; names the batch, its bind count and the limit; nothing was written */
+    public const string BATCH_TOO_LARGE = 'BATCH_TOO_LARGE';
+    /** executor: an update or delete given an expected revision found the row at another revision, or no row; nothing was written */
+    public const string REVISION_CHANGED = 'REVISION_CHANGED';
+    /** executor: a requested column was not included in the loaded row */
+    public const string COLUMN_UNSELECTED = 'COLUMN_UNSELECTED';
+    /** executor: updateOptimistic matched no row (updated_ts changed) */
+    public const string OPTIMISTIC_LOCK = 'OPTIMISTIC_LOCK';
+    /** executor: a target changed since it was read, or a change since the read makes the transaction's writes other writes; names the file and line; the client never retries it */
+    public const string WRITE_CONFLICT = 'WRITE_CONFLICT';
+    /** executor: styled column bytes could not be decoded (docs/spec/codec.md) */
+    public const string CODEC_DECODE = 'CODEC_DECODE';
+    /** executor: a parameter outside its slot's logical type, before any statement (kind, range, scale and precision, time precision, length, U+0000, uuid form), or a styled input that cannot be encoded, including SQL NULL for a non-null column (a NULL parameter assigned to a non-null column; raw SQL keeps DRIVER) */
+    public const string CODEC_ENCODE = 'CODEC_ENCODE';
+    /** executor: PHP objects/references in serialize, unknown style */
+    public const string CODEC_UNSUPPORTED = 'CODEC_UNSUPPORTED';
+    /** executor: missing secret, bad DSN/paths, transaction misuse */
+    public const string CONFIG = 'CONFIG';
+    /** executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout); a lock wait of the markdown executor that ends is CANCELED too */
+    public const string CANCELED = 'CANCELED';
+    /** executor: a transaction or savepoint callback failed and its rollback failed too; the error keeps both errors */
+    public const string ROLLBACK = 'ROLLBACK';
+    /** executor: a test fault armed through the test entry point of the client reported the rollback of a transaction as failed after the rollback ran */
+    public const string FAULT = 'FAULT';
+    /** executor: a statement event subscriber of the connection failed; the operation fails with its error as the cause */
+    public const string SUBSCRIBER = 'SUBSCRIBER';
+    /** executor: addTablesAndColumns found a difference between the existing tables of a document set and the set other than a missing table, a missing column that is null or has a default or a missing index; a missing unique key is one, because it can fail on the existing rows */
+    public const string SCHEMA_DIFFERS = 'SCHEMA_DIFFERS';
+    /** executor */
+    public const string INTERNAL = 'INTERNAL';
+    /** driver: a NOWAIT lock could not be acquired immediately */
+    public const string LOCK_NOT_AVAILABLE = 'LOCK_NOT_AVAILABLE';
+    /** driver: MySQL 1213 / SQLSTATE 40001 / PostgreSQL 40P01 / SQLite LOCKED; retries require TransactionOptions */
+    public const string DEADLOCK = 'DEADLOCK';
+    /** driver: MySQL 1062 / SQLSTATE 23000 */
+    public const string DUPLICATE_KEY = 'DUPLICATE_KEY';
+    /** driver: MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787, and SQLite 1811 "FOREIGN KEY constraint failed" of a RESTRICT action */
+    public const string FOREIGN_KEY = 'FOREIGN_KEY';
+    /** driver: MySQL 3819/4025 / PostgreSQL 23514 / SQLite 275 */
+    public const string CONSTRAINT = 'CONSTRAINT';
+    /** driver: a write rejected because the server or connection is read-only: MySQL 1290/1792 / PostgreSQL 25006 / SQLite 8 and its extended codes */
+    public const string READ_ONLY = 'READ_ONLY';
+    /** driver: the server ended the connection or the connection broke (a killed session, a restart, an idle limit): MySQL 2006/2013/4031 / PostgreSQL SQLSTATE class 08 and 57P01/57P02/57P05, or a client library error on a connection that is no longer open; SQLite has no server connection */
+    public const string CONNECTION_LOST = 'CONNECTION_LOST';
+    /** driver: any other driver error, such as a write that a trigger refuses: MySQL 1644 / PostgreSQL P0001 / SQLite 1811 of a trigger RAISE */
+    public const string DRIVER = 'DRIVER';
+}
+// End of the code generated by orm-gen errors.

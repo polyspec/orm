@@ -14,7 +14,7 @@
 
 ## Installing from release assets
 
-In 0.0.x the polyspec packages are distributed through GitHub only, as release assets and tags: the npm, Composer and Python packages are on no registry (npm, Packagist, PyPI). Each GitHub Release carries `polyspec-orm-npm-<version>.tgz`, `polyspec-orm-php-<version>.zip`, `polyspec-orm-dbspec-php-<version>.zip` (`<package>-<language>-<version>.<ext>`) and the Python wheel `polyspec_orm-<version>-py3-none-any.whl` (see Python client release). Each asset holds the manifest of the repository tree unchanged, and that manifest names every other polyspec package by the exact version of its release, so a project downloads the release assets it needs and installs them together. `make release-assets TAG=vX.Y.Z` builds them from the tagged commit.
+In 0.0.x the polyspec packages are distributed through GitHub only, as release assets and tags: the npm, Composer and Python packages are on no registry (npm, Packagist, PyPI). Each GitHub Release carries `polyspec-orm-npm-<version>.tgz`, `polyspec-orm-php-<version>.zip`, `polyspec-orm-php-ext-php-<version>.zip` (`<package>-<language>-<version>.<ext>`) and the Python wheel `polyspec_orm-<version>-py3-none-any.whl` (see Python client release). Each asset holds the manifest of the repository tree unchanged, and that manifest names every other polyspec package by the exact version of its release, so a project downloads the release assets it needs and installs them together. `make release-assets TAG=vX.Y.Z` builds them from the tagged commit.
 
 - npm: list every tarball as a `file:` dependency, the orm tarball and the tarball of each polyspec package it depends on, from the GitHub Release of the version that the orm `package.json` names. npm satisfies the exact version of `@polyspec/ordered-json` with the tarball installed beside it:
 
@@ -41,7 +41,7 @@ In 0.0.x the polyspec packages are distributed through GitHub only, as release a
 
   The client requires `purrphp/yaml` `1.0.0-p1`, the release of the fork https://github.com/min-0-max/yaml that reads plain scalars by the core schema of YAML 1.2.2 (section 10.3.2); upstream PurrPHP/yaml 1.0.0 does not. Composer reads `repositories` only from the root manifest of a project, never from a dependency's, so the orm package cannot carry this source: a consumer declares the `vcs` repository itself, as above, and tests/release-consumer/composer does the same. `no-api` makes Composer clone the public repository over HTTPS instead of asking the GitHub API, whose anonymous rate limit (HTTP 403) would otherwise send it to an SSH clone that needs a key.
 
-  `polyspec/orm-dbspec` has the type `php-ext`: PIE builds and installs it, and Composer does not.
+  `polyspec/orm-php-ext` has the type `php-ext`: PIE builds and installs it, and Composer does not.
 
 ## Python client release
 

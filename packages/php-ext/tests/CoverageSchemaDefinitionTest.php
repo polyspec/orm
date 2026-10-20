@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 
-// schema_definition feature coverage on the extension orm_dbspec: every case of
+// schema_definition feature coverage on the extension polyspec_orm: every case of
 // contracts/fixtures/schema_definition.json, each a test named by its id, runs
 // the PHP client's coverage test (packages/php/tests/CoverageSchemaDefinitionTest.php)
 // on Polyspec\Orm\Dbspec\Native\Dbspec.
-// Usage: php -d extension=<orm_dbspec.so> vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CoverageSchemaDefinitionTest.php
+// Usage: php -d extension=<polyspec_orm.so> vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CoverageSchemaDefinitionTest.php
 
 namespace Polyspec\Orm\Tests\Extension;
 

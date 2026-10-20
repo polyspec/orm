@@ -1,7 +1,7 @@
 /*
- * Module of the orm_dbspec extension. It uses the arginfo generated from stubs/orm_dbspec.stub.php to
+ * Module of the polyspec_orm extension. It uses the arginfo generated from its one stub, src/polyspec_orm.stub.php, to
  * register the classes of Polyspec\Orm\Dbspec\Native, and implements their constructors, methods, and Dbspec's static methods the same as the PHP client (packages/php/src/Dbspec).
- * The arginfo generated from stubs/code.stub.php (orm-gen errors) registers Polyspec\Orm\Native\Code, the error codes of docs/spec/errors.yaml.
+ * The same arginfo registers Polyspec\Orm\Native\Code, the error codes of docs/spec/errors.yaml, whose block of the stub orm-gen errors writes.
  */
 #include "dbspec.h"
 #include "ext/pdo/php_pdo_driver.h"
@@ -11,10 +11,7 @@
 #include "Zend/zend_exceptions.h"
 #include "Zend/zend_interfaces.h"
 #include "Zend/zend_closures.h"
-#include "orm_dbspec_arginfo.h"
-#include "code_arginfo.h"
-
-#define ORM_DBSPEC_VERSION "0.0.18"
+#include "polyspec_orm_arginfo.h"
 
 /* Holds one method's arena. */
 #define ENTER() dbs_arena arena_; dbs_arena *saved_; dbs_enter(&arena_, &saved_)
@@ -2251,7 +2248,7 @@ static void array_constant(zend_class_entry *ce, const char *name, const char *c
 
 #define COUNT(a) (sizeof(a) / sizeof((a)[0]))
 
-static PHP_MINIT_FUNCTION(orm_dbspec)
+static PHP_MINIT_FUNCTION(polyspec_orm)
 {
     register_class_Polyspec_Orm_Native_Code();
     dbs_ce_Diagnostic = register_class_Polyspec_Orm_Dbspec_Native_Diagnostic();
@@ -2332,15 +2329,15 @@ static PHP_MINIT_FUNCTION(orm_dbspec)
     return SUCCESS;
 }
 
-static PHP_MINFO_FUNCTION(orm_dbspec)
+static PHP_MINFO_FUNCTION(polyspec_orm)
 {
     php_info_print_table_start();
-    php_info_print_table_row(2, "orm_dbspec", "enabled");
-    php_info_print_table_row(2, "version", ORM_DBSPEC_VERSION);
+    php_info_print_table_row(2, "polyspec_orm", "enabled");
+    php_info_print_table_row(2, "version", PHP_POLYSPEC_ORM_VERSION);
     php_info_print_table_end();
 }
 
-static const zend_module_dep orm_dbspec_deps[] = {
+static const zend_module_dep polyspec_orm_deps[] = {
     ZEND_MOD_REQUIRED("spl")
     ZEND_MOD_REQUIRED("hash")
     ZEND_MOD_REQUIRED("pdo")
@@ -2348,24 +2345,24 @@ static const zend_module_dep orm_dbspec_deps[] = {
     ZEND_MOD_END
 };
 
-zend_module_entry orm_dbspec_module_entry = {
+zend_module_entry polyspec_orm_module_entry = {
     STANDARD_MODULE_HEADER_EX,
     NULL,
-    orm_dbspec_deps,
-    "orm_dbspec",
+    polyspec_orm_deps,
+    "polyspec_orm",
     NULL,
-    PHP_MINIT(orm_dbspec),
+    PHP_MINIT(polyspec_orm),
     NULL,
     NULL,
     NULL,
-    PHP_MINFO(orm_dbspec),
-    ORM_DBSPEC_VERSION,
+    PHP_MINFO(polyspec_orm),
+    PHP_POLYSPEC_ORM_VERSION,
     STANDARD_MODULE_PROPERTIES,
 };
 
-#ifdef COMPILE_DL_ORM_DBSPEC
+#ifdef COMPILE_DL_POLYSPEC_ORM
 #ifdef ZTS
 ZEND_TSRMLS_CACHE_DEFINE()
 #endif
-ZEND_GET_MODULE(orm_dbspec)
+ZEND_GET_MODULE(polyspec_orm)
 #endif

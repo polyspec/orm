@@ -4,11 +4,11 @@ declare(strict_types=1);
 // Reads the class declarations of the extension's native classes with Reflection and prints them as JSON: each class and its modifiers, parent and
 // interfaces, constants and values, property modifiers, types and defaults, method modifiers, arguments and return types.
 //
-// Usage: php -d extension=<orm_dbspec library> declarations.php extension
+// Usage: php -d extension=<polyspec_orm library> declarations.php extension
 //        php declarations.php stub
 //        php declarations.php client
-// The extension reads the classes that the loaded extension orm_dbspec registers, and the stub reads the
-// classes that the stubs (stubs/*.stub.php) declare. The two outputs must match (DeclarationsTest.php). The client reads the PHP client classes that
+// The extension reads the classes that the loaded extension polyspec_orm registers, and the stub reads the
+// classes that its one stub (src/polyspec_orm.stub.php) declares. The two outputs must match (DeclarationsTest.php). The client reads the PHP client classes that
 // the extension implements, the Polyspec\Orm\Dbspec classes that are not @internal and Polyspec\Orm\Code, as their native names: the extension
 // must have the same public declarations for each class. A native name is the client's name with Native as the last namespace segment:
 // Polyspec\Orm\Dbspec\Dbspec is Polyspec\Orm\Dbspec\Native\Dbspec, and Polyspec\Orm\Code is Polyspec\Orm\Native\Code.
@@ -19,24 +19,22 @@ const CLIENT_CLASSES = ['Polyspec\\Orm\\Code'];
 
 $mode = $argv[1] ?? '';
 if ($mode === 'extension') {
-    if (!extension_loaded('orm_dbspec')) {
-        fwrite(STDERR, "declarations.php extension: the extension orm_dbspec is not loaded; run php -d extension=<library>\n");
+    if (!extension_loaded('polyspec_orm')) {
+        fwrite(STDERR, "declarations.php extension: the extension polyspec_orm is not loaded; run php -d extension=<library>\n");
         exit(1);
     }
-    $classes = array_keys((new ReflectionExtension('orm_dbspec'))->getClasses());
+    $classes = array_keys((new ReflectionExtension('polyspec_orm'))->getClasses());
 } elseif ($mode === 'stub') {
-    if (extension_loaded('orm_dbspec')) {
-        fwrite(STDERR, "declarations.php stub: the extension orm_dbspec is loaded and declares the same classes; run php without it\n");
+    if (extension_loaded('polyspec_orm')) {
+        fwrite(STDERR, "declarations.php stub: the extension polyspec_orm is loaded and declares the same classes; run php without it\n");
         exit(1);
     }
     $before = get_declared_classes();
-    foreach (glob(dirname(__DIR__) . '/stubs/*.stub.php') as $file) {
-        require $file;
-    }
+    require dirname(__DIR__) . '/src/polyspec_orm.stub.php';
     $classes = array_values(array_diff(get_declared_classes(), $before));
 } elseif ($mode === 'client') {
-    if (extension_loaded('orm_dbspec')) {
-        fwrite(STDERR, "declarations.php client: the extension orm_dbspec is loaded; run php without it\n");
+    if (extension_loaded('polyspec_orm')) {
+        fwrite(STDERR, "declarations.php client: the extension polyspec_orm is loaded; run php without it\n");
         exit(1);
     }
     require dirname(__DIR__, 3) . '/vendor-php/autoload.php';

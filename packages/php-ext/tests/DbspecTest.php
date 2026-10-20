@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-// Checks the dbspec interface of the extension orm_dbspec (Polyspec\Orm\Dbspec\Native\Dbspec) with the shared vectors and the pure PHP client. The PHP
+// Checks the dbspec interface of the extension polyspec_orm (Polyspec\Orm\Dbspec\Native\Dbspec) with the shared vectors and the pure PHP client. The PHP
 // client is the specification, so for the same input the results must match down to the diagnostic message and the exception class and message.
 // - canonical, normalize and invalid cases of tests/dbspec/cases.json: the emission or diagnostic the vector fixes (rule, line,
 //   column), and the same diagnostic and emission as the PHP client for every document.

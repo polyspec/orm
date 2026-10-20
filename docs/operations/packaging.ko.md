@@ -1,5 +1,5 @@
 <!-- doc-id: packaging -->
-<!-- source-sha256: 57ddd75694bf50b79213bb00011996b5fa46e7e6c57d8e9ec0dade4c6ce848e7 -->
+<!-- source-sha256: 8623cf09a3745b72609460d622ab804c07dba1fef28655a66f3b4d75a7b553f7 -->
 # 패키징 결정
 
 | 결정 | 선택 | 이유 | 변경 조건 |
@@ -15,7 +15,7 @@
 
 ## release asset에서 설치
 
-0.0.x 동안 polyspec package는 GitHub로만, release asset과 tag로 배포한다. npm, Composer, Python package는 어떤 registry(npm, Packagist, PyPI)에도 없다. GitHub Release마다 `polyspec-orm-npm-<version>.tgz`, `polyspec-orm-php-<version>.zip`, `polyspec-orm-dbspec-php-<version>.zip`과 Python wheel `polyspec_orm-<version>-py3-none-any.whl`이 있다(`<package>-<language>-<version>.<ext>`, Python client release 참조). 각 asset은 저장소 tree의 manifest를 그대로 담고, 그 manifest는 다른 polyspec package를 모두 그 release의 정확한 version으로 선언하므로, project는 필요한 release asset을 내려받아 함께 설치한다. `make release-assets TAG=vX.Y.Z`가 tag한 commit에서 그것을 만든다.
+0.0.x 동안 polyspec package는 GitHub로만, release asset과 tag로 배포한다. npm, Composer, Python package는 어떤 registry(npm, Packagist, PyPI)에도 없다. GitHub Release마다 `polyspec-orm-npm-<version>.tgz`, `polyspec-orm-php-<version>.zip`, `polyspec-orm-php-ext-php-<version>.zip`과 Python wheel `polyspec_orm-<version>-py3-none-any.whl`이 있다(`<package>-<language>-<version>.<ext>`, Python client release 참조). 각 asset은 저장소 tree의 manifest를 그대로 담고, 그 manifest는 다른 polyspec package를 모두 그 release의 정확한 version으로 선언하므로, project는 필요한 release asset을 내려받아 함께 설치한다. `make release-assets TAG=vX.Y.Z`가 tag한 commit에서 그것을 만든다.
 
 - npm: orm tarball과, 그것이 의존하는 polyspec package마다 orm `package.json`이 적은 version의 GitHub Release에 있는 tarball을 모두 `file:` dependency로 나열한다. npm은 `@polyspec/ordered-json`의 정확한 version을 함께 설치한 tarball로 채운다:
 
@@ -42,7 +42,7 @@
 
   client는 `purrphp/yaml` `1.0.0-p1`을 요구한다. 이는 fork https://github.com/min-0-max/yaml 의 release로, plain scalar를 YAML 1.2.2의 core schema(10.3.2절)로 읽는다. upstream PurrPHP/yaml 1.0.0은 그렇게 읽지 않는다. Composer는 `repositories`를 project의 root manifest에서만 읽고 의존성의 manifest에서는 읽지 않으므로, orm package는 이 source를 consumer에게 전달할 수 없다: consumer가 위처럼 `vcs` repository를 직접 선언하며, tests/release-consumer/composer도 같이 한다. `no-api`는 Composer가 GitHub API에 묻지 않고 공개 repository를 HTTPS로 clone하게 한다. 그렇지 않으면 API의 익명 rate limit(HTTP 403)이 Composer가 key가 필요한 SSH clone으로 넘어간다.
 
-  `polyspec/orm-dbspec`는 type `php-ext`다: PIE가 build하고 설치하며, Composer는 설치하지 않는다.
+  `polyspec/orm-php-ext`는 type `php-ext`다: PIE가 build하고 설치하며, Composer는 설치하지 않는다.
 
 ## Python client release
 

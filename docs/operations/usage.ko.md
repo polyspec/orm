@@ -504,7 +504,7 @@ request를 직접 compile하는 program은, 예를 들어 행을 identity key와
 - 동사의 kind인 `insert`, `update`, `delete`, `select`로 statement event를 publish하며, identity를 다시 시작하는 MySQL `ALTER TABLE`은 `schema`다([statement event](#statement-events)). driver 오류는 model statement가 보고할 code를 가진다.
 - 행을 읽는 step(`assemble`이 있는 step)은 `IR_INVALID` `execute runs a statement without rows; the statement is a read`로, 매개변수 밖을 읽는 `param` slot은 `IR_INVALID` `bind slot <i> reads parameter <p>, but execute has <n> parameters`로 실패하며, 둘 다 statement를 보내지 않는다.
 - `execute`는 아무것도 돌려주지 않는다. 적재가 필요한 값은 model이나 query로 다시 읽는다.
-- PHP extension `orm_dbspec`은 dbspec 표면만 구현하고 query 연결을 갖지 않으므로 `execute`가 없다. 둘 다 PHP client가 실행한다.
+- PHP extension `polyspec_orm`은 dbspec 표면만 구현하고 query 연결을 갖지 않으므로 `execute`가 없다. 둘 다 PHP client가 실행한다.
 
 ### Request hook {#request-hook}
 

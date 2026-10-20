@@ -306,7 +306,7 @@ vendors; this file states only the rules of orm.
   succeeded), `make release-versions` (every released manifest carries X.Y.Z, the module path of
   `packages/go/go.mod` is `github.com/polyspec/orm/packages/go` and the changelogs have its section), `make release-assets`
   (`polyspec-orm-npm-X.Y.Z.tgz` of `@polyspec/orm`, `polyspec-orm-php-X.Y.Z.zip` of `polyspec/orm`,
-  `polyspec-orm-dbspec-php-X.Y.Z.zip` of `polyspec/orm-dbspec` and `polyspec_orm-X.Y.Z-py3-none-any.whl` of
+  `polyspec-orm-php-ext-php-X.Y.Z.zip` of `polyspec/orm-php-ext` and `polyspec_orm-X.Y.Z-py3-none-any.whl` of
   `polyspec-orm`) and `make release-publish` (the release
   with the notes of that section; a section over 125000 characters, the limit of a GitHub release
   body, becomes one line that links the section of CHANGELOG.md at the tag). The tests do not run

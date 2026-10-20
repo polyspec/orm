@@ -44,7 +44,7 @@ type document struct {
 	Extensions map[string]extension `json:"extensions"`
 }
 
-// An extension implements part of the contract outside the four client languages (PHP extension orm_dbspec). syntax is the grammar of the language that reads its declarations, and rules and owners are the ones it implements. The native adapter of such a rule
+// An extension implements part of the contract outside the four client languages (PHP extension polyspec_orm). syntax is the grammar of the language that reads its declarations, and rules and owners are the ones it implements. The native adapter of such a rule
 // is keyed by the extension name
 // as its key.
 type extension struct {

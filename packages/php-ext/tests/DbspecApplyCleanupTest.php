@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 // Wraps a SQLite PDO to inject failures into Polyspec\Orm\Dbspec\Native apply of the
-// PHP extension orm_dbspec, the same cases as the PHP client's
+// PHP extension polyspec_orm, the same cases as the PHP client's
 // packages/php/tests/DbspecApplyCleanupTest.php: a failing lock release
 // after an event stops apply, a failing foreign key restore after a failing
 // BEGIN EXCLUSIVE, a rollback of an applied row whose recorded step lies

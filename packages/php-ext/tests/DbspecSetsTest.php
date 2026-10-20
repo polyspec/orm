@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-// The sets cases of tests/dbspec/cases.json on the extension orm_dbspec (Polyspec\Orm\Dbspec\Native\Dbspec): each
+// The sets cases of tests/dbspec/cases.json on the extension polyspec_orm (Polyspec\Orm\Dbspec\Native\Dbspec): each
 // case, a data set named by its id, runs the PHP client's check (packages/php/tests/dbspec_sets_cases.php) through
 // the extension's parse, manifest and render in every dialect.
-// Usage: php -d extension=<orm_dbspec.so> vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecSetsTest.php
+// Usage: php -d extension=<polyspec_orm.so> vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecSetsTest.php
 
 use Polyspec\Orm\Dbspec\Native\Dbspec as NativeDbspec;
 use PHPUnit\Framework\Attributes\DataProvider;

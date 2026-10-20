@@ -1,14 +1,17 @@
-dnl 확장 orm_dbspec(dbspec 인터페이스의 C 구현)의 build 설정이다. phpize, ./configure, make로 build하고, PIE는
-dnl composer.json의 php-ext.build-path인 이 directory에서 같은 단계를 실행한다.
-PHP_ARG_ENABLE([orm-dbspec], [whether to enable orm_dbspec],
-  [AS_HELP_STRING([--enable-orm-dbspec], [Enable orm_dbspec, the dbspec interface of orm])], [yes])
+dnl The build of the extension polyspec_orm (the dbspec interface in C): phpize, ./configure and make, which PIE runs
+dnl in this directory, the php-ext.build-path of composer.json.
+PHP_ARG_ENABLE([polyspec-orm], [whether to enable polyspec_orm],
+  [AS_HELP_STRING([--enable-polyspec-orm], [Enable polyspec_orm, the dbspec interface of orm])], [yes])
 
-if test "$PHP_ORM_DBSPEC" != "no"; then
-  PHP_NEW_EXTENSION([orm_dbspec],
-    [orm_dbspec.c convert.c util.c model.c literal.c expression.c parse.c emit.c render.c plan.c steps.c catalog.c mermaid.c introspect.c apply.c set.c],
+if test "$PHP_POLYSPEC_ORM" != "no"; then
+  dnl The version of the extension is the version of its package: composer.json lies beside src/, in the package and in the build of kit.
+  PHP_POLYSPEC_ORM_VERSION=`sed -n 's/.*"version": *"\([[^"]]*\)".*/\1/p' "$srcdir/../composer.json"`
+  AC_DEFINE_UNQUOTED([PHP_POLYSPEC_ORM_VERSION], ["$PHP_POLYSPEC_ORM_VERSION"], [The version of the package])
+  PHP_NEW_EXTENSION([polyspec_orm],
+    [polyspec_orm.c convert.c util.c model.c literal.c expression.c parse.c emit.c render.c plan.c steps.c catalog.c mermaid.c introspect.c apply.c set.c],
     [$ext_shared],, [-std=gnu11 -Wall -Wextra -Wno-unused-parameter])
-  PHP_ADD_EXTENSION_DEP([orm_dbspec], [spl])
-  PHP_ADD_EXTENSION_DEP([orm_dbspec], [hash])
-  PHP_ADD_EXTENSION_DEP([orm_dbspec], [pdo])
-  PHP_ADD_EXTENSION_DEP([orm_dbspec], [json])
+  PHP_ADD_EXTENSION_DEP([polyspec_orm], [spl])
+  PHP_ADD_EXTENSION_DEP([polyspec_orm], [hash])
+  PHP_ADD_EXTENSION_DEP([polyspec_orm], [pdo])
+  PHP_ADD_EXTENSION_DEP([polyspec_orm], [json])
 fi

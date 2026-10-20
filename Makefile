@@ -331,7 +331,7 @@ dbspec-introspect-ts-check: lease-tool
 dbspec-introspect-php-check: php-vendor-check
 	$(WITH_TEST_ENV) $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecIntrospectTest.php
 
-# dbspec-introspect-php-extension-check runs the same round trip and unsupported cases with the PHP extension orm_dbspec's
+# dbspec-introspect-php-extension-check runs the same round trip and unsupported cases with the PHP extension polyspec_orm's
 # Polyspec\Orm\Dbspec\Native\Dbspec::introspect. The extension is built in this run's directory.
 .PHONY: dbspec-introspect-php-extension-check
 dbspec-introspect-php-extension-check: php-vendor-check
@@ -381,7 +381,7 @@ dbspec-apply-stress-bench:
 	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./packages/go/internal/dialects -run '^TestApplyStressPlan$$/^($(APPLY_STRESS_DIALECTS))$$' -count=1
 
 # dbspec-apply-pairs-check builds the TypeScript client and the Rust apply runner,
-# the Go, PHP, TypeScript, and Rust runners in tests/dbspec/apply, the PHP extension orm_dbspec runner (built in this run's directory), and the Python runner
+# the Go, PHP, TypeScript, and Rust runners in tests/dbspec/apply, the PHP extension polyspec_orm runner (built in this run's directory), and the Python runner
 # packages/python/tests/dbspec_apply_runner.py: for every ordered pair, on MySQL, PostgreSQL,
 # and SQLite, the first plan of the chain is applied by one client and the rest by another, where the first client stops
 # in the middle, the second client finishes the plan with recover, and the second client rolls back the plan that stopped again. The history
@@ -392,7 +392,7 @@ dbspec-apply-pairs-check: cargo-downloads-check lease-tool python-venv-check
 	$(TSC_BUILD)
 	$(RUN_LONG) rust-build/dbspec_apply --cwd packages/rust -- $(CARGO_COPY) debug/examples/dbspec_apply -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm --example dbspec_apply
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
-	$(WITH_TEST_ENV) DBSPEC_APPLY_RUST=$(RUN_TARGET)/debug/examples/dbspec_apply ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python $(GO_TEST) -tags physical ./packages/go/internal/dialects -run '^TestApplyChainAcrossClients$$' -count=1
+	$(WITH_TEST_ENV) DBSPEC_APPLY_RUST=$(RUN_TARGET)/debug/examples/dbspec_apply POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python $(GO_TEST) -tags physical ./packages/go/internal/dialects -run '^TestApplyChainAcrossClients$$' -count=1
 	rm -rf $(RUN_DIR)
 
 # dbspec-apply-rust-check runs the scenario of dbspec-apply-check, minus the 2000-table plan, with the Rust client's
@@ -437,7 +437,7 @@ dbspec-apply-php-check: php-vendor-check
 	$(WITH_TEST_ENV) $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecApplyTest.php
 
 # dbspec-apply-php-extension-check runs the same scenario with Polyspec\Orm\Dbspec\Native\Dbspec::apply,
-# recover, rollback, and finalize of the PHP extension orm_dbspec. The extension is built in this run's directory.
+# recover, rollback, and finalize of the PHP extension polyspec_orm. The extension is built in this run's directory.
 .PHONY: dbspec-apply-php-extension-check
 dbspec-apply-php-extension-check: php-vendor-check
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
@@ -446,7 +446,7 @@ dbspec-apply-php-extension-check: php-vendor-check
 
 # dbspec-introspect-compare-check applies the stress document (DBSPEC_INTROSPECT_TABLES tables) to MySQL,
 # PostgreSQL, and SQLite, and for each database runs the introspection runners of tests/dbspec/introspect in Go, PHP, TypeScript, Rust, and
-# the PHP extension orm_dbspec (built in this run's directory), requiring the same output, source schema text, and no unsupported objects, and each
+# the PHP extension polyspec_orm (built in this run's directory), requiring the same output, source schema text, and no unsupported objects, and each
 # prints the introspection time and warns when it exceeds the reference value. dbspec-introspect-compare-bench runs the same target with the 2000
 # table document and the release runners.
 .PHONY: dbspec-introspect-compare-check dbspec-introspect-compare-bench
@@ -457,13 +457,13 @@ dbspec-introspect-compare-check: cargo-downloads-check lease-tool python-venv-ch
 	$(TSC_BUILD)
 	$(RUN_LONG) rust-build/dbspec_introspect --cwd packages/rust -- $(CARGO_COPY) $(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --profile $(DBSPEC_INTROSPECT_PROFILE) --locked --offline -p polyspec-orm --example dbspec_introspect
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
-	$(WITH_TEST_ENV) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_INTROSPECT_DOCUMENT) DBSPEC_INTROSPECT_RUST=$(RUN_TARGET)/$(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) DBSPEC_INTROSPECT_PYTHON=$(PYTHON_VENV)/bin/python $(GO_TEST) -tags physical ./packages/go/internal/dialects -run '^TestIntrospectCompare$$' -count=1
+	$(WITH_TEST_ENV) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_INTROSPECT_DOCUMENT) DBSPEC_INTROSPECT_RUST=$(RUN_TARGET)/$(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) DBSPEC_INTROSPECT_PYTHON=$(PYTHON_VENV)/bin/python $(GO_TEST) -tags physical ./packages/go/internal/dialects -run '^TestIntrospectCompare$$' -count=1
 	rm -rf $(RUN_DIR)
 
 dbspec-introspect-compare-bench:
 	$(MAKE) --no-print-directory dbspec-introspect-compare-check DBSPEC_INTROSPECT_TABLES=2000 DBSPEC_INTROSPECT_PROFILE=release
 
-# dbspec-compare-check runs the Go, PHP, TypeScript, and Rust dbspec runners and the PHP extension orm_dbspec runner over tests/dbspec/cases.json,
+# dbspec-compare-check runs the Go, PHP, TypeScript, and Rust dbspec runners and the PHP extension polyspec_orm runner over tests/dbspec/cases.json,
 # the stress document (DBSPEC_COMPARE_TABLES tables), tests/dbspec/ddl.json, tests/dbspec/plans.json, tests/dbspec/mermaid.json,
 # and tests/dbspec/syntax.json,
 # each twice; the two runs' outputs fail at the first differing case. The runs also print the declaration positions of
@@ -551,11 +551,11 @@ dbspec-compare-check/prepare: cargo-downloads-check lease-tool python-venv-check
 	$(RUN_LONG) rust-build/dbspec_apply --cwd packages/rust -- $(CARGO_COPY) debug/examples/dbspec_apply -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm --example dbspec_apply
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
 dbspec-compare-check/runners: dbspec-compare-check/prepare
-	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) $(NODE) --test tests/dbspec/compare/runners.test.mts
+	CARGO_TARGET_DIR=$(RUN_TARGET) POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) $(NODE) --test tests/dbspec/compare/runners.test.mts
 dbspec-compare-check/inputs: dbspec-compare-check/prepare
-	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) $(NODE) --test tests/dbspec/inputs.test.mts
+	CARGO_TARGET_DIR=$(RUN_TARGET) POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) $(NODE) --test tests/dbspec/inputs.test.mts
 dbspec-compare-check/compare: dbspec-compare-check/prepare
-	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python $(NODE) tests/dbspec/compare/check.mts tests/dbspec/cases.json $(DBSPEC_COMPARE_DOCUMENT) tests/dbspec/ddl.json tests/dbspec/plans.json tests/dbspec/mermaid.json tests/dbspec/syntax.json
+	CARGO_TARGET_DIR=$(RUN_TARGET) POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python $(NODE) tests/dbspec/compare/check.mts tests/dbspec/cases.json $(DBSPEC_COMPARE_DOCUMENT) tests/dbspec/ddl.json tests/dbspec/plans.json tests/dbspec/mermaid.json tests/dbspec/syntax.json
 
 dbspec-compare-bench:
 	$(MAKE) --no-print-directory dbspec-compare-check DBSPEC_COMPARE_TABLES=2000
@@ -688,28 +688,26 @@ dbspec-php-check/set: php-vendor-check
 dbspec-php-check/set-parse: php-vendor-check
 	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecSetParseTest.php
 
-.PHONY: dbspec-php-extension-check php-extension-arginfo
-# dbspec-php-extension-check checks the PHP extension orm_dbspec (packages/php-ext, which implements the PHP client's dbspec surface in C,
-# Polyspec\Orm\Dbspec\Native): it checks that src/orm_dbspec_arginfo.h matches what gen_stub.php produces from the stub, builds the extension
-# with phpize in this run's directory and loads it, then checks that Reflection matches stubs/orm_dbspec.stub.php and the PHP client's public dbspec
+.PHONY: dbspec-php-extension-check
+# dbspec-php-extension-check checks the PHP extension polyspec_orm (packages/php-ext, which implements the PHP client's dbspec surface in C,
+# Polyspec\Orm\Dbspec\Native): it checks the names, the one stub and the stub hash of src/polyspec_orm_arginfo.h (make lint-php-ext), builds the extension
+# with phpize in this run's directory and loads it, then checks that Reflection matches src/polyspec_orm.stub.php and the PHP client's public dbspec
 # class, and that the shared dbspec, statement, plan, and Mermaid vectors and the apply cleanup errors (the same cases as the PHP client's plan,
 # Mermaid, and apply cleanup tests) produce the same results as the pure PHP client on SQLite's introspection and application,
-# each checked twice. The build uses the phpize on PATH and
-# php-config, and gen_stub.php is the one that make orm-install-php-extension-tools placed. php-extension-arginfo rewrites the
-# header from the stub.
-PHP_EXTENSION_LIBRARY = $(RUN_DIR)/php-extension/orm_dbspec.so
-GEN_STUB = $(abspath .runtime/bin/gen-stub/gen_stub.php)
+# each checked twice. The build uses the phpize and php-config on PATH, which make orm-install-php-extension-tools checks;
+# make php-ext-arginfo rewrites the header from the stub.
+PHP_EXTENSION_LIBRARY = $(RUN_DIR)/php-extension/polyspec_orm.so
 dbspec-php-extension-check/%: RUN_DIR = $(abspath .runtime/run)/dbspec-php-extension-check-$$PPID
 .PHONY: dbspec-php-extension-check/arginfo dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/analyze dbspec-php-extension-check/names dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse dbspec-php-extension-check/sets dbspec-php-extension-check/schema-definition
 dbspec-php-extension-check: dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/analyze dbspec-php-extension-check/names dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse dbspec-php-extension-check/sets dbspec-php-extension-check/schema-definition
 	rm -rf $(RUN_DIR)
 dbspec-php-extension-check/arginfo:
-	php packages/php-ext/scripts/arginfo.php $(GEN_STUB) check
+	$(NODE) $(KIT)/php-extension.$(KIT_EXT) check
 dbspec-php-extension-check/prepare:
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
 dbspec-php-extension-check/declarations: php-vendor-check dbspec-php-extension-check/prepare
-	ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DeclarationsTest.php
-	ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DeclarationsTest.php
+	POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DeclarationsTest.php
+	POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DeclarationsTest.php
 dbspec-php-extension-check/vectors: php-vendor-check dbspec-php-extension-check/prepare
 	php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecTest.php
 	php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecTest.php
@@ -748,8 +746,6 @@ dbspec-php-extension-check/set: php-vendor-check dbspec-php-extension-check/prep
 # tests/dbspec/set-parse.json and requires each result to equal the PHP client's.
 dbspec-php-extension-check/set-parse: php-vendor-check dbspec-php-extension-check/prepare
 	php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecSetParseTest.php
-php-extension-arginfo:
-	php packages/php-ext/scripts/arginfo.php $(GEN_STUB) write
 
 # repo-check checks that the paths that the root npm script uses are tracked files or
 # directories, that the CI workflow starts servers with make orm-test-servers, and that every variable of that environment file is given
@@ -889,12 +885,12 @@ feature-check/build: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(RUN_LONG) typescript-build -- npm run typescript:build
 # The Python owners of the coverage run on the client's venv (ORM_PYTHON), which imports the installed client (scripts/features/coverage.mts).
-# The php-extension owners run on a PHP that loads the extension orm_dbspec built into the run directory of this target
-# (ORM_DBSPEC_EXTENSION).
+# The php-extension owners run on a PHP that loads the extension polyspec_orm built into the run directory of this target
+# (POLYSPEC_ORM_EXTENSION).
 feature-coverage: RUN_DIR = $(abspath .runtime/run)/feature-coverage-$$PPID
 feature-coverage: feature-check/build python-venv-check
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
-	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) node scripts/features/coverage.mts
+	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) node scripts/features/coverage.mts
 	rm -rf $(RUN_DIR)
 feature-verify-rust: feature-check/build
 	$(WITH_TEST_ENV) node scripts/features/check.mts --run --features --shard rust
@@ -1165,7 +1161,7 @@ PARITY_RUN_DIR = $(STEP_RUN_DIR)
 parity-prepare: lease-tool
 	test -n "$(STEP_RUN_DIR)" || { echo "parity-prepare: STEP_RUN_DIR is unset; run the parity-check through make run-databases TARGETS=parity-check, whose step owns the directory"; exit 1; }
 	mkdir -p $(PARITY_RUN_DIR)
-	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PARITY_RUN_DIR)/orm_dbspec.so
+	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PARITY_RUN_DIR)/polyspec_orm.so
 	$(RUN_LONG) rust-build/parity-conformance --cwd packages/rust -- $(CARGO_LEASED) node $(abspath scripts/cargo-build-copy.mts) $(PARITY_RUN_DIR)/target debug/conformance -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm-tests --bin conformance
 parity-check: parity-prepare
 # interface-check runs first: it reads the API units of config/parity.json and the symbol snapshots that parity-check reads.
@@ -1195,8 +1191,8 @@ flowmark-check:
 
 parity-check: parity-bench-env-check flowmark-check interface-check
 parity-check: export FLOWMARK := $(FLOWMARK)
-parity-check: export ORM_PARITY_PHP_EXTENSION = $(PARITY_RUN_DIR)/orm_dbspec.so
-parity-check: export ORM_DBSPEC_EXTENSION = $(PARITY_RUN_DIR)/orm_dbspec.so
+parity-check: export ORM_PARITY_PHP_EXTENSION = $(PARITY_RUN_DIR)/polyspec_orm.so
+parity-check: export POLYSPEC_ORM_EXTENSION = $(PARITY_RUN_DIR)/polyspec_orm.so
 parity-check: export ORM_SEND_SQLITE_DSN = $(SEND_SQLITE_DSN)
 # ORM_SEND_SQLITE_DSN names a file in the run directory of this step: parity-prepare creates it, while the RUN_DIR of
 # parity-check (which SEND_SQLITE_DSN names) is never created, so sqlite could not open the file.
@@ -1586,10 +1582,10 @@ orm-install-node-min:
 # (scripts/ci/server-programs.mts).
 orm-install-server-programs:
 	$(ONLINE) $(NODE) scripts/ci/server-programs.mts
-# orm-install-php-extension-tools checks that the phpize and php-config used by the build of the PHP extension orm_dbspec are the PHP ones on PATH,
-# and places that PHP's gen_stub.php and PHP-Parser in .runtime/bin/gen-stub (scripts/ci/php-extension-tools.mts).
+# orm-install-php-extension-tools checks that the phpize and php-config used by the build of the PHP extension polyspec_orm are those of the
+# PHP on PATH (scripts/ci/php-extension-tools.mts).
 orm-install-php-extension-tools:
-	$(ONLINE) $(NODE) scripts/ci/php-extension-tools.mts
+	$(NODE) scripts/ci/php-extension-tools.mts
 
 # All setup steps of CI run make targets (make repo-check). ci-php-min-version records the lowest
 # PHP release of make php-min-check as the input of setup-php (version=x.y). Each client refuses SQLite below 3.46 when it connects.

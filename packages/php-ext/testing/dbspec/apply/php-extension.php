@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 // Applies the chain of plans.json (tests/dbspec/plans.json), create-from-empty and
-// rename-table-and-column, to one database with the PHP extension orm_dbspec (Polyspec\Orm\Dbspec\Native)
+// rename-table-and-column, to one database with the PHP extension polyspec_orm (Polyspec\Orm\Dbspec\Native)
 // (docs/spec/plans.md "Apply"). action is one of apply-first (first plan only), apply (whole chain),
 // stop (stops after statement 1 of the second plan runs), recover (finishes the interrupted plan),
 // rollback (reverts the last plan in history). stdout gets one result line: "ok", "stopped", or
@@ -11,7 +11,7 @@ declare(strict_types=1);
 //
 // The DSN is converted to PDO arguments with the PHP client's Orm::parseDsn.
 //
-// Usage: php -d extension=<orm_dbspec library> packages/php-ext/testing/dbspec/apply/php-extension.php <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>
+// Usage: php -d extension=<polyspec_orm library> packages/php-ext/testing/dbspec/apply/php-extension.php <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>
 
 require __DIR__ . '/../../../../../vendor-php/autoload.php';
 require __DIR__ . '/../../../../../tests/dbspec/input.php';
@@ -25,11 +25,11 @@ use Polyspec\Orm\Orm;
 const CONNECTION_RULES = ['mysql' => ["SET time_zone = '+00:00'"], 'postgres' => ["SET TimeZone = 'UTC'"], 'sqlite' => ['PRAGMA foreign_keys = ON']];
 
 if ($argc !== 5) {
-    fwrite(STDERR, "usage: php -d extension=<orm_dbspec library> packages/php-ext/testing/dbspec/apply/php-extension.php <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>\n");
+    fwrite(STDERR, "usage: php -d extension=<polyspec_orm library> packages/php-ext/testing/dbspec/apply/php-extension.php <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>\n");
     exit(2);
 }
-if (!extension_loaded('orm_dbspec')) {
-    fwrite(STDERR, "the extension orm_dbspec is not loaded; run this with php -d extension=<orm_dbspec library>, which make dbspec-apply-pairs-check builds\n");
+if (!extension_loaded('polyspec_orm')) {
+    fwrite(STDERR, "the extension polyspec_orm is not loaded; run this with php -d extension=<polyspec_orm library>, which make dbspec-apply-pairs-check builds\n");
     exit(1);
 }
 [, $action, $dialect, $uri, $vectorsPath] = $argv;

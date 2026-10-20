@@ -88,7 +88,7 @@
     ".github/workflows/push-gate.yml": {"scope": "suite", "reason": "it runs the push check on every push, pull request and merge group, so it decides whether each change of every file passes in CI"},
     ".github/workflows/docs-pages.yml": {"scope": "suite", "reason": "it builds and publishes the documentation site from every document on each push to main, so it changes the publication of every page"},
     "scripts/ci/server-programs.mts": {"scope": "suite", "reason": "the CI setup step server-programs runs it to install the programs of the database servers on the Linux runner, so it changes the servers of every database target in CI"},
-    "scripts/ci/php-extension-tools.mts": {"scope": "suite", "reason": "the CI setup step php-extension-tools runs it to check phpize and php-config and to install the gen_stub.php and PHP-Parser that the arginfo check of the PHP extension orm_dbspec reads, so it gates the PHP extension targets in CI"},
+    "scripts/ci/php-extension-tools.mts": {"scope": "suite", "reason": "the CI setup step php-extension-tools runs it to check the phpize and php-config with which the PHP extension polyspec_orm is built, so it gates the PHP extension targets in CI"},
     "tests/timezone/date.ini": {"scope": "suite", "reason": "WITH_TEST_ENV adds it to the PHP ini scan path of every target that runs database clients, so it sets the time zone of every PHP client the suite starts"},
     ".gitignore": {"scope": "lint", "reason": "it only decides which files git ignores; no test reads it, and owner-check and make orm-check list changed files through git"},
     ".php-version": {"scope": "suite", "reason": "it selects the PHP release of every check, locally and in CI, so it changes the runtime of every PHP target"},

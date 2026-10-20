@@ -503,7 +503,7 @@ A program that compiles requests itself, such as a load that writes rows with th
 - It publishes its statement event with the kind of its verb, `insert`, `update`, `delete` or `select`, and `schema` for the MySQL `ALTER TABLE` of an identity restart ([statement events](#statement-events)); a driver error has the code a model statement would report.
 - A step that reads rows (it has an `assemble`) fails with `IR_INVALID` `execute runs a statement without rows; the statement is a read`, and a `param` slot past the parameters fails with `IR_INVALID` `bind slot <i> reads parameter <p>, but execute has <n> parameters`; neither sends a statement.
 - `execute` returns nothing. A load reads back what it needs with a model or a query.
-- The PHP extension `orm_dbspec` implements only the dbspec surface and holds no query connection, so it has no `execute`; the PHP client runs both.
+- The PHP extension `polyspec_orm` implements only the dbspec surface and holds no query connection, so it has no `execute`; the PHP client runs both.
 
 ### Request hook
 

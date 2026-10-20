@@ -62,14 +62,14 @@ func dbspecLanguages() []string {
 // an apply, B must roll it back with rollback.
 func TestApplyChainAcrossClients(t *testing.T) {
 	testcase.Group(t)
-	rustRunner, extension, python := os.Getenv("DBSPEC_APPLY_RUST"), os.Getenv("ORM_DBSPEC_EXTENSION"), os.Getenv("ORM_PYTHON")
+	rustRunner, extension, python := os.Getenv("DBSPEC_APPLY_RUST"), os.Getenv("POLYSPEC_ORM_EXTENSION"), os.Getenv("ORM_PYTHON")
 	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_DSN"), os.Getenv("ORM_TEST_POSTGRES_DSN")
 	if rustRunner == "" || extension == "" || python == "" || mysqlDSN == "" || postgresDSN == "" {
-		t.Fatal("DBSPEC_APPLY_RUST, ORM_DBSPEC_EXTENSION, ORM_PYTHON, ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; run make dbspec-apply-pairs-check")
+		t.Fatal("DBSPEC_APPLY_RUST, POLYSPEC_ORM_EXTENSION, ORM_PYTHON, ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; run make dbspec-apply-pairs-check")
 	}
 	// make gives as absolute paths the Rust runner under CARGO_TARGET_DIR, the PHP extension in the run directory, and the python of the venv made by install-python.
 	if !filepath.IsAbs(rustRunner) || !filepath.IsAbs(extension) || !filepath.IsAbs(python) {
-		t.Fatalf("DBSPEC_APPLY_RUST %q, ORM_DBSPEC_EXTENSION %q and ORM_PYTHON %q must be absolute paths", rustRunner, extension, python)
+		t.Fatalf("DBSPEC_APPLY_RUST %q, POLYSPEC_ORM_EXTENSION %q and ORM_PYTHON %q must be absolute paths", rustRunner, extension, python)
 	}
 	root, err := filepath.Abs(repoRoot)
 	if err != nil {

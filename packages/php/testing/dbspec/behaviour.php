@@ -7,8 +7,8 @@ declare(strict_types=1);
 //
 // Usage: php packages/php/testing/dbspec/behaviour.php
 
-if (extension_loaded('orm_dbspec')) {
-    fwrite(STDERR, "behaviour.php: the extension orm_dbspec is loaded; record with the PHP library, without the extension\n");
+if (extension_loaded('polyspec_orm')) {
+    fwrite(STDERR, "behaviour.php: the extension polyspec_orm is loaded; record with the PHP library, without the extension\n");
     exit(1);
 }
 $root = dirname(__DIR__, 4);

@@ -1,1374 +1,1374 @@
 {
-  "packages/php-ext/stubs/code.stub.php::Polyspec\\Orm\\Native\\Code": {
-    "exported": true,
-    "signature": "final class Polyspec\\Orm\\Native\\Code extends  implements  uses "
-  },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Analysis": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Analysis": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\Analysis extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Analysis::$diagnostics": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Analysis::$diagnostics": {
     "exported": true,
     "signature": "public readonly array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Analysis::$document": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Analysis::$document": {
     "exported": true,
     "signature": "public readonly ?Polyspec\\Orm\\Dbspec\\Native\\Document"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Analysis::$positions": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Analysis::$positions": {
     "exported": true,
     "signature": "public readonly ?array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Analysis::$tokens": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Analysis::$tokens": {
     "exported": true,
     "signature": "public readonly array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Analysis::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Analysis::__construct": {
     "exported": true,
     "signature": "public function __construct(?Polyspec\\Orm\\Dbspec\\Native\\Document $document, ?array $positions, array $diagnostics, array $tokens): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyCleanupError": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyCleanupError": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Dbspec\\Native\\ApplyCleanupError extends RuntimeException implements Stringable,Throwable uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyCleanupError::$cleanup": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyCleanupError::$cleanup": {
     "exported": true,
     "signature": "public readonly array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyCleanupError::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyCleanupError::__construct": {
     "exported": true,
     "signature": "public function __construct(Throwable $failure, array $cleanup): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyError": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyError": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Dbspec\\Native\\ApplyError extends RuntimeException implements Stringable,Throwable uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyError::$code_": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyError::$code_": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyError::$detail": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyError::$detail": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyError::$plan": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyError::$plan": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyError::$step": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyError::$step": {
     "exported": true,
     "signature": "public readonly int"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyError::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyError::__construct": {
     "exported": true,
     "signature": "public function __construct(string $code_, string $plan, int $step, string $detail, ?Throwable $previous=null): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyEvent": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyEvent": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\ApplyEvent extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyEvent::$kind": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyEvent::$kind": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyEvent::$plan": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyEvent::$plan": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyEvent::$statement": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyEvent::$statement": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyEvent::$step": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyEvent::$step": {
     "exported": true,
     "signature": "public readonly int"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyEvent::$steps": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyEvent::$steps": {
     "exported": true,
     "signature": "public readonly int"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyEvent::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ApplyEvent::__construct": {
     "exported": true,
     "signature": "public function __construct(string $kind, string $plan, int $step, int $steps, string $statement): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ChainResult": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ChainResult": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\ChainResult extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ChainResult::$diagnostics": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ChainResult::$diagnostics": {
     "exported": true,
     "signature": "public readonly array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ChainResult::$plans": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ChainResult::$plans": {
     "exported": true,
     "signature": "public readonly ?array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ChainResult::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ChainResult::__construct": {
     "exported": false,
     "signature": "private function __construct(?array $plans, array $diagnostics): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ChainResult::invalid": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ChainResult::invalid": {
     "exported": true,
     "signature": "public static function invalid(array $diagnostics): Polyspec\\Orm\\Dbspec\\Native\\ChainResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ChainResult::valid": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ChainResult::valid": {
     "exported": true,
     "signature": "public static function valid(array $plans): Polyspec\\Orm\\Dbspec\\Native\\ChainResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Change": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Change": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\Change extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Change::$kind": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Change::$kind": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Change::$name": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Change::$name": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Change::$table": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Change::$table": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Change::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Change::__construct": {
     "exported": true,
     "signature": "public function __construct(string $kind, string $table, string $name): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Check": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Check": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Dbspec\\Native\\Check extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Check::$comments": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Check::$comments": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Check::$expression": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Check::$expression": {
     "exported": true,
     "signature": "public string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Check::$name": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Check::$name": {
     "exported": true,
     "signature": "public string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Check::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Check::__construct": {
     "exported": true,
     "signature": "public function __construct(string $name, string $expression, array $comments=[]): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Column": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Column": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Dbspec\\Native\\Column extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Column::$comments": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Column::$comments": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Column::$default": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Column::$default": {
     "exported": true,
     "signature": "public ?string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Column::$identity": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Column::$identity": {
     "exported": true,
     "signature": "public bool"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Column::$name": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Column::$name": {
     "exported": true,
     "signature": "public string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Column::$nullable": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Column::$nullable": {
     "exported": true,
     "signature": "public bool"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Column::$type": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Column::$type": {
     "exported": true,
     "signature": "public Polyspec\\Orm\\Dbspec\\Native\\ColumnType"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Column::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Column::__construct": {
     "exported": true,
     "signature": "public function __construct(string $name, Polyspec\\Orm\\Dbspec\\Native\\ColumnType $type, bool $nullable, bool $identity, ?string $default, array $comments=[]): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnName": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnName": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\ColumnName extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnName::$name": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnName::$name": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnName::$table": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnName::$table": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnName::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnName::__construct": {
     "exported": true,
     "signature": "public function __construct(string $table, string $name): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnRename": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnRename": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\ColumnRename extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnRename::$new": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnRename::$new": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnRename::$old": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnRename::$old": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnRename::$table": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnRename::$table": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnRename::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnRename::__construct": {
     "exported": true,
     "signature": "public function __construct(string $table, string $old, string $new): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnType": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnType": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\ColumnType extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnType::$name": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnType::$name": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnType::$parameters": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnType::$parameters": {
     "exported": true,
     "signature": "public readonly array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnType::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnType::__construct": {
     "exported": true,
     "signature": "public function __construct(string $name, array $parameters=[]): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnType::isInteger": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnType::isInteger": {
     "exported": true,
     "signature": "public function isInteger(): bool"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnType::text": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnType::text": {
     "exported": true,
     "signature": "public function text(): string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ComparisonResult": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ComparisonResult": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\ComparisonResult extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ComparisonResult::$diagnostics": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ComparisonResult::$diagnostics": {
     "exported": true,
     "signature": "public readonly array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ComparisonResult::$differences": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ComparisonResult::$differences": {
     "exported": true,
     "signature": "public readonly ?array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ComparisonResult::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ComparisonResult::__construct": {
     "exported": false,
     "signature": "private function __construct(?array $differences, array $diagnostics): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ComparisonResult::invalid": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ComparisonResult::invalid": {
     "exported": true,
     "signature": "public static function invalid(array $diagnostics): Polyspec\\Orm\\Dbspec\\Native\\ComparisonResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ComparisonResult::valid": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ComparisonResult::valid": {
     "exported": true,
     "signature": "public static function valid(array $differences): Polyspec\\Orm\\Dbspec\\Native\\ComparisonResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Dbspec\\Native\\Dbspec extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::addTablesAndColumnsSteps": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::addTablesAndColumnsSteps": {
     "exported": true,
     "signature": "public static function addTablesAndColumnsSteps(Polyspec\\Orm\\Dbspec\\Native\\Document $live, array $unsupported, Polyspec\\Orm\\Dbspec\\Native\\Document $target, string $dialect): array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::analyze": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::analyze": {
     "exported": true,
     "signature": "public static function analyze(string $text, array $documents): Polyspec\\Orm\\Dbspec\\Native\\Analysis"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::apply": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::apply": {
     "exported": true,
     "signature": "public static function apply(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::chain": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::chain": {
     "exported": true,
     "signature": "public static function chain(array $plans): Polyspec\\Orm\\Dbspec\\Native\\ChainResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::compareSchemas": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::compareSchemas": {
     "exported": true,
     "signature": "public static function compareSchemas(Polyspec\\Orm\\Dbspec\\Native\\Document $source, Polyspec\\Orm\\Dbspec\\Native\\Document $target): Polyspec\\Orm\\Dbspec\\Native\\ComparisonResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::diff": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::diff": {
     "exported": true,
     "signature": "public static function diff(?Polyspec\\Orm\\Dbspec\\Native\\Document $source, Polyspec\\Orm\\Dbspec\\Native\\Plan $plan): Polyspec\\Orm\\Dbspec\\Native\\DiffResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::emit": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::emit": {
     "exported": true,
     "signature": "public static function emit(Polyspec\\Orm\\Dbspec\\Native\\Document $document): string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::emitPlan": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::emitPlan": {
     "exported": true,
     "signature": "public static function emitPlan(Polyspec\\Orm\\Dbspec\\Native\\Plan $plan): string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::exportMermaid": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::exportMermaid": {
     "exported": true,
     "signature": "public static function exportMermaid(Polyspec\\Orm\\Dbspec\\Native\\Document $document): Polyspec\\Orm\\Dbspec\\Native\\MermaidExportResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::externalDifferences": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::externalDifferences": {
     "exported": true,
     "signature": "public static function externalDifferences(Polyspec\\Orm\\Dbspec\\Native\\Document $live, array $documents): array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::finalize": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::finalize": {
     "exported": true,
     "signature": "public static function finalize(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::format": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::format": {
     "exported": true,
     "signature": "public static function format(string $text, array $documents): Polyspec\\Orm\\Dbspec\\Native\\FormatResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::importMermaid": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::importMermaid": {
     "exported": true,
     "signature": "public static function importMermaid(string $text, string $name): Polyspec\\Orm\\Dbspec\\Native\\MermaidImportResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::installedDifferences": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::installedDifferences": {
     "exported": true,
     "signature": "public static function installedDifferences(Polyspec\\Orm\\Dbspec\\Native\\Document $live, array $unsupported, Polyspec\\Orm\\Dbspec\\Native\\Document $target): array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::introspect": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::introspect": {
     "exported": true,
     "signature": "public static function introspect(PDO $connection, string $dialect, string $name): Polyspec\\Orm\\Dbspec\\Native\\IntrospectResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::manifest": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::manifest": {
     "exported": true,
     "signature": "public static function manifest(array $documents): Polyspec\\Orm\\Dbspec\\Native\\ManifestResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::parse": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::parse": {
     "exported": true,
     "signature": "public static function parse(string $text, array $documents): Polyspec\\Orm\\Dbspec\\Native\\ParseResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::parsePlan": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::parsePlan": {
     "exported": true,
     "signature": "public static function parsePlan(string $text): Polyspec\\Orm\\Dbspec\\Native\\PlanParseResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::parseSet": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::parseSet": {
     "exported": true,
     "signature": "public static function parseSet(array $owned, array $external): array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::planSteps": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::planSteps": {
     "exported": true,
     "signature": "public static function planSteps(?Polyspec\\Orm\\Dbspec\\Native\\Document $source, Polyspec\\Orm\\Dbspec\\Native\\Plan $plan, string $dialect): Polyspec\\Orm\\Dbspec\\Native\\PlanStepsResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::readBytes": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::readBytes": {
     "exported": true,
     "signature": "public static function readBytes(string $name, string $bytes): Polyspec\\Orm\\Dbspec\\Native\\ReadResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::readFile": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::readFile": {
     "exported": true,
     "signature": "public static function readFile(string $path): Polyspec\\Orm\\Dbspec\\Native\\ReadResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::readSet": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::readSet": {
     "exported": true,
     "signature": "public static function readSet(string $path): Polyspec\\Orm\\Dbspec\\Native\\SetResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::recover": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::recover": {
     "exported": true,
     "signature": "public static function recover(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::render": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::render": {
     "exported": true,
     "signature": "public static function render(array $documents, string $dialect): Polyspec\\Orm\\Dbspec\\Native\\RenderResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::rollback": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::rollback": {
     "exported": true,
     "signature": "public static function rollback(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Diagnostic": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Diagnostic": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\Diagnostic extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Diagnostic::$column": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Diagnostic::$column": {
     "exported": true,
     "signature": "public readonly int"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Diagnostic::$line": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Diagnostic::$line": {
     "exported": true,
     "signature": "public readonly int"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Diagnostic::$message": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Diagnostic::$message": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Diagnostic::$rule": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Diagnostic::$rule": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Diagnostic::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Diagnostic::__construct": {
     "exported": true,
     "signature": "public function __construct(string $rule, int $line, int $column, string $message): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Diagram": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Diagram": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Dbspec\\Native\\Diagram extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Diagram::$closingComments": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Diagram::$closingComments": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Diagram::$comments": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Diagram::$comments": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Diagram::$name": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Diagram::$name": {
     "exported": true,
     "signature": "public string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Diagram::$placements": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Diagram::$placements": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Diagram::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Diagram::__construct": {
     "exported": true,
     "signature": "public function __construct(string $name, array $comments=[]): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\DiffResult": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\DiffResult": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\DiffResult extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\DiffResult::$changes": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\DiffResult::$changes": {
     "exported": true,
     "signature": "public readonly ?array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\DiffResult::$diagnostics": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\DiffResult::$diagnostics": {
     "exported": true,
     "signature": "public readonly array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\DiffResult::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\DiffResult::__construct": {
     "exported": false,
     "signature": "private function __construct(?array $changes, array $diagnostics): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\DiffResult::invalid": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\DiffResult::invalid": {
     "exported": true,
     "signature": "public static function invalid(array $diagnostics): Polyspec\\Orm\\Dbspec\\Native\\DiffResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\DiffResult::valid": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\DiffResult::valid": {
     "exported": true,
     "signature": "public static function valid(array $changes): Polyspec\\Orm\\Dbspec\\Native\\DiffResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Difference": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Difference": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\Difference extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Difference::$kind": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Difference::$kind": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Difference::$name": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Difference::$name": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Difference::$table": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Difference::$table": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Difference::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Difference::__construct": {
     "exported": true,
     "signature": "public function __construct(string $kind, string $table, string $name): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Document": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Document": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Dbspec\\Native\\Document extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Document::$diagrams": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Document::$diagrams": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Document::$external": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Document::$external": {
     "exported": true,
     "signature": "public bool"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Document::$name": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Document::$name": {
     "exported": true,
     "signature": "public string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Document::$tables": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Document::$tables": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Document::$trailingComments": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Document::$trailingComments": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Document::$uses": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Document::$uses": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Document::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Document::__construct": {
     "exported": true,
     "signature": "public function __construct(string $name): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Effect": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Effect": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\Effect extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Effect::$kind": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Effect::$kind": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Effect::$name": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Effect::$name": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Effect::$present": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Effect::$present": {
     "exported": true,
     "signature": "public readonly bool"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Effect::$table": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Effect::$table": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Effect::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Effect::__construct": {
     "exported": true,
     "signature": "public function __construct(string $kind, string $table, string $name, bool $present): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Effect::repeat": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Effect::repeat": {
     "exported": true,
     "signature": "public static function repeat(): Polyspec\\Orm\\Dbspec\\Native\\Effect"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Effect::text": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Effect::text": {
     "exported": true,
     "signature": "public function text(): string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ForeignKey": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ForeignKey": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Dbspec\\Native\\ForeignKey extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ForeignKey::$columns": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ForeignKey::$columns": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ForeignKey::$comments": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ForeignKey::$comments": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ForeignKey::$name": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ForeignKey::$name": {
     "exported": true,
     "signature": "public string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ForeignKey::$onDelete": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ForeignKey::$onDelete": {
     "exported": true,
     "signature": "public string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ForeignKey::$onUpdate": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ForeignKey::$onUpdate": {
     "exported": true,
     "signature": "public string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ForeignKey::$referencedColumns": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ForeignKey::$referencedColumns": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ForeignKey::$table": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ForeignKey::$table": {
     "exported": true,
     "signature": "public string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ForeignKey::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ForeignKey::__construct": {
     "exported": true,
     "signature": "public function __construct(string $name, array $columns, string $table, array $referencedColumns, string $onDelete, string $onUpdate, array $comments=[]): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ForeignKey::changesChildRows": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ForeignKey::changesChildRows": {
     "exported": true,
     "signature": "public function changesChildRows(): bool"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\FormatResult": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\FormatResult": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\FormatResult extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\FormatResult::$diagnostics": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\FormatResult::$diagnostics": {
     "exported": true,
     "signature": "public readonly array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\FormatResult::$text": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\FormatResult::$text": {
     "exported": true,
     "signature": "public readonly ?string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\FormatResult::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\FormatResult::__construct": {
     "exported": true,
     "signature": "public function __construct(?string $text, array $diagnostics): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Index": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Index": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Dbspec\\Native\\Index extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Index::$columns": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Index::$columns": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Index::$comments": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Index::$comments": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Index::$name": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Index::$name": {
     "exported": true,
     "signature": "public string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Index::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Index::__construct": {
     "exported": true,
     "signature": "public function __construct(string $name, array $columns, array $comments=[]): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\IndexColumn": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\IndexColumn": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\IndexColumn extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\IndexColumn::$descending": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\IndexColumn::$descending": {
     "exported": true,
     "signature": "public readonly bool"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\IndexColumn::$name": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\IndexColumn::$name": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\IndexColumn::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\IndexColumn::__construct": {
     "exported": true,
     "signature": "public function __construct(string $name, bool $descending): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\IntrospectResult": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\IntrospectResult": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\IntrospectResult extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\IntrospectResult::$document": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\IntrospectResult::$document": {
     "exported": true,
     "signature": "public readonly Polyspec\\Orm\\Dbspec\\Native\\Document"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\IntrospectResult::$unsupported": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\IntrospectResult::$unsupported": {
     "exported": true,
     "signature": "public readonly array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\IntrospectResult::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\IntrospectResult::__construct": {
     "exported": true,
     "signature": "public function __construct(Polyspec\\Orm\\Dbspec\\Native\\Document $document, array $unsupported): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Manifest": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Manifest": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\Manifest extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Manifest::$externalText": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Manifest::$externalText": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Manifest::$manifestHash": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Manifest::$manifestHash": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Manifest::$manifestText": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Manifest::$manifestText": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Manifest::$schemaHash": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Manifest::$schemaHash": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Manifest::$schemaText": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Manifest::$schemaText": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Manifest::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Manifest::__construct": {
     "exported": true,
     "signature": "public function __construct(string $manifestText, string $schemaText, string $manifestHash, string $schemaHash, string $externalText=\"\"): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ManifestResult": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ManifestResult": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\ManifestResult extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ManifestResult::$diagnostics": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ManifestResult::$diagnostics": {
     "exported": true,
     "signature": "public readonly array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ManifestResult::$manifest": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ManifestResult::$manifest": {
     "exported": true,
     "signature": "public readonly ?Polyspec\\Orm\\Dbspec\\Native\\Manifest"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ManifestResult::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ManifestResult::__construct": {
     "exported": false,
     "signature": "private function __construct(?Polyspec\\Orm\\Dbspec\\Native\\Manifest $manifest, array $diagnostics): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ManifestResult::invalid": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ManifestResult::invalid": {
     "exported": true,
     "signature": "public static function invalid(array $diagnostics): Polyspec\\Orm\\Dbspec\\Native\\ManifestResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ManifestResult::valid": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ManifestResult::valid": {
     "exported": true,
     "signature": "public static function valid(Polyspec\\Orm\\Dbspec\\Native\\Manifest $manifest): Polyspec\\Orm\\Dbspec\\Native\\ManifestResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\MermaidExportResult": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\MermaidExportResult": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\MermaidExportResult extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\MermaidExportResult::$dropped": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\MermaidExportResult::$dropped": {
     "exported": true,
     "signature": "public readonly array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\MermaidExportResult::$text": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\MermaidExportResult::$text": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\MermaidExportResult::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\MermaidExportResult::__construct": {
     "exported": true,
     "signature": "public function __construct(string $text, array $dropped): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\MermaidImportResult": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\MermaidImportResult": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\MermaidImportResult extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\MermaidImportResult::$diagnostics": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\MermaidImportResult::$diagnostics": {
     "exported": true,
     "signature": "public readonly array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\MermaidImportResult::$document": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\MermaidImportResult::$document": {
     "exported": true,
     "signature": "public readonly ?Polyspec\\Orm\\Dbspec\\Native\\Document"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\MermaidImportResult::$dropped": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\MermaidImportResult::$dropped": {
     "exported": true,
     "signature": "public readonly array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\MermaidImportResult::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\MermaidImportResult::__construct": {
     "exported": false,
     "signature": "private function __construct(?Polyspec\\Orm\\Dbspec\\Native\\Document $document, array $dropped, array $diagnostics): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\MermaidImportResult::invalid": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\MermaidImportResult::invalid": {
     "exported": true,
     "signature": "public static function invalid(array $diagnostics): Polyspec\\Orm\\Dbspec\\Native\\MermaidImportResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\MermaidImportResult::valid": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\MermaidImportResult::valid": {
     "exported": true,
     "signature": "public static function valid(Polyspec\\Orm\\Dbspec\\Native\\Document $document, array $dropped): Polyspec\\Orm\\Dbspec\\Native\\MermaidImportResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Names": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Names": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Dbspec\\Native\\Names extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Names::column": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Names::column": {
     "exported": true,
     "signature": "public static function column(string $table, string $name, Traversable|array $columns): ?string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Names::ofTable": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Names::ofTable": {
     "exported": true,
     "signature": "public static function ofTable(Polyspec\\Orm\\Dbspec\\Native\\Table $table): array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Names::render": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Names::render": {
     "exported": true,
     "signature": "public static function render(string $table, string $suffix): string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\NullCheck": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\NullCheck": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\NullCheck extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\NullCheck::$column": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\NullCheck::$column": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\NullCheck::$default": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\NullCheck::$default": {
     "exported": true,
     "signature": "public readonly ?string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\NullCheck::$table": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\NullCheck::$table": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\NullCheck::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\NullCheck::__construct": {
     "exported": true,
     "signature": "public function __construct(string $table, string $column, ?string $default): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ParseResult": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ParseResult": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\ParseResult extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ParseResult::$diagnostics": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ParseResult::$diagnostics": {
     "exported": true,
     "signature": "public readonly array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ParseResult::$document": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ParseResult::$document": {
     "exported": true,
     "signature": "public readonly ?Polyspec\\Orm\\Dbspec\\Native\\Document"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ParseResult::$positions": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ParseResult::$positions": {
     "exported": true,
     "signature": "public readonly ?array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ParseResult::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ParseResult::__construct": {
     "exported": false,
     "signature": "private function __construct(?Polyspec\\Orm\\Dbspec\\Native\\Document $document, array $diagnostics, ?array $positions): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ParseResult::invalid": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ParseResult::invalid": {
     "exported": true,
     "signature": "public static function invalid(array $diagnostics): Polyspec\\Orm\\Dbspec\\Native\\ParseResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ParseResult::valid": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ParseResult::valid": {
     "exported": true,
     "signature": "public static function valid(Polyspec\\Orm\\Dbspec\\Native\\Document $document, array $positions): Polyspec\\Orm\\Dbspec\\Native\\ParseResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Placement": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Placement": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Dbspec\\Native\\Placement extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Placement::$comments": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Placement::$comments": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Placement::$table": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Placement::$table": {
     "exported": true,
     "signature": "public string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Placement::$x": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Placement::$x": {
     "exported": true,
     "signature": "public int"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Placement::$y": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Placement::$y": {
     "exported": true,
     "signature": "public int"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Placement::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Placement::__construct": {
     "exported": true,
     "signature": "public function __construct(string $table, int $x, int $y, array $comments=[]): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Plan": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Plan": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\Plan extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Plan::$dropColumns": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Plan::$dropColumns": {
     "exported": true,
     "signature": "public readonly array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Plan::$dropTables": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Plan::$dropTables": {
     "exported": true,
     "signature": "public readonly array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Plan::$from": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Plan::$from": {
     "exported": true,
     "signature": "public readonly ?string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Plan::$name": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Plan::$name": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Plan::$renameColumns": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Plan::$renameColumns": {
     "exported": true,
     "signature": "public readonly array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Plan::$renameTables": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Plan::$renameTables": {
     "exported": true,
     "signature": "public readonly array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Plan::$schema": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Plan::$schema": {
     "exported": true,
     "signature": "public readonly Polyspec\\Orm\\Dbspec\\Native\\Document"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Plan::$to": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Plan::$to": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Plan::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Plan::__construct": {
     "exported": true,
     "signature": "public function __construct(string $name, ?string $from, array $renameTables, array $renameColumns, array $dropTables, array $dropColumns, Polyspec\\Orm\\Dbspec\\Native\\Document $schema, string $to): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanApply": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanApply": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Dbspec\\Native\\PlanApply extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanApply::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanApply::__construct": {
     "exported": false,
     "signature": "private function __construct(): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanApply::effectOn": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanApply::effectOn": {
     "exported": true,
     "signature": "public static function effectOn(PDO $c, string $dialect, Polyspec\\Orm\\Dbspec\\Native\\Effect $e): bool"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanParseResult": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanParseResult": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\PlanParseResult extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanParseResult::$diagnostics": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanParseResult::$diagnostics": {
     "exported": true,
     "signature": "public readonly array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanParseResult::$plan": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanParseResult::$plan": {
     "exported": true,
     "signature": "public readonly ?Polyspec\\Orm\\Dbspec\\Native\\Plan"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanParseResult::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanParseResult::__construct": {
     "exported": false,
     "signature": "private function __construct(?Polyspec\\Orm\\Dbspec\\Native\\Plan $plan, array $diagnostics): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanParseResult::invalid": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanParseResult::invalid": {
     "exported": true,
     "signature": "public static function invalid(array $diagnostics): Polyspec\\Orm\\Dbspec\\Native\\PlanParseResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanParseResult::valid": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanParseResult::valid": {
     "exported": true,
     "signature": "public static function valid(Polyspec\\Orm\\Dbspec\\Native\\Plan $plan): Polyspec\\Orm\\Dbspec\\Native\\PlanParseResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStep": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStep": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\PlanStep extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStep::$effect": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStep::$effect": {
     "exported": true,
     "signature": "public readonly Polyspec\\Orm\\Dbspec\\Native\\Effect"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStep::$finalize": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStep::$finalize": {
     "exported": true,
     "signature": "public readonly bool"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStep::$irreversible": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStep::$irreversible": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStep::$nullChecks": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStep::$nullChecks": {
     "exported": true,
     "signature": "public readonly array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStep::$restore": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStep::$restore": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStep::$restoreIf": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStep::$restoreIf": {
     "exported": true,
     "signature": "public readonly ?Polyspec\\Orm\\Dbspec\\Native\\Effect"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStep::$rollback": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStep::$rollback": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStep::$rollbackRestore": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStep::$rollbackRestore": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStep::$statement": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStep::$statement": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStep::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStep::__construct": {
     "exported": true,
     "signature": "public function __construct(string $statement, string $rollback, string $irreversible, Polyspec\\Orm\\Dbspec\\Native\\Effect $effect, string $restore=\"\", string $rollbackRestore=\"\", ?Polyspec\\Orm\\Dbspec\\Native\\Effect $restoreIf=null, array $nullChecks=[], bool $finalize=false): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStepsResult": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStepsResult": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\PlanStepsResult extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStepsResult::$diagnostics": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStepsResult::$diagnostics": {
     "exported": true,
     "signature": "public readonly array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStepsResult::$steps": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStepsResult::$steps": {
     "exported": true,
     "signature": "public readonly ?array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStepsResult::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStepsResult::__construct": {
     "exported": false,
     "signature": "private function __construct(?array $steps, array $diagnostics): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStepsResult::invalid": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStepsResult::invalid": {
     "exported": true,
     "signature": "public static function invalid(array $diagnostics): Polyspec\\Orm\\Dbspec\\Native\\PlanStepsResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStepsResult::valid": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStepsResult::valid": {
     "exported": true,
     "signature": "public static function valid(array $steps): Polyspec\\Orm\\Dbspec\\Native\\PlanStepsResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Position": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Position": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\Position extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Position::$column": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Position::$column": {
     "exported": true,
     "signature": "public readonly int"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Position::$kind": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Position::$kind": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Position::$line": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Position::$line": {
     "exported": true,
     "signature": "public readonly int"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Position::$path": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Position::$path": {
     "exported": true,
     "signature": "public readonly array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Position::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Position::__construct": {
     "exported": true,
     "signature": "public function __construct(string $kind, array $path, int $line, int $column): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PrimaryKey": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PrimaryKey": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Dbspec\\Native\\PrimaryKey extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PrimaryKey::$columns": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PrimaryKey::$columns": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PrimaryKey::$comments": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PrimaryKey::$comments": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PrimaryKey::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PrimaryKey::__construct": {
     "exported": true,
     "signature": "public function __construct(array $columns, array $comments=[]): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ReadResult": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ReadResult": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\ReadResult extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ReadResult::$diagnostics": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ReadResult::$diagnostics": {
     "exported": true,
     "signature": "public readonly array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ReadResult::$text": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ReadResult::$text": {
     "exported": true,
     "signature": "public readonly ?string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ReadResult::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ReadResult::__construct": {
     "exported": false,
     "signature": "private function __construct(?string $text, array $diagnostics): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ReadResult::invalid": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ReadResult::invalid": {
     "exported": true,
     "signature": "public static function invalid(array $diagnostics): Polyspec\\Orm\\Dbspec\\Native\\ReadResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ReadResult::valid": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ReadResult::valid": {
     "exported": true,
     "signature": "public static function valid(string $text): Polyspec\\Orm\\Dbspec\\Native\\ReadResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\RenderResult": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\RenderResult": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\RenderResult extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\RenderResult::$diagnostics": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\RenderResult::$diagnostics": {
     "exported": true,
     "signature": "public readonly array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\RenderResult::$statements": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\RenderResult::$statements": {
     "exported": true,
     "signature": "public readonly ?array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\RenderResult::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\RenderResult::__construct": {
     "exported": false,
     "signature": "private function __construct(?array $statements, array $diagnostics): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\RenderResult::invalid": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\RenderResult::invalid": {
     "exported": true,
     "signature": "public static function invalid(array $diagnostics): Polyspec\\Orm\\Dbspec\\Native\\RenderResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\RenderResult::valid": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\RenderResult::valid": {
     "exported": true,
     "signature": "public static function valid(array $statements): Polyspec\\Orm\\Dbspec\\Native\\RenderResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetDocument": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetDocument": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\SetDocument extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetDocument::$diagnostics": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetDocument::$diagnostics": {
     "exported": true,
     "signature": "public readonly array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetDocument::$document": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetDocument::$document": {
     "exported": true,
     "signature": "public readonly ?Polyspec\\Orm\\Dbspec\\Native\\Document"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetDocument::$external": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetDocument::$external": {
     "exported": true,
     "signature": "public readonly bool"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetDocument::$name": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetDocument::$name": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetDocument::$positions": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetDocument::$positions": {
     "exported": true,
     "signature": "public readonly ?array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetDocument::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetDocument::__construct": {
     "exported": true,
     "signature": "public function __construct(string $name, bool $external, ?Polyspec\\Orm\\Dbspec\\Native\\Document $document, ?array $positions, array $diagnostics): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetError": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetError": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\SetError extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetError::$message": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetError::$message": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetError::$path": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetError::$path": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetError::$rule": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetError::$rule": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetError::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetError::__construct": {
     "exported": true,
     "signature": "public function __construct(string $rule, string $path, string $message): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetFile": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetFile": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\SetFile extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetFile::$bytes": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetFile::$bytes": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetFile::$path": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetFile::$path": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetFile::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetFile::__construct": {
     "exported": true,
     "signature": "public function __construct(string $path, string $bytes): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetResult": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetResult": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\SetResult extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetResult::$documents": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetResult::$documents": {
     "exported": true,
     "signature": "public readonly ?array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetResult::$errors": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetResult::$errors": {
     "exported": true,
     "signature": "public readonly array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetResult::$external": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetResult::$external": {
     "exported": true,
     "signature": "public readonly ?array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetResult::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetResult::__construct": {
     "exported": false,
     "signature": "private function __construct(?array $documents, ?array $external, array $errors): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetResult::invalid": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetResult::invalid": {
     "exported": true,
     "signature": "public static function invalid(array $errors): Polyspec\\Orm\\Dbspec\\Native\\SetResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetResult::valid": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\SetResult::valid": {
     "exported": true,
     "signature": "public static function valid(array $documents, array $external): Polyspec\\Orm\\Dbspec\\Native\\SetResult"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Setting": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Setting": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Dbspec\\Native\\Setting extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Setting::$arguments": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Setting::$arguments": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Setting::$comments": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Setting::$comments": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Setting::$exclude": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Setting::$exclude": {
     "exported": true,
     "signature": "public ?array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Setting::$form": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Setting::$form": {
     "exported": true,
     "signature": "public ?string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Setting::$include": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Setting::$include": {
     "exported": true,
     "signature": "public ?array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Setting::$kind": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Setting::$kind": {
     "exported": true,
     "signature": "public string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Setting::$requires": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Setting::$requires": {
     "exported": true,
     "signature": "public ?array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Setting::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Setting::__construct": {
     "exported": true,
     "signature": "public function __construct(string $kind, array $arguments, array $comments=[], ?array $exclude=null, ?array $include=null, ?string $form=null, ?array $requires=null): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Setting::auditLine": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Setting::auditLine": {
     "exported": true,
     "signature": "public function auditLine(string $list, ?array $columns): string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Setting::excluded": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Setting::excluded": {
     "exported": true,
     "signature": "public function excluded(Polyspec\\Orm\\Dbspec\\Native\\Table $table): array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Setting::records": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Setting::records": {
     "exported": true,
     "signature": "public function records(string $column): bool"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Settings": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Settings": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Dbspec\\Native\\Settings extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Settings::$closingComments": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Settings::$closingComments": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Settings::$comments": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Settings::$comments": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Settings::$settings": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Settings::$settings": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Settings::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Settings::__construct": {
     "exported": true,
     "signature": "public function __construct(array $comments=[]): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Table": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Table": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Dbspec\\Native\\Table extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Table::$checks": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Table::$checks": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Table::$closingComments": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Table::$closingComments": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Table::$columns": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Table::$columns": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Table::$comments": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Table::$comments": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Table::$foreignKeys": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Table::$foreignKeys": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Table::$indexes": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Table::$indexes": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Table::$name": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Table::$name": {
     "exported": true,
     "signature": "public string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Table::$primaryKey": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Table::$primaryKey": {
     "exported": true,
     "signature": "public ?Polyspec\\Orm\\Dbspec\\Native\\PrimaryKey"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Table::$settings": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Table::$settings": {
     "exported": true,
     "signature": "public ?Polyspec\\Orm\\Dbspec\\Native\\Settings"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Table::$uniqueKeys": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Table::$uniqueKeys": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Table::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Table::__construct": {
     "exported": true,
     "signature": "public function __construct(string $name, array $comments=[]): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\TableRename": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\TableRename": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\TableRename extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\TableRename::$new": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\TableRename::$new": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\TableRename::$old": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\TableRename::$old": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\TableRename::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\TableRename::__construct": {
     "exported": true,
     "signature": "public function __construct(string $old, string $new): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Token": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Token": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\Token extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Token::$class": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Token::$class": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Token::$end": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Token::$end": {
     "exported": true,
     "signature": "public readonly int"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Token::$line": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Token::$line": {
     "exported": true,
     "signature": "public readonly int"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Token::$start": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Token::$start": {
     "exported": true,
     "signature": "public readonly int"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Token::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Token::__construct": {
     "exported": true,
     "signature": "public function __construct(int $line, int $start, int $end, string $class): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\UniqueKey": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\UniqueKey": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Dbspec\\Native\\UniqueKey extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\UniqueKey::$columns": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\UniqueKey::$columns": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\UniqueKey::$comments": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\UniqueKey::$comments": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\UniqueKey::$name": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\UniqueKey::$name": {
     "exported": true,
     "signature": "public string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\UniqueKey::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\UniqueKey::__construct": {
     "exported": true,
     "signature": "public function __construct(string $name, array $columns, array $comments=[]): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Unsupported": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Unsupported": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\Native\\Unsupported extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Unsupported::$kind": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Unsupported::$kind": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Unsupported::$name": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Unsupported::$name": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Unsupported::$reason": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Unsupported::$reason": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Unsupported::$table": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Unsupported::$table": {
     "exported": true,
     "signature": "public readonly string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Unsupported::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Unsupported::__construct": {
     "exported": true,
     "signature": "public function __construct(string $kind, string $table, string $name, string $reason): "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\UseLine": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\UseLine": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Dbspec\\Native\\UseLine extends  implements  uses "
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\UseLine::$comments": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\UseLine::$comments": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\UseLine::$document": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\UseLine::$document": {
     "exported": true,
     "signature": "public string"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\UseLine::$tables": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\UseLine::$tables": {
     "exported": true,
     "signature": "public array"
   },
-  "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\UseLine::__construct": {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\UseLine::__construct": {
     "exported": true,
     "signature": "public function __construct(string $document, array $tables, array $comments=[]): "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Native\\Code": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Native\\Code extends  implements  uses "
   }
 }

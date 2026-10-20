@@ -4,7 +4,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 2) . '/php/tests/coverage_cases.php';
 require_once dirname(__DIR__, 2) . '/php/tests/dbspec_plan_cases.php';
 // Applies the plans.json chains through Polyspec\Orm\Dbspec\Native\Dbspec::apply,
-// ::recover, ::rollback and ::finalize of the PHP extension orm_dbspec on
+// ::recover, ::rollback and ::finalize of the PHP extension polyspec_orm on
 // MySQL, PostgreSQL and SQLite, the same scenarios as the PHP client's
 // packages/php/tests/DbspecApplyTest.php (docs/spec/plans.md "Apply"). Every run
 // gets a fresh database, schema or file. ORM_TEST_MYSQL_SERVER_DSN and

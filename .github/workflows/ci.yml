@@ -170,9 +170,8 @@ jobs:
         id: php-extension-tools
         if: ${{ !cancelled() && steps.group-needs.outputs.php-extension-tools == 'true' }}
         # make dbspec-php-extension-check and make dbspec-compare-check build
-        # the PHP extension orm_dbspec with phpize and check its arginfo with
-        # gen_stub.php; scripts/ci/php-extension-tools.mts checks phpize and
-        # php-config and installs gen_stub.php with its PHP-Parser.
+        # the PHP extension polyspec_orm with phpize;
+        # scripts/ci/php-extension-tools.mts checks phpize and php-config.
         run: make orm-install-php-extension-tools
       - name: programs of the database servers
         id: server-programs

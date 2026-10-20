@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-// Polyspec\Orm\Dbspec\Native\Dbspec::introspect of the PHP extension orm_dbspec on
+// Polyspec\Orm\Dbspec\Native\Dbspec::introspect of the PHP extension polyspec_orm on
 // MySQL, PostgreSQL and SQLite, the same cases as the PHP client's
 // packages/php/tests/DbspecIntrospectTest.php: the round trip of every case
 // of tests/dbspec/ddl.json and every schema document with the source schema

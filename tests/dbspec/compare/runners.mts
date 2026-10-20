@@ -2,7 +2,7 @@
 // <ddl.json> <plans.json> <mermaid.json> <syntax.json> (reads). Each runner follows the
 // line format of tests/dbspec/compare/check.mts, and if an input cannot be read or a vector is missing or of another type, it writes to stderr an error stating the location
 // error and exits nonzero. The TypeScript runner requires the TypeScript build, and the Rust runner requires dbspec_compare
-// example's debug build, and the PHP extension runner requires the orm_dbspec extension (ORM_DBSPEC_EXTENSION) that make built.
+// example's debug build, and the PHP extension runner requires the polyspec_orm extension (POLYSPEC_ORM_EXTENSION) that make built.
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,10 +13,10 @@ export const root = fileURLToPath(new URL('../../../', import.meta.url));
 // INPUTS is the name and order of the inputs that runRunner receives.
 export const INPUTS = ['cases', 'stress', 'ddl', 'plans', 'mermaid', 'syntax'];
 
-// phpExtension is the path of the orm_dbspec extension that make dbspec-compare-check built into that run's directory.
+// phpExtension is the path of the polyspec_orm extension that make dbspec-compare-check built into that run's directory.
 function phpExtension() {
-  const path = process.env.ORM_DBSPEC_EXTENSION;
-  if (!path) throw new Error('ORM_DBSPEC_EXTENSION names no build of the PHP extension orm_dbspec; run make dbspec-compare-check, which builds it and sets it');
+  const path = process.env.POLYSPEC_ORM_EXTENSION;
+  if (!path) throw new Error('POLYSPEC_ORM_EXTENSION names no build of the PHP extension polyspec_orm; run make dbspec-compare-check, which builds it and sets it');
   return path;
 }
 

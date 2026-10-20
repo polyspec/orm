@@ -95,7 +95,7 @@
             "dist": {
                 "type": "path",
                 "url": "packages/php",
-                "reference": "6d8045ccfed2c30197e2f945f31643b3d0362b81"
+                "reference": "899b795e3aaf1ecd1d49f3cf57631b2f91e512c1"
             },
             "require": {
                 "composer-runtime-api": "^2.2",
@@ -110,10 +110,10 @@
             },
             "suggest": {
                 "ext-openssl": "host-side AES on PostgreSQL and SQLite (aes columns)",
-                "ext-orm_dbspec": "Polyspec\\Orm\\Dbspec\\Native\\Dbspec, the dbspec surface of this client implemented in C (packages/php-ext)",
                 "ext-pdo_mysql": "mysql:// DSNs",
                 "ext-pdo_pgsql": "postgres:// DSNs",
-                "ext-pdo_sqlite": "sqlite:// DSNs"
+                "ext-pdo_sqlite": "sqlite:// DSNs",
+                "ext-polyspec_orm": "Polyspec\\Orm\\Dbspec\\Native\\Dbspec, the dbspec surface of this client implemented in C (packages/php-ext)"
             },
             "bin": [
                 "bin/orm-gen"

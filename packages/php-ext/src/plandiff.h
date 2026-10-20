@@ -1,6 +1,6 @@
 /* Internal declarations for using plan.c's diff together with steps.c (PHP client PlanDiff). */
-#ifndef ORM_DBSPEC_PLANDIFF_H
-#define ORM_DBSPEC_PLANDIFF_H
+#ifndef POLYSPEC_ORM_PLANDIFF_H
+#define POLYSPEC_ORM_PLANDIFF_H
 
 #include "dbspec.h"
 

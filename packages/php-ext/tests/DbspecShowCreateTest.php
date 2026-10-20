@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-// Polyspec\Orm\Dbspec\Native\Dbspec::introspect of the PHP extension orm_dbspec on MySQL, reading a canned catalog
+// Polyspec\Orm\Dbspec\Native\Dbspec::introspect of the PHP extension polyspec_orm on MySQL, reading a canned catalog
 // (T62-4-8). The double CannedCatalogPdo answers each catalog query of mysql_read with the rows of
 // tests/dbspec/show-create.json ("catalog" and each case), so the reader of shown_check goes to SHOW CREATE TABLE
 // for the body of the one CHECK. Each case expects the same checks and unsupported objects as the Go introspection

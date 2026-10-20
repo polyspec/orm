@@ -19,7 +19,7 @@
     {
       "kind": "composer",
       "directory": "packages/php-ext",
-      "name": "polyspec/orm-dbspec"
+      "name": "polyspec/orm-php-ext"
     },
     {
       "kind": "wheel",

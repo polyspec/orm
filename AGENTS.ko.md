@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 35e6b5981bed7b58174f0505bfef649475f1b0c5592706c805be85cdb30bab74 -->
+<!-- source-sha256: 379d2899ee47670010cd8423932ebaf9e40e8aa5e35e585b4527bc281a736e69 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -265,7 +265,7 @@ orm 자신의 규칙만 적는다.
   (commit이 `main`에 있고 그 check `push-gate`와 `ci-passed`가 성공했다), `make release-versions`(release하는 모든
   manifest가 X.Y.Z를 가지고, `packages/go/go.mod`의 module path가 `github.com/polyspec/orm/packages/go`이며, 변경 이력에 그 section이 있다),
   `make release-assets`(`@polyspec/orm`의 `polyspec-orm-npm-X.Y.Z.tgz`, `polyspec/orm`의 `polyspec-orm-php-X.Y.Z.zip`,
-  `polyspec/orm-dbspec`의 `polyspec-orm-dbspec-php-X.Y.Z.zip`, `polyspec-orm`의 `polyspec_orm-X.Y.Z-py3-none-any.whl`), `make release-publish`(그 section의 notes로 만든
+  `polyspec/orm-php-ext`의 `polyspec-orm-php-ext-php-X.Y.Z.zip`, `polyspec-orm`의 `polyspec_orm-X.Y.Z-py3-none-any.whl`), `make release-publish`(그 section의 notes로 만든
   release이며, GitHub release 본문의 한도인 125000자를 넘는 section은 tag의 CHANGELOG.md에서 그 section을 가리키는 한 줄이
   된다)다. test는 다시 실행하지 않는다. `make release-coverage`는 checkout의 모든 manifest가 `config/release.json`에
   분류되어 있기를 요구한다.

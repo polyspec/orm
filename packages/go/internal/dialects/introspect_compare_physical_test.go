@@ -43,16 +43,16 @@ const compareDeadline = 10 * time.Minute
 // applyProgressEvery is how many statements are applied between progress lines.
 const applyProgressEvery = 1000
 
-// TestIntrospectCompare applies the stress document to three databases, and checks that four clients and the PHP extension orm_dbspec
+// TestIntrospectCompare applies the stress document to three databases, and checks that four clients and the PHP extension polyspec_orm
 // give the same output from the introspection runner, that the schema text of the document is the same as the original,
 // and that there are no unsupported objects; it prints each client's time and warns if the reference is exceeded.
 func TestIntrospectCompare(t *testing.T) {
 	testcase.Group(t)
-	stressPath, rustRunner, extension := os.Getenv("DBSPEC_STRESS_DOCUMENT"), os.Getenv("DBSPEC_INTROSPECT_RUST"), os.Getenv("ORM_DBSPEC_EXTENSION")
+	stressPath, rustRunner, extension := os.Getenv("DBSPEC_STRESS_DOCUMENT"), os.Getenv("DBSPEC_INTROSPECT_RUST"), os.Getenv("POLYSPEC_ORM_EXTENSION")
 	pythonRunner := os.Getenv("DBSPEC_INTROSPECT_PYTHON")
 	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_DSN"), os.Getenv("ORM_TEST_POSTGRES_DSN")
 	if stressPath == "" || rustRunner == "" || extension == "" || pythonRunner == "" || mysqlDSN == "" || postgresDSN == "" {
-		t.Fatal("DBSPEC_STRESS_DOCUMENT, DBSPEC_INTROSPECT_RUST, ORM_DBSPEC_EXTENSION, DBSPEC_INTROSPECT_PYTHON, ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; run make dbspec-introspect-compare-check")
+		t.Fatal("DBSPEC_STRESS_DOCUMENT, DBSPEC_INTROSPECT_RUST, POLYSPEC_ORM_EXTENSION, DBSPEC_INTROSPECT_PYTHON, ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; run make dbspec-introspect-compare-check")
 	}
 	root, err := filepath.Abs(repoRoot)
 	if err != nil {
@@ -60,7 +60,7 @@ func TestIntrospectCompare(t *testing.T) {
 	}
 	// make gives the document and program copy in its own run directory (RUN_DIR) as absolute paths.
 	if !filepath.IsAbs(stressPath) || !filepath.IsAbs(rustRunner) || !filepath.IsAbs(extension) || !filepath.IsAbs(pythonRunner) {
-		t.Fatalf("DBSPEC_STRESS_DOCUMENT %q, DBSPEC_INTROSPECT_RUST %q, ORM_DBSPEC_EXTENSION %q and DBSPEC_INTROSPECT_PYTHON %q must be absolute paths in the run directory of make", stressPath, rustRunner, extension, pythonRunner)
+		t.Fatalf("DBSPEC_STRESS_DOCUMENT %q, DBSPEC_INTROSPECT_RUST %q, POLYSPEC_ORM_EXTENSION %q and DBSPEC_INTROSPECT_PYTHON %q must be absolute paths in the run directory of make", stressPath, rustRunner, extension, pythonRunner)
 	}
 	text, diagnostics, err := dbspec.ReadFile(stressPath)
 	if err != nil {

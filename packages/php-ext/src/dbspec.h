@@ -1,10 +1,10 @@
 /*
- * Internal declarations of the orm_dbspec extension. The dbspec operations (parse, emit, manifest, render, plan, Mermaid, introspection,
+ * Internal declarations of the polyspec_orm extension. The dbspec operations (parse, emit, manifest, render, plan, Mermaid, introspection,
  * apply) run on this header's C model exactly as specified by the PHP client (packages/php/src/Dbspec), and the PHP object
  * graph is converted in both directions by convert.c. All allocations of one call go into one arena, which is freed at once at the end of the call.
  */
-#ifndef ORM_DBSPEC_H
-#define ORM_DBSPEC_H
+#ifndef POLYSPEC_ORM_DBSPEC_H
+#define POLYSPEC_ORM_DBSPEC_H
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"

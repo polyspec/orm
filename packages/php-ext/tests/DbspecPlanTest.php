@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 // The plan vectors of tests/dbspec/plans.json through the PHP extension
-// orm_dbspec (Polyspec\Orm\Dbspec\Native\Dbspec), the same cases as the PHP client's
+// polyspec_orm (Polyspec\Orm\Dbspec\Native\Dbspec), the same cases as the PHP client's
 // packages/php/tests/DbspecPlanTest.php: every case's canonical emission,
 // changes and steps of three dialects, every invalid case's `plan`
 // diagnostics, every chain case's order or `chain` diagnostics, every parse

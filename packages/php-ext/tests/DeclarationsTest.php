@@ -1,29 +1,29 @@
 <?php
 declare(strict_types=1);
 
-// The extension's declarations of the classes it registers match stubs/orm_dbspec.stub.php. The two declarations
+// The extension's declarations of the classes it registers match src/polyspec_orm.stub.php. The two declarations
 // have the same class names, so they cannot be loaded into one process. declarations.php runs with the extension, and
-// runs without the extension. The stub is the inventory of the interface check (contracts/symbols/php-extension.json). ORM_DBSPEC_EXTENSION is
+// runs without the extension. The stub is the inventory of the interface check (contracts/symbols/php-extension.json). POLYSPEC_ORM_EXTENSION is
 // the built extension library, and if it is missing the test fails.
 
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Large;
 use PHPUnit\Framework\TestCase;
 
-/** The built extension library that ORM_DBSPEC_EXTENSION names. */
+/** The built extension library that POLYSPEC_ORM_EXTENSION names. */
 function extensionLibrary(): string
 {
-    $extension = getenv('ORM_DBSPEC_EXTENSION');
+    $extension = getenv('POLYSPEC_ORM_EXTENSION');
     if ($extension === false || $extension === '' || !is_file($extension)) {
-        throw new RuntimeException('ORM_DBSPEC_EXTENSION names no built library of the extension; run make dbspec-php-extension-check, which builds it');
+        throw new RuntimeException('POLYSPEC_ORM_EXTENSION names no built library of the extension; run make dbspec-php-extension-check, which builds it');
     }
     return $extension;
 }
 
-/** requiredModules is the names of the modules that the extension requires as ZEND_MOD_REQUIRED (src/orm_dbspec.c). */
+/** requiredModules is the names of the modules that the extension requires as ZEND_MOD_REQUIRED (src/polyspec_orm.c). */
 function requiredModules(): array
 {
-    preg_match_all('/ZEND_MOD_REQUIRED\("([a-z_]+)"\)/', file_get_contents(dirname(__DIR__) . '/src/orm_dbspec.c'), $names);
+    preg_match_all('/ZEND_MOD_REQUIRED\("([a-z_]+)"\)/', file_get_contents(dirname(__DIR__) . '/src/polyspec_orm.c'), $names);
     return $names[1];
 }
 
@@ -71,6 +71,17 @@ function declarations(array $arguments, string $mode): array
     return json_decode($out, true, 512, JSON_THROW_ON_ERROR);
 }
 
+/** The array constants that src/polyspec_orm.c registers, since gen_stub cannot write them into the arginfo of the stub. */
+const ARRAY_CONSTANTS = [
+    'Polyspec\\Orm\\Dbspec\\Native\\ColumnType::SIMPLE',
+    'Polyspec\\Orm\\Dbspec\\Native\\ColumnType::PARAMETERIZED',
+    'Polyspec\\Orm\\Dbspec\\Native\\ForeignKey::ACTIONS',
+    'Polyspec\\Orm\\Dbspec\\Native\\Setting::KINDS',
+    'Polyspec\\Orm\\Dbspec\\Native\\Setting::CODEC_STAGES',
+    'Polyspec\\Orm\\Dbspec\\Native\\Setting::STORE_ARGUMENTS',
+    'Polyspec\\Orm\\Dbspec\\Native\\PlanApply::EFFECT_QUERIES',
+];
+
 // Each case runs child PHP processes.
 #[Large]
 final class DeclarationsTest extends TestCase
@@ -80,7 +91,7 @@ final class DeclarationsTest extends TestCase
     public function test_required_modules(): void
     {
         $required = requiredModules();
-        Assert::assertTrue(in_array('pdo', $required, true), 'src/orm_dbspec.c requires ' . implode(', ', $required) . ', without pdo');
+        Assert::assertTrue(in_array('pdo', $required, true), 'src/polyspec_orm.c requires ' . implode(', ', $required) . ', without pdo');
         $shared = moduleArguments(['spl', 'hash', 'pdo'], static fn(string $module): bool => $module !== 'pdo', '/usr/lib/php/20250925');
         Assert::assertSame(['-d', 'extension_dir=/usr/lib/php/20250925', '-d', 'extension=pdo'], $shared, 'a PHP without a built-in pdo gets the arguments ' . json_encode($shared) . ', not the shared pdo of its extension_dir');
         $builtIn = moduleArguments(['spl', 'hash', 'pdo'], static fn(string $module): bool => true, '/usr/lib/php/20250925');
@@ -94,7 +105,15 @@ final class DeclarationsTest extends TestCase
         $extension = extensionLibrary();
         $native = declarations(['-d', "extension=$extension"], 'extension');
         $stub = declarations([], 'stub');
+        // gen_stub cannot write array constants, so the stub declares none and src/polyspec_orm.c registers these; test_client
+        // compares their values with the PHP client.
         $differences = [];
+        foreach (ARRAY_CONSTANTS as $key) {
+            if (!str_starts_with($native[$key] ?? '', 'public const = ') || isset($stub[$key])) {
+                $differences[] = "$key: src/polyspec_orm.c registers it, and the stub does not declare it; extension " . ($native[$key] ?? '(not declared)') . ', stub ' . ($stub[$key] ?? '(not declared)');
+            }
+            $stub[$key] = $native[$key] ?? '(not declared)';
+        }
         foreach (array_unique([...array_keys($native), ...array_keys($stub)]) as $key) {
             $want = $stub[$key] ?? '(not declared)';
             $got = $native[$key] ?? '(not declared)';
@@ -102,7 +121,7 @@ final class DeclarationsTest extends TestCase
                 $differences[] = "$key\n  stub      $want\n  extension $got";
             }
         }
-        Assert::assertSame([], $differences, "the extension declares other symbols than stubs/orm_dbspec.stub.php:\n" . implode("\n", $differences));
+        Assert::assertSame([], $differences, "the extension declares other symbols than src/polyspec_orm.stub.php:\n" . implode("\n", $differences));
     }
 
     // The extension has the same public declarations (name, parent, constants, order and types of properties, methods) for each class that is not PHP client's @internal,
@@ -128,7 +147,7 @@ final class DeclarationsTest extends TestCase
         if ($clientOrder !== $nativeOrder) {
             $differences[] = 'public properties in another order: client ' . implode(', ', $clientOrder) . '; extension ' . implode(', ', $nativeOrder);
         }
-        preg_match_all('/@internal\n \*\/\n(?:final |abstract )?(?:readonly )?class (\w+)/', file_get_contents(dirname(__DIR__) . '/stubs/orm_dbspec.stub.php'), $internal);
+        preg_match_all('/@internal\n \*\/\n(?:final |abstract )?(?:readonly )?class (\w+)/', file_get_contents(dirname(__DIR__) . '/src/polyspec_orm.stub.php'), $internal);
         foreach (array_keys($native) as $key) {
             $class = explode('::', $key)[0];
             if (!isset($classes[$class]) && !in_array(substr($class, strlen('Polyspec\\Orm\\Dbspec\\Native\\')), $internal[1], true)) {
@@ -144,7 +163,7 @@ final class DeclarationsTest extends TestCase
     {
         $package = json_decode(file_get_contents(dirname(__DIR__) . '/composer.json'), true, 512, JSON_THROW_ON_ERROR);
         $name = $package['php-ext']['extension-name'] ?? null;
-        Assert::assertFalse($package['type'] !== 'php-ext' || $name !== 'orm_dbspec', "packages/php-ext/composer.json declares the extension " . json_encode($name) . " of type " . json_encode($package['type']) . ", not orm_dbspec of type php-ext");
+        Assert::assertFalse($package['type'] !== 'php-ext' || $name !== 'polyspec_orm', "packages/php-ext/composer.json declares the extension " . json_encode($name) . " of type " . json_encode($package['type']) . ", not polyspec_orm of type php-ext");
         $config = dirname(__DIR__) . '/' . ($package['php-ext']['build-path'] ?? '') . '/config.m4';
         Assert::assertFalse(!is_file($config) || !str_contains(file_get_contents($config), "PHP_NEW_EXTENSION([$name]"), "the build-path of packages/php-ext/composer.json has no config.m4 that builds $name");
     }

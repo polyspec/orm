@@ -343,14 +343,14 @@ async function nativeTest(item: Item, command: NativeCommand, root: string): Pro
   // PHP runs on PHPUnit with the phpunit.xml.dist of the package of the item's language (packages/php, or packages/php-ext
   // for the PHP extension): a case <id> is the test method test_<id> of the test file's class, selected with an anchored
   // filter and read from the TeamCity events that PHPUnit writes to stdout. The extension's tests run on a PHP that loads
-  // the built extension library that make names in ORM_DBSPEC_EXTENSION.
+  // the built extension library that make names in POLYSPEC_ORM_EXTENSION.
   if (command.runner === 'php') {
     const directory = packageDirectoryOf(item.language);
     const phpPackage = resolve(root, directory);
     if (!testPath.startsWith(`${phpPackage}/`)) throw new Error(`PHP test ${command.test} is outside ${directory}`);
-    const extension = item.language === 'php-extension' ? process.env.ORM_DBSPEC_EXTENSION : undefined;
+    const extension = item.language === 'php-extension' ? process.env.POLYSPEC_ORM_EXTENSION : undefined;
     if (item.language === 'php-extension' && !extension)
-      throw new Error('ORM_DBSPEC_EXTENSION is unset; run this through make, which builds the extension and exports it');
+      throw new Error('POLYSPEC_ORM_EXTENSION is unset; run this through make, which builds the extension and exports it');
     return { format: 'phpunit', program: 'php', cwd: root,
       args: [...(extension ? ['-d', `extension=${extension}`] : []),
         resolve(root, 'vendor-php/bin/phpunit'), '--teamcity', '--configuration', resolve(phpPackage, 'phpunit.xml.dist'),

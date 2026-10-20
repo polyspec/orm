@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 // Runs the export, import, invalid and round trip cases of
-// tests/dbspec/mermaid.json through the PHP extension orm_dbspec
+// tests/dbspec/mermaid.json through the PHP extension polyspec_orm
 // (Polyspec\Orm\Dbspec\Native\Dbspec::exportMermaid and ::importMermaid), the same
 // cases as the PHP client's packages/php/tests/DbspecMermaidTest.php: the
 // Mermaid text, the emitted document, the dropped [kind, table, name] and the
