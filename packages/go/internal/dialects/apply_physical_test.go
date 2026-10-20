@@ -234,14 +234,15 @@ func TestApplyChain(t *testing.T) {
 	}
 	// run executes the command and checks the error code. If the code is an empty string it must succeed,
 	// and for stop it must halt with that error.
-	run := func(e *Env, db, what string, f command, chain []*dbspec.Plan, events func(dbspec.ApplyEvent) error, code string, stop error) error {
+	// A failed check is recorded on e, which the probe reports; an error that the case expects is consumed here.
+	run := func(e *Env, db, what string, f command, chain []*dbspec.Plan, events func(dbspec.ApplyEvent) error, code string, stop error) {
 		if e.Err != nil {
-			return e.Err
+			return
 		}
 		err := f(e.Ctx, e.Conn, dbspec.Dialect(db), chain, fixedNow, events)
 		switch {
 		case stop != nil:
-			if err != stop {
+			if !errors.Is(err, stop) {
 				e.fail("%s: %v, want the stop error", what, err)
 			}
 		case code == "" && err != nil:
@@ -249,7 +250,6 @@ func TestApplyChain(t *testing.T) {
 		case code != "" && applyCode(err) != code:
 			e.fail("%s: %v, want %s", what, err, code)
 		}
-		return err
 	}
 	type scenario struct {
 		name string
@@ -288,7 +288,11 @@ func TestApplyChain(t *testing.T) {
 				e.fail("session: %v", err)
 				return
 			}
-			defer other.Conn.Close()
+			defer func() {
+				if err := other.Conn.Close(); err != nil {
+					e.fail("close the other session: %v", err)
+				}
+			}()
 			hold := map[string]string{"mysql": "SELECT GET_LOCK(" + mysqlApplyLock + ", 0)", "postgres": "SELECT pg_advisory_lock(" + postgresApplyLock + ")", "sqlite": "BEGIN IMMEDIATE"}[db]
 			if _, err := other.Conn.ExecContext(e.Ctx, hold); err != nil {
 				e.fail("hold: %v", err)
@@ -296,7 +300,9 @@ func TestApplyChain(t *testing.T) {
 			}
 			run(e, db, "apply under another session's lock", applyCommand, plans, nil, "locked", nil)
 			if db == "sqlite" {
-				other.Conn.ExecContext(e.Ctx, "ROLLBACK")
+				if _, err := other.Conn.ExecContext(e.Ctx, "ROLLBACK"); err != nil {
+					e.fail("roll back the other session: %v", err)
+				}
 			}
 		}},
 		{"other_database", all, func(e *Env, db string) {
@@ -307,7 +313,11 @@ func TestApplyChain(t *testing.T) {
 				e.fail("second %s: %v", db, err)
 				return
 			}
-			defer other.Conn.Close()
+			defer func() {
+				if err := other.Conn.Close(); err != nil {
+					e.fail("close the other session: %v", err)
+				}
+			}()
 			other.Exec(connectionRules[db]...)
 			var otherErr error
 			applied := false
@@ -403,8 +413,10 @@ func TestApplyChain(t *testing.T) {
 			chain, c := required, requiredCounts[db]
 			run(e, db, "apply", applyCommand, chain, nil, "", nil)
 			e.Exec("INSERT INTO t (a) VALUES ('y')")
-			err := run(e, db, "rollback with a NULL row", dbspec.Rollback, chain, nil, "nulls", nil)
-			e.Check(err != nil && strings.Contains(err.Error(), "has 1 NULL rows"), "rollback with a NULL row: %v, want the count", err)
+			if e.Err == nil {
+				err := dbspec.Rollback(e.Ctx, e.Conn, dbspec.Dialect(db), chain, fixedNow, nil)
+				e.Check(err != nil && applyCode(err) == "nulls" && strings.Contains(err.Error(), "has 1 NULL rows"), "rollback with a NULL row: %v, want the count", err)
+			}
 			schemaIs(e, db, requiredTarget.SchemaText)
 			historyIs(e, db, fmt.Sprintf("base|applied|%d,drop_required_column|applied|%d", c[0][1], c[1][1]))
 		}},
@@ -479,11 +491,13 @@ func TestApplyThroughTransactionPooler(t *testing.T) {
 		}},
 		// Before the first step, another client takes apply's server connection in a transaction,
 		// so the next statement of apply runs on a different server connection.
-		{"session_changed", func(ctx context.Context, apply, other *sql.Conn) error {
+		{"session_changed", func(ctx context.Context, apply, other *sql.Conn) (err error) {
 			var tx *sql.Tx
 			defer func() {
 				if tx != nil {
-					tx.Rollback()
+					if rerr := tx.Rollback(); rerr != nil && !errors.Is(rerr, sql.ErrTxDone) && err == nil {
+						err = fmt.Errorf("roll back the other session's transaction: %w", rerr)
+					}
 				}
 			}()
 			hold := func(ev dbspec.ApplyEvent) error {
@@ -510,7 +524,7 @@ func TestApplyThroughTransactionPooler(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer admin.Close()
+			defer testcase.Close(t, admin)
 			if _, err := admin.ExecContext(ctx, `CREATE DATABASE "`+name+`"`); err != nil {
 				t.Fatal(err)
 			}
@@ -523,17 +537,17 @@ func TestApplyThroughTransactionPooler(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer pooler.Close()
+			defer testcase.Close(t, pooler)
 			apply, err := pooler.Conn(ctx)
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer apply.Close()
+			defer testcase.Close(t, apply)
 			other, err := pooler.Conn(ctx)
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer other.Close()
+			defer testcase.Close(t, other)
 			err = s.run(ctx, apply, other)
 			var applyErr *dbspec.ApplyError
 			if !errors.As(err, &applyErr) || applyErr.Code != "session" || !strings.Contains(applyErr.Message, "a direct or session-pooled connection") {
