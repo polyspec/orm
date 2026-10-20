@@ -1,7 +1,7 @@
 {
   "requirements": {
     "export": ["MER-1", "MER-2", "MER-3", "MER-4", "MER-5", "MER-6"],
-    "import": ["MER-7", "MER-8", "MER-9", "MER-10", "MER-11", "MER-13"],
+    "import": ["MER-7", "MER-8", "MER-9", "MER-10", "MER-11", "MER-12", "MER-13"],
     "invalid": ["MER-7"],
     "round_trip": ["MER-13"]
   },
@@ -679,6 +679,48 @@
         "    }",
         "    a ||--o{ b : \"fk_b_one (a_id) references (id)\"",
         "    a ||--o{ b : \"fk_b_two (a_id) references (id)\""
+      ]
+    },
+    {
+      "document": [
+        "dbspec 1 imported",
+        "",
+        "table a {",
+        "  id i64",
+        "  primary key (id)",
+        "}",
+        "",
+        "table b {",
+        "  id i64",
+        "  a_id i64",
+        "  primary key (id)",
+        "  index ix_b_a_id (a_id)",
+        "  foreign key fk_b_a (a_id) references a (id) on delete restrict on update restrict",
+        "}"
+      ],
+      "dropped": [
+        [
+          "cardinality",
+          "b",
+          "fk_b_a"
+        ],
+        [
+          "index",
+          "b",
+          "ix_b_a_id"
+        ]
+      ],
+      "id": "cardinality-differs",
+      "mermaid": [
+        "erDiagram",
+        "    a {",
+        "        i64 id PK",
+        "    }",
+        "    b {",
+        "        i64 id PK",
+        "        i64 a_id FK",
+        "    }",
+        "    a |o--o{ b : \"fk_b_a (a_id) references (id)\""
       ]
     }
   ],
