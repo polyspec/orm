@@ -15,7 +15,7 @@ final readonly class Effect
     {
     }
 
-    public static function repeat(): self
+    public static function repeat(): Effect
     {
         return new self('repeat', '', '', true);
     }

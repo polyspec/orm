@@ -16,13 +16,13 @@ final readonly class ChainResult
     }
 
     /** @param list<Plan> $plans */
-    public static function valid(array $plans): self
+    public static function valid(array $plans): ChainResult
     {
         return new self($plans, []);
     }
 
     /** @param non-empty-list<Diagnostic> $diagnostics */
-    public static function invalid(array $diagnostics): self
+    public static function invalid(array $diagnostics): ChainResult
     {
         if ($diagnostics === []) {
             throw new \LogicException('An invalid chain result needs a diagnostic');

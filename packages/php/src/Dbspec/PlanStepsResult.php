@@ -16,13 +16,13 @@ final readonly class PlanStepsResult
     }
 
     /** @param list<PlanStep> $steps */
-    public static function valid(array $steps): self
+    public static function valid(array $steps): PlanStepsResult
     {
         return new self($steps, []);
     }
 
     /** @param non-empty-list<Diagnostic> $diagnostics */
-    public static function invalid(array $diagnostics): self
+    public static function invalid(array $diagnostics): PlanStepsResult
     {
         if ($diagnostics === []) {
             throw new \LogicException('An invalid plan steps result needs a diagnostic');

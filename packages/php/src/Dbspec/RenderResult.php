@@ -16,13 +16,13 @@ final readonly class RenderResult
     }
 
     /** @param list<string> $statements */
-    public static function valid(array $statements): self
+    public static function valid(array $statements): RenderResult
     {
         return new self($statements, []);
     }
 
     /** @param non-empty-list<Diagnostic> $diagnostics */
-    public static function invalid(array $diagnostics): self
+    public static function invalid(array $diagnostics): RenderResult
     {
         if ($diagnostics === []) {
             throw new \LogicException('An invalid render result needs a diagnostic');

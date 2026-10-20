@@ -12,13 +12,13 @@ final readonly class ManifestResult
     {
     }
 
-    public static function valid(Manifest $manifest): self
+    public static function valid(Manifest $manifest): ManifestResult
     {
         return new self($manifest, []);
     }
 
     /** @param non-empty-list<Diagnostic> $diagnostics */
-    public static function invalid(array $diagnostics): self
+    public static function invalid(array $diagnostics): ManifestResult
     {
         if ($diagnostics === []) {
             throw new \LogicException('An invalid manifest result needs a diagnostic');

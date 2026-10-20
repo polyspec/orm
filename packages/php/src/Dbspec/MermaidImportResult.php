@@ -20,13 +20,13 @@ final readonly class MermaidImportResult
     }
 
     /** @param list<Unsupported> $dropped */
-    public static function valid(Document $document, array $dropped): self
+    public static function valid(Document $document, array $dropped): MermaidImportResult
     {
         return new self($document, $dropped, []);
     }
 
     /** @param non-empty-list<Diagnostic> $diagnostics */
-    public static function invalid(array $diagnostics): self
+    public static function invalid(array $diagnostics): MermaidImportResult
     {
         if ($diagnostics === []) {
             throw new \LogicException('An invalid Mermaid import result needs a diagnostic');

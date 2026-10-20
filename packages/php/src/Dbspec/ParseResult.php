@@ -20,13 +20,13 @@ final readonly class ParseResult
     }
 
     /** @param non-empty-list<Position> $positions */
-    public static function valid(Document $document, array $positions): self
+    public static function valid(Document $document, array $positions): ParseResult
     {
         return new self($document, [], $positions);
     }
 
     /** @param non-empty-list<Diagnostic> $diagnostics */
-    public static function invalid(array $diagnostics): self
+    public static function invalid(array $diagnostics): ParseResult
     {
         if ($diagnostics === []) {
             throw new \LogicException('An invalid parse result needs a diagnostic');

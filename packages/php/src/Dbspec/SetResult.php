@@ -23,13 +23,13 @@ final readonly class SetResult
      * @param list<SetFile> $documents
      * @param list<SetFile> $external
      */
-    public static function valid(array $documents, array $external): self
+    public static function valid(array $documents, array $external): SetResult
     {
         return new self($documents, $external, []);
     }
 
     /** @param non-empty-list<SetError> $errors */
-    public static function invalid(array $errors): self
+    public static function invalid(array $errors): SetResult
     {
         if ($errors === []) {
             throw new \LogicException('An invalid set result needs an error');

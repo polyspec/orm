@@ -16,13 +16,13 @@ final readonly class DiffResult
     }
 
     /** @param list<Change> $changes */
-    public static function valid(array $changes): self
+    public static function valid(array $changes): DiffResult
     {
         return new self($changes, []);
     }
 
     /** @param non-empty-list<Diagnostic> $diagnostics */
-    public static function invalid(array $diagnostics): self
+    public static function invalid(array $diagnostics): DiffResult
     {
         if ($diagnostics === []) {
             throw new \LogicException('An invalid diff result needs a diagnostic');

@@ -15,13 +15,13 @@ final readonly class ReadResult
     {
     }
 
-    public static function valid(string $text): self
+    public static function valid(string $text): ReadResult
     {
         return new self($text, []);
     }
 
     /** @param non-empty-list<Diagnostic> $diagnostics */
-    public static function invalid(array $diagnostics): self
+    public static function invalid(array $diagnostics): ReadResult
     {
         if ($diagnostics === []) {
             throw new \LogicException('An invalid read result needs a diagnostic');
