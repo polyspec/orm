@@ -807,11 +807,6 @@ bool codec_is_host_style(zend_string *style)
     return zend_string_equals_literal(style, "aes") || zend_string_equals_literal(style, "hex") || zend_string_equals_literal(style, "ip");
 }
 
-bool codec_unsupported(const char *method, const char *row)
-{
-    return orm_failf("CODEC_UNSUPPORTED", "Codec::%s is not implemented by the extension yet (%s)", method, row);
-}
-
 static bool decode_stages(HashTable *styles, zval *raw, zval *ret)
 {
     zend_long n = zend_hash_num_elements(styles);
@@ -1124,6 +1119,9 @@ bool codec_encode(HashTable *styles, zval *styled, zval *ret)
     return true;
 }
 
+static bool aes_seal(zend_string *plain, zend_string *key, zend_string **sealed);
+static zend_string *hex_encode_upper(zend_string *in);
+
 bool codec_host_encode(zval *v, HashTable *styles, zend_string *aes_key, zval *ret)
 {
     if (Z_TYPE_P(v) == IS_NULL) {
@@ -1147,17 +1145,38 @@ bool codec_host_encode(zval *v, HashTable *styles, zend_string *aes_key, zval *r
         if (streq(st, "ip")) {
             zend_string *packed = NULL;
             if (!ip_pack(cur, &packed)) {
+                bool fail = orm_failf("CODEC_ENCODE", "ip: \"%s\" is not an address", ZSTR_VAL(cur));
                 str_free(st);
                 zend_string_release(cur);
-                return orm_failf("CODEC_ENCODE", "ip: \"%s\" is not an address", ZSTR_VAL(cur));
+                return fail;
             }
             zend_string_release(cur);
             cur = packed;
+        } else if (streq(st, "aes")) {
+            str_free(st);
+            if (ZSTR_LEN(aes_key) == 0) {
+                zend_string_release(cur);
+                return orm_fail("CONFIG", zend_string_init(ZEND_STRL("secret aes not configured"), 0));
+            }
+            zend_string *sealed;
+            bool ok = aes_seal(cur, aes_key, &sealed);
+            zend_string_release(cur);
+            if (!ok) {
+                return false;
+            }
+            cur = sealed;
+            continue;
+        } else if (streq(st, "hex")) {
+            str_free(st);
+            zend_string *h = hex_encode_upper(cur);
+            zend_string_release(cur);
+            cur = h;
+            continue;
         } else {
-            bool ok = orm_failf("CODEC_UNSUPPORTED", "host style %s is not implemented by the extension yet (aes and hex are the codec rows T182-2-2 and T182-2-3)", st != NULL ? ZSTR_VAL(st) : "");
+            bool fail = orm_failf("CODEC_UNSUPPORTED", "host style %s", st != NULL ? ZSTR_VAL(st) : "");
             str_free(st);
             zend_string_release(cur);
-            return ok;
+            return fail;
         }
         str_free(st);
     }
@@ -1205,10 +1224,198 @@ static zend_string *hex_decode(zend_string *in)
     return out;
 }
 
+/* ---- host stages: AES (the ORM-AES2 envelope), hex encode, the blind index: PHP's own openssl, hash and random functions ---- */
+
+#define AES_PREFIX "ORM-AES2\0"
+#define AES_PREFIX_LEN 9
+#define AES_NONCE_LEN 12
+#define AES_TAG_LEN 16
+
+/* The v2 key of Codec.php: the binary sha256 of the label, a NUL and the configured key. */
+static bool aes_v2_key(zend_string *key, zend_string **out)
+{
+    zend_string *material = zend_string_concat2(ZEND_STRL("polyspec/orm/aes-256-gcm/v2\0"), ZSTR_VAL(key), ZSTR_LEN(key));
+    zval a[3], rv;
+    ZVAL_STRING(&a[0], "sha256");
+    ZVAL_STR(&a[1], material);
+    ZVAL_TRUE(&a[2]);
+    bool ok = call_fn("hash", &rv, 3, a);
+    zval_ptr_dtor(&a[0]);
+    zval_ptr_dtor(&a[1]);
+    if (!ok) {
+        return false;
+    }
+    *out = Z_STR(rv);
+    return true;
+}
+
+/*
+ * Codec.php's aes write: openssl_encrypt of cur with AES-256-GCM, the v2 key, a random 12-byte nonce and the envelope prefix as
+ * additional data, then the envelope "ORM-AES2\0" . nonce . ciphertext . tag.
+ */
+static bool aes_seal(zend_string *plain, zend_string *key, zend_string **sealed)
+{
+    zend_string *k;
+    if (!aes_v2_key(key, &k)) {
+        return false;
+    }
+    zval len, nonce;
+    ZVAL_LONG(&len, AES_NONCE_LEN);
+    if (!call_fn("random_bytes", &nonce, 1, &len)) {
+        zend_string_release(k);
+        return false;
+    }
+    zval tag, tagref;
+    ZVAL_NULL(&tag);
+    ZVAL_NEW_REF(&tagref, &tag);
+    zval a[8];
+    ZVAL_STR_COPY(&a[0], plain);
+    ZVAL_STRING(&a[1], "aes-256-gcm");
+    ZVAL_STR(&a[2], k);
+    ZVAL_LONG(&a[3], 1);
+    ZVAL_COPY_VALUE(&a[4], &nonce);
+    ZVAL_COPY_VALUE(&a[5], &tagref);
+    ZVAL_STRINGL(&a[6], AES_PREFIX, AES_PREFIX_LEN);
+    ZVAL_LONG(&a[7], AES_TAG_LEN);
+    zval enc;
+    bool called = call_fn("openssl_encrypt", &enc, 8, a);
+    zval_ptr_dtor(&a[0]);
+    zval_ptr_dtor(&a[1]);
+    zval_ptr_dtor(&a[2]);
+    zval_ptr_dtor(&a[6]);
+    zend_string *tag_s = called ? zval_get_string(Z_REFVAL(tagref)) : NULL;
+    zval_ptr_dtor(&tagref);
+    if (!called) {
+        zval_ptr_dtor(&nonce);
+        return false;
+    }
+    if (Z_TYPE(enc) == IS_FALSE) {
+        zval err;
+        zval_ptr_dtor(&nonce);
+        if (!call_fn("openssl_error_string", &err, 0, NULL)) {
+            return false;
+        }
+        zend_string *msg = zval_get_string(&err);
+        zval_ptr_dtor(&err);
+        bool fail = orm_failf("CODEC_ENCODE", "aes: %s", ZSTR_VAL(msg));
+        zend_string_release(msg);
+        return fail;
+    }
+    zend_string *enc_s = Z_STR(enc);
+    zend_string *nonce_s = Z_STR(nonce);
+    size_t n = AES_PREFIX_LEN + ZSTR_LEN(nonce_s) + ZSTR_LEN(enc_s) + ZSTR_LEN(tag_s);
+    zend_string *out = zend_string_alloc(n, 0);
+    char *p = ZSTR_VAL(out);
+    memcpy(p, AES_PREFIX, AES_PREFIX_LEN);
+    p += AES_PREFIX_LEN;
+    memcpy(p, ZSTR_VAL(nonce_s), ZSTR_LEN(nonce_s));
+    p += ZSTR_LEN(nonce_s);
+    memcpy(p, ZSTR_VAL(enc_s), ZSTR_LEN(enc_s));
+    p += ZSTR_LEN(enc_s);
+    memcpy(p, ZSTR_VAL(tag_s), ZSTR_LEN(tag_s));
+    p += ZSTR_LEN(tag_s);
+    *p = '\0';
+    zend_string_release(tag_s);
+    zval_ptr_dtor(&enc);
+    zval_ptr_dtor(&nonce);
+    *sealed = out;
+    return true;
+}
+
+/*
+ * Codec.php's aes read: the envelope of cur opened with the v2 key. Another format, a truncated envelope and a failed authentication
+ * are CODEC_DECODE.
+ */
+static bool aes_open(zend_string *cur, zend_string *key, zend_string **plain)
+{
+    size_t n = ZSTR_LEN(cur);
+    const char *c = ZSTR_VAL(cur);
+    if (n < AES_PREFIX_LEN || memcmp(c, AES_PREFIX, AES_PREFIX_LEN) != 0) {
+        return orm_fail("CODEC_DECODE", zend_string_init(ZEND_STRL("aes: unsupported ciphertext format"), 0));
+    }
+    if (n < AES_PREFIX_LEN + AES_NONCE_LEN + AES_TAG_LEN) {
+        return orm_fail("CODEC_DECODE", zend_string_init(ZEND_STRL("aes: truncated v2 envelope"), 0));
+    }
+    zend_string *nonce = zend_string_init(c + AES_PREFIX_LEN, AES_NONCE_LEN, 0);
+    zend_string *ciphertext = zend_string_init(c + AES_PREFIX_LEN + AES_NONCE_LEN, n - AES_PREFIX_LEN - AES_NONCE_LEN - AES_TAG_LEN, 0);
+    zend_string *tag = zend_string_init(c + n - AES_TAG_LEN, AES_TAG_LEN, 0);
+    zend_string *k;
+    if (!aes_v2_key(key, &k)) {
+        zend_string_release(nonce);
+        zend_string_release(ciphertext);
+        zend_string_release(tag);
+        return false;
+    }
+    zval a[7], res;
+    ZVAL_STR(&a[0], ciphertext);
+    ZVAL_STRING(&a[1], "aes-256-gcm");
+    ZVAL_STR(&a[2], k);
+    ZVAL_LONG(&a[3], 1);
+    ZVAL_STR(&a[4], nonce);
+    ZVAL_STR(&a[5], tag);
+    ZVAL_STRINGL(&a[6], AES_PREFIX, AES_PREFIX_LEN);
+    bool called = call_fn("openssl_decrypt", &res, 7, a);
+    for (int i = 0; i < 7; i++) {
+        zval_ptr_dtor(&a[i]);
+    }
+    if (!called) {
+        return false;
+    }
+    if (Z_TYPE(res) != IS_STRING) {
+        return orm_fail("CODEC_DECODE", zend_string_init(ZEND_STRL("aes: authentication failed"), 0));
+    }
+    *plain = Z_STR(res);
+    return true;
+}
+
+/* bin2hex, upper-case, as Codec.php writes the hex stage. */
+static zend_string *hex_encode_upper(zend_string *in)
+{
+    static const char digits[] = "0123456789ABCDEF";
+    size_t n = ZSTR_LEN(in);
+    zend_string *out = zend_string_alloc(2 * n, 0);
+    for (size_t i = 0; i < n; i++) {
+        unsigned char b = (unsigned char)ZSTR_VAL(in)[i];
+        ZSTR_VAL(out)[2 * i] = digits[b >> 4];
+        ZSTR_VAL(out)[2 * i + 1] = digits[b & 0x0f];
+    }
+    ZSTR_VAL(out)[2 * n] = '\0';
+    return out;
+}
+
+/* Codec::blindIndex: hash_hmac sha256 of the plain text with the key, lower-case hex; null passes through. */
+bool codec_blind_index(zval *v, zend_string *key, zval *ret)
+{
+    if (Z_TYPE_P(v) == IS_NULL) {
+        ZVAL_NULL(ret);
+        return true;
+    }
+    if (ZSTR_LEN(key) == 0) {
+        return orm_fail("CONFIG", zend_string_init(ZEND_STRL("secret blind_index not configured"), 0));
+    }
+    bool yes;
+    IS_A(v, "Polyspec\\Orm\\Bytes", yes);
+    zend_string *plain;
+    if (yes) {
+        zval rv;
+        plain = zval_get_string(read_prop(v, "bytes", &rv));
+    } else {
+        plain = zval_get_string(v);
+    }
+    zval a[3];
+    ZVAL_STRING(&a[0], "sha256");
+    ZVAL_STR(&a[1], plain);
+    ZVAL_STR_COPY(&a[2], key);
+    bool ok = call_fn("hash_hmac", ret, 3, a);
+    zval_ptr_dtor(&a[0]);
+    zval_ptr_dtor(&a[1]);
+    zval_ptr_dtor(&a[2]);
+    return ok;
+}
+
 /*
  * Codec::hostDecode: undoes the host stages of a read cell, in reverse write order. hex and ip are decoded as Codec.php does, and an ip
- * stage ends the decode there, as the PHP loop returns there. The aes stage keeps the key check of Codec.php, then gives CODEC_UNSUPPORTED
- * until T182-2-3 implements the AES envelope. A codec style in the list is CODEC_UNSUPPORTED.
+ * stage ends the decode there, as the PHP loop returns there. A codec style in the list is CODEC_UNSUPPORTED.
  */
 bool codec_host_decode(zval *raw, HashTable *styles, zend_string *aes_key, zval *ret)
 {
@@ -1252,8 +1459,14 @@ bool codec_host_decode(zval *raw, HashTable *styles, zend_string *aes_key, zval 
                 zend_string_release(s);
                 return orm_fail("CONFIG", zend_string_init(ZEND_STRL("secret aes not configured"), 0));
             }
+            zend_string *plain;
+            bool ok = aes_open(s, aes_key, &plain);
             zend_string_release(s);
-            return orm_fail("CODEC_UNSUPPORTED", zend_string_init(ZEND_STRL("aes: the AES host stage is not implemented by the extension yet (T182-2-3)"), 0));
+            if (!ok) {
+                return false;
+            }
+            s = plain;
+            continue;
         } else if (streq(st, "ip")) {
             str_free(st);
             size_t len = ZSTR_LEN(s);

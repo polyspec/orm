@@ -14,7 +14,6 @@ bool codec_host_encode(zval *v, HashTable *styles, zend_string *aes_key, zval *r
 bool codec_host_decode(zval *raw, HashTable *styles, zend_string *aes_key, zval *ret);
 bool codec_decode_rows(HashTable *rows, HashTable *cells, zval *config);
 bool codec_is_host_style(zend_string *style);
-/* Throws CODEC_UNSUPPORTED for a public method the extension does not implement yet; `row` names the item that does. */
-bool codec_unsupported(const char *method, const char *row);
+bool codec_blind_index(zval *v, zend_string *key, zval *ret);
 
 #endif

@@ -1704,7 +1704,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, readBytes)
     LEAVE();
 }
 
-/* Polyspec\Orm\Codec (packages/php-ext/src/codec.c). blindIndex is not implemented yet (T182-2-3) and throws CODEC_UNSUPPORTED. */
+/* Polyspec\Orm\Codec (packages/php-ext/src/codec.c). */
 ZEND_METHOD(Polyspec_Orm_Codec, blindIndex)
 {
     zval *v;
@@ -1713,7 +1713,7 @@ ZEND_METHOD(Polyspec_Orm_Codec, blindIndex)
         Z_PARAM_ZVAL(v)
         Z_PARAM_STR(key)
     ZEND_PARSE_PARAMETERS_END();
-    codec_unsupported("blindIndex", "AES and the blind index, T182-2-3");
+    codec_blind_index(v, key, return_value);
 }
 
 ZEND_METHOD(Polyspec_Orm_Codec, decode)

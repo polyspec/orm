@@ -339,6 +339,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/orm/codec_test.go", "symbol": "TestCodecAESVectors" },
         { "implementation": "php", "test": "packages/php/tests/CodecAesVectorsTest.php", "symbol": "CodecAesVectorsTest::test_vector" },
+        { "implementation": "php-extension", "test": "packages/php/tests/CodecAesVectorsTest.php", "symbol": "CodecAesVectorsTest::test_vector" },
         { "implementation": "rust", "test": "packages/rust/orm/tests/codec_aes_vectors.rs", "symbol": "aes_vectors" },
         { "implementation": "typescript", "test": "packages/ts/tests/codec-aes-vector.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_codec_aes_vectors.py" }
