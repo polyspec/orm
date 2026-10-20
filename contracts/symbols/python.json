@@ -8527,6 +8527,10 @@
     "exported": true,
     "signature": "def aes(self) -\u003e AesUtils"
   },
+  "packages/python/src/polyspec/orm/utils.py::Utils.backend_waiting_for_lock": {
+    "exported": true,
+    "signature": "def backend_waiting_for_lock(self) -\u003e bool"
+  },
   "packages/python/src/polyspec/orm/utils.py::Utils.local": {
     "exported": true,
     "signature": "def local(self, key: str) -\u003e str"
@@ -8550,6 +8554,10 @@
   "packages/python/src/polyspec/orm/utils.py::Utils.stats": {
     "exported": true,
     "signature": "def stats(self) -\u003e DbStats"
+  },
+  "packages/python/src/polyspec/orm/utils.py::Utils.was_inserted": {
+    "exported": true,
+    "signature": "def was_inserted(self, entity: str, sequence: int) -\u003e bool"
   },
   "packages/python/src/polyspec/orm/utils.py::valid_key": {
     "exported": true,

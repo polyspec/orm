@@ -21,6 +21,10 @@ if TYPE_CHECKING:
 # PostgreSQL statements of the utilities, with the $n markers that the engine writes for PostgreSQL.
 POSTGRES_ADVISORY_LOCK = "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))"
 POSTGRES_SET_LOCAL = "SELECT set_config($1, $2, true)"
+BACKEND_WAITING_FOR_LOCK = (
+    "SELECT EXISTS(SELECT 1 FROM pg_locks l JOIN pg_stat_activity a ON a.pid=l.pid "
+    "WHERE a.datname=current_database() AND a.pid<>pg_backend_pid() AND NOT l.granted)"
+)
 
 # validKey accepts a key of at most 64 characters: letters, digits, '_' and '.', not starting with '.'.
 _KEY = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.]{0,63}$")
@@ -112,6 +116,26 @@ class Utils:
         if key not in frame.locals:
             raise OrmError(codes.NO_ROWS, f"local value {key} is not set")
         return frame.locals[key]
+
+    def was_inserted(self, entity: str, sequence: int) -> bool:
+        """Whether a generated insert of entity with the identity key sequence succeeded in the active transaction (INT-52)."""
+        frame = _active(self.db, "wasInserted")
+        if entity == "" or isinstance(sequence, bool) or not isinstance(sequence, int) or sequence <= 0:
+            raise OrmError(codes.CONFIG, "inserted entity and positive key are required")
+        return sequence in frame.inserted.get(entity, ())
+
+    def backend_waiting_for_lock(self) -> bool:
+        """Whether another backend of the PostgreSQL connection waits for a lock (INT-53). MySQL and SQLite return False
+        without a statement; a markdown connection is CAPABILITY_UNSUPPORTED."""
+        unsupported_on_markdown(self.db, "backendWaitingForLock")
+        if self.db.driver != "postgres":
+            return False
+        # pg_stat_activity is a snapshot per transaction: the statistics are cleared first, so that a backend that starts to wait
+        # after the transaction has read the view is seen.
+        self._read("utility", [], "SELECT pg_stat_clear_snapshot()", [])
+        rows = self._read("utility", [], BACKEND_WAITING_FOR_LOCK, [])
+        waiting = rows[0][0] if rows else None
+        return waiting in (True, "t", "1", 1)
 
     def aes(self) -> AesUtils:
         return AesUtils(self)

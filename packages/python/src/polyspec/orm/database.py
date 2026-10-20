@@ -945,6 +945,8 @@ class TxFrame:
         # the transaction inserts then, and None without audit values.
         self.audit = None
         self.pending_audit = None
+        # inserted is the identity keys of the generated single inserts that the transaction succeeded in, by entity (INT-52).
+        self.inserted: dict = {}
         self.locks: list = []
         self.locals: dict = {}
         self.connection = None
@@ -2026,7 +2028,7 @@ class Db:
 
     def _savepoint(self, frame: TxFrame, callback):
         # A savepoint that does not release undoes an audit record inserted inside it.
-        audit_before, kept = frame.audit, False
+        audit_before, inserted_before, kept = frame.audit, {e: set(k) for e, k in frame.inserted.items()}, False
         frame.savepoints += 1
         name = f"orm_sp_{frame.savepoints}"
 
@@ -2061,6 +2063,7 @@ class Db:
             frame.savepoints -= 1
             if not kept:
                 frame.audit = audit_before
+                frame.inserted = inserted_before
 
     def active_frame(self):
         """The transaction frame open on this connection (None if there is none)."""
@@ -2551,8 +2554,23 @@ def write(ex: Executor, request: dict, params, after_hook=None):
         return {"id": identity_id, "affected": 1 if upsert else result["affected"]}
 
     written = _guarded(ex, work)
+    _record_inserted(ex, request, written["id"])
     ex.db._shared.last_affected = written["affected"]
     return {**written, "request": request, "params": params}
+
+
+def _record_inserted(ex: Executor, request: dict, key) -> None:
+    """Records the identity key of a generated single insert in the write set of the transaction (INT-52). A batch insert
+    and an entity without an identity are not recorded."""
+    frame = ex.frame
+    if frame is None or request["kind"] != "insert" or request.get("rows"):
+        return
+    if not isinstance(key, int) or isinstance(key, bool) or key <= 0:
+        return
+    entity = ex.db.engines[request["manifest_hash"]].model.entities.get(request["entity"])
+    if entity is None or not entity.identity:
+        return
+    frame.inserted.setdefault(request["entity"], set()).add(key)
 
 
 def statement(ex: Executor, request: dict, params):
