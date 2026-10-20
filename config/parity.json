@@ -699,6 +699,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/orm/statement_events_test.go", "symbol": "TestStatementEvents" },
         { "implementation": "php", "test": "packages/php/tests/StatementEventsTest.php", "symbol": "StatementEventsTest::test_case" },
+{ "implementation": "php-extension", "test": "packages/php/tests/StatementEventsTest.php", "symbol": "StatementEventsTest::test_case" },
         { "implementation": "typescript", "test": "packages/ts/tests/coverage_statement_events.mjs" },
         { "implementation": "python", "test": "packages/python/tests/statement_events.py" },
         { "implementation": "rust", "test": "packages/rust/orm/tests/statement_events.rs", "symbol": "statement_events" }
@@ -710,6 +711,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/orm/statement_fault_test.go", "symbol": "TestStatementFaultSQLite" },
         { "implementation": "php", "test": "packages/php/tests/StatementFaultTest.php", "symbol": "StatementFaultTest::test_statement_fault" },
+{ "implementation": "php-extension", "test": "packages/php/tests/StatementFaultTest.php", "symbol": "StatementFaultTest::test_statement_fault" },
         { "implementation": "typescript", "test": "packages/ts/tests/statement_fault.mjs" },
         { "implementation": "python", "test": "packages/python/tests/statement_fault.py" },
         { "implementation": "rust", "test": "packages/rust/orm/tests/statement_fault.rs", "symbol": "statement_fault_cases" }

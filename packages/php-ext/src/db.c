@@ -18,16 +18,22 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdarg.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 #define ORM_EXCEPTION "Polyspec\\Orm\\OrmException"
 #define STATEMENT_EVENT "Polyspec\\Orm\\StatementEvent"
 #define BYTES_CLASS "Polyspec\\Orm\\Bytes"
 #define DB_STATE "Polyspec\\Orm\\DbState"
 #define ROW_LOCK_TABLE "orm__row_lock"
+#define REQUEST_CLASS "Polyspec\\Orm\\Request"
 #define SECRET_MASK "$SECRET"
 #define NOW_MASK "$NOW"
 
 static void set_masked(zval *masks, zend_long idx, const char *s);
+static zval *active_for(zval *db);
+static bool audit_for(zval *self, zval *frame, bool guard, bool *settle);
+static void settle_audit(zval *self, zval *frame, zend_long affected, zval *out);
 static zend_long bind_limit(zval *driver);
 static bool send_write(zval *self, zval *step, zval *args, zval *r, zval *id, zval *affected);
 
@@ -153,10 +159,25 @@ static bool pdo_exception_pending(void)
     return pdo_ce != NULL && instanceof_function(EG(exception)->ce, pdo_ce);
 }
 
-static zend_long constant_long(const char *name)
+/* The integer value of the class constant Class::NAME, read from the class's constant table; 0 when there is none. */
+static zend_long constant_long(const char *qualified)
 {
-    zval *c = zend_get_constant_str(name, strlen(name));
-    return c != NULL ? zval_get_long(c) : 0;
+    const char *sep = strstr(qualified, "::");
+    if (sep == NULL) {
+        return 0;
+    }
+    zend_string *class_name = zend_string_init(qualified, (size_t)(sep - qualified), 0);
+    zend_class_entry *ce = zend_lookup_class(class_name);
+    zend_string_release(class_name);
+    if (ce == NULL) {
+        return 0;
+    }
+    zend_class_constant *c = zend_hash_str_find_ptr(CE_CONSTANTS_TABLE(ce), sep + 2, strlen(sep + 2));
+    if (c == NULL) {
+        return 0;
+    }
+    zval *v = &c->value;
+    return zval_get_long(v);
 }
 
 /* $a[$k] with ?? semantics: NULL when $a is not an array, the key is missing, or the value is null. */
@@ -527,18 +548,25 @@ static bool done_model(zval *self, void *ctx, zend_long start, zval *err)
         }
         ZEND_HASH_FOREACH_END();
     }
-    zval kind, tables, tx, *t = aget(c->step, "tables");
+    zval kind, tables, tx;
+    zval *t = aget(c->step, "tables");
     statement_kind(aget(c->step, "sql") ? aget(c->step, "sql") : c->sql, &kind);
     if (t != NULL) {
         ZVAL_COPY(&tables, t);
     } else {
         array_init(&tables);
     }
-    ZVAL_NULL(&tx);
+    zval *active = active_for(self);
+    if (active != NULL) {
+        ZVAL_COPY(&tx, rd(active, "number"));
+    } else {
+        ZVAL_NULL(&tx);
+    }
     pubctx pc = {&kind, &tables, &tx, c->sql, &args};
     bool ok = done_publish(self, &pc, start, err);
     zval_ptr_dtor(&args);
     zval_ptr_dtor(&tables);
+    zval_ptr_dtor(&tx);
     zval_ptr_dtor(&kind);
     return ok;
 }
@@ -699,6 +727,8 @@ static bool exec_stmt(zval *self, zval *st, zval *args)
         ZVAL_DEREF(v);
         zval argv[3];
         ZVAL_LONG(&argv[0], (zend_long)idx + 1);
+        ZVAL_NULL(&argv[1]);
+        ZVAL_NULL(&argv[2]);
         uint32_t argc = 2;
         if (Z_TYPE_P(v) == IS_TRUE || Z_TYPE_P(v) == IS_FALSE) {
             if (pg) {
@@ -1225,8 +1255,10 @@ static bool enter(zval *self, zval *frame, zval *ir)
         return false;
     }
     if (frame != NULL && Z_TYPE_P(frame) == IS_OBJECT) {
-        throw_orm("INTERNAL", "transactions belong to T182-5-2; the extension holds no transaction frame yet");
-        return false;
+        if (as_bool(rd(frame, "finished"))) {
+            throw_orm("CONFIG", "transaction already finished");
+            return false;
+        }
     }
     zval *lock = aget(ir, "lock");
     if (lock != NULL && Z_TYPE_P(lock) == IS_STRING && Z_STRLEN_P(lock) > 0) {
@@ -1474,9 +1506,20 @@ static bool args_of(zval *self, zval *step, zval *params, zval *parents, zval *f
                 push(out, &tz);
                 zval_ptr_dtor(&tz);
             } else if (is_str(from, "audit")) {
-                /* No transaction frame exists in this extension yet, so a write of an audited table has no audit. */
-                throw_orm("CONFIG", "a write of an audited table needs an audit: run it in a transaction with audit values");
-                goto fail;
+                zval *audit = frame != NULL && Z_TYPE_P(frame) == IS_OBJECT ? rd(frame, "audit") : NULL;
+                if (audit == NULL) {
+                    throw_orm("CONFIG", "a write of an audited table needs an audit: run it in a transaction with audit values");
+                    goto fail;
+                }
+                zval *aname = aget(audit, "table");
+                zval *bname = aget(b, "name");
+                if (!(aname != NULL && bname != NULL && zend_string_equals(Z_STR_P(bname), Z_STR_P(aname)))) {
+                    throw_orm("CONFIG", "the audited table records its audits in %s, but the audit of the transaction is a row of %s",
+                        bname != NULL && Z_TYPE_P(bname) == IS_STRING ? Z_STRVAL_P(bname) : "",
+                        aname != NULL && Z_TYPE_P(aname) == IS_STRING ? Z_STRVAL_P(aname) : "");
+                    goto fail;
+                }
+                push(out, aget(audit, "key"));
             } else {
                 throw_orm("INTERNAL", "bind from %s", from != NULL && Z_TYPE_P(from) == IS_STRING ? Z_STRVAL_P(from) : "");
                 goto fail;
@@ -2653,7 +2696,7 @@ static bool select_impl(zval *self, zval *frame, zval *r, zval *out)
         if (ok) {
             array_init(out);
             push(out, &plan);
-            zend_hash_next_index_insert(Z_ARRVAL_P(out), &res);
+            push(out, &res);
             zval_ptr_dtor(&res);
         }
     }
@@ -2768,7 +2811,7 @@ static bool paginate_impl(zval *self, zval *frame, zval *r, zval *out)
             if (ok) {
                 array_init(out);
                 push(out, &plan);
-                zend_hash_next_index_insert(Z_ARRVAL_P(out), &res);
+                push(out, &res);
                 zval n;
                 ZVAL_LONG(&n, zval_get_long(&count));
                 zend_hash_next_index_insert(Z_ARRVAL_P(out), &n);
@@ -2786,6 +2829,38 @@ static bool paginate_impl(zval *self, zval *frame, zval *r, zval *out)
         return false;
     }
     return ok;
+}
+
+static bool binds_audit(zval *step)
+{
+    zval *bs = aget(step, "bind_slots");
+    zval *b;
+    if (bs == NULL || Z_TYPE_P(bs) != IS_ARRAY) {
+        return false;
+    }
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(bs), b)
+    {
+        if (is_str(aget(b, "from"), "audit")) {
+            return true;
+        }
+    }
+    ZEND_HASH_FOREACH_END();
+    return false;
+}
+
+/* The settle of a failed guarded write: the pending error is kept while the savepoint is undone. */
+static void settle_discard(zval *self, zval *frame)
+{
+    zval pending, s;
+    bool had = EG(exception) != NULL;
+    if (had) {
+        take_exception(&pending);
+    }
+    settle_audit(self, frame, 0, &s);
+    zval_ptr_dtor(&s);
+    if (had) {
+        put_exception(&pending);
+    }
 }
 
 static bool write_of_impl(zval *self, zval *frame, zval *r, zval *after, zval *out)
@@ -2846,8 +2921,21 @@ static bool write_of_impl(zval *self, zval *frame, zval *r, zval *after, zval *o
     }
     zval step;
     ZVAL_COPY(&step, aidx(aget(&plan, "steps"), 0));
+    bool has_frame = frame != NULL && Z_TYPE_P(frame) == IS_OBJECT;
+    bool settle_needed = false;
+    if (has_frame && binds_audit(&step)) {
+        bool guard = !is_str(aget(ir, "kind"), "insert");
+        if (!audit_for(self, frame, guard, &settle_needed)) {
+            zval_ptr_dtor(&step);
+            zval_ptr_dtor(&plan);
+            return false;
+        }
+    }
     zval args;
-    if (!args_of(self, &step, rd(r, "params"), NULL, NULL, &args)) {
+    if (!args_of(self, &step, rd(r, "params"), NULL, frame, &args)) {
+        if (settle_needed) {
+            settle_discard(self, frame);
+        }
         zval_ptr_dtor(&step);
         zval_ptr_dtor(&plan);
         return false;
@@ -2858,9 +2946,22 @@ static bool write_of_impl(zval *self, zval *frame, zval *r, zval *after, zval *o
     zval_ptr_dtor(&step);
     zval_ptr_dtor(&plan);
     if (!ok) {
+        if (settle_needed) {
+            settle_discard(self, frame);
+        }
         return false;
     }
     zend_long n = zval_get_long(&affected_zv);
+    if (settle_needed) {
+        zval settled;
+        settle_audit(self, frame, n, &settled);
+        if (Z_TYPE(settled) != IS_NULL) {
+            zval_ptr_dtor(&id);
+            put_exception(&settled);
+            return false;
+        }
+        zval_ptr_dtor(&settled);
+    }
     if (aget(ir, "optimistic") != NULL && n == 0) {
         zval_ptr_dtor(&id);
         throw_orm("OPTIMISTIC_LOCK", "the row changed after it was read");
@@ -3055,14 +3156,15 @@ static bool subscribe_impl(zval *self, zval *subscriber, zval *out)
     zval sub;
     ZVAL_COPY(&sub, subscriber);
     zend_hash_index_update(Z_ARRVAL_P(subs), (zend_ulong)id, &sub);
-    zend_internal_function unsub;
-    memset(&unsub, 0, sizeof(unsub));
-    unsub.type = ZEND_INTERNAL_FUNCTION;
-    unsub.fn_flags = ZEND_ACC_PUBLIC;
-    unsub.function_name = zend_string_init_interned("unsubscribe", sizeof("unsubscribe") - 1, 1);
-    unsub.handler = db_unsubscribe;
-    unsub.reserved[0] = (void *)(uintptr_t)id;
-    zend_create_fake_closure(out, (zend_function *)&unsub, Z_OBJCE_P(self), Z_OBJCE_P(self), self);
+    zend_internal_function *unsub = pemalloc(sizeof(zend_internal_function), 1);
+    memset(unsub, 0, sizeof(zend_internal_function));
+    unsub->type = ZEND_INTERNAL_FUNCTION;
+    unsub->fn_flags = ZEND_ACC_PUBLIC;
+    unsub->scope = Z_OBJCE_P(self);
+    unsub->function_name = zend_string_init_interned("unsubscribe", sizeof("unsubscribe") - 1, 1);
+    unsub->handler = db_unsubscribe;
+    unsub->reserved[0] = (void *)(uintptr_t)id;
+    zend_create_fake_closure(out, (zend_function *)unsub, Z_OBJCE_P(self), Z_OBJCE_P(self), self);
     return true;
 }
 
@@ -3254,19 +3356,7 @@ ZEND_METHOD(Polyspec_Orm_Db, driverError)
     RETURN_COPY_VALUE(&err);
 }
 
-ZEND_METHOD(Polyspec_Orm_Db, utils)
-{
-    ZEND_PARSE_PARAMETERS_NONE();
-    throw_orm("INTERNAL", "Db::utils is not implemented in the extension yet: T182-5-3 implements Utils and Stats");
-    RETURN_THROWS();
-}
 
-ZEND_METHOD(Polyspec_Orm_Db, stats)
-{
-    ZEND_PARSE_PARAMETERS_NONE();
-    throw_orm("INTERNAL", "Db::stats is not implemented in the extension yet: T182-5-3 implements Utils and Stats");
-    RETURN_THROWS();
-}
 
 ZEND_METHOD(Polyspec_Orm_Db, close)
 {
@@ -3359,19 +3449,7 @@ ZEND_METHOD(Polyspec_Orm_Db, subscribe)
     RETURN_COPY_VALUE(&out);
 }
 
-ZEND_METHOD(Polyspec_Orm_Db, nextTransaction)
-{
-    ZEND_PARSE_PARAMETERS_NONE();
-    throw_orm("INTERNAL", "Db::nextTransaction is not implemented in the extension yet: T182-5-2 implements the transactions");
-    RETURN_THROWS();
-}
 
-ZEND_METHOD(Polyspec_Orm_Db, transactionNumber)
-{
-    ZEND_PARSE_PARAMETERS_NONE();
-    /* The connection has no transaction frame in this extension yet, so it has no transaction number. */
-    RETURN_NULL();
-}
 
 ZEND_METHOD(Polyspec_Orm_Db, publish)
 {
@@ -3490,55 +3568,8 @@ ZEND_METHOD(Polyspec_Orm_Db, fetch)
     RETURN_COPY_VALUE(&out);
 }
 
-/* The methods of T182-5-2 (transactions, savepoints, audit) and T182-5-3 (Utils, Stats): the library's signatures, loud until built. */
-ZEND_METHOD(Polyspec_Orm_Db, transaction)
-{
-    zval *args;
-    uint32_t n;
-    ZEND_PARSE_PARAMETERS_START(1, 6)
-        Z_PARAM_VARIADIC('*', args, n)
-    ZEND_PARSE_PARAMETERS_END();
-    (void)args;
-    (void)n;
-    throw_orm("INTERNAL", "Db::transaction is not implemented in the extension yet: T182-5-2 implements the transactions");
-    RETURN_THROWS();
-}
 
-ZEND_METHOD(Polyspec_Orm_Db, resolve)
-{
-    zval *conn;
-    ZEND_PARSE_PARAMETERS_START(1, 1)
-        Z_PARAM_OBJECT_OR_NULL(conn)
-    ZEND_PARSE_PARAMETERS_END();
-    /* Where a model runs: its connection, with the active transaction of that connection. No transaction frame exists in this
-     * extension yet (T182-5-2 creates them), so the active transaction is null, and a model without a connection has none. */
-    if (conn == NULL) {
-        throw_orm("CONFIG", "the model has no connection; use connect or run it inside a transaction");
-        RETURN_THROWS();
-    }
-    if (as_bool(rd(rd(conn, "state"), "closed"))) {
-        throw_orm("CONFIG", "database is closed");
-        RETURN_THROWS();
-    }
-    array_init(return_value);
-    zval c;
-    ZVAL_COPY(&c, conn);
-    zend_hash_next_index_insert(Z_ARRVAL_P(return_value), &c);
-    zval n;
-    ZVAL_NULL(&n);
-    zend_hash_next_index_insert(Z_ARRVAL_P(return_value), &n);
-}
 
-ZEND_METHOD(Polyspec_Orm_Db, inTransaction)
-{
-    zval *conn, *fn;
-    ZEND_PARSE_PARAMETERS_START(2, 2)
-        Z_PARAM_ZVAL(conn)
-        Z_PARAM_OBJECT(fn)
-    ZEND_PARSE_PARAMETERS_END();
-    throw_orm("INTERNAL", "Db::inTransaction is not implemented in the extension yet: T182-5-2 implements the transactions");
-    RETURN_THROWS();
-}
 
 static bool op_execute(zval *self, void *ctx, zval *ret)
 {
@@ -3567,14 +3598,23 @@ static bool op_execute(zval *self, void *ctx, zval *ret)
 /* Db::execute: a compiled statement without rows, run on the connection (outside a transaction it has no audit). */
 static bool execute_impl(zval *self, zval *step, zval *params)
 {
+    zval frame;
+    zval *active = active_for(self);
+    if (active != NULL) {
+        ZVAL_COPY(&frame, active);
+    } else {
+        ZVAL_NULL(&frame);
+    }
     zval empty_ir;
     array_init(&empty_ir);
-    bool ok = enter(self, NULL, &empty_ir);
+    bool ok = enter(self, &frame, &empty_ir);
     zval_ptr_dtor(&empty_ir);
     if (!ok) {
+        zval_ptr_dtor(&frame);
         return false;
     }
     if (aget(step, "assemble") != NULL) {
+        zval_ptr_dtor(&frame);
         throw_orm("IR_INVALID", "execute runs a statement without rows; the statement is a read");
         return false;
     }
@@ -3597,6 +3637,7 @@ static bool execute_impl(zval *self, zval *step, zval *params)
             zend_long pi = as_long(aget(b, "param"));
             if (is_str(from, "param") && (pi < 0 || pi >= nparams)) {
                 zval_ptr_dtor(&plist);
+                zval_ptr_dtor(&frame);
                 throw_orm("IR_INVALID", "bind slot %ld reads parameter %ld, but execute has %ld parameters", (long)i, (long)pi,
                     (long)nparams);
                 return false;
@@ -3605,9 +3646,19 @@ static bool execute_impl(zval *self, zval *step, zval *params)
         }
         ZEND_HASH_FOREACH_END();
     }
+    bool has_frame = Z_TYPE(frame) == IS_OBJECT;
+    if (has_frame && binds_audit(step)) {
+        bool settle;
+        if (!audit_for(self, &frame, false, &settle)) {
+            zval_ptr_dtor(&plist);
+            zval_ptr_dtor(&frame);
+            return false;
+        }
+    }
     zval args;
-    ok = args_of(self, step, &plist, NULL, NULL, &args);
+    ok = args_of(self, step, &plist, NULL, &frame, &args);
     zval_ptr_dtor(&plist);
+    zval_ptr_dtor(&frame);
     if (!ok) {
         return false;
     }
@@ -3806,12 +3857,1405 @@ ZEND_METHOD(Polyspec_Orm_Db, insertParts)
     insert_parts_batch(rows, batch, return_value);
 }
 
+
+/* ---- transactions (T182-5-2): the frames, begin, finish, savepoints, the audit record, the transaction callback ---- */
+
+/* Db::$frames: the active transactions of the request, innermost last, across the connections. */
+static zval *g_frames;
+static size_t g_nframes;
+static size_t g_capframes;
+
+static void frames_push(zval *frame)
+{
+    if (g_nframes == g_capframes) {
+        g_capframes = g_capframes == 0 ? 8 : g_capframes * 2;
+        g_frames = erealloc(g_frames, g_capframes * sizeof(zval));
+    }
+    ZVAL_COPY(&g_frames[g_nframes++], frame);
+}
+
+static void frames_pop(void)
+{
+    if (g_nframes > 0) {
+        zval_ptr_dtor(&g_frames[--g_nframes]);
+    }
+}
+
+/* Db::activeFor: the innermost active transaction of the connection's state, or NULL. The pointer is into the frame stack. */
+static zval *active_for(zval *db)
+{
+    zval *state = rd(db, "state");
+    for (size_t i = g_nframes; i > 0; i--) {
+        zval *fdb = rd(&g_frames[i - 1], "db");
+        zval *fstate = rd(fdb, "state");
+        if (Z_OBJ_P(fstate) == Z_OBJ_P(state)) {
+            return &g_frames[i - 1];
+        }
+    }
+    return NULL;
+}
+
+/* Makes the rollback error: OrmException::rollback(cause, rollback). Throws it. */
+static void throw_rollback(zval *cause, zval *rollback)
+{
+    zval args[2], ex;
+    ZVAL_COPY(&args[0], cause);
+    ZVAL_COPY(&args[1], rollback);
+    if (scall("Polyspec\\Orm\\OrmException::rollback", &ex, 2, args)) {
+        put_exception(&ex);
+    }
+    zval_ptr_dtor(&args[0]);
+    zval_ptr_dtor(&args[1]);
+}
+
+/* Db::joined: the one error, or a CONFIG carrying the messages of several. Returns an owned exception or NULL in out. */
+static void joined(zval *errors, zval *out)
+{
+    zend_long n = acount(errors);
+    ZVAL_NULL(out);
+    if (n == 0) {
+        return;
+    }
+    if (n == 1) {
+        zval *first = aidx(errors, 0);
+        if (first != NULL) {
+            ZVAL_COPY(out, first);
+        }
+        return;
+    }
+    smart_str msg = {0};
+    zval *e;
+    zend_long i = 0;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(errors), e)
+    {
+        zval m;
+        ZVAL_UNDEF(&m);
+        mcall(e, "getMessage", &m, 0, NULL);
+        if (i > 0) {
+            smart_str_appends(&msg, "; ");
+        }
+        smart_str_append(&msg, zval_get_string(&m));
+        zval_ptr_dtor(&m);
+        i++;
+    }
+    ZEND_HASH_FOREACH_END();
+    smart_str_0(&msg);
+    zval args[3], ex;
+    ZVAL_STR(&args[0], zend_string_init("CONFIG", 6, 0));
+    ZVAL_STR(&args[1], msg.s ? msg.s : ZSTR_EMPTY_ALLOC());
+    zval *first = aidx(errors, 0);
+    ZVAL_COPY(&args[2], first);
+    if (newobj(ORM_EXCEPTION, &ex, 3, args)) {
+        ZVAL_COPY_VALUE(out, &ex);
+    }
+    zval_ptr_dtor(&args[0]);
+    zval_ptr_dtor(&args[1]);
+    zval_ptr_dtor(&args[2]);
+}
+
+/* A statement of the connection that is not a model statement, in the transaction (Db::control): it cannot be blocked by a fault. */
+static bool control_stmt(zval *self, const char *kind, zval *tx, const char *sql)
+{
+    zval k, tables, s, binds, out;
+    str_zv(&k, kind);
+    array_init(&tables);
+    ZVAL_COPY(&s, tx);
+    zval sqlz;
+    str_zv(&sqlz, sql);
+    array_init(&binds);
+    bool ok = observed_as(self, true, &k, &tables, &s, &sqlz, &binds, op_exec_sql, &sqlz, &out);
+    zval_ptr_dtor(&k);
+    zval_ptr_dtor(&tables);
+    zval_ptr_dtor(&s);
+    zval_ptr_dtor(&sqlz);
+    zval_ptr_dtor(&binds);
+    if (ok) {
+        zval_ptr_dtor(&out);
+    }
+    return ok;
+}
+
+/* The transaction number of a frame, as a zval. */
+static void frame_number(zval *frame, zval *out)
+{
+    ZVAL_COPY(out, rd(frame, "number"));
+}
+
+/* Db::endSavepoint: the statement of the savepoint name; its error, or NULL in out. Takes the pending exception. */
+static void savepoint_control(zval *self, zval *frame, const char *kind, const char *name, bool *ok);
+
+static void end_savepoint(zval *self, zval *frame, const char *kind, const char *name, zval *out)
+{
+    bool ok;
+    savepoint_control(self, frame, kind, name, &ok);
+    if (ok) {
+        ZVAL_NULL(out);
+        return;
+    }
+    zval ex;
+    take_exception(&ex);
+    ZVAL_COPY_VALUE(out, &ex);
+}
+
+static void savepoint_control(zval *self, zval *frame, const char *kind, const char *name, bool *ok)
+{
+    const char *op = "savepoint";
+    char statement[128];
+    if (strcmp(kind, "savepoint") == 0) {
+        snprintf(statement, sizeof(statement), "SAVEPOINT %s", name);
+    } else if (strcmp(kind, "release") == 0) {
+        op = "release";
+        snprintf(statement, sizeof(statement), "RELEASE SAVEPOINT %s", name);
+    } else {
+        op = "rollback_to";
+        snprintf(statement, sizeof(statement), "ROLLBACK TO SAVEPOINT %s", name);
+    }
+    zval *md = rd(self, "md");
+    if (md != NULL && Z_TYPE_P(md) == IS_OBJECT) {
+        zval msg, r;
+        array_init(&msg);
+        zval v;
+        str_zv(&v, op);
+        setk(&msg, "op", &v);
+        zval_ptr_dtor(&v);
+        str_zv(&v, name);
+        setk(&msg, "name", &v);
+        zval_ptr_dtor(&v);
+        *ok = mcall(md, "call", &r, 1, &msg);
+        zval_ptr_dtor(&msg);
+        zval_ptr_dtor(&r);
+        return;
+    }
+    zval fnum;
+    frame_number(frame, &fnum);
+    *ok = control_stmt(self, kind, &fnum, statement);
+    zval_ptr_dtor(&fnum);
+}
+
+/* The sort order of the mysql local keys: bytewise, as SORT_STRING. */
+static int frame_key_compare(Bucket *a, Bucket *b)
+{
+    return zend_binary_strcmp(Z_STRVAL(a->val), Z_STRLEN(a->val), Z_STRVAL(b->val), Z_STRLEN(b->val));
+}
+
+/* Db::cleanup: releases the locks of the frame and clears its local values; every step is tried and the failures are returned. */
+static void frame_cleanup(zval *self, zval *frame, zval *errors)
+{
+    array_init(errors);
+    zval *fnum_zv = rd(frame, "number");
+    zval fnum;
+    ZVAL_COPY(&fnum, fnum_zv);
+    zval *locks = rd(frame, "locks");
+    if (locks != NULL && Z_TYPE_P(locks) == IS_ARRAY) {
+        zval *key;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(locks), key)
+        {
+            zval tables, sql, args, rows, s;
+            array_init(&tables);
+            str_zv(&sql, "SELECT RELEASE_LOCK(?)");
+            array_init(&args);
+            push(&args, key);
+            zval binds;
+            ZVAL_COPY(&binds, &args);
+            ZVAL_COPY(&s, &fnum);
+            zval k;
+            str_zv(&k, "utility");
+            fetchctx fc = {&sql, &args};
+            bool ok = observed_as(self, true, &k, &tables, &s, &sql, &binds, op_fetch_rows, &fc, &rows);
+            zval_ptr_dtor(&k);
+            zval_ptr_dtor(&s);
+            zval_ptr_dtor(&tables);
+            zval_ptr_dtor(&sql);
+            zval_ptr_dtor(&args);
+            zval_ptr_dtor(&binds);
+            if (ok) {
+                zval *first = aidx(aidx(&rows, 0), 0);
+                bool held = false;
+                if (first != NULL) {
+                    zend_string *fs = zval_get_string(first);
+                    held = ZSTR_LEN(fs) == 1 && ZSTR_VAL(fs)[0] == '1';
+                    zend_string_release(fs);
+                }
+                zval_ptr_dtor(&rows);
+                if (!held) {
+                    throw_orm("CONFIG", "lock %s was not held at transaction end", Z_STRVAL_P(key));
+                    ok = false;
+                }
+            }
+            if (!ok) {
+                zval ex;
+                take_exception(&ex);
+                push(errors, &ex);
+                zval_ptr_dtor(&ex);
+            }
+        }
+        ZEND_HASH_FOREACH_END();
+    }
+    zval empty;
+    array_init(&empty);
+    wr(frame, "locks", &empty);
+    zval_ptr_dtor(&empty);
+    if (is_str(rd(self, "driver"), "mysql")) {
+        zval *locals = rd(frame, "locals");
+        if (locals != NULL && Z_TYPE_P(locals) == IS_ARRAY) {
+            /* The keys are sorted as strings and cleared in that order. */
+            zval keys;
+            array_init(&keys);
+            zend_string *ks;
+            ZEND_HASH_FOREACH_STR_KEY(Z_ARRVAL_P(locals), ks)
+            {
+                if (ks != NULL) {
+                    zval kz;
+                    ZVAL_STR_COPY(&kz, ks);
+                    push(&keys, &kz);
+                    zval_ptr_dtor(&kz);
+                }
+            }
+            ZEND_HASH_FOREACH_END();
+            zend_hash_sort(Z_ARRVAL(keys), frame_key_compare, 0);
+            zval *k;
+            ZEND_HASH_FOREACH_VAL(Z_ARRVAL(keys), k)
+            {
+                smart_str sql = {0};
+                smart_str_appends(&sql, "SET @`orm.");
+                smart_str_append(&sql, zval_get_string(k));
+                smart_str_appends(&sql, "` = NULL");
+                smart_str_0(&sql);
+                bool ok = control_stmt(self, "utility", &fnum, ZSTR_VAL(sql.s));
+                if (!ok) {
+                    zval ex;
+                    take_exception(&ex);
+                    push(errors, &ex);
+                    zval_ptr_dtor(&ex);
+                }
+                smart_str_free(&sql);
+            }
+            ZEND_HASH_FOREACH_END();
+            zval_ptr_dtor(&keys);
+        }
+    }
+    if (is_str(rd(self, "driver"), "sqlite")) {
+        if (as_bool(rd(frame, "readOnly"))) {
+            if (!control_stmt(self, "utility", &fnum, "PRAGMA query_only = 0")) {
+                zval ex;
+                take_exception(&ex);
+                push(errors, &ex);
+                zval_ptr_dtor(&ex);
+            }
+        }
+        if (is_str(rd(frame, "isolation"), "read_uncommitted")) {
+            if (!control_stmt(self, "utility", &fnum, "PRAGMA read_uncommitted = 0")) {
+                zval ex;
+                take_exception(&ex);
+                push(errors, &ex);
+                zval_ptr_dtor(&ex);
+            }
+        }
+    }
+    zval_ptr_dtor(&fnum);
+}
+
+/* Db::finish: ends the transaction. Returns false with the error pending when the end failed. */
+static bool finish_tx(zval *self, zval *frame, bool commit)
+{
+    zval t;
+    ZVAL_TRUE(&t);
+    wr(frame, "finished", &t);
+    zval *md = rd(self, "md");
+    if (md != NULL && Z_TYPE_P(md) == IS_OBJECT) {
+        zval msg, r;
+        array_init(&msg);
+        zval op;
+        str_zv(&op, commit ? "commit" : "rollback");
+        setk(&msg, "op", &op);
+        zval_ptr_dtor(&op);
+        bool ok = mcall(md, "call", &r, 1, &msg);
+        zval_ptr_dtor(&msg);
+        zval_ptr_dtor(&r);
+        return ok;
+    }
+    zval fnum;
+    frame_number(frame, &fnum);
+    zval errors, failure_z;
+    frame_cleanup(self, frame, &errors);
+    joined(&errors, &failure_z);
+    zval_ptr_dtor(&errors);
+    if (commit && Z_TYPE(failure_z) == IS_NULL) {
+        if (control_stmt(self, "commit", &fnum, "COMMIT")) {
+            zval_ptr_dtor(&failure_z);
+            zval_ptr_dtor(&fnum);
+            return true;
+        }
+        zval ex;
+        take_exception(&ex);
+        zval_ptr_dtor(&failure_z);
+        ZVAL_COPY_VALUE(&failure_z, &ex);
+    }
+    zval rollback;
+    ZVAL_NULL(&rollback);
+    /* A failed COMMIT may have ended the transaction on the server, so only the remaining transaction is rolled back. */
+    bool attempted = false;
+    bool rolled = true;
+    zval pdo;
+    if (!commit) {
+        attempted = true;
+    } else if (handle_pdo(self, &pdo)) {
+        zval r;
+        bool ok = mcall(&pdo, "inTransaction", &r, 0, NULL);
+        attempted = ok && zend_is_true(&r);
+        zval_ptr_dtor(&r);
+        zval_ptr_dtor(&pdo);
+        if (!ok) {
+            zval ex;
+            take_exception(&ex);
+            ZVAL_COPY_VALUE(&rollback, &ex);
+            rolled = false;
+        }
+    } else {
+        zval ex;
+        take_exception(&ex);
+        ZVAL_COPY_VALUE(&rollback, &ex);
+        rolled = false;
+    }
+    if (rolled && attempted) {
+        if (!control_stmt(self, "rollback", &fnum, "ROLLBACK")) {
+            zval ex;
+            take_exception(&ex);
+            ZVAL_COPY_VALUE(&rollback, &ex);
+        }
+    }
+    zval_ptr_dtor(&fnum);
+    if (commit) {
+        if (Z_TYPE(rollback) == IS_NULL) {
+            put_exception(&failure_z);
+        } else {
+            throw_rollback(&failure_z, &rollback);
+            zval_ptr_dtor(&failure_z);
+            zval_ptr_dtor(&rollback);
+        }
+        return false;
+    }
+    zval list, final_err;
+    array_init(&list);
+    if (Z_TYPE(failure_z) != IS_NULL) {
+        push(&list, &failure_z);
+    }
+    if (Z_TYPE(rollback) != IS_NULL) {
+        push(&list, &rollback);
+    }
+    zval_ptr_dtor(&failure_z);
+    zval_ptr_dtor(&rollback);
+    joined(&list, &final_err);
+    zval_ptr_dtor(&list);
+    if (Z_TYPE(final_err) != IS_NULL) {
+        put_exception(&final_err);
+        return false;
+    }
+    zval_ptr_dtor(&final_err);
+    return true;
+}
+
+static void driver_error(zval *self, zval *ex, zval *out)
+{
+    zval arg;
+    ZVAL_COPY(&arg, ex);
+    if (!mcall(self, "driverError", out, 1, &arg)) {
+        ZVAL_NULL(out);
+    }
+    zval_ptr_dtor(&arg);
+}
+
+/* Db::begin: opens the transaction on the connection. out is the frame; false with the error pending when it failed. */
+static bool begin_tx(zval *self, const char *isolation, bool read_only, zend_long timeout, zval *out);
+
+/* Db::savepoint: a nested transaction of the same connection is a savepoint of the outer frame. out is the callback's result. */
+static bool savepoint_tx(zval *self, zval *frame, zval *fn, zval *out)
+{
+    zend_long sp = as_long(rd(frame, "savepoints")) + 1;
+    zval spz;
+    ZVAL_LONG(&spz, sp);
+    wr(frame, "savepoints", &spz);
+    char name[64];
+    snprintf(name, sizeof(name), "orm_sp_%ld", (long)sp);
+    zval audit_before;
+    ZVAL_COPY(&audit_before, rd(frame, "audit"));
+    bool kept = false;
+    bool has_pending = false;
+    zval pending;
+    bool ok_sp;
+    savepoint_control(self, frame, "savepoint", name, &ok_sp);
+    if (!ok_sp) {
+        take_exception(&pending);
+        has_pending = true;
+    } else {
+        frames_push(frame);
+        zval ret;
+        ZVAL_UNDEF(&ret);
+        bool ok = call_user_function(NULL, NULL, fn, &ret, 0, NULL) == SUCCESS && EG(exception) == NULL;
+        if (!ok) {
+            zval ex, failure, e1, e2, list, ended;
+            take_exception(&ex);
+            frames_pop();
+            if (is_instance(&ex, "PDOException")) {
+                driver_error(self, &ex, &failure);
+            } else {
+                ZVAL_COPY(&failure, &ex);
+            }
+            zval_ptr_dtor(&ex);
+            end_savepoint(self, frame, "rollback_to", name, &e1);
+            end_savepoint(self, frame, "release", name, &e2);
+            array_init(&list);
+            if (Z_TYPE(e1) != IS_NULL) {
+                push(&list, &e1);
+            }
+            if (Z_TYPE(e2) != IS_NULL) {
+                push(&list, &e2);
+            }
+            zval_ptr_dtor(&e1);
+            zval_ptr_dtor(&e2);
+            joined(&list, &ended);
+            zval_ptr_dtor(&list);
+            if (Z_TYPE(ended) == IS_NULL) {
+                ZVAL_COPY_VALUE(&pending, &failure);
+            } else {
+                throw_rollback(&failure, &ended);
+                take_exception(&pending);
+                zval_ptr_dtor(&failure);
+                zval_ptr_dtor(&ended);
+            }
+            has_pending = true;
+        } else {
+            frames_pop();
+            zval rel;
+            end_savepoint(self, frame, "release", name, &rel);
+            if (Z_TYPE(rel) != IS_NULL) {
+                ZVAL_COPY_VALUE(&pending, &rel);
+                has_pending = true;
+            } else {
+                kept = true;
+                ZVAL_COPY_VALUE(out, &ret);
+            }
+        }
+    }
+    if (!kept) {
+        wr(frame, "audit", &audit_before);
+    }
+    zval_ptr_dtor(&audit_before);
+    zend_long left = as_long(rd(frame, "savepoints")) - 1;
+    zval leftz;
+    ZVAL_LONG(&leftz, left);
+    wr(frame, "savepoints", &leftz);
+    if (has_pending) {
+        put_exception(&pending);
+    }
+    return kept;
+}
+
+/* Db::begin: the statements that open the transaction, by driver, and the frame that holds them. */
+static bool begin_tx(zval *self, const char *isolation, bool read_only, zend_long timeout, zval *out)
+{
+    zval *state = rd(self, "state");
+    if (as_bool(rd(state, "closed"))) {
+        throw_orm("CONFIG", "database is closed");
+        return false;
+    }
+    if (timeout > 0 && !is_str(rd(self, "driver"), "postgres")) {
+        throw_orm("CAPABILITY_UNSUPPORTED", "transaction timeoutMs is supported only by postgres");
+        return false;
+    }
+    zval *md = rd(self, "md");
+    if (md != NULL && Z_TYPE_P(md) == IS_OBJECT) {
+        if (isolation[0] != '\0') {
+            zval arg, e;
+            str_zv(&arg, "the transaction isolation option");
+            if (scall("Polyspec\\Orm\\Markdown::unsupported", &e, 1, &arg)) {
+                put_exception(&e);
+            }
+            zval_ptr_dtor(&arg);
+            return false;
+        }
+        zval n;
+        zval *st = rd(state, "transactions");
+        ZVAL_LONG(&n, as_long(st) + 1);
+        wr(state, "transactions", &n);
+        zval ctor[4];
+        ZVAL_COPY(&ctor[0], self);
+        ZVAL_BOOL(&ctor[1], read_only);
+        str_zv(&ctor[2], isolation);
+        ZVAL_COPY(&ctor[3], &n);
+        bool made = newobj("Polyspec\\Orm\\TxFrame", out, 4, ctor);
+        for (int i = 0; i < 4; i++) {
+            zval_ptr_dtor(&ctor[i]);
+        }
+        if (!made) {
+            return false;
+        }
+        zval ro, bm, r;
+        ZVAL_BOOL(&ro, read_only);
+        bool sent = scall("Polyspec\\Orm\\Markdown::beginMessage", &bm, 1, &ro)
+            && mcall(md, "call", &r, 1, &bm);
+        zval_ptr_dtor(&bm);
+        zval_ptr_dtor(&r);
+        return sent;
+    }
+    /* The upper-case level of the isolation: underscores become spaces. */
+    char level[32] = "";
+    for (size_t i = 0; isolation[i] != '\0' && i < sizeof(level) - 1; i++) {
+        char c = isolation[i] == '_' ? ' ' : isolation[i];
+        level[i] = (char)((c >= 'a' && c <= 'z') ? c - 32 : c);
+        level[i + 1] = '\0';
+    }
+    if (is_str(rd(self, "driver"), "sqlite") && !ensure_row_lock_table(self)) {
+        return false;
+    }
+    zval *st = rd(state, "transactions");
+    zval n;
+    ZVAL_LONG(&n, as_long(st) + 1);
+    wr(state, "transactions", &n);
+    zval ctor[4];
+    ZVAL_COPY(&ctor[0], self);
+    ZVAL_BOOL(&ctor[1], read_only);
+    str_zv(&ctor[2], isolation);
+    ZVAL_COPY(&ctor[3], &n);
+    bool made = newobj("Polyspec\\Orm\\TxFrame", out, 4, ctor);
+    for (int i = 0; i < 4; i++) {
+        zval_ptr_dtor(&ctor[i]);
+    }
+    if (!made) {
+        return false;
+    }
+    /* The statements that open the transaction. Each is [kind, sql] and is a control statement. */
+    const char *kinds[4];
+    char sqls[4][256];
+    int nsteps = 0;
+    const char *driver = Z_STRVAL_P(rd(self, "driver"));
+    if (strcmp(driver, "mysql") == 0) {
+        if (level[0] != '\0') {
+            kinds[nsteps] = "utility";
+            snprintf(sqls[nsteps++], 256, "SET TRANSACTION ISOLATION LEVEL %s", level);
+        }
+        kinds[nsteps] = "begin";
+        snprintf(sqls[nsteps++], 256, "%s", read_only ? "START TRANSACTION READ ONLY" : "START TRANSACTION");
+    } else if (strcmp(driver, "postgres") == 0) {
+        kinds[nsteps] = "begin";
+        snprintf(sqls[nsteps++], 256, "BEGIN%s%s%s", level[0] != '\0' ? " ISOLATION LEVEL " : "", level,
+            read_only ? " READ ONLY" : "");
+        if (timeout > 0) {
+            kinds[nsteps] = "utility";
+            snprintf(sqls[nsteps++], 256, "SET LOCAL statement_timeout = %ld", (long)timeout);
+        }
+    } else {
+        kinds[nsteps] = "begin";
+        snprintf(sqls[nsteps++], 256, "%s", read_only ? "BEGIN" : "BEGIN IMMEDIATE");
+        if (strcmp(isolation, "read_uncommitted") == 0) {
+            kinds[nsteps] = "utility";
+            snprintf(sqls[nsteps++], 256, "PRAGMA read_uncommitted = 1");
+        }
+        if (read_only) {
+            kinds[nsteps] = "utility";
+            snprintf(sqls[nsteps++], 256, "PRAGMA query_only = 1");
+        }
+    }
+    zval number_z;
+    frame_number(out, &number_z);
+    for (int i = 0; i < nsteps; i++) {
+        zval tables;
+        array_init(&tables);
+        zval tx;
+        ZVAL_COPY(&tx, &number_z);
+        bool ok = run_stmt(self, kinds[i], &tables, &tx, sqls[i], true);
+        zval_ptr_dtor(&tables);
+        zval_ptr_dtor(&tx);
+        if (ok) {
+            continue;
+        }
+        zval failure;
+        take_exception(&failure);
+        zval dummy;
+        bool in_tx = false;
+        zval pdo;
+        if (handle_pdo(self, &pdo)) {
+            zval r;
+            if (mcall(&pdo, "inTransaction", &r, 0, NULL)) {
+                in_tx = zend_is_true(&r);
+                zval_ptr_dtor(&r);
+            }
+            zval_ptr_dtor(&pdo);
+        } else {
+            zval_ptr_dtor(&failure);
+            take_exception(&dummy);
+            put_exception(&dummy);
+            zval_ptr_dtor(&number_z);
+            zval_ptr_dtor(out);
+            return false;
+        }
+        if (!in_tx) {
+            put_exception(&failure);
+            zval_ptr_dtor(&number_z);
+            zval_ptr_dtor(out);
+            return false;
+        }
+        if (!finish_tx(self, out, false)) {
+            zval cleanup;
+            take_exception(&cleanup);
+            throw_rollback(&failure, &cleanup);
+            zval_ptr_dtor(&failure);
+            zval_ptr_dtor(&cleanup);
+            zval_ptr_dtor(&number_z);
+            zval_ptr_dtor(out);
+            return false;
+        }
+        put_exception(&failure);
+        zval_ptr_dtor(&number_z);
+        zval_ptr_dtor(out);
+        return false;
+    }
+    zval_ptr_dtor(&number_z);
+    return true;
+}
+
+/* Sorts the strings of a list bytewise (SORT_STRING). */
+static int zstr_compare(const void *a, const void *b)
+{
+    zend_string *x = *(zend_string *const *)a;
+    zend_string *y = *(zend_string *const *)b;
+    return zend_binary_strcmp(ZSTR_VAL(x), ZSTR_LEN(x), ZSTR_VAL(y), ZSTR_LEN(y));
+}
+
+/* The keys of an array, sorted bytewise: the order of ksort(..., SORT_STRING). Keys that are integers are converted to strings. */
+static void sorted_keys(zval *arr, zend_string ***keys_out, size_t *n_out)
+{
+    size_t n = zend_hash_num_elements(Z_ARRVAL_P(arr));
+    zend_string **keys = emalloc(sizeof(zend_string *) * (n ? n : 1));
+    size_t i = 0;
+    zend_string *k;
+    zend_ulong h;
+    ZEND_HASH_FOREACH_KEY(Z_ARRVAL_P(arr), h, k)
+    {
+        keys[i++] = k != NULL ? zend_string_copy(k) : zend_long_to_str((zend_long)h);
+    }
+    ZEND_HASH_FOREACH_END();
+    qsort(keys, n, sizeof(zend_string *), zstr_compare);
+    *keys_out = keys;
+    *n_out = n;
+}
+
+static void free_keys(zend_string **keys, size_t n)
+{
+    for (size_t i = 0; i < n; i++) {
+        zend_string_release(keys[i]);
+    }
+    efree(keys);
+}
+
+/* The audit source of the configuration, called once: its value (an array), or false with its exception pending. */
+static bool scall_source(zval *source, zval *out)
+{
+    return call_user_function(NULL, NULL, source, out, 0, NULL) == SUCCESS && EG(exception) == NULL
+        && Z_TYPE_P(out) == IS_ARRAY;
+}
+
+/* a[k] = copy of v with a string key that is a symbol-table key (numeric strings become integer keys). */
+static void setkz(zval *a, zend_string *k, zval *v)
+{
+    zval c;
+    ZVAL_COPY(&c, v);
+    zend_symtable_update(Z_ARRVAL_P(a), k, &c);
+}
+
+/* Db::auditRecord: the audit record of the transaction's values: the audit source's value plus the transaction's value, in the
+ * record table the connection's set names. out is the record array, or the CONFIG error is pending (false). */
+static bool audit_record(zval *self, zval *values, zval *out)
+{
+    zval *source = rd(rd(self, "config"), "auditSource");
+    if (source == NULL || Z_TYPE_P(source) != IS_OBJECT) {
+        throw_orm("CONFIG", "the transaction has audit values but the connection has no audit source: set Config auditSource");
+        return false;
+    }
+    zval *state = rd(self, "state");
+    zval *sets = rd(state, "sets");
+    /* The models of the sets: [hash, model] pairs in registration order. */
+    zval models;
+    array_init(&models);
+    zend_string *hk;
+    zend_ulong hi;
+    ZEND_HASH_FOREACH_KEY(Z_ARRVAL_P(sets), hi, hk)
+    {
+        zval hash, model;
+        if (hk != NULL) {
+            ZVAL_STR_COPY(&hash, hk);
+        } else {
+            ZVAL_LONG(&hash, (zend_long)hi);
+        }
+        if (!scall("Polyspec\\Orm\\Registry::model", &model, 1, &hash)) {
+            zval_ptr_dtor(&hash);
+            zval_ptr_dtor(&models);
+            return false;
+        }
+        zval pair;
+        array_init(&pair);
+        zend_hash_next_index_insert(Z_ARRVAL(pair), &hash);
+        zend_hash_next_index_insert(Z_ARRVAL(pair), &model);
+        zend_hash_next_index_insert(Z_ARRVAL(models), &pair);
+    }
+    ZEND_HASH_FOREACH_END();
+    /* The audit record tables of the entities, sorted and unique. */
+    zval tables;
+    array_init(&tables);
+    zval *pair;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL(models), pair)
+    {
+        zval *model = aidx(pair, 1);
+        zval *ents = rd(model, "entities");
+        zval *entity;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(ents), entity)
+        {
+            zval *rec = aget(entity, "audit_record");
+            if (rec == NULL || Z_TYPE_P(rec) != IS_STRING || Z_STRLEN_P(rec) == 0) {
+                continue;
+            }
+            bool present = false;
+            zval *t;
+            ZEND_HASH_FOREACH_VAL(Z_ARRVAL(tables), t)
+            {
+                if (zend_string_equals(Z_STR_P(t), Z_STR_P(rec))) {
+                    present = true;
+                }
+            }
+            ZEND_HASH_FOREACH_END();
+            if (!present) {
+                push(&tables, rec);
+            }
+        }
+        ZEND_HASH_FOREACH_END();
+    }
+    ZEND_HASH_FOREACH_END();
+    size_t nt = acount(&tables);
+    if (nt == 0) {
+        zval_ptr_dtor(&models);
+        zval_ptr_dtor(&tables);
+        throw_orm("CONFIG", "the transaction has audit values but no set of the connection has an audited table");
+        return false;
+    }
+    /* Sorts the tables bytewise: the first one is the record table. */
+    zend_string **tk = emalloc(sizeof(zend_string *) * nt);
+    size_t ti = 0;
+    zval *t;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL(tables), t)
+    {
+        tk[ti++] = zend_string_copy(Z_STR_P(t));
+    }
+    ZEND_HASH_FOREACH_END();
+    qsort(tk, nt, sizeof(zend_string *), zstr_compare);
+    if (nt > 1) {
+        smart_str list = {0};
+        for (size_t i = 0; i < nt; i++) {
+            if (i > 0) {
+                smart_str_appends(&list, ", ");
+            }
+            smart_str_append(&list, tk[i]);
+        }
+        smart_str_0(&list);
+        throw_orm("CONFIG", "the audited tables of the connection record their audits in %s; one audit record table is required",
+            ZSTR_VAL(list.s));
+        smart_str_free(&list);
+        free_keys(tk, nt);
+        zval_ptr_dtor(&models);
+        zval_ptr_dtor(&tables);
+        return false;
+    }
+    zend_string *record_table = tk[0];
+    /* The target: the last entity of the sets whose table is the record table and that is not external. */
+    zval target;
+    ZVAL_NULL(&target);
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL(models), pair)
+    {
+        zval *hash = aidx(pair, 0);
+        zval *model = aidx(pair, 1);
+        zval *ents = rd(model, "entities");
+        zval *entity;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(ents), entity)
+        {
+            zval *tbl = aget(entity, "table");
+            if (tbl != NULL && Z_TYPE_P(tbl) == IS_STRING && zend_string_equals(Z_STR_P(tbl), record_table)
+                && !as_bool(aget(entity, "external"))) {
+                zval_ptr_dtor(&target);
+                array_init(&target);
+                setk(&target, "hash", hash);
+                setk(&target, "entity", entity);
+            }
+        }
+        ZEND_HASH_FOREACH_END();
+    }
+    ZEND_HASH_FOREACH_END();
+    if (Z_TYPE(target) == IS_NULL) {
+        throw_orm("CONFIG", "the audit record table %s is not a table of a set registered on the connection", ZSTR_VAL(record_table));
+        free_keys(tk, nt);
+        zval_ptr_dtor(&models);
+        zval_ptr_dtor(&tables);
+        return false;
+    }
+    zval *entity = aget(&target, "entity");
+    if (acount(aget(entity, "pk")) != 1) {
+        throw_orm("CONFIG", "the audit record table %s needs a primary key of one column", ZSTR_VAL(record_table));
+        zval_ptr_dtor(&target);
+        free_keys(tk, nt);
+        zval_ptr_dtor(&models);
+        zval_ptr_dtor(&tables);
+        return false;
+    }
+    /* The merged values: the source's, then the transaction's, each in key order. */
+    zval merged, src;
+    array_init(&merged);
+    bool ok = scall_source(source, &src);
+    if (ok) {
+        zval *cols = aget(entity, "columns");
+        for (int which = 0; which < 2 && ok; which++) {
+            zval *set = which == 0 ? &src : values;
+            zend_string **sk;
+            size_t sn;
+            sorted_keys(set, &sk, &sn);
+            for (size_t i = 0; i < sn && ok; i++) {
+                zval *v = zend_symtable_find(Z_ARRVAL_P(set), sk[i]);
+                ZVAL_DEREF(v);
+                if (zend_symtable_find(Z_ARRVAL_P(cols), sk[i]) == NULL || Z_TYPE_P(zend_symtable_find(Z_ARRVAL_P(cols), sk[i])) == IS_NULL) {
+                    throw_orm("CONFIG", "audit value %s is not a column of %s", ZSTR_VAL(sk[i]), ZSTR_VAL(record_table));
+                    ok = false;
+                    break;
+                }
+                setkz(&merged, sk[i], v);
+            }
+            free_keys(sk, sn);
+        }
+    }
+    zval_ptr_dtor(&src);
+    if (ok && acount(&merged) == 0) {
+        throw_orm("CONFIG", "the audit record of %s has no value: the audit source and the transaction give none", ZSTR_VAL(record_table));
+        ok = false;
+    }
+    free_keys(tk, nt);
+    zval_ptr_dtor(&models);
+    zval_ptr_dtor(&tables);
+    if (!ok) {
+        zval_ptr_dtor(&merged);
+        zval_ptr_dtor(&target);
+        return false;
+    }
+    setk(&target, "values", &merged);
+    zval_ptr_dtor(&merged);
+    ZVAL_COPY_VALUE(out, &target);
+    return true;
+}
+
+/* Db::insertAudit: inserts the audit record of the transaction and returns its table and key. */
+static bool insert_audit(zval *self, zval *frame, zval *record, zval *out)
+{
+    zval *entity = aget(record, "entity");
+    zval *hash = aget(record, "hash");
+    zval ctor[2];
+    str_zv(&ctor[0], "insert");
+    ZVAL_COPY(&ctor[1], hash);
+    zval r;
+    bool made = newobj(REQUEST_CLASS, &r, 2, ctor);
+    zval_ptr_dtor(&ctor[0]);
+    zval_ptr_dtor(&ctor[1]);
+    if (!made) {
+        return false;
+    }
+    zval ir;
+    ZVAL_COPY(&ir, rd(&r, "ir"));
+    setk(&ir, "entity", aget(entity, "entity"));
+    zval set;
+    array_init(&set);
+    zval *values = aget(record, "values");
+    zend_string **vk;
+    size_t vn;
+    sorted_keys(values, &vk, &vn);
+    bool ok = true;
+    for (size_t i = 0; i < vn && ok; i++) {
+        zval *value = zend_symtable_find(Z_ARRVAL_P(values), vk[i]);
+        ZVAL_DEREF(value);
+        zval entry;
+        array_init(&entry);
+        zval colz;
+        ZVAL_STR_COPY(&colz, vk[i]);
+        zend_hash_str_update(Z_ARRVAL(entry), "column", 6, &colz);
+        if (Z_TYPE_P(value) == IS_NULL) {
+            zval t;
+            ZVAL_TRUE(&t);
+            zend_hash_str_update(Z_ARRVAL(entry), "null", 4, &t);
+        } else {
+            zval *cols = aget(entity, "columns");
+            zval *cdef = zend_symtable_find(Z_ARRVAL_P(cols), vk[i]);
+            zval enc_args[2];
+            ZVAL_COPY(&enc_args[0], cdef);
+            ZVAL_COPY(&enc_args[1], value);
+            zval enc;
+            ok = scall("Polyspec\\Orm\\Model::encodeValue", &enc, 2, enc_args);
+            zval_ptr_dtor(&enc_args[0]);
+            zval_ptr_dtor(&enc_args[1]);
+            if (ok) {
+                if (Z_TYPE(enc) == IS_NULL) {
+                    zval t;
+                    ZVAL_TRUE(&t);
+                    zend_hash_str_update(Z_ARRVAL(entry), "null", 4, &t);
+                } else {
+                    zval pv;
+                    ok = mcall(&r, "param", &pv, 1, &enc);
+                    if (ok) {
+                        zend_hash_str_update(Z_ARRVAL(entry), "p", 1, &pv);
+                    }
+                }
+            }
+            zval_ptr_dtor(&enc);
+        }
+        if (ok) {
+            zend_hash_next_index_insert(Z_ARRVAL(set), &entry);
+        } else {
+            zval_ptr_dtor(&entry);
+        }
+    }
+    free_keys(vk, vn);
+    if (ok) {
+        setk(&ir, "set", &set);
+        wr(&r, "ir", &ir);
+    }
+    zval_ptr_dtor(&set);
+    zval_ptr_dtor(&ir);
+    if (!ok) {
+        zval_ptr_dtor(&r);
+        return false;
+    }
+    zval id_pair;
+    bool wok = write_of_impl(self, frame, &r, NULL, &id_pair);
+    zval_ptr_dtor(&r);
+    if (!wok) {
+        return false;
+    }
+    zval *id = aidx(&id_pair, 0);
+    zval key;
+    ZVAL_NULL(&key);
+    zval *pk = aidx(aget(entity, "pk"), 0);
+    zval *identity = aget(entity, "identity");
+    if (identity != NULL && pk != NULL && zend_string_equals(Z_STR_P(identity), Z_STR_P(pk))) {
+        if (id != NULL) {
+            ZVAL_LONG(&key, zval_get_long(id));
+        }
+    } else if (pk != NULL) {
+        zval *pv = zend_symtable_find(Z_ARRVAL_P(values), Z_STR_P(pk));
+        if (pv != NULL) {
+            ZVAL_COPY(&key, pv);
+        }
+    }
+    zval_ptr_dtor(&id_pair);
+    if (Z_TYPE(key) == IS_NULL) {
+        throw_orm("CONFIG", "the audit record %s has no %s after its insert", Z_STRVAL_P(aget(entity, "table")),
+            Z_STRVAL_P(pk));
+        return false;
+    }
+    array_init(out);
+    setk(out, "table", aget(entity, "table"));
+    setk(out, "key", &key);
+    zval_ptr_dtor(&key);
+    return true;
+}
+
+/* Db::auditFor: makes sure the audit record precedes a write of an audited table. A guard (an update, delete or restore that can
+ * match no row) inserts the record inside the savepoint orm_audit; then *settle is set, and settle_audit ends that savepoint. */
+static bool audit_for(zval *self, zval *frame, bool guard, bool *settle)
+{
+    *settle = false;
+    zval *audit = rd(frame, "audit");
+    zval *pending = rd(frame, "pendingAudit");
+    if (audit != NULL || pending == NULL) {
+        return true;
+    }
+    zval pend;
+    ZVAL_COPY(&pend, pending);
+    zval rec;
+    if (!guard) {
+        bool ok = insert_audit(self, frame, &pend, &rec);
+        zval_ptr_dtor(&pend);
+        if (ok) {
+            wr(frame, "audit", &rec);
+            zval_ptr_dtor(&rec);
+        }
+        return ok;
+    }
+    bool ok_sp;
+    savepoint_control(self, frame, "savepoint", "orm_audit", &ok_sp);
+    if (!ok_sp) {
+        zval_ptr_dtor(&pend);
+        return false;
+    }
+    if (!insert_audit(self, frame, &pend, &rec)) {
+        zval e, ended, ended1, ended2, list;
+        take_exception(&e);
+        end_savepoint(self, frame, "rollback_to", "orm_audit", &ended1);
+        end_savepoint(self, frame, "release", "orm_audit", &ended2);
+        array_init(&list);
+        if (Z_TYPE(ended1) != IS_NULL) {
+            push(&list, &ended1);
+        }
+        if (Z_TYPE(ended2) != IS_NULL) {
+            push(&list, &ended2);
+        }
+        zval_ptr_dtor(&ended1);
+        zval_ptr_dtor(&ended2);
+        joined(&list, &ended);
+        zval_ptr_dtor(&list);
+        zval_ptr_dtor(&pend);
+        if (Z_TYPE(ended) == IS_NULL) {
+            put_exception(&e);
+        } else {
+            throw_rollback(&e, &ended);
+            zval_ptr_dtor(&e);
+            zval_ptr_dtor(&ended);
+        }
+        return false;
+    }
+    zval_ptr_dtor(&pend);
+    wr(frame, "audit", &rec);
+    zval_ptr_dtor(&rec);
+    *settle = true;
+    return true;
+}
+
+/* The settle of a guarded audit: releases the savepoint when the write changed a row, and otherwise undoes the record. Returns the
+ * error to throw, or NULL in out. */
+static void settle_audit(zval *self, zval *frame, zend_long affected, zval *out)
+{
+    if (affected > 0) {
+        end_savepoint(self, frame, "release", "orm_audit", out);
+        return;
+    }
+    zval nul;
+    ZVAL_NULL(&nul);
+    wr(frame, "audit", &nul);
+    zval e1, e2, list;
+    end_savepoint(self, frame, "rollback_to", "orm_audit", &e1);
+    end_savepoint(self, frame, "release", "orm_audit", &e2);
+    array_init(&list);
+    if (Z_TYPE(e1) != IS_NULL) {
+        push(&list, &e1);
+    }
+    if (Z_TYPE(e2) != IS_NULL) {
+        push(&list, &e2);
+    }
+    zval_ptr_dtor(&e1);
+    zval_ptr_dtor(&e2);
+    joined(&list, out);
+    zval_ptr_dtor(&list);
+}
+
+/* Db::runTransaction: the callback runs in the frame; an error rolls the frame back, and its own failure is reported with the
+ * rollback's when the rollback fails too. A rollback fault of the test entry point is reported as failed. */
+static bool run_transaction(zval *self, zval *fn, const char *isolation, bool read_only, zend_long timeout, zval *pending, zval *out)
+{
+    zval frame;
+    if (!begin_tx(self, isolation, read_only, timeout, &frame)) {
+        return false;
+    }
+    if (pending != NULL) {
+        wr(&frame, "pendingAudit", pending);
+    }
+    frames_push(&frame);
+    zval v;
+    ZVAL_UNDEF(&v);
+    bool ok = call_user_function(NULL, NULL, fn, &v, 0, NULL) == SUCCESS && EG(exception) == NULL;
+    if (!ok) {
+        zval ex, failure, cleanup;
+        take_exception(&ex);
+        frames_pop();
+        if (is_instance(&ex, "PDOException")) {
+            driver_error(self, &ex, &failure);
+        } else {
+            ZVAL_COPY(&failure, &ex);
+        }
+        zval_ptr_dtor(&ex);
+        if (!finish_tx(self, &frame, false)) {
+            take_exception(&cleanup);
+            throw_rollback(&failure, &cleanup);
+            zval_ptr_dtor(&cleanup);
+            zval_ptr_dtor(&failure);
+            zval_ptr_dtor(&frame);
+            return false;
+        }
+        zval_ptr_dtor(&frame);
+        zval *rf = rd(rd(self, "state"), "rollbackFault");
+        if (as_bool(rf)) {
+            zval f;
+            ZVAL_FALSE(&f);
+            wr(rd(self, "state"), "rollbackFault", &f);
+            zval inner;
+            throw_orm("FAULT", "test fault: the rollback of the transaction ran and is reported as failed");
+            take_exception(&inner);
+            throw_rollback(&failure, &inner);
+            zval_ptr_dtor(&inner);
+            zval_ptr_dtor(&failure);
+            return false;
+        }
+        put_exception(&failure);
+        return false;
+    }
+    frames_pop();
+    if (!finish_tx(self, &frame, true)) {
+        zval_ptr_dtor(&frame);
+        zval_ptr_dtor(&v);
+        return false;
+    }
+    zval_ptr_dtor(&frame);
+    ZVAL_COPY_VALUE(out, &v);
+    return true;
+}
+
+/* Db::transaction: the callback runs in a transaction of the connection; a transaction of the same connection inside an active one
+ * is a savepoint and accepts only the retry option. A DEADLOCK is retried up to retry times, with a growing back-off. */
+static bool transaction_impl(zval *self, zval *fn, const char *isolation, bool read_only, zend_long timeout, zend_long retry,
+    zval *audit, zval *out)
+{
+    if (retry < 0) {
+        throw_orm("CONFIG", "transaction retry must not be negative");
+        return false;
+    }
+    if (timeout < 0) {
+        throw_orm("CONFIG", "transaction timeoutMs must not be negative");
+        return false;
+    }
+    static const char *const levels[] = {"", "read_uncommitted", "read_committed", "repeatable_read", "serializable"};
+    bool known = false;
+    for (size_t i = 0; i < sizeof(levels) / sizeof(levels[0]); i++) {
+        if (strcmp(isolation, levels[i]) == 0) {
+            known = true;
+        }
+    }
+    if (!known) {
+        throw_orm("CONFIG", "unsupported transaction isolation %s", isolation);
+        return false;
+    }
+    if (audit != NULL && Z_TYPE_P(audit) != IS_NULL) {
+        if (!unsupported_on_markdown(self, "a transaction with audit values")) {
+            return false;
+        }
+    }
+    zval *outer = active_for(self);
+    bool has_outer = outer != NULL;
+    zval outer_copy;
+    if (has_outer) {
+        ZVAL_COPY(&outer_copy, outer);
+    }
+    zval record;
+    bool has_record = false;
+    if (audit != NULL && Z_TYPE_P(audit) == IS_ARRAY && !has_outer) {
+        if (!audit_record(self, audit, &record)) {
+            if (has_outer) {
+                zval_ptr_dtor(&outer_copy);
+            }
+            return false;
+        }
+        has_record = true;
+    }
+    if (has_outer) {
+        bool has_audit = audit != NULL && Z_TYPE_P(audit) != IS_NULL;
+        if (strlen(isolation) != 0 || read_only || timeout != 0 || has_audit) {
+            zval_ptr_dtor(&outer_copy);
+            throw_orm("CONFIG", "a nested transaction of the same connection accepts only the retry option");
+            return false;
+        }
+        bool kept = savepoint_tx(self, &outer_copy, fn, out);
+        zval_ptr_dtor(&outer_copy);
+        return kept;
+    }
+    for (zend_long attempt = 0;; attempt++) {
+        if (run_transaction(self, fn, isolation, read_only, timeout, has_record ? &record : NULL, out)) {
+            if (has_record) {
+                zval_ptr_dtor(&record);
+            }
+            return true;
+        }
+        zval ex;
+        take_exception(&ex);
+        zval *code = rd(&ex, "code_");
+        bool deadlock = code != NULL && is_str(code, "DEADLOCK");
+        if (!deadlock || attempt >= retry) {
+            if (has_record) {
+                zval_ptr_dtor(&record);
+            }
+            put_exception(&ex);
+            return false;
+        }
+        zval_ptr_dtor(&ex);
+        zval r;
+        zval lo, hi;
+        ZVAL_LONG(&lo, 0);
+        ZVAL_LONG(&hi, 20000);
+        zval jitter_args[2];
+        ZVAL_COPY(&jitter_args[0], &lo);
+        ZVAL_COPY(&jitter_args[1], &hi);
+        zend_long jitter = 0;
+        if (scall("random_int", &r, 2, jitter_args) && Z_TYPE(r) == IS_LONG) {
+            jitter = Z_LVAL(r);
+        }
+        zval_ptr_dtor(&r);
+        zval_ptr_dtor(&jitter_args[0]);
+        zval_ptr_dtor(&jitter_args[1]);
+        zend_long micros = (50000L << attempt) + jitter;
+        usleep((useconds_t)micros);
+    }
+}
+
+ZEND_METHOD(Polyspec_Orm_Db, transaction)
+{
+    zval *fn;
+    zend_string *iso = NULL;
+    bool read_only = false;
+    zend_long timeout = 0, retry = 3;
+    zval *audit = NULL;
+    ZEND_PARSE_PARAMETERS_START(1, 6)
+        Z_PARAM_OBJECT_OF_CLASS(fn, zend_ce_closure)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_STR(iso)
+        Z_PARAM_BOOL(read_only)
+        Z_PARAM_LONG(timeout)
+        Z_PARAM_LONG(retry)
+        Z_PARAM_ARRAY_OR_NULL(audit)
+    ZEND_PARSE_PARAMETERS_END();
+    const char *isolation = iso != NULL ? ZSTR_VAL(iso) : "";
+    zval out;
+    ZVAL_UNDEF(&out);
+    if (!transaction_impl(ZEND_THIS, fn, isolation, read_only, timeout, retry, audit, &out)) {
+        RETURN_THROWS();
+    }
+    RETURN_COPY_VALUE(&out);
+}
+
+ZEND_METHOD(Polyspec_Orm_Db, nextTransaction)
+{
+    ZEND_PARSE_PARAMETERS_NONE();
+    zval *state = rd(ZEND_THIS, "state");
+    zend_long n = as_long(rd(state, "transactions")) + 1;
+    zval nz;
+    ZVAL_LONG(&nz, n);
+    wr(state, "transactions", &nz);
+    RETURN_LONG(n);
+}
+
+ZEND_METHOD(Polyspec_Orm_Db, transactionNumber)
+{
+    ZEND_PARSE_PARAMETERS_NONE();
+    zval *frame = active_for(ZEND_THIS);
+    if (frame == NULL) {
+        RETURN_NULL();
+    }
+    RETURN_COPY(rd(frame, "number"));
+}
+
 ZEND_METHOD(Polyspec_Orm_Db, activeFor)
 {
     zval *db;
     ZEND_PARSE_PARAMETERS_START(1, 1)
         Z_PARAM_OBJECT_OF_CLASS(db, cls("Polyspec\\Orm\\Db"))
     ZEND_PARSE_PARAMETERS_END();
-    /* No transaction frame exists in this extension yet, so no transaction is active. */
-    RETURN_NULL();
+    zval *frame = active_for(db);
+    if (frame == NULL) {
+        RETURN_NULL();
+    }
+    RETURN_COPY(frame);
+}
+
+ZEND_METHOD(Polyspec_Orm_Db, resolve)
+{
+    zval *conn;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_OBJECT_OR_NULL(conn)
+    ZEND_PARSE_PARAMETERS_END();
+    zval pair;
+    array_init(&pair);
+    if (conn != NULL) {
+        if (as_bool(rd(rd(conn, "state"), "closed"))) {
+            zval_ptr_dtor(&pair);
+            throw_orm("CONFIG", "database is closed");
+            RETURN_THROWS();
+        }
+        zval c;
+        ZVAL_COPY(&c, conn);
+        zend_hash_next_index_insert(Z_ARRVAL(pair), &c);
+        zval *frame = active_for(conn);
+        zval f;
+        if (frame != NULL) {
+            ZVAL_COPY(&f, frame);
+        } else {
+            ZVAL_NULL(&f);
+        }
+        zend_hash_next_index_insert(Z_ARRVAL(pair), &f);
+    } else {
+        if (g_nframes == 0) {
+            zval_ptr_dtor(&pair);
+            throw_orm("CONFIG", "the model has no connection; use connect or run it inside a transaction");
+            RETURN_THROWS();
+        }
+        zval *frame = &g_frames[g_nframes - 1];
+        zval db;
+        ZVAL_COPY(&db, rd(frame, "db"));
+        zend_hash_next_index_insert(Z_ARRVAL(pair), &db);
+        zval f;
+        ZVAL_COPY(&f, frame);
+        zend_hash_next_index_insert(Z_ARRVAL(pair), &f);
+    }
+    RETURN_COPY_VALUE(&pair);
+}
+
+ZEND_METHOD(Polyspec_Orm_Db, inTransaction)
+{
+    zval *conn, *fn;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_OBJECT_OR_NULL(conn)
+        Z_PARAM_OBJECT(fn)
+    ZEND_PARSE_PARAMETERS_END();
+    if (conn == NULL) {
+        if (g_nframes == 0) {
+            throw_orm("CONFIG", "the model has no connection; use connect or run it inside a transaction");
+            RETURN_THROWS();
+        }
+        zval ret;
+        ZVAL_UNDEF(&ret);
+        if (call_user_function(NULL, NULL, fn, &ret, 0, NULL) != SUCCESS || EG(exception) != NULL) {
+            zval_ptr_dtor(&ret);
+            RETURN_THROWS();
+        }
+        zval_ptr_dtor(&ret);
+        return;
+    }
+    zval out;
+    ZVAL_UNDEF(&out);
+    if (!transaction_impl(conn, fn, "", false, 0, 0, NULL, &out)) {
+        RETURN_THROWS();
+    }
+    zval_ptr_dtor(&out);
+}
+
+ZEND_METHOD(Polyspec_Orm_Db, utils)
+{
+    ZEND_PARSE_PARAMETERS_NONE();
+    zval self;
+    ZVAL_OBJ_COPY(&self, Z_OBJ_P(ZEND_THIS));
+    if (!newobj("Polyspec\\Orm\\Utils", return_value, 1, &self)) {
+        zval_ptr_dtor(&self);
+        RETURN_THROWS();
+    }
+    zval_ptr_dtor(&self);
+}
+
+ZEND_METHOD(Polyspec_Orm_Db, stats)
+{
+    ZEND_PARSE_PARAMETERS_NONE();
+    zend_long busy = active_for(ZEND_THIS) != NULL ? 1 : 0;
+    zval args[4];
+    ZVAL_LONG(&args[0], 1);
+    ZVAL_LONG(&args[1], 1);
+    ZVAL_LONG(&args[2], busy);
+    ZVAL_LONG(&args[3], 1 - busy);
+    if (!newobj("Polyspec\\Orm\\Stats", return_value, 4, args)) {
+        RETURN_THROWS();
+    }
 }

@@ -22,9 +22,7 @@ final class Faults
      */
     public static function failNextRollback(Db $db): void
     {
-        (\Closure::bind(static function (Db $db): void {
-            $db->state->rollbackFault = true;
-        }, null, Db::class))($db);
+        self::state($db)->rollbackFault = true;
     }
 
     /**
@@ -41,9 +39,7 @@ final class Faults
         if ($message === '') {
             throw new \InvalidArgumentException('failNextStatement needs a nonempty message');
         }
-        (\Closure::bind(static function (Db $db) use ($code, $message): void {
-            $db->state->statementFault = new OrmException($code, $message);
-        }, null, Db::class))($db);
+        self::state($db)->statementFault = new OrmException($code, $message);
     }
 
     /**
@@ -58,9 +54,7 @@ final class Faults
         if ($t === false || $t->format('Y-m-d H:i:s.u') !== $clock) {
             throw new \InvalidArgumentException('fixClock needs a YYYY-MM-DD HH:MM:SS.ffffff clock');
         }
-        (\Closure::bind(static function (Db $db) use ($t): void {
-            $db->state->fixedClock = $t;
-        }, null, Db::class))($db);
+        self::state($db)->fixedClock = $t;
     }
 
     /**
@@ -69,6 +63,15 @@ final class Faults
      */
     public static function lastAffected(Db $db): ?int
     {
-        return (\Closure::bind(static fn(Db $db): ?int => $db->state->lastAffected, null, Db::class))($db);
+        return self::state($db)->lastAffected;
+    }
+
+    /**
+     * The connection state of the Db. The state is private to Db, and a closure cannot be bound to the scope of the
+     * extension's internal Db, so it is read by reflection.
+     */
+    private static function state(Db $db): \Polyspec\Orm\DbState
+    {
+        return (new \ReflectionProperty(Db::class, 'state'))->getValue($db);
     }
 }

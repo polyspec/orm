@@ -792,11 +792,14 @@ dbspec-php-extension-check/planner: php-vendor-check dbspec-php-extension-check/
 	$(PHP_EXTENSION_TESTS) packages/php/tests/InsertPartsTest.php
 	$(PHP_EXTENSION_TESTS) packages/php/tests/IrAnswersTest.php
 
-# dbspec-php-extension-check/executor runs the suites of T182-5-1 with the extension loaded: DsnTest::test_sqlite_path (sqlite-paths)
-# and MysqlTlsTest::test_session_sql_mode (mysql-session). It first checks that the extension registers Polyspec\Orm\Db: its class is
-# internal, so the connection the suites open is C. The database suite needs make orm-test-servers first (WITH_TEST_ENV).
+# dbspec-php-extension-check/executor runs the suites of the connection, the statement path and the transactions with the extension
+# loaded: StatementEventsTest (statement-events), StatementFaultTest (statement-fault), DsnTest::test_sqlite_path (sqlite-paths) and
+# MysqlTlsTest::test_session_sql_mode (mysql-session). It first checks that the extension registers Polyspec\Orm\Db: its class is
+# internal, so the connection the suites open is C. The database suites need make orm-test-servers first (WITH_TEST_ENV).
 dbspec-php-extension-check/executor: php-vendor-check dbspec-php-extension-check/prepare
 	php -d extension=$(PHP_EXTENSION_LIBRARY) -r 'require "vendor-php/autoload.php"; exit((new ReflectionClass("Polyspec\\Orm\\Db"))->isInternal() ? 0 : 1);'
+	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/StatementEventsTest.php
+	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/StatementFaultTest.php
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/DsnTest.php --filter test_sqlite_path
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/MysqlTlsTest.php --filter test_session_sql_mode
 
