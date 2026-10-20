@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: b1fe519b3bf2301fdaf1eb65d0312fcf20744f835459d3fd545ecd71e5e96c0d -->
+<!-- source-sha256: 84b7aa69531e156584652c6f2af47c09222285ca4e0cb5ff70cf6f34e1e49fc0 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -68,7 +68,7 @@
 | KSTD-5-7 | lint-go가 통과한다 (KSTD-5 후속). Cause: golangci-lint가 examples, packages/go, tests에서, deadcode가 packages/go에서 실패한다 | the Go of the repository | `make lint-go` | [o] |
 | KSTD-5-8 | lint-python이 통과한다 (KSTD-5 후속). Cause: ruff format --check가 repository의 Python에서 실패한다 | the Python of the repository | `make lint-python` | [o] |
 | KSTD-5-9 | lint-php가 통과한다 (KSTD-5 후속). Cause: 루트, packages/php, packages/php-ext의 phpcs와 phpstan이 실패한다 | the PHP of the repository | `make lint-php` | [ ] |
-| KSTD-5-10 | PHP extension은 stub 하나를 가진 하나의 extension polyspec_orm이어서 lint-php-ext와 test-php-ext가 통과한다 (kit K293, S10) (KSTD-5 후속). Cause: kit은 repository의 extension을 package polyspec/orm-php-ext의 polyspec_orm으로, stub은 packages/php-ext/src/polyspec_orm.stub.php 하나로 정하는데, orm은 polyspec/orm-dbspec에서 stub 두 개로 orm_dbspec을 build한다 | packages/php-ext, its stubs, config/parity.json | `make lint-php-ext` | [!] 원인: lint-php-ext는 하나의 extension polyspec_orm과 그 하나의 stub으로 통과하지만, test-php-ext는 extension의 선언을 PHP library와 비교하는데 extension이 아직 Polyspec\Orm\Dbspec\Native와 Polyspec\Orm\Native 이름을 등록한다; 재시도: T182-0-2가 extension이 PHP library의 class 이름을 등록하게 한다 |
+| KSTD-5-10 | PHP extension은 stub 하나를 가진 하나의 extension polyspec_orm이어서 lint-php-ext와 test-php-ext가 통과한다 (kit K293, S10) (KSTD-5 후속). Cause: kit은 repository의 extension을 package polyspec/orm-php-ext의 polyspec_orm으로, stub은 packages/php-ext/src/polyspec_orm.stub.php 하나로 정하는데, orm은 polyspec/orm-dbspec에서 stub 두 개로 orm_dbspec을 build한다 | packages/php-ext, its stubs, config/parity.json | `make lint-php-ext` | [!] 원인: extension이 이제 PHP library가 선언하는 대로 선언하고 lint-php-ext가 통과한다; test-php-ext는 library test 단계에서 멈추는데, 이 단계는 packages/php/vendor를 읽고 이 monorepo는 root에 하나의 Composer vendor인 vendor-php를 설치한다; 재시도: kit이 PHP library의 library test를 그 repository가 설치하는 vendor directory에서 돌린다 |
 | KSTD-5-11 | CHECK_TARGETS가 kit-gates의 모든 gate를 돌린다 (KSTD-5 후속). Cause: kit-check가 CHECK_TARGETS가 돌리지 않는 gate 13개를 보고한다; 각 gate는 그 sub-item이 통과하면 추가된다 | Makefile | `make kit-check` | [ ] |
 | KSTD-5-12 | divergence-check가 통과한다: 어떤 test도 구현, runtime, platform으로 분기하지 않는다 (KSTD-5 후속). Cause: test 83개가 decimal_physical, statement_fault, rollback, integration, dbspec_set의 Rust test에서 #[cfg(...)]로, PHP와 php-ext test에서 extension_loaded로, stress test에서 platform으로 분기해 한 구현이 다른 구현과 다르게 검사된다; contracts/features.json의 partial feature는 KSTD-7-1~-8이다 | the tests of every implementation, config/parity.json | `make divergence-check` | [ ] |
 | KSTD-5-13 | bypass-check가 통과한다: 어떤 local 실행도 CI identity를 설정하지 않는다 (KSTD-5 후속). Cause: scripts/check/run.test.mts:181과 :189가 workflow 밖에서 CI identity를 설정한다 | scripts/check | `make bypass-check` | [ ] |
