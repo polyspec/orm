@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The negative-word helper of the Python dbspec parser is private, so `test_python_extractor` passes. Red: it named `is_negative_word` (KSTD-2-11-7-2-3).
 - The stored-version helper of the Python AES module is private, so the public names match the symbol contract again. Red: the extractor test named `stored_version` (KSTD-2-11-7-2-2).
 - Decoding an AES column falls back to no default version: a plan with no version column is INTERNAL, a NULL stored version of a non-NULL AES value is CODEC_DECODE, a NULL AES value is NULL and its version is never read, and rotation leaves a NULL AES cell unchanged, in all six implementations (COD-44). Red: the clients assumed a version, and rotation failed on NULL AES cells (KSTD-2-11-7-2-1).
 - A bad or undeclared AES key version is CONFIG, a stored version that is not a positive integer is CODEC_DECODE on every read and rotation path, and an AES or version column missing from a row the client selected is INTERNAL, in all six implementations (COD-44). Red: Go returned uncoded errors, and the other clients coerced or misclassified the stored version (KSTD-2-11-7-2).
