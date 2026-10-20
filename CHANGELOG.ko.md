@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 60df6cc6f9c168386fd5eac656a26349fbe186c7f33c5b9c684f701f57c322bc -->
+<!-- source-sha256: fb28736dda8001cbaa784bda6d9d5dbff5527d8ec5b704dc1a47fd543baf37fd -->
 # 변경 이력
 
 ## Unreleased
+- 모든 error-code unit이 INT-65를 인용하고 PHP extension을 포함한 여섯 구현 모두에서 그 상수를 가리키며, catalog unit 다섯 개는 여섯 구현에 묶인 하나의 unit이다; catalog test는 `Polyspec\Orm\Code`의 상수를 reflection으로 비교하므로 같은 assertion이 library와 extension을 검사하고, Python catalog test는 `docs/spec/errors.yaml`을 읽는다. red: api check가 php-extension symbol이 없는 error-code unit을 보고했다(KSTD-2-11-6).
 - DBS-173은 모든 generator가 set이 `use` line으로 쓰는 각 external table의 읽기 전용 model을 scan한 source가 부르든 안 부르든 쓴다고 규정하며, generator마다 하나씩 회귀 case 다섯 개가 이를 지킨다. 어떤 generator도 red가 아니었다: consumer에서 빠진 `Audit`는 T209 이전에 생성한 model에서 왔다(T228).
 - conformance check가 php-extension을 extension을 로드한 PHP runner로 돌리므로 모든 vector가 extension에서 돈다. MySQL과 PostgreSQL에서는 결과가 나머지 다섯 implementation과 같고, SQLite에서는 여섯 모두 문서화된 solo run의 row-lock statement만큼 같은 방식으로 다르다. red: 모든 conformance run이 unsupported language php-extension으로 멈췄다 (T182-0-3).
 - PHP extension이 library 이름으로 `Polyspec\Orm\Validator`를 C로 구현하므로 `tests/ir/validate.json`의 case 125개가 `make dbspec-php-extension-check/ir`에서 extension으로 돌고, interface 기록이 그 class를 담는다. red: extension을 켜도 validator는 PHP library의 것이었다(T182-3).

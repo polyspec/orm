@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- Every error-code unit cites INT-65 and names its constant in all six implementations, the PHP extension included, and the five catalog units are one unit bound in all six; the catalog test compares the constants of `Polyspec\Orm\Code` by reflection, so the same assertions check the library and the extension, and the Python catalog test reads `docs/spec/errors.yaml`. Red: the api check reported the error-code units naming no php-extension symbol (KSTD-2-11-6).
 - DBS-173 states that every generator writes the read-only model of each external table that a set uses through a `use` line, whether or not a scanned source calls it, and five regression cases, one per generator, guard it. No generator was red: the missing `Audit` of a consumer came from models generated before T209 (T228).
 - The conformance check runs php-extension as the PHP runner with the extension loaded, so every vector runs in the extension; on MySQL and PostgreSQL its results equal the other five implementations, and on SQLite all six differ alike by the documented row-lock statement of a solo run. Red: every conformance run stopped with unsupported language php-extension (T182-0-3).
 - The PHP extension implements `Polyspec\Orm\Validator` in C under the library's name, so the 125 cases of `tests/ir/validate.json` run with it under `make dbspec-php-extension-check/ir`, and the interface record holds the class. Red: with the extension loaded the validator was the PHP library's (T182-3).
