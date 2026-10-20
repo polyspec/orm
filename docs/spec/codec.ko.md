@@ -1,27 +1,27 @@
 <!-- doc-id: codec -->
-<!-- source-sha256: ac049a7d8d34465421782bf1363891e748c3d255f8d9f75fe25904b7a5be6dd3 -->
+<!-- source-sha256: 9609b3c8e8fa72c4d24d9902fa8f38d138e1b5d9d5b7067e3f06ad40e6aa1606 -->
 # 코덱 — 컬럼 스타일의 읽기/쓰기 (S2)
 
-Go 데이터베이스 값 변환은 잘못된 형식, null, 범위 초과, 유한하지 않은 값, 지원하지 않는 값에 `CODEC_DECODE`를 반환한다. Host 인코딩은 단계가 없거나 텍스트·바이트가 아닌 값에 `CODEC_ENCODE`를 반환한다. 생성 모델 대입은 컬럼 이름을 붙여 변환 오류를 보고한다. 행 조립은 오류를 호출자에게 반환하고 insert는 쓰기 전에 대입 필드를 검증한다. 빈 바이트 배열은 SQL NULL과 구분한다. scalar 집계 변환은 유효한 십진수를 가장 가까운 유한 binary64 값으로 받는다.
+- **COD-1** Go 데이터베이스 값 변환은 잘못된 형식, null, 범위 초과, 유한하지 않은 값, 지원하지 않는 값에 `CODEC_DECODE`를 반환한다. Host 인코딩은 단계가 없거나 텍스트·바이트가 아닌 값에 `CODEC_ENCODE`를 반환한다. 생성 모델 대입은 컬럼 이름을 붙여 변환 오류를 보고한다. 행 조립은 오류를 호출자에게 반환하고 insert는 쓰기 전에 대입 필드를 검증한다. 빈 바이트 배열은 SQL NULL과 구분한다. scalar 집계 변환은 유효한 십진수를 가장 가까운 유한 binary64 값으로 받는다.
 
-생성된 `decimal(P,S)` 필드는 MySQL, PostgreSQL, SQLite에서 십진 문자열을 받고 소수부 자릿수가 정확히 `S`개인 십진 문자열을 반환한다. `P`는 1부터 18까지, `S`는 0부터 `P`까지이며 각 스키마 빌더는 이 범위 밖의 선언을 거부한다. 0으로 채운 뒤 전체 자릿수는 `P`개 이하이며 소수부 자릿수는 정확히 `S`개다. 이진 부동소수점 값은 decimal 필드 입력이 아니다. 잘못된 십진수, 초과한 정밀도·소수부 자릿수, 정확히 디코딩할 수 없는 데이터베이스 값은 쓰기에서 `CODEC_ENCODE`, 읽기에서 `CODEC_DECODE`로 실패한다. SQL NULL은 구분한다. 이 필드의 정확한 값 기준은 scalar `sum`·`avg`의 유한 binary64 결과 기준을 바꾸지 않는다.
+- **COD-2** 생성된 `decimal(P,S)` 필드는 MySQL, PostgreSQL, SQLite에서 십진 문자열을 받고 소수부 자릿수가 정확히 `S`개인 십진 문자열을 반환한다. `P`는 1부터 18까지, `S`는 0부터 `P`까지이며 각 스키마 빌더는 이 범위 밖의 선언을 거부한다. 0으로 채운 뒤 전체 자릿수는 `P`개 이하이며 소수부 자릿수는 정확히 `S`개다. 이진 부동소수점 값은 decimal 필드 입력이 아니다. 잘못된 십진수, 초과한 정밀도·소수부 자릿수, 정확히 디코딩할 수 없는 데이터베이스 값은 쓰기에서 `CODEC_ENCODE`, 읽기에서 `CODEC_DECODE`로 실패한다. SQL NULL은 구분한다. 이 필드의 정확한 값 기준은 scalar `sum`·`avg`의 유한 binary64 결과 기준을 바꾸지 않는다.
 
-컬럼 스타일은 매니페스트 `styles: [...]`에 **쓰기 순서**로 기록된다(`gz_*` → `["serialize","gz"]`: 직렬화한 뒤 압축). 읽기는 역순.
-`aes`·`hex`·`ip`는 host stage이고 나머지는 실행기 codec이다. Go·PHP·Rust·TypeScript·Python은 같은 인증된 AES v2 형식과 정규화 값을 사용한다. 결정적 encoding은 TypeScript의 PHP serialize 정수형 실수 한 경우를 제외하고 byte가 같다. JavaScript는 `2`와 `2.0`을 같은 `number`로 표현하므로 TypeScript는 해당 값을 정수로 다시 encode한다.
+- **COD-3** 컬럼 스타일은 매니페스트 `styles: [...]`에 **쓰기 순서**로 기록된다(`gz_*` → `["serialize","gz"]`: 직렬화한 뒤 압축). 읽기는 역순.
+  `aes`·`hex`·`ip`는 host stage이고 나머지는 실행기 codec이다. Go·PHP·Rust·TypeScript·Python은 같은 인증된 AES v2 형식과 정규화 값을 사용한다. 결정적 encoding은 TypeScript의 PHP serialize 정수형 실수 한 경우를 제외하고 byte가 같다. JavaScript는 `2`와 `2.0`을 같은 `number`로 표현하므로 TypeScript는 해당 값을 정수로 다시 encode한다.
 
 ### Blind index
 
-`%% blind_index <table> <aes_column> <index_column>`은 AES column의 equality search column을 선언한다. 대상은 nullable 상태가 일치하고 single-column index로 선언된 `char(64)`/`string` 또는 `bytes` column이어야 한다. insert와 update에서 runtime은 `secrets.blind_index`를 key로 사용한 lowercase HMAC-SHA256(plaintext)을 대상에 저장한다. AES column의 equality와 `IN` predicate는 대상 column을 사용하며 ciphertext를 비교하지 않는다. blind-index key는 AES key version과 분리되며 이 directive가 있으면 필수다.
+- **COD-4** `%% blind_index <table> <aes_column> <index_column>`은 AES column의 equality search column을 선언한다. 대상은 nullable 상태가 일치하고 single-column index로 선언된 `char(64)`/`string` 또는 `bytes` column이어야 한다. insert와 update에서 runtime은 `secrets.blind_index`를 key로 사용한 lowercase HMAC-SHA256(plaintext)을 대상에 저장한다. AES column의 equality와 `IN` predicate는 대상 column을 사용하며 ciphertext를 비교하지 않는다. blind-index key는 AES key version과 분리되며 이 directive가 있으면 필수다.
 
 ### AES v2
 
-`aes`는 `ORM-AES2\0 || nonce || ciphertext || tag`를 저장한다. nonce는 12바이트 random 값이고 tag는 AES-256-GCM 인증 tag다. associated data는 `ORM-AES2\0`이다. AES key는 SHA-256(`polyspec/orm/aes-256-gcm/v2\0`와 설정 key bytes의 결합)이다. `aes_hex`는 AES 처리 후 uppercase hex를 적용한다.
+- **COD-5** `aes`는 `ORM-AES2\0 || nonce || ciphertext || tag`를 저장한다. nonce는 12바이트 random 값이고 tag는 AES-256-GCM 인증 tag다. associated data는 `ORM-AES2\0`이다. AES key는 SHA-256(`polyspec/orm/aes-256-gcm/v2\0`와 설정 key bytes의 결합)이다. `aes_hex`는 AES 처리 후 uppercase hex를 적용한다.
 
-모든 AES column은 같은 entity의 non-null integer `aes_key_version` column을 가진다. 새 write는 `secrets.aes_version`을 사용한다. read는 row에 저장된 version으로 `secrets.aes_keys[version]`을 선택한다. version이 없거나 인증에 실패하면 작업을 중단한다. runtime은 이전 ECB 형식을 decode하지 않는다.
+- **COD-6** 모든 AES column은 같은 entity의 non-null integer `aes_key_version` column을 가진다. 새 write는 `secrets.aes_version`을 사용한다. read는 row에 저장된 version으로 `secrets.aes_keys[version]`을 선택한다. version이 없거나 인증에 실패하면 작업을 중단한다. runtime은 이전 ECB 형식을 decode하지 않는다.
 
 ### 암호화한 JSON 값 {#encrypted-json-value}
 
-`json aes` 단계를 가진 blob 컬럼은 AES v2로 암호화한 JSON 값을 저장한다. `json` 단계가 ordered-json 텍스트를 쓰고 `aes`가 그 텍스트를 암호화한다. 읽기는 셀을 복호화하고 모든 `json` 단계와 같이 텍스트의 ordered-json 값을 반환한다([값 모델](#value-model) 참고). 이 값은 멤버 순서, 숫자 텍스트, 빈 객체와 빈 배열의 구분을 유지하므로 `1.50`은 `1.50`으로 반환된다. 엔티티는 non-null integer `aes_key_version` 컬럼을 선언한다.
+- **COD-7** `json aes` 단계를 가진 blob 컬럼은 AES v2로 암호화한 JSON 값을 저장한다. `json` 단계가 ordered-json 텍스트를 쓰고 `aes`가 그 텍스트를 암호화한다. 읽기는 셀을 복호화하고 모든 `json` 단계와 같이 텍스트의 ordered-json 값을 반환한다([값 모델](#value-model) 참고). 이 값은 멤버 순서, 숫자 텍스트, 빈 객체와 빈 배열의 구분을 유지하므로 `1.50`은 `1.50`으로 반환된다. 엔티티는 non-null integer `aes_key_version` 컬럼을 선언한다.
 
 ```text
 dbspec 1 example
@@ -38,75 +38,71 @@ table service_config {
 }
 ```
 
-키는 연결 설정에서 받는다. Go `orm.Config`는 `AESKey`, `AESVersion`, `AESKeys`, PHP `Config`, TypeScript 연결 옵션, Python 연결 옵션은 `aesKey`, `aesVersion`, `aesKeys`, Rust `polyspec_orm::Config`는 `aes_key`, `aes_version`, `aes_keys`를 사용한다. 쓰기는 현재 version의 키 `AESKeys[AESVersion]`로 암호화하고 그 version을 `aes_key_version`에 기록한다. `AESKey`는 그 키이며 키 목록에 그 키가 있으면 생략할 수 있고, 그 키와 다른 `AESKey`는 연결을 `CONFIG`로 실패시킨다. 읽기는 저장된 version의 키를 선택한다. `utils().aes().rotate(model, keyring)`는 version이 keyring의 현재 version과 다른 모든 행을 다시 암호화한다. `jsontext` 컬럼은 `json` 또는 `jsons` 단계만 받으므로 암호화한 JSON 값은 항상 blob 컬럼이다. 감사 변경 행은 AES 컬럼을 평문이나 암호문이 아닌 `{"redacted": true, "present": true}`로 기록한다. 빈 AES 키는 암호화와 복호화에서, 빈 blind index 키는 색인을 계산할 때 모든 client에서 `CONFIG`로 실패한다. 유효하지 않은 ciphertext는 `CODEC_DECODE`로 실패하며 다른 키는 시도하지 않는다.
+- **COD-8** 키는 연결 설정에서 받는다. Go `orm.Config`는 `AESKey`, `AESVersion`, `AESKeys`, PHP `Config`, TypeScript 연결 옵션, Python 연결 옵션은 `aesKey`, `aesVersion`, `aesKeys`, Rust `polyspec_orm::Config`는 `aes_key`, `aes_version`, `aes_keys`를 사용한다. 쓰기는 현재 version의 키 `AESKeys[AESVersion]`로 암호화하고 그 version을 `aes_key_version`에 기록한다. `AESKey`는 그 키이며 키 목록에 그 키가 있으면 생략할 수 있고, 그 키와 다른 `AESKey`는 연결을 `CONFIG`로 실패시킨다. 읽기는 저장된 version의 키를 선택한다. `utils().aes().rotate(model, keyring)`는 version이 keyring의 현재 version과 다른 모든 행을 다시 암호화한다. `jsontext` 컬럼은 `json` 또는 `jsons` 단계만 받으므로 암호화한 JSON 값은 항상 blob 컬럼이다. 감사 변경 행은 AES 컬럼을 평문이나 암호문이 아닌 `{"redacted": true, "present": true}`로 기록한다. 빈 AES 키는 암호화와 복호화에서, 빈 blind index 키는 색인을 계산할 때 모든 client에서 `CONFIG`로 실패한다. 유효하지 않은 ciphertext는 `CODEC_DECODE`로 실패하며 다른 키는 시도하지 않는다.
 
-| 스타일 | 쓰기(값 → 저장 바이트) | 읽기(저장 바이트 → 값) | 기준 |
-|---|---|---|---|
-| `json`, `jsons` | 공통 값 모델의 ordered-json 텍스트 | ordered-json 파싱 | tag `v0.0.9`의 ordered-json `0.0.9`; Go는 packages/go/go.mod가 요구하는 version(`v0.0.9`)의 module `github.com/polyspec/ordered-json/packages/go`를, Rust는 그 tag의 `packages/rust/Cargo.toml` package를 사용하고, PHP와 TypeScript는 version `0.0.9`를 선언하며 저장소 root의 composer.json과 package.json이 그것을 GitHub release `v0.0.9`의 Composer zip과 npm archive에서 받는다 |
-| `serialize` | PHP serialize | PHP unserialize | `serialize` / `unserialize` |
-| `base64` | 앞 stage가 쓴 byte의 base64 | base64_decode | `base64_encode` / `base64_decode` |
-| `gz` | 앞 stage가 쓴 byte의 zlib, level 9 | zlib inflate | `gzcompress(…, 9)` / `gzuncompress` |
-| `yaml` | YAML 1.2 문서 | YAML 1.2 파싱 | 단일 문서와 공통 값 모델 |
+- **COD-9** `json`, `jsons` — 쓰기(값 → 저장 바이트): 공통 값 모델의 ordered-json 텍스트; 읽기(저장 바이트 → 값): ordered-json 파싱; 기준: tag `v0.0.9`의 ordered-json `0.0.9`; Go는 packages/go/go.mod가 요구하는 version(`v0.0.9`)의 module `github.com/polyspec/ordered-json/packages/go`를, Rust는 그 tag의 `packages/rust/Cargo.toml` package를 사용하고, PHP와 TypeScript는 version `0.0.9`를 선언하며 저장소 root의 composer.json과 package.json이 그것을 GitHub release `v0.0.9`의 Composer zip과 npm archive에서 받는다
+- **COD-10** `serialize` — 쓰기(값 → 저장 바이트): PHP serialize; 읽기(저장 바이트 → 값): PHP unserialize; 기준: `serialize` / `unserialize`
+- **COD-11** `base64` — 쓰기(값 → 저장 바이트): 앞 stage가 쓴 byte의 base64; 읽기(저장 바이트 → 값): base64_decode; 기준: `base64_encode` / `base64_decode`
+- **COD-12** `gz` — 쓰기(값 → 저장 바이트): 앞 stage가 쓴 byte의 zlib, level 9; 읽기(저장 바이트 → 값): zlib inflate; 기준: `gzcompress(…, 9)` / `gzuncompress`
+- **COD-13** `yaml` — 쓰기(값 → 저장 바이트): YAML 1.2 문서; 읽기(저장 바이트 → 값): YAML 1.2 파싱; 기준: 단일 문서와 공통 값 모델
 
 ### Stage 목록 {#stage-lists}
 
-값을 byte로 바꾸는 것은 value stage(`json`, `jsons`, `serialize`, `yaml`)뿐이다. `base64`와 `gz`는 앞 stage가 쓴 byte를 변환할 뿐이므로 style `gz_*`는 목록 `['serialize','gz']`이고, `serialize`가 목록에 있어서 serialize한다. `['base64']`나 `['gz']`처럼 `base64`나 `gz`로 시작하는 목록은 어느 client에서도 serialize하지 않는다: 값은 string이고 stage는 그 UTF-8 text를 쓰며, 다른 값은 `CODEC_ENCODE`로 실패한다. SQL NULL은 SQL NULL로 남는다. 이런 목록을 읽으면 byte의 text가 되고, 올바른 UTF-8이 아닌 byte는 `CODEC_DECODE`로 실패한다. 빈 cell은 `CODEC_DECODE`로 실패하지만 마지막 stage가 `base64`이면 예외다: encoder가 빈 byte를 빈 cell로 쓰므로 `['base64']`로 저장한 `""`는 `""`로 읽히고, `['serialize','base64']`는 빈 cell을 `serialize` stage에서 거절한다. `tests/codec/vectors.json`(vector `base64_text.*`와 `gz_text.*`)과 `tests/codec/decode-vectors.json`이 이 사례를 담는다.
+- **COD-14** 값을 byte로 바꾸는 것은 value stage(`json`, `jsons`, `serialize`, `yaml`)뿐이다. `base64`와 `gz`는 앞 stage가 쓴 byte를 변환할 뿐이므로 style `gz_*`는 목록 `['serialize','gz']`이고, `serialize`가 목록에 있어서 serialize한다. `['base64']`나 `['gz']`처럼 `base64`나 `gz`로 시작하는 목록은 어느 client에서도 serialize하지 않는다: 값은 string이고 stage는 그 UTF-8 text를 쓰며, 다른 값은 `CODEC_ENCODE`로 실패한다. SQL NULL은 SQL NULL로 남는다. 이런 목록을 읽으면 byte의 text가 되고, 올바른 UTF-8이 아닌 byte는 `CODEC_DECODE`로 실패한다. 빈 cell은 `CODEC_DECODE`로 실패하지만 마지막 stage가 `base64`이면 예외다: encoder가 빈 byte를 빈 cell로 쓰므로 `['base64']`로 저장한 `""`는 `""`로 읽히고, `['serialize','base64']`는 빈 cell을 `serialize` stage에서 거절한다. `tests/codec/vectors.json`(vector `base64_text.*`와 `gz_text.*`)과 `tests/codec/decode-vectors.json`이 이 사례를 담는다.
 
 ## 값 모델 {#value-model}
-`json`과 `jsons` 단계는 텍스트를 `jsontext` 컬럼에 저장한다. 이 컬럼은 세 데이터베이스에서 모두 텍스트이므로 저장한 텍스트를 적은 그대로 읽는다. `json aes` 단계는 암호화한 텍스트를 blob 컬럼에 저장한다([암호화한 JSON 값](#encrypted-json-value) 참고). 데이터베이스 안에서 질의하는 데이터는 컬럼이나 자식 테이블로 만들며, ORM에는 JSON 경로 조건과 JSON 인덱스가 없다.
+- **COD-15** `json`과 `jsons` 단계는 텍스트를 `jsontext` 컬럼에 저장한다. 이 컬럼은 세 데이터베이스에서 모두 텍스트이므로 저장한 텍스트를 적은 그대로 읽는다. `json aes` 단계는 암호화한 텍스트를 blob 컬럼에 저장한다([암호화한 JSON 값](#encrypted-json-value) 참고). 데이터베이스 안에서 질의하는 데이터는 컬럼이나 자식 테이블로 만들며, ORM에는 JSON 경로 조건과 JSON 인덱스가 없다.
 
-스타일 컬럼의 타입은 "JSON형 값"이다: null · bool · 정수(i64) · 실수(f64) · 문자열 · 리스트 · 문자열 키 맵. `json`·`jsons` 단계는 모든 클라이언트에서 ordered-json 값으로 읽으며, 이 값은 객체 멤버 순서와 숫자 텍스트를 보존하고 빈 객체와 빈 배열을 구분한다. 쓰기는 이 값을 받아 텍스트를 그대로 저장한다. 모든 클라이언트에서 모델의 JSON 출력은 각 ordered-json 값을 값 스타일 컬럼의 바깥 표현 안에 저장한 텍스트로 쓰며 멤버 순서와 숫자 텍스트를 바꾸지 않는다. 언어의 JSON 인코더가 저장한 텍스트를 쓸 수 없으면 클라이언트는 자체 메서드로 출력을 쓰고 인코더는 실패한다. PHP `json_encode`는 ordered-json 값을 가진 행에서 `CODEC_ENCODE`로 실패하고 `toJson()`이 출력을 쓴다. TypeScript `toJSON`은 저장한 멤버 순서로 값을 다시 만들고 각 스칼라를 저장한 텍스트의 `JSON.rawJSON`으로 반환한다. JavaScript가 `"1"` 같은 멤버 키의 순서를 바꾸거나 저장한 키 텍스트가 키의 `JSON.stringify`와 다르면 `CODEC_ENCODE`로 실패하며, `toJSONText()`는 모든 경우에 정확한 텍스트를 쓴다. Rust serde 직렬화는 출력을 serde_json raw value로 쓰며 serde_json serializer는 이를 그대로 쓴다. Python `json.dumps`는 모델을 인코딩할 수 없어 `TypeError`로 실패한다. 모델과 `Collection`의 `to_json_text()`가 출력을 쓰며, 멤버는 `to_array()`의 행 순서를 따르고 다른 값은 `JSON.stringify`가 쓰는 대로 쓰므로, 같은 행에 대해 TypeScript `toJSONText()`와 같은 텍스트를 쓴다. `bytes`나 유한하지 않은 수처럼 JSON으로 쓸 수 없는 값은 `CODEC_ENCODE`로 실패한다. 배열 출력은 표에 적었다. 다른 스타일은 공통 값 모델을 사용한다.
+- **COD-16** 스타일 컬럼의 타입은 "JSON형 값"이다: null · bool · 정수(i64) · 실수(f64) · 문자열 · 리스트 · 문자열 키 맵. `json`·`jsons` 단계는 모든 클라이언트에서 ordered-json 값으로 읽으며, 이 값은 객체 멤버 순서와 숫자 텍스트를 보존하고 빈 객체와 빈 배열을 구분한다. 쓰기는 이 값을 받아 텍스트를 그대로 저장한다. 모든 클라이언트에서 모델의 JSON 출력은 각 ordered-json 값을 값 스타일 컬럼의 바깥 표현 안에 저장한 텍스트로 쓰며 멤버 순서와 숫자 텍스트를 바꾸지 않는다. 언어의 JSON 인코더가 저장한 텍스트를 쓸 수 없으면 클라이언트는 자체 메서드로 출력을 쓰고 인코더는 실패한다. PHP `json_encode`는 ordered-json 값을 가진 행에서 `CODEC_ENCODE`로 실패하고 `toJson()`이 출력을 쓴다. TypeScript `toJSON`은 저장한 멤버 순서로 값을 다시 만들고 각 스칼라를 저장한 텍스트의 `JSON.rawJSON`으로 반환한다. JavaScript가 `"1"` 같은 멤버 키의 순서를 바꾸거나 저장한 키 텍스트가 키의 `JSON.stringify`와 다르면 `CODEC_ENCODE`로 실패하며, `toJSONText()`는 모든 경우에 정확한 텍스트를 쓴다. Rust serde 직렬화는 출력을 serde_json raw value로 쓰며 serde_json serializer는 이를 그대로 쓴다. Python `json.dumps`는 모델을 인코딩할 수 없어 `TypeError`로 실패한다. 모델과 `Collection`의 `to_json_text()`가 출력을 쓰며, 멤버는 `to_array()`의 행 순서를 따르고 다른 값은 `JSON.stringify`가 쓰는 대로 쓰므로, 같은 행에 대해 TypeScript `toJSONText()`와 같은 텍스트를 쓴다. `bytes`나 유한하지 않은 수처럼 JSON으로 쓸 수 없는 값은 `CODEC_ENCODE`로 실패한다. 배열 출력은 표에 적었다. 다른 스타일은 공통 값 모델을 사용한다.
 
-Go JSON codec의 `Decode`는 `orm.StyledValue`를 반환하며 value 변형 안에 `*orderedjson.Value`를 담는다. `Encode`는 `orm.StyledValue`를 입력으로 받는다. `orm.SqlNull()`은 SQL NULL을 선택하고 `orm.Value(v)`는 `v == nil`을 포함한 저장 값을 선택한다. `Kind()`는 `sql-null` 또는 `value`를 반환하고 `Data()`는 value 변형의 저장 값만 반환한다. 생성 setter는 `(*Model, error)`를 반환하고 모델을 바꾸기 전에 값을 검증한다. getter는 `(orm.StyledValue, error)`를 반환하며 컬럼을 조회하지 않았으면 `COLUMN_UNSELECTED`로 실패한다. 사용자 값에는 Go의 `encoding/json`을 사용하지 않는다. portable scalar/list/map 값, named scalar type, `json` field tag가 있는 Go 구조체는 ordered-json으로 명시적으로 변환하며, 파싱한 ordered-json 값은 원래 순서와 노드 종류를 유지한다. `jsontext.Value`와 `json.RawMessage`는 이미 인코딩된 raw JSON 값일 때만 받아 즉시 ordered-json으로 파싱한다. 지원하지 않는 Go kind, 문자열이 아닌 map key, `[]byte`, 유한하지 않은 수는 `CODEC_ENCODE`를 반환한다.
+- **COD-17** Go JSON codec의 `Decode`는 `orm.StyledValue`를 반환하며 value 변형 안에 `*orderedjson.Value`를 담는다. `Encode`는 `orm.StyledValue`를 입력으로 받는다. `orm.SqlNull()`은 SQL NULL을 선택하고 `orm.Value(v)`는 `v == nil`을 포함한 저장 값을 선택한다. `Kind()`는 `sql-null` 또는 `value`를 반환하고 `Data()`는 value 변형의 저장 값만 반환한다. 생성 setter는 `(*Model, error)`를 반환하고 모델을 바꾸기 전에 값을 검증한다. getter는 `(orm.StyledValue, error)`를 반환하며 컬럼을 조회하지 않았으면 `COLUMN_UNSELECTED`로 실패한다. 사용자 값에는 Go의 `encoding/json`을 사용하지 않는다. portable scalar/list/map 값, named scalar type, `json` field tag가 있는 Go 구조체는 ordered-json으로 명시적으로 변환하며, 파싱한 ordered-json 값은 원래 순서와 노드 종류를 유지한다. `jsontext.Value`와 `json.RawMessage`는 이미 인코딩된 raw JSON 값일 때만 받아 즉시 ordered-json으로 파싱한다. 지원하지 않는 Go kind, 문자열이 아닌 map key, `[]byte`, 유한하지 않은 수는 `CODEC_ENCODE`를 반환한다.
 
-TypeScript codec의 `decode`는 `StyledValue<T>`를 반환한다. `kind`는 `sql-null` 또는 `value`이며, `StyledValue.sqlNull()`과 `StyledValue.value(v)`가 두 변형을 만든다. `payload()`는 value 변형의 값을 반환하고 SQL NULL에서는 `CODEC_DECODE`로 실패한다. `json`과 `jsons` 값은 ordered-json `Value`이며, `toJSON()`은 `{"kind":"sql-null"}` 또는 `{"kind":"value","value":...}` 형태로 쓴다.
+- **COD-18** TypeScript codec의 `decode`는 `StyledValue<T>`를 반환한다. `kind`는 `sql-null` 또는 `value`이며, `StyledValue.sqlNull()`과 `StyledValue.value(v)`가 두 변형을 만든다. `payload()`는 value 변형의 값을 반환하고 SQL NULL에서는 `CODEC_DECODE`로 실패한다. `json`과 `jsons` 값은 ordered-json `Value`이며, `toJSON()`은 `{"kind":"sql-null"}` 또는 `{"kind":"value","value":...}` 형태로 쓴다.
 
-Python codec의 `decode`는 `polyspec.orm.StyledValue`를 반환한다. `kind`는 `sql-null` 또는 `value`이며, `StyledValue.sql_null()`과 `StyledValue.value(v)`가 두 변형을 만든다. `payload()`는 저장 값을 반환하고 SQL NULL에서는 `CODEC_DECODE`로 실패한다. `to_json()`은 TypeScript와 같은 tagged 형태를 쓴다.
+- **COD-19** Python codec의 `decode`는 `polyspec.orm.StyledValue`를 반환한다. `kind`는 `sql-null` 또는 `value`이며, `StyledValue.sql_null()`과 `StyledValue.value(v)`가 두 변형을 만든다. `payload()`는 저장 값을 반환하고 SQL NULL에서는 `CODEC_DECODE`로 실패한다. `to_json()`은 TypeScript와 같은 tagged 형태를 쓴다.
 
-값 스타일 컬럼(`json`, `jsons`, `serialize`, `yaml`)은 SQL NULL과 저장된 null 값을 구분한다. SQL NULL에는 인코딩된 값이 없다. JSON 리터럴 null은 `null`, PHP 직렬화 null은 `N;`, YAML null은 YAML null 문서를 저장한다. 모든 값 스타일 컬럼의 setter는 `StyledValue<T>`를 받고 getter도 `StyledValue<T>`를 반환한다. `SqlNull`은 SQL NULL을 쓰거나 반환하고, `Value(v)`는 null 값을 포함해 인코딩된 값을 쓰거나 반환한다. nullable 컬럼은 두 변형을 모두 허용하며 NULL을 허용하지 않는 컬럼은 `SqlNull`을 `CODEC_ENCODE`로 거부한다. 언어의 일반 null 값은 값 스타일 컬럼 setter의 입력이 아니다. 읽기는 nullable 값 스타일 컬럼의 SQL NULL을 root 행, join 행, relation 행에서 모두 `SqlNull`로 반환하므로, 행에서 읽은 값은 같은 상태를 다시 쓰는 setter 입력이다. Python에서 두 변형은 `polyspec.orm`의 `StyledValue.sql_null()`과 `StyledValue.value(v)`이다. 거부된 setter는 호출 시 실패한다. Go setter는 `(*Model, error)`를, getter는 `(orm.StyledValue, error)`를 반환하고, Rust setter는 `Result<Self>`를, getter는 `Result<StyledValue<T>>`를 반환하며, PHP, Python, TypeScript는 코드가 있는 오류를 던진다. 행에서 조회하지 않은 컬럼에는 어느 값도 없으며 이를 요청하면 `COLUMN_UNSELECTED`를 반환한다. 빈 JSON 저장 텍스트는 유효하지 않으므로 `CODEC_DECODE`를 반환한다. 모델 JSON 출력과 행 배열 출력은 조회한 값 스타일 컬럼을 모두 감싼다. SQL NULL은 `{"kind":"sql-null"}`, 인코딩된 값은 `{"kind":"value","value":<디코딩된 값>}`이다. 이 바깥 표현은 문서 내용과 분리되므로 `{"kind":"sql-null"}` JSON 문서는 `{"kind":"value","value":{"kind":"sql-null"}}`이 된다. 조회하지 않은 컬럼을 요청하면 출력값을 만들지 않는다. `contracts/fixtures/styled_column_states.json`이 다섯 클라이언트와 세 데이터베이스의 setter 입력, getter 결과, 저장 셀, 행 배열 출력, 모델 JSON 출력, 오류를 정의한다.
+- **COD-20** 값 스타일 컬럼(`json`, `jsons`, `serialize`, `yaml`)은 SQL NULL과 저장된 null 값을 구분한다. SQL NULL에는 인코딩된 값이 없다. JSON 리터럴 null은 `null`, PHP 직렬화 null은 `N;`, YAML null은 YAML null 문서를 저장한다. 모든 값 스타일 컬럼의 setter는 `StyledValue<T>`를 받고 getter도 `StyledValue<T>`를 반환한다. `SqlNull`은 SQL NULL을 쓰거나 반환하고, `Value(v)`는 null 값을 포함해 인코딩된 값을 쓰거나 반환한다. nullable 컬럼은 두 변형을 모두 허용하며 NULL을 허용하지 않는 컬럼은 `SqlNull`을 `CODEC_ENCODE`로 거부한다. 언어의 일반 null 값은 값 스타일 컬럼 setter의 입력이 아니다. 읽기는 nullable 값 스타일 컬럼의 SQL NULL을 root 행, join 행, relation 행에서 모두 `SqlNull`로 반환하므로, 행에서 읽은 값은 같은 상태를 다시 쓰는 setter 입력이다. Python에서 두 변형은 `polyspec.orm`의 `StyledValue.sql_null()`과 `StyledValue.value(v)`이다. 거부된 setter는 호출 시 실패한다. Go setter는 `(*Model, error)`를, getter는 `(orm.StyledValue, error)`를 반환하고, Rust setter는 `Result<Self>`를, getter는 `Result<StyledValue<T>>`를 반환하며, PHP, Python, TypeScript는 코드가 있는 오류를 던진다. 행에서 조회하지 않은 컬럼에는 어느 값도 없으며 이를 요청하면 `COLUMN_UNSELECTED`를 반환한다. 빈 JSON 저장 텍스트는 유효하지 않으므로 `CODEC_DECODE`를 반환한다. 모델 JSON 출력과 행 배열 출력은 조회한 값 스타일 컬럼을 모두 감싼다. SQL NULL은 `{"kind":"sql-null"}`, 인코딩된 값은 `{"kind":"value","value":<디코딩된 값>}`이다. 이 바깥 표현은 문서 내용과 분리되므로 `{"kind":"sql-null"}` JSON 문서는 `{"kind":"value","value":{"kind":"sql-null"}}`이 된다. 조회하지 않은 컬럼을 요청하면 출력값을 만들지 않는다. `contracts/fixtures/styled_column_states.json`이 다섯 클라이언트와 세 데이터베이스의 setter 입력, getter 결과, 저장 셀, 행 배열 출력, 모델 JSON 출력, 오류를 정의한다.
 
-TypeScript는 setter가 모델을 바꾸기 전과 인코딩·출력을 위해 값을 읽을 때 값 스타일 값을 검사한다.
-정의되지 않은 멤버, 빠진 배열 위치, 유한하지 않은 수, JSON에서 생략될 객체 멤버는
-`CODEC_ENCODE`로 실패한다. 대입한 뒤 입력 객체가 바뀐 경우에도 같다.
+- **COD-21** TypeScript는 setter가 모델을 바꾸기 전과 인코딩·출력을 위해 값을 읽을 때 값 스타일 값을 검사한다.
+  정의되지 않은 멤버, 빠진 배열 위치, 유한하지 않은 수, JSON에서 생략될 객체 멤버는
+  `CODEC_ENCODE`로 실패한다. 대입한 뒤 입력 객체가 바뀐 경우에도 같다.
 
-`json.Marshaler`를 구현한 Go 값은 `MarshalJSON` 결과를 즉시 ordered-json으로 파싱한다. 반환 바이트는 유효한 JSON이어야 하므로 custom marshaler도 ordered-json 모델에서 노드 종류 검사를 거치며 이를 우회할 수 없다.
+- **COD-22** `json.Marshaler`를 구현한 Go 값은 `MarshalJSON` 결과를 즉시 ordered-json으로 파싱한다. 반환 바이트는 유효한 JSON이어야 하므로 custom marshaler도 ordered-json 모델에서 노드 종류 검사를 거치며 이를 우회할 수 없다.
 
-Go `[]byte`는 공통 JSON 값이 아니므로 JSON encoding에서 `CODEC_ENCODE`로 거부한다. Go의 base64 JSON 문자열 표현으로 조용히 변환하지 않으며, JSON column에 대입하기 전에 byte를 공통 값 모델로 decode해야 한다.
-| | Go | Rust | PHP | TypeScript | Python |
-|---|---|---|---|---|---|
-| `json`·`jsons` 컬럼 getter | `orm.StyledValue` containing `*orderedjson.Value` | `StyledValue<polyspec_orm::ordered_json::Value>` | `Polyspec\OrderedJson\Value`를 담은 `Polyspec\Orm\StyledValue` | `ordered-json`의 `StyledValue<Value>` | `polyspec.ordered_json.Value`를 담은 `polyspec.orm.StyledValue` |
-| 값 스타일 컬럼 setter 입력 | portable 값이나 ordered-json 값을 담은 `orm.StyledValue` | `StyledValue<T>`; `T`는 스타일 값 | 스타일 값을 담은 `Polyspec\Orm\StyledValue` | `StyledValue<T>`; `T`는 스타일 값 | 스타일 값을 담은 `polyspec.orm.StyledValue` |
-| 모델 JSON 출력 | `json.Marshal(model)`: 저장된 문서 텍스트를 포함한 값 스타일 컬럼의 바깥 표현 | `to_json()`과 serde 직렬화: 저장된 문서 텍스트를 포함한 값 스타일 컬럼의 바깥 표현 | `toJson()`: 값 스타일 컬럼의 바깥 표현, `json_encode`는 `CODEC_ENCODE`로 실패 | `JSON.stringify(model)`과 `toJSONText()`: 값 스타일 컬럼의 바깥 표현 | `to_json_text()`: 저장된 문서 텍스트를 포함한 값 스타일 컬럼의 바깥 표현, `json.dumps`는 `TypeError`로 실패 |
-| 배열 출력 | `ToArray()`는 값 스타일 컬럼의 바깥 표현을 반환 | `to_array()`는 serde_json 바깥 표현을 반환하며 `1e400`처럼 문서를 표현할 수 없으면 `CODEC_ENCODE` | `toArray()`는 값 스타일 컬럼의 바깥 표현을 반환 | `toArray()`는 값 스타일 컬럼의 바깥 표현을 반환 | `to_array()`는 값 스타일 컬럼의 바깥 표현을 반환 |
+- **COD-23** Go `[]byte`는 공통 JSON 값이 아니므로 JSON encoding에서 `CODEC_ENCODE`로 거부한다. Go의 base64 JSON 문자열 표현으로 조용히 변환하지 않으며, JSON column에 대입하기 전에 byte를 공통 값 모델로 decode해야 한다.
+- **COD-24** `json`·`jsons` 컬럼 getter — Go: `orm.StyledValue` containing `*orderedjson.Value`; Rust: `StyledValue<polyspec_orm::ordered_json::Value>`; PHP: `Polyspec\OrderedJson\Value`를 담은 `Polyspec\Orm\StyledValue`; TypeScript: `ordered-json`의 `StyledValue<Value>`; Python: `polyspec.ordered_json.Value`를 담은 `polyspec.orm.StyledValue`
+- **COD-25** 값 스타일 컬럼 setter 입력 — Go: portable 값이나 ordered-json 값을 담은 `orm.StyledValue`; Rust: `StyledValue<T>`; `T`는 스타일 값; PHP: 스타일 값을 담은 `Polyspec\Orm\StyledValue`; TypeScript: `StyledValue<T>`; `T`는 스타일 값; Python: 스타일 값을 담은 `polyspec.orm.StyledValue`
+- **COD-26** 모델 JSON 출력 — Go: `json.Marshal(model)`: 저장된 문서 텍스트를 포함한 값 스타일 컬럼의 바깥 표현; Rust: `to_json()`과 serde 직렬화: 저장된 문서 텍스트를 포함한 값 스타일 컬럼의 바깥 표현; PHP: `toJson()`: 값 스타일 컬럼의 바깥 표현, `json_encode`는 `CODEC_ENCODE`로 실패; TypeScript: `JSON.stringify(model)`과 `toJSONText()`: 값 스타일 컬럼의 바깥 표현; Python: `to_json_text()`: 저장된 문서 텍스트를 포함한 값 스타일 컬럼의 바깥 표현, `json.dumps`는 `TypeError`로 실패
+- **COD-27** 배열 출력 — Go: `ToArray()`는 값 스타일 컬럼의 바깥 표현을 반환; Rust: `to_array()`는 serde_json 바깥 표현을 반환하며 `1e400`처럼 문서를 표현할 수 없으면 `CODEC_ENCODE`; PHP: `toArray()`는 값 스타일 컬럼의 바깥 표현을 반환; TypeScript: `toArray()`는 값 스타일 컬럼의 바깥 표현을 반환; Python: `to_array()`는 값 스타일 컬럼의 바깥 표현을 반환
 
-PHP 배열은 순서 있는 맵이다. 키가 정확히 `0..n-1`인 배열은 리스트로 읽고, 그 밖의 키는 맵으로 읽는다. serialize 계열 codec은 키 표현을 보존한다. Go와 Rust는 JSON 맵 키를 정렬하고 PHP는 삽입 순서를 유지하므로, 값이 같아도 바이트는 다를 수 있다.
+- **COD-28** PHP 배열은 순서 있는 맵이다. 키가 정확히 `0..n-1`인 배열은 리스트로 읽고, 그 밖의 키는 맵으로 읽는다. serialize 계열 codec은 키 표현을 보존한다. Go와 Rust는 JSON 맵 키를 정렬하고 PHP는 삽입 순서를 유지하므로, 값이 같아도 바이트는 다를 수 있다.
 
-`yaml`은 YAML 1.2 문서 하나를 저장한다. 출력 값은 공통 값 모델을 사용한다. 매핑 키는 문자열이며 정수 YAML 키는 PHP 배열과의 호환을 위해 십진 문자열로 변환한다. 중복 키, 다중 문서, alias, anchor(alias가 없어도), 명시적 tag(`!!str`, `!!int` 같은 core tag 포함), 유한하지 않은 실수, collection 키, 따옴표 없는 boolean·null·실수 키는 `CODEC_DECODE`를 반환한다. 문서가 없는 text, 즉 비었거나 comment만 담은 text는 YAML 값이 아니므로 `CODEC_DECODE`를 반환한다; SQL NULL은 별개의 상태이고, null 값은 `null`이나 `---` 같은 null 문서로 저장한다. YAML 출력 텍스트는 클라이언트마다 다를 수 있으므로 클라이언트 간 검사는 디코딩 값을 비교한다.
+- **COD-29** `yaml`은 YAML 1.2 문서 하나를 저장한다. 출력 값은 공통 값 모델을 사용한다. 매핑 키는 문자열이며 정수 YAML 키는 PHP 배열과의 호환을 위해 십진 문자열로 변환한다. 중복 키, 다중 문서, alias, anchor(alias가 없어도), 명시적 tag(`!!str`, `!!int` 같은 core tag 포함), 유한하지 않은 실수, collection 키, 따옴표 없는 boolean·null·실수 키는 `CODEC_DECODE`를 반환한다. 문서가 없는 text, 즉 비었거나 comment만 담은 text는 YAML 값이 아니므로 `CODEC_DECODE`를 반환한다; SQL NULL은 별개의 상태이고, null 값은 `null`이나 `---` 같은 null 문서로 저장한다. YAML 출력 텍스트는 클라이언트마다 다를 수 있으므로 클라이언트 간 검사는 디코딩 값을 비교한다.
 
 ## 사례
-- ordered-json은 빈 객체와 빈 리스트를 구분한다. `{}`는 모든 client에서 파싱·인코딩·반복 왕복 후에도 객체로 유지되고, `[]`는 배열로 유지된다.
-- Rust는 SQL NULL을 `Val::Null`로, 빈 텍스트를 `Val::Str("")`로 읽는다. 빈 텍스트를 `json`이나 `jsons` 스타일로 디코딩하면 `CODEC_DECODE`를 반환한다.
-- SQL NULL, JSON 리터럴 null, 조회하지 않은 값 스타일 컬럼은 저장값, getter, 행 배열, 모델 JSON 출력에서 구분한다. 조회하지 않은 컬럼을 요청하면 `COLUMN_UNSELECTED`를 반환한다.
-- `json`과 `jsons`는 `[]`, `{}`, `0`, `""`를 보존한다. 파싱 실패는 `CODEC_DECODE`를 반환한다.
-- serialize 계열의 형식 오류는 `CODEC_DECODE`를 반환한다. `O:`, `C:`, `R:`, `r:`는 `CODEC_UNSUPPORTED`를 반환한다.
-- YAML 파싱·값 모델 오류는 `CODEC_DECODE`, YAML 인코딩 오류는 `CODEC_ENCODE`를 반환한다. 첫 위치가 아닌 `yaml` 단계는 `CODEC_UNSUPPORTED`를 반환한다.
-- 문자열 길이는 바이트 길이를 쓴다. 압축 바이트는 구현마다 다를 수 있으므로 `gz`는 왕복한 값이 같음을 보장한다.
+- **COD-30** ordered-json은 빈 객체와 빈 리스트를 구분한다. `{}`는 모든 client에서 파싱·인코딩·반복 왕복 후에도 객체로 유지되고, `[]`는 배열로 유지된다.
+- **COD-31** Rust는 SQL NULL을 `Val::Null`로, 빈 텍스트를 `Val::Str("")`로 읽는다. 빈 텍스트를 `json`이나 `jsons` 스타일로 디코딩하면 `CODEC_DECODE`를 반환한다.
+- **COD-32** SQL NULL, JSON 리터럴 null, 조회하지 않은 값 스타일 컬럼은 저장값, getter, 행 배열, 모델 JSON 출력에서 구분한다. 조회하지 않은 컬럼을 요청하면 `COLUMN_UNSELECTED`를 반환한다.
+- **COD-33** `json`과 `jsons`는 `[]`, `{}`, `0`, `""`를 보존한다. 파싱 실패는 `CODEC_DECODE`를 반환한다.
+- **COD-34** serialize 계열의 형식 오류는 `CODEC_DECODE`를 반환한다. `O:`, `C:`, `R:`, `r:`는 `CODEC_UNSUPPORTED`를 반환한다.
+- **COD-35** YAML 파싱·값 모델 오류는 `CODEC_DECODE`, YAML 인코딩 오류는 `CODEC_ENCODE`를 반환한다. 첫 위치가 아닌 `yaml` 단계는 `CODEC_UNSUPPORTED`를 반환한다.
+- **COD-36** 문자열 길이는 바이트 길이를 쓴다. 압축 바이트는 구현마다 다를 수 있으므로 `gz`는 왕복한 값이 같음을 보장한다.
 
 ## 디코딩은 정확하다 {#decoding-is-exact}
-저장 셀은 인코더의 출력이므로, 읽기는 모든 클라이언트와 모든 데이터베이스에서 인코더가 쓰는 형태의 셀만 디코딩한다. 인코더는 `base64`를 padding을 붙인 표준 알파벳으로, padding bit는 0으로, 공백이나 줄바꿈 없이 쓰고, `hex`는 대문자 hex 숫자로만 쓰며, 그 둘레에 어떤 문자도 쓰지 않는다. 그래서 `base64`나 `hex` 단계는 그 밖의 형태에서 `CODEC_DECODE`로 실패한다: 둘레나 안쪽의 모든 종류의 공백(space, 줄바꿈, form feed, NUL, U+001C 같은 information separator, byte order mark), 빠진 padding 문자, 0이 아닌 padding bit, 알파벳 밖의 문자. 어떤 클라이언트도 디코딩 전에 문자를 잘라 내거나 건너뛰지 않는다. 이유는 다음과 같다.
+- **COD-37** 저장 셀은 인코더의 출력이므로, 읽기는 모든 클라이언트와 모든 데이터베이스에서 인코더가 쓰는 형태의 셀만 디코딩한다. 인코더는 `base64`를 padding을 붙인 표준 알파벳으로, padding bit는 0으로, 공백이나 줄바꿈 없이 쓰고, `hex`는 대문자 hex 숫자로만 쓰며, 그 둘레에 어떤 문자도 쓰지 않는다. 그래서 `base64`나 `hex` 단계는 그 밖의 형태에서 `CODEC_DECODE`로 실패한다: 둘레나 안쪽의 모든 종류의 공백(space, 줄바꿈, form feed, NUL, U+001C 같은 information separator, byte order mark), 빠진 padding 문자, 0이 아닌 padding bit, 알파벳 밖의 문자. 어떤 클라이언트도 디코딩 전에 문자를 잘라 내거나 건너뛰지 않는다. 이유는 다음과 같다.
 
 - 둘 이상의 저장 형태에서 디코딩되는 값은 왕복하지 않는다. 다시 인코딩하면 다른 바이트를 쓰므로, 읽기가 저장 셀이 ORM이 쓰는 것과 다르다는 사실을 감춘다.
 - 언어마다 trim이 지우는 문자 집합이 다르다(예를 들어 Go와 Python은 form feed를, PHP는 NUL을, JavaScript는 byte order mark를 지운다). 그래서 너그러운 읽기는 클라이언트마다 다른 셀을 받는다. 정확한 읽기만이 모든 클라이언트가 똑같이 구현하는 규칙이다.
 - 클라이언트가 모든 `hex` 셀을 디코딩하므로 이 규칙은 모든 데이터베이스에서 성립한다. MySQL `UNHEX`는 홀수 길이 text를 받고 공백이 있는 셀에 NULL을 내므로, 어떤 dialect도 `hex`를 SQL에서 읽지 않는다. 어떤 dialect도 `hex`를 SQL에서 쓰지 않는다: 모든 데이터베이스에서 클라이언트 인코더가 대문자 text를 쓰고, 모든 dialect는 저장된 셀을 그대로 읽어 host 디코딩에 넘긴다.
 
-`ip` 인코더도 쓰기 쪽에서 같은 규칙을 지킨다: 모든 클라이언트에서 주소의 정확한 text만 pack하고, 그 둘레나 안의 공백(space, tab, 줄바꿈, form feed, NUL, no-break space)은 모두 `CODEC_ENCODE`로 실패한다. 어떤 클라이언트도 입력을 trim하지 않는다. trim하면 두 입력이 같은 바이트로 저장되고 저장 값이 입력으로 읽히지 않기 때문이다. `tests/codec/vectors.json`의 `ip.*` vector가 이 사례를 담는다.
+- **COD-38** `ip` 인코더도 쓰기 쪽에서 같은 규칙을 지킨다: 모든 클라이언트에서 주소의 정확한 text만 pack하고, 그 둘레나 안의 공백(space, tab, 줄바꿈, form feed, NUL, no-break space)은 모두 `CODEC_ENCODE`로 실패한다. 어떤 클라이언트도 입력을 trim하지 않는다. trim하면 두 입력이 같은 바이트로 저장되고 저장 값이 입력으로 읽히지 않기 때문이다. `tests/codec/vectors.json`의 `ip.*` vector가 이 사례를 담는다.
 
-`hex`는 대문자 hex 숫자만 받는다. 모든 인코더가 대문자를 쓰므로 소문자는 `CODEC_DECODE`다. Go는 다른 클라이언트가 host 디코딩을 공개하듯(PHP `Codec::hostDecode`, TypeScript `hostDecode`, Rust `codec::host_decode`, Python `host_decode`) `orm.HostDecode(raw, styles, aesKey)`를 공개한다. `aes`가 없는 목록에는 key가 필요 없다.
+- **COD-39** `hex`는 대문자 hex 숫자만 받는다. 모든 인코더가 대문자를 쓰므로 소문자는 `CODEC_DECODE`다. Go는 다른 클라이언트가 host 디코딩을 공개하듯(PHP `Codec::hostDecode`, TypeScript `hostDecode`, Rust `codec::host_decode`, Python `host_decode`) `orm.HostDecode(raw, styles, aesKey)`를 공개한다. `aes`가 없는 목록에는 key가 필요 없다.
 
 ## 벡터 (`tests/codec`)
-`vectors.json`은 `php tests/codec/gen.php`로 생성한다. 각 러너는 저장 바이트를 읽어 정규화한 JSON을 비교한 뒤, 다시 인코딩한 serialize 계열 바이트와 JSON/gz 왕복 값을 비교한다. TypeScript는 같은 파일을 `node packages/ts/tests/codec-vector.mjs`로, Python은 `python -m packages.python.tests.test_codec_vectors`로 실행한다. `make codec-check`는 Go 러너, Rust 러너, TypeScript 러너, Python 러너를 실행하고 각 러너는 인코딩 결과를 `$ORM_CODEC_OUT`에 쓰며, PHP `CodecVectorsTest`가 다른 클라이언트의 출력을 모두 디코딩한다(tests/codec/README.md). 데이터베이스 왕복은 `tests/conformance`의 `codec_roundtrip`이 검사한다. `decode-vectors.json`은 저장 셀과 각 셀이 디코딩되어야 할 값이나 오류를 적는다([디코딩은 정확하다](#decoding-is-exact) 참고). Go, PHP, Rust, TypeScript, Python의 codec 테스트가 각자 자기 패키지에서 그 파일을 읽는다. PHP 확장 `orm_dbspec`에는 codec이 없다. 확장은 dbspec 표면만 구현하며, 그 상수 `Setting::CODEC_STAGES`(`packages/php-ext/src/orm_dbspec.c`)는 `codec` 설정이 적을 수 있는 단계의 이름일 뿐 어떤 셀도 디코딩하지 않는다. PHP 프로그램은 PHP 클라이언트의 `Polyspec\Orm\Codec`으로 디코딩한다.
+- **COD-40** `vectors.json`은 `php tests/codec/gen.php`로 생성한다. 각 러너는 저장 바이트를 읽어 정규화한 JSON을 비교한 뒤, 다시 인코딩한 serialize 계열 바이트와 JSON/gz 왕복 값을 비교한다. TypeScript는 같은 파일을 `node packages/ts/tests/codec-vector.mjs`로, Python은 `python -m packages.python.tests.test_codec_vectors`로 실행한다. `make codec-check`는 Go 러너, Rust 러너, TypeScript 러너, Python 러너를 실행하고 각 러너는 인코딩 결과를 `$ORM_CODEC_OUT`에 쓰며, PHP `CodecVectorsTest`가 다른 클라이언트의 출력을 모두 디코딩한다(tests/codec/README.md). 데이터베이스 왕복은 `tests/conformance`의 `codec_roundtrip`이 검사한다. `decode-vectors.json`은 저장 셀과 각 셀이 디코딩되어야 할 값이나 오류를 적는다([디코딩은 정확하다](#decoding-is-exact) 참고). Go, PHP, Rust, TypeScript, Python의 codec 테스트가 각자 자기 패키지에서 그 파일을 읽는다. PHP 확장 `orm_dbspec`에는 codec이 없다. 확장은 dbspec 표면만 구현하며, 그 상수 `Setting::CODEC_STAGES`(`packages/php-ext/src/orm_dbspec.c`)는 `codec` 설정이 적을 수 있는 단계의 이름일 뿐 어떤 셀도 디코딩하지 않는다. PHP 프로그램은 PHP 클라이언트의 `Polyspec\Orm\Codec`으로 디코딩한다.
 
 ## 생성 코드
-- 읽기: 실행기가 위치형 행을 읽은 직후 `assemble.columns[].styles`에 따라 각 셀을 디코드한다.
-- 쓰기: `set<Col>(v)`는 선언된 스타일을 사용해 런타임 `setStyled`를 호출하고 인코딩된 바이트를 바인드한다.
-- 스타일 컬럼의 술어는 `isNull`과 `isNotNull`로 제한한다(`ir.OpAllowed`).
+- **COD-41** 읽기: 실행기가 위치형 행을 읽은 직후 `assemble.columns[].styles`에 따라 각 셀을 디코드한다.
+- **COD-42** 쓰기: `set<Col>(v)`는 선언된 스타일을 사용해 런타임 `setStyled`를 호출하고 인코딩된 바이트를 바인드한다.
+- **COD-43** 스타일 컬럼의 술어는 `isNull`과 `isNotNull`로 제한한다(`ir.OpAllowed`).
