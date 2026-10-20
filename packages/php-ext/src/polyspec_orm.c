@@ -13,6 +13,7 @@
 #include "Zend/zend_closures.h"
 #include "codec.h"
 #include "validator.h"
+#include "planner.h"
 #include "polyspec_orm_arginfo.h"
 
 /* Holds one method's arena. */
@@ -1865,6 +1866,26 @@ ZEND_METHOD(Polyspec_Orm_Validator, conflictKey)
     validator_conflict_key(ent, set, return_value);
 }
 
+/* Polyspec\Orm\Planner (packages/php-ext/src/planner.c). */
+ZEND_METHOD(Polyspec_Orm_Planner, __construct)
+{
+    zval *model, *dialect;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_OBJECT(model)
+        Z_PARAM_OBJECT(dialect)
+    ZEND_PARSE_PARAMETERS_END();
+    planner_construct(ZEND_THIS, model, dialect);
+}
+
+ZEND_METHOD(Polyspec_Orm_Planner, compile)
+{
+    HashTable *r;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_ARRAY_HT(r)
+    ZEND_PARSE_PARAMETERS_END();
+    planner_compile(ZEND_THIS, r, return_value);
+}
+
 /* Calls a PHP function by name. On failure (exception), false. */
 static bool call_function(const char *name, zval *ret, uint32_t argc, zval *argv)
 {
@@ -2420,6 +2441,7 @@ static PHP_MINIT_FUNCTION(polyspec_orm)
     register_class_Polyspec_Orm_Code();
     register_class_Polyspec_Orm_Codec();
     register_class_Polyspec_Orm_Validator();
+    register_class_Polyspec_Orm_Planner();
     dbs_ce_Diagnostic = register_class_Polyspec_Orm_Dbspec_Diagnostic();
     dbs_ce_Document = register_class_Polyspec_Orm_Dbspec_Document();
     dbs_ce_UseLine = register_class_Polyspec_Orm_Dbspec_UseLine();

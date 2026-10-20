@@ -39,7 +39,7 @@ final readonly class Position
     public int $line;
     public int $column;
 
-    /** @param list<string> $path */
+    /** @param array $path */
     public function __construct(string $kind, array $path, int $line, int $column) {}
 }
 
@@ -865,7 +865,7 @@ final class Codec
  */
 final class Validator
 {
-    public const IR_VERSION = 1;
+    public const int IR_VERSION = 1;
     private RuntimeModel $m;
     private int $n = 0;
     public function __construct(RuntimeModel $m) {}
@@ -876,4 +876,17 @@ final class Validator
     public static function functionType(string $name, ?array $col): string {}
     public static function intervalType(string $name): string {}
     public static function conflictKey(array $ent, array $set): array {}
+}
+
+/**
+ * The request planner (docs/spec/protocol.md), the Planner of the PHP library. The extension implements it in C (planner.c); its
+ * statements, bind slots and errors are those of packages/php/src/Planner.php.
+ */
+final class Planner
+{
+    private readonly RuntimeModel $m;
+    private readonly Dialect $d;
+    public function __construct(RuntimeModel $m, Dialect $d) {}
+    /** @return array{manifest_hash: string, kind: string, steps: list<array>} */
+    public function compile(array $r): array {}
 }

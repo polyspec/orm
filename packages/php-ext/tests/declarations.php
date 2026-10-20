@@ -16,7 +16,7 @@ declare(strict_types=1);
 
 /** The namespace and the class outside it that the extension registers, which are those of the PHP client. */
 const EXTENSION_NAMESPACE = 'Polyspec\\Orm\\Dbspec\\';
-const CLIENT_CLASSES = ['Polyspec\\Orm\\Code', 'Polyspec\\Orm\\Codec', 'Polyspec\\Orm\\Validator'];
+const CLIENT_CLASSES = ['Polyspec\\Orm\\Code', 'Polyspec\\Orm\\Codec', 'Polyspec\\Orm\\Validator', 'Polyspec\\Orm\\Planner'];
 
 /**
  * The declarations of $classes, keyed by class, constant, property and method; with $public only the public members, as the

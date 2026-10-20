@@ -703,8 +703,8 @@ PHP_EXTENSION_LIBRARY = $(RUN_DIR)/php-extension/polyspec_orm.so
 # PHP_EXTENSION_TESTS runs PHPUnit files of packages/php with the extension loaded.
 PHP_EXTENSION_TESTS = php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist
 dbspec-php-extension-check/%: RUN_DIR = $(abspath .runtime/run)/dbspec-php-extension-check-$$PPID
-.PHONY: dbspec-php-extension-check/arginfo dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/sets dbspec-php-extension-check/render dbspec-php-extension-check/graph dbspec-php-extension-check/behaviour dbspec-php-extension-check/schema-definition dbspec-php-extension-check/analyze dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse dbspec-php-extension-check/codec dbspec-php-extension-check/code-catalog dbspec-php-extension-check/decode dbspec-php-extension-check/aes dbspec-php-extension-check/hostcodec dbspec-php-extension-check/ir
-dbspec-php-extension-check: dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/sets dbspec-php-extension-check/render dbspec-php-extension-check/graph dbspec-php-extension-check/behaviour dbspec-php-extension-check/schema-definition dbspec-php-extension-check/analyze dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse dbspec-php-extension-check/codec dbspec-php-extension-check/code-catalog dbspec-php-extension-check/decode dbspec-php-extension-check/aes dbspec-php-extension-check/hostcodec dbspec-php-extension-check/ir
+.PHONY: dbspec-php-extension-check/arginfo dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/sets dbspec-php-extension-check/render dbspec-php-extension-check/graph dbspec-php-extension-check/behaviour dbspec-php-extension-check/schema-definition dbspec-php-extension-check/analyze dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse dbspec-php-extension-check/codec dbspec-php-extension-check/code-catalog dbspec-php-extension-check/decode dbspec-php-extension-check/aes dbspec-php-extension-check/hostcodec dbspec-php-extension-check/ir dbspec-php-extension-check/planner
+dbspec-php-extension-check: dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/sets dbspec-php-extension-check/render dbspec-php-extension-check/graph dbspec-php-extension-check/behaviour dbspec-php-extension-check/schema-definition dbspec-php-extension-check/analyze dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse dbspec-php-extension-check/codec dbspec-php-extension-check/code-catalog dbspec-php-extension-check/decode dbspec-php-extension-check/aes dbspec-php-extension-check/hostcodec dbspec-php-extension-check/ir dbspec-php-extension-check/planner
 	rm -rf $(RUN_DIR)
 dbspec-php-extension-check/arginfo:
 	$(NODE) $(KIT)/php-extension.$(KIT_EXT) check
@@ -783,6 +783,14 @@ dbspec-php-extension-check/ir: php-vendor-check dbspec-php-extension-check/prepa
 # dbspec-php-extension-check/set-parse runs DbspecSetParseTest with the extension: Dbspec::parseSet on every case of tests/dbspec/set-parse.json.
 dbspec-php-extension-check/set-parse: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecSetParseTest.php
+# dbspec-php-extension-check/planner runs the planner suites with the extension: CoveragePlannerTest (the compile vectors of
+# contracts/fixtures/planner.json), InsertPartsTest (contracts/fixtures/insert_parts.json) and IrAnswersTest (contracts/fixtures/ir_answers.json).
+# It first checks that the extension registers Polyspec\Orm\Planner: its class is internal, so the planner the suites run is C.
+dbspec-php-extension-check/planner: php-vendor-check dbspec-php-extension-check/prepare
+	php -d extension=$(PHP_EXTENSION_LIBRARY) -r 'exit((new ReflectionClass("Polyspec\\Orm\\Planner"))->isInternal() ? 0 : 1);'
+	$(PHP_EXTENSION_TESTS) packages/php/tests/CoveragePlannerTest.php
+	$(PHP_EXTENSION_TESTS) packages/php/tests/InsertPartsTest.php
+	$(PHP_EXTENSION_TESTS) packages/php/tests/IrAnswersTest.php
 
 # repo-check checks that the paths that the root npm script uses are tracked files or
 # directories, that the CI workflow starts servers with make orm-test-servers, and that every variable of that environment file is given

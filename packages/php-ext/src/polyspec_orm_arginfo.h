@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: faaf206660349d7248fe992d5147ecfb9899c2c5 */
+ * Stub hash: 72020df303b6d06605875ac0a4ea6104b808f7c8 */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Diagnostic___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, rule, IS_STRING, 0)
@@ -645,6 +645,13 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Validator_con
 	ZEND_ARG_TYPE_INFO(0, set, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Planner___construct, 0, 0, 2)
+	ZEND_ARG_OBJ_INFO(0, m, Polyspec\\Orm\\RuntimeModel, 0)
+	ZEND_ARG_OBJ_INFO(0, d, Polyspec\\Orm\\Dialect, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Planner_compile arginfo_class_Polyspec_Orm_Validator_paramUses
+
 ZEND_METHOD(Polyspec_Orm_Dbspec_Diagnostic, __construct);
 ZEND_METHOD(Polyspec_Orm_Dbspec_Position, __construct);
 ZEND_METHOD(Polyspec_Orm_Dbspec_Document, __construct);
@@ -775,6 +782,8 @@ ZEND_METHOD(Polyspec_Orm_Validator, paramUses);
 ZEND_METHOD(Polyspec_Orm_Validator, functionType);
 ZEND_METHOD(Polyspec_Orm_Validator, intervalType);
 ZEND_METHOD(Polyspec_Orm_Validator, conflictKey);
+ZEND_METHOD(Polyspec_Orm_Planner, __construct);
+ZEND_METHOD(Polyspec_Orm_Planner, compile);
 
 static const zend_function_entry class_Polyspec_Orm_Dbspec_Diagnostic_methods[] = {
 	ZEND_ME(Polyspec_Orm_Dbspec_Diagnostic, __construct, arginfo_class_Polyspec_Orm_Dbspec_Diagnostic___construct, ZEND_ACC_PUBLIC)
@@ -1126,6 +1135,12 @@ static const zend_function_entry class_Polyspec_Orm_Validator_methods[] = {
 	ZEND_FE_END
 };
 
+static const zend_function_entry class_Polyspec_Orm_Planner_methods[] = {
+	ZEND_ME(Polyspec_Orm_Planner, __construct, arginfo_class_Polyspec_Orm_Planner___construct, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Planner, compile, arginfo_class_Polyspec_Orm_Planner_compile, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+
 static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Diagnostic(void)
 {
 	zend_class_entry ce, *class_entry;
@@ -1141,7 +1156,9 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Diagnostic(void)
 
 	zval property_line_default_value;
 	ZVAL_UNDEF(&property_line_default_value);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_LINE), &property_line_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
+	zend_string *property_line_name = zend_string_init("line", sizeof("line") - 1, 1);
+	zend_declare_typed_property(class_entry, property_line_name, &property_line_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
+	zend_string_release(property_line_name);
 
 	zval property_column_default_value;
 	ZVAL_UNDEF(&property_column_default_value);
@@ -1151,7 +1168,9 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Diagnostic(void)
 
 	zval property_message_default_value;
 	ZVAL_UNDEF(&property_message_default_value);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_MESSAGE), &property_message_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string *property_message_name = zend_string_init("message", sizeof("message") - 1, 1);
+	zend_declare_typed_property(class_entry, property_message_name, &property_message_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_message_name);
 
 	return class_entry;
 }
@@ -1171,11 +1190,15 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Position(void)
 
 	zval property_path_default_value;
 	ZVAL_UNDEF(&property_path_default_value);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_PATH), &property_path_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string *property_path_name = zend_string_init("path", sizeof("path") - 1, 1);
+	zend_declare_typed_property(class_entry, property_path_name, &property_path_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_path_name);
 
 	zval property_line_default_value;
 	ZVAL_UNDEF(&property_line_default_value);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_LINE), &property_line_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
+	zend_string *property_line_name = zend_string_init("line", sizeof("line") - 1, 1);
+	zend_declare_typed_property(class_entry, property_line_name, &property_line_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
+	zend_string_release(property_line_name);
 
 	zval property_column_default_value;
 	ZVAL_UNDEF(&property_column_default_value);
@@ -1225,7 +1248,9 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Document(void)
 
 	zval property_name_default_value;
 	ZVAL_UNDEF(&property_name_default_value);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_NAME), &property_name_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string *property_name_name = zend_string_init("name", sizeof("name") - 1, 1);
+	zend_declare_typed_property(class_entry, property_name_name, &property_name_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_name_name);
 
 	return class_entry;
 }
@@ -1317,7 +1342,9 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Table(void)
 
 	zval property_name_default_value;
 	ZVAL_UNDEF(&property_name_default_value);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_NAME), &property_name_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string *property_name_name = zend_string_init("name", sizeof("name") - 1, 1);
+	zend_declare_typed_property(class_entry, property_name_name, &property_name_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_name_name);
 
 	zval property_comments_default_value;
 	ZVAL_UNDEF(&property_comments_default_value);
@@ -1337,12 +1364,16 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Column(void)
 
 	zval property_name_default_value;
 	ZVAL_UNDEF(&property_name_default_value);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_NAME), &property_name_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string *property_name_name = zend_string_init("name", sizeof("name") - 1, 1);
+	zend_declare_typed_property(class_entry, property_name_name, &property_name_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_name_name);
 
 	zval property_type_default_value;
 	ZVAL_UNDEF(&property_type_default_value);
+	zend_string *property_type_name = zend_string_init("type", sizeof("type") - 1, 1);
 	zend_string *property_type_class_Polyspec_Orm_Dbspec_ColumnType = zend_string_init("Polyspec\\Orm\\Dbspec\\ColumnType", sizeof("Polyspec\\Orm\\Dbspec\\ColumnType")-1, 1);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_TYPE), &property_type_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_type_class_Polyspec_Orm_Dbspec_ColumnType, 0, 0));
+	zend_declare_typed_property(class_entry, property_type_name, &property_type_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_type_class_Polyspec_Orm_Dbspec_ColumnType, 0, 0));
+	zend_string_release(property_type_name);
 
 	zval property_nullable_default_value;
 	ZVAL_UNDEF(&property_nullable_default_value);
@@ -1380,7 +1411,9 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_ColumnType(void)
 
 	zval property_name_default_value;
 	ZVAL_UNDEF(&property_name_default_value);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_NAME), &property_name_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string *property_name_name = zend_string_init("name", sizeof("name") - 1, 1);
+	zend_declare_typed_property(class_entry, property_name_name, &property_name_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_name_name);
 
 	zval property_parameters_default_value;
 	ZVAL_UNDEF(&property_parameters_default_value);
@@ -1422,7 +1455,9 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_UniqueKey(void)
 
 	zval property_name_default_value;
 	ZVAL_UNDEF(&property_name_default_value);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_NAME), &property_name_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string *property_name_name = zend_string_init("name", sizeof("name") - 1, 1);
+	zend_declare_typed_property(class_entry, property_name_name, &property_name_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_name_name);
 
 	zval property_columns_default_value;
 	ZVAL_UNDEF(&property_columns_default_value);
@@ -1448,7 +1483,9 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Index(void)
 
 	zval property_name_default_value;
 	ZVAL_UNDEF(&property_name_default_value);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_NAME), &property_name_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string *property_name_name = zend_string_init("name", sizeof("name") - 1, 1);
+	zend_declare_typed_property(class_entry, property_name_name, &property_name_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_name_name);
 
 	zval property_columns_default_value;
 	ZVAL_UNDEF(&property_columns_default_value);
@@ -1474,7 +1511,9 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_IndexColumn(void)
 
 	zval property_name_default_value;
 	ZVAL_UNDEF(&property_name_default_value);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_NAME), &property_name_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string *property_name_name = zend_string_init("name", sizeof("name") - 1, 1);
+	zend_declare_typed_property(class_entry, property_name_name, &property_name_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_name_name);
 
 	zval property_descending_default_value;
 	ZVAL_UNDEF(&property_descending_default_value);
@@ -1494,7 +1533,9 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_ForeignKey(void)
 
 	zval property_name_default_value;
 	ZVAL_UNDEF(&property_name_default_value);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_NAME), &property_name_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string *property_name_name = zend_string_init("name", sizeof("name") - 1, 1);
+	zend_declare_typed_property(class_entry, property_name_name, &property_name_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_name_name);
 
 	zval property_columns_default_value;
 	ZVAL_UNDEF(&property_columns_default_value);
@@ -1544,7 +1585,9 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Check(void)
 
 	zval property_name_default_value;
 	ZVAL_UNDEF(&property_name_default_value);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_NAME), &property_name_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string *property_name_name = zend_string_init("name", sizeof("name") - 1, 1);
+	zend_declare_typed_property(class_entry, property_name_name, &property_name_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_name_name);
 
 	zval property_expression_default_value;
 	ZVAL_UNDEF(&property_expression_default_value);
@@ -1622,7 +1665,9 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Setting(void)
 
 	zval property_include_default_value;
 	ZVAL_UNDEF(&property_include_default_value);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_INCLUDE), &property_include_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY|MAY_BE_NULL));
+	zend_string *property_include_name = zend_string_init("include", sizeof("include") - 1, 1);
+	zend_declare_typed_property(class_entry, property_include_name, &property_include_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY|MAY_BE_NULL));
+	zend_string_release(property_include_name);
 
 	zval property_form_default_value;
 	ZVAL_UNDEF(&property_form_default_value);
@@ -1660,7 +1705,9 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Diagram(void)
 
 	zval property_name_default_value;
 	ZVAL_UNDEF(&property_name_default_value);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_NAME), &property_name_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string *property_name_name = zend_string_init("name", sizeof("name") - 1, 1);
+	zend_declare_typed_property(class_entry, property_name_name, &property_name_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_name_name);
 
 	zval property_comments_default_value;
 	ZVAL_UNDEF(&property_comments_default_value);
@@ -1736,7 +1783,9 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_SetFile(void)
 
 	zval property_path_default_value;
 	ZVAL_UNDEF(&property_path_default_value);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_PATH), &property_path_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string *property_path_name = zend_string_init("path", sizeof("path") - 1, 1);
+	zend_declare_typed_property(class_entry, property_path_name, &property_path_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_path_name);
 
 	zval property_bytes_default_value;
 	ZVAL_UNDEF(&property_bytes_default_value);
@@ -1762,11 +1811,15 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_SetError(void)
 
 	zval property_path_default_value;
 	ZVAL_UNDEF(&property_path_default_value);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_PATH), &property_path_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string *property_path_name = zend_string_init("path", sizeof("path") - 1, 1);
+	zend_declare_typed_property(class_entry, property_path_name, &property_path_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_path_name);
 
 	zval property_message_default_value;
 	ZVAL_UNDEF(&property_message_default_value);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_MESSAGE), &property_message_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string *property_message_name = zend_string_init("message", sizeof("message") - 1, 1);
+	zend_declare_typed_property(class_entry, property_message_name, &property_message_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_message_name);
 
 	return class_entry;
 }
@@ -1808,7 +1861,9 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_SetDocument(void)
 
 	zval property_name_default_value;
 	ZVAL_UNDEF(&property_name_default_value);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_NAME), &property_name_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string *property_name_name = zend_string_init("name", sizeof("name") - 1, 1);
+	zend_declare_typed_property(class_entry, property_name_name, &property_name_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_name_name);
 
 	zval property_external_default_value;
 	ZVAL_UNDEF(&property_external_default_value);
@@ -1876,7 +1931,9 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Token(void)
 
 	zval property_line_default_value;
 	ZVAL_UNDEF(&property_line_default_value);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_LINE), &property_line_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
+	zend_string *property_line_name = zend_string_init("line", sizeof("line") - 1, 1);
+	zend_declare_typed_property(class_entry, property_line_name, &property_line_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
+	zend_string_release(property_line_name);
 
 	zval property_start_default_value;
 	ZVAL_UNDEF(&property_start_default_value);
@@ -1892,7 +1949,9 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Token(void)
 
 	zval property_class_default_value;
 	ZVAL_UNDEF(&property_class_default_value);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_CLASS), &property_class_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string *property_class_name = zend_string_init("class", sizeof("class") - 1, 1);
+	zend_declare_typed_property(class_entry, property_class_name, &property_class_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_class_name);
 
 	return class_entry;
 }
@@ -2058,11 +2117,15 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Plan(void)
 
 	zval property_name_default_value;
 	ZVAL_UNDEF(&property_name_default_value);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_NAME), &property_name_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string *property_name_name = zend_string_init("name", sizeof("name") - 1, 1);
+	zend_declare_typed_property(class_entry, property_name_name, &property_name_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_name_name);
 
 	zval property_from_default_value;
 	ZVAL_UNDEF(&property_from_default_value);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_FROM), &property_from_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING|MAY_BE_NULL));
+	zend_string *property_from_name = zend_string_init("from", sizeof("from") - 1, 1);
+	zend_declare_typed_property(class_entry, property_from_name, &property_from_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING|MAY_BE_NULL));
+	zend_string_release(property_from_name);
 
 	zval property_renameTables_default_value;
 	ZVAL_UNDEF(&property_renameTables_default_value);
@@ -2191,7 +2254,9 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Effect(void)
 
 	zval property_name_default_value;
 	ZVAL_UNDEF(&property_name_default_value);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_NAME), &property_name_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string *property_name_name = zend_string_init("name", sizeof("name") - 1, 1);
+	zend_declare_typed_property(class_entry, property_name_name, &property_name_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_name_name);
 
 	zval property_present_default_value;
 	ZVAL_UNDEF(&property_present_default_value);
@@ -2251,7 +2316,9 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Change(void)
 
 	zval property_name_default_value;
 	ZVAL_UNDEF(&property_name_default_value);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_NAME), &property_name_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string *property_name_name = zend_string_init("name", sizeof("name") - 1, 1);
+	zend_declare_typed_property(class_entry, property_name_name, &property_name_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_name_name);
 
 	return class_entry;
 }
@@ -2277,7 +2344,9 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Difference(void)
 
 	zval property_name_default_value;
 	ZVAL_UNDEF(&property_name_default_value);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_NAME), &property_name_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string *property_name_name = zend_string_init("name", sizeof("name") - 1, 1);
+	zend_declare_typed_property(class_entry, property_name_name, &property_name_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_name_name);
 
 	return class_entry;
 }
@@ -2303,7 +2372,9 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Unsupported(void)
 
 	zval property_name_default_value;
 	ZVAL_UNDEF(&property_name_default_value);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_NAME), &property_name_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string *property_name_name = zend_string_init("name", sizeof("name") - 1, 1);
+	zend_declare_typed_property(class_entry, property_name_name, &property_name_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_name_name);
 
 	zval property_reason_default_value;
 	ZVAL_UNDEF(&property_reason_default_value);
@@ -2379,7 +2450,9 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_ColumnName(void)
 
 	zval property_name_default_value;
 	ZVAL_UNDEF(&property_name_default_value);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_NAME), &property_name_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string *property_name_name = zend_string_init("name", sizeof("name") - 1, 1);
+	zend_declare_typed_property(class_entry, property_name_name, &property_name_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_name_name);
 
 	return class_entry;
 }
@@ -3017,7 +3090,7 @@ static zend_class_entry *register_class_Polyspec_Orm_Validator(void)
 	zval const_IR_VERSION_value;
 	ZVAL_LONG(&const_IR_VERSION_value, 1);
 	zend_string *const_IR_VERSION_name = zend_string_init_interned("IR_VERSION", sizeof("IR_VERSION") - 1, 1);
-	zend_declare_class_constant_ex(class_entry, const_IR_VERSION_name, &const_IR_VERSION_value, ZEND_ACC_PUBLIC, NULL);
+	zend_declare_typed_class_constant(class_entry, const_IR_VERSION_name, &const_IR_VERSION_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
 	zend_string_release(const_IR_VERSION_name);
 
 	zval property_m_default_value;
@@ -3032,6 +3105,30 @@ static zend_class_entry *register_class_Polyspec_Orm_Validator(void)
 	zend_string *property_n_name = zend_string_init("n", sizeof("n") - 1, 1);
 	zend_declare_typed_property(class_entry, property_n_name, &property_n_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
 	zend_string_release(property_n_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Polyspec_Orm_Planner(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm", "Planner", class_Polyspec_Orm_Planner_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
+
+	zval property_m_default_value;
+	ZVAL_UNDEF(&property_m_default_value);
+	zend_string *property_m_name = zend_string_init("m", sizeof("m") - 1, 1);
+	zend_string *property_m_class_Polyspec_Orm_RuntimeModel = zend_string_init("Polyspec\\Orm\\RuntimeModel", sizeof("Polyspec\\Orm\\RuntimeModel")-1, 1);
+	zend_declare_typed_property(class_entry, property_m_name, &property_m_default_value, ZEND_ACC_PRIVATE|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_m_class_Polyspec_Orm_RuntimeModel, 0, 0));
+	zend_string_release(property_m_name);
+
+	zval property_d_default_value;
+	ZVAL_UNDEF(&property_d_default_value);
+	zend_string *property_d_name = zend_string_init("d", sizeof("d") - 1, 1);
+	zend_string *property_d_class_Polyspec_Orm_Dialect = zend_string_init("Polyspec\\Orm\\Dialect", sizeof("Polyspec\\Orm\\Dialect")-1, 1);
+	zend_declare_typed_property(class_entry, property_d_name, &property_d_default_value, ZEND_ACC_PRIVATE|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_d_class_Polyspec_Orm_Dialect, 0, 0));
+	zend_string_release(property_d_name);
 
 	return class_entry;
 }
