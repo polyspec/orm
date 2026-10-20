@@ -2,7 +2,10 @@
 
 package dbspec
 
-import "os"
+import (
+	"errors"
+	"os"
+)
 
 // examine examines path without following a symbolic link (lstat).
 func examine(path string) (entryKind, error) {
@@ -28,12 +31,12 @@ type nameList map[string]bool
 func (n nameList) has(name string) bool { return n[name] }
 
 // listNames lists the names of directory as the bytes the platform gives.
-func listNames(directory string) (nameList, error) {
+func listNames(directory string) (_ nameList, err error) {
 	f, err := os.Open(directory)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { err = errors.Join(err, f.Close()) }()
 	names, err := f.Readdirnames(-1)
 	if err != nil {
 		return nil, err

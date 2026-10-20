@@ -1,3 +1,7 @@
+//go:build physical
+
+// The servers of the probes and of the physical tests are built with those tests, which alone open them (build tag physical).
+
 package dialects
 
 import (

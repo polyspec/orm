@@ -281,7 +281,7 @@ func run() (status int) {
 		AuditSource:   func(context.Context) (map[string]any, error) { return map[string]any{}, nil },
 	})
 	check(err)
-	defer db.Close()
+	defer func() { check(db.Close()) }()
 	_, err = db.Subscribe(func(e orm.StatementEvent) error {
 		binds := make([]any, len(e.Binds))
 		for i, a := range e.Binds {

@@ -44,7 +44,7 @@ func TestRuntimeValueTypes(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer db.Close()
+			defer testcase.Close(t, db)
 			if err := db.Utils().Schema().Install(s); err != nil {
 				t.Fatal(err)
 			}

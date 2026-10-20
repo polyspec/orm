@@ -33,7 +33,7 @@ func rollbackFixture(t *testing.T, driver string) (*orm.DB, func() *orm.Core, fu
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() { testcase.Close(t, db) })
 	if err := db.Utils().Schema().Install(s); err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func rollbackFixture(t *testing.T, driver string) (*orm.DB, func() *orm.Core, fu
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer raw.Close()
+		defer testcase.Close(t, raw)
 		if _, err := raw.Exec(`CREATE TRIGGER rollback_probe_end BEFORE INSERT ON rollback_probe WHEN NEW.label = 'end' BEGIN SELECT RAISE(ROLLBACK, 'rollback probe ended the transaction'); END`); err != nil {
 			t.Fatal(err)
 		}
@@ -52,7 +52,7 @@ func rollbackFixture(t *testing.T, driver string) (*orm.DB, func() *orm.Core, fu
 		session := serverSession(t, driver, dsn)
 		end = func() {
 			raw := openNative(t, driver, session)
-			defer raw.Close()
+			defer testcase.Close(t, raw)
 			var pid int64
 			if err := raw.QueryRow(`SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = 'rollback_probe' AND l.pid <> pg_backend_pid() LIMIT 1`).Scan(&pid); err != nil {
 				t.Errorf("the transaction session holds a lock on rollback_probe: %v", err)
@@ -66,7 +66,7 @@ func rollbackFixture(t *testing.T, driver string) (*orm.DB, func() *orm.Core, fu
 		session := serverSession(t, driver, dsn)
 		end = func() {
 			raw := openNative(t, driver, session)
-			defer raw.Close()
+			defer testcase.Close(t, raw)
 			var id int64
 			if err := raw.QueryRow("SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = 'rollback_probe' LIMIT 1").Scan(&id); err != nil {
 				t.Errorf("the transaction session holds a lock on rollback_probe: %v", err)
@@ -171,8 +171,11 @@ func savepointRollbackFailed(t *testing.T, driver string) {
 		})
 	}, orm.Retry(0))
 	callback := checkRollback(t, err, "transaction")
-	checkRollback(t, callback, "savepoint")
+	nested := checkRollback(t, callback, "savepoint")
 	if driver == "sqlite" {
+		if !strings.Contains(nested.Error(), "rollback probe ended the transaction") {
+			t.Fatalf("savepoint callback error %v", nested)
+		}
 		if n, err := model().GetCount(); err != nil || n != 0 {
 			t.Fatalf("after the failed rollback: %d rows, %v", n, err)
 		}

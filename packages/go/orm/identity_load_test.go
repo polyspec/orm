@@ -203,7 +203,7 @@ func executeIdentityLoadCase(t *testing.T, doc *identityLoadDoc, c identityLoadC
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer testcase.Close(t, db)
 	if err := db.Utils().Schema().Install(doc.schema); err != nil {
 		t.Fatal(err)
 	}
@@ -237,12 +237,12 @@ func executeIdentityLoadCase(t *testing.T, doc *identityLoadDoc, c identityLoadC
 		want = append(want, []any{identityLoadParam(t, row[0]), row[1]})
 	}
 	raw := openNative(t, driver, dsn)
-	defer raw.Close()
+	defer testcase.Close(t, raw)
 	rows, err := raw.Query(doc.Read[driver])
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer rows.Close()
+	defer testcase.Close(t, rows)
 	got := [][]any{}
 	for rows.Next() {
 		var seq int64

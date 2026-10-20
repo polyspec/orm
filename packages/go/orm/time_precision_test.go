@@ -73,7 +73,7 @@ func TestSQLiteTimePrecision(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer db.Close()
+			defer testcase.Close(t, db)
 			if err := db.Utils().Schema().Install(schema); err != nil {
 				t.Fatal(err)
 			}
@@ -88,7 +88,7 @@ func TestSQLiteTimePrecision(t *testing.T) {
 				t.Fatal(err)
 			}
 			raw := openNative(t, "sqlite", dsn)
-			defer raw.Close()
+			defer testcase.Close(t, raw)
 			var at, micro, clock string
 			if err := raw.QueryRow(`SELECT CAST("at" AS TEXT), CAST("micro" AS TEXT), CAST("clock" AS TEXT) FROM "time_probe"`).Scan(&at, &micro, &clock); err != nil {
 				t.Fatal(err)

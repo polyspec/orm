@@ -14,6 +14,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"runtime/pprof"
 	"strings"
@@ -50,7 +51,10 @@ var output sync.Mutex
 func emit(format string, args ...any) {
 	output.Lock()
 	defer output.Unlock()
-	fmt.Fprintf(os.Stdout, format+"\n", args...)
+	if _, err := fmt.Fprintf(os.Stdout, format+"\n", args...); err != nil {
+		// The lines of stdout are the report of the run; a run that cannot write them has no result to report.
+		panic(fmt.Sprintf("testcase: write stdout: %v", err))
+	}
 }
 
 // Warn writes the line `WARNING <message>` saying that a performance measurement exceeded the document's reference value. It measures and reports performance but does not fail the test
@@ -107,6 +111,15 @@ func Of(t testing.TB) *Case {
 			return nil
 		}
 		name = name[:i]
+	}
+}
+
+// Close closes c and fails t with the error of its Close. A test defers it, or calls it in t.Cleanup, for the
+// resources it opens, so that a failed Close is a failure of the test and not a lost error.
+func Close(t testing.TB, c io.Closer) {
+	t.Helper()
+	if err := c.Close(); err != nil {
+		t.Errorf("close %T: %v", c, err)
 	}
 }
 

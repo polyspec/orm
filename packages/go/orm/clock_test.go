@@ -24,7 +24,7 @@ func openClock(t *testing.T, driver, document string) (*orm.Schema, string, *orm
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() { testcase.Close(t, db) })
 	if err := db.Utils().Schema().Install(s); err != nil {
 		t.Fatal(err)
 	}
@@ -144,12 +144,12 @@ func clockSoftDeleteMicroseconds(t *testing.T, driver string) {
 		raw = openNative(t, driver, base)
 		query = "SELECT to_char(deleted_at, 'YYYY-MM-DD HH24:MI:SS.US') FROM clock_mark ORDER BY seq"
 	}
-	defer raw.Close()
+	defer testcase.Close(t, raw)
 	rows, err := raw.Query(query)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer rows.Close()
+	defer testcase.Close(t, rows)
 	var stamps []string
 	for rows.Next() {
 		var stamp sql.NullString

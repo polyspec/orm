@@ -34,7 +34,7 @@ func openSQLite(t *testing.T, dsn string, count int, install bool) []*orm.DB {
 		if err != nil {
 			t.Fatalf("connection %d: %v", i, err)
 		}
-		t.Cleanup(func() { db.Close() })
+		t.Cleanup(func() { testcase.Close(t, db) })
 		out[i] = db
 	}
 	if install {

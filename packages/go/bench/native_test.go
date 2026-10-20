@@ -10,6 +10,7 @@ package bench
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -20,6 +21,7 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // benchDSN returns the seeded bench database named by ORM_BENCH_MYSQL_DSN; an
@@ -181,12 +183,12 @@ const (
 	list100SQL = "SELECT " + listCols + " FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? ORDER BY `a`.`seq` DESC LIMIT 0, 100"
 )
 
-func pkGet(ctx context.Context, db *sql.DB, seq int64) (*author, error) {
+func pkGet(ctx context.Context, db *sql.DB, seq int64) (_ *author, err error) {
 	rows, err := prep(db, pkSQL).QueryContext(ctx, seq)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { err = errors.Join(err, rows.Close()) }()
 	if !rows.Next() {
 		return nil, rows.Err()
 	}
@@ -197,12 +199,12 @@ func pkGet(ctx context.Context, db *sql.DB, seq int64) (*author, error) {
 	return &b, rows.Err()
 }
 
-func list100(ctx context.Context, db *sql.DB, serviceSeq int64) ([]author, error) {
+func list100(ctx context.Context, db *sql.DB, serviceSeq int64) (_ []author, err error) {
 	rows, err := prep(db, list100SQL).QueryContext(ctx, serviceSeq, 0)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { err = errors.Join(err, rows.Close()) }()
 	out := make([]author, 0, 100)
 	for rows.Next() {
 		var b author
@@ -239,22 +241,23 @@ func relation4(ctx context.Context, db *sql.DB, serviceSeq int64) (map[int64][]a
 		for rows.Next() {
 			var b author
 			if err := scan(rows, &b); err != nil {
-				rows.Close()
-				return nil, err
+				return nil, errors.Join(err, rows.Close())
 			}
 			out[b.UserSeq] = append(out[b.UserSeq], b)
 		}
-		rows.Close()
+		if err := errors.Join(rows.Err(), rows.Close()); err != nil {
+			return nil, err
+		}
 	}
 	return out, nil
 }
 
-func listN(ctx context.Context, db *sql.DB, serviceSeq int64, n int) ([]author, error) {
+func listN(ctx context.Context, db *sql.DB, serviceSeq int64, n int) (_ []author, err error) {
 	rows, err := prep(db, fmt.Sprintf("SELECT "+listCols+" FROM `author` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` DESC LIMIT 0, %d", n)).QueryContext(ctx, serviceSeq)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { err = errors.Join(err, rows.Close()) }()
 	out := make([]author, 0, n)
 	for rows.Next() {
 		var b author
@@ -281,7 +284,7 @@ func insertOne(ctx context.Context, db *sql.DB, i int) (int64, error) {
 
 func BenchmarkPKGet(b *testing.B) {
 	db := open(b)
-	defer db.Close()
+	defer testcase.Close(b, db)
 	ctx := context.Background()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
@@ -293,7 +296,7 @@ func BenchmarkPKGet(b *testing.B) {
 
 func BenchmarkList100(b *testing.B) {
 	db := open(b)
-	defer db.Close()
+	defer testcase.Close(b, db)
 	ctx := context.Background()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
@@ -306,7 +309,7 @@ func BenchmarkList100(b *testing.B) {
 
 func BenchmarkInsert(b *testing.B) {
 	db := open(b)
-	defer db.Close()
+	defer testcase.Close(b, db)
 	ctx := context.Background()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
@@ -315,12 +318,14 @@ func BenchmarkInsert(b *testing.B) {
 		}
 	}
 	b.StopTimer()
-	db.ExecContext(ctx, "DELETE FROM `author` WHERE `service_seq` = 999")
+	if _, err := db.ExecContext(ctx, "DELETE FROM `author` WHERE `service_seq` = 999"); err != nil {
+		b.Fatal(err)
+	}
 }
 
 func BenchmarkRelation4(b *testing.B) {
 	db := open(b)
-	defer db.Close()
+	defer testcase.Close(b, db)
 	ctx := context.Background()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
@@ -332,7 +337,7 @@ func BenchmarkRelation4(b *testing.B) {
 
 func BenchmarkPKGetPar(b *testing.B) {
 	db := open(b)
-	defer db.Close()
+	defer testcase.Close(b, db)
 	ctx := context.Background()
 	b.ReportAllocs()
 	b.RunParallel(func(pb *testing.PB) {
@@ -348,7 +353,7 @@ func BenchmarkPKGetPar(b *testing.B) {
 
 func BenchmarkList100Par(b *testing.B) {
 	db := open(b)
-	defer db.Close()
+	defer testcase.Close(b, db)
 	ctx := context.Background()
 	b.ReportAllocs()
 	b.RunParallel(func(pb *testing.PB) {

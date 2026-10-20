@@ -44,7 +44,7 @@ func TestOpenWithoutDriverPackageNamesTheImport(t *testing.T) {
 	} {
 		db, err := orm.Connect(dsn, orm.Config{})
 		if err == nil {
-			db.Close()
+			testcase.Close(t, db)
 			t.Errorf("Connect(%q) succeeded without the %s package", dsn, pkg)
 			continue
 		}

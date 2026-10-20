@@ -47,7 +47,7 @@ func runTestCaseStart(pass *analysis.Pass) (any, error) {
 			if ok {
 				name = function.Name.Name
 			}
-			if !ok || function.Recv != nil || function.Body == nil || !(strings.HasPrefix(name, "Test") || strings.HasPrefix(name, "Fuzz")) || !testing(pass, function.Type.Params) {
+			if !ok || function.Recv != nil || function.Body == nil || !strings.HasPrefix(name, "Test") && !strings.HasPrefix(name, "Fuzz") || !testing(pass, function.Type.Params) {
 				continue
 			}
 			started := false

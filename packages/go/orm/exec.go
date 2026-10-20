@@ -468,7 +468,7 @@ func applyRequestHook(ex executor, r *request) error {
 }
 
 func checkLock(ex executor, r *request) error {
-	if r.ir.Query.Lock != "" && ex.transaction() == nil {
+	if r.ir.Lock != "" && ex.transaction() == nil {
 		return configErr("row locks are allowed only inside a transaction")
 	}
 	return nil
@@ -496,7 +496,7 @@ func query(ex executor, r *request) (*result, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := acquireSQLiteRowLock(ctx, ex, r.ir.Query.Lock); err != nil {
+	if err := acquireSQLiteRowLock(ctx, ex, r.ir.Lock); err != nil {
 		return nil, err
 	}
 	parts, err := rootINParts(r, &c.plan.Steps[0], d.driver)
@@ -788,7 +788,6 @@ func runSelect(ctx context.Context, ex executor, c *cached, st *plan.Step, r *re
 	if err != nil {
 		return nil, d.modelDone(ex, st, sqlText, args, masks, start, err)
 	}
-	defer rows.Close()
 	si := c.scans[st]
 	buf := si.get()
 	defer si.put(buf)
@@ -796,7 +795,7 @@ func runSelect(ctx context.Context, ex executor, c *cached, st *plan.Step, r *re
 	var keyring AESKeyring
 	if assembleHasAES(st.Assemble) {
 		if keyring, err = d.aesKeyring(); err != nil {
-			return nil, err
+			return nil, closeAfter(rows, err)
 		}
 	}
 	var out [][]any
@@ -830,6 +829,9 @@ func runSelect(ctx context.Context, ex executor, c *cached, st *plan.Step, r *re
 	}
 	if err == nil {
 		err = mapDriverErr(rows.Err())
+	}
+	if closeErr := rows.Close(); err == nil {
+		err = mapDriverErr(closeErr)
 	}
 	if err := d.modelDone(ex, st, sqlText, args, masks, start, err); err != nil {
 		return nil, err

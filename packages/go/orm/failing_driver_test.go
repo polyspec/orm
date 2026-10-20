@@ -90,7 +90,7 @@ func (c failingConn) PrepareContext(ctx context.Context, query string) (driver.S
 	if p, ok := c.Conn.(driver.ConnPrepareContext); ok {
 		return p.PrepareContext(ctx, query)
 	}
-	return c.Conn.Prepare(query)
+	return c.Prepare(query)
 }
 
 func (c failingConn) CheckNamedValue(v *driver.NamedValue) error {

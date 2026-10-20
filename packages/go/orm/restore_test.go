@@ -11,9 +11,6 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// restoreTables is the table that contracts/fixtures/restore.dbs creates.
-var restoreTables = []string{"audit", "label", "membership", "membership_history"}
-
 // restoreNative opens the database at dsn with the native driver.
 func restoreNative(t *testing.T, driver, dsn string) *sql.DB {
 	t.Helper()
@@ -35,7 +32,7 @@ func restoreTextRows(t *testing.T, raw *sql.DB, query string) [][]string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer rows.Close()
+	defer testcase.Close(t, rows)
 	columns, err := rows.Columns()
 	if err != nil {
 		t.Fatal(err)

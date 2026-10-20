@@ -102,7 +102,7 @@ func auditCase(t *testing.T, driver, dsn string) {
 			t.Fatal(err)
 		}
 		err = other.Transaction(func() error { return nil }, orm.Audit(map[string]any{"actor": "x"}))
-		other.Close()
+		testcase.Close(t, other)
 		if orm.ErrorCode(err) != orm.CodeConfig {
 			t.Fatalf("an audit transaction of a connection %s = %v, want CONFIG", name, err)
 		}
@@ -113,7 +113,7 @@ func auditCase(t *testing.T, driver, dsn string) {
 		t.Fatal(err)
 	}
 	err = failing.Transaction(func() error { return nil }, orm.Audit(nil))
-	failing.Close()
+	testcase.Close(t, failing)
 	if !errors.Is(err, unavailable) {
 		t.Fatalf("an audit transaction whose source fails = %v, want the source error", err)
 	}
@@ -247,7 +247,7 @@ func TestAuditRecordTransaction(t *testing.T) {
 func readHistory(t *testing.T, driver, dsn string) []historyRow {
 	t.Helper()
 	raw := restoreNative(t, driver, dsn)
-	defer raw.Close()
+	defer testcase.Close(t, raw)
 	change := `"change"`
 	if driver == "mysql" {
 		change = "`change`"
@@ -256,7 +256,7 @@ func readHistory(t *testing.T, driver, dsn string) []historyRow {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer rows.Close()
+	defer testcase.Close(t, rows)
 	var out []historyRow
 	for rows.Next() {
 		var r historyRow

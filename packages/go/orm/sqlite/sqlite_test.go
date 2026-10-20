@@ -18,7 +18,7 @@ func TestMapErrPreservesSQLiteConstraintContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer testcase.Close(t, db)
 	ctx := context.Background()
 	if _, err := db.ExecContext(ctx, `PRAGMA foreign_keys = ON; CREATE TABLE parent (id INTEGER PRIMARY KEY); CREATE TABLE child (id INTEGER PRIMARY KEY, parent_id INTEGER NOT NULL REFERENCES parent(id), code TEXT NOT NULL UNIQUE); CREATE TABLE checked (value TEXT CHECK (value <> '')); INSERT INTO parent(id) VALUES (1); INSERT INTO child(parent_id, code) VALUES (1, 'one')`); err != nil {
 		t.Fatal(err)

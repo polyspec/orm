@@ -55,8 +55,12 @@ func TestFixtureRun(t *testing.T) {
 	if err := Run("runner/pass", time.Minute, func(c *Case) error {
 		c.Step("built %s", "runner")
 		w := c.StepWriter()
-		fmt.Fprint(w, "child line one\n\nchild ")
-		fmt.Fprint(w, "line two\nchild tail")
+		if _, err := fmt.Fprint(w, "child line one\n\nchild "); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprint(w, "line two\nchild tail"); err != nil {
+			return err
+		}
 		w.Flush()
 		return nil
 	}); err != nil {

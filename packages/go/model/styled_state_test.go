@@ -141,7 +141,7 @@ func TestStyledStatesAcrossDatabases(t *testing.T) {
 				} else {
 					raw = openNative(t, driver, dsn)
 				}
-				defer raw.Close()
+				defer testcase.Close(t, raw)
 				bind := "?"
 				if driver == "postgres" {
 					bind = "$1"

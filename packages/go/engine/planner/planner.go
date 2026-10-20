@@ -1521,22 +1521,6 @@ func contains(xs []string, x string) bool {
 	return false
 }
 
-func sortedKeys[V any](m map[string]V) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	// deterministic output for plan caching
-	for i := 1; i < len(keys); i++ {
-		for j := i; j > 0 && keys[j] < keys[j-1]; j-- {
-			keys[j], keys[j-1] = keys[j-1], keys[j]
-		}
-	}
-	return keys
-}
-
-var _ = fmt.Sprintf
-
 // placedJoins collects the joins whose conditions a group places.
 func placedJoins(g *ir.Group, out map[string]bool) {
 	for _, it := range g.Items {

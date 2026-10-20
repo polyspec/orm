@@ -512,7 +512,7 @@ func (v *validator) blindIndex(t *tableNode, s *settingNode, aesColumns map[stri
 	switch {
 	case aesColumns[indexRef.text]:
 		v.add(RuleSetting, indexRef, "the blind index column is not AES-encoded")
-	case index.typ.valid && !(index.typ.typ.Kind == TypeVarchar && index.typ.typ.Length >= 64):
+	case index.typ.valid && (index.typ.typ.Kind != TypeVarchar || index.typ.typ.Length < 64):
 		v.add(RuleSetting, indexRef, "the blind index column is varchar(n) with n >= 64, not %s", index.typ.typ)
 	case aes != nil && (aes.null == nil) != (index.null == nil):
 		v.add(RuleSetting, indexRef, "the blind index column has the nullability of the AES column")
@@ -681,7 +681,7 @@ func (v *validator) auditTables(t *tableNode, tablesRef, recordRef, nameRef, ref
 	if !known {
 		return
 	}
-	if name := tables.column(nameRef.text); name != nil && name.typ.valid && !(name.typ.typ.Kind == TypeVarchar && name.typ.typ.Length >= 63) {
+	if name := tables.column(nameRef.text); name != nil && name.typ.valid && (name.typ.typ.Kind != TypeVarchar || name.typ.typ.Length < 63) {
 		v.add(RuleSetting, nameRef, "the name column is a varchar(n) with n >= 63")
 	}
 	for _, c := range tables.columns {

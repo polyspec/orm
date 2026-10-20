@@ -133,7 +133,7 @@ func hotPathGate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer testcase.Close(t, db)
 
 	for _, c := range []struct {
 		name           string

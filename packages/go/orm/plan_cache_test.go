@@ -75,11 +75,11 @@ func TestCanonicalizePadsInListAndRejectsOutOfRangeParam(t *testing.T) {
 		}
 	}
 	r := in(0, 1, 2)
-	r.ir.Query.Where.Items[0].Pred.Ps = []int{0, 1, 2}
+	r.ir.Where.Items[0].Pred.Ps = []int{0, 1, 2}
 	if err := canonicalize(r); err != nil {
 		t.Fatal(err)
 	}
-	if got := r.ir.Query.Where.Items[0].Pred.Ps; !slices.Equal(got, []int{0, 1, 2, 3}) {
+	if got := r.ir.Where.Items[0].Pred.Ps; !slices.Equal(got, []int{0, 1, 2, 3}) {
 		t.Fatalf("padded list = %v, want slots 0 to 3", got)
 	}
 	if want := []any{int64(10), int64(11), int64(12), int64(12), "tail"}; len(r.params) != len(want) || r.params[3] != want[3] || r.params[4] != want[4] {
@@ -89,7 +89,7 @@ func TestCanonicalizePadsInListAndRejectsOutOfRangeParam(t *testing.T) {
 		t.Fatalf("NParams = %d, canonical = %v", r.ir.NParams, r.canonical)
 	}
 	bad := in(0)
-	bad.ir.Query.Where.Items[0].Pred.Ps = []int{7}
+	bad.ir.Where.Items[0].Pred.Ps = []int{7}
 	if err := canonicalize(bad); ErrorCode(err) != "IR_INVALID" {
 		t.Fatalf("out-of-range param error = %v, want IR_INVALID", err)
 	}

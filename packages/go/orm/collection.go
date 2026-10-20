@@ -193,13 +193,6 @@ func NewCollection[T Model]() *Collection[T] {
 	return &Collection[T]{items: map[Key]T{}}
 }
 
-func (c *Collection[T]) put(k Key, v T) {
-	if _, ok := c.items[k]; !ok {
-		c.keys = append(c.keys, k)
-	}
-	c.items[k] = v
-}
-
 // Len returns the number of models.
 func (c *Collection[T]) Len() int { return len(c.keys) }
 

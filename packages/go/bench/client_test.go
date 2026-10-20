@@ -5,6 +5,7 @@ import (
 
 	"github.com/polyspec/orm/packages/go/model"
 	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // BenchmarkClientList100 reads the 100-row list of TestHotPathGate through the
@@ -14,7 +15,7 @@ func BenchmarkClientList100(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer db.Close()
+	defer testcase.Close(b, db)
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		if _, err := model.Author().Connect(db).ServiceSeq(7).AndIsClose(false).OrderBySeqDesc().Limit(0, 100).Gets(); err != nil {

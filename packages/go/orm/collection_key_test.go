@@ -190,7 +190,7 @@ func TestSplitQueryPropagatesInvalidKey(t *testing.T) {
 	}
 	params[1] = struct{ ID int }{1}
 	r := &request{params: params}
-	r.ir.Query.Where = &ir.Group{Items: []ir.Item{{Pred: &ir.Pred{Op: "in", Ps: indexes}}}}
+	r.ir.Where = &ir.Group{Items: []ir.Item{{Pred: &ir.Pred{Op: "in", Ps: indexes}}}}
 	step := &plan.Step{BindSlots: make([]plan.BindSlot, count)}
 	if _, err := rootINParts(r, step, "sqlite"); err == nil {
 		t.Fatal("split query accepted unsupported key")
@@ -208,14 +208,14 @@ func TestSplitQueryRetainsDistinctTypedValues(t *testing.T) {
 	}
 	params[0], params[1], params[2], params[3] = true, int64(1), []byte("x"), "x"
 	r := &request{params: params}
-	r.ir.Query.Where = &ir.Group{Items: []ir.Item{{Pred: &ir.Pred{Op: "in", Ps: indexes}}}}
+	r.ir.Where = &ir.Group{Items: []ir.Item{{Pred: &ir.Pred{Op: "in", Ps: indexes}}}}
 	parts, err := rootINParts(r, &plan.Step{BindSlots: make([]plan.BindSlot, count)}, "sqlite")
 	if err != nil {
 		t.Fatal(err)
 	}
 	retained := map[int]bool{}
 	for _, part := range parts {
-		for _, index := range part.ir.Query.Where.Items[0].Pred.Ps {
+		for _, index := range part.ir.Where.Items[0].Pred.Ps {
 			retained[index] = true
 		}
 	}

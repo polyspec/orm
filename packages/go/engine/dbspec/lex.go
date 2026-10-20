@@ -133,15 +133,15 @@ func lexLine(s string, line int) ([]token, int, *Diagnostic) {
 	col := 1
 	for i := 0; i < len(s); {
 		c := s[i]
-		switch {
-		case c == ' ':
+		switch c {
+		case ' ':
 			i++
 			col++
-		case c == '(' || c == ')' || c == '{' || c == '}' || c == ',':
+		case '(', ')', '{', '}', ',':
 			tokens = append(tokens, token{kind: tokenPunct, text: s[i : i+1], line: line, col: col})
 			i++
 			col++
-		case c == '<' || c == '>':
+		case '<', '>':
 			n := 1
 			if i+1 < len(s) && (s[i+1] == '=' || (c == '<' && s[i+1] == '>')) {
 				n = 2
@@ -149,11 +149,11 @@ func lexLine(s string, line int) ([]token, int, *Diagnostic) {
 			tokens = append(tokens, token{kind: tokenOperator, text: s[i : i+n], line: line, col: col})
 			i += n
 			col += n
-		case c == '=' || c == '+' || c == '-' || c == '*' || c == '/':
+		case '=', '+', '-', '*', '/':
 			tokens = append(tokens, token{kind: tokenOperator, text: s[i : i+1], line: line, col: col})
 			i++
 			col++
-		case c == '\'':
+		case '\'':
 			start := col
 			var value strings.Builder
 			j := i + 1
@@ -255,7 +255,7 @@ func validNameFormat(s string) bool {
 	}
 	for i := 1; i < len(s); i++ {
 		c := s[i]
-		if !(('a' <= c && c <= 'z') || ('0' <= c && c <= '9') || c == '_') {
+		if (c < 'a' || c > 'z') && (c < '0' || c > '9') && c != '_' {
 			return false
 		}
 	}

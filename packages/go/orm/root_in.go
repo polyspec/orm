@@ -62,7 +62,7 @@ func rootINParts(r *request, st *plan.Step, driver string) ([]*request, error) {
 		end := min(start+chunk, len(unique))
 		part := *r
 		part.ir.Query = ir.CloneQuery(r.ir.Query)
-		part.ir.Query.Where.Items[target].Pred.Ps = padIndexes(unique[start:end])
+		part.ir.Where.Items[target].Pred.Ps = padIndexes(unique[start:end])
 		parts = append(parts, &part)
 	}
 	return parts, nil

@@ -34,7 +34,7 @@ func TestTransactionReportsFailedLocalReset(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer testcase.Close(t, db)
 	err = db.Transaction(func() error { return db.Utils().SetLocal("ormtest.actor", "tester") })
 	if !errors.Is(err, errStatementRejected) {
 		t.Fatalf("commit: want the reset error, got %v", err)

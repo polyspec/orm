@@ -44,7 +44,10 @@ func gen(args []string) {
 	var scan stringList
 	fs.Var(&scan, "scan", "Go package pattern whose model calls are generated (repeatable)")
 	check := fs.Bool("check", false, "compare the generated files with --out without writing")
-	fs.Parse(args)
+	// With ExitOnError, Parse ends the process on a bad flag itself; an error it returns is the same usage error.
+	if err := fs.Parse(args); err != nil {
+		usage()
+	}
 	if *set == "" || *out == "" {
 		usage()
 	}

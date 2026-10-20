@@ -17,7 +17,7 @@ func openRevision(t *testing.T) (*orm.DB, func() *orm.Core, int64) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() { testcase.Close(t, db) })
 	if err := db.Utils().Schema().Install(s); err != nil {
 		t.Fatal(err)
 	}

@@ -33,7 +33,7 @@ func run() (code int) {
 	}()
 	db, err := model.Connect(dsn(), orm.Config{AESKey: "bench-salt", BlindIndexKey: "bench-blind-index"})
 	check(err)
-	defer db.Close()
+	defer func() { check(db.Close()) }()
 
 	// A join child with its own ON conditions whose WHERE conditions are placed
 	// in a group, and two levels of relations with options.

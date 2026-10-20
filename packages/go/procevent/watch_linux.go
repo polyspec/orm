@@ -15,8 +15,8 @@ func WatchExit(pid int) (func() error, error) {
 	if err != nil {
 		return nil, err
 	}
-	return func() error {
-		defer unix.Close(descriptor)
+	return func() (err error) {
+		defer func() { err = errors.Join(err, unix.Close(descriptor)) }()
 		fds := []unix.PollFd{{Fd: int32(descriptor), Events: unix.POLLIN}}
 		for {
 			// A timeout of -1 waits until a notification arrives. If interrupted by a signal (EINTR), it waits again.
@@ -35,16 +35,15 @@ func WatchExit(pid int) (func() error, error) {
 }
 
 // WatchDir registers changes of the directory (an entry is created, removed, or moved) with inotify, and returns a function that waits for the next change
-// and a function that closes the watch. Registration happens before the state is read, so no change
+// and a function that closes the watch and returns the error of closing it. Registration happens before the state is read, so no change
 // between them is missed.
-func WatchDir(path string) (func() error, func(), error) {
+func WatchDir(path string) (func() error, func() error, error) {
 	descriptor, err := unix.InotifyInit1(unix.IN_CLOEXEC)
 	if err != nil {
 		return nil, nil, err
 	}
 	if _, err := unix.InotifyAddWatch(descriptor, path, unix.IN_CREATE|unix.IN_DELETE|unix.IN_MOVED_TO|unix.IN_MOVED_FROM|unix.IN_DELETE_SELF); err != nil {
-		unix.Close(descriptor)
-		return nil, nil, err
+		return nil, nil, errors.Join(err, unix.Close(descriptor))
 	}
 	buffer := make([]byte, 4096)
 	return func() error {
@@ -56,5 +55,5 @@ func WatchDir(path string) (func() error, func(), error) {
 			}
 			return err
 		}
-	}, func() { unix.Close(descriptor) }, nil
+	}, func() error { return unix.Close(descriptor) }, nil
 }

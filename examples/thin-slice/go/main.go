@@ -51,7 +51,7 @@ func run() (code int) {
 		BlindIndexKey: "bench-blind-index",
 	})
 	check(err)
-	defer db.Close()
+	defer func() { check(db.Close()) }()
 	_, err = db.Subscribe(func(e orm.StatementEvent) error {
 		lastSQL, lastArgs = e.SQL, e.Binds
 		for i, a := range lastArgs {
@@ -93,13 +93,14 @@ func run() (code int) {
 	})
 	raw, err := sql.Open("mysql", nativeDSN(dsn()))
 	check(err)
-	defer raw.Close()
+	defer func() { check(raw.Close()) }()
 	stmt, err := raw.PrepareContext(context.Background(), lastSQL)
 	check(err)
 	native := p50(func() {
 		rs, err := stmt.Query(lastArgs...)
 		check(err)
-		cols, _ := rs.Columns()
+		cols, err := rs.Columns()
+		check(err)
 		vals := make([]any, len(cols))
 		ptrs := make([]any, len(cols))
 		for i := range vals {
@@ -108,7 +109,8 @@ func run() (code int) {
 		for rs.Next() {
 			check(rs.Scan(ptrs...))
 		}
-		rs.Close()
+		check(rs.Err())
+		check(rs.Close())
 	})
 	fmt.Fprintf(os.Stderr, "go: client p50 %dµs, native p50 %dµs (%d iterations)\n", client, native, iterations)
 	return 0

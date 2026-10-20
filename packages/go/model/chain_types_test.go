@@ -67,11 +67,12 @@ func TestChainArgumentTypes(t *testing.T) {
 				Importer: importerFunc(func(path string) (*types.Package, error) { return imported[path], nil }),
 				Error:    func(err error) { errs = append(errs, err.Error()) },
 			}
-			conf.Check("snippet", fset, []*ast.File{file}, nil)
-			if c.accept && len(errs) > 0 {
+			// Check returns the first error that Error collects, so err is nil only when errs is empty.
+			_, err = conf.Check("snippet", fset, []*ast.File{file}, nil)
+			if c.accept && err != nil {
 				t.Fatalf("model.Author().%s does not compile: %s", c.call, strings.Join(errs, "; "))
 			}
-			if !c.accept && len(errs) == 0 {
+			if !c.accept && err == nil {
 				t.Fatalf("model.Author().%s compiles; the chain must reject its argument", c.call)
 			}
 		})

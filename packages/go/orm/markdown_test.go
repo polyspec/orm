@@ -61,7 +61,7 @@ func startFakeServer(t *testing.T, answers ...string) *fakeServer {
 			s.received <- nil
 			return
 		}
-		defer conn.Close()
+		defer testcase.Close(t, conn)
 		r := bufio.NewReader(conn)
 		var got []string
 		for _, answer := range answers {
@@ -76,7 +76,7 @@ func startFakeServer(t *testing.T, answers ...string) *fakeServer {
 		}
 		s.received <- got
 	}()
-	t.Cleanup(func() { ln.Close() })
+	t.Cleanup(func() { testcase.Close(t, ln) })
 	return s
 }
 
@@ -100,7 +100,7 @@ func TestMarkdownSessionMessages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer testcase.Close(t, db)
 	if err := db.Transaction(func() error {
 		return db.Transaction(func() error { return nil })
 	}, ReadOnly()); err != nil {
@@ -111,7 +111,7 @@ func TestMarkdownSessionMessages(t *testing.T) {
 	if !errors.As(err, &e) || e.Code != CodeWriteConflict || e.Msg != "people.flowmark.md:3 changed since it was read" {
 		t.Fatalf("commit error = %v; want WRITE_CONFLICT with the server's message", err)
 	}
-	db.Close()
+	testcase.Close(t, db)
 	want := []string{
 		connectLine,
 		`{"op":"begin","read_only":true}`,
@@ -133,7 +133,7 @@ func TestMarkdownConnectRefused(t *testing.T) {
 	s := startFakeServer(t, `{"error":{"code":"CONFIG","message":"connect: the token is not the corpus's token"}}`)
 	db, err := Connect(s.dsn(), Config{})
 	if err == nil {
-		db.Close()
+		testcase.Close(t, db)
 	}
 	var e *Error
 	if !errors.As(err, &e) || e.Code != CodeConfig || e.Msg != "connect: the token is not the corpus's token" {
@@ -153,7 +153,7 @@ func TestMarkdownRejectedSurfaces(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer testcase.Close(t, db)
 	for name, err := range map[string]error{
 		"isolation":   db.Transaction(func() error { return nil }, Isolation(Serializable)),
 		"timeoutMs":   db.Transaction(func() error { return nil }, TimeoutMs(100)),

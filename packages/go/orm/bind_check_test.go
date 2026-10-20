@@ -122,7 +122,7 @@ func TestBindVectors(t *testing.T) {
 			if err != nil {
 				t.Fatalf("checkParam(%s) = %v; want it bound", c.Value, err)
 			}
-			if bound := vectorValue(t, c.Bound); !reflect.DeepEqual(value, bound) && !(value == nil && bound == nil) {
+			if bound := vectorValue(t, c.Bound); !reflect.DeepEqual(value, bound) && (value != nil || bound != nil) {
 				t.Fatalf("checkParam(%s) bound %v; want %v", c.Value, value, bound)
 			}
 		})

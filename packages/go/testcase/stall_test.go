@@ -17,7 +17,7 @@ func TestStepBudgetScalesWithTheSteps(t *testing.T) {
 	if budget := StepBudget(22000); budget < 3*slowest {
 		t.Fatalf("the budget of 22000 steps is %s; expected at least %s", budget, 3*slowest)
 	}
-	if small, large := StepBudget(100), StepBudget(22000); !(small < large) {
+	if small, large := StepBudget(100), StepBudget(22000); small >= large {
 		t.Fatalf("the budget of 100 steps is %s and of 22000 steps %s; expected the budget to grow with the steps", small, large)
 	}
 	if StepBudget(0) <= 0 {

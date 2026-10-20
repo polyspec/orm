@@ -67,7 +67,7 @@ func validKey(key string) bool {
 		return false
 	}
 	for i, r := range key {
-		if !(r == '.' || r == '_' || r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z' || r >= '0' && r <= '9') || i == 0 && r == '.' {
+		if r != '.' && r != '_' && (r < 'A' || r > 'Z') && (r < 'a' || r > 'z') && (r < '0' || r > '9') || i == 0 && r == '.' {
 			return false
 		}
 	}

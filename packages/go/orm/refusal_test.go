@@ -21,7 +21,7 @@ func refusalModels(t *testing.T, driver string) func() *orm.Core {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() { testcase.Close(t, db) })
 	if err := db.Utils().Schema().Install(s); err != nil {
 		t.Fatal(err)
 	}

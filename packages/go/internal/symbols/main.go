@@ -37,7 +37,10 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	os.Stdout.Write(append(out, '\n'))
+	if _, err := os.Stdout.Write(append(out, '\n')); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 }
 
 // symbol is one declaration: its signature and whether Go exports it.

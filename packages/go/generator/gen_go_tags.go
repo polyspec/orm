@@ -45,13 +45,18 @@ var (
 	knownArch = []string{"386", "amd64", "arm", "arm64", "loong64", "mips", "mipsle", "mips64", "mips64le", "ppc64", "ppc64le", "riscv64", "s390x", "wasm"}
 )
 
-// fileConstraint reads the //go:build line of a Go file.
-func fileConstraint(path string) (constraint.Expr, bool) {
+// fileConstraint reads the //go:build line of a Go file. A file that cannot be
+// opened, read or closed has no constraint.
+func fileConstraint(path string) (expr constraint.Expr, ok bool) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, false
 	}
-	defer f.Close()
+	defer func() {
+		if f.Close() != nil {
+			expr, ok = nil, false
+		}
+	}()
 	lines := bufio.NewScanner(f)
 	for lines.Scan() {
 		line := strings.TrimSpace(lines.Text())
@@ -61,8 +66,8 @@ func fileConstraint(path string) (constraint.Expr, bool) {
 		if !constraint.IsGoBuild(line) {
 			return nil, false
 		}
-		expr, err := constraint.Parse(line)
-		return expr, err == nil
+		parsed, err := constraint.Parse(line)
+		return parsed, err == nil
 	}
 	return nil, false
 }

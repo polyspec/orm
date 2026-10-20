@@ -21,7 +21,6 @@ import (
 	"github.com/goccy/go-yaml/token"
 	orderedjson "github.com/polyspec/ordered-json/packages/go"
 	"github.com/polyspec/orm/packages/go/engine/ir"
-	"github.com/polyspec/orm/packages/go/engine/plan"
 	goyaml "go.yaml.in/yaml/v3"
 )
 
@@ -665,20 +664,4 @@ func (p *phpParser) value() (any, error) {
 		return nil, codecErr(CodeCodecUnsupported, "serialize: objects and references are not supported (%c)", t)
 	}
 	return nil, p.fail(fmt.Sprintf("unknown type %q", t))
-}
-
-// styledCols lists the positional columns of a step that need decoding (joins included).
-func styledCols(a *plan.Assemble) []plan.OutCol {
-	var out []plan.OutCol
-	for _, c := range a.Columns {
-		if len(c.Styles) > 0 {
-			out = append(out, c)
-		}
-	}
-	for _, ch := range a.Children {
-		if ch.Kind == "join" {
-			out = append(out, styledCols(ch.Assemble)...)
-		}
-	}
-	return out
 }

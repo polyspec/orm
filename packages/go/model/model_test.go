@@ -35,7 +35,7 @@ func databases(t *testing.T) map[string]*orm.DB {
 		if err != nil {
 			t.Fatalf("%s: %v", driver, err)
 		}
-		t.Cleanup(func() { db.Close() })
+		t.Cleanup(func() { testcase.Close(t, db) })
 		dsns.Store(db, dsn)
 		if err := benchset.Install(db); err != nil {
 			t.Fatalf("%s install: %v", driver, err)
@@ -198,7 +198,7 @@ func TestGetMissingReturnsNil(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer testcase.Close(t, db)
 	if err := benchset.Install(db); err != nil {
 		t.Fatal(err)
 	}
@@ -262,7 +262,7 @@ func TestJoinsAndRelations(t *testing.T) {
 			t.Fatalf("groupLimit: %s", names(got))
 		}
 		other := must(model.Connect(dsnOf(t, db), orm.Config{}))
-		defer other.Close()
+		defer testcase.Close(t, other)
 		external := must(model.Author().Connect(db).
 			Relation(model.User().Connect(other).MatchUserSeqWithSeq().AliasOwner()).
 			GetByName("beta"))

@@ -38,7 +38,7 @@ func TestAESWriteUsesKeyOfCurrentVersion(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Cleanup(func() { db.Close() })
+		t.Cleanup(func() { testcase.Close(t, db) })
 		return db
 	}
 	writer := open(orm.Config{AESKeys: map[int32]string{1: "note-key-one", 2: "note-key-two"}, AESVersion: 2})

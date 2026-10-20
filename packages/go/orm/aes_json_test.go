@@ -49,7 +49,7 @@ func TestAESJSONColumn(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				t.Cleanup(func() { db.Close() })
+				t.Cleanup(func() { testcase.Close(t, db) })
 				return db
 			}
 			first := open(map[int32]string{1: "config-key-one"}, 1)
@@ -102,7 +102,7 @@ func TestAESJSONColumn(t *testing.T) {
 				} else {
 					raw = openNative(t, driver, dsn)
 				}
-				defer raw.Close()
+				defer testcase.Close(t, raw)
 				query := `SELECT config, aes_key_version FROM secret_config WHERE seq = $1`
 				if driver == "mysql" {
 					query = "SELECT config, aes_key_version FROM secret_config WHERE seq = ?"

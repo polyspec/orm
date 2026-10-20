@@ -99,7 +99,7 @@ func TestMySQLIntrospectionOfShownChecks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot open the in-memory SQLite database that answers the catalog: %v", err)
 	}
-	defer db.Close()
+	defer testcase.Close(t, db)
 	db.SetMaxOpenConns(1)
 	for _, c := range v.Cases {
 		t.Run(c.ID, func(t *testing.T) {

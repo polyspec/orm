@@ -60,7 +60,7 @@ func (c countingConn) PrepareContext(ctx context.Context, query string) (driver.
 	if p, ok := c.Conn.(driver.ConnPrepareContext); ok {
 		return p.PrepareContext(ctx, query)
 	}
-	return c.Conn.Prepare(query)
+	return c.Prepare(query)
 }
 
 func (c countingConn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, error) {
@@ -162,7 +162,7 @@ func TestRegisterSendsNoStatement(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer db.Close()
+			defer testcase.Close(t, db)
 			before := sentStatements.Load()
 			if err := db.Utils().Schema().Register(schema); err != nil {
 				t.Fatalf("register: %v", err)
@@ -196,7 +196,7 @@ func TestRegisterSendsNoStatement(t *testing.T) {
 			if err != nil {
 				t.Fatalf("connect with the schema: %v", err)
 			}
-			defer connected.Close()
+			defer testcase.Close(t, connected)
 			if sent := sentStatements.Load() - before; sent != connectSent {
 				t.Fatalf("ConnectSchema sent %d statements, Connect %d; registering must send none", sent, connectSent)
 			}

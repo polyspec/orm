@@ -235,16 +235,16 @@ func diffPlan(source *Document, p *Plan) (*planDiff, []Diagnostic) {
 
 // widens reports whether a type change keeps every value in all three databases.
 func widens(from, to Type) bool {
-	switch {
-	case from.Kind == TypeI16:
+	switch from.Kind {
+	case TypeI16:
 		return to.Kind == TypeI32 || to.Kind == TypeI64
-	case from.Kind == TypeI32:
+	case TypeI32:
 		return to.Kind == TypeI64
-	case from.Kind == TypeVarchar:
+	case TypeVarchar:
 		return (to.Kind == TypeVarchar && to.Length >= from.Length) || to.Kind == TypeText
-	case from.Kind == TypeDecimal:
+	case TypeDecimal:
 		return to.Kind == TypeDecimal && to.Scale == from.Scale && to.Precision >= from.Precision
-	case from.Kind == TypeTime || from.Kind == TypeDatetime:
+	case TypeTime, TypeDatetime:
 		return to.Kind == from.Kind && to.Precision >= from.Precision
 	}
 	return false

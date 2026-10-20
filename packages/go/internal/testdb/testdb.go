@@ -50,7 +50,9 @@ func New(t testing.TB, driver string) string {
 		if err != nil {
 			t.Fatalf("create case file: %v", err)
 		}
-		file.Close()
+		if err := file.Close(); err != nil {
+			t.Fatalf("close case file: %v", err)
+		}
 		c.Step("file %s created", path)
 		t.Cleanup(func() {
 			for _, suffix := range []string{"", "-wal", "-shm", "-journal"} {
@@ -71,12 +73,12 @@ func New(t testing.TB, driver string) string {
 	name := Name()
 	admin := Open(t, driver, base)
 	if _, err := admin.Exec("CREATE DATABASE " + name); err != nil {
-		admin.Close()
+		testcase.Close(t, admin)
 		t.Fatalf("create case database %s: %v", name, err)
 	}
 	c.Step("database %s created", name)
 	t.Cleanup(func() {
-		defer admin.Close()
+		defer testcase.Close(t, admin)
 		stmt := "DROP DATABASE " + name
 		if driver == "postgres" {
 			stmt += " WITH (FORCE)"

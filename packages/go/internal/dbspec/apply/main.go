@@ -57,7 +57,7 @@ func main() {
 	fmt.Println(result)
 }
 
-func run(action, dialect, uri, vectors string) (string, error) {
+func run(action, dialect, uri, vectors string) (_ string, err error) {
 	plans, err := chain(vectors)
 	if err != nil {
 		return "", err
@@ -68,12 +68,12 @@ func run(action, dialect, uri, vectors string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer db.Close()
+	defer func() { err = errors.Join(err, db.Close()) }()
 	conn, err := db.Conn(ctx)
 	if err != nil {
 		return "", err
 	}
-	defer conn.Close()
+	defer func() { err = errors.Join(err, conn.Close()) }()
 	for _, rule := range connectionRules[dialect] {
 		if _, err := conn.ExecContext(ctx, rule); err != nil {
 			return "", fmt.Errorf("%s: %w", rule, err)

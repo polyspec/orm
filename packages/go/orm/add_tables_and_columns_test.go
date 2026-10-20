@@ -52,7 +52,7 @@ func addTablesAndColumnsInstalled(t *testing.T, driver string) (*orm.DB, string)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() { testcase.Close(t, db) })
 	for _, s := range []*orm.Schema{logSet, v1} {
 		if err := db.Utils().Schema().Install(s); err != nil {
 			t.Fatal(err)
@@ -102,7 +102,7 @@ func addTablesAndColumnsNative(t *testing.T, driver, dsn string) *sql.DB {
 func addTablesAndColumnsExec(t *testing.T, driver, dsn, statement string) error {
 	t.Helper()
 	raw := addTablesAndColumnsNative(t, driver, dsn)
-	defer raw.Close()
+	defer testcase.Close(t, raw)
 	_, err := raw.Exec(statement)
 	return err
 }
@@ -111,7 +111,7 @@ func addTablesAndColumnsExec(t *testing.T, driver, dsn, statement string) error 
 func addTablesAndColumnsCount(t *testing.T, driver, dsn, query string) (int64, error) {
 	t.Helper()
 	raw := addTablesAndColumnsNative(t, driver, dsn)
-	defer raw.Close()
+	defer testcase.Close(t, raw)
 	var n int64
 	err := raw.QueryRow(query).Scan(&n)
 	return n, err
@@ -159,7 +159,7 @@ func addTablesAndColumnsCase(t *testing.T, driver string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer next.Close()
+	defer testcase.Close(t, next)
 	err = next.Transaction(func() error {
 		c := orm.NewCore(rowEntity("addcol_item", v2, "id", "note", "priority", "audit_seq"))
 		c.Connect(next)

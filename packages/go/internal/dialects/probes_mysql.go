@@ -3,6 +3,7 @@ package dialects
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"strconv"
 	"strings"
 
@@ -556,7 +557,11 @@ func mysqlProbes() []Probe {
 				e.fail("connect as %s: %v", user, err)
 				return
 			}
-			defer closeDB()
+			defer func() {
+				if err := closeDB(); err != nil {
+					e.fail("close the connection of %s: %v", user, err)
+				}
+			}()
 			other := &Env{Ctx: e.Ctx, Conn: conn, DB: "mysql"}
 			other.Fails("CREATE TRIGGER tg BEFORE INSERT ON t FOR EACH ROW SET @x = 1", "1419")
 			e.Merge(other)
@@ -619,8 +624,8 @@ func mysqlProbes() []Probe {
 	}
 }
 
-// openMySQLConn opens one connection with cfg.
-func openMySQLConn(ctx context.Context, cfg *mysql.Config) (*sql.Conn, func(), error) {
+// openMySQLConn opens one connection with cfg, and returns it with the function that closes it and its pool.
+func openMySQLConn(ctx context.Context, cfg *mysql.Config) (*sql.Conn, func() error, error) {
 	connector, err := mysql.NewConnector(cfg)
 	if err != nil {
 		return nil, nil, err
@@ -628,8 +633,7 @@ func openMySQLConn(ctx context.Context, cfg *mysql.Config) (*sql.Conn, func(), e
 	db := sql.OpenDB(connector)
 	conn, err := db.Conn(ctx)
 	if err != nil {
-		db.Close()
-		return nil, nil, err
+		return nil, nil, errors.Join(err, db.Close())
 	}
-	return conn, func() { conn.Close(); db.Close() }, nil
+	return conn, func() error { return errors.Join(conn.Close(), db.Close()) }, nil
 }

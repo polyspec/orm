@@ -125,9 +125,9 @@ func syntaxInputs(all sharedCases) map[string]syntaxInput {
 
 // writePositions prints each positions case: the declaration positions of its main document as
 // "| kind<TAB>line<TAB>column<TAB>path..." lines, or its diagnostics.
-func writePositions(out *bufio.Writer, cases []positionCase) {
+func writePositions(out *output, cases []positionCase) {
 	for _, c := range cases {
-		fmt.Fprintf(out, "positions/%s\n", c.ID)
+		out.printf("positions/%s\n", c.ID)
 		set := map[string]string{}
 		for name, lines := range c.Documents {
 			if name != c.Main {
@@ -136,33 +136,33 @@ func writePositions(out *bufio.Writer, cases []positionCase) {
 		}
 		_, positions, diagnostics := dbspec.Parse(join(c.Documents[c.Main], false, false), set)
 		for _, d := range diagnostics {
-			fmt.Fprintf(out, "! %s %d %d\n", d.Rule, d.Line, d.Column)
+			out.printf("! %s %d %d\n", d.Rule, d.Line, d.Column)
 		}
 		for _, p := range positions {
-			fmt.Fprintf(out, "| %s\t%d\t%d\t%s\n", p.Kind, p.Line, p.Column, strings.Join(p.Path, "\t"))
+			out.printf("| %s\t%d\t%d\t%s\n", p.Kind, p.Line, p.Column, strings.Join(p.Path, "\t"))
 		}
 	}
 }
 
 // writeSyntax prints the analysis of one syntax case, its tokens ("| line start end class") and its diagnostics,
 // then "syntax/<id>/format" and the formatted text or the diagnostics of the refusal.
-func writeSyntax(out *bufio.Writer, id string, input syntaxInput) {
-	fmt.Fprintf(out, "syntax/%s\n", id)
+func writeSyntax(out *output, id string, input syntaxInput) {
+	out.printf("syntax/%s\n", id)
 	analysis := dbspec.Analyze(input.Text, input.Documents)
 	for _, t := range analysis.Tokens {
-		fmt.Fprintf(out, "| %d %d %d %s\n", t.Line, t.Start, t.End, t.Class)
+		out.printf("| %d %d %d %s\n", t.Line, t.Start, t.End, t.Class)
 	}
 	for _, d := range analysis.Diagnostics {
-		fmt.Fprintf(out, "! %s %d %d\n", d.Rule, d.Line, d.Column)
+		out.printf("! %s %d %d\n", d.Rule, d.Line, d.Column)
 	}
-	fmt.Fprintf(out, "syntax/%s/format\n", id)
+	out.printf("syntax/%s/format\n", id)
 	text, diagnostics := dbspec.Format(input.Text, input.Documents)
 	for _, d := range diagnostics {
-		fmt.Fprintf(out, "! %s %d %d\n", d.Rule, d.Line, d.Column)
+		out.printf("! %s %d %d\n", d.Rule, d.Line, d.Column)
 	}
 	if len(diagnostics) == 0 {
 		for _, line := range strings.Split(text, "\n") {
-			fmt.Fprintf(out, "| %s\n", line)
+			out.printf("| %s\n", line)
 		}
 	}
 }
@@ -184,30 +184,30 @@ func join(lines []string, crlf, mixed bool) string {
 }
 
 // write prints the diagnostic of text, or otherwise its emission.
-func write(out *bufio.Writer, text string, set map[string]string, stress bool) {
+func write(out *output, text string, set map[string]string, stress bool) {
 	document, _, diagnostics := dbspec.Parse(text, set)
 	if len(diagnostics) > 0 {
 		for _, d := range diagnostics {
-			fmt.Fprintf(out, "! %s %d %d\n", d.Rule, d.Line, d.Column)
+			out.printf("! %s %d %d\n", d.Rule, d.Line, d.Column)
 		}
 		return
 	}
 	emitted := dbspec.Emit(document)
 	if stress {
 		if emitted == text {
-			fmt.Fprintln(out, "= unchanged")
+			out.println("= unchanged")
 		} else {
-			fmt.Fprintln(out, "= changed")
+			out.println("= changed")
 		}
 		return
 	}
 	for _, line := range strings.Split(emitted, "\n") {
-		fmt.Fprintf(out, "| %s\n", line)
+		out.printf("| %s\n", line)
 	}
 }
 
 // writeManifest prints the hash and text of the case document set, or the diagnostic of a document or set.
-func writeManifest(out *bufio.Writer, c hashCase) {
+func writeManifest(out *output, c hashCase) {
 	names := make([]string, 0, len(c.Documents))
 	for name := range c.Documents {
 		names = append(names, name)
@@ -224,7 +224,7 @@ func writeManifest(out *bufio.Writer, c hashCase) {
 		document, _, diagnostics := dbspec.Parse(join(c.Documents[name], false, false), set)
 		if len(diagnostics) > 0 {
 			for _, d := range diagnostics {
-				fmt.Fprintf(out, "! %s %d %d\n", d.Rule, d.Line, d.Column)
+				out.printf("! %s %d %d\n", d.Rule, d.Line, d.Column)
 			}
 			return
 		}
@@ -233,23 +233,23 @@ func writeManifest(out *bufio.Writer, c hashCase) {
 	manifest, diagnostics := dbspec.ManifestOf(documents)
 	if len(diagnostics) > 0 {
 		for _, d := range diagnostics {
-			fmt.Fprintf(out, "! %s %d %d\n", d.Rule, d.Line, d.Column)
+			out.printf("! %s %d %d\n", d.Rule, d.Line, d.Column)
 		}
 		return
 	}
-	fmt.Fprintf(out, "= manifestHash %s\n= schemaHash %s\n= manifestText\n", manifest.ManifestHash, manifest.SchemaHash)
+	out.printf("= manifestHash %s\n= schemaHash %s\n= manifestText\n", manifest.ManifestHash, manifest.SchemaHash)
 	for _, line := range strings.Split(manifest.ManifestText, "\n") {
-		fmt.Fprintf(out, "| %s\n", line)
+		out.printf("| %s\n", line)
 	}
-	fmt.Fprintln(out, "= schemaText")
+	out.println("= schemaText")
 	for _, line := range strings.Split(manifest.SchemaText, "\n") {
-		fmt.Fprintf(out, "| %s\n", line)
+		out.printf("| %s\n", line)
 	}
 }
 
 // writeRender prints the statements of the case document set per dialect, or the diagnostic of a document
 // or set.
-func writeRender(out *bufio.Writer, c hashCase) {
+func writeRender(out *output, c hashCase) {
 	names := make([]string, 0, len(c.Documents))
 	for name := range c.Documents {
 		names = append(names, name)
@@ -265,34 +265,34 @@ func writeRender(out *bufio.Writer, c hashCase) {
 		}
 		document, _, diagnostics := dbspec.Parse(join(c.Documents[name], false, false), set)
 		if len(diagnostics) > 0 {
-			fmt.Fprintf(out, "render/%s\n", c.ID)
+			out.printf("render/%s\n", c.ID)
 			for _, d := range diagnostics {
-				fmt.Fprintf(out, "! %s %d %d\n", d.Rule, d.Line, d.Column)
+				out.printf("! %s %d %d\n", d.Rule, d.Line, d.Column)
 			}
 			return
 		}
 		documents = append(documents, document)
 	}
 	for _, dialect := range []dbspec.Dialect{dbspec.DialectMySQL, dbspec.DialectPostgres, dbspec.DialectSQLite} {
-		fmt.Fprintf(out, "render/%s/%s\n", c.ID, dialect)
+		out.printf("render/%s/%s\n", c.ID, dialect)
 		statements, diagnostics := dbspec.Render(documents, dialect)
 		for _, d := range diagnostics {
-			fmt.Fprintf(out, "! %s %d %d\n", d.Rule, d.Line, d.Column)
+			out.printf("! %s %d %d\n", d.Rule, d.Line, d.Column)
 		}
 		for _, s := range statements {
-			fmt.Fprintf(out, "| %s\n", s)
+			out.printf("| %s\n", s)
 		}
 	}
 }
 
 // writeDiagnostics prints the diagnostic. plan, chain, and compare diagnostics end with a message that all clients
 // share, and schema diagnostics of the target or source do not.
-func writeDiagnostics(out *bufio.Writer, diagnostics []dbspec.Diagnostic) {
+func writeDiagnostics(out *output, diagnostics []dbspec.Diagnostic) {
 	for _, d := range diagnostics {
 		if d.Rule == dbspec.RulePlan || d.Rule == dbspec.RuleChain || d.Rule == dbspec.RuleCompare {
-			fmt.Fprintf(out, "! %s %d %d %s\n", d.Rule, d.Line, d.Column, d.Message)
+			out.printf("! %s %d %d %s\n", d.Rule, d.Line, d.Column, d.Message)
 		} else {
-			fmt.Fprintf(out, "! %s %d %d\n", d.Rule, d.Line, d.Column)
+			out.printf("! %s %d %d\n", d.Rule, d.Line, d.Column)
 		}
 	}
 }
@@ -332,7 +332,7 @@ type parseCase struct {
 
 // planSource reads the source schema of a plan case, returns nil if the schema is empty, and if there is a diagnostic
 // prints it and reports false.
-func planSource(out *bufio.Writer, lines *[]string) (*dbspec.Document, bool) {
+func planSource(out *output, lines *[]string) (*dbspec.Document, bool) {
 	if lines == nil {
 		return nil, true
 	}
@@ -345,9 +345,9 @@ func planSource(out *bufio.Writer, lines *[]string) (*dbspec.Document, bool) {
 }
 
 // writeChanges prints each change as "| kind table name".
-func writeChanges(out *bufio.Writer, changes []dbspec.Change) {
+func writeChanges(out *output, changes []dbspec.Change) {
 	for _, c := range changes {
-		fmt.Fprintf(out, "| %s %s %s\n", c.Kind, c.Table, c.Name)
+		out.printf("| %s %s %s\n", c.Kind, c.Table, c.Name)
 	}
 }
 
@@ -355,38 +355,38 @@ func writeChanges(out *bufio.Writer, changes []dbspec.Change) {
 // diagnostic; for each chain case, the chain order or diagnostic; for each parse case, the diagnostic or the emitted
 // plan; for each comparison, the differences or diagnostic.
 // writeStep writes a step as a statement line and its attribute lines (tests/dbspec/compare/check.mts).
-func writeStep(out *bufio.Writer, s dbspec.PlanStep) {
-	fmt.Fprintf(out, "| %s\n", s.Statement)
+func writeStep(out *output, s dbspec.PlanStep) {
+	out.printf("| %s\n", s.Statement)
 	switch {
 	case s.Finalize:
-		fmt.Fprintln(out, "  finalize")
+		out.println("  finalize")
 	case s.Rollback != "":
-		fmt.Fprintf(out, "  rollback: %s\n", s.Rollback)
+		out.printf("  rollback: %s\n", s.Rollback)
 	default:
-		fmt.Fprintf(out, "  irreversible: %s\n", s.Irreversible)
+		out.printf("  irreversible: %s\n", s.Irreversible)
 	}
-	fmt.Fprintf(out, "  effect: %s\n", s.Effect)
+	out.printf("  effect: %s\n", s.Effect)
 	if s.Restore != "" {
-		fmt.Fprintf(out, "  restore: %s\n", s.Restore)
+		out.printf("  restore: %s\n", s.Restore)
 	}
 	if s.RollbackRestore != "" {
-		fmt.Fprintf(out, "  rollback_restore: %s\n", s.RollbackRestore)
+		out.printf("  rollback_restore: %s\n", s.RollbackRestore)
 	}
 	if s.Restore != "" || s.RollbackRestore != "" {
-		fmt.Fprintf(out, "  restore_if: %s\n", s.RestoreIf)
+		out.printf("  restore_if: %s\n", s.RestoreIf)
 	}
 	for _, c := range s.NullChecks {
 		def := "none"
 		if c.HasDefault {
 			def = c.Default
 		}
-		fmt.Fprintf(out, "  null_check: %s %s %s\n", c.Table, c.Column, def)
+		out.printf("  null_check: %s %s %s\n", c.Table, c.Column, def)
 	}
 }
 
-func writePlans(out *bufio.Writer, v planVectors) {
+func writePlans(out *output, v planVectors) {
 	for _, c := range v.Cases {
-		fmt.Fprintf(out, "plans/cases/%s\n", c.ID)
+		out.printf("plans/cases/%s\n", c.ID)
 		source, ok := planSource(out, c.Source)
 		if !ok {
 			continue
@@ -397,14 +397,14 @@ func writePlans(out *bufio.Writer, v planVectors) {
 			continue
 		}
 		for _, line := range strings.Split(dbspec.EmitPlan(p), "\n") {
-			fmt.Fprintf(out, "| %s\n", line)
+			out.printf("| %s\n", line)
 		}
-		fmt.Fprintf(out, "plans/cases/%s/changes\n", c.ID)
+		out.printf("plans/cases/%s/changes\n", c.ID)
 		changes, diagnostics := dbspec.Diff(source, p)
 		writeDiagnostics(out, diagnostics)
 		writeChanges(out, changes)
 		for _, dialect := range []dbspec.Dialect{dbspec.DialectMySQL, dbspec.DialectPostgres, dbspec.DialectSQLite} {
-			fmt.Fprintf(out, "plans/cases/%s/%s\n", c.ID, dialect)
+			out.printf("plans/cases/%s/%s\n", c.ID, dialect)
 			steps, diagnostics := dbspec.PlanSteps(source, p, dialect)
 			writeDiagnostics(out, diagnostics)
 			for _, s := range steps {
@@ -413,7 +413,7 @@ func writePlans(out *bufio.Writer, v planVectors) {
 		}
 	}
 	for _, c := range v.Invalid {
-		fmt.Fprintf(out, "plans/invalid/%s\n", c.ID)
+		out.printf("plans/invalid/%s\n", c.ID)
 		source, ok := planSource(out, c.Source)
 		if !ok {
 			continue
@@ -428,7 +428,7 @@ func writePlans(out *bufio.Writer, v planVectors) {
 		writeChanges(out, changes)
 	}
 	for _, c := range v.Chains {
-		fmt.Fprintf(out, "plans/chains/%s\n", c.ID)
+		out.printf("plans/chains/%s\n", c.ID)
 		var plans []*dbspec.Plan
 		parsed := true
 		for _, lines := range c.Plans {
@@ -443,22 +443,22 @@ func writePlans(out *bufio.Writer, v planVectors) {
 		chain, diagnostics := dbspec.Chain(plans)
 		writeDiagnostics(out, diagnostics)
 		for _, p := range chain {
-			fmt.Fprintf(out, "| %s\n", p.Name)
+			out.printf("| %s\n", p.Name)
 		}
 	}
 	for _, c := range v.Parse {
-		fmt.Fprintf(out, "plans/parse/%s\n", c.ID)
+		out.printf("plans/parse/%s\n", c.ID)
 		p, diagnostics := dbspec.ParsePlan(join(c.Plan, false, false))
 		if len(diagnostics) > 0 {
 			writeDiagnostics(out, diagnostics)
 			continue
 		}
 		for _, line := range strings.Split(dbspec.EmitPlan(p), "\n") {
-			fmt.Fprintf(out, "| %s\n", line)
+			out.printf("| %s\n", line)
 		}
 	}
 	for _, c := range v.Comparisons {
-		fmt.Fprintf(out, "plans/comparisons/%s\n", c.ID)
+		out.printf("plans/comparisons/%s\n", c.ID)
 		source, _, sourceDiagnostics := dbspec.Parse(join(c.Source, false, false), nil)
 		writeDiagnostics(out, sourceDiagnostics)
 		target, _, targetDiagnostics := dbspec.Parse(join(c.Target, false, false), nil)
@@ -469,7 +469,7 @@ func writePlans(out *bufio.Writer, v planVectors) {
 		differences, diagnostics := dbspec.CompareSchemas(source, target)
 		writeDiagnostics(out, diagnostics)
 		for _, d := range differences {
-			fmt.Fprintf(out, "| %s %s %s\n", d.Kind, d.Table, d.Name)
+			out.printf("| %s %s %s\n", d.Kind, d.Table, d.Name)
 		}
 	}
 }
@@ -500,40 +500,40 @@ type roundTripCase struct {
 
 // writeDropped prints what export or import dropped as "= kind<TAB>table<TAB>name".
 // The reason is not compared.
-func writeDropped(out *bufio.Writer, dropped []dbspec.Unsupported) {
+func writeDropped(out *output, dropped []dbspec.Unsupported) {
 	for _, u := range dropped {
-		fmt.Fprintf(out, "= %s\t%s\t%s\n", u.Kind, u.Table, u.Name)
+		out.printf("= %s\t%s\t%s\n", u.Kind, u.Table, u.Name)
 	}
 }
 
 // writeExport prints the Mermaid text of the document and the missing objects.
-func writeExport(out *bufio.Writer, d *dbspec.Document) string {
+func writeExport(out *output, d *dbspec.Document) string {
 	text, dropped := dbspec.ExportMermaid(d)
 	for _, line := range strings.Split(text, "\n") {
-		fmt.Fprintf(out, "| %s\n", line)
+		out.printf("| %s\n", line)
 	}
 	writeDropped(out, dropped)
 	return text
 }
 
 // writeImport prints the document emitted by import and the missing objects, or the diagnostic.
-func writeImport(out *bufio.Writer, text string) {
+func writeImport(out *output, text string) {
 	d, dropped, diagnostics := dbspec.ImportMermaid(text, "imported")
 	if len(diagnostics) > 0 {
 		writeDiagnostics(out, diagnostics)
 		return
 	}
 	for _, line := range strings.Split(dbspec.Emit(d), "\n") {
-		fmt.Fprintf(out, "| %s\n", line)
+		out.printf("| %s\n", line)
 	}
 	writeDropped(out, dropped)
 }
 
 // writeMermaid prints every export case, the import and invalid cases, and the round-trip cases. round
 // trip case is the document's export, then "<case>/import" and the import of that export.
-func writeMermaid(out *bufio.Writer, v mermaidVectors) error {
+func writeMermaid(out *output, v mermaidVectors) error {
 	for _, c := range v.Export {
-		fmt.Fprintf(out, "mermaid/export/%s\n", c.ID)
+		out.printf("mermaid/export/%s\n", c.ID)
 		set := map[string]string{}
 		for name, lines := range c.Documents {
 			set[name] = join(lines, false, false)
@@ -546,15 +546,15 @@ func writeMermaid(out *bufio.Writer, v mermaidVectors) error {
 		writeExport(out, d)
 	}
 	for _, c := range v.Import {
-		fmt.Fprintf(out, "mermaid/import/%s\n", c.ID)
+		out.printf("mermaid/import/%s\n", c.ID)
 		writeImport(out, join(c.Mermaid, false, false))
 	}
 	for _, c := range v.Invalid {
-		fmt.Fprintf(out, "mermaid/invalid/%s\n", c.ID)
+		out.printf("mermaid/invalid/%s\n", c.ID)
 		writeImport(out, join(c.Mermaid, false, false))
 	}
 	for _, c := range v.RoundTrip {
-		fmt.Fprintf(out, "mermaid/round_trip/%s\n", c.ID)
+		out.printf("mermaid/round_trip/%s\n", c.ID)
 		source, diagnostics, err := dbspec.ReadFile(c.Path)
 		if err != nil {
 			return err
@@ -569,7 +569,7 @@ func writeMermaid(out *bufio.Writer, v mermaidVectors) error {
 			continue
 		}
 		text := writeExport(out, d)
-		fmt.Fprintf(out, "mermaid/round_trip/%s/import\n", c.ID)
+		out.printf("mermaid/round_trip/%s/import\n", c.ID)
 		writeImport(out, text)
 	}
 	return nil
@@ -578,8 +578,8 @@ func writeMermaid(out *bufio.Writer, v mermaidVectors) error {
 // writeFile reads a files case twice: once with path given to dbspec.ReadFile as "files/<id>",
 // and once with the file bytes and case path given by name to dbspec.ReadBytes as "files/<id>/bytes". Each result
 // is a diagnostic and message (the name replaced with "<name>"), or otherwise the emission.
-func writeFile(out *bufio.Writer, id, path, name string) error {
-	fmt.Fprintf(out, "files/%s\n", id)
+func writeFile(out *output, id, path, name string) error {
+	out.printf("files/%s\n", id)
 	text, diagnostics, err := dbspec.ReadFile(path)
 	if err != nil {
 		return err
@@ -589,24 +589,24 @@ func writeFile(out *bufio.Writer, id, path, name string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(out, "files/%s/bytes\n", id)
+	out.printf("files/%s/bytes\n", id)
 	text, diagnostics = dbspec.ReadBytes(name, raw)
 	writeRead(out, text, diagnostics, name)
 	return nil
 }
 
 // writeRead prints the diagnostic and message of the reader result, or otherwise the emission of text.
-func writeRead(out *bufio.Writer, text string, diagnostics []dbspec.Diagnostic, name string) {
+func writeRead(out *output, text string, diagnostics []dbspec.Diagnostic, name string) {
 	if len(diagnostics) == 0 {
 		write(out, text, nil, false)
 		return
 	}
 	for _, d := range diagnostics {
-		fmt.Fprintf(out, "! %s %d %d\n", d.Rule, d.Line, d.Column)
+		out.printf("! %s %d %d\n", d.Rule, d.Line, d.Column)
 		if rest, ok := strings.CutPrefix(d.Message, name); ok {
-			fmt.Fprintf(out, "= <name>%s\n", rest)
+			out.printf("= <name>%s\n", rest)
 		} else {
-			fmt.Fprintf(out, "= %s\n", d.Message)
+			out.printf("= %s\n", d.Message)
 		}
 	}
 }
@@ -630,7 +630,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, diagnostics[0].Message)
 		os.Exit(1)
 	}
-	out := bufio.NewWriter(os.Stdout)
+	out := &output{w: bufio.NewWriter(os.Stdout)}
 	for _, kind := range []struct {
 		name  string
 		cases []testCase
@@ -642,11 +642,11 @@ func main() {
 					set[name] = join(lines, c.CRLF, c.Mixed)
 				}
 			}
-			fmt.Fprintf(out, "%s/%s\n", kind.name, c.ID)
+			out.printf("%s/%s\n", kind.name, c.ID)
 			write(out, join(c.Documents[c.Main], c.CRLF, c.Mixed), set, false)
 		}
 	}
-	fmt.Fprintln(out, "stress")
+	out.println("stress")
 	write(out, stress, nil, true)
 	for _, c := range all.Files {
 		if err := writeFile(out, c.ID, filepath.Join(filepath.Dir(os.Args[1]), c.Path), c.Path); err != nil {
@@ -655,7 +655,7 @@ func main() {
 		}
 	}
 	for _, c := range all.Hashes {
-		fmt.Fprintf(out, "hashes/%s\n", c.ID)
+		out.printf("hashes/%s\n", c.ID)
 		writeManifest(out, c)
 	}
 	ddl, err := readDDL(os.Args[3])
@@ -696,8 +696,34 @@ func main() {
 		}
 		writeSyntax(out, id, input)
 	}
-	if err := out.Flush(); err != nil {
+	if err := out.flush(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+}
+
+// output is the buffered standard output of the command. It keeps the first write error, stops writing after it, and
+// returns it from flush, so that a failed write fails the command.
+type output struct {
+	w   *bufio.Writer
+	err error
+}
+
+func (o *output) printf(format string, a ...any) {
+	if o.err == nil {
+		_, o.err = fmt.Fprintf(o.w, format, a...)
+	}
+}
+
+func (o *output) println(a ...any) {
+	if o.err == nil {
+		_, o.err = fmt.Fprintln(o.w, a...)
+	}
+}
+
+func (o *output) flush() error {
+	if o.err != nil {
+		return o.err
+	}
+	return o.w.Flush()
 }

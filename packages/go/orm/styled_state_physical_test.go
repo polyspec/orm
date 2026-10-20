@@ -63,7 +63,7 @@ func TestStyledFixturePhysicalCells(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer db.Close()
+			defer testcase.Close(t, db)
 			if err := db.Utils().Schema().Install(s); err != nil {
 				t.Fatal(err)
 			}
@@ -76,7 +76,7 @@ func TestStyledFixturePhysicalCells(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer raw.Close()
+			defer testcase.Close(t, raw)
 			entity := rowEntity("styled_case", s, "seq", "json_payload", "jsons_payload", "serialize_payload", "yaml_payload", "json_required")
 			newRow := func() *orm.Core { c := orm.NewCore(entity); entity.New(c); c.Connect(db); return c }
 			bind := "?"

@@ -27,7 +27,7 @@ func TestMySQLInstallInsideTransaction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer testcase.Close(t, db)
 	var inside error
 	if err := db.Transaction(func() error {
 		inside = db.Utils().Schema().Install(manifest)
@@ -63,7 +63,7 @@ func TestSchemaEmpty(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer db.Close()
+			defer testcase.Close(t, db)
 			expect := func(want bool, state string) {
 				t.Helper()
 				if got, err := db.Utils().Schema().Empty(); err != nil || got != want {
@@ -73,7 +73,7 @@ func TestSchemaEmpty(t *testing.T) {
 			expect(true, "a new database")
 			if driver == "postgres" {
 				raw := openNative(t, driver, dsn)
-				defer raw.Close()
+				defer testcase.Close(t, raw)
 				if _, err := raw.Exec("CREATE SCHEMA unowned_empty"); err != nil {
 					t.Fatal(err)
 				}
@@ -120,7 +120,7 @@ func TestInstallAppliesRenderedStatements(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer db.Close()
+			defer testcase.Close(t, db)
 			for i := 0; i < 2; i++ {
 				if err := db.Utils().Schema().Install(s); err != nil {
 					t.Fatalf("install %d: %v", i+1, err)
@@ -138,7 +138,7 @@ func TestInstallAppliesRenderedStatements(t *testing.T) {
 			} else {
 				raw = openNative(t, driver, dsn)
 			}
-			defer raw.Close()
+			defer testcase.Close(t, raw)
 			// If the rendered trigger exists in the database, the statement was applied.
 			query := map[string]string{
 				"sqlite":   "SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger'",
@@ -216,7 +216,7 @@ func TestInstallVerifiesTheDatabase(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					defer db.Close()
+					defer testcase.Close(t, db)
 					if err := db.Utils().Schema().Install(s); err != nil {
 						t.Fatalf("install: %v", err)
 					}
@@ -228,7 +228,7 @@ func TestInstallVerifiesTheDatabase(t *testing.T) {
 					} else {
 						raw = openNative(t, driver, dsn)
 					}
-					defer raw.Close()
+					defer testcase.Close(t, raw)
 					if _, err := raw.Exec(c.Statement); err != nil {
 						t.Fatal(err)
 					}

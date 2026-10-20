@@ -57,3 +57,21 @@ func TestParseDSNRejectsInvalidInput(t *testing.T) {
 		})
 	}
 }
+
+// TestDriverFromDSN checks that DriverFromDSN names the database of each DSN scheme and refuses a DSN that is no URI.
+// Requirements: CFG-1.
+func TestDriverFromDSN(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	for input, want := range map[string]string{
+		"mysql://orm@127.0.0.1:3306/orm_example":    "mysql",
+		"postgres://orm@127.0.0.1:5432/orm_example": "postgres",
+		"sqlite:///tmp/orm_example.sqlite":          "sqlite",
+	} {
+		if got, err := DriverFromDSN(input); err != nil || got != want {
+			t.Errorf("DriverFromDSN(%q) = %q, %v; want %q", input, got, err, want)
+		}
+	}
+	if _, err := DriverFromDSN("orm_example"); ErrorCode(err) != CodeConfig {
+		t.Errorf("DriverFromDSN of a DSN that is no URI = %v, want CONFIG", err)
+	}
+}

@@ -204,7 +204,11 @@ func (e *Env) Column(query string, args ...any) string {
 		e.fail("%s: %v", query, err)
 		return ""
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			e.fail("%s: %v", query, err)
+		}
+	}()
 	columns, err := rows.Columns()
 	if err != nil {
 		e.fail("%s: %v", query, err)

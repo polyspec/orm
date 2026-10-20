@@ -35,7 +35,7 @@ func TestWithContextCancels(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer db.Close()
+			defer testcase.Close(t, db)
 			if err := db.Utils().Schema().Install(manifest); err != nil {
 				t.Fatal(err)
 			}
@@ -58,7 +58,7 @@ func TestWithContextCancels(t *testing.T) {
 				waiting <- nil
 			} else {
 				monitor := openNative(t, driver, serverSession(t, driver, dsn))
-				defer monitor.Close()
+				defer testcase.Close(t, monitor)
 				before, err := waiters(monitor, driver)
 				if err != nil {
 					t.Fatal(err)
@@ -108,17 +108,14 @@ func holdRows(t *testing.T, driver, dsn, table string) func() {
 	native := openNative(t, driver, dsn)
 	tx, err := native.Begin()
 	if err != nil {
-		native.Close()
-		t.Fatal(err)
+		t.Fatal(errors.Join(err, native.Close()))
 	}
 	quote := func(name string) string { return `"` + name + `"` }
 	if driver == "mysql" {
 		quote = func(name string) string { return "`" + name + "`" }
 	}
 	if _, err := tx.Exec("UPDATE " + quote(table) + " SET " + quote("seq") + " = " + quote("seq")); err != nil {
-		tx.Rollback()
-		native.Close()
-		t.Fatal(err)
+		t.Fatal(errors.Join(err, tx.Rollback(), native.Close()))
 	}
 	var once sync.Once
 	release := func() {
@@ -126,7 +123,7 @@ func holdRows(t *testing.T, driver, dsn, table string) func() {
 			if err := tx.Rollback(); err != nil {
 				t.Errorf("release the held rows: %v", err)
 			}
-			native.Close()
+			testcase.Close(t, native)
 		})
 	}
 	t.Cleanup(release)
@@ -146,7 +143,7 @@ func TestWithContextCancelsTransaction(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer db.Close()
+			defer testcase.Close(t, db)
 			if err := db.Utils().Schema().Install(manifest); err != nil {
 				t.Fatal(err)
 			}
@@ -193,14 +190,14 @@ func TestWithContextCancelsInsideTransaction(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer holder.Close()
+			defer testcase.Close(t, holder)
 			waiter, err := orm.ConnectSchema(dsn, s, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer waiter.Close()
+			defer testcase.Close(t, waiter)
 			monitor := openNative(t, driver, serverSession(t, driver, dsn))
-			defer monitor.Close()
+			defer testcase.Close(t, monitor)
 			if err := holder.Utils().Schema().Install(manifest); err != nil {
 				t.Fatal(err)
 			}
@@ -309,7 +306,7 @@ func TestRootIdentifiesTheConnection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer testcase.Close(t, db)
 	first := db.WithContext(context.Background())
 	second := first.WithContext(context.Background())
 	if db.Root() != db || first.Root() != db || second.Root() != db {
@@ -319,7 +316,7 @@ func TestRootIdentifiesTheConnection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer other.Close()
+	defer testcase.Close(t, other)
 	if other.Root() == db.Root() {
 		t.Fatal("two connections report the same root")
 	}
@@ -332,12 +329,12 @@ var lockWaiters = map[string]string{
 }
 
 // waiters reads the sessions of the case database that wait for a lock now.
-func waiters(monitor *sql.DB, driver string) ([]int64, error) {
+func waiters(monitor *sql.DB, driver string) (_ []int64, err error) {
 	rows, err := monitor.Query(lockWaiters[driver])
 	if err != nil {
 		return nil, fmt.Errorf("lock wait query: %w", err)
 	}
-	defer rows.Close()
+	defer func() { err = errors.Join(err, rows.Close()) }()
 	var out []int64
 	for rows.Next() {
 		var id int64

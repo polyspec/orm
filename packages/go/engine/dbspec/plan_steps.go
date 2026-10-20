@@ -169,7 +169,7 @@ func (w *planWriter) steps() []PlanStep {
 			continue
 		}
 		for _, o := range objects {
-			if o.kind != "foreign_key" && !(sqlite && o.kind == "check") {
+			if o.kind != "foreign_key" && (!sqlite || o.kind != "check") {
 				dropTables[s] = append(dropTables[s], o)
 			}
 		}
@@ -286,7 +286,7 @@ func (w *planWriter) steps() []PlanStep {
 			continue
 		}
 		for _, o := range d.addObjects[t] {
-			if o.kind != "foreign_key" && !(sqlite && o.kind == "check") {
+			if o.kind != "foreign_key" && (!sqlite || o.kind != "check") {
 				w.addObject(t, o)
 			}
 		}
@@ -756,7 +756,6 @@ func (w *planWriter) dropRendererCheck(table, name, expression string) {
 // namedIndex is the statement that creates or drops one unique key or index of a table.
 type namedIndex struct {
 	name, create, drop string
-	constraint         bool // unique constraints of MySQL and PostgreSQL
 }
 
 // indexes returns the unique keys and indexes of table t, named by name, in renderer order.

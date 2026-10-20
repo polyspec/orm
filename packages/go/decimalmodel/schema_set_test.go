@@ -33,7 +33,7 @@ func schemaSet(t *testing.T, driver string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer testcase.Close(t, db)
 	if err := benchset.Install(db); err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +116,7 @@ func schemaSetUnregistered(t *testing.T, driver string) {
 		t.Fatal(err)
 	}
 	counted(t, raw, &rawRuns)
-	defer raw.Close()
+	defer testcase.Close(t, raw)
 	if _, err := model.User().Connect(raw).GetCount(); orm.ErrorCode(err) != orm.CodeSchemaHashMismatch {
 		t.Fatalf("bench read on a raw connection = %v, want SCHEMA_HASH_MISMATCH", err)
 	}
@@ -125,7 +125,7 @@ func schemaSetUnregistered(t *testing.T, driver string) {
 		t.Fatal(err)
 	}
 	counted(t, core, &coreRuns)
-	defer core.Close()
+	defer testcase.Close(t, core)
 	installer, err := decimalmodel.Connect(dsn, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
@@ -140,7 +140,7 @@ func schemaSetUnregistered(t *testing.T, driver string) {
 	if _, err := row.Create(); err != nil {
 		t.Fatal(err)
 	}
-	installer.Close()
+	testcase.Close(t, installer)
 	if _, err := decimalmodel.DecimalCase().Connect(core).GetCount(); orm.ErrorCode(err) != orm.CodeSchemaHashMismatch {
 		t.Fatalf("decimal read on the bench connection = %v, want SCHEMA_HASH_MISMATCH", err)
 	}
@@ -158,7 +158,7 @@ func schemaSetUnregistered(t *testing.T, driver string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer decimal.Close()
+	defer testcase.Close(t, decimal)
 	if n, err := decimalmodel.DecimalCase().Connect(decimal).GetCount(); err != nil || n != 1 {
 		t.Fatalf("decimal rows through the decimal helper = %d, %v; want 1", n, err)
 	}
@@ -196,7 +196,7 @@ func schemaSetEditedManifest(t *testing.T, driver string) {
 		t.Fatal(err)
 	}
 	counted(t, db, &runs)
-	defer db.Close()
+	defer testcase.Close(t, db)
 	if err := db.Utils().Schema().Install(edited); orm.ErrorCode(err) != orm.CodeConfig {
 		t.Fatalf("install of an edited manifest = %v, want CONFIG", err)
 	}

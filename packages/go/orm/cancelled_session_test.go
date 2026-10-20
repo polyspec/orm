@@ -31,7 +31,7 @@ func TestCancelledTransactionClearsSessionState(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Cleanup(func() { db.Close() })
+		t.Cleanup(func() { testcase.Close(t, db) })
 		return db
 	}
 	key := fmt.Sprintf("orm_test.cancelled.%d", os.Getpid())

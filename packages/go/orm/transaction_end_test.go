@@ -26,7 +26,7 @@ func connectBench(t *testing.T, dsn string) *DB {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() { testcase.Close(t, db) })
 	return db
 }
 
@@ -115,7 +115,7 @@ func TestFailedTransactionEndDiscardsConnection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() { testcase.Close(t, db) })
 	other := connectBench(t, dsn)
 	session := func(t *testing.T) int64 {
 		t.Helper()

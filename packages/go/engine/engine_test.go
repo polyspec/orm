@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/packages/go/engine/dialect"
+	"github.com/polyspec/orm/packages/go/engine/ir"
 	"github.com/polyspec/orm/packages/go/engine/plan"
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 	"github.com/polyspec/orm/packages/go/testcase"
@@ -137,15 +138,6 @@ func TestRowLock(t *testing.T) {
 	if err != nil || !strings.Contains(string(plan), "FOR UPDATE NOWAIT") {
 		t.Fatalf("postgres nowait row lock: %v", err)
 	}
-}
-
-func mustCompileError(t *testing.T, e *Engine, input string) error {
-	t.Helper()
-	_, err := e.Compile([]byte(input))
-	if err == nil {
-		t.Fatal("expected compile error")
-	}
-	return err
 }
 
 func TestJoinAndPlacement(t *testing.T) {
@@ -553,5 +545,27 @@ func TestAllColumnsSelectAESVersionOnce(t *testing.T) {
 	col := asm.Columns[*asm.AESVersion]
 	if col.Column != "aes_key_version" || col.Hidden {
 		t.Fatalf("AES version column %+v", col)
+	}
+}
+
+// TestLoad checks that Load builds the dialect's engine from manifest text, the same engine as New of the model
+// that text describes, and that malformed manifest text is SCHEMA_INVALID.
+func TestLoad(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	m := benchModel(t)
+	e, err := Load(m.ManifestText, "postgres")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if e.M.ManifestHash != m.ManifestHash {
+		t.Errorf("Load manifest hash = %s, want %s", e.M.ManifestHash, m.ManifestHash)
+	}
+	if p := compile(t, e, `"kind":"all","entity":"author"`); len(p.Steps) == 0 {
+		t.Error("the loaded engine compiled no step")
+	}
+	if _, err := Load("not a manifest", "postgres"); err == nil {
+		t.Fatal("Load of malformed manifest text succeeded")
+	} else if e, ok := err.(*ir.Error); !ok || e.Code != "SCHEMA_INVALID" {
+		t.Errorf("Load of malformed manifest text = %v, want SCHEMA_INVALID", err)
 	}
 }

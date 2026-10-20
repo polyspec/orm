@@ -77,6 +77,9 @@ type mdSession struct {
 	// broken means the connection can no longer be used: a read or write failed, the context cut it off,
 	// or the server answered that it ends the connection.
 	broken bool
+	// closed means the connection is closed, and closeErr is the error of closing it.
+	closed   bool
+	closeErr error
 }
 
 type mdConnect struct {
@@ -104,14 +107,22 @@ func dialMarkdown(ctx context.Context, dsn markdownDSN) (*mdSession, error) {
 	s := &mdSession{conn: conn, in: bufio.NewReader(conn), created: time.Now()}
 	if _, err := s.call(ctx, mdConnect{Op: "connect", Corpus: dsn.corpus, Token: dsn.token}); err != nil {
 		s.close()
+		if s.closeErr != nil {
+			return nil, errors.Join(err, s.closeErr)
+		}
 		return nil, err
 	}
 	return s, nil
 }
 
+// close ends the session: it is not used again, and its connection is closed once. The error of closing it is
+// kept in closeErr, which the pool that discards the session returns from its close.
 func (s *mdSession) close() {
 	s.broken = true
-	s.conn.Close()
+	if !s.closed {
+		s.closed = true
+		s.closeErr = s.conn.Close()
+	}
 }
 
 // call sends one message in one line and reads one reply line. If the reply is {"error": {code, message}},
@@ -125,11 +136,15 @@ func (s *mdSession) call(ctx context.Context, msg any) (json.RawMessage, error) 
 	if err != nil {
 		return nil, &ir.Error{Code: CodeInternal, Msg: "writing the message: " + err.Error(), Cause: err}
 	}
-	stop := context.AfterFunc(ctx, func() { s.conn.SetDeadline(time.Now()) })
+	deadline := make(chan error, 1)
+	stop := context.AfterFunc(ctx, func() { deadline <- s.conn.SetDeadline(time.Now()) })
 	answer, err := s.exchange(append(line, '\n'))
-	if !stop() && err == nil {
-		// The context ended after the reply was read: the connection's deadline has passed, so the connection is not used again.
-		s.close()
+	if !stop() {
+		// The context ended and its function set the connection's deadline; an error of setting it is an error of
+		// the call. When the reply was read before, the connection's deadline has passed, so the connection is not used again.
+		if err = errors.Join(err, <-deadline); err == nil {
+			s.close()
+		}
 	}
 	if err != nil {
 		s.close()
@@ -199,6 +214,8 @@ type mdPool struct {
 	open   int
 	inUse  int
 	closed bool
+	// closeErr joins the errors of closing the sessions that the pool discarded; close returns it.
+	closeErr error
 }
 
 func newMarkdownPool(dsn markdownDSN, cfg Config) *mdPool {
@@ -223,8 +240,7 @@ func (p *mdPool) acquire(ctx context.Context) (*mdSession, error) {
 		s := p.idle[len(p.idle)-1]
 		p.idle = p.idle[:len(p.idle)-1]
 		if p.lifetime > 0 && time.Since(s.created) >= p.lifetime {
-			s.close()
-			p.open--
+			p.discard(s)
 			continue
 		}
 		p.inUse++
@@ -251,8 +267,7 @@ func (p *mdPool) release(s *mdSession) {
 	p.mu.Lock()
 	p.inUse--
 	if s.broken || p.closed || len(p.idle) >= p.idleSize {
-		s.close()
-		p.open--
+		p.discard(s)
 	} else {
 		p.idle = append(p.idle, s)
 	}
@@ -260,15 +275,24 @@ func (p *mdPool) release(s *mdSession) {
 	<-p.slots
 }
 
-func (p *mdPool) close() {
+// discard closes the session, which leaves the pool, and keeps the error of closing it. p.mu is held.
+func (p *mdPool) discard(s *mdSession) {
+	s.close()
+	p.closeErr = errors.Join(p.closeErr, s.closeErr)
+	p.open--
+}
+
+// close closes the pool and its idle sessions, and returns the errors of closing the sessions it discarded. A session
+// in use when the pool closes is closed when it is released.
+func (p *mdPool) close() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.closed = true
 	for _, s := range p.idle {
-		s.close()
-		p.open--
+		p.discard(s)
 	}
 	p.idle = nil
+	return p.closeErr
 }
 
 func (p *mdPool) stats() DBStats {
@@ -573,10 +597,8 @@ func (n *mdNode) row(raw json.RawMessage) ([]any, error) {
 		return nil, answerErr("a row of %s: %v", n.ent.Name, err)
 	}
 	var outputs []string
-	var nested []mdMember
 	for _, mb := range ms {
 		if n.joins[mb.name] != nil || n.rels[mb.name] != nil {
-			nested = append(nested, mb)
 			continue
 		}
 		outputs = append(outputs, mb.name)
@@ -785,7 +807,7 @@ func markdownRead(ex executor, r *request) (*result, int64, error) {
 	if root.groups && len(a.Rows) == 0 {
 		// An empty group answer has no first row to name the outputs, so they are the group_by keys and
 		// row_count, the same outputs every group row answers.
-		if err := root.build(append(slices.Clone(r.ir.Query.GroupBy), "row_count")); err != nil {
+		if err := root.build(append(slices.Clone(r.ir.GroupBy), "row_count")); err != nil {
 			return nil, 0, err
 		}
 	}

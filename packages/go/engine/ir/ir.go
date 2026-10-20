@@ -334,7 +334,7 @@ func Validate(m *runtimemodel.Model, r *Request) error {
 	if err := v.query(&r.Query, v.scopes(&r.Query, nil, nil), false, false); err != nil {
 		return err
 	}
-	if r.Query.Lock != "" && r.Kind != "one" && r.Kind != "all" {
+	if r.Lock != "" && r.Kind != "one" && r.Kind != "all" {
 		return errf("IR_INVALID", "row lock is only valid on one or all")
 	}
 	ent := m.Entities[r.Entity]

@@ -19,7 +19,7 @@ func TestNativeStatementsEqualClient(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer testcase.Close(t, db)
 	var mu sync.Mutex
 	var seen []string
 	if _, err := db.Subscribe(func(e orm.StatementEvent) error {
@@ -52,7 +52,7 @@ func TestNativeStatementsEqualClient(t *testing.T) {
 func TestNativeWorkloadsRead(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db := open(t)
-	defer db.Close()
+	defer testcase.Close(t, db)
 	ctx := context.Background()
 	if b, err := pkGet(ctx, db, 42); err != nil || b == nil || b.Seq != 42 {
 		t.Fatalf("pkGet(42) = %v, %v", b, err)

@@ -80,14 +80,32 @@ func within(dir string, h holder) string {
 	return filepath.Join(dir, fmt.Sprintf("within-%d-%s", h.PID, strings.ReplaceAll(h.Started, ":", "")))
 }
 
-// release removes the holding file and, if it was an exclusive, also its inner directory.
-func release(file string) {
+// release removes the holding file and, if it was an exclusive, also its inner directory. A holding that another run
+// already removed is released.
+func release(file string) error {
 	text, err := os.ReadFile(file)
 	var h holder
 	if err == nil && json.Unmarshal(text, &h) == nil && h.Kind == "exclusive" {
-		defer os.RemoveAll(within(filepath.Dir(file), h))
+		removed := remove(file)
+		return errors.Join(removed, os.RemoveAll(within(filepath.Dir(file), h)))
 	}
-	os.Remove(file)
+	return remove(file)
+}
+
+// mustRelease releases the holding file, and ends the process with status 1 when the holding cannot be removed.
+func mustRelease(file string) {
+	if err := release(file); err != nil {
+		fmt.Fprintf(os.Stderr, "lease: release %s: %v\n", file, err)
+		os.Exit(1)
+	}
+}
+
+// remove removes path; a path that no longer exists is removed.
+func remove(path string) error {
+	if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	return nil
 }
 
 // holder is the content of the holding file.
@@ -181,7 +199,10 @@ func (r refusal) takeOver(kind string) bool {
 		if !h.gone() || !current(h) || (h.Kind == "exclusive" && kind != "exclusive") {
 			continue
 		}
-		release(h.file)
+		if err := release(h.file); err != nil {
+			fmt.Fprintf(os.Stderr, "lease: take over the dead %s: %v\n", h, err)
+			continue
+		}
 		fmt.Fprintf(os.Stderr, "lease: took over the dead %s\n", h)
 		took = true
 	}
@@ -254,7 +275,13 @@ func acquire(dir, kind string, pid int, command string) (string, error) {
 	if err := os.WriteFile(temporary, text, 0o644); err != nil {
 		return "", err
 	}
-	defer os.Remove(temporary)
+	// The temporary file is gone after a rename and stays after a link; one that cannot be removed holds nothing,
+	// since holders reads only the holding files, and is reported.
+	defer func() {
+		if err := remove(temporary); err != nil {
+			fmt.Fprintf(os.Stderr, "lease: remove %s: %v\n", temporary, err)
+		}
+	}()
 	if kind == "shared" {
 		file := filepath.Join(dir, fmt.Sprintf("shared-%d-%s.json", pid, random()))
 		if err := os.Rename(temporary, file); err != nil {
@@ -262,12 +289,13 @@ func acquire(dir, kind string, pid int, command string) (string, error) {
 		}
 		all, err := holders(dir)
 		if err != nil {
-			os.Remove(file)
-			return "", err
+			return "", errors.Join(err, remove(file))
 		}
 		for _, h := range all {
 			if h.Kind == "exclusive" {
-				os.Remove(file)
+				if err := remove(file); err != nil {
+					return "", err
+				}
 				// If this process holds an exclusive, it is already inside that holding; if an ancestor process holds it, it acquires within that holding.
 				if h.PID == pid {
 					return "", errHeld
@@ -307,8 +335,7 @@ func acquire(dir, kind string, pid int, command string) (string, error) {
 	}
 	all, err := holders(dir)
 	if err != nil {
-		os.Remove(file)
-		return "", err
+		return "", errors.Join(err, remove(file))
 	}
 	var blocking []holder
 	for _, h := range all {
@@ -317,7 +344,9 @@ func acquire(dir, kind string, pid int, command string) (string, error) {
 		}
 	}
 	if len(blocking) > 0 {
-		os.Remove(file)
+		if err := remove(file); err != nil {
+			return "", err
+		}
 		return "", refusal{blocking: blocking}
 	}
 	return file, nil
@@ -339,7 +368,9 @@ func acquireWaiting(dir, kind string, pid int, command string, wait bool, enclos
 		file, err := acquire(dir, kind, pid, command)
 		var ancestor inside
 		if errors.As(err, &ancestor) {
-			closeWatch()
+			if err := closeWatch(); err != nil {
+				return "", err
+			}
 			file, err = acquireWaiting(within(dir, ancestor.holder), kind, pid, command, wait, &ancestor.holder)
 			if errors.Is(err, errAgain) {
 				continue
@@ -349,24 +380,33 @@ func acquireWaiting(dir, kind string, pid int, command string, wait bool, enclos
 		var refused refusal
 		if errors.As(err, &refused) && refused.released() {
 			// The holding that caused the refusal was released in the meantime. The change notification came after the watch was registered, so it retries without waiting.
-			closeWatch()
+			if err := closeWatch(); err != nil {
+				return "", err
+			}
 			continue
 		}
 		if errors.As(err, &refused) && refused.takeOver(kind) {
 			// Took over a dead holding. Retries with no holding present.
-			closeWatch()
+			if err := closeWatch(); err != nil {
+				return "", err
+			}
 			continue
 		}
 		if err == nil || !wait || !errors.As(err, &refused) || refused.dead() {
-			closeWatch()
+			if closeErr := closeWatch(); closeErr != nil {
+				if err == nil {
+					// The holding was acquired; a run that fails does not keep it.
+					return "", errors.Join(closeErr, release(file))
+				}
+				return "", errors.Join(err, closeErr)
+			}
 			return file, err
 		}
 		if !announced {
 			fmt.Fprintf(os.Stderr, "lease: waiting for the %s lease of %s; %v\n", kind, dir, err)
 			announced = true
 		}
-		err = waitChange(next, refused.releasers())
-		closeWatch()
+		err = errors.Join(waitChange(next, refused.releasers()), closeWatch())
 		if err != nil {
 			return "", err
 		}
@@ -452,17 +492,20 @@ func main() {
 			err = releaser.Start()
 		}
 		if err != nil {
-			release(file)
+			mustRelease(file)
 			fmt.Fprintf(os.Stderr, "lease: start the releaser: %v\n", err)
 			os.Exit(1)
 		}
 		line, _ := bufio.NewReader(recorded).ReadString('\n')
 		if line != "recorded\n" {
-			release(file)
+			mustRelease(file)
 			fmt.Fprintf(os.Stderr, "lease: the releaser of %s did not record itself\n", file)
 			os.Exit(1)
 		}
-		releaser.Process.Release()
+		// The releaser runs in its own session and outlives hold; hold does not wait for it.
+		if err := releaser.Process.Release(); err != nil {
+			fmt.Fprintf(os.Stderr, "lease: release the releaser process: %v\n", err)
+		}
 	case "release-on-exit":
 		// release-on-exit <file> <pid>: the process hold leaves behind. On receiving the exit notice of pid, it removes the holding and its inner
 		// directory.
@@ -481,7 +524,9 @@ func main() {
 		}
 		// hold waits for this line. After that it closes stdout: once hold ends, nothing reads it.
 		fmt.Println("recorded")
-		os.Stdout.Close()
+		if err := os.Stdout.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "lease: close stdout: %v\n", err)
+		}
 		wait, err := procevent.WatchExit(pid)
 		if err == nil {
 			err = wait()
@@ -490,7 +535,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "lease: watch pid %d: %v\n", pid, err)
 			os.Exit(1)
 		}
-		release(file)
+		mustRelease(file)
 	case "run":
 		if len(os.Args) < 6 {
 			usage()
@@ -516,7 +561,7 @@ func main() {
 		// does not end by signal; it waits for the command to finish, then removes the holding.
 		signal.Ignore(syscall.SIGINT, syscall.SIGQUIT)
 		runErr := child.Run()
-		release(file)
+		mustRelease(file)
 		var exit *exec.ExitError
 		if errors.As(runErr, &exit) {
 			if status, ok := exit.Sys().(syscall.WaitStatus); ok && status.Signaled() {

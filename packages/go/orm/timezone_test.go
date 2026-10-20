@@ -70,7 +70,7 @@ func TestConnectionsUseUTC(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				defer db.Close()
+				defer testcase.Close(t, db)
 				if err := db.Utils().Schema().Install(manifest); err != nil {
 					t.Fatal(err)
 				}
@@ -156,7 +156,7 @@ func TestPoolSize(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer db.Close()
+			defer testcase.Close(t, db)
 			if got := db.Stats().MaxOpenConnections; got != 3 {
 				t.Fatalf("max open connections = %d, want 3", got)
 			}
@@ -167,7 +167,7 @@ func TestPoolSize(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer unset.Close()
+			defer testcase.Close(t, unset)
 			if got := unset.Stats().MaxOpenConnections; got != 10 {
 				t.Fatalf("max open connections without a pool size = %d, want 10", got)
 			}
@@ -180,7 +180,7 @@ func TestPoolSize(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer bounded.Close()
+			defer testcase.Close(t, bounded)
 			var active, peak, opened atomic.Int32
 			var wg sync.WaitGroup
 			for i := 0; i < 6; i++ {
@@ -238,7 +238,7 @@ func TestPoolIdleSizeAndLifetime(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer idle.Close()
+			defer testcase.Close(t, idle)
 			var started, release sync.WaitGroup
 			started.Add(3)
 			release.Add(1)
@@ -270,7 +270,7 @@ func TestPoolIdleSizeAndLifetime(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer unset.Close()
+			defer testcase.Close(t, unset)
 			started.Add(3)
 			release.Add(1)
 			for i := 0; i < 3; i++ {
@@ -294,7 +294,7 @@ func TestPoolIdleSizeAndLifetime(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer aged.Close()
+			defer testcase.Close(t, aged)
 			if err := aged.Transaction(func() error { return nil }); err != nil {
 				t.Fatal(err)
 			}
@@ -325,7 +325,7 @@ func TestStatementTimeout(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer setup.Close()
+			defer testcase.Close(t, setup)
 			if err := setup.Utils().Schema().Install(manifest); err != nil {
 				t.Fatal(err)
 			}
@@ -342,7 +342,7 @@ func TestStatementTimeout(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer db.Close()
+			defer testcase.Close(t, db)
 			if err := lockedRead(db, ent); orm.ErrorCode(err) != orm.CodeCanceled {
 				t.Fatalf("a statement past the timeout: %v (code %q)", err, orm.ErrorCode(err))
 			}
@@ -383,7 +383,7 @@ func TestStatementTimeoutThroughAPooler(t *testing.T) {
 	manifest := s
 	t.Cleanup(func() {
 		raw := openNative(t, "postgres", base)
-		defer raw.Close()
+		defer testcase.Close(t, raw)
 		if _, err := raw.Exec(`DROP TABLE IF EXISTS "` + table + `"`); err != nil {
 			t.Errorf("drop case table %s: %v", table, err)
 			return
@@ -394,7 +394,7 @@ func TestStatementTimeoutThroughAPooler(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer setup.Close()
+	defer testcase.Close(t, setup)
 	if err := setup.Utils().Schema().Install(manifest); err != nil {
 		t.Fatal(err)
 	}
@@ -416,7 +416,7 @@ func TestStatementTimeoutThroughAPooler(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer bounded.Close()
+	defer testcase.Close(t, bounded)
 	if err := lockedRead(bounded, ent); orm.ErrorCode(err) != orm.CodeCanceled {
 		t.Fatalf("the bounded connection through the pooler: %v", err)
 	}
@@ -424,7 +424,7 @@ func TestStatementTimeoutThroughAPooler(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer plain.Close()
+	defer testcase.Close(t, plain)
 	// The holder keeps the rows for a declared 400 ms, past the 200 ms bound of
 	// the other connection, so the plain read waits that long and then succeeds.
 	held := time.AfterFunc(400*time.Millisecond, release)
@@ -452,7 +452,7 @@ func TestNativeTimeIsRefusedByDatetime(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer testcase.Close(t, db)
 	if err := db.Utils().Schema().Install(s); err != nil {
 		t.Fatal(err)
 	}

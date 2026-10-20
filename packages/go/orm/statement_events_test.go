@@ -136,9 +136,7 @@ func (r *eventRun) step(s eventStep) error {
 	case "transaction":
 		return r.db.Transaction(func() error {
 			for _, inner := range s.Steps {
-				if err := r.checked(inner); err != nil {
-					return err
-				}
+				r.checked(inner)
 			}
 			if s.Fail {
 				return errCallback
@@ -168,10 +166,10 @@ func (r *eventRun) step(s eventStep) error {
 	return nil
 }
 
-// checked runs the step and checks whether its error is the one the step expected. Expected
-// errors are not swallowed; they are returned so the outer transaction's callback receives them. A transaction
-// callback error that the step expected is treated as handled by the outer callback.
-func (r *eventRun) checked(s eventStep) error {
+// checked runs the step and checks whether its error is the one the step expected; another error ends the case.
+// An error that the step expected is handled here, so the outer transaction's callback goes on with its next
+// step, and a transaction callback error that the step expected is handled by the outer callback.
+func (r *eventRun) checked(s eventStep) {
 	err := r.step(s)
 	switch {
 	case s.Error == "" && err != nil:
@@ -180,11 +178,9 @@ func (r *eventRun) checked(s eventStep) error {
 		if !errors.Is(err, errCallback) {
 			r.t.Fatalf("step %s = %v, want the callback error", s.Op, err)
 		}
-		return nil
 	case s.Error != "" && orm.ErrorCode(err) != s.Error:
 		r.t.Fatalf("step %s = %v, want %s", s.Op, err, s.Error)
 	}
-	return nil
 }
 
 // runEventCases runs every case of the vector on the driver. If subtests are used, it runs each case
@@ -247,7 +243,7 @@ func runEventCase(t *testing.T, driver string, c eventCase, recording bool, reco
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer testcase.Close(t, db)
 	if c.Install == nil || *c.Install {
 		if err := db.Utils().Schema().Install(s); err != nil {
 			t.Fatal(err)
@@ -392,7 +388,7 @@ func TestStatementEventsServerTransactions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer testcase.Close(t, db)
 	var setting, source string
 	if err := orm.ReadForTest(db, "SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'", &setting, &source); err != nil {
 		t.Fatal(err)

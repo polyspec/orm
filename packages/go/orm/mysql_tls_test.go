@@ -62,7 +62,7 @@ func TestMySQLTLSConnection(t *testing.T) {
 		if err != nil {
 			return "", err
 		}
-		defer db.Close()
+		defer testcase.Close(t, db)
 		var name, value string
 		if err := db.QueryRowContext(ctx, "SHOW SESSION STATUS LIKE 'Ssl_version'").Scan(&name, &value); err != nil {
 			return "", err
@@ -115,7 +115,7 @@ func TestMySQLSessionSQLMode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer testcase.Close(t, db)
 	var mode string
 	if err := db.QueryRowContext(ctx, "SELECT @@SESSION.sql_mode").Scan(&mode); err != nil {
 		t.Fatal(err)

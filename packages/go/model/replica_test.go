@@ -42,7 +42,7 @@ func replicaTargets(t *testing.T) map[string][2]string {
 func awaitReplica(t *testing.T, driver, primary, replicaServer string) {
 	t.Helper()
 	source := openNative(t, driver, primary)
-	defer source.Close()
+	defer testcase.Close(t, source)
 	if driver == "postgres" {
 		tx, err := source.Begin()
 		if err != nil {
@@ -70,7 +70,7 @@ func awaitReplica(t *testing.T, driver, primary, replicaServer string) {
 		t.Fatal(err)
 	}
 	target := openNative(t, driver, replicaServer)
-	defer target.Close()
+	defer testcase.Close(t, target)
 	var waited *int64
 	// The deadline is 60 seconds: the replica applies the writes of all clients running in parallel in turn, so on a 4 vCPU Linux
 	// runner it could not reach the primary position within 10 seconds.
@@ -98,7 +98,7 @@ func TestPrimaryAndReplica(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer master.Close()
+			defer testcase.Close(t, master)
 			if err := benchset.Install(master); err != nil {
 				t.Fatal(err)
 			}
@@ -109,7 +109,7 @@ func TestPrimaryAndReplica(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer slave1.Close()
+			defer testcase.Close(t, slave1)
 
 			if n := must(model.User().Connect(slave1).Name(name).GetCount()); n != 1 {
 				t.Fatalf("the replica reads %d rows written through the primary", n)
@@ -162,7 +162,7 @@ func TestReadOnlySQLite(t *testing.T) {
 		t.Fatal(err)
 	}
 	must(model.User().Connect(writable).SetName("read-only").Create())
-	writable.Close()
+	testcase.Close(t, writable)
 	if err := os.Chmod(path, 0o444); err != nil {
 		t.Fatal(err)
 	}
@@ -170,7 +170,7 @@ func TestReadOnlySQLite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer readOnly.Close()
+	defer testcase.Close(t, readOnly)
 	if n := must(model.User().Connect(readOnly).Name("read-only").GetCount()); n != 1 {
 		t.Fatalf("the read-only database reads %d rows", n)
 	}

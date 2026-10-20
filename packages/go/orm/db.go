@@ -11,6 +11,7 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"sync"
@@ -301,8 +302,7 @@ func ConnectSchema(dsn string, s *Schema, cfg Config) (*DB, error) {
 		return nil, err
 	}
 	if err := d.register(s); err != nil {
-		d.Close()
-		return nil, err
+		return nil, closeAfter(d, err)
 	}
 	return d, nil
 }
@@ -334,34 +334,29 @@ func open(ctx context.Context, dsn parsedDSN, cfg Config) (*DB, error) {
 		return nil, configErr("%s", err)
 	}
 	if cfg.PoolSize < 0 {
-		s.Close()
-		return nil, configErr("pool size must not be negative")
+		return nil, closeAfter(s, configErr("pool size must not be negative"))
 	}
 	if cfg.PoolSize == 0 {
 		cfg.PoolSize = defaultPoolSize
 	}
 	if cfg.PoolIdleSize < 0 || cfg.PoolIdleSize > cfg.PoolSize {
-		s.Close()
-		return nil, configErr("pool idle size must be between 0 and the pool size %d", cfg.PoolSize)
+		return nil, closeAfter(s, configErr("pool idle size must be between 0 and the pool size %d", cfg.PoolSize))
 	}
 	if cfg.PoolIdleSize == 0 {
 		cfg.PoolIdleSize = cfg.PoolSize
 	}
 	if cfg.PoolLifetimeMs < 0 {
-		s.Close()
-		return nil, configErr("pool lifetime must not be negative")
+		return nil, closeAfter(s, configErr("pool lifetime must not be negative"))
 	}
 	s.SetMaxOpenConns(cfg.PoolSize)
 	s.SetMaxIdleConns(cfg.PoolIdleSize)
 	s.SetConnMaxLifetime(time.Duration(cfg.PoolLifetimeMs) * time.Millisecond)
 	if err := s.PingContext(ctx); err != nil {
-		s.Close()
-		return nil, mapDriverErr(err)
+		return nil, closeAfter(s, mapDriverErr(err))
 	}
 	if dsn.driver == "sqlite" {
 		if err := checkSQLite(); err != nil {
-			s.Close()
-			return nil, err
+			return nil, closeAfter(s, err)
 		}
 	}
 	if cfg.AESVersion == 0 {
@@ -375,10 +370,17 @@ func open(ctx context.Context, dsn parsedDSN, cfg Config) (*DB, error) {
 	case cfg.AESKey == "":
 		cfg.AESKey = cfg.AESKeys[cfg.AESVersion]
 	case cfg.AESKeys[cfg.AESVersion] != cfg.AESKey:
-		s.Close()
-		return nil, configErr("AESKey differs from AESKeys[%d]", cfg.AESVersion)
+		return nil, closeAfter(s, configErr("AESKey differs from AESKeys[%d]", cfg.AESVersion))
 	}
 	return &DB{sql: s, ctx: ctx, m: &dbMutable{engines: map[string]*engine.Engine{}, schemas: map[string]*Schema{}}, cfg: cfg, driver: dsn.driver, location: dsn.location, plans: map[uint64]*cached{}, stmts: map[string]*sql.Stmt{}}, nil
+}
+
+// closeAfter closes c, which the failed call does not return, and returns err; a failed Close is joined to err.
+func closeAfter(c io.Closer, err error) error {
+	if closeErr := c.Close(); closeErr != nil {
+		return errors.Join(err, closeErr)
+	}
+	return err
 }
 
 // checkSQLite rejects SQLite builds older than the supported minimum. The
@@ -391,9 +393,9 @@ func checkSQLite() error {
 	if version == "" {
 		return &ir.Error{Code: CodeConfig, Msg: "the SQLite driver registered no library version"}
 	}
+	// A version that does not start with major.minor is refused as older, like a version below 3.46.
 	var major, minor int
-	fmt.Sscanf(version, "%d.%d", &major, &minor)
-	if major < 3 || major == 3 && minor < 46 {
+	if _, err := fmt.Sscanf(version, "%d.%d", &major, &minor); err != nil || major < 3 || major == 3 && minor < 46 {
 		return &ir.Error{Code: CodeCapabilityUnsupported, Msg: "SQLite " + version + " is older than 3.46"}
 	}
 	return nil
@@ -460,7 +462,9 @@ func (d *DB) Close() error {
 		d.m.stmtOrder = nil
 		d.m.stmMu.Unlock()
 		if d.md != nil {
-			d.md.close()
+			if err := d.md.close(); err != nil && d.m.closeErr == nil {
+				d.m.closeErr = err
+			}
 			return
 		}
 		if err := d.sql.Close(); err != nil && d.m.closeErr == nil {
@@ -565,7 +569,9 @@ func (d *DB) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {
 	d.m.stmMu.Lock()
 	defer d.m.stmMu.Unlock()
 	if prev, ok := d.stmts[sqlText]; ok {
-		st.Close()
+		if err := st.Close(); err != nil {
+			return nil, mapDriverErr(err)
+		}
 		return prev, nil
 	}
 	d.stmts[sqlText] = st

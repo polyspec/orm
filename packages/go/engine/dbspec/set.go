@@ -309,12 +309,12 @@ func examineFollowed(path string) (entryKind, error) {
 
 // readListedFile opens path once and takes its bytes and its identity from
 // that handle.
-func readListedFile(path string) ([]byte, os.FileInfo, error) {
+func readListedFile(path string) (_ []byte, _ os.FileInfo, err error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, nil, err
 	}
-	defer f.Close()
+	defer func() { err = errors.Join(err, f.Close()) }()
 	data, err := io.ReadAll(f)
 	if err != nil {
 		return nil, nil, err

@@ -53,7 +53,7 @@ func externalCase(t *testing.T, driver, dsn string) {
 	}()
 	schema := db.Utils().Schema()
 	raw := restoreNative(t, driver, dsn)
-	defer raw.Close()
+	defer testcase.Close(t, raw)
 	// exists checks with the raw connection's catalog whether a table exists. A failure that reads a missing table
 	// is not used with a transaction pooler (PgBouncer), since it leaves named prepared statements behind.
 	exists := func(table string) bool {

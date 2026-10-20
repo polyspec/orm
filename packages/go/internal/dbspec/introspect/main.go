@@ -49,7 +49,11 @@ func run() (code int) {
 	if err != nil {
 		fail(err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			fail(err)
+		}
+	}()
 	start := time.Now()
 	document, unsupported, err := dbspec.Introspect(context.Background(), db, dbspec.Dialect(dialect), "introspected")
 	if err != nil {
@@ -62,7 +66,9 @@ func run() (code int) {
 		fmt.Fprintf(&b, "! %s\t%s\t%s\n", u.Kind, u.Table, u.Name)
 		fmt.Fprintf(os.Stderr, "reason %s %s %s: %s\n", u.Kind, u.Table, u.Name, u.Reason)
 	}
-	os.Stdout.WriteString(b.String())
+	if _, err := os.Stdout.WriteString(b.String()); err != nil {
+		fail(err)
+	}
 	fmt.Fprintf(os.Stderr, "elapsed %.1f\n", float64(elapsed.Microseconds())/1000)
 	return 0
 }
