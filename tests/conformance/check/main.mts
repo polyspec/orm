@@ -102,10 +102,11 @@ export function newOutputDirectory(path: string): void {
   mkdirSync(path, { recursive: true });
 }
 
-// caseError runs a case with a deadline and returns its error, or null when it passed.
-async function caseError(name: string, deadline: number, body: (context: Required<Context>) => Promise<void>): Promise<Error | null> {
+// errorOf runs body as the task that start runs, and returns the error of the task, or null when it passed. An error that
+// is not an Error is wrapped with the name of the task.
+async function errorOf<C>(name: string, start: (task: (context: C) => Promise<void>) => Promise<boolean>, body: (context: C) => Promise<void>): Promise<Error | null> {
   let failure: unknown = null;
-  const passed = await runCase(name, deadline, async context => {
+  const passed = await start(async context => {
     try {
       await body(context);
     } catch (error) {
@@ -116,18 +117,14 @@ async function caseError(name: string, deadline: number, body: (context: Require
   return passed ? null : failure instanceof Error ? failure : new Error(`${name} failed: ${errorMessage(failure)}`);
 }
 
+// caseError runs a case with a deadline and returns its error, or null when it passed.
+async function caseError(name: string, deadline: number, body: (context: Required<Context>) => Promise<void>): Promise<Error | null> {
+  return errorOf(name, task => runCase(name, deadline, task), body);
+}
+
 // longError runs a long task without a deadline and returns its error, or null when it passed.
 export async function longError(name: string, body: (context: Context) => Promise<void>): Promise<Error | null> {
-  let failure: unknown = null;
-  const passed = await runLong(name, async context => {
-    try {
-      await body(context);
-    } catch (error) {
-      failure = error;
-      throw error;
-    }
-  });
-  return passed ? null : failure instanceof Error ? failure : new Error(`${name} failed: ${errorMessage(failure)}`);
+  return errorOf(name, task => runLong(name, task), body);
 }
 
 const driverDir = (driver: string): string => driver === 'mysql' ? '' : driver;
