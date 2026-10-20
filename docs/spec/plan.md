@@ -27,7 +27,7 @@ The ORM provides one model-based query syntax in Go, PHP, Rust, TypeScript, and 
 - **PLN-12** Writes: `set<Col>` for stored columns, `new<Name>` for in-memory attributes, `plus<Col>`, `minus<Col>`, `create`, `duplication(model)` with `create`, `update`, `update(true)`, `save`, `delete`, `delete(true)`
 - **PLN-13** Transactions: `connection.transaction(fn)` with deadlock retry
 - **PLN-14** Pages: total count and one page of rows from the same model
-- **PLN-15** Styles: `ip`, `aes`, `aes_serialize`, `aes_hex`, `point`, `serialize`, `base64`, `gz`, `json`, `jsons`, `yaml`
+- **PLN-15** Codec stages ([DBS-69](dbspec.md)): `ip`, `aes`, `hex`, `serialize`, `base64`, `gz`, `ordered_json`, `yaml`
 
 `serialize` and `aes_serialize` use the published PHP serialization format; each client implements that format.
 

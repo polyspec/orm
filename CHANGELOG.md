@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The codec rules and PLN-15 name the stages of DBS-69, `ordered_json` among them, instead of the styles `json`, `jsons`, `point`, `aes_serialize` and `aes_hex` (KSTD-2-9-12).
 - DIA-21 names `orm.Connect`, the Go entry, instead of `orm.Open` (KSTD-2-9-11).
 - The two-connection procedure for lock contention moves from the DSL spec to the usage guide; DSL-119 keeps the savepoint rule (KSTD-2-9-10).
 - `make toolchain-check` passes: the kit link run installs polyspec/ordered-json from its linked folder, so the platform check of `vendor-php` follows its requirement PHP 8.4 and phpstan starts. Red: phpstan failed with "Your Composer dependencies require a PHP version >= 8.5.0", taken from the release metadata of 0.0.9 (KSTD-5-1).

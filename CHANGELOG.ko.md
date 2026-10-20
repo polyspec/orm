@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 079570a6f2f8a96e979f1d7391b902ee229b4dc96fc25dcd655e1632d98c6c71 -->
+<!-- source-sha256: eb8c0aa4718716e4dda6ba2a089107e84f678f023b87ae72ad779789ebcda9b7 -->
 # 변경 이력
 
 ## Unreleased
+- codec 규칙과 PLN-15가 `json`, `jsons`, `point`, `aes_serialize`, `aes_hex` 대신 DBS-69의 stage, 그중 `ordered_json`을 적는다 (KSTD-2-9-12).
 - DIA-21이 `orm.Open` 대신 Go 진입점 `orm.Connect`를 적는다 (KSTD-2-9-11).
 - 잠금 경합을 두 연결로 쓰는 절차가 DSL spec에서 사용법 문서로 옮겨졌다; savepoint 규칙은 DSL-119에 남는다 (KSTD-2-9-10).
 - `make toolchain-check`가 통과한다: kit link 실행이 polyspec/ordered-json을 link된 folder에서 설치하므로 `vendor-php`의 platform check가 그 요구 PHP 8.4를 따르고 phpstan이 시작한다. red: phpstan이 0.0.9 release metadata에서 온 "Your Composer dependencies require a PHP version >= 8.5.0"으로 실패했다(KSTD-5-1).
