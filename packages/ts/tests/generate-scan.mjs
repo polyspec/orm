@@ -419,8 +419,12 @@ async function unparsableFile() {
     await writeFile(join(work, 'src/broken.ts'), 'export const x = 1;\nfunction (\n');
     const result = spawnSync(process.execPath, [bin, 'gen', '--set', join(root, 'contracts/fixtures/bench/dbspec-set.json'), '--out', 'out', '--scan', 'src'], { cwd: work, encoding: 'utf8', timeout: CASE_DEADLINE_MS });
     check(result.status !== 0, `an unparsable file is skipped: status ${result.status}`);
-    check(/broken\.ts:2:\d+:/.test(result.stderr), `the error does not name the file and position: ${result.stderr}`);
+    check(result.stderr.includes('broken.ts:2:10: does not parse'), `the error does not name the file and position: ${result.stderr}`);
     check(!existsSync(join(work, 'out')), 'the failed generation wrote its output');
+    // A parse error on the first line, which no line break precedes, is at its own column of line 1.
+    await writeFile(join(work, 'src/broken.ts'), 'const = 1;\n');
+    const first = spawnSync(process.execPath, [bin, 'gen', '--set', join(root, 'contracts/fixtures/bench/dbspec-set.json'), '--out', 'out', '--scan', 'src'], { cwd: work, encoding: 'utf8', timeout: CASE_DEADLINE_MS });
+    check(first.stderr.includes('broken.ts:1:7: does not parse'), `the error does not name line 1 and its column: ${first.stderr}`);
   } finally {
     await rm(work, { recursive: true, force: true });
   }

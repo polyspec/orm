@@ -570,11 +570,13 @@ function visitFile(path: string, models: ReadonlySet<string>, out: Map<string, S
   const text = readFileSync(path, 'utf8');
   const parsed = parseSync(path, text);
   const errors = parsed.errors.filter(error => error.severity === 'Error');
-  if (errors.length > 0) {
-    // The position is the first label of the first error, as line:column (docs/spec/dsl.md, DSL-152).
-    const start = errors[0]!.labels[0]?.start ?? 0;
-    const before = text.slice(0, start).split('\n');
-    throw new Error(`orm-gen --scan: ${path}:${before.length}:${before[before.length - 1]!.length + 1}: does not parse: ${errors.map(error => error.message).join('; ')}`);
+  const [first] = errors;
+  if (first !== undefined) {
+    // The position is the first label of the first error, as line:column; an error without a label names none
+    // (docs/spec/dsl.md, DSL-152).
+    const label = first.labels[0];
+    const where = label === undefined ? '' : `${lineColumn(text, label.start)}:`;
+    throw new Error(`orm-gen --scan: ${path}:${where} does not parse: ${errors.map(error => error.message).join('; ')}`);
   }
   new Scanner(models, out, sites, resolve(path), module).visit(parsed.program);
 }
@@ -602,4 +604,15 @@ export function scanModelCalls(paths: readonly string[], models: ReadonlySet<str
     else visitFile(path, models, out, sites, module);
   }
   return out;
+}
+
+/** The 1-based line and column of the code unit at offset `start` of `text`, as line:column. */
+function lineColumn(text: string, start: number): string {
+  let line = 1;
+  let lineStart = 0;
+  for (let at = text.indexOf('\n'); at !== -1 && at < start; at = text.indexOf('\n', at + 1)) {
+    line += 1;
+    lineStart = at + 1;
+  }
+  return `${line}:${start - lineStart + 1}`;
 }
