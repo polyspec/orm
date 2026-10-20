@@ -31,10 +31,7 @@
         "psr-4": {
             "Polyspec\\Orm\\Tests\\Model\\": "gen/",
             "Polyspec\\Orm\\Tests\\MarkdownModel\\": "markdownmodel/"
-        },
-        "files": [
-            "gen/bootstrap.php"
-        ]
+        }
     },
     "bin": [
         "bin/orm-gen"

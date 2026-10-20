@@ -9156,13 +9156,10 @@
     {
       "id": "php-markdown-model-generated",
       "paths": [
-        "packages/php/markdownmodel/bootstrap.php",
-        "packages/php/markdownmodel/Logs.php",
-        "packages/php/markdownmodel/People.php",
-        "packages/php/markdownmodel/Tasks.php"
+        "packages/php/models.txt"
       ],
       "tests": [],
-      "command": "vendor-php/bin/orm-gen gen --set tests/markdown/corpus/dbspec/dbspec-set.json --check --out packages/php/markdownmodel --namespace 'Polyspec\\Orm\\Tests\\MarkdownModel'"
+      "command": "sh -c 'while IFS= read -r entry; do case \"$entry\" in \"\"|\"#\"*) continue ;; esac; vendor-php/bin/orm-gen gen --check $entry || exit 1; done < packages/php/models.txt'"
     },
     {
       "id": "typescript-markdown-model-generated",

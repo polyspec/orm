@@ -1,0 +1,5 @@
+# The declared entries of the PHP models that orm-gen generates (P34: generated output is never tracked). Each line that is not a
+# comment is the argument list of one `vendor-php/bin/orm-gen gen` run from the repository root: the document set, the output
+# directory and the namespace. make php-models writes them, and make php-model-check checks them with --check.
+--set contracts/fixtures/bench/dbspec-set.json --out packages/php/gen --namespace Polyspec\Orm\Tests\Model
+--set tests/markdown/corpus/dbspec/dbspec-set.json --out packages/php/markdownmodel --namespace Polyspec\Orm\Tests\MarkdownModel

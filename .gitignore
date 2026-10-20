@@ -51,3 +51,7 @@ go.work.sum
 !/packages/go/markdownmodel/*_test.go
 /packages/go/decimalmodel/*.go
 !/packages/go/decimalmodel/*_test.go
+# The PHP models that orm-gen writes at each orm-install-php (make php-models; P34: generated output is never tracked). Every file of
+# these directories is generated.
+/packages/php/gen/
+/packages/php/markdownmodel/

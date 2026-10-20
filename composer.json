@@ -11,10 +11,7 @@
         "psr-4": {
             "Polyspec\\Orm\\Tests\\Model\\": "packages/php/gen/",
             "Polyspec\\Orm\\Tests\\MarkdownModel\\": "packages/php/markdownmodel/"
-        },
-        "files": [
-            "packages/php/gen/bootstrap.php"
-        ]
+        }
     },
     "repositories": [
         {
