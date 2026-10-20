@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 5736f85a10e9da7079b4b4d46b6cafb5ba267434812d66cef8892da16740b18b -->
+<!-- source-sha256: fc91ddf36821c36c00c624f81a789c7f792ca05be5e721c5dd4e1ab73e31e3da -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -30,7 +30,7 @@
 | KSTD-2-11-2 | spec은 connection pool의 idle 크기와 수명을 CFG에 규정한다 (KSTD-2-11 후속). Cause: pool unit이 이를 검사하는데 CFG-4와 CFG-5는 pool 크기와 대기만 적는다 | docs/spec/config.md and its Korean twin | `make docs-check` | [-] 원인: CFG-5가 이미 poolIdleSize와 poolLifetimeMs를 규정하므로 빠진 규칙이 없다; pool unit은 KSTD-2-11-13에서 이를 인용한다 |
 | KSTD-2-11-3 | spec은 생성된 code가 그 언어의 표준 compiler와 linter를 억제 없이 통과한다고 규정한다 (KSTD-2-11 후속). Cause: generator unit이 allow attribute 없는 Rust code 같은 native 출력을 검사하는데 그것이 묶일 중립 규칙이 없다 | docs/spec and the Korean twins | `make docs-check` | [o] |
 | KSTD-2-11-4 | spec은 query나 connection handle을 버리면 그 query가 취소되고 connection이 반환된다고 각 언어의 폐기 형식으로 규정한다 (KSTD-2-11 후속). Cause: Rust drop unit이 이를 검사하는데 그 규칙과 Go, Python, TypeScript, PHP 형식이 적혀 있지 않다 | docs/spec and the Korean twins | `make docs-check` | [o] |
-| KSTD-2-11-5 | 구현 내부 test는 parity unit이 아닌 일반 package test다 (KSTD-2-11 후속). Cause: dbspec harness와 loader, unicode와 vector 자가 검사, generator scan과 extractor, test harness, bench, example, case clock unit(142개)은 spec 규칙을 검사하지 않는다 | config/parity.json, contracts/features.json | `make parity-declarations-check` | [ ] |
+| KSTD-2-11-5 | 구현 내부 test는 parity unit이 아닌 일반 package test다 (KSTD-2-11 후속). Cause: dbspec harness와 loader, unicode와 vector 자가 검사, generator scan과 extractor, test harness, bench, example, case clock unit(142개)은 spec 규칙을 검사하지 않는다 | config/parity.json, contracts/features.json | `make parity-declarations-check` | [o] |
 | KSTD-2-11-6 | error-code와 catalog unit은 여섯 구현 모두에 묶인 한 규칙의 unit이다 (KSTD-2-11 후속, KSTD-2-11-1). Cause: api unit 43개와 catalog unit 5개가 아무것도 인용하지 않고 php-extension binding이 없다 | config/parity.json, packages/php-ext | `make parity-declarations-check` | [ ] |
 | KSTD-2-11-7 | client api unit은 그 symbol의 INT와 COD id를 인용하고 php-extension binding을 갖는다 (KSTD-2-11 후속). Cause: api unit 68개가 아무것도 인용하지 않는다 | config/parity.json, packages/php-ext | `make parity-declarations-check` | [ ] |
 | KSTD-2-11-8 | 각 feature-coverage case는 모든 구현에 묶인 하나의 중립 unit이다 (KSTD-2-11 후속). Cause: unit 153개가 같은 case를 언어마다 binding 하나씩 선언한다 | config/parity.json, tests of every implementation | `make parity-declarations-check` | [ ] |
