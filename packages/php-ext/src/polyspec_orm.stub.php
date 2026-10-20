@@ -892,10 +892,9 @@ final class Planner
 }
 
 /**
- * A database connection of the PHP library (packages/php/src/Db.php). The extension implements the connection and the statement
- * path in C (db.c). The transaction, savepoint, audit and execute methods belong to T182-5-2, and Utils and Stats to T182-5-3; until
- * those items implement them they are declared with the library's signatures and throw OrmException with code INTERNAL, whose
- * message names the item. DRIVERS is registered by src/polyspec_orm.c, since the stub declares no array constants.
+ * A database connection of the PHP library (packages/php/src/Db.php). The extension implements the connection, the statement path,
+ * the transaction, savepoint, audit and execute methods, and utils() and stats(), in C (db.c). DRIVERS is registered by
+ * src/polyspec_orm.c, since the stub declares no array constants.
  */
 final class Db
 {

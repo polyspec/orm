@@ -6,9 +6,10 @@
  * ParamCheck, Transform, Decimal, Collection, Markdown, OrmException, StatementEvent, DbState, Request) are called by their public
  * names, the same way.
  *
- * The transaction, savepoint, audit and execute methods belong to T182-5-2, and Utils and Stats to T182-5-3; they are declared with
- * the library's signatures and throw OrmException(INTERNAL) naming their item. This file never creates a transaction frame, so a
- * frame is always null and the audit of a write is never needed.
+ * The transaction, savepoint, audit and execute methods are implemented here: the frames of the request, the begin and finish of a
+ * transaction, its savepoints, the audit record of a write, and the execution of a statement without rows. utils() returns the
+ * library's Utils over this connection, and stats() the library's Stats of this one connection, in use while a transaction frame
+ * is active.
  */
 #include "php.h"
 #include "ext/pdo/php_pdo_driver.h"
