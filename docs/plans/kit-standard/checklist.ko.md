@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 5ee5d13d87141b408cba41b548f47eb40b21fde2ff6a2c8ebdd66878b3798f1e -->
+<!-- source-sha256: fb086ac29efbca9e304e52f952862a0bdb2fd7e69770f9fdf032989dca544d62 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -61,13 +61,17 @@
 | KSTD-5-2 | test-markers-check가 통과한다 (KSTD-5 후속). Cause: marker 42개가 test를 건너뛰거나 좁힌다. 예를 들어 feature-check만 database와 함께 돌리는 Rust coverage test의 #[ignore]다; test는 전부 돌거나 그 이유와 함께 지워진다 | the tests of every implementation | `make test-markers-check` | [ ] |
 | KSTD-5-3 | rules-check가 통과한다 (KSTD-5 후속). Cause: AGENTS.md의 규칙 58개가 `Own:`이나 `Refines <id>:`로 시작하지 않아, 이 repository의 규칙인지 원칙을 다듬는지 밝히지 않는다 (kit K279) | AGENTS.md and its Korean twin | `make rules-check` | [o] |
 | KSTD-5-4 | rebuild-check가 통과한다 (KSTD-5 후속). Cause: config/rebuild.json이 없어 repository의 어떤 도구도 그 class를 선언하지 않는다 | config/rebuild.json | `make rebuild-check` | [ ] |
+| KSTD-5-4-1 | docs 검사는 build된 HTML을 parse5로, Markdown table을 mdast-util-from-markdown과 mdast-util-gfm으로 읽는다 (KSTD-5-4 후속). Cause: scripts/docs/check.mts는 HTML을 정규식으로 읽고 scripts/docs/markdown-table.mts와 rules.mts는 table을 pipe로 나눠, ecosystem이 parse하는 문법을 다시 적는다 | scripts/docs, config/rebuild.json | `make docs-check` | [ ] |
+| KSTD-5-4-2 | mise가 지원하는 가장 낮은 Node를 설치하고 손으로 짠 downloader를 지운다 (KSTD-5-4 후속). Cause: scripts/typescript/node-min.mts가 지원하는 가장 낮은 Node를 직접 내려받는데, 이는 `mise install node@<version>`이 하는 일이다 | scripts/typescript, mise.toml, config/rebuild.json | `make ts-min-check` | [ ] |
 | KSTD-5-5 | duplication-check가 통과한다 (KSTD-5 후속). Cause: jscpd가 구현 전체에서 clone 988개(줄의 4.29 percent)를 찾는다; 반복된 code는 둘이 함께 쓰는 한 module로 옮긴다 | the code of every implementation | `make duplication-check` | [ ] |
 | KSTD-5-6 | lint-ts가 통과한다 (KSTD-5 후속). Cause: oxlint와 knip이 repository의 TypeScript에서 실패한다 | the TypeScript of the repository | `make lint-ts` | [o] |
 | KSTD-5-7 | lint-go가 통과한다 (KSTD-5 후속). Cause: golangci-lint가 examples, packages/go, tests에서, deadcode가 packages/go에서 실패한다 | the Go of the repository | `make lint-go` | [o] |
 | KSTD-5-8 | lint-python이 통과한다 (KSTD-5 후속). Cause: ruff format --check가 repository의 Python에서 실패한다 | the Python of the repository | `make lint-python` | [o] |
 | KSTD-5-9 | lint-php가 통과한다 (KSTD-5 후속). Cause: 루트, packages/php, packages/php-ext의 phpcs와 phpstan이 실패한다 | the PHP of the repository | `make lint-php` | [ ] |
-| KSTD-5-10 | PHP extension은 stub 하나를 가진 하나의 extension polyspec_orm이어서 lint-php-ext와 test-php-ext가 통과한다 (kit K293, S10) (KSTD-5 후속). Cause: kit은 repository의 extension을 package polyspec/orm-php-ext의 polyspec_orm으로, stub은 packages/php-ext/src/polyspec_orm.stub.php 하나로 정하는데, orm은 polyspec/orm-dbspec에서 stub 두 개로 orm_dbspec을 build한다 | packages/php-ext, its stubs, config/parity.json | `make lint-php-ext` | [ ] |
+| KSTD-5-10 | PHP extension은 stub 하나를 가진 하나의 extension polyspec_orm이어서 lint-php-ext와 test-php-ext가 통과한다 (kit K293, S10) (KSTD-5 후속). Cause: kit은 repository의 extension을 package polyspec/orm-php-ext의 polyspec_orm으로, stub은 packages/php-ext/src/polyspec_orm.stub.php 하나로 정하는데, orm은 polyspec/orm-dbspec에서 stub 두 개로 orm_dbspec을 build한다 | packages/php-ext, its stubs, config/parity.json | `make lint-php-ext` | [!] 원인: lint-php-ext는 하나의 extension polyspec_orm과 그 하나의 stub으로 통과하지만, test-php-ext는 extension의 선언을 PHP library와 비교하는데 extension이 아직 Polyspec\Orm\Dbspec\Native와 Polyspec\Orm\Native 이름을 등록한다; 재시도: T182-0-2가 extension이 PHP library의 class 이름을 등록하게 한다 |
 | KSTD-5-11 | CHECK_TARGETS가 kit-gates의 모든 gate를 돌린다 (KSTD-5 후속). Cause: kit-check가 CHECK_TARGETS가 돌리지 않는 gate 13개를 보고한다; 각 gate는 그 sub-item이 통과하면 추가된다 | Makefile | `make kit-check` | [ ] |
+| KSTD-5-12 | divergence-check가 통과한다: 어떤 test도 구현, runtime, platform으로 분기하지 않는다 (KSTD-5 후속). Cause: test 83개가 decimal_physical, statement_fault, rollback, integration, dbspec_set의 Rust test에서 #[cfg(...)]로, PHP와 php-ext test에서 extension_loaded로, stress test에서 platform으로 분기해 한 구현이 다른 구현과 다르게 검사된다; contracts/features.json의 partial feature는 KSTD-7-1~-8이다 | the tests of every implementation, config/parity.json | `make divergence-check` | [ ] |
+| KSTD-5-13 | bypass-check가 통과한다: 어떤 local 실행도 CI identity를 설정하지 않는다 (KSTD-5 후속). Cause: scripts/check/run.test.mts:181과 :189가 workflow 밖에서 CI identity를 설정한다 | scripts/check | `make bypass-check` | [ ] |
 | KSTD-6 | link rebuild는 repository layout을 읽고 자기 paths를 두지 않는다 (kit K286). Cause: kit은 link된 checkout을 layout으로 rebuild하며 link 선언의 paths key는 없어진다 | kit.json, the link declaration | `make kit-check` | [ ] |
 | KSTD-7 | main에서 feature-unit-check가 통과한다. Cause: docs/features.md가 그것이 그리는 coverage와 맞지 않고, scripts/features/coverage.test.mts의 8개 case가 "no package implements the client language php-extension"으로 실패한다 | docs/features.md, scripts/features | `make feature-unit-check` | [o] |
 | KSTD-7-1 | PHP extension이 the features schema_install, model_generation and interface_contract를 구현하고 PHP library의 test가 extension으로 이를 돌리며, 그 partial 상태를 지운다 (KSTD-7, T182-0 후속). Cause: S6와 S10은 partial feature를 받지 않고, kit K315는 contracts/features.json의 partial과 unsupported를 실패시킨다 | packages/php-ext, contracts/features.json | `make feature-unit-check` | [ ] |
