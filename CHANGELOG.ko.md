@@ -3,6 +3,7 @@
 # 변경 이력
 
 ## Unreleased
+- T148-4가 완료된 네 하위 항목으로 닫힌다: Python decimal model, PHP performance gate, extension 선언 환경, TypeScript AesKeyring symbol(T148-4).
 - checklist가 전체 parity 실행만 기다리던 행 T77-8-1-6을 더 두지 않는다. 전체 실행은 checklist 내용이 아니다(T77-8-1-6).
 - interface contract가 nullable 읽기, creates batch, revision 쓰기를 따르고, 선택한 vector의 conformance 실행이 그 state contract를 검사한다(T204-1).
 - audited transaction이 audit 기록을 첫 audited 쓰기 바로 전에 넣어, audited 행을 쓰지 않는 작업 단위는 audit 기록을 쓰지 않는다. 다섯 client에서(T220).
