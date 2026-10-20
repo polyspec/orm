@@ -12,6 +12,7 @@
 // by the observed result and errors.
 //
 // Deadlines are wall-clock time, because a deadline is a timer that ends a stuck case, not a limit measuring the case's own computation time (AGENTS.md testing rule).
+import { spawn, type SpawnOptions } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -221,6 +222,22 @@ export function stepLines(step: Step): { write(chunk: string | Uint8Array): void
       partial = '';
     },
   };
+}
+
+// runChild runs one child process and sends its output to the steps as lines. It resolves with the exit code once the
+// process closes and its last line is sent, and rejects when the process cannot start.
+export function runChild(command: string, args: readonly string[], step: Step, options: SpawnOptions = {}): Promise<number | null> {
+  return new Promise<number | null>((resolve, reject) => {
+    const child = spawn(command, args, options);
+    const lines = stepLines(step);
+    child.stdout?.on('data', (chunk: Buffer) => lines.write(String(chunk)));
+    child.stderr?.on('data', (chunk: Buffer) => lines.write(String(chunk)));
+    child.on('error', reject);
+    child.on('close', code => {
+      lines.flush();
+      resolve(code);
+    });
+  });
 }
 
 // caseTest runs a case as one node:test test. Steps are t.diagnostic (the `#` lines of TAP), and a failed case reports its reason

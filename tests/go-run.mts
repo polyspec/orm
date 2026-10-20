@@ -8,7 +8,7 @@ import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { runLong, stepLines } from './testcase.mts';
+import { runChild, runLong } from './testcase.mts';
 
 const [name, pkg, ...args] = process.argv.slice(2);
 if (!name || !pkg) {
@@ -18,17 +18,11 @@ if (!name || !pkg) {
 const directory = mkdtempSync(join(tmpdir(), 'orm-go-run-'));
 const program = join(directory, name.replaceAll('/', '_'));
 try {
-  const built = await runLong(`go-build/${name}`, ({ step }) => new Promise<void>((resolve, reject) => {
-    const child = spawn('go', ['build', '-o', program, pkg], { stdio: ['ignore', 'pipe', 'pipe'] });
-    const lines = stepLines(step);
-    child.stdout.on('data', (chunk: Buffer) => lines.write(String(chunk)));
-    child.stderr.on('data', (chunk: Buffer) => lines.write(String(chunk)));
-    child.on('error', reject);
-    child.on('close', code => {
-      lines.flush();
-      if (code === 0) { step('exit 0'); resolve(); } else reject(new Error(`go build exited with ${code}`));
-    });
-  }));
+  const built = await runLong(`go-build/${name}`, async ({ step }) => {
+    const code = await runChild('go', ['build', '-o', program, pkg], step, { stdio: ['ignore', 'pipe', 'pipe'] });
+    if (code === 0) step('exit 0');
+    else throw new Error(`go build exited with ${code}`);
+  });
   if (!built) process.exitCode = 1;
   else {
     const code = await new Promise<number>((resolve, reject) => {

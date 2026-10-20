@@ -1,28 +1,16 @@
-import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { root } from './lib.mts';
-import { runLong, stepLines, type Step } from '../../tests/testcase.mts';
+import { runChild, runLong, type Step } from '../../tests/testcase.mts';
 
 // The docs build is a long task: vitepress builds every page. The Mermaid diagrams are drawn by the reader's browser
 // (docs/.vitepress/theme/index.ts), so the build uses only Node. It runs with runLong and no deadline, and its progress is seen from
 // the process's output lines and exit code.
 
 // command runs one node process and emits its output lines and exit code as the task's steps.
-function command(args: string[], step: Step): Promise<void> {
-  return new Promise<void>((resolve, reject) => {
-    const child = spawn(process.execPath, args, { cwd: root });
-    const lines = stepLines(step);
-    child.stdout.on('data', (chunk: Buffer) => lines.write(String(chunk)));
-    child.stderr.on('data', (chunk: Buffer) => lines.write(String(chunk)));
-    child.on('error', reject);
-    child.on('close', code => {
-      lines.flush();
-      if (code === 0) {
-        step('exit 0');
-        resolve();
-      } else reject(new Error(`${args.join(' ')} exited with ${code}`));
-    });
-  });
+async function command(args: string[], step: Step): Promise<void> {
+  const code = await runChild(process.execPath, args, step, { cwd: root });
+  if (code === 0) step('exit 0');
+  else throw new Error(`${args.join(' ')} exited with ${code}`);
 }
 
 // The dbs fence (docs/.vitepress/dbs.ts) renders through the dbspec language service, which reads the parser entry of
