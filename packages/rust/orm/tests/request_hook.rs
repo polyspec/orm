@@ -575,6 +575,7 @@ async fn restore_rewritten_key_set_scope() {
     restore_rewritten_key_set_scope_case("sqlite").await;
 }
 
+// Requirements: DIA-161.
 #[tokio::test]
 async fn coverage_request_hook_restore_rewritten_key_set_scope() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -598,6 +599,7 @@ async fn without_hook() {
     without_hook_case("sqlite").await;
 }
 
+// Requirements: CFG-9.
 #[tokio::test]
 async fn coverage_request_hook_without_hook() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -610,6 +612,7 @@ async fn read_filter() {
     read_filter_case("sqlite").await;
 }
 
+// Requirements: DSL-65, PRT-2.
 #[tokio::test]
 async fn coverage_request_hook_read_filter() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -628,6 +631,7 @@ async fn insert_assign() {
     insert_assign_case("sqlite").await;
 }
 
+// Requirements: PRT-4, PRT-5, PRT-41.
 #[tokio::test]
 async fn coverage_request_hook_insert_assign() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -640,6 +644,7 @@ async fn loaded_row_writes() {
     loaded_row_writes_case("sqlite").await;
 }
 
+// Requirements: CFG-21, INT-36, INT-37, PLN-16.
 #[tokio::test]
 async fn coverage_request_hook_loaded_row_writes() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -658,6 +663,7 @@ async fn invalid_param() {
     invalid_param_case("sqlite").await;
 }
 
+// Requirements: PRT-65.
 #[tokio::test]
 async fn coverage_request_hook_invalid_param() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -670,6 +676,7 @@ async fn restore_key() {
     restore_key_case("sqlite").await;
 }
 
+// Requirements: DIA-161.
 #[tokio::test]
 async fn coverage_request_hook_restore_key() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -682,6 +689,7 @@ async fn restore_condition() {
     restore_condition_case("sqlite").await;
 }
 
+// Requirements: DIA-161, INT-38.
 #[tokio::test]
 async fn coverage_request_hook_restore_condition() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -694,6 +702,7 @@ async fn restore_no_key() {
     restore_no_key_case("sqlite").await;
 }
 
+// Requirements: DIA-161.
 #[tokio::test]
 async fn coverage_request_hook_restore_no_key() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -706,6 +715,7 @@ async fn restore_rewritten_key() {
     restore_rewritten_key_case("sqlite").await;
 }
 
+// Requirements: DIA-161.
 #[tokio::test]
 async fn coverage_request_hook_restore_rewritten_key() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -718,6 +728,7 @@ async fn restore_hook_set_key() {
     restore_hook_set_key_case("sqlite").await;
 }
 
+// Requirements: DIA-161.
 #[tokio::test]
 async fn coverage_request_hook_restore_hook_set_key() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);

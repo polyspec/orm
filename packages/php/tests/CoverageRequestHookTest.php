@@ -16,6 +16,7 @@ use PHPUnit\Framework\TestCase;
 #[Medium]
 final class CoverageRequestHookTest extends TestCase
 {
+    // Requirements: CFG-9.
     public function test_without_hook(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
@@ -24,6 +25,7 @@ final class CoverageRequestHookTest extends TestCase
         }
     }
 
+    // Requirements: DSL-65, PRT-2.
     public function test_read_filter(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
@@ -32,6 +34,7 @@ final class CoverageRequestHookTest extends TestCase
         }
     }
 
+    // Requirements: PRT-4, PRT-5, PRT-41.
     public function test_insert_assign(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
@@ -40,6 +43,7 @@ final class CoverageRequestHookTest extends TestCase
         }
     }
 
+    // Requirements: CFG-21, INT-36, INT-37, PLN-16.
     public function test_loaded_row_writes(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
@@ -48,6 +52,7 @@ final class CoverageRequestHookTest extends TestCase
         }
     }
 
+    // Requirements: PRT-65.
     public function test_invalid_param(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
@@ -56,6 +61,7 @@ final class CoverageRequestHookTest extends TestCase
         }
     }
 
+    // Requirements: DIA-161.
     public function test_restore_key(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
@@ -64,6 +70,7 @@ final class CoverageRequestHookTest extends TestCase
         }
     }
 
+    // Requirements: DIA-161, INT-38.
     public function test_restore_condition(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
@@ -72,6 +79,7 @@ final class CoverageRequestHookTest extends TestCase
         }
     }
 
+    // Requirements: DIA-161.
     public function test_restore_no_key(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
@@ -80,6 +88,7 @@ final class CoverageRequestHookTest extends TestCase
         }
     }
 
+    // Requirements: DIA-161.
     public function test_restore_rewritten_key(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
@@ -88,6 +97,7 @@ final class CoverageRequestHookTest extends TestCase
         }
     }
 
+    // Requirements: DIA-161.
     public function test_restore_hook_set_key(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
@@ -96,6 +106,7 @@ final class CoverageRequestHookTest extends TestCase
         }
     }
 
+    // Requirements: DIA-161.
     public function test_restore_rewritten_key_set_scope(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {

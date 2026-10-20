@@ -46,46 +46,57 @@ def run_case(name: str, item) -> None:
 
 
 class CoverageTest(CoverageCase):
+    # Requirements: CFG-9.
     def test_without_hook(self):
         self.each_item("without_hook", lambda item: run_case("without_hook", item))
 
+    # Requirements: DSL-65, PRT-2.
     def test_read_filter(self):
         self.each_item("read_filter", lambda item: run_case("read_filter", item))
 
+    # Requirements: PRT-4, PRT-5, PRT-41.
     def test_insert_assign(self):
         self.each_item("insert_assign", lambda item: run_case("insert_assign", item))
 
+    # Requirements: CFG-21, INT-36, INT-37, PLN-16.
     def test_loaded_row_writes(self):
         self.each_item(
             "loaded_row_writes", lambda item: run_case("loaded_row_writes", item)
         )
 
+    # Requirements: PRT-65.
     def test_invalid_param(self):
         self.each_item("invalid_param", lambda item: run_case("invalid_param", item))
 
+    # Requirements: DIA-161.
     def test_restore_key(self):
         self.each_item("restore_key", lambda item: run_case("restore_key", item))
 
+    # Requirements: DIA-161, INT-38.
     def test_restore_condition(self):
         self.each_item(
             "restore_condition", lambda item: run_case("restore_condition", item)
         )
 
+    # Requirements: DIA-161.
     def test_restore_no_key(self):
         self.each_item("restore_no_key", lambda item: run_case("restore_no_key", item))
 
+    # Requirements: DIA-161.
     def test_restore_rewritten_key(self):
         self.each_item(
             "restore_rewritten_key",
             lambda item: run_case("restore_rewritten_key", item),
         )
 
+    # Requirements: DIA-161.
     def test_restore_rewritten_key_set_scope(self):
         self.each_item(
             "restore_rewritten_key_set_scope",
             lambda item: run_case("restore_rewritten_key_set_scope", item),
         )
 
+    # Requirements: DIA-161.
     def test_restore_hook_set_key(self):
         self.each_item(
             "restore_hook_set_key", lambda item: run_case("restore_hook_set_key", item)
