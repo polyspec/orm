@@ -41,7 +41,7 @@
   "symbol_hashes": {
     "go": "sha256:02f5cb4fa2f9de696960e6511bafb2493839d3a9af4e9fe6d6d604fb03bf9ae9",
     "php": "sha256:05608ad0a62e17a02b8bfeefd6bcdd392531a39be844cec03b889442ffd11fa7",
-    "rust": "sha256:7a678e835e3fa06a433199f916b512b5cf75c0e694c9c6cc113804841432ec2f",
+    "rust": "sha256:441c89b098890f3cce600b0a972616a702d6b305950cda01596b2cf145320561",
     "typescript": "sha256:74405d767d8799b6dd3dd0ac0c0dfe0922c7cbdbd219b22658ffd9ea5e971715",
     "python": "sha256:a1865a8dc066f405ee15fd5fe61f493fd896a4bc7d8088d445120cbe7d737280"
   },
@@ -1916,6 +1916,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/utils.py::Utils.was_inserted",
           "signature": "def was_inserted(self, entity: str, sequence: int) -> bool"
+        },
+        "rust": {
+          "symbol": "packages/rust/orm/src/utils.rs::Utils < 'a >::was_inserted",
+          "signature": "pub fn was_inserted(&self, entity: &str, sequence: i64) -> Result<bool>"
         }
       }
     },
@@ -1942,6 +1946,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/utils.py::Utils.backend_waiting_for_lock",
           "signature": "def backend_waiting_for_lock(self) -> bool"
+        },
+        "rust": {
+          "symbol": "packages/rust/orm/src/utils.rs::Utils < 'a >::backend_waiting_for_lock",
+          "signature": "pub async fn backend_waiting_for_lock(&self) -> Result<bool>"
         }
       }
     },

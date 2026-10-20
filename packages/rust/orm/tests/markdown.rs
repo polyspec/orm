@@ -143,6 +143,7 @@ async fn markdown_rejected_surfaces() {
         ("local", db.utils().local("k").map(drop)),
         ("subscribe", db.subscribe(|_: &polyspec_orm::StatementEvent<'_>| Ok(())).map(|subscription| subscription.unsubscribe())),
         ("schema exists", db.utils().schema().exists("orm").await.map(drop)),
+        ("backend_waiting_for_lock", db.utils().backend_waiting_for_lock().await.map(drop)),
     ];
     for (name, result) in results {
         match result {

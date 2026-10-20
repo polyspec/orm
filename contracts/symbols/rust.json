@@ -6819,6 +6819,10 @@
     "exported": true,
     "signature": "pub fn raw_json (text : Result \u003c String \u003e) -\u003e Result \u003c Box \u003c serde_json :: value :: RawValue \u003e \u003e"
   },
+  "packages/rust/orm/src/model.rs::record_inserted": {
+    "exported": false,
+    "signature": " fn record_inserted (t : \u0026 crate :: tx :: TxShared , req : \u0026 Req , key : \u0026 Val)"
+  },
   "packages/rust/orm/src/model.rs::related_mismatch": {
     "exported": false,
     "signature": " fn related_mismatch \u003c T \u003e (name : \u0026 str , stored : \u0026 str) -\u003e Error"
@@ -8021,7 +8025,7 @@
   },
   "packages/rust/orm/src/tx.rs::TxShared": {
     "exported": false,
-    "signature": "pub (crate) struct TxShared  { pub (crate) db : Db , # [doc = \" The number of this transaction on the connection. Statement events carry it.\"] pub (crate) number : u64 , pub (crate) inner : tokio :: sync :: Mutex \u003c Option \u003c TxInner \u003e \u003e , pub (crate) finished : AtomicBool , savepoints : AtomicU32 , pub (crate) locals : Mutex \u003c HashMap \u003c String , String \u003e \u003e , pub (crate) locks : Mutex \u003c Vec \u003c String \u003e \u003e , # [doc = \" The audit record the transaction inserted right before its first write of an audited table. Inserts and updates of\"] # [doc = \" audit-target tables write its key to the audit column. None until that write and for a transaction with no audit values.\"] pub (crate) audit : Mutex \u003c Option \u003c AuditKey \u003e \u003e , # [doc = \" The audit record the transaction inserts before its first write of an audited table; None without audit values.\"] pub (crate) pending_audit : Mutex \u003c Option \u003c Arc \u003c AuditInsert \u003e \u003e \u003e , sqlite_mode : Mutex \u003c Option \u003c (bool , bool) \u003e \u003e , }"
+    "signature": "pub (crate) struct TxShared  { pub (crate) db : Db , # [doc = \" The number of this transaction on the connection. Statement events carry it.\"] pub (crate) number : u64 , pub (crate) inner : tokio :: sync :: Mutex \u003c Option \u003c TxInner \u003e \u003e , pub (crate) finished : AtomicBool , savepoints : AtomicU32 , pub (crate) locals : Mutex \u003c HashMap \u003c String , String \u003e \u003e , pub (crate) locks : Mutex \u003c Vec \u003c String \u003e \u003e , # [doc = \" The audit record the transaction inserted right before its first write of an audited table. Inserts and updates of\"] # [doc = \" audit-target tables write its key to the audit column. None until that write and for a transaction with no audit values.\"] pub (crate) audit : Mutex \u003c Option \u003c AuditKey \u003e \u003e , # [doc = \" The audit record the transaction inserts before its first write of an audited table; None without audit values.\"] pub (crate) pending_audit : Mutex \u003c Option \u003c Arc \u003c AuditInsert \u003e \u003e \u003e , # [doc = \" The identity keys of the generated single inserts that the transaction succeeded in, by entity (INT-52). A savepoint that does not\"] # [doc = \" release restores it.\"] pub (crate) inserted : Mutex \u003c HashMap \u003c String , HashSet \u003c i64 \u003e \u003e \u003e , sqlite_mode : Mutex \u003c Option \u003c (bool , bool) \u003e \u003e , }"
   },
   "packages/rust/orm/src/tx.rs::TxShared#field.audit": {
     "exported": false,
@@ -8038,6 +8042,10 @@
   "packages/rust/orm/src/tx.rs::TxShared#field.inner": {
     "exported": false,
     "signature": "tokio :: sync :: Mutex \u003c Option \u003c TxInner \u003e \u003e"
+  },
+  "packages/rust/orm/src/tx.rs::TxShared#field.inserted": {
+    "exported": false,
+    "signature": "Mutex \u003c HashMap \u003c String , HashSet \u003c i64 \u003e \u003e \u003e"
   },
   "packages/rust/orm/src/tx.rs::TxShared#field.locals": {
     "exported": false,
@@ -8065,7 +8073,7 @@
   },
   "packages/rust/orm/src/tx.rs::TxShared#wire": {
     "exported": false,
-    "signature": "{\"audit\":\"Mutex\",\"db\":\"Db\",\"finished\":\"AtomicBool\",\"inner\":\"Mutex\",\"locals\":\"Mutex\",\"locks\":\"Mutex\",\"number\":\"integer\",\"pending_audit\":\"Mutex\",\"savepoints\":\"AtomicU32\",\"sqlite_mode\":\"Mutex\"}"
+    "signature": "{\"audit\":\"Mutex\",\"db\":\"Db\",\"finished\":\"AtomicBool\",\"inner\":\"Mutex\",\"inserted\":\"Mutex\",\"locals\":\"Mutex\",\"locks\":\"Mutex\",\"number\":\"integer\",\"pending_audit\":\"Mutex\",\"savepoints\":\"AtomicU32\",\"sqlite_mode\":\"Mutex\"}"
   },
   "packages/rust/orm/src/tx.rs::TxShared::audit": {
     "exported": false,
@@ -8083,6 +8091,10 @@
     "exported": false,
     "signature": "pub (crate) async fn raw (\u0026 self , kind : \u0026 str , sql : \u0026 str) -\u003e Result \u003c () \u003e"
   },
+  "packages/rust/orm/src/tx.rs::TxShared::record_inserted": {
+    "exported": false,
+    "signature": "pub (crate) fn record_inserted (\u0026 self , entity : \u0026 str , key : i64)"
+  },
   "packages/rust/orm/src/tx.rs::TxShared::savepoint_step": {
     "exported": false,
     "signature": "pub (crate) async fn savepoint_step (\u0026 self , kind : \u0026 str , name : \u0026 str) -\u003e Result \u003c () \u003e"
@@ -8090,6 +8102,10 @@
   "packages/rust/orm/src/tx.rs::TxShared::settle_audit": {
     "exported": false,
     "signature": "pub (crate) async fn settle_audit (\u0026 self , changed : bool) -\u003e Result \u003c () \u003e"
+  },
+  "packages/rust/orm/src/tx.rs::TxShared::was_inserted": {
+    "exported": false,
+    "signature": "pub (crate) fn was_inserted (\u0026 self , entity : \u0026 str , key : i64) -\u003e bool"
   },
   "packages/rust/orm/src/tx.rs::active_for": {
     "exported": false,
@@ -8463,6 +8479,10 @@
     "exported": true,
     "signature": "pub fn aes (\u0026 self) -\u003e AesUtils \u003c '_ \u003e"
   },
+  "packages/rust/orm/src/utils.rs::Utils \u003c 'a \u003e::backend_waiting_for_lock": {
+    "exported": true,
+    "signature": "pub async fn backend_waiting_for_lock (\u0026 self) -\u003e Result \u003c bool \u003e"
+  },
   "packages/rust/orm/src/utils.rs::Utils \u003c 'a \u003e::exec": {
     "exported": false,
     "signature": " async fn exec (\u0026 self , ex : \u0026 Executor , kind : \u0026 str , tables : \u0026 [String] , sql : String , params : \u0026 [Param] , types : \u0026 [\u0026 str]) -\u003e Result \u003c u64 \u003e"
@@ -8510,6 +8530,10 @@
   "packages/rust/orm/src/utils.rs::Utils \u003c 'a \u003e::stats": {
     "exported": true,
     "signature": "pub fn stats (\u0026 self) -\u003e DbStats"
+  },
+  "packages/rust/orm/src/utils.rs::Utils \u003c 'a \u003e::was_inserted": {
+    "exported": true,
+    "signature": "pub fn was_inserted (\u0026 self , entity : \u0026 str , sequence : i64) -\u003e Result \u003c bool \u003e"
   },
   "packages/rust/orm/src/utils.rs::Utils#field.db": {
     "exported": false,

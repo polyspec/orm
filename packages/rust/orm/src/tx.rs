@@ -2,7 +2,7 @@
 //! model without a connection runs in the innermost one. A transaction of the
 //! same connection inside an active one creates a savepoint.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::future::{Future, IntoFuture};
 use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
@@ -33,6 +33,9 @@ pub(crate) struct TxShared {
     pub(crate) audit: Mutex<Option<AuditKey>>,
     /// The audit record the transaction inserts before its first write of an audited table; None without audit values.
     pub(crate) pending_audit: Mutex<Option<Arc<AuditInsert>>>,
+    /// The identity keys of the generated single inserts that the transaction succeeded in, by entity (INT-52). A savepoint that does not
+    /// release restores it.
+    pub(crate) inserted: Mutex<HashMap<String, HashSet<i64>>>,
     sqlite_mode: Mutex<Option<(bool, bool)>>,
 }
 
@@ -176,6 +179,16 @@ impl TxShared {
     /// The transaction's audit record. It is taken out and used before waiting for a statement.
     pub(crate) fn audit(&self) -> Option<AuditKey> {
         self.audit.lock().unwrap().clone()
+    }
+
+    /// Whether a generated insert of entity with the identity key succeeded in this transaction (INT-52).
+    pub(crate) fn was_inserted(&self, entity: &str, key: i64) -> bool {
+        self.inserted.lock().unwrap().get(entity).is_some_and(|keys| keys.contains(&key))
+    }
+
+    /// Records a generated insert of entity with the identity key in this transaction (INT-52).
+    pub(crate) fn record_inserted(&self, entity: &str, key: i64) {
+        self.inserted.lock().unwrap().entry(entity.to_owned()).or_default().insert(key);
     }
 
     /// Marks the start of a statement; the transaction rejects concurrent use.
@@ -826,6 +839,7 @@ where
     let name = format!("orm_sp_{n}");
     // A savepoint that does not release undoes an audit record inserted inside it.
     let audit_before = tx.audit();
+    let inserted_before = tx.inserted.lock().unwrap().clone();
     let mut kept = false;
     let ended = async {
         tx.savepoint_step(KIND_SAVEPOINT, &name).await?;
@@ -845,6 +859,7 @@ where
     tx.savepoints.fetch_sub(1, Ordering::AcqRel);
     if !kept {
         *tx.audit.lock().unwrap() = audit_before;
+        *tx.inserted.lock().unwrap() = inserted_before;
     }
     match ended? {
         SavepointEnd::Returned(result) => Ok(result),
@@ -932,6 +947,7 @@ async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, timeout_m
         locks: Mutex::new(Vec::new()),
         audit: Mutex::new(None),
         pending_audit: Mutex::new(None),
+        inserted: Mutex::new(HashMap::new()),
         sqlite_mode: Mutex::new(sqlite_mode),
     };
     let mut began = false;
@@ -971,6 +987,7 @@ async fn begin_markdown(db: &Db, pool: &Arc<MdPool>, isolation: Option<Isolation
         locks: Mutex::new(Vec::new()),
         audit: Mutex::new(None),
         pending_audit: Mutex::new(None),
+        inserted: Mutex::new(HashMap::new()),
         sqlite_mode: Mutex::new(None),
     })
 }

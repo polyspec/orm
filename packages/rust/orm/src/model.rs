@@ -965,6 +965,9 @@ fn assign(r: &mut Req, ent: &dbspec::Entity, s: &SetSpec) -> Result<ir::Assign> 
 /// Null if there is no key.
 async fn write(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<(Val, u64)> {
     let written = write_request(ex, conn, req).await;
+    if let (Ok((key, _)), Executor::Tx(t)) = (&written, ex) {
+        record_inserted(t, req, key);
+    }
     #[cfg(feature = "test-faults")]
     if let Ok((_, affected)) = &written {
         *ex.db().inner.last_affected.lock().unwrap() = Some(*affected);
@@ -995,6 +998,23 @@ async fn write_request(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Resul
     }
     let (key, affected) = sql_write(ex, st, req).await?;
     finish_write(req, key, affected)
+}
+
+/// Records the identity key of a generated single insert in the write set of the transaction (INT-52). A batch insert and an
+/// entity without an identity are not recorded.
+fn record_inserted(t: &crate::tx::TxShared, req: &Req, key: &Val) {
+    if req.ir.kind != "insert" || !req.ir.rows.is_empty() {
+        return;
+    }
+    let Val::I64(sequence) = key else { return };
+    if *sequence <= 0 {
+        return;
+    }
+    let Ok(manifest) = req.schema.manifest() else { return };
+    let identity = manifest.model.entities.iter().find(|e| e.name == req.ir.query.entity).and_then(|e| e.identity.as_ref());
+    if identity.is_some() {
+        t.record_inserted(&req.ir.query.entity, *sequence);
+    }
 }
 
 /// Whether the statement binds the audit record's key: it writes an audited table.

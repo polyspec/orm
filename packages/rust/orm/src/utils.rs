@@ -17,6 +17,9 @@ use crate::{codes, Error, Result};
 use polyspec_orm_schema::dbspec::{self, Document};
 
 /// The utilities of a connection.
+/// The PostgreSQL statement that reports a backend waiting for a lock (INT-53).
+const BACKEND_WAITING_FOR_LOCK: &str = "SELECT EXISTS(SELECT 1 FROM pg_locks l JOIN pg_stat_activity a ON a.pid=l.pid WHERE a.datname=current_database() AND a.pid<>pg_backend_pid() AND NOT l.granted)";
+
 pub struct Utils<'a> {
     db: &'a Db,
 }
@@ -190,6 +193,29 @@ impl<'a> Utils<'a> {
     }
 
     /// A value set with set_local; NO_ROWS when it is missing.
+    /// Whether a generated insert of `entity` with the identity key `sequence` succeeded in the active transaction (INT-52).
+    pub fn was_inserted(&self, entity: &str, sequence: i64) -> Result<bool> {
+        let t = self.active("wasInserted")?;
+        if entity.is_empty() || sequence <= 0 {
+            return Err(Error::Config("inserted entity and positive key are required".into()));
+        }
+        Ok(t.was_inserted(entity, sequence))
+    }
+
+    /// Whether another backend of the PostgreSQL connection waits for a lock (INT-53). MySQL and SQLite return false without a
+    /// statement; a markdown connection is CAPABILITY_UNSUPPORTED. The statement runs on a connection of the pool, as Go does, so
+    /// that the statistics of a transaction do not hide a backend that starts to wait.
+    pub async fn backend_waiting_for_lock(&self) -> Result<bool> {
+        self.db.unsupported_on_markdown("backendWaitingForLock")?;
+        if self.db.driver() != "postgres" {
+            return Ok(false);
+        }
+        let rows = self
+            .query(&Executor::Db(self.db.clone()), KIND_UTILITY, &[], BACKEND_WAITING_FOR_LOCK.into(), &[], &[])
+            .await?;
+        Ok(matches!(rows.first().and_then(|r| r.first()), Some(Val::Bool(true))))
+    }
+
     pub fn local(&self, key: &str) -> Result<String> {
         self.db.unsupported_on_markdown("local")?;
         let t = self.active("local")?;
