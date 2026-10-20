@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The units of the query area cite the requirement ids their tests name: 342 of the 383 DSL, DIA and COD ids; six new planner cases (force index, today, date, the column function on varchar, styled equality, styled is null) failed and then passed in Go, PHP, Rust, TypeScript and Python, and the conformance recorder keeps a vector file's requirements. The other ids are KSTD-2-9 and KSTD-2-10 (KSTD-2-6).
 - The units of the dbspec area cite the requirement ids their tests name: 191 of the 202 DBS, MER, SCH and CPX ids, from a top-level `requirements` of each vector file or a comment at the bound test; new vectors `import/cardinality-differs` (MER-12) and `positions/positions-skip-comments` (DBS-140) failed and then passed in every implementation. The other ids are KSTD-2-9 and KSTD-2-10 (KSTD-2-5).
 - The TypeScript build makes the bins its package declares executable, so a consumer runs `node_modules/.bin/orm-gen`. Red: `node --test packages/ts/tests/bin-mode.mjs` failed with `orm-gen (./dist/bin/orm-gen.js) has mode 644`; green: pass 1 after `npm run typescript:build` (T225).
 - Each testable rule of the specs has a requirement id `**PFX-n**` (960 ids: DBS, MER, SCH, CPX, DSL, DIA, COD, CFG, PAR, ORE, PLN, PRT, INT, ORES), the same in the Korean twins; `make docs-check` passes (KSTD-2-1).
