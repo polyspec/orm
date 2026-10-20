@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: e5af7807df90ffd3074f38cead28ba58d3b127fe581edee26dde77e3c4a2c2f3 -->
+<!-- source-sha256: e1e5666174c468ee41a502a09f8c10883cb8cca6283c3ace2007ec21bc7a2b68 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -71,6 +71,7 @@
 | KSTD-5-7-2 | packages/go/orm이 K334가 찾는 모든 오류를 처리한다 (KSTD-5-7 후속). Cause: kit K334는 golangci-lint가 버린 오류(errcheck check-blank, check-type-assertions), 오류 chain을 잃는 비교나 wrap(errorlint), nil로 반환한 오류(nilerr), linter와 이유 없는 nolint(nolintlint)를 보고하게 한다; packages/go/orm에서 113개를 찾는다 | packages/go/orm | `make lint-go` | [~] |
 | KSTD-5-7-3 | packages/go/engine/dbspec이 K334가 찾는 모든 오류를 처리한다 (KSTD-5-7 후속). Cause: kit K334는 golangci-lint가 버린 오류(errcheck check-blank, check-type-assertions), 오류 chain을 잃는 비교나 wrap(errorlint), nil로 반환한 오류(nilerr), linter와 이유 없는 nolint(nolintlint)를 보고하게 한다; packages/go/engine/dbspec에서 41개를 찾는다 | packages/go/engine/dbspec | `make lint-go` | [~] |
 | KSTD-5-7-4 | 나머지 Go code가 K334가 찾는 모든 오류를 처리하고 deadcode가 도달할 수 없는 함수를 찾지 않는다 (KSTD-5-7 후속). Cause: kit K334는 golangci-lint가 버린 오류(errcheck check-blank, check-type-assertions), 오류 chain을 잃는 비교나 wrap(errorlint), nil로 반환한 오류(nilerr), linter와 이유 없는 nolint(nolintlint)를 보고하게 한다; packages/go/bench, generator, internal, testcase와 tests, bench에서 약 40개를 찾는다 | packages/go, tests, examples | `make lint-go` | [~] |
+| KSTD-5-7-5 | dbspec Apply가 callback의 중단과 ApplyError를 typed result로 보고하므로 호출자가 오류를 비교하지 않고 판정한다 (KSTD-5-7-4 후속). Cause: packages/go/internal/dbspec/apply/main.go:100과 :113이 오류를 ==로 비교한다(errorlint). Apply가 errStop을 cleanup 실패와 join하고 ApplyError를 오류로만 돌려주므로, 호출자 쪽에서 결과가 같은 수정은 없다 | packages/go/engine/dbspec, packages/go/internal/dbspec/apply, their tests | `go test -count=1 -run Apply ./packages/go/engine/dbspec` | [~] |
 | KSTD-5-8 | lint-python이 통과한다 (KSTD-5 후속). Cause: ruff format --check가 repository의 Python에서 실패한다 | the Python of the repository | `make lint-python` | [o] |
 | KSTD-5-9 | lint-php가 통과한다 (KSTD-5 후속). Cause: 루트, packages/php, packages/php-ext의 phpcs와 phpstan이 실패한다 | the PHP of the repository | `make lint-php` | [ ] |
 | KSTD-5-9-1 | 손으로 쓴 PHP가 phpcs 줄 길이를 지킨다 (KSTD-5-9 후속). Cause: phpcs가 손으로 쓴 파일에서 120자를 넘는 줄 2657개를 보고한다 | packages/php | `make lint-php` | [~] |
