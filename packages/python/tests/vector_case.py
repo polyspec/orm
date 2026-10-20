@@ -43,3 +43,17 @@ def vector_tests(
 ) -> unittest.TestSuite:
     """The suite of one `kind` instance for each case, in the order of the file."""
     return unittest.TestSuite(kind(case_id(case), check, case) for case in cases)
+
+
+def vector_load_tests(
+    kind: type[VectorCase],
+    cases: Iterable[Any],
+    check: Callable[[unittest.TestCase, Any], None],
+):
+    """The load_tests protocol of a test module that runs one fixture: one test for each case, named by the case id."""
+
+    def load_tests(_loader, tests, _pattern):
+        tests.addTests(vector_tests(kind, cases, check))
+        return tests
+
+    return load_tests

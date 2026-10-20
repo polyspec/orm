@@ -8,7 +8,7 @@ from pathlib import Path
 
 from polyspec.orm.codec import CodecError, blind_index, host_decode, host_encode
 from . import testcase
-from .vector_case import VectorCase, vector_tests
+from .vector_case import VectorCase, vector_load_tests
 
 ROOT = Path(__file__).resolve().parents[3]
 FIXTURE = json.loads(
@@ -74,12 +74,7 @@ class Case(VectorCase):
     """A case of authenticated_encryption.json."""
 
 
-def load_tests(
-    loader: unittest.TestLoader, tests: unittest.TestSuite, _pattern: object
-) -> unittest.TestSuite:
-    """One test for each case of the fixture, named by the case id."""
-    tests.addTests(vector_tests(Case, FIXTURE["cases"], check_case))
-    return tests
+load_tests = vector_load_tests(Case, FIXTURE["cases"], check_case)
 
 
 if __name__ == "__main__":
