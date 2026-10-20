@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 0d34ed405d89a19ba7ea091b29a9f861d0088e7b2dfaf9919848150ed300d834 -->
+<!-- source-sha256: fd4a341f5fe6ea1a08e333de314c37eb0fa6bc78c2311614890fbb294dc019b6 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -220,6 +220,8 @@ query event에는 정규화 SQL, bind 수, duration, plan 식별자, 오류를 �
 ## 11. 생성기·스키마·확장 구분 — IF-32 ~ IF-34
 
 생성기는 스키마 매니페스트를 읽고 모델, 필드, 컬럼 메서드, 오류 타입을 출력한다. Go와 Rust 생성은 읽은 소스도 읽어 소스가 호출하는 체인, 관계 키, 조인, `new<Name>` 메서드를 출력한다. 선언되지 않은 컬럼이나 연산자의 메서드는 출력하지 않는다. 생성 코드는 매니페스트와 인터페이스 심볼 목록으로 검사한다.
+
+- **INT-66** 생성기가 내보내는 code는 그 언어의 표준 compiler와, 이 repository의 lint gate가 그 언어에 돌리는 formatter와 linter를 통과하며, 생성된 text는 어떤 finding도 억제하지 않는다: Rust `allow` attribute, Go `//nolint`, Python `# noqa`, PHP `@phpstan-ignore`나 `phpcs:ignore`, TypeScript `eslint-disable`이나 `@ts-ignore`가 없다.
 
 관계는 자식의 `match<L>With<R>()`와 함께 `relation(child)`, `relations(child)`를 사용한다. 조인은 `join<L>With<R>(child)`, `leftJoin<L>With<R>(child)`를 사용한다. 알 수 없는 명칭은 PHP와 TypeScript에서는 호출 해석 단계, Go와 Rust에서는 생성 단계에서 실패한다.
 

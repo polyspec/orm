@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- INT-66 rules that the code orm-gen generates passes the standard compiler, formatter and linter of its language with no suppression in the generated text (KSTD-2-11-3).
 - INT-65 rules that every implementation exposes every code of `errors.yaml` as a native constant and that its catalog equals `errors.yaml` (KSTD-2-11-1).
 - INT-7 names the `StyledValue` type that every generator emits for a column with a value codec, instead of a JSON value type per language (KSTD-2-9-9).
 - DBS-172 states that the PHP extension implements every PHP library of the repository (S10), and that the rule describes its dbspec surface (KSTD-2-9-8).
