@@ -24,6 +24,16 @@ func repositoryRoot(t *testing.T) string {
 	return filepath.Clean(filepath.Join(directory, "..", "..", "..", ".."))
 }
 
+// asFixture returns v as T. A test table names the shape it expects of a fixture value; another shape is a broken
+// table, which panics and that runTimed reports as a failed case.
+func asFixture[T any](v any) T {
+	t, ok := v.(T)
+	if !ok {
+		panic(fmt.Sprintf("the test table expects %T, found %T", *new(T), v))
+	}
+	return t
+}
+
 // runTimed runs work under its own deadline and records its start, result, and elapsed time. work runs
 // in its own goroutine and reports failure by returning an error, so the deadline holds even if work is stuck.
 func runTimed(t *testing.T, name string, deadline time.Duration, work func() error) {
@@ -86,7 +96,10 @@ func TestCaseHarnessReportsOnlyFailure(t *testing.T) {
 		output, err := command.CombinedOutput()
 		var exit *exec.ExitError
 		if !errors.As(err, &exit) {
-			return fmt.Errorf("fixture run: want a failing exit, got %v\n%s", err, output)
+			if err == nil {
+				return fmt.Errorf("fixture run: want a failing exit, got success\n%s", output)
+			}
+			return fmt.Errorf("fixture run: want a failing exit: %w\n%s", err, output)
 		}
 		var problems []error
 		for _, name := range names {

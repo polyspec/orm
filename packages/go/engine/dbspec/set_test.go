@@ -115,7 +115,10 @@ func setTree(raw []byte) ([]setTreePath, error) {
 		if err != nil {
 			return nil, err
 		}
-		name := token.(string)
+		name, ok := token.(string)
+		if !ok {
+			return nil, fmt.Errorf("a tree key is not a string: %v", token)
+		}
 		if seen[name] {
 			return nil, fmt.Errorf("tree path %s appears twice", name)
 		}

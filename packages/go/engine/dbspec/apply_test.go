@@ -97,7 +97,7 @@ func TestApplyReportsCleanupErrors(t *testing.T) {
 		return nil
 	}
 	// Without a cleanup error, it returns the failure unwrapped.
-	if err := Apply(ctx, applyTestConn(t), DialectSQLite, plans, now, stopAt); err != stop {
+	if err := Apply(ctx, applyTestConn(t), DialectSQLite, plans, now, stopAt); !errors.Is(err, stop) || errors.Unwrap(err) != nil {
 		t.Errorf("apply stopped by an event without a cleanup error: %#v, want the event error itself", err)
 	}
 

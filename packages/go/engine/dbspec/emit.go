@@ -144,7 +144,11 @@ func (s *settingsNode) model() *Settings {
 			case "history":
 				machine.History = &HistorySetting{Comments: line.comments, Table: args[1], Row: args[2], From: args[3], To: args[4], At: args[5]}
 			case "limit":
-				count, _ := strconv.ParseInt(args[2], 10, 64) // There is no conversion error here, since the check accepted the count.
+				// The settings check parsed this count and rejected any value that fails, and model converts only a validated tree.
+				count, err := strconv.ParseInt(args[2], 10, 64)
+				if err != nil {
+					panic("dbspec: a validated state_machine limit count parses as int64: " + err.Error())
+				}
 				machine.Limits = append(machine.Limits, LimitSetting{Comments: line.comments, State: args[1], Count: count})
 			default:
 				stateLine := StateLineSetting{Comments: line.comments, Initial: line.form == "initial", Terminal: line.form == "terminal"}

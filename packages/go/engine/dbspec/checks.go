@@ -115,7 +115,21 @@ func (c *checkTyper) predicate(e Expr) Expr {
 // subject finds the column of an in or is null predicate. The literal in that place was
 // already rejected by the read stage.
 func (c *checkTyper) subject(e Expr) *columnNode {
-	return c.column(e.(ColumnRef))
+	ref, ok := e.(ColumnRef)
+	if !ok {
+		panic("dbspec: the read stage admits only a column as the operand of in and is null")
+	}
+	return c.column(ref)
+}
+
+// literalSide returns the side of a comparison that has no column. Reading admits only a column or a literal as an
+// operand, so a comparison with a column on one side holds a literal on the other.
+func literalSide(e Expr) Literal {
+	l, ok := e.(Literal)
+	if !ok {
+		panic("dbspec: the read stage admits only a literal beside a column in a comparison")
+	}
+	return l
 }
 
 // comparison types `<left> <op> <right>`, of which reading has made at least
@@ -148,9 +162,9 @@ func (c *checkTyper) comparison(e Binary) Expr {
 			c.add(right.at, "column %q is %s and does not meet %s", right.Name, rc.typ.typ, lc.typ.typ)
 		}
 	case leftColumn:
-		out.Right = c.literal(e.Right.(Literal), lc.typ.typ)
+		out.Right = c.literal(literalSide(e.Right), lc.typ.typ)
 	default:
-		out.Left = c.literal(e.Left.(Literal), rc.typ.typ)
+		out.Left = c.literal(literalSide(e.Left), rc.typ.typ)
 	}
 	return out
 }

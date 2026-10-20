@@ -413,7 +413,7 @@ func checkSetJSON(data []byte) (string, error) {
 			return duplicate, nil
 		}
 		if err != nil {
-			return "", fmt.Errorf("the set file is not JSON: %v", err)
+			return "", fmt.Errorf("the set file is not JSON: %w", err)
 		}
 		if first && token != json.Delim('{') {
 			return "", errors.New("the set file is not one JSON object")
@@ -443,7 +443,10 @@ func checkSetJSON(data []byte) (string, error) {
 			continue
 		}
 		if top.object && top.expectKey {
-			key := token.(string)
+			key, ok := token.(string)
+			if !ok {
+				return "", errors.New("the set file is not JSON: an object key is not a string")
+			}
 			if top.keys[key] && duplicate == "" {
 				duplicate = key
 			}

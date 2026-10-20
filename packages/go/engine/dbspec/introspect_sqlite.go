@@ -201,11 +201,17 @@ func sqliteType(r renderer, declared, column, check string, hasCheck bool) (Type
 	var candidates []Type
 	switch {
 	case m[2] != "":
-		p, _ := strconv.Atoi(m[2])
-		s, _ := strconv.Atoi(m[3])
+		p, errP := strconv.Atoi(m[2])
+		s, errS := strconv.Atoi(m[3])
+		if errP != nil || errS != nil {
+			return Type{}, false
+		}
 		candidates = []Type{{Kind: TypeDecimal, Precision: p, Scale: s}}
 	case m[4] != "":
-		n, _ := strconv.Atoi(m[4])
+		n, err := strconv.Atoi(m[4])
+		if err != nil {
+			return Type{}, false
+		}
 		candidates = []Type{{Kind: TypeVarchar, Length: n}}
 	default:
 		switch m[1] {

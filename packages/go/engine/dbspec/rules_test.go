@@ -22,7 +22,7 @@ type ruleCase struct {
 func errs(spec ...any) []vectorError {
 	var out []vectorError
 	for i := 0; i < len(spec); i += 3 {
-		out = append(out, vectorError{Line: spec[i].(int), Column: spec[i+1].(int), Rule: spec[i+2].(string)})
+		out = append(out, vectorError{Line: asFixture[int](spec[i]), Column: asFixture[int](spec[i+1]), Rule: asFixture[string](spec[i+2])})
 	}
 	return out
 }

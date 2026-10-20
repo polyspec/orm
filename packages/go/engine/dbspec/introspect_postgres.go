@@ -274,14 +274,23 @@ func postgresType(formatted, collation string) (Type, bool) {
 	}
 	switch {
 	case m[2] != "":
-		p, _ := strconv.Atoi(m[2])
-		s, _ := strconv.Atoi(m[3])
+		p, errP := strconv.Atoi(m[2])
+		s, errS := strconv.Atoi(m[3])
+		if errP != nil || errS != nil {
+			return Type{}, false
+		}
 		return Type{Kind: TypeDecimal, Precision: p, Scale: s}, true
 	case m[4] != "":
-		n, _ := strconv.Atoi(m[4])
+		n, err := strconv.Atoi(m[4])
+		if err != nil {
+			return Type{}, false
+		}
 		return Type{Kind: TypeVarchar, Length: n}, collation == "C"
 	case m[5] != "":
-		p, _ := strconv.Atoi(m[6])
+		p, err := strconv.Atoi(m[6])
+		if err != nil {
+			return Type{}, false
+		}
 		if m[5] == "time" {
 			return Type{Kind: TypeTime, Precision: p}, true
 		}

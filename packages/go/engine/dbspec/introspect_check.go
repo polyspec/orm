@@ -478,7 +478,14 @@ func (d *checkDecoder) write(p cPredicate) (string, error) {
 		}
 		return "(" + left + " " + p.op + " " + right + ")", nil
 	case "compare":
-		left, right := p.left.(cOperand), p.right.(cOperand)
+		left, err := operandOf(p.left)
+		if err != nil {
+			return "", err
+		}
+		right, err := operandOf(p.right)
+		if err != nil {
+			return "", err
+		}
 		typ := d.typeOf(left, right)
 		l, err := d.operandText(left, typ)
 		if err != nil {
@@ -490,7 +497,10 @@ func (d *checkDecoder) write(p cPredicate) (string, error) {
 		}
 		return l + " " + p.operator + " " + r, nil
 	case "in":
-		left := p.left.(cOperand)
+		left, err := operandOf(p.left)
+		if err != nil {
+			return "", err
+		}
 		typ := d.typeOf(left, cOperand{})
 		l, err := d.operandText(left, typ)
 		if err != nil {
@@ -508,7 +518,11 @@ func (d *checkDecoder) write(p cPredicate) (string, error) {
 		}
 		return l + keyword + strings.Join(items, ", ") + ")", nil
 	case "null":
-		l, err := d.operandText(p.left.(cOperand), Type{})
+		left, err := operandOf(p.left)
+		if err != nil {
+			return "", err
+		}
+		l, err := d.operandText(left, Type{})
 		if err != nil {
 			return "", err
 		}
@@ -518,6 +532,15 @@ func (d *checkDecoder) write(p cPredicate) (string, error) {
 		return l + " is null", nil
 	}
 	return "", fmt.Errorf("unknown predicate %s", p.op)
+}
+
+// operandOf returns the value of a predicate operand; a predicate in that place is an error of the file.
+func operandOf(n cNode) (cOperand, error) {
+	op, ok := n.(cOperand)
+	if !ok {
+		return cOperand{}, fmt.Errorf("a predicate stands where an operand is expected")
+	}
+	return op, nil
 }
 
 func (d *checkDecoder) side(n cNode) (string, error) {

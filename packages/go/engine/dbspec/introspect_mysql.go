@@ -232,16 +232,26 @@ func mysqlType(columnType, charset, collation string) (typ Type, needsCheck stri
 	text := charset == "utf8mb4" && collation == "utf8mb4_0900_bin"
 	switch {
 	case m[3] == "decimal":
-		p, _ := strconv.Atoi(m[4])
-		s, _ := strconv.Atoi(m[5])
+		p, errP := strconv.Atoi(m[4])
+		s, errS := strconv.Atoi(m[5])
+		if errP != nil || errS != nil {
+			return Type{}, "", false
+		}
 		return Type{Kind: TypeDecimal, Precision: p, Scale: s}, "", charset == ""
 	case m[6] == "varchar":
-		n, _ := strconv.Atoi(m[7])
+		n, err := strconv.Atoi(m[7])
+		if err != nil {
+			return Type{}, "", false
+		}
 		return Type{Kind: TypeVarchar, Length: n}, "", text
 	}
 	precision := 0
 	if m[2] != "" {
-		precision, _ = strconv.Atoi(m[2])
+		p, err := strconv.Atoi(m[2])
+		if err != nil {
+			return Type{}, "", false
+		}
+		precision = p
 	}
 	switch m[1] {
 	case "smallint":

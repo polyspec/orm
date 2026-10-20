@@ -177,9 +177,12 @@ func isDate(s string) bool {
 	if len(s) != 10 || s[4] != '-' || s[7] != '-' || !digits(s[:4]) || !digits(s[5:7]) || !digits(s[8:]) {
 		return false
 	}
-	year, _ := strconv.Atoi(s[:4])
-	month, _ := strconv.Atoi(s[5:7])
-	day, _ := strconv.Atoi(s[8:])
+	year, errY := strconv.Atoi(s[:4])
+	month, errM := strconv.Atoi(s[5:7])
+	day, errD := strconv.Atoi(s[8:])
+	if errY != nil || errM != nil || errD != nil {
+		return false
+	}
 	if year < 1 || month < 1 || month > 12 || day < 1 {
 		return false
 	}
@@ -200,9 +203,12 @@ func canonicalTime(s string, precision int) (string, bool) {
 	if hasFraction && !digits(fraction) {
 		return "", false
 	}
-	hour, _ := strconv.Atoi(clock[:2])
-	minute, _ := strconv.Atoi(clock[3:5])
-	second, _ := strconv.Atoi(clock[6:])
+	hour, errH := strconv.Atoi(clock[:2])
+	minute, errN := strconv.Atoi(clock[3:5])
+	second, errS := strconv.Atoi(clock[6:])
+	if errH != nil || errN != nil || errS != nil {
+		return "", false
+	}
 	if hour > 23 || minute > 59 || second > 59 {
 		return "", false
 	}
