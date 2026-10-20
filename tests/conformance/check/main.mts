@@ -308,6 +308,19 @@ export async function buildRunners(context: Context, root: string, directory: st
   runners.go = binary;
 }
 
+/**
+ * phpArguments is the argument list of the PHP runner: with an extension, its -d extension= comes first, and the zone is
+ * passed as date.timezone, because PHP does not read TZ.
+ */
+export function phpArguments(zone: string, extension: string, flags: string[]): string[] {
+  return [
+    ...(extension === '' ? [] : ['-d', `extension=${extension}`]),
+    ...(zone === '' ? [] : ['-d', `date.timezone=${zone}`]),
+    'packages/php/testing/conformance/runner.php',
+    ...flags,
+  ];
+}
+
 async function runOne(context: Context, root: string, target: Target, output: string, language: string): Promise<void> {
   const flags = ['--dsn', target.dsn, ...target.selected.flatMap(name => ['--vector', name])];
   const goFlags = ['-dsn', target.dsn, ...target.selected.flatMap(name => ['-vector', name])];
@@ -315,10 +328,13 @@ async function runOne(context: Context, root: string, target: Target, output: st
     case 'go':
       if (runners.go === '') throw new Error('go runner is not built');
       return runCommand(context, root, output, runnerDeadline, runners.go, goFlags);
-    case 'php': {
-      // PHP does not read TZ, it reads date.timezone. It runs with the time zone of TZ, as the other runners do.
-      const zone = process.env.TZ ?? '';
-      return runCommand(context, root, output, runnerDeadline, 'php', [...(zone === '' ? [] : ['-d', `date.timezone=${zone}`]), 'packages/php/testing/conformance/runner.php', ...flags]);
+    case 'php':
+      return runCommand(context, root, output, runnerDeadline, 'php', phpArguments(process.env.TZ ?? '', '', flags));
+    case 'php-extension': {
+      // The PHP runner with the extension loaded, nothing else: the extension registers the client's classes under their names.
+      const extension = process.env.POLYSPEC_ORM_EXTENSION ?? '';
+      if (extension === '') throw new Error('POLYSPEC_ORM_EXTENSION is unset; run make conformance-check, which builds the extension and sets it');
+      return runCommand(context, root, output, runnerDeadline, 'php', phpArguments(process.env.TZ ?? '', extension, flags));
     }
     case 'typescript':
       return runCommand(context, root, output, runnerDeadline, 'node', ['packages/ts/testing/conformance/runner_typescript.mts', ...flags]);

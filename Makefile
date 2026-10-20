@@ -1094,9 +1094,12 @@ conformance-result-check/go:
 conformance-result-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.conformance_result
 
+conformance-result-physical-check: RUN_DIR = $(abspath .runtime/run)/conformance-result-physical-check-$$PPID
 conformance-result-physical-check: lease-tool conformance-python-models
 	$(HOLD_TYPESCRIPT)
-	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_PYTHON_MODELS=$(CONFORMANCE_PY_MODELS) node --test tests/conformance/check/result.physical.test.mts
+	rm -rf $(RUN_DIR)
+	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
+	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_PYTHON_MODELS=$(CONFORMANCE_PY_MODELS) POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) node --test tests/conformance/check/result.physical.test.mts
 
 conformance-rust-group-check: lease-tool
 	$(WITH_TEST_ENV) node --test tests/conformance/check/rust-group.physical.test.mts
@@ -1160,7 +1163,8 @@ conformance-check/python: lease-tool python-venv-check conformance-python-models
 conformance-check/run: lease-tool conformance-python-models
 	$(HOLD_TYPESCRIPT)
 	rm -rf $(RUN_DIR)
-	$(WITH_TEST_ENV) export ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_PYTHON_MODELS=$(CONFORMANCE_PY_MODELS) && if $(CONFORMANCE_RUN); then :; \
+	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
+	$(WITH_TEST_ENV) export ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_PYTHON_MODELS=$(CONFORMANCE_PY_MODELS) POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) && if $(CONFORMANCE_RUN); then :; \
 	elif [ -n "$(RECORD)" ]; then \
 	  recorded=0; \
 	  for db in mysql postgres sqlite; do \

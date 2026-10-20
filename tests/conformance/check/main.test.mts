@@ -6,8 +6,8 @@ import { join, resolve } from 'node:path';
 import { COMPUTE, PROCESS, caseTest, withTemporaryDirectory } from '../../testcase.mts';
 import { canon, decodeExact, encode, equalJSON } from './json.mts';
 import {
-  compare, compareRepeatedEvidence, describeDifference, displayCommand, load, newOutputDirectory, recordVerified, requiredLanguages,
-  runCommand, runLanguages, validateOutputFiles,
+  compare, compareRepeatedEvidence, describeDifference, displayCommand, load, newOutputDirectory, phpArguments, recordVerified,
+  requiredLanguages, runCommand, runLanguages, validateOutputFiles,
 } from './main.mts';
 
 const repository = resolve(import.meta.dirname, '../../..');
@@ -230,4 +230,16 @@ caseTest('TestRecordKeepsTheRecordedFiles', COMPUTE, async () => {
     quietly(() => recordVerified(root, requiredLanguages.map(language => join(root, `${language}.json`)), database));
     assert.equal(readFileSync(path, 'utf8'), original, `${database}: the record changed the recorded file`);
   });
+});
+
+// TestPHPExtensionCommandLine pins the command line of the php-extension language: the PHP runner with the extension
+// loaded by -d extension=, and nothing else. The plain php language has no extension argument.
+caseTest('TestPHPExtensionCommandLine', COMPUTE, () => {
+  const extension = '/run/php-extension/polyspec_orm.so';
+  assert.deepEqual(phpArguments('UTC', extension, ['--dsn', 'dsn']), [
+    '-d', `extension=${extension}`, '-d', 'date.timezone=UTC', 'packages/php/testing/conformance/runner.php', '--dsn', 'dsn',
+  ], 'php-extension command line');
+  assert.deepEqual(phpArguments('', extension, []), ['-d', `extension=${extension}`, 'packages/php/testing/conformance/runner.php'],
+    'php-extension command line without a zone');
+  assert.deepEqual(phpArguments('', '', []), ['packages/php/testing/conformance/runner.php'], 'php command line changed');
 });
