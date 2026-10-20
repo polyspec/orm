@@ -2,7 +2,7 @@
 //! case: a match updates and bumps the revision or deletes, a mismatch fails with REVISION_CHANGED and changes
 //! nothing.
 
-use polyspec_orm::{Config, Core, Db, Entity, Model, Param, Schema, Val, codes};
+use polyspec_orm::{codes, Config, Core, Db, Entity, Model, Param, Schema, Val};
 
 static SCHEMA: Schema = Schema::new(
     "dbspec 1 revision\n\ntable note {\n  seq i64 identity\n  label varchar(32)\n  revision i64\n  primary key (seq)\n}\n",

@@ -434,7 +434,13 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
     });
     run!("columns", async {
         let none = Service::new().connect(db).remove_all_columns().get_by_seq(7).await?.ok_or(polyspec_orm::Error::NoRows)?;
-        let added = author().remove_all_columns().add_column_name().add_column_start_dt_alias_start_year(polyspec_orm::year()).get_by_seq(42).await?.ok_or(polyspec_orm::Error::NoRows)?;
+        let added = author()
+            .remove_all_columns()
+            .add_column_name()
+            .add_column_start_dt_alias_start_year(polyspec_orm::year())
+            .get_by_seq(42)
+            .await?
+            .ok_or(polyspec_orm::Error::NoRows)?;
         let removed = Service::new().connect(db).remove_column_name().get_by_seq(7).await?.ok_or(polyspec_orm::Error::NoRows)?;
         Ok::<Value, polyspec_orm::Error>(json!([none.to_array()?, pick(Some(&added), &["seq", "name", "start_year"]), removed.to_array()?]))
     });
@@ -489,12 +495,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         Ok::<Value, polyspec_orm::Error>(json!(rows.len()))
     });
     run!("relation_null_key", async {
-        let rows = User::new()
-            .connect(db)
-            .relations(Author::new().match_seq_with_user_seq().key_name_price())
-            .seq(100)
-            .gets()
-            .await;
+        let rows = User::new().connect(db).relations(Author::new().match_seq_with_user_seq().key_name_price()).seq(100).gets().await;
         match rows {
             Ok(rows) => Ok::<Value, polyspec_orm::Error>(json!(rows.len())),
             Err(e) => Ok(json!({"error": code(&e), "message": e.to_string()})),
@@ -632,7 +633,8 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         Ok::<Value, polyspec_orm::Error>(json!({"sql": st.sql, "binds": binds}))
     });
     run!("aes_values", async {
-        let row = author().remove_all_columns().add_column_aes_hex_email().add_column_aes_hex_phone().get_by_seq(42).await?.ok_or(polyspec_orm::Error::NoRows)?;
+        let row =
+            author().remove_all_columns().add_column_aes_hex_email().add_column_aes_hex_phone().get_by_seq(42).await?.ok_or(polyspec_orm::Error::NoRows)?;
         let found = author().aes_hex_email("user42@example.com").get_count().await?;
         Ok::<Value, polyspec_orm::Error>(json!({"row": row.to_array()?, "found": found}))
     });
@@ -665,10 +667,15 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
                 error
             })?;
             created_array["seq"] = json!("$SEQ");
-            let loaded = author().add_all_columns().get_by_seq(seq).await.map_err(|error| {
-                eprintln!("write_cycle selected row: {error}");
-                error
-            })?.ok_or(polyspec_orm::Error::NoRows)?;
+            let loaded = author()
+                .add_all_columns()
+                .get_by_seq(seq)
+                .await
+                .map_err(|error| {
+                    eprintln!("write_cycle selected row: {error}");
+                    error
+                })?
+                .ok_or(polyspec_orm::Error::NoRows)?;
             mask(shared, &[], &[loaded.get_updated_ts().unwrap()]);
             let mut loaded = loaded.set_name("cycle-2").plus_read_count(3);
             loaded.update(true).await?;
@@ -784,7 +791,12 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
                 let member = ServiceMember::new().connect(db).set_service_seq(seq).set_user_seq(i + 1).create().await?;
                 seqs.push(member.get_seq().unwrap());
             }
-            let loaded = Service::new().connect(db).relations(ServiceMember::new().match_seq_with_service_seq()).get_by_seq(seq).await?.ok_or(polyspec_orm::Error::NoRows)?;
+            let loaded = Service::new()
+                .connect(db)
+                .relations(ServiceMember::new().match_seq_with_service_seq())
+                .get_by_seq(seq)
+                .await?
+                .ok_or(polyspec_orm::Error::NoRows)?;
             let members = loaded.get_service_member_models()?.expect("selected service members").len();
             mask(shared, &seqs, &[]);
             loaded.delete(true).await?;

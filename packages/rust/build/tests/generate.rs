@@ -643,7 +643,11 @@ fn unused_external_tables_keep_their_models() {
     std::fs::create_dir_all(&src).unwrap();
     std::fs::write(src.join("main.rs"), "fn main() { let _ = ExtNote::new(); }").unwrap();
     let note = dir.join("note.dbs");
-    std::fs::write(&note, "dbspec 1 ext_note\n\nuse ext_core { ext_session }\n\ntable ext_note {\n  seq i64 identity\n  title varchar(191)\n  primary key (seq)\n}\n").unwrap();
+    std::fs::write(
+        &note,
+        "dbspec 1 ext_note\n\nuse ext_core { ext_session }\n\ntable ext_note {\n  seq i64 identity\n  title varchar(191)\n  primary key (seq)\n}\n",
+    )
+    .unwrap();
     let external = polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/external");
     let set = set_file(&dir, &[note], &[external.join("core.dbs")]);
     let out = polyspec_orm_build::Builder::set(set).scan(&src).out_dir(dir.join("out")).try_generate();

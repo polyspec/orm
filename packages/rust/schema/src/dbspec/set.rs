@@ -205,10 +205,7 @@ impl Tree {
     /// `lstat`: on Windows the standard library reports a reparse point whose tag is a name
     /// surrogate (a symbolic link or a junction) as a symbolic link.
     fn kind(&mut self, path: &OsStr) -> Result<Kind, String> {
-        self.kinds
-            .entry(path.to_os_string())
-            .or_insert_with(|| std::fs::symlink_metadata(path).map(|meta| kind_of(&meta)).map_err(|e| e.to_string()))
-            .clone()
+        self.kinds.entry(path.to_os_string()).or_insert_with(|| std::fs::symlink_metadata(path).map(|meta| kind_of(&meta)).map_err(|e| e.to_string())).clone()
     }
 
     /// `stat`: the kind of the entry that `path` names, following a symbolic link.

@@ -19,7 +19,11 @@ async fn coverage_constraint_errors() {
         let mut duplicate = author.set_uuid(uuid);
         assert_eq!(code(duplicate.update(false).await), polyspec_orm::codes::DUPLICATE_KEY, "uuid of author 2");
         assert_eq!(User::new().connect(&db).get_by_seq(1).await.unwrap().expect("a row").to_array().unwrap(), user_before, "user 1 changed");
-        assert_eq!(Author::new().connect(&db).add_all_columns().get_by_seq(1).await.unwrap().expect("a row").to_array().unwrap(), author_before, "author 1 changed");
+        assert_eq!(
+            Author::new().connect(&db).add_all_columns().get_by_seq(1).await.unwrap().expect("a row").to_array().unwrap(),
+            author_before,
+            "author 1 changed"
+        );
         db.close().await;
     })
     .await;

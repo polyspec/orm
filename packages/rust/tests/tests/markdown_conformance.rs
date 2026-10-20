@@ -562,7 +562,12 @@ async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             db.transaction(async || Logs::new().set_task("T3").set_note("read only").create().await.map(drop)).read_only().await?;
             Value::Null
         }
-        "lock_update" => db.transaction(async || People::new().connect(db).remove_all_columns().id("P1").for_update().get().await?.ok_or(polyspec_orm::Error::NoRows)?.to_array()).await?,
+        "lock_update" => {
+            db.transaction(async || {
+                People::new().connect(db).remove_all_columns().id("P1").for_update().get().await?.ok_or(polyspec_orm::Error::NoRows)?.to_array()
+            })
+            .await?
+        }
         "lock_nowait" => {
             db.transaction(async || People::new().connect(db).id("P1").for_update_no_wait().get().await.map(drop)).await?;
             Value::Null

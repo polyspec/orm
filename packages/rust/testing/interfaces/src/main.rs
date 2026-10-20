@@ -26,16 +26,7 @@ fn wire_type(t: &syn::Type) -> String {
         let last = p.path.segments.last().unwrap();
         let name = last.ident.to_string();
         let args: Vec<_> = if let syn::PathArguments::AngleBracketed(a) = &last.arguments {
-            a.args
-                .iter()
-                .filter_map(|a| {
-                    if let syn::GenericArgument::Type(t) = a {
-                        Some(wire_type(t))
-                    } else {
-                        None
-                    }
-                })
-                .collect()
+            a.args.iter().filter_map(|a| if let syn::GenericArgument::Type(t) = a { Some(wire_type(t)) } else { None }).collect()
         } else {
             vec![]
         };
@@ -91,10 +82,7 @@ fn tokens(t: &impl ToTokens) -> String {
 }
 
 fn add(out: &mut BTreeMap<String, Entry>, key: String, signature: String, exported: bool) {
-    assert!(
-        out.insert(key.clone(), Entry { signature, exported }).is_none(),
-        "duplicate symbol {key}"
-    );
+    assert!(out.insert(key.clone(), Entry { signature, exported }).is_none(), "duplicate symbol {key}");
 }
 
 /// The names of the public structs, enums, type aliases and traits of the crate, which an impl target must name to export
@@ -124,13 +112,7 @@ fn public_types(names: &mut HashSet<String>, list: &[Item]) {
     }
 }
 
-fn items(
-    out: &mut BTreeMap<String, Entry>,
-    prefix: &str,
-    list: Vec<Item>,
-    scope: bool,
-    types: &HashSet<String>,
-) {
+fn items(out: &mut BTreeMap<String, Entry>, prefix: &str, list: Vec<Item>, scope: bool, types: &HashSet<String>) {
     for item in list {
         match item {
             Item::Struct(s) => {
@@ -138,47 +120,21 @@ fn items(
                 add(
                     out,
                     format!("{prefix}::{}", s.ident),
-                    format!(
-                        "{} struct {} {} {}",
-                        tokens(&s.vis),
-                        s.ident,
-                        tokens(&s.generics),
-                        tokens(&s.fields)
-                    ),
+                    format!("{} struct {} {} {}", tokens(&s.vis), s.ident, tokens(&s.generics), tokens(&s.fields)),
                     exported,
                 );
                 for (i, f) in s.fields.iter().enumerate() {
-                    let name = f
-                        .ident
-                        .as_ref()
-                        .map(|i| i.to_string())
-                        .unwrap_or(i.to_string());
-                    add(
-                        out,
-                        format!("{prefix}::{}#field.{name}", s.ident),
-                        tokens(&f.ty),
-                        exported && is_pub(&f.vis),
-                    );
+                    let name = f.ident.as_ref().map(|i| i.to_string()).unwrap_or(i.to_string());
+                    add(out, format!("{prefix}::{}#field.{name}", s.ident), tokens(&f.ty), exported && is_pub(&f.vis));
                 }
-                add(
-                    out,
-                    format!("{prefix}::{}#wire", s.ident),
-                    serde_json::to_string(&wire_fields(&s.fields)).unwrap(),
-                    exported,
-                );
+                add(out, format!("{prefix}::{}#wire", s.ident), serde_json::to_string(&wire_fields(&s.fields)).unwrap(), exported);
             }
             Item::Enum(e) => {
                 let exported = scope && is_pub(&e.vis);
                 add(
                     out,
                     format!("{prefix}::{}", e.ident),
-                    format!(
-                        "{} enum {} {} {{ {} }}",
-                        tokens(&e.vis),
-                        e.ident,
-                        tokens(&e.generics),
-                        tokens(&e.variants)
-                    ),
+                    format!("{} enum {} {} {{ {} }}", tokens(&e.vis), e.ident, tokens(&e.generics), tokens(&e.variants)),
                     exported,
                 );
                 let mut fields = BTreeMap::new();
@@ -186,68 +142,28 @@ fn items(
                     fields.extend(wire_fields(&v.fields))
                 }
                 if !fields.is_empty() {
-                    add(
-                        out,
-                        format!("{prefix}::{}#wire", e.ident),
-                        serde_json::to_string(&fields).unwrap(),
-                        exported,
-                    );
+                    add(out, format!("{prefix}::{}#wire", e.ident), serde_json::to_string(&fields).unwrap(), exported);
                 }
             }
-            Item::Type(t) => add(
-                out,
-                format!("{prefix}::{}", t.ident),
-                tokens(&t),
-                scope && is_pub(&t.vis),
-            ),
-            Item::Fn(f) => add(
-                out,
-                format!("{prefix}::{}", f.sig.ident),
-                format!("{} {}", tokens(&f.vis), tokens(&f.sig)),
-                scope && is_pub(&f.vis),
-            ),
+            Item::Type(t) => add(out, format!("{prefix}::{}", t.ident), tokens(&t), scope && is_pub(&t.vis)),
+            Item::Fn(f) => add(out, format!("{prefix}::{}", f.sig.ident), format!("{} {}", tokens(&f.vis), tokens(&f.sig)), scope && is_pub(&f.vis)),
             Item::Trait(t) => {
                 let exported = scope && is_pub(&t.vis);
                 let owner = format!("{prefix}::{}", t.ident);
-                add(
-                    out,
-                    owner.clone(),
-                    format!(
-                        "{} trait {} {} : {}",
-                        tokens(&t.vis),
-                        t.ident,
-                        tokens(&t.generics),
-                        tokens(&t.supertraits)
-                    ),
-                    exported,
-                );
+                add(out, owner.clone(), format!("{} trait {} {} : {}", tokens(&t.vis), t.ident, tokens(&t.generics), tokens(&t.supertraits)), exported);
                 for i in t.items {
                     if let TraitItem::Fn(f) = i {
-                        add(
-                            out,
-                            format!("{owner}::{}", f.sig.ident),
-                            tokens(&f.sig),
-                            exported,
-                        );
+                        add(out, format!("{owner}::{}", f.sig.ident), tokens(&f.sig), exported);
                     }
                 }
             }
             Item::Impl(i) => {
                 let target = tokens(&i.self_ty);
-                let tr = i
-                    .trait_
-                    .as_ref()
-                    .map(|(_, p, _)| format!(" as {}", tokens(p)))
-                    .unwrap_or_default();
+                let tr = i.trait_.as_ref().map(|(_, p, _)| format!(" as {}", tokens(p))).unwrap_or_default();
                 let owner = format!("{prefix}::{target}{tr}");
                 // The impl target's last path segment decides whether its public items are exported.
                 let named = match &*i.self_ty {
-                    syn::Type::Path(p) => p
-                        .path
-                        .segments
-                        .last()
-                        .map(|seg| seg.ident.to_string())
-                        .unwrap_or_default(),
+                    syn::Type::Path(p) => p.path.segments.last().map(|seg| seg.ident.to_string()).unwrap_or_default(),
                     _ => String::new(),
                 };
                 let target_exported = scope && types.contains(&named);
@@ -260,12 +176,7 @@ fn items(
                             format!("{} {}", tokens(&f.vis), tokens(&f.sig)),
                             target_exported && (via_trait || is_pub(&f.vis)),
                         ),
-                        ImplItem::Type(t) => add(
-                            out,
-                            format!("{owner}::{}", t.ident),
-                            tokens(&t),
-                            target_exported && (via_trait || is_pub(&t.vis)),
-                        ),
+                        ImplItem::Type(t) => add(out, format!("{owner}::{}", t.ident), tokens(&t), target_exported && (via_trait || is_pub(&t.vis))),
                         _ => {}
                     }
                 }
@@ -276,13 +187,7 @@ fn items(
                     continue;
                 }
                 if let Some((_, inner)) = m.content {
-                    items(
-                        out,
-                        &format!("{prefix}::{}", m.ident),
-                        inner,
-                        scope && is_pub(&m.vis),
-                        types,
-                    );
+                    items(out, &format!("{prefix}::{}", m.ident), inner, scope && is_pub(&m.vis), types);
                 }
             }
             _ => {}
@@ -291,15 +196,11 @@ fn items(
 }
 
 fn is_source(p: &Path) -> bool {
-    p.extension().is_some_and(|x| x == "rs")
-        || p.to_str().is_some_and(|x| x.ends_with(".rs.txt"))
+    p.extension().is_some_and(|x| x == "rs") || p.to_str().is_some_and(|x| x.ends_with(".rs.txt"))
 }
 
 fn collect(dir: &Path, files: &mut Vec<std::path::PathBuf>) {
-    let mut paths: Vec<_> = fs::read_dir(dir)
-        .unwrap()
-        .map(|x| x.unwrap().path())
-        .collect();
+    let mut paths: Vec<_> = fs::read_dir(dir).unwrap().map(|x| x.unwrap().path()).collect();
     paths.sort();
     for p in paths {
         if p.is_dir() {
@@ -320,12 +221,7 @@ fn parse(p: &Path) -> syn::File {
     syn::parse_file(&source).unwrap_or_else(|e| panic!("{}: {e}", p.display()))
 }
 
-fn visit(
-    root: &Path,
-    dir: &Path,
-    out: &mut BTreeMap<String, Entry>,
-    types: &HashSet<String>,
-) {
+fn visit(root: &Path, dir: &Path, out: &mut BTreeMap<String, Entry>, types: &HashSet<String>) {
     let mut files = Vec::new();
     collect(dir, &mut files);
     for p in files {
@@ -350,17 +246,7 @@ fn main() {
     for dir in &args[1..] {
         visit(root, &root.join(dir), &mut out, &types);
     }
-    let json: serde_json::Map<String, serde_json::Value> = out
-        .into_iter()
-        .map(|(key, e)| {
-            (
-                key,
-                serde_json::json!({ "signature": e.signature, "exported": e.exported }),
-            )
-        })
-        .collect();
-    println!(
-        "{}",
-        serde_json::to_string_pretty(&serde_json::Value::Object(json)).unwrap()
-    );
+    let json: serde_json::Map<String, serde_json::Value> =
+        out.into_iter().map(|(key, e)| (key, serde_json::json!({ "signature": e.signature, "exported": e.exported }))).collect();
+    println!("{}", serde_json::to_string_pretty(&serde_json::Value::Object(json)).unwrap());
 }

@@ -109,9 +109,6 @@ fn report_form() {
     );
     let (code, output) = run_fixture("deadline", "fixture_deadline");
     assert_eq!(code, Some(101), "the expired fixture ends the binary\n{output}");
-    assert!(
-        output.contains("fixture_deadline: deadline 200ms exceeded and the case did not stop"),
-        "no deadline line for the expired case\n{output}"
-    );
+    assert!(output.contains("fixture_deadline: deadline 200ms exceeded and the case did not stop"), "no deadline line for the expired case\n{output}");
     assert!(!output.contains("test fixture_deadline ... ok"), "an ok result for the expired case\n{output}");
 }

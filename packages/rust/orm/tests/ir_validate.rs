@@ -51,11 +51,9 @@ fn main() {
     let cases = file["cases"].as_array().expect("cases").clone();
     assert!(!cases.is_empty(), "validate.json has no cases");
     let mut trials: Vec<_> = vec![polyspec_orm_testcase::trial("manifest_hash_mismatch".to_owned(), polyspec_orm_testcase::COMPUTE, manifest_hash_mismatch)];
-    trials.extend(cases
-        .into_iter()
-        .map(|case| {
-            let name = case["name"].as_str().expect("name").to_owned();
-            polyspec_orm_testcase::trial(format!("validate_vectors::{name}"), polyspec_orm_testcase::COMPUTE, move || validate_case(&case))
-        }));
+    trials.extend(cases.into_iter().map(|case| {
+        let name = case["name"].as_str().expect("name").to_owned();
+        polyspec_orm_testcase::trial(format!("validate_vectors::{name}"), polyspec_orm_testcase::COMPUTE, move || validate_case(&case))
+    }));
     polyspec_orm_testcase::run(trials);
 }

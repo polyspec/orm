@@ -20,8 +20,7 @@ fn value_of(entry: &Json) -> Val {
         Some("int") => Val::I64(entry["value"].as_i64().expect("int value")),
         Some("bytes") => Val::Bytes(hex_decode(entry["hex"].as_str().expect("bytes hex"))),
         Some("datetime") => {
-            let instant = DateTime::parse_from_rfc3339(entry["value"].as_str().expect("datetime value"))
-                .unwrap_or_else(|e| panic!("fixture {name}: {e}"));
+            let instant = DateTime::parse_from_rfc3339(entry["value"].as_str().expect("datetime value")).unwrap_or_else(|e| panic!("fixture {name}: {e}"));
             Val::DateTime(instant.naive_utc())
         }
         other => panic!("fixture {name} has unknown type {other:?}"),
@@ -29,10 +28,7 @@ fn value_of(entry: &Json) -> Val {
 }
 
 fn hex_decode(text: &str) -> Vec<u8> {
-    (0..text.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(&text[i..i + 2], 16).expect("fixture hex"))
-        .collect()
+    (0..text.len()).step_by(2).map(|i| u8::from_str_radix(&text[i..i + 2], 16).expect("fixture hex")).collect()
 }
 
 #[test]

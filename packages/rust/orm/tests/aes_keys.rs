@@ -120,19 +120,21 @@ fn aes_read_version_codes_match_the_other_clients() {
     let asm = Assemble {
         entity: "secret_config".to_owned(),
         columns: vec![
-            OutCol { index: 0, name: "config".into(), column: "config".into(), typ: "longblob".into(), styles: vec!["aes".into(), "hex".into()], hidden: false },
+            OutCol {
+                index: 0,
+                name: "config".into(),
+                column: "config".into(),
+                typ: "longblob".into(),
+                styles: vec!["aes".into(), "hex".into()],
+                hidden: false,
+            },
             OutCol { index: 1, name: "aes_key_version".into(), column: "aes_key_version".into(), typ: "int".into(), styles: vec![], hidden: false },
         ],
         aes_version: Some(1),
         ..Default::default()
     };
     let keys = keys(&[(1, "old-key"), (2, "new-key")]);
-    let cases = [
-        (Val::Str("abc".into()), "CODEC_DECODE"),
-        (Val::I64(0), "CODEC_DECODE"),
-        (Val::I64(2_147_483_648), "CODEC_DECODE"),
-        (Val::I64(9), "CONFIG"),
-    ];
+    let cases = [(Val::Str("abc".into()), "CODEC_DECODE"), (Val::I64(0), "CODEC_DECODE"), (Val::I64(2_147_483_648), "CODEC_DECODE"), (Val::I64(9), "CONFIG")];
     for (version, want) in cases {
         let mut data = vec![vec![Val::Str("00".into()), version.clone()]];
         let got = match polyspec_orm::row::decode_styled(&asm, &mut data, &keys) {
