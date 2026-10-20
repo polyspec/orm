@@ -3,7 +3,7 @@
     "canonical": ["DBS-3", "DBS-32", "DBS-35", "DBS-36", "DBS-37", "DBS-38", "DBS-39", "DBS-40", "DBS-43", "DBS-44", "DBS-45", "DBS-47", "DBS-48", "DBS-49", "DBS-50", "DBS-51", "DBS-52", "DBS-53", "DBS-54", "DBS-55", "DBS-56", "DBS-57", "DBS-58", "DBS-63", "DBS-66", "DBS-67", "DBS-68", "DBS-73", "DBS-74", "DBS-75", "DBS-76", "DBS-77", "DBS-78", "DBS-79", "DBS-80", "DBS-81", "DBS-82", "DBS-83", "DBS-84", "DBS-85", "DBS-88", "DBS-89", "DBS-90", "DBS-91", "DBS-92", "DBS-122", "DBS-123", "DBS-124", "DBS-125", "DBS-126", "DBS-127", "DBS-128", "DBS-129", "DBS-130", "DBS-131", "DBS-132"],
     "normalize": ["DBS-2", "DBS-36", "DBS-45", "DBS-47", "DBS-49", "DBS-69", "DBS-71", "DBS-123", "DBS-124", "DBS-125", "DBS-126", "DBS-127", "DBS-128", "DBS-129", "DBS-130", "DBS-131"],
     "invalid": ["DBS-3", "DBS-32", "DBS-33", "DBS-34", "DBS-36", "DBS-37", "DBS-38", "DBS-39", "DBS-40", "DBS-46", "DBS-48", "DBS-49", "DBS-50", "DBS-51", "DBS-52", "DBS-53", "DBS-58", "DBS-60", "DBS-61", "DBS-62", "DBS-63", "DBS-64", "DBS-70", "DBS-71", "DBS-72", "DBS-73", "DBS-74", "DBS-75", "DBS-76", "DBS-77", "DBS-78", "DBS-79", "DBS-80", "DBS-81", "DBS-82", "DBS-83", "DBS-84", "DBS-88", "DBS-89", "DBS-90", "DBS-91", "DBS-92", "DBS-97", "DBS-122", "DBS-144", "DBS-145", "DBS-146", "DBS-147", "DBS-148", "DBS-149", "DBS-150", "DBS-151", "DBS-152", "DBS-153", "DBS-154", "DBS-156", "DBS-157", "DBS-158", "DBS-159", "DBS-160", "DBS-161", "DBS-162", "DBS-163", "DBS-164", "DBS-165", "DBS-166", "DBS-167", "DBS-168", "DBS-169", "DBS-170", "DBS-171", "ORES-56"],
-    "hashes": ["DBS-65", "DBS-86", "DBS-94", "DBS-99", "DBS-100", "DBS-102", "DBS-103"],
+    "hashes": ["DBS-65", "DBS-86", "DBS-94", "DBS-99", "DBS-100", "DBS-102", "DBS-103", "DIA-97"],
     "sets": ["DBS-30", "DBS-35", "DBS-101", "DBS-105", "DBS-106", "DBS-168"],
     "files": ["DBS-4", "DBS-155", "DBS-171"],
     "positions": ["DBS-140", "DBS-142", "DBS-143", "ORES-12", "ORES-57", "ORES-58", "ORES-59", "ORES-60", "ORES-61", "ORES-62", "ORES-63", "ORES-64", "ORES-65", "ORES-66", "ORES-67", "ORES-68", "ORES-69", "ORES-71"]
@@ -13071,6 +13071,86 @@
       ],
       "manifestHash": "sha256:c03e62f0a085505d0499cb2b51496591b3b51fcf3cdebe6f68de808dcfbe464f",
       "schemaHash": "sha256:182ea8ad350b149976d17d103d3be1574d23a01d98da96779dd09cb97f45e7dd"
+    },
+    {
+      "id": "updated-setting-in-manifest-only",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table notes {",
+          "  id i64 identity",
+          "  body text",
+          "  changed_at datetime(6) null",
+          "  primary key (id)",
+          "  settings {",
+          "    updated changed_at",
+          "  }",
+          "}"
+        ]
+      },
+      "manifestText": [
+        "dbspec 1 shop",
+        "",
+        "table notes {",
+        "  id i64 identity",
+        "  body text",
+        "  changed_at datetime(6) null",
+        "  primary key (id)",
+        "  settings {",
+        "    updated changed_at",
+        "  }",
+        "}"
+      ],
+      "schemaText": [
+        "dbspec 1 schema",
+        "",
+        "table notes {",
+        "  id i64 identity",
+        "  body text",
+        "  changed_at datetime(6) null",
+        "  primary key (id)",
+        "}"
+      ],
+      "manifestHash": "sha256:467f036687a8d42db4fee6bc093039b9b9a611eb5acc6eaef52526bc57c34e7d",
+      "schemaHash": "sha256:14f3b76c86d92192caa852bd0e533888f5d24b04e6259edd34c0516cd62c0fbe"
+    },
+    {
+      "id": "updated-setting-absent",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table notes {",
+          "  id i64 identity",
+          "  body text",
+          "  changed_at datetime(6) null",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "manifestText": [
+        "dbspec 1 shop",
+        "",
+        "table notes {",
+        "  id i64 identity",
+        "  body text",
+        "  changed_at datetime(6) null",
+        "  primary key (id)",
+        "}"
+      ],
+      "schemaText": [
+        "dbspec 1 schema",
+        "",
+        "table notes {",
+        "  id i64 identity",
+        "  body text",
+        "  changed_at datetime(6) null",
+        "  primary key (id)",
+        "}"
+      ],
+      "manifestHash": "sha256:d44a71510c9c0af2ecb6cbce60a18535fb581a029b16d013985c1882c97df15a",
+      "schemaHash": "sha256:14f3b76c86d92192caa852bd0e533888f5d24b04e6259edd34c0516cd62c0fbe"
     }
   ],
   "sets": [

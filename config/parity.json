@@ -435,7 +435,7 @@
       ]
     },
     {
-      "id": "dbspec-hashes", "kind": "suite", "requirements": ["DBS-65", "DBS-86", "DBS-94", "DBS-99", "DBS-100", "DBS-102", "DBS-103"],
+      "id": "dbspec-hashes", "kind": "suite", "requirements": ["DBS-65", "DBS-86", "DBS-94", "DBS-99", "DBS-100", "DBS-102", "DBS-103", "DIA-97"],
       "file": "tests/dbspec/cases.json", "cases": "$.hashes[*].id",
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/manifest_test.go", "symbol": "TestManifestVectors" },
