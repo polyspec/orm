@@ -1,3 +1,5 @@
+//go:build featurecoverage || perfgate
+
 // The hot-path regression gate compares the generated client with this
 // package's native statements (same SQL, same typed scan), in one
 // process, so the ratio is comparable on any machine. docs/operations/perf.md §6d records
