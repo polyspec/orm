@@ -81,6 +81,7 @@ async function withInstalled({ driver, dsn }, schema, tables, audited, body) {
 
 await runCases('coverage_audit_triggers.mjs', {
   // contracts/fixtures/audit.dbs: checks the writes of a transaction that received an audit record (tests/restore_case.mjs).
+  // Requirements: CFG-8.
   async audit_history(item) {
     await withInstalled(item, auditSchema(), auditTables, ['item'], (db, driver, dsn) => auditCase(db, driver, dsn));
   },

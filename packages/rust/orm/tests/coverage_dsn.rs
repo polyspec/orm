@@ -3,6 +3,7 @@ use polyspec_orm::db::Pool;
 // feature-check runs it with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN and with --include-ignored.
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
+// Requirements: CFG-1.
 async fn coverage_dsn_connection() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let driver = std::env::var("ORM_FEATURE_DATABASE")

@@ -48,6 +48,7 @@ async function codeOf(work) {
   return '';
 }
 
+// Requirements: PRT-63.
 caseTest('markdown/parse-dsn', COMPUTE, () => {
   const parsed = parseDsn(`markdown://127.0.0.1:4100/tracker?token=${token}`);
   const want = { driver: 'markdown', zone: '+00:00', markdown: { address: '127.0.0.1:4100', corpus: 'tracker', token } };
@@ -73,6 +74,7 @@ caseTest('markdown/parse-dsn', COMPUTE, () => {
 });
 
 // The connect and control messages the client sends, and the parsing of error lines.
+// Requirements: PRT-64.
 caseTest('markdown/session-messages', COMPUTE, async () => {
   const s = await fakeServer(
     '{"ok":true}',
@@ -108,6 +110,7 @@ caseTest('markdown/session-messages', COMPUTE, async () => {
 });
 
 // The CONFIG the server answers to connect is the error of connect.
+// Requirements: PRT-64.
 caseTest('markdown/connect-refused', COMPUTE, async () => {
   const s = await fakeServer('{"error":{"code":"CONFIG","message":"connect: the token is not the corpus\'s token"}}');
   try {

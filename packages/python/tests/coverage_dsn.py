@@ -21,6 +21,7 @@ def dsn_connection(item):
 
 
 class CoverageTest(CoverageCase):
+    # Requirements: CFG-1.
     def test_dsn_connection(self):
         self.each_item("dsn_connection", dsn_connection)
 

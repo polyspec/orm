@@ -11,6 +11,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
+// Requirements: CFG-1.
 func TestCoverageDSNConnection(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	driver, dsn := os.Getenv("ORM_FEATURE_DATABASE"), os.Getenv("ORM_FEATURE_DSN")

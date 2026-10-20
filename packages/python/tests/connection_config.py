@@ -89,6 +89,7 @@ def code_of(run) -> str | None:
 class ConnectionConfigTest(unittest.TestCase):
     deadline = testcase.DATABASE
 
+    # Requirements: CFG-6.
     def test_statement_timeout(self):
         table = f"timeout_{uuid.uuid4().hex[:8]}"
         models, model = probe_models(TEMP["dir"].name, table)
@@ -125,6 +126,7 @@ class ConnectionConfigTest(unittest.TestCase):
     # ORM_TEST_PGBOUNCER_SINGLE_DSN every client shares one server connection, so the statement timeout of one
     # connection must bound only the statements of that connection. The pool of that DSN is bound to the database of
     # ORM_TEST_POSTGRES_DSN, so the case makes one table of its own name there and drops it at the end.
+    # Requirements: CFG-27, CFG-29.
     def test_statement_timeout_through_a_pooler(self):
         single = os.environ.get("ORM_TEST_PGBOUNCER_SINGLE_DSN")
         if not single:

@@ -210,6 +210,7 @@ async function rollbackFault(driver, dsn) {
   } finally { await db.close(); }
 }
 
+// Requirements: CFG-15.
 const cases = { rollback_failed: rollbackFailed, savepoint_rollback_failed: savepointRollbackFailed, rollback_fault: rollbackFault };
 const selected = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(cases);
 for (const env of ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_POSTGRES_DSN']) {

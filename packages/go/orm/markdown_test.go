@@ -12,6 +12,7 @@ import (
 )
 
 func TestParseMarkdownDSN(t *testing.T) {
+	// Requirements: PRT-63.
 	testcase.Start(t, testcase.Compute)
 	got, err := parseDSN("markdown://127.0.0.1:4100/tracker?token=0123456789abcdef0123456789abcdef", 0)
 	if err != nil {
@@ -88,6 +89,7 @@ const connectLine = `{"op":"connect","corpus":"tracker","token":"0123456789abcde
 // TestMarkdownSessionMessages checks the connect and control messages the client sends, and the interpretation of error lines
 // (docs/spec/protocol.md §5).
 func TestMarkdownSessionMessages(t *testing.T) {
+	// Requirements: PRT-64.
 	testcase.Start(t, testcase.Compute)
 	s := startFakeServer(t,
 		`{"ok":true}`,
@@ -126,6 +128,7 @@ func TestMarkdownSessionMessages(t *testing.T) {
 
 // TestMarkdownConnectRefused checks that the CONFIG the server answered to connect is an error of Connect.
 func TestMarkdownConnectRefused(t *testing.T) {
+	// Requirements: PRT-64.
 	testcase.Start(t, testcase.Compute)
 	s := startFakeServer(t, `{"error":{"code":"CONFIG","message":"connect: the token is not the corpus's token"}}`)
 	db, err := Connect(s.dsn(), Config{})

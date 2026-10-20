@@ -114,12 +114,14 @@ function graph() {
   return { modules: seen, violations };
 }
 
+// Requirements: ORE-6, ORES-53, ORES-54, ORES-55.
 caseTest('the subpath module reaches no Node module, undeclared package or Node global', TIMEOUT, () => {
   const { modules, violations } = graph();
   assert.ok(modules.size > 1, 'the graph follows the imports of the subpath module');
   assert.deepEqual(violations, [], `the browser entry reaches a Node or driver dependency:\n${violations.join('\n')}`);
 });
 
+// Requirements: ORE-1, ORES-52.
 caseTest('the subpath module exports exactly the parser functions', TIMEOUT, async () => {
   const entry = await import(start);
   assert.deepEqual(

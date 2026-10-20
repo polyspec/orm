@@ -24,6 +24,7 @@ async fn ssl_version(dsn: &str) -> Result<String, String> {
 }
 
 #[tokio::test]
+// Requirements: CFG-16.
 async fn verify_identity_connects_with_tls() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let version = ssl_version(&require_dsn("ORM_TEST_MYSQL_TLS_DSN")).await.unwrap();
@@ -31,6 +32,7 @@ async fn verify_identity_connects_with_tls() {
 }
 
 #[tokio::test]
+// Requirements: CFG-16.
 async fn verify_identity_refuses_another_ca_and_another_host() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     for (name, var) in [("another CA", "ORM_TEST_MYSQL_TLS_OTHER_CA_DSN"), ("a certificate of another host", "ORM_TEST_MYSQL_TLS_MISMATCH_DSN")] {

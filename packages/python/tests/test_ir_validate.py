@@ -27,6 +27,19 @@ def check_case(test: unittest.TestCase, case: dict) -> None:
     test.assertEqual(raised.exception.code, case["error"])
 
 
+class ManifestHashTest(unittest.TestCase):
+    deadline = testcase.COMPUTE
+
+    def test_a_request_of_another_manifest_is_schema_hash_mismatch(self):
+        # Requirements: PRT-1.
+        other = "sha256:" + "0" * 64
+        self.assertNotEqual(other, MODEL.manifest_hash)
+        request = {"ir_version": 1, "manifest_hash": other, "kind": "all", "entity": "author", "n_params": 0}
+        with self.assertRaises(OrmError) as raised:
+            validate(MODEL, request)
+        self.assertEqual(raised.exception.code, "SCHEMA_HASH_MISMATCH")
+
+
 class Case(VectorCase):
     """A case of the vector file of this module."""
 

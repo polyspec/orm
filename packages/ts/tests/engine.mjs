@@ -23,6 +23,7 @@ async function codeOf(promise) {
 
 // The engine check runs model registration, request validation, and the plan in memory as one case.
 const run = cases();
+// Requirements: PRT-1.
 await run.run('engine', COMPUTE, async () => {
   // The generated models embed the manifest and the external text of the bench set (contracts/fixtures/bench/dbspec-set.json).
   const { manifest } = dbspecManifest(setDocuments);

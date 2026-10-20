@@ -122,6 +122,7 @@ class ConnectionUtcTest(unittest.TestCase):
             )
 
     # The test of DSL-141, DIA-57 (docs/spec).
+    # Requirements: CFG-2, CFG-7.
     def test_connections_use_utc(self):
         for dialect in DIALECTS:
             for zone in ("", "UTC", "+00:00"):

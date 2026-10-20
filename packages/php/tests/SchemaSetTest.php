@@ -505,6 +505,7 @@ final class SchemaSetTest extends TestCase
         with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::externalDocuments($dsn));
     }
 
+    // Requirements: INT-54.
     #[DataProvider('drivers')]
     public function test_register_sends_no_statement(string $driver): void
     {

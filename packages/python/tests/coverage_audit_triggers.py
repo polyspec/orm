@@ -563,6 +563,7 @@ def tearDownModule():
 
 
 class CoverageTest(CoverageCase):
+    # Requirements: CFG-8.
     def test_audit_history(self):
         self.each_item("audit_history", audit_history)
 

@@ -13,6 +13,7 @@ const CONNECT_LINE: &str = r#"{"op":"connect","corpus":"tracker","token":"012345
 
 #[test]
 fn parse_markdown_dsn() {
+    // Requirements: PRT-63.
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let parsed = parse_dsn(&format!("markdown://127.0.0.1:4100/tracker?token={TOKEN}")).unwrap();
     assert_eq!(parsed.driver(), "markdown");
@@ -78,6 +79,7 @@ impl FakeServer {
 /// Checks the connect and control messages the client sends, and the interpretation of error lines (docs/spec/protocol.md §5).
 #[tokio::test]
 async fn markdown_session_messages() {
+    // Requirements: PRT-64.
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let server = fake_server(&[
         r#"{"ok":true}"#,
@@ -110,6 +112,7 @@ async fn markdown_session_messages() {
 /// Checks that the CONFIG the server answers to connect is connect's error.
 #[tokio::test]
 async fn markdown_connect_refused() {
+    // Requirements: PRT-64.
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let server = fake_server(&[r#"{"error":{"code":"CONFIG","message":"connect: the token is not the corpus's token"}}"#]).await;
     let error = match Db::connect(&server.dsn(), 1, Config::default()).await {

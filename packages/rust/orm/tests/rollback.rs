@@ -292,18 +292,21 @@ async fn bounded(driver: &str, case: &str) {
 }
 
 #[tokio::test]
+// Requirements: CFG-15.
 async fn rollback_failed_sqlite() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("sqlite", "rollback_failed").await;
 }
 
 #[tokio::test]
+// Requirements: CFG-15.
 async fn rollback_failed_mysql() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("mysql", "rollback_failed").await;
 }
 
 #[tokio::test]
+// Requirements: CFG-15.
 async fn rollback_failed_postgres() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("postgres", "rollback_failed").await;
@@ -350,6 +353,7 @@ async fn rollback_fault_postgres() {
 
 /// The test entry point exists only when feature `test-faults` is enabled, and no
 /// default feature enables it.
+/// Requirements: PRT-44, PRT-54, PRT-59.
 #[test]
 fn rollback_fault_entry() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);

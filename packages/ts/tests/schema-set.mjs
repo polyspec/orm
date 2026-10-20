@@ -258,6 +258,7 @@ function countStatements(db) {
  * set run on that connection. connectSchema also connects to a database without the external tables.
  */
 // Requirements: SCH-11, DBS-119.
+// Requirements: INT-54.
 async function registerSendsNoStatement(dsn) {
   const member = externalSchema(['member'], ['core']);
   const installer = await Db.connect(dsn);

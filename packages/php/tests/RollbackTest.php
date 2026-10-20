@@ -204,7 +204,11 @@ final class RollbackTest extends TestCase
      */
     private static function rollbackFault(string $dsn): void
     {
+        // Requirements: PRT-46, PRT-56, PRT-61.
         self::check(self::$faultsAutoloaded === false, 'the package autoloader loads Polyspec\\Orm\\Testing\\Faults');
+        foreach (['fixClock', 'lastAffected'] as $entry) {
+            self::check(method_exists(Faults::class, $entry), "Polyspec\\Orm\\Testing\\Faults has no {$entry}");
+        }
         $db = self::connect($dsn);
         Faults::failNextRollback($db);
         $committed = self::raised(fn() => $db->transaction(function () use ($db): void {
@@ -309,6 +313,7 @@ final class RollbackTest extends TestCase
     }
 
     #[DataProvider('serverDrivers')]
+    // Requirements: CFG-15.
     public function test_first_statement_lost(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.

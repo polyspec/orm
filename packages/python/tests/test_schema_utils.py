@@ -59,6 +59,7 @@ class SchemaRegisterTest(unittest.TestCase):
     def tearDownClass(cls):
         cls.db.close()
 
+    # Requirements: INT-54.
     def test_mismatched_hash_is_config_and_registers_nothing(self):
         from polyspec.orm.errors import OrmError
         from polyspec.orm.schema import Schema

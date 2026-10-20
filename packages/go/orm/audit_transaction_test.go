@@ -235,6 +235,7 @@ func auditNative(t *testing.T, driver, dsn string) *sql.DB {
 
 // TestAuditRecordTransaction runs auditCase on three databases, with a new
 // database for each case.
+// Requirements: CFG-8.
 func TestAuditRecordTransaction(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	for _, driver := range []string{"sqlite", "mysql", "postgres"} {

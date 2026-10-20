@@ -15,6 +15,7 @@ function check(failures) {
 }
 
 // A parameter case is a parse in memory.
+// Requirements: CFG-16, CFG-17, CFG-18, CFG-19.
 caseTest('mysql_tls/parameters', COMPUTE, () => {
   const failures = [];
   const refused = (dsn, wanted) => {

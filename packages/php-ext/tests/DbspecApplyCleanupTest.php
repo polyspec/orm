@@ -184,6 +184,7 @@ final class DbspecApplyCleanupTest extends TestCase
     }
 
     // apply/cleanup-errors/release
+    // Requirements: PLN-98.
     public function test_cleanup_errors_release(): void
     {
         $plans = self::$plans;

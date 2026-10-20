@@ -48,6 +48,7 @@ func zoneEntity(s *orm.Schema) *orm.Entity {
 // regardless of the server's time zone (docs/spec/dialects.md "Date and time"). The test
 // server's MySQL is SYSTEM (KST) and PostgreSQL is Asia/Seoul. A value with an offset is
 // stored as UTC wall clock, read back in the UTC location, and the clock default is also UTC.
+// Requirements: CFG-2.
 func TestConnectionsUseUTC(t *testing.T) {
 	// The test of DSL-141, DIA-57 (docs/spec).
 	testcase.Start(t, testcase.Database)
@@ -139,6 +140,7 @@ func TestConnectionsUseUTC(t *testing.T) {
 // TestPoolSize applies the configured maximum of open connections, 10 when
 // PoolSize is zero, and never runs more concurrent transactions or opens more
 // connections than the maximum.
+// Requirements: CFG-4.
 func TestPoolSize(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	targets := map[string]string{
@@ -212,6 +214,7 @@ func TestPoolSize(t *testing.T) {
 // TestPoolIdleSizeAndLifetime keeps at most PoolIdleSize idle connections,
 // closes a connection PoolLifetimeMs after it was opened, and rejects a
 // negative value or an idle size above the pool size with CONFIG.
+// Requirements: CFG-5.
 func TestPoolIdleSizeAndLifetime(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	targets := map[string]string{
@@ -308,6 +311,7 @@ func TestPoolIdleSizeAndLifetime(t *testing.T) {
 // session timeout. The bounded statement is a locking read of a row that
 // another connection holds in an open transaction, so it waits for the lock
 // past the bound.
+// Requirements: CFG-6.
 func TestStatementTimeout(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "zone")
@@ -369,6 +373,7 @@ func lockedRead(db *orm.DB, ent *orm.Entity) error {
 // PgBouncer's orm_test_single is bound to the database of ORM_TEST_POSTGRES_DSN, so the case cannot
 // reach any other database, so the case creates one table named testdb.Name in that database
 // and, when it ends, drops only that table, even after a failure.
+// Requirements: CFG-27, CFG-29.
 func TestStatementTimeoutThroughAPooler(t *testing.T) {
 	c := testcase.Start(t, testcase.Database)
 	base := requireDSN(t, "ORM_TEST_POSTGRES_DSN")

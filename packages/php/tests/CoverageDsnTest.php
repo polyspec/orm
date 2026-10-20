@@ -14,6 +14,7 @@ use Polyspec\Orm\Orm;
 #[Medium]
 final class CoverageDsnTest extends TestCase
 {
+    // Requirements: CFG-1.
     public function test_dsn_connection(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {

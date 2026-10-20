@@ -758,6 +758,7 @@ final class ModelTest extends TestCase
     }
 
     #[DataProvider('drivers')]
+    // Requirements: CFG-4, CFG-5.
     public function test_pool_options(string $driver): void
     {
         $dsn = self::$targets[$driver];
@@ -776,6 +777,7 @@ final class ModelTest extends TestCase
     }
 
     #[DataProvider('drivers')]
+    // Requirements: CFG-6.
     public function test_statement_timeout(string $driver): void
     {
         $dsn = self::$targets[$driver];
@@ -804,6 +806,7 @@ final class ModelTest extends TestCase
     // PgBouncer's orm_test_single is bound to the database of ORM_TEST_POSTGRES_DSN, so it cannot reach the case database.
     // So this case creates only one table named after itself (case_name()) in that database, and removes only that table at the end (even on failure).
     // The table's model is generated from the dbspec document made during the run.
+    // Requirements: CFG-27, CFG-29.
     public function test_statement_timeout_through_a_pooler(): void
     {
         $probeSetup = null;
@@ -876,6 +879,7 @@ final class ModelTest extends TestCase
     }
 
     #[DataProvider('zones')]
+    // Requirements: CFG-2, CFG-7.
     public function test_connection_time_zone(string $zoneName, string $driver): void
     {
         // The test of DSL-141, DIA-57 (docs/spec).
@@ -895,6 +899,7 @@ final class ModelTest extends TestCase
     // model uses the connection it is connected to and no other, and a model
     // without a connection inside a transaction uses the transaction.
     #[DataProvider('serverDrivers')]
+    // Requirements: CFG-21, CFG-22.
     public function test_primary_and_replica(string $driver): void
     {
         $env = strtoupper($driver);
@@ -928,6 +933,7 @@ final class ModelTest extends TestCase
 
     // A connection to a SQLite database file that the process may only read:
     // SQLite opens it read-only, reads succeed, and a write returns READ_ONLY.
+    // Requirements: CFG-24.
     public function test_read_only(): void
     {
         $path = self::$work . "/read-only.sqlite";
@@ -1041,6 +1047,7 @@ final class ModelTest extends TestCase
     }
 
     // conditions
+    // Requirements: PLN-6, PLN-7, PLN-16, PLN-23, PLN-28, PLN-29, PLN-36, PLN-37, PLN-38, PLN-39.
     #[DataProvider('drivers')]
     public function test_conditions(string $driver): void
     {
@@ -1051,6 +1058,7 @@ final class ModelTest extends TestCase
 
     // joins and relations
     // Requirements: DBS-118, CPX-1.
+    // Requirements: PLN-10, PLN-41, PLN-42, PLN-43.
     #[DataProvider('drivers')]
     public function test_joins_and_relations(string $driver): void
     {
@@ -1060,6 +1068,7 @@ final class ModelTest extends TestCase
     }
 
     // columns and subqueries
+    // Requirements: PLN-8, PLN-9, PLN-14.
     #[DataProvider('drivers')]
     public function test_columns_and_subqueries(string $driver): void
     {
@@ -1069,6 +1078,7 @@ final class ModelTest extends TestCase
     }
 
     // writes
+    // Requirements: PLN-12, PLN-27.
     #[DataProvider('drivers')]
     public function test_writes(string $driver): void
     {
@@ -1097,6 +1107,7 @@ final class ModelTest extends TestCase
     }
 
     // transactions
+    // Requirements: PLN-13, PLN-16, PLN-17, PLN-20, PLN-21.
     #[DataProvider('drivers')]
     public function test_transactions(string $driver): void
     {
@@ -1116,6 +1127,7 @@ final class ModelTest extends TestCase
     }
 
     // deadlock retry
+    // Requirements: PLN-24.
     #[DataProvider('drivers')]
     public function test_deadlock_retry(string $driver): void
     {

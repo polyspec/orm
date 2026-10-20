@@ -206,6 +206,7 @@ async fn case<F: Future<Output = Result<String, String>>>(id: &str, body: F) -> 
     result.map(drop).map_err(|e| format!("{id}: {e}"))
 }
 
+// Requirements: PLN-100.
 #[tokio::test]
 async fn apply_reports_cleanup_errors() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);

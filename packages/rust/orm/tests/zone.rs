@@ -82,6 +82,7 @@ fn event(db: &Db) -> ZoneEvent {
 
 #[tokio::test]
 // The test of DSL-141, DIA-57 (docs/spec).
+// Requirements: CFG-2.
 async fn connections_use_utc() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let start = NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap();
@@ -152,6 +153,19 @@ fn non_utc_time_zones_are_rejected() {
     }
 }
 
+/// A parameter other than `timezone` reaches sqlx, which reads it as its own connect option.
+#[test]
+// Requirements: CFG-20.
+fn driver_parameters_reach_sqlx() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let parsed = polyspec_orm::db::parse_dsn("postgres://orm@db.local/orm_example?application_name=orm&timezone=UTC").expect("postgres DSN");
+    let polyspec_orm::db::ConnectOptions::Postgres(options) = parsed.options else { panic!("not postgres://") };
+    assert_eq!(options.get_application_name(), Some("orm"), "application_name reaches sqlx");
+    let parsed = polyspec_orm::db::parse_dsn("mysql://orm@db.local/orm_example?charset=latin1").expect("mysql DSN");
+    let polyspec_orm::db::ConnectOptions::MySql(options) = parsed.options else { panic!("not mysql://") };
+    assert_eq!(options.get_charset(), "latin1", "charset reaches sqlx");
+}
+
 /// A MySQL install inside a transaction returns CONFIG: schema statements
 /// commit implicitly.
 #[tokio::test]
@@ -168,6 +182,7 @@ async fn mysql_install_inside_transaction() {
 
 /// The pool size a connection is opened with is its maximum open connections.
 #[tokio::test]
+// Requirements: CFG-4.
 async fn pool_size() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let tmp = std::env::temp_dir().join(format!("orm-rust-pool-{}", std::process::id()));
@@ -183,6 +198,7 @@ async fn pool_size() {
 /// `pool_lifetime_ms` closes a connection after its lifetime; an idle size
 /// above the pool size returns CONFIG.
 #[tokio::test]
+// Requirements: CFG-5.
 async fn pool_idle_size_and_lifetime() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let tmp = std::env::temp_dir().join(format!("orm-rust-pool-idle-{}", std::process::id()));
@@ -225,6 +241,7 @@ async fn pool_idle_size_and_lifetime() {
 /// A pool size of zero opens a pool of 10 connections, and a pool never runs
 /// more concurrent transactions or opens more connections than its maximum.
 #[tokio::test]
+// Requirements: CFG-4.
 async fn pool_size_bound() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     use std::sync::atomic::{AtomicU32, Ordering};
@@ -324,6 +341,7 @@ async fn locked_read(db: &Db, entity: &'static Entity) -> polyspec_orm::Result<(
 /// statement, and SQLite has no session timeout. The bounded statement is a
 /// locking read of a row that another connection holds.
 #[tokio::test]
+// Requirements: CFG-6.
 async fn statement_timeout() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     for driver in ["mysql", "postgres"] {
@@ -354,6 +372,7 @@ async fn statement_timeout() {
 /// the case keeps a zone table named after itself (`orm_case_<pid>_<counter>`) in that database, and only that table
 /// is dropped at the end (even on failure).
 #[tokio::test]
+// Requirements: CFG-27, CFG-29.
 async fn statement_timeout_through_a_pooler() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let base = require_dsn("ORM_TEST_POSTGRES_DSN");
@@ -411,6 +430,7 @@ async fn statement_timeout_through_a_pooler() {
 /// A PostgreSQL connection reads float8 values exactly in the text format
 /// of the simple protocol and in the binary format of prepared statements.
 #[tokio::test]
+// Requirements: CFG-32.
 async fn postgres_float_round_trip() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let db = Db::connect(&require_dsn("ORM_TEST_POSTGRES_DSN"), 1, polyspec_orm::Config::default()).await.unwrap();
@@ -430,6 +450,7 @@ async fn postgres_float_round_trip() {
 /// connection it ran on stays usable. The statement is an update of a row
 /// that another connection holds, so it waits until its future is dropped.
 #[tokio::test]
+// Requirements: CFG-9.
 async fn dropping_a_query_cancels_it() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     for driver in ["mysql", "postgres"] {

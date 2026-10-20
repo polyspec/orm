@@ -73,6 +73,7 @@ func (k collectionKeysFixture) keyValue(t *testing.T, name string) any {
 }
 
 func TestCollectionKeyIdentityFromFixture(t *testing.T) {
+	// Requirements: PRT-35.
 	testcase.Start(t, testcase.Compute)
 	fixture := loadCollectionKeys(t)
 	keys := map[string]Key{}
@@ -101,6 +102,7 @@ func TestCollectionKeyIdentityFromFixture(t *testing.T) {
 }
 
 func TestCollectionKeyNullIsCodecDecodeFromFixture(t *testing.T) {
+	// Requirements: PRT-35.
 	testcase.Start(t, testcase.Compute)
 	fixture := loadCollectionKeys(t)
 	_, err := KeyOf(nil)

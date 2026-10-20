@@ -234,6 +234,7 @@ func mustSeq(t *testing.T, text string) int64 {
 
 // TestRestoreSoftDeletedRow runs restoreCase on three databases, each case
 // on a new database.
+// Requirements: INT-38.
 func TestRestoreSoftDeletedRow(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	for _, driver := range []string{"sqlite", "mysql", "postgres"} {

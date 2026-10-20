@@ -32,6 +32,7 @@ def value_of(entry):
 
 class CollectionIdentityTest(unittest.TestCase):
     def test_every_fixture_key_has_its_own_identity(self):
+        # Requirements: PRT-35.
         fixture = load_fixture()
         collection = Collection()
         distinct = [entry for entry in fixture["keys"] if "same_as" not in entry]
@@ -49,6 +50,7 @@ class CollectionIdentityTest(unittest.TestCase):
             )
 
     def test_a_null_key_is_codec_decode(self):
+        # Requirements: PRT-35.
         expected = load_fixture()["null"]
         with self.assertRaises(OrmError) as raised:
             Collection().put(None, {})

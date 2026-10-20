@@ -58,6 +58,7 @@ async function wantCleanup(promise, failure, cleanup) {
   });
 }
 
+// Requirements: PLN-99.
 vector('apply/cleanup-errors/release', async () => {
   const stop = new Error('stop');
   const release = new Error('release failed');

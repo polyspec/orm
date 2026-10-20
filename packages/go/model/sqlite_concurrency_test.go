@@ -143,6 +143,7 @@ func TestSQLiteWritersInSeveralProcesses(t *testing.T) {
 
 // TestSQLiteReadsDuringWrite reads from another connection, with and without
 // a read-only transaction, while a write transaction holds the write lock.
+// Requirements: CFG-13.
 func TestSQLiteReadsDuringWrite(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	dsn := "sqlite://" + filepath.Join(t.TempDir(), "reads.sqlite")
@@ -187,6 +188,7 @@ func TestSQLiteReadsDuringWrite(t *testing.T) {
 // TestSQLiteLockWaitExpires holds the write lock longer than the busy_timeout
 // of another connection, whose write transaction returns CANCELED after the
 // wait.
+// Requirements: CFG-12.
 func TestSQLiteLockWaitExpires(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	path := filepath.Join(t.TempDir(), "expiry.sqlite")

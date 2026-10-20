@@ -70,6 +70,7 @@ function writerProcess(dsn, name, writes) {
 }
 
 const tests = {
+  // Requirements: CFG-14.
   async writersInSeveralProcesses() {
     const dsn = await database('processes');
     const results = await Promise.all(Array.from({ length: 6 }, (_, i) => writerProcess(dsn, `p${i}`, 40)));
@@ -77,6 +78,7 @@ const tests = {
     const n = await count(dsn);
     check(n === 240, `services: ${n}, want 240`);
   },
+  // Requirements: CFG-13.
   async readsDuringWrite() {
     const dsn = await database('reads');
     const writer = await connect(dsn);
@@ -96,6 +98,7 @@ const tests = {
       await reader.close();
     }
   },
+  // Requirements: CFG-12.
   async lockWaitExpires() {
     const dsn = await database('expiry');
     const holder = await connect(dsn);

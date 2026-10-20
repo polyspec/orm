@@ -86,6 +86,7 @@ func intp(i int) *int { return &i }
 // The default select set leaves out only the explicit select columns. text, bytes, and codec
 // columns are not left out by themselves.
 func TestDefaultSelectSetLeavesOutOnlySelectExplicit(t *testing.T) {
+	// Requirements: PRT-9.
 	testcase.Start(t, testcase.Compute)
 	p, err := compileRuntime(t, dialect.MySQL{}, &ir.Request{Kind: "all", Query: ir.Query{Entity: "note"}})
 	if err != nil {

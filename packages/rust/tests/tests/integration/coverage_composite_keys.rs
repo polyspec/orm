@@ -11,6 +11,7 @@ const OTHER_TENANT: i64 = 990006;
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_composite_key_rows() {
+    // Requirements: PRT-12.
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("composite_key_rows", async {
         let db = connect().await;

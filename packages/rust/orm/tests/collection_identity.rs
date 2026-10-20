@@ -37,6 +37,7 @@ fn hex_decode(text: &str) -> Vec<u8> {
 
 #[test]
 fn every_fixture_key_has_its_own_identity() {
+    // Requirements: PRT-35.
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let fixture = fixture();
     let entries = fixture["keys"].as_array().expect("keys");
@@ -60,6 +61,7 @@ fn every_fixture_key_has_its_own_identity() {
 
 #[test]
 fn a_null_key_is_codec_decode() {
+    // Requirements: PRT-35.
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let expected = fixture()["null"].clone();
     match Key::of(&Val::Null) {

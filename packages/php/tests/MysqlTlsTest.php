@@ -31,6 +31,7 @@ final class MysqlTlsTest extends TestCase
         }
     }
 
+    // Requirements: CFG-17, CFG-18, CFG-19.
     public function test_parameters(): void
     {
         self::refused('mysql://root@db.local/orm_example?charset=latin1', 'unknown parameter charset');
@@ -62,6 +63,7 @@ final class MysqlTlsTest extends TestCase
         }
     }
 
+    // Requirements: CFG-16.
     public function test_connections(): void
     {
         $config = new Config();
@@ -97,6 +99,7 @@ final class MysqlTlsTest extends TestCase
      * The session sql_mode that the client sets on every MySQL connection equals sql_mode.session of
      * tests/dsn/mysql-session.json, not the server default (docs/spec/config.md "Runtime connection").
      */
+    // Requirements: CFG-7.
     public function test_session_sql_mode(): void
     {
         $dsn = requiredDsn('ORM_TEST_MYSQL_DSN');

@@ -23,6 +23,7 @@ import (
 // statement waiting for the lock. SQLite waits for a lock in its busy handler,
 // which a cancelled context does not interrupt, so on SQLite the context is
 // cancelled before the statement and the statement does not start.
+// Requirements: CFG-9.
 func TestWithContextCancels(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "zone")

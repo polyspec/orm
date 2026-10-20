@@ -68,6 +68,7 @@ async fn with_audit(case: impl AsyncFnOnce(&str, &str)) {
 
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
+// Requirements: CFG-8.
 async fn coverage_audit_history() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     if tokio::time::timeout(DEADLINE, with_audit(audit_rows::audit_case)).await.is_err() {

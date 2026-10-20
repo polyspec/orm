@@ -185,13 +185,24 @@ class RollbackFaultEntryTest(unittest.TestCase):
     deadline = testcase.PROCESS
 
     def test_the_package_entry_point_does_not_export_the_fault(self):
+        # Requirements: PRT-47.
         import polyspec.orm
 
         self.assertFalse(hasattr(polyspec.orm, "fail_next_rollback"))
         self.assertNotIn("fail_next_rollback", polyspec.orm.__all__)
         self.assertTrue(callable(testing.fail_next_rollback))
 
+    def test_the_package_entry_point_does_not_export_the_other_entry_points(self):
+        # Requirements: PRT-57, PRT-62.
+        import polyspec.orm
+
+        for name in ("fix_clock", "last_affected"):
+            self.assertFalse(hasattr(polyspec.orm, name), name)
+            self.assertNotIn(name, polyspec.orm.__all__)
+            self.assertTrue(callable(getattr(testing, name)), name)
+
     def test_the_distribution_holds_the_test_entry_point_that_no_import_loads(self):
+        # Requirements: PRT-47, PRT-57, PRT-62.
         # As with testing/Faults.php in PHP, the distribution contains the test entry point, and the package entry point does not
         # load it. Only the consumer's tests import it by that name to inject faults.
         with (PACKAGE / "pyproject.toml").open("rb") as file:

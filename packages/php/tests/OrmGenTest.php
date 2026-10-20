@@ -96,7 +96,7 @@ final class OrmGenTest extends TestCase
         self::assertTrue(!file_exists($dir), "gen wrote $dir");
     }
 
-    // Requirements: DBS-19, DBS-25, DBS-27, SCH-1.
+    // Requirements: DBS-19, DBS-25, DBS-27, SCH-1, ORES-36.
     public function test_gen_prints_every_error_of_the_set_file_and_writes_nothing(): void
     {
         $work = self::$work;
@@ -109,7 +109,7 @@ final class OrmGenTest extends TestCase
         self::assertTrue(!file_exists("$dir/model"), 'gen wrote the models');
     }
 
-    // Requirements: DBS-5, DBS-98, SCH-1.
+    // Requirements: DBS-5, DBS-98, SCH-1, ORES-21.
     public function test_gen_takes_the_documents_only_from_the_set_file(): void
     {
         $work = self::$work;
@@ -123,6 +123,7 @@ final class OrmGenTest extends TestCase
         self::assertTrue(!file_exists("$dir/model"), 'gen wrote the models');
     }
 
+    // Requirements: PLN-22.
     public function test_gen_rejects_a_column_named_after_a_model_method(): void
     {
         // The test of DSL-127 (docs/spec).

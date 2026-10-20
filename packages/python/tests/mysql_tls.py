@@ -22,6 +22,7 @@ class MysqlTlsParametersTest(unittest.TestCase):
         self.assertEqual(raised.exception.code, "CONFIG", f"{dsn}: {raised.exception}")
         self.assertIn(wanted, str(raised.exception), dsn)
 
+    # Requirements: CFG-17, CFG-18, CFG-19.
     def test_parameters(self):
         self.refused(
             "mysql://root@db.local/orm_example?charset=latin1",
@@ -98,6 +99,7 @@ def ssl_version(dsn: str) -> str:
 class MysqlTlsConnectionsTest(unittest.TestCase):
     deadline = testcase.DATABASE
 
+    # Requirements: CFG-16.
     def test_connections(self):
         dsns = []
         for name in (

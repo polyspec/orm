@@ -157,6 +157,7 @@ class ReplicaTest(unittest.TestCase):
                 slave1.close()
                 master.close()
 
+    # Requirements: CFG-21, CFG-22.
     def test_primary_and_replica_mysql(self):
         self.primary_and_replica("mysql")
 
@@ -165,6 +166,7 @@ class ReplicaTest(unittest.TestCase):
 
     # A connection to a SQLite database file that the process may only read: SQLite opens it read-only, reads
     # succeed, and a write returns READ_ONLY.
+    # Requirements: CFG-24.
     def test_read_only(self):
         models, probe = TEMP["models"]
         path = os.path.join(TEMP["dir"].name, "read-only.sqlite")

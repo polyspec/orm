@@ -145,6 +145,7 @@ func registerTexts(t *testing.T, names ...string) []string {
 // by wrapping the driver and counting (docs/spec/schema.md "Schema registration"). Register and ConnectSchema
 // registration does not read the database even for a set that uses external documents, and a request for a registered set is planned.
 // Manifest text that does not hash to the declared hash is CONFIG with no statement.
+// Requirements: INT-54.
 func TestRegisterSendsNoStatement(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	schema := registerFixture(t)

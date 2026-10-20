@@ -79,6 +79,7 @@ func logResult(t *testing.T, name string, start time.Time) {
 
 // TestApplyReportsCleanupErrors checks that when apply fails, the errors from cleanup (releasing the lock, restoring foreign key
 // checks) are not discarded but returned together with it.
+// Requirements: PLN-97.
 func TestApplyReportsCleanupErrors(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	start := time.Now()

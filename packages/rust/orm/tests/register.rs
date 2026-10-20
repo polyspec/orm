@@ -91,6 +91,7 @@ async fn register_case(driver: &str, dsn: &str) {
 
 #[tokio::test]
 async fn register_sends_no_statement() {
+    // Requirements: INT-54.
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     log::set_logger(&COUNTER).expect("the statement counter is the only logger of this test binary");
     log::set_max_level(log::LevelFilter::Trace);

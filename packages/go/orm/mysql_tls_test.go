@@ -18,6 +18,7 @@ import (
 // ssl-mode=VERIFY_IDENTITY with an absolute ssl-ca path and a host name is the only TLS
 // mode; other ssl-mode values, an ssl-ca that is missing or relative, sockets, and an address host
 // are CONFIG.
+// Requirements: CFG-17, CFG-18.
 func TestParseDSNMySQLTLS(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	parsed, err := parseDSN("mysql://root@db.local:3306/orm_example?timezone=UTC&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem", 0)
@@ -49,6 +50,7 @@ func TestParseDSNMySQLTLS(t *testing.T) {
 // TestMySQLTLSConnection connects to the TLS server of make orm-test-servers
 // with ssl-mode=VERIFY_IDENTITY to require TLS, and rejects a server whose certificate is signed by another CA or
 // has a different host as its name.
+// Requirements: CFG-16.
 func TestMySQLTLSConnection(t *testing.T) {
 	ctx := testcase.Start(t, testcase.Database).Context()
 	version := func(ctx context.Context, dsn string) (string, error) {

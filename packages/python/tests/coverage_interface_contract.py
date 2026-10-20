@@ -21,6 +21,7 @@ def interface_symbols():
 
 
 class CoverageTest(CoverageCase):
+    # Requirements: INT-17, INT-18, INT-19, INT-57, INT-61, INT-64.
     def test_interface_symbols(self):
         self.each_item("interface_symbols", interface_symbols)
 

@@ -150,6 +150,7 @@ async fn count(db: &Db) -> i64 {
 }
 
 #[tokio::test]
+// Requirements: CFG-19.
 async fn dsn_rejects_txlock() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
     let path = std::env::temp_dir().join(format!("orm-rust-sqlite-txlock-{}.sqlite", std::process::id()));
@@ -203,6 +204,7 @@ async fn writers_in_several_processes() {
 }
 
 #[tokio::test]
+// Requirements: CFG-13.
 async fn reads_during_write() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
     let file = database("reads").await;
@@ -226,6 +228,7 @@ async fn reads_during_write() {
 }
 
 #[tokio::test]
+// Requirements: CFG-12.
 async fn lock_wait_expires() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
     let file = database("expiry").await;

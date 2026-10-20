@@ -568,6 +568,7 @@ class OrmGenTest(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
+    # Requirements: ORES-21.
     def test_the_removed_document_flags_are_usage_errors(self):
         for flag in ("--schema", "--use"):
             result = subprocess.run(

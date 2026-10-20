@@ -374,6 +374,7 @@ func TestJoinAliasNamespaces(t *testing.T) {
 }
 
 func TestCompileErrors(t *testing.T) {
+	// Requirements: PRT-1.
 	testcase.Start(t, testcase.Compute)
 	e := testEngine(t)
 	h := e.M.ManifestHash

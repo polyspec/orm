@@ -116,6 +116,7 @@ def composite_key_rows(item):
 
 class CoverageTest(CoverageCase):
     def test_composite_key_rows(self):
+        # Requirements: PRT-12.
         self.each_item("composite_key_rows", composite_key_rows)
 
 

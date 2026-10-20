@@ -124,11 +124,13 @@ final class SqliteConcurrencyTest extends TestCase
         self::case_writers_in_several_processes();
     }
 
+    // Requirements: CFG-13.
     public function test_reads_during_a_write(): void
     {
         self::case_reads_during_a_write();
     }
 
+    // Requirements: CFG-12.
     public function test_lock_wait_expires(): void
     {
         self::case_lock_wait_expires();

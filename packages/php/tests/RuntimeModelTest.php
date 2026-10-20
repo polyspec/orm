@@ -51,6 +51,7 @@ final class RuntimeModelTest extends TestCase
     }
 
     // Requirements: DBS-68, DBS-114.
+    // Requirements: PRT-9.
     public function test_default_select_set_excludes_only_select_explicit(): void
     {
         $bench = self::bench();

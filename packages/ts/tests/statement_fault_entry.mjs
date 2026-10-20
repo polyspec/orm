@@ -27,6 +27,22 @@ function checkFaultEntry() {
   check(!('failNextStatement' in packageEntry), 'the package entry point exports failNextStatement');
 }
 
+// Requirements: PRT-45, PRT-55, PRT-60.
+/** The other entry points of the same subpath: @polyspec/orm/testing exports them, and the package entry point none. */
+function checkOtherEntryPoints() {
+  for (const name of ['failNextRollback', 'fixClock', 'lastAffected']) {
+    check(typeof testing[name] === 'function', `@polyspec/orm/testing does not export ${name}`);
+    check(!(name in packageEntry), `the package entry point exports ${name}`);
+  }
+}
+
+caseTest('statement-fault-entry/other_entry_points', CASE_DEADLINE_MS, async () => {
+  const before = failures;
+  current = 'other_entry_points';
+  checkOtherEntryPoints();
+  if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
+});
+
 caseTest('statement-fault-entry/entry_point', CASE_DEADLINE_MS, async ({ step }) => {
   const before = failures;
   current = 'entry_point';

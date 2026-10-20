@@ -93,6 +93,7 @@ func TestParseChain(t *testing.T) {
 	}
 }
 
+// Requirements: PLN-22.
 func TestColumnNameRules(t *testing.T) {
 	// The test of DSL-127, DSL-129, DSL-130 (docs/spec).
 	testcase.Start(t, testcase.Process)
@@ -228,6 +229,7 @@ func Bad() *model.ProductModel { return model.Product().LkPrice("x") }
 
 // TestGeneratedFieldTypes checks that the Go type of a generated field for each dbspec type and codec
 // follows the "Runtime model" table of docs/spec/dbspec.md.
+// Requirements: INT-2, INT-3, INT-5, INT-6, INT-8, INT-12.
 func TestGeneratedFieldTypes(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	m := namesManifest(t, `dbspec 1 typed

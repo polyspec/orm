@@ -70,6 +70,7 @@ def raised(run):
 
 class MarkdownTest(unittest.TestCase):
     def test_parse_markdown_dsn(self):
+        # Requirements: PRT-63.
         parsed = parse_dsn(f"markdown://127.0.0.1:4100/tracker?token={TOKEN}")
         self.assertEqual(parsed.driver, "markdown")
         self.assertEqual(parsed.zone, "+00:00")
@@ -95,6 +96,7 @@ class MarkdownTest(unittest.TestCase):
             self.assertEqual(error.code, "CONFIG", f"{dsn}: {error}")
 
     def test_markdown_session_messages(self):
+        # Requirements: PRT-64.
         server = FakeServer(
             self,
             '{"ok":true}',
@@ -130,6 +132,7 @@ class MarkdownTest(unittest.TestCase):
         )
 
     def test_markdown_connect_refused(self):
+        # Requirements: PRT-64.
         server = FakeServer(
             self,
             '{"error":{"code":"CONFIG","message":"connect: the token is not the corpus\'s '
@@ -166,6 +169,7 @@ class BindMessageVectors(unittest.TestCase):
     (docs/spec/protocol.md §5 "Parameters"). It is the same case as Go's TestBindMessageVectors."""
 
     def test_message_cases(self):
+        # Requirements: PRT-67.
         import json
         import pathlib
         import types

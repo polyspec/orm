@@ -9,6 +9,7 @@ use std::time::{Duration, Instant};
 /// The check finishes within 10 s on the development machine (8 s measured in T27), and takes 1-2 minutes when the build cache is empty.
 const DEADLINE: Duration = Duration::from_secs(300);
 
+// Requirements: INT-17, INT-18, INT-19, INT-57, INT-61, INT-64.
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_interface_symbols() {

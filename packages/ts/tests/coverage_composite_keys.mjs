@@ -10,6 +10,7 @@ const tenant = 990004;
 const otherTenant = 990006;
 
 await runCases('coverage_composite_keys.mjs', {
+  // Requirements: PRT-12.
   async composite_key_rows({ driver, dsn }) {
     const db = await connect(dsn);
     try {

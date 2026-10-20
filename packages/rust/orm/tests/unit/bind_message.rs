@@ -8,6 +8,7 @@ use crate::{Error, Param};
 
 #[test]
 fn message_vectors() {
+    // Requirements: PRT-67.
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let raw = std::fs::read_to_string(polyspec_orm_testcase::manifest_dir().join("../../../tests/bind/vectors.json")).unwrap();
     let vectors: serde_json::Value = serde_json::from_str(&raw).unwrap();

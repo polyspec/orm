@@ -52,6 +52,7 @@ class ConnectionPoolTest(unittest.TestCase):
                     setup.close()
                     body(dialect, dsn)
 
+    # Requirements: CFG-4, CFG-5.
     def test_options(self):
         def body(dialect, dsn):
             db = models.connect(dsn)

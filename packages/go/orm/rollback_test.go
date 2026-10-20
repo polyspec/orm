@@ -179,6 +179,7 @@ func savepointRollbackFailed(t *testing.T, driver string) {
 	}
 }
 
+// Requirements: CFG-15.
 func TestRollbackFailedSQLite(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	rollbackFailed(t, "sqlite")

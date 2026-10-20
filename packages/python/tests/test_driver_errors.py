@@ -75,6 +75,7 @@ class SqliteDriverErrorTest(unittest.TestCase):
         self.assertEqual(len(failed), 1)
         self.assertIs(failed[0], error)
 
+    # Requirements: CFG-15.
     def test_a_duplicate_unique_key_is_duplicate_key(self):
         self.parent("a").create()
         self.assert_driver_error(

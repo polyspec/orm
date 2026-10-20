@@ -83,6 +83,7 @@ function markdown_received(array $server): array
 #[Large]
 final class MarkdownTest extends TestCase
 {
+    // Requirements: PRT-63.
     public function test_parse_dsn(): void
     {
         $got = Orm::parseMarkdownDsn('markdown://127.0.0.1:4100/tracker?token=' . MARKDOWN_TOKEN);
@@ -108,6 +109,7 @@ final class MarkdownTest extends TestCase
         }
     }
 
+    // Requirements: PRT-64.
     public function test_session_messages(): void
     {
         $server = markdown_fake_server([
@@ -135,6 +137,7 @@ final class MarkdownTest extends TestCase
         self::assertFalse(($got = markdown_received($server)) !== $want, "messages:\n" . implode("\n", $got) . "\nwant:\n" . implode("\n", $want));
     }
 
+    // Requirements: PRT-64.
     public function test_connect_refused(): void
     {
         $server = markdown_fake_server(['{"error":{"code":"CONFIG","message":"connect: the token is not the corpus\'s token"}}']);
@@ -166,6 +169,7 @@ final class MarkdownTest extends TestCase
         markdown_received($server);
     }
 
+    // Requirements: PRT-66.
     public function test_request_message(): void
     {
         // The request message writes parameters in the slot form: the time compared with a date column is YYYY-MM-DD. A row that is absent
@@ -183,6 +187,7 @@ final class MarkdownTest extends TestCase
             || preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{6}$/D', (string) $message['now']) !== 1, 'request message = ' . ($received[1] ?? 'none'));
     }
 
+    // Requirements: PRT-67.
     public function test_bind_message_vectors(): void
     {
         // Message case of tests/bind/vectors.json: the runtime value model JSON of an IR executor message parameter

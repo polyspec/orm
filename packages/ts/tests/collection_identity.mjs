@@ -23,6 +23,7 @@ function valueOf(entry) {
 }
 
 // Each case is a node:test test, the form that the parity runner reads (tests/testcase.mts, caseTest).
+// Requirements: PRT-35.
 caseTest('collection-key/identity-from-fixture', COMPUTE, () => {
   const collection = new orm.Collection();
   const distinct = fixture.keys.filter(entry => entry.same_as === undefined);
@@ -36,6 +37,7 @@ caseTest('collection-key/identity-from-fixture', COMPUTE, () => {
     if (got?.name !== want) throw new Error(`key ${entry.name} reads ${got?.name}, want ${want}`);
   }
 });
+// Requirements: PRT-35.
 caseTest('collection-key/null-is-codec-decode', COMPUTE, () => {
   try {
     new orm.Collection().put(null, {});

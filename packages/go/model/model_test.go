@@ -113,6 +113,7 @@ func names(c *orm.Collection[*model.AuthorModel]) string {
 	return strings.Join(out, ",")
 }
 
+// Requirements: PLN-7, PLN-16, PLN-23, PLN-28, PLN-30, PLN-34, PLN-37, PLN-38, PLN-39.
 func TestConditions(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
@@ -210,6 +211,7 @@ func TestGetMissingReturnsNil(t *testing.T) {
 	}
 }
 
+// Requirements: PLN-10, PLN-41, PLN-42, PLN-43.
 func TestJoinsAndRelations(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
@@ -291,6 +293,7 @@ func dsnOf(t *testing.T, db *orm.DB) string {
 	return v.(string)
 }
 
+// Requirements: PLN-8, PLN-9, PLN-14.
 func TestColumnsAndSubqueries(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
@@ -366,6 +369,7 @@ func TestColumnsAndSubqueries(t *testing.T) {
 	})
 }
 
+// Requirements: PLN-12, PLN-27.
 func TestWrites(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
@@ -414,6 +418,7 @@ func TestWrites(t *testing.T) {
 	})
 }
 
+// Requirements: PLN-13, PLN-16, PLN-17, PLN-18, PLN-20, PLN-21.
 func TestTransactions(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {

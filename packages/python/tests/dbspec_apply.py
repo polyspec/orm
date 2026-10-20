@@ -12,7 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 
-from polyspec.orm.dbspec.apply import apply_plans, recover_plans, rollback_plans  # noqa: E402
+from polyspec.orm.dbspec.apply import _finish, apply_plans, recover_plans, rollback_plans  # noqa: E402
 from polyspec.orm.dbspec.plan import parse_plan  # noqa: E402
 from polyspec.orm.dbspec.plan_steps import plan_steps  # noqa: E402
 from . import testcase  # noqa: E402
@@ -63,6 +63,25 @@ class DbspecApplyTest(unittest.TestCase):
     def test_sqlite_scenarios(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dbspec-apply-") as tmp:
             scenarios(tmp)
+
+    # Requirements: PLN-101.
+    def test_cleanup_failure_notes(self) -> None:
+        """A failure with failing cleanups is raised itself, with one note per cleanup error in order."""
+        failure = RuntimeError("stop")
+
+        def fail() -> None:
+            raise failure
+
+        def release() -> None:
+            raise RuntimeError("release failed")
+
+        def restore() -> None:
+            raise RuntimeError("restore failed")
+
+        with self.assertRaises(RuntimeError) as raised:
+            _finish(fail, release, restore)
+        self.assertIs(raised.exception, failure)
+        self.assertEqual(getattr(raised.exception, "__notes__", []), ["cleanup failed: release failed", "cleanup failed: restore failed"])
 
 
 def scenarios(tmp: str) -> None:

@@ -86,6 +86,7 @@ func awaitReplica(t *testing.T, driver, primary, replicaServer string) {
 // replica side by side. A model uses the connection it is connected to and
 // no other, and a model without a connection inside a transaction uses the
 // transaction.
+// Requirements: CFG-21, CFG-22.
 func TestPrimaryAndReplica(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	for driver, dsns := range replicaTargets(t) {
@@ -148,6 +149,7 @@ func TestPrimaryAndReplica(t *testing.T) {
 // TestReadOnlySQLite writes through a connection to a SQLite database file
 // that the process may only read: SQLite opens it read-only, reads succeed,
 // and a write returns READ_ONLY.
+// Requirements: CFG-24.
 func TestReadOnlySQLite(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	path := filepath.Join(t.TempDir(), "read-only.sqlite")
