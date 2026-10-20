@@ -12,7 +12,7 @@ const output = (program: string, args: string[]): string | undefined => {
   return result.status === 0 ? result.stdout.trim() : undefined;
 };
 const configured = output('php-config', ['--version']) ?? fail('php-config is not on PATH; install the PHP development files of .php-version (the setup-php step gives them in CI)');
-output('sh', ['-c', 'command -v phpize']) ?? fail('phpize is not on PATH; install the PHP development files of .php-version (the setup-php step gives them in CI)');
+if (output('sh', ['-c', 'command -v phpize']) === undefined) fail('phpize is not on PATH; install the PHP development files of .php-version (the setup-php step gives them in CI)');
 const running = output('php', ['-r', 'echo PHP_VERSION;']) ?? fail('php does not run');
 if (configured !== running) fail(`php-config reports PHP ${configured}, but php is PHP ${running}; put the development files of the same PHP on PATH`);
 console.log(`php-extension-tools: php-config ${configured}`);
