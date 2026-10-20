@@ -163,7 +163,7 @@ impl Builder {
         let models: HashSet<String> = set.model.entities.iter().map(|e| names::pascal(&e.name)).collect();
         let paths: Vec<PathBuf> = self.scan.iter().map(|p| Self::absolute(p)).collect();
         let fallible_setters = generate::fallible_setters(&set.model);
-        let scanned = scan::scan(&paths, &models, &fallible_setters)?;
+        let scanned = scan::scan(&paths, &models, &fallible_setters, &self.output_dir().unwrap_or_default().join(MODEL_FILE))?;
         let inputs = set_inputs(set_path, &files).into_iter().map(Path::to_path_buf).chain(paths).chain(scanned.files.iter().cloned()).collect();
         Ok(Loaded { set, scanned, inputs })
     }

@@ -73,6 +73,9 @@ pub fn attaches(name: &str) -> Option<bool> {
     }
 }
 
+/// The model of a receiver that is another set's class (DSL-151): its calls are not this set's, so the scan records none.
+const FOREIGN: &str = "<another set>";
+
 #[derive(Clone, Default)]
 struct Binding {
     model: Option<String>,
@@ -82,6 +85,10 @@ struct Binding {
 
 struct Scanner<'a> {
     models: &'a HashSet<String>,
+    /// The modules that include another set's model file (DSL-151): a model reached through one is not this set's.
+    foreign: &'a HashSet<String>,
+    /// The names that a `use` of this file binds to a model of a foreign module.
+    hidden: HashSet<String>,
     fallible_setters: &'a HashSet<(String, String)>,
     file: String,
     scopes: Vec<HashMap<String, Binding>>,
@@ -89,24 +96,189 @@ struct Scanner<'a> {
     out: &'a mut Scan,
 }
 
-pub fn scan(paths: &[PathBuf], models: &HashSet<String>, fallible_setters: &HashSet<(String, String)>) -> Result<Scan, String> {
+/// Scans the files of `paths`. `model_file` is the model file this generation writes, which tells this set's model module
+/// from the modules that include another set's model file.
+pub fn scan(paths: &[PathBuf], models: &HashSet<String>, fallible_setters: &HashSet<(String, String)>, model_file: &Path) -> Result<Scan, String> {
     let mut out = Scan::default();
     let mut files = Vec::new();
     for p in paths {
         collect_files(p, &mut files)?;
     }
     files.sort();
+    let mut parsed = Vec::new();
     for f in &files {
         let text = std::fs::read_to_string(f).map_err(|e| format!("{}: {e}", f.display()))?;
         let ast = syn::parse_file(&text).map_err(|e| {
             let at = e.span().start();
             format!("{}:{}:{}: {e}", f.display(), at.line, at.column + 1)
         })?;
-        let mut s = Scanner { models, fallible_setters, file: f.display().to_string(), scopes: vec![HashMap::new()], attached: Vec::new(), out: &mut out };
-        s.visit_file(&ast);
+        parsed.push(ast);
+    }
+    let mut own = HashSet::new();
+    let mut foreign = HashSet::new();
+    for (f, ast) in files.iter().zip(&parsed) {
+        let stem = match f.file_stem().and_then(|n| n.to_str()) {
+            Some("mod") => f.parent().and_then(|d| d.file_name()).and_then(|n| n.to_str()).unwrap_or(""),
+            Some(stem) => stem,
+            None => "",
+        };
+        model_modules(f, stem, &ast.items, &normalize(model_file), &mut own, &mut foreign);
+    }
+    let foreign: HashSet<String> = foreign.difference(&own).cloned().collect();
+    for (f, ast) in files.iter().zip(&parsed) {
+        let mut uses = Uses { models, foreign: &foreign, hidden: HashSet::new() };
+        uses.visit_file(ast);
+        let mut s = Scanner {
+            models,
+            foreign: &foreign,
+            hidden: uses.hidden,
+            fallible_setters,
+            file: f.display().to_string(),
+            scopes: vec![HashMap::new()],
+            attached: Vec::new(),
+            out: &mut out,
+        };
+        s.visit_file(ast);
     }
     out.files = files;
     Ok(out)
+}
+
+/// The path with `.` and `..` removed lexically, as `include!` joins its argument to the including file's folder.
+fn normalize(path: &Path) -> PathBuf {
+    let mut out = PathBuf::new();
+    for c in path.components() {
+        match c {
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                out.pop();
+            }
+            c => out.push(c),
+        }
+    }
+    out
+}
+
+/// The file that an `include!` names, when it names a model file (`orm_model.rs`): its string literals joined, after the value
+/// of an `env!` it starts with, or relative to the folder of the including file. An `env!` variable that is not set leaves
+/// the folder unknown; the path is then the literal part, which matches the model file by its tail.
+fn included_file(file: &Path, tokens: &proc_macro2::TokenStream) -> Option<(PathBuf, bool)> {
+    fn walk(tokens: proc_macro2::TokenStream, env: &mut Option<String>, text: &mut String) {
+        let mut previous_env = false;
+        for tree in tokens {
+            match tree {
+                proc_macro2::TokenTree::Ident(i) => previous_env = i == "env",
+                proc_macro2::TokenTree::Group(g) if previous_env => {
+                    let mut name = String::new();
+                    walk(g.stream(), &mut None, &mut name);
+                    *env = Some(name);
+                    previous_env = false;
+                }
+                proc_macro2::TokenTree::Group(g) => walk(g.stream(), env, text),
+                proc_macro2::TokenTree::Literal(l) => {
+                    if let Ok(lit) = syn::parse_str::<syn::LitStr>(&l.to_string()) {
+                        text.push_str(&lit.value());
+                    }
+                }
+                proc_macro2::TokenTree::Punct(p) => previous_env = previous_env && p.as_char() == '!',
+            }
+        }
+    }
+    let mut env = None;
+    let mut text = String::new();
+    walk(tokens.clone(), &mut env, &mut text);
+    if !text.ends_with(crate::MODEL_FILE) {
+        return None;
+    }
+    let tail = text.trim_start_matches('/');
+    Some(match env {
+        Some(name) => match std::env::var_os(&name) {
+            Some(dir) => (normalize(&PathBuf::from(dir).join(tail)), true),
+            None => (normalize(Path::new(tail)), false),
+        },
+        None => (normalize(&file.parent().unwrap_or(Path::new("")).join(&text)), true),
+    })
+}
+
+/// Collects the model modules of `items`: an inline module or a file whose items `include!` a model file, and `models!()`,
+/// which includes `OUT_DIR/orm_model.rs` as the module `model`. A module that includes `model_file` is this set's (`own`);
+/// one that includes another model file is another set's (`foreign`).
+fn model_modules(file: &Path, name: &str, items: &[syn::Item], model_file: &Path, own: &mut HashSet<String>, foreign: &mut HashSet<String>) {
+    for item in items {
+        match item {
+            syn::Item::Mod(m) => {
+                if let Some((_, content)) = &m.content {
+                    model_modules(file, &m.ident.unraw().to_string(), content, model_file, own, foreign);
+                }
+            }
+            syn::Item::Macro(m) => {
+                let included = if m.mac.path.is_ident("include") {
+                    included_file(file, &m.mac.tokens).map(|found| (name.to_owned(), found))
+                } else if m.mac.path.segments.last().is_some_and(|s| s.ident == "models") && m.mac.tokens.is_empty() {
+                    let out = std::env::var_os("OUT_DIR").map(|dir| normalize(&PathBuf::from(dir).join(crate::MODEL_FILE)));
+                    Some(("model".to_owned(), out.map_or_else(|| (PathBuf::from(crate::MODEL_FILE), false), |p| (p, true))))
+                } else {
+                    None
+                };
+                if let Some((module, (path, whole))) = included {
+                    if module.is_empty() {
+                        continue;
+                    }
+                    let same = if whole { path == model_file } else { model_file.ends_with(&path) };
+                    if same {
+                        own.insert(module)
+                    } else {
+                        foreign.insert(module)
+                    };
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+/// Collects the names that the `use` items of a file bind to a model of a foreign module: `use a::foreign::Model`, `use
+/// a::foreign::{Model as Other}` and `use a::foreign::*`.
+struct Uses<'a> {
+    models: &'a HashSet<String>,
+    foreign: &'a HashSet<String>,
+    hidden: HashSet<String>,
+}
+
+impl Uses<'_> {
+    fn tree(&mut self, tree: &syn::UseTree, last: Option<String>) {
+        let from_foreign = last.as_ref().is_some_and(|m| self.foreign.contains(m));
+        match tree {
+            syn::UseTree::Path(p) => self.tree(&p.tree, Some(p.ident.unraw().to_string())),
+            syn::UseTree::Name(n) => {
+                let name = n.ident.unraw().to_string();
+                if from_foreign && self.models.contains(&name) {
+                    self.hidden.insert(name);
+                }
+            }
+            syn::UseTree::Rename(r) => {
+                if from_foreign && self.models.contains(&r.ident.unraw().to_string()) {
+                    self.hidden.insert(r.rename.unraw().to_string());
+                }
+            }
+            syn::UseTree::Glob(_) => {
+                if from_foreign {
+                    self.hidden.extend(self.models.iter().cloned());
+                }
+            }
+            syn::UseTree::Group(g) => {
+                for t in &g.items {
+                    self.tree(t, last.clone());
+                }
+            }
+        }
+    }
+}
+
+impl<'ast> Visit<'ast> for Uses<'_> {
+    fn visit_item_use(&mut self, u: &'ast syn::ItemUse) {
+        self.tree(&u.tree, None);
+    }
 }
 
 fn collect_files(p: &Path, out: &mut Vec<PathBuf>) -> Result<(), String> {
@@ -182,6 +354,16 @@ fn aliases_in(e: &Expr) -> Vec<String> {
 }
 
 impl Scanner<'_> {
+    /// Whether a path that ends in a model class names this set's class: not through a foreign module, and not a name that a
+    /// `use` of the file binds to a foreign module's model (DSL-151).
+    fn own_path(&self, segments: &[String]) -> bool {
+        match segments {
+            [.., module, _] => !self.foreign.contains(module) && !self.hidden.contains(module),
+            [name] => !self.hidden.contains(name),
+            [] => true,
+        }
+    }
+
     fn lookup(&self, name: &str) -> Option<&Binding> {
         self.scopes.iter().rev().find_map(|s| s.get(name))
     }
@@ -215,6 +397,10 @@ impl Scanner<'_> {
             Type::Path(p) => {
                 let last = p.path.segments.last()?;
                 let name = last.ident.to_string();
+                let segments: Vec<String> = p.path.segments.iter().map(|s| s.ident.unraw().to_string()).collect();
+                if !self.own_path(&segments) {
+                    return Some(FOREIGN.to_owned());
+                }
                 if self.models.contains(&name) {
                     return Some(name);
                 }
@@ -257,7 +443,12 @@ impl Scanner<'_> {
                 Expr::Path(p) => {
                     let segs: Vec<String> = p.path.segments.iter().map(|s| s.ident.to_string()).collect();
                     match segs.as_slice() {
-                        [.., model, new] if new == "new" && self.models.contains(model) => Some(model.clone()),
+                        // A class of a foreign module, by its path or by the name a `use` gives it, is another set's.
+                        [.., module, _, new] if new == "new" && self.foreign.contains(module) => Some(FOREIGN.to_owned()),
+                        [name, new] if new == "new" && self.hidden.contains(name) => Some(FOREIGN.to_owned()),
+                        [.., model, new] if new == "new" && self.models.contains(model) => {
+                            Some(if self.own_path(&segs[..segs.len() - 1]) { model.clone() } else { FOREIGN.to_owned() })
+                        }
                         [var] => self.lookup(var).and_then(|b| b.model.clone()),
                         _ => None,
                     }
@@ -490,10 +681,17 @@ impl<'ast> Visit<'ast> for Scanner<'_> {
             }
             return;
         }
+        let model = self.model_of(&m.receiver);
+        if model.as_deref() == Some(FOREIGN) {
+            for argument in &m.args {
+                self.visit_expr(argument);
+            }
+            return;
+        }
         let call = Call {
             name: name.clone(),
             args: m.args.iter().cloned().collect(),
-            model: self.model_of(&m.receiver),
+            model,
             pos: self.pos(m.method.span()),
             attached_many: self.attached.last().copied(),
         };

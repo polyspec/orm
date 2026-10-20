@@ -491,3 +491,43 @@ func Scoped() (int, error) {
 	}
 	buildScannedModule(t)
 }
+
+// TestGoScanAttributesCallsToTheImportedSet checks that a call on a model of
+// another set's generated package, which shares an entity name with this set,
+// is not a call of this set: its getter is neither declared nor refused here.
+func TestGoScanAttributesCallsToTheImportedSet(t *testing.T) {
+	// Requirements: DSL-151.
+	testcase.Start(t, testcase.Process)
+	write := scannedModule(t)
+	write("other/other.go", `package other
+
+import "example.com/ormexample/othermodel"
+
+func Load() *othermodel.ProductModel {
+	return othermodel.Product().Relation(othermodel.Brand().MatchBrandSeqWithSeq().AliasStore())
+}
+
+func Store(p *othermodel.ProductModel) (any, error) { return p.GetStore() }
+`)
+	m := namesManifest(t, namesDiagram)
+	if err := generateGo(m, "othermodel", "", []string{"./other"}); err != nil {
+		t.Fatal(err)
+	}
+	write("example/example.go", `package example
+
+import "example.com/ormexample/model"
+
+func Cheap() *model.ProductModel { return model.Product().LtPrice(1) }
+`)
+	if err := generateGo(m, "model", "", []string{"./..."}); err != nil {
+		t.Fatalf("a call on another set's model was taken as this set's: %v", err)
+	}
+	product, err := os.ReadFile("model/product.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(product), "GetStore") || strings.Contains(string(product), "MatchBrandSeqWithSeq") {
+		t.Error("model/product.go declares a method that only another set's model is called with")
+	}
+	buildScannedModule(t)
+}

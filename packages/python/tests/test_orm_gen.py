@@ -503,6 +503,65 @@ class OrmGenTest(unittest.TestCase):
             result.stderr,
         )
 
+    def test_a_call_on_a_class_of_another_set_is_not_this_sets_call(self):
+        # Requirements: DSL-151.
+        # This set writes model/requests/models.py; model/models.py is another set's output, which shares the class name
+        # Author. A call on that Author, imported absolutely or relatively, is not a call of this set.
+        with tempfile.TemporaryDirectory(prefix="orm-gen-scan-import-") as work:
+            work_path = Path(work)
+            (work_path / "src").mkdir()
+            source = work_path / "src" / "usage.py"
+            source.write_text(
+                "from model.models import Author\n"
+                "from ..model.models import Author as Main\n"
+                "from model.requests.models import User\n"
+                "Author().get_ghost()\n"
+                "Main().get_phantom()\n"
+                "User().ne_name('x')\n",
+                encoding="utf-8",
+            )
+            result = subprocess.run(
+                args=ORM_GEN
+                + [
+                    "gen",
+                    "--set",
+                    str(ROOT / "contracts" / "fixtures" / "bench" / "dbspec-set.json"),
+                    "--out",
+                    str(work_path / "model" / "requests"),
+                    "--scan",
+                    str(source),
+                ],
+                capture_output=True,
+                text=True,
+            )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_a_call_on_a_class_of_this_set_is_checked(self):
+        # Requirements: DSL-151.
+        # The same calls on the Author of this set's output, imported absolutely or relatively, are this set's calls.
+        for line in ("from model.requests.models import Author\n", "from ..model.requests.models import Author\n"):
+            with self.subTest(line=line), tempfile.TemporaryDirectory(prefix="orm-gen-scan-import-") as work:
+                work_path = Path(work)
+                (work_path / "src").mkdir()
+                source = work_path / "src" / "usage.py"
+                source.write_text(line + "Author().get_ghost()\n", encoding="utf-8")
+                result = subprocess.run(
+                    args=ORM_GEN
+                    + [
+                        "gen",
+                        "--set",
+                        str(ROOT / "contracts" / "fixtures" / "bench" / "dbspec-set.json"),
+                        "--out",
+                        str(work_path / "model" / "requests"),
+                        "--scan",
+                        str(source),
+                    ],
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Author.get_ghost is called", result.stderr)
+
     def test_a_relation_to_an_entity_of_a_used_document_attaches_its_getter(self):
         # ext_post of member.dbs uses ext_audit of core.dbs, an external document: the relation to ExtAudit attaches
         # get_ext_audit_model as it does for a local entity.

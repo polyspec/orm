@@ -101,15 +101,42 @@ def parameters(args) -> list:
     return found
 
 
-def _scan_tree(tree, classes: dict, out: dict, sites=None) -> None:
+def _module_path(path: str, level: int, module: str | None) -> list:
+    """The path parts of the module an import names: from the importing file's folder for a relative import, or the dotted
+    name alone for an absolute one, whose root is a folder of sys.path that the scan does not know."""
+    parts = [part for part in (module or "").split(".") if part]
+    if level == 0:
+        return parts
+    folder = os.path.dirname(os.path.abspath(path))
+    for _ in range(level - 1):
+        folder = os.path.dirname(folder)
+    return _split(folder) + parts
+
+
+def _split(path: str) -> list:
+    return [part for part in os.path.normpath(path).split(os.sep) if part]
+
+
+def _own_module(set_module: list, path: str, level: int, module: str | None) -> bool:
+    """Whether an import names the generated module of the set (docs/spec/dsl.md, DSL-151): a relative import resolves from the
+    importing file to that module, and an absolute one names it from some folder of sys.path, so its dotted name is a tail of
+    the module's path. Another set's models.py is another module, and a class imported from it is not this set's model."""
+    parts = _module_path(path, level, module)
+    if level > 0:
+        return parts == set_module
+    return 0 < len(parts) <= len(set_module) and set_module[-len(parts) :] == parts
+
+
+def _scan_tree(tree, classes: dict, out: dict, sites=None, path="", set_module=None) -> None:
     # Local name -> generated class name. Import aliases and assignments are added here.
     imported = dict(classes)
 
     class ImportCollector(ast.NodeVisitor):
         def visit_ImportFrom(self, node):
-            # orm-gen writes the generated classes to models.py, so a class name is a model only when it is imported from that
-            # module. The same name imported from another module is another class, and it unbinds the model of that name.
-            from_models = (node.module or "").rsplit(".", 1)[-1] == "models"
+            # orm-gen writes the generated classes to models.py of the output folder, so a class name is a model only when it
+            # is imported from that module. The same name imported from another module, another set's models.py among them,
+            # is another class, and it unbinds the model of that name.
+            from_models = _own_module(set_module, path, node.level, node.module)
             for alias in node.names:
                 if alias.name in classes:
                     imported[alias.asname or alias.name] = (
@@ -517,7 +544,7 @@ def _scan_tree(tree, classes: dict, out: dict, sites=None) -> None:
     visit(tree, imported)
 
 
-def _scan_file(path: str, classes: dict, out: dict, sites=None) -> None:
+def _scan_file(path: str, classes: dict, out: dict, sites, set_module: list) -> None:
     if not path.endswith(".py"):
         return
     try:
@@ -525,12 +552,14 @@ def _scan_file(path: str, classes: dict, out: dict, sites=None) -> None:
             tree = ast.parse(handle.read(), filename=path)
     except SyntaxError:
         return
-    _scan_tree(tree, classes, out, sites)
+    _scan_tree(tree, classes, out, sites, path, set_module)
 
 
-def scan_model_calls(paths, models, sites=None) -> dict:
+def scan_model_calls(paths, models, sites=None, out_dir=".") -> dict:
     """For each generated model class, returns the list of method
-    names that the source calls on that model's receiver."""
+    names that the source calls on that model's receiver. out_dir is the
+    output folder of the set, whose models.py the classes are imported from."""
+    set_module = _split(os.path.abspath(out_dir)) + ["models"]
     classes = {name: name for name in models}
     out = {name: set() for name in models}
     for path in paths:
@@ -538,7 +567,7 @@ def scan_model_calls(paths, models, sites=None) -> dict:
             for base, directories, files in os.walk(path):
                 directories[:] = sorted(d for d in directories if d not in _SKIPPED)
                 for name in sorted(files):
-                    _scan_file(os.path.join(base, name), classes, out, sites)
+                    _scan_file(os.path.join(base, name), classes, out, sites, set_module)
         else:
-            _scan_file(path, classes, out, sites)
+            _scan_file(path, classes, out, sites, set_module)
     return out

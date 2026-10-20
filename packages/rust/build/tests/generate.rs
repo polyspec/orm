@@ -555,6 +555,35 @@ fn read(row: &Author) { let writer: Option<User> = row.get_writer().unwrap(); le
     assert!(err.contains("User has no method get_ghost: no call attaches \"ghost\""), "{err}");
 }
 
+/// A call belongs to the set whose model module the class is reached through: `main_set` includes another set's output, which
+/// shares the class name Author, so its calls, through a `use` or a path, are not this set's; `requests` includes this set's.
+#[test]
+// Requirements: DSL-151.
+fn a_call_on_a_class_of_another_set_is_not_this_sets_call() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let text = generate_with_schema(
+        bench(),
+        r#"mod main_set { include!(concat!(env!("CARGO_MANIFEST_DIR"), "/main/orm_model.rs")); }
+mod requests { include!("../out/orm_model.rs"); }
+use main_set::Author;
+use crate::main_set::{User as MainUser};
+use requests::User;
+fn main() {
+    let _ = Author::new().get_ghost();
+    let _ = main_set::Author::new().lt_seq(1);
+    let _ = MainUser::new().gt_seq(1);
+    let _ = User::new().ne_name("x");
+}
+fn read(row: &main_set::Author, user: MainUser) { let _ = row.get_phantom(); let _ = user.lt_name("x"); }"#,
+    )
+    .unwrap();
+    assert!(
+        !text.contains("pub fn lt_seq") && !text.contains("pub fn gt_seq") && !text.contains("pub fn lt_name"),
+        "a method of another set's model is generated"
+    );
+    assert!(text.contains("pub fn ne_name"), "the call on this set's User is not generated");
+}
+
 /// A relation to an entity of a used external document attaches its getter, as a relation to an entity of the set does.
 #[test]
 fn relation_to_an_external_entity_attaches_its_getter() {

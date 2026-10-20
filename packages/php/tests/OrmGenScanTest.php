@@ -251,6 +251,29 @@ PHP;
         self::assertFileDoesNotExist("$dir/model/User.php", 'a refused generation writes nothing');
     }
 
+    public function test_a_call_on_a_class_of_another_set_is_not_this_sets_call(): void
+    {
+        // Requirements: DSL-151.
+        // Another set's output shares the class name Author: a call on it, through a use import or a qualified name,
+        // declares and refuses nothing on this set's Author.
+        $ns = self::NS;
+        $source = <<<PHP
+<?php
+use Polyspec\\Orm\\Tests\\OtherSet\\Author;
+use $ns\\User;
+
+(new Author())->ltSeq(1);
+(new Author())->getGhost();
+(new \\Polyspec\\Orm\\Tests\\OtherSet\\Author())->gtReadCount(1);
+(new User())->neName('x');
+PHP;
+        [$code, $err, $dir] = self::generate('imported-set', ['usage.php' => $source]);
+        self::assertSame(0, $code, $err);
+        self::assertNotContains('ltSeq', self::tags($dir, 'Author'));
+        self::assertNotContains('gtReadCount', self::tags($dir, 'Author'));
+        self::assertContains('neName', self::tags($dir, 'User'));
+    }
+
     public function test_a_relation_to_an_entity_of_a_used_document_attaches_its_getter(): void
     {
         // ext_post of member.dbs uses ext_audit of core.dbs, an external document: the relation to ExtAudit attaches
