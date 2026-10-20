@@ -1,5 +1,5 @@
 <!-- doc-id: tests-bind-readme -->
-<!-- source-sha256: 8e32fae49a8ca64b928b83900be48f5903490f93c36479f605d4338f864075b5 -->
+<!-- source-sha256: 054bc78f3adddc453dfa5e190fb5cf03581213a973d53961a3a616ec0f9c3fb9 -->
 # Bind vector
 
 `vectors.json`은 클라이언트 bind 경로의 공유 case다. 각 구현이 자기 package의 test에서 실행하며, 모든 case는

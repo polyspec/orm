@@ -1,5 +1,5 @@
 <!-- doc-id: tests-interfaces-readme -->
-<!-- source-sha256: 82f6306233432680f25c85daaf7295d18e5b3cd68e1266def8588146db5e9b69 -->
+<!-- source-sha256: e0a6a6a313f6676d0ef5bee2612ff64b78ed9b7cbf4bfe70d8d178dd6394c80e -->
 # 공통 인터페이스 검사
 
 [contracts/interfaces.json](../../contracts/interfaces.json)이 인터페이스 구조를 정의한다. [인터페이스 구조 문서](../../docs/spec/interfaces.ko.md)와 함께 변경한다.
