@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 1387c6b9607e744f3c4e276c8a8241c88bcd632885d3efe532c56af2ace74a93 -->
+<!-- source-sha256: 5a3ca4a735d98bc5b8283096bd6d6f05c3eb365dcd02de117f34f40af2f3d09b -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -72,7 +72,7 @@
 | KSTD-5-10 | PHP extension은 stub 하나를 가진 하나의 extension polyspec_orm이어서 lint-php-ext와 test-php-ext가 통과한다 (kit K293, S10) (KSTD-5 후속). Cause: kit은 repository의 extension을 package polyspec/orm-php-ext의 polyspec_orm으로, stub은 packages/php-ext/src/polyspec_orm.stub.php 하나로 정하는데, orm은 polyspec/orm-dbspec에서 stub 두 개로 orm_dbspec을 build한다 | packages/php-ext, its stubs, config/parity.json | `make lint-php-ext` | [!] 원인: extension이 이제 PHP library가 선언하는 대로 선언하고 lint-php-ext가 통과한다; test-php-ext는 library test 단계에서 멈추는데, 이 단계는 packages/php/vendor를 읽고 이 monorepo는 root에 하나의 Composer vendor인 vendor-php를 설치한다; 재시도: kit이 PHP library의 library test를 그 repository가 설치하는 vendor directory에서 돌린다 |
 | KSTD-5-11 | CHECK_TARGETS가 kit-gates의 모든 gate를 돌린다 (KSTD-5 후속). Cause: kit-check가 CHECK_TARGETS가 돌리지 않는 gate 13개를 보고한다; 각 gate는 그 sub-item이 통과하면 추가된다 | Makefile | `make kit-check` | [ ] |
 | KSTD-5-12 | divergence-check가 통과한다: 어떤 test도 구현, runtime, platform으로 분기하지 않는다 (KSTD-5 후속). Cause: test 83개가 decimal_physical, statement_fault, rollback, integration, dbspec_set의 Rust test에서 #[cfg(...)]로, PHP와 php-ext test에서 extension_loaded로, stress test에서 platform으로 분기해 한 구현이 다른 구현과 다르게 검사된다; contracts/features.json의 partial feature는 KSTD-7-1~-8이다 | the tests of every implementation, config/parity.json | `make divergence-check` | [ ] |
-| KSTD-5-12-1 | Rust integration test에 #[cfg(test)]가 없다 (KSTD-5-12 후속). Cause: decimal_physical.rs, rollback.rs, integration.rs, dbspec_set.rs가 test로만 compile되는 파일에서 item에 #[cfg(test)]를 달아 marker가 아무 뜻도 없으며 divergence-check는 이를 분기로 읽는다 | packages/rust/tests, packages/rust/orm/tests, packages/rust/schema/tests | `make divergence-check` | [ ] |
+| KSTD-5-12-1 | Rust integration test에 #[cfg(test)]가 없다 (KSTD-5-12 후속). Cause: decimal_physical.rs, rollback.rs, integration.rs, dbspec_set.rs가 test로만 compile되는 파일에서 item에 #[cfg(test)]를 달아 marker가 아무 뜻도 없으며 divergence-check는 이를 분기로 읽는다 | packages/rust/tests, packages/rust/orm/tests, packages/rust/schema/tests | `cargo test --offline --manifest-path packages/rust/tests/Cargo.toml --test decimal_physical --no-run` | [o] |
 | KSTD-5-12-2 | Rust fault test는 Cargo가 test에 켜는 test-faults feature로 돌며 test code에 #[cfg]가 없다 (KSTD-5-12 후속). Cause: statement_fault.rs와 rollback.rs가 fault case를 #[cfg(feature = "test-faults")]로 막아, feature 없는 build는 다른 구현보다 적은 case를 돈다 | packages/rust/orm/Cargo.toml, packages/rust/orm/tests | `make divergence-check` | [ ] |
 | KSTD-5-13 | bypass-check가 통과한다: 어떤 local 실행도 CI identity를 설정하지 않는다 (KSTD-5 후속). Cause: scripts/check/run.test.mts:181과 :189가 workflow 밖에서 CI identity를 설정한다 | scripts/check | `make bypass-check` | [ ] |
 | KSTD-6 | link rebuild는 repository layout을 읽고 자기 paths를 두지 않는다 (kit K286). Cause: kit은 link된 checkout을 layout으로 rebuild하며 link 선언의 paths key는 없어진다 | kit.json, the link declaration | `make kit-check` | [ ] |

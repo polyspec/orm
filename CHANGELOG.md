@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The Rust integration test decimal_physical.rs carries no `#[cfg(test)]`, a marker that states nothing in a file compiled only as a test; divergence-check went from 99 to 77 findings. The markers of the bin target integration.rs are KSTD-5-12-3 (KSTD-5-12-1).
 - The Python chain refuses a null argument on a non-null column with `CONFIG` for a bare, `eq` and `ne` condition, as DSL-49 rules and the PHP client does. Red: `service_seq(None)` rendered `IS NULL` and raised nothing (KSTD-2-10-4).
 - The PHP extension registers the PHP client's own classes, `Polyspec\Orm\Dbspec\*` and `Polyspec\Orm\Code`, with no `Native` namespace and no guard, and the extension's make targets run the `packages/php` tests with the extension loaded; the 13 mirrored test files are removed after every case was mapped to its client test, and the analyze argument errors gained their cases. Red: `make test-php-ext` reported every registered class as `Native`, declared by no library class (T182-0-2).
 - A file that orm-gen cannot parse while it scans stops the generation in every generator, which writes nothing and names the file with its line and column (DSL-152). Red: the Python scan skipped the file and wrote the models, Go reported it only after writing them, and the TypeScript and PHP errors gave no `file:line:col` (T227).
