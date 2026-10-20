@@ -113,8 +113,14 @@ func compilePlannerCase(t *testing.T, id string) {
 			}
 			got = append(got, plannerStatement{Role: step.Role, SQL: step.SQL, Slots: slots, Tables: step.Tables})
 		}
-		gotJSON, _ := json.Marshal(got)
-		wantJSON, _ := json.Marshal(want)
+		gotJSON, err := json.Marshal(got)
+		if err != nil {
+			t.Fatal(err)
+		}
+		wantJSON, err := json.Marshal(want)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if len(want) == 0 || string(gotJSON) != string(wantJSON) {
 			t.Fatalf("%s statements:\n got %s\nwant %s", dialect, gotJSON, wantJSON)
 		}
@@ -624,8 +630,14 @@ func paramUsesCase(t *testing.T, id string) {
 		Uses [][]paramUseOut `json:"uses"`
 	}
 	decodeFixture(t, c.Expected, &expected)
-	gotJSON, _ := json.Marshal(got)
-	wantJSON, _ := json.Marshal(expected.Uses)
+	gotJSON, err := json.Marshal(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantJSON, err := json.Marshal(expected.Uses)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if string(gotJSON) != string(wantJSON) {
 		t.Fatalf("param uses:\n got %s\nwant %s", gotJSON, wantJSON)
 	}

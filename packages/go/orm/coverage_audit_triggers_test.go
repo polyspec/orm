@@ -59,7 +59,7 @@ func auditTables(t *testing.T, raw *sql.DB, driver string) []string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer rows.Close()
+	defer testcase.Close(t, rows)
 	var out []string
 	for rows.Next() {
 		var name string
@@ -164,7 +164,11 @@ func TestCoverageAuditTransactionEntryPoints(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		seq = row.(*keywordRow).vals["seq"].(int64)
+		sv, err := keywordInt(row, "seq")
+		if err != nil {
+			return err
+		}
+		seq = sv
 		return nil
 	}, orm.Audit(map[string]any{"actor": "transaction"}), orm.Retry(0)); err != nil {
 		t.Fatal(err)
@@ -195,8 +199,19 @@ func TestCoverageAuditTransactionEntryPoints(t *testing.T) {
 	}
 }
 
-// auditColumnsTables is the table that the audit_columns fixture creates.
-var auditColumnsTables = []string{"card", "card_history", "tag", "tag_history"}
+// keywordInt is the int64 value of field in a keyword row. It is an error when the row or the value has another type,
+// which a transaction's callback returns so that the transaction fails with it.
+func keywordInt(row any, field string) (int64, error) {
+	kr, ok := row.(*keywordRow)
+	if !ok {
+		return 0, fmt.Errorf("row is %T, want *keywordRow", row)
+	}
+	v, ok := kr.vals[field].(int64)
+	if !ok {
+		return 0, fmt.Errorf("%s is %T, want int64", field, kr.vals[field])
+	}
+	return v, nil
+}
 
 // dropAuditColumns drops the table and PostgreSQL trigger that the audit_columns fixture created,
 // function. Triggers are dropped along with their table.
@@ -231,7 +246,7 @@ func auditColumnsRows(t *testing.T, raw *sql.DB, query string) ([]string, [][]st
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer rows.Close()
+	defer testcase.Close(t, rows)
 	columns, err := rows.Columns()
 	if err != nil {
 		t.Fatal(err)
@@ -308,11 +323,19 @@ func TestCoverageAuditSelectedColumns(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		seq = row.(*keywordRow).vals["seq"].(int64)
+		sv, err := keywordInt(row, "seq")
+		if err != nil {
+			return err
+		}
+		seq = sv
 		if row, err = core(tags, map[string]any{"label": "x", "color": "red"}).Create(); err != nil {
 			return err
 		}
-		id = row.(*keywordRow).vals["id"].(int64)
+		iv, err := keywordInt(row, "id")
+		if err != nil {
+			return err
+		}
+		id = iv
 		return core(cards, map[string]any{"seq": seq, "title": "second", "secret": "s2"}).Update(nil)
 	}, orm.Audit(map[string]any{"actor": "first"}), orm.Retry(0)); err != nil {
 		t.Fatal(err)
@@ -327,11 +350,11 @@ func TestCoverageAuditSelectedColumns(t *testing.T) {
 	}
 
 	quote := map[bool]string{true: "`change`", false: `"change"`}[driver == "mysql"]
-	columns, rows := auditColumnsRows(t, raw, "SELECT * FROM card_history ORDER BY history_id")
+	columns, _ := auditColumnsRows(t, raw, "SELECT * FROM card_history ORDER BY history_id")
 	if want := []string{"history_id", "change", "previous_audit_seq", "seq", "title", "audit_seq", "deleted_at"}; fmt.Sprint(columns) != fmt.Sprint(want) {
 		t.Fatalf("card_history columns = %v, want %v", columns, want)
 	}
-	_, rows = auditColumnsRows(t, raw, "SELECT "+quote+", previous_audit_seq, seq, title, audit_seq, CASE WHEN deleted_at IS NULL THEN 'live' ELSE 'deleted' END FROM card_history ORDER BY history_id")
+	_, rows := auditColumnsRows(t, raw, "SELECT "+quote+", previous_audit_seq, seq, title, audit_seq, CASE WHEN deleted_at IS NULL THEN 'live' ELSE 'deleted' END FROM card_history ORDER BY history_id")
 	s1 := fmt.Sprint(seq)
 	if want := [][]string{
 		{"insert", "NULL", s1, "first", "1", "live"},
