@@ -1,0 +1,322 @@
+{
+  "schema": 1,
+  "comment": "The class of each tool of orm that make rebuild-check checks (S1). The copies of kit under scripts/kit are not listed: kit classifies them.",
+  "tools": {
+    "examples/complex/php/main.php": {
+      "kind": "policy",
+      "reason": "a runnable example of the PHP client of this repository (docs and README cite it); it shows the product and rebuilds no tool"
+    },
+    "examples/thin-slice/php/main.php": {
+      "kind": "policy",
+      "reason": "the thin-slice demo of the PHP client of this repository, timing the generated client against the same SQL through PDO; it shows the product and rebuilds no tool"
+    },
+    "examples/thin-slice/ts/main.mts": {
+      "kind": "policy",
+      "reason": "the thin-slice demo of the TypeScript client of this repository, timing the generated client against the same SQL through mysql2; it shows the product and rebuilds no tool"
+    },
+    "packages/dbspec-language/bin/dbspec-fmt.mjs": {
+      "kind": "policy",
+      "reason": "the command entry of dbspec-fmt, the formatter of the dbspec language that this repository defines; no ecosystem tool formats dbspec"
+    },
+    "packages/dbspec-lsp/bin/dbspec-lsp.mjs": {
+      "kind": "policy",
+      "reason": "the command entry of the dbspec language server that this repository defines, over vscode-languageserver; no ecosystem server knows dbspec"
+    },
+    "packages/php-ext/scripts/arginfo.php": {
+      "kind": "ecosystem",
+      "tool": "gen_stub.php of php-src"
+    },
+    "packages/php-ext/scripts/build.sh": {
+      "kind": "ecosystem",
+      "tool": "phpize, configure and make of php-src"
+    },
+    "packages/ts/src/bin/orm-gen.ts": {
+      "kind": "policy",
+      "reason": "the command entry of orm-gen, the model generator of this repository; no ecosystem generator reads dbspec"
+    },
+    "packages/ts/src/tools/cli.ts": {
+      "kind": "policy",
+      "reason": "orm-gen, the TypeScript model generator from a dbspec set, the product of this repository; no ecosystem generator reads dbspec"
+    },
+    "scripts/bench-db.mts": {
+      "kind": "policy",
+      "reason": "recreates and seeds the bench databases of the hot-path gates of this repository through its own generated model and host codecs; no ecosystem seeder knows the dbspec codecs"
+    },
+    "scripts/cargo-build-copy.mts": {
+      "kind": "ecosystem",
+      "tool": "cargo build"
+    },
+    "scripts/case-database-check.mts": {
+      "kind": "policy",
+      "reason": "the rule of this repository that client cases leave the shared test database as they found it (T25), comparing its tables, rows and schemas before and after; it reads them with mysql2 and pg"
+    },
+    "scripts/check-rust-150.mts": {
+      "kind": "policy",
+      "reason": "the scale budget of this repository: 150 generated entities must compile in one Rust crate; it runs polyspec-orm-build and cargo"
+    },
+    "scripts/check/ci-setup.mts": {
+      "kind": "policy",
+      "reason": "the setup step of the CI workflow of this repository and the needs it prepares for the check runner; no ecosystem tool states which target needs which setup step"
+    },
+    "scripts/check/commands.mts": {
+      "kind": "policy",
+      "reason": "the commands of a check script as data, so the rules of make repo-check on deadlines, leases and test runners hold for them; a rule of this repository"
+    },
+    "scripts/check/databases.mts": {
+      "kind": "policy",
+      "reason": "the per-run bench and decimal databases of this repository, created and dropped by each run so no run depends on another; it runs the database clients"
+    },
+    "scripts/check/downloads.mts": {
+      "kind": "policy",
+      "reason": "the offline rule of this repository: every check runs without the network, so the downloads must be present; it reads what cargo, go, npm and Composer installed"
+    },
+    "scripts/check/inputs.mts": {
+      "kind": "ecosystem",
+      "tool": "ajv"
+    },
+    "scripts/check/record.mts": {
+      "kind": "policy",
+      "reason": "the run record of the check runner of this repository (.runtime/check/<id>/record.json), so a killed run stays recorded as incomplete"
+    },
+    "scripts/check/report.mts": {
+      "kind": "policy",
+      "reason": "the report of one full-suite run of this repository, which keeps what each failure needs to be diagnosed without a rerun"
+    },
+    "scripts/check/resources.mts": {
+      "kind": "ecosystem",
+      "tool": "free, df and ps"
+    },
+    "scripts/check/run.mts": {
+      "kind": "policy",
+      "reason": "the check runner of this repository: each run gets its own databases and runs each make target as one step under its own process group and record; no ecosystem runner states these rules"
+    },
+    "scripts/check/step.mts": {
+      "kind": "policy",
+      "reason": "one step of the check runner of this repository in its own temporary directory and process group, ended as a group; it uses ps for the group"
+    },
+    "scripts/check/summary.mts": {
+      "kind": "policy",
+      "reason": "the CI summary of the run record of this repository, written to GITHUB_STEP_SUMMARY"
+    },
+    "scripts/ci/php-extension-tools.mts": {
+      "kind": "ecosystem",
+      "tool": "phpize, php-config and gen_stub.php of the PHP on PATH"
+    },
+    "scripts/ci/server-programs.mts": {
+      "kind": "ecosystem",
+      "tool": "apt-get with the Ubuntu and PostgreSQL apt repositories"
+    },
+    "scripts/client-db-test.mts": {
+      "kind": "policy",
+      "reason": "runs the database tests of every client on SQLite, MySQL and PostgreSQL with the servers of make orm-test-servers, the parity rule of this repository"
+    },
+    "scripts/comments/check.mts": {
+      "kind": "ecosystem",
+      "tool": "go/scanner, the TypeScript parser, Python tokenize and ast, and PHP token_get_all"
+    },
+    "scripts/comments/own-lexer.mts": {
+      "kind": "record",
+      "record": "docs/rebuild/rust-comments.md"
+    },
+    "scripts/comments/tokens/php-comments.php": {
+      "kind": "ecosystem",
+      "tool": "token_get_all"
+    },
+    "scripts/comments/tokens/python-comments.py": {
+      "kind": "ecosystem",
+      "tool": "tokenize and ast"
+    },
+    "scripts/dbspec/syntax-vectors.mts": {
+      "kind": "policy",
+      "reason": "writes the token vectors of the dbspec cases from the TypeScript analyzer, so every implementation of the dbspec language is held to them; no ecosystem tool knows dbspec"
+    },
+    "scripts/decimal-bench-sqlite.mts": {
+      "kind": "policy",
+      "reason": "prepares the exact-decimal SQLite bench database of this repository under its lease"
+    },
+    "scripts/decimal-physical-check.mts": {
+      "kind": "policy",
+      "reason": "the physical rule of this repository that every generated decimal owner leaves the same database state twice; it runs PHPUnit and the TypeScript tests"
+    },
+    "scripts/docs/build.mts": {
+      "kind": "ecosystem",
+      "tool": "vitepress build"
+    },
+    "scripts/docs/check.mts": {
+      "kind": "replaced",
+      "reason": "parse5 reads the HTML of the built site instead of the regular expressions over its tags; item KSTD-5-4-1 moves the link and anchor check to it"
+    },
+    "scripts/docs/idempotent.mts": {
+      "kind": "policy",
+      "reason": "the rule of this repository that two builds of the docs are byte for byte equal; it runs vitepress build twice"
+    },
+    "scripts/docs/lib.mts": {
+      "kind": "policy",
+      "reason": "serves the built site with node:http without a SPA fallback and records each request, because the docs check must find a deep route that has no HTML page, which a preview server with fallback hides"
+    },
+    "scripts/docs/markdown-table.mts": {
+      "kind": "replaced",
+      "reason": "mdast-util-from-markdown with mdast-util-gfm reads the Markdown tables instead of splitting lines on the pipe; item KSTD-5-4-1 moves the table reading to it"
+    },
+    "scripts/docs/rules.mts": {
+      "kind": "replaced",
+      "reason": "mdast-util-from-markdown with mdast-util-gfm reads the Markdown tables instead of splitting lines on the pipe; item KSTD-5-4-1 moves the table reading to it"
+    },
+    "scripts/features/build.mts": {
+      "kind": "policy",
+      "reason": "builds the feature document pair from contracts/features.json, the manifest of this repository"
+    },
+    "scripts/features/check.mts": {
+      "kind": "policy",
+      "reason": "checks contracts/features.json, the feature manifest of this repository, for what its schema cannot state"
+    },
+    "scripts/features/coverage.mts": {
+      "kind": "policy",
+      "reason": "the feature coverage rule of this repository: each feature runs its owner tests in every language its parity units bind; it runs cargo test, go test, PHPUnit and node"
+    },
+    "scripts/features/languages.mts": {
+      "kind": "policy",
+      "reason": "the language set of the feature checks from config/parity.json, a rule of this repository"
+    },
+    "scripts/features/manifest.mts": {
+      "kind": "ecosystem",
+      "tool": "ajv"
+    },
+    "scripts/features/owners.mts": {
+      "kind": "policy",
+      "reason": "selects and runs the owner check of changed files (AGENTS.md Owner checks), a rule of this repository"
+    },
+    "scripts/features/packages.mts": {
+      "kind": "policy",
+      "reason": "the package directory of each client language of this repository, as config/release.json labels them"
+    },
+    "scripts/features/select.mts": {
+      "kind": "policy",
+      "reason": "selects the verify commands and helper checks of contracts/features.json, the manifest of this repository"
+    },
+    "scripts/free-ports.mts": {
+      "kind": "ecosystem",
+      "tool": "node:net listening on port 0, which the operating system answers with a free port"
+    },
+    "scripts/group-rows-physical-check.mts": {
+      "kind": "policy",
+      "reason": "the physical rule of this repository that the grouped-result owners leave the same database state twice"
+    },
+    "scripts/install-cli.mts": {
+      "kind": "policy",
+      "reason": "installs dbspec-fmt under a declared prefix without a symbolic link, the path rule of polyspec (as polyspec/template installs template-fmt); npm link would make a symlink"
+    },
+    "scripts/json/formats.mts": {
+      "kind": "ecosystem",
+      "tool": "ajv"
+    },
+    "scripts/json/schema.mts": {
+      "kind": "ecosystem",
+      "tool": "ajv"
+    },
+    "scripts/package-check.mts": {
+      "kind": "policy",
+      "reason": "checks the four client packages as a consumer builds them; it runs npm pack, Composer, cargo and go"
+    },
+    "scripts/perf-test.mts": {
+      "kind": "policy",
+      "reason": "the hot-path gates of this repository against the seeded MySQL bench database"
+    },
+    "scripts/php-without-mysql.mts": {
+      "kind": "policy",
+      "reason": "the rule N17 of this repository that the PHP client runs on SQLite with no MySQL driver loaded; it runs PHPUnit under php -n"
+    },
+    "scripts/php/php-min.mts": {
+      "kind": "policy",
+      "reason": "finds the PHP of the lowest release that composer.json declares, so the client is tested on its declared floor, a rule of this repository; it reads PATH and brew --prefix"
+    },
+    "scripts/physical.mts": {
+      "kind": "policy",
+      "reason": "the shared steps of the physical checks of this repository, which compare the database state before and after the owner tests"
+    },
+    "scripts/publish-output.mts": {
+      "kind": "policy",
+      "reason": "publishes a build output by rename so a reader never sees a half file, the crash-safety rule of polyspec"
+    },
+    "scripts/repo/check.mts": {
+      "kind": "policy",
+      "reason": "the repository check of this repository: the CI workflow gives the database servers through make orm-test-servers and runs the one declared Node"
+    },
+    "scripts/repo/ci.mts": {
+      "kind": "policy",
+      "reason": "the rule of this repository that the CI workflow starts the database servers and passes their variables as make orm-test-servers does; it reads the workflow with yaml"
+    },
+    "scripts/repo/kit-copies.mts": {
+      "kind": "policy",
+      "reason": "the copies of @polyspec/kit from kit.copies of the installed package, so the rules of this repository skip them"
+    },
+    "scripts/repo/messages.mts": {
+      "kind": "policy",
+      "reason": "the rule of this repository that a failure message states its cause and its fix"
+    },
+    "scripts/repo/node.mts": {
+      "kind": "policy",
+      "reason": "the rule (kit K171) that one Node version declared in mise.toml runs every check and workflow"
+    },
+    "scripts/repo/probes.mts": {
+      "kind": "policy",
+      "reason": "the rule of this repository that a client sends no probing statement on connect"
+    },
+    "scripts/repo/scripts.mts": {
+      "kind": "policy",
+      "reason": "the rule of this repository that every path in a root npm script is tracked"
+    },
+    "scripts/repo/shell.mts": {
+      "kind": "ecosystem",
+      "tool": "unbash"
+    },
+    "scripts/repo/sources.mts": {
+      "kind": "policy",
+      "reason": "the source rules of this repository for JavaScript, Rust and PHP files, such as process groups started detached"
+    },
+    "scripts/repo/target.mts": {
+      "kind": "policy",
+      "reason": "the rule of this repository that a Rust program path comes from the declared CARGO_TARGET_DIR"
+    },
+    "scripts/repo/testcases.mts": {
+      "kind": "policy",
+      "reason": "the rules of this repository about deadlines, case reports, leases and test runners over the commands that unbash reads"
+    },
+    "scripts/repo/toolchains.mts": {
+      "kind": "policy",
+      "reason": "the rule of this repository that one file declares the PHP and the Rust that every check and workflow runs"
+    },
+    "scripts/repo/workflow.mts": {
+      "kind": "ecosystem",
+      "tool": "yaml"
+    },
+    "scripts/test-servers-mysql.mts": {
+      "kind": "policy",
+      "reason": "compares the declared MySQL settings with an existing data directory and moves the data when they differ, for the test servers of this repository; it runs mysql and mysqldump"
+    },
+    "scripts/test-servers.mts": {
+      "kind": "policy",
+      "reason": "starts and stops the database servers of the checks of this repository under .runtime/servers on free ports; it runs mysqld, postgres, ProxySQL and PgBouncer"
+    },
+    "scripts/typescript/build.mts": {
+      "kind": "ecosystem",
+      "tool": "tsc"
+    },
+    "scripts/typescript/node-min.mts": {
+      "kind": "replaced",
+      "reason": "mise installs a pinned Node release (mise install node@<version>, with mise where node@<version>), as mise.toml does for the development Node; item KSTD-5-4-2 moves the lowest Node to it and removes this downloader"
+    },
+    "scripts/typescript/sqlite-test.mts": {
+      "kind": "policy",
+      "reason": "runs the TypeScript integration tests on SQLite, MySQL and PostgreSQL with the servers of make orm-test-servers, the parity rule of this repository"
+    },
+    "scripts/unselected-column-physical-check.mts": {
+      "kind": "policy",
+      "reason": "the physical rule of this repository that selected and unselected generated PHP fields leave the same database state twice"
+    },
+    "scripts/version/check.mts": {
+      "kind": "policy",
+      "reason": "the rule of this repository that every version declaration matches VERSION; it reads them with semver"
+    }
+  }
+}
