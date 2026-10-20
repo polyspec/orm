@@ -9,11 +9,11 @@ The executable source is the repository feature manifest. Read the manifest, the
 | model_queries | Model queries | partial | go, php, typescript, python, rust |
 | model_writes | Model writes | partial | go, php, typescript, python, rust |
 | transactions | Transactions | partial | go, php, typescript, python, rust |
-| statement_events | Statement events | partial | go, php, typescript, python, rust |
+| statement_events | Statement events | partial | go, php, php-extension, typescript, python, rust |
 | model_generation | Model generation | partial | go, php, typescript, python, rust |
 | schema_definition | Schema definition and migration | implemented | go, php, php-extension, typescript, python, rust |
 | schema_install | Schema installation | partial | go, php, typescript, python, rust |
-| planner | In-process planner | partial | go, php, typescript, python, rust |
+| planner | In-process planner | partial | go, php, php-extension, typescript, python, rust |
 | composite_keys | Composite keys | partial | go, php, typescript, python, rust |
 | authenticated_encryption | Authenticated encryption | partial | go, php, typescript, python, rust |
 | parameter_chunking | Parameter chunking | partial | go, php, typescript, python, rust |

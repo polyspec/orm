@@ -3311,7 +3311,7 @@
         "tests/dbspec/show-create.json",
         "tests/dbspec/syntax.json",
         "tests/dbspec/set-files.json",
-        "packages/go/engine/dbspec/case_clock_test.go",
+        "packages/go/engine/dbspec/stress_test.go",
         "packages/php/tests/case_clock.php",
         "contracts/fixtures/schema_definition.json",
         "packages/go/orm/coverage_fixture_test.go",
@@ -3413,7 +3413,7 @@
         "packages/rust/schema/tests/coverage_schema_definition.rs",
         "packages/ts/tests/coverage_schema_definition.mjs",
         "packages/ts/tests/package-declarations.mjs",
-        "packages/go/engine/dbspec/case_clock_test.go",
+        "packages/go/engine/dbspec/stress_test.go",
         "packages/php-ext/tests/declarations.php",
         "packages/php-ext/tests/DeclarationsTest.php",
         "packages/php/tests/dbspec_set_cases.php",
@@ -3505,7 +3505,6 @@
             "tests/dbspec/ddl.json",
             "tests/dbspec/plans.json",
             "tests/dbspec/mermaid.json",
-            "packages/go/engine/dbspec/case_clock_test.go",
             "packages/go/engine/dbspec/vector_reader_test.go",
             "tests/dbspec/unicode/main.go",
             "tests/dbspec/unicode/main_test.go",
@@ -3711,9 +3710,10 @@
           "command": "make dbspec-php-extension-check",
           "shard": "other",
           "inputs": [
-            "packages/php-ext/src/**",
+            "packages/php-ext/src/*.c",
+            "packages/php-ext/src/*.h",
+            "packages/php-ext/src/config.m4",
             "packages/php-ext/composer.json",
-            "packages/php-ext/src/polyspec_orm.stub.php",
             "packages/php-ext/tests/declarations.php",
             "packages/php-ext/tests/DeclarationsTest.php",
             "packages/php/tests/DbspecPlanTest.php",
@@ -3777,7 +3777,9 @@
             "tests/dbspec/files/shop.dbs",
             "tests/dbspec/files/dbschema.dbs",
             "tests/dbspec/files/empty.dbs",
-            "packages/php-ext/src/**"
+            "packages/php-ext/src/*.c",
+            "packages/php-ext/src/*.h",
+            "packages/php-ext/src/config.m4"
           ]
         },
         {
@@ -7422,7 +7424,6 @@
             "tests/interfaces/**",
             "contracts/interfaces.json",
             "contracts/symbols/*.json",
-            "packages/php-ext/src/polyspec_orm.stub.php",
             "scripts/schema/interface*.json"
           ]
         },
@@ -7435,7 +7436,6 @@
             "packages/php/testing/interfaces/php.php",
             "contracts/interfaces.json",
             "contracts/symbols/php-extension.json",
-            "packages/php-ext/src/polyspec_orm.stub.php",
             "scripts/schema/interface*.json"
           ]
         },
@@ -7649,7 +7649,7 @@
       "tests": [
         "packages/go/bench/dsn_test.go",
         "packages/go/bench/client_test.go",
-        "packages/go/bench/gate_test.go",
+        "packages/go/bench/gate_helpers_test.go",
         "packages/go/bench/native_test.go",
         "packages/php/tests/PerfGateTest.php",
         "packages/php/tests/perf_extensions.php",
@@ -7674,7 +7674,7 @@
           "inputs": [
             "scripts/perf-test.mts",
             "packages/go/bench/statements_test.go",
-            "packages/go/bench/gate_test.go",
+            "packages/go/bench/gate_helpers_test.go",
             "packages/php/tests/PerfGateTest.php",
             "packages/php/tests/perf_extensions.php"
           ]
