@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: 85c81a70e6388fd4754269c0c98fa4797f290f55b8af5f0eed75db4dfc22899f -->
+<!-- source-sha256: af385367a0693eef4c6284a4df8ae36ede24a29fec27d8353f64d8a79a30a5ed -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1221,7 +1221,7 @@
 | T182-1-1 | interface contract test에서 extension의 모든 stub을 복사한다 (T182-1에 이어). 원인: T182-1이 packages/php-ext/stubs/code.stub.php를 더하고 그 class를 contracts/symbols/php-extension.json에 기록했지만, tests/interfaces/check/contract.test.mts의 case `the extension declarations are checked against the contract`는 임시 root에 orm_dbspec.stub.php만 복사하므로, 기록된 snapshot이 복사본에 없는 class를 이름 붙인다. T182-1은 이 test가 아니라 php-extension의 interface 검사를 실행했다. 완료 기준: case가 extension root의 모든 stub을 복사하고 통과한다. | — | 증거: RED: main에서 case가 `the recorded stub and snapshot are refused`로 실패한다. GREEN: 나머지 stub을 그대로 복사하면 contract.test.mts가 통과한다. | [o] |
 | T182-2 | extension의 codec (T182-1에 이어). 완료 기준: 모든 logical type의 encode와 decode, AES와 decode vector. codec, codec-aes, codec-decode suite가 id로 실행된다. | — | Commands: `make dbspec-php-extension-check/declarations` | [ ] |
 | T182-2-1 | extension이 모든 logical type의 codec을 구현하고 codec suite(tests/codec/vectors.json)가 그 id로 extension에서 돈다 (T182-2 후속). Cause: packages/php-ext에 codec이 없어 extension을 켜도 PHP library test가 Codec을 PHP로 돌린다 | packages/php-ext/src, the stub, config/parity.json | `make dbspec-php-extension-check/codec`, `make dbspec-php-extension-check/declarations` | [o] |
-| T182-2-2 | extension이 host style을 decode하고 codec-decode suite(tests/codec/decode-vectors.json)가 그 id로 extension에서 돈다 (T182-2-1 후속) | packages/php-ext/src, the stub, config/parity.json | `make dbspec-php-extension-check/declarations`, the HostcodecTest run with the extension | [~] |
+| T182-2-2 | extension이 host style을 decode하고 codec-decode suite(tests/codec/decode-vectors.json)가 그 id로 extension에서 돈다 (T182-2-1 후속) | packages/php-ext/src, the stub, config/parity.json | `make dbspec-php-extension-check/decode` | [o] |
 | T182-2-3 | extension이 AES와 blind index를 구현하고 codec-aes suite(tests/codec/aes-vectors.json)가 그 id로 extension에서 돈다 (T182-2-2 후속) | packages/php-ext/src, the stub, config/parity.json | `make dbspec-php-extension-check/declarations`, the CodecAesVectorsTest run with the extension | [ ] |
 | T182-3 | extension의 IR validator (T182-1에 이어). 완료 기준: tests/ir/validate.json이 case 이름으로 실행되고 다른 client와 같은 code를 낸다. | — | Commands: `make dbspec-php-extension-check/declarations` | [~] |
 | T182-4 | extension의 planner (T182-3에 이어). 완료 기준: planner, insert-parts, ir-answers가 id로 실행된다. | — | Commands: `make dbspec-php-extension-check/declarations` | [ ] |

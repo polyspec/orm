@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The PHP extension decodes the hex and ip host stages and decodes rows in C, so the 68 vectors of `tests/codec/decode-vectors.json` run with it under `make dbspec-php-extension-check/decode`. Red: `hostDecode` answered `CODEC_UNSUPPORTED` with the extension loaded (T182-2-2).
 - The Rust integration binary compiles its generated models `nonnull_model` and `external_member` with no `#[cfg(test)]`, so the binary and its tests compile the same code (KSTD-5-12-3).
 - The Rust fault tests carry no `#[cfg(feature = "test-faults")]`: the crate enables the feature for its own tests through its dev-dependency, so every build runs the 17 statement-fault cases the other implementations run; divergence-check went from 77 to 49 findings (KSTD-5-12-2).
 - The TypeScript chain refuses a null argument on a non-null column with `CONFIG` for a bare, `and` and `ne` condition, as DSL-49 rules; the test runs in the TypeScript test script. Red: `serviceSeq(null)` reached the database and failed with `DRIVER` (KSTD-2-10-7).

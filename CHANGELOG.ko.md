@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 3144dc24188258887ec844ab171c33da086d39fe5473443e9b2ddad352564625 -->
+<!-- source-sha256: d7092ba8cb7f4d3f1dd5e2510964a905dc961180d80542186e32107f12115b66 -->
 # 변경 이력
 
 ## Unreleased
+- PHP extension이 hex와 ip host stage와 row decode를 C로 하므로 `tests/codec/decode-vectors.json`의 vector 68개가 `make dbspec-php-extension-check/decode`에서 extension으로 돈다. red: extension을 켜면 `hostDecode`가 `CODEC_UNSUPPORTED`를 답했다 (T182-2-2).
 - Rust integration binary가 생성 model `nonnull_model`과 `external_member`를 `#[cfg(test)]` 없이 compile하므로 binary와 그 test가 같은 code를 compile한다 (KSTD-5-12-3).
 - Rust fault test에 `#[cfg(feature = "test-faults")]`가 없다: crate가 dev-dependency로 자기 test에 feature를 켜므로 모든 build가 다른 구현이 도는 statement-fault case 17개를 돈다; divergence-check finding이 77개에서 49개가 되었다 (KSTD-5-12-2).
 - TypeScript chain이 DSL-49대로 non-null column의 null 인자를 조건 없음, `and`, `ne`에서 `CONFIG`로 거부한다; test는 TypeScript test script에서 돈다. red: `serviceSeq(null)`이 database에 닿아 `DRIVER`로 실패했다 (KSTD-2-10-7).
