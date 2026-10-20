@@ -118,7 +118,11 @@
     {"name": "shape-request-not-object-member", "request": {"ir_version": 1, "n_params": 1, "kind": "all", "entity": "author", "where": [1]}, "error": "IR_INVALID"},
     {"name": "shape-pred-p-float-literal", "request": {"ir_version": 1, "n_params": 1, "kind": "all", "entity": "author", "where": {"items": [{"pred": {"column": "seq", "op": "eq", "p": 0.0}}]}}, "error": "IR_INVALID"},
     {"name": "shape-top-n-params-float-literal", "request": {"ir_version": 1, "n_params": 1.0, "kind": "all", "entity": "author"}, "error": "IR_INVALID"},
-    {"name": "shape-limit-count-exponent-literal", "request": {"ir_version": 1, "n_params": 0, "kind": "all", "entity": "author", "limit": {"offset": 0, "count": 1e1}}, "error": "IR_INVALID"}
+    {"name": "shape-limit-count-exponent-literal", "request": {"ir_version": 1, "n_params": 0, "kind": "all", "entity": "author", "limit": {"offset": 0, "count": 1e1}}, "error": "IR_INVALID"},
+    {"name": "output-fn-new-name", "request": {"ir_version": 1, "n_params": 0, "kind": "all", "entity": "author", "columns": {"fn": {"created_year": {"column": "created_ts", "fn": {"name": "year"}}}}}, "valid": true},
+    {"name": "output-fn-column-name", "request": {"ir_version": 1, "n_params": 0, "kind": "all", "entity": "author", "columns": {"fn": {"name": {"column": "created_ts", "fn": {"name": "year"}}}}}, "error": "COLUMN_ALIAS_CONFLICT"},
+    {"name": "output-sub-new-name", "request": {"ir_version": 1, "n_params": 0, "kind": "all", "entity": "author", "columns": {"sub": {"first_name": {"column": "name", "query": {"entity": "author", "limit": {"count": 1, "offset": 0}, "order": [{"column": "seq"}]}}}}}, "valid": true},
+    {"name": "output-sub-column-name", "request": {"ir_version": 1, "n_params": 0, "kind": "all", "entity": "author", "columns": {"sub": {"description": {"column": "name", "query": {"entity": "author", "limit": {"count": 1, "offset": 0}, "order": [{"column": "seq"}]}}}}}, "error": "COLUMN_ALIAS_CONFLICT"}
   ],
-  "requirements": ["PRT-4", "PRT-6", "PRT-14", "PRT-16", "PRT-17", "PRT-18", "PRT-20", "PRT-21", "PRT-22", "PRT-24"]
+  "requirements": ["PRT-4", "PRT-6", "PRT-10", "PRT-14", "PRT-16", "PRT-17", "PRT-18", "PRT-20", "PRT-21", "PRT-22", "PRT-24"]
 }

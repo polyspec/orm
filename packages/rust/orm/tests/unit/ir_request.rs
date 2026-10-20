@@ -224,7 +224,7 @@ fn query(value: &Value, at: &str) -> ir::Query {
     );
     let columns = object.get("columns").map(|c| {
         let at = format!("{at}.columns");
-        let c = members(c, &at, &["mode", "add", "remove", "sub"]);
+        let c = members(c, &at, &["mode", "add", "remove", "fn", "sub"]);
         ir::Columns {
             mode: c.get("mode").map(|_| string(c, &at, "mode")).unwrap_or_default(),
             add: strings(c, &at, "add"),
@@ -251,7 +251,21 @@ fn query(value: &Value, at: &str) -> ir::Query {
                         .collect()
                 })
                 .unwrap_or_default(),
-            ..Default::default()
+            r#fn: c
+                .get("fn")
+                .map(|fns| {
+                    let at = format!("{at}.fn");
+                    members_of(fns, &at)
+                        .iter()
+                        .map(|(name, cf)| {
+                            let at = format!("{at}.{name}");
+                            let object = members(cf, &at, &["column", "fn"]);
+                            let f = object.get("fn").unwrap_or_else(|| panic!("{REJECTED}{at}.fn: expected a function"));
+                            (name.clone(), ir::ColFunc { column: string(object, &at, "column"), r#fn: func(f, &format!("{at}.fn")) })
+                        })
+                        .collect()
+                })
+                .unwrap_or_default(),
         }
     });
     let limit = object.get("limit").map(|limit| {

@@ -352,7 +352,7 @@
       ]
     },
     {
-      "id": "ir-validate", "kind": "suite", "requirements": ["PRT-4", "PRT-6", "PRT-14", "PRT-16", "PRT-17", "PRT-18", "PRT-20", "PRT-21", "PRT-22", "PRT-24"],
+      "id": "ir-validate", "kind": "suite", "requirements": ["PRT-4", "PRT-6", "PRT-10", "PRT-14", "PRT-16", "PRT-17", "PRT-18", "PRT-20", "PRT-21", "PRT-22", "PRT-24"],
       "file": "tests/ir/validate.json", "cases": "$.cases[*].name",
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/ir/validate_test.go", "symbol": "TestValidateVectors" },
