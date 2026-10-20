@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 8b999644b7276df24e82e358c564596717ed55a6cb5a626c171bed9b3d99ac8c -->
+<!-- source-sha256: 8a54050355b23d5e5cb464cef925ee5621a6d3cc23de71a7799108b989d326dd -->
 # 변경 이력
 
 ## Unreleased
+- CI interface test가 workflow가 실제로 돌리는 `make check-run GROUP=` step을 검사하고, mutation은 workflow에 없던 step 대신 그 step을 지운다. red: test가 mutation 대상이 없다며 실패했다 (KSTD-5-15).
 - `make rust-fmt-check`가 통과한다: Rust code를 고정된 rustfmt와 선언된 packages/rust/rustfmt.toml로 formatting한다. red: cargo fmt --check가 file 12개를 보고했다 (KSTD-5-14).
 - TypeScript client가 SQLite가 bigint로 돌려주는 AES 저장 version을 읽으므로 SQLite에서 AES 읽기와 rotation이 다시 동작한다. red: 모든 SQLite AES 읽기가 CODEC_DECODE로 실패했다(KSTD-2-11-7-2-4).
 - Python dbspec parser의 negative-word helper가 private이어서 `test_python_extractor`가 통과한다. red: 이 test가 `is_negative_word`를 지목했다 (KSTD-2-11-7-2-3).
