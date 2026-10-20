@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: 9e60be7565826633de0e022c9a9d72f566645650baed0f540aeeecafa9fd0f17 -->
+<!-- source-sha256: 429f9cf852ab8564812d8e304770b745869d03660b90afe6cbc6e8881592dd81 -->
 # dbspec
 
 [English](dbspec.md)
@@ -321,6 +321,7 @@ table audit_table {
 - **DBS-108** **설치.** install은 소유한 table이 하나도 없으면 만들고, 모두 있으면 아무것도 바꾸지 않으며, 일부만 있으면 `CONFIG`로 실패하고, 그다음 소유한 table이 집합과 같기를 요구한다. addTablesAndColumns는 소유한 table만 비교하고 바꾼다([schema](schema.ko.md#_4-schema-installation)).
 - **DBS-109** **Plan.** plan은 database 전체를 바꾸므로([plans](plans.ko.md#apply)) target schema text에 `use` 줄이 있는 plan은 `plan` 오류다. 외부 문서를 쓰는 집합은 install과 addTablesAndColumns로 설치하고 올린다.
 - **DBS-110** **Runtime.** 외부 문서에서 쓰는 table은 각각 쓰는 집합의 runtime model에서 그 문서의 자리에 놓이는 **external entity**이며, 이름은 table 이름이고 외부 정의만으로, 곧 column, primary key, unique key만으로 만들며 setting, index, foreign key는 없다. 생성 코드는 다른 entity처럼 model을 주므로 select, join, subquery와 relation에 쓰이고, generator의 relation getter로 이어지며, 조건을 받는다. 문서로 만든 model과 manifest text와 external text로 만든 model은 같다. 이름이 집합의 entity와 겹치는 external entity는 `name.duplicate` diagnostic이다. 쓰기는 소유자만 한다: external entity의 모든 쓰기(create, creates, update, save, delete, restore, restoreOrCreate, upsert, restartIdentity)는 어떤 statement보다 먼저 `CONFIG` `<table> is owned by another document set`로 실패한다. 소유한 table의 audit 기록 table은 외부 table일 수 있다. 그 table을 소유한 집합이 같은 연결에 등록되어 있으면 audit 값을 가진 transaction이 그곳에 기록을 삽입한다([Audit](#audit)).
+- **DBS-173** **External models.** generator는 set이 `use` 줄로 쓰는 외부 문서의 모든 table에 대해, 스캔한 source가 그 table을 호출하는지와 관계없이 읽기 전용 model을 쓴다. 스캔은 model이 어떤 method를 가질지만 정하고 어떤 model이 있을지는 정하지 않으며, model을 있게 하려고 source에 호출을 두지 않는다.
 
 ## Runtime model
 
