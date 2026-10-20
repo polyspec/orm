@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: a076507a2b22687064c441ccc95ff53d4fd803a6126202e24e50dd692526f860 -->
+<!-- source-sha256: 1387c6b9607e744f3c4e276c8a8241c88bcd632885d3efe532c56af2ace74a93 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -32,7 +32,7 @@
 | KSTD-2-10-1 | DSL-87을 세 database의 conformance vector delete_lock이 검사한다 (KSTD-2-10 후속). Cause: vector는 다섯 runner에 쓰였으나 disk가 conformance 하한 아래로 떨어져 기록되지 못했다; 그 patch는 repository 밖에 보관되어 있다 | tests/conformance, the five runners, config/parity.json | `make parity-declarations-check` | [ ] |
 | KSTD-2-10-2 | full-text search를 모든 구현에 구현하고 그 규칙 DSL-32, DSL-33, DIA-6, DIA-187을 검사한다 (KSTD-2-10 후속). Cause: spec은 full-text match를 규정하지만 IR에는 match 연산자가 없고 어떤 client도 이를 보내지 않아 test는 red일 수밖에 없다 | docs/spec/protocol.md, the IR, every planner and client, tests/conformance | `make parity-declarations-check` | [ ] |
 | KSTD-2-10-3 | DIA-175와 DIA-177을 codec column과 select explicit이 있는 corpus의 markdown case가 검사한다 (KSTD-2-10 후속). Cause: markdown corpus catalog에 둘 다 없고, 이를 더하면 다섯 client의 생성 model이 바뀐다 | tests/markdown, the generated models | `make parity-declarations-check` | [ ] |
-| KSTD-2-10-4 | Python chain은 DSL-49대로 null 인자를 CONFIG로 거부한다 (KSTD-2-10 후속). Cause: service_seq(None)이 거부하지 않고 IS NULL을 render한다 | packages/python, its tests | `python -m unittest tests.test_chain_values` | [ ] |
+| KSTD-2-10-4 | Python chain은 DSL-49대로 null 인자를 CONFIG로 거부한다 (KSTD-2-10 후속). Cause: service_seq(None)이 거부하지 않고 IS NULL을 render한다 | packages/python, its tests | `packages/python/.venv/bin/python -m unittest packages.python.tests.test_chain_values` | [o] |
 | KSTD-2-10-5 | Rust는 DSL-49, DSL-50, DSL-124를 compile-fail case로 검사한다 (KSTD-2-10 후속). Cause: Rust에 compile-fail harness가 없어 compile 시점 거부에 test가 없다 | packages/rust, config/parity.json | `make parity-declarations-check` | [ ] |
 | KSTD-2-10-6 | TestProbeCitations가 dialect spec을 그것이 있는 곳에서 읽고 make target이 이를 돌린다 (KSTD-2-10 후속). Cause: 더는 없는 docs/dialects.md를 읽고 어떤 target도 돌리지 않아 보이지 않게 실패한다 | the Go probe test, Makefile | `make dialect-facts-check` | [ ] |
 | KSTD-2-11 | config/parity.json의 모든 unit은 requirement를 인용하고, spec 규칙을 검사하지 않는 test의 unit은 parity unit이 아니다 (KSTD-2 후속). Cause: 영역 항목 뒤에도 702개 unit이 아무것도 인용하지 않는다; 대부분은 내부 동작(unicode table, reader, generator 기계 장치, 도구)의 단일 구현 feature unit이며 S6은 이를 parity unit으로 받지 않으므로, 각각 검사하는 규칙에 모든 구현으로 묶이거나 그 구현의 feature scope로 옮겨진다 | config/parity.json, contracts/features.json, tests of every implementation | `make parity-declarations-check` | [ ] |
