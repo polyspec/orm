@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The statement event rule INT-91 states the seven fields that every client exposes (sql, binds with secrets and clock values masked, kind, tables, elapsed, transaction and error), and the statement event parity unit cites it; the bind count and plan identifier that no client exposed are gone. Red: the unit had no rule to cite (KSTD-2-11-7-4).
 - `make interface-check/self-test` passes in every language: the plan spec states what Go Apply returns, the PHP stored-version reader is marked internal, and the symbol contracts record the surface that earlier rows changed, each finding reviewed against its commit. Red: the self-test failed in Go, PHP, TypeScript, Python and Rust (KSTD-5-16).
 - Every install directory of the checkout is ignored by Git, so `make layout-check` passes. Red: kit K372 named six install directories (KSTD-5-5-7).
 - The five generated error-code sources stay tracked as declared exceptions, on the ground stated in the packaging document: their consumers install the source and run no generator, and the TypeScript build needs no Go toolchain; each client code-catalog test keeps them equal to errors.yaml. Red: kit reported them as tracked generated files (KSTD-5-5-6).

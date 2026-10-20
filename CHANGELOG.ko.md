@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 70e4bb540840c8eaa33c85443308d95713bd3239cf36ed50cdcdbd90b16da650 -->
+<!-- source-sha256: 69053fa973bed4c24cc9c56b05406987a63d68902bee97a793a36983a29f080a -->
 # 변경 이력
 
 ## Unreleased
+- statement event 규칙 INT-91이 모든 client가 노출하는 field 일곱 개(sql, secret과 clock 값을 가린 binds, kind, tables, elapsed, transaction, error)를 적고, statement event parity unit이 이를 인용한다; 어떤 client도 노출하지 않던 bind 수와 plan 식별자는 사라졌다. red: unit이 인용할 규칙이 없었다 (KSTD-2-11-7-4).
 - `make interface-check/self-test`가 모든 언어에서 통과한다: plan spec이 Go Apply의 반환을 적고, PHP 저장 version reader를 internal로 표시하며, symbol contract가 앞선 row들이 바꾼 표면을 기록하고 항목마다 그 commit과 대조해 검토했다. red: self-test가 Go, PHP, TypeScript, Python, Rust에서 실패했다 (KSTD-5-16).
 - checkout의 모든 install directory를 Git이 무시하므로 `make layout-check`가 통과한다. red: kit K372가 install directory 여섯 개를 지목했다 (KSTD-5-5-7).
 - 생성된 error-code source 다섯 개는 packaging 문서에 적은 근거로 선언된 예외로 track된다: 소비자는 source를 설치하고 생성기를 돌리지 않으며, TypeScript build는 Go toolchain을 필요로 하지 않는다; client마다 code-catalog test가 이를 errors.yaml과 같게 지킨다. red: kit이 이를 track된 생성 file로 보고했다 (KSTD-5-5-6).
