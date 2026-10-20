@@ -1314,8 +1314,9 @@ interface-check/self-test: php-vendor-check lease-tool typescript-build interfac
 	$(READ_TYPESCRIPT)
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(NODE) tests/interfaces/check/main.mts --self-test
 
+# go-model-check fails when the Go models that orm-install-go wrote differ from what the GO_MODELS_* entries generate (orm-gen gen --check).
 go-model-check:
-	$(RUN_LONG) go-model -- sh -c 'cd packages/go/model && go generate ./ && git diff --exit-code -- .'
+	$(RUN_LONG) go-model -- sh -c 'cd packages/go && $(GO) run ./cmd/orm-gen gen --check --lang go $(GO_MODELS_MODEL) && $(GO) run ./cmd/orm-gen gen --check --lang go $(GO_MODELS_MARKDOWN) && $(GO) run ./cmd/orm-gen gen --check --lang go $(GO_MODELS_DECIMAL)'
 
 # ts-model-check builds the TypeScript client, then fails when the models
 # script scans a source that does not call models or misses one that does,
@@ -1639,8 +1640,22 @@ orm-install-rust-crates:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path packages/rust/Cargo.toml
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path benchmarks/rust/Cargo.toml
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path packages/rust/testing/interfaces/Cargo.toml
+# GO_MODELS_* are the declared entries of the Go models that orm-gen generates (P34: generated output is never tracked): for each
+# package, the document set, the output directory and the packages scanned for model calls, relative to packages/go. go-models writes
+# them, and it is the last step of orm-install-go, after the modules are downloaded, so every Go check finds them. go-model-check runs
+# orm-gen gen --check against the same entries (no network).
+GO_MODELS_RUN = cd packages/go && $(GO) run ./cmd/orm-gen gen --lang go
+GO_MODELS_MODEL = --set ../../contracts/fixtures/bench/dbspec-set.json --out ./model --scan ./model/... --scan ./internal/conformance --scan ../../examples/... --scan ./bench
+GO_MODELS_MARKDOWN = --set ../../tests/markdown/corpus/dbspec/dbspec-set.json --out ./markdownmodel --scan ./markdownmodel/...
+GO_MODELS_DECIMAL = --set ../../contracts/fixtures/dbspec-set.json --out ./decimalmodel --scan ./decimalmodel/...
+.PHONY: go-models
+go-models:
+	$(GO_MODELS_RUN) $(GO_MODELS_MODEL)
+	$(GO_MODELS_RUN) $(GO_MODELS_MARKDOWN)
+	$(GO_MODELS_RUN) $(GO_MODELS_DECIMAL)
 orm-install-go:
 	$(ONLINE) $(GO) mod download
+	$(MAKE) --no-print-directory go-models
 # orm-install-flowmark installs, in the FLOWMARK directory, the flowmark that markdown-conformance-check runs, at the module
 # version that tests/markdown/flowmark.version pins.
 orm-install-flowmark:

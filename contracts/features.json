@@ -9140,24 +9140,18 @@
     {
       "id": "go-decimal-model-generated",
       "paths": [
-        "packages/go/decimalmodel/generate.go",
-        "packages/go/decimalmodel/decimal_case.go",
-        "packages/go/decimalmodel/orm.go"
+        "packages/go/decimalmodel/generate.go"
       ],
       "tests": [],
-      "command": "node tests/run-long.mts go-decimal-model -- sh -c 'cd packages/go/decimalmodel && go generate ./ && git diff --exit-code -- .'"
+      "command": "node tests/run-long.mts go-decimal-model -- sh -c 'cd packages/go && go run ./cmd/orm-gen gen --check --lang go --set ../../contracts/fixtures/dbspec-set.json --out ./decimalmodel --scan ./decimalmodel/...'"
     },
     {
       "id": "go-markdown-model-generated",
       "paths": [
-        "packages/go/markdownmodel/generate.go",
-        "packages/go/markdownmodel/logs.go",
-        "packages/go/markdownmodel/orm.go",
-        "packages/go/markdownmodel/people.go",
-        "packages/go/markdownmodel/tasks.go"
+        "packages/go/markdownmodel/generate.go"
       ],
       "tests": [],
-      "command": "node tests/run-long.mts go-markdown-model -- sh -c 'cd packages/go/markdownmodel && go generate ./ && git diff --exit-code -- .'"
+      "command": "node tests/run-long.mts go-markdown-model -- sh -c 'cd packages/go && go run ./cmd/orm-gen gen --check --lang go --set ../../tests/markdown/corpus/dbspec/dbspec-set.json --out ./markdownmodel --scan ./markdownmodel/...'"
     },
     {
       "id": "php-markdown-model-generated",
@@ -9173,7 +9167,7 @@
     {
       "id": "typescript-markdown-model-generated",
       "paths": [
-        "packages/ts/src/models/markdown_fixture/models.ts"
+        "scripts/typescript/models.mts"
       ],
       "tests": [],
       "command": "node tests/run-long.mts typescript-build -- npm run typescript:build && sh -c 'cd packages/ts && node dist/bin/orm-gen.js gen --set ../../tests/markdown/corpus/dbspec/dbspec-set.json --out src/models/markdown_fixture --scan tests/markdown_cases.mjs --check'"

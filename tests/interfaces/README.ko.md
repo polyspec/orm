@@ -1,5 +1,5 @@
 <!-- doc-id: tests-interfaces-readme -->
-<!-- source-sha256: e0a6a6a313f6676d0ef5bee2612ff64b78ed9b7cbf4bfe70d8d178dd6394c80e -->
+<!-- source-sha256: a437f9b995faafc8d0d9141de2d5c3ca9ee6fead15941bc59b203e3680bfb3d2 -->
 # 공통 인터페이스 검사
 
 [contracts/interfaces.json](../../contracts/interfaces.json)이 인터페이스 구조를 정의한다. [인터페이스 구조 문서](../../docs/spec/interfaces.ko.md)와 함께 변경한다.
@@ -40,7 +40,7 @@ sequence는 자기가 보내는 statement의 kind를 순서대로 적고, utilit
 인터페이스 변경 후 계약 출력을 다시 생성한다.
 
 ```sh
-(cd packages/go/model && go generate ./)
+make go-models
 vendor-php/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out packages/php/gen --namespace 'Polyspec\Orm\Tests\Model'
 npm run typescript:build
 node tests/interfaces/check/main.mts --generate --record --self-test
