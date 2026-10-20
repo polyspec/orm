@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 8305a684519e4f95edd7e4bd2ec4d6208ad324aa678045e9b526392989a2e142 -->
+<!-- source-sha256: 40415355b6f4bd0f4ddfc01d80fcd863ea305946dc4af98a8c3710f8e690fa4f -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -81,7 +81,7 @@
 | KSTD-5-5-3 | orm-gen이 생성하는 Python model이 track되는 file이 아니라 build 출력이다 (KSTD-5-5 후속). Cause: packages/python/src/polyspec/orm/models/models.py는 orm-gen 생성 header를 달고 track되어, 그 반복 block이 duplication으로 세어지고 P34가 깨진다; test와 wheel 전에 이를 쓰는 build 단계가 없다 | packages/python, the Python build, .gitignore | `make layout-check` | [o] |
 | KSTD-5-5-4 | orm-gen이 생성하는 Go fixture model을 track하지 않는다 (KSTD-5-5 후속). Cause: kit K426이 orm-gen 생성 header를 단 packages/go/model, markdownmodel, decimalmodel의 file 32개를 보고한다(P34) | packages/go, the Go test setup, .gitignore | `make layout-check` | [o] |
 | KSTD-5-5-5 | orm-gen이 생성하는 PHP fixture model을 track하지 않는다 (KSTD-5-5 후속). Cause: kit K426이 orm-gen 생성 header를 단 packages/php/gen과 markdownmodel의 file 30개를 보고한다(P34) | packages/php, orm-install-php, .gitignore | `make layout-check` | [o] |
-| KSTD-5-5-6 | 다섯 client library의 생성된 error-code source가 build 출력이거나 근거와 함께 선언된 예외이다 (KSTD-5-5 후속). Cause: kit K426이 codes.go, Code.php, codes.py, codes.rs, codes.ts를 보고한다; git에서 설치하는 Go module과 Composer는 생성기를 돌리지 않으므로 언어마다 판정이 필요하다 | the five client libraries, config/generated.json | `make layout-check` | [~] |
+| KSTD-5-5-6 | 다섯 client library의 생성된 error-code source가 build 출력이거나 근거와 함께 선언된 예외이다 (KSTD-5-5 후속). Cause: kit K426이 codes.go, Code.php, codes.py, codes.rs, codes.ts를 보고한다; git에서 설치하는 Go module과 Composer는 생성기를 돌리지 않으므로 언어마다 판정이 필요하다 | the five client libraries, config/generated.json | `make layout-check` | [o] |
 | KSTD-5-5-7 | checkout의 모든 install directory를 Git이 무시한다 (KSTD-5-5 후속). Cause: kit K372가 packages/php/vendor, packages/php-ext/vendor, config/php-lint/vendor, tests/release-consumer의 vendor와 node_modules, vulture lock의 mise .venv를 무시되지 않는다고 보고한다 | .gitignore | `make layout-check` | [~] |
 | KSTD-5-6 | lint-ts가 통과한다 (KSTD-5 후속). Cause: oxlint와 knip이 repository의 TypeScript에서 실패한다 | the TypeScript of the repository | `make lint-ts` | [o] |
 | KSTD-5-7 | lint-go가 통과한다 (KSTD-5 후속). Cause: golangci-lint가 examples, packages/go, tests에서, deadcode가 packages/go에서 실패한다 | the Go of the repository | `make lint-go` | [o] |
