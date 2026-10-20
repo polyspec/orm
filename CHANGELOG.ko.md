@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 01b312132ed10dfe9b8e7ee3775a7ec538289d6e080afaf433c9d1b1235f646b -->
+<!-- source-sha256: e323f6fbdf96eb937c421ca239f8e647b7938241479ece04d3c3774e87c01609 -->
 # 변경 이력
 
 ## Unreleased
 - `make interface-check/self-test`가 모든 언어에서 통과한다: plan spec이 Go Apply의 반환을 적고, PHP 저장 version reader를 internal로 표시하며, symbol contract가 앞선 row들이 바꾼 표면을 기록하고 항목마다 그 commit과 대조해 검토했다. red: self-test가 Go, PHP, TypeScript, Python, Rust에서 실패했다 (KSTD-5-16).
+- orm-gen이 생성하는 Python model은 `make orm-install-python`이 쓰고, wheel에서 빠지며, track하지 않는다. red: models.py가 track되었다 (KSTD-5-5-3).
 - orm-gen이 생성하는 TypeScript model은 build 출력이다: TypeScript build가 compile 전에 선언된 목록 하나에서 이를 쓰고, 어느 것도 track하지 않는다. red: 생성 model file 세 개가 track되었다 (KSTD-5-5-1).
 - CI interface test가 workflow가 실제로 돌리는 `make check-run GROUP=` step을 검사하고, mutation은 workflow에 없던 step 대신 그 step을 지운다. red: test가 mutation 대상이 없다며 실패했다 (KSTD-5-15).
 - `make rust-fmt-check`가 통과한다: Rust code를 고정된 rustfmt와 선언된 packages/rust/rustfmt.toml로 formatting한다. red: cargo fmt --check가 file 12개를 보고했다 (KSTD-5-14).

@@ -3,6 +3,7 @@
 
 ## Unreleased
 - `make interface-check/self-test` passes in every language: the plan spec states what Go Apply returns, the PHP stored-version reader is marked internal, and the symbol contracts record the surface that earlier rows changed, each finding reviewed against its commit. Red: the self-test failed in Go, PHP, TypeScript, Python and Rust (KSTD-5-16).
+- The Python models that orm-gen generates are written by `make orm-install-python`, are left out of the wheel, and are not tracked. Red: models.py was tracked (KSTD-5-5-3).
 - The TypeScript models that orm-gen generates are build output: the TypeScript build writes them from one declared list before it compiles, and none is tracked. Red: three generated model files were tracked (KSTD-5-5-1).
 - The CI interface test checks the `make check-run GROUP=` step the workflow runs, and its mutation removes that step instead of a step the workflow never held. Red: the test failed with a missing mutation target (KSTD-5-15).
 - `make rust-fmt-check` passes: the Rust code is formatted by the pinned rustfmt under the declared packages/rust/rustfmt.toml. Red: cargo fmt --check reported 12 files (KSTD-5-14).
