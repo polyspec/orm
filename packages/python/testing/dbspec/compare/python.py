@@ -113,6 +113,19 @@ def join(ls, crlf, mixed):
     return end.join(ls) + end
 
 
+# case_inputs gives the main document of a canonical, normalize or invalid case joined as its flags say, and its other
+# documents by name, joined the same way.
+def case_inputs(c):
+    crlf = c.get("crlf") is True
+    mixed = c.get("mixed") is True
+    docs = {
+        name: join(ls, crlf, mixed)
+        for name, ls in c["documents"].items()
+        if name != c["main"]
+    }
+    return join(c["documents"][c["main"]], crlf, mixed), docs
+
+
 def diagnostic_line(d):
     return f"! {d.rule} {d.line} {d.column}"
 
@@ -148,15 +161,9 @@ shared = read_vectors(cases_path, "cases")
 check_set_names(cases_path, shared)
 for kind in ["canonical", "normalize", "invalid"]:
     for c in shared[kind]:
-        crlf = c.get("crlf") is True
-        mixed = c.get("mixed") is True
-        docs = {
-            name: join(ls, crlf, mixed)
-            for name, ls in c["documents"].items()
-            if name != c["main"]
-        }
+        main, docs = case_inputs(c)
         out.append(f"{kind}/{c['id']}")
-        write(join(c["documents"][c["main"]], crlf, mixed), docs, False)
+        write(main, docs, False)
 
 out.append("stress")
 write(read_document(stress_path), {}, True)
@@ -472,17 +479,7 @@ def syntax_inputs():
     inputs = {}
     for kind in ["canonical", "normalize", "invalid"]:
         for c in shared[kind]:
-            crlf = c.get("crlf") is True
-            mixed = c.get("mixed") is True
-            docs = {
-                name: join(ls, crlf, mixed)
-                for name, ls in c["documents"].items()
-                if name != c["main"]
-            }
-            inputs[f"{kind}.{c['id']}"] = (
-                join(c["documents"][c["main"]], crlf, mixed),
-                docs,
-            )
+            inputs[f"{kind}.{c['id']}"] = case_inputs(c)
     for c in shared["sets"]:
         every = c["documents"] + c.get("external", [])
         for i, ls in enumerate(c["documents"]):

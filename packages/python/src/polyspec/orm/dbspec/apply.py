@@ -821,6 +821,15 @@ def _new_applier(connection, dialect: str, plans, now, events) -> _Applier:
     return _Applier(connection, dialect, chained["plans"], now, events)
 
 
+def _last_plan(a: _Applier):
+    """Returns the last plan of the history with its row, or None when no plan is recorded."""
+    position = a.position()
+    if position == 0:
+        return None
+    p = a.chain[position - 1]
+    return p, a.history[p["name"]]
+
+
 def apply_plans(
     connection: Connection,
     dialect: str,
@@ -855,11 +864,10 @@ def recover_plans(
     a = _new_applier(connection, dialect, plans, now, events)
 
     def run():
-        position = a.position()
-        if position == 0:
+        last = _last_plan(a)
+        if last is None:
             return
-        p = a.chain[position - 1]
-        row = a.history[p["name"]]
+        p, row = last
         if row["state"] in (APPLIED, DONE):
             return
         steps = a.steps(p)
@@ -888,11 +896,10 @@ def rollback_plans(
     a = _new_applier(connection, dialect, plans, now, events)
 
     def run():
-        position = a.position()
-        if position == 0:
+        last = _last_plan(a)
+        if last is None:
             return
-        p = a.chain[position - 1]
-        row = a.history[p["name"]]
+        p, row = last
         steps = a.steps(p)
         k = row["step"]
         applied = row["state"] in (APPLIED, DONE)

@@ -319,6 +319,14 @@ def _scan_tree(
             if isinstance(node, ast.Name):
                 names[node.id] = UNKNOWN
 
+    def join_loop(stmts, names, before):
+        # The scope after a loop joins the scope before it with the scope at the end of its body and its else.
+        for stmt in stmts:
+            visit(stmt, names)
+        after = dict(names)
+        names.clear()
+        names.update(_merge(before, after))
+
     def visit(node, names):
         if isinstance(node, ast.Assign):
             for child in ast.iter_child_nodes(node):
@@ -362,11 +370,7 @@ def _scan_tree(
             before = dict(names)
             visit(node.test, names)
             enter_loop([node.test, *node.body], names)
-            for stmt in node.body + node.orelse:
-                visit(stmt, names)
-            after = dict(names)
-            names.clear()
-            names.update(_merge(before, after))
+            join_loop(node.body + node.orelse, names, before)
             return
         if isinstance(
             node, (ast.Try,) + ((ast.TryStar,) if hasattr(ast, "TryStar") else ())
@@ -456,11 +460,7 @@ def _scan_tree(
             else:
                 forget(node.target, names)
             enter_loop(node.body, names)
-            for stmt in node.body + node.orelse:
-                visit(stmt, names)
-            after = dict(names)
-            names.clear()
-            names.update(_merge(before, after))
+            join_loop(node.body + node.orelse, names, before)
             return
         if isinstance(
             node,

@@ -145,6 +145,18 @@ def is_punct(tok, text: str) -> bool:
     return tok is not None and tok.k == PUNCT and tok.t == text
 
 
+def is_negative_word(v, nxt) -> bool:
+    """Whether the operator v and the word nxt that touches it after it spell a negative word, such as -1."""
+    return (
+        v is not None
+        and v.k == OP
+        and v.t == "-"
+        and nxt is not None
+        and nxt.k == WORD
+        and nxt.s == v.e
+    )
+
+
 def string_value(tok: Tk) -> str:
     return tok.t[1:-1].replace("''", "'")
 
@@ -1448,14 +1460,7 @@ class DocumentParser:
             i += 1
             v = toks[i] if i < len(toks) else None
             nxt = toks[i + 1] if i + 1 < len(toks) else None
-            if (
-                v is not None
-                and v.k == OP
-                and v.t == "-"
-                and nxt is not None
-                and nxt.k == WORD
-                and nxt.s == v.e
-            ):
+            if is_negative_word(v, nxt):
                 value_tok = Tk(WORD, "-" + nxt.t, v.s, nxt.e, line)
                 i += 2
             elif v is not None and v.k in (WORD, STR):
@@ -1964,14 +1969,7 @@ class DocumentParser:
         for _ in range(2):
             v = toks[i] if i < len(toks) else None
             nxt = toks[i + 1] if i + 1 < len(toks) else None
-            if (
-                v is not None
-                and v.k == OP
-                and v.t == "-"
-                and nxt is not None
-                and nxt.k == WORD
-                and nxt.s == v.e
-            ):
+            if is_negative_word(v, nxt):
                 coordinates.append((v, "-" + nxt.t))
                 i += 2
             elif v is not None and v.k == WORD:
