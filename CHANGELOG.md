@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The PHP extension registers the PHP client's own classes, `Polyspec\Orm\Dbspec\*` and `Polyspec\Orm\Code`, with no `Native` namespace and no guard, and the extension's make targets run the `packages/php` tests with the extension loaded; the 13 mirrored test files are removed after every case was mapped to its client test, and the analyze argument errors gained their cases. Red: `make test-php-ext` reported every registered class as `Native`, declared by no library class (T182-0-2).
 - A file that orm-gen cannot parse while it scans stops the generation in every generator, which writes nothing and names the file with its line and column (DSL-152). Red: the Python scan skipped the file and wrote the models, Go reported it only after writing them, and the TypeScript and PHP errors gave no `file:line:col` (T227).
 - `make rebuild-check` passes: `config/rebuild.json` classifies the 78 tools of the repository (57 policy, 16 ecosystem, 4 replaced by KSTD-5-4-1 and KSTD-5-4-2, 1 record). Red: the file did not exist (KSTD-5-4).
 - `make lint-ts` passes: the oxlint and knip findings are fixed without suppression, and tsc of the root and of the docs project type-checks the coverage plans, the package reader and the recorded vectors. Red: oxlint found 4, knip 1 unused export and tsc 4 errors (KSTD-5-6).

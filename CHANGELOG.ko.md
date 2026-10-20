@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a342d55faf8fe098099b877af5eff49994333b6764b70331758c26c163f1db41 -->
+<!-- source-sha256: d30e9a91e9b8321a417fd2c07ac8bbfbad452a06b1f428e5454a567d82adb519 -->
 # 변경 이력
 
 ## Unreleased
+- PHP extension이 PHP client 자신의 class `Polyspec\Orm\Dbspec\*`와 `Polyspec\Orm\Code`를 `Native` namespace도 guard도 없이 등록하고, extension의 make target이 extension을 켠 채 `packages/php` test를 돌린다; mirror test 파일 13개는 모든 case를 client test에 대응시킨 뒤 지웠고, analyze 인자 오류에 case를 더했다. red: `make test-php-ext`가 등록된 모든 class를 어떤 library class도 선언하지 않는 `Native`로 보고했다(T182-0-2).
 - orm-gen이 scan 중 parse할 수 없는 파일은 모든 generator에서 생성을 멈추며, 아무것도 쓰지 않고 그 파일을 줄과 열과 함께 밝힌다(DSL-152). red: Python scan은 그 파일을 건너뛰고 model을 썼고, Go는 model을 쓴 뒤에야 보고했으며, TypeScript와 PHP 오류에는 `file:line:col`이 없었다(T227).
 - `make rebuild-check`가 통과한다: `config/rebuild.json`이 repository의 도구 78개를 분류한다(policy 57, ecosystem 16, KSTD-5-4-1과 KSTD-5-4-2가 대체할 replaced 4, record 1). red: 파일이 없었다(KSTD-5-4).
 - `make lint-ts`가 통과한다: oxlint와 knip finding을 억제 없이 고쳤고, 루트와 docs project의 tsc가 coverage plan, package reader, 기록된 vector의 type을 검사한다. red: oxlint가 4개, knip이 쓰이지 않는 export 1개, tsc가 오류 4개를 찾았다 (KSTD-5-6).
