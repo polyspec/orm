@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The dialect spec no longer describes a `point` type, which dbspec does not have (KSTD-2-9-2).
 - The DSL spec no longer says SQLite stores `decimal` as floating point, which contradicted the exact `DECIMALINT(P,S)` storage of DIA-25 (KSTD-2-9-1).
 - The dependency policy declares the one PHP platform 8.4.1, the minor of `.php-version` with patch 1, which the Composer manifests and their locks already use. Red: `make dependency-policy-check` reported both manifests and both locks against 8.4.0 (KSTD-4).
 - The units of the query area cite the requirement ids their tests name: 342 of the 383 DSL, DIA and COD ids; six new planner cases (force index, today, date, the column function on varchar, styled equality, styled is null) failed and then passed in Go, PHP, Rust, TypeScript and Python, and the conformance recorder keeps a vector file's requirements. The other ids are KSTD-2-9 and KSTD-2-10 (KSTD-2-6).

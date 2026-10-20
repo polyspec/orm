@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: cd1c3d5c98fe9dd949a8945f252534d8fa57b82e879dab37d9026858c0d8497f -->
+<!-- source-sha256: 251ac7d320b7fa34ac02a46e892a0ac288c761719ddb95bc8ce286b96586c2b6 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -16,7 +16,7 @@
 | KSTD-2-8 | docs/spec가 규칙만 담는다: feature-coverage.md가 coverage checker의 규칙에 번호를 매기고, 다른 spec을 다시 말하는 interface-implementation.md는 docs/operations로 옮긴다(KSTD-2-1에 이어). 원인: KSTD-2-1은 feature-coverage.md의 규칙이 문단이라 id를 두지 않았지만 그것은 coverage checker 자신의 시험 가능한 규칙이고, interface-implementation.md는 다른 spec 규칙의 표라 원천이 둘이 된다 | docs/spec/feature-coverage.md, docs/operations, links and navigation | `make docs-check` | [~] |
 | KSTD-2-9 | spec은 test 가능한 규칙만 bullet id로 적는다 (KSTD-2-5, KSTD-2-6 후속). Cause: DBS-12..15는 kit이 id로 읽지 않는 번호 목록이다(R14); DBS-16은 test 없는 비보장 문장이다; DSL-149는 DIA-25와 달리 SQLite가 decimal을 floating point로 저장한다고 한다; DIA-17은 dbspec에 없는 point type을 다룬다; DIA-34는 bench 절차다; DIA-16은 PostgreSQL이 host(col)로 읽는다고 하나 planner는 ip bytes를 그대로 읽는다; DIA-128은 없는 probe를 가리킨다 | docs/spec and the Korean twins, config/parity.json | `make parity-declarations-check` | [~] |
 | KSTD-2-9-1 | DSL-149를 지운다 (KSTD-2-9 후속). Cause: SQLite가 decimal을 floating point로 저장한다고 하나, DIA-25는 executor가 구현하는 정확한 DECIMALINT(P,S) 저장을 규정한다 | docs/spec/dsl.md and its Korean twin | `make docs-check` | [o] |
-| KSTD-2-9-2 | DIA-17과 DIA-31의 typed point 문장을 지운다 (KSTD-2-9 후속). Cause: dbspec에는 point type이 없어 point를 받는 column이 없다 | docs/spec/dialects.md and its Korean twin | `make docs-check` | [ ] |
+| KSTD-2-9-2 | DIA-17과 DIA-31의 typed point 문장을 지운다 (KSTD-2-9 후속). Cause: dbspec에는 point type이 없어 point를 받는 column이 없다 | docs/spec/dialects.md and its Korean twin | `make docs-check` | [o] |
 | KSTD-2-9-3 | DIA-16은 PostgreSQL이 ip 값을 client에서 bytea로 pack한다고 적는다 (KSTD-2-9 후속). Cause: PostgreSQL이 (?)::inet으로 bind하고 host(col)로 읽는다고 하나, 모든 planner는 PostgreSQL에서 ip stage를 host codec에 넘기고 column은 bytea다 (packages/go/engine/dialect/postgres.go) | docs/spec/dialects.md and its Korean twin | `make docs-check` | [ ] |
 | KSTD-2-9-4 | DIA-128은 자신을 검사하는 case를 가리킨다 (KSTD-2-9 후속). Cause: 존재하지 않는 probe sqlite.ddl.types_and_defaults와 postgres.ddl.types_and_defaults를 가리킨다; case는 tests/dbspec/ddl.json의 types-and-defaults다 | docs/spec/dialects.md and its Korean twin | `make docs-check` | [ ] |
 | KSTD-2-9-5 | bench database 절차 DIA-34를 성능 문서로 옮긴다 (KSTD-2-9 후속). Cause: dialect 규칙이 아니라 scripts/bench-db.mts의 절차이며, docs/spec은 규칙만 담는다 (KSTD-2-8) | docs/spec/dialects.md, docs/operations/perf.md and their Korean twins | `make docs-check` | [ ] |

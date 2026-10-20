@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b0934ab29d80b944f187cda27c667f4fc981ddf00a66513019de4e82e7798da4 -->
+<!-- source-sha256: f22a1b1e97841ee133884064afe74a34da16b520025a9b72879a17428687bca8 -->
 # 변경 이력
 
 ## Unreleased
+- dialect spec이 dbspec에 없는 `point` type을 더는 다루지 않는다 (KSTD-2-9-2).
 - DSL spec이 더는 SQLite가 `decimal`을 floating point로 저장한다고 하지 않는다. 이는 DIA-25의 정확한 `DECIMALINT(P,S)` 저장과 어긋났다 (KSTD-2-9-1).
 - dependency policy가 하나의 PHP platform 8.4.1, 즉 `.php-version`의 minor에 patch 1을 선언하며, Composer manifest와 lock은 이미 이를 쓴다. red: `make dependency-policy-check`가 두 manifest와 두 lock을 8.4.0과 다르다고 보고했다(KSTD-4).
 - query 영역의 unit이 그 test가 이름으로 가리키는 requirement id를 인용한다: DSL, DIA, COD id 383개 중 342개다; 새 planner case 6개(force index, today, date, varchar의 column function, styled 비교, styled is null)는 Go, PHP, Rust, TypeScript, Python에서 실패한 뒤 통과했고, conformance recorder가 vector 파일의 requirements를 보존한다. 나머지 id는 KSTD-2-9와 KSTD-2-10이다(KSTD-2-6).
