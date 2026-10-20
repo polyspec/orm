@@ -4,9 +4,9 @@
 //
 // Usage: node packages/ts/testing/dbspec/introspect/typescript.mts <mysql|postgres|sqlite> <uri>
 import { DatabaseSync } from 'node:sqlite';
-import mysql from 'mysql2/promise';
 import pg from 'pg';
 import { emitDbspec, introspectDbspec, type DbspecIntrospection } from '../../../dist/index.js';
+import { connectMysql } from '../connect.mts';
 
 const [dialect, uri, ...rest] = process.argv.slice(2);
 if (dialect === undefined || uri === undefined || rest.length > 0) {
@@ -25,10 +25,7 @@ async function timed(work: () => Promise<DbspecIntrospection>): Promise<[DbspecI
 // introspect opens the URI as the dialect's driver connection, introspects, and closes it.
 async function introspect(): Promise<[DbspecIntrospection, number]> {
   if (dialect === 'mysql' && url.protocol === 'mysql:' && url.search === '') {
-    const connection = await mysql.createConnection({
-      user: decodeURIComponent(url.username), password: decodeURIComponent(url.password),
-      host: url.hostname, port: Number(url.port), database: url.pathname.slice(1),
-    });
+    const connection = await connectMysql(url);
     try { return await timed(() => introspectDbspec(connection, 'mysql', 'introspected')); } finally { await connection.end(); }
   }
   if (dialect === 'postgres' && url.protocol === 'postgres:') {

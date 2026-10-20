@@ -153,18 +153,27 @@ for (const c of shared.files) {
   }
 }
 
-// writeManifest prints the hash and text of the case's document set, or the diagnostic of a document or set.
-function writeManifest(c: { documents: Record<string, string[]> }): void {
+// parseDocuments parses the documents of a case in name order. It returns the diagnostics of the first document that is
+// not valid, in place of the documents.
+function parseDocuments(c: { documents: Record<string, string[]> }): { documents: DbspecDocument[] } | { diagnostics: readonly DbspecDiagnostic[] } {
   const documents: DbspecDocument[] = [];
   for (const name of Object.keys(c.documents).sort()) {
     const result = parseDbspec(join(c.documents[name] ?? [], false), others(c.documents, name));
     const document = documentOf(result);
-    if (document === null) {
-      for (const d of result.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
-      return;
-    }
+    if (document === null) return { diagnostics: result.diagnostics };
     documents.push(document);
   }
+  return { documents };
+}
+
+// writeManifest prints the hash and text of the case's document set, or the diagnostic of a document or set.
+function writeManifest(c: { documents: Record<string, string[]> }): void {
+  const parsed = parseDocuments(c);
+  if ('diagnostics' in parsed) {
+    for (const d of parsed.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
+    return;
+  }
+  const documents = parsed.documents;
   const result = dbspecManifest(documents);
   if (result.diagnostics.length > 0) {
     for (const d of result.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
@@ -186,17 +195,13 @@ for (const c of shared.hashes) {
 // writeRender prints the statements of the case's document set for each dialect, or
 // the diagnostic of a document or set.
 function writeRender(c: { documents: Record<string, string[]>; id: string }): void {
-  const documents: DbspecDocument[] = [];
-  for (const name of Object.keys(c.documents).sort()) {
-    const result = parseDbspec(join(c.documents[name] ?? [], false), others(c.documents, name));
-    const document = documentOf(result);
-    if (document === null) {
-      out.push(`render/${c.id}`);
-      for (const d of result.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
-      return;
-    }
-    documents.push(document);
+  const parsed = parseDocuments(c);
+  if ('diagnostics' in parsed) {
+    out.push(`render/${c.id}`);
+    for (const d of parsed.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
+    return;
   }
+  const documents = parsed.documents;
   for (const dialect of DIALECTS) {
     out.push(`render/${c.id}/${dialect}`);
     const result = renderDbspec(documents, dialect);
@@ -253,38 +258,41 @@ function writeEmittedPlan(plan: DbspecPlan): void {
   for (const line of emitPlan(plan).split('\n')) out.push(`| ${line}`);
 }
 
-const plans = readVectors(plansPath, 'plans');
-for (const c of plans.cases) {
-  out.push(`plans/cases/${c.id}`);
+// planCase writes the header of a plan case and returns its source and parsed plan. It returns undefined when the case has
+// no source, or when its plan does not parse; the diagnostics of that plan are written then.
+function planCase(header: string, c: { source: string[] | null; plan: string[] }): { source: DbspecDocument | null; plan: DbspecPlan } | undefined {
+  out.push(header);
   const source = planSource(c.source);
-  if (source === undefined) continue;
+  if (source === undefined) return undefined;
   const parsed = parsePlan(join(c.plan, false));
   if (parsed.plan === null) {
     writePlanDiagnostics(parsed.diagnostics);
-    continue;
+    return undefined;
   }
-  writeEmittedPlan(parsed.plan);
+  return { source, plan: parsed.plan };
+}
+
+const plans = readVectors(plansPath, 'plans');
+for (const c of plans.cases) {
+  const planned = planCase(`plans/cases/${c.id}`, c);
+  if (planned === undefined) continue;
+  const { source, plan } = planned;
+  writeEmittedPlan(plan);
   out.push(`plans/cases/${c.id}/changes`);
-  const diff = diffPlan(source, parsed.plan);
+  const diff = diffPlan(source, plan);
   writePlanDiagnostics(diff.diagnostics);
   writeChanges(diff.changes ?? []);
   for (const dialect of DIALECTS) {
     out.push(`plans/cases/${c.id}/${dialect}`);
-    const result = planSteps(source, parsed.plan, dialect);
+    const result = planSteps(source, plan, dialect);
     writePlanDiagnostics(result.diagnostics);
     for (const s of result.steps ?? []) writeStep(s);
   }
 }
 for (const c of plans.invalid) {
-  out.push(`plans/invalid/${c.id}`);
-  const source = planSource(c.source);
-  if (source === undefined) continue;
-  const parsed = parsePlan(join(c.plan, false));
-  if (parsed.plan === null) {
-    writePlanDiagnostics(parsed.diagnostics);
-    continue;
-  }
-  const diff = diffPlan(source, parsed.plan);
+  const planned = planCase(`plans/invalid/${c.id}`, c);
+  if (planned === undefined) continue;
+  const diff = diffPlan(planned.source, planned.plan);
   writePlanDiagnostics(diff.diagnostics);
   writeChanges(diff.changes ?? []);
 }

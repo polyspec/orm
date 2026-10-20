@@ -7,9 +7,10 @@
 //
 // Usage: node packages/ts/testing/dbspec/apply/typescript.mts <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>
 import { DatabaseSync } from 'node:sqlite';
-import mysql from 'mysql2/promise';
+import type mysql from 'mysql2/promise';
 import pg from 'pg';
 import { DbspecApplyError, applyPlans, parsePlan, recoverPlans, rollbackPlans, type DbspecApplyHandler, type DbspecPlan } from '../../../dist/dbspec/index.js';
+import { connectMysql } from '../connect.mts';
 import { readVectors } from '../../../../../tests/dbspec/vectors.mts';
 
 // The statements that every client runs on a new connection (packages/go/internal/dialects connectionRules).
@@ -45,10 +46,7 @@ type Opened =
 // connect opens the URI as the dialect's driver connection.
 async function connect(): Promise<Opened> {
   if (dialect === 'mysql' && url.protocol === 'mysql:' && url.search === '') {
-    const connection = await mysql.createConnection({
-      user: decodeURIComponent(url.username), password: decodeURIComponent(url.password),
-      host: url.hostname, port: Number(url.port), database: url.pathname.slice(1),
-    });
+    const connection = await connectMysql(url);
     return { dialect, connection, exec: sql => connection.query(sql), close: () => connection.end() };
   }
   if (dialect === 'postgres' && url.protocol === 'postgres:') {
