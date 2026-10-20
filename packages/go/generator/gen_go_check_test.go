@@ -80,21 +80,9 @@ func Bad() *model.ProductModel { return model.Product().LkPrice("x") }
 // status of orm-gen gen --check.
 func TestGoGenerationCheckCommandReportsDifferences(t *testing.T) {
 	testcase.Start(t, testcase.Process)
-	bin := commandBinary(t)
-	write, _ := generatedScannedModule(t)
-	write("names.dbs", namesDiagram)
-	write("dbspec-set.json", namesSet)
+	bin, write := namesCommand(t, true)
 	run := func(args ...string) (int, string, string) {
-		t.Helper()
-		var stdout, stderr bytes.Buffer
-		cmd := exec.Command(bin, args...)
-		cmd.Stdout, cmd.Stderr = &stdout, &stderr
-		err := cmd.Run()
-		var exit *exec.ExitError
-		if err != nil && !errors.As(err, &exit) {
-			t.Fatal(err)
-		}
-		return cmd.ProcessState.ExitCode(), stdout.String(), stderr.String()
+		return runTool(t, bin, args...)
 	}
 	gen := []string{"gen", "--set", "dbspec-set.json", "--lang", "go", "--out", "model", "--scan", "./...", "--check"}
 	if code, stdout, stderr := run(gen...); code != 0 || stdout != "" || stderr != "" {
@@ -106,4 +94,19 @@ func TestGoGenerationCheckCommandReportsDifferences(t *testing.T) {
 		t.Fatalf("gen --check on a changed file: exit %d\nstdout: %s\nstderr: %s", code, stdout, stderr)
 	}
 	requireSameFiles(t, before, snapshotDir(t, "model"))
+}
+
+// runTool runs bin with args and returns its exit code and its output; a
+// failure to start it fails the test.
+func runTool(t *testing.T, bin string, args ...string) (int, string, string) {
+	t.Helper()
+	var stdout, stderr bytes.Buffer
+	cmd := exec.Command(bin, args...)
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	err := cmd.Run()
+	var exit *exec.ExitError
+	if err != nil && !errors.As(err, &exit) {
+		t.Fatal(err)
+	}
+	return cmd.ProcessState.ExitCode(), stdout.String(), stderr.String()
 }

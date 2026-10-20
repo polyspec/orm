@@ -84,18 +84,10 @@ func TestApplyReportsCleanupErrors(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	start := time.Now()
 	t.Log("RUN apply/cleanup-errors deadline=20s")
-	now := func() time.Time { return time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC) }
-	plans := applyTestPlans(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
+	now, plans, ctx := applyTestSetup(t)
 
 	stop := errors.New("stop")
-	stopAt := func(ev ApplyEvent) error {
-		if ev.Kind == "applied" {
-			return stop
-		}
-		return nil
-	}
+	stopAt := stopAfterApplied(stop)
 	// Without a cleanup error, it returns the failure unwrapped.
 	if res, err := Apply(ctx, applyTestConn(t), DialectSQLite, plans, now, stopAt); err != nil || !res.Stopped || !errors.Is(res.Stop, stop) {
 		t.Errorf("apply stopped by an event without a cleanup error: %+v, %v, want stopped by the event error", res, err)
@@ -125,18 +117,10 @@ func TestApplyStopWithCleanupFailureReturnsJoin(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	start := time.Now()
 	t.Log("RUN apply/stop-join deadline=20s")
-	now := func() time.Time { return time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC) }
-	plans := applyTestPlans(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
+	now, plans, ctx := applyTestSetup(t)
 
 	stop := errors.New("stop")
-	stopAt := func(ev ApplyEvent) error {
-		if ev.Kind == "applied" {
-			return stop
-		}
-		return nil
-	}
+	stopAt := stopAfterApplied(stop)
 	release := errors.New("release failed")
 	c := &failing{conn: applyTestConn(t), fail: map[string]error{"PRAGMA locking_mode = normal": release}}
 	_, err := Apply(ctx, c, DialectSQLite, plans, now, stopAt)
@@ -168,14 +152,9 @@ func TestRollbackRejectsRecordedStepOutsidePlan(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	start := time.Now()
 	t.Log("RUN apply/rollback-step-outside deadline=20s")
-	now := func() time.Time { return time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC) }
-	plans := applyTestPlans(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
+	now, plans, ctx := applyTestSetup(t)
 	conn := applyTestConn(t)
-	if _, err := Apply(ctx, conn, DialectSQLite, plans, now, nil); err != nil {
-		t.Fatal(err)
-	}
+	applyOK(t, ctx, conn, plans, now)
 	if _, err := conn.ExecContext(ctx, `UPDATE "dbspec$plans" SET step = 99`); err != nil {
 		t.Fatal(err)
 	}
@@ -194,14 +173,9 @@ func TestFinalizeMarksPlanDone(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	start := time.Now()
 	t.Log("RUN apply/finalize-done deadline=20s")
-	now := func() time.Time { return time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC) }
-	plans := applyTestPlans(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
+	now, plans, ctx := applyTestSetup(t)
 	conn := applyTestConn(t)
-	if _, err := Apply(ctx, conn, DialectSQLite, plans, now, nil); err != nil {
-		t.Fatal(err)
-	}
+	applyOK(t, ctx, conn, plans, now)
 	var kinds []string
 	events := func(ev ApplyEvent) error {
 		kinds = append(kinds, ev.Kind)
@@ -221,4 +195,35 @@ func TestFinalizeMarksPlanDone(t *testing.T) {
 		t.Errorf("finalize events = %s, want finalize,done", got)
 	}
 	logResult(t, "apply/finalize-done", start)
+}
+
+// applyTestSetup returns the clock, the plans, and a context of 20 seconds for an
+// apply test; the context is cancelled when the test ends.
+func applyTestSetup(t *testing.T) (func() time.Time, []*Plan, context.Context) {
+	t.Helper()
+	now := func() time.Time { return time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC) }
+	plans := applyTestPlans(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	t.Cleanup(cancel)
+	return now, plans, ctx
+}
+
+// stopAfterApplied returns the event hook that stops apply with stop once the
+// plan is applied.
+func stopAfterApplied(stop error) func(ApplyEvent) error {
+	return func(ev ApplyEvent) error {
+		if ev.Kind == "applied" {
+			return stop
+		}
+		return nil
+	}
+}
+
+// applyOK applies the plans to c with the clock now, and fails the test when
+// apply fails.
+func applyOK(t *testing.T, ctx context.Context, c Execer, plans []*Plan, now func() time.Time) {
+	t.Helper()
+	if _, err := Apply(ctx, c, DialectSQLite, plans, now, nil); err != nil {
+		t.Fatal(err)
+	}
 }

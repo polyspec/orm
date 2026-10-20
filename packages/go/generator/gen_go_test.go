@@ -10,17 +10,13 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/packages/go/internal/testmodel"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // namesManifest is the runtime model of one dbspec document.
 func namesManifest(t *testing.T, document string) *runtimemodel.Model {
-	t.Helper()
-	m, diagnostics := runtimemodel.LoadDocuments([]string{document})
-	if len(diagnostics) > 0 {
-		t.Fatal(runtimemodel.DiagnosticsError(diagnostics))
-	}
-	return m
+	return testmodel.Load(t, document)
 }
 
 const namesDiagram = `dbspec 1 names

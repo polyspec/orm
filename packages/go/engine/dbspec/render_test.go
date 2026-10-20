@@ -2,7 +2,6 @@ package dbspec
 
 import (
 	"fmt"
-	"slices"
 	"testing"
 	"time"
 
@@ -53,26 +52,7 @@ func decodeDDLVectors(r vectorReader, object map[string]any) (ddlFile, error) {
 
 // parseDDLSet parses all documents of the case against the other documents.
 func parseDDLSet(c ddlCase) ([]*Document, error) {
-	names := make([]string, 0, len(c.Documents))
-	for name := range c.Documents {
-		names = append(names, name)
-	}
-	slices.Sort(names)
-	var documents []*Document
-	for _, name := range names {
-		set := map[string]string{}
-		for other, lines := range c.Documents {
-			if other != name {
-				set[other] = joinLines(lines, false)
-			}
-		}
-		document, _, diagnostics := Parse(joinLines(c.Documents[name], false), set)
-		if err := expectDocument(document, diagnostics); err != nil {
-			return nil, fmt.Errorf("%s: %w", name, err)
-		}
-		documents = append(documents, document)
-	}
-	return documents, nil
+	return parseDocumentSet(c.Documents)
 }
 
 func TestRenderVectors(t *testing.T) {

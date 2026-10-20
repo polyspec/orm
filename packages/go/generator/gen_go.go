@@ -899,7 +899,7 @@ func (g *goGen) method(pos string, gm *goModel, name string, args []argInfo) {
 			g.fail(pos, "%s.%s: %s is a column; use Set%s", t, name, attr, attr)
 			return
 		}
-		key := snake(attr)
+		key := runtimemodel.SnakeCase(attr)
 		g.addMethod(gm, name, fmt.Sprintf("func (x *%s) %s(v any) *%s { x.m.New(%q, v); return x }\n", t, name, t, key))
 		g.addGetter(pos, gm, "Get"+attr, getter{result: "any", expr: fmt.Sprintf("return x.m.NewValue(%q)", key), origin: "the value attached with " + name})
 	case strings.HasPrefix(name, "AddColumn") && len(name) > 9:
@@ -911,7 +911,7 @@ func (g *goGen) method(pos string, gm *goModel, name string, args []argInfo) {
 				if !g.outputName(pos, gm, attr) {
 					return
 				}
-				key := snake(attr)
+				key := runtimemodel.SnakeCase(attr)
 				g.addMethod(gm, name, fmt.Sprintf("func (x *%s) %s(fn orm.Func) *%s { x.m.AddColumnFunc(%q, %q, fn); return x }\n", t, name, t, col, key))
 				g.addGetter(pos, gm, "Get"+attr, getter{result: "any", expr: fmt.Sprintf("return x.m.NewValue(%q)", key), origin: "the column added with " + name})
 				return
@@ -920,7 +920,7 @@ func (g *goGen) method(pos string, gm *goModel, name string, args []argInfo) {
 		if !g.outputName(pos, gm, rest) {
 			return
 		}
-		key := snake(rest)
+		key := runtimemodel.SnakeCase(rest)
 		g.addMethod(gm, name, fmt.Sprintf("func (x *%s) %s(fn func(*%s) orm.Model) *%s {\n\tx.m.AddColumnSub(%q, func(m orm.Model) orm.Model { return fn(m.(*%s)) })\n\treturn x\n}\n", t, name, t, t, key, t))
 		g.addGetter(pos, gm, "Get"+rest, getter{result: "any", expr: fmt.Sprintf("return x.m.NewValue(%q)", key), origin: "the column added with " + name})
 	case strings.HasPrefix(name, "Get"):
@@ -949,21 +949,6 @@ func (g *goGen) method(pos string, gm *goModel, name string, args []argInfo) {
 }
 
 func isUpperAt(s string, i int) bool { return s[i] >= 'A' && s[i] <= 'Z' }
-
-func snake(s string) string {
-	var b strings.Builder
-	for i, r := range s {
-		if r >= 'A' && r <= 'Z' {
-			if i > 0 {
-				b.WriteByte('_')
-			}
-			b.WriteRune(r + ('a' - 'A'))
-			continue
-		}
-		b.WriteRune(r)
-	}
-	return b.String()
-}
 
 // outputName checks an added column or attached value name against the row
 // name space of the model.
@@ -1101,7 +1086,7 @@ func (g *goGen) relationGetter(pos string, parent, child *goModel, many bool, al
 		name, result, key = "Get"+child.ctor+"Models", "*orm.Collection[*"+child.typ+"]", child.e.Name+"_models"
 	}
 	if alias != "" {
-		name, key = "Get"+alias, snake(alias)
+		name, key = "Get"+alias, runtimemodel.SnakeCase(alias)
 	}
 	if many {
 		result = "*orm.Collection[*" + child.typ + "]"

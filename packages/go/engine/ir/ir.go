@@ -565,7 +565,7 @@ func RestoreKey(ent *runtimemodel.Entity, r *Request) (RestoreParts, error) {
 	}
 	valued := map[string]bool{}
 	for i, item := range items {
-		if i > 0 && itemConn(item) == "or" {
+		if i > 0 && ItemConn(item) == "or" {
 			return RestoreParts{}, errf("IR_INVALID", "restore of %s joins the conditions of its where with and", ent.Name)
 		}
 		if pr := item.Pred; pr != nil && pr.Op == "eq" && pr.P != nil && pr.Fn == nil && pr.Value == nil && pr.Ref == nil && pr.Sub == nil {
@@ -609,8 +609,24 @@ func RestoreKey(ent *runtimemodel.Entity, r *Request) (RestoreParts, error) {
 	return parts, nil
 }
 
-// itemConn is the connector that joins an item to the item before it.
-func itemConn(item Item) string {
+// listOperandError is the error of an in or between predicate whose params
+// (ps) do not fit its operator: an in list is not empty, and between has two.
+func listOperandError(ent *runtimemodel.Entity, p *Pred) error {
+	switch p.Op {
+	case "in", "not_in":
+		if len(p.Ps) == 0 {
+			return errf("EMPTY_IN", "%s.%s", ent.Name, p.Column)
+		}
+	case "between":
+		if len(p.Ps) != 2 {
+			return errf("IR_INVALID", "between needs 2 params (ps)")
+		}
+	}
+	return nil
+}
+
+// ItemConn is the connector that joins an item to the item before it.
+func ItemConn(item Item) string {
 	switch {
 	case item.Pred != nil:
 		return item.Pred.Conn
@@ -1005,14 +1021,8 @@ func (v *validator) pred(s *scope, p *Pred) error {
 				if p.P == nil {
 					return errf("IR_INVALID", "%s needs a value (p)", p.Op)
 				}
-			case "in", "not_in":
-				if len(p.Ps) == 0 {
-					return errf("EMPTY_IN", "%s.%s", ent.Name, p.Column)
-				}
-			case "between":
-				if len(p.Ps) != 2 {
-					return errf("IR_INVALID", "between needs 2 params (ps)")
-				}
+			case "in", "not_in", "between":
+				return listOperandError(ent, p)
 			default:
 				return errf("OPERATOR_NOT_ALLOWED", "%s with a column function", p.Op)
 			}
@@ -1050,13 +1060,9 @@ func (v *validator) pred(s *scope, p *Pred) error {
 	}
 	switch p.Op {
 	case "is_null", "is_not_null":
-	case "in", "not_in":
-		if len(p.Ps) == 0 {
-			return errf("EMPTY_IN", "%s.%s", ent.Name, p.Column)
-		}
-	case "between":
-		if len(p.Ps) != 2 {
-			return errf("IR_INVALID", "between needs 2 params (ps)")
+	case "in", "not_in", "between":
+		if err := listOperandError(ent, p); err != nil {
+			return err
 		}
 	default:
 		if colOps[p.Op] {

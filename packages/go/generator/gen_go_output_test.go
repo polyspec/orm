@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/packages/go/internal/testdb"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
@@ -66,15 +67,7 @@ func snapshotDir(t *testing.T, dir string) map[string]string {
 // dirNames returns the sorted entry names of dir.
 func dirNames(t *testing.T, dir string) []string {
 	t.Helper()
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var names []string
-	for _, entry := range entries {
-		names = append(names, entry.Name())
-	}
-	return names
+	return testdb.DirNames(t, dir)
 }
 
 func requireSameFiles(t *testing.T, want, got map[string]string) {
@@ -264,21 +257,10 @@ func commandBinary(t *testing.T) string {
 // messages of a scanned-source compile error and of a generation failure.
 func TestGoGenerationCommandReportsOutcomes(t *testing.T) {
 	testcase.Start(t, testcase.Process)
-	bin := commandBinary(t)
-	write, _ := generatedScannedModule(t)
-	write("names.dbs", namesDiagram)
+	bin, write := namesCommand(t, false)
 	write("dbspec-set.json", namesSet)
 	run := func() (int, string, string) {
-		t.Helper()
-		var stdout, stderr bytes.Buffer
-		cmd := exec.Command(bin, "gen", "--set", "dbspec-set.json", "--lang", "go", "--out", "model", "--scan", "./...")
-		cmd.Stdout, cmd.Stderr = &stdout, &stderr
-		err := cmd.Run()
-		var exit *exec.ExitError
-		if err != nil && !errors.As(err, &exit) {
-			t.Fatal(err)
-		}
-		return cmd.ProcessState.ExitCode(), stdout.String(), stderr.String()
+		return runTool(t, bin, "gen", "--set", "dbspec-set.json", "--lang", "go", "--out", "model", "--scan", "./...")
 	}
 	write("example/more.go", moreCalls)
 	write("example/unrelated.go", "package example\n\nvar _ = missingName\n")
@@ -361,4 +343,17 @@ func TestGoGenerationCommandReportsSetErrors(t *testing.T) {
 			}
 		})
 	}
+}
+
+// namesCommand returns the orm-gen binary and the writer of the scanned model
+// module, with the names diagram and, when set is true, its dbspec set file.
+func namesCommand(t *testing.T, set bool) (string, func(name, body string)) {
+	t.Helper()
+	bin := commandBinary(t)
+	write, _ := generatedScannedModule(t)
+	write("names.dbs", namesDiagram)
+	if set {
+		write("dbspec-set.json", namesSet)
+	}
+	return bin, write
 }

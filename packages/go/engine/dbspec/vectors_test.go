@@ -363,61 +363,23 @@ func expectDocument(document *Document, diagnostics []Diagnostic) error {
 // canonical, normalize and invalid cases of tests/dbspec/cases.json, one suite each.
 func TestCanonicalVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	for _, c := range loadVectors(t).Canonical {
-		t.Run(c.ID, func(t *testing.T) {
-			runTimed(t, c.ID, 5*time.Second, func() error {
-				text, set, err := c.documentSet()
-				if err != nil {
-					return err
-				}
-				got, err := emitStable(text, set)
-				if err != nil {
-					return err
-				}
-				if want := joinLines(c.Documents[c.Main], false); got != want {
-					return fmt.Errorf("emission differs:\ngot:\n%s\nwant:\n%s", got, want)
-				}
-				return nil
-			})
-		})
-	}
+	runVectorCases(t, loadVectors(t).Canonical, func(c vectorCase, text string, set map[string]string) error {
+		return emitEquals(text, set, joinLines(c.Documents[c.Main], false))
+	})
 }
 
 func TestNormalizeVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	for _, c := range loadVectors(t).Normalize {
-		t.Run(c.ID, func(t *testing.T) {
-			runTimed(t, c.ID, 5*time.Second, func() error {
-				text, set, err := c.documentSet()
-				if err != nil {
-					return err
-				}
-				got, err := emitStable(text, set)
-				if err != nil {
-					return err
-				}
-				if want := joinLines(c.Canonical, false); got != want {
-					return fmt.Errorf("emission differs:\ngot:\n%s\nwant:\n%s", got, want)
-				}
-				return nil
-			})
-		})
-	}
+	runVectorCases(t, loadVectors(t).Normalize, func(c vectorCase, text string, set map[string]string) error {
+		return emitEquals(text, set, joinLines(c.Canonical, false))
+	})
 }
 
 func TestInvalidVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	for _, c := range loadVectors(t).Invalid {
-		t.Run(c.ID, func(t *testing.T) {
-			runTimed(t, c.ID, 5*time.Second, func() error {
-				text, set, err := c.documentSet()
-				if err != nil {
-					return err
-				}
-				return expectDiagnostics(text, set, c.Errors)
-			})
-		})
-	}
+	runVectorCases(t, loadVectors(t).Invalid, func(c vectorCase, text string, set map[string]string) error {
+		return expectDiagnostics(text, set, c.Errors)
+	})
 }
 
 // TestPositionVectors requires Parse to return exactly the declaration positions of every positions case
@@ -547,4 +509,33 @@ func expectDiagnostics(text string, set map[string]string, want []vectorError) e
 		return fmt.Errorf("diagnostics = %+v, want %+v (messages %+v)", got, want, diagnostics)
 	}
 	return nil
+}
+
+// emitEquals checks that the emission of text, with the documents of set, is want.
+func emitEquals(text string, set map[string]string, want string) error {
+	got, err := emitStable(text, set)
+	if err != nil {
+		return err
+	}
+	if got != want {
+		return fmt.Errorf("emission differs:\ngot:\n%s\nwant:\n%s", got, want)
+	}
+	return nil
+}
+
+// runVectorCases runs check on the text and the documents of each case, as a
+// subtest named by the case id under a deadline.
+func runVectorCases(t *testing.T, cases []vectorCase, check func(c vectorCase, text string, set map[string]string) error) {
+	t.Helper()
+	for _, c := range cases {
+		t.Run(c.ID, func(t *testing.T) {
+			runTimed(t, c.ID, 5*time.Second, func() error {
+				text, set, err := c.documentSet()
+				if err != nil {
+					return err
+				}
+				return check(c, text, set)
+			})
+		})
+	}
 }

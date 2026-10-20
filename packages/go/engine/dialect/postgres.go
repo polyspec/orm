@@ -2,7 +2,6 @@ package dialect
 
 import (
 	"fmt"
-	"strings"
 )
 
 // Postgres: "quoted" identifiers, $n placeholders, ILIKE for the case-insensitive
@@ -45,11 +44,7 @@ func (Postgres) RestartIdentity(table, column string) string {
 }
 
 func (Postgres) Upsert(conflict []string, assigns string) string {
-	q := make([]string, len(conflict))
-	for i, c := range conflict {
-		q[i] = QuoteWith(`"`, c)
-	}
-	return " ON CONFLICT (" + strings.Join(q, ", ") + ") DO UPDATE SET " + assigns
+	return upsert(conflict, assigns)
 }
 
 func (Postgres) ReadExpr(col string, _ []string, _ func() string) (string, int) {
@@ -70,18 +65,7 @@ func (Postgres) ReadTime(col string, precision int) string {
 }
 func (Postgres) WriteTime(ph string) string { return "CAST(CAST(" + ph + " AS text) AS time)" }
 func (Postgres) RowLock(mode string) (string, bool) {
-	switch mode {
-	case "update":
-		return " FOR UPDATE", true
-	case "share":
-		return " FOR SHARE", true
-	case "update_nowait":
-		return " FOR UPDATE NOWAIT", true
-	case "share_nowait":
-		return " FOR SHARE NOWAIT", true
-	default:
-		return "", false
-	}
+	return rowLock(mode)
 }
 
 func (Postgres) ReadUUID(col string) string { return "CAST(" + col + " AS text)" }

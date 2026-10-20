@@ -909,33 +909,13 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 				return "", &ir.Error{Code: "IR_INVALID", Msg: s.ent.Name + "." + col.Name + " requires a declared blind index for equality search"}
 			}
 			lhs = p.qcol(s, col.BlindIndex)
-			var phs []string
-			for _, i := range pr.Ps {
-				rhs, err := p.renderBlindIndexValue(b, s.ent.Field(col.BlindIndex), i)
-				if err != nil {
-					return "", err
-				}
-				phs = append(phs, rhs)
-			}
-			op := "IN"
-			if pr.Op == "not_in" {
-				op = "NOT IN"
-			}
-			return lhs + " " + op + " (" + strings.Join(phs, ", ") + ")", nil
+			return p.inList(lhs, pr, func(i int) (string, error) {
+				return p.renderBlindIndexValue(b, s.ent.Field(col.BlindIndex), i)
+			})
 		}
-		var phs []string
-		for _, i := range pr.Ps {
-			rhs, err := p.renderValue(b, col, i)
-			if err != nil {
-				return "", err
-			}
-			phs = append(phs, rhs)
-		}
-		op := "IN"
-		if pr.Op == "not_in" {
-			op = "NOT IN"
-		}
-		return lhs + " " + op + " (" + strings.Join(phs, ", ") + ")", nil
+		return p.inList(lhs, pr, func(i int) (string, error) {
+			return p.renderValue(b, col, i)
+		})
 	case "between":
 		lo, err := p.renderValue(b, col, pr.Ps[0])
 		if err != nil {
@@ -956,6 +936,42 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 		return p.D.ContainsBinary(lhs, func(transform string) string { return b.colParam(*pr.P, col, transform) }), nil
 	}
 	return "", &ir.Error{Code: "OPERATOR_UNKNOWN", Msg: pr.Op}
+}
+
+// renderAssigns renders the assignments of an insert or update as the SET
+// items of its statement, and the AES version column they write when the
+// assignments encrypt a value.
+func (p *Planner) renderAssigns(b *builder, ent *runtimemodel.Entity, assigns []ir.Assign) ([]string, error) {
+	var sets []string
+	for _, a := range assigns {
+		v, err := p.renderAssign(b, ent, ent.Field(a.Column), &a)
+		if err != nil {
+			return nil, err
+		}
+		sets = append(sets, p.D.Quote(a.Column)+" = "+v)
+	}
+	if version := ent.AESVersion; version != "" && assignsAES(ent, assigns) {
+		sets = append(sets, p.D.Quote(version)+" = "+b.config("aes_version", ent.Field(version).Type))
+	}
+	return sets, nil
+}
+
+// inList renders the membership test of lhs in the parameters of pr, each
+// parameter rendered by render: IN, or NOT IN for not_in.
+func (p *Planner) inList(lhs string, pr *ir.Pred, render func(i int) (string, error)) (string, error) {
+	var phs []string
+	for _, i := range pr.Ps {
+		rhs, err := render(i)
+		if err != nil {
+			return "", err
+		}
+		phs = append(phs, rhs)
+	}
+	op := "IN"
+	if pr.Op == "not_in" {
+		op = "NOT IN"
+	}
+	return lhs + " " + op + " (" + strings.Join(phs, ", ") + ")", nil
 }
 
 // renderValue binds one value, wrapping it for SQL-side styles (hex/ip) so
@@ -1120,16 +1136,9 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 			return nil, err
 		}
 		r.OnDuplicate = duplicate
-		var sets []string
-		for _, a := range r.OnDuplicate {
-			v, err := p.renderAssign(b, ent, ent.Field(a.Column), &a)
-			if err != nil {
-				return nil, err
-			}
-			sets = append(sets, p.D.Quote(a.Column)+" = "+v)
-		}
-		if version := ent.AESVersion; version != "" && assignsAES(ent, r.OnDuplicate) {
-			sets = append(sets, p.D.Quote(version)+" = "+b.config("aes_version", ent.Field(version).Type))
+		sets, err := p.renderAssigns(b, ent, r.OnDuplicate)
+		if err != nil {
+			return nil, err
 		}
 		// A duplicate update that changes an existing row is also an update of the audit table.
 		if ent.Audit != nil {
@@ -1148,10 +1157,7 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 	if p.D.InsertReturningID() && ent.Identity != "" {
 		sql += " RETURNING " + p.D.Quote(ent.Identity)
 	}
-	if b.err != nil {
-		return nil, b.err
-	}
-	return &plan.Step{Role: "main", SQL: sql, Tables: b.tableList(), BindSlots: b.binds}, nil
+	return b.mainStep(sql)
 }
 
 // managedColumn is a column that the executor writes on every insert, and its bind slot.
@@ -1315,6 +1321,15 @@ func (b *builder) assigned(start int, col *runtimemodel.Field) {
 	}
 }
 
+// mainStep is the main step of a statement sql, or the error of the builder
+// when the statement could not be built.
+func (b *builder) mainStep(sql string) (*plan.Step, error) {
+	if b.err != nil {
+		return nil, b.err
+	}
+	return &plan.Step{Role: "main", SQL: sql, Tables: b.tableList(), BindSlots: b.binds}, nil
+}
+
 func (p *Planner) updateStep(r *ir.Request) (*plan.Step, error) {
 	b := &builder{p: p}
 	ent := p.M.Entities[r.Entity]
@@ -1326,17 +1341,9 @@ func (p *Planner) updateStep(r *ir.Request) (*plan.Step, error) {
 		return nil, err
 	}
 	root := p.buildScopes(&r.Query, ent.Table, nil)
-	var sets []string
-	for _, a := range set {
-		col := ent.Field(a.Column)
-		v, err := p.renderAssign(b, ent, col, &a)
-		if err != nil {
-			return nil, err
-		}
-		sets = append(sets, p.D.Quote(a.Column)+" = "+v)
-	}
-	if version := ent.AESVersion; version != "" && assignsAES(ent, set) {
-		sets = append(sets, p.D.Quote(version)+" = "+b.config("aes_version", ent.Field(version).Type))
+	sets, err := p.renderAssigns(b, ent, set)
+	if err != nil {
+		return nil, err
 	}
 	// The column of an updated setting is written by the executor with the statement time. If the user
 	// assigns it directly, that value stays.
@@ -1357,10 +1364,7 @@ func (p *Planner) updateStep(r *ir.Request) (*plan.Step, error) {
 		where += " AND " + p.qcol(root, ent.SoftDelete) + " IS NULL"
 	}
 	sql := "UPDATE " + b.table(ent) + " SET " + strings.Join(sets, ", ") + " WHERE " + where
-	if b.err != nil {
-		return nil, b.err
-	}
-	return &plan.Step{Role: "main", SQL: sql, Tables: b.tableList(), BindSlots: b.binds}, nil
+	return b.mainStep(sql)
 }
 
 // statementTime is the statement time that updated and soft delete write to datetime columns.
@@ -1397,10 +1401,7 @@ func (p *Planner) deleteStep(r *ir.Request) (*plan.Step, error) {
 		return &plan.Step{Role: "main", SQL: "UPDATE " + b.table(ent) + " SET " + strings.Join(sets, ", ") + " WHERE " + where, Tables: b.tableList(), BindSlots: b.binds}, nil
 	}
 	sql := "DELETE FROM " + b.table(ent) + " WHERE " + where
-	if b.err != nil {
-		return nil, b.err
-	}
-	return &plan.Step{Role: "main", SQL: sql, Tables: b.tableList(), BindSlots: b.binds}, nil
+	return b.mainStep(sql)
 }
 
 // restoreStep is an update that reverts one soft-deleted row. ir.RestoreKey is the request's set and
@@ -1424,16 +1425,9 @@ func (p *Planner) restoreStep(r *ir.Request) (*plan.Step, error) {
 	}
 	b := &builder{p: p}
 	root := p.buildScopes(&r.Query, ent.Table, nil)
-	var sets []string
-	for _, a := range set {
-		v, err := p.renderAssign(b, ent, ent.Field(a.Column), &a)
-		if err != nil {
-			return nil, err
-		}
-		sets = append(sets, p.D.Quote(a.Column)+" = "+v)
-	}
-	if version := ent.AESVersion; version != "" && assignsAES(ent, set) {
-		sets = append(sets, p.D.Quote(version)+" = "+b.config("aes_version", ent.Field(version).Type))
+	sets, err := p.renderAssigns(b, ent, set)
+	if err != nil {
+		return nil, err
 	}
 	sets = append(sets, p.D.Quote(ent.SoftDelete)+" = NULL")
 	if ent.Audit != nil {

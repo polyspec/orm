@@ -181,8 +181,9 @@ func (r vectorReader) nullableLines(object map[string]any, location, key string)
 	return r.lines(value, vectorAt(location, key))
 }
 
-// linesMap returns an object whose each name holds an array of strings.
-func (r vectorReader) linesMap(object map[string]any, location, key string) (map[string][]string, error) {
+// fieldObject returns the object that the key of object holds; a key that is not an
+// object fails.
+func (r vectorReader) fieldObject(object map[string]any, location, key string) (map[string]any, error) {
 	value, err := r.field(object, location, key)
 	if err != nil {
 		return nil, err
@@ -190,6 +191,15 @@ func (r vectorReader) linesMap(object map[string]any, location, key string) (map
 	items, ok := value.(map[string]any)
 	if !ok {
 		return nil, r.fail(vectorAt(location, key), "is not an object")
+	}
+	return items, nil
+}
+
+// linesMap returns an object whose each name holds an array of strings.
+func (r vectorReader) linesMap(object map[string]any, location, key string) (map[string][]string, error) {
+	items, err := r.fieldObject(object, location, key)
+	if err != nil {
+		return nil, err
 	}
 	out := make(map[string][]string, len(items))
 	for name, item := range items {
@@ -203,13 +213,9 @@ func (r vectorReader) linesMap(object map[string]any, location, key string) (map
 // stepsMap returns an object that holds, per dialect, an array of step objects. A step object
 // has statement and effect strings, and only the keys of docs/spec/plans.md "Steps".
 func (r vectorReader) stepsMap(object map[string]any, location, key string) (map[string][]any, error) {
-	value, err := r.field(object, location, key)
+	items, err := r.fieldObject(object, location, key)
 	if err != nil {
 		return nil, err
-	}
-	items, ok := value.(map[string]any)
-	if !ok {
-		return nil, r.fail(vectorAt(location, key), "is not an object")
 	}
 	allowed := map[string]bool{"statement": true, "rollback": true, "irreversible": true, "effect": true, "restore": true, "rollback_restore": true, "restore_if": true, "null_checks": true, "finalize": true}
 	out := make(map[string][]any, len(items))

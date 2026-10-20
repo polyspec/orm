@@ -420,13 +420,7 @@ func TestStateMachineSetting(t *testing.T) {
 	}
 	testcase.Start(t, testcase.Compute)
 	text := joinLines(cases[0].lines, false)
-	document, _, diagnostics := Parse(text, nil)
-	if document == nil || len(diagnostics) != 0 {
-		t.Fatalf("diagnostics: %+v", diagnostics)
-	}
-	if got, err := emitStable(text, nil); err != nil || got != text {
-		t.Fatalf("emission: %v\n%s", err, got)
-	}
+	document := parseStable(t, text)
 	machine := document.Tables[0].Settings.StateMachine
 	if machine == nil || machine.Column != "status" || len(machine.Lines) != 3 ||
 		machine.Lines[1].From != "doing" || machine.Lines[1].To != "done" ||
@@ -451,13 +445,7 @@ func TestMarkdownSetting(t *testing.T) {
 		"  }",
 		"}",
 	)), false)
-	document, _, diagnostics := Parse(text, nil)
-	if document == nil || len(diagnostics) != 0 {
-		t.Fatalf("diagnostics: %+v", diagnostics)
-	}
-	if got, err := emitStable(text, nil); err != nil || got != text {
-		t.Fatalf("emission: %v\n%s", err, got)
-	}
+	document := parseStable(t, text)
 	trait := document.Tables[0].Settings.Marks
 	if len(trait) != 2 || trait[0].Column != "body" || trait[1].Column != "note" {
 		t.Fatalf("marks: %+v", trait)
@@ -551,13 +539,7 @@ var (
 func TestMarkdownStorageSetting(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	text := joinLines(markdownDoc(markdownColumns, pkID, standardHistory, markdownSettings...), false)
-	document, _, diagnostics := Parse(text, nil)
-	if document == nil || len(diagnostics) != 0 {
-		t.Fatalf("diagnostics: %+v", diagnostics)
-	}
-	if got, err := emitStable(text, nil); err != nil || got != text {
-		t.Fatalf("emission: %v\n%s", err, got)
-	}
+	document := parseStable(t, text)
 	s := document.Tables[0].Settings
 	if s.Store == nil || s.Store.Kind != "document" || s.Store.Shape != "list" {
 		t.Fatalf("store: %+v", s.Store)
@@ -613,13 +595,7 @@ func TestStateMachineKeywordStates(t *testing.T) {
 		"    state_machine status initial initial",
 		"  }", "}",
 	)), false)
-	document, _, diagnostics := Parse(text, nil)
-	if document == nil || len(diagnostics) != 0 {
-		t.Fatalf("diagnostics: %+v", diagnostics)
-	}
-	if got, err := emitStable(text, nil); err != nil || got != text {
-		t.Fatalf("emission: %v\n%s", err, got)
-	}
+	document := parseStable(t, text)
 	lines := document.Tables[0].Settings.StateMachine.Lines
 	if len(lines) != 3 || lines[0].From != "initial" || lines[0].Initial || lines[1].From != "limit" ||
 		lines[1].To != "history" || !lines[2].Initial || lines[2].State != "initial" {
@@ -754,4 +730,18 @@ func TestMarkdownStorageRules(t *testing.T) {
 			})
 		})
 	}
+}
+
+// parseStable parses text, which must be a document without diagnostics, and
+// checks that its emission is text itself.
+func parseStable(t *testing.T, text string) *Document {
+	t.Helper()
+	document, _, diagnostics := Parse(text, nil)
+	if document == nil || len(diagnostics) != 0 {
+		t.Fatalf("diagnostics: %+v", diagnostics)
+	}
+	if got, err := emitStable(text, nil); err != nil || got != text {
+		t.Fatalf("emission: %v\n%s", err, got)
+	}
+	return document
 }

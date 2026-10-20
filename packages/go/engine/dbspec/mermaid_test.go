@@ -196,9 +196,7 @@ func checkMermaidExport(t *testing.T, c mermaidExportCase) {
 		if text != mermaidJoin(c.Mermaid) {
 			problems = append(problems, fmt.Errorf("mermaid\n--- want\n%s--- got\n%s", mermaidJoin(c.Mermaid), text))
 		}
-		if got := mermaidDrops(dropped); !slices.Equal(got, c.Dropped) {
-			problems = append(problems, fmt.Errorf("dropped\nwant %v\ngot  %v", c.Dropped, got))
-		}
+		problems = append(problems, mermaidDropCheck(mermaidDrops(dropped), c.Dropped))
 		return errors.Join(problems...)
 	})
 }
@@ -213,9 +211,7 @@ func checkMermaidImport(t *testing.T, c mermaidImportCase) {
 		if got := Emit(d); got != mermaidJoin(c.Document) {
 			problems = append(problems, fmt.Errorf("document\n--- want\n%s--- got\n%s", mermaidJoin(c.Document), got))
 		}
-		if got := mermaidDrops(dropped); !slices.Equal(got, c.Dropped) {
-			problems = append(problems, fmt.Errorf("dropped\nwant %v\ngot  %v", c.Dropped, got))
-		}
+		problems = append(problems, mermaidDropCheck(mermaidDrops(dropped), c.Dropped))
 		return errors.Join(problems...)
 	})
 }
@@ -285,4 +281,13 @@ func mermaidSkeleton(d *Document) []string {
 		}
 	}
 	return out
+}
+
+// mermaidDropCheck returns the problem of the dropped constructs of a mermaid
+// conversion that differ from want, or nil when they are the same.
+func mermaidDropCheck(got, want [][3]string) error {
+	if slices.Equal(got, want) {
+		return nil
+	}
+	return fmt.Errorf("dropped\nwant %v\ngot  %v", want, got)
 }

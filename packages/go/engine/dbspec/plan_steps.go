@@ -768,14 +768,7 @@ func (w *planWriter) indexes(t *Table, name string) []namedIndex {
 		}
 	}
 	for _, x := range sortedBy(t.Indexes, func(x Index) string { return x.Name }) {
-		columns := make([]string, len(x.Columns))
-		for i, c := range x.Columns {
-			columns[i] = w.q(c.Name)
-			if c.Descending {
-				columns[i] += " DESC"
-			}
-		}
-		out = append(out, namedIndex{name: x.Name, create: "CREATE INDEX " + w.q(x.Name) + " ON " + w.q(name) + " (" + strings.Join(columns, ", ") + ")", drop: w.dropIndex(name, x.Name)})
+		out = append(out, namedIndex{name: x.Name, create: "CREATE INDEX " + w.q(x.Name) + " ON " + w.q(name) + " (" + indexColumnList(x.Columns, w.q) + ")", drop: w.dropIndex(name, x.Name)})
 	}
 	return out
 }

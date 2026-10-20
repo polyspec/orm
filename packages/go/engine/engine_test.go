@@ -34,6 +34,20 @@ func testEngine(t *testing.T) *Engine {
 	return e
 }
 
+// selectAllItems are the first four predicates of the where clause of the select-all
+// requests: the service, closed, display, and sequence predicates.
+const selectAllItems = `{"pred":{"column":"service_seq","op":"eq","p":0}},{"pred":{"conn":"and","column":"is_close","op":"eq","p":1}},{"group":{"conn":"and","items":[{"pred":{"column":"is_display","op":"eq","p":2}},{"group":{"conn":"or","items":[{"pred":{"column":"is_display","op":"eq","p":3}},{"pred":{"conn":"and","column":"display_start_dt","op":"lt","p":4}}]}}]}},{"pred":{"conn":"and","column":"seq","op":"in","ps":[5,6,7]}}`
+
+// refuses checks that the request irBody, with the engine's manifest hash, is
+// refused with an error whose message starts with code.
+func refuses(t *testing.T, e *Engine, irBody, code string) {
+	t.Helper()
+	_, err := e.Compile([]byte(`{"ir_version":1,"manifest_hash":"` + e.M.ManifestHash + `",` + irBody + `}`))
+	if err == nil || !strings.HasPrefix(err.Error(), code) {
+		t.Errorf("%s\n got %v\n want %s", irBody, err, code)
+	}
+}
+
 func compile(t *testing.T, e *Engine, irBody string) *plan.Plan {
 	t.Helper()
 	full := `{"ir_version":1,"manifest_hash":"` + e.M.ManifestHash + `","n_params":64,` + irBody + `}`
@@ -53,15 +67,7 @@ func TestSelectAll(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	e := testEngine(t)
 	p := compile(t, e, `"kind":"all","entity":"author",
-	 "where":{"items":[
-	   {"pred":{"column":"service_seq","op":"eq","p":0}},
-	   {"pred":{"conn":"and","column":"is_close","op":"eq","p":1}},
-	   {"group":{"conn":"and","items":[
-	     {"pred":{"column":"is_display","op":"eq","p":2}},
-	     {"group":{"conn":"or","items":[
-	       {"pred":{"column":"is_display","op":"eq","p":3}},
-	       {"pred":{"conn":"and","column":"display_start_dt","op":"lt","p":4}}]}}]}},
-	   {"pred":{"conn":"and","column":"seq","op":"in","ps":[5,6,7]}},
+	 "where":{"items":[`+selectAllItems+`,
 	   {"pred":{"conn":"and","column":"aes_hex_email","op":"eq","p":8}},
 	   {"pred":{"conn":"and","column":"name","op":"contains","p":9}}]},
 	 "order":[{"column":"seq","desc":true}],"limit":{"offset":0,"count":100}`)
@@ -226,10 +232,7 @@ func TestUpsertAndCascade(t *testing.T) {
 		`"kind":"insert","entity":"author","n_params":1,"set":[{"column":"name","p":0}]`:                                                                                                                                                                                                                                                                        "IR_INVALID: required column author.user_seq is not set",
 		`"kind":"all","entity":"author","no_cascade_delete":true`:                                                                                                                                                                                                                                                                                               "IR_INVALID: relation-only options",
 	} {
-		_, err := e.Compile([]byte(`{"ir_version":1,"manifest_hash":"` + e.M.ManifestHash + `",` + irs + `}`))
-		if err == nil || !strings.HasPrefix(err.Error(), code) {
-			t.Errorf("%s\n got %v\n want %s", irs, err, code)
-		}
+		refuses(t, e, irs, code)
 	}
 }
 
@@ -401,9 +404,7 @@ func TestCompileErrors(t *testing.T) {
 func BenchmarkCompileList(b *testing.B) {
 	e := testEngine(&testing.T{})
 	in := []byte(`{"ir_version":1,"manifest_hash":"` + e.M.ManifestHash + `","kind":"all","entity":"author","n_params":8,
-	 "where":{"items":[{"pred":{"column":"service_seq","op":"eq","p":0}},{"pred":{"conn":"and","column":"is_close","op":"eq","p":1}},
-	 {"group":{"conn":"and","items":[{"pred":{"column":"is_display","op":"eq","p":2}},{"group":{"conn":"or","items":[{"pred":{"column":"is_display","op":"eq","p":3}},{"pred":{"conn":"and","column":"display_start_dt","op":"lt","p":4}}]}}]}},
-	 {"pred":{"conn":"and","column":"seq","op":"in","ps":[5,6,7]}}]},"order":[{"column":"seq","desc":true}],"limit":{"offset":0,"count":100}}`)
+	 "where":{"items":[` + selectAllItems + `]},"order":[{"column":"seq","desc":true}],"limit":{"offset":0,"count":100}}`)
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		if _, err := e.Compile(in); err != nil {
@@ -484,10 +485,7 @@ func TestRelations(t *testing.T) {
 		`"kind":"all","entity":"service","relations":[{"rel":"modules","kind":"many","keys":[{"left":"seq","right":"service_seq"}],"query":{"entity":"service_region","flatten":true}}]`:                 "IR_INVALID",
 		`"kind":"all","entity":"author","n_params":2,"relations":[{"rel":"user","kind":"one","keys":[{"left":"user_seq","right":"seq"}],"query":{"entity":"user","if_parent":{"column":"nope","p":0}}}]`: "COLUMN_UNKNOWN",
 	} {
-		_, err := e.Compile([]byte(`{"ir_version":1,"manifest_hash":"` + e.M.ManifestHash + `",` + irs + `}`))
-		if err == nil || !strings.HasPrefix(err.Error(), code) {
-			t.Errorf("%s\n got %v\n want %s", irs, err, code)
-		}
+		refuses(t, e, irs, code)
 	}
 }
 

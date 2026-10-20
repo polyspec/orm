@@ -266,6 +266,14 @@ func readPostgres(ctx context.Context, q Querier) (*catalog, error) {
 	return c, err
 }
 
+// decimalDigits reads the precision and the scale of a decimal type; ok is false
+// when either is not a number.
+func decimalDigits(precision, scale string) (p, s int, ok bool) {
+	p, errP := strconv.Atoi(precision)
+	s, errS := strconv.Atoi(scale)
+	return p, s, errP == nil && errS == nil
+}
+
 // postgresType reads format_type and collation as a dbspec type.
 func postgresType(formatted, collation string) (Type, bool) {
 	m := postgresTypePattern.FindStringSubmatch(formatted)
@@ -274,9 +282,8 @@ func postgresType(formatted, collation string) (Type, bool) {
 	}
 	switch {
 	case m[2] != "":
-		p, errP := strconv.Atoi(m[2])
-		s, errS := strconv.Atoi(m[3])
-		if errP != nil || errS != nil {
+		p, s, ok := decimalDigits(m[2], m[3])
+		if !ok {
 			return Type{}, false
 		}
 		return Type{Kind: TypeDecimal, Precision: p, Scale: s}, true

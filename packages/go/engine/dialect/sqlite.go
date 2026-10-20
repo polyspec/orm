@@ -47,11 +47,7 @@ func (SQLite) RestartIdentity(table, column string) string {
 }
 
 func (SQLite) Upsert(conflict []string, assigns string) string {
-	q := make([]string, len(conflict))
-	for i, c := range conflict {
-		q[i] = QuoteWith(`"`, c)
-	}
-	return " ON CONFLICT (" + strings.Join(q, ", ") + ") DO UPDATE SET " + assigns
+	return upsert(conflict, assigns)
 }
 
 func (SQLite) ReadExpr(col string, _ []string, _ func() string) (string, int) { return col, 0 }

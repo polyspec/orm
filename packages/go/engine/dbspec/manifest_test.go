@@ -23,20 +23,26 @@ type hashCase struct {
 
 // parseSet parses all documents of the case, in document-name order, against the other documents.
 func (c hashCase) parseSet() ([]*Document, error) {
-	names := make([]string, 0, len(c.Documents))
-	for name := range c.Documents {
+	return parseDocumentSet(c.Documents)
+}
+
+// parseDocumentSet parses all documents of a case, in document-name order, each
+// against the other documents of the case.
+func parseDocumentSet(docs map[string][]string) ([]*Document, error) {
+	names := make([]string, 0, len(docs))
+	for name := range docs {
 		names = append(names, name)
 	}
 	slices.Sort(names)
 	documents := make([]*Document, 0, len(names))
 	for _, name := range names {
 		set := map[string]string{}
-		for other, lines := range c.Documents {
+		for other, lines := range docs {
 			if other != name {
 				set[other] = joinLines(lines, false)
 			}
 		}
-		document, _, diagnostics := Parse(joinLines(c.Documents[name], false), set)
+		document, _, diagnostics := Parse(joinLines(docs[name], false), set)
 		if err := expectDocument(document, diagnostics); err != nil {
 			return nil, fmt.Errorf("%s: %w", name, err)
 		}

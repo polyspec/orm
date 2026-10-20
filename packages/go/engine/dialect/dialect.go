@@ -86,6 +86,33 @@ func Literal(text string) string {
 	return "'" + strings.ReplaceAll(text, "'", "''") + "'"
 }
 
+// upsert is the ON CONFLICT clause of PostgreSQL and SQLite, whose conflict
+// columns are double-quoted.
+func upsert(conflict []string, assigns string) string {
+	q := make([]string, len(conflict))
+	for i, c := range conflict {
+		q[i] = QuoteWith(`"`, c)
+	}
+	return " ON CONFLICT (" + strings.Join(q, ", ") + ") DO UPDATE SET " + assigns
+}
+
+// rowLock is the row lock clause of MySQL and PostgreSQL for a lock mode; the
+// second result is false for a mode neither has.
+func rowLock(mode string) (string, bool) {
+	switch mode {
+	case "update":
+		return " FOR UPDATE", true
+	case "share":
+		return " FOR SHARE", true
+	case "update_nowait":
+		return " FOR UPDATE NOWAIT", true
+	case "share_nowait":
+		return " FOR SHARE NOWAIT", true
+	default:
+		return "", false
+	}
+}
+
 // QuoteWith is a helper for dialects using a single quote character.
 func QuoteWith(q string, ident string) string {
 	parts := strings.Split(ident, ".")

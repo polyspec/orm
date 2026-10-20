@@ -3,10 +3,7 @@ package dbspec
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -87,14 +84,7 @@ func (q showCreateCannedQuerier) answer(query string) ([][]any, int, error) {
 // and the same error.
 func TestMySQLIntrospectionOfShownChecks(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	raw, err := os.ReadFile(filepath.Join(repositoryRoot(t), "tests", "dbspec", "show-create.json"))
-	if err != nil {
-		t.Fatalf("cannot read tests/dbspec/show-create.json: %v; run from a checkout of this repository", err)
-	}
-	var v showCreateVectors
-	if err := json.Unmarshal(raw, &v); err != nil {
-		t.Fatalf("tests/dbspec/show-create.json is not valid JSON: %v", err)
-	}
+	v := loadShowCreate(t)
 	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("cannot open the in-memory SQLite database that answers the catalog: %v", err)

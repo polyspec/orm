@@ -47,14 +47,7 @@ type showCreateCase struct {
 // as the expected body in CHECK_CLAUSE form (T62-4-8).
 func TestMySQLShownCheckVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	raw, err := os.ReadFile(filepath.Join(repositoryRoot(t), "tests", "dbspec", "show-create.json"))
-	if err != nil {
-		t.Fatalf("cannot read tests/dbspec/show-create.json: %v; run from a checkout of this repository", err)
-	}
-	var v showCreateVectors
-	if err := json.Unmarshal(raw, &v); err != nil {
-		t.Fatalf("tests/dbspec/show-create.json is not valid JSON: %v", err)
-	}
+	v := loadShowCreate(t)
 	if len(v.Cases) == 0 {
 		t.Fatal("tests/dbspec/show-create.json has no cases")
 	}
@@ -75,4 +68,18 @@ func TestMySQLShownCheckVectors(t *testing.T) {
 			}
 		})
 	}
+}
+
+// loadShowCreate reads and decodes tests/dbspec/show-create.json; a failure fails the test.
+func loadShowCreate(t *testing.T) showCreateVectors {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join(repositoryRoot(t), "tests", "dbspec", "show-create.json"))
+	if err != nil {
+		t.Fatalf("cannot read tests/dbspec/show-create.json: %v; run from a checkout of this repository", err)
+	}
+	var v showCreateVectors
+	if err := json.Unmarshal(raw, &v); err != nil {
+		t.Fatalf("tests/dbspec/show-create.json is not valid JSON: %v", err)
+	}
+	return v
 }

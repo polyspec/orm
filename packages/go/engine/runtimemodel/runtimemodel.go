@@ -396,3 +396,19 @@ func LoadSetFile(path string) (*Model, error) {
 	}
 	return m, nil
 }
+
+// SnakeCase converts a generated PascalCase name to snake_case.
+func SnakeCase(s string) string {
+	var b strings.Builder
+	for i, r := range s {
+		if r >= 'A' && r <= 'Z' {
+			if i > 0 {
+				b.WriteByte('_')
+			}
+			b.WriteRune(r + ('a' - 'A'))
+			continue
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
+}

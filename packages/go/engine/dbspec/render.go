@@ -137,6 +137,19 @@ func (r renderer) list(names []string) string {
 	return strings.Join(quoted, ", ")
 }
 
+// indexColumnList returns the columns of an index as the list of a CREATE INDEX
+// statement: each column quoted by quote, and DESC after a descending column.
+func indexColumnList(cols []IndexColumn, quote func(string) string) string {
+	columns := make([]string, len(cols))
+	for i, c := range cols {
+		columns[i] = quote(c.Name)
+		if c.Descending {
+			columns[i] += " DESC"
+		}
+	}
+	return strings.Join(columns, ", ")
+}
+
 func (r renderer) table(t *Table) []string {
 	create := r.createTable(t, t.Name, func(column string) string { return rendererName(t.Name, column) }, nil)
 	out := []string{create}
@@ -146,14 +159,7 @@ func (r renderer) table(t *Table) []string {
 		}
 	}
 	for _, x := range sortedBy(t.Indexes, func(x Index) string { return x.Name }) {
-		columns := make([]string, len(x.Columns))
-		for i, c := range x.Columns {
-			columns[i] = r.q(c.Name)
-			if c.Descending {
-				columns[i] += " DESC"
-			}
-		}
-		out = append(out, "CREATE INDEX "+r.q(x.Name)+" ON "+r.q(t.Name)+" ("+strings.Join(columns, ", ")+")")
+		out = append(out, "CREATE INDEX "+r.q(x.Name)+" ON "+r.q(t.Name)+" ("+indexColumnList(x.Columns, r.q)+")")
 	}
 	return out
 }

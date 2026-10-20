@@ -40,28 +40,16 @@ func runTimed(t *testing.T, name string, deadline time.Duration, work func() err
 	t.Helper()
 	started := time.Now()
 	t.Logf("RUN %s deadline=%s", name, deadline)
-	done := make(chan error, 1)
-	go func() {
-		defer func() {
-			if recovered := recover(); recovered != nil {
-				done <- fmt.Errorf("panic: %v", recovered)
-			}
-		}()
-		done <- work()
-	}()
-	timer := time.NewTimer(deadline)
-	defer timer.Stop()
-	select {
-	case err := <-done:
-		elapsed := time.Since(started)
-		if err != nil {
-			t.Errorf("FAIL %s elapsed=%s: %v", name, elapsed, err)
-			return
-		}
-		t.Logf("PASS %s elapsed=%s", name, elapsed)
-	case <-timer.C:
+	ok, err := testcase.Bounded(deadline, work)
+	if !ok {
 		t.Fatalf("FAIL %s: deadline %s exceeded", name, deadline)
 	}
+	elapsed := time.Since(started)
+	if err != nil {
+		t.Errorf("FAIL %s elapsed=%s: %v", name, elapsed, err)
+		return
+	}
+	t.Logf("PASS %s elapsed=%s", name, elapsed)
 }
 
 // failingCaseFixture is the build tag that makes TestFailingCaseFixture (harness_fixture_test.go) build.

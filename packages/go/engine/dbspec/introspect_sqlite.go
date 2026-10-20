@@ -201,9 +201,8 @@ func sqliteType(r renderer, declared, column, check string, hasCheck bool) (Type
 	var candidates []Type
 	switch {
 	case m[2] != "":
-		p, errP := strconv.Atoi(m[2])
-		s, errS := strconv.Atoi(m[3])
-		if errP != nil || errS != nil {
+		p, s, ok := decimalDigits(m[2], m[3])
+		if !ok {
 			return Type{}, false
 		}
 		candidates = []Type{{Kind: TypeDecimal, Precision: p, Scale: s}}

@@ -27,18 +27,7 @@ func (MySQL) ClockOperand(col string, _ int) string { return col }
 func (MySQL) ReadTime(col string, _ int) string     { return "CAST(" + col + " AS CHAR)" }
 func (MySQL) WriteTime(ph string) string            { return ph }
 func (MySQL) RowLock(mode string) (string, bool) {
-	switch mode {
-	case "update":
-		return " FOR UPDATE", true
-	case "share":
-		return " FOR SHARE", true
-	case "update_nowait":
-		return " FOR UPDATE NOWAIT", true
-	case "share_nowait":
-		return " FOR SHARE NOWAIT", true
-	default:
-		return "", false
-	}
+	return rowLock(mode)
 }
 
 // AES is host-side so row version metadata can select the key before decode,

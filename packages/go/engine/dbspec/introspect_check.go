@@ -400,6 +400,13 @@ func (d *checkDecoder) list() ([]cOperand, error) {
 	if err := d.expect("("); err != nil {
 		return nil, err
 	}
+	return d.literals(")", "an in list holds literals only")
+}
+
+// literals reads the literal operands separated by commas, up to and including
+// the closing punctuation closer; a column or other operand that is not a
+// literal fails with msg.
+func (d *checkDecoder) literals(closer, msg string) ([]cOperand, error) {
 	var out []cOperand
 	for {
 		node, err := d.term()
@@ -408,10 +415,10 @@ func (d *checkDecoder) list() ([]cOperand, error) {
 		}
 		operand, ok := node.(cOperand)
 		if !ok || operand.kind == "column" {
-			return nil, fmt.Errorf("an in list holds literals only")
+			return nil, fmt.Errorf("%s", msg)
 		}
 		out = append(out, operand)
-		if d.punct(")") {
+		if d.punct(closer) {
 			return out, nil
 		}
 		if err := d.expect(","); err != nil {
@@ -433,23 +440,9 @@ func (d *checkDecoder) array() ([]cOperand, error) {
 	if err := d.expect("["); err != nil {
 		return nil, err
 	}
-	var out []cOperand
-	for {
-		node, err := d.term()
-		if err != nil {
-			return nil, err
-		}
-		operand, ok := node.(cOperand)
-		if !ok || operand.kind == "column" {
-			return nil, fmt.Errorf("an array holds literals only")
-		}
-		out = append(out, operand)
-		if d.punct("]") {
-			break
-		}
-		if err := d.expect(","); err != nil {
-			return nil, err
-		}
+	out, err := d.literals("]", "an array holds literals only")
+	if err != nil {
+		return nil, err
 	}
 	if wrapped {
 		if err := d.expect(")"); err != nil {

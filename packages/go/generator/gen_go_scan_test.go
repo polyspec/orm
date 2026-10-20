@@ -73,17 +73,8 @@ func Brands() *model.ProductModel {
 	return model.Product().Relations(model.Brand().MatchBrandSeqWithSeq())
 }
 
-func Count(p *model.ProductModel) (int, error) {
-	brands, err := p.GetBrandModels()
-	if err != nil {
-		return 0, err
-	}
-	return brands.Len(), nil
-}
-`)
-	if err := generateGo(namesManifest(t, namesDiagram), "model", "", []string{"./..."}); err != nil {
-		t.Fatal(err)
-	}
+`+scanCountFunc)
+	generateModel(t, namesManifest(t, namesDiagram))
 	buildScannedModule(t)
 }
 
@@ -100,9 +91,7 @@ import "testing"
 
 func TestPrice(t *testing.T) { _ = Product().GtPrice(1) }
 `)
-	if err := generateGo(namesManifest(t, namesDiagram), "model", "", []string{"./..."}); err != nil {
-		t.Fatal(err)
-	}
+	generateModel(t, namesManifest(t, namesDiagram))
 	if out, err := exec.Command("go", "vet", "./...").CombinedOutput(); err != nil {
 		t.Fatalf("go vet: %v\n%s", err, out)
 	}
@@ -131,15 +120,9 @@ import (
 
 func Title() string { return other.Product().Title() }
 
-func Cheap() *model.ProductModel { return model.Product().LtPrice(1) }
-`)
-	if err := generateGo(namesManifest(t, namesDiagram), "model", "", []string{"./..."}); err != nil {
-		t.Fatal(err)
-	}
-	product, err := os.ReadFile("model/product.go")
-	if err != nil {
-		t.Fatal(err)
-	}
+`+scanCheapFunc)
+	generateModel(t, namesManifest(t, namesDiagram))
+	product := readModelFile(t, "product.go")
 	if strings.Contains(string(product), "Title") {
 		t.Fatal("a method of another package's Product result was generated on ProductModel")
 	}
@@ -151,33 +134,15 @@ func Cheap() *model.ProductModel { return model.Product().LtPrice(1) }
 func TestGoRelationGetterReportsMismatch(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	write := scannedModule(t)
-	write("example/example.go", `package example
-
-import "example.com/ormexample/model"
-
-func Load() *model.ProductModel {
-	return model.Product().
-		Relation(model.Brand().MatchBrandSeqWithSeq().AliasOwner()).
+	write("example/example.go", scanLoadHeader+`		Relation(model.Brand().MatchBrandSeqWithSeq().AliasOwner()).
 		Relations(model.Brand().MatchBrandSeqWithSeq())
 }
 
 func Owner(p *model.ProductModel) (*model.BrandModel, error) { return p.GetOwner() }
 
-func Count(p *model.ProductModel) (int, error) {
-	brands, err := p.GetBrandModels()
-	if err != nil {
-		return 0, err
-	}
-	return brands.Len(), nil
-}
-`)
-	if err := generateGo(namesManifest(t, namesDiagram), "model", "", []string{"./..."}); err != nil {
-		t.Fatal(err)
-	}
-	product, err := os.ReadFile("model/product.go")
-	if err != nil {
-		t.Fatal(err)
-	}
+`+scanCountFunc)
+	generateModel(t, namesManifest(t, namesDiagram))
+	product := readModelFile(t, "product.go")
 	text := string(product)
 	for _, want := range []string{
 		"func (x *ProductModel) GetOwner() (*BrandModel, error) {\n\treturn orm.RelatedAs[*BrandModel](x.m, \"owner\")\n}",
@@ -203,8 +168,7 @@ func TestGoGenerationScanPathSpelling(t *testing.T) {
 
 import "example.com/ormexample/model"
 
-func Cheap() *model.ProductModel { return model.Product().LtPrice(1) }
-`)
+`+scanCheapFunc)
 	write("tests/tests.go", `package tests
 
 import "example.com/ormexample/model"
@@ -293,13 +257,8 @@ func Query() *model.ProductModel { return model.Product().GePrice(1) }
 	}
 	t.Cleanup(func() { scanLoads = nil })
 	m := namesManifest(t, namesDiagram)
-	if err := generateGo(m, "model", "", []string{"./..."}); err != nil {
-		t.Fatal(err)
-	}
-	product, err := os.ReadFile("model/product.go")
-	if err != nil {
-		t.Fatal(err)
-	}
+	generateModel(t, m)
+	product := readModelFile(t, "product.go")
 	for _, method := range []string{"GtPrice", "LtPrice", "GePrice"} {
 		if !strings.Contains(string(product), method) {
 			t.Fatalf("the scan did not generate %s", method)
@@ -320,13 +279,7 @@ func TestGoRelationAliasWithChainPrefix(t *testing.T) {
 	// The test of DSL-9, DSL-44 (docs/spec).
 	testcase.Start(t, testcase.Process)
 	write := scannedModule(t)
-	write("example/example.go", `package example
-
-import "example.com/ormexample/model"
-
-func Load() *model.ProductModel {
-	return model.Product().
-		Relation(model.Brand().MatchBrandSeqWithSeq().AliasMatch()).
+	write("example/example.go", scanLoadHeader+`		Relation(model.Brand().MatchBrandSeqWithSeq().AliasMatch()).
 		Relation(model.Brand().MatchBrandSeqWithSeq().AliasJoin())
 }
 
@@ -334,13 +287,8 @@ func Match(p *model.ProductModel) (*model.BrandModel, error) { return p.GetMatch
 
 func Join(p *model.ProductModel) (*model.BrandModel, error) { return p.GetJoin() }
 `)
-	if err := generateGo(namesManifest(t, namesDiagram), "model", "", []string{"./..."}); err != nil {
-		t.Fatal(err)
-	}
-	product, err := os.ReadFile("model/product.go")
-	if err != nil {
-		t.Fatal(err)
-	}
+	generateModel(t, namesManifest(t, namesDiagram))
+	product := readModelFile(t, "product.go")
 	for _, want := range []string{"func (x *ProductModel) GetMatch() (*BrandModel, error)", "func (x *ProductModel) GetJoin() (*BrandModel, error)"} {
 		if !strings.Contains(string(product), want) {
 			t.Errorf("generated product.go lacks %s", want)
@@ -357,13 +305,7 @@ func TestGoNestedRelationAliasAttachesToItsParent(t *testing.T) {
 	// The test of DSL-44 (docs/spec).
 	testcase.Start(t, testcase.Process)
 	write := scannedModule(t)
-	write("example/example.go", `package example
-
-import "example.com/ormexample/model"
-
-func Load() *model.ProductModel {
-	return model.Product().
-		Relation(model.Brand().MatchBrandSeqWithSeq().AliasStore().
+	write("example/example.go", scanLoadHeader+`		Relation(model.Brand().MatchBrandSeqWithSeq().AliasStore().
 			Relation(model.Product().MatchSeqWithBrandSeq().AliasMatch()))
 }
 
@@ -375,9 +317,7 @@ func Match(p *model.ProductModel) (*model.ProductModel, error) {
 	return store.GetMatch()
 }
 `)
-	if err := generateGo(namesManifest(t, namesDiagram), "model", "", []string{"./..."}); err != nil {
-		t.Fatal(err)
-	}
+	generateModel(t, namesManifest(t, namesDiagram))
 	brand, err := os.ReadFile("model/brand.go")
 	if err != nil {
 		t.Fatal(err)
@@ -529,9 +469,7 @@ func Scoped() (int, error) {
 	return count()
 }
 `)
-	if err := generateGo(namesManifest(t, namesDiagram), "model", "", []string{"./..."}); err != nil {
-		t.Fatal(err)
-	}
+	generateModel(t, namesManifest(t, namesDiagram))
 	buildScannedModule(t)
 }
 
@@ -560,15 +498,11 @@ func Store(p *othermodel.ProductModel) (any, error) { return p.GetStore() }
 
 import "example.com/ormexample/model"
 
-func Cheap() *model.ProductModel { return model.Product().LtPrice(1) }
-`)
+`+scanCheapFunc)
 	if err := generateGo(m, "model", "", []string{"./..."}); err != nil {
 		t.Fatalf("a call on another set's model was taken as this set's: %v", err)
 	}
-	product, err := os.ReadFile("model/product.go")
-	if err != nil {
-		t.Fatal(err)
-	}
+	product := readModelFile(t, "product.go")
 	if strings.Contains(string(product), "GetStore") || strings.Contains(string(product), "MatchBrandSeqWithSeq") {
 		t.Error("model/product.go declares a method that only another set's model is called with")
 	}
@@ -636,13 +570,8 @@ func Page(limit *int) *model.ProductModel {
 }
 `)
 	m := namesManifest(t, namesDiagram)
-	if err := generateGo(m, "model", "", []string{"./..."}); err != nil {
-		t.Fatal(err)
-	}
-	product, err := os.ReadFile("model/product.go")
-	if err != nil {
-		t.Fatal(err)
-	}
+	generateModel(t, m)
+	product := readModelFile(t, "product.go")
 	for _, method := range []string{"GtPrice", "AndGtPrice", "LtPrice", "AndLtPrice"} {
 		if !strings.Contains(string(product), ") "+method+"[") {
 			t.Errorf("model/product.go lacks %s called on a reassigned variable", method)
@@ -650,3 +579,32 @@ func Page(limit *int) *model.ProductModel {
 	}
 	buildScannedModule(t)
 }
+
+// readModelFile reads the file name of the generated model package; a failure fails the test.
+func readModelFile(t *testing.T, name string) string {
+	t.Helper()
+	raw, err := os.ReadFile("model/" + name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(raw)
+}
+
+// generateModel generates the model package from the manifest m into the
+// working directory's model folder; a failure fails the test.
+func generateModel(t *testing.T, m *runtimemodel.Model) {
+	t.Helper()
+	if err := generateGo(m, "model", "", []string{"./..."}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// scanCountFunc is the Count function of a scanned example package, which reads the brands of a product.
+const scanCountFunc = "func Count(p *model.ProductModel) (int, error) {\n\tbrands, err := p.GetBrandModels()\n\tif err != nil {\n\t\treturn 0, err\n\t}\n\treturn brands.Len(), nil\n}\n"
+
+// scanCheapFunc is the Cheap function of a scanned example package, which filters the products by price.
+const scanCheapFunc = "func Cheap() *model.ProductModel { return model.Product().LtPrice(1) }\n"
+
+// scanLoadHeader starts the example package of a scan case: a Load function that
+// starts a product query, whose relations the case then writes.
+const scanLoadHeader = "package example\n\nimport \"example.com/ormexample/model\"\n\nfunc Load() *model.ProductModel {\n\treturn model.Product().\n"

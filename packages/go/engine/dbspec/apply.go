@@ -203,17 +203,7 @@ func isOnly(err, target error) bool {
 // Recover judges an interrupted plan from the effects in the catalog and carries it forward. If there is no
 // interrupted plan, it changes nothing.
 func Recover(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error {
-	a, err := newApplier(ctx, c, dialect, plans, now, events)
-	if err != nil {
-		return err
-	}
-	return a.session(func() error {
-		position, err := a.position()
-		if err != nil || position == 0 {
-			return err
-		}
-		p := a.chain[position-1]
-		row := a.history[p.Name]
+	return lastPlan(ctx, c, dialect, plans, now, events, func(a *applier, p *Plan, row historyRow) error {
 		if row.state == stateApplied || row.state == stateDone {
 			return nil
 		}
@@ -244,17 +234,7 @@ func Recover(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now 
 // Rollback rolls the last plan in history back to step 0 with its rollback statements, and then
 // deletes its row. If there is no row, it changes nothing.
 func Rollback(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error {
-	a, err := newApplier(ctx, c, dialect, plans, now, events)
-	if err != nil {
-		return err
-	}
-	return a.session(func() error {
-		position, err := a.position()
-		if err != nil || position == 0 {
-			return err
-		}
-		p := a.chain[position-1]
-		row := a.history[p.Name]
+	return lastPlan(ctx, c, dialect, plans, now, events, func(a *applier, p *Plan, row historyRow) error {
 		steps, err := a.steps(p)
 		if err != nil {
 			return err
@@ -289,30 +269,18 @@ func Rollback(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now
 			if steps[i].Rollback == "" {
 				return a.irreversible(p, steps, i)
 			}
-			statement := steps[i].Rollback
-			if steps[i].RollbackRestore != "" {
-				restore, err := a.effect(steps[i].RestoreIf)
-				if err != nil {
-					return &ApplyError{Code: "failed", Plan: p.Name, Step: i, Err: err}
-				}
-				if restore {
-					statement = steps[i].RollbackRestore
-				}
-			}
-			if err := a.run(p, steps, i, statement); err != nil {
+			statement, err := a.statementAt(p, i, steps[i].Rollback, steps[i].RollbackRestore, steps[i].RestoreIf)
+			if err != nil {
 				return err
 			}
-			if err := a.setStep(p, i); err != nil {
+			if err := a.runAndRecord(p, steps, i, statement, i); err != nil {
 				return err
 			}
 		}
 		if err := a.foreignKeyCheck(p); err != nil {
 			return err
 		}
-		if err := a.verify(p.From); err != nil {
-			return &ApplyError{Code: "verify", Plan: p.Name, Err: err}
-		}
-		if err := a.emit(ApplyEvent{Kind: "verified", Plan: p.Name, Steps: len(steps)}); err != nil {
+		if err := a.verified(p, p.From, len(steps)); err != nil {
 			return err
 		}
 		q := a.r.q
@@ -326,11 +294,7 @@ func Rollback(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now
 // Finalize runs the finalize steps of all applied plans in chain order, deleting hidden tables and
 // columns.
 func Finalize(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error {
-	a, err := newApplier(ctx, c, dialect, plans, now, events)
-	if err != nil {
-		return err
-	}
-	return a.session(func() error {
+	return inSession(ctx, c, dialect, plans, now, events, func(a *applier) error {
 		position, err := a.settled()
 		if err != nil {
 			return err
@@ -374,6 +338,30 @@ func (a *applier) irreversible(p *Plan, steps []PlanStep, i int) error {
 		message = "a finalize step has no rollback"
 	}
 	return &ApplyError{Code: "irreversible", Plan: p.Name, Step: i, Message: message}
+}
+
+// inSession runs fn in a session of the applier of plans; the applier is
+// created with the plans and the arguments of the caller.
+func inSession(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error, fn func(a *applier) error) error {
+	a, err := newApplier(ctx, c, dialect, plans, now, events)
+	if err != nil {
+		return err
+	}
+	return a.session(func() error { return fn(a) })
+}
+
+// lastPlan runs fn in a session of the applier of plans, with the last plan of
+// the history chain and its history row. With no recorded plan it changes
+// nothing.
+func lastPlan(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error, fn func(a *applier, p *Plan, row historyRow) error) error {
+	return inSession(ctx, c, dialect, plans, now, events, func(a *applier) error {
+		position, err := a.position()
+		if err != nil || position == 0 {
+			return err
+		}
+		p := a.chain[position-1]
+		return fn(a, p, a.history[p.Name])
+	})
 }
 
 // session takes the dialect's lock and changes the session settings, runs f, and at the end restores the settings
@@ -666,6 +654,15 @@ func (a *applier) settled() (int, error) {
 	return position, nil
 }
 
+// verified checks that the schema is want, and emits the event of a verified plan
+// with its number of steps.
+func (a *applier) verified(p *Plan, want string, steps int) error {
+	if err := a.verify(want); err != nil {
+		return &ApplyError{Code: "verify", Plan: p.Name, Err: err}
+	}
+	return a.emit(ApplyEvent{Kind: "verified", Plan: p.Name, Steps: steps})
+}
+
 // verify checks that the database's introspection equals want schemaHash (an empty string means an empty
 // database) and that there are no unsupported objects.
 func (a *applier) verify(want string) error {
@@ -796,30 +793,18 @@ func (a *applier) applyPlan(p *Plan) error {
 func (a *applier) forward(p *Plan, steps []PlanStep, start int) error {
 	end := finalizeStart(steps)
 	for i := start; i < end; i++ {
-		statement := steps[i].Statement
-		if steps[i].Restore != "" {
-			restore, err := a.effect(steps[i].RestoreIf)
-			if err != nil {
-				return &ApplyError{Code: "failed", Plan: p.Name, Step: i, Err: err}
-			}
-			if restore {
-				statement = steps[i].Restore
-			}
-		}
-		if err := a.run(p, steps, i, statement); err != nil {
+		statement, err := a.statementAt(p, i, steps[i].Statement, steps[i].Restore, steps[i].RestoreIf)
+		if err != nil {
 			return err
 		}
-		if err := a.setStep(p, i+1); err != nil {
+		if err := a.runAndRecord(p, steps, i, statement, i+1); err != nil {
 			return err
 		}
 	}
 	if err := a.foreignKeyCheck(p); err != nil {
 		return err
 	}
-	if err := a.verify(p.To); err != nil {
-		return &ApplyError{Code: "verify", Plan: p.Name, Err: err}
-	}
-	if err := a.emit(ApplyEvent{Kind: "verified", Plan: p.Name, Steps: len(steps)}); err != nil {
+	if err := a.verified(p, p.To, len(steps)); err != nil {
 		return err
 	}
 	if err := a.record(p, stateApplied, end); err != nil {
@@ -951,6 +936,31 @@ var effectQueries = map[Dialect]map[string]string{
 }
 
 // effect reports whether the effect is in the database now.
+// runAndRecord runs the statement of step i and then records that the plan has
+// reached step done.
+func (a *applier) runAndRecord(p *Plan, steps []PlanStep, i int, statement string, done int) error {
+	if err := a.run(p, steps, i, statement); err != nil {
+		return err
+	}
+	return a.setStep(p, done)
+}
+
+// statementAt returns the statement of step i: restore when the restore
+// statement of the step is set and its condition holds, and statement otherwise.
+func (a *applier) statementAt(p *Plan, i int, statement, restore string, cond Effect) (string, error) {
+	if restore == "" {
+		return statement, nil
+	}
+	ok, err := a.effect(cond)
+	if err != nil {
+		return "", &ApplyError{Code: "failed", Plan: p.Name, Step: i, Err: err}
+	}
+	if ok {
+		return restore, nil
+	}
+	return statement, nil
+}
+
 func (a *applier) effect(e Effect) (bool, error) {
 	var query string
 	var args []any
