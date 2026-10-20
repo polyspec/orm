@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 07adbd6ace45a3abd539a7d95bd6ba474df5acf78fc50c4b55180c214b5d0f2c -->
+<!-- source-sha256: 2381588a5b761f8353d3d66a3760d31c6a5d4daf878080c03c9e9cc8dd6054a1 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -69,7 +69,7 @@
 | KSTD-5-7 | lint-go가 통과한다 (KSTD-5 후속). Cause: golangci-lint가 examples, packages/go, tests에서, deadcode가 packages/go에서 실패한다 | the Go of the repository | `make lint-go` | [o] |
 | KSTD-5-7-2 | packages/go/orm이 K334가 찾는 모든 오류를 처리한다 (KSTD-5-7 후속). Cause: kit K334는 golangci-lint가 버린 오류(errcheck check-blank, check-type-assertions), 오류 chain을 잃는 비교나 wrap(errorlint), nil로 반환한 오류(nilerr), linter와 이유 없는 nolint(nolintlint)를 보고하게 한다; packages/go/orm에서 113개를 찾는다 | packages/go/orm | `make lint-go` | [~] |
 | KSTD-5-7-3 | packages/go/engine/dbspec이 K334가 찾는 모든 오류를 처리한다 (KSTD-5-7 후속). Cause: kit K334는 golangci-lint가 버린 오류(errcheck check-blank, check-type-assertions), 오류 chain을 잃는 비교나 wrap(errorlint), nil로 반환한 오류(nilerr), linter와 이유 없는 nolint(nolintlint)를 보고하게 한다; packages/go/engine/dbspec에서 41개를 찾는다 | packages/go/engine/dbspec | `make lint-go` | [~] |
-| KSTD-5-7-4 | 나머지 Go code가 K334가 찾는 모든 오류를 처리하고 deadcode가 도달할 수 없는 함수를 찾지 않는다 (KSTD-5-7 후속). Cause: kit K334는 golangci-lint가 버린 오류(errcheck check-blank, check-type-assertions), 오류 chain을 잃는 비교나 wrap(errorlint), nil로 반환한 오류(nilerr), linter와 이유 없는 nolint(nolintlint)를 보고하게 한다; packages/go/bench, generator, internal, testcase와 tests, bench에서 약 40개를 찾는다 | packages/go, tests, examples | `make lint-go` | [ ] |
+| KSTD-5-7-4 | 나머지 Go code가 K334가 찾는 모든 오류를 처리하고 deadcode가 도달할 수 없는 함수를 찾지 않는다 (KSTD-5-7 후속). Cause: kit K334는 golangci-lint가 버린 오류(errcheck check-blank, check-type-assertions), 오류 chain을 잃는 비교나 wrap(errorlint), nil로 반환한 오류(nilerr), linter와 이유 없는 nolint(nolintlint)를 보고하게 한다; packages/go/bench, generator, internal, testcase와 tests, bench에서 약 40개를 찾는다 | packages/go, tests, examples | `make lint-go` | [~] |
 | KSTD-5-8 | lint-python이 통과한다 (KSTD-5 후속). Cause: ruff format --check가 repository의 Python에서 실패한다 | the Python of the repository | `make lint-python` | [o] |
 | KSTD-5-9 | lint-php가 통과한다 (KSTD-5 후속). Cause: 루트, packages/php, packages/php-ext의 phpcs와 phpstan이 실패한다 | the PHP of the repository | `make lint-php` | [ ] |
 | KSTD-5-9-1 | 손으로 쓴 PHP가 phpcs 줄 길이를 지킨다 (KSTD-5-9 후속). Cause: phpcs가 손으로 쓴 파일에서 120자를 넘는 줄 2657개를 보고한다 | packages/php | `make lint-php` | [~] |
