@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The checklist no longer holds T77-8-1-6, a row that only awaited the full parity run; a full run is not checklist content (T77-8-1-6).
 - The interface contracts follow the nullable reads, the creates batch and the revision write, and a conformance run of selected vectors checks their state contracts (T204-1).
 - An audited transaction inserts its audit record right before its first audited write, so a unit of work that writes no audited row writes no audit record, in the five clients (T220).
 - The MySQL migration case of the test servers reads the TAP lines of its steps (T221).
