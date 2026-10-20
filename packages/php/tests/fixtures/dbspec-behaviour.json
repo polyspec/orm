@@ -65,6 +65,14 @@
             "TypeError",
             "the document set holds string, not Polyspec\\Orm\\Dbspec\\Document"
         ],
+        "arguments/analyze-document-text-not-a-string": [
+            "InvalidArgumentException",
+            "The declared document set maps document names to texts"
+        ],
+        "arguments/format-document-text-not-a-string": [
+            "InvalidArgumentException",
+            "The declared document set maps document names to texts"
+        ],
         "manifest/repeated-document": [
             null,
             [

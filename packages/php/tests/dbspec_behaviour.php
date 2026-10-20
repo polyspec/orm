@@ -207,6 +207,9 @@ function dbspec_behaviour_cases(): array
     $cases['arguments/missing-file'] = static fn(): array => behaviour_outcome(static fn() => behaviour_described(Dbspec::readFile("$root/tests/dbspec/files/missing.dbs")->diagnostics));
     $cases['arguments/directory'] = static fn(): array => behaviour_outcome(static fn() => behaviour_described(Dbspec::readFile("$root/tests/dbspec/files")->diagnostics));
     $cases['arguments/manifest-of-a-text'] = static fn(): array => behaviour_outcome(static fn() => Dbspec::manifest([$shop]));
+    // A document text of the set that is not a string, given to the syntax analysis and to format.
+    $cases['arguments/analyze-document-text-not-a-string'] = static fn(): array => behaviour_outcome(static fn() => Dbspec::analyze('dbspec 1 d', ['d' => 5]));
+    $cases['arguments/format-document-text-not-a-string'] = static fn(): array => behaviour_outcome(static fn() => Dbspec::format('dbspec 1 d', ['d' => 5]));
 
     $cases['manifest/repeated-document'] = static function () use ($shop): array {
         $set = [Dbspec::parse($shop, [])->document, Dbspec::parse($shop, [])->document];
