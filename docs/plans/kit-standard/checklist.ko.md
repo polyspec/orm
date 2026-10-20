@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: f0e3fdef5cbf9ca22c1d11352ec848a1fc1e40460dd9d995f3f0cb663df4a15a -->
+<!-- source-sha256: 992aacfa03e226cb1e00afac44cce38a8aa85ab323363ffa59e6699450c1660b -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -102,7 +102,7 @@
 | KSTD-5-12-2 | Rust fault test는 Cargo가 test에 켜는 test-faults feature로 돌며 test code에 #[cfg]가 없다 (KSTD-5-12 후속). Cause: statement_fault.rs와 rollback.rs가 fault case를 #[cfg(feature = "test-faults")]로 막아, feature 없는 build는 다른 구현보다 적은 case를 돈다 | packages/rust/orm/Cargo.toml, packages/rust/orm/tests | `cargo test --offline --manifest-path packages/rust/orm/Cargo.toml --test statement_fault --no-run` | [o] |
 | KSTD-5-12-3 | Rust integration binary가 #[cfg(test)] 없이 생성 model을 받는다 (KSTD-5-12-1 후속). Cause: packages/rust/tests/src/integration.rs는 bin target이며 13행과 24행의 #[cfg(test)]가 build.rs가 생성한 code를 include하는 module nonnull_model과 external_member를 막아, binary와 그 test가 다른 code를 compile한다 | packages/rust/tests | `cargo build --offline --manifest-path packages/rust/tests/Cargo.toml --bins` | [o] |
 | KSTD-5-13 | bypass-check가 통과한다: 어떤 local 실행도 CI identity를 설정하지 않는다 (KSTD-5 후속). Cause: scripts/check/run.test.mts:181과 :189가 workflow 밖에서 CI identity를 설정한다 | scripts/check | `make bypass-check` | [~] |
-| KSTD-5-14 | rust-fmt-check가 통과한다 (KSTD-5 후속). Cause: main에서 packages/rust(build, orm/tests, schema, testcase, tests)의 cargo fmt --all --check가 실패한다 | packages/rust | `make rust-fmt-check` | [ ] |
+| KSTD-5-14 | rust-fmt-check가 통과한다 (KSTD-5 후속). Cause: main에서 packages/rust(build, orm/tests, schema, testcase, tests)의 cargo fmt --all --check가 실패한다 | packages/rust | `make rust-fmt-check` | [~] |
 | KSTD-5-15 | CI interface test가 workflow와 일치한다 (KSTD-5 후속). Cause: tests/interfaces/check/ci.test.mts가 .github/workflows/ci.yml에 문자 그대로의 `run: make orm-check` step을 요구하지만 workflow에 없어, main에서 interface-check/tests가 실패한다 | tests/interfaces/check/ci.test.mts or .github/workflows/ci.yml | `node --test tests/interfaces/check/ci.test.mts` | [ ] |
 | KSTD-6 | link rebuild는 repository layout을 읽고 자기 paths를 두지 않는다 (kit K286). Cause: kit은 link된 checkout을 layout으로 rebuild하며 link 선언의 paths key는 없어진다 | kit.json, the link declaration | `make kit-check` | [ ] |
 | KSTD-7 | main에서 feature-unit-check가 통과한다. Cause: docs/features.md가 그것이 그리는 coverage와 맞지 않고, scripts/features/coverage.test.mts의 8개 case가 "no package implements the client language php-extension"으로 실패한다 | docs/features.md, scripts/features | `make feature-unit-check` | [o] |
