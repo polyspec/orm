@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 4221f8914c92eb29c53057866353020d50378f1b351b1444b7fa059159abff5c -->
+<!-- source-sha256: a92d762474ba62cdefa8ada9e303c8b4e36790a6453f0e3d6b37fe41a97dca06 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -45,6 +45,7 @@
 | KSTD-2-11-5 | 구현 내부 test는 parity unit이 아닌 일반 package test다 (KSTD-2-11 후속). Cause: dbspec harness와 loader, unicode와 vector 자가 검사, generator scan과 extractor, test harness, bench, example, case clock unit(142개)은 spec 규칙을 검사하지 않는다 | config/parity.json, contracts/features.json | `make parity-declarations-check` | [o] |
 | KSTD-2-11-6 | error-code와 catalog unit은 여섯 구현 모두에 묶인 한 규칙의 unit이다 (KSTD-2-11 후속, KSTD-2-11-1). Cause: api unit 43개와 catalog unit 5개가 아무것도 인용하지 않고 php-extension binding이 없다 | config/parity.json, packages/php-ext | `node --test tests/interfaces/check/api.test.mts`, `make dbspec-php-extension-check/code-catalog`, `make client-unit-check/code-catalog` | [o] |
 | KSTD-2-11-7 | client api unit은 그 symbol의 INT와 COD id를 인용하고 php-extension binding을 갖는다 (KSTD-2-11 후속). Cause: api unit 68개가 아무것도 인용하지 않는다 | config/parity.json, packages/php-ext | `make parity-declarations-check` | [~] |
+| KSTD-2-11-7-1 | docs/spec/interfaces.md가 api unit 31개가 가리키지만 어떤 requirement도 적지 않은 client 표면을 requirement bullet로 규정하고 unit이 이를 인용한다 (KSTD-2-11-7 후속). Cause: AES keyring과 rotation class, Db connectSchema, execute, subscribe, withRequestHook, transaction, utils와 stats class, query base와 relation, error와 statement event class, utilities class, Collection accessor, GroupRow와 GroupRows member가 번호 없는 문단에만 있거나 아예 없다 | docs/spec/interfaces.md and its Korean twin, config/parity.json | `node --test tests/interfaces/check/api.test.mts` | [~] |
 | KSTD-2-11-8 | 각 feature-coverage case는 모든 구현에 묶인 하나의 중립 unit이다 (KSTD-2-11 후속). Cause: unit 153개가 같은 case를 언어마다 binding 하나씩 선언한다 | config/parity.json, tests of every implementation | `make parity-declarations-check` | [~] |
 | KSTD-2-11-9 | dbspec apply, plan, introspect unit은 여섯 구현 unit이다 (KSTD-2-11 후속). Cause: unit 40개가 한 동작을 구현마다 나눈다 | config/parity.json, tests of every implementation | `make parity-declarations-check` | [ ] |
 | KSTD-2-11-10 | collection identity와 group rows unit은 INT-31과 INT-62를 인용하는 여섯 구현 unit이다 (KSTD-2-11 후속). Cause: unit 18개가 한 동작을 구현마다 나눈다 | config/parity.json, tests of every implementation | `make parity-declarations-check` | [ ] |
