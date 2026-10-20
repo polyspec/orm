@@ -1,4 +1,12 @@
 {
+  "requirements": [
+    "DIA-15",
+    "DIA-32",
+    "COD-4",
+    "COD-5",
+    "COD-6",
+    "COD-8"
+  ],
   "feature": "authenticated_encryption",
   "cases": [
     {"id": "aes_envelope_decrypt", "operation": "aes_decrypt", "input": {"key": "bench-salt", "envelope_hex": "4F524D2D414553320000112233445566778899AABB651DA9F08BE2FA7CD7B2DF5C04D91B32189DCD854A70762F99271A2BEBA64A248E24"}, "expected": {"plain": "user42@example.com"}},

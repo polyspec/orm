@@ -1,4 +1,31 @@
 {
+  "requirements": [
+    "DSL-16",
+    "DSL-24",
+    "DSL-34",
+    "DSL-74",
+    "DSL-78",
+    "DSL-99",
+    "DSL-138",
+    "DSL-147",
+    "DIA-1",
+    "DIA-2",
+    "DIA-3",
+    "DIA-4",
+    "DIA-5",
+    "DIA-7",
+    "DIA-8",
+    "DIA-9",
+    "DIA-12",
+    "DIA-13",
+    "DIA-18",
+    "DIA-22",
+    "DIA-23",
+    "DIA-24",
+    "DIA-27",
+    "DIA-31",
+    "DIA-35"
+  ],
   "cases": [
     {
       "expected": {

@@ -4,6 +4,7 @@
   "description": "tests/conformance/vectors.json or a database's vectors.<driver>.json as the conformance checker reads it: the vectors by name, the chain each runs and its recorded expectation, which may be absent or null until a run records it. The checker refuses an empty list and an empty or repeated name itself; tests/conformance/schema/vectors.schema.json is the full form of a recorded file.",
   "type": "object",
   "properties": {
+    "requirements": { "type": "array", "items": { "type": "string" } },
     "vectors": {
       "type": "array",
       "items": {

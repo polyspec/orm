@@ -6,6 +6,12 @@
   "additionalProperties": false,
   "required": ["vectors"],
   "properties": {
+    "requirements": {
+      "description": "The ids of the spec requirements that the vectors test, which the conformance unit of config/parity.json cites.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string" }
+    },
     "vectors": {
       "type": "array",
       "minItems": 1,

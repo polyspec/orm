@@ -22,7 +22,9 @@ func TestAggregateNumericFixture(t *testing.T) {
 	}
 	var fixture struct {
 		Feature string `json:"feature"`
-		Cases   []struct {
+		// Requirements are the spec ids the cases test (config/parity.json).
+		Requirements []string `json:"requirements"`
+		Cases        []struct {
 			ID        string  `json:"id"`
 			Operation string  `json:"operation"`
 			InputType string  `json:"input_type"`

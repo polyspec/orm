@@ -607,9 +607,14 @@ export function recordVerified(root: string, outputs: string[], driver: string, 
       if (!declared.has(name)) throw new Error(`${language} output has undeclared vector ${JSON.stringify(name)}`);
     }
   }
-  const document: Json = new Map([['vectors', vectors.map((vector): Json => new Map<string, Json>([
-    ['name', vector.name], ['chain', vector.chain], ['calls', vector.calls], ['expect', vector.expect ?? null]]))]]);
   const path = join(root, vectorsPath(driver));
+  // The requirements the file names (config/parity.json) belong to the file, not to a run, so the record keeps them.
+  const requirements = fieldsOf(readExact(path, vectorListSchema))?.get('requirements');
+  const document: Json = new Map<string, Json>([
+    ...(requirements === undefined ? [] : [['requirements', requirements] as [string, Json]]),
+    ['vectors', vectors.map((vector): Json => new Map<string, Json>([
+      ['name', vector.name], ['chain', vector.chain], ['calls', vector.calls], ['expect', vector.expect ?? null]]))],
+  ]);
   const temporary = join(dirname(path), `.vectors-${process.pid}-${createHash('sha256').update(String(Math.random())).digest('hex').slice(0, 8)}`);
   try {
     writeFileSync(temporary, `${encode(document, { indent: '  ', sorted: false })}\n`, { flag: 'wx', mode: 0o644 });

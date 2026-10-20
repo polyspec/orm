@@ -1,4 +1,8 @@
 {
+  "requirements": [
+    "DIA-25",
+    "COD-2"
+  ],
   "feature": "model_writes",
   "columns": [
     {"id": "scaled", "type": "decimal", "precision": 13, "scale": 4},

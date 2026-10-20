@@ -137,4 +137,6 @@ foreach ($yamlCore as $vname => [$text, $v]) {
         'deterministic' => false,
     ];
 }
-echo json_encode(['vectors' => $out], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), "\n";
+// The requirements of docs/spec/codec.md that the vectors test (config/parity.json, unit codec).
+$requirements = ['COD-3', 'COD-9', 'COD-10', 'COD-11', 'COD-12', 'COD-13', 'COD-14', 'COD-16', 'COD-28', 'COD-29', 'COD-30', 'COD-33', 'COD-36', 'COD-38', 'COD-40'];
+echo json_encode(['requirements' => $requirements, 'vectors' => $out], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), "\n";

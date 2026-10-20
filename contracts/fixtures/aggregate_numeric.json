@@ -1,4 +1,8 @@
 {
+  "requirements": [
+    "DSL-66",
+    "COD-1"
+  ],
   "feature": "model_queries",
   "cases": [
     {"id": "decimal_average", "operation": "aggregate_numeric", "input_type": "decimal_text", "input": "48.0450", "expected": {"bits": "404805c28f5c28f6"}},

@@ -68,6 +68,18 @@ caseTest('TestRecordRequiresFourEqualOutputs', COMPUTE, () => withTemporaryDirec
   assert.match(readFileSync(vectors, 'utf8'), /"result": 1/, 'record did not save the agreed result');
 }));
 
+// The requirements a vector file names (config/parity.json) belong to the file, not to a run, so a record keeps them.
+caseTest('TestRecordKeepsTheRequirements', COMPUTE, () => withTemporaryDirectory('orm-conformance-check-test-', temp => {
+  const { root, directory } = conformanceRoot(temp);
+  const vectors = join(directory, 'vectors.json');
+  writeFileSync(vectors, '{"requirements":["DSL-1"],"vectors":[{"name":"one","chain":"one","expect":{"result":0}}]}');
+  quietly(() => recordVerified(root, writeOutputs(root, '{"one":{"result":1}}'), 'mysql'));
+  const recorded = JSON.parse(readFileSync(vectors, 'utf8')) as { requirements?: unknown; vectors: { expect: unknown }[] };
+  assert.deepEqual(Object.keys(recorded), ['requirements', 'vectors'], 'record dropped the requirements or moved them');
+  assert.deepEqual(recorded.requirements, ['DSL-1'], 'record changed the requirements');
+  assert.deepEqual(recorded.vectors[0]?.expect, { result: 1 }, 'record did not save the agreed result');
+}));
+
 caseTest('TestCompareRejectsUndeclaredDialectExpectation', COMPUTE, () => withTemporaryDirectory('orm-conformance-check-test-', temp => {
   const { root, directory } = conformanceRoot(temp);
   writeFileSync(join(directory, 'vectors.json'), '{"vectors":[{"name":"one","chain":"one","expect":{"result":1}}]}');

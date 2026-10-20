@@ -1,4 +1,15 @@
 {
+  "requirements": [
+    "COD-17",
+    "COD-18",
+    "COD-19",
+    "COD-20",
+    "COD-24",
+    "COD-25",
+    "COD-26",
+    "COD-27",
+    "COD-32"
+  ],
   "cases": [
     {
       "id": "sql_null",

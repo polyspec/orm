@@ -1,4 +1,11 @@
 {
+  "requirements": [
+    "COD-14",
+    "COD-29",
+    "COD-37",
+    "COD-39",
+    "COD-40"
+  ],
   "comment": "Decoding of a stored cell is exact: a cell decodes only in the form the encoder writes, and anything else is CODEC_DECODE (docs/spec/codec.md, Decoding is exact). A case gives the stage list in write order, the stored cell as text (stored) or as the hex of its bytes (stored_hex), and the decoded value as a JSON value, compared by value, or the error code. A list of host stages without aes (hex, ip) decodes with the host decode of the client and no key; any other list decodes with the codec decode. Base64 is the padded standard alphabet with zero padding bits, without white space or line breaks; hex is upper-case hex digits only, as every encoder writes it.",
   "vectors": [
     {"name": "base64-exact", "styles": ["serialize", "base64"], "stored": "czoyOiJoaSI7", "value": "hi"},
