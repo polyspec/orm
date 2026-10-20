@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from .test_sqlite import generate
+from .test_sqlite import generate, generate_document
 from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -74,6 +74,31 @@ class SchemaRegisterTest(unittest.TestCase):
             self.db.utils().schema().register(wrong)
         self.assertEqual(caught.exception.code, "CONFIG")
         self.assertEqual(dict(self.db.engines), before)
+
+    # Requirements: INT-54.
+    def test_changed_manifest_is_config_on_db_register_and_connect_schema(self):
+        from polyspec.orm.database import Db
+        from polyspec.orm.errors import OrmError
+        from polyspec.orm.schema import Schema
+
+        before = dict(self.db.engines)
+        with tempfile.TemporaryDirectory(prefix="orm-schema-register-changed-") as tmp:
+            other = generate_document(
+                f"{tmp}/note", ROOT / "contracts" / "fixtures" / "install" / "note.dbs"
+            ).SCHEMA
+            # The manifest text of another set, declared with the hash of this set.
+            changed = Schema(
+                manifest_text=other.manifest_text,
+                manifest_hash=self.schema.manifest_hash,
+                external_text=other.external_text,
+            )
+            with self.assertRaises(OrmError) as caught:
+                self.db.register(changed)
+            self.assertEqual(caught.exception.code, "CONFIG")
+            self.assertEqual(dict(self.db.engines), before)
+            with self.assertRaises(OrmError) as caught:
+                Db.connect_schema(f"sqlite://{tmp}/changed.sqlite3", changed)
+            self.assertEqual(caught.exception.code, "CONFIG")
 
     def test_registering_the_same_set_again_changes_nothing(self):
         before = dict(self.db.engines)

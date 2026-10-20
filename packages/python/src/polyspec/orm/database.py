@@ -1345,12 +1345,11 @@ class Db:
         return _PostgresConnection(self.parsed, self.statement_timeout_ms)
 
     def register(self, schema: Schema) -> "Db":
-        """Registers the generated model set on this connection."""
-        from polyspec.orm.engine.model import model_of_manifest
+        """Registers the generated model set on this connection. A text that does not hash to its declared
+        hash is CONFIG, as in SchemaUtils.register (INT-54)."""
+        from polyspec.orm.utils import _schema_model
 
-        model = model_of_manifest(
-            schema.manifest_text, schema.manifest_hash, schema.external_text
-        )
+        model = _schema_model(schema)
         self._register_set(schema.manifest_hash, model)
         return self
 
