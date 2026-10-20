@@ -42,7 +42,7 @@ func loadSyntaxVectors(t *testing.T) map[string][]Token {
 	if err := r.version(object); err != nil {
 		t.Fatal(err)
 	}
-	if err := r.exactKeys(object, "", "version", "note", "cases"); err != nil {
+	if err := r.exactKeys(object, "", "requirements", "version", "note", "cases"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := r.string(object, "", "note"); err != nil {

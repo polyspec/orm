@@ -22,7 +22,7 @@ function vector(name, body) {
 // The shared vectors are read strictly: the file has exactly the fields of the format, and it is the generator's output.
 const syntaxText = readFileSync(new URL('tests/dbspec/syntax.json', root), 'utf8');
 const syntax = JSON.parse(syntaxText);
-assert.deepEqual(Object.keys(syntax).sort(), ['cases', 'note', 'version']);
+assert.deepEqual(Object.keys(syntax).sort(), ['cases', 'note', 'requirements', 'version']);
 assert.equal(syntax.version, 1);
 for (const c of syntax.cases) {
   assert.deepEqual(Object.keys(c).sort(), ['id', 'tokens']);

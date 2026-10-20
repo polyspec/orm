@@ -172,7 +172,7 @@ fn run(case: &Value) {
 fn shared_set_file_vectors() -> Vec<Trial> {
     let path = vectors_path();
     let file: Value = serde_json::from_slice(&std::fs::read(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))).unwrap();
-    let file = object(&file, "set-files.json", &["version", "note", "cases"], &[]);
+    let file = object(&file, "set-files.json", &["requirements", "version", "note", "cases"], &[]);
     assert_eq!(file["version"], 1, "set-files.json version");
     string(&file["note"], "note");
     let cases = file["cases"].as_array().expect("cases are listed");

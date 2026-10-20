@@ -66,7 +66,7 @@ function readCase(c, index) {
   return c;
 }
 
-exactKeys(vectors, ['version', 'note', 'cases'], 'set-files.json');
+exactKeys(vectors, ['requirements', 'version', 'note', 'cases'], 'set-files.json');
 assert.equal(vectors.version, 1, 'set-files.json version');
 assert.equal(typeof vectors.note, 'string', 'set-files.json note');
 assert.ok(Array.isArray(vectors.cases) && vectors.cases.length > 0, 'set-files.json cases');

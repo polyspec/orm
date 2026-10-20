@@ -1,4 +1,7 @@
 {
+  "requirements": {
+    "cases": ["DBS-6", "DBS-7", "DBS-8", "DBS-9", "DBS-10", "DBS-11", "DBS-12", "DBS-13", "DBS-14", "DBS-15", "DBS-17", "DBS-18", "DBS-19", "DBS-20", "DBS-21", "DBS-22", "DBS-23", "DBS-24", "DBS-25", "DBS-26"]
+  },
   "version": 1,
   "note": "Vectors of the set reader (docs/spec/dbspec.md \"Document sets\"). Each case is a file tree under an empty temporary directory, the root of the tree: a path maps to {\"file\": UTF-8 text}, {\"hex\": bytes}, {\"symlink\": target as written} or {\"hardlink\": the tree path of an earlier file}; parent directories are created. The runner calls the set reader with the tree root joined with `set`. A `want` with `documents` and `external` lists the joined paths, relative to the tree root, in order; the runner requires each returned path to be the tree root, `/`, and that path, and the bytes to equal the file's. A `want` with `errors` lists each error's rule and path in order, the path relative to the tree root; messages are not compared. Unknown or missing fields are errors.",
   "cases": [

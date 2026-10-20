@@ -1,4 +1,7 @@
 {
+  "requirements": {
+    "cases": ["DBS-35", "DBS-37", "DBS-41", "DBS-84", "DBS-88", "DBS-90", "DBS-91", "DBS-92", "DBS-93", "DBS-96"]
+  },
   "version": 1,
   "note": "Each case parses every listed document against the others; statements lists, per dialect, the statements that Render writes for the document set in order. behavior steps run in order after the statements: sql must succeed, or fail when fails is true; query must return want as text. A step with dialects runs only on those dialects.",
   "cases": [

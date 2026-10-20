@@ -242,7 +242,7 @@ fn vector_inputs(cases: &Value) -> Vec<(String, String, BTreeMap<String, String>
 fn syntax_file() -> Value {
     let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec/syntax.json");
     let file: Value = serde_json::from_slice(&std::fs::read(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))).unwrap();
-    assert_keys(&file, &["version", "note", "cases"], "syntax.json");
+    assert_keys(&file, &["requirements", "version", "note", "cases"], "syntax.json");
     assert_eq!(file["version"].as_u64(), Some(1));
     file
 }

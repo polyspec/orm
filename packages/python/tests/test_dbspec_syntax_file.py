@@ -10,7 +10,7 @@ from . import testcase
 class SyntaxVectorFileTest(unittest.TestCase):
     def test_the_file_holds_a_case_for_every_input(self):
         vectors = read_vectors()
-        self.assertEqual(sorted(vectors), ["cases", "note", "version"])
+        self.assertEqual(sorted(vectors), ["cases", "note", "requirements", "version"])
         self.assertEqual(vectors["version"], 1)
         expected = {}
         for case in vectors["cases"]:

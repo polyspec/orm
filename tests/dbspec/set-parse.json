@@ -1,4 +1,7 @@
 {
+  "requirements": {
+    "cases": ["DBS-2", "DBS-28", "DBS-29", "DBS-30", "DBS-31", "DBS-156", "DBS-168", "DBS-171"]
+  },
   "schema": 1,
   "cases": [
     {

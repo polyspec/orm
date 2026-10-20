@@ -36,7 +36,7 @@ function stated(got, want) {
   return Object.fromEntries(Object.keys(want).map(k => [k, got[k]]));
 }
 
-exactKeys(vectors, ['schema', 'cases'], 'set-parse.json');
+exactKeys(vectors, ['requirements', 'schema', 'cases'], 'set-parse.json');
 assert.equal(vectors.schema, 1, 'set-parse.json schema');
 assert.ok(Array.isArray(vectors.cases) && vectors.cases.length > 0, 'set-parse.json cases');
 

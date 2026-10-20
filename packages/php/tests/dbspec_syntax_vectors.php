@@ -37,7 +37,7 @@ function dbspec_syntax_exact_keys(mixed $object, string $location, array $keys):
 function dbspec_syntax_load(string $root): array
 {
     $object = json_decode((string) file_get_contents("$root/tests/dbspec/syntax.json"), true, 512, JSON_THROW_ON_ERROR);
-    dbspec_syntax_exact_keys($object, 'syntax.json', ['version', 'note', 'cases']);
+    dbspec_syntax_exact_keys($object, 'syntax.json', ['requirements', 'version', 'note', 'cases']);
     if ($object['version'] !== 1) {
         throw new RuntimeException('syntax.json has an unknown version');
     }

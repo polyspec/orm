@@ -55,7 +55,7 @@ def load_cases():
     data = json.loads(
         VECTORS.read_text(encoding="utf-8"), object_pairs_hook=_no_duplicates
     )
-    _exact(data, ("version", "note", "cases"), "set-files.json")
+    _exact(data, ("requirements", "version", "note", "cases"), "set-files.json")
     if data["version"] != 1:
         raise VectorError(f"set-files.json: version {data['version']!r}")
     _string(data["note"], "note")

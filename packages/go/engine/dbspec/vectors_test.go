@@ -121,7 +121,7 @@ func loadVectors(t *testing.T) vectorFile {
 // and crlf and mixed are false when absent. A section or field that the format does not name is refused too.
 func decodeCaseVectors(r vectorReader, object map[string]any) (vectorFile, error) {
 	var v vectorFile
-	if err := r.fields(object, "", []string{"version", "note", "canonical", "normalize", "invalid", "hashes", "sets", "files", "positions"}); err != nil {
+	if err := r.fields(object, "", []string{"requirements", "version", "note", "canonical", "normalize", "invalid", "hashes", "sets", "files", "positions"}); err != nil {
 		return v, err
 	}
 	if err := r.version(object); err != nil {

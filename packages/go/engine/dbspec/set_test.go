@@ -17,9 +17,10 @@ import (
 
 // setVectors is tests/dbspec/set-files.json (docs/spec/dbspec.md "Document sets").
 type setVectors struct {
-	Version *int             `json:"version"`
-	Note    *string          `json:"note"`
-	Cases   *[]setVectorCase `json:"cases"`
+	Requirements map[string][]string `json:"requirements"`
+	Version      *int                `json:"version"`
+	Note         *string             `json:"note"`
+	Cases        *[]setVectorCase    `json:"cases"`
 }
 
 type setVectorCase struct {

@@ -29,7 +29,7 @@ function dbspec_set_keys(string $what, mixed $value, array $keys): void
 function dbspec_set_cases(string $root): array
 {
     $file = json_decode((string) file_get_contents("$root/tests/dbspec/set-files.json"), true, 512, JSON_THROW_ON_ERROR);
-    dbspec_set_keys('set-files.json', $file, ['version', 'note', 'cases']);
+    dbspec_set_keys('set-files.json', $file, ['requirements', 'version', 'note', 'cases']);
     if ($file['version'] !== 1 || !is_string($file['note']) || !is_array($file['cases']) || !array_is_list($file['cases']) || $file['cases'] === []) {
         throw new RuntimeException('set-files.json: version, note or cases is wrong');
     }

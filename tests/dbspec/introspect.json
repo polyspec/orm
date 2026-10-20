@@ -1,4 +1,7 @@
 {
+  "requirements": {
+    "cases": ["DBS-42", "DBS-84", "DBS-94"]
+  },
   "version": 1,
   "note": "Each case renders its documents and runs its statements in an empty database of its dialect, with {schema} in a statement replaced by the name of that database or schema; a PostgreSQL case may create a second schema named {schema}_b, which is dropped with it, introspects the database into a document named introspected, and expects that document in canonical form and the unsupported objects as [kind, table, name] in the order of table, kind and name; an entry may add a fourth element, a rule that the reason of that object must contain, and otherwise reasons are not compared. docs/spec/dialects.md \"Introspection\".",
   "cases": [

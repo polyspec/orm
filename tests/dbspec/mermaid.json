@@ -1,4 +1,10 @@
 {
+  "requirements": {
+    "export": ["MER-1", "MER-2", "MER-3", "MER-4", "MER-5", "MER-6"],
+    "import": ["MER-7", "MER-8", "MER-9", "MER-10", "MER-11", "MER-13"],
+    "invalid": ["MER-7"],
+    "round_trip": ["MER-13"]
+  },
   "version": 1,
   "note": "export cases write the Mermaid lines and the dropped objects [kind, table, name] of their document, parsed with the documents of their set; import cases read their Mermaid lines into the document named imported and the dropped objects; invalid cases report exactly the listed [rule, line, column] diagnostics; round trip cases export the document at their path with exactly the dropped objects, import the export into a document of the same name with exactly the imported objects, and get back the tables, columns, primary keys and foreign keys of the document. Lines join with LF and end with one. docs/spec/mermaid.md.",
   "export": [

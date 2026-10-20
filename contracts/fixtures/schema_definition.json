@@ -1,4 +1,7 @@
 {
+  "requirements": {
+    "cases": ["DBS-1", "DBS-103", "DBS-123", "DBS-134", "DBS-141", "DBS-142"]
+  },
   "cases": [
     {
       "expected": {
