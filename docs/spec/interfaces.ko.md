@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 0711410a7141aa6a3660643a28aa69b1994f5654570d897b5d17cfb1cd3388f7 -->
+<!-- source-sha256: 0d34ed405d89a19ba7ea091b29a9f861d0088e7b2dfaf9919848150ed300d834 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -212,6 +212,8 @@ Go key 변환은 부호 있는 정수, 불리언, 문자열, 바이트, 유한 �
 설정은 DSN, schema 파일, executor, AES key version map, query event hook을 선택한다. 다른 database를 선택하거나 request 경로를 변경하지 않는다.
 
 오류는 [errors.yaml](errors.yaml)의 code를 사용한다. Go 호출자는 adapter에 독립적인 분류를 위해 `orm.ErrorCode`, `orm.IsDeadlock`, `orm.IsLockNotAvailable`, `orm.IsDuplicateKey`, `orm.IsForeignKey`, `orm.IsConstraint`를 사용하며 driver 오류 타입을 검사하지 않는다. codec style은 schema 선언이다. AES version column은 NULL 불가 정수 평문 메타데이터이며 encoding style을 사용하지 않고 기본 projection에서 제외한다. AES rotation은 모든 AES payload 컬럼과 version을 하나의 transaction에서 갱신한다.
+
+- **INT-65** 모든 구현(Go, PHP, PHP extension, TypeScript, Python, Rust)은 [errors.yaml](errors.yaml)의 모든 code를 값이 그 code인 error-code catalog의 native 상수로 노출하며, 그 catalog는 errors.yaml과 같다: 빠진 code도 더한 code도 없다.
 
 query event에는 정규화 SQL, bind 수, duration, plan 식별자, 오류를 기록한다. secret과 parameter 값은 log에서 제외한다.
 

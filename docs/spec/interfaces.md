@@ -212,6 +212,8 @@ Configuration selects the dialect, DSN, schema file, executor, AES key version m
 
 Errors use the codes in [errors.yaml](errors.yaml). Go callers use `orm.ErrorCode`, `orm.IsDeadlock`, `orm.IsLockNotAvailable`, `orm.IsDuplicateKey`, `orm.IsForeignKey` and `orm.IsConstraint` for adapter-neutral classification; they do not inspect driver error types. Codec styles are schema declarations. The AES version column is non-null integer plaintext metadata with no encoding style and is excluded from the default projection. AES rotation updates all AES payload columns and the version in one transaction.
 
+- **INT-65** Every implementation (Go, PHP, the PHP extension, TypeScript, Python and Rust) exposes every code of [errors.yaml](errors.yaml) as a native constant of its error-code catalog whose value is the code, and the catalog equals errors.yaml: it lacks no code and adds none.
+
 Query events expose the normalized SQL, bind count, duration, plan identifier, and error. Secrets and parameter values are excluded from logs.
 
 ## 11. Generator, schema, and extension boundaries — IF-32 to IF-34
