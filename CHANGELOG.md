@@ -3,6 +3,7 @@
 
 ## Unreleased
 - `make interface-check/self-test` passes in every language: the plan spec states what Go Apply returns, the PHP stored-version reader is marked internal, and the symbol contracts record the surface that earlier rows changed, each finding reviewed against its commit. Red: the self-test failed in Go, PHP, TypeScript, Python and Rust (KSTD-5-16).
+- Every install directory of the checkout is ignored by Git, so `make layout-check` passes. Red: kit K372 named six install directories (KSTD-5-5-7).
 - The five generated error-code sources stay tracked as declared exceptions, on the ground stated in the packaging document: their consumers install the source and run no generator, and the TypeScript build needs no Go toolchain; each client code-catalog test keeps them equal to errors.yaml. Red: kit reported them as tracked generated files (KSTD-5-5-6).
 - The PHP fixture models are written by `make orm-install-php` from packages/php/models.txt and loaded by the test bootstrap, and none is tracked. Red: 30 generated files were tracked (KSTD-5-5-5).
 - The Go fixture models are written by `make orm-install-go` from packages/go/models.txt, which the generation check and its coverage test also read, and none is tracked. Red: 32 generated files were tracked (KSTD-5-5-4).

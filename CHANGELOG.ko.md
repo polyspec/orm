@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: fa2fc6dd311667b469307dadc8c10f8467a0f0b30814c01e7207b34dce27feb9 -->
+<!-- source-sha256: 70e4bb540840c8eaa33c85443308d95713bd3239cf36ed50cdcdbd90b16da650 -->
 # 변경 이력
 
 ## Unreleased
 - `make interface-check/self-test`가 모든 언어에서 통과한다: plan spec이 Go Apply의 반환을 적고, PHP 저장 version reader를 internal로 표시하며, symbol contract가 앞선 row들이 바꾼 표면을 기록하고 항목마다 그 commit과 대조해 검토했다. red: self-test가 Go, PHP, TypeScript, Python, Rust에서 실패했다 (KSTD-5-16).
+- checkout의 모든 install directory를 Git이 무시하므로 `make layout-check`가 통과한다. red: kit K372가 install directory 여섯 개를 지목했다 (KSTD-5-5-7).
 - 생성된 error-code source 다섯 개는 packaging 문서에 적은 근거로 선언된 예외로 track된다: 소비자는 source를 설치하고 생성기를 돌리지 않으며, TypeScript build는 Go toolchain을 필요로 하지 않는다; client마다 code-catalog test가 이를 errors.yaml과 같게 지킨다. red: kit이 이를 track된 생성 file로 보고했다 (KSTD-5-5-6).
 - PHP fixture model은 `make orm-install-php`가 packages/php/models.txt에서 쓰고 test bootstrap이 불러오며, 어느 것도 track하지 않는다. red: 생성 file 30개가 track되었다 (KSTD-5-5-5).
 - Go fixture model은 `make orm-install-go`가 packages/go/models.txt에서 쓰고, 생성 check와 그 coverage test도 같은 file을 읽으며, 어느 것도 track하지 않는다. red: 생성 file 32개가 track되었다 (KSTD-5-5-4).
