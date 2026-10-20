@@ -69,6 +69,7 @@ class SchemaInstallTest(unittest.TestCase):
         finally:
             db.close()
 
+    # Requirements: SCH-7, DBS-108.
     def test_a_database_that_differs_from_the_set_is_config(self):
         path, db = self.connect("differs.sqlite3")
         try:

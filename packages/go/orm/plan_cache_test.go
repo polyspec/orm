@@ -14,6 +14,7 @@ import (
 // 300 values. The plan cache holds one entry per statement shape with the list
 // length bucketed to a power of two, so the entry count stays at most the number
 // of buckets (1, 2, 4 ... 512: ten), not one per length.
+// Requirements: CPX-4.
 func TestPlanCacheBoundedByInListShape(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	m, err := runtimemodel.LoadFiles("../../../contracts/fixtures/identity_load.dbs")
@@ -59,6 +60,7 @@ func TestPlanCacheBoundedByInListShape(t *testing.T) {
 // TestCanonicalizePadsInListAndRejectsOutOfRangeParam checks the rewrite of
 // one IN list: its slots repeat the last value up to the bucket, the
 // parameters follow the walk, and an index past the parameters is IR_INVALID.
+// Requirements: CPX-4.
 func TestCanonicalizePadsInListAndRejectsOutOfRangeParam(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	in := func(ps ...int) *request {

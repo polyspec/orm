@@ -11,6 +11,7 @@ EXTERNAL = "dbspec 1 core\n\ntable account {\n  seq i64\n  primary key (seq)\n}\
 
 
 class LoadSetTest(unittest.TestCase):
+    # Requirements: SCH-12.
     def test_returns_the_documents_with_the_external_ones_marked(self):
         documents = RuntimeModel.load_set(OWNED, EXTERNAL)
         self.assertEqual(

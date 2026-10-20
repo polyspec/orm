@@ -459,6 +459,7 @@ final class DbspecRulesTest extends TestCase
         }
     }
 
+    // Requirements: DBS-2, DBS-3, DBS-34, DBS-46, DBS-131, DBS-154, DBS-156, DBS-157, DBS-158, DBS-159, DBS-161, DBS-162, DBS-163, DBS-164, DBS-165, DBS-166, DBS-167, DBS-168, DBS-169, DBS-171.
     #[DataProvider('ruleCases')]
     public function test_rule(string $kind, array $case): void
     {
@@ -473,6 +474,7 @@ final class DbspecRulesTest extends TestCase
     }
 
     // Limits: generated documents, each with its own CPU reference.
+    // Requirements: DBS-144, DBS-151, DBS-170.
     #[DataProvider('limitCases')]
     public function test_limit(string $id): void
     {

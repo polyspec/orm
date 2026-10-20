@@ -10,6 +10,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
+// Requirements: SCH-2.
 func TestGenerateUsesCanonicalManifestForGoClient(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	manifest := sampleModel(t)

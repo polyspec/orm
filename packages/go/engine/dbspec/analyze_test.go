@@ -19,6 +19,7 @@ var sampleDocument = []string{
 	"}",
 }
 
+// Requirements: DBS-134, DBS-135.
 func TestAnalyzeSampleTokens(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	text := joinLines(sampleDocument, false)

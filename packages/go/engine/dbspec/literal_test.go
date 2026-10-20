@@ -11,6 +11,7 @@ import (
 // TestCanonicalLiteral checks CanonicalLiteral for every type with the
 // literal forms of TestCanonicalForms and the invalid literals of
 // TestRuleDiagnostics. A text or bytes column has no literal.
+// Requirements: DBS-40, DBS-128, DBS-131.
 func TestCanonicalLiteral(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	cases := []struct {

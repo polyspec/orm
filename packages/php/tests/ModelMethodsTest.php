@@ -104,6 +104,7 @@ final class ModelMethodsTest extends TestCase
         }
     }
 
+    // Requirements: DBS-121.
     /** A date, time or datetime setter takes the text form, never a native value (T189). */
     public function test_a_time_setter_takes_the_text_form(): void
     {

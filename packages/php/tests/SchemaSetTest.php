@@ -467,6 +467,7 @@ final class SchemaSetTest extends TestCase
 
     // The decimal document runs on every driver, in a case database of its own per driver, removed when it ends, also when
     // it fails. The unit binds this method, so the decimal document is its only data set.
+    // Requirements: SCH-7, DBS-108.
     #[DataProvider('decimalDocumentCase')]
     public function test_decimal_document(string $document): void
     {

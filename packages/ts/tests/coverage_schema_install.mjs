@@ -66,6 +66,7 @@ async function withDatabase({ driver, dsn }, body) {
 }
 
 await runCases('coverage_schema_install.mjs', {
+  // Requirements: SCH-7, DBS-108.
   async schema_install_existing(item) {
     await withDatabase(item, async db => {
       await db.utils().schema().install(SCHEMA);
@@ -73,6 +74,7 @@ await runCases('coverage_schema_install.mjs', {
     });
   },
 
+  // Requirements: SCH-7, SCH-10, DBS-108.
   async schema_install_partial(item) {
     await withDatabase(item, async (db, driver, dsn) => {
       assert.equal(await tableExists(driver, dsn, 'coverage_install_missing'), false, 'coverage_install_missing does not exist before the case');
@@ -85,6 +87,7 @@ await runCases('coverage_schema_install.mjs', {
 
   // Install of a set that uses external documents checks the external tables in the database. If an external document's column is missing from the database,
   // install is CONFIG and creates no table it owns. Registration does not read the database, so the set is also connected with it.
+  // Requirements: SCH-7, SCH-11, DBS-107.
   async schema_install_external_documents(item) {
     await withDatabase(item, async (db, driver, dsn) => {
       const connected = await Db.connectSchema(dsn, externalSchema(externalUser));

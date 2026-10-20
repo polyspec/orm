@@ -93,6 +93,7 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
     throw new Error(`${dialect}: case database ${left.name} was left by the cases and is dropped`);
   });
 
+  // Requirements: DBS-119.
   caseTest(`${dialect}: connect takes the DSN and options without a schema path`, 30_000, async ({ step }) => {
     database = await createCaseDatabase(dialect, step);
     db = await Db.connect(database.dsn, { aesKey: 'probe-aes-key', blindIndexKey: 'probe-blind-key', auditSource: auditSource('default') });

@@ -187,6 +187,7 @@ async fn external_case(driver: &str, dsn: &str) {
     db.close().await;
 }
 
+// Requirements: DBS-105, DBS-107, DBS-108, SCH-7, SCH-8, SCH-11.
 #[tokio::test]
 async fn external_documents() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);

@@ -5,6 +5,7 @@
 // Each database is a case database of its own (case-database.mjs); ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name the test
 // servers, and the test fails when either is unset.
 //
+// Requirements: SCH-7, DBS-108.
 // Usage: node packages/ts/tests/dbspec-set-decimal.mjs (after npm run typescript:build)
 import { readFile } from 'node:fs/promises';
 import { CORE, Db, Model, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';

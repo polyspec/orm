@@ -16,6 +16,7 @@ use Polyspec\Orm\Dbspec\Dbspec;
 #[Group('bench')]
 final class DbspecIntrospectStressTest extends TestCase
 {
+    // Requirements: DBS-102.
     public function test_introspect_stress(): void
     {
         // The case builds a document of 2000 tables (one node process), applies it to a SQLite file, and introspects it.

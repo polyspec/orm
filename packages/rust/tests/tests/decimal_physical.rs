@@ -144,6 +144,7 @@ async fn schema_set(driver: &str) {
     drop_schema_set_database(driver, &dsn, &name).await;
 }
 
+// Requirements: SCH-7, DBS-108.
 #[cfg(test)]
 #[tokio::test]
 async fn schema_set_mysql() {
@@ -151,6 +152,7 @@ async fn schema_set_mysql() {
     schema_set("mysql").await;
 }
 
+// Requirements: SCH-7, DBS-108.
 #[cfg(test)]
 #[tokio::test]
 async fn schema_set_postgres() {
@@ -158,6 +160,7 @@ async fn schema_set_postgres() {
     schema_set("postgres").await;
 }
 
+// Requirements: SCH-7, DBS-108.
 #[cfg(test)]
 #[tokio::test]
 async fn schema_set_sqlite() {
@@ -267,6 +270,7 @@ async fn drop_schema_set_database(driver: &str, dsn: &str, name: &str) {
     }
 }
 
+// Requirements: SCH-11, DBS-119.
 #[cfg(test)]
 #[tokio::test]
 async fn schema_set_unregistered_mysql() {
@@ -274,6 +278,7 @@ async fn schema_set_unregistered_mysql() {
     schema_set_unregistered("mysql").await;
 }
 
+// Requirements: SCH-11, DBS-119.
 #[cfg(test)]
 #[tokio::test]
 async fn schema_set_unregistered_postgres() {
@@ -281,6 +286,7 @@ async fn schema_set_unregistered_postgres() {
     schema_set_unregistered("postgres").await;
 }
 
+// Requirements: SCH-11, DBS-119.
 #[cfg(test)]
 #[tokio::test]
 async fn schema_set_unregistered_sqlite() {
@@ -288,6 +294,7 @@ async fn schema_set_unregistered_sqlite() {
     schema_set_unregistered("sqlite").await;
 }
 
+// Requirements: SCH-7.
 #[cfg(test)]
 #[tokio::test]
 async fn schema_set_edited_manifest_mysql() {
@@ -295,6 +302,7 @@ async fn schema_set_edited_manifest_mysql() {
     schema_set_edited_manifest("mysql").await;
 }
 
+// Requirements: SCH-7.
 #[cfg(test)]
 #[tokio::test]
 async fn schema_set_edited_manifest_postgres() {
@@ -302,6 +310,7 @@ async fn schema_set_edited_manifest_postgres() {
     schema_set_edited_manifest("postgres").await;
 }
 
+// Requirements: SCH-7.
 #[cfg(test)]
 #[tokio::test]
 async fn schema_set_edited_manifest_sqlite() {

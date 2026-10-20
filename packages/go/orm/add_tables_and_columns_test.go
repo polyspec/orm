@@ -287,6 +287,7 @@ func addTablesAndColumnsEditedManifestCase(t *testing.T, driver string) {
 	}
 }
 
+// Requirements: SCH-8, SCH-9, SCH-10.
 func TestAddTablesAndColumnsSQLite(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	addTablesAndColumnsCase(t, "sqlite")

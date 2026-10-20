@@ -102,6 +102,7 @@ fn code<T>(r: polyspec_orm::Result<T>) -> String {
 }
 
 #[test]
+// Requirements: DBS-114.
 fn generated_fields_require_selection_or_assignment() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let model = Author::new();

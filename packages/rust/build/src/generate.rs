@@ -158,6 +158,7 @@ mod field_type_tests {
     }
 
     #[test]
+    // Requirements: DBS-112.
     fn generated_field_types_follow_the_runtime_model() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
         assert_eq!(base(&field_of(Type::Decimal(13, 3), &[])), "String");

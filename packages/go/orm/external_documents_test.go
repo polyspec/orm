@@ -155,6 +155,7 @@ func externalCase(t *testing.T, driver, dsn string) {
 	expectConfig("addTablesAndColumns with a drifted external table", err, differs)
 }
 
+// Requirements: DBS-105, DBS-107, DBS-108, SCH-7, SCH-8, SCH-11.
 func TestExternalDocuments(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	for _, driver := range []string{"sqlite", "mysql", "postgres"} {

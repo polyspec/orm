@@ -36,6 +36,7 @@ class RelatedOutputTest(unittest.TestCase):
     def tearDownClass(cls):
         cls.db.close()
 
+    # Requirements: CPX-1, DBS-118.
     def test_relation_model_is_written_under_its_relation_name(self):
         rows = (
             self.models.Author()

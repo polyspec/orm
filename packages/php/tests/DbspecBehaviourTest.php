@@ -20,6 +20,7 @@ final class DbspecBehaviourTest extends TestCase
         }
     }
 
+    // Requirements: DBS-2, DBS-99, DBS-171.
     #[DataProvider('cases')]
     public function test_case(string $name): void
     {

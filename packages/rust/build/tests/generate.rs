@@ -104,6 +104,7 @@ fn generated_code_carries_no_allow_attribute() {
 }
 
 #[test]
+// Requirements: DBS-114.
 fn generated_rows_reject_unselected_fields_and_separate_group_results() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let text = generate("fn main() { let row = ZoneEvent::new(); let _ = row.get_start_dt(); let _ = row.gets_count(); }").unwrap();
@@ -115,6 +116,7 @@ fn generated_rows_reject_unselected_fields_and_separate_group_results() {
 }
 
 #[test]
+// Requirements: DBS-112, DBS-116.
 fn nullable_json_fields_keep_sql_null_separate_from_json_null() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let root = bench();
@@ -169,6 +171,7 @@ fn ignores_calls_of_other_types() {
 }
 
 #[test]
+// Requirements: DBS-27, SCH-1.
 fn rejects_an_invalid_document() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let dir = std::env::temp_dir().join(format!("orm-build-invalid-{}", std::process::id()));
@@ -182,6 +185,7 @@ fn rejects_an_invalid_document() {
 
 /// dbspec::read_bytes rejects, before parse, a DbSchema project XML and an empty file by the signature of their joined path.
 #[test]
+// Requirements: DBS-4, DBS-27, DBS-155, SCH-1.
 fn rejects_a_file_without_the_signature() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     for name in ["dbschema.dbs", "empty.dbs"] {
@@ -200,6 +204,7 @@ fn rejects_a_file_without_the_signature() {
 
 /// A set file with errors, or documents with diagnostics, fail the generation with every error and
 /// every diagnostic, and nothing is written.
+// Requirements: DBS-19, DBS-25, DBS-27, DBS-155, SCH-1.
 #[test]
 fn reports_every_error_of_the_set_and_writes_nothing() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -226,6 +231,7 @@ fn reports_every_error_of_the_set_and_writes_nothing() {
     assert!(!wrote_after_documents, "documents with diagnostics wrote the output");
 }
 
+// Requirements: DBS-100, DBS-104.
 #[test]
 fn manifest_text_is_embedded_with_its_hash() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -243,6 +249,7 @@ fn manifest_text_is_embedded_with_its_hash() {
 }
 
 #[test]
+// Requirements: DBS-112.
 fn generated_field_types_follow_the_runtime_model() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let text = generate_with_schema(
@@ -357,6 +364,7 @@ fn relation_getters_report_a_mismatched_relation_value() {
 /// A set that uses an external document (`uses`) makes models for the tables it owns and read-only models
 /// for the tables it uses from external documents, none for an unused external table, and carries the
 /// text of the used tables in the schema value.
+// Requirements: DBS-101, DBS-104, DBS-110.
 #[test]
 fn generation_leaves_external_tables_out() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -498,6 +506,7 @@ fn check_keeps_the_output_directory_on_generation_error() {
 }
 
 /// A relation alias that starts with a chain prefix (match, join) still gives the parent its getter.
+// Requirements: DBS-118.
 #[test]
 fn relation_alias_with_a_chain_prefix_has_its_getter() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -513,6 +522,7 @@ fn relation_alias_with_a_chain_prefix_has_its_getter() {
 
 /// The alias of a relation nested in a relation gives its getter to the model it aliases on, and a receiver typed through
 /// a wrapper of the getter's result (`Option<User>`) resolves to that model.
+// Requirements: DBS-118.
 #[test]
 fn nested_relation_alias_attaches_its_getter_to_its_parent() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

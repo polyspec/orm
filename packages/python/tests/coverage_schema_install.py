@@ -144,12 +144,15 @@ def schema_install_external_documents(item):
 
 
 class CoverageTest(CoverageCase):
+    # Requirements: SCH-7, DBS-108.
     def test_schema_install_existing(self):
         self.each_item("schema_install_existing", schema_install_existing)
 
+    # Requirements: SCH-7, SCH-10, DBS-108.
     def test_schema_install_partial(self):
         self.each_item("schema_install_partial", schema_install_partial)
 
+    # Requirements: SCH-7, SCH-11, DBS-107.
     def test_schema_install_external_documents(self):
         self.each_item(
             "schema_install_external_documents", schema_install_external_documents

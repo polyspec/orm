@@ -1,5 +1,6 @@
 // models script check: the scan targets are exactly the sources that call a model,
 // and the committed src/models/models.ts equals the generator output of that scan.
+// Requirements: SCH-1.
 // Usage: node --test packages/ts/tests/models-scan.mjs (after tsc -p packages/ts/tsconfig.build.json)
 import { caseTest } from '../../../tests/testcase.mts';
 import assert from 'node:assert/strict';

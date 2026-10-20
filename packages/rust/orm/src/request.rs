@@ -417,6 +417,7 @@ mod plan_cache_tests {
 
     /// One IN statement over lists of 1 to 300 values: the shape key takes one value per power-of-two bucket
     /// (1, 2, 4 ... 512), so 300 lengths give at most ten distinct plan-cache keys.
+    // Requirements: CPX-4.
     #[test]
     fn in_list_keys_are_bounded_by_bucket() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

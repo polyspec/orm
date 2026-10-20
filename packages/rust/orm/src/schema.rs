@@ -160,6 +160,7 @@ mod tests {
     }
 
     // Manifest text that does not hash to the declared hash is SCHEMA_HASH_MISMATCH, and text that is not a manifest is SCHEMA_INVALID.
+    // Requirements: DBS-104, SCH-12.
     #[test]
     fn manifest_hash_mismatch_is_reported() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

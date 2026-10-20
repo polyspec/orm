@@ -26,6 +26,7 @@ function dbspec_stress_reference_scan(string $text): int
 #[Group('bench')]
 final class DbspecStressTest extends TestCase
 {
+    // Requirements: DBS-123.
     public function test_stress(): void
     {
         // The CPU baseline for the stress case is 60 s. It covers document creation (one node process), five parses, and two emits. Warns if exceeded.

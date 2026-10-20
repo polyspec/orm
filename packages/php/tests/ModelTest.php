@@ -860,6 +860,7 @@ final class ModelTest extends TestCase
         }
     }
 
+    // Requirements: SCH-7.
     public function test_install_inside_a_transaction(): void
     {
         $db = self::database('mysql', self::caseDsn('mysql'));
@@ -1048,6 +1049,7 @@ final class ModelTest extends TestCase
     }
 
     // joins and relations
+    // Requirements: DBS-118, CPX-1.
     #[DataProvider('drivers')]
     public function test_joins_and_relations(string $driver): void
     {

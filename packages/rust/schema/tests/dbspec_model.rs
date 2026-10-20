@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 
 const SOURCE: &str = "dbspec 1 shop\n\ntable orders {\n  id i64 identity\n  primary key (id)\n}\n";
 
+// Requirements: DBS-123, DBS-126.
 #[test]
 fn model_is_read_changed_and_emitted() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

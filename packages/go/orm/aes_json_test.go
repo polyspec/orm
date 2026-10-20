@@ -18,6 +18,7 @@ const aesJSONText = `{"z":{},"a":[],"token":"s3cret-token","nested":{"second":2,
 
 // TestAESJSONColumnSchema checks that an AES codec with no key version setting and a text
 // column storing an AES codec are rejected with a SCHEMA_INVALID setting diagnostic.
+// Requirements: DBS-64, DBS-70, DBS-167.
 func TestAESJSONColumnSchema(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	for _, c := range []struct{ document, message string }{

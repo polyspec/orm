@@ -51,6 +51,7 @@ table member_row {
 
 // TestLoadRebuildsTheModelOfTheManifestText checks that reading the manifest text of a document set again
 // gives the same manifestHash and entities.
+// Requirements: DBS-100, DBS-103, DBS-111, DBS-112, DBS-114.
 func TestLoadRebuildsTheModelOfTheManifestText(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	built, diagnostics := LoadDocuments([]string{childDocument, parentDocument})

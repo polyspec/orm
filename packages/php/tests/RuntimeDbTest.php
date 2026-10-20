@@ -151,6 +151,7 @@ final class RuntimeDbTest extends TestCase
         });
     }
 
+    // Requirements: DBS-108, SCH-7.
     #[DataProvider('drivers')]
     public function test_install_renders_the_document_set(string $driver): void
     {

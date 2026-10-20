@@ -78,6 +78,7 @@ function installedTable(Db $db, string $table): bool
 #[Medium]
 final class CoverageSchemaInstallTest extends TestCase
 {
+    // Requirements: DBS-108, SCH-7.
     public function test_schema_install_existing(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
@@ -94,6 +95,7 @@ final class CoverageSchemaInstallTest extends TestCase
         }
     }
 
+    // Requirements: DBS-108, SCH-10.
     public function test_schema_install_partial(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
@@ -115,6 +117,7 @@ final class CoverageSchemaInstallTest extends TestCase
     // The install of a set that uses external documents checks the external tables in the database. If an external document's column
     // is missing from the database, install is CONFIG and does not create the table it owns. Registration
     // does not read the database, so it connects with that set too.
+    // Requirements: DBS-107, SCH-7.
     public function test_schema_install_external_documents(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {

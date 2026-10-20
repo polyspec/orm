@@ -41,6 +41,7 @@ class SchemaInstallUsesTest(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory(prefix="orm-schema-uses-")
         self.addCleanup(self.tmp.cleanup)
 
+    # Requirements: DBS-102.
     def test_a_schema_text_with_use_lines_is_a_schema_text(self):
         document, _positions, diagnostics = parse_dbspec(
             "dbspec 1 schema\n\nuse audit { audit }\n\n"

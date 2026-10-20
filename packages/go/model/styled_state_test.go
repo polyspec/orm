@@ -12,6 +12,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
+// Requirements: DBS-116.
 func TestGeneratedStyledGetterAndSetterStates(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	row := model.Author()

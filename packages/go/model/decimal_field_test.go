@@ -8,6 +8,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
+// Requirements: DBS-112.
 func TestGeneratedDecimalFieldUsesExactText(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	stringPointer := reflect.TypeOf((*string)(nil))

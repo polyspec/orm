@@ -19,6 +19,7 @@ function vector(name, body) {
 }
 
 // The first red of this item: the header line gives its keyword, number and name tokens.
+// Requirements: DBS-134, DBS-135.
 vector('analyze header line tokens', () => {
   const result = analyzeDbspec('dbspec 1 shop', {});
   assert.deepEqual(

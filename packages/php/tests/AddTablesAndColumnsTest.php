@@ -239,6 +239,7 @@ final class AddTablesAndColumnsTest extends TestCase
         }
     }
 
+    // Requirements: SCH-8, SCH-10.
     #[DataProvider('drivers')]
     public function test_add_tables_and_columns(string $driver): void
     {
@@ -246,6 +247,7 @@ final class AddTablesAndColumnsTest extends TestCase
         with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::addTablesAndColumns($dsn, $driver));
     }
 
+    // Requirements: SCH-9.
     #[DataProvider('drivers')]
     public function test_add_tables_and_columns_differs(string $driver): void
     {
@@ -253,6 +255,7 @@ final class AddTablesAndColumnsTest extends TestCase
         with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::addTablesAndColumnsDiffers($dsn, $driver));
     }
 
+    // Requirements: SCH-8, SCH-9.
     #[DataProvider('drivers')]
     public function test_add_tables_and_columns_index(string $driver): void
     {
@@ -260,6 +263,7 @@ final class AddTablesAndColumnsTest extends TestCase
         with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::addTablesAndColumnsIndex($dsn, $driver));
     }
 
+    // Requirements: SCH-8.
     #[DataProvider('drivers')]
     public function test_add_tables_and_columns_transaction(string $driver): void
     {
@@ -267,6 +271,7 @@ final class AddTablesAndColumnsTest extends TestCase
         with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::addTablesAndColumnsTransaction($dsn, $driver));
     }
 
+    // Requirements: SCH-8.
     #[DataProvider('drivers')]
     public function test_add_tables_and_columns_edited_manifest(string $driver): void
     {

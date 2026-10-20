@@ -70,6 +70,7 @@ const decimalAmount = async (db, seq) => (await new DecimalCase().connect(db).se
  * decimal set twice; the second install changes nothing) and uses the models
  * of both sets in and outside a transaction.
  */
+// Requirements: SCH-7, DBS-108.
 async function severalSchemas(dsn) {
   const db = await Db.connectSchema(dsn, benchSchema);
   try {
@@ -93,6 +94,7 @@ async function severalSchemas(dsn) {
  * set that another connection installed. A connection of the decimal helper
  * uses it.
  */
+// Requirements: DBS-119.
 async function unregisteredSchema(dsn) {
   const statements = [];
   const record = event => statements.push(event.sql);
@@ -125,6 +127,7 @@ async function unregisteredSchema(dsn) {
  * nothing; generated code of that text fails with SCHEMA_HASH_MISMATCH when it
  * loads.
  */
+// Requirements: SCH-7, SCH-11, DBS-120.
 async function editedManifest(dsn) {
   const edited = { manifestText: decimal.manifestText.replaceAll('decimal(13,4)', 'decimal(14,4)'), manifestHash: decimal.manifestHash };
   check(edited.manifestText !== decimal.manifestText, 'edited manifest differs');
@@ -182,6 +185,7 @@ async function thrown(run) {
  * - The member's audit transaction inserts a record into ext_audit, which core owns.
  * - If a writable table of an external document differs from the database (a missing column), it is CONFIG.
  */
+// Requirements: DBS-105, DBS-107, DBS-108, DBS-110, SCH-7, SCH-8.
 async function externalDocuments(dsn, driver) {
   const core = manifestOf(externalTexts.core);
   const coreSchema = { manifestText: core.manifestText, manifestHash: core.manifestHash };
@@ -253,6 +257,7 @@ function countStatements(db) {
  * external documents, and a set that writes them does not read the database either; text that does not hash to the declared hash is CONFIG without any statement. The requests of a registered bench
  * set run on that connection. connectSchema also connects to a database without the external tables.
  */
+// Requirements: SCH-11, DBS-119.
 async function registerSendsNoStatement(dsn) {
   const member = externalSchema(['member'], ['core']);
   const installer = await Db.connect(dsn);

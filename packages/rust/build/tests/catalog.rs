@@ -1,5 +1,6 @@
 use polyspec_orm_build::catalog::CatalogConnection;
 
+// Requirements: SCH-6.
 #[tokio::test]
 async fn catalog_connection_does_not_create_a_missing_sqlite_database() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -17,6 +18,7 @@ async fn catalog_connection_does_not_create_a_missing_sqlite_database() {
     assert!(rejected && !created, "catalog access must not create a database");
 }
 
+// Requirements: SCH-5.
 #[tokio::test]
 async fn catalog_connection_rejects_invalid_dsn_without_driver_argument() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);

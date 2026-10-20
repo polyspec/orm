@@ -15,6 +15,7 @@ import (
 // TestCoverageSchemaInstallExisting checks that the bench manifest contained in the generated model
 // installs successfully and changes nothing when reinstalled into a database
 // where it is already installed.
+// Requirements: SCH-7, DBS-108.
 func TestCoverageSchemaInstallExisting(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, _, _ := connectFeature(t)

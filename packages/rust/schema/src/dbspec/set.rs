@@ -519,6 +519,7 @@ mod tests {
     use super::*;
 
     // The normal form: each rule of a segment has an accepting and a rejecting case.
+    // Requirements: DBS-7, DBS-8, DBS-9, DBS-10.
     #[test]
     fn normal_form_cases() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -551,6 +552,7 @@ mod tests {
     }
 
     // The root keeps no trailing separator, so that lstat does not follow a symbolic link.
+    // Requirements: DBS-12.
     #[cfg(unix)]
     #[test]
     fn root_of_prefix() {
@@ -564,6 +566,7 @@ mod tests {
 
     // Nested values are checked by the same rules as the top object: a number beyond a double
     // stays valid JSON, a key twice is set.key, and a lone surrogate is set.json at any level.
+    // Requirements: DBS-13, DBS-21, DBS-23.
     #[test]
     fn nested_json_rules() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -592,6 +595,7 @@ mod tests {
     }
 
     // A schema equal to 1 as a double is accepted; any other value is not.
+    // Requirements: DBS-22.
     #[test]
     fn schema_values() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

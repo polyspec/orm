@@ -44,6 +44,7 @@ class OrmGenTest(unittest.TestCase):
         cls.addClassCleanup(sys.modules.pop, "models", None)
         exec(compile(source.read_text(), module.__file__, "exec"), module.__dict__)
 
+    # Requirements: DBS-120.
     def test_generated_module_imports_and_builds_the_model(self):
         import models
 

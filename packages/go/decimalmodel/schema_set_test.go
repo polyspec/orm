@@ -82,6 +82,7 @@ func schemaSet(t *testing.T, driver string) {
 	}
 }
 
+// Requirements: SCH-7, DBS-108.
 func TestSchemaSetSQLite(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	schemaSet(t, "sqlite")

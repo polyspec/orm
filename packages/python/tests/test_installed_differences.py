@@ -19,6 +19,7 @@ BOTH = "  id i64 identity\n  email varchar(191)\n"
 
 
 class InstalledDifferencesTest(unittest.TestCase):
+    # Requirements: SCH-7.
     def test_an_equal_set_has_no_difference(self):
         self.assertEqual(installed_differences(document(BOTH), [], document(BOTH)), [])
 

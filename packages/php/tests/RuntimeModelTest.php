@@ -36,6 +36,7 @@ final class RuntimeModelTest extends TestCase
         return 'no error';
     }
 
+    // Requirements: DBS-111.
     public function test_entities_in_document_order(): void
     {
         $bench = self::bench();
@@ -49,6 +50,7 @@ final class RuntimeModelTest extends TestCase
         self::assertTrue($author['columns']['json_setting']['codec'] === ['ordered_json'], 'ordered_json codec');
     }
 
+    // Requirements: DBS-68, DBS-114.
     public function test_default_select_set_excludes_only_select_explicit(): void
     {
         $bench = self::bench();
@@ -63,6 +65,7 @@ final class RuntimeModelTest extends TestCase
         self::assertTrue($selected === $want, 'selected ' . implode(',', $selected));
     }
 
+    // Requirements: DBS-103, DBS-104, DBS-120.
     public function test_generated_models_carry_the_manifest_hash_and_the_model(): void
     {
         $root = dirname(__DIR__, 3);
@@ -95,6 +98,7 @@ final class RuntimeModelTest extends TestCase
         self::assertTrue($runtime->entities['item']['unique'] === ['uq_a' => ['a'], 'uq_b' => ['b']], 'the unique keys in name order');
     }
 
+    // Requirements: DBS-120.
     public function test_a_generated_model_that_its_manifest_contradicts_is_refused(): void
     {
         // A model generated before orm-gen wrote the varchar length: its meta() lacks columns.name.length.
@@ -128,6 +132,7 @@ final class RuntimeModelTest extends TestCase
         self::assertTrue($lines === [], implode("\n", $lines));
     }
 
+    // Requirements: DBS-116.
     public function test_codec_value_types(): void
     {
         $type = static fn(string $method): string => (string) (new ReflectionMethod(Author::class, $method))->getReturnType();
@@ -141,6 +146,7 @@ final class RuntimeModelTest extends TestCase
         self::assertTrue($type('getCreatedTs') === 'DateTimeImmutable', 'datetime type');
     }
 
+    // Requirements: DBS-112.
     public function test_i16_field(): void
     {
         $root = dirname(__DIR__, 3);
@@ -179,6 +185,7 @@ final class RuntimeModelTest extends TestCase
         self::assertTrue(str_contains($message, 'the condition method jsonText is also the model method jsonText'), "refused: $message");
     }
 
+    // Requirements: DBS-115.
     public function test_insert_binds_the_clock_of_an_omitted_default_now_column_except_on_MySQL(): void
     {
         $doc = "dbspec 1 clocked\n\ntable note {\n  id i64 identity\n  rank i16\n  body text\n  created_at datetime(6) default now\n  primary key (id)\n}\n";
@@ -207,6 +214,7 @@ final class RuntimeModelTest extends TestCase
         }
     }
 
+    // Requirements: DBS-119.
     public function test_configuration_without_a_schema_path(): void
     {
         $config = new Config(aesKey: 'k');
@@ -215,6 +223,7 @@ final class RuntimeModelTest extends TestCase
         self::assertTrue(self::errorCode(fn() => new Config(aesVersion: 0)) === Code::CONFIG, 'invalid config');
     }
 
+    // Requirements: DBS-104.
     public function test_requests_carry_the_manifest_hash(): void
     {
         $bench = self::bench();

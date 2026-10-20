@@ -313,6 +313,7 @@ func Query() *model.ProductModel { return model.Product().GePrice(1) }
 
 // TestGoRelationAliasWithChainPrefix checks that a relation alias that starts
 // with a chain prefix (Match, Join) still gives the parent its getter.
+// Requirements: DBS-118.
 func TestGoRelationAliasWithChainPrefix(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	write := scannedModule(t)
@@ -348,6 +349,7 @@ func Join(p *model.ProductModel) (*model.BrandModel, error) { return p.GetJoin()
 // TestGoNestedRelationAliasAttachesToItsParent checks that the alias of a
 // relation nested in a relation gives its getter to the model it aliases on,
 // and that a call on the result of a getter resolves to that model.
+// Requirements: DBS-118.
 func TestGoNestedRelationAliasAttachesToItsParent(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	write := scannedModule(t)

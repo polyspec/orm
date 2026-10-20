@@ -179,6 +179,7 @@ async function addTablesAndColumnsEditedManifest(driver, dsn) {
   } finally { await db.close(); }
 }
 
+// Requirements: SCH-8, SCH-9, SCH-10.
 const cases = {
   add_tables_and_columns: addTablesAndColumns,
   add_tables_and_columns_differs: addTablesAndColumnsDiffers,

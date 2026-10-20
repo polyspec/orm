@@ -1,5 +1,6 @@
 use polyspec_orm_build::tool_db::{self, Val};
 
+// Requirements: SCH-4.
 #[test]
 fn tool_accessors_reject_invalid_values_without_defaults_or_contents() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -36,6 +37,7 @@ fn tool_accessors_reject_invalid_values_without_defaults_or_contents() {
     polyspec_orm_testcase::step(format_args!("cpu={cpu:?} wall={wall:?}"));
 }
 
+// Requirements: SCH-4.
 #[tokio::test]
 async fn physical_tool_accessors_preserve_errors_on_all_databases() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);

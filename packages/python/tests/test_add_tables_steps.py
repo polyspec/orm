@@ -39,6 +39,7 @@ CREATE_AND_ADD_STATEMENTS = [
 
 
 class AddTablesAndColumnsStepsTest(unittest.TestCase):
+    # Requirements: SCH-8.
     def test_a_new_table_and_a_nullable_column_are_added_as_one_plan(self):
         result = add_tables_and_columns_steps(
             document(USERS_ID), [], document(NOTE + USERS_EMAIL_NULL), "sqlite"

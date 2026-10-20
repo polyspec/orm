@@ -184,6 +184,7 @@ func seventeenColumns() []string {
 	return append(lines, "  primary key ("+strings.Join(names, ", ")+")", "}")
 }
 
+// Requirements: DBS-32, DBS-36, DBS-38, DBS-39, DBS-42, DBS-43, DBS-46, DBS-48, DBS-50, DBS-58, DBS-156, DBS-157, DBS-158, DBS-159, DBS-161, DBS-162, DBS-163, DBS-164, DBS-165, DBS-166, DBS-167, DBS-168.
 func TestRuleDiagnostics(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, c := range ruleCases {

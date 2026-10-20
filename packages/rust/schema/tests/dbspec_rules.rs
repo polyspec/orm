@@ -1109,6 +1109,7 @@ const CASES: &[Case] = &[
     },
 ];
 
+// Requirements: DBS-156, DBS-157, DBS-158, DBS-159, DBS-161, DBS-162, DBS-163, DBS-164, DBS-165, DBS-166, DBS-167, DBS-168, DBS-169, DBS-171.
 #[test]
 fn dbspec_rules() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE));
@@ -1130,6 +1131,7 @@ fn dbspec_rules() {
     polyspec_orm_testcase::step(format_args!("dbspec rules {} cases cpu={cpu:?} wall={wall:?}", CASES.len()));
 }
 
+// Requirements: DBS-126, DBS-132.
 #[test]
 fn dbspec_comment_attachment() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE));
@@ -1194,6 +1196,7 @@ fn dbspec_comment_attachment() {
     polyspec_orm_testcase::step(format_args!("dbspec comment attachment cpu={cpu:?} wall={wall:?}"));
 }
 
+// Requirements: DBS-144, DBS-151, DBS-170.
 #[test]
 fn dbspec_limits() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE));

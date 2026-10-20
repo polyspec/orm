@@ -14,6 +14,7 @@ use PHPUnit\Framework\TestCase;
 #[Small]
 final class PlanCacheBoundTest extends TestCase
 {
+    // Requirements: CPX-4.
     public function testInListLengthsShareBucketedPlans(): void
     {
         $model = RuntimeModel::build(RuntimeModel::files([dirname(__DIR__, 3) . '/contracts/fixtures/identity_load.dbs']));

@@ -41,6 +41,7 @@ function normalize(name, lines, canonical, documents = {}) {
 }
 
 // encoding, header and limit stop parsing
+// Requirements: DBS-2, DBS-171.
 invalid('byte order mark', '﻿dbspec 1 shop\n', [['encoding', 1, 1]]);
 invalid('bare CR', 'dbspec 1 shop\n\ntable users {\r  id i64\n}\n', [['encoding', 3, 14]]);
 invalid('unpaired surrogate', "dbspec 1 shop\n# \uD800\ntable Users {\n", [['encoding', 2, 3]]);

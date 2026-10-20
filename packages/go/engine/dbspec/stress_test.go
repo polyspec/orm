@@ -27,6 +27,7 @@ const (
 	parseRuns      = 5
 )
 
+// Requirements: DBS-123.
 func TestStressDocument(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	root := repositoryRoot(t)

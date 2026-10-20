@@ -78,6 +78,7 @@ final class OrmGenTest extends TestCase
         self::assertTrue(array_map(fn($f) => file_get_contents($f), glob("$dir/model/*.php")) === $before, 'gen --check wrote files');
     }
 
+    // Requirements: DBS-4, DBS-27, DBS-155.
     public function test_gen_rejects_a_file_without_the_dbspec_signature(): void
     {
         $work = self::$work;
@@ -95,6 +96,7 @@ final class OrmGenTest extends TestCase
         self::assertTrue(!file_exists($dir), "gen wrote $dir");
     }
 
+    // Requirements: DBS-19, DBS-25, DBS-27, SCH-1.
     public function test_gen_prints_every_error_of_the_set_file_and_writes_nothing(): void
     {
         $work = self::$work;
@@ -107,6 +109,7 @@ final class OrmGenTest extends TestCase
         self::assertTrue(!file_exists("$dir/model"), 'gen wrote the models');
     }
 
+    // Requirements: DBS-5, DBS-98, SCH-1.
     public function test_gen_takes_the_documents_only_from_the_set_file(): void
     {
         $work = self::$work;
@@ -134,6 +137,7 @@ final class OrmGenTest extends TestCase
         }
     }
 
+    // Requirements: DBS-104, DBS-105, DBS-110.
     public function test_gen_generates_the_owned_and_the_used_external_tables_of_a_set(): void
     {
         $work = self::$work;

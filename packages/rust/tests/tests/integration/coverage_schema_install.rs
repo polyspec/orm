@@ -18,6 +18,7 @@ table coverage_install_missing {
 }
 ";
 
+// Requirements: SCH-7, DBS-108.
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_schema_install_existing() {
@@ -49,6 +50,7 @@ async fn table_exists(db: &Db, table: &str) -> bool {
     count > 0
 }
 
+// Requirements: SCH-10, DBS-108.
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_schema_install_partial() {
@@ -112,6 +114,7 @@ fn external_schema(external: &str) -> &'static polyspec_orm::Schema {
 
 /// Checks whether installing a set that uses an external document confirms the external table in the database. If an external document's column is not in the database,
 /// the install fails with CONFIG and does not create the tables it owns. Registration does not read the database, so it connects with that set too.
+// Requirements: DBS-107, SCH-7, SCH-11.
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_schema_install_external_documents() {

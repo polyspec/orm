@@ -41,6 +41,7 @@ class AddTablesAndColumnsTest(unittest.TestCase):
         path = os.path.join(self.tmp.name, name)
         return path, Db.connect(f"sqlite://{path}")
 
+    # Requirements: SCH-8.
     def test_adds_the_new_table_and_the_nullable_column(self):
         path, db = self.connect("add.sqlite3")
         try:

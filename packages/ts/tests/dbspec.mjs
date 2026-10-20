@@ -8,6 +8,7 @@ import { dbspecManifest } from '../dist/dbspec/index.js';
 import { checkCases } from '../../../tests/dbspec/cases.mts';
 import { cases, join, parsed, root, vector } from './dbspec_case.mjs';
 
+// Requirements: DBS-99.
 vector('manifest rejects a repeated document name', () => {
   const text = join(['dbspec 1 shop', '', 'table users {', '  id i64 identity', '  primary key (id)', '}'], false);
   const result = dbspecManifest([parsed(text, {}), parsed(text, {})]);

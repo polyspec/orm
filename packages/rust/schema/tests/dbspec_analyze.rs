@@ -30,6 +30,7 @@ fn got(text: &str) -> Vec<Row> {
         .collect()
 }
 
+// Requirements: DBS-134, DBS-135, DBS-137, DBS-139.
 #[test]
 fn token_classes() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -238,6 +239,7 @@ fn token_classes() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
+// Requirements: DBS-136, DBS-144.
 #[test]
 fn limit_stop_gives_no_tokens() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

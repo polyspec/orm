@@ -101,6 +101,7 @@ fn added(r: polyspec_orm::Result<Vec<String>>) -> Vec<String> {
     r.unwrap_or_else(|e| panic!("add_tables_and_columns: {e}"))
 }
 
+// Requirements: SCH-8, SCH-10.
 #[tokio::test]
 async fn add_tables_and_columns() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -142,6 +143,7 @@ async fn add_tables_and_columns() {
     }
 }
 
+// Requirements: SCH-9.
 #[tokio::test]
 async fn add_tables_and_columns_differs() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -160,6 +162,7 @@ async fn add_tables_and_columns_differs() {
 
 /// Missing indexes on existing tables are added, and calling again does nothing. A missing unique key may fail on existing rows,
 /// so it is SCHEMA_DIFFERS with that reason noted.
+// Requirements: SCH-8, SCH-9.
 #[tokio::test]
 async fn add_tables_and_columns_index() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -187,6 +190,7 @@ async fn add_tables_and_columns_index() {
     }
 }
 
+// Requirements: SCH-8.
 #[tokio::test]
 async fn add_tables_and_columns_transaction() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -212,6 +216,7 @@ async fn add_tables_and_columns_transaction() {
     }
 }
 
+// Requirements: SCH-7, SCH-8.
 #[tokio::test]
 async fn add_tables_and_columns_edited_manifest() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);

@@ -19,6 +19,7 @@ fn document(path: &str) -> Document {
     dbspec::parse(&source(path), &BTreeMap::new()).map(|parsed| parsed.document).unwrap_or_else(|errors| panic!("{path}: {errors:?}"))
 }
 
+// Requirements: DBS-100, SCH-12.
 #[test]
 fn manifest_text_reads_back_as_the_same_document_set() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(DEADLINE));
@@ -37,6 +38,7 @@ fn manifest_text_reads_back_as_the_same_document_set() {
     polyspec_orm_testcase::step(format_args!("dbspec runtime manifest round trip cpu={cpu:?} wall={wall:?}"));
 }
 
+// Requirements: DBS-156, SCH-12.
 #[test]
 fn manifest_text_without_header_is_rejected() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(DEADLINE));
@@ -55,6 +57,7 @@ fn manifest_text_without_header_is_rejected() {
     polyspec_orm_testcase::step(format_args!("dbspec runtime manifest without header cpu={cpu:?} wall={wall:?}"));
 }
 
+// Requirements: DBS-111.
 #[test]
 fn runtime_model_of_bench() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(DEADLINE));
@@ -149,6 +152,7 @@ fn runtime_model_of_bench() {
     polyspec_orm_testcase::step(format_args!("dbspec runtime model of bench cpu={cpu:?} wall={wall:?}"));
 }
 
+// Requirements: DBS-65, DBS-85, DBS-99, DBS-111, DBS-112.
 #[test]
 fn runtime_model_names_entities_and_reads_settings() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(DEADLINE));

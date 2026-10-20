@@ -18,6 +18,7 @@ TABLE = "dbspec 1 app\n\ntable t {\n  id i64\n  primary key (id)\n}\n"
 
 
 class AnalyzeTest(unittest.TestCase):
+    # Requirements: DBS-134, DBS-135.
     def test_header_only(self):
         self.assertEqual(
             tokens_of("dbspec 1 app\n"),

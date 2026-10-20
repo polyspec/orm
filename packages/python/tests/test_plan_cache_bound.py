@@ -46,6 +46,7 @@ def handle() -> Db:
 
 
 class PlanCacheBoundTest(unittest.TestCase):
+    # Requirements: CPX-4.
     def test_in_list_lengths_share_bucketed_plans(self):
         db = handle()
         for n in range(1, 301):

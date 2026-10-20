@@ -11,6 +11,7 @@ function inRequest(n) {
   return { request: { ir_version: 1, manifest_hash: 'h', kind: 'all', entity: 'load_probe', where: { items: [{ pred: { column: 'seq', op: 'in', ps } }] }, n_params: n }, params };
 }
 
+// Requirements: CPX-4.
 caseTest('IN lists of lengths 1 to 300 share at most ten plan cache keys', COMPUTE, () => {
   const keys = new Set();
   for (let n = 1; n <= 300; n++) {
@@ -20,6 +21,7 @@ caseTest('IN lists of lengths 1 to 300 share at most ten plan cache keys', COMPU
   }
 });
 
+// Requirements: CPX-4.
 caseTest('an IN list pads to its bucket by repeating its last value and renumbers its parameters', COMPUTE, () => {
   const request = { ir_version: 1, manifest_hash: 'h', kind: 'all', entity: 'load_probe', where: { items: [{ pred: { column: 'seq', op: 'in', ps: [0, 1, 2] } }, { pred: { column: 'label', op: 'eq', p: 3 } }] }, n_params: 4 };
   const out = canonicalize(request, ['a', 'b', 'c', 'tail']);

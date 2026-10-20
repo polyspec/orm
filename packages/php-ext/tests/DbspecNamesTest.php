@@ -42,12 +42,14 @@ final class DbspecNamesTest extends TestCase
         }
     }
 
+    // Requirements: DBS-32, DBS-172.
     #[DataProvider('renderPairs')]
     public function test_render(string $table, string $suffix): void
     {
         $this->assertSame(Names::render($table, $suffix), NativeNames::render($table, $suffix), "render($table, $suffix): the extension differs from the PHP client");
     }
 
+    // Requirements: DBS-32, DBS-172.
     public function test_column(): void
     {
         // column: the first element whose renderer name is the name; null when none does.
@@ -76,6 +78,7 @@ final class DbspecNamesTest extends TestCase
         );
     }
 
+    // Requirements: DBS-32, DBS-172.
     public function test_of_table(): void
     {
         // ofTable: the same renderer names for the same parsed table, in the same order.
