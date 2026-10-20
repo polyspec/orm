@@ -30,3 +30,15 @@ caseTest('group_rows/owner', COMPUTE, () => {
     }
   }
 });
+
+// Requirements: INT-90.
+caseTest('group_rows/negative_count_codec_decode', COMPUTE, () => {
+  for (const count of [-1, '-1', -1.5]) {
+    try {
+      new GroupRow([['row_count', count]]);
+      throw new Error(`negative group count ${count} was accepted`);
+    } catch (error) {
+      if (!(error instanceof OrmError) || error.code !== 'CODEC_DECODE') throw error;
+    }
+  }
+});

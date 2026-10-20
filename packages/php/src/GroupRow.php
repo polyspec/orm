@@ -38,7 +38,7 @@ final readonly class GroupRow implements \JsonSerializable
     {
         if (is_int($value)) {
             if ($value < 0) {
-                throw new OrmException(Code::INTERNAL, 'group result has a negative row_count');
+                throw new OrmException(Code::CODEC_DECODE, 'group result row_count is negative');
             }
             return $value;
         }

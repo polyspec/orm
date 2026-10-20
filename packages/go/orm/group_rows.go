@@ -56,7 +56,7 @@ func newGroupRow(values []groupValue) (GroupRow, error) {
 				return GroupRow{}, fmt.Errorf("group result row_count: %w", err)
 			}
 			if count < 0 {
-				return GroupRow{}, codecErr(CodeInternal, "group result has a negative row_count")
+				return GroupRow{}, codecErr(CodeCodecDecode, "group result row_count is negative")
 			}
 			countFound = true
 		}

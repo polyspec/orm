@@ -46,4 +46,17 @@ final class GroupRowsTest extends TestCase
             }
         }
     }
+
+    // Requirements: INT-90.
+    public function test_negative_count_is_codec_decode(): void
+    {
+        foreach ([-1, '-1', -1.5] as $count) {
+            try {
+                new GroupRow([['row_count', $count]]);
+                self::fail('negative group count was accepted: ' . json_encode($count));
+            } catch (OrmException $error) {
+                self::assertSame(Code::CODEC_DECODE, $error->code_);
+            }
+        }
+    }
 }

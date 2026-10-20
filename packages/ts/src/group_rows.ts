@@ -14,7 +14,7 @@ function checkedCount(value: unknown): number {
   if (typeof value !== 'number' || !Number.isSafeInteger(value)) {
     throw new OrmError(codes.CODEC_DECODE, 'group result row_count is not an exact integer');
   }
-  if (value < 0 || Object.is(value, -0)) throw new OrmError(codes.INTERNAL, 'group result has a negative row_count');
+  if (value < 0 || Object.is(value, -0)) throw new OrmError(codes.CODEC_DECODE, 'group result row_count is not an exact integer');
   return value;
 }
 

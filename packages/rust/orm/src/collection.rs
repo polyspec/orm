@@ -298,7 +298,7 @@ impl GroupRow {
         }
         let count = values.iter().find(|(name, _)| name == "row_count").ok_or_else(|| crate::Error::internal("group result has no row_count"))?.1.as_i64()?;
         if count < 0 {
-            return Err(crate::Error::internal("group result has a negative row_count"));
+            return Err(crate::Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: "group result row_count is negative".into() });
         }
         Ok(Self { values, count })
     }
@@ -390,7 +390,8 @@ mod group_tests {
         let groups = GroupRows::new(vec![row]);
         assert_eq!(groups.to_json().unwrap(), r#"[{"is_close":false,"row_count":3}]"#);
         assert_eq!(groups.to_array().unwrap(), serde_json::json!([{"is_close": false, "row_count": 3}]));
-        assert_eq!(GroupRow::new(vec![("row_count".into(), Val::I64(-1))]).err().unwrap().code(), "INTERNAL");
+        // Requirements: INT-90.
+        assert_eq!(GroupRow::new(vec![("row_count".into(), Val::I64(-1))]).err().unwrap().code(), "CODEC_DECODE");
         assert_eq!(GroupRow::new(vec![("row_count".into(), Val::Str("invalid".into()))]).err().unwrap().code(), "CODEC_DECODE");
         assert_eq!(GroupRow::new(vec![("row_count".into(), Val::I64(1)), ("row_count".into(), Val::I64(2))]).err().unwrap().code(), "CONFIG");
     }

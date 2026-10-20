@@ -88,3 +88,14 @@ func TestGroupColumnDeclarationRejectsMissingAndDuplicateCount(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// Requirements: INT-90.
+func TestGroupRowNegativeCountIsCodecDecode(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	for _, count := range []any{int64(-1), "-1", float64(-1)} {
+		_, err := newGroupRow([]groupValue{{name: "row_count", value: count}})
+		if code := ErrorCode(err); code != CodeCodecDecode {
+			t.Fatalf("negative count %v: code %s, want %s", count, code, CodeCodecDecode)
+		}
+	}
+}
