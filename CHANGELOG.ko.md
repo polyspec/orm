@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 23b3a45bb12f2686dbf7e4f10178850ee2f8b1a513f5ff26484b222d1b105f42 -->
+<!-- source-sha256: 60df6cc6f9c168386fd5eac656a26349fbe186c7f33c5b9c684f701f57c322bc -->
 # 변경 이력
 
 ## Unreleased
 - DBS-173은 모든 generator가 set이 `use` line으로 쓰는 각 external table의 읽기 전용 model을 scan한 source가 부르든 안 부르든 쓴다고 규정하며, generator마다 하나씩 회귀 case 다섯 개가 이를 지킨다. 어떤 generator도 red가 아니었다: consumer에서 빠진 `Audit`는 T209 이전에 생성한 model에서 왔다(T228).
+- conformance check가 php-extension을 extension을 로드한 PHP runner로 돌리므로 모든 vector가 extension에서 돈다. MySQL과 PostgreSQL에서는 결과가 나머지 다섯 implementation과 같고, SQLite에서는 여섯 모두 문서화된 solo run의 row-lock statement만큼 같은 방식으로 다르다. red: 모든 conformance run이 unsupported language php-extension으로 멈췄다 (T182-0-3).
 - PHP extension이 library 이름으로 `Polyspec\Orm\Validator`를 C로 구현하므로 `tests/ir/validate.json`의 case 125개가 `make dbspec-php-extension-check/ir`에서 extension으로 돌고, interface 기록이 그 class를 담는다. red: extension을 켜도 validator는 PHP library의 것이었다(T182-3).
 - PHP extension이 ORM-AES2 형식의 AES host stage, blind index, hex encode를 C에서 PHP의 crypto 함수를 불러 구현하므로 `tests/codec/aes-vectors.json`과 HostcodecTest 전체가 extension으로 돈다. red: extension을 켜면 aes stage가 `CODEC_UNSUPPORTED`를 답했다 (T182-2-3).
 - PHP extension이 hex와 ip host stage와 row decode를 C로 하므로 `tests/codec/decode-vectors.json`의 vector 68개가 `make dbspec-php-extension-check/decode`에서 extension으로 돈다. red: extension을 켜면 `hostDecode`가 `CODEC_UNSUPPORTED`를 답했다 (T182-2-2).
