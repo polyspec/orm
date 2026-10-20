@@ -38,13 +38,14 @@ in kit, with its grounding.
   Enforced by: `.claude/settings.json`
 - P8 Errors are never hidden: no fallback that turns a wrong input into a plausible one, no silent drop of an input or an
   output, no swallowed error. A fallback stands only where it is truly needed, with that need stated.
-  Enforced by: `make lint-ts`, `make lint-python`, `make lint-go`, `make lint-php`, `make lint-rust`
+  Enforced by: `make lint-ts`, `make lint-python`, `make lint-go`, `make lint-php`, `make lint-rust`, `make suppression-check`
 - P9 Correct first; fast only when it stays correct.
   Enforced by: none, the order of correctness and speed is a judgement.
-- P10 Work may go straight to main. A branch or worktree, when an agent or the situation needs one, is named
-  `{type}/{shortname}-{checklist id}` and `{project}-{shortname}-{checklist id}`, and is deleted as soon as it is merged
-  into main. Test or experiment code that cannot merge is cherry-picked when it is worth keeping and otherwise discarded,
-  always before the commit; when it cannot be removed at once, a checklist sub-item states the condition of its removal.
+- P10 Work reaches main only by the fast-forward of `make land` (P38). Each row has its own worktree and branch, named
+  `{type}/{shortname}-{checklist id}` and `{project}-{shortname}-{checklist id}`, made by `make worktree-setup`, which refuses
+  under 30 GB of free disk. The worktree and its branch are removed right after the merge into main, by `make land`.
+  Test or experiment code that cannot merge is cherry-picked when it is worth keeping and otherwise discarded, always before
+  the commit; when it cannot be removed at once, a checklist sub-item states the condition of its removal.
   Enforced by: `.githooks/pre-push`
 - P11 Code comments, identifiers, logs, error messages, test names and commit messages are written in English. Documents are
   English, each with a Korean twin that writes technical terms in English.
@@ -79,7 +80,8 @@ in kit, with its grounding.
   A test that cannot fail proves nothing, and a test that passes without running is a defect.
   Enforced by: `make commits-check`
 - P20 An item is completed by its own unit tests: red, implementation, green. Only the checks that own what changed run; the
-  full suite is not run, neither per fix, per item nor at the end.
+  full suite is not run, neither per fix, per item nor at the end. The full suite runs only on the order of the conductor,
+  which the Claude Code hook in `.claude/settings.json` enforces.
   Enforced by: `.claude/settings.json`
 - P21 A hard judgement or a new line of reasoning is verified adversarially, in rounds, until a round finds nothing. The scope
   of the review is fixed before the first round; a question beside it becomes its own item. The review is asked for
@@ -87,9 +89,11 @@ in kit, with its grounding.
   another document, or shows a case missing that the proposition claims to cover.
   Enforced by: none, an adversarial review is a judgement.
 - P22 Work handed to an agent carries everything the one handing it knows: the history, why earlier attempts were wrong, the
-  measurements, these principles, the state of shared resources and the completion conditions. The agent first answers
+  measurements, these principles, the state of shared resources and the completion conditions. Subagents run on Haiku 5.5,
+  and each gets one row at a time, with its files, its owner test and its stop condition. The agent first answers
   how it will judge right and wrong; the two agree before the work starts. An agent's report that something does not exist,
-  is impossible or does not apply is checked in the code before it is accepted.
+  is impossible or does not apply is checked in the code before it is accepted. The result of an agent is verified before
+  it lands.
   Enforced by: none, what an agent is told is a judgement of the one who hands it the work.
 
 ## Questions
@@ -107,7 +111,9 @@ repository.
 - P24 A plan is the folder `docs/plans/<plan>/` with `plan.md`, `checklist.md` and their Korean twins. A checklist is one table
   with the columns ID, Task, Deliverables, Verification and State; an item ID is unique among the checklists, and a
   sub-item `<id>-<n>` follows its item in one plan. `make plan-new` and `make item-new` write them, and `make plan-split` moves items to another plan.
-  Enforced by: `make docs-check`
+  A change starts from its registered row: `make item-new` registers the row before any work, and its commit names the row
+  (P28).
+  Enforced by: `make docs-check`, `make commits-check`
 - P25 An item is `[ ]` waiting, `[~]` active, `[o]` done, `[!] cause: <cause>; retry: <condition>` bypassed or
   `[-] cause: <cause>` impossible, and moves only along the transitions of `make item-state`. A new finding on a done item
   is a sub-item of its own; the done item keeps its state.
@@ -149,6 +155,14 @@ repository.
 - P35 A finding that looks blocked by a release is a defect of the link tooling and is reported as a kit defect with its
   file and line; only the re-resolution of a committed lock waits for the decision to release (K314).
   Enforced by: none, whether a finding is a link defect or a release question is a judgement of the report.
+- P36 No deferral: a defect that is found is registered as a row and worked now, never left for later.
+  Enforced by: none, whether a found defect is worked now is a judgement of the one who found it.
+- P37 A result is reported only after its check has run, with the output of that run. A claim that a check passes, made
+  without its output, is not a result.
+  Enforced by: none, whether a result was checked before it was claimed is a judgement.
+- P38 One integrator writes the main of each repository. No commit lands on main except a fast-forward by `make land`,
+  which the commit-on-main check of `make commits-check` enforces (K404).
+  Enforced by: `make commits-check`
 
 ## Repository standards
 
@@ -210,4 +224,6 @@ tool lands, a standard binds the work as written here.
   are the PHPUnit files of every library run with the extension loaded and none of the sources of the library (its dependencies and
   autoload-dev are loaded, its own autoload is not, so the library has no guard against the extension), and those of `packages/php-ext` when it holds any; its
   parity implementation shares the tests of the libraries by this layout, with no relative path in a configuration.
-  Enforced by: `make lint-php-ext`, `make test-php-ext`, `make layout-check`
+  The PHP library is library code only: an application on a userland framework, such as a Symfony Console CLI, is its own
+  Composer package that requires the library, since an internal class cannot extend a userland class.
+  Enforced by: `make lint-php-ext`, `make test-php-ext`, `make layout-check`, `make dependency-policy-check`

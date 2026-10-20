@@ -64,6 +64,10 @@ templates:
       - "!package-lock.json"
       - "!composer.json"
       - "!composer.lock"
+      # The link of a Composer project writes these at the root while it is linked (K392); alint skips them by the exclude of Git
+      # in a main checkout only, so they are root files of kit (K423).
+      - "!composer.link.json"
+      - "!composer.link.lock"
       - "!tsconfig.json"
       - "!.gitignore"
       - "!.gitattributes"

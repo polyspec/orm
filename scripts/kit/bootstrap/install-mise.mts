@@ -6,7 +6,7 @@
 // wrapper keeps every directory that mise reads or writes under var/tools, records the trust of the config of the checkout (trustConfig) and installs only
 // what mise.lock pins (MISE_LOCKED), so nothing of the machine changes and no config of the home is read.
 import { execFileSync } from 'node:child_process';
-import { rmSync } from 'node:fs';
+import { existsSync, lstatSync, readdirSync, readlinkSync, realpathSync, rmSync } from 'node:fs';
 import { writeAtomic } from './files.mts';
 import path from 'node:path';
 import { fileDigest } from './digest.mts';
@@ -25,12 +25,39 @@ export const MISE_ASSETS: Readonly<Record<string, string>> = {
  * Records the trust of the mise.toml of the checkout `root` with `mise trust` in the state dir of the checkout (MISE_STATE_DIR),
  * run by the mise `binary` with the environment of mise of the checkout. Each shim of the checkout reads that config only once it
  * is trusted there, so a new worktree is trusted by its own install of mise and no environment variable trusts a path (K208).
+ * The trust of the checkout is then the only entry of its trusted-configs: the other entries, of the home directory, of other
+ * checkouts and of removed worktrees, are removed.
  */
 export function trustConfig({ root, binary, print = () => {} }: { root: string; binary: string; print?: (text: string) => void }): void {
   const environment: NodeJS.ProcessEnv = { ...process.env, ...miseEnvironment(root) };
   // With MISE_GLOBAL_CONFIG_FILE set, `mise trust` trusts the global configuration instead of the file it names, so it is unset here (K208).
   delete environment.MISE_GLOBAL_CONFIG_FILE;
   run(binary, ['trust', path.join(root, 'mise.toml')], { cwd: root, env: environment }, print);
+  removeForeignTrusts(root);
+}
+
+/** Removes the entries of trusted-configs of the checkout `root` that trust something other than its own mise.toml. */
+export function removeForeignTrusts(root: string): void {
+  const directory = toolsPath(root, 'mise', 'state', 'trusted-configs');
+  for (const { name } of foreignTrusts(root)) rmSync(path.join(directory, name), { recursive: true, force: true });
+}
+
+/**
+ * The entries of trusted-configs of the checkout `root` that trust something other than the mise.toml of the checkout, each with
+ * the path it trusts (K397). mise records a trust as a link to the folder of the file, so a link to the home directory trusts every
+ * mise.toml under it, and a link to the folder of a removed worktree trusts a folder that no longer holds a config.
+ */
+export function foreignTrusts(root: string): { name: string; target: string }[] {
+  const directory = toolsPath(root, 'mise', 'state', 'trusted-configs');
+  if (!existsSync(directory)) return [];
+  const own = new Set([path.resolve(root), realpathSync(root)]);
+  const found: { name: string; target: string }[] = [];
+  for (const name of readdirSync(directory)) {
+    const entry = path.join(directory, name);
+    const target = lstatSync(entry).isSymbolicLink() ? path.resolve(directory, readlinkSync(entry)) : entry;
+    if (!own.has(target)) found.push({ name, target });
+  }
+  return found.sort((left, right) => left.name.localeCompare(right.name));
 }
 
 /** The download URL of the mise archive of `version` for the asset `asset`. */
@@ -45,13 +72,38 @@ export const miseArchiveUrl = (version: string, asset: string): string => `https
  * system; uv keeps its cache in var/tools/mise. A tool that mise runs from uv gets the Python of mise from mise; the uv of a check gets it from UV_PYTHON
  * (toolsEnvironment of mise-tools.mts).
  */
+/**
+ * The installs of mise that the checkout `root` reads besides its own (K387): those of the main checkout of its repository when `root`
+ * is a linked worktree, so a worktree runs the tools that the main checkout installed and installs only those that it lacks; the
+ * data dir, the state, the shims and the wrappers stay those of the checkout, and the store holds tools only, never sources.
+ * Undefined in the main checkout, outside a repository and while the main checkout has installed nothing.
+ */
+export function sharedInstalls(root: string): string | undefined {
+  let common: string;
+  try {
+    common = execFileSync('git', ['rev-parse', '--git-common-dir'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  } catch {
+    // git fails outside a repository, which has no main checkout to share.
+    return undefined;
+  }
+  const absolute = path.resolve(root, common);
+  if (path.basename(absolute) !== '.git') return undefined;
+  const main = path.dirname(absolute);
+  const installs = toolsPath(main, 'mise', 'installs');
+  return realpathSync(main) === realpathSync(root) || !existsSync(installs) ? undefined : installs;
+}
+
 export function miseEnvironment(root: string): Record<string, string> {
+  const shared = sharedInstalls(root);
   return {
+    ...(shared === undefined ? {} : { MISE_SHARED_INSTALL_DIRS: shared }),
     MISE_DATA_DIR: toolsPath(root, 'mise'),
     MISE_CACHE_DIR: toolsPath(root, 'mise', 'cache'),
     MISE_STATE_DIR: toolsPath(root, 'mise', 'state'),
     MISE_CONFIG_DIR: toolsPath(root, 'mise', 'config'),
     MISE_GLOBAL_CONFIG_FILE: path.join(root, 'mise.toml'),
+    // mise install records the trust of the root of the global config, the home directory unless this names the checkout (K397-1).
+    MISE_GLOBAL_CONFIG_ROOT: root,
     MISE_LOCKED: '1',
     MISE_AUTO_INSTALL: '0',
     UV_PYTHON_DOWNLOADS: 'never',
@@ -161,7 +213,7 @@ export function installNode({ root, print = () => {} }: { root: string; print?: 
     run(mise, ['install', '--locked', 'node'], { cwd: root, env: bootstrapEnvironment(root) }, print);
   } catch (error) {
     if (!(error instanceof Error)) throw error;
-    throw new Error(`${error.message}; mise.toml must declare node, the Node.js release of the checkout, and mise.lock must pin it (make toolchain-lock)`);
+    throw new Error(`${error.message}; mise.toml must declare node, the Node.js release of the checkout, and mise.lock must pin it (make toolchain-lock)`, { cause: error });
   }
   const directory = miseWhere(root, 'node');
   writeWrapper(root, NODE_WRAPPER, wrapperText('the Node.js of mise.toml of this checkout', `exec ${quote(path.join(directory, 'bin', 'node'))} "$@"`), print);

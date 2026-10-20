@@ -1,5 +1,5 @@
 <!-- doc-id: principles -->
-<!-- source-sha256: fd222e7d6da33eb18afd774e1da227fbf211f85cb051aed816934e150f7d2ada -->
+<!-- source-sha256: e66e38e0d85232dc79edf78d51b4d9677ff1bdd5569a67722ec0f94de1e5f18b -->
 # 원칙
 
 [English](PRINCIPLES.md)
@@ -38,11 +38,12 @@ vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-check`�
   Enforced by: `.claude/settings.json`
 - P8 오류는 숨기지 않습니다: 잘못된 입력을 그럴듯한 입력으로 바꾸는 fallback도, 입력이나 출력을 조용히 버리는 것도, 삼킨
   오류도 없습니다. fallback은 정말 필요한 곳에만 그 필요를 적고 둡니다.
-  Enforced by: `make lint-ts`, `make lint-python`, `make lint-go`, `make lint-php`, `make lint-rust`
+  Enforced by: `make lint-ts`, `make lint-python`, `make lint-go`, `make lint-php`, `make lint-rust`, `make suppression-check`
 - P9 올바름이 먼저입니다; 빠름은 올바름을 지킬 때만 좇습니다.
   Enforced by: none, 올바름과 빠름의 순서는 판단입니다.
-- P10 작업은 main에서 바로 할 수 있습니다. agent나 상황에 따라 branch나 worktree가 필요하면
-  `{type}/{shortname}-{체크리스트 id}`와 `{프로젝트}-{shortname}-{체크리스트 id}`로 이름 짓고, main에 merge되는 즉시
+- P10 main에는 `make land`의 fast-forward로만 작업이 들어갑니다(P38). 각 행은 자기 worktree와 branch를 가지며,
+  `{type}/{shortname}-{체크리스트 id}`와 `{프로젝트}-{shortname}-{체크리스트 id}`로 이름 짓고 `make worktree-setup`으로
+  만듭니다. 자유 디스크가 30 GB 미만이면 거부합니다. worktree와 그 branch는 main에 merge된 직후 `make land`가
   지웁니다. merge될 수 없는 test나 실험 code는 남길 가치가 있으면 cherry-pick하고 아니면 폐기하며, 항상 commit 전에
   합니다; 바로 지울 수 없으면 checklist 하위 항목에 제거 조건을 적습니다.
   Enforced by: `.githooks/pre-push`
@@ -78,15 +79,17 @@ vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-check`�
   test는 아무것도 증명하지 않으며, 실행되지 않고 통과하는 test는 결함입니다.
   Enforced by: `make commits-check`
 - P20 항목은 자기 단위 test의 red, 구현, green으로 완료합니다. 바뀐 것의 소유 검사만 돌리며, 전체 모음은 수정마다, 항목마다,
-  마지막에도 돌리지 않습니다.
+  마지막에도 돌리지 않습니다. 전체 모음은 conductor의 명령으로만 돌며, 이는 `.claude/settings.json`의 Claude Code hook이
+  강제합니다.
   Enforced by: `.claude/settings.json`
 - P21 어려운 판단이나 새로운 추론은 한 round가 아무것도 찾지 못할 때까지 round마다 적대적으로 검증합니다. 검증의 범위는 첫
   round 전에 정하며, 그 옆의 질문은 자기 항목이 됩니다. 검증에는 반론뿐 아니라 해법도 요구하며, finding은 명제가 틀렸음을
   보이거나, 다른 문서와 모순됨을 보이거나, 명제가 다룬다고 주장하는 case가 빠졌음을 보일 때만 인정합니다.
   Enforced by: none, 적대적 review는 판단입니다.
 - P22 agent에게 맡기는 일은 맡기는 쪽이 아는 모든 것을 담습니다: 이력, 이전 시도가 왜 틀렸는지, 측정값, 이 원칙, 공유 자원의
-  상태, 완료 조건. agent는 먼저 옳고 그름을 어떻게 판단할지 답하고, 둘은 작업 전에 합의합니다. 무엇이 없다, 불가능하다,
-  해당하지 않는다는 agent의 보고는 받아들이기 전에 code에서 확인합니다.
+  상태, 완료 조건. Subagent는 Haiku 5.5에서 돌고, 한 번에 한 행씩 그 파일, 소유 test, 중단 조건과 함께 받습니다.
+  agent는 먼저 옳고 그름을 어떻게 판단할지 답하고, 둘은 작업 전에 합의합니다. 무엇이 없다, 불가능하다,
+  해당하지 않는다는 agent의 보고는 받아들이기 전에 code에서 확인합니다. agent의 결과는 main에 들어가기 전에 검증합니다.
   Enforced by: none, agent에게 무엇을 전하는지는 일을 맡기는 사람의 판단입니다.
 
 ## 질문
@@ -102,7 +105,9 @@ vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-check`�
 - P24 plan은 `plan.md`, `checklist.md`와 그 한국어 짝을 가진 folder `docs/plans/<plan>/`이다. checklist는 ID, Task,
   Deliverables, Verification, State column을 가진 table 하나이다. item ID는 checklist 사이에서 유일하고, sub-item
   `<id>-<n>`은 한 plan 안에서 그 item을 따른다. `make plan-new`와 `make item-new`가 그것을 쓰고, `make plan-split`이 item을 다른 plan으로 옮긴다.
-  Enforced by: `make docs-check`
+  변경은 등록된 행에서 시작한다: `make item-new`가 어떤 작업보다 먼저 행을 등록하며, commit은 그 행을 이름으로 적는다
+  (P28).
+  Enforced by: `make docs-check`, `make commits-check`
 - P25 item은 `[ ]` waiting, `[~]` active, `[o]` done, `[!] cause: <cause>; retry: <condition>` bypassed 또는
   `[-] cause: <cause>` impossible이며, `make item-state`의 전이로만 움직인다. done item에 대한 새 발견은 그 자신의
   sub-item이 되고, done item은 state를 유지한다.
@@ -140,6 +145,14 @@ vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-check`�
 - P35 release 때문에 막힌 것처럼 보이는 finding은 link tooling의 결함이며 파일과 줄을 적어 kit 결함으로 보고한다. 커밋된 lock의
   재resolve만 release 결정을 기다린다 (K314).
   Enforced by: none, finding이 link 결함인지 release 문제인지는 보고의 판단이다.
+- P36 미루지 않는다: 발견한 결함은 행으로 등록하고 지금 처리하며, 나중으로 남기지 않는다.
+  Enforced by: none, 발견한 결함을 지금 처리하는지는 발견한 사람의 판단이다.
+- P37 결과는 그 check가 실행된 뒤, 그 실행의 출력과 함께만 보고한다. 출력 없이 check가 통과한다고 주장하는 것은 결과가
+  아니다.
+  Enforced by: none, 주장하기 전에 결과를 확인했는지는 판단이다.
+- P38 각 저장소의 main을 쓰는 integrator는 한 명이다. `make land`의 fast-forward 말고는 어떤 commit도 main에 들어가지
+  않으며, 이는 `make commits-check`의 commit-on-main 검사가 강제한다 (K404).
+  Enforced by: `make commits-check`
 
 ## Repository 기준
 
@@ -194,5 +207,6 @@ owner가 2026-10-13에 이 기준을 승인했습니다. 각 기준은 위반 �
   Reflection으로 library와 비교하되 이름마다 그것을 선언한 library와 비교하며, unit test는 extension을 load하고 library의 source는 하나도 load하지 않고
   (dependency와 autoload-dev는 load하고 library 자신의 autoload는 load하지 않으므로 library에는 extension에 대한 guard가 없다) 실행하는 모든
   library의 PHPUnit 파일과 (있다면) `packages/php-ext`의 것이다. parity implementation은 이 layout으로 library의 test를 공유하며,
-  설정에 상대 경로를 두지 않는다.
-  Enforced by: `make lint-php-ext`, `make test-php-ext`, `make layout-check`
+  설정에 상대 경로를 두지 않는다. PHP library는 library code뿐이다: Symfony Console CLI처럼 userland framework 위의
+  application은 그 library를 require하는 자기 Composer package이다. 내부 class는 userland class를 확장할 수 없기 때문이다.
+  Enforced by: `make lint-php-ext`, `make test-php-ext`, `make layout-check`, `make dependency-policy-check`

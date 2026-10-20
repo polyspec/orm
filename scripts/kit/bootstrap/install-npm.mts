@@ -57,6 +57,8 @@ export function installNpm({ root, declared, node, print = () => {} }: { root: s
     install: (next: string) => {
       writeFileSync(path.join(next, 'package.json'), '{ "private": true }\n');
       if (declared.sha512) unpackVerified({ root, next, version: declared.version, sha512: declared.sha512, print });
+      // The bootstrap keeps the npm of the machine: var/tools does not exist before this install, so this is the one start that takes
+      // its tool from PATH, and bootstrapEnvironment keeps var/tools/bin off PATH (K393-1).
       else run('npm', ['install', '--prefix', next, '--no-save', '--no-package-lock', '--no-bin-links', '--no-audit', '--no-fund', `npm@${declared.version}`], { cwd: next, env: bootstrapEnvironment(root) }, print);
     },
   });

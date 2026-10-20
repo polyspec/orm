@@ -10,7 +10,8 @@
 // No unsafe flow of any (K157): an any value is no argument, assignment, callee, object of a member access or return value
 // of a typed place, and a type assertion does not narrow a type; JSON is read through a schema (K158) and an unknown value is
 // narrowed by a check.
-// No swallowed error (K256): no empty block, an empty catch included, and no catch that only rethrows.
+// No swallowed error (K256): no empty block, an empty catch included, and no catch that only rethrows; an error thrown in a
+// catch carries the caught one as its cause (preserve-caught-error, P8, K334).
 // No non-null assertion (K156): a value whose type admits undefined or null is read with a check, or with a throwing accessor
 // that names what it expects (present of scripts/kit/present.mts in kit), never asserted away with `!`.
 // oxc/number-arg-out-of-range is off: it allows toFixed and toExponential 0 to 20 and toPrecision 1 to 21, the limits before
@@ -30,6 +31,7 @@
     "oxc/number-arg-out-of-range": "off",
     "no-empty": "error",
     "no-useless-catch": "error",
+    "preserve-caught-error": "error",
     "typescript/ban-ts-comment": [
       "error",
       { "ts-expect-error": "allow-with-description", "ts-ignore": true, "ts-nocheck": true, "ts-check": false, "minimumDescriptionLength": 3 }
