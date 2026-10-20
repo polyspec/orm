@@ -1205,7 +1205,7 @@
   },
   "packages/rust/build/src/scan.rs::Scanner": {
     "exported": false,
-    "signature": " struct Scanner \u003c 'a \u003e { models : \u0026 'a HashSet \u003c String \u003e , fallible_setters : \u0026 'a HashSet \u003c (String , String) \u003e , file : String , scopes : Vec \u003c HashMap \u003c String , Binding \u003e \u003e , attached : Vec \u003c bool \u003e , out : \u0026 'a mut Scan , }"
+    "signature": " struct Scanner \u003c 'a \u003e { models : \u0026 'a HashSet \u003c String \u003e , # [doc = \" The modules that include another set's model file (DSL-151): a model reached through one is not this set's.\"] foreign : \u0026 'a HashSet \u003c String \u003e , # [doc = \" The names that a `use` of this file binds to a model of a foreign module.\"] hidden : HashSet \u003c String \u003e , fallible_setters : \u0026 'a HashSet \u003c (String , String) \u003e , file : String , scopes : Vec \u003c HashMap \u003c String , Binding \u003e \u003e , attached : Vec \u003c bool \u003e , out : \u0026 'a mut Scan , }"
   },
   "packages/rust/build/src/scan.rs::Scanner \u003c '_ \u003e as Visit \u003c 'ast \u003e::visit_arm": {
     "exported": false,
@@ -1279,6 +1279,10 @@
     "exported": false,
     "signature": " fn optional (t : \u0026 Type) -\u003e bool"
   },
+  "packages/rust/build/src/scan.rs::Scanner \u003c '_ \u003e::own_path": {
+    "exported": false,
+    "signature": " fn own_path (\u0026 self , segments : \u0026 [String]) -\u003e bool"
+  },
   "packages/rust/build/src/scan.rs::Scanner \u003c '_ \u003e::pos": {
     "exported": false,
     "signature": " fn pos (\u0026 self , span : proc_macro2 :: Span) -\u003e String"
@@ -1311,6 +1315,14 @@
     "exported": false,
     "signature": "String"
   },
+  "packages/rust/build/src/scan.rs::Scanner#field.foreign": {
+    "exported": false,
+    "signature": "\u0026 'a HashSet \u003c String \u003e"
+  },
+  "packages/rust/build/src/scan.rs::Scanner#field.hidden": {
+    "exported": false,
+    "signature": "HashSet \u003c String \u003e"
+  },
   "packages/rust/build/src/scan.rs::Scanner#field.models": {
     "exported": false,
     "signature": "\u0026 'a HashSet \u003c String \u003e"
@@ -1325,7 +1337,35 @@
   },
   "packages/rust/build/src/scan.rs::Scanner#wire": {
     "exported": false,
-    "signature": "{\"attached\":\"list\u003cbool\u003e\",\"fallible_setters\":\"unsupported:\u0026 'a HashSet \u003c (String , String) \u003e\",\"file\":\"text\",\"models\":\"unsupported:\u0026 'a HashSet \u003c String \u003e\",\"out\":\"unsupported:\u0026 'a mut Scan\",\"scopes\":\"list\u003cmap\u003cBinding\u003e\u003e\"}"
+    "signature": "{\"attached\":\"list\u003cbool\u003e\",\"fallible_setters\":\"unsupported:\u0026 'a HashSet \u003c (String , String) \u003e\",\"file\":\"text\",\"foreign\":\"unsupported:\u0026 'a HashSet \u003c String \u003e\",\"hidden\":\"HashSet\",\"models\":\"unsupported:\u0026 'a HashSet \u003c String \u003e\",\"out\":\"unsupported:\u0026 'a mut Scan\",\"scopes\":\"list\u003cmap\u003cBinding\u003e\u003e\"}"
+  },
+  "packages/rust/build/src/scan.rs::Uses": {
+    "exported": false,
+    "signature": " struct Uses \u003c 'a \u003e { models : \u0026 'a HashSet \u003c String \u003e , foreign : \u0026 'a HashSet \u003c String \u003e , hidden : HashSet \u003c String \u003e , }"
+  },
+  "packages/rust/build/src/scan.rs::Uses \u003c '_ \u003e as Visit \u003c 'ast \u003e::visit_item_use": {
+    "exported": false,
+    "signature": " fn visit_item_use (\u0026 mut self , u : \u0026 'ast syn :: ItemUse)"
+  },
+  "packages/rust/build/src/scan.rs::Uses \u003c '_ \u003e::tree": {
+    "exported": false,
+    "signature": " fn tree (\u0026 mut self , tree : \u0026 syn :: UseTree , last : Option \u003c String \u003e)"
+  },
+  "packages/rust/build/src/scan.rs::Uses#field.foreign": {
+    "exported": false,
+    "signature": "\u0026 'a HashSet \u003c String \u003e"
+  },
+  "packages/rust/build/src/scan.rs::Uses#field.hidden": {
+    "exported": false,
+    "signature": "HashSet \u003c String \u003e"
+  },
+  "packages/rust/build/src/scan.rs::Uses#field.models": {
+    "exported": false,
+    "signature": "\u0026 'a HashSet \u003c String \u003e"
+  },
+  "packages/rust/build/src/scan.rs::Uses#wire": {
+    "exported": false,
+    "signature": "{\"foreign\":\"unsupported:\u0026 'a HashSet \u003c String \u003e\",\"hidden\":\"HashSet\",\"models\":\"unsupported:\u0026 'a HashSet \u003c String \u003e\"}"
   },
   "packages/rust/build/src/scan.rs::aliases_in": {
     "exported": false,
@@ -1343,6 +1383,18 @@
     "exported": false,
     "signature": " fn collect_files (p : \u0026 Path , out : \u0026 mut Vec \u003c PathBuf \u003e) -\u003e Result \u003c () , String \u003e"
   },
+  "packages/rust/build/src/scan.rs::included_file": {
+    "exported": false,
+    "signature": " fn included_file (file : \u0026 Path , tokens : \u0026 proc_macro2 :: TokenStream) -\u003e Option \u003c (PathBuf , bool) \u003e"
+  },
+  "packages/rust/build/src/scan.rs::model_modules": {
+    "exported": false,
+    "signature": " fn model_modules (file : \u0026 Path , name : \u0026 str , items : \u0026 [syn :: Item] , model_file : \u0026 Path , own : \u0026 mut HashSet \u003c String \u003e , foreign : \u0026 mut HashSet \u003c String \u003e)"
+  },
+  "packages/rust/build/src/scan.rs::normalize": {
+    "exported": false,
+    "signature": " fn normalize (path : \u0026 Path) -\u003e PathBuf"
+  },
   "packages/rust/build/src/scan.rs::pat_ident": {
     "exported": false,
     "signature": " fn pat_ident (p : \u0026 Pat) -\u003e Option \u003c (String , Option \u003c \u0026 Type \u003e) \u003e"
@@ -1357,7 +1409,7 @@
   },
   "packages/rust/build/src/scan.rs::scan": {
     "exported": true,
-    "signature": "pub fn scan (paths : \u0026 [PathBuf] , models : \u0026 HashSet \u003c String \u003e , fallible_setters : \u0026 HashSet \u003c (String , String) \u003e) -\u003e Result \u003c Scan , String \u003e"
+    "signature": "pub fn scan (paths : \u0026 [PathBuf] , models : \u0026 HashSet \u003c String \u003e , fallible_setters : \u0026 HashSet \u003c (String , String) \u003e , model_file : \u0026 Path) -\u003e Result \u003c Scan , String \u003e"
   },
   "packages/rust/build/src/tool_db.rs::Conn": {
     "exported": true,
@@ -7430,6 +7482,10 @@
   "packages/rust/orm/src/row.rs::Src::val": {
     "exported": true,
     "signature": "fn val (\u0026 mut self , i : usize) -\u003e Result \u003c Val \u003e"
+  },
+  "packages/rust/orm/src/row.rs::aes_row_version": {
+    "exported": false,
+    "signature": " fn aes_row_version (row : \u0026 [Val] , index : usize) -\u003e Result \u003c i32 \u003e"
   },
   "packages/rust/orm/src/row.rs::decode_boolean_columns": {
     "exported": false,

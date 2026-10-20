@@ -4915,6 +4915,10 @@
     "exported": true,
     "signature": "public function rotateRow(array $row, string $versionColumn, array $columns, int $targetVersion): array"
   },
+  "packages/php/src/AesKeyring.php::Polyspec\\Orm\\AesKeyring::storedVersion": {
+    "exported": true,
+    "signature": "public static function storedVersion(mixed $value): int"
+  },
   "packages/php/src/AesKeyring.php::Polyspec\\Orm\\AesKeyring::versions": {
     "exported": true,
     "signature": "public function versions(): array"
@@ -5302,6 +5306,10 @@
   "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::packIp": {
     "exported": false,
     "signature": "private static function packIp(string $s): string"
+  },
+  "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::rowVersion": {
+    "exported": false,
+    "signature": "private static function rowVersion(array $vals, int $index): int"
   },
   "packages/php/src/Codec.php::Polyspec\\Orm\\Codec::unpackIp": {
     "exported": false,

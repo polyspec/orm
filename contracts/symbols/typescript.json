@@ -51,6 +51,10 @@
     "exported": true,
     "signature": "encode(value: unknown, styles: readonly string[], key: string): unknown"
   },
+  "packages/ts/src/aes.ts::storedVersion": {
+    "exported": true,
+    "signature": "export function storedVersion(value: unknown): number"
+  },
   "packages/ts/src/bind_check.ts::ParamSlot": {
     "exported": true,
     "signature": "interface ParamSlot"
@@ -1959,6 +1963,10 @@
     "exported": false,
     "signature": "function integer(value: unknown, what: string): number"
   },
+  "packages/ts/src/dbspec/apply.ts::lastPlan": {
+    "exported": false,
+    "signature": "async function lastPlan(connection: Connection, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () =\u003e number, events: DbspecApplyHandler | null | undefined, body: (a: Applier, p: DbspecPlan, row: HistoryRow) =\u003e Promise\u003cvoid\u003e): Promise\u003cvoid\u003e"
+  },
   "packages/ts/src/dbspec/apply.ts::messageOf": {
     "exported": false,
     "signature": "function messageOf(error: unknown): string"
@@ -2215,10 +2223,6 @@
     "exported": false,
     "signature": "function comments(out: string[], lines: readonly string[], indent: string, view: View): void"
   },
-  "packages/ts/src/dbspec/emit.ts::compare": {
-    "exported": false,
-    "signature": "function compare(a: string, b: string): number"
-  },
   "packages/ts/src/dbspec/emit.ts::defaultText": {
     "exported": false,
     "signature": "function defaultText(value: DbspecDefault): string"
@@ -2254,10 +2258,6 @@
   "packages/ts/src/dbspec/emit.ts::settingText": {
     "exported": false,
     "signature": "function settingText(setting: DbspecSetting, t: DbspecTable, view: View): string"
-  },
-  "packages/ts/src/dbspec/emit.ts::sorted": {
-    "exported": false,
-    "signature": "function sorted\u003cT\u003e(items: readonly T[], key: (item: T) =\u003e string): T[]"
   },
   "packages/ts/src/dbspec/emit.ts::stateLineText": {
     "exported": false,
@@ -2731,6 +2731,14 @@
     "exported": false,
     "signature": "write(p: Predicate): string"
   },
+  "packages/ts/src/dbspec/introspect_check.ts::CheckReport": {
+    "exported": true,
+    "signature": "interface CheckReport"
+  },
+  "packages/ts/src/dbspec/introspect_check.ts::CheckReport.report": {
+    "exported": true,
+    "signature": "report(kind: string, table: string, name: string, reason: string): void"
+  },
   "packages/ts/src/dbspec/introspect_check.ts::Operand": {
     "exported": false,
     "signature": "interface Operand"
@@ -2767,6 +2775,10 @@
     "exported": false,
     "signature": "{\"kind\":\"TokenKind\",\"text\":\"text\"}"
   },
+  "packages/ts/src/dbspec/introspect_check.ts::addCheck": {
+    "exported": true,
+    "signature": "export function addCheck(c: CheckReport, table: string, t: { checks: { name: string; predicate: string; }[]; }, dialect: DbspecDialect, name: string, clause: string, columns: ReadonlyMap\u003cstring, DbspecType\u003e): void"
+  },
   "packages/ts/src/dbspec/introspect_check.ts::checkTokens": {
     "exported": false,
     "signature": "function checkTokens(dialect: DbspecDialect, text: string): Token[]"
@@ -2774,6 +2786,10 @@
   "packages/ts/src/dbspec/introspect_check.ts::decodeCheck": {
     "exported": true,
     "signature": "export function decodeCheck(dialect: DbspecDialect, text: string, columns: ReadonlyMap\u003cstring, DbspecType\u003e): string"
+  },
+  "packages/ts/src/dbspec/introspect_check.ts::markChecked": {
+    "exported": true,
+    "signature": "export function markChecked(checked: Map\u003cstring, Set\u003cstring\u003e\u003e, table: string, column: string): void"
   },
   "packages/ts/src/dbspec/introspect_check.ts::readSQLString": {
     "exported": false,
@@ -4615,10 +4631,6 @@
     "exported": true,
     "signature": "export function chainPlans(plans: readonly DbspecPlan[]): DbspecChainResult"
   },
-  "packages/ts/src/dbspec/plan.ts::compare": {
-    "exported": false,
-    "signature": "function compare(a: string, b: string): number"
-  },
   "packages/ts/src/dbspec/plan.ts::emitPlan": {
     "exported": true,
     "signature": "export function emitPlan(plan: DbspecPlan): string"
@@ -4646,10 +4658,6 @@
   "packages/ts/src/dbspec/plan.ts::planTo": {
     "exported": true,
     "signature": "export function planTo(header: Omit\u003cDbspecPlan, 'schema' | 'to'\u003e, schema: DbspecDocument, schemaText: string): DbspecPlanResult"
-  },
-  "packages/ts/src/dbspec/plan.ts::sortedBy": {
-    "exported": true,
-    "signature": "export function sortedBy\u003cT\u003e(items: readonly T[], key: (item: T) =\u003e string): T[]"
   },
   "packages/ts/src/dbspec/plan_diff.ts::DbspecChange": {
     "exported": true,
@@ -5231,10 +5239,6 @@
     "exported": false,
     "signature": "function actionText(a: DbspecAction): string"
   },
-  "packages/ts/src/dbspec/render.ts::compare": {
-    "exported": false,
-    "signature": "function compare(a: string, b: string): number"
-  },
   "packages/ts/src/dbspec/render.ts::operandType": {
     "exported": false,
     "signature": "function operandType(t: DbspecTable, a: CheckOperand, b: CheckOperand | null): DbspecType | null"
@@ -5250,10 +5254,6 @@
   "packages/ts/src/dbspec/render.ts::scaledDecimal": {
     "exported": false,
     "signature": "function scaledDecimal(text: string): string"
-  },
-  "packages/ts/src/dbspec/render.ts::sorted": {
-    "exported": false,
-    "signature": "function sorted\u003cT\u003e(items: readonly T[], key: (item: T) =\u003e string): T[]"
   },
   "packages/ts/src/dbspec/render.ts::useOrder": {
     "exported": false,
@@ -5442,6 +5442,14 @@
   "packages/ts/src/dbspec/set_read.ts::rootOf": {
     "exported": false,
     "signature": "function rootOf(prefix: string): string"
+  },
+  "packages/ts/src/dbspec/sort.ts::compareText": {
+    "exported": true,
+    "signature": "export function compareText(a: string, b: string): number"
+  },
+  "packages/ts/src/dbspec/sort.ts::sortedBy": {
+    "exported": true,
+    "signature": "export function sortedBy\u003cT\u003e(items: readonly T[], key: (item: T) =\u003e string): T[]"
   },
   "packages/ts/src/dbspec/unicode_word.ts::containsWordRune": {
     "exported": true,
@@ -6935,10 +6943,6 @@
     "exported": false,
     "signature": "function placedJoins(g: Group, out: Set\u003cstring\u003e): void"
   },
-  "packages/ts/src/engine/planner.ts::sameList": {
-    "exported": false,
-    "signature": "function sameList(a: readonly string[], b: readonly string[]): boolean"
-  },
   "packages/ts/src/engine/planner.ts::slot": {
     "exported": false,
     "signature": "function slot(fields: Partial\u003cBindSlot\u003e \u0026 { from: string; }): BindSlot"
@@ -7319,6 +7323,10 @@
     "exported": false,
     "signature": "unknown"
   },
+  "packages/ts/src/generate/scan.ts::Scanner#field.file": {
+    "exported": false,
+    "signature": "string"
+  },
   "packages/ts/src/generate/scan.ts::Scanner#field.functions": {
     "exported": false,
     "signature": "unknown"
@@ -7338,6 +7346,10 @@
   "packages/ts/src/generate/scan.ts::Scanner#field.scopes": {
     "exported": false,
     "signature": "Array\u003cMap\u003cstring, Value\u003e\u003e"
+  },
+  "packages/ts/src/generate/scan.ts::Scanner#field.set": {
+    "exported": false,
+    "signature": "SetModule"
   },
   "packages/ts/src/generate/scan.ts::Scanner#field.sites": {
     "exported": false,
@@ -7411,6 +7423,22 @@
     "exported": false,
     "signature": "private visitImport(node: ImportDeclaration): void"
   },
+  "packages/ts/src/generate/scan.ts::SetModule": {
+    "exported": false,
+    "signature": "interface SetModule"
+  },
+  "packages/ts/src/generate/scan.ts::SetModule#field.hash": {
+    "exported": false,
+    "signature": "string"
+  },
+  "packages/ts/src/generate/scan.ts::SetModule#field.module": {
+    "exported": false,
+    "signature": "string"
+  },
+  "packages/ts/src/generate/scan.ts::SetModule#wire": {
+    "exported": false,
+    "signature": "{\"module\":\"text\",\"hash\":\"text\"}"
+  },
   "packages/ts/src/generate/scan.ts::Value": {
     "exported": false,
     "signature": "interface Value"
@@ -7451,6 +7479,10 @@
     "exported": false,
     "signature": "function isNode(value: unknown): value is Node"
   },
+  "packages/ts/src/generate/scan.ts::lineColumn": {
+    "exported": false,
+    "signature": "function lineColumn(text: string, start: number): string"
+  },
   "packages/ts/src/generate/scan.ts::mapValue": {
     "exported": false,
     "signature": "function mapValue(value: Value | undefined, f: (member: Value) =\u003e Value | undefined): Value | undefined"
@@ -7463,13 +7495,21 @@
     "exported": false,
     "signature": "function members(value: Value | undefined): readonly Value[]"
   },
+  "packages/ts/src/generate/scan.ts::moduleFile": {
+    "exported": false,
+    "signature": "function moduleFile(path: string): string | undefined"
+  },
+  "packages/ts/src/generate/scan.ts::ownModule": {
+    "exported": false,
+    "signature": "function ownModule(set: SetModule, file: string, specifier: string): boolean"
+  },
   "packages/ts/src/generate/scan.ts::parameter": {
     "exported": false,
     "signature": "function parameter(param: ParamPattern): { name: Node; type: TSType | undefined; initializer: Expression | undefined; }"
   },
   "packages/ts/src/generate/scan.ts::scanModelCalls": {
     "exported": true,
-    "signature": "export function scanModelCalls(paths: readonly string[], models: ReadonlySet\u003cstring\u003e, sites: ScanSite[] = []): Map\u003cstring, Set\u003cstring\u003e\u003e"
+    "signature": "export function scanModelCalls(paths: readonly string[], models: ReadonlySet\u003cstring\u003e, outDir: string, hash: string, sites: ScanSite[] = []): Map\u003cstring, Set\u003cstring\u003e\u003e"
   },
   "packages/ts/src/generate/scan.ts::typeOf": {
     "exported": false,
@@ -7481,11 +7521,11 @@
   },
   "packages/ts/src/generate/scan.ts::visitDir": {
     "exported": false,
-    "signature": "function visitDir(dir: string, models: ReadonlySet\u003cstring\u003e, out: Map\u003cstring, Set\u003cstring\u003e\u003e, sites: ScanSite[]): void"
+    "signature": "function visitDir(dir: string, models: ReadonlySet\u003cstring\u003e, out: Map\u003cstring, Set\u003cstring\u003e\u003e, sites: ScanSite[], module: SetModule): void"
   },
   "packages/ts/src/generate/scan.ts::visitFile": {
     "exported": false,
-    "signature": "function visitFile(path: string, models: ReadonlySet\u003cstring\u003e, out: Map\u003cstring, Set\u003cstring\u003e\u003e, sites: ScanSite[]): void"
+    "signature": "function visitFile(path: string, models: ReadonlySet\u003cstring\u003e, out: Map\u003cstring, Set\u003cstring\u003e\u003e, sites: ScanSite[], module: SetModule): void"
   },
   "packages/ts/src/generate/typescript.ts::Generator": {
     "exported": false,
@@ -8411,6 +8451,10 @@
     "exported": true,
     "signature": "{\"query\":\"RequestQuery\",\"column\":\"text\",\"agg\":\"text\"}"
   },
+  "packages/ts/src/list.ts::sameList": {
+    "exported": true,
+    "signature": "export function sameList(a: readonly string[], b: readonly string[]): boolean"
+  },
   "packages/ts/src/markdown.ts::LinksOf": {
     "exported": false,
     "signature": "class LinksOf"
@@ -8694,10 +8738,6 @@
   "packages/ts/src/markdown.ts::parseMarkdownDsn": {
     "exported": true,
     "signature": "export function parseMarkdownDsn(url: URL): MarkdownDsn"
-  },
-  "packages/ts/src/markdown.ts::sameList": {
-    "exported": false,
-    "signature": "function sameList(a: readonly string[], b: readonly string[]): boolean"
   },
   "packages/ts/src/markdown.ts::savepointLine": {
     "exported": true,
@@ -9455,7 +9495,15 @@
     "exported": true,
     "signature": "EntityDef"
   },
+  "packages/ts/src/models/markdown_fixture/models.ts::Logs#field.getFirstTask": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/markdown_fixture/models.ts::Logs#field.getName": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::Logs#field.getTaskPoints": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -9587,6 +9635,22 @@
     "exported": true,
     "signature": "class People"
   },
+  "packages/ts/src/models/markdown_fixture/models.ts::People#field.addColumnFirstTask": {
+    "exported": true,
+    "signature": "(fn: (model: this) =\u003e Model) =\u003e this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::People#field.addColumnTaskPoints": {
+    "exported": true,
+    "signature": "(fn: (model: this) =\u003e Model) =\u003e this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::People#field.andGtJoined": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::People#field.andLeJoined": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
+  },
   "packages/ts/src/models/markdown_fixture/models.ts::People#field.email": {
     "exported": true,
     "signature": "(v0: string | readonly (string)[] | ValueFunction | Model | null) =\u003e this"
@@ -9595,9 +9659,25 @@
     "exported": true,
     "signature": "EntityDef"
   },
+  "packages/ts/src/models/markdown_fixture/models.ts::People#field.getFirstTask": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::People#field.getTaskPoints": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/markdown_fixture/models.ts::People#field.id": {
     "exported": true,
     "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::People#field.lbName": {
+    "exported": true,
+    "signature": "(v0: string) =\u003e this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::People#field.lkName": {
+    "exported": true,
+    "signature": "(v0: string) =\u003e this"
   },
   "packages/ts/src/models/markdown_fixture/models.ts::People#field.matchOwnerWithId": {
     "exported": true,
@@ -9935,7 +10015,15 @@
     "exported": true,
     "signature": "EntityDef"
   },
+  "packages/ts/src/models/markdown_fixture/models.ts::Tasks#field.getFirstTask": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/markdown_fixture/models.ts::Tasks#field.getName": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::Tasks#field.getTaskPoints": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -9951,9 +10039,29 @@
     "exported": true,
     "signature": "() =\u003e this"
   },
+  "packages/ts/src/models/markdown_fixture/models.ts::Tasks#field.neTupleIdWithOwner": {
+    "exported": true,
+    "signature": "(v0: ReadonlyArray\u003creadonly [string, string]\u003e) =\u003e this"
+  },
   "packages/ts/src/models/markdown_fixture/models.ts::Tasks#field.owner": {
     "exported": true,
     "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::Tasks#field.ownerEqId": {
+    "exported": true,
+    "signature": "(v0: People | Tasks | Logs) =\u003e this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::Tasks#field.pointsEqName": {
+    "exported": true,
+    "signature": "(v0: People) =\u003e this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::Tasks#field.titleNeName": {
+    "exported": true,
+    "signature": "(v0: People) =\u003e this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::Tasks#field.tupleIdWithOwner": {
+    "exported": true,
+    "signature": "(v0: ReadonlyArray\u003creadonly [string, string]\u003e) =\u003e this"
   },
   "packages/ts/src/models/markdown_fixture/models.ts::Tasks.addColumnDone": {
     "exported": true,
@@ -16671,6 +16779,22 @@
     "exported": true,
     "signature": "{\"column\":\"text\",\"desc\":\"bool\"}"
   },
+  "packages/ts/src/names.ts::WordPart": {
+    "exported": true,
+    "signature": "interface WordPart"
+  },
+  "packages/ts/src/names.ts::WordPart#field.sep": {
+    "exported": true,
+    "signature": "string"
+  },
+  "packages/ts/src/names.ts::WordPart#field.words": {
+    "exported": true,
+    "signature": "string[]"
+  },
+  "packages/ts/src/names.ts::WordPart#wire": {
+    "exported": true,
+    "signature": "{\"sep\":\"text\",\"words\":\"list\u003ctext\u003e\"}"
+  },
   "packages/ts/src/names.ts::columnIndex": {
     "exported": false,
     "signature": "function columnIndex(e: Entity): Map\u003cstring, string\u003e"
@@ -16710,6 +16834,10 @@
   "packages/ts/src/names.ts::splitWith": {
     "exported": false,
     "signature": "function splitWith(e: Entity, ws: readonly string[]): string[] | undefined"
+  },
+  "packages/ts/src/names.ts::splitWords": {
+    "exported": true,
+    "signature": "export function splitWords(ws: readonly string[], separators: readonly string[]): WordPart[]"
   },
   "packages/ts/src/names.ts::upperFirst": {
     "exported": true,

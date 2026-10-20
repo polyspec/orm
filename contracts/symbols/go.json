@@ -133,7 +133,7 @@
   },
   "packages/go/engine/dbspec/apply.go::Apply": {
     "exported": true,
-    "signature": "func(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error"
+    "signature": "func(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) (ApplyResult, error)"
   },
   "packages/go/engine/dbspec/apply.go::ApplyError": {
     "exported": true,
@@ -190,6 +190,22 @@
   "packages/go/engine/dbspec/apply.go::ApplyEvent#field.Steps": {
     "exported": true,
     "signature": "int"
+  },
+  "packages/go/engine/dbspec/apply.go::ApplyResult": {
+    "exported": true,
+    "signature": "type ApplyResult struct { Stopped bool Stop error Failure *ApplyError }"
+  },
+  "packages/go/engine/dbspec/apply.go::ApplyResult#field.Failure": {
+    "exported": true,
+    "signature": "*ApplyError"
+  },
+  "packages/go/engine/dbspec/apply.go::ApplyResult#field.Stop": {
+    "exported": true,
+    "signature": "error"
+  },
+  "packages/go/engine/dbspec/apply.go::ApplyResult#field.Stopped": {
+    "exported": true,
+    "signature": "bool"
   },
   "packages/go/engine/dbspec/apply.go::Execer": {
     "exported": true,
@@ -327,6 +343,10 @@
     "exported": false,
     "signature": "receiver=*applier func(p *Plan, steps []PlanStep, i int, statement string) error"
   },
+  "packages/go/engine/dbspec/apply.go::applier.runAndRecord": {
+    "exported": false,
+    "signature": "receiver=*applier func(p *Plan, steps []PlanStep, i int, statement string, done int) error"
+  },
   "packages/go/engine/dbspec/apply.go::applier.sameSession": {
     "exported": false,
     "signature": "receiver=*applier func(p *Plan, i int, current int64) error"
@@ -347,9 +367,17 @@
     "exported": false,
     "signature": "receiver=*applier func(f func() error) error"
   },
+  "packages/go/engine/dbspec/apply.go::applier.statementAt": {
+    "exported": false,
+    "signature": "receiver=*applier func(p *Plan, i int, statement, restore string, cond Effect) (string, error)"
+  },
   "packages/go/engine/dbspec/apply.go::applier.steps": {
     "exported": false,
     "signature": "receiver=*applier func(p *Plan) ([]PlanStep, error)"
+  },
+  "packages/go/engine/dbspec/apply.go::applier.verified": {
+    "exported": false,
+    "signature": "receiver=*applier func(p *Plan, want string, steps int) error"
   },
   "packages/go/engine/dbspec/apply.go::applier.verify": {
     "exported": false,
@@ -379,13 +407,29 @@
     "exported": false,
     "signature": "string"
   },
+  "packages/go/engine/dbspec/apply.go::inSession": {
+    "exported": false,
+    "signature": "func(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error, fn func(a *applier) error) error"
+  },
+  "packages/go/engine/dbspec/apply.go::isOnly": {
+    "exported": false,
+    "signature": "func(err, target error) bool"
+  },
   "packages/go/engine/dbspec/apply.go::joinCleanup": {
     "exported": false,
     "signature": "func(errs ...error) error"
   },
+  "packages/go/engine/dbspec/apply.go::lastPlan": {
+    "exported": false,
+    "signature": "func(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error, fn func(a *applier, p *Plan, row historyRow) error) error"
+  },
   "packages/go/engine/dbspec/apply.go::newApplier": {
     "exported": false,
     "signature": "func(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) (*applier, error)"
+  },
+  "packages/go/engine/dbspec/apply.go::unjoined": {
+    "exported": false,
+    "signature": "func(err error) bool"
   },
   "packages/go/engine/dbspec/checks.go::checkLiteral": {
     "exported": false,
@@ -438,6 +482,10 @@
   "packages/go/engine/dbspec/checks.go::isBoolLiteral": {
     "exported": false,
     "signature": "func(e Expr) bool"
+  },
+  "packages/go/engine/dbspec/checks.go::literalSide": {
+    "exported": false,
+    "signature": "func(e Expr) Literal"
   },
   "packages/go/engine/dbspec/checks.go::meets": {
     "exported": false,
@@ -1139,6 +1187,10 @@
     "exported": false,
     "signature": "receiver=*checkDecoder func() ([]cOperand, error)"
   },
+  "packages/go/engine/dbspec/introspect_check.go::checkDecoder.literals": {
+    "exported": false,
+    "signature": "receiver=*checkDecoder func(closer, msg string) ([]cOperand, error)"
+  },
   "packages/go/engine/dbspec/introspect_check.go::checkDecoder.operand": {
     "exported": false,
     "signature": "receiver=*checkDecoder func() (cOperand, error)"
@@ -1190,6 +1242,10 @@
   "packages/go/engine/dbspec/introspect_check.go::numericCast": {
     "exported": false,
     "signature": "func(typeName string) bool"
+  },
+  "packages/go/engine/dbspec/introspect_check.go::operandOf": {
+    "exported": false,
+    "signature": "func(n cNode) (cOperand, error)"
   },
   "packages/go/engine/dbspec/introspect_check.go::readSQLString": {
     "exported": false,
@@ -1274,6 +1330,10 @@
   "packages/go/engine/dbspec/introspect_mysql.go::withoutIntroducers": {
     "exported": false,
     "signature": "func(clause string) string"
+  },
+  "packages/go/engine/dbspec/introspect_postgres.go::decimalDigits": {
+    "exported": false,
+    "signature": "func(precision, scale string) (p, s int, ok bool)"
   },
   "packages/go/engine/dbspec/introspect_postgres.go::postgresAction": {
     "exported": false,
@@ -3393,11 +3453,7 @@
   },
   "packages/go/engine/dbspec/plan_steps.go::namedIndex": {
     "exported": false,
-    "signature": "type namedIndex struct { name, create, drop string constraint bool }"
-  },
-  "packages/go/engine/dbspec/plan_steps.go::namedIndex#field.constraint": {
-    "exported": false,
-    "signature": "bool"
+    "signature": "type namedIndex struct { name, create, drop string }"
   },
   "packages/go/engine/dbspec/plan_steps.go::namedIndex#field.create": {
     "exported": false,
@@ -3635,6 +3691,10 @@
     "exported": false,
     "signature": "func(a Action) string"
   },
+  "packages/go/engine/dbspec/render.go::indexColumnList": {
+    "exported": false,
+    "signature": "func(cols []IndexColumn, quote func(string) string) string"
+  },
   "packages/go/engine/dbspec/render.go::renderer": {
     "exported": false,
     "signature": "type renderer struct { d Dialect }"
@@ -3805,7 +3865,7 @@
   },
   "packages/go/engine/dbspec/set.go::readListedFile": {
     "exported": false,
-    "signature": "func(path string) ([]byte, os.FileInfo, error)"
+    "signature": "func(path string) (_ []byte, _ os.FileInfo, err error)"
   },
   "packages/go/engine/dbspec/set.go::segmentProblem": {
     "exported": false,
@@ -3849,7 +3909,7 @@
   },
   "packages/go/engine/dbspec/set_other.go::listNames": {
     "exported": false,
-    "signature": "func(directory string) (nameList, error)"
+    "signature": "func(directory string) (_ nameList, err error)"
   },
   "packages/go/engine/dbspec/set_other.go::nameList": {
     "exported": false,
@@ -4158,6 +4218,14 @@
   "packages/go/engine/dialect/dialect.go::QuoteWith": {
     "exported": true,
     "signature": "func(q string, ident string) string"
+  },
+  "packages/go/engine/dialect/dialect.go::rowLock": {
+    "exported": false,
+    "signature": "func(mode string) (string, bool)"
+  },
+  "packages/go/engine/dialect/dialect.go::upsert": {
+    "exported": false,
+    "signature": "func(conflict []string, assigns string) string"
   },
   "packages/go/engine/dialect/functions.go::IsValueFunction": {
     "exported": true,
@@ -4763,6 +4831,10 @@
     "exported": true,
     "signature": "{\"group\":\"Group\",\"joined\":\"JoinedRef\",\"pred\":\"Pred\"}"
   },
+  "packages/go/engine/ir/ir.go::ItemConn": {
+    "exported": true,
+    "signature": "func(item Item) string"
+  },
   "packages/go/engine/ir/ir.go::Join": {
     "exported": true,
     "signature": "type Join struct { Rel string `json:\"rel\"` Kind string `json:\"kind\"` Query *Query `json:\"query\"` Left string `json:\"left,omitempty\"` Right string `json:\"right,omitempty\"` }"
@@ -5135,13 +5207,13 @@
     "exported": false,
     "signature": "func(q *Query) bool"
   },
-  "packages/go/engine/ir/ir.go::itemConn": {
-    "exported": false,
-    "signature": "func(item Item) string"
-  },
   "packages/go/engine/ir/ir.go::joinedRefs": {
     "exported": false,
     "signature": "func(g *Group, joined map[string]*Join, seen map[string]bool) error"
+  },
+  "packages/go/engine/ir/ir.go::listOperandError": {
+    "exported": false,
+    "signature": "func(ent *runtimemodel.Entity, p *Pred) error"
   },
   "packages/go/engine/ir/ir.go::meets": {
     "exported": false,
@@ -5615,6 +5687,10 @@
     "exported": false,
     "signature": "receiver=*Planner func(r *ir.Request) (*plan.Step, error)"
   },
+  "packages/go/engine/planner/planner.go::Planner.inList": {
+    "exported": false,
+    "signature": "receiver=*Planner func(lhs string, pr *ir.Pred, render func(i int) (string, error)) (string, error)"
+  },
   "packages/go/engine/planner/planner.go::Planner.insertStep": {
     "exported": false,
     "signature": "receiver=*Planner func(r *ir.Request) (*plan.Step, error)"
@@ -5646,6 +5722,10 @@
   "packages/go/engine/planner/planner.go::Planner.renderAssign": {
     "exported": false,
     "signature": "receiver=*Planner func(b *builder, ent *runtimemodel.Entity, col *runtimemodel.Field, a *ir.Assign) (string, error)"
+  },
+  "packages/go/engine/planner/planner.go::Planner.renderAssigns": {
+    "exported": false,
+    "signature": "receiver=*Planner func(b *builder, ent *runtimemodel.Entity, assigns []ir.Assign) ([]string, error)"
   },
   "packages/go/engine/planner/planner.go::Planner.renderBlindIndexValue": {
     "exported": false,
@@ -5779,6 +5859,10 @@
     "exported": false,
     "signature": "receiver=*builder func(name, typ string) string"
   },
+  "packages/go/engine/planner/planner.go::builder.mainStep": {
+    "exported": false,
+    "signature": "receiver=*builder func(sql string) (*plan.Step, error)"
+  },
   "packages/go/engine/planner/planner.go::builder.now": {
     "exported": false,
     "signature": "receiver=*builder func(precision int) string"
@@ -5813,7 +5897,7 @@
   },
   "packages/go/engine/planner/planner.go::conflictTarget": {
     "exported": false,
-    "signature": "func(ent *runtimemodel.Entity, set []ir.Assign) []string"
+    "signature": "func(ent *runtimemodel.Entity, set []ir.Assign) ([]string, error)"
   },
   "packages/go/engine/planner/planner.go::contains": {
     "exported": false,
@@ -5918,10 +6002,6 @@
   "packages/go/engine/planner/planner.go::scope#field.q": {
     "exported": false,
     "signature": "*ir.Query"
-  },
-  "packages/go/engine/planner/planner.go::sortedKeys": {
-    "exported": false,
-    "signature": "func[V any](m map[string]V) []string"
   },
   "packages/go/engine/planner/planner.go::stepSet": {
     "exported": false,
@@ -6178,6 +6258,10 @@
   "packages/go/engine/runtimemodel/runtimemodel.go::SetLoadError.Error": {
     "exported": true,
     "signature": "receiver=*SetLoadError func() string"
+  },
+  "packages/go/engine/runtimemodel/runtimemodel.go::SnakeCase": {
+    "exported": true,
+    "signature": "func(s string) string"
   },
   "packages/go/engine/runtimemodel/runtimemodel.go::entityOf": {
     "exported": false,
@@ -16847,10 +16931,6 @@
     "exported": false,
     "signature": "receiver=*request func(m Model, outer *Core, scalar bool) *ir.Sub"
   },
-  "packages/go/orm/build.go::snake": {
-    "exported": false,
-    "signature": "func(s string) string"
-  },
   "packages/go/orm/canonical.go::canonicalize": {
     "exported": false,
     "signature": "func(r *request) error"
@@ -16971,6 +17051,10 @@
     "exported": false,
     "signature": "receiver=*phpParser func(msg string) error"
   },
+  "packages/go/orm/codec.go::phpParser.length": {
+    "exported": false,
+    "signature": "receiver=*phpParser func(what string) (int, error)"
+  },
   "packages/go/orm/codec.go::phpParser.until": {
     "exported": false,
     "signature": "receiver=*phpParser func(c byte) (string, error)"
@@ -16986,10 +17070,6 @@
   "packages/go/orm/codec.go::phpUnserialize": {
     "exported": false,
     "signature": "func(b []byte) (any, error)"
-  },
-  "packages/go/orm/codec.go::styledCols": {
-    "exported": false,
-    "signature": "func(a *plan.Assemble) []plan.OutCol"
   },
   "packages/go/orm/codec.go::yamlCoreScalar": {
     "exported": false,
@@ -17057,11 +17137,15 @@
   },
   "packages/go/orm/collection.go::Collection": {
     "exported": true,
-    "signature": "type Collection[T Model] struct { keys []Key items map[Key]T fetched map[Key]any conn *DB }"
+    "signature": "type Collection[T Model] struct { keys []Key items map[Key]T fetched map[Key]any conn *DB err error }"
   },
   "packages/go/orm/collection.go::Collection#field.conn": {
     "exported": false,
     "signature": "*DB"
+  },
+  "packages/go/orm/collection.go::Collection#field.err": {
+    "exported": false,
+    "signature": "error"
   },
   "packages/go/orm/collection.go::Collection#field.fetched": {
     "exported": false,
@@ -17127,9 +17211,9 @@
     "exported": true,
     "signature": "receiver=*Collection[T] func() []map[string]any"
   },
-  "packages/go/orm/collection.go::Collection.put": {
+  "packages/go/orm/collection.go::Collection.failure": {
     "exported": false,
-    "signature": "receiver=*Collection[T] func(k Key, v T)"
+    "signature": "receiver=*Collection[T] func() error"
   },
   "packages/go/orm/collection.go::Core.SetTimeText": {
     "exported": true,
@@ -18143,6 +18227,10 @@
     "exported": false,
     "signature": "func() error"
   },
+  "packages/go/orm/db.go::closeAfter": {
+    "exported": false,
+    "signature": "func(c io.Closer, err error) error"
+  },
   "packages/go/orm/db.go::configErr": {
     "exported": false,
     "signature": "func(format string, a ...any) error"
@@ -18230,6 +18318,10 @@
   "packages/go/orm/db.go::dbMutable#field.subs": {
     "exported": false,
     "signature": "subscribers"
+  },
+  "packages/go/orm/db.go::internalErr": {
+    "exported": false,
+    "signature": "func(format string, a ...any) error"
   },
   "packages/go/orm/db.go::lookupDriver": {
     "exported": false,
@@ -18439,6 +18531,10 @@
     "exported": false,
     "signature": "func(a *auditRecord, record string) (any, error)"
   },
+  "packages/go/orm/exec.go::beginRead": {
+    "exported": false,
+    "signature": "func(ex executor, r *request) (func(), *DB, context.Context, error)"
+  },
   "packages/go/orm/exec.go::bindsAudit": {
     "exported": false,
     "signature": "func(st *plan.Step) bool"
@@ -18501,7 +18597,7 @@
   },
   "packages/go/orm/exec.go::expandIn": {
     "exported": false,
-    "signature": "func(st *plan.Step, vals []any) (string, []any)"
+    "signature": "func(st *plan.Step, vals []any) (string, []any, error)"
   },
   "packages/go/orm/exec.go::getQuery": {
     "exported": false,
@@ -18626,6 +18722,10 @@
   "packages/go/orm/exec.go::scanOne": {
     "exported": false,
     "signature": "func(ctx context.Context, ex executor, c *cached, st *plan.Step, r *request) (any, error)"
+  },
+  "packages/go/orm/exec.go::selectedRowVersion": {
+    "exported": false,
+    "signature": "func(vals []any, asm *plan.Assemble) (int32, error)"
   },
   "packages/go/orm/exec.go::stepRows": {
     "exported": false,
@@ -18873,7 +18973,7 @@
   },
   "packages/go/orm/markdown.go::markdownLinks": {
     "exported": false,
-    "signature": "func(row []any) *mdLinks"
+    "signature": "func(row []any) (*mdLinks, error)"
   },
   "packages/go/orm/markdown.go::markdownRead": {
     "exported": false,
@@ -19021,7 +19121,11 @@
   },
   "packages/go/orm/markdown.go::mdPool": {
     "exported": false,
-    "signature": "type mdPool struct { dsn markdownDSN idleSize int lifetime time.Duration slots chan struct{} mu sync.Mutex idle []*mdSession open int inUse int closed bool }"
+    "signature": "type mdPool struct { dsn markdownDSN idleSize int lifetime time.Duration slots chan struct{} mu sync.Mutex idle []*mdSession open int inUse int closed bool closeErr error }"
+  },
+  "packages/go/orm/markdown.go::mdPool#field.closeErr": {
+    "exported": false,
+    "signature": "error"
   },
   "packages/go/orm/markdown.go::mdPool#field.closed": {
     "exported": false,
@@ -19065,7 +19169,11 @@
   },
   "packages/go/orm/markdown.go::mdPool.close": {
     "exported": false,
-    "signature": "receiver=*mdPool func()"
+    "signature": "receiver=*mdPool func() error"
+  },
+  "packages/go/orm/markdown.go::mdPool.discard": {
+    "exported": false,
+    "signature": "receiver=*mdPool func(s *mdSession)"
   },
   "packages/go/orm/markdown.go::mdPool.release": {
     "exported": false,
@@ -19105,9 +19213,17 @@
   },
   "packages/go/orm/markdown.go::mdSession": {
     "exported": false,
-    "signature": "type mdSession struct { conn net.Conn in *bufio.Reader created time.Time broken bool }"
+    "signature": "type mdSession struct { conn net.Conn in *bufio.Reader created time.Time broken bool closed bool closeErr error }"
   },
   "packages/go/orm/markdown.go::mdSession#field.broken": {
+    "exported": false,
+    "signature": "bool"
+  },
+  "packages/go/orm/markdown.go::mdSession#field.closeErr": {
+    "exported": false,
+    "signature": "error"
+  },
+  "packages/go/orm/markdown.go::mdSession#field.closed": {
     "exported": false,
     "signature": "bool"
   },
@@ -19373,7 +19489,7 @@
   },
   "packages/go/orm/model.go::assembler.joinRow": {
     "exported": false,
-    "signature": "receiver=*assembler func(ch *plan.Child, row []any) ([]any, bool)"
+    "signature": "receiver=*assembler func(ch *plan.Child, row []any) ([]any, bool, error)"
   },
   "packages/go/orm/model.go::assembler.model": {
     "exported": false,
@@ -19418,6 +19534,10 @@
   "packages/go/orm/model.go::collection.put": {
     "exported": false,
     "signature": "receiver=*collection func(k Key, m *Core)"
+  },
+  "packages/go/orm/model.go::collectionOf": {
+    "exported": false,
+    "signature": "func(v any) (any, error)"
   },
   "packages/go/orm/model.go::encodeValue": {
     "exported": false,
@@ -19587,6 +19707,10 @@
     "exported": false,
     "signature": "func(s string) string"
   },
+  "packages/go/orm/model.go::typedCollection": {
+    "exported": false,
+    "signature": "func[T Model](v any) (*Collection[T], error)"
+  },
   "packages/go/orm/model.go::validateIdentityAssignment": {
     "exported": false,
     "signature": "func(ent *runtimemodel.Entity, generated *Entity, m Model) error"
@@ -19634,10 +19758,6 @@
   "packages/go/orm/root_in.go::driverBindLimit": {
     "exported": false,
     "signature": "func(driver string) int"
-  },
-  "packages/go/orm/root_in.go::itemConn": {
-    "exported": false,
-    "signature": "func(item ir.Item) string"
   },
   "packages/go/orm/root_in.go::padIndexes": {
     "exported": false,
@@ -19733,7 +19853,7 @@
   },
   "packages/go/orm/sqlite_lock.go::acquireSQLiteRowLock": {
     "exported": false,
-    "signature": "func(ctx context.Context, ex executor, mode string) error"
+    "signature": "func(ctx context.Context, ex executor, mode string) (err error)"
   },
   "packages/go/orm/sqlite_lock.go::ensureSQLiteRowLock": {
     "exported": false,
@@ -19961,7 +20081,7 @@
   },
   "packages/go/orm/tx.go::activeFor": {
     "exported": false,
-    "signature": "func(db *DB) *txConn"
+    "signature": "func(db *DB) (*txConn, error)"
   },
   "packages/go/orm/tx.go::auditInsert": {
     "exported": false,
@@ -19997,7 +20117,7 @@
   },
   "packages/go/orm/tx.go::currentFlow": {
     "exported": false,
-    "signature": "func() *flowStack"
+    "signature": "func() (*flowStack, error)"
   },
   "packages/go/orm/tx.go::executor": {
     "exported": false,
@@ -20013,19 +20133,19 @@
   },
   "packages/go/orm/tx.go::goroutineID": {
     "exported": false,
-    "signature": "func() uint64"
+    "signature": "func() (uint64, error)"
   },
   "packages/go/orm/tx.go::innermost": {
     "exported": false,
-    "signature": "func() *txConn"
+    "signature": "func() (*txConn, error)"
   },
   "packages/go/orm/tx.go::popFrame": {
     "exported": false,
-    "signature": "func()"
+    "signature": "func() error"
   },
   "packages/go/orm/tx.go::pushFrame": {
     "exported": false,
-    "signature": "func(t *txConn)"
+    "signature": "func(t *txConn) error"
   },
   "packages/go/orm/tx.go::resolve": {
     "exported": false,
@@ -20141,7 +20261,7 @@
   },
   "packages/go/orm/tx.go::txConn.closeStatements": {
     "exported": false,
-    "signature": "receiver=*txConn func()"
+    "signature": "receiver=*txConn func() error"
   },
   "packages/go/orm/tx.go::txConn.commit": {
     "exported": false,
@@ -20510,6 +20630,10 @@
   "packages/go/orm/utils.go::externalTexts": {
     "exported": false,
     "signature": "func(m *runtimemodel.Model) map[string]string"
+  },
+  "packages/go/orm/utils.go::introspectObserved": {
+    "exported": false,
+    "signature": "func(ctx context.Context, r runner, dialect dbspec.Dialect, m *runtimemodel.Model) (*observed, *dbspec.Document, []dbspec.Unsupported, error)"
   },
   "packages/go/orm/utils.go::introspectSet": {
     "exported": false,

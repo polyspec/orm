@@ -2413,7 +2413,7 @@
   },
   "packages/python/src/polyspec/orm/generate/scan.py::scan_model_calls": {
     "exported": true,
-    "signature": "def scan_model_calls(paths, models, sites=None) -\u003e dict"
+    "signature": "def scan_model_calls(paths, models, sites=None, out_dir='.') -\u003e dict"
   },
   "packages/python/src/polyspec/orm/group_rows.py::GroupRow": {
     "exported": true,
