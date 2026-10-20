@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- `make lint-python` passes: six files take the ruff format, six lambda assignments are functions, and a test computes its root after its imports instead of silencing E402. Red: `ruff format --check` listed 6 files (KSTD-5-8).
 - `make lint-go` passes: every unchecked error of the Go code, the tests and the examples is handled (a Close error joins the returned error, and tests close with `testcase.Close`), the staticcheck rewrites are applied, and the 37 unreachable functions are removed or tested as public symbols. Red: golangci-lint found 284 findings and deadcode 37 (KSTD-5-7).
 - The codec rules and PLN-15 name the stages of DBS-69, `ordered_json` among them, instead of the styles `json`, `jsons`, `point`, `aes_serialize` and `aes_hex` (KSTD-2-9-12).
 - DIA-21 names `orm.Connect`, the Go entry, instead of `orm.Open` (KSTD-2-9-11).

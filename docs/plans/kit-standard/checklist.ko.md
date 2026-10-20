@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: dd12514660fd8b94a6b29bca37b145c02c8018193d4fa79df8759e51926aac5f -->
+<!-- source-sha256: 60fd76721db4cf8cde59c376f6e54de18317b3ae32625e5e1ec318918e486519 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -64,7 +64,7 @@
 | KSTD-5-5 | duplication-check가 통과한다 (KSTD-5 후속). Cause: jscpd가 구현 전체에서 clone 988개(줄의 4.29 percent)를 찾는다; 반복된 code는 둘이 함께 쓰는 한 module로 옮긴다 | the code of every implementation | `make duplication-check` | [ ] |
 | KSTD-5-6 | lint-ts가 통과한다 (KSTD-5 후속). Cause: oxlint와 knip이 repository의 TypeScript에서 실패한다 | the TypeScript of the repository | `make lint-ts` | [ ] |
 | KSTD-5-7 | lint-go가 통과한다 (KSTD-5 후속). Cause: golangci-lint가 examples, packages/go, tests에서, deadcode가 packages/go에서 실패한다 | the Go of the repository | `make lint-go` | [o] |
-| KSTD-5-8 | lint-python이 통과한다 (KSTD-5 후속). Cause: ruff format --check가 repository의 Python에서 실패한다 | the Python of the repository | `make lint-python` | [ ] |
+| KSTD-5-8 | lint-python이 통과한다 (KSTD-5 후속). Cause: ruff format --check가 repository의 Python에서 실패한다 | the Python of the repository | `make lint-python` | [o] |
 | KSTD-5-9 | lint-php가 통과한다 (KSTD-5 후속). Cause: 루트, packages/php, packages/php-ext의 phpcs와 phpstan이 실패한다 | the PHP of the repository | `make lint-php` | [ ] |
 | KSTD-5-10 | PHP extension은 stub 하나를 가진 하나의 extension polyspec_orm이어서 lint-php-ext와 test-php-ext가 통과한다 (kit K293, S10) (KSTD-5 후속). Cause: kit은 repository의 extension을 package polyspec/orm-php-ext의 polyspec_orm으로, stub은 packages/php-ext/src/polyspec_orm.stub.php 하나로 정하는데, orm은 polyspec/orm-dbspec에서 stub 두 개로 orm_dbspec을 build한다 | packages/php-ext, its stubs, config/parity.json | `make lint-php-ext` | [ ] |
 | KSTD-5-11 | CHECK_TARGETS가 kit-gates의 모든 gate를 돌린다 (KSTD-5 후속). Cause: kit-check가 CHECK_TARGETS가 돌리지 않는 gate 13개를 보고한다; 각 gate는 그 sub-item이 통과하면 추가된다 | Makefile | `make kit-check` | [ ] |
