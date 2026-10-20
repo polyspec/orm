@@ -15,26 +15,47 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// generateCommand is the generation command declared on the go:generate line of generate.go.
-func generateCommand(t *testing.T) []string {
+// modelsFile is the declared entries of the Go models, relative to packages/go, read by make go-models and make go-model-check.
+const modelsFile = "models.txt"
+
+// modelEntries reads the entries of the Go models from packages/go/models.txt: each line that is not a comment is the
+// argument list of one orm-gen gen run from packages/go.
+func modelEntries(t *testing.T) [][]string {
 	t.Helper()
-	source, err := os.ReadFile("generate.go")
+	source, err := os.ReadFile(filepath.Join("..", modelsFile))
 	if err != nil {
 		t.Fatal(err)
 	}
-	var command []string
+	var entries [][]string
 	for _, line := range strings.Split(string(source), "\n") {
-		if rest, ok := strings.CutPrefix(line, "//go:generate "); ok {
-			if command != nil {
-				t.Fatal("generate.go declares more than one go:generate command")
+		if strings.TrimSpace(line) == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		entries = append(entries, strings.Fields(line))
+	}
+	if len(entries) == 0 {
+		t.Fatalf("%s declares no entry", modelsFile)
+	}
+	return entries
+}
+
+// modelEntry returns the entry that writes the model package, the one whose output is ./model.
+func modelEntry(t *testing.T, entries [][]string) []string {
+	t.Helper()
+	for _, entry := range entries {
+		for i := 0; i+1 < len(entry); i++ {
+			if entry[i] == "--out" && entry[i+1] == "./model" {
+				return entry
 			}
-			command = strings.Fields(rest)
 		}
 	}
-	if len(command) < 3 || command[0] != "go" || command[1] != "run" {
-		t.Fatalf("generate.go declares no go run command: %q", command)
-	}
-	return command
+	t.Fatalf("%s declares no entry with --out ./model", modelsFile)
+	return nil
+}
+
+// genCommand is the orm-gen command that writes one entry of the Go models, run from packages/go.
+func genCommand(entry []string) []string {
+	return append([]string{"go", "run", "./cmd/orm-gen", "gen", "--lang", "go"}, entry...)
 }
 
 // runCheck runs the generation command with --check in dir and returns the stdout, stderr, and exit
@@ -59,16 +80,26 @@ func runCheck(t *testing.T, dir string, command []string) (string, string, int) 
 
 // copyModule copies into dst the Go source of the module parts that the generation command reads:
 // go.work, the go.mod and go.sum of its three modules, the packages/go modules (orm-gen, generator, engine,
-// the Go client), plus the examples that scan reads, the Go conformance runner, and the set file
-// contracts/fixtures/bench/dbspec-set.json and the document it lists, contracts/fixtures/bench/bench.dbs.
+// the Go client), plus the examples that scan reads, the Go conformance runner, and the documents of the bench set
+// directory contracts/fixtures/bench, which the set files list.
 func copyModule(t *testing.T, root, dst string) {
 	t.Helper()
-	files := []string{"go.work", filepath.Join("contracts", "fixtures", "bench", "dbspec-set.json"), filepath.Join("contracts", "fixtures", "bench", "bench.dbs")}
+	files := []string{"go.work"}
 	for _, module := range []string{filepath.Join("packages", "go"), "tests", "examples"} {
 		files = append(files, filepath.Join(module, "go.mod"), filepath.Join(module, "go.sum"))
 	}
 	for _, file := range files {
 		copyFile(t, filepath.Join(root, file), filepath.Join(dst, file))
+	}
+	bench := filepath.Join("contracts", "fixtures", "bench")
+	documents, err := os.ReadDir(filepath.Join(root, bench))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, document := range documents {
+		if !document.IsDir() {
+			copyFile(t, filepath.Join(root, bench, document.Name()), filepath.Join(dst, bench, document.Name()))
+		}
 	}
 	for _, dir := range []string{filepath.Join("packages", "go"), "examples", filepath.Join("packages", "go", "internal", "conformance")} {
 		err := filepath.WalkDir(filepath.Join(root, dir), func(path string, entry fs.DirEntry, err error) error {
@@ -108,15 +139,18 @@ func copyFile(t *testing.T, src, dst string) {
 	}
 }
 
-// TestCoverageModelGenerationCheck checks that the committed model is the same as the output of the declared
-// generation command, and that check reports a copy with one changed byte as different,
+// TestCoverageModelGenerationCheck checks that the committed models are the same as the output of each declared
+// entry of models.txt, and that check reports a copy of the model package with one changed byte as different,
 // and verifies this.
 func TestCoverageModelGenerationCheck(t *testing.T) {
 	testcase.Start(t, testcase.Process)
-	command := generateCommand(t)
-	if stdout, stderr, code := runCheck(t, ".", command); code != 0 || stdout != "" || stderr != "" {
-		t.Fatalf("check of the committed models exited %d:\n%s%s", code, stdout, stderr)
+	entries := modelEntries(t)
+	for _, entry := range entries {
+		if stdout, stderr, code := runCheck(t, "..", genCommand(entry)); code != 0 || stdout != "" || stderr != "" {
+			t.Fatalf("check of the committed models of %q exited %d:\n%s%s", entry, code, stdout, stderr)
+		}
 	}
+	command := genCommand(modelEntry(t, entries))
 
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
@@ -124,8 +158,8 @@ func TestCoverageModelGenerationCheck(t *testing.T) {
 	}
 	copied := t.TempDir()
 	copyModule(t, root, copied)
-	dir := filepath.Join(copied, "packages", "go", "model")
-	target := filepath.Join(dir, "author.go")
+	dir := filepath.Join(copied, "packages", "go")
+	target := filepath.Join(dir, "model", "author.go")
 	data, err := os.ReadFile(target)
 	if err != nil {
 		t.Fatal(err)
@@ -140,7 +174,7 @@ func TestCoverageModelGenerationCheck(t *testing.T) {
 		t.Fatal(err)
 	}
 	// check writes the difference to stdout and exits with 1, and go run reports that exit status on stderr.
-	if stdout, stderr, code := runCheck(t, dir, command); code != 1 || stdout != "differs: author.go\n" || stderr != "exit status 1\n" {
+	if stdout, stderr, code := runCheck(t, dir, command); code != 1 || stdout != "differs: model/author.go\n" || stderr != "exit status 1\n" {
 		t.Fatalf("check of the changed copy exited %d:\n%s%s", code, stdout, stderr)
 	}
 }

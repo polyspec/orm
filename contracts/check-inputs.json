@@ -23,7 +23,7 @@
     "docs-dbs-check": {"scope": "owner", "needs": ["node-modules"], "inputs": ["docs/.vitepress/dbs.ts", "tests/docs/**"]},
     "markdown-table-check": {"scope": "owner", "needs": ["go", "node-modules", "flowmark"], "inputs": ["scripts/docs/markdown-table.mts", "tests/markdown/flowmark.version", "docs/spec/dialects.md", "docs/spec/dialects.ko.md"]},
     "docs-verify-idempotent": {"scope": "owner", "needs": ["node-modules"], "inputs": ["docs/**", "scripts/docs/**", "contracts/interfaces.json", "package.json", "package-lock.json"]},
-    "go-model-check": {"scope": "owner", "needs": ["go"], "inputs": ["packages/go/model/generate.go", "packages/go/generator/*.go", "packages/go/cmd/orm-gen/*.go"]},
+    "go-model-check": {"scope": "owner", "needs": ["go"], "inputs": ["packages/go/models.txt", "packages/go/generator/*.go", "packages/go/cmd/orm-gen/*.go"]},
     "client-unit-check": {"scope": "owner", "needs": ["php", "composer", "node-modules"], "inputs": ["packages/php/tests/InsertPartsTest.php", "packages/ts/tests/insert-parts.mjs", "packages/php/tests/DsnTest.php", "packages/php/tests/MarkdownTest.php", "packages/php/tests/markdown_fake_server.php", "packages/php/tests/RelationKeysTest.php", "packages/php/tests/HostcodecTest.php", "packages/php/tests/CodecAesVectorsTest.php", "tests/codec/aes-vectors.json", "tests/codec/decode-vectors.json", "packages/php/tests/EngineTest.php", "tests/ir/validate.json", "packages/php/tests/RuntimeModelTest.php", "packages/php/tests/OrmGenTest.php", "packages/php/tests/PerfExtensionsTest.php"]},
     "php-min-check": {"scope": "owner", "needs": ["php-min", "composer"], "inputs": ["scripts/php/php-min.mts"]},
     "ts-check": {"scope": "suite", "needs": ["go", "node-modules", "databases"]},

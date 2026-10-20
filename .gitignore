@@ -43,14 +43,11 @@ go.work.sum
 /packages/go/cmd/*/*
 !/packages/go/cmd/*/*.go
 
-# The Go models that orm-gen writes at each orm-install-go (make go-models; P34: generated output is never tracked). The tests and
-# generate.go of these packages are hand-written and stay tracked.
+# The Go models that orm-gen writes at each orm-install-go (make go-models; P34: generated output is never tracked). The tests of
+# these packages are hand-written and stay tracked.
 /packages/go/model/*.go
 !/packages/go/model/*_test.go
-!/packages/go/model/generate.go
 /packages/go/markdownmodel/*.go
 !/packages/go/markdownmodel/*_test.go
-!/packages/go/markdownmodel/generate.go
 /packages/go/decimalmodel/*.go
 !/packages/go/decimalmodel/*_test.go
-!/packages/go/decimalmodel/generate.go

@@ -1,0 +1,7 @@
+# The declared entries of the Go models that orm-gen generates (P34: generated output is never tracked). Each line that is not a
+# comment is the argument list of one `orm-gen gen --lang go` run from packages/go: the document set, the output directory and
+# the packages scanned for model calls. make go-models writes them, make go-model-check checks them with --check, and the
+# generation coverage test (packages/go/model/coverage_model_generation_test.go) reads them.
+--set ../../contracts/fixtures/bench/dbspec-set.json --out ./model --scan ./model/... --scan ./internal/conformance --scan ../../examples/... --scan ./bench
+--set ../../tests/markdown/corpus/dbspec/dbspec-set.json --out ./markdownmodel --scan ./markdownmodel/...
+--set ../../contracts/fixtures/dbspec-set.json --out ./decimalmodel --scan ./decimalmodel/...

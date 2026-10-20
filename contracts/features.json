@@ -9140,18 +9140,18 @@
     {
       "id": "go-decimal-model-generated",
       "paths": [
-        "packages/go/decimalmodel/generate.go"
+        "packages/go/models.txt"
       ],
       "tests": [],
-      "command": "node tests/run-long.mts go-decimal-model -- sh -c 'cd packages/go && go run ./cmd/orm-gen gen --check --lang go --set ../../contracts/fixtures/dbspec-set.json --out ./decimalmodel --scan ./decimalmodel/...'"
+      "command": "node tests/run-long.mts go-decimal-model -- sh -c 'cd packages/go && while IFS= read -r entry; do case \"$entry\" in \"\"|\"#\"*) continue ;; esac; go run ./cmd/orm-gen gen --check --lang go $entry || exit 1; done < models.txt'"
     },
     {
       "id": "go-markdown-model-generated",
       "paths": [
-        "packages/go/markdownmodel/generate.go"
+        "packages/go/models.txt"
       ],
       "tests": [],
-      "command": "node tests/run-long.mts go-markdown-model -- sh -c 'cd packages/go && go run ./cmd/orm-gen gen --check --lang go --set ../../tests/markdown/corpus/dbspec/dbspec-set.json --out ./markdownmodel --scan ./markdownmodel/...'"
+      "command": "node tests/run-long.mts go-markdown-model -- sh -c 'cd packages/go && while IFS= read -r entry; do case \"$entry\" in \"\"|\"#\"*) continue ;; esac; go run ./cmd/orm-gen gen --check --lang go $entry || exit 1; done < models.txt'"
     },
     {
       "id": "php-markdown-model-generated",
