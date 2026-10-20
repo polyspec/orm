@@ -100,6 +100,7 @@ func dropAudit(t *testing.T, raw *sql.DB, driver string) {
 // transaction inserts one audit record, and the audit table's insert, update, soft
 // delete write that key, and whether the trigger records each version in item_history.
 // It checks this and then drops the installed tables and functions.
+// Requirements: CFG-8, DBS-87, DBS-88, DBS-89, DBS-93, DBS-117, DSL-118, DSL-126.
 func TestCoverageAuditHistory(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	driver, dsn := featureDatabase(t)
@@ -122,6 +123,7 @@ func TestCoverageAuditHistory(t *testing.T) {
 // Transaction each insert one audit record (the audit source is called
 // with the transaction's context), the audited write writes that key, and a nested transaction
 // does not receive an audit.
+// Requirements: CFG-8, DBS-87, DBS-88, DBS-93, DSL-126.
 func TestCoverageAuditTransactionEntryPoints(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	driver, dsn := featureDatabase(t)
@@ -281,6 +283,7 @@ func auditColumnsRows(t *testing.T, raw *sql.DB, query string) ([]string, [][]st
 // records only the selected columns. card omits secret with exclude (secret),
 // and tag records only label and the audit column with include (label). The history table holds
 // only the recorded columns. Afterward, it drops the installed tables and functions.
+// Requirements: DBS-85, DBS-88, DBS-93, DBS-94, DBS-96.
 func TestCoverageAuditSelectedColumns(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	driver, dsn := featureDatabase(t)
@@ -400,6 +403,7 @@ func dropRestore(t *testing.T, raw *sql.DB, driver string) {
 // TestCoverageSoftDeleteRestore runs restoreCase on the selected database:
 // an audit table with a unique key and an exclude list, and a table without audit, soft
 // deleted rows are restored. Afterward, it drops the installed tables and functions.
+// Requirements: DBS-67, DBS-87, DBS-88, DBS-93, DBS-96, DBS-117, DIA-161, INT-38.
 func TestCoverageSoftDeleteRestore(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	driver, dsn := featureDatabase(t)

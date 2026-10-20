@@ -134,6 +134,7 @@ function withAudit(Closure $body): void
 final class CoverageAuditTriggersTest extends TestCase
 {
     // The audit transaction inserts one audit record, and the write to the audit table writes its key (audit_case.php).
+    // Requirements: CFG-8, DBS-87, DBS-88, DBS-89, DBS-93, DBS-117, DSL-118, DSL-126.
     public function test_audit_history(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
@@ -145,6 +146,7 @@ final class CoverageAuditTriggersTest extends TestCase
     // Every transaction entry point takes the audit values: PHP's entry point is one Db::transaction on a connection with an audit source,
     // and two transactions each insert one audit record, the audited write writes its key, and nested
     // transactions take no audit.
+    // Requirements: CFG-8, DBS-87, DBS-88, DBS-93, DSL-126.
     public function test_audit_transaction_entry_points(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
@@ -170,6 +172,7 @@ final class CoverageAuditTriggersTest extends TestCase
 
     // Restores a soft-deleted row with restore (restore_case.php): an audit table with a unique key and exclude list, and
     // a table without audit. At the end it removes the installed tables and PostgreSQL trigger functions.
+    // Requirements: DBS-67, DBS-87, DBS-88, DBS-93, DBS-96, DBS-117, DIA-161, INT-38.
     public function test_soft_delete_restore(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {

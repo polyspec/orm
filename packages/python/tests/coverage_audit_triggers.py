@@ -563,16 +563,19 @@ def tearDownModule():
 
 
 class CoverageTest(CoverageCase):
-    # Requirements: CFG-8.
+    # Requirements: CFG-8, DBS-87, DBS-88, DBS-89, DBS-93, DBS-117, DSL-118, DSL-126.
     def test_audit_history(self):
         self.each_item("audit_history", audit_history)
 
+    # Requirements: DBS-85, DBS-88, DBS-93, DBS-94, DBS-96.
     def test_audit_selected_columns(self):
         self.each_item("audit_selected_columns", audit_selected_columns)
 
+    # Requirements: CFG-8, DBS-87, DBS-88, DBS-93, DSL-126.
     def test_audit_transaction_entry_points(self):
         self.each_item("audit_transaction_entry_points", audit_transaction_entry_points)
 
+    # Requirements: DBS-67, DBS-87, DBS-88, DBS-93, DBS-96, DBS-117, DIA-161, INT-38.
     def test_soft_delete_restore(self):
         self.each_item("soft_delete_restore", soft_delete_restore)
 

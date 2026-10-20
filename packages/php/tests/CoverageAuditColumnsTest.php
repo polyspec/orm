@@ -123,7 +123,7 @@ function auditColumnsCase(string $dsn, string $document, string $work): void
 #[Medium]
 final class CoverageAuditColumnsTest extends TestCase
 {
-    // Requirements: CFG-8.
+    // Requirements: DBS-85, DBS-88, DBS-93, DBS-94, DBS-96.
     public function test_audit_selected_columns(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {

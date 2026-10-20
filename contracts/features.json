@@ -6948,20 +6948,10 @@
         }
       ],
       "parity": [
-        "go-internal-packages-go-orm-coverage-audit-triggers",
-        "php-internal-coverage-audit-columns-audit-selected-columns",
-        "php-internal-coverage-audit-triggers-audit-history",
-        "php-internal-coverage-audit-triggers-audit-transaction-entry-points",
-        "php-internal-coverage-audit-triggers-soft-delete-restore",
-        "py-cov-audit-triggers-audit-history",
-        "py-cov-audit-triggers-audit-selected-columns",
-        "py-cov-audit-triggers-audit-transaction-entry-points",
-        "py-cov-audit-triggers-soft-delete-restore",
-        "rust-coverage-audit-history",
-        "rust-coverage-audit-selected-columns",
-        "rust-coverage-audit-transaction-entry-points",
-        "rust-coverage-soft-delete-restore",
-        "ts-coverage_audit_triggers"
+        "coverage-audit-triggers-audit-history",
+        "coverage-audit-triggers-audit-selected-columns",
+        "coverage-audit-triggers-audit-transaction-entry-points",
+        "coverage-audit-triggers-soft-delete-restore"
       ],
       "fixtures": [
         "contracts/fixtures/audit.dbs",
