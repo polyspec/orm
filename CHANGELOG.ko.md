@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9bf743e59dad74d427c1cd6b6bf1b96a493ed7b0b5f81e4bd9eae1c9a6c3417d -->
+<!-- source-sha256: 32587e956e8cc029e53cf17006f9a806958a6ce51357484cbe759e54767ad580 -->
 # 변경 이력
 
 ## Unreleased
+- parse할 수 없는 scan의 Python test가 ruff format을 지키고, TypeScript scan은 non-null assertion도 기본 위치 0도 없이 parse 오류를 그 label의 정확한 줄과 열로 밝힌다; label 없는 오류는 위치를 밝히지 않는다 (T227-1).
 - PHP extension이 library 이름으로 `Polyspec\Orm\Codec`을 C로 구현한다: `tests/codec/vectors.json`의 모든 logical type stage(ordered_json, yaml, serialize, gz, base64, ip)가 extension에서 돌고, `make dbspec-php-extension-check/codec`이 extension으로 vector를 돌린다. red: extension을 켜도 class는 PHP library의 것이었다; host decode와 AES는 T182-2-2와 T182-2-3에서 따른다(T182-2-1).
 - Rust integration test decimal_physical.rs에 test로만 compile되는 파일에서 아무 뜻이 없는 `#[cfg(test)]`가 없다; divergence-check finding이 99개에서 77개가 되었다. bin target integration.rs의 marker는 KSTD-5-12-3이다 (KSTD-5-12-1).
 - Python chain이 DSL-49와 PHP client처럼 non-null column의 null 인자를 조건 없음, `eq`, `ne`에서 `CONFIG`로 거부한다. red: `service_seq(None)`이 아무것도 던지지 않고 `IS NULL`을 render했다 (KSTD-2-10-4).
