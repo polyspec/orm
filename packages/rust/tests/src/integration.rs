@@ -10,7 +10,6 @@ polyspec_orm::models!();
 
 mod bench_set;
 
-#[cfg(test)]
 #[allow(
     dead_code,
     unused_imports,
@@ -21,7 +20,6 @@ mod nonnull_model {
     include!(concat!(env!("OUT_DIR"), "/nonnull/orm_model.rs"));
 }
 
-#[cfg(test)]
 #[allow(
     dead_code,
     unused_imports,
@@ -259,7 +257,13 @@ async fn joins_and_relations(t: &Target) {
     assert_eq!(names(got), "gamma", "group_limit");
 
     let other = model::connect(&t.dsn, 2, polyspec_orm::Config::default()).await.unwrap();
-    let external = Author::new().connect(db).relation(User::new().connect(&other).match_user_seq_with_seq().alias_owner()).get_by_name("beta").await.unwrap().expect("a row");
+    let external = Author::new()
+        .connect(db)
+        .relation(User::new().connect(&other).match_user_seq_with_seq().alias_owner())
+        .get_by_name("beta")
+        .await
+        .unwrap()
+        .expect("a row");
     assert_eq!(external.get_owner().unwrap().map(|u| u.get_name().unwrap()), Some("lee"), "relation on another connection");
     other.close().await;
     assert_eq!(code(Author::new().connect(db).join_user_seq_with_seq(User::new().connect(db)).gets().await), "CONFIG", "join child with connection");
@@ -382,7 +386,13 @@ async fn writes(t: &Target) {
     assert_eq!(got.get_name().unwrap(), "second", "duplication");
     let service = Service::new().connect(db).set_name("tree").create().await.unwrap();
     ServiceMember::new().connect(db).set_service_seq(service.get_seq().unwrap()).set_user_seq(f.users[1].get_seq().unwrap()).create().await.unwrap();
-    let tree = Service::new().connect(db).relations(ServiceMember::new().match_seq_with_service_seq()).get_by_seq(service.get_seq().unwrap()).await.unwrap().expect("a row");
+    let tree = Service::new()
+        .connect(db)
+        .relations(ServiceMember::new().match_seq_with_service_seq())
+        .get_by_seq(service.get_seq().unwrap())
+        .await
+        .unwrap()
+        .expect("a row");
     tree.delete(true).await.unwrap();
     assert_eq!(ServiceMember::new().connect(db).get_count_by_service_seq(service.get_seq().unwrap()).await.unwrap(), 0, "recursive delete");
     let copy = Service::new().connect(db).get_by_seq(f.service.get_seq().unwrap()).await.unwrap().expect("a row");
