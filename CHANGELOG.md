@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- DIA-16 states that PostgreSQL packs an `ip` value on the client into `bytea`, as every planner does, instead of `(?)::inet` and `host(col)` (KSTD-2-9-3).
 - The dialect spec no longer describes a `point` type, which dbspec does not have (KSTD-2-9-2).
 - The DSL spec no longer says SQLite stores `decimal` as floating point, which contradicted the exact `DECIMALINT(P,S)` storage of DIA-25 (KSTD-2-9-1).
 - The dependency policy declares the one PHP platform 8.4.1, the minor of `.php-version` with patch 1, which the Composer manifests and their locks already use. Red: `make dependency-policy-check` reported both manifests and both locks against 8.4.0 (KSTD-4).

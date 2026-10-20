@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 2ed8ea9bef563c0e173a30559736695ea1ef7f7518bee1e7a3586b5d64ce372b -->
+<!-- source-sha256: d3ea3d8be11ed230df3159bd7d8ac9bc6425b48d6357895c08bc0ac066bf6be6 -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -19,7 +19,7 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
 - **DIA-13** nullable 컬럼의 `orderBy<Col>Asc()` / `Desc()` — MySQL 8.0.2+ / MariaDB 10.2+: 기본: 오름차순 NULL 먼저, 내림차순 NULL 나중 (`mysql.order.null_first_asc`); PostgreSQL 12+: `ASC NULLS FIRST` / `DESC NULLS LAST`: 이것 없이는 오름차순 NULL 나중 (`postgres.order.null_last_asc`); SQLite 3.46+: 기본: 오름차순 NULL 먼저, 내림차순 NULL 나중 (`sqlite.order.null_first_asc`)
 - **DIA-14** ORM 함수 — MySQL 8.0.2+ / MariaDB 10.2+: [DSL](dsl.ko.md) 10절 참고
 - **DIA-15** `aes`/`hex` styles — MySQL 8.0.2+ / MariaDB 10.2+: 실행기에서 인증된 AES-256-GCM v2 처리 후 `hex`가 있으면 hex text로 변환. 잘못된 hex text는 모든 database에서 `CODEC_DECODE`다; PostgreSQL 12+: 실행기에서 인증된 AES-256-GCM v2 처리 후 `hex`가 있으면 hex text로 변환. 잘못된 hex text는 모든 database에서 `CODEC_DECODE`다; SQLite 3.46+: 실행기에서 인증된 AES-256-GCM v2 처리 후 `hex`가 있으면 hex text로 변환. 잘못된 hex text는 모든 database에서 `CODEC_DECODE`다
-- **DIA-16** `ip` style — MySQL 8.0.2+ / MariaDB 10.2+: `INET6_ATON` / `INET6_NTOA`; PostgreSQL 12+: `(?)::inet` / `host(col)`; SQLite 3.46+: client-side (16-byte packed)
+- **DIA-16** `ip` style — MySQL 8.0.2+ / MariaDB 10.2+: `INET6_ATON` / `INET6_NTOA`; PostgreSQL 12+: client-side (16-byte packed, `bytea`); SQLite 3.46+: client-side (16-byte packed)
 - **DIA-18** update 시각과 soft delete가 쓰는 clock — MySQL 8.0.2+ / MariaDB 10.2+: `p > 0`인 `datetime(p)` column은 `CURRENT_TIMESTAMP(p)`, 그 밖에는 `CURRENT_TIMESTAMP`; PostgreSQL 12+: executor가 bind한, p로 자른 텍스트(`now` bind slot); SQLite 3.46+: executor가 bind한, p로 자른 텍스트(`now` bind slot)
 
 - **DIA-19** Executor 결과는 PostgreSQL parent IN list 확장 후 `$n` 재번호화, client-side AES/inet codec, database별 DSN/driver 선택이다.
