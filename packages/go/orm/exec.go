@@ -1188,7 +1188,9 @@ func writeAfterHook(ex executor, r *request, after func(*request) error) (key an
 		// An upsert writes one row: MySQL counts 2 for the one that updates, PostgreSQL and SQLite 1.
 		affected = 1
 	}
-	if r.ir.Kind == "insert" && len(r.ir.Rows) == 0 {
+	// pgx reports no insert id; PostgreSQL returns a generated key through RETURNING, so only MySQL and SQLite are
+	// asked for one.
+	if r.ir.Kind == "insert" && len(r.ir.Rows) == 0 && d.driver != "postgres" {
 		lastID, err = res.LastInsertId()
 		if err != nil {
 			return nil, 0, mapDriverErr(err)

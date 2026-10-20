@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 5d11826de7dafed7cb9776865f6f61c07c5e8a94f3a645504a08b665aa6fefb0 -->
+<!-- source-sha256: db6e061de07027a2bfb1355588677035afc65f0be7391cd93d59b736b5f92f47 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -76,6 +76,7 @@
 | KSTD-5-7-5 | dbspec Apply가 callback의 중단과 ApplyError를 typed result로 보고하므로 호출자가 오류를 비교하지 않고 판정한다 (KSTD-5-7-4 후속). Cause: packages/go/internal/dbspec/apply/main.go:100과 :113이 오류를 ==로 비교한다(errorlint). Apply가 errStop을 cleanup 실패와 join하고 ApplyError를 오류로만 돌려주므로, 호출자 쪽에서 결과가 같은 수정은 없다 | packages/go/engine/dbspec, packages/go/internal/dbspec/apply, their tests | `go test -count=1 -run Apply ./packages/go/engine/dbspec` | [o] |
 | KSTD-5-7-6 | build tag 뒤의 Go 파일이 그 tag로 build되고 Go lint를 통과한다 (KSTD-5-7 후속). Cause: kit K406이 module의 모든 build tag를 lint하자 tag bench, decimalphysical, featurecoverage, markdown, ormtest, perfgate, physical에서 finding 81개가 나온다; 그중 engine/dbspec/stress_test.go(tag bench)는 KSTD-5-7-3이 기본 build에서 쓰이지 않는다며 startCaseClock을 지워 더는 build되지 않는다 | the tagged Go files of packages/go and tests | `make lint-go` | [o] |
 | KSTD-5-7-7 | command의 Go build 출력은 추적하지 않는다 (KSTD-5-7 후속). Cause: 0b3426809가 go build가 command 옆에 쓰는 Mach-O binary packages/go/cmd/orm-gen/orm-gen을 commit해, feature-unit-check의 추적 파일 test가 실패하고 생성 파일이 git에 있다 (P34) | .gitignore, packages/go/cmd/orm-gen | `node --test --test-name-pattern='every tracked file selects' tests/testcase.mts` | [o] |
+| KSTD-5-7-8 | identity column이 없는 table의 insert가 PostgreSQL에서 성공한다. insert id를 보고하는 driver에만 이를 묻기 때문이다 (KSTD-5-7-2 후속). Cause: 04df7fddb가 orm이 버리던 LastInsertId 오류를 반환하는데 pgx는 insert id를 보고하지 않아, identity key가 없는 row의 모든 Go insert가 PostgreSQL에서 DRIVER: LastInsertId is not supported by this driver로 실패한다 | packages/go/orm/exec.go, packages/go/model/model_test.go | `go test -count=1 -run TestInsertWithoutIdentityOnEveryDatabase ./packages/go/model` | [~] |
 | KSTD-5-8 | lint-python이 통과한다 (KSTD-5 후속). Cause: ruff format --check가 repository의 Python에서 실패한다 | the Python of the repository | `make lint-python` | [o] |
 | KSTD-5-9 | lint-php가 통과한다 (KSTD-5 후속). Cause: 루트, packages/php, packages/php-ext의 phpcs와 phpstan이 실패한다 | the PHP of the repository | `make lint-php` | [ ] |
 | KSTD-5-9-1 | 손으로 쓴 PHP가 phpcs 줄 길이를 지킨다 (KSTD-5-9 후속). Cause: phpcs가 손으로 쓴 파일에서 120자를 넘는 줄 2657개를 보고한다 | packages/php | `make lint-php` | [~] |

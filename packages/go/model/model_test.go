@@ -298,6 +298,19 @@ func dsnOf(t *testing.T, db *orm.DB) string {
 }
 
 // Requirements: PLN-8, PLN-9, PLN-14.
+// TestInsertWithoutIdentityOnEveryDatabase inserts a row of a table with a composite key and no identity column on every
+// database: the insert succeeds where the driver reports no insert id (pgx on PostgreSQL), since only a driver that
+// reports one is asked for it.
+func TestInsertWithoutIdentityOnEveryDatabase(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	each(t, func(t *testing.T, db *orm.DB) {
+		row := must(model.CompositeAccount().Connect(db).SetTenantId(1).SetAccountId(10).SetName("n").Create())
+		if row.GetAccountId() != 10 {
+			t.Fatalf("created account %d, want 10", row.GetAccountId())
+		}
+	})
+}
+
 func TestColumnsAndSubqueries(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
