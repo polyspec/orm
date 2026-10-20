@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 3e13b20dc618ca4a9cde3c2522a29d607faa06df14fbe496c70519d9eba6cb04 -->
+<!-- source-sha256: fd04947b13a99aeba416d5d965fa679993df0f07b9df3a3b9c6622f393ffd2c2 -->
 # 변경 이력
 
 ## Unreleased
+- `tests/dbspec/syntax.json`이 KSTD-2-10이 `cases.json`에 더한 DIA-97의 hashes case 두 개의 token을 생성기로 다시 만들어 담는다. red: TestSharedSyntaxVectors가 "syntax.json has no tokens for this case"로 실패했다(KSTD-2-10-8).
 - 모든 error-code unit이 INT-65를 인용하고 PHP extension을 포함한 여섯 구현 모두에서 그 상수를 가리키며, catalog unit 다섯 개는 여섯 구현에 묶인 하나의 unit이다; catalog test는 `Polyspec\Orm\Code`의 상수를 reflection으로 비교하므로 같은 assertion이 library와 extension을 검사하고, Python catalog test는 `docs/spec/errors.yaml`을 읽는다. red: api check가 php-extension symbol이 없는 error-code unit을 보고했다(KSTD-2-11-6).
 - `dbspec.Apply`가 callback의 중단과 `ApplyError`를 `ApplyResult`로 보고하므로 호출자가 오류를 비교하지 않고 판정하며, 중단 뒤 cleanup이 실패하면 여전히 join된 오류를 돌려준다; `make lint-go`가 통과한다. red: errorlint가 apply 도구의 오류 비교 두 곳을 보고했다 (KSTD-5-7-5).
 - DBS-173은 모든 generator가 set이 `use` line으로 쓰는 각 external table의 읽기 전용 model을 scan한 source가 부르든 안 부르든 쓴다고 규정하며, generator마다 하나씩 회귀 case 다섯 개가 이를 지킨다. 어떤 generator도 red가 아니었다: consumer에서 빠진 `Audit`는 T209 이전에 생성한 model에서 왔다(T228).
