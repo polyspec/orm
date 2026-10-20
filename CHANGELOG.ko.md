@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: eb8c0aa4718716e4dda6ba2a089107e84f678f023b87ae72ad779789ebcda9b7 -->
+<!-- source-sha256: 86f36f80802b1a6adb726c35c305e81b4f4bb2928e2b8d2902b6298b33e3f90b -->
 # 변경 이력
 
 ## Unreleased
+- `make lint-go`가 통과한다: Go code, test, example의 확인하지 않은 모든 오류를 처리하고(Close 오류는 반환하는 오류에 합치며 test는 `testcase.Close`로 닫는다), staticcheck 수정을 적용했으며, 도달할 수 없는 함수 37개는 지우거나 공개 symbol로서 test했다. red: golangci-lint가 finding 284개를, deadcode가 37개를 찾았다 (KSTD-5-7).
 - codec 규칙과 PLN-15가 `json`, `jsons`, `point`, `aes_serialize`, `aes_hex` 대신 DBS-69의 stage, 그중 `ordered_json`을 적는다 (KSTD-2-9-12).
 - DIA-21이 `orm.Open` 대신 Go 진입점 `orm.Connect`를 적는다 (KSTD-2-9-11).
 - 잠금 경합을 두 연결로 쓰는 절차가 DSL spec에서 사용법 문서로 옮겨졌다; savepoint 규칙은 DSL-119에 남는다 (KSTD-2-9-10).

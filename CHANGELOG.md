@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- `make lint-go` passes: every unchecked error of the Go code, the tests and the examples is handled (a Close error joins the returned error, and tests close with `testcase.Close`), the staticcheck rewrites are applied, and the 37 unreachable functions are removed or tested as public symbols. Red: golangci-lint found 284 findings and deadcode 37 (KSTD-5-7).
 - The codec rules and PLN-15 name the stages of DBS-69, `ordered_json` among them, instead of the styles `json`, `jsons`, `point`, `aes_serialize` and `aes_hex` (KSTD-2-9-12).
 - DIA-21 names `orm.Connect`, the Go entry, instead of `orm.Open` (KSTD-2-9-11).
 - The two-connection procedure for lock contention moves from the DSL spec to the usage guide; DSL-119 keeps the savepoint rule (KSTD-2-9-10).
