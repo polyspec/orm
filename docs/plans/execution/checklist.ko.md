@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: 0e8772c76b22dec3a8312700bd6ea4e4daae51c4a903f6344698379847debc2c -->
+<!-- source-sha256: 7b98c21f96c7a6b8bddacf8a70e3faafcd54e2ee29e58cbbc3e25205d45365d3 -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1225,7 +1225,7 @@
 | T182-2-2 | extension이 host style을 decode하고 codec-decode suite(tests/codec/decode-vectors.json)가 그 id로 extension에서 돈다 (T182-2-1 후속) | packages/php-ext/src, the stub, config/parity.json | `make dbspec-php-extension-check/decode` | [o] |
 | T182-2-3 | extension이 AES와 blind index를 구현하고 codec-aes suite(tests/codec/aes-vectors.json)가 그 id로 extension에서 돈다 (T182-2-2 후속) | packages/php-ext/src, the stub, config/parity.json | `make dbspec-php-extension-check/aes`, `make dbspec-php-extension-check/hostcodec` | [o] |
 | T182-3 | extension의 IR validator (T182-1에 이어). 완료 기준: tests/ir/validate.json이 case 이름으로 실행되고 다른 client와 같은 code를 낸다. | — | `make dbspec-php-extension-check/ir`, `make dbspec-php-extension-check/declarations` | [o] |
-| T182-4 | extension의 planner (T182-3에 이어). 완료 기준: planner, insert-parts, ir-answers가 id로 실행된다. | — | Commands: `make dbspec-php-extension-check/declarations` | [ ] |
+| T182-4 | extension의 planner (T182-3에 이어). 완료 기준: planner, insert-parts, ir-answers가 id로 실행된다. | — | Commands: `make dbspec-php-extension-check/declarations` | [~] |
 | T182-5 | PHP 자체 database 계층 위의 extension executor (T182-2, T182-4에 이어). 완료 기준: statement는 새 driver가 아니라 PHP가 이미 제공하는 database API를 C에서 호출해 실행한다. statement-events, statement-fault, sqlite-paths, mysql-session이 실행된다. | — | Commands: `make dbspec-php-extension-check/declarations` | [ ] |
 | T182-6 | extension의 query, model, collection client (T182-5에 이어. T199는 이 항목의 표면이다). 완료 기준: 생성된 model이 extension에서 실행된다. MySQL, PostgreSQL, SQLite conformance, identity-load, aggregate-numeric, decimal-model, styled-column-states, authenticated-encryption, install-changed-database가 실행된다. client profile이 php-extension을 나열하고 parity가 모든 unit에서 이것을 센다. | — | Commands: `make dbspec-php-extension-check/declarations`, `make dbspec-php-extension-check/names` | [ ] |
 | T183 | MySQL migration fixture의 setup이 실패하면 임시 root를 지운다. 원인: scripts/test-servers-mysql.test.mts의 `fixture()`는 /tmp/orm-mig-XXXX를 만들고, script를 복사하고, 그 text를 검사하고, `mysql-start`를 실행한 뒤에야 `close()`를 돌려주었다. 그래서 이 단계에서 실패하면 root와 시작한 mysqld가 남았고, /private/tmp에서 그런 folder 아홉 개(약 1.7 GB)가 발견되었다. 완료 조건: setup이 실패하면 fixture가 자기 `close()`를 실행하고(서버를 멈추고 socket directory와 root를 지움) 원래 error를 다시 throw한다. | — | Evidence: case "the MySQL fixture removes its root when its setup fails"가 복사한 `mysql-start`를 exit 3으로 끝나게 한다. RED: 수정 전에는 `existsSync(root)`에서 `true !== false`로 실패했다. 수정 후 `make test-servers-check`가 15개 모두 통과하고 /tmp/orm-mig-* folder가 남지 않는다. | [o] |
