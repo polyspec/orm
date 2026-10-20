@@ -14,6 +14,9 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
+// restoreTables is the table that contracts/fixtures/restore.dbs creates.
+var restoreTables = []string{"audit", "label", "membership", "membership_history"}
+
 // featureDatabase is the database and DSN that the feature coverage checker selected.
 // If either one is missing, the test fails.
 func featureDatabase(t *testing.T) (string, string) {
