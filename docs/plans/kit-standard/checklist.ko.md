@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 89d71228442cf0ee9fe1c295de59b8b9c5455be27d5eb331042d779b27c1029d -->
+<!-- source-sha256: 4221f8914c92eb29c53057866353020d50378f1b351b1444b7fa059159abff5c -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -65,7 +65,7 @@
 | KSTD-5-4 | rebuild-check가 통과한다 (KSTD-5 후속). Cause: config/rebuild.json이 없어 repository의 어떤 도구도 그 class를 선언하지 않는다 | config/rebuild.json | `make rebuild-check` | [o] |
 | KSTD-5-4-1 | docs 검사는 build된 HTML을 parse5로, Markdown table을 mdast-util-from-markdown과 mdast-util-gfm으로 읽는다 (KSTD-5-4 후속). Cause: scripts/docs/check.mts는 HTML을 정규식으로 읽고 scripts/docs/markdown-table.mts와 rules.mts는 table을 pipe로 나눠, ecosystem이 parse하는 문법을 다시 적는다 | scripts/docs, config/rebuild.json | `make docs-check` | [ ] |
 | KSTD-5-4-2 | mise가 지원하는 가장 낮은 Node를 설치하고 손으로 짠 downloader를 지운다 (KSTD-5-4 후속). Cause: scripts/typescript/node-min.mts가 지원하는 가장 낮은 Node를 직접 내려받는데, 이는 `mise install node@<version>`이 하는 일이다 | scripts/typescript, mise.toml, config/rebuild.json | `make ts-min-check` | [ ] |
-| KSTD-5-5 | duplication-check가 통과한다 (KSTD-5 후속). Cause: jscpd가 구현 전체에서 clone 988개(줄의 4.29 percent)를 찾는다; 반복된 code는 둘이 함께 쓰는 한 module로 옮긴다 | the code of every implementation | `make duplication-check` | [ ] |
+| KSTD-5-5 | duplication-check가 통과한다 (KSTD-5 후속). Cause: jscpd가 구현 전체에서 clone 988개(줄의 4.29 percent)를 찾는다; 반복된 code는 둘이 함께 쓰는 한 module로 옮긴다 | the code of every implementation | `make duplication-check` | [~] |
 | KSTD-5-6 | lint-ts가 통과한다 (KSTD-5 후속). Cause: oxlint와 knip이 repository의 TypeScript에서 실패한다 | the TypeScript of the repository | `make lint-ts` | [o] |
 | KSTD-5-7 | lint-go가 통과한다 (KSTD-5 후속). Cause: golangci-lint가 examples, packages/go, tests에서, deadcode가 packages/go에서 실패한다 | the Go of the repository | `make lint-go` | [o] |
 | KSTD-5-7-2 | packages/go/orm이 K334가 찾는 모든 오류를 처리한다 (KSTD-5-7 후속). Cause: kit K334는 golangci-lint가 버린 오류(errcheck check-blank, check-type-assertions), 오류 chain을 잃는 비교나 wrap(errorlint), nil로 반환한 오류(nilerr), linter와 이유 없는 nolint(nolintlint)를 보고하게 한다; packages/go/orm에서 113개를 찾는다 | packages/go/orm | `make lint-go` | [o] |
