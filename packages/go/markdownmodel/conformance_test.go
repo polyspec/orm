@@ -90,7 +90,7 @@ func TestMarkdownConformance(t *testing.T) {
 			}
 			actual := normalize(t, got)
 			if !reflect.DeepEqual(actual, c.Expect) {
-				t.Fatalf("%s: got %s, want %s (error %v)", c.ID, jsonText(actual), jsonText(c.Expect), err)
+				t.Fatalf("%s: got %s, want %s (error %v)", c.ID, jsonText(t, actual), jsonText(t, c.Expect), err)
 			}
 		})
 		if !ok {
@@ -186,12 +186,21 @@ func serve(t *testing.T, bin string) *served {
 	}
 	t.Cleanup(func() {
 		if s.db != nil {
-			s.db.Close()
+			testcase.Close(t, s.db)
 		}
 		if err := cmd.Process.Signal(os.Interrupt); err != nil && !errors.Is(err, os.ErrProcessDone) {
-			cmd.Process.Kill()
+			if err := cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
+				t.Errorf("kill flowmark serve: %v", err)
+			}
 		}
-		cmd.Wait()
+		// The interrupted server ends with an exit status, which is the expected end of it; Wait reports
+		// only an error that is not an exit status, such as a failure of the wait itself.
+		if err := cmd.Wait(); err != nil {
+			var exit *exec.ExitError
+			if !errors.As(err, &exit) {
+				t.Errorf("wait for flowmark serve: %v", err)
+			}
+		}
 	})
 	line, err := bufio.NewReader(stdout).ReadString('\n')
 	m := listening.FindStringSubmatch(strings.TrimSuffix(line, "\n"))
@@ -444,7 +453,7 @@ func conformanceCases() map[string]caseFunc {
 				return errStop
 			})
 			if !errors.Is(err, errStop) {
-				return nil, fmt.Errorf("the transaction ended with %v, not its callback's error", err)
+				return nil, fmt.Errorf("the transaction ended with %w, not its callback's error", err)
 			}
 			return markdownmodel.Logs().Connect(s.db).GetCount()
 		},
@@ -460,7 +469,7 @@ func conformanceCases() map[string]caseFunc {
 					return errStop
 				})
 				if !errors.Is(err, errStop) {
-					return fmt.Errorf("the savepoint ended with %v, not its callback's error", err)
+					return fmt.Errorf("the savepoint ended with %w, not its callback's error", err)
 				}
 				return nil
 			}); err != nil {
@@ -557,14 +566,18 @@ func conformanceCases() map[string]caseFunc {
 		"connect_corpus_mismatch": func(s *served) (any, error) {
 			db, err := markdownmodel.Connect(s.dsn("other", s.token), orm.Config{})
 			if err == nil {
-				db.Close()
+				if cerr := db.Close(); cerr != nil {
+					return nil, cerr
+				}
 			}
 			return nil, err
 		},
 		"connect_token_mismatch": func(s *served) (any, error) {
 			db, err := markdownmodel.Connect(s.dsn(s.corpus, strings.Repeat("0", 32)), orm.Config{})
 			if err == nil {
-				db.Close()
+				if cerr := db.Close(); cerr != nil {
+					return nil, cerr
+				}
 			}
 			return nil, err
 		},
@@ -784,7 +797,7 @@ var installRefusal = regexp.MustCompile(`^flowmark install: ([A-Z_]+):`)
 
 // refusedInstall installs tests/markdown/refused/<name>.dbs as the catalog of a new corpus and answers the code of
 // its refusal, {"error": code}; an install that succeeds answers {"error": null}.
-func refusedInstall(s *served, name string) (any, error) {
+func refusedInstall(s *served, name string) (answer any, err error) {
 	catalog, err := os.ReadFile(filepath.Join(conformanceDir, "refused", name+".dbs"))
 	if err != nil {
 		return nil, err
@@ -793,7 +806,11 @@ func refusedInstall(s *served, name string) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer os.RemoveAll(root)
+	defer func() {
+		if rerr := os.RemoveAll(root); rerr != nil && err == nil {
+			answer, err = nil, fmt.Errorf("remove the temporary catalog %s: %w", root, rerr)
+		}
+	}()
 	dir := filepath.Join(root, name)
 	if err := os.MkdirAll(filepath.Join(dir, "dbspec"), 0o755); err != nil {
 		return nil, err
@@ -807,7 +824,7 @@ func refusedInstall(s *served, name string) (any, error) {
 	}
 	m := installRefusal.FindSubmatch(out)
 	if m == nil {
-		return nil, fmt.Errorf("flowmark install %s: %v, without a refusal code:\n%s", dir, err, out)
+		return nil, fmt.Errorf("flowmark install %s: %w, without a refusal code:\n%s", dir, err, out)
 	}
 	return map[string]any{"error": string(m[1])}, nil
 }
@@ -826,7 +843,11 @@ func normalize(t *testing.T, v any) any {
 	return out
 }
 
-func jsonText(v any) string {
-	b, _ := json.Marshal(v)
+func jsonText(t *testing.T, v any) string {
+	t.Helper()
+	b, err := json.Marshal(v)
+	if err != nil {
+		t.Fatalf("result %#v: %v", v, err)
+	}
 	return string(b)
 }
