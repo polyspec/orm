@@ -1,9 +1,21 @@
 # The bootstrap of kit in a repository: `include scripts/kit/kit-bootstrap.mk` in its Makefile. This file is a copy that
-# `make kit-sync` writes from the installed package @polyspec/kit; it includes the kit.mk of that package, which runs the
-# built tools of its dist. The package is installed in two steps, both online: `make install-tools TOOLS=npm` installs the
-# npm of packageManager into var/tools with the copied installer of scripts/kit/bootstrap, then `make install-packages`
-# installs package-lock.json with it, @polyspec/kit included. Until then only those two steps run.
+# `make kit-sync` writes from the installed package @polyspec/kit; it includes the kit.mk of KIT, which runs the built tools of
+# its dist. The package is installed in two steps, both online: `make install-tools TOOLS=npm` installs the npm of
+# packageManager into var/tools with the copied installer of scripts/kit/bootstrap, then `make install-packages` installs
+# package-lock.json with it, @polyspec/kit included. Until then only those two steps run.
+#
+# KIT is the kit of the repository (K348-1). In a development checkout beside the kit checkout ../kit it is the dist of that
+# checkout from the first make on, the provider that the link installs (P30), so a fresh worktree reads kit.mk before npm ci and
+# installs with the tools of the kit it develops against; a kit checkout that is not built fails. Without it, as in CI, KIT is the
+# installed package.
+ifneq ($(wildcard ../kit/.git),)
+ifeq ($(wildcard ../kit/dist/kit.mk),)
+$(error ../kit/dist/kit.mk is missing: the kit checkout beside the repository is not built; run make build in ../kit)
+endif
+KIT := ../kit/dist
+else
 KIT := node_modules/@polyspec/kit/dist
+endif
 KIT_EXT := mjs
 ONLINE ?=
 
@@ -38,20 +50,19 @@ install-packages dependency-review: export npm_config_allow_remote := root
 install-packages: ## Install the packages of package-lock.json, @polyspec/kit included, with the npm of var/tools; only installs, never links or builds; ONLINE
 	$(ONLINE) $(NPM) ci
 
-# The link of install-link (K360, K360-1): it needs the Go of var/tools, which the full install-tools installs, so it runs after
-# that, not after npm ci. Right after npm ci, $(KIT) of a consumer is the released kit that npm ci installed, whose link may
-# predate that of the kit checkout beside the repository; the link of that checkout runs when there is one.
-SIBLING_KIT_LINK := $(if $(filter mjs,$(KIT_EXT)),$(if $(wildcard ../kit/.git),../kit/dist/link.mjs))
+# The link of install-link (K360, K360-1, K360-2): it needs the Go of var/tools, which the full install-tools installs, and the
+# environments that the steps of the repository install, so make install runs it after all of them. KIT is the kit checkout beside
+# the repository when there is one (K348-1), so the link is that of the kit the repository develops against.
 .PHONY: install-link
-install-link: ## Link the packages to the polyspec checkouts beside the repository, with the node of var/tools, after the full install-tools (the link of a ../kit checkout, which must be built, when there is one)
-	$(if $(SIBLING_KIT_LINK),$(if $(wildcard $(SIBLING_KIT_LINK)),,$(error install-link: $(SIBLING_KIT_LINK) is missing; run make build in ../kit)))$(NODE) $(or $(SIBLING_KIT_LINK),$(KIT)/link.$(KIT_EXT)) link --siblings
+install-link: ## Link the packages to the polyspec checkouts beside the repository, with the node of var/tools, after every install of make install
+	$(NODE) $(KIT)/link.$(KIT_EXT) link --siblings
 
 .PHONY: install install-kit
 # install runs the bootstrap of kit as its first prerequisite; a repository adds its install steps as later prerequisites
 # that depend on install-kit, such as install: <repo>-install and <repo>-install: install-kit (K246-2).
-install: install-kit ## Install the tools and packages in the bootstrap order: the npm of packageManager, package-lock.json, then the tools, then the links, then the steps of the repository; ONLINE
-install-kit: ## Install the npm of packageManager, the packages of package-lock.json, the tools and the links, in that order; ONLINE
+install: install-kit ## Install the tools and packages in the bootstrap order: the npm of packageManager, package-lock.json, then the tools, then the steps of the repository, then the links (K360-2); ONLINE
+	$(MAKE) --no-print-directory install-link
+install-kit: ## Install the npm of packageManager, the packages of package-lock.json and the tools, in that order; ONLINE
 	$(MAKE) --no-print-directory install-tools TOOLS=npm
 	$(MAKE) --no-print-directory install-packages
 	$(MAKE) --no-print-directory install-tools
-	$(MAKE) --no-print-directory install-link
