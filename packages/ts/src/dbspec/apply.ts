@@ -740,16 +740,33 @@ export async function applyPlans(connection: Connection, dialect: DbspecDialect,
  * (docs/spec/plans.md "Apply"). Without an interrupted plan nothing changes.
  * Failures are reported as for applyPlans.
  */
-export function recoverPlans(connection: DbspecApplyMySqlConnection, dialect: 'mysql', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
-export function recoverPlans(connection: DbspecApplyPostgresConnection, dialect: 'postgres', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
-export function recoverPlans(connection: DbspecApplySqliteConnection, dialect: 'sqlite', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
-export async function recoverPlans(connection: Connection, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void> {
+/**
+ * Runs body on the last plan of the chain that has a history row, in one session. Without such a plan nothing changes.
+ * body gets the applier, the plan and its history row.
+ */
+async function lastPlan(
+  connection: Connection,
+  dialect: DbspecDialect,
+  plans: readonly DbspecPlan[],
+  now: () => number,
+  events: DbspecApplyHandler | null | undefined,
+  body: (a: Applier, p: DbspecPlan, row: HistoryRow) => Promise<void>,
+): Promise<void> {
   const a = newApplier(connection, dialect, plans, now, events);
   await a.session(async () => {
     const position = await a.position();
     if (position === 0) return;
     const p = present(a.chain[position - 1], 'a.chain[position - 1]');
     const row = present(a.history.get(p.name), 'a.history.get(p.name)');
+    await body(a, p, row);
+  });
+}
+
+export function recoverPlans(connection: DbspecApplyMySqlConnection, dialect: 'mysql', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
+export function recoverPlans(connection: DbspecApplyPostgresConnection, dialect: 'postgres', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
+export function recoverPlans(connection: DbspecApplySqliteConnection, dialect: 'sqlite', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
+export async function recoverPlans(connection: Connection, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void> {
+  await lastPlan(connection, dialect, plans, now, events, async (a, p, row) => {
     if (row.state === APPLIED || row.state === DONE) return;
     const steps = a.steps(p);
     const k = await a.resolve(p, row, steps, true);
@@ -775,12 +792,7 @@ export function rollbackPlans(connection: DbspecApplyMySqlConnection, dialect: '
 export function rollbackPlans(connection: DbspecApplyPostgresConnection, dialect: 'postgres', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
 export function rollbackPlans(connection: DbspecApplySqliteConnection, dialect: 'sqlite', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
 export async function rollbackPlans(connection: Connection, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void> {
-  const a = newApplier(connection, dialect, plans, now, events);
-  await a.session(async () => {
-    const position = await a.position();
-    if (position === 0) return;
-    const p = present(a.chain[position - 1], 'a.chain[position - 1]');
-    const row = present(a.history.get(p.name), 'a.history.get(p.name)');
+  await lastPlan(connection, dialect, plans, now, events, async (a, p, row) => {
     const steps = a.steps(p);
     let k = row.step;
     const applied = row.state === APPLIED || row.state === DONE;
