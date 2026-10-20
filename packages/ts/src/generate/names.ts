@@ -3,7 +3,7 @@
 // column type.
 import { type Entity, type Field as Column, type RuntimeModel as Manifest } from '../engine/model.js';
 import { opAllowed } from '../engine/validate.js';
-import { pascal, words } from '../names.js';
+import { pascal, splitWords, words } from '../names.js';
 
 /** An underscore-separated segment no column name may contain. */
 const reservedSegments = ['and', 'or', 'with', 'gt', 'lt', 'ge', 'le', 'eq', 'ne', 'lk', 'lb', 'between', 'tuple'];
@@ -174,45 +174,27 @@ export function parseChain(m: Manifest, e: Entity, name: string): ChainKey[] | u
   const ws = words(name);
   if (ws.length === 0) return undefined;
   const ix = indexColumns(e);
-  const keys: ChainKey[] = [];
-  let conn = '';
-  let start = 0;
   try {
-    const flush = (end: number) => {
-      const k = parseKey(m, e, ix, ws.slice(start, end));
-      k.conn = conn;
-      keys.push(k);
-    };
-    ws.forEach((w, i) => {
-      if (w === 'And' || w === 'Or') {
-        flush(i);
-        conn = w.toLowerCase();
-        start = i + 1;
-      }
+    return splitWords(ws, ['And', 'Or']).map(part => {
+      const k = parseKey(m, e, ix, part.words);
+      k.conn = part.sep.toLowerCase();
+      return k;
     });
-    flush(ws.length);
   } catch (error) {
     if (error instanceof NameError) return undefined;
     throw error;
   }
-  return keys;
 }
 
 /** Reports whether an orderBy chain is valid. */
 export function validOrder(e: Entity, name: string): boolean {
   const ix = indexColumns(e);
-  const ws = words(name);
-  let start = 0;
-  for (let i = 0; i <= ws.length; i++) {
-    if (i < ws.length && ws[i] !== 'And') continue;
-    const part = ws.slice(start, i);
-    start = i + 1;
+  return splitWords(words(name), ['And']).every(({ words: part }) => {
     if (part.length < 2) return false;
     const dir = part[part.length - 1];
     if (dir !== 'Asc' && dir !== 'Desc') return false;
-    if (!ix.has(part.slice(0, -1).join(''))) return false;
-  }
-  return true;
+    return ix.has(part.slice(0, -1).join(''));
+  });
 }
 
 /** Parses <L>With<R>; an undefined entity accepts a column of any entity. */

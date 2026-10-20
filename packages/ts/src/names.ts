@@ -24,6 +24,25 @@ export function snake(name: string): string {
 
 export function upperFirst(name: string): string { return name === '' ? name : name.charAt(0).toUpperCase() + name.slice(1); }
 
+/** A part of a word list split at its separators, with the separator word that starts it ('' for the first part). */
+export interface WordPart { sep: string; words: string[]; }
+
+/** Splits words before each word that is one of the separators; the parts keep their order. */
+export function splitWords(ws: readonly string[], separators: readonly string[]): WordPart[] {
+  const parts: WordPart[] = [];
+  let sep = '';
+  let start = 0;
+  ws.forEach((w, i) => {
+    if (separators.includes(w)) {
+      parts.push({ sep, words: ws.slice(start, i) });
+      sep = w;
+      start = i + 1;
+    }
+  });
+  parts.push({ sep, words: ws.slice(start) });
+  return parts;
+}
+
 export function words(name: string): string[] {
   const out: string[] = [];
   let start = 0;
@@ -123,35 +142,18 @@ function parseKey(model: RuntimeModel, e: Entity, ws: readonly string[]): ChainK
 export function parseChain(model: RuntimeModel, e: Entity, name: string): ChainKey[] {
   const ws = words(name);
   if (ws.length === 0) throw new OrmError(codes.CONFIG, 'empty condition name');
-  const keys: ChainKey[] = [];
-  let conn = '';
-  let start = 0;
-  const flush = (end: number) => {
-    const parsed = parseKey(model, e, ws.slice(start, end));
-    parsed.conn = conn;
-    keys.push(parsed);
-  };
-  ws.forEach((w, i) => {
-    if (w === 'And' || w === 'Or') {
-      flush(i);
-      conn = w.toLowerCase();
-      start = i + 1;
-    }
+  return splitWords(ws, ['And', 'Or']).map(part => {
+    const parsed = parseKey(model, e, part.words);
+    parsed.conn = part.sep.toLowerCase();
+    return parsed;
   });
-  flush(ws.length);
-  return keys;
 }
 
 export interface OrderKey { column: string; desc: boolean; }
 
 export function parseOrder(e: Entity, name: string): OrderKey[] {
-  const ws = words(name);
   const out: OrderKey[] = [];
-  let start = 0;
-  for (let i = 0; i <= ws.length; i++) {
-    if (i < ws.length && ws[i] !== 'And') continue;
-    const part = ws.slice(start, i);
-    start = i + 1;
+  for (const { words: part } of splitWords(words(name), ['And'])) {
     const dir = part[part.length - 1];
     if (part.length < 2 || (dir !== 'Asc' && dir !== 'Desc')) throw new OrmError(codes.CONFIG, `orderBy${name}: each key needs a column and Asc or Desc`);
     const column = columnIndex(e).get(part.slice(0, -1).join(''));
