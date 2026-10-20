@@ -824,5 +824,5 @@
     "postgres": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\"",
     "sqlite": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\""
   },
-  "requirements": ["PRT-2", "PRT-3", "PRT-26", "PRT-27", "PRT-28", "PRT-29", "PRT-30"]
+  "requirements": ["PRT-2", "PRT-3", "PRT-26", "PRT-27", "PRT-28", "PRT-29", "PRT-30", "DSL-113"]
 }

@@ -128,5 +128,5 @@
     {"name": "output-sub-new-name", "request": {"ir_version": 1, "n_params": 0, "kind": "all", "entity": "author", "columns": {"sub": {"first_name": {"column": "name", "query": {"entity": "author", "limit": {"count": 1, "offset": 0}, "order": [{"column": "seq"}]}}}}}, "valid": true},
     {"name": "output-sub-column-name", "request": {"ir_version": 1, "n_params": 0, "kind": "all", "entity": "author", "columns": {"sub": {"description": {"column": "name", "query": {"entity": "author", "limit": {"count": 1, "offset": 0}, "order": [{"column": "seq"}]}}}}}, "error": "COLUMN_ALIAS_CONFLICT"}
   ],
-  "requirements": ["PRT-4", "PRT-6", "PRT-10", "PRT-12", "PRT-14", "PRT-16", "PRT-17", "PRT-18", "PRT-20", "PRT-21", "PRT-22", "PRT-24"]
+  "requirements": ["PRT-4", "PRT-6", "PRT-10", "PRT-12", "PRT-14", "PRT-16", "PRT-17", "PRT-18", "PRT-20", "PRT-21", "PRT-22", "PRT-24", "DBS-59", "DBS-113", "DSL-113"]
 }
