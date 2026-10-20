@@ -350,6 +350,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/orm/codec_test.go", "symbol": "TestCodecDecodeVectors" },
         { "implementation": "php", "test": "packages/php/tests/HostcodecTest.php", "symbol": "HostcodecTest::test_decode_vector" },
+        { "implementation": "php-extension", "test": "packages/php/tests/HostcodecTest.php", "symbol": "HostcodecTest::test_decode_vector" },
         { "implementation": "typescript", "test": "packages/ts/tests/codec-decode-vector.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_codec_decode_vectors.py" },
         { "implementation": "rust", "test": "packages/rust/orm/tests/codec_vectors.rs", "symbol": "decode_vectors" }

@@ -1170,3 +1170,283 @@ bool codec_host_encode(zval *v, HashTable *styles, zend_string *aes_key, zval *r
     }
     return make_bytes(cur, ret);
 }
+
+/* ---- host stages: the decode (hostDecode and decodeRows) ---- */
+
+static int hex_digit(unsigned char c)
+{
+    if (c >= '0' && c <= '9') {
+        return c - '0';
+    }
+    if (c >= 'A' && c <= 'F') {
+        return c - 'A' + 10;
+    }
+    return -1;
+}
+
+/* hex2bin of the upper-case hex digits only, as Codec.php checks them: the bytes, or NULL for an odd length or any other character. */
+static zend_string *hex_decode(zend_string *in)
+{
+    size_t n = ZSTR_LEN(in);
+    if (n % 2 != 0) {
+        return NULL;
+    }
+    zend_string *out = zend_string_alloc(n / 2, 0);
+    for (size_t i = 0; i < n / 2; i++) {
+        int hi = hex_digit((unsigned char)ZSTR_VAL(in)[2 * i]);
+        int lo = hex_digit((unsigned char)ZSTR_VAL(in)[2 * i + 1]);
+        if (hi < 0 || lo < 0) {
+            zend_string_release(out);
+            return NULL;
+        }
+        ZSTR_VAL(out)[i] = (char)(hi * 16 + lo);
+    }
+    ZSTR_VAL(out)[n / 2] = '\0';
+    return out;
+}
+
+/*
+ * Codec::hostDecode: undoes the host stages of a read cell, in reverse write order. hex and ip are decoded as Codec.php does, and an ip
+ * stage ends the decode there, as the PHP loop returns there. The aes stage keeps the key check of Codec.php, then gives CODEC_UNSUPPORTED
+ * until T182-2-3 implements the AES envelope. A codec style in the list is CODEC_UNSUPPORTED.
+ */
+bool codec_host_decode(zval *raw, HashTable *styles, zend_string *aes_key, zval *ret)
+{
+    zval cur;
+    ZVAL_COPY(&cur, raw);
+    if (Z_TYPE(cur) == IS_RESOURCE) {
+        zval s;
+        if (!call_fn("stream_get_contents", &s, 1, &cur)) {
+            zval_ptr_dtor(&cur);
+            return false;
+        }
+        zval_ptr_dtor(&cur);
+        ZVAL_COPY_VALUE(&cur, &s);
+    }
+    if (Z_TYPE(cur) == IS_NULL) {
+        ZVAL_NULL(ret);
+        return true;
+    }
+    if (Z_TYPE(cur) != IS_STRING) {
+        zval_ptr_dtor(&cur);
+        return orm_fail("CODEC_DECODE", zend_string_init(ZEND_STRL("cell is not bytes"), 0));
+    }
+    zend_string *s = zend_string_copy(Z_STR(cur));
+    zval_ptr_dtor(&cur);
+
+    zend_long n = zend_hash_num_elements(styles);
+    for (zend_long i = n - 1; i >= 0; i--) {
+        zend_string *st = style_at(styles, i);
+        if (streq(st, "hex")) {
+            zend_string *out = hex_decode(s);
+            if (out == NULL) {
+                str_free(st);
+                zend_string_release(s);
+                return orm_fail("CODEC_DECODE", zend_string_init(ZEND_STRL("hex: odd length or non-hex input"), 0));
+            }
+            zend_string_release(s);
+            s = out;
+        } else if (streq(st, "aes")) {
+            str_free(st);
+            if (ZSTR_LEN(aes_key) == 0) {
+                zend_string_release(s);
+                return orm_fail("CONFIG", zend_string_init(ZEND_STRL("secret aes not configured"), 0));
+            }
+            zend_string_release(s);
+            return orm_fail("CODEC_UNSUPPORTED", zend_string_init(ZEND_STRL("aes: the AES host stage is not implemented by the extension yet (T182-2-3)"), 0));
+        } else if (streq(st, "ip")) {
+            str_free(st);
+            size_t len = ZSTR_LEN(s);
+            if (len != 4 && len != 16) {
+                zend_string_release(s);
+                return orm_failf("CODEC_DECODE", "ip: " ZEND_LONG_FMT " packed bytes", (zend_long)len);
+            }
+            char text[INET6_ADDRSTRLEN];
+            if (inet_ntop(len == 4 ? AF_INET : AF_INET6, ZSTR_VAL(s), text, sizeof(text)) == NULL) {
+                zend_string_release(s);
+                return orm_fail("CODEC_DECODE", zend_string_init(ZEND_STRL("ip: the packed address is not valid"), 0));
+            }
+            zend_string_release(s);
+            ZVAL_STRING(ret, text);
+            return true;
+        } else {
+            bool ok = orm_failf("CODEC_UNSUPPORTED", "host style %s", st != NULL ? ZSTR_VAL(st) : "");
+            str_free(st);
+            zend_string_release(s);
+            return ok;
+        }
+        str_free(st);
+    }
+    ZVAL_STR(ret, s);
+    return true;
+}
+
+/* One entry of decodeRows' $cells: [index, host stages, codec stages, whether the host stages include aes, aes_key_version index or null]. */
+typedef struct {
+    zend_long index;
+    HashTable *host;
+    HashTable *codec;
+    bool aes;
+    zval *version;
+} styled_cell;
+
+static bool cell_parse(zval *c, styled_cell *sc)
+{
+    ZVAL_DEREF(c);
+    zval *index = NULL, *host = NULL, *codec = NULL, *aes = NULL, *version = NULL;
+    if (Z_TYPE_P(c) == IS_ARRAY) {
+        HashTable *t = Z_ARRVAL_P(c);
+        index = zend_hash_index_find(t, 0);
+        host = zend_hash_index_find(t, 1);
+        codec = zend_hash_index_find(t, 2);
+        aes = zend_hash_index_find(t, 3);
+        version = zend_hash_index_find(t, 4);
+    }
+    if (index == NULL || host == NULL || codec == NULL || aes == NULL || version == NULL) {
+        zend_type_error("Codec::decodeRows(): a cell is not [index, host stages, codec stages, aes, version index]");
+        return false;
+    }
+    ZVAL_DEREF(index);
+    ZVAL_DEREF(host);
+    ZVAL_DEREF(codec);
+    ZVAL_DEREF(aes);
+    ZVAL_DEREF(version);
+    if (Z_TYPE_P(index) != IS_LONG || Z_TYPE_P(host) != IS_ARRAY || Z_TYPE_P(codec) != IS_ARRAY || (Z_TYPE_P(version) != IS_LONG && Z_TYPE_P(version) != IS_NULL)) {
+        zend_type_error("Codec::decodeRows(): a cell has a field of the wrong type");
+        return false;
+    }
+    sc->index = Z_LVAL_P(index);
+    sc->host = Z_ARRVAL_P(host);
+    sc->codec = Z_ARRVAL_P(codec);
+    sc->aes = zend_is_true(aes);
+    sc->version = version;
+    return true;
+}
+
+/*
+ * Codec::decodeRows: decodes the styled cells of positional rows in place. Each cell takes its host stages first, with the AES key of
+ * the cell (the aes_key_version column of the row when it has one), then its codec stages; a resource that no codec stage reads is
+ * read to its contents. The rows are written back in their own order, as the PHP method writes them.
+ */
+bool codec_decode_rows(HashTable *rows, HashTable *cells, zval *config)
+{
+    bool yes;
+    if (!is_instance(config, "Polyspec\\Orm\\Config", &yes)) {
+        return false;
+    }
+    if (!yes) {
+        zend_type_error("Codec::decodeRows(): the config must be a Polyspec\\Orm\\Config");
+        return false;
+    }
+    zval keyring;
+    ZVAL_UNDEF(&keyring);
+    bool need_keyring = false;
+    zval *c;
+    ZEND_HASH_FOREACH_VAL(cells, c)
+    {
+        styled_cell sc;
+        if (!cell_parse(c, &sc)) {
+            return false;
+        }
+        need_keyring = need_keyring || sc.aes;
+    }
+    ZEND_HASH_FOREACH_END();
+    if (need_keyring && !call_method(config, "keyring", &keyring, 0, NULL)) {
+        return false;
+    }
+
+    bool ok = true;
+    zval *row;
+    ZEND_HASH_FOREACH_VAL(rows, row)
+    {
+        ZVAL_DEREF(row);
+        if (Z_TYPE_P(row) != IS_ARRAY) {
+            zend_type_error("Codec::decodeRows(): a row is not an array");
+            ok = false;
+            break;
+        }
+        SEPARATE_ARRAY(row);
+        HashTable *vals = Z_ARRVAL_P(row);
+        ZEND_HASH_FOREACH_VAL(cells, c)
+        {
+            styled_cell sc;
+            if (!cell_parse(c, &sc)) {
+                ok = false;
+                break;
+            }
+            zval v;
+            zval *cell = zend_hash_index_find(vals, (zend_ulong)sc.index);
+            if (cell != NULL) {
+                ZVAL_DEREF(cell);
+                ZVAL_COPY(&v, cell);
+            } else {
+                zend_error(E_WARNING, "Undefined array key " ZEND_LONG_FMT, sc.index);
+                ZVAL_NULL(&v);
+            }
+            if (zend_hash_num_elements(sc.host) > 0) {
+                zend_string *key = NULL;
+                if (!sc.aes) {
+                    zval rv;
+                    key = zval_get_string(read_prop(config, "aesKey", &rv));
+                } else {
+                    zend_long version;
+                    if (Z_TYPE_P(sc.version) == IS_NULL) {
+                        zval rv;
+                        version = zval_get_long(read_prop(config, "aesVersion", &rv));
+                    } else {
+                        zval *vi = zend_hash_index_find(vals, (zend_ulong)Z_LVAL_P(sc.version));
+                        if (vi == NULL) {
+                            zend_error(E_WARNING, "Undefined array key " ZEND_LONG_FMT, Z_LVAL_P(sc.version));
+                        }
+                        version = vi != NULL ? zval_get_long(vi) : 0;
+                    }
+                    zval arg, kv;
+                    ZVAL_LONG(&arg, version);
+                    if (!call_method(&keyring, "key", &kv, 1, &arg)) {
+                        zval_ptr_dtor(&v);
+                        ok = false;
+                        break;
+                    }
+                    key = zval_get_string(&kv);
+                    zval_ptr_dtor(&kv);
+                }
+                zval host_out;
+                bool hd = codec_host_decode(&v, sc.host, key, &host_out);
+                zend_string_release(key);
+                zval_ptr_dtor(&v);
+                if (!hd) {
+                    ok = false;
+                    break;
+                }
+                ZVAL_COPY_VALUE(&v, &host_out);
+            }
+            if (zend_hash_num_elements(sc.codec) > 0) {
+                zval decoded;
+                bool cd = codec_decode(sc.codec, &v, &decoded);
+                zval_ptr_dtor(&v);
+                if (!cd) {
+                    ok = false;
+                    break;
+                }
+                ZVAL_COPY_VALUE(&v, &decoded);
+            } else if (Z_TYPE(v) == IS_RESOURCE) {
+                zval s;
+                bool rd = call_fn("stream_get_contents", &s, 1, &v);
+                zval_ptr_dtor(&v);
+                if (!rd) {
+                    ok = false;
+                    break;
+                }
+                ZVAL_COPY_VALUE(&v, &s);
+            }
+            zend_hash_index_update(vals, (zend_ulong)sc.index, &v);
+        }
+        ZEND_HASH_FOREACH_END();
+        if (!ok) {
+            break;
+        }
+    }
+    ZEND_HASH_FOREACH_END();
+    zval_ptr_dtor(&keyring);
+    return ok;
+}

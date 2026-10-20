@@ -1704,7 +1704,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, readBytes)
     LEAVE();
 }
 
-/* Polyspec\Orm\Codec (packages/php-ext/src/codec.c). The methods that codec.c does not implement yet throw CODEC_UNSUPPORTED. */
+/* Polyspec\Orm\Codec (packages/php-ext/src/codec.c). blindIndex is not implemented yet (T182-2-3) and throws CODEC_UNSUPPORTED. */
 ZEND_METHOD(Polyspec_Orm_Codec, blindIndex)
 {
     zval *v;
@@ -1770,18 +1770,19 @@ ZEND_METHOD(Polyspec_Orm_Codec, hostDecode)
         Z_PARAM_ARRAY_HT(styles)
         Z_PARAM_STR(aes_key)
     ZEND_PARSE_PARAMETERS_END();
-    codec_unsupported("hostDecode", "the host-style decode, T182-2-2");
+    codec_host_decode(raw, styles, aes_key, return_value);
 }
 
 ZEND_METHOD(Polyspec_Orm_Codec, decodeRows)
 {
-    zval *rows, *cells, *config;
+    zval *rows_zv, *config;
+    HashTable *cells;
     ZEND_PARSE_PARAMETERS_START(3, 3)
-        Z_PARAM_ZVAL(rows)
-        Z_PARAM_ZVAL(cells)
-        Z_PARAM_ZVAL(config)
+        Z_PARAM_ARRAY_EX2(rows_zv, 0, 1, 1)
+        Z_PARAM_ARRAY_HT(cells)
+        Z_PARAM_OBJECT(config)
     ZEND_PARSE_PARAMETERS_END();
-    codec_unsupported("decodeRows", "the row decode of the host styles, T182-2-2");
+    codec_decode_rows(Z_ARRVAL_P(rows_zv), cells, config);
 }
 
 /* Calls a PHP function by name. On failure (exception), false. */
