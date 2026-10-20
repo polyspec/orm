@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: a3ac1f55ec0f5b8b6fc279dc81eb9d9c8ebf3b06eb98d3a44f75a81a3b927b12 -->
+<!-- source-sha256: ef35469fb81547ea8542def89d8091c5f8ad37718cf02a29fe6aca6355a8bf4c -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -67,7 +67,7 @@
 | KSTD-5-5 | duplication-check가 통과한다 (KSTD-5 후속). Cause: jscpd가 구현 전체에서 clone 988개(줄의 4.29 percent)를 찾는다; 반복된 code는 둘이 함께 쓰는 한 module로 옮긴다 | the code of every implementation | `make duplication-check` | [ ] |
 | KSTD-5-6 | lint-ts가 통과한다 (KSTD-5 후속). Cause: oxlint와 knip이 repository의 TypeScript에서 실패한다 | the TypeScript of the repository | `make lint-ts` | [o] |
 | KSTD-5-7 | lint-go가 통과한다 (KSTD-5 후속). Cause: golangci-lint가 examples, packages/go, tests에서, deadcode가 packages/go에서 실패한다 | the Go of the repository | `make lint-go` | [o] |
-| KSTD-5-7-2 | packages/go/orm이 K334가 찾는 모든 오류를 처리한다 (KSTD-5-7 후속). Cause: kit K334는 golangci-lint가 버린 오류(errcheck check-blank, check-type-assertions), 오류 chain을 잃는 비교나 wrap(errorlint), nil로 반환한 오류(nilerr), linter와 이유 없는 nolint(nolintlint)를 보고하게 한다; packages/go/orm에서 113개를 찾는다 | packages/go/orm | `make lint-go` | [ ] |
+| KSTD-5-7-2 | packages/go/orm이 K334가 찾는 모든 오류를 처리한다 (KSTD-5-7 후속). Cause: kit K334는 golangci-lint가 버린 오류(errcheck check-blank, check-type-assertions), 오류 chain을 잃는 비교나 wrap(errorlint), nil로 반환한 오류(nilerr), linter와 이유 없는 nolint(nolintlint)를 보고하게 한다; packages/go/orm에서 113개를 찾는다 | packages/go/orm | `make lint-go` | [~] |
 | KSTD-5-7-3 | packages/go/engine/dbspec이 K334가 찾는 모든 오류를 처리한다 (KSTD-5-7 후속). Cause: kit K334는 golangci-lint가 버린 오류(errcheck check-blank, check-type-assertions), 오류 chain을 잃는 비교나 wrap(errorlint), nil로 반환한 오류(nilerr), linter와 이유 없는 nolint(nolintlint)를 보고하게 한다; packages/go/engine/dbspec에서 41개를 찾는다 | packages/go/engine/dbspec | `make lint-go` | [ ] |
 | KSTD-5-7-4 | 나머지 Go code가 K334가 찾는 모든 오류를 처리하고 deadcode가 도달할 수 없는 함수를 찾지 않는다 (KSTD-5-7 후속). Cause: kit K334는 golangci-lint가 버린 오류(errcheck check-blank, check-type-assertions), 오류 chain을 잃는 비교나 wrap(errorlint), nil로 반환한 오류(nilerr), linter와 이유 없는 nolint(nolintlint)를 보고하게 한다; packages/go/bench, generator, internal, testcase와 tests, bench에서 약 40개를 찾는다 | packages/go, tests, examples | `make lint-go` | [ ] |
 | KSTD-5-8 | lint-python이 통과한다 (KSTD-5 후속). Cause: ruff format --check가 repository의 Python에서 실패한다 | the Python of the repository | `make lint-python` | [o] |
