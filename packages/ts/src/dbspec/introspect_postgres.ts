@@ -3,7 +3,7 @@
 import { present } from '../present.js';
 import { Catalog, quote, tableTypes, type CatalogQuery } from './introspect_catalog.js';
 import { renderedColumn } from './names.js';
-import { CheckDecodeError, decodeCheck } from './introspect_check.js';
+import { addCheck, markChecked } from './introspect_check.js';
 import { recognizeTriggers, type ITrigger } from './introspect_trigger.js';
 import type { DbspecAction, DbspecType } from './model.js';
 
@@ -140,19 +140,10 @@ export async function readPostgres(query: CatalogQuery): Promise<Catalog> {
           c.report('check', table, name, `the check ${definition} is not the renderer CHECK`);
           continue;
         }
-        if (!checked.has(table)) checked.set(table, new Set());
-        present(checked.get(table), 'checked.get(table)').add(column);
+        markChecked(checked, table, column);
         continue;
       }
-      let predicate: string;
-      try {
-        predicate = decodeCheck('postgres', definition, tableTypes(t));
-      } catch (error) {
-        if (!(error instanceof CheckDecodeError)) throw error;
-        c.report('check', table, name, error.message);
-        continue;
-      }
-      t.checks.push({ name, predicate });
+      addCheck(c, table, t, 'postgres', name, definition, tableTypes(t));
     } else {
       c.report(postgresKind(kind), table, name, `a constraint of kind ${kind} has no dbspec definition`);
     }

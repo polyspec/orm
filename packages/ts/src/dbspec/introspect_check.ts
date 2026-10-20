@@ -27,6 +27,41 @@ export function decodeCheck(dialect: DbspecDialect, text: string, columns: Reado
   return d.write(node);
 }
 
+/** The reporter of a catalog read, which states why a check is not read. */
+export interface CheckReport {
+  report(kind: string, table: string, name: string, reason: string): void;
+}
+
+/**
+ * Adds a check of the table that reads as a dbspec predicate. A clause that cannot be read is reported with the reason
+ * of its CheckDecodeError, and the table keeps no check of that name.
+ */
+export function addCheck(
+  c: CheckReport,
+  table: string,
+  t: { checks: { name: string; predicate: string }[] },
+  dialect: DbspecDialect,
+  name: string,
+  clause: string,
+  columns: ReadonlyMap<string, DbspecType>,
+): void {
+  let predicate: string;
+  try {
+    predicate = decodeCheck(dialect, clause, columns);
+  } catch (error) {
+    if (!(error instanceof CheckDecodeError)) throw error;
+    c.report('check', table, name, error.message);
+    return;
+  }
+  t.checks.push({ name, predicate });
+}
+
+/** Records that a column of the table has the renderer CHECK that its catalog type needs. */
+export function markChecked(checked: Map<string, Set<string>>, table: string, column: string): void {
+  if (!checked.has(table)) checked.set(table, new Set());
+  present(checked.get(table), 'checked.get(table)').add(column);
+}
+
 /** Undoes the second escape that CHECK_CLAUSE added to string literals: `\\` becomes `\`, and `\'` becomes `'`. */
 function unescapeMySQLClause(text: string): string {
   let out = '';
