@@ -214,6 +214,12 @@ def _scan_tree(tree, classes: dict, out: dict, sites=None, path="", set_module=N
             return _union([call_result(m, name) for m in _members(receiver)])
         if isinstance(node, ast.Subscript):
             return _element(value_of(node.value, names))
+        # A conditional expression or an or holds either operand, as the checker types it:
+        # the union of both (DSL-151).
+        if isinstance(node, ast.IfExp):
+            return _union([value_of(node.body, names), value_of(node.orelse, names)])
+        if isinstance(node, ast.BoolOp) and isinstance(node.op, ast.Or):
+            return _union([value_of(value, names) for value in node.values])
         if isinstance(node, ast.Constant) and node.value is None:
             return NOTHING
         return None

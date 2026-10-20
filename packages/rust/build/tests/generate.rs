@@ -584,6 +584,34 @@ fn read(row: &main_set::Author, user: MainUser) { let _ = row.get_phantom(); let
     assert!(text.contains("pub fn ne_name"), "the call on this set's User is not generated");
 }
 
+/// A receiver held in a variable resolves through its initializer and its reassignments to its class, as the checker types it: a
+/// `let mut` initialized from a chain on an imported class and reassigned from its own chain in an `if` expression still holds
+/// that class, so a getter called on it after each reassignment is checked as that class's call. An untyped call is offered to
+/// every model, so only the refusal of a getter that nothing attaches tells that the receiver resolved to Author.
+#[test]
+// Requirements: DSL-151.
+fn a_receiver_held_in_a_reassigned_variable_resolves_to_its_class() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let err = generate_with_schema(
+        bench(),
+        r#"mod requests { include!("../out/orm_model.rs"); }
+use requests::Author;
+fn page(limit: Option<i64>) {
+    let mut page = Author::new().add_all_columns();
+    let mut conditions = 0;
+    if let Some(limit) = limit {
+        page = if conditions == 0 { page.gt_read_count(limit) } else { page.and_gt_read_count(limit) };
+        conditions += 1;
+    }
+    if let Some(limit) = limit { page = if conditions == 0 { page.lt_seq(limit) } else { page.and_lt_seq(limit) }; }
+    let _ = page.get_ghost();
+}
+fn main() { page(None); }"#,
+    )
+    .unwrap_err();
+    assert!(err.contains("Author has no method get_ghost"), "{err}");
+}
+
 /// A relation to an entity of a used external document attaches its getter, as a relation to an entity of the set does.
 #[test]
 fn relation_to_an_external_entity_attaches_its_getter() {

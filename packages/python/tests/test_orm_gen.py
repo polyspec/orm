@@ -562,6 +562,26 @@ class OrmGenTest(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn("Author.get_ghost is called", result.stderr)
 
+    def test_a_receiver_held_in_a_reassigned_name_resolves_to_its_class(self):
+        # Requirements: DSL-151.
+        # A name bound from a chain on an imported class and rebound from its own chain in a conditional expression still
+        # holds that class, as the checker types it, so a getter called on it after each rebinding is checked as its call.
+        result = self._scan(
+            "from models import Author\n"
+            "def page(db, limit):\n"
+            "    page = Author().connect(db).add_all_columns()\n"
+            "    conditions = 0\n"
+            "    if limit is not None:\n"
+            "        page = page.gt_read_count(limit) if conditions == 0 else page.and_gt_read_count(limit)\n"
+            "        conditions += 1\n"
+            "    if limit is not None: page = page.lt_seq(limit) if conditions == 0 else page.and_lt_seq(limit)\n"
+            "    page.get_ghost()\n"
+        )
+        self.assertNotEqual(
+            result.returncode, 0, "a getter called on a reassigned name was not checked"
+        )
+        self.assertIn("Author.get_ghost is called", result.stderr)
+
     def test_a_relation_to_an_entity_of_a_used_document_attaches_its_getter(self):
         # ext_post of member.dbs uses ext_audit of core.dbs, an external document: the relation to ExtAudit attaches
         # get_ext_audit_model as it does for a local entity.

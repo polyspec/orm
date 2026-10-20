@@ -531,3 +531,53 @@ func Cheap() *model.ProductModel { return model.Product().LtPrice(1) }
 	}
 	buildScannedModule(t)
 }
+
+// TestGoScanResolvesAReassignedVariable checks that a receiver held in a
+// variable resolves through its initializer and its reassignments to its
+// type: a variable initialized from a chain on an imported model and
+// reassigned from its own chain in either branch of a condition still holds
+// that model, so the calls on it after each reassignment are its calls.
+func TestGoScanResolvesAReassignedVariable(t *testing.T) {
+	// Requirements: DSL-151.
+	testcase.Start(t, testcase.Process)
+	write := scannedModule(t)
+	write("example/example.go", `package example
+
+import "example.com/ormexample/model"
+
+func Page(limit *int) *model.ProductModel {
+	page := model.Product().AddAllColumns()
+	conditions := 0
+	if limit != nil {
+		if conditions == 0 {
+			page = page.GtPrice(*limit)
+		} else {
+			page = page.AndGtPrice(*limit)
+		}
+		conditions++
+	}
+	if limit != nil {
+		if conditions == 0 {
+			page = page.LtPrice(*limit)
+		} else {
+			page = page.AndLtPrice(*limit)
+		}
+	}
+	return page
+}
+`)
+	m := namesManifest(t, namesDiagram)
+	if err := generateGo(m, "model", "", []string{"./..."}); err != nil {
+		t.Fatal(err)
+	}
+	product, err := os.ReadFile("model/product.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, method := range []string{"GtPrice", "AndGtPrice", "LtPrice", "AndLtPrice"} {
+		if !strings.Contains(string(product), ") "+method+"[") {
+			t.Errorf("model/product.go lacks %s called on a reassigned variable", method)
+		}
+	}
+	buildScannedModule(t)
+}

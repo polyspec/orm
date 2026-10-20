@@ -398,6 +398,13 @@ final class ScanVisitor extends NodeVisitorAbstract
         if ($e instanceof Node\Expr\Clone_) {
             return $this->valueOf($e->expr);
         }
+        // A conditional or a null coalescing holds either operand, as the checker types it: the union of both values (DSL-151).
+        if ($e instanceof Node\Expr\Ternary) {
+            return self::unionOf([$this->valueOf($e->if ?? $e->cond), $this->valueOf($e->else)]);
+        }
+        if ($e instanceof Node\Expr\BinaryOp\Coalesce) {
+            return self::unionOf([$this->valueOf($e->left), $this->valueOf($e->right)]);
+        }
         if ($e instanceof Node\Expr\ConstFetch && strtolower($e->name->toString()) === 'null') {
             return self::nothing();
         }

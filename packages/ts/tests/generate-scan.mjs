@@ -374,6 +374,29 @@ async function importedSet() {
   }
 }
 
+/**
+ * A receiver held in a variable resolves through the variable's initializer and its reassignments to its class, as the checker
+ * types the variable: a `let` initialized from a chain on an imported class and reassigned from its own chain in a conditional
+ * expression still holds that class, so the calls on it after each reassignment are its calls.
+ */
+// Requirements: DSL-151.
+async function reassignedVariable() {
+  const { members } = await generate(`
+import { Author } from './models/models.js';
+declare const db: unknown;
+declare const limit: number | null;
+let page = new Author().connect(db).addAllColumns();
+let conditions = 0;
+if (limit !== null) {
+  page = conditions === 0 ? page.gtReadCount(limit) : page.andGtReadCount(limit);
+  conditions += 1;
+}
+if (limit !== null) page = conditions === 0 ? page.ltSeq(limit) : page.andLtSeq(limit);
+page.orderBySeqDesc();
+`);
+  for (const name of ['gtReadCount', 'andGtReadCount', 'ltSeq', 'andLtSeq']) check(members('Author').includes(name), `Author lacks ${name} called on a reassigned variable`);
+}
+
 /** The base method names of the generator are the public methods of the runtime Model, which every generated model inherits. */
 async function baseMethodsMatchModel() {
   const { baseMethods } = await import('../dist/generate/typescript.js');
@@ -385,7 +408,7 @@ async function baseMethodsMatchModel() {
   check(missing.length === 0 && extra.length === 0, `baseMethods differs from the Model methods: missing ${JSON.stringify(missing)}, extra ${JSON.stringify(extra)}`);
 }
 
-const cases = { non_model_call: nonModelCall, base_methods_match_model: baseMethodsMatchModel, model_calls: modelCalls, scan_path_spelling: scanPathSpelling, alias_match_getter: aliasMatchGetter, nested_alias_getter: nestedAliasGetter, unattached_getter: unattachedGetter, external_getter: externalGetter, scope_binding: scopeBinding, may_hold_two_models: mayHoldTwoModels, possible_classes: possibleClasses, callback_parameters: callbackParameters, imported_set: importedSet };
+const cases = { non_model_call: nonModelCall, base_methods_match_model: baseMethodsMatchModel, model_calls: modelCalls, scan_path_spelling: scanPathSpelling, alias_match_getter: aliasMatchGetter, nested_alias_getter: nestedAliasGetter, unattached_getter: unattachedGetter, external_getter: externalGetter, scope_binding: scopeBinding, may_hold_two_models: mayHoldTwoModels, possible_classes: possibleClasses, callback_parameters: callbackParameters, imported_set: importedSet, reassigned_variable: reassignedVariable };
 const selected = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(cases);
 for (const name of selected) {
   const run = cases[name];

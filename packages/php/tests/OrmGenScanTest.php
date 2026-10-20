@@ -274,6 +274,35 @@ PHP;
         self::assertContains('neName', self::tags($dir, 'User'));
     }
 
+    public function test_a_receiver_held_in_a_reassigned_variable_resolves_to_its_class(): void
+    {
+        // Requirements: DSL-151.
+        // A variable initialized from a chain on an imported class and reassigned from its own chain in a conditional
+        // expression still holds that class, as the checker types it, so the calls on it after each reassignment are its calls.
+        $ns = self::NS;
+        $source = <<<PHP
+<?php
+use $ns\\Author;
+
+function page(\$db, ?int \$limit): Author
+{
+    \$page = (new Author())->connect(\$db)->addAllColumns();
+    \$conditions = 0;
+    if (\$limit !== null) {
+        \$page = \$conditions === 0 ? \$page->gtReadCount(\$limit) : \$page->andGtReadCount(\$limit);
+        \$conditions += 1;
+    }
+    if (\$limit !== null) \$page = \$conditions === 0 ? \$page->ltSeq(\$limit) : \$page->andLtSeq(\$limit);
+    return \$page;
+}
+PHP;
+        [$code, $err, $dir] = self::generate('reassigned-variable', ['usage.php' => $source]);
+        self::assertSame(0, $code, $err);
+        foreach (['gtReadCount', 'andGtReadCount', 'ltSeq', 'andLtSeq'] as $method) {
+            self::assertContains($method, self::tags($dir, 'Author'), "Author lacks $method called on a reassigned variable");
+        }
+    }
+
     public function test_a_relation_to_an_entity_of_a_used_document_attaches_its_getter(): void
     {
         // ext_post of member.dbs uses ext_audit of core.dbs, an external document: the relation to ExtAudit attaches

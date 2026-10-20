@@ -223,6 +223,9 @@ class Scanner {
       const cls = this.className(e.callee);
       return cls === undefined ? undefined : { cls, shape: 'model' };
     }
+    // A conditional or a nullish default holds either operand, as the checker types it: the union of both values (DSL-151).
+    if (e.type === 'ConditionalExpression') return union([this.valueOf(e.consequent), this.valueOf(e.alternate)]);
+    if (e.type === 'LogicalExpression' && e.operator === '??') return union([this.valueOf(e.left), this.valueOf(e.right)]);
     if (e.type === 'Literal' && e.value === null) return nothing;
     if (e.type === 'Identifier') return this.lookup(e.name) ?? (e.name === 'undefined' ? nothing : undefined);
     if (e.type === 'ArrayExpression' && e.elements.length === 1 && e.elements[0]?.type === 'SpreadElement') {
