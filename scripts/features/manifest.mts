@@ -3,7 +3,7 @@
 import { resolve } from 'node:path';
 import { parseJson, readJsonFile } from '../json/schema.mts';
 
-/** A language of the clients (the client profile of config/parity.json). */
+/** A language of the clients (the declared implementations of config/parity.json). */
 export type Language = 'go' | 'php' | 'rust' | 'typescript' | 'python';
 /** A verification command of a feature. */
 export type Verification = { id: string; command: string; shard: string; inputs?: string[]; cwd?: string; environment?: 'linux-runner' };

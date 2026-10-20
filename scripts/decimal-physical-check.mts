@@ -2,10 +2,10 @@
 import { run, state, step, TIMEOUT_MS } from './physical.mts';
 import { errorMessage } from '../tests/errors.mts';
 import { parseGoTestEvent } from './json/formats.mts';
-import { clientLanguages } from './features/languages.mts';
+import { implementationLanguages } from './features/languages.mts';
 
 const databases = ['mysql', 'postgres', 'sqlite'];
-const languages = clientLanguages();
+const languages = implementationLanguages();
 
 function command(language: string, database: string): [string, string[]] {
   const id = `decimal_${database}`;

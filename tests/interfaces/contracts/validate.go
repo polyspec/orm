@@ -19,29 +19,27 @@ func compact(s string) string {
 	}, s)
 }
 
-// languages is the client profile of config/parity.json, the one language set; this package is in tests/interfaces/contracts.
-var languages = clientLanguages()
+// languages is the declared implementations of config/parity.json, the one language set; this package is in tests/interfaces/contracts.
+var languages = implementationLanguages()
 
-func clientLanguages() []string {
+func implementationLanguages() []string {
 	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "config", "parity.json"))
 	if err != nil {
 		panic(err)
 	}
 	var parity struct {
-		Profiles []struct {
-			Name            string   `json:"name"`
-			Implementations []string `json:"implementations"`
-		} `json:"profiles"`
+		Implementations []struct {
+			Name string `json:"name"`
+		} `json:"implementations"`
 	}
 	if err := json.Unmarshal(raw, &parity); err != nil {
 		panic(err)
 	}
-	for _, profile := range parity.Profiles {
-		if profile.Name == "client" {
-			return profile.Implementations
-		}
+	names := make([]string, 0, len(parity.Implementations))
+	for _, implementation := range parity.Implementations {
+		names = append(names, implementation.Name)
 	}
-	panic("config/parity.json has no client profile")
+	return names
 }
 
 // outputs maps a common result to the native return type of each language and

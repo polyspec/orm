@@ -9,9 +9,9 @@ import { caseTest } from '../../testcase.mts';
 import { benchDatabases, benchDsn, lockBench } from './bench.mts';
 import { openStateDatabase } from './database.mts';
 import { buildRunners, languageDeadline, longError, requiredLanguages, runLanguage } from './main.mts';
-import { clientLanguages } from '../../../scripts/features/languages.mts';
+import { implementationLanguages } from '../../../scripts/features/languages.mts';
 
-const resultRunnerLanguages = clientLanguages();
+const resultRunnerLanguages = implementationLanguages();
 
 assert.deepEqual(resultRunnerLanguages, requiredLanguages, 'physical result runners differ from required languages');
 lockBench();

@@ -17,11 +17,11 @@ import { homedir } from 'node:os';
 import { delimiter, join, resolve } from 'node:path';
 import { keepAll, render, run, runLanes, variable, type Command } from './check/commands.mts';
 import { COMMANDS as TYPESCRIPT_COMMANDS, sqliteTest } from './typescript/sqlite-test.mts';
-import { clientLanguages } from './features/languages.mts';
+import { implementationLanguages } from './features/languages.mts';
 
 const root = resolve(import.meta.dirname, '..');
-// The lanes are the client profile of config/parity.json, the one language set.
-const LANES = clientLanguages();
+// The lanes are the declared implementations of config/parity.json, the one language set.
+const LANES = implementationLanguages();
 const isLane = (name: string): boolean => LANES.includes(name);
 const env = (name: string): string => process.env[name] ?? '';
 

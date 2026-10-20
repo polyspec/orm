@@ -1,5 +1,5 @@
 // The API units of config/parity.json (kind api) that carry the error catalog: each code of docs/spec/errors.yaml is one unit whose
-// symbol each client of its profile names, and the checker refuses a unit, a symbol or a constant that does not match the catalog.
+// symbol each declared implementation names, and the checker refuses a unit, a symbol or a constant that does not match the catalog.
 import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
 import { caseTest, COMPUTE } from '../../testcase.mts';
@@ -7,19 +7,17 @@ import { apiProblems, readParity, type Parity } from './api.mts';
 import { readErrorCatalog } from './manifest.mts';
 
 const root = resolve(import.meta.dirname, '../../..');
-const CLIENTS = ['go', 'php', 'typescript', 'python', 'rust'];
 
-// tinyParity is a config/parity.json that has only the parts apiProblems reads: two clients, each one's catalog file, and one code's unit.
+// tinyParity is a config/parity.json that has only the parts apiProblems reads: two implementations, each one's catalog file, and one code's unit.
 function tinyParity(): Parity {
   return {
     implementations: [
       { name: 'typescript', errors: { file: 'codes.ts', pattern: '^export const (\\w+) = \'\\w+\';$' } },
       { name: 'python', errors: { file: 'codes.py', pattern: '^(\\w+) = "\\w+"$' } },
     ],
-    profiles: [{ name: 'pair', implementations: ['typescript', 'python'] }],
     units: [
       {
-        id: 'error-code-ir-invalid', kind: 'api', profile: 'pair',
+        id: 'error-code-ir-invalid', kind: 'api',
         symbols: [{ implementation: 'typescript', symbol: '@polyspec/orm!codes.IR_INVALID:var' }, { implementation: 'python', symbol: 'polyspec.orm.codes.IR_INVALID' }],
       },
     ],
@@ -40,12 +38,12 @@ caseTest('the API units of the error catalog cover every code of errors.yaml onc
     const id = `error-code-${code.toLowerCase().replaceAll('_', '-')}`;
     const unit = units.find(entry => entry.id === id);
     assert.ok(unit, `no API unit ${id} for the code ${code} of docs/spec/errors.yaml`);
-    assert.deepEqual(unit.symbols?.map(entry => entry.implementation).sort(), [...CLIENTS].sort(), `${id} names other implementations than the client profile`);
+    assert.deepEqual(unit.symbols?.map(entry => entry.implementation).sort(), (parity.implementations ?? []).map(entry => entry.name).sort(), `${id} names other implementations than the declared ones`);
   }
   assert.deepEqual(apiProblems(root, parity, codes), [], 'the API units of the error catalog do not match docs/spec/errors.yaml and the catalog files');
 });
 
-caseTest('the API unit check accepts a unit that names each client of its profile', COMPUTE, () => {
+caseTest('the API unit check accepts a unit that names each declared implementation', COMPUTE, () => {
   assert.deepEqual(apiProblems(root, tinyParity(), new Set(['IR_INVALID']), sources()), []);
 });
 

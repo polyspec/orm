@@ -2,6 +2,8 @@ package contracts
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -146,5 +148,29 @@ func TestExtensionContractRejectsDrift(t *testing.T) {
 		if validateRules(d) == nil {
 			t.Errorf("%s: an extension adapter that differs from the contract was accepted", name)
 		}
+	}
+}
+
+// The language set of the contracts is the declared implementations of config/parity.json, in their order.
+func TestLanguagesAreTheDeclaredImplementations(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "config", "parity.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var parity struct {
+		Implementations []struct {
+			Name string `json:"name"`
+		} `json:"implementations"`
+	}
+	if err := json.Unmarshal(raw, &parity); err != nil {
+		t.Fatal(err)
+	}
+	var want []string
+	for _, implementation := range parity.Implementations {
+		want = append(want, implementation.Name)
+	}
+	if strings.Join(languages, ",") != strings.Join(want, ",") {
+		t.Fatalf("languages %v, want the declared implementations %v", languages, want)
 	}
 }

@@ -129,26 +129,24 @@ for (const file of allDocs) {
   }
 }
 
-// The implementation count of the documents is the client profile of config/parity.json, and the conformance runners
-// of tests/conformance/check/main.mts (requiredLanguages) must be that same list. A document that counts clients,
-// implementations, runners, planners or outputs in English or Korean states the profile's number; history (CHANGELOG,
-// the checklist) is not checked.
-type Parity = { profiles: { name: string; implementations: string[] }[] };
-const isStringArray = (value: unknown): value is string[] => Array.isArray(value) && value.every(item => typeof item === 'string');
-const isProfile = (value: unknown): value is Parity['profiles'][number] =>
-  typeof value === 'object' && value !== null && 'name' in value && typeof value.name === 'string' && 'implementations' in value && isStringArray(value.implementations);
+// The implementation count of the documents is the declared implementations of config/parity.json, and the conformance
+// runners of tests/conformance/check/main.mts (requiredLanguages) must be that same list. A document that counts clients,
+// implementations, runners, planners or outputs in English or Korean states that number; history (CHANGELOG, the
+// checklist) is not checked.
+type Parity = { implementations: { name: string }[] };
+const isImplementation = (value: unknown): value is Parity['implementations'][number] =>
+  typeof value === 'object' && value !== null && 'name' in value && typeof value.name === 'string';
 const isParity = (value: unknown): value is Parity =>
-  typeof value === 'object' && value !== null && 'profiles' in value && Array.isArray(value.profiles) && value.profiles.every(isProfile);
+  typeof value === 'object' && value !== null && 'implementations' in value && Array.isArray(value.implementations) && value.implementations.every(isImplementation);
 const parityData: unknown = JSON.parse(await readFile(path.join(root, 'config/parity.json'), 'utf8'));
-if (!isParity(parityData)) fail('docs.implementation-count', 'config/parity.json does not match { profiles: [{ name, implementations: string[] }] }');
-const parityProfiles = isParity(parityData) ? parityData.profiles : [];
-const clients = parityProfiles.find(profile => profile.name === 'client')?.implementations ?? [];
+if (!isParity(parityData)) fail('docs.implementation-count', 'config/parity.json does not match { implementations: [{ name: string }] }');
+const clients = isParity(parityData) ? parityData.implementations.map(implementation => implementation.name) : [];
 const runnerSource = await readFile(path.join(root, 'tests/conformance/check/main.mts'), 'utf8');
 const runners = [...(/export const requiredLanguages = \[([^\]]*)\]/.exec(runnerSource)?.[1] ?? '').matchAll(/'([^']+)'/g)].map(match => match[1] ?? '');
-if (clients.length === 0) fail('docs.implementation-count', 'config/parity.json has no client profile');
-const runnersFromProfile = /export const requiredLanguages = clientLanguages\(\)/.test(runnerSource);
-if (!runnersFromProfile && JSON.stringify([...clients].sort()) !== JSON.stringify([...runners].sort()))
-  fail('docs.implementation-count', `tests/conformance/check/main.mts requiredLanguages (${runners.join(', ')}) differs from the client profile of config/parity.json (${clients.join(', ')})`);
+if (clients.length === 0) fail('docs.implementation-count', 'config/parity.json declares no implementation');
+const runnersFromParity = /export const requiredLanguages = implementationLanguages\(\)/.test(runnerSource);
+if (!runnersFromParity && JSON.stringify([...clients].sort()) !== JSON.stringify([...runners].sort()))
+  fail('docs.implementation-count', `tests/conformance/check/main.mts requiredLanguages (${runners.join(', ')}) differs from the declared implementations of config/parity.json (${clients.join(', ')})`);
 const numberWords: Record<string, number> = { two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
 const koreanNumbers: Record<string, number> = { '두': 2, '세': 3, '네': 4, '다섯': 5, '여섯': 6, '일곱': 7, '여덟': 8, '아홉': 9, '열': 10 };
 const countedEnglish = /\b(two|three|four|five|six|seven|eight|nine|ten|\d+)\b(?:[ -]+[\w-]+){0,2}?[ -]+(clients?|implementations?|runners?|planners?)\b|\b(two|three|four|five|six|seven|eight|nine|ten|\d+)[ -]+(outputs?)\b/gi;
@@ -164,8 +162,8 @@ for (const file of [...sources, ...translations.values()]) {
   }
 }
 
-// The planning table of protocol section 4 names every client of the profile, one row each.
-const clientNames: Record<string, string> = { go: 'Go', php: 'PHP', rust: 'Rust', typescript: 'TypeScript', python: 'Python' };
+// The planning table of protocol section 4 names every declared implementation, one row each.
+const clientNames: Record<string, string> = { go: 'Go', php: 'PHP', 'php-extension': 'PHP extension', rust: 'Rust', typescript: 'TypeScript', python: 'Python' };
 for (const file of ['docs/spec/protocol.md', 'docs/spec/protocol.ko.md']) {
   const text = await readFile(path.join(root, file), 'utf8');
   const section = text.slice(text.search(/^## 4\./m), text.search(/^## 5\./m));
@@ -180,7 +178,9 @@ for (const file of ['docs/spec/protocol.md', 'docs/spec/protocol.ko.md']) {
 // sentence that uses two or more client names as the set ("the clients", "implementations", "languages", "runners" or
 // "planners", in English or Korean) names all of them. A subset statement about some clients is not checked.
 const clientDisplay = [...new Set(clients.map(client => clientNames[client] ?? client))];
-const names = clientDisplay.join('|');
+// The longer name comes first, so that "PHP extension" is read as itself and not as PHP.
+const names = [...clientDisplay].sort((left, right) => right.length - left.length).join('|');
+const displayOf = (cell: string): string | undefined => [...clientDisplay].sort((left, right) => right.length - left.length).find(name => cell === name || cell.startsWith(`${name} `));
 const setNoun = /\b(clients?|implementations?|languages?|runners?|planners?)\b|클라이언트|구현|언어|러너|플래너/i;
 const enumerated = new RegExp(`\\b(?:${names})\\b(?: extension)?(?:(?:\\s*[,·]\\s*(?:(?:and|or)\\s+)?(?:the\\s+)?|\\s+(?:and|or)\\s+)(?:${names})\\b(?: extension)?)+`, 'g');
 for (const file of [...sources, ...translations.values()]) {
@@ -191,7 +191,7 @@ for (const file of [...sources, ...translations.values()]) {
     const next = lines[index + 1] ?? '';
     if (/^\s*\|/.test(line) && /^\s*\|[\s:|-]+\|\s*$/.test(next)) {
       const header = line.split('|').slice(1, -1).map(cell => cell.trim());
-      const languages = header.map(cell => cell.split(/\s+/)[0] ?? '').filter(cell => clientDisplay.includes(cell));
+      const languages = header.map(displayOf).filter((name): name is string => name !== undefined);
       if (languages.length >= 2) {
         for (const name of clientDisplay) {
           if (!languages.includes(name)) fail('docs.implementation-count', `${relative(file)} line ${index + 1} table header names ${languages.join(', ')} and has no ${name} column`);

@@ -29,10 +29,10 @@ const runnerDeadline = 2 * time.Minute
 // gets one more minute.
 const pairDeadline = 3*runnerDeadline + time.Minute
 
-// applyClients is the client with the apply runner of tests/dbspec/apply, as set by the dbspec profile of config/parity.json.
+// applyClients is the client with the apply runner of tests/dbspec/apply, as set by the declared implementations of config/parity.json.
 var applyClients = dbspecLanguages()
 
-// dbspecLanguages reads the dbspec profile implementations of config/parity.json. This test runs from the package directory,
+// dbspecLanguages reads the declared implementations of config/parity.json. This test runs from the package directory,
 // so the paths are relative to packages/go/internal/dialects.
 func dbspecLanguages() []string {
 	raw, err := os.ReadFile(filepath.Join(repoRoot, "config", "parity.json"))
@@ -40,20 +40,18 @@ func dbspecLanguages() []string {
 		panic(err)
 	}
 	var parity struct {
-		Profiles []struct {
-			Name            string   `json:"name"`
-			Implementations []string `json:"implementations"`
-		} `json:"profiles"`
+		Implementations []struct {
+			Name string `json:"name"`
+		} `json:"implementations"`
 	}
 	if err := json.Unmarshal(raw, &parity); err != nil {
 		panic(err)
 	}
-	for _, profile := range parity.Profiles {
-		if profile.Name == "dbspec" {
-			return profile.Implementations
-		}
+	names := make([]string, 0, len(parity.Implementations))
+	for _, implementation := range parity.Implementations {
+		names = append(names, implementation.Name)
 	}
-	panic("config/parity.json has no dbspec profile")
+	return names
 }
 
 // TestApplyChainAcrossClients checks, for every ordered pair, whether a chain applied by one client is continued

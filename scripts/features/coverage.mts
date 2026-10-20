@@ -9,7 +9,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { PROCESS, runCase, runLong, stepLines } from '../../tests/testcase.mts';
 import { errorCode } from '../../tests/errors.mts';
 import { readFeatures } from './manifest.mts';
-import { clientLanguages, featureLanguages } from './languages.mts';
+import { implementationLanguages, featureLanguages } from './languages.mts';
 import { parseGoTestEvent } from '../json/formats.mts';
 import { programEnvironment, readBinaries } from '../../tests/cargo-test.mts';
 
@@ -51,7 +51,7 @@ type Plan = { feature: Feature; item: Item; native: Spec[]; dsn: string | null |
 /** A process of a planned execution. */
 type Prepared = { program: string; args: string[]; cwd?: string | undefined; label?: string; env?: Record<string, string> };
 
-export const languages = clientLanguages();
+export const languages = implementationLanguages();
 // claimedLanguages are the client languages of a feature: the ones its parity units bind. Each claimed language needs an owner.
 const claimedLanguages = (feature: Feature): Set<string> => new Set(featureLanguages(feature.parity ?? []));
 export const databases = ['mysql', 'postgres', 'sqlite'];

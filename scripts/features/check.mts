@@ -6,7 +6,7 @@ import { errorCode, errorMessage } from '../../tests/errors.mts';
 import type { Check } from './select.mts';
 import { manifestInputErrors } from './owners.mts';
 import { readFeatures, type FeatureManifest } from './manifest.mts';
-import { clientLanguages, unitTests, unknownParityUnits } from './languages.mts';
+import { implementationLanguages, unitTests, unknownParityUnits } from './languages.mts';
 import { JsonError, readJsonFile, SchemaError } from '../json/schema.mts';
 import { parseSelection, selectChecks, selectionErrors, SHARDS } from './select.mts';
 
@@ -22,7 +22,7 @@ const manifest = readManifest();
 const ids = new Set<string>();
 // shardOf is, for each (cwd, command), the verify command that first declared it and its shard.
 const shardOf = new Map<string, { shard: string; name: string }>();
-const clients = clientLanguages();
+const clients = implementationLanguages();
 const VECTORS_SCHEMA = new URL('../../tests/conformance/schema/vectors.schema.json', import.meta.url).pathname;
 const FIXTURE_SCHEMA = new URL('./schema/fixture.schema.json', import.meta.url).pathname;
 const runVerification = process.argv.includes('--run');
