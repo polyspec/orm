@@ -134,11 +134,12 @@ final class OrmGenTest extends TestCase
         }
     }
 
-    public function test_gen_generates_only_the_owned_tables_of_a_set_with_external_documents(): void
+    public function test_gen_generates_the_owned_and_the_used_external_tables_of_a_set(): void
     {
         $work = self::$work;
-        // member.dbs uses ext_account and ext_audit of core.dbs. core is an external document of the set, so it
-        // gets no model, and the bootstrap holds the text of the external tables that are used.
+        // member.dbs uses ext_account and ext_audit of core.dbs, an external document of the set: each used external table
+        // gets a read-only model (docs/spec/dbspec.md "External documents"), an unused one (ext_session) none, and the
+        // bootstrap holds the text of the used external tables.
         $root = dirname(__DIR__, 3);
         $dir = "$work/gen-use";
         $set = self::setFile("$dir/set/app", ['member.dbs'], ['../core/core.dbs']);
@@ -149,7 +150,7 @@ final class OrmGenTest extends TestCase
         self::assertTrue($code === 0, "gen: $code $out $err");
         $files = array_map('basename', glob("$dir/model/*.php") ?: []);
         sort($files);
-        self::assertTrue($files === ['ExtPost.php', 'ExtPostHistory.php', 'bootstrap.php'], 'generated files ' . json_encode($files));
+        self::assertTrue($files === ['ExtAccount.php', 'ExtAudit.php', 'ExtPost.php', 'ExtPostHistory.php', 'bootstrap.php'], 'generated files ' . json_encode($files));
         $bootstrap = (string) @file_get_contents("$dir/model/bootstrap.php");
         self::assertTrue(str_contains($bootstrap, 'const EXTERNAL_TEXT = ') && str_contains($bootstrap, 'table ext_account {') && !str_contains($bootstrap, 'table ext_session {'), 'bootstrap carries the used external tables');
         [$code, $out] = self::tool(['gen', '--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example', '--check']);
