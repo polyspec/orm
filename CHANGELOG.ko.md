@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0b270de944cff7bdc8b2dcba388b4af3def20aeb74b1cacd26db4cfdf06c2a57 -->
+<!-- source-sha256: e6a95f592e601acf298d20b200b73164763cc0e8b0b74c528d9f8879f50cea05 -->
 # 변경 이력
 
 ## Unreleased
+- set file reader의 번호 단계인 DBS-12~15가 set file unit이 인용하는 requirement다. kit K299가 번호 목록 항목의 id를 읽기 때문이다; 인용한 unit의 trace는 모르는 id도 이름 없는 id도 보고하지 않는다(KSTD-2-9-7).
 - 읽는 동안 바뀐 tree에 대한 set file reader의 문장은 requirement가 아니라 참고다 (KSTD-2-9-6).
 - bench database 절차가 dialect spec에서 성능 문서로 옮겨졌다 (KSTD-2-9-5).
 - DIA-128이 존재하지 않는 probe 대신 자신을 검사하는 `tests/dbspec/ddl.json`의 `types-and-defaults` case를 가리킨다 (KSTD-2-9-4).

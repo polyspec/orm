@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: fb9260ecef518f3e639a7e05f01e7f0ad3af2be74a852dd2105098c9a8a26df3 -->
+<!-- source-sha256: 810925c045797f657b4a32b830dc43dcf2bc2303a7874eaef74a5144dc572f73 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -21,7 +21,7 @@
 | KSTD-2-9-4 | DIA-128은 자신을 검사하는 case를 가리킨다 (KSTD-2-9 후속). Cause: 존재하지 않는 probe sqlite.ddl.types_and_defaults와 postgres.ddl.types_and_defaults를 가리킨다; case는 tests/dbspec/ddl.json의 types-and-defaults다 | docs/spec/dialects.md and its Korean twin | `make docs-check` | [o] |
 | KSTD-2-9-5 | bench database 절차 DIA-34를 성능 문서로 옮긴다 (KSTD-2-9 후속). Cause: dialect 규칙이 아니라 scripts/bench-db.mts의 절차이며, docs/spec은 규칙만 담는다 (KSTD-2-8) | docs/spec/dialects.md, docs/operations/perf.md and their Korean twins | `make docs-check` | [o] |
 | KSTD-2-9-6 | DBS-16을 set file reader의 참고로 바꾼다 (KSTD-2-9 후속). Cause: reader가 판정하지 않는 것, 즉 읽는 동안 바뀐 tree를 적은 문장이라 어떤 test도 통과나 실패를 판정할 수 없다 | docs/spec/dbspec.md and its Korean twin | `make docs-check` | [o] |
-| KSTD-2-9-7 | kit이 번호 목록 항목의 id를 읽으면 DBS-12~15를 set file unit이 인용한다 (KSTD-2-9 후속). Cause: 번호 단계는 순서가 의미인 목록 항목인데 kit R14는 bullet과 heading만 읽는다; kit K299가 1. **ID**를 - **ID**처럼 읽게 한다 | config/parity.json | `make docs-check` | [ ] |
+| KSTD-2-9-7 | kit이 번호 목록 항목의 id를 읽으면 DBS-12~15를 set file unit이 인용한다 (KSTD-2-9 후속). Cause: 번호 단계는 순서가 의미인 목록 항목인데 kit R14는 bullet과 heading만 읽는다; kit K299가 1. **ID**를 - **ID**처럼 읽게 한다 | config/parity.json | `make docs-check` | [o] |
 | KSTD-2-10 | dbspec 영역과 query 영역의 requirement id 중 어떤 test도 이름으로 가리키지 않는 id는 모든 구현에 test를 갖는다 (KSTD-2-5, KSTD-2-6 후속). Cause: CPX-2, DBS-95, DSL-49, DSL-50, DSL-52, DSL-87, DSL-120, DSL-121, DSL-122, DSL-124, DSL-142, DIA-20, DIA-21, DIA-71, DIA-97, COD-21, COD-31은 test가 없다; DSL-32, DSL-33, DIA-6, DIA-187은 두 dialect의 SQL과 SQLite의 거부를 담는 conformance vector가 필요하다; DIA-156, 164, 168~173, 175~179, 182, 186, 190은 markdown conformance case가 필요하다; DBS-59, 87, 109, 113, 117, CPX-3, DSL-113, DIA-108은 그 id를 인용하지 않는 vector나 unit만 가리킨다 | tests/conformance, tests/markdown, config/parity.json, tests of every implementation | `make parity-declarations-check` | [ ] |
 | KSTD-2-11 | config/parity.json의 모든 unit은 requirement를 인용하고, spec 규칙을 검사하지 않는 test의 unit은 parity unit이 아니다 (KSTD-2 후속). Cause: 영역 항목 뒤에도 702개 unit이 아무것도 인용하지 않는다; 대부분은 내부 동작(unicode table, reader, generator 기계 장치, 도구)의 단일 구현 feature unit이며 S6은 이를 parity unit으로 받지 않으므로, 각각 검사하는 규칙에 모든 구현으로 묶이거나 그 구현의 feature scope로 옮겨진다 | config/parity.json, contracts/features.json, tests of every implementation | `make parity-declarations-check` | [ ] |
 | KSTD-3 | orm-gen이 생성하는 code가 그 ecosystem의 formatter와 linter를 통과한다(fsm adoption). 원인: orm-gen의 Python 출력인 fsm의 examples/model/models.py가 ruff format --check에 실패하고 vulture 지적이 25건이며, 생성된 PHP model은 phpcs의 PSR12 header 규칙에 실패한다 | the generators of the five clients and their generated fixture models | `make python-model-check`, `make lint-python`, `make lint-php` | [ ] |

@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- DBS-12 to DBS-15, the numbered steps of the set file reader, are requirements that the set file units cite, since kit K299 reads an id of an ordered list item; the trace of the cited units reports no unknown or unnamed id (KSTD-2-9-7).
 - The set file reader's statement about a tree changed while it reads is a note, not a requirement (KSTD-2-9-6).
 - The bench database procedure moves from the dialect spec to the performance guide (KSTD-2-9-5).
 - DIA-128 names the `types-and-defaults` case of `tests/dbspec/ddl.json` that checks it, instead of probes that do not exist (KSTD-2-9-4).
