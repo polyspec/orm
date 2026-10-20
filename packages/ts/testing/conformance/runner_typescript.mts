@@ -487,6 +487,19 @@ async function main() {
     const service2 = await caught(new Service().connect(db).getBySeq(seq));
     return { members, members_left: left, service_left: service2 };
   });
+  // rollsBack runs body in a transaction that rolls back at the end, so the database is as it was. The transaction is ended
+  // by a boom error that rollsBack throws after body, and any other failure is thrown as it is.
+  const rollsBack = async (body: () => Promise<void>): Promise<void> => {
+    const boom = new Error('boom');
+    let failed: unknown;
+    try {
+      await db.transaction(async () => {
+        await body();
+        throw boom;
+      }, { retry: 0 });
+    } catch (error) { failed = error; }
+    if (failed !== boom) throw failed;
+  };
   await run('transactions', async () => {
     const boom = new Error('boom');
     const events = [];
@@ -517,53 +530,41 @@ async function main() {
   await run('restore', async () => {
     // Restores a soft-deleted row by its primary key. The deletion time is written as a fixed value, so the binds of every database and runner
     // are the same. The transaction rolls back at the end, so the database stays as it was at the start.
-    const boom = new Error('boom');
     const result: Record<string, unknown> = {};
-    let failed: unknown;
-    try {
-      await db.transaction(async () => {
-        const created = await new SoftRecord().setName('restore').create();
-        const seq = created.getSeq();
-        mask([seq]);
-        await created.setDeletedAt('2026-01-02 03:04:05.000000').update();
-        result.hidden = await caught(new SoftRecord().getBySeq(seq));
-        for (const [name, value] of [['restored', 'restore-2'], ['again', 'ignored']] as const) {
-          const array = (await new SoftRecord().setSeq(seq).setName(value).restore()).toArray();
-          array.seq = '$SEQ';
-          result[name] = array;
-        }
-        result.missing = await caught(new SoftRecord().setSeq(0).restore());
-        throw boom;
-      }, { retry: 0 });
-    } catch (error) { failed = error; }
-    if (failed !== boom) throw failed;
+    await rollsBack(async () => {
+      const created = await new SoftRecord().setName('restore').create();
+      const seq = created.getSeq();
+      mask([seq]);
+      await created.setDeletedAt('2026-01-02 03:04:05.000000').update();
+      result.hidden = await caught(new SoftRecord().getBySeq(seq));
+      for (const [name, value] of [['restored', 'restore-2'], ['again', 'ignored']] as const) {
+        const array = (await new SoftRecord().setSeq(seq).setName(value).restore()).toArray();
+        array.seq = '$SEQ';
+        result[name] = array;
+      }
+      result.missing = await caught(new SoftRecord().setSeq(0).restore());
+    });
     result.left = await new SoftRecord().connect(db).name('restore').getCount();
     return result;
   });
   await run('restore_or_create', async () => {
     // restoreOrCreate restores the soft-deleted row of its key, refuses a live row with ROW_NOT_DELETED and creates a
     // missing key (docs/operations/usage.md "Restore or create a row"). The transaction rolls back at the end, so the database is as it was.
-    const boom = new Error('boom');
     const result: Record<string, unknown> = {};
-    let failed: unknown;
-    try {
-      await db.transaction(async () => {
-        const created = await new SoftLink().setCode('roc-1').setLabel('first').create();
-        mask([created.getSeq()]);
-        await created.setDeletedAt('2026-01-02 03:04:05.000000').update();
-        const restored = (await new SoftLink().setCode('roc-1').setLabel('second').restoreOrCreate()).toArray();
-        restored.seq = '$SEQ';
-        result.restored = restored;
-        result.live = await caught(new SoftLink().setCode('roc-1').setLabel('third').restoreOrCreate());
-        const made = await new SoftLink().setCode('roc-2').setLabel('new').restoreOrCreate();
-        mask([made.getSeq()]);
-        const createdRow = made.toArray();
-        createdRow.seq = '$SEQ';
-        result.created = createdRow;
-        throw boom;
-      }, { retry: 0 });
-    } catch (error) { failed = error; }
-    if (failed !== boom) throw failed;
+    await rollsBack(async () => {
+      const created = await new SoftLink().setCode('roc-1').setLabel('first').create();
+      mask([created.getSeq()]);
+      await created.setDeletedAt('2026-01-02 03:04:05.000000').update();
+      const restored = (await new SoftLink().setCode('roc-1').setLabel('second').restoreOrCreate()).toArray();
+      restored.seq = '$SEQ';
+      result.restored = restored;
+      result.live = await caught(new SoftLink().setCode('roc-1').setLabel('third').restoreOrCreate());
+      const made = await new SoftLink().setCode('roc-2').setLabel('new').restoreOrCreate();
+      mask([made.getSeq()]);
+      const createdRow = made.toArray();
+      createdRow.seq = '$SEQ';
+      result.created = createdRow;
+    });
     result.left = await new SoftLink().connect(db).getCount();
     return result;
   });
@@ -571,56 +572,44 @@ async function main() {
     // expectRevision makes an update or a delete write only while author 42's like_count still holds the expected
     // revision; an update stores revision + 1, and a mismatch is REVISION_CHANGED and writes nothing (docs/spec/dsl.md
     // "Writes"). The transaction rolls back at the end, so the database is as it was.
-    const boom = new Error('boom');
     const result: Record<string, unknown> = {};
     const read = async () => {
       const row = await new Author().getBySeq(42);
       return { name: row.getName(), like_count: row.getLikeCount() };
     };
-    let failed: unknown;
-    try {
-      await db.transaction(async () => {
-        const before = await read();
-        result.before = before;
-        const revision = before.like_count;
-        await new Author().setSeq(42).setName('revision-1').expectRevision('like_count', revision).update();
-        result.updated = await read();
-        result.update_mismatch = await caught(new Author().setSeq(42).setName('revision-stale').expectRevision('like_count', revision).update());
-        result.after_mismatch = await read();
-        result.delete_mismatch = await caught(new Author().setSeq(42).expectRevision('like_count', revision).delete());
-        result.kept = await new Author().seq(42).getCount();
-        result.delete_match = await caught(new Author().setSeq(42).expectRevision('like_count', revision + 1).delete());
-        result.deleted = await new Author().seq(42).getCount();
-        throw boom;
-      }, { retry: 0 });
-    } catch (error) { failed = error; }
-    if (failed !== boom) throw failed;
+    await rollsBack(async () => {
+      const before = await read();
+      result.before = before;
+      const revision = before.like_count;
+      await new Author().setSeq(42).setName('revision-1').expectRevision('like_count', revision).update();
+      result.updated = await read();
+      result.update_mismatch = await caught(new Author().setSeq(42).setName('revision-stale').expectRevision('like_count', revision).update());
+      result.after_mismatch = await read();
+      result.delete_mismatch = await caught(new Author().setSeq(42).expectRevision('like_count', revision).delete());
+      result.kept = await new Author().seq(42).getCount();
+      result.delete_match = await caught(new Author().setSeq(42).expectRevision('like_count', revision + 1).delete());
+      result.deleted = await new Author().seq(42).getCount();
+    });
     result.left = await new Author().connect(db).seq(42).getCount();
     return result;
   });
   await run('joins_soft_deleted', async () => {
     // A joined soft_record row that is soft deleted meets no parent: the inner join drops the parent and the left join
     // gives it a null child. The transaction rolls back at the end, so the database is as it was.
-    const boom = new Error('boom');
     const names = ['soft-join-live', 'soft-join-deleted'];
     const result: Record<string, unknown> = {};
-    let failed: unknown;
-    try {
-      await db.transaction(async () => {
-        for (const name of names) {
-          const service = await new Service().setName(name).create();
-          const record = await new SoftRecord().setName(name).create();
-          mask([service.getSeq(), record.getSeq()]);
-          if (name === 'soft-join-deleted') await record.setDeletedAt('2026-01-02 03:04:05.000000').update();
-        }
-        const inner = await new Service().joinNameWithName(new SoftRecord().aliasRecord()).name(names).orderByNameAsc().gets();
-        result.inner = picks(inner, 'name');
-        const left = await new Service().leftJoinNameWithName(new SoftRecord().aliasRecord()).name(names).orderByNameAsc().gets();
-        result.left = left.values().map(row => ({ name: row.getName(), record: pick(row.getRecord(), 'name') }));
-        throw boom;
-      }, { retry: 0 });
-    } catch (error) { failed = error; }
-    if (failed !== boom) throw failed;
+    await rollsBack(async () => {
+      for (const name of names) {
+        const service = await new Service().setName(name).create();
+        const record = await new SoftRecord().setName(name).create();
+        mask([service.getSeq(), record.getSeq()]);
+        if (name === 'soft-join-deleted') await record.setDeletedAt('2026-01-02 03:04:05.000000').update();
+      }
+      const inner = await new Service().joinNameWithName(new SoftRecord().aliasRecord()).name(names).orderByNameAsc().gets();
+      result.inner = picks(inner, 'name');
+      const left = await new Service().leftJoinNameWithName(new SoftRecord().aliasRecord()).name(names).orderByNameAsc().gets();
+      result.left = left.values().map(row => ({ name: row.getName(), record: pick(row.getRecord(), 'name') }));
+    });
     return result;
   });
   await run('column_pairs', async () => {
