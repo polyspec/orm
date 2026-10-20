@@ -7,7 +7,7 @@ This example uses the syntax in [dsl.md](dsl.md). It combines several relation a
 - Relations: `product_lang` (1:1, merged with `parentNode`), `product_brand` (1:1) with a nested merged `product_brand_lang`, `product_review` (1:N, **three per parent**) with a 1:1 `user`, and `order_product_item` for the signed-in member (1:1, **one per parent**)
 - Two-key ordering and page listing
 
-Relation keys are selected with `match<L>With<R>()`, where `L` is the parent column and `R` is the child column. Join children are configured before they are passed to the join method.
+- **CPX-1** Relation keys are selected with `match<L>With<R>()`, where `L` is the parent column and `R` is the child column. Join children are configured before they are passed to the join method.
 
 ## PHP
 ```php
@@ -190,6 +190,6 @@ step 6  query   my_order_item (ONE, group_limit 1)  bind_from: step0.seq
   link: {kind: one, parent_column: seq, child_column: product_seq}
 ```
 
-- Eight statements: the page row query, the page count query, and one query per relation. The public API excludes `multi_statement`; tests verify the ordered steps and exact statement count.
-- Steps 1 through 6 do not run when the parent has zero rows. Empty IN lists are prohibited.
-- This plan has a fixed shape independent of values and is cached. User `IN` list lengths are padded to power-of-two buckets, so each bucket has one shape; relation-stage IN uses a `LIST_EXPAND` slot and remains a cache hit regardless of parent row count.
+- **CPX-2** Eight statements: the page row query, the page count query, and one query per relation. The public API excludes `multi_statement`; tests verify the ordered steps and exact statement count.
+- **CPX-3** Steps 1 through 6 do not run when the parent has zero rows. Empty IN lists are prohibited.
+- **CPX-4** This plan has a fixed shape independent of values and is cached. User `IN` list lengths are padded to power-of-two buckets, so each bucket has one shape; relation-stage IN uses a `LIST_EXPAND` slot and remains a cache hit regardless of parent row count.

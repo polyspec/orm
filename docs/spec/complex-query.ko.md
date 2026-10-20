@@ -1,5 +1,5 @@
 <!-- doc-id: examples-complex-query -->
-<!-- source-sha256: b5a3794a1b95df9d9802b5bca5b2b189df6a4ca556916365be2d65e0b82e84f9 -->
+<!-- source-sha256: b5ccab02203dc5992721169b3b63c157200c439f40b9260ef759eb5d2a810956 -->
 # 복잡한 쿼리 예 — 상품 검색 목록
 
 이 예는 [dsl.md](dsl.ko.md)의 문법을 사용하며 여러 관계와 조건 패턴을 함께 사용한다.
@@ -8,7 +8,7 @@
 - 관계: `product_lang`(1:1, `parentNode`로 병합), 병합한 `product_brand_lang`을 포함한 `product_brand`(1:1), 1:1 `user`를 포함한 `product_review`(1:N, **부모당 3개**), 로그인 회원의 `order_product_item`(1:1, **부모당 1개**)
 - 정렬 키 2개와 페이지 목록
 
-관계 키는 `match<L>With<R>()`로 선택한다. `L`은 부모 컬럼, `R`은 자식 컬럼이다. 조인 자식은 조인 메서드에 전달하기 전에 설정한다.
+- **CPX-1** 관계 키는 `match<L>With<R>()`로 선택한다. `L`은 부모 컬럼, `R`은 자식 컬럼이다. 조인 자식은 조인 메서드에 전달하기 전에 설정한다.
 
 ## PHP
 ```php
@@ -191,6 +191,6 @@ step 6  query   my_order_item (ONE, group_limit 1)  bind_from: step0.seq
   link: {kind: one, parent_column: seq, child_column: product_seq}
 ```
 
-- 문장은 8개다. 페이지 행 쿼리, 페이지 개수 쿼리, 관계마다 쿼리 하나를 실행한다. 공개 API는 `multi_statement`를 제외하며 테스트가 단계 순서와 정확한 문장 수를 검사한다.
-- 부모 행이 0개이면 1~6단계를 실행하지 않는다. 빈 IN 목록은 허용하지 않는다.
-- 이 Plan은 값과 무관하게 형태가 고정되어 캐시된다. 사용자 `IN` 목록 길이는 2의 거듭제곱 bucket으로 채워 bucket마다 형태가 하나다. 관계 단계의 IN은 `LIST_EXPAND` 슬롯을 사용하므로 부모 행 수와 무관하게 캐시를 재사용한다.
+- **CPX-2** 문장은 8개다. 페이지 행 쿼리, 페이지 개수 쿼리, 관계마다 쿼리 하나를 실행한다. 공개 API는 `multi_statement`를 제외하며 테스트가 단계 순서와 정확한 문장 수를 검사한다.
+- **CPX-3** 부모 행이 0개이면 1~6단계를 실행하지 않는다. 빈 IN 목록은 허용하지 않는다.
+- **CPX-4** 이 Plan은 값과 무관하게 형태가 고정되어 캐시된다. 사용자 `IN` 목록 길이는 2의 거듭제곱 bucket으로 채워 bucket마다 형태가 하나다. 관계 단계의 IN은 `LIST_EXPAND` 슬롯을 사용하므로 부모 행 수와 무관하게 캐시를 재사용한다.
