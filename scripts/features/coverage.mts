@@ -144,7 +144,7 @@ export function databaseDsn(env: NodeJS.ProcessEnv, item: { database: string; ds
 
 /** The environment of one database item of a feature: ORM_FEATURE_DATABASE and ORM_FEATURE_DSN are the item's database
  * and DSN, and both are absent when the item has no DSN, so no native test reads a stale value from the base environment. */
-export function featureEnvironment(base: NodeJS.ProcessEnv, database: string, dsn: string | null): NodeJS.ProcessEnv {
+export function featureEnvironment(base: NodeJS.ProcessEnv, database: string, dsn: string | null | undefined): NodeJS.ProcessEnv {
   const env = { ...base };
   delete env.ORM_FEATURE_DATABASE;
   delete env.ORM_FEATURE_DSN;
@@ -177,7 +177,7 @@ export function coverageItems(manifest: Manifest, file: string, env: NodeJS.Proc
   }
   return [...found.values()].map(item => {
     if (item.database === 'none') return { database: 'none', dsn: null };
-    return { database: item.database, dsn_env: item.dsn_env, dsn: databaseDsn(env, item) };
+    return { database: item.database, ...(item.dsn_env === undefined ? {} : { dsn_env: item.dsn_env }), dsn: databaseDsn(env, item) };
   });
 }
 

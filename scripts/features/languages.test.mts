@@ -28,7 +28,7 @@ const readers = [
 const literalArrays = /\[([^[\]]*)\]/g;
 const clientNames = ['go', 'php', 'rust', 'typescript', 'python'];
 function handWrittenSet(source: string): boolean {
-  for (const [, body] of source.matchAll(literalArrays)) {
+  for (const [, body = ''] of source.matchAll(literalArrays)) {
     const names = new Set([...body.matchAll(/['"](\w+)['"]/g)].map(match => match[1]));
     if (clientNames.every(name => names.has(name))) return true;
   }
