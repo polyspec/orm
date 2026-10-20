@@ -2833,6 +2833,7 @@
     {
       "id": "client-statement-event",
       "kind": "api",
+      "requirements": ["INT-91"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.StatementEvent" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\StatementEvent" },
