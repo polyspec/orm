@@ -106,7 +106,7 @@ repository.
 
 - A plan is the folder `docs/plans/<plan>/` with `plan.md`, `checklist.md` and their Korean twins. A checklist is one table
   with the columns ID, Task, Deliverables, Verification and State; an item ID is unique among the checklists, and a
-  sub-item `<id>-<n>` follows its item in one plan. `make plan-new` and `make item-new` write them.
+  sub-item `<id>-<n>` follows its item in one plan. `make plan-new` and `make item-new` write them, and `make plan-split` moves items to another plan.
   Enforced by: `make docs-check`
 - An item is `[ ]` waiting, `[~]` active, `[o]` done, `[!] cause: <cause>; retry: <condition>` bypassed or
   `[-] cause: <cause>` impossible, and moves only along the transitions of `make item-state`. A new finding on a done item
@@ -164,7 +164,7 @@ tool lands, a standard binds the work as written here.
   Enforced by: `make layout-check`
 - S6 Language parity: every implementation of a repository tests the same feature units, vectors and API at the same
   level, and each requirement that docs/spec defines (a bullet `**<id>**` or a heading `<id>`) is cited by a unit, so
-  every implementation tests it. Every unit holds in every implementation: no profile, no exclusion and no native-only symbol.
+  every implementation tests it. Every unit holds in every implementation: no profile, no exclusion and no native-only symbol. A case of a directory suite lists the requirements it tests in its `case.json`.
   Enforced by: `make parity-declarations-check`, `make parity-check`
 - S7 Test placement: a test of a basic feature lives in the package and repository that own the feature; a consumer keeps
   only tests from the consumer's point of view.
@@ -176,11 +176,15 @@ tool lands, a standard binds the work as written here.
   `erasableSyntaxOnly`. Exceptions: a harness that drives one language's implementation is a test of that language; a
   language-specific static check is a plugin of that ecosystem's analyzer; a symbol extractor runs that ecosystem's tool.
   Enforced by: `make layout-check`
-- S10 PHP extension: a PHP extension implements the PHP library of its repository, `packages/php` named
-  `polyspec/<repository>`, and registers its classes and functions under the same names and signatures. It lies in
+- S10 PHP extension: a PHP extension implements every PHP library of its repository and registers their classes and functions
+  under the same names and signatures. A library is `packages/php` named `polyspec/<repository>`, or `packages/<component>/php`
+  named `polyspec/<repository>-<component>` for each component; the repository has one extension. It lies in
   `packages/php-ext/` with its sources in `src/` and one stub, `src/polyspec_<repository>.stub.php`; it is named
   `polyspec/<repository>-php-ext` and `polyspec_<repository>`, a hyphen of the repository name an underscore. `make
   build-php-ext` builds it with phpize after checking that the stub hash of its arginfo header, which `make
-  php-ext-arginfo` writes with the gen_stub.php of the PHP, is that of the stub; `make test-php-ext` compares by Reflection
-  what it registers with the PHP library before its unit tests.
+  php-ext-arginfo` writes with the gen_stub.php of the PHP, is that of the stub, in a copy that keeps `composer.json` beside
+  `src/`, so that `config.m4` takes the version of the extension from `../composer.json`; `make test-php-ext` compares by
+  Reflection what it registers with the libraries, each name with the library that declares it, before its unit tests, which
+  are the PHPUnit files of every library run with the extension loaded, and those of `packages/php-ext` when it holds any; its
+  parity implementation shares the tests of the libraries by this layout, with no relative path in a configuration.
   Enforced by: `make lint-php-ext`, `make test-php-ext`, `make layout-check`

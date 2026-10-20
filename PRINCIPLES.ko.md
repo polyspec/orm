@@ -1,5 +1,5 @@
 <!-- doc-id: principles -->
-<!-- source-sha256: 4847310c067f6e617ce537ecb945e093f2beb7fcfcc62a0649b4eb364d83b4fd -->
+<!-- source-sha256: e074222b025008370de7f1631d581c30d924e99618e195efaa11883a632923c1 -->
 # 원칙
 
 [English](PRINCIPLES.md)
@@ -101,7 +101,7 @@ vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-check`�
 
 - plan은 `plan.md`, `checklist.md`와 그 한국어 짝을 가진 folder `docs/plans/<plan>/`이다. checklist는 ID, Task,
   Deliverables, Verification, State column을 가진 table 하나이다. item ID는 checklist 사이에서 유일하고, sub-item
-  `<id>-<n>`은 한 plan 안에서 그 item을 따른다. `make plan-new`와 `make item-new`가 그것을 쓴다.
+  `<id>-<n>`은 한 plan 안에서 그 item을 따른다. `make plan-new`와 `make item-new`가 그것을 쓰고, `make plan-split`이 item을 다른 plan으로 옮긴다.
   Enforced by: `make docs-check`
 - item은 `[ ]` waiting, `[~]` active, `[o]` done, `[!] cause: <cause>; retry: <condition>` bypassed 또는
   `[-] cause: <cause>` impossible이며, `make item-state`의 전이로만 움직인다. done item에 대한 새 발견은 그 자신의
@@ -154,7 +154,7 @@ owner가 2026-10-13에 이 기준을 승인했습니다. 각 기준은 위반 �
   가집니다(K245). `make layout-check`가 alint로 `config/layout.yml`(kit 공통 rule 위에 레포의 map을 더한 설정)에 맞춰 검사하며,
   그 안의 예외는 모두 이유를 가집니다.
   Enforced by: `make layout-check`
-- S6 언어 parity: repository의 모든 구현은 같은 feature unit, vector, API를 같은 수준으로 test하고, docs/spec이 정의하는 각 requirement(bullet `**<id>**` 또는 heading `<id>`)는 unit이 인용하므로 모든 구현이 그것을 test합니다. 모든 unit은 모든 구현이 가집니다: profile, exclusion, native-only symbol은 없습니다.
+- S6 언어 parity: repository의 모든 구현은 같은 feature unit, vector, API를 같은 수준으로 test하고, docs/spec이 정의하는 각 requirement(bullet `**<id>**` 또는 heading `<id>`)는 unit이 인용하므로 모든 구현이 그것을 test합니다. 모든 unit은 모든 구현이 가집니다: profile, exclusion, native-only symbol은 없습니다. directory suite의 case는 자신이 test하는 requirement를 `case.json`에 나열합니다.
   Enforced by: `make parity-declarations-check`, `make parity-check`
 - S7 test 위치: 기본 기능의 test는 그 기능을 소유한 package와 repository에 둡니다. 소비자는 소비자 관점의 test만 둡니다.
   Enforced by: `make layout-check`, `make parity-declarations-check`
@@ -165,10 +165,14 @@ owner가 2026-10-13에 이 기준을 승인했습니다. 각 기준은 위반 �
   언어의 구현을 구동하는 harness는 그 언어의 test이고, 언어별 정적 check는 그 생태계 analyzer의 plugin이며, symbol
   추출기는 그 생태계의 tool을 돌립니다.
   Enforced by: `make layout-check`
-- S10 PHP extension: PHP extension은 자기 저장소의 PHP library, 즉 `polyspec/<repository>`라는 이름의 `packages/php`를
-  구현하고, 그 class와 function을 같은 이름과 signature로 등록한다. `packages/php-ext/`에 두며 source는 `src/`에, stub은 하나,
+- S10 PHP extension: PHP extension은 자기 저장소의 모든 PHP library를 구현하고, 그 class와 function을 같은 이름과 signature로
+  등록한다. library는 `polyspec/<repository>`라는 이름의 `packages/php`이거나, component마다 `polyspec/<repository>-<component>`라는
+  이름의 `packages/<component>/php`이며, 저장소에는 extension이 하나다. `packages/php-ext/`에 두며 source는 `src/`에, stub은 하나,
   `src/polyspec_<repository>.stub.php`이다. 이름은 `polyspec/<repository>-php-ext`와 `polyspec_<repository>`이고, 저장소
   이름의 hyphen은 underscore가 된다. `make build-php-ext`는 `make php-ext-arginfo`가 PHP의 gen_stub.php로 쓰는 arginfo
-  header의 stub hash가 stub의 것인지 확인한 뒤 phpize로 build한다. `make test-php-ext`는 unit test 전에 등록한 것을
-  Reflection으로 PHP library와 비교한다.
+  header의 stub hash가 stub의 것인지 확인한 뒤 phpize로 build하며, `composer.json`을 `src/` 옆에 둔 사본에서 build하므로
+  `config.m4`가 extension의 version을 `../composer.json`에서 가져온다. `make test-php-ext`는 unit test 전에 등록한 것을
+  Reflection으로 library와 비교하되 이름마다 그것을 선언한 library와 비교하며, unit test는 extension을 load해 실행하는 모든
+  library의 PHPUnit 파일과 (있다면) `packages/php-ext`의 것이다. parity implementation은 이 layout으로 library의 test를 공유하며,
+  설정에 상대 경로를 두지 않는다.
   Enforced by: `make lint-php-ext`, `make test-php-ext`, `make layout-check`
