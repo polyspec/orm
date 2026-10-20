@@ -1,5 +1,5 @@
 <!-- doc-id: packaging -->
-<!-- source-sha256: 8623cf09a3745b72609460d622ab804c07dba1fef28655a66f3b4d75a7b553f7 -->
+<!-- source-sha256: 2b1fa7dc3d74b7083b3a063a3fc72f9510dfc37e8a9477d7cc50cb1c619f3041 -->
 # 패키징 결정
 
 | 결정 | 선택 | 이유 | 변경 조건 |
@@ -58,3 +58,7 @@ release하는 manifest는 packages/ts/package.json, packages/php/composer.json, 
 
 - 저장소 root의 package.json은 `workspaces`에 `packages/*`를 두고, 그 `overrides`는 `@polyspec/ordered-json`을 GitHub Release의 tarball URL(release tag를 적는다)에서 받고, vitepress의 최신 release가 advisory가 있는 `vite` 5에 의존하므로 `vite` 7을 받는다. root의 `npm ci`가 workspace를 설치하고. root의 package-lock.json이 유일한 npm lockfile이다.
 - 저장소 root의 composer.json은 packages/php를 `path` repository에서, polyspec/ordered-json을 `dist`가 GitHub Release의 zip URL과 그 shasum인 `package` repository에서 설치한다. URL이 release tag를 적는다. purrphp/yaml은 fork min-0-max/yaml의 `vcs` repository에서 설치한다. development dependency인 opis/json-schema `2.6.0-p1`은 fork min-0-max/json-schema의 `vcs` repository(`no-api`)에서 설치한다. 이 release는 모든 error를 모으는 mode에서 모든 거부를 보고하며 PHP vector runner(tests/dbspec/vectors.php)가 쓴다. 공개되는 manifest는 이를 요구하지 않으므로 consumer는 아무것도 선언하지 않는다. 그 `vendor-dir`은 vendor-php다. root의 vendor는 Go module의 vendor directory이기 때문이다. `config.platform.php`는 client의 가장 낮은 PHP인 `8.4.0`이다. root의 composer.lock이 유일한 Composer lockfile이고, PHP test는 vendor-php/autoload.php를 load한다.
+
+## 추적되는 generated source
+
+client의 error code source는 `orm-gen errors --lang <lang>`이 docs/spec/errors.yaml에서 생성하며, build 산출물이 아니라 추적된다: packages/go/orm/codes.go, packages/php/src/Code.php, packages/rust/orm/src/codes.rs, packages/ts/src/codes.ts, packages/python/src/polyspec/orm/codes.py. 이유는 각 파일이 consumer가 설치하는 source의 일부이기 때문이다(Go module, Composer archive, cargo package, dist를 배포하는 TypeScript package, Python sdist와 wheel). 이 설치 중 어느 것도 generator를 실행하지 않는다. `orm-gen errors`는 모든 언어의 generator인 Go 도구 하나이므로, TypeScript build는 Go toolchain을 필요로 하지 않으며 codes.ts를 다시 생성하지 않는다. 다섯 경로는 config/generated.json의 선언된 exception이다. 각 client의 code-catalog test(packages/go/orm/codes_test.go, packages/php/tests/CodeCatalogTest.php, packages/rust/orm/tests/code_catalog.rs, packages/ts/tests/code-catalog.mjs, packages/python/tests/test_code_catalog.py)가 파일을 docs/spec/errors.yaml과 같게 유지하며, error-codes feature가 이를 다시 생성해 검사한다.
