@@ -11907,6 +11907,10 @@
     "exported": true,
     "signature": "public bool"
   },
+  "packages/php/src/TxFrame.php::Polyspec\\Orm\\TxFrame::$inserted": {
+    "exported": true,
+    "signature": "public array"
+  },
   "packages/php/src/TxFrame.php::Polyspec\\Orm\\TxFrame::$isolation": {
     "exported": true,
     "signature": "public readonly string"
@@ -11939,6 +11943,10 @@
     "exported": true,
     "signature": "public function __construct(Polyspec\\Orm\\Db $db, bool $readOnly, string $isolation, int $number): "
   },
+  "packages/php/src/TxFrame.php::Polyspec\\Orm\\TxFrame::recordInserted": {
+    "exported": true,
+    "signature": "public static function recordInserted(?Polyspec\\Orm\\TxFrame $frame, Polyspec\\Orm\\Request $r, mixed $id): void"
+  },
   "packages/php/src/UsageError.php::Polyspec\\Orm\\UsageError": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\UsageError extends RuntimeException implements Stringable,Throwable uses "
@@ -11962,6 +11970,10 @@
   "packages/php/src/Utils.php::Polyspec\\Orm\\Utils::aes": {
     "exported": true,
     "signature": "public function aes(): Polyspec\\Orm\\AesUtils"
+  },
+  "packages/php/src/Utils.php::Polyspec\\Orm\\Utils::backendWaitingForLock": {
+    "exported": true,
+    "signature": "public function backendWaitingForLock(): bool"
   },
   "packages/php/src/Utils.php::Polyspec\\Orm\\Utils::exec": {
     "exported": true,
@@ -12002,6 +12014,10 @@
   "packages/php/src/Utils.php::Polyspec\\Orm\\Utils::validKey": {
     "exported": false,
     "signature": "private static function validKey(string $key): bool"
+  },
+  "packages/php/src/Utils.php::Polyspec\\Orm\\Utils::wasInserted": {
+    "exported": true,
+    "signature": "public function wasInserted(string $entity, int $sequence): bool"
   },
   "packages/php/src/Validator.php::Polyspec\\Orm\\Validator": {
     "exported": true,

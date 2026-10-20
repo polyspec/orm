@@ -889,6 +889,7 @@ final class Db
         $name = 'orm_sp_' . (++$frame->savepoints);
         // A savepoint that does not release undoes an audit record inserted inside it.
         $auditBefore = $frame->audit;
+        $insertedBefore = $frame->inserted;
         $kept = false;
         try {
             $this->savepointControl($frame, StatementEvent::SAVEPOINT, $name);
@@ -916,6 +917,7 @@ final class Db
         } finally {
             if (!$kept) {
                 $frame->audit = $auditBefore;
+                $frame->inserted = $insertedBefore;
             }
             $frame->savepoints--;
         }
@@ -1075,6 +1077,7 @@ final class Db
             if (isset($r->ir['optimistic']) && $affected === 0) {
                 throw new OrmException(Code::OPTIMISTIC_LOCK, 'the row changed after it was read');
             }
+            TxFrame::recordInserted($frame, $r, $keys[0] ?? null);
             $this->state->lastAffected = $affected;
             return [$keys[0] ?? null, $affected];
         }
@@ -1097,9 +1100,11 @@ final class Db
         if (isset($r->ir['optimistic']) && $affected === 0) {
             throw new OrmException(Code::OPTIMISTIC_LOCK, 'the row changed after it was read');
         }
+        TxFrame::recordInserted($frame, $r, $id);
         $this->state->lastAffected = $affected;
         return [$id, $affected];
     }
+
 
     /** @return array{0: int|float|string|null, 1: int} */
     private function sendWrite(array $step, array $args, Request $r): array

@@ -122,6 +122,37 @@ final class Utils
         return $frame->locals[$key] ?? throw new OrmException(Code::NO_ROWS, "local value $key is not set");
     }
 
+    /**
+     * Whether a generated insert of $entity with the identity key $sequence succeeded in the active transaction (INT-52).
+     * The fact is restored across savepoint rollback and is the same on every dialect.
+     */
+    public function wasInserted(string $entity, int $sequence): bool
+    {
+        $frame = $this->active('wasInserted');
+        if ($entity === '' || $sequence <= 0) {
+            throw new OrmException(Code::CONFIG, 'inserted entity and positive key are required');
+        }
+        return isset($frame->inserted[$entity][$sequence]);
+    }
+
+    /**
+     * Whether another backend of the PostgreSQL connection waits for a lock (INT-53). MySQL and SQLite return false
+     * without a statement.
+     */
+    public function backendWaitingForLock(): bool
+    {
+        $this->db->unsupportedOnMarkdown('backendWaitingForLock');
+        if ($this->db->driver() !== 'postgres') {
+            return false;
+        }
+        // pg_stat_activity is a snapshot per transaction: the statistics are cleared first, so that a backend that starts to wait
+        // after the transaction has read the view is seen.
+        $this->read(StatementEvent::UTILITY, [], 'SELECT pg_stat_clear_snapshot()', []);
+        $waiting = $this->read(StatementEvent::UTILITY, [],
+            'SELECT EXISTS(SELECT 1 FROM pg_locks l JOIN pg_stat_activity a ON a.pid=l.pid WHERE a.datname=current_database() AND a.pid<>pg_backend_pid() AND NOT l.granted)', []);
+        return $waiting === true || $waiting === 't' || $waiting === '1' || $waiting === 1;
+    }
+
     public function schema(): SchemaUtils
     {
         return new SchemaUtils($this->db, $this);

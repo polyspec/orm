@@ -2864,6 +2864,24 @@ static void settle_discard(zval *self, zval *frame)
     }
 }
 
+/* The write set of the transaction (INT-52): TxFrame::recordInserted of the PHP library records the generated key. frame is
+ * NULL or the transaction's frame. */
+static void record_inserted(zval *frame, zval *r, zval *id)
+{
+    if (frame == NULL || Z_TYPE_P(frame) != IS_OBJECT) {
+        return;
+    }
+    zval args[3], res;
+    ZVAL_COPY(&args[0], frame);
+    ZVAL_COPY(&args[1], r);
+    ZVAL_COPY(&args[2], id);
+    scall("Polyspec\\Orm\\TxFrame::recordInserted", &res, 3, args);
+    zval_ptr_dtor(&args[0]);
+    zval_ptr_dtor(&args[1]);
+    zval_ptr_dtor(&args[2]);
+    zval_ptr_dtor(&res);
+}
+
 static bool write_of_impl(zval *self, zval *frame, zval *r, zval *after, zval *out)
 {
     if (!apply_hook(self, r)) {
@@ -2910,6 +2928,7 @@ static bool write_of_impl(zval *self, zval *frame, zval *r, zval *after, zval *o
             throw_orm("OPTIMISTIC_LOCK", "the row changed after it was read");
             return false;
         }
+        record_inserted(frame, r, &first);
         set_last_affected(self, n);
         array_init(out);
         zend_hash_next_index_insert(Z_ARRVAL_P(out), &first);
@@ -2968,6 +2987,7 @@ static bool write_of_impl(zval *self, zval *frame, zval *r, zval *after, zval *o
         throw_orm("OPTIMISTIC_LOCK", "the row changed after it was read");
         return false;
     }
+    record_inserted(frame, r, &id);
     set_last_affected(self, n);
     array_init(out);
     zend_hash_next_index_insert(Z_ARRVAL_P(out), &id);
@@ -4280,6 +4300,8 @@ static bool savepoint_tx(zval *self, zval *frame, zval *fn, zval *out)
     snprintf(name, sizeof(name), "orm_sp_%ld", (long)sp);
     zval audit_before;
     ZVAL_COPY(&audit_before, rd(frame, "audit"));
+    zval inserted_before;
+    ZVAL_COPY(&inserted_before, rd(frame, "inserted"));
     bool kept = false;
     bool has_pending = false;
     zval pending;
@@ -4340,8 +4362,10 @@ static bool savepoint_tx(zval *self, zval *frame, zval *fn, zval *out)
     }
     if (!kept) {
         wr(frame, "audit", &audit_before);
+        wr(frame, "inserted", &inserted_before);
     }
     zval_ptr_dtor(&audit_before);
+    zval_ptr_dtor(&inserted_before);
     zend_long left = as_long(rd(frame, "savepoints")) - 1;
     zval leftz;
     ZVAL_LONG(&leftz, left);

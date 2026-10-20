@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces-model -->
-<!-- source-sha256: 978475837128ba763c84f74781385bfb2dbed7ae5d28b85c3a718fa8b62e94af -->
+<!-- source-sha256: c26e9616ac8c8ad2ce90a9bbba6c189321332d8c580a72a9e76bec15dcb76dfd -->
 # 공통 구성요소
 
 <!-- contracts/interfaces.json에서 생성됨. 직접 수정하지 않는다. -->
@@ -151,6 +151,8 @@ classDiagram
         lock()
         setLocal()
         local()
+        wasInserted()
+        backendWaitingForLock()
         schema()
         privileges()
         aes()

@@ -150,6 +150,8 @@ classDiagram
         lock()
         setLocal()
         local()
+        wasInserted()
+        backendWaitingForLock()
         schema()
         privileges()
         aes()

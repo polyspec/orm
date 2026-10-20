@@ -2544,6 +2544,32 @@
       ]
     },
     {
+      "id": "client-utils-was-inserted",
+      "kind": "api",
+      "requirements": ["INT-52"],
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Utils.WasInserted" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\Utils::wasInserted" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Utils::wasInserted" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!Utils#wasInserted:member(1)" },
+        { "implementation": "python", "symbol": "orm.utils.Utils.was_inserted" },
+        { "implementation": "rust", "symbol": "polyspec_orm::utils::Utils::was_inserted" }
+      ]
+    },
+    {
+      "id": "client-utils-backend-waiting-for-lock",
+      "kind": "api",
+      "requirements": ["INT-53"],
+      "symbols": [
+        { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Utils.BackendWaitingForLock" },
+        { "implementation": "php", "symbol": "Polyspec\\Orm\\Utils::backendWaitingForLock" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Utils::backendWaitingForLock" },
+        { "implementation": "typescript", "symbol": "@polyspec/orm!Utils#backendWaitingForLock:member(1)" },
+        { "implementation": "python", "symbol": "orm.utils.Utils.backend_waiting_for_lock" },
+        { "implementation": "rust", "symbol": "polyspec_orm::utils::Utils::backend_waiting_for_lock" }
+      ]
+    },
+    {
       "id": "client-db-with-request-hook",
       "kind": "api",
       "requirements": ["INT-78"],

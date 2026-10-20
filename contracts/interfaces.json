@@ -40,7 +40,7 @@
   },
   "symbol_hashes": {
     "go": "sha256:02f5cb4fa2f9de696960e6511bafb2493839d3a9af4e9fe6d6d604fb03bf9ae9",
-    "php": "sha256:6026c61606bd2fe72cbd40407de68ed27f5d65112ac862dddb1f48475796d56a",
+    "php": "sha256:05608ad0a62e17a02b8bfeefd6bcdd392531a39be844cec03b889442ffd11fa7",
     "rust": "sha256:7a678e835e3fa06a433199f916b512b5cf75c0e694c9c6cc113804841432ec2f",
     "typescript": "sha256:613ded3e05b7c427d46110b3e291d99af17cf30c453b09bb191403e8cb426bf6",
     "python": "sha256:abf1b94ad329a093369a6c0206bbec09ce1ba24b6b056f3bcdac70f7472da54b"
@@ -348,6 +348,8 @@
         "lock",
         "setLocal",
         "local",
+        "wasInserted",
+        "backendWaitingForLock",
         "schema",
         "privileges",
         "aes",
@@ -1888,6 +1890,42 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/utils.py::Utils.local",
           "signature": "def local(self, key: str) -> str"
+        }
+      }
+    },
+    {
+      "id": "Utils.wasInserted",
+      "for": "once",
+      "inputs": ["EntityName", "SequenceKey"],
+      "output": "Inspected",
+      "errors": ["CONFIG"],
+      "state": "Reports whether a generated insert of the entity for the identity key succeeded in the active transaction; the fact is restored across savepoint rollback. It needs an active transaction; an empty entity or a key that is not positive is CONFIG",
+      "native": {
+        "go": {
+          "symbol": "packages/go/orm/utils.go::Utils.WasInserted",
+          "signature": "receiver=*Utils func(entity string, key int64) (bool, error)"
+        },
+        "php": {
+          "symbol": "packages/php/src/Utils.php::Polyspec\\Orm\\Utils::wasInserted",
+          "signature": "public function wasInserted(string $entity, int $sequence): bool"
+        }
+      }
+    },
+    {
+      "id": "Utils.backendWaitingForLock",
+      "for": "once",
+      "inputs": [],
+      "output": "Inspected",
+      "errors": ["CAPABILITY_UNSUPPORTED"],
+      "state": "Reports whether another backend of the PostgreSQL connection waits for a lock; MySQL and SQLite return false without a statement, and a markdown connection is CAPABILITY_UNSUPPORTED",
+      "native": {
+        "go": {
+          "symbol": "packages/go/orm/utils.go::Utils.BackendWaitingForLock",
+          "signature": "receiver=*Utils func(ctx context.Context) (bool, error)"
+        },
+        "php": {
+          "symbol": "packages/php/src/Utils.php::Polyspec\\Orm\\Utils::backendWaitingForLock",
+          "signature": "public function backendWaitingForLock(): bool"
         }
       }
     },
