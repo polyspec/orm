@@ -252,6 +252,12 @@ caseTest('a generator source selects the check that regenerates the models', 500
   assert.deepEqual(selected, ['comment-language-check', 'go-model-check']);
 });
 
+// The bootstrap tsconfig that the TypeScript build reads before the models exist is tracked, so it must declare its scope (KSTD-5-5-1).
+caseTest('the bootstrap tsconfig of the TypeScript build declares its scope', 5000, () => {
+  const { paths } = readCheckInputs(root);
+  assert.equal(paths['packages/ts/tsconfig.bootstrap.json']?.scope, 'suite');
+});
+
 // The whole-tree case checks that each tracked file has a behavior test or a scope declaration. If any lacks one, it names that file and fails.
 caseTest('every tracked file selects a behaviour test or declares its scope', 30000, async () => {
   const declarations = readCheckInputs(root);

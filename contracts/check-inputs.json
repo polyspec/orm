@@ -114,6 +114,7 @@
     "scripts/free-ports.mts": {"scope": "suite", "reason": "make orm-test-servers chooses the ports of the database servers of this checkout through it, so it changes the servers of every database target"},
     "scripts/publish-output.mts": {"scope": "suite", "reason": "every make target that builds the lease program, the process tools, a stress document or a test binary publishes it through it (PUBLISH)"},
     "scripts/typescript/build.mts": {"scope": "suite", "reason": "every make target and npm script that builds the TypeScript client publishes packages/ts/dist through it"},
+    "packages/ts/tsconfig.bootstrap.json": {"scope": "suite", "reason": "scripts/typescript/build.mts compiles the generator sources with it before the models exist, so every make target and npm script that builds the TypeScript client reads it"},
     "scripts/cargo-build-copy.mts": {"scope": "suite", "reason": "every make target that runs a Rust program builds and copies that program through it (CARGO_COPY)"},
     "packages/php-ext/testing/dbspec/apply/php-extension.php": {"scope": "suite", "reason": "the dbspec apply runner of the PHP extension client, run by the cross-client runners (tests/dbspec/compare/runners.mts)"},
     "packages/php-ext/testing/dbspec/compare/php-extension.php": {"scope": "suite", "reason": "the dbspec compare runner of the PHP extension client, run by the cross-client runners (tests/dbspec/compare/runners.mts)"},
