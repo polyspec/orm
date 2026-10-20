@@ -25,7 +25,7 @@ func decimalPhysical(t *testing.T, env string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer testcase.Close(t, db)
 	rollback := errors.New("decimal fixture rollback")
 	err = db.Transaction(func() error {
 		amount, large := "48.0450", "9007199254740993"
