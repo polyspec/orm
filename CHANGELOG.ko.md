@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e79e3781f39fac733edd3f1e8c06c58cb230da7f9db02bda3403a1d87f2f4bf0 -->
+<!-- source-sha256: 692c17b49ebea2696ecd0291df3af7bd83913625d29dfdca701f48fd49d373f9 -->
 # 변경 이력
 
 ## Unreleased
+- TypeScript build가 package가 선언한 bin을 실행 가능하게 만들어, 소비자가 `node_modules/.bin/orm-gen`을 실행한다. red: `node --test packages/ts/tests/bin-mode.mjs`가 `orm-gen (./dist/bin/orm-gen.js) has mode 644`로 실패했다. green: `npm run typescript:build` 뒤 pass 1(T225).
 - spec의 시험 가능한 규칙마다 requirement id `**PFX-n**`이 있고(960개: DBS, MER, SCH, CPX, DSL, DIA, COD, CFG, PAR, ORE, PLN, PRT, INT, ORES), 한국어 쌍에도 같다. `make docs-check`가 통과한다(KSTD-2-1).
 - PHP 생성기 test가 T209가 생성하는 사용되는 external table의 읽기 전용 model을 기대한다. red: `phpunit packages/php/tests/OrmGenTest.php`가 generated files ExtAccount.php, ExtAudit.php, ExtPost.php, ExtPostHistory.php, bootstrap.php로 실패했다. green: OK (10 tests, 34 assertions)(T209-1).
 - 생성된 PHP model이 unique key와 index를 어떤 순서로 선언하든 manifest와 맞는다: runtime model이 그것을 canonical manifest text의 순서인 이름 순서로 둔다. red: `phpunit --filter test_a_generated_model_agrees_with_its_manifest_whatever_its_key_order`가 `CONFIG: generated model ... of entity item differs from its manifest`로 실패했다. green: RuntimeModelTest OK (12 tests, 47 assertions), 다시 생성한 bench model은 그대로다(T224).

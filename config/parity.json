@@ -176,6 +176,7 @@
     {"id": "ts-driver-error", "kind": "feature", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/driver-error.mjs", "id": "driver-error/trigger_refused/sqlite"}]},
     {"id": "ts-generate-scan", "kind": "feature", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/generate-scan.mjs", "id": "generate-scan/non_model_call"}]},
     {"id": "ts-code-catalog", "kind": "feature", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/code-catalog.mjs", "id": "code-catalog/matches-errors-yaml"}]},
+    {"id": "ts-bin-mode", "kind": "feature", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/bin-mode.mjs", "id": "bin-mode/executable"}]},
     {"id": "ts-generate", "kind": "feature", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/generate.mjs", "id": "generate"}]},
     {"id": "ts-group_rows", "kind": "feature", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/group_rows.mjs", "id": "group_rows/owner"}]},
     {"id": "ts-idle-connection-end", "kind": "feature", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/idle-connection-end.mjs", "id": "idle-connection-end/postgres"}]},
