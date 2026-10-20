@@ -174,6 +174,6 @@ func subscribeErr(db *DB) error {
 }
 
 func waitingErr(db *DB) error {
-	_, err := db.BackendWaitingForLock(db.ctx)
+	_, err := db.Utils().BackendWaitingForLock(db.ctx)
 	return err
 }

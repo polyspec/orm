@@ -15,7 +15,7 @@ func TestWasInsertedTracksGeneratedRows(t *testing.T) {
 	s := documentSchema(t, "dbspec 1 write_set\n\ntable record {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n")
 	db := connectSchemaDB(t, "sqlite://"+filepath.Join(t.TempDir(), "write-set.sqlite"), s)
 	defer testcase.Close(t, db)
-	waiting, err := db.BackendWaitingForLock(t.Context())
+	waiting, err := db.Utils().BackendWaitingForLock(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}

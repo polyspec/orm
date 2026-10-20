@@ -18071,10 +18071,6 @@
     "exported": false,
     "signature": "map[string]*sql.Stmt"
   },
-  "packages/go/orm/db.go::DB.BackendWaitingForLock": {
-    "exported": true,
-    "signature": "receiver=*DB func(ctx context.Context) (bool, error)"
-  },
   "packages/go/orm/db.go::DB.Close": {
     "exported": true,
     "signature": "receiver=*DB func() error"
@@ -20546,6 +20542,10 @@
   "packages/go/orm/utils.go::Utils.Aes": {
     "exported": true,
     "signature": "receiver=*Utils func() *AESUtils"
+  },
+  "packages/go/orm/utils.go::Utils.BackendWaitingForLock": {
+    "exported": true,
+    "signature": "receiver=*Utils func(ctx context.Context) (bool, error)"
   },
   "packages/go/orm/utils.go::Utils.Local": {
     "exported": true,

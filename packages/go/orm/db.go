@@ -225,34 +225,6 @@ func (d *DB) register(s *Schema) error {
 	return nil
 }
 
-// BackendWaitingForLock reports whether another backend of this PostgreSQL
-// connection pool is waiting for a lock. The inspection is an ORM-owned
-// orchestration capability; non-PostgreSQL adapters have no equivalent
-// backend view and return false without exposing driver SQL to callers.
-func (d *DB) BackendWaitingForLock(ctx context.Context) (bool, error) {
-	if d != nil {
-		if err := d.unsupportedOnMarkdown("backendWaitingForLock"); err != nil {
-			return false, err
-		}
-	}
-	if d == nil || d.sql == nil {
-		return false, configErr("database connection is required")
-	}
-	if d.driver != "postgres" {
-		return false, nil
-	}
-	var waiting bool
-	err := (runner{d: d, q: d.sql}).scan(ctx, KindUtility, nil, `SELECT EXISTS(
-		SELECT 1
-		FROM pg_locks l
-		JOIN pg_stat_activity a ON a.pid=l.pid
-		WHERE a.datname=current_database()
-		  AND a.pid<>pg_backend_pid()
-		  AND NOT l.granted
-	)`, nil, &waiting)
-	return waiting, err
-}
-
 func (d *DB) compile(eng *engine.Engine, r *ir.Request) (*plan.Plan, error) {
 	if err := ir.Validate(eng.M, r); err != nil {
 		return nil, err
