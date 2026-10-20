@@ -9,16 +9,15 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { repositoryRoot, runCases } from './coverage_case.mjs';
+import { generatedModels, generatorArgs } from '../../../scripts/typescript/models.mts';
 
 const client = join(repositoryRoot, 'packages/ts');
 
-/** The orm-gen arguments of the committed generation, read from the package models script. */
+/** The orm-gen arguments of the committed generation: the first entry that the build generates, which writes src/models. */
 async function generationArgs() {
-  const pkg = JSON.parse(await readFile(join(client, 'package.json'), 'utf8'));
-  const words = pkg.scripts.models.split(' ');
-  assert.equal(words[0], 'node', 'the models script runs node');
-  assert.ok(words.includes('--out') && words[words.indexOf('--out') + 1] === 'src/models', 'the models script writes src/models');
-  return words.slice(1);
+  const [main] = generatedModels;
+  assert.equal(main.out, 'src/models', 'the first generated entry writes src/models');
+  return ['dist/bin/orm-gen.js', ...generatorArgs(main)];
 }
 
 /** Runs orm-gen with arguments from the client directory and returns its exit code and output. */

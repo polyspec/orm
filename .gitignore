@@ -1,6 +1,8 @@
 /bin/
 /dist/
 /packages/ts/dist/
+# The models that orm-gen writes into packages/ts/src/models at each TypeScript build (P34: generated output is never tracked).
+/packages/ts/src/models/
 /packages/dbspec-language/dist/
 /packages/dbspec-codemirror/dist/
 /packages/dbspec-lsp/dist/

@@ -9176,7 +9176,7 @@
         "packages/ts/src/models/markdown_fixture/models.ts"
       ],
       "tests": [],
-      "command": "node tests/run-long.mts typescript-build -- npm run typescript:build && sh -c 'cd packages/ts && node dist/bin/orm-gen.js gen --set ../../tests/markdown/corpus/dbspec/dbspec-set.json --out src/models/markdown_fixture --scan tests/markdown_conformance.mjs --check'"
+      "command": "node tests/run-long.mts typescript-build -- npm run typescript:build && sh -c 'cd packages/ts && node dist/bin/orm-gen.js gen --set ../../tests/markdown/corpus/dbspec/dbspec-set.json --out src/models/markdown_fixture --scan tests/markdown_cases.mjs --check'"
     },
     {
       "id": "bench-database",

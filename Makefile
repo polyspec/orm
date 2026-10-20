@@ -1341,6 +1341,7 @@ ts-check: ts-check/hold ts-check/types ts-check/test
 ts-check/hold: lease-tool
 	$(HOLD_TYPESCRIPT)
 ts-check/types: ts-check/hold
+	$(TSC_BUILD)
 	$(RUN_LONG) typescript-check -- npm run typescript:check
 ts-check/test: ts-check/hold
 	$(WITH_TEST_ENV) npm run typescript:test

@@ -9,6 +9,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseSync } from 'oxc-parser';
+import { generatedModels, generatorArgs } from '../../../scripts/typescript/models.mts';
 
 const client = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const root = resolve(client, '../..');
@@ -19,12 +20,11 @@ const modelModules = new Set([join(client, 'dist/models/models.js'), join(client
 const indexModules = new Set([join(client, 'dist/index.js'), join(client, 'src/index.js')]);
 const modelClasses = new Set([...readFileSync(join(client, 'src/models/models.ts'), 'utf8').matchAll(/^export class (\w+)/gm)].map(m => m[1]));
 
-/** Reads the arguments of the models script from package.json. */
+/** The orm-gen arguments of the client's own models, the first entry that the build generates. */
 function modelsArgs() {
-  const script = JSON.parse(readFileSync(join(client, 'package.json'), 'utf8')).scripts.models;
-  const words = script.split(' ');
-  assert.deepEqual(words.slice(0, 3), ['node', 'dist/bin/orm-gen.js', 'gen'], `models script runs orm-gen gen: ${script}`);
-  return words.slice(2);
+  const [main] = generatedModels;
+  assert.equal(main.out, 'src/models', 'the first generated entry writes src/models');
+  return generatorArgs(main);
 }
 
 function files(path) {
