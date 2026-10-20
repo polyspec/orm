@@ -127,7 +127,9 @@ def _own_module(set_module: list, path: str, level: int, module: str | None) -> 
     return 0 < len(parts) <= len(set_module) and set_module[-len(parts) :] == parts
 
 
-def _scan_tree(tree, classes: dict, out: dict, sites=None, path="", set_module=None) -> None:
+def _scan_tree(
+    tree, classes: dict, out: dict, sites=None, path="", set_module=None
+) -> None:
     # Local name -> generated class name. Import aliases and assignments are added here.
     imported = dict(classes)
 
@@ -573,7 +575,9 @@ def scan_model_calls(paths, models, sites=None, out_dir=".") -> dict:
             for base, directories, files in os.walk(path):
                 directories[:] = sorted(d for d in directories if d not in _SKIPPED)
                 for name in sorted(files):
-                    _scan_file(os.path.join(base, name), classes, out, sites, set_module)
+                    _scan_file(
+                        os.path.join(base, name), classes, out, sites, set_module
+                    )
         else:
             _scan_file(path, classes, out, sites, set_module)
     return out

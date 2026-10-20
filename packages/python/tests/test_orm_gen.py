@@ -539,8 +539,14 @@ class OrmGenTest(unittest.TestCase):
     def test_a_call_on_a_class_of_this_set_is_checked(self):
         # Requirements: DSL-151.
         # The same calls on the Author of this set's output, imported absolutely or relatively, are this set's calls.
-        for line in ("from model.requests.models import Author\n", "from ..model.requests.models import Author\n"):
-            with self.subTest(line=line), tempfile.TemporaryDirectory(prefix="orm-gen-scan-import-") as work:
+        for line in (
+            "from model.requests.models import Author\n",
+            "from ..model.requests.models import Author\n",
+        ):
+            with (
+                self.subTest(line=line),
+                tempfile.TemporaryDirectory(prefix="orm-gen-scan-import-") as work,
+            ):
                 work_path = Path(work)
                 (work_path / "src").mkdir()
                 source = work_path / "src" / "usage.py"
@@ -550,7 +556,13 @@ class OrmGenTest(unittest.TestCase):
                     + [
                         "gen",
                         "--set",
-                        str(ROOT / "contracts" / "fixtures" / "bench" / "dbspec-set.json"),
+                        str(
+                            ROOT
+                            / "contracts"
+                            / "fixtures"
+                            / "bench"
+                            / "dbspec-set.json"
+                        ),
                         "--out",
                         str(work_path / "model" / "requests"),
                         "--scan",

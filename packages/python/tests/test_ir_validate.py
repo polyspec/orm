@@ -34,7 +34,13 @@ class ManifestHashTest(unittest.TestCase):
         # Requirements: PRT-1.
         other = "sha256:" + "0" * 64
         self.assertNotEqual(other, MODEL.manifest_hash)
-        request = {"ir_version": 1, "manifest_hash": other, "kind": "all", "entity": "author", "n_params": 0}
+        request = {
+            "ir_version": 1,
+            "manifest_hash": other,
+            "kind": "all",
+            "entity": "author",
+            "n_params": 0,
+        }
         with self.assertRaises(OrmError) as raised:
             validate(MODEL, request)
         self.assertEqual(raised.exception.code, "SCHEMA_HASH_MISMATCH")

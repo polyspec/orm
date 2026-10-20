@@ -57,8 +57,13 @@ class ChainValuesTest(unittest.TestCase):
         self.assertEqual(self.author().eq_read_count([5, 20]).get_count(), 2)
         self.assertEqual(self.author().ne_read_count([5, 20]).get_count(), 1)
         self.assertEqual(self.author().gt_read_count(5).get_count(), 2)
-        self.assertEqual(self.code(lambda: self.author().gt_read_count([5, 20]).get_count()), "CONFIG")
-        self.assertEqual(self.code(lambda: self.author().gt_read_count(None).get_count()), "CONFIG")
+        self.assertEqual(
+            self.code(lambda: self.author().gt_read_count([5, 20]).get_count()),
+            "CONFIG",
+        )
+        self.assertEqual(
+            self.code(lambda: self.author().gt_read_count(None).get_count()), "CONFIG"
+        )
 
 
 if __name__ == "__main__":

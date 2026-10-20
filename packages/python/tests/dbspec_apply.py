@@ -10,12 +10,17 @@ import tempfile
 import unittest
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3]
+from polyspec.orm.dbspec.apply import (
+    _finish,
+    apply_plans,
+    recover_plans,
+    rollback_plans,
+)
+from polyspec.orm.dbspec.plan import parse_plan
+from polyspec.orm.dbspec.plan_steps import plan_steps
+from . import testcase
 
-from polyspec.orm.dbspec.apply import _finish, apply_plans, recover_plans, rollback_plans  # noqa: E402
-from polyspec.orm.dbspec.plan import parse_plan  # noqa: E402
-from polyspec.orm.dbspec.plan_steps import plan_steps  # noqa: E402
-from . import testcase  # noqa: E402
+ROOT = Path(__file__).resolve().parents[3]
 
 NOW = 1_700_000_000_000_000
 
@@ -81,7 +86,10 @@ class DbspecApplyTest(unittest.TestCase):
         with self.assertRaises(RuntimeError) as raised:
             _finish(fail, release, restore)
         self.assertIs(raised.exception, failure)
-        self.assertEqual(getattr(raised.exception, "__notes__", []), ["cleanup failed: release failed", "cleanup failed: restore failed"])
+        self.assertEqual(
+            getattr(raised.exception, "__notes__", []),
+            ["cleanup failed: release failed", "cleanup failed: restore failed"],
+        )
 
 
 def scenarios(tmp: str) -> None:
