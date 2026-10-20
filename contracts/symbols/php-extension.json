@@ -1418,5 +1418,49 @@
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\UseLine::__construct": {
     "exported": true,
     "signature": "public function __construct(string $document, array $tables, array $comments=[]): "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Validator": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Validator extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Validator::$m": {
+    "exported": false,
+    "signature": "private Polyspec\\Orm\\RuntimeModel"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Validator::$n": {
+    "exported": false,
+    "signature": "private int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Validator::__construct": {
+    "exported": true,
+    "signature": "public function __construct(Polyspec\\Orm\\RuntimeModel $m): "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Validator::conflictKey": {
+    "exported": true,
+    "signature": "public static function conflictKey(array $ent, array $set): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Validator::functionType": {
+    "exported": true,
+    "signature": "public static function functionType(string $name, ?array $col): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Validator::intervalType": {
+    "exported": true,
+    "signature": "public static function intervalType(string $name): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Validator::opAllowed": {
+    "exported": true,
+    "signature": "public static function opAllowed(array $c, string $op): bool"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Validator::paramUses": {
+    "exported": true,
+    "signature": "public function paramUses(array $r): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Validator::restoreKey": {
+    "exported": true,
+    "signature": "public static function restoreKey(array $ent, array $r): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Validator::validate": {
+    "exported": true,
+    "signature": "public function validate(array $r): void"
   }
 }
