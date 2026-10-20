@@ -823,5 +823,6 @@
     "mysql": "SELECT `seq`, `label` FROM `load_probe` ORDER BY `seq`",
     "postgres": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\"",
     "sqlite": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\""
-  }
+  },
+  "requirements": ["PRT-3", "PRT-26", "PRT-27", "PRT-28", "PRT-29", "PRT-30"]
 }

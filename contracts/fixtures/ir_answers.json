@@ -126,5 +126,6 @@
       },
       "expect": { "error": "READ_ONLY" }
     }
-  ]
+  ],
+  "requirements": ["PRT-69", "PRT-71", "PRT-72"]
 }

@@ -7,5 +7,6 @@
     "consumed_by_one_statement",
     "refused_in_transaction",
     "empty_argument_refused"
-  ]
+  ],
+  "requirements": ["PRT-48", "PRT-49", "PRT-50", "PRT-51", "PRT-52"]
 }

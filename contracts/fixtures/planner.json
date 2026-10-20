@@ -5360,5 +5360,6 @@
       "schema": "contracts/fixtures/bench/bench.dbs"
     }
   ],
-  "feature": "planner"
+  "feature": "planner",
+  "requirements": ["PRT-6", "PRT-13", "PRT-14", "PRT-16", "PRT-17", "PRT-20", "PRT-21", "PRT-22", "PRT-23", "PRT-25", "PRT-31", "PRT-32", "PRT-33"]
 }

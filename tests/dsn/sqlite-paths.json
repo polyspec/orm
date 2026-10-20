@@ -57,5 +57,6 @@
       "path": "a%FFb.sqlite",
       "error": "CONFIG"
     }
-  ]
+  ],
+  "requirements": ["CFG-11"]
 }

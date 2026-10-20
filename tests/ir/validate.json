@@ -119,5 +119,6 @@
     {"name": "shape-pred-p-float-literal", "request": {"ir_version": 1, "n_params": 1, "kind": "all", "entity": "author", "where": {"items": [{"pred": {"column": "seq", "op": "eq", "p": 0.0}}]}}, "error": "IR_INVALID"},
     {"name": "shape-top-n-params-float-literal", "request": {"ir_version": 1, "n_params": 1.0, "kind": "all", "entity": "author"}, "error": "IR_INVALID"},
     {"name": "shape-limit-count-exponent-literal", "request": {"ir_version": 1, "n_params": 0, "kind": "all", "entity": "author", "limit": {"offset": 0, "count": 1e1}}, "error": "IR_INVALID"}
-  ]
+  ],
+  "requirements": ["PRT-4", "PRT-6", "PRT-14", "PRT-16", "PRT-17", "PRT-18", "PRT-20", "PRT-21", "PRT-22", "PRT-24"]
 }
