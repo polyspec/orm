@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: a87739139ebff8c46ea2f6a029ff8c8f5b950a0159e99308d09baf204e9848c9 -->
+<!-- source-sha256: 65becc7384976270d9c013c281da95977cdea69c601cbc292055c5b27bd4f0b6 -->
 # 사용법
 
 하나의 dbspec document set에서 Go·PHP·Rust·TypeScript·Python 클라이언트를 생성하고, 각 클라이언트에서 같은 문장을 같은 SQL로 실행한다.
@@ -285,6 +285,7 @@ $row->newIsMember(true);                                                        
 - `creates(rows, batch)`는 행을 `batch`개씩 batch로 나누어 각 batch를 하나의 multi-row INSERT로, 하나의 트랜잭션에서 삽입하고 삽입한 행 수를 반환한다. `batch`는 호출자가 정하며 client는 batch를 나누지 않는다. `batch`는 필수인 양의 정수이며 아니면 `CONFIG`다. 바인드 수(행 수 × 컬럼 수)가 바인드 한도(SQLite 999, MySQL과 PostgreSQL 65535)를 넘는 batch는 `BATCH_TOO_LARGE`이고, message는 그 batch와 바인드 수와 한도를 밝힌다. 둘 다 어떤 statement보다 먼저 실패한다.
 - 트랜잭션은 `connection.transaction(fn)`을 사용한다. 콜백 오류나 예외는 트랜잭션을 되돌리고 교착 상태는 재시도한다.
 - 활성 트랜잭션 안에서 같은 연결의 `transaction`을 호출하면 savepoint를 만든다. 바깥 콜백이 안쪽 실패를 반환하지 않으면 안쪽 작업만 되돌린다.
+- 두 트랜잭션을 동시에 열어야 하면 연결이 두 개여야 한다. 한 연결의 두 번째 트랜잭션은 첫 트랜잭션의 savepoint가 되기 때문이다. 잠금 경합도 이렇게 쓴다: 한 연결이 행을 잡고 다른 연결이 기다린다.
 - 트랜잭션 옵션은 `isolation`, `readOnly`, `timeoutMs`를 선택한다. 지원하는 격리 수준은 `default`, `read_uncommitted`, `read_committed`, `repeatable_read`, `serializable`이다. PostgreSQL은 `BEGIN` 후에, MySQL은 유지한 연결에서 `START TRANSACTION` 전에 설정을 적용한다. SQLite는 `PRAGMA query_only`로 `readOnly`를 적용하고 공통 격리 수준을 트랜잭션 연결에 대응시키며, ORM은 commit이나 rollback 전에 연결 상태를 복원한다. 양수 `timeoutMs`는 PostgreSQL `statement_timeout`을 적용하고 MySQL·SQLite는 `CAPABILITY_UNSUPPORTED`를 반환한다.
 - `forUpdate()`, `forShare()`, `forUpdateNoWait()`, `forShareNoWait()`는 트랜잭션 안에서만 허용한다. MySQL과 PostgreSQL은 선택한 행 잠금을 실행하며 `NoWait`는 행을 사용할 수 없으면 즉시 실패한다. SQLite는 잠금 접미사를 만들지 않고 네 모드 모두 ORM 트랜잭션 범위의 데이터베이스 잠금 행을 사용한다. SQLite 쓰기 트랜잭션은 시작할 때 데이터베이스 쓰기 잠금을 얻으므로 그 안의 잠금 요청은 기다리지 않고 성공하며, 잠금 대기는 트랜잭션 시작에서 일어난다([런타임 연결](../spec/config.md)).
 - 공통 실행 중 취소 메서드는 없다. `timeoutMs`가 PostgreSQL 문장 실행 시간을 제한한다.

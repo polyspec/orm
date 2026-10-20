@@ -1,5 +1,5 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: df28b4392af180bbd1cd9faf7e8281f84c655884d3b9056a066d0f25bd96582b -->
+<!-- source-sha256: 274cad42457739f04be1d4e258cc2e53d96b54ff056b400aebb7a07c38ec4a0c -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
@@ -311,7 +311,6 @@ await master.transaction(async () => {
 
 - **DSL-118** 콜백 오류나 예외는 트랜잭션을 되돌린다. 교착 상태는 재시도한다.
 - **DSL-119** 활성 트랜잭션 안에서 같은 연결의 트랜잭션을 호출하면 savepoint를 만든다.
-- **DSL-120** 두 트랜잭션을 동시에 열어야 하면 연결이 두 개여야 한다. 한 연결의 두 번째 트랜잭션은 첫 트랜잭션의 savepoint가 되기 때문이다. 잠금 경합도 이렇게 쓴다: 한 연결이 행을 잡고 다른 연결이 기다린다.
 - **DSL-121** 하나의 트랜잭션 연결을 동시에 사용하면 오류를 반환한다.
 - **DSL-122** 실행 흐름은 Go에서 goroutine, PHP에서 요청, Rust에서 tokio task, TypeScript에서 `AsyncLocalStorage` 컨텍스트, Python에서 요청의 thread다. Python은 transaction이 그 transaction을 연 connection에 활성이고 모든 실행 흐름이 자기 connection을 가진다. 콜백 안에서 시작한 goroutine이나 새 Rust task에는 활성 트랜잭션이 없다. Go 하위 테스트도 이런 goroutine이므로, 그 안에서 연 트랜잭션은 바깥이 쥔 연결을 기다리는 별개 트랜잭션이 된다. TypeScript에서 콜백 안에서 시작한 비동기 작업은 콜백의 컨텍스트와 트랜잭션을 공유하며, 그 트랜잭션에서 다른 문장과 겹친 문장은 `CONFIG`를 반환한다.
 - **DSL-123** `forUpdate()`, `forShare()`, `forUpdateNoWait()`, `forShareNoWait()`는 트랜잭션 안에서만 허용한다.

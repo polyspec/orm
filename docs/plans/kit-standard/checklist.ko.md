@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 53adb2662114df98b6a5d6b5ff59c7621e2ace413e51378e75d91b027ccbfc53 -->
+<!-- source-sha256: 23e83202c2b010ceff071cf8306fd68149eb2e1a64d1ec55f2ed54696a223acb -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -24,7 +24,7 @@
 | KSTD-2-9-7 | kit이 번호 목록 항목의 id를 읽으면 DBS-12~15를 set file unit이 인용한다 (KSTD-2-9 후속). Cause: 번호 단계는 순서가 의미인 목록 항목인데 kit R14는 bullet과 heading만 읽는다; kit K299가 1. **ID**를 - **ID**처럼 읽게 한다 | config/parity.json | `make docs-check` | [o] |
 | KSTD-2-9-8 | DBS-172는 PHP extension이 repository의 모든 PHP library를 구현하며 dbspec surface는 그중 하나라고 적는다 (KSTD-2-9 후속). Cause: extension이 dbspec surface를 구현한다고만 적어 그것이 전체 범위로 읽히는데, S10은 extension이 모든 PHP library를 구현하고 그 class를 등록하게 한다 | docs/spec/dbspec.md and its Korean twin | `make docs-check` | [o] |
 | KSTD-2-9-9 | INT-7은 각 generator가 내보내는 JSON 값의 native type을 적는다 (KSTD-2-9 후속). Cause: Go가 JSON 값을 any로 대응한다고 하나 Go generator는 orm.StyledValue를 내보내고 Rust type은 codec을 따른다 | docs/spec/interfaces.md and its Korean twin | `make docs-check` | [o] |
-| KSTD-2-9-10 | lock test 작성법을 적은 DSL-120을 spec 밖으로 옮긴다 (KSTD-2-9 후속). Cause: 규칙이 아니라 절차이며, test 가능한 부분은 DSL-119다 | docs/spec/dsl.md, docs/operations and their Korean twins | `make docs-check` | [ ] |
+| KSTD-2-9-10 | lock test 작성법을 적은 DSL-120을 spec 밖으로 옮긴다 (KSTD-2-9 후속). Cause: 규칙이 아니라 절차이며, test 가능한 부분은 DSL-119다 | docs/spec/dsl.md, docs/operations and their Korean twins | `make docs-check` | [o] |
 | KSTD-2-9-11 | DIA-21이 Go 진입점을 orm.Connect로 적는다 (KSTD-2-9 후속). Cause: Go client에 없는 orm.Open이라 적는다 | docs/spec/dialects.md and its Korean twin | `make docs-check` | [ ] |
 | KSTD-2-9-12 | COD-9와 COD-31이 codec stage를 ordered_json으로 적는다 (KSTD-2-9 후속). Cause: style을 json과 jsons로 적으나 stage는 ordered_json이고 Go와 Rust는 json에 CODEC_UNSUPPORTED를 답한다 | docs/spec/codec.md and its Korean twin | `make docs-check` | [ ] |
 | KSTD-2-9-13 | CPX-2는 모든 구현이 돌리는 fixture 위에서 complex query 예제의 규칙을 적는다 (KSTD-2-9 후속). Cause: schema가 fixture가 아니고 full text를 쓰는 제품 예제를 적어 어떤 test도 검사할 수 없다 | docs/spec, contracts/fixtures | `make parity-declarations-check` | [ ] |
