@@ -1,5 +1,5 @@
 <!-- doc-id: principles -->
-<!-- source-sha256: 488f8c89209839a5d200ee6d436c7c331a04ebff2ccee79bb9542bdaa3423059 -->
+<!-- source-sha256: 8a20fcad7ed481d21ddbef5e491812e5fbb921da854ea5f4c785d2be0b1c286e -->
 # 원칙
 
 [English](PRINCIPLES.md)
@@ -191,7 +191,8 @@ owner가 2026-10-13에 이 기준을 승인했습니다. 각 기준은 위반 �
   이름의 hyphen은 underscore가 된다. `make build-php-ext`는 `make php-ext-arginfo`가 PHP의 gen_stub.php로 쓰는 arginfo
   header의 stub hash가 stub의 것인지 확인한 뒤 phpize로 build하며, `composer.json`을 `src/` 옆에 둔 사본에서 build하므로
   `config.m4`가 extension의 version을 `../composer.json`에서 가져온다. `make test-php-ext`는 unit test 전에 등록한 것을
-  Reflection으로 library와 비교하되 이름마다 그것을 선언한 library와 비교하며, unit test는 extension을 load해 실행하는 모든
+  Reflection으로 library와 비교하되 이름마다 그것을 선언한 library와 비교하며, unit test는 extension을 load하고 library의 source는 하나도 load하지 않고
+  (dependency와 autoload-dev는 load하고 library 자신의 autoload는 load하지 않으므로 library에는 extension에 대한 guard가 없다) 실행하는 모든
   library의 PHPUnit 파일과 (있다면) `packages/php-ext`의 것이다. parity implementation은 이 layout으로 library의 test를 공유하며,
   설정에 상대 경로를 두지 않는다.
   Enforced by: `make lint-php-ext`, `make test-php-ext`, `make layout-check`

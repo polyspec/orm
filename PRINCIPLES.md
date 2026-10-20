@@ -207,6 +207,7 @@ tool lands, a standard binds the work as written here.
   php-ext-arginfo` writes with the gen_stub.php of the PHP, is that of the stub, in a copy that keeps `composer.json` beside
   `src/`, so that `config.m4` takes the version of the extension from `../composer.json`; `make test-php-ext` compares by
   Reflection what it registers with the libraries, each name with the library that declares it, before its unit tests, which
-  are the PHPUnit files of every library run with the extension loaded, and those of `packages/php-ext` when it holds any; its
+  are the PHPUnit files of every library run with the extension loaded and none of the sources of the library (its dependencies and
+  autoload-dev are loaded, its own autoload is not, so the library has no guard against the extension), and those of `packages/php-ext` when it holds any; its
   parity implementation shares the tests of the libraries by this layout, with no relative path in a configuration.
   Enforced by: `make lint-php-ext`, `make test-php-ext`, `make layout-check`
