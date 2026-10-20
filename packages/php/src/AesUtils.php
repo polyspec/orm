@@ -109,7 +109,8 @@ final class AesUtils
                     foreach ($spec['keys'] as $i => $k) {
                         $row[$k] = $values[$i];
                     }
-                    $version = (int) $values[$keyCount];
+                    // The stored version is passed through unread: rotateRow reads it only for a non-NULL AES value (COD-44).
+                    $version = $values[$keyCount];
                     $row[$spec['version']] = $version;
                     foreach ($spec['columns'] as $i => $c) {
                         $row[$c['name']] = $values[$keyCount + 1 + $i];

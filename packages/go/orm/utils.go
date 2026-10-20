@@ -813,11 +813,8 @@ func (a *AESUtils) Rotate(m Model, keyring AESKeyring) (int, error) {
 				return nil
 			}
 			for _, before := range batch {
-				version, err := rowVersion(before[spec.version])
-				if err != nil {
-					return err
-				}
-				before[spec.version] = version
+				// The stored version is passed through unread: RotateAESRow reads it only for a non-NULL AES value (COD-44).
+				stored := before[spec.version]
 				after, err := RotateAESRow(before, spec.version, rotationColumns, keyring.current, keyring)
 				if err != nil {
 					return err
@@ -830,7 +827,7 @@ func (a *AESUtils) Rotate(m Model, keyring AESKeyring) (int, error) {
 				for _, k := range spec.keys {
 					args = append(args, before[k])
 				}
-				args = append(args, version)
+				args = append(args, stored)
 				res, err := t.run().exec(t.ctx, KindUtility, []string{spec.table}, updateSQL, args...)
 				if err != nil {
 					return err

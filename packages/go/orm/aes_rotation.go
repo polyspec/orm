@@ -73,26 +73,34 @@ func RotateAESRow(row map[string]any, versionColumn string, columns []AESRotatio
 	if _, ok := row[versionColumn]; !ok {
 		return nil, internalErr("aes version column %s is missing", versionColumn)
 	}
-	oldVersion, err := rowVersion(row[versionColumn])
-	if err != nil {
-		return nil, err
-	}
-	oldKey, ok := keyring.keys[oldVersion]
-	if !ok {
-		return nil, configErr("aes key version %d is not declared", oldVersion)
-	}
-	newKey, ok := keyring.keys[targetVersion]
-	if !ok {
-		return nil, configErr("aes target version %d is not declared", targetVersion)
-	}
 	out := make(map[string]any, len(row)+1)
 	for name, value := range row {
 		out[name] = value
 	}
+	var oldKey, newKey string
+	keysRead := false
 	for _, column := range columns {
 		value, exists := row[column.Name]
 		if !exists {
 			return nil, internalErr("aes column %s is missing", column.Name)
+		}
+		// A NULL AES value has no stored bytes to re-encrypt: it is left as it is, and no version is read (COD-44).
+		if value == nil {
+			continue
+		}
+		if !keysRead {
+			oldVersion, err := rowVersion(row[versionColumn])
+			if err != nil {
+				return nil, err
+			}
+			var ok bool
+			if oldKey, ok = keyring.keys[oldVersion]; !ok {
+				return nil, configErr("aes key version %d is not declared", oldVersion)
+			}
+			if newKey, ok = keyring.keys[targetVersion]; !ok {
+				return nil, configErr("aes target version %d is not declared", targetVersion)
+			}
+			keysRead = true
 		}
 		plain, err := HostDecode(value, column.Styles, oldKey)
 		if err != nil {
@@ -104,7 +112,9 @@ func RotateAESRow(row map[string]any, versionColumn string, columns []AESRotatio
 		}
 		out[column.Name] = encoded
 	}
-	out[versionColumn] = targetVersion
+	if keysRead {
+		out[versionColumn] = targetVersion
+	}
 	return out, nil
 }
 

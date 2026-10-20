@@ -60,6 +60,16 @@ check('aes version codes: rotation: stored version is zero', wrong => {
   const got = codeOf(() => keyring.rotateRow({ aes_key_version: 0, email: cipher }, 'aes_key_version', [{ name: 'email', styles: ['aes', 'hex'] }], 2, undefined));
   if (got !== 'CODEC_DECODE') wrong.push(`got ${got || 'no error'}, want CODEC_DECODE`);
 });
+check('aes version codes: rotation: NULL AES value is left unchanged with a NULL or a valid version', wrong => {
+  const columns = [{ name: 'email', styles: ['aes', 'hex'] }];
+  for (const row of [{ aes_key_version: null, email: null }, { aes_key_version: 1, email: null }]) {
+    const got = codeOf(() => {
+      const out = keyring.rotateRow({ ...row }, 'aes_key_version', columns, 2, undefined);
+      if (JSON.stringify(out) !== JSON.stringify(row)) wrong.push(`${JSON.stringify(row)} rotated to ${JSON.stringify(out)}`);
+    });
+    if (got !== '') wrong.push(`${JSON.stringify(row)}: got ${got}, want no error`);
+  }
+});
 check('aes version codes: rotation: AES column missing from the row', wrong => {
   const got = codeOf(() => keyring.rotateRow({ aes_key_version: 1 }, 'aes_key_version', [{ name: 'email', styles: ['aes', 'hex'] }], 2, undefined));
   if (got !== 'INTERNAL') wrong.push(`got ${got || 'no error'}, want INTERNAL`);

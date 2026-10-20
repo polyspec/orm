@@ -76,6 +76,12 @@ class AesVersionCodesTest(unittest.TestCase):
         self.assertEqual(code_of(lambda: _decode_assembly(row, ASSEMBLE, DB)), "")
         self.assertIsNone(row[0])
 
+    def test_rotation_null_aes_is_left_unchanged(self):
+        for row in ({"aes_key_version": None, "email": None}, {"aes_key_version": 1, "email": None}):
+            with self.subTest(row=row):
+                got = KEYRING.rotate_row(dict(row), "aes_key_version", [COLUMN], 2)
+                self.assertEqual(got, row)
+
     def test_rotation_codes(self):
         cases = [
             ({"aes_key_version": 0, "email": CIPHER}, "CODEC_DECODE"),

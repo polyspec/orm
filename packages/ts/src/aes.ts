@@ -40,17 +40,26 @@ export class AesKeyring {
     return key;
   }
 
-  /** Re-encrypts every AES column of a row with the target version. */
+  /**
+   * Re-encrypts every AES column of a row with the target version. A NULL AES value has no stored bytes: it is left as it is, and no
+   * version is read for it (COD-44). The version column is set only when a value was re-encrypted.
+   */
   public rotateRow(row: Readonly<Record<string, unknown>>, versionColumn: string, columns: readonly AesRotationColumn[], targetVersion: number, codec: AesRowCodec): Record<string, unknown> {
     if (!(versionColumn in row)) throw new OrmError(codes.INTERNAL, `AES version column ${versionColumn} is missing`);
-    const oldKey = this.key(storedVersion(row[versionColumn]));
-    const newKey = this.key(targetVersion);
     const out = { ...row };
+    let oldKey: string | undefined;
+    let newKey: string | undefined;
     for (const column of columns) {
       if (!(column.name in row)) throw new OrmError(codes.INTERNAL, `AES column ${column.name} is missing`);
-      out[column.name] = codec.encode(codec.decode(row[column.name], column.styles, oldKey), column.styles, newKey);
+      const value = row[column.name];
+      if (value === null) continue;
+      if (oldKey === undefined || newKey === undefined) {
+        oldKey = this.key(storedVersion(row[versionColumn]));
+        newKey = this.key(targetVersion);
+      }
+      out[column.name] = codec.encode(codec.decode(value, column.styles, oldKey), column.styles, newKey);
     }
-    out[versionColumn] = targetVersion;
+    if (oldKey !== undefined) out[versionColumn] = targetVersion;
     return out;
   }
 }

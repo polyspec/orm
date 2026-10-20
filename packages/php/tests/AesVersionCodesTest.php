@@ -92,6 +92,15 @@ final class AesVersionCodesTest extends TestCase
         $this->assertNull($rows[0][0]);
     }
 
+    public function test_rotation_null_aes_is_left_unchanged(): void
+    {
+        $keyring = new AesKeyring([1 => 'old-key', 2 => 'new-key'], 2);
+        $column = ['name' => 'email', 'styles' => ['aes', 'hex']];
+        foreach ([['aes_key_version' => null, 'email' => null], ['aes_key_version' => 1, 'email' => null]] as $row) {
+            $this->assertSame($row, $keyring->rotateRow($row, 'aes_key_version', [$column], 2), json_encode($row));
+        }
+    }
+
     public function test_rotation_codes(): void
     {
         $keyring = new AesKeyring([1 => 'old-key', 2 => 'new-key'], 2);

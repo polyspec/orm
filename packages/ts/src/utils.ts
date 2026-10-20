@@ -443,7 +443,8 @@ export class AesUtils {
         for (const values of rows) {
           const before: Record<string, unknown> = {};
           spec.keys.forEach((k, i) => { before[k] = values[i]; });
-          const version = versionOf(values[spec.keys.length]);
+          // The stored version is passed through unread: rotateRow reads it only for a non-NULL AES value (COD-44).
+          const version = values[spec.keys.length];
           before[spec.version] = version;
           spec.columns.forEach((c, i) => { before[c.name] = values[spec.keys.length + 1 + i]; });
           const after = keyring.rotateRow(before, spec.version, spec.columns, keyring.currentVersion, codec);
@@ -451,7 +452,7 @@ export class AesUtils {
             ...spec.columns.map(c => driverValue(after[c.name], `the rotated column ${c.name}`)),
             keyring.currentVersion,
             ...spec.keys.map(k => driverValue(before[k], `the key column ${k}`)),
-            version,
+            driverValue(version, `the stored AES version of ${spec.table}`),
           ];
           const result = await frame.statement('utility', [spec.table], updateSql, params);
           if (result.affected !== 1) throw new OrmError(codes.DEADLOCK, `aes rotation of ${spec.table} changed ${result.affected} rows`);

@@ -1,6 +1,7 @@
 package orm
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/polyspec/orm/packages/go/engine/plan"
@@ -190,4 +191,27 @@ func aesReadStep() (*plan.Step, *scanInfo) {
 	}}}
 	si := &scanInfo{styled: []styledScanCol{{index: 0, name: "aes_hex_email", host: []string{"aes", "hex"}}}}
 	return step, si
+}
+
+// Requirements: COD-44.
+func TestRotateAESRowLeavesNullAESUnchanged(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	keys, err := NewAESKeyring(map[int32]string{1: "old-key", 2: "new-key"}, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cols := []AESRotationColumn{{Name: "aes_hex_email", Styles: []string{"aes", "hex"}}}
+	cases := map[string]map[string]any{
+		"NULL version":  {"aes_key_version": nil, "aes_hex_email": nil},
+		"valid version": {"aes_key_version": int32(1), "aes_hex_email": nil},
+	}
+	for name, row := range cases {
+		got, err := RotateAESRow(row, "aes_key_version", cols, 2, keys)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if !reflect.DeepEqual(got, row) {
+			t.Fatalf("%s: rotated NULL AES row = %v, want unchanged %v", name, got, row)
+		}
+	}
 }

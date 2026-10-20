@@ -508,7 +508,8 @@ class AesUtils:
                     return rotated
                 for values in rows:
                     before = {k: values[i] for i, k in enumerate(keys)}
-                    row_version = int(values[len(keys)])
+                    # The stored version is passed through unread: rotate_row reads it only for a non-NULL AES value (COD-44).
+                    row_version = values[len(keys)]
                     before[version] = row_version
                     for i, c in enumerate(columns):
                         before[c.name] = values[len(keys) + 1 + i]

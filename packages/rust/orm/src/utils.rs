@@ -614,8 +614,9 @@ impl AesUtils<'_> {
                     }
                     for row in batch {
                         let k = spec.keys.len();
-                        let version = row_version(&row[k])?;
-                        let old_key = keyring.key(version)?;
+                        // The stored version is read only for a non-NULL AES value; a NULL value has no bytes to decrypt (COD-44).
+                        let aes_present = row[k + 1..k + 1 + n].iter().any(|v| !matches!(v, Val::Null));
+                        let old_key = if aes_present { keyring.key(row_version(&row[k])?)? } else { "" };
                         let mut args = Vec::with_capacity(n + k + 2);
                         for (i, (_, styles)) in spec.columns.iter().enumerate() {
                             let plain = crate::codec::host_decode(&row[k + 1 + i], styles, old_key)?;
@@ -623,7 +624,7 @@ impl AesUtils<'_> {
                         }
                         args.push(Param::I64(keyring.current as i64));
                         args.extend(row[..k].iter().map(val_param));
-                        args.push(Param::I64(version as i64));
+                        args.push(val_param(&row[k]));
                         let affected = self.u.exec(ex, KIND_UTILITY, tables, update.clone(), &args, &update_types).await?;
                         if affected != 1 {
                             return Err(transaction_conflict(format!("aes rotation of {} changed {affected} rows", spec.table)));

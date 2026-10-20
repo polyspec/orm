@@ -75,20 +75,28 @@ class AesKeyring:
         target_version: int,
         codec: object = None,
     ) -> dict:
-        """Re-encrypts every AES column of the row to the target version."""
+        """Re-encrypts every AES column of the row to the target version. A NULL AES value has no stored bytes: it is left
+        as it is, and no version is read for it (COD-44). The version column is set only when a value was re-encrypted."""
         codec = codec or _RowCodec()
         if version_column not in row:
             raise OrmError(codes.INTERNAL, f"AES version column {version_column} is missing")
-        old_key = self.key(_stored_version(row[version_column]))
-        new_key = self.key(target_version)
         out = dict(row)
+        old_key = None
+        new_key = None
         for column in columns:
             if column.name not in row:
                 raise OrmError(codes.INTERNAL, f"AES column {column.name} is missing")
+            value = row[column.name]
+            if value is None:
+                continue
+            if old_key is None:
+                old_key = self.key(_stored_version(row[version_column]))
+                new_key = self.key(target_version)
             out[column.name] = codec.encode(
-                codec.decode(row[column.name], column.styles, old_key),
+                codec.decode(value, column.styles, old_key),
                 column.styles,
                 new_key,
             )
-        out[version_column] = target_version
+        if old_key is not None:
+            out[version_column] = target_version
         return out

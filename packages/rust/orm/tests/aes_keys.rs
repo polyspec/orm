@@ -4,6 +4,7 @@
 
 use std::collections::BTreeMap;
 
+use polyspec_orm::db::Pool;
 use polyspec_orm::{Core, Db, Entity, Model, Schema, Val};
 
 // secret_config { bigint seq PK "auto"; int aes_key_version; longblob config "json aes" }
@@ -223,4 +224,91 @@ fn aes_read_assemble() -> polyspec_orm::plan::Assemble {
         aes_version: Some(1),
         ..Default::default()
     }
+}
+
+// A copy of secret_config whose AES column may be NULL. The version column stays non-null (COD-6).
+const NULL_AES_TEXT: &str = r#"dbspec 1 secret_config_null_aes
+
+table secret_config {
+  seq i64 identity
+  aes_key_version i32
+  config bytes null
+  primary key (seq)
+  settings {
+    select explicit aes_key_version config
+    codec config aes
+    aes_version aes_key_version
+  }
+}
+"#;
+static NULL_AES_SCHEMA: Schema = Schema::new(NULL_AES_TEXT, "sha256:b76a7bc1a184240d8279150252383c3be66e36f01d6ab2b7b4e33045a92b90b2");
+static NULL_AES_SECRET: Entity = Entity {
+    name: "secret_config",
+    schema: &NULL_AES_SCHEMA,
+    new: polyspec_orm::model::new_boxed::<NullAesSecret>,
+    collect: polyspec_orm::model::collect_boxed::<NullAesSecret>,
+};
+
+/// A secret_config row of the NULL-AES schema, read and written by column name.
+#[derive(Clone)]
+struct NullAesSecret {
+    core: Core,
+    values: BTreeMap<String, Val>,
+}
+
+impl Model for NullAesSecret {
+    fn entity() -> &'static Entity {
+        &NULL_AES_SECRET
+    }
+    fn core(&self) -> &Core {
+        &self.core
+    }
+    fn core_mut(&mut self) -> &mut Core {
+        &mut self.core
+    }
+    fn from_core(core: Core) -> Self {
+        NullAesSecret { core, values: BTreeMap::new() }
+    }
+    fn into_core(self) -> Core {
+        self.core
+    }
+    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
+        if !COLUMNS.contains(&name) {
+            return Ok(false);
+        }
+        self.values.insert(name.to_owned(), v);
+        Ok(true)
+    }
+    fn value(&self, name: &str) -> Option<Val> {
+        self.values.get(name).cloned()
+    }
+}
+
+// Requirements: COD-44.
+#[tokio::test]
+async fn aes_rotate_leaves_null_aes_rows_unchanged() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let tmp = std::env::temp_dir().join(format!("orm-rust-aes-null-value-{}", std::process::id()));
+    std::fs::create_dir_all(&tmp).unwrap();
+    let dsn = format!("sqlite://{}", tmp.join("aes-null-value.sqlite").display());
+    let config = polyspec_orm::Config { aes_version: 2, aes_keys: keys(&[(1, "config-key-one"), (2, "config-key-two")]), ..Default::default() };
+    let db = Db::connect(&dsn, 2, config).await.unwrap();
+    db.utils().schema().install(&NULL_AES_SCHEMA).await.unwrap();
+    let Pool::Sqlite(p) = db.pool() else { panic!("the NULL-AES test runs on SQLite") };
+    // One row whose stored version is not declared and one whose version is valid: neither has an AES value.
+    for version in [9_i32, 1] {
+        sqlx::query("INSERT INTO secret_config (aes_key_version, config) VALUES (?, NULL)").bind(version).execute(p).await.unwrap();
+    }
+    let mut core = Core::new(&NULL_AES_SECRET);
+    core.connect(&db);
+    let model = NullAesSecret::from_core(core);
+    let keyring = polyspec_orm::utils::AesKeyring::new(keys(&[(1, "config-key-one"), (2, "config-key-two")]), 2).unwrap();
+    let rotated = db.utils().aes().rotate(&model, &keyring).await.unwrap_or_else(|e| panic!("rotate with NULL AES values: {e}"));
+    assert_eq!(rotated, 2, "rotated rows");
+    let versions: Vec<i64> = sqlx::query_scalar::<_, i64>("SELECT aes_key_version FROM secret_config ORDER BY seq").fetch_all(p).await.unwrap();
+    assert_eq!(versions, vec![2, 2], "stored versions after rotation");
+    let nulls: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM secret_config WHERE config IS NULL").fetch_one(p).await.unwrap();
+    assert_eq!(nulls, 2, "NULL AES cells after rotation");
+    drop(db);
+    std::fs::remove_dir_all(&tmp).unwrap();
 }

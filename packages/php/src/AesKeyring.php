@@ -64,20 +64,30 @@ final class AesKeyring
         if (!array_key_exists($versionColumn, $row)) {
             throw new OrmException(Code::INTERNAL, "AES version column $versionColumn is missing");
         }
-        $oldVersion = self::storedVersion($row[$versionColumn]);
-        $oldKey = $this->keys[$oldVersion]
-            ?? throw new OrmException(Code::CONFIG, "AES version $oldVersion is not declared");
-        $newKey = $this->keys[$targetVersion]
-            ?? throw new OrmException(Code::CONFIG, "AES version $targetVersion is not declared");
+        // A NULL AES value has no stored bytes: it is left as it is, and no version is read for it (COD-44).
         $out = $row;
+        $oldKey = null;
+        $newKey = null;
         foreach ($columns as $column) {
             if (!array_key_exists($column['name'], $row)) {
                 throw new OrmException(Code::INTERNAL, "AES column {$column['name']} is missing");
             }
+            if ($row[$column['name']] === null) {
+                continue;
+            }
+            if ($oldKey === null) {
+                $oldVersion = self::storedVersion($row[$versionColumn]);
+                $oldKey = $this->keys[$oldVersion]
+                    ?? throw new OrmException(Code::CONFIG, "AES version $oldVersion is not declared");
+                $newKey = $this->keys[$targetVersion]
+                    ?? throw new OrmException(Code::CONFIG, "AES version $targetVersion is not declared");
+            }
             $plain = Codec::hostDecode($row[$column['name']], $column['styles'], $oldKey);
             $out[$column['name']] = Codec::hostEncode($plain, $column['styles'], $newKey);
         }
-        $out[$versionColumn] = $targetVersion;
+        if ($oldKey !== null) {
+            $out[$versionColumn] = $targetVersion;
+        }
         return $out;
     }
 }
