@@ -11,6 +11,7 @@ import { functionType, paramUses, type ParamUse } from './engine/params.js';
 import { entityOf, fieldOf, type Entity, type RuntimeModel } from './engine/model.js';
 import { validate } from './engine/validate.js';
 import type { Assemble, Child, OutputColumn, Request, RequestQuery, Subquery } from './ir.js';
+import { sameList } from './list.js';
 import { present } from './present.js';
 import { OrmError } from './runtime_error.js';
 import * as codes from './codes.js';
@@ -464,10 +465,6 @@ class MarkdownNode {
 
 function childOf(rel: string, kind: string, flatten: boolean, cascade: boolean, assemble: Assemble): Child {
   return { rel, kind, step: -1, parent_keys: [], child_keys: [], key: [], flatten, cascade, assemble };
-}
-
-function sameList(a: readonly string[], b: readonly string[]): boolean {
-  return a.length === b.length && a.every((v, i) => v === b[i]);
 }
 
 /** Reads one answer value as a cell of the column type. The value is the same runtime value model as a parameter. */

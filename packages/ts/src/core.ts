@@ -29,7 +29,7 @@ export function styledField(f: Field): boolean {
   return f.stages.some(stage => !plainStages.has(stage));
 }
 
-const integerRanges: Readonly<Record<string, readonly [number, number]>> = {
+export const integerRanges: Readonly<Record<string, readonly [number, number]>> = {
   i16: [-32768, 32767],
   i32: [-2147483648, 2147483647],
   i64: [Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],

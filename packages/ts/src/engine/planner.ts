@@ -3,6 +3,7 @@
 // rows, and INSERT, UPDATE, and DELETE statements.
 import type { Assemble, Assignment, BindSlot, Child, Group, KeyReference, OrmFunction, Plan, PlanStep, Predicate, Request, RequestQuery, Subquery } from '../ir.js';
 import { OrmError } from '../runtime_error.js';
+import { sameList } from '../list.js';
 import { present } from '../present.js';
 import { type Dialect } from './dialect.js';
 import { functionType, intervalType } from './params.js';
@@ -123,10 +124,6 @@ function indexOf(a: Assemble, name: string): number {
 
 function keyRefs(a: Assemble, columns: readonly string[]): KeyReference[] {
   return columns.map(column => ({ column, index: indexOf(a, column) }));
-}
-
-function sameList(a: readonly string[], b: readonly string[]): boolean {
-  return a.length === b.length && a.every((v, i) => v === b[i]);
 }
 
 /** The column `name` of `ent`, which the validator has checked. */

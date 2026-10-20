@@ -1,4 +1,4 @@
-import { CORE, Core, RowState, configError, isModel, styledField, type EntityDef, type ModelLike, type SetSpec } from './core.js';
+import { CORE, Core, RowState, configError, integerRanges, isModel, styledField, type EntityDef, type ModelLike, type SetSpec } from './core.js';
 import { encodeStyled } from './codec.js';
 import { Value as OrderedJsonValue, stringify as orderedJsonStringify } from '@polyspec/ordered-json';
 import { Db, keyOfValues, keyText, keyValue, paginate, query, readTime, resolve, rowKey, scalar, scalarKey, statement, write, type Executor, type Key, type Result } from './database.js';
@@ -245,12 +245,6 @@ function terminal(c: Core): Executor {
   if (c.error) throw c.error;
   return resolve(c.conn);
 }
-
-const integerRanges: Readonly<Record<string, readonly [number, number]>> = {
-  i16: [-32768, 32767],
-  i32: [-2147483648, 2147483647],
-  i64: [Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
-};
 
 /** Converts a cell to the value type of its column type (docs/spec/dbspec.md "Runtime model"). */
 function convert(type: string, value: unknown, zone: string, declared?: Field): unknown {
