@@ -1,5 +1,5 @@
 <!-- doc-id: codec -->
-<!-- source-sha256: 0b44e07f6fc4e3124c43a3ac7a1dcdb4d580932c1a274d8cc321a50cb01f50db -->
+<!-- source-sha256: 1b1d15a77ff59dad6f82f412f95f394c6d76ebe067109ef0b129cebf6f8ec15e -->
 # 코덱 — 컬럼 스타일의 읽기/쓰기 (S2)
 
 - **COD-1** Go 데이터베이스 값 변환은 잘못된 형식, null, 범위 초과, 유한하지 않은 값, 지원하지 않는 값에 `CODEC_DECODE`를 반환한다. Host 인코딩은 단계가 없거나 텍스트·바이트가 아닌 값에 `CODEC_ENCODE`를 반환한다. 생성 모델 대입은 컬럼 이름을 붙여 변환 오류를 보고한다. 행 조립은 오류를 호출자에게 반환하고 insert는 쓰기 전에 대입 필드를 검증한다. 빈 바이트 배열은 SQL NULL과 구분한다. scalar 집계 변환은 유효한 십진수를 가장 가까운 유한 binary64 값으로 받는다.
@@ -106,4 +106,4 @@ table service_config {
 - **COD-41** 읽기: 실행기가 위치형 행을 읽은 직후 `assemble.columns[].styles`에 따라 각 셀을 디코드한다.
 - **COD-42** 쓰기: `set<Col>(v)`는 선언된 스타일을 사용해 런타임 `setStyled`를 호출하고 인코딩된 바이트를 바인드한다.
 - **COD-43** 스타일 컬럼의 술어는 `isNull`과 `isNotNull`로 제한한다(`ir.OpAllowed`).
-- **COD-44** 모든 client(Go, PHP, PHP extension, TypeScript, Python, Rust)는 AES key version과 column 실패에 같은 코드를 준다. 선언되지 않았거나, 비었거나, 그 밖에 잘못된 key version(저장된 row의 version이든 현재 version이든)은 연결의 비밀이 없는 경우이므로 `CONFIG`다. 정수가 아니거나 i32 범위를 벗어난 저장 version은 read 경로와 rotation 경로 모두에서 `CODEC_DECODE`다. 0이나 NaN으로 강제 변환하지 않는다. client가 직접 select한 AES column이 없는 rotation row나 read row는 저장된 바이트가 아니라 client 불변식이 깨진 것이므로 `INTERNAL`이다. `CODEC_DECODE`는 바이트가 존재하는데 decode되지 않는 경우에만 쓴다. version column이 없는 AES column을 가진 plan은 `INTERNAL`로 실패하며, version을 가정하지 않는다.
+- **COD-44** 모든 client(Go, PHP, PHP extension, TypeScript, Python, Rust)는 AES key version과 column 실패에 같은 코드를 준다. 선언되지 않았거나, 비었거나, 그 밖에 잘못된 key version(저장된 row의 version이든 현재 version이든)은 연결의 비밀이 없는 경우이므로 `CONFIG`다. 정수가 아니거나 i32 범위를 벗어난 저장 version은 read 경로와 rotation 경로 모두에서 `CODEC_DECODE`다. 0이나 NaN으로 강제 변환하지 않는다. client가 직접 select한 AES column이 없는 rotation row나 read row는 저장된 바이트가 아니라 client 불변식이 깨진 것이므로 `INTERNAL`이다. `CODEC_DECODE`는 바이트가 존재하는데 decode되지 않는 경우에만 쓴다. version column이 없는 AES column을 가진 plan은 `INTERNAL`로 실패하며, version을 가정하지 않는다. NULL AES 값은 NULL 값이다. 저장된 바이트가 없으므로 read 경로와 rotation 경로 모두에서 version을 읽거나 검사하지 않으며, rotation은 재암호화할 것이 없으므로 version이 무엇이든 NULL AES cell을 그대로 둔다. 이 규칙의 `CODEC_DECODE` 조항은 NULL이 아닌 AES 값의 저장된 version에 적용된다.
