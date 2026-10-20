@@ -12,7 +12,13 @@ final class PlanStep
     public ?array $parent = null;
 
     /** @param list<string> $tables The tables the statement uses by name, sorted */
-    public function __construct(public string $role, public readonly string $sql, public readonly string $lock, public readonly array $slots, public readonly array $tables)
+    public function __construct(
+        public string $role,
+        public readonly string $sql,
+        public readonly string $lock,
+        public readonly array $slots,
+        public readonly array $tables
+    )
     {
     }
 

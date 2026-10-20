@@ -12,12 +12,15 @@ final class Validator
     public const IR_VERSION = 1;
 
     private const CMP = ['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte'];
-    private const ORDERED = ['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in', 'between', 'is_null', 'is_not_null'];
+    private const ORDERED = ['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in', 'between', 'is_null',
+        'is_not_null'];
     private const EQUALITY = ['eq', 'not_eq', 'in', 'not_in', 'is_null', 'is_not_null'];
     private const OPS_BY_TYPE = [
-        'i16' => self::ORDERED, 'i32' => self::ORDERED, 'i64' => self::ORDERED, 'f64' => self::ORDERED, 'decimal' => self::ORDERED,
+        'i16' => self::ORDERED, 'i32' => self::ORDERED, 'i64' => self::ORDERED, 'f64' => self::ORDERED,
+        'decimal' => self::ORDERED,
         'date' => self::ORDERED, 'time' => self::ORDERED, 'datetime' => self::ORDERED,
-        'varchar' => ['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in', 'contains', 'contains_binary', 'is_null', 'is_not_null'],
+        'varchar' => ['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in', 'contains', 'contains_binary',
+            'is_null', 'is_not_null'],
         'text' => ['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte', 'contains', 'contains_binary', 'is_null', 'is_not_null'],
         'uuid' => self::EQUALITY,
         'bool' => ['eq', 'not_eq', 'is_null', 'is_not_null'],
@@ -28,11 +31,14 @@ final class Validator
     /** Field types of every record: int, string, bool, list<T>, map<T>, or a record name. */
     private const RECORDS = [
         'Request' => self::QUERY + [
-            'ir_version' => 'int', 'manifest_hash' => 'string', 'kind' => 'string', 'load' => 'bool', 'set' => 'list<Assign>',
-            'on_duplicate' => 'list<Assign>', 'rows' => 'list<list<int>>', 'optimistic' => 'Optimist', 'agg' => 'string', 'n_params' => 'int',
+            'ir_version' => 'int', 'manifest_hash' => 'string', 'kind' => 'string', 'load' => 'bool',
+            'set' => 'list<Assign>',
+            'on_duplicate' => 'list<Assign>', 'rows' => 'list<list<int>>', 'optimistic' => 'Optimist',
+            'agg' => 'string', 'n_params' => 'int',
         ],
         'Query' => self::QUERY,
-        'Columns' => ['mode' => 'string', 'add' => 'list<string>', 'remove' => 'list<string>', 'fn' => 'map<ColFunc>', 'sub' => 'map<Sub>'],
+        'Columns' => ['mode' => 'string', 'add' => 'list<string>', 'remove' => 'list<string>',
+            'fn' => 'map<ColFunc>', 'sub' => 'map<Sub>'],
         'Func' => ['name' => 'string', 'ps' => 'list<int>'],
         'ColFunc' => ['column' => 'string', 'fn' => 'Func'],
         'Sub' => ['query' => 'Query', 'column' => 'string', 'agg' => 'string'],
@@ -43,8 +49,8 @@ final class Validator
         'Item' => ['pred' => 'Pred', 'group' => 'Group', 'joined' => 'JoinedRef'],
         'JoinedRef' => ['conn' => 'string', 'join' => 'string'],
         'Pred' => [
-            'conn' => 'string', 'column' => 'string', 'op' => 'string', 'p' => 'int', 'ps' => 'list<int>', 'ref' => 'ColRef',
-            'fn' => 'Func', 'value' => 'Func', 'cols' => 'list<string>', 'sub' => 'Sub',
+            'conn' => 'string', 'column' => 'string', 'op' => 'string', 'p' => 'int', 'ps' => 'list<int>',
+            'ref' => 'ColRef', 'fn' => 'Func', 'value' => 'Func', 'cols' => 'list<string>', 'sub' => 'Sub',
         ],
         'ColRef' => ['path' => 'string', 'column' => 'string'],
         'Order' => ['column' => 'string', 'desc' => 'bool', 'random' => 'bool', 'fn' => 'Func'],
@@ -95,25 +101,31 @@ final class Validator
     {
         self::shape('Request', $r, '');
         if (($r['ir_version'] ?? 0) !== self::IR_VERSION) {
-            throw self::err(Code::VERSION_MISMATCH, 'ir_version ' . ($r['ir_version'] ?? 0) . ', engine ' . self::IR_VERSION);
+            throw self::err(Code::VERSION_MISMATCH,
+                'ir_version ' . ($r['ir_version'] ?? 0) . ', engine ' . self::IR_VERSION);
         }
         if (($r['manifest_hash'] ?? '') !== $this->m->manifestHash) {
-            throw self::err(Code::SCHEMA_HASH_MISMATCH, 'client ' . ($r['manifest_hash'] ?? '') . ", engine {$this->m->manifestHash}");
+            throw self::err(Code::SCHEMA_HASH_MISMATCH,
+                'client ' . ($r['manifest_hash'] ?? '') . ", engine {$this->m->manifestHash}");
         }
         $kind = $r['kind'] ?? '';
-        if (!in_array($kind, ['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate', 'insert', 'update', 'delete', 'restore', 'restart_identity'], true)) {
+        if (!in_array($kind, ['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate', 'insert', 'update',
+            'delete', 'restore', 'restart_identity'], true)) {
             throw self::err(Code::IR_INVALID, "unknown kind \"$kind\"");
         }
-        // A table of an external document is written only by the set that owns it (docs/spec/dbspec.md "External documents").
+        // A table of an external document is written only by the set that owns it
+        // (docs/spec/dbspec.md "External documents").
         $target = $this->m->entities[$r['entity'] ?? ''] ?? null;
-        if (($target['external'] ?? false) && in_array($kind, ['insert', 'update', 'delete', 'restore', 'restart_identity'], true)) {
+        if (($target['external'] ?? false)
+            && in_array($kind, ['insert', 'update', 'delete', 'restore', 'restart_identity'], true)) {
             throw self::err(Code::CONFIG, "{$target['table']} is owned by another document set");
         }
         if (($r['load'] ?? false) && ($kind !== 'insert' || ($r['on_duplicate'] ?? []) !== [])) {
             throw self::err(Code::IR_INVALID, 'load is only valid on insert without on_duplicate');
         }
         // restart_identity restarts only one entity's identity, so it takes no row or value.
-        if ($kind === 'restart_identity' && (($r['set'] ?? []) !== [] || ($r['rows'] ?? []) !== [] || ($r['on_duplicate'] ?? []) !== [] || isset($r['where']) || isset($r['optimistic']))) {
+        if ($kind === 'restart_identity' && (($r['set'] ?? []) !== [] || ($r['rows'] ?? []) !== []
+            || ($r['on_duplicate'] ?? []) !== [] || isset($r['where']) || isset($r['optimistic']))) {
             throw self::err(Code::IR_INVALID, 'restart_identity takes no set, rows, on_duplicate, where or optimistic');
         }
         $this->n = $r['n_params'] ?? 0;
@@ -164,12 +176,14 @@ final class Validator
             }
             foreach ($set as $a) {
                 if (!isset($a['p'])) {
-                    throw self::err(Code::IR_INVALID, "multi-row insert assigns $entity.{$a['column']} without a value");
+                    throw self::err(Code::IR_INVALID,
+                        "multi-row insert assigns $entity.{$a['column']} without a value");
                 }
             }
             foreach ($rows as $i => $row) {
                 if (count($row) !== count($set)) {
-                    throw self::err(Code::IR_INVALID, sprintf('insert row %d has %d values for %d columns', $i + 1, count($row), count($set)));
+                    throw self::err(Code::IR_INVALID,
+                        sprintf('insert row %d has %d values for %d columns', $i + 1, count($row), count($set)));
                 }
                 $this->params($row);
             }
@@ -207,14 +221,16 @@ final class Validator
     }
 
     /**
-     * The parts of the statement of a restore request (docs/spec/protocol.md 1.5), picked after the request hook. The set
-     * values with a parameter and the eq conditions with a parameter that the where joins with and give columns their
-     * values; the key is the primary key when they cover it, otherwise the first unique key in name order that they
-     * cover. A set value of a key column becomes a condition, every other set value is a new value, and the where
-     * keeps its other conditions, which narrow the restore further; the key still names at most one row.
+     * The parts of the statement of a restore request (docs/spec/protocol.md 1.5), picked after the request
+     * hook. The set values with a parameter and the eq conditions with a parameter that the where joins with
+     * and give columns their values; the key is the primary key when they cover it, otherwise the first
+     * unique key in name order that they cover. A set value of a key column becomes a condition, every other
+     * set value is a new value, and the where keeps its other conditions, which narrow the restore further;
+     * the key still names at most one row.
      *
-     * @return array{key: list<string>, where: array{items: list<array<string, mixed>>}, set: list<array<string, mixed>>}
-     *     the key, the where with an eq condition for each set value of a key column, and the new values
+     * @return array{key: list<string>, where: array{items: list<array<string, mixed>>},
+     *     set: list<array<string, mixed>>} the key, the where with an eq condition for each set value of a
+     *     key column, and the new values
      */
     public static function restoreKey(array $ent, array $r): array
     {
@@ -226,10 +242,12 @@ final class Validator
         foreach ($items as $i => $item) {
             $conn = ($item['pred'] ?? $item['group'] ?? $item['joined'] ?? [])['conn'] ?? '';
             if ($i > 0 && $conn === 'or') {
-                throw self::err(Code::IR_INVALID, "restore of {$ent['entity']} joins the conditions of its where with and");
+                throw self::err(Code::IR_INVALID,
+                    "restore of {$ent['entity']} joins the conditions of its where with and");
             }
             $pr = $item['pred'] ?? null;
-            if ($pr !== null && ($pr['op'] ?? '') === 'eq' && isset($pr['p']) && !isset($pr['fn']) && !isset($pr['value']) && !isset($pr['ref']) && !isset($pr['sub'])) {
+            if ($pr !== null && ($pr['op'] ?? '') === 'eq' && isset($pr['p']) && !isset($pr['fn'])
+                && !isset($pr['value']) && !isset($pr['ref']) && !isset($pr['sub'])) {
                 $valued[$pr['column']] = true;
             }
         }
@@ -261,13 +279,15 @@ final class Validator
             }
         }
         if ($key === null) {
-            throw self::err(Code::IR_INVALID, "restore of {$ent['entity']} gives no primary key or unique key a value in its set or in an eq condition of its where");
+            throw self::err(Code::IR_INVALID,
+                "restore of {$ent['entity']} gives no primary key or unique key a value in its set or in an eq condition of its where");
         }
         $parts = ['key' => $key, 'where' => ['items' => $items], 'set' => []];
         foreach ($set as $a) {
             if (isset($a['p']) && in_array($a['column'], $key, true)) {
                 $pred = ['column' => $a['column'], 'op' => 'eq', 'p' => $a['p']];
-                $parts['where']['items'][] = ['pred' => ($parts['where']['items'] === [] ? [] : ['conn' => 'and']) + $pred];
+                $parts['where']['items'][] = ['pred' =>
+                    ($parts['where']['items'] === [] ? [] : ['conn' => 'and']) + $pred];
                 continue;
             }
             // The key and the soft delete column are the table's own: a restore clears the latter itself.
@@ -321,7 +341,10 @@ final class Validator
         return $out;
     }
 
-    /** The type of a column function's result on column $col: the type of a parameter compared with it and of the output column it selects. */
+    /**
+     * The type of a column function's result on column $col: the type of a parameter compared with it and of
+     * the output column it selects.
+     */
     public static function functionType(string $name, ?array $col): string
     {
         return match ($name) {
@@ -499,9 +522,11 @@ final class Validator
     private function assign(array $ent, array $a): void
     {
         $column = $a['column'] ?? '';
-        $c = RuntimeModel::column($ent, $column) ?? throw self::err(Code::COLUMN_UNKNOWN, "{$ent['entity']}.$column");
+        $c = RuntimeModel::column($ent, $column) ?? throw self::err(Code::COLUMN_UNKNOWN,
+            "{$ent['entity']}.$column");
         if ($column === $ent['audit']) {
-            throw self::err(Code::IR_INVALID, "{$ent['entity']}.$column is written by the executor from the audit of the transaction");
+            throw self::err(Code::IR_INVALID,
+                "{$ent['entity']}.$column is written by the executor from the audit of the transaction");
         }
         $n = (int) isset($a['p']) + (int) !empty($a['null']) + (int) isset($a['plus_p']) + (int) isset($a['minus_p']);
         if ($n !== 1) {
@@ -526,8 +551,9 @@ final class Validator
     }
 
     /**
-     * scopes is the scope tree of q and its joins (name, ent, joins). As in planner's buildScopes, all joins are placed
-     * before conditions are checked, so a condition can also resolve the path of a join declared later. The ent of an entity not in the manifest is null.
+     * scopes is the scope tree of q and its joins (name, ent, joins). As in planner's buildScopes, all joins
+     * are placed before conditions are checked, so a condition can also resolve the path of a join declared
+     * later. The ent of an entity not in the manifest is null.
      */
     private function scopes(array $q): array
     {
@@ -543,10 +569,11 @@ final class Validator
     }
 
     /**
-     * ref resolves a ref in a column-to-column condition as planner's resolvePath does. $at is the place where the condition sits:
-     * root is the statement's root scope, outer is the scope of the query enclosing a subquery (null if not a subquery),
-     * node is the scope of the condition. Path "" is root, "^" is outer and is used only inside a subquery, and any other path is
-     * the join names joined with "/" from root. The target entity must have the ref's column.
+     * ref resolves a ref in a column-to-column condition as planner's resolvePath does. $at is the place
+     * where the condition sits: root is the statement's root scope, outer is the scope of the query enclosing
+     * a subquery (null if not a subquery), node is the scope of the condition. Path "" is root, "^" is outer
+     * and is used only inside a subquery, and any other path is the join names joined with "/" from root.
+     * The target entity must have the ref's column.
      */
     private function ref(array $at, array $ref): array
     {
@@ -561,15 +588,17 @@ final class Validator
             }
         }
         $ent = $target['ent'] ?? throw self::err(Code::ENTITY_UNKNOWN, $target['name']);
-        return RuntimeModel::column($ent, $column) ?? throw self::err(Code::COLUMN_UNKNOWN, "{$target['name']}.$column");
+        return RuntimeModel::column($ent, $column) ?? throw self::err(Code::COLUMN_UNKNOWN,
+            "{$target['name']}.$column");
     }
 
     /**
-     * The one key an insert with on_duplicate conflicts on. MySQL updates the row met on any unique key, while
-     * PostgreSQL and SQLite name one target and a meeting on another key is a unique violation, so no order of keys
-     * reproduces both: an upsert has exactly one key that can meet the inserted row, and the insert assigns every column
-     * of it. The candidates are the primary key, unless the insert leaves it out (an identity, or a key an IR executor
-     * assigns), and each unique key; a blind index column counts as assigned with its AES source.
+     * The one key an insert with on_duplicate conflicts on. MySQL updates the row met on any unique key,
+     * while PostgreSQL and SQLite name one target and a meeting on another key is a unique violation, so no
+     * order of keys reproduces both: an upsert has exactly one key that can meet the inserted row, and the
+     * insert assigns every column of it. The candidates are the primary key, unless the insert leaves it out
+     * (an identity, or a key an IR executor assigns), and each unique key; a blind index column counts as
+     * assigned with its AES source.
      *
      * @param list<array<string, mixed>> $set
      * @return list<string>
@@ -596,20 +625,26 @@ final class Validator
             throw self::err(Code::IR_INVALID, 'on_duplicate needs exactly one conflict key; no key can meet the row');
         }
         if (count($candidates) !== 1) {
-            throw self::err(Code::IR_INVALID, 'on_duplicate needs exactly one conflict key; ' . implode(', ', array_column($candidates, 'name')) . ' can meet the row');
+            throw self::err(Code::IR_INVALID, 'on_duplicate needs exactly one conflict key; '
+                . implode(', ', array_column($candidates, 'name')) . ' can meet the row');
         }
         foreach ($candidates[0]['columns'] as $c) {
             if (!isset($assigned[$c])) {
-                throw self::err(Code::IR_INVALID, "on_duplicate needs exactly one conflict key; {$candidates[0]['name']} can meet the row but the insert does not assign $c");
+                throw self::err(Code::IR_INVALID,
+                    "on_duplicate needs exactly one conflict key; {$candidates[0]['name']} can meet the row but the insert does not assign $c");
             }
         }
         return $candidates[0]['columns'];
     }
 
-    /** Whether two columns compare alike on the three databases, by the table that dbspec's check operands also read. */
+    /**
+     * Whether two columns compare alike on the three databases, by the table that dbspec's check operands
+     * also read.
+     */
     private static function meets(array $a, array $b): bool
     {
-        return Meet::kind($a['type'], $a['scale'] ?? 0, $a['precision'] ?? 0) === Meet::kind($b['type'], $b['scale'] ?? 0, $b['precision'] ?? 0);
+        return Meet::kind($a['type'], $a['scale'] ?? 0, $a['precision'] ?? 0)
+            === Meet::kind($b['type'], $b['scale'] ?? 0, $b['precision'] ?? 0);
     }
 
     /**
@@ -650,7 +685,8 @@ final class Validator
                     throw self::err(Code::COLUMN_ALIAS_CONFLICT, "$entity.$out is already a row name");
                 }
                 $outputs[$out] = true;
-                $col = RuntimeModel::column($ent, $cf['column'] ?? '') ?? throw self::err(Code::COLUMN_UNKNOWN, "$entity." . ($cf['column'] ?? ''));
+                $col = RuntimeModel::column($ent, $cf['column'] ?? '') ?? throw self::err(Code::COLUMN_UNKNOWN,
+                    "$entity." . ($cf['column'] ?? ''));
                 $this->columnFunc($ent, $col, $cf['fn'] ?? []);
             }
             foreach ($cols['sub'] ?? [] as $out => $sub) {
@@ -678,7 +714,8 @@ final class Validator
             if ($left === '' || $right === '' || !isset($j['query'])) {
                 throw self::err(Code::IR_INVALID, "join $rel: left, right and query are required");
             }
-            $target = $this->m->entities[$j['query']['entity'] ?? ''] ?? throw self::err(Code::ENTITY_UNKNOWN, $j['query']['entity'] ?? '');
+            $target = $this->m->entities[$j['query']['entity'] ?? ''] ?? throw self::err(Code::ENTITY_UNKNOWN,
+                $j['query']['entity'] ?? '');
             if (RuntimeModel::column($ent, $left) === null) {
                 throw self::err(Code::COLUMN_UNKNOWN, "{$ent['entity']}.$left");
             }
@@ -686,10 +723,12 @@ final class Validator
                 throw self::err(Code::COLUMN_UNKNOWN, "{$target['entity']}.$right");
             }
             if (!self::meets(RuntimeModel::column($ent, $left), RuntimeModel::column($target, $right))) {
-                throw self::err(Code::OPERATOR_NOT_ALLOWED, "join $rel: {$ent['entity']}.$left does not meet {$target['entity']}.$right");
+                throw self::err(Code::OPERATOR_NOT_ALLOWED,
+                    "join $rel: {$ent['entity']}.$left does not meet {$target['entity']}.$right");
             }
             $joined[$rel] = $j;
-            $this->query($j['query'], ['root' => $at['root'], 'outer' => $at['outer'], 'node' => $at['node']['joins'][$rel]], true, false);
+            $this->query($j['query'], ['root' => $at['root'], 'outer' => $at['outer'],
+                'node' => $at['node']['joins'][$rel]], true, false);
         }
         if (!$isJoin && isset($q['on'])) {
             throw self::err(Code::IR_INVALID, 'on[] is only valid on join children');
@@ -727,7 +766,8 @@ final class Validator
             if ($keys === [] || ($kind !== 'one' && $kind !== 'many')) {
                 throw self::err(Code::IR_INVALID, "relation $rel: keys and kind one|many are required");
             }
-            $target = $this->m->entities[$child['entity'] ?? ''] ?? throw self::err(Code::ENTITY_UNKNOWN, $child['entity'] ?? '');
+            $target = $this->m->entities[$child['entity'] ?? ''] ?? throw self::err(Code::ENTITY_UNKNOWN,
+                $child['entity'] ?? '');
             $lefts = [];
             $rights = [];
             foreach ($keys as $k) {
@@ -743,7 +783,8 @@ final class Validator
                     throw self::err(Code::COLUMN_UNKNOWN, "{$target['entity']}.$right");
                 }
                 if (!self::meets(RuntimeModel::column($ent, $left), RuntimeModel::column($target, $right))) {
-                    throw self::err(Code::OPERATOR_NOT_ALLOWED, "relation $rel: $entity.$left does not meet {$target['entity']}.$right");
+                    throw self::err(Code::OPERATOR_NOT_ALLOWED,
+                        "relation $rel: $entity.$left does not meet {$target['entity']}.$right");
                 }
                 // A column that appears in two components is not a key.
                 if (isset($lefts[$left]) || isset($rights[$right])) {
@@ -761,8 +802,10 @@ final class Validator
             if (($child['key_by'] ?? '') !== '' && $kind !== 'many') {
                 throw self::err(Code::IR_INVALID, "relation $rel: key_by needs a many relation");
             }
-            if (isset($child['if_parent']) && RuntimeModel::column($ent, $child['if_parent']['column'] ?? '') === null) {
-                throw self::err(Code::COLUMN_UNKNOWN, "$entity." . ($child['if_parent']['column'] ?? '') . ' (if_parent)');
+            if (isset($child['if_parent'])
+                && RuntimeModel::column($ent, $child['if_parent']['column'] ?? '') === null) {
+                throw self::err(Code::COLUMN_UNKNOWN,
+                    "$entity." . ($child['if_parent']['column'] ?? '') . ' (if_parent)');
             }
             $scope = $this->scopes($child);
             $this->query($child, ['root' => $scope, 'outer' => null, 'node' => $scope], false, true);
@@ -778,7 +821,8 @@ final class Validator
         if (isset($q['if_parent'])) {
             $this->params([$q['if_parent']['p'] ?? 0]);
         }
-        if (!$isRelation && ($keyBy !== '' || !empty($q['flatten']) || ($q['limit_per_parent'] ?? 0) > 0 || isset($q['if_parent']) || !empty($q['no_cascade_delete']))) {
+        if (!$isRelation && ($keyBy !== '' || !empty($q['flatten']) || ($q['limit_per_parent'] ?? 0) > 0
+            || isset($q['if_parent']) || !empty($q['no_cascade_delete']))) {
             throw self::err(Code::IR_INVALID, "relation-only options on $entity");
         }
         foreach ($q['order'] ?? [] as $o) {
@@ -855,7 +899,8 @@ final class Validator
             }
             if (isset($it['joined'])) {
                 $name = $it['joined']['join'] ?? '';
-                $j = $joined[$name] ?? throw self::err(Code::ENTITY_NOT_JOINED, "$name is not joined in this statement");
+                $j = $joined[$name] ?? throw self::err(Code::ENTITY_NOT_JOINED,
+                    "$name is not joined in this statement");
                 if (($j['query']['where']['items'] ?? []) === []) {
                     throw self::err(Code::IR_INVALID, "joined $name has no conditions");
                 }
@@ -896,7 +941,8 @@ final class Validator
                 throw self::err(Code::EMPTY_IN, "$name(" . implode(',', $cols) . ')');
             }
             if (count($ps) % count($cols) !== 0) {
-                throw self::err(Code::IR_INVALID, sprintf('%s: %d values for %d columns', $op, count($ps), count($cols)));
+                throw self::err(Code::IR_INVALID,
+                    sprintf('%s: %d values for %d columns', $op, count($ps), count($cols)));
             }
             return;
         }
@@ -918,7 +964,8 @@ final class Validator
             $subEntity = $this->m->entities[$p['sub']['query']['entity']];
             $subColumn = RuntimeModel::column($subEntity, $p['sub']['column'] ?? '');
             if ($subColumn !== null && !self::meets(RuntimeModel::column($ent, $column), $subColumn)) {
-                throw self::err(Code::OPERATOR_NOT_ALLOWED, "$name.$column does not meet the subquery column {$p['sub']['query']['entity']}.{$p['sub']['column']}");
+                throw self::err(Code::OPERATOR_NOT_ALLOWED,
+                    "$name.$column does not meet the subquery column {$p['sub']['query']['entity']}.{$p['sub']['column']}");
             }
             return;
         }
@@ -992,10 +1039,12 @@ final class Validator
             }
             $other = $this->ref($at, $p['ref']);
             if (!self::meets($c, $other)) {
-                throw self::err(Code::OPERATOR_NOT_ALLOWED, "$name.$column does not meet {$p['ref']['column']}");
+                throw self::err(Code::OPERATOR_NOT_ALLOWED,
+                    "$name.$column does not meet {$p['ref']['column']}");
             }
             if (!self::colPairOpAllowed($c, $other, $op)) {
-                throw self::err(Code::OPERATOR_NOT_ALLOWED, "$op on $name.$column ({$c['type']}) and {$p['ref']['column']} ({$other['type']})");
+                throw self::err(Code::OPERATOR_NOT_ALLOWED,
+                    "$op on $name.$column ({$c['type']}) and {$p['ref']['column']} ({$other['type']})");
             }
             return;
         }
@@ -1052,11 +1101,12 @@ final class Validator
         if ($column !== '' && RuntimeModel::column($ent, $column) === null) {
             throw self::err(Code::COLUMN_UNKNOWN, "{$ent['entity']}.$column");
         }
-        // A scalar column subquery yields at most one row by its shape: MySQL answers 1242 and PostgreSQL 21000 for several
-        // rows, and SQLite returns the first, so the request makes one row certain. An in subquery (MySQL 1235) and an
-        // aggregate take no limit.
+        // A scalar column subquery yields at most one row by its shape: MySQL answers 1242 and PostgreSQL 21000
+        // for several rows, and SQLite returns the first, so the request makes one row certain. An in subquery
+        // (MySQL 1235) and an aggregate take no limit.
         $scalarColumn = $scalar && $agg === '';
-        if (($q['relations'] ?? []) !== [] || ($q['lock'] ?? '') !== '' || isset($q['columns']) || (isset($q['limit']) && !$scalarColumn)) {
+        if (($q['relations'] ?? []) !== [] || ($q['lock'] ?? '') !== '' || isset($q['columns'])
+            || (isset($q['limit']) && !$scalarColumn)) {
             throw self::err(Code::IR_INVALID, 'subquery may not use limit, relations, lock or columns');
         }
         if ($scalarColumn) {
@@ -1077,7 +1127,8 @@ final class Validator
                     }
                 }
                 if (!$found) {
-                    throw self::err(Code::IR_INVALID, "a scalar column subquery needs an order that includes the primary key column $pk");
+                    throw self::err(Code::IR_INVALID,
+                        "a scalar column subquery needs an order that includes the primary key column $pk");
                 }
             }
         }

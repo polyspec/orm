@@ -38,7 +38,8 @@ final class CanonicalRequest
     private function index(int $p): int
     {
         if ($p < 0 || $p >= count($this->params)) {
-            throw new OrmException(Code::IR_INVALID, "param index $p out of range (n_params " . count($this->params) . ')');
+            throw new OrmException(Code::IR_INVALID, "param index $p out of range (n_params "
+                . count($this->params) . ')');
         }
         $this->used[$p] = true;
         $this->out[] = $this->params[$p];

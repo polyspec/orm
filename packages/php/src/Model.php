@@ -41,7 +41,10 @@ abstract class Model implements \JsonSerializable
     private string $aggFn = '';
     private string $agg = '';
 
-    /** @var list<array{left: string, right: string}> Relation key components: a pair per match<L>With<R>() call, added in call order */
+    /**
+     * @var list<array{left: string, right: string}> Relation key components: a pair per match<L>With<R>() call,
+     *     added in call order
+     */
     private array $matches = [];
     private string $alias = '';
     private bool $parentNode = false;
@@ -64,7 +67,8 @@ abstract class Model implements \JsonSerializable
     private array $values = [];
     /**
      * @var array{loaded: bool, names: list<string>, hidden: array<string, bool>, original: array<string, mixed>,
-     *     extra: array<string, mixed>, related: array<string, mixed>, cascade: array<string, bool>, flat: list<string>}|null
+     *     extra: array<string, mixed>, related: array<string, mixed>, cascade: array<string, bool>,
+     *     flat: list<string>}|null
      */
     private ?array $row = null;
 
@@ -335,8 +339,10 @@ abstract class Model implements \JsonSerializable
         [$column, $revision] = $this->expectedRevision;
         $meta = static::meta();
         $col = $meta['columns'][$column] ?? null;
-        if ($col === null || !in_array($col['type'], ['i16', 'i32', 'i64'], true) || $col['codec'] !== [] || in_array($column, $meta['pk'], true)) {
-            throw new OrmException(Code::CONFIG, "expectRevision: $column is not an integer column of {$meta['entity']} outside its primary key");
+        if ($col === null || !in_array($col['type'], ['i16', 'i32', 'i64'], true) || $col['codec'] !== []
+            || in_array($column, $meta['pk'], true)) {
+            throw new OrmException(Code::CONFIG, "expectRevision: $column is not an integer column of "
+                . "{$meta['entity']} outside its primary key");
         }
         if (isset($this->sets[$column])) {
             throw new OrmException(Code::CONFIG, "expectRevision: $column is also set in the write");
@@ -344,7 +350,8 @@ abstract class Model implements \JsonSerializable
         if ($optimistic) {
             throw new OrmException(Code::CONFIG, 'expectRevision does not combine with update(true)');
         }
-        $r->ir['where']['items'][] = ['pred' => ['column' => $column, 'op' => 'eq', 'p' => $r->param($revision), 'conn' => 'and']];
+        $r->ir['where']['items'][] = ['pred' => ['column' => $column, 'op' => 'eq',
+            'p' => $r->param($revision), 'conn' => 'and']];
         if ($update) {
             $r->ir['set'][] = ['column' => $column, 'plus_p' => $r->param(1)];
         }
@@ -486,7 +493,8 @@ abstract class Model implements \JsonSerializable
         return match ($col['type']) {
             'i16', 'i32', 'i64' => (int) $v,
             'f64' => (float) $v,
-            'decimal' => is_string($v) ? Decimal::normalize($v, $col['precision'], $col['scale']) : throw new OrmException(Code::CODEC_DECODE, 'decimal cell requires exact text'),
+            'decimal' => is_string($v) ? Decimal::normalize($v, $col['precision'], $col['scale'])
+                : throw new OrmException(Code::CODEC_DECODE, 'decimal cell requires exact text'),
             'bool' => (bool) $v,
             'date', 'datetime' => self::timeValue($v, $zone),
             default => is_string($v) ? $v : (string) $v,
@@ -545,7 +553,8 @@ abstract class Model implements \JsonSerializable
         if (self::prefixed($name, 'orderBy')) {
             $keys = Chain::order(static::class, substr($name, 7));
             if (count($args) > (count($keys) === 1 ? 1 : 0)) {
-                throw new OrmException(Code::CONFIG, "$name accepts " . (count($keys) === 1 ? 'one column function' : 'no argument'));
+                throw new OrmException(Code::CONFIG, "$name accepts "
+                    . (count($keys) === 1 ? 'one column function' : 'no argument'));
             }
             foreach ($keys as $k) {
                 $item = ['column' => $k['column'], 'desc' => $k['desc']];
@@ -666,7 +675,8 @@ abstract class Model implements \JsonSerializable
 
     private static function prefixed(string $name, string $prefix): bool
     {
-        return strlen($name) > strlen($prefix) && str_starts_with($name, $prefix) && ctype_upper($name[strlen($prefix)]);
+        return strlen($name) > strlen($prefix) && str_starts_with($name, $prefix)
+            && ctype_upper($name[strlen($prefix)]);
     }
 
     private static function arity(string $name, array $args, int $count): void
@@ -772,11 +782,13 @@ abstract class Model implements \JsonSerializable
             $this->addItem($k === 0 ? $conn : $key['conn'], ['pred' => $pred]);
         }
         if ($i !== count($args)) {
-            throw new OrmException(Code::CONFIG, 'the condition expects ' . count($keys) . ' values, got ' . count($args));
+            throw new OrmException(Code::CONFIG,
+                'the condition expects ' . count($keys) . ' values, got ' . count($args));
         }
     }
 
-    private const OPERATORS = ['' => 'eq', 'ne' => 'not_eq', 'gt' => 'gt', 'lt' => 'lt', 'ge' => 'gte', 'le' => 'lte', 'lk' => 'contains', 'lb' => 'contains_binary'];
+    private const OPERATORS = ['' => 'eq', 'ne' => 'not_eq', 'gt' => 'gt', 'lt' => 'lt', 'ge' => 'gte',
+        'le' => 'lte', 'lk' => 'contains', 'lb' => 'contains_binary'];
 
     /** @return array{0: array, 1: int} */
     private function predicate(array $key, mixed $value, array $rest, bool $single): array
@@ -795,10 +807,12 @@ abstract class Model implements \JsonSerializable
                 }
                 foreach ($value as $row) {
                     if (!is_array($row) || !array_is_list($row) || count($row) !== count($key['columns'])) {
-                        throw new OrmException(Code::CONFIG, 'each tuple value group needs ' . count($key['columns']) . ' values');
+                        throw new OrmException(Code::CONFIG,
+                            'each tuple value group needs ' . count($key['columns']) . ' values');
                     }
                 }
-                return [['op' => $key['op'] === 'tuple' ? 'tuple_in' : 'tuple_not_in', 'cols' => $key['columns'], 'value' => $value, 'kind' => 'tuple'], 0];
+                return [['op' => $key['op'] === 'tuple' ? 'tuple_in' : 'tuple_not_in', 'cols' => $key['columns'],
+                    'value' => $value, 'kind' => 'tuple'], 0];
             case 'between':
                 if (!is_array($value) || !array_is_list($value) || count($value) !== 2) {
                     throw new OrmException(Code::CONFIG, "between value for $column must be a two-value array");
@@ -809,7 +823,8 @@ abstract class Model implements \JsonSerializable
             if (!$value instanceof Model) {
                 throw new OrmException(Code::CONFIG, "column comparison on $column requires a model");
             }
-            return [$p + ['op' => self::OPERATORS[$key['op']] . '_col', 'ref' => $value, 'refCol' => $key['compare'], 'kind' => 'ref'], 0];
+            return [$p + ['op' => self::OPERATORS[$key['op']] . '_col', 'ref' => $value,
+                'refCol' => $key['compare'], 'kind' => 'ref'], 0];
         }
         $op = self::OPERATORS[$key['op']];
         $eq = $key['op'] === '' || $key['op'] === 'ne';
@@ -829,7 +844,8 @@ abstract class Model implements \JsonSerializable
         if ($value instanceof Func) {
             if ($value->column) {
                 if (!$single) {
-                    throw new OrmException(Code::CONFIG, 'a column function is accepted only by a single-key condition');
+                    throw new OrmException(Code::CONFIG,
+                        'a column function is accepted only by a single-key condition');
                 }
                 if (count($rest) !== 1) {
                     throw new OrmException(Code::CONFIG, "column function on $column requires one compared value");
@@ -851,7 +867,8 @@ abstract class Model implements \JsonSerializable
             if ($value === []) {
                 throw new OrmException(Code::EMPTY_IN, "$column received an empty list");
             }
-            return [$p + ['op' => $key['op'] === 'ne' ? 'not_in' : 'in', 'value' => array_values($value), 'kind' => 'list'], 0];
+            return [$p + ['op' => $key['op'] === 'ne' ? 'not_in' : 'in', 'value' => array_values($value),
+                'kind' => 'list'], 0];
         }
         return [$p + ['op' => $op, 'value' => $value, 'kind' => 'value'], 0];
     }
@@ -917,7 +934,8 @@ abstract class Model implements \JsonSerializable
             if ($child->on !== null) {
                 $childQuery['on'] = $child->groupIr($child->on, $r, $f);
             }
-            $q['joins'][] = ['rel' => $name, 'kind' => $j['kind'], 'query' => $childQuery, 'left' => $j['left'], 'right' => $j['right']];
+            $q['joins'][] = ['rel' => $name, 'kind' => $j['kind'], 'query' => $childQuery, 'left' => $j['left'],
+                'right' => $j['right']];
         }
         if ($this->where['items'] !== []) {
             $q['where'] = $this->groupIr($this->where['items'], $r, $f);
@@ -926,7 +944,8 @@ abstract class Model implements \JsonSerializable
             $child = $rel['child'];
             if ($child->conn !== null) {
                 if ($child->limit !== null) {
-                    throw new OrmException(Code::LIMIT_IN_RELATION, $child::meta()['entity'] . ' relation uses limit; use groupLimit');
+                    throw new OrmException(Code::LIMIT_IN_RELATION,
+                        $child::meta()['entity'] . ' relation uses limit; use groupLimit');
                 }
                 $r->external[spl_object_id($this)][] = $rel;
                 continue;
@@ -966,7 +985,8 @@ abstract class Model implements \JsonSerializable
     {
         $q = $this->query($r, new Frame($this, null));
         if ($this->limit !== null) {
-            throw new OrmException(Code::LIMIT_IN_RELATION, static::meta()['entity'] . ' relation uses limit; use groupLimit');
+            throw new OrmException(Code::LIMIT_IN_RELATION,
+                static::meta()['entity'] . ' relation uses limit; use groupLimit');
         }
         if ($this->parentNode) {
             $q['flatten'] = true;
@@ -983,7 +1003,8 @@ abstract class Model implements \JsonSerializable
         if ($this->possible !== null) {
             $q['if_parent'] = ['column' => $this->possible['column'], 'p' => $r->param($this->possible['value'])];
         }
-        return ['rel' => $this->resultName($many), 'query' => $q, 'kind' => $many ? 'many' : 'one', 'keys' => $this->matches];
+        return ['rel' => $this->resultName($many), 'query' => $q, 'kind' => $many ? 'many' : 'one',
+            'keys' => $this->matches];
     }
 
     private function columnsIr(Request $r): ?array
@@ -1059,7 +1080,8 @@ abstract class Model implements \JsonSerializable
                     throw new OrmException(Code::CONFIG, $child::meta()['entity'] . ' is not joined in the statement');
                 }
                 if ($f->parentOf($child) !== $this->subject()) {
-                    throw new OrmException(Code::CONFIG, $child::meta()['entity'] . ' conditions must be placed in the model it is joined to');
+                    throw new OrmException(Code::CONFIG,
+                        $child::meta()['entity'] . ' conditions must be placed in the model it is joined to');
                 }
                 if (!$f->place($child)) {
                     throw new OrmException(Code::CONFIG, $child::meta()['entity'] . ' conditions are placed twice');
@@ -1146,7 +1168,8 @@ abstract class Model implements \JsonSerializable
 
     /**
      * The per-node conversion of an assemble node for this model class: the columns grouped by
-     * conversion ([index, name] or [index, name, kind]), the loaded names, the hidden names and the names whose loaded value is kept for
+     * conversion ([index, name] or [index, name, kind]), the loaded names, the hidden names and the names whose
+     * loaded value is kept for
      * update and delete, and the single key column. Computed once per model class and plan node.
      */
     private function rowShape(array $asm): array
@@ -1160,7 +1183,8 @@ abstract class Model implements \JsonSerializable
             $shapes = [];
         }
         $meta = static::meta();
-        $shape = ['int' => [], 'float' => [], 'decimal' => [], 'bool' => [], 'date' => [], 'string' => [], 'codec' => [], 'extra' => [],
+        $shape = ['int' => [], 'float' => [], 'decimal' => [], 'bool' => [], 'date' => [], 'string' => [],
+            'codec' => [], 'extra' => [],
             'names' => [], 'hidden' => [], 'original' => [], 'key' => null];
         foreach ($asm['columns'] as $col) {
             $name = $col['name'];
@@ -1199,7 +1223,8 @@ abstract class Model implements \JsonSerializable
         if (count($asm['key'] ?? []) === 1) {
             $shape['key'] = $asm['key'][0]['index'];
         }
-        $shape['row'] = ['loaded' => true, 'names' => $shape['names'], 'hidden' => $shape['hidden'], 'original' => [], 'extra' => [], 'related' => [], 'cascade' => [], 'flat' => []];
+        $shape['row'] = ['loaded' => true, 'names' => $shape['names'], 'hidden' => $shape['hidden'],
+            'original' => [], 'extra' => [], 'related' => [], 'cascade' => [], 'flat' => []];
         return $shapes[$key] = $shape;
     }
 
@@ -1232,11 +1257,13 @@ abstract class Model implements \JsonSerializable
         }
         foreach ($shape['date'] as [$index, $name]) {
             $v = $vals[$index];
-            $values[$name] = $v === null ? null : (is_string($v) ? new PendingTime($v, $zone) : self::timeValue($v, $zone));
+            $values[$name] = $v === null ? null
+                : (is_string($v) ? new PendingTime($v, $zone) : self::timeValue($v, $zone));
         }
         foreach ($shape['string'] as [$index, $name]) {
             $v = $vals[$index];
-            $values[$name] = $v === null || is_string($v) ? $v : (is_resource($v) ? stream_get_contents($v) : (string) $v);
+            $values[$name] = $v === null || is_string($v) ? $v
+                : (is_resource($v) ? stream_get_contents($v) : (string) $v);
         }
         foreach ($shape['codec'] as [$index, $name]) {
             $values[$name] = $vals[$index];
@@ -1322,7 +1349,8 @@ abstract class Model implements \JsonSerializable
             return Collection::keyOf(($this->fetchKey)($m));
         }
         if ($this->keyName !== '') {
-            return Collection::keyOf(array_key_exists($this->keyName, $m->values) ? $m->value($this->keyName) : $m->row['extra'][$this->keyName] ?? null);
+            return Collection::keyOf(array_key_exists($this->keyName, $m->values) ? $m->value($this->keyName)
+                : $m->row['extra'][$this->keyName] ?? null);
         }
         $key = Db::rowKey($vals, $asm['key']);
         if ($key === null) {
@@ -1400,7 +1428,8 @@ abstract class Model implements \JsonSerializable
         $values = [];
         $seen = [];
         foreach ($parents as $p) {
-            if ($this->possible !== null && !Db::sameScalar($p->columnOrExtra($this->possible['column']), $this->possible['value'])) {
+            if ($this->possible !== null
+                && !Db::sameScalar($p->columnOrExtra($this->possible['column']), $this->possible['value'])) {
                 continue;
             }
             $v = $this->matchValues($p, 'left');
@@ -1444,7 +1473,8 @@ abstract class Model implements \JsonSerializable
             }
             $v = $this->matchValues($p, 'left');
             $matched = $v === null ? [] : $byKey[self::matchKey($v)] ?? [];
-            if ($this->possible !== null && !Db::sameScalar($p->columnOrExtra($this->possible['column']), $this->possible['value'])) {
+            if ($this->possible !== null
+                && !Db::sameScalar($p->columnOrExtra($this->possible['column']), $this->possible['value'])) {
                 $matched = [];
             }
             if ($many) {
@@ -1659,7 +1689,8 @@ abstract class Model implements \JsonSerializable
     {
         if (
             !is_int($value) && !is_float($value)
-            && !(is_string($value) && preg_match('/^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/D', $value) === 1)
+            && !(is_string($value) && preg_match('/^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?'
+                . '(?:[eE][+-]?[0-9]+)?$/D', $value) === 1)
         ) {
             throw new OrmException(Code::CODEC_DECODE, 'aggregate scalar is not a finite number');
         }
@@ -1712,7 +1743,8 @@ abstract class Model implements \JsonSerializable
         $hash = (string) ($meta['manifest_hash'] ?? '');
         $registered = Registry::models($hash)[$meta['entity']] ?? null;
         if ($registered !== static::class) {
-            throw new OrmException(Code::SCHEMA_HASH_MISMATCH, static::class . " is not registered by the generated models of manifest $hash");
+            throw new OrmException(Code::SCHEMA_HASH_MISMATCH, static::class
+                . " is not registered by the generated models of manifest $hash");
         }
         return $hash;
     }
@@ -1779,7 +1811,8 @@ abstract class Model implements \JsonSerializable
         }
         [$id] = $db->writeOf($frame, $r);
         $m = $this->newRow($this->conn);
-        $st = ['loaded' => true, 'names' => [], 'hidden' => [], 'original' => [], 'extra' => [], 'related' => [], 'cascade' => [], 'flat' => []];
+        $st = ['loaded' => true, 'names' => [], 'hidden' => [], 'original' => [], 'extra' => [], 'related' => [],
+            'cascade' => [], 'flat' => []];
         foreach ($this->sets as $column => $spec) {
             $st['names'][] = $column;
             if (array_key_exists('value', $spec)) {
@@ -1791,7 +1824,8 @@ abstract class Model implements \JsonSerializable
         // The columns that write the received key: identity, or a key the markdown executor decides (key_prefix).
         // The only primary key column whose value the request did not give.
         $assignedKey = $meta['identity'];
-        if ($assignedKey === '' && $db->driver() === 'markdown' && count($meta['pk']) === 1 && $id !== null && !array_key_exists($meta['pk'][0], $this->sets)) {
+        if ($assignedKey === '' && $db->driver() === 'markdown' && count($meta['pk']) === 1 && $id !== null
+            && !array_key_exists($meta['pk'][0], $this->sets)) {
             $assignedKey = $meta['pk'][0];
         }
         if ($assignedKey !== '') {
@@ -1837,7 +1871,8 @@ abstract class Model implements \JsonSerializable
         }
         foreach ($rows as $row) {
             if (!$row instanceof static || array_keys($row->sets) !== $columns) {
-                throw new OrmException(Code::CONFIG, 'every model of creates must set the same columns in the same order');
+                throw new OrmException(Code::CONFIG,
+                    'every model of creates must set the same columns in the same order');
             }
             foreach ($row->sets as $spec) {
                 if (!array_key_exists('value', $spec) && !isset($spec['null'])) {
@@ -1854,7 +1889,8 @@ abstract class Model implements \JsonSerializable
             $binds = $part * count($columns);
             if ($binds > $limit) {
                 $n = $i + 1;
-                throw new OrmException(Code::BATCH_TOO_LARGE, "creates batch $n of $part rows binds $binds parameters, over the {$db->driver()} limit of $limit");
+                throw new OrmException(Code::BATCH_TOO_LARGE, "creates batch $n of $part rows binds $binds "
+                    . "parameters, over the {$db->driver()} limit of $limit");
             }
         }
         $total = 0;
@@ -1942,7 +1978,8 @@ abstract class Model implements \JsonSerializable
                 continue;
             }
             if ($this->row === null || !in_array($column, $this->row['names'], true)) {
-                throw new OrmException(Code::CONFIG, "changing an AES column of {$meta['entity']} requires a row loaded with $column");
+                throw new OrmException(Code::CONFIG, "changing an AES column of {$meta['entity']} requires a row "
+                    . "loaded with $column");
             }
             $v = $this->value($column);
             $sets[$column] = $v === null ? ['null' => true] : ['value' => $v];
@@ -1975,8 +2012,10 @@ abstract class Model implements \JsonSerializable
             if ($raw === null) {
                 throw new OrmException(Code::CONFIG, 'update(true) requires a row loaded with its update time column');
             }
-            // The version goes down as the text the row was loaded with, which the bind layer takes for a datetime slot (T189).
-            $text = $raw instanceof PendingTime ? $raw->text : self::resolved($raw)->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s.u');
+            // The version goes down as the text the row was loaded with, which the bind layer takes for a
+            // datetime slot (T189).
+            $text = $raw instanceof PendingTime ? $raw->text
+                : self::resolved($raw)->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s.u');
             $r->ir['optimistic'] = ['column' => $updated, 'p' => $r->param($text)];
         }
         [, $affected] = $db->writeOf($frame, $r);
@@ -2063,8 +2102,9 @@ abstract class Model implements \JsonSerializable
     }
 
     /**
-     * Restores the soft-deleted row of the key that restore() picks, or creates it with the set values when no row holds the
-     * key, in one transaction (docs/operations/usage.md "Restore or create a row"), and returns the row. A row that holds the key and is
+     * Restores the soft-deleted row of the key that restore() picks, or creates it with the set values when no
+     * row holds the key, in one transaction (docs/operations/usage.md "Restore or create a row"), and returns
+     * the row. A row that holds the key and is
      * not deleted fails with ROW_NOT_DELETED, and nothing is written.
      */
     public function restoreOrCreate(): static
@@ -2077,7 +2117,8 @@ abstract class Model implements \JsonSerializable
                 return;
             }
             if ($q->getCount() > 0) {
-                throw new OrmException(Code::ROW_NOT_DELETED, 'restoreOrCreate: a row that is not deleted holds the key');
+                throw new OrmException(Code::ROW_NOT_DELETED,
+                    'restoreOrCreate: a row that is not deleted holds the key');
             }
             $row = $this->create();
         });
@@ -2085,7 +2126,8 @@ abstract class Model implements \JsonSerializable
     }
 
     /**
-     * Sends the restore request of the set values and returns the number of rows it restored and the query of the row by
+     * Sends the restore request of the set values and returns the number of rows it restored and the query of
+     * the row by
      * the values of the key that the planner picked.
      *
      * @return array{int, static}
@@ -2105,11 +2147,13 @@ abstract class Model implements \JsonSerializable
         }
         $keys = [];
         $args = [];
-        // The key is read from the request as the hook left it, before the planner renumbers its parameters, as Go reads it.
+        // The key is read from the request as the hook left it, before the planner renumbers its parameters, as
+        // Go reads it.
         [, $restored] = $db->writeOf($frame, $r, function (Request $hooked) use ($own, &$keys, &$args): void {
             $key = Validator::restoreKey(static::meta(), $hooked->ir)['key'];
             foreach ($key as $column) {
-                $keys[] = ['conn' => $keys === [] ? '' : 'and', 'op' => '', 'column' => $column, 'columns' => [], 'compare' => ''];
+                $keys[] = ['conn' => $keys === [] ? '' : 'and', 'op' => '', 'column' => $column, 'columns' => [],
+                    'compare' => ''];
                 $args[] = $this->restoreKeyValue($hooked, $own, $column);
             }
         });
@@ -2197,7 +2241,8 @@ abstract class Model implements \JsonSerializable
 
     /**
      * A column value of the array form. A date, datetime and time column each has one temporal form, the runtime
-     * value model text of docs/spec/protocol.md section 5 (Read): YYYY-MM-DD, YYYY-MM-DD HH:MM:SS.ffffff and HH:MM:SS.ffffff.
+     * value model text of docs/spec/protocol.md section 5 (Read): YYYY-MM-DD, YYYY-MM-DD HH:MM:SS.ffffff and
+     * HH:MM:SS.ffffff.
      */
     private static function columnArrayValue(string $type, mixed $v): mixed
     {
@@ -2214,7 +2259,10 @@ abstract class Model implements \JsonSerializable
         };
     }
 
-    /** A time or datetime text with six fraction digits, zeros past the column precision (the database text has the precision). */
+    /**
+     * A time or datetime text with six fraction digits, zeros past the column precision (the database text has
+     * the precision).
+     */
     private static function sixFractionDigits(string $text): string
     {
         $dot = strpos($text, '.');
@@ -2241,7 +2289,8 @@ abstract class Model implements \JsonSerializable
     }
 
     /** Flags of json_encode for the values of toJson and jsonSerialize. */
-    public const JSON_FLAGS = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR;
+    public const JSON_FLAGS = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION
+        | JSON_THROW_ON_ERROR;
 
     /**
      * The row as JSON text: the members in row order, related rows as nested
@@ -2310,10 +2359,12 @@ abstract class Model implements \JsonSerializable
         foreach ($this->pairs() as [$name, $v]) {
             if (
                 $v instanceof \Polyspec\OrderedJson\Value
-                || ($v instanceof StyledValue && $v->kind === 'value' && $v->payload() instanceof \Polyspec\OrderedJson\Value)
+                || ($v instanceof StyledValue && $v->kind === 'value'
+                    && $v->payload() instanceof \Polyspec\OrderedJson\Value)
                 || (is_array($v) && self::holdsOrderedJson($v))
             ) {
-                throw new OrmException(Code::CODEC_ENCODE, "json_encode cannot write the ordered-json value of $name; use toJson()");
+                throw new OrmException(Code::CODEC_ENCODE,
+                    "json_encode cannot write the ordered-json value of $name; use toJson()");
             }
             $out[$name] = $v;
         }

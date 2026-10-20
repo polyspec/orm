@@ -49,29 +49,34 @@ final class ParamCheck
     {
         $col = $use['column'];
         if ($col !== null && $col['type'] === $use['type']) {
-            return ['type' => $use['type'], 'precision' => $col['precision'] ?? 0, 'scale' => $col['scale'] ?? 0, 'length' => $col['length'] ?? 0, 'not_null' => ($use['assign'] ?? false) && !$col['nullable'], 'column' => $col['name']];
+            return ['type' => $use['type'], 'precision' => $col['precision'] ?? 0, 'scale' => $col['scale'] ?? 0,
+                'length' => $col['length'] ?? 0, 'not_null' => ($use['assign'] ?? false) && !$col['nullable'],
+                'column' => $col['name']];
         }
-        return ['type' => $use['type'], 'precision' => in_array($use['type'], ['datetime', 'time'], true) ? 6 : 0, 'scale' => 0, 'length' => 0];
+        return ['type' => $use['type'],
+            'precision' => in_array($use['type'], ['datetime', 'time'], true) ? 6 : 0, 'scale' => 0, 'length' => 0];
     }
 
     /**
-     * Refuses SQL NULL as parameter $i when $slot assigns a non-null column; it runs for every slot before any
-     * statement.
+     * Refuses SQL NULL as parameter $i when $slot assigns a non-null column; it runs for every slot before
+     * any statement.
      *
      * @param array{not_null?: bool, column?: string} $slot
      */
     public static function checkAssign(int $i, mixed $v, array $slot): void
     {
         if ($v === null && ($slot['not_null'] ?? false)) {
-            throw new OrmException(Code::CODEC_ENCODE, "parameter $i assigns NULL to the non-null " . ($slot['column'] ?? ''));
+            throw new OrmException(Code::CODEC_ENCODE,
+                "parameter $i assigns NULL to the non-null " . ($slot['column'] ?? ''));
         }
     }
 
     /**
-     * Checks the value of parameter $i against the logical type of a slot it fills: the host value kind, the range of
-     * an integer, a finite f64, the precision and scale of a decimal, a date from 0001-01-01 to 9999-12-31, no
-     * non-zero digit of a time or datetime past its precision, at most n characters of a varchar(n), no U+0000 in text
-     * and a lower-case canonical uuid. A value outside it is CODEC_ENCODE; SQL NULL is accepted.
+     * Checks the value of parameter $i against the logical type of a slot it fills: the host value kind,
+     * the range of an integer, a finite f64, the precision and scale of a decimal, a date from 0001-01-01
+     * to 9999-12-31, no non-zero digit of a time or datetime past its precision, at most n characters of a
+     * varchar(n), no U+0000 in text and a lower-case canonical uuid. A value outside it is CODEC_ENCODE;
+     * SQL NULL is accepted.
      *
      * @param array{type: string, precision: int, scale: int, length: int} $slot
      */
@@ -81,7 +86,8 @@ final class ParamCheck
             return;
         }
         $type = $slot['type'];
-        $kind = static fn(): OrmException => new OrmException(Code::CODEC_ENCODE, "parameter $i (" . get_debug_type($v) . ") is not a $type value");
+        $kind = static fn(): OrmException => new OrmException(Code::CODEC_ENCODE,
+            "parameter $i (" . get_debug_type($v) . ") is not a $type value");
         switch ($type) {
             case 'i16':
             case 'i32':
@@ -99,7 +105,8 @@ final class ParamCheck
                     throw $kind();
                 }
                 if (is_float($v) && !is_finite($v)) {
-                    throw new OrmException(Code::CODEC_ENCODE, "parameter $i (" . var_export($v, true) . ') is not a finite f64');
+                    throw new OrmException(Code::CODEC_ENCODE,
+                        "parameter $i (" . var_export($v, true) . ') is not a finite f64');
                 }
                 return;
             case 'bool':
@@ -131,10 +138,13 @@ final class ParamCheck
                     throw new OrmException(Code::CODEC_ENCODE, "parameter $i holds U+0000, which no $type value holds");
                 }
                 if ($type === 'varchar' && $slot['length'] > 0 && $n > $slot['length']) {
-                    throw new OrmException(Code::CODEC_ENCODE, "parameter $i has $n characters, more than varchar({$slot['length']})");
+                    throw new OrmException(Code::CODEC_ENCODE,
+                        "parameter $i has $n characters, more than varchar({$slot['length']})");
                 }
-                if ($type === 'uuid' && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/D', $v) !== 1) {
-                    throw new OrmException(Code::CODEC_ENCODE, "parameter $i (\"$v\") is not a lower-case canonical uuid");
+                if ($type === 'uuid'
+                    && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/D', $v) !== 1) {
+                    throw new OrmException(Code::CODEC_ENCODE,
+                        "parameter $i (\"$v\") is not a lower-case canonical uuid");
                 }
                 return;
             case 'bytes':
@@ -153,9 +163,11 @@ final class ParamCheck
                 } catch (OrmException $e) {
                     throw new OrmException(Code::CODEC_ENCODE, "parameter $i: " . $e->getMessage(), $e);
                 }
-                if ($type !== 'time' && (!is_string($text) || preg_match('/^\d{4}-/', $text) !== 1 || str_starts_with($text, '0000'))) {
+                if ($type !== 'time' && (!is_string($text) || preg_match('/^\d{4}-/', $text) !== 1
+                    || str_starts_with($text, '0000'))) {
                     $shown = "\"$v\"";
-                    throw new OrmException(Code::CODEC_ENCODE, "parameter $i ($shown) is outside 0001-01-01 to 9999-12-31");
+                    throw new OrmException(Code::CODEC_ENCODE,
+                        "parameter $i ($shown) is outside 0001-01-01 to 9999-12-31");
                 }
                 return;
         }

@@ -11,10 +11,13 @@ namespace Polyspec\Orm;
  */
 final class Markdown
 {
-    /** The error that the SQL-only surface accepts on a markdown connection (docs/spec/dialects.md "Markdown IR executor"). */
     /**
-     * The begin control message of a transaction: a read-only transaction sends read_only true, any other leaves the
-     * member out (docs/spec/protocol.md §5 Session, the control cases of tests/bind/vectors.json).
+     * The error that the SQL-only surface accepts on a markdown connection (docs/spec/dialects.md "Markdown
+     * IR executor").
+     */
+    /**
+     * The begin control message of a transaction: a read-only transaction sends read_only true, any other
+     * leaves the member out (docs/spec/protocol.md §5 Session, the control cases of tests/bind/vectors.json).
      *
      * @return array{op: 'begin', read_only?: true}
      */
@@ -25,7 +28,8 @@ final class Markdown
 
     public static function unsupported(string $surface): OrmException
     {
-        return new OrmException(Code::CAPABILITY_UNSUPPORTED, "$surface is not supported by the markdown IR executor");
+        return new OrmException(Code::CAPABILITY_UNSUPPORTED,
+            "$surface is not supported by the markdown IR executor");
     }
 
     private static function answerError(string $message): OrmException
@@ -34,7 +38,8 @@ final class Markdown
     }
 
     /**
-     * Validates r, runs its request message on the connection's session, and returns the answer and the runtime model.
+     * Validates r, runs its request message on the connection's session, and returns the answer and the
+     * runtime model.
      * The message is {ir_version, manifest_hash, request, params, now}.
      *
      * @return array{0: array<string, mixed>, 1: RuntimeModel}
@@ -49,7 +54,8 @@ final class Markdown
         foreach ($r->params as $i => $v) {
             foreach ($uses[$i] ?? [] as $use) {
                 ParamCheck::checkAssign($i, $v, ParamCheck::useSlotType($use));
-                if ($use['column'] !== null && array_filter($use['column']['codec'], static fn(string $s): bool => Codec::isHostStyle($s)) !== []) {
+                if ($use['column'] !== null && array_filter($use['column']['codec'],
+                    static fn(string $s): bool => Codec::isHostStyle($s)) !== []) {
                     continue;
                 }
                 ParamCheck::check($i, $v, ParamCheck::useSlotType($use), $db->zone());
@@ -70,10 +76,11 @@ final class Markdown
     }
 
     /**
-     * The runtime value model JSON value of parameter $i: a decimal is a string, bytes are base64, and a datetime is
-     * YYYY-MM-DD HH:MM:SS.ffffff in UTC, a date is YYYY-MM-DD, a time is HH:MM:SS.ffffff (digits after p are 0; string values too). Which form it is
-     * is decided by the type of the slot the parameter fills. For a hex or ip style column's slot, the client encodes
-     * the value before sending it, as on an SQL connection.
+     * The runtime value model JSON value of parameter $i: a decimal is a string, bytes are base64, and a
+     * datetime is YYYY-MM-DD HH:MM:SS.ffffff in UTC, a date is YYYY-MM-DD, a time is HH:MM:SS.ffffff
+     * (digits after p are 0; string values too). Which form it is is decided by the type of the slot the
+     * parameter fills. For a hex or ip style column's slot, the client encodes the value before sending it,
+     * as on an SQL connection.
      *
      * @param list<array{type: string, column: ?array}> $uses
      */
@@ -111,8 +118,9 @@ final class Markdown
     }
 
     /**
-     * Reads the answer of row reads (one, all, group_count, paginate) as a plan and a positional result. The plan is one placement of the root
-     * node; the last cell of each row in the result is that row's join and relation rows (MarkdownLinks).
+     * Reads the answer of row reads (one, all, group_count, paginate) as a plan and a positional result.
+     * The plan is one placement of the root node; the last cell of each row in the result is that row's
+     * join and relation rows (MarkdownLinks).
      * The third value of paginate is the number of all rows that match the condition.
      *
      * @return array{0: array, 1: array, 2: int}
@@ -130,10 +138,12 @@ final class Markdown
             throw self::answerError('a paginate answer has no count');
         }
         $groups = $kind === 'group_count';
-        $plan = ['kind' => $kind, 'steps' => [['role' => 'main', 'assemble' => self::layout($model, $r->ir, $groups, $rows)]]];
+        $plan = ['kind' => $kind, 'steps' => [['role' => 'main',
+            'assemble' => self::layout($model, $r->ir, $groups, $rows)]]];
         Assemble::index($plan, $model);
         $main = self::rows($db->config(), $model, $r->ir, $plan['steps'][0]['assemble'], $rows);
-        return [$plan, ['main' => $main, 'steps' => [], 'params' => $r->params, 'markdown' => true], is_int($count) ? $count : 0];
+        return [$plan, ['main' => $main, 'steps' => [], 'params' => $r->params, 'markdown' => true],
+            is_int($count) ? $count : 0];
     }
 
     /** The answer for count, sum, and avg. */
@@ -173,7 +183,10 @@ final class Markdown
         return [array_map(self::aggregateValue(...), $keys), $affected];
     }
 
-    /** The value of a sum or avg answer, and the key of a write answer: an integer, a decimal, a decimal string, or null if none. */
+    /**
+     * The value of a sum or avg answer, and the key of a write answer: an integer, a decimal, a decimal
+     * string, or null if none.
+     */
     private static function aggregateValue(mixed $v): int|float|string|null
     {
         if ($v === null || is_int($v) || is_float($v) || is_string($v)) {
@@ -244,7 +257,8 @@ final class Markdown
                     break;
                 }
             }
-            $asm['children'][] = ['rel' => $name, 'kind' => 'join', 'assemble' => self::layout($m, $j['query'], false, $child)];
+            $asm['children'][] = ['rel' => $name, 'kind' => 'join',
+                'assemble' => self::layout($m, $j['query'], false, $child)];
         }
         foreach ($rels as $name => $rel) {
             $child = [];
@@ -261,16 +275,19 @@ final class Markdown
             $asm['children'][] = [
                 'rel' => $name, 'kind' => $rel['kind'], 'flatten' => !empty($rel['query']['flatten']),
                 'assemble' => self::layout($m, $rel['query'], false, $child),
-                // If this row is the row that a relation row's foreign key points at, those rows belong to this row (same as the planner).
-                'cascade' => empty($rel['query']['no_cascade_delete']) && $parentKeys === $ent['pk'] && $childKeys !== $target['pk'],
+                // If this row is the row that a relation row's foreign key points at, those rows belong to this
+                // row (same as the planner).
+                'cascade' => empty($rel['query']['no_cascade_delete']) && $parentKeys === $ent['pk']
+                    && $childKeys !== $target['pk'],
             ];
         }
         return $asm;
     }
 
     /**
-     * The placement of output names: the group count's row_count, a scalar subquery, a column function, or otherwise the node entity's
-     * column. The markdown executor leaves every codec stage to the client, so the whole codec of the column
+     * The placement of output names: the group count's row_count, a scalar subquery, a column function, or
+     * otherwise the node entity's column. The markdown executor leaves every codec stage to the client, so
+     * the whole codec of the column
      * is the style it decodes.
      */
     private static function outCol(RuntimeModel $m, array $q, array $ent, bool $groups, string $name, int $index): array
@@ -283,15 +300,19 @@ final class Markdown
             $type = match ($sub['agg'] ?? '') {
                 'count' => 'i64',
                 'avg' => 'f64',
-                default => RuntimeModel::column($m->entities[$sub['query']['entity']], $sub['column'])['type'] ?? 'text',
+                default => RuntimeModel::column($m->entities[$sub['query']['entity']],
+                    $sub['column'])['type'] ?? 'text',
             };
             return ['index' => $index, 'name' => $name, 'type' => $type];
         }
         if (!$groups && isset($q['columns']['fn'][$name])) {
             $cf = $q['columns']['fn'][$name];
-            return ['index' => $index, 'name' => $name, 'column' => $cf['column'], 'type' => Validator::functionType($cf['fn']['name'], RuntimeModel::column($ent, $cf['column']))];
+            return ['index' => $index, 'name' => $name, 'column' => $cf['column'],
+                'type' => Validator::functionType($cf['fn']['name'], RuntimeModel::column($ent, $cf['column']))];
         }
-        $col = RuntimeModel::column($ent, $name) ?? throw self::answerError("{$q['entity']} answers $name, which is no output of the request");
+        $col = RuntimeModel::column($ent, $name) ?? throw self::answerError(
+            "{$q['entity']} answers $name, which is no output of the request"
+        );
         $out = ['index' => $index, 'name' => $name, 'column' => $name, 'type' => $col['type']];
         if ($col['codec'] !== []) {
             $out['styles'] = $col['codec'];
@@ -320,8 +341,8 @@ final class Markdown
     }
 
     /**
-     * Reads the answer's rows as the positional rows of node placement $asm: the output values, and in the last cell the join and
-     * relation rows. A codec column is decoded per node.
+     * Reads the answer's rows as the positional rows of node placement $asm: the output values, and in the
+     * last cell the join and relation rows. A codec column is decoded per node.
      *
      * @param list<mixed> $rows
      * @return list<list<mixed>>
@@ -341,21 +362,25 @@ final class Markdown
             foreach ($row as $name => $value) {
                 $name = (string) $name;
                 if (isset($joins[$name])) {
-                    $links->joins[$name] = $value === null ? null : self::rows($config, $m, $joins[$name]['query'], $children[$name], [$value])[0];
+                    $links->joins[$name] = $value === null ? null
+                        : self::rows($config, $m, $joins[$name]['query'], $children[$name], [$value])[0];
                     continue;
                 }
                 if (isset($rels[$name])) {
-                    $links->rels[$name] = self::rows($config, $m, $rels[$name]['query'], $children[$name], self::relationItems($value, $rels[$name]['query'], $name));
+                    $links->rels[$name] = self::rows($config, $m, $rels[$name]['query'], $children[$name],
+                        self::relationItems($value, $rels[$name]['query'], $name));
                     continue;
                 }
                 $col = $asm['columns'][count($vals)] ?? null;
                 if ($col === null || $col['name'] !== $name) {
-                    throw self::answerError("a row of {$q['entity']} answers $name where its first row answers " . ($col['name'] ?? 'no more outputs'));
+                    throw self::answerError("a row of {$q['entity']} answers $name where its first row answers "
+                        . ($col['name'] ?? 'no more outputs'));
                 }
                 $vals[] = self::answerValue($col['type'], $value, "{$q['entity']}.$name");
             }
             if (count($vals) !== count($asm['columns'])) {
-                throw self::answerError("a row of {$q['entity']} answers " . count($vals) . ' outputs, its first row ' . count($asm['columns']));
+                throw self::answerError("a row of {$q['entity']} answers " . count($vals)
+                    . ' outputs, its first row ' . count($asm['columns']));
             }
             $vals[] = $links;
             $out[] = $vals;
@@ -367,7 +392,10 @@ final class Markdown
         return $out;
     }
 
-    /** Reads one answer value as a PHP value of the column type. The value is the same runtime value model as a parameter. */
+    /**
+     * Reads one answer value as a PHP value of the column type. The value is the same runtime value model as
+     * a parameter.
+     */
     private static function answerValue(string $type, mixed $v, string $where): mixed
     {
         if ($v === null) {
@@ -384,7 +412,8 @@ final class Markdown
             $ok = $v !== false;
         }
         if (!$ok) {
-            throw new OrmException(Code::CODEC_DECODE, "$where: the answer value " . json_encode($v) . " is not a $type value");
+            throw new OrmException(Code::CODEC_DECODE, "$where: the answer value " . json_encode($v)
+                . " is not a $type value");
         }
         return $type === 'f64' ? (float) $v : $v;
     }

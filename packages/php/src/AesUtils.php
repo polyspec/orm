@@ -16,7 +16,10 @@ final class AesUtils
     {
     }
 
-    /** @return array{table: string, keys: list<string>, version: string, columns: list<array{name: string, styles: list<string>}>} */
+    /**
+     * @return array{table: string, keys: list<string>, version: string,
+     *     columns: list<array{name: string, styles: list<string>}>}
+     */
     private function spec(Model $model): array
     {
         $this->db->unsupportedOnMarkdown('aes rotation');
@@ -24,13 +27,15 @@ final class AesUtils
         $columns = [];
         foreach ($meta['columns'] as $name => $col) {
             if (RuntimeModel::encrypted($col)) {
-                $columns[] = ['name' => $name, 'styles' => array_values(array_filter($col['codec'], static fn(string $s): bool => $s === 'aes' || $s === 'hex'))];
+                $columns[] = ['name' => $name, 'styles' => array_values(array_filter($col['codec'],
+                    static fn(string $s): bool => $s === 'aes' || $s === 'hex'))];
             }
         }
         if ($meta['aes_version'] === '' || $columns === []) {
             throw new OrmException(Code::CONFIG, "entity {$meta['entity']} has no AES columns with a key version");
         }
-        return ['table' => $meta['table'], 'keys' => $meta['pk'], 'version' => $meta['aes_version'], 'columns' => $columns];
+        return ['table' => $meta['table'], 'keys' => $meta['pk'], 'version' => $meta['aes_version'],
+            'columns' => $columns];
     }
 
     private function q(string $name): string
@@ -42,7 +47,8 @@ final class AesUtils
     {
         $spec = $this->spec($model);
         $version = $this->q($spec['version']);
-        $rows = $this->db->fetch(StatementEvent::UTILITY, [$spec['table']], $this->db->transactionNumber(), "SELECT $version, COUNT(*) FROM {$this->q($spec['table'])} GROUP BY $version ORDER BY $version");
+        $rows = $this->db->fetch(StatementEvent::UTILITY, [$spec['table']], $this->db->transactionNumber(),
+            "SELECT $version, COUNT(*) FROM {$this->q($spec['table'])} GROUP BY $version ORDER BY $version");
         $versions = [];
         $total = 0;
         $pending = 0;
@@ -65,9 +71,12 @@ final class AesUtils
         $pg = $this->db->driver() === 'postgres';
         // PostgreSQL uses $n placeholders. For pdo_pgsql, they are sent as ?.
         $ph = static fn(int $n): string => $pg ? '$' . $n : '?';
-        $columns = array_merge(array_map($this->q(...), $spec['keys']), [$this->q($spec['version'])], array_map(fn(array $c): string => $this->q($c['name']), $spec['columns']));
+        $columns = array_merge(array_map($this->q(...), $spec['keys']), [$this->q($spec['version'])],
+            array_map(fn(array $c): string => $this->q($c['name']), $spec['columns']));
         $keyCount = count($spec['keys']);
-        $select = 'SELECT ' . implode(', ', $columns) . " FROM {$this->q($spec['table'])} WHERE {$this->q($spec['version'])} <> {$ph(1)} ORDER BY " . implode(', ', array_slice($columns, 0, $keyCount)) . ' LIMIT 1000';
+        $select = 'SELECT ' . implode(', ', $columns)
+            . " FROM {$this->q($spec['table'])} WHERE {$this->q($spec['version'])} <> {$ph(1)} ORDER BY "
+            . implode(', ', array_slice($columns, 0, $keyCount)) . ' LIMIT 1000';
         $sets = [];
         foreach ($spec['columns'] as $i => $c) {
             $sets[] = $this->q($c['name']) . ' = ' . $ph($i + 1);
@@ -78,7 +87,8 @@ final class AesUtils
             $where[] = $this->q($k) . ' = ' . $ph(count($spec['columns']) + 2 + $i);
         }
         $where[] = $this->q($spec['version']) . ' = ' . $ph(count($spec['columns']) + 2 + $keyCount);
-        $update = "UPDATE {$this->q($spec['table'])} SET " . implode(', ', $sets) . ' WHERE ' . implode(' AND ', $where);
+        $update = "UPDATE {$this->q($spec['table'])} SET " . implode(', ', $sets)
+            . ' WHERE ' . implode(' AND ', $where);
         return $this->u->run(function () use ($select, $update, $spec, $keyring, $keyCount, $pg): int {
             $db = $this->db;
             $tx = $db->transactionNumber();
@@ -114,7 +124,8 @@ final class AesUtils
                         $args[] = $row[$k];
                     }
                     $args[] = $version;
-                    $changed = $db->observed(StatementEvent::UTILITY, $tables, $tx, $update, $args, static function () use ($up, $args): int {
+                    $changed = $db->observed(StatementEvent::UTILITY, $tables, $tx, $update, $args,
+                        static function () use ($up, $args): int {
                         foreach ($args as $i => $v) {
                             match (true) {
                                 $v instanceof Bytes => $up->bindValue($i + 1, $v->bytes, \PDO::PARAM_LOB),

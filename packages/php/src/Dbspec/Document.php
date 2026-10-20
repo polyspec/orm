@@ -16,9 +16,9 @@ final class Document
     /** @var list<string> Comment lines after the last line of the document. */
     public array $trailingComments = [];
     /**
-     * Means the document is not owned by the set but is an external document that an owned document uses. External documents
-     * are parsed and checked, but not rendered, installed, compared, or generated (docs/spec/dbspec.md "Documents and
-     * use"). They do not appear in the document text.
+     * Means the document is not owned by the set but is an external document that an owned document uses. External
+     * documents are parsed and checked, but not rendered, installed, compared, or generated (docs/spec/dbspec.md
+     * "Documents and use"). They do not appear in the document text.
      */
     public bool $external = false;
 

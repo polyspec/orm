@@ -8,17 +8,24 @@ use PhpParser\Node;
 use PhpParser\NodeVisitorAbstract;
 
 /**
- * Walks one file of a Scan. A scope maps a variable name to the value it holds: ['cls' => class, 'many' => bool], where many marks a
- * collection of models; a variable bound to something else maps to null and hides an outer binding.
+ * Walks one file of a Scan. A scope maps a variable name to the value it holds: ['cls' => class,
+ * 'many' => bool], where many marks a collection of models; a variable bound to something else maps to
+ * null and hides an outer binding.
  *
  */
 final class ScanVisitor extends NodeVisitorAbstract
 {
     /** @var list<array<string, array{cls: string, many: bool}|null>> */
     private array $scopes = [[]];
-    /** @var list<int> the indexes of $scopes that a function, method or closure opens; a variable is looked up down to the last one */
+    /**
+     * @var list<int> the indexes of $scopes that a function, method or closure opens; a variable is looked
+     *     up down to the last one
+     */
     private array $barriers = [0];
-    /** @var array<string, array{cls: string, many: bool}> functions with a model return type, by lowercase short name */
+    /**
+     * @var array<string, array{cls: string, many: bool}> functions with a model return type, by lowercase
+     *     short name
+     */
     private array $functions = [];
     /** @var \SplObjectStorage<Node, string> closures that receive a model as the first parameter */
     private \SplObjectStorage $given;
@@ -29,12 +36,17 @@ final class ScanVisitor extends NodeVisitorAbstract
     /** @var array<string, string> the class imports of the file, lowercase alias => fully qualified name */
     private array $uses = [];
     /**
-     * The if statements being walked, innermost last. Each holds the scope before its branches ('base'), the scope at the end of
-     * each branch that is done ('states') and whether an else branch was entered ('else').
-     * @var list<array{base: array<string, array{cls: string, many: bool}|null>, states: list<array<string, array{cls: string, many: bool}|null>>, else: bool}>
+     * The if statements being walked, innermost last. Each holds the scope before its branches ('base'),
+     * the scope at the end of each branch that is done ('states') and whether an else branch was entered
+     * ('else').
+     * @var list<array{base: array<string, array{cls: string, many: bool}|null>,
+     *     states: list<array<string, array{cls: string, many: bool}|null>>, else: bool}>
      */
     private array $ifs = [];
-    /** @var list<array<string, array{cls: string, many: bool}|array{union: list<array{cls: string, many: bool}>}|null>> the scope before each loop being walked */
+    /**
+     * @var list<array<string, array{cls: string, many: bool}|array{union: list<array{cls: string, many: bool}>}|null>>
+     *     the scope before each loop being walked
+     */
     private array $loopBefore = [];
 
     /**
@@ -108,7 +120,8 @@ final class ScanVisitor extends NodeVisitorAbstract
                 } elseif ($stmt instanceof Node\Stmt\ClassMethod && strtolower($stmt->name->toString()) === '__construct') {
                     foreach ($stmt->params as $param) {
                         $value = $this->typeValue($param->type);
-                        if ($value !== null && $param->flags !== 0 && $param->var instanceof Node\Expr\Variable && is_string($param->var->name)) {
+                        if ($value !== null && $param->flags !== 0 && $param->var instanceof Node\Expr\Variable
+                            && is_string($param->var->name)) {
                             $props[$param->var->name] = $value;
                         }
                     }
@@ -140,8 +153,10 @@ final class ScanVisitor extends NodeVisitorAbstract
                 $this->scopes[count($this->scopes) - 1][$param->var->name] = $value;
             }
         }
-        if ($node instanceof Node\Stmt\While_ || $node instanceof Node\Stmt\Do_ || $node instanceof Node\Stmt\For_ || $node instanceof Node\Stmt\Foreach_) {
-            // Before the loop runs, the scope before it is kept, and each name it assigns may hold the values of its assignments.
+        if ($node instanceof Node\Stmt\While_ || $node instanceof Node\Stmt\Do_ || $node instanceof Node\Stmt\For_
+            || $node instanceof Node\Stmt\Foreach_) {
+            // Before the loop runs, the scope before it is kept, and each name it assigns may hold the values
+            // of its assignments.
             $this->enterLoop($node);
         }
         if ($node instanceof Node\Stmt\Foreach_) {
@@ -160,12 +175,14 @@ final class ScanVisitor extends NodeVisitorAbstract
             $this->call($node);
         }
         if ($node instanceof Node\Stmt\Switch_) {
-            $this->ifs[] = ['base' => $this->top(), 'states' => [], 'else' => false, 'started' => false, 'pending' => false];
+            $this->ifs[] = ['base' => $this->top(), 'states' => [], 'else' => false, 'started' => false,
+                'pending' => false];
         }
         if ($node instanceof Node\Stmt\Case_) {
             $i = count($this->ifs) - 1;
             if ($this->ifs[$i]['started']) {
-                // A case after another one starts from the scope of the cases before it, since it may fall through; a case that returns does not.
+                // A case after another one starts from the scope of the cases before it, since it may fall
+                // through; a case that returns does not.
                 if (!$this->ifs[$i]['pending']) {
                     $this->ifs[$i]['states'][] = $this->top();
                     $this->setTop(self::mergeScopes([$this->ifs[$i]['base'], $this->top()]));
@@ -180,10 +197,12 @@ final class ScanVisitor extends NodeVisitorAbstract
             }
         }
         if ($node instanceof Node\Stmt\TryCatch) {
-            $this->ifs[] = ['base' => $this->top(), 'states' => [], 'else' => false, 'catch' => false, 'tryEnd' => null, 'finally' => false, 'pending' => self::exits($node->stmts)];
+            $this->ifs[] = ['base' => $this->top(), 'states' => [], 'else' => false, 'catch' => false,
+                'tryEnd' => null, 'finally' => false, 'pending' => self::exits($node->stmts)];
         }
         if ($node instanceof Node\Stmt\Catch_) {
-            // The catch starts from the scope before the try joined with the scope at the end of the try block, since an exception can leave any of its statements.
+            // The catch starts from the scope before the try joined with the scope at the end of the try block,
+            // since an exception can leave any of its statements.
             $i = count($this->ifs) - 1;
             if (!$this->ifs[$i]['catch']) {
                 $this->ifs[$i]['catch'] = true;
@@ -208,7 +227,8 @@ final class ScanVisitor extends NodeVisitorAbstract
             $this->ifs[$i]['finally'] = true;
             $this->ifs[$i]['pending'] = false;
         }
-        if ($node instanceof Node\Stmt\Catch_ && $node->var instanceof Node\Expr\Variable && is_string($node->var->name)) {
+        if ($node instanceof Node\Stmt\Catch_ && $node->var instanceof Node\Expr\Variable
+            && is_string($node->var->name)) {
             $this->bind($node->var->name, null);
         }
         if ($node instanceof Node\Stmt\Static_) {
@@ -222,7 +242,8 @@ final class ScanVisitor extends NodeVisitorAbstract
             }
         }
         if ($node instanceof Node\Stmt\If_) {
-            $this->ifs[] = ['base' => $this->top(), 'states' => [], 'else' => false, 'pending' => self::exits($node->stmts)];
+            $this->ifs[] = ['base' => $this->top(), 'states' => [], 'else' => false,
+                'pending' => self::exits($node->stmts)];
         }
         if ($node instanceof Node\Stmt\ElseIf_ || $node instanceof Node\Stmt\Else_) {
             // Each branch starts from the scope before the if; the scope at the end of the branch that is done is kept.
@@ -242,11 +263,13 @@ final class ScanVisitor extends NodeVisitorAbstract
         if ($node instanceof Node\Stmt\Class_ || $node instanceof Node\Stmt\Trait_) {
             array_pop($this->properties);
         }
-        if ($node instanceof Node\Stmt\While_ || $node instanceof Node\Stmt\Do_ || $node instanceof Node\Stmt\For_ || $node instanceof Node\Stmt\Foreach_) {
+        if ($node instanceof Node\Stmt\While_ || $node instanceof Node\Stmt\Do_ || $node instanceof Node\Stmt\For_
+            || $node instanceof Node\Stmt\Foreach_) {
             // A loop may run zero times, so the scope after it joins the scope before it.
             $this->setTop(self::mergeScopes([array_pop($this->loopBefore), $this->top()]));
         }
-        if ($node instanceof Node\Stmt\If_ || $node instanceof Node\Stmt\Switch_ || $node instanceof Node\Stmt\TryCatch) {
+        if ($node instanceof Node\Stmt\If_ || $node instanceof Node\Stmt\Switch_
+            || $node instanceof Node\Stmt\TryCatch) {
             $frame = array_pop($this->ifs);
             $states = $frame['states'];
             if ($node instanceof Node\Stmt\TryCatch) {
@@ -254,7 +277,8 @@ final class ScanVisitor extends NodeVisitorAbstract
                     $states[] = $this->top();
                 }
             } else {
-                // The last branch is open; without an else (or default) the scope before the statement is one of the outcomes.
+                // The last branch is open; without an else (or default) the scope before the statement is one of
+                // the outcomes.
                 if (!$frame['pending'] && ($node instanceof Node\Stmt\If_ || $frame['started'])) {
                     $states[] = $this->top();
                 }
@@ -272,25 +296,32 @@ final class ScanVisitor extends NodeVisitorAbstract
                 array_pop($this->barriers);
             }
         }
-        if ($node instanceof Node\Expr\Assign && $node->var instanceof Node\Expr\Variable && is_string($node->var->name)) {
+        if ($node instanceof Node\Expr\Assign && $node->var instanceof Node\Expr\Variable
+            && is_string($node->var->name)) {
             $this->bind($node->var->name, $this->valueOf($node->expr));
-        } elseif ($node instanceof Node\Expr\Assign && ($node->var instanceof Node\Expr\Array_ || $node->var instanceof Node\Expr\List_)) {
+        } elseif ($node instanceof Node\Expr\Assign
+            && ($node->var instanceof Node\Expr\Array_ || $node->var instanceof Node\Expr\List_)) {
             // A destructuring assignment binds each variable to a value the scan does not type.
             $this->forget($node->var);
-        } elseif ($node instanceof Node\Expr\AssignRef && $node->var instanceof Node\Expr\Variable && is_string($node->var->name)) {
-            // A reference makes both names one variable, whose class the scan does not follow: both are forgotten.
+        } elseif ($node instanceof Node\Expr\AssignRef && $node->var instanceof Node\Expr\Variable
+            && is_string($node->var->name)) {
+            // A reference makes both names one variable, whose class the scan does not follow: both are
+            // forgotten.
             $this->bind($node->var->name, null);
             if ($node->expr instanceof Node\Expr\Variable && is_string($node->expr->name)) {
                 $this->bind($node->expr->name, null);
             }
-        } elseif ($node instanceof Node\Expr\AssignOp && $node->var instanceof Node\Expr\Variable && is_string($node->var->name)) {
-            // A compound or coalescing assignment (??=, .=) does not give the variable a model it can be typed with.
+        } elseif ($node instanceof Node\Expr\AssignOp && $node->var instanceof Node\Expr\Variable
+            && is_string($node->var->name)) {
+            // A compound or coalescing assignment (??=, .=) does not give the variable a model it can be typed
+            // with.
             $this->bind($node->var->name, null);
         }
-        // A `/** @var Model|null $name */` tag on an assignment types its variable: a getter returns mixed, so the tag is how
-        // a receiver read through a getter names its model.
+        // A `/** @var Model|null $name */` tag on an assignment types its variable: a getter returns mixed, so
+        // the tag is how a receiver read through a getter names its model.
         if (
-            $node instanceof Node\Stmt\Expression && $node->expr instanceof Node\Expr\Assign && $node->expr->var instanceof Node\Expr\Variable
+            $node instanceof Node\Stmt\Expression && $node->expr instanceof Node\Expr\Assign
+            && $node->expr->var instanceof Node\Expr\Variable
             && is_string($node->expr->var->name)
         ) {
             $typed = $this->docValue($node->getDocComment()?->getText() ?? '', $node->expr->var->name);
@@ -319,7 +350,8 @@ final class ScanVisitor extends NodeVisitorAbstract
                 $name = substr($type, 1);
             } else {
                 $first = strtolower(explode('\\', $type)[0]);
-                $name = isset($this->uses[$first]) ? $this->uses[$first] . substr($type, strlen($first)) : ltrim($this->namespace . '\\' . $type, '\\');
+                $name = isset($this->uses[$first]) ? $this->uses[$first] . substr($type, strlen($first))
+                    : ltrim($this->namespace . '\\' . $type, '\\');
             }
             $cls = $this->models[strtolower($name)] ?? null;
             $values[] = $cls === null ? null : ['cls' => $cls, 'many' => $many];
@@ -333,7 +365,10 @@ final class ScanVisitor extends NodeVisitorAbstract
         $this->scopes[count($this->scopes) - 1][$name] = $value;
     }
 
-    /** Unbinds every variable of an assignment target that is not a plain variable, such as a list or a destructuring. */
+    /**
+     * Unbinds every variable of an assignment target that is not a plain variable, such as a list or a
+     * destructuring.
+     */
     private function forget(?Node $target): void
     {
         if ($target === null) {
@@ -373,15 +408,19 @@ final class ScanVisitor extends NodeVisitorAbstract
             $count++;
         }
         // A name that may hold several models gets the call on each of them.
-        $receivers = array_values(array_filter(self::members($this->valueOf($node->var)), static fn(array $m): bool => !$m['many']));
+        $receivers = array_values(array_filter(self::members($this->valueOf($node->var)),
+            static fn(array $m): bool => !$m['many']));
         foreach ($receivers as $receiver) {
             $this->out[$receiver['cls']][$name][] = $count;
         }
         if ($receivers !== []) {
-            $this->sites[] = ['name' => $name, 'classes' => array_values(array_unique(array_map(static fn(array $r): string => $r['cls'], $receivers))), 'count' => $count];
+            $this->sites[] = ['name' => $name, 'classes' => array_values(array_unique(array_map(
+                static fn(array $r): string => $r['cls'], $receivers
+            ))), 'count' => $count];
         }
         $first = $node->args[0] ?? null;
-        if (count($receivers) === 1 && Scan::modelCallback($name) && $first instanceof Node\Arg && ($first->value instanceof Node\Expr\Closure || $first->value instanceof Node\Expr\ArrowFunction)) {
+        if (count($receivers) === 1 && Scan::modelCallback($name) && $first instanceof Node\Arg
+            && ($first->value instanceof Node\Expr\Closure || $first->value instanceof Node\Expr\ArrowFunction)) {
             $this->given[$first->value] = $receivers[0]['cls'];
         }
     }
@@ -401,7 +440,8 @@ final class ScanVisitor extends NodeVisitorAbstract
         if ($e instanceof Node\Expr\Clone_) {
             return $this->valueOf($e->expr);
         }
-        // A conditional or a null coalescing holds either operand, as the checker types it: the union of both values (DSL-151).
+        // A conditional or a null coalescing holds either operand, as the checker types it: the union of both
+        // values (DSL-151).
         if ($e instanceof Node\Expr\Ternary) {
             return self::unionOf([$this->valueOf($e->if ?? $e->cond), $this->valueOf($e->else)]);
         }
@@ -419,7 +459,8 @@ final class ScanVisitor extends NodeVisitorAbstract
             return $this->valueOf($e->name);
         }
         if ($e instanceof Node\Expr\PropertyFetch || $e instanceof Node\Expr\NullsafePropertyFetch) {
-            if ($e->var instanceof Node\Expr\Variable && $e->var->name === 'this' && $e->name instanceof Node\Identifier && $this->properties !== []) {
+            if ($e->var instanceof Node\Expr\Variable && $e->var->name === 'this'
+                && $e->name instanceof Node\Identifier && $this->properties !== []) {
                 return $this->properties[count($this->properties) - 1][$e->name->toString()] ?? null;
             }
             return null;
@@ -427,13 +468,15 @@ final class ScanVisitor extends NodeVisitorAbstract
         if ($e instanceof Node\Expr\ArrayDimFetch) {
             return self::elementOf($this->valueOf($e->var));
         }
-        if (($e instanceof Node\Expr\MethodCall || $e instanceof Node\Expr\NullsafeMethodCall) && $e->name instanceof Node\Identifier) {
+        if (($e instanceof Node\Expr\MethodCall || $e instanceof Node\Expr\NullsafeMethodCall)
+            && $e->name instanceof Node\Identifier) {
             $receiver = $this->valueOf($e->var);
             if ($receiver === null) {
                 return null;
             }
             $name = $e->name->toString();
-            return self::unionOf(array_map(static fn(array $m): ?array => self::callValue($m, $name), self::members($receiver)));
+            return self::unionOf(array_map(static fn(array $m): ?array => self::callValue($m, $name),
+                self::members($receiver)));
         }
         return null;
     }
@@ -462,7 +505,10 @@ final class ScanVisitor extends NodeVisitorAbstract
         if ($collection === null) {
             return null;
         }
-        return self::unionOf(array_map(static fn(array $m): ?array => $m['many'] ? ['cls' => $m['cls'], 'many' => false] : null, self::members($collection)));
+        return self::unionOf(array_map(
+            static fn(array $m): ?array => $m['many'] ? ['cls' => $m['cls'], 'many' => false] : null,
+            self::members($collection)
+        ));
     }
 
     /**
@@ -478,8 +524,8 @@ final class ScanVisitor extends NodeVisitorAbstract
     }
 
     /**
-     * The value that may hold any of the values: null when one of them is unknown, the value itself when they agree, and
-     * a union of their models otherwise.
+     * The value that may hold any of the values: null when one of them is unknown, the value itself when
+     * they agree, and a union of their models otherwise.
      * @param list<array{cls: string, many: bool}|null> $values
      * @return array{cls: string, many: bool}|array{union: list<array{cls: string, many: bool}>}|null
      */
@@ -503,7 +549,8 @@ final class ScanVisitor extends NodeVisitorAbstract
     }
 
     /**
-     * The scope after branches that each end in one of the given scopes: a name holds the union of its values in them.
+     * The scope after branches that each end in one of the given scopes: a name holds the union of its
+     * values in them.
      * @param list<array<string, array{cls: string, many: bool}|array{union: list<array{cls: string, many: bool}>}|null>> $states
      * @return array<string, array{cls: string, many: bool}|array{union: list<array{cls: string, many: bool}>}|null>
      */
@@ -530,20 +577,23 @@ final class ScanVisitor extends NodeVisitorAbstract
     }
 
     /**
-     * Before a loop runs, a name that the loop assigns may hold what it held before the loop or what its assignments give it,
-     * since a later iteration sees the assignments of an earlier one. A reference in the loop makes both of its names unknown.
+     * Before a loop runs, a name that the loop assigns may hold what it held before the loop or what its
+     * assignments give it, since a later iteration sees the assignments of an earlier one. A reference in
+     * the loop makes both of its names unknown.
      */
     private function enterLoop(Node $loop): void
     {
         $this->loopBefore[] = $this->top();
         $values = [];
-        $assigns = (new \PhpParser\NodeFinder())->find($loop, static fn(Node $n): bool => $n instanceof Node\Expr\Assign || $n instanceof Node\Expr\AssignRef || $n instanceof Node\Expr\AssignOp);
+        $assigns = (new \PhpParser\NodeFinder())->find($loop, static fn(Node $n): bool =>
+            $n instanceof Node\Expr\Assign || $n instanceof Node\Expr\AssignRef || $n instanceof Node\Expr\AssignOp);
         foreach ($assigns as $assign) {
             $value = $assign instanceof Node\Expr\Assign ? $this->valueOf($assign->expr) : null;
             if ($assign->var instanceof Node\Expr\Variable && is_string($assign->var->name)) {
                 $values[$assign->var->name][] = $value;
             } elseif ($assign->var instanceof Node\Expr\Array_ || $assign->var instanceof Node\Expr\List_) {
-                foreach ((new \PhpParser\NodeFinder())->findInstanceOf($assign->var, Node\Expr\Variable::class) as $variable) {
+                foreach ((new \PhpParser\NodeFinder())->findInstanceOf($assign->var, Node\Expr\Variable::class)
+                    as $variable) {
                     if (is_string($variable->name)) {
                         $values[$variable->name][] = null;
                     }
@@ -559,7 +609,11 @@ final class ScanVisitor extends NodeVisitorAbstract
         }
     }
 
-    /** Whether a block ends in return or throw, so that the scope after it is not reached from its end. @param array<Node> $stmts */
+    /**
+     * Whether a block ends in return or throw, so that the scope after it is not reached from its end.
+     *
+     * @param array<Node> $stmts
+     */
     private static function exits(array $stmts): bool
     {
         $last = $stmts === [] ? null : $stmts[array_key_last($stmts)];

@@ -40,7 +40,9 @@ final class SetReader
         $cut = $this->lastSeparator($path);
         $prefix = substr($path, 0, $cut + 1);
         $root = $prefix === '' ? '.' : $prefix;
-        $fail = static fn(string $rule, string $message): SetResult => SetResult::invalid([new SetError($rule, $path, $message)]);
+        $fail = static fn(string $rule, string $message): SetResult => SetResult::invalid(
+            [new SetError($rule, $path, $message)]
+        );
         if (substr($path, $cut + 1) !== self::NAME) {
             return $fail('set.file', "$path: the set file is not named " . self::NAME);
         }
@@ -93,7 +95,8 @@ final class SetReader
             foreach ($parsed[$list] as $written) {
                 $wrong = self::normalForm($written, $list);
                 if ($wrong !== null) {
-                    $errors[] = new SetError('set.path', $path, "$path: the $list path " . json_encode($written, self::JSON_QUOTE) . " $wrong");
+                    $errors[] = new SetError('set.path', $path, "$path: the $list path "
+                        . json_encode($written, self::JSON_QUOTE) . " $wrong");
                     continue;
                 }
                 $joined = $prefix . $written;
@@ -193,7 +196,8 @@ final class SetReader
      */
     private static function open(string $path, ?array $identities = null): array|SetError
     {
-        $failed = static fn(): SetError => new SetError('set.file', $path, "cannot read $path: " . (error_get_last()['message'] ?? 'cannot be read'));
+        $failed = static fn(): SetError => new SetError('set.file', $path, "cannot read $path: "
+            . (error_get_last()['message'] ?? 'cannot be read'));
         $handle = @fopen($path, 'rb');
         if ($handle === false) {
             return $failed();
@@ -237,7 +241,8 @@ final class SetReader
         }
         $value = json_decode($bytes, true, self::DEPTH + 1);
         if (json_last_error() !== JSON_ERROR_NONE) {
-            return $error('set.json', 'the set file is not JSON nested at most ' . self::DEPTH . ' levels deep: ' . json_last_error_msg());
+            return $error('set.json', 'the set file is not JSON nested at most ' . self::DEPTH
+                . ' levels deep: ' . json_last_error_msg());
         }
         [$top, $members, $repeated] = self::scan($bytes);
         if ($top !== 'object') {
@@ -251,7 +256,8 @@ final class SetReader
             $unknown = array_map('strval', $unknown);
             usort($unknown, 'strcmp');
             $quoted = array_map(static fn(string $k): string => (string) json_encode($k, self::JSON_QUOTE), $unknown);
-            return $error('set.key', (count($unknown) === 1 ? 'unknown key ' : 'unknown keys ') . implode(', ', $quoted));
+            return $error('set.key', (count($unknown) === 1 ? 'unknown key ' : 'unknown keys ')
+                . implode(', ', $quoted));
         }
         if (!isset($members['schema'])) {
             return $error('set.schema', 'schema is missing');
@@ -397,7 +403,11 @@ final class SetReader
             return false;
         }
         $dot = strpos($segment, '.');
-        $base = strtr(rtrim($dot === false ? $segment : substr($segment, 0, $dot), ' '), 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ');
+        $base = strtr(
+            rtrim($dot === false ? $segment : substr($segment, 0, $dot), ' '),
+            'abcdefghijklmnopqrstuvwxyz',
+            'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        );
         return preg_match('/\A(?:CON|PRN|AUX|NUL|(?:COM|LPT)(?:[0-9]|\xC2\xB9|\xC2\xB2|\xC2\xB3))\z/', $base) !== 1;
     }
 

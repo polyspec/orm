@@ -64,9 +64,10 @@ final class Codec
                     }
                     break;
                 case 'base64':
-                    // A stored cell is decoded only in the form the encoder writes: no whitespace, no line breaks, no missing padding, no non-zero padding
-                    // bit is CODEC_DECODE (docs/spec/codec.md). PHP's strict mode also accepts whitespace and missing padding, so re-
-                    // encode the text and check that it is the same.
+                    // A stored cell is decoded only in the form the encoder writes: no whitespace, no line
+                    // breaks, no missing padding, no non-zero padding bit is CODEC_DECODE
+                    // (docs/spec/codec.md). PHP's strict mode also accepts whitespace and missing padding, so
+                    // re-encode the text and check that it is the same.
                     $decoded = base64_decode($v, true);
                     $v = $decoded !== false && base64_encode($decoded) === $v ? $decoded : false;
                     if ($v === false) {
@@ -75,7 +76,8 @@ final class Codec
                     break;
                 case 'serialize':
                     if (preg_match('/^(O|C|r|R):/', $v) === 1 || str_contains($v, ';O:') || str_contains($v, ';C:')) {
-                        throw new OrmException(Code::CODEC_UNSUPPORTED, 'serialize: objects and references are not supported');
+                        throw new OrmException(Code::CODEC_UNSUPPORTED,
+                            'serialize: objects and references are not supported');
                     }
                     $v = @unserialize($v, ['allowed_classes' => false]);
                     if ($v === false && $raw !== serialize(false)) {
@@ -124,7 +126,8 @@ final class Codec
         $value = $v->payload();
         $cur = $value;
         if (in_array($styles[0], ['gz', 'base64'], true) && !is_string($value)) {
-            throw new OrmException(Code::CODEC_ENCODE, "{$styles[0]}: the value is " . get_debug_type($value) . ', not a string');
+            throw new OrmException(Code::CODEC_ENCODE, "{$styles[0]}: the value is " . get_debug_type($value)
+                . ', not a string');
         }
         foreach ($styles as $i => $st) {
             switch ($st) {
@@ -137,7 +140,8 @@ final class Codec
                     }
                     try {
                         self::validateYamlValue($value);
-                        $cur = Yaml::dump($value, 20, 2, Yaml::DUMP_EXCEPTION_ON_INVALID_TYPE | Yaml::DUMP_EMPTY_ARRAY_AS_SEQUENCE | Yaml::DUMP_NUMERIC_KEY_AS_STRING);
+                        $cur = Yaml::dump($value, 20, 2, Yaml::DUMP_EXCEPTION_ON_INVALID_TYPE
+                            | Yaml::DUMP_EMPTY_ARRAY_AS_SEQUENCE | Yaml::DUMP_NUMERIC_KEY_AS_STRING);
                     } catch (\Throwable $e) {
                         throw new OrmException(Code::CODEC_ENCODE, 'yaml: ' . $e->getMessage());
                     }
@@ -313,7 +317,8 @@ final class Codec
                     }
                     $nonce = random_bytes(12);
                     $tag = '';
-                    $encrypted = openssl_encrypt($cur, 'aes-256-gcm', self::aesV2Key($aesKey), OPENSSL_RAW_DATA, $nonce, $tag, "ORM-AES2\0", 16);
+                    $encrypted = openssl_encrypt($cur, 'aes-256-gcm', self::aesV2Key($aesKey),
+                        OPENSSL_RAW_DATA, $nonce, $tag, "ORM-AES2\0", 16);
                     $cur = "ORM-AES2\0" . $nonce . $encrypted . $tag;
                     if ($encrypted === false) {
                         throw new OrmException(Code::CODEC_ENCODE, 'aes: ' . (string) openssl_error_string());
@@ -348,7 +353,8 @@ final class Codec
         for ($i = count($styles) - 1; $i >= 0; $i--) {
             switch ($styles[$i]) {
                 case 'hex':
-                    $cur = strlen($cur) % 2 === 0 && strspn($cur, '0123456789ABCDEF') === strlen($cur) ? hex2bin($cur) : false;
+                    $cur = strlen($cur) % 2 === 0 && strspn($cur, '0123456789ABCDEF') === strlen($cur)
+                        ? hex2bin($cur) : false;
                     if ($cur === false) {
                         throw new OrmException(Code::CODEC_DECODE, 'hex: odd length or non-hex input');
                     }
@@ -368,7 +374,8 @@ final class Codec
                     $nonce = substr($cur, $offset, 12);
                     $tag = substr($cur, -16);
                     $ciphertext = substr($cur, $offset + 12, -16);
-                    $plain = openssl_decrypt($ciphertext, 'aes-256-gcm', self::aesV2Key($aesKey), OPENSSL_RAW_DATA, $nonce, $tag, $prefix);
+                    $plain = openssl_decrypt($ciphertext, 'aes-256-gcm', self::aesV2Key($aesKey),
+                        OPENSSL_RAW_DATA, $nonce, $tag, $prefix);
                     if ($plain === false) {
                         throw new OrmException(Code::CODEC_DECODE, 'aes: authentication failed');
                     }

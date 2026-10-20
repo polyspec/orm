@@ -48,33 +48,61 @@ final class Code
     public const NO_ROWS = 'NO_ROWS';
     /** executor: restoreOrCreate found its key on a row that is not deleted; nothing was written */
     public const ROW_NOT_DELETED = 'ROW_NOT_DELETED';
-    /** executor: a batch of creates binds more parameters than the dialect allows; names the batch, its bind count and the limit; nothing was written */
+    /**
+     * executor: a batch of creates binds more parameters than the dialect allows; names the batch, its
+     * bind count and the limit; nothing was written
+     */
     public const BATCH_TOO_LARGE = 'BATCH_TOO_LARGE';
-    /** executor: an update or delete given an expected revision found the row at another revision, or no row; nothing was written */
+    /**
+     * executor: an update or delete given an expected revision found the row at another revision, or no
+     * row; nothing was written
+     */
     public const REVISION_CHANGED = 'REVISION_CHANGED';
     /** executor: a requested column was not included in the loaded row */
     public const COLUMN_UNSELECTED = 'COLUMN_UNSELECTED';
     /** executor: updateOptimistic matched no row (updated_ts changed) */
     public const OPTIMISTIC_LOCK = 'OPTIMISTIC_LOCK';
-    /** executor: a target changed since it was read, or a change since the read makes the transaction's writes other writes; names the file and line; the client never retries it */
+    /**
+     * executor: a target changed since it was read, or a change since the read makes the transaction's
+     * writes other writes; names the file and line; the client never retries it
+     */
     public const WRITE_CONFLICT = 'WRITE_CONFLICT';
     /** executor: styled column bytes could not be decoded (docs/spec/codec.md) */
     public const CODEC_DECODE = 'CODEC_DECODE';
-    /** executor: a parameter outside its slot's logical type, before any statement (kind, range, scale and precision, time precision, length, U+0000, uuid form), or a styled input that cannot be encoded, including SQL NULL for a non-null column (a NULL parameter assigned to a non-null column; raw SQL keeps DRIVER) */
+    /**
+     * executor: a parameter outside its slot's logical type, before any statement (kind, range, scale and
+     * precision, time precision, length, U+0000, uuid form), or a styled input that cannot be encoded,
+     * including SQL NULL for a non-null column (a NULL parameter assigned to a non-null column; raw SQL
+     * keeps DRIVER)
+     */
     public const CODEC_ENCODE = 'CODEC_ENCODE';
     /** executor: PHP objects/references in serialize, unknown style */
     public const CODEC_UNSUPPORTED = 'CODEC_UNSUPPORTED';
     /** executor: missing secret, bad DSN/paths, transaction misuse */
     public const CONFIG = 'CONFIG';
-    /** executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout); a lock wait of the markdown executor that ends is CANCELED too */
+    /**
+     * executor: the statement stopped before it finished: its context or abort signal was cancelled, or a
+     * timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout); a lock wait
+     * of the markdown executor that ends is CANCELED too
+     */
     public const CANCELED = 'CANCELED';
     /** executor: a transaction or savepoint callback failed and its rollback failed too; the error keeps both errors */
     public const ROLLBACK = 'ROLLBACK';
-    /** executor: a test fault armed through the test entry point of the client reported the rollback of a transaction as failed after the rollback ran */
+    /**
+     * executor: a test fault armed through the test entry point of the client reported the rollback of a
+     * transaction as failed after the rollback ran
+     */
     public const FAULT = 'FAULT';
-    /** executor: a statement event subscriber of the connection failed; the operation fails with its error as the cause */
+    /**
+     * executor: a statement event subscriber of the connection failed; the operation fails with its error
+     * as the cause
+     */
     public const SUBSCRIBER = 'SUBSCRIBER';
-    /** executor: addTablesAndColumns found a difference between the existing tables of a document set and the set other than a missing table, a missing column that is null or has a default or a missing index; a missing unique key is one, because it can fail on the existing rows */
+    /**
+     * executor: addTablesAndColumns found a difference between the existing tables of a document set and
+     * the set other than a missing table, a missing column that is null or has a default or a missing
+     * index; a missing unique key is one, because it can fail on the existing rows
+     */
     public const SCHEMA_DIFFERS = 'SCHEMA_DIFFERS';
     /** executor */
     public const INTERNAL = 'INTERNAL';
@@ -84,14 +112,27 @@ final class Code
     public const DEADLOCK = 'DEADLOCK';
     /** driver: MySQL 1062 / SQLSTATE 23000 */
     public const DUPLICATE_KEY = 'DUPLICATE_KEY';
-    /** driver: MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787, and SQLite 1811 "FOREIGN KEY constraint failed" of a RESTRICT action */
+    /**
+     * driver: MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787, and SQLite 1811 "FOREIGN KEY constraint
+     * failed" of a RESTRICT action
+     */
     public const FOREIGN_KEY = 'FOREIGN_KEY';
     /** driver: MySQL 3819/4025 / PostgreSQL 23514 / SQLite 275 */
     public const CONSTRAINT = 'CONSTRAINT';
-    /** driver: a write rejected because the server or connection is read-only: MySQL 1290/1792 / PostgreSQL 25006 / SQLite 8 and its extended codes */
+    /**
+     * driver: a write rejected because the server or connection is read-only: MySQL 1290/1792 /
+     * PostgreSQL 25006 / SQLite 8 and its extended codes
+     */
     public const READ_ONLY = 'READ_ONLY';
-    /** driver: the server ended the connection or the connection broke (a killed session, a restart, an idle limit): MySQL 2006/2013/4031 / PostgreSQL SQLSTATE class 08 and 57P01/57P02/57P05, or a client library error on a connection that is no longer open; SQLite has no server connection */
+    /**
+     * driver: the server ended the connection or the connection broke (a killed session, a restart, an
+     * idle limit): MySQL 2006/2013/4031 / PostgreSQL SQLSTATE class 08 and 57P01/57P02/57P05, or a client
+     * library error on a connection that is no longer open; SQLite has no server connection
+     */
     public const CONNECTION_LOST = 'CONNECTION_LOST';
-    /** driver: any other driver error, such as a write that a trigger refuses: MySQL 1644 / PostgreSQL P0001 / SQLite 1811 of a trigger RAISE */
+    /**
+     * driver: any other driver error, such as a write that a trigger refuses: MySQL 1644 / PostgreSQL
+     * P0001 / SQLite 1811 of a trigger RAISE
+     */
     public const DRIVER = 'DRIVER';
 }

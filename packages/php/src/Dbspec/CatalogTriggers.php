@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Dbspec;
 
 /**
- * The immutable and audit settings are recognized from the catalog triggers, rewritten in the renderer's statement form,
- * (docs/spec/dialects.md "Introspection", "Triggers").
+ * The immutable and audit settings are recognized from the catalog triggers, rewritten in the renderer's
+ * statement form, (docs/spec/dialects.md "Introspection", "Triggers").
  *
  * @internal
  */
@@ -38,7 +38,8 @@ final class CatalogTriggers
             $settings = self::setting($dialect, $t, $list);
             if ($settings === null) {
                 foreach ($list as $tr) {
-                    $c->report('trigger', $table, $tr['name'], 'the trigger is not the renderer output of immutable or audit');
+                    $c->report('trigger', $table, $tr['name'],
+                        'the trigger is not the renderer output of immutable or audit');
                 }
                 continue;
             }
@@ -47,9 +48,10 @@ final class CatalogTriggers
     }
 
     /**
-     * Recognizes each setting by its own trigger name (recomputed by the renderer), and returns those setting lines only when
-     * the trigger set matches the recognized settings' renderer output in both name and content. Otherwise returns null
-     * (docs/spec/dialects.md "Triggers"). A table with both settings is the sum of the two outputs, and is not judged by count.
+     * Recognizes each setting by its own trigger name (recomputed by the renderer), and returns those
+     * setting lines only when the trigger set matches the recognized settings' renderer output in both
+     * name and content. Otherwise returns null (docs/spec/dialects.md "Triggers"). A table with both
+     * settings is the sum of the two outputs, and is not judged by count.
      *
      * @param list<array{name: string, statements: list<string>}> $list
      * @return ?list<string>
@@ -78,7 +80,8 @@ final class CatalogTriggers
                 preg_match(self::AUDIT_INSERT, self::body($insert['statements']), $m)
                 && preg_match(self::AUDIT_UPDATE, self::body($update['statements'] ?? []), $u)
             ) {
-                $tables = preg_match(self::AUDIT_TABLES, self::body($insert['statements']), $tm) === 1 ? [$tm[1], $tm[2], $tm[3]] : [];
+                $tables = preg_match(self::AUDIT_TABLES, self::body($insert['statements']), $tm) === 1
+                    ? [$tm[1], $tm[2], $tm[3]] : [];
                 $audit = self::audit($t, $m[1], explode(', ', $m[2]), $u[1], $tables);
                 if ($audit !== null) {
                     $settings[] = $audit;
@@ -153,8 +156,10 @@ final class CatalogTriggers
                 $excluded[] = $c['name'];
             }
         }
-        // The arguments of audit are the history table, audit column, audit record table, action, and previous, in order.
-        return new Setting('audit', [$history, $column, $references, $names[0], $names[1], ...$tables], [], $excluded === [] ? null : $excluded);
+        // The arguments of audit are the history table, audit column, audit record table, action, and
+        // previous, in order.
+        return new Setting('audit', [$history, $column, $references, $names[0], $names[1], ...$tables], [],
+            $excluded === [] ? null : $excluded);
     }
 
     /**

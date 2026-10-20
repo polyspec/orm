@@ -15,8 +15,9 @@ use Polyspec\Orm\Dbspec\Document;
  *
  * Each entity is [entity, table, pk, identity, updated, soft_delete, aes_version,
  * audit, audit_record, columns, unique, indexes], and `audit` is the audit
- * column, and `audit_record` names the table that holds the transaction's audit records. Each column is [name, type, nullable, default, default_now, select,
- * codec, blind_index, pk, foreign_key], and decimal, time, and datetime have
+ * column, and `audit_record` names the table that holds the transaction's audit records. Each column is
+ * [name, type, nullable, default, default_now, select, codec, blind_index, pk, foreign_key], and decimal,
+ * time, and datetime have
  * precision, decimal also has scale, and varchar has length. default_now means the default is `now`.
  * The generated model's meta() adds the manifest_hash of the document set that made the model to the entity.
  * manifest_hash.
@@ -30,7 +31,8 @@ final class RuntimeModel
 
     /**
      * @param array<string, array> $entities entity name => entity
-     * @param string $externalText The text (Dbspec Manifest) of the tables that the owned documents use from external documents; a set
+     * @param string $externalText The text (Dbspec Manifest) of the tables that the owned documents use from
+     *     external documents; a set
      *     with no external documents has empty text. A used table of an external document is an external entity.
      */
     public function __construct(
@@ -55,7 +57,8 @@ final class RuntimeModel
     }
 
     /**
-     * The document set of the owned documents and external documents (the documents of other sets that owned documents use by use)
+     * The document set of the owned documents and external documents (the documents of other sets that
+     * owned documents use by use)
      * Parses all documents, each using all the other documents as the declared set; external documents are
      * marked external. External documents are parsed and checked, but not rendered, installed, compared, or generated.
      * Both maps are maps from label to text. If there is a diagnostic, it fails with SCHEMA_INVALID.
@@ -92,7 +95,8 @@ final class RuntimeModel
     public static function loadSet(string $manifestText, string $externalText): array
     {
         $external = $externalText === '' ? [] : array_combine(
-            array_map(static fn(string $label): string => "external $label", array_keys(self::splitManifest($externalText))),
+            array_map(static fn(string $label): string => "external $label",
+                array_keys(self::splitManifest($externalText))),
             self::splitManifest($externalText),
         );
         return self::parseSet(self::splitManifest($manifestText), $external);
@@ -128,7 +132,8 @@ final class RuntimeModel
     {
         $set = Dbspec::readSet($path);
         if ($set->errors !== []) {
-            throw new OrmException(Code::CONFIG, implode("\n", array_map(static fn($e): string => "{$e->rule}: {$e->message}", $set->errors)));
+            throw new OrmException(Code::CONFIG, implode("\n",
+                array_map(static fn($e): string => "{$e->rule}: {$e->message}", $set->errors)));
         }
         $errors = [];
         $texts = ['documents' => [], 'external' => []];
@@ -150,7 +155,8 @@ final class RuntimeModel
     }
 
     /**
-     * Reads the set's dbspec file with Dbspec::readFile and parses it. $external is an external document file that an owned document
+     * Reads the set's dbspec file with Dbspec::readFile and parses it. $external is an external document
+     * file that an owned document
      * uses by use (parseSet). An unreadable file is CONFIG; a file with no
      * signature fails with SCHEMA_INVALID.
      *
@@ -192,11 +198,13 @@ final class RuntimeModel
     {
         $result = Dbspec::manifest($documents);
         if ($result->manifest === null) {
-            $lines = array_map(static fn($d): string => "{$d->line}:{$d->column}: {$d->rule}: {$d->message}", $result->diagnostics);
+            $lines = array_map(static fn($d): string => "{$d->line}:{$d->column}: {$d->rule}: {$d->message}",
+                $result->diagnostics);
             throw new OrmException(Code::SCHEMA_INVALID, implode("\n", $lines));
         }
         usort($documents, static fn(Document $a, Document $b): int => strcmp($a->name, $b->name));
-        // The tables that owned documents use from each external document (docs/spec/dbspec.md "External documents").
+        // The tables that owned documents use from each external document
+        // (docs/spec/dbspec.md "External documents").
         $used = [];
         foreach ($documents as $document) {
             if (!$document->external) {
@@ -217,21 +225,25 @@ final class RuntimeModel
                     $entity = self::tableEntity($table);
                 }
                 if (isset($entities[$entity['entity']])) {
-                    throw new OrmException(Code::SCHEMA_INVALID, "entity {$entity['entity']} is declared twice in the document set");
+                    throw new OrmException(Code::SCHEMA_INVALID,
+                        "entity {$entity['entity']} is declared twice in the document set");
                 }
                 $entities[$entity['entity']] = $entity;
             }
         }
-        return new self($result->manifest->manifestHash, $result->manifest->manifestText, $entities, $result->manifest->externalText);
+        return new self($result->manifest->manifestHash, $result->manifest->manifestText, $entities,
+            $result->manifest->externalText);
     }
 
     /**
-     * The model of registered generated classes. Each class's meta() must equal the entity that the manifest text gives
-     * (docs/spec/dbspec.md "Runtime model"): a class generated by another orm-gen, or edited, fails with CONFIG naming the
-     * class, the entity, the first differing field path and the regeneration command, before any statement.
+     * The model of registered generated classes. Each class's meta() must equal the entity that the
+     * manifest text gives (docs/spec/dbspec.md "Runtime model"): a class generated by another orm-gen, or
+     * edited, fails with CONFIG naming the class, the entity, the first differing field path and the
+     * regeneration command, before any statement.
      * @param list<class-string<Model>> $classes
      */
-    public static function fromModels(string $manifestHash, string $manifestText, array $classes, string $externalText = ''): self
+    public static function fromModels(string $manifestHash, string $manifestText, array $classes,
+        string $externalText = ''): self
     {
         $manifest = self::build(self::loadSet($manifestText, $externalText))->entities;
         $entities = [];
@@ -252,7 +264,10 @@ final class RuntimeModel
         return new self($manifestHash, $manifestText, $entities, $externalText);
     }
 
-    /** The first path where two metadata values differ, in the order of the expected keys and then the extra ones; null when equal. */
+    /**
+     * The first path where two metadata values differ, in the order of the expected keys and then the extra
+     * ones; null when equal.
+     */
     private static function firstDifference(mixed $got, mixed $want, string $path): ?string
     {
         $here = $path === '' ? '(entity)' : $path;
@@ -376,7 +391,8 @@ final class RuntimeModel
             }
             $columns[$c->name] = $column;
         }
-        // The unique keys and indexes are in name order, the order of the canonical manifest text (Dbspec\Emitter), so a
+        // The unique keys and indexes are in name order, the order of the canonical manifest text
+        // (Dbspec\Emitter), so a
         // model built from the documents equals the model of its manifest whatever order the documents declare them in.
         $unique = [];
         foreach ($table->uniqueKeys as $uk) {

@@ -17,9 +17,12 @@ namespace Polyspec\Orm\Dbspec;
  */
 final class Parser
 {
-    // As in Go's isWordRune, a word includes `.` (so `a.b` is one token, and a number like 1.5 is also one token).
+    // As in Go's isWordRune, a word includes `.` (so `a.b` is one token, and a number like 1.5 is also one
+    // token).
     private const TOKEN = "/[A-Za-z0-9_.]+|'(?:[^']|'')*+'|<=|>=|<>|[^ ]/u";
-    private const VALID_UTF8 = '/\A(?:[\x00-\x7F]|[\xC2-\xDF][\x80-\xBF]|\xE0[\xA0-\xBF][\x80-\xBF]|[\xE1-\xEC\xEE\xEF][\x80-\xBF]{2}|\xED[\x80-\x9F][\x80-\xBF]|\xF0[\x90-\xBF][\x80-\xBF]{2}|[\xF1-\xF3][\x80-\xBF]{3}|\xF4[\x80-\x8F][\x80-\xBF]{2})*+/';
+    private const VALID_UTF8 = '/\A(?:[\x00-\x7F]|[\xC2-\xDF][\x80-\xBF]|\xE0[\xA0-\xBF][\x80-\xBF]|'
+        . '[\xE1-\xEC\xEE\xEF][\x80-\xBF]{2}|\xED[\x80-\x9F][\x80-\xBF]|\xF0[\x90-\xBF][\x80-\xBF]{2}|'
+        . '[\xF1-\xF3][\x80-\xBF]{3}|\xF4[\x80-\x8F][\x80-\xBF]{2})*+/';
     private const MAX_BYTES = 32 * 1024 * 1024;
     private const MAX_TABLES = 4096;
     private const MAX_COLUMNS = 120000;
@@ -28,24 +31,35 @@ final class Parser
     private const MAX_KEY_COLUMNS = 16;
     private const MAX_KEY_VARCHAR = 640;
     /** The rule table of docs/spec/dbspec.md, in its order, which orders diagnostics at one position. */
-    private const RULES = ['header', 'syntax', 'order', 'name.format', 'name.length', 'name.duplicate', 'type', 'column', 'key', 'foreign_key', 'check', 'setting', 'use', 'diagram', 'limit', 'encoding'];
-    public const RESERVED = ['dbspec', 'use', 'table', 'diagram', 'primary', 'unique', 'index', 'foreign', 'check', 'settings', 'null', 'identity', 'default', 'true', 'false', 'and', 'or', 'not', 'in', 'between', 'is'];
+    private const RULES = ['header', 'syntax', 'order', 'name.format', 'name.length', 'name.duplicate', 'type',
+        'column', 'key', 'foreign_key', 'check', 'setting', 'use', 'diagram', 'limit', 'encoding'];
+    public const RESERVED = ['dbspec', 'use', 'table', 'diagram', 'primary', 'unique', 'index', 'foreign',
+        'check', 'settings', 'null', 'identity', 'default', 'true', 'false', 'and', 'or', 'not', 'in', 'between',
+        'is'];
     /** Codec stages that produce text; the others produce bytes. */
     private const TEXT_STAGES = ['hex', 'base64', 'ordered_json', 'yaml', 'serialize'];
     /** The keyword of markdown storage settings. The cursor reads it (storageLine). */
-    private const STORAGE_KEYWORDS = ['markdown', 'store', 'key_prefix', 'title', 'body', 'order', 'checkbox', 'state_machine'];
-    /** A storage keyword written only once per table. Repeating it is a setting error at the keyword's position. */
+    private const STORAGE_KEYWORDS = ['markdown', 'store', 'key_prefix', 'title', 'body', 'order', 'checkbox',
+        'state_machine'];
+    /**
+     * A storage keyword written only once per table. Repeating it is a setting error at the keyword's position.
+     */
     private const ONCE_STORAGE = ['store', 'key_prefix', 'title', 'body', 'order'];
     /** The codec stages, the fixed words after a codec column (docs/spec/dbspec.md "Keep, move or remove"; R12). */
     private const CODEC_STAGES = ['ordered_json', 'aes', 'hex', 'gz', 'base64', 'serialize', 'yaml', 'ip'];
     /** A character of valid UTF-8, or one invalid byte (R15): the code points of a line. */
-    private const UTF8_CHAR = '(?:[\x00-\x7F]|[\xC2-\xDF][\x80-\xBF]|\xE0[\xA0-\xBF][\x80-\xBF]|[\xE1-\xEC\xEE\xEF][\x80-\xBF]{2}|\xED[\x80-\x9F][\x80-\xBF]|\xF0[\x90-\xBF][\x80-\xBF]{2}|[\xF1-\xF3][\x80-\xBF]{3}|\xF4[\x80-\x8F][\x80-\xBF]{2}|[\s\S])';
+    private const UTF8_CHAR = '(?:[\x00-\x7F]|[\xC2-\xDF][\x80-\xBF]|\xE0[\xA0-\xBF][\x80-\xBF]|'
+        . '[\xE1-\xEC\xEE\xEF][\x80-\xBF]{2}|\xED[\x80-\x9F][\x80-\xBF]|\xF0[\x90-\xBF][\x80-\xBF]{2}|'
+        . '[\xF1-\xF3][\x80-\xBF]{3}|\xF4[\x80-\x8F][\x80-\xBF]{2}|[\s\S])';
 
     /** @var list<array{0:string,1:int,2:int,3:string}> [rule, line, column, message] */
     private array $diagnostics = [];
     private Document $document;
 
-    /** @var array<string, array{table: ?Table, columns: array<string, Column>}> table name => definition; null for a table whose definition is unknown */
+    /**
+     * @var array<string, array{table: ?Table, columns: array<string, Column>}> table name => definition; null
+     *     for a table whose definition is unknown
+     */
     private array $tables = [];
     /** @var array<string, true> index, unique key, foreign key and check names of the schema */
     private array $constraintNames = [];
@@ -55,7 +69,10 @@ final class Parser
     private array $diagramNames = [];
     /** @var array<string, true> tables of failed `use` lines: references to them report nothing more */
     private array $failedTables = [];
-    /** @var array<string, string> the renderer names written by the tables read so far and by the used tables, with their sources */
+    /**
+     * @var array<string, string> the renderer names written by the tables read so far and by the used
+     *     tables, with their sources
+     */
     private array $generatedNames = [];
     /** @var array<string, true> table names of the used documents, which constraint names must differ from */
     private array $usedTableNames = [];
@@ -76,13 +93,19 @@ final class Parser
     private array $comments = [];
     /** @var array<int, array<int, string>> the class the readers gave a token: line => index in the line => class */
     private array $marks = [];
-    /** @var array<int, true> lines whose classes are lexical: abandoned by a syntax diagnostic, or in a block whose opening line failed (R1, R20) */
+    /**
+     * @var array<int, true> lines whose classes are lexical: abandoned by a syntax diagnostic, or in a block
+     *     whose opening line failed (R1, R20)
+     */
     private array $lexical = [];
     /** Whether a line is being read: a syntax diagnostic raised then abandons its line. */
     private bool $reading = false;
     /** Whether the classes are recorded: only for analysis, so that parse keeps no token data. */
     private bool $marking = false;
-    /** The body of a table or settings or diagram block whose opening line failed is read but keeps lexical classes (R20). */
+    /**
+     * The body of a table or settings or diagram block whose opening line failed is read but keeps lexical
+     * classes (R20).
+     */
     private bool $tableFailed = false;
     private bool $settingsFailed = false;
     private bool $diagramFailed = false;
@@ -106,31 +129,53 @@ final class Parser
     private array $identities = [];
     /** @var list<array{0:ForeignKey,1:int,2:int,3:bool}> [foreign key, line, column of name, child columns known] */
     private array $tableForeignKeys = [];
-    /** @var list<array{0:Check,1:int,2:list<array{0:string,1:int}>,3:int}> [check, line, tokens after `(`, end column] */
+    /**
+     * @var list<array{0:Check,1:int,2:list<array{0:string,1:int}>,3:int}> [check, line, tokens after `(`, end
+     *     column]
+     */
     private array $tableChecks = [];
-    /** @var list<array{0:string,1:list<array{0:string,1:int}>,2:int,3:int}> [kind, argument tokens, line, keyword column] */
+    /**
+     * @var list<array{0:string,1:list<array{0:string,1:int}>,2:int,3:int}> [kind, argument tokens, line,
+     *     keyword column]
+     */
     private array $tableSettings = [];
     /** @var array<string, true> */
     private array $settingKeys = [];
-    /** @var Settings|null The block that reads a line: the first block of a table, or a repeated block, which is not kept */
+    /**
+     * @var Settings|null The block that reads a line: the first block of a table, or a repeated block, which
+     *     is not kept
+     */
     private ?Settings $settingsBlock = null;
-    /** A repeated settings block: lines are read only for syntax and not checked (Go's detached block) */
+    /**
+     * A repeated settings block: lines are read only for syntax and not checked (Go's detached block)
+     */
     private bool $detachedBlock = false;
     /** A primary key line of the table failed: its primary key columns are unknown. */
     private bool $failedPrimary = false;
-    /** @var array<string, true> tables with a failed unique or index line: some key's columns are unknown */
+    /**
+     * @var array<string, true> tables with a failed unique or index line: some key's columns are unknown
+     */
     private array $failedKeyTables = [];
-    /** @var array<string, array{0: int, 1: int}> the line and column of each local constraint name */
+    /**
+     * @var array<string, array{0: int, 1: int}> the line and column of each local constraint name
+     */
     private array $constraintAt = [];
-    /** @var array<string, true> names of foreign key and column lines that had a syntax error (Go's failedName) */
+    /**
+     * @var array<string, true> names of foreign key and column lines that had a syntax error (Go's failedName)
+     */
     private array $failedNames = [];
-    /** @var array<string, true> names of column lines that had a syntax error, so their identity check is unresolved */
+    /**
+     * @var array<string, true> names of column lines that had a syntax error, so their identity check is
+     *     unresolved
+     */
     private array $failedColumns = [];
     /** Column lines of the table that had a syntax error (Go's failedLines). */
     private int $failedLines = 0;
     /** Primary key lines of the table that were read (Go keeps every one). */
     private int $primaryKeyLines = 0;
-    /** @var array<string, list<string>> per table, the title and body lines that parsed, duplicates included */
+    /**
+     * @var array<string, list<string>> per table, the title and body lines that parsed, duplicates included
+     */
     private array $parsedTitleBody = [];
     /** The first lex error of the current line: [column, message], or null. */
     private ?array $lexError = null;
@@ -142,13 +187,19 @@ final class Parser
     private array $deferredForeignKeys = [];
     /** @var list<array> audit settings whose history table is checked after the last line */
     private array $deferredAudits = [];
-    /** @var list<array{0: Table, 1: ?Column, 2: list<array{0: string, 1: int}>, 3: int, 4: bool}> Checks the audit setting's record table */
+    /**
+     * @var list<array{0: Table, 1: ?Column, 2: list<array{0: string, 1: int}>, 3: int, 4: bool}> Checks the
+     *     audit setting's record table
+     */
     private array $deferredAuditRecords = [];
     /** @var array<string, true> Tables whose primary key line failed */
     private array $failedPrimaryTables = [];
     /** @var list<array> The history table of a state_machine history line, checked after the last line */
     private array $deferredHistories = [];
-    /** @var array<string, array{0: string, 1: int, 2: int}> column => [default value, line, column], only the first declaration of a column */
+    /**
+     * @var array<string, array{0: string, 1: int, 2: int}> column => [default value, line, column], only the
+     *     first declaration of a column
+     */
     private array $defaultValues = [];
     /** @var int The position of the next token that the cursor reading the setting line will read */
     private int $cursor = 0;
@@ -158,7 +209,8 @@ final class Parser
     /**
      * @param array<string, string> $documents the declared document set
      * @param list<string> $using the documents whose `use` lines lead to this one, to find cycles
-     * @param \ArrayObject<string, array{0: ?Document, 1: ?string}|false> $used used document => [document, reason it is unusable], false while it is read
+     * @param \ArrayObject<string, array{0: ?Document, 1: ?string}|false> $used used document => [document,
+     *     reason it is unusable], false while it is read
      */
     public function __construct(
         private readonly array $documents,
@@ -169,8 +221,8 @@ final class Parser
     }
 
     /**
-     * @return array{0: ?Document, 1: list<Diagnostic>, 2: ?list<Position>, 3: list<Token>} the tokens are read only when
-     *         $withTokens is set, and are empty after a limit stop (docs/spec/dbspec.md "Syntax analysis")
+     * @return array{0: ?Document, 1: list<Diagnostic>, 2: ?list<Position>, 3: list<Token>} the tokens are read
+     *         only when $withTokens is set, and are empty after a limit stop (docs/spec/dbspec.md "Syntax analysis")
      */
     public function run(string $source, bool $withTokens = false): array
     {
@@ -187,7 +239,9 @@ final class Parser
         }
         $rank = array_flip(self::RULES);
         $order = array_keys($this->diagnostics);
-        usort($order, fn(int $a, int $b): int => [$this->diagnostics[$a][1], $this->diagnostics[$a][2], $rank[$this->diagnostics[$a][0]], $a] <=> [$this->diagnostics[$b][1], $this->diagnostics[$b][2], $rank[$this->diagnostics[$b][0]], $b]);
+        usort($order, fn(int $a, int $b): int =>
+            [$this->diagnostics[$a][1], $this->diagnostics[$a][2], $rank[$this->diagnostics[$a][0]], $a]
+            <=> [$this->diagnostics[$b][1], $this->diagnostics[$b][2], $rank[$this->diagnostics[$b][0]], $b]);
         $diagnostics = array_map(fn(int $i): Diagnostic => new Diagnostic(...$this->diagnostics[$i]), $order);
         if ($stop !== null) {
             $diagnostics[] = new Diagnostic(...$stop);
@@ -211,9 +265,9 @@ final class Parser
     }
 
     /**
-     * The tokens of every line of the source in source order, each with its class: the class a reader set, unless the
-     * line is lexical, else the lexical class (docs/spec/dbspec.md "Syntax analysis"). The lines are split and lexed as the
-     * parser reads them, so a line the parser did not read gets the same tokens.
+     * The tokens of every line of the source in source order, each with its class: the class a reader set,
+     * unless the line is lexical, else the lexical class (docs/spec/dbspec.md "Syntax analysis"). The lines
+     * are split and lexed as the parser reads them, so a line the parser did not read gets the same tokens.
      *
      * @return list<Token>
      */
@@ -290,8 +344,8 @@ final class Parser
     }
 
     /**
-     * Sets the class of a token the reader consumed. A token the parser makes itself has no index and is not marked;
-     * the class of a line the parser abandons is dropped when the tokens are built.
+     * Sets the class of a token the reader consumed. A token the parser makes itself has no index and is not
+     * marked; the class of a line the parser abandons is dropped when the tokens are built.
      */
     private function mark(array $token, string $class): void
     {
@@ -300,7 +354,10 @@ final class Parser
         }
     }
 
-    /** A value position gives keyword to true, false, null and now (R6, R18); other words and numbers keep their class. */
+    /**
+     * A value position gives keyword to true, false, null and now (R6, R18); other words and numbers keep
+     * their class.
+     */
     private function markValue(array $token): void
     {
         if (in_array($token[0], ['true', 'false', 'null', 'now'], true)) {
@@ -308,7 +365,11 @@ final class Parser
         }
     }
 
-    /** Consumes the token at the cursor, giving it the class; returns it. @return array{0:string,1:int,2:int,3:int} */
+    /**
+     * Consumes the token at the cursor, giving it the class; returns it.
+     *
+     * @return array{0:string,1:int,2:int,3:int}
+     */
     private function take(string $class): array
     {
         $token = $this->tokens[$this->cursor++];
@@ -316,11 +377,17 @@ final class Parser
         return $token;
     }
 
-    /** The positions in source order, by line and then column; equal places keep the order they were read. @return list<Position> */
+    /**
+     * The positions in source order, by line and then column; equal places keep the order they were read.
+     *
+     * @return list<Position>
+     */
     private function sortedPositions(): array
     {
         $order = array_keys($this->positions);
-        usort($order, fn(int $a, int $b): int => [$this->positions[$a]->line, $this->positions[$a]->column, $a] <=> [$this->positions[$b]->line, $this->positions[$b]->column, $b]);
+        usort($order, fn(int $a, int $b): int =>
+            [$this->positions[$a]->line, $this->positions[$a]->column, $a]
+            <=> [$this->positions[$b]->line, $this->positions[$b]->column, $b]);
         return array_map(fn(int $i): Position => $this->positions[$i], $order);
     }
 
@@ -368,7 +435,8 @@ final class Parser
         if (str_starts_with($source, "\xEF\xBB\xBF")) {
             $this->stop('encoding', 1, 1, 'the document starts with a byte order mark');
         }
-        // Lines before the line of the first encoding error are intact, so they are read; from that line on they are not read (as Go's splitSource).
+        // Lines before the line of the first encoding error are intact, so they are read; from that line on
+        // they are not read (as Go's splitSource).
         $encoding = self::encodingError($source);
         $lines = explode("\n", $source);
         if (end($lines) === '') {
@@ -406,7 +474,8 @@ final class Parser
             $this->tokenize();
             if ($this->lexError !== null) {
                 $this->error('syntax', $this->line, $this->lexError[0], $this->lexError[1]);
-                // Reads with the error character removed from the token (as Go's lexRecover): a table header line at the top also opens its table.
+                // Reads with the error character removed from the token (as Go's lexRecover): a table header
+                // line at the top also opens its table.
                 $this->tokens = self::annotate(self::lexRecover($text), $this->line);
                 if ($this->lexedLine()) {
                     continue;
@@ -423,7 +492,8 @@ final class Parser
         if ($encoding !== null) {
             $this->stop('encoding', ...$encoding);
         }
-        // Reports only the innermost open block (as Go does): an open settings block does not report the table's `{`.
+        // Reports only the innermost open block (as Go does): an open settings block does not report the
+        // table's `{`.
         if ($this->state === 'settings') {
             $this->unclosed($this->settingsOpen[0], $this->settingsOpen[1], 'the settings block is not closed');
             $this->state = 'table';
@@ -443,8 +513,8 @@ final class Parser
     }
 
     /**
-     * The first encoding error after the byte order mark, as [line, column, message], or null. A bare CR is not a
-     * line end, so it is an error; the lines before the error's line are complete and valid.
+     * The first encoding error after the byte order mark, as [line, column, message], or null. A bare CR is
+     * not a line end, so it is an error; the lines before the error's line are complete and valid.
      *
      * @return ?array{0: int, 1: int, 2: string}
      */
@@ -465,7 +535,8 @@ final class Parser
         $before = substr($source, 0, $offset);
         $newline = strrpos($before, "\n");
         $start = $newline === false ? 0 : $newline + 1;
-        return [substr_count($source, "\n", 0, $offset) + 1, mb_strlen(substr($source, $start, $offset - $start), 'UTF-8') + 1, $message];
+        return [substr_count($source, "\n", 0, $offset) + 1,
+            mb_strlen(substr($source, $start, $offset - $start), 'UTF-8') + 1, $message];
     }
 
     // ---------------------------------------------------------------- lines
@@ -669,9 +740,11 @@ final class Parser
         $prefix = 'dbspec 1 ';
         $same = strspn($this->text ^ $prefix, "\0");
         if ($same < strlen($prefix)) {
-            $this->stop('header', 1, min($same, strlen($this->text)) + 1, 'the first line is exactly `dbspec 1 <document>`');
+            $this->stop('header', 1, min($same, strlen($this->text)) + 1,
+                'the first line is exactly `dbspec 1 <document>`');
         }
-        $end = strlen($prefix) + strspn($this->text, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_', strlen($prefix));
+        $end = strlen($prefix) + strspn($this->text,
+            'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_', strlen($prefix));
         if ($end === strlen($prefix) || $end < strlen($this->text)) {
             $this->stop('header', 1, $end + 1, 'the first line is exactly `dbspec 1 <document>`');
         }
@@ -744,7 +817,8 @@ final class Parser
             return;
         }
         $name = $document[0];
-        $this->document->uses[] = new UseLine($name, array_map(static fn(array $table): string => $table[0], $tables), $this->takeComments());
+        $this->document->uses[] = new UseLine($name,
+            array_map(static fn(array $table): string => $table[0], $tables), $this->takeComments());
         $this->declare('use', [$name], $document);
         foreach ($tables as $table) {
             $this->declare('use_table', [$name, $table[0]], $table);
@@ -759,7 +833,8 @@ final class Parser
             return;
         }
         if (isset($this->usedDocuments[$name])) {
-            $this->error('name.duplicate', $this->line, $document[1], "document `$name` is already used");
+            $this->error('name.duplicate', $this->line, $document[1],
+                "document `$name` is already used");
             $failed();
             return;
         }
@@ -783,7 +858,8 @@ final class Parser
         $repeated = null;
         foreach ($used->tables as $definition) {
             $this->usedTableNames[$definition->name] = true;
-            foreach ([$definition->uniqueKeys, $definition->indexes, $definition->foreignKeys, $definition->checks] as $constraints) {
+            foreach ([$definition->uniqueKeys, $definition->indexes, $definition->foreignKeys,
+                $definition->checks] as $constraints) {
                 foreach ($constraints as $constraint) {
                     if (isset($this->constraintNames[$constraint->name])) {
                         $repeated ??= $constraint->name;
@@ -793,7 +869,8 @@ final class Parser
             }
         }
         if ($repeated !== null) {
-            $this->error('name.duplicate', $this->line, $document[1], "document `$name` repeats the constraint name `$repeated` of an earlier used document");
+            $this->error('name.duplicate', $this->line, $document[1],
+                "document `$name` repeats the constraint name `$repeated` of an earlier used document");
         }
         foreach ($tables as [$table, $column]) {
             if (!$this->name([$table, $column])) {
@@ -830,7 +907,8 @@ final class Parser
     private function claimGenerated(string $name, string $source, int $line, int $column): void
     {
         if (isset($this->generatedNames[$name])) {
-            $this->error('name.duplicate', $line, $column, "generated name `$name` of $source repeats the generated name of {$this->generatedNames[$name]}");
+            $this->error('name.duplicate', $line, $column,
+                "generated name `$name` of $source repeats the generated name of {$this->generatedNames[$name]}");
             return;
         }
         $this->generatedNames[$name] = $source;
@@ -844,15 +922,19 @@ final class Parser
     private function usedDocument(string $name): array
     {
         if (isset($this->used[$name])) {
-            // Rewriting a document being read is a use cycle. If the document's header name differs from the set's name, the name
-            // cannot be found through the chain, so it is marked as being read.
-            return $this->used[$name] === false ? [null, 'use cycle: ' . implode(' -> ', [...$this->using, $this->document->name, $name])] : $this->used[$name];
+            // Rewriting a document being read is a use cycle. If the document's header name differs from the
+            // set's name, the name cannot be found through the chain, so it is marked as being read.
+            return $this->used[$name] === false
+                ? [null, 'use cycle: ' . implode(' -> ', [...$this->using, $this->document->name, $name])]
+                : $this->used[$name];
         }
         $this->used[$name] = false;
-        [$document, $diagnostics] = (new self($this->documents, [...$this->using, $this->document->name], $this->used))->run($this->documents[$name]);
+        [$document, $diagnostics] = (new self($this->documents,
+            [...$this->using, $this->document->name], $this->used))->run($this->documents[$name]);
         if ($document === null) {
             $first = $diagnostics[0];
-            $result = [null, "used document `$name` is invalid: {$first->line}:{$first->column} {$first->rule} {$first->message}"];
+            $result = [null,
+                "used document `$name` is invalid: {$first->line}:{$first->column} {$first->rule} {$first->message}"];
         } elseif ($document->name !== $name) {
             $result = [null, "the declared document `$name` is named `{$document->name}` in its header"];
         } else {
@@ -891,15 +973,19 @@ final class Parser
             if (isset($this->tables[$name[0]])) {
                 // Go does not report a duplicate name of a table whose line failed (validate.go's failed table).
                 if (!$headerFailed) {
-                    $this->error('name.duplicate', $this->line, $name[1], "table `{$name[0]}` is already defined or used");
+                    $this->error('name.duplicate', $this->line, $name[1],
+                    "table `{$name[0]}` is already defined or used");
                 }
             } else {
-                // Go reports a constraint with the same name as a table at the constraint's place, even if the table comes later. A constraint in a document being written is reported at the table's place.
+                // Go reports a constraint with the same name as a table at the constraint's place, even if the
+                // table comes later. A constraint in a document being written is reported at the table's place.
                 if (isset($this->constraintAt[$name[0]])) {
                     [$constraintLine, $constraintColumn] = $this->constraintAt[$name[0]];
-                    $this->error('name.duplicate', $constraintLine, $constraintColumn, "constraint name `{$name[0]}` is the name of a table");
+                    $this->error('name.duplicate', $constraintLine, $constraintColumn,
+                        "constraint name `{$name[0]}` is the name of a table");
                 } elseif (isset($this->constraintNames[$name[0]])) {
-                    $this->error('name.duplicate', $this->line, $name[1], "table `{$name[0]}` is named like an index, key, foreign key or check");
+                    $this->error('name.duplicate', $this->line, $name[1],
+                        "table `{$name[0]}` is named like an index, key, foreign key or check");
                 }
                 $this->tables[$name[0]] = ['table' => $table, 'columns' => [], 'headerFailed' => $headerFailed];
             }
@@ -943,7 +1029,8 @@ final class Parser
             case 'check':
                 $this->mark($first, 'keyword');
                 if ($this->tablePhase === 2) {
-                    $this->error('order', $this->line, $first[1], 'key, index, foreign key and check lines come before the settings block');
+                    $this->error('order', $this->line, $first[1],
+                        'key, index, foreign key and check lines come before the settings block');
                 } else {
                     $this->tablePhase = 1;
                 }
@@ -956,10 +1043,12 @@ final class Parser
                 return;
             case 'settings':
                 $this->mark($first, 'keyword');
-                // Go reports the order of a repeated block's keyword only when the line is in correct form (`settings {` only).
+                // Go reports the order of a repeated block's keyword only when the line is in correct form
+                // (`settings {` only).
                 $wellFormed = ($this->tokens[1][0] ?? null) === '{' && !isset($this->tokens[2]);
                 if ($this->tablePhase === 2 && $wellFormed) {
-                    $this->error('order', $this->line, $first[1], 'a table has at most one settings block, after its other lines');
+                    $this->error('order', $this->line, $first[1],
+                        'a table has at most one settings block, after its other lines');
                 }
                 $this->tablePhase = 2;
                 if ($this->expectAt(1, '{')) {
@@ -976,8 +1065,10 @@ final class Parser
             $this->keepSyntaxSince($mark);
             $this->failColumnLine($first[0]);
         } elseif ($this->tablePhase > 0) {
-            // Go reports the order of a column only when the column line matches the syntax (after c.done in columnLine). A line with a syntax error gives only the syntax error.
-            $this->error('order', $this->line, $first[1], 'column lines come before key, index, foreign key, check and settings lines');
+            // Go reports the order of a column only when the column line matches the syntax (after c.done in
+            // columnLine). A line with a syntax error gives only the syntax error.
+            $this->error('order', $this->line, $first[1],
+                'column lines come before key, index, foreign key, check and settings lines');
         }
     }
 
@@ -985,7 +1076,8 @@ final class Parser
     {
         $t = $this->tokens;
         if (count($this->table->columns) + 1 > self::MAX_TABLE_COLUMNS) {
-            $this->stop('limit', $this->line, $t[0][1], 'a table has more than ' . self::MAX_TABLE_COLUMNS . ' columns');
+            $this->stop('limit', $this->line, $t[0][1],
+                'a table has more than ' . self::MAX_TABLE_COLUMNS . ' columns');
         }
         if (++$this->columnCount > self::MAX_COLUMNS) {
             $this->stop('limit', $this->line, $t[0][1], 'the document has more than ' . self::MAX_COLUMNS . ' columns');
@@ -1045,7 +1137,8 @@ final class Parser
                 $rejected = true;
             }
             if (!$rejected && $this->identities !== []) {
-                $this->error('column', $this->line, $identity[1], 'a table has at most one identity column');
+                $this->error('column', $this->line, $identity[1],
+                    'a table has at most one identity column');
                 $rejected = true;
             }
             $this->identities[] = [$name[0], $this->line, $identity[1], $rejected];
@@ -1058,17 +1151,22 @@ final class Parser
             } elseif ($type !== null) {
                 [$canonical, $problem] = Literal::columnDefault($type, $value[0]);
                 if ($problem !== null) {
-                    $this->error('column', $this->line, $type->name === 'text' || $type->name === 'bytes' ? $keyword[1] : $value[1], $problem);
+                    $this->error('column', $this->line,
+                        $type->name === 'text' || $type->name === 'bytes' ? $keyword[1] : $value[1], $problem);
                 }
             }
         }
-        $column = new Column($name[0], $type ?? new ColumnType('invalid'), $nullable, $identity !== null, $canonical, $this->takeComments());
+        $column = new Column($name[0], $type ?? new ColumnType('invalid'), $nullable, $identity !== null,
+            $canonical, $this->takeComments());
         // The name of a column whose renderer writes a type CHECK must not overlap another generated name.
-        if ($identity === null && $type !== null && $type->name !== 'text' && $type->name !== 'bytes' && $wellFormed && self::validName($this->table->name)) {
-            $this->claimGenerated(Names::render($this->table->name, $name[0]), "table {$this->table->name} column {$name[0]}", $this->line, $name[1]);
+        if ($identity === null && $type !== null && $type->name !== 'text' && $type->name !== 'bytes'
+            && $wellFormed && self::validName($this->table->name)) {
+            $this->claimGenerated(Names::render($this->table->name, $name[0]),
+                "table {$this->table->name} column {$name[0]}", $this->line, $name[1]);
         }
         if (isset($this->columns[$name[0]])) {
-            $this->error('name.duplicate', $this->line, $name[1], "column `{$name[0]}` is already defined");
+            $this->error('name.duplicate', $this->line, $name[1],
+                "column `{$name[0]}` is already defined");
         } else {
             $this->columns[$name[0]] = $column;
             if ($type === null) {
@@ -1107,7 +1205,8 @@ final class Parser
         $parameters = [];
         $j = $i + 2;
         $malformed = false;
-        // As in Go, reads the value (number, word, `-` number) and then the separator. A different token in value position, or a separator other than `,` or `)`, is a syntax error.
+        // As in Go, reads the value (number, word, `-` number) and then the separator. A different token in
+        // value position, or a separator other than `,` or `)`, is a syntax error.
         for (;;) {
             $value = $t[$j] ?? null;
             if ($value !== null && $value[0] === '-' && isset($t[$j + 1]) && ctype_digit($t[$j + 1][0])) {
@@ -1184,7 +1283,8 @@ final class Parser
             $this->error('key', $this->line, $first[1], 'a table has exactly one primary key');
             return;
         }
-        $this->table->primaryKey = new PrimaryKey(array_map(static fn(array $c): string => $c[0], $list[0]), $this->takeComments());
+        $this->table->primaryKey = new PrimaryKey(array_map(static fn(array $c): string => $c[0], $list[0]),
+            $this->takeComments());
         $this->declare('constraint', [$this->table->name, 'primary key'], $first);
         $this->checkKeyColumns($list[0], $first[1], true, 'primary key');
     }
@@ -1204,7 +1304,9 @@ final class Parser
         $this->constraintName($name);
         $columns = array_map(static fn(array $c): string => $c[0], $list[0]);
         if ($index) {
-            $this->table->indexes[] = new Index($name[0], array_map(static fn(array $c): IndexColumn => new IndexColumn($c[0], $c[2]), $list[0]), $this->takeComments());
+            $this->table->indexes[] = new Index($name[0],
+                array_map(static fn(array $c): IndexColumn => new IndexColumn($c[0], $c[2]), $list[0]),
+                $this->takeComments());
         } else {
             $this->table->uniqueKeys[] = new UniqueKey($name[0], $columns, $this->takeComments());
         }
@@ -1259,7 +1361,8 @@ final class Parser
             $this->error('key', $this->line, $at, "$what lists more than " . self::MAX_KEY_COLUMNS . ' columns');
         }
         if ($varchar > self::MAX_KEY_VARCHAR) {
-            $this->error('key', $this->line, $at, "$what totals $varchar varchar characters, more than " . self::MAX_KEY_VARCHAR);
+            $this->error('key', $this->line, $at,
+                "$what totals $varchar varchar characters, more than " . self::MAX_KEY_VARCHAR);
         }
     }
 
@@ -1276,7 +1379,8 @@ final class Parser
     {
         $t = $this->tokens;
         if (++$this->foreignKeyCount > self::MAX_FOREIGN_KEYS) {
-            $this->stop('limit', $this->line, $t[0][1], 'the document has more than ' . self::MAX_FOREIGN_KEYS . ' foreign keys');
+            $this->stop('limit', $this->line, $t[0][1],
+                'the document has more than ' . self::MAX_FOREIGN_KEYS . ' foreign keys');
         }
         if (!$this->expectAt(1, 'key')) {
             return;
@@ -1322,7 +1426,8 @@ final class Parser
         }
         foreach ($actionTokens as $action) {
             if (!in_array($action[0], ForeignKey::ACTIONS, true)) {
-                $this->error('foreign_key', $this->line, $action[1], "action `{$action[0]}` is not restrict, cascade or set_null");
+                $this->error('foreign_key', $this->line, $action[1],
+                    "action `{$action[0]}` is not restrict, cascade or set_null");
             }
         }
         $resolvable = $this->name($target);
@@ -1347,11 +1452,13 @@ final class Parser
                 $known = false;
                 $childrenKnown = false;
             } elseif (!isset($this->columns[$column])) {
-                $this->error('foreign_key', $this->line, $position, "foreign key `{$name[0]}` lists unknown column `$column`");
+                $this->error('foreign_key', $this->line, $position,
+                    "foreign key `{$name[0]}` lists unknown column `$column`");
                 $known = false;
                 $childrenKnown = false;
             } elseif (isset($seen[$column])) {
-                $this->error('foreign_key', $this->line, $position, "foreign key `{$name[0]}` repeats column `$column`");
+                $this->error('foreign_key', $this->line, $position,
+                    "foreign key `{$name[0]}` repeats column `$column`");
                 $known = false;
                 $childrenKnown = false;
             } elseif (isset($this->invalidTypes[$column])) {
@@ -1366,7 +1473,8 @@ final class Parser
             }
         }
         if ($resolvable) {
-            $this->deferredForeignKeys[] = [$this->columns, $foreignKey, $this->line, $name[1], $target[1], $parents[0]];
+            $this->deferredForeignKeys[] = [$this->columns, $foreignKey, $this->line, $name[1], $target[1],
+                $parents[0]];
         }
     }
 
@@ -1390,7 +1498,8 @@ final class Parser
     }
 
     /**
-     * Opens the table's settings block: the first block is kept, and a repeated block is not attached to the table; only its syntax is read (Go's detached block).
+     * Opens the table's settings block: the first block is kept, and a repeated block is not attached to the
+     * table; only its syntax is read (Go's detached block).
      */
     private function openSettingsBlock(Settings $settings): void
     {
@@ -1431,7 +1540,8 @@ final class Parser
             return;
         }
         $arguments = array_slice($t, 1);
-        // The exclude and include lists of audit come after the column word, and are read separately after checking the preceding word.
+        // The exclude and include lists of audit come after the column word, and are read separately after
+        // checking the preceding word.
         $rest = [];
         if ($keyword === 'audit' && count($arguments) > 10) {
             $rest = array_slice($arguments, 10);
@@ -1487,9 +1597,11 @@ final class Parser
                     return;
                 }
             }
-            // The arguments of audit are the history table, audit column, audit record table, action, and previous, in order.
+            // The arguments of audit are the history table, audit column, audit record table, action, and
+            // previous, in order.
             $arguments = [$arguments[1], $arguments[3], $arguments[5], $arguments[7], $arguments[9]];
-            // `tables <table> (<record>, <name>)` follows previous and precedes the lists; its three names are arguments 5 to 7.
+            // `tables <table> (<record>, <name>)` follows previous and precedes the lists; its three names are
+            // arguments 5 to 7.
             if (($rest[0][0] ?? null) === 'tables') {
                 $this->mark($rest[0], 'keyword');
                 foreach ([1 => null, 2 => '(', 3 => null, 4 => ',', 5 => null, 6 => ')'] as $k => $want) {
@@ -1519,7 +1631,8 @@ final class Parser
         $key = $perName ? $kind . ' ' . $arguments[0][0] : $kind;
         if (!$this->detachedBlock) {
             if (isset($this->settingKeys[$key])) {
-                $this->error('setting', $this->line, $at, $perName ? "setting `$kind` repeats for `{$arguments[0][0]}`" : "setting `$keyword` repeats");
+                $this->error('setting', $this->line, $at,
+                    $perName ? "setting `$kind` repeats for `{$arguments[0][0]}`" : "setting `$keyword` repeats");
                 return;
             }
             $this->settingKeys[$key] = true;
@@ -1542,9 +1655,12 @@ final class Parser
         foreach ($lists as [$list, $columns]) {
             $listed[$list[0]] = array_map(static fn(array $a): string => $a[0], $columns);
         }
-        $this->settingsBlock->settings[] = new Setting($kind, array_map(static fn(array $a): string => $a[0], $arguments), $this->takeComments(), $listed['exclude'] ?? null, $listed['include'] ?? null);
+        $this->settingsBlock->settings[] = new Setting($kind,
+            array_map(static fn(array $a): string => $a[0], $arguments), $this->takeComments(),
+            $listed['exclude'] ?? null, $listed['include'] ?? null);
         if (!$this->detachedBlock) {
-            $this->declare('setting', [$this->table->name, $keyword, ...self::settingIdentity($keyword, null, $arguments)], [$keyword, $at]);
+            $this->declare('setting', [$this->table->name, $keyword,
+                ...self::settingIdentity($keyword, null, $arguments)], [$keyword, $at]);
             $this->tableSettings[] = [$kind, $arguments, $this->line, $at, $lists, null];
         }
     }
@@ -1563,7 +1679,8 @@ final class Parser
         while ($i < count($tokens)) {
             $keyword = $tokens[$i];
             if ($keyword[0] !== 'exclude' && $keyword[0] !== 'include') {
-                $this->error('syntax', $this->line, $keyword[1], "expected `exclude`, `include` or the end of the line, not `{$keyword[0]}`");
+                $this->error('syntax', $this->line, $keyword[1],
+                    "expected `exclude`, `include` or the end of the line, not `{$keyword[0]}`");
                 return null;
             }
             $this->mark($keyword, 'keyword');
@@ -1671,8 +1788,10 @@ final class Parser
         foreach ($coordinates as [$text, $column]) {
             $integer = Literal::integer($text);
             $digits = ltrim((string) $integer, '-');
-            if ($integer === null || strlen($digits) > 10 || (strlen($digits) === 10 && strcmp($digits, $integer[0] === '-' ? '2147483648' : '2147483647') > 0)) {
-                $this->error('diagram', $this->line, $column, "coordinate `$text` is not an integer from -2147483648 to 2147483647");
+            if ($integer === null || strlen($digits) > 10
+                || (strlen($digits) === 10 && strcmp($digits, $integer[0] === '-' ? '2147483648' : '2147483647') > 0)) {
+                $this->error('diagram', $this->line, $column,
+                    "coordinate `$text` is not an integer from -2147483648 to 2147483647");
                 $valid = false;
                 continue;
             }
@@ -1699,8 +1818,11 @@ final class Parser
             $this->error('key', $this->tableName[0], $this->tableName[1], "table `{$table->name}` has no primary key");
         }
         foreach ($this->identities as [$name, $line, $column, $rejected]) {
-            $resolved = $primary === null || array_reduce($primary->columns, fn(bool $ok, string $c): bool => $ok && self::validName($c) && !isset($this->failedColumns[$c]), true);
-            if (!$rejected && !$this->failedPrimary && ($primary === null || ($resolved && $primary->columns !== [$name]))) {
+            $resolved = $primary === null || array_reduce($primary->columns,
+                fn(bool $ok, string $c): bool => $ok && self::validName($c) && !isset($this->failedColumns[$c]),
+                true);
+            if (!$rejected && !$this->failedPrimary
+                && ($primary === null || ($resolved && $primary->columns !== [$name]))) {
                 $this->error('column', $line, $column, "identity column `$name` must be the only primary key column");
             }
         }
@@ -1718,7 +1840,8 @@ final class Parser
                     $actionColumns[$child] ??= $foreignKey->name;
                 }
             }
-            // Go checks set_null against known children even when the child columns are unknown; it skips only the index check.
+            // Go checks set_null against known children even when the child columns are unknown; it skips only
+            // the index check.
             if ($childrenKnown) {
                 $covered = false;
                 foreach ($leading as $columns) {
@@ -1727,14 +1850,18 @@ final class Parser
                         break;
                     }
                 }
-                if (!$covered && !isset($this->failedKeyTables[$table->name]) && !isset($this->failedPrimaryTables[$table->name])) {
-                    $this->error('foreign_key', $line, $column, "foreign key `{$foreignKey->name}` needs an index or key whose leading columns are its columns");
+                if (!$covered && !isset($this->failedKeyTables[$table->name])
+                    && !isset($this->failedPrimaryTables[$table->name])) {
+                    $this->error('foreign_key', $line, $column,
+                        "foreign key `{$foreignKey->name}` needs an index or key whose leading columns are its "
+                        . "columns");
                 }
             }
             if ($foreignKey->onDelete === 'set_null' || $foreignKey->onUpdate === 'set_null') {
                 foreach ($foreignKey->columns as $child) {
                     if (isset($this->columns[$child]) && !$this->columns[$child]->nullable) {
-                        $this->error('foreign_key', $line, $column, "foreign key `{$foreignKey->name}` sets `$child` null but the column is not null");
+                        $this->error('foreign_key', $line, $column,
+                            "foreign key `{$foreignKey->name}` sets `$child` null but the column is not null");
                         break;
                     }
                 }
@@ -1771,7 +1898,8 @@ final class Parser
         $aes = [];
         foreach ($this->tableSettings as [$kind, $arguments]) {
             $kinds[$kind] = true;
-            if ($kind === 'codec' && in_array('aes', array_map(static fn(array $a): string => $a[0], array_slice($arguments, 1)), true)) {
+            if ($kind === 'codec' && in_array('aes',
+                array_map(static fn(array $a): string => $a[0], array_slice($arguments, 1)), true)) {
                 $aes[$arguments[0][0]] = true;
             }
         }
@@ -1802,15 +1930,19 @@ final class Parser
                 case 'updated':
                 case 'soft_delete':
                     $definition = $column($arguments[0]);
-                    if ($definition !== null && ($definition->type->name !== 'datetime' || ($kind === 'soft_delete' && !$definition->nullable))) {
-                        $this->error('setting', $line, $arguments[0][1], $kind === 'updated' ? 'setting `updated` needs a datetime column' : 'setting `soft_delete` needs a null datetime column');
+                    if ($definition !== null && ($definition->type->name !== 'datetime'
+                        || ($kind === 'soft_delete' && !$definition->nullable))) {
+                        $this->error('setting', $line, $arguments[0][1],
+                            $kind === 'updated' ? 'setting `updated` needs a datetime column'
+                                : 'setting `soft_delete` needs a null datetime column');
                     }
                     break;
                 case 'select_explicit':
                     $seen = [];
                     foreach ($arguments as $token) {
                         if (isset($seen[$token[0]])) {
-                            $this->error('setting', $line, $token[1], "setting `select explicit` repeats `{$token[0]}`");
+                            $this->error('setting', $line, $token[1],
+                                "setting `select explicit` repeats `{$token[0]}`");
                             continue;
                         }
                         $seen[$token[0]] = true;
@@ -1833,7 +1965,8 @@ final class Parser
                         $text = in_array(end($stages)[0], self::TEXT_STAGES, true);
                         $type = $definition->type->name;
                         if ($text ? $type !== 'varchar' && $type !== 'text' : $type !== 'bytes') {
-                            $this->error('setting', $line, $arguments[0][1], 'the last codec stage `' . end($stages)[0] . '` needs ' . ($text ? 'a varchar or text' : 'a bytes') . ' column');
+                            $this->error('setting', $line, $arguments[0][1], 'the last codec stage `'
+                                . end($stages)[0] . '` needs ' . ($text ? 'a varchar or text' : 'a bytes') . ' column');
                         }
                     }
                     if (isset($aes[$arguments[0][0]]) && !isset($kinds['aes_version'])) {
@@ -1842,18 +1975,21 @@ final class Parser
                     break;
                 case 'aes_version':
                     if ($aes === []) {
-                        $this->error('setting', $line, $at, 'setting `aes_version` needs a column with the `aes` codec');
+                        $this->error('setting', $line, $at,
+                            'setting `aes_version` needs a column with the `aes` codec');
                     }
                     $definition = $column($arguments[0]);
                     if ($definition !== null && (!$definition->type->isInteger() || $definition->nullable)) {
-                        $this->error('setting', $line, $arguments[0][1], 'setting `aes_version` needs a non-null integer column');
+                        $this->error('setting', $line, $arguments[0][1],
+                            'setting `aes_version` needs a non-null integer column');
                     }
                     break;
                 case 'blind_index':
                     [$source, $target] = $arguments;
                     $encrypted = $column($source);
                     if (self::validName($source[0]) && isset($this->columns[$source[0]]) && !isset($aes[$source[0]])) {
-                        $this->error('setting', $line, $at, "setting `blind_index` needs a column with the `aes` codec, not `{$source[0]}`");
+                        $this->error('setting', $line, $at,
+                            "setting `blind_index` needs a column with the `aes` codec, not `{$source[0]}`");
                     }
                     $index = $column($target);
                     if ($index !== null) {
@@ -1862,9 +1998,12 @@ final class Parser
                             !($type->name === 'varchar' && $type->parameters[0] >= 64)
                             || ($encrypted !== null && $encrypted->nullable !== $index->nullable)
                             || isset($aes[$target[0]])
-                            || (!isset($singleColumnKeys[$target[0]]) && !isset($this->failedKeyTables[$this->table->name]))
+                            || (!isset($singleColumnKeys[$target[0]])
+                                && !isset($this->failedKeyTables[$this->table->name]))
                         ) {
-                            $this->error('setting', $line, $target[1], "blind index column `{$target[0]}` is a varchar(n >= 64) column with the AES column's nullability, not AES-encoded, and the only column of an index or unique key");
+                            $this->error('setting', $line, $target[1],
+                                "blind index column `{$target[0]}` is a varchar(n >= 64) column with the AES column's "
+                                . "nullability, not AES-encoded, and the only column of an index or unique key");
                         }
                     }
                     break;
@@ -1877,21 +2016,26 @@ final class Parser
                         $found = $found || $foreignKey->name === $arguments[0][0];
                     }
                     if (!$found) {
-                        $this->error('setting', $line, $arguments[0][1], "setting `navigation` names unknown foreign key `{$arguments[0][0]}`");
+                        $this->error('setting', $line, $arguments[0][1],
+                            "setting `navigation` names unknown foreign key `{$arguments[0][0]}`");
                     }
                     break;
                 case 'immutable':
                     if ($changedByForeignKeys) {
-                        $this->error('setting', $line, $at, 'setting `immutable` is rejected on a child of a cascade or set_null foreign key');
+                        $this->error('setting', $line, $at,
+                            'setting `immutable` is rejected on a child of a cascade or set_null foreign key');
                     }
                     foreach (['immutable_update', 'immutable_delete'] as $event) {
-                        $this->claimGenerated(Names::render($this->table->name, $event), "table {$this->table->name} setting immutable", $line, $at);
+                        $this->claimGenerated(Names::render($this->table->name, $event),
+                            "table {$this->table->name} setting immutable", $line, $at);
                     }
                     break;
                 case 'markdown':
                     $definition = $this->columnRef($arguments[0], $line, $kind);
-                    if ($definition !== null && $definition->type->name !== 'invalid' && !in_array($definition->type->name, ['varchar', 'text'], true)) {
-                        $this->error('setting', $line, $arguments[0][1], "markdown needs a varchar or text column, not {$definition->type->text()}");
+                    if ($definition !== null && $definition->type->name !== 'invalid'
+                        && !in_array($definition->type->name, ['varchar', 'text'], true)) {
+                        $this->error('setting', $line, $arguments[0][1],
+                            "markdown needs a varchar or text column, not {$definition->type->text()}");
                     }
                     break;
                 case 'store':
@@ -1906,8 +2050,10 @@ final class Parser
                 case 'title':
                 case 'body':
                     $definition = $this->columnRef($arguments[0], $line, $kind);
-                    if ($definition !== null && (($definition->type->name !== 'invalid' && !in_array($definition->type->name, ['varchar', 'text'], true)) || $definition->nullable)) {
-                        $this->error('setting', $line, $arguments[0][1], "$kind needs a non-null varchar or text column");
+                    if ($definition !== null && (($definition->type->name !== 'invalid'
+                        && !in_array($definition->type->name, ['varchar', 'text'], true)) || $definition->nullable)) {
+                        $this->error('setting', $line, $arguments[0][1],
+                            "$kind needs a non-null varchar or text column");
                     }
                     break;
                 case 'order':
@@ -1915,16 +2061,22 @@ final class Parser
                     if ($definition === null) {
                         break;
                     }
-                    if (($definition->type->name !== 'invalid' && !in_array($definition->type->name, ['i32', 'i64'], true)) || $definition->nullable || $definition->default !== null) {
-                        $this->error('setting', $line, $arguments[0][1], 'order needs a non-null i32 or i64 column with no default');
+                    if (($definition->type->name !== 'invalid'
+                        && !in_array($definition->type->name, ['i32', 'i64'], true))
+                        || $definition->nullable || $definition->default !== null) {
+                        $this->error('setting', $line, $arguments[0][1],
+                            'order needs a non-null i32 or i64 column with no default');
                     } elseif ($this->inKeyOrCheck($arguments[0][0], $checkColumns)) {
-                        $this->error('setting', $line, $arguments[0][1], "order column `{$arguments[0][0]}` is in a key, index or check");
+                        $this->error('setting', $line, $arguments[0][1],
+                            "order column `{$arguments[0][0]}` is in a key, index or check");
                     }
                     break;
                 case 'state_machine':
                     $definition = $this->columnRef($arguments[0], $line, $kind);
-                    if ($definition !== null && (($definition->type->name !== 'invalid' && !in_array($definition->type->name, ['varchar', 'text'], true)) || $definition->nullable)) {
-                        $this->error('setting', $line, $arguments[0][1], 'state_machine needs a non-null varchar or text column');
+                    if ($definition !== null && (($definition->type->name !== 'invalid'
+                        && !in_array($definition->type->name, ['varchar', 'text'], true)) || $definition->nullable)) {
+                        $this->error('setting', $line, $arguments[0][1],
+                            'state_machine needs a non-null varchar or text column');
                     }
                     foreach ($lists as [, $columns]) {
                         foreach ($columns as $token) {
@@ -1934,10 +2086,12 @@ final class Parser
                     break;
                 case 'audit':
                     if ($changedByForeignKeys) {
-                        $this->error('setting', $line, $at, 'setting `audit` is rejected on a child of a cascade or set_null foreign key');
+                        $this->error('setting', $line, $at,
+                            'setting `audit` is rejected on a child of a cascade or set_null foreign key');
                     }
                     foreach (['audit_insert', 'audit_update', 'audit_delete'] as $event) {
-                        $this->claimGenerated(Names::render($this->table->name, $event), "table {$this->table->name} setting audit", $line, $at);
+                        $this->claimGenerated(Names::render($this->table->name, $event),
+                            "table {$this->table->name} setting audit", $line, $at);
                     }
                     $audit = $column($arguments[1]);
                     if ($audit !== null && $audit->nullable) {
@@ -1945,10 +2099,14 @@ final class Parser
                     }
                     $recorded = $this->auditLists($lists, $arguments[1][0], $line, $column);
                     if (self::validName($arguments[2][0])) {
-                        $this->deferredAuditRecords[] = [$this->table, $audit, $arguments, $line, isset($this->failedKeyTables[$this->table->name]) || isset($this->failedPrimaryTables[$this->table->name])];
+                        $this->deferredAuditRecords[] = [$this->table, $audit, $arguments, $line,
+                            isset($this->failedKeyTables[$this->table->name])
+                            || isset($this->failedPrimaryTables[$this->table->name])];
                     }
-                    if (self::validName($arguments[0][0]) && self::validName($arguments[3][0]) && self::validName($arguments[4][0])) {
-                        $this->deferredAudits[] = [$this->table, $this->columns, $arguments, $audit?->type, $line, $recorded];
+                    if (self::validName($arguments[0][0]) && self::validName($arguments[3][0])
+                        && self::validName($arguments[4][0])) {
+                        $this->deferredAudits[] = [$this->table, $this->columns, $arguments, $audit?->type, $line,
+                            $recorded];
                     }
                     break;
             }
@@ -1966,28 +2124,34 @@ final class Parser
                 continue;
             }
             if ($target === null) {
-                $this->error('foreign_key', $line, $targetAt, "foreign key `{$foreignKey->name}` references unknown table `{$foreignKey->table}`");
+                $this->error('foreign_key', $line, $targetAt,
+                    "foreign key `{$foreignKey->name}` references unknown table `{$foreignKey->table}`");
                 continue;
             }
             if ($target['table'] === null) {
                 continue;
             }
-            // Go does not check the column count, pairing, or type of a target whose table line failed (validate.go's foreignKey).
+            // Go does not check the column count, pairing, or type of a target whose table line failed
+            // (validate.go's foreignKey).
             if ($target['headerFailed'] ?? false) {
                 continue;
             }
             $targetColumns = $target['columns'];
-            // Same as Go's foreignKey: the count check is done regardless of whether the child columns are known, while the pairing and type checks are done when all the reference columns are known.
+            // Same as Go's foreignKey: the count check is done regardless of whether the child columns are known,
+            // while the pairing and type checks are done when all the reference columns are known.
             // Known. The type check looks only at known children, and stops at the first mismatch.
             $referencesKnown = true;
             foreach ($parents as [$parent, $position]) {
                 if (!isset($targetColumns[$parent])) {
-                    $this->error('foreign_key', $line, $position, "table `{$foreignKey->table}` has no column `$parent`");
+                    $this->error('foreign_key', $line, $position,
+                        "table `{$foreignKey->table}` has no column `$parent`");
                     $referencesKnown = false;
                 }
             }
             if (count($foreignKey->columns) !== count($foreignKey->referencedColumns)) {
-                $this->error('foreign_key', $line, $at, "foreign key `{$foreignKey->name}` lists " . count($foreignKey->columns) . ' columns and references ' . count($foreignKey->referencedColumns));
+                $this->error('foreign_key', $line, $at, "foreign key `{$foreignKey->name}` lists "
+                    . count($foreignKey->columns) . ' columns and references '
+                    . count($foreignKey->referencedColumns));
                 continue;
             }
             if (!$referencesKnown) {
@@ -1997,16 +2161,23 @@ final class Parser
             foreach ($target['table']->uniqueKeys as $unique) {
                 $keys[] = $unique->columns;
             }
-            if (!in_array($foreignKey->referencedColumns, $keys, true) && !isset($this->failedKeyTables[$foreignKey->table]) && !isset($this->failedPrimaryTables[$foreignKey->table])) {
-                $this->error('foreign_key', $line, $at, "foreign key `{$foreignKey->name}` references columns that are not the primary key or a unique key of `{$foreignKey->table}`");
+            if (!in_array($foreignKey->referencedColumns, $keys, true)
+                && !isset($this->failedKeyTables[$foreignKey->table])
+                && !isset($this->failedPrimaryTables[$foreignKey->table])) {
+                $this->error('foreign_key', $line, $at,
+                    "foreign key `{$foreignKey->name}` references columns that are not the primary key or a unique "
+                    . "key of `{$foreignKey->table}`");
             }
             foreach ($foreignKey->columns as $i => $child) {
                 if (!isset($columns[$child]) || $columns[$child]->type->name === 'invalid') {
                     continue;
                 }
                 $parentType = $targetColumns[$foreignKey->referencedColumns[$i]]->type;
-                if ($parentType->name !== 'invalid' && $columns[$child]->type !== $parentType && $columns[$child]->type->text() !== $parentType->text()) {
-                    $this->error('foreign_key', $line, $at, "foreign key `{$foreignKey->name}` column `$child` is {$columns[$child]->type->text()} but `{$foreignKey->referencedColumns[$i]}` is {$parentType->text()}");
+                if ($parentType->name !== 'invalid' && $columns[$child]->type !== $parentType
+                    && $columns[$child]->type->text() !== $parentType->text()) {
+                    $this->error('foreign_key', $line, $at,
+                        "foreign key `{$foreignKey->name}` column `$child` is {$columns[$child]->type->text()} "
+                        . "but `{$foreignKey->referencedColumns[$i]}` is {$parentType->text()}");
                     break;
                 }
             }
@@ -2015,7 +2186,8 @@ final class Parser
 
     /**
      * Checks the audit's exclude or include list, and returns a function telling whether a column is recorded
-     * (docs/spec/dbspec.md "Audit"). If both lists are used, it rejects at the keyword of the second list and returns null
+     * (docs/spec/dbspec.md "Audit"). If both lists are used, it rejects at the keyword of the second list and
+     * returns null
      * . The columns in the list are table columns, appear only once, and are not audit columns.
      * Audit columns are always recorded, so they are not used in either list.
      *
@@ -2026,7 +2198,8 @@ final class Parser
     private function auditLists(array $lists, string $audit, int $line, \Closure $column): ?\Closure
     {
         if (count($lists) > 1) {
-            $this->error('setting', $line, $lists[1][0][1], 'audit names its recorded columns by exclude or by include, not both');
+            $this->error('setting', $line, $lists[1][0][1],
+                'audit names its recorded columns by exclude or by include, not both');
             return null;
         }
         $listed = [];
@@ -2037,7 +2210,8 @@ final class Parser
                     continue;
                 }
                 if ($token[0] === $audit) {
-                    $this->error('setting', $line, $token[1], "the audit column `{$token[0]}` is always recorded and is not listed in exclude or include");
+                    $this->error('setting', $line, $token[1],
+                        "the audit column `{$token[0]}` is always recorded and is not listed in exclude or include");
                 } else {
                     $column($token);
                 }
@@ -2051,9 +2225,11 @@ final class Parser
     }
 
     /**
-     * Checks the audit record table. That table is another table of this document or of a used document, and not a history
+     * Checks the audit record table. That table is another table of this document or of a used document, and
+     * not a history
      * table; it is not itself audited, and it has a primary key of one column whose type is
-     * the audit column's type. The audit column is the only column of a declared foreign key that restricts its primary key
+     * the audit column's type. The audit column is the only column of a declared foreign key that restricts
+     * its primary key
      * foreign key. So an audit column value without an audit record row is one the database
      * rejects.
      */
@@ -2067,7 +2243,8 @@ final class Parser
                 continue;
             }
             if ($entry === null) {
-                $this->error('setting', $line, $referencesToken[1], "audit record table `$name` is not a table of this document or a used table");
+                $this->error('setting', $line, $referencesToken[1],
+                    "audit record table `$name` is not a table of this document or a used table");
                 continue;
             }
             $record = $entry['table'];
@@ -2083,7 +2260,8 @@ final class Parser
                 continue;
             }
             if ($name === $historyToken[0]) {
-                $this->error('setting', $line, $referencesToken[1], 'the audit record table is another table than the history table');
+                $this->error('setting', $line, $referencesToken[1],
+                    'the audit record table is another table than the history table');
                 continue;
             }
             foreach ($record->settings?->settings ?? [] as $setting) {
@@ -2094,7 +2272,8 @@ final class Parser
             $key = $record->primaryKey?->columns ?? [];
             if (count($key) !== 1) {
                 if (!isset($this->failedPrimaryTables[$name])) {
-                    $this->error('setting', $line, $referencesToken[1], "audit record table `$name` needs a primary key of one column");
+                    $this->error('setting', $line, $referencesToken[1],
+                        "audit record table `$name` needs a primary key of one column");
                 }
                 continue;
             }
@@ -2102,26 +2281,33 @@ final class Parser
             if ($column === null || $pk === null) {
                 continue;
             }
-            if ($pk->type->name !== 'invalid' && $column->type->name !== 'invalid' && $pk->type->text() !== $column->type->text()) {
-                $this->error('setting', $line, $columnToken[1], "the audit column has type {$column->type->text()}, not the type {$pk->type->text()} of the primary key of `$name`");
+            if ($pk->type->name !== 'invalid' && $column->type->name !== 'invalid'
+                && $pk->type->text() !== $column->type->text()) {
+                $this->error('setting', $line, $columnToken[1],
+                    "the audit column has type {$column->type->text()}, not the type {$pk->type->text()} of the "
+                    . "primary key of `$name`");
                 continue;
             }
             foreach ($audited->foreignKeys as $foreignKey) {
                 if (
-                    $foreignKey->columns === [$columnToken[0]] && $foreignKey->table === $name && $foreignKey->referencedColumns === [$key[0]]
+                    $foreignKey->columns === [$columnToken[0]] && $foreignKey->table === $name
+                    && $foreignKey->referencedColumns === [$key[0]]
                     && $foreignKey->onDelete === 'restrict' && $foreignKey->onUpdate === 'restrict'
                 ) {
                     continue 2;
                 }
             }
             if (!$failedKeys) {
-                $this->error('setting', $line, $columnToken[1], "the audit column needs the foreign key ($columnToken[0]) references $name ({$key[0]}) on delete restrict on update restrict");
+                $this->error('setting', $line, $columnToken[1],
+                    "the audit column needs the foreign key ($columnToken[0]) references $name ({$key[0]}) on delete "
+                    . "restrict on update restrict");
             }
         }
     }
 
     /**
-     * Checks the tables table of `tables <table> (<record>, <name>)`: another table than the audited, the history and the
+     * Checks the tables table of `tables <table> (<record>, <name>)`: another table than the audited, the history
+     * and the
      * audit record table, not audited itself, with exactly the record and the name column, the name column a varchar(n)
      * with n >= 63, the primary key (record, name) and the foreign key (record) references the audit record table's key
      * with restrict (docs/spec/dbspec.md "Audit").
@@ -2139,7 +2325,8 @@ final class Parser
                 continue;
             }
             if ($entry === null) {
-                $this->error('setting', $line, $tablesToken[1], "tables table `$name` is not a table of this document or a used table");
+                $this->error('setting', $line, $tablesToken[1], "tables table `$name` is not a table of this document "
+                    . "or a used table");
                 continue;
             }
             $tables = $entry['table'];
@@ -2147,7 +2334,8 @@ final class Parser
                 continue;
             }
             if ($tables === $audited || $name === $historyToken[0] || $name === $referencesToken[0]) {
-                $this->error('setting', $line, $tablesToken[1], 'the tables table is another table than the audited, the history and the audit record table');
+                $this->error('setting', $line, $tablesToken[1], 'the tables table is another table than the audited, '
+                    . 'the history and the audit record table');
                 continue;
             }
             foreach ($tables->settings?->settings ?? [] as $setting) {
@@ -2159,7 +2347,8 @@ final class Parser
             $known = true;
             foreach ([$recordToken, $nameToken] as $token) {
                 if (!isset($entry['columns'][$token[0]])) {
-                    $this->error('setting', $line, $token[1], "column `{$token[0]}` is not a column of tables table `$name`");
+                    $this->error('setting', $line, $token[1], "column `{$token[0]}` is not a column of tables "
+                        . "table `$name`");
                     $known = false;
                 }
             }
@@ -2172,26 +2361,32 @@ final class Parser
             }
             foreach ($tables->columns as $column) {
                 if ($column->name !== $recordToken[0] && $column->name !== $nameToken[0]) {
-                    $this->error('setting', $line, $tablesToken[1], "tables table `$name` has the extra column `{$column->name}`");
+                    $this->error('setting', $line, $tablesToken[1], "tables table `$name` has the extra column "
+                        . "`{$column->name}`");
                 }
             }
-            if (!isset($this->failedPrimaryTables[$name]) && ($tables->primaryKey?->columns ?? []) !== [$recordToken[0], $nameToken[0]]) {
-                $this->error('setting', $line, $tablesToken[1], "the primary key of tables table `$name` is ({$recordToken[0]}, {$nameToken[0]})");
+            if (!isset($this->failedPrimaryTables[$name])
+                && ($tables->primaryKey?->columns ?? []) !== [$recordToken[0], $nameToken[0]]) {
+                $this->error('setting', $line, $tablesToken[1], "the primary key of tables table `$name` is "
+                    . "({$recordToken[0]}, {$nameToken[0]})");
             }
             $record = $this->tables[$referencesToken[0]]['table'] ?? null;
             $key = $record?->primaryKey?->columns ?? [];
-            if ($record === null || ($this->tables[$referencesToken[0]]['headerFailed'] ?? false) || count($key) !== 1 || isset($this->failedKeyTables[$name])) {
+            if ($record === null || ($this->tables[$referencesToken[0]]['headerFailed'] ?? false)
+                || count($key) !== 1 || isset($this->failedKeyTables[$name])) {
                 continue;
             }
             foreach ($tables->foreignKeys as $foreignKey) {
                 if (
-                    $foreignKey->columns === [$recordToken[0]] && $foreignKey->table === $referencesToken[0] && $foreignKey->referencedColumns === $key
+                    $foreignKey->columns === [$recordToken[0]] && $foreignKey->table === $referencesToken[0]
+                    && $foreignKey->referencedColumns === $key
                     && $foreignKey->onDelete === 'restrict' && $foreignKey->onUpdate === 'restrict'
                 ) {
                     continue 2;
                 }
             }
-            $this->error('setting', $line, $tablesToken[1], "tables table `$name` needs the foreign key ({$recordToken[0]}) references {$referencesToken[0]} ({$key[0]}) on delete restrict on update restrict");
+            $this->error('setting', $line, $tablesToken[1], "tables table `$name` needs the foreign key "
+                . "({$recordToken[0]}) references {$referencesToken[0]} ({$key[0]}) on delete restrict on update restrict");
         }
     }
 
@@ -2224,7 +2419,8 @@ final class Parser
             // identity primary key, action and previous columns, a copy of the recorded columns, and remaining columns.
             foreach ($history->settings?->settings ?? [] as $setting) {
                 if ($setting->kind === 'audit') {
-                    $this->error('setting', $line, $historyToken[1], "history table `{$history->name}` is audited itself");
+                    $this->error('setting', $line, $historyToken[1],
+                        "history table `{$history->name}` is audited itself");
                 }
             }
             $key = $history->primaryKey?->columns ?? [];
@@ -2233,16 +2429,21 @@ final class Parser
             if ($identity !== null && $identity->identity && $identity->type->name === 'i64') {
                 $reserved[$identity->name] = true;
             } else {
-                $this->error('setting', $line, $historyToken[1], "history table `{$history->name}` needs an i64 identity primary key");
+                $this->error('setting', $line, $historyToken[1], "history table `{$history->name}` needs an i64 "
+                    . "identity primary key");
             }
             $action = $historyColumns[$actionToken[0]] ?? null;
-            if ($action === null || isset($reserved[$actionToken[0]]) || $action->nullable || $action->type->text() !== 'varchar(8)') {
-                $this->error('setting', $line, $actionToken[1], "the audit action column `{$actionToken[0]}` is a separate non-null varchar(8) column of `{$history->name}`");
+            if ($action === null || isset($reserved[$actionToken[0]]) || $action->nullable
+                || $action->type->text() !== 'varchar(8)') {
+                $this->error('setting', $line, $actionToken[1], "the audit action column `{$actionToken[0]}` is a "
+                    . "separate non-null varchar(8) column of `{$history->name}`");
             }
             $reserved[$actionToken[0]] = true;
             $previous = $historyColumns[$previousToken[0]] ?? null;
-            if ($previous === null || isset($reserved[$previousToken[0]]) || !$previous->nullable || ($auditType !== null && $previous->type->text() !== $auditType->text())) {
-                $this->error('setting', $line, $previousToken[1], "the audit previous column `{$previousToken[0]}` is a separate null column of `{$history->name}` with the audit column's type");
+            if ($previous === null || isset($reserved[$previousToken[0]]) || !$previous->nullable
+                || ($auditType !== null && $previous->type->text() !== $auditType->text())) {
+                $this->error('setting', $line, $previousToken[1], "the audit previous column `{$previousToken[0]}` is a separate "
+                    . "null column of `{$history->name}` with the audit column's type");
             }
             $reserved[$previousToken[0]] = true;
             // A setting that used both lists does not match columns, since the recorded columns are not determined.
@@ -2256,9 +2457,11 @@ final class Parser
                     continue;
                 }
                 if (isset($reserved[$name]) || !isset($historyColumns[$name])) {
-                    $this->error('setting', $line, $historyToken[1], "history table `{$history->name}` has no copy of column `$name`");
+                    $this->error('setting', $line, $historyToken[1], "history table `{$history->name}` has no copy "
+                        . "of column `$name`");
                 } elseif ($historyColumns[$name]->type->text() !== $column->type->text()) {
-                    $this->error('setting', $line, $historyToken[1], "history column `$name` has type {$historyColumns[$name]->type->text()}, not {$column->type->text()}");
+                    $this->error('setting', $line, $historyToken[1], "history column `$name` has type "
+                        . "{$historyColumns[$name]->type->text()}, not {$column->type->text()}");
                 }
             }
             foreach ($historyColumns as $name => $column) {
@@ -2267,9 +2470,11 @@ final class Parser
                     continue;
                 }
                 if (!isset($columns[$name])) {
-                    $this->error('setting', $line, $historyToken[1], "history table `{$history->name}` has column `$name`, which is not a column of `{$audited->name}`");
+                    $this->error('setting', $line, $historyToken[1], "history table `{$history->name}` has column "
+                        . "`$name`, which is not a column of `{$audited->name}`");
                 } elseif (!$recorded($name)) {
-                    $this->error('setting', $line, $historyToken[1], "history table `{$history->name}` has column `$name`, which `{$audited->name}` does not record");
+                    $this->error('setting', $line, $historyToken[1], "history table `{$history->name}` has column "
+                        . "`$name`, which `{$audited->name}` does not record");
                 }
             }
         }
@@ -2300,7 +2505,8 @@ final class Parser
             if ($keyword === 'markdown' || in_array($keyword, self::ONCE_STORAGE, true)) {
                 $key = $keyword === 'markdown' ? "markdown {$arguments[0][0]}" : $keyword;
                 if (isset($this->settingKeys[$key])) {
-                    $this->error('setting', $this->line, $at, $keyword === 'markdown' ? "setting `markdown` repeats for `{$arguments[0][0]}`" : "setting `$keyword` repeats");
+                    $this->error('setting', $this->line, $at, $keyword === 'markdown'
+                        ? "setting `markdown` repeats for `{$arguments[0][0]}`" : "setting `$keyword` repeats");
                     return;
                 }
                 $this->settingKeys[$key] = true;
@@ -2321,7 +2527,8 @@ final class Parser
             $requires,
         );
         if (!$this->detachedBlock) {
-            $this->declare('setting', [$this->table->name, $keyword, ...self::settingIdentity($keyword, $form, $arguments)], [$keyword, $at]);
+            $this->declare('setting', [$this->table->name, $keyword,
+                ...self::settingIdentity($keyword, $form, $arguments)], [$keyword, $at]);
             $this->tableSettings[] = [$keyword, $arguments, $this->line, $at, $lists, $form];
         }
     }
@@ -2330,7 +2537,8 @@ final class Parser
      * From the cursor, reads the arguments of the storage setting, then reads the line form and the `require` list
      * (only on transition and terminal lines).
      *
-     * @return array{0: list<array{0:string,1:int}>, 1: ?string, 2: list<array{0: array{0:string,1:int}, 1: list<array{0:string,1:int}>}>}
+     * @return array{0: list<array{0:string,1:int}>, 1: ?string,
+     *     2: list<array{0: array{0:string,1:int}, 1: list<array{0:string,1:int}>}>}
      */
     private function storageArguments(string $keyword): array
     {
@@ -2349,7 +2557,8 @@ final class Parser
                 if ($kind[0] !== 'files') {
                     $arguments[] = $this->cursorOneOf('`list` or `table`', ['list', 'table']);
                 }
-                // The shard clause is also read in a block: a shard in a block table is a setting error. The `shard` token
+                // The shard clause is also read in a block: a shard in a block table is a setting error. The
+                // `shard` token
                 // is kept for position and removed from the Setting's arguments.
                 if (($this->tokens[$this->cursor][0] ?? null) === 'shard') {
                     $arguments[] = $this->take('keyword');
@@ -2373,7 +2582,8 @@ final class Parser
      * Reads the state_machine line after the column: initial, terminal, history, limit, or
      * transition line, the same way as Go's settingsLine reads it.
      *
-     * @return array{0: list<array{0:string,1:int}>, 1: string, 2: list<array{0: array{0:string,1:int}, 1: list<array{0:string,1:int}>}>}
+     * @return array{0: list<array{0:string,1:int}>, 1: string,
+     *     2: list<array{0: array{0:string,1:int}, 1: list<array{0:string,1:int}>}>}
      */
     private function machineArguments(): array
     {
@@ -2482,7 +2692,11 @@ final class Parser
         return $this->take('keyword');
     }
 
-    /** A string literal. The value is the text between the quotes; a doubled quote is read as one character. @return array{0:string,1:int} */
+    /**
+     * A string literal. The value is the text between the quotes; a doubled quote is read as one character.
+     *
+     * @return array{0:string,1:int}
+     */
     private function cursorQuoted(string $what): array
     {
         $token = $this->tokens[$this->cursor] ?? null;
@@ -2516,7 +2730,8 @@ final class Parser
 
     private function cursorArrow(): void
     {
-        if (($this->tokens[$this->cursor][0] ?? null) !== '-' || ($this->tokens[$this->cursor + 1][0] ?? null) !== '>') {
+        if (($this->tokens[$this->cursor][0] ?? null) !== '-'
+            || ($this->tokens[$this->cursor + 1][0] ?? null) !== '>') {
             throw $this->cursorFail('`->`');
         }
         $this->cursor += 2;
@@ -2525,13 +2740,15 @@ final class Parser
     /** Whether the keyword $text comes next and is not the from state of a transition (no `->` follows). */
     private function formAhead(string $text): bool
     {
-        return ($this->tokens[$this->cursor][0] ?? null) === $text && ($this->tokens[$this->cursor + 1][0] ?? null) !== '-';
+        return ($this->tokens[$this->cursor][0] ?? null) === $text
+            && ($this->tokens[$this->cursor + 1][0] ?? null) !== '-';
     }
 
     /** The value of a default literal token: for a string, the text without quotes; otherwise the token as is. */
     private static function literalValue(string $text): string
     {
-        return $text !== '' && $text[0] === "'" && strlen($text) >= 2 ? str_replace("''", "'", substr($text, 1, -1)) : $text;
+        return $text !== '' && $text[0] === "'" && strlen($text) >= 2
+            ? str_replace("''", "'", substr($text, 1, -1)) : $text;
     }
 
     private static function isNumber(string $token): bool
@@ -2546,7 +2763,8 @@ final class Parser
             return false;
         }
         $digits = ltrim($text, '0');
-        return $digits !== '' && (strlen($digits) < 19 || (strlen($digits) === 19 && strcmp($digits, '9223372036854775807') <= 0));
+        return $digits !== '' && (strlen($digits) < 19
+            || (strlen($digits) === 19 && strcmp($digits, '9223372036854775807') <= 0));
     }
 
     /**
@@ -2580,10 +2798,12 @@ final class Parser
     }
 
     /**
-     * A store's shard clause names a non-null date or datetime column; it is rejected for a block table, a self foreign key,
+     * A store's shard clause names a non-null date or datetime column; it is rejected for a block table, a
+     * self foreign key,
      * and a table that has order.
      *
-     * @param list<array{0:string,1:int}> $arguments After the kind's arguments come the `shard` token, a column, and a period
+     * @param list<array{0:string,1:int}> $arguments After the kind's arguments come the `shard` token, a column,
+     *     and a period
      */
     private function checkStoreShard(array $arguments, int $line, bool $order): void
     {
@@ -2593,7 +2813,8 @@ final class Parser
         }
         [$shard, $column] = [$arguments[$at], $arguments[$at + 1]];
         $definition = $this->columnRef($column, $line, 'store');
-        if ($definition !== null && (($definition->type->name !== 'invalid' && !in_array($definition->type->name, ['date', 'datetime'], true)) || $definition->nullable)) {
+        if ($definition !== null && (($definition->type->name !== 'invalid'
+            && !in_array($definition->type->name, ['date', 'datetime'], true)) || $definition->nullable)) {
             $this->error('setting', $line, $column[1], 'store shard needs a non-null date or datetime column');
         }
         if ($arguments[0][0] === 'block') {
@@ -2623,7 +2844,8 @@ final class Parser
         }
         $definition = $this->columns[$primary->columns[0]] ?? null;
         if ($definition !== null && $definition->type->name !== 'invalid' && $definition->type->name !== 'varchar') {
-            $this->error('setting', $line, $at, "key_prefix needs a varchar primary key, not {$definition->type->text()}");
+            $this->error('setting', $line, $at,
+                "key_prefix needs a varchar primary key, not {$definition->type->text()}");
         }
     }
 
@@ -2675,7 +2897,8 @@ final class Parser
             if ($column === '') {
                 $column = $arguments[0][0];
             } elseif ($arguments[0][0] !== $column) {
-                $this->error('setting', $line, $arguments[0][1], "state_machine repeats for `{$arguments[0][0]}`; a table holds one machine");
+                $this->error('setting', $line, $arguments[0][1],
+                    "state_machine repeats for `{$arguments[0][0]}`; a table holds one machine");
             }
             if ($form === 'history') {
                 if ($history !== null) {
@@ -2689,7 +2912,8 @@ final class Parser
                 // A line of another column already reports that a table holds one machine; it is no line of this one.
                 if ($arguments[0][0] === $column) {
                     [$key, $what] = $form === 'transition'
-                        ? ["transition {$arguments[1][0]} {$arguments[2][0]}", "{$arguments[1][0]} -> {$arguments[2][0]}"]
+                        ? ["transition {$arguments[1][0]} {$arguments[2][0]}",
+                            "{$arguments[1][0]} -> {$arguments[2][0]}"]
                         : ["{$form} {$arguments[1][0]}", "{$form} {$arguments[1][0]}"];
                     if (isset($seen[$key])) {
                         $this->error('setting', $line, $at, "state_machine repeats {$what}");
@@ -2730,7 +2954,8 @@ final class Parser
             }
             $seen[$state[0]] = true;
             if (!self::positiveCount($arguments[2][0])) {
-                $this->error('setting', $line, $arguments[2][1], "limit needs a positive row count, not {$arguments[2][0]}");
+                $this->error('setting', $line, $arguments[2][1],
+                    "limit needs a positive row count, not {$arguments[2][0]}");
             }
         }
         $definition = $column === '' ? null : ($this->columns[$column] ?? null);
@@ -2768,7 +2993,8 @@ final class Parser
         }
         [$firstLine, $firstArguments, $firstAt] = $boxes[0];
         if ($column === '') {
-            $this->error('setting', $firstLine, $firstArguments[0][1], "checkbox needs a state_machine on column `{$firstArguments[0][0]}`");
+            $this->error('setting', $firstLine, $firstArguments[0][1],
+                "checkbox needs a state_machine on column `{$firstArguments[0][0]}`");
             return;
         }
         $covered = [];
@@ -2778,7 +3004,8 @@ final class Parser
                 continue;
             }
             if ($arguments[0][0] !== $column) {
-                $this->error('setting', $line, $arguments[0][1], "checkbox names column `{$arguments[0][0]}`, but the state_machine column is `$column`");
+                $this->error('setting', $line, $arguments[0][1], "checkbox names column `{$arguments[0][0]}`, "
+                    . "but the state_machine column is `$column`");
                 continue;
             }
             $state = $arguments[1];
@@ -2805,7 +3032,8 @@ final class Parser
 
     /**
      * Checks the history table of a state_machine history line (Go's history). It is checked after the last line,
-     * and it must be a table of this document or of a used document. Its row columns that point at the machine's table must
+     * and it must be a table of this document or of a used document. Its row columns that point at the machine's
+     * table must
      * have a foreign key; the from and to columns are state type, and the at column is datetime(6).
      * Each needed column must have a nullable copy, and no column that the line does not name may exist.
      * It declares no title or body.
@@ -2820,7 +3048,8 @@ final class Parser
                 continue;
             }
             if ($entry === null) {
-                $this->error('setting', $line, $tableToken[1], "history table `$name` is not a table of this document or a used table");
+                $this->error('setting', $line, $tableToken[1], "history table `$name` is not a table of this document "
+                    . "or a used table");
                 continue;
             }
             if ($entry['table'] === null || $state === null || $state->type->name === 'invalid') {
@@ -2830,10 +3059,12 @@ final class Parser
             $historyColumns = $entry['columns'];
             $foreignKey = false;
             foreach ($history->foreignKeys as $candidate) {
-                $foreignKey = $foreignKey || ($candidate->columns === [$rowToken[0]] && $candidate->table === $machine->name);
+                $foreignKey = $foreignKey || ($candidate->columns === [$rowToken[0]]
+                    && $candidate->table === $machine->name);
             }
             if (!$foreignKey) {
-                $this->error('setting', $line, $tableToken[1], "history table `$name` has no foreign key of `{$rowToken[0]}` to table `{$machine->name}`");
+                $this->error('setting', $line, $tableToken[1], "history table `$name` has no foreign key of "
+                    . "`{$rowToken[0]}` to table `{$machine->name}`");
             }
             $named = [$rowToken[0] => true];
             $stateType = $state->type->text();
@@ -2843,7 +3074,8 @@ final class Parser
                 if ($column === null) {
                     $this->error('setting', $line, $tableToken[1], "history table `$name` has no column `{$ref[0]}`");
                 } elseif ($column->type->name !== 'invalid' && $column->type->text() !== $want) {
-                    $this->error('setting', $line, $tableToken[1], "history column `{$ref[0]}` has type {$column->type->text()}, not $want");
+                    $this->error('setting', $line, $tableToken[1], "history column `{$ref[0]}` has type "
+                        . "{$column->type->text()}, not $want");
                 }
             }
             foreach ($requires as $ref) {
@@ -2854,9 +3086,12 @@ final class Parser
                     continue;
                 }
                 if ($copy === null) {
-                    $this->error('setting', $line, $tableToken[1], "history table `$name` has no column `{$ref[0]}` of the required column");
-                } elseif (!$copy->nullable || ($copy->type->name !== 'invalid' && $copy->type->text() !== $required->type->text())) {
-                    $this->error('setting', $line, $tableToken[1], "history column `{$ref[0]}` is not a nullable {$required->type->text()} column");
+                    $this->error('setting', $line, $tableToken[1], "history table `$name` has no column "
+                        . "`{$ref[0]}` of the required column");
+                } elseif (!$copy->nullable || ($copy->type->name !== 'invalid'
+                    && $copy->type->text() !== $required->type->text())) {
+                    $this->error('setting', $line, $tableToken[1], "history column `{$ref[0]}` is not a nullable "
+                        . "{$required->type->text()} column");
                 }
             }
             foreach ($history->primaryKey?->columns ?? [] as $column) {
@@ -2864,11 +3099,13 @@ final class Parser
             }
             foreach ($history->columns as $column) {
                 if (!isset($named[$column->name])) {
-                    $this->error('setting', $line, $tableToken[1], "history table `$name` has column `{$column->name}`, which the history line does not name");
+                    $this->error('setting', $line, $tableToken[1], "history table `$name` has column "
+                        . "`{$column->name}`, which the history line does not name");
                 }
             }
             foreach ($this->parsedTitleBody[$history->name] ?? [] as $kind) {
-                $this->error('setting', $line, $tableToken[1], "history table `$name` declares $kind, which a history table does not");
+                $this->error('setting', $line, $tableToken[1], "history table `$name` declares $kind, which a history "
+                    . "table does not");
             }
         }
     }
@@ -2887,7 +3124,8 @@ final class Parser
 
     public static function validName(string $name): bool
     {
-        return preg_match('/^[a-z][a-z0-9_]*$/D', $name) === 1 && !in_array($name, self::RESERVED, true) && strlen($name) <= 63;
+        return preg_match('/^[a-z][a-z0-9_]*$/D', $name) === 1 && !in_array($name, self::RESERVED, true)
+            && strlen($name) <= 63;
     }
 
     /** Whether a token is a word: one or more Go word runes (wordRune). */
@@ -2912,7 +3150,8 @@ final class Parser
         [$name, $column] = $token;
         $line ??= $this->line;
         if (!preg_match('/^[a-z][a-z0-9_]*$/D', $name) || in_array($name, self::RESERVED, true)) {
-            $this->error('name.format', $line, $column, "name `$name` does not match [a-z][a-z0-9_]* or is a reserved word");
+            $this->error('name.format', $line, $column, "name `$name` does not match [a-z][a-z0-9_]* or is a "
+                . "reserved word");
             return false;
         }
         if (strlen($name) > 63) {
@@ -2929,11 +3168,13 @@ final class Parser
             return;
         }
         if (isset($this->constraintNames[$token[0]])) {
-            $this->error('name.duplicate', $this->line, $token[1], "constraint name `{$token[0]}` is already used in the schema");
+            $this->error('name.duplicate', $this->line, $token[1],
+                "constraint name `{$token[0]}` is already used in the schema");
             return;
         }
         if (isset($this->tables[$token[0]]) || isset($this->usedTableNames[$token[0]])) {
-            $this->error('name.duplicate', $this->line, $token[1], "constraint name `{$token[0]}` is the name of a table");
+            $this->error('name.duplicate', $this->line, $token[1],
+                "constraint name `{$token[0]}` is the name of a table");
         }
         $this->constraintNames[$token[0]] = true;
         $this->constraintAt[$token[0]] = [$this->line, $token[1]];
@@ -2944,7 +3185,8 @@ final class Parser
     {
         $token = $this->tokens[$i] ?? null;
         if ($token === null || !self::isWord($token[0])) {
-            $this->error('syntax', $this->line, $token[1] ?? $this->endColumn(), $token === null ? 'expected a name' : "expected a name, found `{$token[0]}`");
+            $this->error('syntax', $this->line, $token[1] ?? $this->endColumn(),
+                $token === null ? 'expected a name' : "expected a name, found `{$token[0]}`");
             return null;
         }
         return $token;
@@ -2954,7 +3196,8 @@ final class Parser
     {
         $token = $this->tokens[$i] ?? null;
         if (($token[0] ?? null) !== $expected) {
-            $this->error('syntax', $this->line, $token[1] ?? $this->endColumn(), "expected `$expected`" . ($token === null ? '' : ", found `{$token[0]}`"));
+            $this->error('syntax', $this->line, $token[1] ?? $this->endColumn(), "expected `$expected`"
+                . ($token === null ? '' : ", found `{$token[0]}`"));
             return false;
         }
         // The expected words of the grammar are its fixed words (R12); punctuation keeps its lexical class.
@@ -3026,7 +3269,8 @@ final class Parser
     }
 
     /**
-     * As in Go, a column line with a syntax error keeps only the syntax error: name and type checks are done only when the line matches the syntax.
+     * As in Go, a column line with a syntax error keeps only the syntax error: name and type checks are done
+     * only when the line matches the syntax.
      */
     private function keepSyntaxSince(int $mark): void
     {
@@ -3038,7 +3282,8 @@ final class Parser
     }
 
     /**
-     * An error for a block not closed at the end of the document. Reported together with other syntax errors on the same line (Go does not limit it to one per line).
+     * An error for a block not closed at the end of the document. Reported together with other syntax errors
+     * on the same line (Go does not limit it to one per line).
      */
     private function unclosed(int $line, int $column, string $message): void
     {

@@ -13,23 +13,29 @@ namespace Polyspec\Orm\Dbspec;
  */
 final class PlanApply
 {
-    /** The table that records applied plans. Dbspec names have no $, so it does not overlap user tables, and introspection reads without the tables starting with dbspec$. */
+    /**
+     * The table that records applied plans. Dbspec names have no $, so it does not overlap user tables, and
+     * introspection reads without the tables starting with dbspec$.
+     */
     private const HISTORY = 'dbspec$plans';
     // The lock name of the current database. MySQL lock names are up to 64 characters, so for a database
     // the name is made 64 characters by appending the first 51 characters of its SHA-256 hex.
     private const MYSQL_LOCK = "CONCAT('dbspec\$plans\$', LEFT(SHA2(DATABASE(), 256), 51))";
     // The advisory lock key of the current schema of the current database.
     private const POSTGRES_LOCK = "hashtext('dbspec\$plans'), hashtext(current_schema())";
-    // A requirement that the session error states. The lock belongs to the server session, so the command must run from start to finish on one
-    // server session not shared with another client. A transaction pooler reselects the server connection for every statement,
-    // so it cannot keep that requirement.
-    private const SESSION_REQUIREMENT = 'apply, recover, rollback and finalize need one server session of their own for the whole run: a direct or session-pooled connection';
-    // Reads the id of the current server session, and whether that session already holds this command's lock. Before the lock
-    // is taken, if it is already held, another client is using the same server session.
+    // A requirement that the session error states. The lock belongs to the server session, so the command
+    // must run from start to finish on one server session not shared with another client. A transaction
+    // pooler reselects the server connection for every statement, so it cannot keep that requirement.
+    private const SESSION_REQUIREMENT = 'apply, recover, rollback and finalize need one server session of their own '
+        . 'for the whole run: a direct or session-pooled connection';
+    // Reads the id of the current server session, and whether that session already holds this command's lock.
+    // Before the lock is taken, if it is already held, another client is using the same server session.
     private const SESSION_QUERIES = [
         'mysql' => 'SELECT CONNECTION_ID(), COALESCE(IS_USED_LOCK(' . self::MYSQL_LOCK . ') = CONNECTION_ID(), 0)',
-        'postgres' => "SELECT pg_backend_pid(), EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND pid = pg_backend_pid() AND objsubid = 2"
-            . " AND classid = (hashtext('dbspec\$plans')::bigint & 4294967295)::oid AND objid = (hashtext(current_schema())::bigint & 4294967295)::oid)",
+        'postgres' => "SELECT pg_backend_pid(), EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND "
+            . "pid = pg_backend_pid() AND objsubid = 2"
+            . " AND classid = (hashtext('dbspec\$plans')::bigint & 4294967295)::oid AND "
+            . "objid = (hashtext(current_schema())::bigint & 4294967295)::oid)",
     ];
     // The maximum time a statement waits for another session's lock (the lock wait in docs/spec/plans.md "Apply").
     private const LOCK_WAIT_SECONDS = 5;
@@ -46,19 +52,33 @@ final class PlanApply
      */
     public const EFFECT_QUERIES = [
         'mysql' => [
-            'table' => 'SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?',
-            'column' => 'SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
-            'index' => 'SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?',
-            'constraint' => 'SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = ? AND CONSTRAINT_NAME = ?',
-            'trigger' => 'SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() AND EVENT_OBJECT_TABLE = ? AND TRIGGER_NAME = ?',
+            'table' => 'SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() '
+                . 'AND TABLE_NAME = ?',
+            'column' => 'SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() '
+                . 'AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+            'index' => 'SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() '
+                . 'AND TABLE_NAME = ? AND INDEX_NAME = ?',
+            'constraint' => 'SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = '
+                . 'DATABASE() AND TABLE_NAME = ? AND CONSTRAINT_NAME = ?',
+            'trigger' => 'SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() '
+                . 'AND EVENT_OBJECT_TABLE = ? AND TRIGGER_NAME = ?',
         ],
         'postgres' => [
-            'table' => "SELECT COUNT(*) FROM pg_class WHERE relnamespace = current_schema()::regnamespace AND relkind IN ('r', 'p') AND relname = ?",
-            'column' => 'SELECT COUNT(*) FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid WHERE c.relnamespace = current_schema()::regnamespace AND c.relname = ? AND a.attname = ? AND a.attnum > 0 AND NOT a.attisdropped',
-            'index' => 'SELECT COUNT(*) FROM pg_index x JOIN pg_class i ON i.oid = x.indexrelid JOIN pg_class c ON c.oid = x.indrelid WHERE c.relnamespace = current_schema()::regnamespace AND c.relname = ? AND i.relname = ?',
-            'constraint' => 'SELECT COUNT(*) FROM pg_constraint k JOIN pg_class c ON c.oid = k.conrelid WHERE c.relnamespace = current_schema()::regnamespace AND c.relname = ? AND k.conname = ?',
-            'trigger' => 'SELECT COUNT(*) FROM pg_trigger g JOIN pg_class c ON c.oid = g.tgrelid WHERE c.relnamespace = current_schema()::regnamespace AND c.relname = ? AND g.tgname = ? AND NOT g.tgisinternal',
-            'function' => 'SELECT COUNT(*) FROM pg_proc WHERE pronamespace = current_schema()::regnamespace AND proname = ?',
+            'table' => "SELECT COUNT(*) FROM pg_class WHERE relnamespace = current_schema()::regnamespace "
+                . "AND relkind IN ('r', 'p') AND relname = ?",
+            'column' => 'SELECT COUNT(*) FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid WHERE '
+                . 'c.relnamespace = current_schema()::regnamespace AND c.relname = ? AND a.attname = ? AND '
+                . 'a.attnum > 0 AND NOT a.attisdropped',
+            'index' => 'SELECT COUNT(*) FROM pg_index x JOIN pg_class i ON i.oid = x.indexrelid JOIN pg_class c '
+                . 'ON c.oid = x.indrelid WHERE c.relnamespace = current_schema()::regnamespace AND c.relname = ? '
+                . 'AND i.relname = ?',
+            'constraint' => 'SELECT COUNT(*) FROM pg_constraint k JOIN pg_class c ON c.oid = k.conrelid WHERE '
+                . 'c.relnamespace = current_schema()::regnamespace AND c.relname = ? AND k.conname = ?',
+            'trigger' => 'SELECT COUNT(*) FROM pg_trigger g JOIN pg_class c ON c.oid = g.tgrelid WHERE '
+                . 'c.relnamespace = current_schema()::regnamespace AND c.relname = ? AND g.tgname = ? AND '
+                . 'NOT g.tgisinternal',
+            'function' => 'SELECT COUNT(*) FROM pg_proc WHERE pronamespace = current_schema()::regnamespace '
+                . 'AND proname = ?',
         ],
         'sqlite' => [
             'table' => "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?",
@@ -82,7 +102,8 @@ final class PlanApply
      * @param \Closure(): \DateTimeInterface $now
      * @param ?\Closure(ApplyEvent): void $events
      */
-    private function __construct(private readonly \PDO $c, string $dialect, array $plans, private readonly \Closure $now, private readonly ?\Closure $events)
+    private function __construct(private readonly \PDO $c, string $dialect, array $plans,
+        private readonly \Closure $now, private readonly ?\Closure $events)
     {
         $this->r = new Renderer($dialect);
         if ($c->getAttribute(\PDO::ATTR_ERRMODE) !== \PDO::ERRMODE_EXCEPTION) {
@@ -163,7 +184,8 @@ final class PlanApply
             $applied = $row['state'] === self::APPLIED || $row['state'] === self::DONE;
             if ($applied) {
                 if ($k < 0 || $k > count($steps)) {
-                    throw new ApplyError('chain', $plan->name, 0, sprintf("the recorded step %d is outside the plan's %d steps", $k, count($steps)));
+                    throw new ApplyError('chain', $plan->name, 0,
+                        sprintf("the recorded step %d is outside the plan's %d steps", $k, count($steps)));
                 }
                 try {
                     $a->verify($plan->to);
@@ -201,7 +223,8 @@ final class PlanApply
             }
             $a->emit(new ApplyEvent('verified', $plan->name, 0, count($steps), ''));
             $q = $a->r->q(...);
-            $a->c->prepare('DELETE FROM ' . $q(self::HISTORY) . ' WHERE ' . $q('name') . ' = ?')->execute([$plan->name]);
+            $a->c->prepare('DELETE FROM ' . $q(self::HISTORY) . ' WHERE ' . $q('name') . ' = ?')
+                ->execute([$plan->name]);
             $a->emit(new ApplyEvent('done', $plan->name, 0, count($steps), ''));
         });
     }
@@ -247,7 +270,8 @@ final class PlanApply
     /** @param list<PlanStep> $steps */
     private function irreversible(Plan $plan, array $steps, int $i): ApplyError
     {
-        return new ApplyError('irreversible', $plan->name, $i, $steps[$i]->finalize ? 'a finalize step has no rollback' : $steps[$i]->irreversible);
+        return new ApplyError('irreversible', $plan->name, $i,
+            $steps[$i]->finalize ? 'a finalize step has no rollback' : $steps[$i]->irreversible);
     }
 
     /**
@@ -283,19 +307,22 @@ final class PlanApply
                     $f();
                 }, function () use (&$previous): void {
                     if ($previous !== null) {
-                        $this->c->exec("SET SESSION lock_wait_timeout = {$previous[0]}, innodb_lock_wait_timeout = {$previous[1]}");
+                        $this->c->exec("SET SESSION lock_wait_timeout = {$previous[0]}, "
+                            . "innodb_lock_wait_timeout = {$previous[1]}");
                     }
                 }, fn() => $this->c->exec('DO RELEASE_LOCK(' . self::MYSQL_LOCK . ')'));
                 return;
             case 'postgres':
                 // If current_schema() is NULL, the result is also NULL and an error.
                 $this->openSession(self::SESSION_QUERIES['postgres']);
-                [$got, $current] = $this->queryRow('SELECT pg_try_advisory_lock(' . self::POSTGRES_LOCK . '), pg_backend_pid()');
+                [$got, $current] = $this->queryRow('SELECT pg_try_advisory_lock(' . self::POSTGRES_LOCK
+                    . '), pg_backend_pid()');
                 if ($got === false) {
                     throw new ApplyError('locked', '', 0, "another session holds the $h advisory lock of this schema");
                 }
                 if ($got !== true) {
-                    throw new \RuntimeException('pg_try_advisory_lock returned ' . var_export($got, true) . '; want true or false');
+                    throw new \RuntimeException('pg_try_advisory_lock returned ' . var_export($got, true)
+                        . '; want true or false');
                 }
                 $previous = null;
                 $this->finish(function () use ($f, $wait, &$previous, $current): void {
@@ -314,7 +341,8 @@ final class PlanApply
                         throw new \RuntimeException("the advisory lock of $h was not held at unlock");
                     }
                     if ($released !== true) {
-                        throw new \RuntimeException('pg_advisory_unlock returned ' . var_export($released, true) . '; want true or false');
+                        throw new \RuntimeException('pg_advisory_unlock returned ' . var_export($released, true)
+                            . '; want true or false');
                     }
                 });
                 return;
@@ -331,7 +359,8 @@ final class PlanApply
     private function sqliteSession(\Closure $f): void
     {
         $foreignKeys = CatalogRows::integer([$this->queryValue('PRAGMA foreign_keys')], 0, 'PRAGMA foreign_keys');
-        $legacy = CatalogRows::integer([$this->queryValue('PRAGMA legacy_alter_table')], 0, 'PRAGMA legacy_alter_table');
+        $legacy = CatalogRows::integer([$this->queryValue('PRAGMA legacy_alter_table')], 0,
+            'PRAGMA legacy_alter_table');
         $busy = CatalogRows::integer([$this->queryValue('PRAGMA busy_timeout')], 0, 'PRAGMA busy_timeout');
         $mode = CatalogRows::text([$this->queryValue('PRAGMA locking_mode')], 0, 'PRAGMA locking_mode');
         $this->c->exec('PRAGMA busy_timeout = ' . (self::LOCK_WAIT_SECONDS * 1000));
@@ -433,8 +462,10 @@ final class PlanApply
             $tail = ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin';
         }
         $this->c->exec('CREATE TABLE IF NOT EXISTS ' . $q(self::HISTORY) . ' (' .
-            $q('name') . " $text NOT NULL, " . $q('from_hash') . " $text NOT NULL, " . $q('to_hash') . " $text NOT NULL, " .
-            $q('state') . " $text NOT NULL, " . $q('step') . " $integer NOT NULL, " . $q('steps') . " $integer NOT NULL, " .
+            $q('name') . " $text NOT NULL, " . $q('from_hash') . " $text NOT NULL, "
+                . $q('to_hash') . " $text NOT NULL, " .
+            $q('state') . " $text NOT NULL, " . $q('step') . " $integer NOT NULL, "
+                . $q('steps') . " $integer NOT NULL, " .
             $q('applied_at') . " $text NOT NULL, PRIMARY KEY (" . $q('name') . '))' . $tail);
     }
 
@@ -442,7 +473,8 @@ final class PlanApply
     {
         $this->createHistory();
         $q = $this->r->q(...);
-        $query = 'SELECT ' . $q('name') . ', ' . $q('from_hash') . ', ' . $q('to_hash') . ', ' . $q('state') . ', ' . $q('step') . ' FROM ' . $q(self::HISTORY);
+        $query = 'SELECT ' . $q('name') . ', ' . $q('from_hash') . ', ' . $q('to_hash') . ', ' . $q('state') . ', '
+            . $q('step') . ' FROM ' . $q(self::HISTORY);
         $this->history = [];
         foreach (CatalogRows::read($this->c, $query) as $row) {
             $this->history[CatalogRows::text($row, 0, $query)] = [
@@ -468,13 +500,16 @@ final class PlanApply
                 continue;
             }
             if ($row['to'] !== $plan->to || $row['from'] !== ($plan->from ?? 'empty')) {
-                throw new ApplyError('chain', $plan->name, 0, "the recorded plan has other hashes than the chain's plan");
+                throw new ApplyError('chain', $plan->name, 0,
+                    "the recorded plan has other hashes than the chain's plan");
             }
             if ($i !== $position) {
                 throw new ApplyError('chain', $plan->name, 0, 'a plan before it in the chain is not recorded');
             }
-            if (!in_array($row['state'], [self::APPLYING, self::APPLIED, self::FINALIZING, self::DONE, self::ROLLING_BACK], true)) {
-                throw new ApplyError('chain', $plan->name, 0, "the recorded state {$row['state']} is not a history state");
+            if (!in_array($row['state'], [self::APPLYING, self::APPLIED, self::FINALIZING, self::DONE,
+                self::ROLLING_BACK], true)) {
+                throw new ApplyError('chain', $plan->name, 0,
+                    "the recorded state {$row['state']} is not a history state");
             }
             $position = $i + 1;
         }
@@ -499,7 +534,8 @@ final class PlanApply
             $plan = $this->chain[$position - 1];
             $row = $this->history[$plan->name];
             if ($row['state'] !== self::APPLIED && $row['state'] !== self::DONE) {
-                throw new ApplyError('interrupted', $plan->name, $row['step'], "the plan is {$row['state']}; run recover or rollback");
+                throw new ApplyError('interrupted', $plan->name, $row['step'],
+                    "the plan is {$row['state']}; run recover or rollback");
             }
             $want = $plan->to;
         }
@@ -511,24 +547,31 @@ final class PlanApply
         return $position;
     }
 
-    /** Checks that the database's introspection is want schemaHash (if '', an empty database) and that there are no unsupported objects. */
+    /**
+     * Checks that the database's introspection is want schemaHash (if '', an empty database) and that there
+     * are no unsupported objects.
+     */
     private function verify(string $want): void
     {
         $result = Dbspec::introspect($this->c, $this->r->dialect, 'schema');
         if ($result->unsupported !== []) {
             $u = $result->unsupported[0];
-            throw new \RuntimeException(sprintf('the database has %d objects that dbspec cannot express, first %s %s %s: %s', count($result->unsupported), $u->kind, $u->table, $u->name, $u->reason));
+            throw new \RuntimeException(sprintf('the database has %d objects that dbspec cannot express, first %s %s %s: %s',
+                count($result->unsupported), $u->kind, $u->table, $u->name, $u->reason));
         }
         $got = '';
         if ($result->document->tables !== []) {
             $manifest = Dbspec::manifest([$result->document]);
             if ($manifest->manifest === null) {
-                throw new \RuntimeException('the introspected schema is invalid: ' . json_encode(array_map(static fn(Diagnostic $d): array => [$d->rule, $d->line, $d->column, $d->message], $manifest->diagnostics)));
+                throw new \RuntimeException('the introspected schema is invalid: ' . json_encode(array_map(
+                    static fn(Diagnostic $d): array => [$d->rule, $d->line, $d->column, $d->message],
+                    $manifest->diagnostics)));
             }
             $got = $manifest->manifest->schemaHash;
         }
         if ($got !== $want) {
-            throw new \RuntimeException(sprintf('the database is at %s, not %s', $got === '' ? 'empty' : $got, $want === '' ? 'empty' : $want));
+            throw new \RuntimeException(sprintf('the database is at %s, not %s', $got === '' ? 'empty' : $got,
+                $want === '' ? 'empty' : $want));
         }
     }
 
@@ -553,7 +596,8 @@ final class PlanApply
     }
 
     /**
-     * Decides the step of an interrupted row by the catalog's effect: going forward if forward, otherwise going backward,
+     * Decides the step of an interrupted row by the catalog's effect: going forward if forward, otherwise going
+     * backward,
      * is where to resume (docs/spec/plans.md "Apply"'s recover).
      *
      * @param array{from: string, to: string, state: string, step: int} $row
@@ -563,7 +607,8 @@ final class PlanApply
     {
         $k = $row['step'];
         if ($k < 0 || $k > count($steps)) {
-            throw new ApplyError('chain', $plan->name, 0, sprintf("the recorded step %d is outside the plan's %d steps", $k, count($steps)));
+            throw new ApplyError('chain', $plan->name, 0,
+                sprintf("the recorded step %d is outside the plan's %d steps", $k, count($steps)));
         }
         $rolling = $row['state'] === self::ROLLING_BACK;
         $uncertain = $rolling ? $k - 1 : $k;
@@ -586,22 +631,28 @@ final class PlanApply
         $q = $this->r->q(...);
         if (!isset($this->history[$plan->name])) {
             $steps = count($this->steps($plan));
-            // applied_at is the UTC time of the tool clock, truncated to six fractional digits as text (docs/spec/plans.md "Apply").
-            $appliedAt = \DateTimeImmutable::createFromInterface(($this->now)())->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d\TH:i:s.u\Z');
-            $this->c->prepare('INSERT INTO ' . $q(self::HISTORY) . ' (' . $q('name') . ', ' . $q('from_hash') . ', ' . $q('to_hash') . ', ' .
-                $q('state') . ', ' . $q('step') . ', ' . $q('steps') . ', ' . $q('applied_at') . ') VALUES (?, ?, ?, ?, ?, ?, ?)')
+            // applied_at is the UTC time of the tool clock, truncated to six fractional digits as text
+            // (docs/spec/plans.md "Apply").
+            $appliedAt = \DateTimeImmutable::createFromInterface(($this->now)())
+                ->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d\TH:i:s.u\Z');
+            $this->c->prepare('INSERT INTO ' . $q(self::HISTORY) . ' (' . $q('name') . ', ' . $q('from_hash') . ', '
+                . $q('to_hash') . ', ' . $q('state') . ', ' . $q('step') . ', ' . $q('steps') . ', '
+                . $q('applied_at') . ') VALUES (?, ?, ?, ?, ?, ?, ?)')
                 ->execute([$plan->name, $plan->from ?? 'empty', $plan->to, $state, $step, $steps, $appliedAt]);
-            $this->history[$plan->name] = ['from' => $plan->from ?? 'empty', 'to' => $plan->to, 'state' => $state, 'step' => $step];
+            $this->history[$plan->name] = ['from' => $plan->from ?? 'empty', 'to' => $plan->to,
+            'state' => $state, 'step' => $step];
             return;
         }
-        $this->c->prepare('UPDATE ' . $q(self::HISTORY) . ' SET ' . $q('state') . ' = ?, ' . $q('step') . ' = ? WHERE ' . $q('name') . ' = ?')
+        $this->c->prepare('UPDATE ' . $q(self::HISTORY) . ' SET ' . $q('state') . ' = ?, ' . $q('step') . ' = ? WHERE '
+            . $q('name') . ' = ?')
             ->execute([$state, $step, $plan->name]);
     }
 
     private function setStep(Plan $plan, int $step): void
     {
         $q = $this->r->q(...);
-        $this->c->prepare('UPDATE ' . $q(self::HISTORY) . ' SET ' . $q('step') . ' = ? WHERE ' . $q('name') . ' = ?')->execute([$step, $plan->name]);
+        $this->c->prepare('UPDATE ' . $q(self::HISTORY) . ' SET ' . $q('step') . ' = ? WHERE ' . $q('name') . ' = ?')
+            ->execute([$step, $plan->name]);
     }
 
     /** Applies one plan up to its finalize step, and verifies it. */
@@ -670,18 +721,23 @@ final class PlanApply
         $row = $this->queryRow($query);
         $this->serverSession = CatalogRows::integer($row, 0, $query);
         if ($row[1] === true || $row[1] === 1 || $row[1] === '1') {
-            throw new ApplyError('session', '', 0, 'this server session already holds the ' . self::HISTORY . ' lock, so another client shares it; ' . self::SESSION_REQUIREMENT);
+            throw new ApplyError('session', '', 0, 'this server session already holds the ' . self::HISTORY
+                . ' lock, so another client shares it; ' . self::SESSION_REQUIREMENT);
         }
     }
 
-    /** Checks that current is the server session holding the lock. If not, it is a session error before step i of the plan (or at the lock if the plan is null). */
+    /**
+     * Checks that current is the server session holding the lock. If not, it is a session error before step i
+     * of the plan (or at the lock if the plan is null).
+     */
     private function sameSession(?Plan $plan, int $i, mixed $current): void
     {
         $id = CatalogRows::integer([$current], 0, 'server session id');
         if ($id === $this->serverSession) {
             return;
         }
-        throw new ApplyError('session', $plan?->name ?? '', $plan === null ? 0 : $i, "the connection moved from server session {$this->serverSession} to $id; " . self::SESSION_REQUIREMENT);
+        throw new ApplyError('session', $plan?->name ?? '', $plan === null ? 0 : $i,
+            "the connection moved from server session {$this->serverSession} to $id; " . self::SESSION_REQUIREMENT);
     }
 
     /**
@@ -740,9 +796,12 @@ final class PlanApply
                     continue;
                 }
                 if ($check->default === null) {
-                    throw new ApplyError('nulls', $plan->name, $i, sprintf('column %s.%s has %d NULL rows and no default to restore NOT NULL', $check->table, $check->column, $n));
+                    throw new ApplyError('nulls', $plan->name, $i,
+                        sprintf('column %s.%s has %d NULL rows and no default to restore NOT NULL',
+                            $check->table, $check->column, $n));
                 }
-                $this->c->exec('UPDATE ' . $q($check->table) . ' SET ' . $q($check->column) . ' = ' . $check->default . ' WHERE ' . $q($check->column) . ' IS NULL');
+                $this->c->exec('UPDATE ' . $q($check->table) . ' SET ' . $q($check->column) . ' = ' . $check->default
+                    . ' WHERE ' . $q($check->column) . ' IS NULL');
             }
         }
     }
@@ -773,7 +832,8 @@ final class PlanApply
             $query = 'SELECT COUNT(*) FROM (SELECT 1 FROM ' . $this->r->q($e->table) . ' LIMIT 1) x';
             $args = [];
         } else {
-            $query = self::EFFECT_QUERIES[$this->r->dialect][$e->kind] ?? throw new \RuntimeException("the effect {$e->text()} has no query on {$this->r->dialect}");
+            $query = self::EFFECT_QUERIES[$this->r->dialect][$e->kind] ?? throw new \RuntimeException(
+                "the effect {$e->text()} has no query on {$this->r->dialect}");
             $args = match ($e->kind) {
                 'table', 'sequence' => [$e->table],
                 'function' => [$e->name],

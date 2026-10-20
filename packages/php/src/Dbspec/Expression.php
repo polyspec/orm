@@ -22,10 +22,16 @@ final class Expression
     private const COMPARISONS = ['=' => true, '<>' => true, '<' => true, '<=' => true, '>' => true, '>=' => true];
     private const ORDERINGS = ['<' => true, '<=' => true, '>' => true, '>=' => true];
     private const ARITHMETIC = ['+' => true, '-' => true, '*' => true, '/' => true];
-    private const KEYWORDS = ['and' => true, 'or' => true, 'not' => true, 'in' => true, 'between' => true, 'is' => true, 'null' => true, 'true' => true, 'false' => true];
+    private const KEYWORDS = [
+        'and' => true, 'or' => true, 'not' => true, 'in' => true, 'between' => true, 'is' => true,
+        'null' => true, 'true' => true, 'false' => true
+    ];
 
     private int $at = 0;
-    /** @var array<int, string> index in the line => class of the tokens the predicate read (docs/spec/dbspec.md "Syntax analysis") */
+    /**
+     * @var array<int, string> index in the line => class of the tokens the predicate read
+     *     (docs/spec/dbspec.md "Syntax analysis")
+     */
     private array $marks = [];
     /** @var list<string> The text of the literal; type checking turns it into canonical form. */
     private array $literals = [];
@@ -60,7 +66,9 @@ final class Expression
     }
 
     /**
-     * @return array{0: ?string, 1: list<array{0:string,1:int,2:int,3:string}>, 2: list<string>, 3: array<int, string>} The canonical text or null; the errors; the column names the check reads (an empty list on failure); the class of each token read (index in the line => class)
+     * @return array{0: ?string, 1: list<array{0:string,1:int,2:int,3:string}>, 2: list<string>,
+     *     3: array<int, string>} The canonical text or null; the errors; the column names the check reads
+     *     (an empty list on failure); the class of each token read (index in the line => class)
      */
     public static function parse(array $tokens, int $line, int $endColumn, array $columns, array $actionColumns): array
     {
@@ -220,7 +228,8 @@ final class Expression
     private function operand(): array
     {
         $token = $this->peek();
-        if ($token !== null && Parser::isWord($token) && !ctype_digit($token) && preg_match('/^[0-9]+\.[0-9]+$/D', $token) !== 1) {
+        if ($token !== null && Parser::isWord($token) && !ctype_digit($token)
+            && preg_match('/^[0-9]+\.[0-9]+$/D', $token) !== 1) {
             if ($this->peek(1) === '(') {
                 $this->fail('a check has no functions');
             }
@@ -246,7 +255,9 @@ final class Expression
         if ($token === 'true' || $token === 'false') {
             $text = $token;
             $this->take('keyword');
-        } elseif ($token === '-' && isset($this->tokens[$this->at + 1]) && $this->tokens[$this->at + 1][1] === $column + 1 && Literal::number('-' . $this->tokens[$this->at + 1][0]) !== null) {
+        } elseif ($token === '-' && isset($this->tokens[$this->at + 1])
+            && $this->tokens[$this->at + 1][1] === $column + 1
+            && Literal::number('-' . $this->tokens[$this->at + 1][0]) !== null) {
             $text = '-' . $this->tokens[$this->at + 1][0];
             $this->at += 2;
         } elseif ($token !== null && (Literal::number($token) !== null || Literal::stringValue($token) !== null)) {
@@ -328,7 +339,8 @@ final class Expression
     /** A bool column or a `true` or `false` literal. */
     private function isBool(array $operand): bool
     {
-        return $operand[0] === 'column' ? $operand[3]?->type->name === 'bool' : $operand[1] === 'true' || $operand[1] === 'false';
+        return $operand[0] === 'column' ? $operand[3]?->type->name === 'bool'
+            : $operand[1] === 'true' || $operand[1] === 'false';
     }
 
     /**
@@ -356,7 +368,8 @@ final class Expression
             return false;
         }
         if (isset($this->actionColumns[$name])) {
-            $found[] = [$at, "`$name` is a column of foreign key `{$this->actionColumns[$name]}` with cascade or set_null"];
+            $found[] = [$at,
+                "`$name` is a column of foreign key `{$this->actionColumns[$name]}` with cascade or set_null"];
             return false;
         }
         if ($column->type->name === 'bytes') {
@@ -407,6 +420,7 @@ final class Expression
 
     private static function meetKind(ColumnType $t): string
     {
-        return Meet::kind($t->name, $t->name === 'decimal' ? $t->parameters[1] : 0, in_array($t->name, ['decimal', 'time', 'datetime'], true) ? $t->parameters[0] : 0);
+        return Meet::kind($t->name, $t->name === 'decimal' ? $t->parameters[1] : 0,
+            in_array($t->name, ['decimal', 'time', 'datetime'], true) ? $t->parameters[0] : 0);
     }
 }

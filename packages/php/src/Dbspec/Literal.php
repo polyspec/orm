@@ -11,7 +11,10 @@ namespace Polyspec\Orm\Dbspec;
  */
 final class Literal
 {
-    private const INTEGER_LIMITS = ['i16' => ['32767', '32768'], 'i32' => ['2147483647', '2147483648'], 'i64' => ['9223372036854775807', '9223372036854775808']];
+    private const INTEGER_LIMITS = [
+        'i16' => ['32767', '32768'], 'i32' => ['2147483647', '2147483648'],
+        'i64' => ['9223372036854775807', '9223372036854775808']
+    ];
 
     /** Splits `-?digits(.digits)?` into its sign, integer digits and fraction digits, or null. */
     public static function number(string $text): ?array
@@ -67,14 +70,16 @@ final class Literal
             $negative = $canonical[0] === '-';
             $digits = ltrim($canonical, '-');
             $limit = $negative ? $minMagnitude : $max;
-            if (strlen($digits) > strlen($limit) || (strlen($digits) === strlen($limit) && strcmp($digits, $limit) > 0)) {
+            if (strlen($digits) > strlen($limit)
+                || (strlen($digits) === strlen($limit) && strcmp($digits, $limit) > 0)) {
                 return [null, "$name default is out of range"];
             }
             return [$canonical, null];
         }
         switch ($name) {
             case 'bool':
-                return $text === 'true' || $text === 'false' ? [$text, null] : [null, 'bool default is not true or false'];
+                return $text === 'true' || $text === 'false'
+                    ? [$text, null] : [null, 'bool default is not true or false'];
             case 'decimal':
                 [$precision, $scale] = $type->parameters;
                 $n = self::number($text);
@@ -90,7 +95,8 @@ final class Literal
                     return [null, "decimal default has more than $scale fraction digits"];
                 }
                 $zero = $digits === '' && trim($fraction, '0') === '';
-                return [($n[0] && !$zero ? '-' : '') . ($digits === '' ? '0' : $digits) . ($scale > 0 ? '.' . str_pad($fraction, $scale, '0') : ''), null];
+                return [($n[0] && !$zero ? '-' : '') . ($digits === '' ? '0' : $digits)
+                    . ($scale > 0 ? '.' . str_pad($fraction, $scale, '0') : ''), null];
             case 'f64':
                 if (self::number($text) === null) {
                     return [null, 'f64 default is not a number'];
@@ -118,18 +124,26 @@ final class Literal
                 }
                 return [self::quote($value), null];
             case 'uuid':
-                if (!preg_match('/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/D', $value)) {
+                if (!preg_match(
+                    '/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/D', $value
+                )) {
                     return [null, 'uuid default is not canonical uuid text'];
                 }
                 return [self::quote(strtolower($value)), null];
             case 'date':
-                return self::date($value) ? [self::quote($value), null] : [null, 'date default is not a date from 0001-01-01 to 9999-12-31'];
+                return self::date($value) ? [self::quote($value), null]
+                    : [null, 'date default is not a date from 0001-01-01 to 9999-12-31'];
             case 'time':
                 $time = self::time($value, $type->parameters[0]);
-                return $time === null ? [null, 'time default is not a time of day with at most ' . $type->parameters[0] . ' fraction digits'] : [self::quote($time), null];
+                return $time === null
+                    ? [null, 'time default is not a time of day with at most ' . $type->parameters[0] . ' fraction digits']
+                    : [self::quote($time), null];
             case 'datetime':
-                $time = strlen($value) > 11 && $value[10] === ' ' && self::date(substr($value, 0, 10)) ? self::time(substr($value, 11), $type->parameters[0]) : null;
-                return $time === null ? [null, 'datetime default is not a date-time with at most ' . $type->parameters[0] . ' fraction digits'] : [self::quote(substr($value, 0, 11) . $time), null];
+                $time = strlen($value) > 11 && $value[10] === ' ' && self::date(substr($value, 0, 10))
+                    ? self::time(substr($value, 11), $type->parameters[0]) : null;
+                return $time === null
+                    ? [null, 'datetime default is not a date-time with at most ' . $type->parameters[0] . ' fraction digits']
+                    : [self::quote(substr($value, 0, 11) . $time), null];
         }
         throw new \LogicException("Unknown column type $name");
     }

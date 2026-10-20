@@ -8,9 +8,9 @@ namespace Polyspec\Orm\Dbspec;
  * Checks the element types of the arrays of a document, a document set, a plan and an unsupported list before a dbspec
  * call reads them. PHP's property types do not type the elements of an array, so a document built or edited in PHP can
  * hold another value there; each is a TypeError "<what> holds <value>, not <type>" at the first such element, in the
- * order the document is read: the document's trailing comments, its use lines, its tables (comments, closing comments,
- * columns, primary key, unique keys, indexes, foreign keys, checks, settings) and its diagrams. The extension checks the
- * same elements in the same order with the same messages.
+ * order the document is read: the document's trailing comments, its use lines, its tables (comments, closing
+ * comments, columns, primary key, unique keys, indexes, foreign keys, checks, settings) and its diagrams. The
+ * extension checks the same elements in the same order with the same messages.
  *
  * @internal
  */

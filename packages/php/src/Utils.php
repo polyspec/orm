@@ -22,7 +22,9 @@ final class Utils
      */
     public function active(string $name): TxFrame
     {
-        return Db::activeFor($this->db) ?? throw new OrmException(Code::CONFIG, "$name requires an active transaction of the connection");
+        return Db::activeFor($this->db) ?? throw new OrmException(
+            Code::CONFIG, "$name requires an active transaction of the connection"
+        );
     }
 
     /** @internal runs $fn in the active transaction of the connection or in a new one without retry */
@@ -73,14 +75,16 @@ final class Utils
         }
         switch ($this->db->driver()) {
             case 'mysql':
-                $got = $this->db->fetch(StatementEvent::UTILITY, [], $frame->number, 'SELECT GET_LOCK(?, 50)', [$key])[0][0] ?? null;
+                $got = $this->db->fetch(StatementEvent::UTILITY, [], $frame->number,
+                    'SELECT GET_LOCK(?, 50)', [$key])[0][0] ?? null;
                 if ((int) $got !== 1) {
                     throw Orm::transactionConflict("lock $key was not acquired");
                 }
                 $frame->locks[] = $key;
                 break;
             case 'postgres':
-                $this->db->fetch(StatementEvent::UTILITY, [], $frame->number, 'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [$key]);
+                $this->db->fetch(StatementEvent::UTILITY, [], $frame->number,
+                    'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [$key]);
                 break;
             default:
                 $this->db->acquireSQLiteRowLock('update');
@@ -100,7 +104,8 @@ final class Utils
         }
         switch ($this->db->driver()) {
             case 'postgres':
-                $this->db->fetch(StatementEvent::UTILITY, [], $frame->number, 'SELECT set_config($1, $2, true)', [$key, $value]);
+                $this->db->fetch(StatementEvent::UTILITY, [], $frame->number,
+                    'SELECT set_config($1, $2, true)', [$key, $value]);
                 break;
             case 'mysql':
                 $this->db->fetch(StatementEvent::UTILITY, [], $frame->number, 'SET @`orm.' . $key . '` = ?', [$value]);

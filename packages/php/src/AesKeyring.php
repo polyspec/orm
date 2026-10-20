@@ -50,8 +50,10 @@ final class AesKeyring
         if (!is_int($oldVersion)) {
             throw new OrmException(Code::CODEC_DECODE, 'AES row version must be an integer');
         }
-        $oldKey = $this->keys[$oldVersion] ?? throw new OrmException(Code::CONFIG, "AES version $oldVersion is not declared");
-        $newKey = $this->keys[$targetVersion] ?? throw new OrmException(Code::CONFIG, "AES version $targetVersion is not declared");
+        $oldKey = $this->keys[$oldVersion]
+            ?? throw new OrmException(Code::CONFIG, "AES version $oldVersion is not declared");
+        $newKey = $this->keys[$targetVersion]
+            ?? throw new OrmException(Code::CONFIG, "AES version $targetVersion is not declared");
         $out = $row;
         foreach ($columns as $column) {
             if (!array_key_exists($column['name'], $row)) {

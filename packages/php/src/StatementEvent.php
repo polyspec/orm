@@ -28,7 +28,8 @@ final readonly class StatementEvent
      * @param list<mixed> $binds the bound values in order; a secret is "$SECRET" and an executor clock value "$NOW"
      * @param list<string> $tables the tables the statement names, sorted; transaction control names none
      * @param float $elapsed seconds from sending the statement until its result was read
-     * @param ?int $transaction the number of the transaction of the connection, counted from 1 by every outermost begin; null outside a transaction
+     * @param ?int $transaction the number of the transaction of the connection, counted from 1 by every
+     *                          outermost begin; null outside a transaction
      * @param ?OrmException $error the error the statement ended with
      */
     public function __construct(

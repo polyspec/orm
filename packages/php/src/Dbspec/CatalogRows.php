@@ -16,8 +16,9 @@ final class CatalogRows
     private static ?\Closure $observer = null;
 
     /**
-     * Calls $observer for each catalog query while $fn runs. The observer receives all of the query's rows once
-     * they have been read or reading has failed, the query, the hrtime before the query was sent, and the query's error (null on success).
+     * Calls $observer for each catalog query while $fn runs. The observer receives all of the query's rows
+     * once they have been read or reading has failed, the query, the hrtime before the query was sent, and
+     * the query's error (null on success).
      * An exception the observer throws ends introspection with that error.
      *
      * @template T
@@ -83,7 +84,8 @@ final class CatalogRows
     {
         $value = $row[$i] ?? null;
         if (!is_string($value)) {
-            throw new \UnexpectedValueException("Catalog value $i is " . get_debug_type($value) . ', not a string, in ' . self::firstLine($query));
+            throw new \UnexpectedValueException("Catalog value $i is " . get_debug_type($value)
+                . ', not a string, in ' . self::firstLine($query));
         }
         return $value;
     }
@@ -104,7 +106,8 @@ final class CatalogRows
         if (is_string($value) && preg_match('/^-?[0-9]+$/D', $value)) {
             return (int) $value;
         }
-        throw new \UnexpectedValueException("Catalog value $i is " . get_debug_type($value) . ', not an integer, in ' . self::firstLine($query));
+        throw new \UnexpectedValueException("Catalog value $i is " . get_debug_type($value)
+            . ', not an integer, in ' . self::firstLine($query));
     }
 
     /** A value that is boolean, or 0 or 1. @param list<mixed> $row */
@@ -120,7 +123,8 @@ final class CatalogRows
         if ($value === 1 || $value === '1') {
             return true;
         }
-        throw new \UnexpectedValueException("Catalog value $i is " . var_export($value, true) . ', not a boolean, in ' . self::firstLine($query));
+        throw new \UnexpectedValueException("Catalog value $i is " . var_export($value, true)
+            . ', not a boolean, in ' . self::firstLine($query));
     }
 
     private static function firstLine(string $query): string

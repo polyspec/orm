@@ -18,7 +18,8 @@ final class Emitter
         if ($document->uses !== []) {
             $out .= "\n";
             foreach (self::sorted($document->uses, static fn(UseLine $use): string => $use->document) as $use) {
-                $out .= self::comments($use->comments, '', $view) . "use {$use->document} { " . implode(', ', $use->tables) . " }\n";
+                $out .= self::comments($use->comments, '', $view) . "use {$use->document} { "
+                    . implode(', ', $use->tables) . " }\n";
             }
         }
         foreach ($document->tables as $table) {
@@ -30,11 +31,13 @@ final class Emitter
         foreach ($document->diagrams as $diagram) {
             $out .= "\n" . self::comments($diagram->comments, '', $view) . "diagram {$diagram->name} {\n";
             foreach ($diagram->placements as $placement) {
-                $out .= self::comments($placement->comments, '  ', $view) . "  {$placement->table} at {$placement->x} {$placement->y}\n";
+                $out .= self::comments($placement->comments, '  ', $view)
+                    . "  {$placement->table} at {$placement->x} {$placement->y}\n";
             }
             $out .= self::comments($diagram->closingComments, '  ', $view) . "}\n";
         }
-        return $out . ($document->trailingComments === [] ? '' : "\n" . self::comments($document->trailingComments, '', $view));
+        return $out . ($document->trailingComments === [] ? ''
+            : "\n" . self::comments($document->trailingComments, '', $view));
     }
 
     private static function table(Table $table, View $view): string
@@ -47,18 +50,23 @@ final class Emitter
                 . ($column->default !== null ? " default {$column->default}" : '') . "\n";
         }
         if ($table->primaryKey !== null) {
-            $out .= self::comments($table->primaryKey->comments, '  ', $view) . '  primary key (' . implode(', ', $table->primaryKey->columns) . ")\n";
+            $out .= self::comments($table->primaryKey->comments, '  ', $view) . '  primary key ('
+                . implode(', ', $table->primaryKey->columns) . ")\n";
         }
         $byName = static fn(object $constraint): string => $constraint->name;
         foreach (self::sorted($table->uniqueKeys, $byName) as $unique) {
-            $out .= self::comments($unique->comments, '  ', $view) . "  unique {$unique->name} (" . implode(', ', $unique->columns) . ")\n";
+            $out .= self::comments($unique->comments, '  ', $view) . "  unique {$unique->name} ("
+                . implode(', ', $unique->columns) . ")\n";
         }
         foreach (self::sorted($table->indexes, $byName) as $index) {
-            $columns = array_map(static fn(IndexColumn $c): string => $c->descending ? "{$c->name} desc" : $c->name, $index->columns);
-            $out .= self::comments($index->comments, '  ', $view) . "  index {$index->name} (" . implode(', ', $columns) . ")\n";
+            $columns = array_map(static fn(IndexColumn $c): string =>
+                $c->descending ? "{$c->name} desc" : $c->name, $index->columns);
+            $out .= self::comments($index->comments, '  ', $view) . "  index {$index->name} ("
+                . implode(', ', $columns) . ")\n";
         }
         foreach (self::sorted($table->foreignKeys, $byName) as $foreignKey) {
-            $out .= self::comments($foreignKey->comments, '  ', $view) . "  foreign key {$foreignKey->name} (" . implode(', ', $foreignKey->columns)
+            $out .= self::comments($foreignKey->comments, '  ', $view)
+                . "  foreign key {$foreignKey->name} (" . implode(', ', $foreignKey->columns)
                 . ") references {$foreignKey->table} (" . implode(', ', $foreignKey->referencedColumns)
                 . ") on delete {$foreignKey->onDelete} on update {$foreignKey->onUpdate}\n";
         }
@@ -72,14 +80,17 @@ final class Emitter
         ));
         if ($table->settings !== null && $written === []) {
             // An empty settings block has no meaning and is omitted; its comments stay before the table's `}`.
-            $closingComments = [...$table->settings->comments, ...$table->settings->closingComments, ...$closingComments];
+            $closingComments = [...$table->settings->comments, ...$table->settings->closingComments,
+                ...$closingComments];
         } elseif ($table->settings !== null) {
             $out .= self::comments($table->settings->comments, '  ', $view) . "  settings {\n";
             $rank = array_flip(Setting::KINDS);
             $settings = $written;
-            usort($settings, static fn(Setting $a, Setting $b): int => $rank[$a->kind] <=> $rank[$b->kind] ?: self::within($a, $b));
+            usort($settings, static fn(Setting $a, Setting $b): int =>
+                $rank[$a->kind] <=> $rank[$b->kind] ?: self::within($a, $b));
             foreach ($settings as $setting) {
-                $out .= self::comments($setting->comments, '    ', $view) . '    ' . self::setting($setting, $table, $view) . "\n";
+                $out .= self::comments($setting->comments, '    ', $view) . '    '
+                    . self::setting($setting, $table, $view) . "\n";
             }
             $out .= self::comments($table->settings->closingComments, '    ', $view) . "  }\n";
         }
@@ -114,7 +125,8 @@ final class Emitter
         return match ($setting->kind) {
             'select_explicit' => 'select explicit ' . implode(' ', $setting->arguments),
             'key_prefix' => 'key_prefix ' . self::quote($setting->arguments[0]),
-            'checkbox' => "checkbox {$setting->arguments[0]} {$setting->arguments[1]} " . self::quote($setting->arguments[2]),
+            'checkbox' => "checkbox {$setting->arguments[0]} {$setting->arguments[1]} "
+                . self::quote($setting->arguments[2]),
             'state_machine' => self::machine($setting),
             'store' => self::store($setting->arguments),
             // Schema text is decided by database state, so the columns not recorded are written as an exclude
@@ -129,7 +141,8 @@ final class Emitter
     }
 
     /**
-     * The store line: if there is a shard clause column and period after the kind's arguments, write `shard` before them.
+     * The store line: if there is a shard clause column and period after the kind's arguments, write
+     * `shard` before them.
      *
      * @param list<string> $arguments
      */

@@ -17,8 +17,10 @@ use PhpParser\ParserFactory;
 final class Scan
 {
     /** Methods of a model whose result is no model: a call on it ends the chain. */
-    private const TERMINALS = ['delete', 'deleteRow', 'creates', 'toArray', 'toJson', 'jsonSerialize', 'connection', 'meta', 'readColumn',
-        'writeColumn', 'getsCount', 'getCount', 'getSum', 'getAvg', 'getsPage', 'getQuery'];
+    private const TERMINALS = [
+        'delete', 'deleteRow', 'creates', 'toArray', 'toJson', 'jsonSerialize', 'connection', 'meta',
+        'readColumn', 'writeColumn', 'getsCount', 'getCount', 'getSum', 'getAvg', 'getsPage', 'getQuery'
+    ];
     /** Methods of a model whose closure receives a model of the receiver's class as its first parameter. */
     private const MODEL_CALLBACKS = ['and', 'or', 'not', 'andNot', 'orNot', 'on', 'fetchKey', 'fetchValue'];
 
@@ -55,7 +57,8 @@ final class Scan
             if (!str_ends_with($file, '.php')) {
                 continue;
             }
-            // A file that does not parse would hide its calls, so it fails the scan with its position (docs/spec/dsl.md, DSL-152).
+            // A file that does not parse would hide its calls, so it fails the scan with its position
+            // (docs/spec/dsl.md, DSL-152).
             $code = (string) file_get_contents($file);
             try {
                 $tree = $parser->parse($code);
@@ -80,10 +83,12 @@ final class Scan
      */
     private static function collect(string $dir, array &$files): void
     {
-        $directories = new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS | \FilesystemIterator::CURRENT_AS_FILEINFO);
+        $directories = new \RecursiveDirectoryIterator($dir,
+            \FilesystemIterator::SKIP_DOTS | \FilesystemIterator::CURRENT_AS_FILEINFO);
         $skipped = new \RecursiveCallbackFilterIterator(
             $directories,
-            static fn (\SplFileInfo $entry): bool => !($entry->isDir() && !$entry->isLink() && in_array($entry->getFilename(), ['vendor', 'node_modules'], true)),
+            static fn (\SplFileInfo $entry): bool => !($entry->isDir() && !$entry->isLink()
+                && in_array($entry->getFilename(), ['vendor', 'node_modules'], true)),
         );
         $found = [];
         foreach (new \RecursiveIteratorIterator($skipped) as $entry) {
@@ -91,7 +96,8 @@ final class Scan
                 throw new \LogicException('RecursiveDirectoryIterator yields SplFileInfo entries');
             }
             if ($entry->isLink()) {
-                throw new \RuntimeException('--scan: ' . $entry->getPathname() . ' is a symlink; the scan never follows one');
+                throw new \RuntimeException('--scan: ' . $entry->getPathname()
+                    . ' is a symlink; the scan never follows one');
             }
             $found[] = $entry->getPathname();
         }

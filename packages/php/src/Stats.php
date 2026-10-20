@@ -11,7 +11,12 @@ use Polyspec\Orm\Dbspec\Renderer;
 
 final readonly class Stats
 {
-    public function __construct(public int $maxOpenConnections, public int $openConnections, public int $inUse, public int $idle)
+    public function __construct(
+        public int $maxOpenConnections,
+        public int $openConnections,
+        public int $inUse,
+        public int $idle
+    )
     {
     }
 }

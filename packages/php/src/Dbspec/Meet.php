@@ -11,12 +11,14 @@ namespace Polyspec\Orm\Dbspec;
 final class Meet
 {
     /** The class of the types that share one: integers meet integers, and varchar meets text. */
-    private const CLASSES = ['i16' => 'integer', 'i32' => 'integer', 'i64' => 'integer', 'varchar' => 'string', 'text' => 'string'];
+    private const CLASSES = [
+        'i16' => 'integer', 'i32' => 'integer', 'i64' => 'integer', 'varchar' => 'string', 'text' => 'string'
+    ];
 
     /**
-     * The class of a column type: two columns meet when their kinds are equal. A decimal carries its scale and a time or
-     * datetime its precision, since a different scale or precision compares differently; every other type is its own
-     * class.
+     * The class of a column type: two columns meet when their kinds are equal. A decimal carries its
+     * scale and a time or datetime its precision, since a different scale or precision compares
+     * differently; every other type is its own class.
      */
     public static function kind(string $type, int $scale, int $precision): string
     {

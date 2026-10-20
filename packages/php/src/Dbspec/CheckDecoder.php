@@ -262,15 +262,20 @@ final class CheckDecoder
             if (!$this->word('in')) {
                 throw new CheckDecodeFailure('not outside not in');
             }
-            return ['node' => 'predicate', 'op' => 'in', 'left' => $left, 'list' => $this->literalList(), 'negated' => true];
+            return ['node' => 'predicate', 'op' => 'in', 'left' => $left,
+                'list' => $this->literalList(), 'negated' => true];
         }
         if ($this->word('in')) {
-            return ['node' => 'predicate', 'op' => 'in', 'left' => $left, 'list' => $this->literalList(), 'negated' => false];
+            return ['node' => 'predicate', 'op' => 'in', 'left' => $left,
+                'list' => $this->literalList(), 'negated' => false];
         }
         return $left;
     }
 
-    /** Reads a parenthesized expression or an operand and the cast after it. If the inside of the parentheses is one operand, it is that operand. */
+    /**
+     * Reads a parenthesized expression or an operand and the cast after it. If the inside of the
+     * parentheses is one operand, it is that operand.
+     */
     private function term(): array
     {
         if ($this->punct('(')) {
@@ -285,7 +290,9 @@ final class CheckDecoder
             if ($node['node'] !== 'operand') {
                 throw new CheckDecodeFailure('a cast of a predicate');
             }
-            if ($node['kind'] === 'string' && in_array($typeName, ['smallint', 'integer', 'bigint', 'numeric', 'double precision', 'real'], true)) {
+            if ($node['kind'] === 'string' && in_array($typeName, [
+                'smallint', 'integer', 'bigint', 'numeric', 'double precision', 'real'
+            ], true)) {
                 $node['kind'] = 'number';
             }
         }
@@ -325,7 +332,9 @@ final class CheckDecoder
             $parenthesized = $this->punct('(');
             [$nextKind, $next] = $this->peek();
             if ($nextKind !== 'number') {
-                throw new CheckDecodeFailure($parenthesized ? 'expected a number after -(' : 'expected a number after -');
+                throw new CheckDecodeFailure($parenthesized
+                    ? 'expected a number after -('
+                    : 'expected a number after -');
             }
             $this->i++;
             if ($parenthesized) {
@@ -403,11 +412,13 @@ final class CheckDecoder
                 return '(' . $this->side($p['left']) . " {$p['op']} " . $this->side($p['right']) . ')';
             case 'compare':
                 $type = $this->typeOf($p['left'], $p['right']);
-                return $this->operandText($p['left'], $type) . " {$p['operator']} " . $this->operandText($p['right'], $type);
+                return $this->operandText($p['left'], $type) . " {$p['operator']} "
+                    . $this->operandText($p['right'], $type);
             case 'in':
                 $type = $this->typeOf($p['left'], null);
                 $items = array_map(fn(array $item): string => $this->operandText($item, $type), $p['list']);
-                return $this->operandText($p['left'], $type) . ($p['negated'] ? ' not in (' : ' in (') . implode(', ', $items) . ')';
+                return $this->operandText($p['left'], $type)
+                    . ($p['negated'] ? ' not in (' : ' in (') . implode(', ', $items) . ')';
             case 'null':
                 return $this->operandText($p['left'], null) . ($p['negated'] ? ' is not null' : ' is null');
         }
@@ -432,7 +443,10 @@ final class CheckDecoder
         return null;
     }
 
-    /** Writes an operand in dbspec notation. A bool column's 1 and 0 become true and false; a SQLite decimal integer is the value divided by the scale. */
+    /**
+     * Writes an operand in dbspec notation. A bool column's 1 and 0 become true and false; a SQLite decimal
+     * integer is the value divided by the scale.
+     */
     private function operandText(array $o, ?ColumnType $type): string
     {
         switch ($o['kind']) {

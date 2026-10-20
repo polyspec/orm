@@ -46,35 +46,42 @@ final class ChainDeclare
                 return null;
             }
             $single = count($keys) === 1;
-            return ['params' => $single ? '\\Polyspec\\Orm\\Func ...$fn' : '', 'returns' => '$this', 'min' => 0, 'max' => $single ? 1 : 0];
+            return ['params' => $single ? '\\Polyspec\\Orm\\Func ...$fn' : '', 'returns' => '$this',
+                'min' => 0, 'max' => $single ? 1 : 0];
         }
         foreach (['LeftJoin', 'Join'] as $prefix) {
             if (str_starts_with($upper, $prefix) && strlen($upper) > strlen($prefix)) {
                 $pair = $this->pair($meta, null, substr($upper, strlen($prefix)));
-                return $pair === null ? null : ['params' => $this->owners($pair[1]) . ' $child', 'returns' => '$this', 'min' => 1, 'max' => 1];
+                return $pair === null ? null
+                    : ['params' => $this->owners($pair[1]) . ' $child', 'returns' => '$this', 'min' => 1, 'max' => 1];
             }
         }
         if (str_starts_with($upper, 'Match') && strlen($upper) > 5) {
-            return $this->pair(null, $meta, substr($upper, 5)) === null ? null : ['params' => '', 'returns' => '$this', 'min' => 0, 'max' => 0];
+            return $this->pair(null, $meta, substr($upper, 5)) === null ? null
+                : ['params' => '', 'returns' => '$this', 'min' => 0, 'max' => 0];
         }
         if (str_starts_with($upper, 'Alias') && strlen($upper) > 5) {
             return ['params' => '', 'returns' => '$this', 'min' => 0, 'max' => 0];
         }
         if (str_starts_with($upper, 'Possible') && strlen($upper) > 8) {
-            return $this->schemaColumn(substr($upper, 8)) === '' ? null : ['params' => 'mixed $value', 'returns' => '$this', 'min' => 1, 'max' => 1];
+            return $this->schemaColumn(substr($upper, 8)) === '' ? null
+                : ['params' => 'mixed $value', 'returns' => '$this', 'min' => 1, 'max' => 1];
         }
         if (str_starts_with($upper, 'New') && strlen($upper) > 3) {
-            return Chain::columnName($meta, substr($upper, 3)) !== '' ? null : ['params' => 'mixed $value', 'returns' => '$this', 'min' => 1, 'max' => 1];
+            return Chain::columnName($meta, substr($upper, 3)) !== '' ? null
+                : ['params' => 'mixed $value', 'returns' => '$this', 'min' => 1, 'max' => 1];
         }
         if (str_starts_with($upper, 'AddColumn') && strlen($upper) > 9) {
             $rest = substr($upper, 9);
             $at = strpos($rest, 'Alias');
-            if ($at !== false && $at > 0 && Chain::columnName($meta, substr($rest, 0, $at)) !== '' && strlen($rest) > $at + 5) {
+            if ($at !== false && $at > 0 && Chain::columnName($meta, substr($rest, 0, $at)) !== ''
+                && strlen($rest) > $at + 5) {
                 return Chain::columnName($meta, substr($rest, $at + 5)) !== '' ? null
                     : ['params' => '\\Polyspec\\Orm\\Func $fn', 'returns' => '$this', 'min' => 1, 'max' => 1];
             }
             return Chain::columnName($meta, $rest) !== '' ? null
-                : ['params' => '\\Closure(static): \\Polyspec\\Orm\\Model $fn', 'returns' => '$this', 'min' => 1, 'max' => 1];
+                : ['params' => '\\Closure(static): \\Polyspec\\Orm\\Model $fn', 'returns' => '$this',
+                    'min' => 1, 'max' => 1];
         }
         if (str_starts_with($upper, 'Get')) {
             return null;
@@ -95,7 +102,10 @@ final class ChainDeclare
         return "@method {$declaration['returns']} $name({$declaration['params']})";
     }
 
-    /** The tag of the getter `get<Name>` of a value that a scanned `alias`, `new` or `addColumn` call, or a relation, names. */
+    /**
+     * The tag of the getter `get<Name>` of a value that a scanned `alias`, `new` or `addColumn` call, or a
+     * relation, names.
+     */
     public static function getter(string $name): string
     {
         return "@method mixed $name()";
@@ -157,7 +167,8 @@ final class ChainDeclare
         $first = $keys[0];
         if (
             count($keys) === 1 && $first['compare'] === '' && $first['column'] !== ''
-            && in_array($first['op'], ['', 'ne', 'gt', 'lt', 'ge', 'le'], true) && Chain::functionColumn($meta['columns'][$first['column']])
+            && in_array($first['op'], ['', 'ne', 'gt', 'lt', 'ge', 'le'], true)
+            && Chain::functionColumn($meta['columns'][$first['column']])
         ) {
             return ['params' => $params[0] . ', mixed $compared = null', 'min' => 1, 'max' => 2];
         }

@@ -16,9 +16,14 @@ final class Config
         public readonly int $aesVersion = 1,
         /** @var array<int, string> every declared AES key version */
         public readonly array $aesKeys = [],
-        /** maximum connections of a pool; the PHP client opens one connection per Db, has no pool and accepts only zero */
+        /**
+         * maximum connections of a pool; the PHP client opens one connection per Db, has no pool and
+         * accepts only zero
+         */
         public readonly int $poolSize = 0,
-        /** bound of every statement of the connection in milliseconds; zero keeps the server default */
+        /**
+         * bound of every statement of the connection in milliseconds; zero keeps the server default
+         */
         public readonly int $statementTimeoutMs = 0,
         /** maximum idle connections of a pool; the PHP client has no pool and accepts only zero */
         public readonly int $poolIdleSize = 0,

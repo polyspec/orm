@@ -42,7 +42,8 @@ final class Planner
             default:
                 $this->selectStep($steps, $r, $r['kind'], $r['agg'] ?? '', null);
         }
-        return ['manifest_hash' => $this->m->manifestHash, 'kind' => $r['kind'], 'steps' => array_map(static fn(PlanStep $s): array => $s->toArray(), $steps->steps)];
+        return ['manifest_hash' => $this->m->manifestHash, 'kind' => $r['kind'],
+            'steps' => array_map(static fn(PlanStep $s): array => $s->toArray(), $steps->steps)];
     }
 
     private static function err(string $code, string $msg): OrmException
@@ -120,7 +121,8 @@ final class Planner
             if ($order === '') {
                 $order = ' ORDER BY ' . $this->qcol($root, $pk[0]) . ' ASC';
             }
-            $sql .= ', ROW_NUMBER() OVER (PARTITION BY ' . implode(', ', $this->qualified($root, $rc->childKeys)) . $order . ') AS ' . $this->d->quote('orm_rn');
+            $sql .= ', ROW_NUMBER() OVER (PARTITION BY ' . implode(', ', $this->qualified($root, $rc->childKeys))
+                . $order . ') AS ' . $this->d->quote('orm_rn');
         }
         $sql .= ' FROM ' . $b->table($root->ent) . ' AS ' . $this->d->quote($root->alias);
         if (($q['force_index'] ?? '') !== '') {
@@ -129,11 +131,14 @@ final class Planner
         $sql .= $this->renderJoins($b, $root);
         $where = [];
         if ($rc !== null) {
-            $keyTypes = array_map(static fn(string $key): string => RuntimeModel::column($root->ent, $key)['type'], $rc->childKeys);
+            $keyTypes = array_map(static fn(string $key): string =>
+                RuntimeModel::column($root->ent, $key)['type'], $rc->childKeys);
             if (count($rc->childKeys) === 1) {
-                $where[] = $this->qcol($root, $rc->childKeys[0]) . ' IN (' . $b->parent($rc->parentStep, $keyTypes) . ')';
+                $where[] = $this->qcol($root, $rc->childKeys[0]) . ' IN ('
+                    . $b->parent($rc->parentStep, $keyTypes) . ')';
             } else {
-                $where[] = '(' . implode(', ', $this->qualified($root, $rc->childKeys)) . ') IN ((' . $b->parent($rc->parentStep, $keyTypes) . '))';
+                $where[] = '(' . implode(', ', $this->qualified($root, $rc->childKeys)) . ') IN (('
+                    . $b->parent($rc->parentStep, $keyTypes) . '))';
             }
         }
         if ($root->ent['soft_delete'] !== '') {
@@ -159,8 +164,10 @@ final class Planner
                 // keep the output columns in order, drop orm_rn, cut at n per parent
                 $w = $this->d->quote('orm_w');
                 $cols = array_map(fn(string $n): string => $w . '.' . $this->d->quote($n), $outNames);
-                $keys = array_map(fn(string $k): string => $w . '.' . $this->d->quote($root->alias . '__' . $k), $rc->childKeys);
-                $sql = 'SELECT ' . implode(', ', $cols) . ' FROM (' . $sql . ') AS ' . $w . ' WHERE ' . $w . '.' . $this->d->quote('orm_rn') . ' <= ' . $perParent
+                $keys = array_map(fn(string $k): string =>
+                    $w . '.' . $this->d->quote($root->alias . '__' . $k), $rc->childKeys);
+                $sql = 'SELECT ' . implode(', ', $cols) . ' FROM (' . $sql . ') AS ' . $w . ' WHERE ' . $w . '.'
+                    . $this->d->quote('orm_rn') . ' <= ' . $perParent
                     . ' ORDER BY ' . implode(', ', $keys) . ', ' . $w . '.' . $this->d->quote('orm_rn');
             } else {
                 $sql .= $this->renderOrder($b, $root, $q);
@@ -170,7 +177,8 @@ final class Planner
                     $sql .= $this->d->limit($q['limit']['offset'] ?? 0, $q['limit']['count']);
                 }
                 if ($lock !== '') {
-                    $suffix = $this->d->rowLock($lock) ?? throw self::err(Code::CAPABILITY_UNSUPPORTED, "{$this->d->name} row lock \"$lock\" is not supported");
+                    $suffix = $this->d->rowLock($lock) ?? throw self::err(Code::CAPABILITY_UNSUPPORTED,
+                        "{$this->d->name} row lock \"$lock\" is not supported");
                     $sql .= $suffix;
                 }
             }
@@ -183,7 +191,8 @@ final class Planner
             $st->parent = ['step' => $rc->parentStep, 'keys' => self::keyRefs($rc->parentAsm, $rc->parentKeys)];
             if (isset($q['if_parent'])) {
                 $column = $q['if_parent']['column'];
-                $st->parent['if_parent'] = ['column' => $column, 'index' => self::indexOf($rc->parentAsm, $column), 'param' => $q['if_parent']['p']];
+                $st->parent['if_parent'] = ['column' => $column,
+                    'index' => self::indexOf($rc->parentAsm, $column), 'param' => $q['if_parent']['p']];
             }
         }
         if ($kind === 'one' || $kind === 'all' || $kind === 'group_count') {
@@ -211,10 +220,13 @@ final class Planner
             $child->parentKeys = self::keyRefs($asm, $rc->parentKeys);
             $child->childKeys = self::keyRefs($st->assemble, $rc->childKeys);
             $child->flatten = !empty($r['query']['flatten']);
-            // owned when the target holds the key: this row's primary key on the left, not the target's on the right
-            $child->cascade = empty($r['query']['no_cascade_delete']) && $rc->parentKeys === $s->ent['pk'] && $rc->childKeys !== $target['pk'];
+            // owned when the target holds the key: this row's primary key on the left, not the target's on the
+            // right
+            $child->cascade = empty($r['query']['no_cascade_delete']) && $rc->parentKeys === $s->ent['pk']
+                && $rc->childKeys !== $target['pk'];
             $keyBy = $r['query']['key_by'] ?? '';
-            $child->key = self::keyRefs($st->assemble, $keyBy !== '' ? [$keyBy] : $this->m->entities[$st->assemble->entity]['pk']);
+            $child->key = self::keyRefs($st->assemble, $keyBy !== '' ? [$keyBy]
+                : $this->m->entities[$st->assemble->entity]['pk']);
             $asm->children[] = $child;
         }
         foreach ($s->q['joins'] ?? [] as $j) {
@@ -250,9 +262,12 @@ final class Planner
                 $parts[] = $this->d->random();
                 continue;
             }
-            $col = isset($o['fn']) ? $this->columnFunction($root, $o['column'], $o['fn']) : $this->qcol($root, $o['column']);
-            // A NOT NULL column keeps its btree order; one that can be NULL sorts NULL first ascending and last descending.
-            $nulls = RuntimeModel::column($root->ent, $o['column'])['nullable'] ? $this->d->nullsOrder(!empty($o['desc'])) : '';
+            $col = isset($o['fn']) ? $this->columnFunction($root, $o['column'], $o['fn'])
+                : $this->qcol($root, $o['column']);
+            // A NOT NULL column keeps its btree order; one that can be NULL sorts NULL first ascending and last
+            // descending.
+            $nulls = RuntimeModel::column($root->ent, $o['column'])['nullable']
+                ? $this->d->nullsOrder(!empty($o['desc'])) : '';
             $parts[] = $col . (!empty($o['desc']) ? ' DESC' : ' ASC') . $nulls;
         }
         return $parts === [] ? '' : ' ORDER BY ' . implode(', ', $parts);
@@ -282,7 +297,8 @@ final class Planner
         return implode(', ', $parts);
     }
 
-    private static function outCol(int $index, string $name, string $column, string $type, array $styles, bool $hidden = false): array
+    private static function outCol(int $index, string $name, string $column, string $type, array $styles,
+        bool $hidden = false): array
     {
         $c = ['index' => $index, 'name' => $name];
         if ($column !== '') {
@@ -330,9 +346,11 @@ final class Planner
             $asm->columns[] = self::outCol($idx++, $c['name'], $c['column'], $type, $styles);
         }
         if ($hasAes && !in_array($s->ent['aes_version'], array_column($projection, 'column'), true)) {
-            // A row that reads an AES column also reads the key version column, which was not selected, hidden along with it.
+            // A row that reads an AES column also reads the key version column, which was not selected, hidden
+            // along with it.
             $name = $s->ent['aes_version'];
-            $version = RuntimeModel::column($s->ent, $name) ?? throw self::err(Code::SCHEMA_INVALID, "{$s->ent['entity']}: an AES column requires the aes_version setting");
+            $version = RuntimeModel::column($s->ent, $name) ?? throw self::err(Code::SCHEMA_INVALID,
+                "{$s->ent['entity']}: an AES column requires the aes_version setting");
             $parts[] = $this->qcol($s, $name) . ' AS ' . $this->d->quote($s->alias . '__' . $name);
             $outNames[] = $s->alias . '__' . $name;
             $asm->columns[] = self::outCol($idx++, $name, $name, $version['type'], [], true);
@@ -370,7 +388,8 @@ final class Planner
             }
         }
         if (($c['remove'] ?? []) !== []) {
-            $base = array_values(array_filter($base, fn(string $x): bool => !in_array($x, $c['remove'], true) || RuntimeModel::column($s->ent, $x)['pk']));
+            $base = array_values(array_filter($base, fn(string $x): bool => !in_array($x, $c['remove'], true)
+                || RuntimeModel::column($s->ent, $x)['pk']));
         }
         // columns relation steps bind or key on are always selected
         $need = $s->extra;
@@ -411,11 +430,13 @@ final class Planner
             $js = $s->joins[$j['rel']];
             $kw = ($j['kind'] ?? '') === 'left' ? ' LEFT JOIN ' : ' INNER JOIN ';
             $conditions = [$this->qcol($s, $j['left']) . ' = ' . $this->qcol($js, $j['right'])];
-            // A joined entity's soft-deleted rows never meet the parent: the condition sits in ON, so a left join gives null.
+            // A joined entity's soft-deleted rows never meet the parent: the condition sits in ON, so a left join
+            // gives null.
             if ($js->ent['soft_delete'] !== '') {
                 $conditions[] = $this->qcol($js, $js->ent['soft_delete']) . ' IS NULL';
             }
-            $sql .= $kw . $b->table($js->ent) . ' AS ' . $this->d->quote($js->alias) . ' ON ' . implode(' AND ', $conditions);
+            $sql .= $kw . $b->table($js->ent) . ' AS ' . $this->d->quote($js->alias) . ' ON '
+                . implode(' AND ', $conditions);
             if (($j['query']['on']['items'] ?? []) !== []) {
                 $sql .= ' AND ' . $this->renderGroup($b, $js, $j['query']['on'], true);
             }
@@ -512,9 +533,11 @@ final class Planner
         }
         if (isset($p['value'])) {
             $fn = $p['value']['name'];
-            // The clock the ORM compares has six fractional digits, and a datetime(p < 6) column is compared with the value extended to six digits
-            // (docs/spec/protocol.md "Clock").
-            $value = $this->d->valueFunction($fn, static fn(): string => $b->param($p['value']['ps'][0], Validator::intervalType($fn)), static fn(): string => $b->now(6))
+            // The clock the ORM compares has six fractional digits, and a datetime(p < 6) column is compared with
+            // the value extended to six digits (docs/spec/protocol.md "Clock").
+            $value = $this->d->valueFunction($fn,
+                static fn(): string => $b->param($p['value']['ps'][0], Validator::intervalType($fn)),
+                static fn(): string => $b->now(6))
                 ?? throw self::err(Code::CAPABILITY_UNSUPPORTED, "$fn is not available on {$this->d->name}");
             if (($col['type'] ?? '') === 'datetime' && $fn !== 'today') {
                 $lhs = $this->d->clockOperand($lhs, $col['precision']);
@@ -525,8 +548,10 @@ final class Planner
             $fn = $this->columnFunction($s, $p['column'], $p['fn']);
             $type = Validator::functionType($p['fn']['name'], $col);
             return match ($op) {
-                'in', 'not_in' => $fn . ($op === 'not_in' ? ' NOT IN ' : ' IN ') . '(' . implode(', ', array_map(static fn(int $i): string => $b->param($i, $type), $p['ps'])) . ')',
-                'between' => $fn . ' BETWEEN ' . $b->param($p['ps'][0], $type) . ' AND ' . $b->param($p['ps'][1], $type),
+                'in', 'not_in' => $fn . ($op === 'not_in' ? ' NOT IN ' : ' IN ') . '(' . implode(', ',
+                    array_map(static fn(int $i): string => $b->param($i, $type), $p['ps'])) . ')',
+                'between' => $fn . ' BETWEEN ' . $b->param($p['ps'][0], $type) . ' AND '
+                    . $b->param($p['ps'][1], $type),
                 default => $fn . ' ' . self::cmp($op) . ' ' . $b->param($p['p'], $type),
             };
         }
@@ -540,10 +565,12 @@ final class Planner
             case 'lte':
                 if ($aes) {
                     if ($op !== 'eq' && $op !== 'not_eq') {
-                        throw self::err(Code::OPERATOR_NOT_ALLOWED, 'AES columns support only equality through a declared blind index');
+                        throw self::err(Code::OPERATOR_NOT_ALLOWED,
+                            'AES columns support only equality through a declared blind index');
                     }
                     $index = $this->blindIndex($s, $col);
-                    return $this->qcol($s, $index) . ' ' . self::cmp($op) . ' ' . $b->blindIndex($p['p'], RuntimeModel::column($s->ent, $index)['type']);
+                    return $this->qcol($s, $index) . ' ' . self::cmp($op) . ' '
+                        . $b->blindIndex($p['p'], RuntimeModel::column($s->ent, $index)['type']);
                 }
                 return $lhs . ' ' . self::cmp($op) . ' ' . $this->renderValue($b, $col, $p['p']);
             case 'eq_col':
@@ -581,7 +608,8 @@ final class Planner
             case 'contains':
                 return $this->d->contains($lhs, $b->colParam($p['p'], $col, 'like_contains'));
             case 'contains_binary':
-                return $this->d->containsBinary($lhs, static fn(string $transform): string => $b->colParam($p['p'], $col, $transform));
+                return $this->d->containsBinary($lhs,
+                    static fn(string $transform): string => $b->colParam($p['p'], $col, $transform));
         }
         throw self::err(Code::OPERATOR_UNKNOWN, $op);
     }
@@ -589,7 +617,8 @@ final class Planner
     private function blindIndex(PlanScope $s, array $col): string
     {
         if ($col['blind_index'] === '') {
-            throw self::err(Code::IR_INVALID, "{$s->ent['entity']}.{$col['name']} requires a declared blind index for equality search");
+            throw self::err(Code::IR_INVALID,
+                "{$s->ent['entity']}.{$col['name']} requires a declared blind index for equality search");
         }
         return $col['blind_index'];
     }
@@ -604,11 +633,14 @@ final class Planner
         return $col['type'] === 'time' ? $this->d->readTime($expr, $col['precision'] ?? 0) : $expr;
     }
 
-    /** Binds one value, wrapped for the SQL-side stages; the other secret stages are marked for the executor. */
+    /**
+     * Binds one value, wrapped for the SQL-side stages; the other secret stages are marked for the executor.
+     */
     private function renderValue(PlanBinds $b, array $col, int $i): string
     {
         $styles = $this->sqlStyles($col);
-        $host = array_values(array_filter($col['codec'], fn(string $st): bool => in_array($st, RuntimeModel::HOST_STAGES, true) && !$this->d->handlesStyle($st)));
+        $host = array_values(array_filter($col['codec'], fn(string $st): bool =>
+            in_array($st, RuntimeModel::HOST_STAGES, true) && !$this->d->handlesStyle($st)));
         if ($styles === []) {
             $ph = $b->colParam($i, $col, '', $host);
             return match ($col['type']) {
@@ -621,7 +653,10 @@ final class Planner
         return $this->d->writeExpr($b->param($i, self::styleInputType($styles[0]), '', $host), $styles);
     }
 
-    /** The type of value that a SQL-side style function receives at its placeholder. hex receives bytes, and ip receives an IP address text. */
+    /**
+     * The type of value that a SQL-side style function receives at its placeholder. hex receives bytes, and ip
+     * receives an IP address text.
+     */
     private static function styleInputType(string $style): string
     {
         return $style === 'ip' ? 'text' : 'bytes';
@@ -693,7 +728,8 @@ final class Planner
             return;
         }
         if (self::assigned($set, $ent['aes_version'])) {
-            throw self::err(Code::IR_INVALID, $ent['aes_version'] . ' is the AES key version column, which the AES writer manages');
+            throw self::err(Code::IR_INVALID,
+                $ent['aes_version'] . ' is the AES key version column, which the AES writer manages');
         }
         if (!$complete || !self::assignsAes($ent, $set)) {
             return;
@@ -714,7 +750,8 @@ final class Planner
     {
         $version = self::hasAes($ent) ? $ent['aes_version'] : '';
         foreach ($ent['columns'] as $c) {
-            if ($c['nullable'] || $c['default'] || $c['name'] === $ent['identity'] || $c['name'] === $version || $c['name'] === $ent['audit'] || self::assigned($set, $c['name'])) {
+            if ($c['nullable'] || $c['default'] || $c['name'] === $ent['identity'] || $c['name'] === $version
+                || $c['name'] === $ent['audit'] || self::assigned($set, $c['name'])) {
                 continue;
             }
             throw self::err(Code::IR_INVALID, 'required column ' . $ent['entity'] . '.' . $c['name'] . ' is not set');
@@ -812,7 +849,8 @@ final class Planner
         self::checkRequiredAssignments($ent, $set);
         $versioned = self::hasAes($ent);
         $audited = $ent['audit'] !== '';
-        // A dialect that uses the executor clock (hostNow) uses the executor clock, truncated to the column's fractional digits, for a `default now` column the user did not assign
+        // A dialect that uses the executor clock (hostNow) uses the executor clock, truncated to the column's
+        // fractional digits, for a `default now` column the user did not assign
         // (docs/spec/protocol.md "Clock").
         $clocked = [];
         if ($this->d->hostNow()) {
@@ -825,7 +863,8 @@ final class Planner
         // load keeps rows as the stored keys, so it accepts and requires the identity column's value.
         $load = $r['load'] ?? false;
         if ($load && $ent['identity'] !== '' && !self::assignsValue($set, $ent['identity'])) {
-            throw self::err(Code::IR_INVALID, "load of {$ent['entity']} needs a value for the identity column {$ent['identity']}");
+            throw self::err(Code::IR_INVALID,
+                "load of {$ent['entity']} needs a value for the identity column {$ent['identity']}");
         }
         $cols = [];
         $vals = [];
@@ -849,19 +888,22 @@ final class Planner
             $cols[] = $this->d->quote($c['name']);
             $vals[] = $b->now($c['precision']);
         }
-        $sql = 'INSERT INTO ' . $b->table($ent) . ' (' . implode(', ', $cols) . ') VALUES (' . implode(', ', $vals) . ')';
+        $sql = 'INSERT INTO ' . $b->table($ent) . ' (' . implode(', ', $cols) . ') VALUES ('
+            . implode(', ', $vals) . ')';
         $rows = $r['rows'] ?? [];
         if ($rows !== []) {
             // derived blind-index columns take the value of their AES source column
             $given = array_column($r['set'], 'column');
             $source = [];
             foreach ($set as $i => $a) {
-                $source[$i] = $i < count($r['set']) ? $i : array_search(self::blindIndexSource($ent, $a['column'])['name'], $given, true);
+                $source[$i] = $i < count($r['set']) ? $i
+                    : array_search(self::blindIndexSource($ent, $a['column'])['name'], $given, true);
             }
             foreach ($rows as $row) {
                 $more = [];
                 foreach ($set as $i => $a) {
-                    $more[] = $this->renderAssign($b, $ent, RuntimeModel::column($ent, $a['column']), ['column' => $a['column'], 'p' => $row[$source[$i]]]);
+                    $more[] = $this->renderAssign($b, $ent, RuntimeModel::column($ent, $a['column']),
+                        ['column' => $a['column'], 'p' => $row[$source[$i]]]);
                 }
                 if ($versioned) {
                     $more[] = $b->config('aes_version', RuntimeModel::column($ent, $ent['aes_version'])['type']);
@@ -881,10 +923,12 @@ final class Planner
             self::checkAesAssignments($ent, $duplicate, true);
             $sets = [];
             foreach ($duplicate as $a) {
-                $sets[] = $this->d->quote($a['column']) . ' = ' . $this->renderAssign($b, $ent, RuntimeModel::column($ent, $a['column']), $a);
+                $sets[] = $this->d->quote($a['column']) . ' = '
+                    . $this->renderAssign($b, $ent, RuntimeModel::column($ent, $a['column']), $a);
             }
             if (self::assignsAes($ent, $duplicate)) {
-                $sets[] = $this->d->quote($ent['aes_version']) . ' = ' . $b->config('aes_version', RuntimeModel::column($ent, $ent['aes_version'])['type']);
+                $sets[] = $this->d->quote($ent['aes_version']) . ' = '
+                    . $b->config('aes_version', RuntimeModel::column($ent, $ent['aes_version'])['type']);
             }
             if ($audited) {
                 $sets[] = $this->d->quote($ent['audit']) . ' = ' . $b->audit($ent);
@@ -915,7 +959,8 @@ final class Planner
             $sets[] = $this->d->quote($a['column']) . ' = ' . $this->renderAssign($b, $ent, $col, $a);
         }
         if (self::assignsAes($ent, $set)) {
-            $sets[] = $this->d->quote($ent['aes_version']) . ' = ' . $b->config('aes_version', RuntimeModel::column($ent, $ent['aes_version'])['type']);
+            $sets[] = $this->d->quote($ent['aes_version']) . ' = '
+                . $b->config('aes_version', RuntimeModel::column($ent, $ent['aes_version'])['type']);
         }
         // the updated time is always assigned: optimistic locking needs the same behavior everywhere
         $updated = $ent['updated'];
@@ -928,17 +973,20 @@ final class Planner
         $where = $this->renderGroup($b, $root, $r['where'], true);
         if (isset($r['optimistic'])) {
             $column = $r['optimistic']['column'];
-            $where .= ' AND ' . $this->qcol($root, $column) . ' = ' . $this->renderValue($b, RuntimeModel::column($ent, $column), $r['optimistic']['p']);
+            $where .= ' AND ' . $this->qcol($root, $column) . ' = '
+                . $this->renderValue($b, RuntimeModel::column($ent, $column), $r['optimistic']['p']);
         }
         if ($ent['soft_delete'] !== '') {
             $where .= ' AND ' . $this->qcol($root, $ent['soft_delete']) . ' IS NULL';
         }
-        return new PlanStep('main', 'UPDATE ' . $b->table($ent) . ' SET ' . implode(', ', $sets) . ' WHERE ' . $where, '', $b->slots, $b->tables());
+        return new PlanStep('main', 'UPDATE ' . $b->table($ent) . ' SET ' . implode(', ', $sets) . ' WHERE '
+            . $where, '', $b->slots, $b->tables());
     }
 
     /**
      * The statement time that updated and soft delete write to datetime columns.
-     * A dialect that uses the executor clock (hostNow) uses the `now` slot truncated to the column's fractional digits; MySQL uses
+     * A dialect that uses the executor clock (hostNow) uses the `now` slot truncated to the column's fractional
+     * digits; MySQL uses
      * CURRENT_TIMESTAMP(p) as the database clock.
      */
     private function clock(PlanBinds $b, array $col): string
@@ -963,16 +1011,19 @@ final class Planner
         $where = $this->renderGroup($b, $root, $r['where'], true);
         if ($soft !== '') {
             $where .= ' AND ' . $this->qcol($root, $soft) . ' IS NULL';
-            return new PlanStep('main', 'UPDATE ' . $b->table($ent) . ' SET ' . $sets . ' WHERE ' . $where, '', $b->slots, $b->tables());
+            return new PlanStep('main', 'UPDATE ' . $b->table($ent) . ' SET ' . $sets . ' WHERE ' . $where, '',
+                $b->slots, $b->tables());
         }
         return new PlanStep('main', 'DELETE FROM ' . $b->table($ent) . ' WHERE ' . $where, '', $b->slots, $b->tables());
     }
 
     /**
-     * An update that restores one soft-deleted row. Validator::restoreKey picks a primary key or unique key from the request's set and where;
-     * that key column's set value is the condition, and the other set values are rendered as an update of the restored row
+     * An update that restores one soft-deleted row. Validator::restoreKey picks a primary key or unique key
+     * from the request's set and where; that key column's set value is the condition, and the other set values
+     * are rendered as an update of the restored row
      * with the new values written together. The other conditions of where narrow the restore further. Only deleted rows
-     * are changed, so rows that are not deleted and rows that do not exist change nothing. The updated column is not written.
+     * are changed, so rows that are not deleted and rows that do not exist change nothing. The updated column
+     * is not written.
      */
     private function restoreStep(array $r): PlanStep
     {
@@ -989,14 +1040,17 @@ final class Planner
             $sets[] = $this->d->quote($a['column']) . ' = ' . $this->renderAssign($b, $ent, $col, $a);
         }
         if (self::assignsAes($ent, $set)) {
-            $sets[] = $this->d->quote($ent['aes_version']) . ' = ' . $b->config('aes_version', RuntimeModel::column($ent, $ent['aes_version'])['type']);
+            $sets[] = $this->d->quote($ent['aes_version']) . ' = '
+                . $b->config('aes_version', RuntimeModel::column($ent, $ent['aes_version'])['type']);
         }
         $sets[] = $this->d->quote($soft) . ' = NULL';
         if ($ent['audit'] !== '') {
             $sets[] = $this->d->quote($ent['audit']) . ' = ' . $b->audit($ent);
         }
-        $where = $this->renderGroup($b, $root, $parts['where'], true) . ' AND ' . $this->qcol($root, $soft) . ' IS NOT NULL';
-        return new PlanStep('main', 'UPDATE ' . $b->table($ent) . ' SET ' . implode(', ', $sets) . ' WHERE ' . $where, '', $b->slots, $b->tables());
+        $where = $this->renderGroup($b, $root, $parts['where'], true) . ' AND '
+            . $this->qcol($root, $soft) . ' IS NOT NULL';
+        return new PlanStep('main', 'UPDATE ' . $b->table($ent) . ' SET ' . implode(', ', $sets) . ' WHERE '
+            . $where, '', $b->slots, $b->tables());
     }
 
     /** Whether the set assigns a parameter value (p) to a column. */
@@ -1011,7 +1065,8 @@ final class Planner
     }
 
     /**
-     * The statement that restarts the entity's identity from the value after the largest key of its table: the next generated
+     * The statement that restarts the entity's identity from the value after the largest key of its table: the
+     * next generated
      * key is the largest key plus 1, or 1 if the table is empty. Runs after loading rows with keys
      * specified by load.
      */
@@ -1060,7 +1115,8 @@ final class Planner
         }
         // A scalar column subquery is ordered and limited to one row, which the validator has checked.
         if (($sub['agg'] ?? '') === '' && isset($q['limit'])) {
-            $sql .= $this->renderOrder($b, $root, $q) . $this->d->limit($q['limit']['offset'] ?? 0, $q['limit']['count']);
+            $sql .= $this->renderOrder($b, $root, $q)
+                . $this->d->limit($q['limit']['offset'] ?? 0, $q['limit']['count']);
         }
         return $sql;
     }
@@ -1070,7 +1126,8 @@ final class Planner
         return match ($sub['agg'] ?? '') {
             'count' => 'i64',
             'avg' => 'f64',
-            default => RuntimeModel::column($this->m->entities[$sub['query']['entity']], $sub['column'] ?? '')['type'] ?? 'string',
+            default => RuntimeModel::column($this->m->entities[$sub['query']['entity']],
+                $sub['column'] ?? '')['type'] ?? 'string',
         };
     }
 }

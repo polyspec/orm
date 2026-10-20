@@ -46,9 +46,9 @@ final class Catalog
 
     /**
      * Writes the intermediate model as dbspec text and parses it. If parse rejects a line,
-     * that line's object is reported as unsupported and removed, and the text is rebuilt. An object that referred to a removed object
-     * is rejected by the next parse, so it is removed the same way. A diagnostic on a line
-     * that belongs to no object is a defect of the reader, so it is an error.
+     * that line's object is reported as unsupported and removed, and the text is rebuilt. An object that
+     * referred to a removed object is rejected by the next parse, so it is removed the same way. A
+     * diagnostic on a line that belongs to no object is a defect of the reader, so it is an error.
      */
     public function document(string $name): IntrospectResult
     {
@@ -58,7 +58,9 @@ final class Catalog
             $result = Dbspec::parse($text, []);
             if ($result->document !== null) {
                 $unsupported = $this->unsupported;
-                usort($unsupported, static fn(Unsupported $a, Unsupported $b): int => strcmp("{$a->table}\0{$a->kind}\0{$a->name}", "{$b->table}\0{$b->kind}\0{$b->name}"));
+                usort($unsupported, static fn(Unsupported $a, Unsupported $b): int => strcmp(
+                    "{$a->table}\0{$a->kind}\0{$a->name}", "{$b->table}\0{$b->kind}\0{$b->name}"
+                ));
                 return new IntrospectResult($result->document, $unsupported);
             }
             // Objects of a rejected table are removed together with the table, so they are not reported separately.
@@ -66,7 +68,10 @@ final class Catalog
             foreach ($result->diagnostics as $d) {
                 $packed = $objects[$d->line] ?? null;
                 if ($packed === null) {
-                    $found = implode("\n", array_map(static fn(Diagnostic $x): string => "{$x->line}:{$x->column} {$x->rule} {$x->message}", $result->diagnostics));
+                    $found = implode("\n", array_map(
+                        static fn(Diagnostic $x): string => "{$x->line}:{$x->column} {$x->rule} {$x->message}",
+                        $result->diagnostics
+                    ));
                     throw new \RuntimeException("Introspected document does not parse:\n$found\n$text");
                 }
                 $object = explode("\0", $packed);
@@ -99,19 +104,27 @@ final class Catalog
     {
         [$kind, $tableName, $name] = $object;
         $t = $this->table($tableName);
-        $without = static fn(array $items): array => array_values(array_filter($items, static fn(array $x): bool => $x['name'] !== $name));
+        $without = static fn(array $items): array => array_values(
+            array_filter($items, static fn(array $x): bool => $x['name'] !== $name)
+        );
         match ($kind) {
-            'table' => $this->tables = array_values(array_filter($this->tables, static fn(CatalogTable $x): bool => $x !== $t)),
+            'table' => $this->tables = array_values(
+                array_filter($this->tables, static fn(CatalogTable $x): bool => $x !== $t)
+            ),
             'column' => $t->columns = $without($t->columns),
             'unique' => $t->uniques = $without($t->uniques),
             'index' => $t->indexes = $without($t->indexes),
             'foreign_key' => $t->foreignKeys = $without($t->foreignKeys),
             'check' => $t->checks = $without($t->checks),
-            'trigger' => $t->settings = array_values(array_filter($t->settings, static fn(string $s): bool => self::firstWord($s) !== $name)),
+            'trigger' => $t->settings = array_values(array_filter($t->settings,
+                static fn(string $s): bool => self::firstWord($s) !== $name)),
         };
     }
 
-    /** Removes a table without a primary key. A foreign key that referred to that table is rejected by parse, so it is removed too. */
+    /**
+     * Removes a table without a primary key. A foreign key that referred to that table is rejected by parse,
+     * so it is removed too.
+     */
     private function dropTablesWithoutKey(): void
     {
         $kept = [];
@@ -137,7 +150,8 @@ final class Catalog
         usort($tables, static fn(CatalogTable $a, CatalogTable $b): int => strcmp($a->name, $b->name));
         $lines = ["dbspec 1 $name"];
         $objects = [];
-        // An object on a line is kept as a "kind\0table\0name" string. It is smaller than an array, so in a large catalog
+        // An object on a line is kept as a "kind\0table\0name" string. It is smaller than an array, so in a
+        // large catalog
         // it reduces memory.
         $add = static function (string $line, array $object) use (&$lines, &$objects): void {
             $lines[] = $line;
@@ -172,8 +186,10 @@ final class Catalog
                 $add("  index {$x['name']} (" . implode(', ', $columns) . ')', ['index', $t->name, $x['name']]);
             }
             foreach ($t->foreignKeys as $f) {
-                $add("  foreign key {$f['name']} (" . implode(', ', $f['columns']) . ") references {$f['table']} (" . implode(', ', $f['refs'])
-                    . ") on delete {$f['onDelete']} on update {$f['onUpdate']}", ['foreign_key', $t->name, $f['name']]);
+                $add("  foreign key {$f['name']} (" . implode(', ', $f['columns'])
+                    . ") references {$f['table']} (" . implode(', ', $f['refs'])
+                    . ") on delete {$f['onDelete']} on update {$f['onUpdate']}",
+                    ['foreign_key', $t->name, $f['name']]);
             }
             foreach ($t->checks as $k) {
                 $add("  check {$k['name']} ({$k['predicate']})", ['check', $t->name, $k['name']]);

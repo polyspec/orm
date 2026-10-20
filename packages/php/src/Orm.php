@@ -9,7 +9,10 @@ final class Orm
 {
     /** milliseconds a SQLite connection waits for a lock when the DSN sets no _pragma=busy_timeout(ms) */
     private const SQLITE_BUSY_TIMEOUT_MS = 5000;
-    /** The session sql_mode decided per MySQL connection. The result does not depend on server settings (tests/dsn/mysql-session.json). */
+    /**
+     * The session sql_mode decided per MySQL connection. The result does not depend on server settings
+     * (tests/dsn/mysql-session.json).
+     */
     private const MYSQL_SQL_MODE = 'STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
 
     /** The parameters that each scheme's DSN accepts (docs/spec/config.md). Other parameters are CONFIG. */
@@ -21,10 +24,10 @@ final class Orm
 
     /**
      * Opens the database that the DSN URI (mysql://, postgres://, sqlite://) selects, and
-     * registers the generated schema's set on that connection, as utils()->schema()->register does. Called by the generated code's
-     * connect helper. If the text does not hash to the declared hash, it is CONFIG before the connection is opened.
-     * Registration does not read the database; install and addTablesAndColumns
-     * check it.
+     * registers the generated schema's set on that connection, as utils()->schema()->register does. Called
+     * by the generated code's connect helper. If the text does not hash to the declared hash, it is CONFIG
+     * before the connection is opened. Registration does not read the database; install and
+     * addTablesAndColumns check it.
      */
     public static function connectSchema(string $dsn, Schema $schema, Config $config): Db
     {
@@ -37,9 +40,9 @@ final class Orm
     /**
      * Opens the database that the DSN URI (mysql://, postgres://, sqlite://) selects. The connection
      * has no registered set, so a model request gives SCHEMA_HASH_MISMATCH until install registers that set.
-     * All connections read and write datetime as UTC
-     * (docs/spec/dialects.md): the time zone of MySQL and PostgreSQL sessions is UTC. A connection
-     * is one per Db and ends with the Db. The PHP client has no pool.
+     * All connections read and write datetime as UTC (docs/spec/dialects.md): the time zone of MySQL and
+     * PostgreSQL sessions is UTC. A connection is one per Db and ends with the Db. The PHP client has no
+     * pool.
      */
     public static function connect(string $dsn, Config $config): Db
     {
@@ -56,21 +59,27 @@ final class Orm
                 $options = [
                     \Pdo\Mysql::ATTR_FOUND_ROWS => true,
                     // MySQL bounds SELECT statements with max_execution_time.
-                    \Pdo\Mysql::ATTR_INIT_COMMAND => "SET time_zone = '+00:00', sql_mode = '" . self::MYSQL_SQL_MODE . "'" . ($config->statementTimeoutMs > 0 ? ', SESSION max_execution_time = ' . $config->statementTimeoutMs : ''),
+                    \Pdo\Mysql::ATTR_INIT_COMMAND => "SET time_zone = '+00:00', sql_mode = '"
+                        . self::MYSQL_SQL_MODE . "'"
+                        . ($config->statementTimeoutMs > 0 ? ', SESSION max_execution_time = ' . $config->statementTimeoutMs : ''),
                 ] + self::mysqlTlsOptions($sslCa);
                 break;
             case 'postgres':
                 // Startup parameters belong to the client session, so a pooler in transaction mode
-                // puts them on every server connection assigned to this connection, and does not put them on other connections.
-                // Since the time zone is also a startup parameter, the connection does not send a SET statement.
-                $pdoDsn .= ";options='-c TimeZone=UTC" . ($config->statementTimeoutMs > 0 ? ' -c statement_timeout=' . $config->statementTimeoutMs : '') . "'";
+                // puts them on every server connection assigned to this connection, and does not put them on
+                // other connections. Since the time zone is also a startup parameter, the connection does not
+                // send a SET statement.
+                $pdoDsn .= ";options='-c TimeZone=UTC"
+                    . ($config->statementTimeoutMs > 0 ? ' -c statement_timeout=' . $config->statementTimeoutMs : '')
+                    . "'";
                 break;
         }
         try {
             $pdo = \PDO::connect($pdoDsn, $user, $password, $options);
             $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
             if ($driver === 'sqlite') {
-                // The version of the SQLite library that pdo_sqlite linked. It does not send a statement that asks for it.
+                // The version of the SQLite library that pdo_sqlite linked. It does not send a statement that
+                // asks for it.
                 $version = (string) $pdo->getAttribute(\PDO::ATTR_SERVER_VERSION);
                 if (version_compare($version, '3.46', '<')) {
                     throw new OrmException(Code::CAPABILITY_UNSUPPORTED, "SQLite $version is older than 3.46");
@@ -91,7 +100,8 @@ final class Orm
     private static function checkConnectionConfig(Config $config): void
     {
         if ($config->poolSize !== 0 || $config->poolIdleSize !== 0 || $config->poolLifetimeMs !== 0) {
-            throw new OrmException(Code::CONFIG, 'poolSize, poolIdleSize and poolLifetimeMs configure a connection pool, and the PHP client opens one connection per Db and keeps no pool; pool PHP connections with PgBouncer or ProxySQL (docs/spec/config.md "Connection poolers")');
+            throw new OrmException(Code::CONFIG,
+                'poolSize, poolIdleSize and poolLifetimeMs configure a connection pool, and the PHP client opens one connection per Db and keeps no pool; pool PHP connections with PgBouncer or ProxySQL (docs/spec/config.md "Connection poolers")');
         }
         if ($config->statementTimeoutMs < 0) {
             throw new OrmException(Code::CONFIG, 'statement timeout must not be negative');
@@ -100,8 +110,9 @@ final class Orm
 
     /**
      * Connects to the flowmark server that markdown://127.0.0.1:<port>/<corpus>?token=<token> points at
-     * (docs/spec/protocol.md §5). Opens one connection and sends the corpus and token in a connect message: if the server
-     * rejects the corpus or token, it is CONFIG. The markdown executor does not accept a statement timeout.
+     * (docs/spec/protocol.md §5). Opens one connection and sends the corpus and token in a connect message:
+     * if the server rejects the corpus or token, it is CONFIG. The markdown executor does not accept a
+     * statement timeout.
      */
     private static function connectMarkdown(string $dsn, Config $config): Db
     {
@@ -110,21 +121,24 @@ final class Orm
         if ($config->statementTimeoutMs > 0) {
             throw Markdown::unsupported('statement timeout');
         }
-        return new Db(null, 'markdown', $config, new \DateTimeZone('UTC'), MarkdownSession::dial($address, $corpus, $token));
+        return new Db(null, 'markdown', $config, new \DateTimeZone('UTC'),
+            MarkdownSession::dial($address, $corpus, $token));
     }
 
     /** The scheme of the DSN URI, in lowercase. If it is not a URI, it is CONFIG. */
     private static function scheme(string $dsn): string
     {
         if (preg_match('#^([a-z][a-z0-9+.-]*)://#i', $dsn, $m) !== 1) {
-            throw new OrmException(Code::CONFIG, 'dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://');
+            throw new OrmException(Code::CONFIG,
+                'dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://');
         }
         return strtolower($m[1]);
     }
 
     /**
-     * Reads markdown://127.0.0.1:<port>/<corpus>?token=<token>. The flowmark server listens only on 127.0.0.1,
-     * and the token travels in plain text, so the host is only 127.0.0.1. Another host, a missing port, a path that is not one name,
+     * Reads markdown://127.0.0.1:<port>/<corpus>?token=<token>. The flowmark server listens only on
+     * 127.0.0.1, and the token travels in plain text, so the host is only 127.0.0.1. Another host, a
+     * missing port, a path that is not one name,
      * a missing token, and any other parameter are CONFIG.
      *
      * @return array{0: string, 1: string, 2: string} the server address, the corpus name and the token
@@ -145,12 +159,14 @@ final class Orm
         }
         $port = $parts['port'] ?? 0;
         if ($port < 1 || $port > 65535) {
-            throw new OrmException(Code::CONFIG, "$form; port \"$port\" is not 1 to 65535: give the port that flowmark serve printed");
+            throw new OrmException(Code::CONFIG,
+                "$form; port \"$port\" is not 1 to 65535: give the port that flowmark serve printed");
         }
         $path = (string) ($parts['path'] ?? '');
         $corpus = rawurldecode(substr($path, 1));
         if (!str_starts_with($path, '/') || $corpus === '' || str_contains($corpus, '/')) {
-            throw new OrmException(Code::CONFIG, "$form; the path \"$path\" is not one corpus name: give the corpus root's directory name");
+            throw new OrmException(Code::CONFIG,
+                "$form; the path \"$path\" is not one corpus name: give the corpus root's directory name");
         }
         $tokens = [];
         foreach (explode('&', (string) ($parts['query'] ?? '')) as $pair) {
@@ -165,7 +181,8 @@ final class Orm
             $tokens[] = urldecode($value);
         }
         if (count($tokens) !== 1 || $tokens[0] === '') {
-            throw new OrmException(Code::CONFIG, "$form; give one token, the token of .flowmark/server.json of the corpus");
+            throw new OrmException(Code::CONFIG,
+                "$form; give one token, the token of .flowmark/server.json of the corpus");
         }
         return ["127.0.0.1:$port", $corpus, $tokens[0]];
     }
@@ -182,10 +199,12 @@ final class Orm
     {
         $driver = self::scheme($dsn);
         if ($driver === 'markdown') {
-            throw new OrmException(Code::CONFIG, 'a markdown DSN selects the markdown IR executor and has no PDO DSN; read it with parseMarkdownDsn');
+            throw new OrmException(Code::CONFIG,
+                'a markdown DSN selects the markdown IR executor and has no PDO DSN; read it with parseMarkdownDsn');
         }
         if (!in_array($driver, Db::DRIVERS, true)) {
-            throw new OrmException(Code::CONFIG, "unsupported DSN scheme $driver; want mysql, postgres, sqlite, or markdown");
+            throw new OrmException(Code::CONFIG,
+                "unsupported DSN scheme $driver; want mysql, postgres, sqlite, or markdown");
         }
         $scheme = substr($dsn, 0, strlen($driver));
         $parts = parse_url(str_replace($scheme . ':///', $scheme . '://localhost/', $dsn));
@@ -198,11 +217,14 @@ final class Orm
         foreach (explode('&', (string) ($parts['query'] ?? '')) as $pair) {
             $key = urldecode(explode('=', $pair, 2)[0]);
             if ($pair !== '' && !in_array($key, $accepted, true)) {
-                throw new OrmException(Code::CONFIG, "$driver DSN has the unknown parameter $key; it accepts " . implode(', ', $accepted));
+                throw new OrmException(Code::CONFIG,
+                    "$driver DSN has the unknown parameter $key; it accepts " . implode(', ', $accepted));
             }
         }
         if (isset($query['timezone']) && !in_array($query['timezone'], ['+00:00', 'UTC'], true)) {
-            throw new OrmException(Code::CONFIG, 'dsn timezone ' . (is_string($query['timezone']) ? $query['timezone'] : '') . ': every connection reads and writes datetime values in UTC');
+            throw new OrmException(Code::CONFIG, 'dsn timezone '
+                . (is_string($query['timezone']) ? $query['timezone'] : '')
+                . ': every connection reads and writes datetime values in UTC');
         }
         $user = isset($parts['user']) ? rawurldecode($parts['user']) : null;
         $password = isset($parts['pass']) ? rawurldecode($parts['pass']) : null;
@@ -239,7 +261,8 @@ final class Orm
                     [$key, $value] = array_pad(explode('=', $pair, 2), 2, '');
                     $key = urldecode($key);
                     if ($key === '_txlock') {
-                        throw new OrmException(Code::CONFIG, 'sqlite DSN does not accept _txlock; write transactions begin with BEGIN IMMEDIATE');
+                        throw new OrmException(Code::CONFIG,
+                            'sqlite DSN does not accept _txlock; write transactions begin with BEGIN IMMEDIATE');
                     }
                     if ($key !== '_pragma') {
                         continue;
@@ -281,10 +304,12 @@ final class Orm
             return null;
         }
         if ($mode !== 'VERIFY_IDENTITY') {
-            throw new OrmException(Code::CONFIG, 'mysql DSN ssl-mode ' . json_encode($mode) . ' is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca');
+            throw new OrmException(Code::CONFIG, 'mysql DSN ssl-mode ' . json_encode($mode)
+                . ' is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca');
         }
         if ($ca === null || $ca === '') {
-            throw new OrmException(Code::CONFIG, 'mysql DSN ssl-mode=VERIFY_IDENTITY needs ssl-ca, the absolute path of the CA file');
+            throw new OrmException(Code::CONFIG,
+                'mysql DSN ssl-mode=VERIFY_IDENTITY needs ssl-ca, the absolute path of the CA file');
         }
         if ($ca[0] !== '/') {
             throw new OrmException(Code::CONFIG, "mysql DSN ssl-ca $ca is not an absolute path");
@@ -294,7 +319,8 @@ final class Orm
         }
         // The identity check compares the host name with the certificate.
         if (filter_var(trim($host, '[]'), FILTER_VALIDATE_IP) !== false) {
-            throw new OrmException(Code::CONFIG, "mysql DSN ssl-mode=VERIFY_IDENTITY needs a host name, not the address $host");
+            throw new OrmException(Code::CONFIG,
+                "mysql DSN ssl-mode=VERIFY_IDENTITY needs a host name, not the address $host");
         }
         return $ca;
     }

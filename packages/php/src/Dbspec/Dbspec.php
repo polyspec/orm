@@ -23,8 +23,9 @@ final class Dbspec
     }
 
     /**
-     * Parses a document as parse does and returns that result unchanged, with the tokens of the text: each with its line,
-     * its start and end in code points and its class (docs/spec/dbspec.md "Syntax analysis"). A limit error gives no tokens.
+     * Parses a document as parse does and returns that result unchanged, with the tokens of the text: each
+     * with its line, its start and end in code points and its class (docs/spec/dbspec.md "Syntax analysis").
+     * A limit error gives no tokens.
      *
      * @param array<string, string> $documents
      */
@@ -73,7 +74,8 @@ final class Dbspec
      */
     public static function readFile(string $path): ReadResult
     {
-        // PHP opens a directory and reads empty text, so it is rejected before it becomes an empty file's signature diagnostic.
+        // PHP opens a directory and reads empty text, so it is rejected before it becomes an empty file's
+        // signature diagnostic.
         if (is_dir($path)) {
             throw new \RuntimeException("cannot read $path: is a directory");
         }
@@ -135,7 +137,8 @@ final class Dbspec
         $documents = [];
         foreach ($texts as $i => [$text, $isExternal]) {
             if (isset($repeated[$i])) {
-                $diagnostic = new Diagnostic('name.duplicate', 1, 10, "document {$names[$i]} appears twice in the document set");
+                $diagnostic = new Diagnostic('name.duplicate', 1, 10,
+                    "document {$names[$i]} appears twice in the document set");
                 $documents[] = new SetDocument($names[$i], $isExternal, null, null, [$diagnostic]);
                 continue;
             }
@@ -145,17 +148,19 @@ final class Dbspec
             if ($result->document !== null) {
                 $result->document->external = $isExternal;
             }
-            $documents[] = new SetDocument($names[$i], $isExternal, $result->document, $result->positions, $result->diagnostics);
+            $documents[] = new SetDocument($names[$i], $isExternal, $result->document, $result->positions,
+                $result->diagnostics);
         }
         return $documents;
     }
 
     /**
      * Checks the bytes of a dbspec document file, which the caller read by its own rules, before parse.
-     * $name is the name by which the message refers to the file. Bytes not starting with SIGNATURE give no text, but
-     * one `signature` diagnostic at line 1, column 1 with the message "<name> is not a dbspec
-     * document", and non-UTF-8 bytes give an `encoding` diagnostic at the line and column of the first bad byte, with the message
-     * "<name> is not valid UTF-8". Other bytes pass through as text without a diagnostic.
+     * $name is the name by which the message refers to the file. Bytes not starting with SIGNATURE give no
+     * text, but one `signature` diagnostic at line 1, column 1 with the message "<name> is not a dbspec
+     * document", and non-UTF-8 bytes give an `encoding` diagnostic at the line and column of the first bad
+     * byte, with the message "<name> is not valid UTF-8". Other bytes pass through as text without a
+     * diagnostic.
      * as is.
      */
     public static function readBytes(string $name, string $bytes): ReadResult
@@ -248,11 +253,13 @@ final class Dbspec
     public static function render(array $documents, string $dialect): RenderResult
     {
         if (!in_array($dialect, Renderer::DIALECTS, true)) {
-            throw new \InvalidArgumentException("Unknown dialect `$dialect`; the dialects are mysql, postgres and sqlite");
+            throw new \InvalidArgumentException("Unknown dialect `$dialect`; the dialects are mysql, postgres "
+                . "and sqlite");
         }
         Graph::documents($documents, 'the document set');
         [, $diagnostics] = DocumentSet::check($documents);
-        return $diagnostics === [] ? RenderResult::valid(Renderer::render($documents, $dialect)) : RenderResult::invalid($diagnostics);
+        return $diagnostics === [] ? RenderResult::valid(Renderer::render($documents, $dialect))
+            : RenderResult::invalid($diagnostics);
     }
 
     /**
@@ -269,7 +276,8 @@ final class Dbspec
             'mysql' => MysqlCatalog::read($connection),
             'postgres' => PostgresCatalog::read($connection),
             'sqlite' => SqliteCatalog::read($connection),
-            default => throw new \InvalidArgumentException("Unknown dialect `$dialect`; the dialects are mysql, postgres and sqlite"),
+            default => throw new \InvalidArgumentException("Unknown dialect `$dialect`; the dialects are mysql, "
+                . "postgres and sqlite"),
         };
         return $catalog->document($name);
     }
@@ -319,19 +327,23 @@ final class Dbspec
             $manifestText .= Emitter::emit($document, View::Manifest);
             array_push($tables, ...$document->tables);
         }
-        // Schema text is one document `schema` holding all the tables the set owns in name order, so the way documents are split
-        // does not matter. Tables used from an external document remain as a use line in that document.
+        // Schema text is one document `schema` holding all the tables the set owns in name order, so the way
+        // documents are split does not matter. Tables used from an external document remain as a use line in
+        // that document.
         usort($tables, static fn(Table $a, Table $b): int => strcmp($a->name, $b->name));
         $schema->tables = $tables;
         $schemaText = Emitter::emit($schema, View::Schema);
-        return ManifestResult::valid(new Manifest($manifestText, $schemaText, 'sha256:' . hash('sha256', $manifestText . $externalText), 'sha256:' . hash('sha256', $schemaText), $externalText));
+        return ManifestResult::valid(new Manifest($manifestText, $schemaText,
+            'sha256:' . hash('sha256', $manifestText . $externalText), 'sha256:' . hash('sha256', $schemaText),
+            $externalText));
     }
 
     /**
-     * Only the columns, primary key, unique keys, the foreign keys whose referenced table is also one of $tables, and the
-     * indexes whose leading columns are such a foreign key's columns, of $tables, from the external document, in document
-     * order (docs/spec/dbspec.md "Manifest and hashes"), so the reduced text satisfies the validation of the full document. If
-     * that table is absent, null. Other foreign keys, indexes, checks, and settings are owned by the external document, so
+     * Only the columns, primary key, unique keys, the foreign keys whose referenced table is also one of
+     * $tables, and the indexes whose leading columns are such a foreign key's columns, of $tables, from the
+     * external document, in document order (docs/spec/dbspec.md "Manifest and hashes"), so the reduced text
+     * satisfies the validation of the full document. If that table is absent, null. Other foreign keys,
+     * indexes, checks, and settings are owned by the external document, so
      * they are not included.
      *
      * @param list<string> $tables
@@ -346,10 +358,12 @@ final class Dbspec
             $trimmed = new Table($table->name);
             $trimmed->columns = $table->columns;
             $trimmed->primaryKey = $table->primaryKey === null ? null : new PrimaryKey($table->primaryKey->columns);
-            $trimmed->uniqueKeys = array_map(static fn(UniqueKey $u): UniqueKey => new UniqueKey($u->name, $u->columns), $table->uniqueKeys);
+            $trimmed->uniqueKeys = array_map(static fn(UniqueKey $u): UniqueKey =>
+                new UniqueKey($u->name, $u->columns), $table->uniqueKeys);
             foreach ($table->foreignKeys as $f) {
                 if (in_array($f->table, $tables, true)) {
-                    $trimmed->foreignKeys[] = new ForeignKey($f->name, $f->columns, $f->table, $f->referencedColumns, $f->onDelete, $f->onUpdate);
+                    $trimmed->foreignKeys[] = new ForeignKey($f->name, $f->columns, $f->table,
+                        $f->referencedColumns, $f->onDelete, $f->onUpdate);
                 }
             }
             foreach ($table->indexes as $x) {
@@ -367,10 +381,11 @@ final class Dbspec
     }
 
     /**
-     * Checks that the tables the set uses from external documents are in the database (docs/spec/dbspec.md "External
-     * documents"). $live is the document of the introspected database. For each table written, if the table is missing,
-     * or an external document column is missing, or its type or null differs, or the primary key differs, or the unique key's columns
-     * list is missing, returns those differences by table name and column order. With no external document, it is an empty list.
+     * Checks that the tables the set uses from external documents are in the database (docs/spec/dbspec.md
+     * "External documents"). $live is the document of the introspected database. For each table written, if
+     * the table is missing, or an external document column is missing, or its type or null differs, or the
+     * primary key differs, or the unique key's columns list is missing, returns those differences by table
+     * name and column order. With no external document, it is an empty list.
      *
      * @param list<Document> $documents
      * @return list<string>
@@ -428,13 +443,15 @@ final class Dbspec
                 } elseif ($g->type->text() !== $column->type->text()) {
                     $out[] = "column $name.{$column->name} is {$g->type->text()}, not {$column->type->text()}";
                 } elseif ($g->nullable !== $column->nullable) {
-                    $out[] = "column $name.{$column->name} is {$nullText($g->nullable)}, not {$nullText($column->nullable)}";
+                    $out[] = "column $name.{$column->name} is {$nullText($g->nullable)}, "
+                        . "not {$nullText($column->nullable)}";
                 }
             }
             $gotKey = $got->primaryKey?->columns ?? [];
             $wantKey = $want->primaryKey?->columns ?? [];
             if ($gotKey !== $wantKey) {
-                $out[] = "table $name has the primary key (" . implode(', ', $gotKey) . '), not (' . implode(', ', $wantKey) . ')';
+                $out[] = "table $name has the primary key (" . implode(', ', $gotKey) . '), not ('
+                    . implode(', ', $wantKey) . ')';
             }
             foreach ($want->uniqueKeys as $unique) {
                 $found = false;
@@ -492,7 +509,8 @@ final class Dbspec
     }
 
     /**
-     * All differences from source to target without a plan, or the diagnostic `compare` of the side that is not schema text
+     * All differences from source to target without a plan, or the diagnostic `compare` of the side that is not
+     * schema text
      * (docs/spec/plans.md "Comparison").
      */
     public static function compareSchemas(Document $source, Document $target): ComparisonResult
@@ -504,7 +522,8 @@ final class Dbspec
 
     /**
      * Checks whether the database matches the document set (docs/spec/schema.md "Schema installation").
-     * $live is the document of the connection's database introspected; $unsupported is the objects introspection could not
+     * $live is the document of the connection's database introspected; $unsupported is the objects introspection
+     * could not
      * read; $target is the schema text document of the document set. Tables of the database that are not in the set are
      * not compared. If a table in the set has an unread object, that object is
      * reported as "unsupported_<kind> <table>[.<name>]: <reason>"; otherwise, for tables of the set in the database,
@@ -529,8 +548,9 @@ final class Dbspec
     }
 
     /**
-     * Compares the set's tables (source) that are in the database with the set. If a table in the set has an unread object,
-     * that object is returned as a difference without a source. Otherwise, the definitions by table name of the set, source,
+     * Compares the set's tables (source) that are in the database with the set. If a table in the set has an
+     * unread object, that object is returned as a difference without a source. Otherwise, the definitions by
+     * table name of the set, source,
      * Returns the comparison result and its diagnostic.
      *
      * @param list<Unsupported> $unsupported
@@ -573,9 +593,10 @@ final class Dbspec
     /**
      * The steps that the connection's addTablesAndColumns will run (docs/spec/schema.md "Adding tables and
      * columns"). `$live` is the document of the connection's introspected database, `$unsupported` is
-     * the objects introspection could not read, and `$target` is the schema text document of the document set. For the set
-     * tables of the database not in the set are neither compared nor changed. The set's tables that are in the database and
-     * differ from the set: a create_table for a table missing from the database, an add_column for a column that is null or has a default,
+     * the objects introspection could not read, and `$target` is the schema text document of the document set.
+     * For the set tables of the database not in the set are neither compared nor changed. The set's tables that
+     * are in the database and differ from the set: a create_table for a table missing from the database, an
+     * add_column for a column that is null or has a default,
      * or an add_index for a non-unique index only; the set's tables that are in the database
      * get plan steps up to the set (docs/spec/plans.md "Steps"), and returns, in table name order, the list of
      * tables as "table", added columns as "table.column" in column order, and then added indexes
@@ -584,9 +605,11 @@ final class Dbspec
      * it is returned with that reason.
      *
      * @param list<Unsupported> $unsupported
-     * @return array{0: list<string>, 1: list<PlanStep>, 2: list<string>} The tables to create, the columns to add, the steps, and the differences
+     * @return array{0: list<string>, 1: list<PlanStep>, 2: list<string>} The tables to create, the columns to
+     *     add, the steps, and the differences
      */
-    public static function addTablesAndColumnsSteps(Document $live, array $unsupported, Document $target, string $dialect): array
+    public static function addTablesAndColumnsSteps(Document $live, array $unsupported, Document $target,
+        string $dialect): array
     {
         Graph::document($live);
         Graph::unsupported($unsupported, 'the unsupported objects');
@@ -623,7 +646,8 @@ final class Dbspec
             }
             if ($d->kind === 'add_unique') {
                 // A unique key fails if existing rows overlap, so plan and apply handle it.
-                $differences[] = 'add_unique ' . $qualified($d->table, $d->name) . ': a missing unique key can fail on the existing rows; add it with a plan';
+                $differences[] = 'add_unique ' . $qualified($d->table, $d->name)
+                    . ': a missing unique key can fail on the existing rows; add it with a plan';
                 continue;
             }
             $differences[] = "{$d->kind} " . $qualified($d->table, $d->name);
@@ -650,7 +674,8 @@ final class Dbspec
                 }
             }
         }
-        // Tables and columns to add are written as one plan. The plan starts from the set's tables that are in the database
+        // Tables and columns to add are written as one plan. The plan starts from the set's tables that are in
+        // the database
         // (an empty database if there are none), so the steps keep the order and rollback of docs/spec/plans.md
         // as they are.
         $diagnostics = [];
@@ -666,7 +691,8 @@ final class Dbspec
             }
         }
         if ($diagnostics === []) {
-            // The target may be the schema text of a set that uses external documents, so the plan document is not parsed and
+            // The target may be the schema text of a set that uses external documents, so the plan document is not
+            // parsed and
             // the plan is built from the target.
             $plan = PlanText::planTo('add_tables_and_columns', $from, [], [], [], [], $target, self::emit($target));
             if ($plan->plan === null) {
@@ -702,7 +728,8 @@ final class Dbspec
         }
         Graph::plan($plan);
         [$diff, $diagnostics] = PlanDiff::of($source, $plan);
-        return $diff === null ? PlanStepsResult::invalid($diagnostics) : PlanStepsResult::valid(PlanSteps::write($diff, $renderer, $plan));
+        return $diff === null ? PlanStepsResult::invalid($diagnostics)
+            : PlanStepsResult::valid(PlanSteps::write($diff, $renderer, $plan));
     }
 
     /**
@@ -728,7 +755,8 @@ final class Dbspec
      * @param \Closure(): \DateTimeInterface $now
      * @param ?\Closure(ApplyEvent): void $events
      */
-    public static function apply(\PDO $connection, string $dialect, array $plans, \Closure $now, ?\Closure $events): void
+    public static function apply(\PDO $connection, string $dialect, array $plans, \Closure $now,
+        ?\Closure $events): void
     {
         PlanApply::apply($connection, $dialect, $plans, $now, $events);
     }
@@ -744,7 +772,8 @@ final class Dbspec
      * @param \Closure(): \DateTimeInterface $now
      * @param ?\Closure(ApplyEvent): void $events
      */
-    public static function recover(\PDO $connection, string $dialect, array $plans, \Closure $now, ?\Closure $events): void
+    public static function recover(\PDO $connection, string $dialect, array $plans, \Closure $now,
+        ?\Closure $events): void
     {
         PlanApply::recover($connection, $dialect, $plans, $now, $events);
     }
@@ -760,7 +789,8 @@ final class Dbspec
      * @param \Closure(): \DateTimeInterface $now
      * @param ?\Closure(ApplyEvent): void $events
      */
-    public static function rollback(\PDO $connection, string $dialect, array $plans, \Closure $now, ?\Closure $events): void
+    public static function rollback(\PDO $connection, string $dialect, array $plans, \Closure $now,
+        ?\Closure $events): void
     {
         PlanApply::rollback($connection, $dialect, $plans, $now, $events);
     }
@@ -774,7 +804,8 @@ final class Dbspec
      * @param \Closure(): \DateTimeInterface $now
      * @param ?\Closure(ApplyEvent): void $events
      */
-    public static function finalize(\PDO $connection, string $dialect, array $plans, \Closure $now, ?\Closure $events): void
+    public static function finalize(\PDO $connection, string $dialect, array $plans, \Closure $now,
+        ?\Closure $events): void
     {
         PlanApply::finalize($connection, $dialect, $plans, $now, $events);
     }

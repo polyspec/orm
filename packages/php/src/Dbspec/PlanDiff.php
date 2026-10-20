@@ -70,7 +70,8 @@ final class PlanDiff
             $from = $manifest->manifest->schemaHash;
         }
         if ($from !== $plan->from) {
-            return [null, [self::error('the plan starts from ' . ($plan->from ?? 'empty') . ', and the source schema is ' . ($from ?? 'empty'))]];
+            return [null, [self::error('the plan starts from ' . ($plan->from ?? 'empty')
+                . ', and the source schema is ' . ($from ?? 'empty'))]];
         }
         $d = new self();
         foreach ($source?->tables ?? [] as $table) {
@@ -122,14 +123,17 @@ final class PlanDiff
             }
         }
         // column rename
-        foreach (PlanText::sortedBy($plan->renameColumns, static fn(ColumnRename $r): string => "{$r->table}.{$r->old}") as $r) {
+        foreach (PlanText::sortedBy($plan->renameColumns,
+            static fn(ColumnRename $r): string => "{$r->table}.{$r->old}") as $r) {
             $src = $d->tableOf[$r->table] ?? null;
             if ($src === null) {
                 $out[] = self::error("rename column {$r->table}.{$r->old}: {$r->table} is not a table of both schemas");
             } elseif (self::column($d->source[$src], $r->old) === null) {
                 $out[] = self::error("rename column {$r->table}.{$r->old}: the source table has no column {$r->old}");
             } elseif (self::column($d->source[$src], $r->new) !== null) {
-                $out[] = self::error("rename column {$r->table}.{$r->old}: the source table already has a column {$r->new}");
+                $out[] = self::error(
+                    "rename column {$r->table}.{$r->old}: the source table already has a column {$r->new}"
+                );
             } elseif (self::column($d->target[$r->table], $r->new) === null) {
                 $out[] = self::error("rename column {$r->table}.{$r->old}: the target table has no column {$r->new}");
             } else {
@@ -182,7 +186,8 @@ final class PlanDiff
                     $out[] = self::error("column $name.{$c->name} changes type from {$sc->type->text()} to {$c->type->text()}, which does not keep every value; it needs a new column");
                     continue;
                 }
-                if (!self::sameType($sc->type, $c->type) || $sc->nullable !== $c->nullable || $sc->default !== $c->default) {
+                if (!self::sameType($sc->type, $c->type) || $sc->nullable !== $c->nullable
+                    || $sc->default !== $c->default) {
                     $d->altered[$name][] = $c->name;
                 }
             }
@@ -208,7 +213,9 @@ final class PlanDiff
             }
             foreach ($tgt->columns as $i => $c) {
                 if (!isset($d->columnOf[$name][$c->name]) && $i < $lastKept) {
-                    $out[] = self::error("column $name.{$c->name} is added before a kept column; added columns come last");
+                    $out[] = self::error(
+                        "column $name.{$c->name} is added before a kept column; added columns come last"
+                    );
                 }
             }
             $sourceKey = array_map(static fn(string $k): string => $renamed[$k] ?? $k, $src->primaryKey->columns);
@@ -320,7 +327,8 @@ final class PlanDiff
         foreach (PlanText::sortedBy($this->renamedTables, static fn(TableRename $r): string => $r->old) as $r) {
             $add('rename_table', $r->old, $r->new);
         }
-        foreach (PlanText::sortedBy($this->renamedColumns, static fn(ColumnRename $r): string => "{$r->table}.{$r->old}") as $r) {
+        foreach (PlanText::sortedBy($this->renamedColumns,
+            static fn(ColumnRename $r): string => "{$r->table}.{$r->old}") as $r) {
             $add('rename_column', $r->table, "{$r->old} {$r->new}");
         }
         foreach ($this->matched as $name) {

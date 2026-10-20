@@ -31,7 +31,8 @@ final class PlanSteps
     /** @var list<string> */
     private array $holdOrder = [];
 
-    private function __construct(private readonly PlanDiff $d, private readonly Renderer $r, private readonly string $holdPrefix)
+    private function __construct(private readonly PlanDiff $d, private readonly Renderer $r,
+        private readonly string $holdPrefix)
     {
     }
 
@@ -131,7 +132,8 @@ final class PlanSteps
         // 3. check, unique, index, and objects of the table to drop
         $dropTables = [];
         foreach ($d->dropObjects as $s => $objects) {
-            if ($sqlite && (isset($this->rebuilt[$this->targetName((string) $s)]) || in_array((string) $s, $d->dropped, true))) {
+            if ($sqlite && (isset($this->rebuilt[$this->targetName((string) $s)])
+                || in_array((string) $s, $d->dropped, true))) {
                 continue;
             }
             foreach ($objects as $o) {
@@ -190,8 +192,10 @@ final class PlanSteps
                 self::present('table', $r->new, ''),
             ));
         }
-        foreach (PlanText::sortedBy($d->renamedColumns, static fn(ColumnRename $r): string => "{$r->table}.{$r->old}") as $r) {
-            $this->add(new PlanStep($this->renameColumn($r->table, $r->old, $r->new), $this->renameColumn($r->table, $r->new, $r->old), '', self::present('column', $r->table, $r->new)));
+        foreach (PlanText::sortedBy($d->renamedColumns,
+            static fn(ColumnRename $r): string => "{$r->table}.{$r->old}") as $r) {
+            $this->add(new PlanStep($this->renameColumn($r->table, $r->old, $r->new),
+                $this->renameColumn($r->table, $r->new, $r->old), '', self::present('column', $r->table, $r->new)));
         }
         // 5. Hide the column and table to drop
         if (!$sqlite) {
@@ -214,7 +218,8 @@ final class PlanSteps
         // 6. create table
         foreach ($d->created as $name) {
             $t = $d->target[$name];
-            $this->add(new PlanStep($this->r->table($t)[0], 'DROP TABLE ' . $this->q($name), '', self::present('table', $name, '')));
+            $this->add(new PlanStep($this->r->table($t)[0], 'DROP TABLE ' . $this->q($name), '',
+                self::present('table', $name, '')));
             $this->createIndexes($t, $name);
         }
         // 7. add, alter column; SQLite rebuild
@@ -259,7 +264,8 @@ final class PlanSteps
                 foreach (PlanDiff::sortedKeys($after) as $n) {
                     if (($before[$n] ?? null) !== $after[$n]) {
                         $this->add(new PlanStep(
-                            'ALTER TABLE ' . $this->q($name) . ' ADD CONSTRAINT ' . $this->q($n) . " CHECK ({$after[$n]})",
+                            'ALTER TABLE ' . $this->q($name) . ' ADD CONSTRAINT ' . $this->q($n)
+                            . " CHECK ({$after[$n]})",
                             $this->dropCheck($name, $n),
                             '',
                             self::present('constraint', $name, $n),
@@ -271,7 +277,8 @@ final class PlanSteps
         // 9. foreign key
         if (!$sqlite) {
             foreach ($d->created as $name) {
-                foreach (PlanText::sortedBy($d->target[$name]->foreignKeys, static fn(ForeignKey $f): string => $f->name) as $f) {
+                foreach (PlanText::sortedBy($d->target[$name]->foreignKeys,
+                    static fn(ForeignKey $f): string => $f->name) as $f) {
                     $this->addObject($name, ['foreign_key', $f->name]);
                 }
             }
@@ -301,10 +308,12 @@ final class PlanSteps
             }
             if (str_contains($key, '.')) {
                 $table = $this->targetName(substr($key, 0, (int) strpos($key, '.')));
-                $this->add(new PlanStep('ALTER TABLE ' . $this->q($table) . ' DROP COLUMN ' . $this->q($h), '', '', self::absent('column', $table, $h), finalize: true));
+                $this->add(new PlanStep('ALTER TABLE ' . $this->q($table) . ' DROP COLUMN ' . $this->q($h), '', '',
+                    self::absent('column', $table, $h), finalize: true));
                 continue;
             }
-            $this->add(new PlanStep('DROP TABLE ' . $this->q($h), '', '', self::absent('table', $h, ''), finalize: true));
+            $this->add(new PlanStep('DROP TABLE ' . $this->q($h), '', '', self::absent('table', $h, ''),
+                finalize: true));
         }
     }
 
@@ -333,7 +342,8 @@ final class PlanSteps
     private function sqliteRebuilds(string $name): bool
     {
         $d = $this->d;
-        if ($d->tableOf[$name] !== $name || isset($d->added[$name]) || isset($d->removed[$name]) || isset($d->altered[$name])) {
+        if ($d->tableOf[$name] !== $name || isset($d->added[$name]) || isset($d->removed[$name])
+            || isset($d->altered[$name])) {
             return true;
         }
         foreach ($d->renamedColumns as $r) {
@@ -365,22 +375,26 @@ final class PlanSteps
                 ));
             } else {
                 $prefix = 'ALTER TABLE ' . $this->q($table) . ' ALTER COLUMN ' . $this->q($c->name);
-                $this->add(new PlanStep("$prefix DROP NOT NULL", "$prefix SET NOT NULL", '', Effect::repeat(), nullChecks: $checks));
+                $this->add(new PlanStep("$prefix DROP NOT NULL", "$prefix SET NOT NULL", '', Effect::repeat(),
+                    nullChecks: $checks));
             }
         }
-        $this->add(new PlanStep($this->renameColumn($table, $c->name, $h), $this->renameColumn($table, $h, $c->name), '', self::present('column', $table, $h)));
+        $this->add(new PlanStep($this->renameColumn($table, $c->name, $h),
+            $this->renameColumn($table, $h, $c->name), '', self::present('column', $table, $h)));
     }
 
     /** The null check of the rollback that restores source column c to non-null. */
     private function nullCheck(string $table, string $column, Column $c): NullCheck
     {
-        return new NullCheck($table, $column, $c->default === null ? null : $this->r->defaultText($c->type, $c->default));
+        return new NullCheck($table, $column,
+            $c->default === null ? null : $this->r->defaultText($c->type, $c->default));
     }
 
     /** Tells whether the precision of time or datetime increases. */
     private static function precisionGrows(ColumnType $from, ColumnType $to): bool
     {
-        return ($to->name === 'time' || $to->name === 'datetime') && $to->name === $from->name && $to->parameters[0] > $from->parameters[0];
+        return ($to->name === 'time' || $to->name === 'datetime') && $to->name === $from->name
+            && $to->parameters[0] > $from->parameters[0];
     }
 
     /** Rebuilds a SQLite table through a work table (docs/spec/plans.md "Steps"). */
@@ -394,19 +408,23 @@ final class PlanSteps
         $hiddenDropped = [];
         foreach ($d->removed[$name] ?? [] as $c) {
             $col = self::column($src, $c);
-            $hiddenDropped[] = new Column($this->hold($src->name . '.' . $c), $col->type, $col->nullable, $col->identity, $col->default);
+            $hiddenDropped[] = new Column($this->hold($src->name . '.' . $c), $col->type, $col->nullable,
+                $col->identity, $col->default);
         }
         // Old definition: the source table with renames applied, and the columns to add, under their stash names
         $old = $this->renamedSource($name);
         $hiddenAdded = [];
         foreach ($d->added[$name] ?? [] as $c) {
             $col = self::column($t, $c);
-            $hiddenAdded[] = new Column($this->hold("+$name.$c"), $col->type, $col->nullable, $col->identity, $col->default);
+            $hiddenAdded[] = new Column($this->hold("+$name.$c"), $col->type, $col->nullable, $col->identity,
+                $col->default);
         }
-        $newCreate = fn(string $as): string => $this->r->createTable($t, $as, static fn(string $c): string => Names::render($t->name, $c), $hiddenDropped);
+        $newCreate = fn(string $as): string => $this->r->createTable($t, $as,
+            static fn(string $c): string => Names::render($t->name, $c), $hiddenDropped);
         // sourceColumn is the source name of the column in the old definition. A column to drop keeps its name.
         $sourceColumn = static fn(string $c): string => $d->columnOf[$name][$c] ?? $c;
-        $oldCreate = $this->r->createTable($old, $name, static fn(string $c): string => Names::render($src->name, $sourceColumn($c)), $hiddenAdded);
+        $oldCreate = $this->r->createTable($old, $name,
+            static fn(string $c): string => Names::render($src->name, $sourceColumn($c)), $hiddenAdded);
         $newColumns = [];
         foreach ($t->columns as $c) {
             $newColumns[] = $c->name;
@@ -473,14 +491,16 @@ final class PlanSteps
         foreach ($t->columns as $c) {
             $identity = $identity || $c->identity;
         }
-        $sequence = static fn(string $to, string $from): string => "INSERT INTO sqlite_sequence (name, seq) SELECT '$to', seq FROM sqlite_sequence WHERE name = '$from'";
+        $sequence = static fn(string $to, string $from): string =>
+            "INSERT INTO sqlite_sequence (name, seq) SELECT '$to', seq FROM " . "sqlite_sequence WHERE name = '$from'";
         $unsequence = static fn(string $n): string => "DELETE FROM sqlite_sequence WHERE name = '$n'";
         $q = $this->q($name);
         $rebuild = self::REBUILD_TABLE;
 
         $this->add(new PlanStep($newCreate($rebuild), "DROP TABLE $work", '', self::present('table', $rebuild, '')));
         if ($identity) {
-            $this->add(new PlanStep($sequence($rebuild, $name), $unsequence($rebuild), '', self::present('sequence', $rebuild, '')));
+            $this->add(new PlanStep($sequence($rebuild, $name), $unsequence($rebuild), '',
+                self::present('sequence', $rebuild, '')));
         }
         $copyIn = "INSERT INTO $work (" . implode(', ', $into) . ') SELECT ' . implode(', ', $from) . " FROM $q";
         if ($hiddenAdded !== []) {
@@ -489,7 +509,8 @@ final class PlanSteps
                 "DELETE FROM $work",
                 '',
                 self::present('rows', $rebuild, ''),
-                restore: "INSERT INTO $work (" . implode(', ', $intoRestore) . ') SELECT ' . implode(', ', $fromRestore) . " FROM $q",
+                restore: "INSERT INTO $work (" . implode(', ', $intoRestore) . ') SELECT '
+                    . implode(', ', $fromRestore) . " FROM $q",
                 restoreIf: self::present('column', $name, $hiddenAdded[0]->name),
             ));
         } else {
@@ -499,14 +520,16 @@ final class PlanSteps
             $this->add(new PlanStep($drop, $create, '', self::absent('index', $name, $indexName)));
         }
         if ($irreversible !== '') {
-            $this->add(new PlanStep("DELETE FROM $q", '', $irreversible, self::absent('rows', $name, ''), nullChecks: $checks));
+            $this->add(new PlanStep("DELETE FROM $q", '', $irreversible, self::absent('rows', $name, ''),
+                nullChecks: $checks));
         } elseif ($hiddenAdded !== []) {
             $this->add(new PlanStep(
                 "DELETE FROM $q",
                 "INSERT INTO $q (" . implode(', ', $backInto) . ') SELECT ' . implode(', ', $backFrom) . " FROM $work",
                 '',
                 self::absent('rows', $name, ''),
-                rollbackRestore: "INSERT INTO $q (" . implode(', ', $backIntoRestore) . ') SELECT ' . implode(', ', $backFromRestore) . " FROM $work",
+                rollbackRestore: "INSERT INTO $q (" . implode(', ', $backIntoRestore) . ') SELECT '
+                    . implode(', ', $backFromRestore) . " FROM $work",
                 restoreIf: self::present('column', $name, $hiddenAdded[0]->name),
                 nullChecks: $checks,
             ));
@@ -520,17 +543,22 @@ final class PlanSteps
             ));
         }
         if ($identity) {
-            $this->add(new PlanStep($unsequence($name), $sequence($name, $rebuild), '', self::absent('sequence', $name, '')));
+            $this->add(new PlanStep($unsequence($name), $sequence($name, $rebuild), '',
+                self::absent('sequence', $name, '')));
         }
         $this->add(new PlanStep("DROP TABLE $q", $oldCreate, '', self::absent('table', $name, '')));
         $this->add(new PlanStep($newCreate($name), "DROP TABLE $q", '', self::present('table', $name, '')));
         if ($identity) {
-            $this->add(new PlanStep($sequence($name, $rebuild), $unsequence($name), '', self::present('sequence', $name, '')));
+            $this->add(new PlanStep($sequence($name, $rebuild), $unsequence($name), '',
+                self::present('sequence', $name, '')));
         }
-        $this->add(new PlanStep("INSERT INTO $q ($newList) SELECT $newList FROM $work", "DELETE FROM $q", '', self::present('rows', $name, '')));
-        $this->add(new PlanStep("DELETE FROM $work", "INSERT INTO $work ($newList) SELECT $newList FROM $q", '', self::absent('rows', $rebuild, '')));
+        $this->add(new PlanStep("INSERT INTO $q ($newList) SELECT $newList FROM $work", "DELETE FROM $q", '',
+            self::present('rows', $name, '')));
+        $this->add(new PlanStep("DELETE FROM $work", "INSERT INTO $work ($newList) SELECT $newList FROM $q", '',
+            self::absent('rows', $rebuild, '')));
         if ($identity) {
-            $this->add(new PlanStep($unsequence($rebuild), $sequence($rebuild, $name), '', self::absent('sequence', $rebuild, '')));
+            $this->add(new PlanStep($unsequence($rebuild), $sequence($rebuild, $name), '',
+                self::absent('sequence', $rebuild, '')));
         }
         $this->add(new PlanStep("DROP TABLE $work", $newCreate($rebuild), '', self::absent('table', $rebuild, '')));
         $this->createIndexes($t, $name);
@@ -563,15 +591,18 @@ final class PlanSteps
             $t->uniqueKeys[] = new UniqueKey($u->name, $rename($u->columns));
         }
         foreach ($src->indexes as $x) {
-            $t->indexes[] = new Index($x->name, array_map(static fn(IndexColumn $c): IndexColumn => new IndexColumn($column($name, $c->name), $c->descending), $x->columns));
+            $t->indexes[] = new Index($x->name, array_map(static fn(IndexColumn $c): IndexColumn =>
+                new IndexColumn($column($name, $c->name), $c->descending), $x->columns));
         }
         foreach ($src->foreignKeys as $f) {
             $parent = isset($targetOfTable[$f->table]) ? (string) $targetOfTable[$f->table] : $f->table;
             $refs = array_map(static fn(string $c): string => $column($parent, $c), $f->referencedColumns);
-            $t->foreignKeys[] = new ForeignKey($f->name, $rename($f->columns), $parent, $refs, $f->onDelete, $f->onUpdate);
+            $t->foreignKeys[] = new ForeignKey($f->name, $rename($f->columns), $parent, $refs, $f->onDelete,
+                $f->onUpdate);
         }
         foreach ($src->checks as $k) {
-            $t->checks[] = new Check($k->name, PlanObjects::checkText($k->expression, static fn(string $c): string => $column($name, $c)));
+            $t->checks[] = new Check($k->name, PlanObjects::checkText($k->expression,
+                static fn(string $c): string => $column($name, $c)));
         }
         return $t;
     }
@@ -601,7 +632,8 @@ final class PlanSteps
         if ($this->r->dialect === 'mysql') {
             $this->add(new PlanStep(
                 'ALTER TABLE ' . $this->q($table) . ' MODIFY COLUMN ' . $this->r->column($to),
-                $irreversible === '' ? 'ALTER TABLE ' . $this->q($table) . ' MODIFY COLUMN ' . $this->r->column($source) : '',
+                $irreversible === '' ? 'ALTER TABLE ' . $this->q($table) . ' MODIFY COLUMN '
+                    . $this->r->column($source) : '',
                 $irreversible,
                 Effect::repeat(),
                 nullChecks: $checks,
@@ -620,14 +652,17 @@ final class PlanSteps
         }
         if ($from->nullable !== $to->nullable) {
             if ($to->nullable) {
-                $this->add(new PlanStep("$prefix DROP NOT NULL", "$prefix SET NOT NULL", '', Effect::repeat(), nullChecks: $checks));
+                $this->add(new PlanStep("$prefix DROP NOT NULL", "$prefix SET NOT NULL", '', Effect::repeat(),
+                    nullChecks: $checks));
             } else {
                 $this->add(new PlanStep("$prefix SET NOT NULL", "$prefix DROP NOT NULL", '', Effect::repeat()));
             }
         }
         if ($from->default !== $to->default || ($to->default !== null && !$sameType)) {
-            $back = $from->default === null ? "$prefix DROP DEFAULT" : "$prefix SET DEFAULT " . $this->r->defaultText($from->type, $from->default);
-            $forward = $to->default === null ? "$prefix DROP DEFAULT" : "$prefix SET DEFAULT " . $this->r->defaultText($to->type, $to->default);
+            $back = $from->default === null ? "$prefix DROP DEFAULT"
+                : "$prefix SET DEFAULT " . $this->r->defaultText($from->type, $from->default);
+            $forward = $to->default === null ? "$prefix DROP DEFAULT"
+                : "$prefix SET DEFAULT " . $this->r->defaultText($to->type, $to->default);
             $this->add(new PlanStep($forward, $back, '', Effect::repeat()));
         }
     }
@@ -659,11 +694,14 @@ final class PlanSteps
     {
         foreach ($this->triggerParts($t) as [$name, $create, $function]) {
             if ($this->r->dialect === 'postgres') {
-                $this->add(new PlanStep('DROP TRIGGER ' . $this->q($name) . ' ON ' . $this->q($t->name), $create, '', self::absent('trigger', $t->name, $name)));
-                $this->add(new PlanStep('DROP FUNCTION ' . $this->q($name) . '()', $function, '', self::absent('function', '', $name)));
+                $this->add(new PlanStep('DROP TRIGGER ' . $this->q($name) . ' ON ' . $this->q($t->name), $create, '',
+                    self::absent('trigger', $t->name, $name)));
+                $this->add(new PlanStep('DROP FUNCTION ' . $this->q($name) . '()', $function, '',
+                    self::absent('function', '', $name)));
                 continue;
             }
-            $this->add(new PlanStep('DROP TRIGGER ' . $this->q($name), $create, '', self::absent('trigger', $t->name, $name)));
+            $this->add(new PlanStep('DROP TRIGGER ' . $this->q($name), $create, '',
+                self::absent('trigger', $t->name, $name)));
         }
     }
 
@@ -671,17 +709,21 @@ final class PlanSteps
     {
         foreach ($this->triggerParts($t) as [$name, $create, $function]) {
             if ($this->r->dialect === 'postgres') {
-                $this->add(new PlanStep($function, 'DROP FUNCTION ' . $this->q($name) . '()', '', self::present('function', '', $name)));
-                $this->add(new PlanStep($create, 'DROP TRIGGER ' . $this->q($name) . ' ON ' . $this->q($t->name), '', self::present('trigger', $t->name, $name)));
+                $this->add(new PlanStep($function, 'DROP FUNCTION ' . $this->q($name) . '()', '',
+                    self::present('function', '', $name)));
+                $this->add(new PlanStep($create, 'DROP TRIGGER ' . $this->q($name) . ' ON ' . $this->q($t->name), '',
+                    self::present('trigger', $t->name, $name)));
                 continue;
             }
-            $this->add(new PlanStep($create, 'DROP TRIGGER ' . $this->q($name), '', self::present('trigger', $t->name, $name)));
+            $this->add(new PlanStep($create, 'DROP TRIGGER ' . $this->q($name), '',
+                self::present('trigger', $t->name, $name)));
         }
     }
 
     private function dropCheck(string $table, string $name): string
     {
-        return 'ALTER TABLE ' . $this->q($table) . ($this->r->dialect === 'mysql' ? ' DROP CHECK ' : ' DROP CONSTRAINT ') . $this->q($name);
+        return 'ALTER TABLE ' . $this->q($table)
+            . ($this->r->dialect === 'mysql' ? ' DROP CHECK ' : ' DROP CONSTRAINT ') . $this->q($name);
     }
 
     private function dropRendererCheck(string $table, string $name, string $expression): void
@@ -705,19 +747,23 @@ final class PlanSteps
         $out = [];
         if ($this->r->dialect === 'sqlite') {
             foreach (PlanText::sortedBy($t->uniqueKeys, static fn(UniqueKey $u): string => $u->name) as $u) {
-                $out[] = [$u->name, 'CREATE UNIQUE INDEX ' . $this->q($u->name) . ' ON ' . $this->q($name) . ' (' . $this->r->list($u->columns) . ')', $this->dropIndex($name, $u->name)];
+                $out[] = [$u->name, 'CREATE UNIQUE INDEX ' . $this->q($u->name) . ' ON ' . $this->q($name) . ' ('
+                    . $this->r->list($u->columns) . ')', $this->dropIndex($name, $u->name)];
             }
         }
         foreach (PlanText::sortedBy($t->indexes, static fn(Index $x): string => $x->name) as $x) {
-            $columns = array_map(fn(IndexColumn $c): string => $this->q($c->name) . ($c->descending ? ' DESC' : ''), $x->columns);
-            $out[] = [$x->name, 'CREATE INDEX ' . $this->q($x->name) . ' ON ' . $this->q($name) . ' (' . implode(', ', $columns) . ')', $this->dropIndex($name, $x->name)];
+            $columns = array_map(fn(IndexColumn $c): string =>
+                $this->q($c->name) . ($c->descending ? ' DESC' : ''), $x->columns);
+            $out[] = [$x->name, 'CREATE INDEX ' . $this->q($x->name) . ' ON ' . $this->q($name) . ' ('
+                . implode(', ', $columns) . ')', $this->dropIndex($name, $x->name)];
         }
         return $out;
     }
 
     private function dropIndex(string $table, string $name): string
     {
-        return $this->r->dialect === 'mysql' ? 'DROP INDEX ' . $this->q($name) . ' ON ' . $this->q($table) : 'DROP INDEX ' . $this->q($name);
+        return $this->r->dialect === 'mysql' ? 'DROP INDEX ' . $this->q($name) . ' ON ' . $this->q($table)
+            : 'DROP INDEX ' . $this->q($name);
     }
 
     /** The unique index and index that the renderer writes after CREATE TABLE. */
@@ -743,23 +789,30 @@ final class PlanSteps
             case 'unique':
                 $u = PlanObjects::named($t->uniqueKeys, $objectName);
                 if ($dialect === 'sqlite') {
-                    return ['CREATE UNIQUE INDEX ' . $this->q($u->name) . ' ON ' . $this->q($name) . ' (' . $this->r->list($u->columns) . ')', $this->dropIndex($name, $u->name), 'index'];
+                    return ['CREATE UNIQUE INDEX ' . $this->q($u->name) . ' ON ' . $this->q($name) . ' ('
+                        . $this->r->list($u->columns) . ')', $this->dropIndex($name, $u->name), 'index'];
                 }
-                $create = 'ALTER TABLE ' . $this->q($name) . ' ADD CONSTRAINT ' . $this->q($u->name) . ' UNIQUE (' . $this->r->list($u->columns) . ')';
+                $create = 'ALTER TABLE ' . $this->q($name) . ' ADD CONSTRAINT ' . $this->q($u->name) . ' UNIQUE ('
+                    . $this->r->list($u->columns) . ')';
                 if ($dialect === 'mysql') {
                     return [$create, 'ALTER TABLE ' . $this->q($name) . ' DROP INDEX ' . $this->q($u->name), 'index'];
                 }
-                return [$create, 'ALTER TABLE ' . $this->q($name) . ' DROP CONSTRAINT ' . $this->q($u->name), 'constraint'];
+                return [$create, 'ALTER TABLE ' . $this->q($name) . ' DROP CONSTRAINT ' . $this->q($u->name),
+                    'constraint'];
             case 'index':
                 $x = PlanObjects::named($t->indexes, $objectName);
-                $columns = array_map(fn(IndexColumn $c): string => $this->q($c->name) . ($c->descending ? ' DESC' : ''), $x->columns);
-                return ['CREATE INDEX ' . $this->q($x->name) . ' ON ' . $this->q($name) . ' (' . implode(', ', $columns) . ')', $this->dropIndex($name, $x->name), 'index'];
+                $columns = array_map(fn(IndexColumn $c): string =>
+                    $this->q($c->name) . ($c->descending ? ' DESC' : ''), $x->columns);
+                return ['CREATE INDEX ' . $this->q($x->name) . ' ON ' . $this->q($name) . ' ('
+                    . implode(', ', $columns) . ')', $this->dropIndex($name, $x->name), 'index'];
             case 'check':
                 $k = PlanObjects::named($t->checks, $objectName);
-                return ['ALTER TABLE ' . $this->q($name) . ' ADD CONSTRAINT ' . $this->q($k->name) . ' CHECK (' . $this->r->checkText($t, $k) . ')', $this->dropCheck($name, $k->name), 'constraint'];
+                return ['ALTER TABLE ' . $this->q($name) . ' ADD CONSTRAINT ' . $this->q($k->name) . ' CHECK ('
+                    . $this->r->checkText($t, $k) . ')', $this->dropCheck($name, $k->name), 'constraint'];
             case 'foreign_key':
                 $f = PlanObjects::named($t->foreignKeys, $objectName);
-                $drop = 'ALTER TABLE ' . $this->q($name) . ($dialect === 'mysql' ? ' DROP FOREIGN KEY ' : ' DROP CONSTRAINT ') . $this->q($f->name);
+                $drop = 'ALTER TABLE ' . $this->q($name)
+                    . ($dialect === 'mysql' ? ' DROP FOREIGN KEY ' : ' DROP CONSTRAINT ') . $this->q($f->name);
                 return ['ALTER TABLE ' . $this->q($name) . ' ADD ' . $this->r->foreignKey($f), $drop, 'constraint'];
         }
         throw new \LogicException("Unknown object kind $kind");

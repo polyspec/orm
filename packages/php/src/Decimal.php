@@ -46,7 +46,10 @@ final class Decimal
 
     public static function normalize(string $input, int $precision, int $scale): string
     {
-        $fail = static fn(string $reason): OrmException => new OrmException(Code::CODEC_ENCODE, "decimal $input: $reason");
+        $fail = static fn(string $reason): OrmException => new OrmException(
+            Code::CODEC_ENCODE,
+            "decimal $input: $reason"
+        );
         if ($precision < 1 || $precision > 18 || $scale < 0 || $scale > $precision) {
             throw $fail('invalid precision or scale');
         }

@@ -30,7 +30,8 @@ final class Engine
      */
     public static function for(string $manifestHash, string $dialect, int $cacheSize): self
     {
-        return self::$engines[$manifestHash . "\0" . $dialect] ??= new self(Registry::model($manifestHash), $dialect, $cacheSize);
+        return self::$engines[$manifestHash . "\0" . $dialect]
+            ??= new self(Registry::model($manifestHash), $dialect, $cacheSize);
     }
 
     /** The plan of a value-free request (docs/spec/protocol.md). */

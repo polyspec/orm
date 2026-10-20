@@ -68,7 +68,9 @@ final class Names
                     $column === false => 'false',
                     default => get_debug_type($column),
                 };
-                throw new \TypeError(__METHOD__ . "(): Argument #3 (\$columns) must contain only strings, $given given");
+                throw new \TypeError(
+                    __METHOD__ . "(): Argument #3 (\$columns) must contain only strings, $given given"
+                );
             }
             if (self::render($table, $column) === $name) {
                 return $column;

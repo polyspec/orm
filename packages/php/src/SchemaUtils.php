@@ -17,9 +17,10 @@ final class SchemaUtils
     }
 
     /**
-     * Registers the generated schema's set on this connection. It reads and writes nothing in the database: the manifest
-     * text is checked to hash to its declared hash (otherwise CONFIG), and the set is only registered. Registering the same set
-     * again changes nothing. Whether the database matches the set is checked by install and
+     * Registers the generated schema's set on this connection. It reads and writes nothing in the database:
+     * the manifest text is checked to hash to its declared hash (otherwise CONFIG), and the set is only
+     * registered. Registering the same set again changes nothing. Whether the database matches the set is
+     * checked by install and
      * addTablesAndColumns at setup and upgrade, and by the connection opened for each request as well.
      * register sets the set without any statement (docs/spec/schema.md "Schema registration").
      */
@@ -29,10 +30,11 @@ final class SchemaUtils
     }
 
     /**
-     * Installs the generated schema's document set into the connection's database, and after checking that the database matches the set,
-     * registers that set on this connection. If the manifest text does not hash to its declared hash, it is CONFIG before any statement.
-     * If the set has a diagnostic, it is SCHEMA_INVALID.
-     * Introspects the connection's database; if a table that external documents use differs from the external document, it is CONFIG.
+     * Installs the generated schema's document set into the connection's database, and after checking that
+     * the database matches the set, registers that set on this connection. If the manifest text does not
+     * hash to its declared hash, it is CONFIG before any statement. If the set has a diagnostic, it is
+     * SCHEMA_INVALID. Introspects the connection's database; if a table that external documents use differs
+     * from the external document, it is CONFIG.
      * If the set owns no tables, the client's renderer creates all the statements (docs/spec/dialects.md
      * "Rendered statements"); if all of them exist, nothing is created; if only some exist, it is
      * CONFIG. Then it rereads the database and compares the tables the set owns with the set; if there is a difference,
@@ -58,7 +60,8 @@ final class SchemaUtils
         $target = self::target($documents);
         $db = $this->db;
         $pdo = $db->pdo();
-        $apply = fn(?int $tx) => $this->observed($tx, static function () use ($db, $pdo, $tx, $statements, $driver, $documents, $target): void {
+        $apply = fn(?int $tx) => $this->observed($tx,
+            static function () use ($db, $pdo, $tx, $statements, $driver, $documents, $target): void {
             try {
                 $live = self::introspectSet($pdo, $driver, $documents);
                 $found = [];
@@ -78,7 +81,8 @@ final class SchemaUtils
                     }
                 }
                 if ($present !== [] && $missing !== []) {
-                    throw new OrmException(Code::CONFIG, 'the database holds only some tables of the document set: ' . implode(', ', $present));
+                    throw new OrmException(Code::CONFIG,
+                        'the database holds only some tables of the document set: ' . implode(', ', $present));
                 }
                 if ($missing !== []) {
                     foreach ($statements as [$statement, $table]) {
@@ -95,7 +99,8 @@ final class SchemaUtils
             $this->u->run(fn() => $apply($db->transactionNumber()));
         } else {
             if (Db::activeFor($this->db) !== null) {
-                throw new OrmException(Code::CONFIG, 'MySQL commits schema statements implicitly; install outside a transaction');
+                throw new OrmException(Code::CONFIG,
+                    'MySQL commits schema statements implicitly; install outside a transaction');
             }
             $apply(null);
         }
@@ -103,18 +108,18 @@ final class SchemaUtils
     }
 
     /**
-     * Upgrades the installed document set only by adding it as a new version of the generated schema (docs/spec/schema.md
-     * "Adding tables and columns"). Introspects the connection's database and compares the set's tables that are in the database with the set,
-     * creates tables of the set that are not in the database, together with their indexes, foreign keys, checks,
-     * and triggers, and adds to existing tables the missing columns that are null or have a default.
-     * adds those columns. It runs the plan steps of Dbspec::addTablesAndColumnsSteps, so the changed tables'
-     * audit triggers are also changed to record the new columns. Tables of other sets are left as they are, and the set
-     * is not registered. Any other difference is SCHEMA_DIFFERS before any statement. The manifest
-     * text is first CONFIG if it does not hash to its declared hash. PostgreSQL applies it in an in-progress
-     * transaction or a new one. MySQL commits schema statements implicitly, and
-     * SQLite rebuilds a table with foreign keys turned off to add a column, but
-     * the foreign key setting does not change inside a transaction, so both are applied outside a transaction,
-     * and inside one it is CONFIG.
+     * Upgrades the installed document set only by adding it as a new version of the generated schema
+     * (docs/spec/schema.md "Adding tables and columns"). Introspects the connection's database and compares
+     * the set's tables that are in the database with the set, creates tables of the set that are not in the
+     * database, together with their indexes, foreign keys, checks, and triggers, and adds to existing tables
+     * the missing columns that are null or have a default. adds those columns. It runs the plan steps of
+     * Dbspec::addTablesAndColumnsSteps, so the changed tables' audit triggers are also changed to record the
+     * new columns. Tables of other sets are left as they are, and the set is not registered. Any other
+     * difference is SCHEMA_DIFFERS before any statement. The manifest text is first CONFIG if it does not
+     * hash to its declared hash. PostgreSQL applies it in an in-progress transaction or a new one. MySQL
+     * commits schema statements implicitly, and SQLite rebuilds a table with foreign keys turned off to add
+     * a column, but the foreign key setting does not change inside a transaction, so both are applied
+     * outside a transaction, and inside one it is CONFIG.
      *
      * @return list<string> Created tables are "table", added columns are "table.column", in table name and column order
      */
@@ -127,16 +132,21 @@ final class SchemaUtils
         $document = self::target($documents);
         $db = $this->db;
         $pdo = $db->pdo();
-        $apply = fn(?int $tx): array => $this->observed($tx, static function () use ($db, $pdo, $tx, $driver, $document, $documents): array {
+        $apply = fn(?int $tx): array => $this->observed($tx,
+            static function () use ($db, $pdo, $tx, $driver, $document, $documents): array {
             try {
                 $live = self::introspectSet($pdo, $driver, $documents);
-                [$added, $steps, $differences] = Dbspec::addTablesAndColumnsSteps($live->document, $live->unsupported, $document, $driver);
+                [$added, $steps, $differences] = Dbspec::addTablesAndColumnsSteps($live->document,
+                    $live->unsupported, $document, $driver);
                 if ($differences !== []) {
-                    throw new OrmException(Code::SCHEMA_DIFFERS, 'the existing tables of the document set differ beyond missing tables, missing columns that are null or have a default and missing indexes: ' . implode('; ', $differences));
+                    throw new OrmException(Code::SCHEMA_DIFFERS,
+                        'the existing tables of the document set differ beyond missing tables, missing columns that are null or have a default and missing indexes: '
+                        . implode('; ', $differences));
                 }
                 foreach ($steps as $step) {
                     // A step creates or changes the table of its effect.
-                    $db->run(StatementEvent::SCHEMA, $step->effect->table === '' ? [] : [$step->effect->table], $tx, $step->statement);
+                    $db->run(StatementEvent::SCHEMA, $step->effect->table === '' ? [] : [$step->effect->table],
+                        $tx, $step->statement);
                 }
                 // Reads the database again after the steps and checks that it matches the set.
                 if ($steps !== []) {
@@ -171,7 +181,8 @@ final class SchemaUtils
     private function observed(?int $tx, \Closure $fn): mixed
     {
         $db = $this->db;
-        return CatalogRows::observed(static function (string $query, int $start, ?\Throwable $failure) use ($db, $tx): void {
+        return CatalogRows::observed(
+            static function (string $query, int $start, ?\Throwable $failure) use ($db, $tx): void {
             $error = match (true) {
                 $failure === null => null,
                 $failure instanceof \PDOException => $db->driverError($failure),
@@ -182,8 +193,8 @@ final class SchemaUtils
     }
 
     /**
-     * Introspects the connection's database; if a table the set uses from an external document differs from that external document,
-     * it is CONFIG (docs/spec/dbspec.md "External documents").
+     * Introspects the connection's database; if a table the set uses from an external document differs from
+     * that external document, it is CONFIG (docs/spec/dbspec.md "External documents").
      *
      * @param list<\Polyspec\Orm\Dbspec\Document> $documents
      */
@@ -205,13 +216,14 @@ final class SchemaUtils
     private static function verifySet(array $differences): void
     {
         if ($differences !== []) {
-            throw new OrmException(Code::CONFIG, 'the database differs from the document set: ' . implode('; ', $differences));
+            throw new OrmException(Code::CONFIG,
+                'the database differs from the document set: ' . implode('; ', $differences));
         }
     }
 
     /**
-     * The schema text document of the set, which is what the database is compared with. The schema text uses external documents as use
-     * lines, so the external document's text is parsed into the set.
+     * The schema text document of the set, which is what the database is compared with. The schema text
+     * uses external documents as use lines, so the external document's text is parsed into the set.
      *
      * @param list<\Polyspec\Orm\Dbspec\Document> $documents
      */
@@ -235,14 +247,16 @@ final class SchemaUtils
     /** @param list<\Polyspec\Orm\Dbspec\Diagnostic> $diagnostics */
     private static function invalid(array $diagnostics): OrmException
     {
-        $lines = array_map(static fn($d): string => "{$d->line}:{$d->column}: {$d->rule}: {$d->message}", $diagnostics);
+        $lines = array_map(static fn($d): string =>
+            "{$d->line}:{$d->column}: {$d->rule}: {$d->message}", $diagnostics);
         return new OrmException(Code::SCHEMA_INVALID, implode("\n", $lines));
     }
 
     /** @param list<string> $differences */
     private static function externalError(array $differences): OrmException
     {
-        return new OrmException(Code::CONFIG, 'the tables that the set uses from external documents differ from the database: ' . implode('; ', $differences));
+        return new OrmException(Code::CONFIG,
+            'the tables that the set uses from external documents differ from the database: ' . implode('; ', $differences));
     }
 
     /**
@@ -266,12 +280,14 @@ final class SchemaUtils
                 $db->run(StatementEvent::BEGIN, [], $tx, 'BEGIN IMMEDIATE');
                 $began = true;
                 $added = $fn($tx);
-                $broken = (int) ($db->fetch(StatementEvent::SCHEMA, [], $tx, 'SELECT COUNT(*) FROM pragma_foreign_key_check')[0][0] ?? 0);
+                $broken = (int) ($db->fetch(StatementEvent::SCHEMA, [], $tx,
+                    'SELECT COUNT(*) FROM pragma_foreign_key_check')[0][0] ?? 0);
                 if ($broken > 0) {
                     throw new OrmException(Code::INTERNAL, "the rebuilt tables break $broken foreign keys");
                 }
             } catch (\Throwable $e) {
-                // Even if a subscriber fails after BEGIN, the transaction was started, so it is also judged by the driver's state.
+                // Even if a subscriber fails after BEGIN, the transaction was started, so it is also judged by the
+                // driver's state.
                 if ($began || $db->pdo()->inTransaction()) {
                     try {
                         $db->run(StatementEvent::ROLLBACK, [], $tx, 'ROLLBACK');
@@ -307,8 +323,10 @@ final class SchemaUtils
         $schema = self::name($schema);
         return match ($this->db->driver()) {
             'postgres' => $this->bool('SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = $1)', [$schema]),
-            'mysql' => $this->bool('SELECT EXISTS(SELECT 1 FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?)', [$schema]),
-            default => $this->bool("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name LIKE ? ESCAPE '\\')", [str_replace('_', '\\_', $schema) . '\\_\\_%']),
+            'mysql' => $this->bool('SELECT EXISTS(SELECT 1 FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?)',
+                [$schema]),
+            default => $this->bool("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name LIKE ? ESCAPE '\\')",
+                [str_replace('_', '\\_', $schema) . '\\_\\_%']),
         };
     }
 
@@ -318,8 +336,10 @@ final class SchemaUtils
         $table = self::name($table);
         return match ($this->db->driver()) {
             'postgres' => $this->bool('SELECT to_regclass($1) IS NOT NULL', [$schema . '.' . $table]),
-            'mysql' => $this->bool('SELECT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?)', [$schema, $table]),
-            default => $this->bool("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?)", [$schema . '__' . $table]),
+            'mysql' => $this->bool('SELECT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?)',
+                [$schema, $table]),
+            default => $this->bool("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?)",
+                [$schema . '__' . $table]),
         };
     }
 

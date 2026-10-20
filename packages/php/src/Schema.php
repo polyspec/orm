@@ -27,12 +27,16 @@ final class Schema
     {
         $actual = 'sha256:' . hash('sha256', $this->manifestText . $this->externalText);
         if ($actual !== $this->manifestHash) {
-            throw new OrmException(Code::CONFIG, "invalid schema manifest: the manifest text hashes to $actual, not to its declared manifestHash {$this->manifestHash}");
+            throw new OrmException(
+                Code::CONFIG,
+                "invalid schema manifest: the manifest text hashes to $actual, not to its declared manifestHash {$this->manifestHash}"
+            );
         }
     }
 
     /**
-     * The parsed documents of the set. External documents are marked external and carry only the tables the owned documents use.
+     * The parsed documents of the set. External documents are marked external and carry only the tables
+     * the owned documents use.
      *
      * @return list<Dbspec\Document>
      */

@@ -7,11 +7,13 @@ namespace Polyspec\Orm;
 /**
  * The orm-gen command line: model generation from a dbspec document set.
  *
- *   orm-gen gen --set <dbspec-set.json> --out <dir> --namespace <Php\Namespace> [--scan <file or directory>]... [--check]
+ *   orm-gen gen --set <dbspec-set.json> --out <dir> --namespace <Php\Namespace>
+ *       [--scan <file or directory>]... [--check]
  *
- * `--scan` names a PHP file or directory, and may repeat: the chain methods it calls on the models are declared as @method
- * tags (docs/spec/dsl.md). `--set` names the set file (docs/spec/dbspec.md "Document sets"): its `documents` get models, and its
- * `external` documents are parsed with the set and get none.
+ * `--scan` names a PHP file or directory, and may repeat: the chain methods it calls on the models are
+ * declared as @method tags (docs/spec/dsl.md). `--set` names the set file (docs/spec/dbspec.md
+ * "Document sets"): its `documents` get models, and its `external` documents are parsed with the set and
+ * get none.
  */
 final class OrmGen
 {
@@ -68,7 +70,8 @@ final class OrmGen
     /**
      * Parses `-name value`, `--name value`, `--name=value`, and boolean
      * `--name` flags up to the first other argument, which starts the positional arguments.
-     * @param array<string, string|bool|list<string>> $spec flag name → default (bool for switches, an array for a flag that repeats)
+     * @param array<string, string|bool|list<string>> $spec flag name → default (bool for switches, an
+     *     array for a flag that repeats)
      * @return array{array<string, string|bool|list<string>>, list<string>}
      */
     private static function flags(array $args, array $spec): array
@@ -121,7 +124,8 @@ final class OrmGen
     private static function gen(array $args): int
     {
         [$o, $rest] = self::flags($args, ['set' => '', 'out' => '', 'namespace' => '', 'scan' => [], 'check' => false]);
-        if ($rest !== [] || $o['set'] === '' || $o['out'] === '' || preg_match('/^[A-Za-z_][A-Za-z0-9_]*(\\\\[A-Za-z_][A-Za-z0-9_]*)*$/', $o['namespace']) !== 1) {
+        if ($rest !== [] || $o['set'] === '' || $o['out'] === ''
+            || preg_match('/^[A-Za-z_][A-Za-z0-9_]*(\\\\[A-Za-z_][A-Za-z0-9_]*)*$/', $o['namespace']) !== 1) {
             throw new UsageError($rest === [] ? '' : 'unexpected argument: ' . $rest[0]);
         }
         $model = RuntimeModel::build(RuntimeModel::set($o['set']));

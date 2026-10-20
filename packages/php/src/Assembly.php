@@ -11,10 +11,18 @@ final class Assembly
     public array $made = [];
 
     public readonly \DateTimeZone $zone;
-    /** Whether this is the result of a markdown answer: the last cell of each row is that row's join and relation rows (MarkdownLinks). */
+    /**
+     * Whether this is the result of a markdown answer: the last cell of each row is that row's join and
+     * relation rows (MarkdownLinks).
+     */
     private readonly bool $markdown;
 
-    public function __construct(public readonly Db $db, public readonly ?Db $conn, private readonly array $result, public readonly bool $track = false)
+    public function __construct(
+        public readonly Db $db,
+        public readonly ?Db $conn,
+        private readonly array $result,
+        public readonly bool $track = false
+    )
     {
         $this->zone = $db->zone();
         $this->markdown = !empty($result['markdown']);
@@ -36,7 +44,10 @@ final class Assembly
         return $first !== null && $parent[$first] !== null ? $parent : null;
     }
 
-    /** Row placement of relation $ch: in SQL results, the placement of the relation step; in a markdown answer, the placement of the child itself. */
+    /**
+     * Row placement of relation $ch: in SQL results, the placement of the relation step; in a markdown
+     * answer, the placement of the child itself.
+     */
     public function relationAssemble(array $ch): array
     {
         return $this->markdown ? $ch['assemble'] : $this->result['steps'][$ch['step']]['step']['assemble'];

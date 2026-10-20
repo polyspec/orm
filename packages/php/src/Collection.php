@@ -27,7 +27,8 @@ final class Collection implements \IteratorAggregate, \Countable, \JsonSerializa
     public static function keyOf(mixed $key): int|string|bool|Bytes|\DateTimeInterface
     {
         return match (true) {
-            is_int($key), is_string($key), is_bool($key), $key instanceof Bytes, $key instanceof \DateTimeInterface => $key,
+            is_int($key), is_string($key), is_bool($key), $key instanceof Bytes,
+            $key instanceof \DateTimeInterface => $key,
             $key === null => throw new OrmException(Code::CODEC_DECODE, 'collection row identity contains SQL NULL'),
             default => (string) $key,
         };
@@ -85,7 +86,9 @@ final class Collection implements \IteratorAggregate, \Countable, \JsonSerializa
     /** @return list<int|string|bool|Bytes|\DateTimeInterface> */
     public function keys(): array
     {
-        return array_values(array_map(static fn(array $e): int|string|bool|Bytes|\DateTimeInterface => $e[0], $this->items));
+        return array_values(array_map(
+            static fn(array $e): int|string|bool|Bytes|\DateTimeInterface => $e[0], $this->items
+        ));
     }
 
     /** @return list<TModel> */

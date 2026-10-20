@@ -11,9 +11,15 @@ namespace Polyspec\Orm;
  */
 final class Chain
 {
-    private const LEADING = ['Ne' => 'ne', 'Eq' => '', 'Gt' => 'gt', 'Lt' => 'lt', 'Ge' => 'ge', 'Le' => 'le', 'Lk' => 'lk', 'Lb' => 'lb', 'Between' => 'between'];
+    private const LEADING = [
+        'Ne' => 'ne', 'Eq' => '', 'Gt' => 'gt', 'Lt' => 'lt', 'Ge' => 'ge', 'Le' => 'le', 'Lk' => 'lk',
+        'Lb' => 'lb', 'Between' => 'between'
+    ];
     private const COMPARE = ['Eq' => '', 'Ne' => 'ne', 'Gt' => 'gt', 'Lt' => 'lt', 'Ge' => 'ge', 'Le' => 'le'];
-    public const ENGINE_OP = ['' => 'eq', 'ne' => 'not_eq', 'gt' => 'gt', 'lt' => 'lt', 'ge' => 'gte', 'le' => 'lte', 'lk' => 'contains', 'lb' => 'contains_binary', 'between' => 'between'];
+    public const ENGINE_OP = [
+        '' => 'eq', 'ne' => 'not_eq', 'gt' => 'gt', 'lt' => 'lt', 'ge' => 'gte', 'le' => 'lte', 'lk' => 'contains',
+        'lb' => 'contains_binary', 'between' => 'between'
+    ];
     /** @var array<string, mixed> parsed names by class and name */
     private static array $cache = [];
 
@@ -89,8 +95,9 @@ final class Chain
      */
     public static function pairMeta(?array $left, ?array $right, array $schema, string $name): array
     {
-        return self::pairOf($left, $right, $name, static fn(?array $side, ?array $other, string $pascal): string => $side !== null
-            ? self::columnName($side, $pascal) : self::listedColumn($schema, $pascal));
+        return self::pairOf($left, $right, $name,
+            static fn(?array $side, ?array $other, string $pascal): string => $side !== null
+                ? self::columnName($side, $pascal) : self::listedColumn($schema, $pascal));
     }
 
     /** The column with the PascalCase name of any model of $schema. */
@@ -191,7 +198,8 @@ final class Chain
                 $errors[] = $e->getMessage();
             }
         };
-        $key = static fn(string $op, string $column = '', array $columns = [], string $compare = ''): array => ['conn' => '', 'op' => $op, 'column' => $column, 'columns' => $columns, 'compare' => $compare];
+        $key = static fn(string $op, string $column = '', array $columns = [], string $compare = ''): array
+            => ['conn' => '', 'op' => $op, 'column' => $column, 'columns' => $columns, 'compare' => $compare];
         if (isset($ix[$text])) {
             $try(fn() => self::checkOp($meta, $ix[$text], '', $key('', $ix[$text])));
         }
@@ -218,7 +226,9 @@ final class Chain
                 continue;
             }
             $right = implode('', array_slice($ws, $i + 1));
-            $rightColumn = $schema === null ? self::schemaColumnName($meta['manifest_hash'], $right) : self::listedColumn($schema, $right);
+            $rightColumn = $schema === null
+                ? self::schemaColumnName($meta['manifest_hash'], $right)
+                : self::listedColumn($schema, $right);
             if ($rightColumn === '') {
                 $errors[] = "no model has the column $right";
                 continue;
@@ -230,7 +240,9 @@ final class Chain
             return $candidates[0];
         }
         if ($candidates === []) {
-            self::fail($errors !== [] ? "$text: " . implode('; ', $errors) : "$text is not a column of {$meta['entity']}");
+            self::fail($errors !== []
+                ? "$text: " . implode('; ', $errors)
+                : "$text is not a column of {$meta['entity']}");
         }
         self::fail("$text has more than one meaning");
     }
@@ -252,7 +264,8 @@ final class Chain
             $allowed = true;
         }
         if (!$allowed) {
-            self::fail("{$meta['entity']}.$column does not accept the " . ($op === '' ? 'equality' : $op) . ' operator');
+            self::fail("{$meta['entity']}.$column does not accept the "
+                . ($op === '' ? 'equality' : $op) . ' operator');
         }
         return $key;
     }
@@ -331,7 +344,8 @@ final class Chain
      */
     public static function pair(?array $left, ?array $right, string $name): array
     {
-        return self::pairOf($left, $right, $name, fn(?array $side, ?array $other, string $pascal): string => self::sideColumn($side, $other, $pascal));
+        return self::pairOf($left, $right, $name,
+            fn(?array $side, ?array $other, string $pascal): string => self::sideColumn($side, $other, $pascal));
     }
 
     /**

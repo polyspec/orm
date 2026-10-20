@@ -18,7 +18,10 @@ final class Db
 
     /** @var list<TxFrame> active transactions of the request, innermost last */
     private static array $frames = [];
-    /** State shared by all handles of one connection: PDO handle, statement cache, registered sets, subscribers, test faults. */
+    /**
+     * State shared by all handles of one connection: PDO handle, statement cache, registered sets,
+     * subscribers, test faults.
+     */
     private readonly DbState $state;
     /** @var array<int, string> masked bind positions of the last args() result */
     private array $masks = [];
@@ -102,7 +105,8 @@ final class Db
     public function registeredModel(string $hash): RuntimeModel
     {
         if (!isset($this->state->sets[$hash])) {
-            throw new OrmException(Code::SCHEMA_HASH_MISMATCH, "manifest $hash is not registered on this connection: connect through its generated code or install it");
+            throw new OrmException(Code::SCHEMA_HASH_MISMATCH, "manifest $hash is not registered on this "
+                . "connection: connect through its generated code or install it");
         }
         return Registry::model($hash);
     }
@@ -207,7 +211,8 @@ final class Db
 
     /**
      * Applies this handle's request hook to $r. If there is no hook, calls nothing. n_params is
-     * set by Request::shape as the parameter count when planning; an exception from the hook is passed through unchanged.
+     * set by Request::shape as the parameter count when planning; an exception from the hook is passed through
+     * unchanged.
      */
     private function hook(Request $r): void
     {
@@ -261,7 +266,8 @@ final class Db
      * @param list<string> $tables
      * @param list<mixed> $binds
      */
-    public function publish(string $kind, array $tables, ?int $transaction, string $sql, array $binds, int $start, ?OrmException $error): void
+    public function publish(string $kind, array $tables, ?int $transaction, string $sql, array $binds, int $start,
+        ?OrmException $error): void
     {
         if ($this->state->subscribers === []) {
             return;
@@ -273,19 +279,22 @@ final class Db
             }
         }
         $event = new StatementEvent($sql, array_values($binds), $kind, $tables, $elapsed, $transaction, $error);
-        // Iterates over a copy of the list. Even if a subscriber unsubscribes, the order of this event stays the same.
+        // Iterates over a copy of the list. Even if a subscriber unsubscribes, the order of this event stays
+        // the same.
         foreach ($this->state->subscribers as $subscriber) {
             try {
                 $subscriber($event);
             } catch (\Throwable $e) {
-                throw new OrmException(Code::SUBSCRIBER, 'statement event subscriber failed: ' . $e->getMessage(), $e);
+                throw new OrmException(Code::SUBSCRIBER, 'statement event subscriber failed: ' . $e->getMessage(),
+                    $e);
             }
         }
     }
 
     /**
-     * @internal Sends one statement that is not a model statement, and publishes its event. $send runs the statement
-     * and returns its result. A driver error is mapped to an OrmException, attached to the event, and thrown.
+     * @internal Sends one statement that is not a model statement, and publishes its event. $send runs the
+     * statement and returns its result. A driver error is mapped to an OrmException, attached to the event,
+     * and thrown.
      *
      * @template T
      * @param list<string> $tables
@@ -293,14 +302,15 @@ final class Db
      * @param \Closure(): T $send
      * @return T
      */
-    public function observed(string $kind, array $tables, ?int $transaction, string $sql, array $binds, \Closure $send): mixed
+    public function observed(string $kind, array $tables, ?int $transaction, string $sql, array $binds,
+        \Closure $send): mixed
     {
         return $this->observedAs(false, $kind, $tables, $transaction, $sql, $binds, $send);
     }
 
     /**
-     * The body of observed. If $control is true, this is a transaction control statement, so a statement fault does not
-     * block it.
+     * The body of observed. If $control is true, this is a transaction control statement, so a statement
+     * fault does not block it.
      *
      * @template T
      * @param list<string> $tables
@@ -308,18 +318,21 @@ final class Db
      * @param \Closure(): T $send
      * @return T
      */
-    private function observedAs(bool $control, string $kind, array $tables, ?int $transaction, string $sql, array $binds, \Closure $send): mixed
+    private function observedAs(bool $control, string $kind, array $tables, ?int $transaction, string $sql,
+        array $binds, \Closure $send): mixed
     {
         $this->handle();
-        return $this->send($send, function (int $start, ?OrmException $error) use ($kind, $tables, $transaction, $sql, $binds): void {
+        return $this->send($send, function (int $start, ?OrmException $error)
+            use ($kind, $tables, $transaction, $sql, $binds): void {
             $this->publish($kind, $tables, $transaction, $sql, $binds, $start, $error);
         }, $control);
     }
 
     /**
      * Sends one statement and publishes its event. $send sends the statement and returns the result, and
-     * $done publishes the event with the hrtime before the statement was sent and the error. A driver error is mapped to an
-     * OrmException, attached to the event, and thrown. A statement whose $control is false consumes an armed statement fault:
+     * $done publishes the event with the hrtime before the statement was sent and the error. A driver error
+     * is mapped to an OrmException, attached to the event, and thrown. A statement whose $control is false
+     * consumes an armed statement fault:
      * it is not sent, and ends with that error (docs/spec/protocol.md 3.2).
      *
      * @template T
@@ -368,17 +381,19 @@ final class Db
     }
 
     /**
-     * @internal Runs one statement that is not a model statement and returns its row as position-ordered values. A statement with no row
-     * returns an empty list. The $n placeholders of PostgreSQL text are changed to ?, which pdo_pgsql accepts, and
-     * sent. The event's sql is the text as is.
+     * @internal Runs one statement that is not a model statement and returns its row as position-ordered
+     * values. A statement with no row returns an empty list. The $n placeholders of PostgreSQL text are
+     * changed to ?, which pdo_pgsql accepts, and sent. The event's sql is the text as is.
      *
      * @param list<string> $tables
      * @param list<mixed> $args
      * @return list<list<mixed>>
      */
-    public function fetch(string $kind, array $tables, ?int $transaction, string $sql, array $args = [], bool $control = false): array
+    public function fetch(string $kind, array $tables, ?int $transaction, string $sql, array $args = [],
+        bool $control = false): array
     {
-        return $this->observedAs($control, $kind, $tables, $transaction, $sql, $args, function () use ($sql, $args): array {
+        return $this->observedAs($control, $kind, $tables, $transaction, $sql, $args,
+            function () use ($sql, $args): array {
             $text = $sql;
             $bound = $args;
             if ($this->driver === 'postgres') {
@@ -465,7 +480,8 @@ final class Db
         }
         $frame = self::$frames[count(self::$frames) - 1] ?? null;
         if ($frame === null) {
-            throw new OrmException(Code::CONFIG, 'the model has no connection; use connect or run it inside a transaction');
+            throw new OrmException(Code::CONFIG, 'the model has no connection; use connect or run it inside a '
+                . 'transaction');
         }
         return [$frame->db, $frame];
     }
@@ -475,7 +491,8 @@ final class Db
     {
         if ($conn === null) {
             if (self::$frames === []) {
-                throw new OrmException(Code::CONFIG, 'the model has no connection; use connect or run it inside a transaction');
+                throw new OrmException(Code::CONFIG, 'the model has no connection; use connect or run it inside a '
+                    . 'transaction');
             }
             $fn();
             return;
@@ -489,14 +506,16 @@ final class Db
      * transaction of the same connection inside an active one creates a
      * savepoint and accepts only retry, which it ignores.
      *
-     * $audit is the audit record value (column => value) for this unit of work. If there is a value, the transaction starts
-     * before it, calls the connection setting's auditSource once, and in each attempt, right before the first write of an audited table, adds
-     * $audit to that value (for the same column, $audit wins) and inserts one row into the audit record table of the set registered on
-     * the connection. A transaction that writes no audited row inserts no record: a first update, delete, or restore that matches no
-     * row undoes the record with a savepoint, and a rolled back savepoint undoes the record with the write that inserted it.
-     * Every audited insert, update, soft delete, and restore in the transaction writes its primary key to the audit
-     * column (docs/spec/dbspec.md "Audit"). If there is no source, or the record table is not one table, or a value's
-     * key is not a column of that table, it is CONFIG before the transaction starts.
+     * $audit is the audit record value (column => value) for this unit of work. If there is a value, the
+     * transaction starts before it, calls the connection setting's auditSource once, and in each attempt,
+     * right before the first write of an audited table, adds $audit to that value (for the same column,
+     * $audit wins) and inserts one row into the audit record table of the set registered on the connection.
+     * A transaction that writes no audited row inserts no record: a first update, delete, or restore that
+     * matches no row undoes the record with a savepoint, and a rolled back savepoint undoes the record with
+     * the write that inserted it. Every audited insert, update, soft delete, and restore in the transaction
+     * writes its primary key to the audit column (docs/spec/dbspec.md "Audit"). If there is no source, or
+     * the record table is not one table, or a value's key is not a column of that table, it is CONFIG before
+     * the transaction starts.
      * A nested transaction uses the outer transaction's audit and does not accept $audit.
      *
      * @template T
@@ -504,7 +523,8 @@ final class Db
      * @param array<string, mixed>|null $audit
      * @return T
      */
-    public function transaction(\Closure $fn, string $isolation = '', bool $readOnly = false, int $timeoutMs = 0, int $retry = 3, ?array $audit = null): mixed
+    public function transaction(\Closure $fn, string $isolation = '', bool $readOnly = false, int $timeoutMs = 0,
+        int $retry = 3, ?array $audit = null): mixed
     {
         if ($retry < 0) {
             throw new OrmException(Code::CONFIG, 'transaction retry must not be negative');
@@ -512,7 +532,8 @@ final class Db
         if ($timeoutMs < 0) {
             throw new OrmException(Code::CONFIG, 'transaction timeoutMs must not be negative');
         }
-        if (!in_array($isolation, ['', 'read_uncommitted', 'read_committed', 'repeatable_read', 'serializable'], true)) {
+        if (!in_array($isolation, ['', 'read_uncommitted', 'read_committed', 'repeatable_read',
+            'serializable'], true)) {
             throw new OrmException(Code::CONFIG, "unsupported transaction isolation $isolation");
         }
         if ($audit !== null) {
@@ -529,7 +550,8 @@ final class Db
         }
         if ($outer !== null) {
             if ($isolation !== '' || $readOnly || $timeoutMs !== 0 || $audit !== null) {
-                throw new OrmException(Code::CONFIG, 'a nested transaction of the same connection accepts only the retry option');
+                throw new OrmException(Code::CONFIG, 'a nested transaction of the same connection accepts only the '
+                    . 'retry option');
             }
             return $this->savepoint($outer, $fn);
         }
@@ -546,18 +568,20 @@ final class Db
     }
 
     /**
-     * The audit record: the audit source's value plus the transaction's value. For the same column, the transaction's value
-     * wins. The record table is the one table that the set registered on the connection's audit setting names with references, and that
-     * table must be the entity of a set registered on the connection. If there is no audit source, or the record table
-     * is missing or there are several, or a value's key is not a column of that table, or the primary key is not
-     * a single column, it is CONFIG. The source is called once before the transaction starts, and its exception passes through unchanged.
+     * The audit record: the audit source's value plus the transaction's value. For the same column, the
+     * transaction's value wins. The record table is the one table that the set registered on the connection's
+     * audit setting names with references, and that table must be the entity of a set registered on the
+     * connection. If there is no audit source, or the record table is missing or there are several, or a
+     * value's key is not a column of that table, or the primary key is not a single column, it is CONFIG. The
+     * source is called once before the transaction starts, and its exception passes through unchanged.
      *
      * @param array<string, mixed> $values
      * @return array{hash: string, entity: array, values: array<string, mixed>}
      */
     private function auditRecord(array $values): array
     {
-        $source = $this->config->auditSource ?? throw new OrmException(Code::CONFIG, 'the transaction has audit values but the connection has no audit source: set Config auditSource');
+        $source = $this->config->auditSource ?? throw new OrmException(Code::CONFIG,
+            'the transaction has audit values but the connection has no audit source: set Config auditSource');
         $models = [];
         foreach (array_keys($this->state->sets) as $hash) {
             $models[$hash] = Registry::model($hash);
@@ -572,10 +596,12 @@ final class Db
         }
         sort($tables, SORT_STRING);
         if ($tables === []) {
-            throw new OrmException(Code::CONFIG, 'the transaction has audit values but no set of the connection has an audited table');
+            throw new OrmException(Code::CONFIG, 'the transaction has audit values but no set of the connection has '
+                . 'an audited table');
         }
         if (count($tables) > 1) {
-            throw new OrmException(Code::CONFIG, 'the audited tables of the connection record their audits in ' . implode(', ', $tables) . '; one audit record table is required');
+            throw new OrmException(Code::CONFIG, 'the audited tables of the connection record their audits in '
+                . implode(', ', $tables) . '; one audit record table is required');
         }
         $target = null;
         foreach ($models as $hash => $model) {
@@ -586,10 +612,12 @@ final class Db
             }
         }
         if ($target === null) {
-            throw new OrmException(Code::CONFIG, "the audit record table {$tables[0]} is not a table of a set registered on the connection");
+            throw new OrmException(Code::CONFIG, "the audit record table {$tables[0]} is not a table of a set "
+                . "registered on the connection");
         }
         if (count($target['entity']['pk']) !== 1) {
-            throw new OrmException(Code::CONFIG, "the audit record table {$tables[0]} needs a primary key of one column");
+            throw new OrmException(Code::CONFIG,
+                "the audit record table {$tables[0]} needs a primary key of one column");
         }
         $merged = [];
         foreach ([$source(), $values] as $set) {
@@ -602,7 +630,8 @@ final class Db
             }
         }
         if ($merged === []) {
-            throw new OrmException(Code::CONFIG, "the audit record of {$tables[0]} has no value: the audit source and the transaction give none");
+            throw new OrmException(Code::CONFIG, "the audit record of {$tables[0]} has no value: the audit source "
+                . "and the transaction give none");
         }
         $target['values'] = $merged;
         return $target;
@@ -624,7 +653,8 @@ final class Db
         ksort($values, SORT_STRING);
         foreach ($values as $column => $value) {
             $value = $value === null ? null : Model::encodeValue($entity['columns'][$column], $value);
-            $r->ir['set'][] = $value === null ? ['column' => $column, 'null' => true] : ['column' => $column, 'p' => $r->param($value)];
+            $r->ir['set'][] = $value === null ? ['column' => $column, 'null' => true]
+                : ['column' => $column, 'p' => $r->param($value)];
         }
         [$id] = $this->writeOf($frame, $r);
         $pk = $entity['pk'][0];
@@ -647,12 +677,14 @@ final class Db
             try {
                 $this->finish($frame, false);
             } catch (\Throwable $cleanup) {
-                // Reports both the callback error and the error at the end of the transaction (docs/spec/interfaces.md).
+                // Reports both the callback error and the error at the end of the transaction
+                // (docs/spec/interfaces.md).
                 throw OrmException::rollback($failure, $cleanup);
             }
             if ($this->state->rollbackFault) {
                 $this->state->rollbackFault = false;
-                throw OrmException::rollback($failure, new OrmException(Code::FAULT, 'test fault: the rollback of the transaction ran and is reported as failed'));
+                throw OrmException::rollback($failure, new OrmException(Code::FAULT,
+                    'test fault: the rollback of the transaction ran and is reported as failed'));
             }
             throw $failure;
         }
@@ -674,12 +706,13 @@ final class Db
         }
         $level = strtoupper(str_replace('_', ' ', $isolation));
         if ($this->driver === 'sqlite') {
-            // The SQLite row lock table is created once, outside a transaction, before the connection's first transaction.
+            // The SQLite row lock table is created once, outside a transaction, before the connection's first
+            // transaction.
             $this->ensureRowLockTable();
         }
         $frame = new TxFrame($this, $readOnly, $isolation, $this->nextTransaction());
-        // The statement that opens a transaction (docs/operations/usage.md "Statement events"). Instead of the driver's transaction
-        // API, the client sends this text as is.
+        // The statement that opens a transaction (docs/operations/usage.md "Statement events"). Instead of the
+        // driver's transaction API, the client sends this text as is.
         // Each step is [kind, sql, control]. A step whose control is true is a transaction control statement.
         $steps = [];
         switch ($this->driver) {
@@ -687,10 +720,12 @@ final class Db
                 if ($level !== '') {
                     $steps[] = [StatementEvent::UTILITY, 'SET TRANSACTION ISOLATION LEVEL ' . $level, true];
                 }
-                $steps[] = [StatementEvent::BEGIN, $readOnly ? 'START TRANSACTION READ ONLY' : 'START TRANSACTION', true];
+                $steps[] = [StatementEvent::BEGIN,
+                    $readOnly ? 'START TRANSACTION READ ONLY' : 'START TRANSACTION', true];
                 break;
             case 'postgres':
-                $steps[] = [StatementEvent::BEGIN, 'BEGIN' . ($level !== '' ? ' ISOLATION LEVEL ' . $level : '') . ($readOnly ? ' READ ONLY' : ''), true];
+                $steps[] = [StatementEvent::BEGIN, 'BEGIN' . ($level !== '' ? ' ISOLATION LEVEL ' . $level : '')
+                    . ($readOnly ? ' READ ONLY' : ''), true];
                 if ($timeoutMs > 0) {
                     // statement_timeout is neither isolation nor read-only, so it is not a control statement.
                     $steps[] = [StatementEvent::UTILITY, 'SET LOCAL statement_timeout = ' . $timeoutMs, true];
@@ -747,7 +782,8 @@ final class Db
         if ($this->state->rowLockReady) {
             return;
         }
-        $this->run(StatementEvent::UTILITY, [self::ROW_LOCK_TABLE], null, 'CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))', true);
+        $this->run(StatementEvent::UTILITY, [self::ROW_LOCK_TABLE], null,
+            'CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))', true);
         $this->state->rowLockReady = true;
     }
 
@@ -808,7 +844,8 @@ final class Db
         };
         foreach ($frame->locks as $key) {
             $attempt(function () use ($key, $frame): void {
-                $released = $this->fetch(StatementEvent::UTILITY, [], $frame->number, 'SELECT RELEASE_LOCK(?)', [$key], true)[0][0] ?? null;
+                $released = $this->fetch(StatementEvent::UTILITY, [], $frame->number, 'SELECT RELEASE_LOCK(?)',
+                    [$key], true)[0][0] ?? null;
                 // If it is not 1, this connection did not hold the lock.
                 if ((string) $released !== '1') {
                     throw new OrmException(Code::CONFIG, "lock $key was not held at transaction end");
@@ -821,7 +858,8 @@ final class Db
             $keys = array_map('strval', array_keys($frame->locals));
             sort($keys, SORT_STRING);
             foreach ($keys as $key) {
-                $attempt(fn() => $this->run(StatementEvent::UTILITY, [], $frame->number, 'SET @`orm.' . $key . '` = NULL', true));
+                $attempt(fn() => $this->run(StatementEvent::UTILITY, [], $frame->number,
+                    'SET @`orm.' . $key . '` = NULL', true));
             }
         }
         if ($this->driver === 'sqlite') {
@@ -829,7 +867,8 @@ final class Db
                 $attempt(fn() => $this->control(StatementEvent::UTILITY, $frame->number, 'PRAGMA query_only = 0'));
             }
             if ($frame->isolation === 'read_uncommitted') {
-                $attempt(fn() => $this->control(StatementEvent::UTILITY, $frame->number, 'PRAGMA read_uncommitted = 0'));
+                $attempt(fn() => $this->control(StatementEvent::UTILITY, $frame->number,
+                    'PRAGMA read_uncommitted = 0'));
             }
         }
         return $errors;
@@ -841,7 +880,8 @@ final class Db
         if (count($errors) <= 1) {
             return $errors[0] ?? null;
         }
-        return new OrmException(Code::CONFIG, implode('; ', array_map(static fn(\Throwable $e): string => $e->getMessage(), $errors)), $errors[0]);
+        return new OrmException(Code::CONFIG,
+            implode('; ', array_map(static fn(\Throwable $e): string => $e->getMessage(), $errors)), $errors[0]);
     }
 
     private function savepoint(TxFrame $frame, \Closure $fn): mixed
@@ -858,7 +898,8 @@ final class Db
             } catch (\Throwable $e) {
                 array_pop(self::$frames);
                 $failure = $e instanceof \PDOException ? $this->driverError($e) : $e;
-                // Attempts both statements: the one that undoes the work after the savepoint, and the one that releases the savepoint.
+                // Attempts both statements: the one that undoes the work after the savepoint, and the one that
+                // releases the savepoint.
                 $ended = self::joined(array_values(array_filter([
                     $this->endSavepoint($frame, StatementEvent::ROLLBACK_TO, $name),
                     $this->endSavepoint($frame, StatementEvent::RELEASE, $name),
@@ -1023,7 +1064,8 @@ final class Db
     public function writeOf(?TxFrame $frame, Request $r, ?\Closure $afterHook = null): array
     {
         $this->hook($r);
-        // The hook has run and the planner has not yet renumbered the parameters: a caller that reads the request as the hook left it reads here.
+        // The hook has run and the planner has not yet renumbered the parameters: a caller that reads the request
+        // as the hook left it reads here.
         if ($afterHook !== null) {
             $afterHook($r);
         }
@@ -1037,7 +1079,8 @@ final class Db
             return [$keys[0] ?? null, $affected];
         }
         $step = $this->plan($r)['steps'][0];
-        $settle = $frame !== null && self::bindsAudit($step) ? $this->auditFor($frame, $r->ir['kind'] !== 'insert') : null;
+        $settle = $frame !== null && self::bindsAudit($step)
+            ? $this->auditFor($frame, $r->ir['kind'] !== 'insert') : null;
         try {
             $args = $this->args($step, $r->params, [], $frame);
             [$id, $affected] = $this->sendWrite($step, $args, $r);
@@ -1074,7 +1117,8 @@ final class Db
                 $entity = Registry::model($r->ir['manifest_hash'])->entity($r->ir['entity']);
                 // An upsert writes one row: MySQL counts 2 for the one that updates, PostgreSQL and SQLite 1.
                 $upsert = $insert && ($r->ir['on_duplicate'] ?? []) !== [];
-                return [$insert && !isset($r->ir['rows']) && $entity['identity'] !== '' ? $this->handle()->lastInsertId() : null, $upsert ? 1 : $st->rowCount()];
+                return [$insert && !isset($r->ir['rows']) && $entity['identity'] !== ''
+                    ? $this->handle()->lastInsertId() : null, $upsert ? 1 : $st->rowCount()];
             } catch (\PDOException $e) {
                 throw self::failed($st, $e);
             }
@@ -1093,10 +1137,11 @@ final class Db
     }
 
     /**
-     * Makes sure the audit record precedes a write of an audited table: when the transaction has a pending record and has not
-     * inserted it, it inserts it now. $guard is true for an update, delete, or restore, which can match no row: the record is then
-     * inserted inside the savepoint orm_audit, and the returned closure, called with the affected count (0 for a failed write),
-     * releases the savepoint when the write changed a row and otherwise rolls the record back; it returns the error of that
+     * Makes sure the audit record precedes a write of an audited table: when the transaction has a pending
+     * record and has not inserted it, it inserts it now. $guard is true for an update, delete, or restore,
+     * which can match no row: the record is then inserted inside the savepoint orm_audit, and the returned
+     * closure, called with the affected count (0 for a failed write), releases the savepoint when the write
+     * changed a row and otherwise rolls the record back; it returns the error of that
      * statement, or null. Without a guard, or with nothing to insert, it returns null.
      *
      * @return (\Closure(int): ?\Throwable)|null
@@ -1153,7 +1198,8 @@ final class Db
         $params = array_values($params);
         foreach ($step['bind_slots'] ?? [] as $i => $b) {
             if ($b['from'] === 'param' && ($b['param'] < 0 || $b['param'] >= count($params))) {
-                throw new OrmException(Code::IR_INVALID, sprintf('bind slot %d reads parameter %d, but execute has %d parameters', $i, $b['param'], count($params)));
+                throw new OrmException(Code::IR_INVALID, sprintf('bind slot %d reads parameter %d, but execute has '
+                    . '%d parameters', $i, $b['param'], count($params)));
             }
         }
         if ($frame !== null && self::bindsAudit($step)) {
@@ -1207,22 +1253,23 @@ final class Db
     }
 
     /**
-     * A bound datetime value as text with precision fraction digits: a digit past precision must be zero and is
-     * dropped, and a non-zero digit there is no value of the column (CODEC_ENCODE).
+     * A bound datetime value as text with precision fraction digits: a digit past precision must be zero and
+     * is dropped, and a non-zero digit there is no value of the column (CODEC_ENCODE).
      */
     private static function boundTimeText(\DateTimeImmutable $t, int $precision, string $colType): string
     {
         if (trim(substr($t->format('u'), $precision), '0') !== '') {
-            throw new OrmException(Code::CODEC_ENCODE, "$colType value " . $t->format('Y-m-d H:i:s.u') . " has a non-zero digit past its $precision fraction digits");
+            throw new OrmException(Code::CODEC_ENCODE, "$colType value " . $t->format('Y-m-d H:i:s.u')
+                . " has a non-zero digit past its $precision fraction digits");
         }
         return self::timeText($t, $precision);
     }
 
     /**
-     * Writes a datetime or date value as text with no offset. A datetime is converted to UTC and
-     * has fractional digits of the column precision, so it matches the text stored in SQLite, and
-     * MySQL and PostgreSQL do not accept offset literals (docs/spec/dialects.md). A date is
-     * the calendar date of the value.
+     * Writes a datetime or date value as text with no offset. A datetime is converted to UTC and has
+     * fractional digits of the column precision, so it matches the text stored in SQLite, and MySQL and
+     * PostgreSQL do not accept offset literals (docs/spec/dialects.md). A date is the calendar date of the
+     * value.
      */
     private function bindTimeValue(mixed $v, string $colType, int $precision): mixed
     {
@@ -1230,8 +1277,9 @@ final class Db
     }
 
     /**
-     * Writes date, time, and datetime values as text with no offset (bindTimeValue). A time is `HH:MM:SS` followed by
-     * fractional digits of the precision. The IR executor message writes precision 6 (docs/spec/protocol.md §5).
+     * Writes date, time, and datetime values as text with no offset (bindTimeValue). A time is `HH:MM:SS`
+     * followed by fractional digits of the precision. The IR executor message writes precision 6
+     * (docs/spec/protocol.md §5).
      *
      * @internal
      */
@@ -1241,31 +1289,36 @@ final class Db
             $v = \DateTimeImmutable::createFromInterface($v)->setTimezone($zone)->format('H:i:s.u');
         }
         if ($colType === 'time' && is_string($v)) {
-            if (preg_match('/^(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?$/D', $v, $m) !== 1 || (int) $m[1] > 23 || (int) $m[2] > 59 || (int) $m[3] > 59) {
+            if (preg_match('/^(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?$/D', $v, $m) !== 1
+                || (int) $m[1] > 23 || (int) $m[2] > 59 || (int) $m[3] > 59) {
                 throw new OrmException(Code::CODEC_ENCODE, "time value \"$v\" is not HH:MM:SS[.ffffff]");
             }
             $fraction = str_pad($m[4] ?? '', 6, '0');
             if (trim(substr($fraction, $precision), '0') !== '') {
-                throw new OrmException(Code::CODEC_ENCODE, "time value \"$v\" has a non-zero digit past its $precision fraction digits");
+                throw new OrmException(Code::CODEC_ENCODE, "time value \"$v\" has a non-zero digit past its "
+                    . "$precision fraction digits");
             }
             return "$m[1]:$m[2]:$m[3]" . ($precision > 0 ? '.' . substr($fraction, 0, $precision) : '');
         }
         if ($v instanceof \DateTimeInterface) {
             return $colType === 'date'
                 ? $v->format('Y-m-d')
-                : self::boundTimeText(\DateTimeImmutable::createFromInterface($v)->setTimezone($zone), $precision, $colType);
+                : self::boundTimeText(\DateTimeImmutable::createFromInterface($v)->setTimezone($zone),
+                    $precision, $colType);
         }
         if (!is_string($v)) {
             return $v;
         }
         if ($colType === 'date') {
-            $d = preg_match('/^\d{4}-\d{2}-\d{2}$/D', $v) === 1 ? \DateTimeImmutable::createFromFormat('!Y-m-d', $v, $zone) : false;
+            $d = preg_match('/^\d{4}-\d{2}-\d{2}$/D', $v) === 1
+                ? \DateTimeImmutable::createFromFormat('!Y-m-d', $v, $zone) : false;
             if ($d === false || $d->format('Y-m-d') !== $v) {
                 throw self::invalidTimeText($v, $colType);
             }
             return $v;
         }
-        if (preg_match('/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})(?:\.(\d{1,6}))?(Z|[+-]\d{2}:\d{2})?$/D', $v, $m) !== 1) {
+        if (preg_match('/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})(?:\.(\d{1,6}))?' . '(Z|[+-]\d{2}:\d{2})?$/D',
+            $v, $m) !== 1) {
             throw self::invalidTimeText($v, $colType);
         }
         $fraction = $m[3] ?? '';
@@ -1328,7 +1381,8 @@ final class Db
                             : Decimal::normalize($v, $b['precision'], $b['scale']);
                     }
                     if ($v instanceof \DateTimeInterface) {
-                        $v = \DateTimeImmutable::createFromInterface($v)->setTimezone($this->zone)->format('Y-m-d H:i:s.u');
+                        $v = \DateTimeImmutable::createFromInterface($v)
+                            ->setTimezone($this->zone)->format('Y-m-d H:i:s.u');
                     }
                     if (($b['transform'] ?? '') !== '') {
                         $v = Transform::param($b['transform'], $v);
@@ -1363,9 +1417,11 @@ final class Db
                     break;
                 case 'audit':
                     $audit = $frame?->audit ??
-                    throw new OrmException(Code::CONFIG, 'a write of an audited table needs an audit: run it in a transaction with audit values');
+                    throw new OrmException(Code::CONFIG, 'a write of an audited table needs an audit: run it in a '
+                        . 'transaction with audit values');
                 if ($audit['table'] !== ($b['name'] ?? '')) {
-                    throw new OrmException(Code::CONFIG, "the audited table records its audits in {$b['name']}, but the audit of the transaction is a row of {$audit['table']}");
+                    throw new OrmException(Code::CONFIG, "the audited table records its audits in {$b['name']}, but "
+                        . "the audit of the transaction is a row of {$audit['table']}");
                 }
                     $out[] = $audit['key'];
                     break;
@@ -1434,10 +1490,14 @@ final class Db
         foreach ($this->masks as $i => $mask) {
             $args[$i] = $mask;
         }
-        $this->publish(self::statementKind($step['sql']), $step['tables'], $this->transactionNumber(), $sql, $args, $start, $err);
+        $this->publish(self::statementKind($step['sql']), $step['tables'], $this->transactionNumber(), $sql,
+            $args, $start, $err);
     }
 
-    /** The kind of statement the planner wrote: the first word of the SQL. ALTER is the schema statement of the MySQL identity restart. */
+    /**
+     * The kind of statement the planner wrote: the first word of the SQL. ALTER is the schema statement of the
+     * MySQL identity restart.
+     */
     private static function statementKind(string $sql): string
     {
         return match (strtoupper(explode(' ', ltrim($sql), 2)[0])) {
@@ -1459,15 +1519,19 @@ final class Db
         $noWait = str_ends_with($mode, '_nowait');
         $previous = 0;
         if ($noWait) {
-            $previous = (int) ($this->fetch(StatementEvent::UTILITY, [], $tx, 'PRAGMA busy_timeout', [], true)[0][0] ?? 0);
+            $previous = (int) ($this->fetch(StatementEvent::UTILITY, [], $tx,
+                'PRAGMA busy_timeout', [], true)[0][0] ?? 0);
             $this->run(StatementEvent::UTILITY, [], $tx, 'PRAGMA busy_timeout=0', true);
         }
         try {
             $this->ensureRowLockTable();
-            $this->run(StatementEvent::UTILITY, [self::ROW_LOCK_TABLE], $tx, 'INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO UPDATE SET "id"=excluded."id"', true);
+            $this->run(StatementEvent::UTILITY, [self::ROW_LOCK_TABLE], $tx,
+                'INSERT INTO "orm__row_lock" ("id") VALUES (1) ' . 'ON CONFLICT ("id") DO UPDATE SET "id"=excluded."id"',
+                true);
         } catch (OrmException $e) {
             $driverError = $e->getPrevious();
-            if ($noWait && $driverError instanceof \PDOException && (((int) ($driverError->errorInfo[1] ?? 0)) & 0xff) === 5) {
+            if ($noWait && $driverError instanceof \PDOException
+                && (((int) ($driverError->errorInfo[1] ?? 0)) & 0xff) === 5) {
                 throw new OrmException(Code::LOCK_NOT_AVAILABLE, $driverError->getMessage(), $driverError);
             }
             throw $e;
@@ -1494,7 +1558,8 @@ final class Db
                 throw self::failed($st, $e);
             }
         }, fn(int $start, ?OrmException $error) => $this->modelDone($step, $sql, $args, $start, $error));
-        // An error from failing to free a row that was read is not the statement's error, so it is thrown after the event.
+        // An error from failing to free a row that was read is not the statement's error, so it is thrown
+        // after the event.
         if ($step['decode'] !== []) {
             Codec::decodeRows($rows, $step['decode'], $this->config);
         }
@@ -1619,7 +1684,8 @@ final class Db
                 continue;
             }
             if ($step['bind_slots'][$slot]['from'] === 'parent') {
-                $sql .= implode($width === 1 ? ', ' : '), (', array_fill(0, $n, implode(', ', array_fill(0, $width, '?'))));
+                $sql .= implode($width === 1 ? ', ' : '), (',
+                    array_fill(0, $n, implode(', ', array_fill(0, $width, '?'))));
             } else {
                 $sql .= '?';
             }
@@ -1631,10 +1697,12 @@ final class Db
     private static function relationChunks(array $step, array $vals, string $driver): array
     {
         $width = count($step['parent']['keys']);
-        $nonParent = count(array_filter($step['bind_slots'] ?? [], static fn(array $b): bool => $b['from'] !== 'parent'));
+        $nonParent = count(array_filter($step['bind_slots'] ?? [],
+            static fn(array $b): bool => $b['from'] !== 'parent'));
         $maxTuples = intdiv(self::bindLimit($driver) - $nonParent, $width);
         if ($maxTuples < 1) {
-            throw new OrmException(Code::IR_INVALID, "relation {$step['id']} needs more bind parameters than $driver permits");
+            throw new OrmException(Code::IR_INVALID, "relation {$step['id']} needs more bind parameters "
+                . "than $driver permits");
         }
         $chunk = 1;
         while ($chunk * 2 <= $maxTuples) {
@@ -1675,7 +1743,8 @@ final class Db
         if (count($step['bind_slots'] ?? []) <= $limit) {
             return [];
         }
-        $tooLarge = new OrmException(Code::IR_INVALID, 'the statement needs ' . count($step['bind_slots']) . " bind parameters but {$this->driver} permits $limit");
+        $tooLarge = new OrmException(Code::IR_INVALID, 'the statement needs ' . count($step['bind_slots'])
+            . " bind parameters but {$this->driver} permits $limit");
         $ir = $r->ir;
         $items = $ir['where']['items'] ?? [];
         if (isset($ir['limit']) || isset($ir['order']) || isset($ir['group_by']) || $items === []) {
@@ -1691,7 +1760,8 @@ final class Db
             if (($item['pred']['conn'] ?? '') === 'or' || $nextConn === 'or') {
                 throw $tooLarge;
             }
-            if ($item['pred']['op'] === 'in' && !isset($item['pred']['sub']) && ($target < 0 || count($item['pred']['ps']) > count($items[$target]['pred']['ps']))) {
+            if ($item['pred']['op'] === 'in' && !isset($item['pred']['sub'])
+                && ($target < 0 || count($item['pred']['ps']) > count($items[$target]['pred']['ps']))) {
                 $target = $i;
             }
         }

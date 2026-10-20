@@ -15,7 +15,10 @@ final class Renderer
     public const DIALECTS = ['mysql', 'postgres', 'sqlite'];
     public const UUID_PATTERN = '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
     private const COMPARISONS = ['=' => true, '<>' => true, '<' => true, '<=' => true, '>' => true, '>=' => true];
-    private const KEYWORDS = ['and' => true, 'or' => true, 'not' => true, 'in' => true, 'between' => true, 'is' => true, 'null' => true, 'true' => true, 'false' => true];
+    private const KEYWORDS = [
+        'and' => true, 'or' => true, 'not' => true, 'in' => true, 'between' => true, 'is' => true,
+        'null' => true, 'true' => true, 'false' => true
+    ];
 
     /** @var list<string> The tokens of the check being read; the position, table, and check name go with them. */
     private array $tokens = [];
@@ -27,7 +30,9 @@ final class Renderer
     public function __construct(public readonly string $dialect)
     {
         if (!in_array($dialect, self::DIALECTS, true)) {
-            throw new \InvalidArgumentException("Unknown dialect `$dialect`; the dialects are mysql, postgres and sqlite");
+            throw new \InvalidArgumentException(
+                "Unknown dialect `$dialect`; the dialects are mysql, postgres and sqlite"
+            );
         }
     }
 
@@ -44,8 +49,8 @@ final class Renderer
     }
 
     /**
-     * Writes the same statements in the same order as render, and returns the table that each statement creates or changes
-     * alongside it. install uses it as the table of a statement event.
+     * Writes the same statements in the same order as render, and returns the table that each statement
+     * creates or changes alongside it. install uses it as the table of a statement event.
      *
      * @param list<Document> $documents
      * @return list<array{0: string, 1: string}> The statement and its table
@@ -54,7 +59,8 @@ final class Renderer
     {
         $r = new self($dialect);
         // A table of an external document is created by the set that owns that document.
-        $ordered = array_values(array_filter(self::useOrder($documents), static fn(Document $d): bool => !$d->external));
+        $ordered = array_values(array_filter(self::useOrder($documents),
+            static fn(Document $d): bool => !$d->external));
         $out = [];
         $add = static function (string $table, array $statements) use (&$out): void {
             foreach ($statements as $statement) {
@@ -70,7 +76,8 @@ final class Renderer
             foreach ($ordered as $document) {
                 foreach ($document->tables as $table) {
                     foreach (self::byName($table->foreignKeys) as $foreignKey) {
-                        $add($table->name, ['ALTER TABLE ' . $r->q($table->name) . ' ADD ' . $r->foreignKey($foreignKey)]);
+                        $add($table->name, ['ALTER TABLE ' . $r->q($table->name) . ' ADD '
+                            . $r->foreignKey($foreignKey)]);
                     }
                 }
             }
@@ -83,7 +90,12 @@ final class Renderer
         return $out;
     }
 
-    /** The table's immutable and audit trigger statements; introspection compares them with the catalog triggers. @return list<string> */
+    /**
+     * The table's immutable and audit trigger statements; introspection compares them with the catalog
+     * triggers.
+     *
+     * @return list<string>
+     */
     public static function tableTriggers(Table $t, string $dialect): array
     {
         return (new self($dialect))->triggers($t);
@@ -161,16 +173,20 @@ final class Renderer
     /** @return list<string> */
     public function table(Table $t): array
     {
-        $create = $this->createTable($t, $t->name, static fn(string $column): string => Names::render($t->name, $column), []);
+        $create = $this->createTable($t, $t->name,
+            static fn(string $column): string => Names::render($t->name, $column), []);
         $out = [$create];
         if ($this->dialect === 'sqlite') {
             foreach (self::byName($t->uniqueKeys) as $unique) {
-                $out[] = 'CREATE UNIQUE INDEX ' . $this->q($unique->name) . ' ON ' . $this->q($t->name) . ' (' . $this->list($unique->columns) . ')';
+                $out[] = 'CREATE UNIQUE INDEX ' . $this->q($unique->name) . ' ON ' . $this->q($t->name)
+                    . ' (' . $this->list($unique->columns) . ')';
             }
         }
         foreach (self::byName($t->indexes) as $index) {
-            $columns = array_map(fn(IndexColumn $c): string => $this->q($c->name) . ($c->descending ? ' DESC' : ''), $index->columns);
-            $out[] = 'CREATE INDEX ' . $this->q($index->name) . ' ON ' . $this->q($t->name) . ' (' . implode(', ', $columns) . ')';
+            $columns = array_map(fn(IndexColumn $c): string =>
+                $this->q($c->name) . ($c->descending ? ' DESC' : ''), $index->columns);
+            $out[] = 'CREATE INDEX ' . $this->q($index->name) . ' ON ' . $this->q($t->name)
+                . ' (' . implode(', ', $columns) . ')';
         }
         return $out;
     }
@@ -342,8 +358,10 @@ final class Renderer
 
     public function foreignKey(ForeignKey $f): string
     {
-        return 'CONSTRAINT ' . $this->q($f->name) . ' FOREIGN KEY (' . $this->list($f->columns) . ') REFERENCES ' . $this->q($f->table)
-            . ' (' . $this->list($f->referencedColumns) . ') ON DELETE ' . self::action($f->onDelete) . ' ON UPDATE ' . self::action($f->onUpdate);
+        return 'CONSTRAINT ' . $this->q($f->name) . ' FOREIGN KEY (' . $this->list($f->columns)
+            . ') REFERENCES ' . $this->q($f->table)
+            . ' (' . $this->list($f->referencedColumns) . ') ON DELETE ' . self::action($f->onDelete)
+            . ' ON UPDATE ' . self::action($f->onUpdate);
     }
 
     private static function action(string $action): string
@@ -450,7 +468,9 @@ final class Renderer
 
     private function invalid(string $problem): never
     {
-        throw new \InvalidArgumentException("Table {$this->table?->name} check {$this->checkName} is not a canonical predicate: $problem");
+        throw new \InvalidArgumentException(
+            "Table {$this->table?->name} check {$this->checkName} is not a canonical predicate: $problem"
+        );
     }
 
     private function peek(int $ahead = 0): ?string
@@ -540,7 +560,8 @@ final class Renderer
     private function operand(): array
     {
         $token = $this->peek();
-        if ($token !== null && preg_match('/^[A-Za-z0-9_]+$/D', $token) && !ctype_digit($token) && !isset(self::KEYWORDS[$token])) {
+        if ($token !== null && preg_match('/^[A-Za-z0-9_]+$/D', $token) && !ctype_digit($token)
+            && !isset(self::KEYWORDS[$token])) {
             $this->at++;
             return ['column', $this->findColumn($token) ?? $this->invalid("`$token` is not a column of the table")];
         }
@@ -550,7 +571,8 @@ final class Renderer
     private function checkLiteral(): array
     {
         $token = $this->peek();
-        if ($token === null || ($token !== 'true' && $token !== 'false' && Literal::number($token) === null && Literal::stringValue($token) === null)) {
+        if ($token === null || ($token !== 'true' && $token !== 'false' && Literal::number($token) === null
+            && Literal::stringValue($token) === null)) {
             $this->invalid('expected a literal, found `' . ($token ?? 'the end') . '`');
         }
         $this->at++;
@@ -610,14 +632,17 @@ final class Renderer
         if ($audit !== null) {
             $column = $audit->arguments[1];
             array_push($out, ...$this->history($t, $audit, 'audit_insert', 'AFTER INSERT', "'insert'", 'NULL'));
-            array_push($out, ...$this->history($t, $audit, 'audit_update', 'AFTER UPDATE', "'update'", 'OLD.' . $this->q($column)));
-            array_push($out, ...$this->reject($t, 'audit_delete', 'BEFORE DELETE', "table {$t->name} deletes through its soft delete column"));
+            array_push($out, ...$this->history($t, $audit, 'audit_update', 'AFTER UPDATE', "'update'",
+                'OLD.' . $this->q($column)));
+            array_push($out, ...$this->reject($t, 'audit_delete', 'BEFORE DELETE',
+                "table {$t->name} deletes through its soft delete column"));
         }
         return $out;
     }
 
     /**
-     * The body of the <table>$<event> trigger is a single statement; PostgreSQL wraps it in a function of the same name.
+     * The body of the <table>$<event> trigger is a single statement; PostgreSQL wraps it in a function of
+     * the same name.
      *
      * @return list<string>
      */
@@ -628,7 +653,8 @@ final class Renderer
         return match ($this->dialect) {
             'mysql' => ["CREATE TRIGGER $name$on$body"],
             'postgres' => [
-                "CREATE FUNCTION $name() RETURNS trigger LANGUAGE plpgsql AS \$\$BEGIN $body; " . ($rejects ? '' : 'RETURN NULL; ') . 'END$$',
+                "CREATE FUNCTION $name() RETURNS trigger LANGUAGE plpgsql AS \$\$BEGIN $body; "
+                    . ($rejects ? '' : 'RETURN NULL; ') . 'END$$',
                 "CREATE TRIGGER $name{$on}EXECUTE FUNCTION $name()",
             ],
             'sqlite' => ["CREATE TRIGGER $name{$on}BEGIN $body; END"],
@@ -647,7 +673,8 @@ final class Renderer
     }
 
     /** @return list<string> */
-    private function history(Table $t, Setting $audit, string $event, string $timing, string $actionValue, string $previousValue): array
+    private function history(Table $t, Setting $audit, string $event, string $timing, string $actionValue,
+        string $previousValue): array
     {
         [$history, , , $action, $previous] = $audit->arguments;
         $columns = [$this->q($action), $this->q($previous)];
@@ -659,11 +686,13 @@ final class Renderer
             $columns[] = $this->q($column->name);
             $values[] = 'NEW.' . $this->q($column->name);
         }
-        $body = 'INSERT INTO ' . $this->q($history) . ' (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $values) . ')';
+        $body = 'INSERT INTO ' . $this->q($history) . ' (' . implode(', ', $columns) . ') VALUES ('
+            . implode(', ', $values) . ')';
         if (count($audit->arguments) === 8) {
             // The tables table keeps one row per audit record and audited table (docs/spec/dialects.md "Triggers").
             [, $column, , , , $tablesTable, $record, $name] = $audit->arguments;
-            $tables = 'INSERT INTO ' . $this->q($tablesTable) . ' (' . $this->q($record) . ', ' . $this->q($name) . ') VALUES (NEW.' . $this->q($column) . ", '{$t->name}')";
+            $tables = 'INSERT INTO ' . $this->q($tablesTable) . ' (' . $this->q($record) . ', ' . $this->q($name)
+                . ') VALUES (NEW.' . $this->q($column) . ", '{$t->name}')";
             $body = $this->dialect === 'mysql'
                 ? "BEGIN $body; $tables ON DUPLICATE KEY UPDATE {$this->q($name)} = {$this->q($name)}; END"
                 : "$body; $tables ON CONFLICT DO NOTHING";

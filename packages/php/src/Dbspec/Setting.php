@@ -18,7 +18,11 @@ namespace Polyspec\Orm\Dbspec;
  */
 final class Setting
 {
-    public const KINDS = ['entity', 'updated', 'soft_delete', 'select_explicit', 'codec', 'aes_version', 'blind_index', 'navigation', 'markdown', 'store', 'key_prefix', 'title', 'body', 'order', 'checkbox', 'state_machine', 'immutable', 'audit'];
+    public const KINDS = [
+        'entity', 'updated', 'soft_delete', 'select_explicit', 'codec', 'aes_version', 'blind_index',
+        'navigation', 'markdown', 'store', 'key_prefix', 'title', 'body', 'order', 'checkbox', 'state_machine',
+        'immutable', 'audit'
+    ];
     public const CODEC_STAGES = ['ordered_json', 'aes', 'hex', 'gz', 'base64', 'serialize', 'yaml', 'ip'];
     /** The number of arguments before the shard clause for each store kind (including the kind). */
     public const STORE_ARGUMENTS = ['files' => 1, 'document' => 2, 'block' => 3];
@@ -43,8 +47,8 @@ final class Setting
     }
 
     /**
-     * Tells whether the audit trigger copies the column. An audit column is always copied, and a column in the exclude list
-     * column is never copied; if there is an include list, only that column is copied.
+     * Tells whether the audit trigger copies the column. An audit column is always copied, and a column in
+     * the exclude list column is never copied; if there is an include list, only that column is copied.
      */
     public function records(string $column): bool
     {
@@ -78,7 +82,8 @@ final class Setting
     }
 
     /**
-     * The audit setting line. If the list is empty, it is written without a list; otherwise the list keyword and its columns are written.
+     * The audit setting line. If the list is empty, it is written without a list; otherwise the list keyword
+     * and its columns are written.
      *
      * @param list<string>|null $columns
      */
