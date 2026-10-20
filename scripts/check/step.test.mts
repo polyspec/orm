@@ -56,6 +56,12 @@ caseTest('a passed step that leaves a temporary entry fails and the entry is rem
 // The forked child is named after the shell until it runs exec; the step waits for the exec of sleep.
 const UNTIL_EXEC = 'until ps -o args= -p $! | grep -q "^sleep "; do :; done';
 
+// removeCase kills the process of a case that is still alive, and removes the temporary directory of the case.
+function removeCase(work: string, pid: number): void {
+  if (pid && alive(pid)) process.kill(pid, 'SIGKILL');
+  rmSync(work, { recursive: true, force: true });
+}
+
 caseTest('a passed step that leaves a process in its group fails and the process is killed', PROCESS, async () => {
   const work = mkdtempSync(join(tmpdir(), 'orm-step-test-'));
   const pidFile = join(work, 'pid');
@@ -69,8 +75,7 @@ caseTest('a passed step that leaves a process in its group fails and the process
     assert.ok(lines.some(line => line.includes(`left 1 processes: ${pid} sleep 37`)), lines.join(' | '));
     assert.equal(alive(pid), false, `process ${pid} is killed`);
   } finally {
-    if (pid && alive(pid)) process.kill(pid, 'SIGKILL');
-    rmSync(work, { recursive: true, force: true });
+    removeCase(work, pid);
   }
 });
 
@@ -89,8 +94,7 @@ caseTest('a failed step keeps its temporary entries in the report and leaves no 
     assert.ok(lines.some(line => line.includes(`left 1 processes: ${pid} sleep 38`)), lines.join(' | '));
     assert.equal(alive(pid), false, `process ${pid} is killed`);
   } finally {
-    if (pid && alive(pid)) process.kill(pid, 'SIGKILL');
-    rmSync(work, { recursive: true, force: true });
+    removeCase(work, pid);
   }
 });
 

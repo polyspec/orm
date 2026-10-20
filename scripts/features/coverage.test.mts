@@ -43,6 +43,15 @@ function defined<T>(value: T | undefined): T {
 
 // The deadline of each case: a check in memory 1 s, a case that runs several node processes 8 s, Go test
 // binary, a case that builds and runs a Rust test binary or state reader 120 s.
+// sampleManifest is the manifest of one independent Go feature whose only test is the owner file.
+function sampleManifest(owner: string): SampleManifest {
+  return { features: [{ id: 'sample', status: 'partial', parity: parityOf(['go']),
+    coverage: { kind: 'independent', cases: ['first'],
+      owners: { go: { part: 'packages/go/sample', tests: [owner],
+        commands: { none: [{ runner: 'go', test: owner, cases: ['first'], symbols: { first: 'TestFirst' } }] } } },
+      dependents: [] } }] };
+}
+
 caseTest('one feature can run without declaring unrelated coverage complete', 1000, () => {
   const manifest = { features: [{ id: 'one' }, { id: 'two' }] };
   assert.deepEqual(selectFeatures(manifest, 'one').features, [{ id: 'one' }]);
@@ -265,11 +274,7 @@ caseTest('every Go execution runs the test instead of reading the test cache', 1
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-go-')));
   const owner = 'packages/go/sample/sample_test.go';
   const runs = join(root, 'runs');
-  const manifest: SampleManifest = { features: [{ id: 'sample', status: 'partial', parity: parityOf(['go']),
-    coverage: { kind: 'independent', cases: ['first'],
-      owners: { go: { part: 'packages/go/sample', tests: [owner],
-        commands: { none: [{ runner: 'go', test: owner, cases: ['first'], symbols: { first: 'TestFirst' } }] } } },
-      dependents: [] } }] };
+  const manifest = sampleManifest(owner);
   try {
     await mkdir(join(root, 'packages/go/sample'), { recursive: true });
     await mkdir(runs);
@@ -300,11 +305,7 @@ func TestFirst(t *testing.T) {
 caseTest('a slow but healthy coverage build runs to its end without a deadline', 120000, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-slow-')));
   const owner = 'packages/go/sample/sample_test.go';
-  const manifest: SampleManifest = { features: [{ id: 'sample', status: 'partial', parity: parityOf(['go']),
-    coverage: { kind: 'independent', cases: ['first'],
-      owners: { go: { part: 'packages/go/sample', tests: [owner],
-        commands: { none: [{ runner: 'go', test: owner, cases: ['first'], symbols: { first: 'TestFirst' } }] } } },
-      dependents: [] } }] };
+  const manifest = sampleManifest(owner);
   const path = process.env.PATH;
   try {
     const realGo = execFileSync('sh', ['-c', 'command -v go']).toString().trim();

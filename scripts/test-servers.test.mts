@@ -19,6 +19,19 @@ const exited = (pid: number): boolean => { const state = processState(pid); retu
 // The stopPid case stops a fake server. Stopping a server is a long task, so it has no deadline, and its end is learned
 // from the operating system's exit event (STOP_PROCESS), not by polling. A slow but sound server that ends 1.5 seconds
 // after TERM is reported stopped after that, when its process is already gone.
+// freePort is a TCP port of the loopback address that no server listens on when the promise resolves.
+function freePort(): Promise<number> {
+  return new Promise<number>((resolve, reject) => {
+    const server = createServer();
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address();
+      if (address === null || typeof address === 'string') { reject(new Error(`the server listens on ${String(address)}, not a port`)); return; }
+      server.close(() => resolve(address.port));
+    });
+  });
+}
+
 caseTest('stopPid waits for the exit event of the server, with no polling', COMPUTE, () => {
   assert.ok(process.env.STOP_PROCESS, 'STOP_PROCESS is unset; run make orm-test-servers-check, which builds it');
   const dir = mkdtempSync(join(tmpdir(), 'orm-stop-'));
@@ -260,15 +273,7 @@ caseTest('the test MySQL server removes an expired binary log by itself', DATABA
   const root = mkdtempSync(join(tmpdir(), 'orm-binlog-'));
   // A Unix socket path cannot exceed 104 bytes, so the socket goes in a short directory.
   const socketDir = mkdtempSync('/tmp/orm-binlog-');
-  const port = await new Promise<number>((resolve, reject) => {
-    const server = createServer();
-    server.once('error', reject);
-    server.listen(0, '127.0.0.1', () => {
-      const address = server.address();
-      if (address === null || typeof address === 'string') { reject(new Error(`the server listens on ${String(address)}, not a port`)); return; }
-      server.close(() => resolve(address.port));
-    });
-  });
+  const port = await freePort();
   const mysql = (sql: string) => execFileSync('mysql', ['--no-defaults', '--protocol=TCP', '-h', '127.0.0.1', '-P', String(port), '-u', 'root', '-N', '-B', '-e', sql], { encoding: 'utf8' });
   const data = join(root, 'data');
   try {
@@ -316,16 +321,7 @@ caseTest('the test MySQL server removes an expired binary log by itself', DATABA
 // segments the replica still needs. The replica started again must stream, and a commit that waits for it must return.
 caseTest('the test PostgreSQL replica streams again after the primary wrote WAL while it was stopped', DATABASE, async () => {
   const root = mkdtempSync(join(tmpdir(), 'orm-pgwal-'));
-  const free = () => new Promise<number>((resolve, reject) => {
-    const server = createServer();
-    server.once('error', reject);
-    server.listen(0, '127.0.0.1', () => {
-      const address = server.address();
-      if (address === null || typeof address === 'string') { reject(new Error(`the server listens on ${String(address)}, not a port`)); return; }
-      server.close(() => resolve(address.port));
-    });
-  });
-  const [primaryPort, replicaPort] = [await free(), await free()];
+  const [primaryPort, replicaPort] = [await freePort(), await freePort()];
   const primary = join(root, 'primary');
   const replica = join(root, 'replica');
   const psql = (port: number, sql: string, timeout?: number) => execFileSync('psql', ['-X', '-q', '-t', '-A', '-v', 'ON_ERROR_STOP=1', '-h', '127.0.0.1', '-p', String(port), '-U', 'orm', '-d', 'postgres', '-c', sql],

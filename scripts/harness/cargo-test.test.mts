@@ -10,6 +10,21 @@ import { fileURLToPath } from 'node:url';
 import { isolatedEnvironment } from '../../tests/environment.mts';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 
+// stubCargo writes the fake cargo of a case, which prints one compiler message for each binary and runs as the test lease.
+// script is the shell body of the test binary named by its argument.
+function stubCargo(base: string, names: readonly string[], script: (name: string) => string): void {
+  mkdirSync(join(base, 'bin'));
+  const messages = names.map(name => {
+    const executable = join(base, `${name}-test`);
+    writeFileSync(executable, script(name), { mode: 0o755 });
+    return JSON.stringify({ reason: 'compiler-artifact', profile: { test: true }, executable, manifest_path: join(base, 'Cargo.toml'), target: { name } });
+  });
+  writeFileSync(join(base, 'messages.json'), `${messages.join('\n')}\n`);
+  writeFileSync(join(base, 'bin/cargo'), `#!/bin/sh\ncat ${join(base, 'messages.json')}\n`, { mode: 0o755 });
+  // The fake lease runs the command after `--` as it is.
+  writeFileSync(join(base, 'lease'), '#!/bin/sh\nwhile [ "$1" != -- ]; do shift; done\nshift\nexec "$@"\n', { mode: 0o755 });
+}
+
 caseTest('cargo-test splits options, name filters and test binary arguments', COMPUTE, () => {
   assert.deepEqual(split(['cargo', '+1.98.1', 'test', '--locked', '--features', 'a,b', '--test', 'x', 'codec', '--', '--nocapture']),
     { cargo: ['cargo', '+1.98.1'], options: ['--locked', '--features', 'a,b', '--test', 'x'], filters: ['codec'], binaryArgs: ['--nocapture'] });
@@ -49,17 +64,7 @@ caseTest('cargo-test runs every test binary after a failed one and names the fai
   const base = realpathSync(mkdtempSync(join(tmpdir(), 'cargo-test-')));
   try {
     const log = join(base, 'ran.log');
-    mkdirSync(join(base, 'bin'));
-    const messages = ['one', 'two', 'three'].map(name => {
-      const executable = join(base, `${name}-test`);
-      // --list writes one test of that binary in libtest format.
-      writeFileSync(executable, `#!/bin/sh\nif [ "$1" = --list ]; then echo '${name}_case: test'; exit 0; fi\necho ${name} >> ${log}\n${name === 'two' ? "echo 'FAIL two_case: expected 1, actual 2'; exit 4" : 'exit 0'}\n`, { mode: 0o755 });
-      return JSON.stringify({ reason: 'compiler-artifact', profile: { test: true }, executable, manifest_path: join(base, 'Cargo.toml'), target: { name } });
-    });
-    writeFileSync(join(base, 'messages.json'), `${messages.join('\n')}\n`);
-    writeFileSync(join(base, 'bin/cargo'), `#!/bin/sh\ncat ${join(base, 'messages.json')}\n`, { mode: 0o755 });
-    // The fake lease runs the command after `--` as it is.
-    writeFileSync(join(base, 'lease'), '#!/bin/sh\nwhile [ "$1" != -- ]; do shift; done\nshift\nexec "$@"\n', { mode: 0o755 });
+    stubCargo(base, ['one', 'two', 'three'], name => `#!/bin/sh\nif [ "$1" = --list ]; then echo '${name}_case: test'; exit 0; fi\necho ${name} >> ${log}\n${name === 'two' ? "echo 'FAIL two_case: expected 1, actual 2'; exit 4" : 'exit 0'}\n`);
     const result = spawnSync(process.execPath, [fileURLToPath(new URL('../../tests/cargo-test.mts', import.meta.url)), 'stub', '--', 'cargo', 'test'],
       { encoding: 'utf8', env: isolatedEnvironment({ PATH: `${join(base, 'bin')}:${process.env.PATH}`, LEASE: join(base, 'lease'), CARGO_LEASES: join(base, 'leases') }) });
     assert.equal(result.status, 4, result.stdout + result.stderr);
@@ -124,15 +129,7 @@ caseTest('cargo-test fails when the name filters select no test in any test bina
   const base = realpathSync(mkdtempSync(join(tmpdir(), 'cargo-empty-')));
   try {
     const log = join(base, 'ran.log');
-    mkdirSync(join(base, 'bin'));
-    const messages = ['one', 'two'].map(name => {
-      const executable = join(base, `${name}-test`);
-      writeFileSync(executable, `#!/bin/sh\nif [ "$1" = --list ]; then case "$2" in ${name}*) echo '${name}_case: test';; esac; echo '0 benchmarks'; exit 0; fi\necho ${name} >> ${log}\n`, { mode: 0o755 });
-      return JSON.stringify({ reason: 'compiler-artifact', profile: { test: true }, executable, manifest_path: join(base, 'Cargo.toml'), target: { name } });
-    });
-    writeFileSync(join(base, 'messages.json'), `${messages.join('\n')}\n`);
-    writeFileSync(join(base, 'bin/cargo'), `#!/bin/sh\ncat ${join(base, 'messages.json')}\n`, { mode: 0o755 });
-    writeFileSync(join(base, 'lease'), '#!/bin/sh\nwhile [ "$1" != -- ]; do shift; done\nshift\nexec "$@"\n', { mode: 0o755 });
+    stubCargo(base, ['one', 'two'], name => `#!/bin/sh\nif [ "$1" = --list ]; then case "$2" in ${name}*) echo '${name}_case: test';; esac; echo '0 benchmarks'; exit 0; fi\necho ${name} >> ${log}\n`);
     const run = (filter: string) => spawnSync(process.execPath, [fileURLToPath(new URL('../../tests/cargo-test.mts', import.meta.url)), 'stub', '--', 'cargo', 'test', filter],
       { encoding: 'utf8', env: isolatedEnvironment({ PATH: `${join(base, 'bin')}:${process.env.PATH}`, LEASE: join(base, 'lease'), CARGO_LEASES: join(base, 'leases') }) });
     const none = run('no_such_name');

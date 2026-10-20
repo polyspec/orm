@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { caseTest } from '../../tests/testcase.mts';
 import * as ownerSelection from './owners.mts';
 import type { CheckInputs, Owner, TargetDeclaration } from './owners.mts';
-import { parseJson, SchemaError } from '../json/schema.mts';
+import { parseJson, refusedPaths } from '../json/schema.mts';
 import { readFeatures } from './manifest.mts';
 
 const { CHECK_INPUTS_SCHEMA, checkInputErrors, makeArguments, manifestChanges, manifestInputErrors, pathScopeErrors, readCheckInputs, selectHelpers, selectOwners, selectTargets, untestedPaths } = ownerSelection;
@@ -164,15 +164,7 @@ caseTest('a change across the four clients selects no full-suite target', 5000, 
 // scope is owner or suite and declares needs, an owner target declares one or more inputs or lints,
 // a suite target declares neither, and a path declaration gives a scope lint or suite and a non-empty reason for a path that is not a pattern.
 const declarationsOf = (targets: unknown, paths: unknown = {}) => JSON.stringify({ comment: '', targets, paths });
-const refused = (text: string): string[] => {
-  try {
-    parseJson<CheckInputs>(text, CHECK_INPUTS_SCHEMA, 'contracts/check-inputs.json');
-  } catch (error) {
-    assert.ok(error instanceof SchemaError, String(error));
-    return [...new Set(error.lines.map(line => line.split(' ')[1] ?? ''))];
-  }
-  return [];
-};
+const refused = (text: string): string[] => refusedPaths(() => parseJson<CheckInputs>(text, CHECK_INPUTS_SCHEMA, 'contracts/check-inputs.json'));
 
 caseTest('the schema of contracts/check-inputs.json accepts the declared shapes', 5000, () => {
   assert.deepEqual(refused(declarationsOf({ a: { scope: 'owner', needs: [], inputs: ['docs/**'] }, b: { scope: 'owner', needs: ['go'], lints: ['**/*.go'] }, c: { scope: 'suite', needs: [] } },

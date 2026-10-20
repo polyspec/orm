@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { caseTest, COMPUTE } from '../../tests/testcase.mts';
-import { parseJson, SchemaError } from '../json/schema.mts';
+import { parseJson, refusedPaths, SchemaError } from '../json/schema.mts';
 import { parseFeatures, readFeatures, type ManifestFeature } from './manifest.mts';
 
 const root = new URL('../..', import.meta.url).pathname;
@@ -13,13 +13,7 @@ assert.ok(first, 'contracts/features.json declares a feature');
 
 // refused is the instance paths of the errors of a manifest, or [] when the schema accepts it.
 function refused(value: unknown): string[] {
-  try {
-    parseFeatures(JSON.stringify(value), 'contracts/features.json');
-  } catch (error) {
-    assert.ok(error instanceof SchemaError, String(error));
-    return [...new Set(error.lines.map(line => line.split(' ')[1] ?? ''))];
-  }
-  return [];
+  return refusedPaths(() => parseFeatures(JSON.stringify(value), 'contracts/features.json'));
 }
 const withFeature = (change: (feature: ManifestFeature) => object): object => ({ ...manifest, features: [change(first)] });
 

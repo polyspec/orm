@@ -71,3 +71,14 @@ export function parseJson<T>(text: string, schema: string, source: string): T {
 export function readJsonFile<T>(file: string, schema: string): T {
   return parseJson<T>(readFileSync(file, 'utf8'), schema, file);
 }
+
+/** refusedPaths is the instance paths of the errors that a parse reports, or [] when the parse accepts the document. */
+export function refusedPaths(parse: () => unknown): string[] {
+  try {
+    parse();
+  } catch (error) {
+    if (!(error instanceof SchemaError)) throw error;
+    return [...new Set(error.lines.map(line => line.split(' ')[1] ?? ''))];
+  }
+  return [];
+}
