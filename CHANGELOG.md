@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The PHP extension implements `Polyspec\Orm\Codec` in C under the library's name: every logical-type stage of `tests/codec/vectors.json` (ordered_json, yaml, serialize, gz, base64, ip) runs in it, and `make dbspec-php-extension-check/codec` runs the vectors with the extension. Red: with the extension loaded the class was the PHP library's; host decode and AES follow in T182-2-2 and T182-2-3 (T182-2-1).
 - The Rust integration test decimal_physical.rs carries no `#[cfg(test)]`, a marker that states nothing in a file compiled only as a test; divergence-check went from 99 to 77 findings. The markers of the bin target integration.rs are KSTD-5-12-3 (KSTD-5-12-1).
 - The Python chain refuses a null argument on a non-null column with `CONFIG` for a bare, `eq` and `ne` condition, as DSL-49 rules and the PHP client does. Red: `service_seq(None)` rendered `IS NULL` and raised nothing (KSTD-2-10-4).
 - The PHP extension registers the PHP client's own classes, `Polyspec\Orm\Dbspec\*` and `Polyspec\Orm\Code`, with no `Native` namespace and no guard, and the extension's make targets run the `packages/php` tests with the extension loaded; the 13 mirrored test files are removed after every case was mapped to its client test, and the analyze argument errors gained their cases. Red: `make test-php-ext` reported every registered class as `Native`, declared by no library class (T182-0-2).

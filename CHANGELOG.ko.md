@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 4dec0d2880c805946530b9d9c4b0b073ebc1d5b39f39468634575bbc621b531a -->
+<!-- source-sha256: 9bf743e59dad74d427c1cd6b6bf1b96a493ed7b0b5f81e4bd9eae1c9a6c3417d -->
 # 변경 이력
 
 ## Unreleased
+- PHP extension이 library 이름으로 `Polyspec\Orm\Codec`을 C로 구현한다: `tests/codec/vectors.json`의 모든 logical type stage(ordered_json, yaml, serialize, gz, base64, ip)가 extension에서 돌고, `make dbspec-php-extension-check/codec`이 extension으로 vector를 돌린다. red: extension을 켜도 class는 PHP library의 것이었다; host decode와 AES는 T182-2-2와 T182-2-3에서 따른다(T182-2-1).
 - Rust integration test decimal_physical.rs에 test로만 compile되는 파일에서 아무 뜻이 없는 `#[cfg(test)]`가 없다; divergence-check finding이 99개에서 77개가 되었다. bin target integration.rs의 marker는 KSTD-5-12-3이다 (KSTD-5-12-1).
 - Python chain이 DSL-49와 PHP client처럼 non-null column의 null 인자를 조건 없음, `eq`, `ne`에서 `CONFIG`로 거부한다. red: `service_seq(None)`이 아무것도 던지지 않고 `IS NULL`을 render했다 (KSTD-2-10-4).
 - PHP extension이 PHP client 자신의 class `Polyspec\Orm\Dbspec\*`와 `Polyspec\Orm\Code`를 `Native` namespace도 guard도 없이 등록하고, extension의 make target이 extension을 켠 채 `packages/php` test를 돌린다; mirror test 파일 13개는 모든 case를 client test에 대응시킨 뒤 지웠고, analyze 인자 오류에 case를 더했다. red: `make test-php-ext`가 등록된 모든 class를 어떤 library class도 선언하지 않는 `Native`로 보고했다(T182-0-2).
