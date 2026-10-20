@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: c483ac1804ef5fa1ea6a8e688f2dbc83fbf24feadb9b01607efcd2dde451de38 -->
+<!-- source-sha256: f7ff0df6bfd8973ed617306272d4e1b9ac35dca0857d550550c5e843e15e363e -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -50,7 +50,7 @@
 | KSTD-2-11-7-3 | manifest text가 manifestHash로 hash되지 않는 set을 등록하면 INT-54대로 모든 client에서 CONFIG이다 (KSTD-2-11-7-1 후속). Cause: Python의 Db.register와 Db.connect_schema가 SCHEMA_HASH_MISMATCH를 내는데 Go, PHP, TypeScript는 CONFIG를 낸다 | packages/python, its tests, config/parity.json | `packages/python/.venv/bin/python -m unittest packages.python.tests.test_schema_utils` | [o] |
 | KSTD-2-11-7-4 | statement event 규칙이 모든 client가 노출하는 것을 적는다: sql, secret을 바꾼 binds, kind, tables, elapsed, transaction, error (KSTD-2-11-7-1 후속). Cause: docs/spec/interfaces.md는 query event가 bind 수와 plan 식별자를 노출한다고 하지만 어떤 client도 이를 노출하지 않아, statement event unit이 인용할 참인 규칙이 없다 | docs/spec/interfaces.md and its Korean twin, config/parity.json | `node --test tests/interfaces/check/api.test.mts` | [ ] |
 | KSTD-2-11-7-5 | wasInserted와 backendWaitingForLock이 INT-52와 INT-53대로 모든 client에 있다 (KSTD-2-11-7-1 후속). Cause: Go client만 이를 구현하는데 spec은 이를 client 표면으로 규정한다 | the utilities of the PHP, TypeScript, Python and Rust clients, their tests, config/parity.json | `node --test tests/interfaces/check/api.test.mts` | [ ] |
-| KSTD-2-11-7-6 | 음수 row count를 가진 GroupRow는 모든 client에서 같은 오류이고, 그 규칙을 적고 인용한다 (KSTD-2-11-7-1 후속). Cause: Python은 이를 CODEC_DECODE로 거부하는데 Go, PHP, TypeScript는 INTERNAL을 낸다 | packages/python, docs/spec/interfaces.md, config/parity.json | `node --test tests/interfaces/check/api.test.mts` | [ ] |
+| KSTD-2-11-7-6 | 음수 row count를 가진 GroupRow는 모든 client에서 같은 오류이고, 그 규칙을 적고 인용한다 (KSTD-2-11-7-1 후속). Cause: Python은 이를 CODEC_DECODE로 거부하는데 Go, PHP, TypeScript는 INTERNAL을 낸다 | packages/python, docs/spec/interfaces.md, config/parity.json | `node --test tests/interfaces/check/api.test.mts` | [~] |
 | KSTD-2-11-8 | 각 feature-coverage case는 모든 구현에 묶인 하나의 중립 unit이다 (KSTD-2-11 후속). Cause: unit 153개가 같은 case를 언어마다 binding 하나씩 선언한다 | config/parity.json, tests of every implementation | `make parity-declarations-check` | [~] |
 | KSTD-2-11-9 | dbspec apply, plan, introspect unit은 여섯 구현 unit이다 (KSTD-2-11 후속). Cause: unit 40개가 한 동작을 구현마다 나눈다 | config/parity.json, tests of every implementation | `make parity-declarations-check` | [ ] |
 | KSTD-2-11-10 | collection identity와 group rows unit은 INT-31과 INT-62를 인용하는 여섯 구현 unit이다 (KSTD-2-11 후속). Cause: unit 18개가 한 동작을 구현마다 나눈다 | config/parity.json, tests of every implementation | `make parity-declarations-check` | [ ] |
