@@ -74,10 +74,12 @@ caseTest('TestRecordKeepsTheRequirements', COMPUTE, () => withTemporaryDirectory
   const vectors = join(directory, 'vectors.json');
   writeFileSync(vectors, '{"requirements":["DSL-1"],"vectors":[{"name":"one","chain":"one","expect":{"result":0}}]}');
   quietly(() => recordVerified(root, writeOutputs(root, '{"one":{"result":1}}'), 'mysql'));
-  const recorded = JSON.parse(readFileSync(vectors, 'utf8')) as { requirements?: unknown; vectors: { expect: unknown }[] };
+  const recorded: unknown = JSON.parse(readFileSync(vectors, 'utf8'));
+  assert.ok(typeof recorded === 'object' && recorded !== null && 'vectors' in recorded && Array.isArray(recorded.vectors), 'record wrote no vector list');
   assert.deepEqual(Object.keys(recorded), ['requirements', 'vectors'], 'record dropped the requirements or moved them');
-  assert.deepEqual(recorded.requirements, ['DSL-1'], 'record changed the requirements');
-  assert.deepEqual(recorded.vectors[0]?.expect, { result: 1 }, 'record did not save the agreed result');
+  assert.deepEqual('requirements' in recorded ? recorded.requirements : undefined, ['DSL-1'], 'record changed the requirements');
+  const first: unknown = recorded.vectors[0];
+  assert.deepEqual(typeof first === 'object' && first !== null && 'expect' in first ? first.expect : undefined, { result: 1 }, 'record did not save the agreed result');
 }));
 
 caseTest('TestCompareRejectsUndeclaredDialectExpectation', COMPUTE, () => withTemporaryDirectory('orm-conformance-check-test-', temp => {

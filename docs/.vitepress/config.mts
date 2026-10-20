@@ -2,7 +2,7 @@ import { defineConfig, type UserConfig } from 'vitepress';
 import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { dbsFences, dbsInfo, renderDbs } from './dbs';
-import { englishHref } from './links.ts';
+import { englishHref } from './links';
 
 /** The markdown-it instance that VitePress gives markdown.config, and the token of its token streams. */
 type Markdown = Parameters<NonNullable<NonNullable<UserConfig['markdown']>['config']>>[0];

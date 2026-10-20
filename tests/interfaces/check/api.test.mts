@@ -38,7 +38,7 @@ caseTest('the API units of the error catalog cover every code of errors.yaml onc
     const id = `error-code-${code.toLowerCase().replaceAll('_', '-')}`;
     const unit = units.find(entry => entry.id === id);
     assert.ok(unit, `no API unit ${id} for the code ${code} of docs/spec/errors.yaml`);
-    assert.deepEqual(unit.symbols?.map(entry => entry.implementation).sort(), (parity.implementations ?? []).map(entry => entry.name).sort(), `${id} names other implementations than the declared ones`);
+    assert.deepEqual(unit.symbols?.map(entry => entry.implementation).sort((a = '', b = '') => a.localeCompare(b)), (parity.implementations ?? []).map(entry => entry.name).sort((a = '', b = '') => a.localeCompare(b)), `${id} names other implementations than the declared ones`);
   }
   assert.deepEqual(apiProblems(root, parity, codes), [], 'the API units of the error catalog do not match docs/spec/errors.yaml and the catalog files');
 });

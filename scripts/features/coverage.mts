@@ -47,7 +47,7 @@ type CargoBuilt = { files: Map<string, string[]>; programs: Record<string, strin
 /** The builds that the executions share. */
 type Builds = { test2json: Built | null; go: Map<string, Built>; cargo: Map<string, CargoBuilt>; cargoReady: Promise<void> };
 /** The planned executions of one item. */
-type Plan = { feature: Feature; item: Item; native: Spec[]; dsn: string | null | undefined };
+type Plan = { feature: Feature; item: Item; native: Spec[]; dsn: string | null };
 /** A process of a planned execution. */
 type Prepared = { program: string; args: string[]; cwd?: string | undefined; label?: string; env?: Record<string, string> };
 
@@ -644,7 +644,7 @@ export async function executeCoverage(manifest: Manifest, root: string, timeoutM
         catch (error) { errors.push(`${key}: ${error instanceof Error ? error.message : String(error)}`); continue; }
         for (const spec of native) if (spec.format === 'case') spec.cwd ??= cwd;
         const dsnEnv = command[0]?.dsn_env ?? '';
-        const dsn = item.database === 'none' ? null : process.env[dsnEnv];
+        const dsn = item.database === 'none' ? null : process.env[dsnEnv] ?? '';
         if (item.database !== 'none' && !dsn) {
           errors.push(`${key}: missing database DSN in ${dsnEnv}`);
           continue;

@@ -7,7 +7,7 @@
 //
 // Usage: node scripts/typescript/build.mts
 import { spawnSync } from 'node:child_process';
-import { chmodSync, existsSync, readFileSync, renameSync, rmSync } from 'node:fs';
+import { chmodSync, existsSync, renameSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -44,8 +44,8 @@ if (built.status !== 0) {
 }
 // tsc writes files with mode 644; a bin the package declares runs through a consumer's node_modules/.bin, so it is made
 // executable in the new output before it is published.
-const bins: Record<string, string> = JSON.parse(readFileSync(join(client, 'package.json'), 'utf8')).bin ?? {};
-for (const file of Object.values(bins)) {
+const bin = readPackage(join(client, 'package.json')).bin;
+for (const file of typeof bin === 'string' ? [bin] : Object.values(bin ?? {})) {
   if (!file.startsWith('./dist/')) throw new Error(`typescript build: the bin ${file} is not built into dist`);
   chmodSync(join(next, file.slice('./dist/'.length)), 0o755);
 }
