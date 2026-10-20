@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: fc91ddf36821c36c00c624f81a789c7f792ca05be5e721c5dd4e1ab73e31e3da -->
+<!-- source-sha256: 39a2d5cac9993302a60773a9988b0e0dcbb3088017c595991f89fea92d7d988f -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -59,4 +59,4 @@
 | KSTD-5-10 | PHP extension은 stub 하나를 가진 하나의 extension polyspec_orm이어서 lint-php-ext와 test-php-ext가 통과한다 (kit K293, S10) (KSTD-5 후속). Cause: kit은 repository의 extension을 package polyspec/orm-php-ext의 polyspec_orm으로, stub은 packages/php-ext/src/polyspec_orm.stub.php 하나로 정하는데, orm은 polyspec/orm-dbspec에서 stub 두 개로 orm_dbspec을 build한다 | packages/php-ext, its stubs, config/parity.json | `make lint-php-ext` | [ ] |
 | KSTD-5-11 | CHECK_TARGETS가 kit-gates의 모든 gate를 돌린다 (KSTD-5 후속). Cause: kit-check가 CHECK_TARGETS가 돌리지 않는 gate 13개를 보고한다; 각 gate는 그 sub-item이 통과하면 추가된다 | Makefile | `make kit-check` | [ ] |
 | KSTD-6 | link rebuild는 repository layout을 읽고 자기 paths를 두지 않는다 (kit K286). Cause: kit은 link된 checkout을 layout으로 rebuild하며 link 선언의 paths key는 없어진다 | kit.json, the link declaration | `make kit-check` | [ ] |
-| KSTD-7 | main에서 feature-unit-check가 통과한다. Cause: docs/features.md가 그것이 그리는 coverage와 맞지 않고, scripts/features/coverage.test.mts의 8개 case가 "no package implements the client language php-extension"으로 실패한다 | docs/features.md, scripts/features | `make feature-unit-check` | [ ] |
+| KSTD-7 | main에서 feature-unit-check가 통과한다. Cause: docs/features.md가 그것이 그리는 coverage와 맞지 않고, scripts/features/coverage.test.mts의 8개 case가 "no package implements the client language php-extension"으로 실패한다 | docs/features.md, scripts/features | `make feature-unit-check` | [o] |

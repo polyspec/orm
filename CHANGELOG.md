@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- `make feature-unit-check` passes: the PHP extension is a client language of the feature coverage, with its package, its PHPUnit run and its owner of `schema_definition`; the 16 features it does not implement yet are `partial`, and `docs/features.md` is regenerated. Red: 8 coverage cases failed with "no package implements the client language php-extension" and the generated document was stale (KSTD-7).
 - 64 implementation-internal tests (dbspec harness and loaders, unicode and vector self-checks, generator scan mechanics, test harness, bench and examples) are no longer declared as parity units; they stay and run as package tests. `make parity-declarations-check` went from 576 to 512 findings (KSTD-2-11-5).
 - Every rule of AGENTS.md says whether it is the repository's own (`Own:`, 50) or refines a principle of PRINCIPLES.md by its id (`Refines <id>:`, 8), with the same prefixes in the Korean twin. Red: `make rules-check` reported 58 rules with neither (KSTD-5-3).
 - A model call that orm-gen scans belongs to the set whose generated models its class is imported from (DSL-151), in all five generators; a class of the same name from another set is another class. Red: the TypeScript, Python and Rust scans refused `Author.getGhost()` of another set with "no aliasGhost, newGhost or addColumn call attaches it", as limepie's requests set did; Go and PHP already resolved the import, and their new cases fail when the check is broken (T226).

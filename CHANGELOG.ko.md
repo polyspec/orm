@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 4b0c26c5589ad37164842a1cc43bae17dcda63dadfcf8640258fe1a9c2a51b83 -->
+<!-- source-sha256: 7fb1cf4c0389399b38ef7b53a941d20c7805c6855ae5f7fe231a171b5c4d17c6 -->
 # 변경 이력
 
 ## Unreleased
+- `make feature-unit-check`가 통과한다: PHP extension이 package, PHPUnit 실행, `schema_definition` owner를 갖춘 feature coverage의 client 언어다; 아직 구현하지 않은 feature 16개는 `partial`이고 `docs/features.md`를 다시 생성했다. red: coverage case 8개가 "no package implements the client language php-extension"으로 실패했고 생성 문서가 낡았다(KSTD-7).
 - 구현 내부 test 64개(dbspec harness와 loader, unicode와 vector 자가 검사, generator scan 기계 장치, test harness, bench, example)를 더는 parity unit으로 선언하지 않는다; 이들은 package test로 남아 돈다. `make parity-declarations-check`가 576개에서 512개 finding이 되었다(KSTD-2-11-5).
 - AGENTS.md의 모든 규칙이 이 repository의 규칙인지(`Own:`, 50개) PRINCIPLES.md의 원칙을 그 id로 다듬는지(`Refines <id>:`, 8개)를 밝히며, 한국어 쌍에도 같은 접두사가 있다. red: `make rules-check`가 둘 다 없는 규칙 58개를 보고했다(KSTD-5-3).
 - orm-gen이 scan한 model 호출은 그 class를 import한 생성 model의 set에 속한다(DSL-151). 다섯 generator 모두 그렇고, 다른 set의 같은 이름 class는 다른 class다. red: TypeScript, Python, Rust scan이 다른 set의 `Author.getGhost()`를 limepie의 requests set처럼 "no aliasGhost, newGhost or addColumn call attaches it"로 거부했다; Go와 PHP는 이미 import를 풀었고, 그 새 case는 검사를 깨면 실패한다(T226).
