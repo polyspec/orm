@@ -377,5 +377,4 @@ await master.transaction(async () => { … }, { isolation: 'serializable', readO
 - **DSL-147** `date()` — Columns: date and time; MySQL: `DATE(c)`; PostgreSQL: `CAST(c AS date)`; SQLite: `date(c)`
 
 - **DSL-148** A column function on a column type that it does not list returns `OPERATOR_NOT_ALLOWED`.
-- **DSL-149** SQLite stores `decimal` values as floating-point numbers, so decimal arithmetic in SQLite can differ from MySQL and PostgreSQL. The ORM does not change the SQLite storage.
 - **DSL-150** The minimum SQLite version is 3.46. A client reads the version of the SQLite library its driver links (Go `RegisterSQLiteVersion` from `modernc.org/sqlite`, PHP `PDO::ATTR_SERVER_VERSION`, TypeScript `process.versions.sqlite`, Rust `libsqlite3_sys::SQLITE_VERSION`, Python `sqlite3.sqlite_version`) and connects without a statement that asks for it or checks the connection.

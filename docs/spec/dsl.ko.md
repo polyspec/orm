@@ -1,5 +1,5 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: 461a442bef4c4d72a98d07d77b8fb8f8de57d48507e03f0d9d8fc03e4df515eb -->
+<!-- source-sha256: 4c0752c1d91b0f67b14ef14c7b183cf1157b4aac204324d445f9d0a56fa2fd2d -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
@@ -378,5 +378,4 @@ await master.transaction(async () => { … }, { isolation: 'serializable', readO
 - **DSL-147** `date()` — 컬럼: 날짜·시각; MySQL: `DATE(c)`; PostgreSQL: `CAST(c AS date)`; SQLite: `date(c)`
 
 - **DSL-148** 목록에 없는 컬럼 타입에 컬럼 함수를 사용하면 `OPERATOR_NOT_ALLOWED`를 반환한다.
-- **DSL-149** SQLite는 `decimal` 값을 부동소수점으로 저장하므로 SQLite의 십진 계산 결과는 MySQL, PostgreSQL과 다를 수 있다. ORM은 SQLite 저장 형식을 바꾸지 않는다.
 - **DSL-150** SQLite 최소 버전은 3.46이다. 클라이언트는 driver가 link한 SQLite library의 version을 읽고(Go `modernc.org/sqlite`의 `RegisterSQLiteVersion`, PHP `PDO::ATTR_SERVER_VERSION`, TypeScript `process.versions.sqlite`, Rust `libsqlite3_sys::SQLITE_VERSION`, Python `sqlite3.sqlite_version`), 그것을 묻거나 연결을 확인하는 statement 없이 연결한다.
