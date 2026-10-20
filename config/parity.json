@@ -25,7 +25,6 @@
       "name": "php-extension",
       "runner": "php",
       "roots": ["packages/php-ext"],
-      "tests": ["packages/php-ext/tests/Coverage*Test.php"],
       "support": ["packages/php-ext/tests/bootstrap.php", "packages/php-ext/tests/declarations.php"],
       "args": ["-d", "extension=${ORM_PARITY_PHP_EXTENSION}"]
     },
@@ -292,7 +291,7 @@
       "id": "schema-definition", "kind": "suite", "requirements": ["DBS-1", "DBS-103", "DBS-123", "DBS-134", "DBS-141", "DBS-142", "ORES-14"],
       "file": "contracts/fixtures/schema_definition.json", "cases": "$.cases[*].id",
       "bindings": [
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/CoverageSchemaDefinitionTest.php" },
+        { "implementation": "php-extension", "test": "packages/php/tests/CoverageSchemaDefinitionTest.php" },
         { "implementation": "go", "test": "packages/go/orm/coverage_schema_definition_test.go", "symbol": "TestCoverageSchemaDefinition" },
         { "implementation": "php", "test": "packages/php/tests/CoverageSchemaDefinitionTest.php" },
         { "implementation": "typescript", "test": "packages/ts/tests/coverage_schema_definition.mjs" },
@@ -405,7 +404,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/vectors_test.go", "symbol": "TestCanonicalVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecTest.php", "symbol": "DbspecTest::test_canonical" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecTest.php", "symbol": "DbspecTest::test_canonical" },
+        { "implementation": "php-extension", "test": "packages/php/tests/DbspecTest.php", "symbol": "DbspecTest::test_canonical" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-canonical.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_dbspec_canonical.py" },
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec.rs", "symbol": "shared_dbspec_vectors::canonical" }
@@ -417,7 +416,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/vectors_test.go", "symbol": "TestNormalizeVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecTest.php", "symbol": "DbspecTest::test_normalize" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecTest.php", "symbol": "DbspecTest::test_normalize" },
+        { "implementation": "php-extension", "test": "packages/php/tests/DbspecTest.php", "symbol": "DbspecTest::test_normalize" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-normalize.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_dbspec_normalize.py" },
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec.rs", "symbol": "shared_dbspec_vectors::normalize" }
@@ -429,7 +428,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/vectors_test.go", "symbol": "TestInvalidVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecTest.php", "symbol": "DbspecTest::test_invalid" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecTest.php", "symbol": "DbspecTest::test_invalid" },
+        { "implementation": "php-extension", "test": "packages/php/tests/DbspecTest.php", "symbol": "DbspecTest::test_invalid" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-invalid.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_dbspec_invalid.py" },
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec.rs", "symbol": "shared_dbspec_vectors::invalid" }
@@ -441,7 +440,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/manifest_test.go", "symbol": "TestManifestVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecManifestTest.php", "symbol": "DbspecManifestTest::test_hashes" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecTest.php", "symbol": "DbspecTest::test_hashes" },
+        { "implementation": "php-extension", "test": "packages/php/tests/DbspecManifestTest.php", "symbol": "DbspecManifestTest::test_hashes" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-hashes.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_dbspec_hashes.py" },
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_manifest.rs", "symbol": "manifest_vectors" }
@@ -451,7 +450,7 @@
       "id": "dbspec-sets", "kind": "suite", "requirements": ["DBS-30", "DBS-35", "DBS-101", "DBS-105", "DBS-106", "DBS-168"],
       "file": "tests/dbspec/cases.json", "cases": "$.sets[*].id",
       "bindings": [
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecSetsTest.php", "symbol": "DbspecSetsTest::test_sets" },
+        { "implementation": "php-extension", "test": "packages/php/tests/DbspecManifestTest.php", "symbol": "DbspecManifestTest::test_sets" },
         { "implementation": "go", "test": "packages/go/engine/dbspec/manifest_test.go", "symbol": "TestDocumentSets" },
         { "implementation": "php", "test": "packages/php/tests/DbspecManifestTest.php", "symbol": "DbspecManifestTest::test_sets" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-sets.mjs" },
@@ -465,7 +464,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/vectors_test.go", "symbol": "TestFileVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecTest.php", "symbol": "DbspecTest::test_files" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecTest.php", "symbol": "DbspecTest::test_files" },
+        { "implementation": "php-extension", "test": "packages/php/tests/DbspecTest.php", "symbol": "DbspecTest::test_files" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-files.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_dbspec_files.py" },
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec.rs", "symbol": "shared_dbspec_files" }
@@ -477,7 +476,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/vectors_test.go", "symbol": "TestPositionVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecTest.php", "symbol": "DbspecTest::test_positions" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecTest.php", "symbol": "DbspecTest::test_positions" },
+        { "implementation": "php-extension", "test": "packages/php/tests/DbspecTest.php", "symbol": "DbspecTest::test_positions" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-positions.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_dbspec_positions.py" },
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec.rs", "symbol": "shared_dbspec_vectors::positions" }
@@ -489,7 +488,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/set_test.go", "symbol": "TestReadSetVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecSetTest.php", "symbol": "DbspecSetTest::test_set" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecSetTest.php", "symbol": "DbspecSetTest::test_set" },
+        { "implementation": "php-extension", "test": "packages/php/tests/DbspecSetTest.php", "symbol": "DbspecSetTest::test_set" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-set.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_dbspec_set_files.py" },
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_set.rs", "symbol": "shared_set_file_vectors" }
@@ -501,7 +500,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/syntax_vectors_test.go", "symbol": "TestSharedSyntaxVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecAnalyzeTest.php", "symbol": "DbspecAnalyzeTest::test_syntax" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecAnalyzeTest.php", "symbol": "DbspecAnalyzeTest::test_syntax" },
+        { "implementation": "php-extension", "test": "packages/php/tests/DbspecAnalyzeTest.php", "symbol": "DbspecAnalyzeTest::test_syntax" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-syntax.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_dbspec_syntax_vectors.py" },
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec.rs", "symbol": "shared_dbspec_syntax" }
@@ -513,7 +512,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/render_test.go", "symbol": "TestRenderVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecRenderTest.php", "symbol": "DbspecRenderTest::test_ddl" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecTest.php", "symbol": "DbspecTest::test_render" },
+        { "implementation": "php-extension", "test": "packages/php/tests/DbspecRenderTest.php", "symbol": "DbspecRenderTest::test_ddl" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-render.mjs" },
         { "implementation": "python", "test": "packages/python/tests/dbspec_ddl.py" },
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_render.rs", "symbol": "render_vectors" }
@@ -525,7 +524,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/internal/dialects/introspect_physical_test.go", "symbol": "TestIntrospectUnsupported" },
         { "implementation": "php", "test": "packages/php/tests/DbspecIntrospectTest.php", "symbol": "DbspecIntrospectTest::test_unsupported" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecIntrospectTest.php", "symbol": "DbspecIntrospectTest::test_unsupported" },
+        { "implementation": "php-extension", "test": "packages/php/tests/DbspecIntrospectTest.php", "symbol": "DbspecIntrospectTest::test_unsupported" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-introspect.mjs" },
         { "implementation": "python", "test": "packages/python/tests/dbspec_introspect.py" },
         { "implementation": "rust", "test": "packages/rust/orm/tests/dbspec_introspect.rs", "symbol": "introspect_unsupported" }
@@ -537,7 +536,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/show_create_test.go", "symbol": "TestMySQLShownCheckVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecShowCreateTest.php", "symbol": "DbspecShowCreateTest::test_show_create" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecShowCreateTest.php", "symbol": "DbspecShowCreateTest::test_introspect" },
+        { "implementation": "php-extension", "test": "packages/php/tests/DbspecShowCreateIntrospectTest.php", "symbol": "DbspecShowCreateIntrospectTest::test_introspect" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-show-create.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_dbspec_show_create.py" },
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_show_create.rs", "symbol": "show_create_vectors" }
@@ -549,7 +548,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/mermaid_test.go", "symbol": "TestMermaidExportVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecMermaidTest.php", "symbol": "DbspecMermaidTest::test_export" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecMermaidTest.php", "symbol": "DbspecMermaidTest::test_export" },
+        { "implementation": "php-extension", "test": "packages/php/tests/DbspecMermaidTest.php", "symbol": "DbspecMermaidTest::test_export" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-mermaid-export.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_dbspec_mermaid_export.py" },
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_mermaid.rs", "symbol": "mermaid_vectors::export" }
@@ -561,7 +560,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/mermaid_test.go", "symbol": "TestMermaidImportVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecMermaidTest.php", "symbol": "DbspecMermaidTest::test_import" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecMermaidTest.php", "symbol": "DbspecMermaidTest::test_import" },
+        { "implementation": "php-extension", "test": "packages/php/tests/DbspecMermaidTest.php", "symbol": "DbspecMermaidTest::test_import" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-mermaid-import.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_dbspec_mermaid_import.py" },
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_mermaid.rs", "symbol": "mermaid_vectors::import" }
@@ -573,7 +572,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/mermaid_test.go", "symbol": "TestMermaidInvalidVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecMermaidTest.php", "symbol": "DbspecMermaidTest::test_invalid" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecMermaidTest.php", "symbol": "DbspecMermaidTest::test_invalid" },
+        { "implementation": "php-extension", "test": "packages/php/tests/DbspecMermaidTest.php", "symbol": "DbspecMermaidTest::test_invalid" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-mermaid-invalid.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_dbspec_mermaid_invalid.py" },
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_mermaid.rs", "symbol": "mermaid_vectors::invalid" }
@@ -585,7 +584,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/mermaid_test.go", "symbol": "TestMermaidRoundTripVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecMermaidTest.php", "symbol": "DbspecMermaidTest::test_round_trip" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecMermaidTest.php", "symbol": "DbspecMermaidTest::test_round_trip" },
+        { "implementation": "php-extension", "test": "packages/php/tests/DbspecMermaidTest.php", "symbol": "DbspecMermaidTest::test_round_trip" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-mermaid-round-trip.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_dbspec_mermaid_round_trip.py" },
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_mermaid.rs", "symbol": "mermaid_vectors::round_trip" }
@@ -597,7 +596,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/plan_test.go", "symbol": "TestPlanVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecPlanTest.php", "symbol": "DbspecPlanTest::test_case" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecPlanTest.php", "symbol": "DbspecPlanTest::test_case" },
+        { "implementation": "php-extension", "test": "packages/php/tests/DbspecPlanTest.php", "symbol": "DbspecPlanTest::test_case" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-plan-cases.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_dbspec_plan_cases.py" },
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_plan.rs", "symbol": "plan_vectors::cases" }
@@ -609,7 +608,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/plan_test.go", "symbol": "TestPlanInvalidVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecPlanTest.php", "symbol": "DbspecPlanTest::test_invalid" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecPlanTest.php", "symbol": "DbspecPlanTest::test_invalid" },
+        { "implementation": "php-extension", "test": "packages/php/tests/DbspecPlanTest.php", "symbol": "DbspecPlanTest::test_invalid" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-plan-invalid.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_dbspec_plan_invalid.py" },
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_plan.rs", "symbol": "plan_vectors::invalid" }
@@ -621,7 +620,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/plan_test.go", "symbol": "TestPlanChains" },
         { "implementation": "php", "test": "packages/php/tests/DbspecPlanTest.php", "symbol": "DbspecPlanTest::test_chain" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecPlanTest.php", "symbol": "DbspecPlanTest::test_chain" },
+        { "implementation": "php-extension", "test": "packages/php/tests/DbspecPlanTest.php", "symbol": "DbspecPlanTest::test_chain" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-plan-chains.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_dbspec_plan_chains.py" },
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_plan.rs", "symbol": "plan_chains" }
@@ -633,7 +632,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/plan_test.go", "symbol": "TestPlanParseErrors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecPlanTest.php", "symbol": "DbspecPlanTest::test_parse" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecPlanTest.php", "symbol": "DbspecPlanTest::test_parse" },
+        { "implementation": "php-extension", "test": "packages/php/tests/DbspecPlanTest.php", "symbol": "DbspecPlanTest::test_parse" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-plan-parse.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_dbspec_plan_parse.py" },
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_plan.rs", "symbol": "plan_parse_errors" }
@@ -645,7 +644,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/plan_test.go", "symbol": "TestCompareSchemas" },
         { "implementation": "php", "test": "packages/php/tests/DbspecPlanTest.php", "symbol": "DbspecPlanTest::test_comparison" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecPlanTest.php", "symbol": "DbspecPlanTest::test_comparison" },
+        { "implementation": "php-extension", "test": "packages/php/tests/DbspecPlanTest.php", "symbol": "DbspecPlanTest::test_comparison" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-plan-comparisons.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_dbspec_plan_comparisons.py" },
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_plan.rs", "symbol": "plan_comparisons" }
@@ -712,7 +711,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/engine/dbspec/parseset_test.go", "symbol": "TestParseSetVectors" },
         { "implementation": "php", "test": "packages/php/tests/DbspecSetParseTest.php", "symbol": "DbspecSetParseTest::test_set_parse" },
-        { "implementation": "php-extension", "test": "packages/php-ext/tests/DbspecSetParseTest.php", "symbol": "DbspecSetParseTest::test_set_parse" },
+        { "implementation": "php-extension", "test": "packages/php/tests/DbspecSetParseTest.php", "symbol": "DbspecSetParseTest::test_set_parse" },
         { "implementation": "typescript", "test": "packages/ts/tests/dbspec-set-parse.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_dbspec_set_parse.py" },
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_set_parse.rs", "symbol": "shared_set_parse_vectors" }
@@ -1572,16 +1571,16 @@
     {"id": "php-internal-client-generics-phpstan-types-the-transaction-result-and-the-rows-of-a-model", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/ClientGenericsTest.php", "id": "ClientGenericsTest::test_phpstan_types_the_transaction_result_and_the_rows_of_a_model"}]},
     {"id": "php-internal-code-catalog-catalog-matches-errors-yaml", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/CodeCatalogTest.php", "id": "CodeCatalogTest::test_catalog_matches_errors_yaml"}]},
     {"id": "php-internal-conformance-result-conformance-result-php", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/ConformanceResultTest.php", "id": "ConformanceResultTest::test_conformance_result_php"}]},
-    {"id": "php-internal-failing-pdo-cleanup-errors-release", "kind": "feature", "requirements": ["PLN-98"], "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecApplyCleanupTest.php", "id": "FailingPdo::test_cleanup_errors_release"}]},
-    {"id": "php-internal-failing-pdo-cleanup-errors-begin-restore", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecApplyCleanupTest.php", "id": "FailingPdo::test_cleanup_errors_begin_restore"}]},
-    {"id": "php-internal-failing-pdo-rollback-step-outside", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecApplyCleanupTest.php", "id": "FailingPdo::test_rollback_step_outside"}]},
-    {"id": "php-internal-failing-pdo-effect-row", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecApplyCleanupTest.php", "id": "FailingPdo::test_effect_row"}]},
-    {"id": "php-internal-failing-pdo-effect-close", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecApplyCleanupTest.php", "id": "FailingPdo::test_effect_close"}]},
+    {"id": "php-internal-failing-pdo-cleanup-errors-release", "kind": "feature", "requirements": ["PLN-98"], "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecApplyCleanupTest.php", "id": "FailingPdo::test_cleanup_errors_release"}, {"implementation": "php-extension", "test": "packages/php/tests/DbspecApplyCleanupTest.php", "id": "FailingPdo::test_cleanup_errors_release"}]},
+    {"id": "php-internal-failing-pdo-cleanup-errors-begin-restore", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecApplyCleanupTest.php", "id": "FailingPdo::test_cleanup_errors_begin_restore"}, {"implementation": "php-extension", "test": "packages/php/tests/DbspecApplyCleanupTest.php", "id": "FailingPdo::test_cleanup_errors_begin_restore"}]},
+    {"id": "php-internal-failing-pdo-rollback-step-outside", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecApplyCleanupTest.php", "id": "FailingPdo::test_rollback_step_outside"}, {"implementation": "php-extension", "test": "packages/php/tests/DbspecApplyCleanupTest.php", "id": "FailingPdo::test_rollback_step_outside"}]},
+    {"id": "php-internal-failing-pdo-effect-row", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecApplyCleanupTest.php", "id": "FailingPdo::test_effect_row"}, {"implementation": "php-extension", "test": "packages/php/tests/DbspecApplyCleanupTest.php", "id": "FailingPdo::test_effect_row"}]},
+    {"id": "php-internal-failing-pdo-effect-close", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecApplyCleanupTest.php", "id": "FailingPdo::test_effect_close"}, {"implementation": "php-extension", "test": "packages/php/tests/DbspecApplyCleanupTest.php", "id": "FailingPdo::test_effect_close"}]},
     {"id": "php-internal-dbspec-introspect-stress-introspect-stress", "kind": "feature", "requirements": ["DBS-102"], "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecIntrospectStressTest.php", "id": "DbspecIntrospectStressTest::test_introspect_stress"}]},
     {"id": "php-internal-dbspec-rules-rule", "kind": "feature", "requirements": ["DBS-2", "DBS-3", "DBS-34", "DBS-46", "DBS-131", "DBS-154", "DBS-156", "DBS-157", "DBS-158", "DBS-159", "DBS-161", "DBS-162", "DBS-163", "DBS-164", "DBS-165", "DBS-166", "DBS-167", "DBS-168", "DBS-169", "DBS-171"], "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecRulesTest.php", "id": "DbspecRulesTest::test_rule"}]},
     {"id": "php-internal-dbspec-rules-limit", "kind": "feature", "requirements": ["DBS-144", "DBS-151", "DBS-170"], "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecRulesTest.php", "id": "DbspecRulesTest::test_limit"}]},
     {"id": "php-internal-dbspec-stress-stress", "kind": "feature", "requirements": ["DBS-123"], "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecStressTest.php", "id": "DbspecStressTest::test_stress"}]},
-    {"id": "php-internal-dbspec-behaviour-case", "kind": "feature", "requirements": ["DBS-2", "DBS-99", "DBS-171"], "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecBehaviourTest.php", "id": "DbspecBehaviourTest::test_case"}]},
+    {"id": "php-internal-dbspec-behaviour-case", "kind": "feature", "requirements": ["DBS-2", "DBS-32", "DBS-99", "DBS-171", "DBS-172"], "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecBehaviourTest.php", "id": "DbspecBehaviourTest::test_case"}, {"implementation": "php-extension", "test": "packages/php/tests/DbspecBehaviourTest.php", "id": "DbspecBehaviourTest::test_case"}]},
     {"id": "php-internal-dbspec-show-create-introspect", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecShowCreateIntrospectTest.php", "id": "DbspecShowCreateIntrospectTest::test_introspect"}]},
     {"id": "php-internal-group-rows-owner", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/GroupRowsTest.php", "id": "GroupRowsTest::test_owner"}]},
     {"id": "php-internal-ir-answers-ir-answer", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/IrAnswersTest.php", "id": "IrAnswersTest::test_ir_answer"}]},
@@ -1677,9 +1676,9 @@
     {"id": "php-internal-coverage-statement-events-statement-events", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/CoverageStatementEventsTest.php", "id": "CoverageStatementEventsTest::test_statement_events"}]},
     {"id": "php-internal-coverage-transactions-transaction-rollback", "kind": "feature", "requirements": ["INT-45", "PLN-13", "PLN-20"], "bindings": [{"implementation": "php", "test": "packages/php/tests/CoverageTransactionsTest.php", "id": "CoverageTransactionsTest::test_transaction_rollback"}]},
     {"id": "php-internal-coverage-transactions-transaction-savepoint", "kind": "feature", "requirements": ["INT-45", "INT-46", "PLN-17"], "bindings": [{"implementation": "php", "test": "packages/php/tests/CoverageTransactionsTest.php", "id": "CoverageTransactionsTest::test_transaction_savepoint"}]},
-    {"id": "php-internal-dbspec-apply-scenario", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecApplyTest.php", "id": "DbspecApplyTest::test_scenario"}]},
-    {"id": "php-internal-dbspec-apply-runs", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecApplyTest.php", "id": "DbspecApplyTest::test_runs"}]},
-    {"id": "php-internal-dbspec-apply-pooler", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecApplyTest.php", "id": "DbspecApplyTest::test_pooler"}]},
+    {"id": "php-internal-dbspec-apply-scenario", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecApplyTest.php", "id": "DbspecApplyTest::test_scenario"}, {"implementation": "php-extension", "test": "packages/php/tests/DbspecApplyTest.php", "id": "DbspecApplyTest::test_scenario"}]},
+    {"id": "php-internal-dbspec-apply-runs", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecApplyTest.php", "id": "DbspecApplyTest::test_runs"}, {"implementation": "php-extension", "test": "packages/php/tests/DbspecApplyTest.php", "id": "DbspecApplyTest::test_runs"}]},
+    {"id": "php-internal-dbspec-apply-pooler", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecApplyTest.php", "id": "DbspecApplyTest::test_pooler"}, {"implementation": "php-extension", "test": "packages/php/tests/DbspecApplyTest.php", "id": "DbspecApplyTest::test_pooler"}]},
     {"id": "php-internal-dbspec-plan-apply-plan", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecPlanApplyTest.php", "id": "DbspecPlanApplyTest::test_plan"}]},
     {"id": "php-internal-decimal-model-db-generate", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/DecimalModelDbTest.php", "id": "DecimalModelDbTest::test_generate"}]},
     {"id": "php-internal-decimal-model-db-setters", "kind": "feature", "requirements": ["COD-2"], "bindings": [{"implementation": "php", "test": "packages/php/tests/DecimalModelDbTest.php", "id": "DecimalModelDbTest::test_setters"}]},
@@ -1726,22 +1725,10 @@
     {"id": "php-internal-plan-cache-bound", "kind": "feature", "requirements": ["CPX-4"], "bindings": [{"implementation": "php", "test": "packages/php/tests/PlanCacheBoundTest.php", "id": "PlanCacheBoundTest::testInListLengthsShareBucketedPlans"}]},
     {"id": "php-internal-schema-set-register-sends-no-statement", "kind": "feature", "requirements": ["INT-54"], "bindings": [{"implementation": "php", "test": "packages/php/tests/SchemaSetTest.php", "id": "SchemaSetTest::test_register_sends_no_statement"}]},
     {"id": "php-internal-engine-engine", "kind": "feature", "requirements": ["PRT-1"], "bindings": [{"implementation": "php", "test": "packages/php/tests/EngineTest.php", "id": "EngineTest::test_engine"}]},
-    {"id": "php-extension-internal-dbspec-apply-cleanup-cleanup-errors-release", "kind": "feature", "requirements": ["PLN-98"], "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DbspecApplyCleanupTest.php", "id": "DbspecApplyCleanupTest::test_cleanup_errors_release"}]},
-    {"id": "php-extension-internal-dbspec-apply-cleanup-cleanup-errors-begin-restore", "kind": "feature", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DbspecApplyCleanupTest.php", "id": "DbspecApplyCleanupTest::test_cleanup_errors_begin_restore"}]},
-    {"id": "php-extension-internal-dbspec-apply-cleanup-rollback-step-outside", "kind": "feature", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DbspecApplyCleanupTest.php", "id": "DbspecApplyCleanupTest::test_rollback_step_outside"}]},
-    {"id": "php-extension-internal-dbspec-apply-cleanup-effect-row", "kind": "feature", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DbspecApplyCleanupTest.php", "id": "DbspecApplyCleanupTest::test_effect_row"}]},
-    {"id": "php-extension-internal-dbspec-apply-cleanup-effect-close", "kind": "feature", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DbspecApplyCleanupTest.php", "id": "DbspecApplyCleanupTest::test_effect_close"}]},
-    {"id": "php-extension-internal-dbspec-apply-scenario", "kind": "feature", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DbspecApplyTest.php", "id": "DbspecApplyTest::test_scenario"}]},
-    {"id": "php-extension-internal-dbspec-apply-runs", "kind": "feature", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DbspecApplyTest.php", "id": "DbspecApplyTest::test_runs"}]},
-    {"id": "php-extension-internal-dbspec-apply-pooler", "kind": "feature", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DbspecApplyTest.php", "id": "DbspecApplyTest::test_pooler"}]},
-    {"id": "php-extension-internal-dbspec-names-render", "kind": "feature", "requirements": ["DBS-32", "DBS-172"], "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DbspecNamesTest.php", "id": "DbspecNamesTest::test_render"}]},
-    {"id": "php-extension-internal-dbspec-names-column", "kind": "feature", "requirements": ["DBS-32", "DBS-172"], "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DbspecNamesTest.php", "id": "DbspecNamesTest::test_column"}]},
-    {"id": "php-extension-internal-dbspec-names-of-table", "kind": "feature", "requirements": ["DBS-32", "DBS-172"], "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DbspecNamesTest.php", "id": "DbspecNamesTest::test_of_table"}]},
     {"id": "php-extension-internal-declarations-required-modules", "kind": "feature", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DeclarationsTest.php", "id": "DeclarationsTest::test_required_modules"}]},
     {"id": "php-extension-internal-declarations-declarations", "kind": "feature", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DeclarationsTest.php", "id": "DeclarationsTest::test_declarations"}]},
     {"id": "php-extension-internal-declarations-client", "kind": "feature", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DeclarationsTest.php", "id": "DeclarationsTest::test_client"}]},
     {"id": "php-extension-internal-declarations-package", "kind": "feature", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DeclarationsTest.php", "id": "DeclarationsTest::test_package"}]},
-    {"id": "php-extension-internal-declarations-mirrors", "kind": "feature", "bindings": [{"implementation": "php-extension", "test": "packages/php-ext/tests/DeclarationsTest.php", "id": "DeclarationsTest::test_mirrors"}]},
     {
       "id": "ir-answers", "kind": "suite", "requirements": ["PRT-69", "PRT-71", "PRT-72"],
       "file": "contracts/fixtures/ir_answers.json", "cases": "$.cases[*].id",

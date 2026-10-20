@@ -16,3 +16,11 @@ export function packageDirectoryOf(language: string): string {
   if (directory === undefined) throw new Error(`no package implements the client language ${language}`);
   return directory;
 }
+
+/**
+ * testDirectoryOf is the package directory whose tests check a client language: that of its package, except for the PHP extension,
+ * which runs the tests of the PHP library with the extension loaded (S10), since it registers the library's own names.
+ */
+export function testDirectoryOf(language: string): string {
+  return language === 'php-extension' ? packageDirectoryOf('php') : packageDirectoryOf(language);
+}

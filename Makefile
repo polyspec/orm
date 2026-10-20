@@ -331,12 +331,13 @@ dbspec-introspect-ts-check: lease-tool
 dbspec-introspect-php-check: php-vendor-check
 	$(WITH_TEST_ENV) $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecIntrospectTest.php
 
-# dbspec-introspect-php-extension-check runs the same round trip and unsupported cases with the PHP extension polyspec_orm's
-# Polyspec\Orm\Dbspec\Native\Dbspec::introspect. The extension is built in this run's directory.
+# dbspec-introspect-php-extension-check runs the same round trip and unsupported cases, the PHP client's DbspecIntrospectTest, with the PHP
+# extension polyspec_orm loaded, whose Polyspec\Orm\Dbspec\Dbspec::introspect takes the place of the client's. The extension is built in
+# this run's directory.
 .PHONY: dbspec-introspect-php-extension-check
 dbspec-introspect-php-extension-check: php-vendor-check
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
-	$(WITH_TEST_ENV) php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecIntrospectTest.php
+	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/DbspecIntrospectTest.php
 	rm -rf $(RUN_DIR)
 
 # dbspec-introspect-rust-check runs the same round trip and the cases of tests/dbspec/introspect.json with the Rust
@@ -436,12 +437,13 @@ dbspec-plan-php-check: php-vendor-check
 dbspec-apply-php-check: php-vendor-check
 	$(WITH_TEST_ENV) $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecApplyTest.php
 
-# dbspec-apply-php-extension-check runs the same scenario with Polyspec\Orm\Dbspec\Native\Dbspec::apply,
-# recover, rollback, and finalize of the PHP extension polyspec_orm. The extension is built in this run's directory.
+# dbspec-apply-php-extension-check runs the same scenario, the PHP client's DbspecApplyTest, with the PHP extension polyspec_orm loaded,
+# whose Polyspec\Orm\Dbspec\Dbspec::apply, recover, rollback, and finalize take the place of the client's. The extension is built in this
+# run's directory.
 .PHONY: dbspec-apply-php-extension-check
 dbspec-apply-php-extension-check: php-vendor-check
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
-	$(WITH_TEST_ENV) php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecApplyTest.php
+	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/DbspecApplyTest.php
 	rm -rf $(RUN_DIR)
 
 # dbspec-introspect-compare-check applies the stress document (DBSPEC_INTROSPECT_TABLES tables) to MySQL,
@@ -689,63 +691,73 @@ dbspec-php-check/set-parse: php-vendor-check
 	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecSetParseTest.php
 
 .PHONY: dbspec-php-extension-check
-# dbspec-php-extension-check checks the PHP extension polyspec_orm (packages/php-ext, which implements the PHP client's dbspec surface in C,
-# Polyspec\Orm\Dbspec\Native): it checks the names, the one stub and the stub hash of src/polyspec_orm_arginfo.h (make lint-php-ext), builds the extension
-# with phpize in this run's directory and loads it, then checks that Reflection matches src/polyspec_orm.stub.php and the PHP client's public dbspec
-# class, and that the shared dbspec, statement, plan, and Mermaid vectors and the apply cleanup errors (the same cases as the PHP client's plan,
-# Mermaid, and apply cleanup tests) produce the same results as the pure PHP client on SQLite's introspection and application,
-# each checked twice. The build uses the phpize and php-config on PATH, which make orm-install-php-extension-tools checks;
+# dbspec-php-extension-check checks the PHP extension polyspec_orm (packages/php-ext), which implements the PHP client's dbspec surface and
+# error codes in C under the client's own class names (Polyspec\Orm\Dbspec\*, Polyspec\Orm\Code; docs/spec/dbspec.md, DBS-172): it checks
+# the names, the one stub and the stub hash of src/polyspec_orm_arginfo.h (make lint-php-ext), builds the extension with phpize in this
+# run's directory, checks that its Reflection matches src/polyspec_orm.stub.php and the PHP client's public classes (DeclarationsTest), and
+# runs the PHP client's own tests (packages/php/tests) with the extension loaded: Composer's autoloader loads a class of the client only
+# when the extension has not registered it, so the extension's classes take the place of the client's. A run that holds results of a
+# whole document set runs twice. The build uses the phpize and php-config on PATH, which make orm-install-php-extension-tools checks;
 # make php-ext-arginfo rewrites the header from the stub.
 PHP_EXTENSION_LIBRARY = $(RUN_DIR)/php-extension/polyspec_orm.so
+# PHP_EXTENSION_TESTS runs PHPUnit files of packages/php with the extension loaded.
+PHP_EXTENSION_TESTS = php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist
 dbspec-php-extension-check/%: RUN_DIR = $(abspath .runtime/run)/dbspec-php-extension-check-$$PPID
-.PHONY: dbspec-php-extension-check/arginfo dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/analyze dbspec-php-extension-check/names dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse dbspec-php-extension-check/sets dbspec-php-extension-check/schema-definition
-dbspec-php-extension-check: dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/analyze dbspec-php-extension-check/names dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse dbspec-php-extension-check/sets dbspec-php-extension-check/schema-definition
+.PHONY: dbspec-php-extension-check/arginfo dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/sets dbspec-php-extension-check/render dbspec-php-extension-check/graph dbspec-php-extension-check/behaviour dbspec-php-extension-check/schema-definition dbspec-php-extension-check/analyze dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse
+dbspec-php-extension-check: dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/sets dbspec-php-extension-check/render dbspec-php-extension-check/graph dbspec-php-extension-check/behaviour dbspec-php-extension-check/schema-definition dbspec-php-extension-check/analyze dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse
 	rm -rf $(RUN_DIR)
 dbspec-php-extension-check/arginfo:
 	$(NODE) $(KIT)/php-extension.$(KIT_EXT) check
 dbspec-php-extension-check/prepare:
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
+# dbspec-php-extension-check/declarations runs the extension's own checks (packages/php-ext/tests): its declarations against the stub and the
+# PHP client, its required modules and its PIE package.
 dbspec-php-extension-check/declarations: php-vendor-check dbspec-php-extension-check/prepare
-	POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DeclarationsTest.php
-	POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DeclarationsTest.php
+	php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DeclarationsTest.php
+# dbspec-php-extension-check/vectors runs DbspecTest with the extension: the canonical, normalize, invalid, files, positions, bytes and arguments cases of tests/dbspec/cases.json, introspection and apply on SQLite.
 dbspec-php-extension-check/vectors: php-vendor-check dbspec-php-extension-check/prepare
-	php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecTest.php
-	php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecTest.php
-# dbspec-php-extension-check/sets runs the sets cases of tests/dbspec/cases.json on the extension, one data set per id.
+	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecTest.php
+	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecTest.php
+# dbspec-php-extension-check/sets runs DbspecManifestTest with the extension: the hashes and sets cases of tests/dbspec/cases.json.
 dbspec-php-extension-check/sets: php-vendor-check dbspec-php-extension-check/prepare
-	php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecSetsTest.php
-# dbspec-php-extension-check/schema-definition runs the cases of contracts/fixtures/schema_definition.json on the extension.
+	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecManifestTest.php
+# dbspec-php-extension-check/render runs DbspecRenderTest with the extension: the statements of tests/dbspec/ddl.json.
+dbspec-php-extension-check/render: php-vendor-check dbspec-php-extension-check/prepare
+	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecRenderTest.php
+# dbspec-php-extension-check/graph runs DbspecGraphTest with the extension: the TypeError of a document or plan whose array holds another type.
+dbspec-php-extension-check/graph: php-vendor-check dbspec-php-extension-check/prepare
+	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecGraphTest.php
+# dbspec-php-extension-check/behaviour runs DbspecBehaviourTest with the extension: the PHP behaviours of fixtures/dbspec-behaviour.json, Names among them.
+dbspec-php-extension-check/behaviour: php-vendor-check dbspec-php-extension-check/prepare
+	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecBehaviourTest.php
+# dbspec-php-extension-check/schema-definition runs CoverageSchemaDefinitionTest with the extension: the cases of contracts/fixtures/schema_definition.json.
 dbspec-php-extension-check/schema-definition: php-vendor-check dbspec-php-extension-check/prepare
-	php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CoverageSchemaDefinitionTest.php
-# dbspec-php-extension-check/analyze checks that the extension's syntax analysis and format produce the same tokens, positions, diagnostics, emission, and
-# formatted text as the PHP client, with focused cases, every case of cases.json, and the limit errors.
+	$(PHP_EXTENSION_TESTS) packages/php/tests/CoverageSchemaDefinitionTest.php
+# dbspec-php-extension-check/analyze runs DbspecAnalyzeTest with the extension: the syntax analysis and format of the focused cases, of tests/dbspec/syntax.json and of the limit errors.
 dbspec-php-extension-check/analyze: php-vendor-check dbspec-php-extension-check/prepare
-	php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecAnalyzeTest.php
-	php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecAnalyzeTest.php
-# dbspec-php-extension-check/names checks that the extension's Names (render, ofTable, column) gives the same results and exceptions as the PHP client's Names.
-dbspec-php-extension-check/names: php-vendor-check dbspec-php-extension-check/prepare
-	php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecNamesTest.php
+	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecAnalyzeTest.php
+	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecAnalyzeTest.php
+# dbspec-php-extension-check/plan runs DbspecPlanTest with the extension: the plan vectors of tests/dbspec/plans.json.
 dbspec-php-extension-check/plan: php-vendor-check dbspec-php-extension-check/prepare
-	php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecPlanTest.php
-	php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecPlanTest.php
+	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecPlanTest.php
+	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecPlanTest.php
+# dbspec-php-extension-check/mermaid runs DbspecMermaidTest with the extension: the Mermaid vectors.
 dbspec-php-extension-check/mermaid: php-vendor-check dbspec-php-extension-check/prepare
-	php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecMermaidTest.php
-	php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecMermaidTest.php
+	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecMermaidTest.php
+	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecMermaidTest.php
+# dbspec-php-extension-check/apply-cleanup runs DbspecApplyCleanupTest with the extension: the cleanup errors of apply after a failing PDO.
 dbspec-php-extension-check/apply-cleanup: php-vendor-check dbspec-php-extension-check/prepare
-	php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecApplyCleanupTest.php
-	php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecApplyCleanupTest.php
-# dbspec-php-extension-check/show-create checks that shown_check (introspect.c) reads every case of tests/dbspec/show-create.json from a canned MySQL catalog
-# with the same checks and unsupported objects as the Go introspection, and that it rejects a missing CHECK with the same error as Go.
+	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecApplyCleanupTest.php
+	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecApplyCleanupTest.php
+# dbspec-php-extension-check/show-create runs DbspecShowCreateIntrospectTest with the extension: introspection of the canned MySQL catalog of tests/dbspec/show-create.json.
 dbspec-php-extension-check/show-create: php-vendor-check dbspec-php-extension-check/prepare
-	php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecShowCreateTest.php
-# dbspec-php-extension-check/set runs the extension's Dbspec::readSet on every case of tests/dbspec/set-files.json and
-# the focused cases and requires each result to equal the PHP client's, messages included.
+	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecShowCreateIntrospectTest.php
+# dbspec-php-extension-check/set runs DbspecSetTest with the extension: Dbspec::readSet on every case of tests/dbspec/set-files.json and the focused cases.
 dbspec-php-extension-check/set: php-vendor-check dbspec-php-extension-check/prepare
-	php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecSetTest.php
-# dbspec-php-extension-check/set-parse runs the extension's Dbspec::parseSet on every case of
-# tests/dbspec/set-parse.json and requires each result to equal the PHP client's.
+	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecSetTest.php
+# dbspec-php-extension-check/set-parse runs DbspecSetParseTest with the extension: Dbspec::parseSet on every case of tests/dbspec/set-parse.json.
 dbspec-php-extension-check/set-parse: php-vendor-check dbspec-php-extension-check/prepare
-	php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecSetParseTest.php
+	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecSetParseTest.php
 
 # repo-check checks that the paths that the root npm script uses are tracked files or
 # directories, that the CI workflow starts servers with make orm-test-servers, and that every variable of that environment file is given

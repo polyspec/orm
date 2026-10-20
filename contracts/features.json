@@ -3435,23 +3435,14 @@
         "packages/go/engine/dbspec/case_clock_test.go",
         "packages/php-ext/tests/declarations.php",
         "packages/php-ext/tests/DeclarationsTest.php",
-        "packages/php-ext/tests/DbspecTest.php",
-        "packages/php-ext/tests/DbspecPlanTest.php",
-        "packages/php-ext/tests/DbspecMermaidTest.php",
-        "packages/php-ext/tests/DbspecApplyCleanupTest.php",
-        "packages/php-ext/tests/DbspecShowCreateTest.php",
         "packages/php/tests/dbspec_set_cases.php",
         "packages/php/tests/DbspecSetTest.php",
-        "packages/php-ext/tests/DbspecSetTest.php",
         "packages/php/tests/dbspec_sets_cases.php",
-        "packages/php-ext/tests/DbspecSetsTest.php",
-        "packages/php-ext/tests/CoverageSchemaDefinitionTest.php",
         "packages/go/engine/dbspec/analyze_test.go",
         "packages/go/engine/dbspec/syntax_vectors_test.go",
         "packages/php/tests/DbspecAnalyzeTest.php",
         "packages/php/tests/dbspec_analysis_cases.php",
         "packages/php/tests/dbspec_syntax_vectors.php",
-        "packages/php-ext/tests/DbspecAnalyzeTest.php",
         "packages/rust/schema/tests/dbspec_analyze.rs",
         "packages/ts/tests/dbspec-analyze.mjs",
         "packages/ts/tests/dbspec-syntax.mjs",
@@ -3459,7 +3450,6 @@
         "packages/go/engine/dbspec/parseset_test.go",
         "packages/php/tests/dbspec_set_parse_cases.php",
         "packages/php/tests/DbspecSetParseTest.php",
-        "packages/php-ext/tests/DbspecSetParseTest.php",
         "packages/ts/tests/dbspec-set-parse.mjs",
         "packages/rust/schema/tests/dbspec_set.rs",
         "packages/rust/schema/tests/dbspec_set_parse.rs",
@@ -3468,7 +3458,6 @@
         "packages/ts/tests/dbspec-set-edges.mjs",
         "packages/ts/tests/browser-entry.mjs",
         "packages/ts/tests/syntax-vectors.mjs",
-        "packages/php-ext/tests/DbspecNamesTest.php",
         "packages/python/tests/dbspec_cases.py",
         "packages/python/tests/dbspec_ddl.py",
         "packages/python/tests/dbspec_plans.py",
@@ -3746,25 +3735,15 @@
             "packages/php-ext/src/polyspec_orm.stub.php",
             "packages/php-ext/tests/declarations.php",
             "packages/php-ext/tests/DeclarationsTest.php",
-            "packages/php-ext/tests/DbspecTest.php",
-            "packages/php-ext/tests/DbspecPlanTest.php",
             "packages/php/tests/DbspecPlanTest.php",
             "tests/dbspec/plans.json",
-            "packages/php-ext/tests/DbspecMermaidTest.php",
             "packages/php/tests/DbspecMermaidTest.php",
             "tests/dbspec/mermaid.json",
-            "packages/php-ext/tests/DbspecApplyCleanupTest.php",
             "packages/php/tests/DbspecApplyCleanupTest.php",
-            "packages/php-ext/tests/DbspecShowCreateTest.php",
-            "packages/php-ext/tests/DbspecSetTest.php",
-            "packages/php-ext/tests/DbspecSetsTest.php",
-            "packages/php-ext/tests/CoverageSchemaDefinitionTest.php",
             "packages/php/tests/dbspec_sets_cases.php",
-            "packages/php-ext/tests/DbspecSetParseTest.php",
             "packages/php/tests/dbspec_set_parse_cases.php",
             "packages/php/tests/dbspec_set_cases.php",
             "tests/dbspec/set-files.json",
-            "packages/php-ext/tests/DbspecAnalyzeTest.php",
             "packages/php/tests/dbspec_analysis_cases.php",
             "packages/php/tests/dbspec_syntax_vectors.php",
             "tests/dbspec/syntax.json",
@@ -3778,8 +3757,7 @@
             "tests/dbspec/files/invalid-utf8.dbs",
             "tests/dbspec/files/shop.dbs",
             "tests/dbspec/files/dbschema.dbs",
-            "tests/dbspec/files/empty.dbs",
-            "packages/php-ext/tests/DbspecNamesTest.php"
+            "tests/dbspec/files/empty.dbs"
           ]
         },
         {
@@ -3905,9 +3883,9 @@
             }
           },
           "php-extension": {
-            "part": "packages/php-ext/tests",
+            "part": "packages/php/tests",
             "tests": [
-              "packages/php-ext/tests/CoverageSchemaDefinitionTest.php"
+              "packages/php/tests/CoverageSchemaDefinitionTest.php"
             ],
             "inputs": [
               "contracts/fixtures/schema_definition.json"
@@ -3916,7 +3894,7 @@
               "none": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageSchemaDefinitionTest.php",
+                  "test": "packages/php/tests/CoverageSchemaDefinitionTest.php",
                   "cases": [
                     "dbspec_emit_round_trip",
                     "dbspec_manifest_hash",

@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-// The sets cases of tests/dbspec/cases.json, shared by the PHP client's DbspecManifestTest and the extension's
-// DbspecSetsTest (packages/php-ext/tests): each implementation passes its Dbspec class.
+// The sets cases of tests/dbspec/cases.json, which DbspecManifestTest checks with the PHP client and, in a process that loads
+// it, with the PHP extension polyspec_orm.
 
 use Polyspec\Orm\Dbspec\Dbspec;
 use PHPUnit\Framework\Assert;

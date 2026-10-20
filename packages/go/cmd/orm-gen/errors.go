@@ -84,10 +84,10 @@ func errorsCmd(args []string) {
 		}
 		sb.WriteString("}\n")
 	case "php-extension":
-		// The block of Polyspec\Orm\Native\Code in the one stub of the extension, between phpExtensionBegin and
+		// The block of Polyspec\Orm\Code in the one stub of the extension, between phpExtensionBegin and
 		// phpExtensionEnd: gen_stub.php writes src/polyspec_orm_arginfo.h from the stub (make php-ext-arginfo), so the
 		// extension registers the same constants as the PHP client's Code. The rest of the stub is kept as it is.
-		sb.WriteString(phpExtensionBegin + "\n\nnamespace Polyspec\\Orm\\Native;\n\n/** Error codes shared by the engine and every executor (docs/spec/errors.yaml). */\nfinal class Code\n{\n")
+		sb.WriteString(phpExtensionBegin + "\n\nnamespace Polyspec\\Orm;\n\n/** Error codes shared by the engine and every executor (docs/spec/errors.yaml). */\nfinal class Code\n{\n")
 		for _, c := range codes {
 			detail := strings.TrimSpace(c.Comment)
 			note := c.Origin

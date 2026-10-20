@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-// The PHPUnit bootstrap of packages/php (phpunit.xml.dist): the Composer autoloader of the development root (vendor-php),
-// which maps Polyspec\Orm\ to src through the path repository of packages/php, and by its autoload-dev the test models
-// Polyspec\Orm\Tests\Model\ (gen) and Polyspec\Orm\Tests\MarkdownModel\ (markdownmodel) and gen/bootstrap.php, the
-// registration of the generated test models.
-require_once dirname(__DIR__, 3) . '/vendor-php/autoload.php';
+// The PHPUnit bootstrap of packages/php (phpunit.xml.dist). PHPUnit has already loaded the Composer autoloader of its run
+// ($GLOBALS['_composer_autoload_path']): that of the development root (vendor-php), which maps Polyspec\Orm\ to src through
+// the path repository of packages/php, or, when the tests run against the extension polyspec_orm (make test-php-ext, S10), kit's
+// autoloader of the same dependencies without the library's own autoload, so that the classes the extension registers are its
+// own. Both hold the autoload-dev: the test models Polyspec\Orm\Tests\Model\ (gen) and Polyspec\Orm\Tests\MarkdownModel\
+// (markdownmodel) and gen/bootstrap.php, the registration of the generated test models.
 require_once __DIR__ . '/bench.php';

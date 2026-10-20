@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 // Applies the chain of plans.json (tests/dbspec/plans.json), create-from-empty and
-// rename-table-and-column, to one database with the PHP extension polyspec_orm (Polyspec\Orm\Dbspec\Native)
+// rename-table-and-column, to one database with the PHP extension polyspec_orm (Polyspec\Orm\Dbspec)
 // (docs/spec/plans.md "Apply"). action is one of apply-first (first plan only), apply (whole chain),
 // stop (stops after statement 1 of the second plan runs), recover (finishes the interrupted plan),
 // rollback (reverts the last plan in history). stdout gets one result line: "ok", "stopped", or
@@ -16,9 +16,9 @@ declare(strict_types=1);
 require __DIR__ . '/../../../../../vendor-php/autoload.php';
 require __DIR__ . '/../../../../../tests/dbspec/input.php';
 
-use Polyspec\Orm\Dbspec\Native\ApplyError;
-use Polyspec\Orm\Dbspec\Native\ApplyEvent;
-use Polyspec\Orm\Dbspec\Native\Dbspec;
+use Polyspec\Orm\Dbspec\ApplyError;
+use Polyspec\Orm\Dbspec\ApplyEvent;
+use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Orm;
 
 // Statement that every client runs on a new connection (packages/go/internal/dialects connectionRules).

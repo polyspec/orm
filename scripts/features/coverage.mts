@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { endGroup } from '../check/step.mts';
-import { packageDirectoryOf } from './packages.mts';
+import { testDirectoryOf } from './packages.mts';
 import { mkdir, mkdtemp, readFile, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, extname, join, relative, resolve, sep } from 'node:path';
@@ -79,7 +79,7 @@ function requirements(feature: Feature, coverage: Coverage, errors: string[]): I
   for (const language of languages) {
     if (!claimed.has(language)) continue;
     const owner = coverage.owners?.[language];
-    const directory = packageDirectoryOf(language);
+    const directory = testDirectoryOf(language);
     if (!owner || !validPart(owner.part) || !owner.part.startsWith(`${directory}/`) && owner.part !== directory) {
       errors.push(`${feature.id}/owner/${language}: missing owning client part`);
       continue;
@@ -340,12 +340,12 @@ async function nativeTest(item: Item, command: NativeCommand, root: string): Pro
     throw new Error('invalid native test file extension');
   if (command.runner === 'node')
     return { format: 'case', program: command.runner, args: [testPath, ...command.cases] };
-  // PHP runs on PHPUnit with the phpunit.xml.dist of the package of the item's language (packages/php, or packages/php-ext
-  // for the PHP extension): a case <id> is the test method test_<id> of the test file's class, selected with an anchored
-  // filter and read from the TeamCity events that PHPUnit writes to stdout. The extension's tests run on a PHP that loads
-  // the built extension library that make names in POLYSPEC_ORM_EXTENSION.
+  // PHP runs on PHPUnit with the phpunit.xml.dist of packages/php, whose tests check the PHP library and the PHP extension
+  // (testDirectoryOf): a case <id> is the test method test_<id> of the test file's class, selected with an anchored filter and
+  // read from the TeamCity events that PHPUnit writes to stdout. For the extension the tests run on a PHP that loads the built
+  // extension library that make names in POLYSPEC_ORM_EXTENSION, whose classes take the place of the library's.
   if (command.runner === 'php') {
-    const directory = packageDirectoryOf(item.language);
+    const directory = testDirectoryOf(item.language);
     const phpPackage = resolve(root, directory);
     if (!testPath.startsWith(`${phpPackage}/`)) throw new Error(`PHP test ${command.test} is outside ${directory}`);
     const extension = item.language === 'php-extension' ? process.env.POLYSPEC_ORM_EXTENSION : undefined;

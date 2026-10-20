@@ -1221,7 +1221,7 @@ caseTest('a workflow that runs a test runner after make orm-check fails by ident
   assert.equal(runnerIdentity('node tests/go-test.mts -v -timeout 0 ./packages/go/engine -count=1'), 'go test');
   assert.equal(runnerIdentity('node tests/conformance/check/main.mts record --driver mysql out/go.json'), undefined);
   assert.equal(runnerIdentity('node --test tests/conformance/check/main.test.mts'), 'node test');
-  assert.equal(runnerIdentity('php -d extension=x.so vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecTest.php'), 'phpunit vendor-php/bin/phpunit');
+  assert.equal(runnerIdentity('php -d extension=x.so vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecTest.php'), 'phpunit vendor-php/bin/phpunit');
   assert.equal(runnerIdentity("node tests/run-long.mts fuzz/ir -- go test -v ./packages/go/engine/ir -run '^$' -fuzz FuzzDecodeRequest"), undefined);
   assert.equal(runnerIdentity('node tests/run-long.mts rust-build/x -- cargo test --no-run --locked'), 'cargo test');
   const make = [

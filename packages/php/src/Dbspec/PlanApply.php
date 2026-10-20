@@ -767,7 +767,7 @@ final class PlanApply
         }
     }
 
-    public function effectHolds(Effect $e): bool
+    private function effectHolds(Effect $e): bool
     {
         if ($e->kind === 'rows') {
             $query = 'SELECT COUNT(*) FROM (SELECT 1 FROM ' . $this->r->q($e->table) . ' LIMIT 1) x';

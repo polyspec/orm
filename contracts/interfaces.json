@@ -40,20 +40,20 @@
   },
   "symbol_hashes": {
     "go": "sha256:7b1eeb51e9670d24c3c5f59fb4cb6c046449fa13f0aae848e4b12eb49f3bf424",
-    "php": "sha256:e33303752cc0c06685a43fad6e91caad312b4a273e3df823350c5c6a33a32da2",
+    "php": "sha256:446e9d4c99decfb217cc93e5d18edd8db26be3107fd9374f98342939f3c935ee",
     "rust": "sha256:ce84a171b00e5f9aaa869624a1c2a38690a4a152d93296849b998344dc8cf1f3",
     "typescript": "sha256:1f3e0ee1a0e7946a015f3b11d9272a1acd009c2b02c318105a3e62e25a5fe2fd",
     "python": "sha256:041c2c763f31de2ca87ee7dda4dc375868162144150d8e3751a082b556039183"
   },
   "extensions": {
     "php-extension": {
-      "description": "The PHP extension polyspec_orm (packages/php-ext) implements the dbspec surface of the PHP client in C as Polyspec\\Orm\\Dbspec\\Native\\Dbspec, with the same classes, properties and methods as Polyspec\\Orm\\Dbspec, and the error codes of Polyspec\\Orm\\Code as Polyspec\\Orm\\Native\\Code. Its declarations are read from its stub with the PHP parser; make dbspec-php-extension-check checks that the loaded extension declares the same.",
+      "description": "The PHP extension polyspec_orm (packages/php-ext) implements the dbspec surface and the error codes of the PHP client in C under the client's own names: the classes of Polyspec\\Orm\\Dbspec with the same properties and methods, and Polyspec\\Orm\\Code. Its declarations are read from its stub with the PHP parser; make dbspec-php-extension-check checks that the loaded extension declares the same.",
       "syntax": "php",
       "roots": [
         "packages/php-ext/src"
       ],
       "symbols": "contracts/symbols/php-extension.json",
-      "symbol_hash": "sha256:c0069f041a051c951eacd55d3e6dcd37de504c6dff58e3b5b633a009790ae25c",
+      "symbol_hash": "sha256:218a14745c27eb2d143f88cd590f5e89cfeef436ea2be088e0edab21bd323c86",
       "rules": [
         "Dbspec.readFile",
         "Dbspec.readBytes",
@@ -2351,8 +2351,8 @@
           "signature": "export function readDbspecFile(path: string): DbspecReadResult"
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::readFile",
-          "signature": "public static function readFile(string $path): Polyspec\\Orm\\Dbspec\\Native\\ReadResult"
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Dbspec::readFile",
+          "signature": "public static function readFile(string $path): Polyspec\\Orm\\Dbspec\\ReadResult"
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/dbspec/file.py::read_dbspec_file",
@@ -2387,8 +2387,8 @@
           "signature": "export function readDbspecBytes(name: string, bytes: Uint8Array): DbspecReadResult"
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::readBytes",
-          "signature": "public static function readBytes(string $name, string $bytes): Polyspec\\Orm\\Dbspec\\Native\\ReadResult"
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Dbspec::readBytes",
+          "signature": "public static function readBytes(string $name, string $bytes): Polyspec\\Orm\\Dbspec\\ReadResult"
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/dbspec/file.py::read_dbspec_bytes",
@@ -2423,8 +2423,8 @@
           "signature": "export function readDbspecSet(path: string): DbspecSetResult"
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::readSet",
-          "signature": "public static function readSet(string $path): Polyspec\\Orm\\Dbspec\\Native\\SetResult"
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Dbspec::readSet",
+          "signature": "public static function readSet(string $path): Polyspec\\Orm\\Dbspec\\SetResult"
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/dbspec/set_file.py::read_dbspec_set",
@@ -2459,8 +2459,8 @@
           "signature": "export function parseDbspec(text: string, documents: Readonly<Record<string, string>>): DbspecParseResult"
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::parse",
-          "signature": "public static function parse(string $text, array $documents): Polyspec\\Orm\\Dbspec\\Native\\ParseResult"
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Dbspec::parse",
+          "signature": "public static function parse(string $text, array $documents): Polyspec\\Orm\\Dbspec\\ParseResult"
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/dbspec/parse.py::parse_dbspec",
@@ -2495,8 +2495,8 @@
           "signature": "export function analyzeDbspec(text: string, documents: Readonly<Record<string, string>>): DbspecAnalysis"
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::analyze",
-          "signature": "public static function analyze(string $text, array $documents): Polyspec\\Orm\\Dbspec\\Native\\Analysis"
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Dbspec::analyze",
+          "signature": "public static function analyze(string $text, array $documents): Polyspec\\Orm\\Dbspec\\Analysis"
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/dbspec/parse.py::analyze_dbspec",
@@ -2531,8 +2531,8 @@
           "signature": "export function formatDbspec(text: string, documents: Readonly<Record<string, string>>): DbspecFormatResult"
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::format",
-          "signature": "public static function format(string $text, array $documents): Polyspec\\Orm\\Dbspec\\Native\\FormatResult"
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Dbspec::format",
+          "signature": "public static function format(string $text, array $documents): Polyspec\\Orm\\Dbspec\\FormatResult"
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/dbspec/parse.py::format_dbspec",
@@ -2567,8 +2567,8 @@
           "signature": "export function emitDbspec(document: DbspecDocument): string"
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::emit",
-          "signature": "public static function emit(Polyspec\\Orm\\Dbspec\\Native\\Document $document): string"
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Dbspec::emit",
+          "signature": "public static function emit(Polyspec\\Orm\\Dbspec\\Document $document): string"
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/dbspec/__init__.py::emit_dbspec",
@@ -2603,8 +2603,8 @@
           "signature": "export function dbspecManifest(documents: readonly DbspecDocument[]): DbspecManifestResult"
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::manifest",
-          "signature": "public static function manifest(array $documents): Polyspec\\Orm\\Dbspec\\Native\\ManifestResult"
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Dbspec::manifest",
+          "signature": "public static function manifest(array $documents): Polyspec\\Orm\\Dbspec\\ManifestResult"
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/dbspec/manifest.py::dbspec_manifest",
@@ -2639,8 +2639,8 @@
           "signature": "export function renderDbspec(documents: readonly DbspecDocument[], dialect: DbspecDialect): DbspecRenderResult"
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::render",
-          "signature": "public static function render(array $documents, string $dialect): Polyspec\\Orm\\Dbspec\\Native\\RenderResult"
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Dbspec::render",
+          "signature": "public static function render(array $documents, string $dialect): Polyspec\\Orm\\Dbspec\\RenderResult"
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/dbspec/render.py::render_dbspec",
@@ -2675,8 +2675,8 @@
           "signature": "export async function introspectDbspec(connection: DbspecMySqlConnection | DbspecPostgresConnection | DbspecSqliteConnection, dialect: DbspecDialect, name: string): Promise<DbspecIntrospection>"
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::introspect",
-          "signature": "public static function introspect(PDO $connection, string $dialect, string $name): Polyspec\\Orm\\Dbspec\\Native\\IntrospectResult"
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Dbspec::introspect",
+          "signature": "public static function introspect(PDO $connection, string $dialect, string $name): Polyspec\\Orm\\Dbspec\\IntrospectResult"
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/dbspec/introspect.py::introspect_dbspec",
@@ -2711,8 +2711,8 @@
           "signature": "export function externalDifferences(live: DbspecDocument, documents: readonly DbspecDocument[]): string[]"
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::externalDifferences",
-          "signature": "public static function externalDifferences(Polyspec\\Orm\\Dbspec\\Native\\Document $live, array $documents): array"
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Dbspec::externalDifferences",
+          "signature": "public static function externalDifferences(Polyspec\\Orm\\Dbspec\\Document $live, array $documents): array"
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/dbspec/manifest.py::external_differences",
@@ -2747,8 +2747,8 @@
           "signature": "export function parsePlan(text: string): DbspecPlanResult"
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::parsePlan",
-          "signature": "public static function parsePlan(string $text): Polyspec\\Orm\\Dbspec\\Native\\PlanParseResult"
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Dbspec::parsePlan",
+          "signature": "public static function parsePlan(string $text): Polyspec\\Orm\\Dbspec\\PlanParseResult"
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/dbspec/plan.py::parse_plan",
@@ -2783,8 +2783,8 @@
           "signature": "export function emitPlan(plan: DbspecPlan): string"
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::emitPlan",
-          "signature": "public static function emitPlan(Polyspec\\Orm\\Dbspec\\Native\\Plan $plan): string"
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Dbspec::emitPlan",
+          "signature": "public static function emitPlan(Polyspec\\Orm\\Dbspec\\Plan $plan): string"
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/dbspec/plan.py::emit_plan",
@@ -2819,8 +2819,8 @@
           "signature": "export function chainPlans(plans: readonly DbspecPlan[]): DbspecChainResult"
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::chain",
-          "signature": "public static function chain(array $plans): Polyspec\\Orm\\Dbspec\\Native\\ChainResult"
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Dbspec::chain",
+          "signature": "public static function chain(array $plans): Polyspec\\Orm\\Dbspec\\ChainResult"
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/dbspec/plan.py::chain_plans",
@@ -2855,8 +2855,8 @@
           "signature": "export function diffPlan(source: DbspecDocument | null, plan: DbspecPlan): DbspecDiffResult"
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::diff",
-          "signature": "public static function diff(?Polyspec\\Orm\\Dbspec\\Native\\Document $source, Polyspec\\Orm\\Dbspec\\Native\\Plan $plan): Polyspec\\Orm\\Dbspec\\Native\\DiffResult"
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Dbspec::diff",
+          "signature": "public static function diff(?Polyspec\\Orm\\Dbspec\\Document $source, Polyspec\\Orm\\Dbspec\\Plan $plan): Polyspec\\Orm\\Dbspec\\DiffResult"
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/dbspec/plan_diff.py::diff_plan",
@@ -2891,8 +2891,8 @@
           "signature": "export function compareSchemas(source: DbspecDocument, target: DbspecDocument): DbspecComparisonResult"
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::compareSchemas",
-          "signature": "public static function compareSchemas(Polyspec\\Orm\\Dbspec\\Native\\Document $source, Polyspec\\Orm\\Dbspec\\Native\\Document $target): Polyspec\\Orm\\Dbspec\\Native\\ComparisonResult"
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Dbspec::compareSchemas",
+          "signature": "public static function compareSchemas(Polyspec\\Orm\\Dbspec\\Document $source, Polyspec\\Orm\\Dbspec\\Document $target): Polyspec\\Orm\\Dbspec\\ComparisonResult"
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/dbspec/compare.py::compare_schemas",
@@ -2927,8 +2927,8 @@
           "signature": "export function installedDifferences(live: DbspecDocument, unsupported: readonly DbspecUnsupported[], target: DbspecDocument): readonly string[]"
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::installedDifferences",
-          "signature": "public static function installedDifferences(Polyspec\\Orm\\Dbspec\\Native\\Document $live, array $unsupported, Polyspec\\Orm\\Dbspec\\Native\\Document $target): array"
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Dbspec::installedDifferences",
+          "signature": "public static function installedDifferences(Polyspec\\Orm\\Dbspec\\Document $live, array $unsupported, Polyspec\\Orm\\Dbspec\\Document $target): array"
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/dbspec/installed.py::installed_differences",
@@ -2963,8 +2963,8 @@
           "signature": "export function addTablesAndColumnsSteps(live: DbspecDocument, unsupported: readonly DbspecUnsupported[], target: DbspecDocument, dialect: DbspecDialect): DbspecAddTablesAndColumnsSteps"
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::addTablesAndColumnsSteps",
-          "signature": "public static function addTablesAndColumnsSteps(Polyspec\\Orm\\Dbspec\\Native\\Document $live, array $unsupported, Polyspec\\Orm\\Dbspec\\Native\\Document $target, string $dialect): array"
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Dbspec::addTablesAndColumnsSteps",
+          "signature": "public static function addTablesAndColumnsSteps(Polyspec\\Orm\\Dbspec\\Document $live, array $unsupported, Polyspec\\Orm\\Dbspec\\Document $target, string $dialect): array"
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/dbspec/add_tables.py::add_tables_and_columns_steps",
@@ -2999,8 +2999,8 @@
           "signature": "export function planSteps(source: DbspecDocument | null, plan: DbspecPlan, dialect: DbspecDialect): DbspecPlanStepsResult"
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::planSteps",
-          "signature": "public static function planSteps(?Polyspec\\Orm\\Dbspec\\Native\\Document $source, Polyspec\\Orm\\Dbspec\\Native\\Plan $plan, string $dialect): Polyspec\\Orm\\Dbspec\\Native\\PlanStepsResult"
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Dbspec::planSteps",
+          "signature": "public static function planSteps(?Polyspec\\Orm\\Dbspec\\Document $source, Polyspec\\Orm\\Dbspec\\Plan $plan, string $dialect): Polyspec\\Orm\\Dbspec\\PlanStepsResult"
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/dbspec/plan_steps.py::plan_steps",
@@ -3035,7 +3035,7 @@
           "signature": "export async function applyPlans(connection: Connection, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>"
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::apply",
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Dbspec::apply",
           "signature": "public static function apply(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
         },
         "python": {
@@ -3071,7 +3071,7 @@
           "signature": "export async function recoverPlans(connection: Connection, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>"
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::recover",
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Dbspec::recover",
           "signature": "public static function recover(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
         },
         "python": {
@@ -3107,7 +3107,7 @@
           "signature": "export async function rollbackPlans(connection: Connection, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>"
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::rollback",
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Dbspec::rollback",
           "signature": "public static function rollback(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
         },
         "python": {
@@ -3143,7 +3143,7 @@
           "signature": "export async function finalizePlans(connection: Connection, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>"
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::finalize",
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Dbspec::finalize",
           "signature": "public static function finalize(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
         },
         "python": {
@@ -3179,8 +3179,8 @@
           "signature": "export function exportMermaid(document: DbspecDocument): DbspecMermaidExport"
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::exportMermaid",
-          "signature": "public static function exportMermaid(Polyspec\\Orm\\Dbspec\\Native\\Document $document): Polyspec\\Orm\\Dbspec\\Native\\MermaidExportResult"
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Dbspec::exportMermaid",
+          "signature": "public static function exportMermaid(Polyspec\\Orm\\Dbspec\\Document $document): Polyspec\\Orm\\Dbspec\\MermaidExportResult"
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/dbspec/mermaid.py::export_mermaid",
@@ -3215,8 +3215,8 @@
           "signature": "export function importMermaid(text: string, name: string): DbspecMermaidImport"
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::importMermaid",
-          "signature": "public static function importMermaid(string $text, string $name): Polyspec\\Orm\\Dbspec\\Native\\MermaidImportResult"
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Dbspec::importMermaid",
+          "signature": "public static function importMermaid(string $text, string $name): Polyspec\\Orm\\Dbspec\\MermaidImportResult"
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/dbspec/mermaid.py::import_mermaid",
@@ -4155,7 +4155,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Diagnostic",
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Diagnostic",
           "fields": [
             "rule",
             "line",
@@ -4219,7 +4219,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Manifest",
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Manifest",
           "fields": [
             "manifestText",
             "schemaText",
@@ -4299,7 +4299,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Plan",
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Plan",
           "fields": [
             "dropColumns",
             "dropTables",
@@ -4387,7 +4387,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStep",
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\PlanStep",
           "fields": [
             "effect",
             "finalize",
@@ -4457,7 +4457,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Effect",
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Effect",
           "fields": [
             "kind",
             "name",
@@ -4514,7 +4514,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\NullCheck",
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\NullCheck",
           "fields": [
             "column",
             "default",
@@ -4568,7 +4568,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Change",
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Change",
           "fields": [
             "kind",
             "name",
@@ -4622,7 +4622,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Difference",
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Difference",
           "fields": [
             "kind",
             "name",
@@ -4680,7 +4680,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Unsupported",
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Unsupported",
           "fields": [
             "kind",
             "name",
@@ -4732,7 +4732,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\TableRename",
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\TableRename",
           "fields": [
             "new",
             "old"
@@ -4784,7 +4784,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnRename",
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\ColumnRename",
           "fields": [
             "new",
             "old",
@@ -4834,7 +4834,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnName",
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\ColumnName",
           "fields": [
             "name",
             "table"

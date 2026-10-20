@@ -8108,8 +8108,8 @@
     "signature": "private function effect(Polyspec\\Orm\\Dbspec\\Plan $plan, int $step, ?Polyspec\\Orm\\Dbspec\\Effect $e): bool"
   },
   "packages/php/src/Dbspec/PlanApply.php::Polyspec\\Orm\\Dbspec\\PlanApply::effectHolds": {
-    "exported": true,
-    "signature": "public function effectHolds(Polyspec\\Orm\\Dbspec\\Effect $e): bool"
+    "exported": false,
+    "signature": "private function effectHolds(Polyspec\\Orm\\Dbspec\\Effect $e): bool"
   },
   "packages/php/src/Dbspec/PlanApply.php::Polyspec\\Orm\\Dbspec\\PlanApply::effectOn": {
     "exported": true,

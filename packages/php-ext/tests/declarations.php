@@ -2,108 +2,92 @@
 
 declare(strict_types=1);
 
-// Reads the class declarations of the extension's native classes with Reflection and prints them as JSON: each class and its modifiers, parent and
-// interfaces, constants and values, property modifiers, types and defaults, method modifiers, arguments and return types.
+// Reads class declarations with Reflection as a map of each class and its modifiers, parent and interfaces, constants and values,
+// property modifiers, types and defaults, method modifiers, arguments and return types.
 //
-// Usage: php -d extension=<polyspec_orm library> declarations.php extension
-//        php declarations.php stub
+// Usage: php declarations.php stub
 //        php declarations.php client
-// The extension reads the classes that the loaded extension polyspec_orm registers, and the stub reads the
-// classes that its one stub (src/polyspec_orm.stub.php) declares. The two outputs must match (DeclarationsTest.php). The client reads the PHP client classes that
-// the extension implements, the Polyspec\Orm\Dbspec classes that are not @internal and Polyspec\Orm\Code, as their native names: the extension
-// must have the same public declarations for each class. A native name is the client's name with Native as the last namespace segment:
-// Polyspec\Orm\Dbspec\Dbspec is Polyspec\Orm\Dbspec\Native\Dbspec, and Polyspec\Orm\Code is Polyspec\Orm\Native\Code.
+// The stub reads the classes that the one stub of the extension (src/polyspec_orm.stub.php) declares, in a PHP without the
+// extension, which registers the same names. The client reads the PHP client classes that the extension implements, the
+// Polyspec\Orm\Dbspec classes that are not @internal and Polyspec\Orm\Code, through the Composer autoloader of the development
+// root, also in a PHP without the extension, which would take their place: only their public declarations are kept. Each prints
+// its map as JSON. DeclarationsTest.php reads the classes of the loaded extension in its own process with declarations() and
+// compares them with both.
 
-const NATIVE_NAMESPACES = ['Polyspec\\Orm\\Dbspec\\Native\\', 'Polyspec\\Orm\\Native\\'];
-/** The PHP client classes outside Polyspec\Orm\Dbspec that the extension implements. */
+/** The namespace and the class outside it that the extension registers, which are those of the PHP client. */
+const EXTENSION_NAMESPACE = 'Polyspec\\Orm\\Dbspec\\';
 const CLIENT_CLASSES = ['Polyspec\\Orm\\Code'];
 
-$mode = $argv[1] ?? '';
-if ($mode === 'extension') {
-    if (!extension_loaded('polyspec_orm')) {
-        fwrite(STDERR, "declarations.php extension: the extension polyspec_orm is not loaded; run php -d extension=<library>\n");
-        exit(1);
-    }
-    $classes = array_keys((new ReflectionExtension('polyspec_orm'))->getClasses());
-} elseif ($mode === 'stub') {
-    if (extension_loaded('polyspec_orm')) {
-        fwrite(STDERR, "declarations.php stub: the extension polyspec_orm is loaded and declares the same classes; run php without it\n");
-        exit(1);
-    }
-    $before = get_declared_classes();
-    require dirname(__DIR__) . '/src/polyspec_orm.stub.php';
-    $classes = array_values(array_diff(get_declared_classes(), $before));
-} elseif ($mode === 'client') {
-    if (extension_loaded('polyspec_orm')) {
-        fwrite(STDERR, "declarations.php client: the extension polyspec_orm is loaded; run php without it\n");
-        exit(1);
-    }
-    require dirname(__DIR__, 3) . '/vendor-php/autoload.php';
-    $classes = [];
-    foreach (glob(dirname(__DIR__, 2) . '/php/src/Dbspec/*.php') as $file) {
-        $client = new ReflectionClass('Polyspec\\Orm\\Dbspec\\' . basename($file, '.php'));
-        if (!str_contains((string) $client->getDocComment(), '@internal')) {
-            $classes[] = $client->getName();
+/**
+ * The declarations of $classes, keyed by class, constant, property and method; with $public only the public members, as the
+ * client is compared with the extension by them. A return type `self` is read as the class's name, which the stub writes.
+ */
+function declarations(array $classes, bool $public): array
+{
+    $type = static fn(?ReflectionType $t): string => $t === null ? '' : (string) $t;
+    $modifiers = static fn(int $flags): string => implode(' ', Reflection::getModifierNames($flags));
+    $out = [];
+    sort($classes);
+    foreach ($classes as $name) {
+        if (!str_starts_with($name, EXTENSION_NAMESPACE) && !in_array($name, CLIENT_CLASSES, true)) {
+            throw new RuntimeException("$name is outside " . EXTENSION_NAMESPACE . ' and ' . implode(', ', CLIENT_CLASSES));
+        }
+        $class = new ReflectionClass($name);
+        $interfaces = $class->getInterfaceNames();
+        sort($interfaces);
+        $parent = $class->getParentClass();
+        $members = [$name => $modifiers($class->getModifiers()) . ' class extends ' . ($parent === false ? '' : $parent->getName())
+            . ' implements ' . implode(',', $interfaces)];
+        foreach ($class->getReflectionConstants() as $constant) {
+            $members["$name::{$constant->getName()}"] = $modifiers($constant->getModifiers()) . ' const = '
+                . json_encode($constant->getValue(), JSON_THROW_ON_ERROR);
+        }
+        foreach ($class->getProperties() as $property) {
+            $members["$name::\${$property->getName()}"] = $modifiers($property->getModifiers()) . ' ' . $type($property->getType())
+                . ($property->hasDefaultValue() ? ' = ' . json_encode($property->getDefaultValue(), JSON_THROW_ON_ERROR) : '');
+        }
+        foreach ($class->getMethods() as $method) {
+            $parameters = array_map(static function (ReflectionParameter $p) use ($type): string {
+                $default = $p->isDefaultValueAvailable() ? ' = ' . json_encode($p->getDefaultValue(), JSON_THROW_ON_ERROR) : '';
+                return $type($p->getType()) . ' ' . ($p->isPassedByReference() ? '&' : '') . ($p->isVariadic() ? '...' : '')
+                    . '$' . $p->getName() . $default;
+            }, $method->getParameters());
+            $members["$name::{$method->getName()}()"] = $modifiers($method->getModifiers()) . ' function(' . implode(', ', $parameters)
+                . '): ' . $type($method->getReturnType());
+        }
+        foreach ($members as $key => $value) {
+            if ($public && $key !== $name && !preg_match('/^(?:(?:final|abstract) )?public\b/', $value)) {
+                continue;
+            }
+            $out[$key] = preg_replace('/\bself\b/', $name, $value);
         }
     }
-    array_push($classes, ...CLIENT_CLASSES);
-} else {
-    fwrite(STDERR, "usage: php declarations.php extension|stub|client\n");
-    exit(2);
+    return $out;
 }
-// The client's names and self are read as the extension's names: Native becomes the last namespace segment of each Polyspec\Orm name.
-$native = static fn(string $text, string $class): string => preg_replace(
-    ['/\\bPolyspec\\\\Orm\\\\(?!(?:[A-Z][A-Za-z0-9]*\\\\)*Native\\\\)((?:[A-Z][A-Za-z0-9]*\\\\)*)([A-Z][A-Za-z0-9]*)\\b(?!\\\\)/', '/\\bself\\b/'],
-    ['Polyspec\\Orm\\\\${1}Native\\\\${2}', $class],
-    $text,
-);
 
-$type = static fn(?ReflectionType $t): string => $t === null ? '' : (string) $t;
-$client = $mode === 'client';
-$modifiers = static fn(int $flags): string => implode(' ', Reflection::getModifierNames($flags));
-$out = [];
-sort($classes);
-foreach ($classes as $source) {
-    $name = $client ? $native($source, '') : $source;
-    if (array_filter(NATIVE_NAMESPACES, static fn(string $namespace): bool => str_starts_with($name, $namespace)) === []) {
-        fwrite(STDERR, "declarations.php $mode: $name is outside " . implode(' and ', NATIVE_NAMESPACES) . "\n");
+if (PHP_SAPI === 'cli' && realpath($argv[0] ?? '') === __FILE__) {
+    $mode = $argv[1] ?? '';
+    if ($mode !== 'stub' && $mode !== 'client') {
+        fwrite(STDERR, "usage: php declarations.php stub|client\n");
+        exit(2);
+    }
+    if (extension_loaded('polyspec_orm')) {
+        fwrite(STDERR, "declarations.php $mode: the extension polyspec_orm is loaded and registers the same classes; run php without it\n");
         exit(1);
     }
-    $class = new ReflectionClass($source);
-    $interfaces = $class->getInterfaceNames();
-    sort($interfaces);
-    $parent = $class->getParentClass();
-    $out[$name] = $modifiers($class->getModifiers()) . ' class extends ' . ($parent === false ? '' : $parent->getName())
-        . ' implements ' . implode(',', $interfaces);
-    foreach ($class->getReflectionConstants() as $constant) {
-        $out["$name::{$constant->getName()}"] = $modifiers($constant->getModifiers()) . ' const = '
-            . json_encode($constant->getValue(), JSON_THROW_ON_ERROR);
-    }
-    foreach ($class->getProperties() as $property) {
-        $out["$name::\${$property->getName()}"] = $modifiers($property->getModifiers()) . ' ' . $type($property->getType())
-            . ($property->hasDefaultValue() ? ' = ' . json_encode($property->getDefaultValue(), JSON_THROW_ON_ERROR) : '');
-    }
-    foreach ($class->getMethods() as $method) {
-        $parameters = array_map(static function (ReflectionParameter $p) use ($type): string {
-            $default = $p->isDefaultValueAvailable() ? ' = ' . json_encode($p->getDefaultValue(), JSON_THROW_ON_ERROR) : '';
-            return $type($p->getType()) . ' ' . ($p->isPassedByReference() ? '&' : '') . ($p->isVariadic() ? '...' : '')
-                . '$' . $p->getName() . $default;
-        }, $method->getParameters());
-        $out["$name::{$method->getName()}()"] = $modifiers($method->getModifiers()) . ' function(' . implode(', ', $parameters)
-            . '): ' . $type($method->getReturnType());
-    }
-}
-if ($client) {
-    // The client compares only the public declarations with the extension, and reads its name and self as the extension's.
-    $public = [];
-    foreach ($out as $key => $value) {
-        if (str_contains($key, '::') && !str_starts_with($value, 'public') && !str_starts_with($value, 'final public') && !str_starts_with($value, 'abstract public')) {
-            continue;
+    if ($mode === 'stub') {
+        $before = get_declared_classes();
+        require dirname(__DIR__) . '/src/polyspec_orm.stub.php';
+        $classes = array_values(array_diff(get_declared_classes(), $before));
+    } else {
+        require dirname(__DIR__, 3) . '/vendor-php/autoload.php';
+        $classes = CLIENT_CLASSES;
+        foreach (glob(dirname(__DIR__, 2) . '/php/src/Dbspec/*.php') as $file) {
+            $client = new ReflectionClass(EXTENSION_NAMESPACE . basename($file, '.php'));
+            if (!str_contains((string) $client->getDocComment(), '@internal')) {
+                $classes[] = $client->getName();
+            }
         }
-        $class = explode('::', $key)[0];
-        $public[$key] = $native($value, $class);
     }
-    $out = $public;
+    echo json_encode(declarations($classes, $mode === 'client'), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR), "\n";
 }
-ksort($out);
-echo json_encode($out, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR), "\n";

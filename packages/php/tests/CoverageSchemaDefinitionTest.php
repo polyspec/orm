@@ -6,7 +6,8 @@ declare(strict_types=1);
 // runs on the PHP dbspec implementation (Polyspec\Orm\Dbspec\Dbspec): after parse, emit reproduces
 // byte for byte, the manifest hash of the document set, the per-dialect rendered statements, the tokens of syntax analysis,
 // formatting and its refusal, and the declaration positions of a parse.
-// packages/php-ext/tests/CoverageSchemaDefinitionTest.php runs the same cases on the extension.
+// The same file runs these cases on the PHP extension polyspec_orm, loaded in its own process (make dbspec-php-extension-check),
+// whose classes take the place of the client's.
 
 require_once __DIR__ . '/coverage_cases.php';
 

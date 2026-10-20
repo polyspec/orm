@@ -1,74 +1,74 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: d8e72d1ab8359394aa98f836135bbd5e48431c9f */
+ * Stub hash: 3bf06a6141484fa36d8c4dbffff5e57444a51414 */
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Diagnostic___construct, 0, 0, 4)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Diagnostic___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, rule, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, line, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, column, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, message, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Position___construct, 0, 0, 4)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Position___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, kind, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, path, IS_ARRAY, 0)
 	ZEND_ARG_TYPE_INFO(0, line, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, column, IS_LONG, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Document___construct, 0, 0, 1)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Document___construct, 0, 0, 1)
 	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_UseLine___construct, 0, 0, 2)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_UseLine___construct, 0, 0, 2)
 	ZEND_ARG_TYPE_INFO(0, document, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, tables, IS_ARRAY, 0)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, comments, IS_ARRAY, 0, "[]")
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Table___construct, 0, 0, 1)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Table___construct, 0, 0, 1)
 	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, comments, IS_ARRAY, 0, "[]")
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Column___construct, 0, 0, 5)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Column___construct, 0, 0, 5)
 	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
-	ZEND_ARG_OBJ_INFO(0, type, Polyspec\\Orm\\Dbspec\\\116ative\\ColumnType, 0)
+	ZEND_ARG_OBJ_INFO(0, type, Polyspec\\Orm\\Dbspec\\ColumnType, 0)
 	ZEND_ARG_TYPE_INFO(0, nullable, _IS_BOOL, 0)
 	ZEND_ARG_TYPE_INFO(0, identity, _IS_BOOL, 0)
 	ZEND_ARG_TYPE_INFO(0, default, IS_STRING, 1)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, comments, IS_ARRAY, 0, "[]")
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ColumnType___construct, 0, 0, 1)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_ColumnType___construct, 0, 0, 1)
 	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, parameters, IS_ARRAY, 0, "[]")
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ColumnType_text, 0, 0, IS_STRING, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_ColumnType_text, 0, 0, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ColumnType_isInteger, 0, 0, _IS_BOOL, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_ColumnType_isInteger, 0, 0, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_PrimaryKey___construct, 0, 0, 1)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_PrimaryKey___construct, 0, 0, 1)
 	ZEND_ARG_TYPE_INFO(0, columns, IS_ARRAY, 0)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, comments, IS_ARRAY, 0, "[]")
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_UniqueKey___construct, 0, 0, 2)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_UniqueKey___construct, 0, 0, 2)
 	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, columns, IS_ARRAY, 0)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, comments, IS_ARRAY, 0, "[]")
 ZEND_END_ARG_INFO()
 
-#define arginfo_class_Polyspec_Orm_Dbspec_Native_Index___construct arginfo_class_Polyspec_Orm_Dbspec_Native_UniqueKey___construct
+#define arginfo_class_Polyspec_Orm_Dbspec_Index___construct arginfo_class_Polyspec_Orm_Dbspec_UniqueKey___construct
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_IndexColumn___construct, 0, 0, 2)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_IndexColumn___construct, 0, 0, 2)
 	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, descending, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ForeignKey___construct, 0, 0, 6)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_ForeignKey___construct, 0, 0, 6)
 	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, columns, IS_ARRAY, 0)
 	ZEND_ARG_TYPE_INFO(0, table, IS_STRING, 0)
@@ -78,19 +78,19 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ForeignKey___con
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, comments, IS_ARRAY, 0, "[]")
 ZEND_END_ARG_INFO()
 
-#define arginfo_class_Polyspec_Orm_Dbspec_Native_ForeignKey_changesChildRows arginfo_class_Polyspec_Orm_Dbspec_Native_ColumnType_isInteger
+#define arginfo_class_Polyspec_Orm_Dbspec_ForeignKey_changesChildRows arginfo_class_Polyspec_Orm_Dbspec_ColumnType_isInteger
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Check___construct, 0, 0, 2)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Check___construct, 0, 0, 2)
 	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, expression, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, comments, IS_ARRAY, 0, "[]")
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Settings___construct, 0, 0, 0)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Settings___construct, 0, 0, 0)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, comments, IS_ARRAY, 0, "[]")
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Setting___construct, 0, 0, 2)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Setting___construct, 0, 0, 2)
 	ZEND_ARG_TYPE_INFO(0, kind, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, arguments, IS_ARRAY, 0)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, comments, IS_ARRAY, 0, "[]")
@@ -100,120 +100,120 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Setting___constr
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, requires, IS_ARRAY, 1, "null")
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Setting_records, 0, 1, _IS_BOOL, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Setting_records, 0, 1, _IS_BOOL, 0)
 	ZEND_ARG_TYPE_INFO(0, column, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Setting_excluded, 0, 1, IS_ARRAY, 0)
-	ZEND_ARG_OBJ_INFO(0, table, Polyspec\\Orm\\Dbspec\\\116ative\\Table, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Setting_excluded, 0, 1, IS_ARRAY, 0)
+	ZEND_ARG_OBJ_INFO(0, table, Polyspec\\Orm\\Dbspec\\Table, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Setting_auditLine, 0, 2, IS_STRING, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Setting_auditLine, 0, 2, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, list, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, columns, IS_ARRAY, 1)
 ZEND_END_ARG_INFO()
 
-#define arginfo_class_Polyspec_Orm_Dbspec_Native_Diagram___construct arginfo_class_Polyspec_Orm_Dbspec_Native_Table___construct
+#define arginfo_class_Polyspec_Orm_Dbspec_Diagram___construct arginfo_class_Polyspec_Orm_Dbspec_Table___construct
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Placement___construct, 0, 0, 3)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Placement___construct, 0, 0, 3)
 	ZEND_ARG_TYPE_INFO(0, table, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, x, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, y, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, comments, IS_ARRAY, 0, "[]")
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ReadResult___construct, 0, 0, 2)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_ReadResult___construct, 0, 0, 2)
 	ZEND_ARG_TYPE_INFO(0, text, IS_STRING, 1)
 	ZEND_ARG_TYPE_INFO(0, diagnostics, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ReadResult_valid, 0, 1, Polyspec\\Orm\\Dbspec\\\116ative\\ReadResult, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_ReadResult_valid, 0, 1, Polyspec\\Orm\\Dbspec\\ReadResult, 0)
 	ZEND_ARG_TYPE_INFO(0, text, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ReadResult_invalid, 0, 1, Polyspec\\Orm\\Dbspec\\\116ative\\ReadResult, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_ReadResult_invalid, 0, 1, Polyspec\\Orm\\Dbspec\\ReadResult, 0)
 	ZEND_ARG_TYPE_INFO(0, diagnostics, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_SetFile___construct, 0, 0, 2)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_SetFile___construct, 0, 0, 2)
 	ZEND_ARG_TYPE_INFO(0, path, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, bytes, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_SetError___construct, 0, 0, 3)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_SetError___construct, 0, 0, 3)
 	ZEND_ARG_TYPE_INFO(0, rule, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, path, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, message, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_SetResult___construct, 0, 0, 3)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_SetResult___construct, 0, 0, 3)
 	ZEND_ARG_TYPE_INFO(0, documents, IS_ARRAY, 1)
 	ZEND_ARG_TYPE_INFO(0, external, IS_ARRAY, 1)
 	ZEND_ARG_TYPE_INFO(0, errors, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_SetResult_valid, 0, 2, Polyspec\\Orm\\Dbspec\\\116ative\\SetResult, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_SetResult_valid, 0, 2, Polyspec\\Orm\\Dbspec\\SetResult, 0)
 	ZEND_ARG_TYPE_INFO(0, documents, IS_ARRAY, 0)
 	ZEND_ARG_TYPE_INFO(0, external, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_SetResult_invalid, 0, 1, Polyspec\\Orm\\Dbspec\\\116ative\\SetResult, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_SetResult_invalid, 0, 1, Polyspec\\Orm\\Dbspec\\SetResult, 0)
 	ZEND_ARG_TYPE_INFO(0, errors, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_SetDocument___construct, 0, 0, 5)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_SetDocument___construct, 0, 0, 5)
 	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, external, _IS_BOOL, 0)
-	ZEND_ARG_OBJ_INFO(0, document, Polyspec\\Orm\\Dbspec\\\116ative\\Document, 1)
+	ZEND_ARG_OBJ_INFO(0, document, Polyspec\\Orm\\Dbspec\\Document, 1)
 	ZEND_ARG_TYPE_INFO(0, positions, IS_ARRAY, 1)
 	ZEND_ARG_TYPE_INFO(0, diagnostics, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ParseResult___construct, 0, 0, 3)
-	ZEND_ARG_OBJ_INFO(0, document, Polyspec\\Orm\\Dbspec\\\116ative\\Document, 1)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_ParseResult___construct, 0, 0, 3)
+	ZEND_ARG_OBJ_INFO(0, document, Polyspec\\Orm\\Dbspec\\Document, 1)
 	ZEND_ARG_TYPE_INFO(0, diagnostics, IS_ARRAY, 0)
 	ZEND_ARG_TYPE_INFO(0, positions, IS_ARRAY, 1)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ParseResult_valid, 0, 2, Polyspec\\Orm\\Dbspec\\\116ative\\ParseResult, 0)
-	ZEND_ARG_OBJ_INFO(0, document, Polyspec\\Orm\\Dbspec\\\116ative\\Document, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_ParseResult_valid, 0, 2, Polyspec\\Orm\\Dbspec\\ParseResult, 0)
+	ZEND_ARG_OBJ_INFO(0, document, Polyspec\\Orm\\Dbspec\\Document, 0)
 	ZEND_ARG_TYPE_INFO(0, positions, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ParseResult_invalid, 0, 1, Polyspec\\Orm\\Dbspec\\\116ative\\ParseResult, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_ParseResult_invalid, 0, 1, Polyspec\\Orm\\Dbspec\\ParseResult, 0)
 	ZEND_ARG_TYPE_INFO(0, diagnostics, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Token___construct, 0, 0, 4)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Token___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, line, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, start, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, end, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, class, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Analysis___construct, 0, 0, 4)
-	ZEND_ARG_OBJ_INFO(0, document, Polyspec\\Orm\\Dbspec\\\116ative\\Document, 1)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Analysis___construct, 0, 0, 4)
+	ZEND_ARG_OBJ_INFO(0, document, Polyspec\\Orm\\Dbspec\\Document, 1)
 	ZEND_ARG_TYPE_INFO(0, positions, IS_ARRAY, 1)
 	ZEND_ARG_TYPE_INFO(0, diagnostics, IS_ARRAY, 0)
 	ZEND_ARG_TYPE_INFO(0, tokens, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-#define arginfo_class_Polyspec_Orm_Dbspec_Native_FormatResult___construct arginfo_class_Polyspec_Orm_Dbspec_Native_ReadResult___construct
+#define arginfo_class_Polyspec_Orm_Dbspec_FormatResult___construct arginfo_class_Polyspec_Orm_Dbspec_ReadResult___construct
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Names_render, 0, 2, IS_STRING, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Names_render, 0, 2, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, table, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, suffix, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
-#define arginfo_class_Polyspec_Orm_Dbspec_Native_Names_ofTable arginfo_class_Polyspec_Orm_Dbspec_Native_Setting_excluded
+#define arginfo_class_Polyspec_Orm_Dbspec_Names_ofTable arginfo_class_Polyspec_Orm_Dbspec_Setting_excluded
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Names_column, 0, 3, IS_STRING, 1)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Names_column, 0, 3, IS_STRING, 1)
 	ZEND_ARG_TYPE_INFO(0, table, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
 	ZEND_ARG_OBJ_TYPE_MASK(0, columns, Traversable, MAY_BE_ARRAY, NULL)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Manifest___construct, 0, 0, 4)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Manifest___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, manifestText, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, schemaText, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, manifestHash, IS_STRING, 0)
@@ -221,105 +221,105 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Manifest___const
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, externalText, IS_STRING, 0, "\'\'")
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ManifestResult___construct, 0, 0, 2)
-	ZEND_ARG_OBJ_INFO(0, manifest, Polyspec\\Orm\\Dbspec\\\116ative\\Manifest, 1)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_ManifestResult___construct, 0, 0, 2)
+	ZEND_ARG_OBJ_INFO(0, manifest, Polyspec\\Orm\\Dbspec\\Manifest, 1)
 	ZEND_ARG_TYPE_INFO(0, diagnostics, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ManifestResult_valid, 0, 1, Polyspec\\Orm\\Dbspec\\\116ative\\ManifestResult, 0)
-	ZEND_ARG_OBJ_INFO(0, manifest, Polyspec\\Orm\\Dbspec\\\116ative\\Manifest, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_ManifestResult_valid, 0, 1, Polyspec\\Orm\\Dbspec\\ManifestResult, 0)
+	ZEND_ARG_OBJ_INFO(0, manifest, Polyspec\\Orm\\Dbspec\\Manifest, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ManifestResult_invalid, 0, 1, Polyspec\\Orm\\Dbspec\\\116ative\\ManifestResult, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_ManifestResult_invalid, 0, 1, Polyspec\\Orm\\Dbspec\\ManifestResult, 0)
 	ZEND_ARG_TYPE_INFO(0, diagnostics, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_RenderResult___construct, 0, 0, 2)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_RenderResult___construct, 0, 0, 2)
 	ZEND_ARG_TYPE_INFO(0, statements, IS_ARRAY, 1)
 	ZEND_ARG_TYPE_INFO(0, diagnostics, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_RenderResult_valid, 0, 1, Polyspec\\Orm\\Dbspec\\\116ative\\RenderResult, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_RenderResult_valid, 0, 1, Polyspec\\Orm\\Dbspec\\RenderResult, 0)
 	ZEND_ARG_TYPE_INFO(0, statements, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_RenderResult_invalid, 0, 1, Polyspec\\Orm\\Dbspec\\\116ative\\RenderResult, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_RenderResult_invalid, 0, 1, Polyspec\\Orm\\Dbspec\\RenderResult, 0)
 	ZEND_ARG_TYPE_INFO(0, diagnostics, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Plan___construct, 0, 0, 8)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Plan___construct, 0, 0, 8)
 	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, from, IS_STRING, 1)
 	ZEND_ARG_TYPE_INFO(0, renameTables, IS_ARRAY, 0)
 	ZEND_ARG_TYPE_INFO(0, renameColumns, IS_ARRAY, 0)
 	ZEND_ARG_TYPE_INFO(0, dropTables, IS_ARRAY, 0)
 	ZEND_ARG_TYPE_INFO(0, dropColumns, IS_ARRAY, 0)
-	ZEND_ARG_OBJ_INFO(0, schema, Polyspec\\Orm\\Dbspec\\\116ative\\Document, 0)
+	ZEND_ARG_OBJ_INFO(0, schema, Polyspec\\Orm\\Dbspec\\Document, 0)
 	ZEND_ARG_TYPE_INFO(0, to, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_PlanStep___construct, 0, 0, 4)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_PlanStep___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, statement, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, rollback, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, irreversible, IS_STRING, 0)
-	ZEND_ARG_OBJ_INFO(0, effect, Polyspec\\Orm\\Dbspec\\\116ative\\Effect, 0)
+	ZEND_ARG_OBJ_INFO(0, effect, Polyspec\\Orm\\Dbspec\\Effect, 0)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, restore, IS_STRING, 0, "\'\'")
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, rollbackRestore, IS_STRING, 0, "\'\'")
-	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, restoreIf, Polyspec\\Orm\\Dbspec\\\116ative\\Effect, 1, "null")
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, restoreIf, Polyspec\\Orm\\Dbspec\\Effect, 1, "null")
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, nullChecks, IS_ARRAY, 0, "[]")
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, finalize, _IS_BOOL, 0, "false")
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Effect___construct, 0, 0, 4)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Effect___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, kind, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, table, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, present, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Effect_repeat, 0, 0, Polyspec\\Orm\\Dbspec\\\116ative\\Effect, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Effect_repeat, 0, 0, Polyspec\\Orm\\Dbspec\\Effect, 0)
 ZEND_END_ARG_INFO()
 
-#define arginfo_class_Polyspec_Orm_Dbspec_Native_Effect_text arginfo_class_Polyspec_Orm_Dbspec_Native_ColumnType_text
+#define arginfo_class_Polyspec_Orm_Dbspec_Effect_text arginfo_class_Polyspec_Orm_Dbspec_ColumnType_text
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_NullCheck___construct, 0, 0, 3)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_NullCheck___construct, 0, 0, 3)
 	ZEND_ARG_TYPE_INFO(0, table, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, column, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, default, IS_STRING, 1)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Change___construct, 0, 0, 3)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Change___construct, 0, 0, 3)
 	ZEND_ARG_TYPE_INFO(0, kind, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, table, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
-#define arginfo_class_Polyspec_Orm_Dbspec_Native_Difference___construct arginfo_class_Polyspec_Orm_Dbspec_Native_Change___construct
+#define arginfo_class_Polyspec_Orm_Dbspec_Difference___construct arginfo_class_Polyspec_Orm_Dbspec_Change___construct
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Unsupported___construct, 0, 0, 4)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Unsupported___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, kind, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, table, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, reason, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_TableRename___construct, 0, 0, 2)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_TableRename___construct, 0, 0, 2)
 	ZEND_ARG_TYPE_INFO(0, old, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, new, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ColumnRename___construct, 0, 0, 3)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_ColumnRename___construct, 0, 0, 3)
 	ZEND_ARG_TYPE_INFO(0, table, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, old, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, new, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ColumnName___construct, 0, 0, 2)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_ColumnName___construct, 0, 0, 2)
 	ZEND_ARG_TYPE_INFO(0, table, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ApplyEvent___construct, 0, 0, 5)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_ApplyEvent___construct, 0, 0, 5)
 	ZEND_ARG_TYPE_INFO(0, kind, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, plan, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, step, IS_LONG, 0)
@@ -327,7 +327,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ApplyEvent___con
 	ZEND_ARG_TYPE_INFO(0, statement, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ApplyError___construct, 0, 0, 4)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_ApplyError___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, code_, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, plan, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, step, IS_LONG, 0)
@@ -335,198 +335,198 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ApplyError___con
 	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, previous, Throwable, 1, "null")
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ApplyCleanupError___construct, 0, 0, 2)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_ApplyCleanupError___construct, 0, 0, 2)
 	ZEND_ARG_OBJ_INFO(0, failure, Throwable, 0)
 	ZEND_ARG_TYPE_INFO(0, cleanup, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_PlanParseResult___construct, 0, 0, 2)
-	ZEND_ARG_OBJ_INFO(0, plan, Polyspec\\Orm\\Dbspec\\\116ative\\Plan, 1)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_PlanParseResult___construct, 0, 0, 2)
+	ZEND_ARG_OBJ_INFO(0, plan, Polyspec\\Orm\\Dbspec\\Plan, 1)
 	ZEND_ARG_TYPE_INFO(0, diagnostics, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_PlanParseResult_valid, 0, 1, Polyspec\\Orm\\Dbspec\\\116ative\\PlanParseResult, 0)
-	ZEND_ARG_OBJ_INFO(0, plan, Polyspec\\Orm\\Dbspec\\\116ative\\Plan, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_PlanParseResult_valid, 0, 1, Polyspec\\Orm\\Dbspec\\PlanParseResult, 0)
+	ZEND_ARG_OBJ_INFO(0, plan, Polyspec\\Orm\\Dbspec\\Plan, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_PlanParseResult_invalid, 0, 1, Polyspec\\Orm\\Dbspec\\\116ative\\PlanParseResult, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_PlanParseResult_invalid, 0, 1, Polyspec\\Orm\\Dbspec\\PlanParseResult, 0)
 	ZEND_ARG_TYPE_INFO(0, diagnostics, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_PlanStepsResult___construct, 0, 0, 2)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_PlanStepsResult___construct, 0, 0, 2)
 	ZEND_ARG_TYPE_INFO(0, steps, IS_ARRAY, 1)
 	ZEND_ARG_TYPE_INFO(0, diagnostics, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_PlanStepsResult_valid, 0, 1, Polyspec\\Orm\\Dbspec\\\116ative\\PlanStepsResult, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_PlanStepsResult_valid, 0, 1, Polyspec\\Orm\\Dbspec\\PlanStepsResult, 0)
 	ZEND_ARG_TYPE_INFO(0, steps, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_PlanStepsResult_invalid, 0, 1, Polyspec\\Orm\\Dbspec\\\116ative\\PlanStepsResult, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_PlanStepsResult_invalid, 0, 1, Polyspec\\Orm\\Dbspec\\PlanStepsResult, 0)
 	ZEND_ARG_TYPE_INFO(0, diagnostics, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ChainResult___construct, 0, 0, 2)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_ChainResult___construct, 0, 0, 2)
 	ZEND_ARG_TYPE_INFO(0, plans, IS_ARRAY, 1)
 	ZEND_ARG_TYPE_INFO(0, diagnostics, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ChainResult_valid, 0, 1, Polyspec\\Orm\\Dbspec\\\116ative\\ChainResult, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_ChainResult_valid, 0, 1, Polyspec\\Orm\\Dbspec\\ChainResult, 0)
 	ZEND_ARG_TYPE_INFO(0, plans, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ChainResult_invalid, 0, 1, Polyspec\\Orm\\Dbspec\\\116ative\\ChainResult, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_ChainResult_invalid, 0, 1, Polyspec\\Orm\\Dbspec\\ChainResult, 0)
 	ZEND_ARG_TYPE_INFO(0, diagnostics, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_DiffResult___construct, 0, 0, 2)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_DiffResult___construct, 0, 0, 2)
 	ZEND_ARG_TYPE_INFO(0, changes, IS_ARRAY, 1)
 	ZEND_ARG_TYPE_INFO(0, diagnostics, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_DiffResult_valid, 0, 1, Polyspec\\Orm\\Dbspec\\\116ative\\DiffResult, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_DiffResult_valid, 0, 1, Polyspec\\Orm\\Dbspec\\DiffResult, 0)
 	ZEND_ARG_TYPE_INFO(0, changes, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_DiffResult_invalid, 0, 1, Polyspec\\Orm\\Dbspec\\\116ative\\DiffResult, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_DiffResult_invalid, 0, 1, Polyspec\\Orm\\Dbspec\\DiffResult, 0)
 	ZEND_ARG_TYPE_INFO(0, diagnostics, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ComparisonResult___construct, 0, 0, 2)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_ComparisonResult___construct, 0, 0, 2)
 	ZEND_ARG_TYPE_INFO(0, differences, IS_ARRAY, 1)
 	ZEND_ARG_TYPE_INFO(0, diagnostics, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ComparisonResult_valid, 0, 1, Polyspec\\Orm\\Dbspec\\\116ative\\ComparisonResult, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_ComparisonResult_valid, 0, 1, Polyspec\\Orm\\Dbspec\\ComparisonResult, 0)
 	ZEND_ARG_TYPE_INFO(0, differences, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ComparisonResult_invalid, 0, 1, Polyspec\\Orm\\Dbspec\\\116ative\\ComparisonResult, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_ComparisonResult_invalid, 0, 1, Polyspec\\Orm\\Dbspec\\ComparisonResult, 0)
 	ZEND_ARG_TYPE_INFO(0, diagnostics, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_MermaidExportResult___construct, 0, 0, 2)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_MermaidExportResult___construct, 0, 0, 2)
 	ZEND_ARG_TYPE_INFO(0, text, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, dropped, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_MermaidImportResult___construct, 0, 0, 3)
-	ZEND_ARG_OBJ_INFO(0, document, Polyspec\\Orm\\Dbspec\\\116ative\\Document, 1)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_MermaidImportResult___construct, 0, 0, 3)
+	ZEND_ARG_OBJ_INFO(0, document, Polyspec\\Orm\\Dbspec\\Document, 1)
 	ZEND_ARG_TYPE_INFO(0, dropped, IS_ARRAY, 0)
 	ZEND_ARG_TYPE_INFO(0, diagnostics, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_MermaidImportResult_valid, 0, 2, Polyspec\\Orm\\Dbspec\\\116ative\\MermaidImportResult, 0)
-	ZEND_ARG_OBJ_INFO(0, document, Polyspec\\Orm\\Dbspec\\\116ative\\Document, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_MermaidImportResult_valid, 0, 2, Polyspec\\Orm\\Dbspec\\MermaidImportResult, 0)
+	ZEND_ARG_OBJ_INFO(0, document, Polyspec\\Orm\\Dbspec\\Document, 0)
 	ZEND_ARG_TYPE_INFO(0, dropped, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_MermaidImportResult_invalid, 0, 1, Polyspec\\Orm\\Dbspec\\\116ative\\MermaidImportResult, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_MermaidImportResult_invalid, 0, 1, Polyspec\\Orm\\Dbspec\\MermaidImportResult, 0)
 	ZEND_ARG_TYPE_INFO(0, diagnostics, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_IntrospectResult___construct, 0, 0, 2)
-	ZEND_ARG_OBJ_INFO(0, document, Polyspec\\Orm\\Dbspec\\\116ative\\Document, 0)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_IntrospectResult___construct, 0, 0, 2)
+	ZEND_ARG_OBJ_INFO(0, document, Polyspec\\Orm\\Dbspec\\Document, 0)
 	ZEND_ARG_TYPE_INFO(0, unsupported, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_parse, 0, 2, Polyspec\\Orm\\Dbspec\\\116ative\\ParseResult, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Dbspec_parse, 0, 2, Polyspec\\Orm\\Dbspec\\ParseResult, 0)
 	ZEND_ARG_TYPE_INFO(0, text, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, documents, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_analyze, 0, 2, Polyspec\\Orm\\Dbspec\\\116ative\\Analysis, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Dbspec_analyze, 0, 2, Polyspec\\Orm\\Dbspec\\Analysis, 0)
 	ZEND_ARG_TYPE_INFO(0, text, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, documents, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_format, 0, 2, Polyspec\\Orm\\Dbspec\\\116ative\\FormatResult, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Dbspec_format, 0, 2, Polyspec\\Orm\\Dbspec\\FormatResult, 0)
 	ZEND_ARG_TYPE_INFO(0, text, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, documents, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_readFile, 0, 1, Polyspec\\Orm\\Dbspec\\\116ative\\ReadResult, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Dbspec_readFile, 0, 1, Polyspec\\Orm\\Dbspec\\ReadResult, 0)
 	ZEND_ARG_TYPE_INFO(0, path, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_readBytes, 0, 2, Polyspec\\Orm\\Dbspec\\\116ative\\ReadResult, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Dbspec_readBytes, 0, 2, Polyspec\\Orm\\Dbspec\\ReadResult, 0)
 	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, bytes, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_readSet, 0, 1, Polyspec\\Orm\\Dbspec\\\116ative\\SetResult, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Dbspec_readSet, 0, 1, Polyspec\\Orm\\Dbspec\\SetResult, 0)
 	ZEND_ARG_TYPE_INFO(0, path, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_parseSet, 0, 2, IS_ARRAY, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Dbspec_parseSet, 0, 2, IS_ARRAY, 0)
 	ZEND_ARG_TYPE_INFO(0, owned, IS_ARRAY, 0)
 	ZEND_ARG_TYPE_INFO(0, external, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_emit, 0, 1, IS_STRING, 0)
-	ZEND_ARG_OBJ_INFO(0, document, Polyspec\\Orm\\Dbspec\\\116ative\\Document, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Dbspec_emit, 0, 1, IS_STRING, 0)
+	ZEND_ARG_OBJ_INFO(0, document, Polyspec\\Orm\\Dbspec\\Document, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_render, 0, 2, Polyspec\\Orm\\Dbspec\\\116ative\\RenderResult, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Dbspec_render, 0, 2, Polyspec\\Orm\\Dbspec\\RenderResult, 0)
 	ZEND_ARG_TYPE_INFO(0, documents, IS_ARRAY, 0)
 	ZEND_ARG_TYPE_INFO(0, dialect, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_introspect, 0, 3, Polyspec\\Orm\\Dbspec\\\116ative\\IntrospectResult, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Dbspec_introspect, 0, 3, Polyspec\\Orm\\Dbspec\\IntrospectResult, 0)
 	ZEND_ARG_OBJ_INFO(0, connection, PDO, 0)
 	ZEND_ARG_TYPE_INFO(0, dialect, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_manifest, 0, 1, Polyspec\\Orm\\Dbspec\\\116ative\\ManifestResult, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Dbspec_manifest, 0, 1, Polyspec\\Orm\\Dbspec\\ManifestResult, 0)
 	ZEND_ARG_TYPE_INFO(0, documents, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_externalDifferences, 0, 2, IS_ARRAY, 0)
-	ZEND_ARG_OBJ_INFO(0, live, Polyspec\\Orm\\Dbspec\\\116ative\\Document, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Dbspec_externalDifferences, 0, 2, IS_ARRAY, 0)
+	ZEND_ARG_OBJ_INFO(0, live, Polyspec\\Orm\\Dbspec\\Document, 0)
 	ZEND_ARG_TYPE_INFO(0, documents, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_parsePlan, 0, 1, Polyspec\\Orm\\Dbspec\\\116ative\\PlanParseResult, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Dbspec_parsePlan, 0, 1, Polyspec\\Orm\\Dbspec\\PlanParseResult, 0)
 	ZEND_ARG_TYPE_INFO(0, text, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_emitPlan, 0, 1, IS_STRING, 0)
-	ZEND_ARG_OBJ_INFO(0, plan, Polyspec\\Orm\\Dbspec\\\116ative\\Plan, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Dbspec_emitPlan, 0, 1, IS_STRING, 0)
+	ZEND_ARG_OBJ_INFO(0, plan, Polyspec\\Orm\\Dbspec\\Plan, 0)
 ZEND_END_ARG_INFO()
 
-#define arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_chain arginfo_class_Polyspec_Orm_Dbspec_Native_ChainResult_valid
+#define arginfo_class_Polyspec_Orm_Dbspec_Dbspec_chain arginfo_class_Polyspec_Orm_Dbspec_ChainResult_valid
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_diff, 0, 2, Polyspec\\Orm\\Dbspec\\\116ative\\DiffResult, 0)
-	ZEND_ARG_OBJ_INFO(0, source, Polyspec\\Orm\\Dbspec\\\116ative\\Document, 1)
-	ZEND_ARG_OBJ_INFO(0, plan, Polyspec\\Orm\\Dbspec\\\116ative\\Plan, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Dbspec_diff, 0, 2, Polyspec\\Orm\\Dbspec\\DiffResult, 0)
+	ZEND_ARG_OBJ_INFO(0, source, Polyspec\\Orm\\Dbspec\\Document, 1)
+	ZEND_ARG_OBJ_INFO(0, plan, Polyspec\\Orm\\Dbspec\\Plan, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_compareSchemas, 0, 2, Polyspec\\Orm\\Dbspec\\\116ative\\ComparisonResult, 0)
-	ZEND_ARG_OBJ_INFO(0, source, Polyspec\\Orm\\Dbspec\\\116ative\\Document, 0)
-	ZEND_ARG_OBJ_INFO(0, target, Polyspec\\Orm\\Dbspec\\\116ative\\Document, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Dbspec_compareSchemas, 0, 2, Polyspec\\Orm\\Dbspec\\ComparisonResult, 0)
+	ZEND_ARG_OBJ_INFO(0, source, Polyspec\\Orm\\Dbspec\\Document, 0)
+	ZEND_ARG_OBJ_INFO(0, target, Polyspec\\Orm\\Dbspec\\Document, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_installedDifferences, 0, 3, IS_ARRAY, 0)
-	ZEND_ARG_OBJ_INFO(0, live, Polyspec\\Orm\\Dbspec\\\116ative\\Document, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Dbspec_installedDifferences, 0, 3, IS_ARRAY, 0)
+	ZEND_ARG_OBJ_INFO(0, live, Polyspec\\Orm\\Dbspec\\Document, 0)
 	ZEND_ARG_TYPE_INFO(0, unsupported, IS_ARRAY, 0)
-	ZEND_ARG_OBJ_INFO(0, target, Polyspec\\Orm\\Dbspec\\\116ative\\Document, 0)
+	ZEND_ARG_OBJ_INFO(0, target, Polyspec\\Orm\\Dbspec\\Document, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_addTablesAndColumnsSteps, 0, 4, IS_ARRAY, 0)
-	ZEND_ARG_OBJ_INFO(0, live, Polyspec\\Orm\\Dbspec\\\116ative\\Document, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Dbspec_addTablesAndColumnsSteps, 0, 4, IS_ARRAY, 0)
+	ZEND_ARG_OBJ_INFO(0, live, Polyspec\\Orm\\Dbspec\\Document, 0)
 	ZEND_ARG_TYPE_INFO(0, unsupported, IS_ARRAY, 0)
-	ZEND_ARG_OBJ_INFO(0, target, Polyspec\\Orm\\Dbspec\\\116ative\\Document, 0)
+	ZEND_ARG_OBJ_INFO(0, target, Polyspec\\Orm\\Dbspec\\Document, 0)
 	ZEND_ARG_TYPE_INFO(0, dialect, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_planSteps, 0, 3, Polyspec\\Orm\\Dbspec\\\116ative\\PlanStepsResult, 0)
-	ZEND_ARG_OBJ_INFO(0, source, Polyspec\\Orm\\Dbspec\\\116ative\\Document, 1)
-	ZEND_ARG_OBJ_INFO(0, plan, Polyspec\\Orm\\Dbspec\\\116ative\\Plan, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Dbspec_planSteps, 0, 3, Polyspec\\Orm\\Dbspec\\PlanStepsResult, 0)
+	ZEND_ARG_OBJ_INFO(0, source, Polyspec\\Orm\\Dbspec\\Document, 1)
+	ZEND_ARG_OBJ_INFO(0, plan, Polyspec\\Orm\\Dbspec\\Plan, 0)
 	ZEND_ARG_TYPE_INFO(0, dialect, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_apply, 0, 5, IS_VOID, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Dbspec_apply, 0, 5, IS_VOID, 0)
 	ZEND_ARG_OBJ_INFO(0, connection, PDO, 0)
 	ZEND_ARG_TYPE_INFO(0, dialect, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, plans, IS_ARRAY, 0)
@@ -534,470 +534,492 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native
 	ZEND_ARG_OBJ_INFO(0, events, Closure, 1)
 ZEND_END_ARG_INFO()
 
-#define arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_recover arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_apply
+#define arginfo_class_Polyspec_Orm_Dbspec_Dbspec_recover arginfo_class_Polyspec_Orm_Dbspec_Dbspec_apply
 
-#define arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_rollback arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_apply
+#define arginfo_class_Polyspec_Orm_Dbspec_Dbspec_rollback arginfo_class_Polyspec_Orm_Dbspec_Dbspec_apply
 
-#define arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_finalize arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_apply
+#define arginfo_class_Polyspec_Orm_Dbspec_Dbspec_finalize arginfo_class_Polyspec_Orm_Dbspec_Dbspec_apply
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_exportMermaid, 0, 1, Polyspec\\Orm\\Dbspec\\\116ative\\MermaidExportResult, 0)
-	ZEND_ARG_OBJ_INFO(0, document, Polyspec\\Orm\\Dbspec\\\116ative\\Document, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Dbspec_exportMermaid, 0, 1, Polyspec\\Orm\\Dbspec\\MermaidExportResult, 0)
+	ZEND_ARG_OBJ_INFO(0, document, Polyspec\\Orm\\Dbspec\\Document, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_importMermaid, 0, 2, Polyspec\\Orm\\Dbspec\\\116ative\\MermaidImportResult, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Dbspec_importMermaid, 0, 2, Polyspec\\Orm\\Dbspec\\MermaidImportResult, 0)
 	ZEND_ARG_TYPE_INFO(0, text, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_PlanApply___construct, 0, 0, 0)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_PlanApply___construct, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_PlanApply_effectOn, 0, 3, _IS_BOOL, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_PlanApply_apply, 0, 5, IS_VOID, 0)
 	ZEND_ARG_OBJ_INFO(0, c, PDO, 0)
 	ZEND_ARG_TYPE_INFO(0, dialect, IS_STRING, 0)
-	ZEND_ARG_OBJ_INFO(0, e, Polyspec\\Orm\\Dbspec\\\116ative\\Effect, 0)
+	ZEND_ARG_TYPE_INFO(0, plans, IS_ARRAY, 0)
+	ZEND_ARG_OBJ_INFO(0, now, Closure, 0)
+	ZEND_ARG_OBJ_INFO(0, events, Closure, 1)
 ZEND_END_ARG_INFO()
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Diagnostic, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Position, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Document, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_UseLine, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Table, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Column, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ColumnType, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ColumnType, text);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ColumnType, isInteger);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_PrimaryKey, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_UniqueKey, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Index, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_IndexColumn, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ForeignKey, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ForeignKey, changesChildRows);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Check, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Settings, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Setting, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Setting, records);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Setting, excluded);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Setting, auditLine);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Diagram, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Placement, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ReadResult, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ReadResult, valid);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ReadResult, invalid);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_SetFile, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_SetError, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_SetResult, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_SetResult, valid);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_SetResult, invalid);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_SetDocument, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ParseResult, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ParseResult, valid);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ParseResult, invalid);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Token, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Analysis, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_FormatResult, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Names, render);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Names, ofTable);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Names, column);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Manifest, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ManifestResult, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ManifestResult, valid);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ManifestResult, invalid);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_RenderResult, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_RenderResult, valid);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_RenderResult, invalid);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Plan, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_PlanStep, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Effect, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Effect, repeat);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Effect, text);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_NullCheck, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Change, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Difference, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Unsupported, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_TableRename, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ColumnRename, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ColumnName, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ApplyEvent, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ApplyError, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ApplyCleanupError, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_PlanParseResult, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_PlanParseResult, valid);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_PlanParseResult, invalid);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_PlanStepsResult, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_PlanStepsResult, valid);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_PlanStepsResult, invalid);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ChainResult, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ChainResult, valid);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ChainResult, invalid);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_DiffResult, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_DiffResult, valid);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_DiffResult, invalid);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ComparisonResult, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ComparisonResult, valid);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ComparisonResult, invalid);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_MermaidExportResult, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_MermaidImportResult, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_MermaidImportResult, valid);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_MermaidImportResult, invalid);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_IntrospectResult, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, parse);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, analyze);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, format);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, readFile);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, readBytes);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, readSet);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, parseSet);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, emit);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, render);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, introspect);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, manifest);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, externalDifferences);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, parsePlan);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, emitPlan);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, chain);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, diff);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, compareSchemas);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, installedDifferences);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, addTablesAndColumnsSteps);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, planSteps);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, apply);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, recover);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, rollback);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, finalize);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, exportMermaid);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, importMermaid);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_PlanApply, __construct);
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_PlanApply, effectOn);
+#define arginfo_class_Polyspec_Orm_Dbspec_PlanApply_recover arginfo_class_Polyspec_Orm_Dbspec_PlanApply_apply
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_Diagnostic_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Diagnostic, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_Diagnostic___construct, ZEND_ACC_PUBLIC)
+#define arginfo_class_Polyspec_Orm_Dbspec_PlanApply_rollback arginfo_class_Polyspec_Orm_Dbspec_PlanApply_apply
+
+#define arginfo_class_Polyspec_Orm_Dbspec_PlanApply_finalize arginfo_class_Polyspec_Orm_Dbspec_PlanApply_apply
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_PlanApply_effectOn, 0, 3, _IS_BOOL, 0)
+	ZEND_ARG_OBJ_INFO(0, c, PDO, 0)
+	ZEND_ARG_TYPE_INFO(0, dialect, IS_STRING, 0)
+	ZEND_ARG_OBJ_INFO(0, e, Polyspec\\Orm\\Dbspec\\Effect, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_METHOD(Polyspec_Orm_Dbspec_Diagnostic, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Position, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Document, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_UseLine, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Table, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Column, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_ColumnType, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_ColumnType, text);
+ZEND_METHOD(Polyspec_Orm_Dbspec_ColumnType, isInteger);
+ZEND_METHOD(Polyspec_Orm_Dbspec_PrimaryKey, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_UniqueKey, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Index, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_IndexColumn, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_ForeignKey, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_ForeignKey, changesChildRows);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Check, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Settings, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Setting, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Setting, records);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Setting, excluded);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Setting, auditLine);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Diagram, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Placement, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_ReadResult, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_ReadResult, valid);
+ZEND_METHOD(Polyspec_Orm_Dbspec_ReadResult, invalid);
+ZEND_METHOD(Polyspec_Orm_Dbspec_SetFile, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_SetError, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_SetResult, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_SetResult, valid);
+ZEND_METHOD(Polyspec_Orm_Dbspec_SetResult, invalid);
+ZEND_METHOD(Polyspec_Orm_Dbspec_SetDocument, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_ParseResult, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_ParseResult, valid);
+ZEND_METHOD(Polyspec_Orm_Dbspec_ParseResult, invalid);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Token, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Analysis, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_FormatResult, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Names, render);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Names, ofTable);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Names, column);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Manifest, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_ManifestResult, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_ManifestResult, valid);
+ZEND_METHOD(Polyspec_Orm_Dbspec_ManifestResult, invalid);
+ZEND_METHOD(Polyspec_Orm_Dbspec_RenderResult, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_RenderResult, valid);
+ZEND_METHOD(Polyspec_Orm_Dbspec_RenderResult, invalid);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Plan, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_PlanStep, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Effect, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Effect, repeat);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Effect, text);
+ZEND_METHOD(Polyspec_Orm_Dbspec_NullCheck, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Change, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Difference, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Unsupported, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_TableRename, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_ColumnRename, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_ColumnName, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_ApplyEvent, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_ApplyError, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_ApplyCleanupError, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_PlanParseResult, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_PlanParseResult, valid);
+ZEND_METHOD(Polyspec_Orm_Dbspec_PlanParseResult, invalid);
+ZEND_METHOD(Polyspec_Orm_Dbspec_PlanStepsResult, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_PlanStepsResult, valid);
+ZEND_METHOD(Polyspec_Orm_Dbspec_PlanStepsResult, invalid);
+ZEND_METHOD(Polyspec_Orm_Dbspec_ChainResult, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_ChainResult, valid);
+ZEND_METHOD(Polyspec_Orm_Dbspec_ChainResult, invalid);
+ZEND_METHOD(Polyspec_Orm_Dbspec_DiffResult, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_DiffResult, valid);
+ZEND_METHOD(Polyspec_Orm_Dbspec_DiffResult, invalid);
+ZEND_METHOD(Polyspec_Orm_Dbspec_ComparisonResult, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_ComparisonResult, valid);
+ZEND_METHOD(Polyspec_Orm_Dbspec_ComparisonResult, invalid);
+ZEND_METHOD(Polyspec_Orm_Dbspec_MermaidExportResult, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_MermaidImportResult, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_MermaidImportResult, valid);
+ZEND_METHOD(Polyspec_Orm_Dbspec_MermaidImportResult, invalid);
+ZEND_METHOD(Polyspec_Orm_Dbspec_IntrospectResult, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, parse);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, analyze);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, format);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, readFile);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, readBytes);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, readSet);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, parseSet);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, emit);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, render);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, introspect);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, manifest);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, externalDifferences);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, parsePlan);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, emitPlan);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, chain);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, diff);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, compareSchemas);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, installedDifferences);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, addTablesAndColumnsSteps);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, planSteps);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, apply);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, recover);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, rollback);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, finalize);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, exportMermaid);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, importMermaid);
+ZEND_METHOD(Polyspec_Orm_Dbspec_PlanApply, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_PlanApply, apply);
+ZEND_METHOD(Polyspec_Orm_Dbspec_PlanApply, recover);
+ZEND_METHOD(Polyspec_Orm_Dbspec_PlanApply, rollback);
+ZEND_METHOD(Polyspec_Orm_Dbspec_PlanApply, finalize);
+ZEND_METHOD(Polyspec_Orm_Dbspec_PlanApply, effectOn);
+
+static const zend_function_entry class_Polyspec_Orm_Dbspec_Diagnostic_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_Diagnostic, __construct, arginfo_class_Polyspec_Orm_Dbspec_Diagnostic___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_Position_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Position, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_Position___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_Position_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_Position, __construct, arginfo_class_Polyspec_Orm_Dbspec_Position___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_Document_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Document, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_Document___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_Document_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_Document, __construct, arginfo_class_Polyspec_Orm_Dbspec_Document___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_UseLine_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_UseLine, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_UseLine___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_UseLine_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_UseLine, __construct, arginfo_class_Polyspec_Orm_Dbspec_UseLine___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_Table_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Table, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_Table___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_Table_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_Table, __construct, arginfo_class_Polyspec_Orm_Dbspec_Table___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_Column_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Column, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_Column___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_Column_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_Column, __construct, arginfo_class_Polyspec_Orm_Dbspec_Column___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_ColumnType_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_ColumnType, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_ColumnType___construct, ZEND_ACC_PUBLIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_ColumnType, text, arginfo_class_Polyspec_Orm_Dbspec_Native_ColumnType_text, ZEND_ACC_PUBLIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_ColumnType, isInteger, arginfo_class_Polyspec_Orm_Dbspec_Native_ColumnType_isInteger, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_ColumnType_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_ColumnType, __construct, arginfo_class_Polyspec_Orm_Dbspec_ColumnType___construct, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_ColumnType, text, arginfo_class_Polyspec_Orm_Dbspec_ColumnType_text, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_ColumnType, isInteger, arginfo_class_Polyspec_Orm_Dbspec_ColumnType_isInteger, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_PrimaryKey_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_PrimaryKey, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_PrimaryKey___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_PrimaryKey_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_PrimaryKey, __construct, arginfo_class_Polyspec_Orm_Dbspec_PrimaryKey___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_UniqueKey_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_UniqueKey, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_UniqueKey___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_UniqueKey_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_UniqueKey, __construct, arginfo_class_Polyspec_Orm_Dbspec_UniqueKey___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_Index_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Index, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_Index___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_Index_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_Index, __construct, arginfo_class_Polyspec_Orm_Dbspec_Index___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_IndexColumn_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_IndexColumn, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_IndexColumn___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_IndexColumn_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_IndexColumn, __construct, arginfo_class_Polyspec_Orm_Dbspec_IndexColumn___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_ForeignKey_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_ForeignKey, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_ForeignKey___construct, ZEND_ACC_PUBLIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_ForeignKey, changesChildRows, arginfo_class_Polyspec_Orm_Dbspec_Native_ForeignKey_changesChildRows, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_ForeignKey_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_ForeignKey, __construct, arginfo_class_Polyspec_Orm_Dbspec_ForeignKey___construct, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_ForeignKey, changesChildRows, arginfo_class_Polyspec_Orm_Dbspec_ForeignKey_changesChildRows, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_Check_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Check, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_Check___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_Check_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_Check, __construct, arginfo_class_Polyspec_Orm_Dbspec_Check___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_Settings_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Settings, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_Settings___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_Settings_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_Settings, __construct, arginfo_class_Polyspec_Orm_Dbspec_Settings___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_Setting_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Setting, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_Setting___construct, ZEND_ACC_PUBLIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Setting, records, arginfo_class_Polyspec_Orm_Dbspec_Native_Setting_records, ZEND_ACC_PUBLIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Setting, excluded, arginfo_class_Polyspec_Orm_Dbspec_Native_Setting_excluded, ZEND_ACC_PUBLIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Setting, auditLine, arginfo_class_Polyspec_Orm_Dbspec_Native_Setting_auditLine, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_Setting_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_Setting, __construct, arginfo_class_Polyspec_Orm_Dbspec_Setting___construct, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Setting, records, arginfo_class_Polyspec_Orm_Dbspec_Setting_records, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Setting, excluded, arginfo_class_Polyspec_Orm_Dbspec_Setting_excluded, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Setting, auditLine, arginfo_class_Polyspec_Orm_Dbspec_Setting_auditLine, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_Diagram_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Diagram, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_Diagram___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_Diagram_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_Diagram, __construct, arginfo_class_Polyspec_Orm_Dbspec_Diagram___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_Placement_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Placement, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_Placement___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_Placement_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_Placement, __construct, arginfo_class_Polyspec_Orm_Dbspec_Placement___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_ReadResult_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_ReadResult, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_ReadResult___construct, ZEND_ACC_PRIVATE)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_ReadResult, valid, arginfo_class_Polyspec_Orm_Dbspec_Native_ReadResult_valid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_ReadResult, invalid, arginfo_class_Polyspec_Orm_Dbspec_Native_ReadResult_invalid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_ReadResult_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_ReadResult, __construct, arginfo_class_Polyspec_Orm_Dbspec_ReadResult___construct, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Dbspec_ReadResult, valid, arginfo_class_Polyspec_Orm_Dbspec_ReadResult_valid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_ReadResult, invalid, arginfo_class_Polyspec_Orm_Dbspec_ReadResult_invalid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_SetFile_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_SetFile, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_SetFile___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_SetFile_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_SetFile, __construct, arginfo_class_Polyspec_Orm_Dbspec_SetFile___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_SetError_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_SetError, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_SetError___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_SetError_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_SetError, __construct, arginfo_class_Polyspec_Orm_Dbspec_SetError___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_SetResult_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_SetResult, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_SetResult___construct, ZEND_ACC_PRIVATE)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_SetResult, valid, arginfo_class_Polyspec_Orm_Dbspec_Native_SetResult_valid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_SetResult, invalid, arginfo_class_Polyspec_Orm_Dbspec_Native_SetResult_invalid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_SetResult_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_SetResult, __construct, arginfo_class_Polyspec_Orm_Dbspec_SetResult___construct, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Dbspec_SetResult, valid, arginfo_class_Polyspec_Orm_Dbspec_SetResult_valid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_SetResult, invalid, arginfo_class_Polyspec_Orm_Dbspec_SetResult_invalid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_SetDocument_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_SetDocument, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_SetDocument___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_SetDocument_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_SetDocument, __construct, arginfo_class_Polyspec_Orm_Dbspec_SetDocument___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_ParseResult_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_ParseResult, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_ParseResult___construct, ZEND_ACC_PRIVATE)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_ParseResult, valid, arginfo_class_Polyspec_Orm_Dbspec_Native_ParseResult_valid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_ParseResult, invalid, arginfo_class_Polyspec_Orm_Dbspec_Native_ParseResult_invalid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_ParseResult_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_ParseResult, __construct, arginfo_class_Polyspec_Orm_Dbspec_ParseResult___construct, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Dbspec_ParseResult, valid, arginfo_class_Polyspec_Orm_Dbspec_ParseResult_valid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_ParseResult, invalid, arginfo_class_Polyspec_Orm_Dbspec_ParseResult_invalid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_Token_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Token, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_Token___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_Token_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_Token, __construct, arginfo_class_Polyspec_Orm_Dbspec_Token___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_Analysis_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Analysis, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_Analysis___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_Analysis_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_Analysis, __construct, arginfo_class_Polyspec_Orm_Dbspec_Analysis___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_FormatResult_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_FormatResult, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_FormatResult___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_FormatResult_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_FormatResult, __construct, arginfo_class_Polyspec_Orm_Dbspec_FormatResult___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_Names_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Names, render, arginfo_class_Polyspec_Orm_Dbspec_Native_Names_render, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Names, ofTable, arginfo_class_Polyspec_Orm_Dbspec_Native_Names_ofTable, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Names, column, arginfo_class_Polyspec_Orm_Dbspec_Native_Names_column, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_Names_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_Names, render, arginfo_class_Polyspec_Orm_Dbspec_Names_render, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Names, ofTable, arginfo_class_Polyspec_Orm_Dbspec_Names_ofTable, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Names, column, arginfo_class_Polyspec_Orm_Dbspec_Names_column, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_Manifest_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Manifest, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_Manifest___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_Manifest_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_Manifest, __construct, arginfo_class_Polyspec_Orm_Dbspec_Manifest___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_ManifestResult_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_ManifestResult, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_ManifestResult___construct, ZEND_ACC_PRIVATE)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_ManifestResult, valid, arginfo_class_Polyspec_Orm_Dbspec_Native_ManifestResult_valid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_ManifestResult, invalid, arginfo_class_Polyspec_Orm_Dbspec_Native_ManifestResult_invalid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_ManifestResult_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_ManifestResult, __construct, arginfo_class_Polyspec_Orm_Dbspec_ManifestResult___construct, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Dbspec_ManifestResult, valid, arginfo_class_Polyspec_Orm_Dbspec_ManifestResult_valid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_ManifestResult, invalid, arginfo_class_Polyspec_Orm_Dbspec_ManifestResult_invalid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_RenderResult_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_RenderResult, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_RenderResult___construct, ZEND_ACC_PRIVATE)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_RenderResult, valid, arginfo_class_Polyspec_Orm_Dbspec_Native_RenderResult_valid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_RenderResult, invalid, arginfo_class_Polyspec_Orm_Dbspec_Native_RenderResult_invalid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_RenderResult_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_RenderResult, __construct, arginfo_class_Polyspec_Orm_Dbspec_RenderResult___construct, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Dbspec_RenderResult, valid, arginfo_class_Polyspec_Orm_Dbspec_RenderResult_valid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_RenderResult, invalid, arginfo_class_Polyspec_Orm_Dbspec_RenderResult_invalid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_Plan_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Plan, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_Plan___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_Plan_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_Plan, __construct, arginfo_class_Polyspec_Orm_Dbspec_Plan___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_PlanStep_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_PlanStep, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_PlanStep___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_PlanStep_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_PlanStep, __construct, arginfo_class_Polyspec_Orm_Dbspec_PlanStep___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_Effect_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Effect, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_Effect___construct, ZEND_ACC_PUBLIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Effect, repeat, arginfo_class_Polyspec_Orm_Dbspec_Native_Effect_repeat, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Effect, text, arginfo_class_Polyspec_Orm_Dbspec_Native_Effect_text, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_Effect_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_Effect, __construct, arginfo_class_Polyspec_Orm_Dbspec_Effect___construct, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Effect, repeat, arginfo_class_Polyspec_Orm_Dbspec_Effect_repeat, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Effect, text, arginfo_class_Polyspec_Orm_Dbspec_Effect_text, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_NullCheck_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_NullCheck, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_NullCheck___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_NullCheck_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_NullCheck, __construct, arginfo_class_Polyspec_Orm_Dbspec_NullCheck___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_Change_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Change, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_Change___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_Change_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_Change, __construct, arginfo_class_Polyspec_Orm_Dbspec_Change___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_Difference_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Difference, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_Difference___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_Difference_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_Difference, __construct, arginfo_class_Polyspec_Orm_Dbspec_Difference___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_Unsupported_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Unsupported, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_Unsupported___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_Unsupported_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_Unsupported, __construct, arginfo_class_Polyspec_Orm_Dbspec_Unsupported___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_TableRename_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_TableRename, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_TableRename___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_TableRename_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_TableRename, __construct, arginfo_class_Polyspec_Orm_Dbspec_TableRename___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_ColumnRename_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_ColumnRename, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_ColumnRename___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_ColumnRename_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_ColumnRename, __construct, arginfo_class_Polyspec_Orm_Dbspec_ColumnRename___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_ColumnName_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_ColumnName, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_ColumnName___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_ColumnName_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_ColumnName, __construct, arginfo_class_Polyspec_Orm_Dbspec_ColumnName___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_ApplyEvent_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_ApplyEvent, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_ApplyEvent___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_ApplyEvent_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_ApplyEvent, __construct, arginfo_class_Polyspec_Orm_Dbspec_ApplyEvent___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_ApplyError_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_ApplyError, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_ApplyError___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_ApplyError_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_ApplyError, __construct, arginfo_class_Polyspec_Orm_Dbspec_ApplyError___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_ApplyCleanupError_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_ApplyCleanupError, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_ApplyCleanupError___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_ApplyCleanupError_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_ApplyCleanupError, __construct, arginfo_class_Polyspec_Orm_Dbspec_ApplyCleanupError___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_PlanParseResult_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_PlanParseResult, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_PlanParseResult___construct, ZEND_ACC_PRIVATE)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_PlanParseResult, valid, arginfo_class_Polyspec_Orm_Dbspec_Native_PlanParseResult_valid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_PlanParseResult, invalid, arginfo_class_Polyspec_Orm_Dbspec_Native_PlanParseResult_invalid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_PlanParseResult_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_PlanParseResult, __construct, arginfo_class_Polyspec_Orm_Dbspec_PlanParseResult___construct, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Dbspec_PlanParseResult, valid, arginfo_class_Polyspec_Orm_Dbspec_PlanParseResult_valid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_PlanParseResult, invalid, arginfo_class_Polyspec_Orm_Dbspec_PlanParseResult_invalid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_PlanStepsResult_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_PlanStepsResult, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_PlanStepsResult___construct, ZEND_ACC_PRIVATE)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_PlanStepsResult, valid, arginfo_class_Polyspec_Orm_Dbspec_Native_PlanStepsResult_valid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_PlanStepsResult, invalid, arginfo_class_Polyspec_Orm_Dbspec_Native_PlanStepsResult_invalid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_PlanStepsResult_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_PlanStepsResult, __construct, arginfo_class_Polyspec_Orm_Dbspec_PlanStepsResult___construct, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Dbspec_PlanStepsResult, valid, arginfo_class_Polyspec_Orm_Dbspec_PlanStepsResult_valid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_PlanStepsResult, invalid, arginfo_class_Polyspec_Orm_Dbspec_PlanStepsResult_invalid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_ChainResult_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_ChainResult, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_ChainResult___construct, ZEND_ACC_PRIVATE)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_ChainResult, valid, arginfo_class_Polyspec_Orm_Dbspec_Native_ChainResult_valid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_ChainResult, invalid, arginfo_class_Polyspec_Orm_Dbspec_Native_ChainResult_invalid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_ChainResult_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_ChainResult, __construct, arginfo_class_Polyspec_Orm_Dbspec_ChainResult___construct, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Dbspec_ChainResult, valid, arginfo_class_Polyspec_Orm_Dbspec_ChainResult_valid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_ChainResult, invalid, arginfo_class_Polyspec_Orm_Dbspec_ChainResult_invalid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_DiffResult_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_DiffResult, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_DiffResult___construct, ZEND_ACC_PRIVATE)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_DiffResult, valid, arginfo_class_Polyspec_Orm_Dbspec_Native_DiffResult_valid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_DiffResult, invalid, arginfo_class_Polyspec_Orm_Dbspec_Native_DiffResult_invalid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_DiffResult_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_DiffResult, __construct, arginfo_class_Polyspec_Orm_Dbspec_DiffResult___construct, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Dbspec_DiffResult, valid, arginfo_class_Polyspec_Orm_Dbspec_DiffResult_valid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_DiffResult, invalid, arginfo_class_Polyspec_Orm_Dbspec_DiffResult_invalid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_ComparisonResult_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_ComparisonResult, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_ComparisonResult___construct, ZEND_ACC_PRIVATE)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_ComparisonResult, valid, arginfo_class_Polyspec_Orm_Dbspec_Native_ComparisonResult_valid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_ComparisonResult, invalid, arginfo_class_Polyspec_Orm_Dbspec_Native_ComparisonResult_invalid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_ComparisonResult_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_ComparisonResult, __construct, arginfo_class_Polyspec_Orm_Dbspec_ComparisonResult___construct, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Dbspec_ComparisonResult, valid, arginfo_class_Polyspec_Orm_Dbspec_ComparisonResult_valid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_ComparisonResult, invalid, arginfo_class_Polyspec_Orm_Dbspec_ComparisonResult_invalid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_MermaidExportResult_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_MermaidExportResult, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_MermaidExportResult___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_MermaidExportResult_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_MermaidExportResult, __construct, arginfo_class_Polyspec_Orm_Dbspec_MermaidExportResult___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_MermaidImportResult_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_MermaidImportResult, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_MermaidImportResult___construct, ZEND_ACC_PRIVATE)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_MermaidImportResult, valid, arginfo_class_Polyspec_Orm_Dbspec_Native_MermaidImportResult_valid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_MermaidImportResult, invalid, arginfo_class_Polyspec_Orm_Dbspec_Native_MermaidImportResult_invalid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_MermaidImportResult_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_MermaidImportResult, __construct, arginfo_class_Polyspec_Orm_Dbspec_MermaidImportResult___construct, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Dbspec_MermaidImportResult, valid, arginfo_class_Polyspec_Orm_Dbspec_MermaidImportResult_valid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_MermaidImportResult, invalid, arginfo_class_Polyspec_Orm_Dbspec_MermaidImportResult_invalid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_IntrospectResult_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_IntrospectResult, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_IntrospectResult___construct, ZEND_ACC_PUBLIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_IntrospectResult_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_IntrospectResult, __construct, arginfo_class_Polyspec_Orm_Dbspec_IntrospectResult___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_Dbspec_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, parse, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_parse, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, analyze, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_analyze, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, format, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_format, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, readFile, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_readFile, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, readBytes, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_readBytes, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, readSet, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_readSet, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, parseSet, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_parseSet, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, emit, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_emit, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, render, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_render, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, introspect, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_introspect, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, manifest, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_manifest, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, externalDifferences, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_externalDifferences, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, parsePlan, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_parsePlan, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, emitPlan, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_emitPlan, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, chain, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_chain, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, diff, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_diff, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, compareSchemas, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_compareSchemas, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, installedDifferences, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_installedDifferences, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, addTablesAndColumnsSteps, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_addTablesAndColumnsSteps, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, planSteps, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_planSteps, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, apply, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_apply, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, recover, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_recover, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, rollback, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_rollback, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, finalize, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_finalize, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, exportMermaid, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_exportMermaid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_Dbspec, importMermaid, arginfo_class_Polyspec_Orm_Dbspec_Native_Dbspec_importMermaid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_Dbspec_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_Dbspec, parse, arginfo_class_Polyspec_Orm_Dbspec_Dbspec_parse, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Dbspec, analyze, arginfo_class_Polyspec_Orm_Dbspec_Dbspec_analyze, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Dbspec, format, arginfo_class_Polyspec_Orm_Dbspec_Dbspec_format, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Dbspec, readFile, arginfo_class_Polyspec_Orm_Dbspec_Dbspec_readFile, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Dbspec, readBytes, arginfo_class_Polyspec_Orm_Dbspec_Dbspec_readBytes, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Dbspec, readSet, arginfo_class_Polyspec_Orm_Dbspec_Dbspec_readSet, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Dbspec, parseSet, arginfo_class_Polyspec_Orm_Dbspec_Dbspec_parseSet, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Dbspec, emit, arginfo_class_Polyspec_Orm_Dbspec_Dbspec_emit, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Dbspec, render, arginfo_class_Polyspec_Orm_Dbspec_Dbspec_render, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Dbspec, introspect, arginfo_class_Polyspec_Orm_Dbspec_Dbspec_introspect, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Dbspec, manifest, arginfo_class_Polyspec_Orm_Dbspec_Dbspec_manifest, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Dbspec, externalDifferences, arginfo_class_Polyspec_Orm_Dbspec_Dbspec_externalDifferences, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Dbspec, parsePlan, arginfo_class_Polyspec_Orm_Dbspec_Dbspec_parsePlan, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Dbspec, emitPlan, arginfo_class_Polyspec_Orm_Dbspec_Dbspec_emitPlan, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Dbspec, chain, arginfo_class_Polyspec_Orm_Dbspec_Dbspec_chain, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Dbspec, diff, arginfo_class_Polyspec_Orm_Dbspec_Dbspec_diff, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Dbspec, compareSchemas, arginfo_class_Polyspec_Orm_Dbspec_Dbspec_compareSchemas, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Dbspec, installedDifferences, arginfo_class_Polyspec_Orm_Dbspec_Dbspec_installedDifferences, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Dbspec, addTablesAndColumnsSteps, arginfo_class_Polyspec_Orm_Dbspec_Dbspec_addTablesAndColumnsSteps, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Dbspec, planSteps, arginfo_class_Polyspec_Orm_Dbspec_Dbspec_planSteps, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Dbspec, apply, arginfo_class_Polyspec_Orm_Dbspec_Dbspec_apply, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Dbspec, recover, arginfo_class_Polyspec_Orm_Dbspec_Dbspec_recover, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Dbspec, rollback, arginfo_class_Polyspec_Orm_Dbspec_Dbspec_rollback, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Dbspec, finalize, arginfo_class_Polyspec_Orm_Dbspec_Dbspec_finalize, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Dbspec, exportMermaid, arginfo_class_Polyspec_Orm_Dbspec_Dbspec_exportMermaid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_Dbspec, importMermaid, arginfo_class_Polyspec_Orm_Dbspec_Dbspec_importMermaid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_FE_END
 };
 
-static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_PlanApply_methods[] = {
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_PlanApply, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_PlanApply___construct, ZEND_ACC_PRIVATE)
-	ZEND_ME(Polyspec_Orm_Dbspec_Native_PlanApply, effectOn, arginfo_class_Polyspec_Orm_Dbspec_Native_PlanApply_effectOn, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+static const zend_function_entry class_Polyspec_Orm_Dbspec_PlanApply_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_PlanApply, __construct, arginfo_class_Polyspec_Orm_Dbspec_PlanApply___construct, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Dbspec_PlanApply, apply, arginfo_class_Polyspec_Orm_Dbspec_PlanApply_apply, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_PlanApply, recover, arginfo_class_Polyspec_Orm_Dbspec_PlanApply_recover, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_PlanApply, rollback, arginfo_class_Polyspec_Orm_Dbspec_PlanApply_rollback, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_PlanApply, finalize, arginfo_class_Polyspec_Orm_Dbspec_PlanApply_finalize, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Dbspec_PlanApply, effectOn, arginfo_class_Polyspec_Orm_Dbspec_PlanApply_effectOn, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_FE_END
 };
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Diagnostic(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Diagnostic(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "Diagnostic", class_Polyspec_Orm_Dbspec_Native_Diagnostic_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "Diagnostic", class_Polyspec_Orm_Dbspec_Diagnostic_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_rule_default_value;
@@ -1023,11 +1045,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Diagnostic(vo
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Position(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Position(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "Position", class_Polyspec_Orm_Dbspec_Native_Position_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "Position", class_Polyspec_Orm_Dbspec_Position_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_kind_default_value;
@@ -1053,11 +1075,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Position(void
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Document(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Document(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "Document", class_Polyspec_Orm_Dbspec_Native_Document_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "Document", class_Polyspec_Orm_Dbspec_Document_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
 
 	zval property_uses_default_value;
@@ -1097,11 +1119,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Document(void
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_UseLine(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_UseLine(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "UseLine", class_Polyspec_Orm_Dbspec_Native_UseLine_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "UseLine", class_Polyspec_Orm_Dbspec_UseLine_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
 
 	zval property_document_default_value;
@@ -1125,11 +1147,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_UseLine(void)
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Table(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Table(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "Table", class_Polyspec_Orm_Dbspec_Native_Table_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "Table", class_Polyspec_Orm_Dbspec_Table_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
 
 	zval property_columns_default_value;
@@ -1141,8 +1163,8 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Table(void)
 	zval property_primaryKey_default_value;
 	ZVAL_NULL(&property_primaryKey_default_value);
 	zend_string *property_primaryKey_name = zend_string_init("primaryKey", sizeof("primaryKey") - 1, 1);
-	zend_string *property_primaryKey_class_Polyspec_Orm_Dbspec_Native_PrimaryKey = zend_string_init("Polyspec\\Orm\\Dbspec\\\116ative\\PrimaryKey", sizeof("Polyspec\\Orm\\Dbspec\\\116ative\\PrimaryKey")-1, 1);
-	zend_declare_typed_property(class_entry, property_primaryKey_name, &property_primaryKey_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_primaryKey_class_Polyspec_Orm_Dbspec_Native_PrimaryKey, 0, MAY_BE_NULL));
+	zend_string *property_primaryKey_class_Polyspec_Orm_Dbspec_PrimaryKey = zend_string_init("Polyspec\\Orm\\Dbspec\\PrimaryKey", sizeof("Polyspec\\Orm\\Dbspec\\PrimaryKey")-1, 1);
+	zend_declare_typed_property(class_entry, property_primaryKey_name, &property_primaryKey_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_primaryKey_class_Polyspec_Orm_Dbspec_PrimaryKey, 0, MAY_BE_NULL));
 	zend_string_release(property_primaryKey_name);
 
 	zval property_uniqueKeys_default_value;
@@ -1172,8 +1194,8 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Table(void)
 	zval property_settings_default_value;
 	ZVAL_NULL(&property_settings_default_value);
 	zend_string *property_settings_name = zend_string_init("settings", sizeof("settings") - 1, 1);
-	zend_string *property_settings_class_Polyspec_Orm_Dbspec_Native_Settings = zend_string_init("Polyspec\\Orm\\Dbspec\\\116ative\\Settings", sizeof("Polyspec\\Orm\\Dbspec\\\116ative\\Settings")-1, 1);
-	zend_declare_typed_property(class_entry, property_settings_name, &property_settings_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_settings_class_Polyspec_Orm_Dbspec_Native_Settings, 0, MAY_BE_NULL));
+	zend_string *property_settings_class_Polyspec_Orm_Dbspec_Settings = zend_string_init("Polyspec\\Orm\\Dbspec\\Settings", sizeof("Polyspec\\Orm\\Dbspec\\Settings")-1, 1);
+	zend_declare_typed_property(class_entry, property_settings_name, &property_settings_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_settings_class_Polyspec_Orm_Dbspec_Settings, 0, MAY_BE_NULL));
 	zend_string_release(property_settings_name);
 
 	zval property_closingComments_default_value;
@@ -1195,11 +1217,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Table(void)
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Column(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Column(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "Column", class_Polyspec_Orm_Dbspec_Native_Column_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "Column", class_Polyspec_Orm_Dbspec_Column_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
 
 	zval property_name_default_value;
@@ -1208,8 +1230,8 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Column(void)
 
 	zval property_type_default_value;
 	ZVAL_UNDEF(&property_type_default_value);
-	zend_string *property_type_class_Polyspec_Orm_Dbspec_Native_ColumnType = zend_string_init("Polyspec\\Orm\\Dbspec\\\116ative\\ColumnType", sizeof("Polyspec\\Orm\\Dbspec\\\116ative\\ColumnType")-1, 1);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_TYPE), &property_type_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_type_class_Polyspec_Orm_Dbspec_Native_ColumnType, 0, 0));
+	zend_string *property_type_class_Polyspec_Orm_Dbspec_ColumnType = zend_string_init("Polyspec\\Orm\\Dbspec\\ColumnType", sizeof("Polyspec\\Orm\\Dbspec\\ColumnType")-1, 1);
+	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_TYPE), &property_type_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_type_class_Polyspec_Orm_Dbspec_ColumnType, 0, 0));
 
 	zval property_nullable_default_value;
 	ZVAL_UNDEF(&property_nullable_default_value);
@@ -1238,11 +1260,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Column(void)
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_ColumnType(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_ColumnType(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "ColumnType", class_Polyspec_Orm_Dbspec_Native_ColumnType_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "ColumnType", class_Polyspec_Orm_Dbspec_ColumnType_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_name_default_value;
@@ -1258,11 +1280,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_ColumnType(vo
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_PrimaryKey(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_PrimaryKey(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "PrimaryKey", class_Polyspec_Orm_Dbspec_Native_PrimaryKey_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "PrimaryKey", class_Polyspec_Orm_Dbspec_PrimaryKey_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
 
 	zval property_columns_default_value;
@@ -1280,37 +1302,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_PrimaryKey(vo
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_UniqueKey(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_UniqueKey(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "UniqueKey", class_Polyspec_Orm_Dbspec_Native_UniqueKey_methods);
-	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
-
-	zval property_name_default_value;
-	ZVAL_UNDEF(&property_name_default_value);
-	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_NAME), &property_name_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
-
-	zval property_columns_default_value;
-	ZVAL_UNDEF(&property_columns_default_value);
-	zend_string *property_columns_name = zend_string_init("columns", sizeof("columns") - 1, 1);
-	zend_declare_typed_property(class_entry, property_columns_name, &property_columns_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
-	zend_string_release(property_columns_name);
-
-	zval property_comments_default_value;
-	ZVAL_UNDEF(&property_comments_default_value);
-	zend_string *property_comments_name = zend_string_init("comments", sizeof("comments") - 1, 1);
-	zend_declare_typed_property(class_entry, property_comments_name, &property_comments_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
-	zend_string_release(property_comments_name);
-
-	return class_entry;
-}
-
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Index(void)
-{
-	zend_class_entry ce, *class_entry;
-
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "Index", class_Polyspec_Orm_Dbspec_Native_Index_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "UniqueKey", class_Polyspec_Orm_Dbspec_UniqueKey_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
 
 	zval property_name_default_value;
@@ -1332,11 +1328,37 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Index(void)
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_IndexColumn(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Index(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "IndexColumn", class_Polyspec_Orm_Dbspec_Native_IndexColumn_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "Index", class_Polyspec_Orm_Dbspec_Index_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
+
+	zval property_name_default_value;
+	ZVAL_UNDEF(&property_name_default_value);
+	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_NAME), &property_name_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+
+	zval property_columns_default_value;
+	ZVAL_UNDEF(&property_columns_default_value);
+	zend_string *property_columns_name = zend_string_init("columns", sizeof("columns") - 1, 1);
+	zend_declare_typed_property(class_entry, property_columns_name, &property_columns_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_columns_name);
+
+	zval property_comments_default_value;
+	ZVAL_UNDEF(&property_comments_default_value);
+	zend_string *property_comments_name = zend_string_init("comments", sizeof("comments") - 1, 1);
+	zend_declare_typed_property(class_entry, property_comments_name, &property_comments_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_comments_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_IndexColumn(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "IndexColumn", class_Polyspec_Orm_Dbspec_IndexColumn_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_name_default_value;
@@ -1352,11 +1374,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_IndexColumn(v
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_ForeignKey(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_ForeignKey(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "ForeignKey", class_Polyspec_Orm_Dbspec_Native_ForeignKey_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "ForeignKey", class_Polyspec_Orm_Dbspec_ForeignKey_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
 
 	zval property_name_default_value;
@@ -1402,11 +1424,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_ForeignKey(vo
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Check(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Check(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "Check", class_Polyspec_Orm_Dbspec_Native_Check_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "Check", class_Polyspec_Orm_Dbspec_Check_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
 
 	zval property_name_default_value;
@@ -1428,11 +1450,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Check(void)
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Settings(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Settings(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "Settings", class_Polyspec_Orm_Dbspec_Native_Settings_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "Settings", class_Polyspec_Orm_Dbspec_Settings_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
 
 	zval property_settings_default_value;
@@ -1456,11 +1478,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Settings(void
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Setting(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Setting(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "Setting", class_Polyspec_Orm_Dbspec_Native_Setting_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "Setting", class_Polyspec_Orm_Dbspec_Setting_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
 
 	zval property_kind_default_value;
@@ -1506,11 +1528,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Setting(void)
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Diagram(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Diagram(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "Diagram", class_Polyspec_Orm_Dbspec_Native_Diagram_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "Diagram", class_Polyspec_Orm_Dbspec_Diagram_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
 
 	zval property_placements_default_value;
@@ -1538,11 +1560,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Diagram(void)
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Placement(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Placement(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "Placement", class_Polyspec_Orm_Dbspec_Native_Placement_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "Placement", class_Polyspec_Orm_Dbspec_Placement_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
 
 	zval property_table_default_value;
@@ -1572,11 +1594,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Placement(voi
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_ReadResult(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_ReadResult(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "ReadResult", class_Polyspec_Orm_Dbspec_Native_ReadResult_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "ReadResult", class_Polyspec_Orm_Dbspec_ReadResult_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_text_default_value;
@@ -1594,11 +1616,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_ReadResult(vo
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_SetFile(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_SetFile(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "SetFile", class_Polyspec_Orm_Dbspec_Native_SetFile_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "SetFile", class_Polyspec_Orm_Dbspec_SetFile_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_path_default_value;
@@ -1614,11 +1636,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_SetFile(void)
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_SetError(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_SetError(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "SetError", class_Polyspec_Orm_Dbspec_Native_SetError_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "SetError", class_Polyspec_Orm_Dbspec_SetError_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_rule_default_value;
@@ -1638,11 +1660,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_SetError(void
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_SetResult(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_SetResult(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "SetResult", class_Polyspec_Orm_Dbspec_Native_SetResult_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "SetResult", class_Polyspec_Orm_Dbspec_SetResult_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_documents_default_value;
@@ -1666,11 +1688,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_SetResult(voi
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_SetDocument(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_SetDocument(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "SetDocument", class_Polyspec_Orm_Dbspec_Native_SetDocument_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "SetDocument", class_Polyspec_Orm_Dbspec_SetDocument_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_name_default_value;
@@ -1686,8 +1708,8 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_SetDocument(v
 	zval property_document_default_value;
 	ZVAL_UNDEF(&property_document_default_value);
 	zend_string *property_document_name = zend_string_init("document", sizeof("document") - 1, 1);
-	zend_string *property_document_class_Polyspec_Orm_Dbspec_Native_Document = zend_string_init("Polyspec\\Orm\\Dbspec\\\116ative\\Document", sizeof("Polyspec\\Orm\\Dbspec\\\116ative\\Document")-1, 1);
-	zend_declare_typed_property(class_entry, property_document_name, &property_document_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_document_class_Polyspec_Orm_Dbspec_Native_Document, 0, MAY_BE_NULL));
+	zend_string *property_document_class_Polyspec_Orm_Dbspec_Document = zend_string_init("Polyspec\\Orm\\Dbspec\\Document", sizeof("Polyspec\\Orm\\Dbspec\\Document")-1, 1);
+	zend_declare_typed_property(class_entry, property_document_name, &property_document_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_document_class_Polyspec_Orm_Dbspec_Document, 0, MAY_BE_NULL));
 	zend_string_release(property_document_name);
 
 	zval property_positions_default_value;
@@ -1705,18 +1727,18 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_SetDocument(v
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_ParseResult(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_ParseResult(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "ParseResult", class_Polyspec_Orm_Dbspec_Native_ParseResult_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "ParseResult", class_Polyspec_Orm_Dbspec_ParseResult_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_document_default_value;
 	ZVAL_UNDEF(&property_document_default_value);
 	zend_string *property_document_name = zend_string_init("document", sizeof("document") - 1, 1);
-	zend_string *property_document_class_Polyspec_Orm_Dbspec_Native_Document = zend_string_init("Polyspec\\Orm\\Dbspec\\\116ative\\Document", sizeof("Polyspec\\Orm\\Dbspec\\\116ative\\Document")-1, 1);
-	zend_declare_typed_property(class_entry, property_document_name, &property_document_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_document_class_Polyspec_Orm_Dbspec_Native_Document, 0, MAY_BE_NULL));
+	zend_string *property_document_class_Polyspec_Orm_Dbspec_Document = zend_string_init("Polyspec\\Orm\\Dbspec\\Document", sizeof("Polyspec\\Orm\\Dbspec\\Document")-1, 1);
+	zend_declare_typed_property(class_entry, property_document_name, &property_document_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_document_class_Polyspec_Orm_Dbspec_Document, 0, MAY_BE_NULL));
 	zend_string_release(property_document_name);
 
 	zval property_diagnostics_default_value;
@@ -1734,11 +1756,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_ParseResult(v
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Token(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Token(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "Token", class_Polyspec_Orm_Dbspec_Native_Token_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "Token", class_Polyspec_Orm_Dbspec_Token_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_line_default_value;
@@ -1764,18 +1786,18 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Token(void)
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Analysis(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Analysis(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "Analysis", class_Polyspec_Orm_Dbspec_Native_Analysis_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "Analysis", class_Polyspec_Orm_Dbspec_Analysis_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_document_default_value;
 	ZVAL_UNDEF(&property_document_default_value);
 	zend_string *property_document_name = zend_string_init("document", sizeof("document") - 1, 1);
-	zend_string *property_document_class_Polyspec_Orm_Dbspec_Native_Document = zend_string_init("Polyspec\\Orm\\Dbspec\\\116ative\\Document", sizeof("Polyspec\\Orm\\Dbspec\\\116ative\\Document")-1, 1);
-	zend_declare_typed_property(class_entry, property_document_name, &property_document_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_document_class_Polyspec_Orm_Dbspec_Native_Document, 0, MAY_BE_NULL));
+	zend_string *property_document_class_Polyspec_Orm_Dbspec_Document = zend_string_init("Polyspec\\Orm\\Dbspec\\Document", sizeof("Polyspec\\Orm\\Dbspec\\Document")-1, 1);
+	zend_declare_typed_property(class_entry, property_document_name, &property_document_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_document_class_Polyspec_Orm_Dbspec_Document, 0, MAY_BE_NULL));
 	zend_string_release(property_document_name);
 
 	zval property_positions_default_value;
@@ -1799,11 +1821,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Analysis(void
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_FormatResult(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_FormatResult(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "FormatResult", class_Polyspec_Orm_Dbspec_Native_FormatResult_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "FormatResult", class_Polyspec_Orm_Dbspec_FormatResult_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_text_default_value;
@@ -1821,21 +1843,21 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_FormatResult(
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Names(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Names(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "Names", class_Polyspec_Orm_Dbspec_Native_Names_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "Names", class_Polyspec_Orm_Dbspec_Names_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
 
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Manifest(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Manifest(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "Manifest", class_Polyspec_Orm_Dbspec_Native_Manifest_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "Manifest", class_Polyspec_Orm_Dbspec_Manifest_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_manifestText_default_value;
@@ -1871,18 +1893,18 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Manifest(void
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_ManifestResult(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_ManifestResult(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "ManifestResult", class_Polyspec_Orm_Dbspec_Native_ManifestResult_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "ManifestResult", class_Polyspec_Orm_Dbspec_ManifestResult_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_manifest_default_value;
 	ZVAL_UNDEF(&property_manifest_default_value);
 	zend_string *property_manifest_name = zend_string_init("manifest", sizeof("manifest") - 1, 1);
-	zend_string *property_manifest_class_Polyspec_Orm_Dbspec_Native_Manifest = zend_string_init("Polyspec\\Orm\\Dbspec\\\116ative\\Manifest", sizeof("Polyspec\\Orm\\Dbspec\\\116ative\\Manifest")-1, 1);
-	zend_declare_typed_property(class_entry, property_manifest_name, &property_manifest_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_manifest_class_Polyspec_Orm_Dbspec_Native_Manifest, 0, MAY_BE_NULL));
+	zend_string *property_manifest_class_Polyspec_Orm_Dbspec_Manifest = zend_string_init("Polyspec\\Orm\\Dbspec\\Manifest", sizeof("Polyspec\\Orm\\Dbspec\\Manifest")-1, 1);
+	zend_declare_typed_property(class_entry, property_manifest_name, &property_manifest_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_manifest_class_Polyspec_Orm_Dbspec_Manifest, 0, MAY_BE_NULL));
 	zend_string_release(property_manifest_name);
 
 	zval property_diagnostics_default_value;
@@ -1894,11 +1916,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_ManifestResul
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_RenderResult(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_RenderResult(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "RenderResult", class_Polyspec_Orm_Dbspec_Native_RenderResult_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "RenderResult", class_Polyspec_Orm_Dbspec_RenderResult_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_statements_default_value;
@@ -1916,11 +1938,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_RenderResult(
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Plan(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Plan(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "Plan", class_Polyspec_Orm_Dbspec_Native_Plan_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "Plan", class_Polyspec_Orm_Dbspec_Plan_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_name_default_value;
@@ -1958,8 +1980,8 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Plan(void)
 	zval property_schema_default_value;
 	ZVAL_UNDEF(&property_schema_default_value);
 	zend_string *property_schema_name = zend_string_init("schema", sizeof("schema") - 1, 1);
-	zend_string *property_schema_class_Polyspec_Orm_Dbspec_Native_Document = zend_string_init("Polyspec\\Orm\\Dbspec\\\116ative\\Document", sizeof("Polyspec\\Orm\\Dbspec\\\116ative\\Document")-1, 1);
-	zend_declare_typed_property(class_entry, property_schema_name, &property_schema_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_schema_class_Polyspec_Orm_Dbspec_Native_Document, 0, 0));
+	zend_string *property_schema_class_Polyspec_Orm_Dbspec_Document = zend_string_init("Polyspec\\Orm\\Dbspec\\Document", sizeof("Polyspec\\Orm\\Dbspec\\Document")-1, 1);
+	zend_declare_typed_property(class_entry, property_schema_name, &property_schema_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_schema_class_Polyspec_Orm_Dbspec_Document, 0, 0));
 	zend_string_release(property_schema_name);
 
 	zval property_to_default_value;
@@ -1971,11 +1993,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Plan(void)
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_PlanStep(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_PlanStep(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "PlanStep", class_Polyspec_Orm_Dbspec_Native_PlanStep_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "PlanStep", class_Polyspec_Orm_Dbspec_PlanStep_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_statement_default_value;
@@ -1999,8 +2021,8 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_PlanStep(void
 	zval property_effect_default_value;
 	ZVAL_UNDEF(&property_effect_default_value);
 	zend_string *property_effect_name = zend_string_init("effect", sizeof("effect") - 1, 1);
-	zend_string *property_effect_class_Polyspec_Orm_Dbspec_Native_Effect = zend_string_init("Polyspec\\Orm\\Dbspec\\\116ative\\Effect", sizeof("Polyspec\\Orm\\Dbspec\\\116ative\\Effect")-1, 1);
-	zend_declare_typed_property(class_entry, property_effect_name, &property_effect_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_effect_class_Polyspec_Orm_Dbspec_Native_Effect, 0, 0));
+	zend_string *property_effect_class_Polyspec_Orm_Dbspec_Effect = zend_string_init("Polyspec\\Orm\\Dbspec\\Effect", sizeof("Polyspec\\Orm\\Dbspec\\Effect")-1, 1);
+	zend_declare_typed_property(class_entry, property_effect_name, &property_effect_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_effect_class_Polyspec_Orm_Dbspec_Effect, 0, 0));
 	zend_string_release(property_effect_name);
 
 	zval property_restore_default_value;
@@ -2018,8 +2040,8 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_PlanStep(void
 	zval property_restoreIf_default_value;
 	ZVAL_UNDEF(&property_restoreIf_default_value);
 	zend_string *property_restoreIf_name = zend_string_init("restoreIf", sizeof("restoreIf") - 1, 1);
-	zend_string *property_restoreIf_class_Polyspec_Orm_Dbspec_Native_Effect = zend_string_init("Polyspec\\Orm\\Dbspec\\\116ative\\Effect", sizeof("Polyspec\\Orm\\Dbspec\\\116ative\\Effect")-1, 1);
-	zend_declare_typed_property(class_entry, property_restoreIf_name, &property_restoreIf_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_restoreIf_class_Polyspec_Orm_Dbspec_Native_Effect, 0, MAY_BE_NULL));
+	zend_string *property_restoreIf_class_Polyspec_Orm_Dbspec_Effect = zend_string_init("Polyspec\\Orm\\Dbspec\\Effect", sizeof("Polyspec\\Orm\\Dbspec\\Effect")-1, 1);
+	zend_declare_typed_property(class_entry, property_restoreIf_name, &property_restoreIf_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_restoreIf_class_Polyspec_Orm_Dbspec_Effect, 0, MAY_BE_NULL));
 	zend_string_release(property_restoreIf_name);
 
 	zval property_nullChecks_default_value;
@@ -2037,11 +2059,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_PlanStep(void
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Effect(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Effect(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "Effect", class_Polyspec_Orm_Dbspec_Native_Effect_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "Effect", class_Polyspec_Orm_Dbspec_Effect_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_kind_default_value;
@@ -2069,11 +2091,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Effect(void)
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_NullCheck(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_NullCheck(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "NullCheck", class_Polyspec_Orm_Dbspec_Native_NullCheck_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "NullCheck", class_Polyspec_Orm_Dbspec_NullCheck_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_table_default_value;
@@ -2097,11 +2119,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_NullCheck(voi
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Change(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Change(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "Change", class_Polyspec_Orm_Dbspec_Native_Change_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "Change", class_Polyspec_Orm_Dbspec_Change_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_kind_default_value;
@@ -2123,11 +2145,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Change(void)
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Difference(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Difference(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "Difference", class_Polyspec_Orm_Dbspec_Native_Difference_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "Difference", class_Polyspec_Orm_Dbspec_Difference_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_kind_default_value;
@@ -2149,11 +2171,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Difference(vo
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Unsupported(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Unsupported(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "Unsupported", class_Polyspec_Orm_Dbspec_Native_Unsupported_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "Unsupported", class_Polyspec_Orm_Dbspec_Unsupported_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_kind_default_value;
@@ -2181,11 +2203,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Unsupported(v
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_TableRename(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_TableRename(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "TableRename", class_Polyspec_Orm_Dbspec_Native_TableRename_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "TableRename", class_Polyspec_Orm_Dbspec_TableRename_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_old_default_value;
@@ -2203,11 +2225,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_TableRename(v
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_ColumnRename(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_ColumnRename(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "ColumnRename", class_Polyspec_Orm_Dbspec_Native_ColumnRename_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "ColumnRename", class_Polyspec_Orm_Dbspec_ColumnRename_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_table_default_value;
@@ -2231,11 +2253,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_ColumnRename(
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_ColumnName(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_ColumnName(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "ColumnName", class_Polyspec_Orm_Dbspec_Native_ColumnName_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "ColumnName", class_Polyspec_Orm_Dbspec_ColumnName_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_table_default_value;
@@ -2251,11 +2273,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_ColumnName(vo
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_ApplyEvent(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_ApplyEvent(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "ApplyEvent", class_Polyspec_Orm_Dbspec_Native_ApplyEvent_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "ApplyEvent", class_Polyspec_Orm_Dbspec_ApplyEvent_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_kind_default_value;
@@ -2291,11 +2313,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_ApplyEvent(vo
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_ApplyError(zend_class_entry *class_entry_RuntimeException)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_ApplyError(zend_class_entry *class_entry_RuntimeException)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "ApplyError", class_Polyspec_Orm_Dbspec_Native_ApplyError_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "ApplyError", class_Polyspec_Orm_Dbspec_ApplyError_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, class_entry_RuntimeException, ZEND_ACC_FINAL);
 
 	zval property_code__default_value;
@@ -2325,11 +2347,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_ApplyError(ze
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_ApplyCleanupError(zend_class_entry *class_entry_RuntimeException)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_ApplyCleanupError(zend_class_entry *class_entry_RuntimeException)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "ApplyCleanupError", class_Polyspec_Orm_Dbspec_Native_ApplyCleanupError_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "ApplyCleanupError", class_Polyspec_Orm_Dbspec_ApplyCleanupError_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, class_entry_RuntimeException, ZEND_ACC_FINAL);
 
 	zval property_cleanup_default_value;
@@ -2341,18 +2363,18 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_ApplyCleanupE
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_PlanParseResult(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_PlanParseResult(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "PlanParseResult", class_Polyspec_Orm_Dbspec_Native_PlanParseResult_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "PlanParseResult", class_Polyspec_Orm_Dbspec_PlanParseResult_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_plan_default_value;
 	ZVAL_UNDEF(&property_plan_default_value);
 	zend_string *property_plan_name = zend_string_init("plan", sizeof("plan") - 1, 1);
-	zend_string *property_plan_class_Polyspec_Orm_Dbspec_Native_Plan = zend_string_init("Polyspec\\Orm\\Dbspec\\\116ative\\Plan", sizeof("Polyspec\\Orm\\Dbspec\\\116ative\\Plan")-1, 1);
-	zend_declare_typed_property(class_entry, property_plan_name, &property_plan_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_plan_class_Polyspec_Orm_Dbspec_Native_Plan, 0, MAY_BE_NULL));
+	zend_string *property_plan_class_Polyspec_Orm_Dbspec_Plan = zend_string_init("Polyspec\\Orm\\Dbspec\\Plan", sizeof("Polyspec\\Orm\\Dbspec\\Plan")-1, 1);
+	zend_declare_typed_property(class_entry, property_plan_name, &property_plan_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_plan_class_Polyspec_Orm_Dbspec_Plan, 0, MAY_BE_NULL));
 	zend_string_release(property_plan_name);
 
 	zval property_diagnostics_default_value;
@@ -2364,11 +2386,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_PlanParseResu
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_PlanStepsResult(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_PlanStepsResult(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "PlanStepsResult", class_Polyspec_Orm_Dbspec_Native_PlanStepsResult_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "PlanStepsResult", class_Polyspec_Orm_Dbspec_PlanStepsResult_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_steps_default_value;
@@ -2386,11 +2408,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_PlanStepsResu
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_ChainResult(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_ChainResult(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "ChainResult", class_Polyspec_Orm_Dbspec_Native_ChainResult_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "ChainResult", class_Polyspec_Orm_Dbspec_ChainResult_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_plans_default_value;
@@ -2408,11 +2430,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_ChainResult(v
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_DiffResult(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_DiffResult(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "DiffResult", class_Polyspec_Orm_Dbspec_Native_DiffResult_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "DiffResult", class_Polyspec_Orm_Dbspec_DiffResult_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_changes_default_value;
@@ -2430,11 +2452,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_DiffResult(vo
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_ComparisonResult(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_ComparisonResult(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "ComparisonResult", class_Polyspec_Orm_Dbspec_Native_ComparisonResult_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "ComparisonResult", class_Polyspec_Orm_Dbspec_ComparisonResult_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_differences_default_value;
@@ -2452,11 +2474,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_ComparisonRes
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_MermaidExportResult(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_MermaidExportResult(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "MermaidExportResult", class_Polyspec_Orm_Dbspec_Native_MermaidExportResult_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "MermaidExportResult", class_Polyspec_Orm_Dbspec_MermaidExportResult_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_text_default_value;
@@ -2474,18 +2496,18 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_MermaidExport
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_MermaidImportResult(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_MermaidImportResult(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "MermaidImportResult", class_Polyspec_Orm_Dbspec_Native_MermaidImportResult_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "MermaidImportResult", class_Polyspec_Orm_Dbspec_MermaidImportResult_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_document_default_value;
 	ZVAL_UNDEF(&property_document_default_value);
 	zend_string *property_document_name = zend_string_init("document", sizeof("document") - 1, 1);
-	zend_string *property_document_class_Polyspec_Orm_Dbspec_Native_Document = zend_string_init("Polyspec\\Orm\\Dbspec\\\116ative\\Document", sizeof("Polyspec\\Orm\\Dbspec\\\116ative\\Document")-1, 1);
-	zend_declare_typed_property(class_entry, property_document_name, &property_document_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_document_class_Polyspec_Orm_Dbspec_Native_Document, 0, MAY_BE_NULL));
+	zend_string *property_document_class_Polyspec_Orm_Dbspec_Document = zend_string_init("Polyspec\\Orm\\Dbspec\\Document", sizeof("Polyspec\\Orm\\Dbspec\\Document")-1, 1);
+	zend_declare_typed_property(class_entry, property_document_name, &property_document_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_document_class_Polyspec_Orm_Dbspec_Document, 0, MAY_BE_NULL));
 	zend_string_release(property_document_name);
 
 	zval property_dropped_default_value;
@@ -2503,18 +2525,18 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_MermaidImport
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_IntrospectResult(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_IntrospectResult(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "IntrospectResult", class_Polyspec_Orm_Dbspec_Native_IntrospectResult_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "IntrospectResult", class_Polyspec_Orm_Dbspec_IntrospectResult_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
 
 	zval property_document_default_value;
 	ZVAL_UNDEF(&property_document_default_value);
 	zend_string *property_document_name = zend_string_init("document", sizeof("document") - 1, 1);
-	zend_string *property_document_class_Polyspec_Orm_Dbspec_Native_Document = zend_string_init("Polyspec\\Orm\\Dbspec\\\116ative\\Document", sizeof("Polyspec\\Orm\\Dbspec\\\116ative\\Document")-1, 1);
-	zend_declare_typed_property(class_entry, property_document_name, &property_document_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_document_class_Polyspec_Orm_Dbspec_Native_Document, 0, 0));
+	zend_string *property_document_class_Polyspec_Orm_Dbspec_Document = zend_string_init("Polyspec\\Orm\\Dbspec\\Document", sizeof("Polyspec\\Orm\\Dbspec\\Document")-1, 1);
+	zend_declare_typed_property(class_entry, property_document_name, &property_document_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_document_class_Polyspec_Orm_Dbspec_Document, 0, 0));
 	zend_string_release(property_document_name);
 
 	zval property_unsupported_default_value;
@@ -2526,11 +2548,11 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_IntrospectRes
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Dbspec(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Dbspec(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "Dbspec", class_Polyspec_Orm_Dbspec_Native_Dbspec_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "Dbspec", class_Polyspec_Orm_Dbspec_Dbspec_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
 
 	zval const_SIGNATURE_value;
@@ -2543,21 +2565,21 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Dbspec(void)
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_PlanApply(void)
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_PlanApply(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "PlanApply", class_Polyspec_Orm_Dbspec_Native_PlanApply_methods);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec", "PlanApply", class_Polyspec_Orm_Dbspec_PlanApply_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
 
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Polyspec_Orm_Native_Code(void)
+static zend_class_entry *register_class_Polyspec_Orm_Code(void)
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Native", "Code", NULL);
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm", "Code", NULL);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
 
 	zval const_VERSION_MISMATCH_value;

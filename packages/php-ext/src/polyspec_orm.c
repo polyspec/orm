@@ -1,7 +1,7 @@
 /*
  * Module of the polyspec_orm extension. It uses the arginfo generated from its one stub, src/polyspec_orm.stub.php, to
- * register the classes of Polyspec\Orm\Dbspec\Native, and implements their constructors, methods, and Dbspec's static methods the same as the PHP client (packages/php/src/Dbspec).
- * The same arginfo registers Polyspec\Orm\Native\Code, the error codes of docs/spec/errors.yaml, whose block of the stub orm-gen errors writes.
+ * register the classes of Polyspec\Orm\Dbspec, and implements their constructors, methods, and Dbspec's static methods the same as the PHP client (packages/php/src/Dbspec).
+ * The same arginfo registers Polyspec\Orm\Code, the error codes of docs/spec/errors.yaml, whose block of the stub orm-gen errors writes.
  */
 #include "dbspec.h"
 #include "ext/pdo/php_pdo_driver.h"
@@ -100,7 +100,7 @@ static void init_obj_or_null(zval *self, const char *name, zend_object *o)
 
 /* ------------------------------------------------------------ model classes */
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Diagnostic, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Diagnostic, __construct)
 {
     zend_string *rule, *message;
     zend_long line, column;
@@ -116,7 +116,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Diagnostic, __construct)
     init_str(ZEND_THIS, "message", message);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Document, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Document, __construct)
 {
     zend_string *name;
     ZEND_PARSE_PARAMETERS_START(1, 1)
@@ -125,7 +125,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Document, __construct)
     init_str(ZEND_THIS, "name", name);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_UseLine, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_UseLine, __construct)
 {
     zend_string *document;
     zval *tables, *comments = NULL;
@@ -140,7 +140,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_UseLine, __construct)
     init_array(ZEND_THIS, "comments", comments);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Table, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Table, __construct)
 {
     zend_string *name;
     zval *comments = NULL;
@@ -153,7 +153,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Table, __construct)
     init_array(ZEND_THIS, "comments", comments);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Column, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Column, __construct)
 {
     zend_string *name, *def;
     zend_object *type;
@@ -176,7 +176,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Column, __construct)
     init_array(ZEND_THIS, "comments", comments);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ColumnType, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_ColumnType, __construct)
 {
     zend_string *name;
     zval *parameters = NULL;
@@ -190,7 +190,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ColumnType, __construct)
 }
 
 /* Writes the values as a string, like implode(',', $parameters). */
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ColumnType, text)
+ZEND_METHOD(Polyspec_Orm_Dbspec_ColumnType, text)
 {
     ZEND_PARSE_PARAMETERS_NONE();
     zval *name = obj_get(ZEND_THIS, "name"), *params = obj_get(ZEND_THIS, "parameters");
@@ -222,7 +222,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ColumnType, text)
     RETURN_STR(smart_str_extract(&b));
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ColumnType, isInteger)
+ZEND_METHOD(Polyspec_Orm_Dbspec_ColumnType, isInteger)
 {
     ZEND_PARSE_PARAMETERS_NONE();
     zval *name = obj_get(ZEND_THIS, "name");
@@ -233,7 +233,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ColumnType, isInteger)
     RETURN_BOOL(str_eqc(n, "i16") || str_eqc(n, "i32") || str_eqc(n, "i64"));
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_PrimaryKey, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_PrimaryKey, __construct)
 {
     zval *columns, *comments = NULL;
     ZEND_PARSE_PARAMETERS_START(1, 2)
@@ -246,7 +246,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_PrimaryKey, __construct)
 }
 
 /* UniqueKey, Index, and Check have the shape (string, array|string, array = []). */
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_UniqueKey, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_UniqueKey, __construct)
 {
     zend_string *name;
     zval *columns, *comments = NULL;
@@ -261,7 +261,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_UniqueKey, __construct)
     init_array(ZEND_THIS, "comments", comments);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Index, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Index, __construct)
 {
     zend_string *name;
     zval *columns, *comments = NULL;
@@ -276,7 +276,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Index, __construct)
     init_array(ZEND_THIS, "comments", comments);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_IndexColumn, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_IndexColumn, __construct)
 {
     zend_string *name;
     bool descending;
@@ -288,7 +288,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_IndexColumn, __construct)
     init_bool(ZEND_THIS, "descending", descending);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ForeignKey, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_ForeignKey, __construct)
 {
     zend_string *name, *table, *on_delete, *on_update;
     zval *columns, *refs, *comments = NULL;
@@ -311,7 +311,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ForeignKey, __construct)
     init_array(ZEND_THIS, "comments", comments);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ForeignKey, changesChildRows)
+ZEND_METHOD(Polyspec_Orm_Dbspec_ForeignKey, changesChildRows)
 {
     ZEND_PARSE_PARAMETERS_NONE();
     zval *d = obj_get(ZEND_THIS, "onDelete"), *u = obj_get(ZEND_THIS, "onUpdate");
@@ -321,7 +321,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ForeignKey, changesChildRows)
     RETURN_BOOL(!zend_string_equals_literal(Z_STR_P(d), "restrict") || !zend_string_equals_literal(Z_STR_P(u), "restrict"));
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Check, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Check, __construct)
 {
     zend_string *name, *expression;
     zval *comments = NULL;
@@ -336,7 +336,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Check, __construct)
     init_array(ZEND_THIS, "comments", comments);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Settings, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Settings, __construct)
 {
     zval *comments = NULL;
     ZEND_PARSE_PARAMETERS_START(0, 1)
@@ -346,7 +346,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Settings, __construct)
     init_array(ZEND_THIS, "comments", comments);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Setting, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Setting, __construct)
 {
     zend_string *kind, *form = NULL;
     zval *arguments, *comments = NULL, *exclude = NULL, *include = NULL, *requires = NULL;
@@ -406,7 +406,7 @@ static bool setting_zrecords(zval *self, zend_string *column, bool *ok)
     return true;
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Setting, records)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Setting, records)
 {
     zend_string *column;
     ZEND_PARSE_PARAMETERS_START(1, 1)
@@ -420,7 +420,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Setting, records)
     RETURN_BOOL(records);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Setting, excluded)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Setting, excluded)
 {
     zend_object *table;
     ZEND_PARSE_PARAMETERS_START(1, 1)
@@ -437,7 +437,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Setting, excluded)
     ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(columns), c) {
         ZVAL_DEREF(c);
         if (Z_TYPE_P(c) != IS_OBJECT || !instanceof_function(Z_OBJCE_P(c), dbs_ce_Column)) {
-            zend_type_error("Polyspec\\Orm\\Dbspec\\Native\\Table::$columns holds %s, not Polyspec\\Orm\\Dbspec\\Native\\Column", zend_zval_value_name(c));
+            zend_type_error("Polyspec\\Orm\\Dbspec\\Table::$columns holds %s, not Polyspec\\Orm\\Dbspec\\Column", zend_zval_value_name(c));
             RETURN_THROWS();
         }
         zval *name = obj_get(c, "name");
@@ -454,7 +454,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Setting, excluded)
     } ZEND_HASH_FOREACH_END();
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Setting, auditLine)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Setting, auditLine)
 {
     zend_string *list;
     zval *columns;
@@ -468,7 +468,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Setting, auditLine)
     }
     ENTER();
     strs args;
-    if (!in_strs(arguments, &args, "Polyspec\\Orm\\Dbspec\\Native\\Setting::$arguments")) {
+    if (!in_strs(arguments, &args, "Polyspec\\Orm\\Dbspec\\Setting::$arguments")) {
         LEAVE();
         RETURN_THROWS();
     }
@@ -480,7 +480,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Setting, auditLine)
     strs names = {0};
     bool ok = true;
     if (columns != NULL) {
-        ok = in_strs(columns, &names, "Polyspec\\Orm\\Dbspec\\Native\\Setting::auditLine(): $columns");
+        ok = in_strs(columns, &names, "Polyspec\\Orm\\Dbspec\\Setting::auditLine(): $columns");
     }
     if (ok) {
         str line = setting_audit_line(&s, ZSTR_VAL(list), columns == NULL ? NULL : &names);
@@ -489,7 +489,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Setting, auditLine)
     LEAVE();
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Diagram, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Diagram, __construct)
 {
     zend_string *name;
     zval *comments = NULL;
@@ -502,7 +502,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Diagram, __construct)
     init_array(ZEND_THIS, "comments", comments);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Placement, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Placement, __construct)
 {
     zend_string *table;
     zend_long x, y;
@@ -548,7 +548,7 @@ static void result_invalid(zval *return_value, zend_class_entry *ce, const char 
 }
 
 #define RESULT_CLASS(cls, first, ZPARAM, what) \
-    ZEND_METHOD(Polyspec_Orm_Dbspec_Native_##cls, __construct) \
+    ZEND_METHOD(Polyspec_Orm_Dbspec_##cls, __construct) \
     { \
         zval *value, *diagnostics; \
         ZEND_PARSE_PARAMETERS_START(2, 2) \
@@ -560,7 +560,7 @@ static void result_invalid(zval *return_value, zend_class_entry *ce, const char 
         init_prop(ZEND_THIS, first, value != NULL ? value : &null_); \
         init_prop(ZEND_THIS, "diagnostics", diagnostics); \
     } \
-    ZEND_METHOD(Polyspec_Orm_Dbspec_Native_##cls, invalid) \
+    ZEND_METHOD(Polyspec_Orm_Dbspec_##cls, invalid) \
     { \
         zval *diagnostics; \
         ZEND_PARSE_PARAMETERS_START(1, 1) \
@@ -590,7 +590,7 @@ static void parse_result(zval *out, zval *document, zval *diagnostics, zval *pos
     }
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ParseResult, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_ParseResult, __construct)
 {
     zval *document, *diagnostics, *positions;
     ZEND_PARSE_PARAMETERS_START(3, 3)
@@ -605,7 +605,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ParseResult, __construct)
     init_prop(ZEND_THIS, "positions", positions != NULL ? positions : &null_);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ParseResult, valid)
+ZEND_METHOD(Polyspec_Orm_Dbspec_ParseResult, valid)
 {
     zval *document, *positions;
     ZEND_PARSE_PARAMETERS_START(2, 2)
@@ -619,7 +619,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ParseResult, valid)
     parse_result(return_value, &doc_copy, &empty, &pos_copy);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ParseResult, invalid)
+ZEND_METHOD(Polyspec_Orm_Dbspec_ParseResult, invalid)
 {
     zval *diagnostics;
     ZEND_PARSE_PARAMETERS_START(1, 1)
@@ -634,7 +634,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ParseResult, invalid)
     parse_result(return_value, NULL, &list, NULL);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Position, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Position, __construct)
 {
     zend_string *kind;
     zval *path;
@@ -651,7 +651,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Position, __construct)
     init_long(ZEND_THIS, "column", column);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Token, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Token, __construct)
 {
     zend_long line, start, end;
     zend_string *cls;
@@ -667,7 +667,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Token, __construct)
     init_str(ZEND_THIS, "class", cls);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Analysis, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Analysis, __construct)
 {
     zval *document, *positions, *diagnostics, *tokens;
     ZEND_PARSE_PARAMETERS_START(4, 4)
@@ -684,7 +684,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Analysis, __construct)
     init_prop(ZEND_THIS, "tokens", tokens);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_FormatResult, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_FormatResult, __construct)
 {
     zend_string *text;
     zval *diagnostics;
@@ -749,7 +749,7 @@ static int names_match(str table, str name, zval *e, zval *out)
 {
     ZVAL_DEREF(e);
     if (Z_TYPE_P(e) != IS_STRING) {
-        zend_type_error("Polyspec\\Orm\\Dbspec\\Native\\Names::column(): Argument #3 ($columns) must contain only strings, %s given", zend_zval_value_name(e));
+        zend_type_error("Polyspec\\Orm\\Dbspec\\Names::column(): Argument #3 ($columns) must contain only strings, %s given", zend_zval_value_name(e));
         return -1;
     }
     if (!str_eq(dbs_renderer_name(table, zs(Z_STR_P(e))), name)) {
@@ -791,7 +791,7 @@ static void names_column(zval *iterable, str table, str name, zval *out)
     zend_iterator_dtor(it);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Names, render)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Names, render)
 {
     zend_string *table, *suffix;
     ZEND_PARSE_PARAMETERS_START(2, 2)
@@ -803,7 +803,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Names, render)
     LEAVE();
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Names, ofTable)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Names, ofTable)
 {
     zval *table;
     ZEND_PARSE_PARAMETERS_START(1, 1)
@@ -816,7 +816,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Names, ofTable)
     LEAVE();
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Names, column)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Names, column)
 {
     zend_string *table, *name;
     zval *columns;
@@ -844,7 +844,7 @@ RESULT_CLASS(ChainResult, "plans", Z_PARAM_NULLABLE_ARRAY, "chain")
 RESULT_CLASS(DiffResult, "changes", Z_PARAM_NULLABLE_ARRAY, "diff")
 RESULT_CLASS(ComparisonResult, "differences", Z_PARAM_NULLABLE_ARRAY, "comparison")
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ReadResult, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_ReadResult, __construct)
 {
     zend_string *text;
     zval *diagnostics;
@@ -856,7 +856,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ReadResult, __construct)
     init_prop(ZEND_THIS, "diagnostics", diagnostics);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ReadResult, valid)
+ZEND_METHOD(Polyspec_Orm_Dbspec_ReadResult, valid)
 {
     zend_string *text;
     ZEND_PARSE_PARAMETERS_START(1, 1)
@@ -867,7 +867,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ReadResult, valid)
     result_valid(return_value, dbs_ce_ReadResult, "text", &v);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ReadResult, invalid)
+ZEND_METHOD(Polyspec_Orm_Dbspec_ReadResult, invalid)
 {
     zval *diagnostics;
     ZEND_PARSE_PARAMETERS_START(1, 1)
@@ -877,7 +877,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ReadResult, invalid)
 }
 
 #define VALID_OBJ(cls, first, vce) \
-    ZEND_METHOD(Polyspec_Orm_Dbspec_Native_##cls, valid) \
+    ZEND_METHOD(Polyspec_Orm_Dbspec_##cls, valid) \
     { \
         zval *value; \
         ZEND_PARSE_PARAMETERS_START(1, 1) \
@@ -887,7 +887,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ReadResult, invalid)
     }
 
 #define VALID_ARRAY(cls, first) \
-    ZEND_METHOD(Polyspec_Orm_Dbspec_Native_##cls, valid) \
+    ZEND_METHOD(Polyspec_Orm_Dbspec_##cls, valid) \
     { \
         zval *value; \
         ZEND_PARSE_PARAMETERS_START(1, 1) \
@@ -904,7 +904,7 @@ VALID_ARRAY(ChainResult, "plans")
 VALID_ARRAY(DiffResult, "changes")
 VALID_ARRAY(ComparisonResult, "differences")
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Manifest, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Manifest, __construct)
 {
     zend_string *manifest_text, *schema_text, *manifest_hash, *schema_hash, *external_text = NULL;
     ZEND_PARSE_PARAMETERS_START(4, 5)
@@ -922,7 +922,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Manifest, __construct)
     init_str(ZEND_THIS, "externalText", external_text != NULL ? external_text : ZSTR_EMPTY_ALLOC());
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_MermaidExportResult, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_MermaidExportResult, __construct)
 {
     zend_string *text;
     zval *dropped;
@@ -934,7 +934,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_MermaidExportResult, __construct)
     init_array(ZEND_THIS, "dropped", dropped);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_MermaidImportResult, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_MermaidImportResult, __construct)
 {
     zend_object *document;
     zval *dropped, *diagnostics;
@@ -948,7 +948,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_MermaidImportResult, __construct)
     init_array(ZEND_THIS, "diagnostics", diagnostics);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_MermaidImportResult, valid)
+ZEND_METHOD(Polyspec_Orm_Dbspec_MermaidImportResult, valid)
 {
     zval *document;
     zval *dropped;
@@ -967,7 +967,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_MermaidImportResult, valid)
     obj_put(return_value, "diagnostics", &empty);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_MermaidImportResult, invalid)
+ZEND_METHOD(Polyspec_Orm_Dbspec_MermaidImportResult, invalid)
 {
     zval *diagnostics;
     ZEND_PARSE_PARAMETERS_START(1, 1)
@@ -986,7 +986,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_MermaidImportResult, invalid)
     obj_put(return_value, "diagnostics", &list);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_IntrospectResult, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_IntrospectResult, __construct)
 {
     zend_object *document;
     zval *unsupported;
@@ -1000,7 +1000,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_IntrospectResult, __construct)
 
 /* ------------------------------------------------------------ plan values */
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Plan, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Plan, __construct)
 {
     zend_string *name, *from, *to;
     zval *rename_tables, *rename_columns, *drop_tables, *drop_columns;
@@ -1025,7 +1025,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Plan, __construct)
     init_str(ZEND_THIS, "to", to);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_PlanStep, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_PlanStep, __construct)
 {
     zend_string *statement, *rollback, *irreversible, *restore = NULL, *rollback_restore = NULL;
     zend_object *effect, *restore_if = NULL;
@@ -1054,7 +1054,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_PlanStep, __construct)
     init_bool(ZEND_THIS, "finalize", finalize);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Effect, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Effect, __construct)
 {
     zend_string *kind, *table, *name;
     bool present;
@@ -1070,7 +1070,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Effect, __construct)
     init_bool(ZEND_THIS, "present", present);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Effect, repeat)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Effect, repeat)
 {
     ZEND_PARSE_PARAMETERS_NONE();
     obj_new(return_value, dbs_ce_Effect);
@@ -1080,7 +1080,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Effect, repeat)
     obj_put_bool(return_value, "present", true);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Effect, text)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Effect, text)
 {
     ZEND_PARSE_PARAMETERS_NONE();
     zval *kind = obj_get(ZEND_THIS, "kind"), *table = obj_get(ZEND_THIS, "table"), *name = obj_get(ZEND_THIS, "name"),
@@ -1105,7 +1105,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Effect, text)
     RETURN_STR(smart_str_extract(&b));
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_NullCheck, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_NullCheck, __construct)
 {
     zend_string *table, *column, *def;
     ZEND_PARSE_PARAMETERS_START(3, 3)
@@ -1119,7 +1119,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_NullCheck, __construct)
 }
 
 #define KIND_TABLE_NAME(cls) \
-    ZEND_METHOD(Polyspec_Orm_Dbspec_Native_##cls, __construct) \
+    ZEND_METHOD(Polyspec_Orm_Dbspec_##cls, __construct) \
     { \
         zend_string *kind, *table, *name; \
         ZEND_PARSE_PARAMETERS_START(3, 3) \
@@ -1135,7 +1135,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_NullCheck, __construct)
 KIND_TABLE_NAME(Change)
 KIND_TABLE_NAME(Difference)
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Unsupported, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Unsupported, __construct)
 {
     zend_string *kind, *table, *name, *reason;
     ZEND_PARSE_PARAMETERS_START(4, 4)
@@ -1150,7 +1150,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Unsupported, __construct)
     init_str(ZEND_THIS, "reason", reason);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_TableRename, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_TableRename, __construct)
 {
     zend_string *old, *new_;
     ZEND_PARSE_PARAMETERS_START(2, 2)
@@ -1161,7 +1161,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_TableRename, __construct)
     init_str(ZEND_THIS, "new", new_);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ColumnRename, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_ColumnRename, __construct)
 {
     zend_string *table, *old, *new_;
     ZEND_PARSE_PARAMETERS_START(3, 3)
@@ -1174,7 +1174,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ColumnRename, __construct)
     init_str(ZEND_THIS, "new", new_);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ColumnName, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_ColumnName, __construct)
 {
     zend_string *table, *name;
     ZEND_PARSE_PARAMETERS_START(2, 2)
@@ -1185,7 +1185,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ColumnName, __construct)
     init_str(ZEND_THIS, "name", name);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ApplyEvent, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_ApplyEvent, __construct)
 {
     zend_string *kind, *plan, *statement;
     zend_long step, steps;
@@ -1216,7 +1216,7 @@ static void exception_init(zval *self, zend_string *message, zend_object *previo
     }
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ApplyError, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_ApplyError, __construct)
 {
     zend_string *code, *plan, *detail;
     zend_long step;
@@ -1267,7 +1267,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ApplyError, __construct)
     zend_string_release(message);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ApplyCleanupError, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_ApplyCleanupError, __construct)
 {
     zend_object *failure;
     zval *cleanup;
@@ -1346,7 +1346,7 @@ static void declared_set_build(zval *documents, smap *set)
     } ZEND_HASH_FOREACH_END();
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, analyze)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, analyze)
 {
     zend_string *text;
     zval *documents;
@@ -1383,7 +1383,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, analyze)
     LEAVE();
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, format)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, format)
 {
     zend_string *text;
     zval *documents;
@@ -1412,7 +1412,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, format)
     LEAVE();
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, parse)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, parse)
 {
     zend_string *text;
     zval *documents;
@@ -1496,7 +1496,7 @@ static void read_bytes(zend_string *name, zend_string *bytes, zval *return_value
 
 /* ------------------------------------------------------------------ sets */
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_SetFile, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_SetFile, __construct)
 {
     zend_string *path, *bytes;
     ZEND_PARSE_PARAMETERS_START(2, 2)
@@ -1507,7 +1507,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_SetFile, __construct)
     init_str(ZEND_THIS, "bytes", bytes);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_SetError, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_SetError, __construct)
 {
     zend_string *rule, *path, *message;
     ZEND_PARSE_PARAMETERS_START(3, 3)
@@ -1520,7 +1520,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_SetError, __construct)
     init_str(ZEND_THIS, "message", message);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_SetResult, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_SetResult, __construct)
 {
     zval *documents, *external, *errors;
     ZEND_PARSE_PARAMETERS_START(3, 3)
@@ -1533,7 +1533,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_SetResult, __construct)
     init_prop(ZEND_THIS, "errors", errors);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_SetResult, valid)
+ZEND_METHOD(Polyspec_Orm_Dbspec_SetResult, valid)
 {
     zval *documents, *external;
     ZEND_PARSE_PARAMETERS_START(2, 2)
@@ -1550,7 +1550,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_SetResult, valid)
     obj_put(return_value, "errors", &none);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_SetResult, invalid)
+ZEND_METHOD(Polyspec_Orm_Dbspec_SetResult, invalid)
 {
     zval *errors;
     ZEND_PARSE_PARAMETERS_START(1, 1)
@@ -1568,7 +1568,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_SetResult, invalid)
     obj_put(return_value, "errors", &list);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, readSet)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, readSet)
 {
     zend_string *path;
     ZEND_PARSE_PARAMETERS_START(1, 1)
@@ -1579,7 +1579,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, readSet)
     LEAVE();
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_SetDocument, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_SetDocument, __construct)
 {
     zend_string *name;
     bool external;
@@ -1601,7 +1601,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_SetDocument, __construct)
 /* Dbspec::parseSet (docs/spec/dbspec.md "Parsing a set"), the twin of the PHP client's: each text's name is the name the
  * parser's header step reads; a text whose name an earlier text has is not parsed and carries `name.duplicate`;
  * every other text is parsed with the texts of all other named documents, an external one marked external. */
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, parseSet)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, parseSet)
 {
     zval *owned, *external;
     ZEND_PARSE_PARAMETERS_START(2, 2)
@@ -1691,7 +1691,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, parseSet)
     LEAVE();
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, readBytes)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, readBytes)
 {
     zend_string *name, *bytes;
     ZEND_PARSE_PARAMETERS_START(2, 2)
@@ -1714,7 +1714,7 @@ static bool call_function(const char *name, zval *ret, uint32_t argc, zval *argv
 }
 
 /* Reads with file_get_contents with is_dir and warnings suppressed, as the PHP client does; the failure reason is the message of error_get_last. */
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, readFile)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, readFile)
 {
     zend_string *path;
     ZEND_PARSE_PARAMETERS_START(1, 1)
@@ -1763,7 +1763,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, readFile)
     zval_ptr_dtor(&bytes);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, emit)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, emit)
 {
     zval *zdoc;
     ZEND_PARSE_PARAMETERS_START(1, 1)
@@ -1777,7 +1777,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, emit)
     LEAVE();
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, render)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, render)
 {
     zval *documents;
     zend_string *dialect_name;
@@ -1811,7 +1811,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, render)
     LEAVE();
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, manifest)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, manifest)
 {
     zval *documents;
     ZEND_PARSE_PARAMETERS_START(1, 1)
@@ -1845,7 +1845,7 @@ static void diags_result(zval *return_value, zend_class_entry *ce, const char *f
     zv_result(return_value, ce, first, value, d);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, externalDifferences)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, externalDifferences)
 {
     zval *live, *documents;
     ZEND_PARSE_PARAMETERS_START(2, 2)
@@ -1862,7 +1862,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, externalDifferences)
     LEAVE();
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, parsePlan)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, parsePlan)
 {
     zend_string *text;
     ZEND_PARSE_PARAMETERS_START(1, 1)
@@ -1881,7 +1881,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, parsePlan)
     LEAVE();
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, emitPlan)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, emitPlan)
 {
     zval *zplan;
     ZEND_PARSE_PARAMETERS_START(1, 1)
@@ -1895,7 +1895,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, emitPlan)
     LEAVE();
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, chain)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, chain)
 {
     zval *plans;
     ZEND_PARSE_PARAMETERS_START(1, 1)
@@ -1933,7 +1933,7 @@ static bool in_source(zval *source, document **out)
     return source == NULL || in_document(source, out);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, diff)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, diff)
 {
     zval *source, *zplan;
     ZEND_PARSE_PARAMETERS_START(2, 2)
@@ -1957,7 +1957,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, diff)
     LEAVE();
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, compareSchemas)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, compareSchemas)
 {
     zval *source, *target;
     ZEND_PARSE_PARAMETERS_START(2, 2)
@@ -1980,7 +1980,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, compareSchemas)
     LEAVE();
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, installedDifferences)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, installedDifferences)
 {
     zval *live, *unsupported_list, *target;
     ZEND_PARSE_PARAMETERS_START(3, 3)
@@ -1998,7 +1998,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, installedDifferences)
     LEAVE();
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, addTablesAndColumnsSteps)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, addTablesAndColumnsSteps)
 {
     zval *live, *unsupported_list, *target;
     zend_string *dialect_name;
@@ -2029,7 +2029,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, addTablesAndColumnsSteps)
     LEAVE();
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, planSteps)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, planSteps)
 {
     zval *source, *zplan;
     zend_string *dialect_name;
@@ -2060,7 +2060,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, planSteps)
 
 /* --------------------------------------------------------------- Mermaid */
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, exportMermaid)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, exportMermaid)
 {
     zval *zdoc;
     ZEND_PARSE_PARAMETERS_START(1, 1)
@@ -2080,7 +2080,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, exportMermaid)
     LEAVE();
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, importMermaid)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, importMermaid)
 {
     zend_string *text, *name;
     ZEND_PARSE_PARAMETERS_START(2, 2)
@@ -2110,7 +2110,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, importMermaid)
     LEAVE();
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, introspect)
+ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, introspect)
 {
     zval *connection;
     zend_string *dialect_name, *name;
@@ -2134,8 +2134,9 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, introspect)
     LEAVE();
 }
 
-#define APPLY_METHOD(op) \
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, op) \
+/* Dbspec's apply commands, and those of PlanApply, which the PHP client's Dbspec calls and which take the same arguments. */
+#define APPLY_METHOD(cls, op) \
+ZEND_METHOD(Polyspec_Orm_Dbspec_##cls, op) \
 { \
     zval *connection, *plans, *now, *events = NULL; \
     zend_string *dialect_name; \
@@ -2151,17 +2152,21 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, op) \
     LEAVE(); \
 }
 
-APPLY_METHOD(apply)
-APPLY_METHOD(recover)
-APPLY_METHOD(rollback)
-APPLY_METHOD(finalize)
+APPLY_METHOD(Dbspec, apply)
+APPLY_METHOD(Dbspec, recover)
+APPLY_METHOD(Dbspec, rollback)
+APPLY_METHOD(Dbspec, finalize)
+APPLY_METHOD(PlanApply, apply)
+APPLY_METHOD(PlanApply, recover)
+APPLY_METHOD(PlanApply, rollback)
+APPLY_METHOD(PlanApply, finalize)
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_PlanApply, __construct)
+ZEND_METHOD(Polyspec_Orm_Dbspec_PlanApply, __construct)
 {
     ZEND_PARSE_PARAMETERS_NONE();
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Native_PlanApply, effectOn)
+ZEND_METHOD(Polyspec_Orm_Dbspec_PlanApply, effectOn)
 {
     zval *connection, *e;
     zend_string *dialect_name;
@@ -2250,60 +2255,60 @@ static void array_constant(zend_class_entry *ce, const char *name, const char *c
 
 static PHP_MINIT_FUNCTION(polyspec_orm)
 {
-    register_class_Polyspec_Orm_Native_Code();
-    dbs_ce_Diagnostic = register_class_Polyspec_Orm_Dbspec_Native_Diagnostic();
-    dbs_ce_Document = register_class_Polyspec_Orm_Dbspec_Native_Document();
-    dbs_ce_UseLine = register_class_Polyspec_Orm_Dbspec_Native_UseLine();
-    dbs_ce_Table = register_class_Polyspec_Orm_Dbspec_Native_Table();
-    dbs_ce_Column = register_class_Polyspec_Orm_Dbspec_Native_Column();
-    dbs_ce_ColumnType = register_class_Polyspec_Orm_Dbspec_Native_ColumnType();
-    dbs_ce_PrimaryKey = register_class_Polyspec_Orm_Dbspec_Native_PrimaryKey();
-    dbs_ce_UniqueKey = register_class_Polyspec_Orm_Dbspec_Native_UniqueKey();
-    dbs_ce_Index = register_class_Polyspec_Orm_Dbspec_Native_Index();
-    dbs_ce_IndexColumn = register_class_Polyspec_Orm_Dbspec_Native_IndexColumn();
-    dbs_ce_ForeignKey = register_class_Polyspec_Orm_Dbspec_Native_ForeignKey();
-    dbs_ce_Check = register_class_Polyspec_Orm_Dbspec_Native_Check();
-    dbs_ce_Settings = register_class_Polyspec_Orm_Dbspec_Native_Settings();
-    dbs_ce_Setting = register_class_Polyspec_Orm_Dbspec_Native_Setting();
-    dbs_ce_Diagram = register_class_Polyspec_Orm_Dbspec_Native_Diagram();
-    dbs_ce_Placement = register_class_Polyspec_Orm_Dbspec_Native_Placement();
-    dbs_ce_Position = register_class_Polyspec_Orm_Dbspec_Native_Position();
-    dbs_ce_ReadResult = register_class_Polyspec_Orm_Dbspec_Native_ReadResult();
-    dbs_ce_ParseResult = register_class_Polyspec_Orm_Dbspec_Native_ParseResult();
-    dbs_ce_Analysis = register_class_Polyspec_Orm_Dbspec_Native_Analysis();
-    dbs_ce_Token = register_class_Polyspec_Orm_Dbspec_Native_Token();
-    dbs_ce_Names = register_class_Polyspec_Orm_Dbspec_Native_Names();
-    dbs_ce_FormatResult = register_class_Polyspec_Orm_Dbspec_Native_FormatResult();
-    dbs_ce_Manifest = register_class_Polyspec_Orm_Dbspec_Native_Manifest();
-    dbs_ce_ManifestResult = register_class_Polyspec_Orm_Dbspec_Native_ManifestResult();
-    dbs_ce_RenderResult = register_class_Polyspec_Orm_Dbspec_Native_RenderResult();
-    dbs_ce_Plan = register_class_Polyspec_Orm_Dbspec_Native_Plan();
-    dbs_ce_PlanStep = register_class_Polyspec_Orm_Dbspec_Native_PlanStep();
-    dbs_ce_Effect = register_class_Polyspec_Orm_Dbspec_Native_Effect();
-    dbs_ce_NullCheck = register_class_Polyspec_Orm_Dbspec_Native_NullCheck();
-    dbs_ce_Change = register_class_Polyspec_Orm_Dbspec_Native_Change();
-    dbs_ce_Difference = register_class_Polyspec_Orm_Dbspec_Native_Difference();
-    dbs_ce_Unsupported = register_class_Polyspec_Orm_Dbspec_Native_Unsupported();
-    dbs_ce_TableRename = register_class_Polyspec_Orm_Dbspec_Native_TableRename();
-    dbs_ce_ColumnRename = register_class_Polyspec_Orm_Dbspec_Native_ColumnRename();
-    dbs_ce_ColumnName = register_class_Polyspec_Orm_Dbspec_Native_ColumnName();
-    dbs_ce_ApplyEvent = register_class_Polyspec_Orm_Dbspec_Native_ApplyEvent();
-    dbs_ce_ApplyError = register_class_Polyspec_Orm_Dbspec_Native_ApplyError(spl_ce_RuntimeException);
-    dbs_ce_ApplyCleanupError = register_class_Polyspec_Orm_Dbspec_Native_ApplyCleanupError(spl_ce_RuntimeException);
-    dbs_ce_PlanParseResult = register_class_Polyspec_Orm_Dbspec_Native_PlanParseResult();
-    dbs_ce_PlanStepsResult = register_class_Polyspec_Orm_Dbspec_Native_PlanStepsResult();
-    dbs_ce_ChainResult = register_class_Polyspec_Orm_Dbspec_Native_ChainResult();
-    dbs_ce_DiffResult = register_class_Polyspec_Orm_Dbspec_Native_DiffResult();
-    dbs_ce_ComparisonResult = register_class_Polyspec_Orm_Dbspec_Native_ComparisonResult();
-    dbs_ce_MermaidExportResult = register_class_Polyspec_Orm_Dbspec_Native_MermaidExportResult();
-    dbs_ce_MermaidImportResult = register_class_Polyspec_Orm_Dbspec_Native_MermaidImportResult();
-    dbs_ce_IntrospectResult = register_class_Polyspec_Orm_Dbspec_Native_IntrospectResult();
-    dbs_ce_Dbspec = register_class_Polyspec_Orm_Dbspec_Native_Dbspec();
-    dbs_ce_PlanApply = register_class_Polyspec_Orm_Dbspec_Native_PlanApply();
-    dbs_ce_SetFile = register_class_Polyspec_Orm_Dbspec_Native_SetFile();
-    dbs_ce_SetError = register_class_Polyspec_Orm_Dbspec_Native_SetError();
-    dbs_ce_SetResult = register_class_Polyspec_Orm_Dbspec_Native_SetResult();
-    dbs_ce_SetDocument = register_class_Polyspec_Orm_Dbspec_Native_SetDocument();
+    register_class_Polyspec_Orm_Code();
+    dbs_ce_Diagnostic = register_class_Polyspec_Orm_Dbspec_Diagnostic();
+    dbs_ce_Document = register_class_Polyspec_Orm_Dbspec_Document();
+    dbs_ce_UseLine = register_class_Polyspec_Orm_Dbspec_UseLine();
+    dbs_ce_Table = register_class_Polyspec_Orm_Dbspec_Table();
+    dbs_ce_Column = register_class_Polyspec_Orm_Dbspec_Column();
+    dbs_ce_ColumnType = register_class_Polyspec_Orm_Dbspec_ColumnType();
+    dbs_ce_PrimaryKey = register_class_Polyspec_Orm_Dbspec_PrimaryKey();
+    dbs_ce_UniqueKey = register_class_Polyspec_Orm_Dbspec_UniqueKey();
+    dbs_ce_Index = register_class_Polyspec_Orm_Dbspec_Index();
+    dbs_ce_IndexColumn = register_class_Polyspec_Orm_Dbspec_IndexColumn();
+    dbs_ce_ForeignKey = register_class_Polyspec_Orm_Dbspec_ForeignKey();
+    dbs_ce_Check = register_class_Polyspec_Orm_Dbspec_Check();
+    dbs_ce_Settings = register_class_Polyspec_Orm_Dbspec_Settings();
+    dbs_ce_Setting = register_class_Polyspec_Orm_Dbspec_Setting();
+    dbs_ce_Diagram = register_class_Polyspec_Orm_Dbspec_Diagram();
+    dbs_ce_Placement = register_class_Polyspec_Orm_Dbspec_Placement();
+    dbs_ce_Position = register_class_Polyspec_Orm_Dbspec_Position();
+    dbs_ce_ReadResult = register_class_Polyspec_Orm_Dbspec_ReadResult();
+    dbs_ce_ParseResult = register_class_Polyspec_Orm_Dbspec_ParseResult();
+    dbs_ce_Analysis = register_class_Polyspec_Orm_Dbspec_Analysis();
+    dbs_ce_Token = register_class_Polyspec_Orm_Dbspec_Token();
+    dbs_ce_Names = register_class_Polyspec_Orm_Dbspec_Names();
+    dbs_ce_FormatResult = register_class_Polyspec_Orm_Dbspec_FormatResult();
+    dbs_ce_Manifest = register_class_Polyspec_Orm_Dbspec_Manifest();
+    dbs_ce_ManifestResult = register_class_Polyspec_Orm_Dbspec_ManifestResult();
+    dbs_ce_RenderResult = register_class_Polyspec_Orm_Dbspec_RenderResult();
+    dbs_ce_Plan = register_class_Polyspec_Orm_Dbspec_Plan();
+    dbs_ce_PlanStep = register_class_Polyspec_Orm_Dbspec_PlanStep();
+    dbs_ce_Effect = register_class_Polyspec_Orm_Dbspec_Effect();
+    dbs_ce_NullCheck = register_class_Polyspec_Orm_Dbspec_NullCheck();
+    dbs_ce_Change = register_class_Polyspec_Orm_Dbspec_Change();
+    dbs_ce_Difference = register_class_Polyspec_Orm_Dbspec_Difference();
+    dbs_ce_Unsupported = register_class_Polyspec_Orm_Dbspec_Unsupported();
+    dbs_ce_TableRename = register_class_Polyspec_Orm_Dbspec_TableRename();
+    dbs_ce_ColumnRename = register_class_Polyspec_Orm_Dbspec_ColumnRename();
+    dbs_ce_ColumnName = register_class_Polyspec_Orm_Dbspec_ColumnName();
+    dbs_ce_ApplyEvent = register_class_Polyspec_Orm_Dbspec_ApplyEvent();
+    dbs_ce_ApplyError = register_class_Polyspec_Orm_Dbspec_ApplyError(spl_ce_RuntimeException);
+    dbs_ce_ApplyCleanupError = register_class_Polyspec_Orm_Dbspec_ApplyCleanupError(spl_ce_RuntimeException);
+    dbs_ce_PlanParseResult = register_class_Polyspec_Orm_Dbspec_PlanParseResult();
+    dbs_ce_PlanStepsResult = register_class_Polyspec_Orm_Dbspec_PlanStepsResult();
+    dbs_ce_ChainResult = register_class_Polyspec_Orm_Dbspec_ChainResult();
+    dbs_ce_DiffResult = register_class_Polyspec_Orm_Dbspec_DiffResult();
+    dbs_ce_ComparisonResult = register_class_Polyspec_Orm_Dbspec_ComparisonResult();
+    dbs_ce_MermaidExportResult = register_class_Polyspec_Orm_Dbspec_MermaidExportResult();
+    dbs_ce_MermaidImportResult = register_class_Polyspec_Orm_Dbspec_MermaidImportResult();
+    dbs_ce_IntrospectResult = register_class_Polyspec_Orm_Dbspec_IntrospectResult();
+    dbs_ce_Dbspec = register_class_Polyspec_Orm_Dbspec_Dbspec();
+    dbs_ce_PlanApply = register_class_Polyspec_Orm_Dbspec_PlanApply();
+    dbs_ce_SetFile = register_class_Polyspec_Orm_Dbspec_SetFile();
+    dbs_ce_SetError = register_class_Polyspec_Orm_Dbspec_SetError();
+    dbs_ce_SetResult = register_class_Polyspec_Orm_Dbspec_SetResult();
+    dbs_ce_SetDocument = register_class_Polyspec_Orm_Dbspec_SetDocument();
 
     /* A PHP readonly class does not accept dynamic properties. Internal classes keep that flag separately. */
 #define DBS_NO_DYNAMIC(n) if (dbs_ce_##n->ce_flags & ZEND_ACC_READONLY_CLASS) dbs_ce_##n->ce_flags |= ZEND_ACC_NO_DYNAMIC_PROPERTIES;
