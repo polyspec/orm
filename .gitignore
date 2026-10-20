@@ -34,3 +34,7 @@ venv/
 # The go.work of each Go module that kit link writes for the local links (K205).
 go.work
 go.work.sum
+
+# The binary that go build writes beside a command of packages/go/cmd (P34: build output is never tracked).
+/packages/go/cmd/*/*
+!/packages/go/cmd/*/*.go
