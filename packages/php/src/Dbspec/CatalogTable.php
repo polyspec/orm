@@ -20,7 +20,8 @@ final class CatalogTable
     public array $uniques = [];
     /** @var list<array{name: string, columns: list<string>, desc: list<bool>}> */
     public array $indexes = [];
-    /** @var list<array{name: string, columns: list<string>, table: string, refs: list<string>, onDelete: string, onUpdate: string}> */
+    /** @var list<array{name: string, columns: list<string>, table: string, refs: list<string>,
+     *     onDelete: string, onUpdate: string}> */
     public array $foreignKeys = [];
     /** @var list<array{name: string, predicate: string}> */
     public array $checks = [];

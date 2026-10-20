@@ -556,7 +556,8 @@ final class PlanApply
         $result = Dbspec::introspect($this->c, $this->r->dialect, 'schema');
         if ($result->unsupported !== []) {
             $u = $result->unsupported[0];
-            throw new \RuntimeException(sprintf('the database has %d objects that dbspec cannot express, first %s %s %s: %s',
+            throw new \RuntimeException(sprintf(
+                'the database has %d objects that dbspec cannot express, first %s %s %s: %s',
                 count($result->unsupported), $u->kind, $u->table, $u->name, $u->reason));
         }
         $got = '';

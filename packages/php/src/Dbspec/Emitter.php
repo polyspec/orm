@@ -164,7 +164,8 @@ final class Emitter
         $text = match ($setting->form) {
             'initial' => "state_machine $column initial {$rest[0]}",
             'terminal' => "state_machine $column terminal {$rest[0]}",
-            'history' => "state_machine $column history {$rest[0]} row {$rest[1]} from {$rest[2]} to {$rest[3]} at {$rest[4]}",
+            'history' => "state_machine $column history {$rest[0]} row {$rest[1]} "
+                . "from {$rest[2]} to {$rest[3]} at {$rest[4]}",
             'limit' => "state_machine $column limit {$rest[0]} " . ltrim($rest[1], '0'),
             default => "state_machine $column {$rest[0]} -> {$rest[1]}",
         };

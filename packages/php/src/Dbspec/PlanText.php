@@ -92,7 +92,9 @@ final class PlanText
         for ($k = $offset; $k < count($lines); $k++) {
             if (str_starts_with($lines[$k], 'use ')) {
                 $document = preg_split('/\s+/', $lines[$k])[1] ?? '';
-                return self::fail($k + 1, "a plan targets a whole database, and its target uses the external document $document: install a set that uses external documents with install or addTablesAndColumns");
+                return self::fail($k + 1,
+                    "a plan targets a whole database, and its target uses the external document $document: "
+                    . "install a set that uses external documents with install or addTablesAndColumns");
             }
         }
         $schemaText = implode("\n", array_slice($lines, $offset)) . "\n";
@@ -104,7 +106,8 @@ final class PlanText
         }
         if (!SchemaComparison::isSchemaText($parsed->document) || Dbspec::emit($parsed->document) !== $schemaText) {
             return self::fail($offset + 1,
-                'the target is not a schema text: one document named schema in canonical form with its tables in name order and only the immutable and audit settings');
+                'the target is not a schema text: one document named schema in canonical form with its tables '
+                . 'in name order and only the immutable and audit settings');
         }
         return self::planTo($planName, $from, $renameTables, $renameColumns, $dropTables, $dropColumns,
             $parsed->document, $schemaText);

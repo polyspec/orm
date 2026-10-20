@@ -422,14 +422,17 @@ final class Renderer
                     return "$q IS time($q) AND $q < '24:00:00'";
                 }
                 $clock = "substr($q, 1, 8)";
-                return "length($q) = " . (9 + $p) . " AND $clock IS time($clock) AND $clock < '24:00:00' AND substr($q, 9, 1) = '.' AND substr($q, 10) GLOB '" . $digits($p) . "'";
+                return "length($q) = " . (9 + $p) . " AND $clock IS time($clock) AND $clock < '24:00:00' "
+                    . "AND substr($q, 9, 1) = '.' AND substr($q, 10) GLOB '" . $digits($p) . "'";
             case 'datetime':
                 $p = $t->parameters[0];
                 if ($p === 0) {
                     return "length($q) = 19 AND $q IS datetime($q) AND substr($q, 12, 2) < '24'";
                 }
                 $stamp = "substr($q, 1, 19)";
-                return "length($q) = " . (20 + $p) . " AND $stamp IS datetime($stamp) AND substr($q, 12, 2) < '24' AND substr($q, 20, 1) = '.' AND substr($q, 21) GLOB '" . $digits($p) . "'";
+                return "length($q) = " . (20 + $p) . " AND $stamp IS datetime($stamp) "
+                    . "AND substr($q, 12, 2) < '24' AND substr($q, 20, 1) = '.' "
+                    . "AND substr($q, 21) GLOB '" . $digits($p) . "'";
         }
         return '';
     }

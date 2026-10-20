@@ -29,7 +29,8 @@ final class Schema
         if ($actual !== $this->manifestHash) {
             throw new OrmException(
                 Code::CONFIG,
-                "invalid schema manifest: the manifest text hashes to $actual, not to its declared manifestHash {$this->manifestHash}"
+                "invalid schema manifest: the manifest text hashes to $actual, "
+                . "not to its declared manifestHash {$this->manifestHash}"
             );
         }
     }

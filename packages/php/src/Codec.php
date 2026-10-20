@@ -248,14 +248,17 @@ final class Codec
             $out = [];
             foreach ($node->getEntries() as $entry) {
                 if ($entry->isMerge()) {
-                    throw new \InvalidArgumentException("merge keys are not supported at line {$entry->getKey()->getLine()}");
+                    throw new \InvalidArgumentException(
+                        "merge keys are not supported at line {$entry->getKey()->getLine()}");
                 }
                 $key = self::yamlNode($entry->getKey(), $schema);
                 if (!is_string($key) && !is_int($key)) {
-                    throw new \InvalidArgumentException("map keys must be strings or integers at line {$entry->getKey()->getLine()}");
+                    throw new \InvalidArgumentException(
+                        "map keys must be strings or integers at line {$entry->getKey()->getLine()}");
                 }
                 if (array_key_exists($key, $out)) {
-                    throw new \InvalidArgumentException("duplicate map key {$key} at line {$entry->getKey()->getLine()}");
+                    throw new \InvalidArgumentException(
+                        "duplicate map key {$key} at line {$entry->getKey()->getLine()}");
                 }
                 $out[$key] = self::yamlNode($entry->getValue(), $schema);
             }

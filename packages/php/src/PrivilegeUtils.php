@@ -67,7 +67,9 @@ final class PrivilegeUtils
         $qualified = $this->table($table);
         // Reads the five privileges in one statement. Every client runs the same statement.
         $row = $this->db->fetch(StatementEvent::UTILITY, [$table], $this->db->transactionNumber(),
-            "SELECT has_table_privilege(current_user, $1, 'INSERT'), has_table_privilege(current_user, $1, 'SELECT'), has_table_privilege(current_user, $1, 'UPDATE'), has_table_privilege(current_user, $1, 'DELETE'), has_table_privilege(current_user, $1, 'TRUNCATE')",
+            "SELECT has_table_privilege(current_user, $1, 'INSERT'), "
+            . "has_table_privilege(current_user, $1, 'SELECT'), has_table_privilege(current_user, $1, 'UPDATE'), "
+            . "has_table_privilege(current_user, $1, 'DELETE'), has_table_privilege(current_user, $1, 'TRUNCATE')",
             [$qualified])[0];
         $out = [];
         foreach (['insert', 'select', 'update', 'delete', 'truncate'] as $i => $p) {

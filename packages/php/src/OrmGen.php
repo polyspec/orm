@@ -18,7 +18,8 @@ namespace Polyspec\Orm;
 final class OrmGen
 {
     private const USAGE = [
-        'gen' => 'orm-gen gen --set <dbspec-set.json> --out <dir> --namespace <Php\\Namespace> [--scan <file or directory>]... [--check]',
+        'gen' => 'orm-gen gen --set <dbspec-set.json> --out <dir> --namespace <Php\\Namespace> '
+            . '[--scan <file or directory>]... [--check]',
     ];
 
     /** @var resource */

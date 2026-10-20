@@ -1526,7 +1526,8 @@ final class Db
         try {
             $this->ensureRowLockTable();
             $this->run(StatementEvent::UTILITY, [self::ROW_LOCK_TABLE], $tx,
-                'INSERT INTO "orm__row_lock" ("id") VALUES (1) ' . 'ON CONFLICT ("id") DO UPDATE SET "id"=excluded."id"',
+                'INSERT INTO "orm__row_lock" ("id") VALUES (1) '
+                . 'ON CONFLICT ("id") DO UPDATE SET "id"=excluded."id"',
                 true);
         } catch (OrmException $e) {
             $driverError = $e->getPrevious();

@@ -32,7 +32,8 @@ final class SchemaComparison
         foreach (['source' => $source, 'target' => $target] as $side => $document) {
             if (!self::isSchemaText($document)) {
                 $diagnostics[] = new Diagnostic('compare', 1, 1,
-                    "the $side is not a schema text: one document named schema in canonical form with its tables in name order and only the immutable and audit settings");
+                    "the $side is not a schema text: one document named schema in canonical form with its "
+                    . "tables in name order and only the immutable and audit settings");
             }
         }
         if ($diagnostics !== []) {
@@ -148,7 +149,8 @@ final class SchemaComparison
         self::objects($add, 'index', $s->indexes, $t->indexes,
             static fn(Index $x): string => PlanObjects::indexDef($x, $same));
         self::objects($add, 'foreign_key', $s->foreignKeys, $t->foreignKeys,
-            static fn(ForeignKey $f): string => PlanObjects::foreignKeyDef($f->columns, $f->table, $f->referencedColumns, $f));
+            static fn(ForeignKey $f): string =>
+                PlanObjects::foreignKeyDef($f->columns, $f->table, $f->referencedColumns, $f));
         self::objects($add, 'check', $s->checks, $t->checks, static fn(Check $k): string => $k->expression);
         foreach (['immutable', 'audit'] as $kind) {
             $sourceSetting = self::setting($s, $kind, $s, $t);

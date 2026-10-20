@@ -169,7 +169,8 @@ final class PlanDiff
                 $old = $d->columnOf[$name][$c->name] ?? null;
                 if ($old === null) {
                     if (!$c->nullable && $c->default === null) {
-                        $out[] = self::error("column $name.{$c->name} is added non-null without a default; add it null, fill it, and make it non-null in a later plan");
+                        $out[] = self::error("column $name.{$c->name} is added non-null without a default; "
+                            . "add it null, fill it, and make it non-null in a later plan");
                     }
                     if ($c->identity) {
                         $out[] = self::error("column $name.{$c->name} adds an identity, which changes the primary key");
@@ -183,7 +184,8 @@ final class PlanDiff
                     continue;
                 }
                 if (!self::sameType($sc->type, $c->type) && !self::widens($sc->type, $c->type)) {
-                    $out[] = self::error("column $name.{$c->name} changes type from {$sc->type->text()} to {$c->type->text()}, which does not keep every value; it needs a new column");
+                    $out[] = self::error("column $name.{$c->name} changes type from {$sc->type->text()} "
+                        . "to {$c->type->text()}, which does not keep every value; it needs a new column");
                     continue;
                 }
                 if (!self::sameType($sc->type, $c->type) || $sc->nullable !== $c->nullable

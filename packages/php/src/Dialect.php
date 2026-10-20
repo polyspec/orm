@@ -412,7 +412,8 @@ final class Dialect
     private static function guardInterval(string $unit, string $operandCast, \Closure $arg): string
     {
         // A typed placeholder needs its cast on both sides: PostgreSQL infers an uncast THEN placeholder as text.
-        $cast = static fn (string $placeholder): string => $operandCast === '' ? $placeholder : "CAST($placeholder AS $operandCast)";
+        $cast = static fn (string $placeholder): string =>
+            $operandCast === '' ? $placeholder : "CAST($placeholder AS $operandCast)";
         $operand = $cast($arg());
         $bound = self::INTERVAL_BOUNDS[$unit];
         return "CASE WHEN $operand BETWEEN -$bound AND $bound THEN " . $cast($arg()) . ' END';
@@ -428,6 +429,7 @@ final class Dialect
     private static function guardResult(\Closure $value): string
     {
         $first = $value();
-        return "CASE WHEN $first BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN " . $value() . ' END';
+        return "CASE WHEN $first BETWEEN '0001-01-01 00:00:00' AND "
+            . "'9999-12-31 23:59:59.999999' THEN " . $value() . ' END';
     }
 }

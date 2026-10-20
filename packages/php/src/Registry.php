@@ -33,7 +33,8 @@ final class Registry
         $actual = 'sha256:' . hash('sha256', $text . $external);
         if ($actual !== $hash) {
             throw new OrmException(Code::SCHEMA_HASH_MISMATCH,
-                "generated code declares manifest $hash, its manifest text hashes to $actual: generate the models again");
+                "generated code declares manifest $hash, its manifest text hashes to $actual: "
+                . "generate the models again");
         }
         self::$texts[$hash] = $text;
         self::$externals[$hash] = $external;

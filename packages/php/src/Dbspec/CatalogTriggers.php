@@ -14,7 +14,8 @@ final class CatalogTriggers
 {
     private const AUDIT_INSERT = '/^INSERT INTO [`"]([a-z0-9_]+)[`"] \(([^)]*)\) VALUES /';
     private const AUDIT_COLUMN = '/^[`"]([a-z0-9_]+)[`"]$/D';
-    private const AUDIT_TABLES = '/; INSERT INTO [`"]([a-z0-9_]+)[`"] \\([`"]([a-z0-9_]+)[`"], [`"]([a-z0-9_]+)[`"]\\) VALUES \\(NEW\\./';
+    private const AUDIT_TABLES = '/; INSERT INTO [`"]([a-z0-9_]+)[`"] \\([`"]([a-z0-9_]+)[`"], '
+        . '[`"]([a-z0-9_]+)[`"]\\) VALUES \\(NEW\\./';
     private const AUDIT_UPDATE = '/VALUES \(\'update\', OLD\.[`"]([a-z0-9_]+)[`"],/';
 
     /**
@@ -125,7 +126,8 @@ final class CatalogTriggers
      * @param list<string> $quoted
      */
     /** @param list<string> $tables the tables table and its record and name columns, or empty without the clause */
-    private static function audit(CatalogTable $t, string $history, array $quoted, string $column, array $tables): ?Setting
+    private static function audit(CatalogTable $t, string $history, array $quoted, string $column,
+        array $tables): ?Setting
     {
         $names = [];
         foreach ($quoted as $q) {

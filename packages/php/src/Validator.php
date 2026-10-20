@@ -280,7 +280,8 @@ final class Validator
         }
         if ($key === null) {
             throw self::err(Code::IR_INVALID,
-                "restore of {$ent['entity']} gives no primary key or unique key a value in its set or in an eq condition of its where");
+                "restore of {$ent['entity']} gives no primary key or unique key a value in its set "
+                . "or in an eq condition of its where");
         }
         $parts = ['key' => $key, 'where' => ['items' => $items], 'set' => []];
         foreach ($set as $a) {
@@ -631,7 +632,8 @@ final class Validator
         foreach ($candidates[0]['columns'] as $c) {
             if (!isset($assigned[$c])) {
                 throw self::err(Code::IR_INVALID,
-                    "on_duplicate needs exactly one conflict key; {$candidates[0]['name']} can meet the row but the insert does not assign $c");
+                    "on_duplicate needs exactly one conflict key; {$candidates[0]['name']} can meet the row "
+                    . "but the insert does not assign $c");
             }
         }
         return $candidates[0]['columns'];
@@ -965,7 +967,8 @@ final class Validator
             $subColumn = RuntimeModel::column($subEntity, $p['sub']['column'] ?? '');
             if ($subColumn !== null && !self::meets(RuntimeModel::column($ent, $column), $subColumn)) {
                 throw self::err(Code::OPERATOR_NOT_ALLOWED,
-                    "$name.$column does not meet the subquery column {$p['sub']['query']['entity']}.{$p['sub']['column']}");
+                    "$name.$column does not meet the subquery column "
+                    . "{$p['sub']['query']['entity']}.{$p['sub']['column']}");
             }
             return;
         }

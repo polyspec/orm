@@ -209,7 +209,8 @@ final class Markdown
     }
 
     /**
-     * The placement of the node for query $q. The columns are decided by the node's first row in the answer, and later rows must have the same output in the same
+     * The placement of the node for query $q. The columns are decided by the node's first row in the answer,
+     * and later rows must have the same output in the same
      * order. The placement of join and relation is decided by the first row of the child rows. A node with no rows
      * has no columns: the node's model is not built. A group count with no rows has the group column and
      * row_count as its columns.

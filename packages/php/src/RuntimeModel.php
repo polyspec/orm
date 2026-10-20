@@ -256,8 +256,10 @@ final class RuntimeModel
             $path = $want === null ? 'entity' : self::firstDifference($meta, $want, '');
             if ($path !== null) {
                 $entity = is_string($name) ? $name : '?';
-                throw new OrmException(Code::CONFIG, "generated model $class of entity $entity differs from its manifest at $path: "
-                    . 'generate the models again (orm-gen gen --set <dbspec-set.json> --out <dir> --namespace <namespace>)');
+                throw new OrmException(Code::CONFIG,
+                    "generated model $class of entity $entity differs from its manifest at $path: "
+                    . 'generate the models again (orm-gen gen --set <dbspec-set.json> '
+                    . '--out <dir> --namespace <namespace>)');
             }
             $entities[$name] = $meta;
         }

@@ -136,13 +136,15 @@ final class Literal
             case 'time':
                 $time = self::time($value, $type->parameters[0]);
                 return $time === null
-                    ? [null, 'time default is not a time of day with at most ' . $type->parameters[0] . ' fraction digits']
+                    ? [null, 'time default is not a time of day with at most '
+                        . $type->parameters[0] . ' fraction digits']
                     : [self::quote($time), null];
             case 'datetime':
                 $time = strlen($value) > 11 && $value[10] === ' ' && self::date(substr($value, 0, 10))
                     ? self::time(substr($value, 11), $type->parameters[0]) : null;
                 return $time === null
-                    ? [null, 'datetime default is not a date-time with at most ' . $type->parameters[0] . ' fraction digits']
+                    ? [null, 'datetime default is not a date-time with at most '
+                        . $type->parameters[0] . ' fraction digits']
                     : [self::quote(substr($value, 0, 11) . $time), null];
         }
         throw new \LogicException("Unknown column type $name");

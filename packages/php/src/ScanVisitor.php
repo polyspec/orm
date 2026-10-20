@@ -117,7 +117,8 @@ final class ScanVisitor extends NodeVisitorAbstract
                             $props[$prop->name->toString()] = $value;
                         }
                     }
-                } elseif ($stmt instanceof Node\Stmt\ClassMethod && strtolower($stmt->name->toString()) === '__construct') {
+                } elseif ($stmt instanceof Node\Stmt\ClassMethod
+                    && strtolower($stmt->name->toString()) === '__construct') {
                     foreach ($stmt->params as $param) {
                         $value = $this->typeValue($param->type);
                         if ($value !== null && $param->flags !== 0 && $param->var instanceof Node\Expr\Variable
@@ -481,7 +482,8 @@ final class ScanVisitor extends NodeVisitorAbstract
         return null;
     }
 
-    /** The value of a method call on one model or collection of models. @param array{cls: string, many: bool} $receiver */
+    /** The value of a method call on one model or collection of models.
+     * @param array{cls: string, many: bool} $receiver */
     private static function callValue(array $receiver, string $name): ?array
     {
         if ($receiver['many']) {
@@ -551,7 +553,8 @@ final class ScanVisitor extends NodeVisitorAbstract
     /**
      * The scope after branches that each end in one of the given scopes: a name holds the union of its
      * values in them.
-     * @param list<array<string, array{cls: string, many: bool}|array{union: list<array{cls: string, many: bool}>}|null>> $states
+     * @param list<array<string, array{cls: string, many: bool}|array{union: list<array{cls: string, many: bool}>}|null>>
+     *     $states
      * @return array<string, array{cls: string, many: bool}|array{union: list<array{cls: string, many: bool}>}|null>
      */
     private static function mergeScopes(array $states): array
@@ -599,7 +602,8 @@ final class ScanVisitor extends NodeVisitorAbstract
                     }
                 }
             }
-            if ($assign instanceof Node\Expr\AssignRef && $assign->expr instanceof Node\Expr\Variable && is_string($assign->expr->name)) {
+            if ($assign instanceof Node\Expr\AssignRef && $assign->expr instanceof Node\Expr\Variable
+                && is_string($assign->expr->name)) {
                 $values[$assign->expr->name][] = null;
             }
         }

@@ -2386,7 +2386,8 @@ final class Parser
                 }
             }
             $this->error('setting', $line, $tablesToken[1], "tables table `$name` needs the foreign key "
-                . "({$recordToken[0]}) references {$referencesToken[0]} ({$key[0]}) on delete restrict on update restrict");
+                . "({$recordToken[0]}) references {$referencesToken[0]} "
+                . "({$key[0]}) on delete restrict on update restrict");
         }
     }
 
@@ -2442,7 +2443,8 @@ final class Parser
             $previous = $historyColumns[$previousToken[0]] ?? null;
             if ($previous === null || isset($reserved[$previousToken[0]]) || !$previous->nullable
                 || ($auditType !== null && $previous->type->text() !== $auditType->text())) {
-                $this->error('setting', $line, $previousToken[1], "the audit previous column `{$previousToken[0]}` is a separate "
+                $this->error('setting', $line, $previousToken[1],
+                    "the audit previous column `{$previousToken[0]}` is a separate "
                     . "null column of `{$history->name}` with the audit column's type");
             }
             $reserved[$previousToken[0]] = true;

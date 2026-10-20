@@ -160,7 +160,8 @@ final class Graph
         throw new \TypeError("$where holds " . self::name($value) . ", not $want");
     }
 
-    /** The value's name as PHP's engine writes it in a type error: the class of an object, true, false, null, int, float, string or array. */
+    /** The value's name as PHP's engine writes it in a type error: the class of an object, true, false, null,
+     * int, float, string or array. */
     private static function name(mixed $value): string
     {
         return match (true) {
