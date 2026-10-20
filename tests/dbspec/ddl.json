@@ -1,6 +1,6 @@
 {
   "requirements": {
-    "cases": ["DBS-35", "DBS-37", "DBS-41", "DBS-84", "DBS-88", "DBS-90", "DBS-91", "DBS-92", "DBS-93", "DBS-96", "DIA-28", "DIA-30", "DIA-113", "DIA-114", "DIA-115", "DIA-116", "DIA-117", "DIA-118", "DIA-119", "DIA-120", "DIA-121", "DIA-122", "DIA-123", "DIA-124", "DIA-125", "DIA-126", "DIA-127", "DIA-128", "DIA-129", "DIA-130", "DIA-131", "DIA-132"]
+    "cases": ["DBS-35", "DBS-37", "DBS-41", "DBS-84", "DBS-88", "DBS-90", "DBS-91", "DBS-92", "DBS-93", "DBS-95", "DBS-96", "DIA-28", "DIA-30", "DIA-113", "DIA-114", "DIA-115", "DIA-116", "DIA-117", "DIA-118", "DIA-119", "DIA-120", "DIA-121", "DIA-122", "DIA-123", "DIA-124", "DIA-125", "DIA-126", "DIA-127", "DIA-128", "DIA-129", "DIA-130", "DIA-131", "DIA-132"]
   },
   "version": 1,
   "note": "Each case parses every listed document against the others; statements lists, per dialect, the statements that Render writes for the document set in order. behavior steps run in order after the statements: sql must succeed, or fail when fails is true; query must return want as text. A step with dialects runs only on those dialects.",
@@ -1100,6 +1100,155 @@
         {
           "sql": "INSERT INTO audit_table (audit_seq, table_name) VALUES (99, 'service')",
           "fails": true
+        }
+      ]
+    },
+    {
+      "id": "audit-encrypted-column",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table vault {",
+          "  id i64 identity",
+          "  label varchar(64)",
+          "  secret varchar(255)",
+          "  key_version i32",
+          "  audit_seq i64",
+          "  primary key (id)",
+          "  index ix_vault_audit (audit_seq)",
+          "  foreign key fk_vault_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
+          "  settings {",
+          "    aes_version key_version",
+          "    codec secret aes hex",
+          "    audit into vault_history column audit_seq references audit action change previous previous_audit_seq",
+          "  }",
+          "}",
+          "",
+          "table vault_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_audit_seq i64 null",
+          "  id i64",
+          "  label varchar(64)",
+          "  secret varchar(255)",
+          "  key_version i32",
+          "  audit_seq i64",
+          "  primary key (history_id)",
+          "}",
+          "",
+          "table locker {",
+          "  id i64 identity",
+          "  label varchar(64)",
+          "  secret varchar(255)",
+          "  key_version i32",
+          "  audit_seq i64",
+          "  primary key (id)",
+          "  index ix_locker_audit (audit_seq)",
+          "  foreign key fk_locker_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
+          "  settings {",
+          "    aes_version key_version",
+          "    codec secret aes hex",
+          "    audit into locker_history column audit_seq references audit action change previous previous_audit_seq exclude (secret)",
+          "  }",
+          "}",
+          "",
+          "table locker_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_audit_seq i64 null",
+          "  id i64",
+          "  label varchar(64)",
+          "  key_version i32",
+          "  audit_seq i64",
+          "  primary key (history_id)",
+          "}",
+          "",
+          "table audit {",
+          "  seq i64 identity",
+          "  actor varchar(64)",
+          "  primary key (seq)",
+          "}"
+        ]
+      },
+      "statements": {
+        "mysql": [
+          "CREATE TABLE `vault` (`id` BIGINT NOT NULL AUTO_INCREMENT, `label` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `secret` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `key_version` INT NOT NULL, `audit_seq` BIGINT NOT NULL, PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+          "CREATE INDEX `ix_vault_audit` ON `vault` (`audit_seq`)",
+          "CREATE TABLE `vault_history` (`history_id` BIGINT NOT NULL AUTO_INCREMENT, `change` varchar(8) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `previous_audit_seq` BIGINT NULL, `id` BIGINT NOT NULL, `label` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `secret` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `key_version` INT NOT NULL, `audit_seq` BIGINT NOT NULL, PRIMARY KEY (`history_id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+          "CREATE TABLE `locker` (`id` BIGINT NOT NULL AUTO_INCREMENT, `label` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `secret` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `key_version` INT NOT NULL, `audit_seq` BIGINT NOT NULL, PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+          "CREATE INDEX `ix_locker_audit` ON `locker` (`audit_seq`)",
+          "CREATE TABLE `locker_history` (`history_id` BIGINT NOT NULL AUTO_INCREMENT, `change` varchar(8) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `previous_audit_seq` BIGINT NULL, `id` BIGINT NOT NULL, `label` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `key_version` INT NOT NULL, `audit_seq` BIGINT NOT NULL, PRIMARY KEY (`history_id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+          "CREATE TABLE `audit` (`seq` BIGINT NOT NULL AUTO_INCREMENT, `actor` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, PRIMARY KEY (`seq`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+          "ALTER TABLE `vault` ADD CONSTRAINT `fk_vault_audit` FOREIGN KEY (`audit_seq`) REFERENCES `audit` (`seq`) ON DELETE RESTRICT ON UPDATE RESTRICT",
+          "ALTER TABLE `locker` ADD CONSTRAINT `fk_locker_audit` FOREIGN KEY (`audit_seq`) REFERENCES `audit` (`seq`) ON DELETE RESTRICT ON UPDATE RESTRICT",
+          "CREATE TRIGGER `vault$audit_insert` AFTER INSERT ON `vault` FOR EACH ROW INSERT INTO `vault_history` (`change`, `previous_audit_seq`, `id`, `label`, `secret`, `key_version`, `audit_seq`) VALUES ('insert', NULL, NEW.`id`, NEW.`label`, NEW.`secret`, NEW.`key_version`, NEW.`audit_seq`)",
+          "CREATE TRIGGER `vault$audit_update` AFTER UPDATE ON `vault` FOR EACH ROW INSERT INTO `vault_history` (`change`, `previous_audit_seq`, `id`, `label`, `secret`, `key_version`, `audit_seq`) VALUES ('update', OLD.`audit_seq`, NEW.`id`, NEW.`label`, NEW.`secret`, NEW.`key_version`, NEW.`audit_seq`)",
+          "CREATE TRIGGER `vault$audit_delete` BEFORE DELETE ON `vault` FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'table vault deletes through its soft delete column'",
+          "CREATE TRIGGER `locker$audit_insert` AFTER INSERT ON `locker` FOR EACH ROW INSERT INTO `locker_history` (`change`, `previous_audit_seq`, `id`, `label`, `key_version`, `audit_seq`) VALUES ('insert', NULL, NEW.`id`, NEW.`label`, NEW.`key_version`, NEW.`audit_seq`)",
+          "CREATE TRIGGER `locker$audit_update` AFTER UPDATE ON `locker` FOR EACH ROW INSERT INTO `locker_history` (`change`, `previous_audit_seq`, `id`, `label`, `key_version`, `audit_seq`) VALUES ('update', OLD.`audit_seq`, NEW.`id`, NEW.`label`, NEW.`key_version`, NEW.`audit_seq`)",
+          "CREATE TRIGGER `locker$audit_delete` BEFORE DELETE ON `locker` FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'table locker deletes through its soft delete column'"
+        ],
+        "postgres": [
+          "CREATE TABLE \"vault\" (\"id\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"label\" varchar(64) COLLATE \"C\" NOT NULL, \"secret\" varchar(255) COLLATE \"C\" NOT NULL, \"key_version\" integer NOT NULL, \"audit_seq\" bigint NOT NULL, PRIMARY KEY (\"id\"))",
+          "CREATE INDEX \"ix_vault_audit\" ON \"vault\" (\"audit_seq\")",
+          "CREATE TABLE \"vault_history\" (\"history_id\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"change\" varchar(8) COLLATE \"C\" NOT NULL, \"previous_audit_seq\" bigint NULL, \"id\" bigint NOT NULL, \"label\" varchar(64) COLLATE \"C\" NOT NULL, \"secret\" varchar(255) COLLATE \"C\" NOT NULL, \"key_version\" integer NOT NULL, \"audit_seq\" bigint NOT NULL, PRIMARY KEY (\"history_id\"))",
+          "CREATE TABLE \"locker\" (\"id\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"label\" varchar(64) COLLATE \"C\" NOT NULL, \"secret\" varchar(255) COLLATE \"C\" NOT NULL, \"key_version\" integer NOT NULL, \"audit_seq\" bigint NOT NULL, PRIMARY KEY (\"id\"))",
+          "CREATE INDEX \"ix_locker_audit\" ON \"locker\" (\"audit_seq\")",
+          "CREATE TABLE \"locker_history\" (\"history_id\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"change\" varchar(8) COLLATE \"C\" NOT NULL, \"previous_audit_seq\" bigint NULL, \"id\" bigint NOT NULL, \"label\" varchar(64) COLLATE \"C\" NOT NULL, \"key_version\" integer NOT NULL, \"audit_seq\" bigint NOT NULL, PRIMARY KEY (\"history_id\"))",
+          "CREATE TABLE \"audit\" (\"seq\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"actor\" varchar(64) COLLATE \"C\" NOT NULL, PRIMARY KEY (\"seq\"))",
+          "ALTER TABLE \"vault\" ADD CONSTRAINT \"fk_vault_audit\" FOREIGN KEY (\"audit_seq\") REFERENCES \"audit\" (\"seq\") ON DELETE RESTRICT ON UPDATE RESTRICT",
+          "ALTER TABLE \"locker\" ADD CONSTRAINT \"fk_locker_audit\" FOREIGN KEY (\"audit_seq\") REFERENCES \"audit\" (\"seq\") ON DELETE RESTRICT ON UPDATE RESTRICT",
+          "CREATE FUNCTION \"vault$audit_insert\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN INSERT INTO \"vault_history\" (\"change\", \"previous_audit_seq\", \"id\", \"label\", \"secret\", \"key_version\", \"audit_seq\") VALUES ('insert', NULL, NEW.\"id\", NEW.\"label\", NEW.\"secret\", NEW.\"key_version\", NEW.\"audit_seq\"); RETURN NULL; END$$",
+          "CREATE TRIGGER \"vault$audit_insert\" AFTER INSERT ON \"vault\" FOR EACH ROW EXECUTE FUNCTION \"vault$audit_insert\"()",
+          "CREATE FUNCTION \"vault$audit_update\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN INSERT INTO \"vault_history\" (\"change\", \"previous_audit_seq\", \"id\", \"label\", \"secret\", \"key_version\", \"audit_seq\") VALUES ('update', OLD.\"audit_seq\", NEW.\"id\", NEW.\"label\", NEW.\"secret\", NEW.\"key_version\", NEW.\"audit_seq\"); RETURN NULL; END$$",
+          "CREATE TRIGGER \"vault$audit_update\" AFTER UPDATE ON \"vault\" FOR EACH ROW EXECUTE FUNCTION \"vault$audit_update\"()",
+          "CREATE FUNCTION \"vault$audit_delete\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RAISE EXCEPTION 'table vault deletes through its soft delete column'; END$$",
+          "CREATE TRIGGER \"vault$audit_delete\" BEFORE DELETE ON \"vault\" FOR EACH ROW EXECUTE FUNCTION \"vault$audit_delete\"()",
+          "CREATE FUNCTION \"locker$audit_insert\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN INSERT INTO \"locker_history\" (\"change\", \"previous_audit_seq\", \"id\", \"label\", \"key_version\", \"audit_seq\") VALUES ('insert', NULL, NEW.\"id\", NEW.\"label\", NEW.\"key_version\", NEW.\"audit_seq\"); RETURN NULL; END$$",
+          "CREATE TRIGGER \"locker$audit_insert\" AFTER INSERT ON \"locker\" FOR EACH ROW EXECUTE FUNCTION \"locker$audit_insert\"()",
+          "CREATE FUNCTION \"locker$audit_update\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN INSERT INTO \"locker_history\" (\"change\", \"previous_audit_seq\", \"id\", \"label\", \"key_version\", \"audit_seq\") VALUES ('update', OLD.\"audit_seq\", NEW.\"id\", NEW.\"label\", NEW.\"key_version\", NEW.\"audit_seq\"); RETURN NULL; END$$",
+          "CREATE TRIGGER \"locker$audit_update\" AFTER UPDATE ON \"locker\" FOR EACH ROW EXECUTE FUNCTION \"locker$audit_update\"()",
+          "CREATE FUNCTION \"locker$audit_delete\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RAISE EXCEPTION 'table locker deletes through its soft delete column'; END$$",
+          "CREATE TRIGGER \"locker$audit_delete\" BEFORE DELETE ON \"locker\" FOR EACH ROW EXECUTE FUNCTION \"locker$audit_delete\"()"
+        ],
+        "sqlite": [
+          "CREATE TABLE \"vault\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"label\" varchar(64) NOT NULL, \"secret\" varchar(255) NOT NULL, \"key_version\" integer NOT NULL, \"audit_seq\" bigint NOT NULL, CONSTRAINT \"fk_vault_audit\" FOREIGN KEY (\"audit_seq\") REFERENCES \"audit\" (\"seq\") ON DELETE RESTRICT ON UPDATE RESTRICT, CONSTRAINT \"vault$label\" CHECK (length(\"label\") <= 64), CONSTRAINT \"vault$secret\" CHECK (length(\"secret\") <= 255), CONSTRAINT \"vault$key_version\" CHECK (typeof(\"key_version\") IN ('integer', 'null') AND \"key_version\" BETWEEN -2147483648 AND 2147483647), CONSTRAINT \"vault$audit_seq\" CHECK (typeof(\"audit_seq\") IN ('integer', 'null')))",
+          "CREATE INDEX \"ix_vault_audit\" ON \"vault\" (\"audit_seq\")",
+          "CREATE TABLE \"vault_history\" (\"history_id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"change\" varchar(8) NOT NULL, \"previous_audit_seq\" bigint NULL, \"id\" bigint NOT NULL, \"label\" varchar(64) NOT NULL, \"secret\" varchar(255) NOT NULL, \"key_version\" integer NOT NULL, \"audit_seq\" bigint NOT NULL, CONSTRAINT \"vault_history$change\" CHECK (length(\"change\") <= 8), CONSTRAINT \"vault_history$previous_audit_seq\" CHECK (typeof(\"previous_audit_seq\") IN ('integer', 'null')), CONSTRAINT \"vault_history$id\" CHECK (typeof(\"id\") IN ('integer', 'null')), CONSTRAINT \"vault_history$label\" CHECK (length(\"label\") <= 64), CONSTRAINT \"vault_history$secret\" CHECK (length(\"secret\") <= 255), CONSTRAINT \"vault_history$key_version\" CHECK (typeof(\"key_version\") IN ('integer', 'null') AND \"key_version\" BETWEEN -2147483648 AND 2147483647), CONSTRAINT \"vault_history$audit_seq\" CHECK (typeof(\"audit_seq\") IN ('integer', 'null')))",
+          "CREATE TABLE \"locker\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"label\" varchar(64) NOT NULL, \"secret\" varchar(255) NOT NULL, \"key_version\" integer NOT NULL, \"audit_seq\" bigint NOT NULL, CONSTRAINT \"fk_locker_audit\" FOREIGN KEY (\"audit_seq\") REFERENCES \"audit\" (\"seq\") ON DELETE RESTRICT ON UPDATE RESTRICT, CONSTRAINT \"locker$label\" CHECK (length(\"label\") <= 64), CONSTRAINT \"locker$secret\" CHECK (length(\"secret\") <= 255), CONSTRAINT \"locker$key_version\" CHECK (typeof(\"key_version\") IN ('integer', 'null') AND \"key_version\" BETWEEN -2147483648 AND 2147483647), CONSTRAINT \"locker$audit_seq\" CHECK (typeof(\"audit_seq\") IN ('integer', 'null')))",
+          "CREATE INDEX \"ix_locker_audit\" ON \"locker\" (\"audit_seq\")",
+          "CREATE TABLE \"locker_history\" (\"history_id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"change\" varchar(8) NOT NULL, \"previous_audit_seq\" bigint NULL, \"id\" bigint NOT NULL, \"label\" varchar(64) NOT NULL, \"key_version\" integer NOT NULL, \"audit_seq\" bigint NOT NULL, CONSTRAINT \"locker_history$change\" CHECK (length(\"change\") <= 8), CONSTRAINT \"locker_history$previous_audit_seq\" CHECK (typeof(\"previous_audit_seq\") IN ('integer', 'null')), CONSTRAINT \"locker_history$id\" CHECK (typeof(\"id\") IN ('integer', 'null')), CONSTRAINT \"locker_history$label\" CHECK (length(\"label\") <= 64), CONSTRAINT \"locker_history$key_version\" CHECK (typeof(\"key_version\") IN ('integer', 'null') AND \"key_version\" BETWEEN -2147483648 AND 2147483647), CONSTRAINT \"locker_history$audit_seq\" CHECK (typeof(\"audit_seq\") IN ('integer', 'null')))",
+          "CREATE TABLE \"audit\" (\"seq\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"actor\" varchar(64) NOT NULL, CONSTRAINT \"audit$actor\" CHECK (length(\"actor\") <= 64))",
+          "CREATE TRIGGER \"vault$audit_insert\" AFTER INSERT ON \"vault\" FOR EACH ROW BEGIN INSERT INTO \"vault_history\" (\"change\", \"previous_audit_seq\", \"id\", \"label\", \"secret\", \"key_version\", \"audit_seq\") VALUES ('insert', NULL, NEW.\"id\", NEW.\"label\", NEW.\"secret\", NEW.\"key_version\", NEW.\"audit_seq\"); END",
+          "CREATE TRIGGER \"vault$audit_update\" AFTER UPDATE ON \"vault\" FOR EACH ROW BEGIN INSERT INTO \"vault_history\" (\"change\", \"previous_audit_seq\", \"id\", \"label\", \"secret\", \"key_version\", \"audit_seq\") VALUES ('update', OLD.\"audit_seq\", NEW.\"id\", NEW.\"label\", NEW.\"secret\", NEW.\"key_version\", NEW.\"audit_seq\"); END",
+          "CREATE TRIGGER \"vault$audit_delete\" BEFORE DELETE ON \"vault\" FOR EACH ROW BEGIN SELECT RAISE(ABORT, 'table vault deletes through its soft delete column'); END",
+          "CREATE TRIGGER \"locker$audit_insert\" AFTER INSERT ON \"locker\" FOR EACH ROW BEGIN INSERT INTO \"locker_history\" (\"change\", \"previous_audit_seq\", \"id\", \"label\", \"key_version\", \"audit_seq\") VALUES ('insert', NULL, NEW.\"id\", NEW.\"label\", NEW.\"key_version\", NEW.\"audit_seq\"); END",
+          "CREATE TRIGGER \"locker$audit_update\" AFTER UPDATE ON \"locker\" FOR EACH ROW BEGIN INSERT INTO \"locker_history\" (\"change\", \"previous_audit_seq\", \"id\", \"label\", \"key_version\", \"audit_seq\") VALUES ('update', OLD.\"audit_seq\", NEW.\"id\", NEW.\"label\", NEW.\"key_version\", NEW.\"audit_seq\"); END",
+          "CREATE TRIGGER \"locker$audit_delete\" BEFORE DELETE ON \"locker\" FOR EACH ROW BEGIN SELECT RAISE(ABORT, 'table locker deletes through its soft delete column'); END"
+        ]
+      },
+      "behavior": [
+        {
+          "sql": "INSERT INTO audit (actor) VALUES ('a')"
+        },
+        {
+          "sql": "INSERT INTO vault (label, secret, key_version, audit_seq) VALUES ('v', '8f2c1e0a9b7d', 1, 1)"
+        },
+        {
+          "query": "SELECT secret FROM vault_history",
+          "want": "8f2c1e0a9b7d"
+        },
+        {
+          "query": "SELECT count(*) FROM vault_history WHERE secret = (SELECT secret FROM vault)",
+          "want": "1"
+        },
+        {
+          "sql": "INSERT INTO locker (label, secret, key_version, audit_seq) VALUES ('l', '8f2c1e0a9b7d', 1, 1)"
+        },
+        {
+          "query": "SELECT label FROM locker_history",
+          "want": "l"
         }
       ]
     }

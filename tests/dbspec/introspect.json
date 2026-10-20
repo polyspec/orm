@@ -1,6 +1,6 @@
 {
   "requirements": {
-    "cases": ["DBS-42", "DBS-84", "DBS-94", "DIA-39", "DIA-44", "DIA-49", "DIA-50", "DIA-59", "DIA-110", "DIA-111", "DIA-112", "DIA-133", "DIA-134", "DIA-135", "DIA-136", "DIA-137", "DIA-138", "DIA-139", "DIA-140", "DIA-141", "DIA-142", "DIA-143", "DIA-144", "DIA-145", "DIA-146", "DIA-147", "DIA-148", "DIA-149", "DIA-150", "DIA-151", "DIA-152", "DIA-153"]
+    "cases": ["DBS-42", "DBS-84", "DBS-94", "DIA-39", "DIA-44", "DIA-49", "DIA-50", "DIA-59", "DIA-71", "DIA-110", "DIA-111", "DIA-112", "DIA-133", "DIA-134", "DIA-135", "DIA-136", "DIA-137", "DIA-138", "DIA-139", "DIA-140", "DIA-141", "DIA-142", "DIA-143", "DIA-144", "DIA-145", "DIA-146", "DIA-147", "DIA-148", "DIA-149", "DIA-150", "DIA-151", "DIA-152", "DIA-153"]
   },
   "version": 1,
   "note": "Each case renders its documents and runs its statements in an empty database of its dialect, with {schema} in a statement replaced by the name of that database or schema; a PostgreSQL case may create a second schema named {schema}_b, which is dropped with it, introspects the database into a document named introspected, and expects that document in canonical form and the unsupported objects as [kind, table, name] in the order of table, kind and name; an entry may add a fourth element, a rule that the reason of that object must contain, and otherwise reasons are not compared. docs/spec/dialects.md \"Introspection\".",
@@ -1617,6 +1617,136 @@
         "}"
       ],
       "unsupported": []
+    },
+    {
+      "id": "mysql-fulltext-index",
+      "dialect": "mysql",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  name varchar(64)",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "statements": [
+        "ALTER TABLE `orders` ADD FULLTEXT INDEX `ft_name` (`name`)"
+      ],
+      "document": [
+        "dbspec 1 introspected",
+        "",
+        "table orders {",
+        "  id i64 identity",
+        "  name varchar(64)",
+        "  primary key (id)",
+        "}"
+      ],
+      "unsupported": [
+        [
+          "index",
+          "orders",
+          "ft_name",
+          "fulltext"
+        ]
+      ]
+    },
+    {
+      "id": "postgres-fulltext-index",
+      "dialect": "postgres",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  name varchar(64)",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "statements": [
+        "CREATE INDEX \"ft_name\" ON \"orders\" USING gin (to_tsvector('simple', \"name\"))"
+      ],
+      "document": [
+        "dbspec 1 introspected",
+        "",
+        "table orders {",
+        "  id i64 identity",
+        "  name varchar(64)",
+        "  primary key (id)",
+        "}"
+      ],
+      "unsupported": [
+        [
+          "index",
+          "orders",
+          "ft_name",
+          "gin"
+        ]
+      ]
+    },
+    {
+      "id": "sqlite-fulltext-table",
+      "dialect": "sqlite",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  name varchar(64)",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "statements": [
+        "CREATE VIRTUAL TABLE \"ft_orders\" USING fts5(\"name\")"
+      ],
+      "document": [
+        "dbspec 1 introspected",
+        "",
+        "table orders {",
+        "  id i64 identity",
+        "  name varchar(64)",
+        "  primary key (id)",
+        "}"
+      ],
+      "unsupported": [
+        [
+          "table",
+          "ft_orders",
+          "ft_orders",
+          "virtual"
+        ],
+        [
+          "table",
+          "ft_orders_config",
+          "ft_orders_config"
+        ],
+        [
+          "table",
+          "ft_orders_content",
+          "ft_orders_content"
+        ],
+        [
+          "table",
+          "ft_orders_data",
+          "ft_orders_data"
+        ],
+        [
+          "table",
+          "ft_orders_docsize",
+          "ft_orders_docsize"
+        ],
+        [
+          "table",
+          "ft_orders_idx",
+          "ft_orders_idx"
+        ]
+      ]
     }
   ]
 }
