@@ -42,7 +42,7 @@
     "go": "sha256:02f5cb4fa2f9de696960e6511bafb2493839d3a9af4e9fe6d6d604fb03bf9ae9",
     "php": "sha256:05608ad0a62e17a02b8bfeefd6bcdd392531a39be844cec03b889442ffd11fa7",
     "rust": "sha256:7a678e835e3fa06a433199f916b512b5cf75c0e694c9c6cc113804841432ec2f",
-    "typescript": "sha256:613ded3e05b7c427d46110b3e291d99af17cf30c453b09bb191403e8cb426bf6",
+    "typescript": "sha256:74405d767d8799b6dd3dd0ac0c0dfe0922c7cbdbd219b22658ffd9ea5e971715",
     "python": "sha256:abf1b94ad329a093369a6c0206bbec09ce1ba24b6b056f3bcdac70f7472da54b"
   },
   "extensions": {
@@ -1908,6 +1908,10 @@
         "php": {
           "symbol": "packages/php/src/Utils.php::Polyspec\\Orm\\Utils::wasInserted",
           "signature": "public function wasInserted(string $entity, int $sequence): bool"
+        },
+        "typescript": {
+          "symbol": "packages/ts/src/utils.ts::Utils.wasInserted",
+          "signature": "public wasInserted(entity: string, sequence: number): boolean"
         }
       }
     },
@@ -1926,6 +1930,10 @@
         "php": {
           "symbol": "packages/php/src/Utils.php::Polyspec\\Orm\\Utils::backendWaitingForLock",
           "signature": "public function backendWaitingForLock(): bool"
+        },
+        "typescript": {
+          "symbol": "packages/ts/src/utils.ts::Utils.backendWaitingForLock",
+          "signature": "public async backendWaitingForLock(): Promise<boolean>"
         }
       }
     },

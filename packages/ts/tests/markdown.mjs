@@ -137,6 +137,7 @@ caseTest('markdown/rejected-surfaces', COMPUTE, async () => {
         timeoutMs: () => db.transaction(() => undefined, { timeoutMs: 100 }),
         lock: () => db.utils().lock('k'),
         setLocal: () => db.utils().setLocal('k', 'v'),
+        backendWaitingForLock: () => db.utils().backendWaitingForLock(),
         subscribe: async () => db.subscribe(() => undefined),
         statementTimeoutMs: () => Db.connect(s.dsn, { statementTimeoutMs: 100 }),
       };

@@ -178,6 +178,8 @@ export class TxFrame {
   public audit: AuditRecord | undefined = undefined;
   /** The audit record the transaction inserts before its first write of an audited table; undefined without audit values. */
   public pendingAudit: AuditInsert | undefined = undefined;
+  /** The identity keys of the generated single inserts that the transaction succeeded in, by entity (INT-52); a savepoint that does not release restores it. */
+  public inserted = new Map<string, Set<number>>();
   /**
    * The number is this transaction's number on the connection; the event of that statement carries it. The connection is held
    * until the transaction ends: it is the driver session of an SQL connection or the flowmark session of a markdown connection.
@@ -1043,6 +1045,7 @@ export class Db {
     const name = `orm_sp_${frame.savepoints}`;
     // A savepoint that does not release undoes an audit record inserted inside it.
     const auditBefore = frame.audit;
+    const insertedBefore = new Map([...frame.inserted].map(([entity, keys]) => [entity, new Set(keys)]));
     let kept = false;
     try {
       await this.savepointStep(frame, 'savepoint', name);
@@ -1062,7 +1065,10 @@ export class Db {
       kept = true;
       return result;
     } finally {
-      if (!kept) frame.audit = auditBefore;
+      if (!kept) {
+        frame.audit = auditBefore;
+        frame.inserted = insertedBefore;
+      }
       frame.savepoints--;
     }
   }
@@ -1436,8 +1442,25 @@ export async function write(ex: Executor, given: Request, givenParams: readonly 
   }
   await settle(written.affected, false);
   const { key, affected } = written;
+  recordInserted(ex, request, key);
   ex.db['shared'].lastAffected = affected;
   return { key, affected, request, params };
+}
+
+/**
+ * Records the identity key of a generated single insert in the write set of the transaction (INT-52). A batch insert and an
+ * entity without an identity are not recorded, as in the other clients.
+ */
+function recordInserted(ex: Executor, request: Request, key: number | string | null): void {
+  const frame = ex.frame;
+  if (frame === undefined || request.kind !== 'insert' || request.rows || key === null) return;
+  const sequence = typeof key === 'number' ? key : /^\d+$/.test(key) ? Number(key) : Number.NaN;
+  if (!Number.isSafeInteger(sequence) || sequence <= 0) return;
+  const entity = ex.db['engines'].get(request.manifest_hash)?.model.entities.get(request.entity);
+  if (entity === undefined || entity.identity === '') return;
+  const keys = frame.inserted.get(request.entity) ?? new Set<number>();
+  keys.add(sequence);
+  frame.inserted.set(request.entity, keys);
 }
 
 /** Runs the write of request in ex: step is its main plan step on a SQL database, undefined on markdown. */

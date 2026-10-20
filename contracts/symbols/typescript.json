@@ -1403,6 +1403,10 @@
     "exported": true,
     "signature": "unknown"
   },
+  "packages/ts/src/database.ts::TxFrame#field.inserted": {
+    "exported": true,
+    "signature": "unknown"
+  },
   "packages/ts/src/database.ts::TxFrame#field.locals": {
     "exported": true,
     "signature": "unknown"
@@ -1578,6 +1582,10 @@
   "packages/ts/src/database.ts::readTime": {
     "exported": true,
     "signature": "export function readTime(value: unknown, colType: string, zone: string, precision: number): string"
+  },
+  "packages/ts/src/database.ts::recordInserted": {
+    "exported": false,
+    "signature": "function recordInserted(ex: Executor, request: Request, key: number | string | null): void"
   },
   "packages/ts/src/database.ts::registerModel": {
     "exported": true,
@@ -17167,6 +17175,10 @@
     "exported": true,
     "signature": "public aes(): AesUtils"
   },
+  "packages/ts/src/utils.ts::Utils.backendWaitingForLock": {
+    "exported": true,
+    "signature": "public async backendWaitingForLock(): Promise\u003cboolean\u003e"
+  },
   "packages/ts/src/utils.ts::Utils.local": {
     "exported": true,
     "signature": "public async local(key: string): Promise\u003cstring\u003e"
@@ -17198,6 +17210,10 @@
   "packages/ts/src/utils.ts::Utils.stats": {
     "exported": true,
     "signature": "public stats(): PoolStats"
+  },
+  "packages/ts/src/utils.ts::Utils.wasInserted": {
+    "exported": true,
+    "signature": "public wasInserted(entity: string, sequence: number): boolean"
   },
   "packages/ts/src/utils.ts::config": {
     "exported": false,

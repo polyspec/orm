@@ -202,6 +202,30 @@ export class Utils {
     return value;
   }
 
+  /** Whether a generated insert of entity with the identity key sequence succeeded in the active transaction (INT-52). */
+  public wasInserted(entity: string, sequence: number): boolean {
+    const frame = this.active('wasInserted');
+    if (entity === '' || !Number.isSafeInteger(sequence) || sequence <= 0) throw config('inserted entity and positive key are required');
+    return frame.inserted.get(entity)?.has(sequence) ?? false;
+  }
+
+  /**
+   * Whether another backend of the PostgreSQL connection waits for a lock (INT-53). MySQL and SQLite return false without
+   * a statement; a markdown connection is CAPABILITY_UNSUPPORTED.
+   */
+  public async backendWaitingForLock(): Promise<boolean> {
+    this.db.unsupportedOnMarkdown('backendWaitingForLock');
+    if (this.db.driver !== 'postgres') return false;
+    // The statement runs on a connection of the pool, as Go does: pg_stat_activity is a snapshot per transaction, so a read inside the
+    // transaction of the caller would not see a backend that starts to wait after the transaction has read it.
+    const sql = 'SELECT EXISTS(SELECT 1 FROM pg_locks l JOIN pg_stat_activity a ON a.pid=l.pid WHERE a.datname=current_database() AND a.pid<>pg_backend_pid() AND NOT l.granted)';
+    const done = this.db.statementDone('utility', [], null, []);
+    this.db.checkStatementFault(sql, done);
+    const rows = (await this.db.pool.execute(sql, [], undefined, done)).rows;
+    const waiting = rows[0]?.[0];
+    return waiting === true || waiting === 't' || waiting === 1 || waiting === '1';
+  }
+
   public schema(): SchemaUtils { return new SchemaUtils(this); }
   public privileges(): PrivilegeUtils { return new PrivilegeUtils(this); }
   public aes(): AesUtils { return new AesUtils(this); }
