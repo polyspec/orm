@@ -545,6 +545,42 @@ func TestCoveragePlannerJoinOnSoftDelete(t *testing.T) {
 	compilePlannerCase(t, "planner_join_on_soft_delete")
 }
 
+// TestCoveragePlannerForceIndex compiles an index hint: MySQL FORCE INDEX, SQLite INDEXED BY, and no hint on PostgreSQL.
+func TestCoveragePlannerForceIndex(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_force_index")
+}
+
+// TestCoveragePlannerValueFunctionToday compiles today(): MySQL CURDATE(), PostgreSQL CURRENT_DATE, and on SQLite the date of the bound client clock.
+func TestCoveragePlannerValueFunctionToday(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_value_function_today")
+}
+
+// TestCoveragePlannerColumnFunctionDate compiles the date() column function: MySQL DATE(c), PostgreSQL CAST(c AS date), SQLite date(c).
+func TestCoveragePlannerColumnFunctionDate(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_column_function_date")
+}
+
+// TestCoveragePlannerRejectsColumnFunctionOnVarchar checks that a column function on a column type it does not list is OPERATOR_NOT_ALLOWED.
+func TestCoveragePlannerRejectsColumnFunctionOnVarchar(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_rejects_column_function_on_varchar")
+}
+
+// TestCoveragePlannerRejectsStyledColumnEquality checks that a styled column takes no comparison other than is null and is not null.
+func TestCoveragePlannerRejectsStyledColumnEquality(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_rejects_styled_column_equality")
+}
+
+// TestCoveragePlannerStyledColumnIsNull compiles is null on a styled column.
+func TestCoveragePlannerStyledColumnIsNull(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_styled_column_is_null")
+}
+
 // paramUseOut is one use of a parameter as planner.json writes it: the slot's logical type and, for a
 // column slot, the column with its length, precision, scale and nullability.
 type paramUseOut struct {
@@ -699,6 +735,12 @@ func TestCoveragePlanner(t *testing.T) {
 		"planner_join_inner_soft_delete":                           TestCoveragePlannerJoinInnerSoftDelete,
 		"planner_join_left_soft_delete":                            TestCoveragePlannerJoinLeftSoftDelete,
 		"planner_join_on_soft_delete":                              TestCoveragePlannerJoinOnSoftDelete,
+		"planner_force_index":                                      TestCoveragePlannerForceIndex,
+		"planner_value_function_today":                             TestCoveragePlannerValueFunctionToday,
+		"planner_column_function_date":                             TestCoveragePlannerColumnFunctionDate,
+		"planner_rejects_column_function_on_varchar":               TestCoveragePlannerRejectsColumnFunctionOnVarchar,
+		"planner_rejects_styled_column_equality":                   TestCoveragePlannerRejectsStyledColumnEquality,
+		"planner_styled_column_is_null":                            TestCoveragePlannerStyledColumnIsNull,
 		"planner_uuid_select":                                      TestCoveragePlannerUuidSelect,
 		"planner_uuid_insert":                                      TestCoveragePlannerUuidInsert,
 		"param_uses_column_function":                               TestCoveragePlannerParamUsesColumnFunction,

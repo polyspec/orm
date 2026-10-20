@@ -622,4 +622,46 @@ final class CoveragePlannerTest extends TestCase
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_join_on_soft_delete');
     }
+
+    public function test_planner_force_index(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        plannerCase($root, $fixture, 'planner_force_index');
+    }
+
+    public function test_planner_value_function_today(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        plannerCase($root, $fixture, 'planner_value_function_today');
+    }
+
+    public function test_planner_column_function_date(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        plannerCase($root, $fixture, 'planner_column_function_date');
+    }
+
+    public function test_planner_rejects_column_function_on_varchar(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        plannerCase($root, $fixture, 'planner_rejects_column_function_on_varchar');
+    }
+
+    public function test_planner_rejects_styled_column_equality(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        plannerCase($root, $fixture, 'planner_rejects_styled_column_equality');
+    }
+
+    public function test_planner_styled_column_is_null(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        plannerCase($root, $fixture, 'planner_styled_column_is_null');
+    }
 }

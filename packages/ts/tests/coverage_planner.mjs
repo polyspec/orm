@@ -146,4 +146,10 @@ await runCases('coverage_planner.mjs', {
   async planner_join_inner_soft_delete() { compileCase('planner_join_inner_soft_delete'); },
   async planner_join_left_soft_delete() { compileCase('planner_join_left_soft_delete'); },
   async planner_join_on_soft_delete() { compileCase('planner_join_on_soft_delete'); },
+  async planner_force_index() { compileCase('planner_force_index'); },
+  async planner_value_function_today() { compileCase('planner_value_function_today'); },
+  async planner_column_function_date() { compileCase('planner_column_function_date'); },
+  async planner_rejects_column_function_on_varchar() { compileCase('planner_rejects_column_function_on_varchar'); },
+  async planner_rejects_styled_column_equality() { compileCase('planner_rejects_styled_column_equality'); },
+  async planner_styled_column_is_null() { compileCase('planner_styled_column_is_null'); },
 }, 60_000);

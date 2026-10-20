@@ -5358,6 +5358,300 @@
       },
       "operation": "compile",
       "schema": "contracts/fixtures/bench/bench.dbs"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`service_seq` AS `a__service_seq` FROM `service_region` AS `a` FORCE INDEX (`ix_service_region_service`) LIMIT 0, 1",
+            "tables": [
+              "service_region"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"service_seq\" AS \"a__service_seq\" FROM \"service_region\" AS \"a\" LIMIT 1 OFFSET 0",
+            "tables": [
+              "service_region"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"service_seq\" AS \"a__service_seq\" FROM \"service_region\" AS \"a\" INDEXED BY \"ix_service_region_service\" LIMIT 1 OFFSET 0",
+            "tables": [
+              "service_region"
+            ]
+          }
+        ]
+      },
+      "id": "planner_force_index",
+      "input": {
+        "columns": {
+          "mode": "none"
+        },
+        "entity": "service_region",
+        "force_index": "ix_service_region_service",
+        "ir_version": 1,
+        "kind": "all",
+        "limit": {
+          "count": 1,
+          "offset": 0
+        },
+        "n_params": 0
+      },
+      "operation": "compile",
+      "schema": "contracts/fixtures/bench/bench.dbs"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`start_dt` >= CURDATE()",
+            "tables": [
+              "author"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"start_dt\" >= CURRENT_DATE",
+            "tables": [
+              "author"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "now",
+                "precision": 6,
+                "type": "datetime"
+              }
+            ],
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"start_dt\" >= date(?)",
+            "tables": [
+              "author"
+            ]
+          }
+        ]
+      },
+      "id": "planner_value_function_today",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "kind": "count",
+        "n_params": 0,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "start_dt",
+                "op": "gte",
+                "value": {
+                  "name": "today"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile",
+      "schema": "contracts/fixtures/bench/bench.dbs"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "date"
+              }
+            ],
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE DATE(`a`.`start_dt`) = ?",
+            "tables": [
+              "author"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "date"
+              }
+            ],
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE CAST(\"a\".\"start_dt\" AS date) = $1",
+            "tables": [
+              "author"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "date"
+              }
+            ],
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE date(\"a\".\"start_dt\") = ?",
+            "tables": [
+              "author"
+            ]
+          }
+        ]
+      },
+      "id": "planner_column_function_date",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "kind": "count",
+        "n_params": 1,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "start_dt",
+                "fn": {
+                  "name": "date"
+                },
+                "op": "eq",
+                "p": 0
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile",
+      "schema": "contracts/fixtures/bench/bench.dbs"
+    },
+    {
+      "expected": {
+        "error": "OPERATOR_NOT_ALLOWED"
+      },
+      "id": "planner_rejects_column_function_on_varchar",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "kind": "count",
+        "n_params": 1,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "name",
+                "fn": {
+                  "name": "year"
+                },
+                "op": "eq",
+                "p": 0
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile",
+      "schema": "contracts/fixtures/bench/bench.dbs"
+    },
+    {
+      "expected": {
+        "error": "OPERATOR_NOT_ALLOWED"
+      },
+      "id": "planner_rejects_styled_column_equality",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "kind": "count",
+        "n_params": 1,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "json_setting",
+                "op": "eq",
+                "p": 0
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile",
+      "schema": "contracts/fixtures/bench/bench.dbs"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`json_setting` IS NULL",
+            "tables": [
+              "author"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"json_setting\" IS NULL",
+            "tables": [
+              "author"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"json_setting\" IS NULL",
+            "tables": [
+              "author"
+            ]
+          }
+        ]
+      },
+      "id": "planner_styled_column_is_null",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "kind": "count",
+        "n_params": 0,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "json_setting",
+                "op": "is_null"
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile",
+      "schema": "contracts/fixtures/bench/bench.dbs"
     }
   ],
   "feature": "planner",

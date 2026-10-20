@@ -519,6 +519,42 @@ mod planner {
     }
 
     #[test]
+    fn planner_force_index() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_force_index");
+    }
+
+    #[test]
+    fn planner_value_function_today() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_value_function_today");
+    }
+
+    #[test]
+    fn planner_column_function_date() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_column_function_date");
+    }
+
+    #[test]
+    fn planner_rejects_column_function_on_varchar() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_column_function_on_varchar");
+    }
+
+    #[test]
+    fn planner_rejects_styled_column_equality() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_styled_column_equality");
+    }
+
+    #[test]
+    fn planner_styled_column_is_null() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_styled_column_is_null");
+    }
+
+    #[test]
     fn param_uses_column_function() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         super::run_param_uses("param_uses_column_function");
