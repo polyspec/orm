@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: f5d9c46d6ae55fca87c54e94575a38f5ca04f52af9cbde7f5eec6873c991605b -->
+<!-- source-sha256: 33c544808ed9eceadd3087efbc3645b24bfb64a0d97a97dbd6d433bd9d07f2c9 -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1228,7 +1228,7 @@
 | T182-4 | extension의 planner (T182-3에 이어). 완료 기준: planner, insert-parts, ir-answers가 id로 실행된다. | — | `make dbspec-php-extension-check/planner`, `make dbspec-php-extension-check/declarations` | [o] |
 | T182-5 | PHP 자체 database 계층 위의 extension executor (T182-2, T182-4에 이어). 완료 기준: statement는 새 driver가 아니라 PHP가 이미 제공하는 database API를 C에서 호출해 실행한다. statement-events, statement-fault, sqlite-paths, mysql-session이 실행된다. | — | Commands: `make dbspec-php-extension-check/declarations` | [~] |
 | T182-5-1 | extension이 Polyspec\Orm\Db의 연결과 statement 경로를 PDO 위에서 C로 구현한다: Orm::connect를 통한 연결, select, scalarOf, writeOf, paginate, args, exec, fetch, statement event이며, sqlite-paths와 mysql-session이 extension에서 돈다 (T182-5 후속) | packages/php-ext/src, the stub, config/parity.json | `make dbspec-php-extension-check/executor` | [o] |
-| T182-5-2 | extension이 Polyspec\Orm\Db의 transaction과 savepoint를 C로 구현한다: begin, finish, savepoint, cleanup, audit, fault injection이며, case가 transaction 안에서 도는 statement-events와 statement-fault가 extension에서 돈다 (T182-5-1 후속) | packages/php-ext/src, the stub, config/parity.json | `make dbspec-php-extension-check/executor` | [ ] |
+| T182-5-2 | extension이 Polyspec\Orm\Db의 transaction과 savepoint를 C로 구현한다: begin, finish, savepoint, cleanup, audit, fault injection이며, case가 transaction 안에서 도는 statement-events와 statement-fault가 extension에서 돈다 (T182-5-1 후속) | packages/php-ext/src, the stub, config/parity.json | `make dbspec-php-extension-check/executor` | [o] |
 | T182-5-3 | extension이 Polyspec\Orm\Db의 request hook, Utils, Stats를 C로 구현하므로 Db의 모든 public member가 extension의 것이다 (T182-5-2 후속) | packages/php-ext/src, the stub, config/parity.json | `make dbspec-php-extension-check/executor` | [ ] |
 | T182-6 | extension의 query, model, collection client (T182-5에 이어. T199는 이 항목의 표면이다). 완료 기준: 생성된 model이 extension에서 실행된다. MySQL, PostgreSQL, SQLite conformance, identity-load, aggregate-numeric, decimal-model, styled-column-states, authenticated-encryption, install-changed-database가 실행된다. client profile이 php-extension을 나열하고 parity가 모든 unit에서 이것을 센다. | — | Commands: `make dbspec-php-extension-check/declarations`, `make dbspec-php-extension-check/names` | [ ] |
 | T183 | MySQL migration fixture의 setup이 실패하면 임시 root를 지운다. 원인: scripts/test-servers-mysql.test.mts의 `fixture()`는 /tmp/orm-mig-XXXX를 만들고, script를 복사하고, 그 text를 검사하고, `mysql-start`를 실행한 뒤에야 `close()`를 돌려주었다. 그래서 이 단계에서 실패하면 root와 시작한 mysqld가 남았고, /private/tmp에서 그런 folder 아홉 개(약 1.7 GB)가 발견되었다. 완료 조건: setup이 실패하면 fixture가 자기 `close()`를 실행하고(서버를 멈추고 socket directory와 root를 지움) 원래 error를 다시 throw한다. | — | Evidence: case "the MySQL fixture removes its root when its setup fails"가 복사한 `mysql-start`를 exit 3으로 끝나게 한다. RED: 수정 전에는 `existsSync(root)`에서 `true !== false`로 실패했다. 수정 후 `make test-servers-check`가 15개 모두 통과하고 /tmp/orm-mig-* folder가 남지 않는다. | [o] |
