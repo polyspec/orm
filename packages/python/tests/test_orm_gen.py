@@ -581,7 +581,9 @@ class OrmGenTest(unittest.TestCase):
             work_path = Path(work)
             (work_path / "src").mkdir()
             (work_path / "src" / "usage.py").write_text("x = 1\n", encoding="utf-8")
-            (work_path / "src" / "broken.py").write_text("x = 1\ndef (:\n", encoding="utf-8")
+            (work_path / "src" / "broken.py").write_text(
+                "x = 1\ndef (:\n", encoding="utf-8"
+            )
             out = work_path / "model"
             result = subprocess.run(
                 args=ORM_GEN
