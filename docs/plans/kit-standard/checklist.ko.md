@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: af82d946f8eebadbe487a26a3ddde12e692c8050d5da2aeebcd0de4ab7f890a0 -->
+<!-- source-sha256: 3c75b3c411bade2601511731be210e90e71c028607d275f771b15dc49b0f01f1 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -46,6 +46,17 @@
 | KSTD-2-11-18 | packaging과 entry point unit은 중립 unit이며 각 구현이 native package로 묶인다 (KSTD-2-11 후속). Cause: unit 30개가 각각 한 package만 검사한다 | config/parity.json, the packages of every implementation | `make parity-declarations-check` | [ ] |
 | KSTD-3 | orm-gen이 생성하는 code가 그 ecosystem의 formatter와 linter를 통과한다(fsm adoption). 원인: orm-gen의 Python 출력인 fsm의 examples/model/models.py가 ruff format --check에 실패하고 vulture 지적이 25건이며, 생성된 PHP model은 phpcs의 PSR12 header 규칙에 실패한다 | the generators of the five clients and their generated fixture models | `make python-model-check`, `make lint-python`, `make lint-php` | [ ] |
 | KSTD-4 | repository의 모든 composer platform은 .php-version의 PHP minor에 patch 1이다 (kit K282). Cause: kit은 모든 composer config.platform.php와 composerPlatforms가 8.4.1이기를 요구하는데 orm은 두 곳에 8.4.0을 선언한다 | the composer.json files, kit.json | `make kit-check` | [o] |
-| KSTD-5 | CHECK_TARGETS가 kit-gates의 모든 gate에 닿는다 (kit K289). Cause: kit-check가 CHECK_TARGETS에 toolchain-check, test-markers-check, rules-check, rebuild-check, layout-check, language-check, duplication-check, lint-ts, lint-go, lint-python, lint-php, lint-php-ext, test-php-ext가 없다고 보고한다; 각각을 추가하고 그 finding을 고쳐 통과시킨다 | Makefile, the files each gate reports | `make kit-check` | [ ] |
+| KSTD-5 | CHECK_TARGETS가 kit-gates의 모든 gate에 닿는다 (kit K289). Cause: kit-check가 CHECK_TARGETS에 toolchain-check, test-markers-check, rules-check, rebuild-check, layout-check, language-check, duplication-check, lint-ts, lint-go, lint-python, lint-php, lint-php-ext, test-php-ext가 없다고 보고한다; 각각을 추가하고 그 finding을 고쳐 통과시킨다 | Makefile, the files each gate reports | `make kit-check` | [~] |
+| KSTD-5-1 | toolchain-check가 통과한다 (KSTD-5 후속). Cause: phpstan이 시작하지 못한다: kit의 link 실행이 vendor-php/composer/installed.json에 polyspec/ordered-json의 release metadata(require php >=8.5)를 남겨 platform_check.php가 PHP 8.5를 요구한다 (kit 결함, scripts/kit/link.mts:390-403) | vendor-php, the kit link | `make toolchain-check` | [ ] |
+| KSTD-5-2 | test-markers-check가 통과한다 (KSTD-5 후속). Cause: marker 42개가 test를 건너뛰거나 좁힌다. 예를 들어 feature-check만 database와 함께 돌리는 Rust coverage test의 #[ignore]다; test는 전부 돌거나 그 이유와 함께 지워진다 | the tests of every implementation | `make test-markers-check` | [ ] |
+| KSTD-5-3 | rules-check가 통과한다 (KSTD-5 후속). Cause: AGENTS.md의 규칙 58개가 `Own:`이나 `Refines <id>:`로 시작하지 않아, 이 repository의 규칙인지 원칙을 다듬는지 밝히지 않는다 (kit K279) | AGENTS.md and its Korean twin | `make rules-check` | [ ] |
+| KSTD-5-4 | rebuild-check가 통과한다 (KSTD-5 후속). Cause: config/rebuild.json이 없어 repository의 어떤 도구도 그 class를 선언하지 않는다 | config/rebuild.json | `make rebuild-check` | [ ] |
+| KSTD-5-5 | duplication-check가 통과한다 (KSTD-5 후속). Cause: jscpd가 구현 전체에서 clone 988개(줄의 4.29 percent)를 찾는다; 반복된 code는 둘이 함께 쓰는 한 module로 옮긴다 | the code of every implementation | `make duplication-check` | [ ] |
+| KSTD-5-6 | lint-ts가 통과한다 (KSTD-5 후속). Cause: oxlint와 knip이 repository의 TypeScript에서 실패한다 | the TypeScript of the repository | `make lint-ts` | [ ] |
+| KSTD-5-7 | lint-go가 통과한다 (KSTD-5 후속). Cause: golangci-lint가 examples, packages/go, tests에서, deadcode가 packages/go에서 실패한다 | the Go of the repository | `make lint-go` | [ ] |
+| KSTD-5-8 | lint-python이 통과한다 (KSTD-5 후속). Cause: ruff format --check가 repository의 Python에서 실패한다 | the Python of the repository | `make lint-python` | [ ] |
+| KSTD-5-9 | lint-php가 통과한다 (KSTD-5 후속). Cause: 루트, packages/php, packages/php-ext의 phpcs와 phpstan이 실패한다 | the PHP of the repository | `make lint-php` | [ ] |
+| KSTD-5-10 | PHP extension은 stub 하나를 가진 하나의 extension polyspec_orm이어서 lint-php-ext와 test-php-ext가 통과한다 (kit K293, S10) (KSTD-5 후속). Cause: kit은 repository의 extension을 package polyspec/orm-php-ext의 polyspec_orm으로, stub은 packages/php-ext/src/polyspec_orm.stub.php 하나로 정하는데, orm은 polyspec/orm-dbspec에서 stub 두 개로 orm_dbspec을 build한다 | packages/php-ext, its stubs, config/parity.json | `make lint-php-ext` | [ ] |
+| KSTD-5-11 | CHECK_TARGETS가 kit-gates의 모든 gate를 돌린다 (KSTD-5 후속). Cause: kit-check가 CHECK_TARGETS가 돌리지 않는 gate 13개를 보고한다; 각 gate는 그 sub-item이 통과하면 추가된다 | Makefile | `make kit-check` | [ ] |
 | KSTD-6 | link rebuild는 repository layout을 읽고 자기 paths를 두지 않는다 (kit K286). Cause: kit은 link된 checkout을 layout으로 rebuild하며 link 선언의 paths key는 없어진다 | kit.json, the link declaration | `make kit-check` | [ ] |
 | KSTD-7 | main에서 feature-unit-check가 통과한다. Cause: docs/features.md가 그것이 그리는 coverage와 맞지 않고, scripts/features/coverage.test.mts의 8개 case가 "no package implements the client language php-extension"으로 실패한다 | docs/features.md, scripts/features | `make feature-unit-check` | [ ] |
