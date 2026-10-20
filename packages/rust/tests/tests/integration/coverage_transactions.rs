@@ -13,9 +13,8 @@ fn is_failure(r: &polyspec_orm::Result<()>, message: &str) -> bool {
     matches!(r, Err(polyspec_orm::Error::Config(m)) if m == message)
 }
 
-// Requirements: PLN-13, PLN-20.
-// Requirements: INT-45.
 #[tokio::test]
+// Requirements: DSL-118, INT-45, PLN-13, PLN-20.
 async fn coverage_transaction_rollback() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("transaction_rollback", async {
@@ -34,9 +33,8 @@ async fn coverage_transaction_rollback() {
     .await;
 }
 
-// Requirements: PLN-17.
-// Requirements: INT-45, INT-46.
 #[tokio::test]
+// Requirements: DSL-119, INT-45, INT-46, PLN-17.
 async fn coverage_transaction_savepoint() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("transaction_savepoint", async {

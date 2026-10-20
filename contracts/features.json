@@ -2098,14 +2098,8 @@
         }
       ],
       "parity": [
-        "go-internal-packages-go-model-coverage-transactions",
-        "php-internal-coverage-transactions-transaction-rollback",
-        "php-internal-coverage-transactions-transaction-savepoint",
-        "py-cov-transactions-transaction-rollback",
-        "py-cov-transactions-transaction-savepoint",
-        "rust-integration-coverage-transactions-coverage-transaction-rollback",
-        "rust-integration-coverage-transactions-coverage-transaction-savepoint",
-        "ts-coverage_transactions"
+        "coverage-transactions-transaction-rollback",
+        "coverage-transactions-transaction-savepoint"
       ],
       "fixtures": [
         "packages/php/tests/deadlock_child.php",

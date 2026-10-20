@@ -103,13 +103,11 @@ def transaction_savepoint(item):
 
 
 class CoverageTest(CoverageCase):
-    # Requirements: PLN-13, PLN-20.
-    # Requirements: INT-45.
+    # Requirements: DSL-118, INT-45, PLN-13, PLN-20.
     def test_transaction_rollback(self):
         self.each_item("transaction_rollback", transaction_rollback)
 
-    # Requirements: PLN-17.
-    # Requirements: INT-45, INT-46.
+    # Requirements: DSL-119, INT-45, INT-46, PLN-17.
     def test_transaction_savepoint(self):
         self.each_item("transaction_savepoint", transaction_savepoint)
 
