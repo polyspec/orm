@@ -30,3 +30,7 @@ __pycache__/
 /vendor/
 venv/
 *.egg-info/
+
+# The go.work of each Go module that kit link writes for the local links (K205).
+go.work
+go.work.sum
