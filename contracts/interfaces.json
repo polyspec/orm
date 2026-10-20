@@ -3020,7 +3020,7 @@
       "native": {
         "go": {
           "symbol": "packages/go/engine/dbspec/apply.go::Apply",
-          "signature": "func(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error"
+          "signature": "func(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) (ApplyResult, error)"
         },
         "php": {
           "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::apply",

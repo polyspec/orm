@@ -1,5 +1,5 @@
 <!-- doc-id: plans -->
-<!-- source-sha256: 1fdc25e053c0f333bf43cc90d36bbfff87f591db41045dd0e834b99bb6d0a2b5 -->
+<!-- source-sha256: 964b0b711bbf1ad154d49e44ecaee252887c9e3f6a7534e1587f9d997713228b -->
 # Schema plan
 
 plan은 database를 한 schema에서 다음 schema로 바꾼다. plan은 target schema와, schema가 표현하지 못하는 결정인 rename과 drop 허가를 담는다. plan은 빈 database에서 시작하는 chain을 이룬다. 모든 client는 plan의 두 schema를 같은 방식으로 diff하고 dialect마다 같은 step을 쓴다. `tests/dbspec/plans.json`이 공유 case를 담는다.
@@ -140,7 +140,7 @@ apply, recover, rollback, finalize는 caller가 가진 connection 하나에서 �
 
 중단된 뒤 recover나 rollback 전까지 plan의 table에 쓰면 안 된다. 예를 들어 SQLite 다시 만들기가 비운 table에 쓴 row는 작업 table에 없다. chain 전체를 적용한 database에서 apply는 아무것도 바꾸지 않는다. 빈 chain의 apply는 history table을 만들고, table이 없는 database를 요구하며, event를 알리지 않는다. 빈 chain의 recover, rollback, finalize는 아무것도 바꾸지 않는다.
 
-Go에는 `Apply`, `Recover`, `Rollback`, `Finalize`, PHP에는 `Dbspec::apply`, `recover`, `rollback`, `finalize`, TypeScript에는 `applyPlans`, `recoverPlans`, `rollbackPlans`, `finalizePlans`, Rust에는 `polyspec_orm::dbspec::apply`, `recover`, `rollback`, `finalize`가 있다. 각각 connection, dialect, chain의 plan, `applied_at`의 clock, event handler를 받는다. TypeScript connection type(`DbspecApplyMySqlConnection`, `DbspecApplyPostgresConnection`, `DbspecApplySqliteConnection`, 그리고 `introspectDbspec`의 `DbspecMySqlConnection`, `DbspecPostgresConnection`, `DbspecSqliteConnection`)은 pg, mysql2, node:sqlite의 type 없이 client가 호출하는 method만 적는다. mysql2 connection, pg client, node:sqlite database가 이 type에 맞으며, driver 하나만 설치한 code도 공개 선언의 type 검사를 통과한다.
+Go에는 `Apply`, `Recover`, `Rollback`, `Finalize`, PHP에는 `Dbspec::apply`, `recover`, `rollback`, `finalize`, TypeScript에는 `applyPlans`, `recoverPlans`, `rollbackPlans`, `finalizePlans`, Rust에는 `polyspec_orm::dbspec::apply`, `recover`, `rollback`, `finalize`가 있다. 각각 connection, dialect, chain의 plan, `applied_at`의 clock, event handler를 받는다. TypeScript connection type(`DbspecApplyMySqlConnection`, `DbspecApplyPostgresConnection`, `DbspecApplySqliteConnection`, 그리고 `introspectDbspec`의 `DbspecMySqlConnection`, `DbspecPostgresConnection`, `DbspecSqliteConnection`)은 pg, mysql2, node:sqlite의 type 없이 client가 호출하는 method만 적는다. mysql2 connection, pg client, node:sqlite database가 이 type에 맞으며, driver 하나만 설치한 code도 공개 선언의 type 검사를 통과한다. Go의 `Apply`는 `ApplyResult`와 error를 돌려준다. event handler가 멈춘 것은 `Stopped`와 handler의 error인 `Stop`으로, apply error만 난 것은 `Failure`로 준다. 두 경우 error는 nil이다. 그 밖의 실패는 error이고, stop 또는 실패 뒤의 정리 실패는 PLN-97처럼 그 error와 join한다.
 
 ## 검증
 
