@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 98da85ec5dd42d2468d39c964a67e5a83d27724b9c318db86b2bb35343496bed -->
+<!-- source-sha256: e79e3781f39fac733edd3f1e8c06c58cb230da7f9db02bda3403a1d87f2f4bf0 -->
 # 변경 이력
 
 ## Unreleased
+- spec의 시험 가능한 규칙마다 requirement id `**PFX-n**`이 있고(960개: DBS, MER, SCH, CPX, DSL, DIA, COD, CFG, PAR, ORE, PLN, PRT, INT, ORES), 한국어 쌍에도 같다. `make docs-check`가 통과한다(KSTD-2-1).
 - PHP 생성기 test가 T209가 생성하는 사용되는 external table의 읽기 전용 model을 기대한다. red: `phpunit packages/php/tests/OrmGenTest.php`가 generated files ExtAccount.php, ExtAudit.php, ExtPost.php, ExtPostHistory.php, bootstrap.php로 실패했다. green: OK (10 tests, 34 assertions)(T209-1).
 - 생성된 PHP model이 unique key와 index를 어떤 순서로 선언하든 manifest와 맞는다: runtime model이 그것을 canonical manifest text의 순서인 이름 순서로 둔다. red: `phpunit --filter test_a_generated_model_agrees_with_its_manifest_whatever_its_key_order`가 `CONFIG: generated model ... of entity item differs from its manifest`로 실패했다. green: RuntimeModelTest OK (12 tests, 47 assertions), 다시 생성한 bench model은 그대로다(T224).
 - 한국어 page가 site root에서 영어 page로 연결해, 중첩된 plan에 dead link가 없다. index page와 한국어 link 일곱 개가 옮겨진 문서를 따르고, dbspec의 Names heading이 id `names`를 갖는다. red: `make docs-check`가 `[vitepress] 2 dead link(s) found`(./../plans/execution/plan, ./../plans/kit-standard/plan)로 실패했다. green: `make docs-check`가 docs-site/links ok, 50 document pairs passed로 0을 낸다(T223).

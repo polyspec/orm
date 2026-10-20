@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- Each testable rule of the specs has a requirement id `**PFX-n**` (960 ids: DBS, MER, SCH, CPX, DSL, DIA, COD, CFG, PAR, ORE, PLN, PRT, INT, ORES), the same in the Korean twins; `make docs-check` passes (KSTD-2-1).
 - The PHP generator test expects the read-only models of the used external tables, which T209 generates. Red: `phpunit packages/php/tests/OrmGenTest.php` failed with generated files ExtAccount.php, ExtAudit.php, ExtPost.php, ExtPostHistory.php, bootstrap.php; green: OK (10 tests, 34 assertions) (T209-1).
 - A generated PHP model agrees with its manifest whatever order its unique keys and indexes are declared in: the runtime model keeps them in name order, the order of the canonical manifest text. Red: `phpunit --filter test_a_generated_model_agrees_with_its_manifest_whatever_its_key_order` failed with `CONFIG: generated model ... of entity item differs from its manifest`; green: RuntimeModelTest OK (12 tests, 47 assertions), and the regenerated bench models are unchanged (T224).
 - A Korean page links to an English page from the site root, so the nested plans have no dead link; the index pages and seven Korean links follow the moved documents, and the Names heading of dbspec has the id `names`. Red: `make docs-check` failed with `[vitepress] 2 dead link(s) found` (./../plans/execution/plan, ./../plans/kit-standard/plan); green: `make docs-check` exits 0 with docs-site/links ok and 50 document pairs passed (T223).
