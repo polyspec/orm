@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: ecd2eca36fae7774cb4aa0243ae24aebeb915ad3cde57ac71c685b5aa7419dd7 -->
+<!-- source-sha256: 89d71228442cf0ee9fe1c295de59b8b9c5455be27d5eb331042d779b27c1029d -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -45,7 +45,7 @@
 | KSTD-2-11-5 | 구현 내부 test는 parity unit이 아닌 일반 package test다 (KSTD-2-11 후속). Cause: dbspec harness와 loader, unicode와 vector 자가 검사, generator scan과 extractor, test harness, bench, example, case clock unit(142개)은 spec 규칙을 검사하지 않는다 | config/parity.json, contracts/features.json | `make parity-declarations-check` | [o] |
 | KSTD-2-11-6 | error-code와 catalog unit은 여섯 구현 모두에 묶인 한 규칙의 unit이다 (KSTD-2-11 후속, KSTD-2-11-1). Cause: api unit 43개와 catalog unit 5개가 아무것도 인용하지 않고 php-extension binding이 없다 | config/parity.json, packages/php-ext | `node --test tests/interfaces/check/api.test.mts`, `make dbspec-php-extension-check/code-catalog`, `make client-unit-check/code-catalog` | [o] |
 | KSTD-2-11-7 | client api unit은 그 symbol의 INT와 COD id를 인용하고 php-extension binding을 갖는다 (KSTD-2-11 후속). Cause: api unit 68개가 아무것도 인용하지 않는다 | config/parity.json, packages/php-ext | `make parity-declarations-check` | [~] |
-| KSTD-2-11-8 | 각 feature-coverage case는 모든 구현에 묶인 하나의 중립 unit이다 (KSTD-2-11 후속). Cause: unit 153개가 같은 case를 언어마다 binding 하나씩 선언한다 | config/parity.json, tests of every implementation | `make parity-declarations-check` | [ ] |
+| KSTD-2-11-8 | 각 feature-coverage case는 모든 구현에 묶인 하나의 중립 unit이다 (KSTD-2-11 후속). Cause: unit 153개가 같은 case를 언어마다 binding 하나씩 선언한다 | config/parity.json, tests of every implementation | `make parity-declarations-check` | [~] |
 | KSTD-2-11-9 | dbspec apply, plan, introspect unit은 여섯 구현 unit이다 (KSTD-2-11 후속). Cause: unit 40개가 한 동작을 구현마다 나눈다 | config/parity.json, tests of every implementation | `make parity-declarations-check` | [ ] |
 | KSTD-2-11-10 | collection identity와 group rows unit은 INT-31과 INT-62를 인용하는 여섯 구현 unit이다 (KSTD-2-11 후속). Cause: unit 18개가 한 동작을 구현마다 나눈다 | config/parity.json, tests of every implementation | `make parity-declarations-check` | [ ] |
 | KSTD-2-11-11 | transaction, rollback, savepoint 실패 unit은 여섯 구현 unit이다 (KSTD-2-11 후속). Cause: 약 30개 unit이 DIA-63, DIA-180, DIA-181, PLN-17, CFG-13의 실패 보고를 구현마다 나눈다 | config/parity.json, tests of every implementation | `make parity-declarations-check` | [ ] |
