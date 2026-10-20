@@ -2812,6 +2812,50 @@
               ]
             }
           },
+          "php-extension": {
+            "part": "packages/php/tests",
+            "tests": [
+              "packages/php/tests/CoverageStatementEventsTest.php"
+            ],
+            "inputs": [
+              "packages/php/tests/statement_events_run.php",
+              "packages/php/tests/case_database.php",
+              "contracts/fixtures/statement_events.dbs",
+              "tests/events/vectors.json"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/CoverageStatementEventsTest.php",
+                  "cases": [
+                    "statement_events"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/CoverageStatementEventsTest.php",
+                  "cases": [
+                    "statement_events"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/CoverageStatementEventsTest.php",
+                  "cases": [
+                    "statement_events"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
           "rust": {
             "part": "packages/rust/orm",
             "tests": [

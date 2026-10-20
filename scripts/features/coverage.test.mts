@@ -78,10 +78,10 @@ caseTest('selecting coverage parts requires only those parts', 1000, async () =>
   const selected = selectFeatures(manifest, 'statement_events', ['owner/php']);
   assert.deepEqual(checkCoverage(selected, {}).toSorted(),
     databases.map(database => `statement_events/owner/php/${database}: no executed report`).toSorted());
-  // The manifest of statement_events has five owners (go, php, rust, typescript, python), and each owner has items for each of the three databases.
-  assert.equal(checkCoverage(selectFeatures(manifest, 'statement_events'), {}).length, 5 * databases.length);
+  // The manifest of statement_events has six owners (go, php, php-extension, rust, typescript, python), and each owner has items for each of the three databases.
+  assert.equal(checkCoverage(selectFeatures(manifest, 'statement_events'), {}).length, 6 * databases.length);
   assert.throws(() => selectFeatures(manifest, 'statement_events', ['owner/cobol']),
-    { message: 'unknown coverage part owner/cobol of statement_events; valid parts: owner/go, owner/php, owner/rust, owner/typescript, owner/python' });
+    { message: 'unknown coverage part owner/cobol of statement_events; valid parts: owner/go, owner/php, owner/php-extension, owner/rust, owner/typescript, owner/python' });
   assert.throws(() => selectFeatures(manifest, undefined, ['owner/php']), { message: '--part needs --feature' });
 });
 
