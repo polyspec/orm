@@ -1,7 +1,7 @@
 <!-- doc-id: dsl -->
 # DSL
 
-This page specifies the query syntax defined by the [design plan](plan.md). Client status is recorded in the [implementation matrix](interface-implementation.md); a client that does not yet match this page is incomplete.
+This page specifies the query syntax defined by the [design plan](plan.md). Client status is recorded in the [implementation matrix](../operations/interface-implementation.md); a client that does not yet match this page is incomplete.
 
 ## 1. Model and connection
 

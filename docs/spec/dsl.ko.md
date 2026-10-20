@@ -1,8 +1,8 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: 37553986cc117ce8bede9b8525face7e9b6b2c2c83e7e6cecb5974f4c3b6e203 -->
+<!-- source-sha256: 461a442bef4c4d72a98d07d77b8fb8f8de57d48507e03f0d9d8fc03e4df515eb -->
 # DSL
 
-이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
+이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
 
 ## 1. 모델과 연결
 

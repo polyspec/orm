@@ -66,7 +66,7 @@ export default defineConfig({
     nav: [
       { text: 'Guide', link: '/operations/usage' },
       { text: 'Common API', link: '/spec/interfaces' },
-      { text: 'Implementation', link: '/spec/interface-implementation' },
+      { text: 'Implementation', link: '/operations/interface-implementation' },
       { text: '한국어', link: '/ko/' },
     ],
     sidebar: [
@@ -91,7 +91,7 @@ export default defineConfig({
         { text: 'Mermaid diagrams', link: '/spec/mermaid' },
       ] },
       { text: 'Development and verification', items: [
-        { text: 'Implementation matrix', link: '/spec/interface-implementation' },
+        { text: 'Implementation matrix', link: '/operations/interface-implementation' },
         { text: 'Checklist', link: '/plans/execution/checklist' },
         { text: 'Performance', link: '/operations/perf' },
         { text: 'Packaging', link: '/operations/packaging' },

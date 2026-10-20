@@ -7382,7 +7382,7 @@
       ],
       "docs": [
         "docs/spec/interfaces.md",
-        "docs/spec/interface-implementation.md"
+        "docs/operations/interface-implementation.md"
       ],
       "verification": [
         {

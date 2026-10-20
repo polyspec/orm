@@ -1,7 +1,7 @@
 <!-- doc-id: interface-implementation -->
 # Common interface implementation matrix
 
-Reference: [Common interface v1](interfaces.md), [machine specification](../../contracts/interfaces.json), and [generated model](interfaces-model.md). Reproduction commands and check coverage are in the [verification guide](../../tests/interfaces/README.md).
+Reference: [Common interface v1](../spec/interfaces.md), [machine specification](../../contracts/interfaces.json), and [generated model](../spec/interfaces-model.md). Reproduction commands and check coverage are in the [verification guide](../../tests/interfaces/README.md).
 
 Local verification: **36 conformance vectors × Go, PHP, Rust, TypeScript, and Python × MySQL, PostgreSQL, and SQLite produce the same statements, binds, and results**. The generated interface, native symbol, and record checks run from `make interface-check`.
 

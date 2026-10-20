@@ -1,8 +1,8 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 499543aa9cab2092c669cfae2146d5f92478d0acff76f1a0b7bf29c00c069445 -->
+<!-- source-sha256: ddad9b6f7705f8b5e6581b90867e9dc46d55e3e86af1c51879a2a7cb4a9d37d0 -->
 # 공통 인터페이스 v1
 
-이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
+이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
 
 ## 1. 호출 구간과 변경 규칙
 

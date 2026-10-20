@@ -1,7 +1,7 @@
 <!-- doc-id: interfaces -->
 # Common interface v1
 
-This page defines the shared public data structures, ownership rules, state transitions, and client call order for the syntax in the [DSL](dsl.md). Implementation status is recorded in [the implementation matrix](interface-implementation.md). A defined interface does not prove that every client implements it.
+This page defines the shared public data structures, ownership rules, state transitions, and client call order for the syntax in the [DSL](dsl.md). Implementation status is recorded in [the implementation matrix](../operations/interface-implementation.md). A defined interface does not prove that every client implements it.
 
 ## 1. Call boundaries and change rules
 

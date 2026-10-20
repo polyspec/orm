@@ -85,7 +85,7 @@ node tests/conformance/check/main.mts run --out "$(mktemp -d)/out" --dsn "$BENCH
 
 [**한국어 README**](README.ko.md)
 
-[**Common interfaces**](docs/spec/interfaces.md) · [Implementation matrix](docs/spec/interface-implementation.md) · [Automatic checks](tests/interfaces/README.md) — data structures, lifetimes, public API and verification status.
+[**Common interfaces**](docs/spec/interfaces.md) · [Implementation matrix](docs/operations/interface-implementation.md) · [Automatic checks](tests/interfaces/README.md) — data structures, lifetimes, public API and verification status.
 
 [**docs/operations/usage.md**](docs/operations/usage.md) — start here: schema, generation, connecting, querying, writing, relations, the three databases, operations.
 

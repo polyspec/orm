@@ -1,5 +1,5 @@
 <!-- doc-id: readme -->
-<!-- source-sha256: bfad19342360d8fc2c586a1dcf436048901918fc1be8306f61fe7831762cbbca -->
+<!-- source-sha256: 01c440f9cdb46cd9675de6440d1205e86155eccdb4681309d5dbd794ac5c4888 -->
 # orm
 
 **Go, PHP, Python, Rust, TypeScript**를 위한 스키마 기반 모델 query grammar다. 목표 문법은 [docs/spec/dsl.ko.md](docs/spec/dsl.ko.md), 작업 순서는 [docs/spec/plan.ko.md](docs/spec/plan.ko.md)에 명시되어 있다.
@@ -86,7 +86,7 @@ node tests/conformance/check/main.mts run --out "$(mktemp -d)/out" --dsn "$BENCH
 
 [**English README**](README.md)
 
-[**공통 인터페이스**](docs/spec/interfaces.ko.md) · [구현 대조표](docs/spec/interface-implementation.ko.md) · [자동 검사](tests/interfaces/README.ko.md) — 자료구조·수명·공개 API와 검증 상태.
+[**공통 인터페이스**](docs/spec/interfaces.ko.md) · [구현 대조표](docs/operations/interface-implementation.ko.md) · [자동 검사](tests/interfaces/README.ko.md) — 자료구조·수명·공개 API와 검증 상태.
 
 [**docs/operations/usage.ko.md**](docs/operations/usage.ko.md) — 여기서 시작한다: 스키마, 생성, 연결, 조회, 쓰기, 관계, 세 데이터베이스, 운영.
 

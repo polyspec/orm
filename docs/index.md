@@ -63,6 +63,6 @@ Go `model.Author()` returns `*model.AuthorModel`. Rust and TypeScript use asynch
 
 ## Implementation status
 
-The implemented clients are **Go, PHP, Rust, TypeScript, and Python**. All five clients generate their models with their own build tool, plan statements in the calling process, and execute them through the native database driver. No service runs beside the calling process. See the [implementation matrix](spec/interface-implementation.md) and the [checklist](plans/execution/checklist.md) for verification scope and remaining work.
+The implemented clients are **Go, PHP, Rust, TypeScript, and Python**. All five clients generate their models with their own build tool, plan statements in the calling process, and execute them through the native database driver. No service runs beside the calling process. See the [implementation matrix](operations/interface-implementation.md) and the [checklist](plans/execution/checklist.md) for verification scope and remaining work.
 
 [DSL](spec/dsl.md) · [Schema](spec/schema.md) · [IR / Plan](spec/protocol.md) · [Complex query example](spec/complex-query.md) · [Documentation build and deployment](operations/docs-development.md) · [한국어 문서](index.ko.md)
