@@ -231,7 +231,7 @@ func chainHistory(t *testing.T, plans []*dbspec.Plan, dialect, last string) []st
 func checkHistory(t *testing.T, dialect, uri string, want []string) {
 	t.Helper()
 	db := openURI(t, dialect, uri)
-	defer db.Close()
+	defer testcase.Close(t, db)
 	q := `"`
 	if dialect == "mysql" {
 		q = "`"
@@ -240,7 +240,7 @@ func checkHistory(t *testing.T, dialect, uri string, want []string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer rows.Close()
+	defer testcase.Close(t, rows)
 	var got []string
 	for rows.Next() {
 		v := make([]string, 7)
@@ -262,7 +262,7 @@ func checkChainState(t *testing.T, dialect, uri string, want []string, target st
 	t.Helper()
 	checkHistory(t, dialect, uri, want)
 	db := openURI(t, dialect, uri)
-	defer db.Close()
+	defer testcase.Close(t, db)
 	ctx, cancel := context.WithTimeout(context.Background(), runnerDeadline)
 	defer cancel()
 	document, unsupported, err := dbspec.Introspect(ctx, db, dbspec.Dialect(dialect), "x")

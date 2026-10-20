@@ -68,14 +68,14 @@ func TestApplyStressPlan(t *testing.T) {
 				c.Step("dropped %s", name)
 			}()
 			pool := openURI(t, db, uri)
-			defer pool.Close()
+			defer testcase.Close(t, pool)
 			ctx, progressed, stopGuard := testcase.StallGuard(c.Context(), stressStallLimit)
 			defer stopGuard()
 			conn, err := pool.Conn(ctx)
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer conn.Close()
+			defer testcase.Close(t, conn)
 			if db == "postgres" {
 				var locks string
 				if err := conn.QueryRowContext(ctx, "SHOW max_locks_per_transaction").Scan(&locks); err != nil {
@@ -98,7 +98,7 @@ func TestApplyStressPlan(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				defer watch.Close()
+				defer testcase.Close(t, watch)
 				heldLocks = func() (int, error) {
 					var n int
 					err := watch.QueryRowContext(ctx, "SELECT count(*) FROM pg_locks WHERE pid = $1 AND locktype = 'relation'", pid).Scan(&n)

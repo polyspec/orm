@@ -36,7 +36,7 @@ func TestSQLiteFileNameWithQuery(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			defer db.Close()
+			defer testcase.Close(t, db)
 			_, err = db.ExecContext(ctx, "CREATE TABLE t (a int)")
 			return err
 		}},

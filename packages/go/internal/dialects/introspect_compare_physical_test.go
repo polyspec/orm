@@ -170,13 +170,13 @@ func compareDatabase(t *testing.T, dialect, name, mysqlDSN, postgresDSN string) 
 func applyStatements(t *testing.T, c *testcase.Case, dialect, uri string, statements []string) {
 	t.Helper()
 	db := openURI(t, dialect, uri)
-	defer db.Close()
+	defer testcase.Close(t, db)
 	ctx := c.Context()
 	conn, err := db.Conn(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer conn.Close()
+	defer testcase.Close(t, conn)
 	for _, rule := range connectionRules[dialect] {
 		if _, err := conn.ExecContext(ctx, rule); err != nil {
 			t.Fatalf("%s: %v", rule, err)
