@@ -158,6 +158,11 @@ func postgresProbes() []Probe {
 			e.Fails("SELECT CAST('2026-06-01 00:00:00' AS timestamp(6)) - make_interval(secs => CAST(1e300 AS double precision))", "22008")
 			e.Want("SELECT CAST(CAST('2026-06-01 00:00:00' AS timestamp(6)) + make_interval(days => 3000000) AS text)", "10240-02-20 00:00:00")
 		}),
+		p("relative.month_end_kept", "adding or subtracting make_interval(months => n) keeps the last valid day of the target month", func(e *Env) {
+			e.Want("SELECT CAST(CAST('2026-01-31 10:00:00' AS timestamp(6)) + make_interval(months => 1) AS text)", "2026-02-28 10:00:00")
+			e.Want("SELECT CAST(CAST('2026-03-31 10:00:00' AS timestamp(6)) - make_interval(months => 1) AS text)", "2026-02-28 10:00:00")
+			e.Want("SELECT CAST(CAST('2028-01-31 10:00:00' AS timestamp(6)) + make_interval(months => 1) AS text)", "2028-02-29 10:00:00")
+		}),
 		// UUID, enum and JSON.
 		p("uuid.native_normalized", "UUID accepts braces and upper case and returns lower case", func(e *Env) {
 			e.Exec("CREATE TABLE t (u uuid)", "INSERT INTO t VALUES ('{A0EEBC99-9C0B-4EF8-BB6D-6BB9BD380A11}')")

@@ -82,6 +82,12 @@ func sqliteProbes() []Probe {
 			e.Want("SELECT datetime('2026-06-01 00:00:00', '-200000 months') IS NULL", "1")
 			e.Want("SELECT datetime('2026-06-01 00:00:00', '-740000 days')", "0000-05-13 00:00:00")
 		}),
+		p("relative.month_floor", "datetime() by months carries a day past the target month's end into the next month, and the floor modifier keeps the last valid day instead", func(e *Env) {
+			e.Want("SELECT datetime('2026-01-31 10:00:00', '+1 months')", "2026-03-03 10:00:00")
+			e.Want("SELECT datetime('2026-01-31 10:00:00', '+1 months', 'floor')", "2026-02-28 10:00:00")
+			e.Want("SELECT datetime('2026-03-31 10:00:00', '-1 months', 'floor')", "2026-02-28 10:00:00")
+			e.Want("SELECT datetime('2028-01-31 10:00:00', '+1 months', 'floor')", "2028-02-29 10:00:00")
+		}),
 		// Null, defaults and catalog text.
 		p("default.catalog_text", "PRAGMA table_info returns the default text as written", func(e *Env) {
 			e.Exec("CREATE TABLE t (a varchar(5) DEFAULT 'x', b int DEFAULT 0, c TEXT DEFAULT CURRENT_TIMESTAMP, d int DEFAULT (1+1), f TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now') || '000'))")

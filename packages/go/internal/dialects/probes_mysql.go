@@ -199,6 +199,11 @@ func mysqlProbes() []Probe {
 			e.Want("SELECT DATE_SUB(TIMESTAMP '2026-06-01 00:00:00', INTERVAL 200000 MONTH) IS NULL", "1")
 			e.Want("SELECT CAST(DATE_SUB(TIMESTAMP '2026-06-01 00:00:00', INTERVAL 24312 MONTH) AS CHAR)", "0000-06-01 00:00:00")
 		}),
+		p("relative.month_end_kept", "DATE_ADD and DATE_SUB by months keep the last valid day of the target month", func(e *Env) {
+			e.Want("SELECT CAST(DATE_ADD(TIMESTAMP '2026-01-31 10:00:00', INTERVAL 1 MONTH) AS CHAR)", "2026-02-28 10:00:00")
+			e.Want("SELECT CAST(DATE_SUB(TIMESTAMP '2026-03-31 10:00:00', INTERVAL 1 MONTH) AS CHAR)", "2026-02-28 10:00:00")
+			e.Want("SELECT CAST(DATE_ADD(TIMESTAMP '2028-01-31 10:00:00', INTERVAL 1 MONTH) AS CHAR)", "2028-02-29 10:00:00")
+		}),
 		// UUID, enum and JSON.
 		p("uuid.no_type", "MySQL has no UUID type (1064)", func(e *Env) {
 			e.Fails("CREATE TABLE t (u uuid)", "1064")

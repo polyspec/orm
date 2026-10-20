@@ -31,7 +31,7 @@ func TestDialectFacts(t *testing.T) {
 	// DIA-73, DIA-74, DIA-75, DIA-76, DIA-77, DIA-78, DIA-79, DIA-80, DIA-81, DIA-82, DIA-83, DIA-84, DIA-85,
 	// DIA-86, DIA-87, DIA-88, DIA-89, DIA-90, DIA-91, DIA-92, DIA-93, DIA-94, DIA-95, DIA-96, DIA-98, DIA-99,
 	// DIA-100, DIA-101, DIA-102, DIA-103, DIA-104, DIA-105, DIA-106, DIA-107, DIA-109, DIA-110, DIA-111, DIA-144
-	// (docs/spec).
+	// and DSL-142 (docs/spec).
 	testcase.Group(t)
 	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_DSN"), os.Getenv("ORM_TEST_POSTGRES_DSN")
 	if mysqlDSN == "" || postgresDSN == "" {
