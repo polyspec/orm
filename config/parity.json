@@ -136,6 +136,7 @@
     { "root": "tests/docs", "reason": "The test of the dbs fence of the documentation site: the tooling of the site, which implements no contract." },
     { "root": "tests/timing", "reason": "The test of the timing harness of the clients: the measurement tooling, which implements no contract." }
   ],
+  "requirements": { "pattern": "(?:CFG|COD|CPX|DBS|DIA|DSL|FCV|INT|MER|ORE|ORES|PAR|PLN|PRT|SCH)-[0-9]+" },
   "units": [
     {"id": "ts-conformance-result-exact-numbers", "kind": "feature", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/result_typescript.test.mts", "id": "ordered-json numbers and styled states remain exact in result output"}]},
     {"id": "ts-conformance-result-member-key-order", "kind": "feature", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/result_typescript.test.mts", "id": "a member key that JavaScript reorders reports an error"}]},
