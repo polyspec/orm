@@ -188,6 +188,7 @@ final class RuntimeModelTest extends TestCase
     // Requirements: DBS-115.
     public function test_insert_binds_the_clock_of_an_omitted_default_now_column_except_on_MySQL(): void
     {
+        // The test of DIA-24 (docs/spec).
         $doc = "dbspec 1 clocked\n\ntable note {\n  id i64 identity\n  rank i16\n  body text\n  created_at datetime(6) default now\n  primary key (id)\n}\n";
         $model = RuntimeModel::build(RuntimeModel::parse(['clocked.dbs' => $doc]));
         self::assertTrue($model->entities['note']['columns']['created_at']['default_now'] && !$model->entities['note']['columns']['rank']['default_now'], 'default_now flag');

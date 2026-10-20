@@ -11,6 +11,7 @@ import (
 // A time setter records a text that is not a time as the statement's error: the first bad set wins, the statement
 // returns CODEC_ENCODE naming the column, and no row changes (T189).
 func TestTimeSetterRecordsBadText(t *testing.T) {
+	// The test of DIA-24 (docs/spec).
 	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
 		before := must(model.TimeCell().Connect(db).GetCount())

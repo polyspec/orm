@@ -143,6 +143,7 @@ def check_aes_vector(test: unittest.TestCase, vector: dict) -> None:
 
 
 class CodecVectorTest(unittest.TestCase):
+    # The test of COD-34 (docs/spec).
     def test_error_cases(self):
         cases = [
             ("bad JSON", lambda: decode(["ordered_json"], b"{bad"), "CODEC_DECODE"),

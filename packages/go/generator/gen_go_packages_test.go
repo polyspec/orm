@@ -23,6 +23,7 @@ table note {
 // that method, and it still writes every method the scan finds: a second run
 // of both generations changes no file and reports no error.
 func TestGoGenerationOfTwoModelPackagesSettlesInOneRun(t *testing.T) {
+	// The test of DSL-39 (docs/spec).
 	testcase.Start(t, testcase.Compute)
 	write := scannedModule(t)
 	write("a/model/doc.go", "// Package model holds the generated models.\npackage model\n")

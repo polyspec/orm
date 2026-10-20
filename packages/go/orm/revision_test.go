@@ -55,6 +55,7 @@ func revisionRow(t *testing.T, model func() *orm.Core, seq int64) map[string]any
 }
 
 func TestRevisionUpdateMatchBumpsTheRevision(t *testing.T) {
+	// The test of DSL-108, DSL-114 (docs/spec).
 	testcase.Start(t, testcase.Database)
 	_, model, seq := openRevision(t)
 	c := model()
@@ -70,6 +71,7 @@ func TestRevisionUpdateMatchBumpsTheRevision(t *testing.T) {
 }
 
 func TestRevisionUpdateMismatchChangesNothing(t *testing.T) {
+	// The test of DSL-108, DSL-114 (docs/spec).
 	testcase.Start(t, testcase.Database)
 	_, model, seq := openRevision(t)
 	c := model()
@@ -85,6 +87,7 @@ func TestRevisionUpdateMismatchChangesNothing(t *testing.T) {
 }
 
 func TestRevisionDeleteMatchDeletes(t *testing.T) {
+	// The test of DSL-108, DSL-114 (docs/spec).
 	testcase.Start(t, testcase.Database)
 	_, model, seq := openRevision(t)
 	c := model()
@@ -99,6 +102,7 @@ func TestRevisionDeleteMatchDeletes(t *testing.T) {
 }
 
 func TestRevisionDeleteMismatchChangesNothing(t *testing.T) {
+	// The test of DSL-108, DSL-114 (docs/spec).
 	testcase.Start(t, testcase.Database)
 	_, model, seq := openRevision(t)
 	c := model()

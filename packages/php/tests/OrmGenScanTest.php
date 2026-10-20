@@ -98,6 +98,7 @@ final class OrmGenScanTest extends TestCase
     #[DataProvider('vectors')]
     public function test_vector(array $case): void
     {
+        // The test of DSL-42 (docs/spec).
         $args = fn(int $n): string => implode(', ', array_fill(0, $n, '1'));
         $receiver = str_replace('{model}', $case['model'], $case['receiver'] ?? '$m');
         $steps = array_map(static fn(array $call): string => "{$call['name']}({$args($call['args'])})", $case['calls']);
@@ -119,6 +120,7 @@ final class OrmGenScanTest extends TestCase
 
     public function test_the_receiver_is_resolved_from_the_source(): void
     {
+        // The test of DSL-42 (docs/spec).
         $ns = self::NS;
         $source = <<<PHP
 <?php
@@ -182,6 +184,7 @@ PHP;
 
     public function test_an_alias_named_match_declares_its_getter(): void
     {
+        // The test of DSL-44 (docs/spec).
         $ns = self::NS;
         $source = <<<PHP
 <?php
@@ -203,6 +206,7 @@ PHP;
     // Requirements: DBS-118.
     public function test_a_nested_relation_alias_declares_its_getter_on_the_model_it_aliases_on(): void
     {
+        // The test of DSL-44 (docs/spec).
         $ns = self::NS;
         $source = <<<PHP
 <?php
@@ -227,6 +231,7 @@ PHP;
 
     public function test_a_getter_call_that_nothing_attaches_stops_generation(): void
     {
+        // The test of DSL-44 (docs/spec).
         $ns = self::NS;
         $source = <<<PHP
 <?php
@@ -737,6 +742,7 @@ PHP;
 
     public function test_a_directory_is_scanned_and_a_file_that_does_not_parse_fails_the_scan(): void
     {
+        // The test of DSL-42 (docs/spec).
         $dir = self::$work . '/directory';
         @mkdir("$dir/src/nested", 0o700, true);
         file_put_contents("$dir/src/nested/a.php", "<?php\n\$a = new " . self::NS . "\\Author();\n\$a->ltSeq(1);\n");
@@ -760,6 +766,7 @@ PHP;
 
     public function test_a_scanned_directory_skips_its_dependencies_and_refuses_a_symlink(): void
     {
+        // The test of DSL-42 (docs/spec).
         $dir = self::$work . '/links';
         mkdir("$dir/src/vendor/pkg", 0o700, true);
         file_put_contents("$dir/src/a.php", "<?php\n\$a = new " . self::NS . "\\Author();\n\$a->ltSeq(1);\n");
@@ -801,6 +808,7 @@ PHP;
 
     public function test_phpstan_finds_every_scanned_chain_method(): void
     {
+        // The test of DSL-42 (docs/spec).
         $root = dirname(__DIR__, 3);
         $ns = self::NS;
         $used = <<<PHP

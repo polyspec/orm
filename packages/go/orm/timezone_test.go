@@ -49,6 +49,7 @@ func zoneEntity(s *orm.Schema) *orm.Entity {
 // server's MySQL is SYSTEM (KST) and PostgreSQL is Asia/Seoul. A value with an offset is
 // stored as UTC wall clock, read back in the UTC location, and the clock default is also UTC.
 func TestConnectionsUseUTC(t *testing.T) {
+	// The test of DSL-141, DIA-57 (docs/spec).
 	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "zone")
 	manifest := s

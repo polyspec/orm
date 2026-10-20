@@ -125,6 +125,7 @@ final class OrmGenTest extends TestCase
 
     public function test_gen_rejects_a_column_named_after_a_model_method(): void
     {
+        // The test of DSL-127 (docs/spec).
         $work = self::$work;
         // restore() is a method of every model, so it overlaps with the condition method of a restore column.
         $dir = "$work/gen-reserved";

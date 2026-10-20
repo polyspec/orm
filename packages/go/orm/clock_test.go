@@ -84,6 +84,7 @@ func clockMicroseconds(t *testing.T, driver string) {
 }
 
 func TestClockMicrosecondsSQLite(t *testing.T) {
+	// The test of DIA-18 (docs/spec).
 	testcase.Start(t, testcase.Database)
 	clockMicroseconds(t, "sqlite")
 }

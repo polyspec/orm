@@ -25,6 +25,13 @@ const cleanupDeadline = 30 * time.Second
 // temporary directory. Each probe reports its start, result and elapsed time
 // and fails on its own deadline.
 func TestDialectFacts(t *testing.T) {
+	// The test of DIA-4, DIA-5, DIA-9, DIA-13, DIA-36, DIA-38, DIA-39, DIA-40, DIA-41, DIA-42, DIA-43, DIA-44,
+	// DIA-45, DIA-46, DIA-47, DIA-48, DIA-49, DIA-50, DIA-51, DIA-52, DIA-53, DIA-54, DIA-55, DIA-56, DIA-58,
+	// DIA-59, DIA-60, DIA-61, DIA-62, DIA-63, DIA-64, DIA-65, DIA-66, DIA-67, DIA-68, DIA-69, DIA-70, DIA-72,
+	// DIA-73, DIA-74, DIA-75, DIA-76, DIA-77, DIA-78, DIA-79, DIA-80, DIA-81, DIA-82, DIA-83, DIA-84, DIA-85,
+	// DIA-86, DIA-87, DIA-88, DIA-89, DIA-90, DIA-91, DIA-92, DIA-93, DIA-94, DIA-95, DIA-96, DIA-98, DIA-99,
+	// DIA-100, DIA-101, DIA-102, DIA-103, DIA-104, DIA-105, DIA-106, DIA-107, DIA-109, DIA-110, DIA-111, DIA-144
+	// (docs/spec).
 	testcase.Group(t)
 	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_DSN"), os.Getenv("ORM_TEST_POSTGRES_DSN")
 	if mysqlDSN == "" || postgresDSN == "" {

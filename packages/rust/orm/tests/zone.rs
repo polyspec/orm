@@ -81,6 +81,7 @@ fn event(db: &Db) -> ZoneEvent {
 }
 
 #[tokio::test]
+// The test of DSL-141, DIA-57 (docs/spec).
 async fn connections_use_utc() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let start = NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap();

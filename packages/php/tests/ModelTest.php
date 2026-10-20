@@ -878,6 +878,7 @@ final class ModelTest extends TestCase
     #[DataProvider('zones')]
     public function test_connection_time_zone(string $zoneName, string $driver): void
     {
+        // The test of DSL-141, DIA-57 (docs/spec).
         $base = self::$targets[$driver];
         $utc = in_array($zoneName, ['', '+00:00', 'UTC'], true);
         // The UTC connection installs a schema, so it uses its own case database; the refused connection uses the shared database.
@@ -1071,6 +1072,7 @@ final class ModelTest extends TestCase
     #[DataProvider('drivers')]
     public function test_writes(string $driver): void
     {
+        // The test of DSL-107, DSL-116 (docs/spec).
         $dsn = self::caseDsn($driver);
         $db = self::database($driver, $dsn);
         self::case_writes($db, $dsn);
@@ -1098,6 +1100,7 @@ final class ModelTest extends TestCase
     #[DataProvider('drivers')]
     public function test_transactions(string $driver): void
     {
+        // The test of DSL-118, DSL-119, DSL-123, DSL-125, DSL-126 (docs/spec).
         $dsn = self::caseDsn($driver);
         $db = self::database($driver, $dsn);
         self::case_transactions($db, $dsn);
@@ -1125,6 +1128,7 @@ final class ModelTest extends TestCase
     #[DataProvider('drivers')]
     public function test_aes_rotation(string $driver): void
     {
+        // The test of COD-8 (docs/spec).
         $dsn = self::caseDsn($driver);
         $db = self::database($driver, $dsn);
         self::case_aes_rotation($db, $dsn);

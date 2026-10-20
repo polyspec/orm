@@ -98,6 +98,7 @@ async fn stored(db: &Db) -> (Vec<u8>, i64) {
 }
 
 #[tokio::test]
+// The test of COD-7 (docs/spec).
 async fn aes_json_column() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     // Member order, number text, and {} apart from [] survive the round trip.

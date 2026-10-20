@@ -48,6 +48,7 @@ mod tests {
 
     // A node that selects all columns reads the AES key version column only once and marks its position.
     #[test]
+    // The test of DIA-33 (docs/spec).
     fn all_columns_select_the_aes_version_once() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let text = crate::dbspec::read_file(&polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/bench/bench.dbs")).unwrap();
@@ -172,6 +173,7 @@ mod tests {
     // SQLite and PostgreSQL inserts set the executor clock on an unassigned `default now` column, as the column's
     // fractional digits (for multi-row inserts, per row). MySQL leaves it to the database default.
     #[test]
+    // The test of DIA-24 (docs/spec).
     fn sqlite_insert_binds_the_clock_for_default_now() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let text = include_str!("../../../../../contracts/fixtures/clock.dbs");

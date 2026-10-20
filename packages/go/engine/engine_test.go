@@ -47,6 +47,7 @@ func compile(t *testing.T, e *Engine, irBody string) *plan.Plan {
 }
 
 func TestSelectAll(t *testing.T) {
+	// The test of DIA-33, COD-4 (docs/spec).
 	testcase.Start(t, testcase.Compute)
 	e := testEngine(t)
 	p := compile(t, e, `"kind":"all","entity":"author",

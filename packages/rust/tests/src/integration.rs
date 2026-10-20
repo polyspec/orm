@@ -42,6 +42,7 @@ fn external_relation_getter_returns_the_external_entity_model() {
 }
 
 #[test]
+// The test of COD-20 (docs/spec).
 fn generated_nonnull_styled_setter_rejects_sql_null() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let err = match nonnull_model::NonnullDocument::new().set_body(polyspec_orm::StyledValue::SqlNull) {

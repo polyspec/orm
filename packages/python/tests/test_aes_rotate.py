@@ -49,6 +49,7 @@ class AesRotateTest(unittest.TestCase):
     def tearDownClass(cls):
         cls.db.close()
 
+    # The test of COD-8 (docs/spec).
     def test_rotates_every_row_not_at_the_current_version(self):
         keyring = AesKeyring({1: "bench-salt", 2: "bench-salt-2"}, 2)
         before = [

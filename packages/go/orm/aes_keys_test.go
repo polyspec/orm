@@ -27,6 +27,7 @@ table secret_note {
 // and AESVersion configured. The write uses AESKeys[AESVersion], and a
 // connection with only that version's key reads the value.
 func TestAESWriteUsesKeyOfCurrentVersion(t *testing.T) {
+	// The test of COD-8 (docs/spec).
 	testcase.Start(t, testcase.Database)
 	s := documentSchema(t, aesKeysSchema)
 	manifest := s

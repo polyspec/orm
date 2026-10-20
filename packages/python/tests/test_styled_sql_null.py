@@ -59,6 +59,7 @@ class StyledSqlNullTest(unittest.TestCase):
                 row.to_array()[name], SQL_NULL, f"{where} {name} array output"
             )
 
+    # The test of COD-20 (docs/spec).
     def test_root_row_reads_sql_null_as_styled_value(self):
         row = self.models.Author().connect(self.db).add_all_columns().get_by_seq(1)
         self.assert_sql_null(row, "root row")

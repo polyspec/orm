@@ -43,6 +43,7 @@ async function generate(source) {
 // has a model receiver here.
 
 /** A method call of a class or object that is not a model adds no model method. */
+// The test of DSL-40 (docs/spec).
 async function nonModelCall() {
   const { members } = await generate(`
 class Settings {

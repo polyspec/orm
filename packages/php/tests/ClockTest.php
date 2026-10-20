@@ -166,6 +166,7 @@ final class ClockTest extends TestCase
     #[DataProvider('drivers')]
     public function test_clock_microseconds(string $driver): void
     {
+        // The test of DIA-18 (docs/spec).
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
         with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::clockMicroseconds($dsn));
     }
@@ -173,6 +174,7 @@ final class ClockTest extends TestCase
     #[DataProvider('drivers')]
     public function test_clock_soft_delete_microseconds(string $driver): void
     {
+        // The test of DIA-18 (docs/spec).
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
         with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::clockSoftDeleteMicroseconds($dsn));
     }
@@ -180,6 +182,7 @@ final class ClockTest extends TestCase
     #[DataProvider('drivers')]
     public function test_clock_now_condition(string $driver): void
     {
+        // The test of DSL-137, DIA-56 (docs/spec).
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
         with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::clockNowCondition($dsn));
     }

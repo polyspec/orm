@@ -62,6 +62,7 @@ func decimalPhysical(t *testing.T, env string) {
 }
 
 func TestDecimalPhysicalMySQL(t *testing.T) {
+	// The test of DIA-25, COD-2 (docs/spec).
 	testcase.Start(t, testcase.Database)
 	decimalPhysical(t, "DECIMAL_MYSQL_DSN")
 }

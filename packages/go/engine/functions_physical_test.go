@@ -25,6 +25,7 @@ import (
 // conditions, subqueries, and placed join conditions on every database and
 // requires equal results.
 func TestPhysicalQueryForms(t *testing.T) {
+	// The test of DSL-137, DSL-139, DSL-144, DIA-11, DIA-14 (docs/spec).
 	testcase.Start(t, testcase.Database)
 	mysqlDSN := os.Getenv("ORM_TEST_MYSQL_DSN")
 	if mysqlDSN != "" {

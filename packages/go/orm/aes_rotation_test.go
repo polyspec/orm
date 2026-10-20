@@ -7,6 +7,7 @@ import (
 )
 
 func TestRotateAESRowUpdatesAllAESColumnsAndVersion(t *testing.T) {
+	// The test of COD-8 (docs/spec).
 	testcase.Start(t, testcase.Compute)
 	keys, err := NewAESKeyring(map[int32]string{1: "old", 2: "new"}, 2)
 	if err != nil {

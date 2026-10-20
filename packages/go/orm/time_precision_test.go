@@ -44,6 +44,7 @@ func timePrecisionInsert(t *testing.T, m *runtimemodel.Model) *plan.Step {
 }
 
 func TestSQLiteTimePrecision(t *testing.T) {
+	// The test of DIA-24 (docs/spec).
 	testcase.Start(t, testcase.Database)
 	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "contracts", "fixtures", "time_precision.dbs"))
 	if err != nil {

@@ -731,6 +731,7 @@ mod tests {
 
     /// AES v2 uses an authenticated envelope and rejects tampering.
     #[test]
+    // The test of COD-5 (docs/spec).
     fn aes_vectors() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let styles = vec!["aes".to_string(), "hex".to_string()];
@@ -746,6 +747,7 @@ mod tests {
     }
 
     #[test]
+    // The test of COD-4 (docs/spec).
     fn blind_index_vector() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         assert_eq!(
@@ -755,6 +757,7 @@ mod tests {
     }
 
     #[test]
+    // The test of COD-29, COD-33, COD-34, COD-35 (docs/spec).
     fn errors_and_keys() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         for (styles, raw, code) in [
@@ -798,6 +801,7 @@ mod tests {
     /// model (docs/spec/codec.md, yaml): plain scalars resolve by the core schema tags, integral keys
     /// become decimal strings, and the refused forms return CODEC_DECODE instead of a string.
     #[test]
+    // The test of COD-29 (docs/spec).
     fn yaml_reads_the_core_schema() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let yaml = vec!["yaml".to_string()];
@@ -877,6 +881,7 @@ mod tests {
     /// A YAML write reads back as the same value, floats as floats; a value the common value
     /// model does not hold, or text that does not read back as the value, returns CODEC_ENCODE.
     #[test]
+    // The test of COD-13 (docs/spec).
     fn yaml_writes_what_it_reads() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let yaml = vec!["yaml".to_string()];
@@ -938,6 +943,7 @@ mod tests {
     /// The json stage returns the ordered-json value with its member order,
     /// number text, and {} apart from []; the write keeps the same text.
     #[test]
+    // The test of COD-16 (docs/spec).
     fn json_stage_keeps_ordered_json() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let text = r#"{"b":1,"a":[],"c":{},"n":1.50}"#;
@@ -966,6 +972,7 @@ mod tests {
     /// A first `gz` or `base64` stage serializes nothing: it stores the UTF-8 text of a string value and refuses any
     /// other value (docs/spec/codec.md, Stage lists).
     #[test]
+    // The test of COD-14 (docs/spec).
     fn leading_gz_and_base64_store_the_text() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let value = serde_json::json!({"a": [1, "x"], "b": null});
@@ -983,6 +990,7 @@ mod tests {
     }
 
     #[test]
+    // The test of COD-20 (docs/spec).
     fn json_literal_null_is_distinct_from_sql_null() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let literal = strict_json::Value::null();

@@ -67,6 +67,7 @@ table json_data {
 // back, ensuring that {"b":1,"a":2} stays as {"b":1,"a":2} and not reordered
 // to {"a":2,"b":1}.
 func TestJsonTextOrderPreservation(t *testing.T) {
+	// The test of DIA-26, COD-15 (docs/spec).
 	testcase.Start(t, testcase.Database)
 	s := documentSchema(t, jsonTextSchema)
 	manifest := s

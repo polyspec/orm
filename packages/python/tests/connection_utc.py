@@ -121,6 +121,7 @@ class ConnectionUtcTest(unittest.TestCase):
                 "date-only datetime text",
             )
 
+    # The test of DSL-141, DIA-57 (docs/spec).
     def test_connections_use_utc(self):
         for dialect in DIALECTS:
             for zone in ("", "UTC", "+00:00"):

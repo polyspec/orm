@@ -8,6 +8,7 @@ import (
 )
 
 func TestHostAESUsesAuthenticatedVersionTwoEnvelope(t *testing.T) {
+	// The test of COD-5 (docs/spec).
 	testcase.Start(t, testcase.Compute)
 	stored, err := HostEncode("member@example.test", []string{"aes"}, "key-v1")
 	if err != nil {

@@ -61,6 +61,7 @@ fn generate_with_schema(schema: PathBuf, source: &str) -> Result<String, String>
 }
 
 #[test]
+// The test of DSL-38, DSL-41, DSL-117 (docs/spec).
 fn generates_called_methods() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let text = generate(
@@ -149,6 +150,7 @@ fn column_function_order_takes_the_function() {
 }
 
 #[test]
+// The test of DSL-37 (docs/spec).
 fn rejects_unknown_names_of_a_known_model() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let err = generate("fn main() {\n    ZoneEvent::new().and_lk_start_dt(\"x\").name(\"y\");\n}\n").unwrap_err();
@@ -157,6 +159,7 @@ fn rejects_unknown_names_of_a_known_model() {
 }
 
 #[test]
+// The test of DSL-37 (docs/spec).
 fn rejects_argument_count() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let err = generate("fn main() { let x = ZoneEvent::new(); x.seq(1, 2); }").unwrap_err();
@@ -508,6 +511,7 @@ fn check_keeps_the_output_directory_on_generation_error() {
 /// A relation alias that starts with a chain prefix (match, join) still gives the parent its getter.
 // Requirements: DBS-118.
 #[test]
+// The test of DSL-44 (docs/spec).
 fn relation_alias_with_a_chain_prefix_has_its_getter() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let text = generate_with_schema(
@@ -524,6 +528,7 @@ fn relation_alias_with_a_chain_prefix_has_its_getter() {
 /// a wrapper of the getter's result (`Option<User>`) resolves to that model.
 // Requirements: DBS-118.
 #[test]
+// The test of DSL-44 (docs/spec).
 fn nested_relation_alias_attaches_its_getter_to_its_parent() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let text = generate_with_schema(
@@ -538,6 +543,7 @@ fn read(row: &Author) { let writer: Option<User> = row.get_writer().unwrap(); le
 
 /// A scanned getter call that no alias, new or add_column call attaches stops generation, naming the model and the method.
 #[test]
+// The test of DSL-44 (docs/spec).
 fn unattached_getter_stops_generation() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let err = generate_with_schema(

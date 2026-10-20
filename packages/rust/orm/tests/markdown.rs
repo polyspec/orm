@@ -126,6 +126,7 @@ async fn markdown_connect_refused() {
 /// Checks that the markdown connection rejects the SQL-only surface with CAPABILITY_UNSUPPORTED (docs/spec/dialects.md
 /// "Markdown IR executor").
 #[tokio::test]
+// The test of DIA-183, DIA-184, DIA-185, DIA-188, DIA-189 (docs/spec).
 async fn markdown_rejected_surfaces() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let server = fake_server(&[r#"{"ok":true}"#]).await;

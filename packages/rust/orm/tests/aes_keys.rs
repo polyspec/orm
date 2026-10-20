@@ -59,6 +59,7 @@ fn keys(pairs: &[(i32, &str)]) -> BTreeMap<i32, String> {
 }
 
 #[tokio::test]
+// The test of COD-8 (docs/spec).
 async fn invalid_aes_configuration_fails_before_connection() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let cases = [
@@ -78,6 +79,7 @@ async fn invalid_aes_configuration_fails_before_connection() {
 }
 
 #[tokio::test]
+// The test of COD-8 (docs/spec).
 async fn aes_write_uses_key_of_current_version() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let tmp = std::env::temp_dir().join(format!("orm-rust-aes-keys-{}", std::process::id()));

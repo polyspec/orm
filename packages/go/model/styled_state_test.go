@@ -14,6 +14,7 @@ import (
 
 // Requirements: DBS-116.
 func TestGeneratedStyledGetterAndSetterStates(t *testing.T) {
+	// The test of COD-17, COD-20 (docs/spec).
 	testcase.Start(t, testcase.Database)
 	row := model.Author()
 	for _, invalid := range []any{nil, orm.StyledValue{}} {

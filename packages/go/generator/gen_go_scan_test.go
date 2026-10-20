@@ -315,6 +315,7 @@ func Query() *model.ProductModel { return model.Product().GePrice(1) }
 // with a chain prefix (Match, Join) still gives the parent its getter.
 // Requirements: DBS-118.
 func TestGoRelationAliasWithChainPrefix(t *testing.T) {
+	// The test of DSL-9, DSL-44 (docs/spec).
 	testcase.Start(t, testcase.Process)
 	write := scannedModule(t)
 	write("example/example.go", `package example
@@ -351,6 +352,7 @@ func Join(p *model.ProductModel) (*model.BrandModel, error) { return p.GetJoin()
 // and that a call on the result of a getter resolves to that model.
 // Requirements: DBS-118.
 func TestGoNestedRelationAliasAttachesToItsParent(t *testing.T) {
+	// The test of DSL-44 (docs/spec).
 	testcase.Start(t, testcase.Process)
 	write := scannedModule(t)
 	write("example/example.go", `package example
@@ -388,6 +390,7 @@ func Match(p *model.ProductModel) (*model.ProductModel, error) {
 // that no Alias, New or AddColumn call attaches stops generation, naming the
 // model and the method.
 func TestGoUnattachedGetterStopsGeneration(t *testing.T) {
+	// The test of DSL-44 (docs/spec).
 	testcase.Start(t, testcase.Process)
 	write := scannedModule(t)
 	write("example/example.go", `package example

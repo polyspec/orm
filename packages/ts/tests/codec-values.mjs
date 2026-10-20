@@ -4,6 +4,7 @@ import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } fr
 import { check, same } from './codec_case.mjs';
 
 // The value checks that no vector file holds run as one case.
+// The test of COD-4, COD-34 (docs/spec).
 check('codec values', wrong => {
   if (blindIndex('member@example.test', 'blind-key') !== '1992d5622b305dec915751bc7382d3c0ed9e130f2cc62ab3560e244953160fa8') wrong.push('blind index');
   for (const [name, operation, code] of [

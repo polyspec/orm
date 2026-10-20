@@ -91,6 +91,7 @@ func requireSQL(t *testing.T, sql string, parts ...string) {
 }
 
 func TestExplicitKeyJoinPlacesChildConditionsInGroup(t *testing.T) {
+	// The test of DSL-95 (docs/spec).
 	testcase.Start(t, testcase.Compute)
 	e := formsEngine(t, "mysql")
 	p := formsCompile(t, e, `"kind":"all","entity":"place",

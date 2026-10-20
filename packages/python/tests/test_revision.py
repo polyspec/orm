@@ -51,12 +51,14 @@ class RevisionTest(unittest.TestCase):
             return e.code
         return None
 
+    # The test of DSL-108, DSL-114 (docs/spec).
     def test_update_match_bumps_the_revision(self):
         self.models.Note().connect(self.db).set_seq(self.seq).set_label(
             "second"
         ).expect_revision("revision", 3).update()
         self.assertEqual(self.stored(), [("second", 4)])
 
+    # The test of DSL-108, DSL-114 (docs/spec).
     def test_update_mismatch_changes_nothing(self):
         note = self.models.Note().connect(self.db).set_seq(self.seq).set_label("stale")
         self.assertEqual(
@@ -65,12 +67,14 @@ class RevisionTest(unittest.TestCase):
         )
         self.assertEqual(self.stored(), [("first", 3)])
 
+    # The test of DSL-108, DSL-114 (docs/spec).
     def test_delete_match_deletes(self):
         self.models.Note().connect(self.db).set_seq(self.seq).expect_revision(
             "revision", 3
         ).delete()
         self.assertEqual(self.stored(), [])
 
+    # The test of DSL-108, DSL-114 (docs/spec).
     def test_delete_mismatch_changes_nothing(self):
         note = self.models.Note().connect(self.db).set_seq(self.seq)
         self.assertEqual(

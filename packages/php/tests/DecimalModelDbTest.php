@@ -104,6 +104,7 @@ final class DecimalModelDbTest extends TestCase
     #[DataProvider('dialects')]
     public function test_setters(string $dialect): void
     {
+        // The test of COD-2 (docs/spec).
         self::dsn($dialect);
         self::load();
         $class = DecimalFixture\DecimalCase::class;
@@ -137,6 +138,7 @@ final class DecimalModelDbTest extends TestCase
     #[DataProvider('dialects')]
     public function test_round_trip(string $dialect): void
     {
+        // The test of COD-2 (docs/spec).
         $dsn = self::dsn($dialect);
         self::load();
         $class = DecimalFixture\DecimalCase::class;

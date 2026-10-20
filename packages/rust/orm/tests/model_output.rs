@@ -50,6 +50,7 @@ impl Model for Secret {
 }
 
 #[test]
+// The test of COD-27 (docs/spec).
 fn array_output_of_an_unrepresentable_number_is_an_error() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let value = polyspec_orm::ordered_json::parse(r#"{"n":1e400}"#).unwrap();
@@ -67,6 +68,7 @@ fn array_output_of_an_unrepresentable_number_is_an_error() {
 }
 
 #[test]
+// The test of COD-16, COD-26 (docs/spec).
 fn json_output_keeps_the_ordered_json_text() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     for text in [r#"{"b":1,"a":[],"c":{},"n":1.50}"#, r#"{"n":1e400}"#] {

@@ -94,6 +94,7 @@ func TestParseChain(t *testing.T) {
 }
 
 func TestColumnNameRules(t *testing.T) {
+	// The test of DSL-127, DSL-129, DSL-130 (docs/spec).
 	testcase.Start(t, testcase.Process)
 	for column, message := range map[string]string{
 		"price_gt_limit": "segment",

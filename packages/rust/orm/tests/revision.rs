@@ -87,6 +87,7 @@ fn keyed(db: &Db, seq: i64, revision: i64) -> Note {
 }
 
 #[tokio::test]
+// The test of DSL-108, DSL-114 (docs/spec).
 async fn revision_update_match_bumps_the_revision() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let (db, path, seq) = seeded("update-match").await;
@@ -99,6 +100,7 @@ async fn revision_update_match_bumps_the_revision() {
 }
 
 #[tokio::test]
+// The test of DSL-108, DSL-114 (docs/spec).
 async fn revision_update_mismatch_changes_nothing() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let (db, path, seq) = seeded("update-mismatch").await;
@@ -112,6 +114,7 @@ async fn revision_update_mismatch_changes_nothing() {
 }
 
 #[tokio::test]
+// The test of DSL-108, DSL-114 (docs/spec).
 async fn revision_delete_match_deletes() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let (db, path, seq) = seeded("delete-match").await;
@@ -122,6 +125,7 @@ async fn revision_delete_match_deletes() {
 }
 
 #[tokio::test]
+// The test of DSL-108, DSL-114 (docs/spec).
 async fn revision_delete_mismatch_changes_nothing() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let (db, path, seq) = seeded("delete-mismatch").await;

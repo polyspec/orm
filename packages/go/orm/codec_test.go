@@ -320,6 +320,7 @@ func jsonNumbers(v any) any {
 }
 
 func TestCodecErrors(t *testing.T) {
+	// The test of COD-23, COD-33, COD-34, COD-35 (docs/spec).
 	testcase.Start(t, testcase.Compute)
 	if encoded, err := Encode([]string{"ordered_json"}, Value(jsontext.Value(`{"object":{},"array":[]}`))); err != nil || encoded != `{"object":{},"array":[]}` {
 		t.Fatalf("jsontext.Value must be parsed as ordered JSON: %v (%v)", encoded, err)
@@ -449,6 +450,7 @@ func TestOrderedJSONCodecParsesJSONRawMessage(t *testing.T) {
 }
 
 func TestOrderedJSONCodecUsesCustomJSONMarshaler(t *testing.T) {
+	// The test of COD-22 (docs/spec).
 	testcase.Start(t, testcase.Compute)
 	type value struct {
 		Body customJSONValue `json:"body"`

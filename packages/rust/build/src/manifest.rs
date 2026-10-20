@@ -132,6 +132,7 @@ mod tests {
 
     // A column with the same name as a fixed model method would collide with the generated method, so it is rejected.
     #[test]
+    // The test of DSL-127 (docs/spec).
     fn reserved_method_names_are_not_columns() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         for name in ["create", "delete", "restore", "random"] {

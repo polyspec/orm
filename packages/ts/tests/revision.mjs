@@ -47,21 +47,25 @@ async function withNote(body) {
   }
 }
 
+// The test of DSL-108, DSL-114 (docs/spec).
 caseTest('revision/update-match', DATABASE, () => withNote(async (db, seq) => {
   await note({ seq, label: 'second' }).connect(db).expectRevision('revision', 3).update();
   assert.deepEqual(await stored(db), [['second', 4]]);
 }));
 
+// The test of DSL-108, DSL-114 (docs/spec).
 caseTest('revision/update-mismatch', DATABASE, () => withNote(async (db, seq) => {
   assert.equal(await codeOf(note({ seq, label: 'stale' }).connect(db).expectRevision('revision', 2).update()), codes.REVISION_CHANGED);
   assert.deepEqual(await stored(db), [['first', 3]]);
 }));
 
+// The test of DSL-108, DSL-114 (docs/spec).
 caseTest('revision/delete-match', DATABASE, () => withNote(async (db, seq) => {
   await note({ seq }).connect(db).expectRevision('revision', 3).delete();
   assert.deepEqual(await stored(db), []);
 }));
 
+// The test of DSL-108, DSL-114 (docs/spec).
 caseTest('revision/delete-mismatch', DATABASE, () => withNote(async (db, seq) => {
   assert.equal(await codeOf(note({ seq }).connect(db).expectRevision('revision', 4).delete()), codes.REVISION_CHANGED);
   assert.deepEqual(await stored(db), [['first', 3]]);
