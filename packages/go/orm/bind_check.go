@@ -82,9 +82,18 @@ func (d *DB) checkParam(i int, v any, s paramSlot) error {
 			f = x
 		case float32:
 			f = float64(x)
+		case uint:
+			// An unsigned value past the int64 range is still a finite f64.
+			f = float64(x)
+		case uint64:
+			f = float64(x)
 		default:
-			if _, ok, _ := integerValue(v); !ok {
+			_, ok, err := integerValue(v)
+			if !ok {
 				return kind()
+			}
+			if err != nil {
+				return codecErr(CodeCodecEncode, "parameter %d (%v): %v", i, v, err)
 			}
 		}
 		if math.IsNaN(f) || math.IsInf(f, 0) {
@@ -130,7 +139,11 @@ func (d *DB) checkParam(i int, v any, s paramSlot) error {
 		if err != nil {
 			return codecErr(CodeCodecEncode, "parameter %d: %v", i, err)
 		}
-		if text := out.(string); s.Type != "time" && (len(text) < 5 || text[4] != '-' || text[:4] == "0000" || text[0] == '-') {
+		text, ok := out.(string)
+		if !ok {
+			return codecErr(CodeCodecEncode, "parameter %d: the time value is %T, not text", i, out)
+		}
+		if s.Type != "time" && (len(text) < 5 || text[4] != '-' || text[:4] == "0000" || text[0] == '-') {
 			return codecErr(CodeCodecEncode, "parameter %d (%v) is outside 0001-01-01 to 9999-12-31", i, v)
 		}
 	}

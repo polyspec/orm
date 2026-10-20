@@ -52,7 +52,7 @@ func clockMicroseconds(t *testing.T, driver string) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		seqs = append(seqs, created.(*keywordRow).vals["seq"])
+		seqs = append(seqs, as[*keywordRow](t, created).vals["seq"])
 	}
 	after := time.Now()
 	sub := false
@@ -64,9 +64,9 @@ func clockMicroseconds(t *testing.T, driver string) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		created, ok := row.(*keywordRow).vals["created_ts"].(time.Time)
+		created, ok := as[*keywordRow](t, row).vals["created_ts"].(time.Time)
 		if !ok {
-			t.Fatalf("created_ts = %#v", row.(*keywordRow).vals["created_ts"])
+			t.Fatalf("created_ts = %#v", as[*keywordRow](t, row).vals["created_ts"])
 		}
 		if created.Nanosecond()%1000 != 0 {
 			t.Fatalf("created_ts %v has more than six fraction digits", created)
@@ -122,7 +122,7 @@ func clockSoftDeleteMicroseconds(t *testing.T, driver string) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := created.(*keywordRow).m.Delete(nil); err != nil {
+		if err := as[*keywordRow](t, created).m.Delete(nil); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -193,7 +193,7 @@ func clockNowCondition(t *testing.T, driver string) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		seq := created.(*keywordRow).vals["seq"]
+		seq := as[*keywordRow](t, created).vals["seq"]
 		for _, fn := range []orm.Func{orm.Now(), orm.SecondsLater(0)} {
 			q := model()
 			q.AddAllColumns()
@@ -202,8 +202,8 @@ func clockNowCondition(t *testing.T, driver string) {
 			if err != nil {
 				t.Fatalf("row %v with created_ts <= %v: %v", seq, fn, err)
 			}
-			if row.(*keywordRow).vals["seq"] != seq {
-				t.Fatalf("row %v read %v", seq, row.(*keywordRow).vals["seq"])
+			if as[*keywordRow](t, row).vals["seq"] != seq {
+				t.Fatalf("row %v read %v", seq, as[*keywordRow](t, row).vals["seq"])
 			}
 		}
 	}

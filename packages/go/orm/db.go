@@ -193,8 +193,9 @@ func (s *Schema) registered() (*runtimemodel.Model, error) {
 		return nil, configErr("schema is required")
 	}
 	m, err := s.Model()
-	if ErrorCode(err) == CodeSchemaHashMismatch {
-		return nil, configErr("invalid schema manifest: %s", err.(*ir.Error).Msg)
+	var coded *ir.Error
+	if errors.As(err, &coded) && coded.Code == CodeSchemaHashMismatch {
+		return nil, configErr("invalid schema manifest: %s", coded.Msg)
 	}
 	return m, err
 }
@@ -581,7 +582,11 @@ func (d *DB) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {
 		d.m.stmtOrder = d.m.stmtOrder[1:]
 		if old, exists := d.stmts[oldest]; exists {
 			delete(d.stmts, oldest)
-			_ = old.Close()
+			// The evicted statement is no longer used by the caller, so its close error is kept for Close,
+			// which reports the statement close errors of the connection.
+			if err := old.Close(); err != nil && d.m.closeErr == nil {
+				d.m.closeErr = fmt.Errorf("close statement %q: %w", oldest, err)
+			}
 		}
 	}
 	return st, nil
@@ -604,9 +609,11 @@ func mapDriverErr(err error) error {
 	driverMu.RLock()
 	mappers := errMappers
 	driverMu.RUnlock()
+	// A mapper returns the error it was given when it does not name the condition, and an *ir.Error
+	// when it does. err holds no *ir.Error here, so a mapped error is one that holds one.
 	for _, m := range mappers {
-		if mapped := m(err); mapped != err {
-			if errors.As(mapped, &coded) && coded.Cause == nil {
+		if mapped := m(err); errors.As(mapped, &coded) {
+			if coded.Cause == nil {
 				coded.Cause = err
 			}
 			return mapped
@@ -688,6 +695,12 @@ func IsNoRows(err error) bool { return ErrorCode(err) == CodeNoRows }
 
 func configErr(format string, a ...any) error {
 	return &ir.Error{Code: CodeConfig, Msg: fmt.Sprintf(format, a...)}
+}
+
+// internalErr reports a broken invariant of the engine itself, such as a value of a type the
+// engine never stores there; it is INTERNAL, never a result of the caller's input.
+func internalErr(format string, a ...any) error {
+	return &ir.Error{Code: CodeInternal, Msg: fmt.Sprintf(format, a...)}
 }
 
 func quoteText(s string) string { return "'" + strings.ReplaceAll(s, "'", "''") + "'" }

@@ -3,6 +3,7 @@ package orm
 import (
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"os"
 	"testing"
 	"time"
@@ -48,11 +49,11 @@ func (k collectionKeysFixture) keyValue(t *testing.T, name string) any {
 		}
 		switch entry.Type {
 		case "text":
-			return entry.Value.(string)
+			return as[string](t, entry.Value)
 		case "bool":
-			return entry.Value.(bool)
+			return as[bool](t, entry.Value)
 		case "int":
-			return int64(entry.Value.(float64))
+			return int64(as[float64](t, entry.Value))
 		case "bytes":
 			raw, err := hex.DecodeString(entry.Hex)
 			if err != nil {
@@ -60,7 +61,7 @@ func (k collectionKeysFixture) keyValue(t *testing.T, name string) any {
 			}
 			return raw
 		case "datetime":
-			instant, err := time.Parse(time.RFC3339Nano, entry.Value.(string))
+			instant, err := time.Parse(time.RFC3339Nano, as[string](t, entry.Value))
 			if err != nil {
 				t.Fatalf("fixture %s: %v", name, err)
 			}
@@ -106,7 +107,8 @@ func TestCollectionKeyNullIsCodecDecodeFromFixture(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	fixture := loadCollectionKeys(t)
 	_, err := KeyOf(nil)
-	ire, ok := err.(*ir.Error)
+	var ire *ir.Error
+	ok := errors.As(err, &ire)
 	if !ok || ire.Code != fixture.Null.Code {
 		t.Fatalf("NULL key: got %v, want %s", err, fixture.Null.Code)
 	}

@@ -78,7 +78,9 @@ func TestCancelledTransactionClearsSessionState(t *testing.T) {
 		}
 		var local sql.NullString
 		if err := db.Transaction(func() error {
-			return activeFor(db).conn.QueryRowContext(context.Background(), "SELECT @`orm.ormtest.cancelled`").Scan(&local)
+			return withActive(db, func(active *txConn) error {
+				return active.conn.QueryRowContext(context.Background(), "SELECT @`orm.ormtest.cancelled`").Scan(&local)
+			})
 		}, Retry(0)); err != nil {
 			t.Fatal(err)
 		}
@@ -95,7 +97,11 @@ func TestCancelledTransactionClearsSessionState(t *testing.T) {
 		cancelled(t, db, lockAndSet)
 		// Another connection takes the same advisory lock within lock_timeout.
 		if err := other.Transaction(func() error {
-			tx := activeFor(other).conn
+			active, activeErr := activeFor(other)
+			if activeErr != nil {
+				return activeErr
+			}
+			tx := active.conn
 			if _, err := tx.ExecContext(context.Background(), "SET LOCAL lock_timeout = '5s'"); err != nil {
 				return err
 			}
@@ -106,7 +112,9 @@ func TestCancelledTransactionClearsSessionState(t *testing.T) {
 		}
 		var local sql.NullString
 		if err := db.Transaction(func() error {
-			return activeFor(db).conn.QueryRowContext(context.Background(), "SELECT current_setting('ormtest.cancelled', true)").Scan(&local)
+			return withActive(db, func(active *txConn) error {
+				return active.conn.QueryRowContext(context.Background(), "SELECT current_setting('ormtest.cancelled', true)").Scan(&local)
+			})
 		}, Retry(0)); err != nil {
 			t.Fatal(err)
 		}
@@ -119,7 +127,9 @@ func TestCancelledTransactionClearsSessionState(t *testing.T) {
 		cancelled(t, db, func(*DB) error { return nil }, ReadOnly())
 		var queryOnly int
 		if err := db.Transaction(func() error {
-			return activeFor(db).conn.QueryRowContext(context.Background(), "PRAGMA query_only").Scan(&queryOnly)
+			return withActive(db, func(active *txConn) error {
+				return active.conn.QueryRowContext(context.Background(), "PRAGMA query_only").Scan(&queryOnly)
+			})
 		}, Retry(0)); err != nil {
 			t.Fatal(err)
 		}
@@ -127,4 +137,36 @@ func TestCancelledTransactionClearsSessionState(t *testing.T) {
 			t.Errorf("the next transaction runs with query_only = %d of the cancelled read-only transaction", queryOnly)
 		}
 	})
+}
+
+// withActive runs fn with the active transaction of db; a call without an active transaction is an error.
+func withActive(db *DB, fn func(active *txConn) error) error {
+	active, err := activeFor(db)
+	if err != nil {
+		return err
+	}
+	if active == nil {
+		return configErr("no transaction is active on the connection")
+	}
+	return fn(active)
+}
+
+// as returns v as a T; a value of another type fails the test.
+func as[T any](t testing.TB, v any) T {
+	t.Helper()
+	out, err := asErr[T](v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return out
+}
+
+// asErr returns v as a T, or an error when v is another type.
+func asErr[T any](v any) (T, error) {
+	out, ok := v.(T)
+	if !ok {
+		var zero T
+		return zero, fmt.Errorf("value is %T, not %T", v, zero)
+	}
+	return out, nil
 }

@@ -166,7 +166,11 @@ type rowShape struct {
 
 func (a *assembler) shape(b *Core, asm *plan.Assemble) (*rowShape, error) {
 	if sh, ok := a.res.cache.shapes.Load(asm); ok {
-		return sh.(*rowShape), nil
+		shape, ok := sh.(*rowShape)
+		if !ok {
+			return nil, internalErr("the cached row shape holds %T, not *rowShape", sh)
+		}
+		return shape, nil
 	}
 	sh := &rowShape{time: make([]bool, len(asm.Columns))}
 	for i, col := range asm.Columns {
@@ -246,7 +250,11 @@ func (a *assembler) model(b *Core, asm *plan.Assemble, row []any) (*Core, error)
 		case "join":
 			child := b.joinChild(ch.Rel)
 			var v any
-			if jrow, present := a.joinRow(ch, row); present {
+			jrow, present, err := a.joinRow(ch, row)
+			if err != nil {
+				return nil, err
+			}
+			if present {
 				cm, err := a.model(child, ch.Assemble, jrow)
 				if err != nil {
 					return nil, err
@@ -273,7 +281,11 @@ func (a *assembler) model(b *Core, asm *plan.Assemble, row []any) (*Core, error)
 					}
 					coll.put(key, cm)
 				}
-				st.setRelated(ch.Rel, child.ent.collection(coll), ch.Cascade, false)
+				related, err := collectionOf(child.ent.collection(coll))
+				if err != nil {
+					return nil, err
+				}
+				st.setRelated(ch.Rel, related, ch.Cascade, false)
 			} else {
 				var v any
 				if len(rows) > 0 {
@@ -295,19 +307,27 @@ func (a *assembler) model(b *Core, asm *plan.Assemble, row []any) (*Core, error)
 
 // joinRow returns the row of join ch and whether that row exists. In SQL results the join column sits with the parent row,
 // and if its first column is NULL, it does not exist. In markdown answers, the parent row's last cell holds the join row.
-func (a *assembler) joinRow(ch *plan.Child, row []any) ([]any, bool) {
+func (a *assembler) joinRow(ch *plan.Child, row []any) ([]any, bool, error) {
 	if a.res.markdown {
-		jrow := markdownLinks(row).joins[ch.Rel]
-		return jrow, jrow != nil
+		links, err := markdownLinks(row)
+		if err != nil {
+			return nil, false, err
+		}
+		jrow := links.joins[ch.Rel]
+		return jrow, jrow != nil, nil
 	}
-	return row, ch.Assemble != nil && len(ch.Assemble.Columns) > 0 && row[ch.Assemble.Columns[0].Index] != nil
+	return row, ch.Assemble != nil && len(ch.Assemble.Columns) > 0 && row[ch.Assemble.Columns[0].Index] != nil, nil
 }
 
 // related is the row of relation ch for parent row row, and its layout. In SQL results, the rows of the relation step
 // are found by key; in markdown answers, the parent row's last cell holds the relation row.
 func (a *assembler) related(ch *plan.Child, row []any) ([][]any, *plan.Assemble, error) {
 	if a.res.markdown {
-		return markdownLinks(row).rels[ch.Rel], ch.Assemble, nil
+		links, err := markdownLinks(row)
+		if err != nil {
+			return nil, nil, err
+		}
+		return links.rels[ch.Rel], ch.Assemble, nil
 	}
 	rows, err := a.res.related(ch, row)
 	if err != nil {
@@ -389,7 +409,15 @@ func (e *Entity) collection(c *collection) any {
 func CollectOf[T Model](keys []Key, items map[Key]*Core, fetched map[Key]any) any {
 	out := &Collection[T]{keys: keys, items: make(map[Key]T, len(items)), fetched: fetched}
 	for k, m := range items {
-		out.items[k] = m.self.(T)
+		item, ok := m.self.(T)
+		if !ok {
+			if out.err == nil {
+				var zero T
+				out.err = internalErr("the model of key %v holds %T, not %T", k, m.self, zero)
+			}
+			continue
+		}
+		out.items[k] = item
 	}
 	return out
 }
@@ -533,7 +561,11 @@ func attachExternal(parents []*Core, rel relSpec) error {
 			// A composite key filters the whole child key column as a tuple.
 			rows := make([][]any, len(values))
 			for i, v := range values {
-				rows[i] = v.([]any)
+				key, ok := v.([]any)
+				if !ok {
+					return internalErr("the composite key value %d holds %T, not a list of values", i, v)
+				}
+				rows[i] = key
 			}
 			match = condNode{pred: &predSpec{op: "tuple_in", cols: matchColumns(ch.matches, true), value: rows, tuple: true}}
 		}
@@ -588,7 +620,11 @@ func attachExternal(parents []*Core, rel relSpec) error {
 			for _, e := range matched {
 				coll.put(e.key, e.m)
 			}
-			p.row.setRelated(name, ch.ent.collection(coll), !ch.deleteLock, false)
+			related, err := collectionOf(ch.ent.collection(coll))
+			if err != nil {
+				return err
+			}
+			p.row.setRelated(name, related, !ch.deleteLock, false)
 			continue
 		}
 		var v any
@@ -614,6 +650,29 @@ func (c *Core) Get() (Model, error) {
 	return rows.items[rows.keys[0]].self, nil
 }
 
+// typedCollection converts the untyped collection of an entity to the typed collection of model T.
+func typedCollection[T Model](v any) (*Collection[T], error) {
+	c, ok := v.(*Collection[T])
+	if !ok {
+		var zero T
+		return nil, internalErr("the entity collection holds %T, not *Collection of %T", v, zero)
+	}
+	if c.err != nil {
+		return nil, c.err
+	}
+	return c, nil
+}
+
+// collectionOf returns the collection that an entity built, or the conversion error that CollectOf met.
+func collectionOf(v any) (any, error) {
+	if f, ok := v.(interface{ failure() error }); ok {
+		if err := f.failure(); err != nil {
+			return nil, err
+		}
+	}
+	return v, nil
+}
+
 // Gets runs the query and returns the collection.
 func Gets[T Model](c *Core) (*Collection[T], error) {
 	c.ensureStatement()
@@ -621,7 +680,7 @@ func Gets[T Model](c *Core) (*Collection[T], error) {
 	if err != nil {
 		return nil, err
 	}
-	return c.ent.collection(rows).(*Collection[T]), nil
+	return typedCollection[T](c.ent.collection(rows))
 }
 
 // GetsCount runs a grouped count without constructing partial models.
@@ -701,7 +760,11 @@ func GetsPage[T Model](c *Core, page, perPage int) (*Page[T], error) {
 		return nil, err
 	}
 	pages := (total + int64(perPage) - 1) / int64(perPage)
-	return &Page[T]{Items: c.ent.collection(rows).(*Collection[T]), TotalCount: total, TotalPages: pages, Page: page, PerPage: perPage}, nil
+	items, err := typedCollection[T](c.ent.collection(rows))
+	if err != nil {
+		return nil, err
+	}
+	return &Page[T]{Items: items, TotalCount: total, TotalPages: pages, Page: page, PerPage: perPage}, nil
 }
 
 // GetCount returns the number of matching rows.
@@ -771,7 +834,11 @@ func (c *Core) GetQuery() (*Statement, error) {
 
 func inTransaction(conn *DB, fn func() error) error {
 	if conn == nil {
-		if innermost() == nil {
+		inner, err := innermost()
+		if err != nil {
+			return err
+		}
+		if inner == nil {
 			return configErr("the model has no connection; use connect or run it inside a transaction")
 		}
 		return fn()
@@ -1659,7 +1726,10 @@ func (c *Core) MarshalJSON() ([]byte, error) {
 		if i > 0 {
 			buf.WriteByte(',')
 		}
-		k, _ := json.Marshal(kv.name)
+		k, err := json.Marshal(kv.name)
+		if err != nil {
+			return nil, err
+		}
 		buf.Write(k)
 		buf.WriteByte(':')
 		v, err := marshalValue(kv.value)

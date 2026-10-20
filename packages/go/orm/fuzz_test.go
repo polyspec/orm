@@ -12,6 +12,8 @@ func FuzzDecodeCiphertext(f *testing.F) {
 	f.Add([]byte("ORM-AES2"))
 	f.Add([]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 	f.Fuzz(func(t *testing.T, input []byte) {
-		_, _ = HostDecode(input, []string{"aes"}, "fuzz-key")
+		if _, err := HostDecode(input, []string{"aes"}, "fuzz-key"); err != nil && ErrorCode(err) == "" {
+			t.Fatalf("HostDecode returned an uncoded error: %v", err)
+		}
 	})
 }

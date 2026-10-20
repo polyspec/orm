@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -19,7 +20,7 @@ const sqliteRowLockDDL = `CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEG
 // in-process mutex would not protect separate processes. The
 // write statement waits for the lock up to the connection's busy_timeout; a
 // NOWAIT request sets the wait to zero.
-func acquireSQLiteRowLock(ctx context.Context, ex executor, mode string) error {
+func acquireSQLiteRowLock(ctx context.Context, ex executor, mode string) (err error) {
 	if mode == "" || ex.base().driver != "sqlite" {
 		return nil
 	}
@@ -37,7 +38,10 @@ func acquireSQLiteRowLock(ctx context.Context, ex executor, mode string) error {
 			return err
 		}
 		defer func() {
-			_, _ = tx.machinery().exec(context.Background(), KindUtility, nil, fmt.Sprintf("PRAGMA busy_timeout=%d", previousBusyTimeout))
+			// The restore runs after the lock attempt, so its error is joined with the result of that attempt.
+			if _, restoreErr := tx.machinery().exec(context.Background(), KindUtility, nil, fmt.Sprintf("PRAGMA busy_timeout=%d", previousBusyTimeout)); restoreErr != nil {
+				err = errors.Join(err, restoreErr)
+			}
 		}()
 	}
 	if err := ensureSQLiteRowLock(ctx, tx.db); err != nil {

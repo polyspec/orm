@@ -87,7 +87,11 @@ func TestTransactionReportsFailedLockRelease(t *testing.T) {
 				return err
 			}
 			// If the lock was released beforehand, RELEASE_LOCK at the end of the transaction returns 0.
-			_, err := activeFor(db).conn.ExecContext(context.Background(), "DO RELEASE_LOCK(?)", key("released"))
+			active, activeErr := activeFor(db)
+			if activeErr != nil {
+				return activeErr
+			}
+			_, err := active.conn.ExecContext(context.Background(), "DO RELEASE_LOCK(?)", key("released"))
 			return err
 		}, Retry(0))
 		if want := "lock " + key("released") + " was not held at transaction end"; err == nil || !strings.Contains(err.Error(), want) {
@@ -207,17 +211,27 @@ func TestTransactionReportsFailedRollback(t *testing.T) {
 	t.Run("panic", func(t *testing.T) {
 		inject(t, rollbackRejected)
 		value := recovered(func() {
-			_ = db.Transaction(func() error { panic("callback panicked") }, Retry(0))
+			if err := db.Transaction(func() error { panic("callback panicked") }, Retry(0)); err != nil {
+				t.Errorf("the panicking transaction returned %v", err)
+			}
 		})
-		err, _ := value.(error)
+		err, isErr := value.(error)
+		if !isErr {
+			t.Fatalf("the recovered value %v is not an error", value)
+		}
 		wantBoth(t, "panic", err, "callback panicked", errRollbackRejected.Error())
 	})
 	t.Run("goexit", func(t *testing.T) {
 		inject(t, rollbackRejected)
 		value := recovered(func() {
-			_ = db.Transaction(func() error { runtime.Goexit(); return nil }, Retry(0))
+			if err := db.Transaction(func() error { runtime.Goexit(); return nil }, Retry(0)); err != nil {
+				t.Errorf("the goexit transaction returned %v", err)
+			}
 		})
-		err, _ := value.(error)
+		err, isErr := value.(error)
+		if !isErr {
+			t.Fatalf("the recovered value %v is not an error", value)
+		}
 		wantBoth(t, "goexit", err, "callback exited without returning", errRollbackRejected.Error())
 	})
 	t.Run("begin", func(t *testing.T) {
@@ -227,7 +241,9 @@ func TestTransactionReportsFailedRollback(t *testing.T) {
 	})
 	t.Run("panic with a successful rollback", func(t *testing.T) {
 		value := recovered(func() {
-			_ = db.Transaction(func() error { panic("callback panicked") }, Retry(0))
+			if err := db.Transaction(func() error { panic("callback panicked") }, Retry(0)); err != nil {
+				t.Errorf("the panicking transaction returned %v", err)
+			}
 		})
 		if value != "callback panicked" {
 			t.Fatalf("want the callback's panic value, got %v", value)
@@ -279,14 +295,28 @@ func TestSavepointReportsFailedEnd(t *testing.T) {
 		})
 		t.Run(statement+"/panic", func(t *testing.T) {
 			inject(t, rejected(statement))
-			value := recovered(func() { _ = nested(func() error { panic("callback panicked") }) })
-			err, _ := value.(error)
+			value := recovered(func() {
+				if err := nested(func() error { panic("callback panicked") }); err != nil {
+					t.Errorf("nested callback: %v", err)
+				}
+			})
+			err, isErr := value.(error)
+			if !isErr {
+				t.Fatalf("the recovered value %v is not an error", value)
+			}
 			wantBoth(t, "panic", err, "callback panicked", errStatementRejected.Error())
 		})
 		t.Run(statement+"/goexit", func(t *testing.T) {
 			inject(t, rejected(statement))
-			value := recovered(func() { _ = nested(func() error { runtime.Goexit(); return nil }) })
-			err, _ := value.(error)
+			value := recovered(func() {
+				if err := nested(func() error { runtime.Goexit(); return nil }); err != nil {
+					t.Errorf("nested goexit: %v", err)
+				}
+			})
+			err, isErr := value.(error)
+			if !isErr {
+				t.Fatalf("the recovered value %v is not an error", value)
+			}
 			wantBoth(t, "goexit", err, "callback exited without returning", errStatementRejected.Error())
 		})
 	}

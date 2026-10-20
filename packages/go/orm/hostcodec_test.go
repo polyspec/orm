@@ -28,11 +28,17 @@ func TestHostAESUsesAuthenticatedVersionTwoEnvelope(t *testing.T) {
 	if _, err := HostDecode(b, []string{"aes"}, "key-v1"); err == nil {
 		t.Fatal("tampered AES ciphertext was accepted")
 	}
-	ip, _ := HostEncode("10.1.2.3", []string{"ip"}, "")
+	ip, err := HostEncode("10.1.2.3", []string{"ip"}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if b, ok := ip.([]byte); !ok || len(b) != 4 {
 		t.Errorf("ipv4 packs to 4 bytes: %v", ip)
 	}
-	back, _ := HostDecode(ip, []string{"ip"}, "")
+	back, err := HostDecode(ip, []string{"ip"}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if back != "10.1.2.3" {
 		t.Errorf("ip round trip: %v", back)
 	}

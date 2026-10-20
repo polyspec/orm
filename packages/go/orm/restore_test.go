@@ -120,18 +120,18 @@ func restoreCase(t *testing.T, driver, dsn string) {
 		}
 		return c
 	}
-	vals := func(m orm.Model) map[string]any { return m.(*keywordRow).vals }
+	vals := func(m orm.Model) map[string]any { return as[*keywordRow](t, m).vals }
 	var seq, id int64
 	if err := adb.Transaction(func() error {
 		row, err := core(memberships, map[string]any{"team_id": int64(1), "member_id": int64(2), "note": "n1"}).Create()
 		if err != nil {
 			return err
 		}
-		seq = vals(row)["seq"].(int64)
+		seq = as[int64](t, vals(row)["seq"])
 		if row, err = core(labels, map[string]any{"name": "red", "color": "x"}).Create(); err != nil {
 			return err
 		}
-		id = vals(row)["id"].(int64)
+		id = as[int64](t, vals(row)["id"])
 		return nil
 	}, orm.Audit(map[string]any{"actor": "create"}), orm.Retry(0)); err != nil {
 		t.Fatal(err)

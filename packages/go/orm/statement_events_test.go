@@ -272,18 +272,30 @@ func runEventCase(t *testing.T, driver string, c eventCase, recording bool, reco
 		recorded[c.ID] = got
 		return
 	}
-	if want := c.Events[driver]; !reflect.DeepEqual(normalized(got), normalized(want)) {
-		gotJSON, _ := json.MarshalIndent(got, "", "  ")
-		wantJSON, _ := json.MarshalIndent(want, "", "  ")
+	if want := c.Events[driver]; !reflect.DeepEqual(normalized(t, got), normalized(t, want)) {
+		gotJSON, err := json.MarshalIndent(got, "", "  ")
+		if err != nil {
+			t.Fatal(err)
+		}
+		wantJSON, err := json.MarshalIndent(want, "", "  ")
+		if err != nil {
+			t.Fatal(err)
+		}
 		t.Fatalf("%s events\n got %s\nwant %s", driver, gotJSON, wantJSON)
 	}
 }
 
 // normalized is the record read back as JSON. Numbers and empty lists in bind take the same form.
-func normalized(records []eventRecord) any {
-	raw, _ := json.Marshal(records)
+func normalized(t testing.TB, records []eventRecord) any {
+	t.Helper()
+	raw, err := json.Marshal(records)
+	if err != nil {
+		t.Fatal(err)
+	}
 	var out any
-	_ = json.Unmarshal(raw, &out)
+	if err := json.Unmarshal(raw, &out); err != nil {
+		t.Fatal(err)
+	}
 	return out
 }
 
@@ -297,10 +309,10 @@ func recordEvents(t *testing.T, driver string, recorded map[string][]eventRecord
 	if err := json.Unmarshal(raw, &doc); err != nil {
 		t.Fatal(err)
 	}
-	for _, c := range doc["cases"].([]any) {
-		cm := c.(map[string]any)
-		if events, ok := recorded[cm["id"].(string)]; ok {
-			cm["events"].(map[string]any)[driver] = events
+	for _, c := range as[[]any](t, doc["cases"]) {
+		cm := as[map[string]any](t, c)
+		if events, ok := recorded[as[string](t, cm["id"])]; ok {
+			as[map[string]any](t, cm["events"])[driver] = events
 		}
 	}
 	out, err := json.MarshalIndent(doc, "", "  ")

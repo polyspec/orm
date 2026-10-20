@@ -130,13 +130,16 @@ func (t *txConn) machinery() runner {
 	return r
 }
 
-func (t *txConn) closeStatements() {
+// closeStatements closes the prepared statements of the transaction and returns the errors of the closes.
+func (t *txConn) closeStatements() error {
 	t.stmMu.Lock()
 	defer t.stmMu.Unlock()
+	var errs []error
 	for _, st := range t.stmts {
-		_ = st.Close()
+		errs = append(errs, st.Close())
 	}
 	t.stmts = nil
+	return errors.Join(errs...)
 }
 
 // flows maps a goroutine to its stack of active transactions. A goroutine
@@ -147,72 +150,98 @@ var flows sync.Map
 // flow lookup needs no goroutine id.
 var openFrames atomic.Int64
 
-func goroutineID() uint64 {
+func goroutineID() (uint64, error) {
 	var buf [64]byte
 	b := buf[:runtime.Stack(buf[:], false)]
 	b = bytes.TrimPrefix(b, []byte("goroutine "))
 	if i := bytes.IndexByte(b, ' '); i > 0 {
 		b = b[:i]
 	}
-	id, _ := strconv.ParseUint(string(b), 10, 64)
-	return id
+	id, err := strconv.ParseUint(string(b), 10, 64)
+	if err != nil {
+		return 0, &ir.Error{Code: CodeInternal, Msg: "the runtime stack does not name a goroutine id", Cause: err}
+	}
+	return id, nil
 }
 
 type flowStack struct{ frames []*txConn }
 
-func currentFlow() *flowStack {
+func currentFlow() (*flowStack, error) {
 	if openFrames.Load() == 0 {
-		return nil
+		return nil, nil
 	}
-	if v, ok := flows.Load(goroutineID()); ok {
-		return v.(*flowStack)
+	id, err := goroutineID()
+	if err != nil {
+		return nil, err
 	}
+	v, ok := flows.Load(id)
+	if !ok {
+		return nil, nil
+	}
+	s, ok := v.(*flowStack)
+	if !ok {
+		return nil, internalErr("the flow of goroutine %d holds %T, not a flow stack", id, v)
+	}
+	return s, nil
+}
+
+func pushFrame(t *txConn) error {
+	id, err := goroutineID()
+	if err != nil {
+		return err
+	}
+	v, _ := flows.LoadOrStore(id, &flowStack{})
+	s, ok := v.(*flowStack)
+	if !ok {
+		return internalErr("the flow of goroutine %d holds %T, not a flow stack", id, v)
+	}
+	s.frames = append(s.frames, t)
+	openFrames.Add(1)
 	return nil
 }
 
-func pushFrame(t *txConn) {
-	id := goroutineID()
-	v, _ := flows.LoadOrStore(id, &flowStack{})
-	s := v.(*flowStack)
-	s.frames = append(s.frames, t)
-	openFrames.Add(1)
-}
-
-func popFrame() {
-	id := goroutineID()
+func popFrame() error {
+	id, err := goroutineID()
+	if err != nil {
+		return err
+	}
 	v, ok := flows.Load(id)
 	if !ok {
-		return
+		return nil
 	}
-	s := v.(*flowStack)
+	s, ok := v.(*flowStack)
+	if !ok {
+		return internalErr("the flow of goroutine %d holds %T, not a flow stack", id, v)
+	}
 	s.frames = s.frames[:len(s.frames)-1]
 	openFrames.Add(-1)
 	if len(s.frames) == 0 {
 		flows.Delete(id)
 	}
+	return nil
 }
 
 // activeFor returns the innermost active transaction of db in this flow. A
 // context handle is the same connection, so frames are matched by connection.
-func activeFor(db *DB) *txConn {
-	s := currentFlow()
-	if s == nil {
-		return nil
+func activeFor(db *DB) (*txConn, error) {
+	s, err := currentFlow()
+	if err != nil || s == nil {
+		return nil, err
 	}
 	for i := len(s.frames) - 1; i >= 0; i-- {
 		if s.frames[i].db.m == db.m {
-			return s.frames[i]
+			return s.frames[i], nil
 		}
 	}
-	return nil
+	return nil, nil
 }
 
-func innermost() *txConn {
-	s := currentFlow()
-	if s == nil || len(s.frames) == 0 {
-		return nil
+func innermost() (*txConn, error) {
+	s, err := currentFlow()
+	if err != nil || s == nil || len(s.frames) == 0 {
+		return nil, err
 	}
-	return s.frames[len(s.frames)-1]
+	return s.frames[len(s.frames)-1], nil
 }
 
 // resolve selects where a model runs: the active transaction of its
@@ -233,7 +262,11 @@ func (t txContext) requestHook() RequestHook { return t.hook }
 
 func resolve(conn *DB) (executor, error) {
 	if conn != nil {
-		if t := activeFor(conn); t != nil {
+		t, err := activeFor(conn)
+		if err != nil {
+			return nil, err
+		}
+		if t != nil {
 			ctx := t.ctx
 			if conn.ctx != t.ctx && conn.ctx != nil {
 				ctx = conn.ctx
@@ -249,7 +282,11 @@ func resolve(conn *DB) (executor, error) {
 		}
 		return conn, nil
 	}
-	if t := innermost(); t != nil {
+	t, err := innermost()
+	if err != nil {
+		return nil, err
+	}
+	if t != nil {
 		return t, nil
 	}
 	return nil, configErr("the model has no connection; use connect or run it inside a transaction")
@@ -442,18 +479,29 @@ func (d *DB) Transaction(fn func() error, options ...TransactionOption) error {
 			return err
 		}
 	}
-	if o.auditSet && activeFor(d) == nil {
+	outer, outerErr := activeFor(d)
+	if outerErr != nil {
+		return outerErr
+	}
+	if o.auditSet && outer == nil {
 		record, err := d.auditRecord(o.audit)
 		if err != nil {
 			return err
 		}
 		inner := fn
 		fn = func() error {
-			activeFor(d).pendingAudit = record
+			active, err := activeFor(d)
+			if err != nil {
+				return err
+			}
+			if active == nil {
+				return internalErr("the audit record of a transaction has no transaction to attach to")
+			}
+			active.pendingAudit = record
 			return inner()
 		}
 	}
-	if outer := activeFor(d); outer != nil {
+	if outer != nil {
 		if o.set {
 			return configErr("a nested transaction of the same connection accepts only the retry option")
 		}
@@ -475,12 +523,16 @@ func (d *DB) runTransaction(fn func() error, o txOptions) (err error) {
 	if err != nil {
 		return err
 	}
-	pushFrame(t)
+	if err := pushFrame(t); err != nil {
+		return errors.Join(err, t.rollback())
+	}
 	// A callback can leave without returning: it can panic, and in a test it
 	// can call runtime.Goexit through t.Fatal. Both end the transaction.
 	returned := false
 	defer func() {
-		popFrame()
+		if popErr := popFrame(); popErr != nil {
+			err = errors.Join(err, popErr)
+		}
 		// If a callback leaves without returning, no caller receives an error, so the failed
 		// rollback is reported as a panic.
 		if r := recover(); r != nil {
@@ -645,8 +697,8 @@ func (t *txConn) rollback() error {
 	if t.ctx.Err() != nil {
 		if t.db.driver != "sqlite" {
 			t.finished.Store(true)
-			t.closeStatements()
-			err := t.closeSession()
+			stmtErr := t.closeStatements()
+			err := errors.Join(stmtErr, t.closeSession())
 			t.cancel()
 			return err
 		}
@@ -656,8 +708,7 @@ func (t *txConn) rollback() error {
 	}
 	errs := []error{t.finishSQLiteMode(), t.releaseLocks(), t.clearLocals()}
 	t.finished.Store(true)
-	t.closeStatements()
-	errs = append(errs, t.rollbackNative())
+	errs = append(errs, t.closeStatements(), t.rollbackNative())
 	if t.unclean || errors.Join(errs...) != nil {
 		errs = append(errs, t.closeSession())
 	}
@@ -719,12 +770,13 @@ func (t *txConn) commit() error {
 		t.unclean = true
 		return t.rollbackAfter(err)
 	}
-	t.closeStatements()
+	stmtErr := t.closeStatements()
 	err := t.commitNative()
 	if err != nil {
 		// After a failed COMMIT the session state is unknown, so the connection is discarded.
 		err = errors.Join(err, t.closeSession())
 	}
+	err = errors.Join(stmtErr, err)
 	if closeErr := t.conn.Close(); closeErr != nil {
 		err = errors.Join(err, closeErr)
 	}
@@ -753,10 +805,14 @@ func (t *txConn) savepoint(fn func() error) (err error) {
 	} else if _, err := t.run().exec(t.ctx, KindSavepoint, nil, "SAVEPOINT "+name); err != nil {
 		return err
 	}
-	pushFrame(t)
+	if pushErr := pushFrame(t); pushErr != nil {
+		return errors.Join(pushErr, t.rollbackSavepoint(name))
+	}
 	returned := false
 	defer func() {
-		popFrame()
+		if popErr := popFrame(); popErr != nil {
+			err = errors.Join(err, popErr)
+		}
 		// If a callback leaves without returning, no caller receives an error, so the failed
 		// savepoint rollback is reported as a panic.
 		if r := recover(); r != nil {

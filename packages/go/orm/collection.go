@@ -186,7 +186,12 @@ type Collection[T Model] struct {
 	items   map[Key]T
 	fetched map[Key]any
 	conn    *DB
+	// err is the first conversion error that CollectOf met; the callers that take the collection report it.
+	err error
 }
+
+// failure returns the conversion error that CollectOf met, if any.
+func (c *Collection[T]) failure() error { return c.err }
 
 // NewCollection returns an empty collection.
 func NewCollection[T Model]() *Collection[T] {

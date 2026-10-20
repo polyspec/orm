@@ -513,7 +513,10 @@ func members(raw json.RawMessage) ([]mdMember, error) {
 		if err != nil {
 			return nil, err
 		}
-		name, _ := tok.(string)
+		name, ok := tok.(string)
+		if !ok {
+			return nil, answerErr("an object member name %v is not a string", tok)
+		}
 		var v json.RawMessage
 		if err := dec.Decode(&v); err != nil {
 			return nil, err
@@ -876,12 +879,19 @@ func markdownWrite(ex executor, r *request) ([]any, int64, error) {
 }
 
 // markdownLinks is the join and relation that a markdown answer row holds in its last cell.
-func markdownLinks(row []any) *mdLinks {
-	links, _ := row[len(row)-1].(*mdLinks)
-	if links == nil {
-		return &mdLinks{}
+func markdownLinks(row []any) (*mdLinks, error) {
+	last := row[len(row)-1]
+	if last == nil {
+		return &mdLinks{}, nil
 	}
-	return links
+	links, ok := last.(*mdLinks)
+	if !ok {
+		return nil, internalErr("the last cell of a markdown answer row holds %T, not the join and relation values", last)
+	}
+	if links == nil {
+		return &mdLinks{}, nil
+	}
+	return links, nil
 }
 
 // beginMessage is the begin control message of a transaction: a read-only transaction sends read_only true, any

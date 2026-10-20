@@ -45,7 +45,7 @@ func triggerRefused(t *testing.T, driver string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	seq := created.(*keywordRow).vals["seq"]
+	seq := as[*keywordRow](t, created).vals["seq"]
 	u := model()
 	u.Set("seq", seq)
 	u.Set("amount", 2)
@@ -67,7 +67,7 @@ func triggerRefused(t *testing.T, driver string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if amount := row.(*keywordRow).vals["amount"]; amount != int32(1) && amount != int64(1) {
+	if amount := as[*keywordRow](t, row).vals["amount"]; amount != int32(1) && amount != int64(1) {
 		t.Fatalf("refused update changed the row: amount %#v", amount)
 	}
 }

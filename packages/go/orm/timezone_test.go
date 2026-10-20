@@ -28,14 +28,22 @@ func zoneEntity(s *orm.Schema) *orm.Entity {
 		Assign: func(m orm.Model, name string, v any) (bool, error) {
 			for _, c := range zoneColumns {
 				if c == name {
-					m.(*keywordRow).vals[name] = v
+					row, err := asErr[*keywordRow](m)
+					if err != nil {
+						return false, err
+					}
+					row.vals[name] = v
 					return true, nil
 				}
 			}
 			return false, nil
 		},
 		Value: func(m orm.Model, name string) (any, bool) {
-			v, ok := m.(*keywordRow).vals[name]
+			row, err := asErr[*keywordRow](m)
+			if err != nil {
+				panic(err)
+			}
+			v, ok := row.vals[name]
 			return v, ok
 		},
 		Collect: func(keys []orm.Key, items map[orm.Key]*orm.Core, fetched map[orm.Key]any) any {
@@ -92,7 +100,7 @@ func TestConnectionsUseUTC(t *testing.T) {
 				if err != nil || row == nil {
 					t.Fatalf("get: %v %v", row, err)
 				}
-				vals := row.(*keywordRow).vals
+				vals := as[*keywordRow](t, row).vals
 				got, ok := vals["start_dt"].(time.Time)
 				if !ok || !got.Equal(start) || got.Location() != time.UTC || got.Format("2006-01-02 15:04") != "2026-01-01 15:00" {
 					t.Fatalf("start_dt = %v, want %v in UTC", vals["start_dt"], start.UTC())

@@ -34,14 +34,22 @@ func keywordEntity(s *orm.Schema) *orm.Entity {
 		Assign: func(m orm.Model, name string, v any) (bool, error) {
 			for _, c := range keywordColumns {
 				if c == name {
-					m.(*keywordRow).vals[name] = v
+					row, err := asErr[*keywordRow](m)
+					if err != nil {
+						return false, err
+					}
+					row.vals[name] = v
 					return true, nil
 				}
 			}
 			return false, nil
 		},
 		Value: func(m orm.Model, name string) (any, bool) {
-			v, ok := m.(*keywordRow).vals[name]
+			row, err := asErr[*keywordRow](m)
+			if err != nil {
+				panic(err)
+			}
+			v, ok := row.vals[name]
 			return v, ok
 		},
 		Collect: func(keys []orm.Key, items map[orm.Key]*orm.Core, fetched map[orm.Key]any) any {
@@ -95,8 +103,8 @@ func TestSQLKeywordNames(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if id, ok := created.(*keywordRow).vals["seq"].(int64); !ok || id <= 0 {
-					t.Fatalf("insert did not assign generated ID: %#v", created.(*keywordRow).vals["seq"])
+				if id, ok := as[*keywordRow](t, created).vals["seq"].(int64); !ok || id <= 0 {
+					t.Fatalf("insert did not assign generated ID: %#v", as[*keywordRow](t, created).vals["seq"])
 				} else {
 					read := model()
 					read.Where("", []orm.ChainKey{{Column: "seq"}}, id)

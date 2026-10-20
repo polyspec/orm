@@ -25,7 +25,10 @@ func (d *DB) Utils() *Utils { return &Utils{db: d} }
 func (u *Utils) Stats() DBStats { return u.db.Stats() }
 
 func (u *Utils) active(name string) (*txConn, error) {
-	t := activeFor(u.db)
+	t, err := activeFor(u.db)
+	if err != nil {
+		return nil, err
+	}
 	if t == nil {
 		return nil, configErr("%s requires an active transaction of the connection", name)
 	}
@@ -35,15 +38,29 @@ func (u *Utils) active(name string) (*txConn, error) {
 // run executes fn in the active transaction of the connection, or in a new
 // transaction when none is active.
 func (u *Utils) run(fn func(t *txConn) error) error {
-	if t := activeFor(u.db); t != nil {
+	t, err := activeFor(u.db)
+	if err != nil {
+		return err
+	}
+	if t != nil {
 		return fn(t)
 	}
-	return u.db.Transaction(func() error { return fn(activeFor(u.db)) }, Retry(0))
+	return u.db.Transaction(func() error {
+		inner, err := activeFor(u.db)
+		if err != nil {
+			return err
+		}
+		return fn(inner)
+	}, Retry(0))
 }
 
 // read executes fn with a runner on the active transaction or the connection.
 func (u *Utils) read(fn func(ctx context.Context, r runner) error) error {
-	if t := activeFor(u.db); t != nil {
+	t, err := activeFor(u.db)
+	if err != nil {
+		return err
+	}
+	if t != nil {
 		return fn(t.ctx, t.run())
 	}
 	return fn(u.db.ctx, runner{d: u.db, q: u.db.sql})
@@ -251,8 +268,14 @@ func (s *SchemaUtils) Install(schema *Schema) error {
 	if err != nil {
 		return err
 	}
-	if d.driver == "mysql" && activeFor(d) != nil {
-		return configErr("MySQL commits schema statements implicitly; install outside a transaction")
+	if d.driver == "mysql" {
+		active, err := activeFor(d)
+		if err != nil {
+			return err
+		}
+		if active != nil {
+			return configErr("MySQL commits schema statements implicitly; install outside a transaction")
+		}
 	}
 	dialect := dbspec.Dialect(d.driver)
 	apply := func(ctx context.Context, r runner) error {
@@ -363,10 +386,14 @@ func (s *SchemaUtils) AddTablesAndColumns(schema *Schema) ([]string, error) {
 		added = additions
 		return nil
 	}
+	active, err := activeFor(d)
+	if err != nil {
+		return nil, err
+	}
 	switch {
 	case d.driver == "postgres":
 		err = s.u.run(func(t *txConn) error { return apply(t.ctx, t.run()) })
-	case activeFor(d) != nil:
+	case active != nil:
 		return nil, configErr("%s adds tables and columns outside a transaction: MySQL commits schema statements implicitly and SQLite turns foreign keys off to rebuild a table", d.driver)
 	case d.driver == "mysql":
 		err = apply(d.ctx, runner{d: d, q: d.sql})

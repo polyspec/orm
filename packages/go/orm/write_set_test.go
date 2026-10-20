@@ -36,10 +36,10 @@ func TestWasInsertedTracksGeneratedRows(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		seq := created.(*keywordRow).vals["seq"].(int64)
+		seq := as[int64](t, as[*keywordRow](t, created).vals["seq"])
 		inserted, err := db.Utils().WasInserted("record", seq)
 		if err != nil || !inserted {
-			return fmt.Errorf("outer insert was not recorded: inserted=%v err=%v", inserted, err)
+			return fmt.Errorf("outer insert was not recorded: inserted=%v err=%w", inserted, err)
 		}
 		var nestedSeq int64
 		err = db.Transaction(func() error {
@@ -49,10 +49,10 @@ func TestWasInsertedTracksGeneratedRows(t *testing.T) {
 			if createErr != nil {
 				return createErr
 			}
-			nestedSeq = row.(*keywordRow).vals["seq"].(int64)
+			nestedSeq = as[int64](t, as[*keywordRow](t, row).vals["seq"])
 			ok, checkErr := db.Utils().WasInserted("record", nestedSeq)
 			if checkErr != nil || !ok {
-				return fmt.Errorf("nested insert was not recorded: inserted=%v err=%v", ok, checkErr)
+				return fmt.Errorf("nested insert was not recorded: inserted=%v err=%w", ok, checkErr)
 			}
 			return errors.New("rollback nested savepoint")
 		}, orm.Retry(0))

@@ -58,7 +58,7 @@ func TestAESWriteUsesKeyOfCurrentVersion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create with AESKeys and AESVersion: %v", err)
 	}
-	seq := created.(*keywordRow).vals["seq"]
+	seq := as[*keywordRow](t, created).vals["seq"]
 	q := model(open(orm.Config{AESKeys: map[int32]string{2: "note-key-two"}, AESVersion: 2}))
 	q.AddAllColumns()
 	q.Where("", []orm.ChainKey{{Column: "seq"}}, mustInt64(seq))

@@ -79,7 +79,7 @@ func auditCase(t *testing.T, driver, dsn string) {
 		if err != nil {
 			return 0, err
 		}
-		return row.(*keywordRow).vals["seq"].(int64), nil
+		return as[int64](t, as[*keywordRow](t, row).vals["seq"]), nil
 	}
 	byKey := func(seq int64) *orm.Core {
 		c := orm.NewCore(items)
@@ -129,7 +129,7 @@ func auditCase(t *testing.T, driver, dsn string) {
 		}
 		nested := adb.Transaction(func() error { return nil }, orm.Audit(map[string]any{"actor": "nested"}))
 		if orm.ErrorCode(nested) != orm.CodeConfig {
-			return fmt.Errorf("a nested transaction with an audit = %v, want CONFIG", nested)
+			return fmt.Errorf("a nested transaction with an audit = %w, want CONFIG", nested)
 		}
 		// A nested transaction uses the outer audit.
 		return db.Transaction(func() error {
@@ -206,7 +206,7 @@ func auditCase(t *testing.T, driver, dsn string) {
 			}
 			return undone
 		}, orm.Retry(0)); !errors.Is(err, undone) {
-			return fmt.Errorf("savepoint = %v, want the callback error", err)
+			return fmt.Errorf("savepoint = %w, want the callback error", err)
 		}
 		_, err := create("kept")
 		return err

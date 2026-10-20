@@ -57,7 +57,7 @@ func vectorValue(t *testing.T, raw json.RawMessage) any {
 			}
 			t.Fatalf("native kind %v is not a time kind", x["native"])
 		case x["int"] != nil:
-			n, ok := new(big.Int).SetString(x["int"].(string), 10)
+			n, ok := new(big.Int).SetString(as[string](t, x["int"]), 10)
 			if !ok || !n.IsInt64() {
 				t.Fatalf("int %v is not an int64", x["int"])
 			}
@@ -72,7 +72,7 @@ func vectorValue(t *testing.T, raw json.RawMessage) any {
 				return math.Inf(-1)
 			}
 		case x["bytes"] != nil:
-			b, err := base64.StdEncoding.DecodeString(x["bytes"].(string))
+			b, err := base64.StdEncoding.DecodeString(as[string](t, x["bytes"]))
 			if err != nil {
 				t.Fatal(err)
 			}

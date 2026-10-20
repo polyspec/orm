@@ -31,7 +31,10 @@ func TestShapeCoversEveryField(t *testing.T) {
 			t.Errorf("%s: same shape key as %s", path, prev)
 		}
 		seen[k] = path
-		js, _ := json.Marshal(&req)
+		js, err := json.Marshal(&req)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if prev, dup := jsons[string(js)]; dup {
 			t.Errorf("%s: mutation is not visible in JSON either (same as %s) — the test itself is off", path, prev)
 		}

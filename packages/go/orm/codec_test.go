@@ -291,11 +291,16 @@ func deref(s *string) string {
 
 // reNumber re-decodes the vector's value with UseNumber so integers compare as int64.
 func reNumber(v any) any {
-	b, _ := json.Marshal(v)
+	b, err := json.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
 	dec := json.NewDecoder(bytes.NewReader(b))
 	dec.UseNumber()
 	var d any
-	_ = dec.Decode(&d)
+	if err := dec.Decode(&d); err != nil {
+		panic(err)
+	}
 	return d
 }
 
@@ -305,7 +310,10 @@ func jsonNumbers(v any) any {
 		if i, err := strconv.ParseInt(string(x), 10, 64); err == nil {
 			return i
 		}
-		f, _ := strconv.ParseFloat(string(x), 64)
+		f, err := strconv.ParseFloat(string(x), 64)
+		if err != nil {
+			panic(err)
+		}
 		return f
 	case []any:
 		for i := range x {
@@ -349,8 +357,8 @@ func TestCodecErrors(t *testing.T) {
 			t.Errorf("%v %q: %v", c.styles, c.raw, err)
 		}
 	}
-	if s, _ := Encode([]string{"serialize"}, Value(map[string]any{"07": 1, "-3": 2, "10": 3, "x": 4.0, "y": 1e25})); s != `a:5:{i:-3;i:2;s:2:"07";i:1;i:10;i:3;s:1:"x";d:4;s:1:"y";d:1.0E+25;}` {
-		t.Errorf("php keys/floats: %s", s)
+	if s, err := Encode([]string{"serialize"}, Value(map[string]any{"07": 1, "-3": 2, "10": 3, "x": 4.0, "y": 1e25})); err != nil || s != `a:5:{i:-3;i:2;s:2:"07";i:1;i:10;i:3;s:1:"x";d:4;s:1:"y";d:1.0E+25;}` {
+		t.Errorf("php keys/floats: %s (%v)", s, err)
 	}
 	if got, err := Decode([]string{"yaml"}, "1: value\n"); err != nil || canonStyled(t, got) != `{"1":"value"}` {
 		t.Errorf("yaml integer key: %v (%v)", got, err)

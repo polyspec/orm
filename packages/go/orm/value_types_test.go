@@ -67,7 +67,7 @@ func TestRuntimeValueTypes(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			vals := row.(*keywordRow).vals
+			vals := as[*keywordRow](t, row).vals
 			if v, err := orm.AsInt16(vals["small"]); err != nil || v != -1234 {
 				t.Errorf("small = %#v (%v)", vals["small"], err)
 			}

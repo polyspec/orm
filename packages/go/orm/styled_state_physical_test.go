@@ -129,7 +129,7 @@ func TestStyledFixturePhysicalCells(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					id := created.(*keywordRow).vals["seq"]
+					id := as[*keywordRow](t, created).vals["seq"]
 					var cell sql.NullString
 					query := fmt.Sprintf("SELECT %s FROM styled_case WHERE seq = %s", column, bind)
 					if err := raw.QueryRow(query, id).Scan(&cell); err != nil {

@@ -1,6 +1,7 @@
 package orm_test
 
 import (
+	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -67,18 +68,55 @@ func rowEntity(name string, s *orm.Schema, columns ...string) *orm.Entity {
 		Assign: func(m orm.Model, name string, v any) (bool, error) {
 			for _, c := range columns {
 				if c == name {
-					m.(*keywordRow).vals[name] = v
+					row, err := asErr[*keywordRow](m)
+					if err != nil {
+						return false, err
+					}
+					row.vals[name] = v
 					return true, nil
 				}
 			}
 			return false, nil
 		},
 		Value: func(m orm.Model, name string) (any, bool) {
-			v, ok := m.(*keywordRow).vals[name]
+			row, err := asErr[*keywordRow](m)
+			if err != nil {
+				panic(err)
+			}
+			v, ok := row.vals[name]
 			return v, ok
 		},
 		Collect: func(keys []orm.Key, items map[orm.Key]*orm.Core, fetched map[orm.Key]any) any {
 			return orm.CollectOf[*keywordRow](keys, items, fetched)
 		},
 	}
+}
+
+// as returns v as a T; a value of another type fails the test.
+func as[T any](t testing.TB, v any) T {
+	t.Helper()
+	out, err := asErr[T](v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return out
+}
+
+// mustAs returns v as a T, and panics when v is another type; it serves the callbacks that have no test.
+func mustAs[T any](v any) T {
+	out, err := asErr[T](v)
+	if err != nil {
+		panic(err)
+	}
+	return out
+}
+
+// asErr returns v as a T, or an error when v is another type.
+func asErr[T any](v any) (T, error) {
+	out, ok := v.(T)
+	if !ok {
+		var zero T
+		return zero, fmt.Errorf("value is %T, not %T", v, zero)
+	}
+	return out, nil
 }

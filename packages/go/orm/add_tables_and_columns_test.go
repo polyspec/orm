@@ -69,7 +69,7 @@ func addTablesAndColumnsInstalled(t *testing.T, driver string) (*orm.DB, string)
 		if err != nil {
 			t.Fatal(err)
 		}
-		return row.(*keywordRow).vals["id"].(int64)
+		return as[int64](t, as[*keywordRow](t, row).vals["id"])
 	}
 	create(rowEntity("addcol_log_entry", logSet, "id", "message"), map[string]any{"message": "kept"})
 	err = db.Transaction(func() error {
@@ -251,7 +251,7 @@ func addTablesAndColumnsTransactionCase(t *testing.T, driver string) {
 		rollback := errors.New("roll back")
 		err := db.Transaction(func() error {
 			if added, err := db.Utils().Schema().AddTablesAndColumns(v2); err != nil || !slices.Equal(added, addTablesAndColumnsAdded) {
-				return fmt.Errorf("AddTablesAndColumns in the transaction = %v, %v", added, err)
+				return fmt.Errorf("AddTablesAndColumns in the transaction = %v, %w", added, err)
 			}
 			return rollback
 		}, orm.Retry(0))

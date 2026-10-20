@@ -34,14 +34,22 @@ func jsonTextEntity(s *orm.Schema) *orm.Entity {
 		Assign: func(m orm.Model, name string, v any) (bool, error) {
 			for _, c := range jsonTextColumns {
 				if c == name {
-					m.(*jsonTextRow).vals[name] = v
+					row, err := asErr[*jsonTextRow](m)
+					if err != nil {
+						return false, err
+					}
+					row.vals[name] = v
 					return true, nil
 				}
 			}
 			return false, nil
 		},
 		Value: func(m orm.Model, name string) (any, bool) {
-			v, ok := m.(*jsonTextRow).vals[name]
+			row, err := asErr[*jsonTextRow](m)
+			if err != nil {
+				panic(err)
+			}
+			v, ok := row.vals[name]
 			return v, ok
 		},
 		Collect: func(keys []orm.Key, items map[orm.Key]*orm.Core, fetched map[orm.Key]any) any {
@@ -118,7 +126,7 @@ func TestJsonTextOrderPreservation(t *testing.T) {
 					if err != nil {
 						t.Fatalf("create: %v", err)
 					}
-					seq := created.(*jsonTextRow).vals["seq"]
+					seq := as[*jsonTextRow](t, created).vals["seq"]
 
 					// Read back the value
 					q := model()

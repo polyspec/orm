@@ -36,7 +36,7 @@ func TestTransactionRollsBackWhenTheCallbackLeaves(t *testing.T) {
 	go func() {
 		defer close(done)
 		// The inner goroutine leaves through runtime.Goexit, as t.Fatal does.
-		_ = db.Transaction(func() error {
+		if err := db.Transaction(func() error {
 			c := row()
 			c.Set("start_dt", time.Now().UTC().Format("2006-01-02 15:04:05.000000"))
 			if _, err := c.Create(); err != nil {
@@ -44,7 +44,9 @@ func TestTransactionRollsBackWhenTheCallbackLeaves(t *testing.T) {
 			}
 			runtimeGoexit()
 			return nil
-		}, orm.Retry(0))
+		}, orm.Retry(0)); err != nil {
+			t.Error(err)
+		}
 	}()
 	<-done
 	count, err := row().GetCount()

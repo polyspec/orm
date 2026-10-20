@@ -75,7 +75,7 @@ func seedDeletedEntries(t *testing.T, entry *orm.Entity, db *orm.DB) map[string]
 		if err != nil {
 			t.Fatal(err)
 		}
-		ids[v[0]+v[1]] = row.(*keywordRow).vals["id"]
+		ids[v[0]+v[1]] = as[*keywordRow](t, row).vals["id"]
 		if err := row.Orm_().Delete(nil); err != nil {
 			t.Fatal(err)
 		}
@@ -266,7 +266,7 @@ var requestHookCases = []struct {
 		}
 		bulk := []*keywordRow{}
 		for _, label := range []string{"bulk1", "bulk2"} {
-			bulk = append(bulk, hookItem(e, nil, map[string]any{"label": label}).Self().(*keywordRow))
+			bulk = append(bulk, as[*keywordRow](t, hookItem(e, nil, map[string]any{"label": label}).Self()))
 		}
 		if n, err := orm.Creates(hookItem(e, hooked, nil), bulk, 2); err != nil || n != 2 {
 			t.Fatalf("bulk create = %d, %v; want 2 rows", n, err)
@@ -410,7 +410,7 @@ var requestHookCases = []struct {
 		if err != nil {
 			t.Fatal(err)
 		}
-		vals := row.(*keywordRow).vals
+		vals := as[*keywordRow](t, row).vals
 		if vals["id"] != ids["ax"] || vals["part"] != "a" || vals["label"] != "x" || vals["note"] != "n1" {
 			t.Fatalf("restore returned %v, want (a, x) with note n1", vals)
 		}
@@ -434,7 +434,7 @@ var requestHookCases = []struct {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if vals := row.(*keywordRow).vals; vals["id"] != ids["ay"] || vals["label"] != "y" || vals["note"] != "n2" {
+		if vals := as[*keywordRow](t, row).vals; vals["id"] != ids["ay"] || vals["label"] != "y" || vals["note"] != "n2" {
 			t.Fatalf("restore returned %v, want (a, y) with note n2", vals)
 		}
 	}},
@@ -476,7 +476,7 @@ var requestHookCases = []struct {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if vals := row.(*keywordRow).vals; vals["id"] != ids["ay"] || vals["label"] != "y" || vals["note"] != "n4" {
+		if vals := as[*keywordRow](t, row).vals; vals["id"] != ids["ay"] || vals["label"] != "y" || vals["note"] != "n4" {
 			t.Fatalf("restore returned %v, want (a, y) with note n4", vals)
 		}
 		if rows := entryRows(t, entry, db); len(rows) != 1 || rows[0]["id"] != ids["ay"] || rows[0]["note"] != "n4" {
@@ -498,7 +498,7 @@ var requestHookCases = []struct {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if vals := row.(*keywordRow).vals; vals["id"] != ids["ax"] || vals["part"] != "a" || vals["note"] != "n5" {
+		if vals := as[*keywordRow](t, row).vals; vals["id"] != ids["ax"] || vals["part"] != "a" || vals["note"] != "n5" {
 			t.Fatalf("restore returned %v, want (a, x) with note n5", vals)
 		}
 		if rows := entryRows(t, entry, db); len(rows) != 1 || rows[0]["id"] != ids["ax"] || rows[0]["note"] != "n5" {
@@ -525,7 +525,7 @@ var requestHookCases = []struct {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if vals := row.(*keywordRow).vals; vals["id"] != ids["ay"] || vals["label"] != "y" || vals["note"] != "n6" {
+		if vals := as[*keywordRow](t, row).vals; vals["id"] != ids["ay"] || vals["label"] != "y" || vals["note"] != "n6" {
 			t.Fatalf("restore returned %v, want (a, y) with note n6", vals)
 		}
 		if rows := entryRows(t, entry, db); len(rows) != 1 || rows[0]["id"] != ids["ay"] || rows[0]["note"] != "n6" {
@@ -567,7 +567,7 @@ func TestCreatesParts(t *testing.T) {
 	batch := func(e *orm.Entity, labels []string) []*keywordRow {
 		rows := []*keywordRow{}
 		for _, label := range labels {
-			rows = append(rows, hookItem(e, nil, map[string]any{"part": "p", "label": label}).Self().(*keywordRow))
+			rows = append(rows, as[*keywordRow](t, hookItem(e, nil, map[string]any{"part": "p", "label": label}).Self()))
 		}
 		return rows
 	}
@@ -631,7 +631,7 @@ func TestCreatesParts(t *testing.T) {
 		rows := batch(e, labels(8))
 		last := hookItem(e, nil, map[string]any{"part": "p"})
 		last.SetNull("label")
-		rows = append(rows, last.Self().(*keywordRow))
+		rows = append(rows, as[*keywordRow](t, last.Self()))
 		if _, err := orm.Creates(hookItem(e, db, nil), rows, 4); err == nil {
 			t.Fatal("creates with a null label in its third batch succeeded")
 		}
@@ -643,5 +643,5 @@ func TestCreatesParts(t *testing.T) {
 
 // cmpInt orders two integer key values.
 func cmpInt(a, b any) int {
-	return cmp.Compare(a.(int64), b.(int64))
+	return cmp.Compare(mustAs[int64](a), mustAs[int64](b))
 }

@@ -98,7 +98,10 @@ func TestBindMessageVectors(t *testing.T) {
 				}
 				return
 			}
-			want, _ := json.Marshal(c.JSON)
+			want, marshalErr := json.Marshal(c.JSON)
+			if marshalErr != nil {
+				t.Fatal(marshalErr)
+			}
 			if err != nil || string(got) != string(want) {
 				t.Fatalf("markdownParam(%q) = %s, %v; want %s", c.Value, got, err, want)
 			}

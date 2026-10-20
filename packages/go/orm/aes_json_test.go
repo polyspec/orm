@@ -125,7 +125,7 @@ func TestAESJSONColumn(t *testing.T) {
 			if err != nil {
 				t.Fatalf("create: %v", err)
 			}
-			seq := created.(*keywordRow).vals["seq"]
+			seq := as[*keywordRow](t, created).vals["seq"]
 			if got := read(first, seq); got != aesJSONText {
 				t.Fatalf("read back %s, want %s", got, aesJSONText)
 			}

@@ -40,10 +40,10 @@ func TestRotateAESRowUpdatesAllAESColumnsAndVersion(t *testing.T) {
 			t.Fatalf("%s = %q, %v", c.name, decoded, err)
 		}
 	}
-	if row["aes_hex_email"].(string) == rotated["aes_hex_email"].(string) {
+	if as[string](t, row["aes_hex_email"]) == as[string](t, rotated["aes_hex_email"]) {
 		t.Fatal("email was not re-encrypted")
 	}
-	if row["aes_hex_phone"].(string) == rotated["aes_hex_phone"].(string) {
+	if as[string](t, row["aes_hex_phone"]) == as[string](t, rotated["aes_hex_phone"]) {
 		t.Fatal("phone was not re-encrypted")
 	}
 }

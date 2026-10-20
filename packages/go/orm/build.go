@@ -281,19 +281,34 @@ func (r *request) pred(p *predSpec, owner *Core, f *frame) *ir.Pred {
 	out := &ir.Pred{Column: p.column, Op: p.op}
 	switch {
 	case p.tuple:
+		rows, ok := p.value.([][]any)
+		if !ok {
+			r.fail(internalErr("tuple predicate holds %T, not rows of values", p.value))
+			return nil
+		}
 		out.Column = ""
 		out.Cols = p.cols
-		for _, row := range p.value.([][]any) {
+		for _, row := range rows {
 			for _, v := range row {
 				out.Ps = append(out.Ps, r.param(v))
 			}
 		}
 	case p.between:
-		for _, v := range p.value.([]any) {
+		values, ok := p.value.([]any)
+		if !ok {
+			r.fail(internalErr("between predicate holds %T, not a list of values", p.value))
+			return nil
+		}
+		for _, v := range values {
 			out.Ps = append(out.Ps, r.param(v))
 		}
 	case p.list:
-		for _, v := range padIn(p.value.([]any)) {
+		values, ok := p.value.([]any)
+		if !ok {
+			r.fail(internalErr("list predicate holds %T, not a list of values", p.value))
+			return nil
+		}
+		for _, v := range padIn(values) {
 			out.Ps = append(out.Ps, r.param(v))
 		}
 	case p.isNull:

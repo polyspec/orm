@@ -135,8 +135,14 @@ func rollbackFailed(t *testing.T, driver string) {
 	if driver != "sqlite" {
 		// The next statement and rollback on a session the server ended is a lost-connection error.
 		var coded *orm.Error
-		errors.As(err, &coded)
-		rollback := coded.Cause.(interface{ Unwrap() []error }).Unwrap()[1]
+		if !errors.As(err, &coded) {
+			t.Fatalf("the transaction error %v is not coded", err)
+		}
+		joined, ok := coded.Cause.(interface{ Unwrap() []error })
+		if !ok {
+			t.Fatalf("the rollback cause holds %T, not a joined error", coded.Cause)
+		}
+		rollback := joined.Unwrap()[1]
 		if orm.ErrorCode(callback) != orm.CodeConnectionLost {
 			t.Errorf("the callback error is %v, want CONNECTION_LOST", callback)
 		}

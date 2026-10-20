@@ -35,7 +35,7 @@ func openRevision(t *testing.T) (*orm.DB, func() *orm.Core, int64) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return db, model, created.(*keywordRow).vals["seq"].(int64)
+	return db, model, as[int64](t, as[*keywordRow](t, created).vals["seq"])
 }
 
 // revisionRow reads the label and revision of the row, or nil when it is gone.
@@ -51,7 +51,7 @@ func revisionRow(t *testing.T, model func() *orm.Core, seq int64) map[string]any
 	if row == nil {
 		return nil
 	}
-	return row.(*keywordRow).vals
+	return as[*keywordRow](t, row).vals
 }
 
 func TestRevisionUpdateMatchBumpsTheRevision(t *testing.T) {

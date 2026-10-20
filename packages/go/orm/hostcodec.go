@@ -61,7 +61,11 @@ var aesCiphers sync.Map
 
 func aesGCM(key string) (cipher.AEAD, error) {
 	if v, ok := aesCiphers.Load(key); ok {
-		return v.(cipher.AEAD), nil
+		aead, ok := v.(cipher.AEAD)
+		if !ok {
+			return nil, internalErr("cached AES cipher holds %T, not cipher.AEAD", v)
+		}
+		return aead, nil
 	}
 	block, err := aes.NewCipher(aesV2Key(key))
 	if err != nil {

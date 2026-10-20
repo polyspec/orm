@@ -457,8 +457,11 @@ func (res *result) related(ch *plan.Child, parent []any) ([][]any, error) {
 // error is returned as is. The changed request is validated by d.plan like any other request.
 func applyRequestHook(ex executor, r *request) error {
 	hook := ex.requestHook()
-	if hook == nil || r.err != nil {
+	if hook == nil {
 		return nil
+	}
+	if r.err != nil {
+		return r.err
 	}
 	if err := hook(&r.ir, r.param, slices.Clone(r.params)); err != nil {
 		return err
@@ -681,7 +684,7 @@ func parentValues(pr *plan.ParentRef, parents [][]any, params []any) ([]any, err
 }
 
 // expandIn rewrites the single parent placeholder into a padded list.
-func expandIn(st *plan.Step, vals []any) (string, []any) {
+func expandIn(st *plan.Step, vals []any) (string, []any, error) {
 	width := len(st.Parent.Keys)
 	tuples := len(vals) / width
 	n := 1
@@ -722,7 +725,15 @@ func expandIn(st *plan.Step, vals []any) (string, []any) {
 			for j < len(st.SQL) && st.SQL[j] >= '0' && st.SQL[j] <= '9' {
 				j++
 			}
-			k, _ := strconv.Atoi(st.SQL[i+1 : j])
+			if j == i+1 {
+				// A '$' that does not start a numbered placeholder is written as it is.
+				sb.WriteByte('$')
+				continue
+			}
+			k, err := strconv.Atoi(st.SQL[i+1 : j])
+			if err != nil {
+				return "", nil, &ir.Error{Code: CodeInternal, Msg: fmt.Sprintf("placeholder %q of the statement is not a number", st.SQL[i:j]), Cause: err}
+			}
 			switch {
 			case k == parent:
 				list(&sb, func(m int) string { return "$" + strconv.Itoa(k+m) })
@@ -733,7 +744,7 @@ func expandIn(st *plan.Step, vals []any) (string, []any) {
 			}
 			i = j - 1
 		}
-		return sb.String(), padded
+		return sb.String(), padded, nil
 	}
 	slot := 0
 	for i := 0; i < len(st.SQL); i++ {
@@ -748,7 +759,7 @@ func expandIn(st *plan.Step, vals []any) (string, []any) {
 		}
 		slot++
 	}
-	return sb.String(), padded
+	return sb.String(), padded, nil
 }
 
 const rowChunk = 32
@@ -769,7 +780,11 @@ func runSelect(ctx context.Context, ex executor, c *cached, st *plan.Step, r *re
 	d := ex.base()
 	sqlText := st.SQL
 	if parentVals != nil {
-		sqlText, parentVals = expandIn(st, parentVals)
+		var err error
+		sqlText, parentVals, err = expandIn(st, parentVals)
+		if err != nil {
+			return nil, err
+		}
 	}
 	args, masks, err := d.args(st, r, parentVals)
 	if err != nil {
@@ -1157,13 +1172,19 @@ func writeAfterHook(ex executor, r *request, after func(*request) error) (key an
 	if err := d.modelDone(ex, st, st.SQL, args, masks, start, err); err != nil {
 		return nil, 0, err
 	}
-	affected, _ = res.RowsAffected()
+	affected, err = res.RowsAffected()
+	if err != nil {
+		return nil, 0, mapDriverErr(err)
+	}
 	if r.ir.Kind == "insert" && len(r.ir.OnDuplicate) > 0 {
 		// An upsert writes one row: MySQL counts 2 for the one that updates, PostgreSQL and SQLite 1.
 		affected = 1
 	}
 	if r.ir.Kind == "insert" && len(r.ir.Rows) == 0 {
-		lastID, _ = res.LastInsertId()
+		lastID, err = res.LastInsertId()
+		if err != nil {
+			return nil, 0, mapDriverErr(err)
+		}
 	}
 	if r.ir.Kind == "update" && r.ir.Optimistic != nil && affected == 0 {
 		return nil, 0, &ir.Error{Code: CodeOptimisticLock, Msg: "the row changed after it was read"}
