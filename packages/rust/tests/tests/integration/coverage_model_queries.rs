@@ -4,6 +4,7 @@ use super::coverage_env::{connect, run};
 use super::model::{Author, User};
 
 #[tokio::test]
+// Requirements: DSL-57, DSL-58, DSL-60, DSL-62, DSL-80, DSL-82, DSL-99, PLN-11.
 async fn coverage_model_query_rows() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("model_query_rows", async {

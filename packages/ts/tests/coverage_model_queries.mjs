@@ -5,6 +5,7 @@ import { Author, User, connect } from '../dist/index.js';
 import { runCases } from './coverage_case.mjs';
 
 await runCases('coverage_model_queries.mjs', {
+  // Requirements: DSL-57, DSL-58, DSL-60, DSL-62, DSL-80, DSL-82, DSL-99, PLN-11.
   async model_query_rows({ driver, dsn }) {
     const db = await connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
     try {

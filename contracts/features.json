@@ -775,11 +775,7 @@
         }
       ],
       "parity": [
-        "go-internal-packages-go-model-coverage-model-queries",
-        "php-internal-coverage-model-queries-model-query-rows",
-        "py-cov-model-queries-model-query-rows",
-        "rust-integration-coverage-model-queries-coverage-model-query-rows",
-        "ts-coverage_model_queries"
+        "coverage-model-query-rows"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",

@@ -35,6 +35,7 @@ def model_query_rows(item):
 
 
 class CoverageTest(CoverageCase):
+    # Requirements: DSL-57, DSL-58, DSL-60, DSL-62, DSL-80, DSL-82, DSL-99, PLN-11.
     def test_model_query_rows(self):
         self.each_item("model_query_rows", model_query_rows)
 

@@ -12,6 +12,7 @@ import (
 
 // TestCoverageModelQueryRows counts, with the generated model, the authors in the seed bench database,
 // reads them sorted, aggregates them, and reads users together with the declared match.
+// Requirements: DSL-57, DSL-58, DSL-60, DSL-62, DSL-80, DSL-82, DSL-99, PLN-11.
 func TestCoverageModelQueryRows(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, _, _ := connectFeature(t)
