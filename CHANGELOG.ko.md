@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e6a95f592e601acf298d20b200b73164763cc0e8b0b74c528d9f8879f50cea05 -->
+<!-- source-sha256: 4fd32393c62f46a94dd9da25c17cb259f92fc33f0df399729b8d8e3ec0882cbd -->
 # 변경 이력
 
 ## Unreleased
+- DBS-172가 PHP extension이 repository의 모든 PHP library를 구현하며(S10) 이 규칙은 그 dbspec 표면을 적는다고 밝힌다 (KSTD-2-9-8).
 - set file reader의 번호 단계인 DBS-12~15가 set file unit이 인용하는 requirement다. kit K299가 번호 목록 항목의 id를 읽기 때문이다; 인용한 unit의 trace는 모르는 id도 이름 없는 id도 보고하지 않는다(KSTD-2-9-7).
 - 읽는 동안 바뀐 tree에 대한 set file reader의 문장은 requirement가 아니라 참고다 (KSTD-2-9-6).
 - bench database 절차가 dialect spec에서 성능 문서로 옮겨졌다 (KSTD-2-9-5).
