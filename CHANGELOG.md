@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The PHP extension implements the connection and statement path of `Polyspec\Orm\Db` in C over PDO, `execute` included, so sqlite-paths and mysql-session run with it. Red: with the extension loaded `Db` was the PHP library class (T182-5-1).
 - A Go insert into a table without an identity column succeeds on PostgreSQL again: only a driver that reports an insert id (MySQL, SQLite) is asked for one, since pgx reports none. Red: after KSTD-5-7-2 returned the dropped error, TestInsertWithoutIdentityOnEveryDatabase and TestColumnsAndSubqueries failed on PostgreSQL with "LastInsertId is not supported by this driver" (KSTD-5-7-8).
 - The PHP extension implements `Polyspec\Orm\Planner` in C under the library's name, so the planner, insert-parts and ir-answers suites run with it under `make dbspec-php-extension-check/planner` (81, 6 and 18 cases). Red: with the extension loaded the planner was the PHP library's (T182-4).
 - The `orm-gen` binary that `go build` writes beside its command is no longer tracked, and the command folders of `packages/go/cmd` ignore their build output. Red: the tracked-file test of `make feature-unit-check` named `packages/go/cmd/orm-gen/orm-gen`, a Mach-O executable committed in 0b3426809 (KSTD-5-7-7).
