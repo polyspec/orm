@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- Decoding an AES column falls back to no default version: a plan with no version column is INTERNAL, a NULL stored version of a non-NULL AES value is CODEC_DECODE, a NULL AES value is NULL and its version is never read, and rotation leaves a NULL AES cell unchanged, in all six implementations (COD-44). Red: the clients assumed a version, and rotation failed on NULL AES cells (KSTD-2-11-7-2-1).
 - A bad or undeclared AES key version is CONFIG, a stored version that is not a positive integer is CODEC_DECODE on every read and rotation path, and an AES or version column missing from a row the client selected is INTERNAL, in all six implementations (COD-44). Red: Go returned uncoded errors, and the other clients coerced or misclassified the stored version (KSTD-2-11-7-2).
 - A group row with a negative or non-integer row count fails with CODEC_DECODE in every client, as INT-90 rules; a missing count stays INTERNAL. Red: Go, PHP and TypeScript gave INTERNAL and Rust panicked (KSTD-2-11-7-6).
 - `make feature-unit-check` passes: the feature document is regenerated, moved test files are declared at their new paths, helper files are no longer inputs of checks, and statement events have their PHP extension coverage owner. Red: the stale document and the helper inputs failed the check (KSTD-7-9).

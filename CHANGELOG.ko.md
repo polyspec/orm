@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c095aa9d077a7f0cc2b433c2ea8e782df5ff46afb1217463d229637adea16cd6 -->
+<!-- source-sha256: 5bfc2a98e21b8faa4907c0741114875e14b80a3892addd6f46be6c57d1c66b62 -->
 # 변경 이력
 
 ## Unreleased
+- AES column decode가 기본 version으로 fallback하지 않는다: version column이 없는 plan은 INTERNAL, NULL이 아닌 AES 값의 NULL 저장 version은 CODEC_DECODE, NULL AES 값은 NULL이고 그 version은 읽지 않으며, rotation은 NULL AES cell을 그대로 둔다. 여섯 구현 모두 같다(COD-44). red: client가 version을 가정했고, rotation이 NULL AES cell에서 실패했다 (KSTD-2-11-7-2-1).
 - 잘못되었거나 선언되지 않은 AES key version은 CONFIG, 양의 정수가 아닌 저장 version은 모든 읽기와 rotation 경로에서 CODEC_DECODE, client가 select한 row에 없는 AES나 version column은 INTERNAL이며, 여섯 구현 모두 같다(COD-44). red: Go는 code 없는 오류를 냈고, 다른 client는 저장 version을 강제 변환하거나 잘못 분류했다 (KSTD-2-11-7-2).
 - 음수이거나 정수가 아닌 row count를 가진 group row는 INT-90대로 모든 client에서 CODEC_DECODE로 실패하고, 없는 count는 INTERNAL로 남는다. red: Go, PHP, TypeScript는 INTERNAL을 냈고 Rust는 panic했다 (KSTD-2-11-7-6).
 - `make feature-unit-check`가 통과한다: feature 문서를 다시 생성하고, 옮긴 test file을 새 경로로 선언하며, helper file은 더는 check의 input이 아니고, statement event가 PHP extension coverage owner를 가진다. red: 낡은 문서와 helper input이 check를 실패시켰다 (KSTD-7-9).
