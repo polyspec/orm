@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: e8b14548567446a690b5647ceb8c42843b7dc8a127ab7200e8abeee84d219f07 -->
+<!-- source-sha256: 5fb324ed79cea0ad65c81362b400008372c49ea031a4a7276f331117e97f0266 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -82,6 +82,7 @@
 | KSTD-5-5-4 | orm-gen이 생성하는 Go fixture model을 track하지 않는다 (KSTD-5-5 후속). Cause: kit K426이 orm-gen 생성 header를 단 packages/go/model, markdownmodel, decimalmodel의 file 32개를 보고한다(P34) | packages/go, the Go test setup, .gitignore | `make layout-check` | [~] |
 | KSTD-5-5-5 | orm-gen이 생성하는 PHP fixture model을 track하지 않는다 (KSTD-5-5 후속). Cause: kit K426이 orm-gen 생성 header를 단 packages/php/gen과 markdownmodel의 file 30개를 보고한다(P34) | packages/php, orm-install-php, .gitignore | `make layout-check` | [~] |
 | KSTD-5-5-6 | 다섯 client library의 생성된 error-code source가 build 출력이거나 근거와 함께 선언된 예외이다 (KSTD-5-5 후속). Cause: kit K426이 codes.go, Code.php, codes.py, codes.rs, codes.ts를 보고한다; git에서 설치하는 Go module과 Composer는 생성기를 돌리지 않으므로 언어마다 판정이 필요하다 | the five client libraries, config/generated.json | `make layout-check` | [~] |
+| KSTD-5-5-7 | checkout의 모든 install directory를 Git이 무시한다 (KSTD-5-5 후속). Cause: kit K372가 packages/php/vendor, packages/php-ext/vendor, config/php-lint/vendor, tests/release-consumer의 vendor와 node_modules, vulture lock의 mise .venv를 무시되지 않는다고 보고한다 | .gitignore | `make layout-check` | [~] |
 | KSTD-5-6 | lint-ts가 통과한다 (KSTD-5 후속). Cause: oxlint와 knip이 repository의 TypeScript에서 실패한다 | the TypeScript of the repository | `make lint-ts` | [o] |
 | KSTD-5-7 | lint-go가 통과한다 (KSTD-5 후속). Cause: golangci-lint가 examples, packages/go, tests에서, deadcode가 packages/go에서 실패한다 | the Go of the repository | `make lint-go` | [o] |
 | KSTD-5-7-2 | packages/go/orm이 K334가 찾는 모든 오류를 처리한다 (KSTD-5-7 후속). Cause: kit K334는 golangci-lint가 버린 오류(errcheck check-blank, check-type-assertions), 오류 chain을 잃는 비교나 wrap(errorlint), nil로 반환한 오류(nilerr), linter와 이유 없는 nolint(nolintlint)를 보고하게 한다; packages/go/orm에서 113개를 찾는다 | packages/go/orm | `make lint-go` | [o] |
