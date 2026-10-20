@@ -3,11 +3,9 @@ package orm
 import (
 	"errors"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
@@ -26,15 +24,9 @@ func TestTransactionReportsFailedLocalReset(t *testing.T) {
 	inject(t, injectedFailure{statement: func(query string) bool {
 		return strings.HasPrefix(query, "SET @`orm.") && strings.HasSuffix(query, "= NULL")
 	}})
-	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "contracts", "fixtures", "bench", "bench.dbs"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	db, err := ConnectSchema(dsn, &Schema{Hash: m.ManifestHash, Text: m.ManifestText}, Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	db := openBench(t, dsn)
 	defer testcase.Close(t, db)
+	var err error
 	err = db.Transaction(func() error { return db.Utils().SetLocal("ormtest.actor", "tester") })
 	if !errors.Is(err, errStatementRejected) {
 		t.Fatalf("commit: want the reset error, got %v", err)

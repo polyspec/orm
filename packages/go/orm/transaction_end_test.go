@@ -15,8 +15,9 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// connectBench connects to dsn with the manifest of contracts/fixtures/bench/bench.dbs.
-func connectBench(t *testing.T, dsn string) *DB {
+// openBench connects to dsn with the schema of the bench fixture; a failure
+// fails the test. The caller closes the returned handle.
+func openBench(t *testing.T, dsn string) *DB {
 	t.Helper()
 	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "contracts", "fixtures", "bench", "bench.dbs"))
 	if err != nil {
@@ -26,6 +27,13 @@ func connectBench(t *testing.T, dsn string) *DB {
 	if err != nil {
 		t.Fatal(err)
 	}
+	return db
+}
+
+// connectBench connects to dsn with the manifest of contracts/fixtures/bench/bench.dbs.
+func connectBench(t *testing.T, dsn string) *DB {
+	t.Helper()
+	db := openBench(t, dsn)
 	t.Cleanup(func() { testcase.Close(t, db) })
 	return db
 }

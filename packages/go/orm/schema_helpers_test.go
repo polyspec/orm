@@ -1,13 +1,13 @@
 package orm_test
 
 import (
-	"fmt"
 	"path/filepath"
 	"testing"
 
 	"github.com/polyspec/orm/packages/go/engine/dbspec"
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // documentSchema is the orm.Schema of a dbspec document set. It builds the manifest text and
@@ -94,12 +94,7 @@ func rowEntity(name string, s *orm.Schema, columns ...string) *orm.Entity {
 
 // as returns v as a T; a value of another type fails the test.
 func as[T any](t testing.TB, v any) T {
-	t.Helper()
-	out, err := asErr[T](v)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return out
+	return testcase.As[T](t, v)
 }
 
 // mustAs returns v as a T, and panics when v is another type; it serves the callbacks that have no test.
@@ -113,10 +108,5 @@ func mustAs[T any](v any) T {
 
 // asErr returns v as a T, or an error when v is another type.
 func asErr[T any](v any) (T, error) {
-	out, ok := v.(T)
-	if !ok {
-		var zero T
-		return zero, fmt.Errorf("value is %T, not %T", v, zero)
-	}
-	return out, nil
+	return testcase.AsErr[T](v)
 }

@@ -27,77 +27,59 @@ import (
 func TestWithContextCancels(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "zone")
-	manifest := s
-	for _, driver := range []string{"sqlite", "mysql", "postgres"} {
-		t.Run(driver, func(t *testing.T) {
-			dsn := newDatabase(t, driver)
-			db, err := orm.ConnectSchema(dsn, s, orm.Config{})
+	eachDatabase(t, []string{"sqlite", "mysql", "postgres"}, s, 1, func(t *testing.T, driver, dsn string, db *orm.DB) {
+		ent := zoneEntity(s)
+		createZoneRowAt(t, db, ent, time.Now().UTC().Format("2006-01-02 15:04:05.000000"))
+		release := holdRows(t, driver, dsn, "zone_event")
+		defer release()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		waiting := make(chan error, 1)
+		if driver == "sqlite" {
+			cancel()
+			waiting <- nil
+		} else {
+			monitor := openNative(t, driver, serverSession(t, driver, dsn))
+			defer testcase.Close(t, monitor)
+			before, err := waiters(monitor, driver)
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer testcase.Close(t, db)
-			if err := db.Utils().Schema().Install(manifest); err != nil {
-				t.Fatal(err)
-			}
-			ent := zoneEntity(s)
-			row := orm.NewCore(ent)
-			ent.New(row)
-			row.Connect(db)
-			row.Set("start_dt", time.Now().UTC().Format("2006-01-02 15:04:05.000000"))
-			if _, err := row.Create(); err != nil {
-				t.Fatal(err)
-			}
-			release := holdRows(t, driver, dsn, "zone_event")
-			defer release()
-
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-			waiting := make(chan error, 1)
-			if driver == "sqlite" {
+			go func() {
+				waiting <- awaitLockWait(ctx, monitor, driver, before)
 				cancel()
-				waiting <- nil
-			} else {
-				monitor := openNative(t, driver, serverSession(t, driver, dsn))
-				defer testcase.Close(t, monitor)
-				before, err := waiters(monitor, driver)
-				if err != nil {
-					t.Fatal(err)
-				}
-				go func() {
-					waiting <- awaitLockWait(ctx, monitor, driver, before)
-					cancel()
-				}()
-			}
-			blocked := orm.NewCore(ent)
-			ent.New(blocked)
-			blocked.Connect(db)
-			got, err := blocked.Get()
-			if err != nil {
-				t.Fatal(err)
-			}
-			got.Orm_().Connect(db.WithContext(ctx))
-			got.Orm_().Set("start_dt", time.Now().UTC().Format("2006-01-02 15:04:05.000000"))
-			started := time.Now()
-			if err := got.Orm_().Update(nil); orm.ErrorCode(err) != orm.CodeCanceled {
-				t.Fatalf("cancelled statement: %v (code %q)", err, orm.ErrorCode(err))
-			}
-			// The statement returned CANCELED while the other connection still held the rows (release runs at the end
-			// of the case), so the cancellation ended it, not a released lock; its duration is printed, not judged.
-			t.Logf("the cancelled statement returned after %s", time.Since(started))
-			if err := <-waiting; err != nil {
-				t.Fatal(err)
-			}
-			release()
+			}()
+		}
+		blocked := orm.NewCore(ent)
+		ent.New(blocked)
+		blocked.Connect(db)
+		got, err := blocked.Get()
+		if err != nil {
+			t.Fatal(err)
+		}
+		got.Orm_().Connect(db.WithContext(ctx))
+		got.Orm_().Set("start_dt", time.Now().UTC().Format("2006-01-02 15:04:05.000000"))
+		started := time.Now()
+		if err := got.Orm_().Update(nil); orm.ErrorCode(err) != orm.CodeCanceled {
+			t.Fatalf("cancelled statement: %v (code %q)", err, orm.ErrorCode(err))
+		}
+		// The statement returned CANCELED while the other connection still held the rows (release runs at the end
+		// of the case), so the cancellation ended it, not a released lock; its duration is printed, not judged.
+		t.Logf("the cancelled statement returned after %s", time.Since(started))
+		if err := <-waiting; err != nil {
+			t.Fatal(err)
+		}
+		release()
 
-			// The connection is usable after the cancelled statement.
-			after := orm.NewCore(ent)
-			ent.New(after)
-			after.Connect(db)
-			if n, err := after.GetCount(); err != nil || n != 1 {
-				t.Fatalf("count after cancellation: %d %v", n, err)
-			}
-		})
-	}
+		// The connection is usable after the cancelled statement.
+		after := orm.NewCore(ent)
+		ent.New(after)
+		after.Connect(db)
+		if n, err := after.GetCount(); err != nil || n != 1 {
+			t.Fatalf("count after cancellation: %d %v", n, err)
+		}
+	})
 }
 
 // holdRows updates every row of the table in an open transaction on another connection to hold the lock on those rows (SQLite
@@ -135,43 +117,31 @@ func holdRows(t *testing.T, driver, dsn, table string) func() {
 func TestWithContextCancelsTransaction(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "zone")
-	manifest := s
-	for _, driver := range []string{"sqlite", "mysql", "postgres"} {
-		t.Run(driver, func(t *testing.T) {
-			dsn := newDatabase(t, driver)
-			db, err := orm.ConnectSchema(dsn, s, orm.Config{})
-			if err != nil {
-				t.Fatal(err)
+	eachDatabase(t, []string{"sqlite", "mysql", "postgres"}, s, 1, func(t *testing.T, driver, dsn string, db *orm.DB) {
+		ent := zoneEntity(s)
+		ctx, cancel := context.WithCancel(context.Background())
+		handle := db.WithContext(ctx)
+		err := handle.Transaction(func() error {
+			row := orm.NewCore(ent)
+			ent.New(row)
+			row.Connect(handle)
+			row.Set("start_dt", time.Now().UTC().Format("2006-01-02 15:04:05.000000"))
+			if _, err := row.Create(); err != nil {
+				return err
 			}
-			defer testcase.Close(t, db)
-			if err := db.Utils().Schema().Install(manifest); err != nil {
-				t.Fatal(err)
-			}
-			ent := zoneEntity(s)
-			ctx, cancel := context.WithCancel(context.Background())
-			handle := db.WithContext(ctx)
-			err = handle.Transaction(func() error {
-				row := orm.NewCore(ent)
-				ent.New(row)
-				row.Connect(handle)
-				row.Set("start_dt", time.Now().UTC().Format("2006-01-02 15:04:05.000000"))
-				if _, err := row.Create(); err != nil {
-					return err
-				}
-				cancel()
-				return nil
-			})
-			if orm.ErrorCode(err) != orm.CodeCanceled {
-				t.Fatalf("cancelled transaction: %v (code %q)", err, orm.ErrorCode(err))
-			}
-			after := orm.NewCore(ent)
-			ent.New(after)
-			after.Connect(db)
-			if n, err := after.GetCount(); err != nil || n != 0 {
-				t.Fatalf("rows after a cancelled transaction: %d %v", n, err)
-			}
+			cancel()
+			return nil
 		})
-	}
+		if orm.ErrorCode(err) != orm.CodeCanceled {
+			t.Fatalf("cancelled transaction: %v (code %q)", err, orm.ErrorCode(err))
+		}
+		after := orm.NewCore(ent)
+		ent.New(after)
+		after.Connect(db)
+		if n, err := after.GetCount(); err != nil || n != 0 {
+			t.Fatalf("rows after a cancelled transaction: %d %v", n, err)
+		}
+	})
 }
 
 // TestWithContextCancelsInsideTransaction waits inside a transaction for a row
@@ -302,10 +272,7 @@ func TestWithContextCancelsInsideTransaction(t *testing.T) {
 func TestRootIdentifiesTheConnection(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "zone")
-	db, err := orm.ConnectSchema("sqlite://"+filepath.Join(t.TempDir(), "root.sqlite"), s, orm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	db := connectSchemaDB(t, "sqlite://"+filepath.Join(t.TempDir(), "root.sqlite"), s)
 	defer testcase.Close(t, db)
 	first := db.WithContext(context.Background())
 	second := first.WithContext(context.Background())

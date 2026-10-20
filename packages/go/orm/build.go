@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 )
 
 // request is one statement under construction: the value-free IR plus values.
@@ -71,28 +72,12 @@ func (f *frame) register(c *Core, prefix string) {
 // <table>_model or <table>_models.
 func (c *Core) resultName(many bool) string {
 	if c.alias != "" {
-		return snake(c.alias)
+		return runtimemodel.SnakeCase(c.alias)
 	}
 	if many {
 		return c.ent.Name + "_models"
 	}
 	return c.ent.Name + "_model"
-}
-
-// snake converts a generated PascalCase name to snake_case.
-func snake(s string) string {
-	var b strings.Builder
-	for i, r := range s {
-		if r >= 'A' && r <= 'Z' {
-			if i > 0 {
-				b.WriteByte('_')
-			}
-			b.WriteRune(r + ('a' - 'A'))
-			continue
-		}
-		b.WriteRune(r)
-	}
-	return b.String()
 }
 
 // build renders the model as a request of kind.

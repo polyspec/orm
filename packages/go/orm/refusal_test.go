@@ -17,21 +17,9 @@ var refusalColumns = []string{"seq", "amount"}
 func refusalModels(t *testing.T, driver string) func() *orm.Core {
 	t.Helper()
 	s := fixtureSchema(t, "refusal")
-	db, err := orm.ConnectSchema(newDatabase(t, driver), s, orm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { testcase.Close(t, db) })
-	if err := db.Utils().Schema().Install(s); err != nil {
-		t.Fatal(err)
-	}
+	db := openSchemaDB(t, newDatabase(t, driver), s)
 	ent := rowEntity("refused_row", s, refusalColumns...)
-	return func() *orm.Core {
-		c := orm.NewCore(ent)
-		ent.New(c)
-		c.Connect(db)
-		return c
-	}
+	return coreFunc(db, ent)
 }
 
 // triggerRefused updates an immutable row. The trigger, which is not in the catalog,
@@ -60,13 +48,7 @@ func triggerRefused(t *testing.T, driver string) {
 	if !errors.As(err, &coded) || errors.Unwrap(coded) == nil {
 		t.Fatalf("refused update does not keep the driver error: %#v", err)
 	}
-	q := model()
-	q.AddAllColumns()
-	q.Where("", []orm.ChainKey{{Column: "seq"}}, seq)
-	row, err := q.Get()
-	if err != nil {
-		t.Fatal(err)
-	}
+	row := getBySeq(t, model, seq)
 	if amount := as[*keywordRow](t, row).vals["amount"]; amount != int32(1) && amount != int64(1) {
 		t.Fatalf("refused update changed the row: amount %#v", amount)
 	}

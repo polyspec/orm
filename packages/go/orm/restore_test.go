@@ -3,7 +3,6 @@ package orm_test
 import (
 	"database/sql"
 	"fmt"
-	"strings"
 	"testing"
 	"time"
 
@@ -14,51 +13,13 @@ import (
 // restoreNative opens the database at dsn with the native driver.
 func restoreNative(t *testing.T, driver, dsn string) *sql.DB {
 	t.Helper()
-	if driver != "sqlite" {
-		return openNative(t, driver, dsn)
-	}
-	path, _, _ := strings.Cut(strings.TrimPrefix(dsn, "sqlite://"), "?")
-	raw, err := sql.Open("sqlite", path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return raw
+	return openNativeSQLite(t, driver, dsn, "")
 }
 
 // restoreTextRows reads all rows of the query as strings. NULL is "NULL".
 func restoreTextRows(t *testing.T, raw *sql.DB, query string) [][]string {
 	t.Helper()
-	rows, err := raw.Query(query)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer testcase.Close(t, rows)
-	columns, err := rows.Columns()
-	if err != nil {
-		t.Fatal(err)
-	}
-	var out [][]string
-	for rows.Next() {
-		values := make([]sql.NullString, len(columns))
-		targets := make([]any, len(columns))
-		for i := range values {
-			targets[i] = &values[i]
-		}
-		if err := rows.Scan(targets...); err != nil {
-			t.Fatal(err)
-		}
-		row := make([]string, len(columns))
-		for i, v := range values {
-			row[i] = "NULL"
-			if v.Valid {
-				row[i] = v.String
-			}
-		}
-		out = append(out, row)
-	}
-	if err := rows.Err(); err != nil {
-		t.Fatal(err)
-	}
+	_, out := queryRows(t, raw, query)
 	return out
 }
 
@@ -80,18 +41,7 @@ func restoreTextRows(t *testing.T, raw *sql.DB, query string) [][]string {
 func restoreCase(t *testing.T, driver, dsn string) {
 	t.Helper()
 	s := fixtureSchema(t, "restore")
-	db, err := orm.ConnectSchema(dsn, s, auditConfig("default"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		if err := db.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
-	if err := db.Utils().Schema().Install(s); err != nil {
-		t.Fatal(err)
-	}
+	db := auditDB(t, dsn, s)
 	raw := restoreNative(t, driver, dsn)
 	defer func() {
 		if err := raw.Close(); err != nil {

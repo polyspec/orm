@@ -1,14 +1,12 @@
 package orm_test
 
 import (
-	"database/sql"
 	"encoding/json"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/polyspec/orm/packages/go/engine/dbspec"
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
@@ -23,10 +21,7 @@ func TestMySQLInstallInsideTransaction(t *testing.T) {
 	dsn := newDatabase(t, "mysql")
 	s := fixtureSchema(t, "zone")
 	manifest := s
-	db, err := orm.ConnectSchema(dsn, s, orm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	db := connectSchemaDB(t, dsn, s)
 	defer testcase.Close(t, db)
 	var inside error
 	if err := db.Transaction(func() error {
@@ -59,10 +54,7 @@ func TestSchemaEmpty(t *testing.T) {
 	for _, driver := range []string{"sqlite", "mysql", "postgres"} {
 		t.Run(driver, func(t *testing.T) {
 			dsn := newDatabase(t, driver)
-			db, err := orm.ConnectSchema(dsn, s, orm.Config{})
-			if err != nil {
-				t.Fatal(err)
-			}
+			db := connectSchemaDB(t, dsn, s)
 			defer testcase.Close(t, db)
 			expect := func(want bool, state string) {
 				t.Helper()
@@ -110,62 +102,39 @@ func TestInstallAppliesRenderedStatements(t *testing.T) {
 	if len(diagnostics) > 0 {
 		t.Fatal(runtimemodel.DiagnosticsError(diagnostics))
 	}
-	for _, driver := range []string{"sqlite", "mysql", "postgres"} {
-		t.Run(driver, func(t *testing.T) {
-			start := time.Now()
-			t.Logf("start %s", driver)
-			defer func() { t.Logf("end %s in %s", driver, time.Since(start)) }()
-			dsn := newDatabase(t, driver)
-			db, err := orm.ConnectSchema(dsn, s, orm.Config{})
-			if err != nil {
-				t.Fatal(err)
+	eachDatabase(t, []string{"sqlite", "mysql", "postgres"}, s, 2, func(t *testing.T, driver, dsn string, db *orm.DB) {
+		statements, diagnostics := dbspec.Render(m.Documents, dbspec.Dialect(driver))
+		if len(diagnostics) > 0 {
+			t.Fatal(runtimemodel.DiagnosticsError(diagnostics))
+		}
+		raw := openRaw(t, driver, dsn)
+		defer testcase.Close(t, raw)
+		// If the rendered trigger exists in the database, the statement was applied.
+		query := map[string]string{
+			"sqlite":   "SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger'",
+			"mysql":    "SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE()",
+			"postgres": "SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema = current_schema()",
+		}[driver]
+		var triggers int
+		if err := raw.QueryRow(query).Scan(&triggers); err != nil {
+			t.Fatal(err)
+		}
+		want := 0
+		for _, statement := range statements {
+			if strings.HasPrefix(statement, "CREATE TRIGGER") {
+				want++
 			}
-			defer testcase.Close(t, db)
-			for i := 0; i < 2; i++ {
-				if err := db.Utils().Schema().Install(s); err != nil {
-					t.Fatalf("install %d: %v", i+1, err)
-				}
-			}
-			statements, diagnostics := dbspec.Render(m.Documents, dbspec.Dialect(driver))
-			if len(diagnostics) > 0 {
-				t.Fatal(runtimemodel.DiagnosticsError(diagnostics))
-			}
-			var raw *sql.DB
-			if driver == "sqlite" {
-				if raw, err = sql.Open("sqlite", strings.TrimPrefix(dsn, "sqlite://")); err != nil {
-					t.Fatal(err)
-				}
-			} else {
-				raw = openNative(t, driver, dsn)
-			}
-			defer testcase.Close(t, raw)
-			// If the rendered trigger exists in the database, the statement was applied.
-			query := map[string]string{
-				"sqlite":   "SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger'",
-				"mysql":    "SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE()",
-				"postgres": "SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema = current_schema()",
-			}[driver]
-			var triggers int
-			if err := raw.QueryRow(query).Scan(&triggers); err != nil {
-				t.Fatal(err)
-			}
-			want := 0
-			for _, statement := range statements {
-				if strings.HasPrefix(statement, "CREATE TRIGGER") {
-					want++
-				}
-			}
-			if want != 3 || triggers != want {
-				t.Fatalf("triggers = %d, rendered %d, want 3", triggers, want)
-			}
-			if _, err := raw.Exec(map[string]string{"mysql": "DROP TABLE `item_history`"}[driver] + map[string]string{"sqlite": `DROP TABLE "item_history"`, "postgres": `DROP TABLE "item_history"`}[driver]); err != nil {
-				t.Fatal(err)
-			}
-			if err := db.Utils().Schema().Install(s); orm.ErrorCode(err) != orm.CodeConfig {
-				t.Fatalf("install over a partly installed set = %v, want CONFIG", err)
-			}
-		})
-	}
+		}
+		if want != 3 || triggers != want {
+			t.Fatalf("triggers = %d, rendered %d, want 3", triggers, want)
+		}
+		if _, err := raw.Exec(map[string]string{"mysql": "DROP TABLE `item_history`"}[driver] + map[string]string{"sqlite": `DROP TABLE "item_history"`, "postgres": `DROP TABLE "item_history"`}[driver]); err != nil {
+			t.Fatal(err)
+		}
+		if err := db.Utils().Schema().Install(s); orm.ErrorCode(err) != orm.CodeConfig {
+			t.Fatalf("install over a partly installed set = %v, want CONFIG", err)
+		}
+	})
 }
 
 // changedDatabase is contracts/fixtures/install/changed_database.json. For each case, the document is
@@ -220,14 +189,7 @@ func TestInstallVerifiesTheDatabase(t *testing.T) {
 					if err := db.Utils().Schema().Install(s); err != nil {
 						t.Fatalf("install: %v", err)
 					}
-					var raw *sql.DB
-					if driver == "sqlite" {
-						if raw, err = sql.Open("sqlite", strings.TrimPrefix(dsn, "sqlite://")); err != nil {
-							t.Fatal(err)
-						}
-					} else {
-						raw = openNative(t, driver, dsn)
-					}
+					raw := openRaw(t, driver, dsn)
 					defer testcase.Close(t, raw)
 					if _, err := raw.Exec(c.Statement); err != nil {
 						t.Fatal(err)

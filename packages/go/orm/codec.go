@@ -531,6 +531,23 @@ func (p *phpParser) expect(c byte) error {
 	return nil
 }
 
+// length reads the length that a serialized string or array of kind what
+// carries after its kind letter, the colon before it included.
+func (p *phpParser) length(what string) (int, error) {
+	if err := p.expect(':'); err != nil {
+		return 0, err
+	}
+	ls, err := p.until(':')
+	if err != nil {
+		return 0, err
+	}
+	n, err := strconv.Atoi(ls)
+	if err != nil || n < 0 {
+		return 0, p.fail("bad " + what + " length")
+	}
+	return n, nil
+}
+
 func (p *phpParser) until(c byte) (string, error) {
 	j := bytes.IndexByte(p.b[p.i:], c)
 	if j < 0 {
@@ -583,16 +600,9 @@ func (p *phpParser) value() (any, error) {
 			return f, nil
 		}
 	case 's':
-		if err := p.expect(':'); err != nil {
-			return nil, err
-		}
-		ls, err := p.until(':')
+		n, err := p.length("string")
 		if err != nil {
 			return nil, err
-		}
-		n, err := strconv.Atoi(ls)
-		if err != nil || n < 0 {
-			return nil, p.fail("bad string length")
 		}
 		if err := p.expect('"'); err != nil {
 			return nil, err
@@ -607,16 +617,9 @@ func (p *phpParser) value() (any, error) {
 		}
 		return s, p.expect(';')
 	case 'a':
-		if err := p.expect(':'); err != nil {
-			return nil, err
-		}
-		ls, err := p.until(':')
+		n, err := p.length("array")
 		if err != nil {
 			return nil, err
-		}
-		n, err := strconv.Atoi(ls)
-		if err != nil || n < 0 {
-			return nil, p.fail("bad array length")
 		}
 		if err := p.expect('{'); err != nil {
 			return nil, err

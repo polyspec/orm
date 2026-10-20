@@ -3,7 +3,6 @@ package orm
 import (
 	"encoding/json"
 	"errors"
-	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -55,14 +54,7 @@ type bindCase struct {
 func TestBindMessageVectors(t *testing.T) {
 	// Requirements: PRT-67.
 	testcase.Start(t, testcase.Compute)
-	raw, err := os.ReadFile("../../../tests/bind/vectors.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var v bindVectors
-	if err := json.Unmarshal(raw, &v); err != nil {
-		t.Fatal(err)
-	}
+	v := readBindVectors(t)
 	if v.Zone != "+00:00" {
 		t.Fatalf("zone %q; this runner writes in UTC", v.Zone)
 	}

@@ -23,10 +23,7 @@ import (
 func hookFixture(t *testing.T, dsn string) (*orm.DB, *orm.Entity, *orm.Entity) {
 	t.Helper()
 	s := fixtureSchema(t, "request_hook")
-	db, err := orm.ConnectSchema(dsn, s, orm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	db := connectSchemaDB(t, dsn, s)
 	t.Cleanup(func() {
 		if err := db.Close(); err != nil {
 			t.Error(err)
@@ -55,6 +52,12 @@ func hookEntry(entry *orm.Entity, db *orm.DB, values map[string]any) *orm.Core {
 func entryRows(t *testing.T, entry *orm.Entity, db *orm.DB) []map[string]any {
 	t.Helper()
 	rows, err := orm.Gets[*keywordRow](hookEntry(entry, db, nil))
+	return rowVals(t, rows, err)
+}
+
+// rowVals returns the column values of the rows of a read; a failed read fails the test.
+func rowVals(t *testing.T, rows *orm.Collection[*keywordRow], err error) []map[string]any {
+	t.Helper()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,6 +66,16 @@ func entryRows(t *testing.T, entry *orm.Entity, db *orm.DB) []map[string]any {
 		out = append(out, r.vals)
 	}
 	return out
+}
+
+// restoreLabel gives the label column of a restore request the bound value of value (the hook's own).
+func restoreLabel(r *ir.Request, addParam func(any) int, value string) {
+	for i := range r.Set {
+		if r.Set[i].Column == "label" {
+			p := addParam(value)
+			r.Set[i].P = &p
+		}
+	}
 }
 
 // seedDeletedEntries creates the hook_entry rows (a, x), (b, x) and (a, y) with note n0 through db, soft
@@ -112,14 +125,7 @@ func hookItem(e *orm.Entity, db *orm.DB, values map[string]any) *orm.Core {
 func hookRows(t *testing.T, e *orm.Entity, db *orm.DB) []map[string]any {
 	t.Helper()
 	rows, err := orm.Gets[*keywordRow](hookItem(e, db, nil))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var out []map[string]any
-	for _, r := range rows.Slice() {
-		out = append(out, r.vals)
-	}
-	return out
+	return rowVals(t, rows, err)
 }
 
 func hookCount(t *testing.T, e *orm.Entity, db *orm.DB) int64 {
@@ -463,12 +469,7 @@ var requestHookCases = []struct {
 		scope := partScope("a")
 		hooked := db.WithRequestHook(func(r *ir.Request, addParam func(any) int, params []any) error {
 			if r.Kind == "restore" {
-				for i := range r.Set {
-					if r.Set[i].Column == "label" {
-						p := addParam("y")
-						r.Set[i].P = &p
-					}
-				}
+				restoreLabel(r, addParam, "y")
 			}
 			return scope(r, addParam, params)
 		})
@@ -510,12 +511,7 @@ var requestHookCases = []struct {
 		// The hook gives the model's label its own value y and sets part a after it, with no where parameter.
 		hooked := db.WithRequestHook(func(r *ir.Request, addParam func(any) int, params []any) error {
 			if r.Kind == "restore" {
-				for i := range r.Set {
-					if r.Set[i].Column == "label" {
-						p := addParam("y")
-						r.Set[i].P = &p
-					}
-				}
+				restoreLabel(r, addParam, "y")
 				p := addParam("a")
 				r.Set = append(r.Set, ir.Assign{Column: "part", P: &p})
 			}

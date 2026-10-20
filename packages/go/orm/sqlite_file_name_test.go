@@ -25,10 +25,7 @@ func TestSQLiteFileNameIsThePath(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := &orm.Schema{Hash: m.ManifestHash, Text: m.ManifestText}
-	db, err := orm.ConnectSchema("sqlite://"+path+"?_pragma=busy_timeout(5000)&timezone=%2B00:00", s, orm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	db := connectSchemaDB(t, "sqlite://"+path+"?_pragma=busy_timeout(5000)&timezone=%2B00:00", s)
 	if err := db.Utils().Schema().Install(s); err != nil {
 		t.Fatal(errors.Join(err, db.Close()))
 	}

@@ -9,6 +9,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/polyspec/orm/packages/go/internal/stmtevent"
 	"github.com/polyspec/orm/packages/go/orm"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
@@ -29,14 +30,7 @@ type eventStep struct {
 	Steps  []eventStep `json:"steps,omitempty"`
 }
 
-type eventRecord struct {
-	SQL         string   `json:"sql"`
-	Binds       []any    `json:"binds"`
-	Kind        string   `json:"kind"`
-	Tables      []string `json:"tables"`
-	Transaction *int64   `json:"transaction"`
-	Error       *string  `json:"error"`
-}
+type eventRecord = stmtevent.Record
 
 type eventCase struct {
 	ID      string                   `json:"id"`
@@ -239,10 +233,7 @@ func runEventCase(t *testing.T, driver string, c eventCase, recording bool, reco
 	t.Helper()
 	s := fixtureSchema(t, "statement_events")
 	dsn := newDatabase(t, driver)
-	db, err := orm.ConnectSchema(dsn, s, orm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	db := connectSchemaDB(t, dsn, s)
 	defer testcase.Close(t, db)
 	if c.Install == nil || *c.Install {
 		if err := db.Utils().Schema().Install(s); err != nil {
@@ -250,6 +241,7 @@ func runEventCase(t *testing.T, driver string, c eventCase, recording bool, reco
 		}
 	}
 	r := &eventRun{t: t, db: db, schema: s, ent: rowEntity("event_probe", s, "seq", "label"), numbers: map[int64]int64{}}
+	var err error
 	if r.stopRec, err = db.Subscribe(r.record); err != nil {
 		t.Fatal(err)
 	}

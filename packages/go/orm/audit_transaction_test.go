@@ -58,18 +58,7 @@ func auditConfig(actor string) orm.Config { return orm.Config{AuditSource: audit
 func auditCase(t *testing.T, driver, dsn string) {
 	t.Helper()
 	s := fixtureSchema(t, "audit")
-	db, err := orm.ConnectSchema(dsn, s, auditConfig("default"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		if err := db.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
-	if err := db.Utils().Schema().Install(s); err != nil {
-		t.Fatal(err)
-	}
+	db := auditDB(t, dsn, s)
 	items := rowEntity("item", s, "seq", "title", "audit_seq", "deleted_at")
 	create := func(title string) (int64, error) {
 		c := orm.NewCore(items)
@@ -222,15 +211,7 @@ func auditCase(t *testing.T, driver, dsn string) {
 // per connection, so it opens with that pragma.
 func auditNative(t *testing.T, driver, dsn string) *sql.DB {
 	t.Helper()
-	if driver != "sqlite" {
-		return openNative(t, driver, dsn)
-	}
-	path, _, _ := strings.Cut(strings.TrimPrefix(dsn, "sqlite://"), "?")
-	raw, err := sql.Open("sqlite", path+"?_pragma=foreign_keys(1)")
-	if err != nil {
-		t.Fatal(err)
-	}
-	return raw
+	return openNativeSQLite(t, driver, dsn, "?_pragma=foreign_keys(1)")
 }
 
 // TestAuditRecordTransaction runs auditCase on three databases, with a new

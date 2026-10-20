@@ -82,21 +82,13 @@ func TestCoverageAesRoundTrip(t *testing.T) {
 // TestCoverageAesTamperRejected rejects a modified envelope.
 func TestCoverageAesTamperRejected(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	input, expected := aesCase(t, "aes_tamper_rejected", "aes_decrypt")
-	plain, err := decryptFixture(t, input)
-	if expected.Error == "" || orm.ErrorCode(err) != expected.Error {
-		t.Fatalf("decrypt = %q, %v; want %s", plain, err, expected.Error)
-	}
+	aesRejected(t, "aes_tamper_rejected")
 }
 
 // TestCoverageAesWrongKeyRejected rejects an envelope with a different key.
 func TestCoverageAesWrongKeyRejected(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	input, expected := aesCase(t, "aes_wrong_key_rejected", "aes_decrypt")
-	plain, err := decryptFixture(t, input)
-	if expected.Error == "" || orm.ErrorCode(err) != expected.Error {
-		t.Fatalf("decrypt = %q, %v; want %s", plain, err, expected.Error)
-	}
+	aesRejected(t, "aes_wrong_key_rejected")
 }
 
 // TestCoverageBlindIndexVector checks that the blind index matches the recorded value.
@@ -120,4 +112,15 @@ func TestCoverageAuthenticatedEncryption(t *testing.T) {
 		"aes_wrong_key_rejected": TestCoverageAesWrongKeyRejected,
 		"blind_index_vector":     TestCoverageBlindIndexVector,
 	})
+}
+
+// aesRejected checks that the decryption case id is rejected with the error its
+// fixture expects.
+func aesRejected(t *testing.T, id string) {
+	t.Helper()
+	input, expected := aesCase(t, id, "aes_decrypt")
+	plain, err := decryptFixture(t, input)
+	if expected.Error == "" || orm.ErrorCode(err) != expected.Error {
+		t.Fatalf("decrypt = %q, %v; want %s", plain, err, expected.Error)
+	}
 }

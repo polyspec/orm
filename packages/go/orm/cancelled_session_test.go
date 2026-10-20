@@ -153,20 +153,5 @@ func withActive(db *DB, fn func(active *txConn) error) error {
 
 // as returns v as a T; a value of another type fails the test.
 func as[T any](t testing.TB, v any) T {
-	t.Helper()
-	out, err := asErr[T](v)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return out
-}
-
-// asErr returns v as a T, or an error when v is another type.
-func asErr[T any](v any) (T, error) {
-	out, ok := v.(T)
-	if !ok {
-		var zero T
-		return zero, fmt.Errorf("value is %T, not %T", v, zero)
-	}
-	return out, nil
+	return testcase.As[T](t, v)
 }

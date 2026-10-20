@@ -479,20 +479,33 @@ func checkLock(ex executor, r *request) error {
 	return nil
 }
 
+// beginRead enters the executor for a read of r and checks the request with
+// the request hook and the lock rules. It returns the function that leaves the
+// executor, the base handle and its context; on an error it has already left
+// the executor.
+func beginRead(ex executor, r *request) (func(), *DB, context.Context, error) {
+	done, err := ex.enter()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if err := applyRequestHook(ex, r); err != nil {
+		done()
+		return nil, nil, nil, err
+	}
+	if err := checkLock(ex, r); err != nil {
+		done()
+		return nil, nil, nil, err
+	}
+	return done, ex.base(), ex.context(), nil
+}
+
 // query runs the main select step and every relation step.
 func query(ex executor, r *request) (*result, error) {
-	done, err := ex.enter()
+	done, d, ctx, err := beginRead(ex, r)
 	if err != nil {
 		return nil, err
 	}
 	defer done()
-	if err := applyRequestHook(ex, r); err != nil {
-		return nil, err
-	}
-	if err := checkLock(ex, r); err != nil {
-		return nil, err
-	}
-	d, ctx := ex.base(), ex.context()
 	if d.md != nil {
 		res, _, err := markdownRead(ex, r)
 		return res, err
@@ -973,18 +986,11 @@ func countCols(a *plan.Assemble) int {
 
 // scalar runs a count, sum, or avg statement; nil means SQL NULL.
 func scalar(ex executor, r *request) (any, error) {
-	done, err := ex.enter()
+	done, d, ctx, err := beginRead(ex, r)
 	if err != nil {
 		return nil, err
 	}
 	defer done()
-	if err := applyRequestHook(ex, r); err != nil {
-		return nil, err
-	}
-	if err := checkLock(ex, r); err != nil {
-		return nil, err
-	}
-	d, ctx := ex.base(), ex.context()
 	if d.md != nil {
 		return markdownScalar(ex, r)
 	}

@@ -20,14 +20,7 @@ func openClock(t *testing.T, driver, document string) (*orm.Schema, string, *orm
 	t.Helper()
 	s := fixtureSchema(t, document)
 	dsn := newDatabase(t, driver)
-	db, err := orm.ConnectSchema(dsn, s, orm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { testcase.Close(t, db) })
-	if err := db.Utils().Schema().Install(s); err != nil {
-		t.Fatal(err)
-	}
+	db := openSchemaDB(t, dsn, s)
 	return s, dsn, db
 }
 
@@ -37,12 +30,7 @@ func openClock(t *testing.T, driver, document string) (*orm.Schema, string, *orm
 func clockMicroseconds(t *testing.T, driver string) {
 	s, _, db := openClock(t, driver, "clock")
 	ent := rowEntity("clock_event", s, clockColumns...)
-	model := func() *orm.Core {
-		c := orm.NewCore(ent)
-		ent.New(c)
-		c.Connect(db)
-		return c
-	}
+	model := coreFunc(db, ent)
 	before := time.Now()
 	var seqs []any
 	for i := range 16 {
@@ -57,13 +45,7 @@ func clockMicroseconds(t *testing.T, driver string) {
 	after := time.Now()
 	sub := false
 	for _, seq := range seqs {
-		q := model()
-		q.AddAllColumns()
-		q.Where("", []orm.ChainKey{{Column: "seq"}}, seq)
-		row, err := q.Get()
-		if err != nil {
-			t.Fatal(err)
-		}
+		row := getBySeq(t, model, seq)
 		created, ok := as[*keywordRow](t, row).vals["created_ts"].(time.Time)
 		if !ok {
 			t.Fatalf("created_ts = %#v", as[*keywordRow](t, row).vals["created_ts"])
@@ -116,12 +98,7 @@ func openClockMark(t *testing.T, driver string) (string, *orm.DB, func() *orm.Co
 func clockSoftDeleteMicroseconds(t *testing.T, driver string) {
 	base, _, model := openClockMark(t, driver)
 	for i := range 16 {
-		c := model()
-		c.Set("label", "mark-"+string(rune('a'+i)))
-		created, err := c.Create()
-		if err != nil {
-			t.Fatal(err)
-		}
+		created := createMark(t, model, i)
 		if err := as[*keywordRow](t, created).m.Delete(nil); err != nil {
 			t.Fatal(err)
 		}
@@ -187,12 +164,7 @@ func clockSoftDeleteMicroseconds(t *testing.T, driver string) {
 func clockNowCondition(t *testing.T, driver string) {
 	_, _, model := openClockMark(t, driver)
 	for i := range 16 {
-		c := model()
-		c.Set("label", "mark-"+string(rune('a'+i)))
-		created, err := c.Create()
-		if err != nil {
-			t.Fatal(err)
-		}
+		created := createMark(t, model, i)
 		seq := as[*keywordRow](t, created).vals["seq"]
 		for _, fn := range []orm.Func{orm.Now(), orm.SecondsLater(0)} {
 			q := model()
@@ -232,4 +204,16 @@ func TestClockNowConditionMySQL(t *testing.T) {
 func TestClockNowConditionPostgres(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	clockNowCondition(t, "postgres")
+}
+
+// createMark creates the clock_mark row labelled with i, through a core of model.
+func createMark(t *testing.T, model func() *orm.Core, i int) orm.Model {
+	t.Helper()
+	c := model()
+	c.Set("label", "mark-"+string(rune('a'+i)))
+	created, err := c.Create()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return created
 }

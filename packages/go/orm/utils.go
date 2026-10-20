@@ -279,8 +279,7 @@ func (s *SchemaUtils) Install(schema *Schema) error {
 	}
 	dialect := dbspec.Dialect(d.driver)
 	apply := func(ctx context.Context, r runner) error {
-		q := &observed{r: r, kind: KindSchema, tables: noTables}
-		live, unsupported, err := introspectSet(ctx, q, dialect, m)
+		q, live, unsupported, err := introspectObserved(ctx, r, dialect, m)
 		if err != nil {
 			return err
 		}
@@ -356,8 +355,7 @@ func (s *SchemaUtils) AddTablesAndColumns(schema *Schema) ([]string, error) {
 	dialect := dbspec.Dialect(d.driver)
 	var added []string
 	apply := func(ctx context.Context, r runner) error {
-		q := &observed{r: r, kind: KindSchema, tables: noTables}
-		live, unsupported, err := introspectSet(ctx, q, dialect, m)
+		q, live, unsupported, err := introspectObserved(ctx, r, dialect, m)
 		if err != nil {
 			return err
 		}
@@ -408,6 +406,14 @@ func (s *SchemaUtils) AddTablesAndColumns(schema *Schema) ([]string, error) {
 
 // introspectSet introspects the connection's database, and if the set uses a table from an external document
 // and that table differs from the external document, it is CONFIG (docs/spec/dbspec.md "External documents").
+// introspectObserved introspects the schema of m through the runner r as a
+// schema statement; it returns the observer too, for the statements that follow.
+func introspectObserved(ctx context.Context, r runner, dialect dbspec.Dialect, m *runtimemodel.Model) (*observed, *dbspec.Document, []dbspec.Unsupported, error) {
+	q := &observed{r: r, kind: KindSchema, tables: noTables}
+	live, unsupported, err := introspectSet(ctx, q, dialect, m)
+	return q, live, unsupported, err
+}
+
 func introspectSet(ctx context.Context, q dbspec.Querier, dialect dbspec.Dialect, m *runtimemodel.Model) (*dbspec.Document, []dbspec.Unsupported, error) {
 	live, unsupported, err := dbspec.Introspect(ctx, q, dialect, "schema")
 	if err != nil {

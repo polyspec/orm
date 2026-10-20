@@ -87,14 +87,7 @@ func vectorValue(t *testing.T, raw json.RawMessage) any {
 // type of its slot (docs/spec/protocol.md §5 "Parameters").
 func TestBindVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	raw, err := os.ReadFile("../../../tests/bind/vectors.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var v bindVectors
-	if err := json.Unmarshal(raw, &v); err != nil {
-		t.Fatal(err)
-	}
+	v := readBindVectors(t)
 	if v.Zone != "+00:00" || len(v.Bind) == 0 {
 		t.Fatalf("zone %q, %d bind cases; this runner checks in UTC", v.Zone, len(v.Bind))
 	}
@@ -127,4 +120,18 @@ func TestBindVectors(t *testing.T) {
 			}
 		})
 	}
+}
+
+// readBindVectors reads the bind vectors of tests/bind/vectors.json; a failure fails the test.
+func readBindVectors(t *testing.T) bindVectors {
+	t.Helper()
+	raw, err := os.ReadFile("../../../tests/bind/vectors.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var v bindVectors
+	if err := json.Unmarshal(raw, &v); err != nil {
+		t.Fatal(err)
+	}
+	return v
 }

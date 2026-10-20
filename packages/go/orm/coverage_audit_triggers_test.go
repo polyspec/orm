@@ -6,10 +6,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 
+	"github.com/polyspec/orm/packages/go/internal/testdb"
 	"github.com/polyspec/orm/packages/go/orm"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
@@ -21,11 +21,7 @@ var restoreTables = []string{"audit", "label", "membership", "membership_history
 // If either one is missing, the test fails.
 func featureDatabase(t *testing.T) (string, string) {
 	t.Helper()
-	driver, dsn := os.Getenv("ORM_FEATURE_DATABASE"), os.Getenv("ORM_FEATURE_DSN")
-	if dsn == "" || (driver != "mysql" && driver != "postgres" && driver != "sqlite") {
-		t.Fatal("ORM_FEATURE_DATABASE (mysql, postgres or sqlite) and ORM_FEATURE_DSN are required")
-	}
-	return driver, dsn
+	return testdb.FeatureDatabase(t)
 }
 
 // openFeatureNative opens the selected database with the native driver.
@@ -103,16 +99,7 @@ func dropAudit(t *testing.T, raw *sql.DB, driver string) {
 // Requirements: CFG-8, DBS-87, DBS-88, DBS-89, DBS-93, DBS-117, DSL-118, DSL-126.
 func TestCoverageAuditHistory(t *testing.T) {
 	testcase.Start(t, testcase.Database)
-	driver, dsn := featureDatabase(t)
-	raw := openFeatureNative(t, driver, dsn)
-	defer func() {
-		if err := raw.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
-	if present := auditTables(t, raw, driver); len(present) > 0 {
-		t.Fatalf("audit tables exist before the case: %v", present)
-	}
+	driver, dsn, raw := auditFeature(t)
 	// It registers the cleanup before installing, so that partially applied installs are dropped too.
 	defer dropAudit(t, raw, driver)
 	auditCase(t, driver, dsn)
@@ -126,30 +113,10 @@ func TestCoverageAuditHistory(t *testing.T) {
 // Requirements: CFG-8, DBS-87, DBS-88, DBS-93, DSL-126.
 func TestCoverageAuditTransactionEntryPoints(t *testing.T) {
 	testcase.Start(t, testcase.Database)
-	driver, dsn := featureDatabase(t)
-	raw := openFeatureNative(t, driver, dsn)
-	defer func() {
-		if err := raw.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
-	if present := auditTables(t, raw, driver); len(present) > 0 {
-		t.Fatalf("audit tables exist before the case: %v", present)
-	}
+	driver, dsn, raw := auditFeature(t)
 	defer dropAudit(t, raw, driver)
 	s := fixtureSchema(t, "audit")
-	db, err := orm.ConnectSchema(dsn, s, auditConfig("default"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		if err := db.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
-	if err := db.Utils().Schema().Install(s); err != nil {
-		t.Fatal(err)
-	}
+	db := auditDB(t, dsn, s)
 	items := rowEntity("item", s, "seq", "title", "audit_seq", "deleted_at")
 	item := func(conn *orm.DB, values map[string]any) *orm.Core {
 		c := orm.NewCore(items)
@@ -219,10 +186,7 @@ func keywordInt(row any, field string) (int64, error) {
 // function. Triggers are dropped along with their table.
 func dropAuditColumns(t *testing.T, raw *sql.DB, driver string) {
 	t.Helper()
-	quote := func(name string) string { return `"` + name + `"` }
-	if driver == "mysql" {
-		quote = func(name string) string { return "`" + name + "`" }
-	}
+	quote := identQuote(driver)
 	var statements []string
 	for _, table := range []string{"card_history", "card", "tag_history", "tag", "audit"} {
 		statements = append(statements, "DROP TABLE IF EXISTS "+quote(table))
@@ -234,48 +198,13 @@ func dropAuditColumns(t *testing.T, raw *sql.DB, driver string) {
 			}
 		}
 	}
-	for _, statement := range statements {
-		if _, err := raw.Exec(statement); err != nil {
-			t.Errorf("%s: %v", statement, err)
-		}
-	}
+	execAll(t, raw, statements)
 }
 
 // auditColumnsRows reads the query's column names and all its rows as strings.
 func auditColumnsRows(t *testing.T, raw *sql.DB, query string) ([]string, [][]string) {
 	t.Helper()
-	rows, err := raw.Query(query)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer testcase.Close(t, rows)
-	columns, err := rows.Columns()
-	if err != nil {
-		t.Fatal(err)
-	}
-	var out [][]string
-	for rows.Next() {
-		values := make([]sql.NullString, len(columns))
-		targets := make([]any, len(columns))
-		for i := range values {
-			targets[i] = &values[i]
-		}
-		if err := rows.Scan(targets...); err != nil {
-			t.Fatal(err)
-		}
-		row := make([]string, len(columns))
-		for i, v := range values {
-			row[i] = "NULL"
-			if v.Valid {
-				row[i] = v.String
-			}
-		}
-		out = append(out, row)
-	}
-	if err := rows.Err(); err != nil {
-		t.Fatal(err)
-	}
-	return columns, out
+	return queryRows(t, raw, query)
 }
 
 // TestCoverageAuditSelectedColumns installs contracts/fixtures/audit_columns.dbs in the selected
@@ -286,29 +215,12 @@ func auditColumnsRows(t *testing.T, raw *sql.DB, query string) ([]string, [][]st
 // Requirements: DBS-85, DBS-88, DBS-93, DBS-94, DBS-96.
 func TestCoverageAuditSelectedColumns(t *testing.T) {
 	testcase.Start(t, testcase.Database)
-	driver, dsn := featureDatabase(t)
-	raw := openFeatureNative(t, driver, dsn)
-	defer func() {
-		if err := raw.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
+	driver, dsn, raw := featureNative(t)
 	// It registers the cleanup before installing, so that partially applied installs are dropped too.
 	defer dropAuditColumns(t, raw, driver)
 
 	s := fixtureSchema(t, "audit_columns")
-	db, err := orm.ConnectSchema(dsn, s, auditConfig("default"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		if err := db.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
-	if err := db.Utils().Schema().Install(s); err != nil {
-		t.Fatal(err)
-	}
+	db := auditDB(t, dsn, s)
 	cards := rowEntity("card", s, "seq", "title", "secret", "audit_seq", "deleted_at")
 	tags := rowEntity("tag", s, "id", "label", "color", "audit_seq")
 	core := func(entity *orm.Entity, values map[string]any) *orm.Core {
@@ -380,10 +292,7 @@ func TestCoverageAuditSelectedColumns(t *testing.T) {
 // Triggers are dropped along with their table.
 func dropRestore(t *testing.T, raw *sql.DB, driver string) {
 	t.Helper()
-	quote := func(name string) string { return `"` + name + `"` }
-	if driver == "mysql" {
-		quote = func(name string) string { return "`" + name + "`" }
-	}
+	quote := identQuote(driver)
 	var statements []string
 	for _, table := range []string{"membership_history", "membership", "label", "audit"} {
 		statements = append(statements, "DROP TABLE IF EXISTS "+quote(table))
@@ -393,11 +302,7 @@ func dropRestore(t *testing.T, raw *sql.DB, driver string) {
 			statements = append(statements, `DROP FUNCTION IF EXISTS "membership$`+event+`"()`)
 		}
 	}
-	for _, statement := range statements {
-		if _, err := raw.Exec(statement); err != nil {
-			t.Errorf("%s: %v", statement, err)
-		}
-	}
+	execAll(t, raw, statements)
 }
 
 // TestCoverageSoftDeleteRestore runs restoreCase on the selected database:
@@ -406,13 +311,7 @@ func dropRestore(t *testing.T, raw *sql.DB, driver string) {
 // Requirements: DBS-67, DBS-87, DBS-88, DBS-93, DBS-96, DBS-117, DIA-161, INT-38.
 func TestCoverageSoftDeleteRestore(t *testing.T) {
 	testcase.Start(t, testcase.Database)
-	driver, dsn := featureDatabase(t)
-	raw := openFeatureNative(t, driver, dsn)
-	defer func() {
-		if err := raw.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
+	driver, dsn, raw := featureNative(t)
 	for _, table := range restoreTables {
 		if rows := restoreTextRows(t, raw, map[string]string{
 			"mysql":    "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '" + table + "'",
@@ -425,4 +324,48 @@ func TestCoverageSoftDeleteRestore(t *testing.T) {
 	// It registers the cleanup before installing, so that partially applied installs are dropped too.
 	defer dropRestore(t, raw, driver)
 	restoreCase(t, driver, dsn)
+}
+
+// auditFeature selects the feature database and opens it natively, and checks
+// that no audit table exists before the case; the native handle is closed when
+// the test ends.
+func auditFeature(t *testing.T) (string, string, *sql.DB) {
+	t.Helper()
+	driver, dsn, raw := featureNative(t)
+	if present := auditTables(t, raw, driver); len(present) > 0 {
+		t.Fatalf("audit tables exist before the case: %v", present)
+	}
+	return driver, dsn, raw
+}
+
+// featureNative selects the feature database and opens it natively; the native
+// handle is closed when the test ends.
+func featureNative(t *testing.T) (string, string, *sql.DB) {
+	t.Helper()
+	driver, dsn := featureDatabase(t)
+	raw := openFeatureNative(t, driver, dsn)
+	t.Cleanup(func() {
+		if err := raw.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	return driver, dsn, raw
+}
+
+// identQuote returns the identifier quoting of driver: backquotes for MySQL, double quotes otherwise.
+func identQuote(driver string) func(string) string {
+	if driver == "mysql" {
+		return func(name string) string { return "`" + name + "`" }
+	}
+	return func(name string) string { return `"` + name + `"` }
+}
+
+// execAll runs the statements in order; a failed statement is an error of the test, and the rest still run.
+func execAll(t *testing.T, raw *sql.DB, statements []string) {
+	t.Helper()
+	for _, statement := range statements {
+		if _, err := raw.Exec(statement); err != nil {
+			t.Errorf("%s: %v", statement, err)
+		}
+	}
 }

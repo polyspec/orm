@@ -182,12 +182,7 @@ func TestRelationKeyCollectionPropagatesInvalidValue(t *testing.T) {
 func TestSplitQueryPropagatesInvalidKey(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	const count = 1000
-	params := make([]any, count)
-	indexes := make([]int, count)
-	for i := range params {
-		params[i] = int64(i)
-		indexes[i] = i
-	}
+	params, indexes := indexedParams(count)
 	params[1] = struct{ ID int }{1}
 	r := &request{params: params}
 	r.ir.Where = &ir.Group{Items: []ir.Item{{Pred: &ir.Pred{Op: "in", Ps: indexes}}}}
@@ -200,12 +195,7 @@ func TestSplitQueryPropagatesInvalidKey(t *testing.T) {
 func TestSplitQueryRetainsDistinctTypedValues(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	const count = 1000
-	params := make([]any, count)
-	indexes := make([]int, count)
-	for i := range params {
-		params[i] = int64(i)
-		indexes[i] = i
-	}
+	params, indexes := indexedParams(count)
 	params[0], params[1], params[2], params[3] = true, int64(1), []byte("x"), "x"
 	r := &request{params: params}
 	r.ir.Where = &ir.Group{Items: []ir.Item{{Pred: &ir.Pred{Op: "in", Ps: indexes}}}}
@@ -246,4 +236,16 @@ func TestExpandInKeepsBareDollar(t *testing.T) {
 	if len(args) != 4 {
 		t.Fatalf("expanded to %d arguments, want 4 (three keys padded to a power of two)", len(args))
 	}
+}
+
+// indexedParams returns count parameters whose values are the int64 of their
+// position, and the list of their positions.
+func indexedParams(count int) ([]any, []int) {
+	params := make([]any, count)
+	indexes := make([]int, count)
+	for i := range params {
+		params[i] = int64(i)
+		indexes[i] = i
+	}
+	return params, indexes
 }

@@ -17,39 +17,7 @@ import (
 var zoneColumns = []string{"seq", "start_dt", "created_ts"}
 
 func zoneEntity(s *orm.Schema) *orm.Entity {
-	return &orm.Entity{
-		Name:   "zone_event",
-		Schema: s,
-		New: func(c *orm.Core) orm.Model {
-			r := &keywordRow{m: c, vals: map[string]any{}}
-			c.Bind(r)
-			return r
-		},
-		Assign: func(m orm.Model, name string, v any) (bool, error) {
-			for _, c := range zoneColumns {
-				if c == name {
-					row, err := asErr[*keywordRow](m)
-					if err != nil {
-						return false, err
-					}
-					row.vals[name] = v
-					return true, nil
-				}
-			}
-			return false, nil
-		},
-		Value: func(m orm.Model, name string) (any, bool) {
-			row, err := asErr[*keywordRow](m)
-			if err != nil {
-				panic(err)
-			}
-			v, ok := row.vals[name]
-			return v, ok
-		},
-		Collect: func(keys []orm.Key, items map[orm.Key]*orm.Core, fetched map[orm.Key]any) any {
-			return orm.CollectOf[*keywordRow](keys, items, fetched)
-		},
-	}
+	return rowEntity("zone_event", s, zoneColumns...)
 }
 
 // TestConnectionsUseUTC checks that every connection reads and writes datetime as UTC,
@@ -74,21 +42,13 @@ func TestConnectionsUseUTC(t *testing.T) {
 					}
 					dsn = base + sep + "timezone=" + strings.ReplaceAll(zone, "+", "%2B")
 				}
-				db, err := orm.ConnectSchema(dsn, s, orm.Config{})
-				if err != nil {
-					t.Fatal(err)
-				}
+				db := connectSchemaDB(t, dsn, s)
 				defer testcase.Close(t, db)
 				if err := db.Utils().Schema().Install(manifest); err != nil {
 					t.Fatal(err)
 				}
 				ent := zoneEntity(s)
-				model := func() *orm.Core {
-					c := orm.NewCore(ent)
-					ent.New(c)
-					c.Connect(db)
-					return c
-				}
+				model := coreFunc(db, ent)
 				start := time.Date(2026, 1, 2, 0, 0, 0, 0, time.FixedZone("+09:00", 9*3600))
 				c := model()
 				c.Set("start_dt", start.UTC().Format("2006-01-02 15:04:05.000000"))
@@ -323,28 +283,15 @@ func TestPoolIdleSizeAndLifetime(t *testing.T) {
 func TestStatementTimeout(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "zone")
-	manifest := s
 	for _, driver := range []string{"mysql", "postgres"} {
 		t.Run(driver, func(t *testing.T) {
 			dsn := newDatabase(t, driver)
 			// The table and its rows are created without a statement timeout;
 			// only the checked statement runs on the connection with the timeout.
-			setup, err := orm.ConnectSchema(dsn, s, orm.Config{})
-			if err != nil {
-				t.Fatal(err)
-			}
+			setup := connectInstalled(t, dsn, s)
 			defer testcase.Close(t, setup)
-			if err := setup.Utils().Schema().Install(manifest); err != nil {
-				t.Fatal(err)
-			}
 			ent := zoneEntity(s)
-			row := orm.NewCore(ent)
-			ent.New(row)
-			row.Connect(setup)
-			row.Set("start_dt", time.Now().UTC().Format(time.DateTime))
-			if _, err := row.Create(); err != nil {
-				t.Fatal(err)
-			}
+			createZoneRow(t, setup, ent)
 			holdRows(t, driver, dsn, "zone_event")
 			db, err := orm.ConnectSchema(dsn, s, orm.Config{StatementTimeoutMs: 200})
 			if err != nil {
@@ -388,7 +335,6 @@ func TestStatementTimeoutThroughAPooler(t *testing.T) {
 	single := requireDSN(t, "ORM_TEST_PGBOUNCER_SINGLE_DSN")
 	table := testdb.Name()
 	s := documentSchema(t, "dbspec 1 zone\n\ntable "+table+" {\n  seq i64 identity\n  start_dt datetime(6)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n")
-	manifest := s
 	t.Cleanup(func() {
 		raw := openNative(t, "postgres", base)
 		defer testcase.Close(t, raw)
@@ -398,24 +344,12 @@ func TestStatementTimeoutThroughAPooler(t *testing.T) {
 		}
 		c.Step("table %s dropped", table)
 	})
-	setup, err := orm.ConnectSchema(base, s, orm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	setup := connectInstalled(t, base, s)
 	defer testcase.Close(t, setup)
-	if err := setup.Utils().Schema().Install(manifest); err != nil {
-		t.Fatal(err)
-	}
 	c.Step("table %s created", table)
 	ent := rowEntity(table, s, zoneColumns...)
 	for i := 0; i < 3; i++ {
-		row := orm.NewCore(ent)
-		ent.New(row)
-		row.Connect(setup)
-		row.Set("start_dt", time.Now().UTC().Format(time.DateTime))
-		if _, err := row.Create(); err != nil {
-			t.Fatal(err)
-		}
+		createZoneRow(t, setup, ent)
 	}
 	// A direct connection holds the rows, so a locking read through the pooler
 	// waits for the lock.
@@ -456,10 +390,7 @@ func TestNativeTimeIsRefusedByDatetime(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "zone")
 	dsn := newDatabase(t, "sqlite")
-	db, err := orm.ConnectSchema(dsn, s, orm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	db := connectSchemaDB(t, dsn, s)
 	defer testcase.Close(t, db)
 	if err := db.Utils().Schema().Install(s); err != nil {
 		t.Fatal(err)

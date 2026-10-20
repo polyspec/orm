@@ -26,7 +26,7 @@ func rootINParts(r *request, st *plan.Step, driver string) ([]*request, error) {
 		if item.Pred == nil {
 			continue
 		}
-		if item.Pred.Conn == "or" || (i+1 < len(q.Where.Items) && itemConn(q.Where.Items[i+1]) == "or") {
+		if item.Pred.Conn == "or" || (i+1 < len(q.Where.Items) && ir.ItemConn(q.Where.Items[i+1]) == "or") {
 			return nil, tooLarge
 		}
 		if item.Pred.Op == "in" && item.Pred.Sub == nil && (target < 0 || len(item.Pred.Ps) > len(q.Where.Items[target].Pred.Ps)) {
@@ -86,16 +86,4 @@ func driverBindLimit(driver string) int {
 		return 999
 	}
 	return 65535
-}
-
-func itemConn(item ir.Item) string {
-	switch {
-	case item.Pred != nil:
-		return item.Pred.Conn
-	case item.Group != nil:
-		return item.Group.Conn
-	case item.Joined != nil:
-		return item.Joined.Conn
-	}
-	return ""
 }

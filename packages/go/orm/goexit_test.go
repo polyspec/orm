@@ -17,21 +17,13 @@ func TestTransactionRollsBackWhenTheCallbackLeaves(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "zone")
 	manifest := s
-	db, err := orm.ConnectSchema("sqlite://"+filepath.Join(t.TempDir(), "goexit.sqlite"), s, orm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	db := connectSchemaDB(t, "sqlite://"+filepath.Join(t.TempDir(), "goexit.sqlite"), s)
 	defer testcase.Close(t, db)
 	if err := db.Utils().Schema().Install(manifest); err != nil {
 		t.Fatal(err)
 	}
 	ent := zoneEntity(s)
-	row := func() *orm.Core {
-		c := orm.NewCore(ent)
-		ent.New(c)
-		c.Connect(db)
-		return c
-	}
+	row := coreFunc(db, ent)
 	done := make(chan struct{})
 	go func() {
 		defer close(done)

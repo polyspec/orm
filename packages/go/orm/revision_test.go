@@ -13,21 +13,9 @@ import (
 func openRevision(t *testing.T) (*orm.DB, func() *orm.Core, int64) {
 	t.Helper()
 	s := documentSchema(t, "dbspec 1 revision\n\ntable note {\n  seq i64 identity\n  label varchar(32)\n  revision i64\n  primary key (seq)\n}\n")
-	db, err := orm.ConnectSchema("sqlite://"+filepath.Join(t.TempDir(), "revision.sqlite"), s, orm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { testcase.Close(t, db) })
-	if err := db.Utils().Schema().Install(s); err != nil {
-		t.Fatal(err)
-	}
+	db := openSchemaDB(t, "sqlite://"+filepath.Join(t.TempDir(), "revision.sqlite"), s)
 	ent := rowEntity("note", s, "seq", "label", "revision")
-	model := func() *orm.Core {
-		c := orm.NewCore(ent)
-		ent.New(c)
-		c.Connect(db)
-		return c
-	}
+	model := coreFunc(db, ent)
 	c := model()
 	c.Set("label", "first")
 	c.Set("revision", int64(3))
@@ -38,16 +26,17 @@ func openRevision(t *testing.T) (*orm.DB, func() *orm.Core, int64) {
 	return db, model, as[int64](t, as[*keywordRow](t, created).vals["seq"])
 }
 
+// revisionCore is a core of model that holds the row of seq.
+func revisionCore(model func() *orm.Core, seq int64) *orm.Core {
+	c := model()
+	c.Set("seq", seq)
+	return c
+}
+
 // revisionRow reads the label and revision of the row, or nil when it is gone.
 func revisionRow(t *testing.T, model func() *orm.Core, seq int64) map[string]any {
 	t.Helper()
-	q := model()
-	q.AddAllColumns()
-	q.Where("", []orm.ChainKey{{Column: "seq"}}, seq)
-	row, err := q.Get()
-	if err != nil {
-		t.Fatal(err)
-	}
+	row := getBySeq(t, model, seq)
 	if row == nil {
 		return nil
 	}
@@ -58,8 +47,7 @@ func TestRevisionUpdateMatchBumpsTheRevision(t *testing.T) {
 	// The test of DSL-108, DSL-114 (docs/spec).
 	testcase.Start(t, testcase.Database)
 	_, model, seq := openRevision(t)
-	c := model()
-	c.Set("seq", seq)
+	c := revisionCore(model, seq)
 	c.Set("label", "second")
 	c.ExpectRevision("revision", 3)
 	if err := c.Update(nil); err != nil {
@@ -74,8 +62,7 @@ func TestRevisionUpdateMismatchChangesNothing(t *testing.T) {
 	// The test of DSL-108, DSL-114 (docs/spec).
 	testcase.Start(t, testcase.Database)
 	_, model, seq := openRevision(t)
-	c := model()
-	c.Set("seq", seq)
+	c := revisionCore(model, seq)
 	c.Set("label", "stale")
 	c.ExpectRevision("revision", 2)
 	if err := c.Update(nil); orm.ErrorCode(err) != orm.CodeRevisionChanged {
@@ -90,8 +77,7 @@ func TestRevisionDeleteMatchDeletes(t *testing.T) {
 	// The test of DSL-108, DSL-114 (docs/spec).
 	testcase.Start(t, testcase.Database)
 	_, model, seq := openRevision(t)
-	c := model()
-	c.Set("seq", seq)
+	c := revisionCore(model, seq)
 	c.ExpectRevision("revision", 3)
 	if err := c.Delete(nil); err != nil {
 		t.Fatal(err)
@@ -105,8 +91,7 @@ func TestRevisionDeleteMismatchChangesNothing(t *testing.T) {
 	// The test of DSL-108, DSL-114 (docs/spec).
 	testcase.Start(t, testcase.Database)
 	_, model, seq := openRevision(t)
-	c := model()
-	c.Set("seq", seq)
+	c := revisionCore(model, seq)
 	c.ExpectRevision("revision", 4)
 	if err := c.Delete(nil); orm.ErrorCode(err) != orm.CodeRevisionChanged {
 		t.Fatalf("delete err = %v, want %s", err, orm.CodeRevisionChanged)

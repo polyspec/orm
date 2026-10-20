@@ -69,10 +69,7 @@ func TestSQLiteTimePrecision(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			dsn := newDatabase(t, "sqlite")
-			db, err := orm.ConnectSchema(dsn, schema, orm.Config{})
-			if err != nil {
-				t.Fatal(err)
-			}
+			db := connectSchemaDB(t, dsn, schema)
 			defer testcase.Close(t, db)
 			if err := db.Utils().Schema().Install(schema); err != nil {
 				t.Fatal(err)

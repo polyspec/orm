@@ -113,17 +113,7 @@ func compilePlannerCase(t *testing.T, id string) {
 			}
 			got = append(got, plannerStatement{Role: step.Role, SQL: step.SQL, Slots: slots, Tables: step.Tables})
 		}
-		gotJSON, err := json.Marshal(got)
-		if err != nil {
-			t.Fatal(err)
-		}
-		wantJSON, err := json.Marshal(want)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(want) == 0 || string(gotJSON) != string(wantJSON) {
-			t.Fatalf("%s statements:\n got %s\nwant %s", dialect, gotJSON, wantJSON)
-		}
+		checkStatementsJSON(t, dialect, got, want, len(want))
 	}
 }
 

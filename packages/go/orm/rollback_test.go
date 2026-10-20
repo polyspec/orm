@@ -29,14 +29,7 @@ func rollbackFixture(t *testing.T, driver string) (*orm.DB, func() *orm.Core, fu
 	s := fixtureSchema(t, "rollback")
 	dsn := newDatabase(t, driver)
 	path := strings.TrimPrefix(dsn, "sqlite://")
-	db, err := orm.ConnectSchema(dsn, s, orm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { testcase.Close(t, db) })
-	if err := db.Utils().Schema().Install(s); err != nil {
-		t.Fatal(err)
-	}
+	db := openSchemaDB(t, dsn, s)
 	end := func() {}
 	switch driver {
 	case "sqlite":
@@ -78,12 +71,7 @@ func rollbackFixture(t *testing.T, driver string) (*orm.DB, func() *orm.Core, fu
 		}
 	}
 	ent := rowEntity("rollback_probe", s, rollbackColumns...)
-	model := func() *orm.Core {
-		c := orm.NewCore(ent)
-		ent.New(c)
-		c.Connect(db)
-		return c
-	}
+	model := coreFunc(db, ent)
 	return db, model, end
 }
 
@@ -124,13 +112,7 @@ func checkRollback(t *testing.T, err error, subject string) error {
 // rollbackFailed makes the callback of a transaction whose rollback also fails fail.
 func rollbackFailed(t *testing.T, driver string) {
 	db, model, end := rollbackFixture(t, driver)
-	err := db.Transaction(func() error {
-		if err := probeCreate(model, "kept"); err != nil {
-			return err
-		}
-		end()
-		return probeCreate(model, "end")
-	}, orm.Retry(0))
+	err := probeTransaction(db, model, end)
 	callback := checkRollback(t, err, "transaction")
 	if driver != "sqlite" {
 		// The next statement and rollback on a session the server ended is a lost-connection error.
@@ -212,4 +194,16 @@ func TestSavepointRollbackFailedMySQL(t *testing.T) {
 func TestSavepointRollbackFailedPostgres(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	savepointRollbackFailed(t, "postgres")
+}
+
+// probeTransaction runs the transaction of a rollback case: it creates the row
+// kept, calls end, and creates the row end.
+func probeTransaction(db *orm.DB, model func() *orm.Core, end func()) error {
+	return db.Transaction(func() error {
+		if err := probeCreate(model, "kept"); err != nil {
+			return err
+		}
+		end()
+		return probeCreate(model, "end")
+	}, orm.Retry(0))
 }

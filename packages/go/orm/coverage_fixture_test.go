@@ -24,17 +24,7 @@ type fixtureCase struct {
 // is an operation. A missing or repeated id fails.
 func featureFixture(t *testing.T, feature, id, operation string) fixtureCase {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "fixtures", feature+".json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var fixture struct {
-		Feature string        `json:"feature"`
-		Cases   []fixtureCase `json:"cases"`
-	}
-	if err := json.Unmarshal(raw, &fixture); err != nil {
-		t.Fatalf("%s fixture: %v", feature, err)
-	}
+	fixture := readFeatureDoc(t, feature)
 	if fixture.Feature != feature {
 		t.Fatalf("%s fixture names feature %q", feature, fixture.Feature)
 	}
@@ -68,16 +58,7 @@ func decodeFixture(t *testing.T, raw json.RawMessage, out any) {
 // the fixture, fails the run, so the suite and the tests stay the same set.
 func runFixtureCases(t *testing.T, feature string, tests map[string]func(*testing.T)) {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "fixtures", feature+".json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var fixture struct {
-		Cases []fixtureCase `json:"cases"`
-	}
-	if err := json.Unmarshal(raw, &fixture); err != nil {
-		t.Fatalf("%s fixture: %v", feature, err)
-	}
+	fixture := readFeatureDoc(t, feature)
 	seen := map[string]bool{}
 	for _, c := range fixture.Cases {
 		seen[c.ID] = true
@@ -93,4 +74,24 @@ func runFixtureCases(t *testing.T, feature string, tests map[string]func(*testin
 			t.Errorf("%s has no case %s for its test", feature, id)
 		}
 	}
+}
+
+// featureDoc is the document of a feature fixture under contracts/fixtures.
+type featureDoc struct {
+	Feature string        `json:"feature"`
+	Cases   []fixtureCase `json:"cases"`
+}
+
+// readFeatureDoc reads and decodes the feature fixture of feature; a failure fails the test.
+func readFeatureDoc(t *testing.T, feature string) featureDoc {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "fixtures", feature+".json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fixture featureDoc
+	if err := json.Unmarshal(raw, &fixture); err != nil {
+		t.Fatalf("%s fixture: %v", feature, err)
+	}
+	return fixture
 }

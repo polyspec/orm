@@ -3,21 +3,16 @@
 package orm
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/packages/go/internal/testdb"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // Requirements: CFG-1.
 func TestCoverageDSNConnection(t *testing.T) {
 	testcase.Start(t, testcase.Database)
-	driver, dsn := os.Getenv("ORM_FEATURE_DATABASE"), os.Getenv("ORM_FEATURE_DSN")
-	if dsn == "" || (driver != "mysql" && driver != "postgres" && driver != "sqlite") {
-		t.Fatal("selected database and DSN are required")
-	}
+	driver, dsn := testdb.FeatureDatabase(t)
 	parsed, err := DriverFromDSN(dsn)
 	if err != nil || parsed != driver {
 		t.Fatalf("DSN driver: %s, %v; want %s", parsed, err, driver)
@@ -25,19 +20,8 @@ func TestCoverageDSNConnection(t *testing.T) {
 	if _, err := DriverFromDSN("invalid://database"); err == nil {
 		t.Fatal("unsupported DSN scheme was accepted")
 	}
-	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "contracts", "fixtures", "bench", "bench.dbs"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	db, err := ConnectSchema(dsn, &Schema{Hash: m.ManifestHash, Text: m.ManifestText}, Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		if err := db.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
+	db := openBench(t, dsn)
+	defer testcase.Close(t, db)
 	if db.Driver() != driver {
 		t.Fatalf("connected to %s, want %s", db.Driver(), driver)
 	}
