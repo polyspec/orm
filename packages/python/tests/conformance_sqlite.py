@@ -1,9 +1,7 @@
 # The conformance vectors on sqlite: one test for each vector of the sqlite expectations, named by the vector name
 # (conformance_case). The bench database comes from BENCH_SQLITE_DSN.
 # Run: python -m packages.python.tests.conformance_sqlite
-import unittest
-
-from .conformance_case import conformance_tests
+from .conformance_case import conformance_module
 from .vector_case import VectorCase
 from . import testcase
 
@@ -12,19 +10,7 @@ class Case(VectorCase):
     """A conformance vector on sqlite."""
 
 
-RUN, SUITE = conformance_tests("sqlite", Case)
-
-
-def setUpModule():  # noqa: N802 - unittest's hook name
-    RUN.start()
-
-
-def load_tests(
-    loader: unittest.TestLoader, tests: unittest.TestSuite, _pattern: object
-) -> unittest.TestSuite:
-    """One test for each vector, named by its name."""
-    tests.addTests(SUITE)
-    return tests
+setUpModule, load_tests = conformance_module("sqlite", Case)
 
 
 if __name__ == "__main__":

@@ -102,3 +102,18 @@ def conformance_tests(dialect, kind):
         kind, vectors(dialect), check(run), lambda vector: vector["name"]
     )
     return run, suite
+
+
+def conformance_module(dialect, kind):
+    """The setUpModule and load_tests hooks of a conformance module: they start the Run of the dialect and add its suite."""
+    run, suite = conformance_tests(dialect, kind)
+
+    def setUpModule():  # noqa: N802 - unittest's hook name
+        run.start()
+
+    def load_tests(_loader, tests, _pattern):
+        """One test for each vector, named by its name."""
+        tests.addTests(suite)
+        return tests
+
+    return setUpModule, load_tests
