@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f6be43dc1ab66961dadbe24229cd59305fdcc470b9eec4f55c0b605598608d5d -->
+<!-- source-sha256: 8b999644b7276df24e82e358c564596717ed55a6cb5a626c171bed9b3d99ac8c -->
 # 변경 이력
 
 ## Unreleased
+- `make rust-fmt-check`가 통과한다: Rust code를 고정된 rustfmt와 선언된 packages/rust/rustfmt.toml로 formatting한다. red: cargo fmt --check가 file 12개를 보고했다 (KSTD-5-14).
 - TypeScript client가 SQLite가 bigint로 돌려주는 AES 저장 version을 읽으므로 SQLite에서 AES 읽기와 rotation이 다시 동작한다. red: 모든 SQLite AES 읽기가 CODEC_DECODE로 실패했다(KSTD-2-11-7-2-4).
 - Python dbspec parser의 negative-word helper가 private이어서 `test_python_extractor`가 통과한다. red: 이 test가 `is_negative_word`를 지목했다 (KSTD-2-11-7-2-3).
 - Python AES module의 저장 version helper가 private이어서 public 이름이 다시 symbol contract와 맞는다. red: extractor test가 `stored_version`을 지목했다 (KSTD-2-11-7-2-2).

@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- `make rust-fmt-check` passes: the Rust code is formatted by the pinned rustfmt under the declared packages/rust/rustfmt.toml. Red: cargo fmt --check reported 12 files (KSTD-5-14).
 - The TypeScript client reads an AES stored version that SQLite returns as a bigint, so AES reads and rotation work on SQLite again. Red: every SQLite AES read failed with CODEC_DECODE (KSTD-2-11-7-2-4).
 - The negative-word helper of the Python dbspec parser is private, so `test_python_extractor` passes. Red: it named `is_negative_word` (KSTD-2-11-7-2-3).
 - The stored-version helper of the Python AES module is private, so the public names match the symbol contract again. Red: the extractor test named `stored_version` (KSTD-2-11-7-2-2).
