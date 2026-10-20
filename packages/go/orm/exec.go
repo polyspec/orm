@@ -873,13 +873,16 @@ func runSelect(ctx context.Context, ex executor, c *cached, st *plan.Step, r *re
 }
 
 func decodeSelectedRow(vals []any, si *scanInfo, st *plan.Step, keyring AESKeyring) error {
-	version := int32(1)
+	var version int32
 	if at := st.Assemble.AESVersion; at != nil {
 		col := st.Assemble.Columns[*at]
 		var err error
 		if version, err = rowVersion(vals[col.Index]); err != nil {
 			return fmt.Errorf("%s.%s: %w", st.Assemble.Entity, col.Name, err)
 		}
+	} else if slices.ContainsFunc(si.styled, func(sc styledScanCol) bool { return slices.Contains(sc.host, "aes") }) {
+		// The planner selects the version column of every AES column, so a plan without one is broken: no version is assumed.
+		return codecErr(CodeInternal, "%s has an AES column and no version column", st.Assemble.Entity)
 	}
 	for _, sc := range si.styled {
 		v := vals[sc.index]

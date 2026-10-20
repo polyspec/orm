@@ -37,6 +37,11 @@ for (const [name, row, want] of cases) {
     if (got !== want) wrong.push(`got ${got || 'no error'}, want ${want || 'no error'}`);
   });
 }
+check('aes version codes: read: plan has an AES column and no version column', wrong => {
+  const noVersion = { ...assemble, aes_version: undefined };
+  const got = codeOf(() => decodeAssembly([cipher, 1], noVersion, db));
+  if (got !== 'INTERNAL') wrong.push(`got ${got || 'no error'}, want INTERNAL`);
+});
 check('aes version codes: rotation: stored version is zero', wrong => {
   const got = codeOf(() => keyring.rotateRow({ aes_key_version: 0, email: cipher }, 'aes_key_version', [{ name: 'email', styles: ['aes', 'hex'] }], 2, undefined));
   if (got !== 'CODEC_DECODE') wrong.push(`got ${got || 'no error'}, want CODEC_DECODE`);

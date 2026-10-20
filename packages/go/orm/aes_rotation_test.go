@@ -3,6 +3,7 @@ package orm
 import (
 	"testing"
 
+	"github.com/polyspec/orm/packages/go/engine/plan"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
@@ -105,5 +106,24 @@ func TestAESVersionCodesAreTheSameInEveryClient(t *testing.T) {
 		if got := ErrorCode(c.err()); got != c.code {
 			t.Errorf("%s: code = %q, want %s", c.name, got, c.code)
 		}
+	}
+}
+
+// Requirements: COD-44.
+func TestAESReadWithoutVersionColumnIsInternal(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	enc, err := HostEncode("email@example.test", []string{"aes", "hex"}, "k")
+	if err != nil {
+		t.Fatal(err)
+	}
+	keys, err := NewAESKeyring(map[int32]string{1: "k"}, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	step := &plan.Step{Assemble: &plan.Assemble{Entity: "user", Columns: []plan.OutCol{{Index: 0, Name: "aes_hex_email", Type: "string"}}}}
+	si := &scanInfo{styled: []styledScanCol{{index: 0, name: "aes_hex_email", host: []string{"aes", "hex"}}}}
+	err = decodeSelectedRow([]any{enc}, si, step, keys)
+	if got := ErrorCode(err); got != CodeInternal {
+		t.Fatalf("plan without a version column: code = %q, want %s (err %v)", got, CodeInternal, err)
 	}
 }

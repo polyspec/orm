@@ -55,6 +55,11 @@ class AesVersionCodesTest(unittest.TestCase):
             with self.subTest(value=bad):
                 self.assertEqual(code_of(lambda: stored_version(bad)), "CODEC_DECODE")
 
+    def test_read_plan_without_version_column_is_internal(self):
+        no_version = {key: value for key, value in ASSEMBLE.items() if key != "aes_version"}
+        row = [CIPHER, 1]
+        self.assertEqual(code_of(lambda: _decode_assembly(row, no_version, DB)), "INTERNAL")
+
     def test_rotation_codes(self):
         cases = [
             ({"aes_key_version": 0, "email": CIPHER}, "CODEC_DECODE"),

@@ -1353,6 +1353,9 @@ export function decodeAssembly(row: unknown[], assemble: Assemble, db: Db): void
     const at = row[present(assemble.columns[assemble.aes_version], 'the AES version column of an assembly').index];
     if (at === undefined) throw new OrmError(codes.INTERNAL, 'the AES version cell of an assembly is missing from the row');
     if (at !== null) version = storedVersion(at);
+  } else if (assemble.columns.some(column => column.styles.includes('aes'))) {
+    // The planner selects the version column of every AES column, so a plan without one is broken: no version is assumed.
+    throw new OrmError(codes.INTERNAL, 'an AES column of an assembly has no version column');
   }
   for (const column of assemble.columns) {
     let value = row[column.index];

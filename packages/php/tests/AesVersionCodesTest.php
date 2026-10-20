@@ -50,6 +50,16 @@ final class AesVersionCodesTest extends TestCase
         $this->assertSame('INTERNAL', $got);
     }
 
+    public function test_read_plan_without_version_column_is_internal(): void
+    {
+        $config = new Config('', '', 2, [1 => 'old-key', 2 => 'new-key']);
+        $rows = [[Codec::hostEncode('value', ['aes', 'hex'], 'old-key'), 1]];
+        $got = $this->codeOf(function () use (&$rows, $config): void {
+            Codec::decodeRows($rows, [[0, ['aes', 'hex'], [], true, null]], $config);
+        });
+        $this->assertSame('INTERNAL', $got);
+    }
+
     public function test_rotation_codes(): void
     {
         $keyring = new AesKeyring([1 => 'old-key', 2 => 'new-key'], 2);

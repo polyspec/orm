@@ -306,12 +306,16 @@ pub fn decode_styled(asm: &crate::plan::Assemble, data: &mut [Vec<Val>], aes_key
             let column = asm
                 .aes_version
                 .map(|at| &asm.columns[at])
-                .ok_or_else(|| Error::Config(format!("{}: the plan reads an AES column without its key version column", asm.entity)))?;
+                // COD-44: the planner selects the version column of every AES column, so a plan without one is broken: no version is assumed.
+                .ok_or_else(|| Error::Engine {
+                    code: crate::codes::INTERNAL.into(),
+                    msg: format!("{}: the plan reads an AES column without its key version column", asm.entity),
+                })?;
             let stored = row[column.index].as_i64()?;
-            i32::try_from(stored)
-                .ok()
-                .filter(|version| *version >= 1)
-                .ok_or_else(|| Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("aes version {stored} is not a positive 32-bit integer") })?
+            i32::try_from(stored).ok().filter(|version| *version >= 1).ok_or_else(|| Error::Engine {
+                code: crate::codes::CODEC_DECODE.into(),
+                msg: format!("aes version {stored} is not a positive 32-bit integer"),
+            })?
         } else {
             0
         };

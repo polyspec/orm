@@ -1629,22 +1629,24 @@ bool codec_decode_rows(HashTable *rows, HashTable *cells, zval *config)
                 } else {
                     zend_long version;
                     if (Z_TYPE_P(sc.version) == IS_NULL) {
-                        zval rv;
-                        version = zval_get_long(read_prop(config, "aesVersion", &rv));
-                    } else {
-                        zval *vi = zend_hash_index_find(vals, (zend_ulong)Z_LVAL_P(sc.version));
-                        if (vi == NULL) {
-                            /* COD-44: the version cell of a row the client selected is missing: a broken invariant, INTERNAL. */
-                            (void)orm_fail("INTERNAL", zend_string_init(ZEND_STRL("the AES version cell is missing from the row"), 0));
-                            zval_ptr_dtor(&v);
-                            ok = false;
-                            break;
-                        }
-                        if (!stored_version(vi, &version)) {
-                            zval_ptr_dtor(&v);
-                            ok = false;
-                            break;
-                        }
+                        /* COD-44: the planner selects the version column of every AES column, so a plan without one is broken: no version is assumed. */
+                        (void)orm_fail("INTERNAL", zend_string_init(ZEND_STRL("an AES column has no version column"), 0));
+                        zval_ptr_dtor(&v);
+                        ok = false;
+                        break;
+                    }
+                    zval *vi = zend_hash_index_find(vals, (zend_ulong)Z_LVAL_P(sc.version));
+                    if (vi == NULL) {
+                        /* COD-44: the version cell of a row the client selected is missing: a broken invariant, INTERNAL. */
+                        (void)orm_fail("INTERNAL", zend_string_init(ZEND_STRL("the AES version cell is missing from the row"), 0));
+                        zval_ptr_dtor(&v);
+                        ok = false;
+                        break;
+                    }
+                    if (!stored_version(vi, &version)) {
+                        zval_ptr_dtor(&v);
+                        ok = false;
+                        break;
                     }
                     zval arg, kv;
                     ZVAL_LONG(&arg, version);

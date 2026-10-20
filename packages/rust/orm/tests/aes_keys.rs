@@ -141,3 +141,29 @@ fn aes_read_version_codes_match_the_other_clients() {
         assert_eq!(got, want, "stored version {version:?}");
     }
 }
+
+// Requirements: COD-44.
+#[test]
+fn aes_read_plan_without_version_column_is_internal() {
+    use polyspec_orm::plan::{Assemble, OutCol};
+    let asm = Assemble {
+        entity: "secret_config".to_owned(),
+        columns: vec![OutCol {
+            index: 0,
+            name: "config".into(),
+            column: "config".into(),
+            typ: "longblob".into(),
+            styles: vec!["aes".into(), "hex".into()],
+            hidden: false,
+        }],
+        aes_version: None,
+        ..Default::default()
+    };
+    let keys = keys(&[(1, "old-key"), (2, "new-key")]);
+    let mut data = vec![vec![Val::Str("00".into())]];
+    let got = match polyspec_orm::row::decode_styled(&asm, &mut data, &keys) {
+        Ok(()) => String::new(),
+        Err(error) => error.code().to_owned(),
+    };
+    assert_eq!(got, "INTERNAL");
+}
