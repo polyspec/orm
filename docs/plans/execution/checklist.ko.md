@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: 307bc43b109b38ed0ef9e412d8823765a53e2d9c81038f8a02ab6816eeac2bf9 -->
+<!-- source-sha256: 8f3c79e04bcee31e5487d5490671e414f719059badc86c150ccac5b99a1a5cd0 -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1287,4 +1287,4 @@
 | T226-1 | TypeScript scan은 재할당된 변수에 담긴 receiver를 그 initializer와 재할당을 따라 class와 그 class의 import로 푼다 (T226 후속). Cause: T226 뒤 limepie models.ts에 ltSeq와 andLtSeq가 없다; modules/core/node/src/console/audit.ts:130이 자기 chain으로 재할당한 let page = new Audit()...에서 이들을 부른다 | the scanners of every generator, their tests | `node --test packages/ts/tests/generate-scan.mjs` | [o] |
 | T227 | orm-gen이 scan 중 parse할 수 없는 파일은 모든 generator에서 오류다. Cause: packages/python/src/polyspec/orm/generate/scan.py:561은 parse할 수 없는 파일을 조용히 건너뛰는데 PHP와 TypeScript scanner는 실패한다; 구현 간 차이이자 버려진 오류다 | docs/spec/dsl.md and its Korean twin, the scanners of the five generators, their tests, config/parity.json | `node --test packages/ts/tests/generate-scan.mjs`, `go test -run Scan ./packages/go/generator`, the scan tests of PHP, Python and Rust | [o] |
 | T227-1 | parse할 수 없는 scan의 Python test가 ruff format을 지킨다 (T227 후속). Cause: main에서 lint-python이 T227이 더한 case인 packages/python/tests/test_orm_gen.py:584에서 실패한다 | packages/python/tests/test_orm_gen.py | `make lint-python`, `node --test packages/ts/tests/generate-scan.mjs` | [o] |
-| T228 | 모든 generator는 set이 use하는 각 external table의 읽기 전용 model을 scan한 source가 부르든 안 부르든 쓴다 (T209 후속). Cause: PHP orm-gen은 external document의 use된 모든 table에 model을 쓰는데 TypeScript orm-gen은 scan이 호출을 찾을 때만 써서, limepie ordersheet, canister, product의 node/model/models.ts에 Audit가 없고 fillOwners가 models[...] is not a constructor로 실패한다 (node/src/install/install-stages.ts:105) | docs/spec/dbspec.md and its Korean twin, the five generators, their tests, config/parity.json | `node --test packages/ts/tests/generate-scan.mjs`, `go test -run External ./packages/go/generator`, the external-table cases of PHP, Python and Rust | [~] |
+| T228 | DBS-173은 모든 generator가 set이 use line으로 쓰는 각 external table의 읽기 전용 model을 scan한 source가 부르든 안 부르든 쓴다고 규정하고, 다섯 generator에 그 규칙을 지키는 회귀 case를 둔다 (T209 후속). Cause: T209 이전의 consumer 생성 model이 낡아 generator 간 차이처럼 보였고, spec이 그 규칙을 적지 않았다 | docs/spec/dbspec.md and its Korean twin, the five generators, their tests, config/parity.json | `node --test packages/ts/tests/generate-scan.mjs`, `go test -run External ./packages/go/generator` | [o] |
