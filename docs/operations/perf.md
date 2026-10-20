@@ -68,3 +68,7 @@ On 2026-09-27, `make perf-check` passed with the seeded MySQL bench database. Th
 | F4 | PHP: one round trip per statement (MySQL emulated prepares, PostgreSQL `ATTR_DISABLE_PREPARES`) | §2 |
 | F5 | PHP rows stay `FETCH_NUM` arrays | §2 |
 | D1 | Rust keeps sqlx | §4 |
+
+## 7. Bench databases
+
+`scripts/bench-db.mts` recreates the databases named by `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN` and `BENCH_SQLITE_DSN`, installs `contracts/fixtures/bench/bench.dbs` through the TypeScript bench model, runs `benchmarks/sql/seed.mysql.sql`, `benchmarks/sql/seed.pg.sql` or `benchmarks/sql/seed.sqlite.sql`, and fills the AES and blind-index columns with the host codecs of the TypeScript client in the authenticated host format.

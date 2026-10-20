@@ -1,5 +1,5 @@
 <!-- doc-id: perf -->
-<!-- source-sha256: 85c3a8cfaf9ea25e2b6e4b0efaaf598e9709ff777c7722fdfdc75f0889769384 -->
+<!-- source-sha256: 4673ca6bae302127e99a20c530e2f229d03ec31df0fe112c20d1e55332b923b3 -->
 # 성능
 
 모든 클라이언트는 호출한 프로세스 안에서 문장을 계획하고 네이티브 드라이버로 실행한다. 현재 클라이언트 오버헤드 기준은 아래 Go·PHP 실행 경로를 `make perf-check`로 측정하며 필수 데이터베이스 환경이 없으면 명령이 실패한다.
@@ -69,3 +69,7 @@
 | F4 | PHP: 문장마다 round trip 하나(MySQL emulated prepare, PostgreSQL `ATTR_DISABLE_PREPARES`) | §2 |
 | F5 | PHP 행은 `FETCH_NUM` 배열 유지 | §2 |
 | D1 | Rust는 sqlx 유지 | §4 |
+
+## 7. bench database
+
+bench database는 `scripts/bench-db.mts`가 만든다. `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`의 database를 다시 만들고, TypeScript bench model로 `contracts/fixtures/bench/bench.dbs`를 설치하고, `benchmarks/sql/seed.mysql.sql`, `benchmarks/sql/seed.pg.sql`, `benchmarks/sql/seed.sqlite.sql`을 실행한 뒤 TypeScript client의 host codec으로 인증된 host 형식의 AES와 blind-index 값을 채운다.
