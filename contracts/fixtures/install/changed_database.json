@@ -1,4 +1,7 @@
 {
+  "requirements": {
+    "cases": ["DBS-108", "SCH-7", "SCH-13"]
+  },
   "feature": "schema_install",
   "cases": [
     {
