@@ -26,7 +26,8 @@
       "runner": "php",
       "roots": ["packages/php-ext"],
       "support": ["packages/php-ext/tests/bootstrap.php", "packages/php-ext/tests/declarations.php"],
-      "args": ["-d", "extension=${ORM_PARITY_PHP_EXTENSION}"]
+      "args": ["-d", "extension=${ORM_PARITY_PHP_EXTENSION}"],
+      "errors": { "file": "packages/php-ext/src/polyspec_orm.stub.php", "pattern": "^    public const (?:string )?(\\w+) = '\\1';$" }
     },
     {
       "name": "typescript",
@@ -178,7 +179,14 @@
     {"id": "ts-generate-scan-reassigned-variable", "kind": "feature", "requirements": ["DSL-151"], "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/generate-scan.mjs", "id": "generate-scan/reassigned_variable"}]},
     {"id": "ts-generate-scan-unparsable-file", "kind": "feature", "requirements": ["DSL-152"], "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/generate-scan.mjs", "id": "generate-scan/unparsable_file"}]},
     {"id": "ts-generate-scan-unused-external-models", "kind": "feature", "requirements": ["DBS-173"], "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/generate-scan.mjs", "id": "generate-scan/unused_external_models"}]},
-    {"id": "ts-code-catalog", "kind": "feature", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/code-catalog.mjs", "id": "code-catalog/matches-errors-yaml"}]},
+    {"id": "code-catalog-matches-errors-yaml", "kind": "feature", "requirements": ["INT-65"], "bindings": [
+      {"implementation": "go", "test": "packages/go/orm/codes_test.go", "id": "TestCodeCatalog"},
+      {"implementation": "php", "test": "packages/php/tests/CodeCatalogTest.php", "id": "CodeCatalogTest::test_catalog_matches_errors_yaml"},
+      {"implementation": "php-extension", "test": "packages/php/tests/CodeCatalogTest.php", "id": "CodeCatalogTest::test_catalog_matches_errors_yaml"},
+      {"implementation": "typescript", "test": "packages/ts/tests/code-catalog.mjs", "id": "code-catalog/matches-errors-yaml"},
+      {"implementation": "python", "test": "packages/python/tests/test_code_catalog.py", "id": "test_codes_match_errors_yaml"},
+      {"implementation": "rust", "test": "packages/rust/orm/tests/code_catalog.rs", "id": "code_catalog::matches_errors_yaml"}
+    ]},
     {"id": "ts-bin-mode", "kind": "feature", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/bin-mode.mjs", "id": "bin-mode/executable"}]},
     {"id": "ts-generate", "kind": "feature", "requirements": ["ORES-21"], "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/generate.mjs", "id": "generate"}]},
     {"id": "ts-group_rows", "kind": "feature", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/group_rows.mjs", "id": "group_rows/owner"}]},
@@ -808,7 +816,6 @@
     {"id": "go-internal-packages-go-orm-cancel", "kind": "feature", "requirements": ["CFG-9"], "bindings": [{"implementation": "go", "test": "packages/go/orm/cancel_test.go", "id": "TestWithContextCancels"}]},
     {"id": "go-internal-packages-go-orm-cancelled-session", "kind": "feature", "requirements": ["CFG-30"], "bindings": [{"implementation": "go", "test": "packages/go/orm/cancelled_session_test.go", "id": "TestCancelledTransactionClearsSessionState"}]},
     {"id": "go-internal-packages-go-orm-clock", "kind": "feature", "requirements": ["DIA-18"], "bindings": [{"implementation": "go", "test": "packages/go/orm/clock_test.go", "id": "TestClockMicrosecondsSQLite"}]},
-    {"id": "go-internal-packages-go-orm-codes", "kind": "feature", "bindings": [{"implementation": "go", "test": "packages/go/orm/codes_test.go", "id": "TestCodeCatalog"}]},
     {"id": "go-internal-packages-go-orm-collection-key", "kind": "feature", "bindings": [{"implementation": "go", "test": "packages/go/orm/collection_key_test.go", "id": "TestTypedKeyValuesCannotCollide"}]},
     {"id": "go-internal-packages-go-orm-context-reset", "kind": "feature", "bindings": [{"implementation": "go", "test": "packages/go/orm/context_reset_test.go", "id": "TestTransactionReportsFailedLocalReset"}]},
     {"id": "go-internal-packages-go-orm-coverage-audit-triggers", "kind": "feature", "bindings": [{"implementation": "go", "test": "packages/go/orm/coverage_audit_triggers_test.go", "id": "TestCoverageAuditHistory", "command": ["make", "-s", "-C", "${ORM_CHECKOUT}", "feature-go-unit", "FEATURE_DATABASE=mysql", "FEATURE_DSN_ENV=BENCH_MYSQL_DSN", "FEATURE_TEST=TestCoverageAuditHistory", "FEATURE_PACKAGE=./orm"]}]},
@@ -1012,7 +1019,6 @@
     { "id": "rust-clock-soft-delete-microseconds-mysql", "kind": "feature", "requirements": ["DIA-18"], "bindings": [{ "implementation": "rust", "test": "packages/rust/orm/tests/clock.rs", "id": "clock_soft_delete_microseconds_mysql" }] },
     { "id": "rust-clock-soft-delete-microseconds-postgres", "kind": "feature", "requirements": ["DIA-18"], "bindings": [{ "implementation": "rust", "test": "packages/rust/orm/tests/clock.rs", "id": "clock_soft_delete_microseconds_postgres" }] },
     { "id": "rust-clock-soft-delete-microseconds-sqlite", "kind": "feature", "requirements": ["DIA-18"], "bindings": [{ "implementation": "rust", "test": "packages/rust/orm/tests/clock.rs", "id": "clock_soft_delete_microseconds_sqlite" }] },
-    { "id": "rust-code-catalog-matches-errors-yaml", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/orm/tests/code_catalog.rs", "id": "code_catalog::matches_errors_yaml" }] },
     { "id": "rust-coverage-audit-history", "kind": "feature", "requirements": ["CFG-8"], "bindings": [{ "implementation": "rust", "test": "packages/rust/orm/tests/coverage_audit_triggers.rs", "id": "coverage_audit_history" }] },
     { "id": "rust-coverage-audit-selected-columns", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/orm/tests/coverage_audit_triggers.rs", "id": "coverage_audit_selected_columns" }] },
     { "id": "rust-coverage-audit-transaction-entry-points", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/orm/tests/coverage_audit_triggers.rs", "id": "coverage_audit_transaction_entry_points" }] },
@@ -1281,10 +1287,6 @@
     {
       "id": "py-test-markdown", "kind": "feature", "requirements": ["PRT-63"],
       "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_markdown.py", "id": "test_parse_markdown_dsn" }]
-    },
-    {
-      "id": "py-test-code-catalog", "kind": "feature",
-      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_code_catalog.py", "id": "test_codes_match_errors_yaml" }]
     },
     {
       "id": "py-test-model-fields", "kind": "feature",
@@ -1579,7 +1581,6 @@
     {"id": "php-internal-autoload-bootstrap", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/AutoloadTest.php", "id": "AutoloadTest::test_bootstrap"}]},
     {"id": "php-internal-autoload-autoload", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/AutoloadTest.php", "id": "AutoloadTest::test_autoload"}]},
     {"id": "php-internal-client-generics-phpstan-types-the-transaction-result-and-the-rows-of-a-model", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/ClientGenericsTest.php", "id": "ClientGenericsTest::test_phpstan_types_the_transaction_result_and_the_rows_of_a_model"}]},
-    {"id": "php-internal-code-catalog-catalog-matches-errors-yaml", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/CodeCatalogTest.php", "id": "CodeCatalogTest::test_catalog_matches_errors_yaml"}]},
     {"id": "php-internal-conformance-result-conformance-result-php", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/ConformanceResultTest.php", "id": "ConformanceResultTest::test_conformance_result_php"}]},
     {"id": "php-internal-failing-pdo-cleanup-errors-release", "kind": "feature", "requirements": ["PLN-98"], "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecApplyCleanupTest.php", "id": "FailingPdo::test_cleanup_errors_release"}, {"implementation": "php-extension", "test": "packages/php/tests/DbspecApplyCleanupTest.php", "id": "FailingPdo::test_cleanup_errors_release"}]},
     {"id": "php-internal-failing-pdo-cleanup-errors-begin-restore", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecApplyCleanupTest.php", "id": "FailingPdo::test_cleanup_errors_begin_restore"}, {"implementation": "php-extension", "test": "packages/php/tests/DbspecApplyCleanupTest.php", "id": "FailingPdo::test_cleanup_errors_begin_restore"}]},
@@ -1781,9 +1782,11 @@
     {
       "id": "error-code-version-mismatch",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeVersionMismatch" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::VERSION_MISMATCH" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::VERSION_MISMATCH" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.VERSION_MISMATCH:var" },
         { "implementation": "python", "symbol": "orm.codes.VERSION_MISMATCH" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::VERSION_MISMATCH" }
@@ -1792,9 +1795,11 @@
     {
       "id": "error-code-schema-hash-mismatch",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeSchemaHashMismatch" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::SCHEMA_HASH_MISMATCH" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::SCHEMA_HASH_MISMATCH" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.SCHEMA_HASH_MISMATCH:var" },
         { "implementation": "python", "symbol": "orm.codes.SCHEMA_HASH_MISMATCH" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::SCHEMA_HASH_MISMATCH" }
@@ -1803,9 +1808,11 @@
     {
       "id": "error-code-schema-invalid",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeSchemaInvalid" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::SCHEMA_INVALID" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::SCHEMA_INVALID" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.SCHEMA_INVALID:var" },
         { "implementation": "python", "symbol": "orm.codes.SCHEMA_INVALID" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::SCHEMA_INVALID" }
@@ -1814,9 +1821,11 @@
     {
       "id": "error-code-dialect-unknown",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeDialectUnknown" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::DIALECT_UNKNOWN" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::DIALECT_UNKNOWN" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.DIALECT_UNKNOWN:var" },
         { "implementation": "python", "symbol": "orm.codes.DIALECT_UNKNOWN" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::DIALECT_UNKNOWN" }
@@ -1825,9 +1834,11 @@
     {
       "id": "error-code-ir-invalid",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeIrInvalid" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::IR_INVALID" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::IR_INVALID" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.IR_INVALID:var" },
         { "implementation": "python", "symbol": "orm.codes.IR_INVALID" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::IR_INVALID" }
@@ -1836,9 +1847,11 @@
     {
       "id": "error-code-capability-unsupported",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeCapabilityUnsupported" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::CAPABILITY_UNSUPPORTED" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::CAPABILITY_UNSUPPORTED" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.CAPABILITY_UNSUPPORTED:var" },
         { "implementation": "python", "symbol": "orm.codes.CAPABILITY_UNSUPPORTED" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::CAPABILITY_UNSUPPORTED" }
@@ -1847,9 +1860,11 @@
     {
       "id": "error-code-entity-unknown",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeEntityUnknown" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::ENTITY_UNKNOWN" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::ENTITY_UNKNOWN" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.ENTITY_UNKNOWN:var" },
         { "implementation": "python", "symbol": "orm.codes.ENTITY_UNKNOWN" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::ENTITY_UNKNOWN" }
@@ -1858,9 +1873,11 @@
     {
       "id": "error-code-column-unknown",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeColumnUnknown" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::COLUMN_UNKNOWN" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::COLUMN_UNKNOWN" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.COLUMN_UNKNOWN:var" },
         { "implementation": "python", "symbol": "orm.codes.COLUMN_UNKNOWN" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::COLUMN_UNKNOWN" }
@@ -1869,9 +1886,11 @@
     {
       "id": "error-code-relation-unknown",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeRelationUnknown" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::RELATION_UNKNOWN" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::RELATION_UNKNOWN" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.RELATION_UNKNOWN:var" },
         { "implementation": "python", "symbol": "orm.codes.RELATION_UNKNOWN" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::RELATION_UNKNOWN" }
@@ -1880,9 +1899,11 @@
     {
       "id": "error-code-index-unknown",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeIndexUnknown" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::INDEX_UNKNOWN" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::INDEX_UNKNOWN" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.INDEX_UNKNOWN:var" },
         { "implementation": "python", "symbol": "orm.codes.INDEX_UNKNOWN" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::INDEX_UNKNOWN" }
@@ -1891,9 +1912,11 @@
     {
       "id": "error-code-column-alias-conflict",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeColumnAliasConflict" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::COLUMN_ALIAS_CONFLICT" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::COLUMN_ALIAS_CONFLICT" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.COLUMN_ALIAS_CONFLICT:var" },
         { "implementation": "python", "symbol": "orm.codes.COLUMN_ALIAS_CONFLICT" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::COLUMN_ALIAS_CONFLICT" }
@@ -1902,9 +1925,11 @@
     {
       "id": "error-code-operator-unknown",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeOperatorUnknown" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::OPERATOR_UNKNOWN" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::OPERATOR_UNKNOWN" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.OPERATOR_UNKNOWN:var" },
         { "implementation": "python", "symbol": "orm.codes.OPERATOR_UNKNOWN" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::OPERATOR_UNKNOWN" }
@@ -1913,9 +1938,11 @@
     {
       "id": "error-code-function-unknown",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeFunctionUnknown" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::FUNCTION_UNKNOWN" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::FUNCTION_UNKNOWN" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.FUNCTION_UNKNOWN:var" },
         { "implementation": "python", "symbol": "orm.codes.FUNCTION_UNKNOWN" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::FUNCTION_UNKNOWN" }
@@ -1924,9 +1951,11 @@
     {
       "id": "error-code-operator-not-allowed",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeOperatorNotAllowed" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::OPERATOR_NOT_ALLOWED" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::OPERATOR_NOT_ALLOWED" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.OPERATOR_NOT_ALLOWED:var" },
         { "implementation": "python", "symbol": "orm.codes.OPERATOR_NOT_ALLOWED" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::OPERATOR_NOT_ALLOWED" }
@@ -1935,9 +1964,11 @@
     {
       "id": "error-code-or-at-group-start",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeOrAtGroupStart" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::OR_AT_GROUP_START" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::OR_AT_GROUP_START" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.OR_AT_GROUP_START:var" },
         { "implementation": "python", "symbol": "orm.codes.OR_AT_GROUP_START" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::OR_AT_GROUP_START" }
@@ -1946,9 +1977,11 @@
     {
       "id": "error-code-empty-in",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeEmptyIn" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::EMPTY_IN" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::EMPTY_IN" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.EMPTY_IN:var" },
         { "implementation": "python", "symbol": "orm.codes.EMPTY_IN" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::EMPTY_IN" }
@@ -1957,9 +1990,11 @@
     {
       "id": "error-code-entity-not-joined",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeEntityNotJoined" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::ENTITY_NOT_JOINED" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::ENTITY_NOT_JOINED" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.ENTITY_NOT_JOINED:var" },
         { "implementation": "python", "symbol": "orm.codes.ENTITY_NOT_JOINED" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::ENTITY_NOT_JOINED" }
@@ -1968,9 +2003,11 @@
     {
       "id": "error-code-limit-in-relation",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeLimitInRelation" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::LIMIT_IN_RELATION" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::LIMIT_IN_RELATION" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.LIMIT_IN_RELATION:var" },
         { "implementation": "python", "symbol": "orm.codes.LIMIT_IN_RELATION" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::LIMIT_IN_RELATION" }
@@ -1979,9 +2016,11 @@
     {
       "id": "error-code-no-rows",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeNoRows" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::NO_ROWS" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::NO_ROWS" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.NO_ROWS:var" },
         { "implementation": "python", "symbol": "orm.codes.NO_ROWS" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::NO_ROWS" }
@@ -1990,9 +2029,11 @@
     {
       "id": "error-code-row-not-deleted",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeRowNotDeleted" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::ROW_NOT_DELETED" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::ROW_NOT_DELETED" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.ROW_NOT_DELETED:var" },
         { "implementation": "python", "symbol": "orm.codes.ROW_NOT_DELETED" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::ROW_NOT_DELETED" }
@@ -2001,9 +2042,11 @@
     {
       "id": "error-code-batch-too-large",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeBatchTooLarge" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::BATCH_TOO_LARGE" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::BATCH_TOO_LARGE" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.BATCH_TOO_LARGE:var" },
         { "implementation": "python", "symbol": "orm.codes.BATCH_TOO_LARGE" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::BATCH_TOO_LARGE" }
@@ -2012,9 +2055,11 @@
     {
       "id": "error-code-revision-changed",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeRevisionChanged" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::REVISION_CHANGED" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::REVISION_CHANGED" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.REVISION_CHANGED:var" },
         { "implementation": "python", "symbol": "orm.codes.REVISION_CHANGED" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::REVISION_CHANGED" }
@@ -2023,9 +2068,11 @@
     {
       "id": "error-code-column-unselected",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeColumnUnselected" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::COLUMN_UNSELECTED" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::COLUMN_UNSELECTED" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.COLUMN_UNSELECTED:var" },
         { "implementation": "python", "symbol": "orm.codes.COLUMN_UNSELECTED" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::COLUMN_UNSELECTED" }
@@ -2034,9 +2081,11 @@
     {
       "id": "error-code-optimistic-lock",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeOptimisticLock" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::OPTIMISTIC_LOCK" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::OPTIMISTIC_LOCK" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.OPTIMISTIC_LOCK:var" },
         { "implementation": "python", "symbol": "orm.codes.OPTIMISTIC_LOCK" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::OPTIMISTIC_LOCK" }
@@ -2045,9 +2094,11 @@
     {
       "id": "error-code-write-conflict",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeWriteConflict" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::WRITE_CONFLICT" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::WRITE_CONFLICT" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.WRITE_CONFLICT:var" },
         { "implementation": "python", "symbol": "orm.codes.WRITE_CONFLICT" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::WRITE_CONFLICT" }
@@ -2056,9 +2107,11 @@
     {
       "id": "error-code-codec-decode",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeCodecDecode" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::CODEC_DECODE" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::CODEC_DECODE" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.CODEC_DECODE:var" },
         { "implementation": "python", "symbol": "orm.codes.CODEC_DECODE" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::CODEC_DECODE" }
@@ -2067,9 +2120,11 @@
     {
       "id": "error-code-codec-encode",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeCodecEncode" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::CODEC_ENCODE" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::CODEC_ENCODE" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.CODEC_ENCODE:var" },
         { "implementation": "python", "symbol": "orm.codes.CODEC_ENCODE" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::CODEC_ENCODE" }
@@ -2078,9 +2133,11 @@
     {
       "id": "error-code-codec-unsupported",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeCodecUnsupported" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::CODEC_UNSUPPORTED" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::CODEC_UNSUPPORTED" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.CODEC_UNSUPPORTED:var" },
         { "implementation": "python", "symbol": "orm.codes.CODEC_UNSUPPORTED" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::CODEC_UNSUPPORTED" }
@@ -2089,9 +2146,11 @@
     {
       "id": "error-code-config",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeConfig" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::CONFIG" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::CONFIG" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.CONFIG:var" },
         { "implementation": "python", "symbol": "orm.codes.CONFIG" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::CONFIG" }
@@ -2100,9 +2159,11 @@
     {
       "id": "error-code-canceled",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeCanceled" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::CANCELED" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::CANCELED" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.CANCELED:var" },
         { "implementation": "python", "symbol": "orm.codes.CANCELED" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::CANCELED" }
@@ -2111,9 +2172,11 @@
     {
       "id": "error-code-rollback",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeRollback" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::ROLLBACK" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::ROLLBACK" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.ROLLBACK:var" },
         { "implementation": "python", "symbol": "orm.codes.ROLLBACK" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::ROLLBACK" }
@@ -2122,9 +2185,11 @@
     {
       "id": "error-code-fault",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeFault" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::FAULT" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::FAULT" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.FAULT:var" },
         { "implementation": "python", "symbol": "orm.codes.FAULT" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::FAULT" }
@@ -2133,9 +2198,11 @@
     {
       "id": "error-code-subscriber",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeSubscriber" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::SUBSCRIBER" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::SUBSCRIBER" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.SUBSCRIBER:var" },
         { "implementation": "python", "symbol": "orm.codes.SUBSCRIBER" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::SUBSCRIBER" }
@@ -2144,9 +2211,11 @@
     {
       "id": "error-code-schema-differs",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeSchemaDiffers" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::SCHEMA_DIFFERS" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::SCHEMA_DIFFERS" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.SCHEMA_DIFFERS:var" },
         { "implementation": "python", "symbol": "orm.codes.SCHEMA_DIFFERS" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::SCHEMA_DIFFERS" }
@@ -2155,9 +2224,11 @@
     {
       "id": "error-code-internal",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeInternal" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::INTERNAL" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::INTERNAL" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.INTERNAL:var" },
         { "implementation": "python", "symbol": "orm.codes.INTERNAL" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::INTERNAL" }
@@ -2166,9 +2237,11 @@
     {
       "id": "error-code-lock-not-available",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeLockNotAvailable" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::LOCK_NOT_AVAILABLE" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::LOCK_NOT_AVAILABLE" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.LOCK_NOT_AVAILABLE:var" },
         { "implementation": "python", "symbol": "orm.codes.LOCK_NOT_AVAILABLE" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::LOCK_NOT_AVAILABLE" }
@@ -2177,9 +2250,11 @@
     {
       "id": "error-code-deadlock",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeDeadlock" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::DEADLOCK" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::DEADLOCK" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.DEADLOCK:var" },
         { "implementation": "python", "symbol": "orm.codes.DEADLOCK" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::DEADLOCK" }
@@ -2188,9 +2263,11 @@
     {
       "id": "error-code-duplicate-key",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeDuplicateKey" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::DUPLICATE_KEY" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::DUPLICATE_KEY" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.DUPLICATE_KEY:var" },
         { "implementation": "python", "symbol": "orm.codes.DUPLICATE_KEY" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::DUPLICATE_KEY" }
@@ -2199,9 +2276,11 @@
     {
       "id": "error-code-foreign-key",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeForeignKey" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::FOREIGN_KEY" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::FOREIGN_KEY" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.FOREIGN_KEY:var" },
         { "implementation": "python", "symbol": "orm.codes.FOREIGN_KEY" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::FOREIGN_KEY" }
@@ -2210,9 +2289,11 @@
     {
       "id": "error-code-constraint",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeConstraint" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::CONSTRAINT" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::CONSTRAINT" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.CONSTRAINT:var" },
         { "implementation": "python", "symbol": "orm.codes.CONSTRAINT" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::CONSTRAINT" }
@@ -2221,9 +2302,11 @@
     {
       "id": "error-code-read-only",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeReadOnly" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::READ_ONLY" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::READ_ONLY" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.READ_ONLY:var" },
         { "implementation": "python", "symbol": "orm.codes.READ_ONLY" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::READ_ONLY" }
@@ -2232,9 +2315,11 @@
     {
       "id": "error-code-connection-lost",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeConnectionLost" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::CONNECTION_LOST" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::CONNECTION_LOST" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.CONNECTION_LOST:var" },
         { "implementation": "python", "symbol": "orm.codes.CONNECTION_LOST" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::CONNECTION_LOST" }
@@ -2243,9 +2328,11 @@
     {
       "id": "error-code-driver",
       "kind": "api",
+      "requirements": ["INT-65"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.CodeDriver" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Code::DRIVER" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Code::DRIVER" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!codes.DRIVER:var" },
         { "implementation": "python", "symbol": "orm.codes.DRIVER" },
         { "implementation": "rust", "symbol": "polyspec_orm::codes::DRIVER" }

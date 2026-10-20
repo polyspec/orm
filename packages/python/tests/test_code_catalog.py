@@ -8,7 +8,7 @@ from pathlib import Path
 from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
-CATALOG = ROOT / "docs" / "errors.yaml"
+CATALOG = ROOT / "docs" / "spec" / "errors.yaml"
 CODES = ROOT / "packages" / "python" / "src" / "polyspec" / "orm" / "codes.py"
 
 
@@ -32,6 +32,7 @@ def read_catalog() -> list[tuple[str, str]]:
 
 
 class CodeCatalogTest(unittest.TestCase):
+    # Requirements: INT-65.
     def test_codes_match_errors_yaml(self):
         catalog = read_catalog()
         source = CODES.read_text(encoding="utf-8")

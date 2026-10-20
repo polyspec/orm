@@ -32,6 +32,7 @@ final class CodeCatalogTest extends TestCase
         return $out;
     }
 
+    // Requirements: INT-65.
     public function test_catalog_matches_errors_yaml(): void
     {
         $source = (string) file_get_contents(__DIR__ . '/../src/Code.php');
@@ -42,5 +43,11 @@ final class CodeCatalogTest extends TestCase
             self::assertSame($note, $m[1], "Code.php $code differs from docs/spec/errors.yaml; run orm-gen errors --lang php");
         }
         self::assertSame(count($codes), preg_match_all('/public const \w+ = /', $source), 'Code.php holds other codes than docs/spec/errors.yaml');
+        if (extension_loaded('polyspec_orm')) {
+            // With the extension loaded, the class it registers must hold the same codes, each with its code as value.
+            $codes = array_column($codes, 0);
+            $registered = (new \ReflectionClass(\Polyspec\Orm\Code::class))->getConstants();
+            self::assertEqualsCanonicalizing(array_combine($codes, $codes), $registered, 'the loaded polyspec_orm extension does not register the codes of docs/spec/errors.yaml');
+        }
     }
 }

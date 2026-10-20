@@ -21,6 +21,7 @@ fn catalog(yaml: &str) -> Vec<(String, String)> {
     out
 }
 
+// Requirements: INT-65.
 fn matches_errors_yaml() {
     let root = polyspec_orm_testcase::manifest_dir();
     let yaml = std::fs::read_to_string(root.join("../../../docs/spec/errors.yaml")).expect("docs/spec/errors.yaml");

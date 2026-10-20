@@ -45,6 +45,7 @@ func readCatalog(t *testing.T) []catalogCode {
 
 // TestCodeCatalog compares codes.go, which orm-gen errors generates, with docs/spec/errors.yaml: every code is a constant
 // with the note of the catalog, and the file holds no other code.
+// Requirements: INT-65.
 func TestCodeCatalog(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	src, err := os.ReadFile("codes.go")
