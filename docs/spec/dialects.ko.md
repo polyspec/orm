@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: d3ea3d8be11ed230df3159bd7d8ac9bc6425b48d6357895c08bc0ac066bf6be6 -->
+<!-- source-sha256: e22d9d3cf9bc9219e24b3e2b09879d4ed8525f9111b73283110ba6743b7e2663 -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -286,7 +286,7 @@ Audit context 선택지. Audit trigger는 클라이언트가 transaction 안에�
 | `datetime(0)` | | | `length(c) = 19 AND c IS datetime(c) AND substr(c, 12, 2) < '24'` |
 | `datetime(p)`, p > 0 | | | `length(c) = 20 + p AND substr(c, 1, 19) IS datetime(substr(c, 1, 19)) AND substr(c, 12, 2) < '24' AND substr(c, 20, 1) = '.' AND substr(c, 21) GLOB` 숫자 class p개 |
 
-- **DIA-128** SQLite `f64` CHECK는 위 schema definitions에 probe가 없다. REAL column은 정수와 숫자 text를 real 값으로 바꾸고 다른 text는 그대로 두는데, 이 CHECK가 그것을 거부한다(`sqlite.ddl.types_and_defaults`). PostgreSQL은 `timestamp` 입력의 24시를 다음 날 자정으로 읽으므로 `'2026-01-01 24:00:00'`은 유효한 date-time인 `2026-01-02 00:00:00`으로 저장된다. MySQL은 그 입력을 거부하고(1292) SQLite는 renderer CHECK가 거부한다. 저장되는 값의 집합이 같으므로 PostgreSQL CHECK는 없다(`postgres.ddl.types_and_defaults`). client는 24시를 보내지 않는다.
+- **DIA-128** SQLite `f64` CHECK는 위 schema definitions에 probe가 없다. REAL column은 정수와 숫자 text를 real 값으로 바꾸고 다른 text는 그대로 두는데, 이 CHECK가 그것을 거부한다(`tests/dbspec/ddl.json`의 `types-and-defaults` case). PostgreSQL은 `timestamp` 입력의 24시를 다음 날 자정으로 읽으므로 `'2026-01-01 24:00:00'`은 유효한 date-time인 `2026-01-02 00:00:00`으로 저장된다. MySQL은 그 입력을 거부하고(1292) SQLite는 renderer CHECK가 거부한다. 저장되는 값의 집합이 같으므로 PostgreSQL CHECK는 없다(같은 case). client는 24시를 보내지 않는다.
 
 ### Trigger
 

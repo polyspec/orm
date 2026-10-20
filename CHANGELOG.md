@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- DIA-128 names the `types-and-defaults` case of `tests/dbspec/ddl.json` that checks it, instead of probes that do not exist (KSTD-2-9-4).
 - DIA-16 states that PostgreSQL packs an `ip` value on the client into `bytea`, as every planner does, instead of `(?)::inet` and `host(col)` (KSTD-2-9-3).
 - The dialect spec no longer describes a `point` type, which dbspec does not have (KSTD-2-9-2).
 - The DSL spec no longer says SQLite stores `decimal` as floating point, which contradicted the exact `DECIMALINT(P,S)` storage of DIA-25 (KSTD-2-9-1).

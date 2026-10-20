@@ -291,7 +291,7 @@ Sources: [MySQL implicit commit](https://dev.mysql.com/doc/refman/8.4/en/implici
 | `datetime(0)` | | | `length(c) = 19 AND c IS datetime(c) AND substr(c, 12, 2) < '24'` |
 | `datetime(p)`, p > 0 | | | `length(c) = 20 + p AND substr(c, 1, 19) IS datetime(substr(c, 1, 19)) AND substr(c, 12, 2) < '24' AND substr(c, 20, 1) = '.' AND substr(c, 21) GLOB` p digit classes |
 
-- **DIA-128** The SQLite `f64` CHECK has no probe in the schema definitions above: a REAL column converts integers and numeric text to real values and keeps other text, which this CHECK rejects (`sqlite.ddl.types_and_defaults`). PostgreSQL reads the input hour 24 of a `timestamp` as midnight of the next day, so `'2026-01-01 24:00:00'` stores `2026-01-02 00:00:00`, a valid date-time, while MySQL rejects that input (1292) and SQLite its renderer CHECK; no PostgreSQL CHECK applies, because the stored values are the same set (`postgres.ddl.types_and_defaults`). Clients never send hour 24.
+- **DIA-128** The SQLite `f64` CHECK has no probe in the schema definitions above: a REAL column converts integers and numeric text to real values and keeps other text, which this CHECK rejects (the `types-and-defaults` case of `tests/dbspec/ddl.json`). PostgreSQL reads the input hour 24 of a `timestamp` as midnight of the next day, so `'2026-01-01 24:00:00'` stores `2026-01-02 00:00:00`, a valid date-time, while MySQL rejects that input (1292) and SQLite its renderer CHECK; no PostgreSQL CHECK applies, because the stored values are the same set (the same case). Clients never send hour 24.
 
 ### Triggers
 
