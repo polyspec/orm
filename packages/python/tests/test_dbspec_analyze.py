@@ -15,6 +15,15 @@ def tokens_of(text, documents=None):
 
 
 TABLE = "dbspec 1 app\n\ntable t {\n  id i64\n  primary key (id)\n}\n"
+# The tokens of the header and of the opening of the table in TABLE, which the document tests share.
+TABLE_OPENING = [
+    (1, 0, 6, "keyword"),
+    (1, 7, 8, "number"),
+    (1, 9, 12, "name"),
+    (3, 0, 5, "keyword"),
+    (3, 6, 7, "name"),
+    (3, 8, 9, "punctuation"),
+]
 
 
 class AnalyzeTest(unittest.TestCase):
@@ -29,12 +38,7 @@ class AnalyzeTest(unittest.TestCase):
         self.assertEqual(
             tokens_of(TABLE),
             [
-                (1, 0, 6, "keyword"),
-                (1, 7, 8, "number"),
-                (1, 9, 12, "name"),
-                (3, 0, 5, "keyword"),
-                (3, 6, 7, "name"),
-                (3, 8, 9, "punctuation"),
+                *TABLE_OPENING,
                 (4, 2, 4, "name"),
                 (4, 5, 8, "type"),
                 (5, 2, 9, "keyword"),
@@ -99,12 +103,7 @@ class AnalyzeTest(unittest.TestCase):
         self.assertEqual(
             tokens_of(text),
             [
-                (1, 0, 6, "keyword"),
-                (1, 7, 8, "number"),
-                (1, 9, 12, "name"),
-                (3, 0, 5, "keyword"),
-                (3, 6, 7, "name"),
-                (3, 8, 9, "punctuation"),
+                *TABLE_OPENING,
                 (4, 2, 4, "word"),
                 (4, 5, 8, "word"),
                 (4, 9, 14, "word"),

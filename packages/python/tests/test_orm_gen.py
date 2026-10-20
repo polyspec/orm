@@ -15,6 +15,14 @@ ROOT = Path(__file__).resolve().parents[3]
 ORM_GEN = [sys.executable, "-m", "polyspec.orm.bin_orm_gen"]
 
 
+def run_gen(set_file, out, scan=None):
+    """Runs gen on the document set file, writing the models to out; with scan, it also scans that file for calls."""
+    args = ORM_GEN + ["gen", "--set", str(set_file), "--out", str(out)]
+    if scan is not None:
+        args += ["--scan", str(scan)]
+    return subprocess.run(args=args, capture_output=True, text=True)
+
+
 class OrmGenTest(unittest.TestCase):
     deadline = testcase.PROCESS
 
@@ -548,19 +556,10 @@ class OrmGenTest(unittest.TestCase):
                 "User().ne_name('x')\n",
                 encoding="utf-8",
             )
-            result = subprocess.run(
-                args=ORM_GEN
-                + [
-                    "gen",
-                    "--set",
-                    str(ROOT / "contracts" / "fixtures" / "bench" / "dbspec-set.json"),
-                    "--out",
-                    str(work_path / "model" / "requests"),
-                    "--scan",
-                    str(source),
-                ],
-                capture_output=True,
-                text=True,
+            result = run_gen(
+                ROOT / "contracts" / "fixtures" / "bench" / "dbspec-set.json",
+                work_path / "model" / "requests",
+                source,
             )
         self.assertEqual(result.returncode, 0, result.stderr)
 
@@ -579,25 +578,10 @@ class OrmGenTest(unittest.TestCase):
                 (work_path / "src").mkdir()
                 source = work_path / "src" / "usage.py"
                 source.write_text(line + "Author().get_ghost()\n", encoding="utf-8")
-                result = subprocess.run(
-                    args=ORM_GEN
-                    + [
-                        "gen",
-                        "--set",
-                        str(
-                            ROOT
-                            / "contracts"
-                            / "fixtures"
-                            / "bench"
-                            / "dbspec-set.json"
-                        ),
-                        "--out",
-                        str(work_path / "model" / "requests"),
-                        "--scan",
-                        str(source),
-                    ],
-                    capture_output=True,
-                    text=True,
+                result = run_gen(
+                    ROOT / "contracts" / "fixtures" / "bench" / "dbspec-set.json",
+                    work_path / "model" / "requests",
+                    source,
                 )
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn("Author.get_ghost is called", result.stderr)
@@ -744,12 +728,7 @@ class OrmGenTest(unittest.TestCase):
                 encoding="utf-8",
             )
             out = root / "out"
-            result = subprocess.run(
-                args=ORM_GEN
-                + ["gen", "--set", str(root / "dbspec-set.json"), "--out", str(out)],
-                capture_output=True,
-                text=True,
-            )
+            result = run_gen(root / "dbspec-set.json", out)
             self.assertEqual(result.returncode, 1, result.stderr)
             self.assertIn(f"set.file: {root}/gone.dbs", result.stderr)
             self.assertIn(f"set.file: {root}/also-gone.dbs", result.stderr)
@@ -764,12 +743,7 @@ class OrmGenTest(unittest.TestCase):
                 '{"schema": 1, "documents": ["a.dbs", "b.dbs"]}', encoding="utf-8"
             )
             out = root / "out"
-            result = subprocess.run(
-                args=ORM_GEN
-                + ["gen", "--set", str(root / "dbspec-set.json"), "--out", str(out)],
-                capture_output=True,
-                text=True,
-            )
+            result = run_gen(root / "dbspec-set.json", out)
             self.assertEqual(result.returncode, 1, result.stderr)
             self.assertIn(f"{root}/a.dbs:1:1: signature:", result.stderr)
             self.assertIn(f"{root}/b.dbs:2:1: encoding:", result.stderr)

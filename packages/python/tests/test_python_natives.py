@@ -50,7 +50,9 @@ def python_parts(signature: str):
     return params, ret
 
 
-class EntityRuleNativesTest(unittest.TestCase):
+class InterfaceSnapshotTest(unittest.TestCase):
+    """The snapshot and the tables that the rules of contracts/interfaces.json are checked against."""
+
     def setUp(self):
         self.manifest = json.loads(
             (ROOT / "contracts" / "interfaces.json").read_text(encoding="utf-8")
@@ -62,45 +64,37 @@ class EntityRuleNativesTest(unittest.TestCase):
         self.outputs = python_table(validate, "outputs")
         self.inputs = python_table(validate, "inputs")
 
+    def check_native(self, rule: dict) -> None:
+        native = rule["native"].get("python")
+        self.assertIsNotNone(native, f"{rule['id']} has no python native")
+        self.assertIn(native["symbol"], self.symbols, rule["id"])
+        self.assertEqual(
+            compact(self.symbols[native["symbol"]]),
+            compact(native["signature"]),
+            rule["id"],
+        )
+        params, ret = python_parts(native["signature"])
+        self.assertEqual(ret, self.outputs[rule["output"]], f"{rule['id']} return type")
+        self.assertEqual(
+            params,
+            self.inputs[",".join(rule["inputs"])],
+            f"{rule['id']} parameters",
+        )
+
+
+class EntityRuleNativesTest(InterfaceSnapshotTest):
     def test_every_entity_rule_names_a_python_method_of_the_snapshot(self):
         rules = [r for r in self.manifest["rules"] if r["for"] == "entity"]
         self.assertEqual(len(rules), 24)
         for rule in rules:
-            native = rule["native"].get("python")
-            self.assertIsNotNone(native, f"{rule['id']} has no python native")
-            self.assertIn(native["symbol"], self.symbols, rule["id"])
-            self.assertEqual(
-                compact(self.symbols[native["symbol"]]),
-                compact(native["signature"]),
-                rule["id"],
-            )
-            params, ret = python_parts(native["signature"])
-            self.assertEqual(
-                ret, self.outputs[rule["output"]], f"{rule['id']} return type"
-            )
-            self.assertEqual(
-                params,
-                self.inputs[",".join(rule["inputs"])],
-                f"{rule['id']} parameters",
-            )
+            self.check_native(rule)
 
 
-class ConnectionAndToolRuleNativesTest(unittest.TestCase):
+class ConnectionAndToolRuleNativesTest(InterfaceSnapshotTest):
     """The rules of the connection (Db), the utilities (Utils), the schema tools (SchemaUtils) and the AES
     tools (AesUtils) name a Python method each, with the same snapshot and table checks as the entity rules."""
 
     PREFIXES = ("Db.", "Utils.", "SchemaUtils.", "AesUtils.")
-
-    def setUp(self):
-        self.manifest = json.loads(
-            (ROOT / "contracts" / "interfaces.json").read_text(encoding="utf-8")
-        )
-        self.symbols = signatures()
-        validate = (
-            ROOT / "tests" / "interfaces" / "contracts" / "validate.go"
-        ).read_text(encoding="utf-8")
-        self.outputs = python_table(validate, "outputs")
-        self.inputs = python_table(validate, "inputs")
 
     def test_every_connection_and_tool_rule_names_a_python_method_of_the_snapshot(self):
         rules = [
@@ -110,26 +104,10 @@ class ConnectionAndToolRuleNativesTest(unittest.TestCase):
         ]
         self.assertEqual(len(rules), 24)
         for rule in rules:
-            native = rule["native"].get("python")
-            self.assertIsNotNone(native, f"{rule['id']} has no python native")
-            self.assertIn(native["symbol"], self.symbols, rule["id"])
-            self.assertEqual(
-                compact(self.symbols[native["symbol"]]),
-                compact(native["signature"]),
-                rule["id"],
-            )
-            params, ret = python_parts(native["signature"])
-            self.assertEqual(
-                ret, self.outputs[rule["output"]], f"{rule['id']} return type"
-            )
-            self.assertEqual(
-                params,
-                self.inputs[",".join(rule["inputs"])],
-                f"{rule['id']} parameters",
-            )
+            self.check_native(rule)
 
 
-class DbspecRuleNativesTest(unittest.TestCase):
+class DbspecRuleNativesTest(InterfaceSnapshotTest):
     """The dbspec rules name a Python function each; the groups are checked in turn."""
 
     GROUPS = {
@@ -163,36 +141,10 @@ class DbspecRuleNativesTest(unittest.TestCase):
         ],
     }
 
-    def setUp(self):
-        self.manifest = json.loads(
-            (ROOT / "contracts" / "interfaces.json").read_text(encoding="utf-8")
-        )
-        self.symbols = signatures()
-        validate = (
-            ROOT / "tests" / "interfaces" / "contracts" / "validate.go"
-        ).read_text(encoding="utf-8")
-        self.outputs = python_table(validate, "outputs")
-        self.inputs = python_table(validate, "inputs")
-
     def check_group(self, ids):
         rules = {r["id"]: r for r in self.manifest["rules"]}
         for rule_id in ids:
-            rule = rules[rule_id]
-            native = rule["native"].get("python")
-            self.assertIsNotNone(native, f"{rule_id} has no python native")
-            self.assertIn(native["symbol"], self.symbols, rule_id)
-            self.assertEqual(
-                compact(self.symbols[native["symbol"]]),
-                compact(native["signature"]),
-                rule_id,
-            )
-            params, ret = python_parts(native["signature"])
-            self.assertEqual(
-                ret, self.outputs[rule["output"]], f"{rule_id} return type"
-            )
-            self.assertEqual(
-                params, self.inputs[",".join(rule["inputs"])], f"{rule_id} parameters"
-            )
+            self.check_native(rules[rule_id])
 
     def test_files_parse_emit_render_introspect_group(self):
         self.check_group(self.GROUPS["files_parse_emit_render_introspect"])

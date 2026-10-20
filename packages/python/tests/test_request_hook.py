@@ -44,7 +44,9 @@ def part_scope(value: str):
     return part_filter(value, READS + ("restore",))
 
 
-class RequestHookTest(unittest.TestCase):
+class RequestHookCase(unittest.TestCase):
+    """The models of contracts/fixtures/request_hook.dbs, and a new SQLite database with their schema for each case."""
+
     @classmethod
     def setUpClass(cls):
         tmp = tempfile.TemporaryDirectory(prefix="orm-request-hook-")
@@ -60,10 +62,16 @@ class RequestHookTest(unittest.TestCase):
         a case database of the selected dialect instead."""
         return f"sqlite://{os.path.join(self.dir, f'{self._testMethodName}.sqlite3')}"
 
-    def setUp(self):
+    def open_database(self) -> None:
+        """Connects the case database with the schema installed; it is closed when the case ends."""
         self.db = Db.connect_schema(self.database(), self.models.SCHEMA)
         self.addCleanup(self.db.close)
         self.db.utils().schema().install(self.models.SCHEMA)
+
+
+class RequestHookTest(RequestHookCase):
+    def setUp(self):
+        self.open_database()
         for part, label in (("a", "a1"), ("a", "a2"), ("b", "b1")):
             self.item(self.db).set_part(part).set_label(label).create()
 
@@ -346,29 +354,12 @@ class RequestHookTest(unittest.TestCase):
         self.assertEqual(self.entry_rows(self.db), [(ids["ax"], "n5")])
 
 
-class InsertPartsTest(unittest.TestCase):
+class InsertPartsTest(RequestHookCase):
     """A multi-row insert in creates runs in batches of the given size (docs/spec/protocol.md 2.1,
     contracts/fixtures/insert_parts.json). The batches run in the given row order in one transaction."""
 
-    @classmethod
-    def setUpClass(cls):
-        tmp = tempfile.TemporaryDirectory(prefix="orm-insert-parts-")
-        cls.addClassCleanup(tmp.cleanup)
-        cls.dir = tmp.name
-        cls.models = generate_document(
-            os.path.join(tmp.name, "models"),
-            ROOT / "contracts" / "fixtures" / "request_hook.dbs",
-        )
-
-    def database(self) -> str:
-        """The DSN of the case's database: a new SQLite file. The feature coverage (coverage_request_hook.py) gives
-        a case database of the selected dialect instead."""
-        return f"sqlite://{os.path.join(self.dir, f'{self._testMethodName}.sqlite3')}"
-
     def setUp(self):
-        self.db = Db.connect_schema(self.database(), self.models.SCHEMA)
-        self.addCleanup(self.db.close)
-        self.db.utils().schema().install(self.models.SCHEMA)
+        self.open_database()
 
     def rows(self, labels):
         return [

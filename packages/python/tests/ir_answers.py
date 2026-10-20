@@ -28,16 +28,30 @@ def load_cases() -> list:
     )["cases"]
 
 
-def answering_server(answer: str):
-    """A listener that answers connect with {"ok": true} and the next message with answer."""
+def listen_once():
+    """A listener on a free loopback port that takes one connection."""
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     listener.bind(("127.0.0.1", 0))
     listener.listen(1)
+    return listener
+
+
+def accept_once(listener):
+    """The one connection of listener, or None when listener closes before one arrives."""
+    try:
+        conn, _ = listener.accept()
+    except OSError:
+        return None
+    return conn
+
+
+def answering_server(answer: str):
+    """A listener that answers connect with {"ok": true} and the next message with answer."""
+    listener = listen_once()
 
     def serve():
-        try:
-            conn, _ = listener.accept()
-        except OSError:
+        conn = accept_once(listener)
+        if conn is None:
             return
         with conn, conn.makefile("rb") as lines:
             for reply in ('{"ok":true}', answer):
@@ -54,14 +68,11 @@ def answering_server(answer: str):
 def keyed_server(answers: dict):
     """A listener that answers connect with {"ok": true} and every later message with the answer of answers
     keyed by the op of a control message or the kind of a request; a message without an answer is IR_INVALID."""
-    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    listener.bind(("127.0.0.1", 0))
-    listener.listen(1)
+    listener = listen_once()
 
     def serve():
-        try:
-            conn, _ = listener.accept()
-        except OSError:
+        conn = accept_once(listener)
+        if conn is None:
             return
         with conn, conn.makefile("rb") as lines:
             first = True
