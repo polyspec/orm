@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 36c97a80fdfcf569a88569eee8029bb4ea39f697d3454760587c15be966b333c -->
+<!-- source-sha256: 43d16d8c98709d978db4bf993b4e765ef0a41f1c131c9e1ead3e1654ed5fa1ed -->
 # 변경 이력
 
 ## Unreleased
+- `packages/go/orm`이 K334 lint 규칙이 찾는 모든 오류(113개)를 처리한다: 버려진 driver와 close 오류는 반환하거나 join하고, type assertion은 검사하며, 오류 비교는 chain을 지키고, builder 오류는 더는 row-lock 검사 뒤에 숨지 않으며, statement의 단독 `$`는 그대로 남는다(DSL-153) (KSTD-5-7-2).
 - build tag 뒤의 Go 파일이 그 tag로 build되고 Go lint를 통과한다: case clock과 `restoreTables`가 유일한 사용처 옆으로 돌아왔고, physical, markdown, coverage, perfgate test의 버려진 오류를 검사하며, `make lint-go`가 26단계 모두 통과한다. red: kit K406이 tag 일곱 개에서 finding 79개를 찾았고 bench stress test는 더는 build되지 않았다 (KSTD-5-7-6).
 - `tests/dbspec/syntax.json`이 KSTD-2-10이 `cases.json`에 더한 DIA-97의 hashes case 두 개의 token을 생성기로 다시 만들어 담는다. red: TestSharedSyntaxVectors가 "syntax.json has no tokens for this case"로 실패했다(KSTD-2-10-8).
 - 모든 error-code unit이 INT-65를 인용하고 PHP extension을 포함한 여섯 구현 모두에서 그 상수를 가리키며, catalog unit 다섯 개는 여섯 구현에 묶인 하나의 unit이다; catalog test는 `Polyspec\Orm\Code`의 상수를 reflection으로 비교하므로 같은 assertion이 library와 extension을 검사하고, Python catalog test는 `docs/spec/errors.yaml`을 읽는다. red: api check가 php-extension symbol이 없는 error-code unit을 보고했다(KSTD-2-11-6).
