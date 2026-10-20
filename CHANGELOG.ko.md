@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 30f71529f0e574f65eba75afe955c3aaf38ced911c960f061aac488654fa5edb -->
+<!-- source-sha256: db1c6de12ee239a07c65f18720e49e5a57e22db43e83424131a3c35aeffb4338 -->
 # 변경 이력
 
 ## Unreleased
+- INT-67이 query, transaction, connection handle을 버리면 각 언어의 폐기 형식으로 그 statement가 취소되고 connection이 반환된다고 규정한다 (KSTD-2-11-4).
 - INT-66이 orm-gen이 생성한 code가 그 언어의 표준 compiler, formatter, linter를 생성된 text 안의 억제 없이 통과한다고 규정한다 (KSTD-2-11-3).
 - INT-65가 모든 구현이 `errors.yaml`의 모든 code를 native 상수로 노출하고 그 catalog가 `errors.yaml`과 같다고 규정한다 (KSTD-2-11-1).
 - INT-7이 언어별 JSON 값 type 대신 모든 generator가 value codec column에 내보내는 `StyledValue` type을 적는다 (KSTD-2-9-9).

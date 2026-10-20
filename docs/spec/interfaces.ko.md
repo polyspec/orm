@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: fd4a341f5fe6ea1a08e333de314c37eb0fa6bc78c2311614890fbb294dc019b6 -->
+<!-- source-sha256: 0ecb42336d54b67c686ba06d0c6a6262845ff26127b620389b7a90705b80f7e0 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -182,6 +182,7 @@ classDiagram
 - **INT-59** `privileges().grantTable(table, role)`, `revokeTable(table, privilege, role)`, `inspectTable(table)`: 테이블 권한. PostgreSQL이 아닌 방언은 `CAPABILITY_UNSUPPORTED` 반환
 - **INT-60** `aes().status(model, keyring)`, `aes().rotate(model, keyring)`: AES 키 버전 상태와 모든 AES 컬럼·버전의 단일 트랜잭션 회전
 - **INT-61** `stats()`: 연결 풀 통계
+- **INT-67** handle을 버리면 그것이 쥔 것을 놓는다: 버려진 query handle은 끝나지 않은 statement를 취소하고, 버려진 transaction이나 connection handle은 열린 transaction을 rollback하고 connection을 pool에 돌려준다. 각 언어는 자기 폐기 형식으로 버린다: Rust는 값을 drop하고, Go는 context를 취소하거나 `Close`를 부르고, Python은 context manager를 나오거나 `close()`를 부르고, TypeScript는 `AbortSignal`을 abort하거나 `close()`를 부르고, PHP는 객체를 파괴하거나 `close()`를 부른다.
 
 데이터를 바꾸는 유틸리티는 활성 트랜잭션이 없으면 트랜잭션을 열고, 같은 연결의 활성 트랜잭션이 있으면 그 트랜잭션에 참여한다.
 

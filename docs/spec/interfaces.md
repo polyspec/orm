@@ -181,6 +181,7 @@ The connection configuration takes `auditSource`, a function that returns the au
 - **INT-59** `privileges().grantTable(table, role)`, `revokeTable(table, privilege, role)`, `inspectTable(table)`: table privileges; non-PostgreSQL dialects return `CAPABILITY_UNSUPPORTED`
 - **INT-60** `aes().status(model, keyring)`, `aes().rotate(model, keyring)`: AES key version status and rotation of every AES column and the version in one transaction
 - **INT-61** `stats()`: connection pool statistics
+- **INT-67** Abandoning a handle releases what it holds: an abandoned query handle cancels its statement if it has not finished, and an abandoned transaction or connection handle rolls back its open transaction and returns its connection to the pool. Each language abandons by its own disposal form: Rust drops the value, Go cancels the context or calls `Close`, Python leaves the context manager or calls `close()`, TypeScript aborts the `AbortSignal` or calls `close()`, and PHP destroys the object or calls `close()`.
 
 Utilities that change data open a transaction when none is active and join the active transaction of the same connection otherwise.
 
