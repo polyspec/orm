@@ -1,5 +1,5 @@
 <!-- doc-id: examples-complex-readme -->
-<!-- source-sha256: 3a06bda57388550aa435294adce96f29a99416799d1f6db7063d9a1f210f6bb5 -->
+<!-- source-sha256: d6203330af790788f13e469195061fcd39a942c82edf44b2196c471cf4ce450a -->
 # 복합 문장 데모
 
 문법의 주요 부분을 한 문장에 담아 세 언어로 쓰고, **같은 compact JSON 바이트**를 출력한다.

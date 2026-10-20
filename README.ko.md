@@ -1,5 +1,5 @@
 <!-- doc-id: readme -->
-<!-- source-sha256: e681f64168954498d0f453d288599daf24c783f81ad27e86c4bba7f530cc4d97 -->
+<!-- source-sha256: bfad19342360d8fc2c586a1dcf436048901918fc1be8306f61fe7831762cbbca -->
 # orm
 
 **Go, PHP, Python, Rust, TypeScript**를 위한 스키마 기반 모델 query grammar다. 목표 문법은 [docs/spec/dsl.ko.md](docs/spec/dsl.ko.md), 작업 순서는 [docs/spec/plan.ko.md](docs/spec/plan.ko.md)에 명시되어 있다.
