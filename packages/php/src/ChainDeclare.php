@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Polyspec\Orm;
@@ -154,8 +155,10 @@ final class ChainDeclare
             $params[] = $this->keyType($meta, $key) . " \$v$i";
         }
         $first = $keys[0];
-        if (count($keys) === 1 && $first['compare'] === '' && $first['column'] !== ''
-            && in_array($first['op'], ['', 'ne', 'gt', 'lt', 'ge', 'le'], true) && Chain::functionColumn($meta['columns'][$first['column']])) {
+        if (
+            count($keys) === 1 && $first['compare'] === '' && $first['column'] !== ''
+            && in_array($first['op'], ['', 'ne', 'gt', 'lt', 'ge', 'le'], true) && Chain::functionColumn($meta['columns'][$first['column']])
+        ) {
             return ['params' => $params[0] . ', mixed $compared = null', 'min' => 1, 'max' => 2];
         }
         return ['params' => implode(', ', $params), 'min' => count($keys), 'max' => count($keys)];

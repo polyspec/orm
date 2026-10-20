@@ -1,4 +1,5 @@
 <?php
+
 // The hot-path gate refuses a PHP that loads a debugger or coverage driver.
 declare(strict_types=1);
 
@@ -12,13 +13,15 @@ final class PerfExtensionsTest extends TestCase
 {
     public function test_refused(): void
     {
-        foreach ([
+        foreach (
+            [
             [[], []],
             [['xdebug'], ['xdebug']],
             [['pcov'], ['pcov']],
             [['xdebug', 'pcov', 'apcu'], ['xdebug', 'pcov']],
             [['apcu', 'opcache'], []],
-        ] as [$loaded, $refused]) {
+            ] as [$loaded, $refused]
+        ) {
             $got = perfGateRefusedExtensions(fn (string $name): bool => in_array($name, $loaded, true));
             self::assertSame($refused, $got, 'loaded ' . json_encode($loaded));
         }

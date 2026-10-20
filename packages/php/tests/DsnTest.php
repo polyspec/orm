@@ -1,4 +1,5 @@
 <?php
+
 // DSN parsing: the scheme selects the driver; the timezone parameter accepts only UTC.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DsnTest.php
 declare(strict_types=1);
@@ -32,8 +33,10 @@ final class DsnTest extends TestCase
     /** @return iterable<string, array{string}> */
     public static function invalidDsns(): iterable
     {
-        foreach (['mysqlx://localhost/orm_example', 'relative/path', '', 'sqlite://relative.sqlite', 'mysql://localhost/', 'postgres://localhost/orm_example?timezone=Nowhere', 'mysql://localhost/orm_example?timezone=%2B09:00', 'sqlite:///tmp/orm_example.sqlite?timezone=Asia%2FSeoul',
-            'sqlite:///tmp/orm_example.sqlite?_txlock=immediate', 'sqlite:///tmp/orm_example.sqlite?_txlock=deferred', 'sqlite:///tmp/orm_example.sqlite?_pragma=busy_timeout'] as $dsn) {
+        foreach (
+            ['mysqlx://localhost/orm_example', 'relative/path', '', 'sqlite://relative.sqlite', 'mysql://localhost/', 'postgres://localhost/orm_example?timezone=Nowhere', 'mysql://localhost/orm_example?timezone=%2B09:00', 'sqlite:///tmp/orm_example.sqlite?timezone=Asia%2FSeoul',
+            'sqlite:///tmp/orm_example.sqlite?_txlock=immediate', 'sqlite:///tmp/orm_example.sqlite?_txlock=deferred', 'sqlite:///tmp/orm_example.sqlite?_pragma=busy_timeout'] as $dsn
+        ) {
             yield ($dsn === '' ? 'empty' : $dsn) => [$dsn];
         }
     }

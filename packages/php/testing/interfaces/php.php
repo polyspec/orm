@@ -1,24 +1,33 @@
 <?php
+
 declare(strict_types=1);
 
 // Reflection reads resolved classes, inheritance, traits, properties and signatures.
 // No constructors or SQL are run while inspecting the declarations.
 $root = realpath($argv[1]);
-if ($root === false) { throw new InvalidArgumentException('Source root does not exist'); }
+if ($root === false) {
+    throw new InvalidArgumentException('Source root does not exist');
+}
 $dirs = array_slice($argv, 2);
 $files = [];
 foreach ($dirs as $dir) {
     $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator("$root/$dir", FilesystemIterator::SKIP_DOTS));
     foreach ($it as $file) {
         $path = $file->getRealPath();
-        if ($file->getExtension() === 'php' && !str_starts_with($path, "$root/packages/php/src/Proto/")) { $files[] = $path; }
+        if ($file->getExtension() === 'php' && !str_starts_with($path, "$root/packages/php/src/Proto/")) {
+            $files[] = $path;
+        }
     }
 }
 sort($files);
 // Load the runtime before generated subclasses. Top-level bootstrap only registers names.
 $autoload = "$root/packages/php/tests/autoload.php";
-if (is_file($autoload)) { require_once $autoload; }
-foreach ($files as $file) { require_once $file; }
+if (is_file($autoload)) {
+    require_once $autoload;
+}
+foreach ($files as $file) {
+    require_once $file;
+}
 // Each declaration is ['signature' => ..., 'exported' => bool]. A class, interface, trait and function is public; a property or
 // method is exported when it is public.
 $out = [];
@@ -26,13 +35,19 @@ $put = static function (string $key, string $signature, bool $exported) use (&$o
     $out[$key] = ['signature' => $signature, 'exported' => $exported];
 };
 $type = static function (?ReflectionType $t, ?ReflectionClass $scope = null) use (&$type): string {
-    if ($t === null) { return ''; }
+    if ($t === null) {
+        return '';
+    }
     if ($t instanceof ReflectionNamedType) {
         $name = $t->getName();
         // Resolve lexical types consistently across PHP Reflection versions.
         // `static` remains distinct because its meaning depends on the called class.
-        if ($name === 'self' && $scope !== null) { $name = $scope->getName(); }
-        if ($name === 'parent' && $scope !== null && ($parent = $scope->getParentClass()) !== false) { $name = $parent->getName(); }
+        if ($name === 'self' && $scope !== null) {
+            $name = $scope->getName();
+        }
+        if ($name === 'parent' && $scope !== null && ($parent = $scope->getParentClass()) !== false) {
+            $name = $parent->getName();
+        }
         return ($t->allowsNull() && !in_array($name, ['mixed', 'null'], true) ? '?' : '') . $name;
     }
     $parts = array_map(static function (ReflectionType $part) use ($type, $scope, $t): string {
@@ -54,39 +69,57 @@ $signature = static function (ReflectionFunctionAbstract $fn) use ($params, $typ
 };
 foreach (array_merge(get_declared_classes(), get_declared_interfaces(), get_declared_traits()) as $name) {
     $r = new ReflectionClass($name);
-    if (!in_array($r->getFileName(), $files, true)) { continue; }
+    if (!in_array($r->getFileName(), $files, true)) {
+        continue;
+    }
     $key = substr($r->getFileName(), strlen($root) + 1) . '::' . $name;
     $kind = $r->isInterface() ? 'interface' : ($r->isTrait() ? 'trait' : 'class');
-    $interfaces = $r->getInterfaceNames(); sort($interfaces);
-    $traits = $r->getTraitNames(); sort($traits);
+    $interfaces = $r->getInterfaceNames();
+    sort($interfaces);
+    $traits = $r->getTraitNames();
+    sort($traits);
     $parent = $r->getParentClass();
     $put($key, implode(' ', Reflection::getModifierNames($r->getModifiers())) . " $kind $name extends " . ($parent === false ? '' : $parent->getName()) . ' implements ' . implode(',', $interfaces) . ' uses ' . implode(',', $traits), true);
     foreach ($r->getProperties() as $p) {
-        if ($p->getDeclaringClass()->getName() !== $name) { continue; }
+        if ($p->getDeclaringClass()->getName() !== $name) {
+            continue;
+        }
         $modifiers = Reflection::getModifierNames($p->getModifiers());
         // PHP 8.4+ reports the implicit protected(set) of readonly properties.
         // Preserve explicit private(set), but keep default readonly portable to 8.2.
-        if ($p->isReadOnly()) { $modifiers = array_values(array_diff($modifiers, ['protected(set)'])); }
+        if ($p->isReadOnly()) {
+            $modifiers = array_values(array_diff($modifiers, ['protected(set)']));
+        }
         $put($key . '::$' . $p->getName(), implode(' ', $modifiers) . ' ' . $type($p->getType(), $p->getDeclaringClass()), $p->isPublic());
     }
     foreach ($r->getMethods() as $m) {
-        if ($m->getDeclaringClass()->getName() !== $name) { continue; }
+        if ($m->getDeclaringClass()->getName() !== $name) {
+            continue;
+        }
         $put($key . '::' . $m->getName(), implode(' ', Reflection::getModifierNames($m->getModifiers())) . ' function ' . $m->getName() . $signature($m), $m->isPublic());
     }
     if ($r->hasConstant('RECORDS') && $r->getReflectionConstant('RECORDS')->getDeclaringClass()->getName() === $name) {
         $records = $r->getReflectionConstant('RECORDS')->getValue();
-        if (!is_array($records)) { throw new UnexpectedValueException("$key RECORDS must be an array"); }
+        if (!is_array($records)) {
+            throw new UnexpectedValueException("$key RECORDS must be an array");
+        }
         $wireType = static function (string $native) use (&$wireType): string {
             if (preg_match('/^(list|map)<(.+)>$/', $native, $matches) === 1) {
                 return $matches[1] . '<' . $wireType($matches[2]) . '>';
             }
-            return match ($native) { 'int' => 'integer', 'string' => 'text', default => $native };
+            return match ($native) {
+                'int' => 'integer', 'string' => 'text', default => $native
+            };
         };
         foreach ($records as $record => $fields) {
-            if (!is_string($record) || !is_array($fields)) { throw new UnexpectedValueException("$key RECORDS entry is invalid"); }
+            if (!is_string($record) || !is_array($fields)) {
+                throw new UnexpectedValueException("$key RECORDS entry is invalid");
+            }
             $wire = [];
             foreach ($fields as $field => $nativeType) {
-                if (!is_string($field) || !is_string($nativeType)) { throw new UnexpectedValueException("$key RECORDS field is invalid"); }
+                if (!is_string($field) || !is_string($nativeType)) {
+                    throw new UnexpectedValueException("$key RECORDS field is invalid");
+                }
                 $wire[$field] = $wireType($nativeType);
             }
             $put($key . '::' . $record . '#wire', json_encode($wire, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR), true);

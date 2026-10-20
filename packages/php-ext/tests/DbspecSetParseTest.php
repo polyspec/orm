@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 // The extension's set parse (Polyspec\Orm\Dbspec\Native\Dbspec::parseSet) against the shared vectors

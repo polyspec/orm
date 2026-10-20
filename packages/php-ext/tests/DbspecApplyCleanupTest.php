@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // Wraps a SQLite PDO to inject failures into Polyspec\Orm\Dbspec\Native apply of the
 // PHP extension polyspec_orm, the same cases as the PHP client's
 // packages/php/tests/DbspecApplyCleanupTest.php: a failing lock release

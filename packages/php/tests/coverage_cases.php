@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // Feature coverage helper shared by packages/php/tests/Coverage*Test.php (scripts/features/coverage.mts
 // runs those test methods with PHPUnit).
 

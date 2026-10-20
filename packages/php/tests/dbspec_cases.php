@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 require_once __DIR__ . '/case_clock.php';
 require_once dirname(__DIR__, 3) . '/tests/dbspec/cases.php';
 

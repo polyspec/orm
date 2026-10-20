@@ -1,4 +1,5 @@
 <?php
+
 // Thin-slice demo (PHP): one statement in every client language, one JSON.
 // stdout: the result as JSON. stderr: p50 of the generated client and of the
 // same SQL through PDO directly.
@@ -29,7 +30,7 @@ $db->subscribe(static function (StatementEvent $e) use (&$lastSql, &$lastArgs): 
 });
 $now = new DateTimeImmutable('2026-09-11 00:00:00', new DateTimeZone('UTC'));
 
-$query = static fn() => (new Author)->connect($db)
+$query = static fn() => (new Author())->connect($db)
     ->serviceSeq(7)
     ->andIsClose(false)
     ->and(fn(Author $q) => $q->isDisplay(true)->or(fn(Author $q) => $q->isDisplay(false)->andLtDisplayStartDt($now)))

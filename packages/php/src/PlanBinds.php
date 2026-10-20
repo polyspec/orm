@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Polyspec\Orm;
@@ -12,7 +13,9 @@ final class PlanBinds
     /** @var array<string, true> Tables that the statement used, by name */
     private array $tables = [];
 
-    public function __construct(private readonly Dialect $d) {}
+    public function __construct(private readonly Dialect $d)
+    {
+    }
 
     /** Quotes the entity's table name and records it as a table of the statement. */
     public function table(array $ent): string

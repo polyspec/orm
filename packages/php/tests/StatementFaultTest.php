@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // The test statement fault of the PHP client (docs/spec/protocol.md 3.2) on SQLite,
 // MySQL and PostgreSQL. A test arms the fault through
 // Polyspec\Orm\Testing\Faults::failNextStatement; the next statement of the
@@ -108,9 +110,9 @@ final class StatementFaultTest extends TestCase
             $events[] = [$event->kind, $event->error?->code_];
         });
         Faults::failNextStatement($db, $fault['code'], $fault['message']);
-        $e = self::raised(fn() => (new StatementProbe)($db)->setLabel('refused')->create());
+        $e = self::raised(fn() => (new StatementProbe())($db)->setLabel('refused')->create());
         self::checkFault($e, 'insert', $fault);
-        self::check((new StatementProbe)($db)->getCount() === 0, 'the refused insert leaves no row');
+        self::check((new StatementProbe())($db)->getCount() === 0, 'the refused insert leaves no row');
         self::check(in_array(['insert', $fault['code']], $events, true), 'the statement event of the insert carries ' . $fault['code'] . ': ' . json_encode($events));
         $db->close();
     }
@@ -120,11 +122,11 @@ final class StatementFaultTest extends TestCase
     {
         $db = self::connect($dsn);
         Faults::failNextStatement($db, $fault['code'], $fault['message']);
-        $e = self::raised(fn() => (new StatementProbe)($db)->setLabel('refused')->create());
+        $e = self::raised(fn() => (new StatementProbe())($db)->setLabel('refused')->create());
         self::checkFault($e, 'first insert', $fault);
-        $second = self::raised(fn() => (new StatementProbe)($db)->setLabel('sent')->create());
+        $second = self::raised(fn() => (new StatementProbe())($db)->setLabel('sent')->create());
         self::check($second === null, 'the second insert runs after the consumed fault: ' . ($second === null ? '' : $second->getMessage()));
-        self::check((new StatementProbe)($db)->getCount() === 1, 'only the second insert writes a row');
+        self::check((new StatementProbe())($db)->getCount() === 1, 'only the second insert writes a row');
         $db->close();
     }
 
@@ -138,10 +140,10 @@ final class StatementFaultTest extends TestCase
         $db = self::connect($dsn);
         Faults::failNextStatement($db, $fault['code'], $fault['message']);
         $e = self::raised(fn() => $db->transaction(function () use ($db): void {
-            (new StatementProbe)($db)->setLabel('in transaction')->create();
+            (new StatementProbe())($db)->setLabel('in transaction')->create();
         }, retry: 0));
         self::checkFault($e, 'transaction', $fault);
-        self::check((new StatementProbe)($db)->getCount() === 0, 'the transaction with the refused insert writes no row');
+        self::check((new StatementProbe())($db)->getCount() === 0, 'the transaction with the refused insert writes no row');
         $db->close();
     }
 
@@ -158,9 +160,9 @@ final class StatementFaultTest extends TestCase
             $e = self::raised(fn() => Faults::failNextStatement($db, $code, $message));
             self::check($e instanceof \InvalidArgumentException, 'failNextStatement with code "' . $code . '" and message "' . $message . '" raises ' . ($e === null ? 'nothing' : $e::class . ': ' . $e->getMessage()));
         }
-        $insert = self::raised(fn() => (new StatementProbe)($db)->setLabel('sent')->create());
+        $insert = self::raised(fn() => (new StatementProbe())($db)->setLabel('sent')->create());
         self::check($insert === null, 'the insert runs because no fault was armed: ' . ($insert === null ? '' : $insert->getMessage()));
-        self::check((new StatementProbe)($db)->getCount() === 1, 'the insert writes its row');
+        self::check((new StatementProbe())($db)->getCount() === 1, 'the insert writes its row');
         $db->close();
     }
 
@@ -201,7 +203,8 @@ final class StatementFaultTest extends TestCase
     public function test_statement_fault(string $case): void
     {
         foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
-            with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => [self::class, self::CASES[$case]]($dsn, self::$fault));
+            with_case_database($driver, static function (string $step): void {
+            }, static fn(string $dsn) => [self::class, self::CASES[$case]]($dsn, self::$fault));
         }
     }
 }

@@ -1,4 +1,5 @@
 <?php
+
 // One side of the deadlock test in ModelTest.php. Inside transaction(): update the first row,
 // print "locked", wait for a line on stdin, then update the second row. The other side runs with
 // the rows swapped, so the database reports a deadlock to one of them and transaction() runs the
@@ -16,11 +17,11 @@ $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(aesKey: 'test-aes-key',
 $runs = 0;
 $db->transaction(function () use (&$runs, $first, $second, $tag): void {
     $runs++;
-    (new Author)->getBySeq((int) $first)->setName("deadlock-$tag")->update();
+    (new Author())->getBySeq((int) $first)->setName("deadlock-$tag")->update();
     if ($runs === 1) {
         fwrite(STDOUT, "locked\n");
         fgets(STDIN);
     }
-    (new Author)->getBySeq((int) $second)->setName("deadlock-$tag")->update();
+    (new Author())->getBySeq((int) $second)->setName("deadlock-$tag")->update();
 });
 fwrite(STDOUT, "done $runs\n");

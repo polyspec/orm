@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // Wraps a SQLite PDO to inject failures into Polyspec\Orm\Dbspec apply and checks
 // that no error is lost (docs/spec/plans.md "Apply"): a failing lock release
 // after an event stops apply, a failing foreign key restore after a failing

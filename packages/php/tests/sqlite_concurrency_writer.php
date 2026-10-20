@@ -1,4 +1,5 @@
 <?php
+
 // The writer process of SqliteConcurrencyTest: it commits $count read-then-write transactions on the SQLite file of $dsn
 // without transaction retries, each reading the service count and then inserting one service named <name>-<i>.
 // Usage: php packages/php/tests/sqlite_concurrency_writer.php <dsn> <name> <count>
@@ -14,8 +15,8 @@ try {
     $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config());
     for ($i = 0; $i < (int) $count; $i++) {
         $db->transaction(function () use ($name, $i): void {
-            (new Service)->getCount();
-            (new Service)->setName("$name-$i")->create();
+            (new Service())->getCount();
+            (new Service())->setName("$name-$i")->create();
         }, retry: 0);
     }
 } catch (\Throwable $e) {

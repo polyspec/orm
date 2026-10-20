@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // The runtime model of the bench set contracts/fixtures/bench/dbspec-set.json (docs/spec/dbspec.md "Runtime model"):
 // entities, the default select set, codec value types, the generated models
 // and their manifest hash, i16 fields, and a connection configuration without

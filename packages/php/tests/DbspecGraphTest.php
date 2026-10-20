@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // A document, document set, plan list or unsupported list whose array holds another type is a TypeError
 // "<what> holds <value>, not <type>" at the first such element (Polyspec\Orm\Dbspec\Graph), one case per checked array;
 // a document whose arrays hold their types is read as before.
@@ -73,43 +75,117 @@ final class DbspecGraphTest extends TestCase
     public static function documentCases(): iterable
     {
         $n = 'Polyspec\\Orm\\Dbspec\\';
-        yield 'Document::$trailingComments' => [static function (Document $d): void { $d->trailingComments = ['# end', 1]; }, "{$n}Document::\$trailingComments holds int, not a string"];
-        yield 'Document::$uses' => [static function (Document $d): void { $d->uses[] = 'core'; }, "{$n}Document::\$uses holds string, not {$n}UseLine"];
-        yield 'UseLine::$tables' => [static function (Document $d): void { $d->uses[0]->tables[] = null; }, "{$n}UseLine::\$tables holds null, not a string"];
-        yield 'UseLine::$comments' => [static function (Document $d): void { $d->uses[0]->comments = [true]; }, "{$n}UseLine::\$comments holds true, not a string"];
-        yield 'Document::$tables' => [static function (Document $d): void { $d->tables[] = []; }, "{$n}Document::\$tables holds array, not {$n}Table"];
-        yield 'Table::$comments' => [static function (Document $d): void { $d->tables[0]->comments = [1.5]; }, "{$n}Table::\$comments holds float, not a string"];
-        yield 'Table::$closingComments' => [static function (Document $d): void { $d->tables[0]->closingComments = [false]; }, "{$n}Table::\$closingComments holds false, not a string"];
-        yield 'Table::$columns' => [static function (Document $d): void { $d->tables[0]->columns[] = 'id'; }, "{$n}Table::\$columns holds string, not {$n}Column"];
-        yield 'ColumnType::$parameters' => [static function (Document $d): void { $d->tables[0]->columns[2]->type = new Polyspec\Orm\Dbspec\ColumnType('varchar', ['32']); }, "{$n}ColumnType::\$parameters holds string, not an int"];
-        yield 'Column::$comments' => [static function (Document $d): void { $d->tables[0]->columns[0]->comments = [2]; }, "{$n}Column::\$comments holds int, not a string"];
-        yield 'PrimaryKey::$columns' => [static function (Document $d): void { $d->tables[0]->primaryKey->columns = [1]; }, "{$n}PrimaryKey::\$columns holds int, not a string"];
-        yield 'PrimaryKey::$comments' => [static function (Document $d): void { $d->tables[0]->primaryKey->comments = [1]; }, "{$n}PrimaryKey::\$comments holds int, not a string"];
-        yield 'Table::$uniqueKeys' => [static function (Document $d): void { $d->tables[0]->uniqueKeys[] = 1; }, "{$n}Table::\$uniqueKeys holds int, not {$n}UniqueKey"];
-        yield 'UniqueKey::$columns' => [static function (Document $d): void { $d->tables[0]->uniqueKeys[0]->columns = [1]; }, "{$n}UniqueKey::\$columns holds int, not a string"];
-        yield 'UniqueKey::$comments' => [static function (Document $d): void { $d->tables[0]->uniqueKeys[0]->comments = [1]; }, "{$n}UniqueKey::\$comments holds int, not a string"];
-        yield 'Table::$indexes' => [static function (Document $d): void { $d->tables[0]->indexes[] = 1; }, "{$n}Table::\$indexes holds int, not {$n}Index"];
-        yield 'Index::$columns' => [static function (Document $d): void { $d->tables[0]->indexes[0]->columns = ['user_id']; }, "{$n}Index::\$columns holds string, not {$n}IndexColumn"];
-        yield 'Index::$comments' => [static function (Document $d): void { $d->tables[0]->indexes[0]->comments = [1]; }, "{$n}Index::\$comments holds int, not a string"];
-        yield 'Table::$foreignKeys' => [static function (Document $d): void { $d->tables[0]->foreignKeys[] = 1; }, "{$n}Table::\$foreignKeys holds int, not {$n}ForeignKey"];
-        yield 'ForeignKey::$columns' => [static function (Document $d): void { $d->tables[0]->foreignKeys[0]->columns = [1]; }, "{$n}ForeignKey::\$columns holds int, not a string"];
-        yield 'ForeignKey::$referencedColumns' => [static function (Document $d): void { $d->tables[0]->foreignKeys[0]->referencedColumns = [1]; }, "{$n}ForeignKey::\$referencedColumns holds int, not a string"];
-        yield 'ForeignKey::$comments' => [static function (Document $d): void { $d->tables[0]->foreignKeys[0]->comments = [1]; }, "{$n}ForeignKey::\$comments holds int, not a string"];
-        yield 'Table::$checks' => [static function (Document $d): void { $d->tables[0]->checks[] = 1; }, "{$n}Table::\$checks holds int, not {$n}Check"];
-        yield 'Check::$comments' => [static function (Document $d): void { $d->tables[0]->checks[0]->comments = [1]; }, "{$n}Check::\$comments holds int, not a string"];
-        yield 'Settings::$comments' => [static function (Document $d): void { $d->tables[0]->settings->comments = [1]; }, "{$n}Settings::\$comments holds int, not a string"];
-        yield 'Settings::$closingComments' => [static function (Document $d): void { $d->tables[0]->settings->closingComments = [1]; }, "{$n}Settings::\$closingComments holds int, not a string"];
-        yield 'Settings::$settings' => [static function (Document $d): void { $d->tables[0]->settings->settings[] = 'immutable'; }, "{$n}Settings::\$settings holds string, not {$n}Setting"];
-        yield 'Setting::$arguments' => [static function (Document $d): void { $d->tables[0]->settings->settings[1]->arguments = ['code', 1]; }, "{$n}Setting::\$arguments holds int, not a string"];
-        yield 'Setting::$comments' => [static function (Document $d): void { $d->tables[0]->settings->settings[0]->comments = [1]; }, "{$n}Setting::\$comments holds int, not a string"];
-        yield 'Setting::$requires' => [static function (Document $d): void { $d->tables[0]->settings->settings[0]->requires = [1]; }, "{$n}Setting::\$requires holds int, not a string"];
-        yield 'Setting::$exclude' => [static function (Document $d): void { $d->tables[0]->settings->settings[0]->exclude = [1]; }, "{$n}Setting::\$exclude holds int, not a string"];
-        yield 'Setting::$include' => [static function (Document $d): void { $d->tables[0]->settings->settings[0]->include = [1]; }, "{$n}Setting::\$include holds int, not a string"];
-        yield 'Document::$diagrams' => [static function (Document $d): void { $d->diagrams[] = 'main'; }, "{$n}Document::\$diagrams holds string, not {$n}Diagram"];
-        yield 'Diagram::$comments' => [static function (Document $d): void { $d->diagrams[0]->comments = [1]; }, "{$n}Diagram::\$comments holds int, not a string"];
-        yield 'Diagram::$closingComments' => [static function (Document $d): void { $d->diagrams[0]->closingComments = [1]; }, "{$n}Diagram::\$closingComments holds int, not a string"];
-        yield 'Diagram::$placements' => [static function (Document $d): void { $d->diagrams[0]->placements[] = 'orders'; }, "{$n}Diagram::\$placements holds string, not {$n}Placement"];
-        yield 'Placement::$comments' => [static function (Document $d): void { $d->diagrams[0]->placements[0]->comments = [1]; }, "{$n}Placement::\$comments holds int, not a string"];
+        yield 'Document::$trailingComments' => [static function (Document $d): void {
+            $d->trailingComments = ['# end', 1];
+        }, "{$n}Document::\$trailingComments holds int, not a string"];
+        yield 'Document::$uses' => [static function (Document $d): void {
+            $d->uses[] = 'core';
+        }, "{$n}Document::\$uses holds string, not {$n}UseLine"];
+        yield 'UseLine::$tables' => [static function (Document $d): void {
+            $d->uses[0]->tables[] = null;
+        }, "{$n}UseLine::\$tables holds null, not a string"];
+        yield 'UseLine::$comments' => [static function (Document $d): void {
+            $d->uses[0]->comments = [true];
+        }, "{$n}UseLine::\$comments holds true, not a string"];
+        yield 'Document::$tables' => [static function (Document $d): void {
+            $d->tables[] = [];
+        }, "{$n}Document::\$tables holds array, not {$n}Table"];
+        yield 'Table::$comments' => [static function (Document $d): void {
+            $d->tables[0]->comments = [1.5];
+        }, "{$n}Table::\$comments holds float, not a string"];
+        yield 'Table::$closingComments' => [static function (Document $d): void {
+            $d->tables[0]->closingComments = [false];
+        }, "{$n}Table::\$closingComments holds false, not a string"];
+        yield 'Table::$columns' => [static function (Document $d): void {
+            $d->tables[0]->columns[] = 'id';
+        }, "{$n}Table::\$columns holds string, not {$n}Column"];
+        yield 'ColumnType::$parameters' => [static function (Document $d): void {
+            $d->tables[0]->columns[2]->type = new Polyspec\Orm\Dbspec\ColumnType('varchar', ['32']);
+        }, "{$n}ColumnType::\$parameters holds string, not an int"];
+        yield 'Column::$comments' => [static function (Document $d): void {
+            $d->tables[0]->columns[0]->comments = [2];
+        }, "{$n}Column::\$comments holds int, not a string"];
+        yield 'PrimaryKey::$columns' => [static function (Document $d): void {
+            $d->tables[0]->primaryKey->columns = [1];
+        }, "{$n}PrimaryKey::\$columns holds int, not a string"];
+        yield 'PrimaryKey::$comments' => [static function (Document $d): void {
+            $d->tables[0]->primaryKey->comments = [1];
+        }, "{$n}PrimaryKey::\$comments holds int, not a string"];
+        yield 'Table::$uniqueKeys' => [static function (Document $d): void {
+            $d->tables[0]->uniqueKeys[] = 1;
+        }, "{$n}Table::\$uniqueKeys holds int, not {$n}UniqueKey"];
+        yield 'UniqueKey::$columns' => [static function (Document $d): void {
+            $d->tables[0]->uniqueKeys[0]->columns = [1];
+        }, "{$n}UniqueKey::\$columns holds int, not a string"];
+        yield 'UniqueKey::$comments' => [static function (Document $d): void {
+            $d->tables[0]->uniqueKeys[0]->comments = [1];
+        }, "{$n}UniqueKey::\$comments holds int, not a string"];
+        yield 'Table::$indexes' => [static function (Document $d): void {
+            $d->tables[0]->indexes[] = 1;
+        }, "{$n}Table::\$indexes holds int, not {$n}Index"];
+        yield 'Index::$columns' => [static function (Document $d): void {
+            $d->tables[0]->indexes[0]->columns = ['user_id'];
+        }, "{$n}Index::\$columns holds string, not {$n}IndexColumn"];
+        yield 'Index::$comments' => [static function (Document $d): void {
+            $d->tables[0]->indexes[0]->comments = [1];
+        }, "{$n}Index::\$comments holds int, not a string"];
+        yield 'Table::$foreignKeys' => [static function (Document $d): void {
+            $d->tables[0]->foreignKeys[] = 1;
+        }, "{$n}Table::\$foreignKeys holds int, not {$n}ForeignKey"];
+        yield 'ForeignKey::$columns' => [static function (Document $d): void {
+            $d->tables[0]->foreignKeys[0]->columns = [1];
+        }, "{$n}ForeignKey::\$columns holds int, not a string"];
+        yield 'ForeignKey::$referencedColumns' => [static function (Document $d): void {
+            $d->tables[0]->foreignKeys[0]->referencedColumns = [1];
+        }, "{$n}ForeignKey::\$referencedColumns holds int, not a string"];
+        yield 'ForeignKey::$comments' => [static function (Document $d): void {
+            $d->tables[0]->foreignKeys[0]->comments = [1];
+        }, "{$n}ForeignKey::\$comments holds int, not a string"];
+        yield 'Table::$checks' => [static function (Document $d): void {
+            $d->tables[0]->checks[] = 1;
+        }, "{$n}Table::\$checks holds int, not {$n}Check"];
+        yield 'Check::$comments' => [static function (Document $d): void {
+            $d->tables[0]->checks[0]->comments = [1];
+        }, "{$n}Check::\$comments holds int, not a string"];
+        yield 'Settings::$comments' => [static function (Document $d): void {
+            $d->tables[0]->settings->comments = [1];
+        }, "{$n}Settings::\$comments holds int, not a string"];
+        yield 'Settings::$closingComments' => [static function (Document $d): void {
+            $d->tables[0]->settings->closingComments = [1];
+        }, "{$n}Settings::\$closingComments holds int, not a string"];
+        yield 'Settings::$settings' => [static function (Document $d): void {
+            $d->tables[0]->settings->settings[] = 'immutable';
+        }, "{$n}Settings::\$settings holds string, not {$n}Setting"];
+        yield 'Setting::$arguments' => [static function (Document $d): void {
+            $d->tables[0]->settings->settings[1]->arguments = ['code', 1];
+        }, "{$n}Setting::\$arguments holds int, not a string"];
+        yield 'Setting::$comments' => [static function (Document $d): void {
+            $d->tables[0]->settings->settings[0]->comments = [1];
+        }, "{$n}Setting::\$comments holds int, not a string"];
+        yield 'Setting::$requires' => [static function (Document $d): void {
+            $d->tables[0]->settings->settings[0]->requires = [1];
+        }, "{$n}Setting::\$requires holds int, not a string"];
+        yield 'Setting::$exclude' => [static function (Document $d): void {
+            $d->tables[0]->settings->settings[0]->exclude = [1];
+        }, "{$n}Setting::\$exclude holds int, not a string"];
+        yield 'Setting::$include' => [static function (Document $d): void {
+            $d->tables[0]->settings->settings[0]->include = [1];
+        }, "{$n}Setting::\$include holds int, not a string"];
+        yield 'Document::$diagrams' => [static function (Document $d): void {
+            $d->diagrams[] = 'main';
+        }, "{$n}Document::\$diagrams holds string, not {$n}Diagram"];
+        yield 'Diagram::$comments' => [static function (Document $d): void {
+            $d->diagrams[0]->comments = [1];
+        }, "{$n}Diagram::\$comments holds int, not a string"];
+        yield 'Diagram::$closingComments' => [static function (Document $d): void {
+            $d->diagrams[0]->closingComments = [1];
+        }, "{$n}Diagram::\$closingComments holds int, not a string"];
+        yield 'Diagram::$placements' => [static function (Document $d): void {
+            $d->diagrams[0]->placements[] = 'orders';
+        }, "{$n}Diagram::\$placements holds string, not {$n}Placement"];
+        yield 'Placement::$comments' => [static function (Document $d): void {
+            $d->diagrams[0]->placements[0]->comments = [1];
+        }, "{$n}Placement::\$comments holds int, not a string"];
     }
 
     // Every entry point that reads a document refuses the changed document with the same TypeError.
@@ -150,7 +226,11 @@ final class DbspecGraphTest extends TestCase
         yield 'Plan::$renameColumns' => [static fn() => Dbspec::emitPlan(graph_plan_with(['renameColumns' => [...graph_plan()->renameColumns, 'a']])), "{$n}Plan::\$renameColumns holds string, not {$n}ColumnRename"];
         yield 'Plan::$dropTables' => [static fn() => Dbspec::emitPlan(graph_plan_with(['dropTables' => [1]])), "{$n}Plan::\$dropTables holds int, not a string"];
         yield 'Plan::$dropColumns' => [static fn() => Dbspec::emitPlan(graph_plan_with(['dropColumns' => ['b.f']])), "{$n}Plan::\$dropColumns holds string, not {$n}ColumnName"];
-        yield 'Plan::$schema' => [static function () { $p = graph_plan(); $p->schema->tables[] = 'users'; return Dbspec::diff(null, $p); }, "{$n}Document::\$tables holds string, not {$n}Table"];
+        yield 'Plan::$schema' => [static function () {
+            $p = graph_plan();
+            $p->schema->tables[] = 'users';
+            return Dbspec::diff(null, $p);
+        }, "{$n}Document::\$tables holds string, not {$n}Table"];
     }
 
     #[DataProvider('listCases')]

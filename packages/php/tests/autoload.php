@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // Test autoloader: the Composer autoloader of the repository root, which maps Polyspec\Orm\ to packages/php/src by the
 // PSR-4 of the library and the test models Polyspec\Orm\Tests\Model\ (packages/php/gen) and
 // Polyspec\Orm\Tests\MarkdownModel\ (packages/php/markdownmodel) by its autoload-dev, which also loads

@@ -1,16 +1,21 @@
 <?php
+
 declare(strict_types=1);
 
 /** Convert a derived numeric column to the integer written in a vector result. */
 function derivedInteger(mixed $value): int
 {
-    if (is_int($value)) return $value;
+    if (is_int($value)) {
+        return $value;
+    }
     if (is_float($value) && is_finite($value) && floor($value) === $value && $value >= -9_223_372_036_854_775_808.0 && $value < 9_223_372_036_854_775_808.0) {
         return (int) $value;
     }
     if (is_string($value) && preg_match('/^-?(?:0|[1-9][0-9]*)$/D', $value) === 1) {
         $parsed = filter_var($value, FILTER_VALIDATE_INT);
-        if ($parsed !== false) return $parsed;
+        if ($parsed !== false) {
+            return $parsed;
+        }
     }
     throw new InvalidArgumentException('invalid derived integer');
 }

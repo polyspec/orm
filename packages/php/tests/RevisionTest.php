@@ -1,4 +1,5 @@
 <?php
+
 // An update or delete with an expected revision (docs/spec/dsl.md "Writes", expectRevision) on a SQLite file of
 // each case: a match updates and bumps the revision or deletes, a mismatch fails with REVISION_CHANGED and
 // changes nothing.
@@ -53,7 +54,7 @@ final class RevisionTest extends TestCase
     {
         $this->db = Orm::connect('sqlite://' . self::$work . "/$name.sqlite", new Config());
         $this->db->utils()->schema()->install(\Polyspec\Orm\Tests\RevisionCase\schema());
-        return (new Note)($this->db)->setLabel('first')->setRevision(3)->create()->getSeq();
+        return (new Note())($this->db)->setLabel('first')->setRevision(3)->create()->getSeq();
     }
 
     private static function code(callable $fn): string
@@ -70,8 +71,8 @@ final class RevisionTest extends TestCase
     {
         // The test of DSL-108, DSL-114 (docs/spec).
         $seq = $this->seed('update-match');
-        (new Note)($this->db)->setSeq($seq)->setLabel('second')->expectRevision('revision', 3)->update();
-        $row = (new Note)($this->db)->getBySeq($seq);
+        (new Note())($this->db)->setSeq($seq)->setLabel('second')->expectRevision('revision', 3)->update();
+        $row = (new Note())($this->db)->getBySeq($seq);
         self::assertSame(['second', 4], [$row->getLabel(), $row->getRevision()]);
     }
 
@@ -79,8 +80,8 @@ final class RevisionTest extends TestCase
     {
         // The test of DSL-108, DSL-114 (docs/spec).
         $seq = $this->seed('update-mismatch');
-        self::assertSame(Code::REVISION_CHANGED, self::code(fn() => (new Note)($this->db)->setSeq($seq)->setLabel('stale')->expectRevision('revision', 2)->update()));
-        $row = (new Note)($this->db)->getBySeq($seq);
+        self::assertSame(Code::REVISION_CHANGED, self::code(fn() => (new Note())($this->db)->setSeq($seq)->setLabel('stale')->expectRevision('revision', 2)->update()));
+        $row = (new Note())($this->db)->getBySeq($seq);
         self::assertSame(['first', 3], [$row->getLabel(), $row->getRevision()]);
     }
 
@@ -88,15 +89,15 @@ final class RevisionTest extends TestCase
     {
         // The test of DSL-108, DSL-114 (docs/spec).
         $seq = $this->seed('delete-match');
-        (new Note)($this->db)->setSeq($seq)->expectRevision('revision', 3)->delete();
-        self::assertNull((new Note)($this->db)->seq($seq)->get());
+        (new Note())($this->db)->setSeq($seq)->expectRevision('revision', 3)->delete();
+        self::assertNull((new Note())($this->db)->seq($seq)->get());
     }
 
     public function test_delete_mismatch_changes_nothing(): void
     {
         // The test of DSL-108, DSL-114 (docs/spec).
         $seq = $this->seed('delete-mismatch');
-        self::assertSame(Code::REVISION_CHANGED, self::code(fn() => (new Note)($this->db)->setSeq($seq)->expectRevision('revision', 4)->delete()));
-        self::assertSame(3, (new Note)($this->db)->getBySeq($seq)->getRevision());
+        self::assertSame(Code::REVISION_CHANGED, self::code(fn() => (new Note())($this->db)->setSeq($seq)->expectRevision('revision', 4)->delete()));
+        self::assertSame(3, (new Note())($this->db)->getBySeq($seq)->getRevision());
     }
 }

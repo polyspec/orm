@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Polyspec\Orm;
@@ -15,7 +16,8 @@ final class Schema
         public readonly string $manifestText,
         public readonly string $manifestHash,
         public readonly string $externalText = '',
-    ) {}
+    ) {
+    }
 
     /**
      * Checks that the text hashes to the declared hash. If not, it is CONFIG, before any statement.

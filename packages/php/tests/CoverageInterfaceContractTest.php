@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // interface_contract feature coverage: runs
 // `node tests/interfaces/check/main.mts -language php` at the repository root and requires exit code 0.
 

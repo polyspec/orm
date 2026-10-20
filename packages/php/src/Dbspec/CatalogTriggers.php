@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Polyspec\Orm\Dbspec;
@@ -73,8 +74,10 @@ final class CatalogTriggers
         $insert = $names[Names::render($t->name, 'audit_insert')] ?? null;
         if ($insert !== null) {
             $update = $names[Names::render($t->name, 'audit_update')] ?? null;
-            if (preg_match(self::AUDIT_INSERT, self::body($insert['statements']), $m)
-                && preg_match(self::AUDIT_UPDATE, self::body($update['statements'] ?? []), $u)) {
+            if (
+                preg_match(self::AUDIT_INSERT, self::body($insert['statements']), $m)
+                && preg_match(self::AUDIT_UPDATE, self::body($update['statements'] ?? []), $u)
+            ) {
                 $tables = preg_match(self::AUDIT_TABLES, self::body($insert['statements']), $tm) === 1 ? [$tm[1], $tm[2], $tm[3]] : [];
                 $audit = self::audit($t, $m[1], explode(', ', $m[2]), $u[1], $tables);
                 if ($audit !== null) {

@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // schema_definition feature coverage: each case of contracts/fixtures/schema_definition.json
 // runs on the PHP dbspec implementation (Polyspec\Orm\Dbspec\Dbspec): after parse, emit reproduces
 // byte for byte, the manifest hash of the document set, the per-dialect rendered statements, the tokens of syntax analysis,

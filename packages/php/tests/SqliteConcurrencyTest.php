@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // SQLite locking: several processes commit read-then-write transactions on one file without
 // transaction retries, a second connection reads while a write transaction is open, and a write
 // that waits longer than busy_timeout returns CANCELED.
@@ -45,8 +47,8 @@ final class SqliteConcurrencyTest extends TestCase
     {
         for ($i = 0; $i < $count; $i++) {
             $db->transaction(function () use ($name, $i): void {
-                (new Service)->getCount();
-                (new Service)->setName("$name-$i")->create();
+                (new Service())->getCount();
+                (new Service())->setName("$name-$i")->create();
             }, retry: 0);
         }
     }
@@ -64,7 +66,8 @@ final class SqliteConcurrencyTest extends TestCase
         return $dsn;
     }
 
-    private static function case_writers_in_several_processes(): void {
+    private static function case_writers_in_several_processes(): void
+    {
         $dsn = self::database('processes');
         $children = [];
         for ($i = 0; $i < 6; $i++) {
@@ -76,31 +79,33 @@ final class SqliteConcurrencyTest extends TestCase
             $status = proc_close($p);
             self::check($status === 0, "writer process $i exited with $status: $out");
         }
-        $count = (new Service)(self::connect($dsn))->getCount();
+        $count = (new Service())(self::connect($dsn))->getCount();
         self::check($count === 240, "services: $count, want 240");
     }
 
-    private static function case_reads_during_a_write(): void {
+    private static function case_reads_during_a_write(): void
+    {
         $dsn = self::database('reads');
         $writer = self::connect($dsn);
         $reader = self::connect($dsn);
         $writer->transaction(function () use ($reader): void {
-            (new Service)->setName('pending')->create();
-            $count = (new Service)($reader)->getCount();
+            (new Service())->setName('pending')->create();
+            $count = (new Service())($reader)->getCount();
             self::check($count === 0, "read during the write: $count services, want 0");
-            $count = $reader->transaction(fn() => (new Service)->getCount(), readOnly: true, retry: 0);
+            $count = $reader->transaction(fn() => (new Service())->getCount(), readOnly: true, retry: 0);
             self::check($count === 0, "read-only transaction during the write: $count services, want 0");
         }, retry: 0);
-        $count = (new Service)($reader)->getCount();
+        $count = (new Service())($reader)->getCount();
         self::check($count === 1, "read after the write: $count services, want 1");
     }
 
-    private static function case_lock_wait_expires(): void {
+    private static function case_lock_wait_expires(): void
+    {
         $dsn = self::database('expiry');
         $holder = self::connect($dsn);
         $waiter = self::connect("$dsn?_pragma=busy_timeout(200)");
         $holder->transaction(function () use ($waiter): void {
-            (new Service)->setName('holder')->create();
+            (new Service())->setName('holder')->create();
             $started = microtime(true);
             $code = 'no error';
             try {

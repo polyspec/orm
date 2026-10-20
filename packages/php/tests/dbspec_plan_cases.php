@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // The one reader of tests/dbspec/plans.json for the PHP tests. DbspecPlanTest, DbspecPlanApplyTest, DbspecApplyTest and
 // DbspecApplyCleanupTest all take their plans from here; the file is opened once per process.
 

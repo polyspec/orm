@@ -1,4 +1,5 @@
 <?php
+
 // The request hook of the PHP client on SQLite: the shared cases of
 // request_hook_cases.php, each a data set named by its case id, on a SQLite
 // file of its own under a temporary directory that the test removes on every

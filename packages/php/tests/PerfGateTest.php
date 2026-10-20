@@ -1,4 +1,5 @@
 <?php
+
 // Hot-path gate: the model client against the same statement through PDO with the same cell
 // decoding and the same typed row conversion, measured in alternating pairs. Each gate query is a
 // data set; the measurement is written to standard error, and a ratio above its reference is a
@@ -63,8 +64,8 @@ final class PerfGateTest extends TestCase
     private static function query(string $name): Author
     {
         return match ($name) {
-            'pk' => (new Author)(self::$db)->seq(42),
-            'list100' => (new Author)(self::$db)->serviceSeq(7)->andIsClose(false)->orderBySeqDesc()->limit(0, 100),
+            'pk' => (new Author())(self::$db)->seq(42),
+            'list100' => (new Author())(self::$db)->serviceSeq(7)->andIsClose(false)->orderBySeqDesc()->limit(0, 100),
         };
     }
 

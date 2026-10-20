@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Polyspec\Orm;
@@ -50,7 +51,7 @@ final class OrmGen
             }
             fwrite(self::$stderr, 'usage: ' . self::USAGE[$command] . "\n");
             return 2;
-        } catch (\RuntimeException|\InvalidArgumentException|OrmException $e) {
+        } catch (\RuntimeException | \InvalidArgumentException | OrmException $e) {
             fwrite(self::$stderr, 'orm-gen: ' . $e->getMessage() . "\n");
             return 1;
         }

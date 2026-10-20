@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // The sets cases of tests/dbspec/cases.json, shared by the PHP client's DbspecManifestTest and the extension's
 // DbspecSetsTest (packages/php-ext/tests): each implementation passes its Dbspec class.
 
@@ -87,13 +89,15 @@ function dbspec_sets_check(string $dbspec, array $case): void
             $messages = array_map(static fn($d): string => "{$d->rule} {$d->line}:{$d->column} {$d->message}", $r->diagnostics);
             Assert::assertSame([], $messages, "{$case['id']}: manifest and external text of {$r->name}");
         }
-        foreach ([
+        foreach (
+            [
             'manifestText' => [$m->manifestText, set_text($expected['manifestText'])],
             'externalText' => [$m->externalText, set_text($expected['externalText'])],
             'schemaText' => [$m->schemaText, set_text($expected['schemaText'])],
             'manifestHash' => [$m->manifestHash, $expected['manifestHash']],
             'schemaHash' => [$m->schemaHash, $expected['schemaHash']],
-        ] as $field => [$gotText, $wantText]) {
+            ] as $field => [$gotText, $wantText]
+        ) {
             Assert::assertSame($wantText, $gotText, "{$case['id']}: $field differs\n--- want\n$wantText\n--- got\n$gotText");
         }
     }

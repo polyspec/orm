@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /*
@@ -88,7 +89,8 @@ final class MarkdownTest extends TestCase
     {
         $got = Orm::parseMarkdownDsn('markdown://127.0.0.1:4100/tracker?token=' . MARKDOWN_TOKEN);
         self::assertFalse($got !== ['127.0.0.1:4100', 'tracker', MARKDOWN_TOKEN], 'parseMarkdownDsn() = ' . json_encode($got));
-        foreach ([
+        foreach (
+            [
             'markdown://127.0.0.1:4100/tracker',
             'markdown://127.0.0.1:4100/tracker?token=',
             'markdown://127.0.0.1:4100/tracker?token=a&token=b',
@@ -101,7 +103,8 @@ final class MarkdownTest extends TestCase
             'markdown://user@127.0.0.1:4100/tracker?token=a',
             'markdown://127.0.0.1:4100/?token=a',
             'markdown://127.0.0.1:4100/a/b?token=a',
-        ] as $input) {
+            ] as $input
+        ) {
             $e = markdown_error(static fn() => Orm::parseMarkdownDsn($input));
             self::assertFalse($e?->code_ !== Code::CONFIG, "parseMarkdownDsn($input) = " . ($e?->getMessage() ?? 'no error') . '; want CONFIG');
             $e = markdown_error(static fn() => Orm::connect($input, new Config()));
@@ -120,9 +123,11 @@ final class MarkdownTest extends TestCase
         $db = Orm::connect($server[2], new Config());
         self::assertFalse($db->driver() !== 'markdown', "driver() = {$db->driver()}; want markdown");
         $db->transaction(static function () use ($db): void {
-            $db->transaction(static function (): void {});
+            $db->transaction(static function (): void {
+            });
         }, readOnly: true);
-        $e = markdown_error(static fn() => $db->transaction(static function (): void {}));
+        $e = markdown_error(static fn() => $db->transaction(static function (): void {
+        }));
         self::assertFalse($e?->code_ !== Code::WRITE_CONFLICT || $e->getMessage() !== 'WRITE_CONFLICT: people.flowmark.md:3 changed since it was read', 'commit error = ' . ($e?->getMessage() ?? 'none') . "; want WRITE_CONFLICT with the server's message");
         $db->close();
         $want = [
@@ -151,13 +156,17 @@ final class MarkdownTest extends TestCase
         $server = markdown_fake_server(['{"ok":true}']);
         $db = Orm::connect($server[2], new Config());
         $surfaces = [
-            'isolation' => static fn() => $db->transaction(static function (): void {}, isolation: 'serializable'),
-            'timeoutMs' => static fn() => $db->transaction(static function (): void {}, timeoutMs: 100),
-            'audit' => static fn() => $db->transaction(static function (): void {}, audit: ['account' => 'a']),
+            'isolation' => static fn() => $db->transaction(static function (): void {
+            }, isolation: 'serializable'),
+            'timeoutMs' => static fn() => $db->transaction(static function (): void {
+            }, timeoutMs: 100),
+            'audit' => static fn() => $db->transaction(static function (): void {
+            }, audit: ['account' => 'a']),
             'lock' => static fn() => $db->utils()->lock('k'),
             'setLocal' => static fn() => $db->utils()->setLocal('k', 'v'),
             'local' => static fn() => $db->utils()->local('k'),
-            'subscribe' => static fn() => $db->subscribe(static function (): void {}),
+            'subscribe' => static fn() => $db->subscribe(static function (): void {
+            }),
         ];
         foreach ($surfaces as $name => $fn) {
             $e = markdown_error($fn);
@@ -235,7 +244,9 @@ final class MarkdownTest extends TestCase
                     'datetime' => new \DateTimeImmutable('2024-01-02 03:04:05', new \DateTimeZone('UTC')),
                 },
                 isset($v['int']) => (int) $v['int'],
-                isset($v['f64']) => match ($v['f64']) { 'NaN' => NAN, 'Infinity' => INF, '-Infinity' => -INF },
+                isset($v['f64']) => match ($v['f64']) {
+                    'NaN' => NAN, 'Infinity' => INF, '-Infinity' => -INF
+                },
                 isset($v['bytes']) => new \Polyspec\Orm\Bytes(base64_decode($v['bytes'], true)),
             };
         };
@@ -349,5 +360,4 @@ final class MarkdownTest extends TestCase
             date_default_timezone_set($default);
         }
     }
-
 }

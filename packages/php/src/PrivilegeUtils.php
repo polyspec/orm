@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Polyspec\Orm;
@@ -11,7 +12,9 @@ use Polyspec\Orm\Dbspec\Renderer;
 /** Table privileges (PostgreSQL only). */
 final class PrivilegeUtils
 {
-    public function __construct(private readonly Db $db, private readonly Utils $u) {}
+    public function __construct(private readonly Db $db, private readonly Utils $u)
+    {
+    }
 
     private function table(string $table): string
     {

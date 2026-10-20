@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // The PHPUnit bootstrap of packages/php-ext (phpunit.xml.dist): the Composer autoloader of the development root (vendor-php),
 // which loads PHPUnit and the PHP client polyspec/orm (packages/php), the specification that the extension's results are compared with. The
 // extension polyspec_orm is loaded by the php that runs PHPUnit (php -d extension=<library>); without it no test can run.

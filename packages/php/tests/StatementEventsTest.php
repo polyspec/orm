@@ -1,4 +1,5 @@
 <?php
+
 // Statement events on SQLite, MySQL and PostgreSQL: every case of the shared
 // vector tests/events/vectors.json in a case database of its own
 // (statement_events_run.php), one data set per case id that runs the case on each
@@ -33,7 +34,8 @@ final class StatementEventsTest extends TestCase
 
     private static function runOn(string $driver, array $case): void
     {
-        with_case_database($driver, static function (string $text): void {}, static fn(string $dsn) => runCase($case, $driver, $dsn));
+        with_case_database($driver, static function (string $text): void {
+        }, static fn(string $dsn) => runCase($case, $driver, $dsn));
     }
 
     /**
@@ -54,6 +56,7 @@ final class StatementEventsTest extends TestCase
         $vector = statementEventsVector();
         $cases = array_column($vector['cases'], null, 'id');
         $spec = $vector['server_transactions'];
-        with_case_database($spec['database'], static function (string $text): void {}, static fn(string $dsn) => runServerTransactions($spec, $cases, $dsn));
+        with_case_database($spec['database'], static function (string $text): void {
+        }, static fn(string $dsn) => runServerTransactions($spec, $cases, $dsn));
     }
 }

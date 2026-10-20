@@ -1,4 +1,5 @@
 <?php
+
 // Unit test of the feature coverage helper (packages/php/tests/coverage_cases.php). The helper
 // is shared by packages/php/tests/Coverage*Test.php, so a change to it is checked by this
 // test (the helpers in contracts/features.json), not by the coverage of all features. Full coverage is run by make orm-check.
@@ -16,16 +17,26 @@ final class CoverageCasesTest extends TestCase
 {
     public function test_reports_error_codes_and_restore_failures(): void
     {
-        $this->assertSame(Code::CONFIG, coverageCode(static function (): void { throw new OrmException(Code::CONFIG, 'bad'); }), 'code');
-        $this->assertSame('no error', coverageCode(static function (): void {}), 'no error');
+        $this->assertSame(Code::CONFIG, coverageCode(static function (): void {
+            throw new OrmException(Code::CONFIG, 'bad');
+        }), 'code');
+        $this->assertSame('no error', coverageCode(static function (): void {
+        }), 'no error');
         $restored = false;
-        coverageRestoring(static function (): void {}, static function () use (&$restored): void { $restored = true; });
+        coverageRestoring(static function (): void {
+        }, static function () use (&$restored): void {
+            $restored = true;
+        });
         $this->assertTrue($restored, 'restore after success');
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('case failed: body; restore failed: cleanup');
         coverageRestoring(
-            static function (): void { throw new RuntimeException('body'); },
-            static function (): void { throw new RuntimeException('cleanup'); },
+            static function (): void {
+                throw new RuntimeException('body');
+            },
+            static function (): void {
+                throw new RuntimeException('cleanup');
+            },
         );
     }
 

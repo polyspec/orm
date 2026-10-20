@@ -1,4 +1,5 @@
 <?php
+
 // Statement events (docs/operations/usage.md "Statement events"), on SQLite, MySQL and
 // PostgreSQL. Every case of the shared vector tests/events/vectors.json runs
 // in a case database of its own (case_database.php) with the fixture
@@ -112,7 +113,7 @@ final class EventRun
 
     private function byLabel(string $label): EventProbe
     {
-        return (new EventProbe)($this->db)->label($label);
+        return (new EventProbe())($this->db)->label($label);
     }
 
     /** Runs one step. Throws the error. */
@@ -120,13 +121,13 @@ final class EventRun
     {
         switch ($s['op']) {
             case 'create':
-                (new EventProbe)($this->db)->setLabel($s['label'])->create();
+                (new EventProbe())($this->db)->setLabel($s['label'])->create();
                 return;
             case 'get':
                 $this->byLabel($s['label'])->get();
                 return;
             case 'count':
-                $n = (new EventProbe)($this->db)->getCount();
+                $n = (new EventProbe())($this->db)->getCount();
                 if (isset($s['result'])) {
                     Assert::assertTrue($n === $s['result'], "count = $n, want {$s['result']}");
                 }
@@ -265,8 +266,10 @@ function runServerTransactions(array $spec, array $cases, string $dsn): void
         // Through a pooler, the pooler applies the startup parameters to the server connection as SET, so
         // the source does not name the client. The source is compared only when it reaches the server directly.
         $pooled = getenv('ORM_TEST_POSTGRES_DSN') !== getenv('ORM_TEST_POSTGRES_SERVER_DSN');
-        Assert::assertTrue(count($zone) === 1 && $zone[0][0] === $spec['time_zone']['setting'] && ($pooled || $zone[0][1] === $spec['time_zone']['source']),
-            'TimeZone setting and source = ' . json_encode($zone) . ', want ' . json_encode($spec['time_zone']) . ($pooled ? ' (pooled)' : ''));
+        Assert::assertTrue(
+            count($zone) === 1 && $zone[0][0] === $spec['time_zone']['setting'] && ($pooled || $zone[0][1] === $spec['time_zone']['source']),
+            'TimeZone setting and source = ' . json_encode($zone) . ', want ' . json_encode($spec['time_zone']) . ($pooled ? ' (pooled)' : '')
+        );
         $probe = static fn(): int => (int) $u->read('utility', [], $spec['probe'], []);
         $first = $probe();
         $cost = $probe() - $first;

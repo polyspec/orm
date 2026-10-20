@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // Shared dbspec vectors (tests/dbspec/cases.json) through the PHP client.
 require_once __DIR__ . '/case_clock.php';
 require_once __DIR__ . '/dbspec_cases.php';
@@ -133,17 +135,39 @@ final class DbspecTest extends TestCase
         $cases = dbspec_read_cases();
         $manifest = array_key_first(array_filter($cases['sets'], static fn(array $c): bool => array_key_exists('manifest', $c)));
         $mutations = [
-            ['note', 'is missing', static function (stdClass $v): void { unset($v->note); }],
-            ['extra', 'is not a known field', static function (stdClass $v): void { $v->extra = []; }],
-            ['canonical[0].extra', 'is not a known field', static function (stdClass $v): void { $v->canonical[0]->extra = true; }],
-            ['normalize[0].canonical', 'is missing', static function (stdClass $v): void { unset($v->normalize[0]->canonical); }],
-            ['invalid[0].errors[0].extra', 'is not a known field', static function (stdClass $v): void { $v->invalid[0]->errors[0]->extra = 1; }],
-            ['hashes[0].extra', 'is not a known field', static function (stdClass $v): void { $v->hashes[0]->extra = true; }],
-            ['sets[0].extra', 'is not a known field', static function (stdClass $v): void { $v->sets[0]->extra = true; }],
-            ["sets[$manifest].manifest.extra", 'is not a known field', static function (stdClass $v) use ($manifest): void { $v->sets[$manifest]->manifest->extra = []; }],
-            ['files[0].errors', 'is missing', static function (stdClass $v): void { unset($v->files[0]->errors); }],
-            ['positions[0].positions[0].extra', 'is not a known field', static function (stdClass $v): void { $v->positions[0]->positions[0]->extra = 1; }],
-            ['positions[0].positions[0].line', 'is not an integer', static function (stdClass $v): void { $v->positions[0]->positions[0]->line = true; }],
+            ['note', 'is missing', static function (stdClass $v): void {
+                unset($v->note);
+            }],
+            ['extra', 'is not a known field', static function (stdClass $v): void {
+                $v->extra = [];
+            }],
+            ['canonical[0].extra', 'is not a known field', static function (stdClass $v): void {
+                $v->canonical[0]->extra = true;
+            }],
+            ['normalize[0].canonical', 'is missing', static function (stdClass $v): void {
+                unset($v->normalize[0]->canonical);
+            }],
+            ['invalid[0].errors[0].extra', 'is not a known field', static function (stdClass $v): void {
+                $v->invalid[0]->errors[0]->extra = 1;
+            }],
+            ['hashes[0].extra', 'is not a known field', static function (stdClass $v): void {
+                $v->hashes[0]->extra = true;
+            }],
+            ['sets[0].extra', 'is not a known field', static function (stdClass $v): void {
+                $v->sets[0]->extra = true;
+            }],
+            ["sets[$manifest].manifest.extra", 'is not a known field', static function (stdClass $v) use ($manifest): void {
+                $v->sets[$manifest]->manifest->extra = [];
+            }],
+            ['files[0].errors', 'is missing', static function (stdClass $v): void {
+                unset($v->files[0]->errors);
+            }],
+            ['positions[0].positions[0].extra', 'is not a known field', static function (stdClass $v): void {
+                $v->positions[0]->positions[0]->extra = 1;
+            }],
+            ['positions[0].positions[0].line', 'is not an integer', static function (stdClass $v): void {
+                $v->positions[0]->positions[0]->line = true;
+            }],
         ];
         foreach ($mutations as [$location, $problem, $change]) {
             yield "$location $problem" => [$location, $problem, $change];

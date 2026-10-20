@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // The restore scenario of contracts/fixtures/restore.dbs (same as restoreCase in packages/go/orm/restore_test.go
 // ). The owner case of RuntimeDbTest.php and the soft_delete_restore case of CoverageAuditTriggersTest.php both use it
 // . The caller generates the fixture's model in $namespace and installs it on the connection.
@@ -38,8 +40,8 @@ function restoreCase(Db $db, string $namespace): void
 {
     $membershipClass = "$namespace\\Membership";
     $labelClass = "$namespace\\Label";
-    $membership = static fn() => (new $membershipClass)($db);
-    $label = static fn() => (new $labelClass)($db);
+    $membership = static fn() => (new $membershipClass())($db);
+    $label = static fn() => (new $labelClass())($db);
     // The audit record key may skip, in each database, a number that the failed transaction wrote, so it is found by the actor
     // instead.
     $auditSeq = static function (string $actor) use ($db): string {
@@ -52,16 +54,16 @@ function restoreCase(Db $db, string $namespace): void
     // $db is the connection opened with an audit source that gives the actor 'default'.
     $adb = $db;
     [$seq, $id] = $adb->transaction(function () use ($membershipClass, $labelClass): array {
-        $seq = (new $membershipClass)->setTeamId(1)->setMemberId(2)->setNote('n1')->create()->getSeq();
-        $id = (new $labelClass)->setName('red')->setColor('x')->create()->getId();
+        $seq = (new $membershipClass())->setTeamId(1)->setMemberId(2)->setNote('n1')->create()->getSeq();
+        $id = (new $labelClass())->setName('red')->setColor('x')->create()->getId();
         return [$seq, $id];
     }, audit: ['actor' => 'create'], retry: 0);
     $adb->transaction(function () use ($membershipClass, $labelClass, $seq, $id): void {
-        (new $membershipClass)->setSeq($seq)->delete();
-        (new $labelClass)->setId($id)->delete();
+        (new $membershipClass())->setSeq($seq)->delete();
+        (new $labelClass())->setId($id)->delete();
     }, audit: ['actor' => 'delete'], retry: 0);
 
-    $duplicate = restoreErrorCode(fn() => $adb->transaction(fn() => (new $membershipClass)->setTeamId(1)->setMemberId(2)->create(), audit: ['actor' => 'duplicate'], retry: 0));
+    $duplicate = restoreErrorCode(fn() => $adb->transaction(fn() => (new $membershipClass())->setTeamId(1)->setMemberId(2)->create(), audit: ['actor' => 'duplicate'], retry: 0));
     restoreWant($duplicate === Code::DUPLICATE_KEY, "insert of the key of a soft-deleted row = $duplicate, want DUPLICATE_KEY");
     $hidden = $label()->getByName('red');
     restoreWant($hidden === null, 'default read of a soft-deleted row is not null, want null');
@@ -73,10 +75,10 @@ function restoreCase(Db $db, string $namespace): void
         return $row;
     };
     // A set value outside the key is a new value written together with the restored row.
-    $restored = $adb->transaction(fn() => (new $membershipClass)->setTeamId(1)->setMemberId(2)->setNote('n2')->restore(), audit: ['actor' => 'restore'], retry: 0);
+    $restored = $adb->transaction(fn() => (new $membershipClass())->setTeamId(1)->setMemberId(2)->setNote('n2')->restore(), audit: ['actor' => 'restore'], retry: 0);
     $want = $values(['seq' => $seq, 'team_id' => 1, 'member_id' => 2, 'note' => 'n2', 'audit_seq' => (int) $auditSeq('restore'), 'deleted_at' => null]);
     restoreWant($values($restored->toArray()) === $want, 'restored membership ' . json_encode($restored->toArray()) . ', want ' . json_encode($want));
-    $again = $adb->transaction(fn() => (new $membershipClass)->setSeq($seq)->setNote('n3')->restore(), audit: ['actor' => 'again'], retry: 0);
+    $again = $adb->transaction(fn() => (new $membershipClass())->setSeq($seq)->setNote('n3')->restore(), audit: ['actor' => 'again'], retry: 0);
     restoreWant($values($again->toArray()) === $want, 'restore of a row that is not deleted ' . json_encode($again->toArray()) . ', want the unchanged row');
 
     $restoredLabel = $label()->setName('red')->setColor('y')->restore();

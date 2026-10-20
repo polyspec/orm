@@ -1,4 +1,5 @@
 <?php
+
 // Codec cross-check (PHP side): every vector of tests/codec/vectors.json decodes with the PHP codec to its value, and
 // every encoding produced by the other runners (tests/codec/out/<lang>.json, written by make codec-check into
 // ORM_CODEC_OUT) decodes to the same value. Each data set is a vector name.

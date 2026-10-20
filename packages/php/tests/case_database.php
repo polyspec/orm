@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // case database: the case's own database, used by one test case. The shared test database
 // (the database of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN) is not assumed to be empty, so a case that installs a schema or checks for an empty database
 // uses a database with a non-overlapping name (MySQL, PostgreSQL) or

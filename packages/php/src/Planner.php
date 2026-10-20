@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Polyspec\Orm;
@@ -9,7 +10,9 @@ namespace Polyspec\Orm;
  */
 final class Planner
 {
-    public function __construct(private readonly RuntimeModel $m, private readonly Dialect $d) {}
+    public function __construct(private readonly RuntimeModel $m, private readonly Dialect $d)
+    {
+    }
 
     /** @return array{manifest_hash: string, kind: string, steps: list<array>} */
     public function compile(array $r): array

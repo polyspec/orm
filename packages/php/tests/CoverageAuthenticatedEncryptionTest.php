@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // authenticated_encryption feature coverage: each case in contracts/fixtures/authenticated_encryption.json
 // runs with the PHP client's AES envelope (Codec::hostEncode, the Codec::hostDecode
 // `aes` stage) and the blind index (Codec::blindIndex).

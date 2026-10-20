@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // The plan vectors of tests/dbspec/plans.json through Polyspec\Orm\Dbspec\Dbspec
 // (docs/spec/plans.md): every case's canonical emission, changes and steps of
 // three dialects, every invalid case's `plan` diagnostics, every chain

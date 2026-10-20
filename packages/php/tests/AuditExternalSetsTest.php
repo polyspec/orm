@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // Audit transactions over sets registered by schema value, on SQLite, MySQL and PostgreSQL
 // (contracts/fixtures/external). core owns ext_account and ext_audit; board and member each use
 // them and own an audited table that records its audits in ext_audit. core and board are
@@ -81,7 +83,7 @@ final class AuditExternalSetsTest extends TestCase
                 require "$work/member/bootstrap.php";
                 $schema->install(\Polyspec\Orm\Tests\AuditExternalSets\Member\schema());
             }
-            $db->transaction(fn() => (new \Polyspec\Orm\Tests\AuditExternalSets\Member\ExtPost)($db)->setAccountSeq(1)->setTitle('hello')->create(), audit: []);
+            $db->transaction(fn() => (new \Polyspec\Orm\Tests\AuditExternalSets\Member\ExtPost())($db)->setAccountSeq(1)->setTitle('hello')->create(), audit: []);
             $records = $db->pdo()->query('SELECT seq, actor FROM ext_audit ORDER BY seq')->fetchAll(PDO::FETCH_NUM);
             self::want(count($records) === 1 && $records[0][1] === 'writer', 'ext_audit ' . json_encode($records) . ', want one record of writer');
             $recorded = $db->pdo()->query('SELECT audit_seq FROM ext_post_history')->fetchAll(PDO::FETCH_COLUMN);
@@ -112,7 +114,8 @@ final class AuditExternalSetsTest extends TestCase
             throw new RuntimeException("cannot create $work");
         }
         try {
-            with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::scenario($order, $dsn, $work));
+            with_case_database($driver, static function (string $step): void {
+            }, static fn(string $dsn) => self::scenario($order, $dsn, $work));
         } finally {
             exec('rm -rf ' . escapeshellarg($work));
         }

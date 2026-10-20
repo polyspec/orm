@@ -1,4 +1,5 @@
 <?php
+
 // The shared cases of the request hook (docs/operations/usage.md "Request hook") with the
 // fixture contracts/fixtures/request_hook.dbs: without_hook, read_filter,
 // insert_assign, loaded_row_writes, invalid_param, restore_key,
@@ -79,7 +80,7 @@ function hookConnect(string $dsn): Db
 function hookSeed(Db $db): void
 {
     foreach ([['a', 'a1'], ['a', 'a2'], ['b', 'b1']] as [$part, $label]) {
-        (new HookItem)($db)->setPart($part)->setLabel($label)->create();
+        (new HookItem())($db)->setPart($part)->setLabel($label)->create();
     }
 }
 
@@ -119,11 +120,11 @@ function withoutHook(string $dsn): void
 {
     $db = hookConnect($dsn);
     hookSeed($db);
-    hookCheck(hookLabels((new HookItem)($db)->gets()) === ['a1', 'a2', 'b1'], 'the connection reads every row');
-    hookCheck((new HookItem)($db)->getCount() === 3, 'the connection counts every row');
+    hookCheck(hookLabels((new HookItem())($db)->gets()) === ['a1', 'a2', 'b1'], 'the connection reads every row');
+    hookCheck((new HookItem())($db)->getCount() === 3, 'the connection counts every row');
     $db->withRequestHook(readFilter('a'));
-    hookCheck(hookLabels((new HookItem)($db)->gets()) === ['a1', 'a2', 'b1'], 'the connection reads every row after a hooked handle was derived');
-    hookCheck((new HookItem)($db)->getCount() === 3, 'the connection counts every row after a hooked handle was derived');
+    hookCheck(hookLabels((new HookItem())($db)->gets()) === ['a1', 'a2', 'b1'], 'the connection reads every row after a hooked handle was derived');
+    hookCheck((new HookItem())($db)->getCount() === 3, 'the connection counts every row after a hooked handle was derived');
     $db->close();
 }
 
@@ -133,13 +134,13 @@ function readFilterCase(string $dsn): void
     $db = hookConnect($dsn);
     hookSeed($db);
     $a = $db->withRequestHook(readFilter('a'));
-    hookCheck(hookLabels((new HookItem)($a)->gets()) === ['a1', 'a2'], 'the hooked read returns the rows of part a');
-    hookCheck((new HookItem)($a)->getCount() === 2, 'the hooked count is 2');
-    $page = (new HookItem)($a)->getsPage(1, 10);
+    hookCheck(hookLabels((new HookItem())($a)->gets()) === ['a1', 'a2'], 'the hooked read returns the rows of part a');
+    hookCheck((new HookItem())($a)->getCount() === 2, 'the hooked count is 2');
+    $page = (new HookItem())($a)->getsPage(1, 10);
     hookCheck($page->totalCount === 2, "the hooked page total is 2, got {$page->totalCount}");
     hookCheck($page->items->count() === 2, 'the hooked page holds 2 rows');
     $b = $db->withRequestHook(readFilter('b'));
-    hookCheck(hookLabels((new HookItem)($b)->gets()) === ['b1'], 'the handle hooked with b reads the row of part b');
+    hookCheck(hookLabels((new HookItem())($b)->gets()) === ['b1'], 'the handle hooked with b reads the row of part b');
     $db->close();
 }
 
@@ -156,11 +157,11 @@ function insertAssign(string $dsn): void
             $r->ir['rows'][$i][] = $r->param('h');
         }
     });
-    (new HookItem)($h)->setLabel('single')->create();
-    $written = (new HookItem)($h)->creates([(new HookItem)->setLabel('bulk1'), (new HookItem)->setLabel('bulk2')], 2);
+    (new HookItem())($h)->setLabel('single')->create();
+    $written = (new HookItem())($h)->creates([(new HookItem())->setLabel('bulk1'), (new HookItem())->setLabel('bulk2')], 2);
     hookCheck($written === 2, "the bulk insert writes 2 rows, got $written");
     $parts = [];
-    foreach ((new HookItem)($db)->gets() as $row) {
+    foreach ((new HookItem())($db)->gets() as $row) {
         $parts[$row->getLabel()] = $row->getPart();
     }
     ksort($parts, SORT_STRING);
@@ -181,10 +182,10 @@ function upsertScope(string $dsn): void
         }
     });
     for ($call = 1; $call <= 2; $call++) {
-        (new HookUpsert)($h)->setName('k')->duplication((new HookUpsert)->setHits(7))->create();
+        (new HookUpsert())($h)->setName('k')->duplication((new HookUpsert())->setHits(7))->create();
     }
     $rows = [];
-    foreach ((new HookUpsert)($db)->gets() as $row) {
+    foreach ((new HookUpsert())($db)->gets() as $row) {
         $rows[] = [$row->getScopeCol(), $row->getName(), $row->getHits()];
     }
     hookCheck($rows === [['a', 'k', 7]], 'the stored row holds scope_col a, name k and hits 7: ' . json_encode($rows));
@@ -203,7 +204,7 @@ function loadedRowWrites(string $dsn): void
             hookAndWhere($r->ir, ['column' => 'part', 'op' => 'eq', 'p' => $r->param('none')]);
         }
     });
-    $rows = (new HookItem)($h)->gets();
+    $rows = (new HookItem())($h)->gets();
     $row = null;
     foreach ($rows as $candidate) {
         if ($candidate->getLabel() === 'a1') {
@@ -218,13 +219,13 @@ function loadedRowWrites(string $dsn): void
     hookCheck($row->connection() === $h, 'the loaded row keeps the hooked handle');
     $row->setLabel('changed')->update();
     hookCheck(in_array('update', $kinds, true), 'the hook receives the update of the loaded row: ' . json_encode($kinds));
-    hookCheck(hookLabels((new HookItem)($db)->gets()) === ['a1', 'a2', 'b1'], 'the predicate the hook adds keeps the update from changing a1');
+    hookCheck(hookLabels((new HookItem())($db)->gets()) === ['a1', 'a2', 'b1'], 'the predicate the hook adds keeps the update from changing a1');
     $row->delete();
     hookCheck(in_array('delete', $kinds, true), 'the hook receives the delete of the loaded row: ' . json_encode($kinds));
-    hookCheck((new HookItem)($db)->getCount() === 3, 'the predicate the hook adds keeps the delete from removing a1');
+    hookCheck((new HookItem())($db)->getCount() === 3, 'the predicate the hook adds keeps the delete from removing a1');
     $kinds = [];
     $h->transaction(static function (): void {
-        (new HookItem)->gets();
+        (new HookItem())->gets();
     });
     hookCheck($kinds === ['all'], 'the hook receives the read of a model without a connection in a transaction of the hooked handle: ' . json_encode($kinds));
     $db->close();
@@ -241,7 +242,7 @@ function invalidParam(string $dsn): void
     $h = $db->withRequestHook(static function (Request $r): void {
         hookAndWhere($r->ir, ['column' => 'part', 'op' => 'eq', 'p' => count($r->params) + 5]);
     });
-    $e = hookRaised(fn() => (new HookItem)($h)->getCount());
+    $e = hookRaised(fn() => (new HookItem())($h)->getCount());
     hookCheck($e instanceof OrmException && $e->code_ === Code::IR_INVALID, 'the hooked count fails with IR_INVALID: ' . ($e === null ? 'nothing' : $e::class . ': ' . $e->getMessage()));
     hookCheck($events === 0, "the refused request sends no statement, got $events events");
     $db->close();
@@ -265,7 +266,7 @@ function seedDeletedEntries(Db $db): array
 {
     $ids = [];
     foreach ([['a', 'x'], ['b', 'x'], ['a', 'y']] as [$part, $label]) {
-        $row = (new HookEntry)($db)->setPart($part)->setLabel($label)->setNote('n0')->create();
+        $row = (new HookEntry())($db)->setPart($part)->setLabel($label)->setNote('n0')->create();
         $ids[$part . $label] = $row->getId();
         $row->delete();
     }
@@ -276,7 +277,7 @@ function seedDeletedEntries(Db $db): array
 function entryRows(Db $db): array
 {
     $out = [];
-    foreach ((new HookEntry)($db)->gets() as $row) {
+    foreach ((new HookEntry())($db)->gets() as $row) {
         $out[] = [$row->getId(), $row->getNote()];
     }
     return $out;
@@ -287,7 +288,7 @@ function restoreKeyCase(string $dsn): void
 {
     $db = hookConnect($dsn);
     $ids = seedDeletedEntries($db);
-    $row = (new HookEntry)($db->withRequestHook(partScope('a')))->setLabel('x')->setNote('n1')->restore();
+    $row = (new HookEntry())($db->withRequestHook(partScope('a')))->setLabel('x')->setNote('n1')->restore();
     hookCheck([$row->getId(), $row->getPart(), $row->getLabel(), $row->getNote()] === [$ids['ax'], 'a', 'x', 'n1'], 'the restore returns (a, x) with note n1: ' . json_encode($row->toArray()));
     hookCheck(entryRows($db) === [[$ids['ax'], 'n1']], 'the connection reads only (a, x) with note n1: ' . json_encode(entryRows($db)));
     $db->close();
@@ -298,10 +299,10 @@ function restoreConditionCase(string $dsn): void
 {
     $db = hookConnect($dsn);
     $ids = seedDeletedEntries($db);
-    $e = hookRaised(fn() => (new HookEntry)($db->withRequestHook(partScope('b')))->setId($ids['ay'])->setNote('n2')->restore());
+    $e = hookRaised(fn() => (new HookEntry())($db->withRequestHook(partScope('b')))->setId($ids['ay'])->setNote('n2')->restore());
     hookCheck($e instanceof OrmException && $e->code_ === Code::NO_ROWS, 'the restore outside the hook condition fails with NO_ROWS: ' . ($e === null ? 'nothing' : $e::class . ': ' . $e->getMessage()));
     hookCheck(entryRows($db) === [], 'the restore outside the hook condition restores no row: ' . json_encode(entryRows($db)));
-    $row = (new HookEntry)($db->withRequestHook(partScope('a')))->setId($ids['ay'])->setNote('n2')->restore();
+    $row = (new HookEntry())($db->withRequestHook(partScope('a')))->setId($ids['ay'])->setNote('n2')->restore();
     hookCheck([$row->getId(), $row->getLabel(), $row->getNote()] === [$ids['ay'], 'y', 'n2'], 'the restore inside the hook condition returns (a, y) with note n2: ' . json_encode($row->toArray()));
     $db->close();
 }
@@ -315,7 +316,7 @@ function restoreNoKeyCase(string $dsn): void
     $db->subscribe(static function () use (&$events): void {
         $events++;
     });
-    $e = hookRaised(fn() => (new HookEntry)($db->withRequestHook(partScope('a')))->setNote('n3')->restore());
+    $e = hookRaised(fn() => (new HookEntry())($db->withRequestHook(partScope('a')))->setNote('n3')->restore());
     hookCheck($e instanceof OrmException && $e->code_ === Code::IR_INVALID, 'the restore without a key fails with IR_INVALID: ' . ($e === null ? 'nothing' : $e::class . ': ' . $e->getMessage()));
     hookCheck($events === 0, "the refused restore sends no statement, got $events events");
     $db->close();
@@ -337,7 +338,7 @@ function restoreRewrittenKeyCase(string $dsn): void
         }
         $scope($r);
     });
-    $row = (new HookEntry)($h)->setLabel('x')->setNote('n4')->restore();
+    $row = (new HookEntry())($h)->setLabel('x')->setNote('n4')->restore();
     hookCheck([$row->getId(), $row->getLabel(), $row->getNote()] === [$ids['ay'], 'y', 'n4'], 'the restore returns (a, y) with note n4: ' . json_encode($row->toArray()));
     hookCheck(entryRows($db) === [[$ids['ay'], 'n4']], 'the connection reads only (a, y) with note n4: ' . json_encode(entryRows($db)));
     $db->close();
@@ -353,7 +354,7 @@ function restoreHookSetKeyCase(string $dsn): void
             array_unshift($r->ir['set'], ['column' => 'part', 'p' => $r->param('a')]);
         }
     });
-    $row = (new HookEntry)($h)->setLabel('x')->setNote('n5')->restore();
+    $row = (new HookEntry())($h)->setLabel('x')->setNote('n5')->restore();
     hookCheck([$row->getId(), $row->getPart(), $row->getNote()] === [$ids['ax'], 'a', 'n5'], 'the restore returns (a, x) with note n5: ' . json_encode($row->toArray()));
     hookCheck(entryRows($db) === [[$ids['ax'], 'n5']], 'the connection reads only (a, x) with note n5: ' . json_encode(entryRows($db)));
     $db->close();
@@ -374,7 +375,7 @@ function restoreRewrittenKeySetScopeCase(string $dsn): void
             $r->ir['set'][] = ['column' => 'part', 'p' => $r->param('a')];
         }
     });
-    $row = (new HookEntry)($h)->setLabel('x')->setNote('n6')->restore();
+    $row = (new HookEntry())($h)->setLabel('x')->setNote('n6')->restore();
     hookCheck([$row->getId(), $row->getLabel(), $row->getNote()] === [$ids['ay'], 'y', 'n6'], 'the restore returns (a, y) with note n6: ' . json_encode($row->toArray()));
     hookCheck(entryRows($db) === [[$ids['ay'], 'n6']], 'the connection reads only (a, y) with note n6: ' . json_encode(entryRows($db)));
     $db->close();

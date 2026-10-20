@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 // Checks the dbspec interface of the extension polyspec_orm (Polyspec\Orm\Dbspec\Native\Dbspec) with the shared vectors and the pure PHP client. The PHP
@@ -368,8 +369,11 @@ final class DbspecTest extends TestCase
         $text = "dbspec 1 shop\n\ntable users {\n  id i64 identity\n  primary key (id)\n}\n";
         same_outcome('an integer document name', static fn() => Dbspec::parse($text, [1 => $text]), static fn() => NativeDbspec::parse($text, [1 => $text]));
         same_outcome('a document text that is not a string', static fn() => Dbspec::parse($text, ['core' => 1]), static fn() => NativeDbspec::parse($text, ['core' => 1]));
-        same_outcome('an unknown dialect', static fn() => Dbspec::render([Dbspec::parse($text, [])->document], 'oracle'),
-            static fn() => NativeDbspec::render([NativeDbspec::parse($text, [])->document], 'oracle'));
+        same_outcome(
+            'an unknown dialect',
+            static fn() => Dbspec::render([Dbspec::parse($text, [])->document], 'oracle'),
+            static fn() => NativeDbspec::render([NativeDbspec::parse($text, [])->document], 'oracle')
+        );
         $missing = "$root/tests/dbspec/files/missing.dbs";
         same_outcome('a missing file', static fn() => Dbspec::readFile($missing), static fn() => NativeDbspec::readFile($missing));
         same_outcome('a directory', static fn() => Dbspec::readFile("$root/tests/dbspec/files"), static fn() => NativeDbspec::readFile("$root/tests/dbspec/files"));
@@ -617,7 +621,10 @@ final class DbspecTest extends TestCase
         same_outcome('an unknown dialect', static fn() => Dbspec::finalize($pdo, 'oracle', $plans, $now, null), static fn() => NativeDbspec::finalize($pdo, 'oracle', $nativePlans, $now, null));
         same_outcome('two plans from empty', static fn() => Dbspec::apply($pdo, 'sqlite', [$plans[0], $plans[0]], $now, null), static fn() => NativeDbspec::apply($pdo, 'sqlite', [$nativePlans[0], $nativePlans[0]], $now, null));
         $text = static fn() => 'now';
-        same_outcome('a clock that returns text', static fn() => Dbspec::apply(new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]), 'sqlite', $plans, $text, null),
-            static fn() => NativeDbspec::apply(new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]), 'sqlite', $nativePlans, $text, null));
+        same_outcome(
+            'a clock that returns text',
+            static fn() => Dbspec::apply(new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]), 'sqlite', $plans, $text, null),
+            static fn() => NativeDbspec::apply(new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]), 'sqlite', $nativePlans, $text, null)
+        );
     }
 }

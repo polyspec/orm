@@ -1,4 +1,5 @@
 <?php
+
 // statement_events coverage: in the case database (ORM_FEATURE_DATABASE) chosen by feature-check,
 // runs each case of tests/events/vectors.json in a new case database (case_database.php) per case,
 // and compares with the expected events (statement_events_run.php). Does not read or write the bench database.
@@ -20,7 +21,8 @@ final class CoverageStatementEventsTest extends TestCase
             [$driver] = coverageItem();
             statementEventsModels();
             foreach (statementEventsVector()['cases'] as $case) {
-                with_case_database($driver, static function (string $text): void {}, static fn(string $dsn) => runCase($case, $driver, $dsn));
+                with_case_database($driver, static function (string $text): void {
+                }, static fn(string $dsn) => runCase($case, $driver, $dsn));
             }
         }
     }

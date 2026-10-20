@@ -1,4 +1,5 @@
 <?php
+
 // The generated decimal model of contracts/fixtures/decimal_schema.dbs on one database of each dialect: the generated
 // getter and setter take exact strings and refuse other values, and a row written and read in a transaction keeps its
 // exact values in the model, its row output and the database, and is gone after the rollback. Each dialect is a data
@@ -113,7 +114,7 @@ final class DecimalModelDbTest extends TestCase
         self::assertTrue($getAmount instanceof ReflectionNamedType && $setAmount instanceof ReflectionNamedType && $getAmount->getName() === 'string' && $setAmount->getName() === 'string', 'generated decimal getter and setter must use exact string values');
         foreach (['1.00001', '1000000000.0000', 'NaN'] as $invalid) {
             try {
-                (new $class)->setAmount($invalid);
+                (new $class())->setAmount($invalid);
                 self::fail("invalid decimal $invalid was accepted");
             } catch (OrmException $error) {
                 self::assertSame(Code::CODEC_ENCODE, $error->code_, "invalid decimal $invalid returned {$error->code_}");
@@ -121,13 +122,13 @@ final class DecimalModelDbTest extends TestCase
         }
         // The generated setters accept exact strings only.
         try {
-            (new $class)->setAmount(48.045);
+            (new $class())->setAmount(48.045);
             self::fail('binary64 decimal input was accepted');
         } catch (TypeError) {
             self::addToAssertionCount(1);
         }
         try {
-            (new $class)->setLargeValue(9007199254740992);
+            (new $class())->setLargeValue(9007199254740992);
             self::fail('binary64 large decimal input was accepted');
         } catch (TypeError) {
             self::addToAssertionCount(1);
@@ -145,12 +146,12 @@ final class DecimalModelDbTest extends TestCase
         $db = DecimalFixture\connect($dsn, new Config());
         $db->utils()->schema()->install(DecimalFixture\schema());
         try {
-            self::assertSame(0, (new $class)->connect($db)->seq(1)->getCount(), 'decimal fixture row 1 exists before the test');
+            self::assertSame(0, (new $class())->connect($db)->seq(1)->getCount(), 'decimal fixture row 1 exists before the test');
             $rollback = new RuntimeException('decimal fixture rollback');
             try {
                 $db->transaction(static function () use ($class, $db, $dialect, $rollback): void {
-                    (new $class)->setSeq(1)->setAmount('48.0450')->setLargeValue('9007199254740993')->create();
-                    $loaded = (new $class)->seq(1)->get();
+                    (new $class())->setSeq(1)->setAmount('48.0450')->setLargeValue('9007199254740993')->create();
+                    $loaded = (new $class())->seq(1)->get();
                     self::assertTrue($loaded->getAmount() === '48.0450' && $loaded->getLargeValue() === '9007199254740993', 'generated decimal fields lost exact values');
                     $array = $loaded->toArray();
                     self::assertTrue($array['amount'] === '48.0450' && $array['large_value'] === '9007199254740993', 'decimal row output lost exact values');
@@ -166,7 +167,7 @@ final class DecimalModelDbTest extends TestCase
                     throw $error;
                 }
             }
-            self::assertSame(0, (new $class)->connect($db)->seq(1)->getCount(), 'decimal fixture row remains after rollback');
+            self::assertSame(0, (new $class())->connect($db)->seq(1)->getCount(), 'decimal fixture row remains after rollback');
         } finally {
             $db->close();
         }

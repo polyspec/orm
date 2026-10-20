@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 // Reads the class declarations of the extension's native classes with Reflection and prints them as JSON: each class and its modifiers, parent and

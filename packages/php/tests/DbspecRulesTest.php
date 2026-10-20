@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // Focused dbspec rules that tests/dbspec/cases.json does not cover yet. An
 // expected error names its rule, its line and a needle: the column is the
 // first occurrence of the needle in that line (in characters), or an integer.
@@ -156,34 +158,52 @@ function rules_vectors(): array
         rules_case('setting-aes-without-version', users(['  secret bytes'], ['  settings {', '    codec secret aes', '  }']), [['setting', 8, 'codec']]),
         rules_case('setting-immutable-cascade-child', ['dbspec 1 shop', '', 'table users {', '  id i64 identity', '  parent_id i64 null', '  primary key (id)', '  index ix_users_parent (parent_id)',
             '  foreign key fk_users_parent (parent_id) references users (id) on delete cascade on update restrict', '  settings {', '    immutable', '  }', '}'], [['setting', 10, 'immutable']]),
-        rules_case('setting-audit-shape', ['dbspec 1 shop', '', 'table service {', '  id i64 identity', '  audit_seq i32', '  primary key (id)', '  index ix_service_audit (audit_seq)',
+        rules_case(
+            'setting-audit-shape',
+            ['dbspec 1 shop', '', 'table service {', '  id i64 identity', '  audit_seq i32', '  primary key (id)', '  index ix_service_audit (audit_seq)',
             '  foreign key fk_service_audit (audit_seq) references audit (seq) on delete restrict on update restrict', '  settings {',
             '    audit into service_history column audit_seq references audit action change previous previous_audit_seq', '  }', '}', '',
             'table service_history {', '  history_id i64', '  change varchar(16)', '  previous_audit_seq i64', '  id i64', '  extra i32', '  primary key (history_id)', '}', '',
             'table audit {', '  seq i32', '  primary key (seq)', '}'],
-            [['setting', 10, 'service_history'], ['setting', 10, 'service_history'], ['setting', 10, 'service_history'], ['setting', 10, 'service_history'], ['setting', 10, 'change'], ['setting', 10, 'previous_audit_seq']]),
+            [['setting', 10, 'service_history'], ['setting', 10, 'service_history'], ['setting', 10, 'service_history'], ['setting', 10, 'service_history'], ['setting', 10, 'change'], ['setting', 10, 'previous_audit_seq']]
+        ),
         rules_case('use-unknown-table', ['dbspec 1 shop', '', 'use core { accounts, ghosts }', '', 'table users {', '  id i64 identity', '  primary key (id)', '}'], [['use', 3, 'ghosts']], $core),
         rules_case('use-invalid-document', ['dbspec 1 shop', '', 'use broken { accounts }'], [['use', 3, 'broken']], ['broken' => ['dbspec 1 broken', '', 'table accounts {', '  Id i64', '}']]),
         rules_case('use-header-mismatch', ['dbspec 1 shop', '', 'use core { accounts }'], [['use', 3, 'core']], ['core' => ['dbspec 1 other', '', 'table accounts {', '  id i64 identity', '  primary key (id)', '}']]),
         rules_case('diagram-rules', array_merge(users([]), ['', 'diagram main {', '  users at 1 2', '  users at 3 4', '  users at 1.5 2', '}']), [['diagram', 10, 'users'], ['diagram', 11, 'users'], ['diagram', 11, '1.5']]),
         rules_case('codec-storage-type', users(['  a varchar(64)', '  b bytes', '  c text'], ['  settings {', '    codec a gz', '    codec b base64', '    codec c yaml ordered_json', '  }']), [['setting', 10, 11], ['setting', 11, 11], ['setting', 12, 'ordered_json']]),
-        rules_case('blind-index-shape', users(
-            ['  s1 bytes', '  s2 bytes', '  s3 bytes', '  s4 bytes', '  version i32', '  short_hash varchar(32)', '  pair_hash varchar(64)', '  null_hash varchar(64) null'],
-            ['  index ix_users_short (short_hash)', '  index ix_users_pair (pair_hash, version)', '  index ix_users_null (null_hash)', '  settings {',
+        rules_case(
+            'blind-index-shape',
+            users(
+                ['  s1 bytes', '  s2 bytes', '  s3 bytes', '  s4 bytes', '  version i32', '  short_hash varchar(32)', '  pair_hash varchar(64)', '  null_hash varchar(64) null'],
+                ['  index ix_users_short (short_hash)', '  index ix_users_pair (pair_hash, version)', '  index ix_users_null (null_hash)', '  settings {',
                 '    codec s1 aes', '    codec s2 aes', '    codec s3 aes', '    codec s4 aes', '    aes_version version',
-                '    blind_index s1 short_hash', '    blind_index s2 pair_hash', '    blind_index s3 null_hash', '    blind_index s4 s1', '    blind_index s1 pair_hash', '  }']),
-            [['setting', 23, 'short_hash'], ['setting', 24, 'pair_hash'], ['setting', 25, 'null_hash'], ['setting', 26, 20], ['setting', 27, 'blind_index']]),
-        rules_case('audit-action-nullable', ['dbspec 1 shop', '', 'table service {', '  id i64 identity', '  audit_seq i64', '  deleted_at datetime(6) null', '  primary key (id)', '  index ix_service_audit (audit_seq)',
+                '    blind_index s1 short_hash',
+                '    blind_index s2 pair_hash',
+                '    blind_index s3 null_hash',
+                '    blind_index s4 s1',
+                '    blind_index s1 pair_hash',
+                '  }']
+            ),
+            [['setting', 23, 'short_hash'], ['setting', 24, 'pair_hash'], ['setting', 25, 'null_hash'], ['setting', 26, 20], ['setting', 27, 'blind_index']]
+        ),
+        rules_case(
+            'audit-action-nullable',
+            ['dbspec 1 shop', '', 'table service {', '  id i64 identity', '  audit_seq i64', '  deleted_at datetime(6) null', '  primary key (id)', '  index ix_service_audit (audit_seq)',
             '  foreign key fk_service_audit (audit_seq) references audit (seq) on delete restrict on update restrict', '  settings {', '    soft_delete deleted_at',
             '    audit into service_history column audit_seq references audit action change previous previous_audit_seq', '  }', '}', '',
             'table service_history {', '  history_id i64 identity', '  change varchar(8) null', '  previous_audit_seq i64 null', '  id i64', '  audit_seq i64', '  deleted_at datetime(6) null', '  primary key (history_id)', '}', '',
             'table audit {', '  seq i64 identity', '  primary key (seq)', '}'],
-            [['setting', 12, 'change']]),
-        rules_case('audit-record-table-audited', ['dbspec 1 shop', '', 'table service {', '  id i64 identity', '  audit_seq i64', '  deleted_at datetime(6) null', '  primary key (id)', '  index ix_service_audit (audit_seq)',
+            [['setting', 12, 'change']]
+        ),
+        rules_case(
+            'audit-record-table-audited',
+            ['dbspec 1 shop', '', 'table service {', '  id i64 identity', '  audit_seq i64', '  deleted_at datetime(6) null', '  primary key (id)', '  index ix_service_audit (audit_seq)',
             '  foreign key fk_service_audit (audit_seq) references service (id) on delete restrict on update restrict', '  settings {', '    soft_delete deleted_at',
             '    audit into service_history column audit_seq references service action change previous previous_audit_seq', '  }', '}', '',
             'table service_history {', '  history_id i64 identity', '  change varchar(8)', '  previous_audit_seq i64 null', '  id i64', '  audit_seq i64', '  deleted_at datetime(6) null', '  primary key (history_id)', '}'],
-            [['setting', 12, 'service action']]),
+            [['setting', 12, 'service action']]
+        ),
         rules_case('used-documents-repeat-constraint', ['dbspec 1 shop', '', 'use a { ta }', 'use b { tb }'], [['name.duplicate', 4, 'b {']], [
             'a' => ['dbspec 1 a', '', 'table ta {', '  id i64 identity', '  code varchar(8)', '  primary key (id)', '  unique uq_code (code)', '}'],
             'b' => ['dbspec 1 b', '', 'table tb {', '  id i64 identity', '  code varchar(8)', '  primary key (id)', '  unique uq_code (code)', '}'],

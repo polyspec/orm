@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Polyspec\Orm;
@@ -10,5 +11,7 @@ final class PlanRelation
     public array $childKeys = [];
     public string $kind = '';
 
-    public function __construct(public readonly int $parentStep, public readonly PlanAssemble $parentAsm) {}
+    public function __construct(public readonly int $parentStep, public readonly PlanAssemble $parentAsm)
+    {
+    }
 }

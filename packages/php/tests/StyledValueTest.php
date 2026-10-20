@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -75,8 +76,14 @@ final class StyledValueTest extends TestCase
                 ];
             }
 
-            public function getPayload(): StyledValue { return $this->readColumn('payload'); }
-            public function setPayload(StyledValue $value): static { return $this->writeColumn('payload', $value); }
+            public function getPayload(): StyledValue
+            {
+                return $this->readColumn('payload');
+            }
+            public function setPayload(StyledValue $value): static
+            {
+                return $this->writeColumn('payload', $value);
+            }
         };
         try {
             $probe->getPayload();

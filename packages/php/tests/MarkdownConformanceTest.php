@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 /*
  * Runs every case of tests/markdown/cases.json, in order, with the PHP client against the server of the flowmark build that FLOWMARK points at,
  * one at a time (tests/markdown/README.md). That build must be the one pinned by flowmark.version; if it is missing or a different build, the run fails (it does not skip). A case reads
@@ -367,7 +369,8 @@ final class MarkdownConformanceTest extends TestCase
                 return (new People())->connect($s->db)->getQuery();
             },
             'isolation' => static function (Served $s): mixed {
-                $s->db->transaction(static function (): void {}, isolation: 'serializable');
+                $s->db->transaction(static function (): void {
+                }, isolation: 'serializable');
                 return null;
             },
             'write_conflict' => static function (Served $s): mixed {
@@ -451,8 +454,10 @@ final class MarkdownConformanceTest extends TestCase
             // subquery (DIA-168).
             'subquery_aggregate' => static function (Served $s): mixed {
                 $sums = [];
-                foreach ((new People())->connect($s->db)->removeAllColumns()
-                    ->addColumnTaskPoints(static fn (People $p) => (new Tasks())->sumPoints()->ownerEqId($p))->orderByIdAsc()->gets() as $m) {
+                foreach (
+                    (new People())->connect($s->db)->removeAllColumns()
+                    ->addColumnTaskPoints(static fn (People $p) => (new Tasks())->sumPoints()->ownerEqId($p))->orderByIdAsc()->gets() as $m
+                ) {
                     $v = $m->getTaskPoints();
                     $sums[] = [$m->getId(), $v === null ? null : (int) $v];
                 }
@@ -463,9 +468,11 @@ final class MarkdownConformanceTest extends TestCase
             // without the limit it is IR_INVALID (DIA-169).
             'scalar_column_subquery' => static function (Served $s): mixed {
                 $first = [];
-                foreach ((new People())->connect($s->db)->removeAllColumns()
+                foreach (
+                    (new People())->connect($s->db)->removeAllColumns()
                     ->addColumnFirstTask(static fn (People $p) => (new Tasks())->removeAllColumns()->addColumnTitle()->ownerEqId($p)->orderByIdAsc()->limit(0, 1))
-                    ->orderByIdAsc()->gets() as $m) {
+                    ->orderByIdAsc()->gets() as $m
+                ) {
                     $first[] = [$m->getId(), $m->getFirstTask()];
                 }
                 $unlimited = self::code_of(static fn () => (new People())->connect($s->db)->removeAllColumns()
@@ -638,7 +645,8 @@ final class MarkdownConformanceTest extends TestCase
     public static function setUpBeforeClass(): void
     {
         self::$served = new Served();
-        self::serve(self::$served, self::pinned_flowmark(), static function (string $step): void {});
+        self::serve(self::$served, self::pinned_flowmark(), static function (string $step): void {
+        });
     }
 
     public static function tearDownAfterClass(): void

@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // The statement vectors of tests/dbspec/ddl.json through
 // Polyspec\Orm\Dbspec\Dbspec::render, and the unknown dialect rule.
 require_once __DIR__ . '/case_clock.php';

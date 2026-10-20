@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // Encrypted JSON value test on SQLite, MySQL and PostgreSQL: the
 // `ordered_json aes` column of contracts/fixtures/secret_config.dbs takes an
 // ordered-json value, reads it back with the same text, rotates to another key
@@ -66,7 +68,7 @@ final class AesJsonTest extends TestCase
     private static function stored(string $dsn): array
     {
         $row = self::raw($dsn)->query('SELECT config, aes_key_version FROM secret_config')->fetch(PDO::FETCH_NUM);
-        $cell = is_resource($row[0]) ? (string) stream_get_contents($row[0]): (string) $row[0];
+        $cell = is_resource($row[0]) ? (string) stream_get_contents($row[0]) : (string) $row[0];
         return [$cell, (int) $row[1]];
     }
 
@@ -79,7 +81,7 @@ final class AesJsonTest extends TestCase
     /** The ordered-json text of a read styled value; a value of another type fails the test. */
     private static function text(mixed $value): string
     {
-        $payload = $value instanceof StyledValue ? $value->payload(): $value;
+        $payload = $value instanceof StyledValue ? $value->payload() : $value;
         if (!$payload instanceof Value) {
             throw new RuntimeException('json value is ' . get_debug_type($payload) . ', not an ordered-json value');
         }
@@ -111,41 +113,41 @@ final class AesJsonTest extends TestCase
 
         $first = self::open($dsn, $one, 1);
         $first->utils()->schema()->install(\Polyspec\Orm\Tests\AesJson\schema());
-        $seq = (new SecretConfig)($first)->setConfig(self::styled(parse($value)))->create()->getSeq();
-        $row = (new SecretConfig)($first)->addAllColumns()->getBySeq($seq);
+        $seq = (new SecretConfig())($first)->setConfig(self::styled(parse($value)))->create()->getSeq();
+        $row = (new SecretConfig())($first)->addAllColumns()->getBySeq($seq);
         self::check(self::text($row->getConfig()) === $value, 'read back');
         $array = $row->toArray()['config'];
         self::check($array['kind'] === 'value' && self::text($array['value']) === $value, 'toArray keeps the ordered-json value');
         $rowJson = '{"seq":' . $seq . ',"aes_key_version":1,"config":{"kind":"value","value":' . $value . '}}';
         self::check($row->toJson() === $rowJson, 'toJson keeps the member order and the number text: ' . $row->toJson());
         self::check(self::jsonEncodeCode($row) === 'CODEC_ENCODE', 'json_encode of a model with an ordered-json value fails');
-        $rows = (new SecretConfig)($first)->addAllColumns()->seq($seq)->gets();
+        $rows = (new SecretConfig())($first)->addAllColumns()->seq($seq)->gets();
         self::check($rows->toJson() === '[' . $rowJson . ']', 'collection toJson');
         self::check(self::jsonEncodeCode($rows) === 'CODEC_ENCODE', 'json_encode of a collection with an ordered-json value fails');
-        self::check((new SecretConfig)($first)->removeAllColumns()->addColumnSeq()->getBySeq($seq)->toJson() === '{"seq":' . $seq . '}'
-            && json_encode((new SecretConfig)($first)->removeAllColumns()->addColumnSeq()->getBySeq($seq)) === '{"seq":' . $seq . '}', 'a row without an ordered-json value');
-        $native = (new SecretConfig)($first)->setConfig(self::styled(['k' => [1, 2]]))->create()->getSeq();
-        $read = (new SecretConfig)($first)->addAllColumns()->getBySeq($native);
+        self::check((new SecretConfig())($first)->removeAllColumns()->addColumnSeq()->getBySeq($seq)->toJson() === '{"seq":' . $seq . '}'
+            && json_encode((new SecretConfig())($first)->removeAllColumns()->addColumnSeq()->getBySeq($seq)) === '{"seq":' . $seq . '}', 'a row without an ordered-json value');
+        $native = (new SecretConfig())($first)->setConfig(self::styled(['k' => [1, 2]]))->create()->getSeq();
+        $read = (new SecretConfig())($first)->addAllColumns()->getBySeq($native);
         self::check(self::text($read->getConfig()) === '{"k":[1,2]}', 'native value write');
-        (new SecretConfig)($first)->getBySeq($native)->delete();
+        (new SecretConfig())($first)->getBySeq($native)->delete();
         [$cell, $version] = self::stored($dsn);
         self::check(str_starts_with($cell, "ORM-AES2\0") && !str_contains($cell, 's3cret-token') && $version === 1, "stored version $version");
         $first->close();
 
         $second = self::open($dsn, $both, 2);
-        self::check(self::text((new SecretConfig)($second)->addAllColumns()->getBySeq($seq)->getConfig()) === $value, 'mixed-version read');
-        self::check($second->utils()->aes()->rotate(new SecretConfig, new AesKeyring($both, 2)) === 1, 'rotate');
+        self::check(self::text((new SecretConfig())($second)->addAllColumns()->getBySeq($seq)->getConfig()) === $value, 'mixed-version read');
+        self::check($second->utils()->aes()->rotate(new SecretConfig(), new AesKeyring($both, 2)) === 1, 'rotate');
         self::check(self::stored($dsn)[1] === 2, 'rotated version');
         $second->close();
 
         $rotated = self::open($dsn, [2 => 'config-key-two'], 2);
-        self::check(self::text((new SecretConfig)($rotated)->addAllColumns()->getBySeq($seq)->getConfig()) === $value, 'rotated read');
+        self::check(self::text((new SecretConfig())($rotated)->addAllColumns()->getBySeq($seq)->getConfig()) === $value, 'rotated read');
         $rotated->close();
 
         $again = self::open($dsn, $both, 1);
-        (new SecretConfig)($again)->getBySeq($seq)->setConfig(self::styled(parse($updated)))->update();
+        (new SecretConfig())($again)->getBySeq($seq)->setConfig(self::styled(parse($updated)))->update();
         self::check(self::stored($dsn)[1] === 1, 'updated version');
-        self::check(self::text((new SecretConfig)($again)->addAllColumns()->getBySeq($seq)->getConfig()) === $updated, 'updated read');
+        self::check(self::text((new SecretConfig())($again)->addAllColumns()->getBySeq($seq)->getConfig()) === $updated, 'updated read');
         $again->close();
     }
 
@@ -167,6 +169,7 @@ final class AesJsonTest extends TestCase
     {
         // The test of DSL-8, COD-7 (docs/spec).
         // The case makes an AES JSON column table in a case database of its own and writes and reads a few rows.
-        with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::aesJsonColumn($dsn));
+        with_case_database($driver, static function (string $step): void {
+        }, static fn(string $dsn) => self::aesJsonColumn($dsn));
     }
 }

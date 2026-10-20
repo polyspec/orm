@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 // schema_definition feature coverage on the extension polyspec_orm: every case of

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 // The extension's declarations of the classes it registers match src/polyspec_orm.stub.php. The two declarations

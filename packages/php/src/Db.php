@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Polyspec\Orm;
@@ -532,7 +533,7 @@ final class Db
             }
             return $this->savepoint($outer, $fn);
         }
-        for ($attempt = 0; ; $attempt++) {
+        for ($attempt = 0;; $attempt++) {
             try {
                 return $this->runTransaction($fn, $isolation, $readOnly, $timeoutMs);
             } catch (OrmException $e) {
@@ -1361,10 +1362,11 @@ final class Db
                     $out[] = self::timeText($clock, $b['precision']);
                     break;
                 case 'audit':
-                    $audit = $frame?->audit ?? throw new OrmException(Code::CONFIG, 'a write of an audited table needs an audit: run it in a transaction with audit values');
-                    if ($audit['table'] !== ($b['name'] ?? '')) {
-                        throw new OrmException(Code::CONFIG, "the audited table records its audits in {$b['name']}, but the audit of the transaction is a row of {$audit['table']}");
-                    }
+                    $audit = $frame?->audit ??
+                    throw new OrmException(Code::CONFIG, 'a write of an audited table needs an audit: run it in a transaction with audit values');
+                if ($audit['table'] !== ($b['name'] ?? '')) {
+                    throw new OrmException(Code::CONFIG, "the audited table records its audits in {$b['name']}, but the audit of the transaction is a row of {$audit['table']}");
+                }
                     $out[] = $audit['key'];
                     break;
                 default:

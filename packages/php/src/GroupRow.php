@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Polyspec\Orm;
@@ -15,7 +16,9 @@ final readonly class GroupRow implements \JsonSerializable
     {
         $values = [];
         foreach ($entries as $entry) {
-            if (count($entry) !== 2) throw new OrmException(Code::CONFIG, 'group result entry must have a name and value');
+            if (count($entry) !== 2) {
+                throw new OrmException(Code::CONFIG, 'group result entry must have a name and value');
+            }
             [$name, $value] = $entry;
             if ($name === '' || array_key_exists($name, $values)) {
                 throw new OrmException(Code::CONFIG, "group result repeats or omits column $name");
@@ -34,18 +37,25 @@ final readonly class GroupRow implements \JsonSerializable
     private static function checkedCount(mixed $value): int
     {
         if (is_int($value)) {
-            if ($value < 0) throw new OrmException(Code::INTERNAL, 'group result has a negative row_count');
+            if ($value < 0) {
+                throw new OrmException(Code::INTERNAL, 'group result has a negative row_count');
+            }
             return $value;
         }
-        if (!is_string($value) || preg_match('/^(0|[1-9][0-9]*)$/D', $value) !== 1 ||
+        if (
+            !is_string($value) || preg_match('/^(0|[1-9][0-9]*)$/D', $value) !== 1 ||
             strlen($value) > strlen((string) PHP_INT_MAX) ||
-            (strlen($value) === strlen((string) PHP_INT_MAX) && strcmp($value, (string) PHP_INT_MAX) > 0)) {
+            (strlen($value) === strlen((string) PHP_INT_MAX) && strcmp($value, (string) PHP_INT_MAX) > 0)
+        ) {
             throw new OrmException(Code::CODEC_DECODE, 'group result row_count is not an exact integer');
         }
         return (int) $value;
     }
 
-    public function count(): int { return $this->count; }
+    public function count(): int
+    {
+        return $this->count;
+    }
 
     public function value(string $name): mixed
     {
@@ -56,7 +66,13 @@ final readonly class GroupRow implements \JsonSerializable
     }
 
     /** @return array<string, mixed> */
-    public function toArray(): array { return $this->values; }
+    public function toArray(): array
+    {
+        return $this->values;
+    }
 
-    public function jsonSerialize(): array { return $this->toArray(); }
+    public function jsonSerialize(): array
+    {
+        return $this->toArray();
+    }
 }

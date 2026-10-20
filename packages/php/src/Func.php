@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Polyspec\Orm;
@@ -12,7 +13,9 @@ namespace Polyspec\Orm;
 final readonly class Func
 {
     /** @param list<int> $args */
-    public function __construct(public string $name, public array $args, public bool $column) {}
+    public function __construct(public string $name, public array $args, public bool $column)
+    {
+    }
 
     /** @param callable(mixed): int $param */
     public function ir(callable $param): array

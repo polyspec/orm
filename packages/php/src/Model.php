@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Polyspec\Orm;
@@ -1502,23 +1503,35 @@ abstract class Model implements \JsonSerializable
     {
         [$db, $frame] = $this->executor();
         $request = $this->build('group_count', $db);
-        if ($request->external !== []) throw new OrmException(Code::CONFIG, 'group count cannot return relations');
+        if ($request->external !== []) {
+            throw new OrmException(Code::CONFIG, 'group count cannot return relations');
+        }
         [$plan, $result] = $db->select($frame, $request);
         $columns = $plan['steps'][0]['assemble']['columns'] ?? null;
-        if (!is_array($columns)) throw new OrmException(Code::INTERNAL, 'group count has no result declaration');
+        if (!is_array($columns)) {
+            throw new OrmException(Code::INTERNAL, 'group count has no result declaration');
+        }
         $names = [];
         foreach ($columns as $column) {
-            if (!empty($column['hidden'])) continue;
+            if (!empty($column['hidden'])) {
+                continue;
+            }
             $name = $column['name'];
-            if ($name === '' || isset($names[$name])) throw new OrmException(Code::CONFIG, "group result repeats or omits column $name");
+            if ($name === '' || isset($names[$name])) {
+                throw new OrmException(Code::CONFIG, "group result repeats or omits column $name");
+            }
             $names[$name] = true;
         }
-        if (!isset($names['row_count'])) throw new OrmException(Code::INTERNAL, 'group result has no row_count');
+        if (!isset($names['row_count'])) {
+            throw new OrmException(Code::INTERNAL, 'group result has no row_count');
+        }
         $rows = [];
         foreach ($result['main'] as $values) {
             $entries = [];
             foreach ($columns as $column) {
-                if (!empty($column['hidden'])) continue;
+                if (!empty($column['hidden'])) {
+                    continue;
+                }
                 $index = $column['index'];
                 if (!array_key_exists($index, $values)) {
                     throw new OrmException(Code::INTERNAL, "group result column {$column['name']} is missing");
@@ -1533,7 +1546,9 @@ abstract class Model implements \JsonSerializable
     private function groupValue(Db $db, array $column, mixed $raw): mixed
     {
         $name = $column['name'];
-        if ($name === 'row_count') return $raw;
+        if ($name === 'row_count') {
+            return $raw;
+        }
         $declared = ($column['column'] ?? '') === $name ? (static::meta()['columns'][$name] ?? null) : null;
         if ($raw === null) {
             if ($declared !== null && !$declared['nullable']) {
@@ -1543,11 +1558,15 @@ abstract class Model implements \JsonSerializable
         }
         if (is_resource($raw)) {
             $raw = stream_get_contents($raw);
-            if ($raw === false) throw new OrmException(Code::CODEC_DECODE, "group column $name could not be read");
+            if ($raw === false) {
+                throw new OrmException(Code::CODEC_DECODE, "group column $name could not be read");
+            }
         }
         $type = $declared['type'] ?? $column['type'];
         if ($declared !== null && RuntimeModel::styled($declared)) {
-            if (!$raw instanceof StyledValue) throw new OrmException(Code::CODEC_DECODE, "group column $name is not StyledValue");
+            if (!$raw instanceof StyledValue) {
+                throw new OrmException(Code::CODEC_DECODE, "group column $name is not StyledValue");
+            }
             return $raw;
         }
         return match ($type) {
@@ -1574,8 +1593,10 @@ abstract class Model implements \JsonSerializable
     {
         if (is_int($raw)) {
             $value = $raw;
-        } elseif (is_string($raw) && preg_match('/^-?(0|[1-9][0-9]*)$/D', $raw) === 1 &&
-            filter_var($raw, FILTER_VALIDATE_INT) !== false) {
+        } elseif (
+            is_string($raw) && preg_match('/^-?(0|[1-9][0-9]*)$/D', $raw) === 1 &&
+            filter_var($raw, FILTER_VALIDATE_INT) !== false
+        ) {
             $value = (int) $raw;
         } else {
             throw new OrmException(Code::CODEC_DECODE, "group column $name is not an exact integer");
@@ -1591,12 +1612,16 @@ abstract class Model implements \JsonSerializable
 
     private static function groupFloat(mixed $raw, string $name): float
     {
-        if (!is_int($raw) && !is_float($raw) &&
-            !(is_string($raw) && preg_match('/^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/D', $raw) === 1)) {
+        if (
+            !is_int($raw) && !is_float($raw) &&
+            !(is_string($raw) && preg_match('/^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/D', $raw) === 1)
+        ) {
             throw new OrmException(Code::CODEC_DECODE, "group column $name is not a number");
         }
         $value = (float) $raw;
-        if (!is_finite($value)) throw new OrmException(Code::CODEC_DECODE, "group column $name is not finite");
+        if (!is_finite($value)) {
+            throw new OrmException(Code::CODEC_DECODE, "group column $name is not finite");
+        }
         return $value;
     }
 
@@ -1632,8 +1657,10 @@ abstract class Model implements \JsonSerializable
 
     private static function aggregateNumber(mixed $value): float
     {
-        if (!is_int($value) && !is_float($value)
-            && !(is_string($value) && preg_match('/^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/D', $value) === 1)) {
+        if (
+            !is_int($value) && !is_float($value)
+            && !(is_string($value) && preg_match('/^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/D', $value) === 1)
+        ) {
             throw new OrmException(Code::CODEC_DECODE, 'aggregate scalar is not a finite number');
         }
         $number = (float) $value;
@@ -2108,8 +2135,10 @@ abstract class Model implements \JsonSerializable
         }
         foreach ($r->ir['where']['items'] ?? [] as $item) {
             $pr = $item['pred'] ?? null;
-            if ($pr !== null && ($pr['column'] ?? '') === $column && ($pr['op'] ?? '') === 'eq' && isset($pr['p'])
-                && !isset($pr['fn']) && !isset($pr['value']) && !isset($pr['ref']) && !isset($pr['sub'])) {
+            if (
+                $pr !== null && ($pr['column'] ?? '') === $column && ($pr['op'] ?? '') === 'eq' && isset($pr['p'])
+                && !isset($pr['fn']) && !isset($pr['value']) && !isset($pr['ref']) && !isset($pr['sub'])
+            ) {
                 return $r->params[$pr['p']];
             }
         }
@@ -2279,9 +2308,11 @@ abstract class Model implements \JsonSerializable
     {
         $out = [];
         foreach ($this->pairs() as [$name, $v]) {
-            if ($v instanceof \Polyspec\OrderedJson\Value
+            if (
+                $v instanceof \Polyspec\OrderedJson\Value
                 || ($v instanceof StyledValue && $v->kind === 'value' && $v->payload() instanceof \Polyspec\OrderedJson\Value)
-                || (is_array($v) && self::holdsOrderedJson($v))) {
+                || (is_array($v) && self::holdsOrderedJson($v))
+            ) {
                 throw new OrmException(Code::CODEC_ENCODE, "json_encode cannot write the ordered-json value of $name; use toJson()");
             }
             $out[$name] = $v;

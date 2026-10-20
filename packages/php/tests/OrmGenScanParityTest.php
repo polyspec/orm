@@ -1,4 +1,5 @@
 <?php
+
 // Parity of the PHP and the node orm-gen scan: for each case of tests/generator/php-scan-vectors.json the two generators
 // declare the same chain methods on the model and reject the same names. The node generator is the built packages/ts
 // (npm run typescript:build); it does not check argument counts, so the cases marked parity false are left out.
@@ -51,8 +52,12 @@ final class OrmGenScanParityTest extends TestCase
         $calls = ($case['chain'] ?? false) ? "$receiver." . implode('.', $steps) . ";\n"
             : implode('', array_map(static fn(string $step): string => "$receiver.$step;\n", $steps));
         file_put_contents("$dir/usage.ts", "import { {$case['model']} } from './models/models.js';\nconst m = new {$case['model']}();\n$calls");
-        $process = proc_open(['node', $bin, 'gen', '--set', "$root/contracts/fixtures/bench/dbspec-set.json", '--out', "$dir/models", '--scan', "$dir/usage.ts"],
-            [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, $root);
+        $process = proc_open(
+            ['node', $bin, 'gen', '--set', "$root/contracts/fixtures/bench/dbspec-set.json", '--out', "$dir/models", '--scan', "$dir/usage.ts"],
+            [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+            $pipes,
+            $root
+        );
         stream_get_contents($pipes[1]);
         stream_get_contents($pipes[2]);
         $code = proc_close($process);

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Polyspec\Orm\Dbspec;
@@ -1857,10 +1858,12 @@ final class Parser
                     $index = $column($target);
                     if ($index !== null) {
                         $type = $index->type;
-                        if (!($type->name === 'varchar' && $type->parameters[0] >= 64)
+                        if (
+                            !($type->name === 'varchar' && $type->parameters[0] >= 64)
                             || ($encrypted !== null && $encrypted->nullable !== $index->nullable)
                             || isset($aes[$target[0]])
-                            || (!isset($singleColumnKeys[$target[0]]) && !isset($this->failedKeyTables[$this->table->name]))) {
+                            || (!isset($singleColumnKeys[$target[0]]) && !isset($this->failedKeyTables[$this->table->name]))
+                        ) {
                             $this->error('setting', $line, $target[1], "blind index column `{$target[0]}` is a varchar(n >= 64) column with the AES column's nullability, not AES-encoded, and the only column of an index or unique key");
                         }
                     }
@@ -2104,8 +2107,10 @@ final class Parser
                 continue;
             }
             foreach ($audited->foreignKeys as $foreignKey) {
-                if ($foreignKey->columns === [$columnToken[0]] && $foreignKey->table === $name && $foreignKey->referencedColumns === [$key[0]]
-                    && $foreignKey->onDelete === 'restrict' && $foreignKey->onUpdate === 'restrict') {
+                if (
+                    $foreignKey->columns === [$columnToken[0]] && $foreignKey->table === $name && $foreignKey->referencedColumns === [$key[0]]
+                    && $foreignKey->onDelete === 'restrict' && $foreignKey->onUpdate === 'restrict'
+                ) {
                     continue 2;
                 }
             }
@@ -2179,8 +2184,10 @@ final class Parser
                 continue;
             }
             foreach ($tables->foreignKeys as $foreignKey) {
-                if ($foreignKey->columns === [$recordToken[0]] && $foreignKey->table === $referencesToken[0] && $foreignKey->referencedColumns === $key
-                    && $foreignKey->onDelete === 'restrict' && $foreignKey->onUpdate === 'restrict') {
+                if (
+                    $foreignKey->columns === [$recordToken[0]] && $foreignKey->table === $referencesToken[0] && $foreignKey->referencedColumns === $key
+                    && $foreignKey->onDelete === 'restrict' && $foreignKey->onUpdate === 'restrict'
+                ) {
                     continue 2;
                 }
             }

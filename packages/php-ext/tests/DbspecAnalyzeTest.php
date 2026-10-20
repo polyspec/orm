@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 // The extension polyspec_orm (Polyspec\Orm\Dbspec\Native) against the PHP client for syntax analysis and formatting

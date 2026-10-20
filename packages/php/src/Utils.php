@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Polyspec\Orm;
@@ -11,7 +12,9 @@ use Polyspec\Orm\Dbspec\Renderer;
 /** Operations outside the query syntax: `$db->utils()`. */
 final class Utils
 {
-    public function __construct(private readonly Db $db) {}
+    public function __construct(private readonly Db $db)
+    {
+    }
 
     /**
      * @internal the active transaction of the connection; CONFIG names $name when there is none.

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Polyspec\Orm;
@@ -11,7 +12,9 @@ use Polyspec\Orm\Dbspec\Renderer;
 /** Schema installation and inspection. */
 final class SchemaUtils
 {
-    public function __construct(private readonly Db $db, private readonly Utils $u) {}
+    public function __construct(private readonly Db $db, private readonly Utils $u)
+    {
+    }
 
     /**
      * Registers the generated schema's set on this connection. It reads and writes nothing in the database: the manifest

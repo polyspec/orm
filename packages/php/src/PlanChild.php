@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Polyspec\Orm;
@@ -14,7 +15,9 @@ final class PlanChild
     public bool $cascade = false;
     public ?PlanAssemble $assemble = null;
 
-    public function __construct(public readonly string $rel, public readonly string $kind) {}
+    public function __construct(public readonly string $rel, public readonly string $kind)
+    {
+    }
 
     public function toArray(): array
     {

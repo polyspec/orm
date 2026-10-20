@@ -1,4 +1,5 @@
 <?php
+
 // Engine test: manifest hash check, request validation, and statement forms of
 // each dialect for the runtime model of contracts/fixtures/bench/bench.dbs.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/EngineTest.php
@@ -51,7 +52,8 @@ final class EngineTest extends TestCase
         }
 
         $mysql = $engines['mysql'];
-        foreach ([
+        foreach (
+            [
             'unknown field' => [$request(['kind' => 'all', 'entity' => 'service', 'keyset' => ['direction' => 'after'], 'n_params' => 0]), Code::IR_INVALID],
             'raw kind' => [$request(['kind' => 'raw', 'entity' => 'service', 'n_params' => 0]), Code::IR_INVALID],
             'max kind' => [$request(['kind' => 'max', 'entity' => 'service', 'agg' => 'seq', 'n_params' => 0]), Code::IR_INVALID],
@@ -67,7 +69,8 @@ final class EngineTest extends TestCase
             'match op' => [$request(['kind' => 'all', 'entity' => 'author', 'where' => ['items' => [['pred' => ['op' => 'match', 'match' => ['name'], 'p' => 0]]]], 'n_params' => 1]), Code::IR_INVALID],
             'insert without required column' => [$request(['kind' => 'insert', 'entity' => 'service_region', 'set' => [['column' => 'name', 'p' => 0]], 'n_params' => 1]), Code::IR_INVALID],
             'update without where' => [$request(['kind' => 'update', 'entity' => 'service', 'set' => [['column' => 'name', 'p' => 0]], 'n_params' => 1]), Code::IR_INVALID],
-        ] as $name => [$ir, $code]) {
+            ] as $name => [$ir, $code]
+        ) {
             self::assertTrue(self::code(fn() => $mysql->compile($ir)) === $code, "validation: $name");
         }
 
@@ -99,13 +102,15 @@ final class EngineTest extends TestCase
         self::assertTrue(str_contains($plan['steps'][1]['sql'], 'WHERE (`a`.`tenant_id`, `a`.`account_id`) IN ((?))'), "composite relation SQL: {$plan['steps'][1]['sql']}");
         $child = $plan['steps'][0]['assemble']['children'][0];
         self::assertTrue(array_column($child['parent_keys'], 'column') === ['tenant_id', 'account_id'] && array_column($child['child_keys'], 'column') === ['tenant_id', 'account_id'], 'composite relation keys in key order');
-        foreach ([
+        foreach (
+            [
             [[], Code::IR_INVALID],
             [[['left' => 'tenant_id', 'right' => 'tenant_id'], ['left' => 'tenant_id', 'right' => 'account_id']], Code::IR_INVALID],
             [[['left' => 'tenant_id', 'right' => 'tenant_id'], ['left' => 'account_id', 'right' => 'tenant_id']], Code::IR_INVALID],
             [[['left' => 'tenant_id', 'right' => '']], Code::IR_INVALID],
             [[['left' => 'tenant_id', 'right' => 'tenant_id'], ['left' => 'nope', 'right' => 'account_id']], Code::COLUMN_UNKNOWN],
-        ] as [$keys, $code]) {
+            ] as [$keys, $code]
+        ) {
             self::assertTrue(self::code(fn() => $mysql->compile($compositeRelation($keys))) === $code, 'relation keys ' . json_encode($keys) . ": want $code");
         }
 
@@ -199,7 +204,8 @@ final class EngineTest extends TestCase
             return $r;
         };
         $slotNames = static fn(array $slots): array => array_map(static fn(array $s): string => $s['from'] === 'param' ? "param {$s['param']}" : $s['from'], $slots);
-        foreach ([
+        foreach (
+            [
             'unique key with audit' => ['sqlite', $restoreRequest('link', ['column' => 'team_id', 'op' => 'eq'], ['conn' => 'and', 'column' => 'member_id', 'op' => 'eq']),
                 'UPDATE "link" SET "deleted_at" = NULL, "audit_seq" = ? WHERE "link"."team_id" = ? AND "link"."member_id" = ? AND "link"."deleted_at" IS NOT NULL',
                 ['audit', 'param 0', 'param 1']],
@@ -227,7 +233,8 @@ final class EngineTest extends TestCase
             'a repeated column' => ['mysql', $restoreRequest('tag', ['column' => 'name', 'op' => 'eq'], ['conn' => 'and', 'column' => 'name', 'op' => 'eq']),
                 'UPDATE `tag` SET `deleted_at` = NULL WHERE `tag`.`name` = ? AND `tag`.`name` = ? AND `tag`.`deleted_at` IS NOT NULL',
                 ['param 0', 'param 1']],
-        ] as $name => [$d, $ir, $sql, $slots]) {
+            ] as $name => [$d, $ir, $sql, $slots]
+        ) {
             try {
                 $plan = (new Engine($restoreModel, $d, 8))->compile($ir);
                 self::assertTrue(count($plan['steps']) === 1 && $plan['steps'][0]['role'] === 'main' && $plan['steps'][0]['sql'] === $sql, "restore $name: " . json_encode($plan['steps']) . " want $sql");
@@ -240,7 +247,8 @@ final class EngineTest extends TestCase
             }
         }
         $restoreEngine = new Engine($restoreModel, 'sqlite', 8);
-        foreach ([
+        foreach (
+            [
             'part of a unique key' => $restoreRequest('link', ['column' => 'team_id', 'op' => 'eq']),
             'a column that is no key' => $restoreRequest('tag', ['column' => 'label', 'op' => 'eq']),
             'part of a unique key in set' => $withSet($restoreRequest('link'), 'member_id'),
@@ -255,7 +263,8 @@ final class EngineTest extends TestCase
             'an assignment of the audit column' => $withSet($restoreRequest('link', ['column' => 'id', 'op' => 'eq']), 'audit_seq'),
             'an optimistic check' => ['optimistic' => ['column' => 'label', 'p' => 0]] + $restoreRequest('tag', ['column' => 'name', 'op' => 'eq']),
             'a table without soft_delete' => $restoreRequest('plain', ['column' => 'id', 'op' => 'eq']),
-        ] as $name => $ir) {
+            ] as $name => $ir
+        ) {
             self::assertTrue(self::code(fn() => $restoreEngine->compile($ir)) === Code::IR_INVALID, "restore rejects $name: " . self::code(fn() => $restoreEngine->compile($ir)));
         }
     }

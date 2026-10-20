@@ -1,4 +1,5 @@
 <?php
+
 // The sqlite path loads no MySQL dialect class (N17): a child process with php -n runs the sqlite path and an autoloader that
 // refuses orm's MySQL dialect classes. The child also asserts that a sqlite:// DSN selects the sqlite dialect and the sqlite
 // PDO driver. The MySQL drivers may be compiled into the PHP that runs the case; the case proves only the class-load claim.

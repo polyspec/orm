@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 // The PHP behaviours of the dbspec interface that the shared vectors do not fix: non-UTF-8 text, argument errors,

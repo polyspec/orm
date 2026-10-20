@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Polyspec\Orm;
@@ -288,8 +289,10 @@ final class ScanVisitor extends NodeVisitorAbstract
         }
         // A `/** @var Model|null $name */` tag on an assignment types its variable: a getter returns mixed, so the tag is how
         // a receiver read through a getter names its model.
-        if ($node instanceof Node\Stmt\Expression && $node->expr instanceof Node\Expr\Assign && $node->expr->var instanceof Node\Expr\Variable
-            && is_string($node->expr->var->name)) {
+        if (
+            $node instanceof Node\Stmt\Expression && $node->expr instanceof Node\Expr\Assign && $node->expr->var instanceof Node\Expr\Variable
+            && is_string($node->expr->var->name)
+        ) {
             $typed = $this->docValue($node->getDocComment()?->getText() ?? '', $node->expr->var->name);
             if ($typed !== null) {
                 $this->bind($node->expr->var->name, $typed);

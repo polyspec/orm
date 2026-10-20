@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // Code.php, which orm-gen errors generates, compared with docs/spec/errors.yaml: every code is a constant whose doc comment
 // is the note of the catalog (the origin, then ": " and the comment of the code), and the class holds no other code.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CodeCatalogTest.php

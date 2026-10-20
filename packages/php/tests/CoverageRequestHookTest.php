@@ -1,4 +1,5 @@
 <?php
+
 // request_hook coverage: in the case database (ORM_FEATURE_DATABASE) chosen by feature-check, for each shared case,
 // creates a new case database (case_database.php), runs the case in request_hook_cases.php, and removes it.
 // Does not read or write the database of ORM_FEATURE_DSN. There is one test method per case of REQUEST_HOOK_CASES
@@ -106,6 +107,7 @@ final class CoverageRequestHookTest extends TestCase
     private static function run_case(string $id): void
     {
         [$driver] = coverageItem();
-        with_case_database($driver, static function (): void {}, static fn(string $dsn) => runRequestHookCase($id, $dsn));
+        with_case_database($driver, static function (): void {
+        }, static fn(string $dsn) => runRequestHookCase($id, $dsn));
     }
 }

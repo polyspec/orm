@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Polyspec\Orm;
@@ -12,6 +13,7 @@ use Purr\Yaml\Node\SequenceNode;
 use Purr\Yaml\Schema\CoreSchema;
 use Purr\Yaml\YamlStream;
 use Symfony\Component\Yaml\Yaml;
+
 use function Polyspec\OrderedJson\parse as orderedJsonParse;
 use function Polyspec\OrderedJson\stringify as orderedJsonStringify;
 
@@ -26,8 +28,12 @@ final class Codec
     /** Returns the stable lowercase HMAC-SHA256 index for plaintext. */
     public static function blindIndex(mixed $v, string $key): ?string
     {
-        if ($v === null) return null;
-        if ($key === '') throw new OrmException(Code::CONFIG, 'secret blind_index not configured');
+        if ($v === null) {
+            return null;
+        }
+        if ($key === '') {
+            throw new OrmException(Code::CONFIG, 'secret blind_index not configured');
+        }
         $plain = $v instanceof Bytes ? $v->bytes : (is_string($v) ? $v : (string) $v);
         return hash_hmac('sha256', $plain, $key);
     }
@@ -363,7 +369,9 @@ final class Codec
                     $tag = substr($cur, -16);
                     $ciphertext = substr($cur, $offset + 12, -16);
                     $plain = openssl_decrypt($ciphertext, 'aes-256-gcm', self::aesV2Key($aesKey), OPENSSL_RAW_DATA, $nonce, $tag, $prefix);
-                    if ($plain === false) throw new OrmException(Code::CODEC_DECODE, 'aes: authentication failed');
+                    if ($plain === false) {
+                        throw new OrmException(Code::CODEC_DECODE, 'aes: authentication failed');
+                    }
                     $cur = $plain;
                     break;
                 case 'ip':

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Polyspec\Orm;
@@ -61,7 +62,9 @@ final class Validator
 
     private int $n = 0;
 
-    public function __construct(private readonly RuntimeModel $m) {}
+    public function __construct(private readonly RuntimeModel $m)
+    {
+    }
 
     private static function err(string $code, string $msg): OrmException
     {
@@ -1032,10 +1035,11 @@ final class Validator
                 if (!$scalar) {
                     throw self::err(Code::IR_INVALID, "$agg subquery is only valid as a column");
                 }
-                $c = RuntimeModel::column($ent, $column) ?? throw self::err(Code::COLUMN_UNKNOWN, "{$ent['entity']}.$column");
-                if (!RuntimeModel::numeric($c)) {
-                    throw self::err(Code::OPERATOR_NOT_ALLOWED, "$agg on {$ent['entity']}.$column ({$c['type']})");
-                }
+                $c = RuntimeModel::column($ent, $column) ??
+                throw self::err(Code::COLUMN_UNKNOWN, "{$ent['entity']}.$column");
+            if (!RuntimeModel::numeric($c)) {
+                throw self::err(Code::OPERATOR_NOT_ALLOWED, "$agg on {$ent['entity']}.$column ({$c['type']})");
+            }
                 break;
             case 'count':
                 if (!$scalar) {

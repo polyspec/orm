@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 /** A DSN variable of the test servers' environment; unset fails with its name, and a database test never skips. */

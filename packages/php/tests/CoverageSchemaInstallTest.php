@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // schema_install feature coverage: the bench manifest held by the generated model is
 // installed again on an installed bench database and changes nothing, and a database with only some tables
 // is not created: the install of a document set fails with CONFIG and creates no missing tables. The install of a set that uses external documents

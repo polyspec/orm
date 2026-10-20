@@ -1,4 +1,5 @@
 <?php
+
 // Generates tests/codec/vectors.json — the PHP ground truth for every executor codec (docs/spec/codec.md).
 // Usage: php tests/codec/gen.php > tests/codec/vectors.json
 declare(strict_types=1);

@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // transactions feature coverage: an error from a transaction callback reaches the caller,
 // rolls back the rows written, and a failure in a nested transaction reverts only the savepoint.
 // Writes only rows of composite_account for tenant 990003, and removes them all.
@@ -20,9 +22,9 @@ function transactionCase(Closure $body): void
     [, $dsn] = coverageItem();
     $db = coverageConnect($dsn);
     try {
-        $existing = (new CompositeAccount)($db)->tenantId(TRANSACTION_TENANT)->getCount();
+        $existing = (new CompositeAccount())($db)->tenantId(TRANSACTION_TENANT)->getCount();
         Assert::assertTrue($existing === 0, "composite_account holds $existing rows of tenant " . TRANSACTION_TENANT . ' before the case');
-        coverageRestoring(fn() => $body($db), fn() => (new CompositeAccount)($db)->tenantId(TRANSACTION_TENANT)->gets()->delete());
+        coverageRestoring(fn() => $body($db), fn() => (new CompositeAccount())($db)->tenantId(TRANSACTION_TENANT)->gets()->delete());
     } finally {
         $db->close();
     }
@@ -30,7 +32,7 @@ function transactionCase(Closure $body): void
 
 function accountExists(Db $db, int $accountId): bool
 {
-    return (new CompositeAccount)($db)->tenantId(TRANSACTION_TENANT)->andAccountId($accountId)->getCount() === 1;
+    return (new CompositeAccount())($db)->tenantId(TRANSACTION_TENANT)->andAccountId($accountId)->getCount() === 1;
 }
 
 #[Medium]
@@ -47,7 +49,7 @@ final class CoverageTransactionsTest extends TestCase
                 $caught = null;
                 try {
                     $db->transaction(function () use ($boom): void {
-                        (new CompositeAccount)->setTenantId(TRANSACTION_TENANT)->setAccountId(1)->setName('rolled')->create();
+                        (new CompositeAccount())->setTenantId(TRANSACTION_TENANT)->setAccountId(1)->setName('rolled')->create();
                         throw $boom;
                     }, retry: 0);
                 } catch (RuntimeException $e) {
@@ -69,10 +71,10 @@ final class CoverageTransactionsTest extends TestCase
                 $boom = new RuntimeException('inner failure');
                 $inner = null;
                 $db->transaction(function () use ($db, $boom, &$inner): void {
-                    (new CompositeAccount)->setTenantId(TRANSACTION_TENANT)->setAccountId(2)->setName('outer')->create();
+                    (new CompositeAccount())->setTenantId(TRANSACTION_TENANT)->setAccountId(2)->setName('outer')->create();
                     try {
                         $db->transaction(function () use ($boom): void {
-                            (new CompositeAccount)->setTenantId(TRANSACTION_TENANT)->setAccountId(3)->setName('inner')->create();
+                            (new CompositeAccount())->setTenantId(TRANSACTION_TENANT)->setAccountId(3)->setName('inner')->create();
                             throw $boom;
                         });
                     } catch (RuntimeException $e) {
@@ -82,7 +84,7 @@ final class CoverageTransactionsTest extends TestCase
                 Assert::assertTrue($inner === $boom, 'the nested transaction error did not reach the outer callback');
                 Assert::assertTrue(accountExists($db, 2), 'the outer row was not committed');
                 Assert::assertTrue(!accountExists($db, 3), 'the savepoint row exists');
-                (new CompositeAccount)($db)->getByTenantIdAndAccountId(TRANSACTION_TENANT, 2)->delete();
+                (new CompositeAccount())($db)->getByTenantIdAndAccountId(TRANSACTION_TENANT, 2)->delete();
                 Assert::assertTrue(!accountExists($db, 2), 'the outer row was not deleted');
             });
         }

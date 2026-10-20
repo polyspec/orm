@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // Driver errors that the error catalog does not list, and CHECK violations,
 // on SQLite, MySQL and PostgreSQL. refused_row is immutable, so its triggers
 // refuse every update with a database error that the catalog does not list;
@@ -75,7 +77,7 @@ final class DriverErrorTest extends TestCase
     {
         $db = self::connect($dsn);
         try {
-            $row = (new RefusedRow)($db)->setAmount(1)->create();
+            $row = (new RefusedRow())($db)->setAmount(1)->create();
             $e = self::raised(fn() => $row->setAmount(2)->update());
             self::check($e instanceof OrmException, 'refused update raises ' . ($e === null ? 'nothing' : $e::class . ': ' . $e->getMessage()));
             if ($e instanceof OrmException) {
@@ -83,7 +85,7 @@ final class DriverErrorTest extends TestCase
                 self::check(str_contains($e->getMessage(), 'table refused_row is immutable'), "refused update message {$e->getMessage()}");
                 self::check($e->getPrevious() instanceof PDOException, 'refused update keeps the driver error');
             }
-            self::check((new RefusedRow)($db)->addAllColumns()->getBySeq($row->getSeq())->getAmount() === 1, 'refused update keeps the row');
+            self::check((new RefusedRow())($db)->addAllColumns()->getBySeq($row->getSeq())->getAmount() === 1, 'refused update keeps the row');
         } finally {
             $db->close();
         }
@@ -94,14 +96,14 @@ final class DriverErrorTest extends TestCase
     {
         $db = self::connect($dsn);
         try {
-            $e = self::raised(fn() => (new RefusedRow)($db)->setAmount(0)->create());
+            $e = self::raised(fn() => (new RefusedRow())($db)->setAmount(0)->create());
             self::check($e instanceof OrmException, 'refused insert raises ' . ($e === null ? 'nothing' : $e::class . ': ' . $e->getMessage()));
             if ($e instanceof OrmException) {
                 self::check($e->code_ === Code::CONSTRAINT, "refused insert code {$e->code_}");
                 self::check(str_contains($e->getMessage(), 'amount_positive'), "refused insert message {$e->getMessage()}");
                 self::check($e->getPrevious() instanceof PDOException, 'refused insert keeps the driver error');
             }
-            self::check((new RefusedRow)($db)->getCount() === 0, 'refused insert writes no row');
+            self::check((new RefusedRow())($db)->getCount() === 0, 'refused insert writes no row');
         } finally {
             $db->close();
         }
@@ -124,13 +126,15 @@ final class DriverErrorTest extends TestCase
     public function test_trigger_refused(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
-        with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::triggerRefused($dsn));
+        with_case_database($driver, static function (string $step): void {
+        }, static fn(string $dsn) => self::triggerRefused($dsn));
     }
 
     #[DataProvider('drivers')]
     public function test_check_refused(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
-        with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::checkRefused($dsn));
+        with_case_database($driver, static function (string $step): void {
+        }, static fn(string $dsn) => self::checkRefused($dsn));
     }
 }

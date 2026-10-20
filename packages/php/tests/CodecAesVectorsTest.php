@@ -1,4 +1,5 @@
 <?php
+
 // The AES v2 vectors of tests/codec/aes-vectors.json, each a data set named by its name: the aes hex host stages
 // round-trip the plain text with the key, and the fixed envelope decodes to the plain text.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecAesVectorsTest.php

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Polyspec\Orm;
@@ -27,5 +28,7 @@ final class TxFrame
     public ?array $pendingAudit = null;
 
     /** @param int $number This transaction's number on the connection. A statement event carries it. */
-    public function __construct(public readonly Db $db, public readonly bool $readOnly, public readonly string $isolation, public readonly int $number) {}
+    public function __construct(public readonly Db $db, public readonly bool $readOnly, public readonly string $isolation, public readonly int $number)
+    {
+    }
 }

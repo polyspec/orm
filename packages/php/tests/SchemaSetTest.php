@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // Several dbspec document sets in one process, on SQLite, MySQL and
 // PostgreSQL. The generated bench models (packages/php/gen) and the models of
 // contracts/fixtures/decimal_schema.dbs, generated into their own namespace,
@@ -127,17 +129,17 @@ final class SchemaSetTest extends TestCase
             foreach ([\Polyspec\Orm\Tests\SchemaSetDecimal\schema(), \Polyspec\Orm\Tests\SchemaSetDecimal\schema()] as $schema) {
                 $db->utils()->schema()->install($schema);
             }
-            (new User)($db)->setName('core')->create();
-            (new DecimalCase)($db)->setSeq(1)->setAmount('48.0450')->create();
+            (new User())($db)->setName('core')->create();
+            (new DecimalCase())($db)->setSeq(1)->setAmount('48.0450')->create();
             $db->transaction(function (): void {
-                (new User)->setName('core-tx')->create();
-                (new DecimalCase)->setSeq(2)->setAmount('1.5000')->create();
+                (new User())->setName('core-tx')->create();
+                (new DecimalCase())->setSeq(2)->setAmount('1.5000')->create();
             }, retry: 0);
-            $users = (new User)($db)->getCount();
+            $users = (new User())($db)->getCount();
             self::check($users === 2, "core rows $users");
-            $amount = (new DecimalCase)($db)->addAllColumns()->getBySeq(1)->getAmount();
+            $amount = (new DecimalCase())($db)->addAllColumns()->getBySeq(1)->getAmount();
             self::check($amount === '48.0450', "decimal amount $amount");
-            $decimals = (new DecimalCase)($db)->getCount();
+            $decimals = (new DecimalCase())($db)->getCount();
             self::check($decimals === 2, "decimal rows $decimals");
         } finally {
             $db->close();
@@ -150,13 +152,13 @@ final class SchemaSetTest extends TestCase
         $decimal = \Polyspec\Orm\Tests\SchemaSetDecimal\connect($dsn, new Config());
         try {
             $decimal->utils()->schema()->install(\Polyspec\Orm\Tests\SchemaSetDecimal\schema());
-            (new DecimalCase)($decimal)->setSeq(1)->setAmount('48.0450')->create();
-            (new DecimalCase)($decimal)->setSeq(2)->setAmount('123456789.1234')->create();
-            $rows = (new DecimalCase)($decimal)->getCount();
+            (new DecimalCase())($decimal)->setSeq(1)->setAmount('48.0450')->create();
+            (new DecimalCase())($decimal)->setSeq(2)->setAmount('123456789.1234')->create();
+            $rows = (new DecimalCase())($decimal)->getCount();
             self::check($rows === 2, "decimal rows $rows");
-            $first = (new DecimalCase)($decimal)->addAllColumns()->getBySeq(1)->getAmount();
+            $first = (new DecimalCase())($decimal)->addAllColumns()->getBySeq(1)->getAmount();
             self::check($first === '48.0450', "decimal amount $first");
-            $last = (new DecimalCase)($decimal)->addAllColumns()->getBySeq(2)->getAmount();
+            $last = (new DecimalCase())($decimal)->addAllColumns()->getBySeq(2)->getAmount();
             self::check($last === '123456789.1234', "decimal amount $last");
         } finally {
             $decimal->close();
@@ -183,7 +185,7 @@ final class SchemaSetTest extends TestCase
         $runs = 0;
         $raw = self::counted(Orm::connect($dsn, new Config()), $runs);
         try {
-            self::check(self::code(fn() => (new User)($raw)->getCount()) === Code::SCHEMA_HASH_MISMATCH, 'bench read on a raw connection');
+            self::check(self::code(fn() => (new User())($raw)->getCount()) === Code::SCHEMA_HASH_MISMATCH, 'bench read on a raw connection');
         } finally {
             $raw->close();
         }
@@ -192,19 +194,19 @@ final class SchemaSetTest extends TestCase
             $installer = \Polyspec\Orm\Tests\SchemaSetDecimal\connect($dsn, new Config());
             try {
                 $installer->utils()->schema()->install(\Polyspec\Orm\Tests\SchemaSetDecimal\schema());
-                (new DecimalCase)($installer)->setSeq(1)->setAmount('1.0000')->create();
+                (new DecimalCase())($installer)->setSeq(1)->setAmount('1.0000')->create();
             } finally {
                 $installer->close();
             }
-            self::check(self::code(fn() => (new DecimalCase)($core)->getCount()) === Code::SCHEMA_HASH_MISMATCH, 'decimal read on the bench connection');
-            self::check(self::code(fn() => (new DecimalCase)($core)->setSeq(2)->setAmount('2.0000')->create()) === Code::SCHEMA_HASH_MISMATCH, 'decimal write on the bench connection');
+            self::check(self::code(fn() => (new DecimalCase())($core)->getCount()) === Code::SCHEMA_HASH_MISMATCH, 'decimal read on the bench connection');
+            self::check(self::code(fn() => (new DecimalCase())($core)->setSeq(2)->setAmount('2.0000')->create()) === Code::SCHEMA_HASH_MISMATCH, 'decimal write on the bench connection');
             self::check($runs === 0, "unregistered requests ran $runs statements");
         } finally {
             $core->close();
         }
         $decimal = \Polyspec\Orm\Tests\SchemaSetDecimal\connect($dsn, new Config());
         try {
-            $rows = (new DecimalCase)($decimal)->getCount();
+            $rows = (new DecimalCase())($decimal)->getCount();
             self::check($rows === 1, "decimal rows through the decimal helper $rows");
         } finally {
             $decimal->close();
@@ -228,7 +230,7 @@ final class SchemaSetTest extends TestCase
             self::check(self::code(fn() => $db->utils()->schema()->install($edited)) === Code::CONFIG, 'install of an edited manifest');
             self::check($runs === 0, "the edited install ran $runs statements");
             $db->utils()->schema()->install(\Polyspec\Orm\Tests\SchemaSetDecimal\schema());
-            self::check((new DecimalCase)($db)->getCount() === 0, 'decimal read');
+            self::check((new DecimalCase())($db)->getCount() === 0, 'decimal read');
             // The generated code of the edited text declares the hash of the real decimal set.
             $editedModel = RuntimeModel::build(RuntimeModel::parse(['decimal_schema.dbs' => str_replace('decimal(13,4)', 'decimal(14,4)', self::$decimalDocuments[0])]));
             $namespace = 'SchemaSetEdited' . (++$edits) . '\\Orm';
@@ -273,12 +275,14 @@ final class SchemaSetTest extends TestCase
         }
         $fixture = static fn(string $name): string => self::$root . "/contracts/fixtures/external/$name.dbs";
         $built = [];
-        foreach ([
+        foreach (
+            [
             'core' => ['ExtCore', ['core'], []],
             'member' => ['ExtMember', ['member'], ['core']],
             'memberV2' => ['ExtMemberV2', ['member_v2'], ['core']],
             'drifted' => ['ExtDrifted', ['member'], ['core_extra']],
-        ] as $key => [$prefix, $owned, $external]) {
+            ] as $key => [$prefix, $owned, $external]
+        ) {
             $model = RuntimeModel::build(RuntimeModel::files(array_map($fixture, $owned), array_map($fixture, $external)));
             $namespace = "Polyspec\\Orm\\Tests\\$prefix";
             Generator::generate($model, self::$work . "/$prefix", $namespace);
@@ -339,7 +343,7 @@ final class SchemaSetTest extends TestCase
             }
             Orm::connectSchema($dsn, $member, $config)->close();
 
-            $db->transaction(fn() => (new \Polyspec\Orm\Tests\ExtMember\ExtPost)($db)->setAccountSeq(1)->setTitle('hello')->create(), audit: []);
+            $db->transaction(fn() => (new \Polyspec\Orm\Tests\ExtMember\ExtPost())($db)->setAccountSeq(1)->setTitle('hello')->create(), audit: []);
             [$audit, $actor] = $db->pdo()->query('SELECT seq, actor FROM ext_audit')->fetch(PDO::FETCH_NUM);
             $recorded = $db->pdo()->query('SELECT audit_seq FROM ext_post_history')->fetchColumn();
             self::check($actor === 'writer' && (int) $recorded === (int) $audit, "audit record ($audit, $actor) and history audit $recorded, want the record of writer in the history");
@@ -379,7 +383,7 @@ final class SchemaSetTest extends TestCase
         $pdo = new StatementCountingPdo($pdoDsn, $user, $password);
         $db = new \Polyspec\Orm\Db($pdo, $driver, new Config(), new DateTimeZone('UTC'));
         try {
-            self::check(self::code(fn() => (new User)($db)->getCount()) === Code::SCHEMA_HASH_MISMATCH, 'bench read before the register');
+            self::check(self::code(fn() => (new User())($db)->getCount()) === Code::SCHEMA_HASH_MISMATCH, 'bench read before the register');
             $before = $pdo->sent;
             $db->utils()->schema()->register(\Polyspec\Orm\Tests\Model\schema());
             $db->utils()->schema()->register(\Polyspec\Orm\Tests\Model\schema());
@@ -389,7 +393,7 @@ final class SchemaSetTest extends TestCase
             self::check(self::code(fn() => $db->utils()->schema()->register($edited)) === Code::CONFIG, 'register of a text that does not hash to its declared hash');
             $sent = $pdo->sent - $before;
             self::check($sent === 0, "register sent $sent statements, want 0");
-            $users = (new User)($db)->getCount();
+            $users = (new User())($db)->getCount();
             self::check($users === 0, "bench read after the register: $users rows");
         } finally {
             $db->close();
@@ -473,7 +477,8 @@ final class SchemaSetTest extends TestCase
     {
         self::check($document === 'decimal_schema.dbs', "decimal document $document");
         foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
-            with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::decimalDocumentRoundTrip($dsn));
+            with_case_database($driver, static function (string $step): void {
+            }, static fn(string $dsn) => self::decimalDocumentRoundTrip($dsn));
         }
     }
 
@@ -481,28 +486,32 @@ final class SchemaSetTest extends TestCase
     public function test_several_schemas(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
-        with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::severalSchemas($dsn));
+        with_case_database($driver, static function (string $step): void {
+        }, static fn(string $dsn) => self::severalSchemas($dsn));
     }
 
     #[DataProvider('drivers')]
     public function test_unregistered_schema(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
-        with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::unregisteredSchema($dsn));
+        with_case_database($driver, static function (string $step): void {
+        }, static fn(string $dsn) => self::unregisteredSchema($dsn));
     }
 
     #[DataProvider('drivers')]
     public function test_edited_manifest(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
-        with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::editedManifest($dsn));
+        with_case_database($driver, static function (string $step): void {
+        }, static fn(string $dsn) => self::editedManifest($dsn));
     }
 
     #[DataProvider('drivers')]
     public function test_external_documents(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
-        with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::externalDocuments($dsn));
+        with_case_database($driver, static function (string $step): void {
+        }, static fn(string $dsn) => self::externalDocuments($dsn));
     }
 
     // Requirements: INT-54.
@@ -510,7 +519,8 @@ final class SchemaSetTest extends TestCase
     public function test_register_sends_no_statement(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
-        with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::registerSendsNoStatement($dsn));
+        with_case_database($driver, static function (string $step): void {
+        }, static fn(string $dsn) => self::registerSendsNoStatement($dsn));
     }
 
     /** @return iterable<string, array{array<string, mixed>}> the cases of changed_database.json by their ids */
@@ -527,7 +537,8 @@ final class SchemaSetTest extends TestCase
     public function test_install_verifies_the_database(array $case): void
     {
         foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
-            with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::installVerifiesTheDatabase($dsn, $case));
+            with_case_database($driver, static function (string $step): void {
+            }, static fn(string $dsn) => self::installVerifiesTheDatabase($dsn, $case));
         }
     }
 }

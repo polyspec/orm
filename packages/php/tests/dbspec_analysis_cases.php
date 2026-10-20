@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // The focused syntax analysis cases shared by the PHP client and the extension (docs/spec/dbspec.md "Syntax analysis"):
 // each is [text, expected tokens as [line, start, end, class]] of the one main document "d".
 
@@ -65,6 +67,6 @@ function dbspec_analysis_focused_cases(): array
         "\xEF\xBB\xBFdbspec 1 d\n",
         [[1, 1, 7, 'word'], [1, 8, 9, 'number'], [1, 10, 11, 'word']],
     ],
-];
+    ];
     return $focused;
 }

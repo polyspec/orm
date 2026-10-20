@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 // The sets cases of tests/dbspec/cases.json on the extension polyspec_orm (Polyspec\Orm\Dbspec\Native\Dbspec): each

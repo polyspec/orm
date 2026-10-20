@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // dsn feature coverage: an unsupported DSN scheme is refused with the config code, and the DSN of the selected database
 // (ORM_FEATURE_DATABASE, ORM_FEATURE_DSN) connects to that database.
 

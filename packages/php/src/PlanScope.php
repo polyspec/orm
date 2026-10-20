@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Polyspec\Orm;
@@ -12,5 +13,7 @@ final class PlanScope
     /** @var list<string> columns a relation step needs selected */
     public array $extra = [];
 
-    public function __construct(public readonly array $ent, public readonly string $alias, public readonly array $q, public readonly ?PlanScope $parent) {}
+    public function __construct(public readonly array $ent, public readonly string $alias, public readonly array $q, public readonly ?PlanScope $parent)
+    {
+    }
 }

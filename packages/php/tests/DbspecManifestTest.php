@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // The hashes cases of tests/dbspec/cases.json and the repeated document name
 // rule through Polyspec\Orm\Dbspec\Dbspec::manifest, and the sets cases through
 // Dbspec::manifest and Dbspec::render in every dialect.
@@ -20,12 +22,14 @@ function manifest_expect(array $case, array $documents): void
     $result = Dbspec::manifest($documents);
     Assert::assertNotNull($result->manifest, "{$case['id']}: diagnostics " . json_encode(array_map(fn($d) => [$d->rule, $d->line, $d->column], $result->diagnostics)));
     $m = $result->manifest;
-    foreach ([
+    foreach (
+        [
         'manifestText' => [$m->manifestText, manifest_text($case['manifestText'])],
         'schemaText' => [$m->schemaText, manifest_text($case['schemaText'])],
         'manifestHash' => [$m->manifestHash, $case['manifestHash']],
         'schemaHash' => [$m->schemaHash, $case['schemaHash']],
-    ] as $field => [$got, $want]) {
+        ] as $field => [$got, $want]
+    ) {
         Assert::assertSame($want, $got, "{$case['id']}: $field differs\n--- want\n$want\n--- got\n$got");
     }
 }

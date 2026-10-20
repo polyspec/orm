@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 // The shared syntax vectors (tests/dbspec/syntax.json, docs/spec/dbspec.md "Syntax analysis"): a strict reader, and the

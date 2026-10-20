@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Polyspec\Orm;
@@ -6,7 +7,9 @@ namespace Polyspec\Orm;
 /** A selected styled column value, including the SQL NULL state. */
 final readonly class StyledValue implements \JsonSerializable
 {
-    private function __construct(public string $kind, private mixed $payload = null) {}
+    private function __construct(public string $kind, private mixed $payload = null)
+    {
+    }
 
     public static function sqlNull(): self
     {

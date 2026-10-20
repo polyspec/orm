@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // Scenario of a transaction that receives an audit record (same as auditCase in packages/go/orm/audit_transaction_test.go
 // ). The owner case of RuntimeDbTest.php and the audit_history case of CoverageAuditTriggersTest.php both use it
 // . The caller generates the model of contracts/fixtures/audit.dbs in $namespace and installs it on the connection.
@@ -63,12 +65,14 @@ function auditConfig(string $actor): Config
 function auditCase(Db $db, string $dsn, string $namespace): void
 {
     $itemClass = "$namespace\\Item";
-    $outside = auditErrorCode(fn() => (new $itemClass)($db)->setTitle('outside')->create());
+    $outside = auditErrorCode(fn() => (new $itemClass())($db)->setTitle('outside')->create());
     auditWant($outside === Code::CONFIG, "insert without an audit = $outside, want CONFIG");
-    foreach ([
+    foreach (
+        [
         'without an audit source' => new Config(),
         'with a source value that is no column' => new Config(auditSource: static fn(): array => ['reason' => 'x']),
-    ] as $name => $config) {
+        ] as $name => $config
+    ) {
         $other = Orm::connectSchema($dsn, ("$namespace\\schema")(), $config);
         try {
             $code = auditErrorCode(fn() => $other->transaction(fn() => null, audit: ['actor' => 'x']));
@@ -93,17 +97,17 @@ function auditCase(Db $db, string $dsn, string $namespace): void
     auditWant($noColumn === Code::CONFIG, "an audit value that is no column = $noColumn, want CONFIG");
 
     $seq = $adb->transaction(function () use ($db, $adb, $itemClass): int {
-        $seq = (new $itemClass)->setTitle('first')->create()->getSeq();
+        $seq = (new $itemClass())->setTitle('first')->create()->getSeq();
         $nested = auditErrorCode(fn() => $adb->transaction(fn() => null, audit: ['actor' => 'nested']));
         auditWant($nested === Code::CONFIG, "a nested transaction with an audit = $nested, want CONFIG");
         // A nested transaction writes the outer audit.
-        $db->transaction(fn() => (new $itemClass)->setSeq($seq)->setTitle('second')->update(), retry: 0);
+        $db->transaction(fn() => (new $itemClass())->setSeq($seq)->setTitle('second')->update(), retry: 0);
         return $seq;
     }, audit: ['actor' => 'create'], retry: 0);
-    $third = auditErrorCode(fn() => (new $itemClass)($db)->setSeq($seq)->setTitle('third')->update());
+    $third = auditErrorCode(fn() => (new $itemClass())($db)->setSeq($seq)->setTitle('third')->update());
     auditWant($third === Code::CONFIG, "update without an audit = $third, want CONFIG");
     // A transaction with no value records only the defaults.
-    $adb->transaction(fn() => (new $itemClass)->setSeq($seq)->delete(), audit: [], retry: 0);
+    $adb->transaction(fn() => (new $itemClass())->setSeq($seq)->delete(), audit: [], retry: 0);
     $failed = new RuntimeException('callback failed');
     try {
         $adb->transaction(fn() => throw $failed, audit: ['actor' => 'rolled back'], retry: 0);

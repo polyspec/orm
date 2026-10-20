@@ -1,4 +1,5 @@
 <?php
+
 // Row keys that match relation children to parents and key collections.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RelationKeysTest.php
 declare(strict_types=1);

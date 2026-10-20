@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 4f62c6d4e7ba89d17e28cc0a5c7fb0c99ddc5a2934eedfc39a2ae9b97ccddee5 -->
+<!-- source-sha256: 8aa9bbc1cff01707e6652bb11f9b76d47562a90ef5be3330b3e7d8869ec66ee4 -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -211,7 +211,7 @@ fault는 각 클라이언트의 test entry point에만 있다. DSN, 설정 값, 
 - **PRT-51** PHP — Entry point: `Polyspec\Orm\Testing\Faults::failNextStatement($db, $code, $message)`; production build가 제외하는 방법: `failNextRollback`과 같은 class이며 package autoloader가 연결하지 않는 `testing/Faults.php`에 있다
 - **PRT-52** Python — Entry point: `polyspec.orm.testing.fail_next_statement(db, code, message)`; production build가 제외하는 방법: `fail_next_rollback`과 같은 package이며 `polyspec.orm`의 어느 module도 import하지 않는다
 
-statement fault는 `Db`에 설정되며 `Db`가 실행하는 statement에만 적용된다. 모든 구현의 dbspec apply, recover, rollback, finalize와 introspection은 호출자가 넘긴 driver 연결 위에서 `Db` 밖에서 실행하므로 이를 소비하지 않는다: Go `packages/go/engine/dbspec/apply.go:138,159,200,282`(`Execer`)와 `packages/go/engine/dbspec/introspect.go:37`(`Querier`), Rust `packages/rust/orm/src/dbspec/apply.rs:296,313,331,347`(`ApplyConnection`)와 `packages/rust/orm/src/dbspec.rs:52`(`CatalogQuerier`), TypeScript `packages/ts/src/dbspec/apply.ts:720,737,768,820`(`Connection`)와 `packages/ts/src/dbspec/introspect.ts:33`, Python `packages/python/src/polyspec/orm/dbspec/apply.py:703,718,743,802`와 `packages/python/src/polyspec/orm/dbspec/introspect.py:16`(`Connection`), PHP `packages/php/src/Dbspec/PlanApply.php:102,118,149,212`와 `packages/php/src/Dbspec/Dbspec.php:161,588`(`\PDO`), PHP 확장 `polyspec_orm`은 `packages/php-ext/src/polyspec_orm.stub.php:665,703,706,709,712`(`\PDO`)이며 구현은 `packages/php-ext/src/apply.c`와 `introspect.c`에 있다.
+statement fault는 `Db`에 설정되며 `Db`가 실행하는 statement에만 적용된다. 모든 구현의 dbspec apply, recover, rollback, finalize와 introspection은 호출자가 넘긴 driver 연결 위에서 `Db` 밖에서 실행하므로 이를 소비하지 않는다: Go `packages/go/engine/dbspec/apply.go:138,159,200,282`(`Execer`)와 `packages/go/engine/dbspec/introspect.go:37`(`Querier`), Rust `packages/rust/orm/src/dbspec/apply.rs:296,313,331,347`(`ApplyConnection`)와 `packages/rust/orm/src/dbspec.rs:52`(`CatalogQuerier`), TypeScript `packages/ts/src/dbspec/apply.ts:720,737,768,820`(`Connection`)와 `packages/ts/src/dbspec/introspect.ts:33`, Python `packages/python/src/polyspec/orm/dbspec/apply.py:703,718,743,802`와 `packages/python/src/polyspec/orm/dbspec/introspect.py:16`(`Connection`), PHP `packages/php/src/Dbspec/PlanApply.php:104,120,151,214`와 `packages/php/src/Dbspec/Dbspec.php:266,731`(`\PDO`), PHP 확장 `polyspec_orm`은 `packages/php-ext/src/polyspec_orm.stub.php:665,703,706,709,712`(`\PDO`)이며 구현은 `packages/php-ext/src/apply.c`와 `introspect.c`에 있다.
 
 ### 3.3 Test clock
 

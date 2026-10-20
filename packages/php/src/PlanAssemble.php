@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Polyspec\Orm;
@@ -11,7 +12,9 @@ final class PlanAssemble
     public array $children = [];
     public array $key = [];
 
-    public function __construct(public readonly string $entity, public readonly string $alias) {}
+    public function __construct(public readonly string $entity, public readonly string $alias)
+    {
+    }
 
     public function toArray(): array
     {

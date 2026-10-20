@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // Checks addTablesAndColumns on SQLite, MySQL, and PostgreSQL (docs/spec/schema.md "Adding tables and
 // columns"). The case database holds the table of the other set addcol_log and the table of addcol set version 1, together with rows.
 // Calling addTablesAndColumns with version 2 adds to existing tables the missing columns that are nullable or have a default,
@@ -124,12 +126,14 @@ final class AddTablesAndColumnsTest extends TestCase
             $db->pdo()->exec("INSERT INTO addcol_extra (item_id, label, audit_seq) VALUES (1, 'extra', 3)");
             $inserted = self::count_of($db, "SELECT COUNT(*) FROM addcol_extra_history WHERE history_action = 'insert' AND previous_audit_seq IS NULL AND audit_seq = 3 AND item_id = 1 AND label = 'extra'");
             self::check($inserted === 1, "history rows of the insert into the created table $inserted");
-            foreach ([
+            foreach (
+                [
                 "INSERT INTO addcol_extra (item_id, label, audit_seq) VALUES (999, 'orphan', 3)" => 'foreign key',
                 "INSERT INTO addcol_extra (item_id, label, audit_seq) VALUES (1, 'extra', 999)" => 'audit foreign key',
                 "INSERT INTO addcol_extra (item_id, label, audit_seq) VALUES (1, '', 3)" => 'check',
                 'DELETE FROM addcol_extra' => 'audit delete',
-            ] as $statement => $what) {
+                ] as $statement => $what
+            ) {
                 $refused = null;
                 try {
                     $db->pdo()->exec($statement);
@@ -244,7 +248,8 @@ final class AddTablesAndColumnsTest extends TestCase
     public function test_add_tables_and_columns(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
-        with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::addTablesAndColumns($dsn, $driver));
+        with_case_database($driver, static function (string $step): void {
+        }, static fn(string $dsn) => self::addTablesAndColumns($dsn, $driver));
     }
 
     // Requirements: SCH-9.
@@ -252,7 +257,8 @@ final class AddTablesAndColumnsTest extends TestCase
     public function test_add_tables_and_columns_differs(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
-        with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::addTablesAndColumnsDiffers($dsn, $driver));
+        with_case_database($driver, static function (string $step): void {
+        }, static fn(string $dsn) => self::addTablesAndColumnsDiffers($dsn, $driver));
     }
 
     // Requirements: SCH-8, SCH-9.
@@ -260,7 +266,8 @@ final class AddTablesAndColumnsTest extends TestCase
     public function test_add_tables_and_columns_index(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
-        with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::addTablesAndColumnsIndex($dsn, $driver));
+        with_case_database($driver, static function (string $step): void {
+        }, static fn(string $dsn) => self::addTablesAndColumnsIndex($dsn, $driver));
     }
 
     // Requirements: SCH-8.
@@ -268,7 +275,8 @@ final class AddTablesAndColumnsTest extends TestCase
     public function test_add_tables_and_columns_transaction(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
-        with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::addTablesAndColumnsTransaction($dsn, $driver));
+        with_case_database($driver, static function (string $step): void {
+        }, static fn(string $dsn) => self::addTablesAndColumnsTransaction($dsn, $driver));
     }
 
     // Requirements: SCH-8.
@@ -276,6 +284,7 @@ final class AddTablesAndColumnsTest extends TestCase
     public function test_add_tables_and_columns_edited_manifest(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
-        with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::addTablesAndColumnsEditedManifest($dsn, $driver));
+        with_case_database($driver, static function (string $step): void {
+        }, static fn(string $dsn) => self::addTablesAndColumnsEditedManifest($dsn, $driver));
     }
 }

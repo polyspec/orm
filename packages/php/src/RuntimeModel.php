@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Polyspec\Orm;
@@ -37,7 +38,8 @@ final class RuntimeModel
         public readonly string $manifestText,
         public readonly array $entities,
         public readonly string $externalText = '',
-    ) {}
+    ) {
+    }
 
     /**
      * Parses the document set. Each text takes the rest of the texts, found by header name,

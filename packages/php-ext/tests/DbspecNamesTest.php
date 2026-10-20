@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 // The extension's Polyspec\Orm\Dbspec\Native\Names against the PHP client's Names (docs/spec/dbspec.md "Names"): render,

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 require_once __DIR__ . '/coverage_cases.php';
@@ -155,9 +156,9 @@ final class RollbackTest extends TestCase
         $db = self::connect($dsn);
         $driver = $db->driver();
         $e = self::raised(fn() => $db->transaction(function () use ($db, $dsn): void {
-            (new RollbackProbe)($db)->setLabel('kept')->create();
+            (new RollbackProbe())($db)->setLabel('kept')->create();
             self::endSession($dsn);
-            (new RollbackProbe)($db)->setLabel('end')->create();
+            (new RollbackProbe())($db)->setLabel('end')->create();
         }, retry: 0));
         self::checkRollback($e, 'transaction');
         if ($driver !== 'sqlite' && $e instanceof OrmException) {
@@ -168,7 +169,7 @@ final class RollbackTest extends TestCase
         }
         if ($driver === 'sqlite' && $e instanceof OrmException && $e->getPrevious() !== null) {
             self::check(str_contains($e->getPrevious()->getMessage(), 'rollback probe ended the transaction'), 'callback error ' . $e->getPrevious()->getMessage());
-            self::check((new RollbackProbe)($db)->getCount() === 0, 'the trigger rolled the transaction back and the connection serves later requests');
+            self::check((new RollbackProbe())($db)->getCount() === 0, 'the trigger rolled the transaction back and the connection serves later requests');
         }
         $db->close();
     }
@@ -179,18 +180,18 @@ final class RollbackTest extends TestCase
         $db = self::connect($dsn);
         $driver = $db->driver();
         $e = self::raised(fn() => $db->transaction(function () use ($db, $dsn): void {
-            (new RollbackProbe)($db)->setLabel('kept')->create();
+            (new RollbackProbe())($db)->setLabel('kept')->create();
             $db->transaction(function () use ($db, $dsn): void {
-                (new RollbackProbe)($db)->setLabel('nested')->create();
+                (new RollbackProbe())($db)->setLabel('nested')->create();
                 self::endSession($dsn);
-                (new RollbackProbe)($db)->setLabel('end')->create();
+                (new RollbackProbe())($db)->setLabel('end')->create();
             });
         }, retry: 0));
         self::checkRollback($e, 'transaction');
-        $inner = $e instanceof OrmException ? $e->getPrevious(): null;
+        $inner = $e instanceof OrmException ? $e->getPrevious() : null;
         self::checkRollback($inner, 'savepoint');
         if ($driver === 'sqlite') {
-            self::check((new RollbackProbe)($db)->getCount() === 0, 'the trigger rolled the transaction back and the connection serves later requests');
+            self::check((new RollbackProbe())($db)->getCount() === 0, 'the trigger rolled the transaction back and the connection serves later requests');
         }
         $db->close();
     }
@@ -212,12 +213,12 @@ final class RollbackTest extends TestCase
         $db = self::connect($dsn);
         Faults::failNextRollback($db);
         $committed = self::raised(fn() => $db->transaction(function () use ($db): void {
-            (new RollbackProbe)($db)->setLabel('committed')->create();
+            (new RollbackProbe())($db)->setLabel('committed')->create();
         }, retry: 0));
         self::check($committed === null, 'a committed transaction with an armed fault raises ' . ($committed === null ? '' : $committed->getMessage()));
         $callback = new RuntimeException('rollback fault callback failed');
         $failing = function () use ($db, $callback): void {
-            (new RollbackProbe)($db)->setLabel('rolled back')->create();
+            (new RollbackProbe())($db)->setLabel('rolled back')->create();
             throw $callback;
         };
         $e = self::raised(fn() => $db->transaction($failing, retry: 0));
@@ -226,10 +227,10 @@ final class RollbackTest extends TestCase
             self::check($e->getPrevious() === $callback, 'the ROLLBACK error keeps the callback error itself');
             self::check($e->rollback instanceof OrmException && $e->rollback->code_ === Code::FAULT, 'the rollback error is FAULT: ' . ($e->rollback === null ? 'none' : $e->rollback->getMessage()));
         }
-        self::check((new RollbackProbe)($db)->getCount() === 1, 'the faulted rollback keeps only the committed row');
+        self::check((new RollbackProbe())($db)->getCount() === 1, 'the faulted rollback keeps only the committed row');
         $again = self::raised(fn() => $db->transaction($failing, retry: 0));
         self::check($again === $callback, 'the transaction after the consumed fault raises the callback error: ' . ($again === null ? 'nothing' : $again->getMessage()));
-        self::check((new RollbackProbe)($db)->getCount() === 1, 'the second rollback keeps only the committed row');
+        self::check((new RollbackProbe())($db)->getCount() === 1, 'the second rollback keeps only the committed row');
         $db->close();
     }
 
@@ -273,7 +274,7 @@ final class RollbackTest extends TestCase
         } else {
             $pdo->exec('KILL ' . $id);
         }
-        $e = self::raised(fn() => (new RollbackProbe)($db)->getCount());
+        $e = self::raised(fn() => (new RollbackProbe())($db)->getCount());
         self::check($e instanceof OrmException && $e->code_ === Code::CONNECTION_LOST, 'the first statement fails with CONNECTION_LOST: ' . ($e === null ? 'no error' : $e->getMessage()));
         self::check($events === [Code::CONNECTION_LOST], 'the statement is sent once: ' . json_encode($events));
     }
@@ -295,21 +296,24 @@ final class RollbackTest extends TestCase
     public function test_rollback_failed(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
-        with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::rollbackFailed($dsn));
+        with_case_database($driver, static function (string $step): void {
+        }, static fn(string $dsn) => self::rollbackFailed($dsn));
     }
 
     #[DataProvider('drivers')]
     public function test_savepoint_rollback_failed(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
-        with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::savepointRollbackFailed($dsn));
+        with_case_database($driver, static function (string $step): void {
+        }, static fn(string $dsn) => self::savepointRollbackFailed($dsn));
     }
 
     #[DataProvider('drivers')]
     public function test_rollback_fault(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
-        with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::rollbackFault($dsn));
+        with_case_database($driver, static function (string $step): void {
+        }, static fn(string $dsn) => self::rollbackFault($dsn));
     }
 
     #[DataProvider('serverDrivers')]
@@ -317,7 +321,8 @@ final class RollbackTest extends TestCase
     public function test_first_statement_lost(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
-        with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::firstStatementLost($dsn));
+        with_case_database($driver, static function (string $step): void {
+        }, static fn(string $dsn) => self::firstStatementLost($dsn));
     }
 
     /** SQLite has no server session to end, so first_statement_lost runs on MySQL and PostgreSQL. */

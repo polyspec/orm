@@ -1,4 +1,5 @@
 <?php
+
 // The unit test of the PHP test autoloaders: bootstrap.php, the package's Composer autoloader that the PHPUnit tests run
 // on, and autoload.php, the autoloader of the repository root that the programs outside the tests (conformance runners,
 // examples) require. Every PHP test uses an autoloader, so a change to one is checked by this test, not by the

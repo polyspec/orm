@@ -1,4 +1,5 @@
 <?php
+
 // orm-gen --scan test: the generator declares, as @method tags of the model class, the chain methods that the scanned
 // PHP sources call on a model (tests/generator/php-scan-vectors.json), resolves the receiver of a call from the source,
 // rejects a name or an argument count the chain grammar does not accept, and leaves PHPStan with no method.notFound.

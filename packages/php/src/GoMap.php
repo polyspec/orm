@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Polyspec\Orm;
@@ -7,5 +8,7 @@ namespace Polyspec\Orm;
 final class GoMap
 {
     /** @param array<string, mixed> $items */
-    public function __construct(public array $items = []) {}
+    public function __construct(public array $items = [])
+    {
+    }
 }

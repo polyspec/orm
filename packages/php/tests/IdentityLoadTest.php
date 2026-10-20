@@ -1,4 +1,5 @@
 <?php
+
 // Identity load and restart (docs/operations/usage.md "Execute a compiled statement"):
 // the shared cases of contracts/fixtures/identity_load.json with the fixture
 // contracts/fixtures/identity_load.dbs. A compile case compiles its request on
@@ -164,7 +165,8 @@ final class IdentityLoadTest extends TestCase
         }
         $schema = new Schema($model->manifestText, $model->manifestHash);
         foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
-            with_case_database($driver, static function (string $text): void {}, static fn(string $dsn) => run_execute_case($model, $schema, $doc, $case, $driver, $dsn));
+            with_case_database($driver, static function (string $text): void {
+            }, static fn(string $dsn) => run_execute_case($model, $schema, $doc, $case, $driver, $dsn));
         }
     }
 }

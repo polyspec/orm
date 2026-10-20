@@ -1,4 +1,5 @@
 <?php
+
 // orm-gen command line test: gen writes and checks the models of a dbspec
 // document set.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenTest.php

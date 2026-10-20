@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 // Records the outcomes of the dbspec behaviour cases (packages/php/tests/dbspec_behaviour.php) that the PHP library

@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // model_generation feature coverage: with the same arguments as the committed generation command,
 // running the orm-gen check mode reports that packages/php/gen is the same as the generator output,
 // and reports that a copy with one byte changed is different.

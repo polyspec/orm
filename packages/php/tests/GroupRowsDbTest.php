@@ -1,4 +1,5 @@
 <?php
+
 // Grouped counts on the seeded bench database of each dialect (BENCH_<DIALECT>_DSN, from make databases-create): getsCount returns group rows whose grouped values keep their types
 // (boolean, integer, SQL NULL), that hold only the grouped columns and the count, and whose counts sum to the row count.
 // The test only reads.
@@ -26,7 +27,7 @@ final class GroupRowsDbTest extends TestCase
             $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index'));
             try {
                 self::assertSame($driver, $db->driver(), 'DSN selected the wrong database');
-                $query = static fn(): Author => (new Author)($db);
+                $query = static fn(): Author => (new Author())($db);
                 $groups = $query()->groupByIsClose()->orderByIsCloseAsc()->getsCount();
                 self::assertTrue($groups instanceof GroupRows && count($groups) === 2, 'getsCount returned partial models');
                 $total = 0;
@@ -62,7 +63,6 @@ final class GroupRowsDbTest extends TestCase
             } finally {
                 $db->close();
             }
-
         }
     }
 }

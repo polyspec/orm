@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // The clock of datetime(6) columns, on SQLite, MySQL and PostgreSQL. An
 // insert of clock_event omits created_ts, whose default is `now`: SQLite and
 // PostgreSQL bind the client clock of the `now` slot, MySQL applies the database
@@ -72,11 +74,11 @@ final class ClockTest extends TestCase
             $db->utils()->schema()->install(\Polyspec\Orm\Tests\ClockCase\schema());
             $before = microtime(true);
             for ($i = 0; $i < 16; $i++) {
-                (new ClockEvent)($db)->setLabel("event-$i")->create();
+                (new ClockEvent())($db)->setLabel("event-$i")->create();
             }
             $after = microtime(true);
             $stamps = [];
-            foreach ((new ClockEvent)($db)->addAllColumns()->orderBySeqAsc()->gets() as $row) {
+            foreach ((new ClockEvent())($db)->addAllColumns()->orderBySeqAsc()->gets() as $row) {
                 $stamps[] = $row->getCreatedTs()->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s.u');
             }
             self::check(count($stamps) === 16, 'rows ' . count($stamps));
@@ -109,7 +111,7 @@ final class ClockTest extends TestCase
         $db = self::markDb($dsn);
         try {
             for ($i = 0; $i < 16; $i++) {
-                (new ClockMark)($db)->setLabel("mark-$i")->create()->delete();
+                (new ClockMark())($db)->setLabel("mark-$i")->create()->delete();
             }
         } finally {
             $db->close();
@@ -139,9 +141,9 @@ final class ClockTest extends TestCase
         $db = self::markDb($dsn);
         try {
             for ($i = 0; $i < 16; $i++) {
-                $seq = (new ClockMark)($db)->setLabel("mark-$i")->create()->getSeq();
+                $seq = (new ClockMark())($db)->setLabel("mark-$i")->create()->getSeq();
                 foreach (['now' => Orm::now(), 'secondsLater(0)' => Orm::secondsLater(0)] as $name => $fn) {
-                    $rows = (new ClockMark)($db)->addAllColumns()->andSeq($seq)->andLeCreatedTs($fn)->gets();
+                    $rows = (new ClockMark())($db)->addAllColumns()->andSeq($seq)->andLeCreatedTs($fn)->gets();
                     self::check(count($rows) === 1, "row $seq with created_ts <= $name: " . count($rows) . ' rows');
                 }
             }
@@ -168,7 +170,8 @@ final class ClockTest extends TestCase
     {
         // The test of DIA-18 (docs/spec).
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
-        with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::clockMicroseconds($dsn));
+        with_case_database($driver, static function (string $step): void {
+        }, static fn(string $dsn) => self::clockMicroseconds($dsn));
     }
 
     #[DataProvider('drivers')]
@@ -176,7 +179,8 @@ final class ClockTest extends TestCase
     {
         // The test of DIA-18 (docs/spec).
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
-        with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::clockSoftDeleteMicroseconds($dsn));
+        with_case_database($driver, static function (string $step): void {
+        }, static fn(string $dsn) => self::clockSoftDeleteMicroseconds($dsn));
     }
 
     #[DataProvider('drivers')]
@@ -184,6 +188,7 @@ final class ClockTest extends TestCase
     {
         // The test of DSL-137, DIA-56 (docs/spec).
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
-        with_case_database($driver, static function (string $step): void {}, static fn(string $dsn) => self::clockNowCondition($dsn));
+        with_case_database($driver, static function (string $step): void {
+        }, static fn(string $dsn) => self::clockNowCondition($dsn));
     }
 }

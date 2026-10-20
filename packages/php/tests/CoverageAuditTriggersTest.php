@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // audit_triggers feature coverage: installs contracts/fixtures/audit.dbs in the bench database
 // and writes it in an audit transaction in the same order as auditCase in packages/go/orm/audit_transaction_test.go,
 // checks the item_history and audit record left by the trigger, and removes the installed table and PostgreSQL function.
@@ -149,8 +151,8 @@ final class CoverageAuditTriggersTest extends TestCase
             selectCoverageItem($item);
             withAudit(function (Db $db): void {
                 $adb = $db;
-                $seq = $adb->transaction(fn(): int => (new Item)->setTitle('first')->create()->getSeq(), audit: ['actor' => 'transaction'], retry: 0);
-                $adb->transaction(fn() => (new Item)($adb)->setSeq($seq)->setTitle('second')->update(), audit: ['actor' => 'connected'], retry: 0);
+                $seq = $adb->transaction(fn(): int => (new Item())->setTitle('first')->create()->getSeq(), audit: ['actor' => 'transaction'], retry: 0);
+                $adb->transaction(fn() => (new Item())($adb)->setSeq($seq)->setTitle('second')->update(), audit: ['actor' => 'connected'], retry: 0);
                 $nested = auditErrorCode(fn() => $adb->transaction(fn() => $adb->transaction(fn() => null, audit: ['actor' => 'nested']), audit: [], retry: 0));
                 Assert::assertTrue($nested === Code::CONFIG, "a nested transaction with an audit is $nested, want CONFIG");
                 $s = (string) $seq;

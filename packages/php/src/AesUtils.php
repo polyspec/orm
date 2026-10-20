@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Polyspec\Orm;
@@ -11,7 +12,9 @@ use Polyspec\Orm\Dbspec\Renderer;
 /** AES key version status and rotation. */
 final class AesUtils
 {
-    public function __construct(private readonly Db $db, private readonly Utils $u) {}
+    public function __construct(private readonly Db $db, private readonly Utils $u)
+    {
+    }
 
     /** @return array{table: string, keys: list<string>, version: string, columns: list<array{name: string, styles: list<string>}>} */
     private function spec(Model $model): array

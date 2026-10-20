@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // The PHP plans reader opens tests/dbspec/plans.json from one file (dbspec_plan_cases.php, plan_vectors()). The test
 // counts the test sources that open the file in code, and names them: exactly one, the helper.
 

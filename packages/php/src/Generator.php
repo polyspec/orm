@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Polyspec\Orm;
@@ -165,8 +166,11 @@ final class Generator
             . "    public function $name($params): static\n    {\n        \$this->__call(" . self::str($name) . ", func_get_args());\n        return \$this;\n    }\n";
         foreach ($e['columns'] as $c) {
             $p = self::pascal($c['name']);
-            $methods[self::camel($c['name'])] = $chain(self::camel($c['name']), 'mixed $value, mixed ...$compared',
-                "    /** The condition of {$c['name']}: a value, a list, a value function, a model, or a column function and its compared value. */\n");
+            $methods[self::camel($c['name'])] = $chain(
+                self::camel($c['name']),
+                'mixed $value, mixed ...$compared',
+                "    /** The condition of {$c['name']}: a value, a list, a value function, a model, or a column function and its compared value. */\n"
+            );
             foreach (['addColumn', 'removeColumn', 'groupBy', 'keyName'] as $prefix) {
                 $methods[$prefix . $p] = $chain($prefix . $p, '');
             }

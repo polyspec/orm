@@ -1,4 +1,5 @@
 <?php
+
 // The result helpers of the PHP conformance runner (packages/php/testing/conformance/result_php_helpers.php): a result keeps ordered-json
 // numbers and styled states, a derived integer is read only from an integral value, and a vector failure keeps its cause.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ConformanceResultTest.php

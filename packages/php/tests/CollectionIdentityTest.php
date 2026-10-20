@@ -1,4 +1,5 @@
 <?php
+
 // The collection key identity of tests/collection/keys.json: every value type has its own key, and a NULL key is CODEC_DECODE.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CollectionIdentityTest.php
 declare(strict_types=1);

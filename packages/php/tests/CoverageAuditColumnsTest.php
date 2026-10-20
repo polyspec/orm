@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // audit_triggers feature coverage: installs contracts/fixtures/audit_columns.dbs in the bench
 // database and checks that the audit trigger records, for the insert, update, and soft delete the client writes,
 // only the chosen columns. card uses exclude (secret) to leave out secret, and
@@ -83,14 +85,14 @@ function auditColumnsCase(string $dsn, string $document, string $work): void
             $db->utils()->schema()->install(\Polyspec\Orm\Tests\CoverageAuditColumns\schema());
             $adb = $db;
             [$seq, $id] = $adb->transaction(function (): array {
-                $seq = (new Card)->setTitle('first')->setSecret('s1')->create()->getSeq();
-                $id = (new Tag)->setLabel('x')->setColor('red')->create()->getId();
-                (new Card)->getBySeq($seq)->setTitle('second')->setSecret('s2')->update();
+                $seq = (new Card())->setTitle('first')->setSecret('s1')->create()->getSeq();
+                $id = (new Tag())->setLabel('x')->setColor('red')->create()->getId();
+                (new Card())->getBySeq($seq)->setTitle('second')->setSecret('s2')->update();
                 return [$seq, $id];
             }, audit: ['actor' => 'first'], retry: 0);
             $adb->transaction(function () use ($seq, $id): void {
-                (new Card)->getBySeq($seq)->delete();
-                (new Tag)->getById($id)->setColor('blue')->update();
+                (new Card())->getBySeq($seq)->delete();
+                (new Tag())->getById($id)->setColor('blue')->update();
             }, audit: ['actor' => 'second'], retry: 0);
             $change = $db->driver() === 'mysql' ? '`change`' : '"change"';
             [$columns] = auditColumnsRows($db, 'SELECT * FROM card_history ORDER BY history_id');

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 use PHPUnit\Framework\Attributes\Small;
@@ -26,7 +27,8 @@ final class GroupRowsTest extends TestCase
         $rows = new GroupRows([$row]);
         self::assertCount(1, $rows, 'group result collection changed the row');
         self::assertSame([['is_close' => false, 'row_count' => 3]], $rows->toArray(), 'group result collection changed the row');
-        foreach ([
+        foreach (
+            [
             [['is_close', false]],
             [['row_count', true]],
             [['row_count', -1]],
@@ -34,7 +36,8 @@ final class GroupRowsTest extends TestCase
             [['row_count', '900719925474099300000']],
             [['row_count', 1], ['row_count', 2]],
             [['row_count', 1, 'extra']],
-        ] as $invalid) {
+            ] as $invalid
+        ) {
             try {
                 new GroupRow($invalid);
                 self::fail('invalid group count was accepted: ' . json_encode($invalid));

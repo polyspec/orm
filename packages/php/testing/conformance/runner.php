@@ -1,4 +1,5 @@
 <?php
+
 // Conformance runner (PHP). Runs the chains of packages/go/internal/conformance/main.go and prints the same document.
 // Usage: php packages/php/testing/conformance/runner.php --dsn URI [--vector NAME]...
 // --vector can be repeated; when given, only the vectors with that name run. An unknown name is an error.
@@ -74,10 +75,14 @@ function norm(mixed $v): mixed
             return '$TS';
         }
         if (str_starts_with($v, "ORM-AES2\0")) {
-            if (strlen($v) < 9 + 12 + 16) throw new RuntimeException('invalid AES ciphertext bind');
+            if (strlen($v) < 9 + 12 + 16) {
+                throw new RuntimeException('invalid AES ciphertext bind');
+            }
             return '$AES';
         }
-        if (str_starts_with($v, 'ORM-AES2')) throw new RuntimeException('invalid AES ciphertext bind');
+        if (str_starts_with($v, 'ORM-AES2')) {
+            throw new RuntimeException('invalid AES ciphertext bind');
+        }
         if (str_starts_with(strtolower($v), '4f524d2d41455332')) {
             $decoded = hex2bin($v);
             if ($decoded === false || !str_starts_with($decoded, "ORM-AES2\0") || strlen($decoded) < 9 + 12 + 16) {
@@ -207,7 +212,7 @@ function run(string $name, callable $fn): void
     $out[$name] = ['statements' => $log, 'result' => $res];
 }
 
-$author = static fn(): Author => (new Author)->connect($db);
+$author = static fn(): Author => (new Author())->connect($db);
 $cols = ['seq', 'name', 'is_close', 'is_display', 'read_count'];
 
 vector('conditions_connectors', fn() => picks($author()->serviceSeq(7)->andIsClose(false)->or()->readCount(6)->orderBySeqAsc()->limit(0, 3)->gets(), ...$cols));
@@ -259,39 +264,39 @@ vector('expression_forms', fn() => [
 ]);
 
 vector('columns', function () use ($db, $author): array {
-    $none = (new Service)($db)->removeAllColumns()->getBySeq(7);
+    $none = (new Service())($db)->removeAllColumns()->getBySeq(7);
     $added = $author()->removeAllColumns()->addColumnName()->addColumnStartDtAliasStartYear(Orm::year())->getBySeq(42);
-    $removed = (new Service)($db)->removeColumnName()->getBySeq(7);
+    $removed = (new Service())($db)->removeColumnName()->getBySeq(7);
     return [$none->toArray(), pick($added, 'seq', 'name', 'start_year'), $removed->toArray()];
 });
 
 vector('joins', function () use ($author): array {
-    $service = (new Service)->on(fn(Service $s) => $s->gtSeq(0))->name('service-7');
+    $service = (new Service())->on(fn(Service $s) => $s->gtSeq(0))->name('service-7');
     $rows = $author()
         ->removeAllColumns()->addColumnName()
         ->joinServiceSeqWithSeq($service)
         ->isClose(false)
         ->and(fn(Author $q) => $q->isDisplay(true)->or($service))
         ->orderBySeqAsc()->limit(0, 2)->gets();
-    $member = new ServiceMember;
+    $member = new ServiceMember();
     $compared = $author()->joinServiceMemberSeqWithSeq($member)->serviceSeq(7)->andSuccessCountLtSeq($member)->getCount();
-    $left = $author()->leftJoinServiceRegionSeqWithSeq((new ServiceRegion)->aliasModule())->serviceSeq(7)->orderBySeqAsc()->limit(0, 1)->gets();
+    $left = $author()->leftJoinServiceRegionSeqWithSeq((new ServiceRegion())->aliasModule())->serviceSeq(7)->orderBySeqAsc()->limit(0, 1)->gets();
     return ['rows' => $rows->toArray(), 'compared' => $compared, 'module' => pick($left->first()->getModule(), 'seq', 'name')];
 });
 
 vector('relations', fn() => $author()
     ->removeAllColumns()->addColumnName()->addColumnIsClose()
-    ->relation((new User)->matchUserSeqWithSeq()->aliasWriter()
-        ->relations((new Author)->matchSeqWithUserSeq()->removeAllColumns()->orderBySeqDesc()->groupLimit(2)))
-    ->relation((new Service)->matchServiceSeqWithSeq()
-        ->relations((new ServiceMember)->matchSeqWithServiceSeq()->removeAllColumns()->orderBySeqAsc()->groupLimit(2)->keyNameUserSeq()))
-    ->relation((new ServiceRegion)->matchServiceRegionSeqWithSeq()->possibleIsClose(true)->parentNode())
+    ->relation((new User())->matchUserSeqWithSeq()->aliasWriter()
+        ->relations((new Author())->matchSeqWithUserSeq()->removeAllColumns()->orderBySeqDesc()->groupLimit(2)))
+    ->relation((new Service())->matchServiceSeqWithSeq()
+        ->relations((new ServiceMember())->matchSeqWithServiceSeq()->removeAllColumns()->orderBySeqAsc()->groupLimit(2)->keyNameUserSeq()))
+    ->relation((new ServiceRegion())->matchServiceRegionSeqWithSeq()->possibleIsClose(true)->parentNode())
     ->serviceSeq(7)->orderBySeqAsc()->limit(0, 3)->gets()->toArray());
 
-vector('relation_empty', fn() => count($author()->relations((new ServiceMember)->matchUserSeqWithUserSeq())->getsBySeq(-1)));
+vector('relation_empty', fn() => count($author()->relations((new ServiceMember())->matchUserSeqWithUserSeq())->getsBySeq(-1)));
 vector('relation_null_key', function () use ($db): int|array {
     try {
-        return count((new User)($db)->relations((new Author)->matchSeqWithUserSeq()->keyNamePrice())->seq(100)->gets());
+        return count((new User())($db)->relations((new Author())->matchSeqWithUserSeq()->keyNamePrice())->seq(100)->gets());
     } catch (OrmException $e) {
         // a nullable key_by is refused by the engine (IR_INVALID): that refusal is the result, not a crash.
         return ['error' => 'IR_INVALID', 'message' => $e->getMessage()];
@@ -303,15 +308,15 @@ vector('relation_null_key', function () use ($db): int|array {
 vector('external_read', function () use ($db): array {
     $related = array_map(
         static fn(NoteReader $r): array => [$r->getSeq(), $r->getSharedNoteModel()->getTitle()],
-        (new NoteReader)($db)->relation((new SharedNote)->matchSharedNoteSeqWithSeq())->orderBySeqAsc()->gets()->all(),
+        (new NoteReader())($db)->relation((new SharedNote())->matchSharedNoteSeqWithSeq())->orderBySeqAsc()->gets()->all(),
     );
     $titles = array_map(
         static fn(SharedNote $n): string => $n->getTitle(),
-        (new SharedNote)($db)->seq((new NoteReader)->addColumnSharedNoteSeq())->orderBySeqAsc()->gets()->all(),
+        (new SharedNote())($db)->seq((new NoteReader())->addColumnSharedNoteSeq())->orderBySeqAsc()->gets()->all(),
     );
     $write = null;
     try {
-        (new SharedNote)($db)->setSeq(9)->setTitle('written')->create();
+        (new SharedNote())($db)->setSeq(9)->setTitle('written')->create();
     } catch (Throwable $e) {
         $write = code($e);
     }
@@ -320,9 +325,9 @@ vector('external_read', function () use ($db): array {
 
 vector('subqueries', fn() => array_map(
     static fn(User $u): array => [$u->getSeq(), derivedInteger($u->getReadTotal())],
-    (new User)($db)
-        ->addColumnReadTotal(fn(User $u) => (new Author)->sumReadCount()->userSeqEqSeq($u)->andServiceSeq(7))
-        ->seq((new Author)->addColumnUserSeq()->serviceSeq(7)->andGeReadCount(906))
+    (new User())($db)
+        ->addColumnReadTotal(fn(User $u) => (new Author())->sumReadCount()->userSeqEqSeq($u)->andServiceSeq(7))
+        ->seq((new Author())->addColumnUserSeq()->serviceSeq(7)->andGeReadCount(906))
         ->orderBySeqAsc()->gets()->all(),
 ));
 
@@ -373,20 +378,20 @@ vector('audit_lazy', function () use ($db): array {
     $caught = null;
     try {
         $db->transaction(function () use ($boom, &$result): void {
-            $result['before'] = (new AuditRecord)->getCount();
-            $result['read'] = (new AuditedNote)->label('audit-lazy')->getCount();
-            (new AuditedNote)->setSeq(-1)->setLabel('audit-none')->update();
-            $result['unchanged'] = (new AuditRecord)->getCount();
-            $created = (new AuditedNote)->setLabel('audit-lazy')->create();
+            $result['before'] = (new AuditRecord())->getCount();
+            $result['read'] = (new AuditedNote())->label('audit-lazy')->getCount();
+            (new AuditedNote())->setSeq(-1)->setLabel('audit-none')->update();
+            $result['unchanged'] = (new AuditRecord())->getCount();
+            $created = (new AuditedNote())->setLabel('audit-lazy')->create();
             mask([$created->getSeq()]);
-            $result['written'] = (new AuditRecord)->getCount();
+            $result['written'] = (new AuditRecord())->getCount();
             throw $boom;
         }, retry: 0, audit: ['request_id' => 'audit-lazy']);
     } catch (\Throwable $e) {
         $caught = $e;
     }
     $result['rolled_back'] = $caught === $boom;
-    $result['after'] = (new AuditRecord)($db)->getCount();
+    $result['after'] = (new AuditRecord())($db)->getCount();
     return $result;
 });
 
@@ -406,12 +411,12 @@ vector('errors', fn() => [
     caught(fn() => $author()->name('a')->isClose(true)->gets()),
     caught(fn() => $author()->name('a')->and()->gets()),
     caught(fn() => $author()->seq([])->gets()),
-    caught(fn() => (new Author)->name('a')->gets()),
+    caught(fn() => (new Author())->name('a')->gets()),
     caught(fn() => $author()->forUpdate()->gets()),
-    caught(fn() => $author()->joinUserSeqWithSeq((new User)($db))->gets()),
+    caught(fn() => $author()->joinUserSeqWithSeq((new User())($db))->gets()),
     caught(fn() => $author()->limit(0, 1)->getsPage(1, 10)),
-    caught(fn() => $author()->relation((new User)->matchUserSeqWithSeq()->limit(0, 1))->getsBySeq(42)),
-    caught(fn() => $author()->name('a')->or(new User)->gets()),
+    caught(fn() => $author()->relation((new User())->matchUserSeqWithSeq()->limit(0, 1))->getsBySeq(42)),
+    caught(fn() => $author()->name('a')->or(new User())->gets()),
 ]);
 
 vector('get_query', function () use ($author): array {
@@ -473,26 +478,26 @@ vector('required_columns', function () use ($db): array {
         }
         return null;
     };
-    $missingState = $failure(fn() => (new Task)($db)->setTitle('draft')->create());
-    $missingTitle = $failure(fn() => (new Task)($db)->setState('open')->create());
-    $created = (new Task)($db)->setTitle('draft')->setState('open')->create();
+    $missingState = $failure(fn() => (new Task())($db)->setTitle('draft')->create());
+    $missingTitle = $failure(fn() => (new Task())($db)->setState('open')->create());
+    $created = (new Task())($db)->setTitle('draft')->setState('open')->create();
     mask([$created->getSeq()]);
     $created->delete();
     return ['missing_state' => $missingState, 'missing_title' => $missingTitle];
 });
 
 vector('creates_and_save', function () use ($db): array {
-    $inserted = (new CompositeAccount)($db)->creates([
-        (new CompositeAccount)->setTenantId(900)->setAccountId(1)->setName('a'),
-        (new CompositeAccount)->setTenantId(900)->setAccountId(2)->setName('b'),
-        (new CompositeAccount)->setTenantId(901)->setAccountId(1)->setName('c'),
+    $inserted = (new CompositeAccount())($db)->creates([
+        (new CompositeAccount())->setTenantId(900)->setAccountId(1)->setName('a'),
+        (new CompositeAccount())->setTenantId(900)->setAccountId(2)->setName('b'),
+        (new CompositeAccount())->setTenantId(901)->setAccountId(1)->setName('c'),
     ], 2);
-    (new CompositeAccount)($db)->setTenantId(900)->setAccountId(1)->setName('dup')
-        ->duplication((new CompositeAccount)->setName('updated'))->create();
-    (new CompositeAccount)($db)->setTenantId(900)->setAccountId(2)->setName('saved')->save();
-    $pairs = (new CompositeAccount)($db)->tupleTenantIdWithAccountId([[900, 1], [900, 2]])->orderByAccountIdAsc()->gets();
-    (new CompositeAccount)($db)->tenantId([900, 901])->orderByTenantIdAsc()->orderByAccountIdAsc()->gets()->delete();
-    $left = (new CompositeAccount)($db)->tenantId([900, 901])->getCount();
+    (new CompositeAccount())($db)->setTenantId(900)->setAccountId(1)->setName('dup')
+        ->duplication((new CompositeAccount())->setName('updated'))->create();
+    (new CompositeAccount())($db)->setTenantId(900)->setAccountId(2)->setName('saved')->save();
+    $pairs = (new CompositeAccount())($db)->tupleTenantIdWithAccountId([[900, 1], [900, 2]])->orderByAccountIdAsc()->gets();
+    (new CompositeAccount())($db)->tenantId([900, 901])->orderByTenantIdAsc()->orderByAccountIdAsc()->gets()->delete();
+    $left = (new CompositeAccount())($db)->tenantId([900, 901])->getCount();
     return ['inserted' => $inserted, 'pairs' => $pairs->toArray(), 'left' => $left];
 });
 
@@ -501,12 +506,12 @@ vector('creates_and_save', function () use ($db): array {
 vector('creates_batch', function () use ($db): array {
     $rows = [];
     foreach (['a', 'b', 'c', 'd', 'e'] as $i => $name) {
-        $rows[] = (new CompositeAccount)->setTenantId(903)->setAccountId($i + 1)->setName($name);
+        $rows[] = (new CompositeAccount())->setTenantId(903)->setAccountId($i + 1)->setName($name);
     }
-    $inserted = (new CompositeAccount)($db)->creates($rows, 2);
-    $zero = caught(fn() => (new CompositeAccount)($db)->creates($rows, 0));
-    $count = (new CompositeAccount)($db)->tenantId([903])->getCount();
-    (new CompositeAccount)($db)->tenantId([903])->orderByAccountIdAsc()->gets()->delete();
+    $inserted = (new CompositeAccount())($db)->creates($rows, 2);
+    $zero = caught(fn() => (new CompositeAccount())($db)->creates($rows, 0));
+    $count = (new CompositeAccount())($db)->tenantId([903])->getCount();
+    (new CompositeAccount())($db)->tenantId([903])->orderByAccountIdAsc()->gets()->delete();
     return ['inserted' => $inserted, 'zero' => $zero, 'count' => $count];
 });
 
@@ -515,10 +520,10 @@ vector('creates_batch', function () use ($db): array {
 vector('creates_batch_too_large', function () use ($db): array {
     $rows = [];
     for ($i = 1; $i <= 21846; $i++) {
-        $rows[] = (new CompositeAccount)->setTenantId(904)->setAccountId($i)->setName('n');
+        $rows[] = (new CompositeAccount())->setTenantId(904)->setAccountId($i)->setName('n');
     }
-    $code = caught(fn() => (new CompositeAccount)($db)->creates($rows, count($rows)));
-    return ['code' => $code, 'count' => (new CompositeAccount)($db)->tenantId([904])->getCount()];
+    $code = caught(fn() => (new CompositeAccount())($db)->creates($rows, count($rows)));
+    return ['code' => $code, 'count' => (new CompositeAccount())($db)->tenantId([904])->getCount()];
 });
 
 /** Creates the Apple, apple, Évian, évian, x_y rows in tenant 902, collects the account_id each pattern selects with $cond, then deletes them. */
@@ -526,14 +531,14 @@ function containsVector(Db $db, callable $cond, string ...$patterns): array
 {
     $rows = [];
     foreach (['Apple', 'apple', 'Évian', 'évian', 'x_y'] as $i => $name) {
-        $rows[] = (new CompositeAccount)->setTenantId(902)->setAccountId($i + 1)->setName($name);
+        $rows[] = (new CompositeAccount())->setTenantId(902)->setAccountId($i + 1)->setName($name);
     }
-    (new CompositeAccount)($db)->creates($rows, count($rows));
+    (new CompositeAccount())($db)->creates($rows, count($rows));
     $matches = [];
     foreach ($patterns as $p) {
-        $matches[] = picks($cond((new CompositeAccount)($db)->tenantId(902), $p)->orderByAccountIdAsc()->gets(), 'account_id');
+        $matches[] = picks($cond((new CompositeAccount())($db)->tenantId(902), $p)->orderByAccountIdAsc()->gets(), 'account_id');
     }
-    (new CompositeAccount)($db)->tenantId(902)->orderByAccountIdAsc()->gets()->delete();
+    (new CompositeAccount())($db)->tenantId(902)->orderByAccountIdAsc()->gets()->delete();
     return $matches;
 }
 
@@ -541,18 +546,18 @@ vector('contains_ascii_fold', fn() => containsVector($db, fn(CompositeAccount $q
 vector('contains_binary_code_point', fn() => containsVector($db, fn(CompositeAccount $q, string $p) => $q->andLbName($p), 'pp', 'É', 'PPL', '_'));
 
 vector('delete_recursive', function () use ($db): array {
-    $service = (new Service)($db)->setName('recursive')->create();
+    $service = (new Service())($db)->setName('recursive')->create();
     $seq = $service->getSeq();
     $seqs = [$seq];
     foreach ([1, 2] as $user) {
-        $seqs[] = (new ServiceMember)($db)->setServiceSeq($seq)->setUserSeq($user)->create()->getSeq();
+        $seqs[] = (new ServiceMember())($db)->setServiceSeq($seq)->setUserSeq($user)->create()->getSeq();
     }
-    $loaded = (new Service)($db)->relations((new ServiceMember)->matchSeqWithServiceSeq())->getBySeq($seq);
+    $loaded = (new Service())($db)->relations((new ServiceMember())->matchSeqWithServiceSeq())->getBySeq($seq);
     $members = count($loaded->getServiceMemberModels());
     mask($seqs);
     $loaded->delete(true);
-    $left = (new ServiceMember)($db)->getCountByServiceSeq($seq);
-    return ['members' => $members, 'members_left' => $left, 'service_left' => caught(fn() => (new Service)($db)->getBySeq($seq))];
+    $left = (new ServiceMember())($db)->getCountByServiceSeq($seq);
+    return ['members' => $members, 'members_left' => $left, 'service_left' => caught(fn() => (new Service())($db)->getBySeq($seq))];
 });
 
 vector('transactions', function () use ($db): array {
@@ -560,18 +565,18 @@ vector('transactions', function () use ($db): array {
     $events = [];
     try {
         $db->transaction(function () use ($db, $boom, &$events): void {
-            (new Service)->setName('tx-outer')->create();
+            (new Service())->setName('tx-outer')->create();
             try {
                 $db->transaction(function () use ($boom): void {
-                    (new Service)->setName('tx-inner')->create();
+                    (new Service())->setName('tx-inner')->create();
                     throw $boom;
                 });
                 $events[] = false;
             } catch (RuntimeException $e) {
                 $events[] = $e === $boom;
             }
-            $events[] = (new Service)->name(['tx-outer', 'tx-inner'])->getCount();
-            $events[] = count((new Service)->name('tx-outer')->forUpdate()->gets());
+            $events[] = (new Service())->name(['tx-outer', 'tx-inner'])->getCount();
+            $events[] = count((new Service())->name('tx-outer')->forUpdate()->gets());
             $db->utils()->lock('conformance');
             $db->utils()->setLocal('ormtest.actor', 'runner');
             $events[] = $db->utils()->local('ormtest.actor');
@@ -581,7 +586,7 @@ vector('transactions', function () use ($db): array {
     } catch (RuntimeException $e) {
         $events[] = $e === $boom;
     }
-    $events[] = (new Service)($db)->name(['tx-outer', 'tx-inner'])->getCount();
+    $events[] = (new Service())($db)->name(['tx-outer', 'tx-inner'])->getCount();
     return $events;
 });
 
@@ -592,19 +597,19 @@ vector('restore', function () use ($db): array {
     $result = [];
     try {
         $db->transaction(function () use ($boom, &$result): void {
-            $created = (new SoftRecord)->setName('restore')->create();
+            $created = (new SoftRecord())->setName('restore')->create();
             $seq = $created->getSeq();
             mask([$seq]);
             $created->setDeletedAt('2026-01-02 03:04:05.000000')->update();
-            $result['hidden'] = caught(fn() => (new SoftRecord)->getBySeq($seq));
+            $result['hidden'] = caught(fn() => (new SoftRecord())->getBySeq($seq));
             // Values outside the key are used only when restoring a deleted row. A second restore does not change a row that was not deleted,
             // and returns it unchanged.
             foreach (['restored' => 'restore-2', 'again' => 'ignored'] as $name => $value) {
-                $array = (new SoftRecord)->setSeq($seq)->setName($value)->restore()->toArray();
+                $array = (new SoftRecord())->setSeq($seq)->setName($value)->restore()->toArray();
                 $array['seq'] = '$SEQ';
                 $result[$name] = $array;
             }
-            $result['missing'] = caught(fn() => (new SoftRecord)->setSeq(0)->restore());
+            $result['missing'] = caught(fn() => (new SoftRecord())->setSeq(0)->restore());
             throw $boom;
         }, retry: 0);
         throw new RuntimeException('the restore transaction committed');
@@ -613,7 +618,7 @@ vector('restore', function () use ($db): array {
             throw $e;
         }
     }
-    $result['left'] = (new SoftRecord)($db)->name('restore')->getCount();
+    $result['left'] = (new SoftRecord())($db)->name('restore')->getCount();
     return $result;
 });
 vector('restore_or_create', function () use ($db): array {
@@ -623,14 +628,14 @@ vector('restore_or_create', function () use ($db): array {
     $result = [];
     try {
         $db->transaction(function () use ($boom, &$result): void {
-            $created = (new SoftLink)->setCode('roc-1')->setLabel('first')->create();
+            $created = (new SoftLink())->setCode('roc-1')->setLabel('first')->create();
             mask([$created->getSeq()]);
             $created->setDeletedAt('2026-01-02 03:04:05.000000')->update();
-            $restored = (new SoftLink)->setCode('roc-1')->setLabel('second')->restoreOrCreate()->toArray();
+            $restored = (new SoftLink())->setCode('roc-1')->setLabel('second')->restoreOrCreate()->toArray();
             $restored['seq'] = '$SEQ';
             $result['restored'] = $restored;
-            $result['live'] = caught(fn() => (new SoftLink)->setCode('roc-1')->setLabel('third')->restoreOrCreate());
-            $made = (new SoftLink)->setCode('roc-2')->setLabel('new')->restoreOrCreate();
+            $result['live'] = caught(fn() => (new SoftLink())->setCode('roc-1')->setLabel('third')->restoreOrCreate());
+            $made = (new SoftLink())->setCode('roc-2')->setLabel('new')->restoreOrCreate();
             mask([$made->getSeq()]);
             $createdRow = $made->toArray();
             $createdRow['seq'] = '$SEQ';
@@ -643,7 +648,7 @@ vector('restore_or_create', function () use ($db): array {
             throw $e;
         }
     }
-    $result['left'] = (new SoftLink)($db)->getCount();
+    $result['left'] = (new SoftLink())($db)->getCount();
     return $result;
 });
 
@@ -654,21 +659,21 @@ vector('expect_revision', function () use ($db): array {
     $boom = new RuntimeException('boom');
     $result = [];
     $read = function (): array {
-        $row = (new Author)->getBySeq(42);
+        $row = (new Author())->getBySeq(42);
         return ['name' => $row->getName(), 'like_count' => $row->getLikeCount()];
     };
     try {
         $db->transaction(function () use ($boom, $read, &$result): void {
             $result['before'] = $read();
             $revision = $result['before']['like_count'];
-            (new Author)->setSeq(42)->setName('revision-1')->expectRevision('like_count', $revision)->update();
+            (new Author())->setSeq(42)->setName('revision-1')->expectRevision('like_count', $revision)->update();
             $result['updated'] = $read();
-            $result['update_mismatch'] = caught(fn() => (new Author)->setSeq(42)->setName('revision-stale')->expectRevision('like_count', $revision)->update());
+            $result['update_mismatch'] = caught(fn() => (new Author())->setSeq(42)->setName('revision-stale')->expectRevision('like_count', $revision)->update());
             $result['after_mismatch'] = $read();
-            $result['delete_mismatch'] = caught(fn() => (new Author)->setSeq(42)->expectRevision('like_count', $revision)->delete());
-            $result['kept'] = (new Author)->seq(42)->getCount();
-            $result['delete_match'] = caught(fn() => (new Author)->setSeq(42)->expectRevision('like_count', $revision + 1)->delete());
-            $result['deleted'] = (new Author)->seq(42)->getCount();
+            $result['delete_mismatch'] = caught(fn() => (new Author())->setSeq(42)->expectRevision('like_count', $revision)->delete());
+            $result['kept'] = (new Author())->seq(42)->getCount();
+            $result['delete_match'] = caught(fn() => (new Author())->setSeq(42)->expectRevision('like_count', $revision + 1)->delete());
+            $result['deleted'] = (new Author())->seq(42)->getCount();
             throw $boom;
         }, retry: 0);
         throw new RuntimeException('the expect_revision transaction committed');
@@ -677,7 +682,7 @@ vector('expect_revision', function () use ($db): array {
             throw $e;
         }
     }
-    $result['left'] = (new Author)($db)->seq(42)->getCount();
+    $result['left'] = (new Author())($db)->seq(42)->getCount();
     return $result;
 });
 
@@ -690,16 +695,16 @@ vector('joins_soft_deleted', function () use ($db): array {
     try {
         $db->transaction(function () use ($boom, $names, &$result): void {
             foreach ($names as $name) {
-                $service = (new Service)->setName($name)->create();
-                $record = (new SoftRecord)->setName($name)->create();
+                $service = (new Service())->setName($name)->create();
+                $record = (new SoftRecord())->setName($name)->create();
                 mask([$service->getSeq(), $record->getSeq()]);
                 if ($name === 'soft-join-deleted') {
                     $record->setDeletedAt('2026-01-02 03:04:05.000000')->update();
                 }
             }
-            $inner = (new Service)->joinNameWithName((new SoftRecord)->aliasRecord())->name($names)->orderByNameAsc()->gets();
+            $inner = (new Service())->joinNameWithName((new SoftRecord())->aliasRecord())->name($names)->orderByNameAsc()->gets();
             $result['inner'] = picks($inner, 'name');
-            $left = (new Service)->leftJoinNameWithName((new SoftRecord)->aliasRecord())->name($names)->orderByNameAsc()->gets();
+            $left = (new Service())->leftJoinNameWithName((new SoftRecord())->aliasRecord())->name($names)->orderByNameAsc()->gets();
             $result['left'] = [];
             foreach ($left->all() as $row) {
                 $result['left'][] = ['name' => $row->getName(), 'record' => pick($row->getRecord(), 'name')];
@@ -720,20 +725,20 @@ vector('column_pairs', function () use ($author): array {
     // column in a subquery column, a join and a relation run when their columns meet, here i32 with i64 and text with
     // varchar, and fail with OPERATOR_NOT_ALLOWED before any statement when they do not.
     $result = [];
-    $s1 = new Service;
+    $s1 = new Service();
     $result['col_i32_i64'] = $author()->joinServiceSeqWithSeq($s1)->readCountLtSeq($s1)->getCount();
-    $s2 = new Service;
+    $s2 = new Service();
     $result['col_text_varchar'] = $author()->joinServiceSeqWithSeq($s2)->descriptionNeName($s2)->getCount();
-    $result['in_i32_i64'] = $author()->likeCount((new User)->addColumnSeq())->getCount();
-    $result['join_i32_i64'] = $author()->joinReadCountWithSeq(new Service)->getCount();
-    $result['relation_i32_i64'] = count($author()->relation((new Service)->matchLikeCountWithSeq())->orderBySeqAsc()->limit(0, 2)->gets()->all());
-    $s3 = new Service;
+    $result['in_i32_i64'] = $author()->likeCount((new User())->addColumnSeq())->getCount();
+    $result['join_i32_i64'] = $author()->joinReadCountWithSeq(new Service())->getCount();
+    $result['relation_i32_i64'] = count($author()->relation((new Service())->matchLikeCountWithSeq())->orderBySeqAsc()->limit(0, 2)->gets()->all());
+    $s3 = new Service();
     $result['col_varchar_i64'] = caught(fn() => $author()->joinServiceSeqWithSeq($s3)->nameEqSeq($s3)->getCount());
-    $s4 = new Service;
+    $s4 = new Service();
     $result['col_decimal_i64'] = caught(fn() => $author()->joinServiceSeqWithSeq($s4)->priceEqSeq($s4)->getCount());
-    $result['in_varchar_i64'] = caught(fn() => $author()->name((new User)->addColumnSeq())->getCount());
-    $result['join_varchar_i64'] = caught(fn() => $author()->joinNameWithSeq(new Service)->getCount());
-    $result['relation_varchar_i64'] = caught(fn() => $author()->relation((new Service)->matchNameWithSeq())->limit(0, 1)->gets());
+    $result['in_varchar_i64'] = caught(fn() => $author()->name((new User())->addColumnSeq())->getCount());
+    $result['join_varchar_i64'] = caught(fn() => $author()->joinNameWithSeq(new Service())->getCount());
+    $result['relation_varchar_i64'] = caught(fn() => $author()->relation((new Service())->matchNameWithSeq())->limit(0, 1)->gets());
     return $result;
 });
 
@@ -749,7 +754,7 @@ vector('relative_time_out_of_range', function () use ($author): array {
 });
 
 vector('aes_status', function () use ($db): array {
-    $status = $db->utils()->aes()->status(new Author, new AesKeyring([1 => 'bench-salt'], 1));
+    $status = $db->utils()->aes()->status(new Author(), new AesKeyring([1 => 'bench-salt'], 1));
     $versions = [];
     foreach ($status->versions as $v => $n) {
         $versions[] = "$v:$n";
@@ -760,8 +765,8 @@ vector('aes_status', function () use ($db): array {
 
 // the seed stores raw hex cells that no encoder writes (benchmarks/sql/seed.*.sql)
 vector('hex_malformed', fn(): array => [
-    'white_space' => caught(fn() => (new HexCell)($db)->getBySeq(1)),
-    'odd_length' => caught(fn() => (new HexCell)($db)->getBySeq(2)),
+    'white_space' => caught(fn() => (new HexCell())($db)->getBySeq(1)),
+    'odd_length' => caught(fn() => (new HexCell())($db)->getBySeq(2)),
 ]);
 
 // A datetime(p) or time(p) value is bound with exactly p fraction digits, the form the SQLite CHECK of the column
@@ -769,33 +774,33 @@ vector('hex_malformed', fn(): array => [
 // and deletes it.
 $at = '2026-06-01 12:34:56';
 vector('datetime_p0_roundtrip', function () use ($db, $at): array {
-    $created = (new TimeCell)($db)->setAt($at)->setClock('10:11:12')->create();
+    $created = (new TimeCell())($db)->setAt($at)->setClock('10:11:12')->create();
     mask([$created->getSeq()]);
-    $rows = (new TimeCell)($db)->at($at)->gets();
+    $rows = (new TimeCell())($db)->at($at)->gets();
     $created->delete();
     return picks($rows, 'clock');
 });
 vector('time_p3_roundtrip', function () use ($db, $at): array {
-    $created = (new TimeCell)($db)->setAt($at)->setClock('10:11:12.345000')->create();
+    $created = (new TimeCell())($db)->setAt($at)->setClock('10:11:12.345000')->create();
     mask([$created->getSeq()]);
-    $rows = (new TimeCell)($db)->clock('10:11:12.345')->gets();
+    $rows = (new TimeCell())($db)->clock('10:11:12.345')->gets();
     $created->delete();
     return picks($rows, 'clock');
 });
 
 // A date and a time(0) column read back as their text form (the driver's date and time values are the codec's input).
 vector('date_roundtrip', function () use ($db): array {
-    $created = (new DayCell)($db)->setLabel('date')->setDay('2026-06-01')->setAtTime('10:11:12')->create();
+    $created = (new DayCell())($db)->setLabel('date')->setDay('2026-06-01')->setAtTime('10:11:12')->create();
     mask([$created->getSeq()]);
-    $rows = (new DayCell)($db)->label('date')->gets();
+    $rows = (new DayCell())($db)->label('date')->gets();
     $created->delete();
     return dateOnly(picks($rows, 'day', 'at_time'));
 });
 
 vector('date_null', function () use ($db): array {
-    $created = (new DayCell)($db)->setLabel('nil')->create();
+    $created = (new DayCell())($db)->setLabel('nil')->create();
     mask([$created->getSeq()]);
-    $rows = (new DayCell)($db)->label('nil')->gets();
+    $rows = (new DayCell())($db)->label('nil')->gets();
     $created->delete();
     return dateOnly(picks($rows, 'day', 'at_time'));
 });
@@ -804,15 +809,15 @@ vector('date_null', function () use ($db): array {
 // unique key on code is the one key that can meet the row; an insert that does not assign code is IR_INVALID before any
 // statement.
 vector('upsert_one_key', function () use ($db): array {
-    $created = (new UpsertCell)($db)->setCode('k1')->setLabel('first')
-        ->duplication((new UpsertCell)->setLabel('second'))->create();
+    $created = (new UpsertCell())($db)->setCode('k1')->setLabel('first')
+        ->duplication((new UpsertCell())->setLabel('second'))->create();
     mask([$created->getSeq()]);
-    $inserted = (new UpsertCell)($db)->code('k1')->gets();
-    (new UpsertCell)($db)->setCode('k1')->setLabel('other')->duplication((new UpsertCell)->setLabel('second'))->create();
-    $updated = (new UpsertCell)($db)->code('k1')->gets();
+    $inserted = (new UpsertCell())($db)->code('k1')->gets();
+    (new UpsertCell())($db)->setCode('k1')->setLabel('other')->duplication((new UpsertCell())->setLabel('second'))->create();
+    $updated = (new UpsertCell())($db)->code('k1')->gets();
     $unassigned = null;
     try {
-        (new UpsertCell)($db)->setLabel('none')->duplication((new UpsertCell)->setLabel('second'))->create();
+        (new UpsertCell())($db)->setLabel('none')->duplication((new UpsertCell())->setLabel('second'))->create();
     } catch (Throwable $e) {
         $unassigned = ['error' => code($e), 'message' => $e->getMessage()];
     }
@@ -826,21 +831,21 @@ vector('upsert_one_key', function () use ($db): array {
 // A PostgreSQL uuid column is read as its text and a uuid value is bound as text cast to uuid, in one form in every
 // planner (docs/spec/dialects.md); the vector inserts, reads the row back by the same value and deletes it.
 vector('uuid_roundtrip', function () use ($db): array {
-    $created = (new UuidCell)($db)->setId('0f8e2d4c-1a3b-4c5d-8e9f-a0b1c2d3e4f5')->create();
+    $created = (new UuidCell())($db)->setId('0f8e2d4c-1a3b-4c5d-8e9f-a0b1c2d3e4f5')->create();
     mask([$created->getSeq()]);
-    $rows = (new UuidCell)($db)->id('0f8e2d4c-1a3b-4c5d-8e9f-a0b1c2d3e4f5')->gets();
+    $rows = (new UuidCell())($db)->id('0f8e2d4c-1a3b-4c5d-8e9f-a0b1c2d3e4f5')->gets();
     $created->delete();
     return picks($rows, 'id');
 });
 
 vector('affected_counts', function () use ($db): array {
     $out = [];
-    $created = (new UpsertCell)($db)->setCode('c1')->setLabel('x')->duplication((new UpsertCell)->setLabel('y'))->create();
+    $created = (new UpsertCell())($db)->setCode('c1')->setLabel('x')->duplication((new UpsertCell())->setLabel('y'))->create();
     mask([$created->getSeq()]);
     $out['upsert_inserted'] = Faults::lastAffected($db);
-    (new UpsertCell)($db)->setCode('c1')->setLabel('x')->duplication((new UpsertCell)->setLabel('y'))->create();
+    (new UpsertCell())($db)->setCode('c1')->setLabel('x')->duplication((new UpsertCell())->setLabel('y'))->create();
     $out['upsert_updated'] = Faults::lastAffected($db);
-    $row = (new UpsertCell)($db)->getBySeq($created->getSeq());
+    $row = (new UpsertCell())($db)->getBySeq($created->getSeq());
     $row->setLabel('y')->update();
     $out['update_unchanged'] = Faults::lastAffected($db);
     $row->setLabel('z')->update();
@@ -861,17 +866,17 @@ $rejected = static function (callable $create): array {
     $created->delete();
     return ['code' => null];
 };
-vector('datetime_precision_rejected', fn(): array => $rejected(fn() => (new TimeCell)($db)->setAt('2026-06-01 12:34:56.5')->setClock('10:11:12')->create()));
-vector('varchar_length_rejected', fn(): array => $rejected(fn() => (new BindCell)($db)->setLabel('123456789')->create()));
-vector('text_nul_rejected', fn(): array => $rejected(fn() => (new BindCell)($db)->setLabel('nul')->setBody("a\0b")->create()));
-vector('uuid_form_rejected', fn(): array => $rejected(fn() => (new BindCell)($db)->setLabel('uuid')->setToken('123E4567-E89B-12D3-A456-426614174000')->create()));
+vector('datetime_precision_rejected', fn(): array => $rejected(fn() => (new TimeCell())($db)->setAt('2026-06-01 12:34:56.5')->setClock('10:11:12')->create()));
+vector('varchar_length_rejected', fn(): array => $rejected(fn() => (new BindCell())($db)->setLabel('123456789')->create()));
+vector('text_nul_rejected', fn(): array => $rejected(fn() => (new BindCell())($db)->setLabel('nul')->setBody("a\0b")->create()));
+vector('uuid_form_rejected', fn(): array => $rejected(fn() => (new BindCell())($db)->setLabel('uuid')->setToken('123E4567-E89B-12D3-A456-426614174000')->create()));
 // A parameter that assigns NULL to a non-null column is CODEC_ENCODE before any statement (docs/spec/protocol.md §5
 // "Parameters"); creates binds each row value as a parameter.
 vector('null_into_not_null', function () use ($db): array {
     // The typed setter takes a string, so the row writes NULL through the column writer of the model.
     $null = new BindCell();
     (new ReflectionMethod(BindCell::class, 'writeColumn'))->invoke($null, 'label', null);
-    return ['code' => caught(fn() => (new BindCell)($db)->creates([(new BindCell)->setLabel('a'), $null], 2))];
+    return ['code' => caught(fn() => (new BindCell())($db)->creates([(new BindCell())->setLabel('a'), $null], 2))];
 });
 // A contains value NULL binds NULL, so `col LIKE NULL` matches no row (docs/spec/protocol.md §2).
 vector('contains_null', function () use ($author): array {
@@ -888,9 +893,9 @@ vector('contains_null', function () use ($author): array {
 // clock, CURRENT_TIMESTAMP(p), which truncates. These vectors come last because the fixed clock stays on the connection.
 vector('clock_truncate_write', function () use ($db): array {
     Faults::fixClock($db, '2026-06-01 12:34:56.999999');
-    $created = (new ClockCell)($db)->setLabel('write')->create();
+    $created = (new ClockCell())($db)->setLabel('write')->create();
     mask([$created->getSeq()]);
-    $row = (new ClockCell)($db)->getBySeq($created->getSeq());
+    $row = (new ClockCell())($db)->getBySeq($created->getSeq());
     $row->delete();
     $at6 = $row->getAt6();
     return [
@@ -901,13 +906,13 @@ vector('clock_truncate_write', function () use ($db): array {
 vector('clock_compare_six_digits', function () use ($db): array {
     Faults::fixClock($db, '2026-06-01 12:34:56.999999');
     $utc = new DateTimeZone('UTC');
-    $created = (new ClockCell)($db)->setLabel('compare')
+    $created = (new ClockCell())($db)->setLabel('compare')
         ->setAt0('2026-06-01 12:34:56')
         ->setAt3('2026-06-01 12:34:56.999')
         ->setAt6('2026-06-01 12:34:56')->create();
     mask([$created->getSeq()]);
-    $geNow = (new ClockCell)($db)->label('compare')->andGeAt0(Orm::now())->getCount();
-    $ltNow = (new ClockCell)($db)->label('compare')->andLtAt3(Orm::now())->getCount();
+    $geNow = (new ClockCell())($db)->label('compare')->andGeAt0(Orm::now())->getCount();
+    $ltNow = (new ClockCell())($db)->label('compare')->andLtAt3(Orm::now())->getCount();
     $created->delete();
     return ['at0_ge_now' => $geNow, 'at3_lt_now' => $ltNow];
 });
@@ -918,9 +923,9 @@ vector('order_nulls', function () use ($author, $db): array {
     $desc = $priced()->orderByPriceDesc()->orderBySeqAsc()->gets()->toArray();
     $perParent = [];
     foreach (['asc', 'desc'] as $order) {
-        $child = (new Author)->matchSeqWithUserSeq()->removeAllColumns()->addColumnPrice();
+        $child = (new Author())->matchSeqWithUserSeq()->removeAllColumns()->addColumnPrice();
         $order === 'asc' ? $child->orderByPriceAsc() : $child->orderByPriceDesc();
-        $perParent[$order] = (new User)($db)->relations($child->orderBySeqAsc()->groupLimit(2))->seq(100)->gets()->toArray();
+        $perParent[$order] = (new User())($db)->relations($child->orderBySeqAsc()->groupLimit(2))->seq(100)->gets()->toArray();
     }
     return [
         'asc' => $asc,
@@ -933,8 +938,8 @@ vector('order_nulls', function () use ($author, $db): array {
 vector('scalar_column_subquery', function () use ($db): array {
     $out = [];
     foreach (['asc', 'desc'] as $order) {
-        $users = (new User)($db)->addColumnReadTotal(static function (User $u) use ($order): Author {
-            $sub = (new Author)->removeAllColumns()->addColumnName()->userSeqEqSeq($u)->andLtSeq(10000);
+        $users = (new User())($db)->addColumnReadTotal(static function (User $u) use ($order): Author {
+            $sub = (new Author())->removeAllColumns()->addColumnName()->userSeqEqSeq($u)->andLtSeq(10000);
             $order === 'asc' ? $sub->orderByPriceAsc() : $sub->orderByPriceDesc();
             return $sub->orderBySeqAsc()->limit(0, 1);
         })->seq(100)->gets()->all();
@@ -946,9 +951,9 @@ vector('scalar_column_subquery', function () use ($db): array {
 // a flattened region of a closed author (seq, name and service_seq collide with the parent; absent for an open author) that holds a flattened service (seq and name collide) with its service members
 vector('relations_flatten', fn() => $author()
     ->removeAllColumns()->addColumnName()->addColumnIsClose()
-    ->relation((new ServiceRegion)->matchServiceRegionSeqWithSeq()->possibleIsClose(true)->parentNode()
-        ->relation((new Service)->matchServiceSeqWithSeq()->parentNode()
-            ->relations((new ServiceMember)->matchSeqWithServiceSeq()->removeAllColumns()->orderBySeqAsc()->groupLimit(2))))
+    ->relation((new ServiceRegion())->matchServiceRegionSeqWithSeq()->possibleIsClose(true)->parentNode()
+        ->relation((new Service())->matchServiceSeqWithSeq()->parentNode()
+            ->relations((new ServiceMember())->matchSeqWithServiceSeq()->removeAllColumns()->orderBySeqAsc()->groupLimit(2))))
     ->serviceSeq(7)->orderBySeqAsc()->limit(0, 8)->gets()->toArray());
 
 foreach (array_keys($selected) as $name) {

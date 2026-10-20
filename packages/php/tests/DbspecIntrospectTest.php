@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 // Polyspec\Orm\Dbspec\Dbspec::introspect on MySQL, PostgreSQL and SQLite
 // (docs/spec/dialects.md "Introspection"). The round trip renders every case of
 // tests/dbspec/ddl.json and every schema document, applies it to an empty

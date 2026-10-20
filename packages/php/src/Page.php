@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Polyspec\Orm;
@@ -17,5 +18,6 @@ final readonly class Page
         public int $totalPages,
         public int $page,
         public int $perPage,
-    ) {}
+    ) {
+    }
 }
