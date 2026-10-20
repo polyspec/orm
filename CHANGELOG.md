@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- Every rule of AGENTS.md says whether it is the repository's own (`Own:`, 50) or refines a principle of PRINCIPLES.md by its id (`Refines <id>:`, 8), with the same prefixes in the Korean twin. Red: `make rules-check` reported 58 rules with neither (KSTD-5-3).
 - A model call that orm-gen scans belongs to the set whose generated models its class is imported from (DSL-151), in all five generators; a class of the same name from another set is another class. Red: the TypeScript, Python and Rust scans refused `Author.getGhost()` of another set with "no aliasGhost, newGhost or addColumn call attaches it", as limepie's requests set did; Go and PHP already resolved the import, and their new cases fail when the check is broken (T226).
 - INT-67 rules that abandoning a query, transaction or connection handle cancels its statement and releases its connection, by the disposal form of each language (KSTD-2-11-4).
 - INT-66 rules that the code orm-gen generates passes the standard compiler, formatter and linter of its language with no suppression in the generated text (KSTD-2-11-3).
