@@ -5,24 +5,13 @@
 # run them.
 import tempfile
 import unittest
-from pathlib import Path
 from . import testcase
 
-ROOT = Path(__file__).resolve().parents[3]
+from polyspec.orm.database import Db
+from polyspec.orm.errors import OrmError
+from .test_sqlite import rollback_schema
 
-from polyspec.orm.database import Db  # noqa: E402
-from polyspec.orm.engine import model_of_documents, parse_document_set  # noqa: E402
-from polyspec.orm.errors import OrmError  # noqa: E402
-from polyspec.orm.schema import Schema  # noqa: E402
-
-MODEL = model_of_documents(
-    parse_document_set([(ROOT / "contracts" / "fixtures" / "rollback.dbs").read_text()])
-)
-SCHEMA = Schema(
-    manifest_text=MODEL.manifest_text,
-    manifest_hash=MODEL.manifest_hash,
-    external_text=MODEL.external_text,
-)
+SCHEMA = rollback_schema()
 
 
 class SchemaInspectionTest(unittest.TestCase):

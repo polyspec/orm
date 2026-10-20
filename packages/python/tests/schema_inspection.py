@@ -9,28 +9,17 @@ import os
 import tempfile
 import unittest
 import uuid
-from pathlib import Path
-from urllib.parse import unquote, urlsplit, urlunsplit
 from . import testcase
 
 import psycopg
-import pymysql
 
-ROOT = Path(__file__).resolve().parents[3]
+from .server_database import server_database
 
-from polyspec.orm.database import Db, DbStats  # noqa: E402
-from polyspec.orm.engine import model_of_documents, parse_document_set  # noqa: E402
-from polyspec.orm.errors import OrmError  # noqa: E402
-from polyspec.orm.schema import Schema  # noqa: E402
+from polyspec.orm.database import Db, DbStats
+from polyspec.orm.errors import OrmError
+from .test_sqlite import rollback_schema
 
-MODEL = model_of_documents(
-    parse_document_set([(ROOT / "contracts" / "fixtures" / "rollback.dbs").read_text()])
-)
-SCHEMA = Schema(
-    manifest_text=MODEL.manifest_text,
-    manifest_hash=MODEL.manifest_hash,
-    external_text=MODEL.external_text,
-)
+SCHEMA = rollback_schema()
 TABLE = "rollback_probe"
 DSN_VARIABLES = {"mysql": "ORM_TEST_MYSQL_DSN", "postgres": "ORM_TEST_POSTGRES_DSN"}
 TEMP = {}
@@ -54,11 +43,6 @@ def required_dsn(dialect: str) -> str:
     return value
 
 
-def with_database(dsn: str, name: str) -> str:
-    url = urlsplit(dsn)
-    return urlunsplit((url.scheme, url.netloc, "/" + name, url.query, url.fragment))
-
-
 @contextlib.contextmanager
 def case_database(dialect: str):
     """Gives the DSN and the database name of a new empty case database and drops it at the end."""
@@ -67,31 +51,8 @@ def case_database(dialect: str):
         return
     dsn = required_dsn(dialect)
     name = f"orm_t147_{uuid.uuid4().hex[:12]}"
-    if dialect == "mysql":
-        url = urlsplit(dsn)
-        admin = pymysql.connect(
-            host=url.hostname,
-            port=url.port,
-            user=unquote(url.username or ""),
-            password=unquote(url.password or ""),
-            autocommit=True,
-        )
-        with admin.cursor() as cursor:
-            cursor.execute(f"CREATE DATABASE `{name}`")
-    else:
-        admin = psycopg.connect(dsn, autocommit=True)
-        admin.execute(f'CREATE DATABASE "{name}"')
-    try:
-        yield with_database(dsn, name), name
-    finally:
-        try:
-            if dialect == "mysql":
-                with admin.cursor() as cursor:
-                    cursor.execute(f"DROP DATABASE `{name}`")
-            else:
-                admin.execute(f'DROP DATABASE "{name}" WITH (FORCE)')
-        finally:
-            admin.close()
+    with server_database(dialect, dsn, name) as case_dsn:
+        yield case_dsn, name
 
 
 def postgres(dsn: str, statement: str) -> None:

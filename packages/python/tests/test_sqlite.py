@@ -9,6 +9,10 @@ import unittest
 from pathlib import Path
 from . import testcase
 
+from polyspec.orm.database import Db
+from polyspec.orm.engine import model_of_documents, parse_document_set
+from polyspec.orm.schema import Schema
+
 ROOT = Path(__file__).resolve().parents[3]
 
 # orm-gen runs from the package installed into this interpreter's venv.
@@ -113,6 +117,39 @@ def run_script(db, text: str) -> None:
     for statement in text.split(";"):
         if statement.strip():
             db._connection.execute(statement, [])
+
+
+def insert_service_and_author(db) -> None:
+    """Inserts a service and an author of it, the rows that the related and styled SQL cases read."""
+    db._connection.execute('INSERT INTO "service" ("name") VALUES (?)', ["svc"])
+    db._connection.execute(
+        'INSERT INTO "author" ("name", "user_seq", "service_seq", "service_region_seq", '
+        '"service_member_seq", "start_dt", "end_dt", "aes_key_version") '
+        "VALUES (?, 1, 1, 1, 1, ?, ?, 1)",
+        ["a", "2026-06-01 00:00:00.000000", "2026-06-01 00:00:00.000000"],
+    )
+
+
+def rollback_schema():
+    """The Schema of contracts/fixtures/rollback.dbs, as the engine parses it."""
+    model = model_of_documents(
+        parse_document_set(
+            [(ROOT / "contracts" / "fixtures" / "rollback.dbs").read_text()]
+        )
+    )
+    return Schema(
+        manifest_text=model.manifest_text,
+        manifest_hash=model.manifest_hash,
+        external_text=model.external_text,
+    )
+
+
+def installed_sqlite(test, path: str, models):
+    """A Db on the SQLite file path with the schema of models installed; it is closed when the test ends."""
+    db = Db.connect_schema(f"sqlite://{path}", models.SCHEMA)
+    test.addCleanup(db.close)
+    db.utils().schema().install(models.SCHEMA)
+    return db
 
 
 class SqliteEndToEndTest(unittest.TestCase):

@@ -5,20 +5,18 @@
 from polyspec.orm import testing
 import os
 import sqlite3
-import subprocess
-import sys
 import tempfile
 import tomllib
 import unittest
 from pathlib import Path
 from . import testcase
 
-from .test_sqlite import generate_document
+from .entry_point_check import assert_import_does_not_load_testing
+from .test_sqlite import generate_document, installed_sqlite
 
 ROOT = Path(__file__).resolve().parents[3]
 PACKAGE = Path(__file__).resolve().parents[1]
 
-from polyspec.orm.database import Db  # noqa: E402
 from polyspec.orm.errors import OrmError  # noqa: E402
 
 FAULT_MESSAGE = (
@@ -46,9 +44,7 @@ class RollbackFaultTest(unittest.TestCase):
 
     def setUp(self):
         self.path = os.path.join(self.dir, f"{self._testMethodName}.sqlite3")
-        self.db = Db.connect_schema(f"sqlite://{self.path}", self.models.SCHEMA)
-        self.addCleanup(self.db.close)
-        self.db.utils().schema().install(self.models.SCHEMA)
+        self.db = installed_sqlite(self, self.path, self.models)
 
     def probe(self, label: str):
         return self.models.RollbackProbe().connect(self.db).set_label(label)
@@ -212,18 +208,7 @@ class RollbackFaultEntryTest(unittest.TestCase):
         self.assertTrue(
             (PACKAGE / "src" / "polyspec" / "orm" / "testing" / "__init__.py").is_file()
         )
-        loaded = subprocess.run(
-            [
-                sys.executable,
-                "-c",
-                "import sys, polyspec.orm, polyspec.orm.database; "
-                'print("polyspec.orm.testing" in sys.modules)',
-            ],
-            capture_output=True,
-            text=True,
-        )
-        self.assertEqual(loaded.returncode, 0, loaded.stderr)
-        self.assertEqual(loaded.stdout.strip(), "False")
+        assert_import_does_not_load_testing(self)
 
 
 if __name__ == "__main__":

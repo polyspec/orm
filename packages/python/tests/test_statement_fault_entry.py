@@ -1,8 +1,6 @@
 # The test entry point polyspec.orm.testing.fail_next_statement outside the fault cases: the package entry point does
 # not export it, the distribution holds it and no import loads it, and every case of contracts/fixtures/statement_fault.json
 # has its test method in statement_fault.py.
-import subprocess
-import sys
 import tomllib
 import unittest
 from pathlib import Path
@@ -10,6 +8,7 @@ from pathlib import Path
 from polyspec.orm import testing
 from . import statement_fault
 from . import testcase
+from .entry_point_check import assert_import_does_not_load_testing
 
 PACKAGE = Path(__file__).resolve().parents[1]
 
@@ -28,18 +27,7 @@ class StatementFaultEntryTest(unittest.TestCase):
         with (PACKAGE / "pyproject.toml").open("rb") as file:
             find = tomllib.load(file)["tool"]["setuptools"]["packages"]["find"]
         self.assertNotIn("polyspec.orm.testing", find.get("exclude", []))
-        loaded = subprocess.run(
-            [
-                sys.executable,
-                "-c",
-                "import sys, polyspec.orm, polyspec.orm.database; "
-                'print("polyspec.orm.testing" in sys.modules)',
-            ],
-            capture_output=True,
-            text=True,
-        )
-        self.assertEqual(loaded.returncode, 0, loaded.stderr)
-        self.assertEqual(loaded.stdout.strip(), "False")
+        assert_import_does_not_load_testing(self)
 
 
 class StatementFaultFixtureTest(unittest.TestCase):

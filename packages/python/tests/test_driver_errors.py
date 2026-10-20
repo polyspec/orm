@@ -13,7 +13,7 @@ from pathlib import Path
 import psycopg
 import pymysql
 
-from .test_sqlite import generate_document
+from .test_sqlite import generate_document, installed_sqlite
 
 
 from polyspec.orm.database import Db, _MysqlConnection, _PostgresConnection  # noqa: E402
@@ -53,9 +53,7 @@ class SqliteDriverErrorTest(unittest.TestCase):
 
     def setUp(self):
         self.path = os.path.join(self.dir, f"{self._testMethodName}.sqlite3")
-        self.db = Db.connect_schema(f"sqlite://{self.path}", self.models.SCHEMA)
-        self.addCleanup(self.db.close)
-        self.db.utils().schema().install(self.models.SCHEMA)
+        self.db = installed_sqlite(self, self.path, self.models)
         self.events = []
         self.db.subscribe(self.events.append)
 
