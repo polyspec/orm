@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: 4360283d245c7e0a2dd7db10f2689d71e9e0b10d9d34e486c38d046bef2d9956 -->
+<!-- source-sha256: d4f4976b658e9a8ee4414c203767e40690b01ba8da70a3b92994318ef51c8607 -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1281,3 +1281,4 @@
 | T225 | TypeScript package의 빌드된 orm-gen bin이 실행 가능하다(fsm). 원인: scripts/typescript/build.mts가 tsc 출력을 그대로 게시하고 tsc는 dist/bin/orm-gen.js를 mode 644로 쓰므로, 소비자의 node_modules/.bin/orm-gen이 Permission denied로 실패한다. dbspec bin은 mode 755로 commit되어 있어 해당하지 않는다 | scripts/typescript/build.mts, packages/ts/tests/bin-mode.mjs | `npm run -s typescript:build && node --test packages/ts/tests/bin-mode.mjs` | [o] |
 | T226 | scan한 model 호출은 모든 generator에서 그 class를 import한 생성 module의 set에 속한다. Cause: TypeScript scan이 class 이름으로만 호출을 귀속시켜, limepie에서 orm-gen gen --set requests가 main set의 Account.getEnabledTotps()(node/src/accounts/store.ts:79)에서 실패한다. requests set도 그 Account를 use한다 | docs/spec, the scanners of the five generators, their tests, config/parity.json | `node --test packages/ts/tests/generate-scan.mjs`, `go test -run Scan ./packages/go/generator`, the scan tests of PHP, Python and Rust | [o] |
 | T226-1 | TypeScript scan은 재할당된 변수에 담긴 receiver를 그 initializer와 재할당을 따라 class와 그 class의 import로 푼다 (T226 후속). Cause: T226 뒤 limepie models.ts에 ltSeq와 andLtSeq가 없다; modules/core/node/src/console/audit.ts:130이 자기 chain으로 재할당한 let page = new Audit()...에서 이들을 부른다 | the scanners of every generator, their tests | `node --test packages/ts/tests/generate-scan.mjs` | [o] |
+| T227 | orm-gen이 scan 중 parse할 수 없는 파일은 모든 generator에서 오류다. Cause: packages/python/src/polyspec/orm/generate/scan.py:561은 parse할 수 없는 파일을 조용히 건너뛰는데 PHP와 TypeScript scanner는 실패한다; 구현 간 차이이자 버려진 오류다 | docs/spec/dsl.md and its Korean twin, the scanners of the five generators, their tests, config/parity.json | `node --test packages/ts/tests/generate-scan.mjs`, `go test -run Scan ./packages/go/generator`, the scan tests of PHP, Python and Rust | [ ] |

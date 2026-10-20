@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- `make rebuild-check` passes: `config/rebuild.json` classifies the 78 tools of the repository (57 policy, 16 ecosystem, 4 replaced by KSTD-5-4-1 and KSTD-5-4-2, 1 record). Red: the file did not exist (KSTD-5-4).
 - `make lint-ts` passes: the oxlint and knip findings are fixed without suppression, and tsc of the root and of the docs project type-checks the coverage plans, the package reader and the recorded vectors. Red: oxlint found 4, knip 1 unused export and tsc 4 errors (KSTD-5-6).
 - `make lint-python` passes: six files take the ruff format, six lambda assignments are functions, and a test computes its root after its imports instead of silencing E402. Red: `ruff format --check` listed 6 files (KSTD-5-8).
 - `make lint-go` passes: every unchecked error of the Go code, the tests and the examples is handled (a Close error joins the returned error, and tests close with `testcase.Close`), the staticcheck rewrites are applied, and the 37 unreachable functions are removed or tested as public symbols. Red: golangci-lint found 284 findings and deadcode 37 (KSTD-5-7).

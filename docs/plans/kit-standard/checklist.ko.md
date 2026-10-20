@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: fb086ac29efbca9e304e52f952862a0bdb2fd7e69770f9fdf032989dca544d62 -->
+<!-- source-sha256: 1a8a84edcb377c6a7c9a94b892d4bbb65a65b08016cede3a88d3b6bce9fd53a4 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -60,7 +60,7 @@
 | KSTD-5-1 | toolchain-check가 통과한다 (KSTD-5 후속). Cause: phpstan이 시작하지 못한다: kit의 link 실행이 vendor-php/composer/installed.json에 polyspec/ordered-json의 release metadata(require php >=8.5)를 남겨 platform_check.php가 PHP 8.5를 요구한다 (kit 결함, scripts/kit/link.mts:390-403) | vendor-php, the kit link | `make toolchain-check` | [o] |
 | KSTD-5-2 | test-markers-check가 통과한다 (KSTD-5 후속). Cause: marker 42개가 test를 건너뛰거나 좁힌다. 예를 들어 feature-check만 database와 함께 돌리는 Rust coverage test의 #[ignore]다; test는 전부 돌거나 그 이유와 함께 지워진다 | the tests of every implementation | `make test-markers-check` | [ ] |
 | KSTD-5-3 | rules-check가 통과한다 (KSTD-5 후속). Cause: AGENTS.md의 규칙 58개가 `Own:`이나 `Refines <id>:`로 시작하지 않아, 이 repository의 규칙인지 원칙을 다듬는지 밝히지 않는다 (kit K279) | AGENTS.md and its Korean twin | `make rules-check` | [o] |
-| KSTD-5-4 | rebuild-check가 통과한다 (KSTD-5 후속). Cause: config/rebuild.json이 없어 repository의 어떤 도구도 그 class를 선언하지 않는다 | config/rebuild.json | `make rebuild-check` | [ ] |
+| KSTD-5-4 | rebuild-check가 통과한다 (KSTD-5 후속). Cause: config/rebuild.json이 없어 repository의 어떤 도구도 그 class를 선언하지 않는다 | config/rebuild.json | `make rebuild-check` | [o] |
 | KSTD-5-4-1 | docs 검사는 build된 HTML을 parse5로, Markdown table을 mdast-util-from-markdown과 mdast-util-gfm으로 읽는다 (KSTD-5-4 후속). Cause: scripts/docs/check.mts는 HTML을 정규식으로 읽고 scripts/docs/markdown-table.mts와 rules.mts는 table을 pipe로 나눠, ecosystem이 parse하는 문법을 다시 적는다 | scripts/docs, config/rebuild.json | `make docs-check` | [ ] |
 | KSTD-5-4-2 | mise가 지원하는 가장 낮은 Node를 설치하고 손으로 짠 downloader를 지운다 (KSTD-5-4 후속). Cause: scripts/typescript/node-min.mts가 지원하는 가장 낮은 Node를 직접 내려받는데, 이는 `mise install node@<version>`이 하는 일이다 | scripts/typescript, mise.toml, config/rebuild.json | `make ts-min-check` | [ ] |
 | KSTD-5-5 | duplication-check가 통과한다 (KSTD-5 후속). Cause: jscpd가 구현 전체에서 clone 988개(줄의 4.29 percent)를 찾는다; 반복된 code는 둘이 함께 쓰는 한 module로 옮긴다 | the code of every implementation | `make duplication-check` | [ ] |

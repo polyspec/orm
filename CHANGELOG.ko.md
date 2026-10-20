@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 732adba9e7d4c6f97b25b576949639e03af3fd2a96e2c01b672c5c88ccffd7b2 -->
+<!-- source-sha256: db89b9205d74a4cb3db122c56aa6d25eaf4a384321b126a0a47c701ac9aad2b1 -->
 # 변경 이력
 
 ## Unreleased
+- `make rebuild-check`가 통과한다: `config/rebuild.json`이 repository의 도구 78개를 분류한다(policy 57, ecosystem 16, KSTD-5-4-1과 KSTD-5-4-2가 대체할 replaced 4, record 1). red: 파일이 없었다(KSTD-5-4).
 - `make lint-ts`가 통과한다: oxlint와 knip finding을 억제 없이 고쳤고, 루트와 docs project의 tsc가 coverage plan, package reader, 기록된 vector의 type을 검사한다. red: oxlint가 4개, knip이 쓰이지 않는 export 1개, tsc가 오류 4개를 찾았다 (KSTD-5-6).
 - `make lint-python`이 통과한다: 파일 6개에 ruff format을 적용했고, lambda 대입 6개를 함수로 바꿨으며, test 하나는 E402를 침묵시키는 대신 import 뒤에 root를 계산한다. red: `ruff format --check`가 파일 6개를 보고했다 (KSTD-5-8).
 - `make lint-go`가 통과한다: Go code, test, example의 확인하지 않은 모든 오류를 처리하고(Close 오류는 반환하는 오류에 합치며 test는 `testcase.Close`로 닫는다), staticcheck 수정을 적용했으며, 도달할 수 없는 함수 37개는 지우거나 공개 symbol로서 test했다. red: golangci-lint가 finding 284개를, deadcode가 37개를 찾았다 (KSTD-5-7).
