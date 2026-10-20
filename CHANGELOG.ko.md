@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 67b29e4b1f30d0209c302e057a6d4612f5a1b25e00e473907e8176a1adba60fa -->
+<!-- source-sha256: be62c8b86edd13645515f9cbf321a8acd104dcd73e1cc1d3b5c215dc431e1408 -->
 # 변경 이력
 
 ## Unreleased
 - `make interface-check/self-test`가 모든 언어에서 통과한다: plan spec이 Go Apply의 반환을 적고, PHP 저장 version reader를 internal로 표시하며, symbol contract가 앞선 row들이 바꾼 표면을 기록하고 항목마다 그 commit과 대조해 검토했다. red: self-test가 Go, PHP, TypeScript, Python, Rust에서 실패했다 (KSTD-5-16).
+- PHP fixture model은 `make orm-install-php`가 packages/php/models.txt에서 쓰고 test bootstrap이 불러오며, 어느 것도 track하지 않는다. red: 생성 file 30개가 track되었다 (KSTD-5-5-5).
 - Go fixture model은 `make orm-install-go`가 packages/go/models.txt에서 쓰고, 생성 check와 그 coverage test도 같은 file을 읽으며, 어느 것도 track하지 않는다. red: 생성 file 32개가 track되었다 (KSTD-5-5-4).
 - orm-gen이 생성하는 Python model은 `make orm-install-python`이 쓰고, wheel에서 빠지며, track하지 않는다. red: models.py가 track되었다 (KSTD-5-5-3).
 - orm-gen이 생성하는 TypeScript model은 build 출력이다: TypeScript build가 compile 전에 선언된 목록 하나에서 이를 쓰고, 어느 것도 track하지 않는다. red: 생성 model file 세 개가 track되었다 (KSTD-5-5-1).

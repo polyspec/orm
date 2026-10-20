@@ -3,6 +3,7 @@
 
 ## Unreleased
 - `make interface-check/self-test` passes in every language: the plan spec states what Go Apply returns, the PHP stored-version reader is marked internal, and the symbol contracts record the surface that earlier rows changed, each finding reviewed against its commit. Red: the self-test failed in Go, PHP, TypeScript, Python and Rust (KSTD-5-16).
+- The PHP fixture models are written by `make orm-install-php` from packages/php/models.txt and loaded by the test bootstrap, and none is tracked. Red: 30 generated files were tracked (KSTD-5-5-5).
 - The Go fixture models are written by `make orm-install-go` from packages/go/models.txt, which the generation check and its coverage test also read, and none is tracked. Red: 32 generated files were tracked (KSTD-5-5-4).
 - The Python models that orm-gen generates are written by `make orm-install-python`, are left out of the wheel, and are not tracked. Red: models.py was tracked (KSTD-5-5-3).
 - The TypeScript models that orm-gen generates are build output: the TypeScript build writes them from one declared list before it compiles, and none is tracked. Red: three generated model files were tracked (KSTD-5-5-1).
