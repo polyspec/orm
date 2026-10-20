@@ -290,7 +290,11 @@ func dsnOf(t *testing.T, db *orm.DB) string {
 	if !ok {
 		t.Fatal("connection DSN is not recorded")
 	}
-	return v.(string)
+	s, isString := v.(string)
+	if !isString {
+		t.Fatalf("connection DSN recorded as %T, want string", v)
+	}
+	return s
 }
 
 // Requirements: PLN-8, PLN-9, PLN-14.

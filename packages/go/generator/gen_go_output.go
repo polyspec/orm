@@ -183,7 +183,7 @@ func (g *goGen) replace() error {
 			errs = append(errs, os.Remove(g.outDir))
 		}
 		if err := errors.Join(errs...); err != nil {
-			return fmt.Errorf("replace the generated files of %s: %w\nrestoring the previous files failed: %v", g.out, cause, err)
+			return fmt.Errorf("replace the generated files of %s: %w\nrestoring the previous files failed: %w", g.out, cause, err)
 		}
 		return unchanged(g.out, cause)
 	}

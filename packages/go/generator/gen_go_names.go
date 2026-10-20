@@ -36,7 +36,7 @@ func checkNames(m *runtimemodel.Model) error {
 		}
 		for _, c := range m.Entities[name].Fields {
 			if err := checkFieldName(c.Name); err != nil {
-				return fmt.Errorf("%s.%s: %v", name, c.Name, err)
+				return fmt.Errorf("%s.%s: %w", name, c.Name, err)
 			}
 		}
 	}

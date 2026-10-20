@@ -1139,7 +1139,11 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 			// MySQL idiom: make last insert id report the existing row on update
 			sets = append(sets, p.D.Quote(ent.Identity)+" = LAST_INSERT_ID("+p.D.Quote(ent.Identity)+")")
 		}
-		sql += p.D.Upsert(conflictTarget(ent, set), strings.Join(sets, ", "))
+		target, err := conflictTarget(ent, set)
+		if err != nil {
+			return nil, err
+		}
+		sql += p.D.Upsert(target, strings.Join(sets, ", "))
 	}
 	if p.D.InsertReturningID() && ent.Identity != "" {
 		sql += " RETURNING " + p.D.Quote(ent.Identity)
@@ -1261,9 +1265,12 @@ func assigned(set []ir.Assign, col string) bool {
 }
 
 // conflictTarget returns the columns of the one key an upsert conflicts on, which ir.Validate has checked.
-func conflictTarget(ent *runtimemodel.Entity, set []ir.Assign) []string {
-	key, _ := ir.ConflictKey(ent, set)
-	return key.Columns
+func conflictTarget(ent *runtimemodel.Entity, set []ir.Assign) ([]string, error) {
+	key, err := ir.ConflictKey(ent, set)
+	if err != nil {
+		return nil, err
+	}
+	return key.Columns, nil
 }
 
 func (p *Planner) renderAssign(b *builder, ent *runtimemodel.Entity, col *runtimemodel.Field, a *ir.Assign) (string, error) {

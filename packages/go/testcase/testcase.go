@@ -103,7 +103,11 @@ func Of(t testing.TB) *Case {
 	t.Helper()
 	for name := t.Name(); ; {
 		if c, ok := started.Load(name); ok {
-			return c.(*Case)
+			cs, ok := c.(*Case)
+			if !ok {
+				t.Fatalf("testcase.Of: the value started for %s is %T, not a *Case", name, c)
+			}
+			return cs
 		}
 		i := strings.LastIndexByte(name, '/')
 		if i < 0 {
@@ -234,6 +238,8 @@ func (c *Case) Deadline() time.Duration { return c.deadline }
 func (c *Case) expire() {
 	output.Lock()
 	fmt.Fprintf(os.Stderr, "testcase %s: deadline %s exceeded and the case did not stop\n", c.name, c.deadline)
-	_ = pprof.Lookup("goroutine").WriteTo(os.Stderr, 2)
+	if err := pprof.Lookup("goroutine").WriteTo(os.Stderr, 2); err != nil {
+		fmt.Fprintf(os.Stderr, "testcase %s: write the goroutine stacks: %v\n", c.name, err)
+	}
 	os.Exit(1)
 }

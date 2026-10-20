@@ -168,7 +168,10 @@ func open(tb testing.TB) *sql.DB {
 	stmtMu.Unlock()
 	par := 1
 	if v := os.Getenv("ORM_BENCH_PAR"); v != "" {
-		par, _ = strconv.Atoi(v)
+		par, err = strconv.Atoi(v)
+		if err != nil {
+			tb.Fatalf("ORM_BENCH_PAR=%q is not a number: %v", v, err)
+		}
 	}
 	db.SetMaxOpenConns(par)
 	db.SetMaxIdleConns(par)

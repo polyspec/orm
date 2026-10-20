@@ -27,7 +27,9 @@ func TestLogicalContractRejectsNativeDrift(t *testing.T) {
 	for _, lang := range languages {
 		t.Run(lang, func(t *testing.T) {
 			var d document
-			_ = json.Unmarshal(source, &d)
+			if err := json.Unmarshal(source, &d); err != nil {
+				t.Fatal(err)
+			}
 			r := find(&d, "Model.gets")
 			n := r.Native[lang]
 			old := map[string]string{"go": "*orm.Collection[*{Entity}Model]", "php": "Polyspec\\Orm\\Collection", "rust": "polyspec_orm::Collection<Self>", "typescript": "Collection<this>", "python": "Collection[Self]"}[lang]
@@ -55,7 +57,9 @@ func TestLogicalContractRejectsNativeDrift(t *testing.T) {
 		},
 	} {
 		var d document
-		_ = json.Unmarshal(source, &d)
+		if err := json.Unmarshal(source, &d); err != nil {
+			t.Fatal(err)
+		}
 		mutate(&d)
 		if validateRules(d) == nil {
 			t.Fatalf("%s: inconsistent logical/native contract accepted", name)

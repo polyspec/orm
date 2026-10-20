@@ -23,7 +23,10 @@ func runCallerPath(pass *analysis.Pass) (any, error) {
 			if !ok {
 				return true
 			}
-			function, _ := pass.TypesInfo.Uses[identifier].(*types.Func)
+			function, ok := pass.TypesInfo.Uses[identifier].(*types.Func)
+			if !ok {
+				return true
+			}
 			if is(function, "runtime", "Caller") || is(function, "runtime", "Callers") {
 				pass.Reportf(identifier.Pos(), "runtime.%s gives the path the binary was compiled at, not the checkout that runs it; find files from the working directory (os.Getwd), which go test sets to the package directory", function.Name())
 			}

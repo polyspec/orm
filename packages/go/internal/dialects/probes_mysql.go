@@ -158,8 +158,8 @@ func mysqlProbes() []Probe {
 		p("current_timestamp.session_time_zone", "DATETIME DEFAULT CURRENT_TIMESTAMP stores the session wall clock, so +09:00 is nine hours after +00:00", func(e *Env) {
 			e.Exec("CREATE TABLE t (z varchar(3), d datetime DEFAULT CURRENT_TIMESTAMP)", utc, "INSERT INTO t (z) VALUES ('utc')",
 				"SET time_zone = '+09:00'", "INSERT INTO t (z) VALUES ('kst')")
-			minutes, _ := strconv.Atoi(e.Value("SELECT TIMESTAMPDIFF(MINUTE, (SELECT d FROM t WHERE z = 'utc'), (SELECT d FROM t WHERE z = 'kst'))"))
-			e.Check(minutes >= 539 && minutes <= 541, "difference %d minutes", minutes)
+			minutes, err := strconv.Atoi(e.Value("SELECT TIMESTAMPDIFF(MINUTE, (SELECT d FROM t WHERE z = 'utc'), (SELECT d FROM t WHERE z = 'kst'))"))
+			e.Check(err == nil && minutes >= 539 && minutes <= 541, "difference %d minutes: %v", minutes, err)
 		}),
 		p("upsert.any_unique_key", "ON DUPLICATE KEY UPDATE meets an existing row on any unique key, not only the primary key", func(e *Env) {
 			e.Exec("CREATE TABLE t (id int PRIMARY KEY, code varchar(8) NOT NULL UNIQUE, v varchar(8))", "INSERT INTO t VALUES (1, 'a', 'old')",

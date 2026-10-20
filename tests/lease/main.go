@@ -496,7 +496,12 @@ func main() {
 			fmt.Fprintf(os.Stderr, "lease: start the releaser: %v\n", err)
 			os.Exit(1)
 		}
-		line, _ := bufio.NewReader(recorded).ReadString('\n')
+		line, err := bufio.NewReader(recorded).ReadString('\n')
+		if err != nil {
+			mustRelease(file)
+			fmt.Fprintf(os.Stderr, "lease: read the record of the releaser of %s: %v\n", file, err)
+			os.Exit(1)
+		}
 		if line != "recorded\n" {
 			mustRelease(file)
 			fmt.Fprintf(os.Stderr, "lease: the releaser of %s did not record itself\n", file)

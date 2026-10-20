@@ -64,10 +64,16 @@ func goSymbols(root string, roots []string) (map[string]symbol, error) {
 			if err != nil {
 				return err
 			}
-			rel, _ := filepath.Rel(root, path)
+			rel, err := filepath.Rel(root, path)
+			if err != nil {
+				return err
+			}
+			var printErr error
 			print := func(node any) string {
 				var b bytes.Buffer
-				_ = printer.Fprint(&b, fset, node)
+				if err := printer.Fprint(&b, fset, node); err != nil && printErr == nil {
+					printErr = err
+				}
 				return strings.Join(strings.Fields(b.String()), " ")
 			}
 			for _, decl := range f.Decls {
@@ -121,13 +127,19 @@ func goSymbols(root string, roots []string) (map[string]symbol, error) {
 									}
 								}
 								if len(wire) > 0 {
-									raw, _ := json.Marshal(wire)
+									raw, err := json.Marshal(wire)
+									if err != nil {
+										return err
+									}
 									out[rel+"::"+t.Name.Name+"#wire"] = symbol{string(raw), typeExported}
 								}
 							}
 						}
 					}
 				}
+			}
+			if printErr != nil {
+				return fmt.Errorf("%s: print a declaration: %w", rel, printErr)
 			}
 			return nil
 		})

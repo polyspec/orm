@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 )
 
 // fixtures maps each fixture run to the fixture tests it selects. The fixtures (testcase_fixture_test.go) build only with
@@ -81,5 +82,34 @@ func TestReportForm(t *testing.T) {
 	}
 	if strings.Contains(output, "--- PASS: TestFixtureDeadline") {
 		t.Errorf("PASS result for the expired case\n%s", output)
+	}
+}
+
+// TestRunAndGroupAndWarn calls the entry points that the tagged fixtures reach through a child go test, in the default
+// build, and checks the result of each: a non-test runner's result is the error of its work.
+func TestRunAndGroupAndWarn(t *testing.T) {
+	Group(t)
+	Warn("warning %d", 1)
+	if err := Run("passing", time.Second, func(c *Case) error {
+		c.Step("step of %s", c.name)
+		return nil
+	}); err != nil {
+		t.Fatalf("Run of a passing case returned %v", err)
+	}
+	sentinel := errors.New("work failed")
+	if err := Run("failing", time.Second, func(c *Case) error { return sentinel }); !errors.Is(err, sentinel) {
+		t.Fatalf("Run of a failing case returned %v, want the work's error", err)
+	}
+	if err := Run("no deadline", 0, func(c *Case) error { return nil }); err == nil {
+		t.Fatal("Run with a zero deadline succeeded")
+	}
+	if err := RunLong("long", func(c *Case) error {
+		c.Step("long step")
+		return nil
+	}); err != nil {
+		t.Fatalf("RunLong of a passing job returned %v", err)
+	}
+	if err := RunLong("long failing", func(c *Case) error { return sentinel }); !errors.Is(err, sentinel) {
+		t.Fatalf("RunLong of a failing job returned %v, want the work's error", err)
 	}
 }

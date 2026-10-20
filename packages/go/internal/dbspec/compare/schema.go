@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -68,13 +69,17 @@ func readVectors(path, name string, value any) (vectorReader, error) {
 		return r, err
 	}
 	if err := schema.Validate(instance); err != nil {
-		refused, ok := err.(*jsonschema.ValidationError)
-		if !ok {
+		var refused *jsonschema.ValidationError
+		if !errors.As(err, &refused) {
 			return r, fmt.Errorf("%s: %w", path, err)
 		}
 		var lines []string
 		for _, leaf := range leaves(refused) {
-			for _, p := range problems(leaf) {
+			found, err := problems(leaf)
+			if err != nil {
+				return r, fmt.Errorf("%s: %w", path, err)
+			}
+			for _, p := range found {
 				lines = append(lines, fmt.Sprintf("%s: %s", path, p))
 			}
 		}
@@ -119,7 +124,7 @@ func location(segments []string, property ...string) string {
 var articles = map[string]string{"integer": "an integer", "object": "an object", "array": "an array", "string": "a string", "boolean": "a boolean", "number": "a number", "null": "null"}
 
 // problems is the shared form of one refusal: the location of each value it refuses and what is wrong there.
-func problems(e *jsonschema.ValidationError) []string {
+func problems(e *jsonschema.ValidationError) ([]string, error) {
 	at := e.InstanceLocation
 	switch k := e.ErrorKind.(type) {
 	case *kind.Required:
@@ -127,16 +132,16 @@ func problems(e *jsonschema.ValidationError) []string {
 		for _, missing := range k.Missing {
 			lines = append(lines, location(at, missing)+" is missing")
 		}
-		return lines
+		return lines, nil
 	case *kind.AdditionalProperties:
 		var lines []string
 		for _, property := range k.Properties {
 			lines = append(lines, location(at, property)+" is not a known field")
 		}
-		return lines
+		return lines, nil
 	case *kind.FalseSchema:
 		if strings.HasSuffix(e.SchemaURL, "/unevaluatedProperties") {
-			return []string{location(at) + " is not a known field"}
+			return []string{location(at) + " is not a known field"}, nil
 		}
 	case *kind.Type:
 		words := make([]string, len(k.Want))
@@ -146,13 +151,16 @@ func problems(e *jsonschema.ValidationError) []string {
 				words[i] = article
 			}
 		}
-		return []string{location(at) + " is not " + strings.Join(words, " or ")}
+		return []string{location(at) + " is not " + strings.Join(words, " or ")}, nil
 	case *kind.MinItems:
-		return []string{location(at) + " is empty"}
+		return []string{location(at) + " is empty"}, nil
 	case *kind.Const:
-		want, _ := json.Marshal(k.Want)
-		return []string{location(at) + " is not " + string(want)}
+		want, err := json.Marshal(k.Want)
+		if err != nil {
+			return nil, fmt.Errorf("%s: the const value of the schema: %w", location(at), err)
+		}
+		return []string{location(at) + " is not " + string(want)}, nil
 	}
 	keyword := strings.Join(e.ErrorKind.KeywordPath(), "/")
-	return []string{fmt.Sprintf("%s fails the %s rule of its schema: %s", location(at), keyword, e.Error())}
+	return []string{fmt.Sprintf("%s fails the %s rule of its schema: %s", location(at), keyword, e.Error())}, nil
 }

@@ -10,9 +10,9 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"encoding/json"
-	"context"
 	"errors"
 	"fmt"
 	"math"
@@ -1126,7 +1126,11 @@ func run() (status int) {
 				return err
 			}
 			result["before"] = before
-			revision := int64(before["like_count"].(int32))
+			count, ok := before["like_count"].(int32)
+			if !ok {
+				return fmt.Errorf("like_count is %T, not int32", before["like_count"])
+			}
+			revision := int64(count)
 			if _, err := model.Author().SetSeq(42).SetName("revision-1").ExpectRevision("like_count", revision).Update(); err != nil {
 				return err
 			}

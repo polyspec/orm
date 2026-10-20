@@ -1,6 +1,7 @@
 package planner
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -198,7 +199,8 @@ func TestRestoreRejectsOtherRequests(t *testing.T) {
 		"a table without soft_delete": restoreRequest(m, "plain", ir.Pred{Column: "id", Op: "eq"}),
 	} {
 		_, err := compileRestore(m, dialect.SQLite{}, r)
-		if e, ok := err.(*ir.Error); !ok || e.Code != "IR_INVALID" {
+		var e *ir.Error
+		if !errors.As(err, &e) || e.Code != "IR_INVALID" {
 			t.Errorf("%s: %v, want IR_INVALID", name, err)
 		}
 	}

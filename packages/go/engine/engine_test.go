@@ -2,6 +2,7 @@ package engine
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -565,7 +566,7 @@ func TestLoad(t *testing.T) {
 	}
 	if _, err := Load("not a manifest", "postgres"); err == nil {
 		t.Fatal("Load of malformed manifest text succeeded")
-	} else if e, ok := err.(*ir.Error); !ok || e.Code != "SCHEMA_INVALID" {
+	} else if e := (*ir.Error)(nil); !errors.As(err, &e) || e.Code != "SCHEMA_INVALID" {
 		t.Errorf("Load of malformed manifest text = %v, want SCHEMA_INVALID", err)
 	}
 }

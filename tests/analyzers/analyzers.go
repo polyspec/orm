@@ -16,7 +16,10 @@ var All = []*analysis.Analyzer{DeferredExit, CallerPath, TestCaseStart, CargoLea
 
 // callee is the function or method that call calls by name, or nil for a call of a function value.
 func callee(pass *analysis.Pass, call *ast.CallExpr) *types.Func {
-	function, _ := typeutil.Callee(pass.TypesInfo, call).(*types.Func)
+	function, ok := typeutil.Callee(pass.TypesInfo, call).(*types.Func)
+	if !ok {
+		return nil
+	}
 	return function
 }
 

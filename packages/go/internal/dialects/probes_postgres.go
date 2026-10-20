@@ -25,8 +25,8 @@ func postgresProbes() []Probe {
 	}
 	return []Probe{
 		p("env.server", "the server is PostgreSQL 17 with database collation C", func(e *Env) {
-			n, _ := strconv.Atoi(e.Value("SHOW server_version_num"))
-			e.Check(n >= 170000 && n < 180000, "server_version_num %d", n)
+			n, err := strconv.Atoi(e.Value("SHOW server_version_num"))
+			e.Check(err == nil && n >= 170000 && n < 180000, "server_version_num %d: %v", n, err)
 			e.Want("SELECT datcollate FROM pg_database WHERE datname = current_database()", "C")
 			e.Note("version=%s TimeZone=%s max_identifier_length=%s", e.Value("SHOW server_version"), e.Value("SHOW TimeZone"), e.Value("SHOW max_identifier_length"))
 		}),

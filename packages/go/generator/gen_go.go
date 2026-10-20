@@ -299,7 +299,7 @@ func Connect(dsn string, cfg orm.Config) (*orm.DB, error) { return orm.ConnectSc
 func writeFormatted(path string, src []byte) error {
 	out, err := format.Source(src)
 	if err != nil {
-		return fmt.Errorf("%s: %v\n%s", path, err, src)
+		return fmt.Errorf("%s: %w\n%s", path, err, src)
 	}
 	return os.WriteFile(path, out, 0o644)
 }
