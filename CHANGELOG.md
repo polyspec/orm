@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- A file that orm-gen cannot parse while it scans stops the generation in every generator, which writes nothing and names the file with its line and column (DSL-152). Red: the Python scan skipped the file and wrote the models, Go reported it only after writing them, and the TypeScript and PHP errors gave no `file:line:col` (T227).
 - `make rebuild-check` passes: `config/rebuild.json` classifies the 78 tools of the repository (57 policy, 16 ecosystem, 4 replaced by KSTD-5-4-1 and KSTD-5-4-2, 1 record). Red: the file did not exist (KSTD-5-4).
 - `make lint-ts` passes: the oxlint and knip findings are fixed without suppression, and tsc of the root and of the docs project type-checks the coverage plans, the package reader and the recorded vectors. Red: oxlint found 4, knip 1 unused export and tsc 4 errors (KSTD-5-6).
 - `make lint-python` passes: six files take the ruff format, six lambda assignments are functions, and a test computes its root after its imports instead of silencing E402. Red: `ruff format --check` listed 6 files (KSTD-5-8).

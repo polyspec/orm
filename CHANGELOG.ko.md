@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: db89b9205d74a4cb3db122c56aa6d25eaf4a384321b126a0a47c701ac9aad2b1 -->
+<!-- source-sha256: a342d55faf8fe098099b877af5eff49994333b6764b70331758c26c163f1db41 -->
 # 변경 이력
 
 ## Unreleased
+- orm-gen이 scan 중 parse할 수 없는 파일은 모든 generator에서 생성을 멈추며, 아무것도 쓰지 않고 그 파일을 줄과 열과 함께 밝힌다(DSL-152). red: Python scan은 그 파일을 건너뛰고 model을 썼고, Go는 model을 쓴 뒤에야 보고했으며, TypeScript와 PHP 오류에는 `file:line:col`이 없었다(T227).
 - `make rebuild-check`가 통과한다: `config/rebuild.json`이 repository의 도구 78개를 분류한다(policy 57, ecosystem 16, KSTD-5-4-1과 KSTD-5-4-2가 대체할 replaced 4, record 1). red: 파일이 없었다(KSTD-5-4).
 - `make lint-ts`가 통과한다: oxlint와 knip finding을 억제 없이 고쳤고, 루트와 docs project의 tsc가 coverage plan, package reader, 기록된 vector의 type을 검사한다. red: oxlint가 4개, knip이 쓰이지 않는 export 1개, tsc가 오류 4개를 찾았다 (KSTD-5-6).
 - `make lint-python`이 통과한다: 파일 6개에 ruff format을 적용했고, lambda 대입 6개를 함수로 바꿨으며, test 하나는 E402를 침묵시키는 대신 import 뒤에 root를 계산한다. red: `ruff format --check`가 파일 6개를 보고했다 (KSTD-5-8).
