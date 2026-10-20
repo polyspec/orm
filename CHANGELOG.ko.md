@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 32587e956e8cc029e53cf17006f9a806958a6ce51357484cbe759e54767ad580 -->
+<!-- source-sha256: d3bc6a08c73cdbe3bf6486559a19d8ff1b042b334e9c81e1a18d3603c99be831 -->
 # 변경 이력
 
 ## Unreleased
+- TypeScript chain이 DSL-49대로 non-null column의 null 인자를 조건 없음, `and`, `ne`에서 `CONFIG`로 거부한다; test는 TypeScript test script에서 돈다. red: `serviceSeq(null)`이 database에 닿아 `DRIVER`로 실패했다 (KSTD-2-10-7).
 - parse할 수 없는 scan의 Python test가 ruff format을 지키고, TypeScript scan은 non-null assertion도 기본 위치 0도 없이 parse 오류를 그 label의 정확한 줄과 열로 밝힌다; label 없는 오류는 위치를 밝히지 않는다 (T227-1).
 - PHP extension이 library 이름으로 `Polyspec\Orm\Codec`을 C로 구현한다: `tests/codec/vectors.json`의 모든 logical type stage(ordered_json, yaml, serialize, gz, base64, ip)가 extension에서 돌고, `make dbspec-php-extension-check/codec`이 extension으로 vector를 돌린다. red: extension을 켜도 class는 PHP library의 것이었다; host decode와 AES는 T182-2-2와 T182-2-3에서 따른다(T182-2-1).
 - Rust integration test decimal_physical.rs에 test로만 compile되는 파일에서 아무 뜻이 없는 `#[cfg(test)]`가 없다; divergence-check finding이 99개에서 77개가 되었다. bin target integration.rs의 marker는 KSTD-5-12-3이다 (KSTD-5-12-1).

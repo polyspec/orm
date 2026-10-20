@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The TypeScript chain refuses a null argument on a non-null column with `CONFIG` for a bare, `and` and `ne` condition, as DSL-49 rules; the test runs in the TypeScript test script. Red: `serviceSeq(null)` reached the database and failed with `DRIVER` (KSTD-2-10-7).
 - The unparsable-scan test of Python keeps the ruff format, and the TypeScript scan names a parse error at the exact line and column of its label with no non-null assertion and no default position of 0; an error without a label names no position (T227-1).
 - The PHP extension implements `Polyspec\Orm\Codec` in C under the library's name: every logical-type stage of `tests/codec/vectors.json` (ordered_json, yaml, serialize, gz, base64, ip) runs in it, and `make dbspec-php-extension-check/codec` runs the vectors with the extension. Red: with the extension loaded the class was the PHP library's; host decode and AES follow in T182-2-2 and T182-2-3 (T182-2-1).
 - The Rust integration test decimal_physical.rs carries no `#[cfg(test)]`, a marker that states nothing in a file compiled only as a test; divergence-check went from 99 to 77 findings. The markers of the bin target integration.rs are KSTD-5-12-3 (KSTD-5-12-1).
