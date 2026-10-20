@@ -1,0 +1,10 @@
+# The clippy configuration of every polyspec repository, copied by kit; change it in kit, never in a copy. make lint-rust runs
+# cargo clippy in the folder of each Cargo workspace, and clippy reads this file from that folder or the nearest ancestor.
+# P8 (K334): a Result is never turned into a plausible value. A use that is truly needed says so with
+# #[allow(clippy::disallowed_methods, reason = "...")], which allow_attributes_without_reason requires to carry its reason.
+disallowed-methods = [
+  { path = "core::result::Result::ok", reason = "P8: an Err becomes None and its error is dropped; match it, use ? or state the need" },
+  { path = "core::result::Result::unwrap_or", reason = "P8: an Err becomes a plausible value; handle the error or state the need" },
+  { path = "core::result::Result::unwrap_or_default", reason = "P8: an Err becomes a default value; handle the error or state the need" },
+  { path = "core::result::Result::unwrap_or_else", reason = "P8: an Err becomes a computed fallback; handle the error or state the need" },
+]

@@ -1,5 +1,6 @@
 #!/bin/sh
-# The commit-msg hook. Git starts it from the top level of the working tree with the file of the message being committed.
-# It runs make commit-msg-check, which checks the message against config/commits.json with the check-commits tool of
-# @polyspec/kit and refuses a commit that breaks it.
-exec make --no-print-directory commit-msg-check MESSAGE="$1"
+# The commit-msg hook. Git runs it with the file of the message being committed as its argument, before each commit, an amend
+# included. The message checks of the commit rules refuse a message with the footer of an AI tool or another rule break (K380).
+# Written by `make hooks`; do not edit it. It calls the make target of the check, which stays across the versions of kit.
+cd "$(git rev-parse --show-toplevel)" || exit 1
+exec make --no-print-directory commit-msg-hook MESSAGE="$1"

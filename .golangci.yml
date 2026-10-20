@@ -6,7 +6,21 @@ linters:
   default: standard
   enable:
     - gomoddirectives
+    # P8, errors are never hidden (K334): nilerr an error checked and then returned as nil, errorlint a comparison, assertion
+    # or %v wrap that loses the error chain, nolintlint a nolint without its linter and its reason.
+    - nilerr
+    - errorlint
+    - nolintlint
   settings:
+    errcheck:
+      # An error assigned to the blank identifier (`x, _ := f()`, `_ = f()`) is a dropped error, and so is an unchecked
+      # type assertion; neither is excluded.
+      check-blank: true
+      check-type-assertions: true
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+      allow-unused: false
     gomoddirectives:
       # The modules of a repository resolve each other through its go.work; a released go.mod never names a replace,
       # which its consumers would not see.

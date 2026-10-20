@@ -80,6 +80,7 @@ templates:
       - "!go.work"
       - "!go.work.sum"
       - "!.golangci.yml"
+      - "!clippy.toml"
       - "!.oxlintrc.json"
       - "!knip.json"
       - "!.editorconfig"
