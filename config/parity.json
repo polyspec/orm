@@ -344,7 +344,7 @@
       ]
     },
     {
-      "id": "codec-decode", "kind": "suite", "requirements": ["COD-14", "COD-29", "COD-37", "COD-39", "COD-40"],
+      "id": "codec-decode", "kind": "suite", "requirements": ["COD-14", "COD-29", "COD-31", "COD-37", "COD-39", "COD-40"],
       "file": "tests/codec/decode-vectors.json", "cases": "$.vectors[*].name",
       "bindings": [
         { "implementation": "go", "test": "packages/go/orm/codec_test.go", "symbol": "TestCodecDecodeVectors" },
@@ -828,6 +828,10 @@
     {"id": "go-internal-packages-go-orm-codec-errors", "kind": "feature", "requirements": ["COD-23", "COD-33", "COD-34", "COD-35"], "bindings": [{"implementation": "go", "test": "packages/go/orm/codec_test.go", "id": "TestCodecErrors"}]},
     {"id": "go-internal-packages-go-generator-column-name-rules", "kind": "feature", "requirements": ["DSL-127", "DSL-129", "DSL-130", "PLN-22"], "bindings": [{"implementation": "go", "test": "packages/go/generator/gen_go_test.go", "id": "TestColumnNameRules"}]},
     {"id": "go-internal-packages-go-generator-generated-field-types", "kind": "feature", "requirements": ["INT-2", "INT-3", "INT-5", "INT-6", "INT-8", "INT-12"], "bindings": [{"implementation": "go", "test": "packages/go/generator/gen_go_test.go", "id": "TestGeneratedFieldTypes"}]},
+    {"id": "ts-styled-value-checks-setter", "kind": "feature", "requirements": ["COD-21"], "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/styled-value-checks.mjs", "id": "styled value checks: a setter refuses what JSON would change"}]},
+    {"id": "ts-styled-value-checks-output", "kind": "feature", "requirements": ["COD-21"], "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/styled-value-checks.mjs", "id": "styled value checks: a changed input fails when it is read for output"}]},
+    {"id": "ts-styled-value-checks-encoding", "kind": "feature", "requirements": ["COD-21"], "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/styled-value-checks.mjs", "id": "styled value checks: a changed input fails when it is read for encoding"}]},
+    {"id": "rust-val-text-null-and-empty", "kind": "feature", "requirements": ["COD-31"], "bindings": [{"implementation": "rust", "test": "packages/rust/orm/tests/val_text.rs", "id": "sql_null_and_empty_text_are_two_values"}]},
     {"id": "go-orm-transaction-control-not-public", "kind": "feature", "requirements": ["DSL-124"], "bindings": [{"implementation": "go", "test": "packages/go/orm/transaction_api_test.go", "id": "TestTransactionControlIsNotPublic"}]},
     {"id": "go-model-transactions", "kind": "feature", "requirements": ["DSL-122"], "bindings": [{"implementation": "go", "test": "packages/go/model/model_test.go", "id": "TestTransactions"}]},
     {"id": "ts-transaction-flow-shared-context", "kind": "feature", "requirements": ["DSL-122"], "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/transaction-flow.mjs", "id": "transaction flow: asynchronous work inside the callback shares the transaction"}]},

@@ -2,6 +2,7 @@
   "requirements": [
     "COD-14",
     "COD-29",
+    "COD-31",
     "COD-37",
     "COD-39",
     "COD-40"
@@ -74,6 +75,7 @@
     {"name": "yaml-key-quoted-true", "styles": ["yaml"], "stored": "\"true\": 1\n", "value": {"true": 1}},
     {"name": "yaml-key-plain-mixed-case-true", "styles": ["yaml"], "stored": "tRUE: 1\n", "value": {"tRUE": 1}},
     {"name": "yaml-key-plain-mixed-case-null", "styles": ["yaml"], "stored": "nULL: 1\n", "value": {"nULL": 1}},
-    {"name": "yaml-key-plain-mixed-case-infinity", "styles": ["yaml"], "stored": ".InF: 1\n", "value": {".InF": 1}}
+    {"name": "yaml-key-plain-mixed-case-infinity", "styles": ["yaml"], "stored": ".InF: 1\n", "value": {".InF": 1}},
+    {"name": "ordered-json-empty-text", "styles": ["ordered_json"], "stored": "", "error": "CODEC_DECODE"}
   ]
 }
