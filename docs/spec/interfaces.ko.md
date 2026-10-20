@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: ddad9b6f7705f8b5e6581b90867e9dc46d55e3e86af1c51879a2a7cb4a9d37d0 -->
+<!-- source-sha256: 0711410a7141aa6a3660643a28aa69b1994f5654570d897b5d17cfb1cd3388f7 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -45,7 +45,7 @@ flowchart LR
 - **INT-4** `Text` — Go: `string`; PHP: `string`; Rust: `String`; TypeScript: `string`; Python: `str`
 - **INT-5** `Bytes` — Go: `[]byte`; PHP: `string`; Rust: `Vec<u8>`; TypeScript: `Uint8Array`; Python: `bytes`
 - **INT-6** `DateTime` — Go: `time.Time`; PHP: `DateTimeImmutable`; Rust: `NaiveDateTime`; TypeScript: `Date`; Python: `str`
-- **INT-7** `JsonValue` — Go: `any`; PHP: `mixed`; Rust: `serde_json::Value`; TypeScript: `unknown`; Python: `StyledValue`
+- **INT-7** `StyledValue`, value codec이 있는 column의 field로 SQL NULL이나 decode된 값을 담는다 — Go: `orm.StyledValue`; PHP: `\Polyspec\Orm\StyledValue`; Rust: `polyspec_orm::StyledValue<T>`, `T`는 codec의 decode type; TypeScript: `StyledValue<T>`; Python: `StyledValue`
 - **INT-8** `Optional<T>` — Go: `*T`; PHP: `?T`; Rust: `Option<T>`; TypeScript: `T | null`; Python: `T | None`
 - **INT-9** `List<T>` — Go: slice; PHP: array; Rust: `Vec<T>`; TypeScript: `T[]`; Python: `list`
 - **INT-10** `Result<T>` — Go: `(T, error)`; PHP: 반환 또는 예외; Rust: `Result<T>`; TypeScript: `Promise<T>`; Python: 반환 또는 예외

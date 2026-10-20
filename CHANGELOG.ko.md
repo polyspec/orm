@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 4fd32393c62f46a94dd9da25c17cb259f92fc33f0df399729b8d8e3ec0882cbd -->
+<!-- source-sha256: e4fdbe3d42a901670cc30462b5baa362ef0e1109ae406b922d72b30503f83b6d -->
 # 변경 이력
 
 ## Unreleased
+- INT-7이 언어별 JSON 값 type 대신 모든 generator가 value codec column에 내보내는 `StyledValue` type을 적는다 (KSTD-2-9-9).
 - DBS-172가 PHP extension이 repository의 모든 PHP library를 구현하며(S10) 이 규칙은 그 dbspec 표면을 적는다고 밝힌다 (KSTD-2-9-8).
 - set file reader의 번호 단계인 DBS-12~15가 set file unit이 인용하는 requirement다. kit K299가 번호 목록 항목의 id를 읽기 때문이다; 인용한 unit의 trace는 모르는 id도 이름 없는 id도 보고하지 않는다(KSTD-2-9-7).
 - 읽는 동안 바뀐 tree에 대한 set file reader의 문장은 requirement가 아니라 참고다 (KSTD-2-9-6).

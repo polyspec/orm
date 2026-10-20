@@ -44,7 +44,7 @@ The planner does not receive database credentials or parameter values. The execu
 - **INT-4** `Text` — Go: `string`; PHP: `string`; Rust: `String`; TypeScript: `string`; Python: `str`
 - **INT-5** `Bytes` — Go: `[]byte`; PHP: `string`; Rust: `Vec<u8>`; TypeScript: `Uint8Array`; Python: `bytes`
 - **INT-6** `DateTime` — Go: `time.Time`; PHP: `DateTimeImmutable`; Rust: `NaiveDateTime`; TypeScript: `Date`; Python: `str`
-- **INT-7** `JsonValue` — Go: `any`; PHP: `mixed`; Rust: `serde_json::Value`; TypeScript: `unknown`; Python: `StyledValue`
+- **INT-7** `StyledValue`, the field of a column with a value codec, holding SQL NULL or the decoded value — Go: `orm.StyledValue`; PHP: `\Polyspec\Orm\StyledValue`; Rust: `polyspec_orm::StyledValue<T>`, `T` the decoded type of the codec; TypeScript: `StyledValue<T>`; Python: `StyledValue`
 - **INT-8** `Optional<T>` — Go: `*T`; PHP: `?T`; Rust: `Option<T>`; TypeScript: `T | null`; Python: `T | None`
 - **INT-9** `List<T>` — Go: slice; PHP: array; Rust: `Vec<T>`; TypeScript: `T[]`; Python: `list`
 - **INT-10** `Result<T>` — Go: `(T, error)`; PHP: return or exception; Rust: `Result<T>`; TypeScript: `Promise<T>`; Python: return or exception
