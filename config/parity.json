@@ -148,7 +148,6 @@
     {"id": "ts-codec-values", "kind": "feature", "requirements": ["COD-4", "COD-34"], "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/codec-values.mjs", "id": "codec values"}]},
     {"id": "ts-coverage_interface_contract", "kind": "feature", "requirements": ["INT-17", "INT-18", "INT-19", "INT-57", "INT-61", "INT-64"], "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/coverage_interface_contract.mjs", "id": "interface_symbols"}]},
     {"id": "ts-coverage_model_generation", "kind": "feature", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/coverage_model_generation.mjs", "id": "model_generation_check"}]},
-    {"id": "ts-coverage-case-unit", "kind": "feature", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/coverage-case-unit.mjs", "id": "coverage_case/runs-requested-cases-in-order"}]},
     {"id": "ts-dbspec-analyze", "kind": "feature", "requirements": ["DBS-134", "DBS-135"], "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/dbspec-analyze.mjs", "id": "analyze header line tokens"}]},
     {"id": "ts-dbspec-apply-cleanup", "kind": "feature", "requirements": ["PLN-99"], "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/dbspec-apply-cleanup.mjs", "id": "apply/cleanup-errors/release"}]},
     {"id": "ts-dbspec-apply-physical", "kind": "feature", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/dbspec-apply-physical.mjs", "id": "every apply scenario runs on its dialects"}]},
@@ -159,7 +158,6 @@
     {"id": "ts-dbspec-rules", "kind": "feature", "requirements": ["DBS-2", "DBS-171"], "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/dbspec-rules.mjs", "id": "invalid byte order mark"}]},
     {"id": "ts-dbspec-set-edges", "kind": "feature", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/dbspec-set-edges.mjs", "id": "set-files parseSet takes a Uint8Array and a string"}]},
     {"id": "ts-dbspec-stress", "kind": "feature", "requirements": ["DBS-123"], "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/dbspec-stress.mjs", "id": "dbspec stress document parses and emits canonically"}]},
-    {"id": "ts-dbspec-unicode", "kind": "feature", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/dbspec-unicode.mjs", "id": "every code point is classified by the ranges of the table"}]},
     {"id": "ts-dbspec", "kind": "feature", "requirements": ["DBS-99"], "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/dbspec.mjs", "id": "manifest rejects a repeated document name"}]},
     {"id": "ts-dbspec_runtime_db", "kind": "feature", "requirements": ["DBS-119"], "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/dbspec_runtime_db.mjs", "id": "sqlite: connect takes the DSN and options without a schema path"}]},
     {"id": "ts-add-tables-and-columns", "kind": "feature", "requirements": ["SCH-8", "SCH-9", "SCH-10"], "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/add-tables-and-columns.mjs", "id": "add-tables-and-columns/add_tables_and_columns/sqlite"}]},
@@ -186,7 +184,6 @@
     {"id": "ts-markdown", "kind": "feature", "requirements": ["PRT-63"], "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/markdown.mjs", "id": "markdown/parse-dsn"}]},
     {"id": "ts-markdown-session-messages", "kind": "feature", "requirements": ["PRT-64"], "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/markdown.mjs", "id": "markdown/session-messages"}]},
     {"id": "ts-markdown-connect-refused", "kind": "feature", "requirements": ["PRT-64"], "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/markdown.mjs", "id": "markdown/connect-refused"}]},
-    {"id": "ts-models-scan", "kind": "feature", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/models-scan.mjs", "id": "the models script scans exactly the sources that call models"}]},
     {"id": "ts-mysql_tls", "kind": "feature", "requirements": ["CFG-16", "CFG-17", "CFG-18", "CFG-19"], "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/mysql_tls.mjs", "id": "mysql_tls/parameters"}]},
     {"id": "ts-package-declarations", "kind": "feature", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/package-declarations.mjs", "id": "package-declarations/no-driver-imports"}]},
     {"id": "ts-param-uses", "kind": "feature", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/param-uses.mjs", "id": "param-uses/kinds"}]},
@@ -231,7 +228,6 @@
     {"id": "ts-schema-set-register-sends-no-statement-sqlite", "kind": "feature", "requirements": ["DBS-119", "SCH-11", "INT-54"], "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/schema-set.mjs", "id": "schema-set/register_sends_no_statement/sqlite"}]},
     {"id": "ts-schema-set-register-sends-no-statement-mysql", "kind": "feature", "requirements": ["DBS-119", "SCH-11", "INT-54"], "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/schema-set.mjs", "id": "schema-set/register_sends_no_statement/mysql"}]},
     {"id": "ts-schema-set-register-sends-no-statement-postgres", "kind": "feature", "requirements": ["DBS-119", "SCH-11", "INT-54"], "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/schema-set.mjs", "id": "schema-set/register_sends_no_statement/postgres"}]},
-    {"id": "ts-syntax-vectors", "kind": "feature", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/syntax-vectors.mjs", "id": "syntax.json is what the generator writes from the current cases"}]},
     {"id": "ts-plan-cache-in-lengths-share-keys", "kind": "feature", "requirements": ["CPX-4"], "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/plan-cache-in.mjs", "id": "IN lists of lengths 1 to 300 share at most ten plan cache keys"}]},
     {"id": "ts-plan-cache-in-pads-to-bucket", "kind": "feature", "requirements": ["CPX-4"], "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/plan-cache-in.mjs", "id": "an IN list pads to its bucket by repeating its last value and renumbers its parameters"}]},
     {"id": "ts-plan-cache-in-param-past-end", "kind": "feature", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/plan-cache-in.mjs", "id": "a parameter index past the parameters is IR_INVALID"}]},
@@ -720,21 +716,14 @@
         { "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_set_parse.rs", "symbol": "shared_set_parse_vectors" }
       ]
     },
-    {"id": "go-internal-examples-dsn", "kind": "feature", "bindings": [{"implementation": "go", "test": "examples/dsn_test.go", "id": "TestExamplesRequireBenchDSN"}]},
-    {"id": "go-internal-examples-outputs", "kind": "feature", "bindings": [{"implementation": "go", "test": "examples/outputs_test.go", "id": "TestExampleOutputsAreIdentical"}]},
     {"id": "go-internal-packages-go-decimalmodel-decimal-physical", "kind": "feature", "requirements": ["DIA-25", "COD-2"], "bindings": [{"implementation": "go", "test": "packages/go/decimalmodel/decimal_physical_test.go", "id": "TestDecimalPhysicalMySQL"}]},
     {"id": "go-internal-packages-go-decimalmodel-schema-set", "kind": "feature", "requirements": ["DBS-108", "SCH-7"], "bindings": [{"implementation": "go", "test": "packages/go/decimalmodel/schema_set_test.go", "id": "TestSchemaSetSQLite"}]},
     {"id": "go-internal-packages-go-engine-dbspec-analyze", "kind": "feature", "requirements": ["DBS-134", "DBS-135"], "bindings": [{"implementation": "go", "test": "packages/go/engine/dbspec/analyze_test.go", "id": "TestAnalyzeSampleTokens"}]},
-    {"id": "go-internal-packages-go-engine-dbspec-subtest-names", "kind": "feature", "bindings": [{"implementation": "go", "test": "packages/go/engine/dbspec/names_test.go", "id": "TestSubtestNamesAreFlat"}]},
-    {"id": "php-internal-dbspec-plan-reader", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecPlanReaderTest.php", "id": "DbspecPlanReaderTest::test_one_file_opens_plans_json"}]},
-    {"id": "ts-internal-conformance-vector-count", "kind": "feature", "bindings": [{"implementation": "typescript", "test": "packages/ts/tests/conformance_vector_count.test.mts", "id": "the mysql conformance suite runs every declared vector"}]},
     {"id": "go-internal-packages-go-engine-dbspec-apply", "kind": "feature", "requirements": ["PLN-97"], "bindings": [{"implementation": "go", "test": "packages/go/engine/dbspec/apply_test.go", "id": "TestApplyReportsCleanupErrors"}]},
-    {"id": "go-internal-packages-go-engine-dbspec-harness", "kind": "feature", "bindings": [{"implementation": "go", "test": "packages/go/engine/dbspec/harness_test.go", "id": "TestFailingCaseFixture"}]},
     {"id": "go-internal-packages-go-engine-dbspec-literal", "kind": "feature", "requirements": ["DBS-40", "DBS-128", "DBS-131"], "bindings": [{"implementation": "go", "test": "packages/go/engine/dbspec/literal_test.go", "id": "TestCanonicalLiteral"}]},
     {"id": "go-internal-packages-go-engine-dbspec-rules", "kind": "feature", "requirements": ["DBS-32", "DBS-36", "DBS-38", "DBS-39", "DBS-42", "DBS-43", "DBS-46", "DBS-48", "DBS-50", "DBS-58", "DBS-156", "DBS-157", "DBS-158", "DBS-159", "DBS-161", "DBS-162", "DBS-163", "DBS-164", "DBS-165", "DBS-166", "DBS-167", "DBS-168"], "bindings": [{"implementation": "go", "test": "packages/go/engine/dbspec/rules_test.go", "id": "TestRuleDiagnostics"}]},
     {"id": "go-internal-packages-go-engine-dbspec-show-create-introspect", "kind": "feature", "bindings": [{"implementation": "go", "test": "packages/go/engine/dbspec/show_create_introspect_test.go", "id": "TestMySQLIntrospectionOfShownChecks"}]},
     {"id": "go-internal-packages-go-engine-dbspec-stress", "kind": "feature", "requirements": ["DBS-123"], "bindings": [{"implementation": "go", "test": "packages/go/engine/dbspec/stress_test.go", "id": "TestStressDocument"}]},
-    {"id": "go-internal-packages-go-engine-dbspec-vector-loaders", "kind": "feature", "bindings": [{"implementation": "go", "test": "packages/go/engine/dbspec/vector_loaders_test.go", "id": "TestVectorLoadersRejectMalformedVectors"}]},
     {"id": "go-internal-packages-go-engine-dialect-sqlite", "kind": "feature", "bindings": [{"implementation": "go", "test": "packages/go/engine/dialect/sqlite_test.go", "id": "TestSQLitePreservesQualifiedPhysicalTableNames"}]},
     {"id": "go-internal-packages-go-engine-engine", "kind": "feature", "requirements": ["DIA-33", "COD-4"], "bindings": [{"implementation": "go", "test": "packages/go/engine/engine_test.go", "id": "TestSelectAll"}]},
     {"id": "go-internal-packages-go-engine-compile-errors", "kind": "feature", "requirements": ["PRT-1"], "bindings": [{"implementation": "go", "test": "packages/go/engine/engine_test.go", "id": "TestCompileErrors"}]},
@@ -750,7 +739,6 @@
     {"id": "go-internal-packages-go-engine-query-forms", "kind": "feature", "requirements": ["DSL-95"], "bindings": [{"implementation": "go", "test": "packages/go/engine/query_forms_test.go", "id": "TestExplicitKeyJoinPlacesChildConditionsInGroup"}]},
     {"id": "go-internal-packages-go-engine-runtimemodel-runtimemodel", "kind": "feature", "requirements": ["DBS-100", "DBS-103", "DBS-111", "DBS-112", "DBS-114"], "bindings": [{"implementation": "go", "test": "packages/go/engine/runtimemodel/runtimemodel_test.go", "id": "TestLoadRebuildsTheModelOfTheManifestText"}]},
     {"id": "go-internal-packages-go-generator-gen-go-check", "kind": "feature", "bindings": [{"implementation": "go", "test": "packages/go/generator/gen_go_check_test.go", "id": "TestGoGenerationCheckReportsDifferences"}]},
-    {"id": "go-internal-packages-go-generator-gen-go-key-prefix", "kind": "feature", "bindings": [{"implementation": "go", "test": "packages/go/generator/gen_go_key_prefix_test.go", "id": "TestGoGeneratesKeyPrefixMethodsWithoutScan"}]},
     {"id": "go-internal-packages-go-generator-gen-go-output", "kind": "feature", "bindings": [{"implementation": "go", "test": "packages/go/generator/gen_go_output_test.go", "id": "TestGoGenerationKeepsOutputOnManifestError"}]},
     {"id": "go-internal-packages-go-generator-gen-go-packages", "kind": "feature", "requirements": ["DSL-39"], "bindings": [{"implementation": "go", "test": "packages/go/generator/gen_go_packages_test.go", "id": "TestGoGenerationOfTwoModelPackagesSettlesInOneRun"}]},
     {"id": "go-internal-packages-go-generator-gen-go-scan", "kind": "feature", "bindings": [{"implementation": "go", "test": "packages/go/generator/gen_go_scan_test.go", "id": "TestGoGenerationIgnoresMethodsOfRelationResults"}]},
@@ -863,10 +851,6 @@
     {"id": "go-internal-packages-go-orm-transaction-end", "kind": "feature", "bindings": [{"implementation": "go", "test": "packages/go/orm/transaction_end_test.go", "id": "TestTransactionReportsFailedLockRelease"}]},
     {"id": "go-internal-packages-go-orm-value-types", "kind": "feature", "bindings": [{"implementation": "go", "test": "packages/go/orm/value_types_test.go", "id": "TestRuntimeValueTypes"}]},
     {"id": "go-internal-packages-go-orm-write-set", "kind": "feature", "bindings": [{"implementation": "go", "test": "packages/go/orm/write_set_test.go", "id": "TestWasInsertedTracksGeneratedRows"}]},
-    {"id": "go-internal-packages-go-testcase-stall", "kind": "feature", "bindings": [{"implementation": "go", "test": "packages/go/testcase/stall_test.go", "id": "TestStepBudgetScalesWithTheSteps"}]},
-    {"id": "go-internal-packages-go-testcase-testcase", "kind": "feature", "bindings": [{"implementation": "go", "test": "packages/go/testcase/testcase_test.go", "id": "TestFixturePass"}]},
-    {"id": "go-internal-conformance-runner-main", "kind": "feature", "bindings": [{"implementation": "go", "test": "packages/go/internal/conformance/main_test.go", "id": "TestPickRejectsUnselectedField"}]},
-    {"id": "go-internal-tests-dbspec-unicode-main", "kind": "feature", "bindings": [{"implementation": "go", "test": "tests/dbspec/unicode/main_test.go", "id": "TestCommittedTablesAreGenerated"}]},
     {"id": "go-internal-dialects-apply-clients-physical", "kind": "feature", "bindings": [{"implementation": "go", "test": "packages/go/internal/dialects/apply_clients_physical_test.go", "id": "TestApplyChainAcrossClients", "command": ["make", "-s", "-C", "${ORM_CHECKOUT}", "dbspec-apply-pairs-check", "GO_TEST_FLAGS=-json"]}]},
     {"id": "go-internal-dialects-apply-physical", "kind": "feature", "bindings": [{"implementation": "go", "test": "packages/go/internal/dialects/apply_physical_test.go", "id": "TestApplyChain"}]},
     {"id": "go-internal-dialects-apply-stress-physical", "kind": "feature", "bindings": [{"implementation": "go", "test": "packages/go/internal/dialects/apply_stress_physical_test.go", "id": "TestApplyStressPlan"}]},
@@ -874,18 +858,14 @@
     {"id": "go-internal-dialects-facts-physical", "kind": "feature", "requirements": ["DIA-4", "DIA-5", "DIA-9", "DIA-13", "DIA-36", "DIA-38", "DIA-39", "DIA-40", "DIA-41", "DIA-42", "DIA-43", "DIA-44", "DIA-45", "DIA-46", "DIA-47", "DIA-48", "DIA-49", "DIA-50", "DIA-51", "DIA-52", "DIA-53", "DIA-54", "DIA-55", "DIA-56", "DIA-58", "DIA-59", "DIA-60", "DIA-61", "DIA-62", "DIA-63", "DIA-64", "DIA-65", "DIA-66", "DIA-67", "DIA-68", "DIA-69", "DIA-70", "DIA-72", "DIA-73", "DIA-74", "DIA-75", "DIA-76", "DIA-77", "DIA-78", "DIA-79", "DIA-80", "DIA-81", "DIA-82", "DIA-83", "DIA-84", "DIA-85", "DIA-86", "DIA-87", "DIA-88", "DIA-89", "DIA-90", "DIA-91", "DIA-92", "DIA-93", "DIA-94", "DIA-95", "DIA-96", "DIA-98", "DIA-99", "DIA-100", "DIA-101", "DIA-102", "DIA-103", "DIA-104", "DIA-105", "DIA-106", "DIA-107", "DIA-109", "DIA-110", "DIA-111", "DIA-144"], "bindings": [{"implementation": "go", "test": "packages/go/internal/dialects/facts_physical_test.go", "id": "TestDialectFacts"}]},
     {"id": "go-internal-dialects-introspect-compare-physical", "kind": "feature", "bindings": [{"implementation": "go", "test": "packages/go/internal/dialects/introspect_compare_physical_test.go", "id": "TestIntrospectCompare", "command": ["make", "-s", "-C", "${ORM_CHECKOUT}", "dbspec-introspect-compare-check", "GO_TEST_FLAGS=-json"]}]},
     {"id": "go-internal-dialects-plans-physical", "kind": "feature", "bindings": [{"implementation": "go", "test": "packages/go/internal/dialects/plans_physical_test.go", "id": "TestPlanApply"}]},
-    {"id": "go-internal-dialects-probe", "kind": "feature", "bindings": [{"implementation": "go", "test": "packages/go/internal/dialects/probe_test.go", "id": "TestProbeIDs"}]},
     {"id": "go-internal-dialects-schema-documents-physical", "kind": "feature", "bindings": [{"implementation": "go", "test": "packages/go/internal/dialects/schema_documents_physical_test.go", "id": "TestSchemaDocumentsApply"}]},
     {"id": "go-internal-dialects-sqlite-filename-physical", "kind": "feature", "bindings": [{"implementation": "go", "test": "packages/go/internal/dialects/sqlite_filename_physical_test.go", "id": "TestSQLiteFileNameWithQuery"}]},
-    {"id": "go-internal-tests-interfaces-contracts-generate", "kind": "feature", "bindings": [{"implementation": "go", "test": "tests/interfaces/contracts/generate_test.go", "id": "TestLogicalContractRejectsNativeDrift"}]},
-    {"id": "go-internal-tests-interfaces-contracts-python-signature", "kind": "feature", "bindings": [{"implementation": "go", "test": "tests/interfaces/contracts/python_signature_test.go", "id": "TestPythonSignatureReadsLikeTheOtherClients"}]},
     {"id": "go-internal-plan-cache-bounded-in-list-shape", "kind": "feature", "requirements": ["CPX-4"], "bindings": [{"implementation": "go", "test": "packages/go/orm/plan_cache_test.go", "id": "TestPlanCacheBoundedByInListShape"}]},
     {"id": "go-internal-plan-cache-pads-in-list-and-rejects-range", "kind": "feature", "requirements": ["CPX-4"], "bindings": [{"implementation": "go", "test": "packages/go/orm/plan_cache_test.go", "id": "TestCanonicalizePadsInListAndRejectsOutOfRangeParam"}]},
     { "id": "rust-catalog-temporal-fraction-keeps-exactly-p-digits-and-rejects-dropped-digits", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/build/src/catalog/temporal.rs", "id": "catalog::temporal::tests::fraction_keeps_exactly_p_digits_and_rejects_dropped_digits" }] },
     { "id": "rust-catalog-temporal-precision-follows-the-native-type-and-dialect-default", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/build/src/catalog/temporal.rs", "id": "catalog::temporal::tests::precision_follows_the_native_type_and_dialect_default" }] },
     { "id": "rust-catalog-temporal-temporal-text-follows-the-dbspec-forms", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/build/src/catalog/temporal.rs", "id": "catalog::temporal::tests::temporal_text_follows_the_dbspec_forms" }] },
     { "id": "rust-generate-field-type-tests-generated-field-types-follow-the-runtime-model", "kind": "feature", "requirements": ["DBS-112"], "bindings": [{ "implementation": "rust", "test": "packages/rust/build/src/generate.rs", "id": "generate::field_type_tests::generated_field_types_follow_the_runtime_model" }] },
-    { "id": "rust-tests-rerun-inputs-name-the-set-file-and-every-document", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/build/src/lib.rs", "id": "tests::rerun_inputs_name_the_set_file_and_every_document" }] },
     { "id": "rust-manifest-reserved-method-names-are-not-columns", "kind": "feature", "requirements": ["DSL-127"], "bindings": [{ "implementation": "rust", "test": "packages/rust/build/src/manifest.rs", "id": "manifest::tests::reserved_method_names_are_not_columns" }] },
     { "id": "rust-catalog-connection-does-not-create-a-missing-sqlite-database", "kind": "feature", "requirements": ["SCH-6"], "bindings": [{ "implementation": "rust", "test": "packages/rust/build/tests/catalog.rs", "id": "catalog_connection_does_not_create_a_missing_sqlite_database" }] },
     { "id": "rust-catalog-connection-rejects-invalid-dsn-without-driver-argument", "kind": "feature", "requirements": ["SCH-5"], "bindings": [{ "implementation": "rust", "test": "packages/rust/build/tests/catalog.rs", "id": "catalog_connection_rejects_invalid_dsn_without_driver_argument" }] },
@@ -899,7 +879,6 @@
     { "id": "rust-generation-leaves-external-tables-out", "kind": "feature", "requirements": ["DBS-101", "DBS-104", "DBS-110"], "bindings": [{ "implementation": "rust", "test": "packages/rust/build/tests/generate.rs", "id": "generation_leaves_external_tables_out" }] },
     { "id": "rust-ignores-calls-of-other-types", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/build/tests/generate.rs", "id": "ignores_calls_of_other_types" }] },
     { "id": "rust-infallible-setter-does-not-accept-result-methods", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/build/tests/generate.rs", "id": "infallible_setter_does_not_accept_result_methods" }] },
-    { "id": "rust-key-prefix-methods-come-from-the-schema-without-a-scan", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/build/tests/generate.rs", "id": "key_prefix_methods_come_from_the_schema_without_a_scan" }] },
     { "id": "rust-manifest-text-is-embedded-with-its-hash", "kind": "feature", "requirements": ["DBS-100", "DBS-104"], "bindings": [{ "implementation": "rust", "test": "packages/rust/build/tests/generate.rs", "id": "manifest_text_is_embedded_with_its_hash" }] },
     { "id": "rust-nullable-json-fields-keep-sql-null-separate-from-json-null", "kind": "feature", "requirements": ["DBS-112", "DBS-116"], "bindings": [{ "implementation": "rust", "test": "packages/rust/build/tests/generate.rs", "id": "nullable_json_fields_keep_sql_null_separate_from_json_null" }] },
     { "id": "rust-rejects-a-file-without-the-signature", "kind": "feature", "requirements": ["DBS-4", "DBS-27", "DBS-155", "SCH-1"], "bindings": [{ "implementation": "rust", "test": "packages/rust/build/tests/generate.rs", "id": "rejects_a_file_without_the_signature" }] },
@@ -908,7 +887,6 @@
     { "id": "rust-rejects-unknown-names-of-a-known-model", "kind": "feature", "requirements": ["DSL-37"], "bindings": [{ "implementation": "rust", "test": "packages/rust/build/tests/generate.rs", "id": "rejects_unknown_names_of_a_known_model" }] },
     { "id": "rust-relation-getters-report-a-mismatched-relation-value", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/build/tests/generate.rs", "id": "relation_getters_report_a_mismatched_relation_value" }] },
     { "id": "rust-reports-every-error-of-the-set-and-writes-nothing", "kind": "feature", "requirements": ["DBS-19", "DBS-25", "DBS-27", "DBS-155", "SCH-1"], "bindings": [{ "implementation": "rust", "test": "packages/rust/build/tests/generate.rs", "id": "reports_every_error_of_the_set_and_writes_nothing" }] },
-    { "id": "rust-scan-path-spelling-keeps-the-generated-source", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/build/tests/generate.rs", "id": "scan_path_spelling_keeps_the_generated_source" }] },
     { "id": "rust-relation-alias-with-a-chain-prefix-has-its-getter", "kind": "feature", "requirements": ["DBS-118", "DSL-44"], "bindings": [{ "implementation": "rust", "test": "packages/rust/build/tests/generate.rs", "id": "relation_alias_with_a_chain_prefix_has_its_getter" }] },
     { "id": "rust-nested-relation-alias-attaches-its-getter-to-its-parent", "kind": "feature", "requirements": ["DBS-118", "DSL-44"], "bindings": [{ "implementation": "rust", "test": "packages/rust/build/tests/generate.rs", "id": "nested_relation_alias_attaches_its_getter_to_its_parent" }] },
     { "id": "rust-unattached-getter-stops-generation", "kind": "feature", "requirements": ["DSL-44"], "bindings": [{ "implementation": "rust", "test": "packages/rust/build/tests/generate.rs", "id": "unattached_getter_stops_generation" }] },
@@ -951,7 +929,6 @@
     { "id": "rust-catalog-page-page-assembly-rejects-column-or-descriptor-changes", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/build/tests/unit/table_page_validation.rs", "id": "catalog::page::tests::page_assembly_rejects_column_or_descriptor_changes" }] },
     { "id": "rust-tool-db-result-metadata-budgets-reject-excess-and-preserve-exact-boundaries", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/build/tests/unit/tool_column_budgets.rs", "id": "tool_db::result::tests::metadata_budgets_reject_excess_and_preserve_exact_boundaries" }] },
     { "id": "rust-tool-db-params-bind-validation-checks-exact-bounds-before-driver-encoding", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/build/tests/unit/typed_bind_validation.rs", "id": "tool_db::params::tests::bind_validation_checks_exact_bounds_before_driver_encoding" }] },
-    { "id": "rust-tests-case-clock-does-not-count-time-off-the-cpu", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/case-clock/src/lib.rs", "id": "tests::case_clock_does_not_count_time_off_the_cpu" }] },
     { "id": "rust-codec-aes-vectors", "kind": "feature", "requirements": ["COD-5"], "bindings": [{ "implementation": "rust", "test": "packages/rust/orm/src/codec.rs", "id": "codec::tests::aes_vectors" }] },
     { "id": "rust-codec-blind-index-vector", "kind": "feature", "requirements": ["COD-4"], "bindings": [{ "implementation": "rust", "test": "packages/rust/orm/src/codec.rs", "id": "codec::tests::blind_index_vector" }] },
     { "id": "rust-codec-errors-and-keys", "kind": "feature", "requirements": ["COD-29", "COD-33", "COD-34", "COD-35"], "bindings": [{ "implementation": "rust", "test": "packages/rust/orm/src/codec.rs", "id": "codec::tests::errors_and_keys" }] },
@@ -981,7 +958,6 @@
     { "id": "rust-tx-one-shot-transaction-reports-callback-and-rollback-errors", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/orm/src/tx.rs", "id": "tx::tests::one_shot_transaction_reports_callback_and_rollback_errors" }] },
     { "id": "rust-tx-panicking-callback-ends-its-transaction", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/orm/src/tx.rs", "id": "tx::tests::panicking_callback_ends_its_transaction" }] },
     { "id": "rust-tx-savepoint-end-failures-are-reported", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/orm/src/tx.rs", "id": "tx::tests::savepoint_end_failures_are_reported" }] },
-    { "id": "rust-tx-scratch-is-removed-after-a-failed-assertion", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/orm/src/tx.rs", "id": "tx::tests::scratch_is_removed_after_a_failed_assertion" }] },
     { "id": "rust-tx-sqlite-transaction-end-failures-are-reported", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/orm/src/tx.rs", "id": "tx::tests::sqlite_transaction_end_failures_are_reported" }] },
     { "id": "rust-tx-transaction-send-future-contract-is-checked", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/orm/src/tx.rs", "id": "tx::tests::transaction_send_future_contract_is_checked" }] },
     { "id": "rust-tx-transaction-timeout-is-the-postgres-statement-timeout", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/orm/src/tx.rs", "id": "tx::tests::transaction_timeout_is_the_postgres_statement_timeout" }] },
@@ -1098,7 +1074,6 @@
     { "id": "rust-dbspec-set-normal-form-cases", "kind": "feature", "requirements": ["DBS-7", "DBS-8", "DBS-9", "DBS-10"], "bindings": [{ "implementation": "rust", "test": "packages/rust/schema/src/dbspec/set.rs", "id": "dbspec::set::tests::normal_form_cases" }] },
     { "id": "rust-dbspec-set-root-of-prefix", "kind": "feature", "requirements": ["DBS-12"], "bindings": [{ "implementation": "rust", "test": "packages/rust/schema/src/dbspec/set.rs", "id": "dbspec::set::tests::root_of_prefix" }] },
     { "id": "rust-dbspec-set-schema-values", "kind": "feature", "requirements": ["DBS-22"], "bindings": [{ "implementation": "rust", "test": "packages/rust/schema/src/dbspec/set.rs", "id": "dbspec::set::tests::schema_values" }] },
-    { "id": "rust-dbspec-unicode-word-binary-search-agrees-with-the-ranges-for-every-code-point", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/schema/src/dbspec/unicode_word.rs", "id": "dbspec::unicode_word::tests::binary_search_agrees_with_the_ranges_for_every_code_point" }] },
     { "id": "rust-limit-stop-gives-no-tokens", "kind": "feature", "requirements": ["DBS-136", "DBS-144"], "bindings": [{ "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_analyze.rs", "id": "limit_stop_gives_no_tokens" }] },
     { "id": "rust-token-classes", "kind": "feature", "requirements": ["DBS-134", "DBS-135", "DBS-137", "DBS-139"], "bindings": [{ "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_analyze.rs", "id": "token_classes" }] },
     { "id": "rust-model-is-read-changed-and-emitted", "kind": "feature", "requirements": ["DBS-123", "DBS-126"], "bindings": [{ "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_model.rs", "id": "model_is_read_changed_and_emitted" }] },
@@ -1109,31 +1084,12 @@
     { "id": "rust-manifest-text-without-header-is-rejected", "kind": "feature", "requirements": ["DBS-156", "SCH-12"], "bindings": [{ "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_runtime.rs", "id": "manifest_text_without_header_is_rejected" }] },
     { "id": "rust-runtime-model-names-entities-and-reads-settings", "kind": "feature", "requirements": ["DBS-65", "DBS-85", "DBS-99", "DBS-111", "DBS-112"], "bindings": [{ "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_runtime.rs", "id": "runtime_model_names_entities_and_reads_settings" }] },
     { "id": "rust-runtime-model-of-bench", "kind": "feature", "requirements": ["DBS-111"], "bindings": [{ "implementation": "rust", "test": "packages/rust/schema/tests/dbspec_runtime.rs", "id": "runtime_model_of_bench" }] },
-    { "id": "rust-fixture-async", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/testcase/tests/form.rs", "id": "fixture_async" }] },
-    { "id": "rust-fixture-deadline", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/testcase/tests/form.rs", "id": "fixture_deadline" }] },
-    { "id": "rust-fixture-fail", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/testcase/tests/form.rs", "id": "fixture_fail" }] },
-    { "id": "rust-fixture-inner", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/testcase/tests/form.rs", "id": "fixture_inner" }] },
-    { "id": "rust-fixture-pass", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/testcase/tests/form.rs", "id": "fixture_pass" }] },
-    { "id": "rust-report-form", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/testcase/tests/form.rs", "id": "report_form" }] },
-    { "id": "rust-client-bench-rejects-an-invalid-iterations-argument", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/tests/tests/client_bench_args.rs", "id": "client_bench_rejects_an_invalid_iterations_argument", "command": ["make","-s","-C","${ORM_CHECKOUT}","feature-rust-unit","FEATURE_CRATE=packages/rust/tests","FEATURE_CARGO_TARGET=--test client_bench_args"] }] },
-    { "id": "rust-client-bench-requires-the-iterations-argument", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/tests/tests/client_bench_args.rs", "id": "client_bench_requires_the_iterations_argument", "command": ["make","-s","-C","${ORM_CHECKOUT}","feature-rust-unit","FEATURE_CRATE=packages/rust/tests","FEATURE_CARGO_TARGET=--test client_bench_args"] }] },
-    { "id": "rust-client-bench-fails-when-dsn-is-empty", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/tests/tests/client_bench_dsn.rs", "id": "client_bench_fails_when_dsn_is_empty", "command": ["make","-s","-C","${ORM_CHECKOUT}","feature-rust-unit","FEATURE_CRATE=packages/rust/tests","FEATURE_CARGO_TARGET=--test client_bench_dsn"] }] },
-    { "id": "rust-client-bench-fails-when-dsn-is-unset", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/tests/tests/client_bench_dsn.rs", "id": "client_bench_fails_when_dsn_is_unset", "command": ["make","-s","-C","${ORM_CHECKOUT}","feature-rust-unit","FEATURE_CRATE=packages/rust/tests","FEATURE_CARGO_TARGET=--test client_bench_dsn"] }] },
     { "id": "rust-coverage-catalog-read", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/tests/tests/coverage_catalog_connection.rs", "id": "coverage_catalog_read" }] },
     { "id": "rust-coverage-catalog-row-mutation", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/tests/tests/coverage_catalog_connection.rs", "id": "coverage_catalog_row_mutation" }] },
     { "id": "rust-coverage-model-generation-check", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/tests/tests/coverage_model_generation.rs", "id": "coverage_model_generation_check" }] },
     { "id": "rust-coverage-hot-path-gate", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/tests/tests/coverage_performance_gate.rs", "id": "coverage_hot_path_gate" }] },
-    { "id": "rust-examples-fail-when-dsn-is-empty", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/tests/tests/example_dsn.rs", "id": "examples_fail_when_dsn_is_empty", "command": ["make","-s","-C","${ORM_CHECKOUT}","feature-rust-unit","FEATURE_CRATE=packages/rust/tests","FEATURE_CARGO_TARGET=--test example_dsn"] }] },
-    { "id": "rust-examples-fail-when-dsn-is-unset", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "packages/rust/tests/tests/example_dsn.rs", "id": "examples_fail_when_dsn_is_unset", "command": ["make","-s","-C","${ORM_CHECKOUT}","feature-rust-unit","FEATURE_CRATE=packages/rust/tests","FEATURE_CARGO_TARGET=--test example_dsn"] }] },
-    { "id": "rust-benchmarks-fail-when-dsn-is-empty", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "benchmarks/rust/tests/dsn.rs", "id": "benchmarks_fail_when_dsn_is_empty", "command": ["make","-s","-C","${ORM_CHECKOUT}","feature-rust-unit","FEATURE_CRATE=benchmarks/rust","FEATURE_CARGO_TARGET=--test dsn"] }] },
-    { "id": "rust-benchmarks-fail-when-dsn-is-unset", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "benchmarks/rust/tests/dsn.rs", "id": "benchmarks_fail_when_dsn_is_unset", "command": ["make","-s","-C","${ORM_CHECKOUT}","feature-rust-unit","FEATURE_CRATE=benchmarks/rust","FEATURE_CARGO_TARGET=--test dsn"] }] },
-    { "id": "rust-benchmarks-reject-an-invalid-iterations-argument", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "benchmarks/rust/tests/dsn.rs", "id": "benchmarks_reject_an_invalid_iterations_argument", "command": ["make","-s","-C","${ORM_CHECKOUT}","feature-rust-unit","FEATURE_CRATE=benchmarks/rust","FEATURE_CARGO_TARGET=--test dsn"] }] },
-    { "id": "rust-benchmarks-require-the-iterations-argument", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "benchmarks/rust/tests/dsn.rs", "id": "benchmarks_require_the_iterations_argument", "command": ["make","-s","-C","${ORM_CHECKOUT}","feature-rust-unit","FEATURE_CRATE=benchmarks/rust","FEATURE_CARGO_TARGET=--test dsn"] }] },
-    { "id": "rust-driver-compare-reads-the-seeded-database", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "benchmarks/rust/tests/seeded.rs", "id": "driver_compare_reads_the_seeded_database", "command": ["make","-s","-C","${ORM_CHECKOUT}","feature-rust-unit","FEATURE_CRATE=benchmarks/rust","FEATURE_CARGO_TARGET=--test seeded"] }] },
-    { "id": "rust-native-reads-the-seeded-database", "kind": "feature", "bindings": [{ "implementation": "rust", "test": "benchmarks/rust/tests/seeded.rs", "id": "native_reads_the_seeded_database", "command": ["make","-s","-C","${ORM_CHECKOUT}","feature-rust-unit","FEATURE_CRATE=benchmarks/rust","FEATURE_CARGO_TARGET=--test seeded"] }] },
     {"id": "rust-conformance-invalid-binds-cannot-be-rendered-as-valid-values", "kind": "feature", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/src/conformance.rs", "id": "invalid_binds_cannot_be_rendered_as_valid_values", "command": ["make","-s","-C","${ORM_CHECKOUT}","feature-rust-unit","FEATURE_CRATE=packages/rust/tests","FEATURE_CARGO_TARGET=--bin conformance"]}]},
     {"id": "rust-conformance-invalid-derived-integers-cannot-be-reported-as-zero", "kind": "feature", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/src/conformance.rs", "id": "invalid_derived_integers_cannot_be_reported_as_zero", "command": ["make","-s","-C","${ORM_CHECKOUT}","feature-rust-unit","FEATURE_CRATE=packages/rust/tests","FEATURE_CARGO_TARGET=--bin conformance"]}]},
-    {"id": "rust-conformance-arguments-reject-missing-duplicate-and-unknown-flags", "kind": "feature", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/src/conformance.rs", "id": "arguments_reject_missing_duplicate_and_unknown_flags", "command": ["make","-s","-C","${ORM_CHECKOUT}","feature-rust-unit","FEATURE_CRATE=packages/rust/tests","FEATURE_CARGO_TARGET=--bin conformance"]}]},
     {"id": "rust-integration-generated-nonnull-styled-setter-rejects-sql-null", "kind": "feature", "requirements": ["COD-20"], "bindings": [{"implementation": "rust", "test": "packages/rust/tests/src/integration.rs", "id": "generated_nonnull_styled_setter_rejects_sql_null", "command": ["make","-s","-C","${ORM_CHECKOUT}","feature-rust-unit","FEATURE_CRATE=packages/rust/tests","FEATURE_CARGO_TARGET=--bin integration"]}]},
     {"id": "rust-integration-coverage-generated-model-connection", "kind": "feature", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/src/integration.rs", "id": "coverage_generated_model_connection", "command": ["make","-s","-C","${ORM_CHECKOUT}","feature-rust-database","FEATURE_CRATE=packages/rust/tests","FEATURE_CARGO_TARGET=--bin integration","FEATURE_DATABASE=mysql","FEATURE_DSN_ENV=BENCH_MYSQL_DSN","FEATURE_TEST=coverage_generated_model_connection"]}]},
     {"id": "rust-integration-coverage-generated-model-connection-postgres", "kind": "feature", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/src/integration.rs", "id": "coverage_generated_model_connection", "command": ["make","-s","-C","${ORM_CHECKOUT}","feature-rust-database","FEATURE_CRATE=packages/rust/tests","FEATURE_CARGO_TARGET=--bin integration","FEATURE_DATABASE=postgres","FEATURE_DSN_ENV=BENCH_POSTGRES_DSN","FEATURE_TEST=coverage_generated_model_connection"]}]},
@@ -1182,7 +1138,6 @@
     {"id": "rust-integration-coverage-transactions-coverage-transaction-savepoint-postgres", "kind": "feature", "requirements": ["INT-45", "INT-46", "PLN-17"], "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/integration/coverage_transactions.rs", "id": "coverage_transactions::coverage_transaction_savepoint", "command": ["make","-s","-C","${ORM_CHECKOUT}","feature-rust-database","FEATURE_CRATE=packages/rust/tests","FEATURE_CARGO_TARGET=--test integration","FEATURE_DATABASE=postgres","FEATURE_DSN_ENV=BENCH_POSTGRES_DSN","FEATURE_TEST=coverage_transactions::coverage_transaction_savepoint"]}]},
     {"id": "rust-integration-coverage-transactions-coverage-transaction-savepoint-sqlite", "kind": "feature", "requirements": ["INT-45", "INT-46", "PLN-17"], "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/integration/coverage_transactions.rs", "id": "coverage_transactions::coverage_transaction_savepoint", "command": ["make","-s","-C","${ORM_CHECKOUT}","feature-rust-database","FEATURE_CRATE=packages/rust/tests","FEATURE_CARGO_TARGET=--test integration","FEATURE_DATABASE=sqlite","FEATURE_DSN_ENV=BENCH_SQLITE_DSN","FEATURE_TEST=coverage_transactions::coverage_transaction_savepoint"]}]},
     {"id": "rust-integration-result-chains-generated-model-result-chains-preserve-assigned-values", "kind": "feature", "bindings": [{"implementation": "rust", "test": "packages/rust/tests/tests/integration/result_chains.rs", "id": "result_chains::generated_model_result_chains_preserve_assigned_values", "command": ["make","-s","-C","${ORM_CHECKOUT}","feature-rust-unit","FEATURE_CRATE=packages/rust/tests","FEATURE_CARGO_TARGET=--test integration"]}]},
-    {"id": "rust-benchmark-native-insert-email-is-an-aes-hex-envelope", "kind": "feature", "bindings": [{"implementation": "rust", "test": "benchmarks/rust/src/native.rs", "id": "tests::insert_email_is_an_aes_hex_envelope", "command": ["make","-s","-C","${ORM_CHECKOUT}","feature-rust-unit","FEATURE_CRATE=benchmarks/rust","FEATURE_CARGO_TARGET=--bin native"]}]},
     {"id": "rust-plan-cache-in-list-keys-bounded", "kind": "feature", "requirements": ["CPX-4"], "bindings": [{"implementation": "rust", "test": "packages/rust/orm/src/request.rs", "id": "request::plan_cache_tests::in_list_keys_are_bounded_by_bucket"}]},
     {
       "id": "py-codec-vector", "kind": "feature", "requirements": ["COD-34"],
@@ -1199,10 +1154,6 @@
     {
       "id": "py-connection-utc", "kind": "feature", "requirements": ["DSL-141", "DIA-57", "CFG-2", "CFG-7"],
       "bindings": [{ "implementation": "python", "test": "packages/python/tests/connection_utc.py", "id": "test_connections_use_utc" }]
-    },
-    {
-      "id": "py-coverage-case-test", "kind": "feature",
-      "bindings": [{ "implementation": "python", "test": "packages/python/tests/coverage_case_test.py", "id": "test_runs_requested_cases_in_order" }]
     },
     {
       "id": "py-dbspec-apply", "kind": "feature",
@@ -1261,16 +1212,8 @@
       "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_dbspec_analyze.py", "id": "test_header_only" }]
     },
     {
-      "id": "py-test-dbspec-cases-reader", "kind": "feature",
-      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_dbspec_cases_reader.py", "id": "test_rejects_missing_and_unknown_fields" }]
-    },
-    {
       "id": "py-test-dbspec-render-dialect", "kind": "feature",
       "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_dbspec_render_dialect.py", "id": "test_unknown_dialect_is_a_type_error" }]
-    },
-    {
-      "id": "py-test-dbspec-syntax-file", "kind": "feature",
-      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_dbspec_syntax_file.py", "id": "test_the_file_holds_a_case_for_every_input" }]
     },
     {
       "id": "py-test-decimal-model-sqlite-ddl", "kind": "feature", "requirements": ["DIA-25"],
@@ -1299,10 +1242,6 @@
     {
       "id": "py-test-introspect-messages", "kind": "feature",
       "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_introspect_messages.py", "id": "test_a_column_without_check_is_quoted_as_the_empty_string" }]
-    },
-    {
-      "id": "py-test-key-prefix", "kind": "feature",
-      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_key_prefix.py", "id": "test_key_prefix_names_resolve_without_a_scan" }]
     },
     {
       "id": "py-test-load-set", "kind": "feature", "requirements": ["SCH-12"],
@@ -1421,10 +1360,6 @@
       "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_terminal_by.py", "id": "test_terminal_by_after_a_condition_counts_the_joined_rows" }]
     },
     {
-      "id": "py-test-testcase", "kind": "feature",
-      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_testcase.py", "id": "test_go_duration_form" }]
-    },
-    {
       "id": "py-test-utils-statements", "kind": "feature",
       "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_utils_statements.py", "id": "test_advisory_lock_statement_uses_numbered_markers" }]
     },
@@ -1439,14 +1374,6 @@
     {
       "id": "py-result-python", "kind": "feature",
       "bindings": [{ "implementation": "python", "test": "packages/python/tests/conformance_result.py", "id": "test_encodes_the_go_layout" }]
-    },
-    {
-      "id": "py-test-python-extractor", "kind": "feature",
-      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_python_extractor.py", "id": "test_public_names_match_the_symbol_file" }]
-    },
-    {
-      "id": "py-test-python-natives", "kind": "feature",
-      "bindings": [{ "implementation": "python", "test": "packages/python/tests/test_python_natives.py", "id": "test_every_entity_rule_names_a_python_method_of_the_snapshot" }]
     },
     {
       "id": "py-ir-answers", "kind": "feature",
@@ -1629,13 +1556,7 @@
     {"id": "php-internal-dbspec-rules-rule", "kind": "feature", "requirements": ["DBS-2", "DBS-3", "DBS-34", "DBS-46", "DBS-131", "DBS-154", "DBS-156", "DBS-157", "DBS-158", "DBS-159", "DBS-161", "DBS-162", "DBS-163", "DBS-164", "DBS-165", "DBS-166", "DBS-167", "DBS-168", "DBS-169", "DBS-171"], "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecRulesTest.php", "id": "DbspecRulesTest::test_rule"}]},
     {"id": "php-internal-dbspec-rules-limit", "kind": "feature", "requirements": ["DBS-144", "DBS-151", "DBS-170"], "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecRulesTest.php", "id": "DbspecRulesTest::test_limit"}]},
     {"id": "php-internal-dbspec-stress-stress", "kind": "feature", "requirements": ["DBS-123"], "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecStressTest.php", "id": "DbspecStressTest::test_stress"}]},
-    {"id": "php-internal-dbspec-unicode-every-code-point", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecUnicodeTest.php", "id": "DbspecUnicodeTest::test_every_code_point"}]},
-    {"id": "php-internal-dbspec-graph-document", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecGraphTest.php", "id": "DbspecGraphTest::test_document"}]},
-    {"id": "php-internal-dbspec-graph-list", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecGraphTest.php", "id": "DbspecGraphTest::test_list"}]},
-    {"id": "php-internal-dbspec-graph-first-element", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecGraphTest.php", "id": "DbspecGraphTest::test_first_element"}]},
-    {"id": "php-internal-dbspec-graph-valid", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecGraphTest.php", "id": "DbspecGraphTest::test_valid"}]},
     {"id": "php-internal-dbspec-behaviour-case", "kind": "feature", "requirements": ["DBS-2", "DBS-99", "DBS-171"], "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecBehaviourTest.php", "id": "DbspecBehaviourTest::test_case"}]},
-    {"id": "php-internal-dbspec-behaviour-records-are-cases", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecBehaviourTest.php", "id": "DbspecBehaviourTest::test_records_are_cases"}]},
     {"id": "php-internal-dbspec-show-create-introspect", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/DbspecShowCreateIntrospectTest.php", "id": "DbspecShowCreateIntrospectTest::test_introspect"}]},
     {"id": "php-internal-group-rows-owner", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/GroupRowsTest.php", "id": "GroupRowsTest::test_owner"}]},
     {"id": "php-internal-ir-answers-ir-answer", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/IrAnswersTest.php", "id": "IrAnswersTest::test_ir_answer"}]},
@@ -1672,8 +1593,6 @@
     {"id": "php-internal-orm-gen-gen-is-the-only-command", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/OrmGenTest.php", "id": "OrmGenTest::test_gen_is_the_only_command"}]},
     {"id": "php-internal-orm-gen-the-bin-composer-installs-loads-the-autoloader", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/OrmGenTest.php", "id": "OrmGenTest::test_the_bin_Composer_installs_loads_the_autoloader"}]},
     {"id": "php-internal-orm-gen-the-bin-outside-composer-names-the-missing-autoloader", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/OrmGenTest.php", "id": "OrmGenTest::test_the_bin_outside_Composer_names_the_missing_autoloader"}]},
-    {"id": "php-internal-perf-extensions-refused", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/PerfExtensionsTest.php", "id": "PerfExtensionsTest::test_refused"}]},
-    {"id": "php-internal-perf-extensions-this-php", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/PerfExtensionsTest.php", "id": "PerfExtensionsTest::test_this_PHP"}]},
     {"id": "php-internal-relation-keys-relation-keys", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/RelationKeysTest.php", "id": "RelationKeysTest::test_relation_keys"}]},
     {"id": "php-internal-request-hook-request-hook", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/RequestHookTest.php", "id": "RequestHookTest::test_request_hook"}]},
     {"id": "php-internal-runtime-model-entities-in-document-order", "kind": "feature", "requirements": ["DBS-111"], "bindings": [{"implementation": "php", "test": "packages/php/tests/RuntimeModelTest.php", "id": "RuntimeModelTest::test_entities_in_document_order"}]},
@@ -1706,9 +1625,6 @@
     {"id": "php-internal-coverage-audit-triggers-audit-history", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/CoverageAuditTriggersTest.php", "id": "CoverageAuditTriggersTest::test_audit_history"}]},
     {"id": "php-internal-coverage-audit-triggers-audit-transaction-entry-points", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/CoverageAuditTriggersTest.php", "id": "CoverageAuditTriggersTest::test_audit_transaction_entry_points"}]},
     {"id": "php-internal-coverage-audit-triggers-soft-delete-restore", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/CoverageAuditTriggersTest.php", "id": "CoverageAuditTriggersTest::test_soft_delete_restore"}]},
-    {"id": "php-internal-coverage-cases-reports-error-codes-and-restore-failures", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/CoverageCasesTest.php", "id": "CoverageCasesTest::test_reports_error_codes_and_restore_failures"}]},
-    {"id": "php-internal-coverage-cases-requires-the-selected-database", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/CoverageCasesTest.php", "id": "CoverageCasesTest::test_requires_the_selected_database"}]},
-    {"id": "php-internal-coverage-cases-runs-a-child-process", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/CoverageCasesTest.php", "id": "CoverageCasesTest::test_runs_a_child_process"}]},
     {"id": "php-internal-coverage-composite-keys-composite-key-rows", "kind": "feature", "requirements": ["PRT-12"], "bindings": [{"implementation": "php", "test": "packages/php/tests/CoverageCompositeKeysTest.php", "id": "CoverageCompositeKeysTest::test_composite_key_rows"}]},
     {"id": "php-internal-coverage-constraints-and-relations-constraint-errors", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/CoverageConstraintsAndRelationsTest.php", "id": "CoverageConstraintsAndRelationsTest::test_constraint_errors"}]},
     {"id": "php-internal-coverage-dsn-dsn-connection", "kind": "feature", "requirements": ["CFG-1"], "bindings": [{"implementation": "php", "test": "packages/php/tests/CoverageDsnTest.php", "id": "CoverageDsnTest::test_dsn_connection"}]},
@@ -1771,7 +1687,6 @@
     {"id": "php-internal-mysql-tls-parameters", "kind": "feature", "requirements": ["CFG-17", "CFG-18", "CFG-19"], "bindings": [{"implementation": "php", "test": "packages/php/tests/MysqlTlsTest.php", "id": "MysqlTlsTest::test_parameters"}]},
     {"id": "php-internal-mysql-tls-connections", "kind": "feature", "requirements": ["CFG-16"], "bindings": [{"implementation": "php", "test": "packages/php/tests/MysqlTlsTest.php", "id": "MysqlTlsTest::test_connections"}]},
     {"id": "php-internal-mysql-tls-session-sql-mode", "kind": "feature", "requirements": ["CFG-7"], "bindings": [{"implementation": "php", "test": "packages/php/tests/MysqlTlsTest.php", "id": "MysqlTlsTest::test_session_sql_mode"}]},
-    {"id": "php-internal-perf-gate-perf-gate", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/PerfGateTest.php", "id": "PerfGateTest::test_perf_gate"}]},
     {"id": "php-internal-rollback-rollback-failed", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/RollbackTest.php", "id": "RollbackTest::test_rollback_failed"}]},
     {"id": "php-internal-rollback-savepoint-rollback-failed", "kind": "feature", "bindings": [{"implementation": "php", "test": "packages/php/tests/RollbackTest.php", "id": "RollbackTest::test_savepoint_rollback_failed"}]},
     {"id": "php-internal-rollback-rollback-fault", "kind": "feature", "requirements": ["PRT-46", "PRT-56", "PRT-61"], "bindings": [{"implementation": "php", "test": "packages/php/tests/RollbackTest.php", "id": "RollbackTest::test_rollback_fault"}]},
