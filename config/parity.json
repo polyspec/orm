@@ -2385,6 +2385,7 @@
     {
       "id": "aes-utils-status",
       "kind": "api",
+      "requirements": ["INT-60"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.AESUtils.Status" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\AesUtils::status" },
@@ -2396,6 +2397,7 @@
     {
       "id": "aes-utils-rotate",
       "kind": "api",
+      "requirements": ["INT-60"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.AESUtils.Rotate" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\AesUtils::rotate" },
@@ -2407,9 +2409,11 @@
     {
       "id": "codec-blind-index",
       "kind": "api",
+      "requirements": ["COD-4"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.BlindIndex" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Codec::blindIndex" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Codec::blindIndex" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!blindIndex:function(1)" },
         { "implementation": "python", "symbol": "orm.codec.blind_index" },
         { "implementation": "rust", "symbol": "polyspec_orm::codec::blind_index" }
@@ -2418,9 +2422,11 @@
     {
       "id": "codec-host-encode",
       "kind": "api",
+      "requirements": ["COD-1"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.HostEncode" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Codec::hostEncode" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Codec::hostEncode" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!hostEncode:function(1)" },
         { "implementation": "python", "symbol": "orm.codec.host_encode" },
         { "implementation": "rust", "symbol": "polyspec_orm::codec::host_encode" }
@@ -2429,9 +2435,11 @@
     {
       "id": "codec-host-decode",
       "kind": "api",
+      "requirements": ["COD-39"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.HostDecode" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Codec::hostDecode" },
+        { "implementation": "php-extension", "symbol": "Polyspec\\Orm\\Codec::hostDecode" },
         { "implementation": "typescript", "symbol": "@polyspec/orm!hostDecode:function(1)" },
         { "implementation": "python", "symbol": "orm.codec.host_decode" },
         { "implementation": "rust", "symbol": "polyspec_orm::codec::host_decode" }
@@ -2440,6 +2448,7 @@
     {
       "id": "collection",
       "kind": "api",
+      "requirements": ["INT-62"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Collection" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Collection" },
@@ -2462,6 +2471,7 @@
     {
       "id": "collection-first",
       "kind": "api",
+      "requirements": ["INT-62"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Collection.First" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Collection::first" },
@@ -2495,6 +2505,7 @@
     {
       "id": "collection-delete",
       "kind": "api",
+      "requirements": ["INT-37"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Collection.Delete" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Collection::delete" },
@@ -2517,6 +2528,7 @@
     {
       "id": "client-query-connect",
       "kind": "api",
+      "requirements": ["INT-17"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Core.Connect" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Model::connect" },
@@ -2539,6 +2551,7 @@
     {
       "id": "client-db-close",
       "kind": "api",
+      "requirements": ["INT-67"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.DB.Close" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Db::close" },
@@ -2550,6 +2563,7 @@
     {
       "id": "client-db-connect",
       "kind": "api",
+      "requirements": ["INT-12", "INT-13", "INT-14", "INT-15"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Connect" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Orm::connect" },
@@ -2583,6 +2597,7 @@
     {
       "id": "client-db-stats-method",
       "kind": "api",
+      "requirements": ["INT-61"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.DB.Stats" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Db::stats" },
@@ -2638,6 +2653,7 @@
     {
       "id": "client-privilege-utils-grant-table",
       "kind": "api",
+      "requirements": ["INT-59"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.PrivilegeUtils.GrantTable" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\PrivilegeUtils::grantTable" },
@@ -2649,6 +2665,7 @@
     {
       "id": "client-privilege-utils-inspect-table",
       "kind": "api",
+      "requirements": ["INT-59"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.PrivilegeUtils.InspectTable" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\PrivilegeUtils::inspectTable" },
@@ -2660,6 +2677,7 @@
     {
       "id": "client-privilege-utils-revoke-table",
       "kind": "api",
+      "requirements": ["INT-59"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.PrivilegeUtils.RevokeTable" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\PrivilegeUtils::revokeTable" },
@@ -2671,6 +2689,7 @@
     {
       "id": "client-schema-utils-add-tables-and-columns",
       "kind": "api",
+      "requirements": ["INT-56"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.SchemaUtils.AddTablesAndColumns" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\SchemaUtils::addTablesAndColumns" },
@@ -2682,6 +2701,7 @@
     {
       "id": "client-schema-utils-empty",
       "kind": "api",
+      "requirements": ["INT-58"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.SchemaUtils.Empty" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\SchemaUtils::empty" },
@@ -2693,6 +2713,7 @@
     {
       "id": "client-schema-utils-exists",
       "kind": "api",
+      "requirements": ["INT-57"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.SchemaUtils.Exists" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\SchemaUtils::exists" },
@@ -2704,6 +2725,7 @@
     {
       "id": "client-schema-utils-install",
       "kind": "api",
+      "requirements": ["INT-55"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.SchemaUtils.Install" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\SchemaUtils::install" },
@@ -2715,6 +2737,7 @@
     {
       "id": "client-schema-utils-installed",
       "kind": "api",
+      "requirements": ["INT-57"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.SchemaUtils.Installed" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\SchemaUtils::installed" },
@@ -2726,6 +2749,7 @@
     {
       "id": "client-schema-utils-register",
       "kind": "api",
+      "requirements": ["INT-54"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.SchemaUtils.Register" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\SchemaUtils::register" },
@@ -2737,6 +2761,7 @@
     {
       "id": "client-utils-local",
       "kind": "api",
+      "requirements": ["INT-51"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Utils.Local" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Utils::local" },
@@ -2748,6 +2773,7 @@
     {
       "id": "client-utils-lock",
       "kind": "api",
+      "requirements": ["INT-50"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Utils.Lock" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Utils::lock" },
@@ -2759,6 +2785,7 @@
     {
       "id": "client-utils-privileges",
       "kind": "api",
+      "requirements": ["INT-59"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Utils.Privileges" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Utils::privileges" },
@@ -2770,6 +2797,7 @@
     {
       "id": "client-utils-schema",
       "kind": "api",
+      "requirements": ["INT-54", "INT-55", "INT-56", "INT-57", "INT-58"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Utils.Schema" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Utils::schema" },
@@ -2781,6 +2809,7 @@
     {
       "id": "client-utils-set-local",
       "kind": "api",
+      "requirements": ["INT-51"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Utils.SetLocal" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Utils::setLocal" },
@@ -2792,6 +2821,7 @@
     {
       "id": "client-utils-stats",
       "kind": "api",
+      "requirements": ["INT-61"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Utils.Stats" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Utils::stats" },
@@ -2814,6 +2844,7 @@
     {
       "id": "client-db",
       "kind": "api",
+      "requirements": ["INT-12", "INT-13", "INT-14", "INT-15"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.DB" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Db" },
@@ -2836,6 +2867,7 @@
     {
       "id": "client-page",
       "kind": "api",
+      "requirements": ["INT-64"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Page" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Page" },
@@ -2902,6 +2934,7 @@
     {
       "id": "client-styled-value",
       "kind": "api",
+      "requirements": ["INT-7", "COD-17", "COD-18", "COD-19", "COD-20", "COD-24", "COD-25"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.StyledValue" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\StyledValue" },
@@ -2924,6 +2957,7 @@
     {
       "id": "codec-styled-value",
       "kind": "api",
+      "requirements": ["INT-7", "COD-17", "COD-18", "COD-19", "COD-20", "COD-24", "COD-25"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.StyledValue" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\StyledValue" },
@@ -2935,6 +2969,7 @@
     {
       "id": "codec-styled-value-sql-null",
       "kind": "api",
+      "requirements": ["COD-17", "COD-18", "COD-19", "COD-20"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.SqlNull" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\StyledValue::sqlNull" },
@@ -2946,6 +2981,7 @@
     {
       "id": "codec-styled-value-value",
       "kind": "api",
+      "requirements": ["COD-17", "COD-18", "COD-19", "COD-20"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Value" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\StyledValue::value" },
@@ -2957,6 +2993,7 @@
     {
       "id": "collection-page",
       "kind": "api",
+      "requirements": ["INT-64"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Page" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Page" },
@@ -2979,6 +3016,7 @@
     {
       "id": "collection-group-rows",
       "kind": "api",
+      "requirements": ["INT-31"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.GroupRows" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\GroupRows" },
@@ -3034,6 +3072,7 @@
     {
       "id": "collection-length",
       "kind": "api",
+      "requirements": ["INT-62"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Collection.Len" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Collection::count" },
@@ -3045,6 +3084,7 @@
     {
       "id": "collection-json-text",
       "kind": "api",
+      "requirements": ["COD-16"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Collection.MarshalJSON" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Collection::toJson" },
