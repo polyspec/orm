@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: db1c6de12ee239a07c65f18720e49e5a57e22db43e83424131a3c35aeffb4338 -->
+<!-- source-sha256: 9eb06c3da63bf2755c8b34585950beddaf8e260ae094953475ac8d8a23f15699 -->
 # 변경 이력
 
 ## Unreleased
+- orm-gen이 scan한 model 호출은 그 class를 import한 생성 model의 set에 속한다(DSL-151). 다섯 generator 모두 그렇고, 다른 set의 같은 이름 class는 다른 class다. red: TypeScript, Python, Rust scan이 다른 set의 `Author.getGhost()`를 limepie의 requests set처럼 "no aliasGhost, newGhost or addColumn call attaches it"로 거부했다; Go와 PHP는 이미 import를 풀었고, 그 새 case는 검사를 깨면 실패한다(T226).
 - INT-67이 query, transaction, connection handle을 버리면 각 언어의 폐기 형식으로 그 statement가 취소되고 connection이 반환된다고 규정한다 (KSTD-2-11-4).
 - INT-66이 orm-gen이 생성한 code가 그 언어의 표준 compiler, formatter, linter를 생성된 text 안의 억제 없이 통과한다고 규정한다 (KSTD-2-11-3).
 - INT-65가 모든 구현이 `errors.yaml`의 모든 code를 native 상수로 노출하고 그 catalog가 `errors.yaml`과 같다고 규정한다 (KSTD-2-11-1).

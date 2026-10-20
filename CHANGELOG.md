@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- A model call that orm-gen scans belongs to the set whose generated models its class is imported from (DSL-151), in all five generators; a class of the same name from another set is another class. Red: the TypeScript, Python and Rust scans refused `Author.getGhost()` of another set with "no aliasGhost, newGhost or addColumn call attaches it", as limepie's requests set did; Go and PHP already resolved the import, and their new cases fail when the check is broken (T226).
 - INT-67 rules that abandoning a query, transaction or connection handle cancels its statement and releases its connection, by the disposal form of each language (KSTD-2-11-4).
 - INT-66 rules that the code orm-gen generates passes the standard compiler, formatter and linter of its language with no suppression in the generated text (KSTD-2-11-3).
 - INT-65 rules that every implementation exposes every code of `errors.yaml` as a native constant and that its catalog equals `errors.yaml` (KSTD-2-11-1).
