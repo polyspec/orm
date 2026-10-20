@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: f0adcaa6bc835ca214c334ca3c9cdfd96f4b765d92bc89173d06965f4721d613 -->
+<!-- source-sha256: 6b26b604ab6adb036f629aba9817f6964329db9af6b0c9574c55cd09218589eb -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -74,7 +74,7 @@
 | KSTD-5-7-4 | 나머지 Go code가 K334가 찾는 모든 오류를 처리하고 deadcode가 도달할 수 없는 함수를 찾지 않는다 (KSTD-5-7 후속). Cause: kit K334는 golangci-lint가 버린 오류(errcheck check-blank, check-type-assertions), 오류 chain을 잃는 비교나 wrap(errorlint), nil로 반환한 오류(nilerr), linter와 이유 없는 nolint(nolintlint)를 보고하게 한다; packages/go/bench, generator, internal, testcase와 tests, bench에서 약 40개를 찾는다 | packages/go, tests, examples | `make lint-go` | [o] |
 | KSTD-5-7-5 | dbspec Apply가 callback의 중단과 ApplyError를 typed result로 보고하므로 호출자가 오류를 비교하지 않고 판정한다 (KSTD-5-7-4 후속). Cause: packages/go/internal/dbspec/apply/main.go:100과 :113이 오류를 ==로 비교한다(errorlint). Apply가 errStop을 cleanup 실패와 join하고 ApplyError를 오류로만 돌려주므로, 호출자 쪽에서 결과가 같은 수정은 없다 | packages/go/engine/dbspec, packages/go/internal/dbspec/apply, their tests | `go test -count=1 -run Apply ./packages/go/engine/dbspec` | [o] |
 | KSTD-5-7-6 | build tag 뒤의 Go 파일이 그 tag로 build되고 Go lint를 통과한다 (KSTD-5-7 후속). Cause: kit K406이 module의 모든 build tag를 lint하자 tag bench, decimalphysical, featurecoverage, markdown, ormtest, perfgate, physical에서 finding 81개가 나온다; 그중 engine/dbspec/stress_test.go(tag bench)는 KSTD-5-7-3이 기본 build에서 쓰이지 않는다며 startCaseClock을 지워 더는 build되지 않는다 | the tagged Go files of packages/go and tests | `make lint-go` | [o] |
-| KSTD-5-7-7 | command의 Go build 출력은 추적하지 않는다 (KSTD-5-7 후속). Cause: 0b3426809가 go build가 command 옆에 쓰는 Mach-O binary packages/go/cmd/orm-gen/orm-gen을 commit해, feature-unit-check의 추적 파일 test가 실패하고 생성 파일이 git에 있다 (P34) | .gitignore, packages/go/cmd/orm-gen | `node --test tests/testcase.mts` | [~] |
+| KSTD-5-7-7 | command의 Go build 출력은 추적하지 않는다 (KSTD-5-7 후속). Cause: 0b3426809가 go build가 command 옆에 쓰는 Mach-O binary packages/go/cmd/orm-gen/orm-gen을 commit해, feature-unit-check의 추적 파일 test가 실패하고 생성 파일이 git에 있다 (P34) | .gitignore, packages/go/cmd/orm-gen | `node --test --test-name-pattern='every tracked file selects' tests/testcase.mts` | [~] |
 | KSTD-5-8 | lint-python이 통과한다 (KSTD-5 후속). Cause: ruff format --check가 repository의 Python에서 실패한다 | the Python of the repository | `make lint-python` | [o] |
 | KSTD-5-9 | lint-php가 통과한다 (KSTD-5 후속). Cause: 루트, packages/php, packages/php-ext의 phpcs와 phpstan이 실패한다 | the PHP of the repository | `make lint-php` | [ ] |
 | KSTD-5-9-1 | 손으로 쓴 PHP가 phpcs 줄 길이를 지킨다 (KSTD-5-9 후속). Cause: phpcs가 손으로 쓴 파일에서 120자를 넘는 줄 2657개를 보고한다 | packages/php | `make lint-php` | [~] |
@@ -95,3 +95,4 @@
 | KSTD-7-6 | hot-path 성능 기준이 모든 구현에서 각자 기록된 기준값으로 성립하고 performance_gate가 implemented다 (KSTD-7 후속). Cause: PHP만 기록된 기준값으로 재고, Rust bench에는 기준값이 없으며 TypeScript 기준은 만들어지지 않았다; S6와 S10은 partial feature를 받지 않고, kit K315는 contracts/features.json의 partial과 unsupported를 실패시킨다 | the bench of every implementation, contracts/features.json | `make feature-unit-check` | [ ] |
 | KSTD-7-7 | catalog connection은 하나의 중립 규칙으로 모든 구현에 구현되고 catalog_connection이 implemented다 (KSTD-7 후속). Cause: polyspec-orm-build만 이를 제공한다; S6와 S10은 partial feature를 받지 않고, kit K315는 contracts/features.json의 partial과 unsupported를 실패시킨다 | docs/spec, every implementation, contracts/features.json | `make feature-unit-check` | [ ] |
 | KSTD-7-8 | pool 설정 poolSize, poolIdleSize, poolLifetimeMs가 다른 모든 client처럼 PHP client와 extension에서도 성립한다 (KSTD-7, CFG-4, CFG-5 후속). Cause: PHP client는 이를 CONFIG로 거부하고 pooling을 PgBouncer나 ProxySQL에 맡기는데, S6은 그런 거부를 허용하지 않는다 | packages/php, packages/php-ext, docs/spec/config.md | `make feature-unit-check` | [ ] |
+| KSTD-7-9 | main에서 make feature-unit-check가 통과한다 (KSTD-7 후속). Cause: PHP extension stub이 check의 helper input으로 쓰여 tests/testcase.mts의 case "a command without inputs or a helper used as an input fails the declaration"가 실패한다 | contracts/check-inputs.json, contracts/features.json | `make feature-unit-check` | [ ] |
