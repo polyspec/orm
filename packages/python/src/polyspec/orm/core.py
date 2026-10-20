@@ -322,6 +322,13 @@ class Core:
                 raise OrmError(
                     codes.CONFIG, f"null is not accepted by the {key.op} operator"
                 )
+            # DSL-49: null is accepted only for a nullable column; a missing column is refused the same way.
+            field = field_of(self.ent.entity, key.column)
+            if field is None or not field.nullable:
+                raise OrmError(
+                    codes.CONFIG,
+                    f"{self.ent.entity.name}.{key.column} is not nullable",
+                )
             return p(kind="null", op="is_not_null" if key.op == "ne" else "is_null"), 0
         if isinstance(value, ColumnFunction):
             if not single:

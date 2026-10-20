@@ -65,6 +65,18 @@ class ChainValuesTest(unittest.TestCase):
             self.code(lambda: self.author().gt_read_count(None).get_count()), "CONFIG"
         )
 
+    # Requirements: DSL-49.
+    def test_null_is_refused_for_a_non_null_column_without_or_with_eq_and_ne(self):
+        self.assertEqual(
+            self.code(lambda: self.author().service_seq(None).get_count()), "CONFIG"
+        )
+        self.assertEqual(
+            self.code(lambda: self.author().eq_service_seq(None).get_count()), "CONFIG"
+        )
+        self.assertEqual(
+            self.code(lambda: self.author().ne_service_seq(None).get_count()), "CONFIG"
+        )
+
 
 if __name__ == "__main__":
     testcase.main()
