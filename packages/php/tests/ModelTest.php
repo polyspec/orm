@@ -399,6 +399,11 @@ final class ModelTest extends TestCase
     }
 
     private static function case_transactions(Db $db, string $dsn): void {
+        // A transaction runs only through transaction(): Db has no public method that begins, commits or rolls one back.
+        // The test of DSL-124 (docs/spec/dsl.md "Transactions").
+        $public = array_map(static fn(ReflectionMethod $m): string => strtolower($m->getName()), (new ReflectionClass(Db::class))->getMethods(ReflectionMethod::IS_PUBLIC));
+        self::check(in_array('transaction', $public, true), 'Db has transaction()');
+        self::check(array_values(array_filter($public, static fn(string $n): bool => preg_match('/^(begin|commit|rollback)/', $n) === 1)) === [], 'no public begin, commit or rollback');
         $boom = new RuntimeException('boom');
         try {
             $db->transaction(function () use ($boom): void {
