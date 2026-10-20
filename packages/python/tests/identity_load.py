@@ -14,11 +14,13 @@ import time
 import unittest
 import uuid
 from pathlib import Path
-from urllib.parse import unquote, urlsplit, urlunsplit
+from urllib.parse import urlsplit
 from . import testcase
 
 import psycopg
-import pymysql
+
+from .runner_connect import mysql_connect
+from .server_database import server_database
 
 ROOT = Path(__file__).resolve().parents[3]
 PACKAGE = Path(__file__).resolve().parents[1]
@@ -130,23 +132,6 @@ def required_dsn(dialect: str) -> str:
     return value
 
 
-def with_database(dsn: str, name: str) -> str:
-    url = urlsplit(dsn)
-    return urlunsplit((url.scheme, url.netloc, "/" + name, url.query, url.fragment))
-
-
-def mysql_connection(dsn: str, database: str | None = None):
-    url = urlsplit(dsn)
-    return pymysql.connect(
-        host=url.hostname,
-        port=url.port,
-        user=unquote(url.username or ""),
-        password=unquote(url.password or ""),
-        database=database,
-        autocommit=True,
-    )
-
-
 @contextlib.contextmanager
 def case_database(dialect: str):
     """Creates an empty case database, gives its DSN, and drops it when finished."""
@@ -160,24 +145,8 @@ def case_database(dialect: str):
         return
     dsn = required_dsn(dialect)
     name = f"orm_t120_{os.getpid()}_{uuid.uuid4().hex[:8]}"
-    if dialect == "mysql":
-        admin = mysql_connection(dsn)
-        with admin.cursor() as cursor:
-            cursor.execute(f"CREATE DATABASE `{name}`")
-    else:
-        admin = psycopg.connect(dsn, autocommit=True)
-        admin.execute(f'CREATE DATABASE "{name}"')
-    try:
-        yield with_database(dsn, name)
-    finally:
-        try:
-            if dialect == "mysql":
-                with admin.cursor() as cursor:
-                    cursor.execute(f"DROP DATABASE `{name}`")
-            else:
-                admin.execute(f'DROP DATABASE "{name}" WITH (FORCE)')
-        finally:
-            admin.close()
+    with server_database(dialect, dsn, name) as case_dsn:
+        yield case_dsn
 
 
 def read_rows(dialect: str, dsn: str) -> list:
@@ -190,7 +159,7 @@ def read_rows(dialect: str, dsn: str) -> list:
         finally:
             connection.close()
     elif dialect == "mysql":
-        connection = mysql_connection(dsn, urlsplit(dsn).path.lstrip("/"))
+        connection = mysql_connect(dsn, urlsplit(dsn).path.lstrip("/"))
         try:
             with connection.cursor() as cursor:
                 cursor.execute(sql)

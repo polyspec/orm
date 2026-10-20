@@ -10,16 +10,16 @@ import stat
 import tempfile
 import time
 import unittest
-from urllib.parse import unquote, urlsplit
+from urllib.parse import urlsplit
 
 import psycopg
-import pymysql
 
 from polyspec.orm.errors import OrmError
 from . import testcase
 from .case_database import case_database
 from .connection_config import probe_models
-from .statement_fault import with_database
+from .runner_connect import mysql_connect
+from .server_database import with_database
 
 TEMP = {}
 
@@ -31,18 +31,6 @@ def setUpModule():
 
 def tearDownModule():
     TEMP["dir"].cleanup()
-
-
-def mysql_connection(dsn: str):
-    url = urlsplit(dsn)
-    return pymysql.connect(
-        host=url.hostname,
-        port=url.port,
-        user=unquote(url.username or ""),
-        password=unquote(url.password or ""),
-        database=url.path.lstrip("/") or None,
-        autocommit=True,
-    )
 
 
 def await_replica(dialect: str, primary: str, replica: str) -> None:
@@ -61,12 +49,12 @@ def await_replica(dialect: str, primary: str, replica: str) -> None:
                     f"synchronous_commit of the barrier transaction is {mode}"
                 )
         return
-    source = mysql_connection(primary)
+    source = mysql_connect(primary, urlsplit(primary).path.lstrip("/") or None)
     with source.cursor() as cursor:
         cursor.execute("SHOW BINARY LOG STATUS")
         file, position = cursor.fetchone()[:2]
     source.close()
-    target = mysql_connection(replica)
+    target = mysql_connect(replica, urlsplit(replica).path.lstrip("/") or None)
     with target.cursor() as cursor:
         cursor.execute("SELECT SOURCE_POS_WAIT(%s, %s, 60)", (file, int(position)))
         (waited,) = cursor.fetchone()

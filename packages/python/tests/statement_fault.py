@@ -11,12 +11,9 @@ import tempfile
 import unittest
 import uuid
 from pathlib import Path
-from urllib.parse import unquote, urlsplit, urlunsplit
 from . import testcase
 
-import psycopg
-import pymysql
-
+from .server_database import server_database
 from .test_sqlite import generate_document
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -72,22 +69,6 @@ def required_dsn(dialect: str) -> str:
     return value
 
 
-def with_database(dsn: str, name: str) -> str:
-    url = urlsplit(dsn)
-    return urlunsplit((url.scheme, url.netloc, "/" + name, url.query, url.fragment))
-
-
-def admin_mysql(dsn: str):
-    url = urlsplit(dsn)
-    return pymysql.connect(
-        host=url.hostname,
-        port=url.port,
-        user=unquote(url.username or ""),
-        password=unquote(url.password or ""),
-        autocommit=True,
-    )
-
-
 @contextlib.contextmanager
 def fresh_db(dialect: str):
     """Creates an empty database and gives a Db with the rollback probe schema installed. Drops that database when finished."""
@@ -103,28 +84,13 @@ def fresh_db(dialect: str):
         return
     dsn = required_dsn(dialect)
     name = f"orm_t78_{uuid.uuid4().hex[:12]}"
-    if dialect == "mysql":
-        admin = admin_mysql(dsn)
-        with admin.cursor() as cursor:
-            cursor.execute(f"CREATE DATABASE `{name}`")
-    else:
-        admin = psycopg.connect(dsn, autocommit=True)
-        admin.execute(f'CREATE DATABASE "{name}"')
-    try:
-        db = Db.connect_schema(with_database(dsn, name), models.SCHEMA)
+    with server_database(dialect, dsn, name) as case_dsn:
+        db = Db.connect_schema(case_dsn, models.SCHEMA)
         try:
             db.utils().schema().install(models.SCHEMA)
             yield db
         finally:
             db.close()
-    finally:
-        if dialect == "mysql":
-            with admin.cursor() as cursor:
-                cursor.execute(f"DROP DATABASE `{name}`")
-            admin.close()
-        else:
-            admin.execute(f'DROP DATABASE "{name}" WITH (FORCE)')
-            admin.close()
 
 
 class StatementFaultTest(unittest.TestCase):

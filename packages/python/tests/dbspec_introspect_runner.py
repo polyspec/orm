@@ -9,44 +9,18 @@ from urllib.parse import unquote, urlsplit
 
 
 import psycopg  # noqa: E402
-import pymysql  # noqa: E402
 import sqlite3  # noqa: E402
 
 from polyspec.orm.dbspec import emit_dbspec  # noqa: E402
 from polyspec.orm.dbspec.introspect import introspect_dbspec  # noqa: E402
-
-
-class Adapter:
-    """Connection used by introspect_dbspec: execute(sql, values) returns {'rows': [...]}."""
-
-    def __init__(self, connection):
-        self.connection = connection
-
-    def execute(self, sql, values=()):
-        cursor = self.connection.cursor()
-        try:
-            if values:
-                cursor.execute(sql, values)
-            else:
-                cursor.execute(sql)
-            rows = cursor.fetchall() if cursor.description else []
-        finally:
-            cursor.close()
-        return {"rows": [list(row) for row in rows]}
+from runner_connect import Adapter, mysql_connect  # noqa: E402
 
 
 def connect(dialect, uri):
     """Opens the URI as the dialect's driver connection. This is the compare URI format of packages/go/internal/dialects."""
     url = urlsplit(uri)
     if dialect == "mysql" and url.scheme == "mysql":
-        return pymysql.connect(
-            host=url.hostname,
-            port=url.port,
-            user=unquote(url.username or ""),
-            password=unquote(url.password or ""),
-            database=url.path[1:],
-            autocommit=True,
-        )
+        return mysql_connect(uri, url.path[1:])
     if dialect == "postgres" and url.scheme == "postgres":
         return psycopg.connect(uri, autocommit=True)
     if dialect == "sqlite" and uri.startswith("sqlite://"):

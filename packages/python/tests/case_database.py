@@ -5,9 +5,8 @@ import contextlib
 import os
 import uuid
 
-import psycopg
-
-from .statement_fault import admin_mysql, required_dsn, with_database
+from .server_database import server_database
+from .statement_fault import required_dsn
 
 
 @contextlib.contextmanager
@@ -19,19 +18,5 @@ def case_database(dialect: str, directory: str, prefix: str):
         return
     dsn = required_dsn(dialect)
     name = f"{prefix}_{uuid.uuid4().hex[:12]}"
-    if dialect == "mysql":
-        admin = admin_mysql(dsn)
-        with admin.cursor() as cursor:
-            cursor.execute(f"CREATE DATABASE `{name}`")
-    else:
-        admin = psycopg.connect(dsn, autocommit=True)
-        admin.execute(f'CREATE DATABASE "{name}"')
-    try:
-        yield with_database(dsn, name)
-    finally:
-        if dialect == "mysql":
-            with admin.cursor() as cursor:
-                cursor.execute(f"DROP DATABASE `{name}`")
-        else:
-            admin.execute(f'DROP DATABASE "{name}" WITH (FORCE)')
-        admin.close()
+    with server_database(dialect, dsn, name) as case_dsn:
+        yield case_dsn

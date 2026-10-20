@@ -11,17 +11,16 @@ import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
-from urllib.parse import unquote, urlsplit
 from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
 
 import psycopg  # noqa: E402
-import pymysql  # noqa: E402
 
 from polyspec.orm.dbspec import emit_dbspec, parse_dbspec  # noqa: E402
 from polyspec.orm.dbspec.introspect import introspect_dbspec  # noqa: E402
 from polyspec.orm.dbspec.render import render_dbspec  # noqa: E402
+from .runner_connect import Adapter, mysql_connect  # noqa: E402
 from .vector_case import VectorCase, vector_tests  # noqa: E402
 
 # Same connection rules as tests/dbspec/introspect (packages/ts/tests/dbspec-introspect.mjs).
@@ -30,37 +29,6 @@ CONNECTION_RULES = {
     "postgres": ["SET TimeZone = 'UTC'"],
     "sqlite": ["PRAGMA foreign_keys = ON"],
 }
-
-
-class Adapter:
-    """Connection used by introspect_dbspec: execute(sql, values) returns {'rows': [...]}."""
-
-    def __init__(self, connection):
-        self.connection = connection
-
-    def execute(self, sql, values=()):
-        cursor = self.connection.cursor()
-        try:
-            if values:
-                cursor.execute(sql, values)
-            else:
-                cursor.execute(sql)
-            rows = cursor.fetchall() if cursor.description else []
-        finally:
-            cursor.close()
-        return {"rows": [list(row) for row in rows]}
-
-
-def mysql_connect(dsn, database):
-    url = urlsplit(dsn)
-    return pymysql.connect(
-        host=url.hostname,
-        port=url.port,
-        user=unquote(url.username or ""),
-        password=unquote(url.password or ""),
-        database=database,
-        autocommit=True,
-    )
 
 
 @contextlib.contextmanager

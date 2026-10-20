@@ -12,12 +12,12 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 import psycopg
-import pymysql
 
 from polyspec.orm import OrmError, Schema, connect
 from polyspec.orm.dbspec import dbspec_manifest, parse_dbspec
 from . import testcase
 from .case_database import case_database
+from .runner_connect import mysql_connect
 from .vector_case import VectorCase, vector_tests
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -60,15 +60,7 @@ def native(dialect: str, dsn: str, sql: str) -> None:
             connection.close()
         return
     if dialect == "mysql":
-        url = urlsplit(dsn)
-        connection = pymysql.connect(
-            host=url.hostname,
-            port=url.port,
-            user=unquote(url.username or ""),
-            password=unquote(url.password or ""),
-            database=url.path[1:],
-            autocommit=True,
-        )
+        connection = mysql_connect(dsn, urlsplit(dsn).path[1:])
         try:
             with connection.cursor() as cursor:
                 cursor.execute(sql)

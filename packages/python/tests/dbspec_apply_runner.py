@@ -13,7 +13,6 @@ import sys
 from urllib.parse import unquote, urlsplit
 
 import psycopg
-import pymysql
 
 from polyspec.orm.dbspec.apply import (
     DbspecApplyError,
@@ -23,6 +22,7 @@ from polyspec.orm.dbspec.apply import (
 )
 from polyspec.orm.dbspec.plan import parse_plan
 from polyspec.orm.placeholders import for_mysql, for_postgres
+from runner_connect import mysql_connect
 
 # The statements every client runs on a new connection (packages/go/internal/dialects connectionRules).
 CONNECTION_RULES = {
@@ -65,14 +65,7 @@ def connect(dialect: str, uri: str):
     """Opens the URI as the driver connection of its dialect, in the compare URI form of packages/go/internal/dialects."""
     url = urlsplit(uri)
     if dialect == "mysql" and url.scheme == "mysql" and not url.query:
-        return pymysql.connect(
-            host=url.hostname,
-            port=url.port,
-            user=unquote(url.username or ""),
-            password=unquote(url.password or ""),
-            database=url.path[1:],
-            autocommit=True,
-        )
+        return mysql_connect(uri, url.path[1:])
     if dialect == "postgres" and url.scheme == "postgres":
         return psycopg.connect(uri, autocommit=True)
     if dialect == "sqlite" and url.scheme == "sqlite" and not url.query:
