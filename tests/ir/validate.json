@@ -77,6 +77,10 @@
     {"name": "pair-join-integers", "request": {"ir_version": 1, "n_params": 0, "kind": "all", "entity": "user", "joins": [{"rel": "writers", "kind": "inner", "left": "seq", "right": "user_seq", "query": {"entity": "author"}}]}, "valid": true},
     {"name": "pair-join-integer-varchar", "request": {"ir_version": 1, "n_params": 0, "kind": "all", "entity": "user", "joins": [{"rel": "writers", "kind": "inner", "left": "seq", "right": "name", "query": {"entity": "author"}}]}, "error": "OPERATOR_NOT_ALLOWED"},
     {"name": "pair-relation-integers", "request": {"ir_version": 1, "n_params": 0, "kind": "all", "entity": "user", "relations": [{"rel": "writers", "kind": "many", "keys": [{"left": "seq", "right": "user_seq"}], "query": {"entity": "author"}}]}, "valid": true},
+    {"name": "relation-keys-empty", "request": {"ir_version": 1, "n_params": 0, "kind": "all", "entity": "user", "relations": [{"rel": "writers", "kind": "many", "keys": [], "query": {"entity": "author"}}]}, "error": "IR_INVALID"},
+    {"name": "relation-key-without-right", "request": {"ir_version": 1, "n_params": 0, "kind": "all", "entity": "user", "relations": [{"rel": "writers", "kind": "many", "keys": [{"left": "seq"}], "query": {"entity": "author"}}]}, "error": "IR_INVALID"},
+    {"name": "relation-key-left-twice", "request": {"ir_version": 1, "n_params": 0, "kind": "all", "entity": "user", "relations": [{"rel": "writers", "kind": "many", "keys": [{"left": "seq", "right": "user_seq"}, {"left": "seq", "right": "seq"}], "query": {"entity": "author"}}]}, "error": "IR_INVALID"},
+    {"name": "join-without-right", "request": {"ir_version": 1, "n_params": 0, "kind": "all", "entity": "author", "joins": [{"rel": "service", "kind": "inner", "left": "service_seq", "query": {"entity": "service"}}]}, "error": "IR_INVALID"},
     {"name": "pair-relation-integer-varchar", "request": {"ir_version": 1, "n_params": 0, "kind": "all", "entity": "user", "relations": [{"rel": "writers", "kind": "many", "keys": [{"left": "seq", "right": "name"}], "query": {"entity": "author"}}]}, "error": "OPERATOR_NOT_ALLOWED"},
     {"name": "upsert-one-unique-key", "request": {"ir_version": 1, "n_params": 3, "kind": "insert", "entity": "author", "set": [{"column": "uuid", "p": 0}, {"column": "name", "p": 1}], "on_duplicate": [{"column": "name", "p": 1}]}, "valid": true},
     {"name": "upsert-primary-key-and-unique-key", "request": {"ir_version": 1, "n_params": 3, "kind": "insert", "entity": "author", "set": [{"column": "seq", "p": 2}, {"column": "uuid", "p": 0}], "on_duplicate": [{"column": "name", "p": 1}]}, "error": "IR_INVALID"},
@@ -124,5 +128,5 @@
     {"name": "output-sub-new-name", "request": {"ir_version": 1, "n_params": 0, "kind": "all", "entity": "author", "columns": {"sub": {"first_name": {"column": "name", "query": {"entity": "author", "limit": {"count": 1, "offset": 0}, "order": [{"column": "seq"}]}}}}}, "valid": true},
     {"name": "output-sub-column-name", "request": {"ir_version": 1, "n_params": 0, "kind": "all", "entity": "author", "columns": {"sub": {"description": {"column": "name", "query": {"entity": "author", "limit": {"count": 1, "offset": 0}, "order": [{"column": "seq"}]}}}}}, "error": "COLUMN_ALIAS_CONFLICT"}
   ],
-  "requirements": ["PRT-4", "PRT-6", "PRT-10", "PRT-14", "PRT-16", "PRT-17", "PRT-18", "PRT-20", "PRT-21", "PRT-22", "PRT-24"]
+  "requirements": ["PRT-4", "PRT-6", "PRT-10", "PRT-12", "PRT-14", "PRT-16", "PRT-17", "PRT-18", "PRT-20", "PRT-21", "PRT-22", "PRT-24"]
 }

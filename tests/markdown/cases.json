@@ -16,7 +16,17 @@
     "DIA-180",
     "DIA-181",
     "DIA-184",
-    "DIA-185"
+    "DIA-185",
+    "PRT-2",
+    "PRT-5",
+    "PRT-7",
+    "PRT-42",
+    "PRT-63",
+    "PRT-64",
+    "PRT-66",
+    "PRT-67",
+    "PRT-70",
+    "PRT-73"
   ],
   "comment": "The markdown IR executor conformance (README.md): each client runs every case, in this order, on one corpus installed from corpus/ and served by the flowmark build that flowmark.version pins; a case's result is the JSON value the README defines for it, compared with expect.",
   "cases": [

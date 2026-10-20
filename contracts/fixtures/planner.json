@@ -26,7 +26,23 @@
     "DIA-27",
     "DIA-31",
     "DIA-35",
-    "COD-43"
+    "COD-43",
+    "PRT-6",
+    "PRT-13",
+    "PRT-14",
+    "PRT-16",
+    "PRT-17",
+    "PRT-20",
+    "PRT-21",
+    "PRT-22",
+    "PRT-23",
+    "PRT-25",
+    "PRT-31",
+    "PRT-32",
+    "PRT-33",
+    "PRT-7",
+    "PRT-19",
+    "PRT-67"
   ],
   "cases": [
     {
@@ -5683,6 +5699,5 @@
       "schema": "contracts/fixtures/bench/bench.dbs"
     }
   ],
-  "feature": "planner",
-  "requirements": ["PRT-6", "PRT-13", "PRT-14", "PRT-16", "PRT-17", "PRT-20", "PRT-21", "PRT-22", "PRT-23", "PRT-25", "PRT-31", "PRT-32", "PRT-33"]
+  "feature": "planner"
 }
