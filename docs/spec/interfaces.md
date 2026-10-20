@@ -38,19 +38,17 @@ The planner does not receive database credentials or parameter values. The execu
 
 ## 3. Types and values — IF-02
 
-| Logical type | Go | PHP | Rust | TypeScript | Python |
-|---|---|---|---|---|---|
-| `I64` | `int64` | `int` | `i64` | `number` | `int` |
-| `F64` | `float64` | `float` | `f64` | `number` | `float` |
-| `Bool` | `bool` | `bool` | `bool` | `boolean` | `bool` |
-| `Text` | `string` | `string` | `String` | `string` | `str` |
-| `Bytes` | `[]byte` | `string` | `Vec<u8>` | `Uint8Array` | `bytes` |
-| `DateTime` | `time.Time` | `DateTimeImmutable` | `NaiveDateTime` | `Date` | `str` |
-| `JsonValue` | `any` | `mixed` | `serde_json::Value` | `unknown` | `StyledValue` |
-| `Optional<T>` | `*T` | `?T` | `Option<T>` | `T \| null` | `T \| None` |
-| `List<T>` | slice | array | `Vec<T>` | `T[]` | `list` |
-| `Result<T>` | `(T, error)` | return or exception | `Result<T>` | `Promise<T>` | return or exception |
-| `Key` | `orm.Key` | typed key | `polyspec_orm::Key` | `Key` | `str` |
+- **INT-1** `I64` — Go: `int64`; PHP: `int`; Rust: `i64`; TypeScript: `number`; Python: `int`
+- **INT-2** `F64` — Go: `float64`; PHP: `float`; Rust: `f64`; TypeScript: `number`; Python: `float`
+- **INT-3** `Bool` — Go: `bool`; PHP: `bool`; Rust: `bool`; TypeScript: `boolean`; Python: `bool`
+- **INT-4** `Text` — Go: `string`; PHP: `string`; Rust: `String`; TypeScript: `string`; Python: `str`
+- **INT-5** `Bytes` — Go: `[]byte`; PHP: `string`; Rust: `Vec<u8>`; TypeScript: `Uint8Array`; Python: `bytes`
+- **INT-6** `DateTime` — Go: `time.Time`; PHP: `DateTimeImmutable`; Rust: `NaiveDateTime`; TypeScript: `Date`; Python: `str`
+- **INT-7** `JsonValue` — Go: `any`; PHP: `mixed`; Rust: `serde_json::Value`; TypeScript: `unknown`; Python: `StyledValue`
+- **INT-8** `Optional<T>` — Go: `*T`; PHP: `?T`; Rust: `Option<T>`; TypeScript: `T | null`; Python: `T | None`
+- **INT-9** `List<T>` — Go: slice; PHP: array; Rust: `Vec<T>`; TypeScript: `T[]`; Python: `list`
+- **INT-10** `Result<T>` — Go: `(T, error)`; PHP: return or exception; Rust: `Result<T>`; TypeScript: `Promise<T>`; Python: return or exception
+- **INT-11** `Key` — Go: `orm.Key`; PHP: typed key; Rust: `polyspec_orm::Key`; TypeScript: `Key`; Python: `str`
 
 Null, an empty list, a missing field, and a default value are different states. Serialization preserves the logical type and field order required by the codec specification.
 
@@ -100,60 +98,52 @@ A terminal does not change the stored request, so repeated terminals produce the
 
 Every public client accepts one DSN URI. `mysql://`, `postgres://`, and `sqlite://` select the database driver. Every connection reads and writes datetime values in UTC; the optional `timezone` parameter accepts only `UTC` or `+00:00`. The caller does not pass a second driver value.
 
-| Client | Public connection call | Result |
-|---|---|---|
-| Go | `model.Connect(dsn, config)` | `(*orm.DB, error)` |
-| PHP | `\Polyspec\Orm\Tests\Model\connect(dsn, new Config(…))` | `Db` |
-| Rust | `model::connect(dsn, pool_size, config).await?` | `polyspec_orm::Db` |
-| TypeScript | `connect(dsn, options)` of the generated module | `Promise<Db>` |
+- **INT-12** Go — Public connection call: `model.Connect(dsn, config)`; Result: `(*orm.DB, error)`
+- **INT-13** PHP — Public connection call: `\Polyspec\Orm\Tests\Model\connect(dsn, new Config(…))`; Result: `Db`
+- **INT-14** Rust — Public connection call: `model::connect(dsn, pool_size, config).await?`; Result: `polyspec_orm::Db`
+- **INT-15** TypeScript — Public connection call: `connect(dsn, options)` of the generated module; Result: `Promise<Db>`
 
 ### 5.1 Creation and language forms
 
-| Operation | PHP | Go | Rust | TypeScript | Python |
-|---|---|---|---|---|---|
-| model creation | `new Product` | `model.Product()` | `Product::new()` | `new Product()` | `Product()` |
-| connection | `->connect($db)` or `($db)` | `.Connect(db)` | `.connect(&db)` | `.connect(db)` | `.connect(db)` |
-| collection terminal | `gets()` | `Gets()` | `gets().await?` | `gets()` | `gets()` |
-| count terminal | `getCount()` | `GetCount()` | `get_count().await?` | `getCount()` | `get_count()` |
+- **INT-16** model creation — PHP: `new Product`; Go: `model.Product()`; Rust: `Product::new()`; TypeScript: `new Product()`; Python: `Product()`
+- **INT-17** connection — PHP: `->connect($db)` or `($db)`; Go: `.Connect(db)`; Rust: `.connect(&db)`; TypeScript: `.connect(db)`; Python: `.connect(db)`
+- **INT-18** collection terminal — PHP: `gets()`; Go: `Gets()`; Rust: `gets().await?`; TypeScript: `gets()`; Python: `gets()`
+- **INT-19** count terminal — PHP: `getCount()`; Go: `GetCount()`; Rust: `get_count().await?`; TypeScript: `getCount()`; Python: `get_count()`
 
 The creation spelling follows the host language. The method role, stored request, result type, error behavior, and call order remain the same.
 
 ### 5.2 Method groups
 
-| Group | Required behavior |
-|---|---|
-| conditions | Use column chains, operator prefixes, value shapes, and explicit connectors. |
-| groups | Preserve item order and nested group boundaries. |
-| relations | Use `match<L>With<R>` keys on the child and a separate statement per relation. |
-| joins | Keep `ON` and `WHERE` conditions separate and place child conditions where the child is passed to a group. |
-| projection | Preserve positional output mapping and reject duplicate row names. |
-| mutation | Record changed fields and original values. |
-| terminals | Receive chain values only and use the model connection. |
+- **INT-20** conditions: Use column chains, operator prefixes, value shapes, and explicit connectors.
+- **INT-21** groups: Preserve item order and nested group boundaries.
+- **INT-22** relations: Use `match<L>With<R>` keys on the child and a separate statement per relation.
+- **INT-23** joins: Keep `ON` and `WHERE` conditions separate and place child conditions where the child is passed to a group.
+- **INT-24** projection: Preserve positional output mapping and reject duplicate row names.
+- **INT-25** mutation: Record changed fields and original values.
+- **INT-26** terminals: Receive chain values only and use the model connection.
 
 #### Finder chains {#finder-chains}
 
 `getBy<Chain>`, `getsBy<Chain>`, and `getCountBy<Chain>` apply a column chain as the condition and call the terminal. A chain is a combination of column keys, operators and connectors, so the set of chains has no bound, and no client lists them all. Each client reaches a chain in one of two ways, and the same chain gives the same rows in every client:
 
-- A client with static model types declares each chain that the model generation finds in the scanned source code. Go, Rust and TypeScript work this way, while PHP and Python resolve the name as the next item says. A chain that no scanned call names has no method until the code calls it and the models are generated again.
-- A client with dynamic model types resolves the name of the call when the call runs. PHP (`__call`) and Python (`__getattr__`) work this way. The generation scan checks the names it finds and declares no method.
+- **INT-27** A client with static model types declares each chain that the model generation finds in the scanned source code. Go, Rust and TypeScript work this way, while PHP and Python resolve the name as the next item says. A chain that no scanned call names has no method until the code calls it and the models are generated again.
+- **INT-28** A client with dynamic model types resolves the name of the call when the call runs. PHP (`__call`) and Python (`__getattr__`) work this way. The generation scan checks the names it finds and declares no method.
 
 The shared vector `terminal_by` in `tests/conformance/vectors.json` runs `getsBy<Chain>` on the non-unique columns `service_seq` and `is_close` in every runtime client, and the rows of each client must equal the recorded result.
 
 ### 5.3 Execution methods
 
-| Method | Result | Connection |
-|---|---|---|
-| `get` | one row; null when no row matches | model connection or active transaction |
-| `gets` | collection | model connection or active transaction |
-| `getsCount` | `GroupRows` with selected grouping values and checked row counts | model connection or active transaction |
-| `getsPage` | page | model connection or active transaction |
-| `getCount` | integer | model connection or active transaction |
-| `create` | row with generated key | model connection or active transaction |
-| `creates(rows, batch)` | inserted row count; `CONFIG` when `batch` is not a positive integer and `BATCH_TOO_LARGE` when a batch binds more than the dialect bind limit, both before any statement | model connection or active transaction |
-| `update` | row | row connection or active transaction |
-| `delete` | row or collection | row connection or active transaction |
-| `restore` | the restored row; `NO_ROWS` when no row has the key | model connection or active transaction |
-| `restoreOrCreate` | the restored or created row; `ROW_NOT_DELETED` when a row that is not deleted has the key | model connection or active transaction |
+- **INT-29** `get` — Result: one row; null when no row matches; Connection: model connection or active transaction
+- **INT-30** `gets` — Result: collection; Connection: model connection or active transaction
+- **INT-31** `getsCount` — Result: `GroupRows` with selected grouping values and checked row counts; Connection: model connection or active transaction
+- **INT-32** `getsPage` — Result: page; Connection: model connection or active transaction
+- **INT-33** `getCount` — Result: integer; Connection: model connection or active transaction
+- **INT-34** `create` — Result: row with generated key; Connection: model connection or active transaction
+- **INT-35** `creates(rows, batch)` — Result: inserted row count; `CONFIG` when `batch` is not a positive integer and `BATCH_TOO_LARGE` when a batch binds more than the dialect bind limit, both before any statement; Connection: model connection or active transaction
+- **INT-36** `update` — Result: row; Connection: row connection or active transaction
+- **INT-37** `delete` — Result: row or collection; Connection: row connection or active transaction
+- **INT-38** `restore` — Result: the restored row; `NO_ROWS` when no row has the key; Connection: model connection or active transaction
+- **INT-39** `restoreOrCreate` — Result: the restored or created row; `ROW_NOT_DELETED` when a row that is not deleted has the key; Connection: model connection or active transaction
 
 A terminal without a connection outside a transaction returns `CONFIG`. A connection must carry the schema engine used by the generated request; otherwise the terminal returns `CONFIG`.
 
@@ -163,38 +153,34 @@ A terminal without a connection outside a transaction returns `CONFIG`. A connec
 
 `connection.transaction(fn, options)` runs the callback in one transaction. Begin, commit, rollback, and the executor are private. A callback error or exception rolls back the transaction; otherwise the transaction commits and the callback result is returned. Before the transaction ends, the client releases its MySQL `lock` locks, clears the MySQL values of `setLocal`, and restores the SQLite `query_only` and `read_uncommitted` modes, because named locks, user variables, and pragmas outlive `COMMIT` and `ROLLBACK` on a pooled connection. A connection returns to the pool only when every cleanup step and the `COMMIT` or `ROLLBACK` succeeded; after a failed step the state of its session is unknown, so the client closes the connection instead and the server ends its transaction, locks and values with the session. A pooled connection is therefore clean or discarded. The TypeScript SQLite driver holds its one connection, which it cannot close. Every cleanup step runs and every failed step is reported; a `RELEASE_LOCK` that does not return 1 is `CONFIG` `lock <key> was not held at transaction end`. When that cleanup fails at commit, the transaction rolls back and returns the cleanup error. When the callback, the begin, or the commit cleanup fails and the cleanup or the rollback fails too, the error is `ROLLBACK` `transaction failed (<cause>) and rollback failed (<transaction end error>)`; it keeps the cause and the transaction end error ([protocol](protocol.md)) and is not retried. A Go or Rust callback that panics, or a Go callback that leaves through `runtime.Goexit`, rolls the transaction back and the panic continues; when that rollback fails, the panic value is the `ROLLBACK` error of the same form. A rollback that fails because the server or the driver closed the connection, for example after a cancelled statement or a killed session, is a failed rollback too and is reported in that form, although the server ended the transaction with the session; a client that ends a failed transaction by closing its connection reports the cause alone. A Go transaction whose context is cancelled cannot run the cleanup statements, so it closes its connection instead of returning it to the pool and reports `CANCELED` alone; the server ends the transaction, its named locks, user variables and SQLite modes with the session. A Rust transaction future dropped before its transaction ends closes the connection at once, over TLS too, so the server ends the transaction and its locks with the session.
 
-| Option | Values |
-|---|---|
-| `isolation` | `default`, `read_uncommitted`, `read_committed`, `repeatable_read`, `serializable` |
-| `readOnly` | boolean |
-| `timeoutMs` | positive integer; PostgreSQL applies `statement_timeout`, MySQL and SQLite return `CAPABILITY_UNSUPPORTED` |
-| `retry` | deadlock retry count, default `3`; each retry runs the complete callback again, and `0` disables retry |
-| `audit` | column name to value of the unit of work's audit record; the transaction inserts the values of the connection's audit source with these values (a value wins) into the audit record table right before its first write of an audited table, in every attempt, so a transaction that writes no audited row inserts none, and every audited write in the transaction writes the record's key ([usage](../operations/usage.md#audited-writes)) |
+- **INT-40** `isolation`: `default`, `read_uncommitted`, `read_committed`, `repeatable_read`, `serializable`
+- **INT-41** `readOnly`: boolean
+- **INT-42** `timeoutMs`: positive integer; PostgreSQL applies `statement_timeout`, MySQL and SQLite return `CAPABILITY_UNSUPPORTED`
+- **INT-43** `retry`: deadlock retry count, default `3`; each retry runs the complete callback again, and `0` disables retry
+- **INT-44** `audit`: column name to value of the unit of work's audit record; the transaction inserts the values of the connection's audit source with these values (a value wins) into the audit record table right before its first write of an audited table, in every attempt, so a transaction that writes no audited row inserts none, and every audited write in the transaction writes the record's key ([usage](../operations/usage.md#audited-writes))
 
 The connection configuration takes `auditSource`, a function that returns the audit values of the current request ([configuration](config.md)). A transaction with `audit` on a connection without a source, a value that is not a column of the audit record table, and an audited write without `audit` fail with `CONFIG`; an error of the source fails the transaction; a nested transaction keeps the outer audit and does not take `audit`.
 
-- Each execution flow keeps a stack of active transactions: the goroutine in Go, the request in PHP, the async context in TypeScript, and the task in Rust. A model without `connect` uses the innermost transaction.
-- A transaction on the same connection inside an active transaction creates a savepoint. An inner failure rolls back only the inner work unless the outer callback returns it. After a callback error, a panic or a Go `runtime.Goexit`, the client runs both `ROLLBACK TO SAVEPOINT` and `RELEASE SAVEPOINT`; when either fails, the error or the panic value is `ROLLBACK` `transaction failed (<cause>) and rollback failed (<savepoint end error>)`, and a failed `RELEASE SAVEPOINT` after a successful callback is returned. A savepoint of a transaction that a cancelled transaction context has already ended ended with it.
-- Concurrent use of one transaction connection returns an error. A task or goroutine started inside the callback has no active transaction.
-- `transactionConflict(message)` (Go: `orm.TransactionConflict`) creates the retryable `DEADLOCK` error.
-- Row locks `forUpdate()`, `forShare()`, `forUpdateNoWait()`, and `forShareNoWait()` are allowed only inside a transaction. MySQL and PostgreSQL append the lock clause; SQLite uses an ORM transaction-scoped lock row. A `*_nowait` request that cannot acquire the lock returns `LOCK_NOT_AVAILABLE` on every adapter.
+- **INT-45** Each execution flow keeps a stack of active transactions: the goroutine in Go, the request in PHP, the async context in TypeScript, and the task in Rust. A model without `connect` uses the innermost transaction.
+- **INT-46** A transaction on the same connection inside an active transaction creates a savepoint. An inner failure rolls back only the inner work unless the outer callback returns it. After a callback error, a panic or a Go `runtime.Goexit`, the client runs both `ROLLBACK TO SAVEPOINT` and `RELEASE SAVEPOINT`; when either fails, the error or the panic value is `ROLLBACK` `transaction failed (<cause>) and rollback failed (<savepoint end error>)`, and a failed `RELEASE SAVEPOINT` after a successful callback is returned. A savepoint of a transaction that a cancelled transaction context has already ended ended with it.
+- **INT-47** Concurrent use of one transaction connection returns an error. A task or goroutine started inside the callback has no active transaction.
+- **INT-48** `transactionConflict(message)` (Go: `orm.TransactionConflict`) creates the retryable `DEADLOCK` error.
+- **INT-49** Row locks `forUpdate()`, `forShare()`, `forUpdateNoWait()`, and `forShareNoWait()` are allowed only inside a transaction. MySQL and PostgreSQL append the lock clause; SQLite uses an ORM transaction-scoped lock row. A `*_nowait` request that cannot acquire the lock returns `LOCK_NOT_AVAILABLE` on every adapter.
 
 `connection.utils()` provides operations outside the query syntax.
 
-| Utility | Behavior |
-|---|---|
-| `lock(key)` | transaction-scoped named lock: MySQL `GET_LOCK`, PostgreSQL advisory lock, SQLite ORM lock row; requires an active transaction |
-| `setLocal(key, value)`, `local(key)` | transaction-local values; requires an active transaction; `local` returns `NO_ROWS` for a missing key |
-| `wasInserted(entity, sequence)` | reports whether a generated ORM insert for the sequence succeeded in the active transaction; the fact is adapter-neutral and restored across savepoint rollback |
-| `backendWaitingForLock(ctx)` | reports PostgreSQL pool backends waiting for a lock; MySQL and SQLite return `false` without exposing a driver-specific caller API |
-| `schema().register(schema)` | takes the generated schema value and registers its set on the connection without reading or writing the database; fails with `CONFIG` when its manifest text does not hash to its `manifestHash` |
-| `schema().install(schema)` | takes the generated schema value, fails with `CONFIG` before any statement when its manifest text does not hash to its `manifestHash`, renders the dbspec document set for the dialect of the connection and creates every table when none exists, and registers the set on the connection; changes nothing when every table exists and returns `CONFIG` when only some exist; then returns `CONFIG` naming each difference when the tables of the set in the database differ from the set; on MySQL a call inside a transaction returns `CONFIG` |
-| `schema().addTablesAndColumns(schema)` | takes the generated schema value and upgrades its installed document set by the tables the database lacks, the missing columns of the existing tables that are null or have a default and the missing indexes of the existing tables, with the plan steps of the dialect, which create each table with its indexes, foreign keys, checks and triggers and replace the audit triggers of each changed table; returns the created tables as `table`, the added columns as `table.column` and the created indexes as `table.index`, leaves the tables of other sets unchanged and registers nothing; any other difference returns `SCHEMA_DIFFERS` before any change, and a missing unique key returns it with the reason that it can fail on the existing rows and belongs to a plan; on MySQL and SQLite a call inside a transaction returns `CONFIG` |
-| `schema().exists(schema)`, `schema().installed(schema, table)` | schema inspection |
-| `schema().empty()` | reports whether the database holds no user content. On PostgreSQL a schema other than `public`, `information_schema` and the `pg_` schemas is content even without objects, and so is a table, partitioned table, view, materialized view, or foreign table in `public`; functions, types, and sequences in `public` are not content. On MySQL a table or view of the connected database is content; on SQLite a table or view other than the `sqlite_` tables and the ORM's `orm__` tables is content |
-| `privileges().grantTable(table, role)`, `revokeTable(table, privilege, role)`, `inspectTable(table)` | table privileges; non-PostgreSQL dialects return `CAPABILITY_UNSUPPORTED` |
-| `aes().status(model, keyring)`, `aes().rotate(model, keyring)` | AES key version status and rotation of every AES column and the version in one transaction |
-| `stats()` | connection pool statistics |
+- **INT-50** `lock(key)`: transaction-scoped named lock: MySQL `GET_LOCK`, PostgreSQL advisory lock, SQLite ORM lock row; requires an active transaction
+- **INT-51** `setLocal(key, value)`, `local(key)`: transaction-local values; requires an active transaction; `local` returns `NO_ROWS` for a missing key
+- **INT-52** `wasInserted(entity, sequence)`: reports whether a generated ORM insert for the sequence succeeded in the active transaction; the fact is adapter-neutral and restored across savepoint rollback
+- **INT-53** `backendWaitingForLock(ctx)`: reports PostgreSQL pool backends waiting for a lock; MySQL and SQLite return `false` without exposing a driver-specific caller API
+- **INT-54** `schema().register(schema)`: takes the generated schema value and registers its set on the connection without reading or writing the database; fails with `CONFIG` when its manifest text does not hash to its `manifestHash`
+- **INT-55** `schema().install(schema)`: takes the generated schema value, fails with `CONFIG` before any statement when its manifest text does not hash to its `manifestHash`, renders the dbspec document set for the dialect of the connection and creates every table when none exists, and registers the set on the connection; changes nothing when every table exists and returns `CONFIG` when only some exist; then returns `CONFIG` naming each difference when the tables of the set in the database differ from the set; on MySQL a call inside a transaction returns `CONFIG`
+- **INT-56** `schema().addTablesAndColumns(schema)`: takes the generated schema value and upgrades its installed document set by the tables the database lacks, the missing columns of the existing tables that are null or have a default and the missing indexes of the existing tables, with the plan steps of the dialect, which create each table with its indexes, foreign keys, checks and triggers and replace the audit triggers of each changed table; returns the created tables as `table`, the added columns as `table.column` and the created indexes as `table.index`, leaves the tables of other sets unchanged and registers nothing; any other difference returns `SCHEMA_DIFFERS` before any change, and a missing unique key returns it with the reason that it can fail on the existing rows and belongs to a plan; on MySQL and SQLite a call inside a transaction returns `CONFIG`
+- **INT-57** `schema().exists(schema)`, `schema().installed(schema, table)`: schema inspection
+- **INT-58** `schema().empty()`: reports whether the database holds no user content. On PostgreSQL a schema other than `public`, `information_schema` and the `pg_` schemas is content even without objects, and so is a table, partitioned table, view, materialized view, or foreign table in `public`; functions, types, and sequences in `public` are not content. On MySQL a table or view of the connected database is content; on SQLite a table or view other than the `sqlite_` tables and the ORM's `orm__` tables is content
+- **INT-59** `privileges().grantTable(table, role)`, `revokeTable(table, privilege, role)`, `inspectTable(table)`: table privileges; non-PostgreSQL dialects return `CAPABILITY_UNSUPPORTED`
+- **INT-60** `aes().status(model, keyring)`, `aes().rotate(model, keyring)`: AES key version status and rotation of every AES column and the version in one transaction
+- **INT-61** `stats()`: connection pool statistics
 
 Utilities that change data open a transaction when none is active and join the active transaction of the same connection otherwise.
 
@@ -212,11 +198,9 @@ A relation result is either one row or a collection according to the schema. The
 
 ## 9. Collection, key, and page — IF-25 to IF-27
 
-| Object | Required fields |
-|---|---|
-| `Collection<T>` | ordered rows, length, first, key lookup |
-| `Key` | logical type tag and value |
-| `Page<T>` | `items`, `totalCount`, `totalPages`, `page`, `perPage` |
+- **INT-62** `Collection<T>`: ordered rows, length, first, key lookup
+- **INT-63** `Key`: logical type tag and value
+- **INT-64** `Page<T>`: `items`, `totalCount`, `totalPages`, `page`, `perPage`
 
 The integer key `7` and text key `"7"` are different keys. A boolean `true` and the integer `1`, bytes and text with the same characters, and a date and time and the text of its form are different keys; a date and time in another zone is the key of its UTC instant. A NULL key component is `CODEC_DECODE`. Composite keys encode each typed component with its length, so `("1", "23")` and `("12", "3")` cannot collide. The plan records the ordered collection identity in `Assemble.key`. Regular rows use every primary-key component; grouped count rows use their group columns and expression aliases. A collection preserves database order unless an explicit order or key policy changes it. A page preserves the root result order and relation attachment order.
 

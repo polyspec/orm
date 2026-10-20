@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 6623874de62ba16a8ca8c3be07ee4736f9ec5a2d9954a5e6d5ef50d7c6023089 -->
+<!-- source-sha256: 499543aa9cab2092c669cfae2146d5f92478d0acff76f1a0b7bf29c00c069445 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -39,19 +39,17 @@ flowchart LR
 
 ## 3. 자료형과 값 — IF-02
 
-| 논리 타입 | Go | PHP | Rust | TypeScript | Python |
-|---|---|---|---|---|---|
-| `I64` | `int64` | `int` | `i64` | `number` | `int` |
-| `F64` | `float64` | `float` | `f64` | `number` | `float` |
-| `Bool` | `bool` | `bool` | `bool` | `boolean` | `bool` |
-| `Text` | `string` | `string` | `String` | `string` | `str` |
-| `Bytes` | `[]byte` | `string` | `Vec<u8>` | `Uint8Array` | `bytes` |
-| `DateTime` | `time.Time` | `DateTimeImmutable` | `NaiveDateTime` | `Date` | `str` |
-| `JsonValue` | `any` | `mixed` | `serde_json::Value` | `unknown` | `StyledValue` |
-| `Optional<T>` | `*T` | `?T` | `Option<T>` | `T \| null` | `T \| None` |
-| `List<T>` | slice | array | `Vec<T>` | `T[]` | `list` |
-| `Result<T>` | `(T, error)` | 반환 또는 예외 | `Result<T>` | `Promise<T>` | 반환 또는 예외 |
-| `Key` | `orm.Key` | 타입 있는 키 | `polyspec_orm::Key` | `Key` | `str` |
+- **INT-1** `I64` — Go: `int64`; PHP: `int`; Rust: `i64`; TypeScript: `number`; Python: `int`
+- **INT-2** `F64` — Go: `float64`; PHP: `float`; Rust: `f64`; TypeScript: `number`; Python: `float`
+- **INT-3** `Bool` — Go: `bool`; PHP: `bool`; Rust: `bool`; TypeScript: `boolean`; Python: `bool`
+- **INT-4** `Text` — Go: `string`; PHP: `string`; Rust: `String`; TypeScript: `string`; Python: `str`
+- **INT-5** `Bytes` — Go: `[]byte`; PHP: `string`; Rust: `Vec<u8>`; TypeScript: `Uint8Array`; Python: `bytes`
+- **INT-6** `DateTime` — Go: `time.Time`; PHP: `DateTimeImmutable`; Rust: `NaiveDateTime`; TypeScript: `Date`; Python: `str`
+- **INT-7** `JsonValue` — Go: `any`; PHP: `mixed`; Rust: `serde_json::Value`; TypeScript: `unknown`; Python: `StyledValue`
+- **INT-8** `Optional<T>` — Go: `*T`; PHP: `?T`; Rust: `Option<T>`; TypeScript: `T | null`; Python: `T | None`
+- **INT-9** `List<T>` — Go: slice; PHP: array; Rust: `Vec<T>`; TypeScript: `T[]`; Python: `list`
+- **INT-10** `Result<T>` — Go: `(T, error)`; PHP: 반환 또는 예외; Rust: `Result<T>`; TypeScript: `Promise<T>`; Python: 반환 또는 예외
+- **INT-11** `Key` — Go: `orm.Key`; PHP: 타입 있는 키; Rust: `polyspec_orm::Key`; TypeScript: `Key`; Python: `str`
 
 null, 빈 목록, 누락 필드, 기본값은 서로 다른 상태다. 직렬화는 코덱 명세가 요구하는 논리 타입과 필드 순서를 유지한다.
 
@@ -101,60 +99,52 @@ classDiagram
 
 모든 공개 클라이언트는 DSN URI 하나를 받는다. `mysql://`, `postgres://`, `sqlite://`가 데이터베이스 드라이버를 선택한다. 모든 연결은 datetime 값을 UTC로 읽고 쓰며, 선택 매개변수 `timezone`은 `UTC`나 `+00:00`만 받는다. 호출자는 별도 드라이버 값을 전달하지 않는다.
 
-| 클라이언트 | 공개 연결 호출 | 결과 |
-|---|---|---|
-| Go | `model.Connect(dsn, config)` | `(*orm.DB, error)` |
-| PHP | `\Polyspec\Orm\Tests\Model\connect(dsn, new Config(…))` | `Db` |
-| Rust | `model::connect(dsn, pool_size, config).await?` | `polyspec_orm::Db` |
-| TypeScript | generated module의 `connect(dsn, options)` | `Promise<Db>` |
+- **INT-12** Go — 공개 연결 호출: `model.Connect(dsn, config)`; 결과: `(*orm.DB, error)`
+- **INT-13** PHP — 공개 연결 호출: `\Polyspec\Orm\Tests\Model\connect(dsn, new Config(…))`; 결과: `Db`
+- **INT-14** Rust — 공개 연결 호출: `model::connect(dsn, pool_size, config).await?`; 결과: `polyspec_orm::Db`
+- **INT-15** TypeScript — 공개 연결 호출: generated module의 `connect(dsn, options)`; 결과: `Promise<Db>`
 
 ### 5.1 생성과 언어별 표기
 
-| 작업 | PHP | Go | Rust | TypeScript | Python |
-|---|---|---|---|---|---|
-| 모델 생성 | `new Product` | `model.Product()` | `Product::new()` | `new Product()` | `Product()` |
-| 연결 | `->connect($db)` 또는 `($db)` | `.Connect(db)` | `.connect(&db)` | `.connect(db)` | `.connect(db)` |
-| 컬렉션 종단 | `gets()` | `Gets()` | `gets().await?` | `gets()` | `gets()` |
-| 개수 종단 | `getCount()` | `GetCount()` | `get_count().await?` | `getCount()` | `get_count()` |
+- **INT-16** 모델 생성 — PHP: `new Product`; Go: `model.Product()`; Rust: `Product::new()`; TypeScript: `new Product()`; Python: `Product()`
+- **INT-17** 연결 — PHP: `->connect($db)` 또는 `($db)`; Go: `.Connect(db)`; Rust: `.connect(&db)`; TypeScript: `.connect(db)`; Python: `.connect(db)`
+- **INT-18** 컬렉션 종단 — PHP: `gets()`; Go: `Gets()`; Rust: `gets().await?`; TypeScript: `gets()`; Python: `gets()`
+- **INT-19** 개수 종단 — PHP: `getCount()`; Go: `GetCount()`; Rust: `get_count().await?`; TypeScript: `getCount()`; Python: `get_count()`
 
 생성 표기는 호스트 언어를 따른다. 메서드 역할, 저장 요청, 결과 타입, 오류 동작, 호출 순서는 같다.
 
 ### 5.2 메서드군
 
-| 메서드군 | 필수 동작 |
-|---|---|
-| 조건 | 컬럼 체인, 연산자 접두어, 값 형태, 명시적 연결자를 사용한다. |
-| 묶음 | 항목 순서와 하위 묶음 구분을 유지한다. |
-| 관계 | 자식의 `match<L>With<R>` 키를 사용하며 관계마다 별도 SQL 문장을 실행한다. |
-| 조인 | `ON`과 `WHERE` 조건을 분리하고 자식을 전달한 묶음 위치에 자식 조건을 넣는다. |
-| 컬럼 | 위치 기반 출력 대응을 유지하고 행 명칭 중복을 거부한다. |
-| 변경 | 변경 필드와 원래 값을 기록한다. |
-| 종단 | 체인 값만 받고 모델 연결을 사용한다. |
+- **INT-20** 조건: 컬럼 체인, 연산자 접두어, 값 형태, 명시적 연결자를 사용한다.
+- **INT-21** 묶음: 항목 순서와 하위 묶음 구분을 유지한다.
+- **INT-22** 관계: 자식의 `match<L>With<R>` 키를 사용하며 관계마다 별도 SQL 문장을 실행한다.
+- **INT-23** 조인: `ON`과 `WHERE` 조건을 분리하고 자식을 전달한 묶음 위치에 자식 조건을 넣는다.
+- **INT-24** 컬럼: 위치 기반 출력 대응을 유지하고 행 명칭 중복을 거부한다.
+- **INT-25** 변경: 변경 필드와 원래 값을 기록한다.
+- **INT-26** 종단: 체인 값만 받고 모델 연결을 사용한다.
 
 #### 조회 체인 {#finder-chains}
 
 `getBy<Chain>`, `getsBy<Chain>`, `getCountBy<Chain>`은 컬럼 체인을 조건으로 적용하고 종단 작업을 호출한다. 체인은 컬럼 key, 연산자, 연결자의 조합이라 가능한 체인의 수에 한계가 없으며, 어떤 client도 그 목록을 다 가지지 않는다. 각 client는 체인을 두 방식 중 하나로 찾으며, 같은 체인은 모든 client에서 같은 row를 준다.
 
-- 정적인 모델 타입을 가진 client는 모델 생성이 scan된 소스 코드에서 찾은 체인마다 선언한다. Go, Rust, TypeScript가 이 방식이며, PHP와 Python은 다음 항목처럼 이름을 해석한다. scan된 호출이 이름을 붙이지 않은 체인은 코드가 그것을 호출하고 모델을 다시 생성하기 전까지 메서드가 없다.
-- 동적인 모델 타입을 가진 client는 호출이 실행될 때 호출 이름을 해석한다. PHP(`__call`)와 Python(`__getattr__`)이 이 방식이다. 생성 scan은 찾은 이름을 검사하지만 메서드를 선언하지 않는다.
+- **INT-27** 정적인 모델 타입을 가진 client는 모델 생성이 scan된 소스 코드에서 찾은 체인마다 선언한다. Go, Rust, TypeScript가 이 방식이며, PHP와 Python은 다음 항목처럼 이름을 해석한다. scan된 호출이 이름을 붙이지 않은 체인은 코드가 그것을 호출하고 모델을 다시 생성하기 전까지 메서드가 없다.
+- **INT-28** 동적인 모델 타입을 가진 client는 호출이 실행될 때 호출 이름을 해석한다. PHP(`__call`)와 Python(`__getattr__`)이 이 방식이다. 생성 scan은 찾은 이름을 검사하지만 메서드를 선언하지 않는다.
 
 공유 vector `terminal_by`(`tests/conformance/vectors.json`)는 모든 runtime client에서 unique가 아닌 column `service_seq`와 `is_close`에 `getsBy<Chain>`을 실행하며, 각 client의 row는 기록된 결과와 같아야 한다.
 
 ### 5.3 실행 메서드
 
-| 메서드 | 결과 | 연결 |
-|---|---|---|
-| `get` | 행 하나; 일치하는 행이 없으면 null | 모델 연결 또는 활성 트랜잭션 |
-| `gets` | 컬렉션 | 모델 연결 또는 활성 트랜잭션 |
-| `getsCount` | 선택한 그룹 값과 검증한 행 개수를 담은 `GroupRows` | 모델 연결 또는 활성 트랜잭션 |
-| `getsPage` | 페이지 | 모델 연결 또는 활성 트랜잭션 |
-| `getCount` | 정수 | 모델 연결 또는 활성 트랜잭션 |
-| `create` | 생성 키를 포함한 행 | 모델 연결 또는 활성 트랜잭션 |
-| `creates(rows, batch)` | 삽입한 행 수. `batch`가 양의 정수가 아니면 `CONFIG`, batch의 바인드 수가 dialect의 바인드 한도를 넘으면 `BATCH_TOO_LARGE`이며 둘 다 어떤 statement보다 먼저 | 모델 연결 또는 활성 트랜잭션 |
-| `update` | 행 | 행 연결 또는 활성 트랜잭션 |
-| `delete` | 행 또는 컬렉션 | 행 연결 또는 활성 트랜잭션 |
-| `restore` | 되돌린 행. 그 key를 가진 행이 없으면 `NO_ROWS` | 모델 연결 또는 활성 트랜잭션 |
-| `restoreOrCreate` | 되돌리거나 만든 행. 지워지지 않은 행이 그 key를 가지면 `ROW_NOT_DELETED` | 모델 연결 또는 활성 트랜잭션 |
+- **INT-29** `get` — 결과: 행 하나; 일치하는 행이 없으면 null; 연결: 모델 연결 또는 활성 트랜잭션
+- **INT-30** `gets` — 결과: 컬렉션; 연결: 모델 연결 또는 활성 트랜잭션
+- **INT-31** `getsCount` — 결과: 선택한 그룹 값과 검증한 행 개수를 담은 `GroupRows`; 연결: 모델 연결 또는 활성 트랜잭션
+- **INT-32** `getsPage` — 결과: 페이지; 연결: 모델 연결 또는 활성 트랜잭션
+- **INT-33** `getCount` — 결과: 정수; 연결: 모델 연결 또는 활성 트랜잭션
+- **INT-34** `create` — 결과: 생성 키를 포함한 행; 연결: 모델 연결 또는 활성 트랜잭션
+- **INT-35** `creates(rows, batch)` — 결과: 삽입한 행 수. `batch`가 양의 정수가 아니면 `CONFIG`, batch의 바인드 수가 dialect의 바인드 한도를 넘으면 `BATCH_TOO_LARGE`이며 둘 다 어떤 statement보다 먼저; 연결: 모델 연결 또는 활성 트랜잭션
+- **INT-36** `update` — 결과: 행; 연결: 행 연결 또는 활성 트랜잭션
+- **INT-37** `delete` — 결과: 행 또는 컬렉션; 연결: 행 연결 또는 활성 트랜잭션
+- **INT-38** `restore` — 결과: 되돌린 행. 그 key를 가진 행이 없으면 `NO_ROWS`; 연결: 모델 연결 또는 활성 트랜잭션
+- **INT-39** `restoreOrCreate` — 결과: 되돌리거나 만든 행. 지워지지 않은 행이 그 key를 가지면 `ROW_NOT_DELETED`; 연결: 모델 연결 또는 활성 트랜잭션
 
 트랜잭션 밖에서 연결 없는 종단 작업은 `CONFIG`를 반환한다. 연결은 생성된 요청이 사용하는 스키마 엔진을 가져야 하며, 아니면 종단 작업이 `CONFIG`를 반환한다.
 
@@ -164,38 +154,34 @@ classDiagram
 
 `connection.transaction(fn, options)`은 콜백을 하나의 트랜잭션에서 실행한다. begin, commit, rollback, 실행기는 비공개다. 콜백 오류나 예외는 트랜잭션을 되돌리고, 그렇지 않으면 커밋하고 콜백 결과를 반환한다. named lock, user variable, pragma는 pool connection에서 `COMMIT`과 `ROLLBACK` 뒤에도 남으므로, 클라이언트는 트랜잭션이 끝나기 전에 MySQL `lock` lock을 풀고 `setLocal`의 MySQL 값을 지우고 SQLite `query_only`와 `read_uncommitted` mode를 되돌린다. connection은 모든 정리 단계와 `COMMIT`이나 `ROLLBACK`이 성공했을 때만 pool에 돌아간다. 한 단계라도 실패하면 그 세션의 상태를 알 수 없으므로 클라이언트는 connection을 pool에 돌려주지 않고 닫고, 서버는 세션과 함께 그 트랜잭션, lock, 값을 종료한다. 따라서 pool의 connection은 깨끗하거나 버려진다. TypeScript SQLite 드라이버는 연결 하나를 유지하며 그 연결은 닫을 수 없다. 모든 정리 단계를 실행하고 실패한 단계를 모두 보고한다. 1을 돌려주지 않은 `RELEASE_LOCK`은 `CONFIG` `lock <key> was not held at transaction end`다. 커밋할 때 이 정리가 실패하면 트랜잭션을 되돌리고 정리 오류를 반환한다. 콜백, begin, 커밋 정리가 실패하고 정리나 rollback도 실패하면 오류는 `ROLLBACK` `transaction failed (<cause>) and rollback failed (<transaction end error>)`다. 이 오류는 원인과 트랜잭션 종료 오류를 유지하며([protocol](protocol.ko.md)) 재시도하지 않는다. panic한 Go나 Rust 콜백과 `runtime.Goexit`로 떠난 Go 콜백은 트랜잭션을 되돌리고 panic을 이어 간다. 그 rollback이 실패하면 panic 값은 같은 형식의 `ROLLBACK` 오류다. server나 driver가 connection을 닫아서, 예를 들어 취소된 statement나 끝난 session 때문에 실패한 rollback도 실패한 rollback이며 같은 형식으로 보고한다. server가 session과 함께 트랜잭션을 끝냈어도 그렇다. 실패한 트랜잭션을 connection을 닫아 끝내는 클라이언트는 원인만 보고한다. context가 취소된 Go 트랜잭션은 정리 statement를 실행할 수 없으므로 connection을 pool에 돌려주지 않고 닫으며 `CANCELED`만 보고한다. server에서 session과 함께 트랜잭션, named lock, user variable, SQLite mode가 끝난다. 트랜잭션이 끝나기 전에 drop된 Rust 트랜잭션 future는 TLS에서도 connection을 바로 닫으므로, server에서 session과 함께 트랜잭션과 lock이 끝난다.
 
-| 옵션 | 값 |
-|---|---|
-| `isolation` | `default`, `read_uncommitted`, `read_committed`, `repeatable_read`, `serializable` |
-| `readOnly` | 불리언 |
-| `timeoutMs` | 양의 정수. PostgreSQL은 `statement_timeout`을 적용하고 MySQL과 SQLite는 `CAPABILITY_UNSUPPORTED`를 반환 |
-| `retry` | 교착 재시도 횟수, 기본값 `3`. 재시도마다 콜백 전체를 다시 실행하며 `0`은 재시도를 끈다 |
-| `audit` | 작업 단위 audit 기록의 컬럼 이름에서 값으로 가는 map. 트랜잭션은 감사 대상 테이블에 처음 쓰기 직전에, 시도마다, 연결 audit source의 값에 이 값을 더해(값이 이긴다) audit 기록 테이블에 삽입하므로 감사 대상 row를 쓰지 않는 트랜잭션은 삽입하지 않고, 트랜잭션 안의 모든 감사 대상 쓰기는 그 기록의 key를 쓴다([사용법](../operations/usage.ko.md#audited-writes)) |
+- **INT-40** `isolation`: `default`, `read_uncommitted`, `read_committed`, `repeatable_read`, `serializable`
+- **INT-41** `readOnly`: 불리언
+- **INT-42** `timeoutMs`: 양의 정수. PostgreSQL은 `statement_timeout`을 적용하고 MySQL과 SQLite는 `CAPABILITY_UNSUPPORTED`를 반환
+- **INT-43** `retry`: 교착 재시도 횟수, 기본값 `3`. 재시도마다 콜백 전체를 다시 실행하며 `0`은 재시도를 끈다
+- **INT-44** `audit`: 작업 단위 audit 기록의 컬럼 이름에서 값으로 가는 map. 트랜잭션은 감사 대상 테이블에 처음 쓰기 직전에, 시도마다, 연결 audit source의 값에 이 값을 더해(값이 이긴다) audit 기록 테이블에 삽입하므로 감사 대상 row를 쓰지 않는 트랜잭션은 삽입하지 않고, 트랜잭션 안의 모든 감사 대상 쓰기는 그 기록의 key를 쓴다([사용법](../operations/usage.ko.md#audited-writes))
 
 연결 설정은 현재 요청의 audit 값을 돌려주는 함수 `auditSource`를 받는다([설정](config.ko.md)). source 없는 연결에서 `audit`을 가진 트랜잭션, audit 기록 테이블의 컬럼이 아닌 값, `audit` 없는 감사 대상 쓰기는 `CONFIG`로 실패하고, source의 오류는 트랜잭션을 실패시킨다. 중첩 트랜잭션은 바깥 audit을 유지하며 `audit`을 받지 않는다.
 
-- 실행 흐름마다 활성 트랜잭션 스택을 유지한다. 실행 흐름은 Go의 goroutine, PHP의 요청, TypeScript의 비동기 컨텍스트, Rust의 task다. `connect` 없는 모델은 가장 안쪽 트랜잭션을 사용한다.
-- 활성 트랜잭션 안에서 같은 연결의 트랜잭션을 호출하면 savepoint를 만든다. 바깥 콜백이 안쪽 실패를 반환하지 않으면 안쪽 작업만 되돌린다. 콜백 오류, panic, Go `runtime.Goexit` 뒤에는 `ROLLBACK TO SAVEPOINT`와 `RELEASE SAVEPOINT`를 모두 실행하고, 둘 중 하나가 실패하면 오류나 panic 값은 `ROLLBACK` `transaction failed (<cause>) and rollback failed (<savepoint end error>)`다. 성공한 콜백 뒤에 실패한 `RELEASE SAVEPOINT`는 그 오류를 반환한다. 취소된 트랜잭션 context로 이미 끝난 트랜잭션의 savepoint는 트랜잭션과 함께 끝났다.
-- 하나의 트랜잭션 연결을 동시에 사용하면 오류를 반환한다. 콜백 안에서 시작한 task나 goroutine에는 활성 트랜잭션이 없다.
-- `transactionConflict(message)`(Go: `orm.TransactionConflict`)는 재시도 대상 `DEADLOCK` 오류를 만든다.
-- 행 잠금 `forUpdate()`, `forShare()`, `forUpdateNoWait()`, `forShareNoWait()`는 트랜잭션 안에서만 허용한다. MySQL과 PostgreSQL은 잠금 절을 추가하고 SQLite는 ORM 트랜잭션 범위의 잠금 행을 사용한다. `*_nowait` 요청이 잠금을 즉시 얻지 못하면 모든 adapter가 `LOCK_NOT_AVAILABLE`을 반환한다.
+- **INT-45** 실행 흐름마다 활성 트랜잭션 스택을 유지한다. 실행 흐름은 Go의 goroutine, PHP의 요청, TypeScript의 비동기 컨텍스트, Rust의 task다. `connect` 없는 모델은 가장 안쪽 트랜잭션을 사용한다.
+- **INT-46** 활성 트랜잭션 안에서 같은 연결의 트랜잭션을 호출하면 savepoint를 만든다. 바깥 콜백이 안쪽 실패를 반환하지 않으면 안쪽 작업만 되돌린다. 콜백 오류, panic, Go `runtime.Goexit` 뒤에는 `ROLLBACK TO SAVEPOINT`와 `RELEASE SAVEPOINT`를 모두 실행하고, 둘 중 하나가 실패하면 오류나 panic 값은 `ROLLBACK` `transaction failed (<cause>) and rollback failed (<savepoint end error>)`다. 성공한 콜백 뒤에 실패한 `RELEASE SAVEPOINT`는 그 오류를 반환한다. 취소된 트랜잭션 context로 이미 끝난 트랜잭션의 savepoint는 트랜잭션과 함께 끝났다.
+- **INT-47** 하나의 트랜잭션 연결을 동시에 사용하면 오류를 반환한다. 콜백 안에서 시작한 task나 goroutine에는 활성 트랜잭션이 없다.
+- **INT-48** `transactionConflict(message)`(Go: `orm.TransactionConflict`)는 재시도 대상 `DEADLOCK` 오류를 만든다.
+- **INT-49** 행 잠금 `forUpdate()`, `forShare()`, `forUpdateNoWait()`, `forShareNoWait()`는 트랜잭션 안에서만 허용한다. MySQL과 PostgreSQL은 잠금 절을 추가하고 SQLite는 ORM 트랜잭션 범위의 잠금 행을 사용한다. `*_nowait` 요청이 잠금을 즉시 얻지 못하면 모든 adapter가 `LOCK_NOT_AVAILABLE`을 반환한다.
 
 `connection.utils()`는 쿼리 문법 밖의 작업을 제공한다.
 
-| 유틸리티 | 동작 |
-|---|---|
-| `lock(key)` | 트랜잭션 범위 이름 잠금. MySQL `GET_LOCK`, PostgreSQL advisory lock, SQLite ORM 잠금 행. 활성 트랜잭션 필요 |
-| `setLocal(key, value)`, `local(key)` | 트랜잭션 로컬 값. 활성 트랜잭션 필요. 없는 키의 `local`은 `NO_ROWS` 반환 |
-| `wasInserted(entity, sequence)` | 해당 sequence에 대한 생성된 ORM insert가 현재 트랜잭션에서 성공했는지 반환. 어댑터 중립적이며 savepoint rollback에 맞춰 복원 |
-| `backendWaitingForLock(ctx)` | PostgreSQL pool backend의 lock 대기를 반환. MySQL과 SQLite는 driver 전용 호출을 노출하지 않고 `false` 반환 |
-| `schema().register(schema)` | generated schema 값을 받아 데이터베이스를 읽거나 쓰지 않고 그 set을 연결에 등록한다. manifest text가 `manifestHash`로 hash되지 않으면 `CONFIG` |
-| `schema().install(schema)` | generated schema 값을 받는다. manifest text가 `manifestHash`로 hash되지 않으면 어떤 statement보다 먼저 `CONFIG`. 연결의 dialect로 dbspec document set을 렌더링하고 테이블이 하나도 없으면 모두 만들며, 그 set을 연결에 등록한다. 모두 있으면 아무것도 바꾸지 않고 일부만 있으면 `CONFIG`. 그다음 데이터베이스의 set 테이블이 set과 다르면 각 차이를 적은 `CONFIG`. MySQL에서 트랜잭션 안의 호출은 `CONFIG` |
-| `schema().addTablesAndColumns(schema)` | generated schema 값을 받아 설치한 그 document set에 데이터베이스에 없는 테이블과, 기존 테이블에 빠진 컬럼 가운데 null이거나 default가 있는 컬럼과, 기존 테이블에 빠진 index를 dialect의 plan step으로 더하며, 그 step은 각 테이블을 index, foreign key, check, 트리거와 함께 만들고 바뀐 각 테이블의 audit 트리거를 바꾼다. 만든 테이블을 `table`, 추가한 컬럼을 `table.column`, 만든 index를 `table.index`로 반환하고, 다른 set의 테이블은 바꾸지 않으며 set을 등록하지 않는다. 다른 차이는 변경 전에 `SCHEMA_DIFFERS`이며, 빠진 unique key는 있는 row에서 실패할 수 있어 plan에서 다룬다는 이유와 함께 `SCHEMA_DIFFERS`. MySQL과 SQLite에서 트랜잭션 안의 호출은 `CONFIG` |
-| `schema().exists(schema)`, `schema().installed(schema, table)` | 스키마 확인 |
-| `schema().empty()` | 데이터베이스에 사용자 내용이 없는지 반환. PostgreSQL에서는 `public`, `information_schema`, `pg_` 스키마가 아닌 스키마가 객체 없이도 내용이고, `public`의 테이블, 파티션 테이블, 뷰, 구체화된 뷰, 외부 테이블도 내용이다. `public`의 함수, 타입, 시퀀스는 내용이 아니다. MySQL에서는 연결한 데이터베이스의 테이블과 뷰가 내용이고, SQLite에서는 `sqlite_` 테이블과 ORM의 `orm__` 테이블이 아닌 테이블과 뷰가 내용이다 |
-| `privileges().grantTable(table, role)`, `revokeTable(table, privilege, role)`, `inspectTable(table)` | 테이블 권한. PostgreSQL이 아닌 방언은 `CAPABILITY_UNSUPPORTED` 반환 |
-| `aes().status(model, keyring)`, `aes().rotate(model, keyring)` | AES 키 버전 상태와 모든 AES 컬럼·버전의 단일 트랜잭션 회전 |
-| `stats()` | 연결 풀 통계 |
+- **INT-50** `lock(key)`: 트랜잭션 범위 이름 잠금. MySQL `GET_LOCK`, PostgreSQL advisory lock, SQLite ORM 잠금 행. 활성 트랜잭션 필요
+- **INT-51** `setLocal(key, value)`, `local(key)`: 트랜잭션 로컬 값. 활성 트랜잭션 필요. 없는 키의 `local`은 `NO_ROWS` 반환
+- **INT-52** `wasInserted(entity, sequence)`: 해당 sequence에 대한 생성된 ORM insert가 현재 트랜잭션에서 성공했는지 반환. 어댑터 중립적이며 savepoint rollback에 맞춰 복원
+- **INT-53** `backendWaitingForLock(ctx)`: PostgreSQL pool backend의 lock 대기를 반환. MySQL과 SQLite는 driver 전용 호출을 노출하지 않고 `false` 반환
+- **INT-54** `schema().register(schema)`: generated schema 값을 받아 데이터베이스를 읽거나 쓰지 않고 그 set을 연결에 등록한다. manifest text가 `manifestHash`로 hash되지 않으면 `CONFIG`
+- **INT-55** `schema().install(schema)`: generated schema 값을 받는다. manifest text가 `manifestHash`로 hash되지 않으면 어떤 statement보다 먼저 `CONFIG`. 연결의 dialect로 dbspec document set을 렌더링하고 테이블이 하나도 없으면 모두 만들며, 그 set을 연결에 등록한다. 모두 있으면 아무것도 바꾸지 않고 일부만 있으면 `CONFIG`. 그다음 데이터베이스의 set 테이블이 set과 다르면 각 차이를 적은 `CONFIG`. MySQL에서 트랜잭션 안의 호출은 `CONFIG`
+- **INT-56** `schema().addTablesAndColumns(schema)`: generated schema 값을 받아 설치한 그 document set에 데이터베이스에 없는 테이블과, 기존 테이블에 빠진 컬럼 가운데 null이거나 default가 있는 컬럼과, 기존 테이블에 빠진 index를 dialect의 plan step으로 더하며, 그 step은 각 테이블을 index, foreign key, check, 트리거와 함께 만들고 바뀐 각 테이블의 audit 트리거를 바꾼다. 만든 테이블을 `table`, 추가한 컬럼을 `table.column`, 만든 index를 `table.index`로 반환하고, 다른 set의 테이블은 바꾸지 않으며 set을 등록하지 않는다. 다른 차이는 변경 전에 `SCHEMA_DIFFERS`이며, 빠진 unique key는 있는 row에서 실패할 수 있어 plan에서 다룬다는 이유와 함께 `SCHEMA_DIFFERS`. MySQL과 SQLite에서 트랜잭션 안의 호출은 `CONFIG`
+- **INT-57** `schema().exists(schema)`, `schema().installed(schema, table)`: 스키마 확인
+- **INT-58** `schema().empty()`: 데이터베이스에 사용자 내용이 없는지 반환. PostgreSQL에서는 `public`, `information_schema`, `pg_` 스키마가 아닌 스키마가 객체 없이도 내용이고, `public`의 테이블, 파티션 테이블, 뷰, 구체화된 뷰, 외부 테이블도 내용이다. `public`의 함수, 타입, 시퀀스는 내용이 아니다. MySQL에서는 연결한 데이터베이스의 테이블과 뷰가 내용이고, SQLite에서는 `sqlite_` 테이블과 ORM의 `orm__` 테이블이 아닌 테이블과 뷰가 내용이다
+- **INT-59** `privileges().grantTable(table, role)`, `revokeTable(table, privilege, role)`, `inspectTable(table)`: 테이블 권한. PostgreSQL이 아닌 방언은 `CAPABILITY_UNSUPPORTED` 반환
+- **INT-60** `aes().status(model, keyring)`, `aes().rotate(model, keyring)`: AES 키 버전 상태와 모든 AES 컬럼·버전의 단일 트랜잭션 회전
+- **INT-61** `stats()`: 연결 풀 통계
 
 데이터를 바꾸는 유틸리티는 활성 트랜잭션이 없으면 트랜잭션을 열고, 같은 연결의 활성 트랜잭션이 있으면 그 트랜잭션에 참여한다.
 
@@ -213,11 +199,9 @@ relation 결과는 schema에 따라 한 행 또는 collection이다. Go와 Rust�
 
 ## 9. Collection·Key·Page — IF-25 ~ IF-27
 
-| 객체 | 필수 필드 |
-|---|---|
-| `Collection<T>` | 순서가 있는 행, 길이, first, key lookup |
-| `Key` | 논리 타입 tag와 값 |
-| `Page<T>` | `items`, `totalCount`, `totalPages`, `page`, `perPage` |
+- **INT-62** `Collection<T>`: 순서가 있는 행, 길이, first, key lookup
+- **INT-63** `Key`: 논리 타입 tag와 값
+- **INT-64** `Page<T>`: `items`, `totalCount`, `totalPages`, `page`, `perPage`
 
 정수 key `7`과 문자열 key `"7"`은 다른 key다. boolean `true`와 정수 `1`, 같은 글자의 bytes와 문자열, 날짜와 시각과 그 형식의 문자열은 다른 key다. 다른 시간대의 날짜와 시각은 그 UTC 시점의 key와 같다. NULL key 구성 요소는 `CODEC_DECODE`다. 복합 key는 각 타입 구성요소의 길이를 함께 인코딩하므로 `("1", "23")`과 `("12", "3")`이 충돌하지 않는다. plan은 순서가 있는 collection 식별자를 `Assemble.key`에 기록한다. 일반 행은 모든 primary key 구성요소를 사용하고 grouped count 행은 group 컬럼과 expression 별칭을 사용한다. 명시적인 order나 key 정책이 없으면 collection은 DB 순서를 보존한다. page는 root 결과 순서와 relation 부착 순서를 보존한다.
 
