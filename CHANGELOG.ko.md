@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 43d16d8c98709d978db4bf993b4e765ef0a41f1c131c9e1ead3e1654ed5fa1ed -->
+<!-- source-sha256: cdf9e2b9287aa978bcfdd386e9557f6530e1d5df9ab31c1cf3e6718d086d6512 -->
 # 변경 이력
 
 ## Unreleased
+- `packages/go/engine/dbspec`이 K334 lint 규칙이 찾는 모든 오류(41개)를 처리한다: 숫자 parse와 type assertion을 검사하고 wrap은 오류 chain을 지킨다 (KSTD-5-7-3).
 - `packages/go/orm`이 K334 lint 규칙이 찾는 모든 오류(113개)를 처리한다: 버려진 driver와 close 오류는 반환하거나 join하고, type assertion은 검사하며, 오류 비교는 chain을 지키고, builder 오류는 더는 row-lock 검사 뒤에 숨지 않으며, statement의 단독 `$`는 그대로 남는다(DSL-153) (KSTD-5-7-2).
 - build tag 뒤의 Go 파일이 그 tag로 build되고 Go lint를 통과한다: case clock과 `restoreTables`가 유일한 사용처 옆으로 돌아왔고, physical, markdown, coverage, perfgate test의 버려진 오류를 검사하며, `make lint-go`가 26단계 모두 통과한다. red: kit K406이 tag 일곱 개에서 finding 79개를 찾았고 bench stress test는 더는 build되지 않았다 (KSTD-5-7-6).
 - `tests/dbspec/syntax.json`이 KSTD-2-10이 `cases.json`에 더한 DIA-97의 hashes case 두 개의 token을 생성기로 다시 만들어 담는다. red: TestSharedSyntaxVectors가 "syntax.json has no tokens for this case"로 실패했다(KSTD-2-10-8).

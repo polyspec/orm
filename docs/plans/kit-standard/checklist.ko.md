@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 5796ab593b2e6677a9836507946d5a017723fa3855bdf3ff09a614206cf3f29c -->
+<!-- source-sha256: 395c31ce838c5f41fc78719d72a6dd303220f6666f1f5e6937ee921452030b8d -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -69,7 +69,7 @@
 | KSTD-5-6 | lint-ts가 통과한다 (KSTD-5 후속). Cause: oxlint와 knip이 repository의 TypeScript에서 실패한다 | the TypeScript of the repository | `make lint-ts` | [o] |
 | KSTD-5-7 | lint-go가 통과한다 (KSTD-5 후속). Cause: golangci-lint가 examples, packages/go, tests에서, deadcode가 packages/go에서 실패한다 | the Go of the repository | `make lint-go` | [o] |
 | KSTD-5-7-2 | packages/go/orm이 K334가 찾는 모든 오류를 처리한다 (KSTD-5-7 후속). Cause: kit K334는 golangci-lint가 버린 오류(errcheck check-blank, check-type-assertions), 오류 chain을 잃는 비교나 wrap(errorlint), nil로 반환한 오류(nilerr), linter와 이유 없는 nolint(nolintlint)를 보고하게 한다; packages/go/orm에서 113개를 찾는다 | packages/go/orm | `make lint-go` | [o] |
-| KSTD-5-7-3 | packages/go/engine/dbspec이 K334가 찾는 모든 오류를 처리한다 (KSTD-5-7 후속). Cause: kit K334는 golangci-lint가 버린 오류(errcheck check-blank, check-type-assertions), 오류 chain을 잃는 비교나 wrap(errorlint), nil로 반환한 오류(nilerr), linter와 이유 없는 nolint(nolintlint)를 보고하게 한다; packages/go/engine/dbspec에서 41개를 찾는다 | packages/go/engine/dbspec | `make lint-go` | [~] |
+| KSTD-5-7-3 | packages/go/engine/dbspec이 K334가 찾는 모든 오류를 처리한다 (KSTD-5-7 후속). Cause: kit K334는 golangci-lint가 버린 오류(errcheck check-blank, check-type-assertions), 오류 chain을 잃는 비교나 wrap(errorlint), nil로 반환한 오류(nilerr), linter와 이유 없는 nolint(nolintlint)를 보고하게 한다; packages/go/engine/dbspec에서 41개를 찾는다 | packages/go/engine/dbspec | `make lint-go` | [o] |
 | KSTD-5-7-4 | 나머지 Go code가 K334가 찾는 모든 오류를 처리하고 deadcode가 도달할 수 없는 함수를 찾지 않는다 (KSTD-5-7 후속). Cause: kit K334는 golangci-lint가 버린 오류(errcheck check-blank, check-type-assertions), 오류 chain을 잃는 비교나 wrap(errorlint), nil로 반환한 오류(nilerr), linter와 이유 없는 nolint(nolintlint)를 보고하게 한다; packages/go/bench, generator, internal, testcase와 tests, bench에서 약 40개를 찾는다 | packages/go, tests, examples | `make lint-go` | [~] |
 | KSTD-5-7-5 | dbspec Apply가 callback의 중단과 ApplyError를 typed result로 보고하므로 호출자가 오류를 비교하지 않고 판정한다 (KSTD-5-7-4 후속). Cause: packages/go/internal/dbspec/apply/main.go:100과 :113이 오류를 ==로 비교한다(errorlint). Apply가 errStop을 cleanup 실패와 join하고 ApplyError를 오류로만 돌려주므로, 호출자 쪽에서 결과가 같은 수정은 없다 | packages/go/engine/dbspec, packages/go/internal/dbspec/apply, their tests | `go test -count=1 -run Apply ./packages/go/engine/dbspec` | [o] |
 | KSTD-5-7-6 | build tag 뒤의 Go 파일이 그 tag로 build되고 Go lint를 통과한다 (KSTD-5-7 후속). Cause: kit K406이 module의 모든 build tag를 lint하자 tag bench, decimalphysical, featurecoverage, markdown, ormtest, perfgate, physical에서 finding 81개가 나온다; 그중 engine/dbspec/stress_test.go(tag bench)는 KSTD-5-7-3이 기본 build에서 쓰이지 않는다며 startCaseClock을 지워 더는 build되지 않는다 | the tagged Go files of packages/go and tests | `make lint-go` | [o] |
