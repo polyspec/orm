@@ -890,3 +890,97 @@ final class Planner
     /** @return array{manifest_hash: string, kind: string, steps: list<array>} */
     public function compile(array $r): array {}
 }
+
+/**
+ * A database connection of the PHP library (packages/php/src/Db.php). The extension implements the connection and the statement
+ * path in C (db.c). The transaction, savepoint, audit and execute methods belong to T182-5-2, and Utils and Stats to T182-5-3; until
+ * those items implement them they are declared with the library's signatures and throw OrmException with code INTERNAL, whose
+ * message names the item. DRIVERS is registered by src/polyspec_orm.c, since the stub declares no array constants.
+ */
+final class Db
+{
+    public const string SECRET = '$SECRET';
+    public const string NOW = '$NOW';
+    private readonly DbState $state;
+    private array $masks;
+    private bool $typed;
+    private ?\Closure $requestHook;
+    private readonly string $driver;
+    private readonly Config $config;
+    private readonly \DateTimeZone $zone;
+    private readonly ?MarkdownSession $md;
+
+    /** @internal Orm::connect creates connections. */
+    public function __construct(?\PDO $pdo, string $driver, Config $config, \DateTimeZone $zone, ?MarkdownSession $md = null) {}
+    /** @internal */
+    public function registerSet(Schema $schema): void {}
+    public function driver(): string {}
+    /** @internal */
+    public function markdownSession(): MarkdownSession {}
+    /** @internal */
+    public function unsupportedOnMarkdown(string $surface): void {}
+    /** @internal */
+    public function registeredModel(string $hash): RuntimeModel {}
+    /** @internal */
+    public function zone(): \DateTimeZone {}
+    /** @internal */
+    public function config(): Config {}
+    /** @internal */
+    public function pdo(): \PDO {}
+    /** @internal */
+    public function driverError(\PDOException $e): OrmException {}
+    /** The operations outside the query syntax. */
+    public function utils(): Utils {}
+    /** The connection state: one connection per Db in PHP. */
+    public function stats(): Stats {}
+    public function close(): void {}
+    public function withRequestHook(\Closure $hook): Db {}
+    public function subscribe(\Closure $subscriber): \Closure {}
+    /** @internal */
+    public function nextTransaction(): int {}
+    /** @internal */
+    public function transactionNumber(): ?int {}
+    /** @internal */
+    public function publish(string $kind, array $tables, ?int $transaction, string $sql, array $binds, int $start, ?OrmException $error): void {}
+    /** @internal */
+    public function observed(string $kind, array $tables, ?int $transaction, string $sql, array $binds, \Closure $send): mixed {}
+    /** @internal */
+    public function run(string $kind, array $tables, ?int $transaction, string $sql, bool $control = false): void {}
+    /** @internal */
+    public function fetch(string $kind, array $tables, ?int $transaction, string $sql, array $args = [], bool $control = false): array {}
+    public static function bindLimit(string $driver): int {}
+    public static function insertParts(int $rows, int $batch): array {}
+    /** @internal */
+    public static function activeFor(Db $db): ?TxFrame {}
+    /** @internal */
+    public static function resolve(?Db $conn): array {}
+    /** @internal */
+    public static function inTransaction(?Db $conn, \Closure $fn): void {}
+    public function transaction(\Closure $fn, string $isolation = '', bool $readOnly = false, int $timeoutMs = 0, int $retry = 3, ?array $audit = null): mixed {}
+    /** @internal @return array{0: array, 1: array} */
+    public function select(?TxFrame $frame, Request $r): array {}
+    /** @internal */
+    public function scalarOf(?TxFrame $frame, Request $r): mixed {}
+    /** @internal @return array{0: array, 1: array, 2: int} */
+    public function paginate(?TxFrame $frame, Request $r): array {}
+    /** @internal @return array{0: int|float|string|null, 1: int} */
+    public function writeOf(?TxFrame $frame, Request $r, ?\Closure $afterHook = null): array {}
+    /** @internal */
+    public function execute(array $step, array $params): void {}
+    /** @internal @return array{sql: string, binds: list<mixed>} */
+    public function statement(Request $r): array {}
+    /** @internal */
+    public function clock(): \DateTimeImmutable {}
+    /** @internal */
+    public static function timeValue(mixed $v, string $colType, int $precision, \DateTimeZone $zone): mixed {}
+    /** @internal */
+    public function acquireSQLiteRowLock(string $mode): void {}
+    /** @internal */
+    public static function rowKey(array $row, array $refs): int|string|bool|Bytes|\DateTimeInterface|null {}
+    /** @internal */
+    public static function rowSlot(array $row, array $refs): ?string {}
+    /** @internal */
+    public static function sameScalar(mixed $a, mixed $b): bool {}
+    /** @internal */
+    public static function scalarText(mixed $v): string {}
+}

@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 72020df303b6d06605875ac0a4ea6104b808f7c8 */
+ * Stub hash: af7a5fb5bb1be992c7450ef3e18f53d0425615ce */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Diagnostic___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, rule, IS_STRING, 0)
@@ -652,6 +652,194 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_class_Polyspec_Orm_Planner_compile arginfo_class_Polyspec_Orm_Validator_paramUses
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Db___construct, 0, 0, 4)
+	ZEND_ARG_OBJ_INFO(0, pdo, PDO, 1)
+	ZEND_ARG_TYPE_INFO(0, driver, IS_STRING, 0)
+	ZEND_ARG_OBJ_INFO(0, config, Polyspec\\Orm\\Config, 0)
+	ZEND_ARG_OBJ_INFO(0, zone, DateTimeZone, 0)
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, md, Polyspec\\Orm\\MarkdownSession, 1, "null")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_registerSet, 0, 1, IS_VOID, 0)
+	ZEND_ARG_OBJ_INFO(0, schema, Polyspec\\Orm\\Schema, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Db_driver arginfo_class_Polyspec_Orm_Dbspec_ColumnType_text
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Db_markdownSession, 0, 0, Polyspec\\Orm\\MarkdownSession, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_unsupportedOnMarkdown, 0, 1, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, surface, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Db_registeredModel, 0, 1, Polyspec\\Orm\\RuntimeModel, 0)
+	ZEND_ARG_TYPE_INFO(0, hash, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Db_zone, 0, 0, DateTimeZone, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Db_config, 0, 0, Polyspec\\Orm\\Config, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Db_pdo, 0, 0, PDO, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Db_driverError, 0, 1, Polyspec\\Orm\\OrmException, 0)
+	ZEND_ARG_OBJ_INFO(0, e, PDOException, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Db_utils, 0, 0, Polyspec\\Orm\\\125tils, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Db_stats, 0, 0, Polyspec\\Orm\\Stats, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_close, 0, 0, IS_VOID, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Db_withRequestHook, 0, 1, Polyspec\\Orm\\Db, 0)
+	ZEND_ARG_OBJ_INFO(0, hook, Closure, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Db_subscribe, 0, 1, Closure, 0)
+	ZEND_ARG_OBJ_INFO(0, subscriber, Closure, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_nextTransaction, 0, 0, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_transactionNumber, 0, 0, IS_LONG, 1)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_publish, 0, 7, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, kind, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, tables, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, transaction, IS_LONG, 1)
+	ZEND_ARG_TYPE_INFO(0, sql, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, binds, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, start, IS_LONG, 0)
+	ZEND_ARG_OBJ_INFO(0, error, Polyspec\\Orm\\OrmException, 1)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_observed, 0, 6, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, kind, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, tables, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, transaction, IS_LONG, 1)
+	ZEND_ARG_TYPE_INFO(0, sql, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, binds, IS_ARRAY, 0)
+	ZEND_ARG_OBJ_INFO(0, send, Closure, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_run, 0, 4, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, kind, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, tables, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, transaction, IS_LONG, 1)
+	ZEND_ARG_TYPE_INFO(0, sql, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, control, _IS_BOOL, 0, "false")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_fetch, 0, 4, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, kind, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, tables, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, transaction, IS_LONG, 1)
+	ZEND_ARG_TYPE_INFO(0, sql, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, args, IS_ARRAY, 0, "[]")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, control, _IS_BOOL, 0, "false")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_bindLimit, 0, 1, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, driver, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_insertParts, 0, 2, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, rows, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, batch, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Db_activeFor, 0, 1, Polyspec\\Orm\\TxFrame, 1)
+	ZEND_ARG_OBJ_INFO(0, db, Polyspec\\Orm\\Db, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_resolve, 0, 1, IS_ARRAY, 0)
+	ZEND_ARG_OBJ_INFO(0, conn, Polyspec\\Orm\\Db, 1)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_inTransaction, 0, 2, IS_VOID, 0)
+	ZEND_ARG_OBJ_INFO(0, conn, Polyspec\\Orm\\Db, 1)
+	ZEND_ARG_OBJ_INFO(0, fn, Closure, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_transaction, 0, 1, IS_MIXED, 0)
+	ZEND_ARG_OBJ_INFO(0, fn, Closure, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, isolation, IS_STRING, 0, "\'\'")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, readOnly, _IS_BOOL, 0, "false")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, timeoutMs, IS_LONG, 0, "0")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, retry, IS_LONG, 0, "3")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, audit, IS_ARRAY, 1, "null")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_select, 0, 2, IS_ARRAY, 0)
+	ZEND_ARG_OBJ_INFO(0, frame, Polyspec\\Orm\\TxFrame, 1)
+	ZEND_ARG_OBJ_INFO(0, r, Polyspec\\Orm\\Request, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_scalarOf, 0, 2, IS_MIXED, 0)
+	ZEND_ARG_OBJ_INFO(0, frame, Polyspec\\Orm\\TxFrame, 1)
+	ZEND_ARG_OBJ_INFO(0, r, Polyspec\\Orm\\Request, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Db_paginate arginfo_class_Polyspec_Orm_Db_select
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_writeOf, 0, 2, IS_ARRAY, 0)
+	ZEND_ARG_OBJ_INFO(0, frame, Polyspec\\Orm\\TxFrame, 1)
+	ZEND_ARG_OBJ_INFO(0, r, Polyspec\\Orm\\Request, 0)
+	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, afterHook, Closure, 1, "null")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_execute, 0, 2, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, step, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, params, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_statement, 0, 1, IS_ARRAY, 0)
+	ZEND_ARG_OBJ_INFO(0, r, Polyspec\\Orm\\Request, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Db_clock, 0, 0, DateTimeImmutable, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_timeValue, 0, 4, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, v, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, colType, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, precision, IS_LONG, 0)
+	ZEND_ARG_OBJ_INFO(0, zone, DateTimeZone, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_acquireSQLiteRowLock, 0, 1, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, mode, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_TYPE_MASK_EX(arginfo_class_Polyspec_Orm_Db_rowKey, 0, 2, Polyspec\\Orm\\Bytes|DateTimeInterface, MAY_BE_LONG|MAY_BE_STRING|MAY_BE_BOOL|MAY_BE_NULL)
+	ZEND_ARG_TYPE_INFO(0, row, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, refs, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_rowSlot, 0, 2, IS_STRING, 1)
+	ZEND_ARG_TYPE_INFO(0, row, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, refs, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_sameScalar, 0, 2, _IS_BOOL, 0)
+	ZEND_ARG_TYPE_INFO(0, a, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, b, IS_MIXED, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_scalarText, 0, 1, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, v, IS_MIXED, 0)
+ZEND_END_ARG_INFO()
+
 ZEND_METHOD(Polyspec_Orm_Dbspec_Diagnostic, __construct);
 ZEND_METHOD(Polyspec_Orm_Dbspec_Position, __construct);
 ZEND_METHOD(Polyspec_Orm_Dbspec_Document, __construct);
@@ -784,6 +972,46 @@ ZEND_METHOD(Polyspec_Orm_Validator, intervalType);
 ZEND_METHOD(Polyspec_Orm_Validator, conflictKey);
 ZEND_METHOD(Polyspec_Orm_Planner, __construct);
 ZEND_METHOD(Polyspec_Orm_Planner, compile);
+ZEND_METHOD(Polyspec_Orm_Db, __construct);
+ZEND_METHOD(Polyspec_Orm_Db, registerSet);
+ZEND_METHOD(Polyspec_Orm_Db, driver);
+ZEND_METHOD(Polyspec_Orm_Db, markdownSession);
+ZEND_METHOD(Polyspec_Orm_Db, unsupportedOnMarkdown);
+ZEND_METHOD(Polyspec_Orm_Db, registeredModel);
+ZEND_METHOD(Polyspec_Orm_Db, zone);
+ZEND_METHOD(Polyspec_Orm_Db, config);
+ZEND_METHOD(Polyspec_Orm_Db, pdo);
+ZEND_METHOD(Polyspec_Orm_Db, driverError);
+ZEND_METHOD(Polyspec_Orm_Db, utils);
+ZEND_METHOD(Polyspec_Orm_Db, stats);
+ZEND_METHOD(Polyspec_Orm_Db, close);
+ZEND_METHOD(Polyspec_Orm_Db, withRequestHook);
+ZEND_METHOD(Polyspec_Orm_Db, subscribe);
+ZEND_METHOD(Polyspec_Orm_Db, nextTransaction);
+ZEND_METHOD(Polyspec_Orm_Db, transactionNumber);
+ZEND_METHOD(Polyspec_Orm_Db, publish);
+ZEND_METHOD(Polyspec_Orm_Db, observed);
+ZEND_METHOD(Polyspec_Orm_Db, run);
+ZEND_METHOD(Polyspec_Orm_Db, fetch);
+ZEND_METHOD(Polyspec_Orm_Db, bindLimit);
+ZEND_METHOD(Polyspec_Orm_Db, insertParts);
+ZEND_METHOD(Polyspec_Orm_Db, activeFor);
+ZEND_METHOD(Polyspec_Orm_Db, resolve);
+ZEND_METHOD(Polyspec_Orm_Db, inTransaction);
+ZEND_METHOD(Polyspec_Orm_Db, transaction);
+ZEND_METHOD(Polyspec_Orm_Db, select);
+ZEND_METHOD(Polyspec_Orm_Db, scalarOf);
+ZEND_METHOD(Polyspec_Orm_Db, paginate);
+ZEND_METHOD(Polyspec_Orm_Db, writeOf);
+ZEND_METHOD(Polyspec_Orm_Db, execute);
+ZEND_METHOD(Polyspec_Orm_Db, statement);
+ZEND_METHOD(Polyspec_Orm_Db, clock);
+ZEND_METHOD(Polyspec_Orm_Db, timeValue);
+ZEND_METHOD(Polyspec_Orm_Db, acquireSQLiteRowLock);
+ZEND_METHOD(Polyspec_Orm_Db, rowKey);
+ZEND_METHOD(Polyspec_Orm_Db, rowSlot);
+ZEND_METHOD(Polyspec_Orm_Db, sameScalar);
+ZEND_METHOD(Polyspec_Orm_Db, scalarText);
 
 static const zend_function_entry class_Polyspec_Orm_Dbspec_Diagnostic_methods[] = {
 	ZEND_ME(Polyspec_Orm_Dbspec_Diagnostic, __construct, arginfo_class_Polyspec_Orm_Dbspec_Diagnostic___construct, ZEND_ACC_PUBLIC)
@@ -1138,6 +1366,50 @@ static const zend_function_entry class_Polyspec_Orm_Validator_methods[] = {
 static const zend_function_entry class_Polyspec_Orm_Planner_methods[] = {
 	ZEND_ME(Polyspec_Orm_Planner, __construct, arginfo_class_Polyspec_Orm_Planner___construct, ZEND_ACC_PUBLIC)
 	ZEND_ME(Polyspec_Orm_Planner, compile, arginfo_class_Polyspec_Orm_Planner_compile, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Polyspec_Orm_Db_methods[] = {
+	ZEND_ME(Polyspec_Orm_Db, __construct, arginfo_class_Polyspec_Orm_Db___construct, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, registerSet, arginfo_class_Polyspec_Orm_Db_registerSet, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, driver, arginfo_class_Polyspec_Orm_Db_driver, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, markdownSession, arginfo_class_Polyspec_Orm_Db_markdownSession, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, unsupportedOnMarkdown, arginfo_class_Polyspec_Orm_Db_unsupportedOnMarkdown, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, registeredModel, arginfo_class_Polyspec_Orm_Db_registeredModel, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, zone, arginfo_class_Polyspec_Orm_Db_zone, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, config, arginfo_class_Polyspec_Orm_Db_config, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, pdo, arginfo_class_Polyspec_Orm_Db_pdo, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, driverError, arginfo_class_Polyspec_Orm_Db_driverError, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, utils, arginfo_class_Polyspec_Orm_Db_utils, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, stats, arginfo_class_Polyspec_Orm_Db_stats, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, close, arginfo_class_Polyspec_Orm_Db_close, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, withRequestHook, arginfo_class_Polyspec_Orm_Db_withRequestHook, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, subscribe, arginfo_class_Polyspec_Orm_Db_subscribe, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, nextTransaction, arginfo_class_Polyspec_Orm_Db_nextTransaction, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, transactionNumber, arginfo_class_Polyspec_Orm_Db_transactionNumber, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, publish, arginfo_class_Polyspec_Orm_Db_publish, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, observed, arginfo_class_Polyspec_Orm_Db_observed, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, run, arginfo_class_Polyspec_Orm_Db_run, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, fetch, arginfo_class_Polyspec_Orm_Db_fetch, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, bindLimit, arginfo_class_Polyspec_Orm_Db_bindLimit, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Db, insertParts, arginfo_class_Polyspec_Orm_Db_insertParts, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Db, activeFor, arginfo_class_Polyspec_Orm_Db_activeFor, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Db, resolve, arginfo_class_Polyspec_Orm_Db_resolve, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Db, inTransaction, arginfo_class_Polyspec_Orm_Db_inTransaction, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Db, transaction, arginfo_class_Polyspec_Orm_Db_transaction, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, select, arginfo_class_Polyspec_Orm_Db_select, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, scalarOf, arginfo_class_Polyspec_Orm_Db_scalarOf, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, paginate, arginfo_class_Polyspec_Orm_Db_paginate, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, writeOf, arginfo_class_Polyspec_Orm_Db_writeOf, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, execute, arginfo_class_Polyspec_Orm_Db_execute, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, statement, arginfo_class_Polyspec_Orm_Db_statement, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, clock, arginfo_class_Polyspec_Orm_Db_clock, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, timeValue, arginfo_class_Polyspec_Orm_Db_timeValue, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Db, acquireSQLiteRowLock, arginfo_class_Polyspec_Orm_Db_acquireSQLiteRowLock, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, rowKey, arginfo_class_Polyspec_Orm_Db_rowKey, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Db, rowSlot, arginfo_class_Polyspec_Orm_Db_rowSlot, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Db, sameScalar, arginfo_class_Polyspec_Orm_Db_sameScalar, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Db, scalarText, arginfo_class_Polyspec_Orm_Db_scalarText, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_FE_END
 };
 
@@ -3129,6 +3401,83 @@ static zend_class_entry *register_class_Polyspec_Orm_Planner(void)
 	zend_string *property_d_class_Polyspec_Orm_Dialect = zend_string_init("Polyspec\\Orm\\Dialect", sizeof("Polyspec\\Orm\\Dialect")-1, 1);
 	zend_declare_typed_property(class_entry, property_d_name, &property_d_default_value, ZEND_ACC_PRIVATE|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_d_class_Polyspec_Orm_Dialect, 0, 0));
 	zend_string_release(property_d_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Polyspec_Orm_Db(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm", "Db", class_Polyspec_Orm_Db_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
+
+	zval const_SECRET_value;
+	zend_string *const_SECRET_value_str = zend_string_init("$SECRET", strlen("$SECRET"), 1);
+	ZVAL_STR(&const_SECRET_value, const_SECRET_value_str);
+	zend_string *const_SECRET_name = zend_string_init_interned("SECRET", sizeof("SECRET") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_SECRET_name, &const_SECRET_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_SECRET_name);
+
+	zval const_NOW_value;
+	zend_string *const_NOW_value_str = zend_string_init("$NOW", strlen("$NOW"), 1);
+	ZVAL_STR(&const_NOW_value, const_NOW_value_str);
+	zend_string *const_NOW_name = zend_string_init_interned("NOW", sizeof("NOW") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_NOW_name, &const_NOW_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_NOW_name);
+
+	zval property_state_default_value;
+	ZVAL_UNDEF(&property_state_default_value);
+	zend_string *property_state_name = zend_string_init("state", sizeof("state") - 1, 1);
+	zend_string *property_state_class_Polyspec_Orm_DbState = zend_string_init("Polyspec\\Orm\\DbState", sizeof("Polyspec\\Orm\\DbState")-1, 1);
+	zend_declare_typed_property(class_entry, property_state_name, &property_state_default_value, ZEND_ACC_PRIVATE|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_state_class_Polyspec_Orm_DbState, 0, 0));
+	zend_string_release(property_state_name);
+
+	zval property_masks_default_value;
+	ZVAL_UNDEF(&property_masks_default_value);
+	zend_string *property_masks_name = zend_string_init("masks", sizeof("masks") - 1, 1);
+	zend_declare_typed_property(class_entry, property_masks_name, &property_masks_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_masks_name);
+
+	zval property_typed_default_value;
+	ZVAL_UNDEF(&property_typed_default_value);
+	zend_string *property_typed_name = zend_string_init("typed", sizeof("typed") - 1, 1);
+	zend_declare_typed_property(class_entry, property_typed_name, &property_typed_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_BOOL));
+	zend_string_release(property_typed_name);
+
+	zval property_requestHook_default_value;
+	ZVAL_UNDEF(&property_requestHook_default_value);
+	zend_string *property_requestHook_name = zend_string_init("requestHook", sizeof("requestHook") - 1, 1);
+	zend_string *property_requestHook_class_Closure = zend_string_init("Closure", sizeof("Closure")-1, 1);
+	zend_declare_typed_property(class_entry, property_requestHook_name, &property_requestHook_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_requestHook_class_Closure, 0, MAY_BE_NULL));
+	zend_string_release(property_requestHook_name);
+
+	zval property_driver_default_value;
+	ZVAL_UNDEF(&property_driver_default_value);
+	zend_string *property_driver_name = zend_string_init("driver", sizeof("driver") - 1, 1);
+	zend_declare_typed_property(class_entry, property_driver_name, &property_driver_default_value, ZEND_ACC_PRIVATE|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_driver_name);
+
+	zval property_config_default_value;
+	ZVAL_UNDEF(&property_config_default_value);
+	zend_string *property_config_name = zend_string_init("config", sizeof("config") - 1, 1);
+	zend_string *property_config_class_Polyspec_Orm_Config = zend_string_init("Polyspec\\Orm\\Config", sizeof("Polyspec\\Orm\\Config")-1, 1);
+	zend_declare_typed_property(class_entry, property_config_name, &property_config_default_value, ZEND_ACC_PRIVATE|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_config_class_Polyspec_Orm_Config, 0, 0));
+	zend_string_release(property_config_name);
+
+	zval property_zone_default_value;
+	ZVAL_UNDEF(&property_zone_default_value);
+	zend_string *property_zone_name = zend_string_init("zone", sizeof("zone") - 1, 1);
+	zend_string *property_zone_class_DateTimeZone = zend_string_init("DateTimeZone", sizeof("DateTimeZone")-1, 1);
+	zend_declare_typed_property(class_entry, property_zone_name, &property_zone_default_value, ZEND_ACC_PRIVATE|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_zone_class_DateTimeZone, 0, 0));
+	zend_string_release(property_zone_name);
+
+	zval property_md_default_value;
+	ZVAL_UNDEF(&property_md_default_value);
+	zend_string *property_md_name = zend_string_init("md", sizeof("md") - 1, 1);
+	zend_string *property_md_class_Polyspec_Orm_MarkdownSession = zend_string_init("Polyspec\\Orm\\MarkdownSession", sizeof("Polyspec\\Orm\\MarkdownSession")-1, 1);
+	zend_declare_typed_property(class_entry, property_md_name, &property_md_default_value, ZEND_ACC_PRIVATE|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_md_class_Polyspec_Orm_MarkdownSession, 0, MAY_BE_NULL));
+	zend_string_release(property_md_name);
 
 	return class_entry;
 }

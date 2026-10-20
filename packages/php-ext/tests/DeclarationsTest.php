@@ -79,6 +79,7 @@ const ARRAY_CONSTANTS = [
     'Polyspec\\Orm\\Dbspec\\Setting::CODEC_STAGES',
     'Polyspec\\Orm\\Dbspec\\Setting::STORE_ARGUMENTS',
     'Polyspec\\Orm\\Dbspec\\PlanApply::EFFECT_QUERIES',
+    'Polyspec\\Orm\\Db::DRIVERS',
 ];
 
 // Each case runs child PHP processes.

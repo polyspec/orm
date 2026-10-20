@@ -687,6 +687,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/orm/sqlite_path_test.go", "symbol": "TestSQLitePathCases" },
         { "implementation": "php", "test": "packages/php/tests/DsnTest.php", "symbol": "DsnTest::test_sqlite_path" },
+        { "implementation": "php-extension", "test": "packages/php/tests/DsnTest.php", "symbol": "DsnTest::test_sqlite_path" },
         { "implementation": "typescript", "test": "packages/ts/tests/dsn.mjs" },
         { "implementation": "python", "test": "packages/python/tests/test_sqlite_paths.py" },
         { "implementation": "rust", "test": "packages/rust/orm/tests/sqlite_file_name.rs", "symbol": "sqlite_path_cases" }
@@ -1641,6 +1642,7 @@
       "bindings": [
         { "implementation": "go", "test": "packages/go/orm/mysql_tls_test.go", "symbol": "TestMySQLSessionSQLMode" },
         { "implementation": "php", "test": "packages/php/tests/MysqlTlsTest.php", "symbol": "MysqlTlsTest::test_session_sql_mode" },
+        { "implementation": "php-extension", "test": "packages/php/tests/MysqlTlsTest.php", "symbol": "MysqlTlsTest::test_session_sql_mode" },
         { "implementation": "typescript", "test": "packages/ts/tests/mysql_tls.mjs" },
         { "implementation": "python", "test": "packages/python/tests/mysql_session.py" },
         { "implementation": "rust", "test": "packages/rust/orm/tests/mysql_tls.rs", "symbol": "session_sql_mode_is_the_declared_one" }
