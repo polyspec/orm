@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: e5d0b65aec9037d435c74a8c0a84e250cf9189fb4685efedce8503b49ceb3667 -->
+<!-- source-sha256: 93a9e120bac5d99d948f1533e32e23a8027f0cda8efcee80c4f3b6f70ec8dfb4 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -154,6 +154,7 @@ classDiagram
 - **INT-69** `GroupRow.toArray`(Go `GroupRow.ToArray`, PHP `GroupRow::toArray`, TypeScript `GroupRow#toArray`, Python `GroupRow.to_array`)는 선택한 값을 이름으로 가진 map 하나를 돌려준다. `row_count`는 검사한 정수 개수이고 SQL NULL은 null이다.
 - **INT-70** `GroupRows.length`(Go `Len`, PHP `count`, TypeScript `length`, Python `length`)는 그룹 행의 개수를 돌려주며, 행은 결과 순서로 순회한다.
 - **INT-71** `GroupRows.toArray`(Go `ToArray`, PHP `toArray`, TypeScript `toArray`, Python `to_array`)는 각 그룹 행의 `toArray` map을 결과 순서대로 돌려준다.
+- **INT-90** 음수 `row_count`를 가진 `GroupRow`는 `CODEC_DECODE`로 실패하며, 음이 아닌 정수가 아닌 모든 `row_count`(불리언, 손실, 안전 정수 범위 밖)도 같다. `row_count`가 없는 행은 `INTERNAL`이다. 행 개수는 데이터베이스의 `COUNT`이며 음수가 될 수 없으므로, 음수 값은 library 불변식의 깨짐이 아니라 개수로 디코드되지 않는 수신 값이다.
 
 ## 6. 연결·트랜잭션·유틸리티 — IF-13 ~ IF-17
 

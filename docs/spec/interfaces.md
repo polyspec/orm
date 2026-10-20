@@ -153,6 +153,7 @@ A terminal without a connection outside a transaction returns `CONFIG`. A connec
 - **INT-69** `GroupRow.toArray` (Go `GroupRow.ToArray`, PHP `GroupRow::toArray`, TypeScript `GroupRow#toArray`, Python `GroupRow.to_array`) returns one map of the selected values by name, with `row_count` as its checked integer count and SQL NULL as null.
 - **INT-70** `GroupRows.length` (Go `Len`, PHP `count`, TypeScript `length`, Python `length`) returns the number of group rows; the rows are iterated in result order.
 - **INT-71** `GroupRows.toArray` (Go `ToArray`, PHP `toArray`, TypeScript `toArray`, Python `to_array`) returns the `toArray` map of each group row, in result order.
+- **INT-90** A `GroupRow` whose `row_count` is negative fails with `CODEC_DECODE`, as does every `row_count` that is not an exact nonnegative integer (boolean, lossy, or beyond the safe integer range). A row with no `row_count` is `INTERNAL`. A row count is the database's `COUNT`, which is never negative, so a negative value is a received value that does not decode as a count, not a broken invariant of the library.
 
 ## 6. Connections, transactions, and utilities — IF-13 to IF-17
 
