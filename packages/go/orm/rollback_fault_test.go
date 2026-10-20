@@ -37,7 +37,7 @@ func rollbackFault(t *testing.T, driver string) {
 	if !ok || len(joined.Unwrap()) != 2 {
 		t.Fatalf("ROLLBACK does not keep the callback and rollback errors: %#v", coded.Cause)
 	}
-	if joined.Unwrap()[0] != errRollbackFaultCallback {
+	if !errors.Is(joined.Unwrap()[0], errRollbackFaultCallback) {
 		t.Fatalf("callback error = %v, want the error of the callback", joined.Unwrap()[0])
 	}
 	var fault *orm.Error
@@ -53,7 +53,7 @@ func rollbackFault(t *testing.T, driver string) {
 		}
 		return errRollbackFaultCallback
 	}, orm.Retry(0))
-	if err != errRollbackFaultCallback {
+	if !errors.Is(err, errRollbackFaultCallback) {
 		t.Fatalf("the transaction after the consumed fault = %v, want the callback error", err)
 	}
 	if n, err := model().GetCount(); err != nil || n != 1 {
