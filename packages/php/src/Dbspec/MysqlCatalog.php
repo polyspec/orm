@@ -16,26 +16,33 @@ final class MysqlCatalog
 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME NOT LIKE 'dbspec\$%' ORDER BY TABLE_NAME";
     private const COLUMNS = "SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA,
 IFNULL(CHARACTER_SET_NAME, ''), IFNULL(COLLATION_NAME, ''), IFNULL(GENERATION_EXPRESSION, '')
-FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND COLUMN_NAME NOT LIKE 'dbspec\$%' ORDER BY TABLE_NAME, ORDINAL_POSITION";
+FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND COLUMN_NAME NOT LIKE 'dbspec\$%' ORDER BY "
+    . "TABLE_NAME, ORDINAL_POSITION";
     private const INDEXES = "SELECT TABLE_NAME, INDEX_NAME, NON_UNIQUE, IFNULL(COLUMN_NAME, ''), IFNULL(COLLATION, 'A'),
 SUB_PART IS NOT NULL, EXPRESSION IS NOT NULL, INDEX_TYPE FROM information_schema.STATISTICS
 WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX";
-    private const FOREIGN_KEYS = 'SELECT rc.TABLE_NAME, rc.CONSTRAINT_NAME, rc.REFERENCED_TABLE_NAME, rc.DELETE_RULE, rc.UPDATE_RULE,
+    private const FOREIGN_KEYS = 'SELECT rc.TABLE_NAME, rc.CONSTRAINT_NAME, rc.REFERENCED_TABLE_NAME, rc.DELETE_RULE, '
+        . 'rc.UPDATE_RULE,
 rc.MATCH_OPTION, k.COLUMN_NAME, k.REFERENCED_COLUMN_NAME FROM information_schema.REFERENTIAL_CONSTRAINTS rc
 JOIN information_schema.KEY_COLUMN_USAGE k ON k.CONSTRAINT_SCHEMA = rc.CONSTRAINT_SCHEMA
 AND k.CONSTRAINT_NAME = rc.CONSTRAINT_NAME AND k.TABLE_NAME = rc.TABLE_NAME
 WHERE rc.CONSTRAINT_SCHEMA = DATABASE() ORDER BY rc.TABLE_NAME, rc.CONSTRAINT_NAME, k.ORDINAL_POSITION';
-    // The join of CHECK_CONSTRAINTS and TABLE_CONSTRAINTS slows down in proportion to the number of tables (at 2000 tables
+    // The join of CHECK_CONSTRAINTS and TABLE_CONSTRAINTS slows down in proportion to the number of
+    // tables (at 2000 tables
     // Read by two queries (60 seconds or more) and joined by name. A MySQL CHECK name is unique within a database.
     private const CHECK_CLAUSES = 'SELECT CONSTRAINT_NAME, CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS
 WHERE CONSTRAINT_SCHEMA = DATABASE() ORDER BY CONSTRAINT_NAME';
     private const CHECKS = "SELECT TABLE_NAME, CONSTRAINT_NAME, ENFORCED FROM information_schema.TABLE_CONSTRAINTS
 WHERE CONSTRAINT_SCHEMA = DATABASE() AND CONSTRAINT_TYPE = 'CHECK' ORDER BY TABLE_NAME, CONSTRAINT_NAME";
-    private const TRIGGERS = 'SELECT EVENT_OBJECT_TABLE, TRIGGER_NAME, ACTION_TIMING, EVENT_MANIPULATION, ACTION_STATEMENT
+    private const TRIGGERS = 'SELECT EVENT_OBJECT_TABLE, TRIGGER_NAME, ACTION_TIMING, EVENT_MANIPULATION, '
+        . 'ACTION_STATEMENT
 FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVENT_OBJECT_TABLE, TRIGGER_NAME';
-    private const ROUTINES = 'SELECT ROUTINE_NAME FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = DATABASE() ORDER BY ROUTINE_NAME';
-    private const EVENTS = 'SELECT EVENT_NAME FROM information_schema.EVENTS WHERE EVENT_SCHEMA = DATABASE() ORDER BY EVENT_NAME';
-    private const TYPE = '/^(smallint|int|bigint|tinyint\(1\)|double|longtext|longblob|date|char\(36\)|time|datetime)(?:\((\d+)\))?$|^(decimal)\((\d+),(\d+)\)$|^(varchar)\((\d+)\)$/D';
+    private const ROUTINES = 'SELECT ROUTINE_NAME FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = DATABASE() '
+        . 'ORDER BY ROUTINE_NAME';
+    private const EVENTS = 'SELECT EVENT_NAME FROM information_schema.EVENTS WHERE EVENT_SCHEMA = DATABASE() ORDER BY '
+        . 'EVENT_NAME';
+    private const TYPE = '/^(smallint|int|bigint|tinyint\(1\)|double|longtext|longblob|date|char\(36\)|time'
+        . '|datetime)(?:\((\d+)\))?$|^(decimal)\((\d+),(\d+)\)$|^(varchar)\((\d+)\)$/D';
 
     public static function read(\PDO $connection): Catalog
     {
@@ -56,9 +63,11 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
         // table: column: the catalog type of a type that is determined only when the renderer CHECK exists
         $pending = [];
         foreach (CatalogRows::read($connection, self::COLUMNS) as $row) {
-            [$table, $name, $columnType, $nullable] = array_map(static fn(int $i): string => CatalogRows::text($row, $i, self::COLUMNS), [0, 1, 2, 3]);
+            [$table, $name, $columnType, $nullable] = array_map(
+                static fn(int $i): string => CatalogRows::text($row, $i, self::COLUMNS), [0, 1, 2, 3]);
             $default = CatalogRows::nullableText($row, 4, self::COLUMNS);
-            [$extra, $charset, $collation, $generation] = array_map(static fn(int $i): string => CatalogRows::text($row, $i, self::COLUMNS), [5, 6, 7, 8]);
+            [$extra, $charset, $collation, $generation] = array_map(
+                static fn(int $i): string => CatalogRows::text($row, $i, self::COLUMNS), [5, 6, 7, 8]);
             $t = $c->table($table);
             if ($t === null) {
                 continue;
@@ -73,7 +82,8 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
                 continue;
             }
             [$typ, $needsCheck] = $type;
-            $column = ['name' => $name, 'type' => $typ, 'null' => $nullable === 'YES', 'identity' => false, 'default' => ''];
+            $column = ['name' => $name, 'type' => $typ, 'null' => $nullable === 'YES',
+                'identity' => false, 'default' => ''];
             $extra = trim($extra, " \t\n\r\v\f");
             if ($extra === 'auto_increment') {
                 $column['identity'] = true;
@@ -105,7 +115,8 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
         }
         $shown = [];
         foreach (CatalogRows::read($connection, self::CHECKS) as $row) {
-            [$table, $name, $enforced] = array_map(static fn(int $i): string => CatalogRows::text($row, $i, self::CHECKS), [0, 1, 2]);
+            [$table, $name, $enforced] = array_map(
+                static fn(int $i): string => CatalogRows::text($row, $i, self::CHECKS), [0, 1, 2]);
             $clause = $clauses[$name] ?? throw new \RuntimeException("check $table.$name has no CHECK_CLAUSE");
             if (self::hasNonAscii($clause)) {
                 $clause = self::shownCheck($connection, $table, $name, $shown);
@@ -121,7 +132,8 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
             if (str_contains($name, '$')) {
                 $column = Names::column($table, $name, array_keys($columns[$table] ?? []));
                 $known = $column === null ? null : $columns[$table][$column];
-                if ($known === null || self::withoutIntroducers($clause) !== self::withoutIntroducers(self::rendererCheck($known))) {
+                if ($known === null
+                    || self::withoutIntroducers($clause) !== self::withoutIntroducers(self::rendererCheck($known))) {
                     $c->report('check', $table, $name, "the check $clause is not the renderer CHECK");
                     continue;
                 }
@@ -129,7 +141,8 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
                 continue;
             }
             try {
-                $t->checks[] = ['name' => $name, 'predicate' => CheckDecoder::decode('mysql', $clause, $t->columnTypes())];
+                $t->checks[] = ['name' => $name,
+                    'predicate' => CheckDecoder::decode('mysql', $clause, $t->columnTypes())];
             } catch (CheckDecodeFailure $e) {
                 $c->report('check', $table, $name, $e->getMessage());
             }
@@ -138,7 +151,8 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
         foreach ($pending as $table => $cols) {
             foreach ($cols as $column => $need) {
                 if (!isset($checked[$table][$column])) {
-                    $c->report('column', (string) $table, (string) $column, "$need without its renderer CHECK has no dbspec type");
+                    $c->report('column', (string) $table, (string) $column,
+                        "$need without its renderer CHECK has no dbspec type");
                     $c->table((string) $table)->dropColumn((string) $column);
                 }
             }
@@ -198,8 +212,10 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
     {
         // ALTER TABLE also adds a zero-valued p-place fraction to a time literal that meets a time(p) column,
         // so that fraction is removed too (probe mysql.check.alter_writes_time_precision).
-        $clause = preg_replace("/_[a-z0-9]+\\\\'/", "\\'", $clause) ?? throw new \RuntimeException('introducer pattern failed');
-        return preg_replace("/\\\\'(\\d\\d:\\d\\d:\\d\\d)\\.0+\\\\'/", "\\'\$1\\'", $clause) ?? throw new \RuntimeException('time fraction pattern failed');
+        $clause = preg_replace("/_[a-z0-9]+\\\\'/", "\\'", $clause) ?? throw new \RuntimeException('introducer pattern '
+            . 'failed');
+        return preg_replace("/\\\\'(\\d\\d:\\d\\d:\\d\\d)\\.0+\\\\'/", "\\'\$1\\'", $clause)
+            ?? throw new \RuntimeException('time fraction pattern failed');
     }
 
     /** True if CHECK_CLAUSE has a byte of 0x80 or above. MySQL 8.4 shows non-ASCII literals encoded twice. */
@@ -210,7 +226,8 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
 
     /**
      * Reads from SHOW CREATE TABLE the body of a check whose CHECK_CLAUSE garbled non-ASCII, and
-     * escapes it again in CHECK_CLAUSE form. information_schema encodes the utf8 bytes one more time when showing them, but
+     * escapes it again in CHECK_CLAUSE form. information_schema encodes the utf8 bytes one more time when
+     * showing them, but
      * SHOW CREATE TABLE writes them correctly; the literals in the body escape `\` and `'` only once.
      * Reads SHOW CREATE TABLE once per table, and collects the results into $shown per table.
      *
@@ -221,10 +238,12 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
         if (!isset($shown[$table])) {
             $query = 'SHOW CREATE TABLE `' . str_replace('`', '``', $table) . '`';
             $rows = CatalogRows::read($connection, $query);
-            $create = CatalogRows::text($rows[0] ?? throw new \RuntimeException("SHOW CREATE TABLE $table returned no row"), 1, $query);
+            $create = CatalogRows::text(
+                $rows[0] ?? throw new \RuntimeException("SHOW CREATE TABLE $table returned no row"), 1, $query);
             $shown[$table] = self::createChecks($create);
         }
-        return $shown[$table][$name] ?? throw new \RuntimeException("check $table.$name has no CHECK in SHOW CREATE TABLE");
+        return $shown[$table][$name]
+            ?? throw new \RuntimeException("check $table.$name has no CHECK in SHOW CREATE TABLE");
     }
 
     /**
@@ -285,7 +304,8 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
         return $text === ($p === 0 ? 'CURRENT_TIMESTAMP' : "CURRENT_TIMESTAMP($p)");
     }
 
-    /** Writes the COLUMN_DEFAULT value, with escapes undone, as a dbspec literal. parse decides the canonical form and validity. */
+    /** Writes the COLUMN_DEFAULT value, with escapes undone, as a dbspec literal.
+     * parse decides the canonical form and validity. */
     private static function defaultLiteral(string $value, ColumnType $type): string
     {
         if ($type->name === 'bool' && ($value === '1' || $value === '0')) {
@@ -331,7 +351,8 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
                 $key['desc'][] = $x['collation'] === 'D';
             }
             if (!$supported) {
-                $c->report('index', $t->name, $key['name'], 'a prefix, expression or ' . strtolower($group[0]['kind']) . ' index has no dbspec definition');
+                $c->report('index', $t->name, $key['name'], 'a prefix, expression or '
+                    . '' . strtolower($group[0]['kind']) . ' index has no dbspec definition');
             } elseif ($key['name'] === 'PRIMARY') {
                 $t->primary = $key['columns'];
             } elseif (str_contains($key['name'], '$')) {
@@ -363,7 +384,8 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
             $currentTable = null;
         };
         foreach (CatalogRows::read($connection, $q) as $row) {
-            [$table, $name, $refTable, $onDelete, $onUpdate, $match, $column, $refColumn] = array_map(static fn(int $i): string => CatalogRows::text($row, $i, $q), range(0, 7));
+            [$table, $name, $refTable, $onDelete, $onUpdate, $match, $column, $refColumn] = array_map(
+                static fn(int $i): string => CatalogRows::text($row, $i, $q), range(0, 7));
             if ($current !== null && ($current['name'] !== $name || $currentTable->name !== $table)) {
                 $flush();
             }
@@ -379,11 +401,13 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
                     continue;
                 }
                 if ($delete === null || $update === null || $match !== 'NONE') {
-                    $c->report('foreign_key', $table, $name, "actions $onDelete, $onUpdate or match $match have no dbspec definition");
+                    $c->report('foreign_key', $table, $name,
+                        "actions $onDelete, $onUpdate or match $match have no dbspec definition");
                     $skipped = "$table\0$name";
                     continue;
                 }
-                $current = ['name' => $name, 'columns' => [], 'table' => $refTable, 'refs' => [], 'onDelete' => $delete, 'onUpdate' => $update];
+                $current = ['name' => $name, 'columns' => [], 'table' => $refTable, 'refs' => [],
+                    'onDelete' => $delete, 'onUpdate' => $update];
                 $currentTable = $t;
             }
             $current['columns'][] = $column;
@@ -398,8 +422,10 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
         $q = self::TRIGGERS;
         $triggers = [];
         foreach (CatalogRows::read($connection, $q) as $row) {
-            [$table, $name, $timing, $event, $statement] = array_map(static fn(int $i): string => CatalogRows::text($row, $i, $q), range(0, 4));
-            $triggers[$table][] = ['name' => $name, 'statements' => ["CREATE TRIGGER `$name` $timing $event ON `$table` FOR EACH ROW $statement"]];
+            [$table, $name, $timing, $event, $statement] = array_map(
+                static fn(int $i): string => CatalogRows::text($row, $i, $q), range(0, 4));
+            $triggers[$table][] = ['name' => $name,
+                'statements' => ["CREATE TRIGGER `$name` $timing $event ON `$table` FOR EACH ROW $statement"]];
         }
         CatalogTriggers::recognize($c, 'mysql', $triggers);
     }

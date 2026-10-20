@@ -14,14 +14,21 @@ final class SqliteCatalog
 {
     private const MASTER = "SELECT type, name, tbl_name, IFNULL(sql, '') FROM sqlite_master
 WHERE name NOT LIKE 'sqlite_%' AND tbl_name NOT LIKE 'dbspec\$%' ORDER BY type, name";
-    private const COLUMNS = "SELECT m.name, p.name, p.type, p.\"notnull\", p.dflt_value, p.pk, p.hidden FROM sqlite_master m
-JOIN pragma_table_xinfo(m.name) p WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND p.name NOT LIKE 'dbspec\$%' ORDER BY m.name, p.cid";
+    private const COLUMNS = "SELECT m.name, p.name, p.type, p.\"notnull\", p.dflt_value, p.pk, p.hidden FROM "
+        . "sqlite_master m
+JOIN pragma_table_xinfo(m.name) p WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND p.name NOT LIKE "
+    . "'dbspec\$%' ORDER BY m.name, p.cid";
     private const INDEXES = "SELECT m.name, l.name, l.\"unique\", l.origin, l.partial,
-IFNULL((SELECT group_concat(IFNULL(x.name, ''), ',') FROM (SELECT name FROM pragma_index_xinfo(l.name) WHERE key = 1 ORDER BY seqno) x), ''),
-IFNULL((SELECT group_concat(x.\"desc\", ',') FROM (SELECT \"desc\" FROM pragma_index_xinfo(l.name) WHERE key = 1 ORDER BY seqno) x), '')
-FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' ORDER BY m.name, l.name";
-    private const DECLARED = '/^(smallint|integer|bigint|BOOLEAN|REAL|TEXT|BLOB|DATE|TIME|DATETIME|INTEGER)$|^DECIMALINT\((\d+),(\d+)\)$|^varchar\((\d+)\)$/D';
-    private const FOREIGN_KEY_ITEM = '/^CONSTRAINT "([^"]+)" FOREIGN KEY \(([^)]*)\) REFERENCES "([^"]+)" \(([^)]*)\) ON DELETE (RESTRICT|CASCADE|SET NULL) ON UPDATE (RESTRICT|CASCADE|SET NULL)$/D';
+IFNULL((SELECT group_concat(IFNULL(x.name, ''), ',') FROM (SELECT name FROM pragma_index_xinfo(l.name) WHERE key = 1 "
+    . "ORDER BY seqno) x), ''),
+IFNULL((SELECT group_concat(x.\"desc\", ',') FROM (SELECT \"desc\" FROM pragma_index_xinfo(l.name) WHERE key = 1 ORDER "
+    . "BY seqno) x), '')
+FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' ORDER BY "
+    . "m.name, l.name";
+    private const DECLARED = '/^(smallint|integer|bigint|BOOLEAN|REAL|TEXT|BLOB|DATE|TIME|DATETIME|INTEGER)$'
+        . '|^DECIMALINT\((\d+),(\d+)\)$|^varchar\((\d+)\)$/D';
+    private const FOREIGN_KEY_ITEM = '/^CONSTRAINT "([^"]+)" FOREIGN KEY \(([^)]*)\) REFERENCES "([^"]+)" \(([^)]*)\) '
+        . 'ON DELETE (RESTRICT|CASCADE|SET NULL) ON UPDATE (RESTRICT|CASCADE|SET NULL)$/D';
     private const CHECK_ITEM = '/^CONSTRAINT "([^"]+)" CHECK \((.*)\)$/D';
     private const PRIMARY_KEY_ITEM = '/^PRIMARY KEY \(([^)]*)\)$/D';
     private const IDENTITY_COLUMN = '/^"([^"]+)" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT$/D';
@@ -37,7 +44,8 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
         $triggers = [];
         $q = self::MASTER;
         foreach (CatalogRows::read($connection, $q) as $row) {
-            [$kind, $name, $table, $text] = array_map(static fn(int $i): string => CatalogRows::text($row, $i, $q), [0, 1, 2, 3]);
+            [$kind, $name, $table, $text] = array_map(
+                static fn(int $i): string => CatalogRows::text($row, $i, $q), [0, 1, 2, 3]);
             if ($kind === 'table') {
                 if (str_starts_with($text, 'CREATE VIRTUAL TABLE') || str_ends_with($text, 'WITHOUT ROWID')) {
                     $c->report('table', $name, $name, 'a virtual or WITHOUT ROWID table has no dbspec definition');
@@ -64,10 +72,12 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
         }
         $q = self::COLUMNS;
         foreach (CatalogRows::read($connection, $q) as $row) {
-            [$table, $name, $declared] = array_map(static fn(int $i): string => CatalogRows::text($row, $i, $q), [0, 1, 2]);
+            [$table, $name, $declared] = array_map(
+                static fn(int $i): string => CatalogRows::text($row, $i, $q), [0, 1, 2]);
             $notNull = CatalogRows::integer($row, 3, $q);
             $default = CatalogRows::nullableText($row, 4, $q);
-            // pk is not used: primary key and identity are decided by the CREATE text. Only the shape of the value is checked.
+            // pk is not used: primary key and identity are decided by the CREATE text.
+            // Only the shape of the value is checked.
             CatalogRows::integer($row, 5, $q);
             $hidden = CatalogRows::integer($row, 6, $q);
             $t = $c->table($table);
@@ -79,8 +89,10 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
                 continue;
             }
             $item = $parsed[$table]['columns'][$name] ?? '';
-            if ($parsed[$table]['identity'] !== $name && !self::columnText($item, $name, $declared, $notNull !== 0, $default)) {
-                $c->report('column', $table, $name, "the column definition \"$item\" has clauses that dbspec does not read");
+            if ($parsed[$table]['identity'] !== $name
+                && !self::columnText($item, $name, $declared, $notNull !== 0, $default)) {
+                $c->report('column', $table, $name,
+                    "the column definition \"$item\" has clauses that dbspec does not read");
                 continue;
             }
             $column = ['name' => $name, 'null' => $notNull === 0, 'identity' => false, 'default' => ''];
@@ -93,7 +105,8 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
             } else {
                 $type = self::type($declared, $name, $check, $hasCheck);
                 if ($type === null) {
-                    $c->report('column', $table, $name, "declared type $declared with CHECK \"$check\" has no dbspec type");
+                    $c->report('column', $table, $name,
+                        "declared type $declared with CHECK \"$check\" has no dbspec type");
                     continue;
                 }
                 $column['type'] = $type;
@@ -107,7 +120,8 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
                 }
                 $column['default'] = $value;
             }
-            $t->columns[] = ['name' => $column['name'], 'type' => $c->sharedType($column['type']), 'null' => $column['null'], 'identity' => $column['identity'], 'default' => $column['default']];
+            $t->columns[] = ['name' => $column['name'], 'type' => $c->sharedType($column['type']),
+                'null' => $column['null'], 'identity' => $column['identity'], 'default' => $column['default']];
         }
         foreach ($c->tables as $t) {
             $st = $parsed[$t->name];
@@ -121,7 +135,8 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
                     continue;
                 }
                 try {
-                    $t->checks[] = ['name' => $name, 'predicate' => CheckDecoder::decode('sqlite', $expression, $t->columnTypes())];
+                    $t->checks[] = ['name' => $name,
+                        'predicate' => CheckDecoder::decode('sqlite', $expression, $t->columnTypes())];
                 } catch (CheckDecodeFailure $e) {
                     $c->report('check', $t->name, $name, $e->getMessage());
                 }
@@ -137,16 +152,19 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
             $columns = CatalogRows::text($row, 5, $q);
             $desc = CatalogRows::text($row, 6, $q);
             $t = $c->table($table);
-            // The pk and u origin indexes come from the primary key and unique definitions, and that definition is read or reported.
+            // The pk and u origin indexes come from the primary key and unique definitions,
+            // and that definition is read or reported.
             if ($t === null || $origin === 'pk' || $origin === 'u') {
                 continue;
             }
             $list = explode(',', $columns);
             if ($origin !== 'c' || $partial !== 0 || str_contains($name, '$') || in_array('', $list, true)) {
-                $c->report('index', $table, $name, "an index of origin $origin, a partial or an expression index has no dbspec definition");
+                $c->report('index', $table, $name,
+                    "an index of origin $origin, a partial or an expression index has no dbspec definition");
                 continue;
             }
-            $key = ['name' => $name, 'columns' => $list, 'desc' => array_map(static fn(string $d): bool => $d === '1', explode(',', $desc))];
+            $key = ['name' => $name, 'columns' => $list,
+                'desc' => array_map(static fn(string $d): bool => $d === '1', explode(',', $desc))];
             if ($unique !== 0) {
                 $t->uniques[] = $key;
             } else {
@@ -157,7 +175,8 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
         return $c;
     }
 
-    /** Decides the dbspec type from the declared type and the column's renderer CHECK. The CHECK must match the renderer output of that type exactly. */
+    /** Decides the dbspec type from the declared type and the column's renderer CHECK.
+     * The CHECK must match the renderer output of that type exactly. */
     private static function type(string $declared, string $column, string $check, bool $hasCheck): ?ColumnType
     {
         if (!preg_match(self::DECLARED, $declared, $m)) {
@@ -179,7 +198,8 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
                 'TEXT' => [new ColumnType('text'), new ColumnType('uuid')],
                 'BLOB' => [new ColumnType('bytes')],
                 'DATE' => [new ColumnType('date')],
-                'TIME', 'DATETIME' => array_map(static fn(int $p): ColumnType => new ColumnType($g(1) === 'TIME' ? 'time' : 'datetime', [$p]), range(0, 6)),
+                'TIME', 'DATETIME' => array_map(static fn(int $p): ColumnType =>
+                    new ColumnType($g(1) === 'TIME' ? 'time' : 'datetime', [$p]), range(0, 6)),
             };
         }
         foreach ($candidates as $type) {
@@ -191,7 +211,8 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
         return null;
     }
 
-    /** Reads dflt_value as a dbspec literal or now. A decimal is an integer multiplied by the scale; a bool is 1 or 0. Otherwise null. */
+    /** Reads dflt_value as a dbspec literal or now. A decimal is an integer multiplied by the scale;
+     * a bool is 1 or 0. Otherwise null. */
     private static function defaultLiteral(string $text, ColumnType $type): ?string
     {
         if ($type->name === 'datetime' && "($text)" === Renderer::columnDefault($type, 'now', 'sqlite')) {
@@ -211,14 +232,18 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
 
     /**
      * Reads the primary key, identity,
-     * foreign keys, and checks from the one-line CREATE TABLE text the renderer writes. Other table-level items are unsupported.
+     * foreign keys, and checks from the one-line CREATE TABLE text the renderer writes.
+     * Other table-level items are unsupported.
      *
-     * @return array{0: array{checks: array<string, string>, order: list<string>, foreignKeys: list<array>, primary: list<string>, identity: string, columns: array<string, string>, unsupported: string}, 1: list<array{0: string, 1: string, 2: string}>}
+     * @return array{0: array{checks: array<string, string>, order: list<string>, foreignKeys: list<array>,
+     *     primary: list<string>, identity: string, columns: array<string, string>, unsupported: string},
+     *     1: list<array{0: string, 1: string, 2: string}>}
      */
     private static function parseTable(string $text): array
     {
         // If unsupported is not empty, it is the reason the whole table could not be read.
-        $st = ['checks' => [], 'order' => [], 'foreignKeys' => [], 'primary' => [], 'identity' => '', 'columns' => [], 'unsupported' => ''];
+        $st = ['checks' => [], 'order' => [], 'foreignKeys' => [], 'primary' => [],
+            'identity' => '', 'columns' => [], 'unsupported' => ''];
         $open = strpos($text, '(');
         if ($open === false || !str_ends_with($text, ')')) {
             $st['unsupported'] = 'the CREATE TABLE text has no column list';
@@ -232,13 +257,15 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
             } elseif (preg_match(self::PRIMARY_KEY_ITEM, $item, $m)) {
                 $st['primary'] = self::unquoteList($m[1]);
             } elseif (preg_match(self::FOREIGN_KEY_ITEM, $item, $m)) {
-                $st['foreignKeys'][] = ['name' => $m[1], 'columns' => self::unquoteList($m[2]), 'table' => $m[3], 'refs' => self::unquoteList($m[4]),
+                $st['foreignKeys'][] = ['name' => $m[1], 'columns' => self::unquoteList($m[2]),
+                    'table' => $m[3], 'refs' => self::unquoteList($m[4]),
                     'onDelete' => Catalog::actionName($m[5]), 'onUpdate' => Catalog::actionName($m[6])];
             } elseif (preg_match(self::CHECK_ITEM, $item, $m)) {
                 $st['checks'][$m[1]] = $m[2];
                 $st['order'][] = $m[1];
             } elseif (preg_match(self::CONSTRAINT_ITEM, $item, $m)) {
-                // A constraint without a name is reported with an empty name. Any other form of primary key makes the table unreadable.
+                // A constraint without a name is reported with an empty name.
+                // Any other form of primary key makes the table unreadable.
                 $kind = ['CHECK' => 'check', 'UNIQUE' => 'unique', 'FOREIGN KEY' => 'foreign_key'][$m[2]] ?? null;
                 if ($kind === null) {
                     $st['unsupported'] = "the primary key \"$item\" has no dbspec definition";
@@ -261,7 +288,8 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
      * NULL, and, if present, only a DEFAULT. SQLite reports a type name that is a keyword
      * in upper case, so the type is compared without regard to case.
      */
-    private static function columnText(string $item, string $name, string $declared, bool $notNull, ?string $default): bool
+    private static function columnText(string $item, string $name, string $declared, bool $notNull,
+        ?string $default): bool
     {
         $prefix = "\"$name\" ";
         if (!str_starts_with($item, $prefix)) {

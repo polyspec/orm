@@ -13,7 +13,8 @@ final class Orm
      * The session sql_mode decided per MySQL connection. The result does not depend on server settings
      * (tests/dsn/mysql-session.json).
      */
-    private const MYSQL_SQL_MODE = 'STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+    private const MYSQL_SQL_MODE = 'STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,'
+        . 'NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
 
     /** The parameters that each scheme's DSN accepts (docs/spec/config.md). Other parameters are CONFIG. */
     private const DSN_PARAMETERS = [
@@ -61,7 +62,8 @@ final class Orm
                     // MySQL bounds SELECT statements with max_execution_time.
                     \Pdo\Mysql::ATTR_INIT_COMMAND => "SET time_zone = '+00:00', sql_mode = '"
                         . self::MYSQL_SQL_MODE . "'"
-                        . ($config->statementTimeoutMs > 0 ? ', SESSION max_execution_time = ' . $config->statementTimeoutMs : ''),
+                        . ($config->statementTimeoutMs > 0 ? ', SESSION max_execution_time = '
+                            . '' . $config->statementTimeoutMs : ''),
                 ] + self::mysqlTlsOptions($sslCa);
                 break;
             case 'postgres':
@@ -101,7 +103,9 @@ final class Orm
     {
         if ($config->poolSize !== 0 || $config->poolIdleSize !== 0 || $config->poolLifetimeMs !== 0) {
             throw new OrmException(Code::CONFIG,
-                'poolSize, poolIdleSize and poolLifetimeMs configure a connection pool, and the PHP client opens one connection per Db and keeps no pool; pool PHP connections with PgBouncer or ProxySQL (docs/spec/config.md "Connection poolers")');
+                'poolSize, poolIdleSize and poolLifetimeMs configure a connection pool, and the PHP client opens one '
+                    . 'connection per Db and keeps no pool; pool PHP connections with PgBouncer or ProxySQL '
+                        . '(docs/spec/config.md "Connection poolers")');
         }
         if ($config->statementTimeoutMs < 0) {
             throw new OrmException(Code::CONFIG, 'statement timeout must not be negative');
@@ -148,7 +152,8 @@ final class Orm
         $form = 'markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>';
         $parts = parse_url($dsn);
         if ($parts === false || strtolower($parts['scheme'] ?? '') !== 'markdown') {
-            throw new OrmException(Code::CONFIG, "$form; give the port that flowmark serve printed and the corpus name");
+            throw new OrmException(Code::CONFIG, "$form; give the port that flowmark serve printed "
+                . "and the corpus name");
         }
         if (isset($parts['user']) || isset($parts['pass'])) {
             throw new OrmException(Code::CONFIG, "$form; it takes no user");
@@ -238,7 +243,8 @@ final class Orm
                 $pdo = isset($query['socket'])
                     ? 'mysql:unix_socket=' . $query['socket']
                     : 'mysql:host=' . $parts['host'] . (isset($parts['port']) ? ';port=' . $parts['port'] : '');
-                return [$driver, $pdo . ';dbname=' . $name . ';charset=utf8mb4', $user ?? '', $password ?? '', [], self::mysqlTls($query, (string) ($parts['host'] ?? ''))];
+                return [$driver, $pdo . ';dbname=' . $name . ';charset=utf8mb4', $user ?? '',
+                    $password ?? '', [], self::mysqlTls($query, (string) ($parts['host'] ?? ''))];
             case 'postgres':
                 if ($name === '') {
                     throw new OrmException(Code::CONFIG, 'postgres DSN must include host and database');
@@ -327,7 +333,8 @@ final class Orm
 
     /**
      * Either the PDO option made from the ssl-ca path of ssl-mode=VERIFY_IDENTITY, or an empty array: the server
-     * certificate is checked against the CA and the host name, over TLS. The password travels only inside TLS, and the client
+     * certificate is checked against the CA and the host name, over TLS. The password travels only inside TLS,
+     * and the client
      * holds no server public key, so it does not do an RSA password exchange.
      *
      * @return array<int, mixed>

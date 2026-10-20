@@ -553,7 +553,8 @@ final class ScanVisitor extends NodeVisitorAbstract
     /**
      * The scope after branches that each end in one of the given scopes: a name holds the union of its
      * values in them.
-     * @param list<array<string, array{cls: string, many: bool}|array{union: list<array{cls: string, many: bool}>}|null>>
+     * @param list<array<string, array{cls: string, many: bool}|array{union: list<array{cls: string,
+     *     many: bool}>}|null>>
      *     $states
      * @return array<string, array{cls: string, many: bool}|array{union: list<array{cls: string, many: bool}>}|null>
      */

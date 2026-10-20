@@ -140,7 +140,8 @@ final class SchemaUtils
                     $live->unsupported, $document, $driver);
                 if ($differences !== []) {
                     throw new OrmException(Code::SCHEMA_DIFFERS,
-                        'the existing tables of the document set differ beyond missing tables, missing columns that are null or have a default and missing indexes: '
+                        'the existing tables of the document set differ beyond missing tables, missing columns that '
+                            . 'are null or have a default and missing indexes: '
                         . implode('; ', $differences));
                 }
                 foreach ($steps as $step) {
@@ -162,7 +163,8 @@ final class SchemaUtils
             return $this->u->run(fn(): array => $apply($db->transactionNumber()));
         }
         if (Db::activeFor($this->db) !== null) {
-            throw new OrmException(Code::CONFIG, "$driver adds tables and columns outside a transaction: MySQL commits schema statements implicitly and SQLite turns foreign keys off to rebuild a table");
+            throw new OrmException(Code::CONFIG, "$driver adds tables and columns outside a transaction: "
+                . "MySQL commits schema statements implicitly and SQLite turns foreign keys off to rebuild a table");
         }
         if ($driver === 'mysql') {
             return $apply(null);
@@ -198,7 +200,8 @@ final class SchemaUtils
      *
      * @param list<\Polyspec\Orm\Dbspec\Document> $documents
      */
-    private static function introspectSet(\PDO $pdo, string $driver, array $documents): \Polyspec\Orm\Dbspec\IntrospectResult
+    private static function introspectSet(\PDO $pdo, string $driver,
+        array $documents): \Polyspec\Orm\Dbspec\IntrospectResult
     {
         $live = Dbspec::introspect($pdo, $driver, 'schema');
         $differences = Dbspec::externalDifferences($live->document, $documents);
@@ -256,7 +259,8 @@ final class SchemaUtils
     private static function externalError(array $differences): OrmException
     {
         return new OrmException(Code::CONFIG,
-            'the tables that the set uses from external documents differ from the database: ' . implode('; ', $differences));
+            'the tables that the set uses from external documents differ from the database: ' . implode('; '
+                . '', $differences));
     }
 
     /**
@@ -325,7 +329,8 @@ final class SchemaUtils
             'postgres' => $this->bool('SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = $1)', [$schema]),
             'mysql' => $this->bool('SELECT EXISTS(SELECT 1 FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?)',
                 [$schema]),
-            default => $this->bool("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name LIKE ? ESCAPE '\\')",
+            default => $this->bool("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name "
+                . "LIKE ? ESCAPE '\\')",
                 [str_replace('_', '\\_', $schema) . '\\_\\_%']),
         };
     }
@@ -336,9 +341,11 @@ final class SchemaUtils
         $table = self::name($table);
         return match ($this->db->driver()) {
             'postgres' => $this->bool('SELECT to_regclass($1) IS NOT NULL', [$schema . '.' . $table]),
-            'mysql' => $this->bool('SELECT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?)',
+            'mysql' => $this->bool('SELECT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND '
+                . 'TABLE_NAME = ?)',
                 [$schema, $table]),
-            default => $this->bool("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?)",
+            default => $this->bool("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name "
+                . "= ?)",
                 [$schema . '__' . $table]),
         };
     }
@@ -354,9 +361,13 @@ final class SchemaUtils
     public function empty(): bool
     {
         return match ($this->db->driver()) {
-            'postgres' => $this->bool("SELECT NOT EXISTS (SELECT 1 FROM pg_namespace n WHERE n.nspname NOT LIKE 'pg\\_%' AND n.nspname <> 'information_schema' AND (n.nspname <> 'public' OR EXISTS (SELECT 1 FROM pg_class c WHERE c.relnamespace = n.oid AND c.relkind IN ('r', 'p', 'v', 'm', 'f'))))", []),
-            'mysql' => $this->bool('SELECT NOT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE())', []),
-            default => $this->bool("SELECT NOT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite\\_%' ESCAPE '\\' AND name NOT LIKE 'orm\\_\\_%' ESCAPE '\\')", []),
+            'postgres' => $this->bool("SELECT NOT EXISTS (SELECT 1 FROM pg_namespace n WHERE n.nspname NOT LIKE "
+                . "'pg\\_%' AND n.nspname <> 'information_schema' AND (n.nspname <> 'public' OR EXISTS (SELECT 1 FROM "
+                    . "pg_class c WHERE c.relnamespace = n.oid AND c.relkind IN ('r', 'p', 'v', 'm', 'f'))))", []),
+            'mysql' => $this->bool('SELECT NOT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = '
+                . 'DATABASE())', []),
+            default => $this->bool("SELECT NOT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND "
+                . "name NOT LIKE 'sqlite\\_%' ESCAPE '\\' AND name NOT LIKE 'orm\\_\\_%' ESCAPE '\\')", []),
         };
     }
 }
