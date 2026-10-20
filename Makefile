@@ -506,6 +506,7 @@ orm-install-python:
 	$(ONLINE) $(PYTHON3) -m pip --python $(PYTHON_VENV)/bin/python install --quiet --require-hashes -r packages/python/pylock.toml
 	$(PYTHON3) -m pip --python $(PYTHON_VENV)/bin/python install --quiet --no-deps --editable packages/python
 	$(ONLINE) $(PYTHON3) -m pip --python $(PYTHON_VENV)/bin/python install --quiet --group packages/python/pyproject.toml:test
+	$(MAKE) --no-print-directory python-models
 # python-venv-check checks that the venv of orm-install-python exists and runs the Python release of mise.toml. A missing venv
 # or another release fails without a download or a repair, and names the fix: remove the venv and run make install.
 .PHONY: python-venv-check
@@ -1149,12 +1150,18 @@ case-database-check: php-vendor-check lease-tool
 # output that an earlier run left. The interfaces checker builds the Rust extractor under the target lease.
 # The parts of conformance-check are independent: even if the counter, result, and physical result checks fail, the conformance run still
 # executes (make -k).
-# PYTHON_MODELS_DIR is the Python model directory that orm-gen writes from contracts/fixtures/bench/bench.dbs and commits.
-# python-model-check uses orm-gen gen --check to verify that the directory matches the generated result (no network).
-PYTHON_MODELS_DIR = packages/python/src/polyspec/orm/models
+# PYTHON_MODELS_* is the one declared entry of the Python models that orm-gen generates (P34: generated output is never tracked): the
+# document set, the output directory and the source scanned for model calls. python-models writes them, and it is the last step of
+# orm-install-python, so every reader of the venv finds them. python-model-check runs orm-gen gen --check against the same entry (no network).
+PYTHON_MODELS_SET = contracts/fixtures/bench/dbspec-set.json
+PYTHON_MODELS_OUT = packages/python/src/polyspec/orm/models
+PYTHON_MODELS_SCAN = packages/python/examples/thin_slice/main.py
+.PHONY: python-models
+python-models: python-venv-check
+	$(PYTHON_VENV)/bin/orm-gen gen --set $(PYTHON_MODELS_SET) --out $(PYTHON_MODELS_OUT) --scan $(PYTHON_MODELS_SCAN)
 .PHONY: python-model-check
 python-model-check: python-venv-check
-	$(PYTHON_VENV)/bin/orm-gen gen --check --set contracts/fixtures/bench/dbspec-set.json --out $(PYTHON_MODELS_DIR) --scan packages/python/examples/thin_slice/main.py
+	$(PYTHON_VENV)/bin/orm-gen gen --check --set $(PYTHON_MODELS_SET) --out $(PYTHON_MODELS_OUT) --scan $(PYTHON_MODELS_SCAN)
 
 # CONFORMANCE_PY_MODELS is the model directory that the Python conformance runner imports. The venv orm-gen writes it from
 # contracts/fixtures/bench/bench.dbs into a temporary directory and renames it into place (an atomic publish of build output).

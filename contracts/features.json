@@ -1176,8 +1176,7 @@
           "shard": "other",
           "inputs": [
             "packages/python/tests/test_model_fields.py",
-            "packages/python/src/polyspec/orm/generate/python.py",
-            "packages/python/src/polyspec/orm/models/models.py"
+            "packages/python/src/polyspec/orm/generate/python.py"
           ]
         },
         {

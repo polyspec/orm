@@ -32,6 +32,8 @@ package-dir = {"" = "src"}
 [tool.setuptools.packages.find]
 where = ["src"]
 namespaces = true
+# polyspec.orm.models holds the fixture models that make orm-install-python generates (make python-models); they are not library code.
+exclude = ["polyspec.orm.models", "polyspec.orm.models.*"]
 # polyspec.orm.testing is the test entry point (docs/spec/protocol.md "Test faults"). The distribution contains it, while the package entry
 # point polyspec.orm does not import it.
 

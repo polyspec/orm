@@ -24,6 +24,8 @@
 /packages/python/.venv/
 # The metadata that pip install --editable writes beside the source (make orm-install-python).
 /packages/python/src/*.egg-info/
+# The models that orm-gen writes at each orm-install-python (make python-models; P34: generated output is never tracked).
+/packages/python/src/polyspec/orm/models/models.py
 __pycache__/
 *.pyc
 /var/
