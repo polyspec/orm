@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The PHP extension runs the executor of the PHP library over PHP's own PDO, in three parts (T182-5-1 to -3) (T182-5).
 - Every public member of `Polyspec\Orm\Db` is the PHP extension's: the request hook came with the statement path and `utils` and `stats` with the transactions, which the declaration check confirms (T182-5-3).
 - The PHP extension implements the transactions, savepoints, audit, fault injection and frames of `Polyspec\Orm\Db`, plus `utils` and `stats`, so statement-events, statement-fault and all 18 IrAnswersTest cases run with it; PostgreSQL connections now set `ATTR_DISABLE_PREPARES`. Red: the transaction vectors failed while the transaction path was missing (T182-5-2).
 - The PHP extension implements the connection and statement path of `Polyspec\Orm\Db` in C over PDO, `execute` included, so sqlite-paths and mysql-session run with it. Red: with the extension loaded `Db` was the PHP library class (T182-5-1).
