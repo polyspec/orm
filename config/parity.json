@@ -2239,6 +2239,7 @@
     {
       "id": "aes-keyring-versions",
       "kind": "api",
+      "requirements": ["INT-74"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.AESKeyring.AESVersions" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\AesKeyring::versions" },
@@ -2250,6 +2251,7 @@
     {
       "id": "aes-rotation-status",
       "kind": "api",
+      "requirements": ["INT-75"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.AESRotationStatus" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\AesRotationStatus" },
@@ -2347,6 +2349,7 @@
     {
       "id": "collection-get",
       "kind": "api",
+      "requirements": ["INT-80"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Collection.Get" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Collection::get" },
@@ -2370,6 +2373,7 @@
     {
       "id": "collection-keys",
       "kind": "api",
+      "requirements": ["INT-81"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Collection.Keys" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Collection::keys" },
@@ -2381,6 +2385,7 @@
     {
       "id": "collection-to-array",
       "kind": "api",
+      "requirements": ["INT-84"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Collection.ToArray" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Collection::toArray" },
@@ -2404,6 +2409,7 @@
     {
       "id": "collection-connect",
       "kind": "api",
+      "requirements": ["INT-85"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Collection.Connect" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Collection::connect" },
@@ -2427,6 +2433,7 @@
     {
       "id": "client-query-relation",
       "kind": "api",
+      "requirements": ["INT-87"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Core.Relation" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Model::relation" },
@@ -2473,6 +2480,7 @@
     {
       "id": "client-db-execute",
       "kind": "api",
+      "requirements": ["INT-76"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.DB.Execute" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Db::execute" },
@@ -2496,6 +2504,7 @@
     {
       "id": "client-db-subscribe",
       "kind": "api",
+      "requirements": ["INT-77"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.DB.Subscribe" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Db::subscribe" },
@@ -2507,6 +2516,7 @@
     {
       "id": "client-db-transaction",
       "kind": "api",
+      "requirements": ["INT-72"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.DB.Transaction" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Db::transaction" },
@@ -2518,6 +2528,7 @@
     {
       "id": "client-db-utils",
       "kind": "api",
+      "requirements": ["INT-73"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.DB.Utils" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Db::utils" },
@@ -2529,6 +2540,7 @@
     {
       "id": "client-db-with-request-hook",
       "kind": "api",
+      "requirements": ["INT-78"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.DB.WithRequestHook" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Db::withRequestHook" },
@@ -2720,6 +2732,7 @@
     {
       "id": "client-query-base",
       "kind": "api",
+      "requirements": ["INT-88"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Core" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Model" },
@@ -2743,6 +2756,7 @@
     {
       "id": "client-orm-error",
       "kind": "api",
+      "requirements": ["INT-89"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Error" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\OrmException" },
@@ -2766,6 +2780,7 @@
     {
       "id": "client-privilege-utils",
       "kind": "api",
+      "requirements": ["INT-59"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.PrivilegeUtils" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\PrivilegeUtils" },
@@ -2788,6 +2803,7 @@
     {
       "id": "client-schema-utils",
       "kind": "api",
+      "requirements": ["INT-54", "INT-55", "INT-56", "INT-57", "INT-58"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.SchemaUtils" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\SchemaUtils" },
@@ -2799,6 +2815,7 @@
     {
       "id": "client-db-stats",
       "kind": "api",
+      "requirements": ["INT-79"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.DBStats" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Stats" },
@@ -2915,6 +2932,7 @@
     {
       "id": "collection-group-row-to-array",
       "kind": "api",
+      "requirements": ["INT-69"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.GroupRow.ToArray" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\GroupRow::toArray" },
@@ -2926,6 +2944,7 @@
     {
       "id": "collection-group-row-value",
       "kind": "api",
+      "requirements": ["INT-68"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.GroupRow.Value" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\GroupRow::value" },
@@ -2937,6 +2956,7 @@
     {
       "id": "collection-group-rows-length",
       "kind": "api",
+      "requirements": ["INT-70"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.GroupRows.Len" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\GroupRows::count" },
@@ -2948,6 +2968,7 @@
     {
       "id": "collection-group-rows-to-array",
       "kind": "api",
+      "requirements": ["INT-71"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.GroupRows.ToArray" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\GroupRows::toArray" },
@@ -2983,6 +3004,7 @@
     {
       "id": "collection-fetched-value",
       "kind": "api",
+      "requirements": ["INT-86"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Collection.FetchedValue" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Collection::fetchedValue" },
@@ -2994,6 +3016,7 @@
     {
       "id": "collection-values",
       "kind": "api",
+      "requirements": ["INT-82"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Collection.Slice" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Collection::all" },
@@ -3005,6 +3028,7 @@
     {
       "id": "collection-entries",
       "kind": "api",
+      "requirements": ["INT-83"],
       "symbols": [
         { "implementation": "go", "symbol": "github.com/polyspec/orm/packages/go/orm.Collection.All" },
         { "implementation": "php", "symbol": "Polyspec\\Orm\\Collection::entries" },

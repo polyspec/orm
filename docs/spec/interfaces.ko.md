@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 0ecb42336d54b67c686ba06d0c6a6262845ff26127b620389b7a90705b80f7e0 -->
+<!-- source-sha256: e5d0b65aec9037d435c74a8c0a84e250cf9189fb4685efedce8503b49ceb3667 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -93,6 +93,8 @@ classDiagram
 
 종단 작업은 저장된 요청을 바꾸지 않으므로 종단 작업을 반복해도 같은 SQL 문장을 만든다.
 
+- **INT-88** 생성된 모델의 query base(Go `Core`, PHP `Model`, TypeScript `Core`, Python `Core`)는 요청마다 builder 호출이 기록한 첫 오류를 보관한다. 종단 작업은 어떤 statement도 보내기 전에 그 오류를 반환한다.
+
 ## 5. 공개 API — IF-09 ~ IF-12
 
 ### 5.0 연결 입력
@@ -148,11 +150,14 @@ classDiagram
 
 트랜잭션 밖에서 연결 없는 종단 작업은 `CONFIG`를 반환한다. 연결은 생성된 요청이 사용하는 스키마 엔진을 가져야 하며, 아니면 종단 작업이 `CONFIG`를 반환한다.
 
-`GroupRows`에는 일부 필드만 채운 모델이 없다. 각 행에는 선택한 그룹 값과 음이 아닌 `row_count` 하나만 있다. 개수가 없거나 중복되거나 형식이 잘못되었거나 손실되면 실패한다. 선택한 값은 불리언과 SQL NULL을 포함해 선언된 타입을 유지하며, 선택하지 않은 값을 요청하면 `COLUMN_UNSELECTED`를 반환한다.
+- **INT-68** `GroupRows`에는 일부 필드만 채운 모델이 없다. 각 행에는 선택한 그룹 값과 음이 아닌 `row_count` 하나만 있다. 개수가 없거나 중복되거나 형식이 잘못되었거나 손실되면 실패한다. 선택한 값은 불리언과 SQL NULL을 포함해 선언된 타입을 유지하며, 선택하지 않은 값을 요청하면 `COLUMN_UNSELECTED`를 반환한다.
+- **INT-69** `GroupRow.toArray`(Go `GroupRow.ToArray`, PHP `GroupRow::toArray`, TypeScript `GroupRow#toArray`, Python `GroupRow.to_array`)는 선택한 값을 이름으로 가진 map 하나를 돌려준다. `row_count`는 검사한 정수 개수이고 SQL NULL은 null이다.
+- **INT-70** `GroupRows.length`(Go `Len`, PHP `count`, TypeScript `length`, Python `length`)는 그룹 행의 개수를 돌려주며, 행은 결과 순서로 순회한다.
+- **INT-71** `GroupRows.toArray`(Go `ToArray`, PHP `toArray`, TypeScript `toArray`, Python `to_array`)는 각 그룹 행의 `toArray` map을 결과 순서대로 돌려준다.
 
 ## 6. 연결·트랜잭션·유틸리티 — IF-13 ~ IF-17
 
-`connection.transaction(fn, options)`은 콜백을 하나의 트랜잭션에서 실행한다. begin, commit, rollback, 실행기는 비공개다. 콜백 오류나 예외는 트랜잭션을 되돌리고, 그렇지 않으면 커밋하고 콜백 결과를 반환한다. named lock, user variable, pragma는 pool connection에서 `COMMIT`과 `ROLLBACK` 뒤에도 남으므로, 클라이언트는 트랜잭션이 끝나기 전에 MySQL `lock` lock을 풀고 `setLocal`의 MySQL 값을 지우고 SQLite `query_only`와 `read_uncommitted` mode를 되돌린다. connection은 모든 정리 단계와 `COMMIT`이나 `ROLLBACK`이 성공했을 때만 pool에 돌아간다. 한 단계라도 실패하면 그 세션의 상태를 알 수 없으므로 클라이언트는 connection을 pool에 돌려주지 않고 닫고, 서버는 세션과 함께 그 트랜잭션, lock, 값을 종료한다. 따라서 pool의 connection은 깨끗하거나 버려진다. TypeScript SQLite 드라이버는 연결 하나를 유지하며 그 연결은 닫을 수 없다. 모든 정리 단계를 실행하고 실패한 단계를 모두 보고한다. 1을 돌려주지 않은 `RELEASE_LOCK`은 `CONFIG` `lock <key> was not held at transaction end`다. 커밋할 때 이 정리가 실패하면 트랜잭션을 되돌리고 정리 오류를 반환한다. 콜백, begin, 커밋 정리가 실패하고 정리나 rollback도 실패하면 오류는 `ROLLBACK` `transaction failed (<cause>) and rollback failed (<transaction end error>)`다. 이 오류는 원인과 트랜잭션 종료 오류를 유지하며([protocol](protocol.ko.md)) 재시도하지 않는다. panic한 Go나 Rust 콜백과 `runtime.Goexit`로 떠난 Go 콜백은 트랜잭션을 되돌리고 panic을 이어 간다. 그 rollback이 실패하면 panic 값은 같은 형식의 `ROLLBACK` 오류다. server나 driver가 connection을 닫아서, 예를 들어 취소된 statement나 끝난 session 때문에 실패한 rollback도 실패한 rollback이며 같은 형식으로 보고한다. server가 session과 함께 트랜잭션을 끝냈어도 그렇다. 실패한 트랜잭션을 connection을 닫아 끝내는 클라이언트는 원인만 보고한다. context가 취소된 Go 트랜잭션은 정리 statement를 실행할 수 없으므로 connection을 pool에 돌려주지 않고 닫으며 `CANCELED`만 보고한다. server에서 session과 함께 트랜잭션, named lock, user variable, SQLite mode가 끝난다. 트랜잭션이 끝나기 전에 drop된 Rust 트랜잭션 future는 TLS에서도 connection을 바로 닫으므로, server에서 session과 함께 트랜잭션과 lock이 끝난다.
+- **INT-72** `connection.transaction(fn, options)`은 콜백을 하나의 트랜잭션에서 실행한다. begin, commit, rollback, 실행기는 비공개다. 콜백 오류나 예외는 트랜잭션을 되돌리고, 그렇지 않으면 커밋하고 콜백 결과를 반환한다. named lock, user variable, pragma는 pool connection에서 `COMMIT`과 `ROLLBACK` 뒤에도 남으므로, 클라이언트는 트랜잭션이 끝나기 전에 MySQL `lock` lock을 풀고 `setLocal`의 MySQL 값을 지우고 SQLite `query_only`와 `read_uncommitted` mode를 되돌린다. connection은 모든 정리 단계와 `COMMIT`이나 `ROLLBACK`이 성공했을 때만 pool에 돌아간다. 한 단계라도 실패하면 그 세션의 상태를 알 수 없으므로 클라이언트는 connection을 pool에 돌려주지 않고 닫고, 서버는 세션과 함께 그 트랜잭션, lock, 값을 종료한다. 따라서 pool의 connection은 깨끗하거나 버려진다. TypeScript SQLite 드라이버는 연결 하나를 유지하며 그 연결은 닫을 수 없다. 모든 정리 단계를 실행하고 실패한 단계를 모두 보고한다. 1을 돌려주지 않은 `RELEASE_LOCK`은 `CONFIG` `lock <key> was not held at transaction end`다. 커밋할 때 이 정리가 실패하면 트랜잭션을 되돌리고 정리 오류를 반환한다. 콜백, begin, 커밋 정리가 실패하고 정리나 rollback도 실패하면 오류는 `ROLLBACK` `transaction failed (<cause>) and rollback failed (<transaction end error>)`다. 이 오류는 원인과 트랜잭션 종료 오류를 유지하며([protocol](protocol.ko.md)) 재시도하지 않는다. panic한 Go나 Rust 콜백과 `runtime.Goexit`로 떠난 Go 콜백은 트랜잭션을 되돌리고 panic을 이어 간다. 그 rollback이 실패하면 panic 값은 같은 형식의 `ROLLBACK` 오류다. server나 driver가 connection을 닫아서, 예를 들어 취소된 statement나 끝난 session 때문에 실패한 rollback도 실패한 rollback이며 같은 형식으로 보고한다. server가 session과 함께 트랜잭션을 끝냈어도 그렇다. 실패한 트랜잭션을 connection을 닫아 끝내는 클라이언트는 원인만 보고한다. context가 취소된 Go 트랜잭션은 정리 statement를 실행할 수 없으므로 connection을 pool에 돌려주지 않고 닫으며 `CANCELED`만 보고한다. server에서 session과 함께 트랜잭션, named lock, user variable, SQLite mode가 끝난다. 트랜잭션이 끝나기 전에 drop된 Rust 트랜잭션 future는 TLS에서도 connection을 바로 닫으므로, server에서 session과 함께 트랜잭션과 lock이 끝난다.
 
 - **INT-40** `isolation`: `default`, `read_uncommitted`, `read_committed`, `repeatable_read`, `serializable`
 - **INT-41** `readOnly`: 불리언
@@ -168,7 +173,7 @@ classDiagram
 - **INT-48** `transactionConflict(message)`(Go: `orm.TransactionConflict`)는 재시도 대상 `DEADLOCK` 오류를 만든다.
 - **INT-49** 행 잠금 `forUpdate()`, `forShare()`, `forUpdateNoWait()`, `forShareNoWait()`는 트랜잭션 안에서만 허용한다. MySQL과 PostgreSQL은 잠금 절을 추가하고 SQLite는 ORM 트랜잭션 범위의 잠금 행을 사용한다. `*_nowait` 요청이 잠금을 즉시 얻지 못하면 모든 adapter가 `LOCK_NOT_AVAILABLE`을 반환한다.
 
-`connection.utils()`는 쿼리 문법 밖의 작업을 제공한다.
+- **INT-73** `connection.utils()`는 쿼리 문법 밖의 작업을 제공한다.
 
 - **INT-50** `lock(key)`: 트랜잭션 범위 이름 잠금. MySQL `GET_LOCK`, PostgreSQL advisory lock, SQLite ORM 잠금 행. 활성 트랜잭션 필요
 - **INT-51** `setLocal(key, value)`, `local(key)`: 트랜잭션 로컬 값. 활성 트랜잭션 필요. 없는 키의 `local`은 `NO_ROWS` 반환
@@ -182,6 +187,12 @@ classDiagram
 - **INT-59** `privileges().grantTable(table, role)`, `revokeTable(table, privilege, role)`, `inspectTable(table)`: 테이블 권한. PostgreSQL이 아닌 방언은 `CAPABILITY_UNSUPPORTED` 반환
 - **INT-60** `aes().status(model, keyring)`, `aes().rotate(model, keyring)`: AES 키 버전 상태와 모든 AES 컬럼·버전의 단일 트랜잭션 회전
 - **INT-61** `stats()`: 연결 풀 통계
+- **INT-74** `AESKeyring.versions()`(Go `AESVersions`, PHP `versions`, TypeScript `versions`, Python `versions`)는 선언된 key version을 숫자 오름차순으로 돌려준다.
+- **INT-75** `AESRotationStatus`는 필드 `current`(keyring의 현재 version), `total`(모델 테이블의 행 수), `pending`(저장된 version이 `current`가 아닌 행 수), `versions`(저장된 version별 행 수)를 가진다. `aes().status(model, keyring)`이 이를 만든다.
+- **INT-76** `execute(step, params)`는 request parameter와 함께 컴파일된 statement step 하나를 연결 또는 그 활성 트랜잭션에서 실행한다([컴파일된 statement 실행](../operations/usage.ko.md#execute-a-compiled-statement)). 행을 읽는 step이나 parameter 개수를 넘는 `param` bind slot은 어떤 statement도 실행하기 전에 `IR_INVALID`로 실패하며, `execute`는 아무것도 반환하지 않는다.
+- **INT-77** `subscribe(subscriber)`는 끝난 뒤 연결과 그 handle들의 모든 statement event를 등록 순서대로 받는 subscriber를 등록하고, 그것을 제거하는 함수를 돌려준다. markdown 연결은 `CAPABILITY_UNSUPPORTED`를 반환한다.
+- **INT-78** `withRequestHook(hook)`은 같은 연결의 handle을 돌려주며, 그 handle의 각 요청은 계획되기 직전에 hook을 받는다. handle은 연결, plan과 statement 캐시, statement event subscriber, 활성 트랜잭션을 공유하며, hook이 있는 handle에 `withRequestHook`을 호출하면 hook을 바꾼다.
+- **INT-79** `stats()`는 연결 풀의 개수를 돌려준다: 최대 열린 연결 수, 열린 연결 수, 사용 중인 연결 수, 유휴 연결 수(Go `DBStats`, PHP `Stats`, TypeScript `PoolStats`, Python `DbStats`).
 - **INT-67** handle을 버리면 그것이 쥔 것을 놓는다: 버려진 query handle은 끝나지 않은 statement를 취소하고, 버려진 transaction이나 connection handle은 열린 transaction을 rollback하고 connection을 pool에 돌려준다. 각 언어는 자기 폐기 형식으로 버린다: Rust는 값을 drop하고, Go는 context를 취소하거나 `Close`를 부르고, Python은 context manager를 나오거나 `close()`를 부르고, TypeScript는 `AbortSignal`을 abort하거나 `close()`를 부르고, PHP는 객체를 파괴하거나 `close()`를 부른다.
 
 데이터를 바꾸는 유틸리티는 활성 트랜잭션이 없으면 트랜잭션을 열고, 같은 연결의 활성 트랜잭션이 있으면 그 트랜잭션에 참여한다.
@@ -198,11 +209,20 @@ classDiagram
 
 relation 결과는 schema에 따라 한 행 또는 collection이다. Go와 Rust의 relation getter는 error도 돌려준다. related row가 없는 행은 결과 없음으로 읽히고, 저장된 relation 값의 type이 getter 결과와 다르면 `INTERNAL`이다. collection keying은 결정적이다. 중복 key는 선언된 정책을 따르고, 선언되지 않은 key function은 오류다.
 
+- **INT-87** `relation(child)`와 `relations(child)`는 자식을 각각 한 행 결과 또는 collection 결과의 relation으로 추가한다. 자식에는 `match<L>With<R>()` key가 있어야 하며, group callback 안에서 추가한 relation은 거부된다. 거부마다 `CONFIG` 오류가 기록되고 종단 작업이 그것을 반환한다.
+
 ## 9. Collection·Key·Page — IF-25 ~ IF-27
 
 - **INT-62** `Collection<T>`: 순서가 있는 행, 길이, first, key lookup
 - **INT-63** `Key`: 논리 타입 tag와 값
 - **INT-64** `Page<T>`: `items`, `totalCount`, `totalPages`, `page`, `perPage`
+- **INT-80** `Collection.get(key)`는 `key`와 같은 타입과 값의 key를 가진 모델을 돌려준다. 그 key를 가진 모델이 없으면 결과는 없음이다: Go는 오류 없이 zero value, PHP는 `null`, TypeScript는 `undefined`, Python은 `None`이다. SQL NULL key는 `CODEC_DECODE`로 실패하며, Go는 변환할 수 없는 key에 대해 `KeyOf`의 변환 오류를 반환한다.
+- **INT-81** `Collection.keys()`는 collection 순서대로 각 모델의 key를 돌려준다.
+- **INT-82** `Collection.values()`(Go `Slice`, PHP `all`)는 collection 순서대로 모델을 돌려준다.
+- **INT-83** `Collection.entries()`(Go `All`, key와 모델 쌍을 내는 순회)는 collection 순서대로 각 key와 모델의 쌍을 돌려준다.
+- **INT-84** `Collection.toArray()`는 collection 순서대로 각 모델의 `toArray` map을 돌려준다.
+- **INT-85** `Collection.connect(db)`는 collection의 모든 모델의 연결을 `db`로 정하고 collection을 돌려준다.
+- **INT-86** `Collection.fetchedValue(key)`는 `key`의 모델과 함께 가져온 값을 돌려준다. 그 key를 가진 모델이 없으면 결과는 없음이다: Go는 오류 없이 `nil`, PHP는 `null`, TypeScript는 `undefined`, Python은 `None`이다.
 
 정수 key `7`과 문자열 key `"7"`은 다른 key다. boolean `true`와 정수 `1`, 같은 글자의 bytes와 문자열, 날짜와 시각과 그 형식의 문자열은 다른 key다. 다른 시간대의 날짜와 시각은 그 UTC 시점의 key와 같다. NULL key 구성 요소는 `CODEC_DECODE`다. 복합 key는 각 타입 구성요소의 길이를 함께 인코딩하므로 `("1", "23")`과 `("12", "3")`이 충돌하지 않는다. plan은 순서가 있는 collection 식별자를 `Assemble.key`에 기록한다. 일반 행은 모든 primary key 구성요소를 사용하고 grouped count 행은 group 컬럼과 expression 별칭을 사용한다. 명시적인 order나 key 정책이 없으면 collection은 DB 순서를 보존한다. page는 root 결과 순서와 relation 부착 순서를 보존한다.
 
@@ -215,6 +235,7 @@ Go key 변환은 부호 있는 정수, 불리언, 문자열, 바이트, 유한 �
 오류는 [errors.yaml](errors.yaml)의 code를 사용한다. Go 호출자는 adapter에 독립적인 분류를 위해 `orm.ErrorCode`, `orm.IsDeadlock`, `orm.IsLockNotAvailable`, `orm.IsDuplicateKey`, `orm.IsForeignKey`, `orm.IsConstraint`를 사용하며 driver 오류 타입을 검사하지 않는다. codec style은 schema 선언이다. AES version column은 NULL 불가 정수 평문 메타데이터이며 encoding style을 사용하지 않고 기본 projection에서 제외한다. AES rotation은 모든 AES payload 컬럼과 version을 하나의 transaction에서 갱신한다.
 
 - **INT-65** 모든 구현(Go, PHP, PHP extension, TypeScript, Python, Rust)은 [errors.yaml](errors.yaml)의 모든 code를 값이 그 code인 error-code catalog의 native 상수로 노출하며, 그 catalog는 errors.yaml과 같다: 빠진 code도 더한 code도 없다.
+- **INT-89** 모든 client의 오류는 [errors.yaml](errors.yaml)의 안정된 code 하나를 가진 라이브러리 오류이며 그 code로 분류한다: Go `ir.Error`(`orm.Error`)는 `Code`, PHP `OrmException`은 `code_`, TypeScript `OrmError`는 `code`, Python `OrmError`는 `code`를 가진다.
 
 query event에는 정규화 SQL, bind 수, duration, plan 식별자, 오류를 기록한다. secret과 parameter 값은 log에서 제외한다.
 
