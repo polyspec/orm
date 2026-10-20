@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 89196b3317ce43f12c221d0c1a915a6c72044f9ddfe4919a54b21df435bb282d -->
+<!-- source-sha256: 1f4f31f49ff9f12f49722921fdccabf11be32ee7d7a1dba71a5524da84dc106d -->
 # 변경 이력
 
 ## Unreleased
+- PHP extension이 library 이름으로 `Polyspec\Orm\Planner`를 C로 구현하므로, planner, insert-parts, ir-answers suite가 `make dbspec-php-extension-check/planner`에서 extension으로 돈다(case 81, 6, 18개). red: extension을 켜도 planner는 PHP library의 것이었다(T182-4).
 - `go build`가 command 옆에 쓰는 `orm-gen` binary를 더는 추적하지 않고, `packages/go/cmd`의 command folder가 build 출력을 ignore한다. red: `make feature-unit-check`의 추적 파일 test가 0b3426809에서 commit된 Mach-O 실행 파일 `packages/go/cmd/orm-gen/orm-gen`을 가리켰다(KSTD-5-7-7).
 - 나머지 Go code가 K334 lint 규칙이 찾는 모든 오류(42개)를 처리하고 도달할 수 없는 함수를 두지 않는다; planner는 버리던 conflict key 오류를 반환하고, bench gate helper는 그것을 쓰는 test의 tag로 build된다 (KSTD-5-7-4).
 - `packages/go/engine/dbspec`이 K334 lint 규칙이 찾는 모든 오류(41개)를 처리한다: 숫자 parse와 type assertion을 검사하고 wrap은 오류 chain을 지킨다 (KSTD-5-7-3).

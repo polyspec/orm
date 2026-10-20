@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The PHP extension implements `Polyspec\Orm\Planner` in C under the library's name, so the planner, insert-parts and ir-answers suites run with it under `make dbspec-php-extension-check/planner` (81, 6 and 18 cases). Red: with the extension loaded the planner was the PHP library's (T182-4).
 - The `orm-gen` binary that `go build` writes beside its command is no longer tracked, and the command folders of `packages/go/cmd` ignore their build output. Red: the tracked-file test of `make feature-unit-check` named `packages/go/cmd/orm-gen/orm-gen`, a Mach-O executable committed in 0b3426809 (KSTD-5-7-7).
 - The rest of the Go code handles every error the K334 lint rules find (42) and holds no unreachable function; the planner returns the conflict key error it dropped, and the bench gate helpers build with the tags of the tests that use them (KSTD-5-7-4).
 - `packages/go/engine/dbspec` handles every error the K334 lint rules find (41): number parses and type assertions are checked, and wraps keep the error chain (KSTD-5-7-3).
