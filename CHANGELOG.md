@@ -3,6 +3,7 @@
 
 ## Unreleased
 - The TypeScript build cache `packages/ts/tsconfig.build.tsbuildinfo` and every `*.tsbuildinfo` is ignored by Git and declared as a generated path, so a build leaves no untracked file in the checkout. Red: `git check-ignore` found no rule for it, and `git status` listed it after `make build` (KSTD-15).
+- `docs/operations/perf.md` drops the PHP 8.5.10 ratios, since PHP 8.5 goes to 8.4; the page keeps the PHP 8.4 ratios (T233). Red: the page quoted the PHP 8.5.10 ratios.
 - The recipes `case-database-check`, `example-check` and `timing-check` build the Rust crates through kit's cargo link (`CARGO_SIBLINGS`), so a sibling polyspec crate resolves to its path and no recipe fetches a locked release (K448-5). Red: `make -s link-state-check` reported Makefile:1175, 1740 and 1753 and exited 2 (KSTD-13).
 - `docs/spec/dialects.md` states the SQLite version of the pinned PHP 8.4 `pdo_sqlite`: 3.53.4 from `select sqlite_version()` of PHP 8.4.26, in place of PHP 8.5.10 (T232). Red: the document named `pdo_sqlite` of PHP 8.5.10.
 - KSTD-9 is done: the server tool sets `LC_ALL` to `en_US.UTF-8` for `initdb`, the PostgreSQL primary and the replica it starts, so the start succeeds with no locale set by the caller. `postgresEnvironment` builds that environment and the tests check it, including a real start with no caller locale. Red: with `LC_ALL` unset, the server exited with `postmaster became multithreaded during startup` (KSTD-9).

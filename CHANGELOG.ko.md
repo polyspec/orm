@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 20ba91b32c465a8fdc5dad5d40d3a8f7908bc7c29be6722be773088b8fd398f3 -->
+<!-- source-sha256: 9c38dd4ccc9bda1ddfb168d6b552074dc1d2402e29a5234d727800eb24742faf -->
 # 변경 이력
 
 ## Unreleased
 - TypeScript build 캐시 `packages/ts/tsconfig.build.tsbuildinfo`와 모든 `*.tsbuildinfo`는 Git이 무시하고 생성 경로로 선언하므로, build가 checkout에 추적되지 않는 파일을 남기지 않습니다. red: `git check-ignore`가 이 파일의 규칙을 찾지 못했고, `make build` 뒤 `git status`가 이 파일을 보고했습니다 (KSTD-15).
+- `docs/operations/perf.md`는 PHP 8.5.10 비율을 뺀다: PHP 8.5는 8.4로 간다. 이 문서는 PHP 8.4 비율을 유지한다 (T233). red: 문서가 PHP 8.5.10 비율을 인용했다.
 - 레시피 `case-database-check`, `example-check`, `timing-check`은 Rust crate를 kit의 cargo link(`CARGO_SIBLINGS`)로 빌드하므로, 형제 polyspec crate가 자기 경로로 resolve되고 어떤 레시피도 잠긴 release를 내려받지 않습니다(K448-5). red: `make -s link-state-check`가 Makefile:1175, 1740, 1753을 보고하고 2로 끝났습니다 (KSTD-13).
 - `docs/spec/dialects.md`는 고정된 PHP 8.4의 `pdo_sqlite` SQLite 버전을 적는다: PHP 8.4.26의 `select sqlite_version()` 결과 3.53.4이며, PHP 8.5.10을 대신한다 (T232). red: 문서가 PHP 8.5.10의 `pdo_sqlite`를 적었다.
 - KSTD-9은 done입니다. 서버 도구가 `initdb`와 시작하는 PostgreSQL primary 및 replica에 `LC_ALL`을 `en_US.UTF-8`로 설정하므로, 호출자가 locale을 설정하지 않아도 시작이 성공합니다. `postgresEnvironment`가 그 환경을 만들고 test가 이를 확인합니다. 호출자 locale이 없는 실제 시작도 포함합니다. red: `LC_ALL`이 없을 때 서버가 `postmaster became multithreaded during startup`로 종료했습니다 (KSTD-9).

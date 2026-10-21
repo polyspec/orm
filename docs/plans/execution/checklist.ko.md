@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: cb7f89ea9c9a5e3568597e83713adda05e6f08dc5440cb0e0e946a895cb064bd -->
+<!-- source-sha256: da3200d74707250cda0c1255bb9a7dbc527730b18ef23ff77d7fbbcef55339b7 -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1298,4 +1298,4 @@
 | T230 | MySQL lock wait timeout(1205)은 CFG-6의 statement timeout처럼 모든 client에서 CANCELED이다 (소비자: limepie drama design). Cause: 어느 client도 1205를 mapping하지 않아 DRIVER가 되는데(python database.py:566-584, php OrmException.php:77, ts driver.ts:184), errors.yaml은 만료된 timeout bound를 CANCELED로 정한다 | docs/spec/errors.yaml, every client, a MySQL conformance case, config/parity.json | `make parity-declarations-check UNITS=mysql-lock-wait-canceled` | [ ] |
 | T231 | errors.yaml이 DUPLICATE_KEY에 모든 database의 duplicate key를 적는다: 모든 client가 mapping하듯 MySQL 1062, PostgreSQL 23505, SQLite 2067과 1555. Cause: docs/spec/errors.yaml:87이 MySQL 1062 / SQLSTATE 23000만 적는다 | docs/spec/errors.yaml, config/parity.json | `make text-absent FILE=docs/spec/errors.yaml TEXT="DUPLICATE_KEY           # MySQL 1062 / SQLSTATE 23000"` | [o] |
 | T232 | docs/spec/dialects.md가 고정된 PHP 8.4 pdo_sqlite의 SQLite version을 select sqlite_version()으로 측정해 적는다 (소유자 판정: PHP 8.5는 8.4로). Cause: dialects.md:76과 dialects.ko.md:71이 PHP 8.5.10의 pdo_sqlite를 적는다 | docs/spec/dialects.md and its twin | `make text-absent FILE=docs/spec/dialects.md TEXT="PHP 8.5.10"` | [o] |
-| T233 | docs/operations/perf.md가 PHP 8.5 비율을 인용하지 않는다 (소유자 판정: PHP 8.5는 8.4로). Cause: perf.md:42와 perf.ko.md:43이 PHP 8.5.10에서 잰 비율을 인용한다; 이를 빼거나 최종 benchmark 단계에서 8.4로 다시 잰다 | docs/operations/perf.md and its twin | `make text-absent FILE=docs/operations/perf.md TEXT="PHP 8.5.10"` | [ ] |
+| T233 | docs/operations/perf.md가 PHP 8.5 비율을 인용하지 않는다 (소유자 판정: PHP 8.5는 8.4로). Cause: perf.md:42와 perf.ko.md:43이 PHP 8.5.10에서 잰 비율을 인용한다; 이를 빼거나 최종 benchmark 단계에서 8.4로 다시 잰다 | docs/operations/perf.md and its twin | `make text-absent FILE=docs/operations/perf.md TEXT="PHP 8.5.10"` | [o] |
