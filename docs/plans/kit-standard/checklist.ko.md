@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 2cebebc74d3fe457d2420c3a86862357bcd8b6a4b6a282b09d0da3b4e08c6ede -->
+<!-- source-sha256: d97f162d17b6db2bde394b0c21423afdf8928a5d007b152ad549641045c917a8 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -57,7 +57,7 @@
 | KSTD-2-11-7-5 | wasInserted와 backendWaitingForLock이 INT-52와 INT-53대로 모든 client에 있다 (KSTD-2-11-7-1 후속). Cause: Go client만 이를 구현하는데 spec은 이를 client 표면으로 규정한다 | the utilities of the PHP, TypeScript, Python and Rust clients, their tests, config/parity.json | `node --test packages/ts/tests/was-inserted.mjs`, `packages/python/.venv/bin/python -m unittest packages.python.tests.test_was_inserted`, `cargo test --offline --manifest-path packages/rust/orm/Cargo.toml --test was_inserted`, `node node_modules/@polyspec/kit/dist/run-tests.mjs phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/WasInsertedTest.php` | [o] |
 | KSTD-2-11-7-6 | 음수 row count를 가진 GroupRow는 모든 client에서 같은 오류이고, 그 규칙을 적고 인용한다 (KSTD-2-11-7-1 후속). Cause: Python은 이를 CODEC_DECODE로 거부하는데 Go, PHP, TypeScript는 INTERNAL을 낸다 | packages/python, docs/spec/interfaces.md, config/parity.json | `go -C packages/go test ./orm -run GroupRow`, `node --test packages/ts/tests/group_rows.mjs`, `node node_modules/@polyspec/kit/dist/run-tests.mjs phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/GroupRowsTest.php`, `cargo test --manifest-path packages/rust/orm/Cargo.toml --lib group_tests` | [o] |
 | KSTD-2-11-8 | 각 feature-coverage case는 모든 구현에 묶인 하나의 중립 unit이다 (KSTD-2-11 후속). Cause: unit 153개가 같은 case를 언어마다 binding 하나씩 선언한다 | config/parity.json, tests of every implementation | `make parity-declarations-check` | [~] |
-| KSTD-2-11-9 | dbspec apply, plan, introspect unit은 여섯 구현 unit이다 (KSTD-2-11 후속). Cause: unit 40개가 한 동작을 구현마다 나눈다 | config/parity.json, tests of every implementation | `make parity-declarations-check` | [ ] |
+| KSTD-2-11-9 | dbspec apply, plan, introspect unit은 여섯 구현 unit이다 (KSTD-2-11 후속). Cause: unit 40개가 한 동작을 구현마다 나눈다 | config/parity.json, tests of every implementation | `make parity-declarations-check` | [~] |
 | KSTD-2-11-10 | collection identity와 group rows unit은 INT-31과 INT-62를 인용하는 여섯 구현 unit이다 (KSTD-2-11 후속). Cause: unit 18개가 한 동작을 구현마다 나눈다 | config/parity.json, tests of every implementation | `make parity-declarations-check` | [ ] |
 | KSTD-2-11-11 | transaction, rollback, savepoint 실패 unit은 여섯 구현 unit이다 (KSTD-2-11 후속). Cause: 약 30개 unit이 DIA-63, DIA-180, DIA-181, PLN-17, CFG-13의 실패 보고를 구현마다 나눈다 | config/parity.json, tests of every implementation | `make parity-declarations-check` | [ ] |
 | KSTD-2-11-12 | request hook, audit, soft delete, restore unit은 여섯 구현 unit이다 (KSTD-2-11 후속). Cause: unit 25개가 DIA-161, DIA-18, DIA-22, DIA-108, DIA-129, DBS-85, DBS-87을 구현마다 나눈다 | config/parity.json, tests of every implementation | `make parity-declarations-check` | [ ] |
