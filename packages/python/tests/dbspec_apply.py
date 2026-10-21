@@ -65,6 +65,7 @@ def history(conn: Conn) -> list:
 
 
 class DbspecApplyTest(unittest.TestCase):
+    # Requirements: PLN-93, PLN-95, PLN-96.
     def test_sqlite_scenarios(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dbspec-apply-") as tmp:
             scenarios(tmp)

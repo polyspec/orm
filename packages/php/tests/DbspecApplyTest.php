@@ -486,6 +486,7 @@ final class DbspecApplyTest extends TestCase
         }
     }
 
+    // Requirements: PLN-93, PLN-95, PLN-96.
     #[DataProvider('scenarioCases')]
     public function test_scenario(string $name, string $db): void
     {

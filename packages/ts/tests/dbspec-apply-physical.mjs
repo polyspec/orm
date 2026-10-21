@@ -437,6 +437,7 @@ for (const [name, dialects, body] of scenarios) {
   }
 }
 
+// Requirements: PLN-93, PLN-95, PLN-96.
 vector('every apply scenario runs on its dialects', () => {
   assert.equal(runs, expected);
   assert.equal(runs, 25 + ALL.reduce((n, dialect) => n + repCounts[dialect][1][1], 0));

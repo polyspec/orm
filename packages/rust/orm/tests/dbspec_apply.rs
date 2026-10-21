@@ -582,6 +582,7 @@ const SCENARIOS: [(&str, &[&str]); 9] = [
     ("nulls", &["mysql", "postgres", "sqlite"]),
 ];
 
+// Requirements: PLN-93, PLN-95, PLN-96.
 #[tokio::test]
 async fn apply_chain_on_three_databases() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);

@@ -177,6 +177,7 @@ func stopAfter(plan string, step int, stop error) func(dbspec.ApplyEvent) error 
 // history, that re-applying leaves it unchanged, drift, the lock, an unlock that releases nothing, verification,
 // recover and rollback after a stop after every step of the representative plan, continuing an interrupted rollback,
 // rollback and re-apply keeping rows written in between, null checks, and finalize.
+// Requirements: PLN-93, PLN-95, PLN-96.
 func TestApplyChain(t *testing.T) {
 	testcase.Group(t)
 	// scenario checks the lock and session settings on the server, so it uses the server DSN, not the pooler.
