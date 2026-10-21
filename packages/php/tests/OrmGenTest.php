@@ -157,9 +157,11 @@ final class OrmGenTest extends TestCase
         self::assertTrue($code === 0, "gen: $code $out $err");
         $files = array_map('basename', glob("$dir/model/*.php") ?: []);
         sort($files);
-        self::assertTrue($files === ['ExtAccount.php', 'ExtAudit.php', 'ExtPost.php', 'ExtPostHistory.php', 'bootstrap.php'], 'generated files ' . json_encode($files));
-        $bootstrap = (string) @file_get_contents("$dir/model/bootstrap.php");
-        self::assertTrue(str_contains($bootstrap, 'const EXTERNAL_TEXT = ') && str_contains($bootstrap, 'table ext_account {') && !str_contains($bootstrap, 'table ext_session {'), 'bootstrap carries the used external tables');
+        self::assertTrue($files === ['ExtAccount.php', 'ExtAudit.php', 'ExtPost.php', 'ExtPostHistory.php', 'bootstrap.php', 'schema_declarations.php'], 'generated files ' . json_encode($files));
+        // The text is written in pieces joined by the concatenation operator (Generator::text), so the pieces are joined back first.
+        $declarations = (string) @file_get_contents("$dir/model/schema_declarations.php");
+        $text = str_replace("'\n    . '", '', $declarations);
+        self::assertTrue(str_contains($declarations, 'const EXTERNAL_TEXT = ') && str_contains($text, 'table ext_account {') && !str_contains($text, 'table ext_session {'), 'the declarations carry the used external tables');
         [$code, $out] = self::tool(['gen', '--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example', '--check']);
         self::assertTrue($code === 0 && $out === '', "gen --check with external documents: $code $out");
     }

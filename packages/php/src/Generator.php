@@ -6,8 +6,9 @@ namespace Polyspec\Orm;
 
 /**
  * Writes one model class per entity with typed column accessors, the model
- * metadata and the query methods that the schema enumerates, plus bootstrap.php,
- * which registers the classes. The query methods are the condition method of
+ * metadata and the query methods that the schema enumerates, plus schema_declarations.php,
+ * which declares the schema and connect, and bootstrap.php, which registers the classes.
+ * The query methods are the condition method of
  * every column and the tuple method of every key prefix of two or more columns,
  * the column methods addColumn, removeColumn, groupBy, keyName, orderBy…Asc and
  * orderBy…Desc, and of a numeric column plus, minus, sum and avg, and forceIndex
@@ -106,18 +107,20 @@ final class Generator
         $tags = $scan === [] ? [] : self::scanTags($m, $namespace, $scan);
         $files = [];
         $external = $m->externalText !== '';
-        $boot = "<?php\n" . self::MARKER . "\ndeclare(strict_types=1);\n\nnamespace $namespace;\n\n"
-            . "use Polyspec\\Orm\\Config;\nuse Polyspec\\Orm\\Db;\nuse Polyspec\\Orm\\Orm;\n"
-            . "use Polyspec\\Orm\\Registry;\nuse Polyspec\\Orm\\Schema;\n\n"
-            . "/** The manifestHash of the document set the models were generated from. */\n"
+        $header = "<?php\n\n" . self::MARKER . "\n\ndeclare(strict_types=1);\n\nnamespace $namespace;\n\n";
+        // The declarations of the set are in schema_declarations.php, and bootstrap.php only requires it and registers
+        // the classes: a file that declares symbols has no side effect (PSR-1).
+        $decl = $header
+            . "use Polyspec\\Orm\\Config;\nuse Polyspec\\Orm\\Db;\nuse Polyspec\\Orm\\Orm;\nuse Polyspec\\Orm\\Schema;\n\n"
+            // A line comment: a docblock here would read as the file docblock of PSR-12.
+            . "// The manifestHash of the document set the models were generated from.\n"
             . "const MANIFEST_HASH = " . self::str($m->manifestHash) . ";\n\n"
-            . "/** The manifest text of the document set the models were generated from. */\n"
-            . "const MANIFEST_TEXT = " . self::str($m->manifestText) . ";\n\n"
-            // The bootstrap of a set that does not use external documents does not write external text,
-            // so it is unchanged.
+            . "// The manifest text of the document set the models were generated from.\n"
+            . "const MANIFEST_TEXT = " . self::text($m->manifestText) . ";\n\n"
+            // The declarations of a set that does not use external documents do not write external text.
             . ($external
-                ? "/** The tables that the set uses from external documents, which other sets own. */\n"
-                    . "const EXTERNAL_TEXT = " . self::str($m->externalText) . ";\n\n"
+                ? "// The tables that the set uses from external documents, which other sets own.\n"
+                    . "const EXTERNAL_TEXT = " . self::text($m->externalText) . ";\n\n"
                 : '')
             . "/** The generated schema value: install takes it to create the tables and register the set. */\n"
             . "function schema(): Schema\n{\n    return new Schema(MANIFEST_TEXT, MANIFEST_HASH"
@@ -125,7 +128,10 @@ final class Generator
             . "/** Opens the database selected by the DSN URI and "
             . "registers the set of these models on the connection. */\n"
             . "function connect(string \$dsn, Config \$config): Db\n{\n"
-            . "    return Orm::connectSchema(\$dsn, schema(), \$config);\n}\n\n"
+            . "    return Orm::connectSchema(\$dsn, schema(), \$config);\n}\n";
+        $boot = $header
+            . "use Polyspec\\Orm\\Registry;\n\n"
+            . "require_once __DIR__ . '/schema_declarations.php';\n\n"
             . "Registry::generated(MANIFEST_HASH, MANIFEST_TEXT" . ($external ? ', EXTERNAL_TEXT' : '') . ");\n";
         foreach ($m->entities as $e) {
             $class = self::pascal($e['entity']);
@@ -136,6 +142,7 @@ final class Generator
             $files["$class.php"] = self::model($e, $class, $namespace, $m->manifestHash, $tags[$class] ?? []);
             $boot .= "Registry::register($class::class);\n";
         }
+        $files['schema_declarations.php'] = $decl;
         $files['bootstrap.php'] = $boot;
         return $files;
     }
@@ -151,7 +158,7 @@ final class Generator
     private static function model(array $e, string $class, string $namespace, string $hash, array $tags = []): string
     {
         $name = $e['entity'];
-        $b = "<?php\n" . self::MARKER . "\ndeclare(strict_types=1);\n\nnamespace $namespace;\n\n"
+        $b = "<?php\n\n" . self::MARKER . "\n\ndeclare(strict_types=1);\n\nnamespace $namespace;\n\n"
             . "use Polyspec\\Orm\\Model;\n\n" . self::classComment($name, $tags)
             . "\nfinal class $class extends Model\n{\n";
         // meta() is the manifest_hash of the document set that made the entity and its model.
@@ -375,8 +382,8 @@ final class Generator
     }
 
     /**
-     * A PHP array literal. An array whose values are scalars or only lists of scalars is written on one line;
-     * other arrays are written one line per element.
+     * A PHP array literal. A list of scalars that fits in 64 characters is written on one line; every other array
+     * is written one line per element, so that no line of a model is longer than the phpcs limit of PSR-12.
      */
     private static function export(mixed $v, int $depth): string
     {
@@ -395,18 +402,15 @@ final class Generator
         $list = array_is_list($v);
         $item = static fn(int|string $k, mixed $x, int $d): string =>
             ($list ? '' : self::export((string) $k, $d) . ' => ') . self::export($x, $d);
-        $flat = true;
-        foreach ($v as $x) {
-            if (is_array($x) && ($x !== [] && (!array_is_list($x) || array_filter($x, 'is_array') !== []))) {
-                $flat = false;
-            }
-        }
-        if ($flat) {
+        if ($list && array_filter($v, 'is_array') === []) {
             $parts = [];
             foreach ($v as $k => $x) {
                 $parts[] = $item($k, $x, $depth + 1);
             }
-            return '[' . implode(', ', $parts) . ']';
+            $inline = '[' . implode(', ', $parts) . ']';
+            if (strlen($inline) <= 64) {
+                return $inline;
+            }
         }
         $pad = str_repeat('    ', $depth + 1);
         $out = "[\n";
@@ -429,6 +433,18 @@ final class Generator
     private static function str(string $s): string
     {
         return "'" . strtr($s, ['\\' => '\\\\', "'" => "\\'"]) . "'";
+    }
+
+    /**
+     * A PHP string expression of $s, its pieces of 80 bytes on lines of their own joined by the concatenation operator,
+     * so that a long text, such as the manifest, keeps every line short. The pieces concatenate to $s exactly.
+     */
+    private static function text(string $s): string
+    {
+        if ($s === '') {
+            return "''";
+        }
+        return implode("\n    . ", array_map(self::str(...), str_split($s, 80)));
     }
 
     /** @param list<string> $items */
