@@ -1096,7 +1096,7 @@ python-schema-inspection-check: python-venv-check
 # and records which SQLite openers keep a DSN query in the file name.
 dialect-facts-check: dialect-facts-check/probes dialect-facts-check/facts
 dialect-facts-check/probes:
-	$(GO_TEST) ./packages/go/internal/dialects -run '^TestProbeIDs$$' -count=1
+	$(GO_TEST) ./packages/go/internal/dialects -run '^(TestProbeIDs|TestProbeCitations)$$' -count=1
 dialect-facts-check/facts:
 	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./packages/go/internal/dialects -run '^(TestDialectFacts|TestSQLiteFileNameWithQuery)$$' -count=1
 
