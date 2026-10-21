@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 49230865d5eb9d7df8bedb58151e63f9d5ec9d21f42a228f7feb14bd3e2c638f -->
+<!-- source-sha256: 04024109620cbd4ef3c233fa390f4e33485110c4b871ce016f429bef7670f922 -->
 # 변경 이력
 
 ## Unreleased
 - 레시피 `case-database-check`, `example-check`, `timing-check`은 Rust crate를 kit의 cargo link(`CARGO_SIBLINGS`)로 빌드하므로, 형제 polyspec crate가 자기 경로로 resolve되고 어떤 레시피도 잠긴 release를 내려받지 않습니다(K448-5). red: `make -s link-state-check`가 Makefile:1175, 1740, 1753을 보고하고 2로 끝났습니다 (KSTD-13).
+- `docs/spec/dialects.md`는 고정된 PHP 8.4의 `pdo_sqlite` SQLite 버전을 적는다: PHP 8.4.26의 `select sqlite_version()` 결과 3.53.4이며, PHP 8.5.10을 대신한다 (T232). red: 문서가 PHP 8.5.10의 `pdo_sqlite`를 적었다.
 - KSTD-9은 done입니다. 서버 도구가 `initdb`와 시작하는 PostgreSQL primary 및 replica에 `LC_ALL`을 `en_US.UTF-8`로 설정하므로, 호출자가 locale을 설정하지 않아도 시작이 성공합니다. `postgresEnvironment`가 그 환경을 만들고 test가 이를 확인합니다. 호출자 locale이 없는 실제 시작도 포함합니다. red: `LC_ALL`이 없을 때 서버가 `postmaster became multithreaded during startup`로 종료했습니다 (KSTD-9).
 - `errors.yaml`의 DUPLICATE_KEY는 모든 database의 duplicate key를 적는다: MySQL 1062, PostgreSQL 23505, SQLite 2067과 1555이며 client들이 그렇게 매핑한다 (T231). red: 행은 MySQL 1062와 SQLSTATE 23000만 적었다.
 - KSTD-11은 done입니다. orm의 Composer root는 phpunit/phpunit을 정확한 버전 13.4.3으로 요구하며(`composer.json`), 추적되는 `composer.lock`은 13.4.3을 잠급니다. K435의 검토된 목표입니다. `make dependency-review UPDATE=1 TARGETS=<file>`이 이를 적용했습니다(update 명령 3 of 3 통과). polyspec/ordered-json, purrphp/yaml, opis/json-schema의 provider 항목은 sibling manifest를 따릅니다(K439-4-1). red: `composer.json`과 `composer.lock`이 13.4.2일 때 Verification(정확한 13.4.3 선언과 `composer show --locked`의 잠긴 `phpunit/phpunit` 버전)이 exit 1로 실패합니다. green: 두 파일이 13.4.3일 때 통과합니다 (KSTD-11).
