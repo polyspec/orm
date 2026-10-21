@@ -8,13 +8,47 @@ import { join } from 'node:path';
 import { createServer } from 'node:net';
 import { isolatedEnvironment } from '../tests/environment.mts';
 import { caseTest, COMPUTE, DATABASE } from '../tests/testcase.mts';
-import { environment, MYSQLD_BINLOG, mysqldArguments, paths, postgresBaseBackupArguments, stopEarlierStart, stopPid } from './test-servers.mts';
+import { environment, MYSQLD_BINLOG, mysqldArguments, paths, POSTGRES_LOCALE, postgresBaseBackupArguments, postgresEnvironment, startLogged, stopEarlierStart, stopPid } from './test-servers.mts';
 
 // processState is the state that ps reports for a process, empty when it is gone. exited is whether it has ended: an ended
 // process is gone, or a zombie (state Z) until the process that adopted it reaps it, and kill(pid, 0) still succeeds on a
 // zombie, so the state is read.
 const processState = (pid: number): string => spawnSync('ps', ['-o', 'stat=', '-p', String(pid)], { encoding: 'utf8' }).stdout.trim();
 const exited = (pid: number): boolean => { const state = processState(pid); return state === '' || state.startsWith('Z'); };
+
+// The PostgreSQL locale cases. A PostgreSQL server with no locale in its environment fails at start with postmaster became
+// multithreaded during startup, so the tool sets LC_ALL for initdb and the server it starts, whatever the caller set.
+caseTest('the PostgreSQL server environment sets LC_ALL to the server locale', COMPUTE, () => {
+  assert.equal(POSTGRES_LOCALE, 'en_US.UTF-8');
+  assert.equal(postgresEnvironment({ PATH: '/bin' }).LC_ALL, POSTGRES_LOCALE);
+  assert.equal(postgresEnvironment({ PATH: '/bin', LC_ALL: 'C' }).LC_ALL, POSTGRES_LOCALE);
+  assert.equal(postgresEnvironment({ PATH: '/bin' }).PATH, '/bin');
+});
+
+// The start case runs initdb and the PostgreSQL server with the environment postgresEnvironment builds from a caller that
+// sets no locale, then reads the environment that the server started with from its own process and stops it. A
+// server that fails at start never logs its ready line, so the start is the observed ready event (startLogged).
+caseTest('the PostgreSQL server starts with no locale set by the caller, and reads the locale it sets', DATABASE, async ({ step }) => {
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'orm-pglocale-')));
+  const data = join(dir, 'data');
+  const caller = { PATH: process.env.PATH ?? '', HOME: dir, TMPDIR: dir };
+  assert.ok(!('LC_ALL' in caller), 'the caller sets no locale');
+  try {
+    const init = spawnSync('initdb', ['-D', data, '-U', 'orm', '--auth=trust', '--encoding=UTF8', '--locale=C'], { env: postgresEnvironment(caller), encoding: 'utf8' });
+    assert.equal(init.status, 0, init.stderr);
+    step('initdb: done');
+    const port = await freePort();
+    await startLogged(dir, 'postgres', 'database system is ready to accept connections', 'postgres', ['-D', data, '-p', String(port), '-c', 'listen_addresses=127.0.0.1', '-c', 'unix_socket_directories='], postgresEnvironment(caller));
+    step(`postgres: ready on ${port}`);
+    // A server process reads the locale from its environment: its own postmaster line names the locale it runs with.
+    const pid = Number(readFileSync(join(dir, 'postgres.pid'), 'utf8').trim());
+    const environ = spawnSync('ps', ['eww', '-o', 'command=', '-p', String(pid)], { encoding: 'utf8' }).stdout;
+    assert.match(environ, new RegExp(`LC_ALL=${POSTGRES_LOCALE.replace(/[.]/g, '[.]')}(\\s|$)`), `the server runs without LC_ALL=${POSTGRES_LOCALE}: ${environ}`);
+  } finally {
+    spawnSync('pg_ctl', ['-D', data, 'stop', '-m', 'fast', '-w'], { env: postgresEnvironment(caller), stdio: 'ignore' });
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 // The stopPid case stops a fake server. Stopping a server is a long task, so it has no deadline, and its end is learned
 // from the operating system's exit event (STOP_PROCESS), not by polling. A slow but sound server that ends 1.5 seconds
@@ -326,13 +360,15 @@ caseTest('the test PostgreSQL replica streams again after the primary wrote WAL 
   const replica = join(root, 'replica');
   const psql = (port: number, sql: string, timeout?: number) => execFileSync('psql', ['-X', '-q', '-t', '-A', '-v', 'ON_ERROR_STOP=1', '-h', '127.0.0.1', '-p', String(port), '-U', 'orm', '-d', 'postgres', '-c', sql],
     { encoding: 'utf8', timeout }).trim();
+  // The PostgreSQL programs run with the environment of the server tool (postgresEnvironment), which sets the locale.
+  const env = postgresEnvironment();
   const start = (data: string, port: number, options: string) => execFileSync('pg_ctl', ['-D', data, '-l', `${data}.log`, '-w', '-t', '60', '-o',
-    `-p ${port} -c listen_addresses=127.0.0.1 -c unix_socket_directories= ${options}`, 'start'], { stdio: 'ignore' });
-  const stop = (data: string) => { if (existsSync(join(data, 'postmaster.pid'))) execFileSync('pg_ctl', ['-D', data, '-m', 'fast', '-w', 'stop'], { stdio: 'ignore' }); };
+    `-p ${port} -c listen_addresses=127.0.0.1 -c unix_socket_directories= ${options}`, 'start'], { stdio: 'ignore', env });
+  const stop = (data: string) => { if (existsSync(join(data, 'postmaster.pid'))) execFileSync('pg_ctl', ['-D', data, '-m', 'fast', '-w', 'stop'], { stdio: 'ignore', env }); };
   try {
-    execFileSync('initdb', ['-D', primary, '-U', 'orm', '--auth=trust', '--encoding=UTF8', '--locale=C'], { stdio: 'ignore' });
+    execFileSync('initdb', ['-D', primary, '-U', 'orm', '--auth=trust', '--encoding=UTF8', '--locale=C'], { stdio: 'ignore', env });
     start(primary, primaryPort, '-c synchronous_standby_names=orm_replica -c synchronous_commit=local');
-    execFileSync('pg_basebackup', postgresBaseBackupArguments(replica, primaryPort), { stdio: 'ignore' });
+    execFileSync('pg_basebackup', postgresBaseBackupArguments(replica, primaryPort), { stdio: 'ignore', env });
     start(replica, replicaPort, '');
     psql(primaryPort, 'CREATE TABLE t (v text)');
     stop(replica);

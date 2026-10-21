@@ -297,13 +297,13 @@ function mysqlTimezones(p: Paths, port: number): void {
 // it has no deadline, and its result is an observed event. The log is read on each change event of the file; each line
 // before the ready line is shown on stderr as "test-servers: <name>: <line>". It resolves when the server logs a line
 // that contains <line>, and fails when the server exits first, naming the server and the last lines of its log.
-export function startLogged(dir: string, name: string, line: string, command: string, args: string[]): Promise<void> {
+export function startLogged(dir: string, name: string, line: string, command: string, args: string[], env?: NodeJS.ProcessEnv): Promise<void> {
   const log = join(dir, `${name}.log`);
   const fd = openSync(log, 'a');
   // The server's lines start at the size of the log before the server starts: read after the spawn, the size could
   // already hold its first lines, and a ready line written before it would never be read.
   let offset = statSync(log).size, pending = '', done = false;
-  const child = spawn(command, args, { detached: true, stdio: ['ignore', fd, fd] });
+  const child = spawn(command, args, { detached: true, stdio: ['ignore', fd, fd], env });
   closeSync(fd);
   return new Promise((resolveStart, rejectStart) => {
     const reader = openSync(log, 'r');
@@ -350,16 +350,27 @@ export function postgresBaseBackupArguments(data: string, port: number): string[
   return ['-D', data, '-R', '-C', '-S', 'orm_replica', '-X', 'stream', '-d', `host=127.0.0.1 port=${port} user=orm application_name=orm_replica`];
 }
 
+// POSTGRES_LOCALE is the locale that the tool sets for the PostgreSQL programs it runs. PostgreSQL refuses to start with
+// no locale in its environment (postmaster became multithreaded during startup, with the hint to set LC_ALL), whatever
+// locale the caller has, so the tool sets it and the caller's value does not reach the server.
+export const POSTGRES_LOCALE = 'en_US.UTF-8';
+
+// postgresEnvironment is the environment of the PostgreSQL programs the tool runs: the caller's environment with LC_ALL set
+// to POSTGRES_LOCALE.
+export function postgresEnvironment(base: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+  return { ...base, LC_ALL: POSTGRES_LOCALE };
+}
+
 async function startPostgres(p: Paths, ports: Ports): Promise<void> {
-  run('initdb', ['-D', p.postgresData, '-U', 'orm', '--auth=trust', '--encoding=UTF8', '--locale=C'], { stdio: ['ignore', openSync(join(p.dir, 'postgres-init.log'), 'w'), 'inherit'] });
+  run('initdb', ['-D', p.postgresData, '-U', 'orm', '--auth=trust', '--encoding=UTF8', '--locale=C'], { stdio: ['ignore', openSync(join(p.dir, 'postgres-init.log'), 'w'), 'inherit'], env: postgresEnvironment() });
   // `pg_ctl start -w` would wait at most 60 s; startLogged waits for the ready line.
   await startLogged(p.dir, 'postgres', 'database system is ready to accept connections', 'postgres', ['-D', p.postgresData, '-p', String(ports.postgres),
-    '-c', 'listen_addresses=127.0.0.1', '-c', 'unix_socket_directories=', '-c', 'synchronous_standby_names=orm_replica', '-c', 'synchronous_commit=local']);
+    '-c', 'listen_addresses=127.0.0.1', '-c', 'unix_socket_directories=', '-c', 'synchronous_standby_names=orm_replica', '-c', 'synchronous_commit=local'], postgresEnvironment());
   console.log(`test-servers: PostgreSQL on 127.0.0.1:${ports.postgres}`);
-  run('pg_basebackup', postgresBaseBackupArguments(p.postgresReplicaData, ports.postgres));
+  run('pg_basebackup', postgresBaseBackupArguments(p.postgresReplicaData, ports.postgres), { env: postgresEnvironment() });
   // A standby logs that it accepts read-only connections.
   await startLogged(p.dir, 'postgres-replica', 'database system is ready to accept read-only connections', 'postgres', ['-D', p.postgresReplicaData,
-    '-p', String(ports.postgresReplica), '-c', 'listen_addresses=127.0.0.1', '-c', 'unix_socket_directories=']);
+    '-p', String(ports.postgresReplica), '-c', 'listen_addresses=127.0.0.1', '-c', 'unix_socket_directories='], postgresEnvironment());
   console.log(`test-servers: PostgreSQL replica on 127.0.0.1:${ports.postgresReplica}`);
 }
 
