@@ -8,6 +8,8 @@
 /packages/dbspec-lsp/dist/
 /packages/dbspec-vscode/dist/
 *.vsix
+# The build cache that tsc writes beside a tsconfig at any depth (tsBuildInfoFile): generated output that a build rewrites, never tracked (P34).
+*.tsbuildinfo
 /target/
 /benchmarks/rust/target/
 /packages/rust/target/

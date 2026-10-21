@@ -1,5 +1,5 @@
 {
   "schema": 1,
-  "paths": ["vendor-php/**", "var/**", ".runtime/**", "**/*.vsix", "**/*.pyc", ".vitepress/cache/**", "**/*.test"],
+  "paths": ["vendor-php/**", "var/**", ".runtime/**", "**/*.vsix", "**/*.pyc", ".vitepress/cache/**", "**/*.test", "**/*.tsbuildinfo"],
   "exceptions": [".kit/kit.lock.json", "tests/*/fixtures/**", "packages/go/orm/codes.go", "packages/php/src/Code.php", "packages/rust/orm/src/codes.rs", "packages/ts/src/codes.ts", "packages/python/src/polyspec/orm/codes.py"]
 }
