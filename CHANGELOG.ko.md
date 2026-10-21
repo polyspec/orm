@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2283396424deb51e3b81045ae14d9d8f681365b9308f30c4d5991d92a50eac35 -->
+<!-- source-sha256: 35a790b71f7066a03c578853ca034dd91ce83adfc9044d53312dafdc39368cb7 -->
 # 변경 이력
 
 ## Unreleased
+- collection identity, collection group, owner parity unit이 여섯 구현 unit이고, bench database의 묶음 count를 모든 client가 검사한다. red: unit이 client별이었고 공통 규칙을 인용하지 않았다(KSTD-2-11-10).
 - 모든 client가 `wasInserted`와 `backendWaitingForLock`을 가진다(INT-52, INT-53). red: PHP, TypeScript, Python, Rust client에 둘 다 없었고 Go client만 구현했다(KSTD-2-11-7-5).
 - dialect probe 인용 test는 dialect spec이 있는 곳인 `docs/spec/dialects.md`와 그 한국어 짝을 읽고, `make dialect-facts-check`가 이를 돌린다. red: `open ../../../../docs/dialects.md: no such file or directory`로 실패했다 (KSTD-2-10-6).
 - MySQL binlog 프로브는 연결을 한 번만 닫는다: 뒤의 defer 닫기가 연결을 소유하고 `Merge`는 더는 다시 닫지 않으므로 `TestDialectFacts/mysql.trigger.binlog_privilege_1419`가 통과한다. red: `sql: connection is already closed`로 실패했다 (KSTD-2-10-6-1).

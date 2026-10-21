@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The collection identity, collection group and owner parity units are six-way, and the grouped counts of the bench database are checked in every client. Red: the units were per client and cited no shared rule (KSTD-2-11-10).
 - Every client has `wasInserted` and `backendWaitingForLock` (INT-52, INT-53). Red: the PHP, TypeScript, Python and Rust clients lacked both; the Go client alone implemented them (KSTD-2-11-7-5).
 - The dialect probe citation test reads the dialect spec where it lives, `docs/spec/dialects.md` and its Korean twin, and `make dialect-facts-check` runs it. Red: it failed with `open ../../../../docs/dialects.md: no such file or directory` (KSTD-2-10-6).
 - The MySQL binlog probe closes its connection once: the deferred close owns the connection, and `Merge` no longer closes it a second time, so `TestDialectFacts/mysql.trigger.binlog_privilege_1419` passes. Red: it failed with `sql: connection is already closed` (KSTD-2-10-6-1).
