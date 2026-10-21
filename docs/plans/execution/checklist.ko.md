@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: 4c2162e08795a2fc33a7ec676bb1ea3af5ff89d0d793375fec59fe276662999a -->
+<!-- source-sha256: 85264bcf15bc8c1a530980814f69c3d3dc460ff800af6d0bc3bcf109ae996fc9 -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1293,3 +1293,4 @@
 | T227 | orm-gen이 scan 중 parse할 수 없는 파일은 모든 generator에서 오류다. Cause: packages/python/src/polyspec/orm/generate/scan.py:561은 parse할 수 없는 파일을 조용히 건너뛰는데 PHP와 TypeScript scanner는 실패한다; 구현 간 차이이자 버려진 오류다 | docs/spec/dsl.md and its Korean twin, the scanners of the five generators, their tests, config/parity.json | `node --test packages/ts/tests/generate-scan.mjs`, `go test -run Scan ./packages/go/generator`, the scan tests of PHP, Python and Rust | [o] |
 | T227-1 | parse할 수 없는 scan의 Python test가 ruff format을 지킨다 (T227 후속). Cause: main에서 lint-python이 T227이 더한 case인 packages/python/tests/test_orm_gen.py:584에서 실패한다 | packages/python/tests/test_orm_gen.py | `make lint-python`, `node --test packages/ts/tests/generate-scan.mjs` | [o] |
 | T228 | DBS-173은 모든 generator가 set이 use line으로 쓰는 각 external table의 읽기 전용 model을 scan한 source가 부르든 안 부르든 쓴다고 규정하고, 다섯 generator에 그 규칙을 지키는 회귀 case를 둔다 (T209 후속). Cause: T209 이전의 consumer 생성 model이 낡아 generator 간 차이처럼 보였고, spec이 그 규칙을 적지 않았다 | docs/spec/dbspec.md and its Korean twin, the five generators, their tests, config/parity.json | `node --test packages/ts/tests/generate-scan.mjs`, `go test -run External ./packages/go/generator` | [o] |
+| T229 | PostgreSQL LISTEN과 NOTIFY가 모든 구현의 client 기능이다: notify(channel, payload)는 transaction 안에서 보내져 그 commit과 함께 전달되고, listen(channel)은 전용 connection에서 받는다; MySQL과 SQLite는 둘 다 명시된 오류로 거부하며 조용한 no-op은 없다 (소비자: limepie drama design). Cause: docs/spec이 둘 다 적지 않아 어느 client도 제공하지 않는다 | docs/spec/dialects.md and protocol.md with their twins, every client, a PostgreSQL conformance case, config/parity.json | `make parity-declarations-check UNITS=postgres-listen-notify` | [ ] |
