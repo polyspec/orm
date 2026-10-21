@@ -84,7 +84,7 @@ codes:
     origin: driver
   - code: DEADLOCK                # MySQL 1213 / SQLSTATE 40001 / PostgreSQL 40P01 / SQLite LOCKED; retries require TransactionOptions
     origin: driver
-  - code: DUPLICATE_KEY           # MySQL 1062 / SQLSTATE 23000
+  - code: DUPLICATE_KEY           # MySQL 1062 (SQLSTATE 23000), PostgreSQL 23505, SQLite 2067 and 1555
     origin: driver
   - code: FOREIGN_KEY             # MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787, and SQLite 1811 "FOREIGN KEY constraint failed" of a RESTRICT action
     origin: driver

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 839def47a7a4eb6aa08ab22c25562da222c860fa91da8651ae71f965dec7a09f -->
+<!-- source-sha256: 0d9e55b717dc6a85b749be1d95dfe27df568837d7ab206ad0b519710afb0f787 -->
 # 변경 이력
 
 ## Unreleased
 - KSTD-9은 done입니다. 서버 도구가 `initdb`와 시작하는 PostgreSQL primary 및 replica에 `LC_ALL`을 `en_US.UTF-8`로 설정하므로, 호출자가 locale을 설정하지 않아도 시작이 성공합니다. `postgresEnvironment`가 그 환경을 만들고 test가 이를 확인합니다. 호출자 locale이 없는 실제 시작도 포함합니다. red: `LC_ALL`이 없을 때 서버가 `postmaster became multithreaded during startup`로 종료했습니다 (KSTD-9).
+- `errors.yaml`의 DUPLICATE_KEY는 모든 database의 duplicate key를 적는다: MySQL 1062, PostgreSQL 23505, SQLite 2067과 1555이며 client들이 그렇게 매핑한다 (T231). red: 행은 MySQL 1062와 SQLSTATE 23000만 적었다.
 - KSTD-11은 done입니다. orm의 Composer root는 phpunit/phpunit을 정확한 버전 13.4.3으로 요구하며(`composer.json`), 추적되는 `composer.lock`은 13.4.3을 잠급니다. K435의 검토된 목표입니다. `make dependency-review UPDATE=1 TARGETS=<file>`이 이를 적용했습니다(update 명령 3 of 3 통과). polyspec/ordered-json, purrphp/yaml, opis/json-schema의 provider 항목은 sibling manifest를 따릅니다(K439-4-1). red: `composer.json`과 `composer.lock`이 13.4.2일 때 Verification(정확한 13.4.3 선언과 `composer show --locked`의 잠긴 `phpunit/phpunit` 버전)이 exit 1로 실패합니다. green: 두 파일이 13.4.3일 때 통과합니다 (KSTD-11).
 - docs 검사는 build된 HTML을 parse5로, Markdown table을 mdast-util-from-markdown과 mdast-util-gfm으로 읽는다: 이스케이프된 파이프는 셀 안에 남고, 따옴표 안의 `>`는 tag를 끝내지 않는다. 정규식과 파이프 분할을 지웠다. red: check.mts가 HTML을 정규식으로 읽었고 table 읽기는 파이프로 줄을 나눴다 (KSTD-5-4-1).
 - Rust README의 기능 표는 마지막 행을 표 안에 둔다; 영문 README는 그 행을 문단 뒤에 두었다. red: rules.mts가 두 표의 구조가 다르다고 보고했다 (KSTD-5-4-1).
