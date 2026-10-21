@@ -82,6 +82,7 @@ func (q showCreateCannedQuerier) answer(query string) ([][]any, int, error) {
 
 // TestMySQLIntrospectionOfShownChecks checks that Go's MySQL introspection yields the same predicate from the canned catalog
 // and the same error.
+// Requirements: DIA-84.
 func TestMySQLIntrospectionOfShownChecks(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	v := loadShowCreate(t)

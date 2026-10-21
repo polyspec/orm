@@ -161,6 +161,7 @@ async fn run_steps(conn: &mut Conn, db: &str, steps: &[Step]) -> Result<(), Stri
     Ok(())
 }
 
+// Requirements: PLN-102.
 #[tokio::test]
 async fn plan_apply() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);

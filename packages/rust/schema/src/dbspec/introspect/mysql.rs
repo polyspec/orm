@@ -437,6 +437,7 @@ mod show_create_tests {
     use std::time::Duration;
 
     /// Every case of tests/dbspec/show-create.json reads to its expected body, or to no body for a name the statement lacks (T62-4-8).
+    // Requirements: DIA-84.
     #[test]
     fn every_show_create_case_reads_to_its_expected_body() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(Duration::from_secs(10)));

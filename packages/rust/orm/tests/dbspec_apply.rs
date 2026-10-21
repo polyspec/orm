@@ -668,6 +668,7 @@ async fn pooler_connection(dsn: &str, name: &str) -> sqlx::PgConnection {
 /// creates its own database and connects to it through PgBouncer. PgBouncer reuses idle server connections LIFO
 /// (server_round_robin = 0), so the order below is fixed. An event handler is a synchronous function, so the
 /// connection's transaction is opened by another task, and the handler waits for that task with block_in_place.
+// Requirements: PLN-105.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn apply_through_a_transaction_pooler() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);

@@ -352,13 +352,19 @@ dbspec-introspect-rust-check: cargo-downloads-check
 .PHONY: dbspec-introspect-python-check
 dbspec-introspect-python-check: python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_introspect
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_introspect_queries
 
 # dbspec-plan-check applies the steps of every case of tests/dbspec/plans.json to MySQL, PostgreSQL, and SQLite,
 # and requires the plan's target, the source via rollback statements, the target after applying again, and the target after finalize, and
 # no hidden names (docs/spec/plans.md "Verification").
 .PHONY: dbspec-plan-check
 dbspec-plan-check:
-	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./packages/go/internal/dialects -run '^TestPlanApply$$' -count=1
+	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./packages/go/internal/dialects -run '^TestPlanApply$' -count=1
+
+# dbspec-plan-python-check applies every case of tests/dbspec/plans.json to MySQL, PostgreSQL and SQLite with the Python client (packages/python/tests/dbspec_plan_physical.py).
+.PHONY: dbspec-plan-python-check
+dbspec-plan-python-check: python-venv-check
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_plan_physical
 
 # dbspec-apply-check applies the plan chain to MySQL, PostgreSQL, and SQLite with history, a second apply, drift,
 # lock, an unlock that releases nothing, verification, recover and rollback at an interruption after every step of a representative plan, row writes between,
@@ -704,8 +710,8 @@ PHP_EXTENSION_LIBRARY = $(RUN_DIR)/php-extension/polyspec_orm.so
 # PHP_EXTENSION_TESTS runs PHPUnit files of packages/php with the extension loaded.
 PHP_EXTENSION_TESTS = php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist
 dbspec-php-extension-check/%: RUN_DIR = $(abspath .runtime/run)/dbspec-php-extension-check-$$PPID
-.PHONY: dbspec-php-extension-check/arginfo dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/sets dbspec-php-extension-check/render dbspec-php-extension-check/graph dbspec-php-extension-check/behaviour dbspec-php-extension-check/schema-definition dbspec-php-extension-check/analyze dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse dbspec-php-extension-check/codec dbspec-php-extension-check/code-catalog dbspec-php-extension-check/decode dbspec-php-extension-check/aes dbspec-php-extension-check/hostcodec dbspec-php-extension-check/ir dbspec-php-extension-check/planner dbspec-php-extension-check/executor
-dbspec-php-extension-check: dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/sets dbspec-php-extension-check/render dbspec-php-extension-check/graph dbspec-php-extension-check/behaviour dbspec-php-extension-check/schema-definition dbspec-php-extension-check/analyze dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse dbspec-php-extension-check/codec dbspec-php-extension-check/code-catalog dbspec-php-extension-check/decode dbspec-php-extension-check/aes dbspec-php-extension-check/hostcodec dbspec-php-extension-check/ir dbspec-php-extension-check/planner dbspec-php-extension-check/executor
+.PHONY: dbspec-php-extension-check/arginfo dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/sets dbspec-php-extension-check/render dbspec-php-extension-check/graph dbspec-php-extension-check/behaviour dbspec-php-extension-check/schema-definition dbspec-php-extension-check/analyze dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/plan-apply dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse dbspec-php-extension-check/codec dbspec-php-extension-check/code-catalog dbspec-php-extension-check/decode dbspec-php-extension-check/aes dbspec-php-extension-check/hostcodec dbspec-php-extension-check/ir dbspec-php-extension-check/planner dbspec-php-extension-check/executor
+dbspec-php-extension-check: dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/sets dbspec-php-extension-check/render dbspec-php-extension-check/graph dbspec-php-extension-check/behaviour dbspec-php-extension-check/schema-definition dbspec-php-extension-check/analyze dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/plan-apply dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse dbspec-php-extension-check/codec dbspec-php-extension-check/code-catalog dbspec-php-extension-check/decode dbspec-php-extension-check/aes dbspec-php-extension-check/hostcodec dbspec-php-extension-check/ir dbspec-php-extension-check/planner dbspec-php-extension-check/executor
 	rm -rf $(RUN_DIR)
 dbspec-php-extension-check/arginfo:
 	$(NODE) $(KIT)/php-extension.$(KIT_EXT) check
@@ -750,6 +756,9 @@ dbspec-php-extension-check/mermaid: php-vendor-check dbspec-php-extension-check/
 dbspec-php-extension-check/apply-cleanup: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecApplyCleanupTest.php
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecApplyCleanupTest.php
+# dbspec-php-extension-check/plan-apply runs DbspecPlanApplyTest with the extension: every plan case of tests/dbspec/plans.json applied to MySQL, PostgreSQL and SQLite.
+dbspec-php-extension-check/plan-apply: php-vendor-check dbspec-php-extension-check/prepare
+	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/DbspecPlanApplyTest.php
 # dbspec-php-extension-check/show-create runs DbspecShowCreateIntrospectTest with the extension: introspection of the canned MySQL catalog of tests/dbspec/show-create.json.
 dbspec-php-extension-check/show-create: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecShowCreateIntrospectTest.php

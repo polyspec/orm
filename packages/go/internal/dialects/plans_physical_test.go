@@ -37,6 +37,7 @@ type planStep struct {
 // it renders and applies the source, runs the before steps and the plan steps before finalize to check the target,
 // checks the source with rollback statements if there are no irreversible steps, then re-applies,
 // and after running the after steps and the finalize step, checks the target and that no hidden names remain.
+// Requirements: PLN-102.
 func TestPlanApply(t *testing.T) {
 	testcase.Group(t)
 	mysqlDSN, postgresDSN := testDSNs(t)

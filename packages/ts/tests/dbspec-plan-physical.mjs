@@ -244,6 +244,7 @@ for (const c of cases) {
   }
 }
 
+// Requirements: PLN-102.
 vector('every plan case runs on every dialect', () => {
   assert.equal(runs, cases.length * DIALECTS.length);
   console.log(`plan runs: ${runs} (${cases.length} cases on ${DIALECTS.length} dialects)`);

@@ -98,6 +98,7 @@ func expectedSchemaText(t *testing.T, documents []*dbspec.Document) string {
 // TestIntrospectRoundTrip renders and applies each set, and checks that the schema text of the introspected documents
 // equals the original, that there are no unsupported objects, and that the query count per dialect
 // is the same regardless of the table count of the set.
+// Requirements: DIA-133.
 func TestIntrospectRoundTrip(t *testing.T) {
 	testcase.Group(t)
 	mysqlDSN, postgresDSN := testDSNs(t)

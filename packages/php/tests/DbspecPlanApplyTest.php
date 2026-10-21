@@ -146,6 +146,7 @@ final class DbspecPlanApplyTest extends TestCase
         }
     }
 
+    // Requirements: PLN-102.
     #[DataProvider('planCases')]
     public function test_plan(array $case, string $dialect): void
     {

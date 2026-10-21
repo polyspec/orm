@@ -527,6 +527,7 @@ final class DbspecApplyTest extends TestCase
         }
     }
 
+    // Requirements: PLN-105.
     #[DataProvider('poolerCases')]
     public function test_pooler(string $name): void
     {

@@ -41,6 +41,7 @@ func dbspecLanguages() []string {
 // the history rows and the introspected schema text afterward must equal the expected ones. When A stops
 // partway, B must reject the interrupted apply and finish it with recover, and when it stops again
 // an apply, B must roll it back with rollback.
+// Requirements: PLN-103.
 func TestApplyChainAcrossClients(t *testing.T) {
 	testcase.Group(t)
 	rustRunner, extension, python := os.Getenv("DBSPEC_APPLY_RUST"), os.Getenv("POLYSPEC_ORM_EXTENSION"), os.Getenv("ORM_PYTHON")

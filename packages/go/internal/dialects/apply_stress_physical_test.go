@@ -32,6 +32,7 @@ const stressReportEvery = 200
 // database (docs/spec/plans.md "Verification"). It proves that each statement commits separately: on PostgreSQL, with the
 // default max_locks_per_transaction 64, the applying session holds no relation lock after any applied step, so the lock
 // count does not depend on the plan size. Every database records each step in its history.
+// Requirements: PLN-104.
 func TestApplyStressPlan(t *testing.T) {
 	testcase.Group(t)
 	mysqlDSN, postgresDSN := testDSNs(t)

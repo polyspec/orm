@@ -18,6 +18,7 @@ class _Connection:
 
 
 class SqliteUnsupportedMessageTest(unittest.TestCase):
+    # Requirements: DIA-191.
     def test_a_column_without_check_is_quoted_as_the_empty_string(self):
         conn = sqlite3.connect(":memory:")
         conn.execute(

@@ -100,6 +100,7 @@ final class DbspecShowCreateIntrospectTest extends TestCase
         }
     }
 
+    // Requirements: DIA-84.
     #[DataProvider('showCreateCases')]
     public function test_introspect(array $case): void
     {
