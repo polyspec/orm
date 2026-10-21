@@ -1,5 +1,5 @@
 <!-- doc-id: plans -->
-<!-- source-sha256: 964b0b711bbf1ad154d49e44ecaee252887c9e3f6a7534e1587f9d997713228b -->
+<!-- source-sha256: e7198dd87f3c5aba17393067ccd47f47e0befede312ebc6a4a12353c21755887 -->
 # Schema plan
 
 plan은 database를 한 schema에서 다음 schema로 바꾼다. plan은 target schema와, schema가 표현하지 못하는 결정인 rename과 drop 허가를 담는다. plan은 빈 database에서 시작하는 chain을 이룬다. 모든 client는 plan의 두 schema를 같은 방식으로 diff하고 dialect마다 같은 step을 쓴다. `tests/dbspec/plans.json`이 공유 case를 담는다.
@@ -137,6 +137,10 @@ apply, recover, rollback, finalize는 caller가 가진 connection 하나에서 �
 - **PLN-99** TypeScript는 `errors`가 실패와 그 뒤 정리 error를 순서대로 담은 `AggregateError`로 reject한다.
 - **PLN-100** Rust는 실패를 `error`로 가진 `ApplyError::Cleanup { error, cleanup }`을 돌려준다. 그 뒤의 정리 error는 앞의 결과를 다시 `error`로 감싼다. 아무것도 풀지 않은 unlock은 `ApplyError::LockNotHeld`다.
 - **PLN-101** Python은 정리 error마다 note `cleanup failed: <error>`를 순서대로 붙인 실패를 던진다(`BaseException.add_note`).
+- **PLN-102** `tests/dbspec/plans.json`의 모든 case를 MySQL, PostgreSQL, SQLite에 적용하며, 각 run은 빈 database, schema 또는 file에서 수행한다. source를 render하고 `before` step을 실행하며, finalize 전의 step을 실행한다(SQLite에서는 foreign key를 끈 뒤 `PRAGMA foreign_key_check`가 행을 반환하지 않는다). 그리고 introspect한 schema text는 target과 같고 unsupported object가 없어야 한다. 되돌릴 수 없는 step이 없으면 rollback 문이 source schema text로 되돌리고 step을 다시 실행한다. 이후 `after` step과 finalize step을 실행하고, target을 다시 introspect하며, 이름이 `dbspec$`로 시작하는 table이나 column이 남지 않는다.
+- **PLN-103** MySQL, PostgreSQL, SQLite에서 Go, PHP, PHP extension, TypeScript, Python, Rust client의 모든 순서쌍에 대해, 첫 client는 chain의 첫 plan을 적용하고 두 번째 client는 나머지를 적용한다. 첫 client가 두 번째 plan을 한 statement 뒤에 멈추면 두 번째 client는 이를 `interrupted`로 거부하고 recover한다. 첫 client가 다시 멈추면 두 번째 client는 rollback한다. 모든 run에서 history row와 introspect한 schema text는 chain의 것과 같아야 한다.
+- **PLN-104** PostgreSQL에서 `max_locks_per_transaction`이 기본값 64일 때, stress plan을 적용하는 session은 적용된 step마다 relation lock을 보유하지 않으므로 lock 수는 plan 크기에 의존하지 않는다. 적용된 각 step은 각 database의 history에 기록된다.
+- **PLN-105** transaction pooler(transaction pooling mode의 PgBouncer, 자체 database)를 거치면, 다른 client가 lock을 보유한 채 남긴 server connection을 가진 apply는 `session` error로 실패하고, 다른 client의 transaction이 첫 `statement` event에서 server connection을 가져가 다음 statement가 다른 server session에서 실행되는 apply도 `session` error로 실패한다. 다른 scenario는 server에 직접 연결하여 실행한다.
 
 중단된 뒤 recover나 rollback 전까지 plan의 table에 쓰면 안 된다. 예를 들어 SQLite 다시 만들기가 비운 table에 쓴 row는 작업 table에 없다. chain 전체를 적용한 database에서 apply는 아무것도 바꾸지 않는다. 빈 chain의 apply는 history table을 만들고, table이 없는 database를 요구하며, event를 알리지 않는다. 빈 chain의 recover, rollback, finalize는 아무것도 바꾸지 않는다.
 

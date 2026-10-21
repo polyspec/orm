@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 88b5a670dcd269437f24ca48ade93480eac9a0e868a3d1c458c8b095bd361647 -->
+<!-- source-sha256: e3fbcce2bf47376442e8a800521db74ba4e67a514a508fb4612cb1329a076c6f -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -356,6 +356,7 @@ Audit context 선택지. Audit trigger는 클라이언트가 transaction 안에�
 - **DIA-152** 빠진 객체를 참조하는 객체도 보고하고 뺀다. 미지원 column 위의 index나 key, 빠진 table로 가는 foreign key, 미지원 column을 쓰는 check가 그렇다. introspect한 문서는 parse되며, parse가 거부한 줄의 객체는 그 diagnostic을 이유로 보고되고 빠진다. 문서가 parse될 때까지 반복한다. parse가 table을 거부하면 그 table은 모든 객체와 함께 빠지고, 같은 parse에서 거부된 그 table의 객체는 따로 보고하지 않는다. 각 객체는 한 번만 보고한다. catalog row가 column마다 하나인 foreign key도 그렇다.
 
 - **DIA-153** SQLite는 table 항목을 `CREATE TABLE` text에서 읽는다. column 정의는 renderer 형식, 곧 따옴표 친 이름, 선언 type, `NULL`이나 `NOT NULL`, 있으면 default일 때 읽는다. 다른 clause(`CHECK`, `REFERENCES`, `UNIQUE`, `COLLATE` 등)가 있는 column은 미지원이다. renderer 형식이 아닌 `CHECK`, `UNIQUE`, `FOREIGN KEY` 항목은 그 kind와 constraint 이름을 붙여 보고하며, 이름이 없으면 빈 이름이다. `UNIQUE` 항목이나 clause의 자동 index는 따로 보고하지 않는다. 다른 형식의 primary key 항목과 그 밖의 항목은 table을 빼게 한다.
+- **DIA-191** CHECK가 없는 column을 포함해, declared type이 dbspec type이 없는 SQLite column은 `declared type <type> with CHECK <check> has no dbspec type` 이유로 보고된다. 여기서 `<check>`는 column의 CHECK text를 JSON 문자열로 쓴 것이고, CHECK가 없으면 `""`이다. Go client는 `%q`로, TypeScript client는 `JSON.stringify`로 `<check>`를 쓰며, Python client도 같은 text를 쓴다.
 
 ## Markdown IR executor
 
