@@ -22,7 +22,6 @@ export const CI_SETUP: Record<string, string | null> = {
   // npm and node-modules install @polyspec/kit, whose kit.mk every make target reads, with the other npm packages.
   npm: 'node-modules',
   'node-modules': 'node-modules',
-  'node-min': 'node-modules',
   rust: 'rust',
   'rust-cache': null,
   'rust-crates': 'rust',
@@ -68,7 +67,6 @@ export const STEP_OUTPUT: Record<string, string | null> = {
   // npm and node-modules run in every group, before group-needs: make ci-group-needs reads the kit.mk that they install.
   npm: null,
   'node-modules': null,
-  'node-min': 'node-modules',
   rust: 'rust',
   'rust-cache': 'rust',
   'rust-crates': 'rust',
