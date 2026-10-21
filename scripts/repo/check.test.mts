@@ -104,7 +104,7 @@ caseTest('a check before make orm-test-servers fails', COMPUTE, () => {
   const early = steps.replace('      - name: database servers', '      - name: early\n        run: make feature-check\n      - name: database servers');
   assert.deepEqual(ciServerErrors(early, script), ['ci.yml step "early" runs make before make orm-test-servers starts the servers']);
   // make install and that part only download, so they may come before the server.
-  const install = steps.replace('      - name: database servers', '      - name: downloads\n        run: make orm-install-go orm-install-node-min\n      - name: database servers');
+  const install = steps.replace('      - name: database servers', '      - name: downloads\n        run: make orm-install-go\n      - name: database servers');
   assert.deepEqual(ciServerErrors(install, script), []);
 });
 

@@ -299,8 +299,8 @@
       "tool": "tsc"
     },
     "scripts/typescript/node-min.mts": {
-      "kind": "replaced",
-      "reason": "mise installs a pinned Node release (mise install node@<version>, with mise where node@<version>), as mise.toml does for the development Node; item KSTD-5-4-2 moves the lowest Node to it and removes this downloader"
+      "kind": "policy",
+      "reason": "prints the bin directory of the lowest Node of engines.node that mise installs (mise where node@<version>, with the version mise.toml pins in mise.lock); ts-min-check runs the TypeScript tests on it, and the script downloads nothing"
     },
     "scripts/typescript/sqlite-test.mts": {
       "kind": "policy",

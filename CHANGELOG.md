@@ -3,6 +3,7 @@
 
 ## Unreleased
 - `make lint-python` passes: unused noqa directives are removed, three files are formatted, and the one silent except of the IR answer test names its case. Red: ruff reported 54 findings and three unformatted files (KSTD-5-8-1).
+- The lowest supported Node is installed by mise: `make ts-min-check` runs the TypeScript tests on the node that `mise where node@<engines.node>` prints, and scripts/typescript/node-min.mts downloads nothing. Red: node-min.mts downloaded that Node itself, outside mise (KSTD-5-4-2).
 - The comments of the PHP extension Db state what it implements: the transactions, savepoints, audit, execute, Utils and Stats are its own, no longer described as throwing INTERNAL. Red: the db.c header and the stub docblock held the stale sentence (T182-5-3-1).
 - The statement event rule INT-91 states the seven fields that every client exposes (sql, binds with secrets and clock values masked, kind, tables, elapsed, transaction and error), and the statement event parity unit cites it; the bind count and plan identifier that no client exposed are gone. Red: the unit had no rule to cite (KSTD-2-11-7-4).
 - `make interface-check/self-test` passes in every language: the plan spec states what Go Apply returns, the PHP stored-version reader is marked internal, and the symbol contracts record the surface that earlier rows changed, each finding reviewed against its commit. Red: the self-test failed in Go, PHP, TypeScript, Python and Rust (KSTD-5-16).

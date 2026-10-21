@@ -1,13 +1,11 @@
 // Checks the download check (scripts/check/downloads.mts) that check reads, and the offline rules in the Makefile. Each case runs in a temporary
 // directory with its lock file and install record, with fake cargo and go; it does not use the network.
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
-import { isolatedEnvironment } from '../../tests/environment.mts';
 import { composerMissing, missingDownloads, npmMissing, offlineMakeErrors } from './downloads.mts';
 
 const repo = resolve(fileURLToPath(new URL('../..', import.meta.url)));
@@ -54,17 +52,6 @@ caseTest('a crate or Go module that is not downloaded names make install, never 
     for (const { message } of missing) assert.doesNotMatch(message, /retry/i);
   } finally {
     rmSync(root, { recursive: true, force: true });
-  }
-});
-
-caseTest('the lowest Node is downloaded only by make orm-install-node-min', PROCESS, () => {
-  const cache = mkdtempSync(join(tmpdir(), 'orm-node-min-'));
-  try {
-    const result = spawnSync(process.execPath, [join(repo, 'scripts/typescript/node-min.mts')], { encoding: 'utf8', env: isolatedEnvironment({ ORM_NODE_CACHE: cache, ORM_NODE_MIN_INSTALL: '' }) });
-    assert.equal(result.status, 1, result.stdout + result.stderr);
-    assert.match(result.stderr, new RegExp(`^node-min: Node [0-9.]+ is not in ${cache.replace(/[.]/g, '\\.')}; run make install, which downloads it\n$`));
-  } finally {
-    rmSync(cache, { recursive: true, force: true });
   }
 });
 

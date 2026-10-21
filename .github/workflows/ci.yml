@@ -106,10 +106,6 @@ jobs:
         id: flowmark
         if: ${{ !cancelled() && steps.group-needs.outputs.flowmark == 'true' }}
         run: make orm-install-flowmark
-      - name: lowest Node release of the TypeScript client
-        id: node-min
-        if: ${{ !cancelled() && steps.group-needs.outputs.node-modules == 'true' }}
-        run: make orm-install-node-min
       - name: Rust toolchain of rust-toolchain.toml
         id: rust
         if: ${{ !cancelled() && steps.group-needs.outputs.rust == 'true' }}

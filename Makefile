@@ -1612,8 +1612,8 @@ rust-check/clippy-test-faults: lease-tool
 # and the parts are independent (make -k).
 
 .PHONY: docs-ci
-.PHONY: install orm-install-interfaces-typescript orm-install-php orm-install-rust orm-install-rust-toolchain orm-install-rust-crates orm-install-go orm-install-node-min orm-install-server-programs orm-install-php-extension-tools ci-php-min-version downloads-check
-install: orm-install-php orm-install-rust orm-install-go orm-install-node-min orm-install-php-extension-tools orm-install-python orm-install-flowmark orm-install-interfaces-typescript
+.PHONY: install orm-install-interfaces-typescript orm-install-php orm-install-rust orm-install-rust-toolchain orm-install-rust-crates orm-install-go orm-install-server-programs orm-install-php-extension-tools ci-php-min-version downloads-check
+install: orm-install-php orm-install-rust orm-install-go orm-install-php-extension-tools orm-install-python orm-install-flowmark orm-install-interfaces-typescript
 # orm-install-interfaces-typescript installs the TypeScript 6.0.3 that packages/ts/testing/interfaces/typescript.mts reads declarations with
 # (config/toolchain.json exceptions): TypeScript 7.0 ships no JavaScript API of its compiler.
 # install-packages also installs the TypeScript of tests/interfaces from its lock, so a fresh install leaves lint-ts with what it reads.
@@ -1668,8 +1668,6 @@ orm-install-go:
 orm-install-flowmark:
 	$(ONLINE) GOBIN=$(dir $(FLOWMARK)) $(GO) install github.com/polyspec/flowmark/cmd/flowmark@$$(cat tests/markdown/flowmark.version)
 	$(ONLINE) $(GO) mod download github.com/polyspec/flowmark@$$(cat tests/markdown/flowmark.version)
-orm-install-node-min:
-	$(ONLINE) ORM_NODE_MIN_INSTALL=1 $(NODE) scripts/typescript/node-min.mts
 # orm-install-server-programs installs, on the CI Linux runner, the server programs that make orm-test-servers starts
 # (scripts/ci/server-programs.mts).
 orm-install-server-programs:
