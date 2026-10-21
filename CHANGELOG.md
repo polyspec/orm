@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- Every client has `wasInserted` and `backendWaitingForLock` (INT-52, INT-53). Red: the PHP, TypeScript, Python and Rust clients lacked both; the Go client alone implemented them (KSTD-2-11-7-5).
 - The dialect probe citation test reads the dialect spec where it lives, `docs/spec/dialects.md` and its Korean twin, and `make dialect-facts-check` runs it. Red: it failed with `open ../../../../docs/dialects.md: no such file or directory` (KSTD-2-10-6).
 - The MySQL binlog probe closes its connection once: the deferred close owns the connection, and `Merge` no longer closes it a second time, so `TestDialectFacts/mysql.trigger.binlog_privilege_1419` passes. Red: it failed with `sql: connection is already closed` (KSTD-2-10-6-1).
 - `make lint-python` passes: unused noqa directives are removed, three files are formatted, and the one silent except of the IR answer test names its case. Red: ruff reported 54 findings and three unformatted files (KSTD-5-8-1).
