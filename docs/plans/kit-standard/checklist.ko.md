@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 589220d9f576d3c4bc888c001d6311d977d719963edc97b2d0925e709ba0a5fa -->
+<!-- source-sha256: 26758866b88f6e47e3da8c34c5eaaf2346a8539711b8b300dc0d3557dd08babc -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -93,7 +93,7 @@
 | KSTD-5-7-7 | command의 Go build 출력은 추적하지 않는다 (KSTD-5-7 후속). Cause: 0b3426809가 go build가 command 옆에 쓰는 Mach-O binary packages/go/cmd/orm-gen/orm-gen을 commit해, feature-unit-check의 추적 파일 test가 실패하고 생성 파일이 git에 있다 (P34) | .gitignore, packages/go/cmd/orm-gen | `node --test --test-name-pattern='every tracked file selects' tests/testcase.mts` | [o] |
 | KSTD-5-7-8 | identity column이 없는 table의 insert가 PostgreSQL에서 성공한다. insert id를 보고하는 driver에만 이를 묻기 때문이다 (KSTD-5-7-2 후속). Cause: 04df7fddb가 orm이 버리던 LastInsertId 오류를 반환하는데 pgx는 insert id를 보고하지 않아, identity key가 없는 row의 모든 Go insert가 PostgreSQL에서 DRIVER: LastInsertId is not supported by this driver로 실패한다 | packages/go/orm/exec.go, packages/go/model/model_test.go | `go test -count=1 -run TestInsertWithoutIdentityOnEveryDatabase ./packages/go/model` | [o] |
 | KSTD-5-8 | lint-python이 통과한다 (KSTD-5 후속). Cause: ruff format --check가 repository의 Python에서 실패한다 | the Python of the repository | `make lint-python` | [o] |
-| KSTD-5-8-1 | make lint-python이 다시 통과한다 (KSTD-5-8 후속). Cause: ruff 0.17.1이 main에서 finding 53개를 보고한다: 더는 필요 없는 파일에 남은 쓰지 않는 noqa 지시(RUF100, 대부분 E402와 N802)와 packages/python/tests/ir_answers.py의 S110 하나다 | packages/python | `make lint-python` | [~] |
+| KSTD-5-8-1 | make lint-python이 다시 통과한다 (KSTD-5-8 후속). Cause: ruff 0.17.1이 main에서 finding 53개를 보고한다: 더는 필요 없는 파일에 남은 쓰지 않는 noqa 지시(RUF100, 대부분 E402와 N802)와 packages/python/tests/ir_answers.py의 S110 하나다 | packages/python | `make lint-python` | [o] |
 | KSTD-5-9 | lint-php가 통과한다 (KSTD-5 후속). Cause: 루트, packages/php, packages/php-ext의 phpcs와 phpstan이 실패한다 | the PHP of the repository | `make lint-php` | [ ] |
 | KSTD-5-9-1 | 손으로 쓴 PHP가 phpcs 줄 길이를 지킨다 (KSTD-5-9 후속). Cause: phpcs가 손으로 쓴 파일에서 120자를 넘는 줄 2657개를 보고한다 | packages/php | `make lint-php` | [~] |
 | KSTD-5-10 | PHP extension은 stub 하나를 가진 하나의 extension polyspec_orm이어서 lint-php-ext와 test-php-ext가 통과한다 (kit K293, S10) (KSTD-5 후속). Cause: kit은 repository의 extension을 package polyspec/orm-php-ext의 polyspec_orm으로, stub은 packages/php-ext/src/polyspec_orm.stub.php 하나로 정하는데, orm은 polyspec/orm-dbspec에서 stub 두 개로 orm_dbspec을 build한다 | packages/php-ext, its stubs, config/parity.json | `make lint-php-ext` | [!] 원인: extension이 이제 PHP library가 선언하는 대로 선언하고 lint-php-ext가 통과한다; test-php-ext는 library test 단계에서 멈추는데, 이 단계는 packages/php/vendor를 읽고 이 monorepo는 root에 하나의 Composer vendor인 vendor-php를 설치한다; 재시도: kit이 PHP library의 library test를 그 repository가 설치하는 vendor directory에서 돌린다 |

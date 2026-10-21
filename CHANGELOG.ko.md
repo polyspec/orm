@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a413deea13fa33b2c5283dd650a359ad17e7a0eedb99b899fbd231721bffad95 -->
+<!-- source-sha256: d84e9e5ff8956a6a49069684bd5c4321e39864441cbe8be6dbea533d67594585 -->
 # 변경 이력
 
 ## Unreleased
+- `make lint-python`이 통과한다: 쓰이지 않는 noqa를 지우고, file 세 개를 formatting하며, IR answer test의 조용한 except 하나가 그 경우를 명시한다. red: ruff가 finding 54개와 formatting되지 않은 file 세 개를 보고했다 (KSTD-5-8-1).
 - PHP extension Db의 주석이 구현한 것을 적는다: transaction, savepoint, audit, execute, Utils, Stats는 extension의 것이고, 더는 INTERNAL을 던진다고 적지 않는다. red: db.c header와 stub docblock에 낡은 문장이 있었다 (T182-5-3-1).
 - statement event 규칙 INT-91이 모든 client가 노출하는 field 일곱 개(sql, secret과 clock 값을 가린 binds, kind, tables, elapsed, transaction, error)를 적고, statement event parity unit이 이를 인용한다; 어떤 client도 노출하지 않던 bind 수와 plan 식별자는 사라졌다. red: unit이 인용할 규칙이 없었다 (KSTD-2-11-7-4).
 - `make interface-check/self-test`가 모든 언어에서 통과한다: plan spec이 Go Apply의 반환을 적고, PHP 저장 version reader를 internal로 표시하며, symbol contract가 앞선 row들이 바꾼 표면을 기록하고 항목마다 그 commit과 대조해 검토했다. red: self-test가 Go, PHP, TypeScript, Python, Rust에서 실패했다 (KSTD-5-16).
