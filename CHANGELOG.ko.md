@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 40f7fc89423c1c73cbfc3fd92bc92066099f8a5706cf6a16c02b55d23cacb7ec -->
+<!-- source-sha256: fb5dea03c5d9e0f9d3a848714c28967828a2e56b3972f735c0e5c882b018922d -->
 # 변경 이력
 
 ## Unreleased
+- `make php-vendor-check`는 composer.json과 다른 autoload를 보고하며 더 이상 고치지 않는다. `make orm-install-php`가 `composer dump-autoload`를 실행한다(KSTD-3-2). red: 낡은 autoload가 조용히 통과하고 다시 쓰였다.
 - 설치된 checkout에서 `make generated-lint-check`가 통과한다: php-vendor-check가 composer.json에서 Composer autoload를 다시 만들어, 낡은 vendor-php가 packages/php/gen/bootstrap.php를 더는 가리키지 않는다(KSTD-3-1). red: main checkout이 그 파일에서 치명적 오류로 실패했다.
 - `make generated-lint-check`가 고정된 도구로 생성 model을 모든 ecosystem에서 검사하며, 생성 PHP는 PSR-12와 PSR-1을 통과한다(KSTD-3). red: 수정 전 생성 PHP가 packages/php/gen/Account.php:1:1에서 PSR-12를 실패했다.
 - collection identity, collection group, owner parity unit이 여섯 구현 unit이고, bench database의 묶음 count를 모든 client가 검사한다. red: unit이 client별이었고 공통 규칙을 인용하지 않았다(KSTD-2-11-10).

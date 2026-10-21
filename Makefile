@@ -528,7 +528,7 @@ python-venv-check:
 .PHONY: php-vendor-check
 php-vendor-check:
 	@for file in vendor-php/autoload.php vendor-php/bin/phpunit; do test -f $$file || { echo "php-vendor-check: $$file is missing; run make orm-install-php, which installs it with Composer"; exit 1; }; done
-	$(COMPOSER) dump-autoload --no-interaction --quiet
+	@$(NODE) scripts/php/vendor-autoload-check.mjs
 
 # python-check runs the Python client's unit tests, the interface tests of the Python extractor, the generated-model check and
 # the Python conformance result check. The tests import the client and ordered-json installed into the venv (orm-install-python).
@@ -1665,6 +1665,7 @@ PHP_MODELS_FILE = packages/php/models.txt
 .PHONY: php-models php-model-check
 orm-install-php:
 	$(ONLINE) $(COMPOSER) install --no-interaction --no-progress --prefer-dist
+	$(COMPOSER) dump-autoload --no-interaction --quiet
 	$(MAKE) --no-print-directory php-models
 php-models: php-vendor-check
 	while IFS= read -r entry; do case "$$entry" in ""|"#"*) continue ;; esac; vendor-php/bin/orm-gen gen $$entry || exit 1; done < $(CURDIR)/$(PHP_MODELS_FILE)
