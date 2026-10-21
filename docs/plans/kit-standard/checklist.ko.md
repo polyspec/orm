@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: e897f88ae2bc30d56b1f7bca1cbffcaa6d01bfe8f74717521867934da8b7df05 -->
+<!-- source-sha256: 7288f1f7d2228beda3c7fd1286dc78b40b3cb6192ea0beb7d72994d1bf71118a -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -135,3 +135,4 @@
 | KSTD-8 | orm의 모든 PHPUnit 실행이 kit run-tests를 거쳐, 멈춘 test가 제한 시간에 실패한다 (kit K436 따름). 원인: PHP_EXTENSION_TESTS와 두 recipe가 run-tests 밖에서 vendor-php/bin/phpunit을 시작해 test별 제한 시간이 적용되지 않았고, 2026-10-21 extension ModelTest 실행이 libpq 잠금 대기에서 3시간 53분 멈췄다 | Makefile: PHP_EXTENSION_TESTS and the recipes of dbspec-php-extension-check/declarations and group-rows-db-php run through the RUN_TESTS phpunit runner, with --php-extension for the extension runs and an explicit --timeout only where a measured duration needs it | `sh -c '! grep -nE "[=;&(@[:space:]]vendor-php/bin/phpunit[[:space:]]" Makefile'` | [o] |
 | KSTD-9 | Postgres test server는 호출자가 locale을 설정하지 않아도 시작한다. server tool이 LC_ALL을 설정한다(KSTD-9). 원인: Postgres test server는 locale 없이 postmaster became multithreaded during startup 메시지와 함께 실패하며, LC_ALL=en_US.UTF-8을 직접 설정할 때만 동작한다. 근거: locale이 없는 기계에서 시작이 실패하고, LC_ALL이 en_US.UTF-8이면 성공한다. 완료 기준: server tool이 시작하는 Postgres test server에 LC_ALL을 설정해, 호출자가 locale을 설정하지 않아도 시작이 성공하고, test가 server가 시작되는 환경을 읽는다. 현재 빨간 상태: LC_ALL이 없으면 Postgres test server 시작이 postmaster became multithreaded during startup으로 실패한다. | `scripts/test-servers.mts` | `node node_modules/@polyspec/kit/dist/run-tests.mjs node -- scripts/test-servers.test.mts` | [ ] |
 | KSTD-10 | scripts/repo/check.test.mts는 main에서 통과한다. 실패하는 20개 case를 고치고, make land가 그 파일을 실행한다(KSTD-10). 원인: scripts/repo/check.test.mts의 case 20개가 main에서 실패하는데 make land는 그것을 실행하지 않아, 깨진 저장소 검사가 실패하는 gate 없이 land된다. 근거: main에서 그 파일을 실행하면 case 20개가 실패한다. 완료 기준: 파일의 모든 case가 main에서 통과하고, scripts/repo 변경이 선택하는 gate가 그 파일을 실행한다. 현재 빨간 상태: main에서 scripts/repo/check.test.mts를 실행하면 case 20개가 실패한다. | `scripts/repo/check.test.mts`, `scripts/repo/check.mts` | `node node_modules/@polyspec/kit/dist/run-tests.mjs node -- scripts/repo/check.test.mts` | [ ] |
+| KSTD-11 | Composer 루트는 검토된 목표 버전 13.4.3을 phpunit/phpunit으로 요구하며, hyper와 ordered-json이 선언하는 방식대로 정확한 버전으로 선언하고 13.4.3으로 잠근다 (K435) | composer.json, composer.lock, config/dependency-review.json | `make dependency-policy-check` | [ ] |
