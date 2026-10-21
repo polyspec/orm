@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 013198e4a8b6489ed9003063f72648381d2d66240a7d58c6ec4ba47872667b0c -->
+<!-- source-sha256: 563b5b5142bc48e18f3cf352f7a79656854b5885496d8c2b938e551bc3b1ecbe -->
 # 변경 이력
 
 ## Unreleased
+- docs 검사는 build된 HTML을 parse5로, Markdown table을 mdast-util-from-markdown과 mdast-util-gfm으로 읽는다: 이스케이프된 파이프는 셀 안에 남고, 따옴표 안의 `>`는 tag를 끝내지 않는다. 정규식과 파이프 분할을 지웠다. red: check.mts가 HTML을 정규식으로 읽었고 table 읽기는 파이프로 줄을 나눴다 (KSTD-5-4-1).
+- Rust README의 기능 표는 마지막 행을 표 안에 둔다; 영문 README는 그 행을 문단 뒤에 두었다. red: rules.mts가 두 표의 구조가 다르다고 보고했다 (KSTD-5-4-1).
 - orm의 모든 PHPUnit 실행이 kit `run-tests`를 거치므로 멈춘 test는 제한 시간에 실패한다: extension 실행, `packages/php-ext` 실행과 `GroupRowsDbTest` 실행이 더는 밖에서 PHPUnit을 시작하지 않는다(KSTD-8). red: Makefile 세 줄이 `vendor-php/bin/phpunit`을 직접 시작해 test별 제한 시간이 적용되지 않았다.
 - PHP extension에서 transaction 안의 row lock이 허용되고 `statementTimeoutMs`를 넘긴 statement가 취소된다. PHP library와 같다: `Db::enter`는 transaction 밖에서만 lock을 거부하고, select 경로는 statement가 실패할 때 설정되지 않은 결과를 해제하지 않는다. red: `ModelTest::test_transactions`가 CONFIG "row locks are allowed only inside a transaction"로 실패했고 select 경로가 SIGBUS로 죽었다 (T182-5-5).
 - `make php-vendor-check`는 composer.json과 다른 autoload를 보고하며 더 이상 고치지 않는다. `make orm-install-php`가 `composer dump-autoload`를 실행한다(KSTD-3-2). red: 낡은 autoload가 조용히 통과하고 다시 쓰였다.

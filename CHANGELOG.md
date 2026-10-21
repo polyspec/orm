@@ -2,6 +2,8 @@
 # Changelog
 
 ## Unreleased
+- The docs checks read the built HTML with parse5 and the Markdown tables with mdast-util-from-markdown and mdast-util-gfm: an escaped pipe stays in its cell, and a quoted `>` no longer ends a tag. The regular expressions and the pipe split are removed. Red: check.mts read HTML with regular expressions, and the table readers split lines on the pipe (KSTD-5-4-1).
+- The Rust README's capability table holds its last row, which the English README had after a paragraph; the Korean twin already had it in the table. Red: rules.mts found the two table structures differ (KSTD-5-4-1).
 - Every PHPUnit run of orm goes through kit `run-tests`, so a hung test fails at its timeout: the extension runs, the `packages/php-ext` run and the `GroupRowsDbTest` run no longer start PHPUnit outside it (KSTD-8). Red: three Makefile lines started `vendor-php/bin/phpunit` directly, so no per-test timeout applied.
 - With the PHP extension, a row lock inside a transaction is allowed and a statement past `statementTimeoutMs` is cancelled, as in the PHP library: `Db::enter` rejects a lock only outside a transaction, and the select path no longer frees an unset result when the statement fails. Red: `ModelTest::test_transactions` failed with CONFIG "row locks are allowed only inside a transaction" and the select path crashed with SIGBUS (T182-5-5).
 - `make php-vendor-check` reports an autoload that differs from composer.json and no longer repairs it; `make orm-install-php` runs `composer dump-autoload` (KSTD-3-2). Red: a stale autoload passed silently and was rewritten.
