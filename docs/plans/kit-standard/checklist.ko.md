@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 9d275036c5905831794eb550cd952a5d0a7b9ddef7c549b41c43fbb4bfd70083 -->
+<!-- source-sha256: ab8453fb6ae6be82a70088fb25e5d5e9cfa1a2c1cf27c2db85eeeedb3ba027ff -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -67,7 +67,7 @@
 | KSTD-2-11-16 | handle 폐기 unit은 각 언어의 폐기 형식에 묶인다 (KSTD-2-11 후속, KSTD-2-11-4). Cause: 약 18개 Rust drop unit에 다른 구현의 unit이 없다 | config/parity.json, tests of every implementation | `make parity-declarations-check` | [ ] |
 | KSTD-2-11-17 | driver error, native cell, markdown connect unit은 중립 unit이며 각 구현이 native 형식으로 묶인다 (KSTD-2-11 후속). Cause: unit 33개가 각각 한 driver만 검사한다 | config/parity.json, tests of every implementation | `make parity-declarations-check` | [ ] |
 | KSTD-2-11-18 | packaging과 entry point unit은 중립 unit이며 각 구현이 native package로 묶인다 (KSTD-2-11 후속). Cause: unit 30개가 각각 한 package만 검사한다 | config/parity.json, the packages of every implementation | `make parity-declarations-check` | [ ] |
-| KSTD-3 | orm-gen이 생성하는 code가 그 ecosystem의 formatter와 linter를 통과한다(fsm adoption). 원인: orm-gen의 Python 출력인 fsm의 examples/model/models.py가 ruff format --check에 실패하고 vulture 지적이 25건이며, 생성된 PHP model은 phpcs의 PSR12 header 규칙에 실패한다 | the generators of the five clients and their generated fixture models | `make generated-lint-check` | [~] |
+| KSTD-3 | orm-gen이 생성하는 code가 그 ecosystem의 formatter와 linter를 통과한다(fsm adoption). 원인: orm-gen의 Python 출력인 fsm의 examples/model/models.py가 ruff format --check에 실패하고 vulture 지적이 25건이며, 생성된 PHP model은 phpcs의 PSR12 header 규칙에 실패한다 | the generators of the five clients and their generated fixture models | `make generated-lint-check` | [o] |
 | KSTD-4 | repository의 모든 composer platform은 .php-version의 PHP minor에 patch 1이다 (kit K282). Cause: kit은 모든 composer config.platform.php와 composerPlatforms가 8.4.1이기를 요구하는데 orm은 두 곳에 8.4.0을 선언한다 | the composer.json files, kit.json | `make kit-check` | [o] |
 | KSTD-5 | CHECK_TARGETS가 kit-gates의 모든 gate에 닿는다 (kit K289). Cause: kit-check가 CHECK_TARGETS에 toolchain-check, test-markers-check, rules-check, rebuild-check, layout-check, language-check, duplication-check, lint-ts, lint-go, lint-python, lint-php, lint-php-ext, test-php-ext가 없다고 보고한다; 각각을 추가하고 그 finding을 고쳐 통과시킨다 | Makefile, the files each gate reports | `make kit-check` | [~] |
 | KSTD-5-1 | toolchain-check가 통과한다 (KSTD-5 후속). Cause: phpstan이 시작하지 못한다: kit의 link 실행이 vendor-php/composer/installed.json에 polyspec/ordered-json의 release metadata(require php >=8.5)를 남겨 platform_check.php가 PHP 8.5를 요구한다 (kit 결함, scripts/kit/link.mts:390-403) | vendor-php, the kit link | `make toolchain-check` | [o] |

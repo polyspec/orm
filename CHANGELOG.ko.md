@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 35a790b71f7066a03c578853ca034dd91ce83adfc9044d53312dafdc39368cb7 -->
+<!-- source-sha256: 5801d63f4753465072de7738a4d3b81d36ad4dd60edc51f6c3ecb9860ad86511 -->
 # 변경 이력
 
 ## Unreleased
+- `make generated-lint-check`가 고정된 도구로 생성 model을 모든 ecosystem에서 검사하며, 생성 PHP는 PSR-12와 PSR-1을 통과한다(KSTD-3). red: 수정 전 생성 PHP가 packages/php/gen/Account.php:1:1에서 PSR-12를 실패했다.
 - collection identity, collection group, owner parity unit이 여섯 구현 unit이고, bench database의 묶음 count를 모든 client가 검사한다. red: unit이 client별이었고 공통 규칙을 인용하지 않았다(KSTD-2-11-10).
 - 모든 client가 `wasInserted`와 `backendWaitingForLock`을 가진다(INT-52, INT-53). red: PHP, TypeScript, Python, Rust client에 둘 다 없었고 Go client만 구현했다(KSTD-2-11-7-5).
 - dialect probe 인용 test는 dialect spec이 있는 곳인 `docs/spec/dialects.md`와 그 한국어 짝을 읽고, `make dialect-facts-check`가 이를 돌린다. red: `open ../../../../docs/dialects.md: no such file or directory`로 실패했다 (KSTD-2-10-6).

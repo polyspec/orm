@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- `make generated-lint-check` lints the generated models of every ecosystem with the pinned tools; the generated PHP passes PSR-12 and PSR-1 (KSTD-3). Red: the generated PHP failed PSR-12 at packages/php/gen/Account.php:1:1 before the fix.
 - The collection identity, collection group and owner parity units are six-way, and the grouped counts of the bench database are checked in every client. Red: the units were per client and cited no shared rule (KSTD-2-11-10).
 - Every client has `wasInserted` and `backendWaitingForLock` (INT-52, INT-53). Red: the PHP, TypeScript, Python and Rust clients lacked both; the Go client alone implemented them (KSTD-2-11-7-5).
 - The dialect probe citation test reads the dialect spec where it lives, `docs/spec/dialects.md` and its Korean twin, and `make dialect-facts-check` runs it. Red: it failed with `open ../../../../docs/dialects.md: no such file or directory` (KSTD-2-10-6).
