@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "75e19ef2e33d8e5d44633abe343ca71b",
+    "content-hash": "6e83a23360d2d3c07ae67f3750fe118d",
     "packages": [
         {
             "name": "nikic/php-parser",
@@ -76,8 +76,11 @@
                 "ext-pcre": "*",
                 "php": ">=8.4"
             },
+            "require-dev": {
+                "phpunit/phpunit": "13.4.3"
+            },
             "suggest": {
-                "ext-ordered_json": "Native backend from the polyspec/ordered-json-extension PIE package"
+                "ext-polyspec_ordered_json": "Native backend from the polyspec/ordered-json-php-ext PIE package"
             },
             "type": "library",
             "autoload": {
@@ -87,7 +90,16 @@
                 "files": [
                     "src/OrderedJson.php"
                 ]
-            }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Polyspec\\OrderedJson\\Tests\\": "tests/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "JSON document order at every depth, with optional native parser"
         },
         {
             "name": "polyspec/orm",
@@ -95,7 +107,7 @@
             "dist": {
                 "type": "path",
                 "url": "packages/php",
-                "reference": "899b795e3aaf1ecd1d49f3cf57631b2f91e512c1"
+                "reference": "f75388963ccfe45873492a8e9ae0982a259d740c"
             },
             "require": {
                 "composer-runtime-api": "^2.2",
@@ -113,7 +125,7 @@
                 "ext-pdo_mysql": "mysql:// DSNs",
                 "ext-pdo_pgsql": "postgres:// DSNs",
                 "ext-pdo_sqlite": "sqlite:// DSNs",
-                "ext-polyspec_orm": "Polyspec\\Orm\\Dbspec\\Native\\Dbspec, the dbspec surface of this client implemented in C (packages/php-ext)"
+                "ext-polyspec_orm": "the dbspec surface and the error codes of this client implemented in C under the same class names (packages/php-ext)"
             },
             "bin": [
                 "bin/orm-gen"
@@ -128,10 +140,7 @@
                 "psr-4": {
                     "Polyspec\\Orm\\Tests\\Model\\": "gen/",
                     "Polyspec\\Orm\\Tests\\MarkdownModel\\": "markdownmodel/"
-                },
-                "files": [
-                    "gen/bootstrap.php"
-                ]
+                }
             },
             "license": [
                 "MIT"
@@ -201,11 +210,6 @@
         {
             "name": "purrphp/yaml",
             "version": "v1.0.0-p1",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/min-0-max/yaml",
-                "reference": "98daf838506e3199d5a058c90adff5a40940959e"
-            },
             "dist": {
                 "type": "zip",
                 "url": "https://api.github.com/repos/min-0-max/yaml/zipball/98daf838506e3199d5a058c90adff5a40940959e",
@@ -284,8 +288,7 @@
             "support": {
                 "issues": "https://github.com/PurrPHP/yaml/issues",
                 "source": "https://github.com/PurrPHP/yaml"
-            },
-            "time": "2026-10-15T02:57:00+00:00"
+            }
         },
         {
             "name": "symfony/polyfill-ctype",
@@ -511,11 +514,6 @@
         {
             "name": "opis/json-schema",
             "version": "v2.6.0-p1",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/min-0-max/json-schema",
-                "reference": "d810833cd43de0ec2c367db6e812e12bf4440e47"
-            },
             "dist": {
                 "type": "zip",
                 "url": "https://api.github.com/repos/min-0-max/json-schema/zipball/d810833cd43de0ec2c367db6e812e12bf4440e47",
@@ -575,8 +573,7 @@
                 "schema",
                 "validation",
                 "validator"
-            ],
-            "time": "2026-10-15T02:57:09+00:00"
+            ]
         },
         {
             "name": "opis/string",
@@ -1270,16 +1267,16 @@
         },
         {
             "name": "phpunit/phpunit",
-            "version": "13.4.2",
+            "version": "13.4.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/sebastianbergmann/phpunit.git",
-                "reference": "7b9ba83328f01ce299ef82161720195bd827a4bb"
+                "reference": "2180c47c4229e5da117ff248753370443c074f10"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/sebastianbergmann/phpunit/zipball/7b9ba83328f01ce299ef82161720195bd827a4bb",
-                "reference": "7b9ba83328f01ce299ef82161720195bd827a4bb",
+                "url": "https://api.github.com/repos/sebastianbergmann/phpunit/zipball/2180c47c4229e5da117ff248753370443c074f10",
+                "reference": "2180c47c4229e5da117ff248753370443c074f10",
                 "shasum": ""
             },
             "require": {
@@ -1350,7 +1347,7 @@
             "support": {
                 "issues": "https://github.com/sebastianbergmann/phpunit/issues",
                 "security": "https://github.com/sebastianbergmann/phpunit/security/policy",
-                "source": "https://github.com/sebastianbergmann/phpunit/tree/13.4.2"
+                "source": "https://github.com/sebastianbergmann/phpunit/tree/13.4.3"
             },
             "funding": [
                 {
@@ -1358,7 +1355,7 @@
                     "type": "other"
                 }
             ],
-            "time": "2026-10-12T15:29:04+00:00"
+            "time": "2026-10-16T05:56:47+00:00"
         },
         {
             "name": "sebastian/cli-parser",
@@ -1907,28 +1904,28 @@
         },
         {
             "name": "sebastian/git-state",
-            "version": "1.0.0",
+            "version": "1.1.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/sebastianbergmann/git-state.git",
-                "reference": "792a952e0eba55b6960a48aeceb9f371aad1f76b"
+                "reference": "31a565f463686f0eefa85f899549256bf5805985"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/sebastianbergmann/git-state/zipball/792a952e0eba55b6960a48aeceb9f371aad1f76b",
-                "reference": "792a952e0eba55b6960a48aeceb9f371aad1f76b",
+                "url": "https://api.github.com/repos/sebastianbergmann/git-state/zipball/31a565f463686f0eefa85f899549256bf5805985",
+                "reference": "31a565f463686f0eefa85f899549256bf5805985",
                 "shasum": ""
             },
             "require": {
                 "php": ">=8.4"
             },
             "require-dev": {
-                "phpunit/phpunit": "^13.0"
+                "phpunit/phpunit": "^13.4.3"
             },
             "type": "library",
             "extra": {
                 "branch-alias": {
-                    "dev-main": "1.0-dev"
+                    "dev-main": "1.1-dev"
                 }
             },
             "autoload": {
@@ -1952,7 +1949,7 @@
             "support": {
                 "issues": "https://github.com/sebastianbergmann/git-state/issues",
                 "security": "https://github.com/sebastianbergmann/git-state/security/policy",
-                "source": "https://github.com/sebastianbergmann/git-state/tree/1.0.0"
+                "source": "https://github.com/sebastianbergmann/git-state/tree/1.1.0"
             },
             "funding": [
                 {
@@ -1972,7 +1969,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-03-21T12:54:28+00:00"
+            "time": "2026-10-21T05:59:52+00:00"
         },
         {
             "name": "sebastian/global-state",

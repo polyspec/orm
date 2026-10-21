@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- KSTD-11 is done: orm's Composer root requires phpunit/phpunit at exactly 13.4.3 (`composer.json`), and the tracked `composer.lock` locks 13.4.3, the reviewed target of K435. `make dependency-review UPDATE=1 TARGETS=<file>` applied it (3 of 3 update commands passed); the provider entries of polyspec/ordered-json, purrphp/yaml and opis/json-schema took their sibling manifests (K439-4-1). Red: with `composer.json` and `composer.lock` at 13.4.2, the Verification (the exact 13.4.3 declaration and the locked `phpunit/phpunit` version of `composer show --locked`) fails with exit 1. Green: with 13.4.3 in both files it passes (KSTD-11).
 - The docs checks read the built HTML with parse5 and the Markdown tables with mdast-util-from-markdown and mdast-util-gfm: an escaped pipe stays in its cell, and a quoted `>` no longer ends a tag. The regular expressions and the pipe split are removed. Red: check.mts read HTML with regular expressions, and the table readers split lines on the pipe (KSTD-5-4-1).
 - The Rust README's capability table holds its last row, which the English README had after a paragraph; the Korean twin already had it in the table. Red: rules.mts found the two table structures differ (KSTD-5-4-1).
 - Every PHPUnit run of orm goes through kit `run-tests`, so a hung test fails at its timeout: the extension runs, the `packages/php-ext` run and the `GroupRowsDbTest` run no longer start PHPUnit outside it (KSTD-8). Red: three Makefile lines started `vendor-php/bin/phpunit` directly, so no per-test timeout applied.

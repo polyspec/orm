@@ -70,7 +70,7 @@
     },
     "require-dev": {
         "phpstan/phpstan": "2.3.1",
-        "phpunit/phpunit": "13.4.2",
+        "phpunit/phpunit": "13.4.3",
         "opis/json-schema": "2.6.0-p1"
     }
 }

@@ -1,12 +1,20 @@
 {
   "schema": 1,
   "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mts) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-15T10:03:57.246Z",
+  "reviewed": "2026-10-21T11:22:02Z",
   "locks": [
     {
       "lock": "package-lock.json",
-      "sha256": "d9e3042e577a5fe9008af6bffb67a0f6623546e081ae429562ceaa048a5d504b",
+      "sha256": "617058c6c74f8462cb561fb86c524aa129a239f93f9f5f62811e908f3e912f19",
       "advisories": [
+        {
+          "package": "markdown-it",
+          "version": "14.3.2",
+          "id": "1242672",
+          "severity": "high",
+          "title": "markdown-it: Quadratic-time rendering of a single multi-line link reference definition with default options (regression since 14.0)",
+          "url": "https://github.com/advisories/GHSA-gfr2-rv44-r23c"
+        },
         {
           "package": "sprintf-js",
           "version": "1.0.3",
@@ -24,23 +32,46 @@
     },
     {
       "lock": "composer.lock",
-      "sha256": "17519b1697ed4eb7b29edbfc1c9616a312fd90dcaead98ed13f72c521b3f8d88",
+      "sha256": "cb19a52f1a7e5237e0c9566d729edf4418a6c47a415ebcbe99c4b3d60331ca41",
       "advisories": []
     },
     {
       "lock": "packages/php-ext/composer.lock",
-      "sha256": "f91d6cd1ca9276d76f39e4cd5efe0012031bc39fc9dabd343159109672b4d818",
+      "sha256": "0a47439786ca3d9e5053907bc24d8f6c33687ab72819c12d028a742033c648ee",
+      "advisories": []
+    },
+    {
+      "lock": "packages/python/pylock.toml",
+      "sha256": "3eecd40691b0182af16ed03f2f1ca001f675425163fea0ee2b7b9979d22ce399",
       "advisories": []
     },
     {
       "lock": "examples/go.sum",
       "sha256": "490489fee9a8c18911d6c50658de08c876fd2810e283c8bab07202ae90cad76f",
-      "advisories": []
+      "advisories": [
+        {
+          "package": "stdlib",
+          "version": "v1.27.2",
+          "id": "GO-2026-6809",
+          "severity": "vulnerability",
+          "title": "Distrust compromised intermediate certificates in crypto/x509",
+          "url": "https://pkg.go.dev/vuln/GO-2026-6809"
+        }
+      ]
     },
     {
       "lock": "packages/go/go.sum",
       "sha256": "9545122fa0eb0ffd811a65adba688aa6b1bff4acde4d97e3212f11a07e145ab9",
-      "advisories": []
+      "advisories": [
+        {
+          "package": "stdlib",
+          "version": "v1.27.2",
+          "id": "GO-2026-6809",
+          "severity": "vulnerability",
+          "title": "Distrust compromised intermediate certificates in crypto/x509",
+          "url": "https://pkg.go.dev/vuln/GO-2026-6809"
+        }
+      ]
     },
     {
       "lock": "tests/go.sum",
@@ -50,12 +81,30 @@
     {
       "lock": "benchmarks/rust/Cargo.lock",
       "sha256": "55a5fb4e57c5dbb4592e33307080536bfd722e88a32388cf7b642b7cd93bfdeb",
-      "advisories": []
+      "advisories": [
+        {
+          "package": "rustls-webpki",
+          "version": "0.103.15",
+          "id": "RUSTSEC-2026-0382",
+          "severity": "vulnerability",
+          "title": "Certificate verification may accept distrusted intermediates",
+          "url": "https://github.com/rustls/webpki/pull/546"
+        }
+      ]
     },
     {
       "lock": "packages/rust/Cargo.lock",
-      "sha256": "d55dbc21d65911660aadc61bebc4776f7b96043945d4aab366f07ed51b91abf6",
-      "advisories": []
+      "sha256": "843509d9db15bc9e2e5b498679eabbad4055e64b560559fbd719dcc444a277cc",
+      "advisories": [
+        {
+          "package": "rustls-webpki",
+          "version": "0.103.15",
+          "id": "RUSTSEC-2026-0382",
+          "severity": "vulnerability",
+          "title": "Certificate verification may accept distrusted intermediates",
+          "url": "https://github.com/rustls/webpki/pull/546"
+        }
+      ]
     },
     {
       "lock": "packages/rust/testing/interfaces/Cargo.lock",
@@ -64,6 +113,13 @@
     }
   ],
   "dependencies": [
+    {
+      "ecosystem": "npm",
+      "manifest": "package.json",
+      "package": "@types/mdast",
+      "version": "4.0.4",
+      "latest": "4.0.4"
+    },
     {
       "ecosystem": "npm",
       "manifest": "package.json",
@@ -88,6 +144,20 @@
     {
       "ecosystem": "npm",
       "manifest": "package.json",
+      "package": "mdast-util-from-markdown",
+      "version": "2.1.0",
+      "latest": "2.1.0"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "package.json",
+      "package": "mdast-util-gfm",
+      "version": "3.1.0",
+      "latest": "3.1.0"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "package.json",
       "package": "mermaid",
       "version": "12.2.0",
       "latest": "12.2.0"
@@ -95,9 +165,23 @@
     {
       "ecosystem": "npm",
       "manifest": "package.json",
+      "package": "micromark-extension-gfm",
+      "version": "3.0.0",
+      "latest": "3.0.0"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "package.json",
       "package": "minimatch",
       "version": "10.2.6",
       "latest": "10.2.6"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "package.json",
+      "package": "parse5",
+      "version": "8.0.1",
+      "latest": "8.0.1"
     },
     {
       "ecosystem": "npm",
@@ -125,7 +209,7 @@
       "manifest": "package.json",
       "package": "unbash",
       "version": "5.1.0",
-      "latest": "5.1.0"
+      "latest": "6.0.1"
     },
     {
       "ecosystem": "npm",
@@ -167,7 +251,7 @@
       "manifest": "packages/dbspec-codemirror/package.json",
       "package": "@codemirror/view",
       "version": "6.43.14",
-      "latest": "6.43.14"
+      "latest": "6.43.15"
     },
     {
       "ecosystem": "npm",
@@ -188,7 +272,7 @@
       "manifest": "packages/dbspec-language/package.json",
       "package": "oxc-parser",
       "version": "0.154.0",
-      "latest": "0.154.0"
+      "latest": "0.155.0"
     },
     {
       "ecosystem": "npm",
@@ -300,7 +384,7 @@
       "manifest": "packages/ts/package.json",
       "package": "oxc-parser",
       "version": "0.154.0",
-      "latest": "0.154.0"
+      "latest": "0.155.0"
     },
     {
       "ecosystem": "npm",
@@ -355,8 +439,8 @@
       "ecosystem": "composer",
       "manifest": "composer.json",
       "package": "phpunit/phpunit",
-      "version": "13.4.2",
-      "latest": "13.4.2"
+      "version": "13.4.3",
+      "latest": "13.4.3"
     },
     {
       "ecosystem": "composer",
@@ -395,24 +479,101 @@
     },
     {
       "ecosystem": "pypi",
+      "manifest": "packages/python/pylock.toml",
+      "package": "cffi",
+      "version": "2.1.1",
+      "latest": "2.1.1"
+    },
+    {
+      "ecosystem": "pypi",
+      "manifest": "packages/python/pylock.toml",
+      "package": "cryptography",
+      "version": "50.0.2",
+      "latest": "50.0.2"
+    },
+    {
+      "ecosystem": "pypi",
+      "manifest": "packages/python/pylock.toml",
+      "package": "deprecation",
+      "version": "2.1.0",
+      "latest": "2.1.0"
+    },
+    {
+      "ecosystem": "pypi",
+      "manifest": "packages/python/pylock.toml",
+      "package": "packaging",
+      "version": "26.3",
+      "latest": "26.3"
+    },
+    {
+      "ecosystem": "pypi",
+      "manifest": "packages/python/pylock.toml",
+      "package": "psycopg",
+      "version": "3.3.6",
+      "latest": "3.3.6"
+    },
+    {
+      "ecosystem": "pypi",
+      "manifest": "packages/python/pylock.toml",
+      "package": "psycopg-binary",
+      "version": "3.3.6",
+      "latest": "3.3.6"
+    },
+    {
+      "ecosystem": "pypi",
+      "manifest": "packages/python/pylock.toml",
+      "package": "pycparser",
+      "version": "3.11",
+      "latest": "3.11"
+    },
+    {
+      "ecosystem": "pypi",
+      "manifest": "packages/python/pylock.toml",
+      "package": "pymysql",
+      "version": "1.2.3",
+      "latest": "1.2.3"
+    },
+    {
+      "ecosystem": "pypi",
+      "manifest": "packages/python/pylock.toml",
+      "package": "rapidyaml",
+      "version": "0.15.2",
+      "latest": "0.15.2"
+    },
+    {
+      "ecosystem": "pypi",
+      "manifest": "packages/python/pylock.toml",
+      "package": "ruamel-yaml",
+      "version": "0.19.1",
+      "latest": "0.19.1"
+    },
+    {
+      "ecosystem": "pypi",
+      "manifest": "packages/python/pylock.toml",
+      "package": "tzdata",
+      "version": "2026.5",
+      "latest": "2026.5"
+    },
+    {
+      "ecosystem": "pypi",
       "manifest": "packages/python/pyproject.toml",
       "package": "setuptools",
       "version": "84.0.0",
-      "latest": "84.0.0"
+      "latest": "84.2.1"
     },
     {
       "ecosystem": "pypi",
       "manifest": "packages/python/pyproject.toml",
       "package": "jsonschema-rs",
       "version": "0.58.6",
-      "latest": "0.58.6"
+      "latest": "0.59.0"
     },
     {
       "ecosystem": "pypi",
       "manifest": "mise.toml",
       "package": "ruff",
-      "version": "0.17.0",
-      "latest": "0.17.0"
+      "version": "0.17.1",
+      "latest": "0.17.1"
     },
     {
       "ecosystem": "go",
