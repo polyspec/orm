@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- `make generated-lint-check` passes in an installed checkout: php-vendor-check regenerates the Composer autoload from composer.json, so a stale vendor-php no longer names packages/php/gen/bootstrap.php (KSTD-3-1). Red: the main checkout failed with a fatal error on that file.
 - `make generated-lint-check` lints the generated models of every ecosystem with the pinned tools; the generated PHP passes PSR-12 and PSR-1 (KSTD-3). Red: the generated PHP failed PSR-12 at packages/php/gen/Account.php:1:1 before the fix.
 - The collection identity, collection group and owner parity units are six-way, and the grouped counts of the bench database are checked in every client. Red: the units were per client and cited no shared rule (KSTD-2-11-10).
 - Every client has `wasInserted` and `backendWaitingForLock` (INT-52, INT-53). Red: the PHP, TypeScript, Python and Rust clients lacked both; the Go client alone implemented them (KSTD-2-11-7-5).

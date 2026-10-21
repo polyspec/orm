@@ -528,6 +528,7 @@ python-venv-check:
 .PHONY: php-vendor-check
 php-vendor-check:
 	@for file in vendor-php/autoload.php vendor-php/bin/phpunit; do test -f $$file || { echo "php-vendor-check: $$file is missing; run make orm-install-php, which installs it with Composer"; exit 1; }; done
+	$(COMPOSER) dump-autoload --no-interaction --quiet
 
 # python-check runs the Python client's unit tests, the interface tests of the Python extractor, the generated-model check and
 # the Python conformance result check. The tests import the client and ordered-json installed into the venv (orm-install-python).

@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5801d63f4753465072de7738a4d3b81d36ad4dd60edc51f6c3ecb9860ad86511 -->
+<!-- source-sha256: 40f7fc89423c1c73cbfc3fd92bc92066099f8a5706cf6a16c02b55d23cacb7ec -->
 # 변경 이력
 
 ## Unreleased
+- 설치된 checkout에서 `make generated-lint-check`가 통과한다: php-vendor-check가 composer.json에서 Composer autoload를 다시 만들어, 낡은 vendor-php가 packages/php/gen/bootstrap.php를 더는 가리키지 않는다(KSTD-3-1). red: main checkout이 그 파일에서 치명적 오류로 실패했다.
 - `make generated-lint-check`가 고정된 도구로 생성 model을 모든 ecosystem에서 검사하며, 생성 PHP는 PSR-12와 PSR-1을 통과한다(KSTD-3). red: 수정 전 생성 PHP가 packages/php/gen/Account.php:1:1에서 PSR-12를 실패했다.
 - collection identity, collection group, owner parity unit이 여섯 구현 unit이고, bench database의 묶음 count를 모든 client가 검사한다. red: unit이 client별이었고 공통 규칙을 인용하지 않았다(KSTD-2-11-10).
 - 모든 client가 `wasInserted`와 `backendWaitingForLock`을 가진다(INT-52, INT-53). red: PHP, TypeScript, Python, Rust client에 둘 다 없었고 Go client만 구현했다(KSTD-2-11-7-5).
