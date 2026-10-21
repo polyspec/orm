@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e2cd5e48fcd7220b3b710469309c0639145eceb860a783313b901e98868222bb -->
+<!-- source-sha256: 2283396424deb51e3b81045ae14d9d8f681365b9308f30c4d5991d92a50eac35 -->
 # 변경 이력
 
 ## Unreleased
 - 모든 client가 `wasInserted`와 `backendWaitingForLock`을 가진다(INT-52, INT-53). red: PHP, TypeScript, Python, Rust client에 둘 다 없었고 Go client만 구현했다(KSTD-2-11-7-5).
 - dialect probe 인용 test는 dialect spec이 있는 곳인 `docs/spec/dialects.md`와 그 한국어 짝을 읽고, `make dialect-facts-check`가 이를 돌린다. red: `open ../../../../docs/dialects.md: no such file or directory`로 실패했다 (KSTD-2-10-6).
 - MySQL binlog 프로브는 연결을 한 번만 닫는다: 뒤의 defer 닫기가 연결을 소유하고 `Merge`는 더는 다시 닫지 않으므로 `TestDialectFacts/mysql.trigger.binlog_privilege_1419`가 통과한다. red: `sql: connection is already closed`로 실패했다 (KSTD-2-10-6-1).
+- apply, plan, introspect parity unit이 검사하는 규칙을 인용하고, plan, query-count, pooler unit은 여섯 구현 unit이다. red: 물리 plan, query 수, pooler session에 대해 unit이 인용할 규칙이 없었다(KSTD-2-11-9).
 - `make lint-python`이 통과한다: 쓰이지 않는 noqa를 지우고, file 세 개를 formatting하며, IR answer test의 조용한 except 하나가 그 경우를 명시한다. red: ruff가 finding 54개와 formatting되지 않은 file 세 개를 보고했다 (KSTD-5-8-1).
 - 가장 낮은 지원 Node는 mise가 설치한다: `make ts-min-check`는 `mise where node@<engines.node>`가 출력하는 node로 TypeScript test를 돌리고, scripts/typescript/node-min.mts는 아무것도 내려받지 않는다. red: node-min.mts가 mise 밖에서 그 Node를 직접 내려받았다 (KSTD-5-4-2).
 - PHP extension Db의 주석이 구현한 것을 적는다: transaction, savepoint, audit, execute, Utils, Stats는 extension의 것이고, 더는 INTERNAL을 던진다고 적지 않는다. red: db.c header와 stub docblock에 낡은 문장이 있었다 (T182-5-3-1).
