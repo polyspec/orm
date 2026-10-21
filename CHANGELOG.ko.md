@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 30659155f5df75bd637c50d80b24828476327ef4dc2155e45eb604d76d1bd180 -->
+<!-- source-sha256: 013198e4a8b6489ed9003063f72648381d2d66240a7d58c6ec4ba47872667b0c -->
 # 변경 이력
 
 ## Unreleased
 - orm의 모든 PHPUnit 실행이 kit `run-tests`를 거치므로 멈춘 test는 제한 시간에 실패한다: extension 실행, `packages/php-ext` 실행과 `GroupRowsDbTest` 실행이 더는 밖에서 PHPUnit을 시작하지 않는다(KSTD-8). red: Makefile 세 줄이 `vendor-php/bin/phpunit`을 직접 시작해 test별 제한 시간이 적용되지 않았다.
+- PHP extension에서 transaction 안의 row lock이 허용되고 `statementTimeoutMs`를 넘긴 statement가 취소된다. PHP library와 같다: `Db::enter`는 transaction 밖에서만 lock을 거부하고, select 경로는 statement가 실패할 때 설정되지 않은 결과를 해제하지 않는다. red: `ModelTest::test_transactions`가 CONFIG "row locks are allowed only inside a transaction"로 실패했고 select 경로가 SIGBUS로 죽었다 (T182-5-5).
 - `make php-vendor-check`는 composer.json과 다른 autoload를 보고하며 더 이상 고치지 않는다. `make orm-install-php`가 `composer dump-autoload`를 실행한다(KSTD-3-2). red: 낡은 autoload가 조용히 통과하고 다시 쓰였다.
 - 설치된 checkout에서 `make generated-lint-check`가 통과한다: php-vendor-check가 composer.json에서 Composer autoload를 다시 만들어, 낡은 vendor-php가 packages/php/gen/bootstrap.php를 더는 가리키지 않는다(KSTD-3-1). red: main checkout이 그 파일에서 치명적 오류로 실패했다.
 - `make generated-lint-check`가 고정된 도구로 생성 model을 모든 ecosystem에서 검사하며, 생성 PHP는 PSR-12와 PSR-1을 통과한다(KSTD-3). red: 수정 전 생성 PHP가 packages/php/gen/Account.php:1:1에서 PSR-12를 실패했다.

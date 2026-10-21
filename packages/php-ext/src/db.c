@@ -1248,7 +1248,7 @@ static bool apply_hook(zval *self, zval *r)
     return ok;
 }
 
-/* Db::enter: the connection is open, and a row lock is only inside a transaction (which this extension does not start yet). */
+/* Db::enter: the connection is open, and a row lock is only inside a transaction: frame is the active transaction, or null. */
 static bool enter(zval *self, zval *frame, zval *ir)
 {
     if (as_bool(rd(rd(self, "state"), "closed"))) {
@@ -1262,7 +1262,8 @@ static bool enter(zval *self, zval *frame, zval *ir)
         }
     }
     zval *lock = aget(ir, "lock");
-    if (lock != NULL && Z_TYPE_P(lock) == IS_STRING && Z_STRLEN_P(lock) > 0) {
+    bool in_transaction = frame != NULL && Z_TYPE_P(frame) == IS_OBJECT;
+    if (lock != NULL && Z_TYPE_P(lock) == IS_STRING && Z_STRLEN_P(lock) > 0 && !in_transaction) {
         throw_orm("CONFIG", "row locks are allowed only inside a transaction");
         return false;
     }
@@ -2636,6 +2637,8 @@ static bool select_impl(zval *self, zval *frame, zval *r, zval *out)
     bool ok = acquire_row_lock(self, &lock);
     zval_ptr_dtor(&lock);
     zval parts, main;
+    /* query_rows leaves its out unset on failure, so main is NULL until a rows array replaces it. */
+    ZVAL_NULL(&main);
     if (!ok || !root_parts(self, r, step0, &parts)) {
         zval_ptr_dtor(&plan);
         return false;
