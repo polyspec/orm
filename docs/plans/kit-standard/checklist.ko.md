@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 896eaf58743624fa679c2706cc7e22b7aab4d433d358f46eb59f17257e301b3c -->
+<!-- source-sha256: bc142c57ba48fd2daf7e11b9e9ad922eddb69fddcce2a3087a400d7c3d5eb4a3 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -34,7 +34,7 @@
 | KSTD-2-10-3 | DIA-175와 DIA-177을 codec column과 select explicit이 있는 corpus의 markdown case가 검사한다 (KSTD-2-10 후속). Cause: markdown corpus catalog에 둘 다 없고, 이를 더하면 다섯 client의 생성 model이 바뀐다 | tests/markdown, the generated models | `make parity-declarations-check` | [ ] |
 | KSTD-2-10-4 | Python chain은 DSL-49대로 null 인자를 CONFIG로 거부한다 (KSTD-2-10 후속). Cause: service_seq(None)이 거부하지 않고 IS NULL을 render한다 | packages/python, its tests | `packages/python/.venv/bin/python -m unittest packages.python.tests.test_chain_values` | [o] |
 | KSTD-2-10-5 | Rust는 DSL-49, DSL-50, DSL-124를 compile-fail case로 검사한다 (KSTD-2-10 후속). Cause: Rust에 compile-fail harness가 없어 compile 시점 거부에 test가 없다 | packages/rust, config/parity.json | `make parity-declarations-check` | [ ] |
-| KSTD-2-10-6 | TestProbeCitations가 dialect spec을 그것이 있는 곳에서 읽고 make target이 이를 돌린다 (KSTD-2-10 후속). Cause: 더는 없는 docs/dialects.md를 읽고 어떤 target도 돌리지 않아 보이지 않게 실패한다 | the Go probe test, Makefile | `make dialect-facts-check` | [ ] |
+| KSTD-2-10-6 | TestProbeCitations가 dialect spec을 그것이 있는 곳에서 읽고 make target이 이를 돌린다 (KSTD-2-10 후속). Cause: 더는 없는 docs/dialects.md를 읽고 어떤 target도 돌리지 않아 보이지 않게 실패한다 | the Go probe test, Makefile | `make dialect-facts-check` | [~] |
 | KSTD-2-10-6-1 | MySQL dialect probe가 connection마다 한 번만 닫는다 (KSTD-2-10-6 후속). Cause: packages/go/internal/dialects/probes_mysql.go:539-571이 e.Merge(other)에서 other.Conn을 닫고 지연된 closeDB()에서 또 닫아, TestDialectFacts/mysql.trigger.binlog_privilege_1419가 "sql: connection is already closed"로 실패한다 | packages/go/internal/dialects/probes_mysql.go | `make dialect-facts-check` | [ ] |
 | KSTD-2-10-7 | TypeScript chain이 DSL-49대로 non-null column의 null 인자를 실행 시 거부한다 (KSTD-2-10-4 후속). Cause: packages/ts/src/core.ts:279가 조건 없음이나 ne에서 column 검사 없이 null을 IS NULL로 넘기는데, Python client가 가졌던 형태다 | packages/ts/src/core.ts, its tests, config/parity.json | `node --test packages/ts/tests/chain-null.mjs` | [o] |
 | KSTD-2-10-8 | tests/dbspec/syntax.json이 tests/dbspec/cases.json의 모든 case의 token을 담는다 (KSTD-2-10 후속). Cause: KSTD-2-10이 cases.json에 hashes case updated-setting-in-manifest-only와 updated-setting-absent를 더하고 syntax.json을 다시 생성하지 않아, TestSharedSyntaxVectors가 syntax.json has no tokens for this case로 실패한다 | tests/dbspec/syntax.json | `go test -count=1 -run TestSharedSyntaxVectors ./packages/go/engine/dbspec` | [o] |
