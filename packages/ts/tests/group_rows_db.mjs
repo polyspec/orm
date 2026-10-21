@@ -1,5 +1,6 @@
 import { Author, GroupRow, GroupRows, OrmError, connect } from '../dist/index.js';
 
+// Requirements: INT-31.
 const { ORM_GROUP_DATABASE: driver, ORM_GROUP_DSN: dsn } = process.env;
 if (!['mysql', 'postgres', 'sqlite'].includes(driver) || !dsn) {
   throw new Error('ORM_GROUP_DATABASE and ORM_GROUP_DSN are required');

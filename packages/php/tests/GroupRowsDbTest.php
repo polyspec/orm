@@ -20,6 +20,7 @@ use Polyspec\Orm\Tests\Model\Author;
 #[Medium]
 final class GroupRowsDbTest extends TestCase
 {
+    // Requirements: INT-31.
     public function test_group_rows(): void
     {
         foreach (['mysql' => 'BENCH_MYSQL_DSN', 'postgres' => 'BENCH_POSTGRES_DSN', 'sqlite' => 'BENCH_SQLITE_DSN'] as $driver => $variable) {

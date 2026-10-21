@@ -1140,6 +1140,26 @@ conformance-rust-group-check: lease-tool
 group-rows-physical-check: php-vendor-check
 	$(WITH_TEST_ENV) node scripts/group-rows-physical-check.mts
 
+# group-rows-db-python runs tests/test_group_rows_db.py on the bench database of BENCH_SQLITE_DSN (make run-databases sets it).
+.PHONY: group-rows-db-python group-rows-db-typescript
+group-rows-db-python:
+	cd packages/python && $(PYTHON_VENV)/bin/python -m unittest tests.test_group_rows_db
+# group-rows-db-typescript runs packages/ts/tests/group_rows_db.mjs on the bench database of BENCH_SQLITE_DSN; the script throws on a failed check.
+group-rows-db-typescript: typescript-build
+	ORM_GROUP_DATABASE=sqlite ORM_GROUP_DSN="$$BENCH_SQLITE_DSN" node packages/ts/tests/group_rows_db.mjs
+# group-rows-db-go runs TestGroupRowsDatabase (packages/go/model/group_rows_db_test.go) on BENCH_SQLITE_DSN.
+group-rows-db-go:
+	cd packages/go && go test ./model -run '^TestGroupRowsDatabase$$' -count=1
+# group-rows-db-php runs GroupRowsDbTest, which reads BENCH_MYSQL_DSN, BENCH_POSTGRES_DSN and BENCH_SQLITE_DSN.
+group-rows-db-php: php-vendor-check
+	vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/GroupRowsDbTest.php
+# group-rows-db-php-extension runs GroupRowsDbTest with the PHP extension loaded, on BENCH_MYSQL_DSN, BENCH_POSTGRES_DSN and BENCH_SQLITE_DSN.
+group-rows-db-php-extension: php-vendor-check dbspec-php-extension-check/prepare
+	$(PHP_EXTENSION_TESTS) packages/php/tests/GroupRowsDbTest.php
+# group-rows-db-rust runs coverage_group_rows_db on BENCH_SQLITE_DSN.
+group-rows-db-rust:
+	$(MAKE) -s feature-rust-database FEATURE_CRATE=packages/rust/tests FEATURE_CARGO_TARGET='--test integration' FEATURE_DATABASE=sqlite FEATURE_DSN_ENV=BENCH_SQLITE_DSN FEATURE_TEST=coverage_group_rows_db::coverage_group_rows_db
+
 unselected-column-physical-check: php-vendor-check
 	$(WITH_TEST_ENV) node scripts/unselected-column-physical-check.mts
 

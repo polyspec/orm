@@ -6,6 +6,7 @@ polyspec_orm::models!();
 
 mod coverage_composite_keys;
 mod coverage_constraints_and_relations;
+mod coverage_group_rows_db;
 mod coverage_env;
 mod coverage_model_queries;
 mod coverage_model_writes;
