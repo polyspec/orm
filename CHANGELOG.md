@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- Every PHPUnit run of orm goes through kit `run-tests`, so a hung test fails at its timeout: the extension runs, the `packages/php-ext` run and the `GroupRowsDbTest` run no longer start PHPUnit outside it (KSTD-8). Red: three Makefile lines started `vendor-php/bin/phpunit` directly, so no per-test timeout applied.
 - `make php-vendor-check` reports an autoload that differs from composer.json and no longer repairs it; `make orm-install-php` runs `composer dump-autoload` (KSTD-3-2). Red: a stale autoload passed silently and was rewritten.
 - `make generated-lint-check` passes in an installed checkout: php-vendor-check regenerates the Composer autoload from composer.json, so a stale vendor-php no longer names packages/php/gen/bootstrap.php (KSTD-3-1). Red: the main checkout failed with a fatal error on that file.
 - `make generated-lint-check` lints the generated models of every ecosystem with the pinned tools; the generated PHP passes PSR-12 and PSR-1 (KSTD-3). Red: the generated PHP failed PSR-12 at packages/php/gen/Account.php:1:1 before the fix.

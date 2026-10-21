@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: e4113f8dce8fda5fe06fed4ea4dbaf8d3ed8eecf68cf522b17785ab46c13470a -->
+<!-- source-sha256: 8d31285d4d338f7e16f6e8025ee158cbf6b993d53a66237cbfc50f823b730fd3 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -131,3 +131,4 @@
 | KSTD-7-7 | catalog connection은 하나의 중립 규칙으로 모든 구현에 구현되고 catalog_connection이 implemented다 (KSTD-7 후속). Cause: polyspec-orm-build만 이를 제공한다; S6와 S10은 partial feature를 받지 않고, kit K315는 contracts/features.json의 partial과 unsupported를 실패시킨다 | docs/spec, every implementation, contracts/features.json | `make feature-unit-check` | [ ] |
 | KSTD-7-8 | pool 설정 poolSize, poolIdleSize, poolLifetimeMs가 다른 모든 client처럼 PHP client와 extension에서도 성립한다 (KSTD-7, CFG-4, CFG-5 후속). Cause: PHP client는 이를 CONFIG로 거부하고 pooling을 PgBouncer나 ProxySQL에 맡기는데, S6은 그런 거부를 허용하지 않는다 | packages/php, packages/php-ext, docs/spec/config.md | `make feature-unit-check` | [ ] |
 | KSTD-7-9 | main에서 make feature-unit-check가 통과한다 (KSTD-7 후속). Cause: PHP extension stub이 check의 helper input으로 쓰여 tests/testcase.mts의 case "a command without inputs or a helper used as an input fails the declaration"가 실패한다 | contracts/check-inputs.json, contracts/features.json | `make feature-unit-check` | [o] |
+| KSTD-8 | orm의 모든 PHPUnit 실행이 kit run-tests를 거쳐, 멈춘 test가 제한 시간에 실패한다 (kit K436 따름). 원인: PHP_EXTENSION_TESTS와 두 recipe가 run-tests 밖에서 vendor-php/bin/phpunit을 시작해 test별 제한 시간이 적용되지 않았고, 2026-10-21 extension ModelTest 실행이 libpq 잠금 대기에서 3시간 53분 멈췄다 | Makefile: PHP_EXTENSION_TESTS and the recipes of dbspec-php-extension-check/declarations and group-rows-db-php run through the RUN_TESTS phpunit runner, with --php-extension for the extension runs and an explicit --timeout only where a measured duration needs it | `sh -c '! grep -nE "[=;&(@[:space:]]vendor-php/bin/phpunit[[:space:]]" Makefile'` | [o] |

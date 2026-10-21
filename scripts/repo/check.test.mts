@@ -329,6 +329,13 @@ caseTest('a rustc other than rust-toolchain.toml fails', COMPUTE, () => {
   ]);
 });
 
+// A PHPUnit run starts through kit's run-tests, which stops a test at its timeout (K436): no line of the Makefile starts the
+// vendor PHPUnit binary itself, whether in a recipe or in a variable such as PHP_EXTENSION_TESTS.
+caseTest('every PHPUnit run of the Makefile goes through run-tests', COMPUTE, () => {
+  const direct = /[=;&(@\s]vendor-php\/bin\/phpunit\s/;
+  assert.deepEqual(text('Makefile').split('\n').filter(line => direct.test(line)), []);
+});
+
 // The CHECK_TARGETS case checks the repository's workflow and Makefile, and the minimal workflow.
 caseTest('the CI workflow runs every target of CHECK_TARGETS once', COMPUTE, () => {
   const targets = checkTargets(text('Makefile'));

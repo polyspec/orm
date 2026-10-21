@@ -708,8 +708,9 @@ dbspec-php-check/set-parse: php-vendor-check
 # whole document set runs twice. The build uses the phpize and php-config on PATH, which make orm-install-php-extension-tools checks;
 # make php-ext-arginfo rewrites the header from the stub.
 PHP_EXTENSION_LIBRARY = $(RUN_DIR)/php-extension/polyspec_orm.so
-# PHP_EXTENSION_TESTS runs PHPUnit files of packages/php with the extension loaded.
-PHP_EXTENSION_TESTS = php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist
+# PHP_EXTENSION_TESTS runs PHPUnit files of packages/php with the extension loaded, through kit's run-tests, which gives each test
+# its own timeout (K436).
+PHP_EXTENSION_TESTS = $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration packages/php/phpunit.xml.dist
 dbspec-php-extension-check/%: RUN_DIR = $(abspath .runtime/run)/dbspec-php-extension-check-$$PPID
 .PHONY: dbspec-php-extension-check/arginfo dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/sets dbspec-php-extension-check/render dbspec-php-extension-check/graph dbspec-php-extension-check/behaviour dbspec-php-extension-check/schema-definition dbspec-php-extension-check/analyze dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/plan-apply dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse dbspec-php-extension-check/codec dbspec-php-extension-check/code-catalog dbspec-php-extension-check/decode dbspec-php-extension-check/aes dbspec-php-extension-check/hostcodec dbspec-php-extension-check/ir dbspec-php-extension-check/planner dbspec-php-extension-check/executor
 dbspec-php-extension-check: dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/sets dbspec-php-extension-check/render dbspec-php-extension-check/graph dbspec-php-extension-check/behaviour dbspec-php-extension-check/schema-definition dbspec-php-extension-check/analyze dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/plan-apply dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse dbspec-php-extension-check/codec dbspec-php-extension-check/code-catalog dbspec-php-extension-check/decode dbspec-php-extension-check/aes dbspec-php-extension-check/hostcodec dbspec-php-extension-check/ir dbspec-php-extension-check/planner dbspec-php-extension-check/executor
@@ -721,7 +722,7 @@ dbspec-php-extension-check/prepare:
 # dbspec-php-extension-check/declarations runs the extension's own checks (packages/php-ext/tests): its declarations against the stub and the
 # PHP client, its required modules and its PIE package.
 dbspec-php-extension-check/declarations: php-vendor-check dbspec-php-extension-check/prepare
-	php -d extension=$(PHP_EXTENSION_LIBRARY) vendor-php/bin/phpunit --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DeclarationsTest.php
+	$(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DeclarationsTest.php
 # dbspec-php-extension-check/vectors runs DbspecTest with the extension: the canonical, normalize, invalid, files, positions, bytes and arguments cases of tests/dbspec/cases.json, introspection and apply on SQLite.
 dbspec-php-extension-check/vectors: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecTest.php
@@ -1153,7 +1154,7 @@ group-rows-db-go:
 	cd packages/go && go test ./model -run '^TestGroupRowsDatabase$$' -count=1
 # group-rows-db-php runs GroupRowsDbTest, which reads BENCH_MYSQL_DSN, BENCH_POSTGRES_DSN and BENCH_SQLITE_DSN.
 group-rows-db-php: php-vendor-check
-	vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/GroupRowsDbTest.php
+	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/GroupRowsDbTest.php
 # group-rows-db-php-extension runs GroupRowsDbTest with the PHP extension loaded, on BENCH_MYSQL_DSN, BENCH_POSTGRES_DSN and BENCH_SQLITE_DSN.
 group-rows-db-php-extension: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_TESTS) packages/php/tests/GroupRowsDbTest.php
