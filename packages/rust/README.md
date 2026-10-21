@@ -68,13 +68,13 @@ Every model has its fixed methods (`connect`, `get`, `gets`, `set_<col>`, `order
 | Set a deadlock retry count, including zero | `db.transaction(callback).retry(count).await` |
 | Cancel a statement or transaction callback | Drop its future |
 | Encrypt model columns | Declare the `aes` codec stage and the `aes_version` setting in the schema, and pass `Config::aes_key` or `Config::aes_keys` with `Config::aes_version` |
+| Record audited writes | Declare the `audit` setting in the schema, give `Config::audit_source` once at connect, and pass the values of the unit of work with `.audit([("action", …)])` on `transaction`, `transaction_send` or `transaction_once` ([usage](../../docs/operations/usage.md#audited-writes)) |
 
 For Rust connections, `aes_version` must be positive. Every declared key version must be positive
 and have a nonempty key. If `aes_keys` is present, it must contain the current version; an
 `aes_key` supplied alongside it must equal that version's key. `Db::connect` returns `CONFIG`
 before opening a connection for invalid key configuration. A connection without AES columns may
 leave both key fields empty.
-| Record audited writes | Declare the `audit` setting in the schema, give `Config::audit_source` once at connect, and pass the values of the unit of work with `.audit([("action", …)])` on `transaction`, `transaction_send` or `transaction_once` ([usage](../../docs/operations/usage.md#audited-writes)) |
 
 A positive `timeout_ms` bounds every statement of the transaction on PostgreSQL: the transaction
 sends `SET LOCAL statement_timeout = <ms>` after its `BEGIN`, the server cancels a statement that

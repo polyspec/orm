@@ -1509,7 +1509,7 @@ docs-check: docs-parse-check orm-docs-check
 # docs-parse-check runs the unit cases of the readers of the built site (scripts/docs/check.mts) and of the Markdown tables
 # (scripts/docs/markdown-table.mts), each on a fixture that tests/docs/fixture.mts writes into var/.
 docs-parse-check:
-	$(NODE) --test tests/docs/html.test.mts tests/docs/markdown-table.test.mts
+	$(NODE) --test tests/docs/html.test.mts tests/docs/markdown-table.test.mts tests/docs/tables.test.mts
 
 docs-verify-idempotent:
 	$(NPM) run docs:verify-idempotent

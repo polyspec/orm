@@ -154,6 +154,10 @@
       "kind": "replaced",
       "reason": "mdast-util-from-markdown with mdast-util-gfm reads the Markdown tables instead of splitting lines on the pipe; item KSTD-5-4-1 moves the table reading to it"
     },
+    "scripts/docs/tables.mts": {
+      "kind": "replaced",
+      "reason": "mdast-util-from-markdown with mdast-util-gfm reads the Markdown tables and their cells from the source text, so an escaped pipe stays in its cell; the table reading that check.mts, markdown-table.mts and rules.mts share is in this file (item KSTD-5-4-1)"
+    },
     "scripts/docs/rules.mts": {
       "kind": "replaced",
       "reason": "mdast-util-from-markdown with mdast-util-gfm reads the Markdown tables instead of splitting lines on the pipe; item KSTD-5-4-1 moves the table reading to it"

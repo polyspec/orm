@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { readFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { docs, root, files } from './lib.mts';
+import { tablesIn } from './tables.mts';
 import { COMPUTE, sections } from '../../tests/testcase.mts';
 import { kitCopies } from '../repo/kit-copies.mts';
 import { readJsonFile } from '../json/schema.mts';
@@ -55,7 +56,8 @@ const listShape = (text: string) => {
   return shape;
 };
 const fences = (text: string) => [...text.matchAll(/(^|\n)\s*```([^\n]*)\n/g)].map(match => (match[2] ?? '').trim());
-const tables = (text: string) => text.split('\n').filter((line: string) => /^\s*\|/.test(line)).map((line: string) => line.split('|').length - 2);
+// tables returns the cell count of each row of each table, the header included, in document order: a translation has the shape of its source.
+const tables = (text: string) => tablesIn(text).flatMap(table => [table.header.length, ...table.rows.map(row => row.length)]);
 // Style rules apply to prose. Code, HTML comments, inline code, link targets,
 // and image targets are identifiers or values and are checked by other rules.
 const prose = (text: string) => text
@@ -167,7 +169,7 @@ const clientNames: Record<string, string> = { go: 'Go', php: 'PHP', 'php-extensi
 for (const file of ['docs/spec/protocol.md', 'docs/spec/protocol.ko.md']) {
   const text = await readFile(path.join(root, file), 'utf8');
   const section = text.slice(text.search(/^## 4\./m), text.search(/^## 5\./m));
-  const rows = section.split('\n').filter(line => line.startsWith('|')).map(line => (line.split('|')[1] ?? '').trim());
+  const rows = tablesIn(section).flatMap(table => [table.header, ...table.rows]).map(cells => cells[0] ?? '');
   for (const client of clients) {
     const name = clientNames[client] ?? client;
     if (!rows.includes(name)) fail('docs.implementation-count', `${file} section 4 has no ${name} row; config/parity.json declares ${client}`);
@@ -185,19 +187,19 @@ const setNoun = /\b(clients?|implementations?|languages?|runners?|planners?)\b|í
 const enumerated = new RegExp(`\\b(?:${names})\\b(?: extension)?(?:(?:\\s*[,Â·]\\s*(?:(?:and|or)\\s+)?(?:the\\s+)?|\\s+(?:and|or)\\s+)(?:${names})\\b(?: extension)?)+`, 'g');
 for (const file of [...sources, ...translations.values()]) {
   if (file.includes(`${path.sep}docs${path.sep}plans${path.sep}`) || path.basename(file).startsWith('CHANGELOG')) continue;
-  const lines = (await readFile(file, 'utf8')).replace(/```[\s\S]*?```|<!--[\s\S]*?-->/g, block => block.replace(/[^\n]/g, '')).replace(/`/g, '').split('\n');
-  for (let index = 0; index < lines.length; index++) {
-    const line = lines[index] ?? '';
-    const next = lines[index + 1] ?? '';
-    if (/^\s*\|/.test(line) && /^\s*\|[\s:|-]+\|\s*$/.test(next)) {
-      const header = line.split('|').slice(1, -1).map(cell => cell.trim());
-      const languages = header.map(displayOf).filter((name): name is string => name !== undefined);
-      if (languages.length >= 2) {
-        for (const name of clientDisplay) {
-          if (!languages.includes(name)) fail('docs.implementation-count', `${relative(file)} line ${index + 1} table header names ${languages.join(', ')} and has no ${name} column`);
-        }
+  const source = await readFile(file, 'utf8');
+  // The header of a table is read from its cells, the backquotes aside; a table in a code block is not one.
+  for (const table of tablesIn(source)) {
+    const languages = table.header.map(cell => displayOf(cell.replace(/`/g, '').trim())).filter((name): name is string => name !== undefined);
+    if (languages.length >= 2) {
+      for (const name of clientDisplay) {
+        if (!languages.includes(name)) fail('docs.implementation-count', `${relative(file)} line ${table.line} table header names ${languages.join(', ')} and has no ${name} column`);
       }
     }
+  }
+  const lines = source.replace(/```[\s\S]*?```|<!--[\s\S]*?-->/g, block => block.replace(/[^\n]/g, '')).replace(/`/g, '').split('\n');
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index] ?? '';
     for (const match of line.matchAll(enumerated)) {
       // The run is the set when a set noun stands within two words before or after it in the same sentence.
       const start = match.index ?? 0;

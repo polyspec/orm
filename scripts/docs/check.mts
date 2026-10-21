@@ -1,12 +1,30 @@
 import assert from 'node:assert/strict';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { defaultTreeAdapter, parse, type DefaultTreeAdapterMap } from 'parse5';
 import { docs, dist, files, siteBase } from './lib.mts';
 import { COMPUTE, runCase, type CaseBody } from '../../tests/testcase.mts';
 
-// docs check reads the built site's HTML with Node: for each Markdown page it checks that an HTML page exists, and that all internal links, images,
+// docs check reads the built site's HTML with parse5: for each Markdown page it checks that an HTML page exists, and that all internal links, images,
 // scripts and stylesheets point to files in dist, that fragments are ids of their page, and that the Mermaid fences are included as source (<pre
 // class="mermaid">). The Mermaid diagrams are drawn by the reader's browser (docs/.vitepress/theme/index.ts).
+type Node = DefaultTreeAdapterMap['node'];
+type Element = DefaultTreeAdapterMap['element'];
+
+// elementsOf returns every element of a parsed document in document order, the content of a template included.
+function elementsOf(document: Node): Element[] {
+  const found: Element[] = [];
+  const visit = (node: Node): void => {
+    if (defaultTreeAdapter.isElementNode(node)) found.push(node);
+    const children = 'content' in node ? node.content.childNodes : 'childNodes' in node ? node.childNodes : [];
+    children.forEach(visit);
+  };
+  visit(document);
+  return found;
+}
+
+// attribute returns the value of an attribute of an element, decoded by the parser, or undefined when it has none.
+const attribute = (element: Element, name: string): string | undefined => element.attrs.find(attr => attr.name === name)?.value;
 let failed = 0;
 const check = async (name: string, body: CaseBody) => { if (!(await runCase(name, COMPUTE, body))) failed++; };
 
@@ -27,21 +45,24 @@ await check('docs-site/pages', async () => {
 });
 if (failed) process.exit(1);
 
-const decode = (value: string): string => value.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 const origin = 'http://site.invalid';
 await check('docs-site/links', async ({ step }) => {
   const anchors = new Map<string, Set<string>>();
   const links = new Set<string>();
   let diagrams = 0;
   for (const file of pages) {
-    const html = await readFile(file, 'utf8');
+    const elements = elementsOf(parse(await readFile(file, 'utf8')));
     const relative = path.relative(dist, file).split(path.sep).join('/');
-    anchors.set(relative, new Set([...html.matchAll(/\sid="([^"]*)"/g)].map(match => decode(match[1] ?? ''))));
-    diagrams += html.split('<pre class="mermaid"').length - 1;
+    anchors.set(relative, new Set(elements.flatMap(element => attribute(element, 'id') ?? [])));
+    diagrams += elements.filter(element => element.tagName === 'pre' && (attribute(element, 'class') ?? '').split(/\s+/).includes('mermaid')).length;
     const url = `${origin}${base}${relative}`;
-    for (const match of html.matchAll(/<(?:a|link|img|script)\s[^>]*?\b(?:href|src)="([^"]*)"/g)) {
-      const target = new URL(decode(match[1] ?? ''), url);
-      if (target.origin === origin) links.add(target.href);
+    for (const element of elements.filter(element => ['a', 'link', 'img', 'script'].includes(element.tagName))) {
+      for (const name of ['href', 'src']) {
+        const value = attribute(element, name);
+        if (value === undefined) continue;
+        const target = new URL(value, url);
+        if (target.origin === origin) links.add(target.href);
+      }
     }
   }
   assert.ok(diagrams >= 20, 'Expected the Mermaid sources of the interface pages in static HTML');

@@ -21,7 +21,7 @@
     "dbspec-codemirror-check": {"scope": "owner", "needs": ["node-modules"], "inputs": ["packages/dbspec-codemirror/**", "packages/dbspec-language/**", "packages/ts/src/dbspec/**", "tests/editor/**"]},
     "dbspec-vscode-check": {"scope": "owner", "needs": ["node-modules"], "inputs": ["packages/dbspec-vscode/**", "packages/dbspec-lsp/**", "packages/dbspec-language/**", "packages/ts/src/dbspec/**", "package-lock.json"]},
     "docs-dbs-check": {"scope": "owner", "needs": ["node-modules"], "inputs": ["docs/.vitepress/dbs.ts", "tests/docs/**"]},
-    "docs-parse-check": {"scope": "owner", "needs": ["go", "node-modules"], "inputs": ["scripts/docs/**", "tests/docs/html.test.mts", "tests/docs/markdown-table.test.mts", "tests/docs/fixture.mts", "tests/testcase.mts", "package.json", "package-lock.json"]},
+    "docs-parse-check": {"scope": "owner", "needs": ["go", "node-modules"], "inputs": ["scripts/docs/**", "tests/docs/html.test.mts", "tests/docs/markdown-table.test.mts", "tests/docs/tables.test.mts", "tests/docs/fixture.mts", "tests/testcase.mts", "package.json", "package-lock.json"]},
     "markdown-table-check": {"scope": "owner", "needs": ["go", "node-modules", "flowmark"], "inputs": ["scripts/docs/markdown-table.mts", "tests/markdown/flowmark.version", "docs/spec/dialects.md", "docs/spec/dialects.ko.md"]},
     "docs-verify-idempotent": {"scope": "owner", "needs": ["node-modules"], "inputs": ["docs/**", "scripts/docs/**", "contracts/interfaces.json", "package.json", "package-lock.json"]},
     "go-model-check": {"scope": "owner", "needs": ["go"], "inputs": ["packages/go/models.txt", "packages/go/generator/*.go", "packages/go/cmd/orm-gen/*.go"]},

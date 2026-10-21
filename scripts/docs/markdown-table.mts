@@ -3,6 +3,7 @@
 // tests/markdown/flowmark.version, with the same surface and the same ruling text, the ruling split into a Result and
 // a Rule. `node scripts/docs/markdown-table.mts` checks both files; `--write` rewrites the table in both.
 //
+// The tables are read with mdast-util-from-markdown and mdast-util-gfm (tables.mts), so an escaped pipe stays in its cell.
 // The split is mechanical so that the check can recompute it: the Result is the ruling up to the first top-level
 // "; ", ": ", " — " or ". " (outside code spans, parentheses and brackets), and the Rule is the rest. A relative link
 // of flowmark's document becomes the absolute link to the pinned revision, to the English document in both languages and without the anchor of a heading, as the translation of a document
@@ -11,7 +12,9 @@ import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import type { Link, Nodes } from 'mdast';
 import { root } from './lib.mts';
+import { parse, tableUnder, textOf } from './tables.mts';
 
 const version = (await readFile(path.join(root, 'tests/markdown/flowmark.version'), 'utf8')).trim();
 const revision = version.split('-').pop();
@@ -21,8 +24,24 @@ const cache = execFileSync('go', ['env', 'GOMODCACHE'], { cwd: root, encoding: '
 const module = { Dir: path.join(cache, 'github.com', `polyspec/flowmark@${version}`) };
 if (!existsSync(module.Dir)) throw new Error(`${module.Dir} is missing; run make orm-install-flowmark, which downloads the module of tests/markdown/flowmark.version`);
 
-const absolute = (text: string) => text.replace(/\]\((\d\d-[a-z-]+(?:\.ko)?\.md)(#[^)]*)?\)/g,
-  (_, file: string) => `](https://github.com/polyspec/flowmark/blob/${revision}/docs/spec/${file.replace('.ko.md', '.md')})`);
+// A relative link of the ruling: a spec of flowmark (NN-name.md or NN-name.ko.md) with an optional anchor.
+const relativeLink = /^(\d\d-[a-z-]+(?:\.ko)?\.md)(?:#.*)?$/;
+const links = (node: Nodes): Link[] => (node.type === 'link' ? [node] : 'children' in node ? node.children.flatMap(links) : []);
+
+// absolute rewrites the relative links of a ruling's source text to the English spec at the pinned revision, without the anchor.
+// The links are found by the parser, so a `](...)` inside a code span is not one; each rewrite keeps the text before the destination.
+const absolute = (ruling: string): string => {
+  let text = ruling;
+  for (const link of links(parse(ruling)).filter(link => relativeLink.test(link.url)).reverse()) {
+    const start = link.position?.start.offset;
+    const end = link.position?.end.offset;
+    if (start === undefined || end === undefined) throw new Error(`the parser gave the link ${link.url} no offset`);
+    const file = relativeLink.exec(link.url)?.[1] ?? '';
+    const destination = text.slice(start, end).lastIndexOf('](');
+    text = `${text.slice(0, start + destination)}](https://github.com/polyspec/flowmark/blob/${revision}/docs/spec/${file.replace('.ko.md', '.md')})${text.slice(end)}`;
+  }
+  return text;
+};
 
 // split returns the Result and the Rule of a ruling.
 function split(ruling: string): [string, string] {
@@ -43,32 +62,14 @@ function split(ruling: string): [string, string] {
   return [ruling, ''];
 }
 
-// cells splits a table row at the pipes that are not inside code spans.
-function cells(line: string) {
-  const out = [];
-  let cell = '';
-  let code = false;
-  for (const c of line.replace(/^\|/, '').replace(/\|\s*$/, '')) {
-    if (c === '`') code = !code;
-    if (c === '|' && !code) { out.push(cell.trim()); cell = ''; } else cell += c;
-  }
-  out.push(cell.trim());
-  return out;
-}
-
-// rows reads the surface table of a flowmark spec 60: the first table under its Surfaces heading.
+// rows reads the surface table of a flowmark spec 60: the first table under its Surfaces heading, one line per surface.
 function rows(text: string) {
-  const lines = text.split('\n');
-  const start = lines.findIndex(l => /^## Surfaces?$/.test(l));
-  if (start < 0) throw new Error('the spec 60 of the pinned flowmark has no Surfaces heading');
-  const table = [];
-  for (const line of lines.slice(start + 1)) {
-    if (line.startsWith('|')) table.push(line);
-    else if (table.length > 0) break;
-  }
-  return table.slice(2).map(line => {
-    const [surface, ruling] = cells(line);
-    const [result, rule] = split(absolute(ruling ?? ''));
+  const surfaces = tableUnder(text, heading => heading.depth === 2 && /^Surfaces?$/.test(textOf(heading)));
+  if (surfaces === undefined) throw new Error('the spec 60 of the pinned flowmark has no Surfaces heading with a table; run make orm-install-flowmark to install the version that tests/markdown/flowmark.version pins');
+  return surfaces.rows.map(cells => {
+    if (cells.length !== 2) throw new Error(`a surface row of the pinned flowmark spec 60 has ${cells.length} cells, not 2: ${cells.join(' | ')}`);
+    const [surface = '', ruling = ''] = cells;
+    const [result, rule] = split(absolute(ruling));
     return `| ${surface} | ${result} | ${rule} |`;
   });
 }
@@ -83,12 +84,12 @@ const failures = [];
 for (const t of targets) {
   const expected = rows(await readFile(path.join(module.Dir, t.spec), 'utf8'));
   const text = await readFile(path.join(root, t.file), 'utf8');
+  const table = tableUnder(text, heading => heading.depth === 2 && `## ${textOf(heading)}` === t.heading);
+  if (table === undefined) { failures.push(`${t.file}: no table under "${t.heading}"`); continue; }
   const lines = text.split('\n');
-  const heading = lines.findIndex(l => l === t.heading);
-  if (heading < 0) { failures.push(`${t.file}: no "${t.heading}" section`); continue; }
-  const first = lines.findIndex((l, i) => i > heading && l.startsWith('|'));
-  let last = first;
-  while (lines[last + 1]?.startsWith('|')) last++;
+  // The header is the first line of the table (1-based), its body follows the delimiter line.
+  const first = table.line - 1;
+  const last = table.endLine - 1;
   const have = lines.slice(first + 2, last + 1);
   if (write) {
     lines.splice(first, last - first + 1, t.header, '|---|---|---|', ...expected);
