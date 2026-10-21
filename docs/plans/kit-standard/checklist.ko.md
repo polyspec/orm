@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 8f56ee96a584121be5ff3cff9020fb7d298d3a556d8e81d2cfa6d6f1c9b35312 -->
+<!-- source-sha256: 7c3e3af840ad89435551f2799a5ebfa6eea3f612396b1059fc474b11306c59c2 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -138,3 +138,4 @@
 | KSTD-11 | Composer 루트는 검토된 목표 버전 13.4.3을 phpunit/phpunit으로 요구하며, hyper와 ordered-json이 선언하는 방식대로 정확한 버전으로 선언하고 13.4.3으로 잠근다 (K435) | composer.json, composer.lock, config/dependency-review.json | `sh -c 'grep -qF "\"phpunit/phpunit\": \"13.4.3\"" composer.json && case "$(var/tools/mise/shims/composer show --locked --format=json phpunit/phpunit)" in *\"13.4.3\"*) ;; *) exit 1 ;; esac'` | [o] |
 | KSTD-12 | orm main에서 make kit-check가 통과한다. kit과의 drift finding이 모두 고쳐진다(KSTD-12). 원인: orm main의 make kit-check는 finding 346개를 보고한다. config/parity.json의 parity unit 318개에 requirements가 없고(kit schema), kit-gates 대상 18개가 CHECK_TARGETS에 없으며, 도구를 bare name으로 시작하는 recipe 6개가 있고(make 3.81 PATH), @polyspec/kit 0.0.54와 다른 vendored 파일 3개(scripts/kit/kit-bootstrap.mk, PRINCIPLES.md, PRINCIPLES.ko.md)와 누락된 vendored copy 1개(config/commit-identity.json)가 있다. 근거: 이 항목을 위해 orm main에서 실행한 make kit-check가 이 class로 2로 끝난다. 완료 기준: main에서 make kit-check가 0으로 끝나며, 각 class가 소유자에 따라 고쳐진다. unit에 requirements가 추가되고, gate가 CHECK_TARGETS에 들어가며, recipe는 도구를 절대 경로로 부르고, vendored 파일은 kit copy와 같다. 현재 빨간 상태: main의 make kit-check가 finding 346개로 2를 반환한다. | `config/parity.json`, `Makefile`, `scripts/kit/kit-bootstrap.mk`, `PRINCIPLES.md`, `PRINCIPLES.ko.md`, `config/commit-identity.json` | `make kit-check` | [ ] |
 | KSTD-13 | Makefile의 case-database-check, example-check, timing-check 레시피가 `make cargo-fetch DIR=<project>` 밖에서 crate를 빌드하여 sibling polyspec crate가 [patch] path로 연결되지 않는다(K448-5). 원인: make link-state-check가 Makefile:1175, 1740, 1753(이 레시피들의 cargo 명령)을 보고하며 대신 `cargo-fetch DIR=<project>`를 쓰라고 요구한다. 근거: 이 checkout의 link-state-check 실행이 finding 3개와 함께 exit 2로 끝난다. | Makefile | `make -s link-state-check` | [ ] |
+| KSTD-14 | orm이 @codemirror/view를 최신 안정 릴리스 6.43.15로 올리고 리뷰 기록에 목표를 적는다. 원인: 잠금은 6.43.14이고 기록에 목표 항목이 없다. | packages/dbspec-codemirror/package.json, package-lock.json, config/dependency-review.json | `make dependency-policy-check` | [ ] |
