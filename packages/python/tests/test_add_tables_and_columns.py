@@ -6,10 +6,10 @@ import tempfile
 import unittest
 
 
-from polyspec.orm.database import Db  # noqa: E402
-from polyspec.orm.dbspec import dbspec_manifest, parse_dbspec  # noqa: E402
-from polyspec.orm.errors import OrmError  # noqa: E402
-from polyspec.orm.schema import Schema  # noqa: E402
+from polyspec.orm.database import Db
+from polyspec.orm.dbspec import dbspec_manifest, parse_dbspec
+from polyspec.orm.errors import OrmError
+from polyspec.orm.schema import Schema
 from . import testcase
 
 USERS_ID = "table users {\n  id i64 identity\n  primary key (id)\n}\n"

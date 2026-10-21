@@ -4,7 +4,7 @@
 import unittest
 
 
-from polyspec.orm.dbspec import add_tables_and_columns_steps, parse_dbspec  # noqa: E402
+from polyspec.orm.dbspec import add_tables_and_columns_steps, parse_dbspec
 from . import testcase
 
 

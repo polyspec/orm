@@ -31,7 +31,7 @@ class VectorCase(unittest.TestCase):
     def __repr__(self) -> str:
         return f"<VectorCase {self.case_id}>"
 
-    def shortDescription(self) -> None:  # noqa: N802 - unittest's method name
+    def shortDescription(self) -> None:
         return None
 
 

@@ -5,7 +5,7 @@ from unittest import mock
 from urllib.parse import urlparse
 
 
-from polyspec.orm import database  # noqa: E402
+from polyspec.orm import database
 from . import testcase
 
 

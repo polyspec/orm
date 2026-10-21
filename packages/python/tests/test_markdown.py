@@ -7,9 +7,9 @@ import math
 import unittest
 
 
-from polyspec.orm.database import Db, parse_dsn  # noqa: E402
-from polyspec.orm.errors import OrmError  # noqa: E402
-from polyspec.orm.markdown import MarkdownDsn  # noqa: E402
+from polyspec.orm.database import Db, parse_dsn
+from polyspec.orm.errors import OrmError
+from polyspec.orm.markdown import MarkdownDsn
 from . import testcase
 
 TOKEN = "0123456789abcdef0123456789abcdef"

@@ -11,7 +11,7 @@ from .vector_case import VectorCase, vector_tests
 from . import testcase
 
 
-def tearDownModule() -> None:  # noqa: N802 - unittest's function name
+def tearDownModule() -> None:
     """Writes the encoded output of every codec vector only to the directory that ORM_CODEC_OUT (make codec-check)
     names, through a temporary file renamed into place."""
     directory = os.environ.get("ORM_CODEC_OUT")

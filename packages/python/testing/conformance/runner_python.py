@@ -333,8 +333,8 @@ def main():
     global DSN, MODELS_DIR, SELECTED
     DSN, MODELS_DIR, SELECTED = parse_args(sys.argv[1:])
     load_models()
-    from polyspec.orm.aes import AesKeyring  # noqa: E402
-    from polyspec.orm.values import orm  # noqa: E402
+    from polyspec.orm.aes import AesKeyring
+    from polyspec.orm.values import orm
 
     db = bench.connect(
         DSN,

@@ -16,8 +16,8 @@ import pymysql
 from .test_sqlite import generate_document, installed_sqlite
 
 
-from polyspec.orm.database import Db, _MysqlConnection, _PostgresConnection  # noqa: E402
-from polyspec.orm.errors import OrmError  # noqa: E402
+from polyspec.orm.database import Db, _MysqlConnection, _PostgresConnection
+from polyspec.orm.errors import OrmError
 from . import testcase
 
 DOCUMENT = """dbspec 1 refusal

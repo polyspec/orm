@@ -8,8 +8,8 @@ import sys
 import unittest
 
 
-from . import coverage_case, testcase  # noqa: E402
-from .coverage_case import REPOSITORY_ROOT, run_cases  # noqa: E402
+from . import coverage_case, testcase
+from .coverage_case import REPOSITORY_ROOT, run_cases
 
 
 def run_with_arguments(ids, cases):

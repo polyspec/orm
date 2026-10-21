@@ -7,11 +7,11 @@ import tempfile
 import unittest
 
 
-from polyspec.orm.database import Db  # noqa: E402
-from polyspec.orm.dbspec import parse_dbspec  # noqa: E402
-from polyspec.orm.dbspec.compare import is_schema_text  # noqa: E402
-from polyspec.orm.engine.model import model_of_documents, parse_document_set  # noqa: E402
-from polyspec.orm.schema import Schema  # noqa: E402
+from polyspec.orm.database import Db
+from polyspec.orm.dbspec import parse_dbspec
+from polyspec.orm.dbspec.compare import is_schema_text
+from polyspec.orm.engine.model import model_of_documents, parse_document_set
+from polyspec.orm.schema import Schema
 from . import testcase
 
 AUDIT = (

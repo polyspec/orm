@@ -8,12 +8,12 @@ import time
 from urllib.parse import unquote, urlsplit
 
 
-import psycopg  # noqa: E402
-import sqlite3  # noqa: E402
+import psycopg
+import sqlite3
 
-from polyspec.orm.dbspec import emit_dbspec  # noqa: E402
-from polyspec.orm.dbspec.introspect import introspect_dbspec  # noqa: E402
-from runner_connect import Adapter, mysql_connect  # noqa: E402
+from polyspec.orm.dbspec import emit_dbspec
+from polyspec.orm.dbspec.introspect import introspect_dbspec
+from runner_connect import Adapter, mysql_connect
 
 
 def connect(dialect, uri):

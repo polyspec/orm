@@ -4,7 +4,7 @@ import sqlite3
 import unittest
 
 
-from polyspec.orm.dbspec.introspect import introspect_dbspec  # noqa: E402
+from polyspec.orm.dbspec.introspect import introspect_dbspec
 from . import testcase
 
 

@@ -31,7 +31,7 @@ class CallbackError(Exception):
     """The error of a transaction callback that fails (a transaction step with fail)."""
 
 
-def setUpModule():  # noqa: N802 - unittest's function name
+def setUpModule():
     directory = tempfile.TemporaryDirectory(prefix="orm-statement-events-")
     STATE["directory"] = directory
     STATE["models"] = generate_document(
@@ -39,7 +39,7 @@ def setUpModule():  # noqa: N802 - unittest's function name
     )
 
 
-def tearDownModule():  # noqa: N802 - unittest's function name
+def tearDownModule():
     STATE["directory"].cleanup()
 
 

@@ -21,8 +21,15 @@ def _stored_version(value) -> int:
     value is CODEC_DECODE; it is never coerced."""
     if isinstance(value, str) and re.fullmatch(r"[0-9]+", value):
         value = int(value)
-    if not isinstance(value, int) or isinstance(value, bool) or not 1 <= value <= 2147483647:
-        raise OrmError(codes.CODEC_DECODE, f"aes version {value!r} is not a positive 32-bit integer")
+    if (
+        not isinstance(value, int)
+        or isinstance(value, bool)
+        or not 1 <= value <= 2147483647
+    ):
+        raise OrmError(
+            codes.CODEC_DECODE,
+            f"aes version {value!r} is not a positive 32-bit integer",
+        )
     return value
 
 
@@ -79,7 +86,9 @@ class AesKeyring:
         as it is, and no version is read for it (COD-44). The version column is set only when a value was re-encrypted."""
         codec = codec or _RowCodec()
         if version_column not in row:
-            raise OrmError(codes.INTERNAL, f"AES version column {version_column} is missing")
+            raise OrmError(
+                codes.INTERNAL, f"AES version column {version_column} is missing"
+            )
         out = dict(row)
         old_key = None
         new_key = None

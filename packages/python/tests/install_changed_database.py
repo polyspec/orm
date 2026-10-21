@@ -30,11 +30,11 @@ DIALECTS = ("sqlite", "mysql", "postgres")
 STATE = {}
 
 
-def setUpModule():  # noqa: N802 - unittest's function name
+def setUpModule():
     STATE["directory"] = tempfile.TemporaryDirectory(prefix="orm-install-changed-")
 
 
-def tearDownModule():  # noqa: N802 - unittest's function name
+def tearDownModule():
     STATE["directory"].cleanup()
 
 

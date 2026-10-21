@@ -92,7 +92,7 @@ def step(text: str) -> None:
 class CaseResult(unittest.TextTestResult):
     """A unittest result that arms the deadline of each case; the reporting is unittest's own."""
 
-    def startTest(self, test: unittest.TestCase) -> None:  # noqa: N802 - unittest's method name
+    def startTest(self, test: unittest.TestCase) -> None:
         global _current
         super().startTest(test)
         deadline = float(getattr(test, "deadline", COMPUTE))
@@ -101,7 +101,7 @@ class CaseResult(unittest.TextTestResult):
         _current = _Running(test.id(), deadline)
         _current.watchdog.start()
 
-    def stopTest(self, test: unittest.TestCase) -> None:  # noqa: N802
+    def stopTest(self, test: unittest.TestCase) -> None:
         global _current
         running = _current
         _current = None

@@ -181,7 +181,7 @@ def run_execute_case(dialect: str, case: dict) -> None:
                 plan = compile_request(dialect, step["request"])
                 try:
                     db.execute(plan["steps"][0], list(step["params"]))
-                except Exception as error:  # noqa: BLE001
+                except Exception as error:
                     if "error" not in step:
                         raise AssertionError(f"step {i}: execute: {error!r}") from error
                     try:

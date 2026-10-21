@@ -4,12 +4,12 @@
 import unittest
 
 
-from polyspec.orm.driver_cells import mysql_conversions, postgres_loaders  # noqa: E402
-import psycopg  # noqa: E402
-import pymysql  # noqa: E402
-from psycopg.pq import Format  # noqa: E402
-from psycopg.postgres import types as pg_types  # noqa: E402
-from pymysql.constants import FIELD_TYPE  # noqa: E402
+from polyspec.orm.driver_cells import mysql_conversions, postgres_loaders
+import psycopg
+import pymysql
+from psycopg.pq import Format
+from psycopg.postgres import types as pg_types
+from pymysql.constants import FIELD_TYPE
 from . import testcase
 
 

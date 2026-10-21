@@ -3,8 +3,8 @@
 import unittest
 
 
-from polyspec.orm.placeholders import for_postgres  # noqa: E402
-from polyspec.orm.utils import POSTGRES_ADVISORY_LOCK, POSTGRES_SET_LOCAL  # noqa: E402
+from polyspec.orm.placeholders import for_postgres
+from polyspec.orm.utils import POSTGRES_ADVISORY_LOCK, POSTGRES_SET_LOCAL
 from . import testcase
 
 

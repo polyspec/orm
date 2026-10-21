@@ -2,9 +2,9 @@
 # CODEC_DECODE, and a row with no row_count is INTERNAL.
 import unittest
 
-from polyspec.orm import codes  # noqa: E402
-from polyspec.orm.errors import OrmError  # noqa: E402
-from polyspec.orm.group_rows import GroupRow  # noqa: E402
+from polyspec.orm import codes
+from polyspec.orm.errors import OrmError
+from polyspec.orm.group_rows import GroupRow
 from . import testcase
 
 

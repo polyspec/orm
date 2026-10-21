@@ -3,7 +3,7 @@
 import unittest
 
 
-from polyspec.orm.dbspec import installed_differences, parse_dbspec  # noqa: E402
+from polyspec.orm.dbspec import installed_differences, parse_dbspec
 from . import testcase
 
 

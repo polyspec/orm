@@ -79,7 +79,7 @@ class Subscribers:
         error = None
         try:
             return run()
-        except BaseException as failure:  # noqa: BLE001
+        except BaseException as failure:
             error = failure
             raise
         finally:

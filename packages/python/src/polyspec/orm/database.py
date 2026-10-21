@@ -2220,7 +2220,9 @@ def _decode_assembly(row, assemble: dict, db: Db) -> None:
         version_cell = row[assemble["columns"][assemble["aes_version"]]["index"]]
     elif any("aes" in column["styles"] for column in assemble["columns"]):
         # The planner selects the version column of every AES column, so a plan without one is broken: no version is assumed.
-        raise OrmError(codes.INTERNAL, "an AES column of an assembly has no version column")
+        raise OrmError(
+            codes.INTERNAL, "an AES column of an assembly has no version column"
+        )
     for column in assemble["columns"]:
         value = row[column["index"]]
         # SQL NULL also goes through the client codec stages and becomes StyledValue.sql_null() (docs/spec/codec.md

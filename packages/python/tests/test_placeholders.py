@@ -5,7 +5,7 @@
 import unittest
 
 
-from polyspec.orm.placeholders import for_mysql, for_postgres  # noqa: E402
+from polyspec.orm.placeholders import for_mysql, for_postgres
 from . import testcase
 
 

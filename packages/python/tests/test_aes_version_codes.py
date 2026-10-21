@@ -57,9 +57,13 @@ class AesVersionCodesTest(unittest.TestCase):
                 self.assertEqual(code_of(lambda: _stored_version(bad)), "CODEC_DECODE")
 
     def test_read_plan_without_version_column_is_internal(self):
-        no_version = {key: value for key, value in ASSEMBLE.items() if key != "aes_version"}
+        no_version = {
+            key: value for key, value in ASSEMBLE.items() if key != "aes_version"
+        }
         row = [CIPHER, 1]
-        self.assertEqual(code_of(lambda: _decode_assembly(row, no_version, DB)), "INTERNAL")
+        self.assertEqual(
+            code_of(lambda: _decode_assembly(row, no_version, DB)), "INTERNAL"
+        )
 
     def test_read_keyring_lacks_stored_version_is_config(self):
         single = host_encode("value", ["aes", "hex"], "single-key")
@@ -69,7 +73,9 @@ class AesVersionCodesTest(unittest.TestCase):
 
     def test_read_null_version_with_aes_value_is_codec_decode(self):
         row = [CIPHER, None]
-        self.assertEqual(code_of(lambda: _decode_assembly(row, ASSEMBLE, DB)), "CODEC_DECODE")
+        self.assertEqual(
+            code_of(lambda: _decode_assembly(row, ASSEMBLE, DB)), "CODEC_DECODE"
+        )
 
     def test_read_null_aes_with_null_version_stays_null(self):
         row = [None, None]
@@ -77,7 +83,10 @@ class AesVersionCodesTest(unittest.TestCase):
         self.assertIsNone(row[0])
 
     def test_rotation_null_aes_is_left_unchanged(self):
-        for row in ({"aes_key_version": None, "email": None}, {"aes_key_version": 1, "email": None}):
+        for row in (
+            {"aes_key_version": None, "email": None},
+            {"aes_key_version": 1, "email": None},
+        ):
             with self.subTest(row=row):
                 got = KEYRING.rotate_row(dict(row), "aes_key_version", [COLUMN], 2)
                 self.assertEqual(got, row)
@@ -91,7 +100,9 @@ class AesVersionCodesTest(unittest.TestCase):
         ]
         for row, want in cases:
             with self.subTest(row=row):
-                got = code_of(lambda: KEYRING.rotate_row(row, "aes_key_version", [COLUMN], 2))
+                got = code_of(
+                    lambda: KEYRING.rotate_row(row, "aes_key_version", [COLUMN], 2)
+                )
                 self.assertEqual(got, want)
 
 

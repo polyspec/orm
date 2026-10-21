@@ -3,7 +3,7 @@
 import unittest
 
 
-from polyspec.orm.model import Collection  # noqa: E402
+from polyspec.orm.model import Collection
 from . import testcase
 
 

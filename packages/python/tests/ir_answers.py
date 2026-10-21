@@ -84,16 +84,16 @@ def keyed_server(answers: dict):
                     first = False
                     reply = {"ok": True}
                 else:
-                    key = "unreadable"
                     try:
                         message = json.loads(line)
                         key = (
                             message.get("op")
                             or message.get("request", {}).get("kind")
-                            or key
+                            or "unreadable"
                         )
                     except ValueError:
-                        pass
+                        # A line that is not JSON has no op or kind; it is answered as "unreadable", which has no answer, so IR_INVALID.
+                        key = "unreadable"
                     reply = answers.get(
                         key,
                         {

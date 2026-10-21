@@ -108,7 +108,7 @@ def conformance_module(dialect, kind):
     """The setUpModule and load_tests hooks of a conformance module: they start the Run of the dialect and add its suite."""
     run, suite = conformance_tests(dialect, kind)
 
-    def setUpModule():  # noqa: N802 - unittest's hook name
+    def setUpModule():
         run.start()
 
     def load_tests(_loader, tests, _pattern):
