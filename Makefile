@@ -161,7 +161,7 @@ TSC_BUILD = $(RUN_LONG) typescript-build -- node scripts/typescript/build.mts
 # dbspec-rust-check, dbspec-ts-check, and dbspec-compare-check run once inside feature-verify-rust or feature-verify-other, so they are not listed again.
 # contracts/check-inputs.json declares a scope for each target: owner targets
 # are also selected by make owner-check, and suite targets run only in the whole suite.
-CHECK_TARGETS = runner-check scripts-typecheck docs-check commits-check release-coverage kit-check owner-validate dependency-policy-check dependency-policy-mutation-check version-check comment-language-check testcase-check repo-check orm-test-servers-check docs-rules-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check orm-install-cli-check markdown-table-check docs-verify-idempotent go-model-check php-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check codec-check bind-check ir-answers-check fuzz-check client-pooler-check case-database-check dialect-facts-check conformance-check conformance-ts-suite-check markdown-conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-python-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-language-check dbspec-plan-php-check dbspec-go-check/engine perf-check dbspec-php-extension-check dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-unit-check feature-coverage feature-verify-rust feature-verify-other feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check go-test-check python-check parity-declarations-check parity-check
+CHECK_TARGETS = runner-check scripts-typecheck docs-check commits-check release-coverage kit-check owner-validate dependency-policy-check dependency-policy-mutation-check version-check comment-language-check testcase-check repo-check orm-test-servers-check docs-rules-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check orm-install-cli-check markdown-table-check docs-verify-idempotent go-model-check php-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check codec-check bind-check ir-answers-check fuzz-check client-pooler-check case-database-check dialect-facts-check conformance-check conformance-ts-suite-check markdown-conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-python-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-language-check dbspec-plan-php-check dbspec-go-check/engine perf-check dbspec-php-extension-check dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-unit-check feature-coverage feature-verify-rust feature-verify-other feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check go-test-check python-check parity-declarations-check parity-check generated-lint-check
 # CI splits make orm-check into one job per CI group and runs them at the same time (the job test, matrix group in .github/workflows/ci.yml).
 # Each job runs `make check-run GROUP=<group>`, which runs CI_TARGETS_<group>; together the groups run every target of CHECK_TARGETS
 # once each (make repo-check verifies it). The groups are split so that each job, with its setup, finishes within 10 minutes, using the target times measured in CI runs.
@@ -1770,3 +1770,22 @@ editor-build: typescript-build
 	$(NPM) run --workspace @polyspec/dbspec-language build
 	$(NPM) run --workspace @polyspec/dbspec-lsp build
 	$(NPM) run --workspace @polyspec/dbspec-codemirror build
+
+# generated-lint-check runs the formatter and linter of each ecosystem on the output that the generators write now, with the
+# pinned tools of the checkout and the configuration of the repository (KSTD-3). The output is gitignored, so the lint of kit
+# (which reads only the files Git does not ignore) never reads it: the paths here are passed explicitly, and ruff is told not to
+# skip ignored paths. Each step fails on its first finding; the generated Python is linted without vulture, whose exclusion
+# of the models in packages/python/pyproject.toml stays as it is.
+GENERATED_PY_MODELS = packages/python/src/polyspec/orm/models/models.py
+GENERATED_PHP = packages/php/gen
+GENERATED_GO = ./model ./markdownmodel ./decimalmodel
+GENERATED_TS = packages/ts/src/models/models.ts
+.PHONY: generated-lint-check
+generated-lint-check: python-models php-models go-models typescript-build
+	ruff check --config ruff.toml --no-respect-gitignore $(GENERATED_PY_MODELS)
+	ruff format --check --config ruff.toml --no-respect-gitignore $(GENERATED_PY_MODELS)
+	phpcs -q -s --report=emacs --standard=phpcs.xml.dist $(GENERATED_PHP)/*.php
+	cd packages/php && phpstan analyse --no-progress --error-format=raw --memory-limit=-1 --configuration=../../phpstan.dist.neon --autoload-file=../../vendor-php/autoload.php gen
+	test -z "$$(cd packages/go && gofmt -l $(GENERATED_GO))" || { cd packages/go && gofmt -l $(GENERATED_GO); exit 1; }
+	cd packages/go && $(GO) vet $(GENERATED_GO)
+	node_modules/.bin/oxlint -c .oxlintrc.json --type-aware --deny-warnings $(GENERATED_TS)

@@ -249,7 +249,7 @@ caseTest('a path that only a lint selects is untested unless its scope is declar
 caseTest('a generator source selects the check that regenerates the models', 5000, () => {
   const { targets: declared } = readCheckInputs(root);
   const selected = selectTargets(declared, ['packages/go/generator/gen_go.go']).filter(({ tested }) => tested.length).map(({ target }) => target);
-  assert.deepEqual(selected, ['comment-language-check', 'go-model-check']);
+  assert.deepEqual(selected, ['comment-language-check', 'go-model-check', 'generated-lint-check']);
 });
 
 // The bootstrap tsconfig that the TypeScript build reads before the models exist is tracked, so it must declare its scope (KSTD-5-5-1).
