@@ -562,9 +562,12 @@ func mysqlProbes() []Probe {
 					e.fail("close the connection of %s: %v", user, err)
 				}
 			}()
+			// closeDB is the only owner of conn; Merge would close it a second time.
 			other := &Env{Ctx: e.Ctx, Conn: conn, DB: "mysql"}
 			other.Fails("CREATE TRIGGER tg BEFORE INSERT ON t FOR EACH ROW SET @x = 1", "1419")
-			e.Merge(other)
+			if other.Err != nil {
+				e.fail("second session: %v", other.Err)
+			}
 		}),
 		// Audit context.
 		p("context.user_variable_session_scope", "a user variable read by a trigger survives COMMIT for the rest of the session", func(e *Env) {

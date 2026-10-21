@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d99f3a4dd7c3f7914082d9704438b2a6c90e9f275f994799cb6db858f95e514e -->
+<!-- source-sha256: 923532aadbf57cdb658c5ebe35a2de0c72446c43ee8e49c30cca3bc75032e149 -->
 # 변경 이력
 
 ## Unreleased
+- MySQL binlog 프로브는 연결을 한 번만 닫는다: 뒤의 defer 닫기가 연결을 소유하고 `Merge`는 더는 다시 닫지 않으므로 `TestDialectFacts/mysql.trigger.binlog_privilege_1419`가 통과한다. red: `sql: connection is already closed`로 실패했다 (KSTD-2-10-6-1).
 - `make lint-python`이 통과한다: 쓰이지 않는 noqa를 지우고, file 세 개를 formatting하며, IR answer test의 조용한 except 하나가 그 경우를 명시한다. red: ruff가 finding 54개와 formatting되지 않은 file 세 개를 보고했다 (KSTD-5-8-1).
 - 가장 낮은 지원 Node는 mise가 설치한다: `make ts-min-check`는 `mise where node@<engines.node>`가 출력하는 node로 TypeScript test를 돌리고, scripts/typescript/node-min.mts는 아무것도 내려받지 않는다. red: node-min.mts가 mise 밖에서 그 Node를 직접 내려받았다 (KSTD-5-4-2).
 - PHP extension Db의 주석이 구현한 것을 적는다: transaction, savepoint, audit, execute, Utils, Stats는 extension의 것이고, 더는 INTERNAL을 던진다고 적지 않는다. red: db.c header와 stub docblock에 낡은 문장이 있었다 (T182-5-3-1).

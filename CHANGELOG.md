@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The MySQL binlog probe closes its connection once: the deferred close owns the connection, and `Merge` no longer closes it a second time, so `TestDialectFacts/mysql.trigger.binlog_privilege_1419` passes. Red: it failed with `sql: connection is already closed` (KSTD-2-10-6-1).
 - `make lint-python` passes: unused noqa directives are removed, three files are formatted, and the one silent except of the IR answer test names its case. Red: ruff reported 54 findings and three unformatted files (KSTD-5-8-1).
 - The lowest supported Node is installed by mise: `make ts-min-check` runs the TypeScript tests on the node that `mise where node@<engines.node>` prints, and scripts/typescript/node-min.mts downloads nothing. Red: node-min.mts downloaded that Node itself, outside mise (KSTD-5-4-2).
 - The comments of the PHP extension Db state what it implements: the transactions, savepoints, audit, execute, Utils and Stats are its own, no longer described as throwing INTERNAL. Red: the db.c header and the stub docblock held the stale sentence (T182-5-3-1).
