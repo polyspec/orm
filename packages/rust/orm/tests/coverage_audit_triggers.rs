@@ -2,6 +2,10 @@
 //! writes with audit record transactions in the same order as Go's coverage_audit_triggers_test.go, then reads the history the trigger left,
 //! and drops the installed tables and PostgreSQL trigger functions. The database ends in the state it started in.
 
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 #[path = "common/audit_rows.rs"]
 mod audit_rows;
 #[path = "common/restore_rows.rs"]

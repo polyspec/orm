@@ -13,6 +13,10 @@
 //! feature `test-faults`, which the dev-dependency of this crate on itself enables
 //! for every test target (Cargo.toml), so `cargo test -p polyspec-orm --test statement_fault` runs the cases.
 
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 use std::time::Duration;
 
 use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
@@ -95,8 +99,8 @@ fn connected(db: &Db) -> Probe {
 
 /// Opens the client and installs the probe table.
 async fn installed(driver: &str, dsn: &str) -> Db {
-    let db = Db::connect(dsn, 2, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
-    db.utils().schema().install(&PROBE_SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
+    let db = Db::connect(dsn, 2, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: {e}"));
+    db.utils().schema().install(&PROBE_SCHEMA).await.or_panic(|e| format!("{driver}: install: {e}"));
     db
 }
 
@@ -136,8 +140,8 @@ async fn consumed_by_one_statement(driver: &str, dsn: &str) {
     polyspec_orm::testing::fail_next_statement(&db, &fixture.code, &fixture.message);
     let error = create(&db, "refused").await.expect_err("the insert is refused");
     check_fault(driver, &error, "first insert");
-    create(&db, "kept").await.unwrap_or_else(|e| panic!("{driver}: the second insert after the consumed fault: {e}"));
-    create(&db, "kept again").await.unwrap_or_else(|e| panic!("{driver}: the third insert: {e}"));
+    create(&db, "kept").await.or_panic(|e| format!("{driver}: the second insert after the consumed fault: {e}"));
+    create(&db, "kept again").await.or_panic(|e| format!("{driver}: the third insert: {e}"));
     assert_eq!(count(&db).await, 2, "{driver}: only the two accepted inserts are stored");
     db.close().await;
 }
@@ -165,7 +169,7 @@ async fn empty_argument_refused(driver: &str, dsn: &str) {
     assert!(refused.is_err(), "{driver}: an empty code panics");
     let refused = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| polyspec_orm::testing::fail_next_statement(&db, &fixture.code, "")));
     assert!(refused.is_err(), "{driver}: an empty message panics");
-    create(&db, "kept").await.unwrap_or_else(|e| panic!("{driver}: a refused arming leaves the next insert running: {e}"));
+    create(&db, "kept").await.or_panic(|e| format!("{driver}: a refused arming leaves the next insert running: {e}"));
     assert_eq!(count(&db).await, 1, "{driver}: the insert ran");
     db.close().await;
 }
@@ -184,7 +188,7 @@ async fn bounded(driver: &str, case: &str) {
             other => unreachable!("unknown case {other}"),
         }
     };
-    tokio::time::timeout(CASE_DEADLINE, run).await.unwrap_or_else(|_| panic!("{driver}: {case}: timeout after {CASE_DEADLINE:?}"));
+    tokio::time::timeout(CASE_DEADLINE, run).await.or_panic(|_| format!("{driver}: {case}: timeout after {CASE_DEADLINE:?}"));
     database.drop().await;
 }
 

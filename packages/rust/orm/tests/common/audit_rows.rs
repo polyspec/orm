@@ -2,6 +2,8 @@
 //! the helpers that work with those tables, and the audit record transaction case. audit.rs and coverage_audit_triggers.rs
 //! both use them.
 
+use crate::or_panic::OrPanic;
+
 use std::collections::BTreeMap;
 
 use polyspec_orm::db::Pool;
@@ -83,8 +85,8 @@ pub fn audit_config(actor: &str) -> polyspec_orm::Config {
 
 /// Connects to dsn with the config and registers audit.dbs. Installs the tables if they are missing.
 pub async fn audit_db(dsn: &str, config: polyspec_orm::Config) -> Db {
-    let db = Db::connect(dsn, 2, config).await.unwrap_or_else(|e| panic!("connect: {e}"));
-    db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("install: {e}"));
+    let db = Db::connect(dsn, 2, config).await.or_panic(|e| format!("connect: {e}"));
+    db.utils().schema().install(&SCHEMA).await.or_panic(|e| format!("install: {e}"));
     db
 }
 
@@ -102,7 +104,7 @@ pub async fn try_exec(db: &Db, statement: &str) -> Result<(), sqlx::Error> {
 // Only coverage_audit_triggers.rs uses this. audit.rs drops its whole case database.
 #[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
 pub async fn exec(db: &Db, statement: &str) {
-    try_exec(db, statement).await.unwrap_or_else(|e| panic!("{statement}: {e}"));
+    try_exec(db, statement).await.or_panic(|e| format!("{statement}: {e}"));
 }
 
 /// Drops the fixture's tables and, on PostgreSQL, the trigger functions that are not dropped with the tables.
@@ -160,7 +162,7 @@ pub async fn audit_records(db: &Db) -> Vec<(String, String)> {
     let query = "SELECT seq, actor FROM audit ORDER BY seq";
     macro_rules! read {
         ($pool:expr) => {{
-            let rows = sqlx::raw_sql(sqlx::AssertSqlSafe(query.to_owned())).fetch_all($pool).await.unwrap_or_else(|e| panic!("{query}: {e}"));
+            let rows = sqlx::raw_sql(sqlx::AssertSqlSafe(query.to_owned())).fetch_all($pool).await.or_panic(|e| format!("{query}: {e}"));
             rows.iter().map(|r| (r.try_get::<i64, _>(0).unwrap().to_string(), r.try_get::<String, _>(1).unwrap())).collect()
         }};
     }
@@ -232,7 +234,7 @@ pub async fn audit_case(driver: &str, dsn: &str) {
         .audit([("actor", "create")])
         .retry(0)
         .await
-        .unwrap_or_else(|e| panic!("{driver}: create: {e}"));
+        .or_panic(|e| format!("{driver}: create: {e}"));
     let mut titled = changed_item(seq, "third");
     titled.core_mut().connect(db);
     assert_eq!(code(polyspec_orm::model::update(&mut titled, false).await), polyspec_orm::codes::CONFIG, "{driver}: update without an audit");
@@ -241,7 +243,7 @@ pub async fn audit_case(driver: &str, dsn: &str) {
         .audit(NO_VALUES)
         .retry(0)
         .await
-        .unwrap_or_else(|e| panic!("{driver}: delete: {e}"));
+        .or_panic(|e| format!("{driver}: delete: {e}"));
     let failed = adb.transaction(async || Err::<(), _>(polyspec_orm::Error::Config("callback failed".into()))).audit([("actor", "rolled back")]).retry(0).await;
     assert!(matches!(&failed, Err(polyspec_orm::Error::Config(m)) if m == "callback failed"), "{driver}: failed callback = {failed:?}");
 
@@ -275,16 +277,16 @@ pub async fn entry_points_case(driver: &str, dsn: &str) {
         .audit([("actor", "transaction")])
         .retry(0)
         .await
-        .unwrap_or_else(|e| panic!("{driver}: transaction: {e}"));
+        .or_panic(|e| format!("{driver}: transaction: {e}"));
     adb.transaction_send(|| async { polyspec_orm::model::update(&mut changed_item(seq, "second"), false).await })
         .audit([("actor", "send")])
         .retry(0)
         .await
-        .unwrap_or_else(|e| panic!("{driver}: transaction_send: {e}"));
+        .or_panic(|e| format!("{driver}: transaction_send: {e}"));
     adb.transaction_once(async || polyspec_orm::model::update(&mut changed_item(seq, "third"), false).await)
         .audit([("actor", "once")])
         .await
-        .unwrap_or_else(|e| panic!("{driver}: transaction_once: {e:?}"));
+        .or_panic(|e| format!("{driver}: transaction_once: {e:?}"));
     let without = adb.transaction_once(async || polyspec_orm::model::update(&mut changed_item(seq, "fourth"), false).await).await;
     assert!(
         matches!(&without, Err(polyspec_orm::TransactionOnceError::Callback(e)) if e.code() == polyspec_orm::codes::CONFIG),

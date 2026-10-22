@@ -4,6 +4,10 @@
 //! MySQL, and PostgreSQL, each database runs in its own case database (polyspec-orm-case-database),
 //! and it fails if ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is missing.
 
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 #[path = "common/audit_rows.rs"]
 mod audit_rows;
 

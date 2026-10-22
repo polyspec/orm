@@ -9,6 +9,10 @@
 //! `cargo test -p polyspec-orm --test request_hook -- --exact <case>` runs a SQLite case; a coverage case needs the
 //! database of make feature-check, which runs it by its exact name.
 
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
@@ -159,7 +163,7 @@ fn entry(db: &Db, values: &[(&str, Param)]) -> HookEntry {
 
 /// The text value of column in row.
 fn text_of<M: Model>(row: &M, column: &str) -> String {
-    row.value(column).unwrap_or_else(|| panic!("{column}")).as_string().unwrap_or_else(|e| panic!("{column}: {e}"))
+    row.value(column).or_panic(|| format!("{column}")).as_string().or_panic(|e| format!("{column}: {e}"))
 }
 
 /// The id value of row.
@@ -377,7 +381,7 @@ async fn loaded_row_writes_case(driver: &str) {
         Ok(())
     });
     let rows = polyspec_orm::model::gets(&item(&hooked)).await.expect("gets");
-    let mut row = rows.models().find(|m| m.value("label").and_then(|v| v.as_string().ok()).as_deref() == Some("a1")).expect("a1").clone();
+    let mut row = rows.models().find(|m| m.value("label").is_some_and(|v| v.as_string().unwrap_or_else(|e| panic!("label: {e}")) == "a1")).expect("a1").clone();
     row.core_mut().set("label", Param::from("changed"));
     polyspec_orm::model::update(&mut row, false).await.expect("update");
     assert_eq!(kinds.lock().unwrap().last().map(String::as_str), Some("update"), "the update of a loaded row passes the hook");
@@ -422,11 +426,11 @@ async fn upsert_scope_case(driver: &str) {
     for call in 1..=2 {
         let mut m = upsert_row(Some(&hooked), &[("name", Param::from("k"))]);
         m.core_mut().duplication(upsert_row(None, &[("hits", Param::from(7_i64))]).into_core());
-        polyspec_orm::model::create(&mut m).await.unwrap_or_else(|e| panic!("upsert call {call} = {e:?}, want the row inserted or updated"));
+        polyspec_orm::model::create(&mut m).await.or_panic(|e| format!("upsert call {call} = {e:?}, want the row inserted or updated"));
     }
     let rows = polyspec_orm::model::gets(&upsert_row(Some(&db), &[])).await.expect("gets");
     let stored: Vec<(String, String, Option<i64>)> =
-        rows.models().map(|m| (text_of(m, "scope_col"), text_of(m, "name"), m.value("hits").and_then(|v| v.as_i64().ok()))).collect();
+        rows.models().map(|m| (text_of(m, "scope_col"), text_of(m, "name"), m.value("hits").map(|v| v.as_i64().unwrap_or_else(|e| panic!("hits: {e}"))))).collect();
     assert_eq!(stored, [("a".to_owned(), "k".to_owned(), Some(7))]);
     db.close().await;
     database.drop().await;
