@@ -936,6 +936,12 @@ final class Db
     public function withRequestHook(\Closure $hook): Db {}
     public function subscribe(\Closure $subscriber): \Closure {}
     /** @internal */
+    public function setListener(\Closure $open): void {}
+    /** @internal */
+    public function listener(): ?\Closure {}
+    public function notify(string $channel, string $payload): void {}
+    public function listen(string $channel): Subscription {}
+    /** @internal */
     public function nextTransaction(): int {}
     /** @internal */
     public function transactionNumber(): ?int {}

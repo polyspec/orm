@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: e52e7311624b7ffc7855b911a2d9eaa5565b147c */
+ * Stub hash: 14ef0097855d696831959cf92a42ad49af092929 */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Diagnostic___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, rule, IS_STRING, 0)
@@ -707,6 +707,22 @@ ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Db_subscribe, 
 	ZEND_ARG_OBJ_INFO(0, subscriber, Closure, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_setListener, 0, 1, IS_VOID, 0)
+	ZEND_ARG_OBJ_INFO(0, open, Closure, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Db_listener, 0, 0, Closure, 1)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_notify, 0, 2, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, channel, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, payload, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Db_listen, 0, 1, Polyspec\\Orm\\Subscription, 0)
+	ZEND_ARG_TYPE_INFO(0, channel, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_nextTransaction, 0, 0, IS_LONG, 0)
 ZEND_END_ARG_INFO()
 
@@ -987,6 +1003,10 @@ ZEND_METHOD(Polyspec_Orm_Db, stats);
 ZEND_METHOD(Polyspec_Orm_Db, close);
 ZEND_METHOD(Polyspec_Orm_Db, withRequestHook);
 ZEND_METHOD(Polyspec_Orm_Db, subscribe);
+ZEND_METHOD(Polyspec_Orm_Db, setListener);
+ZEND_METHOD(Polyspec_Orm_Db, listener);
+ZEND_METHOD(Polyspec_Orm_Db, notify);
+ZEND_METHOD(Polyspec_Orm_Db, listen);
 ZEND_METHOD(Polyspec_Orm_Db, nextTransaction);
 ZEND_METHOD(Polyspec_Orm_Db, transactionNumber);
 ZEND_METHOD(Polyspec_Orm_Db, publish);
@@ -1385,6 +1405,10 @@ static const zend_function_entry class_Polyspec_Orm_Db_methods[] = {
 	ZEND_ME(Polyspec_Orm_Db, close, arginfo_class_Polyspec_Orm_Db_close, ZEND_ACC_PUBLIC)
 	ZEND_ME(Polyspec_Orm_Db, withRequestHook, arginfo_class_Polyspec_Orm_Db_withRequestHook, ZEND_ACC_PUBLIC)
 	ZEND_ME(Polyspec_Orm_Db, subscribe, arginfo_class_Polyspec_Orm_Db_subscribe, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, setListener, arginfo_class_Polyspec_Orm_Db_setListener, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, listener, arginfo_class_Polyspec_Orm_Db_listener, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, notify, arginfo_class_Polyspec_Orm_Db_notify, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Db, listen, arginfo_class_Polyspec_Orm_Db_listen, ZEND_ACC_PUBLIC)
 	ZEND_ME(Polyspec_Orm_Db, nextTransaction, arginfo_class_Polyspec_Orm_Db_nextTransaction, ZEND_ACC_PUBLIC)
 	ZEND_ME(Polyspec_Orm_Db, transactionNumber, arginfo_class_Polyspec_Orm_Db_transactionNumber, ZEND_ACC_PUBLIC)
 	ZEND_ME(Polyspec_Orm_Db, publish, arginfo_class_Polyspec_Orm_Db_publish, ZEND_ACC_PUBLIC)

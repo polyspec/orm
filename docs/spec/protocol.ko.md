@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 8aa9bbc1cff01707e6652bb11f9b76d47562a90ef5be3330b3e7d8869ec66ee4 -->
+<!-- source-sha256: 92c20670064c8ee76dcd5ab1d8ff9e772ee478b5415152bda26febac0d59a769 -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -268,3 +268,7 @@ DSN scheme은 SQL dialect 대신 IR executor를 고를 수 있다. `markdown://`
 - **PRT-71** **오류.** 실패한 메시지는 `{"error": {"code": <code>, "message": <text>}}`로 답을 받는다. code는 [errors.yaml](errors.yaml)의 코드 하나이며, 클라이언트는 그 code와 message의 오류를 돌려준다. hash가 다르면 `SCHEMA_HASH_MISMATCH`다. 읽은 뒤 대상이 바뀐 쓰기는 `WRITE_CONFLICT`이고, transaction이 읽은 뒤의 변경 때문에 transaction의 쓰기가 다른 쓰기가 되는 `commit`도 그렇다. 예를 들어 읽기에 새로 맞거나 더는 맞지 않게 된 행이다. 이 오류는 파일과 줄을 적는다. 바뀐 읽기 위에서 callback을 다시 실행하는 것은 결코 안전하지 않으므로, 클라이언트는 retry option이 있어도 이를 재시도하지 않는다: transaction이 재시도하는 `DEADLOCK`과 달리 commit은 callback을 한 번 실행한 뒤 `WRITE_CONFLICT`를 돌려준다(`contracts/fixtures/ir_answers.json`의 case `commit_write_conflict`와 `commit_deadlock`). 끝난 lock 대기는 `CANCELED`다. JSON object가 아닌 줄, 어떤 제어 메시지도 가리키지 않는 `op`, 제어 메시지가 받지 않는 필드는 `IR_INVALID`다. 끊긴 연결은 `CONNECTION_LOST`이며, server가 한도보다 오래 쉰 트랜잭션의 연결을 닫기 전에 쓰는 답도 그렇다. 호출의 context나 signal이 끝나면 클라이언트는 연결을 닫고 호출은 `CANCELED`다. server는 닫힌 연결의 트랜잭션을 rollback한다.
 - **PRT-72** **세션.** 연결 하나가 세션이다. 제어 메시지 `{"op": "begin", "read_only"?}`, `{"op": "commit"}`, `{"op": "rollback"}`, `{"op": "savepoint" | "release" | "rollback_to", "name"}`가 트랜잭션을 시작하고, 끝내고, 중첩한다. `name`은 `savepoint`, `release`, `rollback_to`가 가리키는 savepoint의 이름이다. 클라이언트는 `readOnly` 옵션의 트랜잭션이면 `read_only` true를 쓰고, 그 밖에는 `read_only`를 쓰지 않는다. executor는 그 트랜잭션에 쓰기 lock을 잡지 않고, SQL 데이터베이스가 읽기 전용 트랜잭션의 쓰기를 거절하듯 그 안의 모든 쓰기를 `READ_ONLY`로 거절한다(`tests/bind/vectors.json`의 `control` case와 `contracts/fixtures/ir_answers.json`의 case `read_only_write`). 제어 메시지마다 `{"ok": true}` 또는 오류를 돌려준다. 트랜잭션은 `begin`부터 끝까지 연결 하나를 잡고, 트랜잭션 밖의 요청은 풀의 아무 연결에서 자기 트랜잭션으로 실행된다.
 - **PRT-73** **executor가 정하는 column.** `identity`, `key_prefix`, `order` column은 executor가 값을 정하므로 insert에서 생략할 수 있다. 1.4절은 planner가 정하는 column을 정의하며, 이 column들은 executor가 정한다.
+
+## 6. Notifications
+
+- **PRT-74** **클라이언트 작업.** `notify`, `listen`, `unlisten`은 IR이 아니다: 클라이언트가 PostgreSQL 연결에서 [DIA-192](dialects.ko.md#notifications)~[DIA-196](dialects.ko.md#notifications)이 정의하는 대로 실행하며, IR 요청에는 들어가지 않는다. markdown executor와 MySQL, SQLite dialect는 이를 `CAPABILITY_UNSUPPORTED`로 거부한다.

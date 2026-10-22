@@ -3,6 +3,7 @@ import { bindSlotType, checkAssign, checkParam, transformParam } from './bind_ch
 import { blindIndex, decode, hostDecode, hostEncode } from './codec.js';
 import type { Assemble, BindSlot, Group, KeyReference, Plan, PlanStep, Request } from './ir.js';
 import { driverValue, isolationSql, openDriver, parseDsn, sqliteBusy, zoneOffset, type DriverName, type DriverPool, type DriverResult, type DriverSession, type DriverValue, type Isolation, type PoolStats, type StatementDone } from './driver.js';
+import { Subscription, checkChannel } from './listen.js';
 import { Subscribers, statementKind, type StatementEvent, type StatementKind } from './events.js';
 import { present } from './present.js';
 import { OrmError, joinedErrors, rollbackFailed } from './runtime_error.js';
@@ -631,6 +632,45 @@ export class Db {
   }
 
   public utils(): Utils { return new Utils(this); }
+
+  /**
+   * Sends a notification with pg_notify (DIA-193): inside a transaction it is delivered with the commit of that transaction,
+   * and outside one at the commit of its own statement. MySQL, SQLite and the markdown executor refuse it (DIA-196).
+   */
+  public async notify(channel: string, payload: string): Promise<void> {
+    this.listenable('notify');
+    checkChannel(channel);
+    const ex = resolve(this);
+    await guarded(ex, async () => {
+      const connection = ex.frame?.session ?? this.pool;
+      const done = this.statementDone('utility', [], ex.frame?.number ?? null, [channel, payload]);
+      await connection.execute('SELECT pg_notify($1, $2)', [channel, payload].map(value => driverValue(value, 'notify')), this.signal, done);
+    });
+  }
+
+  /**
+   * Opens a LISTEN subscription on channel (DIA-194) on a connection of its own. A receive of the subscription uses the abort signal of
+   * this handle: aborting it fails the pending receive with CANCELED and closes the subscription (DIA-195).
+   */
+  public async listen(channel: string): Promise<Subscription> {
+    this.listenable('listen');
+    checkChannel(channel);
+    const pool = this.pool;
+    if (pool.openListener === undefined) throw new OrmError(codes.CONFIG, `driver ${pool.name} has no LISTEN connection`);
+    const listener = await pool.openListener();
+    try {
+      await listener.listen(channel);
+    } catch (error) {
+      await listener.close();
+      throw error;
+    }
+    return new Subscription(listener, this.signal);
+  }
+
+  /** The error of a LISTEN or NOTIFY operation on a database without it (DIA-196). */
+  private listenable(surface: string): void {
+    if (this.md !== undefined || this.pool.name !== 'postgres') throw new OrmError(codes.CAPABILITY_UNSUPPORTED, `${surface} is supported on PostgreSQL only`);
+  }
 
   /**
    * Registers subscriber for the event of every statement that the connection

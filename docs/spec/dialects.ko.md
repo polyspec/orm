@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 9aeca3765c8eba52671052649068f7fb51336002212f8c612350e5dabb41cdbf -->
+<!-- source-sha256: b95ea46710fad7116d8f78fcef6b545e8a25f1a7b870a9fa347ae8261c78e7cc -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -437,3 +437,11 @@ Audit context 선택지. Audit trigger는 클라이언트가 transaction 안에�
 - **DIA-188** lock, local setting, privilege, AES rotation utility — 결과: `CAPABILITY_UNSUPPORTED`
 - **DIA-189** schema install, dbplan chain — 결과: `CAPABILITY_UNSUPPORTED`; 규칙: `flowmark install`이 corpus를 만들고([schema](https://github.com/polyspec/flowmark/blob/8b5d16a81141/docs/spec/30-schema.md)), 진화는 [migration](https://github.com/polyspec/flowmark/blob/8b5d16a81141/docs/spec/80-migration.md)을 따른다
 - **DIA-190** 사용할 수 없는 table(`format.block`, `format.section`, `format.encoding`이나 그 행 사이의 `parent.cycle`이 있는 file, 바이트 단위로 같은 key를 가진 두 행, 또는 자리의 `corpus.walk` 항목) — 결과: 그 행이 필요한 모든 요청은 읽기든 쓰기든 file과 진단을 밝히며 `CONSTRAINT`로 실패하며, 다른 file들의 행만으로 답하지 않는다([canonical format](https://github.com/polyspec/flowmark/blob/8b5d16a81141/docs/spec/10-canonical-format.md))
+
+## Notifications
+
+- **DIA-192** **정의.** `notify(channel, payload)`, `listen(channel)`, `unlisten(channel)`은 PostgreSQL dialect의 클라이언트 작업이다: PostgreSQL의 `pg_notify`와 `LISTEN` / `UNLISTEN`. IR이 아니므로 planner나 executor가 만들지 않는다([protocol](protocol.ko.md#_6-notifications)). channel은 U+0000 없는 UTF-8 1~63바이트의 PostgreSQL 식별자이며, 그 범위 밖의 channel은 문을 실행하기 전에 `CONFIG`로 실패한다.
+- **DIA-193** **notify.** `notify`는 자기 handle의 연결에서 `SELECT pg_notify($1, $2)`를 실행한다. transaction 안에서는 알림이 그 transaction이 commit될 때 전달되고 rollback되면 버려지며, 밖에서는 자기 문의 commit에 전달된다. PostgreSQL이 거부하는 payload(8000바이트 초과 또는 U+0000)는 서버의 오류를 [errors](errors.yaml)의 매핑대로 낸다.
+- **DIA-194** **listen.** `listen(channel)`은 pool 밖의 자기 연결을 열고, channel을 인용된 식별자로 `LISTEN`을 실행하며, 알림마다 channel, payload, 보낸 프로세스의 pid를 준다. 받기 대기가 없을 때 도착한 알림은 도착 순서대로 보관한다. 연결이 끊기면 구독은 `CONNECTION_LOST`로 끝난다.
+- **DIA-195** **unlisten과 취소.** `unlisten(channel)`은 listen 연결에서 `UNLISTEN`을 실행하고 그 channel의 전달을 멈춘다. `close()`는 구독의 모든 channel에 `UNLISTEN`을 실행하고 연결을 클라이언트에 오류 없이 돌려준다. 대기 중인 받기는 [CFG-9](config.ko.md)가 정하는 대로 그 언어의 취소 수단으로 취소한다: Go는 `db.WithContext(ctx)`의 context를, TypeScript는 `db.withSignal(signal)`의 signal을 취소한다. Python, PHP, Rust에는 받기를 위한 그런 수단이 없으므로 그 받기는 기한을 받으며, 기한이 지나면 받기가 끝난다. 취소되었거나 기한이 지난 받기는 `CANCELED`로 실패하고 구독을 닫으며, 그 뒤의 호출은 `CONFIG`로 실패한다.
+- **DIA-196** **다른 데이터베이스.** MySQL, SQLite, markdown executor에서 `notify`, `listen`, `unlisten`은 문이나 연결을 쓰기 전에 `CAPABILITY_UNSUPPORTED`로 실패한다. 어느 것도 조용한 no-op이 아니다.

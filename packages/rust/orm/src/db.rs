@@ -309,6 +309,8 @@ static NEXT_DB: AtomicU64 = AtomicU64::new(1);
 pub(crate) struct DbInner {
     pub(crate) id: u64,
     pub(crate) pool: Pool,
+    /// The PostgreSQL options of the pool, which a LISTEN subscription connects with; None on other databases.
+    pub(crate) listen: Option<sqlx::postgres::PgConnectOptions>,
     /// The dialect a SQL connection plans for. Markdown connections, which do not plan, have none.
     pub(crate) dialect: Option<Dialect>,
     pub(crate) cfg: Config,
@@ -449,6 +451,11 @@ impl Db {
         let dialect = Dialect::parse(parsed.driver());
         let cache = cfg.statement_cache_size;
         let timeout = cfg.statement_timeout_ms;
+        // A LISTEN subscription opens a connection of its own with the options of the pool (DIA-194).
+        let listen = match &parsed.options {
+            ConnectOptions::Postgres(o) => Some(o.clone()),
+            _ => None,
+        };
         let pool = match parsed.options {
             ConnectOptions::Markdown(dsn) => Pool::Markdown(open_markdown(dsn, pool_size, idle, &cfg).await?),
             // MySQL bounds SELECT statements with max_execution_time;
@@ -497,6 +504,7 @@ impl Db {
             inner: Arc::new(DbInner {
                 id: NEXT_DB.fetch_add(1, Ordering::Relaxed),
                 pool,
+                listen,
                 dialect,
                 cfg,
                 zone: parsed.zone,

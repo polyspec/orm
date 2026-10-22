@@ -33,7 +33,7 @@ impl Db {
 
 /// One step of a utils statement. `types` are the dbspec types for each bind value, and the utils binds
 /// are either the manifest's column types or text such as names and keys.
-fn step(sql: String, types: &[&str]) -> Step {
+pub(crate) fn step(sql: String, types: &[&str]) -> Step {
     Step {
         plan_id: 0,
         id: 0,

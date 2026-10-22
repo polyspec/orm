@@ -320,6 +320,43 @@
   },
   "units": [
     {
+      "id": "postgres-listen-notify",
+      "kind": "feature",
+      "requirements": ["DIA-192", "DIA-193", "DIA-194", "DIA-195", "DIA-196", "PRT-74"],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/listen_notify_test.go",
+          "id": "TestListenNotify"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ListenNotifyTest.php",
+          "id": "ListenNotifyTest::test_listen_notify"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/ListenNotifyTest.php",
+          "id": "ListenNotifyTest::test_listen_notify"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/listen-notify.mjs",
+          "id": "listen-notify/postgres"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/listen_notify.py",
+          "id": "test_listen_notify"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/listen_notify.rs",
+          "id": "listen_notify"
+        }
+      ]
+    },
+    {
       "id": "ts-conformance-result-exact-numbers",
       "kind": "feature",
       "bindings": [

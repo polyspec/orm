@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ab6b742fa266517f0fd1253a7feee68656cbb65f816c4a181c4ce30a92fbea11 -->
+<!-- source-sha256: 683785ca64fee14a8a3c8b1d947e76d1fd05083cc8e6c73e15408827568c28db -->
 # 변경 이력
 
 ## Unreleased
@@ -11,6 +11,7 @@
 - `make feature-unit-check`가 main에서 다시 통과한다: contracts/check-inputs.json이 generator 소스를 고르는 generated-lint-check를 선언하고, CHECK_TARGETS가 파일이 선언한 여섯 group-rows-db target을 가진다 (KSTD-7-9-1). red: main에서 scripts/features/owners.test.mts의 CHECK_TARGETS와 generator 소스 테스트가 실패했다.
 - comments check는 Python을 `scripts/comments/tokens/python-comments.mts`로 읽는다. tokenize와 ast 읽기기의 TypeScript 포팅이며, 저장소는 더 이상 Python 도구를 갖지 않는다. 출력은 추적되는 Python 파일 224개 모두에서 이전 읽기기와 같다(KSTD-5-21). red: `every tool of the repository is written in Go, PHP, Rust or TypeScript` 사례가 python-comments.py에서 실패했다.
 - MySQL 잠금 대기 시간 초과(1205)는 모든 client에서 CANCELED다. CFG-6의 쓰기 한계이기 때문이며, `errors.yaml`과 CFG-6에 적혀 있고 Go, PHP, PHP 확장, TypeScript, Python, Rust client가 매핑한다 (T230). red: Go, PHP, TypeScript, Python, Rust 사례가 1205에 대해 DRIVER 또는 값 없음을 반환했다.
+- T229 완료: PostgreSQL LISTEN과 NOTIFY는 모든 클라이언트의 클라이언트 작업이다. `notify(channel, payload)`는 transaction 안에서 `pg_notify`로 보내며 commit과 함께 전달되고, `listen(channel)`은 자기 연결에서 구독을 열며, `unlisten`과 취소가 구독을 끝낸다. MySQL, SQLite, markdown executor는 둘 다 `CAPABILITY_UNSUPPORTED`로 거부한다(T229). red: Verification이 config/parity.json에서 unit `postgres-listen-notify`를 찾지 못했고, 각 클라이언트의 owner 테스트가 실패했다(클라이언트에 `notify`, `listen`, `Notify`가 없었다).
 - KSTD-5-20 완료: 이 commit은 그 완료 상태를 기록하고, 행 commit이 남긴 체크리스트의 한국어 stamp를 갱신한다(KSTD-5-20).
 - repo check의 workflow 규칙 사례는 kit 복사본 두 개, release.yml과 gates.yml을 기대하며 규칙은 둘 다 건너뛴다(KSTD-5-20). red: 사례가 release.yml만 기대했으나 gates.yml이 두 번째 kit 복사본으로 발견되었다.
 - repo check의 Node 사례는 `.github/workflows`의 모든 workflow(gates.yml 포함)를 나열하고 각각이 mise.toml의 Node로 실행되는지 확인한다. kit 복사본 gates.yml은 이 규칙을 통과한다(KSTD-5-19). red: 사례가 workflow 4개를 기대했으나 gates.yml이 다섯 번째로 발견되었다.

@@ -3475,6 +3475,67 @@ ZEND_METHOD(Polyspec_Orm_Db, subscribe)
 
 
 
+/* Db::setListener(open) and Db::listener(): the opener of the LISTEN connections, which DbState keeps (docs/spec/dialects.md DIA-194). */
+ZEND_METHOD(Polyspec_Orm_Db, setListener)
+{
+    zval *opener;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_OBJECT_OF_CLASS(opener, zend_ce_closure)
+    ZEND_PARSE_PARAMETERS_END();
+    wr(rd(ZEND_THIS, "state"), "listener", opener);
+}
+
+ZEND_METHOD(Polyspec_Orm_Db, listener)
+{
+    ZEND_PARSE_PARAMETERS_NONE();
+    zval *opener = rd(rd(ZEND_THIS, "state"), "listener");
+    if (opener == NULL) {
+        RETURN_NULL();
+    }
+    RETURN_COPY(opener);
+}
+
+/* Db::notify(channel, payload) and Db::listen(channel) call Polyspec\Orm\Listen, which holds the rules and the statements of
+ * the PHP client and is the one implementation of both clients (docs/spec/dialects.md DIA-192 to DIA-196). */
+ZEND_METHOD(Polyspec_Orm_Db, notify)
+{
+    zend_string *channel, *payload;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_STR(channel)
+        Z_PARAM_STR(payload)
+    ZEND_PARSE_PARAMETERS_END();
+    zval args[3], ret;
+    ZVAL_COPY(&args[0], ZEND_THIS);
+    ZVAL_STR_COPY(&args[1], channel);
+    ZVAL_STR_COPY(&args[2], payload);
+    bool ok = scall("Polyspec\\Orm\\Listen::notify", &ret, 3, args);
+    zval_ptr_dtor(&args[0]);
+    zval_ptr_dtor(&args[1]);
+    zval_ptr_dtor(&args[2]);
+    if (!ok) {
+        RETURN_THROWS();
+    }
+    zval_ptr_dtor(&ret);
+}
+
+ZEND_METHOD(Polyspec_Orm_Db, listen)
+{
+    zend_string *channel;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_STR(channel)
+    ZEND_PARSE_PARAMETERS_END();
+    zval args[2], ret;
+    ZVAL_COPY(&args[0], ZEND_THIS);
+    ZVAL_STR_COPY(&args[1], channel);
+    bool ok = scall("Polyspec\\Orm\\Listen::listen", &ret, 2, args);
+    zval_ptr_dtor(&args[0]);
+    zval_ptr_dtor(&args[1]);
+    if (!ok) {
+        RETURN_THROWS();
+    }
+    RETURN_COPY_VALUE(&ret);
+}
+
 ZEND_METHOD(Polyspec_Orm_Db, publish)
 {
     zval *tables, *binds, *error = NULL;

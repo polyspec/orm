@@ -95,7 +95,12 @@ final class Orm
         } catch (\PDOException $e) {
             throw new OrmException(Code::CONFIG, 'cannot connect: ' . $e->getMessage(), $e);
         }
-        return new Db($pdo, $driver, $config, new \DateTimeZone('UTC'));
+        $db = new Db($pdo, $driver, $config, new \DateTimeZone('UTC'));
+        if ($driver === 'postgres') {
+            // A LISTEN subscription opens a connection of its own with the same DSN, user, password and options.
+            $db->setListener(static fn (): \PDO => \PDO::connect($pdoDsn, $user, $password, $options));
+        }
+        return $db;
     }
 
     /** Pool options and statement timeout are checked by the same rules for SQL and markdown connections. */

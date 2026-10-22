@@ -107,6 +107,8 @@ type DB struct {
 
 // dbMutable is the state every handle of one connection shares.
 type dbMutable struct {
+	// native is the DSN that the driver opens, which a LISTEN connection opens too.
+	native string
 	// engines holds the engine of this connection's dialect for each manifestHash.
 	engineMu sync.RWMutex
 	engines  map[string]*engine.Engine
@@ -345,7 +347,7 @@ func open(ctx context.Context, dsn parsedDSN, cfg Config) (*DB, error) {
 	case cfg.AESKeys[cfg.AESVersion] != cfg.AESKey:
 		return nil, closeAfter(s, configErr("AESKey differs from AESKeys[%d]", cfg.AESVersion))
 	}
-	return &DB{sql: s, ctx: ctx, m: &dbMutable{engines: map[string]*engine.Engine{}, schemas: map[string]*Schema{}}, cfg: cfg, driver: dsn.driver, location: dsn.location, plans: map[uint64]*cached{}, stmts: map[string]*sql.Stmt{}}, nil
+	return &DB{sql: s, ctx: ctx, m: &dbMutable{engines: map[string]*engine.Engine{}, schemas: map[string]*Schema{}, native: dsn.native}, cfg: cfg, driver: dsn.driver, location: dsn.location, plans: map[uint64]*cached{}, stmts: map[string]*sql.Stmt{}}, nil
 }
 
 // closeAfter closes c, which the failed call does not return, and returns err; a failed Close is joined to err.

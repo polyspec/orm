@@ -1240,6 +1240,77 @@ class DbStats:
     idle: int
 
 
+def _check_channel(channel: str) -> None:
+    """A channel of 1 to 63 bytes without U+0000 (docs/spec/dialects.md DIA-192)."""
+    if not 1 <= len(channel.encode("utf-8")) <= 63 or "\x00" in channel:
+        raise OrmError(codes.CONFIG, "a channel is 1 to 63 bytes without U+0000")
+
+
+def _listenable(db: "Db", surface: str) -> None:
+    """LISTEN and NOTIFY exist on PostgreSQL only (DIA-196)."""
+    if db.driver != "postgres":
+        raise OrmError(
+            codes.CAPABILITY_UNSUPPORTED, f"{surface} is supported on PostgreSQL only"
+        )
+
+
+@dataclass(frozen=True)
+class Notification:
+    """One notification that a LISTEN subscription receives (DIA-194)."""
+
+    channel: str
+    payload: str
+    pid: int
+
+
+class Subscription:
+    """A LISTEN subscription (DIA-194 and DIA-195) on a connection of its own, outside the pool."""
+
+    def __init__(self, connection: "_PostgresConnection"):
+        self._connection = connection
+        self._closed = False
+
+    def receive(self, timeout: float | None = None) -> Notification:
+        """Waits for the next notification. A deadline of timeout seconds that expires fails the receive
+        with CANCELED and closes the subscription; PHP and Python take a deadline, not a cancellation signal."""
+        if self._closed:
+            raise OrmError(codes.CONFIG, "the LISTEN subscription is closed")
+        try:
+            for notice in self._connection.connection.notifies(
+                timeout=timeout, stop_after=1
+            ):
+                return Notification(notice.channel, notice.payload, notice.pid)
+        except Exception as error:
+            if not _is_driver_error("postgres", error):
+                raise
+            _raise_driver_error("postgres", error, bool(self._connection.connection.closed))
+        self.close()
+        raise OrmError(
+            codes.CANCELED, "the receive of the LISTEN subscription expired"
+        )
+
+    def unlisten(self, channel: str) -> None:
+        """Stops delivery of channel on the subscription (DIA-195)."""
+        _check_channel(channel)
+        if self._closed:
+            raise OrmError(codes.CONFIG, "the LISTEN subscription is closed")
+        self._connection.execute(f"UNLISTEN {_quote_ident(channel)}", [])
+
+    def close(self) -> None:
+        """Runs UNLISTEN for every channel and ends the connection. Closing a closed subscription does nothing."""
+        if self._closed:
+            return
+        self._closed = True
+        try:
+            self._connection.execute("UNLISTEN *", [])
+        finally:
+            self._connection.close()
+
+
+def _quote_ident(name: str) -> str:
+    return '"' + name.replace('"', '""') + '"'
+
+
 class Db:
     """A database connection with a plan cache and a statement cache."""
 
@@ -1385,6 +1456,25 @@ class Db:
     def root(self) -> Db:
         """The connection this handle was derived from; a connection returns itself."""
         return self._root if self._root is not None else self
+
+    def notify(self, channel: str, payload: str) -> None:
+        """Sends a notification with pg_notify (DIA-193): inside a transaction it is delivered with the commit of
+        that transaction, and outside one at the commit of its own statement."""
+        _listenable(self, "notify")
+        _check_channel(channel)
+        _Leased(self).execute("SELECT pg_notify($1, $2)", [channel, payload])
+
+    def listen(self, channel: str) -> Subscription:
+        """Opens a LISTEN subscription on channel (DIA-194) on a connection of its own."""
+        _listenable(self, "listen")
+        _check_channel(channel)
+        connection = _PostgresConnection(self.parsed, self.statement_timeout_ms)
+        try:
+            connection.execute(f"LISTEN {_quote_ident(channel)}", [])
+        except BaseException:
+            connection.close()
+            raise
+        return Subscription(connection)
 
     def subscribe(
         self, subscriber: Callable[[StatementEvent], None]

@@ -145,6 +145,33 @@ final class Db
         return $this->state->pdo;
     }
 
+    /** @internal Sets the opener of the LISTEN connections of a PostgreSQL connection (Orm::connect). */
+    public function setListener(\Closure $open): void
+    {
+        $this->state->listener = $open;
+    }
+
+    /** @internal The opener of the LISTEN connections, or null on a connection without them. */
+    public function listener(): ?\Closure
+    {
+        return $this->state->listener;
+    }
+
+    /**
+     * Sends a notification with pg_notify (docs/spec/dialects.md DIA-193): inside a transaction it is delivered with that
+     * transaction's commit. Listen holds the rules and the statement, which the C extension calls too.
+     */
+    public function notify(string $channel, string $payload): void
+    {
+        Listen::notify($this, $channel, $payload);
+    }
+
+    /** Opens a LISTEN subscription on channel on a connection of its own (DIA-194). */
+    public function listen(string $channel): Subscription
+    {
+        return Listen::listen($this, $channel);
+    }
+
     /** @internal Reports this connection's driver error as a code of the error catalog. */
     public function driverError(\PDOException $e): OrmException
     {

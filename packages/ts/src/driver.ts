@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { connect as netConnect, isIP } from 'node:net';
 import mysql, { type Pool as MySqlPool, type PoolConnection as MySqlConnection } from 'mysql2/promise';
 import pg from 'pg';
+import { PostgresListener } from './listen.js';
 import { OrmError } from './runtime_error.js';
 import { parseMarkdownDsn, type MarkdownDsn } from './markdown.js';
 import * as codes from './codes.js';
@@ -59,6 +60,8 @@ export interface DriverPool extends DriverConnection {
    * schema statements and the catalog they read, and the SQLite statement that turns off foreign keys).
    */
   reserve(): Promise<DriverSession>;
+  /** Opens a LISTEN connection of its own, outside the pool (DIA-194); only PostgreSQL has one. */
+  openListener?(): Promise<PostgresListener>;
   stats(): PoolStats;
   close(): Promise<void>;
 }
@@ -439,6 +442,13 @@ class PostgresPoolDriver implements DriverPool {
     let client: pg.PoolClient;
     try { client = await this.pool.connect(); } catch (error) { throw driverError(this.name, error); }
     return new PostgresSession(client, this.cacheSize, this.config, failed => this.release(client, failed));
+  }
+  public async openListener(): Promise<PostgresListener> {
+    const client = new pg.Client(this.config);
+    // The listener attaches its own error handler before the connection opens, so an error during connect is reported by it.
+    const listener = new PostgresListener(client, error => driverError(this.name, error));
+    try { await client.connect(); } catch (error) { throw driverError(this.name, error); }
+    return listener;
   }
   public stats(): PoolStats {
     return { maxOpenConnections: this.maxOpen, openConnections: this.pool.totalCount, inUse: this.pool.totalCount - this.pool.idleCount, idle: this.pool.idleCount };

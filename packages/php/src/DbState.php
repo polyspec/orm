@@ -20,6 +20,13 @@ final class DbState
     /** @var list<string> */
     public array $stmtOrder = [];
     public bool $closed = false;
+    /**
+     * Opens a LISTEN connection of its own, outside the connection's PDO handle (docs/spec/dialects.md DIA-194). Orm::connect
+     * sets it for PostgreSQL only.
+     *
+     * @var (\Closure(): \PDO)|null
+     */
+    public ?\Closure $listener = null;
     /** The test fault that Polyspec\Orm\Testing\Faults::failNextRollback sets. Only that test entry point sets it. */
     public bool $rollbackFault = false;
     /**
