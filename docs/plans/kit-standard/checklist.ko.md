@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 3d065e78169a7893dc069e24ceea6491db46dd206a286a41e0bd8f3e49d815db -->
+<!-- source-sha256: d46c325483e36e64bb7f3e9253924df4d8512b390d8471619bcc8296551e46a7 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -167,7 +167,7 @@
 | KSTD-5-57-8 | case-database crate의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/case-database/src/lib.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-9 | build generate.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/build/src/generate.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-10 | 나머지 build 소스의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/build/src tool_db, catalog, lib | `make lint-rust` reports no finding in these files | [ ] |
-| KSTD-5-57-11 | orm 테스트 target의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests (revision, statement_events, install, dbspec_apply, dbspec_plan_apply, markdown, collection_identity, common/sqlite_case, val_text) | `make lint-rust` reports no finding in these files | [ ] |
+| KSTD-5-57-11 | orm 테스트 target revision, statement_events의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests revision.rs, statement_events.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-12 | orm 테스트 파일 listen_notify, register, clock, was_inserted의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests listen_notify, register, clock, was_inserted | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-13 | orm 테스트 파일 statement_fault, request_hook, audit_rows의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests statement_fault, request_hook, common/audit_rows | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-14 | 나머지 orm 테스트 파일의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests install, dbspec_apply, dbspec_plan_apply, common/sqlite_case, markdown, collection_identity, aes_json, coverage_interface_contract, and the rest the gate reports | `make lint-rust` reports no finding in these files | [ ] |
