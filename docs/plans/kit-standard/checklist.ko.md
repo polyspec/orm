@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 7886b0806aebeba9342fd6b75084ef6c8b202d6821781b858e315d7aa8e6c7dd -->
+<!-- source-sha256: ca674ed3eae6f8fd401f87eb072b859e8528fe03e25b760eaf84b2cd3398345a -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -146,7 +146,7 @@
 | KSTD-5-41-0 | orm에 패키지별 clippy 대상 `make clippy-crate CRATE=polyspec-orm-schema`가 lint-rust와 같은 플래그로 있다 | A clippy-crate target in the Makefile that runs cargo clippy --all-targets for CRATE with the lint-rust flags and CLIPPY_CONF_DIR of kit | `make -n clippy-crate CRATE=polyspec-orm-schema` | [o] |
 | KSTD-5-41-1 | case-database 패키지가 lint-rust 플래그의 clippy를 통과한다, `make clippy-crate CRATE=polyspec-orm-case-database` | The six clippy sites of packages/rust/case-database/src/lib.rs are propagated through their Result, with no suppression | `make clippy-crate CRATE=polyspec-orm-case-database` | [ ] |
 | KSTD-5-48 | docs-check는 Markdown 검사만 실행하고, 사이트 build는 docs-site-check에서 실행한다 | docs-check runs only the Markdown checks; the VitePress site build and the built-site readers run in docs-site-check, which the owner rules select for docs/ changes and the VitePress config | `node --test tests/docs/split.test.mts` fails on the current docs-check, which runs the site build, and passes after the split | [o] |
-| KSTD-5-40 | 모든 suppression은 이유를 적는다(KSTD-5 하위). 원인: suppression-check가 main에서 이유 없는 suppression 95개를 보고하고(Python 테스트 71, dbspec 소스 15, orm 패키지 6, 적합성 코드 2, Rust allow 1), 그래서 CI가 P8로 실패한다. | packages/python, packages/rust/orm (the suppressed lines) | `make suppression-check` | [~] |
+| KSTD-5-40 | 모든 suppression은 이유를 적는다(KSTD-5 하위). 원인: suppression-check가 main에서 이유 없는 suppression 95개를 보고하고(Python 테스트 71, dbspec 소스 15, orm 패키지 6, 적합성 코드 2, Rust allow 1), 그래서 CI가 P8로 실패한다. | packages/python, packages/rust/orm (the suppressed lines) | `make suppression-check` | [o] |
 | KSTD-6 | link rebuild는 repository layout을 읽고 자기 paths를 두지 않는다 (kit K286). Cause: kit은 link된 checkout을 layout으로 rebuild하며 link 선언의 paths key는 없어진다 | kit.json, the link declaration | `make rebuild-check` | [o] |
 | KSTD-7 | main에서 feature-unit-check가 통과한다. Cause: docs/features.md가 그것이 그리는 coverage와 맞지 않고, scripts/features/coverage.test.mts의 8개 case가 "no package implements the client language php-extension"으로 실패한다 | docs/features.md, scripts/features | `make feature-unit-check` | [o] |
 | KSTD-7-1 | PHP extension이 the features schema_install, model_generation and interface_contract를 구현하고 PHP library의 test가 extension으로 이를 돌리며, 그 partial 상태를 지운다 (KSTD-7, T182-0 후속). Cause: S6와 S10은 partial feature를 받지 않고, kit K315는 contracts/features.json의 partial과 unsupported를 실패시킨다 | packages/php-ext, contracts/features.json | `make feature-unit-check` | [ ] |
