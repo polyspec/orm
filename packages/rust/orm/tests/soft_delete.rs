@@ -24,8 +24,11 @@ impl TempFile {
     fn fresh(path: std::path::PathBuf) -> Self {
         match std::fs::remove_file(&path) {
             Ok(()) => {}
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-            Err(error) => panic!("remove the database file {}: {error}", path.display()),
+            Err(error) => {
+                if error.kind() != std::io::ErrorKind::NotFound {
+                    panic!("remove the database file {}: {error}", path.display());
+                }
+            }
         }
         TempFile(path)
     }
@@ -35,9 +38,15 @@ impl Drop for TempFile {
     fn drop(&mut self) {
         match std::fs::remove_file(&self.0) {
             Ok(()) => {}
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-            Err(error) if std::thread::panicking() => eprintln!("remove the database file {}: {error}", self.0.display()),
-            Err(error) => panic!("remove the database file {}: {error}", self.0.display()),
+            Err(error) => {
+                if error.kind() != std::io::ErrorKind::NotFound {
+                    if std::thread::panicking() {
+                        eprintln!("remove the database file {}: {error}", self.0.display());
+                    } else {
+                        panic!("remove the database file {}: {error}", self.0.display());
+                    }
+                }
+            }
         }
     }
 }

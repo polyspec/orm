@@ -121,8 +121,11 @@ fn compile_case(m: &Manifest, c: &Value) -> Result<(), String> {
         if let Some(code) = expected["error"].as_str() {
             let message = expected["message"].as_str().expect("expected message");
             match result {
-                Err(e) if matches_error(&e, code, message) => {}
-                Err(e) => return Err(format!("{}: compile = {e}; want {code} {message:?}", d.name())),
+                Err(e) => {
+                    if !matches_error(&e, code, message) {
+                        return Err(format!("{}: compile = {e}; want {code} {message:?}", d.name()));
+                    }
+                }
                 Ok(p) => return Err(format!("{}: compile = {}; want {code} {message:?}", d.name(), Value::Array(p.steps.iter().map(statement).collect()))),
             }
             continue;

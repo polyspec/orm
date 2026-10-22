@@ -267,8 +267,11 @@ impl Servers {
                         let file = PathBuf::from(format!("{}{suffix}", path.display()));
                         match std::fs::remove_file(&file) {
                             Ok(()) => {}
-                            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
-                            Err(e) => errors.push(format!("{}: {e}", file.display())),
+                            Err(e) => {
+                                if e.kind() != std::io::ErrorKind::NotFound {
+                                    errors.push(format!("{}: {e}", file.display()));
+                                }
+                            }
                         }
                         if file.exists() {
                             errors.push(format!("{} remains after cleanup", file.display()));

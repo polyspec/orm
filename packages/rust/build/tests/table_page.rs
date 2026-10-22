@@ -124,9 +124,9 @@ async fn check() {
         seed.exec(&format!("CREATE TABLE {large}(note {large_type})"), &[]).await.expect("owned budget table");
         let insert = if dialect == "postgres" { format!("INSERT INTO {large} VALUES($1)") } else { format!("INSERT INTO {large} VALUES(?)") };
         seed.exec(&insert, &[tool_db::s(&"x".repeat(8 * 1024 * 1024))]).await.expect("owned budget row");
-        match catalog.table_page(&TableRef { namespace: table.namespace.clone(), name: large.clone() }, 1, 0).await {
-            Err(error) if error.contains("TOOL_QUERY_LIMIT") => {}
-            _ => failures.push("byte-budget"),
+        let outcome = catalog.table_page(&TableRef { namespace: table.namespace.clone(), name: large.clone() }, 1, 0).await;
+        if !matches!(&outcome, Err(error) if error.contains("TOOL_QUERY_LIMIT")) {
+            failures.push("byte-budget");
         }
         let recovery = catalog.table_page(&table, 2, 0).await.expect("recovered page");
         if recovery.result.rows.len() != 2 || !recovery.has_more {
