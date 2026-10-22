@@ -1453,7 +1453,8 @@ caseTest('every CI step runs a make target', COMPUTE, () => {
   ]);
   const root = new URL('../..', import.meta.url).pathname;
   const directory = join(root, '.github/workflows');
-  assert.deepEqual(ciMakeErrors(Object.fromEntries(readdirSync(directory).filter(name => /\.ya?ml$/.test(name)).map(name => [`.github/workflows/${name}`, readFileSync(join(directory, name), 'utf8')]))), []);
+  // orm's own workflows; the copies of @polyspec/kit are kit's and kit-check holds them byte for byte (KSTD-5-24).
+  assert.deepEqual(ciMakeErrors(ownWorkflows(Object.fromEntries(readdirSync(directory).filter(name => /\.ya?ml$/.test(name)).map(name => [`.github/workflows/${name}`, readFileSync(join(directory, name), 'utf8')])), copies)), []);
 });
 
 caseTest('a test does not fail on a measured time above a bound', COMPUTE, () => {
