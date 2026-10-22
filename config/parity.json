@@ -22,7 +22,6 @@
         "packages/go/{cmd,decimalmodel,engine,generator,internal,markdownmodel,model,orm,procevent,testcase}/**/coverage_*_test.go"
       ],
       "support": [
-        "packages/go/engine/dbspec/case_clock_test.go",
         "packages/go/engine/dbspec/vector_reader_test.go",
         "packages/go/model/coverage_helpers_test.go",
         "packages/go/orm/coverage_fixture_test.go",
