@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The trigger rule of the repo check judges only orm's own workflows, and its table no longer holds release.yml, a copy of kit whose triggers kit owns (KSTD-5-25). Red: the case found release.yml with the manual trigger that kit copies, and the rule checked it.
 - The coverage rules of `docs/spec/feature-coverage.md` carry ids, and the implementation matrix moves from `docs/spec` to `docs/operations/interface-implementation.md`, so `docs/spec` holds only rules (KSTD-2-8). Red: `make docs-check` failed at `20747f534^` in the docs-build step (vitepress exit 1).
 - The lock timeout test of `packages/rust/orm` opens its case with `polyspec_orm_testcase::case!`, so it runs with its deadline and RUN line (KSTD-10-6). Red: the rule named the test as one without a case.
 - `group_rows_db.mjs` runs its case through `caseTest` with the database deadline, so it reports its PASS or FAIL line and its deadline like the other TypeScript cases (KSTD-10-4). Red: the case found the script reporting no case.

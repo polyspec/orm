@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: ea32b766356cf13b1785b9bdc31c055a86308fb97d18f47922244ae13708171a -->
+<!-- source-sha256: 049dc6b5f4549242b72d82b244dbe8f92854deba1bc080b6c689852c7b7f72c8 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -119,7 +119,7 @@
 | KSTD-5-22 | 모든 Rust test가 공유 testcase package로 case를 시작한다 (KSTD-5 후속). Cause: packages/rust/build/src/generate.rs의 fixed_list_names_the_public_methods_of_the_fixed_impl가 그렇지 않다 | packages/rust/build/src/generate.rs | `var/tools/bin/node --test --test-name-pattern='every Rust test starts its case with the shared testcase package' scripts/repo/check.test.mts` | [o] |
 | KSTD-5-23 | 어떤 recipe도 독립된 test를 차례로 돌리지 않는다 (KSTD-5 후속). Cause: Makefile의 dbspec-php-extension-check/planner recipe가 독립된 test를 하나씩 차례로 돌린다 | Makefile | `var/tools/bin/node --test --test-name-pattern='a recipe or a command that runs independent tests in sequence is refused' scripts/repo/check.test.mts` | [o] |
 | KSTD-5-24 | 모든 CI step이 make target을 돌린다 (KSTD-5 후속). Cause: .github/workflows/gates.yml의 step "install rust"가 make target을 돌리지 않는다; kit row인지 먼저 정한다 | .github/workflows or kit | `make repo-check/unit` | [ ] |
-| KSTD-5-25 | 모든 workflow가 선언된 event에서만 돈다 (KSTD-5 후속). Cause: repo check가 .github/workflows/release.yml의 trigger를 보고한다 | .github/workflows/release.yml | `make repo-check/unit` | [ ] |
+| KSTD-5-25 | 모든 workflow가 선언된 event에서만 돈다 (KSTD-5 후속). Cause: repo check가 .github/workflows/release.yml의 trigger를 보고한다 | .github/workflows/release.yml | `var/tools/bin/node --test --test-name-pattern='every workflow runs on its declared events only' scripts/repo/check.test.mts` | [o] |
 | KSTD-5-26 | Makefile build 출력은 임시 file을 거쳐 게시된다 (KSTD-5 후속). Cause: Makefile:867의 recipe가 출력을 제자리에 쓴다 | Makefile | `node --test --test-name-pattern='published through a temporary file' scripts/repo/check.test.mts` | [o] |
 | KSTD-5-27 | examples와 packages/go의 Go stdlib lock이 advisory GO-2026-6809가 없는 release에 있다 (T235 후속). Cause: examples/go.sum과 packages/go/go.sum이 stdlib v1.27.2에 고정되어 있고, review record가 GO-2026-6809를 보고한다 | examples/go.sum, packages/go/go.sum | `make dependency-policy-check` | [-] 원인: 사용자 2026-10-22: 개발 중 제3자 advisory 또는 pin 작업 없음 |
 | KSTD-5-28 | benchmarks와 packages/rust의 Rust lock이 advisory RUSTSEC-2026-0382가 없는 rustls-webpki를 쓴다 (T235 후속). Cause: benchmarks/rust/Cargo.lock과 packages/rust/Cargo.lock이 rustls-webpki 0.103.15에 고정되어 있다 | benchmarks/rust/Cargo.lock, packages/rust/Cargo.lock | `make dependency-policy-check` | [-] 원인: 사용자 2026-10-22: 개발 중 제3자 advisory 또는 pin 작업 없음 |

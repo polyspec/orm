@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1660b7738453e04ce670df25687c7c8843cea760e39c0cc406826c00026d3ae2 -->
+<!-- source-sha256: db9240b266d8dbebde40e52c18a63c835323e06d71e2ea2ab39d5c496a2ec471 -->
 # 변경 이력
 
 ## Unreleased
 
+- repo check의 trigger 규칙은 orm 자신의 workflow만 판단하고, 표에서 kit 복사본인 release.yml을 뺀다. 그 trigger는 kit이 소유한다(KSTD-5-25). red: 사례가 kit이 복사한 release.yml의 수동 trigger를 찾아 판단했다.
 - `docs/spec/feature-coverage.md`의 coverage 규칙에 id가 붙고, 구현 matrix는 `docs/spec`에서 `docs/operations/interface-implementation.md`로 옮겨져 `docs/spec`에는 규칙만 남는다(KSTD-2-8). red: `20747f534^`에서 `make docs-check`가 docs-build 단계에서 실패했다(vitepress exit 1).
 - `packages/rust/orm`의 lock timeout test는 `polyspec_orm_testcase::case!`로 case를 시작해 deadline과 RUN 줄을 가진다(KSTD-10-6). red: 규칙이 case가 없는 test로 지목했다.
 - `group_rows_db.mjs`는 데이터베이스 deadline으로 `caseTest`에서 사례를 실행하므로 다른 TypeScript 사례처럼 PASS 또는 FAIL 줄과 deadline을 보고한다(KSTD-10-4). red: 사례가 보고하는 case가 없는 스크립트를 찾았다.
