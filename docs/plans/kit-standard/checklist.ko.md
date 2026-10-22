@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 6bb9c6565e567251f056cb35ef740f413e84bdedc78b2aec9e98b700c2c29412 -->
+<!-- source-sha256: 8cb80c68f51fbe1d4792a36e784b50e803354de9fb7339ed2a398a0c35b56b72 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -107,7 +107,7 @@
 | KSTD-5-12-1 | Rust integration test에 #[cfg(test)]가 없다 (KSTD-5-12 후속). Cause: decimal_physical.rs, rollback.rs, integration.rs, dbspec_set.rs가 test로만 compile되는 파일에서 item에 #[cfg(test)]를 달아 marker가 아무 뜻도 없으며 divergence-check는 이를 분기로 읽는다 | packages/rust/tests, packages/rust/orm/tests, packages/rust/schema/tests | `cargo test --offline --manifest-path packages/rust/tests/Cargo.toml --test decimal_physical --no-run` | [o] |
 | KSTD-5-12-2 | Rust fault test는 Cargo가 test에 켜는 test-faults feature로 돌며 test code에 #[cfg]가 없다 (KSTD-5-12 후속). Cause: statement_fault.rs와 rollback.rs가 fault case를 #[cfg(feature = "test-faults")]로 막아, feature 없는 build는 다른 구현보다 적은 case를 돈다 | packages/rust/orm/Cargo.toml, packages/rust/orm/tests | `cargo test --offline --manifest-path packages/rust/orm/Cargo.toml --test statement_fault --no-run` | [o] |
 | KSTD-5-12-3 | Rust integration binary가 #[cfg(test)] 없이 생성 model을 받는다 (KSTD-5-12-1 후속). Cause: packages/rust/tests/src/integration.rs는 bin target이며 13행과 24행의 #[cfg(test)]가 build.rs가 생성한 code를 include하는 module nonnull_model과 external_member를 막아, binary와 그 test가 다른 code를 compile한다 | packages/rust/tests | `cargo build --offline --manifest-path packages/rust/tests/Cargo.toml --bins` | [o] |
-| KSTD-5-13 | bypass-check가 통과한다: 어떤 local 실행도 CI identity를 설정하지 않는다 (KSTD-5 후속). Cause: scripts/check/run.test.mts:181과 :189가 workflow 밖에서 CI identity를 설정한다 | scripts/check | `make bypass-check` | [~] |
+| KSTD-5-13 | bypass-check가 통과한다: 어떤 local 실행도 CI identity를 설정하지 않는다 (KSTD-5 후속). Cause: scripts/check/run.test.mts:181과 :189가 workflow 밖에서 CI identity를 설정한다 | scripts/check | `make bypass-check` | [o] |
 | KSTD-5-14 | rust-fmt-check가 통과한다 (KSTD-5 후속). Cause: main에서 packages/rust(build, orm/tests, schema, testcase, tests)의 cargo fmt --all --check가 실패한다 | packages/rust | `make rust-fmt-check` | [o] |
 | KSTD-5-15 | CI interface test가 workflow와 일치한다 (KSTD-5 후속). Cause: tests/interfaces/check/ci.test.mts가 .github/workflows/ci.yml에 문자 그대로의 `run: make orm-check` step을 요구하지만 workflow에 없어, main에서 interface-check/tests가 실패한다 | tests/interfaces/check/ci.test.mts or .github/workflows/ci.yml | `node --test tests/interfaces/check/ci.test.mts` | [o] |
 | KSTD-5-16 | make interface-check/self-test가 모든 언어에서 통과한다 (KSTD-5 후속). Cause: 이를 돌리지 않고 land한 row들이 public 표면을 바꿨는데 symbol contract는 그대로다: Go Apply가 ApplyResult를 돌려주고(KSTD-5-7-5), PHP AesKeyring::storedVersion과 Codec::rowVersion은 새 public helper이며(KSTD-2-11-7-2), TypeScript scanModelCalls와 Python scan_model_calls의 signature가 바뀌었고(T226) TypeScript dbspec sort helper가 옮겨졌으며(KSTD-5-5), Rust build scan.rs가 바뀌었다(T226) | contracts/symbols, contracts/interfaces.json, the changed sources | `make interface-check/self-test` | [o] |

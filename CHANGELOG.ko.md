@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c8bea7dc1979d473cef9fad8df8945b4aa8ed1e9f1cb794ba8b1a2e1d3148141 -->
+<!-- source-sha256: 94567d46bf3c75a1017cefba28a67077268ce7e3427f8760fe0c4fa845a6a167 -->
 # 변경 이력
 
 ## Unreleased
+- `scripts/check/run.test.mts`의 가드 test는 로컬에서 CI group의 거부만 검사하고 CI identity를 설정하지 않는다. 수락 사례는 GitHub Actions 프로세스에서만 실행된다(KSTD-5-13). red: 부모의 test가 로컬 실행에서 CI identity를 설정해 bypass 검사가 실패했다.
 
 - repo check의 Node, PHP, Rust 버전 규칙은 orm 자신의 workflow만 판단한다. gates.yml과 release.yml은 kit-check가 바이트 단위로 보유하는 kit 복사본이다(KSTD-10). red: 사례가 kit 복사본 gates.yml이 mise.toml과 .php-version을 읽지 않는다고 찾았다.
 - `packages/rust/orm`의 fulltext test는 `polyspec_orm_testcase::case!`로 case를 시작해 deadline과 RUN 줄을 가진다(KSTD-5-22-1). red: 규칙이 나중에 추가된 case 없는 Rust test를 지목했다.
