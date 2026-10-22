@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Polyspec\Orm;
 
 /**
- * One bounded page of a table in primary-key order. hasMore reports one row beyond the page, found by a sentinel row; it is
- * not a total count. A page is not authorization for a row change.
+ * One bounded page of a table in primary-key order. hasMore reports one row beyond the page, found by a sentinel row;
+ * it is not a total count. A page is not authorization for a row change.
  */
 final class CatalogTablePage
 {

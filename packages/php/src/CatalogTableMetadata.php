@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace Polyspec\Orm;
 
 /**
- * The descriptor of a table: its qualified name, its native relation kind, its columns in physical order, its primary key
- * in constraint order and whether that key is a reliable row identity. A descriptor is not authorization for a row change.
+ * The descriptor of a table: its qualified name, its native relation kind, its columns in physical order, its primary
+ * key in constraint order and whether that key is a reliable row identity. A descriptor is not authorization for a row
+ * change.
  */
 final class CatalogTableMetadata
 {

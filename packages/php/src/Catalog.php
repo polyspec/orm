@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace Polyspec\Orm;
 
 /**
- * The catalog connection (SCH-6a, docs/spec/interfaces.md "Qualified native Rust table metadata" to "Qualified Rust table
- * pages"). It reads table metadata and bounded table pages, runs validated read-only queries and changes rows with explicit
- * commands. Its descriptors and pages do not authorize a row change; each change re-reads its original row inside its own
- * transaction and compares it with the snapshot. Modelled on the Go catalog connection (packages/go/orm/catalog*.go).
+ * The catalog connection (SCH-6a, docs/spec/interfaces.md "Qualified native Rust table metadata" to "Qualified Rust
+ * table pages"). It reads table metadata and bounded table pages, runs validated read-only queries and changes rows
+ * with explicit commands. Its descriptors and pages do not authorize a row change; each change re-reads its original
+ * row inside its own transaction and compares it with the snapshot. Modelled on the Go catalog connection
+ * (packages/go/orm/catalog*.go).
  */
 final class Catalog
 {
@@ -20,12 +21,22 @@ final class Catalog
     private const DEFAULT_BYTES = 67108864;
     private const SQL_BYTES = 262144;
     private const MYSQL_INTEGER_TYPES = ['LONG', 'LONGLONG', 'SHORT', 'TINY', 'INT24', 'YEAR'];
-    private const MYSQL_STRING_TYPES = ['VAR_STRING', 'STRING', 'BLOB', 'TINY_BLOB', 'MEDIUM_BLOB', 'LONG_BLOB', 'ENUM', 'SET'];
+    private const MYSQL_STRING_TYPES = [
+        'VAR_STRING',
+        'STRING',
+        'BLOB',
+        'TINY_BLOB',
+        'MEDIUM_BLOB',
+        'LONG_BLOB',
+        'ENUM',
+        'SET'
+    ];
 
     /** Selects the native kind of a relation by its namespace and name. */
     private const KIND_SQL = [
         'mysql' => 'SELECT TABLE_TYPE FROM information_schema.TABLES WHERE TABLE_SCHEMA=? AND TABLE_NAME=?',
-        'postgres' => 'SELECT c.relkind::text FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=? AND c.relname=?',
+        'postgres' => 'SELECT c.relkind::text FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE '
+            . 'n.nspname=? AND c.relname=?',
         'sqlite' => 'SELECT type FROM pragma_table_list WHERE schema=? AND name=?',
     ];
 
@@ -34,16 +45,35 @@ final class Catalog
      * automatic key, default expression and whether the default is an expression.
      */
     private const COLUMNS_SQL = [
-        'mysql' => "SELECT c.COLUMN_NAME,c.COLUMN_TYPE,c.IS_NULLABLE='YES',(c.GENERATION_EXPRESSION IS NOT NULL AND c.GENERATION_EXPRESSION<>''),COALESCE(pk.ORDINAL_POSITION,0),(c.EXTRA LIKE '%auto_increment%'),c.COLUMN_DEFAULT,(c.EXTRA LIKE '%DEFAULT_GENERATED%') FROM information_schema.COLUMNS c LEFT JOIN information_schema.KEY_COLUMN_USAGE pk ON pk.CONSTRAINT_SCHEMA=c.TABLE_SCHEMA AND pk.TABLE_NAME=c.TABLE_NAME AND pk.COLUMN_NAME=c.COLUMN_NAME AND pk.CONSTRAINT_NAME='PRIMARY' WHERE c.TABLE_SCHEMA=? AND c.TABLE_NAME=? ORDER BY c.ORDINAL_POSITION",
-        'postgres' => 'SELECT a.attname::text,format_type(a.atttypid,a.atttypmod),NOT a.attnotnull,(a.attgenerated<>\'\' OR a.attidentity=\'a\'),COALESCE(k.ord,0),(a.attidentity<>\'\'),pg_get_expr(d.adbin,d.adrelid),(d.adbin IS NOT NULL) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_attribute a ON a.attrelid=c.oid LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum LEFT JOIN pg_index i ON i.indrelid=c.oid AND i.indisprimary LEFT JOIN LATERAL unnest(i.indkey) WITH ORDINALITY AS k(attnum,ord) ON k.attnum=a.attnum WHERE n.nspname=? AND c.relname=? AND a.attnum>0 AND NOT a.attisdropped ORDER BY a.attnum',
-        'sqlite' => 'SELECT name,type,NOT "notnull",hidden<>0,pk,0,dflt_value,(dflt_value IS NOT NULL) FROM pragma_table_xinfo(?,?) ORDER BY cid',
+        'mysql' => "SELECT c.COLUMN_NAME,c.COLUMN_TYPE,c.IS_NULLABLE='YES',(c.GENERATION_EXPRESSION IS NOT NULL AND "
+            . "c.GENERATION_EXPRESSION<>''),COALESCE(pk.ORDINAL_POSITION,0),(c.EXTRA LIKE "
+            . "'%auto_increment%'),c.COLUMN_DEFAULT,(c.EXTRA LIKE '%DEFAULT_GENERATED%') FROM "
+            . "information_schema.COLUMNS c LEFT JOIN information_schema.KEY_COLUMN_USAGE pk ON "
+            . "pk.CONSTRAINT_SCHEMA=c.TABLE_SCHEMA AND pk.TABLE_NAME=c.TABLE_NAME AND pk.COLUMN_NAME=c.COLUMN_NAME "
+            . "AND pk.CONSTRAINT_NAME='PRIMARY' WHERE c.TABLE_SCHEMA=? AND c.TABLE_NAME=? ORDER BY c.ORDINAL_POSITION",
+        'postgres' => 'SELECT a.attname::text,format_type(a.atttypid,a.atttypmod),NOT '
+            . 'a.attnotnull,(a.attgenerated<>\'\' OR '
+            . 'a.attidentity=\'a\'),COALESCE(k.ord,0),(a.attidentity<>\'\'),pg_get_expr(d.adbin,d.adrelid),(d.adbin '
+            . 'IS NOT NULL) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_attribute a ON '
+            . 'a.attrelid=c.oid LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum LEFT JOIN '
+            . 'pg_index i ON i.indrelid=c.oid AND i.indisprimary LEFT JOIN LATERAL unnest(i.indkey) WITH ORDINALITY '
+            . 'AS k(attnum,ord) ON k.attnum=a.attnum WHERE n.nspname=? AND c.relname=? AND a.attnum>0 AND NOT '
+            . 'a.attisdropped ORDER BY a.attnum',
+        'sqlite' => 'SELECT name,type,NOT "notnull",hidden<>0,pk,0,dflt_value,(dflt_value IS NOT NULL) FROM '
+            . 'pragma_table_xinfo(?,?) ORDER BY cid',
     ];
 
     /** The keywords that a read query never uses as a statement or clause; a query that contains one is refused. */
     private const WRITE_WORDS = [
         'INSERT' => true, 'UPDATE' => true, 'DELETE' => true, 'MERGE' => true, 'UPSERT' => true, 'CREATE' => true,
         'DROP' => true, 'ALTER' => true, 'TRUNCATE' => true, 'RENAME' => true, 'GRANT' => true, 'REVOKE' => true,
-        'CALL' => true, 'DO' => true, 'INTO' => true, 'LOCK' => true, 'SHARE' => true, 'PROCEDURE' => true, 'LOAD' => true,
+        'CALL' => true,
+        'DO' => true,
+        'INTO' => true,
+        'LOCK' => true,
+        'SHARE' => true,
+        'PROCEDURE' => true,
+        'LOAD' => true,
         'COPY' => true, 'ATTACH' => true, 'DETACH' => true, 'PRAGMA' => true, 'VACUUM' => true, 'REINDEX' => true,
         'ANALYZE' => true,
     ];
@@ -55,14 +85,16 @@ final class Catalog
     }
 
     /**
-     * Opens the catalog connection of a mysql, postgres or sqlite DSN. A markdown DSN is refused. A SQLite DSN must name an
-     * existing regular file, and the connection never creates one.
+     * Opens the catalog connection of a mysql, postgres or sqlite DSN. A markdown DSN is refused. A SQLite DSN must
+     * name an existing regular file, and the connection never creates one.
      */
     public static function connect(string $dsn): self
     {
         if (preg_match('#^markdown://#i', $dsn) === 1) {
-            throw new OrmException(Code::CONFIG,
-                'CATALOG_DSN: a markdown corpus has no database catalog; give a mysql, postgres or sqlite DSN');
+            throw new OrmException(
+                Code::CONFIG,
+                'CATALOG_DSN: a markdown corpus has no database catalog; give a mysql, postgres or sqlite DSN'
+            );
         }
         [$driver, $pdoDsn] = Orm::parseDsn($dsn);
         if ($driver === 'sqlite') {
@@ -87,7 +119,10 @@ final class Catalog
         $this->db->close();
     }
 
-    /** The namespace of the connection: the current schema of PostgreSQL, the current database of MySQL and main for SQLite. */
+    /**
+     * The namespace of the connection: the current schema of PostgreSQL, the current database of MySQL and main for
+     * SQLite.
+     */
     public function currentNamespace(): string
     {
         if ($this->dialect === 'sqlite') {
@@ -97,7 +132,10 @@ final class Catalog
         return $this->read(function (\PDO $pdo) use ($query): string {
             $raw = $this->query($pdo, $query, [], 2, self::METADATA_BYTES);
             if (count($raw['rows']) !== 1 || count($raw['rows'][0]) !== 1) {
-                throw new OrmException(Code::TABLE_NAMESPACE_UNAVAILABLE, 'the connection reported no single namespace');
+                throw new OrmException(
+                    Code::TABLE_NAMESPACE_UNAVAILABLE,
+                    'the connection reported no single namespace'
+                );
             }
             $name = $raw['rows'][0][0];
             if (!is_string($name)) {
@@ -109,8 +147,8 @@ final class Catalog
     }
 
     /**
-     * Reads the metadata of an explicitly qualified table, {namespace, name}, in a read-only session. The descriptor must
-     * be the same when it is read again within the session.
+     * Reads the metadata of an explicitly qualified table, {namespace, name}, in a read-only session. The descriptor
+     * must be the same when it is read again within the session.
      *
      * @param array{namespace: string, name: string} $table
      */
@@ -121,8 +159,8 @@ final class Catalog
     }
 
     /**
-     * Reads one bounded page of an explicitly qualified table in primary-key order, in a fresh read-only session. A table
-     * without a primary key has no defined order. The descriptor must be the same before and after the read.
+     * Reads one bounded page of an explicitly qualified table in primary-key order, in a fresh read-only session. A
+     * table without a primary key has no defined order. The descriptor must be the same before and after the read.
      *
      * @param array{namespace: string, name: string} $table
      */
@@ -154,14 +192,20 @@ final class Catalog
             if ($hasMore) {
                 $rows = array_slice($rows, 0, $limit);
             }
-            return new CatalogTablePage($metadata, new CatalogResult(self::columnNames($metadata), $rows),
-                $limit, $offset, $metadata->primaryKey, $hasMore);
+            return new CatalogTablePage(
+                $metadata,
+                new CatalogResult(self::columnNames($metadata), $rows),
+                $limit,
+                $offset,
+                $metadata->primaryKey,
+                $hasMore
+            );
         });
     }
 
     /**
-     * Captures the row at index of a page as a snapshot. The table must have a reliable row identity, and the page must be
-     * a page of that table as tablePage reads it.
+     * Captures the row at index of a page as a snapshot. The table must have a reliable row identity, and the page must
+     * be a page of that table as tablePage reads it.
      */
     public function rowSnapshotFromPage(CatalogTablePage $page, int $index): CatalogRowSnapshot
     {
@@ -170,14 +214,20 @@ final class Catalog
             self::checkName($metadata->table['namespace']);
             self::checkName($metadata->table['name']);
         } catch (OrmException $e) {
-            throw new OrmException(Code::ROW_SNAPSHOT_INVALID, 'invalid original row or descriptor: ' . $e->getMessage(), $e);
+            throw new OrmException(
+                Code::ROW_SNAPSHOT_INVALID,
+                'invalid original row or descriptor: ' . $e->getMessage(),
+                $e
+            );
         }
         if ($page->limit < 1 || $page->limit > 1000 || $page->offset < 0 || $page->offset > 1000000) {
             throw new OrmException(Code::ROW_SNAPSHOT_INVALID, 'invalid page bounds');
         }
         $rows = $page->result->rows;
-        if (count($rows) > $page->limit || ($page->hasMore && count($rows) !== $page->limit)
-            || $page->orderBy !== $metadata->primaryKey) {
+        if (
+            count($rows) > $page->limit || ($page->hasMore && count($rows) !== $page->limit)
+            || $page->orderBy !== $metadata->primaryKey
+        ) {
             throw new OrmException(Code::ROW_SNAPSHOT_INVALID, 'page rows or order do not match its bounds');
         }
         $keyIndexes = self::descriptorKeys($metadata);
@@ -193,8 +243,9 @@ final class Catalog
     }
 
     /**
-     * Runs one read query (SELECT, WITH or VALUES) in a fresh read-only session. A query that writes, locks or has more than
-     * one statement fails with QUERY_READ_ONLY before it runs. Placeholders are `?`; a result over a limit fails, never truncated.
+     * Runs one read query (SELECT, WITH or VALUES) in a fresh read-only session. A query that writes, locks or has more
+     * than one statement fails with QUERY_READ_ONLY before it runs. Placeholders are `?`; a result over a limit fails,
+     * never truncated.
      *
      * @param list<mixed> $params
      */
@@ -204,15 +255,20 @@ final class Catalog
     }
 
     /**
-     * Runs one read query like readOnlyQuery, and types each cell by its native column type: float cells hold their IEEE-754
-     * bits, UNSIGNED integers are unsigned cells, DECIMAL is plain text, date, time and datetime hold the dbspec text with six
-     * fraction digits, binary is bytes and NULL is a null cell. MySQL TIMESTAMP, PostgreSQL timestamptz and timetz, and values
-     * outside the dbspec ranges fail with CATALOG_VALUE. Rows hold CatalogGridCell values.
+     * Runs one read query like readOnlyQuery, and types each cell by its native column type: float cells hold their
+     * IEEE-754 bits, UNSIGNED integers are unsigned cells, DECIMAL is plain text, date, time and datetime hold the
+     * dbspec text with six fraction digits, binary is bytes and NULL is a null cell. MySQL TIMESTAMP, PostgreSQL
+     * timestamptz and timetz, and values outside the dbspec ranges fail with CATALOG_VALUE. Rows hold CatalogGridCell
+     * values.
      *
      * @param list<mixed> $params
      */
-    public function readOnlyGridQuery(string $sql, array $params = [], int $maxRows = 0, int $maxBytes = 0): CatalogResult
-    {
+    public function readOnlyGridQuery(
+        string $sql,
+        array $params = [],
+        int $maxRows = 0,
+        int $maxBytes = 0
+    ): CatalogResult {
         return $this->readOnly($sql, $params, $maxRows, $maxBytes, true);
     }
 
@@ -240,9 +296,10 @@ final class Catalog
     }
 
     /**
-     * Inserts one row with explicit primary-key values inside a writable transaction. It rejects an existing key, writes with
-     * bound parameters, requires exactly one affected row and re-reads the row by its key before it commits. Every supplied
-     * value must read back exactly. Automatic and expression-default keys are not supported and fail when the key is not given.
+     * Inserts one row with explicit primary-key values inside a writable transaction. It rejects an existing key,
+     * writes with bound parameters, requires exactly one affected row and re-reads the row by its key before it
+     * commits. Every supplied value must read back exactly. Automatic and expression-default keys are not supported and
+     * fail when the key is not given.
      *
      * @param array<string, mixed> $values column name => value
      */
@@ -257,15 +314,22 @@ final class Catalog
         $keys = [];
         foreach ($keyIndexes as $index) {
             if (!array_key_exists($index, $provided)) {
-                throw new OrmException(Code::ROW_INSERT_INVALID,
-                    'explicit primary-key value of "' . $declared->columns[$index]->name . '" is required');
+                throw new OrmException(
+                    Code::ROW_INSERT_INVALID,
+                    'explicit primary-key value of "' . $declared->columns[$index]->name . '" is required'
+                );
             }
             $keys[] = $provided[$index];
         }
         return $this->write(function (\PDO $pdo) use ($declared, $changes, $keys): CatalogResult {
             if ($this->dialect === 'postgres') {
-                // The lock that an INSERT takes, held before the schema check so that no DDL changes the table in between.
-                $this->exec($pdo, 'LOCK TABLE ' . self::qualified($declared->table, $this->dialect) . ' IN ROW EXCLUSIVE MODE', []);
+                // The lock that an INSERT takes, held before the schema check so that no DDL changes the table in
+                // between.
+                $this->exec(
+                    $pdo,
+                    'LOCK TABLE ' . self::qualified($declared->table, $this->dialect) . ' IN ROW EXCLUSIVE MODE',
+                    []
+                );
             }
             if ($this->lookup($pdo, $declared, $keys, true) !== []) {
                 throw new OrmException(Code::ROW_CONFLICT, 'insertion key already exists');
@@ -300,8 +364,10 @@ final class Catalog
             }
             foreach ($changes as [$index, $value]) {
                 if (self::cellKey($after[0][$index]) !== self::cellKey($value)) {
-                    throw new OrmException(Code::ROW_WRITE_MISMATCH,
-                        'stored inserted values of "' . $descriptor->columns[$index]->name . '" differ');
+                    throw new OrmException(
+                        Code::ROW_WRITE_MISMATCH,
+                        'stored inserted values of "' . $descriptor->columns[$index]->name . '" differ'
+                    );
                 }
             }
             return new CatalogResult(self::columnNames($descriptor), $after);
@@ -309,9 +375,9 @@ final class Catalog
     }
 
     /**
-     * Updates the row of an original snapshot. Inside the transaction it re-reads the row by its original keys, locks it,
-     * compares it with the snapshot and then writes. After the write it re-reads the row by its resulting keys and requires
-     * every ordinary column to hold the value that was written. A failed check rolls back.
+     * Updates the row of an original snapshot. Inside the transaction it re-reads the row by its original keys, locks
+     * it, compares it with the snapshot and then writes. After the write it re-reads the row by its resulting keys and
+     * requires every ordinary column to hold the value that was written. A failed check rolls back.
      *
      * @param array<string, mixed> $values column name => value
      */
@@ -366,7 +432,10 @@ final class Catalog
             }
             $after = $this->lookup($pdo, $descriptor, $newKeys, false);
             if (count($after) !== 1) {
-                throw new OrmException(Code::ROW_WRITE_MISMATCH, 'expected exactly one updated row, got ' . count($after));
+                throw new OrmException(
+                    Code::ROW_WRITE_MISMATCH,
+                    'expected exactly one updated row, got ' . count($after)
+                );
             }
             if ($this->describe($pdo, $original->metadata->table) != $descriptor) {
                 throw new OrmException(Code::ROW_SCHEMA_CHANGED, 'original descriptor changed');
@@ -377,7 +446,10 @@ final class Catalog
                     continue;
                 }
                 if (self::cellKey($after[0][$i]) !== self::cellKey($updated[$i])) {
-                    throw new OrmException(Code::ROW_WRITE_MISMATCH, 'stored ordinary values of "' . $column->name . '" differ');
+                    throw new OrmException(
+                        Code::ROW_WRITE_MISMATCH,
+                        'stored ordinary values of "' . $column->name . '" differ'
+                    );
                 }
             }
             return new CatalogResult(self::columnNames($descriptor), $after);
@@ -385,8 +457,8 @@ final class Catalog
     }
 
     /**
-     * Deletes the row of an original snapshot. Inside the transaction it locks and compares the row, requires exactly one
-     * affected row and verifies that no row remains under the key. It returns the number of rows deleted.
+     * Deletes the row of an original snapshot. Inside the transaction it locks and compares the row, requires exactly
+     * one affected row and verifies that no row remains under the key. It returns the number of rows deleted.
      */
     public function deleteRow(CatalogRowSnapshot $original): int
     {
@@ -402,7 +474,10 @@ final class Catalog
             if ($this->dialect === 'mysql') {
                 $this->mysqlSafety($pdo, $descriptor);
             }
-            $sql = 'DELETE FROM ' . self::qualified($descriptor->table, $this->dialect) . ' WHERE ' . $this->keyPredicate($descriptor);
+            $sql = 'DELETE FROM ' . self::qualified(
+                $descriptor->table,
+                $this->dialect
+            ) . ' WHERE ' . $this->keyPredicate($descriptor);
             $affected = $this->exec($pdo, $sql, $keys);
             if ($affected !== 1) {
                 throw new OrmException(Code::ROW_WRITE_MISMATCH, "expected exactly one deleted row, got $affected");
@@ -418,8 +493,8 @@ final class Catalog
     }
 
     /**
-     * Runs a bounded query and types each cell by the native type of its column (gridCell). SQLite types each value, so its
-     * cells take the type of their own value.
+     * Runs a bounded query and types each cell by the native type of its column (gridCell). SQLite types each value, so
+     * its cells take the type of their own value.
      *
      * @param list<mixed> $args
      * @return array{names: list<string>, rows: list<list<CatalogGridCell>>}
@@ -438,17 +513,28 @@ final class Catalog
                 $native = strtoupper((string) ($meta['native_type'] ?? ''));
                 $unsigned = false;
                 $binary = false;
-                if ($this->dialect === 'mysql' && (in_array($native, self::MYSQL_INTEGER_TYPES, true)
-                    || in_array($native, self::MYSQL_STRING_TYPES, true))) {
-                    // PDO reports neither the UNSIGNED flag nor the binary charset, so both come from the column definition of
-                    // the table. An expression has no column definition, and its type is refused rather than guessed.
+                if (
+                    $this->dialect === 'mysql' && (in_array($native, self::MYSQL_INTEGER_TYPES, true)
+                    || in_array($native, self::MYSQL_STRING_TYPES, true))
+                ) {
+                    // PDO reports neither the UNSIGNED flag nor the binary charset, so both come from the column
+                    // definition of the table. An expression has no column definition, and its type is refused rather
+                    // than guessed.
                     $table = (string) ($meta['table'] ?? '');
                     if ($table === '') {
-                        throw self::refused("expression \"$name\" of type $native has no column definition, so PDO does not report its signedness or charset; select a table column");
+                        throw self::refused(
+                            "expression "
+                            . "\"$name\" of type $native has no column definition, so PDO does not report its "
+                                . "signedness or charset; select a table column"
+                        );
                     }
                     [$dataType, $columnType] = $this->mysqlColumnDefinition($pdo, $table, $name);
                     $unsigned = str_contains($columnType, 'unsigned');
-                    $binary = in_array($dataType, ['binary', 'varbinary', 'tinyblob', 'blob', 'mediumblob', 'longblob'], true);
+                    $binary = in_array(
+                        $dataType,
+                        ['binary', 'varbinary', 'tinyblob', 'blob', 'mediumblob', 'longblob'],
+                        true
+                    );
                 }
                 $columns[] = [$native, $unsigned, $binary];
             }
@@ -468,7 +554,8 @@ final class Catalog
                 foreach ($row as $i => $value) {
                     [$native, $unsigned, $binary] = $columns[$i];
                     if ($this->dialect === 'sqlite') {
-                        // SQLite types each value: PDO reports the type of this row's value, and a blob with the flag blob.
+                        // SQLite types each value: PDO reports the type of this row's value, and a blob with the flag
+                        // blob.
                         $cellMeta = $st->getColumnMeta($i) ?: [];
                         $native = strtoupper((string) ($cellMeta['native_type'] ?? ''));
                         $binary = in_array('blob', (array) ($cellMeta['flags'] ?? []), true);
@@ -484,11 +571,16 @@ final class Catalog
     }
 
     /**
-     * The grid cell of one driver value. native is the upper-cased type name that PDO reports for the column (MySQL field
-     * type names, PostgreSQL type names); unsigned is a MySQL UNSIGNED column and binary a binary string.
+     * The grid cell of one driver value. native is the upper-cased type name that PDO reports for the column (MySQL
+     * field type names, PostgreSQL type names); unsigned is a MySQL UNSIGNED column and binary a binary string.
      */
-    private static function gridCell(mixed $value, string $dialect, string $native, bool $unsigned, bool $binary): CatalogGridCell
-    {
+    private static function gridCell(
+        mixed $value,
+        string $dialect,
+        string $native,
+        bool $unsigned,
+        bool $binary
+    ): CatalogGridCell {
         if ($value === null) {
             return new CatalogGridCell('null');
         }
@@ -557,7 +649,10 @@ final class Catalog
         }
         if (is_string($value)) {
             if (!self::isUtf8($value)) {
-                throw new OrmException(Code::CATALOG_VALUE, 'unsupported grid value: text of native type "' . $native . '" is not valid UTF-8');
+                throw new OrmException(
+                    Code::CATALOG_VALUE,
+                    'unsupported grid value: text of native type "' . $native . '" is not valid UTF-8'
+                );
             }
             return new CatalogGridCell('text', $value);
         }
@@ -588,9 +683,14 @@ final class Catalog
      */
     private function mysqlColumnDefinition(\PDO $pdo, string $table, string $column): array
     {
-        $rows = $this->query($pdo,
-            'SELECT DATA_TYPE, COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME=?',
-            [$table, $column], 2, self::METADATA_BYTES)['rows'];
+        $rows = $this->query(
+            $pdo,
+            'SELECT DATA_TYPE, COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND '
+            . 'TABLE_NAME=? AND COLUMN_NAME=?',
+            [$table, $column],
+            2,
+            self::METADATA_BYTES
+        )['rows'];
         if (count($rows) !== 1 || !is_string($rows[0][0] ?? null) || !is_string($rows[0][1] ?? null)) {
             throw self::refused("column \"$table.$column\" has no single column definition in the current database");
         }
@@ -636,11 +736,17 @@ final class Catalog
         throw self::refused('expected a number, got ' . get_debug_type($value));
     }
 
-    /** An integer cell; an UNSIGNED column holds its value as exact decimal digits, which PHP ints cannot hold past PHP_INT_MAX. */
+    /**
+     * An integer cell; an UNSIGNED column holds its value as exact decimal digits, which PHP ints cannot hold past
+     * PHP_INT_MAX.
+     */
     private static function integerCell(mixed $value, bool $unsigned): CatalogGridCell
     {
         if (is_int($value)) {
-            return $unsigned ? new CatalogGridCell('unsigned', sprintf('%u', $value)) : new CatalogGridCell('integer', $value);
+            return $unsigned ? new CatalogGridCell(
+                'unsigned',
+                sprintf('%u', $value)
+            ) : new CatalogGridCell('integer', $value);
         }
         if (!is_string($value)) {
             throw self::refused('expected an integer, got ' . get_debug_type($value));
@@ -661,8 +767,10 @@ final class Catalog
     /** A dbspec date, YYYY-MM-DD: a calendar date from 0001-01-01 to 9999-12-31. */
     private static function dateText(string $text): string
     {
-        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $text, $m) !== 1 || (int) $m[1] < 1
-            || !checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
+        if (
+            preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $text, $m) !== 1 || (int) $m[1] < 1
+            || !checkdate((int) $m[2], (int) $m[3], (int) $m[1])
+        ) {
             throw self::refused("date \"$text\" is outside 0001-01-01 to 9999-12-31 or is not a date");
         }
         return $text;
@@ -703,8 +811,8 @@ final class Catalog
     }
 
     /**
-     * Runs fn in a writable transaction. A failed fn rolls back. A commit that the database rejects rolls back and reports
-     * ROW_COMMIT_REJECTED; any other commit failure is an unknown outcome that must not be retried.
+     * Runs fn in a writable transaction. A failed fn rolls back. A commit that the database rejects rolls back and
+     * reports ROW_COMMIT_REJECTED; any other commit failure is an unknown outcome that must not be retried.
      *
      * @template T
      * @param \Closure(\PDO): T $fn
@@ -716,8 +824,8 @@ final class Catalog
     }
 
     /**
-     * Opens one transaction on the connection, runs fn and ends the transaction. SQLite sets query_only on every session
-     * itself, so a read session cannot write and a write session is not left read-only.
+     * Opens one transaction on the connection, runs fn and ends the transaction. SQLite sets query_only on every
+     * session itself, so a read session cannot write and a write session is not left read-only.
      *
      * @template T
      * @param \Closure(\PDO): T $fn
@@ -751,7 +859,9 @@ final class Catalog
         return $value;
     }
 
-    /** Rolls the transaction back and rethrows cause; a failed rollback is reported with cause as its previous error. */
+    /**
+     * Rolls the transaction back and rethrows cause; a failed rollback is reported with cause as its previous error.
+     */
     private function rollback(\PDO $pdo, \Throwable $cause): never
     {
         try {
@@ -767,7 +877,11 @@ final class Catalog
         try {
             $pdo->exec('ROLLBACK');
         } catch (\PDOException $e) {
-            throw new OrmException(Code::ROW_ROLLBACK_FAILED, 'rollback: ' . $this->db->driverError($e)->getMessage(), $e);
+            throw new OrmException(
+                Code::ROW_ROLLBACK_FAILED,
+                'rollback: ' . $this->db->driverError($e)->getMessage(),
+                $e
+            );
         }
     }
 
@@ -775,13 +889,22 @@ final class Catalog
     private function commitFailed(\PDO $pdo, \PDOException $e): never
     {
         $mapped = $this->db->driverError($e);
-        if (in_array($mapped->code_, [Code::DUPLICATE_KEY, Code::FOREIGN_KEY, Code::CONSTRAINT, Code::DEADLOCK], true)) {
-            $this->rollback($pdo, new OrmException(Code::ROW_COMMIT_REJECTED,
-                'native commit rejected: ' . $mapped->getMessage(), $mapped));
+        if (
+            in_array(
+                $mapped->code_,
+                [Code::DUPLICATE_KEY, Code::FOREIGN_KEY, Code::CONSTRAINT, Code::DEADLOCK],
+                true
+            )
+        ) {
+            $this->rollback($pdo, new OrmException(
+                Code::ROW_COMMIT_REJECTED,
+                'native commit rejected: ' . $mapped->getMessage(),
+                $mapped
+            ));
         }
-        // The outcome is unknown. Ending the server transaction is the discard of the connection that the Go client does.
-        // Whether that ROLLBACK succeeds does not change the outcome, which is reported as unknown: a failed ROLLBACK is
-        // reported with it, as the cause of the indeterminate error.
+        // The outcome is unknown. Ending the server transaction is the discard of the connection that the Go client
+        // does. Whether that ROLLBACK succeeds does not change the outcome, which is reported as unknown: a failed
+        // ROLLBACK is reported with it, as the cause of the indeterminate error.
         $message = 'commit outcome unknown; do not retry: ' . $mapped->getMessage();
         $cause = $mapped;
         try {
@@ -854,8 +977,8 @@ final class Catalog
     }
 
     /**
-     * Describes a table inside the session. Callers that need a stable descriptor describe it again inside the same session
-     * and compare the two.
+     * Describes a table inside the session. Callers that need a stable descriptor describe it again inside the same
+     * session and compare the two.
      *
      * @param array{namespace: string, name: string} $ref
      */
@@ -864,7 +987,13 @@ final class Catalog
         if ($this->dialect === 'sqlite' && $ref['namespace'] !== 'main') {
             throw new OrmException(Code::TABLE_NAMESPACE_UNSUPPORTED, 'SQLite requires main');
         }
-        $kindRaw = $this->query($pdo, self::KIND_SQL[$this->dialect], [$ref['namespace'], $ref['name']], 2, self::METADATA_BYTES);
+        $kindRaw = $this->query(
+            $pdo,
+            self::KIND_SQL[$this->dialect],
+            [$ref['namespace'], $ref['name']],
+            2,
+            self::METADATA_BYTES
+        );
         if ($kindRaw['rows'] === []) {
             throw new OrmException(Code::TABLE_NOT_FOUND, $ref['namespace'] . '.' . $ref['name']);
         }
@@ -905,17 +1034,33 @@ final class Catalog
             }
         }
 
-        // A SQLite INTEGER primary key without a separate primary-key index is the rowid alias: never NULL, generated by the database.
-        if ($this->dialect === 'sqlite' && $kind === 'table' && count($keys) === 1
-            && strcasecmp($columns[$keys[0][1]]->nativeType, 'INTEGER') === 0) {
-            $indexRaw = $this->query($pdo, "SELECT count(*) FROM pragma_index_list(?,?) WHERE origin='pk'", $args, 1, self::METADATA_BYTES);
+        // A SQLite INTEGER primary key without a separate primary-key index is the rowid alias: never NULL, generated
+        // by the database.
+        if (
+            $this->dialect === 'sqlite' && $kind === 'table' && count($keys) === 1
+            && strcasecmp($columns[$keys[0][1]]->nativeType, 'INTEGER') === 0
+        ) {
+            $indexRaw = $this->query(
+                $pdo,
+                "SELECT count(*) FROM pragma_index_list(?,?) WHERE origin='pk'",
+                $args,
+                1,
+                self::METADATA_BYTES
+            );
             if (count($indexRaw['rows']) !== 1 || count($indexRaw['rows'][0]) !== 1) {
                 throw new OrmException(Code::TABLE_METADATA_INVALID, 'primary index count');
             }
             if (self::intValue($indexRaw['rows'][0][0]) === 0) {
                 $old = $columns[$keys[0][1]];
-                $columns[$keys[0][1]] = new CatalogColumn($old->name, $old->nativeType, false, $old->generated,
-                    true, $old->defaultExpression, $old->expressionDefault);
+                $columns[$keys[0][1]] = new CatalogColumn(
+                    $old->name,
+                    $old->nativeType,
+                    false,
+                    $old->generated,
+                    true,
+                    $old->defaultExpression,
+                    $old->expressionDefault
+                );
             }
         }
 
@@ -979,7 +1124,10 @@ final class Catalog
     /** The predicate of the primary key: each key column equals one placeholder. */
     private function keyPredicate(CatalogTableMetadata $metadata): string
     {
-        return implode(' AND ', array_map(fn (string $name): string => self::quote($name, $this->dialect) . '=?', $metadata->primaryKey));
+        return implode(
+            ' AND ',
+            array_map(fn (string $name): string => self::quote($name, $this->dialect) . '=?', $metadata->primaryKey)
+        );
     }
 
     private static function kind(string $dialect, string $native): string
@@ -1005,10 +1153,20 @@ final class Catalog
         self::checkName($name);
         $native = self::text($row[1]);
         if ($row[6] !== null && !is_string($row[6])) {
-            throw new OrmException(Code::TABLE_METADATA_INVALID, "default expression of column \"$name\" is " . get_debug_type($row[6]));
+            throw new OrmException(
+                Code::TABLE_METADATA_INVALID,
+                "default expression of column \"$name\" is " . get_debug_type($row[6])
+            );
         }
-        return new CatalogColumn($name, $native, self::boolValue($row[2]), self::boolValue($row[3]),
-            self::boolValue($row[5]), $row[6], self::boolValue($row[7]));
+        return new CatalogColumn(
+            $name,
+            $native,
+            self::boolValue($row[2]),
+            self::boolValue($row[3]),
+            self::boolValue($row[5]),
+            $row[6],
+            self::boolValue($row[7])
+        );
     }
 
     private static function text(mixed $value): string
@@ -1062,8 +1220,8 @@ final class Catalog
     }
 
     /**
-     * Converts the values of a raw result with the native type of each column. Text is a string, binary the bytes, integers
-     * int, floats float, and decimals their plain text. A value that its type does not fit fails explicitly.
+     * Converts the values of a raw result with the native type of each column. Text is a string, binary the bytes,
+     * integers int, floats float, and decimals their plain text. A value that its type does not fit fails explicitly.
      *
      * @param array{names: list<string>, types: list<string>, rows: list<list<mixed>>} $raw
      * @param list<string> $types
@@ -1072,7 +1230,10 @@ final class Catalog
     private static function convertRows(array $raw, array $types): array
     {
         if (count($types) !== count($raw['names'])) {
-            throw new OrmException(Code::TABLE_METADATA_INVALID, count($types) . ' native types for ' . count($raw['names']) . ' columns');
+            throw new OrmException(
+                Code::TABLE_METADATA_INVALID,
+                count($types) . ' native types for ' . count($raw['names']) . ' columns'
+            );
         }
         $out = [];
         foreach ($raw['rows'] as $row) {
@@ -1151,8 +1312,9 @@ final class Catalog
     }
 
     /**
-     * Checks named assignments against a descriptor and returns [column index, normalized value] in the order given. Unknown,
-     * duplicate and generated columns, a NULL in a non-null column and unsupported values fail before any statement runs.
+     * Checks named assignments against a descriptor and returns [column index, normalized value] in the order given.
+     * Unknown, duplicate and generated columns, a NULL in a non-null column and unsupported values fail before any
+     * statement runs.
      *
      * @param array<string, mixed> $values
      * @return list<array{0: int, 1: mixed}>
@@ -1208,8 +1370,10 @@ final class Catalog
         if (!in_array($metadata->kind, ['table', 'partitioned'], true)) {
             throw $invalid('the relation is not a table');
         }
-        if (!$metadata->reliableRowIdentity || $metadata->primaryKey === [] || $metadata->columns === []
-            || count($metadata->columns) > 2048) {
+        if (
+            !$metadata->reliableRowIdentity || $metadata->primaryKey === [] || $metadata->columns === []
+            || count($metadata->columns) > 2048
+        ) {
             throw $invalid('no reliable row identity');
         }
         $names = [];
@@ -1262,20 +1426,25 @@ final class Catalog
     private static function checkCells(CatalogTableMetadata $metadata, array $cells): void
     {
         if (count($cells) !== count($metadata->columns)) {
-            throw new OrmException(Code::ROW_SNAPSHOT_INVALID,
-                'row has ' . count($cells) . ' cells for ' . count($metadata->columns) . ' columns');
+            throw new OrmException(
+                Code::ROW_SNAPSHOT_INVALID,
+                'row has ' . count($cells) . ' cells for ' . count($metadata->columns) . ' columns'
+            );
         }
         foreach ($cells as $i => $cell) {
             if ($cell === null && !$metadata->columns[$i]->nullable) {
-                throw new OrmException(Code::ROW_SNAPSHOT_INVALID, 'NULL in non-null column "' . $metadata->columns[$i]->name . '"');
+                throw new OrmException(
+                    Code::ROW_SNAPSHOT_INVALID,
+                    'NULL in non-null column "' . $metadata->columns[$i]->name . '"'
+                );
             }
             self::cellKey($cell);
         }
     }
 
     /**
-     * The canonical text of one cell: its type and its exact value. Two cells are equal exactly when their keys are equal, so
-     * a float compares by its bits.
+     * The canonical text of one cell: its type and its exact value. Two cells are equal exactly when their keys are
+     * equal, so a float compares by its bits.
      */
     private static function cellKey(mixed $cell): string
     {
@@ -1347,7 +1516,10 @@ final class Catalog
         return true;
     }
 
-    /** Reads the rows that match the primary key of a descriptor, at most two. A lock takes FOR UPDATE where the server supports it. */
+    /**
+     * Reads the rows that match the primary key of a descriptor, at most two. A lock takes FOR UPDATE where the server
+     * supports it.
+     */
     private function lookup(\PDO $pdo, CatalogTableMetadata $metadata, array $keys, bool $lock): array
     {
         $suffix = $lock && $this->dialect !== 'sqlite' ? ' FOR UPDATE' : '';
@@ -1360,14 +1532,17 @@ final class Catalog
     }
 
     /**
-     * Refuses a MySQL row change unless the server, the account and the table are verified: partial revokes are off, the
-     * account holds TRIGGER on the table, the table is InnoDB and it has no triggers (mutation.rs, mysql_safety).
+     * Refuses a MySQL row change unless the server, the account and the table are verified: partial revokes are off,
+     * the account holds TRIGGER on the table, the table is InnoDB and it has no triggers (mutation.rs, mysql_safety).
      */
     private function mysqlSafety(\PDO $pdo, CatalogTableMetadata $metadata): void
     {
         $partial = $this->query($pdo, 'SELECT CAST(@@GLOBAL.partial_revokes AS SIGNED)', [], 1, 4096);
         if (count($partial['rows']) !== 1 || (string) $partial['rows'][0][0] !== '0') {
-            throw new OrmException(Code::ROW_MUTATION_UNSUPPORTED, 'MySQL partial-revoke visibility requires verification');
+            throw new OrmException(
+                Code::ROW_MUTATION_UNSUPPORTED,
+                'MySQL partial-revoke visibility requires verification'
+            );
         }
 
         $account = $this->query($pdo, 'SELECT CURRENT_USER()', [], 1, 4096);
@@ -1379,11 +1554,18 @@ final class Catalog
         $grantee = "'" . substr($text, 0, $at) . "'@'" . substr($text, $at + 1) . "'";
 
         $ns = $metadata->table['namespace'];
-        $grants = $this->query($pdo,
-            "SELECT PRIVILEGE_TYPE FROM information_schema.USER_PRIVILEGES WHERE GRANTEE=? AND PRIVILEGE_TYPE='TRIGGER' "
-            . "UNION ALL SELECT PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES WHERE GRANTEE=? AND TABLE_SCHEMA=? AND PRIVILEGE_TYPE='TRIGGER' "
-            . "UNION ALL SELECT PRIVILEGE_TYPE FROM information_schema.TABLE_PRIVILEGES WHERE GRANTEE=? AND TABLE_SCHEMA=? AND TABLE_NAME=? AND PRIVILEGE_TYPE='TRIGGER'",
-            [$grantee, $grantee, $ns, $grantee, $ns, $metadata->table['name']], 16, 4096);
+        $grants = $this->query(
+            $pdo,
+            "SELECT PRIVILEGE_TYPE FROM information_schema.USER_PRIVILEGES WHERE GRANTEE=? AND "
+            . "PRIVILEGE_TYPE='TRIGGER' "
+            . "UNION ALL SELECT PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES WHERE GRANTEE=? AND "
+            . "TABLE_SCHEMA=? AND PRIVILEGE_TYPE='TRIGGER' "
+            . "UNION ALL SELECT PRIVILEGE_TYPE FROM information_schema.TABLE_PRIVILEGES WHERE GRANTEE=? AND "
+            . "TABLE_SCHEMA=? AND TABLE_NAME=? AND PRIVILEGE_TYPE='TRIGGER'",
+            [$grantee, $grantee, $ns, $grantee, $ns, $metadata->table['name']],
+            16,
+            4096
+        );
         $trigger = false;
         foreach ($grants['rows'] as $row) {
             if (count($row) === 1 && $row[0] === 'TRIGGER') {
@@ -1394,8 +1576,13 @@ final class Catalog
             throw new OrmException(Code::ROW_MUTATION_UNSUPPORTED, 'MySQL trigger visibility is unverified');
         }
 
-        $engine = $this->query($pdo, 'SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=? AND TABLE_NAME=?',
-            [$ns, $metadata->table['name']], 2, 4096);
+        $engine = $this->query(
+            $pdo,
+            'SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=? AND TABLE_NAME=?',
+            [$ns, $metadata->table['name']],
+            2,
+            4096
+        );
         if (count($engine['rows']) !== 1 || count($engine['rows'][0]) !== 1) {
             throw new OrmException(Code::ROW_MUTATION_UNSUPPORTED, 'MySQL requires InnoDB');
         }
@@ -1404,21 +1591,29 @@ final class Catalog
             throw new OrmException(Code::ROW_MUTATION_UNSUPPORTED, 'MySQL requires InnoDB');
         }
 
-        $triggers = $this->query($pdo,
-            'SELECT TRIGGER_NAME FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA=? AND EVENT_OBJECT_TABLE=? LIMIT 1',
-            [$ns, $metadata->table['name']], 1, 4096);
+        $triggers = $this->query(
+            $pdo,
+            'SELECT TRIGGER_NAME FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA=? AND '
+            . 'EVENT_OBJECT_TABLE=? LIMIT 1',
+            [$ns, $metadata->table['name']],
+            1,
+            4096
+        );
         if ($triggers['rows'] !== []) {
             throw new OrmException(Code::ROW_MUTATION_UNSUPPORTED, 'MySQL triggers require effect verification');
         }
     }
 
     /**
-     * Refuses a read query that is not one supported non-locking read query: it tokenizes the query, so keywords inside string
-     * literals, quoted identifiers and comments are not seen, and refuses a MySQL executable comment.
+     * Refuses a read query that is not one supported non-locking read query: it tokenizes the query, so keywords inside
+     * string literals, quoted identifiers and comments are not seen, and refuses a MySQL executable comment.
      */
     private static function validateReadOnly(string $query, string $dialect): void
     {
-        $refused = static fn (): OrmException => new OrmException(Code::QUERY_READ_ONLY, 'expected one supported non-locking read query');
+        $refused = static fn (): OrmException => new OrmException(
+            Code::QUERY_READ_ONLY,
+            'expected one supported non-locking read query'
+        );
         if ($query === '' || strlen($query) > self::SQL_BYTES) {
             throw $refused();
         }
@@ -1444,8 +1639,8 @@ final class Catalog
     }
 
     /**
-     * The upper-cased words of a query and its semicolons. String literals, quoted identifiers and comments are skipped. It
-     * returns null for an unterminated literal or comment and for a MySQL executable comment.
+     * The upper-cased words of a query and its semicolons. String literals, quoted identifiers and comments are
+     * skipped. It returns null for an unterminated literal or comment and for a MySQL executable comment.
      *
      * @return list<string>|null
      */
@@ -1473,7 +1668,8 @@ final class Catalog
                 }
                 $i = $close + 2;
             } elseif ($c === "'" || $c === '"' || $c === '`') {
-                // MySQL reads backslash escapes inside string literals and double-quoted strings; other dialects do not.
+                // MySQL reads backslash escapes inside string literals and double-quoted strings; other dialects do
+                // not.
                 $next = self::skipQuoted($query, $i, $c, $dialect === 'mysql' && $c !== '`');
                 if ($next === null) {
                     return null;
@@ -1481,14 +1677,22 @@ final class Catalog
                 $i = $next;
             } elseif ($c === '_' || self::isLetter($c)) {
                 $j = $i;
-                while ($j < $n && ($query[$j] === '_' || $query[$j] === '$' || self::isLetter($query[$j]) || self::isDigit($query[$j]))) {
+                while (
+                    $j < $n && (
+                    $query[$j] === '_' || $query[$j] === '$' || self::isLetter($query[$j]) || self::isDigit($query[$j])
+                    )
+                ) {
                     $j++;
                 }
                 $words[] = strtoupper(substr($query, $i, $j - $i));
                 $i = $j;
             } elseif (self::isDigit($c)) {
                 $j = $i;
-                while ($j < $n && ($query[$j] === '.' || $query[$j] === '_' || self::isLetter($query[$j]) || self::isDigit($query[$j]))) {
+                while (
+                    $j < $n && (
+                    $query[$j] === '.' || $query[$j] === '_' || self::isLetter($query[$j]) || self::isDigit($query[$j])
+                    )
+                ) {
                     $j++;
                 }
                 $i = $j;
@@ -1502,7 +1706,10 @@ final class Catalog
         return $words;
     }
 
-    /** The index after the literal or identifier that starts at start, with the doubled quote mark and, when backslash is set, backslash escapes. */
+    /**
+     * The index after the literal or identifier that starts at start, with the doubled quote mark and, when backslash
+     * is set, backslash escapes.
+     */
     private static function skipQuoted(string $query, int $start, string $quote, bool $backslash): ?int
     {
         $n = strlen($query);

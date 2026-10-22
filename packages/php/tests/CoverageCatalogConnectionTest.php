@@ -94,11 +94,11 @@ final class CoverageCatalogConnectionTest extends TestCase
     }
 
     /**
-     * The grid cells of one row per dialect (docs/spec/interfaces.md, "Rust native grid query specification"): float cells hold
-     * their IEEE-754 bits in hexadecimal, UNSIGNED integers are exact decimal digits, and date, time and datetime cells hold
-     * dbspec text. Each refused value fails with CATALOG_VALUE.
+     * The grid cells of one row per dialect (docs/spec/interfaces.md, "Rust native grid query specification"): float
+     * cells hold their IEEE-754 bits in hexadecimal, UNSIGNED integers are exact decimal digits, and date, time and
+     * datetime cells hold dbspec text. Each refused value fails with CATALOG_VALUE.
      */
-    public function test_grid_cells(): void
+    public function testGridCells(): void
     {
         [$sql, $expected, $refused] = match ($this->driver) {
             'mysql' => [
@@ -124,8 +124,10 @@ final class CoverageCatalogConnectionTest extends TestCase
                 ],
             ],
             'postgres' => [
-                "SELECT 1.5::real AS f, 1.5::double precision AS d, 'NaN'::double precision AS nan, 'NaN'::real AS nanf, "
-                . "9223372036854775807::bigint AS i, 2.50::numeric(10,2) AS dec, '\\x6162'::bytea AS b, NULL::date AS n, "
+                "SELECT 1.5::real AS f, 1.5::double precision AS d, 'NaN'::double precision AS nan, 'NaN'::real AS "
+                . "nanf, "
+                . "9223372036854775807::bigint AS i, 2.50::numeric(10,2) AS dec, '\\x6162'::bytea AS b, NULL::date "
+                . "AS n, "
                 . "'2024-02-29'::date AS dt, '12:34:56.5'::time AS tm, '2024-02-29 01:02:03.5'::timestamp AS dtm",
                 [
                     new CatalogGridCell('float32', '3fc00000'),
@@ -162,8 +164,12 @@ final class CoverageCatalogConnectionTest extends TestCase
         $result = $this->catalog->readOnlyGridQuery($sql, []);
         self::assertCount(1, $result->rows);
         self::assertEquals($expected, $result->rows[0]);
-        // A table column takes its type from its definition: the integer of user.seq is an integer cell on every database.
-        $seq = $this->catalog->readOnlyGridQuery('SELECT seq FROM ' . $this->quote('user') . ' ORDER BY seq LIMIT 1', []);
+        // A table column takes its type from its definition: the integer of user.seq is an integer cell on every
+        // database.
+        $seq = $this->catalog->readOnlyGridQuery(
+            'SELECT seq FROM ' . $this->quote('user') . ' ORDER BY seq LIMIT 1',
+            []
+        );
         self::assertSame('integer', $seq->rows[0][0]->kind);
         foreach ($refused as $query) {
             try {

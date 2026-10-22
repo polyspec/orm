@@ -1,15 +1,18 @@
 <?php
 
-// The commit of a catalog write that the database does not confirm: its outcome is unknown, and a failed ROLLBACK that ends
-// the server transaction is reported with it. The private commitFailed is called directly, because a real database cannot be
-// made to fail its commit and its rollback in the same way.
+// The commit of a catalog write that the database does not confirm: its outcome is unknown, and a failed ROLLBACK that
+// ends the server transaction is reported with it. The private commitFailed is called directly, because a real database
+// cannot be made to fail its commit and its rollback in the same way.
 declare(strict_types=1);
+
+namespace Polyspec\Orm\Tests;
 
 use Polyspec\Orm\Catalog;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\OrmException;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
+use ReflectionMethod;
 
 #[Small]
 final class CatalogCommitFailureTest extends TestCase
@@ -39,7 +42,7 @@ final class CatalogCommitFailureTest extends TestCase
         }
     }
 
-    public function test_unknown_commit_with_rollback_that_succeeds_reports_the_commit_error(): void
+    public function testUnknownCommitWithRollbackThatSucceedsReportsTheCommitError(): void
     {
         $pdo = new class extends \PDO {
             public function __construct()
@@ -63,7 +66,7 @@ final class CatalogCommitFailureTest extends TestCase
         }
     }
 
-    public function test_failed_rollback_is_reported_as_the_cause_of_the_unknown_commit(): void
+    public function testFailedRollbackIsReportedAsTheCauseOfTheUnknownCommit(): void
     {
         $pdo = new class extends \PDO {
             public function __construct()
