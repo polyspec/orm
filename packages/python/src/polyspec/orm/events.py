@@ -106,7 +106,7 @@ class Subscribers:
                 if failure.code == codes.SUBSCRIBER:
                     raise
                 raise _subscriber_error(failure) from None
-            except Exception as failure:  # noqa: BLE001
+            except Exception as failure:  # noqa: BLE001 - a subscriber failure of any type is wrapped as the subscriber error
                 raise _subscriber_error(failure) from None
 
 

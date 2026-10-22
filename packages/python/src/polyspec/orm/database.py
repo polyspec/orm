@@ -1801,7 +1801,7 @@ class Db:
             ):
                 try:
                     control(kind, sql)
-                except Exception as failure:  # noqa: BLE001
+                except Exception as failure:  # noqa: BLE001 - each failed savepoint control is collected, so the rest run and the failures are reported together
                     failures.append(failure)
             if failures:
                 if error is not None:
@@ -2078,7 +2078,7 @@ class Db:
         def attempt(sql: str, values=None, faultable: bool = False):
             try:
                 return frame.run(sql, values, "utility", faultable=faultable)
-            except Exception as error:  # noqa: BLE001
+            except Exception as error:  # noqa: BLE001 - a failed utility statement of any type is recorded in errors and returns None
                 errors.append(error)
                 return None
 
@@ -2146,7 +2146,7 @@ class Db:
                 ):
                     try:
                         control(kind, sql)
-                    except Exception as failure:  # noqa: BLE001
+                    except Exception as failure:  # noqa: BLE001 - each failed savepoint control is collected, so the rest run and the failures are reported together
                         rollback_errors.append(failure)
                 if rollback_errors:
                     raise rollback_failed(error, rollback_errors[0]) from None
