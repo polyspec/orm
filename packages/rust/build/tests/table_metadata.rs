@@ -1,3 +1,7 @@
+#[path = "common/dialect_dsn.rs"]
+mod dialect_dsn;
+use dialect_dsn::dsn_for;
+
 use polyspec_orm_build::{
     catalog::{CatalogConnection, TableRef},
     tool_db,
@@ -29,11 +33,7 @@ async fn check() {
     let mut failures = Vec::new();
     for dialect in ["sqlite", "mysql", "postgres"] {
         polyspec_orm_testcase::step(format_args!("running {dialect}"));
-        let dsn = match dialect {
-            "sqlite" => format!("sqlite://{}", path.display()),
-            "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").expect("MySQL fixture DSN"),
-            _ => std::env::var("ORM_TOOLS_POSTGRES_DSN").expect("PostgreSQL fixture DSN"),
-        };
+        let dsn = dsn_for(dialect, &path);
         let (database, mut seed, _) = tool_db::open(&dsn).await.expect("fixture connection");
         let name = format!("orm_table_metadata_{}", std::process::id());
         seed.exec(

@@ -1,6 +1,10 @@
 //! Date, time, and datetime grid cells: MySQL and PostgreSQL decode them into temporal cells in dbspec text form,
 //! and for a described table's read, the column precision p applies; a grid query uses six fractional digits.
 //! SQLite gives the same temporal cell for a described table and the stored text for a grid query. The tables each dialect made are dropped at the end.
+
+#[path = "common/dialect_dsn.rs"]
+mod dialect_dsn;
+use dialect_dsn::dsn_for;
 use polyspec_orm_build::{
     catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableRef},
     tool_db::{self, GridCell, QueryLimits, P},
@@ -106,11 +110,7 @@ async fn check() {
     let mut failures = Vec::new();
     for dialect in ["sqlite", "mysql", "postgres"] {
         polyspec_orm_testcase::step(format_args!("running {dialect}"));
-        let dsn = match dialect {
-            "sqlite" => format!("sqlite://{}", path.display()),
-            "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").expect("MySQL fixture DSN"),
-            _ => std::env::var("ORM_TOOLS_POSTGRES_DSN").expect("PostgreSQL fixture DSN"),
-        };
+        let dsn = dsn_for(dialect, &path);
         let (database, mut seed, _) = tool_db::open(&dsn).await.expect("fixture connection");
         let name = format!("orm_grid_temporal_{}", std::process::id());
         let table_sql = quote(&name, dialect);

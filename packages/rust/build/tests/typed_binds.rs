@@ -1,3 +1,7 @@
+#[path = "common/dialect_dsn.rs"]
+mod dialect_dsn;
+use dialect_dsn::dsn_for;
+
 use polyspec_orm_build::tool_db::{self, GridCell, ParamType, QueryLimits, P};
 #[tokio::test]
 // Requirements: INT-116.
@@ -9,11 +13,7 @@ async fn native_typed_binds_preserve_values_and_typed_nulls() {
         let mut failures = Vec::new();
         for dialect in ["sqlite", "mysql", "postgres"] {
             polyspec_orm_testcase::step(format_args!("running {dialect}"));
-            let dsn = match dialect {
-                "sqlite" => format!("sqlite://{}", path.display()),
-                "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").expect("MySQL fixture DSN"),
-                _ => std::env::var("ORM_TOOLS_POSTGRES_DSN").expect("PostgreSQL fixture DSN"),
-            };
+            let dsn = dsn_for(dialect, &path);
             let (database, mut connection, _) = tool_db::open(&dsn).await.expect("fixture connection");
             let parameters = [P::Binary(vec![0, 255]), P::Float64(1.5f64.to_bits()), P::Null(ParamType::Text)];
             let sql = if dialect == "postgres" { "SELECT $1::bytea,$2::float8,$3::text" } else { "SELECT ?,?,?" };
@@ -54,11 +54,7 @@ async fn native_typed_writes_roundtrip_reject_and_rollback() {
         let mut failures = Vec::new();
         for dialect in ["sqlite", "mysql", "postgres"] {
             polyspec_orm_testcase::step(format_args!("running {dialect}"));
-            let dsn = match dialect {
-                "sqlite" => format!("sqlite://{}", path.display()),
-                "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").expect("MySQL fixture DSN"),
-                _ => std::env::var("ORM_TOOLS_POSTGRES_DSN").expect("PostgreSQL fixture DSN"),
-            };
+            let dsn = dsn_for(dialect, &path);
             let (database, mut connection, _) = tool_db::open(&dsn).await.expect("owned fixture connection");
             let table = format!("orm_typed_bind_{}", std::process::id());
             let blob = if dialect == "postgres" { "BYTEA" } else { "BLOB" };
