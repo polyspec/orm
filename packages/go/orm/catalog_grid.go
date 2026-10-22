@@ -108,6 +108,13 @@ func (s *catalogSession) columnNames(query string, args []any) ([]string, error)
 
 // catalogSQLiteRawQuery wraps a read query of width columns so that each result column is the unary plus of a positionally
 // renamed column: the rows keep the storage class of each value and carry no declared type.
+//
+// Row order: the outer SELECT has no ORDER BY. SQLite's lang_select.html says: "If a SELECT statement that returns more than
+// one row does not have an ORDER BY clause, the order in which the rows are returned is undefined." The order of the grid
+// rows therefore rests on the query flattener, which folds this simple CTE into the inner query and keeps the inner ORDER BY
+// (https://www.sqlite.org/optoverview.html#flattening, "Subquery Flattening"). That is SQLite's behaviour, not a documented
+// promise. TestCoverageCatalogGridOrder checks the plan (no MATERIALIZE or CO-ROUTINE step for g) with an ORDER BY DESC query,
+// so a SQLite that stops flattening fails the test instead of changing the order silently.
 func catalogSQLiteRawQuery(query string, width int) string {
 	names := make([]string, width)
 	cols := make([]string, width)
