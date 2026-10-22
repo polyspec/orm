@@ -360,39 +360,38 @@ static zval *column_of(pctx *c, HashTable *rows, const char *key)
 
 /* ---- library calls ---- */
 
-/* Calls a public static method of a library class: the result is kept, or NULL with an exception. */
-static zval *lib_static(pctx *c, const char *cls, const char *method, uint32_t argc, zval *argv)
+/* Calls the callable cb, which the caller built and which this call releases, into a kept result: NULL with an exception, or when the call fails. */
+static zval *invoke_kept(pctx *c, zval *cb, uint32_t argc, zval *argv)
 {
-    zval cb;
     zval *ret = keep(c);
     ZVAL_UNDEF(ret);
-    array_init(&cb);
-    add_next_index_string(&cb, cls);
-    add_next_index_string(&cb, method);
-    zend_result r = call_user_function(NULL, NULL, &cb, ret, argc, argv);
-    zval_ptr_dtor(&cb);
+    zend_result r = call_user_function(NULL, NULL, cb, ret, argc, argv);
+    zval_ptr_dtor(cb);
     if (r != SUCCESS || EG(exception) != NULL) {
         return NULL;
     }
     return ret;
 }
 
+/* Calls a public static method of a library class: the result is kept, or NULL with an exception. */
+static zval *lib_static(pctx *c, const char *cls, const char *method, uint32_t argc, zval *argv)
+{
+    zval cb;
+    array_init(&cb);
+    add_next_index_string(&cb, cls);
+    add_next_index_string(&cb, method);
+    return invoke_kept(c, &cb, argc, argv);
+}
+
 /* Calls a public method of the Dialect object $this->d: the result is kept, or NULL with an exception. */
 static zval *D(pctx *c, const char *method, uint32_t argc, zval *argv)
 {
     zval cb;
-    zval *ret = keep(c);
-    ZVAL_UNDEF(ret);
     array_init(&cb);
     Z_TRY_ADDREF_P(c->dialect);
     add_next_index_zval(&cb, c->dialect);
     add_next_index_string(&cb, method);
-    zend_result r = call_user_function(NULL, NULL, &cb, ret, argc, argv);
-    zval_ptr_dtor(&cb);
-    if (r != SUCCESS || EG(exception) != NULL) {
-        return NULL;
-    }
-    return ret;
+    return invoke_kept(c, &cb, argc, argv);
 }
 
 /* A string result of a Dialect method. NULL with an exception set, or for a null result (the ?string methods). */
