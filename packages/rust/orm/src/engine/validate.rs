@@ -6,7 +6,7 @@ use crate::codes;
 use crate::ir;
 use crate::schema::Manifest;
 use crate::Result;
-use polyspec_orm_schema::dbspec::{Entity, Field};
+use polyspec_orm_schema::dbspec::{Entity, Field, Type};
 
 const IR_VERSION: u32 = 1;
 
@@ -641,6 +641,18 @@ impl<'m> Validator<'m> {
             }
             if !p.ps.len().is_multiple_of(p.cols.len()) {
                 return Err(err(codes::IR_INVALID, format!("{}: {} values for {} columns", p.op, p.ps.len(), p.cols.len())));
+            }
+            return Ok(());
+        }
+        if p.op == "fulltext" || p.op == "fulltext_boolean" {
+            if p.cols.is_empty() || p.p.is_none() || !p.column.is_empty() || !p.ps.is_empty() || p.sub.is_some() || p.r#fn.is_some() || p.value.is_some() || p.r#ref.is_some() {
+                return Err(err(codes::IR_INVALID, format!("{} takes cols and p only", p.op)));
+            }
+            for name in &p.cols {
+                let c = ent.field(name).ok_or_else(|| unknown_column(&ent.name, name))?;
+                if !matches!(c.ty, Type::Varchar(_) | Type::Text) || !c.codec.is_empty() {
+                    return Err(err(codes::OPERATOR_NOT_ALLOWED, format!("{} on {}.{name}", p.op, ent.name)));
+                }
             }
             return Ok(());
         }

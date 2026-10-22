@@ -387,8 +387,34 @@ pub fn transform(kind: &str, s: &str) -> crate::Result<String> {
         "like_contains" => format!("%{}%", esc(s)),
         "like_starts" => format!("{}%", esc(s)),
         "like_ends" => format!("%{}", esc(s)),
+        "fulltext_boolean" => {
+            let out = fulltext_boolean(s);
+            if out.is_empty() {
+                return Err(crate::engine::err(crate::codes::IR_INVALID, "fulltext search text has no term"));
+            }
+            out
+        }
         _ => return Err(crate::Error::Config(format!("unknown value transform {kind}"))),
     })
+}
+
+/// The transform fulltext_boolean (DIA-6): the search text of a MySQL boolean-mode match. It splits the value on whitespace,
+/// removes the boolean operator characters from each term, drops the terms that are empty, prefixes every term with +,
+/// suffixes the last term with *, and joins the terms with single spaces. A value with no term is the empty string.
+pub fn fulltext_boolean(s: &str) -> String {
+    let mut terms: Vec<String> = s
+        .split_whitespace()
+        .map(|w| w.chars().filter(|c| !"+-<>()~*\"@".contains(*c)).collect::<String>())
+        .filter(|t| !t.is_empty())
+        .map(|t| format!("+{t}"))
+        .collect();
+    match terms.last_mut() {
+        Some(last) => {
+            last.push('*');
+            terms.join(" ")
+        }
+        None => String::new(),
+    }
 }
 
 fn esc(s: &str) -> String {

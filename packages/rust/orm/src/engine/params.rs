@@ -117,6 +117,12 @@ impl<'m> ParamUses<'m> {
             }
             return;
         }
+        if p.op == "fulltext" || p.op == "fulltext_boolean" {
+            if let Some(i) = p.p {
+                self.add(i, "text".into(), None);
+            }
+            return;
+        }
         let f = ent.field(&p.column);
         if let Some(value) = &p.value {
             for &i in &value.ps {

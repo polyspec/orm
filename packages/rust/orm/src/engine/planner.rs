@@ -151,6 +151,11 @@ impl Builder {
         self.slot(BindSlot { from: "param".into(), param: i, col_type: ty.into(), precision, ..Default::default() })
     }
 
+    /// The placeholder for value Params[i] bound through the value transform `transform`, with the text type of a full-text search.
+    fn transformed(&mut self, i: usize, transform: &str) -> String {
+        self.slot(BindSlot { from: "param".into(), param: i, transform: transform.into(), col_type: "text".into(), ..Default::default() })
+    }
+
     /// The placeholder for value Params[i] compared with or assigned to column `col`. The type is the type of `col`
     /// and decimal, time, and datetime carry its digit counts.
     fn col_param(&mut self, i: usize, col: &Field, transform: &str) -> String {
@@ -843,6 +848,12 @@ impl<'m> Planner<'m> {
                     rows.push(row);
                 }
                 return Ok(self.d.tuple_in(&cols, &rows, pr.op == "tuple_not_in"));
+            }
+            "fulltext" | "fulltext_boolean" => {
+                let cols = self.qualified(s, &pr.cols);
+                let i = p()?;
+                let sql = self.d.fulltext(&cols, &mut |t| b.transformed(i, t), pr.op == "fulltext_boolean");
+                return sql.ok_or_else(|| err(codes::OPERATOR_NOT_ALLOWED, format!("{} on {}", pr.op, s.ent.name)));
             }
             _ => {}
         }

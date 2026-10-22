@@ -186,6 +186,27 @@ impl Dialect {
         }
     }
 
+    /// A full-text match of cols against value, in boolean mode when boolean is set. None when the dialect has no
+    /// full-text search on a table (DIA-187).
+    pub fn fulltext(self, cols: &[String], value: &mut dyn FnMut(&str) -> String, boolean: bool) -> Option<String> {
+        match self {
+            Dialect::MySql => Some(if boolean {
+                format!("MATCH ({}) AGAINST ({} IN BOOLEAN MODE)", cols.join(", "), value("fulltext_boolean"))
+            } else {
+                format!("MATCH ({}) AGAINST ({} IN NATURAL LANGUAGE MODE)", cols.join(", "), value(""))
+            }),
+            Dialect::Postgres => {
+                let doc = format!(
+                    "to_tsvector('simple', {})",
+                    cols.iter().map(|c| format!("coalesce({c}, '')")).collect::<Vec<_>>().join(" || ' ' || ")
+                );
+                let query = if boolean { "websearch_to_tsquery" } else { "plainto_tsquery" };
+                Some(format!("{doc} @@ {query}('simple', {})", value("")))
+            }
+            Dialect::Sqlite => None,
+        }
+    }
+
     pub fn upsert(self, conflict: &[String], assigns: &str) -> String {
         match self {
             Dialect::MySql => format!(" ON DUPLICATE KEY UPDATE {assigns}"),
