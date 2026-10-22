@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The `dbspec-php-extension-check/planner` target runs its three PHPUnit suites as parts after the class check, the `dbspec-plan-check` quoting of the `TestPlanApply` pattern is written `$$` for make, and the chained TypeScript verifications of statement-fault and install-register are split into one command each (KSTD-5-23). Red: the repo check read the `$` quoting as a make variable and rejected the command, and the planner test ran three suites in one recipe.
 - KSTD-5-22 is done: this commit records its done state in both checklists and refreshes their Korean stamps (KSTD-5-22).
 - Every Rust test of the repository starts its case with `polyspec_orm_testcase::case!`: the fixed-list test of packages/rust/build, the restore-or-create and external-relation tests and the AES key read tests (KSTD-5-22). Red: the rule named generate.rs and seven other Rust tests without a case.
 - `make feature-unit-check` passes on main again: contracts/check-inputs.json declares generated-lint-check, which selects the generator sources, and CHECK_TARGETS holds the six group-rows-db targets the file declares (KSTD-7-9-1). Red: the CHECK_TARGETS and generator-source tests of scripts/features/owners.test.mts failed on main.

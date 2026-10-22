@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1aa0964f18d0aa3e66cd83721b2ffbbf82fedda7d18c3b7e0091f31416a0b418 -->
+<!-- source-sha256: 5a9f0011f309d8bb1fe259bd9432ed453eab0876867cce54f597913c9d628b59 -->
 # 변경 이력
 
 ## Unreleased
+- `dbspec-php-extension-check/planner` 대상은 클래스 검사 뒤에 세 PHPUnit 묶음을 부분으로 실행하고, `dbspec-plan-check`의 `TestPlanApply` 패턴 인용은 make용 `$$`로 쓰며, statement-fault와 install-register의 연결된 TypeScript 검증은 명령 하나씩으로 나뉜다(KSTD-5-23). red: 저장소 검사가 `$`를 make 변수로 읽어 명령을 거부했고, planner 사례는 한 recipe에서 세 묶음을 실행했다.
 - KSTD-5-22 완료: 이 commit은 두 체크리스트에 그 완료 상태를 기록하고 한국어 stamp를 갱신한다(KSTD-5-22).
 - 모든 Rust test가 `polyspec_orm_testcase::case!`로 case를 시작한다. packages/rust/build의 고정 목록 test, restore-or-create와 외부 관계 test, AES 키 읽기 test다(KSTD-5-22). red: 규칙이 generate.rs와 case가 없는 Rust test 일곱 개를 보고했다.
 - `make feature-unit-check`가 main에서 다시 통과한다: contracts/check-inputs.json이 generator 소스를 고르는 generated-lint-check를 선언하고, CHECK_TARGETS가 파일이 선언한 여섯 group-rows-db target을 가진다 (KSTD-7-9-1). red: main에서 scripts/features/owners.test.mts의 CHECK_TARGETS와 generator 소스 테스트가 실패했다.
