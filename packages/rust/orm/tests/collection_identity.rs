@@ -2,13 +2,17 @@
 //! and a NULL key is CODEC_DECODE. The unit test reads the fixture and needs no database.
 //! Usage: cargo test -p polyspec-orm --test collection_identity (from packages/rust).
 
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 use polyspec_orm::chrono::DateTime;
 use polyspec_orm::{Error, Key, Val};
 use serde_json::Value as Json;
 
 fn fixture() -> Json {
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../tests/collection/keys.json");
-    let src = std::fs::read_to_string(path).unwrap_or_else(|e| panic!("read {path}: {e}; run make orm-check from the checkout root"));
+    let src = std::fs::read_to_string(path).or_panic(|e| format!("read {path}: {e}; run make orm-check from the checkout root"));
     serde_json::from_str(&src).expect("tests/collection/keys.json is not JSON")
 }
 
@@ -20,7 +24,7 @@ fn value_of(entry: &Json) -> Val {
         Some("int") => Val::I64(entry["value"].as_i64().expect("int value")),
         Some("bytes") => Val::Bytes(hex_decode(entry["hex"].as_str().expect("bytes hex"))),
         Some("datetime") => {
-            let instant = DateTime::parse_from_rfc3339(entry["value"].as_str().expect("datetime value")).unwrap_or_else(|e| panic!("fixture {name}: {e}"));
+            let instant = DateTime::parse_from_rfc3339(entry["value"].as_str().expect("datetime value")).or_panic(|e| format!("fixture {name}: {e}"));
             Val::DateTime(instant.naive_utc())
         }
         other => panic!("fixture {name} has unknown type {other:?}"),
@@ -40,7 +44,7 @@ fn every_fixture_key_has_its_own_identity() {
     let mut seen: Vec<(String, Key)> = Vec::new();
     for entry in entries {
         let name = entry["name"].as_str().expect("name").to_owned();
-        let key = Key::of(&value_of(entry)).unwrap_or_else(|e| panic!("key {name}: {e}"));
+        let key = Key::of(&value_of(entry)).or_panic(|e| format!("key {name}: {e}"));
         let again = Key::of(&value_of(entry)).expect("key again");
         assert_eq!(key, again, "key {name} has no stable identity");
         if let Some(same_as) = entry["same_as"].as_str() {

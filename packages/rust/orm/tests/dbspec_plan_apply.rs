@@ -8,6 +8,10 @@
 //! run, the target is read again and no `dbspec$` table or column remains. A test
 //! fails when ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
 
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 #[path = "common/dbspec_probe.rs"]
 mod dbspec_probe;
 
@@ -175,15 +179,15 @@ async fn plan_apply() {
     let mut runs = 0;
     for case in cases {
         let case_id = case["id"].as_str().expect("id");
-        let plan = parse_plan(&lines(&case["plan"])).unwrap_or_else(|e| panic!("{case_id}: {e:?}"));
+        let plan = parse_plan(&lines(&case["plan"])).or_panic(|e| format!("{case_id}: {e:?}"));
         let source: Option<Document> = (!case["source"].is_null())
-            .then(|| dbspec::parse(&lines(&case["source"]), &BTreeMap::new()).map(|parsed| parsed.document).unwrap_or_else(|e| panic!("{case_id}: {e:?}")));
+            .then(|| dbspec::parse(&lines(&case["source"]), &BTreeMap::new()).map(|parsed| parsed.document).or_panic(|e| format!("{case_id}: {e:?}")));
         for (db, dialect) in DIALECTS {
             let setup = match &source {
                 None => Vec::new(),
-                Some(source) => dbspec::render(&[source], dialect).unwrap_or_else(|e| panic!("{case_id}: {e:?}")),
+                Some(source) => dbspec::render(&[source], dialect).or_panic(|e| format!("{case_id}: {e:?}")),
             };
-            let steps_of = plan_steps(source.as_ref(), &plan, dialect).unwrap_or_else(|e| panic!("{case_id}: {e:?}"));
+            let steps_of = plan_steps(source.as_ref(), &plan, dialect).or_panic(|e| format!("{case_id}: {e:?}"));
             let reversible = steps_of.iter().all(|s| s.finalize || !s.rollback.is_empty());
             let want = plan.schema_text().to_owned();
             let source_text = source.as_ref().map(|d| dbspec::manifest(&[d]).expect("source manifest").schema_text).unwrap_or_default();

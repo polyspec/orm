@@ -9,6 +9,10 @@
 //! case runs in its own case database (polyspec-orm-case-database) and fails if ORM_TEST_MYSQL_DSN or
 //! ORM_TEST_POSTGRES_DSN is missing.
 
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 use std::collections::BTreeMap;
 
 use polyspec_orm::db::Pool;
@@ -38,9 +42,9 @@ const MISSING_UNIQUE: &str = "add_unique addcol_item.uq_addcol_item_label: a mis
 /// that manifestHash.
 fn fixture(name: &str) -> &'static Schema {
     let path = format!("{}/../../../contracts/fixtures/add_tables_and_columns/{name}.dbs", polyspec_orm_testcase::manifest_dir().display());
-    let text = dbspec::read_file(std::path::Path::new(&path)).unwrap_or_else(|e| panic!("{path}: {e:?}"));
-    let document = dbspec::parse(&text, &BTreeMap::new()).map(|parsed| parsed.document).unwrap_or_else(|e| panic!("{path}: {e:?}"));
-    let manifest = dbspec::manifest(&[&document]).unwrap_or_else(|e| panic!("{path}: {e:?}"));
+    let text = dbspec::read_file(std::path::Path::new(&path)).or_panic(|e| format!("{path}: {e:?}"));
+    let document = dbspec::parse(&text, &BTreeMap::new()).map(|parsed| parsed.document).or_panic(|e| format!("{path}: {e:?}"));
+    let manifest = dbspec::manifest(&[&document]).or_panic(|e| format!("{path}: {e:?}"));
     edited(&manifest.manifest_text, &manifest.manifest_hash)
 }
 
@@ -92,13 +96,13 @@ async fn installed(database: &CaseDatabase) -> Db {
         "INSERT INTO addcol_tag (item_id, name) VALUES (1, 'red')",
         "INSERT INTO addcol_tag (item_id, parent_id, name) VALUES (1, 1, 'child')",
     ] {
-        exec(&db, statement).await.unwrap_or_else(|e| panic!("{statement}: {e}"));
+        exec(&db, statement).await.or_panic(|e| format!("{statement}: {e}"));
     }
     db
 }
 
 fn added(r: polyspec_orm::Result<Vec<String>>) -> Vec<String> {
-    r.unwrap_or_else(|e| panic!("add_tables_and_columns: {e}"))
+    r.or_panic(|e| format!("add_tables_and_columns: {e}"))
 }
 
 // Requirements: SCH-8, SCH-10.
@@ -137,7 +141,7 @@ async fn add_tables_and_columns() {
         assert_eq!(count(&db, "SELECT COUNT(*) FROM addcol_extra").await.unwrap(), 1, "{driver}: rows of the created table");
         assert!(added(db.utils().schema().add_tables_and_columns(fixture("v2")).await).is_empty(), "{driver}: repeated add_tables_and_columns");
         // All tables exist, so install changes nothing (docs/spec/schema.md, "Schema installation").
-        db.utils().schema().install(fixture("v2")).await.unwrap_or_else(|e| panic!("{driver}: install of version 2 over its tables: {e}"));
+        db.utils().schema().install(fixture("v2")).await.or_panic(|e| format!("{driver}: install of version 2 over its tables: {e}"));
         db.close().await;
         database.drop().await;
     }
@@ -184,7 +188,7 @@ async fn add_tables_and_columns_index() {
             "{driver}: repeated add_tables_and_columns with the index"
         );
         // install changes nothing only when the database matches the set: the indexes are there as declared.
-        db.utils().schema().install(fixture("index")).await.unwrap_or_else(|e| panic!("{driver}: install of the set with the index: {e}"));
+        db.utils().schema().install(fixture("index")).await.or_panic(|e| format!("{driver}: install of the set with the index: {e}"));
         db.close().await;
         database.drop().await;
     }
