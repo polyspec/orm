@@ -372,6 +372,50 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
     let author = move || Author::new().connect(db);
     let cols = ["seq", "name", "is_close", "is_display", "read_count"];
 
+    // DSL-87 and DSL-111: a user with its authors loaded as has-many rows. Unlocked, delete(true) deletes the authors and the user;
+    // locked, the authors stay, so the user's delete fails on the foreign key, and the normalized code is recorded.
+    run!("delete_lock", async {
+        let mut out: Vec<Value> = Vec::new();
+        for locked in [false, true] {
+            let user = User::new().connect(db).set_name("delete-lock").create().await?;
+            let u_seq = user.get_seq()?;
+            let author = Author::new()
+                .connect(db)
+                .set_name("delete-lock")
+                .set_user_seq(u_seq)
+                .set_service_seq(7)
+                .set_service_region_seq(7)
+                .set_service_member_seq(7)
+                .set_start_dt("2026-01-01 00:00:00")?
+                .set_end_dt("2026-12-31 00:00:00")?
+                .create()
+                .await?;
+            let a_seq = author.get_seq()?;
+            let rel = if locked {
+                Author::new().match_seq_with_user_seq().delete_lock()
+            } else {
+                Author::new().match_seq_with_user_seq()
+            };
+            let loaded = User::new().connect(db).seq(u_seq).relations(rel).gets().await?;
+            let error = match loaded.delete(true).await {
+                Ok(()) => "none".to_owned(),
+                Err(e) => {
+                    if e.code().is_empty() {
+                        return Err(e);
+                    }
+                    e.code().to_owned()
+                }
+            };
+            let authors = Author::new().connect(db).seq(a_seq).gets().await?.len();
+            let users = User::new().connect(db).seq(u_seq).gets().await?.len();
+            out.push(json!([authors, users, error]));
+            if locked {
+                Author::new().connect(db).get_by_seq(a_seq).await?.ok_or(polyspec_orm::Error::NoRows)?.delete(false).await?;
+                User::new().connect(db).get_by_seq(u_seq).await?.ok_or(polyspec_orm::Error::NoRows)?.delete(false).await?;
+            }
+        }
+        Ok::<Value, polyspec_orm::Error>(Value::Array(out))
+    });
     run!("conditions_connectors", async {
         let rows = author().service_seq(7).and_is_close(false).or(()).read_count(6).order_by_seq_asc().limit(0, 3).gets().await?;
         Ok::<Value, polyspec_orm::Error>(picks(&rows, &cols))
