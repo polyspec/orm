@@ -320,6 +320,49 @@
   },
   "units": [
     {
+      "id": "fulltext-search",
+      "kind": "feature",
+      "requirements": [
+        "DSL-32",
+        "DSL-33",
+        "DIA-6",
+        "DIA-187",
+        "PRT-75"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/engine/fulltext_search_test.go",
+          "id": "TestFulltextSearch"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/FulltextSearchTest.php",
+          "id": "FulltextSearchTest::test_fulltext_search"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/FulltextSearchTest.php",
+          "id": "FulltextSearchTest::test_fulltext_search"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/fulltext-search.mjs",
+          "id": "fulltext-search"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/fulltext_search.py",
+          "id": "test_fulltext_search"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/fulltext_search.rs",
+          "id": "fulltext_search"
+        }
+      ]
+    },
+    {
       "id": "postgres-listen-notify",
       "kind": "feature",
       "requirements": ["DIA-192", "DIA-193", "DIA-194", "DIA-195", "DIA-196", "PRT-74"],

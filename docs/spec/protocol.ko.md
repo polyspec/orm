@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 92c20670064c8ee76dcd5ab1d8ff9e772ee478b5415152bda26febac0d59a769 -->
+<!-- source-sha256: 73b8dccd62fdf6e97b03c4817fa8eff9bb1bda74585ff95be85eb3f936484b8b -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -83,7 +83,7 @@ Relation = {"rel": "writer", "kind": "one | many", "keys": [{"left": "user_seq",
 ```json
 Group = {"conn": "and | or", "not": true, "items": [Item]}
 Item  = {"pred": Pred} | {"group": Group} | {"joined": {"conn": "and | or", "join": "service_model"}}
-Pred  = {"conn", "column", "op", "p"}                                   // eq not_eq gt gte lt lte contains contains_binary
+Pred  = {"conn", "column", "op", "p"}                                   // eq not_eq gt gte lt lte contains contains_binary fulltext fulltext_boolean
       | {"conn", "column", "op": "in | not_in | between", "ps": [...]}
       | {"conn", "column", "op": "is_null | is_not_null"}
       | {"conn", "column", "op": "eq_col | not_eq_col | gt_col | gte_col | lt_col | lte_col", "ref": {"path": "service_model", "column": "seq"}}
@@ -272,3 +272,4 @@ DSN scheme은 SQL dialect 대신 IR executor를 고를 수 있다. `markdown://`
 ## 6. Notifications
 
 - **PRT-74** **클라이언트 작업.** `notify`, `listen`, `unlisten`은 IR이 아니다: 클라이언트가 PostgreSQL 연결에서 [DIA-192](dialects.ko.md#notifications)~[DIA-196](dialects.ko.md#notifications)이 정의하는 대로 실행하며, IR 요청에는 들어가지 않는다. markdown executor와 MySQL, SQLite dialect는 이를 `CAPABILITY_UNSUPPORTED`로 거부한다.
+- **PRT-75** **전문 검색 조건.** `fulltext`와 `fulltext_boolean`은 [DSL-32](dsl.ko.md)와 [DSL-33](dsl.ko.md)의 Pred 연산자다. `column`은 한 table의 열을 담은 비어 있지 않은 배열이고, `p`는 검색어 문자열이다. planner는 연산자의 모드로 그 열들에 대한 매치를 만들며, dialect별 형태는 [DIA-6](dialects.ko.md)이 정의한다. 다른 모든 연산자는 스칼라 `column`을 받으며, 전문 검색 연산자에 스칼라 `column`을 주면 `IR_INVALID`로 실패한다. 전문 검색이 없는 dialect(SQLite)에서 `fulltext` 조건은 `OPERATOR_NOT_ALLOWED`로 답한다([DIA-187](dialects.ko.md)).

@@ -75,8 +75,8 @@ Key   = [Operator] Column
 - **DSL-29** `Lk` — SQL: `LIKE` with the value between wildcards
 - **DSL-30** `Lb` — SQL: binary `LIKE` with the value between wildcards
 - **DSL-31** `Between` — SQL: `BETWEEN` with a fixed two-value array
-- **DSL-32** `Fulltext` — SQL: full-text match in natural-language mode
-- **DSL-33** `FulltextBoolean` — SQL: full-text match in boolean mode
+- **DSL-32** `Fulltext` — SQL: full-text match in natural-language mode; IR: `fulltext` ([PRT-75](protocol.md))
+- **DSL-33** `FulltextBoolean` — SQL: full-text match in boolean mode; IR: `fulltext_boolean` ([PRT-75](protocol.md))
 
 - **DSL-34** `<ColA><Op><ColB>(model)` compares column `ColA` of the calling model with column `ColB` of `model` in the same statement. `(new Product)->priceGtMinPrice($brand)` renders `a.price > b.min_price`. `Op` is `Eq`, `Ne`, `Gt`, `Lt`, `Ge`, or `Le`. Inside `on(fn)` the calling model is the join child.
 - **DSL-35** `tuple<ColA>With<ColB>(list)` compares several columns with a list of value groups, such as `tupleTenantIdWithAccountId([[1, 10], [2, 10]])` for `(tenant_id, account_id) IN ((1, 10), (2, 10))`. `Ne` produces `NOT IN`. Go uses the generated value group struct `model.<Model><ColA>With<ColB>` with one field per column, Rust uses tuples, TypeScript uses typed tuples, and Python uses tuples. SQLite renders the list as `IN (VALUES …)`.

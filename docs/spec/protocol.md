@@ -82,7 +82,7 @@ Relation = {"rel": "writer", "kind": "one | many", "keys": [{"left": "user_seq",
 ```json
 Group = {"conn": "and | or", "not": true, "items": [Item]}
 Item  = {"pred": Pred} | {"group": Group} | {"joined": {"conn": "and | or", "join": "service_model"}}
-Pred  = {"conn", "column", "op", "p"}                                   // eq not_eq gt gte lt lte contains contains_binary
+Pred  = {"conn", "column", "op", "p"}                                   // eq not_eq gt gte lt lte contains contains_binary fulltext fulltext_boolean
       | {"conn", "column", "op": "in | not_in | between", "ps": [...]}
       | {"conn", "column", "op": "is_null | is_not_null"}
       | {"conn", "column", "op": "eq_col | not_eq_col | gt_col | gte_col | lt_col | lte_col", "ref": {"path": "service_model", "column": "seq"}}
@@ -271,3 +271,4 @@ A DSN scheme may select an IR executor instead of a SQL dialect. The scheme `mar
 ## 6. Notifications
 
 - **PRT-74** **Client operations.** `notify`, `listen` and `unlisten` are not IR: a client runs them on its PostgreSQL connection as [DIA-192](dialects.md#notifications) to [DIA-196](dialects.md#notifications) define, and an IR request never carries them. The markdown executor and the MySQL and SQLite dialects refuse them with `CAPABILITY_UNSUPPORTED`.
+- **PRT-75** **Full-text predicates.** `fulltext` and `fulltext_boolean` are the Pred ops of [DSL-32](dsl.md) and [DSL-33](dsl.md). Their `column` is a non-empty array of columns of one table, and `p` is the search text, a string; the planner renders the match over those columns in the mode of the op, as [DIA-6](dialects.md) defines it per dialect. Every other op takes a scalar `column`, and a fulltext op with a scalar `column` fails with `IR_INVALID`. On a dialect without full-text search (SQLite) a `fulltext` predicate is answered `OPERATOR_NOT_ALLOWED` ([DIA-187](dialects.md)).

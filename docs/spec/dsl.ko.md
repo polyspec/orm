@@ -1,5 +1,5 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: 49674ea1c1a56dbdca067fd66cca61009cd63212e85371d6e1d49689707110f9 -->
+<!-- source-sha256: 205698aacb665ea8589f2ae8e3822ed6534dfdb0da42a769936d291ed8308ca4 -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
@@ -76,8 +76,8 @@ Key   = [Operator] Column
 - **DSL-29** `Lk` — SQL: 값 앞뒤에 와일드카드를 둔 `LIKE`
 - **DSL-30** `Lb` — SQL: 값 앞뒤에 와일드카드를 둔 binary `LIKE`
 - **DSL-31** `Between` — SQL: 길이 2 고정 배열을 받는 `BETWEEN`
-- **DSL-32** `Fulltext` — SQL: 자연어 모드 전문 검색
-- **DSL-33** `FulltextBoolean` — SQL: boolean 모드 전문 검색
+- **DSL-32** `Fulltext` — SQL: 자연어 모드 전문 검색; IR: `fulltext` ([PRT-75](protocol.ko.md))
+- **DSL-33** `FulltextBoolean` — SQL: boolean 모드 전문 검색; IR: `fulltext_boolean` ([PRT-75](protocol.ko.md))
 
 - **DSL-34** `<ColA><Op><ColB>(model)`는 같은 SQL 문장 안에서 호출한 모델의 컬럼 `ColA`와 `model`의 컬럼 `ColB`를 비교한다. `(new Product)->priceGtMinPrice($brand)`는 `a.price > b.min_price`를 출력한다. `Op`는 `Eq`, `Ne`, `Gt`, `Lt`, `Ge`, `Le`다. `on(fn)` 안에서 호출한 모델은 조인 자식이다.
 - **DSL-35** `tuple<ColA>With<ColB>(list)`는 여러 컬럼을 값 묶음 목록과 비교한다. `tupleTenantIdWithAccountId([[1, 10], [2, 10]])`는 `(tenant_id, account_id) IN ((1, 10), (2, 10))`이다. `Ne`는 `NOT IN`을 만든다. Go는 컬럼마다 필드가 하나인 생성 값 묶음 구조체 `model.<Model><ColA>With<ColB>`, Rust는 튜플, TypeScript는 타입을 지정한 튜플, Python은 튜플을 사용한다. SQLite는 목록을 `IN (VALUES …)`로 출력한다.
