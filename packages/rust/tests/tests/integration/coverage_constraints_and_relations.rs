@@ -4,6 +4,7 @@ use super::coverage_env::{code, connect, run};
 use super::model::{Author, User};
 
 #[tokio::test]
+// CFG-33: a violated foreign key, check or unique key is reported as FOREIGN_KEY, CONSTRAINT or DUPLICATE_KEY, and no row changes.
 async fn coverage_constraint_errors() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("constraint_errors", async {

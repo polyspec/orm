@@ -10,6 +10,7 @@ import { parseDbspec, renderDbspec } from '../dist/dbspec/index.js';
 const root = new URL('../../../', import.meta.url);
 const ddl = JSON.parse(readFileSync(new URL('tests/dbspec/ddl.json', root), 'utf8'));
 
+// DBS-174: renderDbspec refuses a dialect that is none of mysql, postgres and sqlite with a TypeError that names it.
 caseTest('render rejects an unknown dialect', 15000, () => {
   const c = ddl.cases[0];
   const text = lines => lines.join('\n') + '\n';

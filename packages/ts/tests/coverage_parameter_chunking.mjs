@@ -6,6 +6,7 @@ import { Author, connect } from '../dist/index.js';
 import { errorCode, runCases } from './coverage_case.mjs';
 
 await runCases('coverage_parameter_chunking.mjs', {
+  // PRT-76: a root IN list longer than the bind limit is split into chunks, and a limit on the split list fails with IR_INVALID.
   async root_in_chunking({ driver, dsn }) {
     const db = await connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
     try {

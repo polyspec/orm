@@ -1,5 +1,5 @@
 <!-- doc-id: config -->
-<!-- source-sha256: 3c463f56902067b1f0d2254b446fdc24c69d0a367c531258a590c92a892c5127 -->
+<!-- source-sha256: c95ae341cb15f6153c7145622289a4899c73b5f32417216b6d096ed379e34297 -->
 # 런타임 연결
 
 클라이언트는 연결 값을 인자로 받으며 환경 변수나 비밀 저장소를 스스로 읽지 않는다. 클라이언트는 설정 파일을 읽지 않는다.
@@ -86,6 +86,7 @@ PgBouncer 설정:
 - **CFG-30** 클라이언트가 트랜잭션 밖에서 정하는 PostgreSQL 세션 상태는 시간대뿐이다. 모든 클라이언트는 시간대를 startup 매개변수 `TimeZone=UTC`로 보내며, PgBouncer는 `TimeZone`을 기본으로 추적한다. 트랜잭션 옵션(`SET TRANSACTION`, `SET LOCAL statement_timeout`), `utils().setLocal`(`set_config(…, true)`), `utils().lock`(`pg_advisory_xact_lock`)은 트랜잭션과 함께 끝난다.
 - **CFG-31** 문 취소는 PgBouncer를 거쳐서도 동작한다. PgBouncer는 클라이언트 연결의 프로토콜 취소 요청을 그 문을 실행하는 서버 연결로 전달한다. TypeScript는 연결의 process id와 secret key로 그 요청을 전송한다.
 - **CFG-32** Rust 클라이언트는 startup 매개변수 `extra_float_digits`를 보내지 않는다. PostgreSQL 12 이상은 서버 기본값으로 float8 값을 정확히 출력한다.
+- **CFG-33** 위반된 foreign key, check 또는 unique key는 `FOREIGN_KEY`, `CONSTRAINT` 또는 `DUPLICATE_KEY`로 보고되며, 각 database의 native code는 [errors.yaml](errors.yaml)이 나열한 것이고, statement는 어떤 row도 바꾸지 않는다. 이는 CFG-6의 `1205` 규칙 옆의 대응이다.
 
 ProxySQL은 기본 multiplexing으로 실행하며 ORM 전용 설정이 필요 없다. ProxySQL은 클라이언트 연결마다 `time_zone`, `sql_mode`, `max_execution_time`을 기억하고 그 연결에 쓰는 모든 서버 연결에 적용한다. 사용자 변수, `GET_LOCK`, `CREATE TEMPORARY TABLE`을 포함한 문이 실행되면 ProxySQL은 그 클라이언트 연결이 끊어질 때까지 서버 연결 하나에 고정한다. MySQL에서 `utils().setLocal`은 사용자 변수 `` @`orm.<key>` ``를, `utils().lock`은 `GET_LOCK`을 쓰므로 이들을 사용한 연결은 더 이상 multiplexing되지 않는다. 결과는 달라지지 않는다.
 

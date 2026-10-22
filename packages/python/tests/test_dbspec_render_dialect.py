@@ -6,6 +6,7 @@ from .dbspec_ddl import DATA, parse_set
 from . import testcase
 
 
+# DBS-174: render_dbspec refuses a dialect it does not know with a TypeError.
 class RenderDialectTest(unittest.TestCase):
     def test_unknown_dialect_is_a_type_error(self):
         documents = parse_set(DATA["cases"][-1]["documents"])

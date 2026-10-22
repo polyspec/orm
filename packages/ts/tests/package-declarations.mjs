@@ -113,6 +113,7 @@ try {
       tsc = await command(process.execPath, [typescriptCompiler(), '-p', project], {}, step);
     });
   } else failed++;
+  // INT-93: the published declarations type-check in a project with none of the driver types installed.
   await check('package-declarations/type-check-without-driver-types', COMPUTE, () => {
     assert.ok(tsc, 'tsc of the project did not run');
     assert.equal(tsc.code, 0, `tsc of the project failed:\n${tsc.output}`);

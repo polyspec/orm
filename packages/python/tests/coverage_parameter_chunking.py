@@ -5,6 +5,7 @@ from polyspec.orm.models import models
 from .coverage_case import error_code, expect_equal, CoverageCase, coverage_main
 
 
+# PRT-76: a root IN list longer than the bind limit is split into chunks, and a limit on the split list fails with IR_INVALID.
 def root_in_chunking(item):
     driver, dsn = item
     db = models.connect(dsn, aesKey="bench-salt", blindIndexKey="bench-blind-index")

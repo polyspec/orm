@@ -36,6 +36,7 @@ caseTest('a result never drops an undefined field or writes a non-finite number 
   assert.throws(() => resultValue(new Date('2026-01-01T00:00:00Z')), /unsupported conformance result/);
 });
 
+// COD-45: a derived integer is a number only within 2^53, and any other value is refused as an invalid derived integer.
 caseTest('derived integer conversion preserves the exact numeric value', 1000, () => {
   assert.equal(derivedInteger(2), 2);
   assert.equal(derivedInteger('2'), 2);
@@ -47,6 +48,7 @@ caseTest('derived integer conversion preserves the exact numeric value', 1000, (
   }
 });
 
+// COD-46: a failing vector reports its error with the original error as its cause, and a write vector runs in the transaction the runner gives it.
 caseTest('unexpected vector errors preserve their cause and write vectors use a transaction', 1000, async () => {
   const cause = new Error('invalid row');
   await assert.rejects(executeVector('invalid', async () => { throw cause; }), (error: unknown) => {

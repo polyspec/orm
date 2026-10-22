@@ -5,6 +5,7 @@ from polyspec.orm.models import models
 from .coverage_case import error_code, expect_equal, CoverageCase, coverage_main
 
 
+# CFG-33: a violated foreign key, check or unique key is reported as FOREIGN_KEY, CONSTRAINT or DUPLICATE_KEY, and no row changes.
 def constraint_errors(item):
     driver, dsn = item
     db = models.connect(dsn, aesKey="bench-salt", blindIndexKey="bench-blind-index")

@@ -64,6 +64,7 @@ if (process.argv[2] === 'child') {
   console.log(`child: the pool survived the end of its idle connection on ${dialect}`);
 } else {
   for (const dialect of ['postgres', 'mysql']) {
+    // INT-92: a connection that the server ends while the pool holds it idle is discarded, and the process keeps running.
     caseTest(`idle-connection-end/${dialect}`, DATABASE, async ({ step }) => {
       await withCaseDatabase(dialect, step, async database => {
         const child = spawnSync(process.execPath, [new URL(import.meta.url).pathname, 'child', dialect, database.dsn], { encoding: 'utf8', env: process.env, timeout: DATABASE });

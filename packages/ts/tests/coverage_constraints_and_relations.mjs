@@ -5,6 +5,7 @@ import { Author, User, connect } from '../dist/index.js';
 import { errorCode, runCases } from './coverage_case.mjs';
 
 await runCases('coverage_constraints_and_relations.mjs', {
+  // CFG-33: a violated foreign key, check or unique key is reported as FOREIGN_KEY, CONSTRAINT or DUPLICATE_KEY, and no row changes.
   async constraint_errors({ driver, dsn }) {
     const db = await connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
     try {

@@ -675,6 +675,9 @@
     {
       "id": "ts-conformance-result-derived-integer",
       "kind": "feature",
+      "requirements": [
+        "COD-45"
+      ],
       "bindings": [
         {
           "implementation": "typescript",
@@ -686,6 +689,9 @@
     {
       "id": "ts-conformance-result-vector-errors",
       "kind": "feature",
+      "requirements": [
+        "COD-46"
+      ],
       "bindings": [
         {
           "implementation": "typescript",
@@ -1269,6 +1275,9 @@
     {
       "id": "ts-dbspec-plan",
       "kind": "feature",
+      "requirements": [
+        "DBS-174"
+      ],
       "bindings": [
         {
           "implementation": "typescript",
@@ -1280,6 +1289,9 @@
     {
       "id": "ts-dbspec-render-dialect",
       "kind": "feature",
+      "requirements": [
+        "DBS-174"
+      ],
       "bindings": [
         {
           "implementation": "typescript",
@@ -1608,6 +1620,9 @@
     {
       "id": "ts-coverage_constraints_and_relations",
       "kind": "feature",
+      "requirements": [
+        "CFG-33"
+      ],
       "bindings": [
         {
           "implementation": "typescript",
@@ -1883,6 +1898,9 @@
     {
       "id": "ts-coverage_parameter_chunking",
       "kind": "feature",
+      "requirements": [
+        "PRT-76"
+      ],
       "bindings": [
         {
           "implementation": "typescript",
@@ -2668,6 +2686,9 @@
     {
       "id": "ts-idle-connection-end",
       "kind": "feature",
+      "requirements": [
+        "INT-92"
+      ],
       "bindings": [
         {
           "implementation": "typescript",
@@ -2738,6 +2759,9 @@
     {
       "id": "ts-package-declarations",
       "kind": "feature",
+      "requirements": [
+        "INT-93"
+      ],
       "bindings": [
         {
           "implementation": "typescript",
@@ -16023,6 +16047,9 @@
     {
       "id": "php-extension-internal-declarations-declarations",
       "kind": "feature",
+      "requirements": [
+        "DBS-172"
+      ],
       "bindings": [
         {
           "implementation": "php-extension",
@@ -16034,6 +16061,9 @@
     {
       "id": "php-extension-internal-declarations-client",
       "kind": "feature",
+      "requirements": [
+        "DBS-172"
+      ],
       "bindings": [
         {
           "implementation": "php-extension",
