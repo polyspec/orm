@@ -528,9 +528,8 @@ async fn nulls(conn: &mut Conn, db: &str, chain: &[Plan], c: &[(usize, usize)]) 
     run(conn, Command::Apply, chain, None, &mut quiet).await.map_err(|e| format!("apply: {e}"))?;
     conn.exec("INSERT INTO t (a) VALUES ('y')").await?;
     let result = run(conn, Command::Rollback, chain, None, &mut quiet).await;
-    match &result {
-        Err(e) if e.code() == Some("nulls") && e.to_string().contains("has 1 NULL rows") => {}
-        _ => return Err(format!("rollback with a NULL row: {result:?}, want nulls with the count")),
+    if !matches!(&result, Err(e) if e.code() == Some("nulls") && e.to_string().contains("has 1 NULL rows")) {
+        return Err(format!("rollback with a NULL row: {result:?}, want nulls with the count"));
     }
     schema_is(conn, &schema_text(&chain[1])).await?;
     history_is(conn, db, &format!("base|applied|{},drop_required_column|applied|{}", c[0].1, c[1].1)).await

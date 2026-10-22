@@ -44,7 +44,7 @@ async fn install_case(driver: &str, dsn: &str, vector: &Value) {
     let code = vector["expected"]["code"].as_str().unwrap();
     let want = format!("{code}: {}", vector["expected"]["message"][driver].as_str().unwrap());
     match db.utils().schema().install(schema).await {
-        Err(e) if e.code() == code && e.to_string() == want => {}
+        Err(e) => assert!(e.code() == code && e.to_string() == want, "{driver}: install over the changed database: {e:?}, want {want}"),
         other => panic!("{driver}: install over the changed database: {other:?}, want {want}"),
     }
     exec(&db, vector["remaining"].as_str().unwrap()).await;
