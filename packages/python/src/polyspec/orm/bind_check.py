@@ -179,4 +179,24 @@ def transform_param(kind: str, value):
         return f"{escaped}%"
     if kind == "like_ends":
         return f"%{escaped}"
+    if kind == "fulltext_boolean":
+        out = fulltext_boolean(value)
+        if out == "":
+            raise OrmError(codes.IR_INVALID, "fulltext search text has no term")
+        return out
     return value
+
+
+def fulltext_boolean(value: str) -> str:
+    """The transform fulltext_boolean (DIA-6): the search text of a MySQL boolean-mode match. It splits the value on
+    whitespace, removes the boolean operator characters from each term, drops the terms that are empty, prefixes every
+    term with +, suffixes the last term with *, and joins the terms with single spaces. A value with no term is ""."""
+    terms = []
+    for word in value.split():
+        term = "".join(ch for ch in word if ch not in '+-<>()~*"@')
+        if term:
+            terms.append("+" + term)
+    if not terms:
+        return ""
+    terms[-1] += "*"
+    return " ".join(terms)

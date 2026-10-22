@@ -187,6 +187,10 @@ class _Dialect:
     def contains_binary(self, col: str, value) -> str:
         return f"{col} LIKE {value('like_contains')}"
 
+    def fulltext(self, cols, value, boolean: bool):
+        # A full-text match is refused unless the dialect has one (DIA-187).
+        return None
+
     def tuple_in(self, cols, rows, negate: bool) -> str:
         return _tuple_in(cols, rows, negate, False)
 
@@ -286,6 +290,13 @@ class MysqlDialect(_Dialect):
         # utf8mb4_0900_bin compares code points under LIKE; LIKE BINARY is deprecated since MySQL 8.0.27.
         return f"{col} LIKE {value('like_contains')}"
 
+    def fulltext(self, cols, value, boolean):
+        # MATCH … AGAINST; the boolean mode binds the value through fulltext_boolean (DIA-6).
+        names = ", ".join(cols)
+        if boolean:
+            return f"MATCH ({names}) AGAINST ({value('fulltext_boolean')} IN BOOLEAN MODE)"
+        return f"MATCH ({names}) AGAINST ({value('')} IN NATURAL LANGUAGE MODE)"
+
     def random(self):
         return "RAND()"
 
@@ -382,6 +393,12 @@ class PostgresDialect(_Dialect):
         )
 
 
+    def fulltext(self, cols, value, boolean):
+        # to_tsvector over the simple configuration; the boolean mode uses websearch_to_tsquery (DIA-6).
+        doc = "to_tsvector('simple', " + " || ' ' || ".join(f"coalesce({c}, '')" for c in cols) + ")"
+        query = "websearch_to_tsquery" if boolean else "plainto_tsquery"
+        return f"{doc} @@ {query}('simple', {value('')})"
+
 class SqliteDialect(_Dialect):
     """All codec stages are on the host side."""
 
@@ -450,6 +467,10 @@ class SqliteDialect(_Dialect):
     def contains_binary(self, col, value):
         # SQLite LIKE ignores ASCII case.
         return f"instr({col}, {value('')}) > 0"
+
+    def fulltext(self, cols, value, boolean):
+        # SQLite has no full-text search on a table (DIA-187).
+        return None
 
     def tuple_in(self, cols, rows, negate):
         return _tuple_in(cols, rows, negate, True)

@@ -111,6 +111,10 @@ class _Builder:
             slot.precision = 6
         return self._typed(slot)
 
+    def transformed(self, i: int, transform: str) -> str:
+        """The value Params[i] bound through the value transform kind, with the text type of a full-text search."""
+        return self._typed(_Slot("param", param=i, transform=transform, col_type="text"))
+
     def col_param(self, i: int, col: Field, transform: str = "") -> str:
         slot = _Slot("param", param=i, transform=transform, col_type=col.type)
         if col.type in ("decimal", "time", "datetime"):
@@ -817,6 +821,15 @@ class Planner:
                     ]
                 )
             return self.d.tuple_in(self._qualified(s, cols), rows, op == "tuple_not_in")
+        if op in ("fulltext", "fulltext_boolean"):
+            sql = self.d.fulltext(
+                self._qualified(s, pr["cols"]),
+                lambda transform: b.transformed(pr["p"], transform),
+                op == "fulltext_boolean",
+            )
+            if sql is None:
+                raise OrmError(codes.OPERATOR_NOT_ALLOWED, f"{op} on {s.ent.name}")
+            return sql
         col = field_of(s.ent, pr["column"])
         lhs = self._qcol(s, pr["column"])
         if pr.get("sub"):

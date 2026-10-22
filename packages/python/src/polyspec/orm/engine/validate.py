@@ -464,6 +464,17 @@ class _Validator:
                     codes.IR_INVALID, f"{op}: {len(ps)} values for {len(cols)} columns"
                 )
             return
+        if op in ("fulltext", "fulltext_boolean"):
+            cols = p.get("cols") or []
+            if not cols or p.get("p") is None or p.get("column") or ps or any(p.get(k) for k in ("ref", "fn", "value", "sub")):
+                _fail(codes.IR_INVALID, f"{op} takes cols and p only")
+            for name in cols:
+                c = field_of(ent, name)
+                if c is None:
+                    _fail(codes.COLUMN_UNKNOWN, f"{ent.name}.{name}")
+                if c.type not in ("varchar", "text") or c.stages:
+                    _fail(codes.OPERATOR_NOT_ALLOWED, f"{op} on {ent.name}.{name}")
+            return
         if p.get("cols") or []:
             _fail(codes.IR_INVALID, "cols is only valid with tuple_in or tuple_not_in")
         column = p.get("column") or ""

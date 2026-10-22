@@ -101,6 +101,10 @@ class _ParamUses:
                 if cols:
                     self.column(i, field_of(ent, cols[k % len(cols)]))
             return
+        if p.get("op") in ("fulltext", "fulltext_boolean"):
+            if p.get("p") is not None:
+                self.add(p["p"], ParamUse("text"))
+            return
         f = field_of(ent, p["column"]) if p.get("column") else None
         value = p.get("value")
         if value:
