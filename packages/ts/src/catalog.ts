@@ -63,6 +63,8 @@ export interface CatalogColumn {
   automaticKey: boolean;
   defaultExpression: string | null;
   expressionDefault: boolean;
+  /** SQLite only: the fraction digits that the dbspec CHECK of a TIME or DATETIME column fixes; null when no CHECK fixes them. */
+  checkPrecision: number | null;
 }
 
 /** A table: its kind, its columns in physical order, its primary key in constraint order and whether that key is a reliable identity. */
@@ -240,25 +242,95 @@ function plainValue(value: unknown, column: DriverColumn): CatalogValue {
     return integerValue(integerOf(value, column.type));
   }
   if (typeof value === 'bigint') return integerValue(value);
+  if (typeof value === 'number' && FLOAT32_TYPES.has(baseType(column.type))) {
+    throw err(CODE_VALUE, `single-precision ${column.type} arrived as a number; it must arrive as its exact text`);
+  }
   if (typeof value === 'number') {
     if (!Number.isFinite(value)) throw err(CODE_VALUE, 'a non-finite number is not a catalog value');
     return value;
   }
+  if (typeof value === 'string' && FLOAT32_TYPES.has(baseType(column.type))) return float32FromBits(float32BitsOfText(value));
   if (typeof value === 'string') return value;
   throw err(CODE_VALUE, `unsupported driver value of type ${typeof value}`);
 }
 
-/** The float bits of a number as an IEEE-754 single or double. */
-function float32Bits(value: number): number {
-  const view = new DataView(new ArrayBuffer(4));
-  view.setFloat32(0, value);
-  return view.getUint32(0);
-}
-
+/** The float bits of a number as an IEEE-754 double. */
 function float64Bits(value: number): bigint {
   const view = new DataView(new ArrayBuffer(8));
   view.setFloat64(0, value);
   return view.getBigUint64(0);
+}
+
+/** The number of bits of a non-negative integer. */
+function bitLength(value: bigint): number {
+  return value === 0n ? 0 : value.toString(2).length;
+}
+
+/** Whether num/den is at least 2^e. */
+function atLeastPowerOfTwo(num: bigint, den: bigint, e: number): boolean {
+  return e >= 0 ? num >= den << BigInt(e) : num << BigInt(-e) >= den;
+}
+
+/** num * 2^s / den rounded to the nearest integer, ties to even. */
+function roundScaled(num: bigint, den: bigint, s: number): bigint {
+  const scaledNum = s >= 0 ? num << BigInt(s) : num;
+  const scaledDen = s >= 0 ? den : den << BigInt(-s);
+  let q = scaledNum / scaledDen;
+  const twice = (scaledNum % scaledDen) * 2n;
+  if (twice > scaledDen || (twice === scaledDen && q % 2n === 1n)) q += 1n;
+  return q;
+}
+
+/**
+ * The IEEE-754 single bits of a decimal text as PostgreSQL and MySQL print a float4 or FLOAT. The value is rounded once, to nearest
+ * with ties to even, by exact integer arithmetic; a rounding through a double would round twice and could differ.
+ */
+function float32BitsOfText(text: string): number {
+  const specials: Record<string, bigint> = { NaN: 0x7fc00000n, Infinity: 0x7f800000n, '-Infinity': 0xff800000n };
+  const special = specials[text];
+  if (special !== undefined) return Number(special);
+  const match = /^([+-])?(\d+)(?:\.(\d+))?(?:[eE]([+-]?\d+))?$/.exec(text);
+  if (match === null) throw err(CODE_VALUE, `float text "${text}" is not a decimal number`);
+  const sign = match[1] === '-' ? 1n << 31n : 0n;
+  const fraction = match[3] ?? '';
+  const exponent10 = Number(match[4] ?? '0') - fraction.length;
+  const mantissa = BigInt(match[2] + fraction);
+  if (mantissa === 0n) return Number(sign);
+  let num = mantissa;
+  let den = 1n;
+  if (exponent10 >= 0) num *= 10n ** BigInt(exponent10);
+  else den = 10n ** BigInt(-exponent10);
+  // 2^e2 <= num/den < 2^(e2+1)
+  let e2 = bitLength(num) - bitLength(den);
+  while (!atLeastPowerOfTwo(num, den, e2)) e2 -= 1;
+  while (atLeastPowerOfTwo(num, den, e2 + 1)) e2 += 1;
+  if (e2 >= -126) {
+    // A normal value: q = x * 2^(23 - e2) lies in [2^23, 2^24) before rounding.
+    let q = roundScaled(num, den, 23 - e2);
+    if (q === 1n << 24n) {
+      q = 1n << 23n;
+      e2 += 1;
+    }
+    if (e2 > 127) return Number(sign | 0x7f800000n);
+    return Number(sign | (BigInt(e2 + 127) << 23n) | (q - (1n << 23n)));
+  }
+  // A subnormal value: q counts units of 2^-149 and may round up to the smallest normal.
+  const q = roundScaled(num, den, 149);
+  if (q === 1n << 23n) return Number(sign | (1n << 23n));
+  return Number(sign | q);
+}
+
+/** The float value of single-precision bits. */
+function float32FromBits(bits: number): number {
+  const view = new DataView(new ArrayBuffer(4));
+  view.setUint32(0, bits);
+  return view.getFloat32(0);
+}
+
+/** The number of fraction digits of a temporal text. */
+function fractionDigits(text: string): number {
+  const dot = text.indexOf('.');
+  return dot < 0 ? 0 : text.length - dot - 1;
 }
 
 const DATE_TEXT = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -377,7 +449,7 @@ function gridCell(value: unknown, column: DriverColumn, dialect: DriverName): Ca
     throw unsupported();
   }
   if (typeof value === 'number') {
-    if (FLOAT32_TYPES.has(base)) return { kind: 'float32', bits: float32Bits(value) };
+    if (FLOAT32_TYPES.has(base)) throw err(CODE_VALUE, `single-precision ${type} arrived as a number; it must arrive as its exact text`);
     if (FLOAT64_TYPES.has(base)) return { kind: 'float64', bits: float64Bits(value) };
     if (INTEGER_TYPES.has(base) && Number.isInteger(value)) return integer(BigInt(value));
     throw unsupported();
@@ -388,10 +460,11 @@ function gridCell(value: unknown, column: DriverColumn, dialect: DriverName): Ca
   }
   if (typeof value !== 'string') throw unsupported();
   if (INTEGER_TYPES.has(base)) return integer(integerOf(value, type));
-  if (FLOAT32_TYPES.has(base) || FLOAT64_TYPES.has(base)) {
+  if (FLOAT32_TYPES.has(base)) return { kind: 'float32', bits: float32BitsOfText(value) };
+  if (FLOAT64_TYPES.has(base)) {
     const number = Number(value);
     if (Number.isNaN(number) && value !== 'NaN') throw err(CODE_VALUE, `float of native type "${type}" is not a number: ${value}`);
-    return FLOAT32_TYPES.has(base) ? { kind: 'float32', bits: float32Bits(number) } : { kind: 'float64', bits: float64Bits(number) };
+    return { kind: 'float64', bits: float64Bits(number) };
   }
   if (DECIMAL_TYPES.has(base)) {
     // A nonfinite PostgreSQL numeric stays unsupported (docs/spec/interfaces.md).
@@ -408,13 +481,121 @@ function gridCell(value: unknown, column: DriverColumn, dialect: DriverName): Ca
   throw unsupported();
 }
 
-/** A driver value of a plain read of a described table: the plain conversion, then the declared precision of a temporal column. */
+/** A driver value of a described table: the plain conversion, then the temporal rules of its column (dbspec text for SQLite, the declared precision otherwise). */
 function describedValue(value: unknown, column: DriverColumn, described: CatalogColumn | undefined, dialect: DriverName): CatalogValue {
   const plain = plainValue(value, column);
-  if (described === undefined || typeof plain !== 'string') return plain;
+  if (described === undefined) return plain;
+  if (dialect === 'sqlite') return sqliteTemporal(plain, described);
+  if (typeof plain !== 'string') return plain;
   const kind = temporalKind(dialect, described.nativeType);
   if (kind === undefined) return plain;
   return describedTemporal(plain, kind, declaredPrecision(dialect, described.nativeType));
+}
+
+/** A cell of a described table with its size in the read budget. */
+function describedCell(value: unknown, column: DriverColumn, described: CatalogColumn | undefined, dialect: DriverName): { cell: CatalogValue; size: number } {
+  const cell = describedValue(value, column, described, dialect);
+  return { cell, size: sizeOf(cell) };
+}
+
+/**
+ * A SQLite temporal column of a described table (Rust temporal.rs, sqlite_kind): the stored text must be in the dbspec form, and its
+ * fraction must have the digits that the table's dbspec CHECK fixes. A value that is no dbspec text is GRID_TEMPORAL_VALUE.
+ */
+function sqliteTemporal(plain: CatalogValue, described: CatalogColumn): CatalogValue {
+  const declared = described.nativeType.toUpperCase();
+  if (declared !== 'DATE' && declared !== 'TIME' && declared !== 'DATETIME') return plain;
+  if (plain === null) return null;
+  const kind = declared === 'DATE' ? 'date' : declared === 'TIME' ? 'time' : 'datetime';
+  if (typeof plain !== 'string' || !dbspecTemporal(kind, plain)) {
+    throw err(CODE_TEMPORAL_VALUE, `${described.name} holds a value that is not a dbspec ${kind}`);
+  }
+  if (kind === 'date') return plain;
+  if (described.checkPrecision === null) throw err(CODE_TEMPORAL_PRECISION, `${described.name} has no dbspec CHECK that fixes its fraction digits`);
+  const digits = fractionDigits(plain);
+  if (digits !== described.checkPrecision) {
+    throw err(CODE_TEMPORAL_PRECISION, `${described.name} holds ${digits} fraction digits; its dbspec CHECK fixes ${described.checkPrecision}`);
+  }
+  return plain;
+}
+
+/** Whether text is in the dbspec form of its kind: the rules of Rust's is_temporal, without any normalization. */
+function dbspecTemporal(kind: 'date' | 'time' | 'datetime', text: string): boolean {
+  const valid = (check: () => string): boolean => {
+    try {
+      check();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  if (kind === 'date') return text.length === 10 && valid(() => dateText(text));
+  if (kind === 'time') {
+    const [whole = '', digits] = text.split('.');
+    if (whole.length !== 8 || (digits !== undefined && !/^[0-9]{1,6}$/.test(digits))) return false;
+    return valid(() => timeText(whole));
+  }
+  const parts = text.split(' ');
+  if (parts.length !== 2) return false;
+  return dbspecTemporal('date', parts[0] ?? '') && dbspecTemporal('time', parts[1] ?? '');
+}
+
+/**
+ * The fraction digits that the dbspec CHECK of a SQLite column fixes (dbspec/render.ts): a GLOB of p `[0-9]` groups, or no fraction for
+ * p = 0. Null when no CHECK of the table's definition names the column.
+ */
+function checkPrecisionOf(tableSql: string, column: string): number | null {
+  const quoted = `"${column.split('"').join('""')}"`;
+  for (const clause of checkClauses(tableSql)) {
+    if (!clause.includes(quoted)) continue;
+    const glob = /GLOB '((?:\[0-9\])*)'/.exec(clause);
+    if (glob !== null) return (glob[1] ?? '').length / 5;
+    if (/IS (time|datetime)\(/.test(clause)) return 0;
+  }
+  return null;
+}
+
+/** The text inside each CHECK ( ... ) of a table definition, balanced over its parentheses. */
+function checkClauses(tableSql: string): string[] {
+  const clauses: string[] = [];
+  const opening = /CHECK\s*\(/gi;
+  let found: RegExpExecArray | null;
+  while ((found = opening.exec(tableSql)) !== null) {
+    const start = found.index + found[0].length;
+    let depth = 1;
+    let i = start;
+    while (i < tableSql.length && depth > 0) {
+      const c = tableSql.charAt(i);
+      if (c === '(') depth += 1;
+      else if (c === ')') depth -= 1;
+      i += 1;
+    }
+    clauses.push(tableSql.slice(start, i - 1));
+  }
+  return clauses;
+}
+
+/** The byte size of a converted cell: UTF-8 bytes of text, the length of binary, and 8 for every number, boolean and NULL. */
+function sizeOf(value: unknown): number {
+  if (typeof value === 'string') return Buffer.byteLength(value, 'utf8');
+  if (value instanceof Uint8Array) return value.length;
+  return 8;
+}
+
+/** The byte size of a grid cell: UTF-8 bytes of its text, the length of binary, and 8 for every number, boolean and NULL. */
+function gridSize(cell: CatalogGridCell): number {
+  switch (cell.kind) {
+    case 'text':
+    case 'decimal':
+    case 'date':
+    case 'time':
+    case 'datetime':
+      return Buffer.byteLength(cell.value, 'utf8');
+    case 'binary':
+      return cell.value.length;
+    default:
+      return 8;
+  }
 }
 
 /** The canonical key of a cell: its type and its exact value. Two cells are equal exactly when their keys are equal. */
@@ -663,14 +844,22 @@ class Session {
   public constructor(public readonly dialect: DriverName, private readonly session: DriverSession) {}
 
   /**
-   * Streams one statement and keeps its rows. The stream stops at the first row past maxRows or maxBytes, and the read then fails with
-   * CATALOG_LIMIT; no row past the budget is read.
+   * Streams one statement and converts each row as it arrives. The stream stops at the first row past maxRows or past maxBytes, and
+   * the read then fails with CATALOG_LIMIT; no row past the budget is converted or kept. Each cell is counted by its converted size
+   * (sizeOf and gridSize). A conversion error stops the stream and is thrown after it.
    */
-  public async query(sql: string, params: readonly unknown[], maxRows: number, maxBytes: number): Promise<{ columns: DriverColumn[]; rows: unknown[][] }> {
+  public async collect<T>(
+    sql: string,
+    params: readonly unknown[],
+    maxRows: number,
+    maxBytes: number,
+    convert: (value: unknown, column: DriverColumn, index: number) => { cell: T; size: number },
+  ): Promise<{ columns: DriverColumn[]; rows: T[][] }> {
     const bound = checkParams(params, CODE_PARAM);
-    const out: { columns: DriverColumn[]; rows: unknown[][] } = { columns: [], rows: [] };
+    const out: { columns: DriverColumn[]; rows: T[][] } = { columns: [], rows: [] };
     let bytes = 0;
     let overflow: string | undefined;
+    let failure: unknown;
     const sink: RowSink = {
       columns: columns => { out.columns = columns; },
       row: values => {
@@ -678,23 +867,40 @@ class Session {
           overflow = `result has more than ${maxRows} rows`;
           return false;
         }
-        for (const value of values) {
-          bytes += typeof value === 'string' ? Buffer.byteLength(value, 'utf8') : value instanceof Uint8Array ? value.length : 8;
-        }
-        if (bytes > maxBytes) {
-          overflow = `result has more than ${maxBytes} bytes of values`;
+        try {
+          const cells: T[] = [];
+          values.forEach((value, index) => {
+            const converted = convert(value, columnAt(out.columns, index), index);
+            bytes += converted.size;
+            cells.push(converted.cell);
+          });
+          if (bytes > maxBytes) {
+            overflow = `result has more than ${maxBytes} bytes of values`;
+            return false;
+          }
+          out.rows.push(cells);
+          return true;
+        } catch (error) {
+          failure = error;
           return false;
         }
-        out.rows.push(values);
-        return true;
       },
     };
     await this.session.scan(sql, bound, sink, noop);
+    if (failure !== undefined) {
+      this.stopped = true;
+      throw failure;
+    }
     if (overflow !== undefined) {
       this.stopped = true;
       throw err(CODE_LIMIT, overflow);
     }
     return out;
+  }
+
+  /** Reads the rows of a statement with each value as it is, counted by its size. */
+  public async rawRows(sql: string, params: readonly unknown[], maxRows: number, maxBytes: number): Promise<{ columns: DriverColumn[]; rows: unknown[][] }> {
+    return this.collect<unknown>(sql, params, maxRows, maxBytes, value => ({ cell: value, size: sizeOf(value) }));
   }
 
   /** Runs a statement that returns no rows and returns the number of rows it changed. */
@@ -717,8 +923,10 @@ class Session {
 
   /** Reads the rows of a plain query: each value by the native type of its column. */
   public async plainRows(sql: string, params: readonly unknown[], maxRows: number, maxBytes: number): Promise<{ columns: DriverColumn[]; rows: CatalogValue[][] }> {
-    const raw = await this.query(sql, params, maxRows, maxBytes);
-    return { columns: raw.columns, rows: raw.rows.map(row => row.map((value, index) => plainValue(value, columnAt(raw.columns, index)))) };
+    return this.collect<CatalogValue>(sql, params, maxRows, maxBytes, (value, column) => {
+      const cell = plainValue(value, column);
+      return { cell, size: sizeOf(cell) };
+    });
   }
 
   /** Reads one table descriptor: the kind, the columns, the key in constraint order and the identity flag. */
@@ -755,9 +963,22 @@ class Session {
         automaticKey: boolOf(row[5], 'automatic key'),
         defaultExpression,
         expressionDefault: boolOf(row[7], 'expression default'),
+        checkPrecision: null,
       };
       if (ordinal > 0) keys.push({ ordinal, index: columns.length });
       columns.push(column);
+    }
+    if (this.dialect === 'sqlite') {
+      // The dbspec renderer writes the fraction digits of a TIME or DATETIME column into a CHECK of the table's own definition.
+      const tables = (await this.plainRows("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", [ref.name], 2, METADATA_BYTES)).rows;
+      const [tableRow] = tables;
+      if (tables.length !== 1 || tableRow === undefined || tableRow.length !== 1 || typeof tableRow[0] !== 'string') {
+        throw err(CODE_METADATA, `the definition of table "${ref.name}" is not one text`);
+      }
+      for (const column of columns) {
+        const declared = column.nativeType.toUpperCase();
+        if (declared === 'TIME' || declared === 'DATETIME') column.checkPrecision = checkPrecisionOf(tableRow[0], column.name);
+      }
     }
     keys.sort((a, b) => a.ordinal - b.ordinal);
     keys.forEach((key, position) => {
@@ -795,21 +1016,21 @@ class Session {
     const predicate = metadata.primaryKey.map((name, index) => `${quoteIdent(name, this.dialect)}=${placeholder(index + 1, this.dialect)}`).join(' AND ');
     const sql = `SELECT ${quoteList(metadata.columns.map(column => column.name), this.dialect)} FROM ${qualified(metadata.table, this.dialect)}` +
       ` WHERE ${predicate} LIMIT 2${suffix}`;
-    const raw = await this.query(sql, keys, 2, PAGE_BYTES);
+    const raw = await this.collect<CatalogValue>(sql, keys, 2, PAGE_BYTES, (value, column, index) => describedCell(value, column, metadata.columns[index], this.dialect));
     if (raw.columns.length !== metadata.columns.length) throw err(CODE_WRITE, 'row shape differs from descriptor');
-    return raw.rows.map(row => describedRow(row, raw.columns, metadata, this.dialect));
+    return raw.rows;
   }
 
   /** Refuses a MySQL row change unless the server, the account and the table are verified (mutation.rs, mysql_safety). */
   public async mysqlSafety(metadata: CatalogTableMetadata): Promise<void> {
     const unsupported = (reason: string): OrmError => err(CODE_UNSUPPORTED, reason);
-    const partial = (await this.query('SELECT CAST(@@GLOBAL.partial_revokes AS SIGNED)', [], 1, 4096)).rows;
+    const partial = (await this.rawRows('SELECT CAST(@@GLOBAL.partial_revokes AS SIGNED)', [], 1, 4096)).rows;
     const [partialRow] = partial;
     if (partial.length !== 1 || partialRow === undefined || partialRow.length !== 1 || Number(partialRow[0]) !== 0) {
       throw unsupported('MySQL partial-revoke visibility requires verification');
     }
 
-    const account = (await this.query('SELECT CURRENT_USER()', [], 1, 4096)).rows;
+    const account = (await this.rawRows('SELECT CURRENT_USER()', [], 1, 4096)).rows;
     const [accountRow] = account;
     if (account.length !== 1 || accountRow === undefined || accountRow.length !== 1) throw unsupported('unverifiable MySQL account');
     const text = textOf(accountRow[0], 'MySQL account');
@@ -817,7 +1038,7 @@ class Session {
     if (at < 0) throw unsupported('unverifiable MySQL account');
     const grantee = `'${text.slice(0, at)}'@'${text.slice(at + 1)}'`;
 
-    const grants = (await this.query(
+    const grants = (await this.rawRows(
       "SELECT PRIVILEGE_TYPE FROM information_schema.USER_PRIVILEGES WHERE GRANTEE=? AND PRIVILEGE_TYPE='TRIGGER' " +
         "UNION ALL SELECT PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES WHERE GRANTEE=? AND TABLE_SCHEMA=? AND PRIVILEGE_TYPE='TRIGGER' " +
         "UNION ALL SELECT PRIVILEGE_TYPE FROM information_schema.TABLE_PRIVILEGES WHERE GRANTEE=? AND TABLE_SCHEMA=? AND TABLE_NAME=? AND PRIVILEGE_TYPE='TRIGGER'",
@@ -827,14 +1048,14 @@ class Session {
     )).rows;
     if (!grants.some(row => row.length === 1 && row[0] === 'TRIGGER')) throw unsupported('MySQL trigger visibility is unverified');
 
-    const engine = (await this.query('SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=? AND TABLE_NAME=?',
+    const engine = (await this.rawRows('SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=? AND TABLE_NAME=?',
       [metadata.table.namespace, metadata.table.name], 2, 4096)).rows;
     const [engineRow] = engine;
     if (engine.length !== 1 || engineRow === undefined || engineRow.length !== 1 || typeof engineRow[0] !== 'string' || engineRow[0].toLowerCase() !== 'innodb') {
       throw unsupported('MySQL requires InnoDB');
     }
 
-    const triggers = (await this.query('SELECT TRIGGER_NAME FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA=? AND EVENT_OBJECT_TABLE=? LIMIT 1',
+    const triggers = (await this.rawRows('SELECT TRIGGER_NAME FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA=? AND EVENT_OBJECT_TABLE=? LIMIT 1',
       [metadata.table.namespace, metadata.table.name], 1, 4096)).rows;
     if (triggers.length !== 0) throw unsupported('MySQL triggers require effect verification');
   }
@@ -847,10 +1068,6 @@ function columnAt(columns: DriverColumn[], index: number): DriverColumn {
   return column;
 }
 
-/** A row of a described table: each value by its native type, with the declared precision of its temporal columns. */
-function describedRow(row: unknown[], columns: DriverColumn[], metadata: CatalogTableMetadata, dialect: DriverName): CatalogValue[] {
-  return row.map((value, index) => describedValue(value, columnAt(columns, index), metadata.columns[index], dialect));
-}
 
 function textOf(value: unknown, what: string): string {
   if (typeof value !== 'string') throw err(CODE_METADATA, `expected text for ${what}, got ${typeof value}`);
@@ -991,13 +1208,13 @@ export class CatalogConnection {
       if (metadata.primaryKey.length > 0) sql += ` ORDER BY ${quoteList(metadata.primaryKey, this.dialect)}`;
       // One extra row is the sentinel that reports hasMore; the stream stops at that row.
       sql += ` LIMIT ${limit + 1} OFFSET ${offset}`;
-      const raw = await session.query(sql, [], limit + 1, PAGE_BYTES);
+      const raw = await session.collect<CatalogValue>(sql, [], limit + 1, PAGE_BYTES, (value, column, index) => describedCell(value, column, metadata.columns[index], this.dialect));
       if (raw.columns.length !== metadata.columns.length || raw.columns.some((column, index) => column.name !== metadata.columns[index]?.name)) {
         throw err(CODE_PAGE_CHANGED, 'prepared columns differ from descriptor');
       }
       const after = await session.describe(table);
       if (!sameDescriptor(after, metadata)) throw err(CODE_PAGE_CHANGED, 'descriptor changed during read');
-      let rows = raw.rows.map(row => describedRow(row, raw.columns, metadata, this.dialect));
+      let rows = raw.rows;
       const hasMore = rows.length > limit;
       if (hasMore) rows = rows.slice(0, limit);
       return {
@@ -1025,10 +1242,13 @@ export class CatalogConnection {
   public async readOnlyGridQuery(query: string, params: readonly unknown[], limits: CatalogQueryLimits = {}): Promise<CatalogGridResult> {
     const { maxRows, maxBytes } = this.queryBudget(query, params, limits);
     return this.read(async session => {
-      const raw = await session.query(query, params, maxRows, maxBytes);
+      const raw = await session.collect<CatalogGridCell>(query, params, maxRows, maxBytes, (value, column) => {
+        const cell = gridCell(value, column, this.dialect);
+        return { cell, size: gridSize(cell) };
+      });
       return {
         columns: raw.columns.map(column => ({ name: column.name, nativeType: column.type })),
-        rows: raw.rows.map(row => row.map((value, index) => gridCell(value, columnAt(raw.columns, index), this.dialect))),
+        rows: raw.rows,
       };
     });
   }

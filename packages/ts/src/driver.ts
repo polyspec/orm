@@ -917,6 +917,8 @@ export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, stat
         decimalNumbers: false,
         jsonStrings: true,
         supportBigNumbers: exact,
+        // The catalog reads a FLOAT as its exact text, so that the single-precision bits are rounded from the text and not from a double.
+        ...(exact ? { typeCast: (field: { type?: string | number; string(): string | null }, next: () => unknown) => (field.type === 'FLOAT' ? field.string() : next()) } : {}),
         maxPreparedStatements: statementCacheSize,
       });
       const setup: SessionSetup = {};
@@ -934,7 +936,8 @@ export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, stat
       const config: pg.PoolConfig = { connectionString: url.toString(), max: bounds.size };
       // pg closes a connection maxLifetimeSeconds after it opened, idle or at its release.
       if (bounds.lifetimeMs > 0) config.maxLifetimeSeconds = bounds.lifetimeMs / 1000;
-      if (exact) config.types = { getTypeParser: (oid: number, format?: 'text' | 'binary') => (oid === 20 ? (value: string): string => value : pg.types.getTypeParser(oid, format)) };
+      // The catalog reads int8 and float4 as their exact text: int8 is not rounded and float4 bits are rounded from the text, not from a double.
+      if (exact) config.types = { getTypeParser: (oid: number, format?: 'text' | 'binary') => (oid === 20 || oid === 700 ? (value: string): string => value : pg.types.getTypeParser(oid, format)) };
       config.options = '-c TimeZone=UTC';
       if (statementTimeoutMs > 0) config.options += ` -c statement_timeout=${statementTimeoutMs}`;
       return new PostgresPoolDriver(new pg.Pool(config), statementCacheSize, bounds.size, bounds.idleSize, config);

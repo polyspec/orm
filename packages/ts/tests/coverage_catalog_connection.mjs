@@ -3,6 +3,7 @@
 // case inserts, updates and deletes one row of composite_account in tenant 990005 and ends in the state it started in.
 import assert from 'node:assert/strict';
 import { connectCatalog } from '../dist/index.js';
+import { DatabaseSync } from 'node:sqlite';
 
 const TENANT = 990005;
 
@@ -191,22 +192,98 @@ async function gridCase() {
   }
 }
 
-// A described temporal column reads with exactly the fraction digits its native type declares (GRID_TEMPORAL_PRECISION otherwise).
+// A described temporal column reads with exactly the fraction digits its declared precision fixes: the native type for MySQL and
+// PostgreSQL, the dbspec CHECK of the table for SQLite. A value with other digits fails with GRID_TEMPORAL_PRECISION.
 async function precisionCase() {
   const { driver, catalog } = await connect();
   try {
     const page = await catalog.tablePage({ namespace: await catalog.currentNamespace(), name: 'author' }, 3, 0);
     const index = page.columnIndex('start_dt');
     const column = page.metadata.columns[index];
-    // SQLite has no temporal storage class and keeps its stored text (not checked here).
-    if (driver !== 'sqlite' && column !== undefined && /TIME|DATETIME|TIMESTAMP/i.test(column.nativeType)) {
+    if (column !== undefined && /TIME|DATETIME|TIMESTAMP/i.test(column.nativeType)) {
       const declared = /\((\d+)\)/.exec(column.nativeType);
-      const precision = declared ? Number(declared[1]) : driver === 'postgres' ? 6 : 0;
+      const precision = driver === 'sqlite'
+        ? column.checkPrecision
+        : declared ? Number(declared[1]) : driver === 'postgres' ? 6 : 0;
+      assert.notEqual(precision, null, `${driver}: start_dt has a precision its CHECK or type fixes`);
       for (const row of page.result.rows) {
         const value = row[index];
         const fraction = typeof value === 'string' && value.includes('.') ? value.split('.')[1].length : 0;
         assert.equal(fraction, precision, `${driver}: start_dt of ${column.nativeType} has ${fraction} fraction digits`);
       }
+    }
+  } finally {
+    await catalog.close();
+  }
+}
+
+// SQLite temporal rules of a described table, on tables this case creates in the bench file and drops afterwards: a value in the
+// dbspec form with the digits its CHECK fixes reads back; a value that is no dbspec text fails with GRID_TEMPORAL_VALUE; a column with
+// no CHECK that fixes its digits fails with GRID_TEMPORAL_PRECISION.
+async function sqliteTemporalCase() {
+  if (process.env.ORM_FEATURE_DATABASE !== 'sqlite') return;
+  const path = decodeURIComponent(new URL(process.env.ORM_FEATURE_DSN).pathname);
+  const db = new DatabaseSync(path);
+  const names = ['kcat_temporal_ok', 'kcat_temporal_bare', 'kcat_temporal_nocheck'];
+  try {
+    for (const name of names) db.exec(`DROP TABLE IF EXISTS ${name}`);
+    db.exec(`CREATE TABLE kcat_temporal_ok (id INTEGER PRIMARY KEY, a DATETIME CHECK ("a" IS NULL OR (length("a") = 23 AND substr("a", 1, 19) IS datetime(substr("a", 1, 19)) AND substr("a", 12, 2) < '24' AND substr("a", 20, 1) = '.' AND substr("a", 21) GLOB '[0-9][0-9][0-9]')))`);
+    db.exec(`INSERT INTO kcat_temporal_ok (id, a) VALUES (1, '2026-01-02 03:04:05.123')`);
+    db.exec(`CREATE TABLE kcat_temporal_bare (id INTEGER PRIMARY KEY, b DATETIME)`);
+    db.exec(`INSERT INTO kcat_temporal_bare (id, b) VALUES (1, 'not a datetime')`);
+    db.exec(`CREATE TABLE kcat_temporal_nocheck (id INTEGER PRIMARY KEY, b DATETIME)`);
+    db.exec(`INSERT INTO kcat_temporal_nocheck (id, b) VALUES (1, '2026-01-02 03:04:05.123')`);
+    const catalog = await connectCatalog(process.env.ORM_FEATURE_DSN);
+    try {
+      const ok = await catalog.tablePage({ namespace: 'main', name: 'kcat_temporal_ok' }, 1, 0);
+      assert.equal(ok.result.rows[0][1], '2026-01-02 03:04:05.123', 'sqlite: a dbspec datetime reads back as its text');
+      await assert.rejects(catalog.tablePage({ namespace: 'main', name: 'kcat_temporal_bare' }, 1, 0), codeIs('GRID_TEMPORAL_VALUE'), 'sqlite: a non-dbspec text');
+      await assert.rejects(catalog.tablePage({ namespace: 'main', name: 'kcat_temporal_nocheck' }, 1, 0), codeIs('GRID_TEMPORAL_PRECISION'), 'sqlite: no CHECK fixes the digits');
+    } finally {
+      await catalog.close();
+    }
+  } finally {
+    for (const name of names) db.exec(`DROP TABLE IF EXISTS ${name}`);
+    db.close();
+  }
+}
+
+// The byte budget counts each cell by its converted size (sizeOf, gridSize): an integer and a boolean are 8 bytes, text is its UTF-8 bytes,
+// binary its length. A read of exactly the budget succeeds, one byte less fails. An integer that a driver returns as text is still 8 bytes.
+async function byteBudgetCase() {
+  const { driver, catalog } = await connect();
+  try {
+    const big = await catalog.readOnlyQuery('SELECT 9223372036854775807 AS n', [], { maxBytes: 8 });
+    assert.equal(big.rows[0][0], 9223372036854775807n, `${driver}: a big integer within its 8 bytes`);
+    await assert.rejects(catalog.readOnlyQuery('SELECT 9223372036854775807 AS n', [], { maxBytes: 7 }), codeIs('CATALOG_LIMIT'), `${driver}: 7 bytes do not hold an 8-byte integer`);
+    const two = "SELECT 1 AS a UNION ALL SELECT 2";
+    assert.equal((await catalog.readOnlyQuery(two, [], { maxBytes: 16 })).rows.length, 2, `${driver}: two integers in 16 bytes`);
+    await assert.rejects(catalog.readOnlyQuery(two, [], { maxBytes: 15 }), codeIs('CATALOG_LIMIT'), `${driver}: two integers in 15 bytes`);
+    const accent = await catalog.readOnlyQuery("SELECT 'é' AS t", [], { maxBytes: 2 });
+    assert.equal(accent.rows[0][0], 'é', `${driver}: a two-byte character in two bytes`);
+    await assert.rejects(catalog.readOnlyQuery("SELECT 'é' AS t", [], { maxBytes: 1 }), codeIs('CATALOG_LIMIT'), `${driver}: the UTF-8 bytes, not the characters`);
+    const grid = await catalog.readOnlyGridQuery(driver === 'postgres' ? 'SELECT 1.5::double precision' : driver === 'mysql' ? 'SELECT CAST(1.5 AS DOUBLE)' : 'SELECT 1.5', [], { maxBytes: 8 });
+    assert.equal(grid.rows[0][0].kind, 'float64', `${driver}: a double in 8 bytes`);
+    await assert.rejects(catalog.readOnlyGridQuery("SELECT 'é'", [], { maxBytes: 1 }), codeIs('CATALOG_LIMIT'), `${driver}: a grid text counts its UTF-8 bytes`);
+  } finally {
+    await catalog.close();
+  }
+}
+
+// float4 of PostgreSQL is rounded from its exact text, and the single-precision bits are those of the nearest float4 (ties to even).
+async function floatCase() {
+  const { driver, catalog } = await connect();
+  try {
+    if (driver === 'postgres') {
+      const bits = async (sql) => (await catalog.readOnlyGridQuery(sql, [])).rows[0][0];
+      assert.deepEqual(await bits('SELECT 16777216::real'), { kind: 'float32', bits: 1266679808 }, 'postgres: 2^24 is exact');
+      assert.deepEqual(await bits('SELECT 16777218::real'), { kind: 'float32', bits: 1266679809 }, 'postgres: 2^24 + 2 is the next float4');
+      assert.deepEqual(await bits("SELECT '1e-45'::real"), { kind: 'float32', bits: 1 }, 'postgres: the least subnormal float4');
+      assert.deepEqual(await bits("SELECT '-1.17549435e-38'::real"), { kind: 'float32', bits: 2155872256 }, 'postgres: the least normal float4, negative');
+      assert.deepEqual(await bits("SELECT '3.4028235e+38'::real"), { kind: 'float32', bits: 2139095039 }, 'postgres: the largest float4');
+      assert.deepEqual(await bits("SELECT 'NaN'::real"), { kind: 'float32', bits: 2143289344 }, 'postgres: NaN float4');
+      const plain = await catalog.readOnlyQuery('SELECT 1.1::real AS f', []);
+      assert.equal(plain.rows[0][0], Math.fround(1.1), 'postgres: a float4 reads as its exact single-precision value');
     }
   } finally {
     await catalog.close();
@@ -219,4 +296,7 @@ await plainCase();
 await streamCase();
 await gridCase();
 await precisionCase();
-console.log('catalog_connection: read, row mutation, columns, stream budgets, grid cells and precision passed');
+await sqliteTemporalCase();
+await byteBudgetCase();
+await floatCase();
+console.log('catalog_connection: read, row mutation, columns, stream budgets, byte budgets, grid cells, float and temporal precision passed');
