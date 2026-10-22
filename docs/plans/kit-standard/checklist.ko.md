@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 032fa8a7811f68f7eb0e3271328d1c8cf7100450fa00071e2212aa933e93a0ce -->
+<!-- source-sha256: 2d2c1860f50ac18977b0dca285203edd6f32c0d4b3a5237850553ae894a329ef -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -232,3 +232,4 @@
 | KSTD-5-67 | relation step의 parent bind slot이 없으면 실패한다 | packages/rust/orm/src/driver.rs:102, :117 | `make rust-check` | [ ] |
 | KSTD-5-68 | 음수 또는 범위를 벗어난 소수 정밀도를 거부한다 | packages/rust/orm/src/db.rs:1155,1167,1185 | `make rust-check` | [ ] |
 | KSTD-5-69 | commit task의 panic payload를 포함한다 | packages/rust/build/src/catalog/mutation_finish.rs:40 | `make rust-check` | [ ] |
+| KSTD-5-70 | CARGO_MANIFEST_DIR이 없을 때 현재 디렉터리 대신 변수 이름을 밝히는 오류를 낸다 | packages/rust/build/src/lib.rs:146 | `make rust-check` | [ ] |

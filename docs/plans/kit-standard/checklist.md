@@ -231,3 +231,4 @@
 | KSTD-5-67 | Fail when a relation step's parent bind slot is absent | packages/rust/orm/src/driver.rs:102, :117 | `make rust-check` | [ ] |
 | KSTD-5-68 | Reject a negative or out-of-range fraction precision | packages/rust/orm/src/db.rs:1155,1167,1185 | `make rust-check` | [ ] |
 | KSTD-5-69 | Include the panic payload of the commit task | packages/rust/build/src/catalog/mutation_finish.rs:40 | `make rust-check` | [ ] |
+| KSTD-5-70 | Name the missing CARGO_MANIFEST_DIR instead of resolving against the current directory | packages/rust/build/src/lib.rs:146 | `make rust-check` | [ ] |
