@@ -11,18 +11,18 @@ namespace Polyspec\Orm;
  */
 final readonly class StatementEvent
 {
-    public const SELECT = 'select';
-    public const INSERT = 'insert';
-    public const UPDATE = 'update';
-    public const DELETE = 'delete';
-    public const BEGIN = 'begin';
-    public const COMMIT = 'commit';
-    public const ROLLBACK = 'rollback';
-    public const SAVEPOINT = 'savepoint';
-    public const RELEASE = 'release';
-    public const ROLLBACK_TO = 'rollback_to';
-    public const SCHEMA = 'schema';
-    public const UTILITY = 'utility';
+    public const string SELECT = 'select';
+    public const string INSERT = 'insert';
+    public const string UPDATE = 'update';
+    public const string DELETE = 'delete';
+    public const string BEGIN = 'begin';
+    public const string COMMIT = 'commit';
+    public const string ROLLBACK = 'rollback';
+    public const string SAVEPOINT = 'savepoint';
+    public const string RELEASE = 'release';
+    public const string ROLLBACK_TO = 'rollback_to';
+    public const string SCHEMA = 'schema';
+    public const string UTILITY = 'utility';
 
     /**
      * @param list<mixed> $binds the bound values in order; a secret is "$SECRET" and an executor clock value "$NOW"

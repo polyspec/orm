@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: fd6ac007d0ce48341ba7d2fde807613abc6037b6 */
+ * Stub hash: 5dad6feaaf4d8be48aa511c40deb214221a80e75 */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Diagnostic___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, rule, IS_STRING, 0)
@@ -856,6 +856,16 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_scalarText
 	ZEND_ARG_TYPE_INFO(0, v, IS_MIXED, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_StatementEvent___construct, 0, 0, 7)
+	ZEND_ARG_TYPE_INFO(0, sql, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, binds, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, kind, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, tables, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, elapsed, IS_DOUBLE, 0)
+	ZEND_ARG_TYPE_INFO(0, transaction, IS_LONG, 1)
+	ZEND_ARG_OBJ_INFO(0, error, Polyspec\\Orm\\OrmException, 1)
+ZEND_END_ARG_INFO()
+
 ZEND_METHOD(Polyspec_Orm_Dbspec_Diagnostic, __construct);
 ZEND_METHOD(Polyspec_Orm_Dbspec_Position, __construct);
 ZEND_METHOD(Polyspec_Orm_Dbspec_Document, __construct);
@@ -1032,6 +1042,7 @@ ZEND_METHOD(Polyspec_Orm_Db, rowKey);
 ZEND_METHOD(Polyspec_Orm_Db, rowSlot);
 ZEND_METHOD(Polyspec_Orm_Db, sameScalar);
 ZEND_METHOD(Polyspec_Orm_Db, scalarText);
+ZEND_METHOD(Polyspec_Orm_StatementEvent, __construct);
 
 static const zend_function_entry class_Polyspec_Orm_Dbspec_Diagnostic_methods[] = {
 	ZEND_ME(Polyspec_Orm_Dbspec_Diagnostic, __construct, arginfo_class_Polyspec_Orm_Dbspec_Diagnostic___construct, ZEND_ACC_PUBLIC)
@@ -1434,6 +1445,11 @@ static const zend_function_entry class_Polyspec_Orm_Db_methods[] = {
 	ZEND_ME(Polyspec_Orm_Db, rowSlot, arginfo_class_Polyspec_Orm_Db_rowSlot, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_ME(Polyspec_Orm_Db, sameScalar, arginfo_class_Polyspec_Orm_Db_sameScalar, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_ME(Polyspec_Orm_Db, scalarText, arginfo_class_Polyspec_Orm_Db_scalarText, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Polyspec_Orm_StatementEvent_methods[] = {
+	ZEND_ME(Polyspec_Orm_StatementEvent, __construct, arginfo_class_Polyspec_Orm_StatementEvent___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
@@ -3740,6 +3756,143 @@ static zend_class_entry *register_class_Polyspec_Orm_Db(void)
 	zend_string *property_md_class_Polyspec_Orm_MarkdownSession = zend_string_init("Polyspec\\Orm\\MarkdownSession", sizeof("Polyspec\\Orm\\MarkdownSession")-1, 1);
 	zend_declare_typed_property(class_entry, property_md_name, &property_md_default_value, ZEND_ACC_PRIVATE|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_md_class_Polyspec_Orm_MarkdownSession, 0, MAY_BE_NULL));
 	zend_string_release(property_md_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Polyspec_Orm_StatementEvent(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm", "StatementEvent", class_Polyspec_Orm_StatementEvent_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
+
+	zval const_SELECT_value;
+	zend_string *const_SELECT_value_str = zend_string_init("select", strlen("select"), 1);
+	ZVAL_STR(&const_SELECT_value, const_SELECT_value_str);
+	zend_string *const_SELECT_name = zend_string_init_interned("SELECT", sizeof("SELECT") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_SELECT_name, &const_SELECT_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_SELECT_name);
+
+	zval const_INSERT_value;
+	zend_string *const_INSERT_value_str = zend_string_init("insert", strlen("insert"), 1);
+	ZVAL_STR(&const_INSERT_value, const_INSERT_value_str);
+	zend_string *const_INSERT_name = zend_string_init_interned("INSERT", sizeof("INSERT") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_INSERT_name, &const_INSERT_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_INSERT_name);
+
+	zval const_UPDATE_value;
+	zend_string *const_UPDATE_value_str = zend_string_init("update", strlen("update"), 1);
+	ZVAL_STR(&const_UPDATE_value, const_UPDATE_value_str);
+	zend_string *const_UPDATE_name = zend_string_init_interned("UPDATE", sizeof("UPDATE") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_UPDATE_name, &const_UPDATE_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_UPDATE_name);
+
+	zval const_DELETE_value;
+	zend_string *const_DELETE_value_str = zend_string_init("delete", strlen("delete"), 1);
+	ZVAL_STR(&const_DELETE_value, const_DELETE_value_str);
+	zend_string *const_DELETE_name = zend_string_init_interned("DELETE", sizeof("DELETE") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_DELETE_name, &const_DELETE_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_DELETE_name);
+
+	zval const_BEGIN_value;
+	zend_string *const_BEGIN_value_str = zend_string_init("begin", strlen("begin"), 1);
+	ZVAL_STR(&const_BEGIN_value, const_BEGIN_value_str);
+	zend_string *const_BEGIN_name = zend_string_init_interned("BEGIN", sizeof("BEGIN") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_BEGIN_name, &const_BEGIN_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_BEGIN_name);
+
+	zval const_COMMIT_value;
+	zend_string *const_COMMIT_value_str = zend_string_init("commit", strlen("commit"), 1);
+	ZVAL_STR(&const_COMMIT_value, const_COMMIT_value_str);
+	zend_string *const_COMMIT_name = zend_string_init_interned("COMMIT", sizeof("COMMIT") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_COMMIT_name, &const_COMMIT_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_COMMIT_name);
+
+	zval const_ROLLBACK_value;
+	zend_string *const_ROLLBACK_value_str = zend_string_init("rollback", strlen("rollback"), 1);
+	ZVAL_STR(&const_ROLLBACK_value, const_ROLLBACK_value_str);
+	zend_string *const_ROLLBACK_name = zend_string_init_interned("ROLLBACK", sizeof("ROLLBACK") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_ROLLBACK_name, &const_ROLLBACK_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_ROLLBACK_name);
+
+	zval const_SAVEPOINT_value;
+	zend_string *const_SAVEPOINT_value_str = zend_string_init("savepoint", strlen("savepoint"), 1);
+	ZVAL_STR(&const_SAVEPOINT_value, const_SAVEPOINT_value_str);
+	zend_string *const_SAVEPOINT_name = zend_string_init_interned("SAVEPOINT", sizeof("SAVEPOINT") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_SAVEPOINT_name, &const_SAVEPOINT_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_SAVEPOINT_name);
+
+	zval const_RELEASE_value;
+	zend_string *const_RELEASE_value_str = zend_string_init("release", strlen("release"), 1);
+	ZVAL_STR(&const_RELEASE_value, const_RELEASE_value_str);
+	zend_string *const_RELEASE_name = zend_string_init_interned("RELEASE", sizeof("RELEASE") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_RELEASE_name, &const_RELEASE_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_RELEASE_name);
+
+	zval const_ROLLBACK_TO_value;
+	zend_string *const_ROLLBACK_TO_value_str = zend_string_init("rollback_to", strlen("rollback_to"), 1);
+	ZVAL_STR(&const_ROLLBACK_TO_value, const_ROLLBACK_TO_value_str);
+	zend_string *const_ROLLBACK_TO_name = zend_string_init_interned("ROLLBACK_TO", sizeof("ROLLBACK_TO") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_ROLLBACK_TO_name, &const_ROLLBACK_TO_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_ROLLBACK_TO_name);
+
+	zval const_SCHEMA_value;
+	zend_string *const_SCHEMA_value_str = zend_string_init("schema", strlen("schema"), 1);
+	ZVAL_STR(&const_SCHEMA_value, const_SCHEMA_value_str);
+	zend_string *const_SCHEMA_name = zend_string_init_interned("SCHEMA", sizeof("SCHEMA") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_SCHEMA_name, &const_SCHEMA_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_SCHEMA_name);
+
+	zval const_UTILITY_value;
+	zend_string *const_UTILITY_value_str = zend_string_init("utility", strlen("utility"), 1);
+	ZVAL_STR(&const_UTILITY_value, const_UTILITY_value_str);
+	zend_string *const_UTILITY_name = zend_string_init_interned("UTILITY", sizeof("UTILITY") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_UTILITY_name, &const_UTILITY_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_UTILITY_name);
+
+	zval property_sql_default_value;
+	ZVAL_UNDEF(&property_sql_default_value);
+	zend_string *property_sql_name = zend_string_init("sql", sizeof("sql") - 1, 1);
+	zend_declare_typed_property(class_entry, property_sql_name, &property_sql_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_sql_name);
+
+	zval property_binds_default_value;
+	ZVAL_UNDEF(&property_binds_default_value);
+	zend_string *property_binds_name = zend_string_init("binds", sizeof("binds") - 1, 1);
+	zend_declare_typed_property(class_entry, property_binds_name, &property_binds_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_binds_name);
+
+	zval property_kind_default_value;
+	ZVAL_UNDEF(&property_kind_default_value);
+	zend_string *property_kind_name = zend_string_init("kind", sizeof("kind") - 1, 1);
+	zend_declare_typed_property(class_entry, property_kind_name, &property_kind_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_kind_name);
+
+	zval property_tables_default_value;
+	ZVAL_UNDEF(&property_tables_default_value);
+	zend_string *property_tables_name = zend_string_init("tables", sizeof("tables") - 1, 1);
+	zend_declare_typed_property(class_entry, property_tables_name, &property_tables_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_tables_name);
+
+	zval property_elapsed_default_value;
+	ZVAL_UNDEF(&property_elapsed_default_value);
+	zend_string *property_elapsed_name = zend_string_init("elapsed", sizeof("elapsed") - 1, 1);
+	zend_declare_typed_property(class_entry, property_elapsed_name, &property_elapsed_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_DOUBLE));
+	zend_string_release(property_elapsed_name);
+
+	zval property_transaction_default_value;
+	ZVAL_UNDEF(&property_transaction_default_value);
+	zend_string *property_transaction_name = zend_string_init("transaction", sizeof("transaction") - 1, 1);
+	zend_declare_typed_property(class_entry, property_transaction_name, &property_transaction_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG|MAY_BE_NULL));
+	zend_string_release(property_transaction_name);
+
+	zval property_error_default_value;
+	ZVAL_UNDEF(&property_error_default_value);
+	zend_string *property_error_name = zend_string_init("error", sizeof("error") - 1, 1);
+	zend_string *property_error_class_Polyspec_Orm_OrmException = zend_string_init("Polyspec\\Orm\\OrmException", sizeof("Polyspec\\Orm\\OrmException")-1, 1);
+	zend_declare_typed_property(class_entry, property_error_name, &property_error_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_error_class_Polyspec_Orm_OrmException, 0, MAY_BE_NULL));
+	zend_string_release(property_error_name);
 
 	return class_entry;
 }

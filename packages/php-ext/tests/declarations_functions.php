@@ -12,7 +12,8 @@ const CLIENT_CLASSES = [
     'Polyspec\\Orm\\Codec',
     'Polyspec\\Orm\\Validator',
     'Polyspec\\Orm\\Planner',
-    'Polyspec\\Orm\\Db'
+    'Polyspec\\Orm\\Db',
+    'Polyspec\\Orm\\StatementEvent'
 ];
 
 /**

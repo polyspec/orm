@@ -2442,6 +2442,7 @@ static PHP_MINIT_FUNCTION(polyspec_orm)
     register_class_Polyspec_Orm_Codec();
     register_class_Polyspec_Orm_Validator();
     register_class_Polyspec_Orm_Planner();
+    register_class_Polyspec_Orm_StatementEvent();
     /* Db::DRIVERS, the array constant gen_stub cannot write (db.c implements the class). */
     static const char *const drivers[] = {"mysql", "postgres", "sqlite"};
     array_constant(register_class_Polyspec_Orm_Db(), "DRIVERS", drivers, NULL, COUNT(drivers));

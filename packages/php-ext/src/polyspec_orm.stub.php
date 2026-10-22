@@ -1057,3 +1057,30 @@ final class Db
     /** @internal */
     public static function scalarText(mixed $v): string {}
 }
+
+/** One statement that the connection sent to the database (docs/operations/usage.md "Statement events"). */
+final readonly class StatementEvent
+{
+    public const string SELECT = 'select';
+    public const string INSERT = 'insert';
+    public const string UPDATE = 'update';
+    public const string DELETE = 'delete';
+    public const string BEGIN = 'begin';
+    public const string COMMIT = 'commit';
+    public const string ROLLBACK = 'rollback';
+    public const string SAVEPOINT = 'savepoint';
+    public const string RELEASE = 'release';
+    public const string ROLLBACK_TO = 'rollback_to';
+    public const string SCHEMA = 'schema';
+    public const string UTILITY = 'utility';
+
+    public string $sql;
+    public array $binds;
+    public string $kind;
+    public array $tables;
+    public float $elapsed;
+    public ?int $transaction;
+    public ?OrmException $error;
+
+    public function __construct(string $sql, array $binds, string $kind, array $tables, float $elapsed, ?int $transaction, ?OrmException $error) {}
+}

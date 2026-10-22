@@ -53,7 +53,7 @@
         "packages/php-ext/src"
       ],
       "symbols": "contracts/symbols/php-extension.json",
-      "symbol_hash": "sha256:bbaa7743e49ffe7edffe551fb3f0af049220d2414dd5d1d92979b3f4e9faadda",
+      "symbol_hash": "sha256:a6e91eb9b4df1c2d3cb661e1cf9aa993d38a95801dd4264a1366f07bdbc4b35f",
       "rules": [
         "Dbspec.readFile",
         "Dbspec.readBytes",

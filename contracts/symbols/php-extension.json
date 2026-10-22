@@ -123,6 +123,14 @@
     "exported": true,
     "signature": "public static function insertParts(int $rows, int $batch): array"
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::listen": {
+    "exported": true,
+    "signature": "public function listen(string $channel): Polyspec\\Orm\\Subscription"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::listener": {
+    "exported": true,
+    "signature": "public function listener(): ?Closure"
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::markdownSession": {
     "exported": true,
     "signature": "public function markdownSession(): Polyspec\\Orm\\MarkdownSession"
@@ -130,6 +138,10 @@
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::nextTransaction": {
     "exported": true,
     "signature": "public function nextTransaction(): int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::notify": {
+    "exported": true,
+    "signature": "public function notify(string $channel, string $payload): void"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::observed": {
     "exported": true,
@@ -186,6 +198,10 @@
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::select": {
     "exported": true,
     "signature": "public function select(?Polyspec\\Orm\\TxFrame $frame, Polyspec\\Orm\\Request $r): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::setListener": {
+    "exported": true,
+    "signature": "public function setListener(Closure $open): void"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::statement": {
     "exported": true,
@@ -1634,6 +1650,42 @@
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Planner::compile": {
     "exported": true,
     "signature": "public function compile(array $r): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\StatementEvent": {
+    "exported": true,
+    "signature": "final readonly class Polyspec\\Orm\\StatementEvent extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\StatementEvent::$binds": {
+    "exported": true,
+    "signature": "public readonly array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\StatementEvent::$elapsed": {
+    "exported": true,
+    "signature": "public readonly float"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\StatementEvent::$error": {
+    "exported": true,
+    "signature": "public readonly ?Polyspec\\Orm\\OrmException"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\StatementEvent::$kind": {
+    "exported": true,
+    "signature": "public readonly string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\StatementEvent::$sql": {
+    "exported": true,
+    "signature": "public readonly string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\StatementEvent::$tables": {
+    "exported": true,
+    "signature": "public readonly array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\StatementEvent::$transaction": {
+    "exported": true,
+    "signature": "public readonly ?int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\StatementEvent::__construct": {
+    "exported": true,
+    "signature": "public function __construct(string $sql, array $binds, string $kind, array $tables, float $elapsed, ?int $transaction, ?Polyspec\\Orm\\OrmException $error): "
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Validator": {
     "exported": true,
