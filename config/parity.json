@@ -590,12 +590,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/FulltextSearchTest.php",
-          "id": "FulltextSearchTest::test_fulltext_search"
+          "id": "FulltextSearchTest::testFulltextSearch"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/FulltextSearchTest.php",
-          "id": "FulltextSearchTest::test_fulltext_search"
+          "id": "FulltextSearchTest::testFulltextSearch"
         },
         {
           "implementation": "typescript",

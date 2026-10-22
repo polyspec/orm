@@ -18,7 +18,8 @@ use PHPUnit\Framework\TestCase;
 #[Medium]
 final class CoverageParameterChunkingTest extends TestCase
 {
-    // PRT-76: a root IN list longer than the bind limit is split into chunks, and a limit on the split list fails with IR_INVALID.
+    // PRT-76: a root IN list longer than the bind limit is split into chunks, and a limit on the split list fails with
+    // IR_INVALID.
     public function testRootInChunking(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {

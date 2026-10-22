@@ -42,8 +42,9 @@ final class Transform
 
     /**
      * The transform fulltext_boolean (DIA-6): the search text of a MySQL boolean-mode match. It splits the value on
-     * whitespace, removes the boolean operator characters from each term, drops the terms that are empty, prefixes every
-     * term with +, suffixes the last term with *, and joins the terms with single spaces. A value with no term is ''.
+     * whitespace, removes the boolean operator characters from each term, drops the terms that are empty, prefixes
+     * every term with +, suffixes the last term with *, and joins the terms with single spaces. A value with no term is
+     * ''.
      */
     public static function fulltextBoolean(string $s): string
     {

@@ -171,7 +171,10 @@ final class Dialect
             'mysql' => 'MATCH (' . implode(', ', $cols) . ') AGAINST (' . ($boolean
                 ? $value('fulltext_boolean') . ' IN BOOLEAN MODE'
                 : $value('') . ' IN NATURAL LANGUAGE MODE') . ')',
-            'postgres' => "to_tsvector('simple', " . implode(" || ' ' || ", array_map(static fn(string $c): string => "coalesce($c, '')", $cols))
+            'postgres' => "to_tsvector('simple', " . implode(
+                " || ' ' || ",
+                array_map(static fn(string $c): string => "coalesce($c, '')", $cols)
+            )
                 . ') @@ ' . ($boolean ? 'websearch_to_tsquery' : 'plainto_tsquery') . "('simple', " . $value('') . ')',
             default => null,
         };

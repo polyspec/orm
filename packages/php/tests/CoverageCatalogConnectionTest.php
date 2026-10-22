@@ -1,9 +1,12 @@
 <?php
 
-// catalog_connection coverage (Requirements: SCH-5, SCH-6a): runs the two shared cases against the bench database that the
-// feature check selected (ORM_FEATURE_DATABASE, ORM_FEATURE_DSN) through Catalog::connect. The read case only reads; the
-// mutation case inserts, updates and deletes one row of composite_account in tenant 990005 and ends in the state it started in.
+// catalog_connection coverage (Requirements: SCH-5, SCH-6a): runs the two shared cases against the bench database that
+// the feature check selected (ORM_FEATURE_DATABASE, ORM_FEATURE_DSN) through Catalog::connect. The read case only
+// reads; the mutation case inserts, updates and deletes one row of composite_account in tenant 990005 and ends in the
+// state it started in.
 declare(strict_types=1);
+
+namespace Polyspec\Orm\Tests;
 
 use Polyspec\Orm\Catalog;
 use Polyspec\Orm\CatalogGridCell;
@@ -22,7 +25,11 @@ final class CoverageCatalogConnectionTest extends TestCase
     protected function setUp(): void
     {
         $this->driver = (string) getenv('ORM_FEATURE_DATABASE');
-        self::assertContains($this->driver, ['mysql', 'postgres', 'sqlite'], 'ORM_FEATURE_DATABASE is required; run it through make feature-check');
+        self::assertContains(
+            $this->driver,
+            ['mysql', 'postgres', 'sqlite'],
+            'ORM_FEATURE_DATABASE is required; run it through make feature-check'
+        );
         $this->catalog = Catalog::connect((string) getenv('ORM_FEATURE_DSN'));
         self::assertSame($this->driver, $this->catalog->dialect(), 'ORM_FEATURE_DSN selects another database');
     }
@@ -37,7 +44,7 @@ final class CoverageCatalogConnectionTest extends TestCase
         return $this->driver === 'mysql' ? "`{$name}`" : "\"{$name}\"";
     }
 
-    public function test_read(): void
+    public function testRead(): void
     {
         $namespace = $this->catalog->currentNamespace();
         $author = ['namespace' => $namespace, 'name' => 'author'];
@@ -54,7 +61,7 @@ final class CoverageCatalogConnectionTest extends TestCase
         $this->catalog->readOnlyQuery('UPDATE ' . $this->quote('user') . ' SET name = name WHERE seq = 1', []);
     }
 
-    public function test_row_mutation(): void
+    public function testRowMutation(): void
     {
         $account = $this->quote('composite_account');
         $countSql = "SELECT COUNT(*) FROM {$account} WHERE tenant_id = " . self::TENANT;
@@ -62,7 +69,10 @@ final class CoverageCatalogConnectionTest extends TestCase
         self::assertSame(0, $tenantRows());
         $table = ['namespace' => $this->catalog->currentNamespace(), 'name' => 'composite_account'];
         $meta = $this->catalog->describeTable($table);
-        $inserted = $this->catalog->insertRow($meta, ['tenant_id' => self::TENANT, 'account_id' => 1, 'name' => 'catalog']);
+        $inserted = $this->catalog->insertRow(
+            $meta,
+            ['tenant_id' => self::TENANT, 'account_id' => 1, 'name' => 'catalog']
+        );
         self::assertCount(1, $inserted->rows);
         $find = function (string $want) use ($table): object {
             $page = $this->catalog->tablePage($table, 1000, 0);

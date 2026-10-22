@@ -1004,7 +1004,11 @@ final class Validator
         }
         if ($op === 'fulltext' || $op === 'fulltext_boolean') {
             $cols = $p['cols'] ?? [];
-            if ($cols === [] || !isset($p['p']) || $column !== '' || ($p['ps'] ?? []) !== [] || isset($p['sub']) || isset($p['fn']) || isset($p['value']) || isset($p['ref'])) {
+            if (
+                $cols === [] || !isset($p['p']) || $column !== '' || (
+                $p['ps'] ?? []
+                ) !== [] || isset($p['sub']) || isset($p['fn']) || isset($p['value']) || isset($p['ref'])
+            ) {
                 throw self::err(Code::IR_INVALID, "$op takes cols and p only");
             }
             foreach ($cols as $c) {
