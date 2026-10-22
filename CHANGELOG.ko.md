@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: de69cad182ef3b25a5768be0d3dd076a0c8d028adf6dafbb8d7169b7a9f8e476 -->
+<!-- source-sha256: cf3e4ebd0e46ca7e336f635ac5047781346896cf1d555e8971013ded4892b944 -->
 # 변경 이력
 
 ## Unreleased
 
+- `build/tests/lock_probe_order.rs`의 쓰지 않는 `AtomicU8` import를 뺀다. 그래서 `make rust-check`의 clippy gate가 main에서 `unused_imports`를 더 보고하지 않는다(KSTD-5-56). red: 19c5dd83c의 `make rust-check`가 clippy에서 `build/tests/lock_probe_order.rs:3`의 `unused_imports`로 실패했다.
 - main의 Rust clippy가 통과한다: `orm/src/lib.rs`의 `mysql_code_tests` module을 파일의 마지막 항목으로 옮기고, `build/tests/lock_probe_order.rs`의 쓰지 않는 `AtomicU8` import를 뺀다. 그래서 `make rust-check`가 통과한다(KSTD-5-55) (KSTD-5-56). red: 19c5dd83c의 `make rust-check`가 clippy에서 `orm/src/lib.rs:118`의 `items_after_test_module`과 `build/tests/lock_probe_order.rs:3`의 `unused_imports`로 실패했다.
 - tests crate의 conformance.rs, integration.rs, decimal_physical.rs, coverage_schema_install.rs의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-24).
 - build table_page.rs와 orm identity_load.rs, soft_delete.rs, dbspec_probe.rs의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-23).
