@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
+import { minimatch } from 'minimatch';
 import { caseTest } from '../../tests/testcase.mts';
 import * as ownerSelection from './owners.mts';
 import type { CheckInputs, Owner, TargetDeclaration } from './owners.mts';
@@ -22,6 +23,22 @@ caseTest('a changed test selects only the commands that run it', 5000, async () 
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/go/orm/mysql_tls_test.go'])), ['dsn_connection/dsn-go', 'dsn_connection/dsn-mysql-tls-go']);
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/go/orm/external_documents_test.go'])), ['schema_install/install-register-go']);
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/php/tests/CoverageDsnTest.php'])), ['dsn_connection/coverage/owner/php']);
+});
+
+// The owner rules of config/owner-checks.json select the lint target of each language (KSTD-5-47): a path of each language
+// selects that language's lint target by its glob, so land runs the lint of a branch that changes the language.
+caseTest('a changed path selects the lint target of its language', 5000, async () => {
+  const declaration = JSON.parse(await readFile(new URL('../../config/owner-checks.json', import.meta.url), 'utf8')) as { owners: { paths: string[]; targets?: string[] }[] };
+  const targets = (path: string) => declaration.owners.filter(rule => rule.paths.some(glob => minimatch(path, glob))).flatMap(rule => rule.targets ?? []);
+  const cases: [string, string][] = [
+    ['packages/go/orm/errs.go', 'lint-go'],
+    ['packages/rust/orm/src/errs.rs', 'lint-rust'],
+    ['packages/python/orm/errs.py', 'lint-python'],
+    ['packages/php/src/Errs.php', 'lint-php'],
+    ['scripts/features/owners.mts', 'lint-ts'],
+  ];
+  for (const [path, lint] of cases)
+    assert.ok(targets(path).includes(lint), `${path} selects ${targets(path).join(', ') || 'no target'}, not ${lint}`);
 });
 
 // The transaction-end case (G5.45-1) checks that for a file containing a test, the file selects the command that runs that test. Rust's tx.rs has its own

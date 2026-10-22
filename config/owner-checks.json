@@ -7,6 +7,11 @@
   ],
   "owners": [
     { "paths": ["docs/**"], "targets": ["docs-site-check"] },
+    { "paths": ["**/*.go"], "targets": ["lint-go"] },
+    { "paths": ["**/*.rs"], "targets": ["lint-rust"] },
+    { "paths": ["**/*.py"], "targets": ["lint-python"] },
+    { "paths": ["**/*.php"], "targets": ["lint-php"] },
+    { "paths": ["**/*.ts", "**/*.mts"], "targets": ["lint-ts"] },
     { "paths": ["**"], "targets": ["feature-owner-check"], "variable": "PATHS" }
   ]
 }

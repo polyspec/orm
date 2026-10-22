@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 8b8a4ab0745e098507afa0e43d4e738a1009cef1fea464ec31aa519d7e7298ad -->
+<!-- source-sha256: cda8af8342caa1ec7e26e9cb1e30baa40b76fd4aebe19e48388306bc4f441d92 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -135,7 +135,7 @@
 | KSTD-5-37 | 테스트 서버의 startLogged는 준비 줄을 시한까지만 기다리고, 실패하면 단계 이름과 로그 경로를 밝히며, 감시자 이벤트와 함께 주기적으로도 로그를 읽는다 (조용한 대기 없음) | scripts/test-servers.mts, scripts/test-servers.test.mts | `make orm-test-servers-check` | [o] |
 | KSTD-5-38 | orm의 도구 경로가 kit의 KIT_TOOLS를 써서 연결된 worktree가 빌드된다 | orm/Makefile tool paths use `$(KIT_TOOLS)` | `make orm-install-go typescript-build editor-build` | [o] |
 | KSTD-5-39 | docs site의 VitePress 임시 폴더가 git에서 무시된다 | `.gitignore` ignores `/docs/.vitepress/.temp/` | `git check-ignore -q docs/.vitepress/.temp/probe` | [o] |
-| KSTD-5-47 | 변경된 경로의 언어에 맞는 lint target을 owner 선택이 고르도록 하여 land가 이를 실행하게 한다 (KSTD-5에 이어짐). 원인: config/owner-checks.json이 모든 변경 경로를 feature-owner-check에 넘기고, 이 target은 lint-go, lint-rust, lint-python, lint-php, lint-ts, duplication-check를 고르지 않아 land는 lint를 실행하지 않으며 finding을 추가한 branch도 land된다 | config/owner-checks.json: a rule per language that selects its lint target for the paths of that language | `make land BRANCH=fix/lint-owner-KSTD-5-47` refuses a branch with a Go errcheck finding at lint-go | [ ] |
+| KSTD-5-47 | 변경된 경로의 언어에 맞는 lint target을 owner 선택이 고르도록 하여 land가 이를 실행하게 한다 (KSTD-5에 이어짐). 원인: config/owner-checks.json이 모든 변경 경로를 feature-owner-check에 넘기고, 이 target은 lint-go, lint-rust, lint-python, lint-php, lint-ts, duplication-check를 고르지 않아 land는 lint를 실행하지 않으며 finding을 추가한 branch도 land된다 | config/owner-checks.json: a rule per language that selects its lint target for the paths of that language | `make feature-unit-check/owners` runs the owner test whose lint case fails on the config before the fix and passes after it | [~] |
 | KSTD-5-44 | TypeScript lint가 통과한다: oxlint와 knip이 발견 사항을 보고하지 않는다 (KSTD-5 하위) | the TypeScript sources that oxlint and knip name, with the unused export quoteIdent of listen.ts removed when nothing uses it | `make lint-ts` | [o] |
 | KSTD-5-45 | orm의 PHP 소스가 make lint-php를 통과한다 (phpcs: 줄 길이와 PSR-1 부작용). Red today: phpcs가 6개 finding을 보고한다: packages/php-ext/tests/silent_paths.php의 긴 줄 3개와 packages/php/tests의 Coverage 테스트 3개 파일의 PSR-1 부작용 | packages/php-ext/tests/silent_paths.php, packages/php/tests/CoverageConformanceVerificationTest.php, packages/php/tests/CoverageModelQueriesTest.php, packages/php/tests/CoverageModelWritesTest.php | `make lint-php` exits 0, with no suppression comment that states no reason | [o] |
 | KSTD-5-43 | checkout의 Python 코드가 ruff check, ruff format, vulture 어느 것에서도 finding 없이 make lint-python을 통과한다 | the Python sources of packages/python that the lint reports, with no suppression that has no stated reason | `make lint-python` | [o] |
