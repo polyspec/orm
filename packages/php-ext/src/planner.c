@@ -550,8 +550,8 @@ static zend_string *b_typed(pctx *c, pbinds *b, zval *slot)
     return b_add(c, b, slot);
 }
 
-/* The placeholder of request value Params[$i], of dbspec type $type. */
-static zend_string *b_param(pctx *c, pbinds *b, zend_long i, zend_string *type, zend_string *transform, HashTable *hostStyles)
+/* The bind slot of request value Params[$i]: its source, its index, its transform and its host styles. */
+static zval *param_slot(pctx *c, zend_long i, zend_string *transform, HashTable *hostStyles)
 {
     zval *slot = newlist(c);
     putc_(slot, "from", "param");
@@ -562,6 +562,13 @@ static zend_string *b_param(pctx *c, pbinds *b, zend_long i, zend_string *type, 
     if (count_of(hostStyles) > 0) {
         put(slot, "host_styles", Za(c, hostStyles));
     }
+    return slot;
+}
+
+/* The placeholder of request value Params[$i], of dbspec type $type. */
+static zend_string *b_param(pctx *c, pbinds *b, zend_long i, zend_string *type, zend_string *transform, HashTable *hostStyles)
+{
+    zval *slot = param_slot(c, i, transform, hostStyles);
     puts_(slot, "col_type", type);
     if (zend_string_equals_literal(type, "datetime") || zend_string_equals_literal(type, "time")) {
         putl(slot, "precision", 6);
@@ -572,15 +579,7 @@ static zend_string *b_param(pctx *c, pbinds *b, zend_long i, zend_string *type, 
 /* The placeholder of request value Params[$i] compared with or assigned to column $col. */
 static zend_string *b_col_param(pctx *c, pbinds *b, zend_long i, HashTable *col, zend_string *transform, HashTable *hostStyles)
 {
-    zval *slot = newlist(c);
-    putc_(slot, "from", "param");
-    putl(slot, "param", i);
-    if (ZSTR_LEN(transform) > 0) {
-        puts_(slot, "transform", transform);
-    }
-    if (count_of(hostStyles) > 0) {
-        put(slot, "host_styles", Za(c, hostStyles));
-    }
+    zval *slot = param_slot(c, i, transform, hostStyles);
     zend_string *type = gs(c, col, "type");
     puts_(slot, "col_type", type);
     if (zend_string_equals_literal(type, "decimal")) {
