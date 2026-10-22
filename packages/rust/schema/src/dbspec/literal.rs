@@ -40,7 +40,14 @@ pub(crate) fn default_literal(ty: Type, value: &Value) -> Result<String, String>
             if digits.len() > 20 {
                 return Err(unfit());
             }
-            let magnitude: i128 = if digits.is_empty() { 0 } else { digits.parse().map_err(|_| unfit())? };
+            let magnitude: i128 = if digits.is_empty() {
+                0
+            } else {
+                match digits.parse() {
+                    Ok(value) => value,
+                    Err(error) => return Err(format!("default does not fit {ty_text}: {error}")),
+                }
+            };
             let number = if *negative { -magnitude } else { magnitude };
             if number < min || number > max {
                 return Err(unfit());
@@ -68,7 +75,10 @@ pub(crate) fn default_literal(ty: Type, value: &Value) -> Result<String, String>
         (Type::F64, Value::Number { negative, text }) => {
             // Rust's `Display` writes the shortest decimal that reads back as
             // the same value, without an exponent.
-            let parsed: f64 = format!("{}{text}", if *negative { "-" } else { "" }).parse().map_err(|_| unfit())?;
+            let parsed: f64 = match format!("{}{text}", if *negative { "-" } else { "" }).parse() {
+                Ok(value) => value,
+                Err(error) => return Err(format!("default does not fit {ty_text}: {error}")),
+            };
             if !parsed.is_finite() {
                 return Err(unfit());
             }
@@ -116,10 +126,13 @@ pub(crate) fn default_literal(ty: Type, value: &Value) -> Result<String, String>
 pub(crate) fn check_literal(ty: Type, value: &Value) -> Result<String, String> {
     let fits = match (ty, value) {
         (Type::Text, Value::Str(text)) if !text.contains('\0') => Ok(quote(text)),
-        (Type::Text, _) | (Type::DateTime(_), Value::Word(_)) => Err(()),
-        _ => default_literal(ty, value).map_err(|_| ()),
+        (Type::Text, _) | (Type::DateTime(_), Value::Word(_)) => Err(None),
+        _ => default_literal(ty, value).map_err(Some),
     };
-    fits.map_err(|()| format!("literal {} does not fit {}", value.written(), ty.render()))
+    fits.map_err(|detail| match detail {
+        Some(message) => format!("literal {} does not fit {}: {message}", value.written(), ty.render()),
+        None => format!("literal {} does not fit {}", value.written(), ty.render()),
+    })
 }
 
 impl Value {
@@ -134,8 +147,9 @@ impl Value {
 }
 
 fn digits(text: &str, count: usize) -> Option<u32> {
+    // At most 4 digits are read here, so the value fits in u32 and is the digits read in decimal.
     if text.len() == count && text.bytes().all(|b| b.is_ascii_digit()) {
-        text.parse().ok()
+        Some(text.bytes().fold(0, |value, b| value * 10 + u32::from(b - b'0')))
     } else {
         None
     }

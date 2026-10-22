@@ -413,13 +413,14 @@ fn split_names(s: &str) -> Vec<String> {
     s.split(',').map(|p| p.trim().to_owned()).collect()
 }
 
-/// The value if the numeric text is between lo and hi inclusive. A number over 9 digits is out of range.
+/// The value if the numeric text is between lo and hi inclusive. Text that is not digits, or a number over 9 digits,
+/// is not a dbspec type. Nine digits fit in u32, so the value is read from the digits without a parse that could fail.
 fn within(digits: &str, lo: u32, hi: u32) -> Option<u32> {
     let significant = digits.trim_start_matches('0');
-    if significant.len() > 9 {
+    if significant.len() > 9 || !significant.bytes().all(|b| b.is_ascii_digit()) {
         return None;
     }
-    let n = if significant.is_empty() { 0 } else { significant.parse::<u32>().ok()? };
+    let n = significant.bytes().fold(0, |value, b| value * 10 + u32::from(b - b'0'));
     (lo..=hi).contains(&n).then_some(n)
 }
 

@@ -319,10 +319,23 @@ fn head(text: &str) -> Result<Head<'_>, Stopped> {
     Ok(Head { lines, tokens, name })
 }
 
-/// The document name that the header step of `parse` reads from `text`, or `None` when that step
-/// fails. It runs the first steps of `parse` and stops after the header.
-pub(crate) fn header_name(text: &str) -> Option<String> {
-    head(text).ok().map(|head| head.name.text.to_owned())
+/// The integer that a coordinate token holds, or the reason it is not one that fits in `i32`.
+fn coordinate_value(text: &str, negative: bool) -> Result<i32, String> {
+    let digits = text.trim_start_matches('0');
+    let magnitude: i128 = if digits.is_empty() {
+        0
+    } else if digits.len() > 20 {
+        return Err(format!("{text:?} has more than 20 digits"));
+    } else {
+        digits.parse().map_err(|error| format!("{text:?}: {error}"))?
+    };
+    i32::try_from(if negative { -magnitude } else { magnitude }).map_err(|error| format!("{text:?}: {error}"))
+}
+
+/// The document name that the header step of `parse` reads from `text`. A header that does not parse stops with its
+/// diagnostics. It runs the first steps of `parse` and stops after the header.
+pub(crate) fn header_name(text: &str) -> Result<String, Stopped> {
+    head(text).map(|head| head.name.text.to_owned())
 }
 
 pub(crate) fn parse(text: &str) -> Result<Syntax, Stopped> {
@@ -1027,7 +1040,13 @@ impl Parser {
             loop {
                 match cursor.peek() {
                     Some(t) if t.kind == Kind::Number && !t.text.contains('.') => {
-                        let parsed = t.text.parse::<u32>().ok();
+                        let parsed = match t.text.parse::<u32>() {
+                            Ok(value) => Some(value),
+                            Err(error) => {
+                                self.report(err(cursor.here(), "syntax", format!("{:?} is not a number: {error}", t.text)));
+                                None
+                            }
+                        };
                         cursor.next();
                         values.push(parsed);
                     }
@@ -1644,17 +1663,13 @@ impl Parser {
                 cursor.next();
             }
             let value = match cursor.next() {
-                Some(t) if t.kind == Kind::Number && !t.text.contains('.') => {
-                    let digits = t.text.trim_start_matches('0');
-                    let magnitude = if digits.is_empty() {
-                        Some(0)
-                    } else if digits.len() > 20 {
-                        None
-                    } else {
-                        digits.parse::<i128>().ok()
-                    };
-                    magnitude.and_then(|m| i32::try_from(if negative { -m } else { m }).ok())
-                }
+                Some(t) if t.kind == Kind::Number && !t.text.contains('.') => match coordinate_value(t.text, negative) {
+                    Ok(value) => Some(value),
+                    Err(message) => {
+                        self.report(err(pos, "diagram", format!("a coordinate is not an integer: {message}")));
+                        return;
+                    }
+                },
                 None => {
                     self.report(err(cursor.end, "syntax", "the line ends early"));
                     return;

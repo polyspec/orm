@@ -259,7 +259,7 @@ fn manifest_chunks(text: &str) -> Result<Vec<(usize, String, String)>, Vec<Diagn
     let mut chunks: Vec<(usize, String, String)> = Vec::new();
     for (i, line) in text.split_inclusive('\n').enumerate() {
         if line.starts_with("dbspec ") {
-            let name = super::parser::header_name(line.trim_end_matches(['\r', '\n'])).unwrap_or_default();
+            let name = super::parser::header_name(line.trim_end_matches(['\r', '\n'])).map_err(|stopped| super::stopped(stopped.diags))?;
             chunks.push((i, name, String::new()));
         }
         match chunks.last_mut() {

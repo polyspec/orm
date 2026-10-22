@@ -309,14 +309,20 @@ fn parse(bytes: &[u8], path: &Path) -> Result<Lists, SetError> {
     }
     let documents = match value("documents") {
         None => return Err(key("documents is missing".into())),
-        Some(raw) => serde_json::from_str::<Vec<String>>(raw).map_err(|_| key("documents is not an array of strings".into()))?,
+        Some(raw) => match serde_json::from_str::<Vec<String>>(raw) {
+            Ok(documents) => documents,
+            Err(error) => return Err(key(format!("documents is not an array of strings: {error}"))),
+        },
     };
     if documents.is_empty() {
         return Err(error(RULE_SET_EMPTY, path, format!("{shown}: documents is empty")));
     }
     let external = match value("external") {
         None => Vec::new(),
-        Some(raw) => serde_json::from_str::<Vec<String>>(raw).map_err(|_| key("external is not an array of strings".into()))?,
+        Some(raw) => match serde_json::from_str::<Vec<String>>(raw) {
+            Ok(external) => external,
+            Err(error) => return Err(key(format!("external is not an array of strings: {error}"))),
+        },
     };
     Ok(Lists { documents, external })
 }
@@ -629,8 +635,11 @@ pub fn parse_set(owned: &[&str], external: &[&str]) -> Vec<SetDocument> {
     let mut parse: Vec<(&str, usize)> = Vec::new();
     let texts = owned.iter().map(|t| (*t, false)).chain(external.iter().map(|t| (*t, true)));
     for (text, is_external) in texts {
-        let name = super::parser::header_name(text);
-        out.push(SetDocument { name: name.clone(), external: is_external, document: None, positions: Vec::new(), diagnostics: Vec::new() });
+        let (name, header_diagnostics) = match super::parser::header_name(text) {
+            Ok(name) => (Some(name), Vec::new()),
+            Err(stopped) => (None, super::stopped(stopped.diags)),
+        };
+        out.push(SetDocument { name: name.clone(), external: is_external, document: None, positions: Vec::new(), diagnostics: header_diagnostics });
         let index = out.len() - 1;
         if let Some(name) = name {
             if named.contains_key(&name) {

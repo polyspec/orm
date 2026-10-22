@@ -420,7 +420,7 @@ fn sort(diags: &mut [Diag]) {
 
 /// The diagnostics of a stopped parse: those found before the stopping error,
 /// in order, then the stopping error.
-fn stopped(mut diags: Vec<Diag>) -> Vec<Diagnostic> {
+pub(crate) fn stopped(mut diags: Vec<Diag>) -> Vec<Diagnostic> {
     let stop = diags.pop();
     sort(&mut diags);
     diags.extend(stop);

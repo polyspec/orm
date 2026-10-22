@@ -218,7 +218,10 @@ fn parse(p: &Path) -> syn::File {
     if p.to_str().is_some_and(|x| x.ends_with(".rs.txt")) {
         source.push('}');
     }
-    syn::parse_file(&source).unwrap_or_else(|e| panic!("{}: {e}", p.display()))
+    match syn::parse_file(&source) {
+        Ok(file) => file,
+        Err(e) => panic!("{}: {e}", p.display()),
+    }
 }
 
 fn visit(root: &Path, dir: &Path, out: &mut BTreeMap<String, Entry>, types: &HashSet<String>) {
