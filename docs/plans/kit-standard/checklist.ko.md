@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: fc4cd42762c24c8e7bf0b8927f0f23dc69419f825f16b08e743a9c9bddbed237 -->
+<!-- source-sha256: 8b8a4ab0745e098507afa0e43d4e738a1009cef1fea464ec31aa519d7e7298ad -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -147,7 +147,7 @@
 | KSTD-5-41-1 | case-database 패키지가 lint-rust 플래그의 clippy를 통과한다, `make clippy-crate CRATE=polyspec-orm-case-database` | The six clippy sites of packages/rust/case-database/src/lib.rs are propagated through their Result, with no suppression | `make clippy-crate CRATE=polyspec-orm-case-database` | [ ] |
 | KSTD-5-48 | docs-check는 Markdown 검사만 실행하고, 사이트 build는 docs-site-check에서 실행한다 | docs-check runs only the Markdown checks; the VitePress site build and the built-site readers run in docs-site-check, which the owner rules select for docs/ changes and the VitePress config | `node --test tests/docs/split.test.mts` fails on the current docs-check, which runs the site build, and passes after the split | [o] |
 | KSTD-5-40 | 모든 suppression은 이유를 적는다(KSTD-5 하위). 원인: suppression-check가 main에서 이유 없는 suppression 95개를 보고하고(Python 테스트 71, dbspec 소스 15, orm 패키지 6, 적합성 코드 2, Rust allow 1), 그래서 CI가 P8로 실패한다. | packages/python, packages/rust/orm (the suppressed lines) | `make suppression-check` | [o] |
-| KSTD-5-51 | Python test_schema_install이 main에서 통과한다: set이 쓰는 외부 document의 table을 set이 요구하는 대로 설치하거나 검사하며, 실패하던 세 test가 assertion을 약화하지 않고 통과한다 | packages/python/tests/test_schema_install.py or the fixture it reads, packages/python/src | `node node_modules/@polyspec/kit/dist/run-tests.mjs python --venv packages/python/.venv --module packages.python.tests.testcase -- packages.python.tests.test_schema_install` | [ ] |
+| KSTD-5-51 | Python test_schema_install이 main에서 통과한다: set이 쓰는 외부 document의 table을 set이 요구하는 대로 설치하거나 검사하며, 실패하던 세 test가 assertion을 약화하지 않고 통과한다 | packages/python/tests/test_schema_install.py or the fixture it reads, packages/python/src | `node node_modules/@polyspec/kit/dist/run-tests.mjs python --venv packages/python/.venv --module packages.python.tests.testcase -- packages.python.tests.test_schema_install` | [o] |
 | KSTD-5-48-1 | contracts/check-inputs.json이 docs-site-check와 docs-site-parse-check의 scope를 선언하여, main에서 make feature-unit-check/owners가 통과한다 | contracts/check-inputs.json, with the scopes of docs-site-check and docs-site-parse-check | `make feature-unit-check/owners` | [o] |
 | KSTD-6 | link rebuild는 repository layout을 읽고 자기 paths를 두지 않는다 (kit K286). Cause: kit은 link된 checkout을 layout으로 rebuild하며 link 선언의 paths key는 없어진다 | kit.json, the link declaration | `make rebuild-check` | [o] |
 | KSTD-7 | main에서 feature-unit-check가 통과한다. Cause: docs/features.md가 그것이 그리는 coverage와 맞지 않고, scripts/features/coverage.test.mts의 8개 case가 "no package implements the client language php-extension"으로 실패한다 | docs/features.md, scripts/features | `make feature-unit-check` | [o] |
