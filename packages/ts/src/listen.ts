@@ -93,7 +93,7 @@ export class PostgresListener {
 }
 
 /** A quoted PostgreSQL identifier of channel; the channel's length and NUL are checked by the caller. */
-export function quoteIdent(name: string): string {
+function quoteIdent(name: string): string {
   return `"${name.replaceAll('"', '""')}"`;
 }
 

@@ -1085,10 +1085,6 @@ function boolOf(value: unknown, what: string): boolean {
   throw err(CODE_METADATA, `expected a boolean for ${what}, got ${String(value)}`);
 }
 
-function byteSize(value: unknown): number {
-  return typeof value === 'string' ? Buffer.byteLength(value, 'utf8') : value instanceof Uint8Array ? value.length : 8;
-}
-
 const BEGIN_SQL: Record<DriverName, { read: string; write: string }> = {
   mysql: { read: 'START TRANSACTION READ ONLY', write: 'START TRANSACTION' },
   postgres: { read: 'BEGIN READ ONLY', write: 'BEGIN' },

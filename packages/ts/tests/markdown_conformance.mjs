@@ -52,7 +52,7 @@ async function pinnedFlowmark() {
   try {
     info = (await run('go', ['version', '-m', bin])).stdout;
   } catch (error) {
-    throw new Error(`FLOWMARK ${bin} is no Go build (${String(error.stderr ?? error.message).trim()}); run make orm-install-flowmark, which installs the flowmark ${pin} pinned in tests/markdown/flowmark.version`);
+    throw new Error(`FLOWMARK ${bin} is no Go build (${String(error.stderr ?? error.message).trim()}); run make orm-install-flowmark, which installs the flowmark ${pin} pinned in tests/markdown/flowmark.version`, { cause: error });
   }
   const main = /^\tmod\t(\S+)\t(\S+)/m.exec(info);
   if (main === null || main[1] !== flowmarkModule || main[2] !== pin) {
@@ -83,7 +83,7 @@ async function serve(bin, step) {
     await mkdir(path.join(s.dir, 'dbspec'), { recursive: true });
     await writeFile(path.join(s.dir, 'dbspec', 'conformance.dbs'), await readFile(path.join(conformanceDir, 'corpus', 'dbspec', 'conformance.dbs')));
     step(`flowmark install ${s.dir}`);
-    try { await run(bin, ['install', s.dir]); } catch (error) { throw new Error(`flowmark install: ${error.message}\n${error.stdout ?? ''}${error.stderr ?? ''}`); }
+    try { await run(bin, ['install', s.dir]); } catch (error) { throw new Error(`flowmark install: ${error.message}\n${error.stdout ?? ''}${error.stderr ?? ''}`, { cause: error }); }
     step(`flowmark serve ${s.dir} --port 0`);
     s.server = spawn(bin, ['serve', s.dir, '--port', '0'], { stdio: ['ignore', 'pipe', 'pipe'] });
     s.server.stderr.setEncoding('utf8').on('data', chunk => { s.stderr += chunk; });
@@ -100,7 +100,7 @@ async function serve(bin, step) {
     s.port = m[1];
     s.token = JSON.parse(await readFile(path.join(s.dir, '.flowmark', 'server.json'), 'utf8')).token;
     s.dsn = (corpus, token) => `markdown://127.0.0.1:${s.port}/${corpus}?token=${token}`;
-    try { s.db = await connect(s.dsn(s.corpus, s.token)); } catch (error) { throw new Error(`connect: ${error.message}; stderr:\n${s.stderr}`); }
+    try { s.db = await connect(s.dsn(s.corpus, s.token)); } catch (error) { throw new Error(`connect: ${error.message}; stderr:\n${s.stderr}`, { cause: error }); }
     return s;
   } catch (error) {
     await s.stop();
@@ -119,7 +119,7 @@ await runner.run('markdown/setup', PROCESS, async ({ step }) => {
   try {
     await run(process.execPath, ['dist/bin/orm-gen.js', 'gen', '--set', '../../tests/markdown/corpus/dbspec/dbspec-set.json', '--out', 'src/models/markdown_fixture', '--scan', 'tests/markdown_cases.mjs', '--check'], { cwd: fileURLToPath(new URL('..', import.meta.url)) });
   } catch (error) {
-    throw new Error(`src/models/markdown_fixture differs from the generator output; regenerate it with the same orm-gen command without --check: ${error.stdout ?? ''}${error.stderr ?? error.message}`);
+    throw new Error(`src/models/markdown_fixture differs from the generator output; regenerate it with the same orm-gen command without --check: ${error.stdout ?? ''}${error.stderr ?? error.message}`, { cause: error });
   }
   const bin = await pinnedFlowmark();
   all = await loadCases();
@@ -142,10 +142,10 @@ if (ready) {
         try {
           got = await conformanceCases[c.id](served);
         } catch (error) {
-          if (!(error instanceof OrmError)) throw new Error(`${c.id} failed without an orm code: ${error?.stack ?? error}`);
+          if (!(error instanceof OrmError)) throw new Error(`${c.id} failed without an orm code: ${error?.stack ?? error}`, { cause: error });
           got = { error: error.code, message: error.message };
           if (isDeepStrictEqual({ error: got.error }, c.expect)) return;
-          throw new Error(`${c.id}: got ${JSON.stringify(got)}, want ${JSON.stringify(c.expect)}`);
+          throw new Error(`${c.id}: got ${JSON.stringify(got)}, want ${JSON.stringify(c.expect)}`, { cause: error });
         }
         const actual = normalize(got);
         if (!isDeepStrictEqual(actual, c.expect)) throw new Error(`${c.id}: got ${JSON.stringify(actual)}, want ${JSON.stringify(c.expect)}`);

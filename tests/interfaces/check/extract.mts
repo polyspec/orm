@@ -51,7 +51,7 @@ export async function extract(signal: AbortSignal | undefined, root: string, lan
   try {
     output = await run(program, args, signal ? { signal } : {});
   } catch (error) {
-    throw new Error(`${lang} declarations: ${error instanceof Error ? error.message : String(error)}\n`);
+    throw new Error(`${lang} declarations: ${error instanceof Error ? error.message : String(error)}\n`, { cause: error });
   }
   if (output.code !== 0) throw new Error(`${lang} declarations: ${exitText(output)}\n${output.stderr}`);
   return parseJson<Symbols>(output.stdout, symbolsSchema, `${lang} declarations`);
@@ -92,7 +92,7 @@ export async function buildRust(step: Step, root: string, directory: string): Pr
   try {
     file = statSync(executable).isFile();
   } catch (error) {
-    throw new Error(`cargo build left no executable ${executable}: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`cargo build left no executable ${executable}: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
   }
   if (!file) throw new Error(`cargo build left no executable ${executable}: it is a directory`);
   return executable;

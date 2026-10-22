@@ -73,9 +73,11 @@ for (const database of databases) {
     for (let attempt = 1; attempt <= 2; attempt++) {
       await step(`decimal/${database}/${language}/${attempt}`, 2 * TIMEOUT_MS, async ({ step: progress }) => {
         const [program, args] = command(language, database);
-        let output: string;
+        let output = '';
+        let redacted: string | undefined;
         try { output = await run(program, args); }
-        catch (error) { throw new Error(errorMessage(error).replaceAll(dsn, '[redacted]')); }
+        catch (error) { redacted = errorMessage(error).replaceAll(dsn, '[redacted]'); }
+        if (redacted !== undefined) throw new Error(redacted);
         if (!observed(language, database, output)) throw new Error(`${database}/${language}/${attempt}: missing exact pass event`);
         const after = await state(database, dsn);
         if (after !== before) throw new Error(`${database}/${language}/${attempt}: database state changed`);

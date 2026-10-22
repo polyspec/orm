@@ -25,7 +25,7 @@ async function dropPoolerTable(dsn, table) {
   const client = postgresClient(dsn);
   await client.connect();
   try { await client.query(`DROP TABLE IF EXISTS "${table}"`); } catch (error) {
-    throw new Error(`drop table ${table}: ${error.message}`);
+    throw new Error(`drop table ${table}: ${error.message}`, { cause: error });
   } finally { await client.end(); }
 }
 const root = new URL('../../..', import.meta.url).pathname;

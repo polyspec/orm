@@ -298,11 +298,26 @@ const PG_TYPE_NAMES: Record<number, string> = {
   1184: 'TIMESTAMPTZ', 1186: 'INTERVAL', 1266: 'TIMETZ', 1560: 'BIT', 1562: 'VARBIT', 1700: 'NUMERIC', 2950: 'UUID', 3802: 'JSONB',
 };
 
+/**
+ * A member that a driver keeps off its public types: mysql2 holds its callback connection under `connection`, and pg's client holds
+ * its socket under `connection`. Each caller names the one member it reads; the driver's own code is the only reader.
+ */
+// oxlint-disable typescript/no-unsafe-type-assertion, typescript/no-unsafe-return -- Reflect.get returns any, and these members have no public type to check it against; the caller's type argument is the declared contract.
+function privateMember<T>(target: object, key: string): T {
+  return Reflect.get(target, key) as T;
+}
+// oxlint-enable typescript/no-unsafe-type-assertion, typescript/no-unsafe-return
+
+/** Whether a pg result's fields are an array, which pg's query object exposes as result.fields. */
+function isPgFieldList(fields: unknown): fields is Array<{ name: string; dataTypeID: number }> {
+  return Array.isArray(fields);
+}
+
 /** The row description fields of a pg result, which the query object exposes as result.fields. */
 function pgFields(result: unknown): Array<{ name: string; dataTypeID: number }> {
-  const fields = Reflect.get(result as object, 'fields');
-  if (!Array.isArray(fields)) throw new OrmError(codes.INTERNAL, 'a pg result has no fields');
-  return fields as Array<{ name: string; dataTypeID: number }>;
+  const fields: unknown = typeof result === 'object' && result !== null ? Reflect.get(result, 'fields') : undefined;
+  if (!isPgFieldList(fields)) throw new OrmError(codes.INTERNAL, 'a pg result has no fields');
+  return fields;
 }
 
 function pgColumn(field: { name: string; dataTypeID: number }): DriverColumn {
@@ -327,7 +342,7 @@ async function mysqlControl(connection: MySqlConnection, sql: string, params: re
 /** Streams the rows of one MySQL statement. A row that sink refuses ends the statement; the connection is then discarded by its caller. */
 function mysqlScan(connection: MySqlConnection, sql: string, params: readonly DriverValue[], sink: RowSink): Promise<void> {
   // mysql2's promise connection wraps the callback connection, whose query object emits the rows as they are read.
-  const core = Reflect.get(connection, 'connection') as unknown as { query(options: { sql: string; rowsAsArray: boolean }, values: DriverValue[]): CoreQuery };
+  const core = privateMember<{ query(options: { sql: string; rowsAsArray: boolean }, values: DriverValue[]): CoreQuery }>(connection, 'connection');
   return new Promise<void>((resolve, reject) => {
     let stopped = false;
     const query = core.query({ sql, rowsAsArray: true }, [...params]);
@@ -423,7 +438,7 @@ class MySqlSession implements DriverSession {
     // gracefully, so the server would keep sending; the socket itself is destroyed so the server ends the statement.
     if (discard) {
       this.connection.destroy();
-      (Reflect.get(this.connection, 'connection') as unknown as { stream: { destroy(): void } }).stream.destroy();
+      privateMember<{ stream: { destroy(): void } }>(this.connection, 'connection').stream.destroy();
     } else this.connection.release();
   }
 }
@@ -482,7 +497,7 @@ function pgScan(client: pg.PoolClient, sql: string, params: readonly DriverValue
       announced = true;
       sink.columns(fields.map(pgColumn));
     };
-    const config = { text: sql, values: [...params], rowMode: 'array' } as unknown as pg.QueryConfig;
+    const config: pg.QueryArrayConfig = { text: sql, values: [...params], rowMode: 'array' };
     const query = new pg.Query(config);
     query.on('row', (row: unknown[], result: unknown) => {
       if (stopped) return;
@@ -594,7 +609,7 @@ class PostgresSession implements DriverSession {
   }
   public release(discard: boolean): void {
     // A discarded client can still have rows in flight (a streamed result that stopped early); the socket is destroyed so that the server ends the statement.
-    if (discard) (this.client as unknown as { connection: { stream: { destroy(): void } } }).connection.stream.destroy();
+    if (discard) privateMember<{ stream: { destroy(): void } }>(this.client, 'connection').stream.destroy();
     this.client.removeListener('error', this.onError);
     this.done(discard || this.failure !== undefined);
   }
@@ -629,7 +644,7 @@ class SqliteState {
 
 /** The statement's parameters as node:sqlite binds them; a boolean is 0 or 1. */
 function sqliteValues(params: readonly DriverValue[]): Array<null | number | string | bigint | Uint8Array> {
-  return params.map(value => typeof value === 'boolean' ? Number(value) : value) as Array<null | number | string | bigint | Uint8Array>;
+  return params.map(value => typeof value === 'boolean' ? Number(value) : value);
 }
 
 function sqliteColumns(statement: ReturnType<DatabaseSync['prepare']>): DriverColumn[] {
@@ -937,7 +952,8 @@ export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, stat
       // pg closes a connection maxLifetimeSeconds after it opened, idle or at its release.
       if (bounds.lifetimeMs > 0) config.maxLifetimeSeconds = bounds.lifetimeMs / 1000;
       // The catalog reads int8 and float4 as their exact text: int8 is not rounded and float4 bits are rounded from the text, not from a double.
-      if (exact) config.types = { getTypeParser: (oid: number, format?: 'text' | 'binary') => (oid === 20 || oid === 700 ? (value: string): string => value : pg.types.getTypeParser(oid, format)) };
+      const parse: (oid: number, format?: 'text' | 'binary') => (value: string) => unknown = pg.types.getTypeParser;
+      if (exact) config.types = { getTypeParser: (oid: number, format?: 'text' | 'binary') => (oid === 20 || oid === 700 ? (value: string): string => value : parse(oid, format)) };
       config.options = '-c TimeZone=UTC';
       if (statementTimeoutMs > 0) config.options += ` -c statement_timeout=${statementTimeoutMs}`;
       return new PostgresPoolDriver(new pg.Pool(config), statementCacheSize, bounds.size, bounds.idleSize, config);

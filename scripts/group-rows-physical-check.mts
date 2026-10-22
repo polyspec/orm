@@ -21,9 +21,11 @@ for (const database of databases) {
       : [`${packageDirectory[language]}/tests/group_rows_db.mjs`];
     for (let attempt = 1; attempt <= 2; attempt++) {
       await step(`group-rows/${database}/${language}/${attempt}`, 2 * TIMEOUT_MS, async ({ step: progress }) => {
-        let output: string;
+        let output = '';
+        let redacted: string | undefined;
         try { output = await run(program, args, { ...process.env, ORM_GROUP_DATABASE: database, ORM_GROUP_DSN: dsn }); }
-        catch (error) { throw new Error(errorMessage(error).replaceAll(dsn, '[redacted]')); }
+        catch (error) { redacted = errorMessage(error).replaceAll(dsn, '[redacted]'); }
+        if (redacted !== undefined) throw new Error(redacted);
         // In PHPUnit's TeamCity output, a test ends with no failed or skipped test, and TypeScript tests write a CASE line
         // one.
         const finished = [...output.matchAll(/^##teamcity\[testFinished name='([^']*)'/gm)].map(match => match[1]);

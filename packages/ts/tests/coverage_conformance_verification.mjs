@@ -20,7 +20,7 @@ await runCases('coverage_conformance_verification.mjs', {
     try {
       ({ stdout } = await promisify(execFile)(process.execPath, args, { maxBuffer: 64 * 1024 * 1024, timeout: 240_000 }));
     } catch (error) {
-      throw new Error(`runner_typescript failed: ${error.stderr || error.message}`);
+      throw new Error(`runner_typescript failed: ${error.stderr || error.message}`, { cause: error });
     }
     const output = JSON.parse(stdout);
     assert.deepEqual(Object.keys(output), selected, 'the runner ran exactly the selected vectors');

@@ -707,6 +707,7 @@ export async function executeCoverage(manifest: Manifest, root: string, timeoutM
         return readings;
       };
       const passed = await runCase(`${first.item.key} (${databases.join(',')}) run ${attempt}`, count * timeoutMs, async ({ step }) => {
+        let caught = false;
         try {
           const before = await readStates();
           if (planFailures.size) throw new Error('database state reader failed');
@@ -737,8 +738,9 @@ export async function executeCoverage(manifest: Manifest, root: string, timeoutM
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           failure = dsns.reduce((text, dsn) => (dsn ? text.replaceAll(dsn, '[redacted]') : text), message);
-          throw new Error(failure);
+          caught = true;
         }
+        if (caught) throw new Error(failure);
       });
       if (!passed) {
         for (const plan of unit) {
@@ -768,6 +770,7 @@ export async function executeCoverage(manifest: Manifest, root: string, timeoutM
         for (let attempt = 1; attempt <= 2; attempt++) {
           let failure: string | undefined;
           const passed = await runCase(`${key} run ${attempt}`, count * timeoutMs, async ({ step }) => {
+            let caught = false;
             try {
               const stateBefore = dsn ? await state(item.database, dsn, timeoutMs) : null;
               if (dsn) step(`state before ${stateBefore}`);
@@ -796,8 +799,9 @@ export async function executeCoverage(manifest: Manifest, root: string, timeoutM
             } catch (error) {
               const message = error instanceof Error ? error.message : String(error);
               failure = dsn ? message.replaceAll(dsn, '[redacted]') : message;
-              throw new Error(failure);
+              caught = true;
             }
+            if (caught) throw new Error(failure);
           });
           if (!passed) {
             errors.push(`${key} run ${attempt}: ${failure ?? `deadline ${count * timeoutMs} ms exceeded`}`);

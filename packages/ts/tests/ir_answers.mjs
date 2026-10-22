@@ -68,7 +68,7 @@ for (const c of doc.cases) {
     try {
       got = normalize(await chain({ db }));
     } catch (error) {
-      if (!(error instanceof OrmError)) throw new Error(`${c.id} failed without an orm code: ${error?.stack ?? error}`);
+      if (!(error instanceof OrmError)) throw new Error(`${c.id} failed without an orm code: ${error?.stack ?? error}`, { cause: error });
       got = { error: error.code };
     } finally {
       await db.close();

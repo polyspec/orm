@@ -84,7 +84,7 @@ export async function createCaseDatabase(dialect, step) {
       async drop(report = step) {
         try {
           for (const suffix of ['', '-wal', '-shm', '-journal']) await rm(path + suffix, { force: true });
-        } catch (error) { throw new Error(`remove database file ${path}: ${error.message}`); }
+        } catch (error) { throw new Error(`remove database file ${path}: ${error.message}`, { cause: error }); }
         report(`database file ${path} removed`);
       },
     };
@@ -97,7 +97,7 @@ export async function createCaseDatabase(dialect, step) {
     async drop(report = step) {
       try {
         await admin(dialect, dialect === 'mysql' ? `DROP DATABASE \`${name}\`` : `DROP DATABASE "${name}" WITH (FORCE)`);
-      } catch (error) { throw new Error(`drop database ${name}: ${error.message}`); }
+      } catch (error) { throw new Error(`drop database ${name}: ${error.message}`, { cause: error }); }
       report(`database ${name} dropped`);
     },
   };

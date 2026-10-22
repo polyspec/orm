@@ -47,9 +47,11 @@ export function run(program: string, args: string[], env: NodeJS.ProcessEnv = pr
 
 /** state is the hash of the database state that the state reader reports; the DSN never appears in an error. */
 export async function state(database: string, dsn: string): Promise<string> {
-  let output: string;
+  let output = '';
+  let redacted: string | undefined;
   try { output = await run(process.execPath, [join(import.meta.dirname, '../tests/conformance/check/main.mts'), 'state', '--driver', database, '--dsn', dsn]); }
-  catch (error) { throw new Error(errorMessage(error).replaceAll(dsn, '[redacted]')); }
+  catch (error) { redacted = errorMessage(error).replaceAll(dsn, '[redacted]'); }
+  if (redacted !== undefined) throw new Error(redacted);
   const match = new RegExp(`^${database} state ([a-f0-9]{64})\\n$`).exec(output);
   if (!match?.[1]) throw new Error(`${database}: invalid state reader output`);
   return match[1];

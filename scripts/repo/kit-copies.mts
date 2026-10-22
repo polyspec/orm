@@ -12,7 +12,7 @@ export function kitCopies(root: string): Record<string, string> {
   try {
     manifest = createRequire(join(root, 'package.json')).resolve('@polyspec/kit/package.json');
   } catch (error) {
-    throw new Error(`@polyspec/kit is not installed (${errorCode(error) ?? String(error)}); run make install-tools TOOLS=npm, then make install-packages`);
+    throw new Error(`@polyspec/kit is not installed (${errorCode(error) ?? String(error)}); run make install-tools TOOLS=npm, then make install-packages`, { cause: error });
   }
   const copies = readPackage(manifest).kit?.copies;
   if (copies === undefined) throw new Error(`${manifest} declares no kit.copies; install a release of @polyspec/kit`);

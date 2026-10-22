@@ -84,7 +84,7 @@ export function generate(analyze: Analyze, inputs: Input[]): Entry[] {
     try {
       result = analyze(text, documents);
     } catch (error) {
-      throw new Error(`${id}: analyzeDbspec failed: ${errorMessage(error)}`);
+      throw new Error(`${id}: analyzeDbspec failed: ${errorMessage(error)}`, { cause: error });
     }
     return { id, tokens: result.tokens.map(t => [t.line, t.start, t.end, t.class]) };
   });

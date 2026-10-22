@@ -38,7 +38,7 @@ async function runChild(source: string, args: string[] = [], timeout = 30_000): 
       return { code: 0, stdout };
     } catch (error) {
       const failure = execFailure(error);
-      if (failure.killed) throw new Error(`fixture did not exit within ${duration(timeout)}\n${failure.stdout}`);
+      if (failure.killed) throw new Error(`fixture did not exit within ${duration(timeout)}\n${failure.stdout}`, { cause: error });
       return { code: failure.code, stdout: failure.stdout };
     }
   } finally { await rm(dir, { recursive: true, force: true }); }

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f883c7dd3e3ad36b16a9140ef3d7b1757af640fa636291684664d5f980bb66c3 -->
+<!-- source-sha256: ad014f8bf8e176dc0d95e0967347d7414b89fadcef1481ac09ad694c50019ee8 -->
 # 변경 이력
 
 ## Unreleased
 
+- 저장소의 TypeScript lint가 통과한다: lint-ts 단계가 oxlint 발견 사항과 사용되지 않는 export를 보고하지 않는다. 오류는 cause를 유지하고, DSN을 가리는 재throw는 catch 밖에서 수행하며, 사용되지 않는 byteSize를 제거하고 quoteIdent의 export를 해제한다 (KSTD-5-44). red: make lint-ts가 oxlint 발견 사항 34건과 knip의 사용되지 않는 export 1건을 보고한다.
 - VitePress의 임시 폴더 `docs/.vitepress/.temp/`는 git이 무시하므로, 그것을 남기는 build가 land를 막지 않는다(KSTD-5-39). red: 줄을 추가하기 전 `git check-ignore` probe가 실패했다.
 - Makefile의 도구 경로가 KIT_TOOLS를 써서, 연결된 worktree가 main checkout이 설치한 도구로 빌드된다(KSTD-5-38). red: 새 worktree의 rebuild가 없는 var/tools/mise/shims/go에서 멈췄다.
 - lint-php가 통과한다. PHP는 PSR-12 배치, camelCase test method(config/parity.json의 PHP binding 218개와 Makefile filter 포함), 파일당 class 하나, 모든 test class의 namespace, PHPUnit bootstrap이 require하는 test helper, 빈 catch 없음, 이유 없는 silenced call 없음을 따르고, test는 생성한 model을 autoloader 없이 불러온다(KSTD-5-9). red: root, packages/php, packages/php-ext의 phpcs와 phpstan이 실패했다.

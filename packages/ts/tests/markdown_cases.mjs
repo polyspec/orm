@@ -37,7 +37,7 @@ async function refusedInstall(s, name) {
       return { error: null };
     } catch (error) {
       const m = /^flowmark install: ([A-Z_]+):/m.exec(`${error.stdout ?? ''}${error.stderr ?? ''}`);
-      if (m === null) throw new Error(`flowmark install ${dir}: ${error.message}, without a refusal code`);
+      if (m === null) throw new Error(`flowmark install ${dir}: ${error.message}, without a refusal code`, { cause: error });
       return { error: m[1] };
     }
   } finally {
