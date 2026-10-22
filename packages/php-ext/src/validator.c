@@ -1199,6 +1199,30 @@ static bool pred(vctx *c, const vat *at, HashTable *p)
         }
         return true;
     }
+    if (streq(op, "fulltext") || streq(op, "fulltext_boolean")) {
+        /* PRT-75: cols and p only; each column is a text column without a codec (DIA-6, DIA-187). */
+        HashTable *fcols = ha(get(p, "cols"));
+        if (!has_items(fcols) || !has(p, "p") || *str(c, p, "column", "") != '\0' || has_items(ha(get(p, "ps"))) || has(p, "sub") || has(p, "fn") || has(p, "value") || has(p, "ref")) {
+            return fail(IR_INVALID, "%s takes cols and p only", op);
+        }
+        zval *fv;
+        ZEND_HASH_FOREACH_VAL(fcols, fv)
+        {
+            const char *fname = sv(c, fv);
+            HashTable *fc = NULL;
+            TRY(col_of(c, ent, fname, &fc));
+            if (fc == NULL) {
+                return fail("COLUMN_UNKNOWN", "%s.%s", name, fname);
+            }
+            zval *ft = get(fc, "type");
+            bool text = ft != NULL && Z_TYPE_P(ft) == IS_STRING && (streq(Z_STRVAL_P(ft), "varchar") || streq(Z_STRVAL_P(ft), "text"));
+            if (!text || has_codec(fc)) {
+                return fail("OPERATOR_NOT_ALLOWED", "%s on %s.%s", op, name, fname);
+            }
+        }
+        ZEND_HASH_FOREACH_END();
+        return true;
+    }
     if (has_items(ha(get(p, "cols")))) {
         return fail(IR_INVALID, "cols is only valid with tuple_in or tuple_not_in");
     }
@@ -2099,6 +2123,12 @@ static void pred_uses(vctx *c, HashTable *p, HashTable *ent, HashTable *out)
             k++;
         }
         ZEND_HASH_FOREACH_END();
+        return;
+    }
+    if (streq(op, "fulltext") || streq(op, "fulltext_boolean")) {
+        if (has(p, "p")) {
+            add_use(c, out, num(p, "p", 0), "text", NULL, false);
+        }
         return;
     }
     HashTable *col = NULL;

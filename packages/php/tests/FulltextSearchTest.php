@@ -21,7 +21,10 @@ spl_autoload_register(static function (string $class): void {
 
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Dialect;
+use Polyspec\Orm\Engine;
 use Polyspec\Orm\OrmException;
+use Polyspec\Orm\Planner;
+use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\Transform;
 use PHPUnit\Framework\TestCase;
 
@@ -67,5 +70,39 @@ final class FulltextSearchTest extends TestCase
         $this->assertSame("$doc @@ plainto_tsquery('simple', \$[])", $postgres->fulltext($cols, $value, false));
         $this->assertSame("$doc @@ websearch_to_tsquery('simple', \$[])", $postgres->fulltext($cols, $value, true));
         $this->assertNull($sqlite->fulltext($cols, $value, true));
+
+        $this->assertCompiles();
+    }
+
+    /**
+     * The planner of the engine compiles the predicate in each dialect. With the extension loaded, the planner is the extension's
+     * (the extension registers Planner), and its predicate, bind slot and error come from the C planner and validator.
+     */
+    private function assertCompiles(): void
+    {
+        if (extension_loaded('polyspec_orm')) {
+            $this->assertTrue((new \ReflectionClass(Planner::class))->isInternal(), 'the planner is the extension planner');
+        }
+        $root = dirname(__DIR__, 3);
+        $model = RuntimeModel::build(RuntimeModel::files(["$root/contracts/fixtures/bench/bench.dbs"]));
+        $request = [
+            'manifest_hash' => $model->manifestHash,
+            'entity' => 'user',
+            'ir_version' => 1,
+            'kind' => 'count',
+            'n_params' => 1,
+            'where' => ['items' => [['pred' => ['cols' => ['name'], 'op' => 'fulltext_boolean', 'p' => 0]]]],
+        ];
+        $mysql = (new Engine($model, 'mysql', 8))->compile($request)['steps'][0];
+        $this->assertSame('SELECT COUNT(*) FROM `user` AS `a` WHERE MATCH (`a`.`name`) AGAINST (? IN BOOLEAN MODE)', $mysql['sql']);
+        $this->assertSame('fulltext_boolean', $mysql['bind_slots'][0]['transform']);
+        $postgres = (new Engine($model, 'postgres', 8))->compile($request)['steps'][0];
+        $this->assertSame("SELECT COUNT(*) FROM \"user\" AS \"a\" WHERE to_tsvector('simple', coalesce(\"a\".\"name\", '')) @@ websearch_to_tsquery('simple', \$1)", $postgres['sql']);
+        try {
+            (new Engine($model, 'sqlite', 8))->compile($request);
+            $this->fail('SQLite must refuse the predicate');
+        } catch (OrmException $e) {
+            $this->assertSame(Code::OPERATOR_NOT_ALLOWED, $e->code_);
+        }
     }
 }

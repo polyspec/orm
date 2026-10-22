@@ -1083,6 +1083,7 @@ static zend_string *render_order(pctx *c, pbinds *b, pscope *s, HashTable *q);
 static zend_string *sub_select(pctx *c, pbinds *b, pscope *outer, HashTable *sub);
 static zend_string *value_function_sql(pctx *c, pbinds *b, zend_string *fn, zend_long ps0);
 static zend_string *contains_binary_sql(pctx *c, pbinds *b, zend_string *lhs, HashTable *col, zend_long p);
+static zend_string *fulltext_sql(pctx *c, pbinds *b, pscope *s, HashTable *p, const char *ops);
 static pstep *select_step(pctx *c, zval *steps, HashTable *q, const char *kind, zend_string *agg, prel *rc);
 static bool relation_steps(pctx *c, zval *steps, pscope *s, passm *ast, zend_long stepId);
 static zend_string *select_list(pctx *c, pbinds *b, pscope *s, passm *ast, zend_long *idx, zval *outNames);
@@ -1516,6 +1517,9 @@ static zend_string *render_pred(pctx *c, pbinds *b, pscope *s, HashTable *p)
         zval a[3] = {*qcols, *rows, *Zb(c, strcmp(ops, "tuple_not_in") == 0)};
         return Ds(c, "tupleIn", 3, a);
     }
+    if (strcmp(ops, "fulltext") == 0 || strcmp(ops, "fulltext_boolean") == 0) {
+        return fulltext_sql(c, b, s, p, ops);
+    }
     HashTable *colh = NULL;
     if (!col_of(c, s->ent, gs(c, p, "column"), &colh)) {
         return NULL;
@@ -1808,7 +1812,10 @@ ZEND_NAMED_FUNCTION(planner_thunk_value)
     ZEND_PARSE_PARAMETERS_START(1, 1)
         Z_PARAM_STR(tr)
     ZEND_PARSE_PARAMETERS_END();
-    zend_string *ph = b_col_param(g_value->c, g_value->b, g_value->p, g_value->col, tr, NULL);
+    /* A full-text predicate has no column: its value is text (col NULL), and the other value closures bind by the column. */
+    zend_string *ph = g_value->col == NULL
+        ? b_param(g_value->c, g_value->b, g_value->p, fmt(g_value->c, "text"), tr, NULL)
+        : b_col_param(g_value->c, g_value->b, g_value->p, g_value->col, tr, NULL);
     if (ph == NULL) {
         RETURN_NULL();
     }
@@ -1874,6 +1881,31 @@ static zend_string *contains_binary_sql(pctx *c, pbinds *b, zend_string *lhs, Ha
             return NULL;
         }
         return fail("INTERNAL", "containsBinary gives no string");
+    }
+    return r;
+}
+
+/* Planner::renderPred of a full-text predicate: Dialect::fulltext over the qualified columns, the value bound as text through
+ * the transform fulltext_boolean in the boolean mode (DIA-6). A dialect without full-text search gives null (DIA-187). */
+static zend_string *fulltext_sql(pctx *c, pbinds *b, pscope *s, HashTable *p, const char *ops)
+{
+    fns_init();
+    /* Dialect::fulltext over the qualified columns; the value is bound as text through the transform fulltext_boolean in
+     * the boolean mode (DIA-6). A dialect without full-text search gives null: OPERATOR_NOT_ALLOWED (DIA-187). */
+    zval *qcols = qualified(c, s, lst(p, "cols"));
+    OKP(qcols);
+    pthunk tv = {c, b, gl(p, "p", 0), 0, NULL, NULL};
+    pthunk *sv = g_value;
+    g_value = &tv;
+    zval *cv = make_closure(c, &fn_value_def);
+    zval a[3] = {*qcols, *cv, *Zb(c, strcmp(ops, "fulltext_boolean") == 0)};
+    zend_string *r = Ds(c, "fulltext", 3, a);
+    g_value = sv;
+    if (r == NULL) {
+        if (EG(exception) != NULL) {
+            return NULL;
+        }
+        return fail("OPERATOR_NOT_ALLOWED", "%s", ops);
     }
     return r;
 }
