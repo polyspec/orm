@@ -33,8 +33,12 @@ pub enum P {
 pub(super) fn invalid() -> sqlx::Error {
     sqlx::Error::Encode("TOOL_BIND_INVALID: unsupported or invalid native bind".into())
 }
+
+pub(super) fn invalid_with(error: impl std::fmt::Display) -> sqlx::Error {
+    sqlx::Error::Encode(format!("TOOL_BIND_INVALID: unsupported or invalid native bind: {error}").into())
+}
 pub(super) fn decimal(value: &str) -> Result<bigdecimal::BigDecimal, sqlx::Error> {
-    value.parse().map_err(|_| invalid())
+    value.parse().map_err(invalid_with)
 }
 pub(super) fn validate(values: &[P], dialect: &str) -> Result<(), sqlx::Error> {
     if values.len() > 65535 {
@@ -111,11 +115,11 @@ mod tests;
 
 /// Reads a checked dbspec text as a chrono value.
 pub(super) fn date(value: &str) -> Result<polyspec_orm::chrono::NaiveDate, sqlx::Error> {
-    polyspec_orm::chrono::NaiveDate::parse_from_str(value, "%Y-%m-%d").map_err(|_| invalid())
+    polyspec_orm::chrono::NaiveDate::parse_from_str(value, "%Y-%m-%d").map_err(invalid_with)
 }
 pub(super) fn time(value: &str) -> Result<polyspec_orm::chrono::NaiveTime, sqlx::Error> {
-    polyspec_orm::chrono::NaiveTime::parse_from_str(value, "%H:%M:%S%.f").map_err(|_| invalid())
+    polyspec_orm::chrono::NaiveTime::parse_from_str(value, "%H:%M:%S%.f").map_err(invalid_with)
 }
 pub(super) fn datetime(value: &str) -> Result<polyspec_orm::chrono::NaiveDateTime, sqlx::Error> {
-    polyspec_orm::chrono::NaiveDateTime::parse_from_str(value, "%Y-%m-%d %H:%M:%S%.f").map_err(|_| invalid())
+    polyspec_orm::chrono::NaiveDateTime::parse_from_str(value, "%Y-%m-%d %H:%M:%S%.f").map_err(invalid_with)
 }

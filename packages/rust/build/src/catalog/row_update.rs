@@ -6,6 +6,10 @@ use std::collections::HashSet;
 fn invalid() -> String {
     "ROW_UPDATE_INVALID: invalid column assignments".into()
 }
+
+fn invalid_with(error: impl std::fmt::Display) -> String {
+    format!("ROW_UPDATE_INVALID: invalid column assignments: {error}")
+}
 impl RowSnapshot {
     fn updated_cells(&self, changes: &[(String, GridCell)]) -> Result<Vec<GridCell>, String> {
         if changes.is_empty() || changes.len() > self.metadata().columns.len() {
@@ -34,8 +38,8 @@ impl RowSnapshot {
             let index = self.metadata().columns.iter().position(|column| column.name == *name).ok_or_else(invalid)?;
             cells[index] = value.clone();
         }
-        row_snapshot::row(self.metadata(), &cells).map_err(|_| invalid())?;
-        row_snapshot::revision(self.metadata(), &cells).map_err(|_| "ROW_UPDATE_LIMIT: updated row budget exceeded".to_owned())?;
+        row_snapshot::row(self.metadata(), &cells).map_err(invalid_with)?;
+        row_snapshot::revision(self.metadata(), &cells).map_err(|error| format!("ROW_UPDATE_LIMIT: updated row budget exceeded: {error}"))?;
         Ok(cells)
     }
     /// Validate before any SQL is executed. This does not authorize a write.

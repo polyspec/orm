@@ -18,9 +18,13 @@ impl std::fmt::Debug for RowSnapshot {
 fn invalid() -> String {
     "ROW_SNAPSHOT_INVALID: invalid original row or descriptor".into()
 }
+
+fn invalid_with(error: impl std::fmt::Display) -> String {
+    format!("ROW_SNAPSHOT_INVALID: invalid original row or descriptor: {error}")
+}
 pub(super) fn descriptor(value: &TableMetadata) -> Result<Vec<usize>, String> {
-    metadata::validate_name(&value.table.namespace).map_err(|_| invalid())?;
-    metadata::validate_name(&value.table.name).map_err(|_| invalid())?;
+    metadata::validate_name(&value.table.namespace).map_err(invalid_with)?;
+    metadata::validate_name(&value.table.name).map_err(invalid_with)?;
     if !matches!(value.kind, TableKind::Table | TableKind::Partitioned)
         || !value.reliable_row_identity
         || value.primary_key.is_empty()
@@ -32,7 +36,7 @@ pub(super) fn descriptor(value: &TableMetadata) -> Result<Vec<usize>, String> {
     let mut names = HashSet::new();
     let mut bytes = 0usize;
     for column in &value.columns {
-        metadata::validate_name(&column.name).map_err(|_| invalid())?;
+        metadata::validate_name(&column.name).map_err(invalid_with)?;
         bytes = bytes
             .checked_add(column.name.len())
             .and_then(|n| n.checked_add(column.native_type.len()))
@@ -110,12 +114,12 @@ impl Write for RevisionWriter {
 pub(super) fn revision(metadata: &TableMetadata, cells: &[GridCell]) -> Result<String, String> {
     let mut writer = RevisionWriter { hash: Sha256::new(), bytes: 0 };
     serde_json::to_writer(&mut writer, &("orm-row-baseline-v1", metadata, cells))
-        .map_err(|_| "ROW_SNAPSHOT_LIMIT: original row encoding exceeds its budget".to_owned())?;
+        .map_err(|error| format!("ROW_SNAPSHOT_LIMIT: original row encoding exceeds its budget: {error}"))?;
     Ok(format!("{:x}", writer.hash.finalize()))
 }
 impl RowSnapshot {
     pub fn from_page(page: &TablePage, row_index: usize) -> Result<Self, String> {
-        super::page::validate_request(&page.metadata.table, page.limit, page.offset).map_err(|_| invalid())?;
+        super::page::validate_request(&page.metadata.table, page.limit, page.offset).map_err(invalid_with)?;
         if page.result.rows.len() > page.limit || (page.has_more && page.result.rows.len() != page.limit) || page.order_by != page.metadata.primary_key {
             return Err(invalid());
         }

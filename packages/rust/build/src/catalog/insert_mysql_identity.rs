@@ -27,7 +27,7 @@ pub(super) async fn execute(connection: &mut Conn, metadata: &TableMetadata, sql
             let value = if column.native_type.to_ascii_lowercase().contains("unsigned") {
                 P::Unsigned(identity)
             } else {
-                P::I(i64::try_from(identity).map_err(|_| "ROW_WRITE_MISMATCH: signed identity overflow".to_owned())?)
+                P::I(i64::try_from(identity).map_err(|error| format!("ROW_WRITE_MISMATCH: signed identity overflow: {error}"))?)
             };
             bound.push(value);
             predicates.push(format!("{quoted}=?"));

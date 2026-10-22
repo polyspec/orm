@@ -14,6 +14,10 @@ impl Default for QueryLimits {
 fn error() -> sqlx::Error {
     sqlx::Error::Decode("TOOL_QUERY_LIMIT: invalid or exceeded result budget".into())
 }
+
+fn error_with(error: impl std::fmt::Display) -> sqlx::Error {
+    sqlx::Error::Decode(format!("TOOL_QUERY_LIMIT: invalid or exceeded result budget: {error}").into())
+}
 pub(super) struct Budget {
     limits: QueryLimits,
     bytes: usize,
@@ -35,7 +39,7 @@ impl Budget {
     }
     pub(super) fn add_row<T: serde::Serialize>(&mut self, row: &[T], count: usize) -> Result<(), sqlx::Error> {
         let mut writer = Counter { bytes: self.bytes + usize::from(count > 0), limit: self.limits.max_bytes };
-        serde_json::to_writer(&mut writer, row).map_err(|_| error())?;
+        serde_json::to_writer(&mut writer, row).map_err(error_with)?;
         self.bytes = writer.bytes;
         Ok(())
     }

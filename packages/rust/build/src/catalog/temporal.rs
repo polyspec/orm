@@ -9,7 +9,9 @@ use crate::tool_db::{is_temporal, Conn, GridCell, GridQueryResult, QueryLimits, 
 fn precision(native_type: &str, dialect: &str) -> Result<usize, String> {
     let declared = native_type.split_once('(').and_then(|(_, rest)| rest.split_once(')')).map(|(digits, _)| digits);
     let p = match (declared, dialect) {
-        (Some(digits), _) => digits.parse::<usize>().map_err(|_| format!("GRID_TEMPORAL_PRECISION: native type {native_type:?} has no precision"))?,
+        (Some(digits), _) => digits
+                .parse::<usize>()
+                .map_err(|error| format!("GRID_TEMPORAL_PRECISION: native type {native_type:?} has no precision: {error}"))?,
         (None, "mysql") => 0,
         (None, "postgres") => 6,
         (None, _) => return Err(format!("GRID_TEMPORAL_PRECISION: native type {native_type:?} has no precision")),

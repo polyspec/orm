@@ -51,6 +51,6 @@ pub(super) fn validate(metadata: &TableMetadata, values: &[(String, P)], dialect
     let params = values.iter().map(|(_, value)| value.clone()).collect::<Vec<_>>();
     tool_db::validate_params(&params, dialect).map_err(|e| e.to_string())?;
     let cells = params.iter().map(cell).collect::<Vec<_>>();
-    row_snapshot::revision(metadata, &cells).map_err(|_| "ROW_INSERT_LIMIT: assignment encoding budget exceeded".to_owned())?;
+    row_snapshot::revision(metadata, &cells).map_err(|error| format!("ROW_INSERT_LIMIT: assignment encoding budget exceeded: {error}"))?;
     Ok(if omitted.is_empty() { Some(keys.into_iter().flatten().collect()) } else { None })
 }

@@ -16,14 +16,14 @@ pub(super) fn validate(sql: &str, dialect: &str) -> Result<(), String> {
         "sqlite" => Box::new(SQLiteDialect {}),
         _ => return Err(error()),
     };
-    let tokens = Tokenizer::new(dialect.as_ref(), sql).tokenize().map_err(|_| error())?;
+    let tokens = Tokenizer::new(dialect.as_ref(), sql).tokenize().map_err(error_with)?;
     if tokens
         .iter()
         .any(|token| matches!(token,Token::Whitespace(Whitespace::MultiLineComment(comment)) if comment.starts_with('!')||comment.starts_with("M!")))
     {
         return Err(error());
     }
-    let statements = Parser::new(dialect.as_ref()).with_recursion_limit(64).with_tokens(tokens).parse_statements().map_err(|_| error())?;
+    let statements = Parser::new(dialect.as_ref()).with_recursion_limit(64).with_tokens(tokens).parse_statements().map_err(error_with)?;
     if statements.len() != 1 || !matches!(statements[0], Statement::Query(_)) || statements.visit(&mut ReadOnly { expression_depth: 0 }).is_break() {
         return Err(error());
     }
@@ -31,6 +31,10 @@ pub(super) fn validate(sql: &str, dialect: &str) -> Result<(), String> {
 }
 fn error() -> String {
     "QUERY_READ_ONLY: expected one supported non-locking read query".into()
+}
+
+fn error_with(error: impl std::fmt::Display) -> String {
+    format!("QUERY_READ_ONLY: expected one supported non-locking read query: {error}")
 }
 struct ReadOnly {
     expression_depth: usize,

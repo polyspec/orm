@@ -163,7 +163,7 @@ impl Builder {
         let models: HashSet<String> = set.model.entities.iter().map(|e| names::pascal(&e.name)).collect();
         let paths: Vec<PathBuf> = self.scan.iter().map(|p| Self::absolute(p)).collect();
         let fallible_setters = generate::fallible_setters(&set.model);
-        let scanned = scan::scan(&paths, &models, &fallible_setters, &self.output_dir().unwrap_or_default().join(MODEL_FILE))?;
+        let scanned = scan::scan(&paths, &models, &fallible_setters, &self.output_dir()?.join(MODEL_FILE))?;
         let inputs = set_inputs(set_path, &files).into_iter().map(Path::to_path_buf).chain(paths).chain(scanned.files.iter().cloned()).collect();
         Ok(Loaded { set, scanned, inputs })
     }
@@ -183,8 +183,12 @@ fn set_inputs<'a>(set_path: &'a Path, files: &'a dbspec::Set) -> Vec<&'a Path> {
 }
 
 fn write_if_changed(path: &Path, content: &[u8]) -> Result<(), String> {
-    if std::fs::read(path).map(|old| old == content).unwrap_or(false) {
-        return Ok(());
+    // A file that does not exist yet is written; any other read failure is an error, not a reason to write over the file.
+    match std::fs::read(path) {
+        Ok(old) if old == content => return Ok(()),
+        Ok(_) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => return Err(format!("{}: cannot read the existing file: {error}", path.display())),
     }
     std::fs::write(path, content).map_err(|e| format!("{}: {e}", path.display()))
 }

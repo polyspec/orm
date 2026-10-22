@@ -39,10 +39,11 @@ pub struct GridQueryResult {
 pub(super) fn postgres_decimal(row: &sqlx::postgres::PgRow, index: usize) -> Result<GridCell, sqlx::Error> {
     use sqlx::Row;
     let invalid = || sqlx::Error::Decode("Unsupported or invalid finite grid decimal".into());
-    let Some(decimal) = row.try_get::<Option<bigdecimal::BigDecimal>, _>(index).map_err(|_| invalid())? else { return Ok(GridCell::Null) };
+    let invalid_with = |error: &dyn std::fmt::Display| sqlx::Error::Decode(format!("Unsupported or invalid finite grid decimal: {error}").into());
+    let Some(decimal) = row.try_get::<Option<bigdecimal::BigDecimal>, _>(index).map_err(|error| invalid_with(&error))? else { return Ok(GridCell::Null) };
     let raw = row.try_get_raw(index)?;
     let decimal = if raw.format() == sqlx::postgres::PgValueFormat::Binary {
-        let bytes = raw.as_bytes().map_err(|_| invalid())?;
+        let bytes = raw.as_bytes().map_err(|error| invalid_with(&error))?;
         if bytes.len() < 8 {
             return Err(invalid());
         }
@@ -123,23 +124,23 @@ pub(super) fn postgres_temporal(row: &sqlx::postgres::PgRow, index: usize) -> Re
     if raw.format() != sqlx::postgres::PgValueFormat::Binary {
         return Err(temporal_error("text format"));
     }
-    let bytes = raw.as_bytes().map_err(|_| temporal_error("value bytes"))?;
+    let bytes = raw.as_bytes().map_err(|error| temporal_error(&format!("value bytes: {error}")))?;
     let epoch = NaiveDate::from_ymd_opt(2000, 1, 1).expect("2000-01-01 is a date");
     Ok(Some(match name {
         "DATE" => {
-            let days = i32::from_be_bytes(bytes.try_into().map_err(|_| temporal_error("date length"))?);
+            let days = i32::from_be_bytes(bytes.try_into().map_err(|error| temporal_error(&format!("date length: {error}")))?);
             let date = epoch.checked_add_signed(TimeDelta::days(i64::from(days))).ok_or_else(|| temporal_error("infinite or out of range date"))?;
             GridCell::Date(date_text(date)?)
         }
         "TIME" => {
-            let micros = i64::from_be_bytes(bytes.try_into().map_err(|_| temporal_error("time length"))?);
+            let micros = i64::from_be_bytes(bytes.try_into().map_err(|error| temporal_error(&format!("time length: {error}")))?);
             if !(0..86_400_000_000).contains(&micros) {
                 return Err(temporal_error("time outside 00:00:00 to 23:59:59.999999"));
             }
             GridCell::Time(time_text(NaiveTime::MIN + TimeDelta::microseconds(micros)))
         }
         _ => {
-            let micros = i64::from_be_bytes(bytes.try_into().map_err(|_| temporal_error("timestamp length"))?);
+            let micros = i64::from_be_bytes(bytes.try_into().map_err(|error| temporal_error(&format!("timestamp length: {error}")))?);
             let value = epoch
                 .and_time(NaiveTime::MIN)
                 .checked_add_signed(TimeDelta::microseconds(micros))

@@ -94,6 +94,8 @@ struct Scanner<'a> {
     scopes: Vec<HashMap<String, Binding>>,
     attached: Vec<bool>,
     out: &'a mut Scan,
+    /// The arguments that could not be read, one message each: scan fails with them rather than record a call without them.
+    failures: Vec<String>,
 }
 
 /// Scans the files of `paths`. `model_file` is the model file this generation writes, which tells this set's model module
@@ -137,8 +139,12 @@ pub fn scan(paths: &[PathBuf], models: &HashSet<String>, fallible_setters: &Hash
             scopes: vec![HashMap::new()],
             attached: Vec::new(),
             out: &mut out,
+            failures: Vec::new(),
         };
         s.visit_file(ast);
+        if !s.failures.is_empty() {
+            return Err(s.failures.join("; "));
+        }
     }
     out.files = files;
     Ok(out)
@@ -544,7 +550,13 @@ impl Scanner<'_> {
                     }
                     use syn::parse::Parser;
                     type Exprs = syn::punctuated::Punctuated<Expr, syn::Token![,]>;
-                    let args: Vec<Expr> = Exprs::parse_terminated.parse2(g.stream()).map(|a| a.into_iter().collect()).unwrap_or_default();
+                    let args: Vec<Expr> = match Exprs::parse_terminated.parse2(g.stream()) {
+                        Ok(args) => args.into_iter().collect(),
+                        Err(error) => {
+                            self.failures.push(format!("{}: the arguments of .{}( do not parse as expressions: {error}", self.file, name.unraw()));
+                            continue;
+                        }
+                    };
                     let name = name.unraw().to_string();
                     self.out.calls.push(Call { name, args, model: None, pos: self.pos(g.span()), attached_many: self.attached.last().copied() });
                 }

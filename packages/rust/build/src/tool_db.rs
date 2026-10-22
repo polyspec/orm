@@ -54,7 +54,7 @@ impl Val {
         match self {
             Val::Int(n) => Ok(*n),
             Val::Bool(b) => Ok(i64::from(*b)),
-            Val::Text(s) => s.parse().map_err(|_| sqlx::Error::Decode("Invalid tool integer".into())),
+            Val::Text(s) => s.parse().map_err(|error| sqlx::Error::Decode(format!("Invalid tool integer: {error}").into())),
             Val::Null => Err(sqlx::Error::Decode("Required tool integer is NULL".into())),
         }
     }
@@ -375,7 +375,7 @@ pub struct ToolDsn {
 impl ToolDsn {
     /// Parses a DSN URI.
     pub fn parse(raw: &str) -> Result<ToolDsn, String> {
-        let url = url::Url::parse(raw).map_err(|_| "MIGRATION_CONFIG: dsn must be a URI using mysql://, postgres://, or sqlite://".to_owned())?;
+        let url = url::Url::parse(raw).map_err(|error| format!("MIGRATION_CONFIG: dsn must be a URI using mysql://, postgres://, or sqlite://: {error}"))?;
         let dialect = url.scheme().to_lowercase();
         let host = url.host_str().unwrap_or("");
         let database = url.path().trim_matches('/');
@@ -393,12 +393,12 @@ impl ToolDsn {
     }
 
     /// The DSN with its password hidden.
-    pub fn redacted(&self) -> String {
+    pub fn redacted(&self) -> Result<String, String> {
         let mut url = self.url.clone();
         if url.password().is_some() {
-            let _ = url.set_password(Some("xxxxx"));
+            url.set_password(Some("xxxxx")).map_err(|()| "the password of the DSN cannot be hidden".to_owned())?;
         }
-        url.to_string()
+        Ok(url.to_string())
     }
 }
 
@@ -412,7 +412,10 @@ pub async fn open(raw: &str) -> Result<(polyspec_orm::Db, Conn, ToolDsn), String
     } else {
         raw.to_owned()
     };
-    let connect_err = |e: &dyn std::fmt::Display| format!("MIGRATION_CONNECT: dsn={}: {e}", dsn.redacted());
+    let connect_err = |e: &dyn std::fmt::Display| match dsn.redacted() {
+        Ok(text) => format!("MIGRATION_CONNECT: dsn={text}: {e}"),
+        Err(reason) => format!("MIGRATION_CONNECT: dsn could not be shown ({reason}): {e}"),
+    };
     let db = polyspec_orm::Db::connect(&target, 4, polyspec_orm::Config::default()).await.map_err(|e| connect_err(&e))?;
     let conn = Conn::acquire(db.pool()).await.map_err(|e| connect_err(&e))?;
     Ok((db, conn, dsn))

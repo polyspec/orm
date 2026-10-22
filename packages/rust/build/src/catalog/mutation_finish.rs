@@ -37,7 +37,7 @@ pub(super) async fn finish<T: Send + 'static>(mut connection: Conn, result: Resu
             }
         }
     });
-    task.await.map_err(|_| "ROW_COMMIT_INDETERMINATE: commit owner interrupted; do not retry".to_owned())?
+    task.await.map_err(|error| format!("ROW_COMMIT_INDETERMINATE: commit owner interrupted; do not retry: {error}"))?
 }
 fn explicitly_rejected(error: &sqlx::Error) -> bool {
     error
