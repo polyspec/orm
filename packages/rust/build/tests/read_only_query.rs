@@ -10,10 +10,12 @@ async fn actual_catalog_queries_enforce_read_only_scopes_on_three_databases() {
     tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("read-only query deadline");
 }
 async fn check() {
-    let cleanup_ids = std::env::var("ORM_READONLY_CLEANUP_IDS")
-        .ok()
-        .map(|value| value.split(',').map(|id| id.parse::<u32>().expect("explicit owned fixture PID")).collect::<Vec<_>>())
-        .unwrap_or_default();
+    // An unset variable names no fixture process; a value that is not Unicode is a failed test, not an empty list.
+    let cleanup_ids = match std::env::var("ORM_READONLY_CLEANUP_IDS") {
+        Ok(value) => value.split(',').map(|id| id.parse::<u32>().expect("explicit owned fixture PID")).collect::<Vec<_>>(),
+        Err(std::env::VarError::NotPresent) => Vec::new(),
+        Err(error) => panic!("ORM_READONLY_CLEANUP_IDS: {error}"),
+    };
     let path = std::env::temp_dir().join(format!("orm-query-readonly-{}.sqlite", std::process::id()));
     assert!(!path.exists());
     for dialect in ["sqlite", "mysql", "postgres"] {
