@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: c09c50b54ee5d0046a475776f363c61a18d3fc7c92fdf7ef81320d6ad611f4c6 -->
+<!-- source-sha256: 6db6502daf2059a6637fa75771c636069349afc7f4c4b2250a1d919629c302a9 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -117,7 +117,7 @@
 | KSTD-5-20 | repo check의 workflow 규칙이 kit이 복사하는 workflow를 건너뛴다 (KSTD-5 후속). Cause: repo check가 .github/workflows/gates.yml이 kit 사본임을 모른다 | scripts/repo/check.mts | `var/tools/bin/node --test --test-name-pattern='the workflow rules skip the workflows that @polyspec/kit copies' scripts/repo/check.test.mts` | [o] |
 | KSTD-5-21 | 모든 도구는 Go, PHP, Rust, TypeScript로 쓴다 (KSTD-5 후속). Cause: scripts/comments/tokens/python-comments.py가 Python 도구이다 | scripts/comments/tokens | `var/tools/bin/node --test --test-name-pattern='every tool of the repository is written in Go, PHP, Rust or TypeScript' scripts/repo/check.test.mts` | [o] |
 | KSTD-5-22 | 모든 Rust test가 공유 testcase package로 case를 시작한다 (KSTD-5 후속). Cause: packages/rust/build/src/generate.rs의 fixed_list_names_the_public_methods_of_the_fixed_impl가 그렇지 않다 | packages/rust/build/src/generate.rs | `var/tools/bin/node --test --test-name-pattern='every Rust test starts its case with the shared testcase package' scripts/repo/check.test.mts` | [o] |
-| KSTD-5-22-1 | packages/rust/orm의 fulltext_search test가 공유 testcase package로 case를 시작한다(KSTD-5-22 하위). Cause: 나중의 변경이 추가한 test가 polyspec_orm_testcase로 시작하지 않는다 | packages/rust/orm/tests/fulltext_search.rs | `var/tools/bin/node --test --test-name-pattern='every Rust test starts its case with the shared testcase package' scripts/repo/check.test.mts` | [~] |
+| KSTD-5-22-1 | packages/rust/orm의 fulltext_search test가 공유 testcase package로 case를 시작한다(KSTD-5-22 하위). Cause: 나중의 변경이 추가한 test가 polyspec_orm_testcase로 시작하지 않는다 | packages/rust/orm/tests/fulltext_search.rs | `var/tools/bin/node --test --test-name-pattern='every Rust test starts its case with the shared testcase package' scripts/repo/check.test.mts` | [o] |
 | KSTD-5-23 | 어떤 recipe도 독립된 test를 차례로 돌리지 않는다 (KSTD-5 후속). Cause: Makefile의 dbspec-php-extension-check/planner recipe가 독립된 test를 하나씩 차례로 돌린다 | Makefile | `var/tools/bin/node --test --test-name-pattern='a recipe or a command that runs independent tests in sequence is refused' scripts/repo/check.test.mts` | [o] |
 | KSTD-5-24 | 모든 CI step이 make target을 돌린다 (KSTD-5 후속). Cause: .github/workflows/gates.yml의 step "install rust"가 make target을 돌리지 않는다; kit row인지 먼저 정한다 | .github/workflows or kit | `var/tools/bin/node --test --test-name-pattern='every CI step runs a make target' scripts/repo/check.test.mts` | [o] |
 | KSTD-5-25 | 모든 workflow가 선언된 event에서만 돈다 (KSTD-5 후속). Cause: repo check가 .github/workflows/release.yml의 trigger를 보고한다 | .github/workflows/release.yml | `var/tools/bin/node --test --test-name-pattern='every workflow runs on its declared events only' scripts/repo/check.test.mts` | [o] |
