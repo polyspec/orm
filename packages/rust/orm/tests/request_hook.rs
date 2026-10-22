@@ -9,6 +9,10 @@
 //! `cargo test -p polyspec-orm --test request_hook -- --exact <case>` runs a SQLite case; a coverage case needs the
 //! database of make feature-check, which runs it by its exact name.
 
+#[macro_use]
+#[path = "common/model_row.rs"]
+mod model_row;
+
 #[path = "common/or_panic.rs"]
 mod or_panic;
 use or_panic::OrPanic;
@@ -30,39 +34,7 @@ static HOOK_ITEM: Entity = Entity {
 };
 const COLUMNS: [&str; 3] = ["id", "part", "label"];
 
-#[derive(Clone)]
-struct HookItem {
-    core: Core,
-    values: BTreeMap<String, Val>,
-}
-
-impl Model for HookItem {
-    fn entity() -> &'static Entity {
-        &HOOK_ITEM
-    }
-    fn core(&self) -> &Core {
-        &self.core
-    }
-    fn core_mut(&mut self) -> &mut Core {
-        &mut self.core
-    }
-    fn from_core(core: Core) -> Self {
-        HookItem { core, values: BTreeMap::new() }
-    }
-    fn into_core(self) -> Core {
-        self.core
-    }
-    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
-        if !COLUMNS.contains(&name) {
-            return Ok(false);
-        }
-        self.values.insert(name.to_owned(), v);
-        Ok(true)
-    }
-    fn value(&self, name: &str) -> Option<Val> {
-        self.values.get(name).cloned()
-    }
-}
+model_row!(HookItem, HOOK_ITEM, COLUMNS);
 
 static HOOK_ENTRY: Entity = Entity {
     name: "hook_entry",

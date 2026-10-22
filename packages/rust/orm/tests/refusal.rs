@@ -7,13 +7,17 @@
 //! (polyspec-orm-case-database). The test fails when ORM_TEST_MYSQL_DSN or
 //! ORM_TEST_POSTGRES_DSN is unset.
 
+#[macro_use]
+#[path = "common/model_row.rs"]
+mod model_row;
+
 #[path = "common/or_panic.rs"]
 mod or_panic;
 use or_panic::OrPanic;
 
 use std::time::Duration;
 
-use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
+use polyspec_orm::{Core, Db, Entity, Model, Param, Schema};
 use polyspec_orm_case_database::CaseDatabase;
 
 static REFUSAL_SCHEMA: Schema =
@@ -27,39 +31,7 @@ static REFUSED_ROW: Entity = Entity {
 const COLUMNS: [&str; 2] = ["seq", "amount"];
 const CASE_DEADLINE: Duration = Duration::from_secs(30);
 
-#[derive(Clone)]
-struct RefusedRow {
-    core: Core,
-    values: std::collections::BTreeMap<String, Val>,
-}
-
-impl Model for RefusedRow {
-    fn entity() -> &'static Entity {
-        &REFUSED_ROW
-    }
-    fn core(&self) -> &Core {
-        &self.core
-    }
-    fn core_mut(&mut self) -> &mut Core {
-        &mut self.core
-    }
-    fn from_core(core: Core) -> Self {
-        RefusedRow { core, values: std::collections::BTreeMap::new() }
-    }
-    fn into_core(self) -> Core {
-        self.core
-    }
-    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
-        if !COLUMNS.contains(&name) {
-            return Ok(false);
-        }
-        self.values.insert(name.to_owned(), v);
-        Ok(true)
-    }
-    fn value(&self, name: &str) -> Option<Val> {
-        self.values.get(name).cloned()
-    }
-}
+model_row!(RefusedRow, REFUSED_ROW, COLUMNS);
 
 fn connected(db: &Db) -> RefusedRow {
     let mut core = Core::new(&REFUSED_ROW);

@@ -2,6 +2,10 @@
 //! encrypts with `aes_keys[aes_version]`, and an `aes_key` that differs from
 //! that key is rejected.
 
+#[macro_use]
+#[path = "common/model_row.rs"]
+mod model_row;
+
 #[path = "common/or_panic.rs"]
 mod or_panic;
 use or_panic::OrPanic;
@@ -220,40 +224,7 @@ static NULL_AES_SECRET: Entity = Entity {
     collect: polyspec_orm::model::collect_boxed::<NullAesSecret>,
 };
 
-/// A secret_config row of the NULL-AES schema, read and written by column name.
-#[derive(Clone)]
-struct NullAesSecret {
-    core: Core,
-    values: BTreeMap<String, Val>,
-}
-
-impl Model for NullAesSecret {
-    fn entity() -> &'static Entity {
-        &NULL_AES_SECRET
-    }
-    fn core(&self) -> &Core {
-        &self.core
-    }
-    fn core_mut(&mut self) -> &mut Core {
-        &mut self.core
-    }
-    fn from_core(core: Core) -> Self {
-        NullAesSecret { core, values: BTreeMap::new() }
-    }
-    fn into_core(self) -> Core {
-        self.core
-    }
-    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
-        if !COLUMNS.contains(&name) {
-            return Ok(false);
-        }
-        self.values.insert(name.to_owned(), v);
-        Ok(true)
-    }
-    fn value(&self, name: &str) -> Option<Val> {
-        self.values.get(name).cloned()
-    }
-}
+model_row!(NullAesSecret, NULL_AES_SECRET, COLUMNS);
 
 // Requirements: COD-44.
 #[tokio::test]

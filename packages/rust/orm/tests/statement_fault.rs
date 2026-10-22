@@ -13,13 +13,17 @@
 //! feature `test-faults`, which the dev-dependency of this crate on itself enables
 //! for every test target (Cargo.toml), so `cargo test -p polyspec-orm --test statement_fault` runs the cases.
 
+#[macro_use]
+#[path = "common/model_row.rs"]
+mod model_row;
+
 #[path = "common/or_panic.rs"]
 mod or_panic;
 use or_panic::OrPanic;
 
 use std::time::Duration;
 
-use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
+use polyspec_orm::{Core, Db, Entity, Model, Param, Schema};
 use polyspec_orm_case_database::CaseDatabase;
 use serde::Deserialize;
 
@@ -57,39 +61,7 @@ static PROBE: Entity = Entity {
 };
 const COLUMNS: [&str; 2] = ["seq", "label"];
 
-#[derive(Clone)]
-struct Probe {
-    core: Core,
-    values: std::collections::BTreeMap<String, Val>,
-}
-
-impl Model for Probe {
-    fn entity() -> &'static Entity {
-        &PROBE
-    }
-    fn core(&self) -> &Core {
-        &self.core
-    }
-    fn core_mut(&mut self) -> &mut Core {
-        &mut self.core
-    }
-    fn from_core(core: Core) -> Self {
-        Probe { core, values: std::collections::BTreeMap::new() }
-    }
-    fn into_core(self) -> Core {
-        self.core
-    }
-    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
-        if !COLUMNS.contains(&name) {
-            return Ok(false);
-        }
-        self.values.insert(name.to_owned(), v);
-        Ok(true)
-    }
-    fn value(&self, name: &str) -> Option<Val> {
-        self.values.get(name).cloned()
-    }
-}
+model_row!(Probe, PROBE, COLUMNS);
 
 fn connected(db: &Db) -> Probe {
     let mut core = Core::new(&PROBE);

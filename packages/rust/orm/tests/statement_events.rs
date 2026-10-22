@@ -6,6 +6,10 @@
 //! null outside a transaction), and error (the code of the statement error, or null if none). compare
 //! "tables" compares only events that have tables. elapsed is a `Duration`, so it cannot be negative.
 
+#[macro_use]
+#[path = "common/model_row.rs"]
+mod model_row;
+
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
@@ -13,7 +17,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use polyspec_orm::core::{Arg, ChainKey};
-use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, StatementEvent, Subscription, Val};
+use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, StatementEvent, Subscription};
 use polyspec_orm_case_database::CaseDatabase;
 use serde_json::{json, Value};
 
@@ -30,39 +34,7 @@ const VECTOR: &str = include_str!("../../../../tests/events/vectors.json");
 const CASE_DEADLINE: Duration = Duration::from_secs(60);
 const BY_LABEL: &[ChainKey] = &[ChainKey { conn: "", op: "", column: "label", columns: &[], compare: "" }];
 
-#[derive(Clone)]
-struct EventProbe {
-    core: Core,
-    values: std::collections::BTreeMap<String, Val>,
-}
-
-impl Model for EventProbe {
-    fn entity() -> &'static Entity {
-        &EVENT_PROBE
-    }
-    fn core(&self) -> &Core {
-        &self.core
-    }
-    fn core_mut(&mut self) -> &mut Core {
-        &mut self.core
-    }
-    fn from_core(core: Core) -> Self {
-        EventProbe { core, values: std::collections::BTreeMap::new() }
-    }
-    fn into_core(self) -> Core {
-        self.core
-    }
-    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
-        if !COLUMNS.contains(&name) {
-            return Ok(false);
-        }
-        self.values.insert(name.to_owned(), v);
-        Ok(true)
-    }
-    fn value(&self, name: &str) -> Option<Val> {
-        self.values.get(name).cloned()
-    }
-}
+model_row!(EventProbe, EVENT_PROBE, COLUMNS);
 
 /// The error message of a failing transaction callback.
 const CALLBACK_FAILED: &str = "statement events test callback failed";

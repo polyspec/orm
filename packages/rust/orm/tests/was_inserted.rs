@@ -2,6 +2,10 @@
 //! PostgreSQL. The model is the clock fixture (contracts/fixtures/clock.dbs). Each case runs in a case database of its own
 //! (polyspec-orm-case-database). The test fails when ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
 
+#[macro_use]
+#[path = "common/model_row.rs"]
+mod model_row;
+
 #[path = "common/or_panic.rs"]
 mod or_panic;
 use or_panic::OrPanic;
@@ -22,39 +26,7 @@ static CLOCK_EVENT: Entity = Entity {
 const COLUMNS: [&str; 3] = ["seq", "label", "created_ts"];
 const CASE_DEADLINE: Duration = Duration::from_secs(60);
 
-#[derive(Clone)]
-struct ClockEvent {
-    core: Core,
-    values: std::collections::BTreeMap<String, Val>,
-}
-
-impl Model for ClockEvent {
-    fn entity() -> &'static Entity {
-        &CLOCK_EVENT
-    }
-    fn core(&self) -> &Core {
-        &self.core
-    }
-    fn core_mut(&mut self) -> &mut Core {
-        &mut self.core
-    }
-    fn from_core(core: Core) -> Self {
-        ClockEvent { core, values: std::collections::BTreeMap::new() }
-    }
-    fn into_core(self) -> Core {
-        self.core
-    }
-    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
-        if !COLUMNS.contains(&name) {
-            return Ok(false);
-        }
-        self.values.insert(name.to_owned(), v);
-        Ok(true)
-    }
-    fn value(&self, name: &str) -> Option<Val> {
-        self.values.get(name).cloned()
-    }
-}
+model_row!(ClockEvent, CLOCK_EVENT, COLUMNS);
 
 fn connected(db: &Db) -> ClockEvent {
     let mut core = Core::new(&CLOCK_EVENT);

@@ -6,6 +6,10 @@
 
 use polyspec_orm::{Core, Model, Val};
 
+#[macro_use]
+#[path = "common/model_row.rs"]
+mod model_row;
+
 #[path = "common/secret_config.rs"]
 mod secret_config;
 use secret_config::{Secret, SECRET};
