@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5a9f0011f309d8bb1fe259bd9432ed453eab0876867cce54f597913c9d628b59 -->
+<!-- source-sha256: 23269c0e7ad3d6b092675111c996e5b4585ecb43931ba9c40f5379632a8b3795 -->
 # 변경 이력
 
 ## Unreleased
+- KSTD-5-23 완료: 이 commit은 두 체크리스트에 그 완료 상태를 기록하고 한국어 stamp를 갱신한다(KSTD-5-23).
 - `dbspec-php-extension-check/planner` 대상은 클래스 검사 뒤에 세 PHPUnit 묶음을 부분으로 실행하고, `dbspec-plan-check`의 `TestPlanApply` 패턴 인용은 make용 `$$`로 쓰며, statement-fault와 install-register의 연결된 TypeScript 검증은 명령 하나씩으로 나뉜다(KSTD-5-23). red: 저장소 검사가 `$`를 make 변수로 읽어 명령을 거부했고, planner 사례는 한 recipe에서 세 묶음을 실행했다.
 - KSTD-5-22 완료: 이 commit은 두 체크리스트에 그 완료 상태를 기록하고 한국어 stamp를 갱신한다(KSTD-5-22).
 - 모든 Rust test가 `polyspec_orm_testcase::case!`로 case를 시작한다. packages/rust/build의 고정 목록 test, restore-or-create와 외부 관계 test, AES 키 읽기 test다(KSTD-5-22). red: 규칙이 generate.rs와 case가 없는 Rust test 일곱 개를 보고했다.
