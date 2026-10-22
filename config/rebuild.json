@@ -118,6 +118,10 @@
       "kind": "ecosystem",
       "tool": "token_get_all"
     },
+    "scripts/comments/tokens/python-comments.mts": {
+      "kind": "policy",
+      "reason": "the TypeScript port of the Python comment tokenizer (KSTD-5-21), which the comments check runs; the repository has no Python tool, and no ecosystem tool reads the comments of Python sources as this repository does"
+    },
     "scripts/dbspec/syntax-vectors.mts": {
       "kind": "policy",
       "reason": "writes the token vectors of the dbspec cases from the TypeScript analyzer, so every implementation of the dbspec language is held to them; no ecosystem tool knows dbspec"
@@ -226,6 +230,10 @@
       "kind": "policy",
       "reason": "finds the PHP of the lowest release that composer.json declares, so the client is tested on its declared floor, a rule of this repository; it reads PATH and brew --prefix"
     },
+    "scripts/php/vendor-autoload-check.mjs": {
+      "kind": "policy",
+      "reason": "checks that the Composer autoload installed in vendor-php names the files that composer.json declares (KSTD-3-2); no ecosystem tool checks a stale autoload of this repository"
+    },
     "scripts/physical.mts": {
       "kind": "policy",
       "reason": "the shared steps of the physical checks of this repository, which compare the database state before and after the owner tests"
@@ -297,6 +305,10 @@
     "scripts/typescript/build.mts": {
       "kind": "ecosystem",
       "tool": "tsc"
+    },
+    "scripts/typescript/models.mts": {
+      "kind": "policy",
+      "reason": "the generator of the TypeScript models of packages/ts/src/models that build.mts runs with each entry of orm-gen (P34); no ecosystem generator reads the dbspec sets of this repository"
     },
     "scripts/typescript/node-min.mts": {
       "kind": "policy",

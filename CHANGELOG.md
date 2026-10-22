@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The rebuild layout reads three repository tools that config/rebuild.json did not classify: `scripts/comments/tokens/python-comments.mts`, `scripts/php/vendor-autoload-check.mjs` and `scripts/typescript/models.mts` are `policy` tools, so `make rebuild-check` passes (KSTD-6). Red: `make rebuild-check` exited 2 with each of the three tools having no class.
+- The autoload check cases of `scripts/php/vendor-autoload-check.test.mjs` are declared with `caseTest` again, after a later fix had rewritten them with node:test (KSTD-10-5-1). Red: the rule named the file as declaring node:test tests directly.
 - Full-text search is implemented in every implementation: the IR ops fulltext and fulltext_boolean (PRT-75) over cols, MATCH for MySQL, to_tsvector for PostgreSQL, refused on SQLite, and the boolean text normalized by fulltext_boolean (DIA-6) (KSTD-2-10-2).
 - The repository declares its commit identity in `config/commit-identity.json`, the kit copy of min-0-max <max.tools>, so commits-check enforces it (KSTD-5-17). Red: the identity case found the file missing.
 - The autoload check cases of `scripts/php/vendor-autoload-check.test.mjs` are declared with `caseTest` again, after a later fix had rewritten them with node:test (KSTD-10-5-1). Red: the rule named the file as declaring node:test tests directly.
