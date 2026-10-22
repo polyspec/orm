@@ -28,6 +28,7 @@ final readonly class GroupRows implements \Countable, \IteratorAggregate, \JsonS
         return $this->rows;
     }
 
+    /** @return \Traversable<int, GroupRow> */
     public function getIterator(): \Traversable
     {
         yield from $this->rows;

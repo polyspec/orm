@@ -1842,3 +1842,9 @@ WORKSPACE ?= packages/rust
 clippy-crate: ## Clippy of the package CRATE with the lint-rust flags, in the Cargo workspace WORKSPACE; offline once the crates are downloaded
 	test -n "$(CRATE)" || { echo "clippy-crate: CRATE is required" >&2; exit 2; }
 	cd $(WORKSPACE) && CLIPPY_CONF_DIR=$(abspath $(KIT)/..) cargo clippy -p $(CRATE) --all-targets --locked -- -D warnings -D unused_must_use -D clippy::let_underscore_must_use -D clippy::let_underscore_untyped -D clippy::map_err_ignore -D clippy::allow_attributes_without_reason
+
+# group-rows-phpstan-check runs PHPStan at level 9 over the fixture of KSTD-5-53: a row of GroupRows is typed as GroupRow for its
+# caller, so calling its method on each row passes; a mixed row fails it.
+.PHONY: group-rows-phpstan-check
+group-rows-phpstan-check:
+	cd packages/php && $(PHPSTAN) analyse --no-progress --error-format=raw --memory-limit=-1 --level=9 --configuration=$(KIT_PACKAGE)/phpstan.dist.neon --autoload-file=../../vendor-php/autoload.php tests/phpstan/GroupRowsIteration.php
