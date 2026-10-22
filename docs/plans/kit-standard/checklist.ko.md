@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 007f9898b0f1ee37ecc521a5489ca53958f0961548da2149bfe94e7e9b3f74f1 -->
+<!-- source-sha256: 072ebd0377c90b3091f5603d1500baadb1cdfd4d64f9b07c6d3d9b9d05485c19 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -121,6 +121,16 @@
 | KSTD-5-24 | 모든 CI step이 make target을 돌린다 (KSTD-5 후속). Cause: .github/workflows/gates.yml의 step "install rust"가 make target을 돌리지 않는다; kit row인지 먼저 정한다 | .github/workflows or kit | `make repo-check/unit` | [ ] |
 | KSTD-5-25 | 모든 workflow가 선언된 event에서만 돈다 (KSTD-5 후속). Cause: repo check가 .github/workflows/release.yml의 trigger를 보고한다 | .github/workflows/release.yml | `make repo-check/unit` | [ ] |
 | KSTD-5-26 | Makefile build 출력은 임시 file을 거쳐 게시된다 (KSTD-5 후속). Cause: Makefile:867의 recipe가 출력을 제자리에 쓴다 | Makefile | `node --test --test-name-pattern='published through a temporary file' scripts/repo/check.test.mts` | [o] |
+| KSTD-5-27 | examples와 packages/go의 Go stdlib lock이 advisory GO-2026-6809가 없는 release에 있다 (T235 후속). Cause: examples/go.sum과 packages/go/go.sum이 stdlib v1.27.2에 고정되어 있고, review record가 GO-2026-6809를 보고한다 | examples/go.sum, packages/go/go.sum | `make dependency-policy-check` | [ ] |
+| KSTD-5-28 | benchmarks와 packages/rust의 Rust lock이 advisory RUSTSEC-2026-0382가 없는 rustls-webpki를 쓴다 (T235 후속). Cause: benchmarks/rust/Cargo.lock과 packages/rust/Cargo.lock이 rustls-webpki 0.103.15에 고정되어 있다 | benchmarks/rust/Cargo.lock, packages/rust/Cargo.lock | `make dependency-policy-check` | [ ] |
+| KSTD-5-29 | release-consumer Composer lock의 패키지가 composer.json이 선언한 PHP platform에서 돈다 (T235 후속, K438 보류). Cause: tests/release-consumer/composer/composer.lock이 polyspec/ordered-json과 polyspec/orm에 php >=8.5를 요구하는데 composer.json은 php 8.4.1을 선언한다 | tests/release-consumer/composer | `make dependency-policy-check` | [ ] |
+| KSTD-5-30 | package-lock.json이 @polyspec/ordered-json을 GitHub release URL이 아닌 registry에서 resolve한다 (T235 후속, ordered-json T2.65 보류). Cause: package-lock.json:2844가 https://github.com/polyspec/ordered-json/releases/download/v0.0.9/에서 resolve한다 | package-lock.json | `make dependency-policy-check` | [ ] |
+| KSTD-5-31 | config/dependency-policy.json에 sprintf-js의 오래된 예외가 없다 (T235 후속). Cause: advisory 1241202 예외가 review record에서 더 이상 찾지 않는 advisory를 가리킨다 | config/dependency-policy.json | `make dependency-policy-check` | [ ] |
+| KSTD-5-32 | review가 이름 붙인 최신 stable release가 있는 package는 그 release이거나 기록된 예외가 있다 (T235 후속). Cause: unbash, @codemirror/view, oxc-parser (두 checkout), setuptools, jsonschema-rs, modernc.org/sqlite (두 lock)가 예외 없이 검토 대상보다 오래되었다 | package.json, packages/*/package.json, packages/python/pyproject.toml, packages/go/go.mod, tests/go.mod | `make dependency-policy-check` | [ ] |
+| KSTD-5-33 | orm과 sibling의 Composer lock이 opis/json-schema를 한 버전으로 고정한다 (T235 후속). Cause: orm/composer.lock:515이 v2.6.0-p1을 다른 source에서 고정한다 | composer.lock | `make dependency-policy-check` | [ ] |
+| KSTD-5-34 | orm의 phpunit pin이 sibling과 공유하는 검토 대상과 맞는다 (T235 후속). Cause: orm은 phpunit/phpunit을 검토 대상 13.4.3으로 고정했고, sibling crudui와 template은 13.4.2로 고정했다 | composer.lock | `make dependency-policy-check` | [ ] |
+| KSTD-5-35 | orm의 node_modules 패키지(@types/vscode, esbuild)가 검토 대상에 고정되어 있다 (T235 후속). Cause: review가 package-lock.json에 고정된 @types/vscode 1.140.0과 esbuild 0.28.2의 검토 대상을 기록하지 않았다 | package-lock.json, config/dependency-review.json | `make dependency-policy-check` | [ ] |
+| KSTD-5-36 | policy가 main 브랜치가 있는 sibling과 orm lock을 비교한다 (T235 후속). Cause: json-schema와 yaml sibling에는 공유 pin을 평가할 수 있는 main 브랜치가 없다 | scripts/kit config or the siblings | `make dependency-policy-check` | [ ] |
 | KSTD-6 | link rebuild는 repository layout을 읽고 자기 paths를 두지 않는다 (kit K286). Cause: kit은 link된 checkout을 layout으로 rebuild하며 link 선언의 paths key는 없어진다 | kit.json, the link declaration | `make kit-check` | [ ] |
 | KSTD-7 | main에서 feature-unit-check가 통과한다. Cause: docs/features.md가 그것이 그리는 coverage와 맞지 않고, scripts/features/coverage.test.mts의 8개 case가 "no package implements the client language php-extension"으로 실패한다 | docs/features.md, scripts/features | `make feature-unit-check` | [o] |
 | KSTD-7-1 | PHP extension이 the features schema_install, model_generation and interface_contract를 구현하고 PHP library의 test가 extension으로 이를 돌리며, 그 partial 상태를 지운다 (KSTD-7, T182-0 후속). Cause: S6와 S10은 partial feature를 받지 않고, kit K315는 contracts/features.json의 partial과 unsupported를 실패시킨다 | packages/php-ext, contracts/features.json | `make feature-unit-check` | [ ] |
