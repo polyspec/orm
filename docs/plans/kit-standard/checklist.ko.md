@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 5f95556f985421068ab00081129cc3ca34601cab6d527caf20ee5f17b31d1172 -->
+<!-- source-sha256: 1149c7059f71746ff2292edb7f419f3008759d9a157fee9176ca11e1ad23e0f5 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -127,7 +127,7 @@
 | KSTD-5-30 | package-lock.json이 @polyspec/ordered-json을 GitHub release URL이 아닌 registry에서 resolve한다 (T235 후속, ordered-json T2.65 보류). Cause: package-lock.json:2844가 https://github.com/polyspec/ordered-json/releases/download/v0.0.9/에서 resolve한다 | package-lock.json | `make dependency-policy-check` | [ ] |
 | KSTD-5-31 | config/dependency-policy.json에 sprintf-js의 오래된 예외가 없다 (T235 후속). Cause: advisory 1241202 예외가 review record에서 더 이상 찾지 않는 advisory를 가리킨다 | config/dependency-policy.json | `make dependency-policy-check` | [ ] |
 | KSTD-5-32 | review가 이름 붙인 최신 stable release가 있는 package는 그 release이거나 기록된 예외가 있다 (T235 후속). Cause: unbash, @codemirror/view, oxc-parser (두 checkout), setuptools, jsonschema-rs, modernc.org/sqlite (두 lock)가 예외 없이 검토 대상보다 오래되었다 | package.json, packages/*/package.json, packages/python/pyproject.toml, packages/go/go.mod, tests/go.mod | `make dependency-policy-check` | [-] 원인: 사용자 2026-10-22: 버전 고정 작업 없음 |
-| KSTD-5-33 | orm과 sibling의 Composer lock이 opis/json-schema를 한 버전으로 고정한다 (T235 후속). Cause: orm/composer.lock:515이 v2.6.0-p1을 다른 source에서 고정한다 | composer.lock | `make dependency-policy-check` | [ ] |
+| KSTD-5-33 | orm과 sibling의 Composer lock이 opis/json-schema를 한 버전으로 고정한다 (T235 후속). Cause: orm/composer.lock:515이 v2.6.0-p1을 다른 source에서 고정한다 | composer.lock | `make dependency-policy-check` | [-] 원인: 사용자 2026-10-22: 버전 고정 작업 없음 |
 | KSTD-5-34 | orm의 phpunit pin이 sibling과 공유하는 검토 대상과 맞는다 (T235 후속). Cause: orm은 phpunit/phpunit을 검토 대상 13.4.3으로 고정했고, sibling crudui와 template은 13.4.2로 고정했다 | composer.lock | `make dependency-policy-check` | [ ] |
 | KSTD-5-35 | orm의 node_modules 패키지(@types/vscode, esbuild)가 검토 대상에 고정되어 있다 (T235 후속). Cause: review가 package-lock.json에 고정된 @types/vscode 1.140.0과 esbuild 0.28.2의 검토 대상을 기록하지 않았다 | package-lock.json, config/dependency-review.json | `make dependency-policy-check` | [ ] |
 | KSTD-5-36 | policy가 main 브랜치가 있는 sibling과 orm lock을 비교한다 (T235 후속). Cause: json-schema와 yaml sibling에는 공유 pin을 평가할 수 있는 main 브랜치가 없다 | scripts/kit config or the siblings | `make dependency-policy-check` | [ ] |
