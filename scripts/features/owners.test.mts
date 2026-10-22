@@ -25,13 +25,20 @@ caseTest('a changed test selects only the commands that run it', 5000, async () 
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/php/tests/CoverageDsnTest.php'])), ['dsn_connection/coverage/owner/php']);
 });
 
+// An owner rule of config/owner-checks.json: its paths, and the make targets it selects when a path matches.
+type OwnerRule = { paths: string[]; targets?: string[] };
+function isOwnerRule(value: unknown): value is OwnerRule {
+  return typeof value === 'object' && value !== null && 'paths' in value && Array.isArray(value.paths) && value.paths.every(glob => typeof glob === 'string');
+}
+
 // The owner rules of config/owner-checks.json select the lint target of each language (KSTD-5-47): a path of each language
 // selects that language's lint target by its glob, so land runs the lint of a branch that changes the language.
 caseTest('a changed path selects the lint target of its language', 5000, async () => {
   const text = await readFile(new URL('../../config/owner-checks.json', import.meta.url), 'utf8');
   const parsed: unknown = JSON.parse(text);
-  const declaration = parsed as { owners: { paths: string[]; targets?: string[] }[] };
-  const targets = (path: string) => declaration.owners.filter(rule => rule.paths.some(glob => minimatch(path, glob))).flatMap(rule => rule.targets ?? []);
+  const rules = typeof parsed === 'object' && parsed !== null && 'owners' in parsed && Array.isArray(parsed.owners) ? parsed.owners.filter(isOwnerRule) : [];
+  assert.ok(rules.length > 0, 'config/owner-checks.json has no owner rules');
+  const targets = (path: string) => rules.filter(rule => rule.paths.some(glob => minimatch(path, glob))).flatMap(rule => rule.targets ?? []);
   const cases: [string, string][] = [
     ['packages/go/orm/errs.go', 'lint-go'],
     ['packages/rust/orm/src/errs.rs', 'lint-rust'],
