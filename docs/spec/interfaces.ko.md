@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: ecc53af4e6f7b7a5d26ec215eb580f310ad6b703d79da2dc0843462f37b48c9c -->
+<!-- source-sha256: ded2893e8420b680474d976603cc61b15c297542f7beacf0e4b791974baec364 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -536,3 +536,6 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 - **INT-123** `insert_row`는 권한 있는 생성기가 생략된 키를 돌려주지 않으면 명시적인 기본 키 값을 요구하고, 기존 키와 알 수 없거나 중복되거나 생성 열 대상인 할당을 거부하며, 정확히 한 행이 영향을 받을 것을 요구하고, 선언된 키로 행을 다시 읽으며, 제공된 모든 값을 정확히 비교한다.
 - **INT-124** 열 메타데이터가 2048개를 넘거나, 열 이름과 네이티브 타입을 합한 크기가 64 KiB를 넘는 질의 결과는 `TOOL_QUERY_COLUMNS`로 실패한다.
 - **INT-125** 경계가 있는 질의의 텍스트가 정확히 한 개의 statement로 나뉘지 않으면 `TOOL_QUERY_STATEMENT`로 실패한다.
+- **INT-135** 질의 결과는 statement의 출력 열을 select 순서대로, 중복된 이름을 포함해 각 네이티브 타입과 함께 나열하며, 행이 없는 결과도 그 열을 유지한다.
+- **INT-136** 읽기 전용 grid 질의는 읽기만 하는 statement 하나를 받아들인다: `SELECT`, 또는 그 부분이 읽기만 하는 `WITH` 질의. 주석이나 문자열 리터럴 안의 `;`는 statement를 끝내지 않는다. 쓰기, commit, 프로시저 호출, `INTO` 선택, `FOR UPDATE` 잠금, 또는 뒤따르는 두 번째 statement가 있는 문장은 거부하며, PostgreSQL에서는 `UNION ALL` 피연산자 200개 또는 `+` 항 200개인 질의도 거부한다.
+- **INT-137** 취소된 task가 열어 둔 읽기 전용 scope는 pool로 돌아가지 않는다: 그 connection은 폐기되고, pool의 다음 checkout은 쓸 수 있다.
