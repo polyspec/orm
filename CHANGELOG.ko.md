@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: cff6ee0340818ef7b48fd41736ffa240f7d24f93d35a7f93655ef7b42ae5a7d1 -->
+<!-- source-sha256: 0e899ba91f4f00be1ee0f43276e89ef2441c86caa9e9a358887bfc128f93e67b -->
 # 변경 이력
 
 ## Unreleased
 
+- `make clippy-crate CRATE=<package>`가 lint-rust의 clippy 플래그를 한 패키지에 적용한다. clippy 행의 하위 항목을 단독으로 검사할 수 있다(KSTD-5-41-0).
 - PHP extension의 parser는 줄마다 token buffer를 새로 만들지 않고, generated name의 source 문자열을 진단 때만 만든다. 그래서 limit/columns 문서의 peak는 88 MB로, test의 상한 96 MB 아래다(T182-0-2-1). red: testLimitColumnsPeak가 109.1 MB를 측정했다.
 - PHP 확장에서 unsubscribe하면 그 unsubscribe closure의 function을 해제한다. subscribe와 unsubscribe를 되풀이하는 process의 메모리가 평평하게 유지된다(T182-5-4). red: leak test가 200000번의 subscribe/unsubscribe 주기 동안 resident set이 31248 KB 늘었다고 보고했다.
 - parity declaration check는 unit마다 implementation을 한 번씩만 binding한다. aes-version-codes와 dbspec-introspect-query-count unit을 behaviour별 unit으로 나누며, 각 unit은 자기 requirement(COD-44, COD-47부터 COD-60, DIA-133, DIA-154부터 DIA-156)를 가진다. dbspec의 오래된 Go support glob도 제거한다(KSTD-2-7). red: parity-declarations-check가 158 finding을 냈고, 그중 44개는 R12 duplicate-binding, 1개는 오래된 glob이었다. green: 113 finding이며, 모두 php-extension declares no symbols다.

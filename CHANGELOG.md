@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `make clippy-crate CRATE=<package>` runs the lint-rust clippy flags on one package, so a sub-item of the clippy row can be checked alone (KSTD-5-41-0).
 - The PHP extension's parser reuses its line token buffer and formats the source of a generated name only for a diagnostic, so the limit/columns document peaks at 88 MB, under the 96 MB bound of its test (T182-0-2-1). Red: testLimitColumnsPeak measured 109.1 MB.
 - Unsubscribing in the PHP extension frees the function of its unsubscribe closure, so a process that subscribes and unsubscribes over and over keeps its memory flat (T182-5-4). Red: the leak test reported the resident set grew by 31248 KB over 200000 subscribe/unsubscribe cycles.
 - The parity declaration check binds each implementation once per unit: the aes-version-codes and dbspec-introspect-query-count units are split into one unit per behaviour, each with its own requirement (COD-44, COD-47 to COD-60, DIA-133, DIA-154 to DIA-156), and the stale Go support glob of dbspec is removed (KSTD-2-7). Red: parity-declarations-check reported 158 findings, 44 of them R12 duplicate-binding and 1 a stale glob. Green: 113 findings, all php-extension declares no symbols.

@@ -1822,3 +1822,11 @@ generated-lint-check: python-models php-models go-models typescript-build
 	test -z "$$(cd packages/go && gofmt -l $(GENERATED_GO))" || { cd packages/go && gofmt -l $(GENERATED_GO); exit 1; }
 	cd packages/go && $(GO) vet $(GENERATED_GO)
 	node_modules/.bin/oxlint -c $(KIT_PACKAGE)/.oxlintrc.json --type-aware --deny-warnings $(GENERATED_TS)
+
+# clippy-crate runs the lint-rust flags on the one package CRATE: cargo clippy --all-targets of the Cargo workspace WORKSPACE
+# holds it, with the clippy.toml of kit (CLIPPY_CONF_DIR), as lint-rust does. packages/rust holds most packages.
+WORKSPACE ?= packages/rust
+.PHONY: clippy-crate
+clippy-crate: ## Clippy of the package CRATE with the lint-rust flags, in the Cargo workspace WORKSPACE; offline once the crates are downloaded
+	test -n "$(CRATE)" || { echo "clippy-crate: CRATE is required" >&2; exit 2; }
+	cd $(WORKSPACE) && CLIPPY_CONF_DIR=$(abspath $(KIT)/..) cargo clippy -p $(CRATE) --all-targets --locked -- -D warnings -D unused_must_use -D clippy::let_underscore_must_use -D clippy::let_underscore_untyped -D clippy::map_err_ignore -D clippy::allow_attributes_without_reason

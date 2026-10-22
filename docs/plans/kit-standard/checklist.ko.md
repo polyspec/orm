@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: b10a6890ada89bfd9f916a5314124e8d5d0adca67aa592b5d3992962fc039743 -->
+<!-- source-sha256: 922b0cb3b4dd78cb6b163203bf122ff456f0fe9bd8866206116d5b896bb1b448 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -143,7 +143,7 @@
 | KSTD-5-46 | duplication-check 통과: 6줄 이상 clone 0개 (KSTD-5 하위) | the files that make duplication-check names in its clone list (426 clones in rust, php, c, javascript, go, python, typescript), with the shared logic extracted into one module per group | `make duplication-check` exits 0 with zero clones | [ ] |
 | KSTD-5-46-2 | schema crate의 manifest와 render 테스트 helper 중복을 공유한다 (KSTD-5-46 하위) | packages/rust/schema/tests/dbspec_manifest.rs, packages/rust/schema/tests/dbspec_render.rs, and the shared helper module they both use | `make dbspec-rust-check` passes, and make duplication-check lists no clone between dbspec_manifest.rs and dbspec_render.rs | [ ] |
 | KSTD-5-41 | orm의 Rust 소스가 make lint-rust(-D warnings 아래 clippy)를 통과한다 | The 40 clippy errors of benchmarks/rust, packages/rust, testcase, schema and the interface tools are fixed in the code, with no suppression | `make lint-rust` | [ ] |
-| KSTD-5-41-0 | orm에 패키지별 clippy 대상 `make clippy-crate CRATE=polyspec-orm-schema`가 lint-rust와 같은 플래그로 있다 | A clippy-crate target in the Makefile that runs cargo clippy --all-targets for CRATE with the lint-rust flags and CLIPPY_CONF_DIR of kit | `make clippy-crate CRATE=polyspec-orm-schema` | [ ] |
+| KSTD-5-41-0 | orm에 패키지별 clippy 대상 `make clippy-crate CRATE=polyspec-orm-schema`가 lint-rust와 같은 플래그로 있다 | A clippy-crate target in the Makefile that runs cargo clippy --all-targets for CRATE with the lint-rust flags and CLIPPY_CONF_DIR of kit | `make -n clippy-crate CRATE=polyspec-orm-schema` | [o] |
 | KSTD-5-41-1 | case-database 패키지가 lint-rust 플래그의 clippy를 통과한다, `make clippy-crate CRATE=polyspec-orm-case-database` | The six clippy sites of packages/rust/case-database/src/lib.rs are propagated through their Result, with no suppression | `make clippy-crate CRATE=polyspec-orm-case-database` | [ ] |
 | KSTD-6 | link rebuild는 repository layout을 읽고 자기 paths를 두지 않는다 (kit K286). Cause: kit은 link된 checkout을 layout으로 rebuild하며 link 선언의 paths key는 없어진다 | kit.json, the link declaration | `make rebuild-check` | [o] |
 | KSTD-7 | main에서 feature-unit-check가 통과한다. Cause: docs/features.md가 그것이 그리는 coverage와 맞지 않고, scripts/features/coverage.test.mts의 8개 case가 "no package implements the client language php-extension"으로 실패한다 | docs/features.md, scripts/features | `make feature-unit-check` | [o] |
