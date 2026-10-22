@@ -10241,6 +10241,9 @@
     {
       "id": "rust-check-refused-mysql",
       "kind": "feature",
+      "requirements": [
+        "CFG-33"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10252,6 +10255,9 @@
     {
       "id": "rust-check-refused-postgres",
       "kind": "feature",
+      "requirements": [
+        "CFG-33"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10263,6 +10269,9 @@
     {
       "id": "rust-check-refused-sqlite",
       "kind": "feature",
+      "requirements": [
+        "CFG-33"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -11874,6 +11883,9 @@
     {
       "id": "rust-integration-coverage-constraints-and-relations-coverage-constraint-errors",
       "kind": "feature",
+      "requirements": [
+        "CFG-33"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -11897,6 +11909,9 @@
     {
       "id": "rust-integration-coverage-constraints-and-relations-coverage-constraint-errors-postgres",
       "kind": "feature",
+      "requirements": [
+        "CFG-33"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -11920,6 +11935,9 @@
     {
       "id": "rust-integration-coverage-constraints-and-relations-coverage-constraint-errors-sqlite",
       "kind": "feature",
+      "requirements": [
+        "CFG-33"
+      ],
       "bindings": [
         {
           "implementation": "rust",

@@ -140,18 +140,21 @@ async fn trigger_refused_postgres() {
 }
 
 #[tokio::test]
+// Requirements: CFG-33.
 async fn check_refused_sqlite() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("sqlite", "check").await;
 }
 
 #[tokio::test]
+// Requirements: CFG-33.
 async fn check_refused_mysql() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("mysql", "check").await;
 }
 
 #[tokio::test]
+// Requirements: CFG-33.
 async fn check_refused_postgres() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("postgres", "check").await;
