@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9c38dd4ccc9bda1ddfb168d6b552074dc1d2402e29a5234d727800eb24742faf -->
+<!-- source-sha256: 8f8fd40e741afdfab16d4869040302e659e49d31605d8637355884b80437beb8 -->
 # 변경 이력
 
 ## Unreleased
+- 빌드 출력에 대한 저장소 검사는 따옴표 안의 텍스트를 텍스트로 읽는다. "WORKTREE=<path>" 같은 사용법 메시지를 stderr로 출력하는 recipe를 더는 파일로의 리다이렉트로 보고하지 않고, `sh -c "…"`의 명령 문자열은 계속 검사한다(KSTD-5-26). Red: 검사가 Makefile:883(`echo "usage: … WORKTREE=<path>" >&2`)을 제자리 리다이렉트로 보고했다. Green: Makefile에서 검사가 통과하고, `sh -c` 안의 따옴표 친 리다이렉트는 여전히 찾는다.
 - TypeScript build 캐시 `packages/ts/tsconfig.build.tsbuildinfo`와 모든 `*.tsbuildinfo`는 Git이 무시하고 생성 경로로 선언하므로, build가 checkout에 추적되지 않는 파일을 남기지 않습니다. red: `git check-ignore`가 이 파일의 규칙을 찾지 못했고, `make build` 뒤 `git status`가 이 파일을 보고했습니다 (KSTD-15).
 - `docs/operations/perf.md`는 PHP 8.5.10 비율을 뺀다: PHP 8.5는 8.4로 간다. 이 문서는 PHP 8.4 비율을 유지한다 (T233). red: 문서가 PHP 8.5.10 비율을 인용했다.
 - 레시피 `case-database-check`, `example-check`, `timing-check`은 Rust crate를 kit의 cargo link(`CARGO_SIBLINGS`)로 빌드하므로, 형제 polyspec crate가 자기 경로로 resolve되고 어떤 레시피도 잠긴 release를 내려받지 않습니다(K448-5). red: `make -s link-state-check`가 Makefile:1175, 1740, 1753을 보고하고 2로 끝났습니다 (KSTD-13).

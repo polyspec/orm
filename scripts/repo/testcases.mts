@@ -451,12 +451,15 @@ export function fixedPortErrors(files: Record<string, string>) {
 // a `go test -c -o` whose output is not @OUT@, a line that redirects standard output to a file (`> file`), and a line that runs tsc directly.
 // Such output leaves a half-written file when the build is cut off, and other runs or later steps read a file still being written. Output is
 // written to a temporary file and renamed by $(PUBLISH) (scripts/publish-output.mts), and the TypeScript client is built with scripts/typescript/build.mts.
-// Comment lines, stderr redirects (>&2) and /dev/null are not checked.
+// Comment lines, quoted text, stderr redirects (>&2) and /dev/null are not checked.
 export function unpublishedOutputErrors(makefile: string): string[] {
   const errors: string[] = [];
   for (const [index, line] of makefile.split('\n').entries()) {
     if (/^\s*#/.test(line)) continue;
-    const text = line.replace(/\d?>&\d|>\s*\/dev\/null/g, '');
+    // A quoted word is text, not a shell redirect: an angle bracket in a message such as "W=<path>" writes no file.
+    // The command string of a shell (sh -c "...") is a command, so its quotes are kept and a redirect in it is found.
+    const unquoted = /\b(?:sh|bash|zsh) -c\b/.test(line) ? line : line.replace(/"(?:[^"\\]|\\.)*"|'[^']*'/g, '""');
+    const text = unquoted.replace(/\d?>&\d|>\s*\/dev\/null/g, '');
     const direct = /\bgo (?:build|test -c)\b[^#]*\s-o\s+(?!@OUT@)\S/.test(text) ? 'writes a Go build output in place'
       : /(?<![-=<>])>>?\s*[^\s&>]/.test(text) && !/^\s*@?echo /.test(text.replace(/^\t/, '')) ? 'redirects a command into a file in place'
       : /typescript\/bin\/tsc\b(?![^#]*--noEmit)/.test(text) ? 'runs tsc into dist in place' : '';

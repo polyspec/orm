@@ -1547,6 +1547,8 @@ caseTest('a Makefile build output is published through a temporary file', COMPUT
     '\tnode tests/dbspec/stress.mts > $(DOC)',
     '\t$(PUBLISH) $(DOC) node tests/dbspec/stress.mts',
     '\ttest -f x || { echo "x is missing" >&2; exit 1; }',
+    '\t@test -n "$(W)" || { echo "usage: make x W=<path>" >&2; exit 2; }',
+    '\tsh -c "node x.mts > out.txt"',
     '\tnode packages/ts/node_modules/typescript/bin/tsc -p packages/ts/tsconfig.build.json',
     '\tnode packages/ts/node_modules/typescript/bin/tsc -p packages/ts/tsconfig.json --noEmit',
     '# go build -o $(LEASE) in a comment',
@@ -1554,7 +1556,8 @@ caseTest('a Makefile build output is published through a temporary file', COMPUT
   assert.deepEqual(unpublishedOutputErrors(makefile).map(error => error.split(', so ')[0]), [
     'Makefile:1 writes a Go build output in place',
     'Makefile:4 redirects a command into a file in place',
-    'Makefile:7 runs tsc into dist in place',
+    'Makefile:8 redirects a command into a file in place',
+    'Makefile:9 runs tsc into dist in place',
   ]);
   assert.deepEqual(unpublishedOutputErrors(readFileSync(new URL('../../Makefile', import.meta.url), 'utf8')), []);
 });
