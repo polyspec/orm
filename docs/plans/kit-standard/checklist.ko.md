@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 6a9936e20cd1c5dfa9be1dc834e371ee4ccde8acc4bdaf71de15c8a1ba191430 -->
+<!-- source-sha256: 032fa8a7811f68f7eb0e3271328d1c8cf7100450fa00071e2212aa933e93a0ce -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -231,3 +231,4 @@
 | KSTD-5-66 | upsert planner의 conflict-key 오류를 전파한다 | packages/rust/orm/src/engine/planner.rs:313 | `make rust-check` | [ ] |
 | KSTD-5-67 | relation step의 parent bind slot이 없으면 실패한다 | packages/rust/orm/src/driver.rs:102, :117 | `make rust-check` | [ ] |
 | KSTD-5-68 | 음수 또는 범위를 벗어난 소수 정밀도를 거부한다 | packages/rust/orm/src/db.rs:1155,1167,1185 | `make rust-check` | [ ] |
+| KSTD-5-69 | commit task의 panic payload를 포함한다 | packages/rust/build/src/catalog/mutation_finish.rs:40 | `make rust-check` | [ ] |
