@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: 06bd7939125475918bf9af88a0b81fc661fd5521d0195c32b6e803483e68804c -->
+<!-- source-sha256: 779b2f71a522e8c05000478bed4540a94baa88a835d65fa87ba0c965693a6e3c -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1299,4 +1299,4 @@
 | T231 | errors.yaml이 DUPLICATE_KEY에 모든 database의 duplicate key를 적는다: 모든 client가 mapping하듯 MySQL 1062, PostgreSQL 23505, SQLite 2067과 1555. Cause: docs/spec/errors.yaml:87이 MySQL 1062 / SQLSTATE 23000만 적는다 | docs/spec/errors.yaml, config/parity.json | `make text-absent FILE=docs/spec/errors.yaml TEXT="DUPLICATE_KEY           # MySQL 1062 / SQLSTATE 23000"` | [o] |
 | T232 | docs/spec/dialects.md가 고정된 PHP 8.4 pdo_sqlite의 SQLite version을 select sqlite_version()으로 측정해 적는다 (소유자 판정: PHP 8.5는 8.4로). Cause: dialects.md:76과 dialects.ko.md:71이 PHP 8.5.10의 pdo_sqlite를 적는다 | docs/spec/dialects.md and its twin | `make text-absent FILE=docs/spec/dialects.md TEXT="PHP 8.5.10"` | [o] |
 | T233 | docs/operations/perf.md가 PHP 8.5 비율을 인용하지 않는다 (소유자 판정: PHP 8.5는 8.4로). Cause: perf.md:42와 perf.ko.md:43이 PHP 8.5.10에서 잰 비율을 인용한다; 이를 빼거나 최종 benchmark 단계에서 8.4로 다시 잰다 | docs/operations/perf.md and its twin | `make text-absent FILE=docs/operations/perf.md TEXT="PHP 8.5.10"` | [o] |
-| T235 | 취약한 markdown-it 잠금과 보안 검토를 갱신한다. 원인: package-lock.json이 수정 버전 14.3.3이 있는데도 high advisory 1242672가 있는 markdown-it 14.3.2를 고정한다. | package-lock.json, config/dependency-review.json | `make dependency-policy-check`; `make dependency-policy-mutation-check` | [ ] |
+| T235 | 취약한 markdown-it 잠금과 보안 검토를 갱신한다. 원인: package-lock.json이 수정 버전 14.3.3이 있는데도 high advisory 1242672가 있는 markdown-it 14.3.2를 고정한다. | package-lock.json, config/dependency-review.json | `make dependency-policy-check`; `make dependency-policy-mutation-check` | [~] |
