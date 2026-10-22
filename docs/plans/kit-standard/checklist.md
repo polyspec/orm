@@ -228,3 +228,4 @@
 | KSTD-5-64 | Report an unparseable SQLite library version as an error that names it | packages/rust/orm/src/db.rs:495-496; packages/ts/src/driver.ts:972 | `make rust-check` | [ ] |
 | KSTD-5-65 | Propagate the missing OUT_DIR error in the build scan | packages/rust/build/src/lib.rs:166 | `make rust-check` | [ ] |
 | KSTD-5-66 | Propagate the conflict-key error of the upsert planner | packages/rust/orm/src/engine/planner.rs:313 | `make rust-check` | [ ] |
+| KSTD-5-67 | Fail when a relation step's parent bind slot is absent | packages/rust/orm/src/driver.rs:102, :117 | `make rust-check` | [ ] |

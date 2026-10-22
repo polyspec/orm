@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: b02dbe72144ce0c4272f0175982614c647ad71477cbbdb964604750276684314 -->
+<!-- source-sha256: a79e8ec1d646d6ee3947ed0daa9df0c7a971188683a6a95ee4f21e8e6e351167 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -229,3 +229,4 @@
 | KSTD-5-64 | 파싱할 수 없는 SQLite library version을 그 텍스트를 밝히는 오류로 보고한다 | packages/rust/orm/src/db.rs:495-496; packages/ts/src/driver.ts:972 | `make rust-check` | [ ] |
 | KSTD-5-65 | build scan에서 OUT_DIR이 없다는 오류를 전파한다 | packages/rust/build/src/lib.rs:166 | `make rust-check` | [ ] |
 | KSTD-5-66 | upsert planner의 conflict-key 오류를 전파한다 | packages/rust/orm/src/engine/planner.rs:313 | `make rust-check` | [ ] |
+| KSTD-5-67 | relation step의 parent bind slot이 없으면 실패한다 | packages/rust/orm/src/driver.rs:102, :117 | `make rust-check` | [ ] |
