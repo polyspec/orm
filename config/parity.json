@@ -45,155 +45,155 @@
       "internal": [
         {
           "glob": "packages/go/engine/dialect/sqlite_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/go/engine/interface_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/go/engine/ir/fuzz_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/go/engine/ir/operators_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/go/engine/ir/params_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/go/engine/plan/plan_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/go/engine/planner/restore_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/go/engine/planner/soft_delete_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/go/generator/gen_go_check_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "generated: an internal package test of the go module that checks the output of a generator of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/go/generator/gen_go_output_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "generated: an internal package test of the go module that checks the output of a generator of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/go/internal/dialects/ddl_physical_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
           "glob": "packages/go/internal/dialects/introspect_compare_physical_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
           "glob": "packages/go/internal/dialects/schema_documents_physical_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "fixture: an internal package test of the go module that reads the fixtures of the contract data, not a helper the contract names (K313)"
         },
         {
           "glob": "packages/go/internal/dialects/sqlite_filename_physical_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
           "glob": "packages/go/model/assignment_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/go/model/chunk_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/go/model/coverage_constraints_and_relations_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
           "glob": "packages/go/model/coverage_model_generation_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "generated: an internal package test of the go module that checks the output of a generator of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/go/model/coverage_parameter_chunking_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
           "glob": "packages/go/orm/assignment_propagation_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/go/orm/bind_check_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "fixture: an internal package test of the go module that reads the fixtures of the contract data, not a helper the contract names (K313)"
         },
         {
           "glob": "packages/go/orm/context_reset_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
           "glob": "packages/go/orm/coverage_statement_events_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
           "glob": "packages/go/orm/fuzz_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/go/orm/goexit_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/go/orm/keyword_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/go/orm/pg/pg_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/go/orm/refusal_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
           "glob": "packages/go/orm/related_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/go/orm/request_hook_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "fixture: an internal package test of the go module that reads the fixtures of the contract data, not a helper the contract names (K313)"
         },
         {
           "glob": "packages/go/orm/rollback_fault_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "harness: an internal package test of the go module that checks the test harness of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/go/orm/sqlite/sqlite_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/go/orm/sqlite_file_name_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
           "glob": "packages/go/orm/statement_fault_entry_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "harness: an internal package test of the go module that checks the test harness of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/go/orm/styled_state_physical_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
           "glob": "packages/go/orm/transaction_end_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/go/orm/value_types_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
           "glob": "packages/go/orm/write_set_test.go",
-          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         }
       ]
     },
@@ -241,63 +241,63 @@
       "internal": [
         {
           "glob": "packages/php/tests/AutoloadTest.php",
-          "reason": "an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+          "reason": "ecosystem: an internal test of the PHP package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/php/tests/ClientGenericsTest.php",
-          "reason": "an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+          "reason": "ecosystem: an internal test of the PHP package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/php/tests/ConformanceResultTest.php",
-          "reason": "an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+          "reason": "harness: an internal test of the PHP package that checks the test harness of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
-          "reason": "an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+          "reason": "external: an internal test of the PHP package that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
           "glob": "packages/php/tests/CoverageModelGenerationTest.php",
-          "reason": "an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+          "reason": "generated: an internal test of the PHP package that checks the output of a generator of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/php/tests/CoverageParameterChunkingTest.php",
-          "reason": "an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+          "reason": "external: an internal test of the PHP package that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
           "glob": "packages/php/tests/CoveragePerformanceGateTest.php",
-          "reason": "an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+          "reason": "harness: an internal test of the PHP package that checks the test harness of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/php/tests/CoverageStatementEventsTest.php",
-          "reason": "an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+          "reason": "external: an internal test of the PHP package that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
           "glob": "packages/php/tests/DriverErrorTest.php",
-          "reason": "an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+          "reason": "external: an internal test of the PHP package that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
           "glob": "packages/php/tests/OrmGenScanParityTest.php",
-          "reason": "an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+          "reason": "generated: an internal test of the PHP package that checks the output of a generator of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/php/tests/RelationKeysTest.php",
-          "reason": "an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+          "reason": "test: an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/php/tests/RequestHookTest.php",
-          "reason": "an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+          "reason": "fixture: an internal test of the PHP package that reads the fixtures of the contract data, not a helper the contract names (K313)"
         },
         {
           "glob": "packages/php/tests/SqliteWithoutMysqlTest.php",
-          "reason": "an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+          "reason": "ecosystem: an internal test of the PHP package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/php/tests/UnselectedColumnDbTest.php",
-          "reason": "an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+          "reason": "external: an internal test of the PHP package that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
           "glob": "packages/php/tests/UnselectedColumnTest.php",
-          "reason": "an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+          "reason": "test: an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
         }
       ]
     },
@@ -361,15 +361,15 @@
       "internal": [
         {
           "glob": "packages/ts/tests/bin-mode.mjs",
-          "reason": "an internal test of the TypeScript package that tests a helper or harness of the owner, not a behaviour of the contract (K313)"
+          "reason": "ecosystem: an internal test of the TypeScript package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/ts/tests/clock.mjs",
-          "reason": "an internal test of the TypeScript package that tests a helper or harness of the owner, not a behaviour of the contract (K313)"
+          "reason": "external: an internal test of the TypeScript package that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
           "glob": "packages/ts/tests/driver-error.mjs",
-          "reason": "an internal test of the TypeScript package that tests a helper or harness of the owner, not a behaviour of the contract (K313)"
+          "reason": "external: an internal test of the TypeScript package that runs against a database or driver of an external service, not a helper the contract names (K313)"
         }
       ]
     },
@@ -379,23 +379,23 @@
       "internal": [
         {
           "glob": "packages/python/tests/test_install_lock.py",
-          "reason": "an internal test of the Python package that tests the install recipe of the Makefile, not a behaviour of the contract (K313)"
+          "reason": "ecosystem: an internal test of the Python package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/python/tests/test_no_path_change.py",
-          "reason": "an internal test of the Python package that tests the sys.path rule of the test folder (PRINCIPLES.md S3), not a behaviour of the contract (K313)"
+          "reason": "ecosystem: an internal test of the Python package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/python/tests/test_packaging.py",
-          "reason": "an internal test of the Python package that tests the package data of the distribution, not a behaviour of the contract (K313)"
+          "reason": "ecosystem: an internal test of the Python package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/python/tests/test_requires_python.py",
-          "reason": "an internal test of the Python package that tests the requires-python pin against mise.toml, not a behaviour of the contract (K313)"
+          "reason": "ecosystem: an internal test of the Python package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/python/tests/conformance_result.py",
-          "reason": "an internal test of the Python conformance runner that tests the output encoder of the runner, not a behaviour of the contract (K313)"
+          "reason": "harness: an internal test of the Python package that checks the test harness of the owner, not a behaviour of the contract (K313)"
         }
       ],
       "roots": [
@@ -466,19 +466,19 @@
       "internal": [
         {
           "glob": "packages/rust/tests/tests/coverage_performance_gate.rs",
-          "reason": "the hot-path benchmark gate of the Rust client: it runs client_bench and checks the shape of its timing lines, a performance check of the harness, not a behaviour of the contract (K313)"
+          "reason": "harness: an internal test of the Rust package that checks the test harness of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/rust/tests/src/conformance.rs",
-          "reason": "the helpers of the conformance runner that render the values of its vectors for comparison, a test of the harness and not a behaviour of the contract (K313)"
+          "reason": "harness: an internal test of the Rust package that checks the test harness of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/rust/build/tests/unit/row_insert_lock.rs",
-          "reason": "a unit test of the private SQL-text helper postgres_insert_lock of the catalog, reached through super::*, not a behaviour of the contract (K313)"
+          "reason": "test: a unit test of the private SQL-text helper postgres_insert_lock of the catalog, reached through super::*, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/rust/build/tests/lock_probe_order.rs",
-          "reason": "a self-check of the test harness: a fake mutation publishes its Locked phase to a probe, so the test checks the probe of the harness and not the publisher (K313)"
+          "reason": "harness: an internal test of the Rust package that checks the test harness of the owner, not a behaviour of the contract (K313)"
         }
       ]
     }
@@ -541,47 +541,47 @@
   "tools": [
     {
       "root": "packages/go/bench",
-      "reason": "Benchmarks that measure the performance of the Go implementation; they implement no contract and run only under go test -bench, so they belong to no implementation."
+      "reason": "harness: Benchmarks that measure the performance of the Go implementation; they implement no contract and run only under go test -bench, so they belong to no implementation."
     },
     {
       "root": "tests/analyzers",
-      "reason": "Analyzers for the Go test conventions of the repository; the tooling implements no contract, so its tests belong to no implementation."
+      "reason": "harness: Analyzers for the Go test conventions of the repository; the tooling implements no contract, so its tests belong to no implementation."
     },
     {
       "root": "tests/codec",
-      "reason": "The PHP generator of tests/codec/vectors.json, which the codec suites read; the generator is single-language tooling that implements no contract."
+      "reason": "generated: The PHP generator of tests/codec/vectors.json, which the codec suites read; the generator is single-language tooling that implements no contract."
     },
     {
       "root": "packages/dbspec-codemirror",
-      "reason": "The CodeMirror adapter of the dbspec editor stack: JavaScript over @polyspec/dbspec-language, with no grammar and no contract of its own."
+      "reason": "ecosystem: The CodeMirror adapter of the dbspec editor stack: JavaScript over @polyspec/dbspec-language, with no grammar and no contract of its own."
     },
     {
       "root": "packages/dbspec-language",
-      "reason": "The dbspec language service of the editor stack: diagnostics, tokens, folding and formatting over the parser of the TypeScript runtime; it implements no contract of its own."
+      "reason": "ecosystem: The dbspec language service of the editor stack: diagnostics, tokens, folding and formatting over the parser of the TypeScript runtime; it implements no contract of its own."
     },
     {
       "root": "packages/dbspec-lsp",
-      "reason": "The dbspec language server of the editor stack, which serves every editor over @polyspec/dbspec-language; it implements no contract of its own."
+      "reason": "ecosystem: The dbspec language server of the editor stack, which serves every editor over @polyspec/dbspec-language; it implements no contract of its own."
     },
     {
       "root": "packages/dbspec-vscode",
-      "reason": "The VS Code extension of the editor stack: its manifest and bundle, which hold no grammar and implement no contract."
+      "reason": "ecosystem: The VS Code extension of the editor stack: its manifest and bundle, which hold no grammar and implement no contract."
     },
     {
       "root": "scripts",
-      "reason": "The repository scripts: the tooling of the checks, builds, installs and releases; it implements no contract, so its tests belong to no implementation."
+      "reason": "harness: The repository scripts: the tooling of the checks, builds, installs and releases; it implements no contract, so its tests belong to no implementation."
     },
     {
       "root": "tests/cli",
-      "reason": "The test of the command-line install of dbspec-fmt: the editor-stack tooling, which implements no contract."
+      "reason": "ecosystem: The test of the command-line install of dbspec-fmt: the editor-stack tooling, which implements no contract."
     },
     {
       "root": "tests/docs",
-      "reason": "The test of the dbs fence of the documentation site: the tooling of the site, which implements no contract."
+      "reason": "harness: The test of the dbs fence of the documentation site: the tooling of the site, which implements no contract."
     },
     {
       "root": "tests/timing",
-      "reason": "The test of the timing harness of the clients: the measurement tooling, which implements no contract."
+      "reason": "harness: The test of the timing harness of the clients: the measurement tooling, which implements no contract."
     }
   ],
   "requirements": {
