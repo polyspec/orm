@@ -120,6 +120,7 @@ mod mysql_code_tests {
 
     #[test]
     fn mysql_lock_wait_timeout_is_canceled() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         assert_eq!(mysql_code(1205), Some(codes::CANCELED));
     }
 }
