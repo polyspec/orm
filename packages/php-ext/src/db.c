@@ -87,13 +87,18 @@ static bool mcall(zval *o, const char *m, zval *ret, uint32_t argc, zval *argv)
     return r == SUCCESS && EG(exception) == NULL;
 }
 
-/* Calls a function by name, or a static method as "Polyspec\\Orm\\Codec::decodeRows". */
+/* Calls a function by name, or a static method as "Polyspec\\Orm\\Codec::decodeRows". A call that is not callable, or that
+ * throws, returns false with an exception set; the result must be checked by every caller (warn_unused_result). */
+static bool scall(const char *f, zval *ret, uint32_t argc, zval *argv) __attribute__((warn_unused_result));
 static bool scall(const char *f, zval *ret, uint32_t argc, zval *argv)
 {
     zval fn;
     ZVAL_STRING(&fn, f);
     zend_result r = call_user_function(NULL, NULL, &fn, ret, argc, argv);
     zval_ptr_dtor(&fn);
+    if (r != SUCCESS && EG(exception) == NULL) {
+        zend_throw_error(NULL, "%s is not callable", f);
+    }
     return r == SUCCESS && EG(exception) == NULL;
 }
 
@@ -2869,20 +2874,23 @@ static void settle_discard(zval *self, zval *frame)
 
 /* The write set of the transaction (INT-52): TxFrame::recordInserted of the PHP library records the generated key. frame is
  * NULL or the transaction's frame. */
-static void record_inserted(zval *frame, zval *r, zval *id)
+static bool record_inserted(zval *frame, zval *r, zval *id)
 {
     if (frame == NULL || Z_TYPE_P(frame) != IS_OBJECT) {
-        return;
+        return true;
     }
     zval args[3], res;
     ZVAL_COPY(&args[0], frame);
     ZVAL_COPY(&args[1], r);
     ZVAL_COPY(&args[2], id);
-    scall("Polyspec\\Orm\\TxFrame::recordInserted", &res, 3, args);
+    bool ok = scall("Polyspec\\Orm\\TxFrame::recordInserted", &res, 3, args);
     zval_ptr_dtor(&args[0]);
     zval_ptr_dtor(&args[1]);
     zval_ptr_dtor(&args[2]);
-    zval_ptr_dtor(&res);
+    if (ok) {
+        zval_ptr_dtor(&res);
+    }
+    return ok;
 }
 
 static bool write_of_impl(zval *self, zval *frame, zval *r, zval *after, zval *out)
@@ -2931,7 +2939,10 @@ static bool write_of_impl(zval *self, zval *frame, zval *r, zval *after, zval *o
             throw_orm("OPTIMISTIC_LOCK", "the row changed after it was read");
             return false;
         }
-        record_inserted(frame, r, &first);
+        if (!record_inserted(frame, r, &first)) {
+            zval_ptr_dtor(&first);
+            return false;
+        }
         set_last_affected(self, n);
         array_init(out);
         zend_hash_next_index_insert(Z_ARRVAL_P(out), &first);
@@ -2990,7 +3001,10 @@ static bool write_of_impl(zval *self, zval *frame, zval *r, zval *after, zval *o
         throw_orm("OPTIMISTIC_LOCK", "the row changed after it was read");
         return false;
     }
-    record_inserted(frame, r, &id);
+    if (!record_inserted(frame, r, &id)) {
+        zval_ptr_dtor(&id);
+        return false;
+    }
     set_last_affected(self, n);
     array_init(out);
     zend_hash_next_index_insert(Z_ARRVAL_P(out), &id);

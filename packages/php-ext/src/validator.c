@@ -71,6 +71,7 @@ static bool fail(const char *code, const char *fmt, ...)
     zend_string_release(cn);
     if (ce == NULL) {
         zend_string_release(msg);
+        zend_throw_error(NULL, "class Polyspec\\Orm\\OrmException is not loaded");
         return false;
     }
     zval ex, args[2], rv;

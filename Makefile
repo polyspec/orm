@@ -729,6 +729,9 @@ dbspec-php-extension-check/prepare:
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
 # dbspec-php-extension-check/declarations runs the extension's own checks (packages/php-ext/tests): its declarations against the stub and the
 # PHP client, its required modules and its PIE package.
+# dbspec-php-extension-check/silent-paths runs silent_paths.php with the extension alone (php -n, no library class): a call that must fail with an OrmException must throw, not return silently (T182-2-4).
+dbspec-php-extension-check/silent-paths: dbspec-php-extension-check/prepare
+	$(CURDIR)/var/tools/bin/php -n -d extension=$(PHP_EXTENSION_LIBRARY) packages/php-ext/tests/silent_paths.php
 dbspec-php-extension-check/declarations: php-vendor-check dbspec-php-extension-check/prepare
 	$(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DeclarationsTest.php
 # dbspec-php-extension-check/vectors runs DbspecTest with the extension: the canonical, normalize, invalid, files, positions, bytes and arguments cases of tests/dbspec/cases.json, introspection and apply on SQLite.
