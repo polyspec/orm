@@ -135,7 +135,8 @@ final class RuntimeModelTest extends TestCase
     public function testAGeneratedModelAgreesWithItsManifestWhateverItsKeyOrder(): void
     {
         // The unique keys and indexes are declared out of name order; the manifest text sorts them by name.
-        $source = "dbspec 1 order\n\ntable item {\n  id i64 identity\n  b i32\n  a i32\n  primary key (id)\n  unique uq_b (b)\n  unique uq_a (a)\n  index ix_b (b)\n  index ix_a (a)\n}\n";
+        $source = "dbspec 1 order\n\ntable item {\n  id i64 identity\n  b i32\n  a i32\n  primary key (id)\n  unique "
+            . "uq_b (b)\n  unique uq_a (a)\n  index ix_b (b)\n  index ix_a (a)\n}\n";
         // orm-gen builds the meta from the documents (OrmGen gen: RuntimeModel::build of the set).
         $model = RuntimeModel::build(RuntimeModel::loadSet($source, ''));
         $meta = $model->entities['item'] + ['manifest_hash' => $model->manifestHash];
@@ -223,7 +224,8 @@ final class RuntimeModelTest extends TestCase
     public function testI16Field(): void
     {
         $root = dirname(__DIR__, 3);
-        $doc = "dbspec 1 small\n\ntable small_value {\n  seq i64 identity\n  level i16\n  rank i16 null\n  primary key (seq)\n}\n";
+        $doc = "dbspec 1 small\n\ntable small_value {\n  seq i64 identity\n  level i16\n  rank i16 null\n  primary "
+            . "key (seq)\n}\n";
         $model = RuntimeModel::build(RuntimeModel::parse(['small.dbs' => $doc]));
         self::assertTrue($model->entities['small_value']['columns']['level']['type'] === 'i16', 'i16 type');
         $out = sys_get_temp_dir() . '/orm-php-runtime-i16-' . getmypid();
@@ -276,7 +278,8 @@ final class RuntimeModelTest extends TestCase
     public function testInsertBindsTheClockOfAnOmittedDefaultNowColumnExceptOnMySQL(): void
     {
         // The test of DIA-24 (docs/spec).
-        $doc = "dbspec 1 clocked\n\ntable note {\n  id i64 identity\n  rank i16\n  body text\n  created_at datetime(6) default now\n  primary key (id)\n}\n";
+        $doc = "dbspec 1 clocked\n\ntable note {\n  id i64 identity\n  rank i16\n  body text\n  created_at "
+            . "datetime(6) default now\n  primary key (id)\n}\n";
         $model = RuntimeModel::build(RuntimeModel::parse(['clocked.dbs' => $doc]));
         self::assertTrue(
             $model->entities['note']['columns']['created_at'][

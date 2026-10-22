@@ -130,7 +130,8 @@ function restoreCase(Db $db, string $namespace): void
     $change = $db->driver() === 'mysql' ? '`change`' : '"change"';
     $rows = $db->pdo()
         ->query(
-            "SELECT $change, previous_audit_seq, seq, team_id, member_id, audit_seq, CASE WHEN deleted_at IS NULL THEN 'live' ELSE 'deleted' END FROM membership_history ORDER BY history_id"
+            "SELECT $change, previous_audit_seq, seq, team_id, member_id, audit_seq, CASE WHEN deleted_at IS NULL "
+            . "THEN 'live' ELSE 'deleted' END FROM membership_history ORDER BY history_id"
         )
         ->fetchAll(PDO::FETCH_NUM);
     $history = array_map(

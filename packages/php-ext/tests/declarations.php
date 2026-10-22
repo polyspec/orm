@@ -100,7 +100,8 @@ if (PHP_SAPI === 'cli' && realpath($argv[0] ?? '') === __FILE__) {
     if (extension_loaded('polyspec_orm')) {
         fwrite(
             STDERR,
-            "declarations.php $mode: the extension polyspec_orm is loaded and registers the same classes; run php without it\n"
+            "declarations.php $mode: the extension polyspec_orm is loaded and registers the same classes; run php "
+            . "without it\n"
         );
         exit(1);
     }

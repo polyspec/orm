@@ -109,7 +109,8 @@ function case_database(string $driver, callable $step): CaseDatabase
     $admin = getenv($env);
     if ($admin === false || $admin === '') {
         throw new RuntimeException(
-            "$env is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers"
+            "$env is required; database tests never skip; run the test through its make target, which reads the "
+            . "environment of make orm-test-servers"
         );
     }
     try {

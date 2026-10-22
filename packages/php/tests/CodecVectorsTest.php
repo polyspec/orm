@@ -168,7 +168,8 @@ final class CodecVectorsTest extends TestCase
         self::assertNotSame(
             '',
             $out,
-            'ORM_CODEC_OUT is unset; run make codec-check, which runs the Go, Rust, TypeScript and Python codec tests into its run directory'
+            'ORM_CODEC_OUT is unset; run make codec-check, which runs the Go, Rust, TypeScript and Python codec '
+            . 'tests into its run directory'
         );
         $file = "$out/$lang.json";
         self::assertFileExists($file, "the $lang codec test of this run did not write it");

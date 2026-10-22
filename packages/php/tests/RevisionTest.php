@@ -21,7 +21,8 @@ use PHPUnit\Framework\TestCase;
 #[Medium]
 final class RevisionTest extends TestCase
 {
-    private const DOCUMENT = "dbspec 1 revision\n\ntable note {\n  seq i64 identity\n  label varchar(32)\n  revision i64\n  primary key (seq)\n}\n";
+    private const DOCUMENT = "dbspec 1 revision\n\ntable note {\n  seq i64 identity\n  label varchar(32)\n  revision "
+        . "i64\n  primary key (seq)\n}\n";
 
     private static string $work = '';
     private ?Db $db = null;

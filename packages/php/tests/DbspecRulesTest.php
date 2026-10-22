@@ -402,14 +402,17 @@ function rules_vectors(): array
             [['setting', 8, 'codec']]
         ),
         rules_case('setting-immutable-cascade-child', ['dbspec 1 shop', '', 'table users {', '  id i64 identity', '  parent_id i64 null', '  primary key (id)', '  index ix_users_parent (parent_id)',
-            '  foreign key fk_users_parent (parent_id) references users (id) on delete cascade on update restrict', '  settings {', '    immutable', '  }', '}'], [
+            '  foreign key fk_users_parent (parent_id) references users (id) on delete cascade on update '
+            . 'restrict', '  settings {', '    immutable', '  }', '}'], [
                 ['setting', 10, 'immutable']
             ]),
         rules_case(
             'setting-audit-shape',
             ['dbspec 1 shop', '', 'table service {', '  id i64 identity', '  audit_seq i32', '  primary key (id)', '  index ix_service_audit (audit_seq)',
-            '  foreign key fk_service_audit (audit_seq) references audit (seq) on delete restrict on update restrict', '  settings {',
-            '    audit into service_history column audit_seq references audit action change previous previous_audit_seq', '  }', '}', '',
+            '  foreign key fk_service_audit (audit_seq) references audit (seq) on delete restrict on update '
+            . 'restrict', '  settings {',
+            '    audit into service_history column audit_seq references audit action change previous '
+            . 'previous_audit_seq', '  }', '}', '',
             'table service_history {', '  history_id i64', '  change varchar(16)', '  previous_audit_seq i64', '  id i64', '  extra i32', '  primary key (history_id)', '}', '',
             'table audit {', '  seq i32', '  primary key (seq)', '}'],
             [
@@ -474,7 +477,8 @@ function rules_vectors(): array
                     '  pair_hash varchar(64)',
                     '  null_hash varchar(64) null'
                 ],
-                ['  index ix_users_short (short_hash)', '  index ix_users_pair (pair_hash, version)', '  index ix_users_null (null_hash)', '  settings {',
+                ['  index ix_users_short (short_hash)', '  index ix_users_pair (pair_hash, '
+                    . 'version)', '  index ix_users_null (null_hash)', '  settings {',
                 '    codec s1 aes', '    codec s2 aes', '    codec s3 aes', '    codec s4 aes', '    aes_version version',
                 '    blind_index s1 short_hash',
                 '    blind_index s2 pair_hash',
@@ -494,8 +498,10 @@ function rules_vectors(): array
         rules_case(
             'audit-action-nullable',
             ['dbspec 1 shop', '', 'table service {', '  id i64 identity', '  audit_seq i64', '  deleted_at datetime(6) null', '  primary key (id)', '  index ix_service_audit (audit_seq)',
-            '  foreign key fk_service_audit (audit_seq) references audit (seq) on delete restrict on update restrict', '  settings {', '    soft_delete deleted_at',
-            '    audit into service_history column audit_seq references audit action change previous previous_audit_seq', '  }', '}', '',
+            '  foreign key fk_service_audit (audit_seq) references audit (seq) on delete restrict on update '
+            . 'restrict', '  settings {', '    soft_delete deleted_at',
+            '    audit into service_history column audit_seq references audit action change previous '
+            . 'previous_audit_seq', '  }', '}', '',
             'table service_history {', '  history_id i64 identity', '  change varchar(8) null', '  previous_audit_seq i64 null', '  id i64', '  audit_seq i64', '  deleted_at datetime(6) null', '  primary key (history_id)', '}', '',
             'table audit {', '  seq i64 identity', '  primary key (seq)', '}'],
             [['setting', 12, 'change']]
@@ -503,9 +509,13 @@ function rules_vectors(): array
         rules_case(
             'audit-record-table-audited',
             ['dbspec 1 shop', '', 'table service {', '  id i64 identity', '  audit_seq i64', '  deleted_at datetime(6) null', '  primary key (id)', '  index ix_service_audit (audit_seq)',
-            '  foreign key fk_service_audit (audit_seq) references service (id) on delete restrict on update restrict', '  settings {', '    soft_delete deleted_at',
-            '    audit into service_history column audit_seq references service action change previous previous_audit_seq', '  }', '}', '',
-            'table service_history {', '  history_id i64 identity', '  change varchar(8)', '  previous_audit_seq i64 null', '  id i64', '  audit_seq i64', '  deleted_at datetime(6) null', '  primary key (history_id)', '}'],
+            '  foreign key fk_service_audit (audit_seq) references service (id) on delete restrict on update '
+            . 'restrict', '  settings {', '    soft_delete deleted_at',
+            '    audit into service_history column audit_seq references service action change previous '
+            . 'previous_audit_seq', '  }', '}', '',
+            'table service_history {', '  history_id i64 identity', '  change varchar(8)', '  previous_audit_seq i64 '
+                . 'null', '  id i64', '  audit_seq i64', '  deleted_at datetime(6) '
+                . 'null', '  primary key (history_id)', '}'],
             [['setting', 12, 'service action']]
         ),
         rules_case('used-documents-repeat-constraint', [
@@ -635,7 +645,8 @@ function rules_vectors(): array
                 '  index ix_users_b (born desc, at)',
                 '  # sorted after b',
                 '  index ix_users_z (account_id)',
-                '  foreign key fk_users_account (account_id) references accounts (id) on delete restrict on update restrict',
+                '  foreign key fk_users_account (account_id) references accounts (id) on delete restrict on update '
+                . 'restrict',
                 '  check ck_users_small (small in (1, -2, 3) and big >= 1 and (big <= 10 or big = 20))',
                 '  settings {',
                 '    # the model name',
@@ -718,8 +729,10 @@ function rules_vectors(): array
         [
             'id' => 'closing-comments-and-bounds',
             'documents' => ['shop' => [
-                'dbspec 1 shop', '', 'table users {', '  id i64 identity', '  ratio f64 default 0.000000125', '  primary key (id)', '  # before the end of the table', '}', '',
-                'diagram main {', '  users at -2147483648 2147483647', '  # before the end of the diagram', '}', '', '# end of document',
+                'dbspec 1 shop', '', 'table users {', '  id i64 identity', '  ratio f64 default '
+                    . '0.000000125', '  primary key (id)', '  # before the end of the table', '}', '',
+                'diagram main {', '  users at -2147483648 '
+                    . '2147483647', '  # before the end of the diagram', '}', '', '# end of document',
             ]],
             'main' => 'shop',
         ],
@@ -742,8 +755,10 @@ function rules_vectors(): array
                 '  index ix_service_hash (secret_hash)',
                 '  index ix_service_parent (parent_id)',
                 '  foreign key fk_service_audit (audit_id) references audit (id) on delete restrict on update restrict',
-                '  foreign key fk_service_parent (parent_id) references service (id) on delete restrict on update restrict',
-                '  check ck_service_version (key_version >= 1 and key_version <= 100 and secret is not null or key_version not in (0, -1))',
+                '  foreign key fk_service_parent (parent_id) references service (id) on delete restrict on update '
+                . 'restrict',
+                '  check ck_service_version (key_version >= 1 and key_version <= 100 and secret is not null or '
+                . 'key_version not in (0, -1))',
                 '  settings {',
                 '    entity service_entity',
                 '    updated changed_at',
@@ -754,7 +769,8 @@ function rules_vectors(): array
                 '    blind_index secret secret_hash',
                 '    navigation fk_service_parent children parent',
                 '    immutable',
-                '    audit into service_history column audit_id references audit action change previous previous_audit_id',
+                '    audit into service_history column audit_id references audit action change previous '
+                . 'previous_audit_id',
                 '  }',
                 '}',
                 '',

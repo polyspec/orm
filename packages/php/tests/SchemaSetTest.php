@@ -293,12 +293,14 @@ final class SchemaSetTest extends TestCase
             $type = match ($driver) {
                 'mysql' => $db->pdo()
                     ->query(
-                        "SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'decimal_case' AND COLUMN_NAME = 'amount'"
+                        "SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND "
+                        . "TABLE_NAME = 'decimal_case' AND COLUMN_NAME = 'amount'"
                     )
                     ->fetchColumn(),
                 'postgres' => $db->pdo()
                     ->query(
-                        "SELECT numeric_precision || ',' || numeric_scale FROM information_schema.columns WHERE table_name = 'decimal_case' AND column_name = 'amount'"
+                        "SELECT numeric_precision || ',' || numeric_scale FROM information_schema.columns WHERE "
+                        . "table_name = 'decimal_case' AND column_name = 'amount'"
                     )
                     ->fetchColumn(),
                 default => $db->pdo()
@@ -379,7 +381,8 @@ final class SchemaSetTest extends TestCase
                 );
             }
         };
-        $missing = 'the tables that the set uses from external documents differ from the database: table ext_account does not exist; table ext_audit does not exist';
+        $missing = 'the tables that the set uses from external documents differ from the database: table ext_account '
+            . 'does not exist; table ext_audit does not exist';
         Orm::connectSchema($dsn, $member, $config)->close();
 
         $db = Orm::connect($dsn, $config);
@@ -436,7 +439,8 @@ final class SchemaSetTest extends TestCase
             $accounts = (int) $db->pdo()->query('SELECT COUNT(*) FROM ext_account')->fetchColumn();
             self::check($accounts === 1, "ext_account has $accounts rows after the member changes, want 1");
 
-            $differs = 'the tables that the set uses from external documents differ from the database: column ext_account.nick does not exist';
+            $differs = 'the tables that the set uses from external documents differ from the database: column '
+                . 'ext_account.nick does not exist';
             Orm::connectSchema($dsn, $drifted, $config)->close();
             $expectConfig('install with a drifted external table', static fn() => $schema->install($drifted), $differs);
             $expectConfig(

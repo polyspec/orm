@@ -11,7 +11,8 @@ use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\OrmGen;
 
 const SCHEMA = "dbspec 1 methods\n\ntable item {\n  seq i64\n  account_seq i64\n  project_seq i64\n  name varchar(32)\n"
-    . "  amount decimal(10,2)\n  primary key (seq)\n  unique uq_item_name (name)\n  index ix_item_account (account_seq, project_seq)\n}\n";
+    . "  amount decimal(10,2)\n  primary key (seq)\n  unique uq_item_name (name)\n  index ix_item_account "
+    . "(account_seq, project_seq)\n}\n";
 
 // Every call names a method that the schema enumerates.
 const MODEL_METHODS_CALLS = <<<'PHP'

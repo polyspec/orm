@@ -28,7 +28,8 @@ function auditColumnsTable(Db $db, string $table): bool
 {
     $sql = match ($db->driver()) {
         'mysql' => 'SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?',
-        'postgres' => 'SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = ?',
+        'postgres' => 'SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = current_schema() AND '
+            . 'table_name = ?',
         'sqlite' => "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?",
     };
     $st = $db->pdo()->prepare($sql);
@@ -111,7 +112,8 @@ function auditColumnsCase(string $dsn, string $document, string $work): void
             );
             [, $rows] = auditColumnsRows(
                 $db,
-                "SELECT $change, previous_audit_seq, seq, title, audit_seq, CASE WHEN deleted_at IS NULL THEN 'live' ELSE 'deleted' END FROM card_history ORDER BY history_id"
+                "SELECT $change, previous_audit_seq, seq, title, audit_seq, CASE WHEN deleted_at IS NULL THEN 'live' "
+                . "ELSE 'deleted' END FROM card_history ORDER BY history_id"
             );
             $want = [
                 ['insert', 'NULL', "$seq", 'first', '1', 'live'],

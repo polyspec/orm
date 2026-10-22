@@ -10,8 +10,6 @@
 // ORM_PERF_CPU_LOAD=1 runs the gate beside one busy process per CPU.
 declare(strict_types=1);
 
-
-
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\DoesNotPerformAssertions;
 use PHPUnit\Framework\Attributes\Large;
@@ -37,13 +35,16 @@ final class PerfGateTest extends TestCase
                 'perf_gate: this PHP loads ' . implode(
                     ', ',
                     $refused
-                ) . '; the gate measures PHP without a debugger or coverage driver (shivammathur/setup-php coverage: none)'
+                ) . '; the gate measures PHP without a debugger or coverage driver (shivammathur/setup-php coverage: '
+                    . 'none)'
             );
         }
         $benchDsn = requiredDsn('ORM_BENCH_MYSQL_DSN');
         if ($benchDsn === false || $benchDsn === '') {
             throw new RuntimeException(
-                'ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database, and the gate never skips; run it through make orm-check or make run-databases TARGETS=<target>, which create the bench database of the run'
+                'ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database, and the gate never skips; run '
+                . 'it through make orm-check or make run-databases TARGETS=<target>, which create the bench database '
+                . 'of the run'
             );
         }
         self::$db = \Polyspec\Orm\Tests\Model\connect($benchDsn, new Config(
@@ -96,7 +97,8 @@ final class PerfGateTest extends TestCase
             fwrite(
                 STDERR,
                 sprintf(
-                    "WARNING perf_gate %s: client/native ratio %.2f is above its reference %.2f (docs/operations/perf.md); machine %s %s, PHP %s\n",
+                    "WARNING perf_gate %s: client/native ratio %.2f is above its reference %.2f "
+                    . "(docs/operations/perf.md); machine %s %s, PHP %s\n",
                     $name,
                     $ratio,
                     $bound,

@@ -66,7 +66,8 @@ function dsn(): string
     if ($dsn === false || $dsn === '') {
         fwrite(
             STDERR,
-            "ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database; run it through make orm-check or make run-databases TARGETS=<target>, which create the bench database of the run\n"
+            "ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database; run it through make orm-check or "
+            . "make run-databases TARGETS=<target>, which create the bench database of the run\n"
         );
         exit(1);
     }

@@ -7,7 +7,6 @@
 // packages/php/tests/ConformanceResultTest.php
 declare(strict_types=1);
 
-
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
@@ -129,8 +128,8 @@ function vectorNamesOf(string $path): array
 /** @return list<string> the vector names the PHP runner declares, read from its source. */
 function declaredVectors(): array
 {
-    // The names of the top-level vector('<name>', ...) calls of the runner, read from its tokens, so the layout of a call
-    // (one line, or its arguments one per line) does not matter.
+    // The names of the top-level vector('<name>', ...) calls of the runner, read from its tokens, so the layout of a
+    // call (one line, or its arguments one per line) does not matter.
     $code = (string) file_get_contents(conformanceRoot() . '/packages/php/testing/conformance/runner.php');
     $tokens = array_values(array_filter(
         PhpToken::tokenize($code),

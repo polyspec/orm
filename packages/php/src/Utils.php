@@ -167,7 +167,8 @@ final class Utils
         $waiting = $this->read(
             StatementEvent::UTILITY,
             [],
-            'SELECT EXISTS(SELECT 1 FROM pg_locks l JOIN pg_stat_activity a ON a.pid=l.pid WHERE a.datname=current_database() AND a.pid<>pg_backend_pid() AND NOT l.granted)',
+            'SELECT EXISTS(SELECT 1 FROM pg_locks l JOIN pg_stat_activity a ON a.pid=l.pid WHERE '
+            . 'a.datname=current_database() AND a.pid<>pg_backend_pid() AND NOT l.granted)',
             []
         );
         return $waiting === true || $waiting === 't' || $waiting === '1' || $waiting === 1;

@@ -132,7 +132,8 @@ final class MarkdownTest extends TestCase
         $server = markdown_fake_server([
             '{"ok":true}',
             '{"ok":true}', '{"ok":true}', '{"ok":true}', '{"ok":true}',
-            '{"ok":true}', '{"error":{"code":"WRITE_CONFLICT","message":"people.flowmark.md:3 changed since it was read"}}',
+            '{"ok":true}', '{"error":{"code":"WRITE_CONFLICT","message":"people.flowmark.md:3 changed since it was '
+                . 'read"}}',
         ]);
         $db = Orm::connect($server[2], new Config());
         self::assertFalse($db->driver() !== 'markdown', "driver() = {$db->driver()}; want markdown");

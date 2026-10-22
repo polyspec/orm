@@ -11,7 +11,8 @@ declare(strict_types=1);
 // process-global, so every order and database runs in a process of its own: PHPUnit runs each
 // test in a separate process (RunTestsInSeparateProcesses). Each test uses a case database of its own
 // (case_database.php); the test fails when ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
-// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AuditExternalSetsTest.php
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist
+// packages/php/tests/AuditExternalSetsTest.php
 
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Generator;
@@ -47,7 +48,11 @@ final class AuditExternalSetsTest extends TestCase
     private static function generateMember(string $work): void
     {
         $path = static fn(string $name): string => self::$root . "/contracts/fixtures/external/$name.dbs";
-        Generator::generate(RuntimeModel::build(RuntimeModel::files([$path('member')], [$path('core')])), "$work/member", 'Polyspec\\Orm\\Tests\\AuditExternalSets\\Member');
+        Generator::generate(
+            RuntimeModel::build(RuntimeModel::files([$path('member')], [$path('core')])),
+            "$work/member",
+            'Polyspec\\Orm\\Tests\\AuditExternalSets\\Member'
+        );
         spl_autoload_register(static function (string $class) use ($work): void {
             $prefix = 'Polyspec\\Orm\\Tests\\AuditExternalSets\\Member\\';
             if (str_starts_with($class, $prefix)) {
@@ -62,9 +67,9 @@ final class AuditExternalSetsTest extends TestCase
     }
 
     /**
-     * Installs core and board only as schema values, creates and reads member, installs it, and checks whether the audit transaction of member
-     * writes to ext_audit, owned by core, and keeps that key in ext_post_history. member_by_value_first
-     * also installs member first as schema values, and then reads the generated bootstrap.
+     * Installs core and board only as schema values, creates and reads member, installs it, and checks whether the
+     * audit transaction of member writes to ext_audit, owned by core, and keeps that key in ext_post_history.
+     * member_by_value_first also installs member first as schema values, and then reads the generated bootstrap.
      */
     private static function scenario(string $order, string $dsn, string $work): void
     {
@@ -82,11 +87,22 @@ final class AuditExternalSetsTest extends TestCase
                 require "$work/member/bootstrap.php";
                 $schema->install(\Polyspec\Orm\Tests\AuditExternalSets\Member\schema());
             }
-            $db->transaction(fn() => (new \Polyspec\Orm\Tests\AuditExternalSets\Member\ExtPost())($db)->setAccountSeq(1)->setTitle('hello')->create(), audit: []);
+            $db->transaction(
+                fn() => (new \Polyspec\Orm\Tests\AuditExternalSets\Member\ExtPost())($db)->setAccountSeq(1)
+                    ->setTitle('hello')
+                    ->create(),
+                audit: []
+            );
             $records = $db->pdo()->query('SELECT seq, actor FROM ext_audit ORDER BY seq')->fetchAll(PDO::FETCH_NUM);
-            self::want(count($records) === 1 && $records[0][1] === 'writer', 'ext_audit ' . json_encode($records) . ', want one record of writer');
+            self::want(
+                count($records) === 1 && $records[0][1] === 'writer',
+                'ext_audit ' . json_encode($records) . ', want one record of writer'
+            );
             $recorded = $db->pdo()->query('SELECT audit_seq FROM ext_post_history')->fetchAll(PDO::FETCH_COLUMN);
-            self::want(count($recorded) === 1 && (int) $recorded[0] === (int) $records[0][0], 'ext_post_history audit keys ' . json_encode($recorded) . ", want [{$records[0][0]}]");
+            self::want(
+                count($recorded) === 1 && (int) $recorded[0] === (int) $records[0][0],
+                'ext_post_history audit keys ' . json_encode($recorded) . ", want [{$records[0][0]}]"
+            );
         } finally {
             $db->close();
         }

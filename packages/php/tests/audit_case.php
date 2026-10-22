@@ -47,7 +47,8 @@ function auditItemHistory(Db $db): array
     $change = $db->driver() === 'mysql' ? '`change`' : '"change"';
     return auditTextRows(
         $db,
-        "SELECT $change, previous_audit_seq, seq, title, audit_seq, CASE WHEN deleted_at IS NULL THEN 'live' ELSE 'deleted' END FROM item_history ORDER BY history_id"
+        "SELECT $change, previous_audit_seq, seq, title, audit_seq, CASE WHEN deleted_at IS NULL THEN 'live' ELSE "
+        . "'deleted' END FROM item_history ORDER BY history_id"
     );
 }
 

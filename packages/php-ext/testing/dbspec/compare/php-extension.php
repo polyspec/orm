@@ -15,14 +15,16 @@ require __DIR__ . '/../../../../php/testing/dbspec/compare/php-interface.php';
 if ($argc !== 7) {
     fwrite(
         STDERR,
-        "usage: php -d extension=<polyspec_orm library> packages/php-ext/testing/dbspec/compare/php-extension.php <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>\n"
+        "usage: php -d extension=<polyspec_orm library> packages/php-ext/testing/dbspec/compare/php-extension.php "
+        . "<cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>\n"
     );
     exit(2);
 }
 if (!extension_loaded('polyspec_orm')) {
     fwrite(
         STDERR,
-        "the extension polyspec_orm is not loaded; run this with php -d extension=<polyspec_orm library>, which make dbspec-compare-check builds\n"
+        "the extension polyspec_orm is not loaded; run this with php -d extension=<polyspec_orm library>, which make "
+        . "dbspec-compare-check builds\n"
     );
     exit(1);
 }

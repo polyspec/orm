@@ -15,7 +15,13 @@ use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
 // The document of the canonical case every-line-kind of tests/dbspec/cases.json.
-const GRAPH_TEXT = "dbspec 1 shop\n\nuse core { users }\n\ntable orders {\n  id i64 identity\n  user_id i64\n  status varchar(32) default 'pending'\n  total decimal(13,2) default 0.00\n  coupon_code varchar(32) null\n  placed_at datetime(6) default now\n  primary key (id)\n  unique uq_orders_coupon (coupon_code)\n  index ix_orders_status (status, placed_at desc)\n  index ix_orders_user (user_id)\n  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict\n  check ck_orders_total (total >= 0.00)\n  settings {\n    updated placed_at\n    select explicit coupon_code\n  }\n}\n\ndiagram main {\n  orders at 120 340\n}\n";
+const GRAPH_TEXT = "dbspec 1 shop\n\nuse core { users }\n\ntable orders {\n  id i64 identity\n  user_id i64\n  "
+    . "status varchar(32) default 'pending'\n  total decimal(13,2) default 0.00\n  coupon_code varchar(32) null\n  "
+    . "placed_at datetime(6) default now\n  primary key (id)\n  unique uq_orders_coupon (coupon_code)\n  index "
+    . "ix_orders_status (status, placed_at desc)\n  index ix_orders_user (user_id)\n  foreign key fk_orders_user "
+    . "(user_id) references users (id) on delete restrict on update restrict\n  check ck_orders_total (total >= "
+    . "0.00)\n  settings {\n    updated placed_at\n    select explicit coupon_code\n  }\n}\n\ndiagram main {\n  "
+    . "orders at 120 340\n}\n";
 const GRAPH_CORE = "dbspec 1 core\n\ntable users {\n  id i64 identity\n  primary key (id)\n}\n";
 
 /** A parsed copy of the graph document, whose core document is external. */

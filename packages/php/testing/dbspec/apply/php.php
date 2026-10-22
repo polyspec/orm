@@ -30,7 +30,8 @@ const CONNECTION_RULES = [
 if ($argc !== 5) {
     fwrite(
         STDERR,
-        "usage: php packages/php/testing/dbspec/apply/php.php <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>\n"
+        "usage: php packages/php/testing/dbspec/apply/php.php <apply-first|apply|stop|recover|rollback> "
+        . "<mysql|postgres|sqlite> <uri> <plans.json>\n"
     );
     exit(2);
 }

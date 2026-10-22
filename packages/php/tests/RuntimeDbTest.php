@@ -42,8 +42,10 @@ final class RuntimeDbTest extends TestCase
             exec('rm -rf ' . escapeshellarg($work));
         });
 
-        $values = "dbspec 1 runtime_values\n\ntable sample {\n  seq i64 identity\n  level i16\n  amount i32 default 7\n  label varchar(16) default 'x'\n"
-            . "  note text null\n  day date null\n  clock time(3) null\n  created datetime(6) default now\n  token uuid null\n  primary key (seq)\n}\n";
+        $values = "dbspec 1 runtime_values\n\ntable sample {\n  seq i64 identity\n  level i16\n  amount i32 default "
+            . "7\n  label varchar(16) default 'x'\n"
+            . "  note text null\n  day date null\n  clock time(3) null\n  created datetime(6) default now\n  token "
+            . "uuid null\n  primary key (seq)\n}\n";
         // audit.dbs and restore.dbs both declare an audit table, so each is generated separately and only one is
         // installed per case.
         $sets = [

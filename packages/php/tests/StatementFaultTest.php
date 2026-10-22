@@ -64,7 +64,8 @@ final class StatementFaultTest extends TestCase
             exec('rm -rf ' . escapeshellarg($work));
         });
 
-        $schemaText = "dbspec 1 statement_fault\n\ntable statement_probe {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n";
+        $schemaText = "dbspec 1 statement_fault\n\ntable statement_probe {\n  seq i64 identity\n  label "
+            . "varchar(32)\n  primary key (seq)\n}\n";
         Generator::generate(
             RuntimeModel::build(RuntimeModel::parse(['statement_fault.dbs' => $schemaText])),
             "$work/models",

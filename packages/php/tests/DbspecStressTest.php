@@ -130,7 +130,8 @@ final class DbspecStressTest extends TestCase
         );
         if ($ratio > $referenceRatio) {
             fwrite(STDERR, 'WARNING ' . sprintf(
-                'dbspec_stress median parse CPU of %.3f ms is %.2f times the reference CPU of %.3f ms, above the reference ratio %.1f (docs/spec/dbspec.md, Verification); machine %s',
+                'dbspec_stress median parse CPU of %.3f ms is %.2f times the reference CPU of %.3f ms, above the '
+                . 'reference ratio %.1f (docs/spec/dbspec.md, Verification); machine %s',
                 $parseMs,
                 $ratio,
                 $references[2],

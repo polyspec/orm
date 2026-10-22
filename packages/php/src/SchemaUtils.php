@@ -152,7 +152,8 @@ final class SchemaUtils
                     if ($differences !== []) {
                         throw new OrmException(
                             Code::SCHEMA_DIFFERS,
-                            'the existing tables of the document set differ beyond missing tables, missing columns that '
+                            'the existing tables of the document set differ beyond missing tables, missing columns '
+                            . 'that '
                             . 'are null or have a default and missing indexes: '
                             . implode('; ', $differences)
                         );

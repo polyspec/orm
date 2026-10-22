@@ -279,9 +279,13 @@ final class DbspecPlanApplyTest extends TestCase
             }
             $schemaIs('finalized', $want);
             $hidden = plan_value($pdo, [
-                'mysql' => "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME LIKE 'dbspec\$%' OR COLUMN_NAME LIKE 'dbspec\$%')",
-                'postgres' => "SELECT COUNT(*) FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid WHERE c.relnamespace = current_schema()::regnamespace AND c.relkind = 'r' AND a.attnum > 0 AND (c.relname LIKE 'dbspec\$%' OR a.attname LIKE 'dbspec\$%')",
-                'sqlite' => "SELECT COUNT(*) FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type = 'table' AND (m.name LIKE 'dbspec\$%' OR p.name LIKE 'dbspec\$%')",
+                'mysql' => "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND "
+                    . "(TABLE_NAME LIKE 'dbspec\$%' OR COLUMN_NAME LIKE 'dbspec\$%')",
+                'postgres' => "SELECT COUNT(*) FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid WHERE "
+                    . "c.relnamespace = current_schema()::regnamespace AND c.relkind = 'r' AND a.attnum > 0 AND "
+                    . "(c.relname LIKE 'dbspec\$%' OR a.attname LIKE 'dbspec\$%')",
+                'sqlite' => "SELECT COUNT(*) FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type = "
+                    . "'table' AND (m.name LIKE 'dbspec\$%' OR p.name LIKE 'dbspec\$%')",
             ][$dialect]);
             Assert::assertSame('0', $hidden, "$id: $hidden hidden columns remain after finalize");
         } finally {

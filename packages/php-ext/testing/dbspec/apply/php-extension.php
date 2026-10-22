@@ -32,14 +32,16 @@ const CONNECTION_RULES = [
 if ($argc !== 5) {
     fwrite(
         STDERR,
-        "usage: php -d extension=<polyspec_orm library> packages/php-ext/testing/dbspec/apply/php-extension.php <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>\n"
+        "usage: php -d extension=<polyspec_orm library> packages/php-ext/testing/dbspec/apply/php-extension.php "
+        . "<apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>\n"
     );
     exit(2);
 }
 if (!extension_loaded('polyspec_orm')) {
     fwrite(
         STDERR,
-        "the extension polyspec_orm is not loaded; run this with php -d extension=<polyspec_orm library>, which make dbspec-apply-pairs-check builds\n"
+        "the extension polyspec_orm is not loaded; run this with php -d extension=<polyspec_orm library>, which make "
+        . "dbspec-apply-pairs-check builds\n"
     );
     exit(1);
 }

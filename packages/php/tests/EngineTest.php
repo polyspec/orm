@@ -48,9 +48,12 @@ final class EngineTest extends TestCase
         );
 
         $want = [
-            'mysql' => 'SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `service` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1',
-            'postgres' => 'SELECT "a"."seq" AS "a__seq", "a"."name" AS "a__name" FROM "service" AS "a" WHERE "a"."seq" = $1 LIMIT 1 OFFSET 0',
-            'sqlite' => 'SELECT "a"."seq" AS "a__seq", "a"."name" AS "a__name" FROM "service" AS "a" WHERE "a"."seq" = ? LIMIT 1 OFFSET 0',
+            'mysql' => 'SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `service` AS `a` WHERE `a`.`seq` '
+                . '= ? LIMIT 0, 1',
+            'postgres' => 'SELECT "a"."seq" AS "a__seq", "a"."name" AS "a__name" FROM "service" AS "a" WHERE '
+                . '"a"."seq" = $1 LIMIT 1 OFFSET 0',
+            'sqlite' => 'SELECT "a"."seq" AS "a__seq", "a"."name" AS "a__name" FROM "service" AS "a" WHERE "a"."seq" '
+                . '= ? LIMIT 1 OFFSET 0',
         ];
         foreach ($engines as $d => $engine) {
             $plan = $engine->plan($byId);
@@ -433,17 +436,20 @@ final class EngineTest extends TestCase
                 ['column' => 'team_id', 'op' => 'eq'],
                 ['conn' => 'and', 'column' => 'member_id', 'op' => 'eq']
             ),
-                'UPDATE "link" SET "deleted_at" = NULL, "audit_seq" = ? WHERE "link"."team_id" = ? AND "link"."member_id" = ? AND "link"."deleted_at" IS NOT NULL',
+                'UPDATE "link" SET "deleted_at" = NULL, "audit_seq" = ? WHERE "link"."team_id" = ? AND '
+                . '"link"."member_id" = ? AND "link"."deleted_at" IS NOT NULL',
                 ['audit', 'param 0', 'param 1']],
             'unique key in another order' => ['mysql', $restoreRequest(
                 'link',
                 ['column' => 'member_id', 'op' => 'eq'],
                 ['conn' => 'and', 'column' => 'team_id', 'op' => 'eq']
             ),
-                'UPDATE `link` SET `deleted_at` = NULL, `audit_seq` = ? WHERE `link`.`member_id` = ? AND `link`.`team_id` = ? AND `link`.`deleted_at` IS NOT NULL',
+                'UPDATE `link` SET `deleted_at` = NULL, `audit_seq` = ? WHERE `link`.`member_id` = ? AND '
+                . '`link`.`team_id` = ? AND `link`.`deleted_at` IS NOT NULL',
                 ['audit', 'param 0', 'param 1']],
             'primary key' => ['postgres', $restoreRequest('link', ['column' => 'id', 'op' => 'eq']),
-                'UPDATE "link" SET "deleted_at" = NULL, "audit_seq" = $1 WHERE "link"."id" = $2 AND "link"."deleted_at" IS NOT NULL',
+                'UPDATE "link" SET "deleted_at" = NULL, "audit_seq" = $1 WHERE "link"."id" = $2 AND '
+                . '"link"."deleted_at" IS NOT NULL',
                 ['audit', 'param 0']],
             'without audit' => ['mysql', $restoreRequest('tag', ['column' => 'name', 'op' => 'eq']),
                 'UPDATE `tag` SET `deleted_at` = NULL WHERE `tag`.`name` = ? AND `tag`.`deleted_at` IS NOT NULL',
@@ -452,34 +458,39 @@ final class EngineTest extends TestCase
                 $restoreRequest('link', ['column' => 'team_id', 'op' => 'eq']),
                 'member_id'
             ),
-                'UPDATE "link" SET "deleted_at" = NULL, "audit_seq" = ? WHERE "link"."team_id" = ? AND "link"."member_id" = ? AND "link"."deleted_at" IS NOT NULL',
+                'UPDATE "link" SET "deleted_at" = NULL, "audit_seq" = ? WHERE "link"."team_id" = ? AND '
+                . '"link"."member_id" = ? AND "link"."deleted_at" IS NOT NULL',
                 ['audit', 'param 0', 'param 1']],
             'primary key of set before a unique key of where' => ['postgres', $withSet(
                 $restoreRequest('tag', ['column' => 'name', 'op' => 'eq']),
                 'id',
                 'label'
             ),
-                'UPDATE "tag" SET "label" = $1, "deleted_at" = NULL WHERE "tag"."name" = $2 AND "tag"."id" = $3 AND "tag"."deleted_at" IS NOT NULL',
+                'UPDATE "tag" SET "label" = $1, "deleted_at" = NULL WHERE "tag"."name" = $2 AND "tag"."id" = $3 AND '
+                . '"tag"."deleted_at" IS NOT NULL',
                 ['param 2', 'param 0', 'param 1']],
             'new value and null' => ['postgres', $withSet(
                 $restoreRequest('tag', ['column' => 'name', 'op' => 'eq']),
                 'label'
             ),
-                'UPDATE "tag" SET "label" = $1, "deleted_at" = NULL WHERE "tag"."name" = $2 AND "tag"."deleted_at" IS NOT NULL',
+                'UPDATE "tag" SET "label" = $1, "deleted_at" = NULL WHERE "tag"."name" = $2 AND "tag"."deleted_at" '
+                . 'IS NOT NULL',
                 ['param 1', 'param 0']],
             'a key and another condition' => ['mysql', $restoreRequest(
                 'tag',
                 ['column' => 'name', 'op' => 'eq'],
                 ['conn' => 'and', 'column' => 'label', 'op' => 'gt']
             ),
-                'UPDATE `tag` SET `deleted_at` = NULL WHERE `tag`.`name` = ? AND `tag`.`label` > ? AND `tag`.`deleted_at` IS NOT NULL',
+                'UPDATE `tag` SET `deleted_at` = NULL WHERE `tag`.`name` = ? AND `tag`.`label` > ? AND '
+                . '`tag`.`deleted_at` IS NOT NULL',
                 ['param 0', 'param 1']],
             'a repeated column' => ['mysql', $restoreRequest(
                 'tag',
                 ['column' => 'name', 'op' => 'eq'],
                 ['conn' => 'and', 'column' => 'name', 'op' => 'eq']
             ),
-                'UPDATE `tag` SET `deleted_at` = NULL WHERE `tag`.`name` = ? AND `tag`.`name` = ? AND `tag`.`deleted_at` IS NOT NULL',
+                'UPDATE `tag` SET `deleted_at` = NULL WHERE `tag`.`name` = ? AND `tag`.`name` = ? AND '
+                . '`tag`.`deleted_at` IS NOT NULL',
                 ['param 0', 'param 1']],
             ] as $name => [$d, $ir, $sql, $slots]
         ) {

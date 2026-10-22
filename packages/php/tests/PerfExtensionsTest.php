@@ -3,7 +3,6 @@
 // The hot-path gate refuses a PHP that loads a debugger or coverage driver.
 declare(strict_types=1);
 
-
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 

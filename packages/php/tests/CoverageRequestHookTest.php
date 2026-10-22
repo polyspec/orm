@@ -6,7 +6,6 @@
 // (scripts/features/check.mts compares it with the case list in features.json).
 declare(strict_types=1);
 
-
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 

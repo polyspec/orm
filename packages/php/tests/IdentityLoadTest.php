@@ -14,7 +14,6 @@
 // [--filter <case id>]
 declare(strict_types=1);
 
-
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Large;

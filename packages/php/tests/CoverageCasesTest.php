@@ -6,7 +6,6 @@
 // orm-check.
 declare(strict_types=1);
 
-
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Code;

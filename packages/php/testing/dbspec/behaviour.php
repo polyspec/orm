@@ -30,7 +30,9 @@ if (!is_dir(dirname($path)) && !mkdir(dirname($path), 0o755, true)) {
 }
 $text = json_encode(
     [
-        'comment' => 'The outcomes of the PHP dbspec behaviour cases (packages/php/tests/dbspec_behaviour.php), recorded from the PHP library by packages/php/testing/dbspec/behaviour.php. DbspecBehaviourTest compares the PHP library and the extension with them.',
+        'comment' => 'The outcomes of the PHP dbspec behaviour cases (packages/php/tests/dbspec_behaviour.php), '
+            . 'recorded from the PHP library by packages/php/testing/dbspec/behaviour.php. DbspecBehaviourTest '
+            . 'compares the PHP library and the extension with them.',
         'cases' => $cases
     ],
     JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR

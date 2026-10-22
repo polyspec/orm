@@ -8,7 +8,6 @@
 // packages/php/tests/DecimalModelDbTest.php
 declare(strict_types=1);
 
-
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;

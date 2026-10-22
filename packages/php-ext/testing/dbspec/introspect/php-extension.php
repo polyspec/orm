@@ -18,14 +18,16 @@ use Polyspec\Orm\Orm;
 if ($argc !== 3) {
     fwrite(
         STDERR,
-        "usage: php -d extension=<polyspec_orm library> packages/php-ext/testing/dbspec/introspect/php-extension.php <mysql|postgres|sqlite> <uri>\n"
+        "usage: php -d extension=<polyspec_orm library> packages/php-ext/testing/dbspec/introspect/php-extension.php "
+        . "<mysql|postgres|sqlite> <uri>\n"
     );
     exit(2);
 }
 if (!extension_loaded('polyspec_orm')) {
     fwrite(
         STDERR,
-        "the extension polyspec_orm is not loaded; run this with php -d extension=<polyspec_orm library>, which make dbspec-introspect-compare-check builds\n"
+        "the extension polyspec_orm is not loaded; run this with php -d extension=<polyspec_orm library>, which make "
+        . "dbspec-introspect-compare-check builds\n"
     );
     exit(1);
 }

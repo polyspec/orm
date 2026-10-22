@@ -99,7 +99,8 @@ final class ModelTest extends TestCase
             $v = requiredDsn($env);
             if ($v === false || $v === '') {
                 throw new RuntimeException(
-                    "$env is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers"
+                    "$env is required; database tests never skip; run the test through its make target, which reads "
+                    . "the environment of make orm-test-servers"
                 );
             }
             self::$targets[$driver] = $v;
@@ -1153,11 +1154,13 @@ final class ModelTest extends TestCase
             $single = requiredDsn('ORM_TEST_PGBOUNCER_SINGLE_DSN');
             if ($single === false || $single === '') {
                 throw new RuntimeException(
-                    'ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers'
+                    'ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip; run the test through its '
+                    . 'make target, which reads the environment of make orm-test-servers'
                 );
             }
             $table = case_name();
-            $probe = "dbspec 1 pooler_probe\n\ntable $table {\n  seq i64 identity\n  label varchar(16)\n  primary key (seq)\n}\n";
+            $probe = "dbspec 1 pooler_probe\n\ntable $table {\n  seq i64 identity\n  label varchar(16)\n  primary "
+                . "key (seq)\n}\n";
             Generator::generate(
                 RuntimeModel::build(RuntimeModel::parse(['pooler_probe.dbs' => $probe])),
                 self::$work . "/pooler",
@@ -1268,7 +1271,8 @@ final class ModelTest extends TestCase
         $replica = requiredDsn("ORM_TEST_{$env}_REPLICA_DSN");
         if ($replica === false || $replica === '') {
             throw new RuntimeException(
-                "ORM_TEST_{$env}_REPLICA_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers"
+                "ORM_TEST_{$env}_REPLICA_DSN is required; database tests never skip; run the test through its make "
+                . "target, which reads the environment of make orm-test-servers"
             );
         }
         // The replica copies the primary's case database under the same name. MySQL needs that database on the replica

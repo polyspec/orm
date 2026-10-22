@@ -107,7 +107,8 @@ final class CoverageConformanceVerificationTest extends TestCase
         $dsn = getenv($variable);
         if (!is_string($dsn) || $dsn === '') {
             throw new RuntimeException(
-                "$variable is required, and database tests never skip; run make databases-create, which seeds the bench databases and writes their DSNs"
+                "$variable is required, and database tests never skip; run make databases-create, which seeds the "
+                . "bench databases and writes their DSNs"
             );
         }
         $root = dirname(__DIR__, 3);

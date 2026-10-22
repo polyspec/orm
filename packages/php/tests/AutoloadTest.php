@@ -33,7 +33,8 @@ final class AutoloadTest extends TestCase
 
     public function testAutoload(): void
     {
-        $code = 'require $argv[1]; foreach (array_slice($argv, 2) as $class) { echo $class, " ", class_exists($class) ? "found" : "missing", "\n"; }';
+        $code = 'require $argv[1]; foreach (array_slice($argv, 2) as $class) { echo $class, " ", '
+            . 'class_exists($class) ? "found" : "missing", "\n"; }';
         $process = proc_open(
             [PHP_BINARY, '-r', $code, __DIR__ . '/autoload.php', ...self::CLASSES, 'Polyspec\\Orm\\NoSuchClass'],
             [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],

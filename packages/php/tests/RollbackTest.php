@@ -99,7 +99,8 @@ final class RollbackTest extends TestCase
         [$driver, $pdo] = self::native($dsn);
         if ($driver === 'sqlite') {
             $pdo->exec(
-                "CREATE TRIGGER rollback_probe_end BEFORE INSERT ON rollback_probe WHEN NEW.label = 'end' BEGIN SELECT RAISE(ROLLBACK, 'rollback probe ended the transaction'); END"
+                "CREATE TRIGGER rollback_probe_end BEFORE INSERT ON rollback_probe WHEN NEW.label = 'end' BEGIN "
+                . "SELECT RAISE(ROLLBACK, 'rollback probe ended the transaction'); END"
             );
         }
         return $db;
@@ -125,7 +126,8 @@ final class RollbackTest extends TestCase
         $server = requiredDsn($env);
         if ($server === false || $server === '') {
             throw new RuntimeException(
-                "$env is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers"
+                "$env is required; database tests never skip; run the test through its make target, which reads the "
+                . "environment of make orm-test-servers"
             );
         }
         // The case database name is the path of the case DSN. The server connection opens that database too.
@@ -133,13 +135,17 @@ final class RollbackTest extends TestCase
         [, $pdo] = self::native(case_dsn_with_database($server, $database));
         if ($driver === 'postgres') {
             $pid = $pdo->query(
-                "SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = 'rollback_probe' AND l.pid <> pg_backend_pid() LIMIT 1"
+                "SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid "
+                . "FROM pg_database WHERE datname = current_database()) AND c.relname = 'rollback_probe' AND l.pid "
+                . "<> pg_backend_pid() LIMIT 1"
             )->fetchColumn();
             self::check($pid !== false, 'the transaction session holds a lock on rollback_probe');
             $pdo->prepare('SELECT pg_terminate_backend(?, 5000)')->execute([(int) $pid]);
         } else {
             $id = $pdo->query(
-                "SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = 'rollback_probe' LIMIT 1"
+                "SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON "
+                . "t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = 'rollback_probe' "
+                . "LIMIT 1"
             )->fetchColumn();
             self::check($id !== false, 'the transaction session holds a lock on rollback_probe');
             $pdo->exec('KILL ' . (int) $id);
@@ -303,7 +309,8 @@ final class RollbackTest extends TestCase
         $server = requiredDsn($env);
         if ($server === false || $server === '') {
             throw new RuntimeException(
-                "$env is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers"
+                "$env is required; database tests never skip; run the test through its make target, which reads the "
+                . "environment of make orm-test-servers"
             );
         }
         $direct = case_dsn_with_database($server, ltrim((string) parse_url($dsn, PHP_URL_PATH), '/'));

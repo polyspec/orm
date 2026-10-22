@@ -39,7 +39,8 @@ final class AddTablesAndColumnsTest extends TestCase
     private const DIFFERS = ['required', 'removed', 'changed', 'nullable', 'default', 'unique', 'reorder'];
     // index.dbs adds the column and index for version 1. The index comes after the column.
     private const ADDED_INDEX = ['addcol_item.note', 'addcol_item.ix_addcol_item_label', 'addcol_item_history.note'];
-    private const MISSING_UNIQUE = 'add_unique addcol_item.uq_addcol_item_label: a missing unique key can fail on the existing rows; add it with a plan';
+    private const MISSING_UNIQUE = 'add_unique addcol_item.uq_addcol_item_label: a missing unique key can fail on '
+        . 'the existing rows; add it with a plan';
 
     private static function check(bool $ok, string $message): void
     {
@@ -92,7 +93,8 @@ final class AddTablesAndColumnsTest extends TestCase
         $pdo->exec("INSERT INTO addcol_log_entry (message) VALUES ('kept')");
         $pdo->exec("INSERT INTO audit (actor) VALUES ('setup')");
         $pdo->exec(
-            "INSERT INTO addcol_item (ref, label, created_at, audit_seq) VALUES ('item-1', 'first', '2026-01-01 00:00:00.000000', 1)"
+            "INSERT INTO addcol_item (ref, label, created_at, audit_seq) VALUES ('item-1', 'first', '2026-01-01 "
+            . "00:00:00.000000', 1)"
         );
         $pdo->exec("INSERT INTO addcol_tag (item_id, name) VALUES (1, 'red')");
         $pdo->exec("INSERT INTO addcol_tag (item_id, parent_id, name) VALUES (1, 1, 'child')");
@@ -108,7 +110,8 @@ final class AddTablesAndColumnsTest extends TestCase
             // The rows are unchanged, and the new columns are NULL or default.
             $items = self::rowCount(
                 $db,
-                "SELECT COUNT(*) FROM addcol_item WHERE ref = 'item-1' AND label = 'first' AND note IS NULL AND priority = 3 AND archived = false AND status = 'new'"
+                "SELECT COUNT(*) FROM addcol_item WHERE ref = 'item-1' AND label = 'first' AND note IS NULL AND "
+                . "priority = 3 AND archived = false AND status = 'new'"
             );
             self::check($items === 1, "items with their values and the new defaults $items");
             self::check(
@@ -132,7 +135,8 @@ final class AddTablesAndColumnsTest extends TestCase
             $db->pdo()->exec("UPDATE addcol_item SET note = 'later', priority = 4, audit_seq = 2 WHERE id = 1");
             $history = self::rowCount(
                 $db,
-                "SELECT COUNT(*) FROM addcol_item_history WHERE history_action = 'update' AND previous_audit_seq = 1 AND audit_seq = 2 AND note = 'later' AND priority = 4 AND status = 'new'"
+                "SELECT COUNT(*) FROM addcol_item_history WHERE history_action = 'update' AND previous_audit_seq = 1 "
+                . "AND audit_seq = 2 AND note = 'later' AND priority = 4 AND status = 'new'"
             );
             self::check($history === 1, "history rows of the update with the new columns $history");
             // The new table was created with its index, foreign key, check, and audit trigger.
@@ -140,7 +144,8 @@ final class AddTablesAndColumnsTest extends TestCase
             $db->pdo()->exec("INSERT INTO addcol_extra (item_id, label, audit_seq) VALUES (1, 'extra', 3)");
             $inserted = self::rowCount(
                 $db,
-                "SELECT COUNT(*) FROM addcol_extra_history WHERE history_action = 'insert' AND previous_audit_seq IS NULL AND audit_seq = 3 AND item_id = 1 AND label = 'extra'"
+                "SELECT COUNT(*) FROM addcol_extra_history WHERE history_action = 'insert' AND previous_audit_seq IS "
+                . "NULL AND audit_seq = 3 AND item_id = 1 AND label = 'extra'"
             );
             self::check($inserted === 1, "history rows of the insert into the created table $inserted");
             foreach (

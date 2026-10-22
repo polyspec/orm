@@ -7,7 +7,6 @@
 // packages/php/tests/UnselectedColumnDbTest.php
 declare(strict_types=1);
 
-
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Code;

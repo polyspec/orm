@@ -15,7 +15,8 @@ require __DIR__ . '/php-interface.php';
 if ($argc !== 7) {
     fwrite(
         STDERR,
-        "usage: php packages/php/testing/dbspec/compare/php.php <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>\n"
+        "usage: php packages/php/testing/dbspec/compare/php.php <cases.json> <stress document> <ddl.json> "
+        . "<plans.json> <mermaid.json> <syntax.json>\n"
     );
     exit(2);
 }

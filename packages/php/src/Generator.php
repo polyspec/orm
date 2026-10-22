@@ -112,7 +112,8 @@ final class Generator
         // The declarations of the set are in schema_declarations.php, and bootstrap.php only requires it and registers
         // the classes: a file that declares symbols has no side effect (PSR-1).
         $decl = $header
-            . "use Polyspec\\Orm\\Config;\nuse Polyspec\\Orm\\Db;\nuse Polyspec\\Orm\\Orm;\nuse Polyspec\\Orm\\Schema;\n\n"
+            . "use Polyspec\\Orm\\Config;\nuse Polyspec\\Orm\\Db;\nuse Polyspec\\Orm\\Orm;\nuse "
+            . "Polyspec\\Orm\\Schema;\n\n"
             // A line comment: a docblock here would read as the file docblock of PSR-12.
             . "// The manifestHash of the document set the models were generated from.\n"
             . "const MANIFEST_HASH = " . self::str($m->manifestHash) . ";\n\n"

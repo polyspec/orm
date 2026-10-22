@@ -360,7 +360,8 @@ function dbspec_behaviour_cases(): array
     // parts.
     $cases['documents/edited'] = static function (): array {
         $document = Dbspec::parse(
-            "dbspec 1 shop\n\ntable users {\n  id i64 identity\n  name varchar(64)\n  primary key (id)\n  unique users_name (name)\n}\n",
+            "dbspec 1 shop\n\ntable users {\n  id i64 identity\n  name varchar(64)\n  primary key (id)\n  unique "
+            . "users_name (name)\n}\n",
             []
         )->document;
         $ns = 'Polyspec\\Orm\\Dbspec';
@@ -548,7 +549,8 @@ function dbspec_behaviour_cases(): array
     $cases['names/column/non-string-element'] = static fn(): array => behaviour_outcome(
         static fn() => Polyspec\Orm\Dbspec\Names::column('orders', $target(), ['id', 5])
     );
-    $named = "dbspec 1 d\ntable orders {\n  id i64 identity\n  note text\n  code varchar(40) null\n  amount decimal(10,2)\n  primary key (id)\n  settings {\n    immutable\n  }\n}\ntable "
+    $named = "dbspec 1 d\ntable orders {\n  id i64 identity\n  note text\n  code varchar(40) null\n  amount "
+        . "decimal(10,2)\n  primary key (id)\n  settings {\n    immutable\n  }\n}\ntable "
         . str_repeat(
             'a',
             62
