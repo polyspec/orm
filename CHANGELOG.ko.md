@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: cdeb73826f2c75e683cf4a3322371fcbfd400d59ee466bb0a6d0c97fc893beee -->
+<!-- source-sha256: 62f510c53f8dea00c693691d769420cfbf43240bcf2fef6cdb98c38adb70ffae -->
 # 변경 이력
 
 ## Unreleased
+- PHP 확장은 PHP 클라이언트의 클래스 이름을 쓴다: `Native` 네임스페이스 대신 `Polyspec\Orm\Dbspec\*`와 `Polyspec\Orm\Code`를 등록하므로, 사용자 코드는 확장 유무와 관계없이 같고, 확장이 있는 프로세스는 그 클래스들의 PHP 클라이언트 파일을 읽지 않는다 (T182-0). red: 선언 테스트가 `Polyspec\Orm\Native\Code is outside Polyspec\Orm\Dbspec\ and Polyspec\Orm\Code`로 실패했다.
 - 빌드 출력에 대한 저장소 검사는 따옴표 안의 텍스트를 텍스트로 읽는다. "WORKTREE=<path>" 같은 사용법 메시지를 stderr로 출력하는 recipe를 더는 파일로의 리다이렉트로 보고하지 않고, `sh -c "…"`의 명령 문자열은 계속 검사한다(KSTD-5-26). Red: 검사가 Makefile:883(`echo "usage: … WORKTREE=<path>" >&2`)을 제자리 리다이렉트로 보고했다. Green: Makefile에서 검사가 통과하고, `sh -c` 안의 따옴표 친 리다이렉트는 여전히 찾는다.
 - docs/spec/dialects.md의 Markdown IR executor 표가 고정된 버전의 flowmark 능력 표를 반영하고, `make markdown-table-check`가 통과한다(KSTD-5-18). red: 제목 아래 표가 없었다.
 - TypeScript build 캐시 `packages/ts/tsconfig.build.tsbuildinfo`와 모든 `*.tsbuildinfo`는 Git이 무시하고 생성 경로로 선언하므로, build가 checkout에 추적되지 않는 파일을 남기지 않습니다. red: `git check-ignore`가 이 파일의 규칙을 찾지 못했고, `make build` 뒤 `git status`가 이 파일을 보고했습니다 (KSTD-15).

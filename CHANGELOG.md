@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The PHP extension takes the PHP client's class names: it registers `Polyspec\Orm\Dbspec\*` and `Polyspec\Orm\Code` in place of the `Native` namespaces, so user code is the same with or without the extension, and a process with the extension loads none of the client's PHP files for those classes (T182-0). Red: the declaration tests failed with `Polyspec\Orm\Native\Code is outside Polyspec\Orm\Dbspec\ and Polyspec\Orm\Code`.
 - The repo check of build outputs reads quoted text as text: a recipe that prints a usage message such as "WORKTREE=<path>" to stderr is no longer reported as a redirect into a file, while the command string of `sh -c "…"` is still checked (KSTD-5-26). Red: the check reported Makefile:883 (`echo "usage: … WORKTREE=<path>" >&2`) as a redirect in place. Green: the check holds on the Makefile, and a quoted redirect in `sh -c` is still found.
 - The Markdown IR executor table of docs/spec/dialects.md mirrors the flowmark capability table at the pinned version, and `make markdown-table-check` passes (KSTD-5-18). Red: the table was missing under the heading.
 - The TypeScript build cache `packages/ts/tsconfig.build.tsbuildinfo` and every `*.tsbuildinfo` is ignored by Git and declared as a generated path, so a build leaves no untracked file in the checkout. Red: `git check-ignore` found no rule for it, and `git status` listed it after `make build` (KSTD-15).
