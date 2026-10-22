@@ -69,13 +69,13 @@ ONLINE := env -u CARGO_NET_OFFLINE -u GOPROXY -u npm_config_offline -u COMPOSER_
 include scripts/kit/kit-bootstrap.mk
 # The tools of mise.toml that a recipe starts by its absolute path (kit K171): make 3.81, the make of macOS, looks a
 # recipe line without shell syntax up on the PATH that make started with, not on the PATH that kit.mk exports.
-GO := $(CURDIR)/var/tools/mise/shims/go
-COMPOSER := $(CURDIR)/var/tools/mise/shims/composer
-PYTHON3 := $(CURDIR)/var/tools/mise/shims/python3
-RUFF := $(CURDIR)/var/tools/mise/shims/ruff
+GO := $(KIT_TOOLS)/mise/shims/go
+COMPOSER := $(KIT_TOOLS)/mise/shims/composer
+PYTHON3 := $(KIT_TOOLS)/mise/shims/python3
+RUFF := $(KIT_TOOLS)/mise/shims/ruff
 # The PHP lint wrappers of kit (scripts/kit/install-php-lint.mts) are not tools of mise.toml, so their recipes start them by these paths too.
-PHPCS := $(CURDIR)/var/tools/bin/phpcs
-PHPSTAN := $(CURDIR)/var/tools/bin/phpstan
+PHPCS := $(KIT_TOOLS)/bin/phpcs
+PHPSTAN := $(KIT_TOOLS)/bin/phpstan
 
 # commit-msg-check is the commit-msg hook: it checks the message file MESSAGE that git is about to commit.
 .PHONY: commit-msg-check

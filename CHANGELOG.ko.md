@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2d98c3bcfe5848767f06d33474626449692d0e395dad501a766fc87c09925c59 -->
+<!-- source-sha256: a4bfce2a5dfc4434adac7fa80ed62b3b6801a05ad1654f5905d9958fe78e5bb4 -->
 # 변경 이력
 
 ## Unreleased
 
+- Makefile의 도구 경로가 KIT_TOOLS를 써서, 연결된 worktree가 main checkout이 설치한 도구로 빌드된다(KSTD-5-38). red: 새 worktree의 rebuild가 없는 var/tools/mise/shims/go에서 멈췄다.
 - lint-php가 통과한다. PHP는 PSR-12 배치, camelCase test method(config/parity.json의 PHP binding 218개와 Makefile filter 포함), 파일당 class 하나, 모든 test class의 namespace, PHPUnit bootstrap이 require하는 test helper, 빈 catch 없음, 이유 없는 silenced call 없음을 따르고, test는 생성한 model을 autoloader 없이 불러온다(KSTD-5-9). red: root, packages/php, packages/php-ext의 phpcs와 phpstan이 실패했다.
 - 손으로 쓴 PHP는 120자 줄 길이를 지킨다. 긴 호출, chain, 목록, 문자열, 주석을 token 그대로 PSR-12 방식으로 감싸고, Unicode word table 생성기는 설명을 두 줄로 쓴다(KSTD-5-9-1). red: phpcs가 긴 줄 1450개를 보고했다.
 - config/rebuild.json은 scripts/typescript/models.mts와 scripts/php/vendor-autoload-check.mjs를 분류하므로 make rebuild-check가 통과한다(KSTD-5-5-1-1). red: rebuild-check가 두 도구를 분류 없이 보고했다.
