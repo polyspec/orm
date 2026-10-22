@@ -7,7 +7,6 @@
 // packages/php/tests/ConformanceResultTest.php
 declare(strict_types=1);
 
-require_once dirname(__DIR__) . '/testing/conformance/result_php_helpers.php';
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
@@ -130,10 +129,24 @@ function vectorNamesOf(string $path): array
 /** @return list<string> the vector names the PHP runner declares, read from its source. */
 function declaredVectors(): array
 {
-    preg_match_all(
-        "/^vector\\('([a-z0-9_]+)',/m",
-        (string) file_get_contents(conformanceRoot() . '/packages/php/testing/conformance/runner.php'),
-        $matches
-    );
-    return $matches[1];
+    // The names of the top-level vector('<name>', ...) calls of the runner, read from its tokens, so the layout of a call
+    // (one line, or its arguments one per line) does not matter.
+    $code = (string) file_get_contents(conformanceRoot() . '/packages/php/testing/conformance/runner.php');
+    $tokens = array_values(array_filter(
+        PhpToken::tokenize($code),
+        static fn(PhpToken $token): bool => !$token->is([T_WHITESPACE, T_COMMENT, T_DOC_COMMENT])
+    ));
+    $names = [];
+    foreach ($tokens as $i => $token) {
+        $previous = $tokens[$i - 1] ?? null;
+        $statementStart = $previous === null || $previous->is([';', '{', '}', T_OPEN_TAG]);
+        if (
+            $statementStart && $token->is(T_STRING) && $token->text === 'vector'
+            && ($tokens[$i + 1] ?? null)?->text === '('
+            && ($tokens[$i + 2] ?? null)?->is(T_CONSTANT_ENCAPSED_STRING)
+        ) {
+            $names[] = substr($tokens[$i + 2]->text, 1, -1);
+        }
+    }
+    return $names;
 }

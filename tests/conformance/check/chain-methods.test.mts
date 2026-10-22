@@ -41,9 +41,11 @@ const directory = (path: string, extension: string) => () =>
   readdirSync(new URL(path, root)).filter(name => name.endsWith(extension)).sort().map(name => read(`${path}/${name}`)).join('\n');
 // A Rust `run!(` whose name stands on the next line is joined to that line, so every body starts on a `run!("name"` line.
 const rust = (path: string) => () => read(path).replace(/run!\(\n\s*"/g, 'run!("');
+// A PHP `vector(` whose name stands on the next line (a call with its arguments one per line, PSR-12) is joined the same way.
+const php = (path: string) => () => read(path).replace(/\bvector\(\n\s*'/g, "vector('");
 const runners: Runner[] = [
   { name: 'typescript', source: file('packages/ts/testing/conformance/runner_typescript.mts'), naming: camel, start: n => new RegExp(`\\brun\\('${escape(n)}'`), any: /\brun\('[a-z0-9_]+'/ },
-  { name: 'php', source: file('packages/php/testing/conformance/runner.php'), naming: camel, start: n => new RegExp(`\\bvector\\('${escape(n)}'`), any: /\bvector\('[a-z0-9_]+'/ },
+  { name: 'php', source: php('packages/php/testing/conformance/runner.php'), naming: camel, start: n => new RegExp(`\\bvector\\('${escape(n)}'`), any: /\bvector\('[a-z0-9_]+'/ },
   { name: 'go', source: directory('packages/go/internal/conformance', '.go'), naming: pascal, start: n => new RegExp(`\\brun\\("${escape(n)}"`), any: /\brun\("[a-z0-9_]+"/ },
   { name: 'rust', source: rust('packages/rust/tests/src/conformance.rs'), naming: snake, start: n => new RegExp(`\\brun!\\("${escape(n)}"`), any: /\brun!\("[a-z0-9_]+"/ },
 ];
