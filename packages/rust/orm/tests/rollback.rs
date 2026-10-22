@@ -15,6 +15,10 @@
 //! That entry point is built with feature `test-faults`, which the dev-dependency of this crate on
 //! itself enables for every test target (Cargo.toml): `cargo test -p polyspec-orm --test rollback`.
 
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 use std::time::Duration;
 
 use polyspec_orm::db::Pool;
@@ -74,13 +78,13 @@ fn connected(db: &Db) -> RollbackProbe {
 
 /// Opens the client, installs the fixture and, on SQLite, the trigger that raises ROLLBACK.
 async fn installed(driver: &str, dsn: &str) -> Db {
-    let db = Db::connect(dsn, 2, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
-    db.utils().schema().install(&ROLLBACK_SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
+    let db = Db::connect(dsn, 2, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: {e}"));
+    db.utils().schema().install(&ROLLBACK_SCHEMA).await.or_panic(|e| format!("{driver}: install: {e}"));
     if let Pool::Sqlite(p) = db.pool() {
         sqlx::raw_sql("CREATE TRIGGER rollback_probe_end BEFORE INSERT ON rollback_probe WHEN NEW.label = 'end' BEGIN SELECT RAISE(ROLLBACK, 'rollback probe ended the transaction'); END")
             .execute(p)
             .await
-            .unwrap_or_else(|e| panic!("trigger: {e}"));
+            .or_panic(|e| format!("trigger: {e}"));
     }
     db
 }
@@ -98,7 +102,7 @@ async fn end_session(driver: &str, session: &str) {
     if driver == "sqlite" {
         return;
     }
-    let admin = Db::connect(session, 1, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: session connection: {e}"));
+    let admin = Db::connect(session, 1, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: session connection: {e}"));
     match admin.pool() {
         Pool::Postgres(pool) => {
             let pid: i32 = sqlx::query_scalar(
@@ -224,7 +228,7 @@ fn check_fault(driver: &str, error: &polyspec_orm::Error, subject: &str) {
 async fn rollback_fault(driver: &str, dsn: &str) {
     let db = installed(driver, dsn).await;
     polyspec_orm::testing::fail_next_rollback(&db);
-    db.transaction(async || create("committed").await).retry(0).await.unwrap_or_else(|e| panic!("{driver}: a committed transaction with an armed fault: {e}"));
+    db.transaction(async || create("committed").await).retry(0).await.or_panic(|e| format!("{driver}: a committed transaction with an armed fault: {e}"));
     let failing = async || -> polyspec_orm::Result<()> {
         create("rolled back").await?;
         Err(fault_callback())
@@ -283,7 +287,7 @@ async fn bounded(driver: &str, case: &str) {
             other => unreachable!("unknown case {other}"),
         }
     };
-    tokio::time::timeout(CASE_DEADLINE, run).await.unwrap_or_else(|_| panic!("{driver}: {case}: timeout after {CASE_DEADLINE:?}"));
+    tokio::time::timeout(CASE_DEADLINE, run).await.or_panic(|_| format!("{driver}: {case}: timeout after {CASE_DEADLINE:?}"));
     database.drop().await;
 }
 

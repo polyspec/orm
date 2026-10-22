@@ -11,6 +11,10 @@
 //! Each case runs in its own case database (polyspec-orm-case-database) and fails if ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN
 //! is missing.
 
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -22,7 +26,7 @@ use polyspec_orm_case_database::CaseDatabase;
 /// The text of contracts/fixtures/<name>.dbs.
 fn fixture(name: &str) -> String {
     let path = format!("{}/../../../contracts/fixtures/{name}.dbs", polyspec_orm_testcase::manifest_dir().display());
-    dbspec::read_file(std::path::Path::new(&path)).unwrap_or_else(|e| panic!("{path}: {e:?}"))
+    dbspec::read_file(std::path::Path::new(&path)).or_panic(|e| format!("{path}: {e:?}"))
 }
 
 /// The schema values of the owned document and the external document. Like generated code, they hold the manifest text, external text, and
@@ -34,13 +38,13 @@ fn set_schema(owned: &[&str], external: &[&str]) -> &'static Schema {
         .iter()
         .map(|(text, is_external)| {
             let set: BTreeMap<String, String> = texts.iter().filter(|(other, _)| other != text).map(|(other, _)| (name(other), other.clone())).collect();
-            let mut document = dbspec::parse(text, &set).map(|parsed| parsed.document).unwrap_or_else(|e| panic!("{e:?}"));
+            let mut document = dbspec::parse(text, &set).map(|parsed| parsed.document).or_panic(|e| format!("{e:?}"));
             document.external = *is_external;
             document
         })
         .collect();
     let refs: Vec<&Document> = documents.iter().collect();
-    let manifest = dbspec::manifest(&refs).unwrap_or_else(|e| panic!("{e:?}"));
+    let manifest = dbspec::manifest(&refs).or_panic(|e| format!("{e:?}"));
     let leak = |s: String| -> &'static str { Box::leak(s.into_boxed_str()) };
     Box::leak(Box::new(Schema::with_external(leak(manifest.manifest_text), leak(manifest.external_text), leak(manifest.manifest_hash))))
 }
@@ -103,7 +107,7 @@ async fn scalar(db: &Db, query: &str) -> i64 {
         Pool::Sqlite(p) => sqlx::query_scalar(sqlx::AssertSqlSafe(query.to_owned())).fetch_one(p).await,
         Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
     }
-    .unwrap_or_else(|e| panic!("{query}: {e}"))
+    .or_panic(|e| format!("{query}: {e}"))
 }
 
 async fn text(db: &Db, query: &str) -> String {
@@ -113,7 +117,7 @@ async fn text(db: &Db, query: &str) -> String {
         Pool::Sqlite(p) => sqlx::query_scalar(sqlx::AssertSqlSafe(query.to_owned())).fetch_one(p).await,
         Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
     }
-    .unwrap_or_else(|e| panic!("{query}: {e}"))
+    .or_panic(|e| format!("{query}: {e}"))
 }
 
 /// Checks that it is CONFIG and that the message contains `message`.
@@ -135,9 +139,9 @@ async fn external_case(driver: &str, dsn: &str) {
     let config = || Config { audit_source: Some(source.clone()), ..Default::default() };
     let missing =
         "the tables that the set uses from external documents differ from the database: table ext_account does not exist; table ext_audit does not exist";
-    Db::connect_schema(dsn, member, 2, config()).await.unwrap_or_else(|e| panic!("{driver}: connect before core: {e}")).close().await;
+    Db::connect_schema(dsn, member, 2, config()).await.or_panic(|e| format!("{driver}: connect before core: {e}")).close().await;
 
-    let db = Db::connect(dsn, 2, config()).await.unwrap_or_else(|e| panic!("{driver}: connect: {e}"));
+    let db = Db::connect(dsn, 2, config()).await.or_panic(|e| format!("{driver}: connect: {e}"));
     let utils = db.utils();
     let schema = utils.schema();
     let exists = async |table: &str| exec(&db, &format!("SELECT COUNT(*) FROM {table}")).await.is_ok();
@@ -145,21 +149,21 @@ async fn external_case(driver: &str, dsn: &str) {
     expect_config(&format!("{driver}: add_tables_and_columns before core"), schema.add_tables_and_columns(member).await, missing);
     assert!(!exists("ext_post").await, "{driver}: ext_post exists after the refused install");
 
-    schema.install(core).await.unwrap_or_else(|e| panic!("{driver}: install core: {e}"));
-    exec(&db, "INSERT INTO ext_account (name) VALUES ('kim')").await.unwrap_or_else(|e| panic!("{driver}: insert ext_account: {e}"));
+    schema.install(core).await.or_panic(|e| format!("{driver}: install core: {e}"));
+    exec(&db, "INSERT INTO ext_account (name) VALUES ('kim')").await.or_panic(|e| format!("{driver}: insert ext_account: {e}"));
     for i in 1..=2 {
-        schema.install(member).await.unwrap_or_else(|e| panic!("{driver}: install {i} of member: {e}"));
+        schema.install(member).await.or_panic(|e| format!("{driver}: install {i} of member: {e}"));
     }
     for table in ["ext_post", "ext_post_history"] {
         assert!(exists(table).await, "{driver}: {table} does not exist after the member install");
     }
-    let connected = Db::connect_schema(dsn, member, 2, config()).await.unwrap_or_else(|e| panic!("{driver}: connect with core installed: {e}"));
+    let connected = Db::connect_schema(dsn, member, 2, config()).await.or_panic(|e| format!("{driver}: connect with core installed: {e}"));
     connected.close().await;
 
     // board is another module set that uses the same core. Even if a set is registered only as a schema value, the audit record table
     // is found in the core that owns it.
     let board = set_schema(&["external/board"], &["external/core"]);
-    schema.install(board).await.unwrap_or_else(|e| panic!("{driver}: install of board: {e}"));
+    schema.install(board).await.or_panic(|e| format!("{driver}: install of board: {e}"));
     db.transaction(async || {
         let mut post = Post::from_core(Core::new(&POST));
         post.core_mut().set("account_seq", Param::I64(1));
@@ -168,20 +172,20 @@ async fn external_case(driver: &str, dsn: &str) {
     })
     .audit(Vec::<(String, Param)>::new())
     .await
-    .unwrap_or_else(|e| panic!("{driver}: audited create in the member set: {e}"));
+    .or_panic(|e| format!("{driver}: audited create in the member set: {e}"));
     let audit = scalar(&db, "SELECT seq FROM ext_audit").await;
     let actor = text(&db, "SELECT actor FROM ext_audit").await;
     let recorded = scalar(&db, "SELECT audit_seq FROM ext_post_history").await;
     assert_eq!((actor.as_str(), recorded), ("writer", audit), "{driver}: the audit record of writer in the history");
 
-    let added = schema.add_tables_and_columns(member).await.unwrap_or_else(|e| panic!("{driver}: add_tables_and_columns of member: {e}"));
+    let added = schema.add_tables_and_columns(member).await.or_panic(|e| format!("{driver}: add_tables_and_columns of member: {e}"));
     assert!(added.is_empty(), "{driver}: add_tables_and_columns of the installed member added {added:?}");
-    let added = schema.add_tables_and_columns(member_v2).await.unwrap_or_else(|e| panic!("{driver}: add_tables_and_columns of member_v2: {e}"));
+    let added = schema.add_tables_and_columns(member_v2).await.or_panic(|e| format!("{driver}: add_tables_and_columns of member_v2: {e}"));
     assert_eq!(added, ["ext_post.summary", "ext_post_history.summary"], "{driver}: add_tables_and_columns of member_v2");
     assert_eq!(scalar(&db, "SELECT COUNT(*) FROM ext_account").await, 1, "{driver}: ext_account rows after the member changes");
 
     let differs = "the tables that the set uses from external documents differ from the database: column ext_account.nick does not exist";
-    Db::connect_schema(dsn, drifted, 2, config()).await.unwrap_or_else(|e| panic!("{driver}: connect with a drifted external table: {e}")).close().await;
+    Db::connect_schema(dsn, drifted, 2, config()).await.or_panic(|e| format!("{driver}: connect with a drifted external table: {e}")).close().await;
     expect_config(&format!("{driver}: install with a drifted external table"), schema.install(drifted).await, differs);
     expect_config(&format!("{driver}: add_tables_and_columns with a drifted external table"), schema.add_tables_and_columns(drifted).await, differs);
     db.close().await;

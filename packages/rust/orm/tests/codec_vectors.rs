@@ -5,7 +5,11 @@
 //! When ORM_CODEC_OUT names a directory (make codec-check), the trial `vectors_output`, which runs after the vector
 //! trials, writes Rust's encodings to rust.json there for the PHP cross-check, through a temporary file and a rename.
 
-use std::sync::{Mutex, PoisonError};
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
+use std::sync::{Mutex};
 
 use base64::Engine as _;
 use polyspec_orm::codec::{decode, encode, encode_ordered, hex_decode, host_decode, host_encode};
@@ -34,8 +38,11 @@ fn root() -> std::path::PathBuf {
 }
 
 /// The serde_json form of an ordered-json value, from its compact text.
-fn ordered_json_value(value: &ordered_json::Value) -> Option<Value> {
-    serde_json::from_str(&value.compact()).ok()
+fn ordered_json_value(value: &ordered_json::Value) -> Value {
+    match serde_json::from_str(&value.compact()) {
+        Ok(json) => json,
+        Err(error) => panic!("the ordered-json value has no serde_json form: {error}"),
+    }
 }
 
 /// JSON cannot distinguish 2.0 from 2: compare with integral floats folded to integers.
@@ -58,7 +65,7 @@ fn json_of(val: &Val) -> Option<Value> {
         Val::Null => Some(Value::Null),
         Val::Str(s) => Some(Value::String(s.clone())),
         Val::Json(j) => Some(j.clone()),
-        Val::Ordered(o) => ordered_json_value(o),
+        Val::Ordered(o) => Some(ordered_json_value(o)),
         _ => None,
     }
 }
@@ -105,7 +112,7 @@ fn vector_case(v: &Vector) {
     }
     let got = match &decoded {
         Ok(Val::Json(j)) => j.clone(),
-        Ok(Val::Ordered(o)) => ordered_json_value(o).expect("the ordered-json value has a serde_json form"),
+        Ok(Val::Ordered(o)) => ordered_json_value(o),
         Ok(Val::Str(s)) => Value::String(s.clone()),
         Ok(Val::Null) => Value::Null,
         other => panic!("{}: decode {other:?}", v.name),
@@ -125,9 +132,11 @@ fn vector_case(v: &Vector) {
         Param::Bytes(b) => Some(base64::engine::general_purpose::STANDARD.encode(b)),
         other => panic!("encode gave {other:?}"),
     };
-    OUTPUT
-        .lock()
-        .unwrap_or_else(PoisonError::into_inner)
+    let mut output = match OUTPUT.lock() {
+        Ok(output) => output,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    output
         .get_or_insert_with(Map::new)
         .insert(v.name.clone(), enc_b64.clone().map(Value::String).unwrap_or(Value::Null));
     if v.deterministic && enc_b64 != v.encoded_b64 {
@@ -142,7 +151,7 @@ fn vector_case(v: &Vector) {
     match decode(&v.styles, &back_raw) {
         Ok(Val::Json(j)) if norm(&j) == norm(&v.value) => {}
         Ok(Val::Str(s)) if v.value.as_str() == Some(s.as_str()) => {}
-        Ok(Val::Ordered(o)) if ordered_json_value(&o).is_some_and(|j| norm(&j) == norm(&v.value)) => {}
+        Ok(Val::Ordered(o)) if norm(&ordered_json_value(&o)) == norm(&v.value) => {}
         Ok(Val::Null) if v.value.is_null() => {}
         other => fails.push(format!("round trip {other:?}")),
     }
@@ -152,7 +161,11 @@ fn vector_case(v: &Vector) {
 /// Writes the encodings of the vector trials to ORM_CODEC_OUT/rust.json when the variable names a directory.
 fn vectors_output() {
     let Some(dir) = std::env::var_os("ORM_CODEC_OUT") else { return };
-    let out = OUTPUT.lock().unwrap_or_else(PoisonError::into_inner).take().unwrap_or_default();
+    let mut guard = match OUTPUT.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let out = guard.take().unwrap_or_default();
     let dir = std::path::PathBuf::from(dir);
     std::fs::create_dir_all(&dir).expect("ORM_CODEC_OUT directory");
     let temporary = dir.join(format!("rust.json.tmp-{}", std::process::id()));
@@ -236,11 +249,11 @@ fn styled_case(case: &Value) {
         assert_eq!(decoded.unwrap_err().code(), CODEC_DECODE, "{id}");
         return;
     }
-    let decoded = decoded.unwrap_or_else(|error| panic!("{id}: {error}"));
+    let decoded = decoded.or_panic(|error| format!("{id}: {error}"));
     let expected = &case["output"];
     let output = match &decoded {
         Val::Null => serde_json::json!({"kind": "sql-null"}),
-        Val::Ordered(value) => serde_json::json!({"kind": "value", "value": ordered_json_value(value).unwrap()}),
+        Val::Ordered(value) => serde_json::json!({"kind": "value", "value": ordered_json_value(value)}),
         Val::Json(value) => serde_json::json!({"kind": "value", "value": value}),
         other => panic!("{id}: unexpected decoded value {other:?}"),
     };

@@ -1,6 +1,10 @@
 //! The IR request of a shared fixture case, read from its JSON: the planner coverage (coverage_planner.rs, a unit test
 //! module of the engine) and the shared validation vectors (tests/ir_validate.rs) build their requests with it.
 
+#[path = "../common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 use crate::ir;
 use crate::schema::Manifest;
 use serde_json::{json, Map, Value};
@@ -13,11 +17,11 @@ pub(crate) fn repository() -> PathBuf {
 /// The manifest of the dbspec document at the repository path `at`.
 pub(crate) fn schema(at: &str) -> Manifest {
     let path = repository().join(at);
-    let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    let text = std::fs::read_to_string(&path).or_panic(|e| format!("{}: {e}", path.display()));
     let document =
-        crate::dbspec::parse(&text, &Default::default()).map(|parsed| parsed.document).unwrap_or_else(|errors| panic!("{}: {errors:?}", path.display()));
-    let set = crate::dbspec::manifest(&[&document]).unwrap_or_else(|errors| panic!("{}: {errors:?}", path.display()));
-    Manifest::load(&set.manifest_text, &set.manifest_hash).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
+        crate::dbspec::parse(&text, &Default::default()).map(|parsed| parsed.document).or_panic(|errors| format!("{}: {errors:?}", path.display()));
+    let set = crate::dbspec::manifest(&[&document]).or_panic(|errors| format!("{}: {errors:?}", path.display()));
+    Manifest::load(&set.manifest_text, &set.manifest_hash).or_panic(|e| format!("{}: {e}", path.display()))
 }
 
 /// Finds one `id` case in the fixture and returns its schema document path, input, and expected.
@@ -98,11 +102,19 @@ fn normalized(value: &Value) -> Value {
 }
 
 fn index(value: &Value, at: &str) -> usize {
-    value.as_u64().and_then(|n| usize::try_from(n).ok()).unwrap_or_else(|| panic!("{REJECTED}{at}: expected a parameter index, got {value}"))
+    match value.as_u64().map(usize::try_from) {
+        Some(Ok(index)) => index,
+        Some(Err(error)) => panic!("{REJECTED}{at}: parameter index does not fit: {error}"),
+        None => panic!("{REJECTED}{at}: expected a parameter index, got {value}"),
+    }
 }
 
 fn count(value: Option<&Value>, at: &str) -> u32 {
-    value.and_then(Value::as_u64).and_then(|n| u32::try_from(n).ok()).unwrap_or_else(|| panic!("{REJECTED}{at}: expected a count"))
+    match value.and_then(Value::as_u64).map(u32::try_from) {
+        Some(Ok(count)) => count,
+        Some(Err(error)) => panic!("{REJECTED}{at}: count does not fit: {error}"),
+        None => panic!("{REJECTED}{at}: expected a count"),
+    }
 }
 
 /// Reads one column function or value function as IR.
