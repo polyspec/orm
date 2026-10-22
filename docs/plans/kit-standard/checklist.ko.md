@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 88cc165a3439f337a262df28bda884df35038d43f4da177b9b9df7a8274da016 -->
+<!-- source-sha256: 6dc6a6d1e29c60f80430a283ebe66f66811e82851c477fdec4b6821a70f91ee6 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -151,7 +151,7 @@
 | KSTD-5-48-1 | contracts/check-inputs.json이 docs-site-check와 docs-site-parse-check의 scope를 선언하여, main에서 make feature-unit-check/owners가 통과한다 | contracts/check-inputs.json, with the scopes of docs-site-check and docs-site-parse-check | `make feature-unit-check/owners` | [o] |
 | KSTD-5-49 | Rust planner가 source가 없을 때 잘못된 column에서 blind index를 계산함 | packages/rust/orm/src/engine/planner.rs and its unit test | `make rust-check` | [ ] |
 | KSTD-5-50 | TypeScript split query가 key가 NULL인 row를 버림 | packages/ts/src/database.ts, the same split merge in Go, Rust, PHP and Python | `make ts-check` | [ ] |
-| KSTD-5-52 | PHP 모델의 관계와 alias getter가 mixed가 아닌 대상 모델 타입을 반환한다 | `packages/php/src/ChainDeclare.php` | `make php-model-check` | [ ] |
+| KSTD-5-52 | PHP 모델 getter가 대상 타입을 반환한다: 관계와 alias는 mixed가 아닌 대상 타입의 선언된 getter를 얻고, alias 없는 관계도 선언된 getter를 얻는다 | `packages/php/src/ChainDeclare.php` | `make php-model-check` | [ ] |
 | KSTD-6 | link rebuild는 repository layout을 읽고 자기 paths를 두지 않는다 (kit K286). Cause: kit은 link된 checkout을 layout으로 rebuild하며 link 선언의 paths key는 없어진다 | kit.json, the link declaration | `make rebuild-check` | [o] |
 | KSTD-7 | main에서 feature-unit-check가 통과한다. Cause: docs/features.md가 그것이 그리는 coverage와 맞지 않고, scripts/features/coverage.test.mts의 8개 case가 "no package implements the client language php-extension"으로 실패한다 | docs/features.md, scripts/features | `make feature-unit-check` | [o] |
 | KSTD-7-1 | PHP extension이 the features schema_install, model_generation and interface_contract를 구현하고 PHP library의 test가 extension으로 이를 돌리며, 그 partial 상태를 지운다 (KSTD-7, T182-0 후속). Cause: S6와 S10은 partial feature를 받지 않고, kit K315는 contracts/features.json의 partial과 unsupported를 실패시킨다 | packages/php-ext, contracts/features.json | `make feature-unit-check` | [ ] |
