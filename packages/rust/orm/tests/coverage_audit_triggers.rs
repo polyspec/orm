@@ -53,7 +53,7 @@ fn feature_database() -> (String, String) {
 /// and continues that failure. It fails if item, item_history, or audit already exist.
 async fn with_audit(case: impl AsyncFnOnce(&str, &str)) {
     let (driver, dsn) = feature_database();
-    let db = Db::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: connect: {e}"));
+    let db = Db::connect(&dsn, 2, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: connect: {e}"));
     assert_eq!(db.driver(), driver, "ORM_FEATURE_DSN selects another database than ORM_FEATURE_DATABASE");
     for table in ["item", "item_history", "audit"] {
         assert!(!table_exists(&db, table).await, "{driver}: table {table} exists before the case");
@@ -155,11 +155,11 @@ fn with<M: Model>(values: &[(&str, Param)]) -> M {
 async fn text_rows(db: &Db, query: &str) -> Vec<Vec<String>> {
     macro_rules! read {
         ($pool:expr) => {{
-            let rows = sqlx::raw_sql(sqlx::AssertSqlSafe(query.to_owned())).fetch_all($pool).await.unwrap_or_else(|e| panic!("{query}: {e}"));
+            let rows = sqlx::raw_sql(sqlx::AssertSqlSafe(query.to_owned())).fetch_all($pool).await.or_panic(|e| format!("{query}: {e}"));
             rows.iter()
                 .map(|r| {
                     (0..r.len())
-                        .map(|i| r.try_get::<Option<String>, _>(i).unwrap_or_else(|e| panic!("{query}: {e}")).unwrap_or_else(|| "NULL".to_owned()))
+                        .map(|i| r.try_get::<Option<String>, _>(i).or_panic(|e| format!("{query}: {e}")).unwrap_or_else(|| "NULL".to_owned()))
                         .collect()
                 })
                 .collect()
@@ -193,20 +193,20 @@ async fn drop_columns_tables(db: &Db, driver: &str) {
             Pool::Sqlite(p) => sql.execute(p).await.map(|_| ()),
             Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
         };
-        done.unwrap_or_else(|e| panic!("{statement}: {e}"));
+        done.or_panic(|e| format!("{statement}: {e}"));
     }
 }
 
 async fn audit_selected_columns() {
     let (driver, dsn) = feature_database();
-    let db = Db::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: connect: {e}"));
+    let db = Db::connect(&dsn, 2, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: connect: {e}"));
     assert_eq!(db.driver(), driver, "ORM_FEATURE_DSN selects another database than ORM_FEATURE_DATABASE");
     for table in ["card", "card_history", "tag", "tag_history", "audit"] {
         assert!(!table_exists(&db, table).await, "{driver}: table {table} exists before the case");
     }
     let text = |s: &str| Param::Str(s.to_owned());
-    let adb = Db::connect(&dsn, 2, audit_rows::audit_config("default")).await.unwrap_or_else(|e| panic!("{driver}: connect: {e}"));
-    adb.utils().schema().install(&COLUMNS_SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
+    let adb = Db::connect(&dsn, 2, audit_rows::audit_config("default")).await.or_panic(|e| format!("{driver}: connect: {e}"));
+    adb.utils().schema().install(&COLUMNS_SCHEMA).await.or_panic(|e| format!("{driver}: install: {e}"));
     let (seq, id) = adb
         .transaction(async || {
             let card = polyspec_orm::model::create(&mut with::<Card>(&[("title", text("first")), ("secret", text("s1"))])).await?;
@@ -219,7 +219,7 @@ async fn audit_selected_columns() {
         .audit([("actor", "first")])
         .retry(0)
         .await
-        .unwrap_or_else(|e| panic!("{driver}: audit first: {e}"));
+        .or_panic(|e| format!("{driver}: audit first: {e}"));
     adb.transaction(async || {
         polyspec_orm::model::delete(&with::<Card>(&[("seq", Param::I64(seq))]), false).await?;
         polyspec_orm::model::update(&mut with::<Tag>(&[("id", Param::I64(id)), ("color", text("blue"))]), false).await
@@ -227,7 +227,7 @@ async fn audit_selected_columns() {
     .audit([("actor", "second")])
     .retry(0)
     .await
-    .unwrap_or_else(|e| panic!("{driver}: audit second: {e}"));
+    .or_panic(|e| format!("{driver}: audit second: {e}"));
 
     let (change, text_type) = if driver == "mysql" { ("`change`", "CHAR") } else { ("\"change\"", "TEXT") };
     let cast = |column: &str| format!("CAST({column} AS {text_type})");
@@ -297,7 +297,7 @@ async fn drop_restore_tables(db: &Db, driver: &str) {
 /// a table without audit whose soft-deleted rows are restored. When done, it drops the installed tables and functions.
 async fn soft_delete_restore() {
     let (driver, dsn) = feature_database();
-    let db = Db::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: connect: {e}"));
+    let db = Db::connect(&dsn, 2, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: connect: {e}"));
     assert_eq!(db.driver(), driver, "ORM_FEATURE_DSN selects another database than ORM_FEATURE_DATABASE");
     for table in restore_rows::TABLES {
         assert!(!table_exists(&db, table).await, "{driver}: table {table} exists before the case");

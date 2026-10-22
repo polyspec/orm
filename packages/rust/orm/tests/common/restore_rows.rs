@@ -2,6 +2,8 @@
 //! case that restores soft-deleted rows (in the same order as restoreCase in packages/go/orm/restore_test.go). restore.rs and
 //! coverage_audit_triggers.rs both use it.
 
+use crate::or_panic::OrPanic;
+
 use std::collections::BTreeMap;
 
 use polyspec_orm::db::Pool;
@@ -82,7 +84,11 @@ fn shown(values: &BTreeMap<String, Val>) -> String {
     let text: BTreeMap<&String, Val> = values
         .iter()
         .map(|(k, v)| match v {
-            Val::Bytes(b) => (k, String::from_utf8(b.clone()).map(Val::Str).unwrap_or_else(|_| v.clone())),
+            // Bytes that are UTF-8 read back as text; any other bytes are the value itself, which the error returns.
+            Val::Bytes(b) => match String::from_utf8(b.clone()) {
+                Ok(text) => (k, Val::Str(text)),
+                Err(error) => (k, Val::Bytes(error.into_bytes())),
+            },
             _ => (k, v.clone()),
         })
         .collect();
@@ -93,11 +99,11 @@ fn shown(values: &BTreeMap<String, Val>) -> String {
 pub async fn text_rows(db: &Db, query: &str) -> Vec<Vec<String>> {
     macro_rules! read {
         ($pool:expr) => {{
-            let rows = sqlx::raw_sql(sqlx::AssertSqlSafe(query.to_owned())).fetch_all($pool).await.unwrap_or_else(|e| panic!("{query}: {e}"));
+            let rows = sqlx::raw_sql(sqlx::AssertSqlSafe(query.to_owned())).fetch_all($pool).await.or_panic(|e| format!("{query}: {e}"));
             rows.iter()
                 .map(|r| {
                     (0..r.len())
-                        .map(|i| r.try_get::<Option<String>, _>(i).unwrap_or_else(|e| panic!("{query}: {e}")).unwrap_or_else(|| "NULL".to_owned()))
+                        .map(|i| r.try_get::<Option<String>, _>(i).or_panic(|e| format!("{query}: {e}")).unwrap_or_else(|| "NULL".to_owned()))
                         .collect()
                 })
                 .collect()
@@ -135,8 +141,8 @@ pub async fn restore_case(driver: &str, dsn: &str) {
     let source: polyspec_orm::AuditSource = std::sync::Arc::new(|| Ok(vec![("actor".to_owned(), Param::from("default"))]));
     let db = Db::connect(dsn, 2, polyspec_orm::Config { audit_source: Some(source), ..Default::default() })
         .await
-        .unwrap_or_else(|e| panic!("{driver}: connect: {e}"));
-    db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
+        .or_panic(|e| format!("{driver}: connect: {e}"));
+    db.utils().schema().install(&SCHEMA).await.or_panic(|e| format!("{driver}: install: {e}"));
     let i = Param::I64;
     let text = |s: &str| Param::Str(s.to_owned());
     let adb = &db;
@@ -150,7 +156,7 @@ pub async fn restore_case(driver: &str, dsn: &str) {
         .audit([("actor", "create")])
         .retry(0)
         .await
-        .unwrap_or_else(|e| panic!("{driver}: create: {e}"));
+        .or_panic(|e| format!("{driver}: create: {e}"));
     adb.transaction(async || {
         polyspec_orm::model::delete(&with::<Membership>(&db, &[("seq", i(seq))]), false).await?;
         polyspec_orm::model::delete(&with::<Label>(&db, &[("id", i(id))]), false).await
@@ -158,7 +164,7 @@ pub async fn restore_case(driver: &str, dsn: &str) {
     .audit([("actor", "delete")])
     .retry(0)
     .await
-    .unwrap_or_else(|e| panic!("{driver}: delete: {e}"));
+    .or_panic(|e| format!("{driver}: delete: {e}"));
 
     let duplicate = adb
         .transaction(async || polyspec_orm::model::create(&mut with::<Membership>(&db, &[("team_id", i(1)), ("member_id", i(2))])).await.map(|_| ()))
@@ -172,7 +178,7 @@ pub async fn restore_case(driver: &str, dsn: &str) {
         &[polyspec_orm::core::ChainKey { column: "name", ..polyspec_orm::core::ChainKey::EMPTY }],
         vec![polyspec_orm::core::Arg::Value(polyspec_orm::args::Value::One(text("red")))],
     );
-    assert!(polyspec_orm::model::get(&read).await.unwrap_or_else(|e| panic!("{driver}: read: {e}")).is_none(), "{driver}: default read of a soft-deleted row");
+    assert!(polyspec_orm::model::get(&read).await.or_panic(|e| format!("{driver}: read: {e}")).is_none(), "{driver}: default read of a soft-deleted row");
     let without = polyspec_orm::model::restore(&with::<Membership>(&db, &[("team_id", i(1)), ("member_id", i(2))])).await;
     assert_eq!(code(without), polyspec_orm::codes::CONFIG, "{driver}: restore of an audited row without an audit");
 
@@ -182,7 +188,7 @@ pub async fn restore_case(driver: &str, dsn: &str) {
         .audit([("actor", "restore")])
         .retry(0)
         .await
-        .unwrap_or_else(|e| panic!("{driver}: restore: {e}"));
+        .or_panic(|e| format!("{driver}: restore: {e}"));
     // The audit record's key can skip numbers that a failed transaction used, differently on each database, so it is found by actor.
     let audit_seq = async |actor: &str| -> String {
         let rows = text_rows(&db, &format!("SELECT {} FROM audit WHERE actor = '{actor}'", cast_text(driver, "seq"))).await;
@@ -207,12 +213,12 @@ pub async fn restore_case(driver: &str, dsn: &str) {
         .audit([("actor", "again")])
         .retry(0)
         .await
-        .unwrap_or_else(|e| panic!("{driver}: restore again: {e}"));
+        .or_panic(|e| format!("{driver}: restore again: {e}"));
     assert_eq!(shown(&again.values), shown(&restored.values), "{driver}: restore of a row that is not deleted returns the unchanged row");
 
     let label = polyspec_orm::model::restore(&with::<Label>(&db, &[("name", text("red")), ("color", text("y"))]))
         .await
-        .unwrap_or_else(|e| panic!("{driver}: restore label: {e}"));
+        .or_panic(|e| format!("{driver}: restore label: {e}"));
     let want: BTreeMap<String, Val> = [("id", Val::I64(id)), ("name", Val::Str("red".into())), ("color", Val::Str("y".into())), ("deleted_at", Val::Null)]
         .into_iter()
         .map(|(k, v)| (k.to_owned(), v))
