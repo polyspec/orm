@@ -2939,6 +2939,30 @@ static pstep *insert_step(pctx *c, HashTable *r)
     return step_new(c, "main", sql, ZSTR_EMPTY_ALLOC(), slots, tables);
 }
 
+/* Renders each assignment of set as `column = value` onto sets, binding the values into b; false when a column is unknown or a value fails. */
+static bool render_sets(pctx *c, pbinds *b, HashTable *ent, HashTable *set, zval *sets)
+{
+    zval *a;
+    ZEND_HASH_FOREACH_VAL(set, a) {
+        ZVAL_DEREF(a);
+        HashTable *ah = Z_ARRVAL_P(a);
+        HashTable *col = NULL;
+        if (!col_of(c, ent, gs(c, ah, "column"), &col)) {
+            return false;
+        }
+        zend_string *qc = quote(c, gs(c, ah, "column"));
+        if (qc == NULL) {
+            return false;
+        }
+        zend_string *v = render_assign(c, b, ent, col, ah);
+        if (v == NULL) {
+            return false;
+        }
+        lpushs(sets, fmt(c, "%s = %s", ZSTR_VAL(qc), ZSTR_VAL(v)));
+    } ZEND_HASH_FOREACH_END();
+    return true;
+}
+
 /* The statement of an update (Planner::updateStep). */
 static pstep *update_step(pctx *c, HashTable *r)
 {
@@ -2953,20 +2977,9 @@ static pstep *update_step(pctx *c, HashTable *r)
     pscope *root = scopes(c, r, gs(c, ent, "table"), NULL);
     OKP(root);
     zval *sets = newlist(c);
-    zval *a;
-    ZEND_HASH_FOREACH_VAL(set, a) {
-        ZVAL_DEREF(a);
-        HashTable *ah = Z_ARRVAL_P(a);
-        HashTable *col = NULL;
-        if (!col_of(c, ent, gs(c, ah, "column"), &col)) {
-            return NULL;
-        }
-        zend_string *qc = quote(c, gs(c, ah, "column"));
-        OKP(qc);
-        zend_string *v = render_assign(c, b, ent, col, ah);
-        OKP(v);
-        lpushs(sets, fmt(c, "%s = %s", ZSTR_VAL(qc), ZSTR_VAL(v)));
-    } ZEND_HASH_FOREACH_END();
+    if (!render_sets(c, b, ent, set, sets)) {
+        return NULL;
+    }
     bool as = false;
     if (!assigns_aes(c, ent, set, &as)) {
         return NULL;
@@ -3094,20 +3107,9 @@ static pstep *restore_step(pctx *c, HashTable *r)
     pscope *root = scopes(c, r, gs(c, ent, "table"), NULL);
     OKP(root);
     zval *sets = newlist(c);
-    zval *a;
-    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(setz), a) {
-        ZVAL_DEREF(a);
-        HashTable *ah = Z_ARRVAL_P(a);
-        HashTable *col = NULL;
-        if (!col_of(c, ent, gs(c, ah, "column"), &col)) {
-            return NULL;
-        }
-        zend_string *qc = quote(c, gs(c, ah, "column"));
-        OKP(qc);
-        zend_string *v = render_assign(c, b, ent, col, ah);
-        OKP(v);
-        lpushs(sets, fmt(c, "%s = %s", ZSTR_VAL(qc), ZSTR_VAL(v)));
-    } ZEND_HASH_FOREACH_END();
+    if (!render_sets(c, b, ent, Z_ARRVAL_P(setz), sets)) {
+        return NULL;
+    }
     bool as = false;
     if (!assigns_aes(c, ent, Z_ARRVAL_P(setz), &as)) {
         return NULL;
