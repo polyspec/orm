@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 60c591be56fbdffd87290a02015da66a16d49ecce1051e50ac8d0b285c22c2aa -->
+<!-- source-sha256: 8b768b7a0c9f3e88371a9c9e6b013f8e52766463c2fccbe914d33f95ecfa8dfe -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -134,6 +134,7 @@
 | KSTD-5-36 | policy가 main 브랜치가 있는 sibling과 orm lock을 비교한다 (T235 후속). Cause: json-schema와 yaml sibling에는 공유 pin을 평가할 수 있는 main 브랜치가 없다 | scripts/kit config or the siblings | `make dependency-policy-check` | [-] 원인: 사용자 2026-10-22: 버전 고정, advisory 또는 link-lock 작업 없음; kit K448이 검사를 제거 |
 | KSTD-5-37 | 테스트 서버의 startLogged는 준비 줄을 시한까지만 기다리고, 실패하면 단계 이름과 로그 경로를 밝히며, 감시자 이벤트와 함께 주기적으로도 로그를 읽는다 (조용한 대기 없음) | scripts/test-servers.mts, scripts/test-servers.test.mts | `make orm-test-servers-check` | [o] |
 | KSTD-5-38 | orm의 도구 경로가 kit의 KIT_TOOLS를 써서 연결된 worktree가 빌드된다 | orm/Makefile tool paths use `$(KIT_TOOLS)` | `make orm-install-go typescript-build editor-build` | [o] |
+| KSTD-5-39 | docs site의 VitePress 임시 폴더가 git에서 무시된다 | `.gitignore` ignores `/docs/.vitepress/.temp/` | `git check-ignore -q docs/.vitepress/.temp/probe` | [ ] |
 | KSTD-6 | link rebuild는 repository layout을 읽고 자기 paths를 두지 않는다 (kit K286). Cause: kit은 link된 checkout을 layout으로 rebuild하며 link 선언의 paths key는 없어진다 | kit.json, the link declaration | `make rebuild-check` | [o] |
 | KSTD-7 | main에서 feature-unit-check가 통과한다. Cause: docs/features.md가 그것이 그리는 coverage와 맞지 않고, scripts/features/coverage.test.mts의 8개 case가 "no package implements the client language php-extension"으로 실패한다 | docs/features.md, scripts/features | `make feature-unit-check` | [o] |
 | KSTD-7-1 | PHP extension이 the features schema_install, model_generation and interface_contract를 구현하고 PHP library의 test가 extension으로 이를 돌리며, 그 partial 상태를 지운다 (KSTD-7, T182-0 후속). Cause: S6와 S10은 partial feature를 받지 않고, kit K315는 contracts/features.json의 partial과 unsupported를 실패시킨다 | packages/php-ext, contracts/features.json | `make feature-unit-check` | [ ] |
