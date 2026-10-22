@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 0207ddb7016d9618bd0a081e65a099b16b8fca8e7ae53ba0854df8c1bafe2358 -->
+<!-- source-sha256: 6a04cd359b54bd1a7c7309320b4d6728df0fe3ca6cc95ebb48dc9279706d4b58 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -130,7 +130,7 @@
 | KSTD-5-33 | orm과 sibling의 Composer lock이 opis/json-schema를 한 버전으로 고정한다 (T235 후속). Cause: orm/composer.lock:515이 v2.6.0-p1을 다른 source에서 고정한다 | composer.lock | `make dependency-policy-check` | [-] 원인: 사용자 2026-10-22: 버전 고정 작업 없음 |
 | KSTD-5-34 | orm의 phpunit pin이 sibling과 공유하는 검토 대상과 맞는다 (T235 후속). Cause: orm은 phpunit/phpunit을 검토 대상 13.4.3으로 고정했고, sibling crudui와 template은 13.4.2로 고정했다 | composer.lock | `make dependency-policy-check` | [-] 원인: 사용자 2026-10-22: 버전 고정 작업 없음 |
 | KSTD-5-35 | orm의 node_modules 패키지(@types/vscode, esbuild)가 검토 대상에 고정되어 있다 (T235 후속). Cause: review가 package-lock.json에 고정된 @types/vscode 1.140.0과 esbuild 0.28.2의 검토 대상을 기록하지 않았다 | package-lock.json, config/dependency-review.json | `make dependency-policy-check` | [-] 원인: 사용자 2026-10-22: 버전 고정, advisory 또는 link-lock 작업 없음; kit K448이 검사를 제거 |
-| KSTD-5-36 | policy가 main 브랜치가 있는 sibling과 orm lock을 비교한다 (T235 후속). Cause: json-schema와 yaml sibling에는 공유 pin을 평가할 수 있는 main 브랜치가 없다 | scripts/kit config or the siblings | `make dependency-policy-check` | [ ] |
+| KSTD-5-36 | policy가 main 브랜치가 있는 sibling과 orm lock을 비교한다 (T235 후속). Cause: json-schema와 yaml sibling에는 공유 pin을 평가할 수 있는 main 브랜치가 없다 | scripts/kit config or the siblings | `make dependency-policy-check` | [-] 원인: 사용자 2026-10-22: 버전 고정, advisory 또는 link-lock 작업 없음; kit K448이 검사를 제거 |
 | KSTD-6 | link rebuild는 repository layout을 읽고 자기 paths를 두지 않는다 (kit K286). Cause: kit은 link된 checkout을 layout으로 rebuild하며 link 선언의 paths key는 없어진다 | kit.json, the link declaration | `make kit-check` | [ ] |
 | KSTD-7 | main에서 feature-unit-check가 통과한다. Cause: docs/features.md가 그것이 그리는 coverage와 맞지 않고, scripts/features/coverage.test.mts의 8개 case가 "no package implements the client language php-extension"으로 실패한다 | docs/features.md, scripts/features | `make feature-unit-check` | [o] |
 | KSTD-7-1 | PHP extension이 the features schema_install, model_generation and interface_contract를 구현하고 PHP library의 test가 extension으로 이를 돌리며, 그 partial 상태를 지운다 (KSTD-7, T182-0 후속). Cause: S6와 S10은 partial feature를 받지 않고, kit K315는 contracts/features.json의 partial과 unsupported를 실패시킨다 | packages/php-ext, contracts/features.json | `make feature-unit-check` | [ ] |
