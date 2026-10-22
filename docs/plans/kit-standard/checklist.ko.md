@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 5b27190f7f7e863648358792416fb60f629c6543ceac9bc2cdac977412a48776 -->
+<!-- source-sha256: 81cc07a35419b45d32414e953fa9e3d66be9157d32cde10196a848a5a98df8db -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -123,7 +123,7 @@
 | KSTD-5-26 | Makefile build 출력은 임시 file을 거쳐 게시된다 (KSTD-5 후속). Cause: Makefile:867의 recipe가 출력을 제자리에 쓴다 | Makefile | `node --test --test-name-pattern='published through a temporary file' scripts/repo/check.test.mts` | [o] |
 | KSTD-5-27 | examples와 packages/go의 Go stdlib lock이 advisory GO-2026-6809가 없는 release에 있다 (T235 후속). Cause: examples/go.sum과 packages/go/go.sum이 stdlib v1.27.2에 고정되어 있고, review record가 GO-2026-6809를 보고한다 | examples/go.sum, packages/go/go.sum | `make dependency-policy-check` | [-] 원인: 사용자 2026-10-22: 개발 중 제3자 advisory 또는 pin 작업 없음 |
 | KSTD-5-28 | benchmarks와 packages/rust의 Rust lock이 advisory RUSTSEC-2026-0382가 없는 rustls-webpki를 쓴다 (T235 후속). Cause: benchmarks/rust/Cargo.lock과 packages/rust/Cargo.lock이 rustls-webpki 0.103.15에 고정되어 있다 | benchmarks/rust/Cargo.lock, packages/rust/Cargo.lock | `make dependency-policy-check` | [-] 원인: 사용자 2026-10-22: 개발 중 제3자 advisory 또는 pin 작업 없음 |
-| KSTD-5-29 | release-consumer Composer lock의 패키지가 composer.json이 선언한 PHP platform에서 돈다 (T235 후속, K438 보류). Cause: tests/release-consumer/composer/composer.lock이 polyspec/ordered-json과 polyspec/orm에 php >=8.5를 요구하는데 composer.json은 php 8.4.1을 선언한다 | tests/release-consumer/composer | `make dependency-policy-check` | [ ] |
+| KSTD-5-29 | release-consumer Composer lock의 패키지가 composer.json이 선언한 PHP platform에서 돈다 (T235 후속, K438 보류). Cause: tests/release-consumer/composer/composer.lock이 polyspec/ordered-json과 polyspec/orm에 php >=8.5를 요구하는데 composer.json은 php 8.4.1을 선언한다 | tests/release-consumer/composer | `make dependency-policy-check` | [-] 원인: 사용자 2026-10-22: 버전 고정, advisory 또는 link-lock 작업 없음; kit K448이 검사를 제거 |
 | KSTD-5-30 | package-lock.json이 @polyspec/ordered-json을 GitHub release URL이 아닌 registry에서 resolve한다 (T235 후속, ordered-json T2.65 보류). Cause: package-lock.json:2844가 https://github.com/polyspec/ordered-json/releases/download/v0.0.9/에서 resolve한다 | package-lock.json | `make dependency-policy-check` | [ ] |
 | KSTD-5-31 | config/dependency-policy.json에 sprintf-js의 오래된 예외가 없다 (T235 후속). Cause: advisory 1241202 예외가 review record에서 더 이상 찾지 않는 advisory를 가리킨다 | config/dependency-policy.json | `make dependency-policy-check` | [-] 원인: 사용자 2026-10-22: 개발 중 제3자 advisory 또는 pin 작업 없음 |
 | KSTD-5-32 | review가 이름 붙인 최신 stable release가 있는 package는 그 release이거나 기록된 예외가 있다 (T235 후속). Cause: unbash, @codemirror/view, oxc-parser (두 checkout), setuptools, jsonschema-rs, modernc.org/sqlite (두 lock)가 예외 없이 검토 대상보다 오래되었다 | package.json, packages/*/package.json, packages/python/pyproject.toml, packages/go/go.mod, tests/go.mod | `make dependency-policy-check` | [-] 원인: 사용자 2026-10-22: 버전 고정 작업 없음 |
