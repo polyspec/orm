@@ -37,8 +37,11 @@ fn coverage_hot_path_gate() {
         assert_eq!(value("n="), ITERATIONS.to_string(), "{name}: sample count: {line}");
         for label in ["mean=", "p50=", "p90=", "p99="] {
             let field = value(label);
-            let nanos: f64 =
-                field.strip_suffix("ns").and_then(|v| v.parse().ok()).unwrap_or_else(|| panic!("{name}: {label}{field} is not a duration in ns: {line}"));
+            let nanos: f64 = match field.strip_suffix("ns").map(str::parse::<f64>) {
+                Some(Ok(nanos)) => nanos,
+                Some(Err(error)) => panic!("{name}: {label}{field} is not a duration in ns: {line}: {error}"),
+                None => panic!("{name}: {label}{field} is not a duration in ns: {line}"),
+            };
             assert!(nanos > 0.0, "{name}: {label} must be positive: {line}");
         }
     }

@@ -7,6 +7,8 @@
 //! database of BENCH_<DIALECT>_DSN, and the output of each vector equals its recorded expectation. A vector run alone
 //! differs, since an earlier vector of the full run makes the first-use statements of each connection. The feature-check case `coverage_conformance_vector` is an ignored trial, which feature-check
 //! runs with --include-ignored.
+use polyspec_orm_testcase::OrPanic;
+
 mod common;
 
 use serde_json::Value;
@@ -38,14 +40,14 @@ fn coverage_conformance_vector() {
         other => panic!("ORM_FEATURE_DATABASE {other:?} is not mysql, postgres or sqlite"),
     };
     let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/conformance").join(file);
-    let recorded: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display())))
-        .unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    let recorded: Value = serde_json::from_str(&std::fs::read_to_string(&path).or_panic(|e| format!("{}: {e}", path.display())))
+        .or_panic(|e| format!("{}: {e}", path.display()));
     let recorded = recorded["vectors"].as_array().unwrap_or_else(|| panic!("{}: no vectors array", path.display()));
     let redact = |bytes: &[u8]| String::from_utf8_lossy(bytes).replace(&dsn, "[dsn]");
 
     let output = common::run("conformance", runner(&dsn, &VECTORS), DEADLINE);
     assert!(output.status.success(), "conformance runner failed with {}: {}", output.status, redact(&output.stderr));
-    let got: serde_json::Map<String, Value> = serde_json::from_slice(&output.stdout).unwrap_or_else(|e| panic!("runner output is not a JSON object: {e}"));
+    let got: serde_json::Map<String, Value> = serde_json::from_slice(&output.stdout).or_panic(|e| format!("runner output is not a JSON object: {e}"));
     let mut names: Vec<&str> = got.keys().map(String::as_str).collect();
     names.sort_unstable();
     assert_eq!(names, VECTORS, "the runner must print exactly the selected vectors");
@@ -65,8 +67,8 @@ fn coverage_conformance_vector() {
 /// The recorded vectors of `file` in tests/conformance.
 fn recorded(file: &str) -> Vec<Value> {
     let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/conformance").join(file);
-    let recorded: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display())))
-        .unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    let recorded: Value = serde_json::from_str(&std::fs::read_to_string(&path).or_panic(|e| format!("{}: {e}", path.display())))
+        .or_panic(|e| format!("{}: {e}", path.display()));
     recorded["vectors"].as_array().unwrap_or_else(|| panic!("{}: no vectors array", path.display())).clone()
 }
 
@@ -111,7 +113,7 @@ fn dialect_trials(dialect: &'static str, file: &'static str, dsn_variable: &'sta
         .map(|(vector, name)| {
             let (run, names) = (run.clone(), names.clone());
             polyspec_orm_testcase::trial(format!("conformance_{dialect}::{name}"), polyspec_orm_testcase::PROCESS, move || {
-                let got = full_run(&run, dsn_variable).unwrap_or_else(|reason| panic!("{reason}"));
+                let got = full_run(&run, dsn_variable).or_panic(|reason| reason);
                 let mut printed: Vec<&str> = got.keys().map(String::as_str).collect();
                 printed.sort_unstable();
                 let mut want: Vec<&str> = names.iter().map(String::as_str).collect();

@@ -1,6 +1,8 @@
 //! catalog_connection: orm-build's live-db catalog reads the table metadata of the seeded bench database,
 //! the author table page, and a read-only query, and inserts, updates, and deletes a row in composite_account, which has no identity column.
 //! The database ends in the state it started in.
+use polyspec_orm_testcase::OrPanic;
+
 use polyspec_orm_build::catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableRef};
 use polyspec_orm_build::tool_db::{GridCell, QueryLimits, Val, P};
 use std::sync::atomic::AtomicBool;
@@ -17,7 +19,7 @@ async fn connect() -> (String, CatalogConnection) {
         .expect("ORM_FEATURE_DATABASE is required; run it through make feature-check, which sets it for each coverage case");
     let dsn = std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required; run it through make feature-check, which sets it for each coverage case");
     assert!(["mysql", "postgres", "sqlite"].contains(&driver.as_str()), "ORM_FEATURE_DATABASE {driver:?} is not mysql, postgres or sqlite");
-    let catalog = CatalogConnection::connect(&dsn).await.unwrap_or_else(|e| panic!("{driver}: catalog connection: {}", e.replace(&dsn, "[dsn]")));
+    let catalog = CatalogConnection::connect(&dsn).await.or_panic(|e| format!("{driver}: catalog connection: {}", e.replace(&dsn, "[dsn]")));
     assert_eq!(catalog.dialect(), driver, "ORM_FEATURE_DSN selects another database than ORM_FEATURE_DATABASE");
     (driver, catalog)
 }
@@ -55,8 +57,8 @@ async fn coverage_catalog_read() {
         let metadata = catalog.describe_table(&author).await.expect("author metadata");
         let text = std::fs::read_to_string(polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/bench/bench.dbs")).expect("bench schema");
         let document =
-            polyspec_orm::dbspec::parse(&text, &Default::default()).map(|parsed| parsed.document).unwrap_or_else(|errors| panic!("bench schema: {errors:?}"));
-        let model = polyspec_orm::dbspec::runtime_model(&[&document]).unwrap_or_else(|errors| panic!("bench model: {errors:?}"));
+            polyspec_orm::dbspec::parse(&text, &Default::default()).map(|parsed| parsed.document).or_panic(|errors| format!("bench schema: {errors:?}"));
+        let model = polyspec_orm::dbspec::runtime_model(&[&document]).or_panic(|errors| format!("bench model: {errors:?}"));
         let declared = model.entities.iter().find(|e| e.table == "author").expect("declared author table");
         let columns: Vec<&str> = metadata.columns.iter().map(|c| c.name.as_str()).collect();
         let declared_columns: Vec<&str> = declared.fields.iter().map(|f| f.name.as_str()).collect();
