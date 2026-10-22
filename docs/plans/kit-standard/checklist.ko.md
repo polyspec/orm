@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: f7d8df4c0b3d57701f6e9a33adc27913d952e736c0aaa364c7d7f362131a367d -->
+<!-- source-sha256: d5b8632942c9fb408ca4a43cfcac0a47dd19586f5d5c6a32a4bcefd3eb42fd66 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -236,3 +236,4 @@
 | KSTD-5-71 | Rust codec, driver, markdown와 build 파일의 map_err(\|_\|) 클로저가 원인을 유지하게 한다 | packages/rust/orm/src/codec.rs; packages/rust/orm/src/driver.rs (bad()); packages/rust/orm/src/markdown.rs:573,579; packages/rust/build/src/catalog/*; packages/rust/build/src/tool_db/* | `make rust-check` | [ ] |
 | KSTD-5-72 | 생성된 Go Value 접근자의 오류를 nil 대신 반환한다 | packages/go/orm/model.go:122 (read at model.go:1298) | `make go-vet-check` | [ ] |
 | KSTD-5-73 | TypeScript decipher에서 AES 인증 실패만 잡는다 | packages/ts/src/codec.ts:77 | `make ts-check` | [ ] |
+| KSTD-5-74 | TypeScript save에서 키 없음 OrmError만 잡는다 | packages/ts/src/model.ts:848 | `make ts-check` | [ ] |
