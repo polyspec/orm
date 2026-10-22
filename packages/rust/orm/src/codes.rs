@@ -81,6 +81,8 @@ pub const CATALOG_LIMIT: &str = "CATALOG_LIMIT";
 pub const CATALOG_VALUE: &str = "CATALOG_VALUE";
 /// executor
 pub const CATALOG_PARAM: &str = "CATALOG_PARAM";
+/// executor: an operation on a catalog connection after its close(): nothing runs and no statement is sent
+pub const CATALOG_CLOSED: &str = "CATALOG_CLOSED";
 /// executor
 pub const TABLE_METADATA_INVALID: &str = "TABLE_METADATA_INVALID";
 /// executor

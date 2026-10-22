@@ -44,6 +44,7 @@ const (
 	CodeCatalogLimit              = "CATALOG_LIMIT"               // executor
 	CodeCatalogValue              = "CATALOG_VALUE"               // executor
 	CodeCatalogParam              = "CATALOG_PARAM"               // executor
+	CodeCatalogClosed             = "CATALOG_CLOSED"              // executor: an operation on a catalog connection after its close(): nothing runs and no statement is sent
 	CodeTableMetadataInvalid      = "TABLE_METADATA_INVALID"      // executor
 	CodeTableReferenceInvalid     = "TABLE_REFERENCE_INVALID"     // executor
 	CodeTableNotFound             = "TABLE_NOT_FOUND"             // executor

@@ -132,6 +132,43 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
         self.assertEqual(self.catalog.delete_row(find("catalog-updated")), 1)
         self.assertEqual(tenant_rows(), 0)
 
+    def test_closed_connection(self):
+        self.catalog.close()
+        with self.assertRaisesRegex(Exception, "CATALOG_CLOSED"):
+            self.catalog.current_namespace()
+        with self.assertRaisesRegex(Exception, "CATALOG_CLOSED"):
+            self.catalog.read_only_query("SELECT 1", [])
+
+    def test_mysql_timestamp_refused(self):
+        if self.driver != "mysql":
+            self.skipTest("MySQL TIMESTAMP")
+        # A table that this test creates and drops: a grid query reads its TIMESTAMP column, which must be refused.
+        import pymysql
+        from polyspec.orm.database import parse_dsn
+
+        url = parse_dsn(os.environ["ORM_FEATURE_DSN"]).url
+        admin = pymysql.connect(
+            host=url.hostname,
+            port=url.port or 3306,
+            user=url.username,
+            password=url.password or "",
+            database=url.path.lstrip("/"),
+            autocommit=True,
+        )
+        table = "orm_catalog_grid_timestamp"
+        try:
+            with admin.cursor() as cursor:
+                cursor.execute(f"DROP TABLE IF EXISTS `{table}`")
+                cursor.execute(f"CREATE TABLE `{table}` (`ts` TIMESTAMP NULL)")
+                # A NULL TIMESTAMP reads as a null cell; a value is what the grid refuses.
+                cursor.execute(f"INSERT INTO `{table}` (`ts`) VALUES ('2024-01-01 00:00:00')")
+            with self.assertRaisesRegex(Exception, "CATALOG_VALUE"):
+                self.catalog.read_only_grid_query(f"SELECT `ts` FROM `{table}`", [])
+        finally:
+            with admin.cursor() as cursor:
+                cursor.execute(f"DROP TABLE IF EXISTS `{table}`")
+            admin.close()
+
     def test_grid_cells(self):
         sql, expected = GRID_CELLS[self.driver]
         result = self.catalog.read_only_grid_query(sql, [])

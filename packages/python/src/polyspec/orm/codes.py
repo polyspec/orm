@@ -81,6 +81,8 @@ CATALOG_LIMIT = "CATALOG_LIMIT"
 CATALOG_VALUE = "CATALOG_VALUE"
 # executor
 CATALOG_PARAM = "CATALOG_PARAM"
+# executor: an operation on a catalog connection after its close(): nothing runs and no statement is sent
+CATALOG_CLOSED = "CATALOG_CLOSED"
 # executor
 TABLE_METADATA_INVALID = "TABLE_METADATA_INVALID"
 # executor

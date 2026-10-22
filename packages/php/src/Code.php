@@ -87,6 +87,8 @@ final class Code
     public const CATALOG_VALUE = 'CATALOG_VALUE';
     /** executor */
     public const CATALOG_PARAM = 'CATALOG_PARAM';
+    /** executor: an operation on a catalog connection after its close(): nothing runs and no statement is sent */
+    public const CATALOG_CLOSED = 'CATALOG_CLOSED';
     /** executor */
     public const TABLE_METADATA_INVALID = 'TABLE_METADATA_INVALID';
     /** executor */

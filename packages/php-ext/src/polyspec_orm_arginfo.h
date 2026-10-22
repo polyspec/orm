@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 82c0d563ce2891782998b797adeb42908c291dba */
+ * Stub hash: 35aff104282d2ec44c9cae6a94213160e173600b */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Diagnostic___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, rule, IS_STRING, 0)
@@ -3341,6 +3341,13 @@ static zend_class_entry *register_class_Polyspec_Orm_Code(void)
 	zend_string *const_CATALOG_PARAM_name = zend_string_init_interned("CATALOG_PARAM", sizeof("CATALOG_PARAM") - 1, 1);
 	zend_declare_typed_class_constant(class_entry, const_CATALOG_PARAM_name, &const_CATALOG_PARAM_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
 	zend_string_release(const_CATALOG_PARAM_name);
+
+	zval const_CATALOG_CLOSED_value;
+	zend_string *const_CATALOG_CLOSED_value_str = zend_string_init("CATALOG_CLOSED", strlen("CATALOG_CLOSED"), 1);
+	ZVAL_STR(&const_CATALOG_CLOSED_value, const_CATALOG_CLOSED_value_str);
+	zend_string *const_CATALOG_CLOSED_name = zend_string_init_interned("CATALOG_CLOSED", sizeof("CATALOG_CLOSED") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_CATALOG_CLOSED_name, &const_CATALOG_CLOSED_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_CATALOG_CLOSED_name);
 
 	zval const_TABLE_METADATA_INVALID_value;
 	zend_string *const_TABLE_METADATA_INVALID_value_str = zend_string_init("TABLE_METADATA_INVALID", strlen("TABLE_METADATA_INVALID"), 1);

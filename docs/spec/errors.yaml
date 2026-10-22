@@ -90,6 +90,8 @@ codes:
     origin: executor
   - code: CATALOG_PARAM
     origin: executor
+  - code: CATALOG_CLOSED          # an operation on a catalog connection after its close(): nothing runs and no statement is sent
+    origin: executor
   - code: TABLE_METADATA_INVALID
     origin: executor
   - code: TABLE_REFERENCE_INVALID

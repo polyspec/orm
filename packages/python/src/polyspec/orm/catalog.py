@@ -648,6 +648,8 @@ class _Session:
                 names = [column[0] for column in cursor.description]
                 codes = [column[1] for column in cursor.description]
                 if grid and self.dialect == "mysql":
+                    # pymysql exposes the UNSIGNED flag only on the private result of a cursor: Cursor.description has no
+                    # flags, and no public pymysql API reports them. The attribute is read here, for grid queries only.
                     unsigned = [bool(field_.flags & _MYSQL_UNSIGNED_FLAG) for field_ in cursor._result.fields]
                 else:
                     unsigned = [False] * len(names)
@@ -820,7 +822,7 @@ class CatalogConnection:
 
     def _ensure_open(self) -> None:
         if self._closed:
-            raise _error(codes.CONFIG, "the catalog connection is closed")
+            raise _error(codes.CATALOG_CLOSED, "the catalog connection is closed")
 
     def _open(self) -> _Session:
         self._ensure_open()
