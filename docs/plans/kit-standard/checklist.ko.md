@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 1aa78a4703b52033f3e0937026c5d78ab96320da1982c50ad35dca034d5fa98c -->
+<!-- source-sha256: 585327c98ffdcceea247521351e74f646b9c5ee531ad4812680f2a3b400d959a -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -121,7 +121,7 @@
 | KSTD-5-24 | 모든 CI step이 make target을 돌린다 (KSTD-5 후속). Cause: .github/workflows/gates.yml의 step "install rust"가 make target을 돌리지 않는다; kit row인지 먼저 정한다 | .github/workflows or kit | `make repo-check/unit` | [ ] |
 | KSTD-5-25 | 모든 workflow가 선언된 event에서만 돈다 (KSTD-5 후속). Cause: repo check가 .github/workflows/release.yml의 trigger를 보고한다 | .github/workflows/release.yml | `make repo-check/unit` | [ ] |
 | KSTD-5-26 | Makefile build 출력은 임시 file을 거쳐 게시된다 (KSTD-5 후속). Cause: Makefile:867의 recipe가 출력을 제자리에 쓴다 | Makefile | `node --test --test-name-pattern='published through a temporary file' scripts/repo/check.test.mts` | [o] |
-| KSTD-5-27 | examples와 packages/go의 Go stdlib lock이 advisory GO-2026-6809가 없는 release에 있다 (T235 후속). Cause: examples/go.sum과 packages/go/go.sum이 stdlib v1.27.2에 고정되어 있고, review record가 GO-2026-6809를 보고한다 | examples/go.sum, packages/go/go.sum | `make dependency-policy-check` | [ ] |
+| KSTD-5-27 | examples와 packages/go의 Go stdlib lock이 advisory GO-2026-6809가 없는 release에 있다 (T235 후속). Cause: examples/go.sum과 packages/go/go.sum이 stdlib v1.27.2에 고정되어 있고, review record가 GO-2026-6809를 보고한다 | examples/go.sum, packages/go/go.sum | `make dependency-policy-check` | [-] 원인: 사용자 2026-10-22: 개발 중 제3자 advisory 또는 pin 작업 없음 |
 | KSTD-5-28 | benchmarks와 packages/rust의 Rust lock이 advisory RUSTSEC-2026-0382가 없는 rustls-webpki를 쓴다 (T235 후속). Cause: benchmarks/rust/Cargo.lock과 packages/rust/Cargo.lock이 rustls-webpki 0.103.15에 고정되어 있다 | benchmarks/rust/Cargo.lock, packages/rust/Cargo.lock | `make dependency-policy-check` | [~] |
 | KSTD-5-29 | release-consumer Composer lock의 패키지가 composer.json이 선언한 PHP platform에서 돈다 (T235 후속, K438 보류). Cause: tests/release-consumer/composer/composer.lock이 polyspec/ordered-json과 polyspec/orm에 php >=8.5를 요구하는데 composer.json은 php 8.4.1을 선언한다 | tests/release-consumer/composer | `make dependency-policy-check` | [ ] |
 | KSTD-5-30 | package-lock.json이 @polyspec/ordered-json을 GitHub release URL이 아닌 registry에서 resolve한다 (T235 후속, ordered-json T2.65 보류). Cause: package-lock.json:2844가 https://github.com/polyspec/ordered-json/releases/download/v0.0.9/에서 resolve한다 | package-lock.json | `make dependency-policy-check` | [ ] |
