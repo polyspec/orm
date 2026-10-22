@@ -9,7 +9,7 @@ namespace Polyspec\Orm;
  * A later row with the same key replaces the earlier one. The integer 7 and
  * the text "7" are different keys.
  *
- * @template TModel of Model
+ * @template TModel
  * @implements \IteratorAggregate<int|string, TModel>
  */
 final class Collection implements \IteratorAggregate, \Countable, \JsonSerializable

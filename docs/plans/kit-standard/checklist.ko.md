@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: f92eff629992811e436399f1cc3d6a7d261fbb5c67fa783a501ffa933dce7ed9 -->
+<!-- source-sha256: b163c06f8cd3706f56c238450ebff5ffe525711bfec01e12eb85e7cfbb8e6872 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -153,7 +153,7 @@
 | KSTD-5-50 | TypeScript split query가 key가 NULL인 row를 버림 | packages/ts/src/database.ts, the same split merge in Go, Rust, PHP and Python | `make ts-check` | [ ] |
 | KSTD-5-52 | PHP 모델 getter가 대상 타입을 반환한다: 관계와 alias는 mixed가 아닌 대상 타입의 선언된 getter를 얻고, alias 없는 관계도 선언된 getter를 얻는다 | `packages/php/src/ChainDeclare.php` | `make php-model-check`, `vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenScanTest.php` | [o] |
 | KSTD-5-53 | PHP GroupRows의 반복이 mixed가 아닌 GroupRow로 타입되어 호출부가 타입된 행을 본다 | `packages/php/src/GroupRows.php` | `make group-rows-phpstan-check` | [o] |
-| KSTD-5-54 | 생성된 gets()는 모델로 매개변수화된 Collection을 반환하고, 한 행 get()은 문서화된 null 계약(Model\|null)을 유지한다 | `packages/php/src/Collection.php`, `packages/php/src/ChainDeclare.php` | `make collection-raw-phpstan-check` | [ ] |
+| KSTD-5-54 | 생성된 gets()는 모델로 매개변수화된 Collection을 반환하고, 한 행 get()은 문서화된 null 계약(Model\|null)을 유지한다 | `packages/php/src/Collection.php`, `packages/php/src/ChainDeclare.php` | `make collection-raw-phpstan-check` | [o] |
 | KSTD-5-55 | main의 Rust clippy가 통과한다: orm/src/lib.rs가 mysql_code_tests 테스트 모듈을 impl 항목 앞에 두어 -D warnings 아래 clippy가 items_after_test_module로 거부하므로 main의 make rust-check가 실패한다 | packages/rust/orm/src/lib.rs | `make rust-check` | [ ] |
 | KSTD-5-56 | main의 Rust clippy가 통과한다: packages/rust/build/tests/lock_probe_order.rs가 쓰지 않는 AtomicU8을 import하여 -D warnings 아래 clippy가 unused_imports로 거부하므로 main의 make rust-check가 실패한다 | packages/rust/build/tests/lock_probe_order.rs | `make rust-check` | [ ] |
 | KSTD-5-57 | make lint-rust가 main에서 통과한다: 금지된 unwrap_or_else와 must_use let을 고친다 | benchmarks/rust/src/driver_compare.rs, benchmarks/rust/src/native.rs, packages/rust/testcase/src/lib.rs | `make lint-rust` exits 0 with no finding | [ ] |

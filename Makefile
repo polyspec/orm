@@ -1848,3 +1848,9 @@ clippy-crate: ## Clippy of the package CRATE with the lint-rust flags, in the Ca
 .PHONY: group-rows-phpstan-check
 group-rows-phpstan-check:
 	cd packages/php && $(PHPSTAN) analyse --no-progress --error-format=raw --memory-limit=-1 --level=9 --configuration=$(KIT_PACKAGE)/phpstan.dist.neon --autoload-file=../../vendor-php/autoload.php tests/phpstan/GroupRowsIteration.php
+
+# collection-raw-phpstan-check runs PHPStan at level 5 over the fixture of KSTD-5-54: a raw Collection parameter carries no
+# method of the base Model, so calling a column getter on its rows is no false method.notFound.
+.PHONY: collection-raw-phpstan-check
+collection-raw-phpstan-check:
+	cd packages/php && $(PHPSTAN) analyse --no-progress --error-format=raw --memory-limit=-1 --level=5 --configuration=$(KIT_PACKAGE)/phpstan.dist.neon --autoload-file=../../vendor-php/autoload.php tests/phpstan/RawCollection.php

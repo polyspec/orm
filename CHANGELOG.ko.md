@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 843b085f818d76e7cbf0bcd6e2da821587e3094c47b0e1e0c200840cd5c008a7 -->
+<!-- source-sha256: dbd47a6a99817065c69cfe0d55d8fec96cca32020eb51a651202aa54289f09a8 -->
 # 변경 이력
 
 ## Unreleased
 
+- `Collection` template이 base `Model`을 기본 bound로 갖지 않으므로, raw `Collection` 매개변수의 row에서 PHPStan이 거짓 `method.notFound`를 보고하지 않는다. 타입이 있는 `gets(): Collection<Model>` 경로는 그대로다. `make collection-raw-phpstan-check`는 그 fixture를 level 5 PHPStan으로 검사한다(KSTD-5-54). red: fixture가 `Call to an undefined method Polyspec\Orm\Model::getSeq()`를 보고했다.
 - `GroupRows::getIterator()`가 `GroupRow`를 내도록 문서화되어, 그 row를 쓰는 호출자는 mixed가 아닌 타입이 있는 row를 얻는다. `make group-rows-phpstan-check`는 각 row의 메서드를 호출하는 fixture를 level 9 PHPStan으로 검사한다(KSTD-5-53). red: fixture가 `Cannot call method toArray() on mixed`를 보고했다.
 - PHP 모델 getter가 `mixed` 대신 대상 타입을 선언한다. 관계 getter는 `?Model`(`get<Entity>Model`) 또는 `list<Model>`(`get<Entity>Models`)이고, alias, new, addColumn getter는 호출이 선언한 타입을 얻는다. new는 literal 또는 타입이 있는 매개변수, addColumn은 closure의 반환 타입, alias는 chain의 결과를 쓴다. 선언된 타입이 없는 호출은 그 호출을 이름으로 적은 CONFIG 오류로 거부한다(KSTD-5-52). red: tests/generator/php-scan-vectors.json의 getter-type vector가 `mixed`를 선언했다.
 - owner 선택이 변경된 Go, Rust, Python, PHP, TypeScript 경로를 각 언어의 lint target(`lint-go`, `lint-rust`, `lint-python`, `lint-php`, `lint-ts`)으로 보내므로, `make land`는 그 언어를 바꾸는 branch의 lint를 실행하고 새 finding을 거부한다(KSTD-5-47). red: owners test의 case `a changed path selects the lint target of its language`가 이전 config에서 `packages/go/orm/errs.go selects feature-owner-check, not lint-go`로 실패했다. 실제 Go errcheck gate는 여기서 실행하지 않았다. golangci-lint가 이 환경에 설치되어 있지 않아, land에서 Go finding이 `lint-go`에 의해 거부되는 것은 확인하지 않았다.
