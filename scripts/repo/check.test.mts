@@ -606,6 +606,14 @@ caseTest('the workflow rules skip the workflows that @polyspec/kit copies', COMP
   assert.throws(() => ownWorkflows(all, null), /no copies of @polyspec\/kit/);
 });
 
+// The commit identity is declared, so commits-check enforces it: config/commit-identity.json is the kit copy of this
+// repository's identity, which AGENTS.md rules (KSTD-5-17).
+caseTest('the repository declares its commit identity, which commits-check enforces', COMPUTE, () => {
+  const identity = new URL('../../config/commit-identity.json', import.meta.url).pathname;
+  assert.ok(existsSync(identity), 'config/commit-identity.json is missing; run make kit-sync to write the kit copy');
+  assert.deepEqual(JSON.parse(readFileSync(identity, 'utf8')), { schema: 1, name: 'min-0-max', email: 'max@blue.tools' });
+});
+
 caseTest('the copies of @polyspec/kit are read from the installed package', COMPUTE, () => {
   const root = mkdtempSync(join(tmpdir(), 'orm-kit-copies-'));
   try {
