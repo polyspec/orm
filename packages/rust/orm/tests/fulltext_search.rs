@@ -6,6 +6,7 @@ use polyspec_orm::Dialect;
 
 #[test]
 fn fulltext_search() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let cases = [
         ("alpha beta", "+alpha +beta*"),
         ("  +a  (b) \"c\"  ", "+a +b +c*"),
