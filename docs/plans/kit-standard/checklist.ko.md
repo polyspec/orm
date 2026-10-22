@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 127bcd9ce044e14c2b5742bcaa90f075276886a6f092afe8555783ba8de36b6e -->
+<!-- source-sha256: 439be1e13d6b3df587881469cfde70343149de7079ea36e29330393693c2e5ba -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -166,6 +166,7 @@
 | KSTD-5-57-7 | 나머지 orm 소스의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/src markdown, row, dbspec/apply, tx, lib, bind_check, engine validate and planner, model | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-8 | case-database crate의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/case-database/src/lib.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-9 | build generate.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/build/src/generate.rs | `make lint-rust` reports no finding in these files | [ ] |
+| KSTD-5-57-10 | 나머지 build 소스의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/build/src tool_db, catalog, lib | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-6 | link rebuild는 repository layout을 읽고 자기 paths를 두지 않는다 (kit K286). Cause: kit은 link된 checkout을 layout으로 rebuild하며 link 선언의 paths key는 없어진다 | kit.json, the link declaration | `make rebuild-check` | [o] |
 | KSTD-7 | main에서 feature-unit-check가 통과한다. Cause: docs/features.md가 그것이 그리는 coverage와 맞지 않고, scripts/features/coverage.test.mts의 8개 case가 "no package implements the client language php-extension"으로 실패한다 | docs/features.md, scripts/features | `make feature-unit-check` | [o] |
 | KSTD-7-1 | PHP extension이 the features schema_install, model_generation and interface_contract를 구현하고 PHP library의 test가 extension으로 이를 돌리며, 그 partial 상태를 지운다 (KSTD-7, T182-0 후속). Cause: S6와 S10은 partial feature를 받지 않고, kit K315는 contracts/features.json의 partial과 unsupported를 실패시킨다 | packages/php-ext, contracts/features.json | `make feature-unit-check` | [ ] |
