@@ -1,3 +1,7 @@
+#[path = "common/table_column.rs"]
+mod table_column;
+use table_column::plain_column;
+
 use polyspec_orm_build::{
     catalog::{RowSnapshot, TableColumnMetadata, TableKind, TableMetadata, TablePage, TableRef},
     tool_db::{GridCell, GridQueryResult, QueryColumn},
@@ -8,24 +12,8 @@ fn fixture() -> TablePage {
             table: TableRef { namespace: "main".into(), name: "fixture".into() },
             kind: TableKind::Table,
             columns: vec![
-                TableColumnMetadata {
-                    name: "a".into(),
-                    native_type: "INTEGER".into(),
-                    nullable: false,
-                    generated: false,
-                    automatic_key: false,
-                    default_expression: None,
-                    expression_default: false,
-                },
-                TableColumnMetadata {
-                    name: "b".into(),
-                    native_type: "TEXT".into(),
-                    nullable: false,
-                    generated: false,
-                    automatic_key: false,
-                    default_expression: None,
-                    expression_default: false,
-                },
+                plain_column("a", "INTEGER", false),
+                plain_column("b", "TEXT", false),
             ],
             primary_key: vec!["b".into(), "a".into()],
             reliable_row_identity: true,

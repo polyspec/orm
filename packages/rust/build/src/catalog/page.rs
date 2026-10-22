@@ -67,5 +67,12 @@ fn assemble(metadata: TableMetadata, mut result: GridQueryResult, after: TableMe
 }
 
 #[cfg(test)]
+use crate::catalog::TableColumnMetadata;
+
+#[cfg(test)]
+#[path = "../../tests/common/table_column.rs"]
+mod table_column;
+
+#[cfg(test)]
 #[path = "../../tests/unit/table_page_validation.rs"]
 mod tests;
