@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 23652c6300ce62e730acfeeb3b3069a329f3ee19dca3e5dea0009e5fc2ef8595 -->
+<!-- source-sha256: b865bcba3f14df64bdcb3436836c5086d1c32d189fd7d105d2b2925b88e4fcc3 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -209,3 +209,4 @@
 | KSTD-15 | TypeScript build cache packages/ts/tsconfig.build.tsbuildinfo와 형제 *.tsbuildinfo는 Git이 무시하고 생성 경로로 선언한다(AGENTS.md의 generated-files 규칙). 원인: 이 캐시는 build마다 main checkout에 추적되지 않은 채 다시 나타나 generated-files 규칙을 어긴다. 인수 조건: .gitignore가 어느 깊이의 *.tsbuildinfo든 무시하고, config/generated.json이 **/*.tsbuildinfo를 선언하며, build 뒤 git status에 tsbuildinfo가 없다. 현재 빨간 상태: git check-ignore가 packages/ts/tsconfig.build.tsbuildinfo의 규칙을 찾지 못하고, make build 뒤 git status가 그 파일을 보고한다. | .gitignore, config/generated.json | `sh -c "git check-ignore -q packages/ts/tsconfig.build.tsbuildinfo && git check-ignore -q packages/ts/sibling.tsbuildinfo"` | [o] |
 | KSTD-5-57-14b | add_tables_and_columns, dbspec_plan_apply, collection_identity의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests add_tables_and_columns, dbspec_plan_apply, collection_identity | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-18b | build 테스트 read_only_query.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/build/tests/read_only_query.rs | `make lint-rust` reports no finding in this file | [ ] |
+| KSTD-5-57-14c | orm 테스트 dbspec_introspect.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests/dbspec_introspect.rs | `make lint-rust` reports no finding in this file | [ ] |
