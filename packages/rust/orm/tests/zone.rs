@@ -8,8 +8,12 @@
 use chrono::{NaiveDate, NaiveDateTime, Utc};
 use polyspec_orm::core::{Arg, ChainKey};
 use polyspec_orm::db::Pool;
-use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
+use polyspec_orm::{Core, Db, Entity, Model, Param, Schema};
 use polyspec_orm_case_database::{CaseDatabase, CaseTable};
+
+#[macro_use]
+#[path = "common/typed_model.rs"]
+mod typed_model;
 
 /// Returns the DSN in `var`; an unset or empty variable fails the test.
 fn require_dsn(var: &str) -> String {
@@ -31,48 +35,11 @@ static SCHEMA: Schema =
 static ENTITY: Entity =
     Entity { name: "zone_event", schema: &SCHEMA, new: polyspec_orm::model::new_boxed::<ZoneEvent>, collect: polyspec_orm::model::collect_boxed::<ZoneEvent> };
 
-#[derive(Clone)]
-struct ZoneEvent {
-    core: Core,
-    seq: i64,
-    start_dt: NaiveDateTime,
-    created_ts: NaiveDateTime,
-}
-
-impl Model for ZoneEvent {
-    fn entity() -> &'static Entity {
-        &ENTITY
-    }
-    fn core(&self) -> &Core {
-        &self.core
-    }
-    fn core_mut(&mut self) -> &mut Core {
-        &mut self.core
-    }
-    fn from_core(core: Core) -> Self {
-        ZoneEvent { core, seq: 0, start_dt: NaiveDateTime::default(), created_ts: NaiveDateTime::default() }
-    }
-    fn into_core(self) -> Core {
-        self.core
-    }
-    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
-        match name {
-            "seq" => self.seq = v.as_i64()?,
-            "start_dt" => self.start_dt = v.as_datetime()?,
-            "created_ts" => self.created_ts = v.as_datetime()?,
-            _ => return Ok(false),
-        }
-        Ok(true)
-    }
-    fn value(&self, name: &str) -> Option<Val> {
-        Some(match name {
-            "seq" => Val::I64(self.seq),
-            "start_dt" => Val::DateTime(self.start_dt),
-            "created_ts" => Val::DateTime(self.created_ts),
-            _ => return None,
-        })
-    }
-}
+typed_model!(ZoneEvent, ENTITY, {
+    seq: i64 = "seq",
+    start_dt: NaiveDateTime = "start_dt",
+    created_ts: NaiveDateTime = "created_ts",
+});
 
 fn event(db: &Db) -> ZoneEvent {
     let mut core = Core::new(&ENTITY);

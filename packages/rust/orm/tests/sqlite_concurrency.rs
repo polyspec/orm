@@ -3,81 +3,47 @@
 //! second connection reads while a write transaction is open, and a write that
 //! waits longer than busy_timeout returns CANCELED.
 
-use std::sync::LazyLock;
 use std::time::{Duration, Instant};
 
 use futures_util::future::join_all;
-use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
+use polyspec_orm::{Db, Model, Param};
 
-/// The manifest text of contracts/fixtures/bench/bench.dbs alone: the document carries comments, which its manifest text
-/// leaves out, so the document text itself is not the manifest text.
-static MANIFEST_TEXT: LazyLock<String> = LazyLock::new(|| {
-    let text = include_str!("../../../../contracts/fixtures/bench/bench.dbs");
-    let document = polyspec_orm::dbspec::parse(text, &Default::default()).expect("bench.dbs parses").document;
-    polyspec_orm::dbspec::manifest(&[&document]).expect("the manifest of bench.dbs").manifest_text
-});
+#[path = "common/sqlite_case.rs"]
+mod sqlite_case;
+use sqlite_case::{Database, SCHEMA};
 
-static SCHEMA: LazyLock<Schema> = LazyLock::new(|| Schema::new(&MANIFEST_TEXT, "sha256:349a7152d1ad701b2baf8e7e67e14660ec6a75cdd78d5ec61c430f9f6498a1ed"));
+async fn database(name: &str) -> Database {
+    sqlite_case::database("sqlite-lock", name).await
+}
 
-static ENTITY: LazyLock<Entity> = LazyLock::new(|| Entity {
-    name: "service",
-    schema: &SCHEMA,
-    new: polyspec_orm::model::new_boxed::<Service>,
-    collect: polyspec_orm::model::collect_boxed::<Service>,
-});
+#[macro_use]
+#[path = "common/typed_model.rs"]
+mod typed_model;
+
+#[path = "common/service_model.rs"]
+mod service_model;
+use service_model::service;
 
 /// The database of a writer process started by `writers_in_several_processes`.
 const WRITER_DSN: &str = "ORM_SQLITE_WRITER_DSN";
 /// The name of that writer process.
 const WRITER_NAME: &str = "ORM_SQLITE_WRITER_NAME";
 
-#[derive(Clone)]
-struct Service {
-    core: Core,
-    seq: i64,
-    name: String,
-}
-
-impl Model for Service {
-    fn entity() -> &'static Entity {
-        &ENTITY
-    }
-    fn core(&self) -> &Core {
-        &self.core
-    }
-    fn core_mut(&mut self) -> &mut Core {
-        &mut self.core
-    }
-    fn from_core(core: Core) -> Self {
-        Service { core, seq: 0, name: String::new() }
-    }
-    fn into_core(self) -> Core {
-        self.core
-    }
-    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
-        match name {
-            "seq" => self.seq = v.as_i64()?,
-            "name" => self.name = v.as_string()?,
-            _ => return Ok(false),
-        }
-        Ok(true)
-    }
-    fn value(&self, name: &str) -> Option<Val> {
-        Some(match name {
-            "seq" => Val::I64(self.seq),
-            "name" => Val::Str(self.name.clone()),
-            _ => return None,
+/// Holds a write transaction on `holder` that creates one service, and times the write of `waiter` that waits behind it.
+/// Returns the code of the waiter's error, if it failed, and how long the write waited.
+async fn hold_lock_while_writing(holder: &Db, waiter: &Db) -> (Option<String>, Duration) {
+    holder
+        .transaction(async || {
+            let mut row = service(None);
+            row.core_mut().set("name", Param::Str("holder".into()));
+            polyspec_orm::model::create(&mut row).await?;
+            let started = Instant::now();
+            let result = write_service(waiter, "waiter").await;
+            Ok((result.err().map(|e| e.code().to_owned()), started.elapsed()))
         })
-    }
-}
-
-/// A service model connected to `db`, or to the active transaction without one.
-fn service(db: Option<&Db>) -> Service {
-    let mut core = Core::new(&ENTITY);
-    if let Some(db) = db {
-        core.connect(db);
-    }
-    Service::from_core(core)
+        .retry(0)
+        .await
+        .unwrap()
 }
 
 /// Runs one transaction that reads the service count and then inserts the service `label`.
@@ -109,34 +75,6 @@ async fn open(dsn: &str, count: usize) -> Vec<Db> {
         out.push(Db::connect_schema(dsn, &SCHEMA, 1, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("connection {i}: {e}")));
     }
     out
-}
-
-/// A new SQLite file with the schema installed, in a directory of its own for one test. The directory is removed
-/// when the value is dropped, also when the test fails an assertion and unwinds.
-struct Database {
-    dsn: String,
-    dir: std::path::PathBuf,
-}
-
-impl Drop for Database {
-    fn drop(&mut self) {
-        if let Err(error) = std::fs::remove_dir_all(&self.dir) {
-            if !std::thread::panicking() {
-                panic!("remove {}: {error}", self.dir.display());
-            }
-        }
-    }
-}
-
-async fn database(name: &str) -> Database {
-    let dir = std::env::temp_dir().join(format!("orm-rust-sqlite-lock-{}-{name}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).unwrap();
-    let dsn = format!("sqlite://{}", dir.join(format!("{name}.sqlite")).display());
-    let db = Db::connect(&dsn, 1, polyspec_orm::Config::default()).await.unwrap();
-    db.utils().schema().install(&SCHEMA).await.unwrap();
-    db.close().await;
-    Database { dsn, dir }
 }
 
 /// Runs one writer per connection at the same time and returns the failures.
@@ -235,18 +173,7 @@ async fn lock_wait_expires() {
     let dsn = file.dsn.clone();
     let holder = &open(&dsn, 1).await[0];
     let waiter = &open(&format!("{dsn}?_pragma=busy_timeout(200)"), 1).await[0];
-    let (code, waited) = holder
-        .transaction(async || {
-            let mut row = service(None);
-            row.core_mut().set("name", Param::Str("holder".into()));
-            polyspec_orm::model::create(&mut row).await?;
-            let started = Instant::now();
-            let result = write_service(waiter, "waiter").await;
-            Ok((result.err().map(|e| e.code().to_owned()), started.elapsed()))
-        })
-        .retry(0)
-        .await
-        .unwrap();
+    let (code, waited) = hold_lock_while_writing(holder, waiter).await;
     assert_eq!(code.as_deref(), Some(polyspec_orm::codes::CANCELED), "write past the lock wait");
     assert!(waited >= Duration::from_millis(200), "write returned after {waited:?}, before the 200ms lock wait");
 }
@@ -258,18 +185,7 @@ async fn statement_timeout_bounds_sqlite_lock_wait() {
     let dsn = file.dsn.clone();
     let holder = open(&dsn, 1).await.remove(0);
     let waiter = Db::connect_schema(&dsn, &SCHEMA, 1, polyspec_orm::Config { statement_timeout_ms: 200, ..Default::default() }).await.unwrap();
-    let (code, waited) = holder
-        .transaction(async || {
-            let mut row = service(None);
-            row.core_mut().set("name", Param::Str("holder".into()));
-            polyspec_orm::model::create(&mut row).await?;
-            let started = Instant::now();
-            let result = write_service(&waiter, "waiter").await;
-            Ok((result.err().map(|e| e.code().to_owned()), started.elapsed()))
-        })
-        .retry(0)
-        .await
-        .unwrap();
+    let (code, waited) = hold_lock_while_writing(&holder, &waiter).await;
     assert_eq!(code.as_deref(), Some(polyspec_orm::codes::CANCELED), "statement timeout cancels the lock wait");
     assert!(waited >= Duration::from_millis(200), "write returned after {waited:?}, before the 200ms statement timeout");
     waiter.close().await;

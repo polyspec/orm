@@ -2,7 +2,11 @@
 //! case: a match updates and bumps the revision or deletes, a mismatch fails with REVISION_CHANGED and changes
 //! nothing.
 
-use polyspec_orm::{codes, Config, Core, Db, Entity, Model, Param, Schema, Val};
+use polyspec_orm::{codes, Config, Core, Db, Entity, Model, Param, Schema};
+
+#[macro_use]
+#[path = "common/typed_model.rs"]
+mod typed_model;
 
 static SCHEMA: Schema = Schema::new(
     "dbspec 1 revision\n\ntable note {\n  seq i64 identity\n  label varchar(32)\n  revision i64\n  primary key (seq)\n}\n",
@@ -12,48 +16,11 @@ static SCHEMA: Schema = Schema::new(
 static ENTITY: Entity =
     Entity { name: "note", schema: &SCHEMA, new: polyspec_orm::model::new_boxed::<Note>, collect: polyspec_orm::model::collect_boxed::<Note> };
 
-#[derive(Clone)]
-struct Note {
-    core: Core,
-    seq: i64,
-    label: String,
-    revision: i64,
-}
-
-impl Model for Note {
-    fn entity() -> &'static Entity {
-        &ENTITY
-    }
-    fn core(&self) -> &Core {
-        &self.core
-    }
-    fn core_mut(&mut self) -> &mut Core {
-        &mut self.core
-    }
-    fn from_core(core: Core) -> Self {
-        Note { core, seq: 0, label: String::new(), revision: 0 }
-    }
-    fn into_core(self) -> Core {
-        self.core
-    }
-    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
-        match name {
-            "seq" => self.seq = v.as_i64()?,
-            "label" => self.label = v.as_string()?,
-            "revision" => self.revision = v.as_i64()?,
-            _ => return Ok(false),
-        }
-        Ok(true)
-    }
-    fn value(&self, name: &str) -> Option<Val> {
-        Some(match name {
-            "seq" => Val::I64(self.seq),
-            "label" => Val::Str(self.label.clone()),
-            "revision" => Val::I64(self.revision),
-            _ => return None,
-        })
-    }
-}
+typed_model!(Note, ENTITY, {
+    seq: i64 = "seq",
+    label: String = "label",
+    revision: i64 = "revision",
+});
 
 fn note(db: &Db) -> Note {
     let mut core = Core::new(&ENTITY);
@@ -99,6 +66,15 @@ async fn revision_update_match_bumps_the_revision() {
     let _ = std::fs::remove_file(&path);
 }
 
+/// Asserts that the write was refused with `code` (REVISION_CHANGED), that the stored note still has revision 3, and then
+/// closes the database and removes its file.
+async fn assert_refused_and_kept(code: &str, db: Db, path: &std::path::Path) {
+    assert_eq!(code, codes::REVISION_CHANGED);
+    assert_eq!(stored(&db).await, vec![("first".to_owned(), 3)]);
+    db.close().await;
+    let _ = std::fs::remove_file(path);
+}
+
 #[tokio::test]
 // The test of DSL-108, DSL-114 (docs/spec).
 async fn revision_update_mismatch_changes_nothing() {
@@ -107,10 +83,7 @@ async fn revision_update_mismatch_changes_nothing() {
     let mut m = keyed(&db, seq, 2);
     m.core_mut().set("label", Param::Str("stale".into()));
     let err = polyspec_orm::model::update(&mut m, false).await.unwrap_err();
-    assert_eq!(err.code(), codes::REVISION_CHANGED);
-    assert_eq!(stored(&db).await, vec![("first".to_owned(), 3)]);
-    db.close().await;
-    let _ = std::fs::remove_file(&path);
+    assert_refused_and_kept(err.code(), db, &path).await;
 }
 
 #[tokio::test]
@@ -130,8 +103,5 @@ async fn revision_delete_mismatch_changes_nothing() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let (db, path, seq) = seeded("delete-mismatch").await;
     let err = polyspec_orm::model::delete(&keyed(&db, seq, 4), false).await.unwrap_err();
-    assert_eq!(err.code(), codes::REVISION_CHANGED);
-    assert_eq!(stored(&db).await, vec![("first".to_owned(), 3)]);
-    db.close().await;
-    let _ = std::fs::remove_file(&path);
+    assert_refused_and_kept(err.code(), db, &path).await;
 }

@@ -6,7 +6,15 @@
 use std::sync::{Arc, LazyLock, Mutex};
 
 use chrono::NaiveDateTime;
-use polyspec_orm::{Config, Core, Db, Entity, Model, Param, Schema, StatementEvent, Val};
+use polyspec_orm::{Config, Core, Db, Entity, Model, Param, StatementEvent};
+
+#[path = "common/sqlite_case.rs"]
+mod sqlite_case;
+use sqlite_case::SCHEMA;
+
+#[macro_use]
+#[path = "common/typed_model.rs"]
+mod typed_model;
 
 /// A database file of a test: it is removed before the test starts, so an old file of an earlier run is never read, and when the test
 /// ends, failed or not. A removal that fails fails the test, unless the test already panics, which then names the file on stderr.
@@ -34,16 +42,6 @@ impl Drop for TempFile {
     }
 }
 
-/// The manifest text of contracts/fixtures/bench/bench.dbs alone: the document carries comments, which its manifest text
-/// leaves out, so the document text itself is not the manifest text.
-static MANIFEST_TEXT: LazyLock<String> = LazyLock::new(|| {
-    let text = include_str!("../../../../contracts/fixtures/bench/bench.dbs");
-    let document = polyspec_orm::dbspec::parse(text, &Default::default()).expect("bench.dbs parses").document;
-    polyspec_orm::dbspec::manifest(&[&document]).expect("the manifest of bench.dbs").manifest_text
-});
-
-static SCHEMA: LazyLock<Schema> = LazyLock::new(|| Schema::new(&MANIFEST_TEXT, "sha256:349a7152d1ad701b2baf8e7e67e14660ec6a75cdd78d5ec61c430f9f6498a1ed"));
-
 static ENTITY: LazyLock<Entity> = LazyLock::new(|| Entity {
     name: "soft_record",
     schema: &SCHEMA,
@@ -51,51 +49,11 @@ static ENTITY: LazyLock<Entity> = LazyLock::new(|| Entity {
     collect: polyspec_orm::model::collect_boxed::<SoftRecord>,
 });
 
-#[derive(Clone)]
-struct SoftRecord {
-    core: Core,
-    seq: i64,
-    name: String,
-    deleted_at: Option<NaiveDateTime>,
-}
-
-impl Model for SoftRecord {
-    fn entity() -> &'static Entity {
-        &ENTITY
-    }
-    fn core(&self) -> &Core {
-        &self.core
-    }
-    fn core_mut(&mut self) -> &mut Core {
-        &mut self.core
-    }
-    fn from_core(core: Core) -> Self {
-        SoftRecord { core, seq: 0, name: String::new(), deleted_at: None }
-    }
-    fn into_core(self) -> Core {
-        self.core
-    }
-    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
-        match name {
-            "seq" => self.seq = v.as_i64()?,
-            "name" => self.name = v.as_string()?,
-            "deleted_at" => self.deleted_at = if v.is_null() { None } else { Some(v.as_datetime()?) },
-            _ => return Ok(false),
-        }
-        Ok(true)
-    }
-    fn value(&self, name: &str) -> Option<Val> {
-        Some(match name {
-            "seq" => Val::I64(self.seq),
-            "name" => Val::Str(self.name.clone()),
-            "deleted_at" => match &self.deleted_at {
-                None => Val::Null,
-                Some(x) => Val::DateTime(*x),
-            },
-            _ => return None,
-        })
-    }
-}
+typed_model!(SoftRecord, ENTITY, {
+    seq: i64 = "seq",
+    name: String = "name",
+    deleted_at: Option<NaiveDateTime> = "deleted_at",
+});
 
 fn record(db: &Db) -> SoftRecord {
     let mut core = Core::new(&ENTITY);
