@@ -6,7 +6,11 @@ fn require_send<T: Send>(value: T) -> T {
     value
 }
 fn dsn(name: &str) -> String {
-    std::env::var(name).ok().filter(|v| !v.is_empty()).expect("declared test DSN is required")
+    match std::env::var(name) {
+        Ok(value) if !value.is_empty() => value,
+        Ok(_) => panic!("declared test DSN {name} is set but empty"),
+        Err(error) => panic!("declared test DSN {name} is required: {error}"),
+    }
 }
 async fn execute(db: &Db, sql: &str) {
     let statement = sqlx::AssertSqlSafe(sql.to_owned());

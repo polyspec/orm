@@ -1653,7 +1653,7 @@ mod tests {
         _: *const std::ffi::c_char,
     ) -> std::ffi::c_int {
         // SAFETY: SQLite passes a null or NUL-terminated string.
-        let text = |p: *const std::ffi::c_char| if p.is_null() { "" } else { unsafe { std::ffi::CStr::from_ptr(p) }.to_str().unwrap_or_else(|e| panic!("the SQLite text is not UTF-8: {e}")) };
+        let text = |p: *const std::ffi::c_char| if p.is_null() { "" } else { unsafe { std::ffi::CStr::from_ptr(p) }.to_str().or_panic(|e| format!("the SQLite text is not UTF-8: {e}")) };
         let denied = match SQLITE_DENIED.load(Ordering::Acquire) {
             DENY_ROLLBACK => action == libsqlite3_sys::SQLITE_TRANSACTION && text(first) == "ROLLBACK",
             DENY_QUERY_ONLY_ON => action == libsqlite3_sys::SQLITE_PRAGMA && text(first) == "query_only" && text(second) == "1",
