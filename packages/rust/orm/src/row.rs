@@ -157,7 +157,7 @@ fn raw_i64(r: &MySqlRow, i: usize) -> Result<i64> {
         "YEAR" => required_cell(year_cell(r, i)?, i)?,
         "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "MEDIUMINT UNSIGNED" | "INT UNSIGNED" | "BIGINT UNSIGNED" => {
             i64::try_from(required_cell(r.try_get::<Option<u64>, _>(i)?, i)?)
-                .map_err(|_| Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("column {i} exceeds i64 range") })?
+                .map_err(|error| Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("column {i} exceeds i64 range: {error}") })?
         }
         "BOOLEAN" => i64::from(required_cell(r.try_get::<Option<bool>, _>(i)?, i)?),
         _ => read_cell_mysql(r, i)?.as_i64()?,
@@ -212,7 +212,7 @@ pub fn read_cell_mysql(row: &MySqlRow, i: usize) -> Result<Val> {
             return match row.try_get::<Option<u64>, _>(i)? {
                 Some(value) => i64::try_from(value)
                     .map(Val::I64)
-                    .map_err(|_| Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("column {i} exceeds i64 range") }),
+                    .map_err(|error| Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("column {i} exceeds i64 range: {error}") }),
                 None => Ok(Val::Null),
             };
         }
@@ -342,10 +342,14 @@ pub fn decode_styled(asm: &crate::plan::Assemble, data: &mut [Vec<Val>], aes_key
 /// The key version a row stores in its version column: a positive 32-bit integer, otherwise CODEC_DECODE (COD-44).
 fn aes_row_version(row: &[Val], index: usize) -> Result<i32> {
     let stored = row[index].as_i64()?;
-    i32::try_from(stored)
-        .ok()
-        .filter(|version| *version >= 1)
-        .ok_or_else(|| Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("aes version {stored} is not a positive 32-bit integer") })
+    let version = i32::try_from(stored).map_err(|error| Error::Engine {
+        code: crate::codes::CODEC_DECODE.into(),
+        msg: format!("aes version {stored} is not a positive 32-bit integer: {error}"),
+    })?;
+    if version < 1 {
+        return Err(Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("aes version {stored} is not a positive 32-bit integer") });
+    }
+    Ok(version)
 }
 
 /// Applies declared boolean column types to positional rows, including joined rows.

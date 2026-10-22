@@ -172,7 +172,24 @@ impl From<sqlx::Error> for Error {
                 }
             } else if let Some(s) = d.try_downcast_ref::<sqlx::sqlite::SqliteError>() {
                 // sqlx reports the extended result code as text
-                let n: i64 = s.code().and_then(|c| c.parse().ok()).unwrap_or(0);
+                // sqlx reports the extended result code as text; a code that is missing or not a number is an explicit error with its text.
+                let n: i64 = match s.code() {
+                    Some(text) => match text.parse() {
+                        Ok(n) => n,
+                        Err(error) => {
+                            return Error::Engine {
+                                code: codes::DRIVER.into(),
+                                msg: format!("sqlite reported extended result code {text:?}, which is not a number: {error}; {}", s.message()),
+                            }
+                        }
+                    },
+                    None => {
+                        return Error::Engine {
+                            code: codes::DRIVER.into(),
+                            msg: format!("sqlite reported no extended result code: {}", s.message()),
+                        }
+                    }
+                };
                 match (n & 0xff, n) {
                     (6, _) => Some((codes::DEADLOCK, s.message().to_owned())),
                     (_, 2067) | (_, 1555) => Some((codes::DUPLICATE_KEY, s.message().to_owned())),
@@ -235,10 +252,16 @@ impl Error {
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// Reports SQLITE_BUSY or one of its extended codes.
-pub(crate) fn sqlite_busy(e: &sqlx::Error) -> bool {
+pub(crate) fn sqlite_busy(e: &sqlx::Error) -> Result<bool> {
     use sqlx::error::DatabaseError as _;
-    let code = e.as_database_error().and_then(|d| d.try_downcast_ref::<sqlx::sqlite::SqliteError>()).and_then(|s| s.code()).and_then(|c| c.parse::<i64>().ok());
-    code.is_some_and(|n| n & 0xff == 5)
+    // An error that is not a SQLite database error has no code, so it is not busy.
+    let Some(text) = e.as_database_error().and_then(|d| d.try_downcast_ref::<sqlx::sqlite::SqliteError>()).and_then(|s| s.code()) else {
+        return Ok(false);
+    };
+    let n: i64 = text
+        .parse()
+        .map_err(|error| Error::Engine { code: codes::DRIVER.into(), msg: format!("sqlite reported extended result code {text:?}, which is not a number: {error}") })?;
+    Ok(n & 0xff == 5)
 }
 
 /// Includes the models that `polyspec_orm_build` generated in the build script as the

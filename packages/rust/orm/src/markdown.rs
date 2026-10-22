@@ -269,12 +269,12 @@ impl MdPool {
 
     /// Hands out an idle session or connects a new one. If open sessions equal the pool size, it waits until one returns.
     pub(crate) async fn acquire(self: &Arc<Self>) -> Result<MdLease> {
-        let closed = || Error::Config("database is closed".into());
-        let slot = self.slots.clone().acquire_owned().await.map_err(|_| closed())?;
+        let closed = |error: &dyn std::fmt::Display| Error::Config(format!("database is closed: {error}"));
+        let slot = self.slots.clone().acquire_owned().await.map_err(|error| closed(&error))?;
         {
             let mut state = self.state.lock().unwrap();
             if state.closed {
-                return Err(closed());
+                return Err(Error::Config("database is closed".into()));
             }
             while let Some(session) = state.idle.pop() {
                 if session.created.elapsed() >= self.lifetime {
@@ -627,13 +627,17 @@ impl<'m> MdNode<'m> {
 /// Reads one value of the reply as a value of the column type. The value uses the same runtime value model as parameters.
 fn answer_value(typ: &str, raw: &RawValue) -> Result<Val> {
     let bad = || Error::Engine { code: codes::CODEC_DECODE.into(), msg: format!("the answer value {} is not a {typ} value", raw.get()) };
-    let value: Value = serde_json::from_str(raw.get()).map_err(|_| bad())?;
+    let bad_with = |error: &dyn std::fmt::Display| Error::Engine {
+        code: codes::CODEC_DECODE.into(),
+        msg: format!("the answer value {} is not a {typ} value: {error}", raw.get()),
+    };
+    let value: Value = serde_json::from_str(raw.get()).map_err(|error| bad_with(&error))?;
     Ok(match (typ, value) {
         (_, Value::Null) => Val::Null,
         ("i16" | "i32" | "i64", Value::Number(n)) => Val::I64(n.as_i64().ok_or_else(bad)?),
         ("f64", Value::Number(n)) => Val::F64(n.as_f64().ok_or_else(bad)?),
         ("bool", Value::Bool(b)) => Val::Bool(b),
-        ("bytes", Value::String(s)) => Val::Bytes(base64::engine::general_purpose::STANDARD.decode(s).map_err(|_| bad())?),
+        ("bytes", Value::String(s)) => Val::Bytes(base64::engine::general_purpose::STANDARD.decode(s).map_err(|error| bad_with(&error))?),
         ("i16" | "i32" | "i64" | "f64" | "bool" | "bytes", _) => return Err(bad()),
         (_, Value::String(s)) => Val::Str(s),
         _ => return Err(bad()),
@@ -682,10 +686,9 @@ pub(crate) async fn markdown_scalar(ex: &Executor, req: &mut Req) -> Result<Val>
     let text = || String::from_utf8_lossy(&answer).into_owned();
     let mut a: HashMap<String, Box<RawValue>> = serde_json::from_slice(&answer).map_err(|e| answer_err(format!("{}: {e}", text())))?;
     if req.ir.kind == "count" {
-        let count = a
-            .get("count")
-            .and_then(|raw| serde_json::from_str::<i64>(raw.get()).ok())
-            .ok_or_else(|| answer_err(format!("a count answer {} has no count", text())))?;
+        let raw = a.get("count").ok_or_else(|| answer_err(format!("a count answer {} has no count", text())))?;
+        let count = serde_json::from_str::<i64>(raw.get())
+            .map_err(|error| answer_err(format!("a count answer {} is not a count: {error}", text())))?;
         return Ok(Val::I64(count));
     }
     let raw = a.remove("value").ok_or_else(|| answer_err(format!("a {} answer {} has no value", req.ir.kind, text())))?;

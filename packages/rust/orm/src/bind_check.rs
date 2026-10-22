@@ -93,8 +93,8 @@ pub(crate) fn check_param(i: usize, v: &Param, s: &ParamSlot<'_>, zone: &Zone) -
         }
         "decimal" => {
             let Param::Str(text) = v else { return Err(kind()) };
-            let precision = u8::try_from(s.precision).map_err(|_| encode_error(format!("invalid decimal precision {}", s.precision)))?;
-            let scale = u8::try_from(s.scale).map_err(|_| encode_error(format!("invalid decimal scale {}", s.scale)))?;
+            let precision = u8::try_from(s.precision).map_err(|error| encode_error(format!("invalid decimal precision {}: {error}", s.precision)))?;
+            let scale = u8::try_from(s.scale).map_err(|error| encode_error(format!("invalid decimal scale {}: {error}", s.scale)))?;
             crate::decimal::normalize(text, precision, scale).map_err(|e| encode_error(format!("parameter {i}: {e}")))?;
         }
         "varchar" | "text" | "uuid" => {
@@ -103,8 +103,11 @@ pub(crate) fn check_param(i: usize, v: &Param, s: &ParamSlot<'_>, zone: &Zone) -
                 return Err(encode_error(format!("parameter {i} holds U+0000, which no {ty} value holds")));
             }
             let n = text.chars().count();
-            if ty == "varchar" && s.length > 0 && i64::try_from(n).unwrap_or(i64::MAX) > s.length {
-                return Err(encode_error(format!("parameter {i} has {n} characters, more than varchar({})", s.length)));
+            if ty == "varchar" && s.length > 0 {
+                let characters = i64::try_from(n).map_err(|error| encode_error(format!("parameter {i} has {n} characters, which does not fit a length: {error}")))?;
+                if characters > s.length {
+                    return Err(encode_error(format!("parameter {i} has {n} characters, more than varchar({})", s.length)));
+                }
             }
             if ty == "uuid" && !is_canonical_uuid(text) {
                 return Err(encode_error(format!("parameter {i} ({text:?}) is not a lower-case canonical uuid")));

@@ -808,15 +808,14 @@ impl Db {
         let insert = "INSERT INTO \"orm__row_lock\" (\"id\") VALUES (1) ON CONFLICT (\"id\") DO UPDATE SET \"id\"=excluded.\"id\"";
         let statement = sqlx::SqlSafeStr::into_sql_str(sqlx::AssertSqlSafe(insert));
         let start = std::time::Instant::now();
-        let result = sqlx::raw_sql(statement).execute(&mut **tx).await.map(drop).map_err(|error| {
-            let busy = crate::sqlite_busy(&error);
-            let mapped = Error::from(error);
-            if nowait && busy {
-                Error::Engine { code: crate::codes::LOCK_NOT_AVAILABLE.into(), msg: mapped.to_string() }
-            } else {
-                mapped
+        let result = match sqlx::raw_sql(statement).execute(&mut **tx).await {
+            Ok(_) => Ok(()),
+            Err(error) => {
+                let busy = crate::sqlite_busy(&error)?;
+                let mapped = Error::from(error);
+                Err(if nowait && busy { Error::Engine { code: crate::codes::LOCK_NOT_AVAILABLE.into(), msg: mapped.to_string() } } else { mapped })
             }
-        });
+        };
         let result = self.statement_done(Sent::bare(KIND_UTILITY, &tables, transaction, insert), start, result);
         let restore_failure = match previous {
             Some(previous) => {

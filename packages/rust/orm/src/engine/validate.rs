@@ -161,7 +161,7 @@ pub(crate) fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
         return Err(err(codes::IR_INVALID, "restart_identity takes no set, rows, on_duplicate, where or optimistic"));
     }
     let v = Validator { m, n: r.n_params };
-    let root = v.scopes(&r.query);
+    let root = v.scopes(&r.query)?;
     v.query(&r.query, At { root: &root, outer: None, node: &root }, false, false)?;
     let q = &r.query;
     if !q.lock.is_empty() && r.kind != "one" && r.kind != "all" {
@@ -352,14 +352,15 @@ impl<'m> Validator<'m> {
 
     /// The scope tree of q and its joins. As in the planner's build_scopes, all joins are placed before the conditions are checked,
     /// so a condition also resolves the path of a join declared later.
-    fn scopes(&self, q: &ir::Query) -> Scope<'m> {
-        let mut s = Scope { name: q.entity.clone(), ent: self.m.entity(&q.entity).ok(), joins: Vec::new() };
+    fn scopes(&self, q: &ir::Query) -> Result<Scope<'m>> {
+        // An entity the manifest does not declare is an error that names it.
+        let mut s = Scope { name: q.entity.clone(), ent: Some(self.m.entity(&q.entity)?), joins: Vec::new() };
         for j in &q.joins {
             if !s.joins.iter().any(|(n, _)| *n == j.rel) {
-                s.joins.push((j.rel.clone(), self.scopes(&j.query)));
+                s.joins.push((j.rel.clone(), self.scopes(&j.query)?));
             }
         }
-        s
+        Ok(s)
     }
 
     /// Like the planner's resolve_path, resolves the ref of a column-to-column condition. Path "" is the statement's root,
@@ -515,7 +516,7 @@ impl<'m> Validator<'m> {
                     return Err(err(codes::COLUMN_UNKNOWN, format!("{}.{} (if_parent)", q.entity, ip.column)));
                 }
             }
-            let scope = self.scopes(&r.query);
+            let scope = self.scopes(&r.query)?;
             self.query(&r.query, At { root: &scope, outer: None, node: &scope }, false, true)?;
         }
         if !q.key_by.is_empty() {
@@ -816,7 +817,7 @@ impl<'m> Validator<'m> {
                 }
             }
         }
-        let scope = self.scopes(q);
+        let scope = self.scopes(q)?;
         self.query(q, At { root: &scope, outer: Some(outer), node: &scope }, false, false)
     }
 }

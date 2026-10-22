@@ -309,8 +309,8 @@ fn blind_index_source<'e>(ent: &'e Entity, target: &str) -> Option<&'e Field> {
 }
 
 /// The columns of the one key an upsert conflicts on, which the validator has checked.
-fn conflict_target(ent: &Entity, set: &[ir::Assign]) -> Vec<String> {
-    super::validate::conflict_key(ent, set).unwrap_or_default()
+fn conflict_target(ent: &Entity, set: &[ir::Assign]) -> Result<Vec<String>> {
+    super::validate::conflict_key(ent, set)
 }
 
 /// The precision and scale a column value slot carries: decimal(p,s), time(p), datetime(p).
@@ -1182,7 +1182,7 @@ impl<'m> Planner<'m> {
                 let identity = self.d.quote(identity);
                 sets.push(format!("{identity} = LAST_INSERT_ID({identity})"));
             }
-            sql.push_str(&self.d.upsert(&conflict_target(ent, &set), &sets.join(", ")));
+            sql.push_str(&self.d.upsert(&conflict_target(ent, &set)?, &sets.join(", ")));
         }
         if let Some(identity) = ent.identity.as_deref().filter(|_| self.d.insert_returning_id()) {
             sql.push_str(&format!(" RETURNING {}", self.d.quote(identity)));

@@ -196,7 +196,7 @@ impl TxShared {
         if self.finished.load(Ordering::Acquire) {
             return Err(Error::Config("transaction already finished".into()));
         }
-        self.inner.try_lock().map_err(|_| Error::Config("the transaction connection is already in use".into()))
+        self.inner.try_lock().map_err(|error| Error::Config(format!("the transaction connection is already in use: {error}")))
     }
 
     /// Runs a statement text of `kind` on the transaction connection and
@@ -242,7 +242,11 @@ tokio::task_local! {
 }
 
 fn frames() -> Vec<Arc<TxShared>> {
-    FLOW.try_with(|f| f.clone()).unwrap_or_default()
+    // The task-local is torn down when its thread ends, and then no transaction frame is open, so the answer is empty.
+    let Ok(frames) = FLOW.try_with(|f| f.clone()) else {
+        return Vec::new();
+    };
+    frames
 }
 
 /// The innermost active transaction of a connection in this task.

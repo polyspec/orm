@@ -778,7 +778,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
             .into_iter()
             .map(|row| match <[CatalogValue; 5]>::try_from(row) {
                 Ok([CatalogValue::Text(name), CatalogValue::Text(from), CatalogValue::Text(to), CatalogValue::Text(state), CatalogValue::Int(step)]) => {
-                    let step = usize::try_from(step).map_err(|_| ApplyError::Database(protocol(format!("{HISTORY_TABLE} row {name} has the step {step}"))))?;
+                    let step = usize::try_from(step).map_err(|error| ApplyError::Database(protocol(format!("{HISTORY_TABLE} row {name} has the step {step}: {error}"))))?;
                     Ok(HistoryRow { name, from, to, state, step })
                 }
                 Ok(other) => Err(ApplyError::Database(protocol(format!("{HISTORY_TABLE} has the row {other:?}")))),
@@ -900,7 +900,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
 
     /// Writes the plan's row as state and step. Creates the row if it does not exist.
     async fn record(&mut self, p: &Plan, state: &str, step: usize, steps: usize) -> Result<(), ApplyError> {
-        let count = |n: usize| i64::try_from(n).map_err(|_| ApplyError::Database(protocol(format!("the step {n} does not fit a history row"))));
+        let count = |n: usize| i64::try_from(n).map_err(|error| ApplyError::Database(protocol(format!("the step {n} does not fit a history row: {error}"))));
         if !self.history.iter().any(|r| r.name == p.name()) {
             let placeholders: Vec<String> = (1..=7).map(|n| self.placeholder(n)).collect();
             let insert = format!(
@@ -951,7 +951,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
     }
 
     async fn set_step(&mut self, p: &Plan, step: usize) -> Result<(), ApplyError> {
-        let step = i64::try_from(step).map_err(|_| ApplyError::Database(protocol(format!("the step {step} does not fit a history row"))))?;
+        let step = i64::try_from(step).map_err(|error| ApplyError::Database(protocol(format!("the step {step} does not fit a history row: {error}"))))?;
         let update =
             format!("UPDATE {} SET {} = {} WHERE {} = {}", self.q(HISTORY_TABLE), self.q("step"), self.placeholder(1), self.q("name"), self.placeholder(2));
         Ok(self.c.execute_bound(&update, &[CatalogValue::Int(step), CatalogValue::Text(p.name().to_owned())]).await?)
