@@ -12095,6 +12095,9 @@
     {
       "id": "rust-integration-coverage-parameter-chunking-coverage-root-in-chunking",
       "kind": "feature",
+      "requirements": [
+        "PRT-76"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -12118,6 +12121,9 @@
     {
       "id": "rust-integration-coverage-parameter-chunking-coverage-root-in-chunking-postgres",
       "kind": "feature",
+      "requirements": [
+        "PRT-76"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -12141,6 +12147,9 @@
     {
       "id": "rust-integration-coverage-parameter-chunking-coverage-root-in-chunking-sqlite",
       "kind": "feature",
+      "requirements": [
+        "PRT-76"
+      ],
       "bindings": [
         {
           "implementation": "rust",
