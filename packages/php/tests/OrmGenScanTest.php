@@ -132,9 +132,8 @@ final class OrmGenScanTest extends TestCase
         $steps = array_map(static fn(array $call): string => "{$call['name']}({$args($call['args'])})", $case['calls']);
         $calls = ($case['chain'] ?? false) ? "$receiver->" . implode('->', $steps) . ";\n"
             : implode('', array_map(static fn(string $step): string => "$receiver->$step;\n", $steps));
-        $source = "<?php\nuse " . self::NS . "\\{$case[
-            'model'
-        ]};\n\n\$db = null;\n\$m = new {$case['model']}();\n$calls";
+        $source = "<?php\nuse " . self::NS . "\\{$case['model']};\n\n\$db = null;\n"
+            . "\$m = new {$case['model']}();\n$calls";
         [$code, $err, $dir] = self::generate('vector-' . $case['id'], ['usage.php' => $source]);
         if (isset($case['expected']['rejected'])) {
             self::assertSame(1, $code, $case['id'] . ' status');

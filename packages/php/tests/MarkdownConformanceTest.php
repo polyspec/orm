@@ -113,11 +113,9 @@ final class MarkdownConformanceTest extends TestCase
         }
         if ($main[0] !== self::FLOWMARK_MODULE || $main[1] !== $pin) {
             throw new RuntimeException(
-                "FLOWMARK $bin is \"{$main[
-                    0
-                ]}\" \"{$main[
-                    1
-                ]}\", not the pinned " . self::FLOWMARK_MODULE . " $pin; run make orm-install-flowmark, or give FLOWMARK a build of a flowmark checkout at that revision"
+                "FLOWMARK $bin is \"{$main[0]}\" \"{$main[1]}\", not the pinned " . self::FLOWMARK_MODULE
+                    . " $pin; run make orm-install-flowmark, or give FLOWMARK a build of a flowmark checkout at that "
+                    . "revision"
             );
         }
         return $bin;

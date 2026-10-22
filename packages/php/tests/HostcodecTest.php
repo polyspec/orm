@@ -29,7 +29,8 @@ final class HostcodecTest extends TestCase
 
     public function testHostcodec(): void
     {
-        $fixed = '4F524D2D414553320000112233445566778899AABB651DA9F08BE2FA7CD7B2DF5C04D91B32189DCD854A70762F99271A2BEBA64A248E24';
+        $fixed = '4F524D2D414553320000112233445566778899AABB651DA9F08BE2FA7CD7B2DF5C04D91B32189DCD854A70762F'
+            . '99271A2BEBA64A248E24';
         self::assertSame(
             'user42@example.com',
             Codec::hostDecode($fixed, ['aes', 'hex'], 'bench-salt'),

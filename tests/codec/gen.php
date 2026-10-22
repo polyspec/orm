@@ -59,7 +59,8 @@ function encode(array $styles, mixed $v): ?string
                 $value,
                 20,
                 2,
-                Yaml::DUMP_EXCEPTION_ON_INVALID_TYPE | Yaml::DUMP_EMPTY_ARRAY_AS_SEQUENCE | Yaml::DUMP_NUMERIC_KEY_AS_STRING
+                Yaml::DUMP_EXCEPTION_ON_INVALID_TYPE | Yaml::DUMP_EMPTY_ARRAY_AS_SEQUENCE
+                    | Yaml::DUMP_NUMERIC_KEY_AS_STRING
             ),
             'json', 'jsons' => json_encode(
                 $value,

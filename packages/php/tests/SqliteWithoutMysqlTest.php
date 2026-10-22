@@ -19,8 +19,8 @@ final class SqliteWithoutMysqlTest extends TestCase
         $work = $argv[2];
         require $autoload;
         require $argv[3];
-        // orm's MySQL dialect classes: a load of one of them fails the child, before its code runs. It is registered after
-        // the Composer loader, which prepends itself, so this guard sees every class load first.
+        // orm's MySQL dialect classes: a load of one of them fails the child, before its code runs. It is registered
+        // after the Composer loader, which prepends itself, so this guard sees every class load first.
         $mysqlDialect = ['Polyspec\\Orm\\Dbspec\\MysqlCatalog'];
         spl_autoload_register(static function (string $class) use ($mysqlDialect): void {
             if (in_array($class, $mysqlDialect, true)) {
@@ -28,7 +28,10 @@ final class SqliteWithoutMysqlTest extends TestCase
                 exit(5);
             }
         }, true, true);
-        $db = Polyspec\Orm\Orm::connect("sqlite://$work/case.sqlite", new Polyspec\Orm\Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
+        $db = Polyspec\Orm\Orm::connect(
+            "sqlite://$work/case.sqlite",
+            new Polyspec\Orm\Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key')
+        );
         $driver = $db->pdo()->getAttribute(PDO::ATTR_DRIVER_NAME);
         if ($db->driver() !== 'sqlite' || $driver !== 'sqlite') {
             fwrite(STDERR, "the sqlite DSN selected the dialect {$db->driver()} and the PDO driver $driver");

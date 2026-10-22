@@ -95,7 +95,8 @@ final class OrmGenTest extends TestCase
         [$code, $out] = self::tool($args);
         self::assertTrue(
             $code === 1
-                && $out === "differs: $dir/model/Item.php\nextra: $dir/model/Removed.php\nmissing: $dir/model/Tag.php\n",
+                && $out === "differs: $dir/model/Item.php\nextra: $dir/model/Removed.php\n"
+                    . "missing: $dir/model/Tag.php\n",
             "differences: $code $out"
         );
         self::assertTrue(

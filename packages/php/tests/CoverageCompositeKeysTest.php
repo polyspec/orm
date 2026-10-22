@@ -82,7 +82,8 @@ final class CoverageCompositeKeysTest extends TestCase
                         $got = [];
                         foreach ($loaded as $a) {
                             foreach ($a->getMemberships() as $m) {
-                                $got[] = "{$a->getTenantId()}/{$a->getAccountId()}:{$m->getTenantId()}/{$m->getAccountId()}/{$m->getRole()}";
+                                $got[] = "{$a->getTenantId()}/{$a->getAccountId()}:"
+                                    . "{$m->getTenantId()}/{$m->getAccountId()}/{$m->getRole()}";
                             }
                         }
                         $want = [

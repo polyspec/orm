@@ -35,7 +35,8 @@ $text = json_encode(
             . 'compares the PHP library and the extension with them.',
         'cases' => $cases
     ],
-    JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR
+    JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE
+        | JSON_THROW_ON_ERROR
 ) . "\n";
 file_put_contents("$path.tmp", $text);
 rename("$path.tmp", $path);

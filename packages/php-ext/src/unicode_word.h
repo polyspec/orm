@@ -1,6 +1,7 @@
 /*
  * Generated file. The word rune table of Unicode 17.0.0.
- * Closed ranges of code points for which unicode.IsLetter or unicode.IsDigit is true, in ascending order and non-overlapping.
+ * Closed ranges of code points for which unicode.IsLetter or unicode.IsDigit is true, in ascending order and
+ * non-overlapping.
  * Written by `go run ./tests/dbspec/unicode -write`. Do not edit it directly.
  */
 #ifndef POLYSPEC_UNICODE_WORD_H

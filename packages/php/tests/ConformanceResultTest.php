@@ -23,7 +23,8 @@ final class ConformanceResultTest extends TestCase
             'styled' => ['kind' => 'value', 'value' => Polyspec\OrderedJson\parse('{"n":9007199254740993}')],
             'sqlNull' => ['kind' => 'sql-null'],
         ];
-        $want = '{"exact":9007199254740993,"styled":{"kind":"value","value":{"n":9007199254740993}},"sqlNull":{"kind":"sql-null"}}';
+        $want = '{"exact":9007199254740993,"styled":{"kind":"value","value":{"n":9007199254740993}},'
+            . '"sqlNull":{"kind":"sql-null"}}';
         self::assertSame(
             $want,
             Model::jsonText($result),
