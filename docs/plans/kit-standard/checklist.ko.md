@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: efa61c4f0af49900a3cd101dbd48982928aeedbc0cb90b8327fb4dd5209a6159 -->
+<!-- source-sha256: 3d065e78169a7893dc069e24ceea6491db46dd206a286a41e0bd8f3e49d815db -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -212,3 +212,4 @@
 | KSTD-5-57-14c | orm 테스트 dbspec_introspect.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests/dbspec_introspect.rs | `make lint-rust` reports no finding in this file | [ ] |
 | KSTD-5-57-18c | sqlite_concurrency.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests/sqlite_concurrency.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-18d | lock_probe_order.rs의 미사용 import를 고친다 (KSTD-5-57 하위) | packages/rust/build/tests/lock_probe_order.rs | `make lint-rust` reports no finding in these files | [ ] |
+| KSTD-5-57-18e | packages/rust/tests의 catch-check 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/tests/tests/integration/coverage_schema_install.rs, packages/rust/tests/tests/markdown_conformance.rs | `make lint-rust` reports no finding in these files | [ ] |
