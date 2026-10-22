@@ -114,17 +114,6 @@ fn mysql_code(number: u16) -> Option<&'static str> {
     })
 }
 
-#[cfg(test)]
-mod mysql_code_tests {
-    use super::*;
-
-    #[test]
-    fn mysql_lock_wait_timeout_is_canceled() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        assert_eq!(mysql_code(1205), Some(codes::CANCELED));
-    }
-}
-
 /// Driver errors: the codes the catalog names (docs/spec/errors.yaml, origin driver) map to a
 /// shared code keeping the driver's message — MySQL 1213 / SQLSTATE 40001 → DEADLOCK, 1062 →
 /// DUPLICATE_KEY; PostgreSQL 40P01 / 40001 → DEADLOCK, 23505 → DUPLICATE_KEY, 23503 → FOREIGN_KEY; SQLite LOCKED
@@ -278,4 +267,15 @@ macro_rules! models {
             include!(concat!(env!("OUT_DIR"), "/orm_model.rs"));
         }
     };
+}
+
+#[cfg(test)]
+mod mysql_code_tests {
+    use super::*;
+
+    #[test]
+    fn mysql_lock_wait_timeout_is_canceled() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        assert_eq!(mysql_code(1205), Some(codes::CANCELED));
+    }
 }
