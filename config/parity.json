@@ -12305,6 +12305,9 @@
     {
       "id": "py-decimal-model-db",
       "kind": "feature",
+      "requirements": [
+        "COD-2"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -12316,6 +12319,9 @@
     {
       "id": "py-mysql-session",
       "kind": "feature",
+      "requirements": [
+        "CFG-3"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -12360,6 +12366,12 @@
     {
       "id": "py-schema-inspection",
       "kind": "feature",
+      "requirements": [
+        "INT-57",
+        "INT-58",
+        "INT-59",
+        "INT-79"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -12413,6 +12425,9 @@
     {
       "id": "py-test-aggregate-numeric-driver-values",
       "kind": "feature",
+      "requirements": [
+        "DSL-66"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -12424,6 +12439,9 @@
     {
       "id": "py-test-alias-columns",
       "kind": "feature",
+      "requirements": [
+        "DSL-73"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -12435,6 +12453,12 @@
     {
       "id": "py-test-collection",
       "kind": "feature",
+      "requirements": [
+        "INT-62",
+        "INT-63",
+        "INT-80",
+        "INT-86"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -12486,6 +12510,9 @@
     {
       "id": "py-test-driver-cells",
       "kind": "feature",
+      "requirements": [
+        "COD-2"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -12511,6 +12538,9 @@
     {
       "id": "py-test-event-placeholders",
       "kind": "feature",
+      "requirements": [
+        "INT-91"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -12589,6 +12619,9 @@
     {
       "id": "py-test-model-fields",
       "kind": "feature",
+      "requirements": [
+        "DBS-112"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -12600,6 +12633,9 @@
     {
       "id": "py-test-model-json-text",
       "kind": "feature",
+      "requirements": [
+        "COD-26"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -12625,6 +12661,9 @@
     {
       "id": "py-test-new-values",
       "kind": "feature",
+      "requirements": [
+        "DSL-115"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -12710,6 +12749,9 @@
     {
       "id": "py-test-remove-columns",
       "kind": "feature",
+      "requirements": [
+        "DSL-76"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -12721,6 +12763,9 @@
     {
       "id": "py-test-request-hook",
       "kind": "feature",
+      "requirements": [
+        "INT-78"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -12759,6 +12804,9 @@
     {
       "id": "py-test-row-lock-event",
       "kind": "feature",
+      "requirements": [
+        "INT-49"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -12770,6 +12818,9 @@
     {
       "id": "py-test-schema-inspection",
       "kind": "feature",
+      "requirements": [
+        "INT-79"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -12838,6 +12889,10 @@
     {
       "id": "py-test-sqlite",
       "kind": "feature",
+      "requirements": [
+        "DSL-106",
+        "DSL-107"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -12849,6 +12904,9 @@
     {
       "id": "py-test-statement-fault-entry",
       "kind": "feature",
+      "requirements": [
+        "PRT-52"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -12874,6 +12932,9 @@
     {
       "id": "py-test-subqueries",
       "kind": "feature",
+      "requirements": [
+        "DSL-74"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -12896,6 +12957,9 @@
     {
       "id": "py-test-terminal-by",
       "kind": "feature",
+      "requirements": [
+        "DSL-60"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -12907,6 +12971,9 @@
     {
       "id": "py-test-utils-statements",
       "kind": "feature",
+      "requirements": [
+        "DIA-2"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -12918,6 +12985,9 @@
     {
       "id": "py-test-utils",
       "kind": "feature",
+      "requirements": [
+        "INT-51"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -12951,6 +13021,9 @@
     {
       "id": "py-ir-answers",
       "kind": "feature",
+      "requirements": [
+        "PRT-69"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -12990,6 +13063,9 @@
     {
       "id": "py-cov-authenticated-encryption-aes-envelope-decrypt",
       "kind": "feature",
+      "requirements": [
+        "COD-5"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -13001,6 +13077,9 @@
     {
       "id": "py-cov-authenticated-encryption-aes-round-trip",
       "kind": "feature",
+      "requirements": [
+        "COD-5"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -13012,6 +13091,9 @@
     {
       "id": "py-cov-authenticated-encryption-aes-tamper-rejected",
       "kind": "feature",
+      "requirements": [
+        "COD-6"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -13023,6 +13105,9 @@
     {
       "id": "py-cov-authenticated-encryption-aes-wrong-key-rejected",
       "kind": "feature",
+      "requirements": [
+        "COD-6"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -13034,6 +13119,9 @@
     {
       "id": "py-cov-authenticated-encryption-blind-index-vector",
       "kind": "feature",
+      "requirements": [
+        "COD-4"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -13059,6 +13147,9 @@
     {
       "id": "py-cov-conformance-verification-conformance-vector",
       "kind": "feature",
+      "requirements": [
+        "DIA-37"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -13111,6 +13202,9 @@
     {
       "id": "py-cov-parameter-chunking-root-in-chunking",
       "kind": "feature",
+      "requirements": [
+        "PRT-40"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -13169,6 +13263,9 @@
     {
       "id": "py-cov-statement-events-statement-events",
       "kind": "feature",
+      "requirements": [
+        "INT-91"
+      ],
       "bindings": [
         {
           "implementation": "python",

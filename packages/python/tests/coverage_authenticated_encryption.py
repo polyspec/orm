@@ -71,20 +71,25 @@ def blind_index_vector():
 
 
 class CoverageTest(CoverageCase):
+    # Requirements: COD-5.
     def test_aes_envelope_decrypt(self):
         self.each_item("aes_envelope_decrypt", aes_envelope_decrypt)
 
+    # Requirements: COD-5.
     def test_aes_round_trip(self):
         self.each_item("aes_round_trip", aes_round_trip)
 
+    # Requirements: COD-6.
     def test_aes_tamper_rejected(self):
         self.each_item("aes_tamper_rejected", lambda: rejected("aes_tamper_rejected"))
 
+    # Requirements: COD-6.
     def test_aes_wrong_key_rejected(self):
         self.each_item(
             "aes_wrong_key_rejected", lambda: rejected("aes_wrong_key_rejected")
         )
 
+    # Requirements: COD-4.
     def test_blind_index_vector(self):
         self.each_item("blind_index_vector", blind_index_vector)
 

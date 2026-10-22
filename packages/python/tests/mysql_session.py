@@ -15,6 +15,7 @@ VECTOR = json.loads((ROOT / "tests" / "dsn" / "mysql-session.json").read_text())
 
 
 class MysqlSessionTest(unittest.TestCase):
+    # Requirements: CFG-3.
     def test_session_sql_mode(self):
         dsn = os.environ.get("ORM_TEST_MYSQL_DSN", "")
         if not dsn:

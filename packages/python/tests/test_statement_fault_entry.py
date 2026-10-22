@@ -16,6 +16,7 @@ PACKAGE = Path(__file__).resolve().parents[1]
 class StatementFaultEntryTest(unittest.TestCase):
     deadline = testcase.PROCESS
 
+    # Requirements: PRT-52.
     def test_the_package_entry_point_does_not_export_the_fault(self):
         import polyspec.orm
 

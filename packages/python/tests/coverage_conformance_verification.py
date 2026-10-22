@@ -56,6 +56,7 @@ def conformance_vector(item):
 
 
 class CoverageTest(CoverageCase):
+    # Requirements: DIA-37.
     def test_conformance_vector(self):
         self.each_item("conformance_vector", conformance_vector)
 

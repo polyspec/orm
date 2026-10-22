@@ -26,6 +26,7 @@ class SchemaInspectionTest(unittest.TestCase):
             call()
         return caught.exception.code
 
+    # Requirements: INT-79.
     def test_stats_report_the_pool_of_the_db(self):
         from polyspec.orm.database import DbStats
 

@@ -43,6 +43,7 @@ class SubqueryColumnTest(unittest.TestCase):
     def tearDownClass(cls):
         cls.db.close()
 
+    # Requirements: DSL-74.
     def test_read_total_is_the_sum_of_the_correlated_rows(self):
         users = (
             self.models.User()

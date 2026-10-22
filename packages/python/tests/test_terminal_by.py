@@ -41,6 +41,7 @@ class TerminalByTest(unittest.TestCase):
     def tearDownClass(cls):
         cls.db.close()
 
+    # Requirements: DSL-60.
     def test_terminal_by_after_a_condition_counts_the_joined_rows(self):
         query = self.models.Author().connect(self.db).service_seq(7)
         self.assertEqual(query.get_count_by_is_close(True), 1)

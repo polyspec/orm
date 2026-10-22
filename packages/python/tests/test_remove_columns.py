@@ -35,6 +35,7 @@ class RemoveColumnsTest(unittest.TestCase):
     def tearDownClass(cls):
         cls.db.close()
 
+    # Requirements: DSL-76.
     def test_keys_and_the_added_column_only(self):
         row = (
             self.models.Author()

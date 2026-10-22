@@ -31,6 +31,7 @@ def run_statement_events(item):
 
 
 class CoverageTest(CoverageCase):
+    # Requirements: INT-91.
     def test_statement_events(self):
         self.each_item("statement_events", run_statement_events)
 

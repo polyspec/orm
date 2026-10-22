@@ -37,6 +37,7 @@ class AliasColumnsTest(unittest.TestCase):
     def tearDownClass(cls):
         cls.db.close()
 
+    # Requirements: DSL-73.
     def test_alias_column_is_keyed_by_its_snake_case_name(self):
         row = (
             self.models.Author()

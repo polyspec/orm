@@ -76,6 +76,7 @@ class ModelJsonTextTest(unittest.TestCase):
             .add_column_read_count()
         )
 
+    # Requirements: COD-26.
     def test_a_row_writes_the_stored_ordered_json_text_in_row_order(self):
         row = self.author().get_by_seq(1)
         text = row.to_json_text()

@@ -37,6 +37,7 @@ class DecimalModelDbTest(unittest.TestCase):
             ROOT / "contracts" / "fixtures" / "dbspec-set.json",
         )
 
+    # Requirements: COD-2.
     def test_setters(self):
         case = self.models.DecimalCase
         for invalid in ("1.00001", "1000000000.0000", "NaN", 48.045):

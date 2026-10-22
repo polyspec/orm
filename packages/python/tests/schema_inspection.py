@@ -187,6 +187,7 @@ class SchemaInspectionTest(unittest.TestCase):
             DbStats(max_open_connections=10, open_connections=1, in_use=0, idle=1),
         )
 
+    # Requirements: INT-57, INT-58, INT-59, INT-79.
     def test_sqlite(self):
         self.run_case("sqlite")
 

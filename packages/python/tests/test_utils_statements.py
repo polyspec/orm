@@ -9,6 +9,7 @@ from . import testcase
 
 
 class PostgresUtilityStatements(unittest.TestCase):
+    # Requirements: DIA-2.
     def test_advisory_lock_statement_uses_numbered_markers(self):
         text, args = for_postgres(POSTGRES_ADVISORY_LOCK, ["key"])
         self.assertEqual(

@@ -151,6 +151,7 @@ def check_case(test: unittest.TestCase, case: dict) -> None:
         test.fail(f"got {json.dumps(actual)}, want {json.dumps(case['expect'])}")
 
 
+# Requirements: PRT-69.
 class Case(VectorCase):
     """A case of contracts/fixtures/ir_answers.json."""
 

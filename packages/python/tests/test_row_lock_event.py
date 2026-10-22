@@ -29,6 +29,7 @@ class RowLockEventTest(unittest.TestCase):
     def tearDownClass(cls):
         cls.db.close()
 
+    # Requirements: INT-49.
     def test_row_lock_take_names_the_row_lock_table(self):
         events = []
         self.db.subscribe(events.append)

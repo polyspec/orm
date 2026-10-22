@@ -30,6 +30,7 @@ CASES = [
 class ModelFieldsTest(unittest.TestCase):
     deadline = testcase.COMPUTE
 
+    # Requirements: DBS-112.
     def test_field_types(self):
         for model, column, getter, setter in CASES:
             with self.subTest(column=f"{model.__name__}.{column}"):

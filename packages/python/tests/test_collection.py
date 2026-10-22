@@ -8,6 +8,7 @@ from . import testcase
 
 
 class CollectionLookupTest(unittest.TestCase):
+    # Requirements: INT-62, INT-63, INT-80, INT-86.
     def test_get_has_and_fetched_read_the_stored_key(self):
         c = Collection()
         c.put(7, "seven", fetched={"seq": 7})

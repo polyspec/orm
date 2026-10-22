@@ -29,6 +29,7 @@ class EventPlaceholdersTest(unittest.TestCase):
     def tearDownClass(cls):
         cls.db.close()
 
+    # Requirements: INT-91.
     def test_clock_and_secret_binds_are_shown_as_placeholders(self):
         events = []
         self.db.subscribe(events.append)

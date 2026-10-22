@@ -45,6 +45,7 @@ class UtilsTest(unittest.TestCase):
     def tearDownClass(cls):
         cls.db.close()
 
+    # Requirements: INT-51.
     def test_local_value_is_readable_inside_the_transaction(self):
         seen = []
 

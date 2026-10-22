@@ -81,6 +81,7 @@ class RequestHookTest(RequestHookCase):
     def labels(self, db) -> list:
         return sorted(row.get_label() for row in self.item(db).gets())
 
+    # Requirements: INT-78.
     def test_without_hook(self):
         self.assertEqual(self.labels(self.db), ["a1", "a2", "b1"])
         self.assertEqual(self.item(self.db).get_count(), 3)

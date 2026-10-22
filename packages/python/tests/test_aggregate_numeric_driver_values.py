@@ -9,6 +9,7 @@ from . import testcase
 
 
 class DriverValueTest(unittest.TestCase):
+    # Requirements: DSL-66.
     def test_decimal_and_text_give_the_same_value(self) -> None:
         self.assertEqual(
             _aggregate_number(Decimal("48.0450")), _aggregate_number("48.0450")

@@ -193,6 +193,7 @@ class SqliteEndToEndTest(unittest.TestCase):
             .set_end_dt("2026-06-02 00:00:00.000000")
         )
 
+    # Requirements: DSL-106, DSL-107.
     def test_write_cycle(self):
         created = self.author("cycle").set_read_count(10).new_label("made").create()
         seq = created.get_seq()
