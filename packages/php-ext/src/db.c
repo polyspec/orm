@@ -2606,6 +2606,25 @@ static bool acquire_row_lock(zval *self, zval *mode)
 
 /* ---- the entry points of the statement path (Db::select, scalarOf, paginate, writeOf, statement) ---- */
 
+/* Calls the Markdown object's method m with self and r when self holds one: 1 or 0 for its result, or -1 when self holds
+no Markdown object, so the caller runs the statement itself. */
+static int md_call(zval *self, zval *r, const char *m, zval *out)
+{
+    zval *md = rd(self, "md");
+    if (md == NULL || Z_TYPE_P(md) != IS_OBJECT) {
+        return -1;
+    }
+    zval args[2];
+    ZVAL_COPY(&args[0], self);
+    ZVAL_COPY(&args[1], r);
+    char name[64];
+    snprintf(name, sizeof name, "Polyspec\\Orm\\Markdown::%s", m);
+    bool ok = scall(name, out, 2, args);
+    zval_ptr_dtor(&args[0]);
+    zval_ptr_dtor(&args[1]);
+    return ok ? 1 : 0;
+}
+
 static bool select_impl(zval *self, zval *frame, zval *r, zval *out)
 {
     if (!apply_hook(self, r)) {
@@ -2615,15 +2634,9 @@ static bool select_impl(zval *self, zval *frame, zval *r, zval *out)
     if (!enter(self, frame, ir)) {
         return false;
     }
-    zval *md = rd(self, "md");
-    if (md != NULL && Z_TYPE_P(md) == IS_OBJECT) {
-        zval args[2];
-        ZVAL_COPY(&args[0], self);
-        ZVAL_COPY(&args[1], r);
-        bool ok = scall("Polyspec\\Orm\\Markdown::read", out, 2, args);
-        zval_ptr_dtor(&args[0]);
-        zval_ptr_dtor(&args[1]);
-        return ok;
+    int handled = md_call(self, r, "read", out);
+    if (handled >= 0) {
+        return handled == 1;
     }
     zval plan;
     if (!plan_of(self, r, &plan)) {
@@ -2720,15 +2733,9 @@ static bool scalar_of_impl(zval *self, zval *frame, zval *r, zval *out)
     if (!enter(self, frame, rd(r, "ir"))) {
         return false;
     }
-    zval *md = rd(self, "md");
-    if (md != NULL && Z_TYPE_P(md) == IS_OBJECT) {
-        zval args[2];
-        ZVAL_COPY(&args[0], self);
-        ZVAL_COPY(&args[1], r);
-        bool ok = scall("Polyspec\\Orm\\Markdown::scalar", out, 2, args);
-        zval_ptr_dtor(&args[0]);
-        zval_ptr_dtor(&args[1]);
-        return ok;
+    int handled = md_call(self, r, "scalar", out);
+    if (handled >= 0) {
+        return handled == 1;
     }
     zval plan;
     if (!plan_of(self, r, &plan)) {
@@ -2782,15 +2789,9 @@ static bool paginate_impl(zval *self, zval *frame, zval *r, zval *out)
     if (!enter(self, frame, rd(r, "ir"))) {
         return false;
     }
-    zval *md = rd(self, "md");
-    if (md != NULL && Z_TYPE_P(md) == IS_OBJECT) {
-        zval args[2];
-        ZVAL_COPY(&args[0], self);
-        ZVAL_COPY(&args[1], r);
-        bool ok = scall("Polyspec\\Orm\\Markdown::read", out, 2, args);
-        zval_ptr_dtor(&args[0]);
-        zval_ptr_dtor(&args[1]);
-        return ok;
+    int handled = md_call(self, r, "read", out);
+    if (handled >= 0) {
+        return handled == 1;
     }
     zval plan;
     if (!plan_of(self, r, &plan)) {
