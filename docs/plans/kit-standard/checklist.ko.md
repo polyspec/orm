@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: b865bcba3f14df64bdcb3436836c5086d1c32d189fd7d105d2b2925b88e4fcc3 -->
+<!-- source-sha256: 3ffe55462e78590f0cdf19e1be143a07bce2157eba26cc1a6e820d5af5b5cfda -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -210,3 +210,4 @@
 | KSTD-5-57-14b | add_tables_and_columns, dbspec_plan_apply, collection_identity의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests add_tables_and_columns, dbspec_plan_apply, collection_identity | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-18b | build 테스트 read_only_query.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/build/tests/read_only_query.rs | `make lint-rust` reports no finding in this file | [ ] |
 | KSTD-5-57-14c | orm 테스트 dbspec_introspect.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests/dbspec_introspect.rs | `make lint-rust` reports no finding in this file | [ ] |
+| KSTD-5-57-18c | sqlite_concurrency.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests/sqlite_concurrency.rs | `make lint-rust` reports no finding in these files | [ ] |

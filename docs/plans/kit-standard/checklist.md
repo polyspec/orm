@@ -209,3 +209,4 @@
 | KSTD-5-57-14b | Fix the lint findings of add_tables_and_columns, dbspec_plan_apply and collection_identity (follows KSTD-5-57) | packages/rust/orm/tests add_tables_and_columns, dbspec_plan_apply, collection_identity | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-18b | Fix the lint finding of the build test file read_only_query.rs (follows KSTD-5-57) | packages/rust/build/tests/read_only_query.rs | `make lint-rust` reports no finding in this file | [ ] |
 | KSTD-5-57-14c | Fix the lint findings of the orm test file dbspec_introspect.rs (follows KSTD-5-57) | packages/rust/orm/tests/dbspec_introspect.rs | `make lint-rust` reports no finding in this file | [ ] |
+| KSTD-5-57-18c | Fix the lint finding of the orm test file sqlite_concurrency.rs (follows KSTD-5-57) | packages/rust/orm/tests/sqlite_concurrency.rs | `make lint-rust` reports no finding in these files | [ ] |
