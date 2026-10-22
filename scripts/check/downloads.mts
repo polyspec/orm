@@ -21,8 +21,8 @@ const fix = 'run make install, which downloads it';
 const offline = { CARGO_NET_OFFLINE: 'true', GOPROXY: 'off', npm_config_offline: 'true', COMPOSER_DISABLE_NETWORK: '1' };
 
 
-// npmMissing returns the packages that package-lock.json installs (optional platform packages excluded) that are either absent from node_modules or
-// at a different version.
+// npmMissing returns the packages that package-lock.json installs (optional platform packages excluded) that are absent from node_modules.
+// Versions are not compared: the package manager owns versions (user rule 2026-10-22).
 export function npmMissing(root: string, directory: string) {
   const lock = join(root, directory, 'package-lock.json');
   const installed = join(root, directory, 'node_modules', '.package-lock.json');
@@ -31,11 +31,11 @@ export function npmMissing(root: string, directory: string) {
   const present = readNpmLock(installed).packages;
   return Object.entries(readNpmLock(lock).packages)
     .filter(([path, entry]) => path && !entry.optional && !entry.link)
-    .filter(([path, entry]) => present[path]?.version !== entry.version)
-    .map(([path, entry]) => `${directory}/${path} ${entry.version} is ${present[path] ? `installed as ${present[path].version}` : 'not installed'}`);
+    .filter(([path]) => present[path] === undefined)
+    .map(([path, entry]) => `${directory}/${path} ${entry.version} is not installed`);
 }
 
-// composerMissing is the packages in composer.lock that are absent from vendor or have a different version.
+// composerMissing is the packages in composer.lock that are absent from vendor. Versions are not compared (user rule 2026-10-22).
 // The vendor directory is config.vendor-dir in composer.json, and if absent it is vendor.
 export function composerMissing(root: string, directory: string) {
   const lock = join(root, directory, 'composer.lock');
@@ -47,8 +47,8 @@ export function composerMissing(root: string, directory: string) {
   const present = new Map(readComposerPackages(installed).packages.map(entry => [entry.name, entry.version]));
   const locked = readComposerPackages(lock);
   return [...locked.packages, ...(locked['packages-dev'] ?? [])]
-    .filter(entry => present.get(entry.name) !== entry.version)
-    .map(entry => `${directory} ${entry.name} ${entry.version} is ${present.has(entry.name) ? `installed as ${present.get(entry.name)}` : 'not installed'}`);
+    .filter(entry => !present.has(entry.name))
+    .map(entry => `${directory} ${entry.name} ${entry.version} is not installed`);
 }
 
 // missingDownloads lists each missing download per need. run has the same shape as spawnSync (the test changes it).
