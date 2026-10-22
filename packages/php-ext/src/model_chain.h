@@ -16,5 +16,13 @@ bool model_chain_add_item(model_state *s, const char *conn, size_t conn_len, zva
 /* Model::connector with no argument: records the connector as pending for the next condition; it fails when a connector is
  * already pending. */
 bool model_chain_pending(model_state *s, const char *conn, size_t conn_len, const char **error);
+/* Model::limit: the offset and the count of the limit, or false with the message of the failed rule. */
+bool model_chain_limit(model_state *s, zend_long offset, zend_long count, const char **error);
+
+/* Model::orderByRandom: appends the random ordering to the order list. */
+void model_chain_order_random(model_state *s);
+
+/* Model::addAllColumns and Model::removeAllColumns: sets the column mode to 'all' or 'none'. */
+void model_chain_column_mode(model_state *s, const char *mode, size_t mode_len);
 
 #endif

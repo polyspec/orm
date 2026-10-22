@@ -70,3 +70,35 @@ bool model_chain_pending(model_state *s, const char *conn, size_t conn_len, cons
     set_pending(s, conn, conn_len);
     return true;
 }
+
+/* Model::limit: keeps the offset and the count, and fails unless the offset is not negative and the count is positive. */
+bool model_chain_limit(model_state *s, zend_long offset, zend_long count, const char **error)
+{
+    if (offset < 0 || count < 1) {
+        *error = "limit requires a non-negative offset and a positive count";
+        return false;
+    }
+    zval limit;
+    array_init(&limit);
+    add_assoc_long(&limit, "offset", offset);
+    add_assoc_long(&limit, "count", count);
+    model_state_free_limit(s);
+    ZVAL_COPY_VALUE(&s->limit, &limit);
+    return true;
+}
+
+/* Model::orderByRandom: appends the random ordering to the order list. */
+void model_chain_order_random(model_state *s)
+{
+    zval random;
+    array_init(&random);
+    add_assoc_bool(&random, "random", true);
+    zend_hash_next_index_insert(Z_ARRVAL(s->order), &random);
+}
+
+/* Model::addAllColumns and Model::removeAllColumns: set the column mode, 'all' or 'none'. */
+void model_chain_column_mode(model_state *s, const char *mode, size_t mode_len)
+{
+    model_state_free_column_mode(s);
+    s->column_mode = zend_string_init(mode, mode_len, 0);
+}
