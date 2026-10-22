@@ -551,3 +551,21 @@ func TestAESRotation(t *testing.T) {
 		}
 	})
 }
+
+// TestDuplicateRelationNamesTheAliasCall: two unaliased relations of one child entity have one result name, and the CONFIG message names that
+// result and the alias call (CPX-5).
+func TestDuplicateRelationNamesTheAliasCall(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	each(t, func(t *testing.T, db *orm.DB) {
+		_, err := model.Author().Connect(db).
+			Relation(model.User().MatchUserSeqWithSeq()).
+			Relation(model.User().MatchUserSeqWithSeq()).
+			Gets()
+		if orm.ErrorCode(err) != orm.CodeConfig {
+			t.Fatalf("duplicate relation: want CONFIG, got %v", err)
+		}
+		if msg := err.Error(); !strings.Contains(msg, "user_model") || !strings.Contains(msg, "alias") {
+			t.Fatalf("CONFIG message does not name user_model and the alias call: %s", msg)
+		}
+	})
+}
