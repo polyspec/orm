@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 603548ac89aa779158caa01e35a789e7b6c11c3db188ed3aef10640df05d9377 -->
+<!-- source-sha256: 90ae0e1092173b9ff16744f56c9d48546ba0367f5b9ae121dbc638383fa4cddf -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -221,3 +221,4 @@
 | KSTD-5-57-20 | orm 테스트 파일 value_decode.rs와 unit 파일 param_uses.rs, coverage_planner.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests value_decode.rs, unit/param_uses.rs, unit/coverage_planner.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-19 | orm 테스트 파일 zone.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests/zone.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-58 | DbspecRulesTest::testLimitColumnsPeak가 limit과 columns 문서의 peak 메모리를 안정적으로 잰다: 그 bound는 앞서 실행된 test의 프로세스 상태에 따라 달라지지 않는다 | packages/php/tests/DbspecRulesTest.php | `vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter testLimitColumnsPeak packages/php/tests/DbspecRulesTest.php` | [o] |
+| KSTD-5-59 | NOWAIT 행 잠금 뒤 busy_timeout 복원 오류를 잠금 오류와 합친다(모든 언어) | packages/rust/orm/src/db.rs:808; packages/ts/src/database.ts:1134; packages/php/src/Db.php:1670; packages/python/src/polyspec/orm/database.py:1978 | `make rust-check` | [ ] |
