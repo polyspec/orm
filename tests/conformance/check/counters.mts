@@ -7,7 +7,7 @@ import { text, type StateDatabase } from './database.mts';
 export type CounterValue = { value: bigint; called: boolean; owner: string };
 
 /** The tables that the conformance vectors write. */
-export const conformanceWriteTables = new Set(['author', 'service', 'service_member', 'soft_link', 'soft_record', 'task', 'time_cell', 'day_cell', 'clock_cell', 'upsert_cell', 'uuid_cell', 'bind_cell', 'audit_record', 'audited_note', 'audited_note_history']);
+export const conformanceWriteTables = new Set(['author', 'service', 'service_member', 'soft_link', 'soft_record', 'task', 'time_cell', 'day_cell', 'clock_cell', 'upsert_cell', 'uuid_cell', 'bind_cell', 'audit_record', 'audited_note', 'audited_note_history', 'user']);
 
 const mysqlAutoOption = /(?:^|\s)AUTO_INCREMENT=([0-9]+)(?:\s|$)/;
 
