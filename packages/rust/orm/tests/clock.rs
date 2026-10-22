@@ -6,6 +6,10 @@
 //! a case database of its own (polyspec-orm-case-database). The test fails when
 //! ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
 
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 use std::time::Duration;
 
 use polyspec_orm::core::{Arg, ChainKey};
@@ -69,19 +73,19 @@ fn connected(db: &Db) -> ClockEvent {
 /// millisecond clock cannot give.
 async fn clock_microseconds(driver: &str, dsn: &str) {
     // Every connection is UTC.
-    let db = Db::connect(dsn, 2, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
-    db.utils().schema().install(&CLOCK_SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
+    let db = Db::connect(dsn, 2, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: {e}"));
+    db.utils().schema().install(&CLOCK_SCHEMA).await.or_panic(|e| format!("{driver}: install: {e}"));
     let before = chrono::Utc::now().naive_utc();
     for i in 0..16 {
         let mut row = connected(&db);
         row.core_mut().set("label", Param::from(format!("event-{i}").as_str()));
-        polyspec_orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}"));
+        polyspec_orm::model::create(&mut row).await.or_panic(|e| format!("{driver}: create: {e}"));
     }
     let after = chrono::Utc::now().naive_utc();
     let mut q = connected(&db);
     q.core_mut().add_all_columns();
     q.core_mut().order_by("seq", false, None);
-    let rows = polyspec_orm::model::gets(&q).await.unwrap_or_else(|e| panic!("{driver}: gets: {e}")).into_vec();
+    let rows = polyspec_orm::model::gets(&q).await.or_panic(|e| format!("{driver}: gets: {e}")).into_vec();
     assert_eq!(rows.len(), 16, "{driver}: rows");
     let mut sub = false;
     for row in &rows {
@@ -91,7 +95,7 @@ async fn clock_microseconds(driver: &str, dsn: &str) {
             Some(Val::Str(text)) => {
                 let fraction = text.rsplit_once('.').map(|(_, f)| f).unwrap_or("");
                 assert!(fraction.len() == 6 && fraction.bytes().all(|b| b.is_ascii_digit()), "{driver}: created_ts {text} has six fraction digits");
-                chrono::NaiveDateTime::parse_from_str(text, "%Y-%m-%d %H:%M:%S%.f").unwrap_or_else(|e| panic!("{driver}: created_ts {text}: {e}"))
+                chrono::NaiveDateTime::parse_from_str(text, "%Y-%m-%d %H:%M:%S%.f").or_panic(|e| format!("{driver}: created_ts {text}: {e}"))
             }
             other => panic!("{driver}: created_ts {other:?}"),
         };
@@ -109,7 +113,7 @@ async fn bounded(driver: &str) {
     let database = CaseDatabase::create(driver).await;
     tokio::time::timeout(CASE_DEADLINE, clock_microseconds(driver, database.dsn()))
         .await
-        .unwrap_or_else(|_| panic!("{driver}: timeout after {CASE_DEADLINE:?}"));
+        .or_panic(|_| format!("{driver}: timeout after {CASE_DEADLINE:?}"));
     database.drop().await;
 }
 
@@ -187,15 +191,15 @@ fn mark(db: &Db) -> ClockMark {
 /// Connects (every connection is UTC) and installs the clock_mark document in
 /// the case database.
 async fn mark_db(driver: &str, dsn: &str) -> Db {
-    let db = Db::connect(dsn, 2, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
-    db.utils().schema().install(&CLOCK_MARK_SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
+    let db = Db::connect(dsn, 2, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: {e}"));
+    db.utils().schema().install(&CLOCK_MARK_SCHEMA).await.or_panic(|e| format!("{driver}: install: {e}"));
     db
 }
 
 async fn create_mark(db: &Db, driver: &str, i: usize) -> ClockMark {
     let mut row = mark(db);
     row.core_mut().set("label", Param::from(format!("mark-{i}").as_str()));
-    polyspec_orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}"))
+    polyspec_orm::model::create(&mut row).await.or_panic(|e| format!("{driver}: create: {e}"))
 }
 
 /// Sixteen soft deletions in separate statements store deleted_at with six
@@ -206,7 +210,7 @@ async fn clock_soft_delete_microseconds(driver: &str, dsn: &str) {
     let db = mark_db(driver, dsn).await;
     for i in 0..16 {
         let row = create_mark(&db, driver, i).await;
-        polyspec_orm::model::delete(&row, false).await.unwrap_or_else(|e| panic!("{driver}: delete: {e}"));
+        polyspec_orm::model::delete(&row, false).await.or_panic(|e| format!("{driver}: delete: {e}"));
     }
     let stamps: Vec<Option<String>> = match db.pool() {
         Pool::MySql(p) => sqlx::query_scalar("SELECT DATE_FORMAT(deleted_at, '%Y-%m-%d %H:%i:%s.%f') FROM clock_mark ORDER BY seq").fetch_all(p).await,
@@ -214,12 +218,12 @@ async fn clock_soft_delete_microseconds(driver: &str, dsn: &str) {
         Pool::Sqlite(p) => sqlx::query_scalar("SELECT deleted_at FROM clock_mark ORDER BY seq").fetch_all(p).await,
         Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
     }
-    .unwrap_or_else(|e| panic!("{driver}: read deleted_at: {e}"));
+    .or_panic(|e| format!("{driver}: read deleted_at: {e}"));
     assert_eq!(stamps.len(), 16, "{driver}: rows");
     let mut sub = false;
     for stamp in &stamps {
         let stamp = stamp.as_deref().unwrap_or_else(|| panic!("{driver}: deleted_at is NULL after a soft deletion"));
-        chrono::NaiveDateTime::parse_from_str(stamp, "%Y-%m-%d %H:%M:%S%.6f").unwrap_or_else(|e| panic!("{driver}: deleted_at {stamp}: {e}"));
+        chrono::NaiveDateTime::parse_from_str(stamp, "%Y-%m-%d %H:%M:%S%.6f").or_panic(|e| format!("{driver}: deleted_at {stamp}: {e}"));
         let fraction = stamp.rsplit_once('.').map(|(_, f)| f).unwrap_or("");
         assert_eq!(fraction.len(), 6, "{driver}: deleted_at {stamp} has six fraction digits");
         sub |= !stamp.ends_with("000");
@@ -246,7 +250,7 @@ async fn clock_now_condition(driver: &str, dsn: &str) {
         for (name, func) in [("now", polyspec_orm::args::now()), ("seconds_later(0)", polyspec_orm::args::seconds_later(0))] {
             let filter =
                 mark(&db).core().by(KEYS, vec![Arg::Value(polyspec_orm::args::Value::One(Param::I64(seq))), Arg::Value(polyspec_orm::args::Value::Func(func))]);
-            let found = polyspec_orm::model::get_count(&filter).await.unwrap_or_else(|e| panic!("{driver}: count: {e}"));
+            let found = polyspec_orm::model::get_count(&filter).await.or_panic(|e| format!("{driver}: count: {e}"));
             assert_eq!(found, 1, "{driver}: row {seq} with created_ts <= {name}");
         }
     }
@@ -261,7 +265,7 @@ async fn bounded_mark(driver: &str, case: &str) {
             _ => clock_now_condition(driver, database.dsn()).await,
         }
     };
-    tokio::time::timeout(CASE_DEADLINE, run).await.unwrap_or_else(|_| panic!("{driver}: {case}: timeout after {CASE_DEADLINE:?}"));
+    tokio::time::timeout(CASE_DEADLINE, run).await.or_panic(|_| format!("{driver}: {case}: timeout after {CASE_DEADLINE:?}"));
     database.drop().await;
 }
 

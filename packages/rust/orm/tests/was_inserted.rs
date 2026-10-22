@@ -2,6 +2,10 @@
 //! PostgreSQL. The model is the clock fixture (contracts/fixtures/clock.dbs). Each case runs in a case database of its own
 //! (polyspec-orm-case-database). The test fails when ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
 
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 use std::time::Duration;
 
 use polyspec_orm::{Core, Db, Entity, Error, Model, Param, Schema, Val};
@@ -62,7 +66,7 @@ fn connected(db: &Db) -> ClockEvent {
 async fn insert_event(db: &Db, label: &str) -> i64 {
     let mut row = connected(db);
     row.core_mut().set("label", Param::from(label));
-    let created = polyspec_orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("create {label}: {e}"));
+    let created = polyspec_orm::model::create(&mut row).await.or_panic(|e| format!("create {label}: {e}"));
     match created.value("seq") {
         Some(Val::I64(seq)) => seq,
         other => panic!("the identity of {label}: {other:?}"),
@@ -94,7 +98,7 @@ async fn tracks_generated_rows(driver: &str, db: &Db) {
         })
         .retry(0)
         .await;
-    result.unwrap_or_else(|e| panic!("{driver}: {e}"));
+    result.or_panic(|e| format!("{driver}: {e}"));
 }
 
 /// The utility needs an active transaction and a valid entity and key; each violation is CONFIG.
@@ -110,12 +114,12 @@ async fn needs_a_transaction_and_valid_arguments(driver: &str, db: &Db) {
         })
         .retry(0)
         .await;
-    result.unwrap_or_else(|e| panic!("{driver}: {e}"));
+    result.or_panic(|e| format!("{driver}: {e}"));
 }
 
 /// SQLite and MySQL answer false without a statement; PostgreSQL with no waiter answers false.
 async fn no_waiter(driver: &str, db: &Db) {
-    assert!(!db.utils().backend_waiting_for_lock().await.unwrap_or_else(|e| panic!("{driver}: {e}")), "{driver}: no backend waits for a lock");
+    assert!(!db.utils().backend_waiting_for_lock().await.or_panic(|e| format!("{driver}: {e}")), "{driver}: no backend waits for a lock");
 }
 
 /// PostgreSQL: a second backend that waits for a row lock is reported. The transaction holds the row, and a task on a second
@@ -127,7 +131,7 @@ async fn postgres_waiter(dsn: &str, db: &Db) {
         .transaction(async || Ok(insert_event(db, "held").await))
         .retry(0)
         .await
-        .unwrap_or_else(|e| panic!("postgres: {e}"));
+        .or_panic(|e| format!("postgres: {e}"));
     let (waiting, waiter) = db
         .transaction(async || {
             let mut row = connected(db);
@@ -154,15 +158,15 @@ async fn postgres_waiter(dsn: &str, db: &Db) {
         })
         .retry(0)
         .await
-        .unwrap_or_else(|e| panic!("postgres: {e}"));
+        .or_panic(|e| format!("postgres: {e}"));
     assert!(waiting, "postgres: the waiting backend is reported while the transaction holds the row");
-    waiter.await.expect("the waiter ends").unwrap_or_else(|e| panic!("postgres: the waiting update: {e}"));
+    waiter.await.expect("the waiter ends").or_panic(|e| format!("postgres: the waiting update: {e}"));
 }
 
 async fn bounded(driver: &str) {
     let database = CaseDatabase::create(driver).await;
-    let db = Db::connect_schema(database.dsn(), &CLOCK_SCHEMA, 4, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
-    db.utils().schema().install(&CLOCK_SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
+    let db = Db::connect_schema(database.dsn(), &CLOCK_SCHEMA, 4, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: {e}"));
+    db.utils().schema().install(&CLOCK_SCHEMA).await.or_panic(|e| format!("{driver}: install: {e}"));
     tracks_generated_rows(driver, &db).await;
     needs_a_transaction_and_valid_arguments(driver, &db).await;
     no_waiter(driver, &db).await;
