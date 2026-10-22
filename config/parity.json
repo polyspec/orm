@@ -463,7 +463,25 @@
       "errors": {
         "file": "packages/rust/orm/src/codes.rs",
         "pattern": "^pub const (\\w+): &str = \"\\w+\";$"
-      }
+      },
+      "internal": [
+        {
+          "glob": "packages/rust/tests/tests/coverage_performance_gate.rs",
+          "reason": "the hot-path benchmark gate of the Rust client: it runs client_bench and checks the shape of its timing lines, a performance check of the harness, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/rust/tests/src/conformance.rs",
+          "reason": "the helpers of the conformance runner that render the values of its vectors for comparison, a test of the harness and not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/rust/build/tests/unit/row_insert_lock.rs",
+          "reason": "a unit test of the private SQL-text helper postgres_insert_lock of the catalog, reached through super::*, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/rust/build/tests/lock_probe_order.rs",
+          "reason": "a self-check of the test harness: a fake mutation publishes its Locked phase to a probe, so the test checks the probe of the harness and not the publisher (K313)"
+        }
+      ]
     }
   ],
   "suites": [
@@ -8935,17 +8953,6 @@
       ]
     },
     {
-      "id": "rust-a-probe-inside-the-locked-publisher-sees-the-mutation-at-locked",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/row_mutation.rs",
-          "id": "a_probe_inside_the_locked_publisher_sees_the_mutation_at_locked"
-        }
-      ]
-    },
-    {
       "id": "rust-native-updates-lock-compare-verify-and-rollback",
       "kind": "feature",
       "requirements": [
@@ -9251,17 +9258,6 @@
           "implementation": "rust",
           "test": "packages/rust/build/tests/unit/read_only_policy.rs",
           "id": "catalog::read_only::tests::policy_validates_nested_read_shapes_and_rejects_writes"
-        }
-      ]
-    },
-    {
-      "id": "rust-catalog-row-insert-lock-tests-a-postgres-insert-takes-the-insert-lock-of-its-table",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/unit/row_insert_lock.rs",
-          "id": "catalog::row_insert::lock_tests::a_postgres_insert_takes_the_insert_lock_of_its_table"
         }
       ]
     },
@@ -11532,59 +11528,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/coverage_model_generation.rs",
           "id": "coverage_model_generation_check"
-        }
-      ]
-    },
-    {
-      "id": "rust-coverage-hot-path-gate",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_performance_gate.rs",
-          "id": "coverage_hot_path_gate"
-        }
-      ]
-    },
-    {
-      "id": "rust-conformance-invalid-binds-cannot-be-rendered-as-valid-values",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/src/conformance.rs",
-          "id": "invalid_binds_cannot_be_rendered_as_valid_values",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-unit",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--bin conformance",
-            "FEATURE_TEST=invalid_binds_cannot_be_rendered_as_valid_values"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "rust-conformance-invalid-derived-integers-cannot-be-reported-as-zero",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/src/conformance.rs",
-          "id": "invalid_derived_integers_cannot_be_reported_as_zero",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-unit",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--bin conformance",
-            "FEATURE_TEST=invalid_derived_integers_cannot_be_reported_as_zero"
-          ]
         }
       ]
     },
