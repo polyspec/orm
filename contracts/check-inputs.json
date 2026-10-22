@@ -5,7 +5,7 @@
     "scripts-typecheck": {"scope": "owner", "needs": ["node-modules"], "inputs": ["tsconfig.json", "scripts/**/*.mts", "tests/**/*.mts"]},
     "docs-check": {"scope": "owner", "needs": ["node-modules"], "inputs": ["**/*.md", "config/documents.json", "config/checklist.json", "docs/**", "scripts/docs/**", "contracts/interfaces.json", "package.json", "package-lock.json"]},
     "commits-check": {"scope": "owner", "needs": [], "inputs": [".githooks/**"]},
-    "kit-check": {"scope": "owner", "needs": [], "inputs": ["package-lock.json", "mise.toml", "mise.lock", ".mise/locks/**", "scripts/kit/**", "config/**", "PRINCIPLES.md", "PRINCIPLES.ko.md", ".github/workflows/release.yml", "ruff.toml", "phpcs.xml.dist", "phpstan.dist.neon", ".golangci.yml", ".oxlintrc.json", "knip.json", ".editorconfig"]},
+    "kit-check": {"scope": "owner", "needs": [], "inputs": ["package-lock.json", "mise.toml", "mise.lock", ".mise/locks/**", "scripts/kit/**", "config/**", "PRINCIPLES.md", "PRINCIPLES.ko.md", ".github/workflows/release.yml", ".editorconfig"]},
     "toolchain-check": {"scope": "suite", "needs": []},
     "layout-check": {"scope": "suite", "needs": []},
     "rules-check": {"scope": "suite", "needs": []},

@@ -37,24 +37,29 @@ jobs:
           php-version-file: ${{ github.event.repository.name }}/.php-version
           tools: none
           coverage: none
-      # The sibling checkouts of the 0.0.x polyspec packages (K473, K468): each repository that config/polyspec.json declares is cloned
-      # beside the project at its default branch (a clone without a branch), before install, which links the packages to them. No kit
-      # tool is installed yet, so node reads the declarations; a declaration without an owner/name repository fails the step.
+      # The sibling checkouts of the polyspec packages (K473, K515): each github.com/polyspec repository that a tracked lock names in
+      # the release URL of a package, other than the repository itself, is cloned beside the project at its default branch (a clone
+      # without a branch), before install, which links the packages to them. No kit tool is installed yet, so node reads the locks.
       - name: sibling checkouts
         working-directory: ${{ github.event.repository.name }}
+        env:
+          SELF: ${{ github.event.repository.name }}
         run: |
           repositories=$(node -e '
+            const { execFileSync } = require("node:child_process");
             const fs = require("node:fs");
-            if (!fs.existsSync("config/polyspec.json")) process.exit(0);
+            const locks = execFileSync("git", ["ls-files", "-z"], { encoding: "utf8" }).split("\0")
+              .filter(file => /(^|\/)(package-lock\.json|composer\.lock|uv\.lock|Cargo\.lock|pylock[^/]*\.toml)$/.test(file));
             const names = new Set();
-            for (const item of JSON.parse(fs.readFileSync("config/polyspec.json", "utf8")).packages) {
-              if (!/^polyspec\/[A-Za-z0-9._-]+$/.test(item.repository ?? "")) throw new Error("config/polyspec.json: no owner/name repository for " + item.name);
-              names.add(item.repository);
+            for (const file of locks) {
+              for (const match of fs.readFileSync(file, "utf8").matchAll(/github\.com\/polyspec\/([A-Za-z0-9._-]+?)(?:\.git)?(?=[\/"#?])/g)) {
+                if (match[1] !== process.env.SELF) names.add(match[1]);
+              }
             }
-            for (const name of names) console.log(name);
+            for (const name of [...names].sort()) console.log(name);
           ')
           for repository in $repositories; do
-            git clone --depth 1 "https://github.com/$repository.git" "../${repository#*/}"
+            git clone --depth 1 "https://github.com/polyspec/$repository.git" "../$repository"
           done
       - name: install
         working-directory: ${{ github.event.repository.name }}

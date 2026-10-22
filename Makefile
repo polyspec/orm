@@ -70,6 +70,8 @@ include scripts/kit/kit-bootstrap.mk
 # The tools of mise.toml that a recipe starts by its absolute path (kit K171): make 3.81, the make of macOS, looks a
 # recipe line without shell syntax up on the PATH that make started with, not on the PATH that kit.mk exports.
 GO := $(KIT_TOOLS)/mise/shims/go
+# The lint configurations that kit reads from its package (kit K514), the folder above the dist of KIT.
+KIT_PACKAGE := $(abspath $(KIT)/..)
 COMPOSER := $(KIT_TOOLS)/mise/shims/composer
 PYTHON3 := $(KIT_TOOLS)/mise/shims/python3
 RUFF := $(KIT_TOOLS)/mise/shims/ruff
@@ -1810,10 +1812,10 @@ GENERATED_GO = ./model ./markdownmodel ./decimalmodel
 GENERATED_TS = packages/ts/src/models/models.ts
 .PHONY: generated-lint-check
 generated-lint-check: python-models php-models go-models typescript-build
-	$(RUFF) check --config ruff.toml --no-respect-gitignore $(GENERATED_PY_MODELS)
-	$(RUFF) format --check --config ruff.toml --no-respect-gitignore $(GENERATED_PY_MODELS)
-	$(PHPCS) -q -s --report=emacs --standard=phpcs.xml.dist $(GENERATED_PHP)/*.php
-	cd packages/php && $(PHPSTAN) analyse --no-progress --error-format=raw --memory-limit=-1 --configuration=../../phpstan.dist.neon --autoload-file=../../vendor-php/autoload.php gen
+	$(RUFF) check --config $(KIT_PACKAGE)/ruff.toml --no-respect-gitignore $(GENERATED_PY_MODELS)
+	$(RUFF) format --check --config $(KIT_PACKAGE)/ruff.toml --no-respect-gitignore $(GENERATED_PY_MODELS)
+	$(PHPCS) -q -s --report=emacs --standard=$(KIT_PACKAGE)/phpcs.xml.dist $(GENERATED_PHP)/*.php
+	cd packages/php && $(PHPSTAN) analyse --no-progress --error-format=raw --memory-limit=-1 --configuration=$(KIT_PACKAGE)/phpstan.dist.neon --autoload-file=../../vendor-php/autoload.php gen
 	test -z "$$(cd packages/go && gofmt -l $(GENERATED_GO))" || { cd packages/go && gofmt -l $(GENERATED_GO); exit 1; }
 	cd packages/go && $(GO) vet $(GENERATED_GO)
-	node_modules/.bin/oxlint -c .oxlintrc.json --type-aware --deny-warnings $(GENERATED_TS)
+	node_modules/.bin/oxlint -c $(KIT_PACKAGE)/.oxlintrc.json --type-aware --deny-warnings $(GENERATED_TS)

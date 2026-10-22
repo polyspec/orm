@@ -1,5 +1,5 @@
 <!-- doc-id: principles -->
-<!-- source-sha256: f87467f105a8441079b482665fbc065da05d07b00fe07abe39c6c5f82e28f41e -->
+<!-- source-sha256: 40d8ecdade0fbdee61668d75d122aab0ae8010e40668338f91a09b71e8ce954b -->
 # 원칙
 
 [English](PRINCIPLES.md)
@@ -145,8 +145,8 @@ vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-check`�
   Enforced by: `make parity-declarations-check`
 - P34 반복된 code는 제외가 아니라 하나의 module로 재구성해서 고친다. tool source는 분류하고, 생성물은 Git에 추적하지 않는다.
   Enforced by: `make duplication-check`, `make rebuild-check`, `.githooks/pre-commit`
-- P35 release 때문에 막힌 것처럼 보이는 finding은 link tooling의 결함이며 파일과 줄을 적어 kit 결함으로 보고한다. 커밋된 lock의
-  추적되는 lock은 어떤 release도 기다리지 않는다: 추적되는 파일은 0.0.x polyspec 패키지를 잠그지 않고, 그 선언은 config/polyspec.json에 있다 (K314, K468).
+- P35 release 때문에 막힌 것처럼 보이는 finding은 link tooling의 결함이며 파일과 줄을 적어 kit 결함으로 보고한다. 추적되는 lock은
+  어떤 release도 기다리지 않는다: 추적되는 lock은 각 polyspec 패키지의 release를 기록하고, link는 설치된 폴더를 sibling checkout으로 바꾼다 (K448, K507).
   Enforced by: none, finding이 link 결함인지 release 문제인지는 보고의 판단이다.
 - P36 미루지 않는다: 발견한 결함은 행으로 등록하고 지금 처리하며, 나중으로 남기지 않는다.
   Enforced by: none, 발견한 결함을 지금 처리하는지는 발견한 사람의 판단이다.

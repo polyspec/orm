@@ -70,33 +70,12 @@ export const miseArchiveUrl = (version: string, asset: string): string => `https
  * mise.lock pins and no install on its own (a
  * missing tool is an error until make install-tools), and no uv that downloads a Python or reads a uv.toml of the home or the
  * system; uv keeps its cache in var/tools/mise. A tool that mise runs from uv gets the Python of mise from mise; the uv of a check gets it from UV_PYTHON
- * (toolsEnvironment of mise-tools.mts).
+ * (toolsEnvironment of mise-tools.mts). var/tools is that of the main checkout (toolsPath, K519): a linked worktree runs the data,
+ * the installs and the shims that the main checkout installed and keeps only its own mise.toml as the global configuration, which
+ * mise reads without a trust, so a uv tool such as vulture, whose install mise keys by its data dir, is the one of the main checkout.
  */
-/**
- * The installs of mise that the checkout `root` reads besides its own (K387): those of the main checkout of its repository when `root`
- * is a linked worktree, so a worktree runs the tools that the main checkout installed and installs only those that it lacks; the
- * data dir, the state, the shims and the wrappers stay those of the checkout, and the store holds tools only, never sources.
- * Undefined in the main checkout, outside a repository and while the main checkout has installed nothing.
- */
-export function sharedInstalls(root: string): string | undefined {
-  let common: string;
-  try {
-    common = execFileSync('git', ['rev-parse', '--git-common-dir'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
-  } catch {
-    // git fails outside a repository, which has no main checkout to share.
-    return undefined;
-  }
-  const absolute = path.resolve(root, common);
-  if (path.basename(absolute) !== '.git') return undefined;
-  const main = path.dirname(absolute);
-  const installs = toolsPath(main, 'mise', 'installs');
-  return realpathSync(main) === realpathSync(root) || !existsSync(installs) ? undefined : installs;
-}
-
 export function miseEnvironment(root: string): Record<string, string> {
-  const shared = sharedInstalls(root);
   return {
-    ...(shared === undefined ? {} : { MISE_SHARED_INSTALL_DIRS: shared }),
     MISE_DATA_DIR: toolsPath(root, 'mise'),
     MISE_CACHE_DIR: toolsPath(root, 'mise', 'cache'),
     MISE_STATE_DIR: toolsPath(root, 'mise', 'state'),

@@ -156,8 +156,8 @@ repository.
   output is never tracked in Git.
   Enforced by: `make duplication-check`, `make rebuild-check`, `.githooks/pre-commit`
 - P35 A finding that looks blocked by a release is a defect of the link tooling and is reported as a kit defect with its
-  file and line. No tracked lock waits for a release: a tracked file locks no 0.0.x polyspec package, and the declarations of
-  such packages live in config/polyspec.json (K314, K468).
+  file and line. No tracked lock waits for a release: a tracked lock records the release of each polyspec package, and the link
+  replaces the installed folder with the sibling checkout (K448, K507).
   Enforced by: none, whether a finding is a link defect or a release question is a judgement of the report.
 - P36 No deferral: a defect that is found is registered as a row and worked now, never left for later.
   Enforced by: none, whether a found defect is worked now is a judgement of the one who found it.
