@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 03e8be06247f4f1f5fdfff1c9e305f9618919a793fc925031358f82ce33791b2 -->
+<!-- source-sha256: 8dcc306d3231eb16b04f85d5557f4d4237138264bb686b06b821ef582977201d -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP library의 parser는 declaration position을 scalar 목록으로 들고, Position 객체는 성공한 parse에서만 만든다. 그래서 limit/columns 문서의 peak는 PHPUnit에서 66.9 MB로, test의 유도된 상한 안에 든다(T182-0-2-1-1). red: testLimitColumnsPeak가 96.8 MB를 측정했고 상한은 91.6 MB였다.
 - `make docs-check`는 Markdown 검사만 실행하므로 land가 VitePress 사이트를 더 이상 build하지 않는다. 사이트 build와 built site를 읽는 검사는 `make docs-site-check`에서 실행하며, owner 규칙이 docs/ 아래 변경에 대해 이를 고르고 CI가 실행한다(KSTD-5-48). red: `tests/docs/split.test.mts`가 docs-check의 expansion에서 사이트 build를 찾는다.
 - `make clippy-crate CRATE=<package>`가 lint-rust의 clippy 플래그를 한 패키지에 적용한다. clippy 행의 하위 항목을 단독으로 검사할 수 있다(KSTD-5-41-0).
 - PHP extension의 parser는 줄마다 token buffer를 새로 만들지 않고, generated name의 source 문자열을 진단 때만 만든다. 그래서 limit/columns 문서의 peak는 88 MB로, test의 상한 96 MB 아래다(T182-0-2-1). red: testLimitColumnsPeak가 109.1 MB를 측정했다.

@@ -203,8 +203,22 @@ final class Parser
     private array $defaultValues = [];
     /** @var int The position of the next token that the cursor reading the setting line will read */
     private int $cursor = 0;
-    /** @var list<Position> the declaration positions in the order they were read; run sorts them */
-    private array $positions = [];
+    /**
+     * The declaration positions in the order they were read; run sorts them. They are kept as parallel lists of scalars and
+     * shared strings, not as one Position object each: a parse that holds many declarations (up to the limit of columns) keeps
+     * the lists only, and sortedPositions makes the Position objects of a successful parse.
+     *
+     * @var list<string> the kind of each position
+     */
+    private array $positionKinds = [];
+    /** @var list<int> the number of parts of the name path of each position */
+    private array $positionPathLengths = [];
+    /** @var list<string> the parts of the name paths, the parts of each position in turn */
+    private array $positionPathParts = [];
+    /** @var list<int> the line of each position */
+    private array $positionLines = [];
+    /** @var list<int> the column of each position */
+    private array $positionColumns = [];
 
     /**
      * @param array<string, string> $documents the declared document set
@@ -386,11 +400,22 @@ final class Parser
      */
     private function sortedPositions(): array
     {
-        $order = array_keys($this->positions);
+        $paths = [];
+        $next = 0;
+        foreach ($this->positionPathLengths as $i => $length) {
+            $paths[$i] = array_slice($this->positionPathParts, $next, $length);
+            $next += $length;
+        }
+        $order = array_keys($this->positionKinds);
         usort($order, fn(int $a, int $b): int =>
-            [$this->positions[$a]->line, $this->positions[$a]->column, $a]
-            <=> [$this->positions[$b]->line, $this->positions[$b]->column, $b]);
-        return array_map(fn(int $i): Position => $this->positions[$i], $order);
+            [$this->positionLines[$a], $this->positionColumns[$a], $a]
+            <=> [$this->positionLines[$b], $this->positionColumns[$b], $b]);
+        return array_map(fn(int $i): Position => new Position(
+            $this->positionKinds[$i],
+            $paths[$i],
+            $this->positionLines[$i],
+            $this->positionColumns[$i]
+        ), $order);
     }
 
     /**
@@ -402,7 +427,13 @@ final class Parser
      */
     private function declare(string $kind, array $path, array $token): void
     {
-        $this->positions[] = new Position($kind, $path, $this->line, $token[1]);
+        $this->positionKinds[] = $kind;
+        $this->positionPathLengths[] = count($path);
+        foreach ($path as $part) {
+            $this->positionPathParts[] = $part;
+        }
+        $this->positionLines[] = $this->line;
+        $this->positionColumns[] = $token[1];
     }
 
     /**

@@ -252,9 +252,12 @@ final class DeclarationsTest extends TestCase
         );
     }
 
-    // The limit/columns document (121 tables of 1000 columns; the 120001st column trips the limit) is parsed with the extension
-    // under the memory the test sets: its peak over the memory before the parse stays under 96 MB, so the case runs within
-    // PHPUnit's 128 MB limit with room for the process. T182-0-2-1.
+    // The limit/columns document (121 tables of 1000 columns; the 120001st column trips the limit) must parse within the memory
+    // that PHPUnit allows a process: its peak over the memory held before the parse is below the bound, which is derived from
+    // three numbers. PHP's default memory_limit (128 MiB, 134217728 bytes) is the memory of the process that runs the test. The
+    // baseline is the memory the process holds before the parse (memory_get_usage()). The margin of 16 MiB is what the process
+    // keeps for the rest of the run (PHPUnit's collection, output and the next test). The bound is 128 MiB minus the baseline
+    // minus the margin. The test raises memory_limit to 256M so that a peak above the bound fails the assertion, not the process.
     public function testLimitColumnsPeak(): void
     {
         ini_set('memory_limit', '256M');
@@ -266,15 +269,22 @@ final class DeclarationsTest extends TestCase
             }
             $text .= "  primary key (c0)\n}\n";
         }
-        $before = memory_get_usage();
+        $baseline = memory_get_usage();
+        $bound = 134217728 - $baseline - 16777216;
         memory_reset_peak_usage();
         $result = \Polyspec\Orm\Dbspec\Dbspec::parse($text, []);
-        $peak = memory_get_peak_usage() - $before;
+        $peak = memory_get_peak_usage() - $baseline;
         Assert::assertNull($result->document, 'the limit document returned a document');
         Assert::assertLessThan(
-            96_000_000,
+            $bound,
             $peak,
-            sprintf('the limit/columns case peaks at %.1f MB, above its bound of 96 MB', $peak / 1e6)
+            sprintf(
+                'the limit/columns case peaks at %d bytes above the baseline of %d bytes; the derived bound is %d bytes '
+                . '(128 MiB 134217728 minus the baseline minus the 16 MiB margin 16777216)',
+                $peak,
+                $baseline,
+                $bound
+            )
         );
     }
 
