@@ -187,8 +187,11 @@ fn write_if_changed(path: &Path, content: &[u8]) -> Result<(), String> {
     match std::fs::read(path) {
         Ok(old) if old == content => return Ok(()),
         Ok(_) => {}
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-        Err(error) => return Err(format!("{}: cannot read the existing file: {error}", path.display())),
+        Err(error) => {
+            if error.kind() != std::io::ErrorKind::NotFound {
+                return Err(format!("{}: cannot read the existing file: {error}", path.display()));
+            }
+        }
     }
     std::fs::write(path, content).map_err(|e| format!("{}: {e}", path.display()))
 }
