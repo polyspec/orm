@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 0d8187d24755f4136479169392895992d511f54a124ff214bfb64585b4c13b9c -->
+<!-- source-sha256: c1d3466f776250adceec8dc8b945e33783e9a9e5c8300150ec17de729c7b1ac2 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -152,7 +152,7 @@
 | KSTD-5-49 | Rust planner가 source가 없을 때 잘못된 column에서 blind index를 계산함 | packages/rust/orm/src/engine/planner.rs and its unit test | `make rust-check` | [ ] |
 | KSTD-5-50 | TypeScript split query가 key가 NULL인 row를 버림 | packages/ts/src/database.ts, the same split merge in Go, Rust, PHP and Python | `make ts-check` | [ ] |
 | KSTD-5-52 | PHP 모델 getter가 대상 타입을 반환한다: 관계와 alias는 mixed가 아닌 대상 타입의 선언된 getter를 얻고, alias 없는 관계도 선언된 getter를 얻는다 | `packages/php/src/ChainDeclare.php` | `make php-model-check`, `vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenScanTest.php` | [o] |
-| KSTD-5-53 | PHP GroupRows의 반복이 mixed가 아닌 GroupRow로 타입되어 호출부가 타입된 행을 본다 | `packages/php/src/GroupRows.php` | `node node_modules/@polyspec/kit/dist/run-tests.mjs phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/GroupRowsTest.php` | [ ] |
+| KSTD-5-53 | PHP GroupRows의 반복이 mixed가 아닌 GroupRow로 타입되어 호출부가 타입된 행을 본다 | `packages/php/src/GroupRows.php` | `vendor-php/bin/phpstan analyse --no-progress --error-format=raw --memory-limit=-1 --level=9 --configuration=../kit/phpstan.dist.neon --autoload-file=vendor-php/autoload.php packages/php/tests/phpstan/GroupRowsIteration.php` | [ ] |
 | KSTD-5-54 | 생성된 gets()는 모델로 매개변수화된 Collection을 반환하고, 한 행 get()은 문서화된 null 계약(Model\|null)을 유지한다 | `packages/php/src/Collection.php`, `packages/php/src/ChainDeclare.php` | `make php-model-check` | [ ] |
 | KSTD-5-55 | main의 Rust clippy가 통과한다: orm/src/lib.rs가 mysql_code_tests 테스트 모듈을 impl 항목 앞에 두어 -D warnings 아래 clippy가 items_after_test_module로 거부하므로 main의 make rust-check가 실패한다 | packages/rust/orm/src/lib.rs | `make rust-check` | [ ] |
 | KSTD-5-56 | main의 Rust clippy가 통과한다: packages/rust/build/tests/lock_probe_order.rs가 쓰지 않는 AtomicU8을 import하여 -D warnings 아래 clippy가 unused_imports로 거부하므로 main의 make rust-check가 실패한다 | packages/rust/build/tests/lock_probe_order.rs | `make rust-check` | [ ] |
