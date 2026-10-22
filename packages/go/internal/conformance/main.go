@@ -1747,10 +1747,18 @@ func deleteLockVector(db *orm.DB) (any, error) {
 		}
 		out = append(out, []any{len(picks(authors, "seq")), len(picks(users, "seq")), code})
 		if locked {
-			if err := author.Delete(); err != nil {
+			leftAuthors, err := model.Author().Connect(db).Seq(author.GetSeq()).Gets()
+			if err != nil {
 				return nil, err
 			}
-			if err := user.Delete(); err != nil {
+			if err := leftAuthors.Delete(); err != nil {
+				return nil, err
+			}
+			leftUsers, err := model.User().Connect(db).Seq(user.GetSeq()).Gets()
+			if err != nil {
+				return nil, err
+			}
+			if err := leftUsers.Delete(); err != nil {
 				return nil, err
 			}
 		}

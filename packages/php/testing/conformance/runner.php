@@ -139,7 +139,7 @@ vector('delete_lock', function () use ($db): array {
         if ($locked) {
             $rel->deleteLock();
         }
-        $loaded = (new User())->connect($db)->relations($rel)->getBySeq($uSeq);
+        $loaded = (new User())->connect($db)->seq($uSeq)->relations($rel)->gets();
         $error = 'none';
         try {
             $loaded->delete(true);
@@ -150,8 +150,8 @@ vector('delete_lock', function () use ($db): array {
         $users = count((new User())->connect($db)->seq($uSeq)->gets());
         $out[] = [$authors, $users, $error];
         if ($locked) {
-            (new Author())->connect($db)->getBySeq($aSeq)->delete();
-            (new User())->connect($db)->getBySeq($uSeq)->delete();
+            (new Author())->connect($db)->seq($aSeq)->gets()->delete();
+            (new User())->connect($db)->seq($uSeq)->gets()->delete();
         }
     }
     return $out;

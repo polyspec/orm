@@ -410,8 +410,8 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
             let users = User::new().connect(db).seq(u_seq).gets().await?.len();
             out.push(json!([authors, users, error]));
             if locked {
-                Author::new().connect(db).get_by_seq(a_seq).await?.ok_or(polyspec_orm::Error::NoRows)?.delete(false).await?;
-                User::new().connect(db).get_by_seq(u_seq).await?.ok_or(polyspec_orm::Error::NoRows)?.delete(false).await?;
+                Author::new().connect(db).seq(a_seq).gets().await?.delete(false).await?;
+                User::new().connect(db).seq(u_seq).gets().await?.delete(false).await?;
             }
         }
         Ok::<Value, polyspec_orm::Error>(Value::Array(out))

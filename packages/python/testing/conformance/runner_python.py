@@ -402,7 +402,7 @@ def main():
             rel = Author().match_seq_with_user_seq()
             if locked:
                 rel.delete_lock()
-            loaded = User().connect(db).relations(rel).get_by_seq(u_seq)
+            loaded = User().connect(db).seq(u_seq).relations(rel).gets()
             error = "none"
             try:
                 loaded.delete(True)
@@ -414,8 +414,8 @@ def main():
             users = len(User().connect(db).seq(u_seq).gets())
             out.append([authors, users, error])
             if locked:
-                Author().connect(db).get_by_seq(a_seq).delete()
-                User().connect(db).get_by_seq(u_seq).delete()
+                Author().connect(db).seq(a_seq).gets().delete()
+                User().connect(db).seq(u_seq).gets().delete()
         return out
 
     run("delete_lock", delete_lock)
