@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 2827e7c9c14b6cd6ddcf1797cdf21591271b0272c533c252cbb450eeb48c6bfa -->
+<!-- source-sha256: 8ec610e6999f70ce3f391cba0ff33671331677a8c28c6b4678cd734621ecefd0 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -112,7 +112,7 @@
 | KSTD-5-15 | CI interface test가 workflow와 일치한다 (KSTD-5 후속). Cause: tests/interfaces/check/ci.test.mts가 .github/workflows/ci.yml에 문자 그대로의 `run: make orm-check` step을 요구하지만 workflow에 없어, main에서 interface-check/tests가 실패한다 | tests/interfaces/check/ci.test.mts or .github/workflows/ci.yml | `node --test tests/interfaces/check/ci.test.mts` | [o] |
 | KSTD-5-16 | make interface-check/self-test가 모든 언어에서 통과한다 (KSTD-5 후속). Cause: 이를 돌리지 않고 land한 row들이 public 표면을 바꿨는데 symbol contract는 그대로다: Go Apply가 ApplyResult를 돌려주고(KSTD-5-7-5), PHP AesKeyring::storedVersion과 Codec::rowVersion은 새 public helper이며(KSTD-2-11-7-2), TypeScript scanModelCalls와 Python scan_model_calls의 signature가 바뀌었고(T226) TypeScript dbspec sort helper가 옮겨졌으며(KSTD-5-5), Rust build scan.rs가 바뀌었다(T226) | contracts/symbols, contracts/interfaces.json, the changed sources | `make interface-check/self-test` | [o] |
 | KSTD-5-17 | repository의 commit identity를 선언하여 commits-check가 이를 강제한다 (KSTD-5 후속). Cause: kit K405는 author와 committer를 config/commit-identity.json과 대조하는데 orm은 이를 선언하지 않고, AGENTS.md는 모든 commit을 min-0-max <max@blue.tools>로 규정한다 | config/commit-identity.json | `make commits-check` | [ ] |
-| KSTD-5-18 | markdown-table-check가 통과한다: docs/spec/dialects.md의 Markdown IR executor 항목이 check가 기대하는 표이다 (KSTD-5 후속). Cause: 그 항목이 목록으로 쓰여 main에서 make markdown-table-check가 실패한다 | docs/spec/dialects.md and its twin | `make markdown-table-check` | [~] |
+| KSTD-5-18 | markdown-table-check가 통과한다: docs/spec/dialects.md의 Markdown IR executor 항목이 check가 기대하는 표이다 (KSTD-5 후속). Cause: 그 항목이 목록으로 쓰여 main에서 make markdown-table-check가 실패한다 | docs/spec/dialects.md and its twin | `make markdown-table-check` | [o] |
 | KSTD-5-19 | check와 모든 workflow가 mise.toml의 Node를 돌린다 (KSTD-5 후속). Cause: repo check가 kit의 사본인 .github/workflows/gates.yml을 보고한다; 그 규칙이 orm의 것인지 kit의 것인지 먼저 정한다(S1) | scripts/repo/check.mts or kit | `make repo-check/unit` | [ ] |
 | KSTD-5-20 | repo check의 workflow 규칙이 kit이 복사하는 workflow를 건너뛴다 (KSTD-5 후속). Cause: repo check가 .github/workflows/gates.yml이 kit 사본임을 모른다 | scripts/repo/check.mts | `make repo-check/unit` | [ ] |
 | KSTD-5-21 | 모든 도구는 Go, PHP, Rust, TypeScript로 쓴다 (KSTD-5 후속). Cause: scripts/comments/tokens/python-comments.py가 Python 도구이다 | scripts/comments/tokens | `make repo-check/unit` | [ ] |

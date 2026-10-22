@@ -3,6 +3,7 @@
 
 ## Unreleased
 - The repo check of build outputs reads quoted text as text: a recipe that prints a usage message such as "WORKTREE=<path>" to stderr is no longer reported as a redirect into a file, while the command string of `sh -c "…"` is still checked (KSTD-5-26). Red: the check reported Makefile:883 (`echo "usage: … WORKTREE=<path>" >&2`) as a redirect in place. Green: the check holds on the Makefile, and a quoted redirect in `sh -c` is still found.
+- The Markdown IR executor table of docs/spec/dialects.md mirrors the flowmark capability table at the pinned version, and `make markdown-table-check` passes (KSTD-5-18). Red: the table was missing under the heading.
 - The TypeScript build cache `packages/ts/tsconfig.build.tsbuildinfo` and every `*.tsbuildinfo` is ignored by Git and declared as a generated path, so a build leaves no untracked file in the checkout. Red: `git check-ignore` found no rule for it, and `git status` listed it after `make build` (KSTD-15).
 - `docs/operations/perf.md` drops the PHP 8.5.10 ratios, since PHP 8.5 goes to 8.4; the page keeps the PHP 8.4 ratios (T233). Red: the page quoted the PHP 8.5.10 ratios.
 - The recipes `case-database-check`, `example-check` and `timing-check` build the Rust crates through kit's cargo link (`CARGO_SIBLINGS`), so a sibling polyspec crate resolves to its path and no recipe fetches a locked release (K448-5). Red: `make -s link-state-check` reported Makefile:1175, 1740 and 1753 and exited 2 (KSTD-13).
