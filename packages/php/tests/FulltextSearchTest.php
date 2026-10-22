@@ -70,7 +70,7 @@ final class FulltextSearchTest extends TestCase
      */
     private function assertCompiles(): void
     {
-        if (extension_loaded('polyspec_orm')) {
+        if (getenv('ORM_PHP_MODE') === 'extension') {
             $this->assertTrue(
                 (new \ReflectionClass(Planner::class))->isInternal(),
                 'the planner is the extension planner'

@@ -23,7 +23,7 @@ if ($argc !== 3) {
     );
     exit(2);
 }
-if (!extension_loaded('polyspec_orm')) {
+if (getenv('ORM_PHP_MODE') !== 'extension') {
     fwrite(
         STDERR,
         "the extension polyspec_orm is not loaded; run this with php -d extension=<polyspec_orm library>, which make "

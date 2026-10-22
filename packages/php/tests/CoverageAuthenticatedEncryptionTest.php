@@ -51,7 +51,7 @@ final class CoverageAuthenticatedEncryptionTest extends TestCase
     // With the extension loaded (php-extension, S10) the codec is the extension's class, not the PHP client's.
     public static function setUpBeforeClass(): void
     {
-        if (extension_loaded('polyspec_orm')) {
+        if (getenv('ORM_PHP_MODE') === 'extension') {
             Assert::assertTrue(
                 (new \ReflectionClass(Codec::class))->isInternal(),
                 'the Codec of the loaded extension is the extension class'

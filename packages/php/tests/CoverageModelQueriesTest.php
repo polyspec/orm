@@ -24,7 +24,7 @@ final class CoverageModelQueriesTest extends TestCase
      */
     private static function assertEntryClassesAreInternal(): void
     {
-        if (!extension_loaded('polyspec_orm')) {
+        if (getenv('ORM_PHP_MODE') !== 'extension') {
             return;
         }
         foreach (['Polyspec\\Orm\\Db', 'Polyspec\\Orm\\Planner'] as $entry) {

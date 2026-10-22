@@ -22,7 +22,7 @@ if (PHP_SAPI === 'cli' && realpath($argv[0] ?? '') === __FILE__) {
         fwrite(STDERR, "usage: php declarations.php stub|client\n");
         exit(2);
     }
-    if (extension_loaded('polyspec_orm')) {
+    if (getenv('ORM_PHP_MODE') === 'extension') {
         fwrite(
             STDERR,
             "declarations.php $mode: the extension polyspec_orm is loaded and registers the same classes; run php "

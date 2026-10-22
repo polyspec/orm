@@ -10,7 +10,7 @@ use function Polyspec\Orm\Tests\dbspec_behaviour_cases;
 //
 // Usage: php packages/php/testing/dbspec/behaviour.php
 
-if (extension_loaded('polyspec_orm')) {
+if (getenv('ORM_PHP_MODE') === 'extension') {
     fwrite(
         STDERR,
         "behaviour.php: the extension polyspec_orm is loaded; record with the PHP library, without the extension\n"
