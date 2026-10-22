@@ -88,6 +88,7 @@ final class DeclarationsTest extends TestCase
 {
     // The module case is when the module the extension requires exists only as a shared module in a PHP without php.ini (pdo in the CI runner's PHP package). It
     // builds the argument that loads that module from extension_dir, and checks that it adds no argument when all are present.
+    // INT-94: the extension declares pdo as its required module, so PHP loads it only with pdo present.
     public function test_required_modules(): void
     {
         $required = requiredModules();
@@ -159,6 +160,7 @@ final class DeclarationsTest extends TestCase
     }
 
     // PIE builds the extension from composer.json's php-ext: the name is the extension's name that was loaded, and config.m4 is in build-path.
+    // INT-95: the package is of type php-ext, names polyspec_orm, and its build-path holds the config.m4 that builds it.
     public function test_package(): void
     {
         $package = json_decode(file_get_contents(dirname(__DIR__) . '/composer.json'), true, 512, JSON_THROW_ON_ERROR);

@@ -16036,6 +16036,9 @@
     {
       "id": "php-extension-internal-declarations-required-modules",
       "kind": "feature",
+      "requirements": [
+        "INT-94"
+      ],
       "bindings": [
         {
           "implementation": "php-extension",
@@ -16075,6 +16078,9 @@
     {
       "id": "php-extension-internal-declarations-package",
       "kind": "feature",
+      "requirements": [
+        "INT-95"
+      ],
       "bindings": [
         {
           "implementation": "php-extension",
