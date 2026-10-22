@@ -381,7 +381,7 @@ async fn loaded_row_writes_case(driver: &str) {
         Ok(())
     });
     let rows = polyspec_orm::model::gets(&item(&hooked)).await.expect("gets");
-    let mut row = rows.models().find(|m| m.value("label").is_some_and(|v| v.as_string().unwrap_or_else(|e| panic!("label: {e}")) == "a1")).expect("a1").clone();
+    let mut row = rows.models().find(|m| m.value("label").is_some_and(|v| v.as_string().or_panic(|e| format!("label: {e}")) == "a1")).expect("a1").clone();
     row.core_mut().set("label", Param::from("changed"));
     polyspec_orm::model::update(&mut row, false).await.expect("update");
     assert_eq!(kinds.lock().unwrap().last().map(String::as_str), Some("update"), "the update of a loaded row passes the hook");
@@ -430,7 +430,7 @@ async fn upsert_scope_case(driver: &str) {
     }
     let rows = polyspec_orm::model::gets(&upsert_row(Some(&db), &[])).await.expect("gets");
     let stored: Vec<(String, String, Option<i64>)> =
-        rows.models().map(|m| (text_of(m, "scope_col"), text_of(m, "name"), m.value("hits").map(|v| v.as_i64().unwrap_or_else(|e| panic!("hits: {e}"))))).collect();
+        rows.models().map(|m| (text_of(m, "scope_col"), text_of(m, "name"), m.value("hits").map(|v| v.as_i64().or_panic(|e| format!("hits: {e}"))))).collect();
     assert_eq!(stored, [("a".to_owned(), "k".to_owned(), Some(7))]);
     db.close().await;
     database.drop().await;
