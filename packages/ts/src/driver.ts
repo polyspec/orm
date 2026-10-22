@@ -642,7 +642,7 @@ export function parseDsn(dsn: string): ParsedDsn {
  * Returns the percent-decoded path of a sqlite:// DSN. An invalid escape, a
  * path that is not UTF-8 after decoding and a NUL byte are CONFIG errors.
  */
-function sqlitePath(url: URL): string {
+export function sqlitePath(url: URL): string {
   let path: string;
   try {
     path = decodeURIComponent(url.pathname);
