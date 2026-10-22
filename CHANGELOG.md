@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `contracts/check-inputs.json` declares the scopes of `docs-site-check` and `docs-site-parse-check`, so `make feature-unit-check/owners` passes on main again (KSTD-5-48-1). Red: the owners test reports both targets as declaring no scope.
 - Every suppression of a lint finding in the repository states its reason, so `make suppression-check` (P8) passes: the Python test, dbspec and orm suppressions and the Rust allow carry their reasons inline, and the lambda assignments of the tests and of the dbspec sources are defs (KSTD-5-40). Red: `make suppression-check` on 6533e687d reported 95 suppressions without a reason.
 - The PHP library's parser keeps the declaration positions as lists of scalars and builds the Position objects only for a successful parse, so the limit/columns document peaks at 66.9 MB under PHPUnit, within the derived bound of its test (T182-0-2-1-1). Red: testLimitColumnsPeak measured 96.8 MB against a bound of 91.6 MB.
 - `make docs-check` runs the Markdown checks only, so a land no longer builds the VitePress site; the site build and the checks that read the built site run in `make docs-site-check`, which the owner rules select for changes under docs/ and CI runs (KSTD-5-48). Red: `tests/docs/split.test.mts` finds the site build in the expansion of docs-check.

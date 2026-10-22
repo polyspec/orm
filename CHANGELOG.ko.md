@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 6ee1a9c20f0bd41569d34e530e0bff7e8ad861f98f43c9d7e95b633bd0efea56 -->
+<!-- source-sha256: 8af95a060b89615272679f6a1eb10357ec34745a3df764a59950c10199ac9291 -->
 # 변경 이력
 
 ## Unreleased
 
+- `contracts/check-inputs.json`이 `docs-site-check`와 `docs-site-parse-check`의 scope를 선언하므로, main에서 `make feature-unit-check/owners`가 다시 통과한다(KSTD-5-48-1). red: owners test가 두 target에 scope가 없다고 보고했다.
 - 저장소의 모든 lint suppression이 이유를 적어 `make suppression-check`(P8)가 통과한다. Python test, dbspec, orm의 suppression과 Rust allow는 이유를 줄 안에 적었고, test와 dbspec 소스의 lambda 할당은 def로 바꿨다(KSTD-5-40). red: 6533e687d의 `make suppression-check`는 이유 없는 suppression 95개를 보고했다.
 - PHP library의 parser는 declaration position을 scalar 목록으로 들고, Position 객체는 성공한 parse에서만 만든다. 그래서 limit/columns 문서의 peak는 PHPUnit에서 66.9 MB로, test의 유도된 상한 안에 든다(T182-0-2-1-1). red: testLimitColumnsPeak가 96.8 MB를 측정했고 상한은 91.6 MB였다.
 - `make docs-check`는 Markdown 검사만 실행하므로 land가 VitePress 사이트를 더 이상 build하지 않는다. 사이트 build와 built site를 읽는 검사는 `make docs-site-check`에서 실행하며, owner 규칙이 docs/ 아래 변경에 대해 이를 고르고 CI가 실행한다(KSTD-5-48). red: `tests/docs/split.test.mts`가 docs-check의 expansion에서 사이트 build를 찾는다.
