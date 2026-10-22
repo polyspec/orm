@@ -154,14 +154,15 @@ caseTest('a workflow runs only the summary and the report upload after make orm-
 const repository = new URL('../../', import.meta.url);
 const declared = readFileSync(new URL('mise.toml', repository), 'utf8');
 const minimum = readPackage(join(repository.pathname, 'package.json')).engines?.['node'];
-const workflows = Object.fromEntries(readdirSync(new URL('.github/workflows/', repository)).sort()
-  .map(name => [`.github/workflows/${name}`, readFileSync(new URL(`.github/workflows/${name}`, repository), 'utf8')]));
+// orm's own workflows: the copies of @polyspec/kit (gates.yml and release.yml) are kit's, and kit-check holds them byte for byte (KSTD-10).
+const workflows = ownWorkflows(Object.fromEntries(readdirSync(new URL('.github/workflows/', repository)).sort()
+  .map(name => [`.github/workflows/${name}`, readFileSync(new URL(`.github/workflows/${name}`, repository), 'utf8')])), copies);
 
 // mise writes the tool node of mise.toml from a version, or none for an empty one.
 const mise = (version: string) => version ? `[tools]\nnode = "${version}"\n` : '[tools]\n';
 
 caseTest('the checks and every workflow run the Node of mise.toml', COMPUTE, () => {
-  assert.deepEqual(Object.keys(workflows), ['.github/workflows/ci.yml', '.github/workflows/docs-pages.yml', '.github/workflows/gates.yml', '.github/workflows/push-gate.yml', '.github/workflows/release.yml']);
+  assert.deepEqual(Object.keys(workflows), ['.github/workflows/ci.yml', '.github/workflows/docs-pages.yml', '.github/workflows/push-gate.yml']);
   assert.deepEqual(nodeVersionErrors(declared, minimum, workflows, process.versions.node), []);
 });
 
