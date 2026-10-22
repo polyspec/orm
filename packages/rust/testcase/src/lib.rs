@@ -254,3 +254,17 @@ pub fn run_in_order_then(trials: Vec<libtest_mimic::Trial>, after: impl FnOnce()
     after();
     conclusion.exit()
 }
+
+/// Returns the value of an `Ok`, and panics with the message `report` makes of the error otherwise.
+pub trait OrPanic<T, E> {
+    fn or_panic(self, report: impl FnOnce(E) -> String) -> T;
+}
+
+impl<T, E> OrPanic<T, E> for std::result::Result<T, E> {
+    fn or_panic(self, report: impl FnOnce(E) -> String) -> T {
+        match self {
+            Ok(value) => value,
+            Err(error) => panic!("{}", report(error)),
+        }
+    }
+}

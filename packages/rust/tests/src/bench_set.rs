@@ -3,14 +3,16 @@
 //! bench_shared.dbs, which must exist before the set installs (docs/spec/dbspec.md "External documents"), so
 //! the external document is installed first as its own set, as scripts/bench-db.mts does.
 
+use polyspec_orm_testcase::OrPanic;
+
 use polyspec_orm::dbspec;
 use std::sync::LazyLock;
 
 /// The manifest of contracts/fixtures/bench/bench_shared.dbs alone, as the set that owns it would generate it.
 static SHARED_MANIFEST: LazyLock<dbspec::Manifest> = LazyLock::new(|| {
     let text = include_str!("../../../../contracts/fixtures/bench/bench_shared.dbs");
-    let document = dbspec::parse(text, &Default::default()).unwrap_or_else(|e| panic!("bench_shared.dbs: {e:?}")).document;
-    dbspec::manifest(&[&document]).unwrap_or_else(|e| panic!("bench_shared.dbs: {e:?}"))
+    let document = dbspec::parse(text, &Default::default()).or_panic(|e| format!("bench_shared.dbs: {e:?}")).document;
+    dbspec::manifest(&[&document]).or_panic(|e| format!("bench_shared.dbs: {e:?}"))
 });
 
 /// The schema value of bench_shared.dbs.

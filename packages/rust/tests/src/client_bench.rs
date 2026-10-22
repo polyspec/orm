@@ -44,10 +44,13 @@ fn iterations(minimum: usize) -> usize {
 async fn main() {
     let iters = iterations(1);
     let config = polyspec_orm::Config { aes_key: "bench-salt".into(), blind_index_key: "bench-blind-index".into(), ..Default::default() };
-    let dsn = bench_dsn().unwrap_or_else(|e| {
-        eprintln!("{e}");
-        std::process::exit(1)
-    });
+    let dsn = match bench_dsn() {
+        Ok(dsn) => dsn,
+        Err(e) => {
+            eprintln!("{e}");
+            std::process::exit(1)
+        }
+    };
     let db = model::connect(&dsn, 1, config).await.unwrap();
 
     for _ in 0..200 {
@@ -76,7 +79,7 @@ async fn main() {
     let mut s = Vec::new();
     for i in 0..iters {
         let t = Instant::now();
-        let _ = Author::new().connect(&db).service_seq(i as i64).and_is_close(false).order_by_seq_desc().limit(0, 100).get_query().await.unwrap();
+        Author::new().connect(&db).service_seq(i as i64).and_is_close(false).order_by_seq_desc().limit(0, 100).get_query().await.unwrap();
         s.push(t.elapsed().as_nanos() as u64);
     }
     stats("plan cache hit (no db)", s);
