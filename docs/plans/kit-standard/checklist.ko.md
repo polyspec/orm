@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 3e22121181e6754cb121d74c8328eb7ff6fb743bed881e34aa3c265a8df4a6f2 -->
+<!-- source-sha256: b5af6e075c2462eea3c8fa30b471cab7a316c88810c715012b94abe3ae191d7d -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -141,6 +141,7 @@
 | KSTD-5-43 | checkout의 Python 코드가 ruff check, ruff format, vulture 어느 것에서도 finding 없이 make lint-python을 통과한다 | the Python sources of packages/python that the lint reports, with no suppression that has no stated reason | `make lint-python` | [o] |
 | KSTD-5-42 | make lint-go 통과: packages/go의 처리되지 않은 error를 모두 처리한다 (KSTD-5-7 후속). 원인: golangci-lint가 packages/go에서 errcheck 11건을 보고하고, deadcode는 build tag(예: featurecoverage) 아래에서만 도달되는 unreachable 함수 77건을 보고하며, kit lint-go는 tag마다 따로 판정한다 | packages/go/orm/catalog.go, catalog_grid.go, listen.go, packages/go/model/group_rows_db_test.go, and the coverage and grid-order tests of packages/go/orm | `make lint-go` | [ ] |
 | KSTD-5-46 | duplication-check 통과: 6줄 이상 clone 0개 (KSTD-5 하위) | the files that make duplication-check names in its clone list (426 clones in rust, php, c, javascript, go, python, typescript), with the shared logic extracted into one module per group | `make duplication-check` exits 0 with zero clones | [ ] |
+| KSTD-5-46-2 | schema crate의 manifest와 render 테스트 helper 중복을 공유한다 (KSTD-5-46 하위) | packages/rust/schema/tests/dbspec_manifest.rs, packages/rust/schema/tests/dbspec_render.rs, and the shared helper module they both use | `make dbspec-rust-check` passes, and make duplication-check lists no clone between dbspec_manifest.rs and dbspec_render.rs | [ ] |
 | KSTD-5-41 | orm의 Rust 소스가 make lint-rust(-D warnings 아래 clippy)를 통과한다 | The 40 clippy errors of benchmarks/rust, packages/rust, testcase, schema and the interface tools are fixed in the code, with no suppression | `make lint-rust` | [ ] |
 | KSTD-6 | link rebuild는 repository layout을 읽고 자기 paths를 두지 않는다 (kit K286). Cause: kit은 link된 checkout을 layout으로 rebuild하며 link 선언의 paths key는 없어진다 | kit.json, the link declaration | `make rebuild-check` | [o] |
 | KSTD-7 | main에서 feature-unit-check가 통과한다. Cause: docs/features.md가 그것이 그리는 coverage와 맞지 않고, scripts/features/coverage.test.mts의 8개 case가 "no package implements the client language php-extension"으로 실패한다 | docs/features.md, scripts/features | `make feature-unit-check` | [o] |
