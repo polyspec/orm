@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f8f36ce683e23d78573150cc8eaec3da846721d2fc98a2fe17d7c5a283ccfd73 -->
+<!-- source-sha256: 5a8097e76ea89092be77e60a768248235b95efd0c1bdffe8742fec6e5c52ab95 -->
 # 변경 이력
 
 ## Unreleased
+- comments check는 Python을 `scripts/comments/tokens/python-comments.mts`로 읽는다. tokenize와 ast 읽기기의 TypeScript 포팅이며, 저장소는 더 이상 Python 도구를 갖지 않는다. 출력은 추적되는 Python 파일 224개 모두에서 이전 읽기기와 같다(KSTD-5-21). red: `every tool of the repository is written in Go, PHP, Rust or TypeScript` 사례가 python-comments.py에서 실패했다.
 - KSTD-5-20 완료: 이 commit은 그 완료 상태를 기록하고, 행 commit이 남긴 체크리스트의 한국어 stamp를 갱신한다(KSTD-5-20).
 - repo check의 workflow 규칙 사례는 kit 복사본 두 개, release.yml과 gates.yml을 기대하며 규칙은 둘 다 건너뛴다(KSTD-5-20). red: 사례가 release.yml만 기대했으나 gates.yml이 두 번째 kit 복사본으로 발견되었다.
 - repo check의 Node 사례는 `.github/workflows`의 모든 workflow(gates.yml 포함)를 나열하고 각각이 mise.toml의 Node로 실행되는지 확인한다. kit 복사본 gates.yml은 이 규칙을 통과한다(KSTD-5-19). red: 사례가 workflow 4개를 기대했으나 gates.yml이 다섯 번째로 발견되었다.

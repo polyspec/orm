@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The comments check reads Python through `scripts/comments/tokens/python-comments.mts`, a TypeScript port of the tokenize and ast reader, so the repository has no Python tool; the output matches the former reader on all 224 tracked Python files (KSTD-5-21). Red: `every tool of the repository is written in Go, PHP, Rust or TypeScript` failed on python-comments.py.
 - KSTD-5-20 is done: this commit records its done state and refreshes the Korean stamps of the checklist that the row commit left stale (KSTD-5-20).
 - The workflow-rules case of the repo check expects both kit copies, release.yml and gates.yml, and the rules skip them (KSTD-5-20). Red: the case expected release.yml alone and found gates.yml as a second kit copy.
 - The Node case of the repo check lists every workflow of `.github/workflows`, gates.yml included, and checks that each runs the Node of mise.toml; the kit copy gates.yml passes that rule (KSTD-5-19). Red: the case expected four workflows and found gates.yml as a fifth.
