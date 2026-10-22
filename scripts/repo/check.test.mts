@@ -594,8 +594,8 @@ caseTest('every variable a helper make command reads is exported by the Makefile
 const vendoredFiles = copies;
 
 caseTest('the workflow rules skip the workflows that @polyspec/kit copies', COMPUTE, () => {
-  // kit copies one workflow, release.yml; its other copies (PRINCIPLES.md, the lint configurations, the bootstrap) are no workflows.
-  assert.deepEqual(Object.keys(vendoredFiles).filter(file => file.startsWith('.github/workflows/')), ['.github/workflows/release.yml']);
+  // kit copies two workflows, gates.yml and release.yml; its other copies (PRINCIPLES.md, the lint configurations, the bootstrap) are no workflows.
+  assert.deepEqual(Object.keys(vendoredFiles).filter(file => file.startsWith('.github/workflows/')), ['.github/workflows/release.yml', '.github/workflows/gates.yml']);
   const all = { '.github/workflows/ci.yml': 'a', '.github/workflows/release.yml': 'b' };
   assert.deepEqual(ownWorkflows(all, vendoredFiles), { '.github/workflows/ci.yml': 'a' });
   assert.deepEqual(ownWorkflows({ 'ci.yml': 'a', 'release.yml': 'b' }, vendoredFiles), { 'ci.yml': 'a' });

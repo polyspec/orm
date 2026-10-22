@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The workflow-rules case of the repo check expects both kit copies, release.yml and gates.yml, and the rules skip them (KSTD-5-20). Red: the case expected release.yml alone and found gates.yml as a second kit copy.
 - The Node case of the repo check lists every workflow of `.github/workflows`, gates.yml included, and checks that each runs the Node of mise.toml; the kit copy gates.yml passes that rule (KSTD-5-19). Red: the case expected four workflows and found gates.yml as a fifth.
 - The PHP extension takes the PHP client's class names: it registers `Polyspec\Orm\Dbspec\*` and `Polyspec\Orm\Code` in place of the `Native` namespaces, so user code is the same with or without the extension, and a process with the extension loads none of the client's PHP files for those classes (T182-0). Red: the declaration tests failed with `Polyspec\Orm\Native\Code is outside Polyspec\Orm\Dbspec\ and Polyspec\Orm\Code`.
 - The repo check of build outputs reads quoted text as text: a recipe that prints a usage message such as "WORKTREE=<path>" to stderr is no longer reported as a redirect into a file, while the command string of `sh -c "…"` is still checked (KSTD-5-26). Red: the check reported Makefile:883 (`echo "usage: … WORKTREE=<path>" >&2`) as a redirect in place. Green: the check holds on the Makefile, and a quoted redirect in `sh -c` is still found.
