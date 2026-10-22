@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 8058e40924f853d030b727d42dd51f0a41a387f73f9fab0e88444e4442a061de -->
+<!-- source-sha256: a73c05e09ccdf3e3b7092738f616084497ec5b258de68d32da03127ad5ba006f -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -207,3 +207,4 @@
 | KSTD-13 | Makefile의 case-database-check, example-check, timing-check 레시피가 `make cargo-fetch DIR=<project>` 밖에서 crate를 빌드하여 sibling polyspec crate가 [patch] path로 연결되지 않는다(K448-5). 원인: make link-state-check가 Makefile:1175, 1740, 1753(이 레시피들의 cargo 명령)을 보고하며 대신 `cargo-fetch DIR=<project>`를 쓰라고 요구한다. 근거: 이 checkout의 link-state-check 실행이 finding 3개와 함께 exit 2로 끝난다. | Makefile | `make -s link-state-check` | [o] |
 | KSTD-14 | orm이 @codemirror/view를 최신 안정 릴리스 6.43.15로 올리고 리뷰 기록에 목표를 적는다. 원인: 잠금은 6.43.14이고 기록에 목표 항목이 없다. | packages/dbspec-codemirror/package.json, package-lock.json, config/dependency-review.json | `make dependency-policy-check` | [-] 원인: 사용자 2026-10-22: 버전 고정 작업 없음 |
 | KSTD-15 | TypeScript build cache packages/ts/tsconfig.build.tsbuildinfo와 형제 *.tsbuildinfo는 Git이 무시하고 생성 경로로 선언한다(AGENTS.md의 generated-files 규칙). 원인: 이 캐시는 build마다 main checkout에 추적되지 않은 채 다시 나타나 generated-files 규칙을 어긴다. 인수 조건: .gitignore가 어느 깊이의 *.tsbuildinfo든 무시하고, config/generated.json이 **/*.tsbuildinfo를 선언하며, build 뒤 git status에 tsbuildinfo가 없다. 현재 빨간 상태: git check-ignore가 packages/ts/tsconfig.build.tsbuildinfo의 규칙을 찾지 못하고, make build 뒤 git status가 그 파일을 보고한다. | .gitignore, config/generated.json | `sh -c "git check-ignore -q packages/ts/tsconfig.build.tsbuildinfo && git check-ignore -q packages/ts/sibling.tsbuildinfo"` | [o] |
+| KSTD-5-57-14b | add_tables_and_columns, dbspec_plan_apply, collection_identity의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests add_tables_and_columns, dbspec_plan_apply, collection_identity | `make lint-rust` reports no finding in these files | [ ] |
