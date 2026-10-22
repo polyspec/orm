@@ -123,7 +123,7 @@ async fn text(db: &Db, query: &str) -> String {
 /// Checks that it is CONFIG and that the message contains `message`.
 fn expect_config<T: std::fmt::Debug>(step: &str, result: polyspec_orm::Result<T>, message: &str) {
     match result {
-        Err(e) if e.code() == polyspec_orm::codes::CONFIG && e.to_string().contains(message) => {}
+        Err(e) => assert!(e.code() == polyspec_orm::codes::CONFIG && e.to_string().contains(message), "{step}: {e:?}, want CONFIG with {message:?}"),
         other => panic!("{step}: {other:?}, want CONFIG with {message:?}"),
     }
 }
