@@ -227,8 +227,11 @@ async fn remove(admin: Option<&str>, name: &str, path: Option<&Path>) -> Result<
             let file = PathBuf::from(format!("{}{suffix}", path.display()));
             match std::fs::remove_file(&file) {
                 Ok(()) => {}
-                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
-                Err(e) => return Err(format!("remove {}: {e}", file.display())),
+                Err(e) => {
+                    if e.kind() != std::io::ErrorKind::NotFound {
+                        return Err(format!("remove {}: {e}", file.display()));
+                    }
+                }
             }
         }
         return Ok(());
