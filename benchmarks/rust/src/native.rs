@@ -201,9 +201,11 @@ fn invalid_dsn(error: impl std::fmt::Display) -> ! {
 #[tokio::main]
 async fn main() {
     let iters = iterations(3);
-    let opts = MySqlConnectOptions::from_str(&bench_dsn())
-        .unwrap_or_else(|e| invalid_dsn(e))
-        .statement_cache_capacity(256);
+    let opts = match MySqlConnectOptions::from_str(&bench_dsn()) {
+        Ok(options) => options,
+        Err(e) => invalid_dsn(e),
+    }
+    .statement_cache_capacity(256);
     let pool = MySqlPoolOptions::new()
         .max_connections(1)
         .connect_with(opts)

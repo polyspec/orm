@@ -46,7 +46,10 @@ pub fn manifest_dir() -> std::path::PathBuf {
 /// program. If the value is missing, the test ran outside that runner, so it panics without guessing a path.
 pub fn program(name: &str) -> String {
     let variable = format!("ORM_PROGRAM_{}", name.to_uppercase().replace('-', "_"));
-    std::env::var(&variable).unwrap_or_else(|_| panic!("{variable} is unset; run the test through tests/cargo-test.mts, which gives the copied program"))
+    match std::env::var(&variable) {
+        Ok(value) => value,
+        Err(_) => panic!("{variable} is unset; run the test through tests/cargo-test.mts, which gives the copied program"),
+    }
 }
 
 /// Runs the program `program` with `args`, with the environment variable `var` set to `value`, or unset when `value` is `None`.
@@ -138,8 +141,12 @@ pub fn duration(d: Duration) -> String {
 /// Writes one diagnostic line straight to stderr (it does not pass through libtest's capture).
 fn emit(line: &str) {
     let mut err = std::io::stderr().lock();
-    let _ = writeln!(err, "{line}");
-    let _ = err.flush();
+    if let Err(error) = writeln!(err, "{line}") {
+        panic!("the diagnostic line could not be written to stderr: {error}");
+    }
+    if let Err(error) = err.flush() {
+        panic!("stderr could not be flushed: {error}");
+    }
 }
 
 /// One running case. When dropped, it checks for failure: if there is a reason, it panics so libtest reports it as a failure.
@@ -187,7 +194,12 @@ impl Drop for Case {
     fn drop(&mut self) {
         drop(self.stop.take());
         if let Some(watchdog) = self.watchdog.take() {
-            let _ = watchdog.join();
+            if let Err(panic) = watchdog.join() {
+                // A watchdog that panicked reports its own panic, unless this case is already unwinding.
+                if !thread::panicking() {
+                    std::panic::resume_unwind(panic);
+                }
+            }
         }
         // If already panicking, that panic is reported as the failure, so it does not panic again.
         if !thread::panicking() {

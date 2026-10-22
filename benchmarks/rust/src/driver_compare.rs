@@ -143,9 +143,11 @@ async fn main() {
     let iterations = iterations(10);
 
     let dsn = bench_dsn();
-    let sqlx_options = MySqlConnectOptions::from_str(&dsn)
-        .unwrap_or_else(|e| invalid_dsn(e))
-        .statement_cache_capacity(256);
+    let sqlx_options = match MySqlConnectOptions::from_str(&dsn) {
+        Ok(options) => options,
+        Err(e) => invalid_dsn(e),
+    }
+    .statement_cache_capacity(256);
     let sqlx = MySqlPoolOptions::new()
         .min_connections(1)
         .max_connections(1)
@@ -154,7 +156,10 @@ async fn main() {
         .unwrap();
 
     let async_options =
-        OptsBuilder::from_opts(Opts::from_url(&dsn).unwrap_or_else(|e| invalid_dsn(e)))
+        OptsBuilder::from_opts(match Opts::from_url(&dsn) {
+            Ok(opts) => opts,
+            Err(e) => invalid_dsn(e),
+        })
             .pool_opts(PoolOpts::default().with_constraints(PoolConstraints::new(1, 1).unwrap()));
     let mysql_async = AsyncPool::new(async_options);
 
