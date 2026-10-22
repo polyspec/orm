@@ -29,7 +29,6 @@ final class PerfExtensionsTest extends TestCase
 
     public function testThisPHP(): void
     {
-        $got = perfGateRefusedExtensions(fn (string $name): bool => extension_loaded($name));
-        self::assertSame(array_values(array_filter(['xdebug', 'pcov'], 'extension_loaded')), $got);
+        self::assertSame(declaredRefusedExtensions(), loadedRefusedExtensions(), 'the declared refused extensions differ from the loaded ones');
     }
 }

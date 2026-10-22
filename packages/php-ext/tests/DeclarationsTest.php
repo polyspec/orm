@@ -29,21 +29,17 @@ function requiredModules(): array
 }
 
 /**
- * moduleArguments are the arguments that make the PHP run without php.ini (-n) have the module the extension requires.
- * -n also does not load shared modules (for example pdo, which the Ubuntu PHP package loads from conf.d), so a module
- * not in that PHP is loaded from this PHP's extension_dir. If a required module is missing, PHP does not load the
- * extension. $loaded (module name) is whether php -n has that module.
+ * moduleArguments are the arguments that make the PHP run without php.ini (-n) have every module the extension requires.
+ * -n does not load shared modules (for example pdo, which the Ubuntu PHP package loads from conf.d), so each required
+ * module is loaded from this PHP's extension_dir. The declarations of requiredModules() are the environment the run
+ * declares; declared() asserts that php -n then has each of them, and a run that lacks one fails loudly.
  */
-function moduleArguments(array $modules, callable $loaded, string $extensionDir): array
+function moduleArguments(array $modules, string $extensionDir): array
 {
-    $missing = array_values(array_filter($modules, static fn(string $module): bool => !$loaded($module)));
-    if ($missing === []) {
-        return [];
-    }
     return [
         '-d',
         "extension_dir=$extensionDir",
-        ...array_merge(...array_map(static fn(string $module): array => ['-d', "extension=$module"], $missing))
+        ...array_merge(...array_map(static fn(string $module): array => ['-d', "extension=$module"], $modules)),
     ];
 }
 
@@ -67,18 +63,14 @@ function run(array $command): array
  */
 function declared(string $mode): array
 {
-    // -n does not read php.ini: if php.ini loads the extension, a class with the same name as the stub already exists.
-    // The module the extension requires is loaded by moduleArguments.
-    $loaded = static fn(string $module): bool => run(
-        [PHP_BINARY, '-n', '-r', 'exit(extension_loaded($argv[1]) ? 0 : 1);', $module]
-    )[0] === 0;
-    $command = [
-        PHP_BINARY,
-        '-n',
-        ...moduleArguments(requiredModules(), $loaded, (string) ini_get('extension_dir')),
-        __DIR__ . '/declarations.php',
-        $mode
-    ];
+    $modules = requiredModules();
+    $arguments = moduleArguments($modules, (string) ini_get('extension_dir'));
+    [$probeCode, $probeOut, $probeErr] = run([PHP_BINARY, '-n', ...$arguments, '-r', 'echo json_encode(get_loaded_extensions());']);
+    Assert::assertSame(0, $probeCode, 'php -n with the declared modules failed: ' . trim($probeErr) . trim($probeOut));
+    $loaded = json_decode($probeOut, true, 512, JSON_THROW_ON_ERROR);
+    $missing = array_values(array_diff($modules, $loaded));
+    Assert::assertSame([], $missing, 'the declared modules are not loaded by php -n: ' . implode(', ', $missing));
+    $command = [PHP_BINARY, '-n', ...$arguments, __DIR__ . '/declarations.php', $mode];
     [$code, $out, $err] = run($command);
     Assert::assertSame(
         0,
