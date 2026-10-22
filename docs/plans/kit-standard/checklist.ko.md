@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: c6a788afcfdfb05082f5d1aaf5643cff289f4227dffb38860e7d2ed7dcfcb097 -->
+<!-- source-sha256: d8ed08103b8702efccacb01fac176200404c77cf6bf42d913578e12f6c07d259 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -140,7 +140,7 @@
 | KSTD-5-45 | orm의 PHP 소스가 make lint-php를 통과한다 (phpcs: 줄 길이와 PSR-1 부작용). Red today: phpcs가 6개 finding을 보고한다: packages/php-ext/tests/silent_paths.php의 긴 줄 3개와 packages/php/tests의 Coverage 테스트 3개 파일의 PSR-1 부작용 | packages/php-ext/tests/silent_paths.php, packages/php/tests/CoverageConformanceVerificationTest.php, packages/php/tests/CoverageModelQueriesTest.php, packages/php/tests/CoverageModelWritesTest.php | `make lint-php` exits 0, with no suppression comment that states no reason | [o] |
 | KSTD-5-43 | checkout의 Python 코드가 ruff check, ruff format, vulture 어느 것에서도 finding 없이 make lint-python을 통과한다 | the Python sources of packages/python that the lint reports, with no suppression that has no stated reason | `make lint-python` | [o] |
 | KSTD-5-42 | make lint-go 통과: packages/go의 처리되지 않은 error를 모두 처리한다 (KSTD-5-7 후속). 원인: golangci-lint가 packages/go에서 errcheck 11건을 보고하고, deadcode는 build tag(예: featurecoverage) 아래에서만 도달되는 unreachable 함수 77건을 보고하며, kit lint-go는 tag마다 따로 판정한다 | packages/go/orm/catalog.go, catalog_grid.go, listen.go, packages/go/model/group_rows_db_test.go, and the coverage and grid-order tests of packages/go/orm | `make lint-go` | [ ] |
-| KSTD-5-46 | duplication-check 통과: 6줄 이상 clone 0개 (KSTD-5 하위) | the files that make duplication-check names in its clone list (426 clones in rust, php, c, javascript, go, python, typescript), with the shared logic extracted into one module per group | `make duplication-check` exits 0 with zero clones | [ ] |
+| KSTD-5-46 | duplication-check 통과: 6줄 이상 clone 0개 (KSTD-5 하위) | the files that make duplication-check names in its clone list (426 clones in rust, php, c, javascript, go, python, typescript), with the shared logic extracted into one module per group | `make duplication-check` exits 0 with zero clones | [~] |
 | KSTD-5-46-2 | schema crate의 manifest와 render 테스트 helper 중복을 공유한다 (KSTD-5-46 하위) | packages/rust/schema/tests/dbspec_manifest.rs, packages/rust/schema/tests/dbspec_render.rs, and the shared helper module they both use | `make dbspec-rust-check` passes, and make duplication-check lists no clone between dbspec_manifest.rs and dbspec_render.rs | [-] 원인: KSTD-5-46에 병합됨 |
 | KSTD-5-41 | orm의 Rust 소스가 make lint-rust(-D warnings 아래 clippy)를 통과한다 | The 40 clippy errors of benchmarks/rust, packages/rust, testcase, schema and the interface tools are fixed in the code, with no suppression | `make lint-rust` | [ ] |
 | KSTD-5-41-0 | orm에 패키지별 clippy 대상 `make clippy-crate CRATE=polyspec-orm-schema`가 lint-rust와 같은 플래그로 있다 | A clippy-crate target in the Makefile that runs cargo clippy --all-targets for CRATE with the lint-rust flags and CLIPPY_CONF_DIR of kit | `make -n clippy-crate CRATE=polyspec-orm-schema` | [o] |
