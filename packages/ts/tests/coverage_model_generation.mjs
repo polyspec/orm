@@ -1,3 +1,4 @@
+// DSL-40: the TypeScript models are written by orm-gen from the set into src/models, and --check reports a difference.
 // model_generation coverage: running orm-gen with the same arguments as the committed generation plus --check reports that the committed
 // src/models/models.ts matches the generated result, and that a copy with one byte changed is reported as different,
 // is checked. The copy is placed at packages/ts/src/models under the OS temp directory so the runtime

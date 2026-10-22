@@ -1,3 +1,4 @@
+// DIA-37: the recorded conformance vectors of each dialect hold the expected result of every vector.
 // conformance_verification coverage: runs the TypeScript conformance runner read-only on the chosen database,
 // running only the selected vectors, and checks that each output equals the recorded expect of that database as a JSON value.
 import assert from 'node:assert/strict';

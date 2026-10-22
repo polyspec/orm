@@ -26,6 +26,7 @@ for (const dialect of dialects.length > 0 ? dialects : ['mysql', 'postgres', 'sq
     const name = `statement_events/${c.id}/${dialect}`;
     let failed = 0;
     const check = (cond, message) => { if (!cond) { failed++; console.error(`FAIL ${name}: ${message}`); } };
+    // INT-91: each statement event records the seven fields of a statement that the connection sent.
     caseTest(name, DATABASE, async ({ step }) => {
       await withCaseDatabase(dialect, step, database => runEventCase(c, dialect, database.dsn, check));
       if (failed > 0) throw new Error(`${failed} check(s) failed; each FAIL line above names one`);

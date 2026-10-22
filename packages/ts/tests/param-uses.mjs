@@ -35,6 +35,7 @@ function usesOf(uses) {
   return uses.map(list => list.map(use => [use.type, use.column?.name ?? '']));
 }
 
+// DIA-31: paramUses names the logical type and the column of the slot that each parameter fills.
 caseTest('param-uses/kinds', COMPUTE, () => {
   const parsed = parseDbspec(document, {});
   if (parsed.document === null) throw new Error(JSON.stringify(parsed.diagnostics));

@@ -632,6 +632,10 @@
     {
       "id": "ts-conformance-result-exact-numbers",
       "kind": "feature",
+      "requirements": [
+        "COD-16",
+        "COD-20"
+      ],
       "bindings": [
         {
           "implementation": "typescript",
@@ -643,6 +647,9 @@
     {
       "id": "ts-conformance-result-member-key-order",
       "kind": "feature",
+      "requirements": [
+        "COD-16"
+      ],
       "bindings": [
         {
           "implementation": "typescript",
@@ -654,6 +661,9 @@
     {
       "id": "ts-conformance-result-undefined-and-non-finite",
       "kind": "feature",
+      "requirements": [
+        "COD-21"
+      ],
       "bindings": [
         {
           "implementation": "typescript",
@@ -1002,6 +1012,9 @@
     {
       "id": "ts-coverage_model_generation",
       "kind": "feature",
+      "requirements": [
+        "DSL-40"
+      ],
       "bindings": [
         {
           "implementation": "typescript",
@@ -1293,6 +1306,9 @@
     {
       "id": "ts-dbspec-set-edges",
       "kind": "feature",
+      "requirements": [
+        "DBS-11"
+      ],
       "bindings": [
         {
           "implementation": "typescript",
@@ -1578,6 +1594,9 @@
     {
       "id": "ts-coverage_conformance_verification",
       "kind": "feature",
+      "requirements": [
+        "DIA-37"
+      ],
       "bindings": [
         {
           "implementation": "typescript",
@@ -2730,6 +2749,9 @@
     {
       "id": "ts-param-uses",
       "kind": "feature",
+      "requirements": [
+        "DIA-31"
+      ],
       "bindings": [
         {
           "implementation": "typescript",
@@ -2741,6 +2763,9 @@
     {
       "id": "ts-request_hook",
       "kind": "feature",
+      "requirements": [
+        "INT-78"
+      ],
       "bindings": [
         {
           "implementation": "typescript",
@@ -3082,6 +3107,9 @@
     {
       "id": "ts-statement-events",
       "kind": "feature",
+      "requirements": [
+        "INT-91"
+      ],
       "bindings": [
         {
           "implementation": "typescript",
@@ -5852,6 +5880,9 @@
     {
       "id": "statement-events",
       "kind": "suite",
+      "requirements": [
+        "INT-91"
+      ],
       "file": "tests/events/vectors.json",
       "cases": "$.cases[*].id",
       "bindings": [
