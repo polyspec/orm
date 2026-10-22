@@ -1,6 +1,6 @@
 // Fails when a comment of a tracked code file contains Hangul. Each ecosystem's comments come from its own tokenizer:
 // Go from go/scanner (scripts/comments/tokens/go-comments.go), TypeScript and JavaScript from the TypeScript parser of
-// the pinned interface project, Python from tokenize and ast (tokens/python-comments.py), and PHP from token_get_all
+// the pinned interface project, Python from the TypeScript port of tokenize and ast (tokens/python-comments.mts), and PHP from token_get_all
 // (tokens/php-comments.php). Rust, C and the hash-comment files have no tokenizer in their toolchains, so they use the
 // lexer of own-lexer.mts, which docs/rebuild/ records. This module aggregates the comment lines and reports each Hangul
 // line by file and line number.
@@ -143,7 +143,7 @@ async function batch(family: Family, files: string[], dir: string, texts: Map<st
   if (family === 'go') {
     return runTokenizer('go', ['run', join(root, 'scripts/comments/tokens/go-comments.go')], { GOWORK: 'off', GOFLAGS: '', GOPROXY: 'off' }, files.map(file => join(dir, file)));
   }
-  if (family === 'python') return runTokenizer('python3', ['-I', join(root, 'scripts/comments/tokens/python-comments.py')], {}, files.map(file => join(dir, file)));
+  if (family === 'python') return runTokenizer(process.execPath, [join(root, 'scripts/comments/tokens/python-comments.mts')], {}, files.map(file => join(dir, file)));
   if (family === 'php') return runTokenizer('php', [join(root, 'scripts/comments/tokens/php-comments.php')], {}, files.map(file => join(dir, file)));
   return files.map(file => {
     const text = texts.get(file) ?? '';

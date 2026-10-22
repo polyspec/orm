@@ -118,10 +118,6 @@
       "kind": "ecosystem",
       "tool": "token_get_all"
     },
-    "scripts/comments/tokens/python-comments.py": {
-      "kind": "ecosystem",
-      "tool": "tokenize and ast"
-    },
     "scripts/dbspec/syntax-vectors.mts": {
       "kind": "policy",
       "reason": "writes the token vectors of the dbspec cases from the TypeScript analyzer, so every implementation of the dbspec language is held to them; no ecosystem tool knows dbspec"
