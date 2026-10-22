@@ -3,6 +3,9 @@
 
 ## Unreleased
 
+- config/rebuild.json classifies scripts/typescript/models.mts and scripts/php/vendor-autoload-check.mjs, so make rebuild-check passes (KSTD-5-5-1-1). Red: rebuild-check reported both tools with no class.
+- config/rebuild.json classifies scripts/typescript/models.mts and scripts/php/vendor-autoload-check.mjs, so make rebuild-check passes (KSTD-5-5-1-1). Red: rebuild-check reported both tools with no class.
+- KSTD-10-5 is done again on main: its autoload check cases are declared with `caseTest`, as KSTD-10-5-1 restored after the KSTD-3-2 commit rewrote them with node:test (KSTD-10-5). Red: the rule failed on the rewritten test.
 - The extension fails loudly on its silent paths: `Validator::restoreKey` and `conflictKey` throw an Error naming the missing OrmException class instead of returning null, `scall` throws when a call is not callable, `record_inserted` propagates a failed TxFrame::recordInserted instead of discarding it, and the build uses `-Werror` (T182-2-4). Red: `make dbspec-php-extension-check/silent-paths` returned null with no exception for both calls.
 - KSTD-10-5 is done again on main: its autoload check cases are declared with `caseTest`, as KSTD-10-5-1 restored after the KSTD-3-2 commit rewrote them with node:test (KSTD-10-5). Red: the rule failed on the rewritten test.
 - The test servers' startLogged no longer waits forever: a ready line that does not come fails with its step and log, and the log is also read on a timer (KSTD-5-37).

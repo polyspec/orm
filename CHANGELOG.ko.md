@@ -1,10 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 072a2d8f4a09f182bea06a73c8c5ee179a378b8b1eb264ac821fb319e178feec -->
+<!-- source-sha256: 466a233f219799d145ed8e295c725187edf88c677e96863278d9434916f58aad -->
 # 변경 이력
 
 ## Unreleased
-- KSTD-10-5를 main에서 다시 완료로 표시한다: autoload 검사 사례는 KSTD-3-2 commit이 node:test로 다시 쓴 뒤 KSTD-10-5-1이 복구한 대로 `caseTest`로 선언된다(KSTD-10-5). red: 규칙이 다시 쓰인 test에서 실패했다.
 
+- config/rebuild.json은 scripts/typescript/models.mts와 scripts/php/vendor-autoload-check.mjs를 분류하므로 make rebuild-check가 통과한다(KSTD-5-5-1-1). red: rebuild-check가 두 도구를 분류 없이 보고했다.
+- KSTD-10-5를 main에서 다시 완료로 표시한다: autoload 검사 사례는 KSTD-3-2 commit이 node:test로 다시 쓴 뒤 KSTD-10-5-1이 복구한 대로 `caseTest`로 선언된다(KSTD-10-5). red: 규칙이 다시 쓰인 test에서 실패했다.
 - 테스트 서버의 startLogged는 더는 영원히 기다리지 않는다: 준비 줄이 오지 않으면 단계와 로그를 밝히며 실패하고, 로그도 주기적으로 읽는다 (KSTD-5-37).
 - `scripts/check/run.test.mts`의 가드 test는 로컬에서 CI group의 거부만 검사하고 CI identity를 설정하지 않는다. 수락 사례는 GitHub Actions 프로세스에서만 실행된다(KSTD-5-13). red: 부모의 test가 로컬 실행에서 CI identity를 설정해 bypass 검사가 실패했다.
 - repo check의 Node, PHP, Rust 버전 규칙은 orm 자신의 workflow만 판단한다. gates.yml과 release.yml은 kit-check가 바이트 단위로 보유하는 kit 복사본이다(KSTD-10). red: 사례가 kit 복사본 gates.yml이 mise.toml과 .php-version을 읽지 않는다고 찾았다.
