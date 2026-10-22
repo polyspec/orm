@@ -1,0 +1,6 @@
+#!/bin/sh
+# The pre-merge-commit hook. Git runs it before it creates a merge commit. It refuses a merge commit on main, since main moves only by
+# commits and fast-forwards (P38, K404-1). Written by `make hooks`; do not edit it. It calls the make target of the check, which
+# stays across the versions of kit.
+cd "$(git rev-parse --show-toplevel)" || exit 1
+exec make --no-print-directory merge-commit-hook

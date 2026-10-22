@@ -41,12 +41,13 @@ in kit, with its grounding.
   Enforced by: `make lint-ts`, `make lint-python`, `make lint-go`, `make lint-php`, `make lint-rust`, `make suppression-check`
 - P9 Correct first; fast only when it stays correct.
   Enforced by: none, the order of correctness and speed is a judgement.
-- P10 Work reaches main only by the fast-forward of `make land` (P38). Each row has its own worktree and branch, named
-  `{type}/{shortname}-{checklist id}` and `{project}-{shortname}-{checklist id}`, made by `make worktree-setup`, which refuses
-  under 30 GB of free disk. The worktree and its branch are removed right after the merge into main, by `make land`.
-  Test or experiment code that cannot merge is cherry-picked when it is worth keeping and otherwise discarded, always before
-  the commit; when it cannot be removed at once, a checklist sub-item states the condition of its removal.
-  Enforced by: `.githooks/pre-push`
+- P10 Work reaches main in one of two ways. Direct work on main is committed through the gated commits of P38. Parallel or
+  isolated work has its own worktree and branch, named `{type}/{shortname}-{checklist id}` and `{project}-{shortname}-{checklist id}`,
+  made by `make worktree-setup`, which refuses under 30 GB of free disk; it reaches main only by the fast-forward of `make land`,
+  and its worktree and branch are removed right after the merge, by `make land`. Test or experiment code that cannot merge is
+  cherry-picked when it is worth keeping and otherwise discarded, always before the commit; when it cannot be removed at once, a
+  checklist sub-item states the condition of its removal.
+  Enforced by: `.githooks/pre-push`, `.githooks/pre-merge-commit`
 - P11 Code comments, identifiers, logs, error messages, test names and commit messages are written in English. Documents are
   English, each with a Korean twin that writes technical terms in English.
   Enforced by: `make commits-check` for the commit messages, `make language-check` for the code
@@ -78,6 +79,8 @@ in kit, with its grounding.
 
 - P19 A defect starts as a test that reproduces it and fails for the intended reason; the fix follows; the same test passes.
   A test that cannot fail proves nothing, and a test that passes without running is a defect.
+  A comment or document that a change makes stale is corrected in the commit of that change; one found after its row is done
+  is a sub-item whose Verification is `make text-absent FILE=<path> TEXT=<stale text>`, which fails while the stale text is there.
   Enforced by: `make commits-check`
 - P20 An item is completed by its own unit tests: red, implementation, green. Only the checks that own what changed run; the
   full suite is not run, neither per fix, per item nor at the end. The full suite runs only on the order of the conductor,
@@ -135,8 +138,8 @@ repository.
   Enforced by: `make kit-check`
 - P30 During 0.0.x development a repository consumes the packages of the others only through links: the installed folder of a
   polyspec package is a symbolic link to the folder of its provider, never a copy, and the link counts as the installed released
-  version; versions are checked at install only (K305-1). While a project is linked, the platform and `composer validate` rules of
-  the dependency policy judge its link lock, and the tracked lock waits for the check of the batch release (K326).
+  version; versions are checked at install only (K305-1). While a project is linked, every Composer rule of
+  the dependency policy judges its link manifest and link lock, and the tracked lock waits for the check of the batch release (K326, K326-2).
   Enforced by: `make link-state-check`
 - P31 No gate is bypassed: a test, script or Makefile never sets the CI identity (`GITHUB_ACTIONS`, `CI`) outside a workflow, never
   names a gate of kit-gates in `make -o`, `--old-file` or `--assume-old`, and never uses `--no-verify` (K308).
@@ -153,16 +156,20 @@ repository.
   output is never tracked in Git.
   Enforced by: `make duplication-check`, `make rebuild-check`, `.githooks/pre-commit`
 - P35 A finding that looks blocked by a release is a defect of the link tooling and is reported as a kit defect with its
-  file and line; only the re-resolution of a committed lock waits for the decision to release (K314).
+  file and line. No tracked lock waits for a release: a tracked file locks no 0.0.x polyspec package, and the declarations of
+  such packages live in config/polyspec.json (K314, K468).
   Enforced by: none, whether a finding is a link defect or a release question is a judgement of the report.
 - P36 No deferral: a defect that is found is registered as a row and worked now, never left for later.
   Enforced by: none, whether a found defect is worked now is a judgement of the one who found it.
 - P37 A result is reported only after its check has run, with the output of that run. A claim that a check passes, made
   without its output, is not a result.
   Enforced by: none, whether a result was checked before it was claimed is a judgement.
-- P38 One integrator writes the main of each repository. No commit lands on main except a fast-forward by `make land`,
-  which the commit-on-main check of `make commits-check` enforces (K404).
-  Enforced by: `make commits-check`
+- P38 main may be written directly, by one actor per checkout, through gated commits. A commit on main runs the gates that
+  `make land` selects for its staged paths, on the staged tree, and is refused only on a finding that HEAD lacks, which it names.
+  A merge commit on main is refused, so main moves by commits and fast-forwards only. The first commit of a repository, which
+  creates main with no commit to compare with, is not gated. The hooks protect against an accidental ungated commit; a deliberate
+  bypass (`--no-verify`, `core.hooksPath`, a raw `update-ref`) is out of scope (K404, K446, K404-1).
+  Enforced by: `.githooks/pre-commit`, `.githooks/pre-merge-commit`
 
 ## Repository standards
 
@@ -185,10 +192,7 @@ tool lands, a standard binds the work as written here.
   (`*.test.{ts,mts,cts,mjs,cjs,js}`, vitest's `*.{test,spec}.*`, `*Test.php`, `*_test.go`, `tests/` and `#[test]`,
   `test_*.py`); a repository may add files but never narrow the set, and a file named like a test is run by a binding.
   Enforced by: `make parity-declarations-check`
-- S4 Versions: a version is chosen only after every locked dependency is shown to work with it; the latest LTS where the
-  ecosystem has one, otherwise the latest stable release the dependencies support, or a newer non-LTS close to the LTS.
-  The declared floor equals the pinned toolchain at the pin's precision, every repository uses the same pins, an exception
-  is declared with its scope, reason and retry condition, and nothing falls back silently to a source build.
+- S4 Versions: kit enforces no version or pin; each package manager and its lock decide.
   Enforced by: `make toolchain-check`, `make dependency-policy-check`
 - S5 Folders: every monorepo has the same root folders (`packages/`, `contracts/`, `docs/`, `scripts/`, `tests/`,
   `examples/`, `benchmarks/`, `config/`). Runtime ports of the main spec live in `packages/<runtime>/`, other components in
@@ -224,6 +228,8 @@ tool lands, a standard binds the work as written here.
   are the PHPUnit files of every library run with the extension loaded and none of the sources of the library (its dependencies and
   autoload-dev are loaded, its own autoload is not, so the library has no guard against the extension), and those of `packages/php-ext` when it holds any; its
   parity implementation shares the tests of the libraries by this layout, with no relative path in a configuration.
-  The PHP library is library code only: an application on a userland framework, such as a Symfony Console CLI, is its own
-  Composer package that requires the library, since an internal class cannot extend a userland class.
+  The PHP library is library code only: an application on a userland framework, such as a PHP console application, is its own
+  Composer package that requires the library, since an internal class cannot extend a userland class. A Composer package of
+  type `project` is an application: it is outside the extension run and the S10 library checks, and `make test-php` runs its
+  tests as its own package.
   Enforced by: `make lint-php-ext`, `make test-php-ext`, `make layout-check`, `make dependency-policy-check`

@@ -1,0 +1,26 @@
+#!/bin/sh
+# The reference-transaction hook (K495). Git runs it for each transaction of refs, with its state as the argument and the updates as
+# "<old> <new> <ref>" lines on standard input. main moves only through make land, which sets KIT_MAIN_WRITER, and through a commit
+# whose pre-commit hook passed, which records the pid of its git in kit-main-commit of the git folder; in the prepared state any other
+# move of refs/heads/main (git merge, git reset, git update-ref, a commit with --no-verify) is refused. The creation of main and an
+# update that keeps its value pass: pack-refs writes main into packed-refs with its value, then deletes its loose ref while
+# packed-refs holds that value. Written by `make hooks`; do not edit it.
+# git runs the hook in the states preparing, prepared, committed and aborted, and one commit runs several transactions (HEAD, then
+# main, then AUTO_MERGE), so the record is removed only by the committed transaction that moved main.
+record="$(git rev-parse --git-path kit-main-commit)"
+if [ "$1" = committed ]; then
+  grep -q ' refs/heads/main$' && [ -f "$record" ] && [ "$(cat "$record")" = "$PPID" ] && rm -f "$record"
+  exit 0
+fi
+[ "$1" = prepared ] || exit 0
+[ -n "$KIT_MAIN_WRITER" ] && exit 0
+[ -f "$record" ] && [ "$(cat "$record")" = "$PPID" ] && exit 0
+current="$(git rev-parse -q --verify refs/heads/main)"
+packed="$(git rev-parse --git-common-dir)/packed-refs"
+while read -r old new ref; do
+  [ "$ref" = refs/heads/main ] && [ -n "$current" ] && [ "$new" != "$current" ] || continue
+  case "$new" in *[!0]*) ;; *) grep -qx "$old refs/heads/main" "$packed" 2>/dev/null && continue ;; esac
+  echo "[hooks] main moves only through make land or a commit whose pre-commit hook passed (K495): $ref $old -> $new is refused; land the branch with make land" >&2
+  exit 1
+done
+exit 0

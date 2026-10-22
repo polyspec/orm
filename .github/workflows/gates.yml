@@ -1,7 +1,8 @@
 # The gates of kit in a repository that adopts it (K270). kit-sync copies this file from the installed package @polyspec/kit to
 # .github/workflows/gates.yml, and kit-check fails when the checkout differs from it; a repository never edits it.
 #
-# It installs the repository in the bootstrap order and runs make -k kit-gates: every check that a rule of PRINCIPLES.md is
+# It checks out the project and the sibling checkouts of its 0.0.x polyspec packages (K473, K468), installs the repository in the
+# bootstrap order, links the packages to those checkouts and runs make -k kit-gates: every check that a rule of PRINCIPLES.md is
 # enforced by, each a target of kit.mk, so one run shows every failure. A repository runs its own tests in a workflow of its own.
 name: gates
 
@@ -18,29 +19,53 @@ jobs:
   gates:
     runs-on: ubuntu-24.04
     steps:
-      # actions/checkout v7.0.1; commits-check reads the commits of the run, so the checkout carries the full commit graph.
+      # actions/checkout v7.0.1; commits-check reads the commits of the run, so the checkout carries the full commit graph. The project
+      # lies in the folder named by its repository (K473), beside the sibling checkouts, as link reads them; every run step names it.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
+          path: ${{ github.event.repository.name }}
       # actions/setup-node v7.1.0: the Node.js of mise.toml starts the bootstrap, which installs that release into var/tools.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
-          node-version-file: mise.toml
+          node-version-file: ${{ github.event.repository.name }}/mise.toml
           package-manager-cache: false
       # shivammathur/setup-php 2.40.0: the PHP of .php-version, for a repository that declares one (K193).
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
-        if: ${{ hashFiles('.php-version') != '' }}
+        if: ${{ hashFiles(format('{0}/.php-version', github.event.repository.name)) != '' }}
         with:
-          php-version-file: .php-version
+          php-version-file: ${{ github.event.repository.name }}/.php-version
           tools: none
           coverage: none
+      # The sibling checkouts of the 0.0.x polyspec packages (K473, K468): each repository that config/polyspec.json declares is cloned
+      # beside the project at its default branch (a clone without a branch), before install, which links the packages to them. No kit
+      # tool is installed yet, so node reads the declarations; a declaration without an owner/name repository fails the step.
+      - name: sibling checkouts
+        working-directory: ${{ github.event.repository.name }}
+        run: |
+          repositories=$(node -e '
+            const fs = require("node:fs");
+            if (!fs.existsSync("config/polyspec.json")) process.exit(0);
+            const names = new Set();
+            for (const item of JSON.parse(fs.readFileSync("config/polyspec.json", "utf8")).packages) {
+              if (!/^polyspec\/[A-Za-z0-9._-]+$/.test(item.repository ?? "")) throw new Error("config/polyspec.json: no owner/name repository for " + item.name);
+              names.add(item.repository);
+            }
+            for (const name of names) console.log(name);
+          ')
+          for repository in $repositories; do
+            git clone --depth 1 "https://github.com/$repository.git" "../${repository#*/}"
+          done
       - name: install
+        working-directory: ${{ github.event.repository.name }}
         run: make install
       # cargo of the Rust pin, for a repository that declares rust-toolchain.toml.
       - name: install rust
-        if: ${{ hashFiles('rust-toolchain.toml') != '' }}
+        if: ${{ hashFiles(format('{0}/rust-toolchain.toml', github.event.repository.name)) != '' }}
+        working-directory: ${{ github.event.repository.name }}
         run: rustup toolchain install
       - name: commit range
+        working-directory: ${{ github.event.repository.name }}
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
@@ -50,5 +75,11 @@ jobs:
           elif [ -n "$BEFORE" ] && [ "$BEFORE" != 0000000000000000000000000000000000000000 ]; then echo "range=$BEFORE..$GITHUB_SHA"
           else echo "range=HEAD"
           fi >> "$GITHUB_ENV"
+      # make link links each installed 0.0.x polyspec package to its sibling checkout that the step above cloned, so the gates check
+      # the links and the code of the siblings (K473); a declared package without its checkout fails here, with its name.
+      - name: link
+        working-directory: ${{ github.event.repository.name }}
+        run: make link
       - name: gates
+        working-directory: ${{ github.event.repository.name }}
         run: make -k kit-gates RANGE="$range"

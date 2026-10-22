@@ -72,6 +72,10 @@ include scripts/kit/kit-bootstrap.mk
 GO := $(CURDIR)/var/tools/mise/shims/go
 COMPOSER := $(CURDIR)/var/tools/mise/shims/composer
 PYTHON3 := $(CURDIR)/var/tools/mise/shims/python3
+RUFF := $(CURDIR)/var/tools/mise/shims/ruff
+# The PHP lint wrappers of kit (scripts/kit/install-php-lint.mts) are not tools of mise.toml, so their recipes start them by these paths too.
+PHPCS := $(CURDIR)/var/tools/bin/phpcs
+PHPSTAN := $(CURDIR)/var/tools/bin/phpstan
 
 # commit-msg-check is the commit-msg hook: it checks the message file MESSAGE that git is about to commit.
 .PHONY: commit-msg-check
@@ -165,7 +169,7 @@ TSC_BUILD = $(RUN_LONG) typescript-build -- node scripts/typescript/build.mts
 # dbspec-rust-check, dbspec-ts-check, and dbspec-compare-check run once inside feature-verify-rust or feature-verify-other, so they are not listed again.
 # contracts/check-inputs.json declares a scope for each target: owner targets
 # are also selected by make owner-check, and suite targets run only in the whole suite.
-CHECK_TARGETS = runner-check scripts-typecheck docs-check docs-parse-check commits-check release-coverage kit-check owner-validate dependency-policy-check dependency-policy-mutation-check version-check comment-language-check testcase-check repo-check orm-test-servers-check docs-rules-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check orm-install-cli-check markdown-table-check docs-verify-idempotent go-model-check php-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check codec-check bind-check ir-answers-check fuzz-check client-pooler-check case-database-check dialect-facts-check conformance-check conformance-ts-suite-check markdown-conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-python-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-language-check dbspec-plan-php-check dbspec-go-check/engine perf-check dbspec-php-extension-check dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-unit-check feature-coverage feature-verify-rust feature-verify-other feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check go-test-check python-check parity-declarations-check parity-check generated-lint-check group-rows-db-go group-rows-db-python group-rows-db-typescript group-rows-db-php group-rows-db-php-extension group-rows-db-rust
+CHECK_TARGETS = runner-check scripts-typecheck docs-check docs-parse-check commits-check release-coverage kit-check owner-validate dependency-policy-check dependency-policy-mutation-check version-check comment-language-check testcase-check repo-check orm-test-servers-check docs-rules-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check orm-install-cli-check markdown-table-check docs-verify-idempotent go-model-check php-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check codec-check bind-check ir-answers-check fuzz-check client-pooler-check case-database-check dialect-facts-check conformance-check conformance-ts-suite-check markdown-conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-python-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-language-check dbspec-plan-php-check dbspec-go-check/engine perf-check dbspec-php-extension-check dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-unit-check feature-coverage feature-verify-rust feature-verify-other feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check go-test-check python-check parity-declarations-check parity-check generated-lint-check group-rows-db-go group-rows-db-python group-rows-db-typescript group-rows-db-php group-rows-db-php-extension group-rows-db-rust toolchain-check layout-check rules-check rebuild-check language-check test-markers-check duplication-check link-state-check polyspec-lock-check bypass-check suppression-check divergence-check lint-ts lint-php lint-python lint-go lint-rust lint-php-ext test-php-ext
 # CI splits make orm-check into one job per CI group and runs them at the same time (the job test, matrix group in .github/workflows/ci.yml).
 # Each job runs `make check-run GROUP=<group>`, which runs CI_TARGETS_<group>; together the groups run every target of CHECK_TARGETS
 # once each (make repo-check verifies it). The groups are split so that each job, with its setup, finishes within 10 minutes, using the target times measured in CI runs.
@@ -183,7 +187,7 @@ CHECK_TARGETS = runner-check scripts-typecheck docs-check docs-parse-check commi
 #   stress_mysql: MySQL application of the 2000-table plan (feature-stress-mysql-check)
 #   stress_pg_sqlite: bench of the stress document and PostgreSQL and SQLite application (feature-stress-pg-sqlite-check)
 CI_GROUPS = static clients_db clients_pooler conformance dbspec dbspec_apply feature_coverage feature_verify_rust feature_verify_other feature_helpers stress_mysql stress_pg_sqlite python
-CI_TARGETS_static = runner-check docs-check docs-parse-check commits-check release-coverage kit-check owner-validate dependency-policy-check dependency-policy-mutation-check version-check comment-language-check testcase-check repo-check orm-test-servers-check docs-rules-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check orm-install-cli-check markdown-table-check docs-verify-idempotent go-model-check php-model-check client-unit-check php-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check codec-check bind-check ir-answers-check fuzz-check package-check ts-model-check dbspec-language-check feature-unit-check parity-declarations-check generated-lint-check
+CI_TARGETS_static = runner-check docs-check docs-parse-check commits-check release-coverage kit-check owner-validate dependency-policy-check dependency-policy-mutation-check version-check comment-language-check testcase-check repo-check orm-test-servers-check docs-rules-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check orm-install-cli-check markdown-table-check docs-verify-idempotent go-model-check php-model-check client-unit-check php-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check codec-check bind-check ir-answers-check fuzz-check package-check ts-model-check dbspec-language-check feature-unit-check parity-declarations-check generated-lint-check toolchain-check layout-check rules-check rebuild-check language-check test-markers-check duplication-check link-state-check polyspec-lock-check bypass-check suppression-check divergence-check lint-ts lint-php lint-python lint-go lint-rust lint-php-ext test-php-ext
 CI_TARGETS_clients_db = perf-check rust-driver-check example-check client-db-check dialect-facts-check go-test-check group-rows-db-go group-rows-db-typescript group-rows-db-php group-rows-db-php-extension group-rows-db-rust
 CI_TARGETS_clients_pooler = client-pooler-check
 CI_TARGETS_conformance = ts-check scripts-typecheck ts-min-check conformance-check conformance-ts-suite-check markdown-conformance-check parity-check
@@ -1160,7 +1164,7 @@ group-rows-db-python:
 # group-rows-db-typescript runs packages/ts/tests/group_rows_db.mjs on the bench database of BENCH_SQLITE_DSN; the script throws on a failed check.
 group-rows-db-typescript: typescript-build
 	$(READ_TYPESCRIPT)
-	ORM_GROUP_DATABASE=sqlite ORM_GROUP_DSN="$$BENCH_SQLITE_DSN" node packages/ts/tests/group_rows_db.mjs
+	ORM_GROUP_DATABASE=sqlite ORM_GROUP_DSN="$$BENCH_SQLITE_DSN" $(NODE) packages/ts/tests/group_rows_db.mjs
 # group-rows-db-go runs TestGroupRowsDatabase (packages/go/model/group_rows_db_test.go) on BENCH_SQLITE_DSN.
 group-rows-db-go:
 	$(GO_TEST) ./packages/go/model -run '^TestGroupRowsDatabase$$' -count=1
@@ -1803,10 +1807,10 @@ GENERATED_GO = ./model ./markdownmodel ./decimalmodel
 GENERATED_TS = packages/ts/src/models/models.ts
 .PHONY: generated-lint-check
 generated-lint-check: python-models php-models go-models typescript-build
-	ruff check --config ruff.toml --no-respect-gitignore $(GENERATED_PY_MODELS)
-	ruff format --check --config ruff.toml --no-respect-gitignore $(GENERATED_PY_MODELS)
-	phpcs -q -s --report=emacs --standard=phpcs.xml.dist $(GENERATED_PHP)/*.php
-	cd packages/php && phpstan analyse --no-progress --error-format=raw --memory-limit=-1 --configuration=../../phpstan.dist.neon --autoload-file=../../vendor-php/autoload.php gen
+	$(RUFF) check --config ruff.toml --no-respect-gitignore $(GENERATED_PY_MODELS)
+	$(RUFF) format --check --config ruff.toml --no-respect-gitignore $(GENERATED_PY_MODELS)
+	$(PHPCS) -q -s --report=emacs --standard=phpcs.xml.dist $(GENERATED_PHP)/*.php
+	cd packages/php && $(PHPSTAN) analyse --no-progress --error-format=raw --memory-limit=-1 --configuration=../../phpstan.dist.neon --autoload-file=../../vendor-php/autoload.php gen
 	test -z "$$(cd packages/go && gofmt -l $(GENERATED_GO))" || { cd packages/go && gofmt -l $(GENERATED_GO); exit 1; }
 	cd packages/go && $(GO) vet $(GENERATED_GO)
 	node_modules/.bin/oxlint -c .oxlintrc.json --type-aware --deny-warnings $(GENERATED_TS)

@@ -1,5 +1,5 @@
 <!-- doc-id: principles -->
-<!-- source-sha256: e66e38e0d85232dc79edf78d51b4d9677ff1bdd5569a67722ec0f94de1e5f18b -->
+<!-- source-sha256: f87467f105a8441079b482665fbc065da05d07b00fe07abe39c6c5f82e28f41e -->
 # 원칙
 
 [English](PRINCIPLES.md)
@@ -41,12 +41,13 @@ vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-check`�
   Enforced by: `make lint-ts`, `make lint-python`, `make lint-go`, `make lint-php`, `make lint-rust`, `make suppression-check`
 - P9 올바름이 먼저입니다; 빠름은 올바름을 지킬 때만 좇습니다.
   Enforced by: none, 올바름과 빠름의 순서는 판단입니다.
-- P10 main에는 `make land`의 fast-forward로만 작업이 들어갑니다(P38). 각 행은 자기 worktree와 branch를 가지며,
-  `{type}/{shortname}-{체크리스트 id}`와 `{프로젝트}-{shortname}-{체크리스트 id}`로 이름 짓고 `make worktree-setup`으로
-  만듭니다. 자유 디스크가 30 GB 미만이면 거부합니다. worktree와 그 branch는 main에 merge된 직후 `make land`가
-  지웁니다. merge될 수 없는 test나 실험 code는 남길 가치가 있으면 cherry-pick하고 아니면 폐기하며, 항상 commit 전에
-  합니다; 바로 지울 수 없으면 checklist 하위 항목에 제거 조건을 적습니다.
-  Enforced by: `.githooks/pre-push`
+- P10 main에 작업이 들어가는 길은 둘입니다. main에서 직접 하는 작업은 P38의 gate를 거친 commit으로 들어갑니다. 병렬이나 격리된
+  작업은 자기 worktree와 branch를 가지며, `{type}/{shortname}-{체크리스트 id}`와 `{프로젝트}-{shortname}-{체크리스트 id}`로
+  이름 짓고 `make worktree-setup`으로 만듭니다. 자유 디스크가 30 GB 미만이면 거부합니다. 이 작업은 `make land`의
+  fast-forward로만 main에 들어가며, worktree와 그 branch는 merge된 직후 `make land`가 지웁니다. merge될 수 없는 test나
+  실험 code는 남길 가치가 있으면 cherry-pick하고 아니면 폐기하며, 항상 commit 전에 합니다; 바로 지울 수 없으면 checklist
+  하위 항목에 제거 조건을 적습니다.
+  Enforced by: `.githooks/pre-push`, `.githooks/pre-merge-commit`
 - P11 code 주석, identifier, log, error message, test 이름, commit message는 영어로 씁니다. 문서는 영어이며, 각각 기술 용어를
   영어로 쓰는 한국어 쌍을 가집니다.
   Enforced by: `make commits-check`는 commit message에 대해, `make language-check`는 code에 대해
@@ -77,6 +78,8 @@ vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-check`�
 
 - P19 결함은 그것을 재현하고 의도한 이유로 실패하는 test에서 시작합니다; 그다음 고치고; 같은 test가 통과합니다. 실패할 수 없는
   test는 아무것도 증명하지 않으며, 실행되지 않고 통과하는 test는 결함입니다.
+  변경으로 낡게 된 주석이나 문서는 그 변경의 commit에서 고칩니다. 행이 끝난 뒤 찾은 것은 Verification이
+  `make text-absent FILE=<path> TEXT=<낡은 text>`인 하위 항목으로 두며, 낡은 text가 남아 있는 동안 실패합니다.
   Enforced by: `make commits-check`
 - P20 항목은 자기 단위 test의 red, 구현, green으로 완료합니다. 바뀐 것의 소유 검사만 돌리며, 전체 모음은 수정마다, 항목마다,
   마지막에도 돌리지 않습니다. 전체 모음은 conductor의 명령으로만 돌며, 이는 `.claude/settings.json`의 Claude Code hook이
@@ -127,8 +130,8 @@ vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-check`�
   prerequisite로 작업에 합류하고, 작업 이름으로 시작하는 다른 target으로 합류하지 않는다 (K246).
   Enforced by: `make kit-check`
 - P30 0.0.x 개발 중 저장소는 다른 저장소의 package를 link로만 쓴다. 설치된 polyspec package 폴더는 제공자 폴더를 가리키는
-  심볼릭 링크이며 사본이 아니고, link는 설치된 릴리스 버전으로 간주한다. 버전은 설치할 때만 검사한다 (K305-1). project가 link된 동안 dependency policy의 platform과
-  `composer validate` 규칙은 그 project의 link lock을 판단하고, 추적되는 lock은 일괄 release의 검사를 기다린다 (K326).
+  심볼릭 링크이며 사본이 아니고, link는 설치된 릴리스 버전으로 간주한다. 버전은 설치할 때만 검사한다 (K305-1). project가 link된 동안 dependency policy의 모든 Composer
+  규칙은 그 project의 link manifest와 link lock을 판단하고, 추적되는 lock은 일괄 release의 검사를 기다린다 (K326, K326-2).
   Enforced by: `make link-state-check`
 - P31 gate는 우회하지 않는다. test, script, Makefile은 workflow 밖에서 CI identity(`GITHUB_ACTIONS`, `CI`)를 설정하지 않고,
   `make -o`, `--old-file`, `--assume-old`에 kit-gates의 gate를 적지 않으며, `--no-verify`를 쓰지 않는다 (K308).
@@ -143,16 +146,19 @@ vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-check`�
 - P34 반복된 code는 제외가 아니라 하나의 module로 재구성해서 고친다. tool source는 분류하고, 생성물은 Git에 추적하지 않는다.
   Enforced by: `make duplication-check`, `make rebuild-check`, `.githooks/pre-commit`
 - P35 release 때문에 막힌 것처럼 보이는 finding은 link tooling의 결함이며 파일과 줄을 적어 kit 결함으로 보고한다. 커밋된 lock의
-  재resolve만 release 결정을 기다린다 (K314).
+  추적되는 lock은 어떤 release도 기다리지 않는다: 추적되는 파일은 0.0.x polyspec 패키지를 잠그지 않고, 그 선언은 config/polyspec.json에 있다 (K314, K468).
   Enforced by: none, finding이 link 결함인지 release 문제인지는 보고의 판단이다.
 - P36 미루지 않는다: 발견한 결함은 행으로 등록하고 지금 처리하며, 나중으로 남기지 않는다.
   Enforced by: none, 발견한 결함을 지금 처리하는지는 발견한 사람의 판단이다.
 - P37 결과는 그 check가 실행된 뒤, 그 실행의 출력과 함께만 보고한다. 출력 없이 check가 통과한다고 주장하는 것은 결과가
   아니다.
   Enforced by: none, 주장하기 전에 결과를 확인했는지는 판단이다.
-- P38 각 저장소의 main을 쓰는 integrator는 한 명이다. `make land`의 fast-forward 말고는 어떤 commit도 main에 들어가지
-  않으며, 이는 `make commits-check`의 commit-on-main 검사가 강제한다 (K404).
-  Enforced by: `make commits-check`
+- P38 main은 checkout마다 한 행위자가 gate를 거친 commit으로 직접 쓸 수 있다. main의 commit은 `make land`가 스테이징된 경로에
+  대해 고르는 gate를 스테이징된 tree에서 실행하고, HEAD에 없는 finding일 때만 이름을 적어 거부한다. main의 merge commit은
+  거부하므로 main은 commit과 fast-forward로만 움직인다. 저장소의 첫 commit은 main을 만들며 비교할 commit이 없으므로 gate를
+  거치지 않는다. hook은 실수로 gate를 거치지 않은 commit을 막는다. 의도적 우회(`--no-verify`, `core.hooksPath`, raw
+  `update-ref`)는 이 규칙의 범위 밖이다 (K404, K446, K404-1).
+  Enforced by: `.githooks/pre-commit`, `.githooks/pre-merge-commit`
 
 ## Repository 기준
 
@@ -174,9 +180,7 @@ owner가 2026-10-13에 이 기준을 승인했습니다. 각 기준은 위반 �
   (`*.test.{ts,mts,cts,mjs,cjs,js}`, vitest의 `*.{test,spec}.*`, `*Test.php`, `*_test.go`, `tests/`와 `#[test]`, `test_*.py`).
   repository는 파일을 더할 수만 있고 좁힐 수 없으며, test처럼 이름 붙은 파일은 binding이 실행합니다.
   Enforced by: `make parity-declarations-check`
-- S4 버전: lock의 모든 의존성이 동작함을 보인 뒤에만 정합니다. 생태계에 LTS가 있으면 최신 LTS, 없으면 의존성이 지원하는
-  최신 stable, 또는 LTS에 근접한 더 새 non-LTS를 씁니다. 선언 하한은 pin 정밀도로 pin과 같고, 모든 repository가 같은
-  pin을 쓰며, 예외는 범위, 이유, 재시도 조건과 함께 선언하고, source build로 조용히 fallback하지 않습니다.
+- S4 버전: kit은 버전도 pin도 강제하지 않습니다. 각 package manager와 그 lock이 정합니다.
   Enforced by: `make toolchain-check`, `make dependency-policy-check`
 - S5 폴더: 모든 monorepo는 같은 root 폴더(`packages/`, `contracts/`, `docs/`, `scripts/`, `tests/`, `examples/`,
   `benchmarks/`, `config/`)를 가집니다. 주 spec의 runtime port는 `packages/<runtime>/`, 다른 component는
@@ -207,6 +211,7 @@ owner가 2026-10-13에 이 기준을 승인했습니다. 각 기준은 위반 �
   Reflection으로 library와 비교하되 이름마다 그것을 선언한 library와 비교하며, unit test는 extension을 load하고 library의 source는 하나도 load하지 않고
   (dependency와 autoload-dev는 load하고 library 자신의 autoload는 load하지 않으므로 library에는 extension에 대한 guard가 없다) 실행하는 모든
   library의 PHPUnit 파일과 (있다면) `packages/php-ext`의 것이다. parity implementation은 이 layout으로 library의 test를 공유하며,
-  설정에 상대 경로를 두지 않는다. PHP library는 library code뿐이다: Symfony Console CLI처럼 userland framework 위의
-  application은 그 library를 require하는 자기 Composer package이다. 내부 class는 userland class를 확장할 수 없기 때문이다.
+  설정에 상대 경로를 두지 않는다. PHP library는 library code뿐이다: PHP console application처럼 userland framework 위의
+  application은 그 library를 require하는 자기 Composer package이다. 내부 class는 userland class를 확장할 수 없기 때문이다. Composer type이 `project`인 package는 application이다. extension 실행과 S10 library
+  검사 밖에 있으며, `make test-php`는 그 test를 자기 package로 실행한다.
   Enforced by: `make lint-php-ext`, `make test-php-ext`, `make layout-check`, `make dependency-policy-check`

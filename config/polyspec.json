@@ -1,0 +1,52 @@
+{
+  "packages": [
+    {
+      "ecosystem": "npm",
+      "project": ".",
+      "name": "@polyspec/kit",
+      "repository": "polyspec/kit"
+    },
+    {
+      "ecosystem": "npm",
+      "project": ".",
+      "name": "@polyspec/ordered-json",
+      "repository": "polyspec/ordered-json"
+    },
+    {
+      "ecosystem": "composer",
+      "project": ".",
+      "name": "polyspec/ordered-json",
+      "repository": "polyspec/ordered-json"
+    },
+    {
+      "ecosystem": "composer",
+      "project": "packages/php",
+      "name": "polyspec/ordered-json",
+      "repository": "polyspec/ordered-json"
+    },
+    {
+      "ecosystem": "composer",
+      "project": "tests/release-consumer/composer",
+      "name": "polyspec/ordered-json",
+      "repository": "polyspec/ordered-json"
+    },
+    {
+      "ecosystem": "npm",
+      "project": "packages/ts",
+      "name": "@polyspec/ordered-json",
+      "repository": "polyspec/ordered-json"
+    },
+    {
+      "ecosystem": "npm",
+      "project": "tests/release-consumer/npm",
+      "name": "@polyspec/ordered-json",
+      "repository": "polyspec/ordered-json"
+    },
+    {
+      "ecosystem": "python",
+      "project": "packages/python",
+      "name": "polyspec-ordered-json",
+      "repository": "polyspec/ordered-json"
+    }
+  ]
+}
