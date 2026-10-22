@@ -163,7 +163,8 @@
     "DBS-87",
     "DBS-113",
     "DBS-117",
-    "CPX-3"
+    "CPX-3",
+    "DSL-87"
   ],
   "vectors": [
     {
@@ -5785,6 +5786,11 @@
           }
         ]
       }
+    },
+    {
+      "name": "delete_lock",
+      "chain": "user(U) with its authors loaded as has-many rows through Author.matchSeqWithUserSeq(); case 1 unlocked: delete(true); case 2 the relation deleteLock(), delete(true); expect the locked authors kept and the user delete refused by the foreign key (DSL-87, DSL-111)",
+      "calls": ["relations", "deleteLock", "delete"]
     }
   ]
 }
