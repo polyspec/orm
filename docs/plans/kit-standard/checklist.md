@@ -237,3 +237,4 @@
 | KSTD-5-73 | Catch only the AES authentication failure in the TypeScript decipher | packages/ts/src/codec.ts:77 | `make ts-check` | [ ] |
 | KSTD-5-74 | Catch only the missing-key OrmError in TypeScript save | packages/ts/src/model.ts:848 | `make ts-check` | [ ] |
 | KSTD-5-75 | Rethrow CodecError in the TypeScript codec catch blocks, with the cause | packages/ts/src/codec.ts:197,361 | `make ts-check` | [ ] |
+| KSTD-5-76 | Report a stat or scandir failure in the PHP set reader as an error, not as a missing entry | packages/php/src/Dbspec/SetReader.php:165,186 | `make lint-php` | [ ] |
