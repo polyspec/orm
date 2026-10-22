@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Rust clippy passes on main: the `mysql_code_tests` module of `orm/src/lib.rs` is the last item of the file, and the unused `AtomicU8` import of `build/tests/lock_probe_order.rs` is dropped, so `make rust-check` passes (KSTD-5-55) (KSTD-5-56). Red: `make rust-check` on 19c5dd83c failed in clippy with `items_after_test_module` at `orm/src/lib.rs:118` and `unused_imports` at `build/tests/lock_probe_order.rs:3`.
 - The lint findings in the tests crate files conformance.rs, integration.rs, decimal_physical.rs and coverage_schema_install.rs are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-24).
 - The lint findings in the build table_page.rs and the orm identity_load.rs, soft_delete.rs and dbspec_probe.rs are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-23).
 - The lint findings in the tests crate common/mod.rs and the coverage files are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-22).
