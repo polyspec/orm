@@ -212,3 +212,4 @@
 | KSTD-5-57-18c | Fix the lint finding of the orm test file sqlite_concurrency.rs (follows KSTD-5-57) | packages/rust/orm/tests/sqlite_concurrency.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-18d | Fix the unused import in build test lock_probe_order.rs (follows KSTD-5-57) | packages/rust/build/tests/lock_probe_order.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-18e | Fix the catch-check findings of packages/rust/tests coverage_schema_install.rs and markdown_conformance.rs (follows KSTD-5-57) | packages/rust/tests/tests/integration/coverage_schema_install.rs, packages/rust/tests/tests/markdown_conformance.rs | `make lint-rust` reports no finding in these files | [ ] |
+| KSTD-5-57-19 | Fix the lint findings of the orm test file zone.rs (follows KSTD-5-57) | packages/rust/orm/tests/zone.rs | `make lint-rust` reports no finding in these files | [ ] |
