@@ -9,7 +9,7 @@ export type { Entity, Field, FieldType, RuntimeModel } from './engine/index.js';
 export { loadSet } from './engine/index.js';
 export { OrmError } from './runtime_error.js';
 export { CatalogConnection, CatalogRowSnapshot, connectCatalog } from './catalog.js';
-export type { CatalogAssignment, CatalogColumn, CatalogMutationResult, CatalogQueryLimits, CatalogQueryResult, CatalogTableKind, CatalogTableMetadata, CatalogTablePage, CatalogTableRef, CatalogValue } from './catalog.js';
+export type { CatalogAssignment, CatalogColumn, CatalogGridCell, CatalogGridResult, CatalogMutationResult, CatalogQueryLimits, CatalogQueryResult, CatalogTableKind, CatalogTableMetadata, CatalogTablePage, CatalogTableRef, CatalogValue } from './catalog.js';
 export { Db, registerModel } from './database.js';
 export type { ConnectOptions, Key, RequestHook, Schema, TransactionOptions } from './database.js';
 export type { StatementEvent, StatementKind, StatementSubscriber } from './events.js';

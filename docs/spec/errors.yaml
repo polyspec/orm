@@ -79,6 +79,65 @@ codes:
     origin: executor
   - code: INTERNAL
     origin: executor
+  # ---- catalog connection (SCH-6a) ----
+  - code: QUERY_READ_ONLY
+    origin: executor
+  - code: QUERY_LIMIT_INVALID
+    origin: executor
+  - code: CATALOG_LIMIT
+    origin: executor
+  - code: CATALOG_VALUE
+    origin: executor
+  - code: CATALOG_PARAM
+    origin: executor
+  - code: TABLE_METADATA_INVALID
+    origin: executor
+  - code: TABLE_REFERENCE_INVALID
+    origin: executor
+  - code: TABLE_NOT_FOUND
+    origin: executor
+  - code: TABLE_KIND_UNSUPPORTED
+    origin: executor
+  - code: TABLE_NAMESPACE_UNSUPPORTED
+    origin: executor
+  - code: TABLE_NAMESPACE_UNAVAILABLE
+    origin: executor
+  - code: TABLE_PAGE_INVALID
+    origin: executor
+  - code: TABLE_PAGE_UNSUPPORTED
+    origin: executor
+  - code: TABLE_PAGE_METADATA_CHANGED
+    origin: executor
+  - code: ROW_SNAPSHOT_INVALID
+    origin: executor
+  - code: ROW_SNAPSHOT_LIMIT
+    origin: executor
+  - code: ROW_INSERT_INVALID
+    origin: executor
+  - code: ROW_UPDATE_INVALID
+    origin: executor
+  - code: ROW_UPDATE_LIMIT
+    origin: executor
+  - code: ROW_CONFLICT
+    origin: executor
+  - code: ROW_IDENTITY_AMBIGUOUS
+    origin: executor
+  - code: ROW_SCHEMA_CHANGED
+    origin: executor
+  - code: ROW_WRITE_MISMATCH
+    origin: executor
+  - code: ROW_MUTATION_UNSUPPORTED
+    origin: executor
+  - code: ROW_COMMIT_REJECTED
+    origin: executor
+  - code: ROW_COMMIT_INDETERMINATE
+    origin: executor
+  - code: ROW_ROLLBACK_FAILED
+    origin: executor
+  - code: GRID_TEMPORAL_VALUE
+    origin: executor
+  - code: GRID_TEMPORAL_PRECISION
+    origin: executor
   # ---- driver (mapped) ----
   - code: LOCK_NOT_AVAILABLE      # a NOWAIT lock could not be acquired immediately
     origin: driver

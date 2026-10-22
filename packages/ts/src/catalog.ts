@@ -1,10 +1,11 @@
-// The catalog connection (SCH-6a): native table metadata, bounded table pages, validated read-only queries and explicit row
-// changes over a MySQL, PostgreSQL or SQLite database selected by its DSN. It follows the Go implementation
-// (packages/go/orm/catalog*.go) and the Rust reference (packages/rust/build/src/catalog, docs/spec/interfaces.md).
+// The catalog connection (SCH-6a): native table metadata, bounded table pages, validated read-only queries, typed grid reads
+// and explicit row changes over a MySQL, PostgreSQL or SQLite database selected by its DSN. Values follow the Go catalog
+// (packages/go/orm/catalog*.go, catalogValue and catalogBytesValue); grid cells follow the Rust reference (packages/rust/build/src/tool_db/grid.rs
+// and src/catalog, docs/spec/interfaces.md "Rust native grid query specification").
 import { createHash } from 'node:crypto';
 import { lstatSync } from 'node:fs';
 import * as codes from './codes.js';
-import { driverError, openDriver, parseDsn, sqlitePath, type DriverName, type DriverPool, type DriverSession, type DriverValue } from './driver.js';
+import { driverError, openDriver, parseDsn, sqlitePath, type DriverColumn, type DriverName, type DriverPool, type DriverSession, type DriverValue, type RowSink } from './driver.js';
 import { OrmError } from './runtime_error.js';
 
 /** Budgets of the catalog connection (docs/spec/interfaces.md). A result over its budget is refused, never truncated. */
@@ -16,23 +17,36 @@ const DEFAULT_QUERY_ROWS = 100000;
 const DEFAULT_QUERY_BYTES = 64 << 20;
 const SQL_BYTES = 256 << 10;
 
-/** The codes of the catalog connection that the Rust reference names; QUERY_READ_ONLY is the code that tests check. */
+/** The error codes of the catalog connection, registered in docs/spec/errors.yaml. */
 const CODE_READ_ONLY = 'QUERY_READ_ONLY';
+const CODE_QUERY_LIMIT = 'QUERY_LIMIT_INVALID';
+const CODE_LIMIT = 'CATALOG_LIMIT';
 const CODE_VALUE = 'CATALOG_VALUE';
 const CODE_PARAM = 'CATALOG_PARAM';
-const CODE_LIMIT = 'CATALOG_LIMIT';
 const CODE_METADATA = 'TABLE_METADATA_INVALID';
 const CODE_TABLE_REF = 'TABLE_REFERENCE_INVALID';
+const CODE_TABLE_NOT_FOUND = 'TABLE_NOT_FOUND';
+const CODE_KIND = 'TABLE_KIND_UNSUPPORTED';
+const CODE_NAMESPACE = 'TABLE_NAMESPACE_UNSUPPORTED';
+const CODE_NAMESPACE_UNAVAILABLE = 'TABLE_NAMESPACE_UNAVAILABLE';
+const CODE_PAGE_INVALID = 'TABLE_PAGE_INVALID';
+const CODE_PAGE_UNSUPPORTED = 'TABLE_PAGE_UNSUPPORTED';
 const CODE_PAGE_CHANGED = 'TABLE_PAGE_METADATA_CHANGED';
-const CODE_ROW_CONFLICT = 'ROW_CONFLICT';
-const CODE_ROW_SCHEMA = 'ROW_SCHEMA_CHANGED';
-const CODE_ROW_WRITE = 'ROW_WRITE_MISMATCH';
-const CODE_ROW_SNAPSHOT = 'ROW_SNAPSHOT_INVALID';
-const CODE_ROW_AMBIGUOUS = 'ROW_IDENTITY_AMBIGUOUS';
-const CODE_ROW_UNSUPPORTED = 'ROW_MUTATION_UNSUPPORTED';
+const CODE_SNAPSHOT = 'ROW_SNAPSHOT_INVALID';
+const CODE_SNAPSHOT_LIMIT = 'ROW_SNAPSHOT_LIMIT';
+const CODE_INSERT_INVALID = 'ROW_INSERT_INVALID';
+const CODE_UPDATE_INVALID = 'ROW_UPDATE_INVALID';
+const CODE_UPDATE_LIMIT = 'ROW_UPDATE_LIMIT';
+const CODE_CONFLICT = 'ROW_CONFLICT';
+const CODE_AMBIGUOUS = 'ROW_IDENTITY_AMBIGUOUS';
+const CODE_SCHEMA = 'ROW_SCHEMA_CHANGED';
+const CODE_WRITE = 'ROW_WRITE_MISMATCH';
+const CODE_UNSUPPORTED = 'ROW_MUTATION_UNSUPPORTED';
 const CODE_COMMIT_REJECTED = 'ROW_COMMIT_REJECTED';
 const CODE_COMMIT_UNKNOWN = 'ROW_COMMIT_INDETERMINATE';
-const CODE_ROLLBACK_FAILED = 'ROW_ROLLBACK_FAILED';
+const CODE_ROLLBACK = 'ROW_ROLLBACK_FAILED';
+const CODE_TEMPORAL_VALUE = 'GRID_TEMPORAL_VALUE';
+const CODE_TEMPORAL_PRECISION = 'GRID_TEMPORAL_PRECISION';
 
 export interface CatalogTableRef {
   namespace: string;
@@ -60,16 +74,45 @@ export interface CatalogTableMetadata {
   reliableRowIdentity: boolean;
 }
 
-/** One cell or bound parameter. Integers that fit a JavaScript number are numbers; a larger integer is a bigint and only a grid query returns it. */
+/**
+ * One value of a plain read. An integer inside the JavaScript safe range is a number; a larger one is a bigint, so no integer
+ * is rounded. Binary values are Uint8Array copies, decimals are their plain text, and temporal values are their dbspec text.
+ */
 export type CatalogValue = null | boolean | number | bigint | string | Uint8Array;
+
+/**
+ * One cell of a grid read, typed by the native type of its column (the Rust GridCell). Integer is a signed value and unsigned a MySQL
+ * unsigned value; a float keeps its IEEE-754 bits, so signed zero and the nonfinite values survive; a decimal is its plain text.
+ */
+export type CatalogGridCell =
+  | { kind: 'null' }
+  | { kind: 'integer'; value: bigint }
+  | { kind: 'unsigned'; value: bigint }
+  | { kind: 'float32'; bits: number }
+  | { kind: 'float64'; bits: bigint }
+  | { kind: 'decimal'; value: string }
+  | { kind: 'text'; value: string }
+  | { kind: 'boolean'; value: boolean }
+  | { kind: 'binary'; value: Uint8Array }
+  | { kind: 'date'; value: string }
+  | { kind: 'time'; value: string }
+  | { kind: 'datetime'; value: string };
 
 export interface CatalogQueryLimits {
   maxRows?: number;
   maxBytes?: number;
 }
 
+/** A plain read: the column names in order and the rows. */
 export interface CatalogQueryResult {
+  columns: string[];
   rows: CatalogValue[][];
+}
+
+/** A grid read: each column with its native type name, and the rows of typed cells. */
+export interface CatalogGridResult {
+  columns: Array<{ name: string; nativeType: string }>;
+  rows: CatalogGridCell[][];
 }
 
 export interface CatalogTablePage {
@@ -111,7 +154,7 @@ export class CatalogRowSnapshot {
   /** Throws unless the snapshot holds the shape that rowSnapshotFromPage builds. */
   public valid(): void {
     if (this.keyIndexes.length === 0 || this.cells.length !== this.metadata.columns.length) {
-      throw new OrmError(CODE_ROW_SNAPSHOT, 'the snapshot was not captured by rowSnapshotFromPage');
+      throw err(CODE_SNAPSHOT, 'the snapshot was not captured by rowSnapshotFromPage');
     }
   }
 
@@ -125,6 +168,11 @@ export class CatalogRowSnapshot {
 }
 
 const noop = (): void => undefined;
+const MIN_SAFE = BigInt(Number.MIN_SAFE_INTEGER);
+const MAX_SAFE = BigInt(Number.MAX_SAFE_INTEGER);
+const I64_MIN = -(2n ** 63n);
+const I64_MAX = 2n ** 63n - 1n;
+const U64_MAX = 2n ** 64n - 1n;
 
 function err(code: string, message: string, cause?: unknown): OrmError {
   return new OrmError(code, message, cause);
@@ -134,34 +182,272 @@ function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-/** The text of a metadata or result value: a string, or the UTF-8 bytes of a binary value. */
-function textOf(value: unknown, what: string): string {
-  if (typeof value === 'string') return value;
-  if (value instanceof Uint8Array) {
-    try {
-      return new TextDecoder('utf-8', { fatal: true }).decode(value);
-    } catch (error) {
-      throw err(CODE_METADATA, `${what} is not valid UTF-8: ${messageOf(error)}`, error);
-    }
+/** The native type name without the UNSIGNED suffix, which a MySQL integer carries when it is unsigned. */
+function baseType(type: string): string {
+  return type.replace(/ UNSIGNED$/, '').toUpperCase();
+}
+
+const INTEGER_TYPES = new Set(['TINYINT', 'SMALLINT', 'MEDIUMINT', 'INT', 'BIGINT', 'INT2', 'INT4', 'INT8']);
+const FLOAT32_TYPES = new Set(['FLOAT', 'FLOAT4']);
+const FLOAT64_TYPES = new Set(['DOUBLE', 'FLOAT8']);
+const DECIMAL_TYPES = new Set(['DECIMAL', 'NUMERIC']);
+const TEXT_TYPES = new Set(['CHAR', 'VARCHAR', 'TEXT', 'BPCHAR', 'NAME', 'ENUM', 'SET']);
+const BINARY_TYPES = new Set(['BLOB', 'BINARY', 'VARBINARY', 'BYTEA']);
+
+/** A value of a native integer type as a bigint: a number, a decimal string, or a bigint. */
+function integerOf(value: unknown, type: string): bigint {
+  if (typeof value === 'bigint') return value;
+  if (typeof value === 'number' && Number.isInteger(value)) return BigInt(value);
+  if (typeof value === 'string' && /^-?\d+$/.test(value)) return BigInt(value);
+  throw err(CODE_VALUE, `integer of native type "${type}" expected, got ${String(value)}`);
+}
+
+/** An integer for a plain read: a number inside the safe range, otherwise the exact bigint. */
+function integerValue(value: bigint): CatalogValue {
+  return value >= MIN_SAFE && value <= MAX_SAFE ? Number(value) : value;
+}
+
+/** Decodes the bytes of a text value of a native type as UTF-8; invalid bytes fail. */
+function utf8Of(value: Uint8Array, type: string): string {
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(value);
+  } catch (error) {
+    throw err(CODE_VALUE, `text of native type "${type}" is not valid UTF-8: ${messageOf(error)}`, error);
   }
-  throw err(CODE_METADATA, `expected text for ${what}, got ${typeof value}`);
 }
 
-function intOf(value: unknown, what: string): number {
-  if (typeof value === 'number' && Number.isInteger(value)) return value;
-  throw err(CODE_METADATA, `expected an integer for ${what}, got ${String(value)}`);
+/** The Go catalog conversion of a binary driver value by its native type (catalogBytesValue): the MySQL and PostgreSQL text types arrive as bytes. */
+function bytesValue(value: Uint8Array, type: string): CatalogValue {
+  const upper = type.toUpperCase();
+  if (/BLOB|BINARY|BYTEA/.test(upper)) return new Uint8Array(value);
+  if (/DECIMAL|NUMERIC|MONEY/.test(upper)) return utf8Of(value, type);
+  if (upper.includes('INT')) return integerValue(integerOf(utf8Of(value, type), type));
+  if (/FLOAT|DOUBLE|REAL/.test(upper)) {
+    const text = utf8Of(value, type);
+    const number = Number(text);
+    if (Number.isNaN(number) && text !== 'NaN') throw err(CODE_VALUE, `float of native type "${type}" is not a number: ${text}`);
+    return number;
+  }
+  if (/CHAR|TEXT|JSON|ENUM|^SET|UUID|XML|NAME/.test(upper)) return utf8Of(value, type);
+  throw err(CODE_VALUE, `unsupported native type "${type}"`);
 }
 
-function boolOf(value: unknown, what: string): boolean {
-  if (typeof value === 'boolean') return value;
-  if (value === 0 || value === 1) return value === 1;
-  throw err(CODE_METADATA, `expected a boolean for ${what}, got ${String(value)}`);
+/** A driver value of a plain read: the Go catalog conversion, with the native type of its column. */
+function plainValue(value: unknown, column: DriverColumn): CatalogValue {
+  if (value === null || typeof value === 'boolean') return value;
+  if (value instanceof Uint8Array) return bytesValue(value, column.type);
+  if (INTEGER_TYPES.has(baseType(column.type)) && (typeof value === 'string' || typeof value === 'number' || typeof value === 'bigint')) {
+    return integerValue(integerOf(value, column.type));
+  }
+  if (typeof value === 'bigint') return integerValue(value);
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) throw err(CODE_VALUE, 'a non-finite number is not a catalog value');
+    return value;
+  }
+  if (typeof value === 'string') return value;
+  throw err(CODE_VALUE, `unsupported driver value of type ${typeof value}`);
 }
 
-/** A name of a namespace, table or column: 1..1024 UTF-8 bytes without NUL. */
+/** The float bits of a number as an IEEE-754 single or double. */
+function float32Bits(value: number): number {
+  const view = new DataView(new ArrayBuffer(4));
+  view.setFloat32(0, value);
+  return view.getUint32(0);
+}
+
+function float64Bits(value: number): bigint {
+  const view = new DataView(new ArrayBuffer(8));
+  view.setFloat64(0, value);
+  return view.getBigUint64(0);
+}
+
+const DATE_TEXT = /^(\d{4})-(\d{2})-(\d{2})$/;
+const TIME_TEXT = /^(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?$/;
+
+/** A dbspec date `YYYY-MM-DD` from 0001-01-01 to 9999-12-31; any other text fails with GRID_TEMPORAL_VALUE. */
+function dateText(text: string): string {
+  const match = DATE_TEXT.exec(text);
+  if (match === null) throw err(CODE_TEMPORAL_VALUE, `date "${text}" is not in the form YYYY-MM-DD`);
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
+  if (year < 1 || date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
+    throw err(CODE_TEMPORAL_VALUE, `date "${text}" is outside 0001-01-01 to 9999-12-31 or is not a calendar date`);
+  }
+  return text;
+}
+
+/** A dbspec time `HH:MM:SS.ffffff` with six fraction digits, within 00:00:00 to 23:59:59.999999. */
+function timeText(text: string): string {
+  const match = TIME_TEXT.exec(text);
+  if (match === null) throw err(CODE_TEMPORAL_VALUE, `time "${text}" is not in the form HH:MM:SS`);
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const seconds = Number(match[3]);
+  if (hours > 23 || minutes > 59 || seconds > 59) throw err(CODE_TEMPORAL_VALUE, `time "${text}" is outside 00:00:00 to 23:59:59.999999`);
+  return `${match[1]}:${match[2]}:${match[3]}.${(match[4] ?? '').padEnd(6, '0')}`;
+}
+
+/** A dbspec datetime `YYYY-MM-DD HH:MM:SS.ffffff` in UTC. */
+function datetimeText(text: string): string {
+  const [date = '', time = ''] = text.split(' ');
+  if (text.split(' ').length !== 2) throw err(CODE_TEMPORAL_VALUE, `datetime "${text}" is not in the form YYYY-MM-DD HH:MM:SS`);
+  return `${dateText(date)} ${timeText(time)}`;
+}
+
+/** The temporal kind of a native type of a dialect: date, time or datetime; undefined for every other type, and for SQLite, which keeps its text. */
+function temporalKind(dialect: DriverName, type: string): 'date' | 'time' | 'datetime' | undefined {
+  const head = baseType(type).split(/[( ]/)[0] ?? '';
+  if (dialect === 'mysql') {
+    if (head === 'DATE') return 'date';
+    if (head === 'TIME') return 'time';
+    if (head === 'DATETIME') return 'datetime';
+    return undefined;
+  }
+  if (dialect === 'postgres') {
+    if (head === 'DATE') return 'date';
+    if (head === 'TIME') return 'time';
+    if (head === 'TIMESTAMP') return 'datetime';
+  }
+  return undefined;
+}
+
+/**
+ * The fraction digits of a described temporal column: the digits of its native type (MySQL time(3), PostgreSQL timestamp(3)
+ * without time zone), or 0 for MySQL and 6 for PostgreSQL when the type names none.
+ */
+function declaredPrecision(dialect: DriverName, type: string): number {
+  const match = /\((\d+)\)/.exec(type);
+  if (match !== null) return Number(match[1]);
+  return dialect === 'postgres' ? 6 : 0;
+}
+
+/**
+ * A temporal value of a described column in its declared precision p (docs/spec/interfaces.md "Rust native grid query
+ * specification"): exactly p fraction digits, GRID_TEMPORAL_PRECISION for a non-zero digit beyond p.
+ */
+function describedTemporal(value: string, kind: 'date' | 'time' | 'datetime', precision: number): string {
+  if (kind === 'date') return dateText(value);
+  const text = kind === 'time' ? timeText(value) : datetimeText(value);
+  const dot = text.lastIndexOf('.');
+  const head = text.slice(0, dot);
+  const digits = text.slice(dot + 1);
+  if (digits.slice(precision) !== '0'.repeat(Math.max(0, digits.length - precision))) {
+    throw err(CODE_TEMPORAL_PRECISION, `temporal value "${value}" has more fraction digits than its precision ${precision}`);
+  }
+  return precision === 0 ? head : `${head}.${digits.slice(0, precision)}`;
+}
+
+/** A grid cell of a SQLite result: SQLite has no declared temporal type in a grid read, so text keeps its stored form. */
+function sqliteGridCell(value: unknown): CatalogGridCell {
+  if (value === null) return { kind: 'null' };
+  if (typeof value === 'bigint') {
+    if (value < I64_MIN || value > I64_MAX) throw err(CODE_VALUE, `integer ${value.toString()} is outside the signed 64-bit range`);
+    return { kind: 'integer', value };
+  }
+  if (typeof value === 'number') return { kind: 'float64', bits: float64Bits(value) };
+  if (typeof value === 'string') return { kind: 'text', value };
+  if (value instanceof Uint8Array) return { kind: 'binary', value: new Uint8Array(value) };
+  throw err(CODE_VALUE, `unsupported driver value of type ${typeof value}`);
+}
+
+/** A grid cell of a MySQL or PostgreSQL column, by its native type (the Rust grid rules, decode and temporal forms). */
+function gridCell(value: unknown, column: DriverColumn, dialect: DriverName): CatalogGridCell {
+  if (value === null) return { kind: 'null' };
+  if (dialect === 'sqlite') return sqliteGridCell(value);
+  const type = column.type;
+  const base = baseType(type);
+  const unsupported = (): OrmError => err(CODE_VALUE, `grid cell of native type "${type}" is not supported`);
+  const integer = (number: bigint): CatalogGridCell => {
+    if (type.endsWith(' UNSIGNED')) {
+      if (number < 0n || number > U64_MAX) throw err(CODE_VALUE, `unsigned integer ${number.toString()} is outside the 64-bit range`);
+      return { kind: 'unsigned', value: number };
+    }
+    if (number < I64_MIN || number > I64_MAX) throw err(CODE_VALUE, `integer ${number.toString()} is outside the signed 64-bit range`);
+    return { kind: 'integer', value: number };
+  };
+  if (value instanceof Uint8Array) {
+    if (BINARY_TYPES.has(base)) return { kind: 'binary', value: new Uint8Array(value) };
+    throw unsupported();
+  }
+  if (typeof value === 'boolean') {
+    if (base === 'BOOL') return { kind: 'boolean', value };
+    throw unsupported();
+  }
+  if (typeof value === 'number') {
+    if (FLOAT32_TYPES.has(base)) return { kind: 'float32', bits: float32Bits(value) };
+    if (FLOAT64_TYPES.has(base)) return { kind: 'float64', bits: float64Bits(value) };
+    if (INTEGER_TYPES.has(base) && Number.isInteger(value)) return integer(BigInt(value));
+    throw unsupported();
+  }
+  if (typeof value === 'bigint') {
+    if (INTEGER_TYPES.has(base)) return integer(value);
+    throw unsupported();
+  }
+  if (typeof value !== 'string') throw unsupported();
+  if (INTEGER_TYPES.has(base)) return integer(integerOf(value, type));
+  if (FLOAT32_TYPES.has(base) || FLOAT64_TYPES.has(base)) {
+    const number = Number(value);
+    if (Number.isNaN(number) && value !== 'NaN') throw err(CODE_VALUE, `float of native type "${type}" is not a number: ${value}`);
+    return FLOAT32_TYPES.has(base) ? { kind: 'float32', bits: float32Bits(number) } : { kind: 'float64', bits: float64Bits(number) };
+  }
+  if (DECIMAL_TYPES.has(base)) {
+    // A nonfinite PostgreSQL numeric stays unsupported (docs/spec/interfaces.md).
+    if (!/^-?\d+(\.\d+)?$/.test(value)) throw unsupported();
+    return { kind: 'decimal', value };
+  }
+  if (TEXT_TYPES.has(base)) return { kind: 'text', value };
+  if (dialect === 'mysql' && base === 'DATE') return { kind: 'date', value: dateText(value) };
+  if (dialect === 'mysql' && base === 'TIME') return { kind: 'time', value: timeText(value) };
+  if (dialect === 'mysql' && base === 'DATETIME') return { kind: 'datetime', value: datetimeText(value) };
+  if (dialect === 'postgres' && base === 'DATE') return { kind: 'date', value: dateText(value) };
+  if (dialect === 'postgres' && base === 'TIME') return { kind: 'time', value: timeText(value) };
+  if (dialect === 'postgres' && base === 'TIMESTAMP') return { kind: 'datetime', value: datetimeText(value) };
+  throw unsupported();
+}
+
+/** A driver value of a plain read of a described table: the plain conversion, then the declared precision of a temporal column. */
+function describedValue(value: unknown, column: DriverColumn, described: CatalogColumn | undefined, dialect: DriverName): CatalogValue {
+  const plain = plainValue(value, column);
+  if (described === undefined || typeof plain !== 'string') return plain;
+  const kind = temporalKind(dialect, described.nativeType);
+  if (kind === undefined) return plain;
+  return describedTemporal(plain, kind, declaredPrecision(dialect, described.nativeType));
+}
+
+/** The canonical key of a cell: its type and its exact value. Two cells are equal exactly when their keys are equal. */
+function cellKey(cell: unknown): string {
+  if (cell === null) return 'n';
+  if (typeof cell === 'boolean') return cell ? 'b1' : 'b0';
+  if (typeof cell === 'number') {
+    if (!Number.isFinite(cell)) throw err(CODE_SNAPSHOT, 'non-finite number cell');
+    return `d${Object.is(cell, -0) ? '-0' : String(cell)}`;
+  }
+  if (typeof cell === 'bigint') return `i${cell.toString()}`;
+  if (typeof cell === 'string') return `s${Buffer.byteLength(cell, 'utf8')}:${cell}`;
+  if (cell instanceof Uint8Array) return `x${Buffer.from(cell).toString('hex')}`;
+  throw err(CODE_SNAPSHOT, `unsupported cell type ${typeof cell}`);
+}
+
+function sameCell(a: unknown, b: unknown): boolean {
+  return cellKey(a) === cellKey(b);
+}
+
+function sameRow(a: readonly unknown[], b: readonly unknown[]): boolean {
+  return a.length === b.length && a.every((cell, index) => sameCell(cell, b[index]));
+}
+
+/** Two descriptors are equal when their canonical JSON is equal; the fields are always built in one order. */
+function sameDescriptor(a: CatalogTableMetadata, b: CatalogTableMetadata): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
 function checkName(name: string): void {
-  const bytes = Buffer.byteLength(name, 'utf8');
-  if (name === '' || bytes > 1024 || name.includes('\0')) throw err(CODE_TABLE_REF, 'expected 1..1024 UTF-8 bytes without NUL');
+  if (name === '' || Buffer.byteLength(name, 'utf8') > 1024 || name.includes('\0')) {
+    throw err(CODE_TABLE_REF, 'expected 1..1024 UTF-8 bytes without NUL');
+  }
 }
 
 function checkTable(ref: CatalogTableRef): void {
@@ -197,59 +483,9 @@ function checkParams(params: readonly unknown[], code: string): DriverValue[] {
   });
 }
 
-/** A bigint inside the safe integer range becomes a number; a larger one stays a bigint. */
-function plainDriverValue(value: unknown): unknown {
-  if (typeof value === 'bigint' && value >= BigInt(Number.MIN_SAFE_INTEGER) && value <= BigInt(Number.MAX_SAFE_INTEGER)) {
-    return Number(value);
-  }
-  return value;
-}
-
-/** A driver value as a catalog value. A grid query keeps an integer outside the safe range as a bigint; a plain query refuses it. */
-function catalogValue(value: unknown, grid: boolean): CatalogValue {
-  if (value === null || typeof value === 'boolean' || typeof value === 'string') return value;
-  if (typeof value === 'number') {
-    if (!Number.isFinite(value)) throw err(CODE_VALUE, 'a non-finite number is not a catalog value');
-    return value;
-  }
-  if (typeof value === 'bigint') {
-    if (grid) return value;
-    throw err(CODE_VALUE, `integer ${value.toString()} is outside the JavaScript safe integer range; use readOnlyGridQuery`);
-  }
-  if (value instanceof Uint8Array) return new Uint8Array(value);
-  throw err(CODE_VALUE, `unsupported driver value of type ${typeof value}`);
-}
-
-/** The canonical key of a cell: its type and its exact value. Two cells are equal exactly when their keys are equal. */
-function cellKey(cell: unknown): string {
-  if (cell === null) return 'n';
-  if (typeof cell === 'boolean') return cell ? 'b1' : 'b0';
-  if (typeof cell === 'number') {
-    if (!Number.isFinite(cell)) throw err(CODE_ROW_SNAPSHOT, 'non-finite number cell');
-    return `d${Object.is(cell, -0) ? '-0' : String(cell)}`;
-  }
-  if (typeof cell === 'bigint') return `i${cell.toString()}`;
-  if (typeof cell === 'string') return `s${Buffer.byteLength(cell, 'utf8')}:${cell}`;
-  if (cell instanceof Uint8Array) return `x${Buffer.from(cell).toString('hex')}`;
-  throw err(CODE_ROW_SNAPSHOT, `unsupported cell type ${typeof cell}`);
-}
-
-function sameCell(a: unknown, b: unknown): boolean {
-  return cellKey(a) === cellKey(b);
-}
-
-function sameRow(a: readonly unknown[], b: readonly unknown[]): boolean {
-  return a.length === b.length && a.every((cell, index) => sameCell(cell, b[index]));
-}
-
-/** Two descriptors are equal when their canonical JSON is equal; the fields are always built in one order. */
-function sameDescriptor(a: CatalogTableMetadata, b: CatalogTableMetadata): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
-}
-
-/** The key columns of a descriptor as column indexes in constraint order; it must have a reliable identity. */
+/** The descriptor's key columns as column indexes in constraint order; it must have a reliable identity. */
 function descriptorKeys(metadata: CatalogTableMetadata): number[] {
-  const invalid = (reason: string): OrmError => err(CODE_ROW_SNAPSHOT, `invalid original row or descriptor: ${reason}`);
+  const invalid = (reason: string): OrmError => err(CODE_SNAPSHOT, `invalid original row or descriptor: ${reason}`);
   if (metadata.kind !== 'table' && metadata.kind !== 'partitioned') throw invalid('the relation is not a table');
   if (!metadata.reliableRowIdentity || metadata.primaryKey.length === 0 || metadata.columns.length === 0 || metadata.columns.length > METADATA_ROWS) {
     throw invalid('no reliable row identity');
@@ -272,10 +508,10 @@ function descriptorKeys(metadata: CatalogTableMetadata): number[] {
 }
 
 function checkCells(metadata: CatalogTableMetadata, cells: readonly unknown[]): void {
-  if (cells.length !== metadata.columns.length) throw err(CODE_ROW_SNAPSHOT, `row has ${cells.length} cells for ${metadata.columns.length} columns`);
+  if (cells.length !== metadata.columns.length) throw err(CODE_SNAPSHOT, `row has ${cells.length} cells for ${metadata.columns.length} columns`);
   cells.forEach((cell, index) => {
     const column = metadata.columns[index];
-    if (cell === null && column !== undefined && !column.nullable) throw err(CODE_ROW_SNAPSHOT, `NULL in non-null column "${column.name}"`);
+    if (cell === null && column !== undefined && !column.nullable) throw err(CODE_SNAPSHOT, `NULL in non-null column "${column.name}"`);
     cellKey(cell);
   });
 }
@@ -286,20 +522,19 @@ function revisionOf(metadata: CatalogTableMetadata, cells: readonly unknown[]): 
     const key = cellKey(cell);
     encoded += `${Buffer.byteLength(key, 'utf8')}:${key}`;
   }
-  if (Buffer.byteLength(encoded, 'utf8') > SNAPSHOT_BYTES) throw err('ROW_SNAPSHOT_LIMIT', 'original row encoding exceeds its budget');
+  if (Buffer.byteLength(encoded, 'utf8') > SNAPSHOT_BYTES) throw err(CODE_SNAPSHOT_LIMIT, 'original row encoding exceeds its budget');
   return createHash('sha256').update(encoded, 'utf8').digest('hex');
 }
 
 /** Checks named assignments against a descriptor, in the order given. */
 function checkChanges(metadata: CatalogTableMetadata, values: readonly CatalogAssignment[], code: string): Array<{ index: number; value: DriverValue }> {
   if (values.length === 0 || values.length > metadata.columns.length) throw err(code, 'invalid column assignments');
-  const params = checkParams(values.map(assignment => assignment.value), code);
+  const params = checkParams(values.map(assignment => assignment.value), CODE_PARAM);
   const seen = new Set<string>();
   return values.map((assignment, position) => {
     const index = metadata.columns.findIndex(column => column.name === assignment.name);
-    if (index < 0) throw err(code, `unknown column "${assignment.name}"`);
     const column = metadata.columns[index];
-    if (column === undefined) throw err(code, `unknown column "${assignment.name}"`);
+    if (index < 0 || column === undefined) throw err(code, `unknown column "${assignment.name}"`);
     if (seen.has(column.name)) throw err(code, `duplicate column "${column.name}"`);
     if (column.generated) throw err(code, `generated column "${column.name}" is not writable`);
     const value = params[position] ?? null;
@@ -417,32 +652,52 @@ function catalogKind(dialect: DriverName, native: string): CatalogTableKind {
   if (dialect === 'postgres' && native === 'f') return 'foreign';
   if (dialect === 'sqlite' && native === 'virtual') return 'virtual';
   if (dialect === 'sqlite' && native === 'shadow') return 'shadow';
-  throw err('TABLE_KIND_UNSUPPORTED', `relation kind "${native}" of ${dialect}`);
+  throw err(CODE_KIND, `relation kind "${native}" of ${dialect}`);
 }
 
 /** A bound session: one pooled connection inside one transaction. It is discarded when it ends, so a session setting never returns to the pool. */
 class Session {
+  /** Set when a read stopped a statement before its end: the connection then holds rows that were not read, and only a discard is safe. */
+  public stopped = false;
+
   public constructor(public readonly dialect: DriverName, private readonly session: DriverSession) {}
 
-  /** Runs a statement that returns rows. A bounded result over maxRows or maxBytes is refused. */
-  public async rows(sql: string, params: readonly unknown[], maxRows: number, maxBytes: number): Promise<unknown[][]> {
+  /**
+   * Streams one statement and keeps its rows. The stream stops at the first row past maxRows or maxBytes, and the read then fails with
+   * CATALOG_LIMIT; no row past the budget is read.
+   */
+  public async query(sql: string, params: readonly unknown[], maxRows: number, maxBytes: number): Promise<{ columns: DriverColumn[]; rows: unknown[][] }> {
     const bound = checkParams(params, CODE_PARAM);
-    const result = bound.length === 0
-      ? await this.session.control(sql, [], noop)
-      : await this.session.execute(sql, bound, undefined, noop);
-    if (result.rows.length > maxRows) throw err(CODE_LIMIT, `result has more than ${maxRows} rows`);
-    let budget = 0;
-    const rows = result.rows.map(row => row.map(plainDriverValue));
-    for (const row of rows) {
-      for (const value of row) {
-        budget += typeof value === 'string' ? Buffer.byteLength(value, 'utf8') : value instanceof Uint8Array ? value.length : 8;
-      }
+    const out: { columns: DriverColumn[]; rows: unknown[][] } = { columns: [], rows: [] };
+    let bytes = 0;
+    let overflow: string | undefined;
+    const sink: RowSink = {
+      columns: columns => { out.columns = columns; },
+      row: values => {
+        if (out.rows.length >= maxRows) {
+          overflow = `result has more than ${maxRows} rows`;
+          return false;
+        }
+        for (const value of values) {
+          bytes += typeof value === 'string' ? Buffer.byteLength(value, 'utf8') : value instanceof Uint8Array ? value.length : 8;
+        }
+        if (bytes > maxBytes) {
+          overflow = `result has more than ${maxBytes} bytes of values`;
+          return false;
+        }
+        out.rows.push(values);
+        return true;
+      },
+    };
+    await this.session.scan(sql, bound, sink, noop);
+    if (overflow !== undefined) {
+      this.stopped = true;
+      throw err(CODE_LIMIT, overflow);
     }
-    if (budget > maxBytes) throw err(CODE_LIMIT, `result has more than ${maxBytes} bytes of values`);
-    return rows;
+    return out;
   }
 
-  /** Runs a statement that changes rows and returns the number of rows it affected. */
+  /** Runs a statement that returns no rows and returns the number of rows it changed. */
   public async exec(sql: string, params: readonly unknown[]): Promise<number> {
     const bound = checkParams(params, CODE_PARAM);
     const result = bound.length === 0
@@ -460,19 +715,27 @@ class Session {
     this.session.release(discard);
   }
 
+  /** Reads the rows of a plain query: each value by the native type of its column. */
+  public async plainRows(sql: string, params: readonly unknown[], maxRows: number, maxBytes: number): Promise<{ columns: DriverColumn[]; rows: CatalogValue[][] }> {
+    const raw = await this.query(sql, params, maxRows, maxBytes);
+    return { columns: raw.columns, rows: raw.rows.map(row => row.map((value, index) => plainValue(value, columnAt(raw.columns, index)))) };
+  }
+
   /** Reads one table descriptor: the kind, the columns, the key in constraint order and the identity flag. */
   public async describe(ref: CatalogTableRef): Promise<CatalogTableMetadata> {
     checkTable(ref);
-    if (this.dialect === 'sqlite' && ref.namespace !== 'main') throw err('TABLE_NAMESPACE_UNSUPPORTED', 'SQLite requires main');
-    const kindRows = await this.rows(KIND_SQL[this.dialect], [ref.namespace, ref.name], 2, METADATA_BYTES);
-    if (kindRows.length === 0) throw err('TABLE_NOT_FOUND', `${ref.namespace}.${ref.name}`);
+    if (this.dialect === 'sqlite' && ref.namespace !== 'main') throw err(CODE_NAMESPACE, 'SQLite requires main');
+    const kindRows = (await this.plainRows(KIND_SQL[this.dialect], [ref.namespace, ref.name], 2, METADATA_BYTES)).rows;
+    if (kindRows.length === 0) throw err(CODE_TABLE_NOT_FOUND, `${ref.namespace}.${ref.name}`);
     const [kindRow] = kindRows;
     if (kindRows.length !== 1 || kindRow === undefined || kindRow.length !== 1) throw err(CODE_METADATA, 'ambiguous relation');
-    const kind = catalogKind(this.dialect, textOf(kindRow[0], 'relation kind'));
+    const nativeKind = kindRow[0];
+    if (typeof nativeKind !== 'string') throw err(CODE_METADATA, 'relation kind is not text');
+    const kind = catalogKind(this.dialect, nativeKind);
 
     // SQLite table-valued pragmas take the table name first and the schema second.
     const args = this.dialect === 'sqlite' ? [ref.name, ref.namespace] : [ref.namespace, ref.name];
-    const rows = await this.rows(COLUMNS_SQL[this.dialect], args, METADATA_ROWS, METADATA_BYTES);
+    const rows = (await this.plainRows(COLUMNS_SQL[this.dialect], args, METADATA_ROWS, METADATA_BYTES)).rows;
 
     const columns: CatalogColumn[] = [];
     const keys: Array<{ ordinal: number; index: number }> = [];
@@ -483,9 +746,7 @@ class Session {
       if (columns.some(existing => existing.name === name)) throw err(CODE_METADATA, `duplicate column "${name}"`);
       const ordinal = intOf(row[4], 'key ordinal');
       if (ordinal < 0) throw err(CODE_METADATA, 'negative key ordinal');
-      let defaultExpression: string | null;
-      if (row[6] === null) defaultExpression = null;
-      else defaultExpression = textOf(row[6], `default of column "${name}"`);
+      const defaultExpression = row[6] === null ? null : textOf(row[6], `default of column "${name}"`);
       const column: CatalogColumn = {
         name,
         nativeType: textOf(row[1], `native type of column "${name}"`),
@@ -508,7 +769,7 @@ class Session {
     if (this.dialect === 'sqlite' && kind === 'table' && keys.length === 1 && onlyKey !== undefined) {
       const keyColumn = columns[onlyKey.index];
       if (keyColumn !== undefined && keyColumn.nativeType.toUpperCase() === 'INTEGER') {
-        const [indexRow] = await this.rows("SELECT count(*) FROM pragma_index_list(?,?) WHERE origin='pk'", args, 1, METADATA_BYTES);
+        const [indexRow] = (await this.plainRows("SELECT count(*) FROM pragma_index_list(?,?) WHERE origin='pk'", args, 1, METADATA_BYTES)).rows;
         if (indexRow === undefined || indexRow.length !== 1) throw err(CODE_METADATA, 'primary index count');
         if (intOf(indexRow[0], 'primary index count') === 0) {
           keyColumn.nullable = false;
@@ -531,52 +792,84 @@ class Session {
   /** The rows that match a descriptor's key, at most two. A lock takes FOR UPDATE on a server that supports it; SQLite's write transaction already holds the lock. */
   public async lookup(metadata: CatalogTableMetadata, keys: readonly CatalogValue[], lock: boolean): Promise<CatalogValue[][]> {
     const suffix = lock && this.dialect !== 'sqlite' ? ' FOR UPDATE' : '';
-    const predicate = metadata.primaryKey
-      .map((name, index) => `${quoteIdent(name, this.dialect)}=${placeholder(index + 1, this.dialect)}`)
-      .join(' AND ');
+    const predicate = metadata.primaryKey.map((name, index) => `${quoteIdent(name, this.dialect)}=${placeholder(index + 1, this.dialect)}`).join(' AND ');
     const sql = `SELECT ${quoteList(metadata.columns.map(column => column.name), this.dialect)} FROM ${qualified(metadata.table, this.dialect)}` +
       ` WHERE ${predicate} LIMIT 2${suffix}`;
-    const rows = await this.rows(sql, keys, 2, PAGE_BYTES);
-    return rows.map(row => {
-      if (row.length !== metadata.columns.length) throw err(CODE_ROW_WRITE, 'row shape differs from descriptor');
-      return row.map(cell => catalogValue(cell, false));
-    });
+    const raw = await this.query(sql, keys, 2, PAGE_BYTES);
+    if (raw.columns.length !== metadata.columns.length) throw err(CODE_WRITE, 'row shape differs from descriptor');
+    return raw.rows.map(row => describedRow(row, raw.columns, metadata, this.dialect));
   }
 
   /** Refuses a MySQL row change unless the server, the account and the table are verified (mutation.rs, mysql_safety). */
   public async mysqlSafety(metadata: CatalogTableMetadata): Promise<void> {
-    const unsupported = (reason: string): OrmError => err(CODE_ROW_UNSUPPORTED, reason);
-    const [partial] = await this.rows('SELECT CAST(@@GLOBAL.partial_revokes AS SIGNED)', [], 1, 4096);
-    if (partial === undefined || partial.length !== 1 || partial[0] !== 0) throw unsupported('MySQL partial-revoke visibility requires verification');
+    const unsupported = (reason: string): OrmError => err(CODE_UNSUPPORTED, reason);
+    const partial = (await this.query('SELECT CAST(@@GLOBAL.partial_revokes AS SIGNED)', [], 1, 4096)).rows;
+    const [partialRow] = partial;
+    if (partial.length !== 1 || partialRow === undefined || partialRow.length !== 1 || Number(partialRow[0]) !== 0) {
+      throw unsupported('MySQL partial-revoke visibility requires verification');
+    }
 
-    const [account] = await this.rows('SELECT CURRENT_USER()', [], 1, 4096);
-    if (account === undefined || account.length !== 1) throw unsupported('unverifiable MySQL account');
-    const text = textOf(account[0], 'MySQL account');
+    const account = (await this.query('SELECT CURRENT_USER()', [], 1, 4096)).rows;
+    const [accountRow] = account;
+    if (account.length !== 1 || accountRow === undefined || accountRow.length !== 1) throw unsupported('unverifiable MySQL account');
+    const text = textOf(accountRow[0], 'MySQL account');
     const at = text.lastIndexOf('@');
     if (at < 0) throw unsupported('unverifiable MySQL account');
     const grantee = `'${text.slice(0, at)}'@'${text.slice(at + 1)}'`;
 
-    const grants = await this.rows(
+    const grants = (await this.query(
       "SELECT PRIVILEGE_TYPE FROM information_schema.USER_PRIVILEGES WHERE GRANTEE=? AND PRIVILEGE_TYPE='TRIGGER' " +
         "UNION ALL SELECT PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES WHERE GRANTEE=? AND TABLE_SCHEMA=? AND PRIVILEGE_TYPE='TRIGGER' " +
         "UNION ALL SELECT PRIVILEGE_TYPE FROM information_schema.TABLE_PRIVILEGES WHERE GRANTEE=? AND TABLE_SCHEMA=? AND TABLE_NAME=? AND PRIVILEGE_TYPE='TRIGGER'",
       [grantee, grantee, metadata.table.namespace, grantee, metadata.table.namespace, metadata.table.name],
       16,
       4096,
-    );
-    const trigger = grants.some(row => row.length === 1 && row[0] === 'TRIGGER');
-    if (!trigger) throw unsupported('MySQL trigger visibility is unverified');
+    )).rows;
+    if (!grants.some(row => row.length === 1 && row[0] === 'TRIGGER')) throw unsupported('MySQL trigger visibility is unverified');
 
-    const [engine] = await this.rows('SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=? AND TABLE_NAME=?',
-      [metadata.table.namespace, metadata.table.name], 2, 4096);
-    if (engine === undefined || engine.length !== 1 || typeof engine[0] !== 'string' || engine[0].toLowerCase() !== 'innodb') {
+    const engine = (await this.query('SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=? AND TABLE_NAME=?',
+      [metadata.table.namespace, metadata.table.name], 2, 4096)).rows;
+    const [engineRow] = engine;
+    if (engine.length !== 1 || engineRow === undefined || engineRow.length !== 1 || typeof engineRow[0] !== 'string' || engineRow[0].toLowerCase() !== 'innodb') {
       throw unsupported('MySQL requires InnoDB');
     }
 
-    const triggers = await this.rows('SELECT TRIGGER_NAME FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA=? AND EVENT_OBJECT_TABLE=? LIMIT 1',
-      [metadata.table.namespace, metadata.table.name], 1, 4096);
+    const triggers = (await this.query('SELECT TRIGGER_NAME FROM information_schema.TRIGGERS WHERE EVENT_OBJECT_SCHEMA=? AND EVENT_OBJECT_TABLE=? LIMIT 1',
+      [metadata.table.namespace, metadata.table.name], 1, 4096)).rows;
     if (triggers.length !== 0) throw unsupported('MySQL triggers require effect verification');
   }
+}
+
+/** The column of a result at index; the driver returns one name and type per cell, so a missing column is a shape error. */
+function columnAt(columns: DriverColumn[], index: number): DriverColumn {
+  const column = columns[index];
+  if (column === undefined) throw err(CODE_METADATA, `no column at position ${index}`);
+  return column;
+}
+
+/** A row of a described table: each value by its native type, with the declared precision of its temporal columns. */
+function describedRow(row: unknown[], columns: DriverColumn[], metadata: CatalogTableMetadata, dialect: DriverName): CatalogValue[] {
+  return row.map((value, index) => describedValue(value, columnAt(columns, index), metadata.columns[index], dialect));
+}
+
+function textOf(value: unknown, what: string): string {
+  if (typeof value !== 'string') throw err(CODE_METADATA, `expected text for ${what}, got ${typeof value}`);
+  return value;
+}
+
+function intOf(value: unknown, what: string): number {
+  if (typeof value === 'number' && Number.isInteger(value)) return value;
+  throw err(CODE_METADATA, `expected an integer for ${what}, got ${String(value)}`);
+}
+
+function boolOf(value: unknown, what: string): boolean {
+  if (typeof value === 'boolean') return value;
+  if (value === 0 || value === 1) return value === 1;
+  throw err(CODE_METADATA, `expected a boolean for ${what}, got ${String(value)}`);
+}
+
+function byteSize(value: unknown): number {
+  return typeof value === 'string' ? Buffer.byteLength(value, 'utf8') : value instanceof Uint8Array ? value.length : 8;
 }
 
 const BEGIN_SQL: Record<DriverName, { read: string; write: string }> = {
@@ -645,16 +938,21 @@ export class CatalogConnection {
     return value;
   }
 
-  /** Rolls back, releases the connection discarded and returns the error to throw, joined with a failed rollback. */
+  /**
+   * Ends a session and returns the error to throw, joined with a failed rollback. A session that a read stopped early is discarded
+   * without a rollback on MySQL and PostgreSQL, where the discard ends the server's transaction; SQLite's shared connection is rolled back.
+   */
   private async endSession(session: Session, error: unknown): Promise<OrmError | undefined> {
     let failure: OrmError | undefined = error === undefined ? undefined : driverError(this.dialect, error);
-    try {
-      await session.control('ROLLBACK');
-    } catch (rollbackError) {
-      const rolled = driverError(this.dialect, rollbackError);
-      failure = failure === undefined
-        ? err(CODE_ROLLBACK_FAILED, `rollback: ${rolled.message}`, rolled)
-        : err(CODE_ROLLBACK_FAILED, `${failure.message}; rollback: ${rolled.message}`, failure);
+    if (!session.stopped || this.dialect === 'sqlite') {
+      try {
+        await session.control('ROLLBACK');
+      } catch (rollbackError) {
+        const rolled = driverError(this.dialect, rollbackError);
+        failure = failure === undefined
+          ? err(CODE_ROLLBACK, `rollback: ${rolled.message}`, rolled)
+          : err(CODE_ROLLBACK, `${failure.message}; rollback: ${rolled.message}`, failure);
+      }
     }
     session.release(true);
     return failure;
@@ -665,11 +963,11 @@ export class CatalogConnection {
     if (this.dialect === 'sqlite') return 'main';
     const query = this.dialect === 'postgres' ? 'SELECT current_schema()' : 'SELECT DATABASE()';
     return this.read(async session => {
-      const rows = await session.rows(query, [], 2, METADATA_BYTES);
+      const { rows } = await session.plainRows(query, [], 2, METADATA_BYTES);
       const [row] = rows;
-      if (rows.length !== 1 || row === undefined || row.length !== 1) throw err('TABLE_NAMESPACE_UNAVAILABLE', 'the connection reported no single namespace');
+      if (rows.length !== 1 || row === undefined || row.length !== 1) throw err(CODE_NAMESPACE_UNAVAILABLE, 'the connection reported no single namespace');
       const name = row[0];
-      if (typeof name !== 'string') throw err('TABLE_NAMESPACE_UNAVAILABLE', 'the connection reported no text namespace');
+      if (typeof name !== 'string') throw err(CODE_NAMESPACE_UNAVAILABLE, 'the connection reported no text namespace');
       checkName(name);
       return name;
     });
@@ -684,26 +982,27 @@ export class CatalogConnection {
   public async tablePage(table: CatalogTableRef, limit: number, offset: number): Promise<CatalogTablePage> {
     checkTable(table);
     if (!Number.isInteger(limit) || limit < 1 || limit > 1000 || !Number.isInteger(offset) || offset < 0 || offset > 1000000) {
-      throw err('TABLE_PAGE_INVALID', 'limit requires 1..1000 and offset 0..1000000');
+      throw err(CODE_PAGE_INVALID, 'limit requires 1..1000 and offset 0..1000000');
     }
     return this.read(async session => {
       const metadata = await session.describe(table);
-      if (metadata.columns.length === 0) throw err('TABLE_PAGE_UNSUPPORTED', 'relation has no selectable columns');
+      if (metadata.columns.length === 0) throw err(CODE_PAGE_UNSUPPORTED, 'relation has no selectable columns');
       let sql = `SELECT ${quoteList(metadata.columns.map(column => column.name), this.dialect)} FROM ${qualified(table, this.dialect)}`;
       if (metadata.primaryKey.length > 0) sql += ` ORDER BY ${quoteList(metadata.primaryKey, this.dialect)}`;
-      // One extra row is the sentinel that reports hasMore.
+      // One extra row is the sentinel that reports hasMore; the stream stops at that row.
       sql += ` LIMIT ${limit + 1} OFFSET ${offset}`;
-      const raw = await session.rows(sql, [], limit + 1, PAGE_BYTES);
-      if (raw.some(row => row.length !== metadata.columns.length)) throw err(CODE_PAGE_CHANGED, 'prepared columns differ from descriptor');
+      const raw = await session.query(sql, [], limit + 1, PAGE_BYTES);
+      if (raw.columns.length !== metadata.columns.length || raw.columns.some((column, index) => column.name !== metadata.columns[index]?.name)) {
+        throw err(CODE_PAGE_CHANGED, 'prepared columns differ from descriptor');
+      }
       const after = await session.describe(table);
       if (!sameDescriptor(after, metadata)) throw err(CODE_PAGE_CHANGED, 'descriptor changed during read');
-      let rows = raw.map(row => row.map(cell => catalogValue(cell, false)));
+      let rows = raw.rows.map(row => describedRow(row, raw.columns, metadata, this.dialect));
       const hasMore = rows.length > limit;
       if (hasMore) rows = rows.slice(0, limit);
-      const columns = metadata.columns.map(column => ({ ...column }));
       return {
         metadata,
-        result: { columns, rows },
+        result: { columns: metadata.columns.map(column => ({ ...column })), rows },
         limit,
         offset,
         orderBy: [...metadata.primaryKey],
@@ -713,46 +1012,53 @@ export class CatalogConnection {
     });
   }
 
-  /** Runs one read query (SELECT, WITH or VALUES) in a fresh read-only session. Integers outside the safe range are refused. */
+  /** Runs one read query (SELECT, WITH or VALUES) in a fresh read-only session; each value is converted by its native type. */
   public async readOnlyQuery(query: string, params: readonly unknown[], limits: CatalogQueryLimits = {}): Promise<CatalogQueryResult> {
-    return { rows: await this.runReadOnly(query, params, limits, false) };
-  }
-
-  /** Runs one read query like readOnlyQuery; an integer outside the safe range is returned as a bigint and no value is narrowed. */
-  public async readOnlyGridQuery(query: string, params: readonly unknown[], limits: CatalogQueryLimits = {}): Promise<CatalogQueryResult> {
-    return { rows: await this.runReadOnly(query, params, limits, true) };
-  }
-
-  private async runReadOnly(query: string, params: readonly unknown[], limits: CatalogQueryLimits, grid: boolean): Promise<CatalogValue[][]> {
-    validateReadOnly(query, this.dialect);
-    if ((limits.maxRows ?? 0) < 0 || (limits.maxBytes ?? 0) < 0) throw err('QUERY_LIMIT_INVALID', 'limits must not be negative');
-    const maxRows = limits.maxRows || DEFAULT_QUERY_ROWS;
-    const maxBytes = limits.maxBytes || DEFAULT_QUERY_BYTES;
-    const bound = checkParams(params, CODE_PARAM);
+    const { maxRows, maxBytes } = this.queryBudget(query, params, limits);
     return this.read(async session => {
-      const raw = await session.rows(query, bound, maxRows, maxBytes);
-      return raw.map(row => row.map(cell => catalogValue(cell, grid)));
+      const { columns, rows } = await session.plainRows(query, params, maxRows, maxBytes);
+      return { columns: columns.map(column => column.name), rows };
     });
+  }
+
+  /** Runs one read query and returns typed grid cells (the Rust grid rules): each cell is typed by its column's native type. */
+  public async readOnlyGridQuery(query: string, params: readonly unknown[], limits: CatalogQueryLimits = {}): Promise<CatalogGridResult> {
+    const { maxRows, maxBytes } = this.queryBudget(query, params, limits);
+    return this.read(async session => {
+      const raw = await session.query(query, params, maxRows, maxBytes);
+      return {
+        columns: raw.columns.map(column => ({ name: column.name, nativeType: column.type })),
+        rows: raw.rows.map(row => row.map((value, index) => gridCell(value, columnAt(raw.columns, index), this.dialect))),
+      };
+    });
+  }
+
+  /** Checks the statement and the limits of a read; a zero limit takes its default. */
+  private queryBudget(query: string, params: readonly unknown[], limits: CatalogQueryLimits): { maxRows: number; maxBytes: number } {
+    validateReadOnly(query, this.dialect);
+    if ((limits.maxRows ?? 0) < 0 || (limits.maxBytes ?? 0) < 0) throw err(CODE_QUERY_LIMIT, 'limits must not be negative');
+    checkParams(params, CODE_PARAM);
+    return { maxRows: limits.maxRows || DEFAULT_QUERY_ROWS, maxBytes: limits.maxBytes || DEFAULT_QUERY_BYTES };
   }
 
   /** Captures the row at index of a page. The table must have a reliable identity, and the page must be a page of that table as tablePage reads it. */
   public rowSnapshotFromPage(page: CatalogTablePage, index: number): CatalogRowSnapshot {
-    const invalid = (reason: string): OrmError => err(CODE_ROW_SNAPSHOT, `invalid original row or descriptor: ${reason}`);
+    const invalid = (reason: string): OrmError => err(CODE_SNAPSHOT, `invalid original row or descriptor: ${reason}`);
     try { checkTable(page.metadata.table); } catch (error) { throw invalid(messageOf(error)); }
     if (!Number.isInteger(page.limit) || page.limit < 1 || page.limit > 1000 || page.offset < 0 || page.offset > 1000000) {
-      throw err(CODE_ROW_SNAPSHOT, 'invalid page bounds');
+      throw err(CODE_SNAPSHOT, 'invalid page bounds');
     }
     const rows = page.result.rows;
     const orderMatches = page.orderBy.length === page.metadata.primaryKey.length && page.orderBy.every((name, i) => name === page.metadata.primaryKey[i]);
     if (rows.length > page.limit || (page.hasMore && rows.length !== page.limit) || !orderMatches) {
-      throw err(CODE_ROW_SNAPSHOT, 'page rows or order do not match its bounds');
+      throw err(CODE_SNAPSHOT, 'page rows or order do not match its bounds');
     }
     const keyIndexes = descriptorKeys(page.metadata);
     const sameColumns = page.result.columns.length === page.metadata.columns.length &&
       page.result.columns.every((column, i) => column.name === page.metadata.columns[i]?.name);
-    if (!sameColumns) throw err(CODE_ROW_SNAPSHOT, 'projection differs from descriptor');
+    if (!sameColumns) throw err(CODE_SNAPSHOT, 'projection differs from descriptor');
     const row = rows[index];
-    if (index < 0 || row === undefined) throw err(CODE_ROW_SNAPSHOT, `row index ${index} outside the page`);
+    if (index < 0 || row === undefined) throw err(CODE_SNAPSHOT, `row index ${index} outside the page`);
     const cells = [...row];
     checkCells(page.metadata, cells);
     return new CatalogRowSnapshot(page.metadata, cells, keyIndexes, revisionOf(page.metadata, cells));
@@ -761,10 +1067,10 @@ export class CatalogConnection {
   /** Inserts one row with explicit primary-key values. It rejects an existing key, requires exactly one affected row and re-reads the row before it commits. */
   public async insertRow(declared: CatalogTableMetadata, values: readonly CatalogAssignment[]): Promise<CatalogMutationResult> {
     const keyIndexes = descriptorKeys(declared);
-    const changes = checkChanges(declared, values, 'ROW_INSERT_INVALID');
+    const changes = checkChanges(declared, values, CODE_INSERT_INVALID);
     const provided = new Map(changes.map(change => [change.index, change.value] as const));
     const keys = keyIndexes.map(index => {
-      if (!provided.has(index)) throw err('ROW_INSERT_INVALID', `explicit primary-key value of "${declared.columns[index]?.name ?? ''}" is required`);
+      if (!provided.has(index)) throw err(CODE_INSERT_INVALID, `explicit primary-key value of "${declared.columns[index]?.name ?? ''}" is required`);
       return provided.get(index) ?? null;
     });
     return this.write(async session => {
@@ -773,27 +1079,26 @@ export class CatalogConnection {
         await session.control(`LOCK TABLE ${qualified(declared.table, this.dialect)} IN ROW EXCLUSIVE MODE`);
       }
       const existing = await session.lookup(declared, keys, true);
-      if (existing.length !== 0) throw err(CODE_ROW_CONFLICT, 'insertion key already exists');
+      if (existing.length !== 0) throw err(CODE_CONFLICT, 'insertion key already exists');
       const descriptor = await session.describe(declared.table);
-      if (!sameDescriptor(descriptor, declared)) throw err(CODE_ROW_SCHEMA, 'insertion descriptor changed');
+      if (!sameDescriptor(descriptor, declared)) throw err(CODE_SCHEMA, 'insertion descriptor changed');
       if (this.dialect === 'mysql') await session.mysqlSafety(descriptor);
       const names = changes.map(change => quoteIdent(descriptor.columns[change.index]?.name ?? '', this.dialect));
       const marks = changes.map((_, index) => placeholder(index + 1, this.dialect));
-      const args = changes.map(change => change.value);
       const affected = await session.exec(
         `INSERT INTO ${qualified(descriptor.table, this.dialect)} (${names.join(',')}) VALUES (${marks.join(',')})`,
-        args,
+        changes.map(change => change.value),
       );
-      if (affected !== 1) throw err(CODE_ROW_WRITE, `expected exactly one inserted row, got ${affected}`);
+      if (affected !== 1) throw err(CODE_WRITE, `expected exactly one inserted row, got ${affected}`);
       const after = await session.lookup(descriptor, keys, false);
-      if (after.length !== 1) throw err(CODE_ROW_WRITE, 'expected exactly one inserted row');
+      if (after.length !== 1) throw err(CODE_WRITE, 'expected exactly one inserted row');
       const afterDescriptor = await session.describe(declared.table);
-      if (!sameDescriptor(afterDescriptor, descriptor)) throw err(CODE_ROW_SCHEMA, 'insertion descriptor changed');
+      if (!sameDescriptor(afterDescriptor, descriptor)) throw err(CODE_SCHEMA, 'insertion descriptor changed');
       const [stored] = after;
-      if (stored === undefined) throw err(CODE_ROW_WRITE, 'expected exactly one inserted row');
+      if (stored === undefined) throw err(CODE_WRITE, 'expected exactly one inserted row');
       for (const change of changes) {
         if (!sameCell(stored[change.index], change.value)) {
-          throw err(CODE_ROW_WRITE, `stored inserted values of "${descriptor.columns[change.index]?.name ?? ''}" differ`);
+          throw err(CODE_WRITE, `stored inserted values of "${descriptor.columns[change.index]?.name ?? ''}" differ`);
         }
       }
       return { columns: descriptor.columns.map(column => column.name), rows: after };
@@ -803,21 +1108,21 @@ export class CatalogConnection {
   /** Updates the row of an original snapshot. Inside the transaction it locks the row by its original keys, compares it with the snapshot and writes; then it re-reads the row and requires the written values. */
   public async updateRow(original: CatalogRowSnapshot, values: readonly CatalogAssignment[]): Promise<CatalogMutationResult> {
     original.valid();
-    const changes = checkChanges(original.metadata, values, 'ROW_UPDATE_INVALID');
+    const changes = checkChanges(original.metadata, values, CODE_UPDATE_INVALID);
     const updated = [...original.originalCells()];
     for (const change of changes) updated[change.index] = change.value;
     try { checkCells(original.metadata, updated); } catch (error) {
-      throw err('ROW_UPDATE_INVALID', `invalid updated row: ${messageOf(error)}`, error);
+      throw err(CODE_UPDATE_INVALID, `invalid updated row: ${messageOf(error)}`, error);
     }
     try { revisionOf(original.metadata, updated); } catch (error) {
-      throw err('ROW_UPDATE_LIMIT', `updated row budget exceeded: ${messageOf(error)}`, error);
+      throw err(CODE_UPDATE_LIMIT, `updated row budget exceeded: ${messageOf(error)}`, error);
     }
     const keys = original.keys();
     const keyIndexes = original.keyIndexList();
     return this.write(async session => {
       const current = await session.lookup(original.metadata, keys, true);
       const descriptor = await session.describe(original.metadata.table);
-      if (!sameDescriptor(descriptor, original.metadata)) throw err(CODE_ROW_SCHEMA, 'original descriptor changed');
+      if (!sameDescriptor(descriptor, original.metadata)) throw err(CODE_SCHEMA, 'original descriptor changed');
       checkCurrent(current, original.originalCells());
       if (this.dialect === 'mysql') await session.mysqlSafety(descriptor);
       const sets = changes.map((change, index) => `${quoteIdent(descriptor.columns[change.index]?.name ?? '', this.dialect)}=${placeholder(index + 1, this.dialect)}`);
@@ -825,22 +1130,19 @@ export class CatalogConnection {
       const predicate = descriptor.primaryKey
         .map((name, index) => `${quoteIdent(name, this.dialect)}=${placeholder(changes.length + index + 1, this.dialect)}`)
         .join(' AND ');
-      const affected = await session.exec(
-        `UPDATE ${qualified(descriptor.table, this.dialect)} SET ${sets.join(',')} WHERE ${predicate}`,
-        args,
-      );
+      const affected = await session.exec(`UPDATE ${qualified(descriptor.table, this.dialect)} SET ${sets.join(',')} WHERE ${predicate}`, args);
       // MySQL reports zero for an update that changes nothing; the re-read below is the authority there.
-      if (affected > 1 || (affected === 0 && this.dialect !== 'mysql')) throw err(CODE_ROW_WRITE, `unexpected affected row count ${affected}`);
+      if (affected > 1 || (affected === 0 && this.dialect !== 'mysql')) throw err(CODE_WRITE, `unexpected affected row count ${affected}`);
       const newKeys = keyIndexes.map(index => updated[index] ?? null);
       const after = await session.lookup(descriptor, newKeys, false);
-      if (after.length !== 1) throw err(CODE_ROW_WRITE, `expected exactly one updated row, got ${after.length}`);
+      if (after.length !== 1) throw err(CODE_WRITE, `expected exactly one updated row, got ${after.length}`);
       const afterDescriptor = await session.describe(original.metadata.table);
-      if (!sameDescriptor(afterDescriptor, descriptor)) throw err(CODE_ROW_SCHEMA, 'original descriptor changed');
+      if (!sameDescriptor(afterDescriptor, descriptor)) throw err(CODE_SCHEMA, 'original descriptor changed');
       const [stored] = after;
-      if (stored === undefined) throw err(CODE_ROW_WRITE, 'expected exactly one updated row');
+      if (stored === undefined) throw err(CODE_WRITE, 'expected exactly one updated row');
       descriptor.columns.forEach((column, index) => {
         if (column.generated) return; // A generated column may be recomputed by the database.
-        if (!sameCell(stored[index], updated[index])) throw err(CODE_ROW_WRITE, `stored ordinary values of "${column.name}" differ`);
+        if (!sameCell(stored[index], updated[index])) throw err(CODE_WRITE, `stored ordinary values of "${column.name}" differ`);
       });
       return { columns: descriptor.columns.map(column => column.name), rows: after };
     });
@@ -853,16 +1155,16 @@ export class CatalogConnection {
     return this.write(async session => {
       const current = await session.lookup(original.metadata, keys, true);
       const descriptor = await session.describe(original.metadata.table);
-      if (!sameDescriptor(descriptor, original.metadata)) throw err(CODE_ROW_SCHEMA, 'original descriptor changed');
+      if (!sameDescriptor(descriptor, original.metadata)) throw err(CODE_SCHEMA, 'original descriptor changed');
       checkCurrent(current, original.originalCells());
       if (this.dialect === 'mysql') await session.mysqlSafety(descriptor);
       const predicate = descriptor.primaryKey.map((name, index) => `${quoteIdent(name, this.dialect)}=${placeholder(index + 1, this.dialect)}`).join(' AND ');
       const affected = await session.exec(`DELETE FROM ${qualified(descriptor.table, this.dialect)} WHERE ${predicate}`, keys);
-      if (affected !== 1) throw err(CODE_ROW_WRITE, `expected exactly one deleted row, got ${affected}`);
+      if (affected !== 1) throw err(CODE_WRITE, `expected exactly one deleted row, got ${affected}`);
       const after = await session.lookup(descriptor, keys, false);
-      if (after.length !== 0) throw err(CODE_ROW_WRITE, 'deleted row remains');
+      if (after.length !== 0) throw err(CODE_WRITE, 'deleted row remains');
       const afterDescriptor = await session.describe(original.metadata.table);
-      if (!sameDescriptor(afterDescriptor, descriptor)) throw err(CODE_ROW_SCHEMA, 'original descriptor changed');
+      if (!sameDescriptor(afterDescriptor, descriptor)) throw err(CODE_SCHEMA, 'original descriptor changed');
       return affected;
     });
   }
@@ -870,10 +1172,10 @@ export class CatalogConnection {
 
 /** Compares the rows that a key read returned with the original cells of a snapshot. */
 function checkCurrent(current: readonly CatalogValue[][], original: readonly CatalogValue[]): void {
-  if (current.length === 0) throw err(CODE_ROW_CONFLICT, 'original row is missing');
-  if (current.length > 1) throw err(CODE_ROW_AMBIGUOUS, 'key selected multiple rows');
+  if (current.length === 0) throw err(CODE_CONFLICT, 'original row is missing');
+  if (current.length > 1) throw err(CODE_AMBIGUOUS, 'key selected multiple rows');
   const [row] = current;
-  if (row === undefined || !sameRow(row, original)) throw err(CODE_ROW_CONFLICT, 'original values changed');
+  if (row === undefined || !sameRow(row, original)) throw err(CODE_CONFLICT, 'original values changed');
 }
 
 /** Connects to the database that a mysql, postgres or sqlite DSN selects. A markdown DSN is refused, and a SQLite file must exist. */
@@ -890,8 +1192,8 @@ export async function connectCatalog(dsn: string): Promise<CatalogConnection> {
     }
     if (!regular) throw err(codes.CONFIG, 'CATALOG_SQLITE_FILE: expected an existing regular file');
   }
-  const bounds = { size: 10, idleSize: 10, lifetimeMs: 0 };
-  const pool = openDriver(dsn, parsed, bounds, 256);
+  // The catalog pool keeps integers exact (openDriver, exact).
+  const pool = openDriver(dsn, parsed, { size: 10, idleSize: 10, lifetimeMs: 0 }, 256, 0, true);
   try {
     (await pool.reserve()).release(false);
   } catch (error) {

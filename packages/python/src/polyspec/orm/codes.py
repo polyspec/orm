@@ -59,7 +59,7 @@ CODEC_ENCODE = "CODEC_ENCODE"
 CODEC_UNSUPPORTED = "CODEC_UNSUPPORTED"
 # executor: missing secret, bad DSN/paths, transaction misuse
 CONFIG = "CONFIG"
-# executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout); a lock wait of the markdown executor that ends is CANCELED too, and so is a MySQL lock wait timeout (1205, innodb_lock_wait_timeout)
+# executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout); a lock wait of the markdown executor that ends is CANCELED too, and so is a MySQL lock wait timeout (1205, innodb_lock_wait_timeout), and so is a MySQL lock wait timeout (1205, innodb_lock_wait_timeout)
 CANCELED = "CANCELED"
 # executor: a transaction or savepoint callback failed and its rollback failed too; the error keeps both errors
 ROLLBACK = "ROLLBACK"
@@ -71,11 +71,69 @@ SUBSCRIBER = "SUBSCRIBER"
 SCHEMA_DIFFERS = "SCHEMA_DIFFERS"
 # executor
 INTERNAL = "INTERNAL"
+# executor
+QUERY_READ_ONLY = "QUERY_READ_ONLY"
+# executor
+QUERY_LIMIT_INVALID = "QUERY_LIMIT_INVALID"
+# executor
+CATALOG_LIMIT = "CATALOG_LIMIT"
+# executor
+CATALOG_VALUE = "CATALOG_VALUE"
+# executor
+CATALOG_PARAM = "CATALOG_PARAM"
+# executor
+TABLE_METADATA_INVALID = "TABLE_METADATA_INVALID"
+# executor
+TABLE_REFERENCE_INVALID = "TABLE_REFERENCE_INVALID"
+# executor
+TABLE_NOT_FOUND = "TABLE_NOT_FOUND"
+# executor
+TABLE_KIND_UNSUPPORTED = "TABLE_KIND_UNSUPPORTED"
+# executor
+TABLE_NAMESPACE_UNSUPPORTED = "TABLE_NAMESPACE_UNSUPPORTED"
+# executor
+TABLE_NAMESPACE_UNAVAILABLE = "TABLE_NAMESPACE_UNAVAILABLE"
+# executor
+TABLE_PAGE_INVALID = "TABLE_PAGE_INVALID"
+# executor
+TABLE_PAGE_UNSUPPORTED = "TABLE_PAGE_UNSUPPORTED"
+# executor
+TABLE_PAGE_METADATA_CHANGED = "TABLE_PAGE_METADATA_CHANGED"
+# executor
+ROW_SNAPSHOT_INVALID = "ROW_SNAPSHOT_INVALID"
+# executor
+ROW_SNAPSHOT_LIMIT = "ROW_SNAPSHOT_LIMIT"
+# executor
+ROW_INSERT_INVALID = "ROW_INSERT_INVALID"
+# executor
+ROW_UPDATE_INVALID = "ROW_UPDATE_INVALID"
+# executor
+ROW_UPDATE_LIMIT = "ROW_UPDATE_LIMIT"
+# executor
+ROW_CONFLICT = "ROW_CONFLICT"
+# executor
+ROW_IDENTITY_AMBIGUOUS = "ROW_IDENTITY_AMBIGUOUS"
+# executor
+ROW_SCHEMA_CHANGED = "ROW_SCHEMA_CHANGED"
+# executor
+ROW_WRITE_MISMATCH = "ROW_WRITE_MISMATCH"
+# executor
+ROW_MUTATION_UNSUPPORTED = "ROW_MUTATION_UNSUPPORTED"
+# executor
+ROW_COMMIT_REJECTED = "ROW_COMMIT_REJECTED"
+# executor
+ROW_COMMIT_INDETERMINATE = "ROW_COMMIT_INDETERMINATE"
+# executor
+ROW_ROLLBACK_FAILED = "ROW_ROLLBACK_FAILED"
+# executor
+GRID_TEMPORAL_VALUE = "GRID_TEMPORAL_VALUE"
+# executor
+GRID_TEMPORAL_PRECISION = "GRID_TEMPORAL_PRECISION"
 # driver: a NOWAIT lock could not be acquired immediately
 LOCK_NOT_AVAILABLE = "LOCK_NOT_AVAILABLE"
 # driver: MySQL 1213 / SQLSTATE 40001 / PostgreSQL 40P01 / SQLite LOCKED; retries require TransactionOptions
 DEADLOCK = "DEADLOCK"
-# driver: MySQL 1062 / SQLSTATE 23000
+# driver: MySQL 1062 (SQLSTATE 23000), PostgreSQL 23505, SQLite 2067 and 1555
 DUPLICATE_KEY = "DUPLICATE_KEY"
 # driver: MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787, and SQLite 1811 "FOREIGN KEY constraint failed" of a RESTRICT action
 FOREIGN_KEY = "FOREIGN_KEY"

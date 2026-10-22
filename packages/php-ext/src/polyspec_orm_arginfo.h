@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 4daa671381dcc1e0424a64c7cbafcbb303bf239b */
+ * Stub hash: 82c0d563ce2891782998b797adeb42908c291dba */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Diagnostic___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, rule, IS_STRING, 0)
@@ -3306,6 +3306,209 @@ static zend_class_entry *register_class_Polyspec_Orm_Code(void)
 	zend_string *const_INTERNAL_name = zend_string_init_interned("INTERNAL", sizeof("INTERNAL") - 1, 1);
 	zend_declare_typed_class_constant(class_entry, const_INTERNAL_name, &const_INTERNAL_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
 	zend_string_release(const_INTERNAL_name);
+
+	zval const_QUERY_READ_ONLY_value;
+	zend_string *const_QUERY_READ_ONLY_value_str = zend_string_init("QUERY_READ_ONLY", strlen("QUERY_READ_ONLY"), 1);
+	ZVAL_STR(&const_QUERY_READ_ONLY_value, const_QUERY_READ_ONLY_value_str);
+	zend_string *const_QUERY_READ_ONLY_name = zend_string_init_interned("QUERY_READ_ONLY", sizeof("QUERY_READ_ONLY") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_QUERY_READ_ONLY_name, &const_QUERY_READ_ONLY_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_QUERY_READ_ONLY_name);
+
+	zval const_QUERY_LIMIT_INVALID_value;
+	zend_string *const_QUERY_LIMIT_INVALID_value_str = zend_string_init("QUERY_LIMIT_INVALID", strlen("QUERY_LIMIT_INVALID"), 1);
+	ZVAL_STR(&const_QUERY_LIMIT_INVALID_value, const_QUERY_LIMIT_INVALID_value_str);
+	zend_string *const_QUERY_LIMIT_INVALID_name = zend_string_init_interned("QUERY_LIMIT_INVALID", sizeof("QUERY_LIMIT_INVALID") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_QUERY_LIMIT_INVALID_name, &const_QUERY_LIMIT_INVALID_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_QUERY_LIMIT_INVALID_name);
+
+	zval const_CATALOG_LIMIT_value;
+	zend_string *const_CATALOG_LIMIT_value_str = zend_string_init("CATALOG_LIMIT", strlen("CATALOG_LIMIT"), 1);
+	ZVAL_STR(&const_CATALOG_LIMIT_value, const_CATALOG_LIMIT_value_str);
+	zend_string *const_CATALOG_LIMIT_name = zend_string_init_interned("CATALOG_LIMIT", sizeof("CATALOG_LIMIT") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_CATALOG_LIMIT_name, &const_CATALOG_LIMIT_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_CATALOG_LIMIT_name);
+
+	zval const_CATALOG_VALUE_value;
+	zend_string *const_CATALOG_VALUE_value_str = zend_string_init("CATALOG_VALUE", strlen("CATALOG_VALUE"), 1);
+	ZVAL_STR(&const_CATALOG_VALUE_value, const_CATALOG_VALUE_value_str);
+	zend_string *const_CATALOG_VALUE_name = zend_string_init_interned("CATALOG_VALUE", sizeof("CATALOG_VALUE") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_CATALOG_VALUE_name, &const_CATALOG_VALUE_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_CATALOG_VALUE_name);
+
+	zval const_CATALOG_PARAM_value;
+	zend_string *const_CATALOG_PARAM_value_str = zend_string_init("CATALOG_PARAM", strlen("CATALOG_PARAM"), 1);
+	ZVAL_STR(&const_CATALOG_PARAM_value, const_CATALOG_PARAM_value_str);
+	zend_string *const_CATALOG_PARAM_name = zend_string_init_interned("CATALOG_PARAM", sizeof("CATALOG_PARAM") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_CATALOG_PARAM_name, &const_CATALOG_PARAM_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_CATALOG_PARAM_name);
+
+	zval const_TABLE_METADATA_INVALID_value;
+	zend_string *const_TABLE_METADATA_INVALID_value_str = zend_string_init("TABLE_METADATA_INVALID", strlen("TABLE_METADATA_INVALID"), 1);
+	ZVAL_STR(&const_TABLE_METADATA_INVALID_value, const_TABLE_METADATA_INVALID_value_str);
+	zend_string *const_TABLE_METADATA_INVALID_name = zend_string_init_interned("TABLE_METADATA_INVALID", sizeof("TABLE_METADATA_INVALID") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_TABLE_METADATA_INVALID_name, &const_TABLE_METADATA_INVALID_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_TABLE_METADATA_INVALID_name);
+
+	zval const_TABLE_REFERENCE_INVALID_value;
+	zend_string *const_TABLE_REFERENCE_INVALID_value_str = zend_string_init("TABLE_REFERENCE_INVALID", strlen("TABLE_REFERENCE_INVALID"), 1);
+	ZVAL_STR(&const_TABLE_REFERENCE_INVALID_value, const_TABLE_REFERENCE_INVALID_value_str);
+	zend_string *const_TABLE_REFERENCE_INVALID_name = zend_string_init_interned("TABLE_REFERENCE_INVALID", sizeof("TABLE_REFERENCE_INVALID") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_TABLE_REFERENCE_INVALID_name, &const_TABLE_REFERENCE_INVALID_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_TABLE_REFERENCE_INVALID_name);
+
+	zval const_TABLE_NOT_FOUND_value;
+	zend_string *const_TABLE_NOT_FOUND_value_str = zend_string_init("TABLE_NOT_FOUND", strlen("TABLE_NOT_FOUND"), 1);
+	ZVAL_STR(&const_TABLE_NOT_FOUND_value, const_TABLE_NOT_FOUND_value_str);
+	zend_string *const_TABLE_NOT_FOUND_name = zend_string_init_interned("TABLE_NOT_FOUND", sizeof("TABLE_NOT_FOUND") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_TABLE_NOT_FOUND_name, &const_TABLE_NOT_FOUND_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_TABLE_NOT_FOUND_name);
+
+	zval const_TABLE_KIND_UNSUPPORTED_value;
+	zend_string *const_TABLE_KIND_UNSUPPORTED_value_str = zend_string_init("TABLE_KIND_UNSUPPORTED", strlen("TABLE_KIND_UNSUPPORTED"), 1);
+	ZVAL_STR(&const_TABLE_KIND_UNSUPPORTED_value, const_TABLE_KIND_UNSUPPORTED_value_str);
+	zend_string *const_TABLE_KIND_UNSUPPORTED_name = zend_string_init_interned("TABLE_KIND_UNSUPPORTED", sizeof("TABLE_KIND_UNSUPPORTED") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_TABLE_KIND_UNSUPPORTED_name, &const_TABLE_KIND_UNSUPPORTED_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_TABLE_KIND_UNSUPPORTED_name);
+
+	zval const_TABLE_NAMESPACE_UNSUPPORTED_value;
+	zend_string *const_TABLE_NAMESPACE_UNSUPPORTED_value_str = zend_string_init("TABLE_NAMESPACE_UNSUPPORTED", strlen("TABLE_NAMESPACE_UNSUPPORTED"), 1);
+	ZVAL_STR(&const_TABLE_NAMESPACE_UNSUPPORTED_value, const_TABLE_NAMESPACE_UNSUPPORTED_value_str);
+	zend_string *const_TABLE_NAMESPACE_UNSUPPORTED_name = zend_string_init_interned("TABLE_NAMESPACE_UNSUPPORTED", sizeof("TABLE_NAMESPACE_UNSUPPORTED") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_TABLE_NAMESPACE_UNSUPPORTED_name, &const_TABLE_NAMESPACE_UNSUPPORTED_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_TABLE_NAMESPACE_UNSUPPORTED_name);
+
+	zval const_TABLE_NAMESPACE_UNAVAILABLE_value;
+	zend_string *const_TABLE_NAMESPACE_UNAVAILABLE_value_str = zend_string_init("TABLE_NAMESPACE_UNAVAILABLE", strlen("TABLE_NAMESPACE_UNAVAILABLE"), 1);
+	ZVAL_STR(&const_TABLE_NAMESPACE_UNAVAILABLE_value, const_TABLE_NAMESPACE_UNAVAILABLE_value_str);
+	zend_string *const_TABLE_NAMESPACE_UNAVAILABLE_name = zend_string_init_interned("TABLE_NAMESPACE_UNAVAILABLE", sizeof("TABLE_NAMESPACE_UNAVAILABLE") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_TABLE_NAMESPACE_UNAVAILABLE_name, &const_TABLE_NAMESPACE_UNAVAILABLE_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_TABLE_NAMESPACE_UNAVAILABLE_name);
+
+	zval const_TABLE_PAGE_INVALID_value;
+	zend_string *const_TABLE_PAGE_INVALID_value_str = zend_string_init("TABLE_PAGE_INVALID", strlen("TABLE_PAGE_INVALID"), 1);
+	ZVAL_STR(&const_TABLE_PAGE_INVALID_value, const_TABLE_PAGE_INVALID_value_str);
+	zend_string *const_TABLE_PAGE_INVALID_name = zend_string_init_interned("TABLE_PAGE_INVALID", sizeof("TABLE_PAGE_INVALID") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_TABLE_PAGE_INVALID_name, &const_TABLE_PAGE_INVALID_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_TABLE_PAGE_INVALID_name);
+
+	zval const_TABLE_PAGE_UNSUPPORTED_value;
+	zend_string *const_TABLE_PAGE_UNSUPPORTED_value_str = zend_string_init("TABLE_PAGE_UNSUPPORTED", strlen("TABLE_PAGE_UNSUPPORTED"), 1);
+	ZVAL_STR(&const_TABLE_PAGE_UNSUPPORTED_value, const_TABLE_PAGE_UNSUPPORTED_value_str);
+	zend_string *const_TABLE_PAGE_UNSUPPORTED_name = zend_string_init_interned("TABLE_PAGE_UNSUPPORTED", sizeof("TABLE_PAGE_UNSUPPORTED") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_TABLE_PAGE_UNSUPPORTED_name, &const_TABLE_PAGE_UNSUPPORTED_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_TABLE_PAGE_UNSUPPORTED_name);
+
+	zval const_TABLE_PAGE_METADATA_CHANGED_value;
+	zend_string *const_TABLE_PAGE_METADATA_CHANGED_value_str = zend_string_init("TABLE_PAGE_METADATA_CHANGED", strlen("TABLE_PAGE_METADATA_CHANGED"), 1);
+	ZVAL_STR(&const_TABLE_PAGE_METADATA_CHANGED_value, const_TABLE_PAGE_METADATA_CHANGED_value_str);
+	zend_string *const_TABLE_PAGE_METADATA_CHANGED_name = zend_string_init_interned("TABLE_PAGE_METADATA_CHANGED", sizeof("TABLE_PAGE_METADATA_CHANGED") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_TABLE_PAGE_METADATA_CHANGED_name, &const_TABLE_PAGE_METADATA_CHANGED_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_TABLE_PAGE_METADATA_CHANGED_name);
+
+	zval const_ROW_SNAPSHOT_INVALID_value;
+	zend_string *const_ROW_SNAPSHOT_INVALID_value_str = zend_string_init("ROW_SNAPSHOT_INVALID", strlen("ROW_SNAPSHOT_INVALID"), 1);
+	ZVAL_STR(&const_ROW_SNAPSHOT_INVALID_value, const_ROW_SNAPSHOT_INVALID_value_str);
+	zend_string *const_ROW_SNAPSHOT_INVALID_name = zend_string_init_interned("ROW_SNAPSHOT_INVALID", sizeof("ROW_SNAPSHOT_INVALID") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_ROW_SNAPSHOT_INVALID_name, &const_ROW_SNAPSHOT_INVALID_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_ROW_SNAPSHOT_INVALID_name);
+
+	zval const_ROW_SNAPSHOT_LIMIT_value;
+	zend_string *const_ROW_SNAPSHOT_LIMIT_value_str = zend_string_init("ROW_SNAPSHOT_LIMIT", strlen("ROW_SNAPSHOT_LIMIT"), 1);
+	ZVAL_STR(&const_ROW_SNAPSHOT_LIMIT_value, const_ROW_SNAPSHOT_LIMIT_value_str);
+	zend_string *const_ROW_SNAPSHOT_LIMIT_name = zend_string_init_interned("ROW_SNAPSHOT_LIMIT", sizeof("ROW_SNAPSHOT_LIMIT") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_ROW_SNAPSHOT_LIMIT_name, &const_ROW_SNAPSHOT_LIMIT_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_ROW_SNAPSHOT_LIMIT_name);
+
+	zval const_ROW_INSERT_INVALID_value;
+	zend_string *const_ROW_INSERT_INVALID_value_str = zend_string_init("ROW_INSERT_INVALID", strlen("ROW_INSERT_INVALID"), 1);
+	ZVAL_STR(&const_ROW_INSERT_INVALID_value, const_ROW_INSERT_INVALID_value_str);
+	zend_string *const_ROW_INSERT_INVALID_name = zend_string_init_interned("ROW_INSERT_INVALID", sizeof("ROW_INSERT_INVALID") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_ROW_INSERT_INVALID_name, &const_ROW_INSERT_INVALID_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_ROW_INSERT_INVALID_name);
+
+	zval const_ROW_UPDATE_INVALID_value;
+	zend_string *const_ROW_UPDATE_INVALID_value_str = zend_string_init("ROW_UPDATE_INVALID", strlen("ROW_UPDATE_INVALID"), 1);
+	ZVAL_STR(&const_ROW_UPDATE_INVALID_value, const_ROW_UPDATE_INVALID_value_str);
+	zend_string *const_ROW_UPDATE_INVALID_name = zend_string_init_interned("ROW_UPDATE_INVALID", sizeof("ROW_UPDATE_INVALID") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_ROW_UPDATE_INVALID_name, &const_ROW_UPDATE_INVALID_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_ROW_UPDATE_INVALID_name);
+
+	zval const_ROW_UPDATE_LIMIT_value;
+	zend_string *const_ROW_UPDATE_LIMIT_value_str = zend_string_init("ROW_UPDATE_LIMIT", strlen("ROW_UPDATE_LIMIT"), 1);
+	ZVAL_STR(&const_ROW_UPDATE_LIMIT_value, const_ROW_UPDATE_LIMIT_value_str);
+	zend_string *const_ROW_UPDATE_LIMIT_name = zend_string_init_interned("ROW_UPDATE_LIMIT", sizeof("ROW_UPDATE_LIMIT") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_ROW_UPDATE_LIMIT_name, &const_ROW_UPDATE_LIMIT_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_ROW_UPDATE_LIMIT_name);
+
+	zval const_ROW_CONFLICT_value;
+	zend_string *const_ROW_CONFLICT_value_str = zend_string_init("ROW_CONFLICT", strlen("ROW_CONFLICT"), 1);
+	ZVAL_STR(&const_ROW_CONFLICT_value, const_ROW_CONFLICT_value_str);
+	zend_string *const_ROW_CONFLICT_name = zend_string_init_interned("ROW_CONFLICT", sizeof("ROW_CONFLICT") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_ROW_CONFLICT_name, &const_ROW_CONFLICT_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_ROW_CONFLICT_name);
+
+	zval const_ROW_IDENTITY_AMBIGUOUS_value;
+	zend_string *const_ROW_IDENTITY_AMBIGUOUS_value_str = zend_string_init("ROW_IDENTITY_AMBIGUOUS", strlen("ROW_IDENTITY_AMBIGUOUS"), 1);
+	ZVAL_STR(&const_ROW_IDENTITY_AMBIGUOUS_value, const_ROW_IDENTITY_AMBIGUOUS_value_str);
+	zend_string *const_ROW_IDENTITY_AMBIGUOUS_name = zend_string_init_interned("ROW_IDENTITY_AMBIGUOUS", sizeof("ROW_IDENTITY_AMBIGUOUS") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_ROW_IDENTITY_AMBIGUOUS_name, &const_ROW_IDENTITY_AMBIGUOUS_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_ROW_IDENTITY_AMBIGUOUS_name);
+
+	zval const_ROW_SCHEMA_CHANGED_value;
+	zend_string *const_ROW_SCHEMA_CHANGED_value_str = zend_string_init("ROW_SCHEMA_CHANGED", strlen("ROW_SCHEMA_CHANGED"), 1);
+	ZVAL_STR(&const_ROW_SCHEMA_CHANGED_value, const_ROW_SCHEMA_CHANGED_value_str);
+	zend_string *const_ROW_SCHEMA_CHANGED_name = zend_string_init_interned("ROW_SCHEMA_CHANGED", sizeof("ROW_SCHEMA_CHANGED") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_ROW_SCHEMA_CHANGED_name, &const_ROW_SCHEMA_CHANGED_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_ROW_SCHEMA_CHANGED_name);
+
+	zval const_ROW_WRITE_MISMATCH_value;
+	zend_string *const_ROW_WRITE_MISMATCH_value_str = zend_string_init("ROW_WRITE_MISMATCH", strlen("ROW_WRITE_MISMATCH"), 1);
+	ZVAL_STR(&const_ROW_WRITE_MISMATCH_value, const_ROW_WRITE_MISMATCH_value_str);
+	zend_string *const_ROW_WRITE_MISMATCH_name = zend_string_init_interned("ROW_WRITE_MISMATCH", sizeof("ROW_WRITE_MISMATCH") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_ROW_WRITE_MISMATCH_name, &const_ROW_WRITE_MISMATCH_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_ROW_WRITE_MISMATCH_name);
+
+	zval const_ROW_MUTATION_UNSUPPORTED_value;
+	zend_string *const_ROW_MUTATION_UNSUPPORTED_value_str = zend_string_init("ROW_MUTATION_UNSUPPORTED", strlen("ROW_MUTATION_UNSUPPORTED"), 1);
+	ZVAL_STR(&const_ROW_MUTATION_UNSUPPORTED_value, const_ROW_MUTATION_UNSUPPORTED_value_str);
+	zend_string *const_ROW_MUTATION_UNSUPPORTED_name = zend_string_init_interned("ROW_MUTATION_UNSUPPORTED", sizeof("ROW_MUTATION_UNSUPPORTED") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_ROW_MUTATION_UNSUPPORTED_name, &const_ROW_MUTATION_UNSUPPORTED_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_ROW_MUTATION_UNSUPPORTED_name);
+
+	zval const_ROW_COMMIT_REJECTED_value;
+	zend_string *const_ROW_COMMIT_REJECTED_value_str = zend_string_init("ROW_COMMIT_REJECTED", strlen("ROW_COMMIT_REJECTED"), 1);
+	ZVAL_STR(&const_ROW_COMMIT_REJECTED_value, const_ROW_COMMIT_REJECTED_value_str);
+	zend_string *const_ROW_COMMIT_REJECTED_name = zend_string_init_interned("ROW_COMMIT_REJECTED", sizeof("ROW_COMMIT_REJECTED") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_ROW_COMMIT_REJECTED_name, &const_ROW_COMMIT_REJECTED_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_ROW_COMMIT_REJECTED_name);
+
+	zval const_ROW_COMMIT_INDETERMINATE_value;
+	zend_string *const_ROW_COMMIT_INDETERMINATE_value_str = zend_string_init("ROW_COMMIT_INDETERMINATE", strlen("ROW_COMMIT_INDETERMINATE"), 1);
+	ZVAL_STR(&const_ROW_COMMIT_INDETERMINATE_value, const_ROW_COMMIT_INDETERMINATE_value_str);
+	zend_string *const_ROW_COMMIT_INDETERMINATE_name = zend_string_init_interned("ROW_COMMIT_INDETERMINATE", sizeof("ROW_COMMIT_INDETERMINATE") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_ROW_COMMIT_INDETERMINATE_name, &const_ROW_COMMIT_INDETERMINATE_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_ROW_COMMIT_INDETERMINATE_name);
+
+	zval const_ROW_ROLLBACK_FAILED_value;
+	zend_string *const_ROW_ROLLBACK_FAILED_value_str = zend_string_init("ROW_ROLLBACK_FAILED", strlen("ROW_ROLLBACK_FAILED"), 1);
+	ZVAL_STR(&const_ROW_ROLLBACK_FAILED_value, const_ROW_ROLLBACK_FAILED_value_str);
+	zend_string *const_ROW_ROLLBACK_FAILED_name = zend_string_init_interned("ROW_ROLLBACK_FAILED", sizeof("ROW_ROLLBACK_FAILED") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_ROW_ROLLBACK_FAILED_name, &const_ROW_ROLLBACK_FAILED_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_ROW_ROLLBACK_FAILED_name);
+
+	zval const_GRID_TEMPORAL_VALUE_value;
+	zend_string *const_GRID_TEMPORAL_VALUE_value_str = zend_string_init("GRID_TEMPORAL_VALUE", strlen("GRID_TEMPORAL_VALUE"), 1);
+	ZVAL_STR(&const_GRID_TEMPORAL_VALUE_value, const_GRID_TEMPORAL_VALUE_value_str);
+	zend_string *const_GRID_TEMPORAL_VALUE_name = zend_string_init_interned("GRID_TEMPORAL_VALUE", sizeof("GRID_TEMPORAL_VALUE") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_GRID_TEMPORAL_VALUE_name, &const_GRID_TEMPORAL_VALUE_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_GRID_TEMPORAL_VALUE_name);
+
+	zval const_GRID_TEMPORAL_PRECISION_value;
+	zend_string *const_GRID_TEMPORAL_PRECISION_value_str = zend_string_init("GRID_TEMPORAL_PRECISION", strlen("GRID_TEMPORAL_PRECISION"), 1);
+	ZVAL_STR(&const_GRID_TEMPORAL_PRECISION_value, const_GRID_TEMPORAL_PRECISION_value_str);
+	zend_string *const_GRID_TEMPORAL_PRECISION_name = zend_string_init_interned("GRID_TEMPORAL_PRECISION", sizeof("GRID_TEMPORAL_PRECISION") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_GRID_TEMPORAL_PRECISION_name, &const_GRID_TEMPORAL_PRECISION_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_GRID_TEMPORAL_PRECISION_name);
 
 	zval const_LOCK_NOT_AVAILABLE_value;
 	zend_string *const_LOCK_NOT_AVAILABLE_value_str = zend_string_init("LOCK_NOT_AVAILABLE", strlen("LOCK_NOT_AVAILABLE"), 1);

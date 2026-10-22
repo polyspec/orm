@@ -59,7 +59,7 @@ export const CODEC_ENCODE = 'CODEC_ENCODE';
 export const CODEC_UNSUPPORTED = 'CODEC_UNSUPPORTED';
 // executor: missing secret, bad DSN/paths, transaction misuse
 export const CONFIG = 'CONFIG';
-// executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout); a lock wait of the markdown executor that ends is CANCELED too, and so is a MySQL lock wait timeout (1205, innodb_lock_wait_timeout)
+// executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout); a lock wait of the markdown executor that ends is CANCELED too, and so is a MySQL lock wait timeout (1205, innodb_lock_wait_timeout), and so is a MySQL lock wait timeout (1205, innodb_lock_wait_timeout)
 export const CANCELED = 'CANCELED';
 // executor: a transaction or savepoint callback failed and its rollback failed too; the error keeps both errors
 export const ROLLBACK = 'ROLLBACK';
@@ -71,11 +71,69 @@ export const SUBSCRIBER = 'SUBSCRIBER';
 export const SCHEMA_DIFFERS = 'SCHEMA_DIFFERS';
 // executor
 export const INTERNAL = 'INTERNAL';
+// executor
+export const QUERY_READ_ONLY = 'QUERY_READ_ONLY';
+// executor
+export const QUERY_LIMIT_INVALID = 'QUERY_LIMIT_INVALID';
+// executor
+export const CATALOG_LIMIT = 'CATALOG_LIMIT';
+// executor
+export const CATALOG_VALUE = 'CATALOG_VALUE';
+// executor
+export const CATALOG_PARAM = 'CATALOG_PARAM';
+// executor
+export const TABLE_METADATA_INVALID = 'TABLE_METADATA_INVALID';
+// executor
+export const TABLE_REFERENCE_INVALID = 'TABLE_REFERENCE_INVALID';
+// executor
+export const TABLE_NOT_FOUND = 'TABLE_NOT_FOUND';
+// executor
+export const TABLE_KIND_UNSUPPORTED = 'TABLE_KIND_UNSUPPORTED';
+// executor
+export const TABLE_NAMESPACE_UNSUPPORTED = 'TABLE_NAMESPACE_UNSUPPORTED';
+// executor
+export const TABLE_NAMESPACE_UNAVAILABLE = 'TABLE_NAMESPACE_UNAVAILABLE';
+// executor
+export const TABLE_PAGE_INVALID = 'TABLE_PAGE_INVALID';
+// executor
+export const TABLE_PAGE_UNSUPPORTED = 'TABLE_PAGE_UNSUPPORTED';
+// executor
+export const TABLE_PAGE_METADATA_CHANGED = 'TABLE_PAGE_METADATA_CHANGED';
+// executor
+export const ROW_SNAPSHOT_INVALID = 'ROW_SNAPSHOT_INVALID';
+// executor
+export const ROW_SNAPSHOT_LIMIT = 'ROW_SNAPSHOT_LIMIT';
+// executor
+export const ROW_INSERT_INVALID = 'ROW_INSERT_INVALID';
+// executor
+export const ROW_UPDATE_INVALID = 'ROW_UPDATE_INVALID';
+// executor
+export const ROW_UPDATE_LIMIT = 'ROW_UPDATE_LIMIT';
+// executor
+export const ROW_CONFLICT = 'ROW_CONFLICT';
+// executor
+export const ROW_IDENTITY_AMBIGUOUS = 'ROW_IDENTITY_AMBIGUOUS';
+// executor
+export const ROW_SCHEMA_CHANGED = 'ROW_SCHEMA_CHANGED';
+// executor
+export const ROW_WRITE_MISMATCH = 'ROW_WRITE_MISMATCH';
+// executor
+export const ROW_MUTATION_UNSUPPORTED = 'ROW_MUTATION_UNSUPPORTED';
+// executor
+export const ROW_COMMIT_REJECTED = 'ROW_COMMIT_REJECTED';
+// executor
+export const ROW_COMMIT_INDETERMINATE = 'ROW_COMMIT_INDETERMINATE';
+// executor
+export const ROW_ROLLBACK_FAILED = 'ROW_ROLLBACK_FAILED';
+// executor
+export const GRID_TEMPORAL_VALUE = 'GRID_TEMPORAL_VALUE';
+// executor
+export const GRID_TEMPORAL_PRECISION = 'GRID_TEMPORAL_PRECISION';
 // driver: a NOWAIT lock could not be acquired immediately
 export const LOCK_NOT_AVAILABLE = 'LOCK_NOT_AVAILABLE';
 // driver: MySQL 1213 / SQLSTATE 40001 / PostgreSQL 40P01 / SQLite LOCKED; retries require TransactionOptions
 export const DEADLOCK = 'DEADLOCK';
-// driver: MySQL 1062 / SQLSTATE 23000
+// driver: MySQL 1062 (SQLSTATE 23000), PostgreSQL 23505, SQLite 2067 and 1555
 export const DUPLICATE_KEY = 'DUPLICATE_KEY';
 // driver: MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787, and SQLite 1811 "FOREIGN KEY constraint failed" of a RESTRICT action
 export const FOREIGN_KEY = 'FOREIGN_KEY';

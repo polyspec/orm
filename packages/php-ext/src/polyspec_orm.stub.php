@@ -810,7 +810,7 @@ final class Code
     public const string CODEC_UNSUPPORTED = 'CODEC_UNSUPPORTED';
     /** executor: missing secret, bad DSN/paths, transaction misuse */
     public const string CONFIG = 'CONFIG';
-    /** executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout); a lock wait of the markdown executor that ends is CANCELED too, and so is a MySQL lock wait timeout (1205, innodb_lock_wait_timeout) */
+    /** executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout); a lock wait of the markdown executor that ends is CANCELED too, and so is a MySQL lock wait timeout (1205, innodb_lock_wait_timeout), and so is a MySQL lock wait timeout (1205, innodb_lock_wait_timeout) */
     public const string CANCELED = 'CANCELED';
     /** executor: a transaction or savepoint callback failed and its rollback failed too; the error keeps both errors */
     public const string ROLLBACK = 'ROLLBACK';
@@ -822,11 +822,69 @@ final class Code
     public const string SCHEMA_DIFFERS = 'SCHEMA_DIFFERS';
     /** executor */
     public const string INTERNAL = 'INTERNAL';
+    /** executor */
+    public const string QUERY_READ_ONLY = 'QUERY_READ_ONLY';
+    /** executor */
+    public const string QUERY_LIMIT_INVALID = 'QUERY_LIMIT_INVALID';
+    /** executor */
+    public const string CATALOG_LIMIT = 'CATALOG_LIMIT';
+    /** executor */
+    public const string CATALOG_VALUE = 'CATALOG_VALUE';
+    /** executor */
+    public const string CATALOG_PARAM = 'CATALOG_PARAM';
+    /** executor */
+    public const string TABLE_METADATA_INVALID = 'TABLE_METADATA_INVALID';
+    /** executor */
+    public const string TABLE_REFERENCE_INVALID = 'TABLE_REFERENCE_INVALID';
+    /** executor */
+    public const string TABLE_NOT_FOUND = 'TABLE_NOT_FOUND';
+    /** executor */
+    public const string TABLE_KIND_UNSUPPORTED = 'TABLE_KIND_UNSUPPORTED';
+    /** executor */
+    public const string TABLE_NAMESPACE_UNSUPPORTED = 'TABLE_NAMESPACE_UNSUPPORTED';
+    /** executor */
+    public const string TABLE_NAMESPACE_UNAVAILABLE = 'TABLE_NAMESPACE_UNAVAILABLE';
+    /** executor */
+    public const string TABLE_PAGE_INVALID = 'TABLE_PAGE_INVALID';
+    /** executor */
+    public const string TABLE_PAGE_UNSUPPORTED = 'TABLE_PAGE_UNSUPPORTED';
+    /** executor */
+    public const string TABLE_PAGE_METADATA_CHANGED = 'TABLE_PAGE_METADATA_CHANGED';
+    /** executor */
+    public const string ROW_SNAPSHOT_INVALID = 'ROW_SNAPSHOT_INVALID';
+    /** executor */
+    public const string ROW_SNAPSHOT_LIMIT = 'ROW_SNAPSHOT_LIMIT';
+    /** executor */
+    public const string ROW_INSERT_INVALID = 'ROW_INSERT_INVALID';
+    /** executor */
+    public const string ROW_UPDATE_INVALID = 'ROW_UPDATE_INVALID';
+    /** executor */
+    public const string ROW_UPDATE_LIMIT = 'ROW_UPDATE_LIMIT';
+    /** executor */
+    public const string ROW_CONFLICT = 'ROW_CONFLICT';
+    /** executor */
+    public const string ROW_IDENTITY_AMBIGUOUS = 'ROW_IDENTITY_AMBIGUOUS';
+    /** executor */
+    public const string ROW_SCHEMA_CHANGED = 'ROW_SCHEMA_CHANGED';
+    /** executor */
+    public const string ROW_WRITE_MISMATCH = 'ROW_WRITE_MISMATCH';
+    /** executor */
+    public const string ROW_MUTATION_UNSUPPORTED = 'ROW_MUTATION_UNSUPPORTED';
+    /** executor */
+    public const string ROW_COMMIT_REJECTED = 'ROW_COMMIT_REJECTED';
+    /** executor */
+    public const string ROW_COMMIT_INDETERMINATE = 'ROW_COMMIT_INDETERMINATE';
+    /** executor */
+    public const string ROW_ROLLBACK_FAILED = 'ROW_ROLLBACK_FAILED';
+    /** executor */
+    public const string GRID_TEMPORAL_VALUE = 'GRID_TEMPORAL_VALUE';
+    /** executor */
+    public const string GRID_TEMPORAL_PRECISION = 'GRID_TEMPORAL_PRECISION';
     /** driver: a NOWAIT lock could not be acquired immediately */
     public const string LOCK_NOT_AVAILABLE = 'LOCK_NOT_AVAILABLE';
     /** driver: MySQL 1213 / SQLSTATE 40001 / PostgreSQL 40P01 / SQLite LOCKED; retries require TransactionOptions */
     public const string DEADLOCK = 'DEADLOCK';
-    /** driver: MySQL 1062 / SQLSTATE 23000 */
+    /** driver: MySQL 1062 (SQLSTATE 23000), PostgreSQL 23505, SQLite 2067 and 1555 */
     public const string DUPLICATE_KEY = 'DUPLICATE_KEY';
     /** driver: MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787, and SQLite 1811 "FOREIGN KEY constraint failed" of a RESTRICT action */
     public const string FOREIGN_KEY = 'FOREIGN_KEY';

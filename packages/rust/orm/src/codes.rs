@@ -59,7 +59,7 @@ pub const CODEC_ENCODE: &str = "CODEC_ENCODE";
 pub const CODEC_UNSUPPORTED: &str = "CODEC_UNSUPPORTED";
 /// executor: missing secret, bad DSN/paths, transaction misuse
 pub const CONFIG: &str = "CONFIG";
-/// executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout); a lock wait of the markdown executor that ends is CANCELED too, and so is a MySQL lock wait timeout (1205, innodb_lock_wait_timeout)
+/// executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout); a lock wait of the markdown executor that ends is CANCELED too, and so is a MySQL lock wait timeout (1205, innodb_lock_wait_timeout), and so is a MySQL lock wait timeout (1205, innodb_lock_wait_timeout)
 pub const CANCELED: &str = "CANCELED";
 /// executor: a transaction or savepoint callback failed and its rollback failed too; the error keeps both errors
 pub const ROLLBACK: &str = "ROLLBACK";
@@ -71,11 +71,69 @@ pub const SUBSCRIBER: &str = "SUBSCRIBER";
 pub const SCHEMA_DIFFERS: &str = "SCHEMA_DIFFERS";
 /// executor
 pub const INTERNAL: &str = "INTERNAL";
+/// executor
+pub const QUERY_READ_ONLY: &str = "QUERY_READ_ONLY";
+/// executor
+pub const QUERY_LIMIT_INVALID: &str = "QUERY_LIMIT_INVALID";
+/// executor
+pub const CATALOG_LIMIT: &str = "CATALOG_LIMIT";
+/// executor
+pub const CATALOG_VALUE: &str = "CATALOG_VALUE";
+/// executor
+pub const CATALOG_PARAM: &str = "CATALOG_PARAM";
+/// executor
+pub const TABLE_METADATA_INVALID: &str = "TABLE_METADATA_INVALID";
+/// executor
+pub const TABLE_REFERENCE_INVALID: &str = "TABLE_REFERENCE_INVALID";
+/// executor
+pub const TABLE_NOT_FOUND: &str = "TABLE_NOT_FOUND";
+/// executor
+pub const TABLE_KIND_UNSUPPORTED: &str = "TABLE_KIND_UNSUPPORTED";
+/// executor
+pub const TABLE_NAMESPACE_UNSUPPORTED: &str = "TABLE_NAMESPACE_UNSUPPORTED";
+/// executor
+pub const TABLE_NAMESPACE_UNAVAILABLE: &str = "TABLE_NAMESPACE_UNAVAILABLE";
+/// executor
+pub const TABLE_PAGE_INVALID: &str = "TABLE_PAGE_INVALID";
+/// executor
+pub const TABLE_PAGE_UNSUPPORTED: &str = "TABLE_PAGE_UNSUPPORTED";
+/// executor
+pub const TABLE_PAGE_METADATA_CHANGED: &str = "TABLE_PAGE_METADATA_CHANGED";
+/// executor
+pub const ROW_SNAPSHOT_INVALID: &str = "ROW_SNAPSHOT_INVALID";
+/// executor
+pub const ROW_SNAPSHOT_LIMIT: &str = "ROW_SNAPSHOT_LIMIT";
+/// executor
+pub const ROW_INSERT_INVALID: &str = "ROW_INSERT_INVALID";
+/// executor
+pub const ROW_UPDATE_INVALID: &str = "ROW_UPDATE_INVALID";
+/// executor
+pub const ROW_UPDATE_LIMIT: &str = "ROW_UPDATE_LIMIT";
+/// executor
+pub const ROW_CONFLICT: &str = "ROW_CONFLICT";
+/// executor
+pub const ROW_IDENTITY_AMBIGUOUS: &str = "ROW_IDENTITY_AMBIGUOUS";
+/// executor
+pub const ROW_SCHEMA_CHANGED: &str = "ROW_SCHEMA_CHANGED";
+/// executor
+pub const ROW_WRITE_MISMATCH: &str = "ROW_WRITE_MISMATCH";
+/// executor
+pub const ROW_MUTATION_UNSUPPORTED: &str = "ROW_MUTATION_UNSUPPORTED";
+/// executor
+pub const ROW_COMMIT_REJECTED: &str = "ROW_COMMIT_REJECTED";
+/// executor
+pub const ROW_COMMIT_INDETERMINATE: &str = "ROW_COMMIT_INDETERMINATE";
+/// executor
+pub const ROW_ROLLBACK_FAILED: &str = "ROW_ROLLBACK_FAILED";
+/// executor
+pub const GRID_TEMPORAL_VALUE: &str = "GRID_TEMPORAL_VALUE";
+/// executor
+pub const GRID_TEMPORAL_PRECISION: &str = "GRID_TEMPORAL_PRECISION";
 /// driver: a NOWAIT lock could not be acquired immediately
 pub const LOCK_NOT_AVAILABLE: &str = "LOCK_NOT_AVAILABLE";
 /// driver: MySQL 1213 / SQLSTATE 40001 / PostgreSQL 40P01 / SQLite LOCKED; retries require TransactionOptions
 pub const DEADLOCK: &str = "DEADLOCK";
-/// driver: MySQL 1062 / SQLSTATE 23000
+/// driver: MySQL 1062 (SQLSTATE 23000), PostgreSQL 23505, SQLite 2067 and 1555
 pub const DUPLICATE_KEY: &str = "DUPLICATE_KEY";
 /// driver: MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787, and SQLite 1811 "FOREIGN KEY constraint failed" of a RESTRICT action
 pub const FOREIGN_KEY: &str = "FOREIGN_KEY";

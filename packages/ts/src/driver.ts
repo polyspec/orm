@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { connect as netConnect, isIP } from 'node:net';
 import mysql, { type Pool as MySqlPool, type PoolConnection as MySqlConnection } from 'mysql2/promise';
+import type { FieldPacket } from 'mysql2';
 import pg from 'pg';
 import { PostgresListener } from './listen.js';
 import { OrmError } from './runtime_error.js';
@@ -25,10 +26,23 @@ export type DriverName = 'mysql' | 'postgres' | 'sqlite';
 export type Isolation = 'read_uncommitted' | 'read_committed' | 'repeatable_read' | 'serializable';
 export type DriverValue = null | boolean | number | string | bigint | Uint8Array;
 
+/** A column of a result: its name, and its native type name as the driver reports it (MySQL and PostgreSQL names, the SQLite declared type). */
+export interface DriverColumn { name: string; type: string; }
+
 export interface DriverResult {
   rows: unknown[][];
   affected: number;
   insertId: number | bigint | string | null;
+  columns: DriverColumn[];
+}
+
+/**
+ * Receives a streamed result: columns once, before the first row, then each row. A row returns false to stop the result; the
+ * statement then ends and the connection is no longer usable for the rows that remain, so the caller discards it.
+ */
+export interface RowSink {
+  columns(columns: DriverColumn[]): void;
+  row(values: unknown[]): boolean;
 }
 
 export interface PoolStats { maxOpenConnections: number; openConnections: number; inUse: number; idle: number; }
@@ -70,6 +84,8 @@ export interface DriverPool extends DriverConnection {
 export interface DriverSession extends DriverConnection {
   /** Runs a statement that is not prepared (transaction control, savepoints, locks, session values, schema statements). */
   control(sql: string, params: readonly DriverValue[], done: StatementDone): Promise<DriverResult>;
+  /** Streams the rows of one statement into sink, which may stop it early (see RowSink). */
+  scan(sql: string, params: readonly DriverValue[], sink: RowSink, done: StatementDone): Promise<void>;
   /** Whether the SQLite connection is inside a transaction. Other drivers do not report it. */
   inTransaction?(): boolean;
   /**
@@ -250,17 +266,91 @@ export function isolationSql(isolation: Isolation): string {
   return isolation.replaceAll('_', ' ').toUpperCase();
 }
 
+/** The native type name of a MySQL column: the type code, UNSIGNED for an unsigned integer, and BLOB, BINARY or VARBINARY for binary strings. */
+function mysqlColumn(field: FieldPacket): DriverColumn {
+  const code = Number(field.columnType ?? -1);
+  const charset = field.characterSet ?? 0;
+  const flags = field.flags ?? 0;
+  const base = MYSQL_TYPE_NAMES[code] ?? `MYSQL_TYPE_${code}`;
+  let type = base;
+  if (code >= 249 && code <= 252) type = charset === MYSQL_BINARY_CHARSET ? 'BLOB' : 'TEXT';
+  else if (code === 15 || code === 253 || code === 254) {
+    if (charset === MYSQL_BINARY_CHARSET) type = code === 254 ? 'BINARY' : 'VARBINARY';
+  }
+  if (MYSQL_INTEGER_TYPES.has(base) && (Number(flags) & MYSQL_UNSIGNED_FLAG) !== 0) type = `${base} UNSIGNED`;
+  return { name: field.name, type };
+}
+
+const MYSQL_BINARY_CHARSET = 63;
+const MYSQL_UNSIGNED_FLAG = 32;
+const MYSQL_INTEGER_TYPES = new Set(['TINYINT', 'SMALLINT', 'MEDIUMINT', 'INT', 'BIGINT']);
+/** The MySQL column type codes of the protocol, by name (mysql2 TypeCode). */
+const MYSQL_TYPE_NAMES: Record<number, string> = {
+  0: 'DECIMAL', 1: 'TINYINT', 2: 'SMALLINT', 3: 'INT', 4: 'FLOAT', 5: 'DOUBLE', 6: 'NULL', 7: 'TIMESTAMP', 8: 'BIGINT', 9: 'MEDIUMINT',
+  10: 'DATE', 11: 'TIME', 12: 'DATETIME', 13: 'YEAR', 14: 'DATE', 15: 'VARCHAR', 16: 'BIT', 245: 'JSON', 246: 'DECIMAL', 247: 'ENUM',
+  248: 'SET', 249: 'BLOB', 250: 'BLOB', 251: 'BLOB', 252: 'BLOB', 253: 'VARCHAR', 254: 'CHAR', 255: 'GEOMETRY',
+};
+
+/** The PostgreSQL native type name of a column's type OID; an OID without a name is reported as OID:<n>. */
+const PG_TYPE_NAMES: Record<number, string> = {
+  16: 'BOOL', 17: 'BYTEA', 18: 'CHAR', 19: 'NAME', 20: 'INT8', 21: 'INT2', 23: 'INT4', 25: 'TEXT', 26: 'OID', 114: 'JSON', 142: 'XML',
+  700: 'FLOAT4', 701: 'FLOAT8', 790: 'MONEY', 1042: 'BPCHAR', 1043: 'VARCHAR', 1082: 'DATE', 1083: 'TIME', 1114: 'TIMESTAMP',
+  1184: 'TIMESTAMPTZ', 1186: 'INTERVAL', 1266: 'TIMETZ', 1560: 'BIT', 1562: 'VARBIT', 1700: 'NUMERIC', 2950: 'UUID', 3802: 'JSONB',
+};
+
+/** The row description fields of a pg result, which the query object exposes as result.fields. */
+function pgFields(result: unknown): Array<{ name: string; dataTypeID: number }> {
+  const fields = Reflect.get(result as object, 'fields');
+  if (!Array.isArray(fields)) throw new OrmError(codes.INTERNAL, 'a pg result has no fields');
+  return fields as Array<{ name: string; dataTypeID: number }>;
+}
+
+function pgColumn(field: { name: string; dataTypeID: number }): DriverColumn {
+  return { name: field.name, type: PG_TYPE_NAMES[field.dataTypeID] ?? `OID:${field.dataTypeID}` };
+}
+
 async function mysqlExecute(connection: MySqlPool | MySqlConnection, sql: string, params: readonly DriverValue[]): Promise<DriverResult> {
-  const [value] = await connection.execute({ sql, rowsAsArray: true }, [...params]);
-  if (Array.isArray(value)) return { rows: arrayRows(value), affected: 0, insertId: null };
+  const [value, fields] = await connection.execute({ sql, rowsAsArray: true }, [...params]);
+  const columns = (fields ?? []).map(mysqlColumn);
+  if (Array.isArray(value)) return { rows: arrayRows(value), affected: 0, insertId: null, columns };
   const result = value as { affectedRows: number; insertId: number };
-  return { rows: [], affected: result.affectedRows, insertId: result.insertId || null };
+  return { rows: [], affected: result.affectedRows, insertId: result.insertId || null, columns };
 }
 
 async function mysqlControl(connection: MySqlConnection, sql: string, params: readonly DriverValue[]): Promise<DriverResult> {
-  const [value] = await connection.query({ sql, rowsAsArray: true }, [...params]);
-  if (Array.isArray(value)) return { rows: arrayRows(value), affected: 0, insertId: null };
-  return { rows: [], affected: (value as { affectedRows: number }).affectedRows, insertId: null };
+  const [value, fields] = await connection.query({ sql, rowsAsArray: true }, [...params]);
+  const columns = (fields ?? []).map(mysqlColumn);
+  if (Array.isArray(value)) return { rows: arrayRows(value), affected: 0, insertId: null, columns };
+  return { rows: [], affected: (value as { affectedRows: number }).affectedRows, insertId: null, columns };
+}
+
+/** Streams the rows of one MySQL statement. A row that sink refuses ends the statement; the connection is then discarded by its caller. */
+function mysqlScan(connection: MySqlConnection, sql: string, params: readonly DriverValue[], sink: RowSink): Promise<void> {
+  // mysql2's promise connection wraps the callback connection, whose query object emits the rows as they are read.
+  const core = Reflect.get(connection, 'connection') as unknown as { query(options: { sql: string; rowsAsArray: boolean }, values: DriverValue[]): CoreQuery };
+  return new Promise<void>((resolve, reject) => {
+    let stopped = false;
+    const query = core.query({ sql, rowsAsArray: true }, [...params]);
+    query.on('fields', (fields: FieldPacket[] | undefined) => {
+      sink.columns((fields ?? []).map(mysqlColumn));
+    });
+    query.on('result', (row: unknown) => {
+      if (stopped) return;
+      if (!sink.row(arrayRows([row])[0] ?? [])) {
+        stopped = true;
+        resolve();
+      }
+    });
+    query.on('end', () => { if (!stopped) resolve(); });
+    query.on('error', (error: unknown) => { if (!stopped) reject(error); });
+  });
+}
+
+/** The callback query object of mysql2: an event emitter that streams the rows of one statement. */
+interface CoreQuery {
+  on(event: 'fields', listener: (fields: FieldPacket[] | undefined) => void): CoreQuery;
+  on(event: 'result', listener: (row: unknown) => void): CoreQuery;
+  on(event: 'end' | 'error', listener: (error?: unknown) => void): CoreQuery;
 }
 
 /** Stops the statement running on connection from another connection of the pool. */
@@ -325,9 +415,16 @@ class MySqlSession implements DriverSession {
   public control(sql: string, params: readonly DriverValue[], done: StatementDone): Promise<DriverResult> {
     return observed(this.name, sql, done, 'statement', () => mysqlControl(this.connection, sql, params));
   }
+  public scan(sql: string, params: readonly DriverValue[], sink: RowSink, done: StatementDone): Promise<void> {
+    return observed(this.name, sql, done, 'statement', () => mysqlScan(this.connection, sql, params, sink));
+  }
   public release(discard: boolean): void {
-    if (discard) this.connection.destroy();
-    else this.connection.release();
+    // A discarded connection can still have rows in flight (a streamed result that stopped early). mysql2's destroy ends the stream
+    // gracefully, so the server would keep sending; the socket itself is destroyed so the server ends the statement.
+    if (discard) {
+      this.connection.destroy();
+      (Reflect.get(this.connection, 'connection') as unknown as { stream: { destroy(): void } }).stream.destroy();
+    } else this.connection.release();
   }
 }
 
@@ -372,7 +469,37 @@ async function pgExecute(client: pg.PoolClient, sql: string, params: readonly Dr
     await observed('postgres', deallocate, done, 'deallocate', () => afterFailure(client.query(deallocate), failure));
   }
   const rows = arrayRows(result.rows);
-  return { rows, affected: result.rowCount ?? 0, insertId: insertIdOf(rows) };
+  return { rows, affected: result.rowCount ?? 0, insertId: insertIdOf(rows), columns: result.fields.map(pgColumn) };
+}
+
+/** Streams the rows of one PostgreSQL statement. A row that sink refuses ends the statement; the connection is then discarded by its caller. */
+function pgScan(client: pg.PoolClient, sql: string, params: readonly DriverValue[], sink: RowSink): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    let announced = false;
+    let stopped = false;
+    const announce = (fields: Array<{ name: string; dataTypeID: number }>): void => {
+      if (announced) return;
+      announced = true;
+      sink.columns(fields.map(pgColumn));
+    };
+    const config = { text: sql, values: [...params], rowMode: 'array' } as unknown as pg.QueryConfig;
+    const query = new pg.Query(config);
+    query.on('row', (row: unknown[], result: unknown) => {
+      if (stopped) return;
+      announce(pgFields(result));
+      if (!sink.row(row)) {
+        stopped = true;
+        resolve();
+      }
+    });
+    query.on('end', (result: unknown) => {
+      if (stopped) return;
+      announce(pgFields(result));
+      resolve();
+    });
+    query.on('error', (error: unknown) => { if (!stopped) reject(error); });
+    client.query(query);
+  });
 }
 
 /**
@@ -466,6 +593,8 @@ class PostgresSession implements DriverSession {
     client.on('error', this.onError);
   }
   public release(discard: boolean): void {
+    // A discarded client can still have rows in flight (a streamed result that stopped early); the socket is destroyed so that the server ends the statement.
+    if (discard) (this.client as unknown as { connection: { stream: { destroy(): void } } }).connection.stream.destroy();
     this.client.removeListener('error', this.onError);
     this.done(discard || this.failure !== undefined);
   }
@@ -473,9 +602,12 @@ class PostgresSession implements DriverSession {
     const work = pgExecute(this.client, sql, params, this.cacheSize, done, () => this.failure);
     return signal === undefined ? work : cancellable(this.name, signal, () => pgCancel(this.config, this.client), work);
   }
+  public scan(sql: string, params: readonly DriverValue[], sink: RowSink, done: StatementDone): Promise<void> {
+    return observed(this.name, sql, done, 'statement', () => pgScan(this.client, sql, params, sink));
+  }
   public async control(sql: string, params: readonly DriverValue[], done: StatementDone): Promise<DriverResult> {
     const result = await observed(this.name, sql, done, 'statement', () => afterFailure(this.client.query({ text: sql, values: [...params], rowMode: 'array' }), () => this.failure));
-    return { rows: result.rows as unknown[][], affected: result.rowCount ?? 0, insertId: null };
+    return { rows: result.rows as unknown[][], affected: result.rowCount ?? 0, insertId: null, columns: result.fields.map(pgColumn) };
   }
 }
 
@@ -495,16 +627,36 @@ class SqliteState {
   }
 }
 
+/** The statement's parameters as node:sqlite binds them; a boolean is 0 or 1. */
+function sqliteValues(params: readonly DriverValue[]): Array<null | number | string | bigint | Uint8Array> {
+  return params.map(value => typeof value === 'boolean' ? Number(value) : value) as Array<null | number | string | bigint | Uint8Array>;
+}
+
+function sqliteColumns(statement: ReturnType<DatabaseSync['prepare']>): DriverColumn[] {
+  return statement.columns().map(column => ({ name: column.name, type: column.type ?? '' }));
+}
+
 function sqliteExecute(state: SqliteState, sql: string, params: readonly DriverValue[]): DriverResult {
   const statement = state.statement(sql);
-  const values = params.map(value => typeof value === 'boolean' ? Number(value) : value) as Array<null | number | string | bigint | Uint8Array>;
+  const values = sqliteValues(params);
   if (/^\s*(?:SELECT|WITH|PRAGMA)\b/i.test(sql) || /\bRETURNING\b/i.test(sql)) {
     statement.setReturnArrays(true);
+    const columns = sqliteColumns(statement);
     const rows = arrayRows(statement.all(...values));
-    return { rows, affected: rows.length, insertId: insertIdOf(rows) };
+    return { rows, affected: rows.length, insertId: insertIdOf(rows), columns };
   }
   const result = statement.run(...values);
-  return { rows: [], affected: Number(result.changes), insertId: result.lastInsertRowid };
+  return { rows: [], affected: Number(result.changes), insertId: result.lastInsertRowid, columns: [] };
+}
+
+/** Streams the rows of one SQLite statement. node:sqlite reads a row when the loop asks for it, so a break stops the statement at once. */
+function sqliteScan(state: SqliteState, sql: string, params: readonly DriverValue[], sink: RowSink): void {
+  const statement = state.statement(sql);
+  statement.setReturnArrays(true);
+  sink.columns(sqliteColumns(statement));
+  for (const row of statement.iterate(...sqliteValues(params))) {
+    if (!sink.row(arrayRows([row])[0] ?? [])) break;
+  }
 }
 
 class SqlitePoolDriver implements DriverPool {
@@ -549,6 +701,9 @@ class SqliteSession implements DriverSession {
   }
   public control(sql: string, params: readonly DriverValue[], done: StatementDone): Promise<DriverResult> {
     return observed(this.name, sql, done, 'statement', () => sqliteExecute(this.state, sql, params));
+  }
+  public scan(sql: string, params: readonly DriverValue[], sink: RowSink, done: StatementDone): Promise<void> {
+    return observed(this.name, sql, done, 'statement', () => sqliteScan(this.state, sql, params, sink));
   }
   public inTransaction(): boolean { return this.state.db.isTransaction; }
   public release(): void {
@@ -736,7 +891,11 @@ function boundMySqlPool(pool: MySqlCorePool, bounds: PoolBounds): void {
  */
 const MYSQL_SQL_MODE = 'STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
 
-export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, statementCacheSize: number, statementTimeoutMs = 0): DriverPool {
+/**
+ * Opens the pool of a DSN. With exact, the pool keeps integers exact: MySQL reports a BIGINT outside the safe range as a string
+ * instead of a rounded number, and PostgreSQL int8 as text, so the catalog connection reads every integer without rounding.
+ */
+export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, statementCacheSize: number, statementTimeoutMs = 0, exact = false): DriverPool {
   const url = new URL(dsn);
   url.searchParams.delete('timezone');
   switch (parsed.driver) {
@@ -757,6 +916,7 @@ export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, stat
         dateStrings: true,
         decimalNumbers: false,
         jsonStrings: true,
+        supportBigNumbers: exact,
         maxPreparedStatements: statementCacheSize,
       });
       const setup: SessionSetup = {};
@@ -774,6 +934,7 @@ export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, stat
       const config: pg.PoolConfig = { connectionString: url.toString(), max: bounds.size };
       // pg closes a connection maxLifetimeSeconds after it opened, idle or at its release.
       if (bounds.lifetimeMs > 0) config.maxLifetimeSeconds = bounds.lifetimeMs / 1000;
+      if (exact) config.types = { getTypeParser: (oid: number, format?: 'text' | 'binary') => (oid === 20 ? (value: string): string => value : pg.types.getTypeParser(oid, format)) };
       config.options = '-c TimeZone=UTC';
       if (statementTimeoutMs > 0) config.options += ` -c statement_timeout=${statementTimeoutMs}`;
       return new PostgresPoolDriver(new pg.Pool(config), statementCacheSize, bounds.size, bounds.idleSize, config);
