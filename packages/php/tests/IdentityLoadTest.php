@@ -14,6 +14,10 @@
 // [--filter <case id>]
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
+use PDO;
+use RuntimeException;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Large;

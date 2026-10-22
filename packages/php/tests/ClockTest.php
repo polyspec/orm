@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // The clock of datetime(6) columns, on SQLite, MySQL and PostgreSQL. An
 // insert of clock_event omits created_ts, whose default is `now`: SQLite and
 // PostgreSQL bind the client clock of the `now` slot, MySQL applies the database
@@ -14,6 +16,9 @@ declare(strict_types=1);
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ClockTest.php
 // [--filter <case>]
 
+use DateTimeImmutable;
+use DateTimeZone;
+use PDO;
 use Polyspec\Orm\Tests\ClockCase\ClockEvent;
 use Polyspec\Orm\Tests\ClockMarkCase\ClockMark;
 use Polyspec\Orm\Config;

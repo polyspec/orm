@@ -7,6 +7,8 @@
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AutoloadTest.php
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 use PHPUnit\Framework\Attributes\Large;
 use PHPUnit\Framework\TestCase;
 

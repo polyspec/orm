@@ -2,11 +2,15 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // The shared 2000-table document from tests/dbspec/stress.mts rendered for
 // SQLite, applied to a new file and introspected under the configured
 // memory_limit: the document keeps its schema text and no object is
 // unsupported.
 
+use PDO;
+use RuntimeException;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Large;

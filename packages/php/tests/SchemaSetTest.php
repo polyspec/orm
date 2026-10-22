@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // Several dbspec document sets in one process, on SQLite, MySQL and
 // PostgreSQL. The generated bench models (packages/php/gen) and the models of
 // contracts/fixtures/decimal_schema.dbs, generated into their own namespace,
@@ -20,6 +22,9 @@ declare(strict_types=1);
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/SchemaSetTest.php
 // [--filter <case>]
 
+use DateTimeZone;
+use PDO;
+use PDOException;
 use Polyspec\Orm\Tests\Model\User;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;

@@ -2,10 +2,13 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // MysqlCatalog::createChecks, the reader of a SHOW CREATE TABLE statement (T62-4-8), reads every case of
 // tests/dbspec/show-create.json to the body that the case expects in CHECK_CLAUSE form, or to no body for a
 // name the statement does not have.
 
+use ReflectionMethod;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;

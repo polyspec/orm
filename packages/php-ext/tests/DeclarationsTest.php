@@ -2,11 +2,15 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Extension\Tests;
+
 // The extension's declarations of the classes it registers match src/polyspec_orm.stub.php and the PHP client. The
 // extension registers the client's own names, so neither the stub nor the client can be loaded into the process that
 // loads it: this test reads the extension in its own process and runs declarations.php without the extension for the
 // stub and the client. The stub is the inventory of the interface check (contracts/symbols/php-extension.json).
 
+use ReflectionExtension;
+use RuntimeException;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Large;
 use PHPUnit\Framework\TestCase;

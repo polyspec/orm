@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // Polyspec\Orm\Dbspec\Dbspec::introspect on MySQL, reading a canned catalog
 // (T62-4-8). The double CannedCatalogPdo answers each catalog query of mysql_read with the rows of
 // tests/dbspec/show-create.json ("catalog" and each case), so the reader of shown_check goes to SHOW CREATE TABLE
@@ -9,6 +11,7 @@ declare(strict_types=1);
 // of the same answers (packages/go/engine/dbspec show_create_introspect_test.go reads the same file), or the error of a
 // CHECK the statement lacks.
 
+use RuntimeException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;

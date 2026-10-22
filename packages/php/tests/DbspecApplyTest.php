@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // Applies the plans.json chains through Polyspec\Orm\Dbspec\Dbspec::apply, ::recover,
 // ::rollback and ::finalize on MySQL, PostgreSQL and SQLite (docs/spec/plans.md
 // "Apply"): the chain of create-from-empty and rename-table-and-column with
@@ -17,6 +19,12 @@ declare(strict_types=1);
 // ORM_TEST_PGBOUNCER_DSN the transaction pooler; the test
 // fails when one is unset.
 
+use Closure;
+use DateTimeImmutable;
+use LogicException;
+use PDO;
+use RuntimeException;
+use Throwable;
 use Polyspec\Orm\Dbspec\ApplyCleanupError;
 use Polyspec\Orm\Dbspec\ApplyError;
 use Polyspec\Orm\Dbspec\ApplyEvent;

@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use function Polyspec\Orm\Tests\dbspec_behaviour_cases;
+
 // Records the outcomes of the dbspec behaviour cases (packages/php/tests/dbspec_behaviour.php) that the PHP library
 // gives into packages/php/tests/fixtures/dbspec-behaviour.json, which DbspecBehaviourTest compares with. It runs the
 // PHP library only: a process with the extension loaded is refused, since the record is the PHP client's.

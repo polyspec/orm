@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // audit_triggers feature coverage: installs contracts/fixtures/audit.dbs in the bench database
 // and writes it in an audit transaction in the same order as auditCase in packages/go/orm/audit_transaction_test.go,
 // checks the item_history and audit record left by the trigger, and removes the installed table and PostgreSQL
@@ -9,6 +11,8 @@ declare(strict_types=1);
 // is created per fixture in a temporary directory under its own namespace, and the bench model is not read.
 
 
+use Closure;
+use RuntimeException;
 use Polyspec\Orm\Tests\CoverageAudit\Item;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;

@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // LISTEN and NOTIFY on PostgreSQL (DIA-192 to DIA-196, PRT-74). A notification sent inside a transaction is delivered
 // with its commit and dropped by a rollback; one sent outside a transaction is delivered at once; unlisten stops a
 // channel; a receive whose deadline expires raises CANCELED; and MySQL and SQLite refuse notify and listen with

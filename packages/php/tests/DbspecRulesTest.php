@@ -2,10 +2,14 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // Focused dbspec rules that tests/dbspec/cases.json does not cover yet. An
 // expected error names its rule, its line and a needle: the column is the
 // first occurrence of the needle in that line (in characters), or an integer.
 
+use LogicException;
+use RuntimeException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Large;
 use PHPUnit\Framework\TestCase;
@@ -994,9 +998,9 @@ final class DbspecRulesTest extends TestCase
     {
         [$text, $want] = rules_limit($id);
         $clock = cpuCaseBegin(20.0);
-        $result = Polyspec\Orm\Dbspec\Dbspec::parse($text, []);
+        $result = \Polyspec\Orm\Dbspec\Dbspec::parse($text, []);
         $got = array_map(
-            static fn(Polyspec\Orm\Dbspec\Diagnostic $d): array => [$d->rule, $d->line, $d->column],
+            static fn(\Polyspec\Orm\Dbspec\Diagnostic $d): array => [$d->rule, $d->line, $d->column],
             $result->diagnostics
         );
         $this->assertNull($result->document, "limit/$id: a document was returned");

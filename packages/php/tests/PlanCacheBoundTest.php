@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
+use ReflectionProperty;
 use Polyspec\Orm\Engine;
 use Polyspec\Orm\Request;
 use Polyspec\Orm\RuntimeModel;

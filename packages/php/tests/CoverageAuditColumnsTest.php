@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // audit_triggers feature coverage: installs contracts/fixtures/audit_columns.dbs in the bench
 // database and checks that the audit trigger records, for the insert, update, and soft delete the client writes,
 // only the chosen columns. card uses exclude (secret) to leave out secret, and
@@ -12,6 +14,8 @@ declare(strict_types=1);
 // model only.
 
 
+use PDO;
+use RuntimeException;
 use Polyspec\Orm\Tests\CoverageAuditColumns\Card;
 use Polyspec\Orm\Tests\CoverageAuditColumns\Tag;
 use Polyspec\Orm\Config;

@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // The test statement fault of the PHP client (docs/spec/protocol.md 3.2) on SQLite,
 // MySQL and PostgreSQL. A test arms the fault through
 // Polyspec\Orm\Testing\Faults::failNextStatement; the next statement of the
@@ -15,6 +17,8 @@ declare(strict_types=1);
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/StatementFaultTest.php
 // [--filter <case>]
 
+use RuntimeException;
+use Throwable;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;

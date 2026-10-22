@@ -2,6 +2,11 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
+use PDO;
+use PDOStatement;
+
 /** Counts all statements, prepares, and transaction starts that the connection sends to the database. */
 final class StatementCountingPdo extends PDO
 {

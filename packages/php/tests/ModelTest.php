@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // Model integration test on SQLite, MySQL and PostgreSQL. A case that installs
 // the schema runs in a case database of its own (case_database.php) created
 // through ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN; the cases that only
@@ -10,6 +12,14 @@ declare(strict_types=1);
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelTest.php
 // [--filter <case>]
 
+use Closure;
+use DateTimeImmutable;
+use DateTimeZone;
+use PDO;
+use ReflectionClass;
+use ReflectionMethod;
+use RuntimeException;
+use Throwable;
 use Polyspec\Orm\Tests\Model\Account;
 use Polyspec\Orm\Tests\Model\Author;
 use Polyspec\Orm\Tests\Model\CompositeAccount;

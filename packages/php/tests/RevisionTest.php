@@ -7,6 +7,8 @@
 // [--filter <case>]
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;

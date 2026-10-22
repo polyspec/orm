@@ -2,12 +2,16 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // A MySQL lock wait timeout (1205, innodb_lock_wait_timeout) is the expiry of the write bound of CFG-6, so the driver
 // error is CANCELED in OrmException::fromDriver, not DRIVER. The case builds the PDOException of the driver and needs
 // no database.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist
 // packages/php/tests/OrmExceptionLockWaitTest.php
 
+use PDO;
+use PDOException;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\OrmException;
 use PHPUnit\Framework\Attributes\Small;

@@ -8,6 +8,9 @@
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/MysqlTlsTest.php
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
+use RuntimeException;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Code;

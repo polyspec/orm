@@ -16,6 +16,11 @@
 // PHPUnit assertion.
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
+use Closure;
+use RuntimeException;
+use Throwable;
 use PHPUnit\Framework\Assert;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;

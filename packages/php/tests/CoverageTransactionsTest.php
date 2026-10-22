@@ -2,11 +2,15 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // transactions feature coverage: an error from a transaction callback reaches the caller,
 // rolls back the rows written, and a failure in a nested transaction reverts only the savepoint.
 // Writes only rows of composite_account for tenant 990003, and removes them all.
 
 
+use Closure;
+use RuntimeException;
 use Polyspec\Orm\Tests\Model\CompositeAccount;
 use Polyspec\Orm\Db;
 use PHPUnit\Framework\Assert;

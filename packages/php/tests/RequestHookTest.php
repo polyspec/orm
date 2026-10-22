@@ -8,6 +8,9 @@
 // [--filter <case>]
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
+use RuntimeException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;

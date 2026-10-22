@@ -2,10 +2,16 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // A document, document set, plan list or unsupported list whose array holds another type is a TypeError
 // "<what> holds <value>, not <type>" at the first such element (Polyspec\Orm\Dbspec\Graph), one case per checked array;
 // a document whose arrays hold their types is read as before.
 
+use Closure;
+use DateTimeImmutable;
+use PDO;
+use TypeError;
 use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Dbspec\Document;
 use Polyspec\Orm\Dbspec\Plan;
@@ -116,7 +122,7 @@ final class DbspecGraphTest extends TestCase
             $d->tables[0]->columns[] = 'id';
         }, "{$n}Table::\$columns holds string, not {$n}Column"];
         yield 'ColumnType::$parameters' => [static function (Document $d): void {
-            $d->tables[0]->columns[2]->type = new Polyspec\Orm\Dbspec\ColumnType('varchar', ['32']);
+            $d->tables[0]->columns[2]->type = new \Polyspec\Orm\Dbspec\ColumnType('varchar', ['32']);
         }, "{$n}ColumnType::\$parameters holds string, not an int"];
         yield 'Column::$comments' => [static function (Document $d): void {
             $d->tables[0]->columns[0]->comments = [2];

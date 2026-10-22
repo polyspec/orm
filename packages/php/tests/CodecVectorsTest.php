@@ -7,6 +7,9 @@
 //   vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecVectorsTest.php
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
+use Closure;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;

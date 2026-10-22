@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // Wraps a SQLite PDO to inject failures into Polyspec\Orm\Dbspec apply and checks
 // that no error is lost (docs/spec/plans.md "Apply"): a failing lock release
 // after an event stops apply, a failing foreign key restore after a failing
@@ -9,6 +11,12 @@ declare(strict_types=1);
 // outside the plan, an effect query that returns no row, and a result that
 // cannot be closed.
 
+use Closure;
+use DateTimeImmutable;
+use PDO;
+use PDOException;
+use RuntimeException;
+use Throwable;
 use Polyspec\Orm\Dbspec\ApplyCleanupError;
 use Polyspec\Orm\Dbspec\ApplyError;
 use Polyspec\Orm\Dbspec\ApplyEvent;

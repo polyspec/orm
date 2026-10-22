@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // Audit transactions over sets registered by schema value, on SQLite, MySQL and PostgreSQL
 // (contracts/fixtures/external). core owns ext_account and ext_audit; board and member each use
 // them and own an audited table that records its audits in ext_audit. core and board are
@@ -14,6 +16,8 @@ declare(strict_types=1);
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist
 // packages/php/tests/AuditExternalSetsTest.php
 
+use PDO;
+use RuntimeException;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Generator;
 use Polyspec\Orm\Orm;

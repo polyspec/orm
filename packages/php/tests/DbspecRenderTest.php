@@ -2,9 +2,13 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // The statement vectors of tests/dbspec/ddl.json through
 // Polyspec\Orm\Dbspec\Dbspec::render, and the unknown dialect rule.
 
+use InvalidArgumentException;
+use RuntimeException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;

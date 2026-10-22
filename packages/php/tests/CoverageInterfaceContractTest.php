@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // interface_contract feature coverage: runs
 // `node tests/interfaces/check/main.mts -language php` at the repository root and requires exit code 0.
 

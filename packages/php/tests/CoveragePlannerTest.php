@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // planner feature coverage: the requests in contracts/fixtures/planner.json,
 // with the manifest hash of that case's schema document added, are compiled by the PHP engine of each dialect,
 // and the statement's role, sql, bind slots (source, param number, type), or error

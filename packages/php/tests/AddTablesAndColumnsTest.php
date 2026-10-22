@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // Checks addTablesAndColumns on SQLite, MySQL, and PostgreSQL (docs/spec/schema.md "Adding tables and
 // columns"). The case database holds the table of the other set addcol_log and the table of addcol set version 1,
 // together with rows. Calling addTablesAndColumns with version 2 adds to existing tables the missing columns that are
@@ -15,6 +17,9 @@ declare(strict_types=1);
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist
 // packages/php/tests/AddTablesAndColumnsTest.php [--filter <case>]
 
+use LogicException;
+use PDOException;
+use RuntimeException;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;

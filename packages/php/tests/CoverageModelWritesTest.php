@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // model_writes feature coverage: the create of the generated CompositeAccount model,
 // update, duplication (upsert), count, and delete, on rows of tenant 990002,
 // and removes all those rows. composite_account has no identity column, so

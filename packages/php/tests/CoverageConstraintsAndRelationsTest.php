@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // constraints_and_relations feature coverage: deleting a referenced row, a check violation,
 // and unique duplicates fail with FOREIGN_KEY, CONSTRAINT, and DUPLICATE_KEY respectively, and no row
 // is changed.

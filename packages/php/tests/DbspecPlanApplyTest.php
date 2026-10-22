@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // Applies every case of tests/dbspec/plans.json to MySQL, PostgreSQL and
 // SQLite through Polyspec\Orm\Dbspec\Dbspec (docs/spec/plans.md "Verification"): a fresh
 // database, schema or file per run renders and applies the source, runs the
@@ -14,6 +16,9 @@ declare(strict_types=1);
 // or column named dbspec$. ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name the
 // servers; the test fails when either is unset.
 
+use PDO;
+use PDOException;
+use RuntimeException;
 use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Dbspec\Diagnostic;
 use Polyspec\Orm\Dbspec\Unsupported;

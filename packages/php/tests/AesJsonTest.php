@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // Encrypted JSON value test on SQLite, MySQL and PostgreSQL: the
 // `ordered_json aes` column of contracts/fixtures/secret_config.dbs takes an
 // ordered-json value, reads it back with the same text, rotates to another key
@@ -14,6 +16,8 @@ declare(strict_types=1);
 // [--filter <case>]
 // The bench model is not read: this test uses only the model of its own document set.
 
+use PDO;
+use RuntimeException;
 use Polyspec\Orm\Tests\AesJson\SecretConfig;
 use Polyspec\Orm\AesKeyring;
 use Polyspec\Orm\Config;

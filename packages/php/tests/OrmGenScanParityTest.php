@@ -8,6 +8,8 @@
 // packages/php/tests/OrmGenScanParityTest.php
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;

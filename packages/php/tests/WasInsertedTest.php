@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // INT-52 wasInserted and INT-53 backendWaitingForLock on Polyspec\Orm\Utils, on SQLite, MySQL and PostgreSQL. The model
 // is the clock fixture contracts/fixtures/clock.dbs, generated into a temporary directory under
 // Polyspec\Orm\Tests\WasInsertedCase. Each case runs in a case database of its own (case_database.php); MySQL and
@@ -100,7 +102,7 @@ final class WasInsertedTest extends TestCase
     #[DataProvider('drivers')]
     public function testWasInsertedTracksGeneratedRows(string $driver): void
     {
-        self::onCase($driver, static function (Polyspec\Orm\Db $db): void {
+        self::onCase($driver, static function (\Polyspec\Orm\Db $db): void {
             $outer = 0;
             $nested = 0;
             $db->transaction(function () use ($db, &$outer, &$nested): void {
@@ -143,7 +145,7 @@ final class WasInsertedTest extends TestCase
     #[DataProvider('drivers')]
     public function testWasInsertedNeedsATransactionAndValidArguments(string $driver): void
     {
-        self::onCase($driver, static function (Polyspec\Orm\Db $db): void {
+        self::onCase($driver, static function (\Polyspec\Orm\Db $db): void {
             self::assertSame(
                 Code::CONFIG,
                 self::codeOf(static fn() => $db->utils()->wasInserted('clock_event', 1)),
@@ -176,7 +178,7 @@ final class WasInsertedTest extends TestCase
     #[DataProvider('drivers')]
     public function testBackendWaitingForLockIsFalseWithoutAWaiter(string $driver): void
     {
-        self::onCase($driver, static function (Polyspec\Orm\Db $db): void {
+        self::onCase($driver, static function (\Polyspec\Orm\Db $db): void {
             self::assertFalse($db->utils()->backendWaitingForLock(), 'no backend waits for a lock');
         });
     }
@@ -188,7 +190,7 @@ final class WasInsertedTest extends TestCase
      */
     public function testPostgresReportsABackendWaitingForLock(): void
     {
-        self::onCase('postgres', static function (Polyspec\Orm\Db $db, string $dsn): void {
+        self::onCase('postgres', static function (\Polyspec\Orm\Db $db, string $dsn): void {
             $seq = 0;
             $db->transaction(static function () use ($db, &$seq): void {
                 $seq = (int) (new \Polyspec\Orm\Tests\WasInsertedCase\ClockEvent())($db)->setLabel('held')

@@ -2,12 +2,15 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // performance_gate feature coverage: runs packages/php/tests/PerfGateTest.php in a child
 // PHPUnit process and passes only when the exit code is 0. The gate's output is not put
 // into this test's output; on failure it goes into the error. ORM_BENCH_MYSQL_DSN is the seeded shared bench
 // database, and the gate only reads it.
 
 
+use RuntimeException;
 use PHPUnit\Framework\Attributes\Large;
 use PHPUnit\Framework\TestCase;
 

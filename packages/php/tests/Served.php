@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 use Polyspec\Orm\Db;
 
 /** The flowmark server the test started, and its corpus. */

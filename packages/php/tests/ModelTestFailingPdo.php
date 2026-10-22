@@ -2,6 +2,13 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
+use Closure;
+use PDO;
+use PDOException;
+use PDOStatement;
+
 // A real server does not refuse the cleanup statement and the rollback at the end of a transaction, so
 // PDO rejects the chosen statement, and with rejectRollback it makes the rollback fail.
 // The rollback is actually finished first, and then the failure is returned.

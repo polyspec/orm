@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // Checks that the PHP UnicodeWord table (the table the tests/dbspec/unicode generator wrote from Go's Unicode data)
 // matches its ranges at every code point. Go's ranges are checked against Go by that generator's test.
 

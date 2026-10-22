@@ -2,6 +2,11 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
+use PDO;
+use PDOStatement;
+
 /**
  * A SQLite connection that injects an error into the chosen statement and replaces the chosen query with another query.
  * The replaced query runs without the parameters of the original query.

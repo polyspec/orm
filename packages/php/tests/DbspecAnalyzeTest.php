@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // Syntax analysis and formatting (docs/spec/dbspec.md "Syntax analysis", "Formatting") through the PHP client:
 // focused token cases, the shared cases of tests/dbspec/cases.json, the shared syntax vectors of
 // tests/dbspec/syntax.json, and the limit stop.

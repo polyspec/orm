@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // Runtime model behavior on SQLite, MySQL and PostgreSQL (docs/spec/dbspec.md
 // "Runtime model" and "Audit"): installing a dbspec document set, i16, uuid,
 // date and time values, database defaults for omitted columns, the required
@@ -17,6 +19,7 @@ declare(strict_types=1);
 // [--filter <case>]
 // The bench model is not read: this test uses only the model of its own document set.
 
+use Closure;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;

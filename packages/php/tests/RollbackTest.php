@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // A transaction or savepoint whose callback fails and whose rollback fails
 // too, on SQLite, MySQL and PostgreSQL. The client reports one
 // OrmException with the code ROLLBACK that keeps the callback error as its
@@ -21,6 +23,9 @@ declare(strict_types=1);
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RollbackTest.php
 // [--filter <case>]
 
+use PDO;
+use RuntimeException;
+use Throwable;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;

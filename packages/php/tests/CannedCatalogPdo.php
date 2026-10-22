@@ -2,6 +2,12 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
+use PDO;
+use PDOStatement;
+use RuntimeException;
+
 /**
  * A PDO whose query() answers the catalog queries of MySQL introspection from the canned catalog. The rows are
  * returned by a statement of an in-memory SQLite database, so introspection reads them through the PDOStatement

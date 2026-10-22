@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // case database: the case's own database, used by one test case. The shared test database
 // (the database of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN) is not assumed to be empty, so a case that installs a
 // schema or checks for an empty database uses a database with a non-overlapping name (MySQL, PostgreSQL) or
@@ -10,6 +12,10 @@ declare(strict_types=1);
 // PostgreSQL also takes a database, not a schema: empty() counts a non-public schema as content.
 // The calling script autoloads Polyspec\Orm\Orm.
 
+use InvalidArgumentException;
+use PDO;
+use RuntimeException;
+use Throwable;
 use Polyspec\Orm\Orm;
 
 /** A non-overlapping name orm_case_<pid>_<counter> per process. The counter counts from 1. */

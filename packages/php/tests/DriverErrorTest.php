@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // Driver errors that the error catalog does not list, and CHECK violations,
 // on SQLite, MySQL and PostgreSQL. refused_row is immutable, so its triggers
 // refuse every update with a database error that the catalog does not list;
@@ -13,6 +15,8 @@ declare(strict_types=1);
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DriverErrorTest.php
 // [--filter <case>]
 
+use PDOException;
+use Throwable;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;

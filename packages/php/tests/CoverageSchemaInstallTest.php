@@ -2,12 +2,15 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // schema_install feature coverage: the bench manifest held by the generated model is
 // installed again on an installed bench database and changes nothing, and a database with only some tables
 // is not created: the install of a document set fails with CONFIG and creates no missing tables. The install of a set
 // that uses external documents checks the external tables in the database, and registration does not read the database.
 
 
+use RuntimeException;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;

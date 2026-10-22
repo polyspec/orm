@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 /*
  * markdown IR executor unit case (docs/spec/protocol.md §5): the markdown DSN, the connect the client sends,
  * the reading of control messages and error lines, the connect the server refuses, the SQL-only surface that a markdown
@@ -12,6 +14,9 @@ declare(strict_types=1);
  */
 
 
+use Closure;
+use DateTimeImmutable;
+use RuntimeException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Large;
 use PHPUnit\Framework\TestCase;

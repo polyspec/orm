@@ -7,6 +7,12 @@
 // packages/php/tests/ConformanceResultTest.php
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
+use DomainException;
+use InvalidArgumentException;
+use PhpToken;
+use RuntimeException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
@@ -19,8 +25,8 @@ final class ConformanceResultTest extends TestCase
     public function testConformanceResultPhp(): void
     {
         $result = [
-            'exact' => Polyspec\OrderedJson\parse('9007199254740993'),
-            'styled' => ['kind' => 'value', 'value' => Polyspec\OrderedJson\parse('{"n":9007199254740993}')],
+            'exact' => \Polyspec\OrderedJson\parse('9007199254740993'),
+            'styled' => ['kind' => 'value', 'value' => \Polyspec\OrderedJson\parse('{"n":9007199254740993}')],
             'sqlNull' => ['kind' => 'sql-null'],
         ];
         $want = '{"exact":9007199254740993,"styled":{"kind":"value","value":{"n":9007199254740993}},'

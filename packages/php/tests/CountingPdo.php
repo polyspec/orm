@@ -2,6 +2,11 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
+use PDO;
+use PDOStatement;
+
 /** Counts the catalog queries sent by introspection. */
 final class CountingPdo extends PDO
 {

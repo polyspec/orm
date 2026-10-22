@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
+use PDOStatement;
+
 /** The statement that runs the replaced query without parameters, and whose result close fails for the chosen query. */
 final class FailingStatement extends PDOStatement
 {

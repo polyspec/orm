@@ -10,6 +10,12 @@
 // ORM_PERF_CPU_LOAD=1 runs the gate beside one busy process per CPU.
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
+use Closure;
+use PDO;
+use ReflectionProperty;
+use RuntimeException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\DoesNotPerformAssertions;
 use PHPUnit\Framework\Attributes\Large;

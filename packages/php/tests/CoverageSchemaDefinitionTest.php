@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // schema_definition feature coverage: each case of contracts/fixtures/schema_definition.json
 // runs on the PHP dbspec implementation (Polyspec\Orm\Dbspec\Dbspec): after parse, emit reproduces
 // byte for byte, the manifest hash of the document set, the per-dialect rendered statements, the tokens of syntax
@@ -10,6 +12,7 @@ declare(strict_types=1);
 // dbspec-php-extension-check), whose classes take the place of the client's.
 
 
+use RuntimeException;
 use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Dbspec\Document;
 use PHPUnit\Framework\Assert;

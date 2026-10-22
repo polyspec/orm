@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 /*
  * Runs every case of tests/markdown/cases.json, in order, with the PHP client against the server of the flowmark build
  * that FLOWMARK points at, one at a time (tests/markdown/README.md). That build must be the one pinned by
@@ -13,6 +15,9 @@ declare(strict_types=1);
  * packages/php/tests/MarkdownConformanceTest.php
  */
 
+use DateTimeImmutable;
+use DateTimeZone;
+use RuntimeException;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
 use Polyspec\Orm\Orm;

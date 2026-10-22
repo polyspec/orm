@@ -2,10 +2,13 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // The shared 2000-table, 60000-column, 10000-foreign-key document from
 // tests/dbspec/stress.mts: parse and emit times, emit(parse(doc)) === doc and
 // two identical emissions, under the configured memory_limit.
 
+use RuntimeException;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Large;
@@ -57,7 +60,7 @@ final class DbspecStressTest extends TestCase
         for ($i = 0; $i < 5; $i++) {
             $result = null;
             $parseStarted = caseClockStart();
-            $result = Polyspec\Orm\Dbspec\Dbspec::parse($text, []);
+            $result = \Polyspec\Orm\Dbspec\Dbspec::parse($text, []);
             [$parseCpuMs, $parseWallMs] = caseClockElapsed($parseStarted);
             fwrite(STDERR, "parse cpuMs=$parseCpuMs wallMs=$parseWallMs" . "\n");
             $parses[] = $parseCpuMs;
@@ -106,9 +109,9 @@ final class DbspecStressTest extends TestCase
         fwrite(STDERR, "parsed cpu minMs={$parses[0]} medianMs=$parseMs maxMs={$parses[4]}" . "\n");
 
         $emitStarted = caseClockStart();
-        $first = Polyspec\Orm\Dbspec\Dbspec::emit($document);
+        $first = \Polyspec\Orm\Dbspec\Dbspec::emit($document);
         $emitMs = caseClockElapsed($emitStarted)[0];
-        $second = Polyspec\Orm\Dbspec\Dbspec::emit($document);
+        $second = \Polyspec\Orm\Dbspec\Dbspec::emit($document);
         Assert::assertSame($text, $first, 'emit(parse(doc)) differs from the stress document');
         Assert::assertSame($first, $second, 'Two emissions differ');
         fwrite(STDERR, "emitted emitMs=$emitMs" . "\n");

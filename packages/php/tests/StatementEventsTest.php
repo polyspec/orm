@@ -10,6 +10,8 @@
 // packages/php/tests/StatementEventsTest.php [--filter <method or data set>]
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;

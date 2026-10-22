@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // composite_keys feature coverage: composite_account with a two-column primary key and
 // composite_membership that refers to that key (ON DELETE CASCADE) are written, read, and removed for tenants 990004
 // and

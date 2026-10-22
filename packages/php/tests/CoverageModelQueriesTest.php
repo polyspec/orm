@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // model_queries feature coverage: reads the bench database seeded with the generated bench model
 // (scripts/bench-db.sh). author seq i is user_seq i%5000+1,
 // service_seq i%100+1, read_count i%1000, and the name of user seq n is user-n.

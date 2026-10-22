@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // The hashes cases of tests/dbspec/cases.json and the repeated document name
 // rule through Polyspec\Orm\Dbspec\Dbspec::manifest, and the sets cases through
 // Dbspec::manifest and Dbspec::render in every dialect.

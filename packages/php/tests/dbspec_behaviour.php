@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // The PHP behaviours of the dbspec interface that the shared vectors do not fix: non-UTF-8 text, argument errors,
 // result objects, documents built and edited in PHP, introspection failures, the apply argument errors, and apply,
 // recover, rollback and finalize stopped at each event on a SQLite file. Each case returns the outcome as JSON values;
@@ -9,6 +11,17 @@ declare(strict_types=1);
 // packages/php/testing/dbspec/behaviour.php records). Both implementations of Polyspec\Orm\Dbspec, the PHP library and
 // the extension, run the same cases, each in its own process.
 
+use ArrayIterator;
+use Closure;
+use DateTimeImmutable;
+use DomainException;
+use Generator;
+use PDO;
+use PDOException;
+use PDOStatement;
+use RuntimeException;
+use Throwable;
+use stdClass;
 use Polyspec\Orm\Dbspec\Dbspec;
 
 /** The repository root, which outcomes write as <root> so that a recorded message names no machine's path. */
@@ -341,15 +354,15 @@ function dbspec_behaviour_cases(): array
         get_object_vars(Dbspec::parse("dbspec 1 shop\n", []))
     );
     $cases['objects/document-properties'] = static fn(): array => array_keys(
-        get_object_vars(new Polyspec\Orm\Dbspec\Document('d'))
+        get_object_vars(new \Polyspec\Orm\Dbspec\Document('d'))
     );
     $cases['objects/invalid-result-without-a-diagnostic'] = static fn(): array => behaviour_outcome(
-        static fn() => Polyspec\Orm\Dbspec\ParseResult::invalid([])
+        static fn() => \Polyspec\Orm\Dbspec\ParseResult::invalid([])
     );
     $cases[
         'objects/repeated-readonly-construction'
     ] = static fn(): array => behaviour_outcome(static function (): void {
-        $d = new Polyspec\Orm\Dbspec\Diagnostic('syntax', 1, 2, 'm');
+        $d = new \Polyspec\Orm\Dbspec\Diagnostic('syntax', 1, 2, 'm');
         $d->__construct('syntax', 1, 2, 'm');
     });
 
@@ -492,15 +505,15 @@ function dbspec_behaviour_cases(): array
 
     // The constructors of SetResult.
     $cases['sets/result-invalid-without-an-error'] = static fn(): array => behaviour_outcome(
-        static fn() => Polyspec\Orm\Dbspec\SetResult::invalid([])
+        static fn() => \Polyspec\Orm\Dbspec\SetResult::invalid([])
     );
     $cases['sets/result-invalid'] = static fn(): array => behaviour_outcome(
-        static fn() => Polyspec\Orm\Dbspec\SetResult::invalid(
-            [new Polyspec\Orm\Dbspec\SetError('set.file', 'a', 'a: m')]
+        static fn() => \Polyspec\Orm\Dbspec\SetResult::invalid(
+            [new \Polyspec\Orm\Dbspec\SetError('set.file', 'a', 'a: m')]
         )
     );
     $cases['sets/result-valid'] = static fn(): array => behaviour_outcome(
-        static fn() => Polyspec\Orm\Dbspec\SetResult::valid([new Polyspec\Orm\Dbspec\SetFile('a.dbs', 'x')], [])
+        static fn() => \Polyspec\Orm\Dbspec\SetResult::valid([new \Polyspec\Orm\Dbspec\SetFile('a.dbs', 'x')], [])
     );
 
     // Names: render keeps a name of at most 63 bytes and otherwise cuts it by bytes and adds a $ and 8 hex digits of
@@ -517,25 +530,25 @@ function dbspec_behaviour_cases(): array
     ];
     foreach ($renders as $i => [$table, $suffix]) {
         $cases["names/render/$i"] = static fn(): array => behaviour_outcome(
-            static fn() => Polyspec\Orm\Dbspec\Names::render($table, $suffix)
+            static fn() => \Polyspec\Orm\Dbspec\Names::render($table, $suffix)
         );
     }
     $long = 'c_' . str_repeat('y', 60);
-    $target = static fn(): string => Polyspec\Orm\Dbspec\Names::render('orders', $long);
+    $target = static fn(): string => \Polyspec\Orm\Dbspec\Names::render('orders', $long);
     $columns = ['id', $long, 'other', $long];
     $cases['names/column/array-hit'] = static fn(): array => behaviour_outcome(
-        static fn() => Polyspec\Orm\Dbspec\Names::column('orders', $target(), $columns)
+        static fn() => \Polyspec\Orm\Dbspec\Names::column('orders', $target(), $columns)
     );
     $cases['names/column/array-miss'] = static fn(): array => behaviour_outcome(
-        static fn() => Polyspec\Orm\Dbspec\Names::column('orders', 'nothing$00000000', $columns)
+        static fn() => \Polyspec\Orm\Dbspec\Names::column('orders', 'nothing$00000000', $columns)
     );
     $cases['names/column/empty-array'] = static fn(): array => behaviour_outcome(
-        static fn() => Polyspec\Orm\Dbspec\Names::column('orders', $target(), [])
+        static fn() => \Polyspec\Orm\Dbspec\Names::column('orders', $target(), [])
     );
     $cases[
         'names/column/generator-stops-at-the-match'
     ] = static fn(): array => behaviour_outcome(
-        static fn() => Polyspec\Orm\Dbspec\Names::column('orders', $target(), (static function () use (
+        static fn() => \Polyspec\Orm\Dbspec\Names::column('orders', $target(), (static function () use (
             $long
         ): Generator {
             yield 'id';
@@ -544,10 +557,10 @@ function dbspec_behaviour_cases(): array
         })())
     );
     $cases['names/column/array-iterator'] = static fn(): array => behaviour_outcome(
-        static fn() => Polyspec\Orm\Dbspec\Names::column('orders', $target(), new ArrayIterator(['id', $long]))
+        static fn() => \Polyspec\Orm\Dbspec\Names::column('orders', $target(), new ArrayIterator(['id', $long]))
     );
     $cases['names/column/non-string-element'] = static fn(): array => behaviour_outcome(
-        static fn() => Polyspec\Orm\Dbspec\Names::column('orders', $target(), ['id', 5])
+        static fn() => \Polyspec\Orm\Dbspec\Names::column('orders', $target(), ['id', 5])
     );
     $named = "dbspec 1 d\ntable orders {\n  id i64 identity\n  note text\n  code varchar(40) null\n  amount "
         . "decimal(10,2)\n  primary key (id)\n  settings {\n    immutable\n  }\n}\ntable "
@@ -560,7 +573,7 @@ function dbspec_behaviour_cases(): array
         return [
             behaviour_described($parsed->diagnostics),
             array_map(
-                static fn(Polyspec\Orm\Dbspec\Table $t): array => Polyspec\Orm\Dbspec\Names::ofTable($t),
+                static fn(\Polyspec\Orm\Dbspec\Table $t): array => \Polyspec\Orm\Dbspec\Names::ofTable($t),
                 $parsed->document->tables
             )
         ];

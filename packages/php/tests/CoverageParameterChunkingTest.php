@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // parameter_chunking feature coverage: a root IN list longer than the bind limit of every driver
 // is run in parts, duplicate values are read only once, and combining a split list with limit
 // gives IR_INVALID.

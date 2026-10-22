@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // The plan vectors of tests/dbspec/plans.json through Polyspec\Orm\Dbspec\Dbspec
 // (docs/spec/plans.md): every case's canonical emission, changes and steps of
 // three dialects, every invalid case's `plan` diagnostics, every chain
@@ -10,6 +12,8 @@ declare(strict_types=1);
 // comparison's differences or `compare` diagnostics, and the unknown dialect
 // rule.
 
+use InvalidArgumentException;
+use RuntimeException;
 use Polyspec\Orm\Dbspec\Change;
 use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Dbspec\Diagnostic;

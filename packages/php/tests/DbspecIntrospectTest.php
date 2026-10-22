@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // Polyspec\Orm\Dbspec\Dbspec::introspect on MySQL, PostgreSQL and SQLite
 // (docs/spec/dialects.md "Introspection"). The round trip renders every case of
 // tests/dbspec/ddl.json and every schema document, applies it to an empty
@@ -11,6 +13,9 @@ declare(strict_types=1);
 // ORM_TEST_POSTGRES_DSN name the servers; the test fails when either is unset.
 // Each case creates and drops its own database, schema or file.
 
+use InvalidArgumentException;
+use PDO;
+use RuntimeException;
 use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Dbspec\Document;
 use Polyspec\Orm\Dbspec\Table;

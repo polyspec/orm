@@ -8,6 +8,13 @@
 // packages/php/tests/DecimalModelDbTest.php
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
+use PDO;
+use ReflectionMethod;
+use ReflectionNamedType;
+use RuntimeException;
+use TypeError;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
@@ -109,7 +116,7 @@ final class DecimalModelDbTest extends TestCase
         // The test of COD-2 (docs/spec).
         self::dsn($dialect);
         self::load();
-        $class = DecimalFixture\DecimalCase::class;
+        $class = \DecimalFixture\DecimalCase::class;
         $getAmount = (new ReflectionMethod($class, 'getAmount'))->getReturnType();
         $setAmount = (new ReflectionMethod($class, 'setAmount'))->getParameters()[0]->getType();
         self::assertTrue(
@@ -154,9 +161,9 @@ final class DecimalModelDbTest extends TestCase
         // The test of COD-2 (docs/spec).
         $dsn = self::dsn($dialect);
         self::load();
-        $class = DecimalFixture\DecimalCase::class;
-        $db = DecimalFixture\connect($dsn, new Config());
-        $db->utils()->schema()->install(DecimalFixture\schema());
+        $class = \DecimalFixture\DecimalCase::class;
+        $db = \DecimalFixture\connect($dsn, new Config());
+        $db->utils()->schema()->install(\DecimalFixture\schema());
         try {
             self::assertSame(
                 0,

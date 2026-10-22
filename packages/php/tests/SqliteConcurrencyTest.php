@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // SQLite locking: several processes commit read-then-write transactions on one file without
 // transaction retries, a second connection reads while a write transaction is open, and a write
 // that waits longer than busy_timeout returns CANCELED.
