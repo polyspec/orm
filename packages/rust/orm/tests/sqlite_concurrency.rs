@@ -3,6 +3,10 @@
 //! second connection reads while a write transaction is open, and a write that
 //! waits longer than busy_timeout returns CANCELED.
 
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 use std::time::{Duration, Instant};
 
 use futures_util::future::join_all;
@@ -72,7 +76,7 @@ async fn write_services(db: &Db, name: &str, n: usize) -> Result<(), String> {
 async fn open(dsn: &str, count: usize) -> Vec<Db> {
     let mut out = Vec::new();
     for i in 0..count {
-        out.push(Db::connect_schema(dsn, &SCHEMA, 1, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("connection {i}: {e}")));
+        out.push(Db::connect_schema(dsn, &SCHEMA, 1, polyspec_orm::Config::default()).await.or_panic(|e| format!("connection {i}: {e}")));
     }
     out
 }
