@@ -6,6 +6,9 @@ use polyspec_orm::engine::validate;
 use polyspec_orm::{dbspec, ir, schema};
 use serde_json::Value;
 
+#[path = "common/or_panic.rs"]
+mod or_panic;
+
 #[path = "unit/ir_request.rs"]
 mod ir_request;
 

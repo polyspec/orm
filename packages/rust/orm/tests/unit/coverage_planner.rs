@@ -3,7 +3,7 @@
 //! in order (the parent slot is -1), table) must equal `expected[dialect]`, or the error code must equal `expected.error`.
 //! The engine's compile is visible only inside the crate, so src/engine/mod.rs makes this file a unit test module.
 
-use super::or_panic::OrPanic;
+use crate::or_panic::OrPanic;
 use super::ir_request::{members, repository, request, schema};
 use super::{compile, param_uses, validate, Dialect};
 use polyspec_orm_case_clock::CaseClock;

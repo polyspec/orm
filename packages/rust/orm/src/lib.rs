@@ -270,6 +270,10 @@ macro_rules! models {
 }
 
 #[cfg(test)]
+#[path = "../tests/common/or_panic.rs"]
+mod or_panic;
+
+#[cfg(test)]
 mod mysql_code_tests {
     use super::*;
 

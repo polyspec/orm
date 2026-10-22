@@ -35,8 +35,7 @@ pub fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
 mod ir_request;
 
 #[cfg(test)]
-#[path = "../../tests/common/or_panic.rs"]
-mod or_panic;
+use crate::or_panic::OrPanic;
 
 #[cfg(test)]
 #[path = "../../tests/unit/coverage_planner.rs"]
@@ -317,7 +316,7 @@ mod tests {
             ),
         ];
         for (dialect, request, sql, slots) in cases {
-            let plan = compile(&m, dialect, &request).unwrap_or_else(|e| panic!("{sql}: {e}"));
+            let plan = compile(&m, dialect, &request).or_panic(|e| format!("{sql}: {e}"));
             assert_eq!(plan.steps.len(), 1, "{sql}");
             assert_eq!(plan.steps[0].role, "main");
             assert_eq!(plan.steps[0].sql, sql);

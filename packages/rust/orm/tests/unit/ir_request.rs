@@ -1,9 +1,7 @@
 //! The IR request of a shared fixture case, read from its JSON: the planner coverage (coverage_planner.rs, a unit test
 //! module of the engine) and the shared validation vectors (tests/ir_validate.rs) build their requests with it.
 
-#[path = "../common/or_panic.rs"]
-mod or_panic;
-use or_panic::OrPanic;
+use crate::or_panic::OrPanic;
 
 use crate::ir;
 use crate::schema::Manifest;
