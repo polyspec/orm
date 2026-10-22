@@ -1,10 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 94567d46bf3c75a1017cefba28a67077268ce7e3427f8760fe0c4fa845a6a167 -->
+<!-- source-sha256: a05e52a212d9aa13c0175e398e82fdb33beea50418730843eca0b318cc9a0049 -->
 # 변경 이력
 
 ## Unreleased
-- `scripts/check/run.test.mts`의 가드 test는 로컬에서 CI group의 거부만 검사하고 CI identity를 설정하지 않는다. 수락 사례는 GitHub Actions 프로세스에서만 실행된다(KSTD-5-13). red: 부모의 test가 로컬 실행에서 CI identity를 설정해 bypass 검사가 실패했다.
 
+- 테스트 서버의 startLogged는 더는 영원히 기다리지 않는다: 준비 줄이 오지 않으면 단계와 로그를 밝히며 실패하고, 로그도 주기적으로 읽는다 (KSTD-5-37).
+- `scripts/check/run.test.mts`의 가드 test는 로컬에서 CI group의 거부만 검사하고 CI identity를 설정하지 않는다. 수락 사례는 GitHub Actions 프로세스에서만 실행된다(KSTD-5-13). red: 부모의 test가 로컬 실행에서 CI identity를 설정해 bypass 검사가 실패했다.
 - repo check의 Node, PHP, Rust 버전 규칙은 orm 자신의 workflow만 판단한다. gates.yml과 release.yml은 kit-check가 바이트 단위로 보유하는 kit 복사본이다(KSTD-10). red: 사례가 kit 복사본 gates.yml이 mise.toml과 .php-version을 읽지 않는다고 찾았다.
 - `packages/rust/orm`의 fulltext test는 `polyspec_orm_testcase::case!`로 case를 시작해 deadline과 RUN 줄을 가진다(KSTD-5-22-1). red: 규칙이 나중에 추가된 case 없는 Rust test를 지목했다.
 - PHP 확장이 authenticated_encryption을 구현한다: PHP 라이브러리의 테스트가 확장을 로드한 채 실행되고, 기능은 모든 클라이언트 언어에서 구현된다 (KSTD-7-2).

@@ -2,8 +2,9 @@
 # Changelog
 
 ## Unreleased
-- The guard test of `scripts/check/run.test.mts` checks the refusal of a CI group locally, without setting the CI identity; the accepting case runs only in a GitHub Actions process (KSTD-5-13). Red: the bypass check failed on the parent test, which set the CI identity in a local run.
 
+- The test servers' startLogged no longer waits forever: a ready line that does not come fails with its step and log, and the log is also read on a timer (KSTD-5-37).
+- The guard test of `scripts/check/run.test.mts` checks the refusal of a CI group locally, without setting the CI identity; the accepting case runs only in a GitHub Actions process (KSTD-5-13). Red: the bypass check failed on the parent test, which set the CI identity in a local run.
 - The workflow rules of the repo check that read the Node, PHP and Rust versions judge only orm's own workflows, not gates.yml and release.yml, which are kit's copies that kit-check holds byte for byte (KSTD-10). Red: the cases found gates.yml, a kit copy, not reading mise.toml and .php-version.
 - The fulltext test of `packages/rust/orm` opens its case with `polyspec_orm_testcase::case!`, so it runs with its deadline and RUN line (KSTD-5-22-1). Red: the rule named a Rust test added later without a case.
 - The PHP extension implements authenticated_encryption: the PHP library's tests run with the extension loaded and the feature is implemented in every client language (KSTD-7-2).
