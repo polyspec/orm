@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7a5b5b8fa54dde6c4c9908424c716cdf3b07f6a1b05d97626cbed713b58654e9 -->
+<!-- source-sha256: 1f6c204a6b91a4dcfbc07cfd748fdef7db45f8e82a062a5cacde11217fd1070c -->
 # 변경 이력
 
 ## Unreleased
+- 저장소는 커밋 identity를 `config/commit-identity.json`에 선언한다. kit 사본이며 min-0-max <max@blue.tools>이므로 commits-check가 이를 강제한다(KSTD-5-17). red: identity 사례가 파일이 없음을 찾았다.
 - `scripts/php/vendor-autoload-check.test.mjs`의 autoload 검사 사례를 나중의 수정이 node:test로 다시 쓴 뒤에 `caseTest`로 다시 선언한다(KSTD-10-5-1). red: 규칙이 node:test를 직접 쓰는 파일로 지목했다.
 
 - repo check의 trigger 규칙은 orm 자신의 workflow만 판단하고, 표에서 kit 복사본인 release.yml을 뺀다. 그 trigger는 kit이 소유한다(KSTD-5-25). red: 사례가 kit이 복사한 release.yml의 수동 trigger를 찾아 판단했다.

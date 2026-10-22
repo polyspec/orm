@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The repository declares its commit identity in `config/commit-identity.json`, the kit copy of min-0-max <max.tools>, so commits-check enforces it (KSTD-5-17). Red: the identity case found the file missing.
 - The autoload check cases of `scripts/php/vendor-autoload-check.test.mjs` are declared with `caseTest` again, after a later fix had rewritten them with node:test (KSTD-10-5-1). Red: the rule named the file as declaring node:test tests directly.
 
 - The trigger rule of the repo check judges only orm's own workflows, and its table no longer holds release.yml, a copy of kit whose triggers kit owns (KSTD-5-25). Red: the case found release.yml with the manual trigger that kit copies, and the rule checked it.
