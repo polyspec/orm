@@ -243,6 +243,11 @@ Errors use the codes in [errors.yaml](errors.yaml). Go callers use `orm.ErrorCod
 - **INT-94** The PHP extension `polyspec_orm` declares the `pdo` module as a required module, so PHP loads the extension only when pdo is present.
 - **INT-95** The extension package `packages/php-ext/composer.json` is of type `php-ext` and names the extension `polyspec_orm`, and its build-path holds the `config.m4` that builds that extension.
 - **INT-96** A statement event subscriber that raises an error fails its statement with `SUBSCRIBER`. The message of that failure is `SUBSCRIBER: statement event subscriber failed: ` followed by the text of the subscriber's error (for an ORM error, its code, a colon and its message), and the subscriber's error is the cause of the failure.
+- **INT-130** `AESKeyring` (Go `AESKeyring`, PHP `AesKeyring`, TypeScript `AESKeyring`, Python `AesKeyring`, Rust `AesKeyring`) holds the declared AES key versions and the current version (Go `CurrentAESVersion`); it is the keyring argument of INT-60.
+- **INT-131** `AESUtils` (Go `AESUtils`, PHP `AesUtils`, TypeScript `AESUtils`, Python `AesUtils`, Rust `AesUtils`) is the value of `aes()` (INT-60) and exposes `status(model, keyring)` and `rotate(model, keyring)` as the operations of INT-60.
+- **INT-132** `Db.connectSchema(dsn, schema)` (Go `ConnectSchema`, PHP `Orm::connectSchema`, TypeScript `Db.connectSchema`, Python `Db.connect_schema`, Rust `Db::connect_schema`) connects to the DSN and registers the schema value as INT-54 does; it fails with `CONFIG` when the manifest text does not hash to its `manifestHash`.
+- **INT-133** `Schema` (Go `Schema`, PHP `Schema`, TypeScript `Schema`, Python `Schema`, Rust `Schema`) is the generated schema value: the manifest text, its `manifestHash`, and the external document text of the set when it uses external documents. It is the argument of INT-54 through INT-58 and of INT-132.
+- **INT-134** `Utils` (Go `Utils`, PHP `Utils`, TypeScript `Utils`, Python `Utils`, Rust `Utils`) is the value of `connection.utils()` (INT-73) and holds the utility groups of INT-50 through INT-61, among them `schema()`, `privileges()`, `aes()` (INT-131) and `stats()`.
 
 Secrets and parameter values are excluded from logs.
 

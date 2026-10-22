@@ -17693,6 +17693,7 @@
     {
       "id": "aes-keyring",
       "kind": "api",
+      "requirements": ["INT-130","INT-60"],
       "symbols": [
         {
           "implementation": "go",
@@ -17777,6 +17778,7 @@
     {
       "id": "aes-utils",
       "kind": "api",
+      "requirements": ["INT-131","INT-60"],
       "symbols": [
         {
           "implementation": "go",
@@ -18282,6 +18284,7 @@
     {
       "id": "client-db-connectschema",
       "kind": "api",
+      "requirements": ["INT-132","INT-54"],
       "symbols": [
         {
           "implementation": "go",
@@ -19135,6 +19138,7 @@
     {
       "id": "client-schema",
       "kind": "api",
+      "requirements": ["INT-133"],
       "symbols": [
         {
           "implementation": "go",
@@ -19287,6 +19291,7 @@
     {
       "id": "client-utils",
       "kind": "api",
+      "requirements": ["INT-134","INT-73"],
       "symbols": [
         {
           "implementation": "go",
@@ -19441,6 +19446,7 @@
     {
       "id": "collection-group-row",
       "kind": "api",
+      "requirements": ["INT-68","INT-69","INT-70","INT-71","INT-90"],
       "symbols": [
         {
           "implementation": "go",

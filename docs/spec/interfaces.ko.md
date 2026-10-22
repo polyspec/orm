@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 65bb78d840350cf7ec699f08a21b76dc529da47a6a2f880d63b1814004c5c3cb -->
+<!-- source-sha256: ecc53af4e6f7b7a5d26ec215eb580f310ad6b703d79da2dc0843462f37b48c9c -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -244,6 +244,11 @@ Go key 변환은 부호 있는 정수, 불리언, 문자열, 바이트, 유한 �
 - **INT-94** PHP 확장 `polyspec_orm`은 `pdo` module을 필수 module로 선언하므로, PHP는 pdo가 있을 때에만 확장을 로드한다.
 - **INT-95** 확장 package `packages/php-ext/composer.json`은 type `php-ext`이고 확장 이름 `polyspec_orm`을 가지며, 그 build-path에는 그 확장을 빌드하는 `config.m4`가 있다.
 - **INT-96** statement event subscriber가 오류를 던지면 그 statement는 `SUBSCRIBER`로 실패한다. 실패 메시지는 `SUBSCRIBER: statement event subscriber failed: ` 뒤에 subscriber 오류의 텍스트(ORM 오류이면 `코드: 메시지`)가 붙고, subscriber의 오류가 그 실패의 원인(cause)이다.
+- **INT-130** `AESKeyring`(Go `AESKeyring`, PHP `AesKeyring`, TypeScript `AESKeyring`, Python `AesKeyring`, Rust `AesKeyring`)은 선언된 AES key version과 현재 version(Go `CurrentAESVersion`)을 가지며, INT-60의 keyring 인자이다.
+- **INT-131** `AESUtils`(Go `AESUtils`, PHP `AesUtils`, TypeScript `AESUtils`, Python `AesUtils`, Rust `AesUtils`)는 `aes()`(INT-60)의 값이고, INT-60의 연산인 `status(model, keyring)`과 `rotate(model, keyring)`을 노출한다.
+- **INT-132** `Db.connectSchema(dsn, schema)`(Go `ConnectSchema`, PHP `Orm::connectSchema`, TypeScript `Db.connectSchema`, Python `Db.connect_schema`, Rust `Db::connect_schema`)는 DSN에 연결하고 schema 값을 INT-54와 같이 등록한다. manifest text가 그 `manifestHash`와 hash가 일치하지 않으면 `CONFIG`로 실패한다.
+- **INT-133** `Schema`(Go `Schema`, PHP `Schema`, TypeScript `Schema`, Python `Schema`, Rust `Schema`)는 생성된 schema 값이다. manifest text, 그 `manifestHash`, 그리고 외부 문서를 쓰는 set이면 외부 문서 text를 가진다. INT-54부터 INT-58까지와 INT-132의 인자이다.
+- **INT-134** `Utils`(Go `Utils`, PHP `Utils`, TypeScript `Utils`, Python `Utils`, Rust `Utils`)는 `connection.utils()`(INT-73)의 값이며 INT-50부터 INT-61까지의 utility group을 가진다. 그 가운데 `schema()`, `privileges()`, `aes()`(INT-131), `stats()`가 있다.
 
 secret과 parameter 값은 log에서 제외한다.
 
