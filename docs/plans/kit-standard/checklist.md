@@ -236,3 +236,4 @@
 | KSTD-5-72 | Return the error of the generated Go Value accessor instead of nil | packages/go/orm/model.go:122 (read at model.go:1298) | `make go-vet-check` | [ ] |
 | KSTD-5-73 | Catch only the AES authentication failure in the TypeScript decipher | packages/ts/src/codec.ts:77 | `make ts-check` | [ ] |
 | KSTD-5-74 | Catch only the missing-key OrmError in TypeScript save | packages/ts/src/model.ts:848 | `make ts-check` | [ ] |
+| KSTD-5-75 | Rethrow CodecError in the TypeScript codec catch blocks, with the cause | packages/ts/src/codec.ts:197,361 | `make ts-check` | [ ] |

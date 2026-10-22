@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: d5b8632942c9fb408ca4a43cfcac0a47dd19586f5d5c6a32a4bcefd3eb42fd66 -->
+<!-- source-sha256: 64bd719bab1ae205d46786cf6095beea1cac9f20703d21acd2032ef1677c420b -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -237,3 +237,4 @@
 | KSTD-5-72 | 생성된 Go Value 접근자의 오류를 nil 대신 반환한다 | packages/go/orm/model.go:122 (read at model.go:1298) | `make go-vet-check` | [ ] |
 | KSTD-5-73 | TypeScript decipher에서 AES 인증 실패만 잡는다 | packages/ts/src/codec.ts:77 | `make ts-check` | [ ] |
 | KSTD-5-74 | TypeScript save에서 키 없음 OrmError만 잡는다 | packages/ts/src/model.ts:848 | `make ts-check` | [ ] |
+| KSTD-5-75 | TypeScript codec catch 블록이 CodecError를 원인과 함께 다시 던지게 한다 | packages/ts/src/codec.ts:197,361 | `make ts-check` | [ ] |
