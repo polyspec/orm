@@ -7,8 +7,6 @@ declare(strict_types=1);
 // loads it: this test reads the extension in its own process and runs declarations.php without the extension for the
 // stub and the client. The stub is the inventory of the interface check (contracts/symbols/php-extension.json).
 
-require_once __DIR__ . '/declarations.php';
-
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Large;
 use PHPUnit\Framework\TestCase;

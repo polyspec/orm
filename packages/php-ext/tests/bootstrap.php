@@ -12,3 +12,5 @@ if (!extension_loaded('polyspec_orm')) {
         'the extension polyspec_orm is not loaded; run make dbspec-php-extension-check, which builds and loads it'
     );
 }
+// The functions that DeclarationsTest.php shares with declarations.php, which it runs as a child process.
+require_once __DIR__ . '/declarations_functions.php';

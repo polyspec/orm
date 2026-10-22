@@ -8,15 +8,13 @@
 declare(strict_types=1);
 
 require dirname(__DIR__, 3) . '/packages/php/tests/autoload.php';
+require __DIR__ . '/thin_slice_functions.php';
 
 use Polyspec\Orm\Tests\Model\Author;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\StatementEvent;
-
-const ITERATIONS = 500;
-const AES_KEY = 'bench-salt';
 
 $lastSql = '';
 $lastArgs = [];
@@ -59,30 +57,3 @@ $native = p50(static function () use ($stmt, $lastArgs): void {
     $stmt->fetchAll(PDO::FETCH_NUM);
 });
 fwrite(STDERR, sprintf("php: client p50 %dµs, native p50 %dµs (%d iterations)\n", $client, $native, ITERATIONS));
-
-/** ORM_BENCH_MYSQL_DSN points to the seeded bench database. If it is missing or empty, it ends without connecting. */
-function dsn(): string
-{
-    $dsn = getenv('ORM_BENCH_MYSQL_DSN');
-    if ($dsn === false || $dsn === '') {
-        fwrite(
-            STDERR,
-            "ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database; run it through make orm-check or "
-            . "make run-databases TARGETS=<target>, which create the bench database of the run\n"
-        );
-        exit(1);
-    }
-    return $dsn;
-}
-
-function p50(Closure $f): int
-{
-    $s = [];
-    for ($i = 0; $i < ITERATIONS; $i++) {
-        $t = hrtime(true);
-        $f();
-        $s[] = intdiv(hrtime(true) - $t, 1000);
-    }
-    sort($s);
-    return $s[intdiv(count($s), 2)];
-}

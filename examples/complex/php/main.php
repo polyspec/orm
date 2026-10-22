@@ -6,6 +6,7 @@
 declare(strict_types=1);
 
 require dirname(__DIR__, 3) . '/packages/php/tests/autoload.php';
+require __DIR__ . '/complex_functions.php';
 
 use Polyspec\Orm\Tests\Model\Author;
 use Polyspec\Orm\Tests\Model\Service;
@@ -58,18 +59,3 @@ echo json_encode([
     'page_pages' => $page->totalPages,
     'page_length' => count($page->items),
 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), "\n";
-
-/** ORM_BENCH_MYSQL_DSN points to the seeded bench database. If it is missing or empty, it ends without connecting. */
-function dsn(): string
-{
-    $dsn = getenv('ORM_BENCH_MYSQL_DSN');
-    if ($dsn === false || $dsn === '') {
-        fwrite(
-            STDERR,
-            "ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database; run it through make orm-check or "
-            . "make run-databases TARGETS=<target>, which create the bench database of the run\n"
-        );
-        exit(1);
-    }
-    return $dsn;
-}
