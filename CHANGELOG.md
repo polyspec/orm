@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The hand-written PHP keeps the 120 character line length: long calls, chains, lists, strings and comments are wrapped PSR-12 style, token for token, and the Unicode word table generator writes its description in two lines (KSTD-5-9-1). Red: phpcs reported 1450 long lines.
 - config/rebuild.json classifies scripts/typescript/models.mts and scripts/php/vendor-autoload-check.mjs, so make rebuild-check passes (KSTD-5-5-1-1). Red: rebuild-check reported both tools with no class.
 - config/rebuild.json classifies scripts/typescript/models.mts and scripts/php/vendor-autoload-check.mjs, so make rebuild-check passes (KSTD-5-5-1-1). Red: rebuild-check reported both tools with no class.
 - KSTD-10-5 is done again on main: its autoload check cases are declared with `caseTest`, as KSTD-10-5-1 restored after the KSTD-3-2 commit rewrote them with node:test (KSTD-10-5). Red: the rule failed on the rewritten test.

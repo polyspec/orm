@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 31ffd242a09966b26a402c029e43e443698734a1315d6d2a4054c7b92036e41d -->
+<!-- source-sha256: d70a10592c3fff34ea1398b241cfee6976a80dc2e0d9ee0511e24f6688ea8a36 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -100,7 +100,7 @@
 | KSTD-5-8 | lint-python이 통과한다 (KSTD-5 후속). Cause: ruff format --check가 repository의 Python에서 실패한다 | the Python of the repository | `make lint-python` | [o] |
 | KSTD-5-8-1 | make lint-python이 다시 통과한다 (KSTD-5-8 후속). Cause: ruff 0.17.1이 main에서 finding 53개를 보고한다: 더는 필요 없는 파일에 남은 쓰지 않는 noqa 지시(RUF100, 대부분 E402와 N802)와 packages/python/tests/ir_answers.py의 S110 하나다 | packages/python | `make lint-python` | [o] |
 | KSTD-5-9 | lint-php가 통과한다 (KSTD-5 후속). Cause: 루트, packages/php, packages/php-ext의 phpcs와 phpstan이 실패한다 | the PHP of the repository | `make lint-php` | [~] |
-| KSTD-5-9-1 | 손으로 쓴 PHP가 phpcs 줄 길이를 지킨다 (KSTD-5-9 후속). Cause: phpcs가 손으로 쓴 파일에서 120자를 넘는 줄 2657개를 보고한다 | packages/php | `make lint-php` | [~] |
+| KSTD-5-9-1 | 손으로 쓴 PHP가 phpcs 줄 길이를 지킨다 (KSTD-5-9 후속). Cause: phpcs가 손으로 쓴 파일에서 120자를 넘는 줄 2657개를 보고한다 | packages/php | `make lint-php` | [o] |
 | KSTD-5-10 | PHP extension은 stub 하나를 가진 하나의 extension polyspec_orm이어서 lint-php-ext와 test-php-ext가 통과한다 (kit K293, S10) (KSTD-5 후속). Cause: kit은 repository의 extension을 package polyspec/orm-php-ext의 polyspec_orm으로, stub은 packages/php-ext/src/polyspec_orm.stub.php 하나로 정하는데, orm은 polyspec/orm-dbspec에서 stub 두 개로 orm_dbspec을 build한다 | packages/php-ext, its stubs, config/parity.json | `make lint-php-ext` | [!] 원인: extension이 이제 PHP library가 선언하는 대로 선언하고 lint-php-ext가 통과한다; test-php-ext는 library test 단계에서 멈추는데, 이 단계는 packages/php/vendor를 읽고 이 monorepo는 root에 하나의 Composer vendor인 vendor-php를 설치한다; 재시도: kit이 PHP library의 library test를 그 repository가 설치하는 vendor directory에서 돌린다 |
 | KSTD-5-11 | CHECK_TARGETS가 kit-gates의 모든 gate를 돌린다 (KSTD-5 후속). Cause: kit-check가 CHECK_TARGETS가 돌리지 않는 gate 13개를 보고한다; 각 gate는 그 sub-item이 통과하면 추가된다 | Makefile | `make kit-check` | [ ] |
 | KSTD-5-12 | divergence-check가 통과한다: 어떤 test도 구현, runtime, platform으로 분기하지 않는다 (KSTD-5 후속). Cause: test 83개가 decimal_physical, statement_fault, rollback, integration, dbspec_set의 Rust test에서 #[cfg(...)]로, PHP와 php-ext test에서 extension_loaded로, stress test에서 platform으로 분기해 한 구현이 다른 구현과 다르게 검사된다; contracts/features.json의 partial feature는 KSTD-7-1~-8이다 | the tests of every implementation, config/parity.json | `make divergence-check` | [ ] |

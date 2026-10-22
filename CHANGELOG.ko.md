@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 466a233f219799d145ed8e295c725187edf88c677e96863278d9434916f58aad -->
+<!-- source-sha256: a2c5100d6bdaa6e2156dd51cdc63cae8b5f6bd078badc02bcab78f41782f4d78 -->
 # 변경 이력
 
 ## Unreleased
 
+- 손으로 쓴 PHP는 120자 줄 길이를 지킨다. 긴 호출, chain, 목록, 문자열, 주석을 token 그대로 PSR-12 방식으로 감싸고, Unicode word table 생성기는 설명을 두 줄로 쓴다(KSTD-5-9-1). red: phpcs가 긴 줄 1450개를 보고했다.
 - config/rebuild.json은 scripts/typescript/models.mts와 scripts/php/vendor-autoload-check.mjs를 분류하므로 make rebuild-check가 통과한다(KSTD-5-5-1-1). red: rebuild-check가 두 도구를 분류 없이 보고했다.
 - KSTD-10-5를 main에서 다시 완료로 표시한다: autoload 검사 사례는 KSTD-3-2 commit이 node:test로 다시 쓴 뒤 KSTD-10-5-1이 복구한 대로 `caseTest`로 선언된다(KSTD-10-5). red: 규칙이 다시 쓰인 test에서 실패했다.
 - 테스트 서버의 startLogged는 더는 영원히 기다리지 않는다: 준비 줄이 오지 않으면 단계와 로그를 밝히며 실패하고, 로그도 주기적으로 읽는다 (KSTD-5-37).
