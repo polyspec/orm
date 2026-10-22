@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 75e8d6d80cc19153d718fd8d2fcf4b90ddd6991253830890e22fcbb1993dea84 -->
+<!-- source-sha256: 43ce3eca89bddeedd72f36c80dc9075a0babd155300a76a741891b0cc1cced9d -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -242,3 +242,4 @@
 | KSTD-5-77 | PHP와 C에서 YAML 파서의 예외 클래스만 잡고 원인을 잇는다 | packages/php/src/Codec.php:96,149,104,156; packages/php/src/Model.php:2360; packages/php-ext/src/codec.c:194-203 | `make lint-php` | [ ] |
 | KSTD-5-78 | step과 test-server 스크립트에서 ESRCH만 종료된 process group으로 본다 | scripts/check/step.mts:63; scripts/test-servers.mts:203, :341 | `make scripts-typecheck` | [ ] |
 | KSTD-5-79 | fixture를 읽을 수 없을 때 ENOENT만 owner 없음으로 본다 | scripts/features/owners.mts:60; scripts/check/databases.mts:85-99 | `make scripts-typecheck` | [ ] |
+| KSTD-5-80 | extension이 다중 row insert의 두 번째 row에 첫 row의 column을 parameter uses로 준다(MarkdownTest::testParamUses) | packages/php-ext/src/planner.c; packages/php/tests/MarkdownTest.php | `make php-extension-markdown-check` | [ ] |
