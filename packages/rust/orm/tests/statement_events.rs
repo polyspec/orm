@@ -216,13 +216,37 @@ impl EventRun {
 }
 
 /// Runs one case in its own case database and compares the recorded events with the vector.
+/// Checks the outcome of a step against the case: a step that declares an error must fail, and a step that declares
+/// nothing, or the callback failure the case expects, must not fail with an error that the case did not declare.
+fn assert_step_outcome(outcome: &polyspec_orm::Result<()>, s: &Value, driver: &str) {
+    let op = s["op"].as_str().unwrap_or_default();
+    match s["error"].as_str() {
+        Some("callback") | None => assert!(outcome.is_ok(), "{driver}: step {op} failed although the case declares no error"),
+        Some(code) => assert!(outcome.is_err(), "{driver}: step {op} succeeded although the case declares {code}"),
+    }
+}
+
+/// An environment variable as an option: unset is None, and a value that is not UTF-8 is a panic that names it.
+fn optional_env(name: &str) -> Option<String> {
+    match std::env::var(name) {
+        Ok(value) => Some(value),
+        Err(std::env::VarError::NotPresent) => None,
+        Err(error) => panic!("{name}: {error}"),
+    }
+}
+
 async fn run_case(driver: &'static str, case: &Value) {
     let id = case["id"].as_str().expect("case id");
     let database = CaseDatabase::create(driver).await;
     let run = async {
-        let db = Db::connect_schema(database.dsn(), &EVENTS_SCHEMA, 2, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {id}: {e}"));
+        let db = match Db::connect_schema(database.dsn(), &EVENTS_SCHEMA, 2, polyspec_orm::Config::default()).await {
+            Ok(db) => db,
+            Err(e) => panic!("{driver}: {id}: {e}"),
+        };
         if case["install"].as_bool().unwrap_or(true) {
-            db.utils().schema().install(&EVENTS_SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: {id}: install: {e}"));
+            if let Err(e) = db.utils().schema().install(&EVENTS_SCHEMA).await {
+                panic!("{driver}: {id}: install: {e}");
+            }
         }
         let recorded = Arc::new(Mutex::new(Recorded::default()));
         let sink = recorded.clone();
@@ -234,7 +258,8 @@ async fn run_case(driver: &'static str, case: &Value) {
             .unwrap();
         let r = EventRun { driver, db: db.clone(), recorded, recording: Mutex::new(Some(recording)), failing: Mutex::new(None) };
         for s in case["steps"].as_array().expect("case steps") {
-            let _ = r.checked(s).await;
+            let outcome = r.checked(s).await;
+            assert_step_outcome(&outcome, s, driver);
         }
         let mut got = std::mem::take(&mut r.recorded.lock().unwrap().records);
         if case["compare"].as_str() == Some("tables") {
@@ -249,7 +274,9 @@ async fn run_case(driver: &'static str, case: &Value) {
         );
         db.close().await;
     };
-    tokio::time::timeout(CASE_DEADLINE, run).await.unwrap_or_else(|_| panic!("{driver}: {id}: timeout after {CASE_DEADLINE:?}"));
+    if tokio::time::timeout(CASE_DEADLINE, run).await.is_err() {
+        panic!("{driver}: {id}: timeout after {CASE_DEADLINE:?}");
+    }
     database.drop().await;
 }
 
@@ -303,7 +330,10 @@ async fn coverage_statement_events() {
 async fn statement_events_server_transactions() {
     let vector: Value = serde_json::from_str(VECTOR).expect("tests/events/vectors.json");
     let spec = &vector["server_transactions"];
-    let listed = |key: &str| spec[key].as_array().unwrap_or_else(|| panic!("{key}")).iter().any(|c| c == "rust");
+    let listed = |key: &str| match spec[key].as_array() {
+        Some(clients) => clients.iter().any(|c| c == "rust"),
+        None => panic!("the server_transactions vector has no list {key}"),
+    };
     let (one_per_event, with_prepares) = (listed("first_run_clients"), listed("first_run_prepare_clients"));
     assert!(one_per_event != with_prepares, "rust is in exactly one of first_run_clients and first_run_prepare_clients");
     let page = vector["cases"].as_array().expect("vector cases").iter().find(|c| c["id"] == spec["page"]).expect("server_transactions page is a case");
@@ -321,7 +351,7 @@ async fn statement_events_server_transactions() {
             sqlx::query_as("SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'").fetch_one(pool).await.expect("TimeZone");
         // Through a pooler, the pooler applies the startup parameters to the server connection with SET, so
         // the source does not name the client. The source is compared only when it reaches the server directly.
-        let pooled = std::env::var("ORM_TEST_POSTGRES_DSN").ok() != std::env::var("ORM_TEST_POSTGRES_SERVER_DSN").ok();
+        let pooled = optional_env("ORM_TEST_POSTGRES_DSN") != optional_env("ORM_TEST_POSTGRES_SERVER_DSN");
         assert_eq!(setting, spec["time_zone"]["setting"], "TimeZone setting");
         if !pooled {
             assert_eq!(source, spec["time_zone"]["source"], "TimeZone source");
@@ -342,7 +372,8 @@ async fn statement_events_server_transactions() {
         let mut failures = Vec::new();
         for name in ["first", "second"] {
             for s in page["steps"].as_array().expect("page steps") {
-                let _ = r.checked(s).await;
+                let outcome = r.checked(s).await;
+                assert_step_outcome(&outcome, s, driver);
             }
             let records = std::mem::take(&mut r.recorded.lock().unwrap().records);
             let events = records.len() as i64;
@@ -360,7 +391,9 @@ async fn statement_events_server_transactions() {
         db.close().await;
         assert!(failures.is_empty(), "{}", failures.join("\n"));
     };
-    tokio::time::timeout(CASE_DEADLINE, run).await.unwrap_or_else(|_| panic!("server_transactions: timeout after {CASE_DEADLINE:?}"));
+    if tokio::time::timeout(CASE_DEADLINE, run).await.is_err() {
+        panic!("server_transactions: timeout after {CASE_DEADLINE:?}");
+    }
     database.drop().await;
 }
 

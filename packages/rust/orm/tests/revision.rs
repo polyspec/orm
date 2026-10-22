@@ -28,10 +28,19 @@ fn note(db: &Db) -> Note {
     Note::from_core(core)
 }
 
+/// Removes the database file of a case. A file that is already gone is the state the case wants; any other failure is reported.
+fn remove_case_file(path: &std::path::Path) {
+    if let Err(error) = std::fs::remove_file(path) {
+        if error.kind() != std::io::ErrorKind::NotFound {
+            panic!("remove {}: {error}", path.display());
+        }
+    }
+}
+
 /// A connection to a new SQLite file of the case that holds one note at revision 3, its path and the note's key.
 async fn seeded(case: &str) -> (Db, std::path::PathBuf, i64) {
     let path = std::env::temp_dir().join(format!("orm-rust-revision-{case}-{}.sqlite", std::process::id()));
-    let _ = std::fs::remove_file(&path);
+    remove_case_file(&path);
     let db = Db::connect(&format!("sqlite://{}", path.display()), 1, Config::default()).await.unwrap();
     db.utils().schema().install(&SCHEMA).await.unwrap();
     let mut first = note(&db);
@@ -63,7 +72,7 @@ async fn revision_update_match_bumps_the_revision() {
     polyspec_orm::model::update(&mut m, false).await.unwrap();
     assert_eq!(stored(&db).await, vec![("second".to_owned(), 4)]);
     db.close().await;
-    let _ = std::fs::remove_file(&path);
+    remove_case_file(&path);
 }
 
 /// Asserts that the write was refused with `code` (REVISION_CHANGED), that the stored note still has revision 3, and then
@@ -72,7 +81,7 @@ async fn assert_refused_and_kept(code: &str, db: Db, path: &std::path::Path) {
     assert_eq!(code, codes::REVISION_CHANGED);
     assert_eq!(stored(&db).await, vec![("first".to_owned(), 3)]);
     db.close().await;
-    let _ = std::fs::remove_file(path);
+    remove_case_file(path);
 }
 
 #[tokio::test]
@@ -94,7 +103,7 @@ async fn revision_delete_match_deletes() {
     polyspec_orm::model::delete(&keyed(&db, seq, 3), false).await.unwrap();
     assert_eq!(stored(&db).await, vec![]);
     db.close().await;
-    let _ = std::fs::remove_file(&path);
+    remove_case_file(&path);
 }
 
 #[tokio::test]
