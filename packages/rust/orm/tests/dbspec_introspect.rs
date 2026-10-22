@@ -7,6 +7,10 @@
 //! unsupported objects. A test fails when ORM_TEST_MYSQL_DSN or
 //! ORM_TEST_POSTGRES_DSN is unset.
 
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 #[path = "common/dbspec_probe.rs"]
 mod dbspec_probe;
 
@@ -32,7 +36,7 @@ const SCHEMA_DOCUMENT_DIRECTORIES: [&str; 2] = ["contracts/fixtures/bench", "con
 
 fn schema_documents(directory: &Path) -> Vec<PathBuf> {
     let mut paths: Vec<PathBuf> = std::fs::read_dir(directory)
-        .unwrap_or_else(|e| panic!("{}: {e}", directory.display()))
+        .or_panic(|e| format!("{}: {e}", directory.display()))
         .map(|entry| entry.expect("directory entry").path())
         .filter(|path| path.extension().is_some_and(|e| e == "dbs"))
         .collect();
@@ -56,12 +60,12 @@ fn round_trip_sets() -> Vec<RoundTripSet> {
             .into_iter()
             .map(|path| {
                 let name = path.file_stem().expect("stem").to_string_lossy().into_owned();
-                (name, dbspec::read_file(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display())))
+                (name, dbspec::read_file(&path).or_panic(|e| format!("{}: {e}", path.display())))
             })
             .collect();
         for (name, text) in &texts {
             let others: BTreeMap<String, String> = texts.iter().filter(|(other, _)| *other != name).map(|(o, t)| (o.clone(), t.clone())).collect();
-            let document = dbspec::parse(text, &others).unwrap_or_else(|e| panic!("{directory}/{name}.dbs: {e:?}")).document;
+            let document = dbspec::parse(text, &others).or_panic(|e| format!("{directory}/{name}.dbs: {e:?}")).document;
             let mut documents = BTreeMap::from([(name.clone(), text.clone())]);
             for used in &document.uses {
                 documents.insert(used.document.text.clone(), texts[&used.document.text].clone());
@@ -78,7 +82,7 @@ fn parse_set(id: &str, documents: &BTreeMap<String, String>) -> Vec<Document> {
         .iter()
         .map(|(name, text)| {
             let set: BTreeMap<String, String> = documents.iter().filter(|(other, _)| *other != name).map(|(o, t)| (o.clone(), t.clone())).collect();
-            dbspec::parse(text, &set).map(|parsed| parsed.document).unwrap_or_else(|e| panic!("{id}/{name}: {e:?}"))
+            dbspec::parse(text, &set).map(|parsed| parsed.document).or_panic(|e| format!("{id}/{name}: {e:?}"))
         })
         .collect()
 }
@@ -88,7 +92,7 @@ fn parse_set(id: &str, documents: &BTreeMap<String, String>) -> Vec<Document> {
 /// and parses them as one document.
 fn expected_schema_text(id: &str, documents: &[Document]) -> String {
     let refs: Vec<&Document> = documents.iter().collect();
-    let schema = dbspec::manifest(&refs).unwrap_or_else(|e| panic!("{id}: {e:?}")).schema_text;
+    let schema = dbspec::manifest(&refs).or_panic(|e| format!("{id}: {e:?}")).schema_text;
     let mut tables: Vec<(String, String)> = Vec::new();
     let mut current: Option<(String, String)> = None;
     for line in schema.lines() {
@@ -111,8 +115,8 @@ fn expected_schema_text(id: &str, documents: &[Document]) -> String {
         text.push_str(block);
         text.push('\n');
     }
-    let combined = dbspec::parse(&text, &BTreeMap::new()).map(|parsed| parsed.document).unwrap_or_else(|e| panic!("{id}: combined document: {e:?}\n{text}"));
-    dbspec::manifest(&[&combined]).unwrap_or_else(|e| panic!("{id}: {e:?}")).schema_text
+    let combined = dbspec::parse(&text, &BTreeMap::new()).map(|parsed| parsed.document).or_panic(|e| format!("{id}: combined document: {e:?}\n{text}"));
+    dbspec::manifest(&[&combined]).or_panic(|e| format!("{id}: {e:?}")).schema_text
 }
 
 // Requirements: DIA-133.
@@ -129,7 +133,7 @@ async fn introspect_round_trip() {
         let refs: Vec<&Document> = documents.iter().collect();
         let want = expected_schema_text(&set.id, &documents);
         for (db, dialect) in DIALECTS {
-            let statements = dbspec::render(&refs, dialect).unwrap_or_else(|e| panic!("{}: {e:?}", set.id));
+            let statements = dbspec::render(&refs, dialect).or_panic(|e| format!("{}: {e:?}", set.id));
             let id = format!("{db}.introspect.{}", set.id);
             index += 1;
             let want = want.clone();
@@ -202,7 +206,7 @@ async fn introspect_unsupported_case(index: usize, case: &Value) {
     let documents_text = case["documents"].as_object().expect("documents").iter().map(|(name, l)| (name.clone(), lines(l))).collect();
     let documents = parse_set(case_id, &documents_text);
     let refs: Vec<&Document> = documents.iter().collect();
-    let statements = dbspec::render(&refs, dialect).unwrap_or_else(|e| panic!("{case_id}: {e:?}"));
+    let statements = dbspec::render(&refs, dialect).or_panic(|e| format!("{case_id}: {e:?}"));
     // {schema} is this case's database or schema name.
     let schema = servers.name(index);
     let extra: Vec<String> = strings(&case["statements"]).iter().map(|s| s.replace("{schema}", &schema)).collect();
