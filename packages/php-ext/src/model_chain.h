@@ -25,4 +25,27 @@ void model_chain_order_random(model_state *s);
 /* Model::addAllColumns and Model::removeAllColumns: sets the column mode to 'all' or 'none'. */
 void model_chain_column_mode(model_state *s, const char *mode, size_t mode_len);
 
+/* Model::parentNode: sets the parent-node flag. */
+void model_chain_parent_node(model_state *s);
+
+/* Model::groupLimit: keeps the count, or fails unless the count is positive. */
+bool model_chain_group_limit(model_state *s, zend_long count, const char **error);
+
+/* Model::expectRevision: keeps the column and the revision as the pair the write checks. */
+void model_chain_expect_revision(model_state *s, const char *column, size_t column_len, zend_long revision);
+
+/* Model::deleteLock: sets the delete-lock flag. */
+void model_chain_delete_lock(model_state *s);
+
+/* Model::forUpdate, forShare, forUpdateNoWait and forShareNoWait: sets the lock mode, one of 'update', 'share',
+ * 'update_nowait' and 'share_nowait'. */
+void model_chain_lock(model_state *s, const char *mode, size_t mode_len);
+
+/* Model::fetchKey and Model::fetchValue: keeps the closure, which the fetch calls. */
+void model_chain_fetch_key(model_state *s, zval *fn);
+void model_chain_fetch_value(model_state *s, zval *fn);
+
+/* Model::duplication: keeps the model of the duplicate-key update. */
+void model_chain_duplication(model_state *s, zval *model);
+
 #endif

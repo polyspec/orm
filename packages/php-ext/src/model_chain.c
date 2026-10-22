@@ -102,3 +102,57 @@ void model_chain_column_mode(model_state *s, const char *mode, size_t mode_len)
     model_state_free_column_mode(s);
     s->column_mode = zend_string_init(mode, mode_len, 0);
 }
+
+void model_chain_parent_node(model_state *s)
+{
+    s->parent_node = true;
+}
+
+bool model_chain_group_limit(model_state *s, zend_long count, const char **error)
+{
+    if (count < 1) {
+        *error = "groupLimit requires a positive count";
+        return false;
+    }
+    s->group_limit = count;
+    return true;
+}
+
+void model_chain_expect_revision(model_state *s, const char *column, size_t column_len, zend_long revision)
+{
+    zval pair;
+    array_init(&pair);
+    add_next_index_stringl(&pair, column, column_len);
+    add_next_index_long(&pair, revision);
+    model_state_free_expected_revision(s);
+    ZVAL_COPY_VALUE(&s->expected_revision, &pair);
+}
+
+void model_chain_delete_lock(model_state *s)
+{
+    s->delete_lock = true;
+}
+
+void model_chain_lock(model_state *s, const char *mode, size_t mode_len)
+{
+    model_state_free_lock(s);
+    s->lock = zend_string_init(mode, mode_len, 0);
+}
+
+void model_chain_fetch_key(model_state *s, zval *fn)
+{
+    model_state_free_fetch_key(s);
+    ZVAL_COPY(&s->fetch_key, fn);
+}
+
+void model_chain_fetch_value(model_state *s, zval *fn)
+{
+    model_state_free_fetch_value(s);
+    ZVAL_COPY(&s->fetch_value, fn);
+}
+
+void model_chain_duplication(model_state *s, zval *model)
+{
+    model_state_free_duplication(s);
+    ZVAL_COPY(&s->duplication, model);
+}
