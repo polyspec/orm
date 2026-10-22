@@ -5,8 +5,72 @@ import os
 import unittest
 
 from polyspec.orm import connect_catalog
+from polyspec.orm.catalog import GridCell
 
 TENANT = 990005
+
+# One row of typed grid cells per dialect (docs/spec/interfaces.md, "Rust native grid query specification"): float cells hold
+# their IEEE-754 bits, UNSIGNED integers are unsigned cells, and date, time and datetime cells hold dbspec text.
+GRID_CELLS = {
+    "mysql": (
+        "SELECT CAST(1.5 AS FLOAT) AS f, CAST(1.5 AS DOUBLE) AS d, CAST(18446744073709551615 AS UNSIGNED) AS u, "
+        "CAST(-7 AS SIGNED) AS i, CAST(1.50 AS DECIMAL(10,2)) AS dv, CAST('ab' AS BINARY) AS b, CAST(NULL AS DATE) AS n, "
+        "CAST('2024-02-29' AS DATE) AS dt, CAST('12:34:56.5' AS TIME(6)) AS tm, "
+        "CAST('2024-02-29 01:02:03.5' AS DATETIME(6)) AS dtm",
+        [
+            GridCell("float32", 0x3FC00000),
+            GridCell("float64", 0x3FF8000000000000),
+            GridCell("unsigned", 2**64 - 1),
+            GridCell("integer", -7),
+            GridCell("decimal", "1.50"),
+            GridCell("binary", b"ab"),
+            GridCell("null"),
+            GridCell("date", "2024-02-29"),
+            GridCell("time", "12:34:56.500000"),
+            GridCell("datetime", "2024-02-29 01:02:03.500000"),
+        ],
+    ),
+    "postgres": (
+        "SELECT 1.5::real AS f, 1.5::double precision AS d, 'NaN'::double precision AS nan, 'NaN'::real AS nanf, "
+        "9223372036854775807::bigint AS i, 2.50::numeric(10,2) AS dec, '\\x6162'::bytea AS b, NULL::date AS n, "
+        "'2024-02-29'::date AS dt, '12:34:56.5'::time AS tm, '2024-02-29 01:02:03.5'::timestamp AS dtm",
+        [
+            GridCell("float32", 0x3FC00000),
+            GridCell("float64", 0x3FF8000000000000),
+            GridCell("float64", 0x7FF8000000000000),
+            GridCell("float32", 0x7FC00000),
+            GridCell("integer", 9223372036854775807),
+            GridCell("decimal", "2.50"),
+            GridCell("binary", b"ab"),
+            GridCell("null"),
+            GridCell("date", "2024-02-29"),
+            GridCell("time", "12:34:56.500000"),
+            GridCell("datetime", "2024-02-29 01:02:03.500000"),
+        ],
+    ),
+    "sqlite": (
+        "SELECT 1.5 AS d, 7 AS i, 'x' AS t, X'6162' AS b, NULL AS n",
+        [
+            GridCell("float64", 0x3FF8000000000000),
+            GridCell("integer", 7),
+            GridCell("text", "x"),
+            GridCell("binary", b"ab"),
+            GridCell("null"),
+        ],
+    ),
+}
+
+# Values that the grid query refuses with CATALOG_VALUE, as the Rust grid refuses them.
+GRID_REFUSED = {
+    "mysql": ["SELECT CAST('-01:00:00' AS TIME(6)) AS t"],
+    "postgres": [
+        "SELECT '2024-01-01 00:00:00+00'::timestamptz AS t",
+        "SELECT '00:00:00+00'::timetz AS t",
+        "SELECT '24:00:00'::time AS t",
+        "SELECT 'infinity'::date AS t",
+    ],
+    "sqlite": [],
+}
 
 
 def quote(name, driver):
@@ -67,6 +131,15 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
         self.assertEqual(len(updated.rows), 1)
         self.assertEqual(self.catalog.delete_row(find("catalog-updated")), 1)
         self.assertEqual(tenant_rows(), 0)
+
+    def test_grid_cells(self):
+        sql, expected = GRID_CELLS[self.driver]
+        result = self.catalog.read_only_grid_query(sql, [])
+        self.assertEqual(len(result.rows), 1)
+        self.assertEqual(result.rows[0], expected)
+        for refused in GRID_REFUSED[self.driver]:
+            with self.assertRaisesRegex(Exception, "CATALOG_VALUE"):
+                self.catalog.read_only_grid_query(refused, [])
 
 
 if __name__ == "__main__":

@@ -9,11 +9,12 @@ import hashlib
 import json
 import math
 import os
+import re
 import stat
 import struct
 from collections.abc import Mapping
-from dataclasses import asdict, dataclass
-from datetime import date, datetime, timezone
+from dataclasses import asdict, dataclass, field
+from datetime import date, datetime, timedelta, timezone
 from typing import Callable, TypeVar
 
 from polyspec.orm import codes
@@ -151,16 +152,14 @@ def _text(value) -> str:
     return value
 
 
-def _check_value(value, dates: bool):
-    """A driver value that the catalog reads: NULL, a boolean, an integer, a finite float, text, bytes or a datetime. A date is
-    read only by a grid query (dates=True); a time or an interval has no catalog value."""
+def _check_value(value):
+    """A driver value that the catalog reads: NULL, a boolean, an integer, a finite float, text, bytes or a datetime. A date,
+    a time or an interval has no catalog value in a plain read; the grid query reads them."""
     if value is None or isinstance(value, (bool, int, str, bytes, datetime)):
         return value
     if isinstance(value, float):
         if math.isnan(value) or math.isinf(value):
             raise _error(VALUE, "non-finite float value")
-        return value
-    if dates and isinstance(value, date):
         return value
     raise _error(VALUE, f"unsupported native type {type(value).__name__}")
 
@@ -406,6 +405,8 @@ class _Raw:
     names: list
     rows: list
     affected: int
+    codes: list = field(default_factory=list)
+    unsigned: list = field(default_factory=list)
 
 
 def _descriptor(metadata: CatalogTableMetadata) -> list:
@@ -513,15 +514,132 @@ def _check_current(current: list, original: list) -> None:
         raise _error(ROW_CONFLICT, "original values changed")
 
 
-def _grid_cell(value):
-    """A grid cell: a datetime or date as its dbspec text in UTC, a timezone-aware datetime refused, other values as they are."""
-    if isinstance(value, datetime):
-        if value.tzinfo is not None:
-            raise _error(VALUE, "a timezone-aware datetime is unsupported in a grid cell")
-        return f"{value:%Y-%m-%d %H:%M:%S}.{value.microsecond:06d}"
-    if isinstance(value, date):
-        return value.isoformat()
-    return value
+@dataclass(frozen=True)
+class GridCell:
+    """One typed cell of a grid query (docs/spec/interfaces.md, "Rust native grid query specification"). kind is one of
+    null, integer, unsigned, float32, float64, decimal, text, boolean, binary, date, time or datetime. A float cell holds its
+    IEEE-754 bits, so signed zero and nonfinite values are preserved; a date, time or datetime cell holds its dbspec text."""
+
+    kind: str
+    value: object = None
+
+
+_MYSQL_FLOAT, _MYSQL_DOUBLE, _MYSQL_TIMESTAMP, _MYSQL_DATE, _MYSQL_TIME, _MYSQL_DATETIME = 4, 5, 7, 10, 11, 12
+_MYSQL_DECIMAL, _MYSQL_NEWDECIMAL, _MYSQL_UNSIGNED_FLAG = 0, 246, 32
+_PG_FLOAT4, _PG_FLOAT8, _PG_NUMERIC, _PG_DATE, _PG_TIME, _PG_TIMESTAMP = 700, 701, 1700, 1082, 1083, 1114
+_PG_TIMESTAMPTZ, _PG_TIMETZ = 1184, 1266
+_PG_TEXT_TEMPORAL = ("date", "time", "timestamp")
+_DATE_TEXT = re.compile(r"(\d{4})-(\d{2})-(\d{2})")
+_TIME_TEXT = re.compile(r"(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?")
+
+
+def _refuse(message: str):
+    return _error(VALUE, f"unsupported grid value: {message}")
+
+
+def _float32_bits(value: float) -> int:
+    return struct.unpack(">I", struct.pack(">f", value))[0]
+
+
+def _float64_bits(value: float) -> int:
+    return struct.unpack(">Q", struct.pack(">d", value))[0]
+
+
+def _date_text(year: int, month: int, day: int) -> str:
+    """dbspec date YYYY-MM-DD: a calendar date from 0001-01-01 to 9999-12-31."""
+    try:
+        date(year, month, day)
+    except ValueError:
+        raise _refuse("date outside 0001-01-01 to 9999-12-31") from None
+    return f"{year:04d}-{month:02d}-{day:02d}"
+
+
+def _time_text(hour: int, minute: int, second: int, micro: int) -> str:
+    """dbspec time HH:MM:SS.ffffff: a time of day from 00:00:00 to 23:59:59.999999."""
+    if hour > 23 or minute > 59 or second > 59:
+        raise _refuse("time outside 00:00:00 to 23:59:59.999999")
+    return f"{hour:02d}:{minute:02d}:{second:02d}.{micro:06d}"
+
+
+def _pg_text_date(text: str) -> GridCell:
+    match = _DATE_TEXT.fullmatch(text)
+    if match is None:
+        raise _refuse(f"date text {text!r}")
+    return GridCell("date", _date_text(*(int(part) for part in match.groups())))
+
+
+def _pg_text_time(text: str) -> str:
+    match = _TIME_TEXT.fullmatch(text)
+    if match is None:
+        raise _refuse(f"time text {text!r}")
+    hour, minute, second = (int(part) for part in match.groups()[:3])
+    fraction = (match.group(4) or "").ljust(6, "0")
+    return _time_text(hour, minute, second, int(fraction or "0"))
+
+
+def _pg_text_datetime(text: str) -> GridCell:
+    day, _, clock = text.partition(" ")
+    date_part = _pg_text_date(day).value
+    return GridCell("datetime", f"{date_part} {_pg_text_time(clock)}")
+
+
+def _grid_cell(value, dialect: str, code, unsigned: bool) -> GridCell:
+    """The grid cell of one driver value. code is the native type code of the column (MySQL field type, PostgreSQL type OID;
+    None for SQLite) and unsigned tells a MySQL UNSIGNED integer column."""
+    if value is None:
+        return GridCell("null")
+    if dialect == "mysql":
+        if code == _MYSQL_FLOAT:
+            return GridCell("float32", _float32_bits(value))
+        if code == _MYSQL_DOUBLE:
+            return GridCell("float64", _float64_bits(value))
+        if code == _MYSQL_TIMESTAMP:
+            raise _refuse("MySQL TIMESTAMP follows a time zone")
+        if code == _MYSQL_DATE and isinstance(value, date) and not isinstance(value, datetime):
+            return GridCell("date", _date_text(value.year, value.month, value.day))
+        if code == _MYSQL_DATETIME and isinstance(value, datetime):
+            return GridCell("datetime", f"{_date_text(value.year, value.month, value.day)} "
+                            f"{_time_text(value.hour, value.minute, value.second, value.microsecond)}")
+        if code == _MYSQL_TIME and isinstance(value, timedelta):
+            micros = (value.days * 86400 + value.seconds) * 1000000 + value.microseconds
+            if not 0 <= micros < 86400 * 1000000:
+                raise _refuse("time outside 00:00:00 to 23:59:59.999999")
+            clock = micros // 1000000
+            return GridCell("time", _time_text(clock // 3600, clock // 60 % 60, clock % 60, micros % 1000000))
+        if code in (_MYSQL_DECIMAL, _MYSQL_NEWDECIMAL) and isinstance(value, str):
+            return GridCell("decimal", value)
+        if isinstance(value, int) and not isinstance(value, bool) and unsigned:
+            return GridCell("unsigned", value)
+    elif dialect == "postgres":
+        if code == _PG_FLOAT4:
+            return GridCell("float32", _float32_bits(value))
+        if code == _PG_FLOAT8:
+            return GridCell("float64", _float64_bits(value))
+        if code == _PG_NUMERIC and isinstance(value, str):
+            return GridCell("decimal", value)
+        if code in (_PG_TIMESTAMPTZ, _PG_TIMETZ):
+            raise _refuse("PostgreSQL timestamptz and timetz are unsupported")
+        if code == _PG_DATE and isinstance(value, str):
+            if value.startswith("infinity") or value.startswith("-infinity"):
+                raise _refuse("PostgreSQL infinity")
+            return _pg_text_date(value)
+        if code == _PG_TIME and isinstance(value, str):
+            return GridCell("time", _pg_text_time(value))
+        if code == _PG_TIMESTAMP and isinstance(value, str):
+            if "infinity" in value:
+                raise _refuse("PostgreSQL infinity")
+            return _pg_text_datetime(value)
+    if isinstance(value, bool):
+        return GridCell("boolean", value)
+    if isinstance(value, int):
+        return GridCell("unsigned" if unsigned else "integer", value)
+    if isinstance(value, float):
+        return GridCell("float64", _float64_bits(value))
+    if isinstance(value, str):
+        return GridCell("text", value)
+    if isinstance(value, bytes):
+        return GridCell("binary", value)
+    raise _refuse(f"native type {type(value).__name__} of column type {code}")
 
 
 class _Session:
@@ -532,7 +650,7 @@ class _Session:
         self.wrapper = wrapper
         self.raw = wrapper.connection
 
-    def run(self, sql: str, params=(), max_rows=None, max_bytes=None, dates=False) -> _Raw:
+    def run(self, sql: str, params=(), max_rows=None, max_bytes=None, grid=False) -> _Raw:
         if self.dialect == "sqlite":
             text, args = sql, tuple(params)
         elif self.dialect == "mysql":
@@ -542,11 +660,26 @@ class _Session:
         cursor = self.raw.cursor()
         names: list = []
         rows: list = []
+        codes: list = []
+        unsigned: list = []
         budget = 0
         try:
+            if grid and self.dialect == "postgres":
+                # Grid cells read PostgreSQL date, time and timestamp values as their text, so that 24:00:00 and infinity are
+                # seen as the server writes them, as the Rust grid reads them. psycopg is imported only by a PostgreSQL grid.
+                from psycopg.postgres import types as pg_types
+                from psycopg.types.string import TextLoader
+
+                for name in _PG_TEXT_TEMPORAL:
+                    cursor.adapters.register_loader(pg_types[name].oid, TextLoader)
             cursor.execute(text, args)
             if cursor.description:
                 names = [column[0] for column in cursor.description]
+                codes = [column[1] for column in cursor.description]
+                if grid and self.dialect == "mysql":
+                    unsigned = [bool(field_.flags & _MYSQL_UNSIGNED_FLAG) for field_ in cursor._result.fields]
+                else:
+                    unsigned = [False] * len(names)
                 while True:
                     row = cursor.fetchone()
                     if row is None:
@@ -557,7 +690,7 @@ class _Session:
                         budget += len(value) if isinstance(value, (str, bytes)) else 8
                     if max_bytes is not None and budget > max_bytes:
                         raise _error(LIMIT, f"result has more than {max_bytes} bytes of values")
-                    rows.append([_check_value(value, dates) for value in row])
+                    rows.append(list(row) if grid else [_check_value(value) for value in row])
             affected = cursor.rowcount if cursor.rowcount is not None else 0
         except Exception as error:
             if not _is_driver_error(self.dialect, error):
@@ -566,7 +699,7 @@ class _Session:
             _raise_driver_error(self.dialect, error, lost)
         finally:
             cursor.close()
-        return _Raw(names, rows, affected)
+        return _Raw(names, rows, affected, codes, unsigned)
 
     def close(self) -> None:
         self.wrapper.close()
@@ -873,8 +1006,10 @@ class CatalogConnection:
         return self._query(query, params, max_rows, max_bytes, grid=False)
 
     def read_only_grid_query(self, query: str, params=(), max_rows: int = 0, max_bytes: int = 0) -> CatalogQueryResult:
-        """Runs one read query and returns grid cells: a date or datetime as its dbspec text in UTC with six fraction digits,
-        binary bytes preserved and NULL as None. Other types follow read_only_query."""
+        """Runs one read query and returns typed GridCell values, as the Rust grid reads them: float cells as IEEE-754 bits,
+        MySQL UNSIGNED integers as unsigned cells, DECIMAL as plain text, date, time and datetime as dbspec text with six
+        fraction digits, binary as bytes and NULL as a null cell. MySQL TIMESTAMP, PostgreSQL timestamptz and timetz, and
+        values outside the dbspec ranges fail with CATALOG_VALUE."""
         return self._query(query, params, max_rows, max_bytes, grid=True)
 
     def _query(self, query, params, max_rows: int, max_bytes: int, grid: bool) -> CatalogQueryResult:
@@ -886,12 +1021,15 @@ class CatalogConnection:
         values = _params(params)
 
         def work(session: _Session) -> CatalogQueryResult:
-            raw = session.run(query, values, rows_budget, bytes_budget, dates=grid)
             if grid:
-                cells = [[_grid_cell(value) for value in row] for row in raw.rows]
-            else:
-                cells = raw.rows
-            return CatalogQueryResult(columns=raw.names, rows=cells)
+                raw = session.run(query, values, rows_budget, bytes_budget, grid=True)
+                cells = [
+                    [_grid_cell(value, self._dialect, raw.codes[i], raw.unsigned[i]) for i, value in enumerate(row)]
+                    for row in raw.rows
+                ]
+                return CatalogQueryResult(columns=raw.names, rows=cells)
+            raw = session.run(query, values, rows_budget, bytes_budget)
+            return CatalogQueryResult(columns=raw.names, rows=raw.rows)
 
         return self._read(work)
 
