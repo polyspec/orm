@@ -19,7 +19,7 @@ fn set_file(dir: &Path, documents: &[PathBuf], external: &[PathBuf]) -> PathBuf 
     let copy = |into: &str, path: &PathBuf| {
         let name = path.file_name().expect("a document has a file name").to_str().expect("a UTF-8 name").to_owned();
         std::fs::create_dir_all(dir.join(into)).unwrap();
-        std::fs::copy(path, dir.join(into).join(&name)).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+        std::fs::copy(path, dir.join(into).join(&name)).or_panic(|e| format!("{}: {e}", path.display()));
         name
     };
     let documents: Vec<String> = documents.iter().map(|p| copy("set", p)).collect();
@@ -44,7 +44,7 @@ fn generate_external(source: &str) -> Result<String, String> {
     let set = set_file(&dir, &[external.join("member.dbs")], &[external.join("core.dbs")]);
     let out = polyspec_orm_build::Builder::set(set).scan(&src).out_dir(dir.join("out")).try_generate();
     let text = out.map(|p| std::fs::read_to_string(p).unwrap());
-    let _ = std::fs::remove_dir_all(&dir);
+    remove_test_dir(&dir);
     text
 }
 
@@ -56,7 +56,7 @@ fn generate_with_schema(schema: PathBuf, source: &str) -> Result<String, String>
     std::fs::write(src.join("main.rs"), source).unwrap();
     let out = polyspec_orm_build::Builder::set(set_file(&dir, &[schema], &[])).scan(&src).out_dir(dir.join("out")).try_generate();
     let text = out.map(|p| std::fs::read_to_string(p).unwrap());
-    let _ = std::fs::remove_dir_all(&dir);
+    remove_test_dir(&dir);
     text
 }
 
@@ -182,7 +182,7 @@ fn rejects_an_invalid_document() {
     let text = std::fs::read_to_string(schema()).unwrap().replace("start_dt datetime(6)", "start_dt datetime(9)");
     std::fs::write(dir.join("zone.dbs"), text).unwrap();
     let err = polyspec_orm_build::Builder::set(set_file(&dir, &[dir.join("zone.dbs")], &[])).out_dir(dir.join("out")).try_generate().unwrap_err();
-    let _ = std::fs::remove_dir_all(&dir);
+    remove_test_dir(&dir);
     assert!(err.contains("zone.dbs: SCHEMA_INVALID 5:"), "{err}");
 }
 
@@ -198,7 +198,7 @@ fn rejects_a_file_without_the_signature() {
         let out = dir.join("out");
         let err = polyspec_orm_build::Builder::set(&set).out_dir(out.clone()).try_generate().unwrap_err();
         let wrote = out.exists();
-        let _ = std::fs::remove_dir_all(&dir);
+        remove_test_dir(&dir);
         assert!(!wrote, "{name}: generation wrote {}", out.display());
         let display = format!("{}/{name}", dir.join("set").display());
         assert_eq!(err, format!("{display}: SCHEMA_INVALID 1:1 signature: {display} is not a dbspec document"), "{name}");
@@ -223,7 +223,7 @@ fn reports_every_error_of_the_set_and_writes_nothing() {
     let set = set_file(&dir, &[signature, invalid], &[]);
     let diagnostics = polyspec_orm_build::Builder::set(&set).out_dir(dir.join("out")).try_generate().unwrap_err();
     let wrote_after_documents = dir.join("out").exists();
-    let _ = std::fs::remove_dir_all(&dir);
+    remove_test_dir(&dir);
     let lines: Vec<&str> = set_errors.lines().collect();
     assert_eq!(lines.len(), 3, "{set_errors}");
     assert!(lines[0].starts_with("set.file: ") && lines[0].contains("gone.dbs"), "{set_errors}");
@@ -247,7 +247,7 @@ fn manifest_text_is_embedded_with_its_hash() {
     let embedded = std::fs::read_to_string(dir.join("out").join(polyspec_orm_build::MANIFEST_FILE)).unwrap();
     let zone = std::fs::read_to_string(schema()).unwrap();
     let audit = std::fs::read_to_string(audit).unwrap();
-    let _ = std::fs::remove_dir_all(&dir);
+    remove_test_dir(&dir);
     assert_eq!(embedded, format!("{audit}{zone}"), "the manifest text holds the documents in name order");
 }
 
@@ -378,13 +378,13 @@ fn generation_leaves_external_tables_out() {
     let out = polyspec_orm_build::Builder::set(&set).out_dir(dir.join("out")).try_generate();
     let text = out.map(|p| std::fs::read_to_string(p).unwrap());
     let external = std::fs::read_to_string(dir.join("out").join("orm_external.dbs"));
-    let _ = std::fs::remove_dir_all(&dir);
-    let text = text.unwrap_or_else(|e| panic!("generate: {e}"));
+    remove_test_dir(&dir);
+    let text = text.or_panic(|e| format!("generate: {e}"));
     assert!(text.contains("pub struct ExtPost ") && text.contains("pub struct ExtPostHistory "), "the owned tables have models");
     assert!(text.contains("pub struct ExtAccount ") && text.contains("pub struct ExtAudit "), "the used external tables have models");
     assert!(!text.contains("pub struct ExtSession "), "the unused external table ext_session has a model");
     assert!(text.contains("polyspec_orm::Schema::with_external("), "the schema value carries the external text:\n{text}");
-    let external = external.unwrap_or_else(|e| panic!("orm_external.dbs: {e}"));
+    let external = external.or_panic(|e| format!("orm_external.dbs: {e}"));
     assert!(external.starts_with("dbspec 1 ext_core\n"), "external text: {external}");
     assert!(!external.contains("ext_session"), "the external text carries ext_session, which the set does not use");
 }
@@ -415,11 +415,11 @@ fn scan_path_spelling_keeps_the_generated_source() {
     let set = set_file(&dir, &[schema()], &[]);
     let mut texts = Vec::new();
     for (name, [src, tests, out]) in &spellings {
-        let _ = std::fs::remove_dir_all(dir.join("out"));
+        remove_test_dir(&dir.join("out"));
         let text = polyspec_orm_build::Builder::set(&set).scan(src).scan(tests).out_dir(out).try_generate().map(|p| std::fs::read_to_string(p).unwrap());
-        texts.push((*name, text.unwrap_or_else(|e| panic!("generate {name}: {e}"))));
+        texts.push((*name, text.or_panic(|e| format!("generate {name}: {e}"))));
     }
-    let _ = std::fs::remove_dir_all(&dir);
+    remove_test_dir(&dir);
     let first = &texts[0].1;
     assert!(first.contains("pub fn gt_start_dt<") && first.contains("pub fn or_seq<"), "the calls of src and tests are generated");
     for (name, text) in &texts {
@@ -436,7 +436,7 @@ fn a_table_named_like_the_runtime_crate_gets_a_model_module_of_its_own() {
     let schema = dir.join("crate_name.dbs");
     std::fs::write(&schema, "dbspec 1 crate_name\n\ntable polyspec_orm {\n  seq i64 identity\n  primary key (seq)\n}\n").unwrap();
     let text = generate_with_schema(schema, "fn main() { let _ = PolyspecOrm::new(); }");
-    let _ = std::fs::remove_dir_all(&dir);
+    remove_test_dir(&dir);
     let text = text.unwrap();
     // Generated code calls the runtime crate as polyspec_orm::, so a model module of the same name shadows that path.
     assert!(text.contains("pub mod polyspec_orm_model {"), "the model module of table polyspec_orm is polyspec_orm_model");
@@ -486,8 +486,8 @@ fn check_reports_differences_without_writing() {
         assert!(!out.join("orm_manifest.dbs").exists(), "the check wrote orm_manifest.dbs");
         Ok(())
     })();
-    let _ = std::fs::remove_dir_all(&dir);
-    result.unwrap_or_else(|e| panic!("check: {e}"));
+    remove_test_dir(&dir);
+    result.or_panic(|e| format!("check: {e}"));
 }
 
 /// A check whose generation fails returns the error and does not create the output directory.
@@ -503,7 +503,7 @@ fn check_keeps_the_output_directory_on_generation_error() {
     let out = dir.join("out");
     let err = polyspec_orm_build::Builder::set(&set).scan(&src).out_dir(&out).check();
     let created = out.exists();
-    let _ = std::fs::remove_dir_all(&dir);
+    remove_test_dir(&dir);
     assert!(err.is_err(), "a call the schema does not allow must fail the check");
     assert!(!created, "the check created the output directory");
 }
@@ -597,7 +597,7 @@ fn a_file_that_does_not_parse_stops_the_generation() {
     std::fs::write(src.join("broken.rs"), "fn main() {}\nfn (\n").unwrap();
     let out = polyspec_orm_build::Builder::set(set_file(&dir, &[bench()], &[])).scan(&src).out_dir(dir.join("out")).try_generate();
     let wrote = dir.join("out").exists();
-    let _ = std::fs::remove_dir_all(&dir);
+    remove_test_dir(&dir);
     let err = out.expect_err("an unparsable file is skipped");
     assert!(err.contains("broken.rs:2:"), "the error does not name the file and position: {err}");
     assert!(!wrote, "the failed generation wrote its output");
@@ -652,8 +652,8 @@ fn unused_external_tables_keep_their_models() {
     let set = set_file(&dir, &[note], &[external.join("core.dbs")]);
     let out = polyspec_orm_build::Builder::set(set).scan(&src).out_dir(dir.join("out")).try_generate();
     let text = out.map(|p| std::fs::read_to_string(p).unwrap());
-    let _ = std::fs::remove_dir_all(&dir);
-    let text = text.unwrap_or_else(|e| panic!("generate: {e}"));
+    remove_test_dir(&dir);
+    let text = text.or_panic(|e| format!("generate: {e}"));
     assert!(text.contains("pub struct ExtSession "), "a used external table that no source calls has no model");
 }
 
@@ -701,4 +701,27 @@ fn a_restore_or_create_call_is_a_fixed_method() {
     // model keeps its own method, not a generated one.
     let text = generate("async fn main() { let _ = ZoneEvent::new().restore_or_create().await; }").unwrap();
     assert!(text.contains("pub async fn restore_or_create(&self) -> polyspec_orm::Result<Self>"), "the fixed method is missing");
+}
+
+/// Removes a test directory. One that is already gone is the state the test wants; any other failure panics with its path.
+fn remove_test_dir(path: &std::path::Path) {
+    if let Err(error) = std::fs::remove_dir_all(path) {
+        if error.kind() != std::io::ErrorKind::NotFound {
+            panic!("remove {}: {error}", path.display());
+        }
+    }
+}
+
+/// Returns the value of an Ok, and panics with the message the error gives otherwise.
+trait OrPanic<T, E> {
+    fn or_panic(self, report: impl FnOnce(E) -> String) -> T;
+}
+
+impl<T, E> OrPanic<T, E> for Result<T, E> {
+    fn or_panic(self, report: impl FnOnce(E) -> String) -> T {
+        match self {
+            Ok(value) => value,
+            Err(error) => panic!("{}", report(error)),
+        }
+    }
 }
