@@ -2,8 +2,9 @@
 # Changelog
 
 ## Unreleased
-- KSTD-10-5 is done again on main: its autoload check cases are declared with `caseTest`, as KSTD-10-5-1 restored after the KSTD-3-2 commit rewrote them with node:test (KSTD-10-5). Red: the rule failed on the rewritten test.
 
+- The extension fails loudly on its silent paths: `Validator::restoreKey` and `conflictKey` throw an Error naming the missing OrmException class instead of returning null, `scall` throws when a call is not callable, `record_inserted` propagates a failed TxFrame::recordInserted instead of discarding it, and the build uses `-Werror` (T182-2-4). Red: `make dbspec-php-extension-check/silent-paths` returned null with no exception for both calls.
+- KSTD-10-5 is done again on main: its autoload check cases are declared with `caseTest`, as KSTD-10-5-1 restored after the KSTD-3-2 commit rewrote them with node:test (KSTD-10-5). Red: the rule failed on the rewritten test.
 - The test servers' startLogged no longer waits forever: a ready line that does not come fails with its step and log, and the log is also read on a timer (KSTD-5-37).
 - The guard test of `scripts/check/run.test.mts` checks the refusal of a CI group locally, without setting the CI identity; the accepting case runs only in a GitHub Actions process (KSTD-5-13). Red: the bypass check failed on the parent test, which set the CI identity in a local run.
 - The workflow rules of the repo check that read the Node, PHP and Rust versions judge only orm's own workflows, not gates.yml and release.yml, which are kit's copies that kit-check holds byte for byte (KSTD-10). Red: the cases found gates.yml, a kit copy, not reading mise.toml and .php-version.
