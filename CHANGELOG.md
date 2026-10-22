@@ -2,9 +2,10 @@
 # Changelog
 
 ## Unreleased
+
+- Full-text search is implemented in every implementation: the IR ops fulltext and fulltext_boolean (PRT-75) over cols, MATCH for MySQL, to_tsvector for PostgreSQL, refused on SQLite, and the boolean text normalized by fulltext_boolean (DIA-6) (KSTD-2-10-2).
 - The repository declares its commit identity in `config/commit-identity.json`, the kit copy of min-0-max <max.tools>, so commits-check enforces it (KSTD-5-17). Red: the identity case found the file missing.
 - The autoload check cases of `scripts/php/vendor-autoload-check.test.mjs` are declared with `caseTest` again, after a later fix had rewritten them with node:test (KSTD-10-5-1). Red: the rule named the file as declaring node:test tests directly.
-
 - The trigger rule of the repo check judges only orm's own workflows, and its table no longer holds release.yml, a copy of kit whose triggers kit owns (KSTD-5-25). Red: the case found release.yml with the manual trigger that kit copies, and the rule checked it.
 - The coverage rules of `docs/spec/feature-coverage.md` carry ids, and the implementation matrix moves from `docs/spec` to `docs/operations/interface-implementation.md`, so `docs/spec` holds only rules (KSTD-2-8). Red: `make docs-check` failed at `20747f534^` in the docs-build step (vitepress exit 1).
 - The lock timeout test of `packages/rust/orm` opens its case with `polyspec_orm_testcase::case!`, so it runs with its deadline and RUN line (KSTD-10-6). Red: the rule named the test as one without a case.
