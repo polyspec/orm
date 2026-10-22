@@ -3203,6 +3203,9 @@ static bool subscribe_impl(zval *self, zval *subscriber, zval *out)
     unsub->handler = db_unsubscribe;
     unsub->reserved[0] = (void *)(uintptr_t)id;
     zend_create_fake_closure(out, (zend_function *)unsub, Z_OBJCE_P(self), Z_OBJCE_P(self), self);
+    /* zend_create_fake_closure copies the function into the closure, which frees its copy with the closure; the
+     * template is not used again, so it is freed here rather than leaked per subscribe. */
+    pefree(unsub, 1);
     return true;
 }
 

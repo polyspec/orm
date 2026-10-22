@@ -836,7 +836,7 @@ dbspec-php-extension-check/executor: php-vendor-check dbspec-php-extension-check
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/StatementFaultTest.php
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/DsnTest.php --filter testSqlitePath
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/MysqlTlsTest.php --filter testSessionSqlMode
-	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/ModelTest.php --filter 'test_(transactions|statement_timeout)'
+	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/ModelTest.php --filter 'test(Transactions|StatementTimeout)'
 
 # repo-check checks that the paths that the root npm script uses are tracked files or
 # directories, that the CI workflow starts servers with make orm-test-servers, and that every variable of that environment file is given

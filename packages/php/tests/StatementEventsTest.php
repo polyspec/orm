@@ -52,6 +52,37 @@ final class StatementEventsTest extends TestCase
         }
     }
 
+    /**
+     * Unsubscribing frees the function of the unsubscribe closure: a process that subscribes and unsubscribes
+     * over and over keeps its memory flat. The extension's allocation is persistent, so the measure is the
+     * resident set of this process (ps), not memory_get_usage.
+     */
+    public function testUnsubscribeFreesClosure(): void
+    {
+        $path = sys_get_temp_dir() . '/unsubscribe-leak-' . getmypid() . '.sqlite';
+        @unlink($path);
+        try {
+            $db = \Polyspec\Orm\Orm::connect('sqlite://' . $path, new \Polyspec\Orm\Config());
+            $rss = static fn(): int => (int) trim((string) shell_exec('ps -o rss= -p ' . getmypid()));
+            $cycle = static function (\Polyspec\Orm\Db $db): void {
+                $stop = $db->subscribe(static function (): void {
+                });
+                $stop();
+            };
+            for ($i = 0; $i < 20000; $i++) {
+                $cycle($db);
+            }
+            $before = $rss();
+            for ($i = 0; $i < 200000; $i++) {
+                $cycle($db);
+            }
+            $grew = $rss() - $before;
+            self::assertLessThan(10240, $grew, "resident set grew by {$grew} KB over 200000 subscribe/unsubscribe cycles");
+        } finally {
+            @unlink($path);
+        }
+    }
+
     public function testServerTransactions(): void
     {
         $vector = statementEventsVector();
