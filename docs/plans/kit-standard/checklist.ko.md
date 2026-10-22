@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: bb59c8b9e0a0d97be0b21955c7110de1fd3a7c0a74e435f7dd9daf6a59b0a4f1 -->
+<!-- source-sha256: b530fc9280ea5a84a2a6ad3ac9957c7c36071566056b1b2e75ecf28d636af7b8 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -136,6 +136,7 @@
 | KSTD-5-38 | orm의 도구 경로가 kit의 KIT_TOOLS를 써서 연결된 worktree가 빌드된다 | orm/Makefile tool paths use `$(KIT_TOOLS)` | `make orm-install-go typescript-build editor-build` | [o] |
 | KSTD-5-39 | docs site의 VitePress 임시 폴더가 git에서 무시된다 | `.gitignore` ignores `/docs/.vitepress/.temp/` | `git check-ignore -q docs/.vitepress/.temp/probe` | [o] |
 | KSTD-5-47 | 변경된 경로의 언어에 맞는 lint target을 owner 선택이 고르도록 하여 land가 이를 실행하게 한다 (KSTD-5에 이어짐). 원인: config/owner-checks.json이 모든 변경 경로를 feature-owner-check에 넘기고, 이 target은 lint-go, lint-rust, lint-python, lint-php, lint-ts, duplication-check를 고르지 않아 land는 lint를 실행하지 않으며 finding을 추가한 branch도 land된다 | config/owner-checks.json: a rule per language that selects its lint target for the paths of that language | `make land BRANCH=fix/lint-owner-KSTD-5-47` refuses a branch with a Go errcheck finding at lint-go | [ ] |
+| KSTD-5-44 | TypeScript lint가 통과한다: oxlint와 knip이 발견 사항을 보고하지 않는다 (KSTD-5 하위) | the TypeScript sources that oxlint and knip name, with the unused export quoteIdent of listen.ts removed when nothing uses it | `make lint-ts` | [ ] |
 | KSTD-6 | link rebuild는 repository layout을 읽고 자기 paths를 두지 않는다 (kit K286). Cause: kit은 link된 checkout을 layout으로 rebuild하며 link 선언의 paths key는 없어진다 | kit.json, the link declaration | `make rebuild-check` | [o] |
 | KSTD-7 | main에서 feature-unit-check가 통과한다. Cause: docs/features.md가 그것이 그리는 coverage와 맞지 않고, scripts/features/coverage.test.mts의 8개 case가 "no package implements the client language php-extension"으로 실패한다 | docs/features.md, scripts/features | `make feature-unit-check` | [o] |
 | KSTD-7-1 | PHP extension이 the features schema_install, model_generation and interface_contract를 구현하고 PHP library의 test가 extension으로 이를 돌리며, 그 partial 상태를 지운다 (KSTD-7, T182-0 후속). Cause: S6와 S10은 partial feature를 받지 않고, kit K315는 contracts/features.json의 partial과 unsupported를 실패시킨다 | packages/php-ext, contracts/features.json | `make feature-unit-check` | [ ] |
