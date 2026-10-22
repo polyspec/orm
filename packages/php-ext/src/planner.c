@@ -2704,6 +2704,28 @@ static zend_string *aes_version_slot(pctx *c, pbinds *b, HashTable *ent)
     return b_config(c, b, "aes_version", t);
 }
 
+/* Adds the AES key version to sets when the assignments of set encrypt a column: the version column is set to its slot. */
+static bool push_aes_version(pctx *c, pbinds *b, HashTable *ent, HashTable *set, zval *sets)
+{
+    bool as = false;
+    if (!assigns_aes(c, ent, set, &as)) {
+        return false;
+    }
+    if (as) {
+        zend_string *qv = quote(c, gs(c, ent, "aes_version"));
+        if (qv == NULL) {
+            return false;
+        }
+        zend_string *cv = aes_version_slot(c, b, ent);
+        if (cv == NULL) {
+            return false;
+        }
+        lpushs(sets, fmt(c, "%s = %s", ZSTR_VAL(qv), ZSTR_VAL(cv)));
+    }
+    return true;
+}
+
+
 /* The statement of an insert, with its rows and upsert (Planner::insertStep). */
 static pstep *insert_step(pctx *c, HashTable *r)
 {
@@ -2890,16 +2912,8 @@ static pstep *insert_step(pctx *c, HashTable *r)
             OKP(v);
             lpushs(sets, fmt(c, "%s = %s", ZSTR_VAL(qc), ZSTR_VAL(v)));
         } ZEND_HASH_FOREACH_END();
-        bool as = false;
-        if (!assigns_aes(c, ent, Z_ARRVAL_P(dupz), &as)) {
+        if (!push_aes_version(c, b, ent, Z_ARRVAL_P(dupz), sets)) {
             return NULL;
-        }
-        if (as) {
-            zend_string *qv = quote(c, gs(c, ent, "aes_version"));
-            OKP(qv);
-            zend_string *cv = aes_version_slot(c, b, ent);
-            OKP(cv);
-            lpushs(sets, fmt(c, "%s = %s", ZSTR_VAL(qv), ZSTR_VAL(cv)));
         }
         if (audited) {
             zend_string *qa = quote(c, gs(c, ent, "audit"));
@@ -2993,16 +3007,8 @@ static pstep *update_step(pctx *c, HashTable *r)
     if (!render_sets(c, b, ent, set, sets)) {
         return NULL;
     }
-    bool as = false;
-    if (!assigns_aes(c, ent, set, &as)) {
+    if (!push_aes_version(c, b, ent, set, sets)) {
         return NULL;
-    }
-    if (as) {
-        zend_string *qv = quote(c, gs(c, ent, "aes_version"));
-        OKP(qv);
-        zend_string *cv = aes_version_slot(c, b, ent);
-        OKP(cv);
-        lpushs(sets, fmt(c, "%s = %s", ZSTR_VAL(qv), ZSTR_VAL(cv)));
     }
     zend_string *updated = gs(c, ent, "updated");
     if (ZSTR_LEN(updated) > 0 && !assigned(c, lst(r, "set"), updated)) {
@@ -3116,16 +3122,8 @@ static pstep *restore_step(pctx *c, HashTable *r)
     if (!render_sets(c, b, ent, Z_ARRVAL_P(setz), sets)) {
         return NULL;
     }
-    bool as = false;
-    if (!assigns_aes(c, ent, Z_ARRVAL_P(setz), &as)) {
+    if (!push_aes_version(c, b, ent, Z_ARRVAL_P(setz), sets)) {
         return NULL;
-    }
-    if (as) {
-        zend_string *qv = quote(c, gs(c, ent, "aes_version"));
-        OKP(qv);
-        zend_string *cv = aes_version_slot(c, b, ent);
-        OKP(cv);
-        lpushs(sets, fmt(c, "%s = %s", ZSTR_VAL(qv), ZSTR_VAL(cv)));
     }
     zend_string *qsoft = quote(c, soft);
     OKP(qsoft);
