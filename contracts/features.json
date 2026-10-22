@@ -2222,7 +2222,18 @@
         },
         {
           "id": "statement-fault-typescript",
-          "command": "node --conditions=orm-test packages/ts/tests/statement_fault.mjs && node --conditions=orm-test packages/ts/tests/statement_fault_entry.mjs",
+          "command": "node --conditions=orm-test packages/ts/tests/statement_fault.mjs",
+          "shard": "other",
+          "inputs": [
+            "packages/ts/tests/statement_fault.mjs",
+            "packages/ts/tests/statement_fault_entry.mjs",
+            "contracts/fixtures/statement_fault.json",
+            "contracts/fixtures/rollback.dbs"
+          ]
+        },
+        {
+          "id": "statement-fault-typescript-entry",
+          "command": "node --conditions=orm-test packages/ts/tests/statement_fault_entry.mjs",
           "shard": "other",
           "inputs": [
             "packages/ts/tests/statement_fault.mjs",
@@ -4235,7 +4246,18 @@
         },
         {
           "id": "install-register-typescript",
-          "command": "node packages/ts/tests/schema-set.mjs register_sends_no_statement external_documents && node packages/ts/tests/install_changed_database.mjs",
+          "command": "node packages/ts/tests/schema-set.mjs register_sends_no_statement external_documents",
+          "shard": "other",
+          "inputs": [
+            "packages/ts/tests/schema-set.mjs",
+            "packages/ts/tests/install_changed_database.mjs",
+            "packages/ts/tests/case-database.mjs",
+            "contracts/fixtures/install/changed_database.json"
+          ]
+        },
+        {
+          "id": "install-changed-database-typescript",
+          "command": "node packages/ts/tests/install_changed_database.mjs",
           "shard": "other",
           "inputs": [
             "packages/ts/tests/schema-set.mjs",

@@ -1403,6 +1403,12 @@ caseTest('a recipe or a command that runs independent tests in sequence is refus
   const root = new URL('../..', import.meta.url).pathname;
   assert.deepEqual(independentTestErrors(readFileSync(join(root, 'Makefile'), 'utf8')), []);
   assert.deepEqual(chainedCommandErrors(readFeatures(root)), []);
+  // The planner target runs no test in its own recipe: its suites are parts that make -j runs together (KSTD-5-23).
+  const makefileLines = readFileSync(join(root, 'Makefile'), 'utf8').split('\n');
+  const plannerAt = makefileLines.findIndex(line => line.startsWith('dbspec-php-extension-check/planner:'));
+  const plannerRecipe: string[] = [];
+  for (let index = plannerAt + 1; index < makefileLines.length && makefileLines[index]?.startsWith('\t'); index++) plannerRecipe.push(makefileLines[index] ?? '');
+  assert.deepEqual(plannerRecipe, []);
 });
 
 

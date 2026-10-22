@@ -363,7 +363,7 @@ dbspec-introspect-python-check: python-venv-check
 # no hidden names (docs/spec/plans.md "Verification").
 .PHONY: dbspec-plan-check
 dbspec-plan-check:
-	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./packages/go/internal/dialects -run '^TestPlanApply$' -count=1
+	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./packages/go/internal/dialects -run '^TestPlanApply$$' -count=1
 
 # dbspec-plan-python-check applies every case of tests/dbspec/plans.json to MySQL, PostgreSQL and SQLite with the Python client (packages/python/tests/dbspec_plan_physical.py).
 .PHONY: dbspec-plan-python-check
@@ -802,10 +802,16 @@ dbspec-php-extension-check/set-parse: php-vendor-check dbspec-php-extension-chec
 # dbspec-php-extension-check/planner runs the planner suites with the extension: CoveragePlannerTest (the compile vectors of
 # contracts/fixtures/planner.json), InsertPartsTest (contracts/fixtures/insert_parts.json) and IrAnswersTest (contracts/fixtures/ir_answers.json).
 # It first checks that the extension registers Polyspec\Orm\Planner: its class is internal, so the planner the suites run is C.
-dbspec-php-extension-check/planner: php-vendor-check dbspec-php-extension-check/prepare
+dbspec-php-extension-check/planner: dbspec-php-extension-check/planner/coverage dbspec-php-extension-check/planner/insert-parts dbspec-php-extension-check/planner/ir-answers
+
+# The planner parts are independent: each runs as its own target after the class check, so make -j runs them together.
+dbspec-php-extension-check/planner/internal: php-vendor-check dbspec-php-extension-check/prepare
 	php -d extension=$(PHP_EXTENSION_LIBRARY) -r 'exit((new ReflectionClass("Polyspec\\Orm\\Planner"))->isInternal() ? 0 : 1);'
+dbspec-php-extension-check/planner/coverage: php-vendor-check dbspec-php-extension-check/planner/internal
 	$(PHP_EXTENSION_TESTS) packages/php/tests/CoveragePlannerTest.php
+dbspec-php-extension-check/planner/insert-parts: php-vendor-check dbspec-php-extension-check/planner/internal
 	$(PHP_EXTENSION_TESTS) packages/php/tests/InsertPartsTest.php
+dbspec-php-extension-check/planner/ir-answers: php-vendor-check dbspec-php-extension-check/planner/internal
 	$(PHP_EXTENSION_TESTS) packages/php/tests/IrAnswersTest.php
 
 # dbspec-php-extension-check/executor runs the suites of the connection, the statement path and the transactions with the extension
