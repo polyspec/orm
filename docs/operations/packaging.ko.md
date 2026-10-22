@@ -1,5 +1,5 @@
 <!-- doc-id: packaging -->
-<!-- source-sha256: 2b1fa7dc3d74b7083b3a063a3fc72f9510dfc37e8a9477d7cc50cb1c619f3041 -->
+<!-- source-sha256: 4cd141df2366bc407946bff2649edd2f0b7011e925debc0acf3d6c861c70e68c -->
 # 패키징 결정
 
 | 결정 | 선택 | 이유 | 변경 조건 |
@@ -40,7 +40,7 @@
   }
   ```
 
-  client는 `purrphp/yaml` `1.0.0-p1`을 요구한다. 이는 fork https://github.com/min-0-max/yaml 의 release로, plain scalar를 YAML 1.2.2의 core schema(10.3.2절)로 읽는다. upstream PurrPHP/yaml 1.0.0은 그렇게 읽지 않는다. Composer는 `repositories`를 project의 root manifest에서만 읽고 의존성의 manifest에서는 읽지 않으므로, orm package는 이 source를 consumer에게 전달할 수 없다: consumer가 위처럼 `vcs` repository를 직접 선언하며, tests/release-consumer/composer도 같이 한다. `no-api`는 Composer가 GitHub API에 묻지 않고 공개 repository를 HTTPS로 clone하게 한다. 그렇지 않으면 API의 익명 rate limit(HTTP 403)이 Composer가 key가 필요한 SSH clone으로 넘어간다.
+  client는 `purrphp/yaml` `1.0.0-p1`을 요구한다. 이는 fork https://github.com/min-0-max/yaml 의 release로, plain scalar를 YAML 1.2.2의 core schema(10.3.2절)로 읽는다. upstream 1.0.0 release는 그렇게 읽지 않는다. Composer는 `repositories`를 project의 root manifest에서만 읽고 의존성의 manifest에서는 읽지 않으므로, orm package는 이 source를 consumer에게 전달할 수 없다: consumer가 위처럼 `vcs` repository를 직접 선언하며, tests/release-consumer/composer도 같이 한다. `no-api`는 Composer가 GitHub API에 묻지 않고 공개 repository를 HTTPS로 clone하게 한다. 그렇지 않으면 API의 익명 rate limit(HTTP 403)이 Composer가 key가 필요한 SSH clone으로 넘어간다.
 
   `polyspec/orm-php-ext`는 type `php-ext`다: PIE가 build하고 설치하며, Composer는 설치하지 않는다.
 

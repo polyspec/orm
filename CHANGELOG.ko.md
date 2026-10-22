@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 30c75d71caaf7be0be1ddfce99e538d8213b2b7b6b2c6ac6a81322805d9078be -->
+<!-- source-sha256: cdeb73826f2c75e683cf4a3322371fcbfd400d59ee466bb0a6d0c97fc893beee -->
 # 변경 이력
 
 ## Unreleased
@@ -7,6 +7,8 @@
 - docs/spec/dialects.md의 Markdown IR executor 표가 고정된 버전의 flowmark 능력 표를 반영하고, `make markdown-table-check`가 통과한다(KSTD-5-18). red: 제목 아래 표가 없었다.
 - TypeScript build 캐시 `packages/ts/tsconfig.build.tsbuildinfo`와 모든 `*.tsbuildinfo`는 Git이 무시하고 생성 경로로 선언하므로, build가 checkout에 추적되지 않는 파일을 남기지 않습니다. red: `git check-ignore`가 이 파일의 규칙을 찾지 못했고, `make build` 뒤 `git status`가 이 파일을 보고했습니다 (KSTD-15).
 - `docs/operations/perf.md`는 PHP 8.5.10 비율을 뺀다: PHP 8.5는 8.4로 간다. 이 문서는 PHP 8.4 비율을 유지한다 (T233). red: 문서가 PHP 8.5.10 비율을 인용했다.
+- T234는 이 커밋에서 done으로 기록된다: 항목이 [o]이고, red는 수정 전 T234 text-absent 실행(changelog와 packaging 문서에 upstream YAML 제품 이름이 있음)이며, green은 수정 후 같은 실행이다 (T234).
+- T142-1-1의 changelog 항목과 packaging 문서는 PHP YAML 의존성을 일반적으로 적는다. 의존성 package 이름과 fork 사실은 그대로 둔다 (T234).
 - 레시피 `case-database-check`, `example-check`, `timing-check`은 Rust crate를 kit의 cargo link(`CARGO_SIBLINGS`)로 빌드하므로, 형제 polyspec crate가 자기 경로로 resolve되고 어떤 레시피도 잠긴 release를 내려받지 않습니다(K448-5). red: `make -s link-state-check`가 Makefile:1175, 1740, 1753을 보고하고 2로 끝났습니다 (KSTD-13).
 - `docs/spec/dialects.md`는 고정된 PHP 8.4의 `pdo_sqlite` SQLite 버전을 적는다: PHP 8.4.26의 `select sqlite_version()` 결과 3.53.4이며, PHP 8.5.10을 대신한다 (T232). red: 문서가 PHP 8.5.10의 `pdo_sqlite`를 적었다.
 - KSTD-9은 done입니다. 서버 도구가 `initdb`와 시작하는 PostgreSQL primary 및 replica에 `LC_ALL`을 `en_US.UTF-8`로 설정하므로, 호출자가 locale을 설정하지 않아도 시작이 성공합니다. `postgresEnvironment`가 그 환경을 만들고 test가 이를 확인합니다. 호출자 locale이 없는 실제 시작도 포함합니다. red: `LC_ALL`이 없을 때 서버가 `postmaster became multithreaded during startup`로 종료했습니다 (KSTD-9).
@@ -406,13 +408,13 @@
 - 생성된 TypeScript model이 쓰는 runtime 이름만 import하고, chain method를 합쳐진 interface 대신 class field로 선언한다. (#T170)
 - 생성된 Rust model이 allow attribute를 담지 않는다: 변환이 값을 가져가는 곳에만 mut v를 쓰고, 인자 없는 new 옆에 Default impl을 둔다. (#T137-1-3-1)
 - make run-databases TARGETS=conformance-check VECTOR="..."가 준비된 bench database에서 지정한 conformance vector를 실행하고, RECORD=1은 전체 실행을 기록한다. VECTOR와 함께 쓴 RECORD는 거부한다. conformance README가 다섯 client를 기술한다. (#T169-2)
-- 공유 decode vector가 모든 client에서 JSON 값을 비교하고, 받아들이는 YAML key 1, "true", tRUE, nULL, .InF가 공유 vector가 되었다. PHP는 T142-1-1의 purrphp 결함 때문에 대소문자가 섞인 key 세 개를 건너뛴다. (#T142-11)
+- 공유 decode vector가 모든 client에서 JSON 값을 비교하고, 받아들이는 YAML key 1, "true", tRUE, nULL, .InF가 공유 vector가 되었다. PHP는 T142-1-1이 추적하는 YAML 의존성 결함 때문에 대소문자가 섞인 key 세 개를 건너뛴다. (#T142-11)
 - conformance vector creates_and_save가 T169의 insert part를 기록한다. (#T169-1)
 - 여러 행 insert가 bind 한도(SQLite 999, MySQL과 PostgreSQL 65535)로 제한된 2의 거듭제곱 크기 part로 transaction 안에서 실행되어, 모든 client에서 PHP plan cache가 유한한 수의 insert 모양만 가진다. (#T169)
 - TypeScript가 plain YAML map key의 type을 대소문자를 무시하던 regex 대신 yaml library 자신의 core schema tag로 정해, tRUE, nULL, .InF가 문자열 key로 남는다. (#T142-10)
 - 모든 client가 alias 유무와 관계없이 YAML anchor를, core tag를 포함한 모든 explicit tag를, 그리고 document가 없는 text를 거부한다. docs/codec.md가 이를 명시한다. (#T142-9)
 - Go는 goccy/go-yaml로, Python은 rapidyaml로 YAML을 읽어 둘 다 U+0085를 내용으로 유지한다. Python은 ruamel.yaml로 쓰고 PyYAML을 없앴다. next_line 제외를 없앴다. (#T142-2)
-- PHP client가 YAML을 purrphp/yaml과 그 core schema로 읽어, 1_000, 날짜, timestamp가 다른 client처럼 문자열로 남는다. orm은 node model에서 여러 document, alias, anchor, tag, merge key, 중복 key를 거부한다. purrphp 결함 때문에 vector 두 개를 제외하며 T142-1-1이 추적한다. (#T142-1)
+- PHP client가 YAML을 purrphp/yaml과 그 core schema로 읽어, 1_000, 날짜, timestamp가 다른 client처럼 문자열로 남는다. orm은 node model에서 여러 document, alias, anchor, tag, merge key, 중복 key를 거부한다. YAML 의존성 결함 때문에 vector 두 개를 제외하며 T142-1-1이 추적한다. (#T142-1)
 - Rust workspace가 unsafe code와 이유 없는 allow attribute를 거부한다. planner의 lifetime transmute를 없앴고, thread CPU clock은 rustix로 읽으며, SQLite authorizer callback만 이유를 적고 unsafe code를 유지한다. (#T137-1-3)
 - T166: 모든 client가 하나의 set parse(Go dbspec.ParseSet, TypeScript parseDbspecSet, Python parse_dbspec_set, PHP와 extension Dbspec::parseSet, Rust dbspec::parse_set)로 문서 집합을 parse한다. 각 text는 parser의 header로 이름이 정해지고, 반복된 이름은 뒤 text의 진단이며, 공유 vector tests/dbspec/set-parse.json이 규칙을 담는다. 문자열 비교로 header를 읽던 곳은 모두 없앴다.
 - T165-4: kit-check가 mise.toml과 mise.lock을 입력으로 받는다.

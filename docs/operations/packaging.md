@@ -39,7 +39,7 @@ In 0.0.x the polyspec packages are distributed through GitHub only, as release a
   }
   ```
 
-  The client requires `purrphp/yaml` `1.0.0-p1`, the release of the fork https://github.com/min-0-max/yaml that reads plain scalars by the core schema of YAML 1.2.2 (section 10.3.2); upstream PurrPHP/yaml 1.0.0 does not. Composer reads `repositories` only from the root manifest of a project, never from a dependency's, so the orm package cannot carry this source: a consumer declares the `vcs` repository itself, as above, and tests/release-consumer/composer does the same. `no-api` makes Composer clone the public repository over HTTPS instead of asking the GitHub API, whose anonymous rate limit (HTTP 403) would otherwise send it to an SSH clone that needs a key.
+  The client requires `purrphp/yaml` `1.0.0-p1`, the release of the fork https://github.com/min-0-max/yaml that reads plain scalars by the core schema of YAML 1.2.2 (section 10.3.2); the upstream 1.0.0 release does not. Composer reads `repositories` only from the root manifest of a project, never from a dependency's, so the orm package cannot carry this source: a consumer declares the `vcs` repository itself, as above, and tests/release-consumer/composer does the same. `no-api` makes Composer clone the public repository over HTTPS instead of asking the GitHub API, whose anonymous rate limit (HTTP 403) would otherwise send it to an SSH clone that needs a key.
 
   `polyspec/orm-php-ext` has the type `php-ext`: PIE builds and installs it, and Composer does not.
 
