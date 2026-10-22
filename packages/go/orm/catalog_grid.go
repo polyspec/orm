@@ -55,7 +55,20 @@ func (c *CatalogConnection) ReadOnlyGridQuery(ctx context.Context, query string,
 		return CatalogGridResult{}, err
 	}
 	return catalogRead(ctx, c, func(s *catalogSession) (CatalogGridResult, error) {
-		raw, err := s.queryRaw(query, args, maxRows, maxBytes)
+		statement := query
+		var columns []string
+		if c.dialect == "sqlite" {
+			// The SQLite driver parses the text of a column declared DATE, DATETIME or TIMESTAMP into a time value, and
+			// the grid must keep the stored text. Reading the columns through a positional CTE and unary plus removes the
+			// declared type while keeping each storage class (docs/spec/interfaces.md, "Rust native grid query specification").
+			names, err := s.columnNames(query, args)
+			if err != nil {
+				return CatalogGridResult{}, err
+			}
+			statement = catalogSQLiteRawQuery(query, len(names))
+			columns = names
+		}
+		raw, err := s.queryRaw(statement, args, maxRows, maxBytes)
 		if err != nil {
 			return CatalogGridResult{}, err
 		}
@@ -71,8 +84,38 @@ func (c *CatalogConnection) ReadOnlyGridQuery(ctx context.Context, query string,
 			}
 			rows = append(rows, cells)
 		}
-		return CatalogGridResult{Columns: raw.names, Rows: rows}, nil
+		if columns == nil {
+			columns = raw.names
+		}
+		return CatalogGridResult{Columns: columns, Rows: rows}, nil
 	})
+}
+
+// columnNames returns the column names of a query as the driver reports them for the query itself, without reading a row.
+// A CTE would rename a duplicate name, so the names of the grid come from the query.
+func (s *catalogSession) columnNames(query string, args []any) ([]string, error) {
+	rows, err := s.conn.QueryContext(s.ctx, query, args...)
+	if err != nil {
+		return nil, mapDriverErr(err)
+	}
+	defer rows.Close()
+	names, err := rows.Columns()
+	if err != nil {
+		return nil, mapDriverErr(err)
+	}
+	return names, nil
+}
+
+// catalogSQLiteRawQuery wraps a read query of width columns so that each result column is the unary plus of a positionally
+// renamed column: the rows keep the storage class of each value and carry no declared type.
+func catalogSQLiteRawQuery(query string, width int) string {
+	names := make([]string, width)
+	cols := make([]string, width)
+	for i := range names {
+		names[i] = fmt.Sprintf(`"c%d"`, i)
+		cols[i] = "+" + names[i]
+	}
+	return "WITH g(" + strings.Join(names, ", ") + ") AS (\n" + query + "\n) SELECT " + strings.Join(cols, ", ") + " FROM g"
 }
 
 var (
@@ -153,8 +196,6 @@ func catalogGridSQLite(value any, refuse func(string, ...any) (CatalogGridCell, 
 		return cell(CatalogGridText, v)
 	case []byte:
 		return cell(CatalogGridBinary, append([]byte(nil), v...))
-	case time.Time:
-		return refuse("a declared temporal column is decoded by the SQLite driver; the stored text is not available")
 	default:
 		return refuse("driver value %T", value)
 	}

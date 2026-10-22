@@ -4,6 +4,7 @@ package orm_test
 
 import (
 	"context"
+	"database/sql"
 	"os"
 	"reflect"
 	"slices"
@@ -249,8 +250,7 @@ func catalogGridRefused(driver string) []string {
 			"SELECT 'infinity'::date AS t",
 		}
 	default:
-		// A declared DATE column is decoded by the SQLite driver into a time value; the grid has no text of it to keep.
-		return []string{"SELECT start_dt FROM author LIMIT 1"}
+		return nil
 	}
 }
 
@@ -276,6 +276,117 @@ func TestCoverageCatalogGridCells(t *testing.T) {
 		_, err := c.ReadOnlyGridQuery(ctx, refused, nil, orm.CatalogQueryLimits{})
 		if err == nil || !strings.Contains(err.Error(), "CATALOG_VALUE") {
 			t.Fatalf("%s: %s returned %v, want CATALOG_VALUE", driver, refused, err)
+		}
+	}
+}
+
+// catalogProbe creates a table of the feature database for the cases of declared types and drops it at the end of the test.
+func catalogProbe(t *testing.T, driver, dsn, table, create string, rows ...string) *sql.DB {
+	t.Helper()
+	raw := openRaw(t, driver, dsn)
+	t.Cleanup(func() {
+		if _, err := raw.Exec("DROP TABLE IF EXISTS " + table); err != nil {
+			t.Errorf("%s: drop %s: %v", driver, table, err)
+		}
+		if err := raw.Close(); err != nil {
+			t.Errorf("%s: close: %v", driver, err)
+		}
+	})
+	if _, err := raw.Exec("DROP TABLE IF EXISTS " + table); err != nil {
+		t.Fatalf("%s: drop %s: %v", driver, table, err)
+	}
+	if _, err := raw.Exec(create); err != nil {
+		t.Fatalf("%s: create %s: %v", driver, table, err)
+	}
+	for _, row := range rows {
+		if _, err := raw.Exec(row); err != nil {
+			t.Fatalf("%s: insert into %s: %v", driver, table, err)
+		}
+	}
+	return raw
+}
+
+// Requirements: SCH-6a.
+func TestCoverageCatalogGridDeclared(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	ctx := context.Background()
+	driver, c := catalogConnect(t)
+	defer c.Close()
+	if driver != "sqlite" {
+		t.Skip("the declared-type cases of the grid are the SQLite storage-class cases")
+	}
+	_, dsn := featureDatabase(t)
+	catalogProbe(t, driver, dsn, "grid_probe",
+		"CREATE TABLE grid_probe (seq INTEGER PRIMARY KEY, d DATE, dt DATETIME, n DATETIME, b DATETIME)",
+		"INSERT INTO grid_probe VALUES (1, '2026-10-22', '2026-10-22 01:02:03.5', 42, X'6162')",
+		"INSERT INTO grid_probe VALUES (2, NULL, 'abc', 1.5, NULL)")
+
+	// A declared DATE or DATETIME column keeps the stored text, as the Rust grid does, and an integer or blob keeps its storage class.
+	result, err := c.ReadOnlyGridQuery(ctx, "SELECT d, dt, n, b, d FROM grid_probe ORDER BY seq", nil, orm.CatalogQueryLimits{})
+	if err != nil {
+		t.Fatalf("%s: declared grid query: %v", driver, err)
+	}
+	wantColumns := []string{"d", "dt", "n", "b", "d"}
+	if !reflect.DeepEqual(result.Columns, wantColumns) {
+		t.Fatalf("%s: columns %v, want %v", driver, result.Columns, wantColumns)
+	}
+	want := [][]orm.CatalogGridCell{
+		{
+			{Kind: orm.CatalogGridText, Value: "2026-10-22"},
+			{Kind: orm.CatalogGridText, Value: "2026-10-22 01:02:03.5"},
+			{Kind: orm.CatalogGridInteger, Value: int64(42)},
+			{Kind: orm.CatalogGridBinary, Value: []byte("ab")},
+			{Kind: orm.CatalogGridText, Value: "2026-10-22"},
+		},
+		{
+			{Kind: orm.CatalogGridNull, Value: nil},
+			{Kind: orm.CatalogGridText, Value: "abc"},
+			{Kind: orm.CatalogGridFloat64, Value: uint64(0x3FF8000000000000)},
+			{Kind: orm.CatalogGridNull, Value: nil},
+			{Kind: orm.CatalogGridNull, Value: nil},
+		},
+	}
+	if !reflect.DeepEqual(result.Rows, want) {
+		t.Fatalf("%s: declared cells\n got %#v\nwant %#v", driver, result.Rows, want)
+	}
+}
+
+// Requirements: SCH-6a.
+func TestCoverageCatalogGridTimestamp(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	ctx := context.Background()
+	driver, c := catalogConnect(t)
+	defer c.Close()
+	_, dsn := featureDatabase(t)
+
+	var refused []string
+	switch driver {
+	case "mysql":
+		catalogProbe(t, driver, dsn, "grid_probe",
+			"CREATE TABLE grid_probe (seq INT PRIMARY KEY, ts TIMESTAMP NULL)",
+			"INSERT INTO grid_probe VALUES (1, '2026-10-22 01:02:03')",
+			"INSERT INTO grid_probe VALUES (2, NULL)")
+		refused = []string{"SELECT ts FROM grid_probe WHERE seq = 1"}
+		// A NULL timestamp is a null cell, not a refusal.
+		result, err := c.ReadOnlyGridQuery(ctx, "SELECT ts FROM grid_probe WHERE seq = 2", nil, orm.CatalogQueryLimits{})
+		if err != nil {
+			t.Fatalf("%s: NULL timestamp: %v", driver, err)
+		}
+		if want := [][]orm.CatalogGridCell{{{Kind: orm.CatalogGridNull, Value: nil}}}; !reflect.DeepEqual(result.Rows, want) {
+			t.Fatalf("%s: NULL timestamp cells %#v", driver, result.Rows)
+		}
+	case "postgres":
+		catalogProbe(t, driver, dsn, "grid_probe",
+			"CREATE TABLE grid_probe (seq INT PRIMARY KEY, tz TIMESTAMPTZ NULL, tt TIMETZ NULL)",
+			"INSERT INTO grid_probe VALUES (1, '2026-10-22 01:02:03+00', '01:02:03+00')")
+		refused = []string{"SELECT tz FROM grid_probe WHERE seq = 1", "SELECT tt FROM grid_probe WHERE seq = 1"}
+	default:
+		t.Skip("the timestamp refusals are the MySQL and PostgreSQL time-zone types")
+	}
+	for _, query := range refused {
+		_, err := c.ReadOnlyGridQuery(ctx, query, nil, orm.CatalogQueryLimits{})
+		if err == nil || !strings.Contains(err.Error(), "CATALOG_VALUE") {
+			t.Fatalf("%s: %s returned %v, want CATALOG_VALUE", driver, query, err)
 		}
 	}
 }
