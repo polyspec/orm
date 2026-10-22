@@ -1,10 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ad0efbf072ac791d3a9790d0980e8e88f72f9a5541616c739ea3e7cfbeb0d819 -->
+<!-- source-sha256: 95e0cf85074fda995fbaf3b6a8c63bf5ffe55c9f64b5dc27793a99d63835f390 -->
 # 변경 이력
 
 ## Unreleased
 - KSTD-5-22 완료: 이 commit은 두 체크리스트에 그 완료 상태를 기록하고 한국어 stamp를 갱신한다(KSTD-5-22).
 - 모든 Rust test가 `polyspec_orm_testcase::case!`로 case를 시작한다. packages/rust/build의 고정 목록 test, restore-or-create와 외부 관계 test, AES 키 읽기 test다(KSTD-5-22). red: 규칙이 generate.rs와 case가 없는 Rust test 일곱 개를 보고했다.
+- `make feature-unit-check`가 main에서 다시 통과한다: contracts/check-inputs.json이 generator 소스를 고르는 generated-lint-check를 선언하고, CHECK_TARGETS가 파일이 선언한 여섯 group-rows-db target을 가진다 (KSTD-7-9-1). red: main에서 scripts/features/owners.test.mts의 CHECK_TARGETS와 generator 소스 테스트가 실패했다.
 - comments check는 Python을 `scripts/comments/tokens/python-comments.mts`로 읽는다. tokenize와 ast 읽기기의 TypeScript 포팅이며, 저장소는 더 이상 Python 도구를 갖지 않는다. 출력은 추적되는 Python 파일 224개 모두에서 이전 읽기기와 같다(KSTD-5-21). red: `every tool of the repository is written in Go, PHP, Rust or TypeScript` 사례가 python-comments.py에서 실패했다.
 - KSTD-5-20 완료: 이 commit은 그 완료 상태를 기록하고, 행 commit이 남긴 체크리스트의 한국어 stamp를 갱신한다(KSTD-5-20).
 - repo check의 workflow 규칙 사례는 kit 복사본 두 개, release.yml과 gates.yml을 기대하며 규칙은 둘 다 건너뛴다(KSTD-5-20). red: 사례가 release.yml만 기대했으나 gates.yml이 두 번째 kit 복사본으로 발견되었다.

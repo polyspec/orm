@@ -37,6 +37,7 @@
     "group-rows-db-php-extension": {"scope": "owner", "needs": ["go", "php", "composer", "php-extension-tools", "databases"], "inputs": ["packages/php/tests/GroupRowsDbTest.php","packages/php-ext/**"]},
     "group-rows-db-rust": {"scope": "owner", "needs": ["go", "rust", "databases"], "inputs": ["packages/rust/tests/tests/integration/coverage_group_rows_db.rs"]},
     "rust-check": {"scope": "suite", "needs": ["go", "rust"]},
+    "generated-lint-check": {"scope": "owner", "needs": ["go", "php", "composer", "python", "node-modules"], "inputs": ["packages/go/models.txt", "packages/go/generator/*.go", "packages/go/cmd/orm-gen/*.go", "packages/php/models.txt", "packages/php/bin/orm-gen", "packages/php/src/OrmGen.php", "contracts/fixtures/bench/dbspec-set.json", "packages/python/examples/thin_slice/main.py"]},
     "go-fmt-check": {"scope": "owner", "needs": ["go"], "lints": ["**/*.go"]},
     "go-vet-check": {"scope": "owner", "needs": ["go"], "inputs": ["tests/analyzers/**"], "lints": ["**/*.go", "go.work", "go.work.sum", "**/go.mod", "**/go.sum"]},
     "rust-fmt-check": {"scope": "owner", "needs": ["rust"], "lints": ["packages/rust/**/*.rs", "benchmarks/rust/**/*.rs", "packages/rust/testing/interfaces/**/*.rs"]},

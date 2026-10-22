@@ -4,6 +4,7 @@
 ## Unreleased
 - KSTD-5-22 is done: this commit records its done state in both checklists and refreshes their Korean stamps (KSTD-5-22).
 - Every Rust test of the repository starts its case with `polyspec_orm_testcase::case!`: the fixed-list test of packages/rust/build, the restore-or-create and external-relation tests and the AES key read tests (KSTD-5-22). Red: the rule named generate.rs and seven other Rust tests without a case.
+- `make feature-unit-check` passes on main again: contracts/check-inputs.json declares generated-lint-check, which selects the generator sources, and CHECK_TARGETS holds the six group-rows-db targets the file declares (KSTD-7-9-1). Red: the CHECK_TARGETS and generator-source tests of scripts/features/owners.test.mts failed on main.
 - The comments check reads Python through `scripts/comments/tokens/python-comments.mts`, a TypeScript port of the tokenize and ast reader, so the repository has no Python tool; the output matches the former reader on all 224 tracked Python files (KSTD-5-21). Red: `every tool of the repository is written in Go, PHP, Rust or TypeScript` failed on python-comments.py.
 - KSTD-5-20 is done: this commit records its done state and refreshes the Korean stamps of the checklist that the row commit left stale (KSTD-5-20).
 - The workflow-rules case of the repo check expects both kit copies, release.yml and gates.yml, and the rules skip them (KSTD-5-20). Red: the case expected release.yml alone and found gates.yml as a second kit copy.
