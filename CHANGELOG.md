@@ -2,8 +2,9 @@
 # Changelog
 
 ## Unreleased
-- The fulltext test of `packages/rust/orm` opens its case with `polyspec_orm_testcase::case!`, so it runs with its deadline and RUN line (KSTD-5-22-1). Red: the rule named a Rust test added later without a case.
 
+- The PHP extension implements authenticated_encryption: the PHP library's tests run with the extension loaded and the feature is implemented in every client language (KSTD-7-2).
+- The fulltext test of `packages/rust/orm` opens its case with `polyspec_orm_testcase::case!`, so it runs with its deadline and RUN line (KSTD-5-22-1). Red: the rule named a Rust test added later without a case.
 - The CI step rule of the repo check judges only orm's own workflows, so the kit copy gates.yml, which kit-check holds byte for byte, is not read for its make steps (KSTD-5-24). Red: the case found gates.yml steps that run rustup and shell commands directly.
 - The rebuild layout reads three repository tools that config/rebuild.json did not classify: `scripts/comments/tokens/python-comments.mts`, `scripts/php/vendor-autoload-check.mjs` and `scripts/typescript/models.mts` are `policy` tools, so `make rebuild-check` passes (KSTD-6). Red: `make rebuild-check` exited 2 with each of the three tools having no class.
 - The autoload check cases of `scripts/php/vendor-autoload-check.test.mjs` are declared with `caseTest` again, after a later fix had rewritten them with node:test (KSTD-10-5-1). Red: the rule named the file as declaring node:test tests directly.

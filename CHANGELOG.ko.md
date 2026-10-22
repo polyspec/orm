@@ -1,10 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a8f3c1e4eb79f67fa12828f0b9190fcfa8a1862ae2aa4656795a7f4deb519810 -->
+<!-- source-sha256: eb7a8e281b2a499d664e3450717dfb00e2f3877d342a9b72155ff75c0f648126 -->
 # 변경 이력
 
 ## Unreleased
-- `packages/rust/orm`의 fulltext test는 `polyspec_orm_testcase::case!`로 case를 시작해 deadline과 RUN 줄을 가진다(KSTD-5-22-1). red: 규칙이 나중에 추가된 case 없는 Rust test를 지목했다.
 
+- PHP 확장이 authenticated_encryption을 구현한다: PHP 라이브러리의 테스트가 확장을 로드한 채 실행되고, 기능은 모든 클라이언트 언어에서 구현된다 (KSTD-7-2).
+- `packages/rust/orm`의 fulltext test는 `polyspec_orm_testcase::case!`로 case를 시작해 deadline과 RUN 줄을 가진다(KSTD-5-22-1). red: 규칙이 나중에 추가된 case 없는 Rust test를 지목했다.
 - repo check의 CI 단계 규칙은 orm 자신의 workflow만 판단한다. kit-check가 바이트 단위로 보유하는 kit 복사본 gates.yml의 make 단계는 읽지 않는다(KSTD-5-24). red: 사례가 rustup과 셸 명령을 직접 실행하는 gates.yml 단계를 찾았다.
 - rebuild 레이아웃이 config/rebuild.json에 분류되지 않은 저장소 도구 세 개를 읽는다. `scripts/comments/tokens/python-comments.mts`, `scripts/php/vendor-autoload-check.mjs`, `scripts/typescript/models.mts`를 `policy` 도구로 분류하므로 `make rebuild-check`가 통과한다(KSTD-6). red: `make rebuild-check`가 종료 코드 2로 실패했고, 세 도구 각각이 분류가 없었다.
 - `scripts/php/vendor-autoload-check.test.mjs`의 autoload 검사 사례를 나중의 수정이 node:test로 다시 쓴 뒤에 `caseTest`로 다시 선언한다(KSTD-10-5-1). red: 규칙이 node:test를 직접 쓰는 파일로 지목했다.
