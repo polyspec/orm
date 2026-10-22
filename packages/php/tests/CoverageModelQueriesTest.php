@@ -14,6 +14,14 @@ use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
+// With the extension loaded (php-extension, S10) the client's entry classes are the extension's: a fallback to the PHP
+// classes would not test the extension, so each one is asserted internal.
+if (extension_loaded('polyspec_orm')) {
+    foreach (['Polyspec\\Orm\\Db', 'Polyspec\\Orm\\Planner'] as $entry) {
+        Assert::assertTrue((new \ReflectionClass($entry))->isInternal(), "$entry is the extension class");
+    }
+}
+
 #[Medium]
 final class CoverageModelQueriesTest extends TestCase
 {

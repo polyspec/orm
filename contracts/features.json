@@ -732,7 +732,7 @@
       "id": "model_queries",
       "title": "Model queries",
       "title_ko": "\ubaa8\ub378 \uc870\ud68c",
-      "status": "partial",
+      "status": "implemented",
       "description": "Build conditions, joins, relations, columns, subqueries, aggregates, and pages with the generated model methods and read the rows as models and collections.",
       "description_ko": "\uc0dd\uc131\ub41c \ubaa8\ub378 \uba54\uc11c\ub4dc\ub85c \uc870\uac74, \uc870\uc778, \uad00\uacc4, \uceec\ub7fc, \uc11c\ube0c\ucffc\ub9ac, \uc9d1\uacc4, \ud398\uc774\uc9c0\ub97c \ub9cc\ub4e4\uace0 \ud589\uc744 \ubaa8\ub378\uacfc \uceec\ub809\uc158\uc73c\ub85c \uc77d\ub294\ub2e4.",
       "inputs": {
@@ -1438,7 +1438,7 @@
       "id": "model_writes",
       "title": "Model writes",
       "title_ko": "\ubaa8\ub378 \uc4f0\uae30",
-      "status": "partial",
+      "status": "implemented",
       "description": "Create, create many, update with optional optimistic locking, save, delete with optional recursive relation deletion, including the duplication assignments of an upsert, and restore a soft-deleted row named by its primary key or one unique key, with new values of its other columns, returning the restored row.",
       "description_ko": "\uc0dd\uc131, \ub2e4\uac74 \uc0dd\uc131, \uc120\ud0dd\uc801 \ub099\uad00\uc801 \uc7a0\uae08 \uac31\uc2e0, \uc800\uc7a5, \uc120\ud0dd\uc801 \uad00\uacc4 \uc7ac\uadc0 \uc0ad\uc81c\ub97c \uc218\ud589\ud558\uba70 upsert\uc758 duplication \ud560\ub2f9\uc744 \ud3ec\ud568\ud55c\ub2e4. primary key\ub098 unique key \ud558\ub098\uc758 \uac12\uc73c\ub85c \ucc3e\uc740 soft delete\ud55c \ud589\uc744 \ub2e4\ub978 \uceec\ub7fc\uc758 \uc0c8 \uac12\uacfc \ud568\uaed8 restore\ud558\uace0 \ub418\ub3cc\ub9b0 \ud589\uc744 \ubc18\ud658\ud55c\ub2e4.",
       "inputs": {

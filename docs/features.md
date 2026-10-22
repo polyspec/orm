@@ -6,8 +6,8 @@ The executable source is the repository feature manifest. Read the manifest, the
 | ID | Feature | Status | Languages |
 |---|---|---|---|
 | dsn_connection | DSN URI connection | partial | go, php, typescript, python, rust |
-| model_queries | Model queries | partial | go, php, typescript, python, rust |
-| model_writes | Model writes | partial | go, php, typescript, python, rust |
+| model_queries | Model queries | implemented | go, php, php-extension, typescript, python, rust |
+| model_writes | Model writes | implemented | go, php, php-extension, typescript, python, rust |
 | transactions | Transactions | partial | go, php, typescript, python, rust |
 | statement_events | Statement events | partial | go, php, php-extension, typescript, python, rust |
 | model_generation | Model generation | partial | typescript, python, rust |

@@ -1824,6 +1824,11 @@
           "id": "CoverageModelQueriesTest::test_model_query_rows"
         },
         {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/CoverageModelQueriesTest.php",
+          "id": "CoverageModelQueriesTest::test_model_query_rows"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_model_queries.mjs",
           "id": "model_query_rows [sqlite]"
@@ -1885,6 +1890,11 @@
         },
         {
           "implementation": "php",
+          "test": "packages/php/tests/CoverageModelWritesTest.php",
+          "id": "CoverageModelWritesTest::test_model_write_cycle"
+        },
+        {
+          "implementation": "php-extension",
           "test": "packages/php/tests/CoverageModelWritesTest.php",
           "id": "CoverageModelWritesTest::test_model_write_cycle"
         },
