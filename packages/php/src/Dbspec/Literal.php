@@ -70,8 +70,10 @@ final class Literal
             $negative = $canonical[0] === '-';
             $digits = ltrim($canonical, '-');
             $limit = $negative ? $minMagnitude : $max;
-            if (strlen($digits) > strlen($limit)
-                || (strlen($digits) === strlen($limit) && strcmp($digits, $limit) > 0)) {
+            if (
+                strlen($digits) > strlen($limit)
+                || (strlen($digits) === strlen($limit) && strcmp($digits, $limit) > 0)
+            ) {
                 return [null, "$name default is out of range"];
             }
             return [$canonical, null];
@@ -124,9 +126,12 @@ final class Literal
                 }
                 return [self::quote($value), null];
             case 'uuid':
-                if (!preg_match(
-                    '/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/D', $value
-                )) {
+                if (
+                    !preg_match(
+                        '/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/D',
+                        $value
+                    )
+                ) {
                     return [null, 'uuid default is not canonical uuid text'];
                 }
                 return [self::quote(strtolower($value)), null];

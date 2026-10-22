@@ -18,8 +18,7 @@ final class PlanStep
         public readonly string $lock,
         public readonly array $slots,
         public readonly array $tables
-    )
-    {
+    ) {
     }
 
     public function toArray(): array

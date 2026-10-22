@@ -31,9 +31,13 @@ final class SchemaComparison
         $diagnostics = [];
         foreach (['source' => $source, 'target' => $target] as $side => $document) {
             if (!self::isSchemaText($document)) {
-                $diagnostics[] = new Diagnostic('compare', 1, 1,
+                $diagnostics[] = new Diagnostic(
+                    'compare',
+                    1,
+                    1,
                     "the $side is not a schema text: one document named schema in canonical form with its "
-                    . "tables in name order and only the immutable and audit settings");
+                    . "tables in name order and only the immutable and audit settings"
+                );
             }
         }
         if ($diagnostics !== []) {
@@ -120,8 +124,10 @@ final class SchemaComparison
             $keptTarget[] = $c->name;
             $lastKept = $i;
             $sameType = PlanDiff::sameType($sc->type, $c->type);
-            if ((!$sameType && PlanDiff::widens($sc->type, $c->type)) || $sc->nullable !== $c->nullable
-                || $sc->default !== $c->default) {
+            if (
+                (!$sameType && PlanDiff::widens($sc->type, $c->type)) || $sc->nullable !== $c->nullable
+                || $sc->default !== $c->default
+            ) {
                 $add('alter_column', $c->name);
             }
             if (!$sameType && !PlanDiff::widens($sc->type, $c->type)) {
@@ -144,13 +150,28 @@ final class SchemaComparison
             $add('change_primary_key', '');
         }
         $same = static fn(string $c): string => $c;
-        self::objects($add, 'unique', $s->uniqueKeys, $t->uniqueKeys,
-            static fn(UniqueKey $u): string => implode(',', $u->columns));
-        self::objects($add, 'index', $s->indexes, $t->indexes,
-            static fn(Index $x): string => PlanObjects::indexDef($x, $same));
-        self::objects($add, 'foreign_key', $s->foreignKeys, $t->foreignKeys,
+        self::objects(
+            $add,
+            'unique',
+            $s->uniqueKeys,
+            $t->uniqueKeys,
+            static fn(UniqueKey $u): string => implode(',', $u->columns)
+        );
+        self::objects(
+            $add,
+            'index',
+            $s->indexes,
+            $t->indexes,
+            static fn(Index $x): string => PlanObjects::indexDef($x, $same)
+        );
+        self::objects(
+            $add,
+            'foreign_key',
+            $s->foreignKeys,
+            $t->foreignKeys,
             static fn(ForeignKey $f): string =>
-                PlanObjects::foreignKeyDef($f->columns, $f->table, $f->referencedColumns, $f));
+            PlanObjects::foreignKeyDef($f->columns, $f->table, $f->referencedColumns, $f)
+        );
         self::objects($add, 'check', $s->checks, $t->checks, static fn(Check $k): string => $k->expression);
         foreach (['immutable', 'audit'] as $kind) {
             $sourceSetting = self::setting($s, $kind, $s, $t);

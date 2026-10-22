@@ -107,10 +107,12 @@ final class Orm
     private static function checkConnectionConfig(Config $config): void
     {
         if ($config->poolSize !== 0 || $config->poolIdleSize !== 0 || $config->poolLifetimeMs !== 0) {
-            throw new OrmException(Code::CONFIG,
+            throw new OrmException(
+                Code::CONFIG,
                 'poolSize, poolIdleSize and poolLifetimeMs configure a connection pool, and the PHP client opens one '
                     . 'connection per Db and keeps no pool; pool PHP connections with PgBouncer or ProxySQL '
-                        . '(docs/spec/config.md "Connection poolers")');
+                . '(docs/spec/config.md "Connection poolers")'
+            );
         }
         if ($config->statementTimeoutMs < 0) {
             throw new OrmException(Code::CONFIG, 'statement timeout must not be negative');
@@ -130,16 +132,23 @@ final class Orm
         if ($config->statementTimeoutMs > 0) {
             throw Markdown::unsupported('statement timeout');
         }
-        return new Db(null, 'markdown', $config, new \DateTimeZone('UTC'),
-            MarkdownSession::dial($address, $corpus, $token));
+        return new Db(
+            null,
+            'markdown',
+            $config,
+            new \DateTimeZone('UTC'),
+            MarkdownSession::dial($address, $corpus, $token)
+        );
     }
 
     /** The scheme of the DSN URI, in lowercase. If it is not a URI, it is CONFIG. */
     private static function scheme(string $dsn): string
     {
         if (preg_match('#^([a-z][a-z0-9+.-]*)://#i', $dsn, $m) !== 1) {
-            throw new OrmException(Code::CONFIG,
-                'dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://');
+            throw new OrmException(
+                Code::CONFIG,
+                'dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://'
+            );
         }
         return strtolower($m[1]);
     }
@@ -169,14 +178,18 @@ final class Orm
         }
         $port = $parts['port'] ?? 0;
         if ($port < 1 || $port > 65535) {
-            throw new OrmException(Code::CONFIG,
-                "$form; port \"$port\" is not 1 to 65535: give the port that flowmark serve printed");
+            throw new OrmException(
+                Code::CONFIG,
+                "$form; port \"$port\" is not 1 to 65535: give the port that flowmark serve printed"
+            );
         }
         $path = (string) ($parts['path'] ?? '');
         $corpus = rawurldecode(substr($path, 1));
         if (!str_starts_with($path, '/') || $corpus === '' || str_contains($corpus, '/')) {
-            throw new OrmException(Code::CONFIG,
-                "$form; the path \"$path\" is not one corpus name: give the corpus root's directory name");
+            throw new OrmException(
+                Code::CONFIG,
+                "$form; the path \"$path\" is not one corpus name: give the corpus root's directory name"
+            );
         }
         $tokens = [];
         foreach (explode('&', (string) ($parts['query'] ?? '')) as $pair) {
@@ -191,8 +204,10 @@ final class Orm
             $tokens[] = urldecode($value);
         }
         if (count($tokens) !== 1 || $tokens[0] === '') {
-            throw new OrmException(Code::CONFIG,
-                "$form; give one token, the token of .flowmark/server.json of the corpus");
+            throw new OrmException(
+                Code::CONFIG,
+                "$form; give one token, the token of .flowmark/server.json of the corpus"
+            );
         }
         return ["127.0.0.1:$port", $corpus, $tokens[0]];
     }
@@ -209,12 +224,16 @@ final class Orm
     {
         $driver = self::scheme($dsn);
         if ($driver === 'markdown') {
-            throw new OrmException(Code::CONFIG,
-                'a markdown DSN selects the markdown IR executor and has no PDO DSN; read it with parseMarkdownDsn');
+            throw new OrmException(
+                Code::CONFIG,
+                'a markdown DSN selects the markdown IR executor and has no PDO DSN; read it with parseMarkdownDsn'
+            );
         }
         if (!in_array($driver, Db::DRIVERS, true)) {
-            throw new OrmException(Code::CONFIG,
-                "unsupported DSN scheme $driver; want mysql, postgres, sqlite, or markdown");
+            throw new OrmException(
+                Code::CONFIG,
+                "unsupported DSN scheme $driver; want mysql, postgres, sqlite, or markdown"
+            );
         }
         $scheme = substr($dsn, 0, strlen($driver));
         $parts = parse_url(str_replace($scheme . ':///', $scheme . '://localhost/', $dsn));
@@ -227,8 +246,10 @@ final class Orm
         foreach (explode('&', (string) ($parts['query'] ?? '')) as $pair) {
             $key = urldecode(explode('=', $pair, 2)[0]);
             if ($pair !== '' && !in_array($key, $accepted, true)) {
-                throw new OrmException(Code::CONFIG,
-                    "$driver DSN has the unknown parameter $key; it accepts " . implode(', ', $accepted));
+                throw new OrmException(
+                    Code::CONFIG,
+                    "$driver DSN has the unknown parameter $key; it accepts " . implode(', ', $accepted)
+                );
             }
         }
         if (isset($query['timezone']) && !in_array($query['timezone'], ['+00:00', 'UTC'], true)) {
@@ -272,8 +293,10 @@ final class Orm
                     [$key, $value] = array_pad(explode('=', $pair, 2), 2, '');
                     $key = urldecode($key);
                     if ($key === '_txlock') {
-                        throw new OrmException(Code::CONFIG,
-                            'sqlite DSN does not accept _txlock; write transactions begin with BEGIN IMMEDIATE');
+                        throw new OrmException(
+                            Code::CONFIG,
+                            'sqlite DSN does not accept _txlock; write transactions begin with BEGIN IMMEDIATE'
+                        );
                     }
                     if ($key !== '_pragma') {
                         continue;
@@ -319,8 +342,10 @@ final class Orm
                 . ' is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca');
         }
         if ($ca === null || $ca === '') {
-            throw new OrmException(Code::CONFIG,
-                'mysql DSN ssl-mode=VERIFY_IDENTITY needs ssl-ca, the absolute path of the CA file');
+            throw new OrmException(
+                Code::CONFIG,
+                'mysql DSN ssl-mode=VERIFY_IDENTITY needs ssl-ca, the absolute path of the CA file'
+            );
         }
         if ($ca[0] !== '/') {
             throw new OrmException(Code::CONFIG, "mysql DSN ssl-ca $ca is not an absolute path");
@@ -330,8 +355,10 @@ final class Orm
         }
         // The identity check compares the host name with the certificate.
         if (filter_var(trim($host, '[]'), FILTER_VALIDATE_IP) !== false) {
-            throw new OrmException(Code::CONFIG,
-                "mysql DSN ssl-mode=VERIFY_IDENTITY needs a host name, not the address $host");
+            throw new OrmException(
+                Code::CONFIG,
+                "mysql DSN ssl-mode=VERIFY_IDENTITY needs a host name, not the address $host"
+            );
         }
         return $ca;
     }

@@ -83,8 +83,10 @@ final class Scan
      */
     private static function collect(string $dir, array &$files): void
     {
-        $directories = new \RecursiveDirectoryIterator($dir,
-            \FilesystemIterator::SKIP_DOTS | \FilesystemIterator::CURRENT_AS_FILEINFO);
+        $directories = new \RecursiveDirectoryIterator(
+            $dir,
+            \FilesystemIterator::SKIP_DOTS | \FilesystemIterator::CURRENT_AS_FILEINFO
+        );
         $skipped = new \RecursiveCallbackFilterIterator(
             $directories,
             static fn (\SplFileInfo $entry): bool => !($entry->isDir() && !$entry->isLink()

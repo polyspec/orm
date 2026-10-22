@@ -290,9 +290,11 @@ final class CheckDecoder
             if ($node['node'] !== 'operand') {
                 throw new CheckDecodeFailure('a cast of a predicate');
             }
-            if ($node['kind'] === 'string' && in_array($typeName, [
+            if (
+                $node['kind'] === 'string' && in_array($typeName, [
                 'smallint', 'integer', 'bigint', 'numeric', 'double precision', 'real'
-            ], true)) {
+                ], true)
+            ) {
                 $node['kind'] = 'number';
             }
         }

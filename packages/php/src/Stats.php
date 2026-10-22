@@ -16,7 +16,6 @@ final readonly class Stats
         public int $openConnections,
         public int $inUse,
         public int $idle
-    )
-    {
+    ) {
     }
 }

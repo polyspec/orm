@@ -27,8 +27,10 @@ final class AesUtils
         $columns = [];
         foreach ($meta['columns'] as $name => $col) {
             if (RuntimeModel::encrypted($col)) {
-                $columns[] = ['name' => $name, 'styles' => array_values(array_filter($col['codec'],
-                    static fn(string $s): bool => $s === 'aes' || $s === 'hex'))];
+                $columns[] = ['name' => $name, 'styles' => array_values(array_filter(
+                    $col['codec'],
+                    static fn(string $s): bool => $s === 'aes' || $s === 'hex'
+                ))];
             }
         }
         if ($meta['aes_version'] === '' || $columns === []) {
@@ -47,8 +49,12 @@ final class AesUtils
     {
         $spec = $this->spec($model);
         $version = $this->q($spec['version']);
-        $rows = $this->db->fetch(StatementEvent::UTILITY, [$spec['table']], $this->db->transactionNumber(),
-            "SELECT $version, COUNT(*) FROM {$this->q($spec['table'])} GROUP BY $version ORDER BY $version");
+        $rows = $this->db->fetch(
+            StatementEvent::UTILITY,
+            [$spec['table']],
+            $this->db->transactionNumber(),
+            "SELECT $version, COUNT(*) FROM {$this->q($spec['table'])} GROUP BY $version ORDER BY $version"
+        );
         $versions = [];
         $total = 0;
         $pending = 0;
@@ -71,8 +77,11 @@ final class AesUtils
         $pg = $this->db->driver() === 'postgres';
         // PostgreSQL uses $n placeholders. For pdo_pgsql, they are sent as ?.
         $ph = static fn(int $n): string => $pg ? '$' . $n : '?';
-        $columns = array_merge(array_map($this->q(...), $spec['keys']), [$this->q($spec['version'])],
-            array_map(fn(array $c): string => $this->q($c['name']), $spec['columns']));
+        $columns = array_merge(
+            array_map($this->q(...), $spec['keys']),
+            [$this->q($spec['version'])],
+            array_map(fn(array $c): string => $this->q($c['name']), $spec['columns'])
+        );
         $keyCount = count($spec['keys']);
         $select = 'SELECT ' . implode(', ', $columns)
             . " FROM {$this->q($spec['table'])} WHERE {$this->q($spec['version'])} <> {$ph(1)} ORDER BY "
@@ -125,19 +134,25 @@ final class AesUtils
                         $args[] = $row[$k];
                     }
                     $args[] = $version;
-                    $changed = $db->observed(StatementEvent::UTILITY, $tables, $tx, $update, $args,
+                    $changed = $db->observed(
+                        StatementEvent::UTILITY,
+                        $tables,
+                        $tx,
+                        $update,
+                        $args,
                         static function () use ($up, $args): int {
-                        foreach ($args as $i => $v) {
-                            match (true) {
-                                $v instanceof Bytes => $up->bindValue($i + 1, $v->bytes, \PDO::PARAM_LOB),
-                                $v === null => $up->bindValue($i + 1, null, \PDO::PARAM_NULL),
-                                is_int($v) => $up->bindValue($i + 1, $v, \PDO::PARAM_INT),
-                                default => $up->bindValue($i + 1, (string) $v, \PDO::PARAM_STR),
-                            };
+                            foreach ($args as $i => $v) {
+                                match (true) {
+                                    $v instanceof Bytes => $up->bindValue($i + 1, $v->bytes, \PDO::PARAM_LOB),
+                                    $v === null => $up->bindValue($i + 1, null, \PDO::PARAM_NULL),
+                                    is_int($v) => $up->bindValue($i + 1, $v, \PDO::PARAM_INT),
+                                    default => $up->bindValue($i + 1, (string) $v, \PDO::PARAM_STR),
+                                };
+                            }
+                            $up->execute();
+                            return $up->rowCount();
                         }
-                        $up->execute();
-                        return $up->rowCount();
-                    });
+                    );
                     if ($changed !== 1) {
                         throw Orm::transactionConflict("aes rotation of {$spec['table']} changed $changed rows");
                     }

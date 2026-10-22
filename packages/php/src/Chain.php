@@ -95,9 +95,13 @@ final class Chain
      */
     public static function pairMeta(?array $left, ?array $right, array $schema, string $name): array
     {
-        return self::pairOf($left, $right, $name,
+        return self::pairOf(
+            $left,
+            $right,
+            $name,
             static fn(?array $side, ?array $other, string $pascal): string => $side !== null
-                ? self::columnName($side, $pascal) : self::listedColumn($schema, $pascal));
+            ? self::columnName($side, $pascal) : self::listedColumn($schema, $pascal)
+        );
     }
 
     /** The column with the PascalCase name of any model of $schema. */
@@ -344,8 +348,12 @@ final class Chain
      */
     public static function pair(?array $left, ?array $right, string $name): array
     {
-        return self::pairOf($left, $right, $name,
-            fn(?array $side, ?array $other, string $pascal): string => self::sideColumn($side, $other, $pascal));
+        return self::pairOf(
+            $left,
+            $right,
+            $name,
+            fn(?array $side, ?array $other, string $pascal): string => self::sideColumn($side, $other, $pascal)
+        );
     }
 
     /**

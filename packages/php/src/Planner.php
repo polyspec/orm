@@ -177,8 +177,10 @@ final class Planner
                     $sql .= $this->d->limit($q['limit']['offset'] ?? 0, $q['limit']['count']);
                 }
                 if ($lock !== '') {
-                    $suffix = $this->d->rowLock($lock) ?? throw self::err(Code::CAPABILITY_UNSUPPORTED,
-                        "{$this->d->name} row lock \"$lock\" is not supported");
+                    $suffix = $this->d->rowLock($lock) ?? throw self::err(
+                        Code::CAPABILITY_UNSUPPORTED,
+                        "{$this->d->name} row lock \"$lock\" is not supported"
+                    );
                     $sql .= $suffix;
                 }
             }
@@ -297,9 +299,14 @@ final class Planner
         return implode(', ', $parts);
     }
 
-    private static function outCol(int $index, string $name, string $column, string $type, array $styles,
-        bool $hidden = false): array
-    {
+    private static function outCol(
+        int $index,
+        string $name,
+        string $column,
+        string $type,
+        array $styles,
+        bool $hidden = false
+    ): array {
         $c = ['index' => $index, 'name' => $name];
         if ($column !== '') {
             $c['column'] = $column;
@@ -349,8 +356,10 @@ final class Planner
             // A row that reads an AES column also reads the key version column, which was not selected, hidden
             // along with it.
             $name = $s->ent['aes_version'];
-            $version = RuntimeModel::column($s->ent, $name) ?? throw self::err(Code::SCHEMA_INVALID,
-                "{$s->ent['entity']}: an AES column requires the aes_version setting");
+            $version = RuntimeModel::column($s->ent, $name) ?? throw self::err(
+                Code::SCHEMA_INVALID,
+                "{$s->ent['entity']}: an AES column requires the aes_version setting"
+            );
             $parts[] = $this->qcol($s, $name) . ' AS ' . $this->d->quote($s->alias . '__' . $name);
             $outNames[] = $s->alias . '__' . $name;
             $asm->columns[] = self::outCol($idx++, $name, $name, $version['type'], [], true);
@@ -540,9 +549,11 @@ final class Planner
             $fn = $p['value']['name'];
             // The clock the ORM compares has six fractional digits, and a datetime(p < 6) column is compared with
             // the value extended to six digits (docs/spec/protocol.md "Clock").
-            $value = $this->d->valueFunction($fn,
+            $value = $this->d->valueFunction(
+                $fn,
                 static fn(): string => $b->param($p['value']['ps'][0], Validator::intervalType($fn)),
-                static fn(): string => $b->now(6))
+                static fn(): string => $b->now(6)
+            )
                 ?? throw self::err(Code::CAPABILITY_UNSUPPORTED, "$fn is not available on {$this->d->name}");
             if (($col['type'] ?? '') === 'datetime' && $fn !== 'today') {
                 $lhs = $this->d->clockOperand($lhs, $col['precision']);
@@ -553,8 +564,10 @@ final class Planner
             $fn = $this->columnFunction($s, $p['column'], $p['fn']);
             $type = Validator::functionType($p['fn']['name'], $col);
             return match ($op) {
-                'in', 'not_in' => $fn . ($op === 'not_in' ? ' NOT IN ' : ' IN ') . '(' . implode(', ',
-                    array_map(static fn(int $i): string => $b->param($i, $type), $p['ps'])) . ')',
+                'in', 'not_in' => $fn . ($op === 'not_in' ? ' NOT IN ' : ' IN ') . '(' . implode(
+                    ', ',
+                    array_map(static fn(int $i): string => $b->param($i, $type), $p['ps'])
+                ) . ')',
                 'between' => $fn . ' BETWEEN ' . $b->param($p['ps'][0], $type) . ' AND '
                     . $b->param($p['ps'][1], $type),
                 default => $fn . ' ' . self::cmp($op) . ' ' . $b->param($p['p'], $type),
@@ -570,8 +583,10 @@ final class Planner
             case 'lte':
                 if ($aes) {
                     if ($op !== 'eq' && $op !== 'not_eq') {
-                        throw self::err(Code::OPERATOR_NOT_ALLOWED,
-                            'AES columns support only equality through a declared blind index');
+                        throw self::err(
+                            Code::OPERATOR_NOT_ALLOWED,
+                            'AES columns support only equality through a declared blind index'
+                        );
                     }
                     $index = $this->blindIndex($s, $col);
                     return $this->qcol($s, $index) . ' ' . self::cmp($op) . ' '
@@ -613,8 +628,10 @@ final class Planner
             case 'contains':
                 return $this->d->contains($lhs, $b->colParam($p['p'], $col, 'like_contains'));
             case 'contains_binary':
-                return $this->d->containsBinary($lhs,
-                    static fn(string $transform): string => $b->colParam($p['p'], $col, $transform));
+                return $this->d->containsBinary(
+                    $lhs,
+                    static fn(string $transform): string => $b->colParam($p['p'], $col, $transform)
+                );
         }
         throw self::err(Code::OPERATOR_UNKNOWN, $op);
     }
@@ -622,8 +639,10 @@ final class Planner
     private function blindIndex(PlanScope $s, array $col): string
     {
         if ($col['blind_index'] === '') {
-            throw self::err(Code::IR_INVALID,
-                "{$s->ent['entity']}.{$col['name']} requires a declared blind index for equality search");
+            throw self::err(
+                Code::IR_INVALID,
+                "{$s->ent['entity']}.{$col['name']} requires a declared blind index for equality search"
+            );
         }
         return $col['blind_index'];
     }
@@ -733,8 +752,10 @@ final class Planner
             return;
         }
         if (self::assigned($set, $ent['aes_version'])) {
-            throw self::err(Code::IR_INVALID,
-                $ent['aes_version'] . ' is the AES key version column, which the AES writer manages');
+            throw self::err(
+                Code::IR_INVALID,
+                $ent['aes_version'] . ' is the AES key version column, which the AES writer manages'
+            );
         }
         if (!$complete || !self::assignsAes($ent, $set)) {
             return;
@@ -755,8 +776,10 @@ final class Planner
     {
         $version = self::hasAes($ent) ? $ent['aes_version'] : '';
         foreach ($ent['columns'] as $c) {
-            if ($c['nullable'] || $c['default'] || $c['name'] === $ent['identity'] || $c['name'] === $version
-                || $c['name'] === $ent['audit'] || self::assigned($set, $c['name'])) {
+            if (
+                $c['nullable'] || $c['default'] || $c['name'] === $ent['identity'] || $c['name'] === $version
+                || $c['name'] === $ent['audit'] || self::assigned($set, $c['name'])
+            ) {
                 continue;
             }
             throw self::err(Code::IR_INVALID, 'required column ' . $ent['entity'] . '.' . $c['name'] . ' is not set');
@@ -868,8 +891,10 @@ final class Planner
         // load keeps rows as the stored keys, so it accepts and requires the identity column's value.
         $load = $r['load'] ?? false;
         if ($load && $ent['identity'] !== '' && !self::assignsValue($set, $ent['identity'])) {
-            throw self::err(Code::IR_INVALID,
-                "load of {$ent['entity']} needs a value for the identity column {$ent['identity']}");
+            throw self::err(
+                Code::IR_INVALID,
+                "load of {$ent['entity']} needs a value for the identity column {$ent['identity']}"
+            );
         }
         $cols = [];
         $vals = [];
@@ -907,8 +932,12 @@ final class Planner
             foreach ($rows as $row) {
                 $more = [];
                 foreach ($set as $i => $a) {
-                    $more[] = $this->renderAssign($b, $ent, RuntimeModel::column($ent, $a['column']),
-                        ['column' => $a['column'], 'p' => $row[$source[$i]]]);
+                    $more[] = $this->renderAssign(
+                        $b,
+                        $ent,
+                        RuntimeModel::column($ent, $a['column']),
+                        ['column' => $a['column'], 'p' => $row[$source[$i]]]
+                    );
                 }
                 if ($versioned) {
                     $more[] = $b->config('aes_version', RuntimeModel::column($ent, $ent['aes_version'])['type']);
@@ -1016,8 +1045,13 @@ final class Planner
         $where = $this->renderGroup($b, $root, $r['where'], true);
         if ($soft !== '') {
             $where .= ' AND ' . $this->qcol($root, $soft) . ' IS NULL';
-            return new PlanStep('main', 'UPDATE ' . $b->table($ent) . ' SET ' . $sets . ' WHERE ' . $where, '',
-                $b->slots, $b->tables());
+            return new PlanStep(
+                'main',
+                'UPDATE ' . $b->table($ent) . ' SET ' . $sets . ' WHERE ' . $where,
+                '',
+                $b->slots,
+                $b->tables()
+            );
         }
         return new PlanStep('main', 'DELETE FROM ' . $b->table($ent) . ' WHERE ' . $where, '', $b->slots, $b->tables());
     }
@@ -1131,8 +1165,10 @@ final class Planner
         return match ($sub['agg'] ?? '') {
             'count' => 'i64',
             'avg' => 'f64',
-            default => RuntimeModel::column($this->m->entities[$sub['query']['entity']],
-                $sub['column'] ?? '')['type'] ?? 'string',
+            default => RuntimeModel::column(
+                $this->m->entities[$sub['query']['entity']],
+                $sub['column'] ?? ''
+            )['type'] ?? 'string',
         };
     }
 }

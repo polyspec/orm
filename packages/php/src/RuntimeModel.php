@@ -95,8 +95,10 @@ final class RuntimeModel
     public static function loadSet(string $manifestText, string $externalText): array
     {
         $external = $externalText === '' ? [] : array_combine(
-            array_map(static fn(string $label): string => "external $label",
-                array_keys(self::splitManifest($externalText))),
+            array_map(
+                static fn(string $label): string => "external $label",
+                array_keys(self::splitManifest($externalText))
+            ),
             self::splitManifest($externalText),
         );
         return self::parseSet(self::splitManifest($manifestText), $external);
@@ -132,8 +134,10 @@ final class RuntimeModel
     {
         $set = Dbspec::readSet($path);
         if ($set->errors !== []) {
-            throw new OrmException(Code::CONFIG, implode("\n",
-                array_map(static fn($e): string => "{$e->rule}: {$e->message}", $set->errors)));
+            throw new OrmException(Code::CONFIG, implode(
+                "\n",
+                array_map(static fn($e): string => "{$e->rule}: {$e->message}", $set->errors)
+            ));
         }
         $errors = [];
         $texts = ['documents' => [], 'external' => []];
@@ -198,8 +202,10 @@ final class RuntimeModel
     {
         $result = Dbspec::manifest($documents);
         if ($result->manifest === null) {
-            $lines = array_map(static fn($d): string => "{$d->line}:{$d->column}: {$d->rule}: {$d->message}",
-                $result->diagnostics);
+            $lines = array_map(
+                static fn($d): string => "{$d->line}:{$d->column}: {$d->rule}: {$d->message}",
+                $result->diagnostics
+            );
             throw new OrmException(Code::SCHEMA_INVALID, implode("\n", $lines));
         }
         usort($documents, static fn(Document $a, Document $b): int => strcmp($a->name, $b->name));
@@ -225,14 +231,20 @@ final class RuntimeModel
                     $entity = self::tableEntity($table);
                 }
                 if (isset($entities[$entity['entity']])) {
-                    throw new OrmException(Code::SCHEMA_INVALID,
-                        "entity {$entity['entity']} is declared twice in the document set");
+                    throw new OrmException(
+                        Code::SCHEMA_INVALID,
+                        "entity {$entity['entity']} is declared twice in the document set"
+                    );
                 }
                 $entities[$entity['entity']] = $entity;
             }
         }
-        return new self($result->manifest->manifestHash, $result->manifest->manifestText, $entities,
-            $result->manifest->externalText);
+        return new self(
+            $result->manifest->manifestHash,
+            $result->manifest->manifestText,
+            $entities,
+            $result->manifest->externalText
+        );
     }
 
     /**
@@ -242,9 +254,12 @@ final class RuntimeModel
      * regeneration command, before any statement.
      * @param list<class-string<Model>> $classes
      */
-    public static function fromModels(string $manifestHash, string $manifestText, array $classes,
-        string $externalText = ''): self
-    {
+    public static function fromModels(
+        string $manifestHash,
+        string $manifestText,
+        array $classes,
+        string $externalText = ''
+    ): self {
         $manifest = self::build(self::loadSet($manifestText, $externalText))->entities;
         $entities = [];
         foreach ($classes as $class) {
@@ -256,10 +271,12 @@ final class RuntimeModel
             $path = $want === null ? 'entity' : self::firstDifference($meta, $want, '');
             if ($path !== null) {
                 $entity = is_string($name) ? $name : '?';
-                throw new OrmException(Code::CONFIG,
+                throw new OrmException(
+                    Code::CONFIG,
                     "generated model $class of entity $entity differs from its manifest at $path: "
                     . 'generate the models again (orm-gen gen --set <dbspec-set.json> '
-                    . '--out <dir> --namespace <namespace>)');
+                    . '--out <dir> --namespace <namespace>)'
+                );
             }
             $entities[$name] = $meta;
         }

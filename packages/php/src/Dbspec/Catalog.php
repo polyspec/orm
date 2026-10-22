@@ -59,7 +59,8 @@ final class Catalog
             if ($result->document !== null) {
                 $unsupported = $this->unsupported;
                 usort($unsupported, static fn(Unsupported $a, Unsupported $b): int => strcmp(
-                    "{$a->table}\0{$a->kind}\0{$a->name}", "{$b->table}\0{$b->kind}\0{$b->name}"
+                    "{$a->table}\0{$a->kind}\0{$a->name}",
+                    "{$b->table}\0{$b->kind}\0{$b->name}"
                 ));
                 return new IntrospectResult($result->document, $unsupported);
             }
@@ -116,8 +117,10 @@ final class Catalog
             'index' => $t->indexes = $without($t->indexes),
             'foreign_key' => $t->foreignKeys = $without($t->foreignKeys),
             'check' => $t->checks = $without($t->checks),
-            'trigger' => $t->settings = array_values(array_filter($t->settings,
-                static fn(string $s): bool => self::firstWord($s) !== $name)),
+            'trigger' => $t->settings = array_values(array_filter(
+                $t->settings,
+                static fn(string $s): bool => self::firstWord($s) !== $name
+            )),
         };
     }
 
@@ -186,10 +189,12 @@ final class Catalog
                 $add("  index {$x['name']} (" . implode(', ', $columns) . ')', ['index', $t->name, $x['name']]);
             }
             foreach ($t->foreignKeys as $f) {
-                $add("  foreign key {$f['name']} (" . implode(', ', $f['columns'])
+                $add(
+                    "  foreign key {$f['name']} (" . implode(', ', $f['columns'])
                     . ") references {$f['table']} (" . implode(', ', $f['refs'])
                     . ") on delete {$f['onDelete']} on update {$f['onUpdate']}",
-                    ['foreign_key', $t->name, $f['name']]);
+                    ['foreign_key', $t->name, $f['name']]
+                );
             }
             foreach ($t->checks as $k) {
                 $add("  check {$k['name']} ({$k['predicate']})", ['check', $t->name, $k['name']]);

@@ -66,7 +66,8 @@ final class PlanObjects
                 if ($t === null || self::indexDef($x, $renamed) !== self::indexDef($t, $same)) {
                     $d->dropObjects[$src->name][] = ['index', $x->name];
                     $droppedKeys[implode(',', array_map(
-                        static fn(IndexColumn $c): string => $renamed($c->name), $x->columns
+                        static fn(IndexColumn $c): string => $renamed($c->name),
+                        $x->columns
                     ))] = true;
                 }
             }
@@ -78,7 +79,7 @@ final class PlanObjects
             }
             // foreign key
             $forcedFK = static function (array $cols, string $parent, array $refs)
-                    use ($alteredColumn, $droppedKeys, $name): bool {
+ use ($alteredColumn, $droppedKeys, $name): bool {
                 foreach ($cols as $c) {
                     if (isset($alteredColumn["$name.$c"])) {
                         return true;
@@ -100,16 +101,19 @@ final class PlanObjects
             $sourceForeignKey = static function (ForeignKey $f) use ($targetTable, $column, $renamed): array {
                 $parent = $targetTable($f->table);
                 return [array_map($renamed, $f->columns), $parent, array_map(
-                    static fn(string $c): string => $column($parent, $c), $f->referencedColumns
+                    static fn(string $c): string => $column($parent, $c),
+                    $f->referencedColumns
                 )];
             };
             foreach ($src->foreignKeys as $f) {
                 [$cols, $parent, $refs] = $sourceForeignKey($f);
                 $t = self::named($tgt->foreignKeys, $f->name);
-                if ($t === null
+                if (
+                    $t === null
                     || self::foreignKeyDef($cols, $parent, $refs, $f)
                         !== self::foreignKeyDef($t->columns, $t->table, $t->referencedColumns, $t)
-                    || $forcedFK($cols, $parent, $refs)) {
+                    || $forcedFK($cols, $parent, $refs)
+                ) {
                     $d->dropObjects[$src->name][] = ['foreign_key', $f->name];
                 }
             }
@@ -220,8 +224,11 @@ final class PlanObjects
      */
     public static function checkText(string $expression, callable $f): string
     {
-        return preg_replace_callback(self::CHECK_TOKEN,
-            static fn(array $m): string => self::isColumn($m[0]) ? $f($m[0]) : $m[0], $expression)
+        return preg_replace_callback(
+            self::CHECK_TOKEN,
+            static fn(array $m): string => self::isColumn($m[0]) ? $f($m[0]) : $m[0],
+            $expression
+        )
             ?? throw new \LogicException("Check text `$expression` cannot be read");
     }
 

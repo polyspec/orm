@@ -83,11 +83,15 @@ WHERE NOT t.tgisinternal AND c.relnamespace = current_schema()::regnamespace ORD
         $q = self::COLUMNS;
         foreach (CatalogRows::read($connection, $q) as $row) {
             [$table, $name, $quotedName, $formatted] = array_map(
-                static fn(int $i): string => CatalogRows::text($row, $i, $q), [0, 1, 2, 3]);
+                static fn(int $i): string => CatalogRows::text($row, $i, $q),
+                [0, 1, 2, 3]
+            );
             $notNull = CatalogRows::flag($row, 4, $q);
             $default = CatalogRows::nullableText($row, 5, $q);
             [$identity, $generated, $collation] = array_map(
-                static fn(int $i): string => CatalogRows::text($row, $i, $q), [6, 7, 8]);
+                static fn(int $i): string => CatalogRows::text($row, $i, $q),
+                [6, 7, 8]
+            );
             $t = $c->table($table);
             if ($t === null) {
                 continue;
@@ -127,11 +131,15 @@ WHERE NOT t.tgisinternal AND c.relnamespace = current_schema()::regnamespace ORD
         $q = self::CONSTRAINTS;
         foreach (CatalogRows::read($connection, $q) as $row) {
             [$table, $name, $kind, $definition] = array_map(
-                static fn(int $i): string => CatalogRows::text($row, $i, $q), [0, 1, 2, 3]);
+                static fn(int $i): string => CatalogRows::text($row, $i, $q),
+                [0, 1, 2, 3]
+            );
             $deferrable = CatalogRows::flag($row, 4, $q);
             $validated = CatalogRows::flag($row, 5, $q);
             [$match, $onDelete, $onUpdate, $refTable, $columns, $refs] = array_map(
-                static fn(int $i): string => CatalogRows::text($row, $i, $q), range(6, 11));
+                static fn(int $i): string => CatalogRows::text($row, $i, $q),
+                range(6, 11)
+            );
             $t = $c->table($table);
             if ($t === null) {
                 continue;
@@ -155,8 +163,12 @@ WHERE NOT t.tgisinternal AND c.relnamespace = current_schema()::regnamespace ORD
                 $delete = self::action($onDelete);
                 $update = self::action($onUpdate);
                 if ($delete === null || $update === null || $match !== 's') {
-                    $c->report('foreign_key', $table, $name,
-                        "actions $onDelete, $onUpdate or match $match have no dbspec definition");
+                    $c->report(
+                        'foreign_key',
+                        $table,
+                        $name,
+                        "actions $onDelete, $onUpdate or match $match have no dbspec definition"
+                    );
                     continue;
                 }
                 $t->foreignKeys[] = ['name' => $name, 'columns' => $list, 'table' => $refTable,
@@ -197,16 +209,24 @@ WHERE NOT t.tgisinternal AND c.relnamespace = current_schema()::regnamespace ORD
             $table = CatalogRows::text($row, 0, $q);
             $name = CatalogRows::text($row, 1, $q);
             [$unique, $partial, $expression, $include] = array_map(
-                static fn(int $i): bool => CatalogRows::flag($row, $i, $q), [2, 3, 4, 5]);
+                static fn(int $i): bool => CatalogRows::flag($row, $i, $q),
+                [2, 3, 4, 5]
+            );
             [$method, $columns, $options] = array_map(
-                static fn(int $i): string => CatalogRows::text($row, $i, $q), [6, 7, 8]);
+                static fn(int $i): string => CatalogRows::text($row, $i, $q),
+                [6, 7, 8]
+            );
             $t = $c->table($table);
             if ($t === null) {
                 continue;
             }
             if ($unique || $partial || $expression || $include || $method !== 'btree' || str_contains($name, '$')) {
-                $c->report('index', $table, $name,
-                    "a unique, partial, expression, covering or $method index has no dbspec index");
+                $c->report(
+                    'index',
+                    $table,
+                    $name,
+                    "a unique, partial, expression, covering or $method index has no dbspec index"
+                );
                 continue;
             }
             $t->indexes[] = ['name' => $name, 'columns' => explode(',', $columns),
@@ -217,10 +237,14 @@ WHERE NOT t.tgisinternal AND c.relnamespace = current_schema()::regnamespace ORD
         $q = self::TRIGGERS;
         foreach (CatalogRows::read($connection, $q) as $row) {
             [$table, $name, $definition, $function, $source, $language] = array_map(
-                static fn(int $i): string => CatalogRows::text($row, $i, $q), range(0, 5));
+                static fn(int $i): string => CatalogRows::text($row, $i, $q),
+                range(0, 5)
+            );
             $functions[$function] = true;
-            if (!preg_match(self::TRIGGER, $definition, $m) || $language !== 'plpgsql'
-                || trim($m[1], '"') !== $name || trim($m[5], '"') !== $function) {
+            if (
+                !preg_match(self::TRIGGER, $definition, $m) || $language !== 'plpgsql'
+                || trim($m[1], '"') !== $name || trim($m[5], '"') !== $function
+            ) {
                 $triggers[$table][] = ['name' => $name, 'statements' => [$definition]];
                 continue;
             }

@@ -87,7 +87,8 @@ final class Collection implements \IteratorAggregate, \Countable, \JsonSerializa
     public function keys(): array
     {
         return array_values(array_map(
-            static fn(array $e): int|string|bool|Bytes|\DateTimeInterface => $e[0], $this->items
+            static fn(array $e): int|string|bool|Bytes|\DateTimeInterface => $e[0],
+            $this->items
         ));
     }
 

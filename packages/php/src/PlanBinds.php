@@ -42,8 +42,10 @@ final class PlanBinds
     private function typed(array $slot): string
     {
         if (($slot['col_type'] ?? '') === '') {
-            throw new OrmException(Code::IR_INVALID,
-                sprintf('bind slot %d (%s) has no declared type', count($this->slots), $slot['from']));
+            throw new OrmException(
+                Code::IR_INVALID,
+                sprintf('bind slot %d (%s) has no declared type', count($this->slots), $slot['from'])
+            );
         }
         return $this->add($slot);
     }

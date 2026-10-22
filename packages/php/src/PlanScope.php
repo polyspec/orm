@@ -18,7 +18,6 @@ final class PlanScope
         public readonly string $alias,
         public readonly array $q,
         public readonly ?PlanScope $parent
-    )
-    {
+    ) {
     }
 }

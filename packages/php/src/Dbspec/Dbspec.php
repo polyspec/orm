@@ -137,8 +137,12 @@ final class Dbspec
         $documents = [];
         foreach ($texts as $i => [$text, $isExternal]) {
             if (isset($repeated[$i])) {
-                $diagnostic = new Diagnostic('name.duplicate', 1, 10,
-                    "document {$names[$i]} appears twice in the document set");
+                $diagnostic = new Diagnostic(
+                    'name.duplicate',
+                    1,
+                    10,
+                    "document {$names[$i]} appears twice in the document set"
+                );
                 $documents[] = new SetDocument($names[$i], $isExternal, null, null, [$diagnostic]);
                 continue;
             }
@@ -148,8 +152,13 @@ final class Dbspec
             if ($result->document !== null) {
                 $result->document->external = $isExternal;
             }
-            $documents[] = new SetDocument($names[$i], $isExternal, $result->document, $result->positions,
-                $result->diagnostics);
+            $documents[] = new SetDocument(
+                $names[$i],
+                $isExternal,
+                $result->document,
+                $result->positions,
+                $result->diagnostics
+            );
         }
         return $documents;
     }
@@ -333,9 +342,13 @@ final class Dbspec
         usort($tables, static fn(Table $a, Table $b): int => strcmp($a->name, $b->name));
         $schema->tables = $tables;
         $schemaText = Emitter::emit($schema, View::Schema);
-        return ManifestResult::valid(new Manifest($manifestText, $schemaText,
-            'sha256:' . hash('sha256', $manifestText . $externalText), 'sha256:' . hash('sha256', $schemaText),
-            $externalText));
+        return ManifestResult::valid(new Manifest(
+            $manifestText,
+            $schemaText,
+            'sha256:' . hash('sha256', $manifestText . $externalText),
+            'sha256:' . hash('sha256', $schemaText),
+            $externalText
+        ));
     }
 
     /**
@@ -362,8 +375,14 @@ final class Dbspec
                 new UniqueKey($u->name, $u->columns), $table->uniqueKeys);
             foreach ($table->foreignKeys as $f) {
                 if (in_array($f->table, $tables, true)) {
-                    $trimmed->foreignKeys[] = new ForeignKey($f->name, $f->columns, $f->table,
-                        $f->referencedColumns, $f->onDelete, $f->onUpdate);
+                    $trimmed->foreignKeys[] = new ForeignKey(
+                        $f->name,
+                        $f->columns,
+                        $f->table,
+                        $f->referencedColumns,
+                        $f->onDelete,
+                        $f->onUpdate
+                    );
                 }
             }
             foreach ($table->indexes as $x) {
@@ -608,9 +627,12 @@ final class Dbspec
      * @return array{0: list<string>, 1: list<PlanStep>, 2: list<string>} The tables to create, the columns to
      *     add, the steps, and the differences
      */
-    public static function addTablesAndColumnsSteps(Document $live, array $unsupported, Document $target,
-        string $dialect): array
-    {
+    public static function addTablesAndColumnsSteps(
+        Document $live,
+        array $unsupported,
+        Document $target,
+        string $dialect
+    ): array {
         Graph::document($live);
         Graph::unsupported($unsupported, 'the unsupported objects');
         Graph::document($target);
@@ -755,9 +777,13 @@ final class Dbspec
      * @param \Closure(): \DateTimeInterface $now
      * @param ?\Closure(ApplyEvent): void $events
      */
-    public static function apply(\PDO $connection, string $dialect, array $plans, \Closure $now,
-        ?\Closure $events): void
-    {
+    public static function apply(
+        \PDO $connection,
+        string $dialect,
+        array $plans,
+        \Closure $now,
+        ?\Closure $events
+    ): void {
         PlanApply::apply($connection, $dialect, $plans, $now, $events);
     }
 
@@ -772,9 +798,13 @@ final class Dbspec
      * @param \Closure(): \DateTimeInterface $now
      * @param ?\Closure(ApplyEvent): void $events
      */
-    public static function recover(\PDO $connection, string $dialect, array $plans, \Closure $now,
-        ?\Closure $events): void
-    {
+    public static function recover(
+        \PDO $connection,
+        string $dialect,
+        array $plans,
+        \Closure $now,
+        ?\Closure $events
+    ): void {
         PlanApply::recover($connection, $dialect, $plans, $now, $events);
     }
 
@@ -789,9 +819,13 @@ final class Dbspec
      * @param \Closure(): \DateTimeInterface $now
      * @param ?\Closure(ApplyEvent): void $events
      */
-    public static function rollback(\PDO $connection, string $dialect, array $plans, \Closure $now,
-        ?\Closure $events): void
-    {
+    public static function rollback(
+        \PDO $connection,
+        string $dialect,
+        array $plans,
+        \Closure $now,
+        ?\Closure $events
+    ): void {
         PlanApply::rollback($connection, $dialect, $plans, $now, $events);
     }
 
@@ -804,9 +838,13 @@ final class Dbspec
      * @param \Closure(): \DateTimeInterface $now
      * @param ?\Closure(ApplyEvent): void $events
      */
-    public static function finalize(\PDO $connection, string $dialect, array $plans, \Closure $now,
-        ?\Closure $events): void
-    {
+    public static function finalize(
+        \PDO $connection,
+        string $dialect,
+        array $plans,
+        \Closure $now,
+        ?\Closure $events
+    ): void {
         PlanApply::finalize($connection, $dialect, $plans, $now, $events);
     }
 

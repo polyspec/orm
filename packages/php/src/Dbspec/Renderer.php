@@ -59,8 +59,10 @@ final class Renderer
     {
         $r = new self($dialect);
         // A table of an external document is created by the set that owns that document.
-        $ordered = array_values(array_filter(self::useOrder($documents),
-            static fn(Document $d): bool => !$d->external));
+        $ordered = array_values(array_filter(
+            self::useOrder($documents),
+            static fn(Document $d): bool => !$d->external
+        ));
         $out = [];
         $add = static function (string $table, array $statements) use (&$out): void {
             foreach ($statements as $statement) {
@@ -173,8 +175,12 @@ final class Renderer
     /** @return list<string> */
     public function table(Table $t): array
     {
-        $create = $this->createTable($t, $t->name,
-            static fn(string $column): string => Names::render($t->name, $column), []);
+        $create = $this->createTable(
+            $t,
+            $t->name,
+            static fn(string $column): string => Names::render($t->name, $column),
+            []
+        );
         $out = [$create];
         if ($this->dialect === 'sqlite') {
             foreach (self::byName($t->uniqueKeys) as $unique) {
@@ -563,8 +569,10 @@ final class Renderer
     private function operand(): array
     {
         $token = $this->peek();
-        if ($token !== null && preg_match('/^[A-Za-z0-9_]+$/D', $token) && !ctype_digit($token)
-            && !isset(self::KEYWORDS[$token])) {
+        if (
+            $token !== null && preg_match('/^[A-Za-z0-9_]+$/D', $token) && !ctype_digit($token)
+            && !isset(self::KEYWORDS[$token])
+        ) {
             $this->at++;
             return ['column', $this->findColumn($token) ?? $this->invalid("`$token` is not a column of the table")];
         }
@@ -574,8 +582,10 @@ final class Renderer
     private function checkLiteral(): array
     {
         $token = $this->peek();
-        if ($token === null || ($token !== 'true' && $token !== 'false' && Literal::number($token) === null
-            && Literal::stringValue($token) === null)) {
+        if (
+            $token === null || ($token !== 'true' && $token !== 'false' && Literal::number($token) === null
+            && Literal::stringValue($token) === null)
+        ) {
             $this->invalid('expected a literal, found `' . ($token ?? 'the end') . '`');
         }
         $this->at++;
@@ -635,10 +645,20 @@ final class Renderer
         if ($audit !== null) {
             $column = $audit->arguments[1];
             array_push($out, ...$this->history($t, $audit, 'audit_insert', 'AFTER INSERT', "'insert'", 'NULL'));
-            array_push($out, ...$this->history($t, $audit, 'audit_update', 'AFTER UPDATE', "'update'",
-                'OLD.' . $this->q($column)));
-            array_push($out, ...$this->reject($t, 'audit_delete', 'BEFORE DELETE',
-                "table {$t->name} deletes through its soft delete column"));
+            array_push($out, ...$this->history(
+                $t,
+                $audit,
+                'audit_update',
+                'AFTER UPDATE',
+                "'update'",
+                'OLD.' . $this->q($column)
+            ));
+            array_push($out, ...$this->reject(
+                $t,
+                'audit_delete',
+                'BEFORE DELETE',
+                "table {$t->name} deletes through its soft delete column"
+            ));
         }
         return $out;
     }
@@ -676,9 +696,14 @@ final class Renderer
     }
 
     /** @return list<string> */
-    private function history(Table $t, Setting $audit, string $event, string $timing, string $actionValue,
-        string $previousValue): array
-    {
+    private function history(
+        Table $t,
+        Setting $audit,
+        string $event,
+        string $timing,
+        string $actionValue,
+        string $previousValue
+    ): array {
         [$history, , , $action, $previous] = $audit->arguments;
         $columns = [$this->q($action), $this->q($previous)];
         $values = [$actionValue, $previousValue];

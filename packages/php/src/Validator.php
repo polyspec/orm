@@ -101,31 +101,41 @@ final class Validator
     {
         self::shape('Request', $r, '');
         if (($r['ir_version'] ?? 0) !== self::IR_VERSION) {
-            throw self::err(Code::VERSION_MISMATCH,
-                'ir_version ' . ($r['ir_version'] ?? 0) . ', engine ' . self::IR_VERSION);
+            throw self::err(
+                Code::VERSION_MISMATCH,
+                'ir_version ' . ($r['ir_version'] ?? 0) . ', engine ' . self::IR_VERSION
+            );
         }
         if (($r['manifest_hash'] ?? '') !== $this->m->manifestHash) {
-            throw self::err(Code::SCHEMA_HASH_MISMATCH,
-                'client ' . ($r['manifest_hash'] ?? '') . ", engine {$this->m->manifestHash}");
+            throw self::err(
+                Code::SCHEMA_HASH_MISMATCH,
+                'client ' . ($r['manifest_hash'] ?? '') . ", engine {$this->m->manifestHash}"
+            );
         }
         $kind = $r['kind'] ?? '';
-        if (!in_array($kind, ['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate', 'insert', 'update',
-            'delete', 'restore', 'restart_identity'], true)) {
+        if (
+            !in_array($kind, ['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate', 'insert', 'update',
+            'delete', 'restore', 'restart_identity'], true)
+        ) {
             throw self::err(Code::IR_INVALID, "unknown kind \"$kind\"");
         }
         // A table of an external document is written only by the set that owns it
         // (docs/spec/dbspec.md "External documents").
         $target = $this->m->entities[$r['entity'] ?? ''] ?? null;
-        if (($target['external'] ?? false)
-            && in_array($kind, ['insert', 'update', 'delete', 'restore', 'restart_identity'], true)) {
+        if (
+            ($target['external'] ?? false)
+            && in_array($kind, ['insert', 'update', 'delete', 'restore', 'restart_identity'], true)
+        ) {
             throw self::err(Code::CONFIG, "{$target['table']} is owned by another document set");
         }
         if (($r['load'] ?? false) && ($kind !== 'insert' || ($r['on_duplicate'] ?? []) !== [])) {
             throw self::err(Code::IR_INVALID, 'load is only valid on insert without on_duplicate');
         }
         // restart_identity restarts only one entity's identity, so it takes no row or value.
-        if ($kind === 'restart_identity' && (($r['set'] ?? []) !== [] || ($r['rows'] ?? []) !== []
-            || ($r['on_duplicate'] ?? []) !== [] || isset($r['where']) || isset($r['optimistic']))) {
+        if (
+            $kind === 'restart_identity' && (($r['set'] ?? []) !== [] || ($r['rows'] ?? []) !== []
+            || ($r['on_duplicate'] ?? []) !== [] || isset($r['where']) || isset($r['optimistic']))
+        ) {
             throw self::err(Code::IR_INVALID, 'restart_identity takes no set, rows, on_duplicate, where or optimistic');
         }
         $this->n = $r['n_params'] ?? 0;
@@ -176,14 +186,18 @@ final class Validator
             }
             foreach ($set as $a) {
                 if (!isset($a['p'])) {
-                    throw self::err(Code::IR_INVALID,
-                        "multi-row insert assigns $entity.{$a['column']} without a value");
+                    throw self::err(
+                        Code::IR_INVALID,
+                        "multi-row insert assigns $entity.{$a['column']} without a value"
+                    );
                 }
             }
             foreach ($rows as $i => $row) {
                 if (count($row) !== count($set)) {
-                    throw self::err(Code::IR_INVALID,
-                        sprintf('insert row %d has %d values for %d columns', $i + 1, count($row), count($set)));
+                    throw self::err(
+                        Code::IR_INVALID,
+                        sprintf('insert row %d has %d values for %d columns', $i + 1, count($row), count($set))
+                    );
                 }
                 $this->params($row);
             }
@@ -242,12 +256,16 @@ final class Validator
         foreach ($items as $i => $item) {
             $conn = ($item['pred'] ?? $item['group'] ?? $item['joined'] ?? [])['conn'] ?? '';
             if ($i > 0 && $conn === 'or') {
-                throw self::err(Code::IR_INVALID,
-                    "restore of {$ent['entity']} joins the conditions of its where with and");
+                throw self::err(
+                    Code::IR_INVALID,
+                    "restore of {$ent['entity']} joins the conditions of its where with and"
+                );
             }
             $pr = $item['pred'] ?? null;
-            if ($pr !== null && ($pr['op'] ?? '') === 'eq' && isset($pr['p']) && !isset($pr['fn'])
-                && !isset($pr['value']) && !isset($pr['ref']) && !isset($pr['sub'])) {
+            if (
+                $pr !== null && ($pr['op'] ?? '') === 'eq' && isset($pr['p']) && !isset($pr['fn'])
+                && !isset($pr['value']) && !isset($pr['ref']) && !isset($pr['sub'])
+            ) {
                 $valued[$pr['column']] = true;
             }
         }
@@ -279,9 +297,11 @@ final class Validator
             }
         }
         if ($key === null) {
-            throw self::err(Code::IR_INVALID,
+            throw self::err(
+                Code::IR_INVALID,
                 "restore of {$ent['entity']} gives no primary key or unique key a value in its set "
-                . "or in an eq condition of its where");
+                . "or in an eq condition of its where"
+            );
         }
         $parts = ['key' => $key, 'where' => ['items' => $items], 'set' => []];
         foreach ($set as $a) {
@@ -529,11 +549,15 @@ final class Validator
     private function assign(array $ent, array $a): void
     {
         $column = $a['column'] ?? '';
-        $c = RuntimeModel::column($ent, $column) ?? throw self::err(Code::COLUMN_UNKNOWN,
-            "{$ent['entity']}.$column");
+        $c = RuntimeModel::column($ent, $column) ?? throw self::err(
+            Code::COLUMN_UNKNOWN,
+            "{$ent['entity']}.$column"
+        );
         if ($column === $ent['audit']) {
-            throw self::err(Code::IR_INVALID,
-                "{$ent['entity']}.$column is written by the executor from the audit of the transaction");
+            throw self::err(
+                Code::IR_INVALID,
+                "{$ent['entity']}.$column is written by the executor from the audit of the transaction"
+            );
         }
         $n = (int) isset($a['p']) + (int) !empty($a['null']) + (int) isset($a['plus_p']) + (int) isset($a['minus_p']);
         if ($n !== 1) {
@@ -595,8 +619,10 @@ final class Validator
             }
         }
         $ent = $target['ent'] ?? throw self::err(Code::ENTITY_UNKNOWN, $target['name']);
-        return RuntimeModel::column($ent, $column) ?? throw self::err(Code::COLUMN_UNKNOWN,
-            "{$target['name']}.$column");
+        return RuntimeModel::column($ent, $column) ?? throw self::err(
+            Code::COLUMN_UNKNOWN,
+            "{$target['name']}.$column"
+        );
     }
 
     /**
@@ -637,9 +663,11 @@ final class Validator
         }
         foreach ($candidates[0]['columns'] as $c) {
             if (!isset($assigned[$c])) {
-                throw self::err(Code::IR_INVALID,
+                throw self::err(
+                    Code::IR_INVALID,
                     "on_duplicate needs exactly one conflict key; {$candidates[0]['name']} can meet the row "
-                    . "but the insert does not assign $c");
+                    . "but the insert does not assign $c"
+                );
             }
         }
         return $candidates[0]['columns'];
@@ -693,8 +721,10 @@ final class Validator
                     throw self::err(Code::COLUMN_ALIAS_CONFLICT, "$entity.$out is already a row name");
                 }
                 $outputs[$out] = true;
-                $col = RuntimeModel::column($ent, $cf['column'] ?? '') ?? throw self::err(Code::COLUMN_UNKNOWN,
-                    "$entity." . ($cf['column'] ?? ''));
+                $col = RuntimeModel::column($ent, $cf['column'] ?? '') ?? throw self::err(
+                    Code::COLUMN_UNKNOWN,
+                    "$entity." . ($cf['column'] ?? '')
+                );
                 $this->columnFunc($ent, $col, $cf['fn'] ?? []);
             }
             foreach ($cols['sub'] ?? [] as $out => $sub) {
@@ -722,8 +752,10 @@ final class Validator
             if ($left === '' || $right === '' || !isset($j['query'])) {
                 throw self::err(Code::IR_INVALID, "join $rel: left, right and query are required");
             }
-            $target = $this->m->entities[$j['query']['entity'] ?? ''] ?? throw self::err(Code::ENTITY_UNKNOWN,
-                $j['query']['entity'] ?? '');
+            $target = $this->m->entities[$j['query']['entity'] ?? ''] ?? throw self::err(
+                Code::ENTITY_UNKNOWN,
+                $j['query']['entity'] ?? ''
+            );
             if (RuntimeModel::column($ent, $left) === null) {
                 throw self::err(Code::COLUMN_UNKNOWN, "{$ent['entity']}.$left");
             }
@@ -731,8 +763,10 @@ final class Validator
                 throw self::err(Code::COLUMN_UNKNOWN, "{$target['entity']}.$right");
             }
             if (!self::meets(RuntimeModel::column($ent, $left), RuntimeModel::column($target, $right))) {
-                throw self::err(Code::OPERATOR_NOT_ALLOWED,
-                    "join $rel: {$ent['entity']}.$left does not meet {$target['entity']}.$right");
+                throw self::err(
+                    Code::OPERATOR_NOT_ALLOWED,
+                    "join $rel: {$ent['entity']}.$left does not meet {$target['entity']}.$right"
+                );
             }
             $joined[$rel] = $j;
             $this->query($j['query'], ['root' => $at['root'], 'outer' => $at['outer'],
@@ -774,8 +808,10 @@ final class Validator
             if ($keys === [] || ($kind !== 'one' && $kind !== 'many')) {
                 throw self::err(Code::IR_INVALID, "relation $rel: keys and kind one|many are required");
             }
-            $target = $this->m->entities[$child['entity'] ?? ''] ?? throw self::err(Code::ENTITY_UNKNOWN,
-                $child['entity'] ?? '');
+            $target = $this->m->entities[$child['entity'] ?? ''] ?? throw self::err(
+                Code::ENTITY_UNKNOWN,
+                $child['entity'] ?? ''
+            );
             $lefts = [];
             $rights = [];
             foreach ($keys as $k) {
@@ -791,8 +827,10 @@ final class Validator
                     throw self::err(Code::COLUMN_UNKNOWN, "{$target['entity']}.$right");
                 }
                 if (!self::meets(RuntimeModel::column($ent, $left), RuntimeModel::column($target, $right))) {
-                    throw self::err(Code::OPERATOR_NOT_ALLOWED,
-                        "relation $rel: $entity.$left does not meet {$target['entity']}.$right");
+                    throw self::err(
+                        Code::OPERATOR_NOT_ALLOWED,
+                        "relation $rel: $entity.$left does not meet {$target['entity']}.$right"
+                    );
                 }
                 // A column that appears in two components is not a key.
                 if (isset($lefts[$left]) || isset($rights[$right])) {
@@ -810,10 +848,14 @@ final class Validator
             if (($child['key_by'] ?? '') !== '' && $kind !== 'many') {
                 throw self::err(Code::IR_INVALID, "relation $rel: key_by needs a many relation");
             }
-            if (isset($child['if_parent'])
-                && RuntimeModel::column($ent, $child['if_parent']['column'] ?? '') === null) {
-                throw self::err(Code::COLUMN_UNKNOWN,
-                    "$entity." . ($child['if_parent']['column'] ?? '') . ' (if_parent)');
+            if (
+                isset($child['if_parent'])
+                && RuntimeModel::column($ent, $child['if_parent']['column'] ?? '') === null
+            ) {
+                throw self::err(
+                    Code::COLUMN_UNKNOWN,
+                    "$entity." . ($child['if_parent']['column'] ?? '') . ' (if_parent)'
+                );
             }
             $scope = $this->scopes($child);
             $this->query($child, ['root' => $scope, 'outer' => null, 'node' => $scope], false, true);
@@ -829,8 +871,10 @@ final class Validator
         if (isset($q['if_parent'])) {
             $this->params([$q['if_parent']['p'] ?? 0]);
         }
-        if (!$isRelation && ($keyBy !== '' || !empty($q['flatten']) || ($q['limit_per_parent'] ?? 0) > 0
-            || isset($q['if_parent']) || !empty($q['no_cascade_delete']))) {
+        if (
+            !$isRelation && ($keyBy !== '' || !empty($q['flatten']) || ($q['limit_per_parent'] ?? 0) > 0
+            || isset($q['if_parent']) || !empty($q['no_cascade_delete']))
+        ) {
             throw self::err(Code::IR_INVALID, "relation-only options on $entity");
         }
         foreach ($q['order'] ?? [] as $o) {
@@ -907,8 +951,10 @@ final class Validator
             }
             if (isset($it['joined'])) {
                 $name = $it['joined']['join'] ?? '';
-                $j = $joined[$name] ?? throw self::err(Code::ENTITY_NOT_JOINED,
-                    "$name is not joined in this statement");
+                $j = $joined[$name] ?? throw self::err(
+                    Code::ENTITY_NOT_JOINED,
+                    "$name is not joined in this statement"
+                );
                 if (($j['query']['where']['items'] ?? []) === []) {
                     throw self::err(Code::IR_INVALID, "joined $name has no conditions");
                 }
@@ -949,8 +995,10 @@ final class Validator
                 throw self::err(Code::EMPTY_IN, "$name(" . implode(',', $cols) . ')');
             }
             if (count($ps) % count($cols) !== 0) {
-                throw self::err(Code::IR_INVALID,
-                    sprintf('%s: %d values for %d columns', $op, count($ps), count($cols)));
+                throw self::err(
+                    Code::IR_INVALID,
+                    sprintf('%s: %d values for %d columns', $op, count($ps), count($cols))
+                );
             }
             return;
         }
@@ -985,9 +1033,11 @@ final class Validator
             $subEntity = $this->m->entities[$p['sub']['query']['entity']];
             $subColumn = RuntimeModel::column($subEntity, $p['sub']['column'] ?? '');
             if ($subColumn !== null && !self::meets(RuntimeModel::column($ent, $column), $subColumn)) {
-                throw self::err(Code::OPERATOR_NOT_ALLOWED,
+                throw self::err(
+                    Code::OPERATOR_NOT_ALLOWED,
                     "$name.$column does not meet the subquery column "
-                    . "{$p['sub']['query']['entity']}.{$p['sub']['column']}");
+                    . "{$p['sub']['query']['entity']}.{$p['sub']['column']}"
+                );
             }
             return;
         }
@@ -1061,12 +1111,16 @@ final class Validator
             }
             $other = $this->ref($at, $p['ref']);
             if (!self::meets($c, $other)) {
-                throw self::err(Code::OPERATOR_NOT_ALLOWED,
-                    "$name.$column does not meet {$p['ref']['column']}");
+                throw self::err(
+                    Code::OPERATOR_NOT_ALLOWED,
+                    "$name.$column does not meet {$p['ref']['column']}"
+                );
             }
             if (!self::colPairOpAllowed($c, $other, $op)) {
-                throw self::err(Code::OPERATOR_NOT_ALLOWED,
-                    "$op on $name.$column ({$c['type']}) and {$p['ref']['column']} ({$other['type']})");
+                throw self::err(
+                    Code::OPERATOR_NOT_ALLOWED,
+                    "$op on $name.$column ({$c['type']}) and {$p['ref']['column']} ({$other['type']})"
+                );
             }
             return;
         }
@@ -1127,8 +1181,10 @@ final class Validator
         // for several rows, and SQLite returns the first, so the request makes one row certain. An in subquery
         // (MySQL 1235) and an aggregate take no limit.
         $scalarColumn = $scalar && $agg === '';
-        if (($q['relations'] ?? []) !== [] || ($q['lock'] ?? '') !== '' || isset($q['columns'])
-            || (isset($q['limit']) && !$scalarColumn)) {
+        if (
+            ($q['relations'] ?? []) !== [] || ($q['lock'] ?? '') !== '' || isset($q['columns'])
+            || (isset($q['limit']) && !$scalarColumn)
+        ) {
             throw self::err(Code::IR_INVALID, 'subquery may not use limit, relations, lock or columns');
         }
         if ($scalarColumn) {
@@ -1149,8 +1205,10 @@ final class Validator
                     }
                 }
                 if (!$found) {
-                    throw self::err(Code::IR_INVALID,
-                        "a scalar column subquery needs an order that includes the primary key column $pk");
+                    throw self::err(
+                        Code::IR_INVALID,
+                        "a scalar column subquery needs an order that includes the primary key column $pk"
+                    );
                 }
             }
         }

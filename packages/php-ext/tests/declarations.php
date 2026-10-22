@@ -15,6 +15,7 @@ declare(strict_types=1);
 // compares them with both.
 
 /** The namespace and the class outside it that the extension registers, which are those of the PHP client. */
+
 const EXTENSION_NAMESPACE = 'Polyspec\\Orm\\Dbspec\\';
 const CLIENT_CLASSES = ['Polyspec\\Orm\\Code', 'Polyspec\\Orm\\Codec', 'Polyspec\\Orm\\Validator', 'Polyspec\\Orm\\Planner', 'Polyspec\\Orm\\Db'];
 

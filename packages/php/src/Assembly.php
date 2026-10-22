@@ -22,8 +22,7 @@ final class Assembly
         public readonly ?Db $conn,
         private readonly array $result,
         public readonly bool $track = false
-    )
-    {
+    ) {
         $this->zone = $db->zone();
         $this->markdown = !empty($result['markdown']);
     }

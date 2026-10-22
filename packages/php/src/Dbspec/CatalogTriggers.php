@@ -39,8 +39,12 @@ final class CatalogTriggers
             $settings = self::setting($dialect, $t, $list);
             if ($settings === null) {
                 foreach ($list as $tr) {
-                    $c->report('trigger', $table, $tr['name'],
-                        'the trigger is not the renderer output of immutable or audit');
+                    $c->report(
+                        'trigger',
+                        $table,
+                        $tr['name'],
+                        'the trigger is not the renderer output of immutable or audit'
+                    );
                 }
                 continue;
             }
@@ -126,9 +130,13 @@ final class CatalogTriggers
      * @param list<string> $quoted
      */
     /** @param list<string> $tables the tables table and its record and name columns, or empty without the clause */
-    private static function audit(CatalogTable $t, string $history, array $quoted, string $column,
-        array $tables): ?Setting
-    {
+    private static function audit(
+        CatalogTable $t,
+        string $history,
+        array $quoted,
+        string $column,
+        array $tables
+    ): ?Setting {
         $names = [];
         foreach ($quoted as $q) {
             if (preg_match(self::AUDIT_COLUMN, $q, $m) !== 1) {
@@ -160,8 +168,12 @@ final class CatalogTriggers
         }
         // The arguments of audit are the history table, audit column, audit record table, action, and
         // previous, in order.
-        return new Setting('audit', [$history, $column, $references, $names[0], $names[1], ...$tables], [],
-            $excluded === [] ? null : $excluded);
+        return new Setting(
+            'audit',
+            [$history, $column, $references, $names[0], $names[1], ...$tables],
+            [],
+            $excluded === [] ? null : $excluded
+        );
     }
 
     /**

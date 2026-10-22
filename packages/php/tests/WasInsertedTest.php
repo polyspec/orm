@@ -66,7 +66,8 @@ final class WasInsertedTest extends TestCase
     /** Runs the case on a new case database of $driver, which is dropped afterwards, with the connection and its DSN. */
     private static function onCase(string $driver, \Closure $body): void
     {
-        with_case_database($driver, static function (string $step): void {}, static function (string $dsn) use ($body): void {
+        with_case_database($driver, static function (string $step): void {
+        }, static function (string $dsn) use ($body): void {
             $db = self::connect($dsn);
             try {
                 $body($db, $dsn);
@@ -154,8 +155,11 @@ final class WasInsertedTest extends TestCase
             $pipes = [];
             $db->transaction(function () use ($db, $dsn, $seq, &$child, &$pipes): void {
                 (new \Polyspec\Orm\Tests\WasInsertedCase\ClockEvent())($db)->getBySeq($seq)->setLabel('parent')->update();
-                $child = proc_open([PHP_BINARY, __DIR__ . '/was_inserted_child.php', $dsn, (string) $seq],
-                    [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+                $child = proc_open(
+                    [PHP_BINARY, __DIR__ . '/was_inserted_child.php', $dsn, (string) $seq],
+                    [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+                    $pipes
+                );
                 self::assertIsResource($child, 'the waiting child did not start');
                 $waiting = false;
                 for ($deadline = microtime(true) + 10; !$waiting && microtime(true) < $deadline; usleep(20000)) {

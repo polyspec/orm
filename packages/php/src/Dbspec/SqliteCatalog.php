@@ -45,7 +45,9 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
         $q = self::MASTER;
         foreach (CatalogRows::read($connection, $q) as $row) {
             [$kind, $name, $table, $text] = array_map(
-                static fn(int $i): string => CatalogRows::text($row, $i, $q), [0, 1, 2, 3]);
+                static fn(int $i): string => CatalogRows::text($row, $i, $q),
+                [0, 1, 2, 3]
+            );
             if ($kind === 'table') {
                 if (str_starts_with($text, 'CREATE VIRTUAL TABLE') || str_ends_with($text, 'WITHOUT ROWID')) {
                     $c->report('table', $name, $name, 'a virtual or WITHOUT ROWID table has no dbspec definition');
@@ -73,7 +75,9 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
         $q = self::COLUMNS;
         foreach (CatalogRows::read($connection, $q) as $row) {
             [$table, $name, $declared] = array_map(
-                static fn(int $i): string => CatalogRows::text($row, $i, $q), [0, 1, 2]);
+                static fn(int $i): string => CatalogRows::text($row, $i, $q),
+                [0, 1, 2]
+            );
             $notNull = CatalogRows::integer($row, 3, $q);
             $default = CatalogRows::nullableText($row, 4, $q);
             // pk is not used: primary key and identity are decided by the CREATE text.
@@ -89,10 +93,16 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
                 continue;
             }
             $item = $parsed[$table]['columns'][$name] ?? '';
-            if ($parsed[$table]['identity'] !== $name
-                && !self::columnText($item, $name, $declared, $notNull !== 0, $default)) {
-                $c->report('column', $table, $name,
-                    "the column definition \"$item\" has clauses that dbspec does not read");
+            if (
+                $parsed[$table]['identity'] !== $name
+                && !self::columnText($item, $name, $declared, $notNull !== 0, $default)
+            ) {
+                $c->report(
+                    'column',
+                    $table,
+                    $name,
+                    "the column definition \"$item\" has clauses that dbspec does not read"
+                );
                 continue;
             }
             $column = ['name' => $name, 'null' => $notNull === 0, 'identity' => false, 'default' => ''];
@@ -105,8 +115,12 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
             } else {
                 $type = self::type($declared, $name, $check, $hasCheck);
                 if ($type === null) {
-                    $c->report('column', $table, $name,
-                        "declared type $declared with CHECK \"$check\" has no dbspec type");
+                    $c->report(
+                        'column',
+                        $table,
+                        $name,
+                        "declared type $declared with CHECK \"$check\" has no dbspec type"
+                    );
                     continue;
                 }
                 $column['type'] = $type;
@@ -159,8 +173,12 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
             }
             $list = explode(',', $columns);
             if ($origin !== 'c' || $partial !== 0 || str_contains($name, '$') || in_array('', $list, true)) {
-                $c->report('index', $table, $name,
-                    "an index of origin $origin, a partial or an expression index has no dbspec definition");
+                $c->report(
+                    'index',
+                    $table,
+                    $name,
+                    "an index of origin $origin, a partial or an expression index has no dbspec definition"
+                );
                 continue;
             }
             $key = ['name' => $name, 'columns' => $list,
@@ -288,9 +306,13 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
      * NULL, and, if present, only a DEFAULT. SQLite reports a type name that is a keyword
      * in upper case, so the type is compared without regard to case.
      */
-    private static function columnText(string $item, string $name, string $declared, bool $notNull,
-        ?string $default): bool
-    {
+    private static function columnText(
+        string $item,
+        string $name,
+        string $declared,
+        bool $notNull,
+        ?string $default
+    ): bool {
         $prefix = "\"$name\" ";
         if (!str_starts_with($item, $prefix)) {
             return false;

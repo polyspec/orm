@@ -60,47 +60,53 @@ final class SchemaUtils
         $target = self::target($documents);
         $db = $this->db;
         $pdo = $db->pdo();
-        $apply = fn(?int $tx) => $this->observed($tx,
+        $apply = fn(?int $tx) => $this->observed(
+            $tx,
             static function () use ($db, $pdo, $tx, $statements, $driver, $documents, $target): void {
-            try {
-                $live = self::introspectSet($pdo, $driver, $documents);
-                $found = [];
-                foreach ($live->document->tables as $table) {
-                    $found[$table->name] = true;
-                }
-                foreach ($live->unsupported as $u) {
-                    $found[$u->table] = true;
-                }
-                $present = [];
-                $missing = [];
-                foreach ($target->tables as $table) {
-                    if (isset($found[$table->name])) {
-                        $present[] = $table->name;
-                    } else {
-                        $missing[] = $table->name;
+                try {
+                    $live = self::introspectSet($pdo, $driver, $documents);
+                    $found = [];
+                    foreach ($live->document->tables as $table) {
+                        $found[$table->name] = true;
                     }
-                }
-                if ($present !== [] && $missing !== []) {
-                    throw new OrmException(Code::CONFIG,
-                        'the database holds only some tables of the document set: ' . implode(', ', $present));
-                }
-                if ($missing !== []) {
-                    foreach ($statements as [$statement, $table]) {
-                        $db->run(StatementEvent::SCHEMA, [$table], $tx, $statement);
+                    foreach ($live->unsupported as $u) {
+                        $found[$u->table] = true;
                     }
-                    $live = Dbspec::introspect($pdo, $driver, 'schema');
+                    $present = [];
+                    $missing = [];
+                    foreach ($target->tables as $table) {
+                        if (isset($found[$table->name])) {
+                            $present[] = $table->name;
+                        } else {
+                            $missing[] = $table->name;
+                        }
+                    }
+                    if ($present !== [] && $missing !== []) {
+                        throw new OrmException(
+                            Code::CONFIG,
+                            'the database holds only some tables of the document set: ' . implode(', ', $present)
+                        );
+                    }
+                    if ($missing !== []) {
+                        foreach ($statements as [$statement, $table]) {
+                            $db->run(StatementEvent::SCHEMA, [$table], $tx, $statement);
+                        }
+                        $live = Dbspec::introspect($pdo, $driver, 'schema');
+                    }
+                    self::verifySet(Dbspec::installedDifferences($live->document, $live->unsupported, $target));
+                } catch (\PDOException $e) {
+                    throw $db->driverError($e);
                 }
-                self::verifySet(Dbspec::installedDifferences($live->document, $live->unsupported, $target));
-            } catch (\PDOException $e) {
-                throw $db->driverError($e);
             }
-        });
+        );
         if ($driver !== 'mysql') {
             $this->u->run(fn() => $apply($db->transactionNumber()));
         } else {
             if (Db::activeFor($this->db) !== null) {
-                throw new OrmException(Code::CONFIG,
-                    'MySQL commits schema statements implicitly; install outside a transaction');
+                throw new OrmException(
+                    Code::CONFIG,
+                    'MySQL commits schema statements implicitly; install outside a transaction'
+                );
             }
             $apply(null);
         }
@@ -132,33 +138,45 @@ final class SchemaUtils
         $document = self::target($documents);
         $db = $this->db;
         $pdo = $db->pdo();
-        $apply = fn(?int $tx): array => $this->observed($tx,
+        $apply = fn(?int $tx): array => $this->observed(
+            $tx,
             static function () use ($db, $pdo, $tx, $driver, $document, $documents): array {
-            try {
-                $live = self::introspectSet($pdo, $driver, $documents);
-                [$added, $steps, $differences] = Dbspec::addTablesAndColumnsSteps($live->document,
-                    $live->unsupported, $document, $driver);
-                if ($differences !== []) {
-                    throw new OrmException(Code::SCHEMA_DIFFERS,
-                        'the existing tables of the document set differ beyond missing tables, missing columns that '
+                try {
+                    $live = self::introspectSet($pdo, $driver, $documents);
+                    [$added, $steps, $differences] = Dbspec::addTablesAndColumnsSteps(
+                        $live->document,
+                        $live->unsupported,
+                        $document,
+                        $driver
+                    );
+                    if ($differences !== []) {
+                        throw new OrmException(
+                            Code::SCHEMA_DIFFERS,
+                            'the existing tables of the document set differ beyond missing tables, missing columns that '
                             . 'are null or have a default and missing indexes: '
-                        . implode('; ', $differences));
+                            . implode('; ', $differences)
+                        );
+                    }
+                    foreach ($steps as $step) {
+                        // A step creates or changes the table of its effect.
+                        $db->run(
+                            StatementEvent::SCHEMA,
+                            $step->effect->table === '' ? [] : [$step->effect->table],
+                            $tx,
+                            $step->statement
+                        );
+                    }
+                    // Reads the database again after the steps and checks that it matches the set.
+                    if ($steps !== []) {
+                        $live = Dbspec::introspect($pdo, $driver, 'schema');
+                    }
+                    self::verifySet(Dbspec::installedDifferences($live->document, $live->unsupported, $document));
+                    return $added;
+                } catch (\PDOException $e) {
+                    throw $db->driverError($e);
                 }
-                foreach ($steps as $step) {
-                    // A step creates or changes the table of its effect.
-                    $db->run(StatementEvent::SCHEMA, $step->effect->table === '' ? [] : [$step->effect->table],
-                        $tx, $step->statement);
-                }
-                // Reads the database again after the steps and checks that it matches the set.
-                if ($steps !== []) {
-                    $live = Dbspec::introspect($pdo, $driver, 'schema');
-                }
-                self::verifySet(Dbspec::installedDifferences($live->document, $live->unsupported, $document));
-                return $added;
-            } catch (\PDOException $e) {
-                throw $db->driverError($e);
             }
-        });
+        );
         if ($driver === 'postgres') {
             return $this->u->run(fn(): array => $apply($db->transactionNumber()));
         }
@@ -185,13 +203,15 @@ final class SchemaUtils
         $db = $this->db;
         return CatalogRows::observed(
             static function (string $query, int $start, ?\Throwable $failure) use ($db, $tx): void {
-            $error = match (true) {
-                $failure === null => null,
-                $failure instanceof \PDOException => $db->driverError($failure),
-                default => new OrmException(Code::DRIVER, $failure->getMessage(), $failure),
-            };
-            $db->publish(StatementEvent::SCHEMA, [], $tx, $query, [], $start, $error);
-        }, $fn);
+                $error = match (true) {
+                    $failure === null => null,
+                    $failure instanceof \PDOException => $db->driverError($failure),
+                    default => new OrmException(Code::DRIVER, $failure->getMessage(), $failure),
+                };
+                $db->publish(StatementEvent::SCHEMA, [], $tx, $query, [], $start, $error);
+            },
+            $fn
+        );
     }
 
     /**
@@ -200,9 +220,11 @@ final class SchemaUtils
      *
      * @param list<\Polyspec\Orm\Dbspec\Document> $documents
      */
-    private static function introspectSet(\PDO $pdo, string $driver,
-        array $documents): \Polyspec\Orm\Dbspec\IntrospectResult
-    {
+    private static function introspectSet(
+        \PDO $pdo,
+        string $driver,
+        array $documents
+    ): \Polyspec\Orm\Dbspec\IntrospectResult {
         $live = Dbspec::introspect($pdo, $driver, 'schema');
         $differences = Dbspec::externalDifferences($live->document, $documents);
         if ($differences !== []) {
@@ -219,8 +241,10 @@ final class SchemaUtils
     private static function verifySet(array $differences): void
     {
         if ($differences !== []) {
-            throw new OrmException(Code::CONFIG,
-                'the database differs from the document set: ' . implode('; ', $differences));
+            throw new OrmException(
+                Code::CONFIG,
+                'the database differs from the document set: ' . implode('; ', $differences)
+            );
         }
     }
 
@@ -258,9 +282,14 @@ final class SchemaUtils
     /** @param list<string> $differences */
     private static function externalError(array $differences): OrmException
     {
-        return new OrmException(Code::CONFIG,
-            'the tables that the set uses from external documents differ from the database: ' . implode('; '
-                . '', $differences));
+        return new OrmException(
+            Code::CONFIG,
+            'the tables that the set uses from external documents differ from the database: ' . implode(
+                '; '
+                . '',
+                $differences
+            )
+        );
     }
 
     /**
@@ -284,8 +313,12 @@ final class SchemaUtils
                 $db->run(StatementEvent::BEGIN, [], $tx, 'BEGIN IMMEDIATE');
                 $began = true;
                 $added = $fn($tx);
-                $broken = (int) ($db->fetch(StatementEvent::SCHEMA, [], $tx,
-                    'SELECT COUNT(*) FROM pragma_foreign_key_check')[0][0] ?? 0);
+                $broken = (int) ($db->fetch(
+                    StatementEvent::SCHEMA,
+                    [],
+                    $tx,
+                    'SELECT COUNT(*) FROM pragma_foreign_key_check'
+                )[0][0] ?? 0);
                 if ($broken > 0) {
                     throw new OrmException(Code::INTERNAL, "the rebuilt tables break $broken foreign keys");
                 }
@@ -327,11 +360,15 @@ final class SchemaUtils
         $schema = self::name($schema);
         return match ($this->db->driver()) {
             'postgres' => $this->bool('SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = $1)', [$schema]),
-            'mysql' => $this->bool('SELECT EXISTS(SELECT 1 FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?)',
-                [$schema]),
-            default => $this->bool("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name "
+            'mysql' => $this->bool(
+                'SELECT EXISTS(SELECT 1 FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?)',
+                [$schema]
+            ),
+            default => $this->bool(
+                "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name "
                 . "LIKE ? ESCAPE '\\')",
-                [str_replace('_', '\\_', $schema) . '\\_\\_%']),
+                [str_replace('_', '\\_', $schema) . '\\_\\_%']
+            ),
         };
     }
 
@@ -341,12 +378,16 @@ final class SchemaUtils
         $table = self::name($table);
         return match ($this->db->driver()) {
             'postgres' => $this->bool('SELECT to_regclass($1) IS NOT NULL', [$schema . '.' . $table]),
-            'mysql' => $this->bool('SELECT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND '
+            'mysql' => $this->bool(
+                'SELECT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND '
                 . 'TABLE_NAME = ?)',
-                [$schema, $table]),
-            default => $this->bool("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name "
+                [$schema, $table]
+            ),
+            default => $this->bool(
+                "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name "
                 . "= ?)",
-                [$schema . '__' . $table]),
+                [$schema . '__' . $table]
+            ),
         };
     }
 

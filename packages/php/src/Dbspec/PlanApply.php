@@ -102,9 +102,13 @@ final class PlanApply
      * @param \Closure(): \DateTimeInterface $now
      * @param ?\Closure(ApplyEvent): void $events
      */
-    private function __construct(private readonly \PDO $c, string $dialect, array $plans,
-        private readonly \Closure $now, private readonly ?\Closure $events)
-    {
+    private function __construct(
+        private readonly \PDO $c,
+        string $dialect,
+        array $plans,
+        private readonly \Closure $now,
+        private readonly ?\Closure $events
+    ) {
         $this->r = new Renderer($dialect);
         if ($c->getAttribute(\PDO::ATTR_ERRMODE) !== \PDO::ERRMODE_EXCEPTION) {
             throw new \InvalidArgumentException('apply needs a connection whose error mode is PDO::ERRMODE_EXCEPTION');
@@ -184,8 +188,12 @@ final class PlanApply
             $applied = $row['state'] === self::APPLIED || $row['state'] === self::DONE;
             if ($applied) {
                 if ($k < 0 || $k > count($steps)) {
-                    throw new ApplyError('chain', $plan->name, 0,
-                        sprintf("the recorded step %d is outside the plan's %d steps", $k, count($steps)));
+                    throw new ApplyError(
+                        'chain',
+                        $plan->name,
+                        0,
+                        sprintf("the recorded step %d is outside the plan's %d steps", $k, count($steps))
+                    );
                 }
                 try {
                     $a->verify($plan->to);
@@ -270,8 +278,12 @@ final class PlanApply
     /** @param list<PlanStep> $steps */
     private function irreversible(Plan $plan, array $steps, int $i): ApplyError
     {
-        return new ApplyError('irreversible', $plan->name, $i,
-            $steps[$i]->finalize ? 'a finalize step has no rollback' : $steps[$i]->irreversible);
+        return new ApplyError(
+            'irreversible',
+            $plan->name,
+            $i,
+            $steps[$i]->finalize ? 'a finalize step has no rollback' : $steps[$i]->irreversible
+        );
     }
 
     /**
@@ -359,8 +371,11 @@ final class PlanApply
     private function sqliteSession(\Closure $f): void
     {
         $foreignKeys = CatalogRows::integer([$this->queryValue('PRAGMA foreign_keys')], 0, 'PRAGMA foreign_keys');
-        $legacy = CatalogRows::integer([$this->queryValue('PRAGMA legacy_alter_table')], 0,
-            'PRAGMA legacy_alter_table');
+        $legacy = CatalogRows::integer(
+            [$this->queryValue('PRAGMA legacy_alter_table')],
+            0,
+            'PRAGMA legacy_alter_table'
+        );
         $busy = CatalogRows::integer([$this->queryValue('PRAGMA busy_timeout')], 0, 'PRAGMA busy_timeout');
         $mode = CatalogRows::text([$this->queryValue('PRAGMA locking_mode')], 0, 'PRAGMA locking_mode');
         $this->c->exec('PRAGMA busy_timeout = ' . (self::LOCK_WAIT_SECONDS * 1000));
@@ -500,16 +515,26 @@ final class PlanApply
                 continue;
             }
             if ($row['to'] !== $plan->to || $row['from'] !== ($plan->from ?? 'empty')) {
-                throw new ApplyError('chain', $plan->name, 0,
-                    "the recorded plan has other hashes than the chain's plan");
+                throw new ApplyError(
+                    'chain',
+                    $plan->name,
+                    0,
+                    "the recorded plan has other hashes than the chain's plan"
+                );
             }
             if ($i !== $position) {
                 throw new ApplyError('chain', $plan->name, 0, 'a plan before it in the chain is not recorded');
             }
-            if (!in_array($row['state'], [self::APPLYING, self::APPLIED, self::FINALIZING, self::DONE,
-                self::ROLLING_BACK], true)) {
-                throw new ApplyError('chain', $plan->name, 0,
-                    "the recorded state {$row['state']} is not a history state");
+            if (
+                !in_array($row['state'], [self::APPLYING, self::APPLIED, self::FINALIZING, self::DONE,
+                self::ROLLING_BACK], true)
+            ) {
+                throw new ApplyError(
+                    'chain',
+                    $plan->name,
+                    0,
+                    "the recorded state {$row['state']} is not a history state"
+                );
             }
             $position = $i + 1;
         }
@@ -534,8 +559,12 @@ final class PlanApply
             $plan = $this->chain[$position - 1];
             $row = $this->history[$plan->name];
             if ($row['state'] !== self::APPLIED && $row['state'] !== self::DONE) {
-                throw new ApplyError('interrupted', $plan->name, $row['step'],
-                    "the plan is {$row['state']}; run recover or rollback");
+                throw new ApplyError(
+                    'interrupted',
+                    $plan->name,
+                    $row['step'],
+                    "the plan is {$row['state']}; run recover or rollback"
+                );
             }
             $want = $plan->to;
         }
@@ -558,7 +587,12 @@ final class PlanApply
             $u = $result->unsupported[0];
             throw new \RuntimeException(sprintf(
                 'the database has %d objects that dbspec cannot express, first %s %s %s: %s',
-                count($result->unsupported), $u->kind, $u->table, $u->name, $u->reason));
+                count($result->unsupported),
+                $u->kind,
+                $u->table,
+                $u->name,
+                $u->reason
+            ));
         }
         $got = '';
         if ($result->document->tables !== []) {
@@ -566,13 +600,17 @@ final class PlanApply
             if ($manifest->manifest === null) {
                 throw new \RuntimeException('the introspected schema is invalid: ' . json_encode(array_map(
                     static fn(Diagnostic $d): array => [$d->rule, $d->line, $d->column, $d->message],
-                    $manifest->diagnostics)));
+                    $manifest->diagnostics
+                )));
             }
             $got = $manifest->manifest->schemaHash;
         }
         if ($got !== $want) {
-            throw new \RuntimeException(sprintf('the database is at %s, not %s', $got === '' ? 'empty' : $got,
-                $want === '' ? 'empty' : $want));
+            throw new \RuntimeException(sprintf(
+                'the database is at %s, not %s',
+                $got === '' ? 'empty' : $got,
+                $want === '' ? 'empty' : $want
+            ));
         }
     }
 
@@ -608,8 +646,12 @@ final class PlanApply
     {
         $k = $row['step'];
         if ($k < 0 || $k > count($steps)) {
-            throw new ApplyError('chain', $plan->name, 0,
-                sprintf("the recorded step %d is outside the plan's %d steps", $k, count($steps)));
+            throw new ApplyError(
+                'chain',
+                $plan->name,
+                0,
+                sprintf("the recorded step %d is outside the plan's %d steps", $k, count($steps))
+            );
         }
         $rolling = $row['state'] === self::ROLLING_BACK;
         $uncertain = $rolling ? $k - 1 : $k;
@@ -737,8 +779,12 @@ final class PlanApply
         if ($id === $this->serverSession) {
             return;
         }
-        throw new ApplyError('session', $plan?->name ?? '', $plan === null ? 0 : $i,
-            "the connection moved from server session {$this->serverSession} to $id; " . self::SESSION_REQUIREMENT);
+        throw new ApplyError(
+            'session',
+            $plan?->name ?? '',
+            $plan === null ? 0 : $i,
+            "the connection moved from server session {$this->serverSession} to $id; " . self::SESSION_REQUIREMENT
+        );
     }
 
     /**
@@ -797,9 +843,17 @@ final class PlanApply
                     continue;
                 }
                 if ($check->default === null) {
-                    throw new ApplyError('nulls', $plan->name, $i,
-                        sprintf('column %s.%s has %d NULL rows and no default to restore NOT NULL',
-                            $check->table, $check->column, $n));
+                    throw new ApplyError(
+                        'nulls',
+                        $plan->name,
+                        $i,
+                        sprintf(
+                            'column %s.%s has %d NULL rows and no default to restore NOT NULL',
+                            $check->table,
+                            $check->column,
+                            $n
+                        )
+                    );
                 }
                 $this->c->exec('UPDATE ' . $q($check->table) . ' SET ' . $q($check->column) . ' = ' . $check->default
                     . ' WHERE ' . $q($check->column) . ' IS NULL');
@@ -834,7 +888,8 @@ final class PlanApply
             $args = [];
         } else {
             $query = self::EFFECT_QUERIES[$this->r->dialect][$e->kind] ?? throw new \RuntimeException(
-                "the effect {$e->text()} has no query on {$this->r->dialect}");
+                "the effect {$e->text()} has no query on {$this->r->dialect}"
+            );
             $args = match ($e->kind) {
                 'table', 'sequence' => [$e->table],
                 'function' => [$e->name],

@@ -31,7 +31,8 @@ final class Generator
         return array_map(
             static fn(\ReflectionMethod $r): string => $r->getName(),
             (new \ReflectionClass(Model::class))->getMethods(
-                \ReflectionMethod::IS_PUBLIC | \ReflectionMethod::IS_PROTECTED)
+                \ReflectionMethod::IS_PUBLIC | \ReflectionMethod::IS_PROTECTED
+            )
         );
     }
 
@@ -136,8 +137,10 @@ final class Generator
         foreach ($m->entities as $e) {
             $class = self::pascal($e['entity']);
             if (isset($files["$class.php"])) {
-                throw new OrmException(Code::SCHEMA_INVALID,
-                    "entities {$e['entity']} and another entity generate the class $class");
+                throw new OrmException(
+                    Code::SCHEMA_INVALID,
+                    "entities {$e['entity']} and another entity generate the class $class"
+                );
             }
             $files["$class.php"] = self::model($e, $class, $namespace, $m->manifestHash, $tags[$class] ?? []);
             $boot .= "Registry::register($class::class);\n";
@@ -220,8 +223,11 @@ final class Generator
         foreach ([$e['pk'], ...array_values($e['unique']), ...array_values($e['indexes'])] as $columns) {
             for ($k = 2; $k <= count($columns); $k++) {
                 $name = 'tuple' . implode('With', array_map(self::pascal(...), array_slice($columns, 0, $k)));
-                $methods[$name] ??= $chain($name, 'array $values',
-                    '    /** @param list<list<mixed>> $values */' . "\n");
+                $methods[$name] ??= $chain(
+                    $name,
+                    'array $values',
+                    '    /** @param list<list<mixed>> $values */' . "\n"
+                );
             }
         }
         foreach (array_keys($e['indexes']) as $index) {
@@ -520,14 +526,18 @@ final class Generator
             $p = self::pascal($c['name']);
             foreach (["get$p", "set$p"] as $accessor) {
                 if (isset($fixed[strtolower($accessor)])) {
-                    throw new OrmException(Code::SCHEMA_INVALID,
-                        "{$e['entity']}.{$c['name']}: $accessor is a fixed model method");
+                    throw new OrmException(
+                        Code::SCHEMA_INVALID,
+                        "{$e['entity']}.{$c['name']}: $accessor is a fixed model method"
+                    );
                 }
             }
             if (isset($names[strtolower($p)])) {
-                throw new OrmException(Code::SCHEMA_INVALID,
+                throw new OrmException(
+                    Code::SCHEMA_INVALID,
                     "{$e['entity']}.{$c['name']}: the condition method " . self::camel($c['name'])
-                    . ' is also the model method ' . $names[strtolower($p)]);
+                    . ' is also the model method ' . $names[strtolower($p)]
+                );
             }
         }
     }

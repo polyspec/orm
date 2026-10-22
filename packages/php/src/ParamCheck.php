@@ -66,8 +66,10 @@ final class ParamCheck
     public static function checkAssign(int $i, mixed $v, array $slot): void
     {
         if ($v === null && ($slot['not_null'] ?? false)) {
-            throw new OrmException(Code::CODEC_ENCODE,
-                "parameter $i assigns NULL to the non-null " . ($slot['column'] ?? ''));
+            throw new OrmException(
+                Code::CODEC_ENCODE,
+                "parameter $i assigns NULL to the non-null " . ($slot['column'] ?? '')
+            );
         }
     }
 
@@ -86,8 +88,10 @@ final class ParamCheck
             return;
         }
         $type = $slot['type'];
-        $kind = static fn(): OrmException => new OrmException(Code::CODEC_ENCODE,
-            "parameter $i (" . get_debug_type($v) . ") is not a $type value");
+        $kind = static fn(): OrmException => new OrmException(
+            Code::CODEC_ENCODE,
+            "parameter $i (" . get_debug_type($v) . ") is not a $type value"
+        );
         switch ($type) {
             case 'i16':
             case 'i32':
@@ -105,8 +109,10 @@ final class ParamCheck
                     throw $kind();
                 }
                 if (is_float($v) && !is_finite($v)) {
-                    throw new OrmException(Code::CODEC_ENCODE,
-                        "parameter $i (" . var_export($v, true) . ') is not a finite f64');
+                    throw new OrmException(
+                        Code::CODEC_ENCODE,
+                        "parameter $i (" . var_export($v, true) . ') is not a finite f64'
+                    );
                 }
                 return;
             case 'bool':
@@ -138,13 +144,19 @@ final class ParamCheck
                     throw new OrmException(Code::CODEC_ENCODE, "parameter $i holds U+0000, which no $type value holds");
                 }
                 if ($type === 'varchar' && $slot['length'] > 0 && $n > $slot['length']) {
-                    throw new OrmException(Code::CODEC_ENCODE,
-                        "parameter $i has $n characters, more than varchar({$slot['length']})");
+                    throw new OrmException(
+                        Code::CODEC_ENCODE,
+                        "parameter $i has $n characters, more than varchar({$slot['length']})"
+                    );
                 }
-                if ($type === 'uuid'
-                    && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/D', $v) !== 1) {
-                    throw new OrmException(Code::CODEC_ENCODE,
-                        "parameter $i (\"$v\") is not a lower-case canonical uuid");
+                if (
+                    $type === 'uuid'
+                    && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/D', $v) !== 1
+                ) {
+                    throw new OrmException(
+                        Code::CODEC_ENCODE,
+                        "parameter $i (\"$v\") is not a lower-case canonical uuid"
+                    );
                 }
                 return;
             case 'bytes':
@@ -163,11 +175,15 @@ final class ParamCheck
                 } catch (OrmException $e) {
                     throw new OrmException(Code::CODEC_ENCODE, "parameter $i: " . $e->getMessage(), $e);
                 }
-                if ($type !== 'time' && (!is_string($text) || preg_match('/^\d{4}-/', $text) !== 1
-                    || str_starts_with($text, '0000'))) {
+                if (
+                    $type !== 'time' && (!is_string($text) || preg_match('/^\d{4}-/', $text) !== 1
+                    || str_starts_with($text, '0000'))
+                ) {
                     $shown = "\"$v\"";
-                    throw new OrmException(Code::CODEC_ENCODE,
-                        "parameter $i ($shown) is outside 0001-01-01 to 9999-12-31");
+                    throw new OrmException(
+                        Code::CODEC_ENCODE,
+                        "parameter $i ($shown) is outside 0001-01-01 to 9999-12-31"
+                    );
                 }
                 return;
         }

@@ -28,8 +28,10 @@ final class Markdown
 
     public static function unsupported(string $surface): OrmException
     {
-        return new OrmException(Code::CAPABILITY_UNSUPPORTED,
-            "$surface is not supported by the markdown IR executor");
+        return new OrmException(
+            Code::CAPABILITY_UNSUPPORTED,
+            "$surface is not supported by the markdown IR executor"
+        );
     }
 
     private static function answerError(string $message): OrmException
@@ -54,8 +56,12 @@ final class Markdown
         foreach ($r->params as $i => $v) {
             foreach ($uses[$i] ?? [] as $use) {
                 ParamCheck::checkAssign($i, $v, ParamCheck::useSlotType($use));
-                if ($use['column'] !== null && array_filter($use['column']['codec'],
-                    static fn(string $s): bool => Codec::isHostStyle($s)) !== []) {
+                if (
+                    $use['column'] !== null && array_filter(
+                        $use['column']['codec'],
+                        static fn(string $s): bool => Codec::isHostStyle($s)
+                    ) !== []
+                ) {
                     continue;
                 }
                 ParamCheck::check($i, $v, ParamCheck::useSlotType($use), $db->zone());
@@ -301,8 +307,10 @@ final class Markdown
             $type = match ($sub['agg'] ?? '') {
                 'count' => 'i64',
                 'avg' => 'f64',
-                default => RuntimeModel::column($m->entities[$sub['query']['entity']],
-                    $sub['column'])['type'] ?? 'text',
+                default => RuntimeModel::column(
+                    $m->entities[$sub['query']['entity']],
+                    $sub['column']
+                )['type'] ?? 'text',
             };
             return ['index' => $index, 'name' => $name, 'type' => $type];
         }
@@ -368,8 +376,13 @@ final class Markdown
                     continue;
                 }
                 if (isset($rels[$name])) {
-                    $links->rels[$name] = self::rows($config, $m, $rels[$name]['query'], $children[$name],
-                        self::relationItems($value, $rels[$name]['query'], $name));
+                    $links->rels[$name] = self::rows(
+                        $config,
+                        $m,
+                        $rels[$name]['query'],
+                        $children[$name],
+                        self::relationItems($value, $rels[$name]['query'], $name)
+                    );
                     continue;
                 }
                 $col = $asm['columns'][count($vals)] ?? null;

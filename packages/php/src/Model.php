@@ -339,8 +339,10 @@ abstract class Model implements \JsonSerializable
         [$column, $revision] = $this->expectedRevision;
         $meta = static::meta();
         $col = $meta['columns'][$column] ?? null;
-        if ($col === null || !in_array($col['type'], ['i16', 'i32', 'i64'], true) || $col['codec'] !== []
-            || in_array($column, $meta['pk'], true)) {
+        if (
+            $col === null || !in_array($col['type'], ['i16', 'i32', 'i64'], true) || $col['codec'] !== []
+            || in_array($column, $meta['pk'], true)
+        ) {
             throw new OrmException(Code::CONFIG, "expectRevision: $column is not an integer column of "
                 . "{$meta['entity']} outside its primary key");
         }
@@ -782,8 +784,10 @@ abstract class Model implements \JsonSerializable
             $this->addItem($k === 0 ? $conn : $key['conn'], ['pred' => $pred]);
         }
         if ($i !== count($args)) {
-            throw new OrmException(Code::CONFIG,
-                'the condition expects ' . count($keys) . ' values, got ' . count($args));
+            throw new OrmException(
+                Code::CONFIG,
+                'the condition expects ' . count($keys) . ' values, got ' . count($args)
+            );
         }
     }
 
@@ -807,8 +811,10 @@ abstract class Model implements \JsonSerializable
                 }
                 foreach ($value as $row) {
                     if (!is_array($row) || !array_is_list($row) || count($row) !== count($key['columns'])) {
-                        throw new OrmException(Code::CONFIG,
-                            'each tuple value group needs ' . count($key['columns']) . ' values');
+                        throw new OrmException(
+                            Code::CONFIG,
+                            'each tuple value group needs ' . count($key['columns']) . ' values'
+                        );
                     }
                 }
                 return [['op' => $key['op'] === 'tuple' ? 'tuple_in' : 'tuple_not_in', 'cols' => $key['columns'],
@@ -844,8 +850,10 @@ abstract class Model implements \JsonSerializable
         if ($value instanceof Func) {
             if ($value->column) {
                 if (!$single) {
-                    throw new OrmException(Code::CONFIG,
-                        'a column function is accepted only by a single-key condition');
+                    throw new OrmException(
+                        Code::CONFIG,
+                        'a column function is accepted only by a single-key condition'
+                    );
                 }
                 if (count($rest) !== 1) {
                     throw new OrmException(Code::CONFIG, "column function on $column requires one compared value");
@@ -944,8 +952,10 @@ abstract class Model implements \JsonSerializable
             $child = $rel['child'];
             if ($child->conn !== null) {
                 if ($child->limit !== null) {
-                    throw new OrmException(Code::LIMIT_IN_RELATION,
-                        $child::meta()['entity'] . ' relation uses limit; use groupLimit');
+                    throw new OrmException(
+                        Code::LIMIT_IN_RELATION,
+                        $child::meta()['entity'] . ' relation uses limit; use groupLimit'
+                    );
                 }
                 $r->external[spl_object_id($this)][] = $rel;
                 continue;
@@ -985,8 +995,10 @@ abstract class Model implements \JsonSerializable
     {
         $q = $this->query($r, new Frame($this, null));
         if ($this->limit !== null) {
-            throw new OrmException(Code::LIMIT_IN_RELATION,
-                static::meta()['entity'] . ' relation uses limit; use groupLimit');
+            throw new OrmException(
+                Code::LIMIT_IN_RELATION,
+                static::meta()['entity'] . ' relation uses limit; use groupLimit'
+            );
         }
         if ($this->parentNode) {
             $q['flatten'] = true;
@@ -1080,8 +1092,10 @@ abstract class Model implements \JsonSerializable
                     throw new OrmException(Code::CONFIG, $child::meta()['entity'] . ' is not joined in the statement');
                 }
                 if ($f->parentOf($child) !== $this->subject()) {
-                    throw new OrmException(Code::CONFIG,
-                        $child::meta()['entity'] . ' conditions must be placed in the model it is joined to');
+                    throw new OrmException(
+                        Code::CONFIG,
+                        $child::meta()['entity'] . ' conditions must be placed in the model it is joined to'
+                    );
                 }
                 if (!$f->place($child)) {
                     throw new OrmException(Code::CONFIG, $child::meta()['entity'] . ' conditions are placed twice');
@@ -1428,8 +1442,10 @@ abstract class Model implements \JsonSerializable
         $values = [];
         $seen = [];
         foreach ($parents as $p) {
-            if ($this->possible !== null
-                && !Db::sameScalar($p->columnOrExtra($this->possible['column']), $this->possible['value'])) {
+            if (
+                $this->possible !== null
+                && !Db::sameScalar($p->columnOrExtra($this->possible['column']), $this->possible['value'])
+            ) {
                 continue;
             }
             $v = $this->matchValues($p, 'left');
@@ -1473,8 +1489,10 @@ abstract class Model implements \JsonSerializable
             }
             $v = $this->matchValues($p, 'left');
             $matched = $v === null ? [] : $byKey[self::matchKey($v)] ?? [];
-            if ($this->possible !== null
-                && !Db::sameScalar($p->columnOrExtra($this->possible['column']), $this->possible['value'])) {
+            if (
+                $this->possible !== null
+                && !Db::sameScalar($p->columnOrExtra($this->possible['column']), $this->possible['value'])
+            ) {
                 $matched = [];
             }
             if ($many) {
@@ -1824,8 +1842,10 @@ abstract class Model implements \JsonSerializable
         // The columns that write the received key: identity, or a key the markdown executor decides (key_prefix).
         // The only primary key column whose value the request did not give.
         $assignedKey = $meta['identity'];
-        if ($assignedKey === '' && $db->driver() === 'markdown' && count($meta['pk']) === 1 && $id !== null
-            && !array_key_exists($meta['pk'][0], $this->sets)) {
+        if (
+            $assignedKey === '' && $db->driver() === 'markdown' && count($meta['pk']) === 1 && $id !== null
+            && !array_key_exists($meta['pk'][0], $this->sets)
+        ) {
             $assignedKey = $meta['pk'][0];
         }
         if ($assignedKey !== '') {
@@ -1871,8 +1891,10 @@ abstract class Model implements \JsonSerializable
         }
         foreach ($rows as $row) {
             if (!$row instanceof static || array_keys($row->sets) !== $columns) {
-                throw new OrmException(Code::CONFIG,
-                    'every model of creates must set the same columns in the same order');
+                throw new OrmException(
+                    Code::CONFIG,
+                    'every model of creates must set the same columns in the same order'
+                );
             }
             foreach ($row->sets as $spec) {
                 if (!array_key_exists('value', $spec) && !isset($spec['null'])) {
@@ -2117,8 +2139,10 @@ abstract class Model implements \JsonSerializable
                 return;
             }
             if ($q->getCount() > 0) {
-                throw new OrmException(Code::ROW_NOT_DELETED,
-                    'restoreOrCreate: a row that is not deleted holds the key');
+                throw new OrmException(
+                    Code::ROW_NOT_DELETED,
+                    'restoreOrCreate: a row that is not deleted holds the key'
+                );
             }
             $row = $this->create();
         });
@@ -2363,8 +2387,10 @@ abstract class Model implements \JsonSerializable
                     && $v->payload() instanceof \Polyspec\OrderedJson\Value)
                 || (is_array($v) && self::holdsOrderedJson($v))
             ) {
-                throw new OrmException(Code::CODEC_ENCODE,
-                    "json_encode cannot write the ordered-json value of $name; use toJson()");
+                throw new OrmException(
+                    Code::CODEC_ENCODE,
+                    "json_encode cannot write the ordered-json value of $name; use toJson()"
+                );
             }
             $out[$name] = $v;
         }

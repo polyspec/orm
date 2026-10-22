@@ -63,7 +63,6 @@ final class TxFrame
         public readonly bool $readOnly,
         public readonly string $isolation,
         public readonly int $number
-    )
-    {
+    ) {
     }
 }

@@ -24,8 +24,10 @@ final class MarkdownSession
     {
         $conn = @stream_socket_client("tcp://$address", $errno, $errstr);
         if ($conn === false) {
-            throw new OrmException(Code::DRIVER,
-                "connecting to the flowmark server $address: $errstr; start flowmark serve for the corpus");
+            throw new OrmException(
+                Code::DRIVER,
+                "connecting to the flowmark server $address: $errstr; start flowmark serve for the corpus"
+            );
         }
         // No limit is put on the time to read an answer: the answer to a request waiting for a lock is ended
         // by the server's lock wait.
@@ -70,30 +72,38 @@ final class MarkdownSession
             $n = @fwrite($this->conn, substr($line, $written));
             if ($n === false || $n === 0) {
                 $this->close();
-                throw new OrmException(Code::CONNECTION_LOST,
-                    'the flowmark server connection broke while the message was written');
+                throw new OrmException(
+                    Code::CONNECTION_LOST,
+                    'the flowmark server connection broke while the message was written'
+                );
             }
         }
         $answer = fgets($this->conn);
         if ($answer === false) {
             $this->close();
-            throw new OrmException(Code::CONNECTION_LOST,
-                'the flowmark server connection broke: the server closed the connection');
+            throw new OrmException(
+                Code::CONNECTION_LOST,
+                'the flowmark server connection broke: the server closed the connection'
+            );
         }
         $answer = rtrim($answer, "\n");
         $decoded = str_starts_with($answer, '{') ? json_decode($answer, true, 512, JSON_BIGINT_AS_STRING) : null;
         if (!is_array($decoded)) {
             $this->close();
-            throw new OrmException(Code::INTERNAL,
-                'the flowmark server answered ' . json_encode($answer) . ', not a JSON object');
+            throw new OrmException(
+                Code::INTERNAL,
+                'the flowmark server answered ' . json_encode($answer) . ', not a JSON object'
+            );
         }
         if (array_key_exists('error', $decoded)) {
             $error = $decoded['error'];
             $code = is_array($error) ? ($error['code'] ?? '') : '';
             if (!is_string($code) || $code === '') {
                 $this->close();
-                throw new OrmException(Code::INTERNAL,
-                    'the flowmark server answered the error ' . json_encode($error) . ' without a code');
+                throw new OrmException(
+                    Code::INTERNAL,
+                    'the flowmark server answered the error ' . json_encode($error) . ' without a code'
+                );
             }
             // The server closes the connection after writing CONNECTION_LOST (idle transaction).
             if ($code === Code::CONNECTION_LOST) {

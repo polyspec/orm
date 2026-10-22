@@ -22,10 +22,12 @@ final class PlanChild
     public function toArray(): array
     {
         $out = ['rel' => $this->rel, 'kind' => $this->kind];
-        foreach ([
+        foreach (
+            [
             'step' => $this->step, 'parent_keys' => $this->parentKeys, 'child_keys' => $this->childKeys,
             'key' => $this->key, 'flatten' => $this->flatten, 'cascade' => $this->cascade
-        ] as $k => $v) {
+            ] as $k => $v
+        ) {
             if ($v !== 0 && $v !== [] && $v !== false) {
                 $out[$k] = $v;
             }

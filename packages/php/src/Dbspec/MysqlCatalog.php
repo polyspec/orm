@@ -64,10 +64,14 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
         $pending = [];
         foreach (CatalogRows::read($connection, self::COLUMNS) as $row) {
             [$table, $name, $columnType, $nullable] = array_map(
-                static fn(int $i): string => CatalogRows::text($row, $i, self::COLUMNS), [0, 1, 2, 3]);
+                static fn(int $i): string => CatalogRows::text($row, $i, self::COLUMNS),
+                [0, 1, 2, 3]
+            );
             $default = CatalogRows::nullableText($row, 4, self::COLUMNS);
             [$extra, $charset, $collation, $generation] = array_map(
-                static fn(int $i): string => CatalogRows::text($row, $i, self::COLUMNS), [5, 6, 7, 8]);
+                static fn(int $i): string => CatalogRows::text($row, $i, self::COLUMNS),
+                [5, 6, 7, 8]
+            );
             $t = $c->table($table);
             if ($t === null) {
                 continue;
@@ -116,7 +120,9 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
         $shown = [];
         foreach (CatalogRows::read($connection, self::CHECKS) as $row) {
             [$table, $name, $enforced] = array_map(
-                static fn(int $i): string => CatalogRows::text($row, $i, self::CHECKS), [0, 1, 2]);
+                static fn(int $i): string => CatalogRows::text($row, $i, self::CHECKS),
+                [0, 1, 2]
+            );
             $clause = $clauses[$name] ?? throw new \RuntimeException("check $table.$name has no CHECK_CLAUSE");
             if (self::hasNonAscii($clause)) {
                 $clause = self::shownCheck($connection, $table, $name, $shown);
@@ -132,8 +138,10 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
             if (str_contains($name, '$')) {
                 $column = Names::column($table, $name, array_keys($columns[$table] ?? []));
                 $known = $column === null ? null : $columns[$table][$column];
-                if ($known === null
-                    || self::withoutIntroducers($clause) !== self::withoutIntroducers(self::rendererCheck($known))) {
+                if (
+                    $known === null
+                    || self::withoutIntroducers($clause) !== self::withoutIntroducers(self::rendererCheck($known))
+                ) {
                     $c->report('check', $table, $name, "the check $clause is not the renderer CHECK");
                     continue;
                 }
@@ -151,8 +159,12 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
         foreach ($pending as $table => $cols) {
             foreach ($cols as $column => $need) {
                 if (!isset($checked[$table][$column])) {
-                    $c->report('column', (string) $table, (string) $column,
-                        "$need without its renderer CHECK has no dbspec type");
+                    $c->report(
+                        'column',
+                        (string) $table,
+                        (string) $column,
+                        "$need without its renderer CHECK has no dbspec type"
+                    );
                     $c->table((string) $table)->dropColumn((string) $column);
                 }
             }
@@ -239,7 +251,10 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
             $query = 'SHOW CREATE TABLE `' . str_replace('`', '``', $table) . '`';
             $rows = CatalogRows::read($connection, $query);
             $create = CatalogRows::text(
-                $rows[0] ?? throw new \RuntimeException("SHOW CREATE TABLE $table returned no row"), 1, $query);
+                $rows[0] ?? throw new \RuntimeException("SHOW CREATE TABLE $table returned no row"),
+                1,
+                $query
+            );
             $shown[$table] = self::createChecks($create);
         }
         return $shown[$table][$name]
@@ -385,7 +400,9 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
         };
         foreach (CatalogRows::read($connection, $q) as $row) {
             [$table, $name, $refTable, $onDelete, $onUpdate, $match, $column, $refColumn] = array_map(
-                static fn(int $i): string => CatalogRows::text($row, $i, $q), range(0, 7));
+                static fn(int $i): string => CatalogRows::text($row, $i, $q),
+                range(0, 7)
+            );
             if ($current !== null && ($current['name'] !== $name || $currentTable->name !== $table)) {
                 $flush();
             }
@@ -401,8 +418,12 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
                     continue;
                 }
                 if ($delete === null || $update === null || $match !== 'NONE') {
-                    $c->report('foreign_key', $table, $name,
-                        "actions $onDelete, $onUpdate or match $match have no dbspec definition");
+                    $c->report(
+                        'foreign_key',
+                        $table,
+                        $name,
+                        "actions $onDelete, $onUpdate or match $match have no dbspec definition"
+                    );
                     $skipped = "$table\0$name";
                     continue;
                 }
@@ -423,7 +444,9 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
         $triggers = [];
         foreach (CatalogRows::read($connection, $q) as $row) {
             [$table, $name, $timing, $event, $statement] = array_map(
-                static fn(int $i): string => CatalogRows::text($row, $i, $q), range(0, 4));
+                static fn(int $i): string => CatalogRows::text($row, $i, $q),
+                range(0, 4)
+            );
             $triggers[$table][] = ['name' => $name,
                 'statements' => ["CREATE TRIGGER `$name` $timing $event ON `$table` FOR EACH ROW $statement"]];
         }

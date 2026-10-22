@@ -123,8 +123,12 @@ final class PlanDiff
             }
         }
         // column rename
-        foreach (PlanText::sortedBy($plan->renameColumns,
-            static fn(ColumnRename $r): string => "{$r->table}.{$r->old}") as $r) {
+        foreach (
+            PlanText::sortedBy(
+                $plan->renameColumns,
+                static fn(ColumnRename $r): string => "{$r->table}.{$r->old}"
+            ) as $r
+        ) {
             $src = $d->tableOf[$r->table] ?? null;
             if ($src === null) {
                 $out[] = self::error("rename column {$r->table}.{$r->old}: {$r->table} is not a table of both schemas");
@@ -188,8 +192,10 @@ final class PlanDiff
                         . "to {$c->type->text()}, which does not keep every value; it needs a new column");
                     continue;
                 }
-                if (!self::sameType($sc->type, $c->type) || $sc->nullable !== $c->nullable
-                    || $sc->default !== $c->default) {
+                if (
+                    !self::sameType($sc->type, $c->type) || $sc->nullable !== $c->nullable
+                    || $sc->default !== $c->default
+                ) {
                     $d->altered[$name][] = $c->name;
                 }
             }
@@ -329,8 +335,12 @@ final class PlanDiff
         foreach (PlanText::sortedBy($this->renamedTables, static fn(TableRename $r): string => $r->old) as $r) {
             $add('rename_table', $r->old, $r->new);
         }
-        foreach (PlanText::sortedBy($this->renamedColumns,
-            static fn(ColumnRename $r): string => "{$r->table}.{$r->old}") as $r) {
+        foreach (
+            PlanText::sortedBy(
+                $this->renamedColumns,
+                static fn(ColumnRename $r): string => "{$r->table}.{$r->old}"
+            ) as $r
+        ) {
             $add('rename_column', $r->table, "{$r->old} {$r->new}");
         }
         foreach ($this->matched as $name) {

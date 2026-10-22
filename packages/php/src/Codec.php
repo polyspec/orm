@@ -76,8 +76,10 @@ final class Codec
                     break;
                 case 'serialize':
                     if (preg_match('/^(O|C|r|R):/', $v) === 1 || str_contains($v, ';O:') || str_contains($v, ';C:')) {
-                        throw new OrmException(Code::CODEC_UNSUPPORTED,
-                            'serialize: objects and references are not supported');
+                        throw new OrmException(
+                            Code::CODEC_UNSUPPORTED,
+                            'serialize: objects and references are not supported'
+                        );
                     }
                     $v = @unserialize($v, ['allowed_classes' => false]);
                     if ($v === false && $raw !== serialize(false)) {
@@ -249,16 +251,19 @@ final class Codec
             foreach ($node->getEntries() as $entry) {
                 if ($entry->isMerge()) {
                     throw new \InvalidArgumentException(
-                        "merge keys are not supported at line {$entry->getKey()->getLine()}");
+                        "merge keys are not supported at line {$entry->getKey()->getLine()}"
+                    );
                 }
                 $key = self::yamlNode($entry->getKey(), $schema);
                 if (!is_string($key) && !is_int($key)) {
                     throw new \InvalidArgumentException(
-                        "map keys must be strings or integers at line {$entry->getKey()->getLine()}");
+                        "map keys must be strings or integers at line {$entry->getKey()->getLine()}"
+                    );
                 }
                 if (array_key_exists($key, $out)) {
                     throw new \InvalidArgumentException(
-                        "duplicate map key {$key} at line {$entry->getKey()->getLine()}");
+                        "duplicate map key {$key} at line {$entry->getKey()->getLine()}"
+                    );
                 }
                 $out[$key] = self::yamlNode($entry->getValue(), $schema);
             }
@@ -320,8 +325,16 @@ final class Codec
                     }
                     $nonce = random_bytes(12);
                     $tag = '';
-                    $encrypted = openssl_encrypt($cur, 'aes-256-gcm', self::aesV2Key($aesKey),
-                        OPENSSL_RAW_DATA, $nonce, $tag, "ORM-AES2\0", 16);
+                    $encrypted = openssl_encrypt(
+                        $cur,
+                        'aes-256-gcm',
+                        self::aesV2Key($aesKey),
+                        OPENSSL_RAW_DATA,
+                        $nonce,
+                        $tag,
+                        "ORM-AES2\0",
+                        16
+                    );
                     $cur = "ORM-AES2\0" . $nonce . $encrypted . $tag;
                     if ($encrypted === false) {
                         throw new OrmException(Code::CODEC_ENCODE, 'aes: ' . (string) openssl_error_string());
@@ -377,8 +390,15 @@ final class Codec
                     $nonce = substr($cur, $offset, 12);
                     $tag = substr($cur, -16);
                     $ciphertext = substr($cur, $offset + 12, -16);
-                    $plain = openssl_decrypt($ciphertext, 'aes-256-gcm', self::aesV2Key($aesKey),
-                        OPENSSL_RAW_DATA, $nonce, $tag, $prefix);
+                    $plain = openssl_decrypt(
+                        $ciphertext,
+                        'aes-256-gcm',
+                        self::aesV2Key($aesKey),
+                        OPENSSL_RAW_DATA,
+                        $nonce,
+                        $tag,
+                        $prefix
+                    );
                     if ($plain === false) {
                         throw new OrmException(Code::CODEC_DECODE, 'aes: authentication failed');
                     }

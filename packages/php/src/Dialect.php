@@ -40,8 +40,10 @@ final class Dialect
 
     public static function quoteWith(string $q, string $ident): string
     {
-        return implode('.', array_map(static fn(string $p): string => $q . str_replace($q, $q . $q, $p) . $q,
-            explode('.', $ident)));
+        return implode('.', array_map(
+            static fn(string $p): string => $q . str_replace($q, $q . $q, $p) . $q,
+            explode('.', $ident)
+        ));
     }
 
     public function quote(string $ident): string
@@ -384,10 +386,11 @@ final class Dialect
                 $operandCast = $cast === 'double precision' ? $cast : 'bigint';
                 return self::guardResult(
                     function () use ($now, $arg, $unit, $cast, $operandCast, $later, $field): string {
-                    $clock = 'CAST(' . $now() . ' AS timestamp(6))';
-                    $value = 'CAST(' . self::guardInterval($unit, $operandCast, $arg) . " AS $cast)";
-                    return '(' . $clock . ($later ? ' + ' : ' - ') . "make_interval($field => $value))";
-                });
+                        $clock = 'CAST(' . $now() . ' AS timestamp(6))';
+                        $value = 'CAST(' . self::guardInterval($unit, $operandCast, $arg) . " AS $cast)";
+                        return '(' . $clock . ($later ? ' + ' : ' - ') . "make_interval($field => $value))";
+                    }
+                );
             default:
                 if ($fn === 'now') {
                     return $now();

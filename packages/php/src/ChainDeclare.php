@@ -74,8 +74,10 @@ final class ChainDeclare
         if (str_starts_with($upper, 'AddColumn') && strlen($upper) > 9) {
             $rest = substr($upper, 9);
             $at = strpos($rest, 'Alias');
-            if ($at !== false && $at > 0 && Chain::columnName($meta, substr($rest, 0, $at)) !== ''
-                && strlen($rest) > $at + 5) {
+            if (
+                $at !== false && $at > 0 && Chain::columnName($meta, substr($rest, 0, $at)) !== ''
+                && strlen($rest) > $at + 5
+            ) {
                 return Chain::columnName($meta, substr($rest, $at + 5)) !== '' ? null
                     : ['params' => '\\Polyspec\\Orm\\Func $fn', 'returns' => '$this', 'min' => 1, 'max' => 1];
             }

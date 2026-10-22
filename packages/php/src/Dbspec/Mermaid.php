@@ -40,16 +40,22 @@ final class Mermaid
             $dropped[] = new Unsupported($kind, $table, $name, $reason);
         };
         foreach ($d->uses as $u) {
-            $report('use', '', $u->document,
-                'export writes the tables of one document; used tables appear only as relationship ends');
+            $report(
+                'use',
+                '',
+                $u->document,
+                'export writes the tables of one document; used tables appear only as relationship ends'
+            );
             if ($u->comments !== []) {
                 $report('comment', '', $u->document, 'Mermaid has no comments on use lines');
             }
         }
         foreach ($d->diagrams as $g) {
             $report('diagram', '', $g->name, 'a dbspec diagram has no Mermaid form');
-            if ($g->comments !== [] || $g->closingComments !== []
-                || array_any($g->placements, static fn(Placement $p): bool => $p->comments !== [])) {
+            if (
+                $g->comments !== [] || $g->closingComments !== []
+                || array_any($g->placements, static fn(Placement $p): bool => $p->comments !== [])
+            ) {
                 $report('comment', '', $g->name, 'Mermaid has no diagram comments');
             }
         }
@@ -60,10 +66,16 @@ final class Mermaid
         usort($tables, static fn(Table $a, Table $b): int => strcmp($a->name, $b->name));
         $out = "erDiagram\n";
         foreach ($tables as $t) {
-            if ($t->comments !== [] || $t->closingComments !== []
-                || ($t->primaryKey?->comments ?? []) !== [] || self::settingsCommented($t->settings)) {
-                $report('comment', $t->name, $t->name,
-                    'Mermaid has no comments on the table, primary key and settings lines');
+            if (
+                $t->comments !== [] || $t->closingComments !== []
+                || ($t->primaryKey?->comments ?? []) !== [] || self::settingsCommented($t->settings)
+            ) {
+                $report(
+                    'comment',
+                    $t->name,
+                    $t->name,
+                    'Mermaid has no comments on the table, primary key and settings lines'
+                );
             }
             $out .= "    {$t->name} {\n";
             foreach ($t->columns as $c) {
@@ -75,8 +87,12 @@ final class Mermaid
                 if (in_array($c->name, $t->primaryKey?->columns ?? [], true)) {
                     $keys[] = 'PK';
                 }
-                if (array_any($t->foreignKeys,
-                    static fn(ForeignKey $f): bool => in_array($c->name, $f->columns, true))) {
+                if (
+                    array_any(
+                        $t->foreignKeys,
+                        static fn(ForeignKey $f): bool => in_array($c->name, $f->columns, true)
+                    )
+                ) {
                     $keys[] = 'FK';
                 }
                 if (array_any($t->uniqueKeys, static fn(UniqueKey $u): bool => in_array($c->name, $u->columns, true))) {
@@ -94,8 +110,12 @@ final class Mermaid
                 }
                 if ($c->default !== null) {
                     if (str_contains($c->default, '"')) {
-                        $report('default', $t->name, $c->name,
-                            'a Mermaid comment cannot hold the default, which contains a double quote');
+                        $report(
+                            'default',
+                            $t->name,
+                            $c->name,
+                            'a Mermaid comment cannot hold the default, which contains a double quote'
+                        );
                     } else {
                         $suffix[] = "default {$c->default}";
                     }
@@ -112,8 +132,12 @@ final class Mermaid
                 }
             };
             foreach ($t->uniqueKeys as $u) {
-                $report('unique', $t->name, $u->name,
-                    'Mermaid marks the columns of a unique key with UK but has no key');
+                $report(
+                    'unique',
+                    $t->name,
+                    $u->name,
+                    'Mermaid marks the columns of a unique key with UK but has no key'
+                );
                 $keyComment($u->name, $u->comments);
             }
             foreach ($t->indexes as $x) {
@@ -186,8 +210,11 @@ final class Mermaid
             MermaidImportResult::invalid([new Diagnostic(self::RULE, $line, 1, $message)]);
         foreach ($lines as $i => $raw) {
             $n = $i + 1;
-            $line = preg_replace('/^' . self::SPACE . '+|' . self::SPACE . '+$/D', '',
-                str_ends_with($raw, "\r") ? substr($raw, 0, -1) : $raw);
+            $line = preg_replace(
+                '/^' . self::SPACE . '+|' . self::SPACE . '+$/D',
+                '',
+                str_ends_with($raw, "\r") ? substr($raw, 0, -1) : $raw
+            );
             if ($line === '' || str_starts_with($line, '%%')) {
                 continue;
             }
@@ -253,8 +280,12 @@ final class Mermaid
                         [$column['null'], $column['identity'], $column['default']] =
                             [($s[1] ?? '') !== '', ($s[2] ?? '') !== '', $s[3] ?? ''];
                     } else {
-                        $c->report('comment', $e['name'], $a['name'],
-                            'the comment ' . self::quoted($a['comment']) . ' is not a dbspec column suffix');
+                        $c->report(
+                            'comment',
+                            $e['name'],
+                            $a['name'],
+                            'the comment ' . self::quoted($a['comment']) . ' is not a dbspec column suffix'
+                        );
                     }
                 }
                 $t->columns[] = $column;
@@ -262,8 +293,12 @@ final class Mermaid
                     $t->primary[] = $a['name'];
                 }
                 if (in_array('UK', $a['keys'], true)) {
-                    $c->report('unique', $e['name'], $a['name'],
-                        'Mermaid does not say which UK attributes form one key');
+                    $c->report(
+                        'unique',
+                        $e['name'],
+                        $a['name'],
+                        'Mermaid does not say which UK attributes form one key'
+                    );
                 }
             }
             $c->tables[] = $t;
@@ -289,8 +324,12 @@ final class Mermaid
             $manyRight = str_ends_with($r['rightCard'], '{');
             $manyLeft = str_starts_with($r['leftCard'], '}');
             if ($manyLeft === $manyRight) {
-                $c->report('relationship', $r['left'], $r['label'],
-                    "the relationship to {$r['right']} is not one to many");
+                $c->report(
+                    'relationship',
+                    $r['left'],
+                    $r['label'],
+                    "the relationship to {$r['right']} is not one to many"
+                );
                 continue;
             }
             if ($manyLeft) {
@@ -299,8 +338,12 @@ final class Mermaid
             $pt = $c->table($parent);
             $ct = $c->table($child);
             if (preg_match(self::LABEL, $r['label'], $m) !== 1 || $pt === null || $ct === null) {
-                $c->report('relationship', $child, $r['label'],
-                    'the label does not give the foreign key columns, or an end is not a table');
+                $c->report(
+                    'relationship',
+                    $child,
+                    $r['label'],
+                    'the label does not give the foreign key columns, or an end is not a table'
+                );
                 continue;
             }
             $columns = self::splitNames($m[2]);
@@ -318,9 +361,13 @@ final class Mermaid
                 $nullable = $nullable || $cc['null'];
             }
             if (!$ok) {
-                $c->report('relationship', $child, $m[1],
+                $c->report(
+                    'relationship',
+                    $child,
+                    $m[1],
                     "its columns are not FK attributes of $child or "
-                    . "its referenced columns are not attributes of $parent");
+                    . "its referenced columns are not attributes of $parent"
+                );
                 continue;
             }
             $wantParent = $nullable ? '|o' : '||';
@@ -328,8 +375,12 @@ final class Mermaid
                 $wantParent = ['||' => '||', '|o' => 'o|'][$wantParent];
             }
             if ($parentCard !== $wantParent || ($childCard !== 'o{' && $childCard !== '}o')) {
-                $c->report('cardinality', $child, $m[1],
-                    "the cardinalities differ from the ones the foreign key's nullability gives");
+                $c->report(
+                    'cardinality',
+                    $child,
+                    $m[1],
+                    "the cardinalities differ from the ones the foreign key's nullability gives"
+                );
             }
             $ct->foreignKeys[] = ['name' => $m[1], 'columns' => $columns, 'table' => $parent,
                 'refs' => $refs, 'onDelete' => 'restrict', 'onUpdate' => 'restrict'];
@@ -347,10 +398,16 @@ final class Mermaid
         }
         foreach ($byName as $e) {
             foreach ($e['attributes'] as $a) {
-                if (in_array('FK', $a['keys'], true) && !isset($usedForeignKeys[$e['name']][$a['name']])
-                    && $c->table($e['name']) !== null) {
-                    $c->report('foreign_key', $e['name'], $a['name'],
-                        'no relationship gives the foreign key of this FK attribute');
+                if (
+                    in_array('FK', $a['keys'], true) && !isset($usedForeignKeys[$e['name']][$a['name']])
+                    && $c->table($e['name']) !== null
+                ) {
+                    $c->report(
+                        'foreign_key',
+                        $e['name'],
+                        $a['name'],
+                        'no relationship gives the foreign key of this FK attribute'
+                    );
                 }
             }
         }
@@ -414,7 +471,10 @@ final class Mermaid
     {
         $escapes = ["\x07" => '\\a', "\x08" => '\\b', "\f" => '\\f', "\n" => '\\n', "\r" => '\\r',
             "\t" => '\\t', "\v" => '\\v', '\\' => '\\\\', '"' => '\\"'];
-        return '"' . preg_replace_callback('/[\x00-\x1F\x7F\\\\"]/',
-            static fn(array $m): string => $escapes[$m[0]] ?? sprintf('\\x%02x', ord($m[0])), $s) . '"';
+        return '"' . preg_replace_callback(
+            '/[\x00-\x1F\x7F\\\\"]/',
+            static fn(array $m): string => $escapes[$m[0]] ?? sprintf('\\x%02x', ord($m[0])),
+            $s
+        ) . '"';
     }
 }

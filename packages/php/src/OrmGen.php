@@ -125,8 +125,10 @@ final class OrmGen
     private static function gen(array $args): int
     {
         [$o, $rest] = self::flags($args, ['set' => '', 'out' => '', 'namespace' => '', 'scan' => [], 'check' => false]);
-        if ($rest !== [] || $o['set'] === '' || $o['out'] === ''
-            || preg_match('/^[A-Za-z_][A-Za-z0-9_]*(\\\\[A-Za-z_][A-Za-z0-9_]*)*$/', $o['namespace']) !== 1) {
+        if (
+            $rest !== [] || $o['set'] === '' || $o['out'] === ''
+            || preg_match('/^[A-Za-z_][A-Za-z0-9_]*(\\\\[A-Za-z_][A-Za-z0-9_]*)*$/', $o['namespace']) !== 1
+        ) {
             throw new UsageError($rest === [] ? '' : 'unexpected argument: ' . $rest[0]);
         }
         $model = RuntimeModel::build(RuntimeModel::set($o['set']));

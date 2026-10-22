@@ -32,7 +32,10 @@ final class DocumentSet
         foreach ($documents as $i => $document) {
             if ($i > 0 && $documents[$i - 1]->name === $document->name) {
                 $diagnostics[] = new Diagnostic(
-                    'name.duplicate', 1, $header, "document {$document->name} appears twice in the document set"
+                    'name.duplicate',
+                    1,
+                    $header,
+                    "document {$document->name} appears twice in the document set"
                 );
             }
             $used = array_map(static fn(UseLine $u): string => $u->document, $document->uses);
@@ -40,7 +43,10 @@ final class DocumentSet
             foreach ($used as $name) {
                 if (!isset($names[$name])) {
                     $diagnostics[] = new Diagnostic(
-                        'use', 1, $header, "document {$document->name} uses $name, which is not in the document set"
+                        'use',
+                        1,
+                        $header,
+                        "document {$document->name} uses $name, which is not in the document set"
                     );
                 }
             }
@@ -68,7 +74,10 @@ final class DocumentSet
         foreach ($documents as $document) {
             if ($document->external && !isset($reached[$document->name])) {
                 $diagnostics[] = new Diagnostic(
-                    'use', 1, $header, "external document {$document->name} is not used by a document of the set"
+                    'use',
+                    1,
+                    $header,
+                    "external document {$document->name} is not used by a document of the set"
                 );
             }
         }

@@ -15,8 +15,7 @@ final class OrmException extends \RuntimeException
         string $message,
         ?\Throwable $previous = null,
         public readonly ?\Throwable $rollback = null
-    )
-    {
+    ) {
         parent::__construct($code_ . ': ' . $message, 0, $previous);
     }
 
@@ -26,9 +25,12 @@ final class OrmException extends \RuntimeException
      */
     public static function rollback(\Throwable $cause, \Throwable $rollback): self
     {
-        return new self(Code::ROLLBACK,
+        return new self(
+            Code::ROLLBACK,
             'transaction failed (' . $cause->getMessage() . ') and rollback failed (' . $rollback->getMessage() . ')',
-            $cause, $rollback);
+            $cause,
+            $rollback
+        );
     }
 
     /**

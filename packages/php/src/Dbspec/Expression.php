@@ -228,8 +228,10 @@ final class Expression
     private function operand(): array
     {
         $token = $this->peek();
-        if ($token !== null && Parser::isWord($token) && !ctype_digit($token)
-            && preg_match('/^[0-9]+\.[0-9]+$/D', $token) !== 1) {
+        if (
+            $token !== null && Parser::isWord($token) && !ctype_digit($token)
+            && preg_match('/^[0-9]+\.[0-9]+$/D', $token) !== 1
+        ) {
             if ($this->peek(1) === '(') {
                 $this->fail('a check has no functions');
             }
@@ -255,9 +257,11 @@ final class Expression
         if ($token === 'true' || $token === 'false') {
             $text = $token;
             $this->take('keyword');
-        } elseif ($token === '-' && isset($this->tokens[$this->at + 1])
+        } elseif (
+            $token === '-' && isset($this->tokens[$this->at + 1])
             && $this->tokens[$this->at + 1][1] === $column + 1
-            && Literal::number('-' . $this->tokens[$this->at + 1][0]) !== null) {
+            && Literal::number('-' . $this->tokens[$this->at + 1][0]) !== null
+        ) {
             $text = '-' . $this->tokens[$this->at + 1][0];
             $this->at += 2;
         } elseif ($token !== null && (Literal::number($token) !== null || Literal::stringValue($token) !== null)) {
@@ -420,7 +424,10 @@ final class Expression
 
     private static function meetKind(ColumnType $t): string
     {
-        return Meet::kind($t->name, $t->name === 'decimal' ? $t->parameters[1] : 0,
-            in_array($t->name, ['decimal', 'time', 'datetime'], true) ? $t->parameters[0] : 0);
+        return Meet::kind(
+            $t->name,
+            $t->name === 'decimal' ? $t->parameters[1] : 0,
+            in_array($t->name, ['decimal', 'time', 'datetime'], true) ? $t->parameters[0] : 0
+        );
     }
 }

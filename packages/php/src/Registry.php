@@ -32,9 +32,11 @@ final class Registry
     {
         $actual = 'sha256:' . hash('sha256', $text . $external);
         if ($actual !== $hash) {
-            throw new OrmException(Code::SCHEMA_HASH_MISMATCH,
+            throw new OrmException(
+                Code::SCHEMA_HASH_MISMATCH,
                 "generated code declares manifest $hash, its manifest text hashes to $actual: "
-                . "generate the models again");
+                . "generate the models again"
+            );
         }
         self::$texts[$hash] = $text;
         self::$externals[$hash] = $external;
@@ -64,8 +66,10 @@ final class Registry
         }
         $loaded = self::$models[$hash][$meta['entity']] ?? $class;
         if ($loaded !== $class) {
-            throw new OrmException(Code::CONFIG,
-                "entity {$meta['entity']} of manifest $hash is generated as both $loaded and $class");
+            throw new OrmException(
+                Code::CONFIG,
+                "entity {$meta['entity']} of manifest $hash is generated as both $loaded and $class"
+            );
         }
         self::$models[$hash][$meta['entity']] = $class;
         unset(self::$runtime[$hash]);
@@ -93,8 +97,12 @@ final class Registry
             return self::$runtime[$hash];
         }
         if (isset(self::$models[$hash])) {
-            return self::$runtime[$hash] = RuntimeModel::fromModels($hash, self::$texts[$hash],
-                array_values(self::$models[$hash]), self::$externals[$hash] ?? '');
+            return self::$runtime[$hash] = RuntimeModel::fromModels(
+                $hash,
+                self::$texts[$hash],
+                array_values(self::$models[$hash]),
+                self::$externals[$hash] ?? ''
+            );
         }
         $text = self::$texts[$hash] ?? throw self::unloaded($hash);
         return self::$runtime[$hash] = RuntimeModel::build(RuntimeModel::loadSet($text, self::$externals[$hash] ?? ''));

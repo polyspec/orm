@@ -21,8 +21,10 @@ final class PlanText
         }
         $name = self::NAME;
         $lines = explode("\n", substr($text, 0, -1));
-        if (!preg_match("/^dbplan 1 ($name)\$/D", $lines[0], $m) || in_array($m[1], Parser::RESERVED, true)
-            || strlen($m[1]) > 63) {
+        if (
+            !preg_match("/^dbplan 1 ($name)\$/D", $lines[0], $m) || in_array($m[1], Parser::RESERVED, true)
+            || strlen($m[1]) > 63
+        ) {
             return self::fail(1, 'the first line is exactly `dbplan 1 <name>`');
         }
         $planName = $m[1];
@@ -79,8 +81,10 @@ final class PlanText
                 }
                 $dropColumns[] = new ColumnName($r[1], $r[2]);
             } else {
-                return self::fail($n,
-                    'a header line is `rename table`, `rename column`, `allow drop table` or `allow drop column`');
+                return self::fail(
+                    $n,
+                    'a header line is `rename table`, `rename column`, `allow drop table` or `allow drop column`'
+                );
             }
         }
         if ($i >= count($lines)) {
@@ -92,9 +96,11 @@ final class PlanText
         for ($k = $offset; $k < count($lines); $k++) {
             if (str_starts_with($lines[$k], 'use ')) {
                 $document = preg_split('/\s+/', $lines[$k])[1] ?? '';
-                return self::fail($k + 1,
+                return self::fail(
+                    $k + 1,
                     "a plan targets a whole database, and its target uses the external document $document: "
-                    . "install a set that uses external documents with install or addTablesAndColumns");
+                    . "install a set that uses external documents with install or addTablesAndColumns"
+                );
             }
         }
         $schemaText = implode("\n", array_slice($lines, $offset)) . "\n";
@@ -105,12 +111,22 @@ final class PlanText
                 new Diagnostic($d->rule, $d->line + $offset, $d->column, $d->message), $parsed->diagnostics));
         }
         if (!SchemaComparison::isSchemaText($parsed->document) || Dbspec::emit($parsed->document) !== $schemaText) {
-            return self::fail($offset + 1,
+            return self::fail(
+                $offset + 1,
                 'the target is not a schema text: one document named schema in canonical form with its tables '
-                . 'in name order and only the immutable and audit settings');
+                . 'in name order and only the immutable and audit settings'
+            );
         }
-        return self::planTo($planName, $from, $renameTables, $renameColumns, $dropTables, $dropColumns,
-            $parsed->document, $schemaText);
+        return self::planTo(
+            $planName,
+            $from,
+            $renameTables,
+            $renameColumns,
+            $dropTables,
+            $dropColumns,
+            $parsed->document,
+            $schemaText
+        );
     }
 
     /**
@@ -122,15 +138,30 @@ final class PlanText
      * @param list<string> $dropTables
      * @param list<ColumnName> $dropColumns
      */
-    public static function planTo(string $name, ?string $from, array $renameTables, array $renameColumns,
-        array $dropTables, array $dropColumns, Document $schema, string $schemaText): PlanParseResult
-    {
+    public static function planTo(
+        string $name,
+        ?string $from,
+        array $renameTables,
+        array $renameColumns,
+        array $dropTables,
+        array $dropColumns,
+        Document $schema,
+        string $schemaText
+    ): PlanParseResult {
         $to = 'sha256:' . hash('sha256', $schemaText);
         if ($to === $from) {
             return self::fail(2, 'the plan starts from its own target schema');
         }
-        return PlanParseResult::valid(new Plan($name, $from, $renameTables, $renameColumns, $dropTables,
-            $dropColumns, $schema, $to));
+        return PlanParseResult::valid(new Plan(
+            $name,
+            $from,
+            $renameTables,
+            $renameColumns,
+            $dropTables,
+            $dropColumns,
+            $schema,
+            $to
+        ));
     }
 
     /**
@@ -143,15 +174,23 @@ final class PlanText
         foreach (self::sortedBy($plan->renameTables, static fn(TableRename $r): string => $r->old) as $r) {
             $out .= "rename table {$r->old} {$r->new}\n";
         }
-        foreach (self::sortedBy($plan->renameColumns,
-            static fn(ColumnRename $r): string => "{$r->table}.{$r->old}") as $r) {
+        foreach (
+            self::sortedBy(
+                $plan->renameColumns,
+                static fn(ColumnRename $r): string => "{$r->table}.{$r->old}"
+            ) as $r
+        ) {
             $out .= "rename column {$r->table}.{$r->old} {$r->new}\n";
         }
         foreach (self::sortedBy($plan->dropTables, static fn(string $t): string => $t) as $t) {
             $out .= "allow drop table $t\n";
         }
-        foreach (self::sortedBy($plan->dropColumns,
-            static fn(ColumnName $c): string => "{$c->table}.{$c->name}") as $c) {
+        foreach (
+            self::sortedBy(
+                $plan->dropColumns,
+                static fn(ColumnName $c): string => "{$c->table}.{$c->name}"
+            ) as $c
+        ) {
             $out .= "allow drop column {$c->table}.{$c->name}\n";
         }
         return $out . "\n" . self::schemaText($plan);
