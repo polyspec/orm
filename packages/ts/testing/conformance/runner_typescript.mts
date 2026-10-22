@@ -150,6 +150,30 @@ async function main() {
     const rows = await author().serviceSeq(7).andIsClose(false).or().readCount(6).orderBySeqAsc().limit(0, 3).gets();
     return picks(rows, ...cols);
   });
+  // DSL-87 and DSL-111: a user with its authors loaded as has-many rows. Unlocked, delete(true) deletes the authors and the user; locked,
+  // the authors stay, so the user's delete fails on the foreign key, and the normalized code is recorded.
+  await run('delete_lock', async () => {
+    const out: unknown[] = [];
+    for (const locked of [false, true]) {
+      const user = await new User().connect(db).setName('delete-lock').create();
+      const uSeq = user.toArray().seq as number;
+      const author = await new Author().connect(db).setName('delete-lock').setUserSeq(uSeq).setServiceSeq(7)
+        .setServiceRegionSeq(7).setServiceMemberSeq(7).setStartDt('2026-01-01 00:00:00').setEndDt('2026-12-31 00:00:00').create();
+      const aSeq = author.toArray().seq as number;
+      const rel = new Author().matchSeqWithUserSeq();
+      if (locked) rel.deleteLock();
+      const loaded = await new User().connect(db).seq(uSeq).relations(rel).gets();
+      const error = await caught(loaded.delete(true));
+      const authors = await new Author().connect(db).seq(aSeq).gets();
+      const users = await new User().connect(db).seq(uSeq).gets();
+      out.push([authors.toArray().length, users.toArray().length, error === null ? 'none' : error]);
+      if (locked) {
+        await (await new Author().connect(db).seq(aSeq).gets()).delete();
+        await (await new User().connect(db).seq(uSeq).gets()).delete();
+      }
+    }
+    return out;
+  });
   await run('conditions_group', async () => {
     const rows = await author().serviceSeq(7)
       .and(q => q.isDisplay(false).or(q => q.isClose(true).andGtReadCount(500)))

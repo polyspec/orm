@@ -393,6 +393,11 @@ func run() (status int) {
 		}
 		return picks(rows, cols...), nil
 	})
+	// DSL-87 and DSL-111: delete(true) deletes the loaded relation rows recursively, except the relations marked deleteLock().
+	// Case 1: the user goes with its author. Case 2: the locked relation keeps the user.
+	run("delete_lock", func() (any, error) {
+		return deleteLockVector(db)
+	})
 	run("conditions_group", func() (any, error) {
 		rows, err := author().ServiceSeq(7).
 			And(func(q *model.AuthorModel) {
@@ -1702,3 +1707,53 @@ func dateTimeText(t time.Time) string { return t.Format("2006-01-02 15:04:05.999
 
 // textPtr returns the pointer to a text value, the form of a nullable setter.
 func textPtr(s string) *string { return &s }
+
+// deleteLockVector runs DSL-87 and DSL-111 on a user with its authors loaded as has-many rows: unlocked, delete(true) deletes the authors
+// and the user; locked, the authors stay, so the user's delete fails on the foreign key, and the normalized error code is recorded.
+func deleteLockVector(db *orm.DB) (any, error) {
+	out := []any{}
+	for _, locked := range []bool{false, true} {
+		user, err := model.User().Connect(db).SetName("delete-lock").Create()
+		if err != nil {
+			return nil, err
+		}
+		author, err := model.Author().Connect(db).SetName("delete-lock").SetUserSeq(user.GetSeq()).SetServiceSeq(7).
+			SetServiceRegionSeq(7).SetServiceMemberSeq(7).SetStartDt("2026-01-01 00:00:00").SetEndDt("2026-12-31 00:00:00").Create()
+		if err != nil {
+			return nil, err
+		}
+		rel := model.Author().MatchSeqWithUserSeq()
+		if locked {
+			rel.DeleteLock()
+		}
+		loaded, err := model.User().Connect(db).Seq(user.GetSeq()).Relations(rel).Gets()
+		if err != nil {
+			return nil, err
+		}
+		code := "none"
+		if err := loaded.Delete(true); err != nil {
+			code = orm.ErrorCode(err)
+			if code == "" {
+				return nil, err
+			}
+		}
+		authors, err := model.Author().Connect(db).Seq(author.GetSeq()).Gets()
+		if err != nil {
+			return nil, err
+		}
+		users, err := model.User().Connect(db).Seq(user.GetSeq()).Gets()
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, []any{len(picks(authors, "seq")), len(picks(users, "seq")), code})
+		if locked {
+			if err := author.Delete(); err != nil {
+				return nil, err
+			}
+			if err := user.Delete(); err != nil {
+				return nil, err
+			}
+		}
+	}
+	return out, nil
+}
