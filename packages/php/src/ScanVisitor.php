@@ -49,14 +49,25 @@ final class ScanVisitor extends NodeVisitorAbstract
      */
     private array $loopBefore = [];
 
+    /** @var list<array<string, ?string>> the declared type of each parameter of each enclosing function, innermost last */
+    private array $frames = [];
+
     /**
      * @param array<string, string> $models lowercase fully qualified class name => class name
      * @param array<string, array<string, list<int|null>>> $out
+     * @param array<string, array<string, list<array{call: string, type: ?string}>>> $types per model class, the
+     *     declared types of the getters that the calls of new, addColumn and alias name, with the call that declares
+     *     each
      */
-    public function __construct(private readonly array $models, private array &$out, private array &$sites)
-    {
+    public function __construct(
+        private readonly array $models,
+        private array &$out,
+        private array &$sites,
+        private array &$types,
+    ) {
         $this->given = new \SplObjectStorage();
     }
+
 
     public function beforeTraverse(array $nodes): ?array
     {
@@ -98,6 +109,9 @@ final class ScanVisitor extends NodeVisitorAbstract
 
     public function enterNode(Node $node): null
     {
+        if (self::functionNode($node)) {
+            $this->frames[] = $this->paramTypes($node->params);
+        }
         if ($node instanceof Node\Stmt\Namespace_) {
             $this->namespace = $node->name === null ? '' : $node->name->toString();
             $this->uses = [];
@@ -269,6 +283,9 @@ final class ScanVisitor extends NodeVisitorAbstract
 
     public function leaveNode(Node $node): null
     {
+        if (self::functionNode($node)) {
+            array_pop($this->frames);
+        }
         if ($node instanceof Node\Stmt\Class_ || $node instanceof Node\Stmt\Trait_) {
             array_pop($this->properties);
         }
@@ -414,6 +431,148 @@ final class ScanVisitor extends NodeVisitorAbstract
         $this->scopes[count($this->scopes) - 1] = $scope;
     }
 
+    /** Whether a node is a method call, the link of a chain. */
+    private static function isCall(Node $node): bool
+    {
+        return $node instanceof Node\Expr\MethodCall || $node instanceof Node\Expr\NullsafeMethodCall;
+    }
+
+    /** Whether a node is a function whose parameters a frame records. */
+    private static function functionNode(Node $node): bool
+    {
+        return $node instanceof Node\Stmt\Function_ || $node instanceof Node\Stmt\ClassMethod
+            || $node instanceof Node\Expr\Closure || $node instanceof Node\Expr\ArrowFunction;
+    }
+
+    /**
+     * The declared type of each parameter of a function, as written: a name, a nullable name, or null when
+     * the parameter
+     * has no type or a type that is not a single one (a union, an intersection).
+     * @param array<Node\Param> $params
+     * @return array<string, ?string>
+     */
+    private function paramTypes(array $params): array
+    {
+        $out = [];
+        foreach ($params as $param) {
+            if ($param->var instanceof Node\Expr\Variable && is_string($param->var->name)) {
+                $out[$param->var->name] = self::typeName($param->type);
+            }
+        }
+        return $out;
+    }
+
+    /** The declared type of a type node as written, or null when it names no single type. */
+    private static function typeName(?Node $type): ?string
+    {
+        if ($type instanceof Node\NullableType) {
+            $inner = self::typeName($type->type);
+            return $inner === null ? null : "?$inner";
+        }
+        if ($type instanceof Node\Identifier || $type instanceof Node\Name) {
+            return $type->toString();
+        }
+        return null;
+    }
+
+    /**
+     * The PHP type of the value of an argument: a literal takes its own type (int, float, string, bool, null), and a
+     * variable takes the declared type of its parameter in the innermost function; any other expression has no type
+     * that the scan declares, so the result is null.
+     */
+    private function valueType(Node $value): ?string
+    {
+        if ($value instanceof Node\Scalar\LNumber) {
+            return 'int';
+        }
+        if ($value instanceof Node\Scalar\DNumber) {
+            return 'float';
+        }
+        if ($value instanceof Node\Scalar\String_) {
+            return 'string';
+        }
+        if ($value instanceof Node\Expr\ConstFetch) {
+            return match (strtolower($value->name->toString())) {
+                'true', 'false' => 'bool',
+                'null' => 'null',
+                default => null,
+            };
+        }
+        if ($value instanceof Node\Expr\Variable && is_string($value->name) && $this->frames !== []) {
+            return end($this->frames)[$value->name] ?? null;
+        }
+        return null;
+    }
+
+    /**
+     * Records the declared types of the getters that a call names. new<Attr>(value) declares get<Attr> with the type of
+     * the value; addColumn<Name>(fn): T declares get<Name> with the return type T; and a get or gets that ends a chain
+     * with alias<Name> declares get<Name> with the chain's result, ?Model for get and list<Model> for gets. A call
+     * without a type is recorded with a null type, which the generator refuses.
+     */
+    private function declaredTypes(
+        Node\Expr\MethodCall|Node\Expr\NullsafeMethodCall $node,
+        string $name,
+        array $receivers,
+        ?int $count,
+    ): void {
+        $classes = array_values(array_unique(array_map(static fn(array $r): string => $r['cls'], $receivers)));
+        if ($classes === []) {
+            return;
+        }
+        if (str_starts_with($name, 'new') && strlen($name) > 3 && $count === 1 && $node->args[0] instanceof Node\Arg) {
+            $type = $this->valueType($node->args[0]->value);
+            foreach ($classes as $cls) {
+                $this->types[$cls]['get' . substr($name, 3)][] = ['call' => $name, 'type' => $type];
+            }
+        }
+        $oneArg = $count === 1 && $node->args[0] instanceof Node\Arg;
+        if (str_starts_with($name, 'addColumn') && strlen($name) > 9 && $oneArg) {
+            $rest = substr($name, 9);
+            $at = strpos($rest, 'Alias');
+            $key = $at !== false && $at > 0 && strlen($rest) > $at + 5 ? substr($rest, $at + 5) : $rest;
+            $fn = $node->args[0]->value;
+            $closure = $fn instanceof Node\Expr\Closure || $fn instanceof Node\Expr\ArrowFunction;
+            $type = $closure ? self::typeName($fn->returnType) : null;
+            foreach ($classes as $cls) {
+                $this->types[$cls]['get' . $key][] = ['call' => $name, 'type' => $type];
+            }
+        }
+        if (($name === 'get' || $name === 'gets') && count($classes) === 1) {
+            $this->recordAliases($node->var, $name, $classes[0], $classes[0]);
+        }
+    }
+
+    /**
+     * Records the declared type of each alias in a chain that ends with the get or gets $terminal of the entity
+     * $entity.
+     * An alias of the chain names a result of the entity: its getter belongs to the entity and has the entity's model,
+     * ?Model for get and list<Model> for gets. An alias inside a relation argument names the result of that relation,
+     * which belongs to the class that owns the relation, and has the model of the argument's own chain. $entity is null
+     * for such an argument, whose alias takes the entity of its own chain.
+     */
+    private function recordAliases(Node $chain, string $terminal, string $owner, ?string $entity): void
+    {
+        for ($cur = $chain; self::isCall($cur); $cur = $cur->var) {
+            $name = $cur->name instanceof Node\Identifier ? $cur->name->toString() : '';
+            if (str_starts_with($name, 'alias') && strlen($name) > 5) {
+                $model = $entity ?? (($this->valueOf($cur->var)['cls'] ?? null));
+                if ($model !== null) {
+                    $type = $terminal === 'gets' ? "list<$model>" : "?$model";
+                    $this->types[$owner]['get' . substr($name, 5)][] = ['call' => $name, 'type' => $type];
+                }
+            }
+            if (strtolower($name) === 'relation') {
+                $relationOwner = $this->valueOf($cur->var)['cls'] ?? null;
+                foreach ($cur->args as $arg) {
+                    if ($relationOwner !== null && $arg instanceof Node\Arg) {
+                        $this->recordAliases($arg->value, $terminal, $relationOwner, null);
+                    }
+                }
+            }
+        }
+    }
+
     private function call(Node\Expr\MethodCall|Node\Expr\NullsafeMethodCall $node): void
     {
         if (!$node->name instanceof Node\Identifier) {
@@ -436,6 +595,7 @@ final class ScanVisitor extends NodeVisitorAbstract
         foreach ($receivers as $receiver) {
             $this->out[$receiver['cls']][$name][] = $count;
         }
+        $this->declaredTypes($node, $name, $receivers, $count);
         if ($receivers !== []) {
             $this->sites[] = ['name' => $name, 'classes' => array_values(array_unique(array_map(
                 static fn(array $r): string => $r['cls'],

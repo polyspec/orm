@@ -134,6 +134,10 @@ final class OrmGenScanTest extends TestCase
         $steps = array_map(static fn(array $call): string => "{$call['name']}({$args($call['args'])})", $case['calls']);
         $calls = ($case['chain'] ?? false) ? "$receiver->" . implode('->', $steps) . ";\n"
             : implode('', array_map(static fn(string $step): string => "$receiver->$step;\n", $steps));
+        // A case with a body gives its own statements in place of the calls, for the typed getters (DSL-42).
+        if (isset($case['body'])) {
+            $calls = $case['body'];
+        }
         $source = "<?php\nuse " . self::NS . "\\{$case['model']};\n\n\$db = null;\n"
             . "\$m = new {$case['model']}();\n$calls";
         [$code, $err, $dir] = self::generate('vector-' . $case['id'], ['usage.php' => $source]);
@@ -147,6 +151,17 @@ final class OrmGenScanTest extends TestCase
         $declared = self::tags($dir, $case['model']);
         sort($declared, SORT_STRING);
         self::assertSame($case['expected']['declared'], $declared, $case['id']);
+        foreach ($case['expected']['types'] ?? [] as $name => $type) {
+            self::assertSame($type, self::tagType($dir, $case['model'], $name), "$name of {$case['id']}");
+        }
+    }
+
+    /** @return string the type that the class comment declares for the getter $name, with @method */
+    private static function tagType(string $dir, string $class, string $name): string
+    {
+        $source = (string) file_get_contents("$dir/model/$class.php");
+        preg_match('/^ \* @method (\S+) ' . preg_quote($name, '/') . '\(/m', $source, $m);
+        return $m[1] ?? '';
     }
 
     public function testTheReceiverIsResolvedFromTheSource(): void

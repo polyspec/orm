@@ -29,12 +29,20 @@ final class Scan
      * for a call whose count is not known (a spread or a named argument).
      * @param list<string> $paths files or directories
      * @param list<string> $classes the class names of the generated models, without namespace
+     * @param ?array $types set to the declared types of the getters, per class and getter, with the call that
+     *     declares each
      * @return array<string, array<string, list<int|null>>>
      */
-    public static function calls(array $paths, string $namespace, array $classes, ?array &$sites = null): array
-    {
+    public static function calls(
+        array $paths,
+        string $namespace,
+        array $classes,
+        ?array &$sites = null,
+        ?array &$types = null,
+    ): array {
         $out = [];
         $siteList = [];
+        $typeList = [];
         $files = [];
         foreach ($paths as $path) {
             if (is_link($path)) {
@@ -68,10 +76,11 @@ final class Scan
             }
             $traverser = new NodeTraverser(new NameResolver());
             $tree = $traverser->traverse($tree ?? []);
-            $visitor = new ScanVisitor($models, $out, $siteList);
+            $visitor = new ScanVisitor($models, $out, $siteList, $typeList);
             (new NodeTraverser($visitor))->traverse($tree);
         }
         $sites = $siteList;
+        $types = $typeList;
         return $out;
     }
 

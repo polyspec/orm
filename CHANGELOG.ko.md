@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ca3ee9602bbc5a8dca99f2f8e31e758fb3a5719bc88838468041ac0e130ef9e4 -->
+<!-- source-sha256: cc3fd9887ef4a1cc8f29e2fc9026597f18d74de36c8760c59695eea861457113 -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP 모델 getter가 `mixed` 대신 대상 타입을 선언한다. 관계 getter는 `?Model`(`get<Entity>Model`) 또는 `list<Model>`(`get<Entity>Models`)이고, alias, new, addColumn getter는 호출이 선언한 타입을 얻는다. new는 literal 또는 타입이 있는 매개변수, addColumn은 closure의 반환 타입, alias는 chain의 결과를 쓴다. 선언된 타입이 없는 호출은 그 호출을 이름으로 적은 CONFIG 오류로 거부한다(KSTD-5-52). red: tests/generator/php-scan-vectors.json의 getter-type vector가 `mixed`를 선언했다.
 - owner 선택이 변경된 Go, Rust, Python, PHP, TypeScript 경로를 각 언어의 lint target(`lint-go`, `lint-rust`, `lint-python`, `lint-php`, `lint-ts`)으로 보내므로, `make land`는 그 언어를 바꾸는 branch의 lint를 실행하고 새 finding을 거부한다(KSTD-5-47). red: owners test의 case `a changed path selects the lint target of its language`가 이전 config에서 `packages/go/orm/errs.go selects feature-owner-check, not lint-go`로 실패했다. 실제 Go errcheck gate는 여기서 실행하지 않았다. golangci-lint가 이 환경에 설치되어 있지 않아, land에서 Go finding이 `lint-go`에 의해 거부되는 것은 확인하지 않았다.
 - Python schema install test가 bench set보다 먼저 외부 document(bench_shared.dbs)를 설치한다. set은 table shared_note가 존재하기를 요구하며, SQLite 연결도 닫는다. 그래서 assertion을 약화하지 않고 test_schema_install이 통과한다(KSTD-5-51). red: test_schema_install이 세 test를 CONFIG "table shared_note does not exist"로 실패시켰다.
 - `contracts/check-inputs.json`이 `docs-site-check`와 `docs-site-parse-check`의 scope를 선언하므로, main에서 `make feature-unit-check/owners`가 다시 통과한다(KSTD-5-48-1). red: owners test가 두 target에 scope가 없다고 보고했다.

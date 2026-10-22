@@ -105,12 +105,12 @@ final class ChainDeclare
     }
 
     /**
-     * The tag of the getter `get<Name>` of a value that a scanned `alias`, `new` or `addColumn` call, or a
-     * relation, names.
+     * The tag of the getter `get<Name>` of a value that a scanned `alias`, `new` or `addColumn` call, or a relation,
+     * names: its type is the one the generator resolves for it, never mixed.
      */
-    public static function getter(string $name): string
+    public static function getter(string $name, string $type): string
     {
-        return "@method mixed $name()";
+        return "@method $type $name()";
     }
 
     /** @return list<array>|null */

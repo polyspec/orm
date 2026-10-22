@@ -266,7 +266,20 @@ final class Generator
             $metas[] = $e + ['manifest_hash' => $m->manifestHash, 'class' => ltrim($namespace, '\\') . '\\' . $class];
         }
         $sites = [];
-        $calls = Scan::calls($scan, $namespace, $classes, $sites);
+        $declared = [];
+        $problems = [];
+        $calls = Scan::calls($scan, $namespace, $classes, $sites, $declared);
+        // A new or addColumn call whose value or closure declares no type is refused whether or not its getter is read.
+        foreach ($declared as $cls => $getters) {
+            foreach ($getters as $entries) {
+                foreach ($entries as $entry) {
+                    if ($entry['type'] === null) {
+                        $problems[] = "$cls.{$entry['call']}: the call declares no type; give the value a literal or a "
+                            . 'typed parameter, or the closure a return type';
+                    }
+                }
+            }
+        }
         $used = [];
         foreach ($calls as $names) {
             foreach (array_keys($names) as $name) {
@@ -274,7 +287,6 @@ final class Generator
             }
         }
         $declare = new ChainDeclare($metas);
-        $problems = [];
         $tags = [];
         // A getter that a scanned call names is refused only when no class the call may be on attaches it:
         // a class of the call that lacks the getter is not an error, since the call runs on the class that
@@ -343,7 +355,10 @@ final class Generator
                 if ($declaration === null) {
                     // A name that no class declares is refused by the group check above, with the classes of its call.
                     if (self::namedGetter($name, substr($name, 3), array_column($metas, 'entity'), $used)) {
-                        $found[$name] = ChainDeclare::getter($name);
+                        $type = self::getterType($name, $class, $metas, $declared[$class][$name] ?? [], $problems);
+                        if ($type !== null) {
+                            $found[$name] = ChainDeclare::getter($name, $type);
+                        }
                     }
                     continue;
                 }
@@ -357,6 +372,47 @@ final class Generator
             throw new OrmException(Code::CONFIG, implode('; ', $problems));
         }
         return $tags;
+    }
+
+    /**
+     * The PHP type of the getter $name of the model $class. A relation getter has its target model: ?Target for
+     * get<Target>Model and list<Target> for get<Target>Models. Any other getter has the type its scanned calls declare
+     * (new, addColumn and alias); when a call declares none, or the calls declare different types, the generator
+     * refuses the model with a CONFIG problem that names the call, and the getter is not declared.
+     * @param list<array> $metas
+     * @param list<array{call: string, type: ?string}> $calls the calls that declare the getter
+     * @param list<string> $problems
+     */
+    private static function getterType(
+        string $name,
+        string $class,
+        array $metas,
+        array $calls,
+        array &$problems,
+    ): ?string {
+        foreach ($metas as $meta) {
+            $target = self::pascal($meta['entity']);
+            if ($name === "get{$target}Model") {
+                return "?$target";
+            }
+            if ($name === "get{$target}Models") {
+                return "list<$target>";
+            }
+        }
+        // A call without a type is reported with every call of the model, so the getter itself adds no problem.
+        if ($calls === []) {
+            $problems[] = "$class.$name: no get or gets reads the alias, so its getter has no type";
+            return null;
+        }
+        if (in_array(null, array_column($calls, 'type'), true)) {
+            return null;
+        }
+        $types = array_values(array_unique(array_column($calls, 'type')));
+        if (count($types) !== 1) {
+            $problems[] = "$class.$name: the calls declare different types, " . implode(', ', $types);
+            return null;
+        }
+        return $types[0];
     }
 
     /**
