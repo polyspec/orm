@@ -2,8 +2,8 @@
 
 // Requirements: COD-44.
 // The codes of AES key-version failures: an undeclared key version is CONFIG, a stored version that is not a positive
-// 32-bit integer is CODEC_DECODE on the read path and on the rotation path, and an AES column or version column that the
-// client selected but did not get is INTERNAL.
+// 32-bit integer is CODEC_DECODE on the read path and on the rotation path, and an AES column or version column that
+// the client selected but did not get is INTERNAL.
 declare(strict_types=1);
 
 use PHPUnit\Framework\Attributes\Small;
@@ -31,7 +31,15 @@ final class AesVersionCodesTest extends TestCase
         $config = new Config('', '', 2, [1 => 'old-key', 2 => 'new-key']);
         $cipher = Codec::hostEncode('value', ['aes', 'hex'], 'old-key');
         $cell = [0, ['aes', 'hex'], [], true, 1];
-        foreach ([['abc', 'CODEC_DECODE'], [0, 'CODEC_DECODE'], [2147483648, 'CODEC_DECODE'], [9, 'CONFIG'], ['1', '']] as [$stored, $want]) {
+        foreach (
+            [
+            ['abc', 'CODEC_DECODE'],
+            [0, 'CODEC_DECODE'],
+            [2147483648, 'CODEC_DECODE'],
+            [9, 'CONFIG'],
+            ['1', '']
+            ] as [$stored, $want]
+        ) {
             $rows = [[$cipher, $stored]];
             $got = $this->codeOf(function () use (&$rows, $cell, $config): void {
                 Codec::decodeRows($rows, [$cell], $config);

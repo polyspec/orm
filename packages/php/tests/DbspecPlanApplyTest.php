@@ -26,7 +26,11 @@ use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
 // The statement that every client runs on a new connection.
-const PLAN_CONNECTION_RULES = ['mysql' => ["SET time_zone = '+00:00'"], 'postgres' => ["SET TimeZone = 'UTC'"], 'sqlite' => ['PRAGMA foreign_keys = ON']];
+const PLAN_CONNECTION_RULES = [
+    'mysql' => ["SET time_zone = '+00:00'"],
+    'postgres' => ["SET TimeZone = 'UTC'"],
+    'sqlite' => ['PRAGMA foreign_keys = ON']
+];
 
 /** The DSNs of the servers; the test fails when either is unset. */
 function plan_dsns(): array
@@ -74,7 +78,11 @@ function open_plan_database(string $dialect): array
     $pdo->exec($dialect === 'mysql' ? "USE $quoted" : "SET search_path TO $quoted");
     return [$pdo, static function () use (&$pdo, $admin, $dialect, $quoted, $name): void {
         $pdo = null;
-        $admin->exec(($dialect === 'mysql' ? 'DROP DATABASE ' : 'DROP SCHEMA ') . $quoted . ($dialect === 'mysql' ? '' : ' CASCADE'));
+        $admin->exec(
+            (
+                $dialect === 'mysql' ? 'DROP DATABASE ' : 'DROP SCHEMA '
+            ) . $quoted . ($dialect === 'mysql' ? '' : ' CASCADE')
+        );
         $left = $dialect === 'mysql'
             ? $admin->prepare('SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?')
             : $admin->prepare('SELECT COUNT(*) FROM pg_namespace WHERE nspname = ?');
@@ -92,7 +100,11 @@ function plan_lines(array $lines): string
 /** @param list<Diagnostic> $diagnostics */
 function plan_failure(string $id, array $diagnostics): never
 {
-    throw new RuntimeException("$id: " . json_encode(array_map(static fn(Diagnostic $d): array => [$d->rule, $d->line, $d->column, $d->message], $diagnostics)));
+    throw new RuntimeException(
+        "$id: " . json_encode(
+            array_map(static fn(Diagnostic $d): array => [$d->rule, $d->line, $d->column, $d->message], $diagnostics)
+        )
+    );
 }
 
 /** The text of the first column of the first row; SQL NULL is NULL. Only strings and integers are read as text. */
@@ -105,7 +117,9 @@ function plan_value(PDO $pdo, string $query): string
         $value === null => 'NULL',
         is_string($value) => $value,
         is_int($value) => (string) $value,
-        default => throw new RuntimeException("$query: value of type " . get_debug_type($value) . ' has no text form here'),
+        default => throw new RuntimeException(
+            "$query: value of type " . get_debug_type($value) . ' has no text form here'
+        ),
     };
 }
 
@@ -118,7 +132,11 @@ function plan_steps(PDO $pdo, string $dialect, array $steps): void
         }
         if (isset($step['query'])) {
             $got = plan_value($pdo, $step['query']);
-            Assert::assertSame($step['want'], $got, "{$step['query']}: got " . json_encode($got) . '; want ' . json_encode($step['want']));
+            Assert::assertSame(
+                $step['want'],
+                $got,
+                "{$step['query']}: got " . json_encode($got) . '; want ' . json_encode($step['want'])
+            );
         } elseif ($step['fails'] ?? false) {
             try {
                 $pdo->exec($step['sql']);
@@ -181,13 +199,26 @@ final class DbspecPlanApplyTest extends TestCase
         [$pdo, $drop] = open_plan_database($dialect);
         $schemaIs = static function (string $what, string $wantText) use (&$pdo, $dialect, $id): void {
             $introspected = Dbspec::introspect($pdo, $dialect, 'introspected');
-            Assert::assertSame([], $introspected->unsupported, "$id $what: unsupported " . json_encode(array_map(static fn(Unsupported $u): array => [$u->kind, $u->table, $u->name, $u->reason], $introspected->unsupported)));
+            Assert::assertSame(
+                [],
+                $introspected->unsupported,
+                "$id $what: unsupported " . json_encode(
+                    array_map(
+                        static fn(Unsupported $u): array => [$u->kind, $u->table, $u->name, $u->reason],
+                        $introspected->unsupported
+                    )
+                )
+            );
             $gotText = '';
             if ($introspected->document->tables !== []) {
                 $got = Dbspec::manifest([$introspected->document]);
                 $gotText = $got->manifest?->schemaText ?? plan_failure($id, $got->diagnostics);
             }
-            Assert::assertSame($wantText, $gotText, "$id $what: schema text differs\n--- want\n$wantText--- got\n$gotText");
+            Assert::assertSame(
+                $wantText,
+                $gotText,
+                "$id $what: schema text differs\n--- want\n$wantText--- got\n$gotText"
+            );
         };
         // forward runs the steps before finalize. If it is a restore, the step that has a restore statement
         // runs it (the added column that rollback hid is there).
@@ -219,7 +250,9 @@ final class DbspecPlanApplyTest extends TestCase
                 // A rollback that goes all the way back recreates the old table with the added column hidden.
                 for ($i = count($steps) - 1; $i >= 0; $i--) {
                     if (!$steps[$i]->finalize) {
-                        $pdo->exec($steps[$i]->rollbackRestore !== '' ? $steps[$i]->rollbackRestore : $steps[$i]->rollback);
+                        $pdo->exec(
+                            $steps[$i]->rollbackRestore !== '' ? $steps[$i]->rollbackRestore : $steps[$i]->rollback
+                        );
                     }
                 }
                 if ($dialect === 'sqlite') {

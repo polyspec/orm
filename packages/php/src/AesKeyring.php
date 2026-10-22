@@ -48,7 +48,10 @@ final class AesKeyring
             $value = (int) $value;
         }
         if (!is_int($value) || $value < 1 || $value > 2147483647) {
-            throw new OrmException(Code::CODEC_DECODE, 'aes version ' . var_export($value, true) . ' is not a positive 32-bit integer');
+            throw new OrmException(
+                Code::CODEC_DECODE,
+                'aes version ' . var_export($value, true) . ' is not a positive 32-bit integer'
+            );
         }
         return $value;
     }

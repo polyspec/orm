@@ -70,7 +70,9 @@ final class CoverageConformanceVerificationTest extends TestCase
 
     private static function file(string $driver): string
     {
-        return dirname(__DIR__, 3) . '/tests/conformance/' . ($driver === 'mysql' ? 'vectors.json' : "vectors.$driver.json");
+        return dirname(__DIR__, 3) . '/tests/conformance/' . (
+            $driver === 'mysql' ? 'vectors.json' : "vectors.$driver.json"
+        );
     }
 
     /** @return iterable<string, array{string, mixed}> */
@@ -105,10 +107,15 @@ final class CoverageConformanceVerificationTest extends TestCase
         $variable = 'BENCH_' . strtoupper($driver) . '_DSN';
         $dsn = getenv($variable);
         if (!is_string($dsn) || $dsn === '') {
-            throw new RuntimeException("$variable is required, and database tests never skip; run make databases-create, which seeds the bench databases and writes their DSNs");
+            throw new RuntimeException(
+                "$variable is required, and database tests never skip; run make databases-create, which seeds the bench databases and writes their DSNs"
+            );
         }
         $root = dirname(__DIR__, 3);
-        [$status, $stdout, $stderr] = coverageProcess([PHP_BINARY, "$root/packages/php/testing/conformance/runner.php", '--dsn', $dsn], $root);
+        [$status, $stdout, $stderr] = coverageProcess(
+            [PHP_BINARY, "$root/packages/php/testing/conformance/runner.php", '--dsn', $dsn],
+            $root
+        );
         if ($status !== 0) {
             throw new RuntimeException(str_replace($dsn, '[dsn]', "conformance runner exited $status: $stderr$stdout"));
         }
@@ -119,7 +126,10 @@ final class CoverageConformanceVerificationTest extends TestCase
     {
         $output = self::runnerOutput($driver);
         Assert::assertTrue(property_exists($output, $name), "the runner gave no output for $name");
-        Assert::assertTrue(sameJson($output->$name, $expect), "vector $name differs from " . basename(self::file($driver)) . ': ' . json_encode($output->$name));
+        Assert::assertTrue(
+            sameJson($output->$name, $expect),
+            "vector $name differs from " . basename(self::file($driver)) . ': ' . json_encode($output->$name)
+        );
     }
 
     #[DataProvider('mysqlVectors')]
@@ -161,13 +171,18 @@ final class CoverageConformanceVerificationTest extends TestCase
             }
             [$status, $stdout, $stderr] = coverageProcess($command, $root);
             if ($status !== 0) {
-                throw new RuntimeException(str_replace($dsn, '[dsn]', "conformance runner exited $status: $stderr$stdout"));
+                throw new RuntimeException(
+                    str_replace($dsn, '[dsn]', "conformance runner exited $status: $stderr$stdout")
+                );
             }
             $output = json_decode($stdout, false, 512, JSON_THROW_ON_ERROR);
             $names = array_keys(get_object_vars($output));
             Assert::assertTrue($names === CONFORMANCE_VECTORS, 'runner output vectors ' . json_encode($names));
             foreach (CONFORMANCE_VECTORS as $name) {
-                Assert::assertTrue(sameJson($output->$name, $expect[$name]), "vector $name differs from $file: " . json_encode($output->$name));
+                Assert::assertTrue(
+                    sameJson($output->$name, $expect[$name]),
+                    "vector $name differs from $file: " . json_encode($output->$name)
+                );
             }
         }
     }

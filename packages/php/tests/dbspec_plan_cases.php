@@ -12,9 +12,22 @@ function plan_vectors(): array
     if ($vectors !== null) {
         return $vectors;
     }
-    $vectors = json_decode(file_get_contents(dirname(__DIR__, 3) . '/tests/dbspec/plans.json'), true, 512, JSON_THROW_ON_ERROR);
-    if ($vectors['version'] !== 1 || ($vectors['cases'] ?? []) === [] || ($vectors['invalid'] ?? []) === [] || ($vectors['chains'] ?? []) === [] || ($vectors['parse'] ?? []) === [] || ($vectors['comparisons'] ?? []) === []) {
-        throw new RuntimeException('tests/dbspec/plans.json has no version 1 cases, invalid cases, chains, parse cases and comparisons');
+    $vectors = json_decode(
+        file_get_contents(dirname(__DIR__, 3) . '/tests/dbspec/plans.json'),
+        true,
+        512,
+        JSON_THROW_ON_ERROR
+    );
+    if (
+        $vectors['version'] !== 1 || ($vectors['cases'] ?? []) === [] || (
+        $vectors['invalid'] ?? []
+        ) === [] || ($vectors['chains'] ?? []) === [] || ($vectors['parse'] ?? []) === [] || (
+        $vectors['comparisons'] ?? []
+        ) === []
+    ) {
+        throw new RuntimeException(
+            'tests/dbspec/plans.json has no version 1 cases, invalid cases, chains, parse cases and comparisons'
+        );
     }
     return $vectors;
 }

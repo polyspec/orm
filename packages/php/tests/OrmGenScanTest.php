@@ -41,7 +41,10 @@ final class OrmGenScanTest extends TestCase
         return $out;
     }
 
-    /** Generates the models of contracts/fixtures/bench/dbspec-set.json with --scan of $sources in a new folder; returns the code, stderr and the folder. */
+    /**
+     * Generates the models of contracts/fixtures/bench/dbspec-set.json with --scan of $sources in a new folder; returns
+     * the code, stderr and the folder.
+     */
     private static function generate(string $name, array $sources, array $extra = []): array
     {
         $dir = self::$work . '/' . $name;
@@ -54,15 +57,28 @@ final class OrmGenScanTest extends TestCase
         }
         $stderr = fopen('php://memory', 'w+');
         ob_start();
-        $code = OrmGen::run(['gen', '--set', dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json', '--out', "$dir/model", '--namespace', self::NS, ...$scan, ...$extra], $stderr);
+        $code = OrmGen::run(
+            [
+                'gen',
+                '--set',
+                dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json',
+                '--out',
+                "$dir/model",
+                '--namespace',
+                self::NS,
+                ...$scan,
+                ...$extra
+            ],
+            $stderr
+        );
         ob_end_clean();
         rewind($stderr);
         return [$code, (string) stream_get_contents($stderr), $dir];
     }
 
     /**
-     * Generates the models of member.dbs (or of $owned as note.dbs when given), which uses core.dbs as an external document,
-     * with --scan of $sources in a new folder; returns the code, stderr and the folder.
+     * Generates the models of member.dbs (or of $owned as note.dbs when given), which uses core.dbs as an external
+     * document, with --scan of $sources in a new folder; returns the code, stderr and the folder.
      */
     private static function generateExternal(string $name, array $sources, ?string $owned = null): array
     {
@@ -79,7 +95,13 @@ final class OrmGenScanTest extends TestCase
         }
         copy("$root/contracts/fixtures/external/core.dbs", "$dir/set/core/core.dbs");
         $set = "$dir/set/app/dbspec-set.json";
-        file_put_contents($set, json_encode(['schema' => 1, 'documents' => [$document], 'external' => ['../core/core.dbs']], JSON_UNESCAPED_SLASHES));
+        file_put_contents(
+            $set,
+            json_encode(
+                ['schema' => 1, 'documents' => [$document], 'external' => ['../core/core.dbs']],
+                JSON_UNESCAPED_SLASHES
+            )
+        );
         $scan = [];
         foreach ($sources as $file => $text) {
             file_put_contents("$dir/src/$file", $text);
@@ -110,7 +132,9 @@ final class OrmGenScanTest extends TestCase
         $steps = array_map(static fn(array $call): string => "{$call['name']}({$args($call['args'])})", $case['calls']);
         $calls = ($case['chain'] ?? false) ? "$receiver->" . implode('->', $steps) . ";\n"
             : implode('', array_map(static fn(string $step): string => "$receiver->$step;\n", $steps));
-        $source = "<?php\nuse " . self::NS . "\\{$case['model']};\n\n\$db = null;\n\$m = new {$case['model']}();\n$calls";
+        $source = "<?php\nuse " . self::NS . "\\{$case[
+            'model'
+        ]};\n\n\$db = null;\n\$m = new {$case['model']}();\n$calls";
         [$code, $err, $dir] = self::generate('vector-' . $case['id'], ['usage.php' => $source]);
         if (isset($case['expected']['rejected'])) {
             self::assertSame(1, $code, $case['id'] . ' status');
@@ -181,7 +205,21 @@ PHP;
         self::assertSame(0, $code, $err);
         $author = self::tags($dir, 'Author');
         sort($author, SORT_STRING);
-        self::assertSame(['andGtReadCount', 'geLikeCount', 'getBySeq', 'ltEndDt', 'ltSeq', 'ltSuccessCount', 'neName', 'neServiceSeq', 'orLeUserSeq'], $author, 'Author');
+        self::assertSame(
+            [
+                'andGtReadCount',
+                'geLikeCount',
+                'getBySeq',
+                'ltEndDt',
+                'ltSeq',
+                'ltSuccessCount',
+                'neName',
+                'neServiceSeq',
+                'orLeUserSeq'
+            ],
+            $author,
+            'Author'
+        );
         $user = self::tags($dir, 'User');
         sort($user, SORT_STRING);
         self::assertSame(['gtSeq', 'lkName'], $user, 'User');
@@ -253,7 +291,10 @@ foreach (\$rows as \$row) {
 PHP;
         [$code, $err, $dir] = self::generate('unattached-getter', ['usage.php' => $source]);
         self::assertSame(1, $code, 'status');
-        self::assertStringContainsString('User.getGhost is called, but no aliasGhost, newGhost or addColumn call attaches it', $err);
+        self::assertStringContainsString(
+            'User.getGhost is called, but no aliasGhost, newGhost or addColumn call attaches it',
+            $err
+        );
         self::assertFileDoesNotExist("$dir/model/User.php", 'a refused generation writes nothing');
     }
 
@@ -284,7 +325,8 @@ PHP;
     {
         // Requirements: DSL-151.
         // A variable initialized from a chain on an imported class and reassigned from its own chain in a conditional
-        // expression still holds that class, as the checker types it, so the calls on it after each reassignment are its calls.
+        // expression still holds that class, as the checker types it, so the calls on it after each reassignment are
+        // its calls.
         $ns = self::NS;
         $source = <<<PHP
 <?php
@@ -305,7 +347,11 @@ PHP;
         [$code, $err, $dir] = self::generate('reassigned-variable', ['usage.php' => $source]);
         self::assertSame(0, $code, $err);
         foreach (['gtReadCount', 'andGtReadCount', 'ltSeq', 'andLtSeq'] as $method) {
-            self::assertContains($method, self::tags($dir, 'Author'), "Author lacks $method called on a reassigned variable");
+            self::assertContains(
+                $method,
+                self::tags($dir, 'Author'),
+                "Author lacks $method called on a reassigned variable"
+            );
         }
     }
 
@@ -351,9 +397,9 @@ PHP;
 
     public function test_a_name_is_typed_by_its_binding_in_its_own_scope(): void
     {
-        // The outer row is a ServiceMember. A destructuring assignment and an if with differing branches leave row with a
-        // class the scan cannot type, so their setIsClose calls are not the outer ServiceMember's; the call on an Author row
-        // in another function is attributed to Author.
+        // The outer row is a ServiceMember. A destructuring assignment and an if with differing branches leave row with
+        // a class the scan cannot type, so their setIsClose calls are not the outer ServiceMember's; the call on an
+        // Author row in another function is attributed to Author.
         $ns = self::NS;
         $source = <<<PHP
 <?php
@@ -387,7 +433,8 @@ PHP;
 
     public function test_a_name_that_may_hold_two_models_gets_the_call_on_each(): void
     {
-        // Each branch binds row to another model, so the call after the if is on either: each class declares the method.
+        // Each branch binds row to another model, so the call after the if is on either: each class declares the
+        // method.
         $ns = self::NS;
         $source = <<<PHP
 <?php
@@ -468,7 +515,10 @@ PHP;
         self::assertNotContains('ltSeq', self::tags($dir, 'Author'));
     }
 
-    /** A getter on a name that may hold two models is refused only when no possible class has it: Author has is_close, User does not. */
+    /**
+     * A getter on a name that may hold two models is refused only when no possible class has it: Author has is_close,
+     * User does not.
+     */
     public function test_a_possible_class_with_the_getter_accepts_the_call_after_an_if(): void
     {
         $ns = self::NS;
@@ -488,7 +538,10 @@ function branch(bool \$x): void
     \$row->getIsClose();
 }
 PHP;
-        [$code, $err] = self::generate('a_possible_class_with_the_getter_accepts_the_call_after_an_if', ['usage.php' => $source]);
+        [$code, $err] = self::generate(
+            'a_possible_class_with_the_getter_accepts_the_call_after_an_if',
+            ['usage.php' => $source]
+        );
         self::assertSame(0, $code, $err);
     }
 
@@ -513,7 +566,10 @@ function loops(): void
     }
 }
 PHP;
-        [$code, $err] = self::generate('a_possible_class_with_the_getter_accepts_the_call_in_a_loop', ['usage.php' => $source]);
+        [$code, $err] = self::generate(
+            'a_possible_class_with_the_getter_accepts_the_call_in_a_loop',
+            ['usage.php' => $source]
+        );
         self::assertSame(0, $code, $err);
     }
 
@@ -560,7 +616,10 @@ function zero(array \$xs): void
     \$row->getIsClose();
 }
 PHP;
-        [$code, $err] = self::generate('a_loop_that_may_run_zero_times_keeps_the_class_before_it', ['usage.php' => $source]);
+        [$code, $err] = self::generate(
+            'a_loop_that_may_run_zero_times_keeps_the_class_before_it',
+            ['usage.php' => $source]
+        );
         self::assertSame(0, $code, $err);
     }
 
@@ -607,11 +666,16 @@ function loops(bool \$more): void
     }
 }
 PHP;
-        [$code, $err] = self::generate('a_reference_in_a_loop_forgets_both_names_at_its_entry', ['usage.php' => $source]);
+        [$code, $err] = self::generate(
+            'a_reference_in_a_loop_forgets_both_names_at_its_entry',
+            ['usage.php' => $source]
+        );
         self::assertSame(0, $code, $err);
     }
 
-    /** A model method is refused only when no possible class declares it: Author has is_close, ServiceMember does not. */
+    /**
+     * A model method is refused only when no possible class declares it: Author has is_close, ServiceMember does not.
+     */
     public function test_a_method_is_refused_only_when_no_possible_class_declares_it(): void
     {
         $ns = self::NS;
@@ -705,7 +769,8 @@ PHP;
     }
 
     /**
-     * Generates the models of shapes.dbs, whose alpha and beta tables share the name flag with a boolean and a datetime column, with
+     * Generates the models of shapes.dbs, whose alpha and beta tables share the name flag with a boolean and a datetime
+     * column, with
      * --scan of $source in a new folder; returns the code, stderr and the folder.
      */
     private static function generateShapes(string $name, string $source): array
@@ -713,19 +778,28 @@ PHP;
         $dir = self::$work . '/' . $name;
         @mkdir("$dir/set", 0o700, true);
         @mkdir("$dir/src", 0o700, true);
-        file_put_contents("$dir/set/shapes.dbs", "dbspec 1 shapes\n\ntable alpha {\n  seq i64 identity\n  flag bool\n  primary key (seq)\n}\n\ntable beta {\n  seq i64 identity\n  flag datetime(6)\n  primary key (seq)\n}\n");
+        file_put_contents(
+            "$dir/set/shapes.dbs",
+            "dbspec 1 shapes\n\ntable alpha {\n  seq i64 identity\n  flag bool\n  primary key (seq)\n}\n\ntable beta {\n  seq i64 identity\n  flag datetime(6)\n  primary key (seq)\n}\n"
+        );
         $set = "$dir/set/dbspec-set.json";
         file_put_contents($set, json_encode(['schema' => 1, 'documents' => ['shapes.dbs']], JSON_UNESCAPED_SLASHES));
         file_put_contents("$dir/src/usage.php", $source);
         $stderr = fopen('php://memory', 'w+');
         ob_start();
-        $code = OrmGen::run(['gen', '--set', $set, '--out', "$dir/model", '--namespace', self::NS, '--scan', "$dir/src/usage.php"], $stderr);
+        $code = OrmGen::run(
+            ['gen', '--set', $set, '--out', "$dir/model", '--namespace', self::NS, '--scan', "$dir/src/usage.php"],
+            $stderr
+        );
         ob_end_clean();
         rewind($stderr);
         return [$code, (string) stream_get_contents($stderr), $dir];
     }
 
-    /** An argument count is accepted when one class that may hold the name accepts it, and refused when no possible class does. */
+    /**
+     * An argument count is accepted when one class that may hold the name accepts it, and refused when no possible
+     * class does.
+     */
     public function test_an_argument_count_is_refused_only_when_no_possible_class_accepts_it(): void
     {
         $ns = self::NS;
@@ -746,11 +820,15 @@ function read(bool \$x): void
     \$row->neFlag(true, false);
 }
 PHP;
-        // Alpha takes one argument and Beta takes two (its datetime column takes the optional comparison): two arguments are accepted.
+        // Alpha takes one argument and Beta takes two (its datetime column takes the optional comparison): two
+        // arguments are accepted.
         [$code, $err] = self::generateShapes('count-one-accepts', $source);
         self::assertSame(0, $code, $err);
         // No class takes three arguments, so the call is refused, naming the class that declares the method.
-        [$code, $err] = self::generateShapes('count-none-accepts', str_replace('neFlag(true, false)', 'neFlag(true, false, true)', $source));
+        [$code, $err] = self::generateShapes(
+            'count-none-accepts',
+            str_replace('neFlag(true, false)', 'neFlag(true, false, true)', $source)
+        );
         self::assertSame(1, $code, 'status');
         self::assertStringContainsString('Alpha.neFlag takes 1 argument, called with 3', $err);
     }
@@ -828,7 +906,20 @@ PHP;
         $run = function (string $out) use ($dir): array {
             $stderr = fopen('php://memory', 'w+');
             ob_start();
-            $code = OrmGen::run(['gen', '--set', dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json', '--out', $out, '--namespace', self::NS, '--scan', "$dir/src"], $stderr);
+            $code = OrmGen::run(
+                [
+                    'gen',
+                    '--set',
+                    dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json',
+                    '--out',
+                    $out,
+                    '--namespace',
+                    self::NS,
+                    '--scan',
+                    "$dir/src"
+                ],
+                $stderr
+            );
             ob_end_clean();
             rewind($stderr);
             return [$code, (string) stream_get_contents($stderr)];
@@ -851,7 +942,20 @@ PHP;
         file_put_contents("$dir/src/broken.php", "<?php\n\$a = new (;\n");
         $stderr = fopen('php://memory', 'w+');
         ob_start();
-        $code = OrmGen::run(['gen', '--set', dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json', '--out', "$dir/model", '--namespace', self::NS, '--scan', "$dir/src"], $stderr);
+        $code = OrmGen::run(
+            [
+                'gen',
+                '--set',
+                dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json',
+                '--out',
+                "$dir/model",
+                '--namespace',
+                self::NS,
+                '--scan',
+                "$dir/src"
+            ],
+            $stderr
+        );
         ob_end_clean();
         rewind($stderr);
         $err = (string) stream_get_contents($stderr);
@@ -866,11 +970,27 @@ PHP;
         $dir = self::$work . '/links';
         mkdir("$dir/src/vendor/pkg", 0o700, true);
         file_put_contents("$dir/src/a.php", "<?php\n\$a = new " . self::NS . "\\Author();\n\$a->ltSeq(1);\n");
-        file_put_contents("$dir/src/vendor/pkg/b.php", "<?php\n\$a = new " . self::NS . "\\Author();\n\$a->gtSeq(1);\n");
+        file_put_contents(
+            "$dir/src/vendor/pkg/b.php",
+            "<?php\n\$a = new " . self::NS . "\\Author();\n\$a->gtSeq(1);\n"
+        );
         $run = function (string $out) use ($dir): array {
             $stderr = fopen('php://memory', 'w+');
             ob_start();
-            $code = OrmGen::run(['gen', '--set', dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json', '--out', $out, '--namespace', self::NS, '--scan', "$dir/src"], $stderr);
+            $code = OrmGen::run(
+                [
+                    'gen',
+                    '--set',
+                    dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json',
+                    '--out',
+                    $out,
+                    '--namespace',
+                    self::NS,
+                    '--scan',
+                    "$dir/src"
+                ],
+                $stderr
+            );
             ob_end_clean();
             rewind($stderr);
             return [$code, (string) stream_get_contents($stderr)];
@@ -893,7 +1013,18 @@ PHP;
         self::assertSame(0, $code, $err);
         $stderr = fopen('php://memory', 'w+');
         ob_start();
-        $args = ['gen', '--set', dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json', '--out', "$dir/model", '--namespace', self::NS, '--scan', "$dir/src/usage.php", '--check'];
+        $args = [
+            'gen',
+            '--set',
+            dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json',
+            '--out',
+            "$dir/model",
+            '--namespace',
+            self::NS,
+            '--scan',
+            "$dir/src/usage.php",
+            '--check'
+        ];
         self::assertSame(0, OrmGen::run($args, $stderr), 'current');
         self::assertSame('', (string) ob_get_clean());
         file_put_contents("$dir/src/usage.php", $source . "\$a->gtSeq(1);\n");
@@ -931,11 +1062,23 @@ PHP;
         self::assertSame(0, $code, $err);
         file_put_contents("$dir/models.php", "<?php\nspl_autoload_register(static function (string \$class): void {\n"
             . "    \$prefix = '" . addslashes($ns) . "\\\\';\n"
-            . "    if (str_starts_with(\$class, \$prefix)) {\n        require " . var_export("$dir/model/", true) . " . substr(\$class, strlen(\$prefix)) . '.php';\n    }\n});\n");
-        file_put_contents("$dir/autoload.php", "<?php\nrequire " . var_export("$root/packages/php/tests/autoload.php", true) . ";\nrequire " . var_export("$dir/models.php", true) . ";\n");
+            . "    if (str_starts_with(\$class, \$prefix)) {\n        require " . var_export(
+                "$dir/model/",
+                true
+            ) . " . substr(\$class, strlen(\$prefix)) . '.php';\n    }\n});\n");
+        file_put_contents(
+            "$dir/autoload.php",
+            "<?php\nrequire " . var_export(
+                "$root/packages/php/tests/autoload.php",
+                true
+            ) . ";\nrequire " . var_export("$dir/models.php", true) . ";\n"
+        );
         file_put_contents("$dir/phpstan.neon", "parameters:\n    tmpDir: $dir/phpstan-cache\n");
         // A call that the sources of the scan do not make is not declared: the control that makes the zero meaningful.
-        file_put_contents("$dir/control.php", "<?php\ndeclare(strict_types=1);\n\nfunction control(\\$ns\\Author \$a): void\n{\n    \$a->ltReadCount(1);\n}\n");
+        file_put_contents(
+            "$dir/control.php",
+            "<?php\ndeclare(strict_types=1);\n\nfunction control(\\$ns\\Author \$a): void\n{\n    \$a->ltReadCount(1);\n}\n"
+        );
         $analyse = function (string $file) use ($root, $dir): array {
             $command = [PHP_BINARY, "$root/vendor-php/bin/phpstan", 'analyse', '--no-progress', '--no-ansi', '--error-format=json',
                 '--configuration', "$dir/phpstan.neon", '--level=9', '--memory-limit=512M', '--autoload-file', "$dir/autoload.php", $file];
@@ -947,24 +1090,39 @@ PHP;
             $status = proc_close($process);
             // PHPStan exits 0 without errors and 1 with errors; any other status is a run that did not analyse.
             self::assertContains($status, [0, 1], "phpstan analyse $file exited with $status:\n$out$err");
-            // The JSON report names the identifier of each error (files.<path>.messages[].identifier), so a finding is matched by
-            // its identifier, not by the text of a format.
+            // The JSON report names the identifier of each error (files.<path>.messages[].identifier), so a finding is
+            // matched by its identifier, not by the text of a format.
             $report = json_decode($out, true, flags: JSON_THROW_ON_ERROR);
             self::assertIsArray($report, "phpstan analyse $file wrote no JSON report:\n$out$err");
             $findings = [];
             foreach ((array) ($report['files'] ?? []) as $path => $entry) {
                 foreach ((array) (is_array($entry) ? ($entry['messages'] ?? []) : []) as $message) {
-                    self::assertIsArray($message, "phpstan analyse $file reported a message that is not an object:\n$out");
-                    $findings[] = sprintf('%s:%s: %s [%s]', $path, $message['line'] ?? '?', $message['message'] ?? '', $message['identifier'] ?? 'no identifier');
+                    self::assertIsArray(
+                        $message,
+                        "phpstan analyse $file reported a message that is not an object:\n$out"
+                    );
+                    $findings[] = sprintf(
+                        '%s:%s: %s [%s]',
+                        $path,
+                        $message['line'] ?? '?',
+                        $message['message'] ?? '',
+                        $message['identifier'] ?? 'no identifier'
+                    );
                 }
             }
             return [$findings, $out . $err, $status];
         };
         [$findings, $raw] = $analyse("$dir/src/usage.php");
-        $notFound = array_values(array_filter($findings, static fn(string $line): bool => str_ends_with($line, '[method.notFound]')));
+        $notFound = array_values(
+            array_filter($findings, static fn(string $line): bool => str_ends_with($line, '[method.notFound]'))
+        );
         self::assertSame([], $notFound, "method.notFound:\n" . implode("\n", $notFound) . "\n$raw");
         [$control, $controlRaw, $controlStatus] = $analyse("$dir/control.php");
         self::assertSame(1, $controlStatus, "the control call is declared:\n$controlRaw");
-        self::assertNotSame([], array_filter($control, static fn(string $line): bool => str_ends_with($line, '[method.notFound]')), "the control call is declared:\n$controlRaw");
+        self::assertNotSame(
+            [],
+            array_filter($control, static fn(string $line): bool => str_ends_with($line, '[method.notFound]')),
+            "the control call is declared:\n$controlRaw"
+        );
     }
 }

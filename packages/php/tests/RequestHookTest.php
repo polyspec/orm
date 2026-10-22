@@ -4,7 +4,8 @@
 // request_hook_cases.php, each a data set named by its case id, on a SQLite
 // file of its own under a temporary directory that the test removes on every
 // path.
-// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RequestHookTest.php [--filter <case>]
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RequestHookTest.php
+// [--filter <case>]
 declare(strict_types=1);
 
 require_once __DIR__ . '/request_hook_cases.php';

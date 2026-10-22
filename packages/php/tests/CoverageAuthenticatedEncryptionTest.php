@@ -24,7 +24,10 @@ function encryptionCase(array $fixture, string $id, string $operation): array
 {
     $found = array_values(array_filter($fixture['cases'], static fn(array $c): bool => $c['id'] === $id));
     Assert::assertTrue(count($found) === 1, 'authenticated_encryption.json has ' . count($found) . " cases $id");
-    Assert::assertTrue($found[0]['operation'] === $operation, "case $id has operation {$found[0]['operation']}, want $operation");
+    Assert::assertTrue(
+        $found[0]['operation'] === $operation,
+        "case $id has operation {$found[0]['operation']}, want $operation"
+    );
     return $found[0];
 }
 
@@ -61,8 +64,14 @@ final class CoverageAuthenticatedEncryptionTest extends TestCase
         $envelope = Codec::hostEncode($case['input']['plain'], ['aes'], $case['input']['key']);
         Assert::assertTrue($envelope instanceof Bytes, 'the envelope is not bytes');
         $prefix = hex2bin($case['expected']['prefix_hex']);
-        Assert::assertTrue($prefix !== false && str_starts_with($envelope->bytes, $prefix), 'envelope prefix ' . bin2hex(substr($envelope->bytes, 0, 9)));
-        Assert::assertTrue(strlen($envelope->bytes) === $case['expected']['envelope_bytes'], 'envelope length ' . strlen($envelope->bytes));
+        Assert::assertTrue(
+            $prefix !== false && str_starts_with($envelope->bytes, $prefix),
+            'envelope prefix ' . bin2hex(substr($envelope->bytes, 0, 9))
+        );
+        Assert::assertTrue(
+            strlen($envelope->bytes) === $case['expected']['envelope_bytes'],
+            'envelope length ' . strlen($envelope->bytes)
+        );
         $again = Codec::hostEncode($case['input']['plain'], ['aes'], $case['input']['key']);
         Assert::assertTrue($again->bytes !== $envelope->bytes, 'two encryptions share a nonce');
         $plain = Codec::hostDecode($envelope->bytes, ['aes'], $case['input']['key']);

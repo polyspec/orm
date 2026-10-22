@@ -52,7 +52,12 @@ function dbspec_analysis_focused_cases(): array
         [[1, 0, 6, 'keyword'], [1, 7, 8, 'number'], [1, 9, 10, 'name'],
             [3, 0, 5, 'keyword'], [3, 6, 7, 'name'], [3, 8, 9, 'punctuation'],
             [4, 2, 4, 'word'], [4, 5, 8, 'word'], [4, 9, 14, 'word'],
-            [5, 2, 9, 'keyword'], [5, 10, 13, 'keyword'], [5, 14, 15, 'punctuation'], [5, 15, 17, 'name'], [5, 17, 18, 'punctuation'],
+            [5, 2, 9, 'keyword'], [5, 10, 13, 'keyword'], [
+                5,
+                14,
+                15,
+                'punctuation'
+            ], [5, 15, 17, 'name'], [5, 17, 18, 'punctuation'],
             [6, 0, 1, 'punctuation'],
             [8, 0, 5, 'comment']],
     ],

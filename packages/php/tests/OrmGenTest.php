@@ -32,7 +32,10 @@ final class OrmGenTest extends TestCase
     {
         @mkdir($dir, 0o700, true);
         $path = "$dir/dbspec-set.json";
-        file_put_contents($path, json_encode(['schema' => 1, 'documents' => $documents, 'external' => $external], JSON_UNESCAPED_SLASHES));
+        file_put_contents(
+            $path,
+            json_encode(['schema' => 1, 'documents' => $documents, 'external' => $external], JSON_UNESCAPED_SLASHES)
+        );
         return $path;
     }
 
@@ -62,10 +65,24 @@ final class OrmGenTest extends TestCase
         $work = self::$work;
         $dir = "$work/gen-check";
         @mkdir("$dir/model", 0o700, true);
-        file_put_contents("$dir/example.dbs", "dbspec 1 example\n\ntable item {\n  seq i64\n  name varchar(32)\n  primary key (seq)\n}\n\ntable tag {\n  seq i64\n  primary key (seq)\n}\n");
+        file_put_contents(
+            "$dir/example.dbs",
+            "dbspec 1 example\n\ntable item {\n  seq i64\n  name varchar(32)\n  primary key (seq)\n}\n\ntable tag {\n  seq i64\n  primary key (seq)\n}\n"
+        );
         $set = self::setFile($dir, ['example.dbs']);
-        $args = ['gen', '--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example', '--check'];
-        [$code] = self::tool(['gen', '--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example']);
+        $args = [
+            'gen',
+            '--set',
+            $set,
+            '--out',
+            "$dir/model",
+            '--namespace',
+            'Polyspec\\Orm\\Tests\\Example',
+            '--check'
+        ];
+        [$code] = self::tool(
+            ['gen', '--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example']
+        );
         self::assertTrue($code === 0, 'gen');
         file_put_contents("$dir/model/Notes.php", "<?php\n");
         [$code, $out, $err] = self::tool($args);
@@ -75,8 +92,15 @@ final class OrmGenTest extends TestCase
         file_put_contents("$dir/model/Removed.php", "<?php\n" . \Polyspec\Orm\Generator::MARKER . "\n");
         $before = array_map(fn($f) => file_get_contents($f), glob("$dir/model/*.php"));
         [$code, $out] = self::tool($args);
-        self::assertTrue($code === 1 && $out === "differs: $dir/model/Item.php\nextra: $dir/model/Removed.php\nmissing: $dir/model/Tag.php\n", "differences: $code $out");
-        self::assertTrue(array_map(fn($f) => file_get_contents($f), glob("$dir/model/*.php")) === $before, 'gen --check wrote files');
+        self::assertTrue(
+            $code === 1
+                && $out === "differs: $dir/model/Item.php\nextra: $dir/model/Removed.php\nmissing: $dir/model/Tag.php\n",
+            "differences: $code $out"
+        );
+        self::assertTrue(
+            array_map(fn($f) => file_get_contents($f), glob("$dir/model/*.php")) === $before,
+            'gen --check wrote files'
+        );
     }
 
     // Requirements: DBS-4, DBS-27, DBS-155.
@@ -90,7 +114,9 @@ final class OrmGenTest extends TestCase
             copy(dirname(__DIR__, 3) . "/tests/dbspec/files/$name", "$work/signature/$name");
         }
         $dir = "$work/signature/model";
-        [$code, $out, $err] = self::tool(['gen', '--set', $set, '--out', $dir, '--namespace', 'Polyspec\\Orm\\Tests\\Example']);
+        [$code, $out, $err] = self::tool(
+            ['gen', '--set', $set, '--out', $dir, '--namespace', 'Polyspec\\Orm\\Tests\\Example']
+        );
         $want = "orm-gen: SCHEMA_INVALID: $work/signature/dbschema.dbs:1:1: signature: $work/signature/dbschema.dbs is not a dbspec document\n"
             . "$work/signature/empty.dbs:1:1: signature: $work/signature/empty.dbs is not a dbspec document\n";
         self::assertTrue($code === 1 && $out === '' && $err === $want, "$code $out $err");
@@ -103,7 +129,9 @@ final class OrmGenTest extends TestCase
         $work = self::$work;
         $dir = "$work/set-errors";
         $set = self::setFile($dir, ['gone.dbs', 'sub\\x.dbs']);
-        [$code, $out, $err] = self::tool(['gen', '--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example']);
+        [$code, $out, $err] = self::tool(
+            ['gen', '--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example']
+        );
         $want = "orm-gen: CONFIG: set.file: $dir/gone.dbs: gone.dbs is not a name that $dir/ lists\n"
             . "set.path: $set: the documents path \"sub\\\\x.dbs\" has no normal form\n";
         self::assertTrue($code === 1 && $out === '' && $err === $want, "$code $out $err");
@@ -117,9 +145,27 @@ final class OrmGenTest extends TestCase
         $dir = "$work/positional";
         $set = self::setFile($dir, ['example.dbs']);
         file_put_contents("$dir/example.dbs", "dbspec 1 example\n\ntable item {\n  seq i64\n  primary key (seq)\n}\n");
-        foreach ([['--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example', "$dir/example.dbs"], ['--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example', "$dir/example.dbs"], ['--set', $set, '--use', "$dir/example.dbs", '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example']] as $args) {
+        foreach (
+            [
+            ['--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example', "$dir/example.dbs"],
+            ['--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example', "$dir/example.dbs"],
+            [
+                '--set',
+                $set,
+                '--use',
+                "$dir/example.dbs",
+                '--out',
+                "$dir/model",
+                '--namespace',
+                'Polyspec\\Orm\\Tests\\Example'
+            ]
+            ] as $args
+        ) {
             [$code, $out, $err] = self::tool(['gen', ...$args]);
-            self::assertTrue($code === 2 && $out === '' && str_contains($err, 'usage: orm-gen gen --set '), json_encode($args) . ": $code $out $err");
+            self::assertTrue(
+                $code === 2 && $out === '' && str_contains($err, 'usage: orm-gen gen --set '),
+                json_encode($args) . ": $code $out $err"
+            );
         }
         self::assertTrue(!file_exists("$dir/model"), 'gen wrote the models');
     }
@@ -134,9 +180,17 @@ final class OrmGenTest extends TestCase
         @mkdir("$dir/model", 0o700, true);
         $set = self::setFile($dir, ['example.dbs']);
         foreach (['create', 'restore'] as $column) {
-            file_put_contents("$dir/example.dbs", "dbspec 1 example\n\ntable item {\n  seq i64\n  $column varchar(32)\n  primary key (seq)\n}\n");
-            [$code, $out, $err] = self::tool(['gen', '--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example']);
-            self::assertTrue($code !== 0 && str_contains($out . $err, "column name is a reserved method name: $column"), "$column: $code $out $err");
+            file_put_contents(
+                "$dir/example.dbs",
+                "dbspec 1 example\n\ntable item {\n  seq i64\n  $column varchar(32)\n  primary key (seq)\n}\n"
+            );
+            [$code, $out, $err] = self::tool(
+                ['gen', '--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example']
+            );
+            self::assertTrue(
+                $code !== 0 && str_contains($out . $err, "column name is a reserved method name: $column"),
+                "$column: $code $out $err"
+            );
         }
     }
 
@@ -144,25 +198,46 @@ final class OrmGenTest extends TestCase
     public function test_gen_generates_the_owned_and_the_used_external_tables_of_a_set(): void
     {
         $work = self::$work;
-        // member.dbs uses ext_account and ext_audit of core.dbs, an external document of the set: each used external table
-        // gets a read-only model (docs/spec/dbspec.md "External documents"), an unused one (ext_session) none, and the
-        // bootstrap holds the text of the used external tables.
+        // member.dbs uses ext_account and ext_audit of core.dbs, an external document of the set: each used external
+        // table gets a read-only model (docs/spec/dbspec.md "External documents"), an unused one (ext_session) none,
+        // and the bootstrap holds the text of the used external tables.
         $root = dirname(__DIR__, 3);
         $dir = "$work/gen-use";
         $set = self::setFile("$dir/set/app", ['member.dbs'], ['../core/core.dbs']);
         @mkdir("$dir/set/core", 0o700, true);
         copy("$root/contracts/fixtures/external/member.dbs", "$dir/set/app/member.dbs");
         copy("$root/contracts/fixtures/external/core.dbs", "$dir/set/core/core.dbs");
-        [$code, $out, $err] = self::tool(['gen', '--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example']);
+        [$code, $out, $err] = self::tool(
+            ['gen', '--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example']
+        );
         self::assertTrue($code === 0, "gen: $code $out $err");
         $files = array_map('basename', glob("$dir/model/*.php") ?: []);
         sort($files);
-        self::assertTrue($files === ['ExtAccount.php', 'ExtAudit.php', 'ExtPost.php', 'ExtPostHistory.php', 'bootstrap.php', 'schema_declarations.php'], 'generated files ' . json_encode($files));
-        // The text is written in pieces joined by the concatenation operator (Generator::text), so the pieces are joined back first.
+        self::assertTrue(
+            $files === [
+                'ExtAccount.php',
+                'ExtAudit.php',
+                'ExtPost.php',
+                'ExtPostHistory.php',
+                'bootstrap.php',
+                'schema_declarations.php'
+            ],
+            'generated files ' . json_encode($files)
+        );
+        // The text is written in pieces joined by the concatenation operator (Generator::text), so the pieces are
+        // joined back first.
         $declarations = (string) @file_get_contents("$dir/model/schema_declarations.php");
         $text = str_replace("'\n    . '", '', $declarations);
-        self::assertTrue(str_contains($declarations, 'const EXTERNAL_TEXT = ') && str_contains($text, 'table ext_account {') && !str_contains($text, 'table ext_session {'), 'the declarations carry the used external tables');
-        [$code, $out] = self::tool(['gen', '--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example', '--check']);
+        self::assertTrue(
+            str_contains(
+                $declarations,
+                'const EXTERNAL_TEXT = '
+            ) && str_contains($text, 'table ext_account {') && !str_contains($text, 'table ext_session {'),
+            'the declarations carry the used external tables'
+        );
+        [$code, $out] = self::tool(
+            ['gen', '--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example', '--check']
+        );
         self::assertTrue($code === 0 && $out === '', "gen --check with external documents: $code $out");
     }
 
@@ -173,7 +248,10 @@ final class OrmGenTest extends TestCase
         // with `./` and with a trailing `/` (the output only: a set path ends in its file name).
         $dir = "$work/gen-path-spelling";
         self::setFile($dir, ['example.dbs']);
-        file_put_contents("$dir/example.dbs", "dbspec 1 example\n\ntable item {\n  seq i64\n  name varchar(32)\n  primary key (seq)\n}\n");
+        file_put_contents(
+            "$dir/example.dbs",
+            "dbspec 1 example\n\ntable item {\n  seq i64\n  name varchar(32)\n  primary key (seq)\n}\n"
+        );
         $spellings = [
             'relative' => ['dbspec-set.json', 'model'],
             'absolute' => ["$dir/dbspec-set.json", "$dir/model"],
@@ -186,14 +264,19 @@ final class OrmGenTest extends TestCase
             $first = null;
             foreach ($spellings as $name => [$set, $out]) {
                 exec('rm -rf ' . escapeshellarg("$dir/model"));
-                [$code, , $err] = self::tool(['gen', '--set', $set, '--out', $out, '--namespace', 'Polyspec\\Orm\\Tests\\Example']);
+                [$code, , $err] = self::tool(
+                    ['gen', '--set', $set, '--out', $out, '--namespace', 'Polyspec\\Orm\\Tests\\Example']
+                );
                 self::assertTrue($code === 0, "$name: $code $err");
                 $files = [];
                 foreach (glob("$dir/model/*.php") as $file) {
                     $files[basename($file)] = file_get_contents($file);
                 }
                 $first ??= $files;
-                self::assertTrue($files !== [] && $files === $first, "the models of the $name paths differ from the relative paths");
+                self::assertTrue(
+                    $files !== [] && $files === $first,
+                    "the models of the $name paths differ from the relative paths"
+                );
             }
         } finally {
             chdir($previous);
@@ -204,14 +287,23 @@ final class OrmGenTest extends TestCase
     {
         foreach (['build', 'ddl', 'diff', 'validate', 'migrate', 'import'] as $command) {
             [$code, $out, $err] = self::tool([$command]);
-            self::assertTrue($code === 2 && $out === '' && str_starts_with($err, "usage: orm-gen gen ") && substr_count($err, "\n") === 1, "$command: $code $out $err");
+            self::assertTrue(
+                $code === 2 && $out === '' && str_starts_with(
+                    $err,
+                    "usage: orm-gen gen "
+                ) && substr_count($err, "\n") === 1,
+                "$command: $code $out $err"
+            );
         }
     }
 
     public function test_the_bin_Composer_installs_loads_the_autoloader(): void
     {
         [$code, $out, $err] = self::process([PHP_BINARY, 'vendor-php/bin/orm-gen']);
-        self::assertTrue($code === 2 && $out === '' && str_starts_with($err, 'usage: orm-gen gen '), "vendor-php/bin/orm-gen: $code $out $err");
+        self::assertTrue(
+            $code === 2 && $out === '' && str_starts_with($err, 'usage: orm-gen gen '),
+            "vendor-php/bin/orm-gen: $code $out $err"
+        );
     }
 
     public function test_the_bin_outside_Composer_names_the_missing_autoloader(): void
@@ -225,6 +317,11 @@ final class OrmGenTest extends TestCase
         copy(dirname(__DIR__) . '/bin/orm-gen', "$bin/orm-gen");
         [$code, $out, $err] = self::process([PHP_BINARY, "$bin/orm-gen"]);
         $missing = "$bin/../vendor/autoload.php";
-        self::assertTrue($code === 2 && $out === '' && $err === "orm-gen: no Composer autoloader at $missing; run the vendor/bin/orm-gen that Composer installs\n", "$bin/orm-gen: $code $out $err");
+        self::assertTrue(
+            $code === 2
+                && $out === ''
+                && $err === "orm-gen: no Composer autoloader at $missing; run the vendor/bin/orm-gen that Composer installs\n",
+            "$bin/orm-gen: $code $out $err"
+        );
     }
 }

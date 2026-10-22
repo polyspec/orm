@@ -79,7 +79,9 @@ function dbspec_syntax_load(string $root): array
     return $out;
 }
 
-/** join as scripts/dbspec/syntax-vectors.mts writes a document: LF, CRLF, or alternating CRLF and LF with no final end. */
+/**
+ * join as scripts/dbspec/syntax-vectors.mts writes a document: LF, CRLF, or alternating CRLF and LF with no final end.
+ */
 function dbspec_syntax_join(array $lines, bool $crlf, bool $mixed = false): string
 {
     if ($mixed) {
@@ -119,7 +121,11 @@ function dbspec_syntax_inputs(array $cases): array
                     $documents[$name] = dbspec_syntax_join($lines, $crlf, $mixed);
                 }
             }
-            $inputs[] = ["$section.{$c['id']}", dbspec_syntax_join($c['documents'][$c['main']], $crlf, $mixed), $documents];
+            $inputs[] = [
+                "$section.{$c['id']}",
+                dbspec_syntax_join($c['documents'][$c['main']], $crlf, $mixed),
+                $documents
+            ];
         }
     }
     foreach ($cases['sets'] as $c) {
@@ -185,5 +191,7 @@ function dbspec_syntax_unproduced(string $root, array $cases): array
     foreach (dbspec_syntax_inputs($cases) as [$id]) {
         $produced[$id] = true;
     }
-    return array_values(array_filter(array_keys(dbspec_syntax_load($root)), static fn(string $id): bool => !isset($produced[$id])));
+    return array_values(
+        array_filter(array_keys(dbspec_syntax_load($root)), static fn(string $id): bool => !isset($produced[$id]))
+    );
 }

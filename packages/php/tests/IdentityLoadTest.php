@@ -10,7 +10,8 @@
 // first step of the plan with Db::execute, then the rows of load_probe read
 // through PDO are compared. The test fails when ORM_TEST_MYSQL_DSN or
 // ORM_TEST_POSTGRES_DSN is unset.
-// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/IdentityLoadTest.php [--filter <case id>]
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/IdentityLoadTest.php
+// [--filter <case id>]
 declare(strict_types=1);
 
 require_once __DIR__ . '/case_database.php';
@@ -87,7 +88,12 @@ function run_compile_case(RuntimeModel $model, array $case): void
     $expected = $case['expected'];
     foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
         if (isset($expected['error'])) {
-            expect_error(static fn() => compile_load($model, $dialect, $case['input']), $expected['error'], $expected['message'], "$dialect: compile");
+            expect_error(
+                static fn() => compile_load($model, $dialect, $case['input']),
+                $expected['error'],
+                $expected['message'],
+                "$dialect: compile"
+            );
             continue;
         }
         $plan = compile_load($model, $dialect, $case['input']);
@@ -99,8 +105,14 @@ function run_compile_case(RuntimeModel $model, array $case): void
 }
 
 /** Runs one execute case in $driver's case database $dsn and compares the rows of load_probe. */
-function run_execute_case(RuntimeModel $model, Schema $schema, array $doc, array $case, string $driver, string $dsn): void
-{
+function run_execute_case(
+    RuntimeModel $model,
+    Schema $schema,
+    array $doc,
+    array $case,
+    string $driver,
+    string $dsn
+): void {
     $db = Orm::connectSchema($dsn, $schema, new Config());
     try {
         $db->utils()->schema()->install($schema);
@@ -141,7 +153,12 @@ final class IdentityLoadTest extends TestCase
     /** @return array<string, mixed> */
     private static function doc(): array
     {
-        return json_decode((string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/identity_load.json'), true, 512, JSON_THROW_ON_ERROR);
+        return json_decode(
+            (string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/identity_load.json'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
     }
 
     /** @return iterable<string, array{array<string, mixed>}> */
@@ -158,7 +175,9 @@ final class IdentityLoadTest extends TestCase
     {
         $root = dirname(__DIR__, 3);
         $doc = self::doc();
-        $model = RuntimeModel::build(RuntimeModel::parse([basename($doc['fixture']) => (string) file_get_contents("$root/{$doc['fixture']}")]));
+        $model = RuntimeModel::build(
+            RuntimeModel::parse([basename($doc['fixture']) => (string) file_get_contents("$root/{$doc['fixture']}")])
+        );
         if ($case['operation'] === 'compile') {
             run_compile_case($model, $case);
             return;

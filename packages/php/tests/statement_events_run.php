@@ -11,8 +11,9 @@
 // transaction) and error (the code of the statement's error, or null).
 // elapsed must not be negative. The test fails when ORM_TEST_MYSQL_DSN or
 // ORM_TEST_POSTGRES_DSN is unset.
-// StatementEventsTest.php and the statement_events coverage use this runner: the model is made by statementEventsModels,
-// then runCase and runServerTransactions are called inside a PHPUnit test. Each check is a PHPUnit assertion.
+// StatementEventsTest.php and the statement_events coverage use this runner: the model is made by
+// statementEventsModels, then runCase and runServerTransactions are called inside a PHPUnit test. Each check is a
+// PHPUnit assertion.
 declare(strict_types=1);
 
 require_once __DIR__ . '/case_database.php';
@@ -29,8 +30,8 @@ use Polyspec\Orm\StatementEvent;
 use Polyspec\Orm\Tests\StatementEventsCase\EventProbe;
 
 /**
- * The model of contracts/fixtures/statement_events.dbs is created once in a temporary directory of this process and autoloaded.
- * The directory is removed when the process ends.
+ * The model of contracts/fixtures/statement_events.dbs is created once in a temporary directory of this process and
+ * autoloaded. The directory is removed when the process ends.
  */
 function statementEventsModels(): void
 {
@@ -46,10 +47,17 @@ function statementEventsModels(): void
         exec('rm -rf ' . escapeshellarg($work));
     });
     $fixture = (string) file_get_contents("$root/contracts/fixtures/statement_events.dbs");
-    Generator::generate(RuntimeModel::build(RuntimeModel::parse(['statement_events.dbs' => $fixture])), "$work/models", 'Polyspec\\Orm\\Tests\\StatementEventsCase');
+    Generator::generate(
+        RuntimeModel::build(RuntimeModel::parse(['statement_events.dbs' => $fixture])),
+        "$work/models",
+        'Polyspec\\Orm\\Tests\\StatementEventsCase'
+    );
     spl_autoload_register(static function (string $class) use ($work): void {
         if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\StatementEventsCase\\')) {
-            require_once "$work/models/" . substr($class, strlen('Polyspec\\Orm\\Tests\\StatementEventsCase\\')) . '.php';
+            require_once "$work/models/" . substr(
+                $class,
+                strlen('Polyspec\\Orm\\Tests\\StatementEventsCase\\')
+            ) . '.php';
         }
     });
     require_once "$work/models/bootstrap.php";
@@ -58,7 +66,12 @@ function statementEventsModels(): void
 /** @return array<string, mixed> tests/events/vectors.json */
 function statementEventsVector(): array
 {
-    return json_decode((string) file_get_contents(dirname(__DIR__, 3) . '/tests/events/vectors.json'), true, 512, JSON_THROW_ON_ERROR);
+    return json_decode(
+        (string) file_get_contents(dirname(__DIR__, 3) . '/tests/events/vectors.json'),
+        true,
+        512,
+        JSON_THROW_ON_ERROR
+    );
 }
 
 /** The error of a failing transaction callback. The step's error "callback" expects this error. */
@@ -71,7 +84,10 @@ final class EventRun
 {
     /** @var list<array<string, mixed>> */
     public array $records = [];
-    /** @var array<int, int> Renumbers the transaction numbers of a connection in the order they first appear within the case. */
+    /**
+     * @var array<int, int> Renumbers the transaction numbers of a connection in the order they first appear within the
+     *   case.
+     */
     private array $numbers = [];
     public ?Closure $stopRecording = null;
     public ?Closure $stopFailing = null;
@@ -186,13 +202,19 @@ final class EventRun
                 throw $e;
             }
             if ($want === 'callback') {
-                Assert::assertTrue($e instanceof CallbackFailed, "step {$s['op']} = " . $e::class . ": {$e->getMessage()}, want the callback error");
+                Assert::assertTrue(
+                    $e instanceof CallbackFailed,
+                    "step {$s['op']} = " . $e::class . ": {$e->getMessage()}, want the callback error"
+                );
                 return;
             }
             $code = $e instanceof OrmException ? $e->code_ : $e::class;
             Assert::assertTrue($code === $want, "step {$s['op']} = $code: {$e->getMessage()}, want $want");
             if ($want === Code::SUBSCRIBER) {
-                Assert::assertTrue($e->getPrevious() !== null && $e->getPrevious() === $this->refused, 'the SUBSCRIBER error keeps the subscriber error as its previous exception');
+                Assert::assertTrue(
+                    $e->getPrevious() !== null && $e->getPrevious() === $this->refused,
+                    'the SUBSCRIBER error keeps the subscriber error as its previous exception'
+                );
             }
             return;
         }
@@ -203,14 +225,24 @@ final class EventRun
 /** The value read back from JSON. Bind numbers and empty lists take the same form as in the vector. */
 function normalized(array $records): mixed
 {
-    return json_decode(json_encode($records, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION), true, 512, JSON_THROW_ON_ERROR);
+    return json_decode(
+        json_encode(
+            $records,
+            JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION
+        ),
+        true,
+        512,
+        JSON_THROW_ON_ERROR
+    );
 }
 
 /** Makes the record's key order the same as the vector's. */
 function ordered(array $records): array
 {
     return array_map(static fn(array $r): array => [
-        'sql' => $r['sql'], 'binds' => $r['binds'], 'kind' => $r['kind'], 'tables' => $r['tables'], 'transaction' => $r['transaction'], 'error' => $r['error'],
+        'sql' => $r['sql'], 'binds' => $r['binds'], 'kind' => $r['kind'], 'tables' => $r['tables'], 'transaction' => $r[
+            'transaction'
+        ], 'error' => $r['error'],
     ], $records);
 }
 
@@ -267,8 +299,12 @@ function runServerTransactions(array $spec, array $cases, string $dsn): void
         // the source does not name the client. The source is compared only when it reaches the server directly.
         $pooled = getenv('ORM_TEST_POSTGRES_DSN') !== getenv('ORM_TEST_POSTGRES_SERVER_DSN');
         Assert::assertTrue(
-            count($zone) === 1 && $zone[0][0] === $spec['time_zone']['setting'] && ($pooled || $zone[0][1] === $spec['time_zone']['source']),
-            'TimeZone setting and source = ' . json_encode($zone) . ', want ' . json_encode($spec['time_zone']) . ($pooled ? ' (pooled)' : '')
+            count($zone) === 1 && $zone[0][0] === $spec['time_zone']['setting'] && (
+                $pooled || $zone[0][1] === $spec['time_zone']['source']
+            ),
+            'TimeZone setting and source = ' . json_encode($zone) . ', want ' . json_encode($spec['time_zone']) . (
+                $pooled ? ' (pooled)' : ''
+            )
         );
         $probe = static fn(): int => (int) $u->read('utility', [], $spec['probe'], []);
         $first = $probe();
@@ -289,7 +325,10 @@ function runServerTransactions(array $spec, array $cases, string $dsn): void
             fwrite(STDERR, "server_transactions $page run: $events events, $transactions transactions\n");
             $run->assertElapsed();
             if ($page === 'second' || $compareFirst) {
-                Assert::assertTrue($transactions === $events, "$page run spent $transactions server transactions for $events statement events, want one per event");
+                Assert::assertTrue(
+                    $transactions === $events,
+                    "$page run spent $transactions server transactions for $events statement events, want one per event"
+                );
             }
         }
     } finally {

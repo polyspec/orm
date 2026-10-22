@@ -31,7 +31,13 @@ $rows = (new Author())($db)
     ->relation((new User())->matchUserSeqWithSeq()
         ->relations((new Author())->matchSeqWithUserSeq()->removeAllColumns()->orderBySeqDesc()->groupLimit(2)))
     ->relation((new Service())->matchServiceSeqWithSeq()->aliasOwnerService()
-        ->relations((new ServiceMember())->matchSeqWithServiceSeq()->removeAllColumns()->orderBySeqAsc()->groupLimit(2)->keyNameUserSeq()))
+        ->relations(
+            (new ServiceMember())->matchSeqWithServiceSeq()
+                ->removeAllColumns()
+                ->orderBySeqAsc()
+                ->groupLimit(2)
+                ->keyNameUserSeq()
+        ))
     ->orderBySeqAsc()
     ->limit(0, 2)
     ->gets();
@@ -58,7 +64,10 @@ function dsn(): string
 {
     $dsn = getenv('ORM_BENCH_MYSQL_DSN');
     if ($dsn === false || $dsn === '') {
-        fwrite(STDERR, "ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database; run it through make orm-check or make run-databases TARGETS=<target>, which create the bench database of the run\n");
+        fwrite(
+            STDERR,
+            "ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database; run it through make orm-check or make run-databases TARGETS=<target>, which create the bench database of the run\n"
+        );
         exit(1);
     }
     return $dsn;

@@ -37,8 +37,8 @@ final class TxFrame
     public array $inserted = [];
 
     /**
-     * Records the identity key of a generated single insert in the write set of the transaction (INT-52). A batch insert
-     * and an entity without an identity are not recorded. Db::writeOf and the extension's write path call it.
+     * Records the identity key of a generated single insert in the write set of the transaction (INT-52). A batch
+     * insert and an entity without an identity are not recorded. Db::writeOf and the extension's write path call it.
      *
      * @internal
      */

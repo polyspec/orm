@@ -37,8 +37,8 @@ function dbspec_documents(array $documents, bool $crlf, bool $mixed = false): ar
 
 /**
  * Checks one case of a kind (canonical, normalize, invalid) with the PHPUnit assertions: a canonical case emits
- * unchanged, a normalize case emits its canonical lines, an invalid case reports exactly the listed errors in order. The
- * case's CPU time is measured against its reference $cpuSeconds (case_clock.php).
+ * unchanged, a normalize case emits its canonical lines, an invalid case reports exactly the listed errors in order.
+ * The case's CPU time is measured against its reference $cpuSeconds (case_clock.php).
  */
 function dbspec_check_case(string $kind, array $case, float $cpuSeconds): void
 {
@@ -50,21 +50,49 @@ function dbspec_check_case(string $kind, array $case, float $cpuSeconds): void
     if ($kind === 'invalid') {
         Assert::assertNull($result->document, "$id: a document was returned with diagnostics expected");
         Assert::assertNull($result->positions, "$id: positions were returned for an invalid document");
-        $got = array_map(static fn(Polyspec\Orm\Dbspec\Diagnostic $d): array => ['line' => $d->line, 'column' => $d->column, 'rule' => $d->rule], $result->diagnostics);
-        $want = array_map(static fn(array $e): array => ['line' => $e['line'], 'column' => $e['column'], 'rule' => $e['rule']], $case['errors']);
-        Assert::assertSame($want, $got, "$id: diagnostics differ\n" . implode("\n", array_map(static fn($d) => "{$d->line}:{$d->column} {$d->rule} {$d->message}", $result->diagnostics)));
+        $got = array_map(
+            static fn(Polyspec\Orm\Dbspec\Diagnostic $d): array => [
+                'line' => $d->line,
+                'column' => $d->column,
+                'rule' => $d->rule
+            ],
+            $result->diagnostics
+        );
+        $want = array_map(
+            static fn(array $e): array => ['line' => $e['line'], 'column' => $e['column'], 'rule' => $e['rule']],
+            $case['errors']
+        );
+        Assert::assertSame(
+            $want,
+            $got,
+            "$id: diagnostics differ\n" . implode(
+                "\n",
+                array_map(static fn($d) => "{$d->line}:{$d->column} {$d->rule} {$d->message}", $result->diagnostics)
+            )
+        );
         foreach ($result->diagnostics as $d) {
             Assert::assertNotSame('', $d->message, "$id: empty diagnostic message");
         }
     } else {
-        Assert::assertSame([], array_map(static fn($d) => "{$d->line}:{$d->column} {$d->rule} {$d->message}", $result->diagnostics), "$id: unexpected diagnostics");
+        Assert::assertSame(
+            [],
+            array_map(static fn($d) => "{$d->line}:{$d->column} {$d->rule} {$d->message}", $result->diagnostics),
+            "$id: unexpected diagnostics"
+        );
         Assert::assertNotNull($result->document, "$id: no document");
-        $want = $kind === 'canonical' ? implode("\n", $case['documents'][$case['main']]) . "\n" : implode("\n", $case['canonical']) . "\n";
+        $want = $kind === 'canonical' ? implode(
+            "\n",
+            $case['documents'][$case['main']]
+        ) . "\n" : implode("\n", $case['canonical']) . "\n";
         $emitted = Polyspec\Orm\Dbspec\Dbspec::emit($result->document);
         Assert::assertSame($want, $emitted, "$id: emission differs");
         $again = Polyspec\Orm\Dbspec\Dbspec::parse($emitted, $texts);
         Assert::assertNotNull($again->document, "$id: emission does not parse again");
-        Assert::assertSame($emitted, Polyspec\Orm\Dbspec\Dbspec::emit($again->document), "$id: emission is not idempotent");
+        Assert::assertSame(
+            $emitted,
+            Polyspec\Orm\Dbspec\Dbspec::emit($again->document),
+            "$id: emission is not idempotent"
+        );
     }
     cpuCaseEnd($id, $clock);
 }
@@ -110,7 +138,11 @@ function dbspec_case_sets(string $kind, array $cases): iterable
  */
 function dbspec_check_position_case(array $case, float $cpuSeconds): void
 {
-    Assert::assertSame(['id', 'documents', 'main', 'positions'], array_keys($case), 'positions case has unexpected fields');
+    Assert::assertSame(
+        ['id', 'documents', 'main', 'positions'],
+        array_keys($case),
+        'positions case has unexpected fields'
+    );
     $id = 'positions/' . $case['id'];
     $clock = cpuCaseBegin($cpuSeconds);
     $texts = dbspec_documents($case['documents'], false);

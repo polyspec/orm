@@ -21,24 +21,34 @@ final class DbspecIntrospectStressTest extends TestCase
     // Requirements: DBS-102.
     public function test_introspect_stress(): void
     {
-        // The case builds a document of 2000 tables (one node process), applies it to a SQLite file, and introspects it.
-        // The introspection of 2000 tables needs more than the default 128M; kit's runner runs php without a memory flag.
+        // The case builds a document of 2000 tables (one node process), applies it to a SQLite file, and introspects
+        // it. The introspection of 2000 tables needs more than the default 128M; kit's runner runs php without a memory
+        // flag.
         ini_set('memory_limit', '512M');
         fwrite(STDERR, 'memoryLimit=' . ini_get('memory_limit') . "\n");
         $root = dirname(__DIR__, 3);
-        $process = proc_open(['node', "$root/tests/dbspec/stress.mts"], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+        $process = proc_open(
+            ['node', "$root/tests/dbspec/stress.mts"],
+            [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+            $pipes
+        );
         Assert::assertTrue(is_resource($process), 'node tests/dbspec/stress.mts did not start');
         $text = stream_get_contents($pipes[1]);
         $errors = stream_get_contents($pipes[2]);
         fclose($pipes[1]);
         fclose($pipes[2]);
         $status = proc_close($process);
-        Assert::assertFalse($status !== 0 || $text === false || $text === '', "node tests/dbspec/stress.mts failed with status $status: $errors");
+        Assert::assertFalse(
+            $status !== 0 || $text === false || $text === '',
+            "node tests/dbspec/stress.mts failed with status $status: $errors"
+        );
         $parsed = Dbspec::parse($text, []);
         Assert::assertNotNull($parsed->document, 'the stress document does not parse');
         $rendered = Dbspec::render([$parsed->document], 'sqlite');
         Assert::assertNotNull($rendered->statements, 'the stress document does not render');
-        $want = Dbspec::manifest([$parsed->document])->manifest?->schemaText ?? throw new RuntimeException('the stress document has no manifest');
+        $want = Dbspec::manifest([$parsed->document])->manifest?->schemaText ?? throw new RuntimeException(
+            'the stress document has no manifest'
+        );
         $path = sys_get_temp_dir() . '/dbspec_php_stress_' . getmypid() . '.sqlite';
         Assert::assertFalse(file_exists($path), "$path already exists");
         // The value for the check is set before introspection, so its memory is not measured.

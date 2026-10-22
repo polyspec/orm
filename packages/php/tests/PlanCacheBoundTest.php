@@ -18,7 +18,9 @@ final class PlanCacheBoundTest extends TestCase
     // Requirements: CPX-4.
     public function testInListLengthsShareBucketedPlans(): void
     {
-        $model = RuntimeModel::build(RuntimeModel::files([dirname(__DIR__, 3) . '/contracts/fixtures/identity_load.dbs']));
+        $model = RuntimeModel::build(
+            RuntimeModel::files([dirname(__DIR__, 3) . '/contracts/fixtures/identity_load.dbs'])
+        );
         $engine = new Engine($model, 'sqlite', 1024);
         $cache = new ReflectionProperty(Engine::class, 'plans');
         for ($n = 1; $n <= 300; $n++) {
@@ -32,7 +34,11 @@ final class PlanCacheBoundTest extends TestCase
             $r->canonicalize();
             $engine->plan($r->shape());
             $entries = count($cache->getValue($engine));
-            $this->assertLessThanOrEqual(10, $entries, "length $n: plan cache holds $entries entries, want at most 10 (one per bucketed shape)");
+            $this->assertLessThanOrEqual(
+                10,
+                $entries,
+                "length $n: plan cache holds $entries entries, want at most 10 (one per bucketed shape)"
+            );
         }
     }
 }

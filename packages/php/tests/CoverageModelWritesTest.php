@@ -37,17 +37,28 @@ final class CoverageModelWritesTest extends TestCase
             $db = coverageConnect($dsn);
             try {
                 $existing = (new CompositeAccount())($db)->tenantId(WRITE_TENANT)->getCount();
-                Assert::assertTrue($existing === 0, "composite_account holds $existing rows of tenant " . WRITE_TENANT . ' before the case');
+                Assert::assertTrue(
+                    $existing === 0,
+                    "composite_account holds $existing rows of tenant " . WRITE_TENANT . ' before the case'
+                );
                 coverageRestoring(function () use ($db): void {
-                    $created = (new CompositeAccount())($db)->setTenantId(WRITE_TENANT)->setAccountId(1)->setName('created')->create();
-                    Assert::assertTrue($created->getName() === 'created' && $created->getAccountId() === 1, 'created row ' . json_encode($created->toArray()));
+                    $created = (new CompositeAccount())($db)->setTenantId(WRITE_TENANT)
+                        ->setAccountId(1)
+                        ->setName('created')
+                        ->create();
+                    Assert::assertTrue(
+                        $created->getName() === 'created' && $created->getAccountId() === 1,
+                        'created row ' . json_encode($created->toArray())
+                    );
                     $inserted = (new CompositeAccount())($db)->creates([
                         (new CompositeAccount())->setTenantId(WRITE_TENANT)->setAccountId(2)->setName('many-2'),
                         (new CompositeAccount())->setTenantId(WRITE_TENANT)->setAccountId(3)->setName('many-3'),
                         (new CompositeAccount())->setTenantId(WRITE_TENANT)->setAccountId(4)->setName('many-4'),
                     ], 2);
                     Assert::assertTrue($inserted === 3, "creates inserted $inserted rows, want 3");
-                    (new CompositeAccount())($db)->getByTenantIdAndAccountId(WRITE_TENANT, 1)->setName('updated')->update();
+                    (new CompositeAccount())($db)->getByTenantIdAndAccountId(WRITE_TENANT, 1)
+                        ->setName('updated')
+                        ->update();
                     $name = (new CompositeAccount())($db)->getByTenantIdAndAccountId(WRITE_TENANT, 1)->getName();
                     Assert::assertTrue($name === 'updated', "updated name is $name");
                     (new CompositeAccount())($db)->setTenantId(WRITE_TENANT)->setAccountId(1)->setName('ignored')

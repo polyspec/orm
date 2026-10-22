@@ -27,14 +27,20 @@ function plannerCase(string $root, array $fixture, string $id): void
     Assert::assertTrue(count($found) === 1, "planner.json has " . count($found) . " cases $id");
     $case = $found[0];
     Assert::assertTrue($case['operation'] === 'compile', "case $id has operation {$case['operation']}");
-    Assert::assertTrue(($case['schema'] ?? '') !== '', "case $id names no schema; give it the repository path of its dbspec document");
+    Assert::assertTrue(
+        ($case['schema'] ?? '') !== '',
+        "case $id names no schema; give it the repository path of its dbspec document"
+    );
     $model = RuntimeModel::build(RuntimeModel::files(["$root/{$case['schema']}"]));
     $request = ['manifest_hash' => $model->manifestHash] + $case['input'];
     foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
         $engine = new Engine($model, $dialect, 8);
         if (isset($case['expected']['error'])) {
             $code = coverageCode(fn() => $engine->compile($request));
-            Assert::assertTrue($code === $case['expected']['error'], "$dialect $id is $code, want {$case['expected']['error']}");
+            Assert::assertTrue(
+                $code === $case['expected']['error'],
+                "$dialect $id is $code, want {$case['expected']['error']}"
+            );
             continue;
         }
         $plan = $engine->compile($request);
@@ -68,7 +74,10 @@ function plannerCase(string $root, array $fixture, string $id): void
             'sql' => $step['sql'],
             'tables' => $step['tables'],
         ], $plan['steps']);
-        Assert::assertTrue($statements === $case['expected'][$dialect], "$dialect $id statements " . json_encode($statements));
+        Assert::assertTrue(
+            $statements === $case['expected'][$dialect],
+            "$dialect $id statements " . json_encode($statements)
+        );
     }
 }
 

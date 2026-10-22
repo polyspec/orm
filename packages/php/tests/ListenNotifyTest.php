@@ -65,7 +65,12 @@ final class ListenNotifyTest extends TestCase
             }, static function (string $dsn) use ($driver): void {
                 $db = Orm::connect($dsn, new Config());
                 try {
-                    foreach ([static fn () => $db->notify('t229_events', 'x'), static fn () => $db->listen('t229_events')] as $call) {
+                    foreach (
+                        [
+                        static fn () => $db->notify('t229_events', 'x'),
+                        static fn () => $db->listen('t229_events')
+                        ] as $call
+                    ) {
                         try {
                             $call();
                             self::fail("$driver accepted LISTEN or NOTIFY");

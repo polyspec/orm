@@ -10,8 +10,8 @@ declare(strict_types=1);
 // Each case runs in a case database of its own (case_database.php) created
 // through ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN; the test fails when either
 // is unset.
-// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AesJsonTest.php [--filter <case>]
-// The bench model is not read: this test uses only the model of its own document set.
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AesJsonTest.php
+// [--filter <case>] The bench model is not read: this test uses only the model of its own document set.
 require_once __DIR__ . '/case_database.php';
 
 use Polyspec\Orm\Tests\AesJson\SecretConfig;
@@ -44,7 +44,11 @@ final class AesJsonTest extends TestCase
         });
 
         self::$documents = [(string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/secret_config.dbs')];
-        Generator::generate(RuntimeModel::build(RuntimeModel::parse(['secret_config.dbs' => self::$documents[0]])), "$work/gen", 'Polyspec\\Orm\\Tests\\AesJson');
+        Generator::generate(
+            RuntimeModel::build(RuntimeModel::parse(['secret_config.dbs' => self::$documents[0]])),
+            "$work/gen",
+            'Polyspec\\Orm\\Tests\\AesJson'
+        );
         spl_autoload_register(static function (string $class) use ($work): void {
             if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\AesJson\\')) {
                 require "$work/gen/" . substr($class, strlen('Polyspec\\Orm\\Tests\\AesJson\\')) . '.php';
@@ -75,7 +79,11 @@ final class AesJsonTest extends TestCase
     /** @param array<int, string> $keys */
     private static function open(string $dsn, array $keys, int $version): Db
     {
-        return Orm::connectSchema($dsn, \Polyspec\Orm\Tests\AesJson\schema(), new Config(aesKey: $keys[$version], aesVersion: $version, aesKeys: $keys));
+        return Orm::connectSchema(
+            $dsn,
+            \Polyspec\Orm\Tests\AesJson\schema(),
+            new Config(aesKey: $keys[$version], aesVersion: $version, aesKeys: $keys)
+        );
     }
 
     /** The ordered-json text of a read styled value; a value of another type fails the test. */
@@ -117,37 +125,65 @@ final class AesJsonTest extends TestCase
         $row = (new SecretConfig())($first)->addAllColumns()->getBySeq($seq);
         self::check(self::text($row->getConfig()) === $value, 'read back');
         $array = $row->toArray()['config'];
-        self::check($array['kind'] === 'value' && self::text($array['value']) === $value, 'toArray keeps the ordered-json value');
+        self::check(
+            $array['kind'] === 'value' && self::text($array['value']) === $value,
+            'toArray keeps the ordered-json value'
+        );
         $rowJson = '{"seq":' . $seq . ',"aes_key_version":1,"config":{"kind":"value","value":' . $value . '}}';
-        self::check($row->toJson() === $rowJson, 'toJson keeps the member order and the number text: ' . $row->toJson());
-        self::check(self::jsonEncodeCode($row) === 'CODEC_ENCODE', 'json_encode of a model with an ordered-json value fails');
+        self::check(
+            $row->toJson() === $rowJson,
+            'toJson keeps the member order and the number text: ' . $row->toJson()
+        );
+        self::check(
+            self::jsonEncodeCode($row) === 'CODEC_ENCODE',
+            'json_encode of a model with an ordered-json value fails'
+        );
         $rows = (new SecretConfig())($first)->addAllColumns()->seq($seq)->gets();
         self::check($rows->toJson() === '[' . $rowJson . ']', 'collection toJson');
-        self::check(self::jsonEncodeCode($rows) === 'CODEC_ENCODE', 'json_encode of a collection with an ordered-json value fails');
-        self::check((new SecretConfig())($first)->removeAllColumns()->addColumnSeq()->getBySeq($seq)->toJson() === '{"seq":' . $seq . '}'
-            && json_encode((new SecretConfig())($first)->removeAllColumns()->addColumnSeq()->getBySeq($seq)) === '{"seq":' . $seq . '}', 'a row without an ordered-json value');
+        self::check(
+            self::jsonEncodeCode($rows) === 'CODEC_ENCODE',
+            'json_encode of a collection with an ordered-json value fails'
+        );
+        self::check((
+            new SecretConfig()
+        )($first)->removeAllColumns()->addColumnSeq()->getBySeq($seq)->toJson() === '{"seq":' . $seq . '}'
+            && json_encode(
+                (new SecretConfig())($first)->removeAllColumns()->addColumnSeq()->getBySeq($seq)
+            ) === '{"seq":' . $seq . '}', 'a row without an ordered-json value');
         $native = (new SecretConfig())($first)->setConfig(self::styled(['k' => [1, 2]]))->create()->getSeq();
         $read = (new SecretConfig())($first)->addAllColumns()->getBySeq($native);
         self::check(self::text($read->getConfig()) === '{"k":[1,2]}', 'native value write');
         (new SecretConfig())($first)->getBySeq($native)->delete();
         [$cell, $version] = self::stored($dsn);
-        self::check(str_starts_with($cell, "ORM-AES2\0") && !str_contains($cell, 's3cret-token') && $version === 1, "stored version $version");
+        self::check(
+            str_starts_with($cell, "ORM-AES2\0") && !str_contains($cell, 's3cret-token') && $version === 1,
+            "stored version $version"
+        );
         $first->close();
 
         $second = self::open($dsn, $both, 2);
-        self::check(self::text((new SecretConfig())($second)->addAllColumns()->getBySeq($seq)->getConfig()) === $value, 'mixed-version read');
+        self::check(
+            self::text((new SecretConfig())($second)->addAllColumns()->getBySeq($seq)->getConfig()) === $value,
+            'mixed-version read'
+        );
         self::check($second->utils()->aes()->rotate(new SecretConfig(), new AesKeyring($both, 2)) === 1, 'rotate');
         self::check(self::stored($dsn)[1] === 2, 'rotated version');
         $second->close();
 
         $rotated = self::open($dsn, [2 => 'config-key-two'], 2);
-        self::check(self::text((new SecretConfig())($rotated)->addAllColumns()->getBySeq($seq)->getConfig()) === $value, 'rotated read');
+        self::check(
+            self::text((new SecretConfig())($rotated)->addAllColumns()->getBySeq($seq)->getConfig()) === $value,
+            'rotated read'
+        );
         $rotated->close();
 
         $again = self::open($dsn, $both, 1);
         (new SecretConfig())($again)->getBySeq($seq)->setConfig(self::styled(parse($updated)))->update();
         self::check(self::stored($dsn)[1] === 1, 'updated version');
-        self::check(self::text((new SecretConfig())($again)->addAllColumns()->getBySeq($seq)->getConfig()) === $updated, 'updated read');
+        self::check(
+            self::text((new SecretConfig())($again)->addAllColumns()->getBySeq($seq)->getConfig()) === $updated,
+            'updated read'
+        );
         $again->close();
     }
 

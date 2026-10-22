@@ -6,8 +6,8 @@ declare(strict_types=1);
 // (T62-4-8). The double CannedCatalogPdo answers each catalog query of mysql_read with the rows of
 // tests/dbspec/show-create.json ("catalog" and each case), so the reader of shown_check goes to SHOW CREATE TABLE
 // for the body of the one CHECK. Each case expects the same checks and unsupported objects as the Go introspection
-// of the same answers (packages/go/engine/dbspec show_create_introspect_test.go reads the same file), or the error of a CHECK
-// the statement lacks.
+// of the same answers (packages/go/engine/dbspec show_create_introspect_test.go reads the same file), or the error of a
+// CHECK the statement lacks.
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
@@ -23,8 +23,11 @@ use Polyspec\Orm\Dbspec\Unsupported;
 final class CannedCatalogPdo extends PDO
 {
     /** @param array<string, mixed> $catalog */
-    public function __construct(private readonly array $catalog, private readonly string $create, private readonly string $checkName)
-    {
+    public function __construct(
+        private readonly array $catalog,
+        private readonly string $create,
+        private readonly string $checkName
+    ) {
         parent::__construct('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
     }
 
@@ -56,7 +59,17 @@ final class CannedCatalogPdo extends PDO
         if (str_contains($query, 'information_schema.COLUMNS')) {
             $rows = [];
             foreach ($this->catalog['columns'] as $column) {
-                $rows[] = [$table, $column['name'], $column['type'], $column['nullable'], null, '', $column['charset'], $column['collation'], ''];
+                $rows[] = [
+                    $table,
+                    $column['name'],
+                    $column['type'],
+                    $column['nullable'],
+                    null,
+                    '',
+                    $column['charset'],
+                    $column['collation'],
+                    ''
+                ];
             }
             return [$rows, 9];
         }
@@ -90,7 +103,12 @@ final class DbspecShowCreateIntrospectTest extends TestCase
 {
     private static function data(): array
     {
-        return json_decode((string) file_get_contents(dirname(__DIR__, 3) . '/tests/dbspec/show-create.json'), true, 512, JSON_THROW_ON_ERROR);
+        return json_decode(
+            (string) file_get_contents(dirname(__DIR__, 3) . '/tests/dbspec/show-create.json'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
     }
 
     public static function showCreateCases(): iterable

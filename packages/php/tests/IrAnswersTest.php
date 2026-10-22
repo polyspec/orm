@@ -24,7 +24,12 @@ final class IrAnswersTest extends TestCase
     /** @return iterable<string, array{array{id: string, chain: string, answer: mixed, expect: mixed}}> */
     public static function cases(): iterable
     {
-        $doc = json_decode((string) file_get_contents(__DIR__ . '/../../../contracts/fixtures/ir_answers.json'), true, 512, JSON_THROW_ON_ERROR);
+        $doc = json_decode(
+            (string) file_get_contents(__DIR__ . '/../../../contracts/fixtures/ir_answers.json'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
         foreach ($doc['cases'] as $case) {
             yield $case['id'] => [$case];
         }
@@ -55,6 +60,12 @@ final class IrAnswersTest extends TestCase
         $actual = MarkdownConformanceTest::normalize($got);
         $expect = MarkdownConformanceTest::normalize($case['expect']);
         $detail = $error === null ? '' : " (error {$error->code_}: {$error->getMessage()})";
-        self::assertSame($expect, $actual, "{$case['id']}: got " . MarkdownConformanceTest::json_text($actual) . ', want ' . MarkdownConformanceTest::json_text($expect) . $detail);
+        self::assertSame(
+            $expect,
+            $actual,
+            "{$case['id']}: got " . MarkdownConformanceTest::json_text(
+                $actual
+            ) . ', want ' . MarkdownConformanceTest::json_text($expect) . $detail
+        );
     }
 }

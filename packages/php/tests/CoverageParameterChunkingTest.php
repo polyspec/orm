@@ -30,7 +30,10 @@ final class CoverageParameterChunkingTest extends TestCase
                 $count = (new Author())($db)->seq($values)->getCount();
                 Assert::assertTrue($count === 70000, "count of the split IN list is $count, want 70000");
                 $limited = coverageCode(fn() => (new Author())($db)->seq($values)->limit(0, 10)->gets());
-                Assert::assertTrue($limited === Code::IR_INVALID, "a limited split IN list is $limited, want IR_INVALID");
+                Assert::assertTrue(
+                    $limited === Code::IR_INVALID,
+                    "a limited split IN list is $limited, want IR_INVALID"
+                );
             } finally {
                 $db->close();
             }

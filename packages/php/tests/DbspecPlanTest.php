@@ -68,7 +68,9 @@ function plan_text(array $lines): string
 /** @param list<Diagnostic> $diagnostics */
 function plan_diagnostics(array $diagnostics): string
 {
-    return json_encode(array_map(static fn(Diagnostic $d): array => [$d->rule, $d->line, $d->column, $d->message], $diagnostics));
+    return json_encode(
+        array_map(static fn(Diagnostic $d): array => [$d->rule, $d->line, $d->column, $d->message], $diagnostics)
+    );
 }
 
 /** @param ?list<string> $lines */
@@ -78,13 +80,17 @@ function plan_source(string $id, ?array $lines): ?Document
         return null;
     }
     $result = Dbspec::parse(plan_text($lines), []);
-    return $result->document ?? throw new RuntimeException("$id: source diagnostics " . plan_diagnostics($result->diagnostics));
+    return $result->document ?? throw new RuntimeException(
+        "$id: source diagnostics " . plan_diagnostics($result->diagnostics)
+    );
 }
 
 function plan_of(string $id, array $lines): Plan
 {
     $result = Dbspec::parsePlan(plan_text($lines));
-    return $result->plan ?? throw new RuntimeException("$id: plan diagnostics " . plan_diagnostics($result->diagnostics));
+    return $result->plan ?? throw new RuntimeException(
+        "$id: plan diagnostics " . plan_diagnostics($result->diagnostics)
+    );
 }
 
 /** @param list<Diagnostic> $diagnostics @return list<string> */
@@ -117,22 +123,41 @@ final class DbspecPlanTest extends TestCase
         $source = plan_source($id, $case['source'] ?? null);
         $plan = plan_of($id, $case['plan']);
         $emitted = Dbspec::emitPlan($plan);
-        Assert::assertSame(plan_text($case['plan']), $emitted, "$id: emitPlan differs\n--- want\n" . plan_text($case['plan']) . "--- got\n$emitted");
+        Assert::assertSame(
+            plan_text($case['plan']),
+            $emitted,
+            "$id: emitPlan differs\n--- want\n" . plan_text($case['plan']) . "--- got\n$emitted"
+        );
         $diff = Dbspec::diff($source, $plan);
-        $changes = $diff->changes ?? throw new RuntimeException("$id: diff diagnostics " . plan_diagnostics($diff->diagnostics));
+        $changes = $diff->changes ?? throw new RuntimeException(
+            "$id: diff diagnostics " . plan_diagnostics($diff->diagnostics)
+        );
         $got = array_map(static fn(Change $c): array => [$c->kind, $c->table, $c->name], $changes);
-        Assert::assertSame($case['changes'], $got, "$id: changes\nwant " . json_encode($case['changes']) . "\ngot  " . json_encode($got));
+        Assert::assertSame(
+            $case['changes'],
+            $got,
+            "$id: changes\nwant " . json_encode($case['changes']) . "\ngot  " . json_encode($got)
+        );
         foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
             $want = $case['steps'][$dialect] ?? throw new RuntimeException("$id: no $dialect steps");
             $result = Dbspec::planSteps($source, $plan, $dialect);
-            $steps = $result->steps ?? throw new RuntimeException("$id/$dialect: diagnostics " . plan_diagnostics($result->diagnostics));
+            $steps = $result->steps ?? throw new RuntimeException(
+                "$id/$dialect: diagnostics " . plan_diagnostics($result->diagnostics)
+            );
             for ($i = 0; $i < max(count($steps), count($want)); $i++) {
                 $got = isset($steps[$i]) ? step_fields($steps[$i]) : null;
                 $expected = $want[$i] ?? null;
                 if ($expected !== null) {
                     ksort($expected);
                 }
-                Assert::assertSame($expected, $got, "$id/$dialect: step $i differs\n--- want\n" . json_encode($expected, JSON_UNESCAPED_SLASHES) . "\n--- got\n" . json_encode($got, JSON_UNESCAPED_SLASHES));
+                Assert::assertSame(
+                    $expected,
+                    $got,
+                    "$id/$dialect: step $i differs\n--- want\n" . json_encode(
+                        $expected,
+                        JSON_UNESCAPED_SLASHES
+                    ) . "\n--- got\n" . json_encode($got, JSON_UNESCAPED_SLASHES)
+                );
             }
         }
         cpuCaseEnd($id, $caseStarted);
@@ -153,13 +178,22 @@ final class DbspecPlanTest extends TestCase
 
         $source = plan_source($id, $case['source'] ?? null);
         $parsed = Dbspec::parsePlan(plan_text($case['plan']));
-        $diagnostics = $parsed->plan === null ? $parsed->diagnostics : Dbspec::diff($source, $parsed->plan)->diagnostics;
+        $diagnostics = $parsed->plan === null ? $parsed
+            ->diagnostics : Dbspec::diff($source, $parsed->plan)
+            ->diagnostics;
         $got = plan_messages($id, 'plan', $diagnostics);
-        Assert::assertSame($case['errors'], $got, "$id: errors\nwant " . json_encode($case['errors']) . "\ngot  " . json_encode($got));
+        Assert::assertSame(
+            $case['errors'],
+            $got,
+            "$id: errors\nwant " . json_encode($case['errors']) . "\ngot  " . json_encode($got)
+        );
         // Refuses the step with the same diagnostic as the diff.
         if ($parsed->plan !== null) {
             $steps = Dbspec::planSteps($source, $parsed->plan, 'postgres');
-            Assert::assertFalse($steps->steps !== null || plan_messages($id, 'plan', $steps->diagnostics) !== $case['errors'], "$id: planSteps does not report the diff diagnostics: " . plan_diagnostics($steps->diagnostics));
+            Assert::assertFalse(
+                $steps->steps !== null || plan_messages($id, 'plan', $steps->diagnostics) !== $case['errors'],
+                "$id: planSteps does not report the diff diagnostics: " . plan_diagnostics($steps->diagnostics)
+            );
         }
         cpuCaseEnd($id, $caseStarted);
     }
@@ -180,9 +214,17 @@ final class DbspecPlanTest extends TestCase
         $plans = array_map(static fn(array $lines): Plan => plan_of($id, $lines), $case['plans']);
         $chain = Dbspec::chain($plans);
         $errors = plan_messages($id, 'chain', $chain->diagnostics);
-        Assert::assertSame(($case['errors'] ?? []), $errors, "$id: errors\nwant " . json_encode($case['errors'] ?? []) . "\ngot  " . json_encode($errors));
+        Assert::assertSame(
+            ($case['errors'] ?? []),
+            $errors,
+            "$id: errors\nwant " . json_encode($case['errors'] ?? []) . "\ngot  " . json_encode($errors)
+        );
         $order = array_map(static fn(Plan $p): string => $p->name, $chain->plans ?? []);
-        Assert::assertSame(($case['order'] ?? []), $order, "$id: order\nwant " . json_encode($case['order'] ?? []) . "\ngot  " . json_encode($order));
+        Assert::assertSame(
+            ($case['order'] ?? []),
+            $order,
+            "$id: order\nwant " . json_encode($case['order'] ?? []) . "\ngot  " . json_encode($order)
+        );
         cpuCaseEnd($id, $caseStarted);
     }
 
@@ -200,9 +242,22 @@ final class DbspecPlanTest extends TestCase
         $id = "plan/parse/{$case['id']}";
 
         $parsed = Dbspec::parsePlan(plan_text($case['plan']));
-        // Compares the plan diagnostic down to its message, and the target diagnostic down to its rule, line, and column.
-        $got = array_map(static fn(Diagnostic $d): array => [$d->rule, $d->line, $d->column, $d->rule === 'plan' ? $d->message : null], $parsed->diagnostics);
-        Assert::assertSame($case['errors'], $got, "$id: errors\nwant " . json_encode($case['errors']) . "\ngot  " . json_encode($got));
+        // Compares the plan diagnostic down to its message, and the target diagnostic down to its rule, line, and
+        // column.
+        $got = array_map(
+            static fn(Diagnostic $d): array => [
+                $d->rule,
+                $d->line,
+                $d->column,
+                $d->rule === 'plan' ? $d->message : null
+            ],
+            $parsed->diagnostics
+        );
+        Assert::assertSame(
+            $case['errors'],
+            $got,
+            "$id: errors\nwant " . json_encode($case['errors']) . "\ngot  " . json_encode($got)
+        );
         cpuCaseEnd($id, $caseStarted);
     }
 
@@ -222,10 +277,24 @@ final class DbspecPlanTest extends TestCase
         $source = plan_source("$id/source", $case['source']);
         $target = plan_source("$id/target", $case['target']);
         $result = Dbspec::compareSchemas($source, $target);
-        $got = array_map(static fn(Difference $d): array => [$d->kind, $d->table, $d->name], $result->differences ?? []);
-        Assert::assertSame($case['differences'], $got, "$id: differences\nwant " . json_encode($case['differences']) . "\ngot  " . json_encode($got));
-        $errors = array_map(static fn(Diagnostic $d): array => [$d->rule, $d->line, $d->column, $d->message], $result->diagnostics);
-        Assert::assertSame($case['errors'], $errors, "$id: errors\nwant " . json_encode($case['errors']) . "\ngot  " . json_encode($errors));
+        $got = array_map(
+            static fn(Difference $d): array => [$d->kind, $d->table, $d->name],
+            $result->differences ?? []
+        );
+        Assert::assertSame(
+            $case['differences'],
+            $got,
+            "$id: differences\nwant " . json_encode($case['differences']) . "\ngot  " . json_encode($got)
+        );
+        $errors = array_map(
+            static fn(Diagnostic $d): array => [$d->rule, $d->line, $d->column, $d->message],
+            $result->diagnostics
+        );
+        Assert::assertSame(
+            $case['errors'],
+            $errors,
+            "$id: errors\nwant " . json_encode($case['errors']) . "\ngot  " . json_encode($errors)
+        );
         cpuCaseEnd($id, $caseStarted);
     }
 

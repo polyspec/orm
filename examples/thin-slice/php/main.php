@@ -41,7 +41,12 @@ $query = static fn() => (new Author())->connect($db)
 
 $out = [];
 foreach ($query() as $r) {
-    $out[] = ['is_display' => $r->getIsDisplay(), 'like_count' => $r->getLikeCount(), 'name' => $r->getName(), 'seq' => $r->getSeq()];
+    $out[] = [
+        'is_display' => $r->getIsDisplay(),
+        'like_count' => $r->getLikeCount(),
+        'name' => $r->getName(),
+        'seq' => $r->getSeq()
+    ];
 }
 echo json_encode($out, JSON_THROW_ON_ERROR), "\n";
 
@@ -60,7 +65,10 @@ function dsn(): string
 {
     $dsn = getenv('ORM_BENCH_MYSQL_DSN');
     if ($dsn === false || $dsn === '') {
-        fwrite(STDERR, "ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database; run it through make orm-check or make run-databases TARGETS=<target>, which create the bench database of the run\n");
+        fwrite(
+            STDERR,
+            "ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database; run it through make orm-check or make run-databases TARGETS=<target>, which create the bench database of the run\n"
+        );
         exit(1);
     }
     return $dsn;

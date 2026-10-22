@@ -1,8 +1,9 @@
 <?php
 
-// The sqlite path loads no MySQL dialect class (N17): a child process with php -n runs the sqlite path and an autoloader that
-// refuses orm's MySQL dialect classes. The child also asserts that a sqlite:// DSN selects the sqlite dialect and the sqlite
-// PDO driver. The MySQL drivers may be compiled into the PHP that runs the case; the case proves only the class-load claim.
+// The sqlite path loads no MySQL dialect class (N17): a child process with php -n runs the sqlite path and an
+// autoloader that refuses orm's MySQL dialect classes. The child also asserts that a sqlite:// DSN selects the sqlite
+// dialect and the sqlite PDO driver. The MySQL drivers may be compiled into the PHP that runs the case; the case proves
+// only the class-load claim.
 declare(strict_types=1);
 
 use PHPUnit\Framework\Attributes\Medium;
@@ -11,7 +12,8 @@ use PHPUnit\Framework\TestCase;
 #[Medium]
 final class SqliteWithoutMysqlTest extends TestCase
 {
-    // The child program: it refuses a MySQL driver, then runs the SQLite case with the autoloader, the bench install helper and the work directory it is given.
+    // The child program: it refuses a MySQL driver, then runs the SQLite case with the autoloader, the bench install
+    // helper and the work directory it is given.
     private const CHILD = <<<'PHP'
         $autoload = $argv[1];
         $work = $argv[2];
@@ -48,11 +50,21 @@ final class SqliteWithoutMysqlTest extends TestCase
     public function test_sqlite_path_loads_no_mysql_dialect_class(): void
     {
         $root = dirname(__DIR__, 3);
-        $manifest = json_decode((string) file_get_contents("$root/packages/php/composer.json"), true, 512, JSON_THROW_ON_ERROR);
+        $manifest = json_decode(
+            (string) file_get_contents("$root/packages/php/composer.json"),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
         $drivers = ['ext-pdo_mysql', 'ext-pdo_pgsql', 'ext-pdo_sqlite'];
         $required = array_values(array_intersect($drivers, array_keys($manifest['require'] ?? [])));
         $suggested = array_values(array_intersect($drivers, array_keys($manifest['suggest'] ?? [])));
-        self::assertTrue($required === [] && $suggested === $drivers, 'composer.json requires ' . json_encode($required) . ' and suggests ' . json_encode($suggested) . ' of the PDO drivers; it must require none and suggest all three');
+        self::assertTrue(
+            $required === [] && $suggested === $drivers,
+            'composer.json requires ' . json_encode($required) . ' and suggests ' . json_encode(
+                $suggested
+            ) . ' of the PDO drivers; it must require none and suggest all three'
+        );
 
         $work = sys_get_temp_dir() . '/orm-php-without-mysql-' . getmypid();
         if (!mkdir($work, 0o700, true)) {
@@ -60,7 +72,16 @@ final class SqliteWithoutMysqlTest extends TestCase
         }
         try {
             $process = proc_open(
-                [PHP_BINARY, '-n', '-r', self::CHILD, '--', "$root/vendor-php/autoload.php", $work, __DIR__ . '/bench.php'],
+                [
+                    PHP_BINARY,
+                    '-n',
+                    '-r',
+                    self::CHILD,
+                    '--',
+                    "$root/vendor-php/autoload.php",
+                    $work,
+                    __DIR__ . '/bench.php'
+                ],
                 [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
                 $pipes,
             );

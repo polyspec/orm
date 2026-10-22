@@ -46,7 +46,16 @@ function graph_plan_text(): string
 function graph_plan_with(array $changes): Plan
 {
     $p = graph_plan();
-    $args = ['name' => $p->name, 'from' => $p->from, 'renameTables' => $p->renameTables, 'renameColumns' => $p->renameColumns, 'dropTables' => $p->dropTables, 'dropColumns' => $p->dropColumns, 'schema' => $p->schema, 'to' => $p->to];
+    $args = [
+        'name' => $p->name,
+        'from' => $p->from,
+        'renameTables' => $p->renameTables,
+        'renameColumns' => $p->renameColumns,
+        'dropTables' => $p->dropTables,
+        'dropColumns' => $p->dropColumns,
+        'schema' => $p->schema,
+        'to' => $p->to
+    ];
     return new Plan(...array_merge($args, $changes));
 }
 
@@ -71,7 +80,10 @@ function graph_type_error(Closure $body): string
 #[Small]
 final class DbspecGraphTest extends TestCase
 {
-    /** @return iterable<string, array{Closure(Document): void, string}> a change that puts a wrong element in one array, and the message */
+    /**
+     * @return iterable<string, array{Closure(Document): void, string}> a change that puts a wrong element in one array,
+     *   and the message
+     */
     public static function documentCases(): iterable
     {
         $n = 'Polyspec\\Orm\\Dbspec\\';
@@ -200,7 +212,12 @@ final class DbspecGraphTest extends TestCase
             'externalDifferences' => static fn(Document $d) => Dbspec::externalDifferences($d, []),
             'compareSchemas' => static fn(Document $d) => Dbspec::compareSchemas($d, graph_core()),
             'installedDifferences' => static fn(Document $d) => Dbspec::installedDifferences(graph_core(), [], $d),
-            'addTablesAndColumnsSteps' => static fn(Document $d) => Dbspec::addTablesAndColumnsSteps($d, [], graph_core(), 'sqlite'),
+            'addTablesAndColumnsSteps' => static fn(Document $d) => Dbspec::addTablesAndColumnsSteps(
+                $d,
+                [],
+                graph_core(),
+                'sqlite'
+            ),
             'diff' => static fn(Document $d) => Dbspec::diff($d, graph_plan()),
             'planSteps' => static fn(Document $d) => Dbspec::planSteps($d, graph_plan(), 'sqlite'),
             'exportMermaid' => static fn(Document $d) => Dbspec::exportMermaid($d),
@@ -212,20 +229,58 @@ final class DbspecGraphTest extends TestCase
         }
     }
 
-    /** @return iterable<string, array{Closure(): mixed, string}> a call with a wrong element in a list or a plan, and the message */
+    /**
+     * @return iterable<string, array{Closure(): mixed, string}> a call with a wrong element in a list or a plan, and
+     *   the message
+     */
     public static function listCases(): iterable
     {
         $n = 'Polyspec\\Orm\\Dbspec\\';
-        yield 'document set' => [static fn() => Dbspec::manifest([graph_document(), 'core']), "the document set holds string, not {$n}Document"];
-        yield 'document set of render' => [static fn() => Dbspec::render([1], 'sqlite'), "the document set holds int, not {$n}Document"];
-        yield 'document set of externalDifferences' => [static fn() => Dbspec::externalDifferences(graph_core(), [null]), "the document set holds null, not {$n}Document"];
+        yield 'document set' => [
+            static fn() => Dbspec::manifest([graph_document(), 'core']),
+            "the document set holds string, not {$n}Document"
+        ];
+        yield 'document set of render' => [
+            static fn() => Dbspec::render([1], 'sqlite'),
+            "the document set holds int, not {$n}Document"
+        ];
+        yield 'document set of externalDifferences' => [
+            static fn() => Dbspec::externalDifferences(graph_core(), [null]),
+            "the document set holds null, not {$n}Document"
+        ];
         yield 'plans' => [static fn() => Dbspec::chain([graph_plan(), 'p']), "the plans holds string, not {$n}Plan"];
-        yield 'plans of apply' => [static fn() => Dbspec::apply(new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]), 'sqlite', [1], static fn() => new DateTimeImmutable(), null), "the plans holds int, not {$n}Plan"];
-        yield 'unsupported objects' => [static fn() => Dbspec::installedDifferences(graph_core(), ['x'], graph_core()), "the unsupported objects holds string, not {$n}Unsupported"];
-        yield 'Plan::$renameTables' => [static fn() => Dbspec::emitPlan(graph_plan_with(['renameTables' => [...graph_plan()->renameTables, 'a']])), "{$n}Plan::\$renameTables holds string, not {$n}TableRename"];
-        yield 'Plan::$renameColumns' => [static fn() => Dbspec::emitPlan(graph_plan_with(['renameColumns' => [...graph_plan()->renameColumns, 'a']])), "{$n}Plan::\$renameColumns holds string, not {$n}ColumnRename"];
-        yield 'Plan::$dropTables' => [static fn() => Dbspec::emitPlan(graph_plan_with(['dropTables' => [1]])), "{$n}Plan::\$dropTables holds int, not a string"];
-        yield 'Plan::$dropColumns' => [static fn() => Dbspec::emitPlan(graph_plan_with(['dropColumns' => ['b.f']])), "{$n}Plan::\$dropColumns holds string, not {$n}ColumnName"];
+        yield 'plans of apply' => [
+            static fn() => Dbspec::apply(
+                new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]),
+                'sqlite',
+                [1],
+                static fn() => new DateTimeImmutable(),
+                null
+            ),
+            "the plans holds int, not {$n}Plan"
+        ];
+        yield 'unsupported objects' => [
+            static fn() => Dbspec::installedDifferences(graph_core(), ['x'], graph_core()),
+            "the unsupported objects holds string, not {$n}Unsupported"
+        ];
+        yield 'Plan::$renameTables' => [
+            static fn() => Dbspec::emitPlan(graph_plan_with(['renameTables' => [...graph_plan()->renameTables, 'a']])),
+            "{$n}Plan::\$renameTables holds string, not {$n}TableRename"
+        ];
+        yield 'Plan::$renameColumns' => [
+            static fn() => Dbspec::emitPlan(
+                graph_plan_with(['renameColumns' => [...graph_plan()->renameColumns, 'a']])
+            ),
+            "{$n}Plan::\$renameColumns holds string, not {$n}ColumnRename"
+        ];
+        yield 'Plan::$dropTables' => [
+            static fn() => Dbspec::emitPlan(graph_plan_with(['dropTables' => [1]])),
+            "{$n}Plan::\$dropTables holds int, not a string"
+        ];
+        yield 'Plan::$dropColumns' => [
+            static fn() => Dbspec::emitPlan(graph_plan_with(['dropColumns' => ['b.f']])),
+            "{$n}Plan::\$dropColumns holds string, not {$n}ColumnName"
+        ];
         yield 'Plan::$schema' => [static function () {
             $p = graph_plan();
             $p->schema->tables[] = 'users';
@@ -245,7 +300,10 @@ final class DbspecGraphTest extends TestCase
         $document = graph_document();
         $document->tables[0]->columns[] = 'id';
         $document->trailingComments = [1];
-        Assert::assertSame('Polyspec\\Orm\\Dbspec\\Document::$trailingComments holds int, not a string', graph_type_error(static fn() => Dbspec::emit($document)));
+        Assert::assertSame(
+            'Polyspec\\Orm\\Dbspec\\Document::$trailingComments holds int, not a string',
+            graph_type_error(static fn() => Dbspec::emit($document))
+        );
     }
 
     // A document whose arrays hold their types reads as before.

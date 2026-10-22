@@ -26,7 +26,13 @@ final class DbspecRenderTest extends TestCase
     {
         [$cpuMs, $wallMs] = caseClockElapsed(self::$started);
         if ($cpuMs > 10000) {
-            caseClockWarning(sprintf('dbspec_render used %.3f ms of CPU (%.3f ms wall), above its reference of 10 s', $cpuMs, $wallMs));
+            caseClockWarning(
+                sprintf(
+                    'dbspec_render used %.3f ms of CPU (%.3f ms wall), above its reference of 10 s',
+                    $cpuMs,
+                    $wallMs
+                )
+            );
         }
     }
 
@@ -38,7 +44,12 @@ final class DbspecRenderTest extends TestCase
 
     public static function ddlCases(): iterable
     {
-        $vectors = json_decode(file_get_contents(dirname(__DIR__, 3) . '/tests/dbspec/ddl.json'), true, 512, JSON_THROW_ON_ERROR);
+        $vectors = json_decode(
+            file_get_contents(dirname(__DIR__, 3) . '/tests/dbspec/ddl.json'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
         if (($vectors['cases'] ?? []) === []) {
             throw new RuntimeException('Missing ddl vectors');
         }
@@ -60,7 +71,12 @@ final class DbspecRenderTest extends TestCase
                 }
             }
             $result = Dbspec::parse(self::text($lines), $set);
-            $this->assertNotNull($result->document, "{$case['id']}/$name: diagnostics " . json_encode(array_map(fn($d) => [$d->rule, $d->line, $d->column, $d->message], $result->diagnostics)));
+            $this->assertNotNull(
+                $result->document,
+                "{$case['id']}/$name: diagnostics " . json_encode(
+                    array_map(fn($d) => [$d->rule, $d->line, $d->column, $d->message], $result->diagnostics)
+                )
+            );
             $documents[] = $result->document;
         }
         foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
@@ -69,7 +85,12 @@ final class DbspecRenderTest extends TestCase
             // The order of the document set does not change the result.
             foreach ([$documents, array_reverse($documents)] as $set) {
                 $rendered = Dbspec::render($set, $dialect);
-                $this->assertNotNull($rendered->statements, "{$case['id']}/$dialect: diagnostics " . json_encode(array_map(fn($d) => [$d->rule, $d->line, $d->column, $d->message], $rendered->diagnostics)));
+                $this->assertNotNull(
+                    $rendered->statements,
+                    "{$case['id']}/$dialect: diagnostics " . json_encode(
+                        array_map(fn($d) => [$d->rule, $d->line, $d->column, $d->message], $rendered->diagnostics)
+                    )
+                );
                 $this->assertSame($want, $rendered->statements, "{$case['id']}/$dialect: statements differ");
             }
         }

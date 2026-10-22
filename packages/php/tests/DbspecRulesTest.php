@@ -36,7 +36,13 @@ function rules_case(string $id, array $lines, array $errors, array $others = [])
 /** A table body with an identity key around the given lines. */
 function users(array $columns, array $rest = []): array
 {
-    return array_merge(['dbspec 1 shop', '', 'table users {', '  id i64 identity'], $columns, ['  primary key (id)'], $rest, ['}']);
+    return array_merge(
+        ['dbspec 1 shop', '', 'table users {', '  id i64 identity'],
+        $columns,
+        ['  primary key (id)'],
+        $rest,
+        ['}']
+    );
 }
 
 /** The focused canonical, normalize and invalid cases. */
@@ -47,31 +53,169 @@ function rules_vectors(): array
     ]];
 
     $invalid = [
-        rules_case('encoding-bom', ["\u{FEFF}dbspec 1 shop", '', 'table users {', '  id i64 identity', '  primary key (id)', '}'], [['encoding', 1, 1]]),
-        rules_case('encoding-invalid-utf8', ['dbspec 1 shop', '', "# caf\xff", 'table users {', '  id i64 identity', '  Bad i64', '  primary key (id)', '}'], [['encoding', 3, 6]]),
-        rules_case('encoding-bare-cr', ['dbspec 1 shop', '', 'table users {', "  id i64\ridentity", '  primary key (id)', '}'], [['encoding', 4, 9]]),
+        rules_case(
+            'encoding-bom',
+            ["\u{FEFF}dbspec 1 shop", '', 'table users {', '  id i64 identity', '  primary key (id)', '}'],
+            [['encoding', 1, 1]]
+        ),
+        rules_case(
+            'encoding-invalid-utf8',
+            [
+                'dbspec 1 shop',
+                '',
+                "# caf\xff",
+                'table users {',
+                '  id i64 identity',
+                '  Bad i64',
+                '  primary key (id)',
+                '}'
+            ],
+            [['encoding', 3, 6]]
+        ),
+        rules_case(
+            'encoding-bare-cr',
+            ['dbspec 1 shop', '', 'table users {', "  id i64\ridentity", '  primary key (id)', '}'],
+            [['encoding', 4, 9]]
+        ),
         rules_case('header-version', ['dbspec 2 shop', '', 'table Users {', '}'], [['header', 1, '2']]),
         rules_case('header-extra-token', ['dbspec 1 shop extra', 'table Users {', '}'], [['header', 1, 14]]),
         rules_case('header-blank-first-line', ['', 'dbspec 1 shop'], [['header', 1, 1]]),
         rules_case('header-double-space', ['dbspec 1  shop'], [['header', 1, 10]]),
         rules_case('header-tab', ["dbspec\t1 shop"], [['header', 1, 7]]),
-        rules_case('blind-index-bytes-target', users(['  secret bytes', '  version i32', '  secret_hash bytes'], ['  settings {', '    codec secret aes', '    aes_version version', '    blind_index secret secret_hash', '  }']), [['setting', 12, 'secret_hash']]),
+        rules_case(
+            'blind-index-bytes-target',
+            users(
+                ['  secret bytes', '  version i32', '  secret_hash bytes'],
+                [
+                    '  settings {',
+                    '    codec secret aes',
+                    '    aes_version version',
+                    '    blind_index secret secret_hash',
+                    '  }'
+                ]
+            ),
+            [['setting', 12, 'secret_hash']]
+        ),
         rules_case('header-name-format', ['dbspec 1 Shop'], [['name.format', 1, 'Shop']]),
-        rules_case('order-use-after-table', ['dbspec 1 shop', '', 'table users {', '  id i64 identity', '  primary key (id)', '}', 'use core { accounts }'], [['order', 7, 'use']], $core),
-        rules_case('order-table-after-diagram', ['dbspec 1 shop', '', 'diagram main {', '}', 'table users {', '  id i64 identity', '  primary key (id)', '}'], [['order', 5, 'table']]),
+        rules_case(
+            'order-use-after-table',
+            [
+                'dbspec 1 shop',
+                '',
+                'table users {',
+                '  id i64 identity',
+                '  primary key (id)',
+                '}',
+                'use core { accounts }'
+            ],
+            [['order', 7, 'use']],
+            $core
+        ),
+        rules_case(
+            'order-table-after-diagram',
+            [
+                'dbspec 1 shop',
+                '',
+                'diagram main {',
+                '}',
+                'table users {',
+                '  id i64 identity',
+                '  primary key (id)',
+                '}'
+            ],
+            [['order', 5, 'table']]
+        ),
         rules_case('order-column-after-key', users([], ['  name varchar(8)']), [['order', 6, 'name']]),
-        rules_case('order-line-after-settings', users([], ['  settings {', '  }', '  index ix_users_id (id)']), [['order', 8, 'index']]),
-        rules_case('syntax-top-level', ['dbspec 1 shop', '', 'view users {', '}'], [['syntax', 3, 'view'], ['syntax', 4, '}']]),
+        rules_case(
+            'order-line-after-settings',
+            users([], ['  settings {', '  }', '  index ix_users_id (id)']),
+            [['order', 8, 'index']]
+        ),
+        rules_case(
+            'syntax-top-level',
+            ['dbspec 1 shop', '', 'view users {', '}'],
+            [['syntax', 3, 'view'], ['syntax', 4, '}']]
+        ),
         rules_case('syntax-column-modifier', users(['  name varchar(8) unique']), [['syntax', 5, 'unique']]),
-        rules_case('syntax-unclosed-table', ['dbspec 1 shop', '', 'table users {', '  id i64 identity', '  primary key (id)'], [['syntax', 3, '{']]),
-        rules_case('name-primary', users(['  code varchar(8)'], ['  unique primary (code)']), [['name.format', 7, 'primary (']]),
+        rules_case(
+            'syntax-unclosed-table',
+            ['dbspec 1 shop', '', 'table users {', '  id i64 identity', '  primary key (id)'],
+            [['syntax', 3, '{']]
+        ),
+        rules_case(
+            'name-primary',
+            users(['  code varchar(8)'], ['  unique primary (code)']),
+            [['name.format', 7, 'primary (']]
+        ),
         rules_case('name-duplicate-column', users(['  id i32']), [['name.duplicate', 5, 'id']]),
-        rules_case('name-duplicate-table', array_merge(users([]), ['', 'table users {', '  id i64 identity', '  primary key (id)', '}']), [['name.duplicate', 8, 'users']]),
-        rules_case('name-duplicate-kinds', users(['  code varchar(8)'], ['  index ix_code (code)', '  check ix_code (code <> \'\')']), [['name.duplicate', 8, 'ix_code']]),
-        rules_case('name-duplicate-used-document', ['dbspec 1 shop', '', 'use core { accounts }', '', 'table users {', '  id i64 identity', '  code varchar(16)', '  primary key (id)', '  unique uq_accounts_code (code)', '}'], [['name.duplicate', 9, 'uq_accounts_code']], $core),
-        rules_case('name-duplicate-diagram', array_merge(users([]), ['', 'diagram main {', '}', '', 'diagram main {', '}']), [['name.duplicate', 11, 'main']]),
-        rules_case('name-duplicate-used-table', ['dbspec 1 shop', '', 'use core { accounts }', '', 'table accounts {', '  id i64 identity', '  primary key (id)', '}'], [['name.duplicate', 5, 'accounts']], $core),
-        rules_case('type-ranges', users(['  a varchar(0)', '  b varchar(16384)', '  c time(7)', '  d decimal(5,6)', '  e datetime', '  f decimal(0,0)']), [['type', 5, 'varchar'], ['type', 6, 'varchar'], ['type', 7, 'time'], ['type', 8, 'decimal'], ['type', 9, 'datetime'], ['type', 10, 'decimal']]),
+        rules_case(
+            'name-duplicate-table',
+            array_merge(users([]), ['', 'table users {', '  id i64 identity', '  primary key (id)', '}']),
+            [['name.duplicate', 8, 'users']]
+        ),
+        rules_case(
+            'name-duplicate-kinds',
+            users(['  code varchar(8)'], ['  index ix_code (code)', '  check ix_code (code <> \'\')']),
+            [['name.duplicate', 8, 'ix_code']]
+        ),
+        rules_case(
+            'name-duplicate-used-document',
+            [
+                'dbspec 1 shop',
+                '',
+                'use core { accounts }',
+                '',
+                'table users {',
+                '  id i64 identity',
+                '  code varchar(16)',
+                '  primary key (id)',
+                '  unique uq_accounts_code (code)',
+                '}'
+            ],
+            [['name.duplicate', 9, 'uq_accounts_code']],
+            $core
+        ),
+        rules_case(
+            'name-duplicate-diagram',
+            array_merge(users([]), ['', 'diagram main {', '}', '', 'diagram main {', '}']),
+            [['name.duplicate', 11, 'main']]
+        ),
+        rules_case(
+            'name-duplicate-used-table',
+            [
+                'dbspec 1 shop',
+                '',
+                'use core { accounts }',
+                '',
+                'table accounts {',
+                '  id i64 identity',
+                '  primary key (id)',
+                '}'
+            ],
+            [['name.duplicate', 5, 'accounts']],
+            $core
+        ),
+        rules_case(
+            'type-ranges',
+            users(
+                [
+                    '  a varchar(0)',
+                    '  b varchar(16384)',
+                    '  c time(7)',
+                    '  d decimal(5,6)',
+                    '  e datetime',
+                    '  f decimal(0,0)'
+                ]
+            ),
+            [
+                ['type', 5, 'varchar'],
+                ['type', 6, 'varchar'],
+                ['type', 7, 'time'],
+                ['type', 8, 'decimal'],
+                ['type', 9, 'datetime'],
+                ['type', 10, 'decimal']
+            ]
+        ),
         rules_case('column-defaults', users([
             "  a text default 'x'",
             '  b i16 default 32768',
@@ -87,19 +231,73 @@ function rules_vectors(): array
             '  l decimal(5,2) default 1234.5',
             '  m i32 default 1.5',
             '  n f64 default true',
-        ]), [['column', 5, 'default'], ['column', 6, '32768'], ['column', 7, '1.234'], ['column', 8, "'abc'"], ['column', 9, "'2026"], ['column', 10, 'now'], ['column', 11, "'2026"], ['column', 12, "'24"], ['column', 13, "'not"], ['column', 14, '1'], ['column', 15, 22], ['column', 16, '1234.5'], ['column', 17, '1.5'], ['column', 18, 'true']]),
-        rules_case('column-identity', ['dbspec 1 shop', '', 'table users {', '  id i64 null identity', '  other i64 identity', '  code i64', '  primary key (id)', '}'], [['column', 4, 'identity'], ['column', 5, 'identity'], ['key', 7, 'id)']]),
-        rules_case('column-identity-default', users(['  seq i64 identity default 1']), [['column', 5, 'identity'], ['column', 5, 'default']]),
-        rules_case('key-rules', array_merge(users(['  a varchar(320)', '  b varchar(321)', '  c bytes', '  n i64 null'], [
+        ]), [
+            ['column', 5, 'default'],
+            ['column', 6, '32768'],
+            ['column', 7, '1.234'],
+            ['column', 8, "'abc'"],
+            ['column', 9, "'2026"],
+            ['column', 10, 'now'],
+            ['column', 11, "'2026"],
+            ['column', 12, "'24"],
+            ['column', 13, "'not"],
+            ['column', 14, '1'],
+            ['column', 15, 22],
+            ['column', 16, '1234.5'],
+            ['column', 17, '1.5'],
+            ['column', 18, 'true']
+        ]),
+        rules_case(
+            'column-identity',
+            [
+                'dbspec 1 shop',
+                '',
+                'table users {',
+                '  id i64 null identity',
+                '  other i64 identity',
+                '  code i64',
+                '  primary key (id)',
+                '}'
+            ],
+            [['column', 4, 'identity'], ['column', 5, 'identity'], ['key', 7, 'id)']]
+        ),
+        rules_case(
+            'column-identity-default',
+            users(['  seq i64 identity default 1']),
+            [['column', 5, 'identity'], ['column', 5, 'default']]
+        ),
+        rules_case('key-rules', array_merge(users([
+            '  a varchar(320)',
+            '  b varchar(321)',
+            '  c bytes',
+            '  n i64 null'
+        ], [
             '  primary key (id)',
             '  unique uq_users_ab (a, b)',
             '  index ix_users_aa (a, a)',
             '  index ix_users_x (x)',
             '  index ix_users_c (c)',
             '  unique uq_users_n (n)',
-        ])), [['key', 10, 'primary'], ['key', 11, 'uq_users_ab'], ['key', 12, 'a)'], ['key', 13, 'x)'], ['key', 14, 'c)']]),
-        rules_case('key-seventeen-columns', users(array_map(static fn(int $i): string => "  c$i i32", range(1, 17)), ['  index ix_users_many (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15, c16, c17)']), [['key', 23, 'ix_users_many']]),
-        rules_case('key-nullable-primary', ['dbspec 1 shop', '', 'table users {', '  id i64 null', '  primary key (id)', '}'], [['key', 5, 'id)']]),
+        ])), [
+            ['key', 10, 'primary'],
+            ['key', 11, 'uq_users_ab'],
+            ['key', 12, 'a)'],
+            ['key', 13, 'x)'],
+            ['key', 14, 'c)']
+        ]),
+        rules_case(
+            'key-seventeen-columns',
+            users(
+                array_map(static fn(int $i): string => "  c$i i32", range(1, 17)),
+                ['  index ix_users_many (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15, c16, c17)']
+            ),
+            [['key', 23, 'ix_users_many']]
+        ),
+        rules_case(
+            'key-nullable-primary',
+            ['dbspec 1 shop', '', 'table users {', '  id i64 null', '  primary key (id)', '}'],
+            [['key', 5, 'id)']]
+        ),
         rules_case('foreign-key-rules', ['dbspec 1 shop', '', 'use core { accounts }', '', 'table orders {', '  id i64 identity',
             '  account_id i32', '  code varchar(16)', '  pair_a i64', '  pair_b i64',
             '  primary key (id)',
@@ -112,7 +310,14 @@ function rules_vectors(): array
             '  foreign key fk_orders_arity (pair_a, pair_b) references orders (id)',
             '  foreign key fk_orders_column (zzz) references orders (id)',
             '  foreign key fk_orders_target (pair_a) references orders (zzz)',
-            '}'], [['foreign_key', 15, 'fk_orders_type'], ['foreign_key', 16, 'fk_orders_nokey'], ['foreign_key', 17, 'nowhere'], ['foreign_key', 18, 'fk_orders_arity'], ['foreign_key', 19, 'zzz'], ['foreign_key', 20, 'zzz']], $core),
+            '}'], [
+                ['foreign_key', 15, 'fk_orders_type'],
+                ['foreign_key', 16, 'fk_orders_nokey'],
+                ['foreign_key', 17, 'nowhere'],
+                ['foreign_key', 18, 'fk_orders_arity'],
+                ['foreign_key', 19, 'zzz'],
+                ['foreign_key', 20, 'zzz']
+            ], $core),
         rules_case('check-rules', users(['  a i32', "  b varchar(8)"], [
             '  check ck_users_mod (a % 2 = 0)',
             '  check ck_users_unknown (zzz > 1)',
@@ -123,7 +328,13 @@ function rules_vectors(): array
         rules_case('check-set-null-column', ['dbspec 1 shop', '', 'table users {', '  id i64 identity', '  parent_id i64 null', '  primary key (id)', '  index ix_users_parent (parent_id)',
             '  foreign key fk_users_parent (parent_id) references users (id) on delete restrict on update set_null',
             '  check ck_users_parent (parent_id is null or parent_id <> id)', '}'], [['check', 9, 'parent_id is']]),
-        rules_case('check-typed-rules', users(['  qty i32', '  active bool', '  at_a time(0)', '  at_b time(3)', '  name varchar(8)'], [
+        rules_case('check-typed-rules', users([
+            '  qty i32',
+            '  active bool',
+            '  at_a time(0)',
+            '  at_b time(3)',
+            '  name varchar(8)'
+        ], [
             '  check ck_users_bool_ordering (active >= false)',
             '  check ck_users_time_precision (at_a < at_b)',
             '  check ck_users_read_first (name = 1 + 2)',
@@ -140,8 +351,30 @@ function rules_vectors(): array
             '  check ck_users_bool_alone (active)',
             '  check ck_users_alone_before_and (active and qty > 0)',
             '  check ck_users_alone_in_group (qty > 0 or (active))',
-        ]), [['check', 11, '>= false'], ['check', 12, 'at_b'], ['check', 13, '+'], ['check', 14, '1 in'], ['check', 15, 'true'], ['check', 16, '-'], ['check', 17, '-'], ['check', 18, '<'], ['check', 19, '1 and'], ['check', 20, "'x'"], ['check', 21, 'not ('], ['check', 22, 'between 1'], ['check', 23, 'not between'], ['check', 24, 'active)'], ['check', 25, 'active and'], ['check', 26, 'active)']]),
-        rules_case('setting-rules', users(['  name varchar(8)', '  secret bytes', '  stamp datetime(6)', '  version i32 null'], [
+        ]), [
+            ['check', 11, '>= false'],
+            ['check', 12, 'at_b'],
+            ['check', 13, '+'],
+            ['check', 14, '1 in'],
+            ['check', 15, 'true'],
+            ['check', 16, '-'],
+            ['check', 17, '-'],
+            ['check', 18, '<'],
+            ['check', 19, '1 and'],
+            ['check', 20, "'x'"],
+            ['check', 21, 'not ('],
+            ['check', 22, 'between 1'],
+            ['check', 23, 'not between'],
+            ['check', 24, 'active)'],
+            ['check', 25, 'active and'],
+            ['check', 26, 'active)']
+        ]),
+        rules_case('setting-rules', users([
+            '  name varchar(8)',
+            '  secret bytes',
+            '  stamp datetime(6)',
+            '  version i32 null'
+        ], [
             '  settings {',
             '    updated name',
             '    updated stamp',
@@ -154,10 +387,26 @@ function rules_vectors(): array
             '    immutable',
             '    immutable',
             '  }',
-        ]), [['setting', 11, 'name'], ['setting', 12, 'updated'], ['setting', 13, 'stamp'], ['setting', 14, 28], ['setting', 15, 'rot13'], ['setting', 16, 17], ['setting', 17, 'name'], ['setting', 18, 'fk_none'], ['setting', 20, 'immutable']]),
-        rules_case('setting-aes-without-version', users(['  secret bytes'], ['  settings {', '    codec secret aes', '  }']), [['setting', 8, 'codec']]),
+        ]), [
+            ['setting', 11, 'name'],
+            ['setting', 12, 'updated'],
+            ['setting', 13, 'stamp'],
+            ['setting', 14, 28],
+            ['setting', 15, 'rot13'],
+            ['setting', 16, 17],
+            ['setting', 17, 'name'],
+            ['setting', 18, 'fk_none'],
+            ['setting', 20, 'immutable']
+        ]),
+        rules_case(
+            'setting-aes-without-version',
+            users(['  secret bytes'], ['  settings {', '    codec secret aes', '  }']),
+            [['setting', 8, 'codec']]
+        ),
         rules_case('setting-immutable-cascade-child', ['dbspec 1 shop', '', 'table users {', '  id i64 identity', '  parent_id i64 null', '  primary key (id)', '  index ix_users_parent (parent_id)',
-            '  foreign key fk_users_parent (parent_id) references users (id) on delete cascade on update restrict', '  settings {', '    immutable', '  }', '}'], [['setting', 10, 'immutable']]),
+            '  foreign key fk_users_parent (parent_id) references users (id) on delete cascade on update restrict', '  settings {', '    immutable', '  }', '}'], [
+                ['setting', 10, 'immutable']
+            ]),
         rules_case(
             'setting-audit-shape',
             ['dbspec 1 shop', '', 'table service {', '  id i64 identity', '  audit_seq i32', '  primary key (id)', '  index ix_service_audit (audit_seq)',
@@ -165,17 +414,68 @@ function rules_vectors(): array
             '    audit into service_history column audit_seq references audit action change previous previous_audit_seq', '  }', '}', '',
             'table service_history {', '  history_id i64', '  change varchar(16)', '  previous_audit_seq i64', '  id i64', '  extra i32', '  primary key (history_id)', '}', '',
             'table audit {', '  seq i32', '  primary key (seq)', '}'],
-            [['setting', 10, 'service_history'], ['setting', 10, 'service_history'], ['setting', 10, 'service_history'], ['setting', 10, 'service_history'], ['setting', 10, 'change'], ['setting', 10, 'previous_audit_seq']]
+            [
+                ['setting', 10, 'service_history'],
+                ['setting', 10, 'service_history'],
+                ['setting', 10, 'service_history'],
+                ['setting', 10, 'service_history'],
+                ['setting', 10, 'change'],
+                ['setting', 10, 'previous_audit_seq']
+            ]
         ),
-        rules_case('use-unknown-table', ['dbspec 1 shop', '', 'use core { accounts, ghosts }', '', 'table users {', '  id i64 identity', '  primary key (id)', '}'], [['use', 3, 'ghosts']], $core),
-        rules_case('use-invalid-document', ['dbspec 1 shop', '', 'use broken { accounts }'], [['use', 3, 'broken']], ['broken' => ['dbspec 1 broken', '', 'table accounts {', '  Id i64', '}']]),
-        rules_case('use-header-mismatch', ['dbspec 1 shop', '', 'use core { accounts }'], [['use', 3, 'core']], ['core' => ['dbspec 1 other', '', 'table accounts {', '  id i64 identity', '  primary key (id)', '}']]),
-        rules_case('diagram-rules', array_merge(users([]), ['', 'diagram main {', '  users at 1 2', '  users at 3 4', '  users at 1.5 2', '}']), [['diagram', 10, 'users'], ['diagram', 11, 'users'], ['diagram', 11, '1.5']]),
-        rules_case('codec-storage-type', users(['  a varchar(64)', '  b bytes', '  c text'], ['  settings {', '    codec a gz', '    codec b base64', '    codec c yaml ordered_json', '  }']), [['setting', 10, 11], ['setting', 11, 11], ['setting', 12, 'ordered_json']]),
+        rules_case(
+            'use-unknown-table',
+            [
+                'dbspec 1 shop',
+                '',
+                'use core { accounts, ghosts }',
+                '',
+                'table users {',
+                '  id i64 identity',
+                '  primary key (id)',
+                '}'
+            ],
+            [['use', 3, 'ghosts']],
+            $core
+        ),
+        rules_case(
+            'use-invalid-document',
+            ['dbspec 1 shop', '', 'use broken { accounts }'],
+            [['use', 3, 'broken']],
+            ['broken' => ['dbspec 1 broken', '', 'table accounts {', '  Id i64', '}']]
+        ),
+        rules_case(
+            'use-header-mismatch',
+            ['dbspec 1 shop', '', 'use core { accounts }'],
+            [['use', 3, 'core']],
+            ['core' => ['dbspec 1 other', '', 'table accounts {', '  id i64 identity', '  primary key (id)', '}']]
+        ),
+        rules_case(
+            'diagram-rules',
+            array_merge(users([]), ['', 'diagram main {', '  users at 1 2', '  users at 3 4', '  users at 1.5 2', '}']),
+            [['diagram', 10, 'users'], ['diagram', 11, 'users'], ['diagram', 11, '1.5']]
+        ),
+        rules_case(
+            'codec-storage-type',
+            users(
+                ['  a varchar(64)', '  b bytes', '  c text'],
+                ['  settings {', '    codec a gz', '    codec b base64', '    codec c yaml ordered_json', '  }']
+            ),
+            [['setting', 10, 11], ['setting', 11, 11], ['setting', 12, 'ordered_json']]
+        ),
         rules_case(
             'blind-index-shape',
             users(
-                ['  s1 bytes', '  s2 bytes', '  s3 bytes', '  s4 bytes', '  version i32', '  short_hash varchar(32)', '  pair_hash varchar(64)', '  null_hash varchar(64) null'],
+                [
+                    '  s1 bytes',
+                    '  s2 bytes',
+                    '  s3 bytes',
+                    '  s4 bytes',
+                    '  version i32',
+                    '  short_hash varchar(32)',
+                    '  pair_hash varchar(64)',
+                    '  null_hash varchar(64) null'
+                ],
                 ['  index ix_users_short (short_hash)', '  index ix_users_pair (pair_hash, version)', '  index ix_users_null (null_hash)', '  settings {',
                 '    codec s1 aes', '    codec s2 aes', '    codec s3 aes', '    codec s4 aes', '    aes_version version',
                 '    blind_index s1 short_hash',
@@ -185,7 +485,13 @@ function rules_vectors(): array
                 '    blind_index s1 pair_hash',
                 '  }']
             ),
-            [['setting', 23, 'short_hash'], ['setting', 24, 'pair_hash'], ['setting', 25, 'null_hash'], ['setting', 26, 20], ['setting', 27, 'blind_index']]
+            [
+                ['setting', 23, 'short_hash'],
+                ['setting', 24, 'pair_hash'],
+                ['setting', 25, 'null_hash'],
+                ['setting', 26, 20],
+                ['setting', 27, 'blind_index']
+            ]
         ),
         rules_case(
             'audit-action-nullable',
@@ -204,12 +510,64 @@ function rules_vectors(): array
             'table service_history {', '  history_id i64 identity', '  change varchar(8)', '  previous_audit_seq i64 null', '  id i64', '  audit_seq i64', '  deleted_at datetime(6) null', '  primary key (history_id)', '}'],
             [['setting', 12, 'service action']]
         ),
-        rules_case('used-documents-repeat-constraint', ['dbspec 1 shop', '', 'use a { ta }', 'use b { tb }'], [['name.duplicate', 4, 'b {']], [
-            'a' => ['dbspec 1 a', '', 'table ta {', '  id i64 identity', '  code varchar(8)', '  primary key (id)', '  unique uq_code (code)', '}'],
-            'b' => ['dbspec 1 b', '', 'table tb {', '  id i64 identity', '  code varchar(8)', '  primary key (id)', '  unique uq_code (code)', '}'],
+        rules_case('used-documents-repeat-constraint', [
+            'dbspec 1 shop',
+            '',
+            'use a { ta }',
+            'use b { tb }'
+        ], [['name.duplicate', 4, 'b {']], [
+            'a' => [
+                'dbspec 1 a',
+                '',
+                'table ta {',
+                '  id i64 identity',
+                '  code varchar(8)',
+                '  primary key (id)',
+                '  unique uq_code (code)',
+                '}'
+            ],
+            'b' => [
+                'dbspec 1 b',
+                '',
+                'table tb {',
+                '  id i64 identity',
+                '  code varchar(8)',
+                '  primary key (id)',
+                '  unique uq_code (code)',
+                '}'
+            ],
         ]),
-        rules_case('malformed-reference', ['dbspec 1 shop', '', 'table orders {', '  id i64 identity', '  user_id i64', '  primary key (id)', '  index ix_orders_user (user_id)', '  foreign key fk_orders_user (user_id) references Users (id)', '}'], [['name.format', 8, 'Users']]),
-        rules_case('constraint-named-like-used-table', ['dbspec 1 shop', '', 'use core { accounts }', '', 'table users {', '  id i64 identity', '  primary key (id)', '  index accounts (id)', '}'], [['name.duplicate', 8, 'accounts']], $core),
+        rules_case(
+            'malformed-reference',
+            [
+                'dbspec 1 shop',
+                '',
+                'table orders {',
+                '  id i64 identity',
+                '  user_id i64',
+                '  primary key (id)',
+                '  index ix_orders_user (user_id)',
+                '  foreign key fk_orders_user (user_id) references Users (id)',
+                '}'
+            ],
+            [['name.format', 8, 'Users']]
+        ),
+        rules_case(
+            'constraint-named-like-used-table',
+            [
+                'dbspec 1 shop',
+                '',
+                'use core { accounts }',
+                '',
+                'table users {',
+                '  id i64 identity',
+                '  primary key (id)',
+                '  index accounts (id)',
+                '}'
+            ],
+            [['name.duplicate', 8, 'accounts']],
+            $core
+        ),
     ];
 
     $normalize = [
@@ -298,20 +656,60 @@ function rules_vectors(): array
 
     $normalize[] = [
         'id' => 'f64-shortest',
-        'documents' => ['shop' => ['dbspec 1 shop', '', 'table users {', '  id i64 identity', '  a f64 default 0.100000000000000005551', '  b f64 default 100.0', '  primary key (id)', '}']],
+        'documents' => [
+            'shop' => [
+                'dbspec 1 shop',
+                '',
+                'table users {',
+                '  id i64 identity',
+                '  a f64 default 0.100000000000000005551',
+                '  b f64 default 100.0',
+                '  primary key (id)',
+                '}'
+            ]
+        ],
         'main' => 'shop',
-        'canonical' => ['dbspec 1 shop', '', 'table users {', '  id i64 identity', '  a f64 default 0.1', '  b f64 default 100', '  primary key (id)', '}'],
+        'canonical' => [
+            'dbspec 1 shop',
+            '',
+            'table users {',
+            '  id i64 identity',
+            '  a f64 default 0.1',
+            '  b f64 default 100',
+            '  primary key (id)',
+            '}'
+        ],
     ];
 
     $normalize[] = [
         'id' => 'check-typed-operands',
-        'documents' => ['shop' => users(['  small i16', '  big i64', '  price decimal(13,2)', '  cost decimal(8,2)', '  ratio f64', '  name varchar(8)', '  note text', '  at_a datetime(6)', '  at_b datetime(6)'], [
+        'documents' => ['shop' => users([
+            '  small i16',
+            '  big i64',
+            '  price decimal(13,2)',
+            '  cost decimal(8,2)',
+            '  ratio f64',
+            '  name varchar(8)',
+            '  note text',
+            '  at_a datetime(6)',
+            '  at_b datetime(6)'
+        ], [
             "  check ck_users_columns (small <= big and cost <= price and name <> note and at_a < at_b)",
             "  check ck_users_left_literal (0 < price and -007 < small and '2100-01-01 00:00:00' > at_a)",
             "  check ck_users_ranges (ratio >= 0.0 and ratio <= 1.50 and note in ('a', 'it''s'))",
         ])],
         'main' => 'shop',
-        'canonical' => users(['  small i16', '  big i64', '  price decimal(13,2)', '  cost decimal(8,2)', '  ratio f64', '  name varchar(8)', '  note text', '  at_a datetime(6)', '  at_b datetime(6)'], [
+        'canonical' => users([
+            '  small i16',
+            '  big i64',
+            '  price decimal(13,2)',
+            '  cost decimal(8,2)',
+            '  ratio f64',
+            '  name varchar(8)',
+            '  note text',
+            '  at_a datetime(6)',
+            '  at_b datetime(6)'
+        ], [
             "  check ck_users_columns (small <= big and cost <= price and name <> note and at_a < at_b)",
             "  check ck_users_left_literal (0.00 < price and -7 < small and '2100-01-01 00:00:00.000000' > at_a)",
             "  check ck_users_ranges (ratio >= 0 and ratio <= 1.5 and note in ('a', 'it''s'))",
@@ -467,7 +865,9 @@ final class DbspecRulesTest extends TestCase
     {
         [$cpuMs, $wallMs] = caseClockElapsed(self::$started);
         if ($cpuMs > 60000) {
-            caseClockWarning(sprintf('dbspec_rules used %.3f ms of CPU (%.3f ms wall), above its reference of 60 s', $cpuMs, $wallMs));
+            caseClockWarning(
+                sprintf('dbspec_rules used %.3f ms of CPU (%.3f ms wall), above its reference of 60 s', $cpuMs, $wallMs)
+            );
         }
     }
 
@@ -479,7 +879,8 @@ final class DbspecRulesTest extends TestCase
         }
     }
 
-    // Requirements: DBS-2, DBS-3, DBS-34, DBS-46, DBS-131, DBS-154, DBS-156, DBS-157, DBS-158, DBS-159, DBS-161, DBS-162, DBS-163, DBS-164, DBS-165, DBS-166, DBS-167, DBS-168, DBS-169, DBS-171.
+    // Requirements: DBS-2, DBS-3, DBS-34, DBS-46, DBS-131, DBS-154, DBS-156, DBS-157, DBS-158, DBS-159, DBS-161,
+    // DBS-162, DBS-163, DBS-164, DBS-165, DBS-166, DBS-167, DBS-168, DBS-169, DBS-171.
     #[DataProvider('ruleCases')]
     public function test_rule(string $kind, array $case): void
     {
@@ -501,7 +902,10 @@ final class DbspecRulesTest extends TestCase
         [$text, $want] = rules_limit($id);
         $clock = cpuCaseBegin(20.0);
         $result = Polyspec\Orm\Dbspec\Dbspec::parse($text, []);
-        $got = array_map(static fn(Polyspec\Orm\Dbspec\Diagnostic $d): array => [$d->rule, $d->line, $d->column], $result->diagnostics);
+        $got = array_map(
+            static fn(Polyspec\Orm\Dbspec\Diagnostic $d): array => [$d->rule, $d->line, $d->column],
+            $result->diagnostics
+        );
         $this->assertNull($result->document, "limit/$id: a document was returned");
         $this->assertSame([$want], $got, "limit/$id");
         cpuCaseEnd("limit/$id", $clock);

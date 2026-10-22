@@ -1,8 +1,8 @@
 <?php
 
-// Grouped counts on the seeded bench database of each dialect (BENCH_<DIALECT>_DSN, from make databases-create): getsCount returns group rows whose grouped values keep their types
-// (boolean, integer, SQL NULL), that hold only the grouped columns and the count, and whose counts sum to the row count.
-// The test only reads.
+// Grouped counts on the seeded bench database of each dialect (BENCH_<DIALECT>_DSN, from make databases-create):
+// getsCount returns group rows whose grouped values keep their types (boolean, integer, SQL NULL), that hold only the
+// grouped columns and the count, and whose counts sum to the row count. The test only reads.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/GroupRowsDbTest.php
 declare(strict_types=1);
 
@@ -23,18 +23,37 @@ final class GroupRowsDbTest extends TestCase
     // Requirements: INT-31.
     public function test_group_rows(): void
     {
-        foreach (['mysql' => 'BENCH_MYSQL_DSN', 'postgres' => 'BENCH_POSTGRES_DSN', 'sqlite' => 'BENCH_SQLITE_DSN'] as $driver => $variable) {
+        foreach (
+            [
+            'mysql' => 'BENCH_MYSQL_DSN',
+            'postgres' => 'BENCH_POSTGRES_DSN',
+            'sqlite' => 'BENCH_SQLITE_DSN'
+            ] as $driver => $variable
+        ) {
             $dsn = requiredDsn($variable);
-            $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index'));
+            $db = \Polyspec\Orm\Tests\Model\connect(
+                $dsn,
+                new Config(aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index')
+            );
             try {
                 self::assertSame($driver, $db->driver(), 'DSN selected the wrong database');
                 $query = static fn(): Author => (new Author())($db);
                 $groups = $query()->groupByIsClose()->orderByIsCloseAsc()->getsCount();
-                self::assertTrue($groups instanceof GroupRows && count($groups) === 2, 'getsCount returned partial models');
+                self::assertTrue(
+                    $groups instanceof GroupRows && count($groups) === 2,
+                    'getsCount returned partial models'
+                );
                 $total = 0;
                 foreach ($groups as $row) {
-                    self::assertTrue($row instanceof GroupRow && is_bool($row->value('is_close')) && $row->count() >= 1, 'grouped boolean or count has the wrong type');
-                    self::assertSame(['is_close', 'row_count'], array_keys($row->toArray()), 'group row includes an unselected field');
+                    self::assertTrue(
+                        $row instanceof GroupRow && is_bool($row->value('is_close')) && $row->count() >= 1,
+                        'grouped boolean or count has the wrong type'
+                    );
+                    self::assertSame(
+                        ['is_close', 'row_count'],
+                        array_keys($row->toArray()),
+                        'group row includes an unselected field'
+                    );
                     try {
                         $row->value('name');
                         self::fail('unselected model column was available');

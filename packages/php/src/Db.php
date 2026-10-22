@@ -158,8 +158,8 @@ final class Db
     }
 
     /**
-     * Sends a notification with pg_notify (docs/spec/dialects.md DIA-193): inside a transaction it is delivered with that
-     * transaction's commit. Listen holds the rules and the statement, which the C extension calls too.
+     * Sends a notification with pg_notify (docs/spec/dialects.md DIA-193): inside a transaction it is delivered with
+     * that transaction's commit. Listen holds the rules and the statement, which the C extension calls too.
      */
     public function notify(string $channel, string $payload): void
     {

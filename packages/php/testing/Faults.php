@@ -43,8 +43,9 @@ final class Faults
     }
 
     /**
-     * Pins the connection's executor clock to the $clock time. $clock is UTC text in the form `YYYY-MM-DD HH:MM:SS.ffffff`
-     * (docs/spec/protocol.md "Test clock"). A different format is an \InvalidArgumentException and nothing is set.
+     * Pins the connection's executor clock to the $clock time. $clock is UTC text in the form `YYYY-MM-DD
+     * HH:MM:SS.ffffff` (docs/spec/protocol.md "Test clock"). A different format is an \InvalidArgumentException and
+     * nothing is set.
      */
     public static function fixClock(Db $db, string $clock): void
     {

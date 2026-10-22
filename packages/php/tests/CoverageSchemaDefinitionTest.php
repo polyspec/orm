@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 // schema_definition feature coverage: each case of contracts/fixtures/schema_definition.json
 // runs on the PHP dbspec implementation (Polyspec\Orm\Dbspec\Dbspec): after parse, emit reproduces
-// byte for byte, the manifest hash of the document set, the per-dialect rendered statements, the tokens of syntax analysis,
-// formatting and its refusal, and the declaration positions of a parse.
-// The same file runs these cases on the PHP extension polyspec_orm, loaded in its own process (make dbspec-php-extension-check),
-// whose classes take the place of the client's.
+// byte for byte, the manifest hash of the document set, the per-dialect rendered statements, the tokens of syntax
+// analysis, formatting and its refusal, and the declaration positions of a parse.
+// The same file runs these cases on the PHP extension polyspec_orm, loaded in its own process (make
+// dbspec-php-extension-check), whose classes take the place of the client's.
 
 require_once __DIR__ . '/coverage_cases.php';
 
@@ -51,7 +51,10 @@ function fixtureCase(array $fixture, string $id, string $operation): array
 {
     foreach ($fixture['cases'] as $case) {
         if ($case['id'] === $id) {
-            Assert::assertTrue($case['operation'] === $operation, "case $id has operation {$case['operation']}, want $operation");
+            Assert::assertTrue(
+                $case['operation'] === $operation,
+                "case $id has operation {$case['operation']}, want $operation"
+            );
             return $case;
         }
     }
@@ -73,7 +76,10 @@ class CoverageSchemaDefinitionTest extends TestCase
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/schema_definition.json");
         $case = fixtureCase($fixture, 'dbspec_emit_round_trip', 'parse_emit');
-        Assert::assertTrue($case['expected'] === ['identical' => true], 'unexpected round trip expectation ' . json_encode($case['expected']));
+        Assert::assertTrue(
+            $case['expected'] === ['identical' => true],
+            'unexpected round trip expectation ' . json_encode($case['expected'])
+        );
         [$texts, $documents] = fixtureDocuments($root, $case['input']['documents'], $dbspec);
         foreach (array_keys($texts) as $i => $path) {
             Assert::assertTrue($dbspec::emit($documents[$i]) === $texts[$path], "emit of $path differs from its text");
@@ -89,7 +95,10 @@ class CoverageSchemaDefinitionTest extends TestCase
         [, $documents] = fixtureDocuments($root, $case['input']['documents'], $dbspec);
         $result = $dbspec::manifest($documents);
         Assert::assertTrue($result->manifest !== null, 'manifest diagnostics ' . json_encode($result->diagnostics));
-        Assert::assertTrue($result->manifest->manifestHash === $case['expected']['manifest_hash'], "manifest hash {$result->manifest->manifestHash}");
+        Assert::assertTrue(
+            $result->manifest->manifestHash === $case['expected']['manifest_hash'],
+            "manifest hash {$result->manifest->manifestHash}"
+        );
     }
 
     public function test_dbspec_render_ddl(): void
@@ -99,10 +108,16 @@ class CoverageSchemaDefinitionTest extends TestCase
         $fixture = coverageJson("$root/contracts/fixtures/schema_definition.json");
         $case = fixtureCase($fixture, 'dbspec_render_ddl', 'render');
         [, $documents] = fixtureDocuments($root, $case['input']['documents'], $dbspec);
-        Assert::assertTrue(array_keys($case['expected']) === ['mysql', 'postgres', 'sqlite'], 'rendered dialects ' . json_encode(array_keys($case['expected'])));
+        Assert::assertTrue(
+            array_keys($case['expected']) === ['mysql', 'postgres', 'sqlite'],
+            'rendered dialects ' . json_encode(array_keys($case['expected']))
+        );
         foreach ($case['expected'] as $dialect => $statements) {
             $result = $dbspec::render($documents, $dialect);
-            Assert::assertTrue($result->statements === $statements, "$dialect statements " . json_encode($result->statements));
+            Assert::assertTrue(
+                $result->statements === $statements,
+                "$dialect statements " . json_encode($result->statements)
+            );
         }
     }
 
@@ -116,11 +131,26 @@ class CoverageSchemaDefinitionTest extends TestCase
         foreach (array_keys($texts) as $i => $path) {
             $analysis = $dbspec::analyze($texts[$path], []);
             $parsed = $dbspec::parse($texts[$path], []);
-            Assert::assertTrue($analysis->diagnostics === [], "$path analysis diagnostics " . json_encode($analysis->diagnostics));
-            Assert::assertTrue($dbspec::emit($analysis->document) === $dbspec::emit($documents[$i]), "$path: the analysis differs from the parsed document");
-            Assert::assertTrue($analysis->positions == $parsed->positions, "$path: the analysis differs from the positions of the parse");
-            $tokens = array_map(static fn(object $t): array => [$t->line, $t->start, $t->end, $t->class], $analysis->tokens);
-            Assert::assertTrue($case['expected']['tokens'] !== [] && $tokens === $case['expected']['tokens'], "$path tokens " . json_encode($tokens));
+            Assert::assertTrue(
+                $analysis->diagnostics === [],
+                "$path analysis diagnostics " . json_encode($analysis->diagnostics)
+            );
+            Assert::assertTrue(
+                $dbspec::emit($analysis->document) === $dbspec::emit($documents[$i]),
+                "$path: the analysis differs from the parsed document"
+            );
+            Assert::assertTrue(
+                $analysis->positions == $parsed->positions,
+                "$path: the analysis differs from the positions of the parse"
+            );
+            $tokens = array_map(
+                static fn(object $t): array => [$t->line, $t->start, $t->end, $t->class],
+                $analysis->tokens
+            );
+            Assert::assertTrue(
+                $case['expected']['tokens'] !== [] && $tokens === $case['expected']['tokens'],
+                "$path tokens " . json_encode($tokens)
+            );
         }
     }
 
@@ -132,8 +162,14 @@ class CoverageSchemaDefinitionTest extends TestCase
         $case = fixtureCase($fixture, 'dbspec_format', 'format');
         $result = $dbspec::format(implode("\n", $case['input']['text']) . "\n", []);
         Assert::assertTrue($result->diagnostics === [], 'format diagnostics ' . json_encode($result->diagnostics));
-        Assert::assertTrue($result->text === implode("\n", $case['expected']['text']) . "\n", "formatted text {$result->text}");
-        Assert::assertTrue($dbspec::format($result->text, [])->text === $result->text, 'the formatted text is not its own format');
+        Assert::assertTrue(
+            $result->text === implode("\n", $case['expected']['text']) . "\n",
+            "formatted text {$result->text}"
+        );
+        Assert::assertTrue(
+            $dbspec::format($result->text, [])->text === $result->text,
+            'the formatted text is not its own format'
+        );
     }
 
     public function test_dbspec_format_refusal(): void
@@ -144,8 +180,14 @@ class CoverageSchemaDefinitionTest extends TestCase
         $case = fixtureCase($fixture, 'dbspec_format_refusal', 'format');
         $result = $dbspec::format(implode("\n", $case['input']['text']) . "\n", []);
         Assert::assertTrue($result->text === null, "a document with a diagnostic was rewritten: {$result->text}");
-        $diagnostics = array_map(static fn(object $d): array => ['rule' => $d->rule, 'line' => $d->line, 'column' => $d->column], $result->diagnostics);
-        Assert::assertTrue($case['expected']['diagnostics'] !== [] && $diagnostics === $case['expected']['diagnostics'], 'diagnostics ' . json_encode($diagnostics));
+        $diagnostics = array_map(
+            static fn(object $d): array => ['rule' => $d->rule, 'line' => $d->line, 'column' => $d->column],
+            $result->diagnostics
+        );
+        Assert::assertTrue(
+            $case['expected']['diagnostics'] !== [] && $diagnostics === $case['expected']['diagnostics'],
+            'diagnostics ' . json_encode($diagnostics)
+        );
     }
 
     public function test_dbspec_parse_positions(): void
@@ -157,9 +199,23 @@ class CoverageSchemaDefinitionTest extends TestCase
         [$texts] = fixtureDocuments($root, $case['input']['documents'], $dbspec);
         foreach ($texts as $path => $text) {
             $parsed = $dbspec::parse($text, []);
-            Assert::assertTrue($parsed->positions !== null, "$path parse diagnostics " . json_encode($parsed->diagnostics));
-            $positions = array_map(static fn(object $p): array => ['kind' => $p->kind, 'path' => $p->path, 'line' => $p->line, 'column' => $p->column], $parsed->positions);
-            Assert::assertTrue($case['expected']['positions'] !== [] && $positions === $case['expected']['positions'], "$path positions " . json_encode($positions));
+            Assert::assertTrue(
+                $parsed->positions !== null,
+                "$path parse diagnostics " . json_encode($parsed->diagnostics)
+            );
+            $positions = array_map(
+                static fn(object $p): array => [
+                    'kind' => $p->kind,
+                    'path' => $p->path,
+                    'line' => $p->line,
+                    'column' => $p->column
+                ],
+                $parsed->positions
+            );
+            Assert::assertTrue(
+                $case['expected']['positions'] !== [] && $positions === $case['expected']['positions'],
+                "$path positions " . json_encode($positions)
+            );
         }
     }
 }

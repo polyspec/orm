@@ -28,14 +28,28 @@ function cpuCaseEnd(string $id, array $clock): void
 {
     [$cpuMs, $wallMs] = caseClockElapsed($clock[0]);
     if ($cpuMs > $clock[1] * 1000) {
-        caseClockWarning(sprintf('%s used %.3f ms of CPU (%.3f ms wall), above its reference of %s s', $id, $cpuMs, $wallMs, $clock[1]));
+        caseClockWarning(
+            sprintf(
+                '%s used %.3f ms of CPU (%.3f ms wall), above its reference of %s s',
+                $id,
+                $cpuMs,
+                $wallMs,
+                $clock[1]
+            )
+        );
     }
 }
 
-/** Writes to stderr the line `WARNING <message>; machine ...` that the measurement exceeded the baseline. A warning is not a failure. */
+/**
+ * Writes to stderr the line `WARNING <message>; machine ...` that the measurement exceeded the baseline. A warning is
+ * not a failure.
+ */
 function caseClockWarning(string $message): void
 {
-    fwrite(STDERR, sprintf("WARNING %s; machine %s %s, PHP %s\n", $message, PHP_OS_FAMILY, php_uname('m'), PHP_VERSION));
+    fwrite(
+        STDERR,
+        sprintf("WARNING %s; machine %s %s, PHP %s\n", $message, PHP_OS_FAMILY, php_uname('m'), PHP_VERSION)
+    );
 }
 
 /** The start of one case: [hrtime ns, process CPU ns]. */

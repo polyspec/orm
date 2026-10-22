@@ -11,7 +11,8 @@ declare(strict_types=1);
 //
 // The DSN is converted to PDO arguments with the PHP client's Orm::parseDsn.
 //
-// Usage: php -d extension=<polyspec_orm library> packages/php-ext/testing/dbspec/apply/php-extension.php <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>
+// Usage: php -d extension=<polyspec_orm library> packages/php-ext/testing/dbspec/apply/php-extension.php
+// <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>
 
 require __DIR__ . '/../../../../../vendor-php/autoload.php';
 require __DIR__ . '/../../../../../tests/dbspec/input.php';
@@ -22,14 +23,24 @@ use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Orm;
 
 // Statement that every client runs on a new connection (packages/go/internal/dialects connectionRules).
-const CONNECTION_RULES = ['mysql' => ["SET time_zone = '+00:00'"], 'postgres' => ["SET TimeZone = 'UTC'"], 'sqlite' => ['PRAGMA foreign_keys = ON']];
+const CONNECTION_RULES = [
+    'mysql' => ["SET time_zone = '+00:00'"],
+    'postgres' => ["SET TimeZone = 'UTC'"],
+    'sqlite' => ['PRAGMA foreign_keys = ON']
+];
 
 if ($argc !== 5) {
-    fwrite(STDERR, "usage: php -d extension=<polyspec_orm library> packages/php-ext/testing/dbspec/apply/php-extension.php <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>\n");
+    fwrite(
+        STDERR,
+        "usage: php -d extension=<polyspec_orm library> packages/php-ext/testing/dbspec/apply/php-extension.php <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>\n"
+    );
     exit(2);
 }
 if (!extension_loaded('polyspec_orm')) {
-    fwrite(STDERR, "the extension polyspec_orm is not loaded; run this with php -d extension=<polyspec_orm library>, which make dbspec-apply-pairs-check builds\n");
+    fwrite(
+        STDERR,
+        "the extension polyspec_orm is not loaded; run this with php -d extension=<polyspec_orm library>, which make dbspec-apply-pairs-check builds\n"
+    );
     exit(1);
 }
 [, $action, $dialect, $uri, $vectorsPath] = $argv;
@@ -62,7 +73,12 @@ try {
         'apply' => Dbspec::apply($pdo, $dialect, $plans, $now, null),
         'recover' => Dbspec::recover($pdo, $dialect, $plans, $now, null),
         'rollback' => Dbspec::rollback($pdo, $dialect, $plans, $now, null),
-        'stop' => Dbspec::apply($pdo, $dialect, $plans, $now, static function (ApplyEvent $event) use ($plans, $stop): void {
+        'stop' => Dbspec::apply($pdo, $dialect, $plans, $now, static function (
+            ApplyEvent $event
+        ) use (
+            $plans,
+            $stop
+): void {
             if ($event->kind === 'applied' && $event->plan === $plans[1]->name && $event->step === 1) {
                 throw $stop;
             }

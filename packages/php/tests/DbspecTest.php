@@ -28,7 +28,13 @@ final class DbspecTest extends TestCase
     {
         [$cpuMs, $wallMs] = caseClockElapsed(self::$started);
         if ($cpuMs > 10000) {
-            caseClockWarning(sprintf('dbspec_vectors used %.3f ms of CPU (%.3f ms wall), above its reference of 10 s', $cpuMs, $wallMs));
+            caseClockWarning(
+                sprintf(
+                    'dbspec_vectors used %.3f ms of CPU (%.3f ms wall), above its reference of 10 s',
+                    $cpuMs,
+                    $wallMs
+                )
+            );
         }
     }
 
@@ -106,7 +112,10 @@ final class DbspecTest extends TestCase
         $path = dirname(__DIR__, 3) . '/tests/dbspec/' . $case['path'];
         [$name, $reader] = [
             'file' => [$path, static fn(): ReadResult => Dbspec::readFile($path)],
-            'bytes' => [$case['path'], static fn(): ReadResult => Dbspec::readBytes($case['path'], (string) file_get_contents($path))],
+            'bytes' => [
+                $case['path'],
+                static fn(): ReadResult => Dbspec::readBytes($case['path'], (string) file_get_contents($path))
+            ],
         ][$kind];
         $id = 'files/' . $case['id'] . '/' . $kind;
         // The files case is a computation that reads and parses one file, and has a CPU baseline of 2 s.
@@ -114,7 +123,10 @@ final class DbspecTest extends TestCase
         $read = $reader();
         if ($case['errors'] !== []) {
             $this->assertNull($read->text, "$id: text was returned with diagnostics expected");
-            $got = array_map(static fn(Diagnostic $d): array => ['line' => $d->line, 'column' => $d->column, 'rule' => $d->rule], $read->diagnostics);
+            $got = array_map(
+                static fn(Diagnostic $d): array => ['line' => $d->line, 'column' => $d->column, 'rule' => $d->rule],
+                $read->diagnostics
+            );
             $this->assertSame($case['errors'], $got, "$id: diagnostics differ");
             foreach ($read->diagnostics as $d) {
                 $this->assertSame($name . ($fileMessages[$d->rule] ?? ''), $d->message, "$id: message");
@@ -124,7 +136,11 @@ final class DbspecTest extends TestCase
             $this->assertSame(file_get_contents($path), $read->text, "$id: the file bytes were not returned");
             $result = Dbspec::parse($read->text, []);
             $this->assertNotNull($result->document, "$id: the file text does not parse");
-            $this->assertSame($read->text, Dbspec::emit($result->document), "$id: the file text does not parse and emit unchanged");
+            $this->assertSame(
+                $read->text,
+                Dbspec::emit($result->document),
+                "$id: the file text does not parse and emit unchanged"
+            );
         }
         cpuCaseEnd($id, $clock);
     }
@@ -133,7 +149,9 @@ final class DbspecTest extends TestCase
     public static function strictReaderCases(): iterable
     {
         $cases = dbspec_read_cases();
-        $manifest = array_key_first(array_filter($cases['sets'], static fn(array $c): bool => array_key_exists('manifest', $c)));
+        $manifest = array_key_first(
+            array_filter($cases['sets'], static fn(array $c): bool => array_key_exists('manifest', $c))
+        );
         $mutations = [
             ['note', 'is missing', static function (stdClass $v): void {
                 unset($v->note);
@@ -156,7 +174,9 @@ final class DbspecTest extends TestCase
             ['sets[0].extra', 'is not a known field', static function (stdClass $v): void {
                 $v->sets[0]->extra = true;
             }],
-            ["sets[$manifest].manifest.extra", 'is not a known field', static function (stdClass $v) use ($manifest): void {
+            ["sets[$manifest].manifest.extra", 'is not a known field', static function (
+                stdClass $v
+            ) use ($manifest): void {
                 $v->sets[$manifest]->manifest->extra = [];
             }],
             ['files[0].errors', 'is missing', static function (stdClass $v): void {
@@ -181,7 +201,9 @@ final class DbspecTest extends TestCase
         $value = json_decode($text, false, 512, JSON_THROW_ON_ERROR);
         $change($value);
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessageMatches('/^' . preg_quote("tests/dbspec/cases.json: $location $problem", '/') . '$/');
+        $this->expectExceptionMessageMatches(
+            '/^' . preg_quote("tests/dbspec/cases.json: $location $problem", '/') . '$/'
+        );
         dbspec_check_cases($value);
     }
 }

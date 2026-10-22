@@ -11,10 +11,17 @@ use Polyspec\Orm\OrmException;
 #[Small]
 final class AggregateNumericTest extends TestCase
 {
-    /** @return iterable<string, array{array<string, mixed>}> for each case in contracts/fixtures/aggregate_numeric.json */
+    /**
+     * @return iterable<string, array{array<string, mixed>}> for each case in contracts/fixtures/aggregate_numeric.json
+     */
     public static function cases(): iterable
     {
-        $fixture = json_decode((string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/aggregate_numeric.json'), true, 512, JSON_THROW_ON_ERROR);
+        $fixture = json_decode(
+            (string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/aggregate_numeric.json'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
         foreach ($fixture['cases'] as $case) {
             yield $case['id'] => [$case];
         }
@@ -34,7 +41,11 @@ final class AggregateNumericTest extends TestCase
         try {
             $number = $convert->invoke(null, $input);
         } catch (OrmException $error) {
-            self::assertSame($case['expected']['error'] ?? null, $error->code_, "{$case['id']}: unexpected {$error->code_}");
+            self::assertSame(
+                $case['expected']['error'] ?? null,
+                $error->code_,
+                "{$case['id']}: unexpected {$error->code_}"
+            );
             return;
         }
         self::assertArrayNotHasKey('error', $case['expected'], "{$case['id']}: expected an error, got a value");

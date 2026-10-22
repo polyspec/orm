@@ -30,20 +30,45 @@ final class HostcodecTest extends TestCase
     public function test_hostcodec(): void
     {
         $fixed = '4F524D2D414553320000112233445566778899AABB651DA9F08BE2FA7CD7B2DF5C04D91B32189DCD854A70762F99271A2BEBA64A248E24';
-        self::assertSame('user42@example.com', Codec::hostDecode($fixed, ['aes', 'hex'], 'bench-salt'), 'shared fixed AES v2 vector');
-        foreach ([['plain' => 'member@example.test', 'key' => 'key-v1'], ['plain' => '한글 텍스트', 'key' => 'key-v2']] as $v) {
+        self::assertSame(
+            'user42@example.com',
+            Codec::hostDecode($fixed, ['aes', 'hex'], 'bench-salt'),
+            'shared fixed AES v2 vector'
+        );
+        foreach (
+            [
+            ['plain' => 'member@example.test', 'key' => 'key-v1'],
+            ['plain' => '한글 텍스트', 'key' => 'key-v2']
+            ] as $v
+        ) {
             $raw = Codec::hostEncode($v['plain'], ['aes'], $v['key']);
             self::assertInstanceOf(Bytes::class, $raw);
             self::assertStringStartsWith("ORM-AES2\0", $raw->bytes, 'AES v2 envelope prefix');
             self::assertSame($v['plain'], Codec::hostDecode($raw->bytes, ['aes'], $v['key']), 'AES v2 round trip');
             $tampered = $raw->bytes;
             $tampered[strlen($tampered) - 1] = chr(ord($tampered[strlen($tampered) - 1]) ^ 1);
-            self::assertCode(Code::CODEC_DECODE, static fn() => Codec::hostDecode($tampered, ['aes'], $v['key']), 'tampered AES → CODEC_DECODE');
+            self::assertCode(
+                Code::CODEC_DECODE,
+                static fn() => Codec::hostDecode($tampered, ['aes'], $v['key']),
+                'tampered AES → CODEC_DECODE'
+            );
         }
         foreach (['00', 'zz', '', 'EC026C86BF1C78E3660CCC20789EDF0D00'] as $bad) {
-            self::assertCode(Code::CODEC_DECODE, static fn() => Codec::hostDecode($bad, ['aes', 'hex'], 'k'), "corrupt ciphertext '$bad' → CODEC_DECODE");
+            self::assertCode(
+                Code::CODEC_DECODE,
+                static fn() => Codec::hostDecode($bad, ['aes', 'hex'], 'k'),
+                "corrupt ciphertext '$bad' → CODEC_DECODE"
+            );
         }
-        self::assertCode(Code::CODEC_DECODE, static fn() => Codec::hostDecode((string) Codec::hostEncode('value', ['aes', 'hex'], 'key'), ['aes', 'hex'], 'wrong-key'), 'wrong key → CODEC_DECODE');
+        self::assertCode(
+            Code::CODEC_DECODE,
+            static fn() => Codec::hostDecode(
+                (string) Codec::hostEncode('value', ['aes', 'hex'], 'key'),
+                ['aes', 'hex'],
+                'wrong-key'
+            ),
+            'wrong key → CODEC_DECODE'
+        );
         self::assertCode(Code::CONFIG, static fn() => Codec::hostEncode('x', ['aes', 'hex'], ''), 'no key → CONFIG');
         self::assertNull(Codec::hostEncode(null, ['aes', 'hex'], 'k'), 'null passes through');
         self::assertNull(Codec::hostDecode(null, ['aes', 'hex'], 'k'), 'null passes through');
@@ -59,16 +84,37 @@ final class HostcodecTest extends TestCase
         $mapped = Codec::hostEncode('::ffff:10.1.2.3', ['ip'], '');
         self::assertInstanceOf(Bytes::class, $mapped);
         self::assertSame("\x0a\x01\x02\x03", $mapped->bytes, 'IPv4-mapped IPv6 packs to 4 bytes like INET6_ATON');
-        self::assertSame('1992d5622b305dec915751bc7382d3c0ed9e130f2cc62ab3560e244953160fa8', Codec::blindIndex('member@example.test', 'blind-key'), 'shared blind-index HMAC vector');
-        self::assertCode(Code::CODEC_ENCODE, static fn() => Codec::hostEncode('not-an-ip', ['ip'], ''), 'bad address → CODEC_ENCODE');
-        self::assertCode(Code::CODEC_DECODE, static fn() => Codec::hostDecode('abc', ['ip'], ''), '3 packed bytes → CODEC_DECODE');
-        self::assertCode(Code::CODEC_UNSUPPORTED, static fn() => Codec::hostEncode('x', ['gz'], ''), 'codec style as host stage → CODEC_UNSUPPORTED');
+        self::assertSame(
+            '1992d5622b305dec915751bc7382d3c0ed9e130f2cc62ab3560e244953160fa8',
+            Codec::blindIndex('member@example.test', 'blind-key'),
+            'shared blind-index HMAC vector'
+        );
+        self::assertCode(
+            Code::CODEC_ENCODE,
+            static fn() => Codec::hostEncode('not-an-ip', ['ip'], ''),
+            'bad address → CODEC_ENCODE'
+        );
+        self::assertCode(
+            Code::CODEC_DECODE,
+            static fn() => Codec::hostDecode('abc', ['ip'], ''),
+            '3 packed bytes → CODEC_DECODE'
+        );
+        self::assertCode(
+            Code::CODEC_UNSUPPORTED,
+            static fn() => Codec::hostEncode('x', ['gz'], ''),
+            'codec style as host stage → CODEC_UNSUPPORTED'
+        );
     }
 
     /** @return iterable<string, array{array<string, mixed>}> for each vector in tests/codec/decode-vectors.json */
     public static function decodeVectors(): iterable
     {
-        $vectors = json_decode((string) file_get_contents(dirname(__DIR__, 3) . '/tests/codec/decode-vectors.json'), true, 512, JSON_THROW_ON_ERROR)['vectors'];
+        $vectors = json_decode(
+            (string) file_get_contents(dirname(__DIR__, 3) . '/tests/codec/decode-vectors.json'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        )['vectors'];
         if ($vectors === []) {
             throw new RuntimeException('decode-vectors.json has no vectors');
         }
@@ -77,8 +123,9 @@ final class HostcodecTest extends TestCase
         }
     }
 
-    // Shared decode vectors (tests/codec/decode-vectors.json): stored cells decode only in the form the encoder writes, and other
-    // forms are CODEC_DECODE. Host stage lists without aes are read by hostDecode with no key, and the rest by decode.
+    // Shared decode vectors (tests/codec/decode-vectors.json): stored cells decode only in the form the encoder writes,
+    // and other forms are CODEC_DECODE. Host stage lists without aes are read by hostDecode with no key, and the rest
+    // by decode.
     /** @param array<string, mixed> $v */
     #[DataProvider('decodeVectors')]
     public function test_decode_vector(array $v): void

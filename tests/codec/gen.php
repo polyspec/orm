@@ -55,8 +55,16 @@ function encode(array $styles, mixed $v): ?string
     foreach ($styles as $st) {
         $cur = match ($st) {
             'serialize' => serialize($value),
-            'yaml' => Yaml::dump($value, 20, 2, Yaml::DUMP_EXCEPTION_ON_INVALID_TYPE | Yaml::DUMP_EMPTY_ARRAY_AS_SEQUENCE | Yaml::DUMP_NUMERIC_KEY_AS_STRING),
-            'json', 'jsons' => json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+            'yaml' => Yaml::dump(
+                $value,
+                20,
+                2,
+                Yaml::DUMP_EXCEPTION_ON_INVALID_TYPE | Yaml::DUMP_EMPTY_ARRAY_AS_SEQUENCE | Yaml::DUMP_NUMERIC_KEY_AS_STRING
+            ),
+            'json', 'jsons' => json_encode(
+                $value,
+                JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
+            ),
             'base64' => base64_encode($cur),
             'gz' => gzcompress($cur, 9),
         };
@@ -75,7 +83,9 @@ foreach ($styles as $name => $chain) {
             // maps with only int keys are still maps in the value model (keys become strings) unless sequential
             'encoded_b64' => $enc === null ? null : base64_encode($enc),
             // gz bytes depend on the zlib implementation; json key order differs; JSON cannot say 2.0 vs 2
-            'deterministic' => !in_array('gz', $chain, true) && $name !== 'json' && $name !== 'yaml' && !(is_float($v) && floor($v) === $v),
+            'deterministic' => !in_array('gz', $chain, true) && $name !== 'json' && $name !== 'yaml' && !(
+                is_float($v) && floor($v) === $v
+            ),
         ];
     }
 }
@@ -96,7 +106,8 @@ foreach ($textStyles as $name => $chain) {
     }
 }
 // The ip host stage packs only the exact text of an address: white space around or inside it is CODEC_ENCODE, so two
-// inputs never store the same bytes and the stored value reads back as the input (docs/spec/codec.md, Decoding is exact).
+// inputs never store the same bytes and the stored value reads back as the input (docs/spec/codec.md, Decoding is
+// exact).
 $ipWhiteSpace = [
     'leading_space' => ' 192.0.2.1',
     'trailing_space' => '192.0.2.1 ',
@@ -139,5 +150,24 @@ foreach ($yamlCore as $vname => [$text, $v]) {
     ];
 }
 // The requirements of docs/spec/codec.md that the vectors test (config/parity.json, unit codec).
-$requirements = ['COD-3', 'COD-9', 'COD-10', 'COD-11', 'COD-12', 'COD-13', 'COD-14', 'COD-16', 'COD-28', 'COD-29', 'COD-30', 'COD-33', 'COD-36', 'COD-38', 'COD-40'];
-echo json_encode(['requirements' => $requirements, 'vectors' => $out], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), "\n";
+$requirements = [
+    'COD-3',
+    'COD-9',
+    'COD-10',
+    'COD-11',
+    'COD-12',
+    'COD-13',
+    'COD-14',
+    'COD-16',
+    'COD-28',
+    'COD-29',
+    'COD-30',
+    'COD-33',
+    'COD-36',
+    'COD-38',
+    'COD-40'
+];
+echo json_encode(
+    ['requirements' => $requirements, 'vectors' => $out],
+    JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
+), "\n";

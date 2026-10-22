@@ -139,8 +139,8 @@ final class Utils
     }
 
     /**
-     * Whether a generated insert of $entity with the identity key $sequence succeeded in the active transaction (INT-52).
-     * The fact is restored across savepoint rollback and is the same on every dialect.
+     * Whether a generated insert of $entity with the identity key $sequence succeeded in the active transaction
+     * (INT-52). The fact is restored across savepoint rollback and is the same on every dialect.
      */
     public function wasInserted(string $entity, int $sequence): bool
     {
@@ -161,8 +161,8 @@ final class Utils
         if ($this->db->driver() !== 'postgres') {
             return false;
         }
-        // pg_stat_activity is a snapshot per transaction: the statistics are cleared first, so that a backend that starts to wait
-        // after the transaction has read the view is seen.
+        // pg_stat_activity is a snapshot per transaction: the statistics are cleared first, so that a backend that
+        // starts to wait after the transaction has read the view is seen.
         $this->read(StatementEvent::UTILITY, [], 'SELECT pg_stat_clear_snapshot()', []);
         $waiting = $this->read(
             StatementEvent::UTILITY,

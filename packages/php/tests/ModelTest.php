@@ -8,7 +8,8 @@ require_once __DIR__ . '/coverage_cases.php';
 // through ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN; the cases that only
 // connect use those databases and create nothing there. The test fails when
 // either is unset.
-// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelTest.php [--filter <case>]
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelTest.php
+// [--filter <case>]
 require_once __DIR__ . '/case_database.php';
 
 use Polyspec\Orm\Tests\Model\Account;
@@ -99,7 +100,9 @@ final class ModelTest extends TestCase
         foreach (['mysql' => 'ORM_TEST_MYSQL_DSN', 'postgres' => 'ORM_TEST_POSTGRES_DSN'] as $driver => $env) {
             $v = requiredDsn($env);
             if ($v === false || $v === '') {
-                throw new RuntimeException("$env is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers");
+                throw new RuntimeException(
+                    "$env is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers"
+                );
             }
             self::$targets[$driver] = $v;
         }
@@ -139,7 +142,10 @@ final class ModelTest extends TestCase
     /** The connection with the bench schema installed in the database of $dsn (the case database). */
     private static function database(string $driver, string $dsn): Db
     {
-        $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
+        $db = \Polyspec\Orm\Tests\Model\connect(
+            $dsn,
+            new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key')
+        );
         \Polyspec\Orm\Tests\installBench($db);
         return $db;
     }
@@ -166,7 +172,10 @@ final class ModelTest extends TestCase
         $db->close();
     }
 
-    /** @return array{service: Service, member: ServiceMember, module: ServiceRegion, users: list<User>, authors: list<Author>} */
+    /**
+     * @return array{service: Service, member: ServiceMember, module: ServiceRegion, users: list<User>, authors:
+     *   list<Author>}
+     */
     private static function seed(Db $db): array
     {
         $f = ['users' => [], 'authors' => []];
@@ -174,8 +183,14 @@ final class ModelTest extends TestCase
         foreach (['kim', 'lee', 'park'] as $name) {
             $f['users'][] = (new User())($db)->setName($name)->create();
         }
-        $f['module'] = (new ServiceRegion())->connect($db)->setServiceSeq($f['service']->getSeq())->setName('module')->create();
-        $f['member'] = (new ServiceMember())->connect($db)->setServiceSeq($f['service']->getSeq())->setUserSeq($f['users'][0]->getSeq())->create();
+        $f['module'] = (new ServiceRegion())->connect($db)
+            ->setServiceSeq($f['service']->getSeq())
+            ->setName('module')
+            ->create();
+        $f['member'] = (new ServiceMember())->connect($db)
+            ->setServiceSeq($f['service']->getSeq())
+            ->setUserSeq($f['users'][0]->getSeq())
+            ->create();
         foreach (['alpha', 'beta', 'gamma', 'delta'] as $i => $name) {
             $b = (new Author())->connect($db)
                 ->setName($name)
@@ -210,28 +225,57 @@ final class ModelTest extends TestCase
             ->and(fn(Author $q) => $q->geReadCount(10)->andLtReadCount(30)->or()->name('alpha'))
             ->orderByReadCountDescAndSeqAsc()->gets();
         self::check(self::names($rows) === 'gamma,beta,alpha', 'group: ' . self::names($rows));
-        $rows = (new Author())($db)->getsBySeqAndNeName([$f['authors'][0]->getSeq(), $f['authors'][1]->getSeq()], 'beta');
+        $rows = (new Author())($db)->getsBySeqAndNeName(
+            [$f['authors'][0]->getSeq(), $f['authors'][1]->getSeq()],
+            'beta'
+        );
         self::check(self::names($rows) === 'alpha', 'getsBy list: ' . self::names($rows));
         self::check((new Author())($db)->photoUrl(null)->getCount() === 2, 'null');
         self::check((new Author())($db)->nePhotoUrl(null)->andLkName('lph')->getCount() === 1, 'not null and like');
         self::check((new Author())($db)->betweenReadCount([10, 20])->getCount() === 2, 'between');
-        self::check((new Author())($db)->gtStartDt(self::$start->modify('+90 minutes')->format('Y-m-d H:i:s'))->getCount() === 2, 'time compare');
+        self::check(
+            (new Author())($db)->gtStartDt(
+                self::$start->modify('+90 minutes')->format('Y-m-d H:i:s')
+            )->getCount() === 2,
+            'time compare'
+        );
         $one = (new Author())($db)->getByName('gamma');
         self::check($one !== null && $one->getReadCount() === 20, 'getBy');
         self::check((new Author())($db)->getByName('missing') === null, 'get without a row');
         $q = (new Author())($db)->serviceSeq($svc);
         self::check($q->getCountByIsClose(true) === 2 && $q->getCount() === 4, 'terminal changed the model');
         self::check((new Author())($db)->geReadCount(20)->getCount() === 2, 'ge');
-        self::check(self::code(fn() => (new Author())($db)->name('a')->isClose(true)->gets()) === Code::CONFIG, 'missing connector');
-        self::check(self::code(fn() => (new Author())($db)->name('a')->and()->gets()) === Code::CONFIG, 'dangling connector');
+        self::check(
+            self::code(fn() => (new Author())($db)->name('a')->isClose(true)->gets()) === Code::CONFIG,
+            'missing connector'
+        );
+        self::check(
+            self::code(fn() => (new Author())($db)->name('a')->and()->gets()) === Code::CONFIG,
+            'dangling connector'
+        );
         self::check(self::code(fn() => (new Author())($db)->seq([])->gets()) === Code::EMPTY_IN, 'empty list');
-        // The test of DSL-49 (null only for a nullable column) and DSL-50 (a list and null only without an operator, with Eq
-        // and with Ne) (docs/spec/dsl.md).
-        self::check(self::code(fn() => (new Author())($db)->photoUrl(null)->andName(null)->gets()) === Code::CONFIG, 'null on a non-null column');
-        self::check(self::code(fn() => (new Author())($db)->gtReadCount([10, 20])->gets()) === Code::CONFIG, 'a list with an operator');
-        self::check(self::code(fn() => (new Author())($db)->gtReadCount(null)->gets()) === Code::CONFIG, 'null with an operator');
-        self::check((new Author())($db)->neReadCount([10, 20])->andServiceSeq($svc)->getCount() === 2, 'a list with Ne');
-        self::check(self::code(fn() => (new Author())($db)->betweenSeq([1])->gets()) === Code::CONFIG, 'between with one value');
+        // The test of DSL-49 (null only for a nullable column) and DSL-50 (a list and null only without an operator,
+        // with Eq and with Ne) (docs/spec/dsl.md).
+        self::check(
+            self::code(fn() => (new Author())($db)->photoUrl(null)->andName(null)->gets()) === Code::CONFIG,
+            'null on a non-null column'
+        );
+        self::check(
+            self::code(fn() => (new Author())($db)->gtReadCount([10, 20])->gets()) === Code::CONFIG,
+            'a list with an operator'
+        );
+        self::check(
+            self::code(fn() => (new Author())($db)->gtReadCount(null)->gets()) === Code::CONFIG,
+            'null with an operator'
+        );
+        self::check(
+            (new Author())($db)->neReadCount([10, 20])->andServiceSeq($svc)->getCount() === 2,
+            'a list with Ne'
+        );
+        self::check(
+            self::code(fn() => (new Author())($db)->betweenSeq([1])->gets()) === Code::CONFIG,
+            'between with one value'
+        );
         self::check(self::code(fn() => (new Author())($db)->lkSeq('x')) === Code::CONFIG, 'operator not allowed');
         self::check(self::code(fn() => (new Author())($db)->unknownColumn(1)) === Code::CONFIG, 'unknown column');
         $stmt = (new Author())($db)->name('alpha')->getQuery();
@@ -250,7 +294,10 @@ final class ModelTest extends TestCase
         self::check(self::names($rows) === 'alpha,gamma,delta', 'placed join conditions: ' . self::names($rows));
         self::check($rows->first()->getUserModel()?->getName() === 'kim', 'join result');
         $member = new ServiceMember();
-        self::check((new Author())($db)->joinServiceMemberSeqWithSeq($member)->readCountGtSeq($member)->getCount() === 3, 'column comparison');
+        self::check(
+            (new Author())($db)->joinServiceMemberSeqWithSeq($member)->readCountGtSeq($member)->getCount() === 3,
+            'column comparison'
+        );
         $loaded = (new Author())($db)
             ->relation((new User())->matchUserSeqWithSeq()->aliasWriter())
             ->relations((new ServiceMember())->matchServiceSeqWithServiceSeq()->aliasMembers())
@@ -259,14 +306,24 @@ final class ModelTest extends TestCase
         $b = $loaded->first();
         self::check($b->getWriter()?->getName() === 'kim', 'relation alias');
         self::check(count($b->getMembers()) === 1 && $b->getServiceRegionModel()->getName() === 'module', 'relations');
-        $limited = (new User())($db)->relations((new Author())->matchSeqWithUserSeq()->orderBySeqDesc()->groupLimit(1))->orderBySeqAsc()->gets();
+        $limited = (new User())($db)->relations((new Author())->matchSeqWithUserSeq()->orderBySeqDesc()->groupLimit(1))
+            ->orderBySeqAsc()
+            ->gets();
         $got = $limited->first()->getAuthorModels();
         self::check(count($got) === 1 && $got->first()->getName() === 'gamma', 'groupLimit');
         $other = \Polyspec\Orm\Tests\Model\connect($dsn, $db->config());
-        $external = (new Author())($db)->relation((new User())($other)->matchUserSeqWithSeq()->aliasOwner())->getByName('beta');
+        $external = (new Author())($db)->relation(
+            (new User())($other)->matchUserSeqWithSeq()->aliasOwner()
+        )->getByName('beta');
         self::check($external->getOwner()?->getName() === 'lee', 'relation on another connection');
-        self::check(self::code(fn() => (new Author())($db)->joinUserSeqWithSeq((new User())($db))->gets()) === Code::CONFIG, 'join child with connection');
-        self::check(self::code(fn() => (new Author())($db)->name('a')->or(new User())->gets()) === Code::CONFIG, 'unjoined model placement');
+        self::check(
+            self::code(fn() => (new Author())($db)->joinUserSeqWithSeq((new User())($db))->gets()) === Code::CONFIG,
+            'join child with connection'
+        );
+        self::check(
+            self::code(fn() => (new Author())($db)->name('a')->or(new User())->gets()) === Code::CONFIG,
+            'unjoined model placement'
+        );
         $array = $b->toArray();
         self::check(($array['writer']['name'] ?? null) === 'kim' && $array['name'] === 'alpha', 'toArray');
         $json = json_decode((string) json_encode($b), true);
@@ -291,7 +348,14 @@ final class ModelTest extends TestCase
         self::check((new Author())($db)->seq(-1)->get() === null, 'get over no rows');
         self::check(count((new Author())($db)->groupByIsClose()->getsCount()) === 2, 'getsCount');
         $page = (new Author())($db)->orderBySeqAsc()->getsPage(2, 3);
-        self::check($page->totalCount === 4 && $page->totalPages === 2 && count($page->items) === 1 && $page->items->first()->getName() === 'delta', 'page');
+        self::check(
+            $page->totalCount === 4 && $page
+                ->totalPages === 2 && count($page->items) === 1 && $page
+                ->items
+                ->first()
+                ->getName() === 'delta',
+            'page'
+        );
         self::check((new Author())($db)->keyNameName()->gets()->get('beta') !== null, 'keyName');
         foreach ([10, 11] as $a) {
             foreach ([1, 2] as $tenant) {
@@ -304,7 +368,10 @@ final class ModelTest extends TestCase
             (new CompositeMembership())->setTenantId(2)->setAccountId(10)->setRole('member'),
         ];
         self::check((new CompositeMembership())($db)->creates($memberships, 2) === 3, 'creates');
-        self::check((new CompositeMembership())($db)->tupleTenantIdWithAccountId([[1, 10], [2, 10]])->getCount() === 2, 'tuple');
+        self::check(
+            (new CompositeMembership())($db)->tupleTenantIdWithAccountId([[1, 10], [2, 10]])->getCount() === 2,
+            'tuple'
+        );
         $fetched = (new Author())($db)->orderBySeqAsc()->fetchValue(fn(Author $b) => strtoupper($b->getName()))->gets();
         self::check($fetched->fetchedValues() === ['ALPHA', 'BETA', 'GAMMA', 'DELTA'], 'fetchValue');
     }
@@ -317,31 +384,58 @@ final class ModelTest extends TestCase
         $again = (new Author())($db)->getBySeq($b->getSeq());
         self::check($again->getName() === 'renamed' && $again->getReadCount() === 5, 'update');
         // Requirements: DSL-155.
-        self::check(self::code(fn() => $b->setName('stale')->update(true)) === Code::CONFIG, 'optimistic update without a fresh version');
+        self::check(
+            self::code(fn() => $b->setName('stale')->update(true)) === Code::CONFIG,
+            'optimistic update without a fresh version'
+        );
         $again->setName('again')->update();
         $b->setName('x')->update();
         $item = (new Account())($db)->setName('acc')->newLabel('shown')->create();
         self::check($item->getLabel() === 'shown' && $item->toArray()['label'] === 'shown', 'new value');
         self::check(self::code(fn() => (new Account())->newName('x')) === Code::CONFIG, 'new with a column name');
         $saved = (new Account())($db)->setSeq($item->getSeq())->setName('saved')->save();
-        self::check($saved->getName() === 'saved' && (new Account())($db)->getBySeq($item->getSeq())->getName() === 'saved', 'save as update');
+        self::check(
+            $saved->getName() === 'saved' && (new Account())($db)->getBySeq($item->getSeq())->getName() === 'saved',
+            'save as update'
+        );
         (new Author())($db)->getBySeq($f['authors'][3]->getSeq())->delete();
         self::check((new Author())($db)->getCount() === 3, 'delete');
         (new Author())($db)->isClose(true)->gets()->delete();
         self::check((new Author())($db)->getCount() === 2, 'collection delete');
         (new CompositeAccount())($db)->setTenantId(9)->setAccountId(9)->setName('first')->create();
-        (new CompositeAccount())($db)->setTenantId(9)->setAccountId(9)->setName('first')->duplication((new CompositeAccount())->setName('second'))->create();
-        self::check((new CompositeAccount())($db)->getByTenantIdAndAccountId(9, 9)->getName() === 'second', 'duplication');
+        (new CompositeAccount())($db)->setTenantId(9)
+            ->setAccountId(9)
+            ->setName('first')
+            ->duplication((new CompositeAccount())->setName('second'))
+            ->create();
+        self::check(
+            (new CompositeAccount())($db)->getByTenantIdAndAccountId(9, 9)->getName() === 'second',
+            'duplication'
+        );
         $service = (new Service())($db)->setName('recursive')->create();
         (new ServiceMember())($db)->setServiceSeq($service->getSeq())->setUserSeq($f['users'][0]->getSeq())->create();
-        $loaded = (new Service())($db)->relations((new ServiceMember())->matchSeqWithServiceSeq())->getBySeq($service->getSeq());
+        $loaded = (new Service())($db)->relations(
+            (new ServiceMember())->matchSeqWithServiceSeq()
+        )->getBySeq($service->getSeq());
         $loaded->delete(true);
-        self::check((new ServiceMember())($db)->getCountByServiceSeq($service->getSeq()) === 0 && (new Service())($db)->getBySeq($service->getSeq()) === null, 'delete(true)');
+        self::check(
+            (
+                new ServiceMember()
+            )($db)->getCountByServiceSeq(
+                $service->getSeq()
+            ) === 0 && (new Service())($db)->getBySeq($service->getSeq()) === null,
+            'delete(true)'
+        );
     }
 
     private static function case_styled_value_states(Db $db, string $dsn): void
     {
-        $fixture = json_decode(file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/styled_column_states.json'), true, 512, JSON_THROW_ON_ERROR);
+        $fixture = json_decode(
+            file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/styled_column_states.json'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
         $cases = array_column($fixture['cases'], null, 'id');
         $seed = self::seed($db);
         $seq = $seed['authors'][0]->getSeq();
@@ -349,11 +443,25 @@ final class ModelTest extends TestCase
         $pdo->beginTransaction();
         try {
             $row = (new Author())($db)->addAllColumns()->getBySeq($seq);
-            self::check($row->getJsonSetting() instanceof StyledValue && $row->getJsonSetting()->kind === 'sql-null', 'SQL NULL getter');
+            self::check(
+                $row->getJsonSetting() instanceof StyledValue && $row->getJsonSetting()->kind === 'sql-null',
+                'SQL NULL getter'
+            );
             self::check($row->toArray()['json_setting'] === $cases['sql_null']['output'], 'SQL NULL array output');
-            self::check(json_decode($row->toJson(), true, 512, JSON_THROW_ON_ERROR)['json_setting'] === $cases['sql_null']['output'], 'SQL NULL JSON output');
+            self::check(
+                json_decode(
+                    $row->toJson(),
+                    true,
+                    512,
+                    JSON_THROW_ON_ERROR
+                )['json_setting'] === $cases['sql_null']['output'],
+                'SQL NULL JSON output'
+            );
             $partial = (new Author())($db)->removeAllColumns()->addColumnName()->getBySeq($seq);
-            self::check(self::code(fn() => $partial->getJsonSetting()) === Code::COLUMN_UNSELECTED, 'unselected getter');
+            self::check(
+                self::code(fn() => $partial->getJsonSetting()) === Code::COLUMN_UNSELECTED,
+                'unselected getter'
+            );
 
             $row->setJsonSetting(StyledValue::value(\Polyspec\OrderedJson\parse('null')))
                 ->setJsonsTags(StyledValue::value(\Polyspec\OrderedJson\parse('null')))
@@ -361,30 +469,78 @@ final class ModelTest extends TestCase
                 ->update();
             $loaded = (new Author())($db)->addAllColumns()->getBySeq($seq);
             self::check($loaded->getJsonSetting()->kind === 'value', 'JSON null getter');
-            self::check(json_decode(Model::jsonText($loaded->toArray()['json_setting']), true, 512, JSON_THROW_ON_ERROR) === $cases['json_null']['output'], 'JSON null array output');
-            self::check(json_decode(Model::jsonText($loaded->toArray()['jsons_tags']), true, 512, JSON_THROW_ON_ERROR) === $cases['jsons_value_null']['output'], 'JSONS null array output');
-            self::check($loaded->toArray()['serialize_data'] === $cases['serialize_value_null']['output'], 'serialize null array output');
+            self::check(
+                json_decode(
+                    Model::jsonText($loaded->toArray()['json_setting']),
+                    true,
+                    512,
+                    JSON_THROW_ON_ERROR
+                ) === $cases['json_null']['output'],
+                'JSON null array output'
+            );
+            self::check(
+                json_decode(
+                    Model::jsonText($loaded->toArray()['jsons_tags']),
+                    true,
+                    512,
+                    JSON_THROW_ON_ERROR
+                ) === $cases['jsons_value_null']['output'],
+                'JSONS null array output'
+            );
+            self::check(
+                $loaded->toArray()['serialize_data'] === $cases['serialize_value_null']['output'],
+                'serialize null array output'
+            );
             $json = json_decode($loaded->toJson(), true, 512, JSON_THROW_ON_ERROR);
-            self::check($json['json_setting'] === $cases['json_null']['output'] && $json['serialize_data'] === $cases['serialize_value_null']['output'], 'encoded null JSON output');
+            self::check(
+                $json['json_setting'] === $cases['json_null']['output'] && $json['serialize_data'] === $cases[
+                    'serialize_value_null'
+                ]['output'],
+                'encoded null JSON output'
+            );
             $cell = $pdo->prepare('SELECT json_setting, jsons_tags, serialize_data FROM author WHERE seq = ?');
             $cell->execute([$seq]);
             $stored = $cell->fetch(\PDO::FETCH_ASSOC);
-            self::check($stored['json_setting'] === 'null' && $stored['jsons_tags'] === 'null' && $stored['serialize_data'] === 'N;', 'encoded null storage');
+            self::check(
+                $stored['json_setting'] === 'null' && $stored['jsons_tags'] === 'null' && $stored[
+                    'serialize_data'
+                ] === 'N;',
+                'encoded null storage'
+            );
 
             $loaded->setJsonSetting(StyledValue::value(\Polyspec\OrderedJson\parse('{"kind":"sql-null"}')))->update();
             $again = (new Author())($db)->addAllColumns()->getBySeq($seq);
-            self::check(json_decode(Model::jsonText($again->toArray()['json_setting']), true, 512, JSON_THROW_ON_ERROR) === $cases['json_object_with_kind']['output'], 'JSON document does not collide with state tag');
+            self::check(
+                json_decode(
+                    Model::jsonText($again->toArray()['json_setting']),
+                    true,
+                    512,
+                    JSON_THROW_ON_ERROR
+                ) === $cases['json_object_with_kind']['output'],
+                'JSON document does not collide with state tag'
+            );
 
-            $again->setJsonSetting(StyledValue::sqlNull())->setJsonsTags(StyledValue::sqlNull())->setSerializeData(StyledValue::sqlNull())->update();
+            $again->setJsonSetting(StyledValue::sqlNull())
+                ->setJsonsTags(StyledValue::sqlNull())
+                ->setSerializeData(StyledValue::sqlNull())
+                ->update();
             $nulls = (new Author())($db)->addAllColumns()->getBySeq($seq);
             self::check($nulls->toArray()['json_setting'] === $cases['sql_null']['output'], 'SQL NULL restored');
             $cell = $pdo->prepare('SELECT json_setting, jsons_tags, serialize_data FROM author WHERE seq = ?');
             $cell->execute([$seq]);
             $stored = $cell->fetch(\PDO::FETCH_ASSOC);
-            self::check($stored['json_setting'] === null && $stored['jsons_tags'] === null && $stored['serialize_data'] === null, 'SQL NULL storage');
+            self::check(
+                $stored['json_setting'] === null && $stored['jsons_tags'] === null && $stored[
+                    'serialize_data'
+                ] === null,
+                'SQL NULL storage'
+            );
 
             $pdo->prepare('UPDATE author SET json_setting = ? WHERE seq = ?')->execute(['', $seq]);
-            self::check(self::code(fn() => (new Author())($db)->addAllColumns()->getBySeq($seq)) === Code::CODEC_DECODE, 'empty JSON text rejected');
+            self::check(
+                self::code(fn() => (new Author())($db)->addAllColumns()->getBySeq($seq)) === Code::CODEC_DECODE,
+                'empty JSON text rejected'
+            );
         } finally {
             $pdo->rollBack();
         }
@@ -402,18 +558,32 @@ final class ModelTest extends TestCase
         self::check($row->getGzExtend()->payload() === 'compressed text', 'gz styled value');
         self::check($row->getBase64Extra()->payload() === 'plain', 'base64 styled value');
         self::check((new Author())($db)->ip('10.0.0.1')->getCount() === 1, 'ip condition');
-        self::check((new Author())($db)->addAllColumns()->getBySeq($f['authors'][1]->getSeq())->getGzExtend()->kind === 'sql-null', 'gz SQL NULL');
+        self::check(
+            (new Author())($db)->addAllColumns()
+                ->getBySeq($f['authors'][1]->getSeq())
+                ->getGzExtend()
+                ->kind === 'sql-null',
+            'gz SQL NULL'
+        );
         $stored = $db->pdo()->query('SELECT base64_extra FROM author WHERE seq = ' . $seq)->fetchColumn();
         self::check($stored === base64_encode('plain'), 'base64 storage');
     }
 
     private static function case_transactions(Db $db, string $dsn): void
     {
-        // A transaction runs only through transaction(): Db has no public method that begins, commits or rolls one back.
-        // The test of DSL-124 (docs/spec/dsl.md "Transactions").
-        $public = array_map(static fn(ReflectionMethod $m): string => strtolower($m->getName()), (new ReflectionClass(Db::class))->getMethods(ReflectionMethod::IS_PUBLIC));
+        // A transaction runs only through transaction(): Db has no public method that begins, commits or rolls one
+        // back. The test of DSL-124 (docs/spec/dsl.md "Transactions").
+        $public = array_map(
+            static fn(ReflectionMethod $m): string => strtolower($m->getName()),
+            (new ReflectionClass(Db::class))->getMethods(ReflectionMethod::IS_PUBLIC)
+        );
         self::check(in_array('transaction', $public, true), 'Db has transaction()');
-        self::check(array_values(array_filter($public, static fn(string $n): bool => preg_match('/^(begin|commit|rollback)/', $n) === 1)) === [], 'no public begin, commit or rollback');
+        self::check(
+            array_values(
+                array_filter($public, static fn(string $n): bool => preg_match('/^(begin|commit|rollback)/', $n) === 1)
+            ) === [],
+            'no public begin, commit or rollback'
+        );
         $boom = new RuntimeException('boom');
         try {
             $db->transaction(function () use ($boom): void {
@@ -444,7 +614,10 @@ final class ModelTest extends TestCase
         }, isolation: 'read_committed', retry: 0);
         self::check($result === 'done', 'transaction result');
         self::check((new User())($db)->getCount() === 1, 'commit');
-        self::check(self::code(fn() => (new User())($db)->forUpdate()->gets()) === Code::CONFIG, 'lock outside a transaction');
+        self::check(
+            self::code(fn() => (new User())($db)->forUpdate()->gets()) === Code::CONFIG,
+            'lock outside a transaction'
+        );
         self::check(self::code(fn() => $db->utils()->lock('x')) === Code::CONFIG, 'lock utility outside a transaction');
         $attempts = 0;
         $db->transaction(function () use (&$attempts): void {
@@ -454,7 +627,12 @@ final class ModelTest extends TestCase
             }
         });
         self::check($attempts === 3, 'retry');
-        self::check(self::code(fn() => $db->transaction(fn() => $db->transaction(fn() => null, readOnly: true))) === Code::CONFIG, 'nested options');
+        self::check(
+            self::code(
+                fn() => $db->transaction(fn() => $db->transaction(fn() => null, readOnly: true))
+            ) === Code::CONFIG,
+            'nested options'
+        );
         self::check($db->utils()->schema()->empty() === false, 'schema empty');
         self::check($db->utils()->stats()->openConnections === 1, 'stats');
         self::check($db->stats() == $db->utils()->stats(), 'Db stats are the utility stats');
@@ -464,30 +642,64 @@ final class ModelTest extends TestCase
     {
         $schema = $db->utils()->schema();
         $broken = "dbspec 1 broken\n\ntable t {\n}\n";
-        self::check(self::code(fn() => $schema->install(new \Polyspec\Orm\Schema($broken, 'sha256:' . hash('sha256', $broken)))) === Code::SCHEMA_INVALID, 'install an invalid document');
+        self::check(
+            self::code(
+                fn() => $schema->install(new \Polyspec\Orm\Schema($broken, 'sha256:' . hash('sha256', $broken)))
+            ) === Code::SCHEMA_INVALID,
+            'install an invalid document'
+        );
         $user = (new User())($db)->setName('kept')->create();
         $schema->install(\Polyspec\Orm\Tests\Model\schema());
         self::check((new User())($db)->seq($user->getSeq())->get()?->getName() === 'kept', 'install again keeps rows');
-        $db->pdo()->exec($db->driver() === 'postgres' ? 'DROP TABLE "task" CASCADE' : ($db->driver() === 'mysql' ? 'DROP TABLE `task`' : 'DROP TABLE "task"'));
-        self::check(self::code(fn() => $schema->install(\Polyspec\Orm\Tests\Model\schema())) === Code::CONFIG, 'install over some tables of the set');
+        $db->pdo()->exec(
+            $db->driver() === 'postgres' ? 'DROP TABLE "task" CASCADE' : (
+                $db->driver() === 'mysql' ? 'DROP TABLE `task`' : 'DROP TABLE "task"'
+            )
+        );
+        self::check(
+            self::code(fn() => $schema->install(\Polyspec\Orm\Tests\Model\schema())) === Code::CONFIG,
+            'install over some tables of the set'
+        );
         self::check(self::code(fn() => $schema->exists('bad name')) === Code::CONFIG, 'invalid schema name');
         $privileges = $db->utils()->privileges();
         switch ($db->driver()) {
             case 'mysql':
                 $name = ltrim((string) parse_url($dsn, PHP_URL_PATH), '/');
-                self::check($schema->exists($name) && $schema->installed($name, 'user') && !$schema->installed($name, 'missing'), 'mysql schema inspection');
-                self::check(self::code(fn() => $privileges->inspectTable('public.user')) === Code::CAPABILITY_UNSUPPORTED, 'mysql privileges');
+                self::check(
+                    $schema->exists($name) && $schema
+                        ->installed($name, 'user') && !$schema
+                        ->installed($name, 'missing'),
+                    'mysql schema inspection'
+                );
+                self::check(
+                    self::code(fn() => $privileges->inspectTable('public.user')) === Code::CAPABILITY_UNSUPPORTED,
+                    'mysql privileges'
+                );
                 break;
             case 'postgres':
-                self::check($schema->exists('public') && $schema->installed('public', 'user') && !$schema->installed('public', 'missing'), 'postgres schema inspection');
+                self::check(
+                    $schema->exists('public') && $schema
+                        ->installed('public', 'user') && !$schema
+                        ->installed('public', 'missing'),
+                    'postgres schema inspection'
+                );
                 $got = $privileges->inspectTable('public.user');
                 self::check($got['select'] && $got['insert'], 'inspectTable');
-                self::check(self::code(fn() => $privileges->inspectTable('user')) === Code::CONFIG, 'unqualified table');
-                self::check(self::code(fn() => $privileges->revokeTable('public.user', 'drop', 'nobody')) === Code::CONFIG, 'unsupported privilege');
+                self::check(
+                    self::code(fn() => $privileges->inspectTable('user')) === Code::CONFIG,
+                    'unqualified table'
+                );
+                self::check(
+                    self::code(fn() => $privileges->revokeTable('public.user', 'drop', 'nobody')) === Code::CONFIG,
+                    'unsupported privilege'
+                );
                 break;
             default:
                 self::check(!$schema->installed('ormexample', 'user'), 'sqlite schema inspection');
-                self::check(self::code(fn() => $privileges->grantTable('public.user', 'orm')) === Code::CAPABILITY_UNSUPPORTED, 'sqlite privileges');
+                self::check(
+                    self::code(fn() => $privileges->grantTable('public.user', 'orm')) === Code::CAPABILITY_UNSUPPORTED,
+                    'sqlite privileges'
+                );
         }
     }
 
@@ -535,11 +747,29 @@ final class ModelTest extends TestCase
         self::check($db->utils()->aes()->rotate(new Author(), $keyring) === 4, 'rotate');
         self::check($db->utils()->aes()->status(new Author(), $keyring)->pending === 0, 'after rotation');
         // A write with only aesKeys and aesVersion encrypts with aesKeys[aesVersion].
-        $versioned = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: [1 => 'test-aes-key', 2 => 'next-aes-key']));
-        (new Author())($versioned)->getBySeq($f['authors'][1]->getSeq())->setAesHexEmail('second@example.com')->update();
-        $current = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: [2 => 'next-aes-key']));
-        self::check((new Author())($current)->getBySeq($f['authors'][1]->getSeq())->getAesHexEmail() === 'second@example.com', 'write with the key of aesVersion');
-        self::check(self::code(fn() => new Config(aesKey: 'other-key', aesKeys: [1 => 'test-aes-key'])) === Code::CONFIG, 'aesKey differs from aesKeys[aesVersion]');
+        $versioned = \Polyspec\Orm\Tests\Model\connect(
+            $dsn,
+            new Config(
+                blindIndexKey: 'test-blind-key',
+                aesVersion: 2,
+                aesKeys: [1 => 'test-aes-key', 2 => 'next-aes-key']
+            )
+        );
+        (new Author())($versioned)->getBySeq($f['authors'][1]->getSeq())
+            ->setAesHexEmail('second@example.com')
+            ->update();
+        $current = \Polyspec\Orm\Tests\Model\connect(
+            $dsn,
+            new Config(blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: [2 => 'next-aes-key'])
+        );
+        self::check(
+            (new Author())($current)->getBySeq($f['authors'][1]->getSeq())->getAesHexEmail() === 'second@example.com',
+            'write with the key of aesVersion'
+        );
+        self::check(
+            self::code(fn() => new Config(aesKey: 'other-key', aesKeys: [1 => 'test-aes-key'])) === Code::CONFIG,
+            'aesKey differs from aesKeys[aesVersion]'
+        );
     }
 
     // Inserts and reads more values than SQLite binds in one statement: the inserts
@@ -563,14 +793,17 @@ final class ModelTest extends TestCase
         self::check(count((new Service())($db)->name($names)->gets()) === $n, 'found rows');
         self::check((new Service())($db)->name($names)->getCount() === $n, 'count');
         if ($db->driver() === 'sqlite') {
-            self::check(self::code(fn() => (new Service())($db)->name($names)->limit(0, 10)->gets()) === Code::IR_INVALID, 'limited split');
+            self::check(
+                self::code(fn() => (new Service())($db)->name($names)->limit(0, 10)->gets()) === Code::IR_INVALID,
+                'limited split'
+            );
         }
     }
 
     // Multi-row inserts run as batches of the given size (docs/spec/protocol.md "Relation steps"; the shared cases of
-    // contracts/fixtures/insert_parts.json run in InsertPartsTest.php): each batch is one insert statement, a batch that is
-    // not positive is CONFIG and one over the bind limit is BATCH_TOO_LARGE before any statement, the rows keep their
-    // order, and a failing batch leaves no row of the call.
+    // contracts/fixtures/insert_parts.json run in InsertPartsTest.php): each batch is one insert statement, a batch
+    // that is not positive is CONFIG and one over the bind limit is BATCH_TOO_LARGE before any statement, the rows keep
+    // their order, and a failing batch leaves no row of the call.
     private static function case_insert_parts(Db $db): void
     {
         $inserts = [];
@@ -585,19 +818,37 @@ final class ModelTest extends TestCase
         // The refusal counts rows and columns before any statement, so one model repeated proves it; distinct
         // models would cost about 1.8 KB each, 115 MB for the mysql limit (T216).
         $over = array_fill(0, $limit, (new Service())->setName('over'));
-        self::check(self::code(fn() => (new Service())($db)->creates($over, $limit)) === Code::BATCH_TOO_LARGE, 'a batch over the bind limit is BATCH_TOO_LARGE');
+        self::check(
+            self::code(fn() => (new Service())($db)->creates($over, $limit)) === Code::BATCH_TOO_LARGE,
+            'a batch over the bind limit is BATCH_TOO_LARGE'
+        );
         self::check($inserts === [], 'refused creates send no insert');
         $inserts = [];
         $labels = array_map(static fn(int $i): string => sprintf('order-%02d', 12 - $i), range(0, 12));
-        self::check((new Service())($db)->creates(array_map(static fn(string $l): Service => (new Service())->setName($l), $labels), 6) === 13, 'creates 13 rows');
-        self::check(array_map(static fn($e): int => count($e->binds), $inserts) === [6, 6, 1], 'batches 6, 6, 1: ' . json_encode(array_map(static fn($e): int => count($e->binds), $inserts)));
+        self::check(
+            (new Service())($db)->creates(
+                array_map(static fn(string $l): Service => (new Service())->setName($l), $labels),
+                6
+            ) === 13,
+            'creates 13 rows'
+        );
+        self::check(
+            array_map(static fn($e): int => count($e->binds), $inserts) === [6, 6, 1],
+            'batches 6, 6, 1: ' . json_encode(array_map(static fn($e): int => count($e->binds), $inserts))
+        );
         $read = (new Service())($db)->name($labels)->orderBySeqAsc()->gets()->all();
-        self::check(array_map(static fn(Service $s): string => $s->getName(), $read) === $labels, 'rows keep the given order');
+        self::check(
+            array_map(static fn(Service $s): string => $s->getName(), $read) === $labels,
+            'rows keep the given order'
+        );
         $unsubscribe();
         $before = (new Service())($db)->getCount();
         $rows = array_map(static fn(int $i): Service => (new Service())->setName("rollback-$i"), range(1, 8));
         $rows[] = (fn(): Service => $this->writeColumn('name', null))->call(new Service());
-        self::check(self::code(fn() => (new Service())($db)->creates($rows, 4)) !== 'no error', 'a failing batch fails creates');
+        self::check(
+            self::code(fn() => (new Service())($db)->creates($rows, 4)) !== 'no error',
+            'a failing batch fails creates'
+        );
         self::check((new Service())($db)->getCount() === $before, 'a failing part leaves no row');
     }
 
@@ -613,19 +864,41 @@ final class ModelTest extends TestCase
         $created = (new Author())($db)
             ->setName('zone')->setUserSeq($f['users'][0]->getSeq())->setServiceSeq($f['service']->getSeq())
             ->setServiceRegionSeq($f['module']->getSeq())->setServiceMemberSeq($f['member']->getSeq())
-            ->setStartDt($midnight->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'))->setEndDt($midnight->modify('+1 day')->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'))->create();
+            ->setStartDt($midnight->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'))
+                ->setEndDt($midnight->modify('+1 day')->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'))
+                ->create();
         $row = (new Author())($db)->getBySeq($created->getSeq());
         self::check($row !== null, 'row');
         $start = $row->getStartDt();
-        self::check($start == $midnight && $start->format('H:i P') === '00:00 +00:00', 'start_dt ' . $start->format(DATE_ATOM));
+        self::check(
+            $start == $midnight && $start->format('H:i P') === '00:00 +00:00',
+            'start_dt ' . $start->format(DATE_ATOM)
+        );
         $ts = $row->getCreatedTs();
-        self::check(abs($ts->getTimestamp() - $before->getTimestamp()) < 60, 'created_ts ' . $ts->format(DATE_ATOM) . ' at ' . $before->format(DATE_ATOM));
+        self::check(
+            abs($ts->getTimestamp() - $before->getTimestamp()) < 60,
+            'created_ts ' . $ts->format(DATE_ATOM) . ' at ' . $before->format(DATE_ATOM)
+        );
         self::check($ts->getOffset() === 0, 'created_ts zone ' . $ts->format(DATE_ATOM));
-        self::check((new Author())($db)->startDt($midnight->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'))->getCount() === 1, 'equality filter');
+        self::check(
+            (new Author())($db)->startDt(
+                $midnight->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s')
+            )->getCount() === 1,
+            'equality filter'
+        );
         self::check((new Author())($db)->startDt('2026-01-02 00:00:00')->getCount() === 1, 'equality filter by text');
-        self::check((new Author())($db)->startDt('2026-01-02T00:00:00.0')->getCount() === 1, 'equality filter by text with fraction');
-        self::check((new Author())($db)->startDt(['2026-01-02 00:00:00', '2026-01-03 00:00:00'])->getCount() === 1, 'in filter by text');
-        self::check((new Author())($db)->betweenStartDt(['2026-01-02 00:00:00', '2026-01-02 00:00:00.5'])->getCount() === 1, 'between filter by text');
+        self::check(
+            (new Author())($db)->startDt('2026-01-02T00:00:00.0')->getCount() === 1,
+            'equality filter by text with fraction'
+        );
+        self::check(
+            (new Author())($db)->startDt(['2026-01-02 00:00:00', '2026-01-03 00:00:00'])->getCount() === 1,
+            'in filter by text'
+        );
+        self::check(
+            (new Author())($db)->betweenStartDt(['2026-01-02 00:00:00', '2026-01-02 00:00:00.5'])->getCount() === 1,
+            'between filter by text'
+        );
         if ($db->driver() === 'sqlite') {
             try {
                 (new Author())($db)->startDt('2026-01-02')->getCount();
@@ -637,13 +910,15 @@ final class ModelTest extends TestCase
     }
 
     /**
-     * Updates every row of the table in an open transaction of another connection, taking the lock on that row (MySQL, PostgreSQL).
-     * Rollback releases the lock.
+     * Updates every row of the table in an open transaction of another connection, taking the lock on that row (MySQL,
+     * PostgreSQL). Rollback releases the lock.
      */
     private static function holdRows(string $driver, string $dsn, string $table): PDO
     {
         $pdo = case_admin($dsn);
-        $quote = $driver === 'mysql' ? static fn(string $n): string => "`$n`" : static fn(string $n): string => "\"$n\"";
+        $quote = $driver === 'mysql' ? static fn(
+            string $n
+        ): string => "`$n`" : static fn(string $n): string => "\"$n\"";
         $pdo->beginTransaction();
         $pdo->exec('UPDATE ' . $quote($table) . ' SET ' . $quote('seq') . ' = ' . $quote('seq'));
         return $pdo;
@@ -657,9 +932,15 @@ final class ModelTest extends TestCase
      */
     private static function holdRowsFor(string $dsn, string $table, int $ms)
     {
-        $code = 'require ' . var_export(dirname(__DIR__, 3) . '/vendor-php/autoload.php', true) . '; require ' . var_export(__DIR__ . '/case_database.php', true) . ';'
+        $code = 'require ' . var_export(
+            dirname(__DIR__, 3) . '/vendor-php/autoload.php',
+            true
+        ) . '; require ' . var_export(__DIR__ . '/case_database.php', true) . ';'
             . ' $pdo = case_admin(' . var_export($dsn, true) . '); $pdo->beginTransaction();'
-            . ' $pdo->exec(' . var_export('UPDATE "' . $table . '" SET "seq" = "seq"', true) . '); echo "held\n"; fflush(STDOUT);'
+            . ' $pdo->exec(' . var_export(
+                'UPDATE "' . $table . '" SET "seq" = "seq"',
+                true
+            ) . '); echo "held\n"; fflush(STDOUT);'
             . ' usleep(' . ($ms * 1000) . '); $pdo->rollBack();';
         $process = proc_open([PHP_BINARY, '-r', $code], [1 => ['pipe', 'w']], $pipes);
         if (!is_resource($process) || trim((string) fgets($pipes[1])) !== 'held') {
@@ -692,7 +973,9 @@ final class ModelTest extends TestCase
         if ($driver === 'postgres') {
             $source->beginTransaction();
             $source->exec('SET LOCAL synchronous_commit = remote_apply');
-            $mode = $source->query("SELECT current_setting('synchronous_commit'), pg_logical_emit_message(true, 'orm-test-barrier', '')")->fetchColumn();
+            $mode = $source->query(
+                "SELECT current_setting('synchronous_commit'), pg_logical_emit_message(true, 'orm-test-barrier', '')"
+            )->fetchColumn();
             if ($mode !== 'remote_apply') {
                 throw new RuntimeException("synchronous_commit of the barrier transaction is $mode");
             }
@@ -702,8 +985,8 @@ final class ModelTest extends TestCase
         $status = $source->query('SHOW BINARY LOG STATUS')->fetch(PDO::FETCH_NUM);
         [, $pdoDsn, $user, $password] = Orm::parseDsn($replica);
         $target = new PDO($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-        // The deadline is 60 s: the replica applies the writes of all clients running in parallel in turn, so on a 4 vCPU Linux
-        // runner it could not reach the primary's position within 10 s.
+        // The deadline is 60 s: the replica applies the writes of all clients running in parallel in turn, so on a 4
+        // vCPU Linux runner it could not reach the primary's position within 10 s.
         $st = $target->prepare('SELECT SOURCE_POS_WAIT(?, ?, 60)');
         $st->execute([$status[0], (int) $status[1]]);
         $waited = $st->fetchColumn();
@@ -723,10 +1006,18 @@ final class ModelTest extends TestCase
         return 'no error';
     }
 
-    /** Checks that the message holds both the callback error and the error at the end of the transaction, in a ROLLBACK. */
+    /**
+     * Checks that the message holds both the callback error and the error at the end of the transaction, in a ROLLBACK.
+     */
     private static function checkBoth(string $what, string $message, string $cause, string $end): void
     {
-        self::check(str_starts_with($message, "ROLLBACK: transaction failed ($cause) and rollback failed (") && str_contains($message, $end), "$what reports the cause and the failed transaction end: $message");
+        self::check(
+            str_starts_with(
+                $message,
+                "ROLLBACK: transaction failed ($cause) and rollback failed ("
+            ) && str_contains($message, $end),
+            "$what reports the cause and the failed transaction end: $message"
+        );
     }
 
     public static function setUpBeforeClass(): void
@@ -765,7 +1056,9 @@ final class ModelTest extends TestCase
         }
     }
 
-    /** @return iterable<string, array{string, string}> the connection time zones on each driver, named <zone>/<driver> */
+    /**
+     * @return iterable<string, array{string, string}> the connection time zones on each driver, named <zone>/<driver>
+     */
     public static function zones(): iterable
     {
         foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
@@ -789,14 +1082,26 @@ final class ModelTest extends TestCase
         // A Db holds one connection. The PHP client has no pool and refuses the pool options.
         $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config());
         self::check($db->utils()->stats()->maxOpenConnections === 1, 'one connection per Db');
-        foreach (['poolSize: 3' => new Config(poolSize: 3), 'poolSize: -1' => new Config(poolSize: -1), 'poolIdleSize: 1' => new Config(poolIdleSize: 1), 'poolLifetimeMs: 1000' => new Config(poolLifetimeMs: 1000)] as $option => $config) {
+        foreach (
+            [
+            'poolSize: 3' => new Config(poolSize: 3),
+            'poolSize: -1' => new Config(poolSize: -1),
+            'poolIdleSize: 1' => new Config(poolIdleSize: 1),
+            'poolLifetimeMs: 1000' => new Config(poolLifetimeMs: 1000)
+            ] as $option => $config
+        ) {
             $error = null;
             try {
                 \Polyspec\Orm\Tests\Model\connect($dsn, $config);
             } catch (OrmException $e) {
                 $error = $e;
             }
-            self::check($error?->code_ === Code::CONFIG && str_contains($error->getMessage(), 'PgBouncer or ProxySQL'), "$option is refused with CONFIG naming the poolers: " . ($error === null ? 'connected' : $error->getMessage()));
+            self::check(
+                $error?->code_ === Code::CONFIG && str_contains($error->getMessage(), 'PgBouncer or ProxySQL'),
+                "$option is refused with CONFIG naming the poolers: " . (
+                    $error === null ? 'connected' : $error->getMessage()
+                )
+            );
         }
     }
 
@@ -805,7 +1110,12 @@ final class ModelTest extends TestCase
     public function test_statement_timeout(string $driver): void
     {
         $dsn = self::$targets[$driver];
-        self::check(self::code(fn() => \Polyspec\Orm\Tests\Model\connect($dsn, new Config(statementTimeoutMs: -1))) === Code::CONFIG, 'negative statement timeout');
+        self::check(
+            self::code(
+                fn() => \Polyspec\Orm\Tests\Model\connect($dsn, new Config(statementTimeoutMs: -1))
+            ) === Code::CONFIG,
+            'negative statement timeout'
+        );
         // MySQL bounds SELECT statements with max_execution_time, PostgreSQL
         // bounds every statement, and SQLite has no session timeout. The bounded
         // statement is a locking read of a row that another connection holds, so
@@ -816,8 +1126,14 @@ final class ModelTest extends TestCase
             self::seed($db);
             $db->close();
             $holder = self::holdRows($driver, $caseDsn, 'author');
-            $bounded = \Polyspec\Orm\Tests\Model\connect($caseDsn, new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key', statementTimeoutMs: 200));
-            self::check(self::code(fn() => self::lockedRead($bounded, Author::class)) === Code::CANCELED, 'a statement past the timeout');
+            $bounded = \Polyspec\Orm\Tests\Model\connect(
+                $caseDsn,
+                new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key', statementTimeoutMs: 200)
+            );
+            self::check(
+                self::code(fn() => self::lockedRead($bounded, Author::class)) === Code::CANCELED,
+                'a statement past the timeout'
+            );
             $bounded->close();
             $holder->rollBack();
         }
@@ -827,10 +1143,10 @@ final class ModelTest extends TestCase
     // turn. Through ORM_TEST_PGBOUNCER_SINGLE_DSN every client shares one server
     // connection, so the statement timeout of one connection must bound only the
     // statements of that connection.
-    // PgBouncer's orm_test_single is bound to the database of ORM_TEST_POSTGRES_DSN, so it cannot reach the case database.
-    // So this case creates only one table named after itself (case_name()) in that database, and removes only that table at the end (even on failure).
-    // The table's model is generated from the dbspec document made during the run.
-    // Requirements: CFG-27, CFG-29.
+    // PgBouncer's orm_test_single is bound to the database of ORM_TEST_POSTGRES_DSN, so it cannot reach the case
+    // database. So this case creates only one table named after itself (case_name()) in that database, and removes only
+    // that table at the end (even on failure). The table's model is generated from the dbspec document made during the
+    // run. Requirements: CFG-27, CFG-29.
     public function test_statement_timeout_through_a_pooler(): void
     {
         $probeSetup = null;
@@ -838,14 +1154,23 @@ final class ModelTest extends TestCase
         try {
             $single = requiredDsn('ORM_TEST_PGBOUNCER_SINGLE_DSN');
             if ($single === false || $single === '') {
-                throw new RuntimeException('ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers');
+                throw new RuntimeException(
+                    'ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers'
+                );
             }
             $table = case_name();
             $probe = "dbspec 1 pooler_probe\n\ntable $table {\n  seq i64 identity\n  label varchar(16)\n  primary key (seq)\n}\n";
-            Generator::generate(RuntimeModel::build(RuntimeModel::parse(['pooler_probe.dbs' => $probe])), self::$work . "/pooler", 'Polyspec\\Orm\\Tests\\PoolerProbe');
+            Generator::generate(
+                RuntimeModel::build(RuntimeModel::parse(['pooler_probe.dbs' => $probe])),
+                self::$work . "/pooler",
+                'Polyspec\\Orm\\Tests\\PoolerProbe'
+            );
             spl_autoload_register(static function (string $class): void {
                 if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\PoolerProbe\\')) {
-                    require self::$work . "/pooler/" . substr($class, strlen('Polyspec\\Orm\\Tests\\PoolerProbe\\')) . '.php';
+                    require self::$work . "/pooler/" . substr(
+                        $class,
+                        strlen('Polyspec\\Orm\\Tests\\PoolerProbe\\')
+                    ) . '.php';
                 }
             });
             require self::$work . "/pooler/bootstrap.php";
@@ -860,7 +1185,10 @@ final class ModelTest extends TestCase
             // waits for the lock.
             $holder = self::holdRows('postgres', self::$targets['postgres'], $table);
             $bounded = \Polyspec\Orm\Tests\PoolerProbe\connect($single, new Config(statementTimeoutMs: 200));
-            self::check(self::code(fn() => self::lockedRead($bounded, $model)) === Code::CANCELED, 'the bounded connection through the pooler');
+            self::check(
+                self::code(fn() => self::lockedRead($bounded, $model)) === Code::CANCELED,
+                'the bounded connection through the pooler'
+            );
             $holder->rollBack();
             $plain = \Polyspec\Orm\Tests\PoolerProbe\connect($single, new Config());
             // Another process holds the rows for a declared 400 ms, past the 200 ms
@@ -868,10 +1196,16 @@ final class ModelTest extends TestCase
             $process = self::holdRowsFor(self::$targets['postgres'], $table, 400);
             $started = hrtime(true);
             self::lockedRead($plain, $model);
-            self::check((hrtime(true) - $started) / 1e6 >= 200, 'a connection without a timeout after the bounded one waits past the bound');
+            self::check(
+                (hrtime(true) - $started) / 1e6 >= 200,
+                'a connection without a timeout after the bounded one waits past the bound'
+            );
             proc_close($process);
             $holder = self::holdRows('postgres', self::$targets['postgres'], $table);
-            self::check(self::code(fn() => self::lockedRead($bounded, $model)) === Code::CANCELED, 'the bounded connection after the plain one');
+            self::check(
+                self::code(fn() => self::lockedRead($bounded, $model)) === Code::CANCELED,
+                'the bounded connection after the plain one'
+            );
             $holder->rollBack();
             $bounded->close();
             $plain->close();
@@ -909,13 +1243,19 @@ final class ModelTest extends TestCase
         // The test of DSL-141, DIA-57 (docs/spec).
         $base = self::$targets[$driver];
         $utc = in_array($zoneName, ['', '+00:00', 'UTC'], true);
-        // The UTC connection installs a schema, so it uses its own case database; the refused connection uses the shared database.
+        // The UTC connection installs a schema, so it uses its own case database; the refused connection uses the
+        // shared database.
         $plain = preg_replace('/[?&]timezone=[^&]*/', '', $utc ? self::caseDsn($driver) : $base);
-        $dsn = $zoneName === '' ? $plain : $plain . (str_contains($plain, '?') ? '&' : '?') . 'timezone=' . rawurlencode($zoneName);
+        $dsn = $zoneName === '' ? $plain : $plain . (
+            str_contains($plain, '?') ? '&' : '?'
+        ) . 'timezone=' . rawurlencode($zoneName);
         if ($utc) {
             self::connectionUtc(self::database($driver, $dsn));
         } else {
-            self::check(self::code(fn() => \Polyspec\Orm\Tests\Model\connect($dsn, new Config())) === Code::CONFIG, 'a time zone other than UTC');
+            self::check(
+                self::code(fn() => \Polyspec\Orm\Tests\Model\connect($dsn, new Config())) === Code::CONFIG,
+                'a time zone other than UTC'
+            );
         }
     }
 
@@ -929,7 +1269,9 @@ final class ModelTest extends TestCase
         $env = strtoupper($driver);
         $replica = requiredDsn("ORM_TEST_{$env}_REPLICA_DSN");
         if ($replica === false || $replica === '') {
-            throw new RuntimeException("ORM_TEST_{$env}_REPLICA_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers");
+            throw new RuntimeException(
+                "ORM_TEST_{$env}_REPLICA_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers"
+            );
         }
         // The replica copies the primary's case database under the same name. MySQL needs that database on the replica
         // before it can connect, so it waits on the shared replica database and then connects.
@@ -938,19 +1280,40 @@ final class ModelTest extends TestCase
         $name = 'replica-' . hrtime(true);
         (new User())($master)->setName($name)->create();
         self::awaitReplica($driver, $primary->dsn, $replica);
-        $slave1 = \Polyspec\Orm\Tests\Model\connect($primary->related($replica), new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
-        self::check((new User())($slave1)->name($name)->getCount() === 1, 'the replica reads the row written through the primary');
-        self::check(self::code(fn() => (new User())($slave1)->setName("$name-replica")->create()) === Code::READ_ONLY, 'a write through the replica connection is rejected');
-        self::check((new User())($master)->name("$name-replica")->getCount() === 0, 'a write through the replica connection does not reach the primary');
+        $slave1 = \Polyspec\Orm\Tests\Model\connect(
+            $primary->related($replica),
+            new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key')
+        );
+        self::check(
+            (new User())($slave1)->name($name)->getCount() === 1,
+            'the replica reads the row written through the primary'
+        );
+        self::check(
+            self::code(fn() => (new User())($slave1)->setName("$name-replica")->create()) === Code::READ_ONLY,
+            'a write through the replica connection is rejected'
+        );
+        self::check(
+            (new User())($master)->name("$name-replica")->getCount() === 0,
+            'a write through the replica connection does not reach the primary'
+        );
         // A row read through the replica is written through the primary.
         (new User())($slave1)->name($name)->get()->connect($master)->setName("$name-renamed")->update();
         $master->transaction(function () use ($master, $slave1, $name): void {
             (new User())->setName("$name-tx")->create();
-            self::check((new User())($master)->name("$name-tx")->getCount() === 1, 'the primary connection inside its transaction');
-            self::check((new User())($slave1)->name("$name-tx")->getCount() === 0, 'the replica connection reads no uncommitted row');
+            self::check(
+                (new User())($master)->name("$name-tx")->getCount() === 1,
+                'the primary connection inside its transaction'
+            );
+            self::check(
+                (new User())($slave1)->name("$name-tx")->getCount() === 0,
+                'the replica connection reads no uncommitted row'
+            );
         });
         self::awaitReplica($driver, $primary->dsn, $replica);
-        self::check((new User())($slave1)->name(["$name-renamed", "$name-tx"])->getCount() === 2, 'the replica reads the committed rows');
+        self::check(
+            (new User())($slave1)->name(["$name-renamed", "$name-tx"])->getCount() === 2,
+            'the replica reads the committed rows'
+        );
         $slave1->close();
         $master->close();
     }
@@ -965,9 +1328,18 @@ final class ModelTest extends TestCase
         (new User())($writable)->setName('read-only')->create();
         $writable->close();
         chmod($path, 0o444);
-        $readOnly = \Polyspec\Orm\Tests\Model\connect("sqlite://$path", new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
-        self::check((new User())($readOnly)->name('read-only')->getCount() === 1, 'the read-only database reads the row');
-        self::check(self::code(fn() => (new User())($readOnly)->setName('rejected')->create()) === Code::READ_ONLY, 'a write to the read-only database');
+        $readOnly = \Polyspec\Orm\Tests\Model\connect(
+            "sqlite://$path",
+            new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key')
+        );
+        self::check(
+            (new User())($readOnly)->name('read-only')->getCount() === 1,
+            'the read-only database reads the row'
+        );
+        self::check(
+            self::code(fn() => (new User())($readOnly)->setName('rejected')->create()) === Code::READ_ONLY,
+            'a write to the read-only database'
+        );
         $readOnly->close();
     }
 
@@ -978,12 +1350,18 @@ final class ModelTest extends TestCase
     {
         [, $pdoDsn, $user, $password] = Orm::parseDsn(self::$targets['mysql']);
         $pdo = new ModelTestFailingPdo($pdoDsn, $user, $password);
-        $pdo->rejects = static fn(string $sql): bool => str_starts_with($sql, 'SET @`orm.') && str_ends_with($sql, '= NULL');
+        $pdo->rejects = static fn(string $sql): bool => str_starts_with(
+            $sql,
+            'SET @`orm.'
+        ) && str_ends_with($sql, '= NULL');
         $failing = new Db($pdo, 'mysql', new Config(), new DateTimeZone('UTC'));
         $committed = self::failureMessage(fn() => $failing->transaction(function () use ($failing): void {
             $failing->utils()->setLocal('ormtest.actor', 'tester');
         }));
-        self::check(str_contains($committed, 'statement rejected by the test driver'), "commit reports the failed reset: $committed");
+        self::check(
+            str_contains($committed, 'statement rejected by the test driver'),
+            "commit reports the failed reset: $committed"
+        );
         $rolledBack = self::failureMessage(fn() => $failing->transaction(function () use ($failing): void {
             $failing->utils()->setLocal('ormtest.actor', 'tester');
             throw new RuntimeException('callback failed');
@@ -1003,7 +1381,10 @@ final class ModelTest extends TestCase
         $committed = self::failureMessage(fn() => $failing->transaction(function () use ($failing, $key): void {
             $failing->utils()->lock($key('commit'));
         }, retry: 0));
-        self::check(str_contains($committed, 'statement rejected by the test driver'), "commit reports the failed release: $committed");
+        self::check(
+            str_contains($committed, 'statement rejected by the test driver'),
+            "commit reports the failed release: $committed"
+        );
         $rolledBack = self::failureMessage(fn() => $failing->transaction(function () use ($failing, $key): void {
             $failing->utils()->lock($key('rollback'));
             throw new RuntimeException('callback failed');
@@ -1015,7 +1396,10 @@ final class ModelTest extends TestCase
             $failing->utils()->lock($key('released'));
             $pdo->prepare('DO RELEASE_LOCK(?)')->execute([$key('released')]);
         }, retry: 0));
-        self::check(str_contains($notHeld, 'lock ' . $key('released') . ' was not held at transaction end'), "a lock released early is reported: $notHeld");
+        self::check(
+            str_contains($notHeld, 'lock ' . $key('released') . ' was not held at transaction end'),
+            "a lock released early is reported: $notHeld"
+        );
     }
 
     // If the native rollback, the SQLite mode restore, or the rollback after begin fails, the transaction
@@ -1032,11 +1416,19 @@ final class ModelTest extends TestCase
         $pdo->rejects = static fn(string $sql): bool => $sql === 'PRAGMA query_only = 1';
         $began = self::failureMessage(fn() => $failing->transaction(fn() => null, readOnly: true, retry: 0));
         // A driver error that is not in the catalog is a cause with the code DRIVER.
-        self::checkBoth('begin', $began, 'DRIVER: statement rejected by the test driver', 'rollback rejected by the test driver');
+        self::checkBoth(
+            'begin',
+            $began,
+            'DRIVER: statement rejected by the test driver',
+            'rollback rejected by the test driver'
+        );
         $pdo->rejectRollback = false;
         $pdo->rejects = static fn(string $sql): bool => $sql === 'PRAGMA query_only = 0';
         $committed = self::failureMessage(fn() => $failing->transaction(fn() => null, readOnly: true, retry: 0));
-        self::check(str_contains($committed, 'statement rejected by the test driver'), "commit reports the failed mode reset: $committed");
+        self::check(
+            str_contains($committed, 'statement rejected by the test driver'),
+            "commit reports the failed mode reset: $committed"
+        );
         $rolledBack = self::failureMessage(fn() => $failing->transaction(function (): void {
             throw new RuntimeException('callback failed');
         }, readOnly: true, retry: 0));
@@ -1050,7 +1442,9 @@ final class ModelTest extends TestCase
     {
         $pdo = new ModelTestFailingPdo("sqlite:" . self::$work . "/savepoint-end.sqlite");
         $failing = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
-        $nested = static fn(Closure $fn): string => self::failureMessage(fn() => $failing->transaction(fn() => $failing->transaction($fn), retry: 0));
+        $nested = static fn(Closure $fn): string => self::failureMessage(
+            fn() => $failing->transaction(fn() => $failing->transaction($fn), retry: 0)
+        );
         foreach (['ROLLBACK TO SAVEPOINT', 'RELEASE SAVEPOINT'] as $statement) {
             $pdo->rejects = static fn(string $sql): bool => str_starts_with($sql, $statement);
             $failed = $nested(function (): void {
@@ -1060,13 +1454,22 @@ final class ModelTest extends TestCase
         }
         $pdo->rejects = static fn(string $sql): bool => str_starts_with($sql, 'RELEASE SAVEPOINT');
         $released = $nested(fn() => null);
-        self::check(str_contains($released, 'statement rejected by the test driver'), "a successful callback reports the failed release: $released");
-        $pdo->rejects = static fn(string $sql): bool => str_starts_with($sql, 'ROLLBACK TO SAVEPOINT') || str_starts_with($sql, 'RELEASE SAVEPOINT');
+        self::check(
+            str_contains($released, 'statement rejected by the test driver'),
+            "a successful callback reports the failed release: $released"
+        );
+        $pdo->rejects = static fn(string $sql): bool => str_starts_with(
+            $sql,
+            'ROLLBACK TO SAVEPOINT'
+        ) || str_starts_with($sql, 'RELEASE SAVEPOINT');
         $both = $nested(function (): void {
             throw new RuntimeException('callback failed');
         });
         self::checkBoth('both statements', $both, 'callback failed', 'statement rejected by the test driver');
-        self::check(substr_count($both, 'statement rejected by the test driver') === 2, "both savepoint statements are reported: $both");
+        self::check(
+            substr_count($both, 'statement rejected by the test driver') === 2,
+            "both savepoint statements are reported: $both"
+        );
         $pdo->rejects = null;
     }
 

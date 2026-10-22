@@ -15,7 +15,12 @@ final class InsertPartsTest extends TestCase
 {
     public static function cases(): iterable
     {
-        $fixture = json_decode((string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/insert_parts.json'), true, 512, JSON_THROW_ON_ERROR);
+        $fixture = json_decode(
+            (string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/insert_parts.json'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
         foreach ($fixture['cases'] as $case) {
             yield $case['id'] => [$case];
         }

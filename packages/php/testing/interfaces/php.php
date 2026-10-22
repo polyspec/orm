@@ -28,8 +28,8 @@ if (is_file($autoload)) {
 foreach ($files as $file) {
     require_once $file;
 }
-// Each declaration is ['signature' => ..., 'exported' => bool]. A class, interface, trait and function is public; a property or
-// method is exported when it is public.
+// Each declaration is ['signature' => ..., 'exported' => bool]. A class, interface, trait and function is public; a
+// property or method is exported when it is public.
 $out = [];
 $put = static function (string $key, string $signature, bool $exported) use (&$out): void {
     $out[$key] = ['signature' => $signature, 'exported' => $exported];
@@ -60,7 +60,9 @@ $params = static function (ReflectionFunctionAbstract $fn) use ($type): array {
     $scope = $fn instanceof ReflectionMethod ? $fn->getDeclaringClass() : null;
     return array_map(static function (ReflectionParameter $p) use ($type, $scope): string {
         $default = $p->isDefaultValueAvailable() ? '=' . json_encode($p->getDefaultValue(), JSON_THROW_ON_ERROR) : '';
-        return $type($p->getType(), $scope) . ' ' . ($p->isPassedByReference() ? '&' : '') . ($p->isVariadic() ? '...' : '') . '$' . $p->getName() . $default;
+        return $type($p->getType(), $scope) . ' ' . (
+            $p->isPassedByReference() ? '&' : ''
+        ) . ($p->isVariadic() ? '...' : '') . '$' . $p->getName() . $default;
     }, $fn->getParameters());
 };
 $signature = static function (ReflectionFunctionAbstract $fn) use ($params, $type): string {
@@ -79,7 +81,16 @@ foreach (array_merge(get_declared_classes(), get_declared_interfaces(), get_decl
     $traits = $r->getTraitNames();
     sort($traits);
     $parent = $r->getParentClass();
-    $put($key, implode(' ', Reflection::getModifierNames($r->getModifiers())) . " $kind $name extends " . ($parent === false ? '' : $parent->getName()) . ' implements ' . implode(',', $interfaces) . ' uses ' . implode(',', $traits), true);
+    $put(
+        $key,
+        implode(
+            ' ',
+            Reflection::getModifierNames($r->getModifiers())
+        ) . " $kind $name extends " . (
+            $parent === false ? '' : $parent->getName()
+        ) . ' implements ' . implode(',', $interfaces) . ' uses ' . implode(',', $traits),
+        true
+    );
     foreach ($r->getProperties() as $p) {
         if ($p->getDeclaringClass()->getName() !== $name) {
             continue;
@@ -90,13 +101,24 @@ foreach (array_merge(get_declared_classes(), get_declared_interfaces(), get_decl
         if ($p->isReadOnly()) {
             $modifiers = array_values(array_diff($modifiers, ['protected(set)']));
         }
-        $put($key . '::$' . $p->getName(), implode(' ', $modifiers) . ' ' . $type($p->getType(), $p->getDeclaringClass()), $p->isPublic());
+        $put(
+            $key . '::$' . $p->getName(),
+            implode(' ', $modifiers) . ' ' . $type($p->getType(), $p->getDeclaringClass()),
+            $p->isPublic()
+        );
     }
     foreach ($r->getMethods() as $m) {
         if ($m->getDeclaringClass()->getName() !== $name) {
             continue;
         }
-        $put($key . '::' . $m->getName(), implode(' ', Reflection::getModifierNames($m->getModifiers())) . ' function ' . $m->getName() . $signature($m), $m->isPublic());
+        $put(
+            $key . '::' . $m->getName(),
+            implode(
+                ' ',
+                Reflection::getModifierNames($m->getModifiers())
+            ) . ' function ' . $m->getName() . $signature($m),
+            $m->isPublic()
+        );
     }
     if ($r->hasConstant('RECORDS') && $r->getReflectionConstant('RECORDS')->getDeclaringClass()->getName() === $name) {
         $records = $r->getReflectionConstant('RECORDS')->getValue();
@@ -122,7 +144,11 @@ foreach (array_merge(get_declared_classes(), get_declared_interfaces(), get_decl
                 }
                 $wire[$field] = $wireType($nativeType);
             }
-            $put($key . '::' . $record . '#wire', json_encode($wire, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR), true);
+            $put(
+                $key . '::' . $record . '#wire',
+                json_encode($wire, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),
+                true
+            );
         }
     }
 }

@@ -1,7 +1,7 @@
 <?php
 
-// The writer process of SqliteConcurrencyTest: it commits $count read-then-write transactions on the SQLite file of $dsn
-// without transaction retries, each reading the service count and then inserting one service named <name>-<i>.
+// The writer process of SqliteConcurrencyTest: it commits $count read-then-write transactions on the SQLite file of
+// $dsn without transaction retries, each reading the service count and then inserting one service named <name>-<i>.
 // Usage: php packages/php/tests/sqlite_concurrency_writer.php <dsn> <name> <count>
 declare(strict_types=1);
 

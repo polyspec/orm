@@ -20,7 +20,12 @@ use PHPUnit\Framework\TestCase;
 function manifest_expect(array $case, array $documents): void
 {
     $result = Dbspec::manifest($documents);
-    Assert::assertNotNull($result->manifest, "{$case['id']}: diagnostics " . json_encode(array_map(fn($d) => [$d->rule, $d->line, $d->column], $result->diagnostics)));
+    Assert::assertNotNull(
+        $result->manifest,
+        "{$case['id']}: diagnostics " . json_encode(
+            array_map(fn($d) => [$d->rule, $d->line, $d->column], $result->diagnostics)
+        )
+    );
     $m = $result->manifest;
     foreach (
         [
@@ -49,7 +54,13 @@ final class DbspecManifestTest extends TestCase
     {
         [$cpuMs, $wallMs] = caseClockElapsed(self::$started);
         if ($cpuMs > 10000) {
-            caseClockWarning(sprintf('dbspec_manifest used %.3f ms of CPU (%.3f ms wall), above its reference of 10 s', $cpuMs, $wallMs));
+            caseClockWarning(
+                sprintf(
+                    'dbspec_manifest used %.3f ms of CPU (%.3f ms wall), above its reference of 10 s',
+                    $cpuMs,
+                    $wallMs
+                )
+            );
         }
     }
 

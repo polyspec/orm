@@ -21,8 +21,8 @@ final class DbState
     public array $stmtOrder = [];
     public bool $closed = false;
     /**
-     * Opens a LISTEN connection of its own, outside the connection's PDO handle (docs/spec/dialects.md DIA-194). Orm::connect
-     * sets it for PostgreSQL only.
+     * Opens a LISTEN connection of its own, outside the connection's PDO handle (docs/spec/dialects.md DIA-194).
+     * Orm::connect sets it for PostgreSQL only.
      *
      * @var (\Closure(): \PDO)|null
      */

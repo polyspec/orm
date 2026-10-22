@@ -17,7 +17,10 @@ final class CoverageInterfaceContractTest extends TestCase
     // Requirements: INT-17, INT-18, INT-19, INT-57, INT-61, INT-64.
     public function test_interface_symbols(): void
     {
-        [$status, $stdout, $stderr] = coverageProcess(['node', 'tests/interfaces/check/main.mts', '-language', 'php'], dirname(__DIR__, 3));
+        [$status, $stdout, $stderr] = coverageProcess(
+            ['node', 'tests/interfaces/check/main.mts', '-language', 'php'],
+            dirname(__DIR__, 3)
+        );
         Assert::assertTrue($status === 0, "interface check exited $status: $stderr$stdout");
     }
 }

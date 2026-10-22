@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-// Reads the vectors and writes the output shared by the dbspec compare runners (php.php, php-extension.php). The output functions take a Dbspec class
-// (Polyspec\Orm\Dbspec\Dbspec or the extension's Polyspec\Orm\Dbspec\Native\Dbspec) and write in the line format of tests/dbspec/compare/check.mts:
-// dbspec_write_interface writes the shared cases, stress documents, file reads, manifest and statement vectors,
-// dbspec_write_plans writes the plan vectors, and dbspec_write_mermaid writes the Mermaid vectors. The two classes have the same methods and result
-// shape.
+// Reads the vectors and writes the output shared by the dbspec compare runners (php.php, php-extension.php). The output
+// functions take a Dbspec class (Polyspec\Orm\Dbspec\Dbspec or the extension's Polyspec\Orm\Dbspec\Native\Dbspec) and
+// write in the line format of tests/dbspec/compare/check.mts: dbspec_write_interface writes the shared cases, stress
+// documents, file reads, manifest and statement vectors, dbspec_write_plans writes the plan vectors, and
+// dbspec_write_mermaid writes the Mermaid vectors. The two classes have the same methods and result shape.
 
 require_once __DIR__ . '/../../../../../tests/dbspec/input.php';
 require_once __DIR__ . '/../../../../../tests/dbspec/cases.php';
@@ -19,8 +19,9 @@ function dbspec_vector_fail(string $path, string $location, string $problem): ne
 }
 
 /**
- * Reads the vector file at $path against the schema tests/dbspec/schema/$kind.schema.json (tests/dbspec/vectors.php) and
- * returns it with objects as associative arrays; a refusal is written to stderr, one line per problem, and ends with 1.
+ * Reads the vector file at $path against the schema tests/dbspec/schema/$kind.schema.json (tests/dbspec/vectors.php)
+ * and returns it with objects as associative arrays; a refusal is written to stderr, one line per problem, and ends
+ * with 1.
  *
  * @return array<string, mixed>
  */
@@ -43,7 +44,8 @@ function dbspec_read_vectors(string $path, string $kind): array
 }
 
 /**
-  * Joins the lines with LF, with CRLF if $crlf, or alternating CRLF and LF if $mixed, with no line ending after the last line.
+  * Joins the lines with LF, with CRLF if $crlf, or alternating CRLF and LF if $mixed, with no line ending after the
+  * last line.
  *
  * @param list<string> $lines
  */
@@ -62,7 +64,10 @@ function dbspec_join(array $lines, bool $crlf, bool $mixed): string
     return $text;
 }
 
-/** Writes the diagnostics of $text parsed with $dbspec, or its emission if there are none. @param array<string, string> $set */
+/**
+ * Writes the diagnostics of $text parsed with $dbspec, or its emission if there are none. @param array<string, string>
+ * $set
+ */
 function dbspec_write(string $dbspec, string $text, array $set, bool $stress): void
 {
     $result = $dbspec::parse($text, $set);
@@ -176,7 +181,10 @@ function dbspec_write_render(string $dbspec, array $case): void
     }
 }
 
-/** The third word of the first line, the document name of a dbspec header split at single spaces, or null. @param list<string> $lines */
+/**
+ * The third word of the first line, the document name of a dbspec header split at single spaces, or null. @param
+ * list<string> $lines
+ */
 function dbspec_header_name(array $lines): ?string
 {
     return $lines === [] ? null : (explode(' ', $lines[0])[2] ?? null);
@@ -204,8 +212,8 @@ function dbspec_vector_named_documents(string $path, array $documents, string $a
 /**
  * With $dbspec, writes the canonical, normalize, invalid, stress document, and files cases of tests/dbspec/cases.json,
  * the hashes case, and the tests/dbspec/ddl.json rendering, in this order. The vector file is checked before output
- * its shape, and an invalid vector is reported with its location to stderr and exits with 1. It returns the cases it read, which
- * dbspec_write_positions and dbspec_write_syntax print.
+ * its shape, and an invalid vector is reported with its location to stderr and exits with 1. It returns the cases it
+ * read, which dbspec_write_positions and dbspec_write_syntax print.
  *
  * @return array<string, list<array<string, mixed>>>
  */
@@ -214,11 +222,22 @@ function dbspec_write_interface(string $dbspec, string $casesPath, string $stres
     // cases.json is read against its schema (tests/dbspec/cases.php): a missing or unknown section or field is refused.
     $cases = dbspec_read_vectors($casesPath, 'cases');
     foreach (['canonical', 'normalize', 'invalid'] as $kind) {
-        $cases[$kind] = array_map(static fn(array $case): array => $case + ['crlf' => false, 'mixed' => false], $cases[$kind]);
+        $cases[$kind] = array_map(
+            static fn(array $case): array => $case + ['crlf' => false, 'mixed' => false],
+            $cases[$kind]
+        );
     }
     foreach ($cases['sets'] as $i => $case) {
-        $cases['sets'][$i]['documents'] = dbspec_vector_named_documents($casesPath, $case['documents'], "sets[$i].documents");
-        $cases['sets'][$i]['external'] = dbspec_vector_named_documents($casesPath, $case['external'] ?? [], "sets[$i].external");
+        $cases['sets'][$i]['documents'] = dbspec_vector_named_documents(
+            $casesPath,
+            $case['documents'],
+            "sets[$i].documents"
+        );
+        $cases['sets'][$i]['external'] = dbspec_vector_named_documents(
+            $casesPath,
+            $case['external'] ?? [],
+            "sets[$i].external"
+        );
     }
 
     $stress = dbspec_read_document($dbspec, $stressPath);
@@ -238,15 +257,18 @@ function dbspec_write_interface(string $dbspec, string $casesPath, string $stres
     }
     echo "stress\n";
     dbspec_write($dbspec, $stress, [], true);
-    // The files case reads with $dbspec::readFile given the path as "files/<id>", and with $dbspec::readBytes given the file
-    // bytes and the case path as the name, as "files/<id>/bytes", and writes the diagnostic and its message
+    // The files case reads with $dbspec::readFile given the path as "files/<id>", and with $dbspec::readBytes given the
+    // file bytes and the case path as the name, as "files/<id>/bytes", and writes the diagnostic and its message
     // or, if there is none, the emission. The name before the message is written as "<name>".
     foreach ($cases['files'] as $case) {
         $path = dirname($casesPath) . '/' . $case['path'];
         try {
             $reads = [
                 "files/{$case['id']}" => [$path, $dbspec::readFile($path)],
-                "files/{$case['id']}/bytes" => [$case['path'], $dbspec::readBytes($case['path'], (string) file_get_contents($path))],
+                "files/{$case['id']}/bytes" => [
+                    $case['path'],
+                    $dbspec::readBytes($case['path'], (string) file_get_contents($path))
+                ],
             ];
         } catch (RuntimeException $e) {
             fwrite(STDERR, $e->getMessage() . "\n");
@@ -260,7 +282,9 @@ function dbspec_write_interface(string $dbspec, string $casesPath, string $stres
             }
             foreach ($read->diagnostics as $d) {
                 echo "! {$d->rule} {$d->line} {$d->column}\n";
-                echo '= ' . (str_starts_with($d->message, $name) ? '<name>' . substr($d->message, strlen($name)) : $d->message) . "\n";
+                echo '= ' . (
+                    str_starts_with($d->message, $name) ? '<name>' . substr($d->message, strlen($name)) : $d->message
+                ) . "\n";
             }
         }
     }
@@ -321,7 +345,10 @@ function dbspec_syntax_inputs(array $cases): array
                     $set[$name] = dbspec_join($lines, $case['crlf'], $case['mixed']);
                 }
             }
-            $inputs["$kind.{$case['id']}"] = [dbspec_join($case['documents'][$case['main']], $case['crlf'], $case['mixed']), $set];
+            $inputs["$kind.{$case['id']}"] = [
+                dbspec_join($case['documents'][$case['main']], $case['crlf'], $case['mixed']),
+                $set
+            ];
         }
     }
     foreach ($cases['sets'] as $case) {
@@ -423,7 +450,11 @@ function dbspec_step(object $s): void
 function dbspec_plan_diagnostics(array $diagnostics): void
 {
     foreach ($diagnostics as $d) {
-        echo in_array($d->rule, ['plan', 'chain', 'compare'], true) ? "! {$d->rule} {$d->line} {$d->column} {$d->message}\n" : "! {$d->rule} {$d->line} {$d->column}\n";
+        echo in_array(
+            $d->rule,
+            ['plan', 'chain', 'compare'],
+            true
+        ) ? "! {$d->rule} {$d->line} {$d->column} {$d->message}\n" : "! {$d->rule} {$d->line} {$d->column}\n";
     }
 }
 
@@ -462,8 +493,8 @@ function dbspec_emitted_plan(string $dbspec, object $plan): void
 }
 
 /**
- * With $dbspec, writes the case, invalid, chain, parse and comparison of tests/dbspec/plans.json in this order. The vector file
- * is checked for its shape before output.
+ * With $dbspec, writes the case, invalid, chain, parse and comparison of tests/dbspec/plans.json in this order. The
+ * vector file is checked for its shape before output.
  */
 function dbspec_write_plans(string $dbspec, string $plansPath): void
 {
@@ -551,7 +582,10 @@ function dbspec_write_plans(string $dbspec, string $plansPath): void
     }
 }
 
-/** Writes what export or import dropped as "= kind<TAB>table<TAB>name", and does not compare the reasons. @param list<object> $dropped */
+/**
+ * Writes what export or import dropped as "= kind<TAB>table<TAB>name", and does not compare the reasons. @param
+ * list<object> $dropped
+ */
 function dbspec_dropped(array $dropped): void
 {
     foreach ($dropped as $u) {

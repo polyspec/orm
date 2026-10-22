@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-// The sets cases of tests/dbspec/cases.json, which DbspecManifestTest checks with the PHP client and, in a process that loads
-// it, with the PHP extension polyspec_orm.
+// The sets cases of tests/dbspec/cases.json, which DbspecManifestTest checks with the PHP client and, in a process that
+// loads it, with the PHP extension polyspec_orm.
 
 use Polyspec\Orm\Dbspec\Dbspec;
 use PHPUnit\Framework\Assert;
@@ -18,7 +18,10 @@ function manifest_text(array $lines): string
 function manifest_parsed(string $id, array $lines, array $set, string $dbspec = Dbspec::class): object
 {
     $result = $dbspec::parse(manifest_text($lines), $set);
-    Assert::assertNotNull($result->document, "$id: diagnostics " . json_encode(array_map(fn($d) => [$d->rule, $d->line, $d->column], $result->diagnostics)));
+    Assert::assertNotNull(
+        $result->document,
+        "$id: diagnostics " . json_encode(array_map(fn($d) => [$d->rule, $d->line, $d->column], $result->diagnostics))
+    );
     return $result->document;
 }
 
@@ -53,13 +56,17 @@ function created_tables(array $statements): array
  */
 function dbspec_sets_check(string $dbspec, array $case): void
 {
-    // Each document is parsed within the set, with the other owned documents, external documents (external), and parsing documents (the header name is the key).
-    // External documents are marked as external.
+    // Each document is parsed within the set, with the other owned documents, external documents (external), and
+    // parsing documents (the header name is the key). External documents are marked as external.
     $all = array_merge($case['documents'], $case['external'] ?? []);
     $owned = count($case['documents']);
     $names = [];
     foreach ($all as $i => $lines) {
-        Assert::assertSame(1, preg_match('/\Adbspec 1 ([A-Za-z0-9_]+)\z/', $lines[0] ?? '', $m), "{$case['id']}: document $i has no header name");
+        Assert::assertSame(
+            1,
+            preg_match('/\Adbspec 1 ([A-Za-z0-9_]+)\z/', $lines[0] ?? '', $m),
+            "{$case['id']}: document $i has no header name"
+        );
         $names[$i] = $m[1];
     }
     $documents = [];
@@ -78,7 +85,11 @@ function dbspec_sets_check(string $dbspec, array $case): void
     $result = $dbspec::manifest($documents);
     $got = array_map(fn($d) => [$d->rule, $d->line, $d->column], $result->diagnostics);
     Assert::assertSame($want, $got, "{$case['id']}: manifest diagnostics");
-    Assert::assertSame($want === [], $result->manifest !== null, "{$case['id']}: a manifest is returned exactly when no diagnostic is expected");
+    Assert::assertSame(
+        $want === [],
+        $result->manifest !== null,
+        "{$case['id']}: a manifest is returned exactly when no diagnostic is expected"
+    );
     $expected = $case['manifest'] ?? null;
     if ($expected !== null) {
         $m = $result->manifest;
@@ -86,7 +97,10 @@ function dbspec_sets_check(string $dbspec, array $case): void
         // without diagnostics (docs/spec/dbspec.md "Manifest and hashes").
         $split = static fn(string $text): array => $text === '' ? [] : preg_split('/(?<=\n)(?=dbspec )/', $text);
         foreach ($dbspec::parseSet($split($m->manifestText), $split($m->externalText)) as $r) {
-            $messages = array_map(static fn($d): string => "{$d->rule} {$d->line}:{$d->column} {$d->message}", $r->diagnostics);
+            $messages = array_map(
+                static fn($d): string => "{$d->rule} {$d->line}:{$d->column} {$d->message}",
+                $r->diagnostics
+            );
             Assert::assertSame([], $messages, "{$case['id']}: manifest and external text of {$r->name}");
         }
         foreach (
@@ -98,16 +112,28 @@ function dbspec_sets_check(string $dbspec, array $case): void
             'schemaHash' => [$m->schemaHash, $expected['schemaHash']],
             ] as $field => [$gotText, $wantText]
         ) {
-            Assert::assertSame($wantText, $gotText, "{$case['id']}: $field differs\n--- want\n$wantText\n--- got\n$gotText");
+            Assert::assertSame(
+                $wantText,
+                $gotText,
+                "{$case['id']}: $field differs\n--- want\n$wantText\n--- got\n$gotText"
+            );
         }
     }
     foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
         $rendered = $dbspec::render($documents, $dialect);
         $got = array_map(fn($d) => [$d->rule, $d->line, $d->column], $rendered->diagnostics);
         Assert::assertSame($want, $got, "{$case['id']}/$dialect: render diagnostics");
-        Assert::assertSame($want === [], $rendered->statements !== null, "{$case['id']}/$dialect: statements are returned exactly when no diagnostic is expected");
+        Assert::assertSame(
+            $want === [],
+            $rendered->statements !== null,
+            "{$case['id']}/$dialect: statements are returned exactly when no diagnostic is expected"
+        );
         if ($expected !== null) {
-            Assert::assertSame($expected['created'], created_tables($rendered->statements), "{$case['id']}/$dialect: render creates");
+            Assert::assertSame(
+                $expected['created'],
+                created_tables($rendered->statements),
+                "{$case['id']}/$dialect: render creates"
+            );
         }
     }
 }

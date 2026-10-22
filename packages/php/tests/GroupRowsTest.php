@@ -26,7 +26,11 @@ final class GroupRowsTest extends TestCase
         }
         $rows = new GroupRows([$row]);
         self::assertCount(1, $rows, 'group result collection changed the row');
-        self::assertSame([['is_close' => false, 'row_count' => 3]], $rows->toArray(), 'group result collection changed the row');
+        self::assertSame(
+            [['is_close' => false, 'row_count' => 3]],
+            $rows->toArray(),
+            'group result collection changed the row'
+        );
         foreach (
             [
             [['is_close', false]],

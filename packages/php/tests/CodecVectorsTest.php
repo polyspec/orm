@@ -18,7 +18,10 @@ use Polyspec\Orm\StyledValue;
 #[Small]
 final class CodecVectorsTest extends TestCase
 {
-    /** Value model: an ordered-json value is decoded; sequential arrays are lists, other arrays are maps with sorted string keys. */
+    /**
+     * Value model: an ordered-json value is decoded; sequential arrays are lists, other arrays are maps with sorted
+     * string keys.
+     */
     private static function canon(mixed $v): mixed
     {
         if ($v instanceof \Polyspec\OrderedJson\Value) {
@@ -52,7 +55,12 @@ final class CodecVectorsTest extends TestCase
     /** @return iterable<string, array{array<string, mixed>}> for each vector in tests/codec/vectors.json */
     public static function vectors(): iterable
     {
-        $vectors = json_decode(file_get_contents(dirname(__DIR__, 3) . '/tests/codec/vectors.json'), true, 512, JSON_THROW_ON_ERROR)['vectors'];
+        $vectors = json_decode(
+            file_get_contents(dirname(__DIR__, 3) . '/tests/codec/vectors.json'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        )['vectors'];
         foreach ($vectors as $v) {
             yield $v['name'] => [$v];
         }
@@ -79,8 +87,15 @@ final class CodecVectorsTest extends TestCase
         }
         $raw = $v['encoded_b64'] === null ? null : base64_decode($v['encoded_b64'], true);
         $decoded = Codec::decode($styles, $raw);
-        self::assertSame(self::canonText($v['value']), self::canonText($decoded->kind === 'sql-null' ? null : $decoded->payload()), 'php decode');
-        $enc = Codec::encode($styles, $v['encoded_b64'] === null ? StyledValue::sqlNull() : StyledValue::value($v['value']));
+        self::assertSame(
+            self::canonText($v['value']),
+            self::canonText($decoded->kind === 'sql-null' ? null : $decoded->payload()),
+            'php decode'
+        );
+        $enc = Codec::encode(
+            $styles,
+            $v['encoded_b64'] === null ? StyledValue::sqlNull() : StyledValue::value($v['value'])
+        );
         if ($v['deterministic']) {
             self::assertSame($v['encoded_b64'], $enc === null ? null : base64_encode($enc), 'php encode differs');
         }
@@ -97,18 +112,27 @@ final class CodecVectorsTest extends TestCase
     public static function errors(): iterable
     {
         yield 'duplicate YAML key' => [fn() => Codec::decode(['yaml'], "a: 1\na: 2\n"), Code::CODEC_DECODE];
-        yield 'multiple YAML documents' => [fn() => Codec::decode(['yaml'], "---\na: 1\n---\na: 2\n"), Code::CODEC_DECODE];
+        yield 'multiple YAML documents' => [
+            fn() => Codec::decode(['yaml'], "---\na: 1\n---\na: 2\n"),
+            Code::CODEC_DECODE
+        ];
         yield 'YAML alias' => [fn() => Codec::decode(['yaml'], "a: &x [1]\nb: *x\n"), Code::CODEC_DECODE];
         yield 'YAML custom tag' => [fn() => Codec::decode(['yaml'], "a: !custom value\n"), Code::CODEC_DECODE];
         yield 'YAML anchor' => [fn() => Codec::decode(['yaml'], "a: &x 1\n"), Code::CODEC_DECODE];
         yield 'YAML standard tag' => [fn() => Codec::decode(['yaml'], "a: !!str 1\n"), Code::CODEC_DECODE];
-        yield 'YAML merge key' => [fn() => Codec::decode(['yaml'], "a: {b: 1}\nc:\n  <<: {b: 1}\n"), Code::CODEC_DECODE];
+        yield 'YAML merge key' => [
+            fn() => Codec::decode(['yaml'], "a: {b: 1}\nc:\n  <<: {b: 1}\n"),
+            Code::CODEC_DECODE
+        ];
         yield 'YAML null map key' => [fn() => Codec::decode(['yaml'], "~: value\n"), Code::CODEC_DECODE];
         yield 'YAML float map key' => [fn() => Codec::decode(['yaml'], "1.5: value\n"), Code::CODEC_DECODE];
         yield 'YAML collection map key' => [fn() => Codec::decode(['yaml'], "[a]: value\n"), Code::CODEC_DECODE];
         yield 'YAML non-finite number' => [fn() => Codec::decode(['yaml'], "value: .inf\n"), Code::CODEC_DECODE];
         yield 'YAML boolean map key' => [fn() => Codec::decode(['yaml'], "true: value\n"), Code::CODEC_DECODE];
-        yield 'invalid YAML order' => [fn() => Codec::encode(['serialize', 'yaml'], StyledValue::value([])), Code::CODEC_UNSUPPORTED];
+        yield 'invalid YAML order' => [
+            fn() => Codec::encode(['serialize', 'yaml'], StyledValue::value([])),
+            Code::CODEC_UNSUPPORTED
+        ];
     }
 
     #[DataProvider('errors')]
@@ -125,29 +149,46 @@ final class CodecVectorsTest extends TestCase
 
     public function test_php_yaml_integer_map_key(): void
     {
-        self::assertSame('{"1":"value"}', self::canonText(Codec::decode(['yaml'], "1: value\n")->payload()), 'YAML integer map key: expected string key');
+        self::assertSame(
+            '{"1":"value"}',
+            self::canonText(Codec::decode(['yaml'], "1: value\n")->payload()),
+            'YAML integer map key: expected string key'
+        );
     }
 
     /**
-     * The output of Go(TestCodecVectors), Rust(codec test), TypeScript(codec-vector.mjs), and Python(codec_vector.py) is checked by make codec-check, which in this run
-     * runs that test and reads only what it wrote to the ORM_CODEC_OUT directory. Reading output written by another target or an earlier run
-     * does not compare this run's code. Skipping a missing output makes a language that was not compared look like it passed.
+     * The output of Go(TestCodecVectors), Rust(codec test), TypeScript(codec-vector.mjs), and Python(codec_vector.py)
+     * is checked by make codec-check, which in this run runs that test and reads only what it wrote to the
+     * ORM_CODEC_OUT directory. Reading output written by another target or an earlier run does not compare this run's
+     * code. Skipping a missing output makes a language that was not compared look like it passed.
      */
     private static function assertOutput(string $lang, array $v): void
     {
         $out = (string) getenv('ORM_CODEC_OUT');
-        self::assertNotSame('', $out, 'ORM_CODEC_OUT is unset; run make codec-check, which runs the Go, Rust, TypeScript and Python codec tests into its run directory');
+        self::assertNotSame(
+            '',
+            $out,
+            'ORM_CODEC_OUT is unset; run make codec-check, which runs the Go, Rust, TypeScript and Python codec tests into its run directory'
+        );
         $file = "$out/$lang.json";
         self::assertFileExists($file, "the $lang codec test of this run did not write it");
         $outs = json_decode(file_get_contents($file), true, 512, JSON_THROW_ON_ERROR);
         if (isset($v['encode_error'])) {
-            self::assertArrayNotHasKey($v['name'], $outs, "$lang wrote an encoding for {$v['name']}, which must fail with {$v['encode_error']}");
+            self::assertArrayNotHasKey(
+                $v['name'],
+                $outs,
+                "$lang wrote an encoding for {$v['name']}, which must fail with {$v['encode_error']}"
+            );
             return;
         }
         self::assertArrayHasKey($v['name'], $outs, "$lang: missing {$v['name']}");
         $raw = $outs[$v['name']] === null ? null : base64_decode($outs[$v['name']], true);
         $decoded = Codec::decode(self::styles($v), $raw);
-        self::assertSame(self::canonText($v['value']), self::canonText($decoded->kind === 'sql-null' ? null : $decoded->payload()), "$lang → php");
+        self::assertSame(
+            self::canonText($v['value']),
+            self::canonText($decoded->kind === 'sql-null' ? null : $decoded->payload()),
+            "$lang → php"
+        );
     }
 
     /** @param array<string, mixed> $v */

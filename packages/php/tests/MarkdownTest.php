@@ -46,7 +46,11 @@ function markdown_error(Closure $fn): ?OrmException
  */
 function markdown_fake_server(array $answers): array
 {
-    $process = proc_open([PHP_BINARY, __DIR__ . '/markdown_fake_server.php', ...$answers], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+    $process = proc_open(
+        [PHP_BINARY, __DIR__ . '/markdown_fake_server.php', ...$answers],
+        [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+        $pipes
+    );
     if ($process === false) {
         throw new RuntimeException('cannot start markdown_fake_server.php');
     }
@@ -76,7 +80,9 @@ function markdown_received(array $server): array
     proc_close($server[0]);
     $received = json_decode($line, true);
     if (!is_array($received)) {
-        throw new RuntimeException("markdown_fake_server.php printed \"$line\", not the received lines; stderr:\n$stderr");
+        throw new RuntimeException(
+            "markdown_fake_server.php printed \"$line\", not the received lines; stderr:\n$stderr"
+        );
     }
     return $received;
 }
@@ -88,7 +94,10 @@ final class MarkdownTest extends TestCase
     public function test_parse_dsn(): void
     {
         $got = Orm::parseMarkdownDsn('markdown://127.0.0.1:4100/tracker?token=' . MARKDOWN_TOKEN);
-        self::assertFalse($got !== ['127.0.0.1:4100', 'tracker', MARKDOWN_TOKEN], 'parseMarkdownDsn() = ' . json_encode($got));
+        self::assertFalse(
+            $got !== ['127.0.0.1:4100', 'tracker', MARKDOWN_TOKEN],
+            'parseMarkdownDsn() = ' . json_encode($got)
+        );
         foreach (
             [
             'markdown://127.0.0.1:4100/tracker',
@@ -106,9 +115,15 @@ final class MarkdownTest extends TestCase
             ] as $input
         ) {
             $e = markdown_error(static fn() => Orm::parseMarkdownDsn($input));
-            self::assertFalse($e?->code_ !== Code::CONFIG, "parseMarkdownDsn($input) = " . ($e?->getMessage() ?? 'no error') . '; want CONFIG');
+            self::assertFalse(
+                $e?->code_ !== Code::CONFIG,
+                "parseMarkdownDsn($input) = " . ($e?->getMessage() ?? 'no error') . '; want CONFIG'
+            );
             $e = markdown_error(static fn() => Orm::connect($input, new Config()));
-            self::assertFalse($e?->code_ !== Code::CONFIG, "connect($input) = " . ($e?->getMessage() ?? 'no error') . '; want CONFIG');
+            self::assertFalse(
+                $e?->code_ !== Code::CONFIG,
+                "connect($input) = " . ($e?->getMessage() ?? 'no error') . '; want CONFIG'
+            );
         }
     }
 
@@ -128,7 +143,11 @@ final class MarkdownTest extends TestCase
         }, readOnly: true);
         $e = markdown_error(static fn() => $db->transaction(static function (): void {
         }));
-        self::assertFalse($e?->code_ !== Code::WRITE_CONFLICT || $e->getMessage() !== 'WRITE_CONFLICT: people.flowmark.md:3 changed since it was read', 'commit error = ' . ($e?->getMessage() ?? 'none') . "; want WRITE_CONFLICT with the server's message");
+        self::assertFalse(
+            $e?->code_ !== Code::WRITE_CONFLICT || $e
+                ->getMessage() !== 'WRITE_CONFLICT: people.flowmark.md:3 changed since it was read',
+            'commit error = ' . ($e?->getMessage() ?? 'none') . "; want WRITE_CONFLICT with the server's message"
+        );
         $db->close();
         $want = [
             MARKDOWN_CONNECT_LINE,
@@ -139,16 +158,27 @@ final class MarkdownTest extends TestCase
             '{"op":"begin"}',
             '{"op":"commit"}',
         ];
-        self::assertFalse(($got = markdown_received($server)) !== $want, "messages:\n" . implode("\n", $got) . "\nwant:\n" . implode("\n", $want));
+        self::assertFalse(
+            ($got = markdown_received($server)) !== $want,
+            "messages:\n" . implode("\n", $got) . "\nwant:\n" . implode("\n", $want)
+        );
     }
 
     // Requirements: PRT-64.
     public function test_connect_refused(): void
     {
-        $server = markdown_fake_server(['{"error":{"code":"CONFIG","message":"connect: the token is not the corpus\'s token"}}']);
+        $server = markdown_fake_server(
+            ['{"error":{"code":"CONFIG","message":"connect: the token is not the corpus\'s token"}}']
+        );
         $e = markdown_error(static fn() => Orm::connect($server[2], new Config())->close());
-        self::assertFalse($e?->code_ !== Code::CONFIG || $e->getMessage() !== "CONFIG: connect: the token is not the corpus's token", 'connect error = ' . ($e?->getMessage() ?? 'none') . "; want the server's CONFIG");
-        self::assertFalse(($got = markdown_received($server)) !== [MARKDOWN_CONNECT_LINE], 'messages = ' . json_encode($got));
+        self::assertFalse(
+            $e?->code_ !== Code::CONFIG || $e->getMessage() !== "CONFIG: connect: the token is not the corpus's token",
+            'connect error = ' . ($e?->getMessage() ?? 'none') . "; want the server's CONFIG"
+        );
+        self::assertFalse(
+            ($got = markdown_received($server)) !== [MARKDOWN_CONNECT_LINE],
+            'messages = ' . json_encode($got)
+        );
     }
 
     public function test_rejected_surfaces(): void
@@ -170,10 +200,16 @@ final class MarkdownTest extends TestCase
         ];
         foreach ($surfaces as $name => $fn) {
             $e = markdown_error($fn);
-            self::assertFalse($e?->code_ !== Code::CAPABILITY_UNSUPPORTED, "$name: " . ($e?->getMessage() ?? 'no error') . '; want CAPABILITY_UNSUPPORTED');
+            self::assertFalse(
+                $e?->code_ !== Code::CAPABILITY_UNSUPPORTED,
+                "$name: " . ($e?->getMessage() ?? 'no error') . '; want CAPABILITY_UNSUPPORTED'
+            );
         }
         $e = markdown_error(static fn() => Orm::connect($server[2], new Config(statementTimeoutMs: 100)));
-        self::assertFalse($e?->code_ !== Code::CAPABILITY_UNSUPPORTED, 'statementTimeoutMs: ' . ($e?->getMessage() ?? 'no error') . '; want CAPABILITY_UNSUPPORTED');
+        self::assertFalse(
+            $e?->code_ !== Code::CAPABILITY_UNSUPPORTED,
+            'statementTimeoutMs: ' . ($e?->getMessage() ?? 'no error') . '; want CAPABILITY_UNSUPPORTED'
+        );
         $db->close();
         markdown_received($server);
     }
@@ -181,8 +217,8 @@ final class MarkdownTest extends TestCase
     // Requirements: PRT-66.
     public function test_request_message(): void
     {
-        // The request message writes parameters in the slot form: the time compared with a date column is YYYY-MM-DD. A row that is absent
-        // group count is an empty result.
+        // The request message writes parameters in the slot form: the time compared with a date column is YYYY-MM-DD. A
+        // row that is absent group count is an empty result.
         $server = markdown_fake_server(['{"ok":true}', '{"rows":[]}']);
         $db = \Polyspec\Orm\Tests\MarkdownModel\connect($server[2], new Config());
         $groups = (new \Polyspec\Orm\Tests\MarkdownModel\Tasks())->connect($db)
@@ -191,9 +227,16 @@ final class MarkdownTest extends TestCase
         $db->close();
         $received = markdown_received($server);
         $message = json_decode($received[1] ?? 'null', true);
-        self::assertFalse(!is_array($message) || $message['params'] !== ['2026-10-01'] || $message['request']['kind'] !== 'group_count'
-            || $message['ir_version'] !== 1 || $message['manifest_hash'] !== \Polyspec\Orm\Tests\MarkdownModel\MANIFEST_HASH
-            || preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{6}$/D', (string) $message['now']) !== 1, 'request message = ' . ($received[1] ?? 'none'));
+        self::assertFalse(!is_array($message) || $message['params'] !== [
+            '2026-10-01'
+        ] || $message['request']['kind'] !== 'group_count'
+            || $message['ir_version'] !== 1 || $message[
+                'manifest_hash'
+            ] !== \Polyspec\Orm\Tests\MarkdownModel\MANIFEST_HASH
+            || preg_match(
+                '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{6}$/D',
+                (string) $message['now']
+            ) !== 1, 'request message = ' . ($received[1] ?? 'none'));
     }
 
     // Requirements: PRT-67.
@@ -201,10 +244,17 @@ final class MarkdownTest extends TestCase
     {
         // Message case of tests/bind/vectors.json: the runtime value model JSON of an IR executor message parameter
         // (docs/spec/protocol.md §5 "Parameters"). It is the same case as Go's TestBindMessageVectors.
-        $vectors = json_decode((string) file_get_contents(__DIR__ . '/../../../tests/bind/vectors.json'), true, flags: JSON_THROW_ON_ERROR);
+        $vectors = json_decode(
+            (string) file_get_contents(__DIR__ . '/../../../tests/bind/vectors.json'),
+            true,
+            flags: JSON_THROW_ON_ERROR
+        );
         $server = markdown_fake_server(['{"ok":true}']);
         $db = Orm::connect($server[2], new Config());
-        self::assertFalse((new DateTimeImmutable("2000-01-01", $db->zone()))->format("P") !== $vectors["zone"], "zone {$db->zone()->getName()}; want {$vectors['zone']}");
+        self::assertFalse(
+            (new DateTimeImmutable("2000-01-01", $db->zone()))->format("P") !== $vectors["zone"],
+            "zone {$db->zone()->getName()}; want {$vectors['zone']}"
+        );
         // The control cases: the begin control message of a transaction with and without readOnly (§5 Session).
         self::assertNotEmpty($vectors['control'] ?? [], 'tests/bind/vectors.json has no control cases');
         foreach ($vectors['control'] as $c) {
@@ -217,9 +267,15 @@ final class MarkdownTest extends TestCase
                 $got = $param->invoke(null, $db, 0, $c['value'], [['type' => $c['type'], 'column' => null]]);
             });
             if (isset($c['code'])) {
-                self::assertFalse($e?->code_ !== $c['code'], "{$c['name']}: " . json_encode($got) . ' ' . ($e?->getMessage() ?? '') . "; want {$c['code']}");
+                self::assertFalse(
+                    $e?->code_ !== $c['code'],
+                    "{$c['name']}: " . json_encode($got) . ' ' . ($e?->getMessage() ?? '') . "; want {$c['code']}"
+                );
             } else {
-                self::assertFalse($e !== null || $got !== $c['json'], "{$c['name']}: " . json_encode($got) . ' ' . ($e?->getMessage() ?? '') . "; want {$c['json']}");
+                self::assertFalse(
+                    $e !== null || $got !== $c['json'],
+                    "{$c['name']}: " . json_encode($got) . ' ' . ($e?->getMessage() ?? '') . "; want {$c['json']}"
+                );
             }
         }
         $db->close();
@@ -228,9 +284,13 @@ final class MarkdownTest extends TestCase
 
     public function test_bind_vectors(): void
     {
-        // Bind case of tests/bind/vectors.json: checks the parameter value against the logical type of its slot (docs/spec/protocol.md §5
-        // "Parameters"). It is the same case as Go's TestBindVectors.
-        $vectors = json_decode((string) file_get_contents(__DIR__ . '/../../../tests/bind/vectors.json'), true, flags: JSON_THROW_ON_ERROR);
+        // Bind case of tests/bind/vectors.json: checks the parameter value against the logical type of its slot
+        // (docs/spec/protocol.md §5 "Parameters"). It is the same case as Go's TestBindVectors.
+        $vectors = json_decode(
+            (string) file_get_contents(__DIR__ . '/../../../tests/bind/vectors.json'),
+            true,
+            flags: JSON_THROW_ON_ERROR
+        );
         $zone = new \DateTimeZone($vectors['zone']);
         // {"int": text} is an int, {"f64": text} is a float that is infinite or NaN, and {"bytes": base64} is Bytes.
         $value = static function (mixed $v): mixed {
@@ -252,7 +312,12 @@ final class MarkdownTest extends TestCase
         };
         self::assertNotSame([], $vectors['bind']);
         foreach ($vectors['bind'] as $c) {
-            $slot = ['type' => $c['slot']['type'], 'precision' => $c['slot']['precision'] ?? 0, 'scale' => $c['slot']['scale'] ?? 0, 'length' => $c['slot']['length'] ?? 0];
+            $slot = [
+                'type' => $c['slot']['type'],
+                'precision' => $c['slot']['precision'] ?? 0,
+                'scale' => $c['slot']['scale'] ?? 0,
+                'length' => $c['slot']['length'] ?? 0
+            ];
             $v = $value($c['value']);
             $transform = $c['slot']['transform'] ?? '';
             $notNull = $c['slot']['not_null'] ?? false;
@@ -265,9 +330,15 @@ final class MarkdownTest extends TestCase
                 }
             });
             if (isset($c['code'])) {
-                self::assertFalse($e?->code_ !== $c['code'], "{$c['name']}: " . ($e?->getMessage() ?? 'bound') . "; want {$c['code']}");
+                self::assertFalse(
+                    $e?->code_ !== $c['code'],
+                    "{$c['name']}: " . ($e?->getMessage() ?? 'bound') . "; want {$c['code']}"
+                );
             } else {
-                self::assertFalse($e !== null || $v != $value($c['bound']), "{$c['name']}: " . ($e?->getMessage() ?? '') . '; want it bound');
+                self::assertFalse(
+                    $e !== null || $v != $value($c['bound']),
+                    "{$c['name']}: " . ($e?->getMessage() ?? '') . '; want it bound'
+                );
             }
         }
     }
@@ -297,7 +368,10 @@ final class MarkdownTest extends TestCase
         $validator = new Validator($model);
         /** Each use of paramUses reduced to [type, column name]. */
         $usesOf = static fn(array $uses): array => array_map(
-            static fn(array $list): array => array_map(static fn(array $u): array => [$u['type'], $u['column']['name'] ?? ''], $list),
+            static fn(array $list): array => array_map(
+                static fn(array $u): array => [$u['type'], $u['column']['name'] ?? ''],
+                $list
+            ),
             $uses,
         );
         $base = ['ir_version' => 1, 'manifest_hash' => $model->manifestHash];
@@ -307,12 +381,28 @@ final class MarkdownTest extends TestCase
                     ['pred' => ['column' => 'title', 'op' => 'eq', 'p' => 0]],
                     ['pred' => ['conn' => 'and', 'column' => 'born', 'op' => 'between', 'ps' => [1, 2]]],
                     ['pred' => ['conn' => 'and', 'column' => 'at', 'op' => 'eq', 'fn' => ['name' => 'year'], 'p' => 3]],
-                    ['pred' => ['conn' => 'and', 'column' => 'at', 'op' => 'gt', 'value' => ['name' => 'days_ago', 'ps' => [4]]]],
+                    [
+                        'pred' => [
+                            'conn' => 'and',
+                            'column' => 'at',
+                            'op' => 'gt',
+                            'value' => ['name' => 'days_ago', 'ps' => [4]]
+                        ]
+                    ],
                     ['pred' => ['conn' => 'and', 'column' => 'title', 'op' => 'contains', 'p' => 5]],
                     ['pred' => ['conn' => 'and', 'column' => 'at', 'op' => 'eq', 'fn' => ['name' => 'date'], 'p' => 6]],
-                    ['pred' => ['conn' => 'and', 'column' => 'at', 'op' => 'lt', 'value' => ['name' => 'seconds_later', 'ps' => [7]]]],
+                    [
+                        'pred' => [
+                            'conn' => 'and',
+                            'column' => 'at',
+                            'op' => 'lt',
+                            'value' => ['name' => 'seconds_later', 'ps' => [7]]
+                        ]
+                    ],
                 ]],
-                'relations' => [['rel' => 'owner_model', 'kind' => 'one', 'keys' => [['left' => 'owner', 'right' => 'id']],
+                'relations' => [['rel' => 'owner_model', 'kind' => 'one', 'keys' => [
+                    ['left' => 'owner', 'right' => 'id']
+                ],
                     'query' => ['entity' => 'owners', 'if_parent' => ['column' => 'title', 'p' => 8]]]],
                 'n_params' => 9], [
                 [['varchar', 'title']],
@@ -326,7 +416,11 @@ final class MarkdownTest extends TestCase
                 [['varchar', 'title']],
             ]],
             'insert' => [$base + ['kind' => 'insert', 'entity' => 'notes',
-                'set' => [['column' => 'owner', 'p' => 0], ['column' => 'title', 'p' => 1], ['column' => 'at', 'p' => 2]],
+                'set' => [
+                    ['column' => 'owner', 'p' => 0],
+                    ['column' => 'title', 'p' => 1],
+                    ['column' => 'at', 'p' => 2]
+                ],
                 'rows' => [[3, 4, 5]], 'n_params' => 6], [
                 [['varchar', 'owner']], [['varchar', 'title']], [['datetime', 'at']],
                 [['varchar', 'owner']], [['varchar', 'title']], [['datetime', 'at']],
@@ -340,7 +434,10 @@ final class MarkdownTest extends TestCase
         ];
         foreach ($requests as $name => [$request, $want]) {
             $validator->validate($request);
-            self::assertFalse(($got = $usesOf($validator->paramUses($request))) !== $want, "$name uses = " . json_encode($got) . "\nwant " . json_encode($want));
+            self::assertFalse(
+                ($got = $usesOf($validator->paramUses($request))) !== $want,
+                "$name uses = " . json_encode($got) . "\nwant " . json_encode($want)
+            );
         }
     }
 

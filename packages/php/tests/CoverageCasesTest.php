@@ -2,7 +2,8 @@
 
 // Unit test of the feature coverage helper (packages/php/tests/coverage_cases.php). The helper
 // is shared by packages/php/tests/Coverage*Test.php, so a change to it is checked by this
-// test (the helpers in contracts/features.json), not by the coverage of all features. Full coverage is run by make orm-check.
+// test (the helpers in contracts/features.json), not by the coverage of all features. Full coverage is run by make
+// orm-check.
 declare(strict_types=1);
 
 require_once __DIR__ . '/coverage_cases.php';
@@ -56,7 +57,10 @@ final class CoverageCasesTest extends TestCase
 
     public function test_runs_a_child_process(): void
     {
-        [$status, $stdout, $stderr] = coverageProcess([PHP_BINARY, '-r', 'echo "out"; fwrite(STDERR, "err"); exit(3);'], __DIR__);
+        [$status, $stdout, $stderr] = coverageProcess(
+            [PHP_BINARY, '-r', 'echo "out"; fwrite(STDERR, "err"); exit(3);'],
+            __DIR__
+        );
         $this->assertSame([3, 'out', 'err'], [$status, $stdout, $stderr], 'child');
     }
 }

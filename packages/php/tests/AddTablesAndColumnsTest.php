@@ -3,16 +3,17 @@
 declare(strict_types=1);
 
 // Checks addTablesAndColumns on SQLite, MySQL, and PostgreSQL (docs/spec/schema.md "Adding tables and
-// columns"). The case database holds the table of the other set addcol_log and the table of addcol set version 1, together with rows.
-// Calling addTablesAndColumns with version 2 adds to existing tables the missing columns that are nullable or have a default,
-// keeps the rows, the trigger of the changed audit table records the new column, and a missing
-// table is created with its index, foreign key, check, and audit trigger, and the tables of other sets are
+// columns"). The case database holds the table of the other set addcol_log and the table of addcol set version 1,
+// together with rows. Calling addTablesAndColumns with version 2 adds to existing tables the missing columns that are
+// nullable or have a default, keeps the rows, the trigger of the changed audit table records the new column, and a
+// missing table is created with its index, foreign key, check, and audit trigger, and the tables of other sets are
 // left alone. Calling it again adds nothing. Missing indexes on existing tables are added, and a missing unique key
 // is SCHEMA_DIFFERS, which states the reason. A set with another difference, before changing anything,
 // is SCHEMA_DIFFERS. The fixtures are contracts/fixtures/add_tables_and_columns/*.dbs. Each case
 // runs in its own case database (case_database.php), and ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN
 // is missing, the test fails.
-// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AddTablesAndColumnsTest.php [--filter <case>]
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist
+// packages/php/tests/AddTablesAndColumnsTest.php [--filter <case>]
 require_once __DIR__ . '/case_database.php';
 
 use Polyspec\Orm\Code;
@@ -80,8 +81,8 @@ final class AddTablesAndColumnsTest extends TestCase
 
     /**
      * Installs addcol_log and version 1 in the case database, one log row, one item with audit record 1, and the
-     * link written with the item's tag and that tag's child tag. The item's audit column refers to the row of the audit record table
-     * by a foreign key, so the audit record is written first.
+     * link written with the item's tag and that tag's child tag. The item's audit column refers to the row of the audit
+     * record table by a foreign key, so the audit record is written first.
      */
     private static function installed(string $dsn): Db
     {
@@ -91,7 +92,9 @@ final class AddTablesAndColumnsTest extends TestCase
         $pdo = $db->pdo();
         $pdo->exec("INSERT INTO addcol_log_entry (message) VALUES ('kept')");
         $pdo->exec("INSERT INTO audit (actor) VALUES ('setup')");
-        $pdo->exec("INSERT INTO addcol_item (ref, label, created_at, audit_seq) VALUES ('item-1', 'first', '2026-01-01 00:00:00.000000', 1)");
+        $pdo->exec(
+            "INSERT INTO addcol_item (ref, label, created_at, audit_seq) VALUES ('item-1', 'first', '2026-01-01 00:00:00.000000', 1)"
+        );
         $pdo->exec("INSERT INTO addcol_tag (item_id, name) VALUES (1, 'red')");
         $pdo->exec("INSERT INTO addcol_tag (item_id, parent_id, name) VALUES (1, 1, 'child')");
         return $db;
@@ -104,10 +107,19 @@ final class AddTablesAndColumnsTest extends TestCase
             $added = $db->utils()->schema()->addTablesAndColumns(self::fixture('v2'));
             self::check($added === self::ADDED, 'addTablesAndColumns = ' . json_encode($added));
             // The rows are unchanged, and the new columns are NULL or default.
-            $items = self::count_of($db, "SELECT COUNT(*) FROM addcol_item WHERE ref = 'item-1' AND label = 'first' AND note IS NULL AND priority = 3 AND archived = false AND status = 'new'");
+            $items = self::count_of(
+                $db,
+                "SELECT COUNT(*) FROM addcol_item WHERE ref = 'item-1' AND label = 'first' AND note IS NULL AND priority = 3 AND archived = false AND status = 'new'"
+            );
             self::check($items === 1, "items with their values and the new defaults $items");
-            self::check(self::count_of($db, 'SELECT COUNT(*) FROM addcol_tag WHERE color IS NULL') === 2, 'tags with a null color');
-            self::check(self::count_of($db, "SELECT COUNT(*) FROM addcol_log_entry WHERE message = 'kept'") === 1, 'log entries');
+            self::check(
+                self::count_of($db, 'SELECT COUNT(*) FROM addcol_tag WHERE color IS NULL') === 2,
+                'tags with a null color'
+            );
+            self::check(
+                self::count_of($db, "SELECT COUNT(*) FROM addcol_log_entry WHERE message = 'kept'") === 1,
+                'log entries'
+            );
             // SQLite turns foreign keys off and recreates the table. Checks that the connection turned them back on.
             $orphan = null;
             try {
@@ -119,12 +131,18 @@ final class AddTablesAndColumnsTest extends TestCase
             // The audit trigger records the new column.
             $db->pdo()->exec("INSERT INTO audit (actor) VALUES ('update')");
             $db->pdo()->exec("UPDATE addcol_item SET note = 'later', priority = 4, audit_seq = 2 WHERE id = 1");
-            $history = self::count_of($db, "SELECT COUNT(*) FROM addcol_item_history WHERE history_action = 'update' AND previous_audit_seq = 1 AND audit_seq = 2 AND note = 'later' AND priority = 4 AND status = 'new'");
+            $history = self::count_of(
+                $db,
+                "SELECT COUNT(*) FROM addcol_item_history WHERE history_action = 'update' AND previous_audit_seq = 1 AND audit_seq = 2 AND note = 'later' AND priority = 4 AND status = 'new'"
+            );
             self::check($history === 1, "history rows of the update with the new columns $history");
             // The new table was created with its index, foreign key, check, and audit trigger.
             $db->pdo()->exec("INSERT INTO audit (actor) VALUES ('extra')");
             $db->pdo()->exec("INSERT INTO addcol_extra (item_id, label, audit_seq) VALUES (1, 'extra', 3)");
-            $inserted = self::count_of($db, "SELECT COUNT(*) FROM addcol_extra_history WHERE history_action = 'insert' AND previous_audit_seq IS NULL AND audit_seq = 3 AND item_id = 1 AND label = 'extra'");
+            $inserted = self::count_of(
+                $db,
+                "SELECT COUNT(*) FROM addcol_extra_history WHERE history_action = 'insert' AND previous_audit_seq IS NULL AND audit_seq = 3 AND item_id = 1 AND label = 'extra'"
+            );
             self::check($inserted === 1, "history rows of the insert into the created table $inserted");
             foreach (
                 [
@@ -169,17 +187,23 @@ final class AddTablesAndColumnsTest extends TestCase
     }
 
     /**
-     * Adds the missing index to an existing table, and calling again does nothing. A missing unique key on a table that has
-     * rows fails, so it is SCHEMA_DIFFERS stating the reason.
+     * Adds the missing index to an existing table, and calling again does nothing. A missing unique key on a table that
+     * has rows fails, so it is SCHEMA_DIFFERS stating the reason.
      */
     private static function addTablesAndColumnsIndex(string $dsn, string $driver): void
     {
         $db = self::installed($dsn);
         try {
             $unique = self::thrown(fn() => $db->utils()->schema()->addTablesAndColumns(self::fixture('unique')));
-            self::check($unique?->code_ === Code::SCHEMA_DIFFERS && str_contains($unique->getMessage(), self::MISSING_UNIQUE), 'a missing unique key: ' . ($unique?->getMessage() ?? 'no error'));
+            self::check(
+                $unique?->code_ === Code::SCHEMA_DIFFERS && str_contains($unique->getMessage(), self::MISSING_UNIQUE),
+                'a missing unique key: ' . ($unique?->getMessage() ?? 'no error')
+            );
             $added = $db->utils()->schema()->addTablesAndColumns(self::fixture('index'));
-            self::check($added === self::ADDED_INDEX, 'addTablesAndColumns with a missing index = ' . json_encode($added));
+            self::check(
+                $added === self::ADDED_INDEX,
+                'addTablesAndColumns with a missing index = ' . json_encode($added)
+            );
             $again = $db->utils()->schema()->addTablesAndColumns(self::fixture('index'));
             self::check($again === [], 'repeated addTablesAndColumns with the index = ' . json_encode($again));
             // install changes nothing only when the database matches the set: the index exists as declared.
@@ -199,7 +223,10 @@ final class AddTablesAndColumnsTest extends TestCase
                 try {
                     $db->transaction(function () use ($db): void {
                         $added = $db->utils()->schema()->addTablesAndColumns(self::fixture('v2'));
-                        self::check($added === self::ADDED, 'addTablesAndColumns in the transaction = ' . json_encode($added));
+                        self::check(
+                            $added === self::ADDED,
+                            'addTablesAndColumns in the transaction = ' . json_encode($added)
+                        );
                         throw new LogicException('roll back');
                     }, retry: 0);
                 } catch (LogicException $e) {
@@ -211,7 +238,10 @@ final class AddTablesAndColumnsTest extends TestCase
                 $db->transaction(function () use ($db, &$inside): void {
                     $inside = self::thrown(fn() => $db->utils()->schema()->addTablesAndColumns(self::fixture('v2')));
                 }, retry: 0);
-                self::check($inside?->code_ === Code::CONFIG, "addTablesAndColumns in a $driver transaction: " . ($inside?->getMessage() ?? 'no error'));
+                self::check(
+                    $inside?->code_ === Code::CONFIG,
+                    "addTablesAndColumns in a $driver transaction: " . ($inside?->getMessage() ?? 'no error')
+                );
             }
             $added = $db->utils()->schema()->addTablesAndColumns(self::fixture('v2'));
             self::check($added === self::ADDED, 'addTablesAndColumns after the transaction = ' . json_encode($added));
@@ -227,9 +257,15 @@ final class AddTablesAndColumnsTest extends TestCase
             $v2 = self::fixture('v2');
             $edited = new Schema(str_replace(' note ', ' memo ', $v2->manifestText), $v2->manifestHash);
             $e = self::thrown(fn() => $db->utils()->schema()->addTablesAndColumns($edited));
-            self::check($e?->code_ === Code::CONFIG, 'addTablesAndColumns of an edited manifest: ' . ($e?->getMessage() ?? 'no error'));
+            self::check(
+                $e?->code_ === Code::CONFIG,
+                'addTablesAndColumns of an edited manifest: ' . ($e?->getMessage() ?? 'no error')
+            );
             $added = $db->utils()->schema()->addTablesAndColumns($v2);
-            self::check($added === self::ADDED, 'addTablesAndColumns after the edited manifest = ' . json_encode($added));
+            self::check(
+                $added === self::ADDED,
+                'addTablesAndColumns after the edited manifest = ' . json_encode($added)
+            );
         } finally {
             $db->close();
         }

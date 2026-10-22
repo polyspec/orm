@@ -33,6 +33,10 @@ final class DbspecPlanReaderTest extends TestCase
             }
         }
         sort($openers);
-        Assert::assertSame(['dbspec_plan_cases.php'], $openers, 'plans.json must be opened by one file only: ' . implode(', ', $openers));
+        Assert::assertSame(
+            ['dbspec_plan_cases.php'],
+            $openers,
+            'plans.json must be opened by one file only: ' . implode(', ', $openers)
+        );
     }
 }

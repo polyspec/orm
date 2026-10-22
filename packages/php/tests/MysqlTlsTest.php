@@ -1,9 +1,9 @@
 <?php
 
-// The DSN parameters of the PHP client and the MySQL TLS connection (docs/spec/config.md): the DSN uses only the parameters of the scheme,
-// and `ssl-mode=VERIFY_IDENTITY` with an absolute `ssl-ca` path and a host name is the only MySQL TLS
-// mode; every other parameter and mode is CONFIG. Connection cases need the ORM_TEST_MYSQL_TLS_DSN from `make orm-test-servers`,
-// ORM_TEST_MYSQL_TLS_OTHER_CA_DSN, and ORM_TEST_MYSQL_TLS_MISMATCH_DSN,
+// The DSN parameters of the PHP client and the MySQL TLS connection (docs/spec/config.md): the DSN uses only the
+// parameters of the scheme, and `ssl-mode=VERIFY_IDENTITY` with an absolute `ssl-ca` path and a host name is the only
+// MySQL TLS mode; every other parameter and mode is CONFIG. Connection cases need the ORM_TEST_MYSQL_TLS_DSN from `make
+// orm-test-servers`, ORM_TEST_MYSQL_TLS_OTHER_CA_DSN, and ORM_TEST_MYSQL_TLS_MISMATCH_DSN,
 // and the test fails if any of them is missing.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/MysqlTlsTest.php
 declare(strict_types=1);
@@ -28,7 +28,10 @@ final class MysqlTlsTest extends TestCase
             Orm::parseDsn($dsn);
             self::fail("accepted $dsn");
         } catch (OrmException $e) {
-            self::assertTrue($e->code_ === Code::CONFIG && str_contains($e->getMessage(), $wanted), "$dsn: {$e->code_} {$e->getMessage()}, expected CONFIG with $wanted");
+            self::assertTrue(
+                $e->code_ === Code::CONFIG && str_contains($e->getMessage(), $wanted),
+                "$dsn: {$e->code_} {$e->getMessage()}, expected CONFIG with $wanted"
+            );
         }
     }
 
@@ -37,7 +40,10 @@ final class MysqlTlsTest extends TestCase
     {
         self::refused('mysql://root@db.local/orm_example?charset=latin1', 'unknown parameter charset');
         self::refused('mysql://root@db.local/orm_example?sslmode=disable', 'unknown parameter sslmode');
-        self::refused('postgres://root@db.local/orm_example?application_name=orm', 'unknown parameter application_name');
+        self::refused(
+            'postgres://root@db.local/orm_example?application_name=orm',
+            'unknown parameter application_name'
+        );
         self::refused('postgres://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY', 'unknown parameter ssl-mode');
         self::refused('sqlite:///tmp/orm-tls.sqlite?cache=shared', 'unknown parameter cache');
         foreach (['VERIFY_CA', 'REQUIRED', 'PREFERRED', 'DISABLED', 'verify_identity', ''] as $mode) {
@@ -49,8 +55,13 @@ final class MysqlTlsTest extends TestCase
         foreach (['127.0.0.1', '[::1]'] as $host) {
             self::refused("mysql://root@$host/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem", 'host name');
         }
-        self::refused('mysql://root@localhost/orm_example?socket=/tmp/mysql.sock&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem', 'socket');
-        $parsed = Orm::parseDsn('mysql://root@db.local/orm_example?timezone=UTC&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem');
+        self::refused(
+            'mysql://root@localhost/orm_example?socket=/tmp/mysql.sock&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem',
+            'socket'
+        );
+        $parsed = Orm::parseDsn(
+            'mysql://root@db.local/orm_example?timezone=UTC&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem'
+        );
         self::assertTrue($parsed[0] === 'mysql' && $parsed[5] === '/tmp/ca.pem', 'parsed ' . json_encode($parsed));
         foreach (
             ['postgres://orm@127.0.0.1/orm_example?sslmode=disable&timezone=UTC', 'postgres:///orm_example?host=/tmp', 'sqlite:///tmp/orm-tls.sqlite?_pragma=busy_timeout(5000)&timezone=UTC',
@@ -73,13 +84,21 @@ final class MysqlTlsTest extends TestCase
         $sslVersion = static function (string $dsn) use ($config): string {
             $db = Orm::connect($dsn, $config);
             try {
-                return (string) ($db->pdo()->query("SHOW SESSION STATUS LIKE 'Ssl_version'")->fetch(\PDO::FETCH_NUM)[1] ?? '');
+                return (string) (
+                    $db->pdo()->query("SHOW SESSION STATUS LIKE 'Ssl_version'")->fetch(\PDO::FETCH_NUM)[1] ?? ''
+                );
             } finally {
                 $db->close();
             }
         };
         $dsns = [];
-        foreach (['ORM_TEST_MYSQL_TLS_DSN', 'ORM_TEST_MYSQL_TLS_OTHER_CA_DSN', 'ORM_TEST_MYSQL_TLS_MISMATCH_DSN'] as $name) {
+        foreach (
+            [
+            'ORM_TEST_MYSQL_TLS_DSN',
+            'ORM_TEST_MYSQL_TLS_OTHER_CA_DSN',
+            'ORM_TEST_MYSQL_TLS_MISMATCH_DSN'
+            ] as $name
+        ) {
             $value = requiredDsn($name);
             if (!is_string($value) || $value === '') {
                 throw new RuntimeException("$name is not set; run make orm-test-servers");
@@ -87,13 +106,20 @@ final class MysqlTlsTest extends TestCase
             $dsns[] = $value;
         }
         $version = $sslVersion($dsns[0]);
-        self::assertMatchesRegularExpression('/^TLSv1\.[23]$/', $version, 'the VERIFY_IDENTITY connection has Ssl_version ' . json_encode($version));
+        self::assertMatchesRegularExpression(
+            '/^TLSv1\.[23]$/',
+            $version,
+            'the VERIFY_IDENTITY connection has Ssl_version ' . json_encode($version)
+        );
         foreach (['another CA' => $dsns[1], 'a certificate of another host' => $dsns[2]] as $name => $dsn) {
             try {
                 $sslVersion($dsn);
                 self::fail("the connection with $name was accepted");
             } catch (OrmException $e) {
-                self::assertTrue($e->code_ === Code::CONFIG && str_contains($e->getMessage(), 'SSL'), "the connection with $name failed for another cause: {$e->code_} {$e->getMessage()}");
+                self::assertTrue(
+                    $e->code_ === Code::CONFIG && str_contains($e->getMessage(), 'SSL'),
+                    "the connection with $name failed for another cause: {$e->code_} {$e->getMessage()}"
+                );
             }
         }
     }
@@ -109,7 +135,12 @@ final class MysqlTlsTest extends TestCase
         if (!is_string($dsn) || $dsn === '') {
             throw new RuntimeException('ORM_TEST_MYSQL_DSN is not set; run make orm-test-servers');
         }
-        $vector = json_decode((string) file_get_contents(__DIR__ . '/../../../tests/dsn/mysql-session.json'), true, 512, JSON_THROW_ON_ERROR);
+        $vector = json_decode(
+            (string) file_get_contents(__DIR__ . '/../../../tests/dsn/mysql-session.json'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
         $db = Orm::connect($dsn, new Config());
         try {
             $mode = (string) $db->pdo()->query('SELECT @@SESSION.sql_mode')->fetchColumn();

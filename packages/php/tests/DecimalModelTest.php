@@ -12,16 +12,27 @@ use Polyspec\Orm\Tests\Model\Author;
 #[Small]
 final class DecimalModelTest extends TestCase
 {
-    /** @return iterable<string, array{array<string, mixed>, array<string, mixed>}> the case and its column of contracts/fixtures/decimal_model.json */
+    /**
+     * @return iterable<string, array{array<string, mixed>, array<string, mixed>}> the case and its column of
+     *   contracts/fixtures/decimal_model.json
+     */
     public static function cases(): iterable
     {
-        $fixture = json_decode((string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/decimal_model.json'), true, 512, JSON_THROW_ON_ERROR);
+        $fixture = json_decode(
+            (string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/decimal_model.json'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
         $columns = [];
         foreach ($fixture['columns'] as $column) {
             $columns[$column['id']] = $column;
         }
         foreach ($fixture['cases'] as $case) {
-            yield $case['id'] => [$case, $columns[$case['column']] ?? throw new RuntimeException("unknown column {$case['column']}")];
+            yield $case['id'] => [
+                $case,
+                $columns[$case['column']] ?? throw new RuntimeException("unknown column {$case['column']}")
+            ];
         }
     }
 
@@ -37,9 +48,17 @@ final class DecimalModelTest extends TestCase
             self::assertArrayNotHasKey('error', $case['expected'], "{$case['id']}: expected an error");
             self::assertSame($case['expected']['value'], $actual);
             $stored = Decimal::scaled($case['input'], $column['precision'], $column['scale']);
-            self::assertSame($case['expected']['value'], Decimal::fromScaled($stored, $column['precision'], $column['scale']), "{$case['id']}: SQLite round trip");
+            self::assertSame(
+                $case['expected']['value'],
+                Decimal::fromScaled($stored, $column['precision'], $column['scale']),
+                "{$case['id']}: SQLite round trip"
+            );
         } catch (OrmException $error) {
-            self::assertSame($case['expected']['error'] ?? null, $error->code_, "{$case['id']}: unexpected {$error->code_}");
+            self::assertSame(
+                $case['expected']['error'] ?? null,
+                $error->code_,
+                "{$case['id']}: unexpected {$error->code_}"
+            );
         }
     }
 
@@ -49,6 +68,10 @@ final class DecimalModelTest extends TestCase
         $setter = (new ReflectionMethod(Author::class, 'setPrice'))->getParameters()[0]->getType();
         self::assertInstanceOf(ReflectionNamedType::class, $getter);
         self::assertInstanceOf(ReflectionNamedType::class, $setter);
-        self::assertSame(['string', 'string'], [$getter->getName(), $setter->getName()], 'generated decimal getter and setter must use nullable string');
+        self::assertSame(
+            ['string', 'string'],
+            [$getter->getName(), $setter->getName()],
+            'generated decimal getter and setter must use nullable string'
+        );
     }
 }

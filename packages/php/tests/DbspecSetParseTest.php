@@ -22,7 +22,10 @@ final class DbspecSetParseTest extends TestCase
     #[DataProvider('setParseCases')]
     public function test_set_parse(array $case): void
     {
-        dbspec_set_parse_check($case, static fn(array $owned, array $external): array => Dbspec::parseSet($owned, $external), function (array $result, array $case): void {
+        dbspec_set_parse_check($case, static fn(
+            array $owned,
+            array $external
+        ): array => Dbspec::parseSet($owned, $external), function (array $result, array $case): void {
             $texts = [...$case['owned'], ...$case['external']];
             $named = [];
             $repeated = [];
@@ -50,7 +53,11 @@ final class DbspecSetParseTest extends TestCase
                 if ($one->document !== null) {
                     $one->document->external = $d->external;
                 }
-                $this->assertSame(json_encode([$one->document, $one->positions, $one->diagnostics]), json_encode([$d->document, $d->positions, $d->diagnostics]), "text $i differs from one parse of it");
+                $this->assertSame(
+                    json_encode([$one->document, $one->positions, $one->diagnostics]),
+                    json_encode([$d->document, $d->positions, $d->diagnostics]),
+                    "text $i differs from one parse of it"
+                );
             }
         });
     }

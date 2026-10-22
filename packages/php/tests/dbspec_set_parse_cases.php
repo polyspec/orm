@@ -45,7 +45,9 @@ function dbspec_set_parse_sets(string $root): iterable
     }
 }
 
-/** Runs one vector through $parse(owned, external) with the PHPUnit assertions; $check, when given, sees the result too. */
+/**
+ * Runs one vector through $parse(owned, external) with the PHPUnit assertions; $check, when given, sees the result too.
+ */
 function dbspec_set_parse_check(array $case, callable $parse, ?callable $check = null): void
 {
     $result = $parse($case['owned'], $case['external']);
@@ -55,12 +57,23 @@ function dbspec_set_parse_check(array $case, callable $parse, ?callable $check =
         'name' => $d->name,
         'external' => $d->external,
         'parsed' => $d->document !== null,
-        'diagnostics' => array_map(static fn(object $x, int $k): array => array_intersect_key(['rule' => $x->rule, 'line' => $x->line, 'column' => $x->column, 'message' => $x->message], $want[$i]['diagnostics'][$k] ?? ['rule' => 0, 'line' => 0, 'column' => 0]), $d->diagnostics, array_keys($d->diagnostics)),
+        'diagnostics' => array_map(
+            static fn(object $x, int $k): array => array_intersect_key(
+                ['rule' => $x->rule, 'line' => $x->line, 'column' => $x->column, 'message' => $x->message],
+                $want[$i]['diagnostics'][$k] ?? ['rule' => 0, 'line' => 0, 'column' => 0]
+            ),
+            $d->diagnostics,
+            array_keys($d->diagnostics)
+        ),
     ], $result, array_keys($result));
     Assert::assertEquals($want, $got);
     foreach ($result as $d) {
         if ($d->document !== null) {
-            Assert::assertSame($d->external, $d->document->external, "document {$d->name} is not marked as its text is");
+            Assert::assertSame(
+                $d->external,
+                $d->document->external,
+                "document {$d->name} is not marked as its text is"
+            );
         }
     }
     if ($check !== null) {

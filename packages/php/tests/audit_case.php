@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-// Scenario of a transaction that receives an audit record (same as auditCase in packages/go/orm/audit_transaction_test.go
-// ). The owner case of RuntimeDbTest.php and the audit_history case of CoverageAuditTriggersTest.php both use it
-// . The caller generates the model of contracts/fixtures/audit.dbs in $namespace and installs it on the connection.
+// Scenario of a transaction that receives an audit record (same as auditCase in
+// packages/go/orm/audit_transaction_test.go ). The owner case of RuntimeDbTest.php and the audit_history case of
+// CoverageAuditTriggersTest.php both use it . The caller generates the model of contracts/fixtures/audit.dbs in
+// $namespace and installs it on the connection.
 
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
@@ -32,14 +33,22 @@ function auditWant(bool $ok, string $message): void
 function auditTextRows(Db $db, string $sql): array
 {
     $rows = $db->pdo()->query($sql)->fetchAll(PDO::FETCH_NUM);
-    return array_map(static fn(array $r): array => array_map(static fn(mixed $v): string => $v === null ? 'NULL' : (string) $v, $r), $rows);
+    return array_map(
+        static fn(array $r): array => array_map(static fn(mixed $v): string => $v === null ? 'NULL' : (string) $v, $r),
+        $rows
+    );
 }
 
-/** Reads item_history's [change, previous, seq, title, audit, deleted] in history_id order. @return list<list<string>> */
+/**
+ * Reads item_history's [change, previous, seq, title, audit, deleted] in history_id order. @return list<list<string>>
+ */
 function auditItemHistory(Db $db): array
 {
     $change = $db->driver() === 'mysql' ? '`change`' : '"change"';
-    return auditTextRows($db, "SELECT $change, previous_audit_seq, seq, title, audit_seq, CASE WHEN deleted_at IS NULL THEN 'live' ELSE 'deleted' END FROM item_history ORDER BY history_id");
+    return auditTextRows(
+        $db,
+        "SELECT $change, previous_audit_seq, seq, title, audit_seq, CASE WHEN deleted_at IS NULL THEN 'live' ELSE 'deleted' END FROM item_history ORDER BY history_id"
+    );
 }
 
 /** The connection settings of an audit source that gives the actor as the audit value. */
@@ -49,16 +58,20 @@ function auditConfig(string $actor): Config
 }
 
 /**
- * Checks the writes of the transaction that receives audit records. $db is the connection opened with auditConfig('default'), and $dsn is
- * that database.
- *   - The transaction inserts one record that combines the value the connection setting's audit source gives with the transaction's audit value
- *     into the audit setting's references table right before its first audited write (for the same column, the transaction value
+ * Checks the writes of the transaction that receives audit records. $db is the connection opened with
+ * auditConfig('default'), and $dsn is that database.
+ * - The transaction inserts one record that combines the value the connection setting's audit source gives with the
+ * transaction's audit value
+ * into the audit setting's references table right before its first audited write (for the same column, the transaction
+ * value
  *     wins), and the insert, update, and soft delete of the audit table write its primary key to the audit column.
  *     The trigger keeps each version in the history table, and previous is the audit key of the previous version.
- *   - An audit transaction on a connection with no audit source, and a value that is not a column of the audit record table (a value of the transaction or
+ * - An audit transaction on a connection with no audit source, and a value that is not a column of the audit record
+ * table (a value of the transaction or
  *     of the source) is CONFIG, and an exception the source throws is the transaction's exception.
  *   - A nested transaction uses the outer audit and does not take its own (CONFIG).
- *   - An audit table write without audit is CONFIG. A raw write that points at a missing audit record is refused by the foreign key
+ * - An audit table write without audit is CONFIG. A raw write that points at a missing audit record is refused by the
+ * foreign key
  *     refuses it.
  *   - If the callback fails, the audit record is rolled back too.
  */
@@ -82,7 +95,11 @@ function auditCase(Db $db, string $dsn, string $namespace): void
         auditWant($code === Code::CONFIG, "an audit transaction of a connection $name = $code, want CONFIG");
     }
     $unavailable = new RuntimeException('no request');
-    $failing = Orm::connectSchema($dsn, ("$namespace\\schema")(), new Config(auditSource: static fn(): array => throw $unavailable));
+    $failing = Orm::connectSchema(
+        $dsn,
+        ("$namespace\\schema")(),
+        new Config(auditSource: static fn(): array => throw $unavailable)
+    );
     try {
         $failing->transaction(fn() => null, audit: []);
         $thrown = null;
@@ -91,7 +108,12 @@ function auditCase(Db $db, string $dsn, string $namespace): void
     } finally {
         $failing->close();
     }
-    auditWant($thrown === $unavailable, 'an audit transaction whose source fails: ' . ($thrown?->getMessage() ?? 'no error') . ', want the source exception');
+    auditWant(
+        $thrown === $unavailable,
+        'an audit transaction whose source fails: ' . (
+            $thrown?->getMessage() ?? 'no error'
+        ) . ', want the source exception'
+    );
     $adb = $db;
     $noColumn = auditErrorCode(fn() => $adb->transaction(fn() => null, audit: ['reason' => 'x']));
     auditWant($noColumn === Code::CONFIG, "an audit value that is no column = $noColumn, want CONFIG");

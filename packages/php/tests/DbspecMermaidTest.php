@@ -26,8 +26,20 @@ const MERMAID_CASE_CPU_SECONDS = 5.0;
 /** The vectors of tests/dbspec/mermaid.json. */
 function mermaid_vectors(): array
 {
-    $vectors = json_decode(file_get_contents(dirname(__DIR__, 3) . '/tests/dbspec/mermaid.json'), true, 512, JSON_THROW_ON_ERROR);
-    Assert::assertFalse($vectors['version'] !== 1 || $vectors['export'] === [] || $vectors['import'] === [] || $vectors['invalid'] === [] || $vectors['round_trip'] === [], 'tests/dbspec/mermaid.json has no export, import, invalid or round trip cases of version 1');
+    $vectors = json_decode(
+        file_get_contents(dirname(__DIR__, 3) . '/tests/dbspec/mermaid.json'),
+        true,
+        512,
+        JSON_THROW_ON_ERROR
+    );
+    Assert::assertFalse(
+        $vectors[
+            'version'
+        ] !== 1 || $vectors['export'] === [] || $vectors['import'] === [] || $vectors['invalid'] === [] || $vectors[
+            'round_trip'
+        ] === [],
+        'tests/dbspec/mermaid.json has no export, import, invalid or round trip cases of version 1'
+    );
     return $vectors;
 }
 
@@ -58,13 +70,18 @@ function mermaid_skeleton(Document $d): array
     foreach ($tables as $t) {
         $out[] = "table {$t->name}";
         foreach ($t->columns as $c) {
-            $out[] = "column {$c->name} {$c->type->text()} null=" . ($c->nullable ? 'true' : 'false') . ' identity=' . ($c->identity ? 'true' : 'false') . ' default=' . ($c->default ?? '-');
+            $out[] = "column {$c->name} {$c->type->text()} null=" . (
+                $c->nullable ? 'true' : 'false'
+            ) . ' identity=' . ($c->identity ? 'true' : 'false') . ' default=' . ($c->default ?? '-');
         }
         $out[] = 'primary key ' . implode(', ', $t->primaryKey->columns);
         $foreignKeys = $t->foreignKeys;
         usort($foreignKeys, static fn($a, $b): int => strcmp($a->name, $b->name));
         foreach ($foreignKeys as $f) {
-            $out[] = "foreign key {$f->name} (" . implode(', ', $f->columns) . ") references {$f->table} (" . implode(', ', $f->referencedColumns) . ')';
+            $out[] = "foreign key {$f->name} (" . implode(', ', $f->columns) . ") references {$f->table} (" . implode(
+                ', ',
+                $f->referencedColumns
+            ) . ')';
         }
     }
     return $out;
@@ -105,7 +122,11 @@ final class DbspecMermaidTest extends TestCase
         $clock = cpuCaseBegin(MERMAID_CASE_CPU_SECONDS);
         $result = Dbspec::importMermaid(mermaid_join($case['mermaid']), 'imported');
         Assert::assertNotNull($result->document, "import/{$case['id']}: " . json_encode($result->diagnostics));
-        Assert::assertSame(mermaid_join($case['document']), Dbspec::emit($result->document), "import/{$case['id']} document");
+        Assert::assertSame(
+            mermaid_join($case['document']),
+            Dbspec::emit($result->document),
+            "import/{$case['id']} document"
+        );
         Assert::assertSame($case['dropped'], mermaid_drops($result->dropped), "import/{$case['id']} dropped");
         cpuCaseEnd('mermaid/import/' . $case['id'], $clock);
     }
@@ -144,11 +165,23 @@ final class DbspecMermaidTest extends TestCase
         $parsed = Dbspec::parse($read->text, []);
         Assert::assertNotNull($parsed->document, "round_trip/{$case['id']}: " . json_encode($parsed->diagnostics));
         $exported = Dbspec::exportMermaid($parsed->document);
-        Assert::assertSame($case['dropped'], mermaid_drops($exported->dropped), "round_trip/{$case['id']} export dropped");
+        Assert::assertSame(
+            $case['dropped'],
+            mermaid_drops($exported->dropped),
+            "round_trip/{$case['id']} export dropped"
+        );
         $imported = Dbspec::importMermaid($exported->text, $parsed->document->name);
         Assert::assertNotNull($imported->document, "round_trip/{$case['id']}: " . json_encode($imported->diagnostics));
-        Assert::assertSame($case['imported'], mermaid_drops($imported->dropped), "round_trip/{$case['id']} import dropped");
-        Assert::assertSame(implode("\n", mermaid_skeleton($parsed->document)), implode("\n", mermaid_skeleton($imported->document)), "round_trip/{$case['id']} tables");
+        Assert::assertSame(
+            $case['imported'],
+            mermaid_drops($imported->dropped),
+            "round_trip/{$case['id']} import dropped"
+        );
+        Assert::assertSame(
+            implode("\n", mermaid_skeleton($parsed->document)),
+            implode("\n", mermaid_skeleton($imported->document)),
+            "round_trip/{$case['id']} tables"
+        );
                 cpuCaseEnd('mermaid/round_trip/' . $case['id'], $clock);
     }
 }

@@ -61,7 +61,12 @@ final class MarkdownConformanceTest extends TestCase
     /** @return list<array{id: string, expect: mixed}> */
     private static function load_cases(): array
     {
-        $doc = json_decode((string) file_get_contents(self::MARKDOWN_CONFORMANCE_DIR . '/cases.json'), true, 512, JSON_THROW_ON_ERROR);
+        $doc = json_decode(
+            (string) file_get_contents(self::MARKDOWN_CONFORMANCE_DIR . '/cases.json'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
         $seen = [];
         foreach ($doc['cases'] as $case) {
             $id = $case['id'] ?? '';
@@ -74,15 +79,17 @@ final class MarkdownConformanceTest extends TestCase
     }
 
     /**
-     * The flowmark binary that FLOWMARK points at. Fails unless the build information that `go version -m` reads is the flowmark module's
-     * flowmark.version pin.
+     * The flowmark binary that FLOWMARK points at. Fails unless the build information that `go version -m` reads is the
+     * flowmark module's flowmark.version pin.
      */
     private static function pinned_flowmark(): string
     {
         $pin = trim((string) file_get_contents(self::MARKDOWN_CONFORMANCE_DIR . '/flowmark.version'));
         $bin = (string) getenv('FLOWMARK');
         if ($bin === '') {
-            throw new RuntimeException("FLOWMARK is not set; run make markdown-conformance-check, which passes the path of the flowmark $pin pinned in tests/markdown/flowmark.version");
+            throw new RuntimeException(
+                "FLOWMARK is not set; run make markdown-conformance-check, which passes the path of the flowmark $pin pinned in tests/markdown/flowmark.version"
+            );
         }
         [$code, $out, $err] = self::run_process(['go', 'version', '-m', $bin]);
         $main = null;
@@ -94,10 +101,20 @@ final class MarkdownConformanceTest extends TestCase
             }
         }
         if ($code !== 0 || $main === null) {
-            throw new RuntimeException("FLOWMARK $bin is no Go build (go version -m: " . trim($err . $out) . "); run make orm-install-flowmark, which installs the flowmark $pin pinned in tests/markdown/flowmark.version");
+            throw new RuntimeException(
+                "FLOWMARK $bin is no Go build (go version -m: " . trim(
+                    $err . $out
+                ) . "); run make orm-install-flowmark, which installs the flowmark $pin pinned in tests/markdown/flowmark.version"
+            );
         }
         if ($main[0] !== self::FLOWMARK_MODULE || $main[1] !== $pin) {
-            throw new RuntimeException("FLOWMARK $bin is \"{$main[0]}\" \"{$main[1]}\", not the pinned " . self::FLOWMARK_MODULE . " $pin; run make orm-install-flowmark, or give FLOWMARK a build of a flowmark checkout at that revision");
+            throw new RuntimeException(
+                "FLOWMARK $bin is \"{$main[
+                    0
+                ]}\" \"{$main[
+                    1
+                ]}\", not the pinned " . self::FLOWMARK_MODULE . " $pin; run make orm-install-flowmark, or give FLOWMARK a build of a flowmark checkout at that revision"
+            );
         }
         return $bin;
     }
@@ -151,7 +168,12 @@ final class MarkdownConformanceTest extends TestCase
         if (!mkdir("{$s->dir}/dbspec", 0o755, true)) {
             throw new RuntimeException("cannot create {$s->dir}/dbspec");
         }
-        if (!copy(self::MARKDOWN_CONFORMANCE_DIR . '/corpus/dbspec/conformance.dbs', "{$s->dir}/dbspec/conformance.dbs")) {
+        if (
+            !copy(
+                self::MARKDOWN_CONFORMANCE_DIR . '/corpus/dbspec/conformance.dbs',
+                "{$s->dir}/dbspec/conformance.dbs"
+            )
+        ) {
             throw new RuntimeException('cannot copy the corpus catalog');
         }
         $step("flowmark install {$s->dir}");
@@ -161,7 +183,11 @@ final class MarkdownConformanceTest extends TestCase
         }
         $step("flowmark serve {$s->dir} --port 0");
         $s->stderr = "{$s->root}/serve.stderr";
-        $process = proc_open([$bin, 'serve', $s->dir, '--port', '0'], [1 => ['pipe', 'w'], 2 => ['file', $s->stderr, 'w']], $pipes);
+        $process = proc_open(
+            [$bin, 'serve', $s->dir, '--port', '0'],
+            [1 => ['pipe', 'w'], 2 => ['file', $s->stderr, 'w']],
+            $pipes
+        );
         if ($process === false) {
             throw new RuntimeException('cannot start flowmark serve');
         }
@@ -170,15 +196,30 @@ final class MarkdownConformanceTest extends TestCase
         fclose($pipes[1]);
         $listening = '/^\[serve\] listening on 127\.0\.0\.1:([0-9]+) for the corpus (.+)$/';
         if ($line === false || preg_match($listening, rtrim($line, "\n"), $m) !== 1 || $m[2] !== $s->corpus) {
-            throw new RuntimeException('flowmark serve printed ' . json_encode($line) . ", not its listening line; stderr:\n" . (string) @file_get_contents($s->stderr));
+            throw new RuntimeException(
+                'flowmark serve printed ' . json_encode(
+                    $line
+                ) . ", not its listening line; stderr:\n" . (string) @file_get_contents(
+                    $s->stderr
+                )
+            );
         }
         $s->port = $m[1];
-        $file = json_decode((string) file_get_contents("{$s->dir}/.flowmark/server.json"), true, 512, JSON_THROW_ON_ERROR);
+        $file = json_decode(
+            (string) file_get_contents("{$s->dir}/.flowmark/server.json"),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
         $s->token = (string) ($file['token'] ?? '');
         try {
             $s->db = connect($s->dsn($s->corpus, $s->token), new Config());
         } catch (OrmException $e) {
-            throw new RuntimeException("connect: {$e->code_} {$e->getMessage()}; stderr:\n" . (string) @file_get_contents($s->stderr), 0, $e);
+            throw new RuntimeException(
+                "connect: {$e->code_} {$e->getMessage()}; stderr:\n" . (string) @file_get_contents($s->stderr),
+                0,
+                $e
+            );
         }
     }
 
@@ -217,7 +258,12 @@ final class MarkdownConformanceTest extends TestCase
     {
         return [
             'insert_one' => static function (Served $s): mixed {
-                $m = (new People())->connect($s->db)->setName('Ann')->setEmail('ann@example.com')->setAge(30)->setScore('1.50')->create();
+                $m = (new People())->connect($s->db)
+                    ->setName('Ann')
+                    ->setEmail('ann@example.com')
+                    ->setAge(30)
+                    ->setScore('1.50')
+                    ->create();
                 return ['id' => $m->getId()];
             },
             'insert_rows' => static function (Served $s): mixed {
@@ -227,7 +273,10 @@ final class MarkdownConformanceTest extends TestCase
             },
             'insert_rows_tasks' => static function (Served $s): mixed {
                 return (new Tasks())->connect($s->db)->creates([
-                    (new Tasks())->setOwner('P1')->setTitle('write spec')->setPoints(3)->setDue(self::day('2026-10-01')),
+                    (new Tasks())->setOwner('P1')
+                        ->setTitle('write spec')
+                        ->setPoints(3)
+                        ->setDue(self::day('2026-10-01')),
                     (new Tasks())->setOwner('P1')->setTitle('review')->setPoints(5)->setDue(null),
                     (new Tasks())->setOwner('P2')->setTitle('ship')->setPoints(8)->setDue(self::day('2026-10-05')),
                 ], 3);
@@ -237,13 +286,28 @@ final class MarkdownConformanceTest extends TestCase
                 return ['id' => $m->getId()];
             },
             'one' => static function (Served $s): mixed {
-                return (new People())->connect($s->db)->removeAllColumns()->addColumnName()->addColumnEmail()->addColumnAge()->addColumnActive()->addColumnScore()->id('P1')->get()->toArray();
+                return (new People())->connect($s->db)
+                    ->removeAllColumns()
+                    ->addColumnName()
+                    ->addColumnEmail()
+                    ->addColumnAge()
+                    ->addColumnActive()
+                    ->addColumnScore()
+                    ->id('P1')
+                    ->get()
+                    ->toArray();
             },
             'one_no_rows' => static function (Served $s): mixed {
                 return (new People())->connect($s->db)->id('P9')->get()?->toArray();
             },
             'all' => static function (Served $s): mixed {
-                return (new People())->connect($s->db)->removeAllColumns()->addColumnName()->addColumnAge()->orderByNameDesc()->gets()->toArray();
+                return (new People())->connect($s->db)
+                    ->removeAllColumns()
+                    ->addColumnName()
+                    ->addColumnAge()
+                    ->orderByNameDesc()
+                    ->gets()
+                    ->toArray();
             },
             'count' => static function (Served $s): mixed {
                 return (new Tasks())->connect($s->db)->owner('P1')->getCount();
@@ -252,7 +316,12 @@ final class MarkdownConformanceTest extends TestCase
                 return (new Tasks())->connect($s->db)->groupByOwner()->orderByOwnerAsc()->getsCount()->toArray();
             },
             'group_count_no_rows' => static function (Served $s): mixed {
-                return (new Tasks())->connect($s->db)->owner('P9')->groupByOwner()->orderByOwnerAsc()->getsCount()->toArray();
+                return (new Tasks())->connect($s->db)
+                    ->owner('P9')
+                    ->groupByOwner()
+                    ->orderByOwnerAsc()
+                    ->getsCount()
+                    ->toArray();
             },
             'sum' => static function (Served $s): mixed {
                 return (new Tasks())->connect($s->db)->sumPoints()->getSum();
@@ -261,8 +330,16 @@ final class MarkdownConformanceTest extends TestCase
                 return (new People())->connect($s->db)->avgAge()->getAvg();
             },
             'paginate' => static function (Served $s): mixed {
-                $page = (new People())->connect($s->db)->removeAllColumns()->addColumnName()->orderByNameAsc()->getsPage(2, 2);
-                return ['items' => $page->items->toArray(), 'total_count' => $page->totalCount, 'total_pages' => $page->totalPages];
+                $page = (new People())->connect($s->db)
+                    ->removeAllColumns()
+                    ->addColumnName()
+                    ->orderByNameAsc()
+                    ->getsPage(2, 2);
+                return [
+                    'items' => $page->items->toArray(),
+                    'total_count' => $page->totalCount,
+                    'total_pages' => $page->totalPages
+                ];
             },
             'join' => static function (Served $s): mixed {
                 return (new Tasks())->connect($s->db)->removeAllColumns()->addColumnTitle()
@@ -271,7 +348,9 @@ final class MarkdownConformanceTest extends TestCase
             },
             'relation_many' => static function (Served $s): mixed {
                 return (new People())->connect($s->db)->removeAllColumns()->addColumnName()
-                    ->relations((new Tasks())->removeAllColumns()->addColumnDue()->matchIdWithOwner()->orderByTitleAsc())
+                    ->relations(
+                        (new Tasks())->removeAllColumns()->addColumnDue()->matchIdWithOwner()->orderByTitleAsc()
+                    )
                     ->id('P1')->get()->toArray();
             },
             'relation_one' => static function (Served $s): mixed {
@@ -392,8 +471,8 @@ final class MarkdownConformanceTest extends TestCase
                 $read = (new People())->connect($s->db)->id('P1')->get();
                 return ['error' => $code, 'name' => $read->getName()];
             },
-            // A transaction that reads P1 and writes its own name back, with retry options: the commit's code (null when
-            // it commits) and how many times the callback ran. WRITE_CONFLICT is never retried, DEADLOCK is
+            // A transaction that reads P1 and writes its own name back, with retry options: the commit's code (null
+            // when it commits) and how many times the callback ran. WRITE_CONFLICT is never retried, DEADLOCK is
             // (contracts/fixtures/ir_answers.json).
             'transaction_retry_commit' => static function (Served $s): mixed {
                 $runs = 0;
@@ -420,8 +499,18 @@ final class MarkdownConformanceTest extends TestCase
             // NULL sorts before every value ascending and after every value descending (docs/spec/dialects.md DIA-156).
             'order_nulls' => static function (Served $s): mixed {
                 return [
-                    'asc' => (new People())->connect($s->db)->removeAllColumns()->addColumnAge()->orderByAgeAsc()->gets()->toArray(),
-                    'desc' => (new People())->connect($s->db)->removeAllColumns()->addColumnAge()->orderByAgeDesc()->gets()->toArray(),
+                    'asc' => (new People())->connect($s->db)
+                        ->removeAllColumns()
+                        ->addColumnAge()
+                        ->orderByAgeAsc()
+                        ->gets()
+                        ->toArray(),
+                    'desc' => (new People())->connect($s->db)
+                        ->removeAllColumns()
+                        ->addColumnAge()
+                        ->orderByAgeDesc()
+                        ->gets()
+                        ->toArray(),
                 ];
             },
             // orderByRandom is supported and not seeded, so the case answers the keys sorted (DIA-182).
@@ -436,18 +525,39 @@ final class MarkdownConformanceTest extends TestCase
             // The key t3 equals T3 without regard to case: a plain insert is DUPLICATE_KEY, and an on_duplicate insert
             // meets T3, which keeps its key (DIA-164).
             'primary_key_case' => static function (Served $s): mixed {
-                $duplicate = self::code_of(static fn () => (new Tasks())->connect($s->db)->setId('t3')->setOwner('P2')->setTitle('dup')->setPoints(1)->create());
+                $duplicate = self::code_of(
+                    static fn () => (new Tasks())->connect($s->db)
+                        ->setId('t3')
+                        ->setOwner('P2')
+                        ->setTitle('dup')
+                        ->setPoints(1)
+                        ->create()
+                );
                 (new Tasks())->connect($s->db)->setId('t3')->setOwner('P2')->setTitle('ship it')->setPoints(8)
                     ->duplication((new Tasks())->setTitle('ship it'))->create();
                 $met = (new Tasks())->connect($s->db)->removeAllColumns()->addColumnTitle()->id('T3')->get()->toArray();
-                return ['duplicate' => $duplicate, 'met' => $met, 'count' => (new Tasks())->connect($s->db)->getCount()];
+                return [
+                    'duplicate' => $duplicate,
+                    'met' => $met,
+                    'count' => (new Tasks())->connect($s->db)->getCount()
+                ];
             },
             // Two columns compared with a list of value groups, IN and NOT IN (DIA-168).
             'tuple_in' => static function (Served $s): mixed {
                 $pairs = [['T1', 'P1'], ['T3', 'P1']];
                 return [
-                    'in' => (new Tasks())->connect($s->db)->removeAllColumns()->tupleIdWithOwner($pairs)->orderByIdAsc()->gets()->toArray(),
-                    'not_in' => (new Tasks())->connect($s->db)->removeAllColumns()->neTupleIdWithOwner($pairs)->orderByIdAsc()->gets()->toArray(),
+                    'in' => (new Tasks())->connect($s->db)
+                        ->removeAllColumns()
+                        ->tupleIdWithOwner($pairs)
+                        ->orderByIdAsc()
+                        ->gets()
+                        ->toArray(),
+                    'not_in' => (new Tasks())->connect($s->db)
+                        ->removeAllColumns()
+                        ->neTupleIdWithOwner($pairs)
+                        ->orderByIdAsc()
+                        ->gets()
+                        ->toArray(),
                 ];
             },
             // The sum of each person's task points as a scalar Sub aggregate, and the owners of a task through an IN
@@ -456,12 +566,19 @@ final class MarkdownConformanceTest extends TestCase
                 $sums = [];
                 foreach (
                     (new People())->connect($s->db)->removeAllColumns()
-                    ->addColumnTaskPoints(static fn (People $p) => (new Tasks())->sumPoints()->ownerEqId($p))->orderByIdAsc()->gets() as $m
+                    ->addColumnTaskPoints(static fn (People $p) => (new Tasks())->sumPoints()->ownerEqId($p))
+                        ->orderByIdAsc()
+                        ->gets() as $m
                 ) {
                     $v = $m->getTaskPoints();
                     $sums[] = [$m->getId(), $v === null ? null : (int) $v];
                 }
-                $owners = (new People())->connect($s->db)->removeAllColumns()->id((new Tasks())->addColumnOwner())->orderByIdAsc()->gets()->toArray();
+                $owners = (new People())->connect($s->db)
+                    ->removeAllColumns()
+                    ->id((new Tasks())->addColumnOwner())
+                    ->orderByIdAsc()
+                    ->gets()
+                    ->toArray();
                 return ['sums' => $sums, 'owners' => $owners];
             },
             // The title of each person's first task, a column subquery with limit 1 and an order by the primary key;
@@ -470,13 +587,24 @@ final class MarkdownConformanceTest extends TestCase
                 $first = [];
                 foreach (
                     (new People())->connect($s->db)->removeAllColumns()
-                    ->addColumnFirstTask(static fn (People $p) => (new Tasks())->removeAllColumns()->addColumnTitle()->ownerEqId($p)->orderByIdAsc()->limit(0, 1))
+                    ->addColumnFirstTask(
+                        static fn (People $p) => (new Tasks())->removeAllColumns()
+                            ->addColumnTitle()
+                            ->ownerEqId($p)
+                            ->orderByIdAsc()
+                            ->limit(0, 1)
+                    )
                     ->orderByIdAsc()->gets() as $m
                 ) {
                     $first[] = [$m->getId(), $m->getFirstTask()];
                 }
                 $unlimited = self::code_of(static fn () => (new People())->connect($s->db)->removeAllColumns()
-                    ->addColumnFirstTask(static fn (People $p) => (new Tasks())->removeAllColumns()->addColumnTitle()->ownerEqId($p)->orderByIdAsc())
+                    ->addColumnFirstTask(
+                        static fn (People $p) => (new Tasks())->removeAllColumns()
+                            ->addColumnTitle()
+                            ->ownerEqId($p)
+                            ->orderByIdAsc()
+                    )
                     ->orderByIdAsc()->gets());
                 return ['first' => $first, 'unlimited' => $unlimited];
             },
@@ -485,20 +613,48 @@ final class MarkdownConformanceTest extends TestCase
                 $p = new People();
                 $meet = (new Tasks())->connect($s->db)->joinOwnerWithId($p)->titleNeName($p)->getCount();
                 $q = new People();
-                return ['meet' => $meet, 'refused' => self::code_of(static fn () => (new Tasks())->connect($s->db)->joinOwnerWithId($q)->pointsEqName($q)->getCount())];
+                return [
+                    'meet' => $meet,
+                    'refused' => self::code_of(
+                        static fn () => (new Tasks())->connect($s->db)
+                            ->joinOwnerWithId($q)
+                            ->pointsEqName($q)
+                            ->getCount()
+                    )
+                ];
             },
             // Lk: A-Z and a-z without regard to case, % literal (DIA-171).
             'contains' => static function (Served $s): mixed {
                 return [
-                    'fold' => (new People())->connect($s->db)->removeAllColumns()->lkName('ANN')->orderByIdAsc()->gets()->toArray(),
-                    'literal' => (new People())->connect($s->db)->removeAllColumns()->lkName('%')->orderByIdAsc()->gets()->toArray(),
+                    'fold' => (new People())->connect($s->db)
+                        ->removeAllColumns()
+                        ->lkName('ANN')
+                        ->orderByIdAsc()
+                        ->gets()
+                        ->toArray(),
+                    'literal' => (new People())->connect($s->db)
+                        ->removeAllColumns()
+                        ->lkName('%')
+                        ->orderByIdAsc()
+                        ->gets()
+                        ->toArray(),
                 ];
             },
             // Lb: compared by code point (DIA-172).
             'contains_binary' => static function (Served $s): mixed {
                 return [
-                    'exact' => (new People())->connect($s->db)->removeAllColumns()->lbName('Ann')->orderByIdAsc()->gets()->toArray(),
-                    'folded' => (new People())->connect($s->db)->removeAllColumns()->lbName('ann')->orderByIdAsc()->gets()->toArray(),
+                    'exact' => (new People())->connect($s->db)
+                        ->removeAllColumns()
+                        ->lbName('Ann')
+                        ->orderByIdAsc()
+                        ->gets()
+                        ->toArray(),
+                    'folded' => (new People())->connect($s->db)
+                        ->removeAllColumns()
+                        ->lbName('ann')
+                        ->orderByIdAsc()
+                        ->gets()
+                        ->toArray(),
                 ];
             },
             // The default now of joined, a datetime(0), holds no fraction, and a relative time function past 9999-12-31
@@ -508,7 +664,10 @@ final class MarkdownConformanceTest extends TestCase
                 $far = Orm::secondsLater(1000000000000000);
                 return [
                     'fraction' => (int) $joined->format('u'),
-                    'out_of_range' => [(new People())->connect($s->db)->andGtJoined($far)->getCount(), (new People())->connect($s->db)->andLeJoined($far)->getCount()],
+                    'out_of_range' => [
+                        (new People())->connect($s->db)->andGtJoined($far)->getCount(),
+                        (new People())->connect($s->db)->andLeJoined($far)->getCount()
+                    ],
                 ];
             },
             // A read through the column of the index ix_tasks_owner, which the corpus derives in memory (DIA-176).
@@ -534,7 +693,11 @@ final class MarkdownConformanceTest extends TestCase
                     $namesFile = str_contains($e->getMessage(), 'tasks.flowmark.md');
                 }
                 file_put_contents($path, $text);
-                return ['broken' => $broken, 'names_file' => $namesFile, 'restored' => (new Tasks())->connect($s->db)->getCount()];
+                return [
+                    'broken' => $broken,
+                    'names_file' => $namesFile,
+                    'restored' => (new Tasks())->connect($s->db)->getCount()
+                ];
             },
             // A catalog with an aes column is a schema error on a corpus (DIA-178).
             'install_refuses_aes' => static function (Served $s): mixed {
@@ -569,7 +732,12 @@ final class MarkdownConformanceTest extends TestCase
         $root = sys_get_temp_dir() . '/markdown-refused-' . getmypid() . '-' . bin2hex(random_bytes(4));
         $dir = "$root/$name";
         try {
-            if (!mkdir("$dir/dbspec", 0o755, true) || !copy(self::MARKDOWN_CONFORMANCE_DIR . "/refused/$name.dbs", "$dir/dbspec/$name.dbs")) {
+            if (
+                !mkdir("$dir/dbspec", 0o755, true) || !copy(
+                    self::MARKDOWN_CONFORMANCE_DIR . "/refused/$name.dbs",
+                    "$dir/dbspec/$name.dbs"
+                )
+            ) {
                 throw new RuntimeException("cannot write the catalog $dir/dbspec/$name.dbs");
             }
             $process = proc_open([$s->bin, 'install', $dir], [1 => ['pipe', 'w'], 2 => ['redirect', 1]], $pipes);
@@ -597,7 +765,10 @@ final class MarkdownConformanceTest extends TestCase
         }
     }
 
-    /** The result, written as JSON and read back, with the object's members in name order: the same shape as expect in cases.json. */
+    /**
+     * The result, written as JSON and read back, with the object's members in name order: the same shape as expect in
+     * cases.json.
+     */
     public static function normalize(mixed $v): mixed
     {
         $sorted = static function (mixed $v) use (&$sorted): mixed {
@@ -609,7 +780,14 @@ final class MarkdownConformanceTest extends TestCase
             }
             return array_map($sorted, $v);
         };
-        return $sorted(json_decode(json_encode($v, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), true, 512, JSON_THROW_ON_ERROR));
+        return $sorted(
+            json_decode(
+                json_encode($v, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+                true,
+                512,
+                JSON_THROW_ON_ERROR
+            )
+        );
     }
 
     public static function json_text(mixed $v): string
@@ -621,8 +799,8 @@ final class MarkdownConformanceTest extends TestCase
     private static ?Served $served = null;
 
     /**
-     * The cases of tests/markdown/cases.json in their order, each a data set named by its id. Every case of cases.json has a
-     * PHP body and every PHP body a case; a difference fails here.
+     * The cases of tests/markdown/cases.json in their order, each a data set named by its id. Every case of cases.json
+     * has a PHP body and every PHP body a case; a difference fails here.
      *
      * @return iterable<string, array{array{id: string, expect: mixed}}>
      */
@@ -635,7 +813,11 @@ final class MarkdownConformanceTest extends TestCase
         $extra = array_values(array_diff(array_keys($funcs), $ids));
         sort($extra, SORT_STRING);
         if ($missing !== [] || $extra !== []) {
-            throw new RuntimeException('cases.json and the PHP cases differ: missing in PHP ' . self::json_text($missing) . ', not in cases.json ' . self::json_text($extra));
+            throw new RuntimeException(
+                'cases.json and the PHP cases differ: missing in PHP ' . self::json_text(
+                    $missing
+                ) . ', not in cases.json ' . self::json_text($extra)
+            );
         }
         foreach ($cases as $case) {
             yield $case['id'] => [$case];
@@ -657,8 +839,8 @@ final class MarkdownConformanceTest extends TestCase
     }
 
     /**
-     * A case reads the corpus that the cases before it wrote, so the make target runs PHPUnit with --stop-on-defect: the
-     * run stops at the first failure.
+     * A case reads the corpus that the cases before it wrote, so the make target runs PHPUnit with --stop-on-defect:
+     * the run stops at the first failure.
      *
      * @param array{id: string, expect: mixed} $case
      */
@@ -675,6 +857,10 @@ final class MarkdownConformanceTest extends TestCase
         $actual = self::normalize($got);
         $expect = self::normalize($case['expect']);
         $detail = $error === null ? '' : " (error {$error->code_}: {$error->getMessage()})";
-        self::assertSame($expect, $actual, "{$case['id']}: got " . self::json_text($actual) . ', want ' . self::json_text($expect) . $detail);
+        self::assertSame(
+            $expect,
+            $actual,
+            "{$case['id']}: got " . self::json_text($actual) . ', want ' . self::json_text($expect) . $detail
+        );
     }
 }

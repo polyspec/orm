@@ -40,7 +40,9 @@ function auditColumnsTable(Db $db, string $table): bool
 /** Removes the installed table, and the PostgreSQL trigger function that is not removed with the table. */
 function dropAuditColumns(Db $db): void
 {
-    $quote = $db->driver() === 'mysql' ? static fn(string $n): string => "`$n`" : static fn(string $n): string => "\"$n\"";
+    $quote = $db->driver() === 'mysql' ? static fn(
+        string $n
+    ): string => "`$n`" : static fn(string $n): string => "\"$n\"";
     foreach (['card_history', 'card', 'tag_history', 'tag', 'audit'] as $table) {
         $db->pdo()->exec('DROP TABLE IF EXISTS ' . $quote($table));
     }
@@ -65,14 +67,21 @@ function auditColumnsRows(Db $db, string $sql): array
     for ($i = 0; $i < $st->columnCount(); $i++) {
         $columns[] = $st->getColumnMeta($i)['name'];
     }
-    $rows = array_map(static fn(array $r): array => array_map(static fn(mixed $v): string => $v === null ? 'NULL' : (string) $v, $r), $st->fetchAll(PDO::FETCH_NUM));
+    $rows = array_map(
+        static fn(array $r): array => array_map(static fn(mixed $v): string => $v === null ? 'NULL' : (string) $v, $r),
+        $st->fetchAll(PDO::FETCH_NUM)
+    );
     return [$columns, $rows];
 }
 
 /** Creates the document's model in $work, then runs install, write, history check, and cleanup. */
 function auditColumnsCase(string $dsn, string $document, string $work): void
 {
-    Generator::generate(RuntimeModel::build(RuntimeModel::parse(['audit_columns.dbs' => $document])), "$work/gen", 'Polyspec\\Orm\\Tests\\CoverageAuditColumns');
+    Generator::generate(
+        RuntimeModel::build(RuntimeModel::parse(['audit_columns.dbs' => $document])),
+        "$work/gen",
+        'Polyspec\\Orm\\Tests\\CoverageAuditColumns'
+    );
     spl_autoload_register(static function (string $class) use ($work): void {
         if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\CoverageAuditColumns\\')) {
             require_once "$work/gen/" . substr($class, strlen('Polyspec\\Orm\\Tests\\CoverageAuditColumns\\')) . '.php';
@@ -97,8 +106,14 @@ function auditColumnsCase(string $dsn, string $document, string $work): void
             $change = $db->driver() === 'mysql' ? '`change`' : '"change"';
             [$columns] = auditColumnsRows($db, 'SELECT * FROM card_history ORDER BY history_id');
             $want = ['history_id', 'change', 'previous_audit_seq', 'seq', 'title', 'audit_seq', 'deleted_at'];
-            Assert::assertTrue($columns === $want, 'card_history columns ' . json_encode($columns) . ', want ' . json_encode($want));
-            [, $rows] = auditColumnsRows($db, "SELECT $change, previous_audit_seq, seq, title, audit_seq, CASE WHEN deleted_at IS NULL THEN 'live' ELSE 'deleted' END FROM card_history ORDER BY history_id");
+            Assert::assertTrue(
+                $columns === $want,
+                'card_history columns ' . json_encode($columns) . ', want ' . json_encode($want)
+            );
+            [, $rows] = auditColumnsRows(
+                $db,
+                "SELECT $change, previous_audit_seq, seq, title, audit_seq, CASE WHEN deleted_at IS NULL THEN 'live' ELSE 'deleted' END FROM card_history ORDER BY history_id"
+            );
             $want = [
                 ['insert', 'NULL', "$seq", 'first', '1', 'live'],
                 ['update', '1', "$seq", 'second', '1', 'live'],
@@ -107,8 +122,14 @@ function auditColumnsCase(string $dsn, string $document, string $work): void
             Assert::assertTrue($rows === $want, 'card_history ' . json_encode($rows) . ', want ' . json_encode($want));
             [$columns] = auditColumnsRows($db, 'SELECT * FROM tag_history ORDER BY history_id');
             $want = ['history_id', 'change', 'previous_audit_seq', 'label', 'audit_seq'];
-            Assert::assertTrue($columns === $want, 'tag_history columns ' . json_encode($columns) . ', want ' . json_encode($want));
-            [, $rows] = auditColumnsRows($db, "SELECT $change, previous_audit_seq, label, audit_seq FROM tag_history ORDER BY history_id");
+            Assert::assertTrue(
+                $columns === $want,
+                'tag_history columns ' . json_encode($columns) . ', want ' . json_encode($want)
+            );
+            [, $rows] = auditColumnsRows(
+                $db,
+                "SELECT $change, previous_audit_seq, label, audit_seq FROM tag_history ORDER BY history_id"
+            );
             $want = [['insert', 'NULL', 'x', '1'], ['update', '1', 'x', '2']];
             Assert::assertTrue($rows === $want, 'tag_history ' . json_encode($rows) . ', want ' . json_encode($want));
         }, fn() => dropAuditColumns($db));

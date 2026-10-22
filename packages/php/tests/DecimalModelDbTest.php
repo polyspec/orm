@@ -4,7 +4,8 @@
 // getter and setter take exact strings and refuse other values, and a row written and read in a transaction keeps its
 // exact values in the model, its row output and the database, and is gone after the rollback. Each dialect is a data
 // set; each dialect takes its DSN from the test servers' environment or databases-create (BENCH_SQLITE_DSN).
-// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter '@<dialect>$' packages/php/tests/DecimalModelDbTest.php
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter '@<dialect>$'
+// packages/php/tests/DecimalModelDbTest.php
 declare(strict_types=1);
 
 require_once __DIR__ . '/coverage_cases.php';
@@ -35,7 +36,9 @@ final class DecimalModelDbTest extends TestCase
     /** Generates the model of the fixture into a new directory. */
     private static function generate(): string
     {
-        $model = RuntimeModel::build(RuntimeModel::files([dirname(__DIR__, 3) . '/contracts/fixtures/decimal_schema.dbs']));
+        $model = RuntimeModel::build(
+            RuntimeModel::files([dirname(__DIR__, 3) . '/contracts/fixtures/decimal_schema.dbs'])
+        );
         $generated = sys_get_temp_dir() . '/orm-decimal-php-' . bin2hex(random_bytes(8));
         Generator::generate($model, $generated, 'DecimalFixture');
         return $generated;
@@ -111,13 +114,24 @@ final class DecimalModelDbTest extends TestCase
         $class = DecimalFixture\DecimalCase::class;
         $getAmount = (new ReflectionMethod($class, 'getAmount'))->getReturnType();
         $setAmount = (new ReflectionMethod($class, 'setAmount'))->getParameters()[0]->getType();
-        self::assertTrue($getAmount instanceof ReflectionNamedType && $setAmount instanceof ReflectionNamedType && $getAmount->getName() === 'string' && $setAmount->getName() === 'string', 'generated decimal getter and setter must use exact string values');
+        self::assertTrue(
+            $getAmount instanceof ReflectionNamedType
+                && $setAmount instanceof ReflectionNamedType
+                && $getAmount->getName() === 'string'
+                && $setAmount
+                ->getName() === 'string',
+            'generated decimal getter and setter must use exact string values'
+        );
         foreach (['1.00001', '1000000000.0000', 'NaN'] as $invalid) {
             try {
                 (new $class())->setAmount($invalid);
                 self::fail("invalid decimal $invalid was accepted");
             } catch (OrmException $error) {
-                self::assertSame(Code::CODEC_ENCODE, $error->code_, "invalid decimal $invalid returned {$error->code_}");
+                self::assertSame(
+                    Code::CODEC_ENCODE,
+                    $error->code_,
+                    "invalid decimal $invalid returned {$error->code_}"
+                );
             }
         }
         // The generated setters accept exact strings only.
@@ -146,19 +160,34 @@ final class DecimalModelDbTest extends TestCase
         $db = DecimalFixture\connect($dsn, new Config());
         $db->utils()->schema()->install(DecimalFixture\schema());
         try {
-            self::assertSame(0, (new $class())->connect($db)->seq(1)->getCount(), 'decimal fixture row 1 exists before the test');
+            self::assertSame(
+                0,
+                (new $class())->connect($db)->seq(1)->getCount(),
+                'decimal fixture row 1 exists before the test'
+            );
             $rollback = new RuntimeException('decimal fixture rollback');
             try {
                 $db->transaction(static function () use ($class, $db, $dialect, $rollback): void {
                     (new $class())->setSeq(1)->setAmount('48.0450')->setLargeValue('9007199254740993')->create();
                     $loaded = (new $class())->seq(1)->get();
-                    self::assertTrue($loaded->getAmount() === '48.0450' && $loaded->getLargeValue() === '9007199254740993', 'generated decimal fields lost exact values');
+                    self::assertTrue(
+                        $loaded->getAmount() === '48.0450' && $loaded->getLargeValue() === '9007199254740993',
+                        'generated decimal fields lost exact values'
+                    );
                     $array = $loaded->toArray();
-                    self::assertTrue($array['amount'] === '48.0450' && $array['large_value'] === '9007199254740993', 'decimal row output lost exact values');
+                    self::assertTrue(
+                        $array['amount'] === '48.0450' && $array['large_value'] === '9007199254740993',
+                        'decimal row output lost exact values'
+                    );
                     $query = $db->pdo()->prepare('SELECT amount, large_value FROM decimal_case WHERE seq = ?');
                     $query->execute([1]);
                     $stored = $query->fetch(PDO::FETCH_NUM);
-                    self::assertTrue($stored !== false && (string) $stored[0] === ($dialect === 'sqlite' ? '480450' : '48.0450') && (string) $stored[1] === '9007199254740993', 'database decimal storage lost exact values');
+                    self::assertTrue(
+                        $stored !== false && (string) $stored[0] === (
+                            $dialect === 'sqlite' ? '480450' : '48.0450'
+                        ) && (string) $stored[1] === '9007199254740993',
+                        'database decimal storage lost exact values'
+                    );
                     throw $rollback;
                 }, retry: 0);
                 self::fail('decimal transaction unexpectedly committed');
@@ -167,7 +196,11 @@ final class DecimalModelDbTest extends TestCase
                     throw $error;
                 }
             }
-            self::assertSame(0, (new $class())->connect($db)->seq(1)->getCount(), 'decimal fixture row remains after rollback');
+            self::assertSame(
+                0,
+                (new $class())->connect($db)->seq(1)->getCount(),
+                'decimal fixture row remains after rollback'
+            );
         } finally {
             $db->close();
         }

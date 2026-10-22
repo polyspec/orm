@@ -19,11 +19,19 @@ final class CoveragePerformanceGateTest extends TestCase
     {
         $dsn = getenv('ORM_BENCH_MYSQL_DSN');
         if (!is_string($dsn) || $dsn === '') {
-            throw new RuntimeException('ORM_BENCH_MYSQL_DSN is required; run it through make orm-check or make run-databases TARGETS=<target>, which create the bench database of the run');
+            throw new RuntimeException(
+                'ORM_BENCH_MYSQL_DSN is required; run it through make orm-check or make run-databases TARGETS=<target>, which create the bench database of the run'
+            );
         }
         $package = dirname(__DIR__);
         [$status, $stdout, $stderr] = coverageProcess(
-            [PHP_BINARY, dirname(__DIR__, 3) . '/vendor-php/bin/phpunit', '--configuration', "$package/phpunit.xml.dist", __DIR__ . '/PerfGateTest.php'],
+            [
+                PHP_BINARY,
+                dirname(__DIR__, 3) . '/vendor-php/bin/phpunit',
+                '--configuration',
+                "$package/phpunit.xml.dist",
+                __DIR__ . '/PerfGateTest.php'
+            ],
             dirname(__DIR__, 3),
         );
         $this->assertSame(0, $status, str_replace($dsn, '[dsn]', "PerfGateTest.php exited $status: $stdout$stderr"));

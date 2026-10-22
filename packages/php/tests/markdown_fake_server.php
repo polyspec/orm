@@ -37,7 +37,10 @@ if ($conn !== false && $keyed !== null) {
             $message = json_decode($line, true);
             $key = is_array($message) ? ($message['op'] ?? $message['request']['kind'] ?? 'unreadable') : 'unreadable';
             $answer = array_key_exists($key, $keyed)
-                ? json_encode($keyed[$key], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION)
+                ? json_encode(
+                    $keyed[$key],
+                    JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION
+                )
                 : json_encode(['error' => ['code' => 'IR_INVALID', 'message' => "the case has no answer for $key"]]);
         }
         if (fwrite($conn, $answer . "\n") === false) {

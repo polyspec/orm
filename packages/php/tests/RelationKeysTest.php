@@ -25,7 +25,20 @@ final class RelationKeysTest extends TestCase
         foreach (['get', 'gets', 'getCount', 'getsPage', 'create', 'update', 'delete'] as $method) {
             self::assertTrue(method_exists(Author::class, $method), "terminal $method is missing");
         }
-        foreach (['one', 'all', 'count', 'using', 'begin', 'commit', 'rollback', 'savepoint', 'exec', 'offsetGet'] as $method) {
+        foreach (
+            [
+            'one',
+            'all',
+            'count',
+            'using',
+            'begin',
+            'commit',
+            'rollback',
+            'savepoint',
+            'exec',
+            'offsetGet'
+            ] as $method
+        ) {
             self::assertFalse(method_exists(Author::class, $method), "removed method $method remains public");
         }
     }

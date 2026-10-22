@@ -16,7 +16,12 @@ final class DbspecShowCreateTest extends TestCase
 {
     public static function showCreateCases(): iterable
     {
-        $data = json_decode((string) file_get_contents(dirname(__DIR__, 3) . '/tests/dbspec/show-create.json'), true, 512, JSON_THROW_ON_ERROR);
+        $data = json_decode(
+            (string) file_get_contents(dirname(__DIR__, 3) . '/tests/dbspec/show-create.json'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
         foreach ($data['cases'] as $case) {
             yield $case['id'] => [$case];
         }
@@ -25,7 +30,9 @@ final class DbspecShowCreateTest extends TestCase
     #[DataProvider('showCreateCases')]
     public function test_show_create(array $case): void
     {
-        $checks = (new ReflectionMethod(MysqlCatalog::class, 'createChecks'))->invoke(null, implode("\n", $case['create']) . "\n");
+        $checks = (
+            new ReflectionMethod(MysqlCatalog::class, 'createChecks')
+        )->invoke(null, implode("\n", $case['create']) . "\n");
         $got = $checks[$case['name']] ?? null;
         if ($case['expected'] === 'not found') {
             $this->assertNull($got, "createChecks reads {$case['name']}, want not found");

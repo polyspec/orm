@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 // case database: the case's own database, used by one test case. The shared test database
-// (the database of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN) is not assumed to be empty, so a case that installs a schema or checks for an empty database
-// uses a database with a non-overlapping name (MySQL, PostgreSQL) or
+// (the database of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN) is not assumed to be empty, so a case that installs a
+// schema or checks for an empty database uses a database with a non-overlapping name (MySQL, PostgreSQL) or
 // a SQLite file, and removes it when the case ends (even after a failure). ORM_TEST_*_DSN is used only
 // as the admin connection that creates and removes the database; nothing is created in that database.
 // PostgreSQL also takes a database, not a schema: empty() counts a non-public schema as content.
@@ -85,10 +85,11 @@ function case_admin(string $dsn): PDO
 }
 
 /**
- * Creates a new case database for $driver and reports it with $step. MySQL and PostgreSQL make a database on the server of
- * ORM_TEST_<DRIVER>_DSN, and SQLite makes a file in a temp directory. The caller calls drop().
+ * Creates a new case database for $driver and reports it with $step. MySQL and PostgreSQL make a database on the server
+ * of ORM_TEST_<DRIVER>_DSN, and SQLite makes a file in a temp directory. The caller calls drop().
  *
- * @param callable(string): void $step callable that reports the case's steps (the test passes a callable that does nothing)
+ * @param callable(string): void $step callable that reports the case's steps (the test passes a callable that does
+ *   nothing)
  */
 function case_database(string $driver, callable $step): CaseDatabase
 {
@@ -107,7 +108,9 @@ function case_database(string $driver, callable $step): CaseDatabase
     $env = 'ORM_TEST_' . strtoupper($driver) . '_DSN';
     $admin = getenv($env);
     if ($admin === false || $admin === '') {
-        throw new RuntimeException("$env is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers");
+        throw new RuntimeException(
+            "$env is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers"
+        );
     }
     try {
         case_admin($admin)->exec("CREATE DATABASE $name");

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Polyspec\Orm;
 
 /**
- * LISTEN and NOTIFY on PostgreSQL (docs/spec/dialects.md DIA-192 to DIA-196, PRT-74). Db::notify and Db::listen call these
- * functions, and so does the C extension, so the rules are written once.
+ * LISTEN and NOTIFY on PostgreSQL (docs/spec/dialects.md DIA-192 to DIA-196, PRT-74). Db::notify and Db::listen call
+ * these functions, and so does the C extension, so the rules are written once.
  *
  * @internal
  */

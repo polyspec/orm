@@ -55,8 +55,16 @@ final class DbspecAnalyzeTest extends TestCase
         $analysis = Dbspec::analyze($limitText, ['d' => $limitText]);
         $this->assertSame([], $analysis->tokens, 'analyze/limit-no-tokens: a limit stop must give no tokens');
         $this->assertNull($analysis->document, 'analyze/limit-no-tokens: a limit stop must give no document');
-        $this->assertNotSame([], $analysis->diagnostics, 'analyze/limit-no-tokens: a limit stop must give the limit diagnostic');
-        $this->assertSame('limit', $analysis->diagnostics[array_key_last($analysis->diagnostics)]->rule, 'analyze/limit-no-tokens: the last diagnostic must be the limit');
+        $this->assertNotSame(
+            [],
+            $analysis->diagnostics,
+            'analyze/limit-no-tokens: a limit stop must give the limit diagnostic'
+        );
+        $this->assertSame(
+            'limit',
+            $analysis->diagnostics[array_key_last($analysis->diagnostics)]->rule,
+            'analyze/limit-no-tokens: the last diagnostic must be the limit'
+        );
         cpuCaseEnd('analyze/limit-no-tokens', $clock);
     }
 
@@ -79,20 +87,45 @@ final class DbspecAnalyzeTest extends TestCase
         $text = $texts[$case['main']];
         $parsed = Dbspec::parse($text, $texts);
         $analysis = Dbspec::analyze($text, $texts);
-        $this->assertEquals($parsed->diagnostics, $analysis->diagnostics, "analyze/$id: the parse result is not returned unchanged");
-        $this->assertEquals($parsed->positions, $analysis->positions, "analyze/$id: the parse result is not returned unchanged");
-        $this->assertSame($parsed->document === null, $analysis->document === null, "analyze/$id: the parse result is not returned unchanged");
+        $this->assertEquals(
+            $parsed->diagnostics,
+            $analysis->diagnostics,
+            "analyze/$id: the parse result is not returned unchanged"
+        );
+        $this->assertEquals(
+            $parsed->positions,
+            $analysis->positions,
+            "analyze/$id: the parse result is not returned unchanged"
+        );
+        $this->assertSame(
+            $parsed->document === null,
+            $analysis->document === null,
+            "analyze/$id: the parse result is not returned unchanged"
+        );
         if ($parsed->document !== null) {
-            $this->assertSame(Dbspec::emit($parsed->document), Dbspec::emit($analysis->document), "analyze/$id: the document differs from parse");
+            $this->assertSame(
+                Dbspec::emit($parsed->document),
+                Dbspec::emit($analysis->document),
+                "analyze/$id: the document differs from parse"
+            );
         }
         $format = Dbspec::format($text, $texts);
         if ($kind === 'invalid') {
             $this->assertNull($format->text, "format/$id: an invalid document was formatted");
-            $got = array_map(static fn($d): array => ['line' => $d->line, 'column' => $d->column, 'rule' => $d->rule], $format->diagnostics);
-            $want = array_map(static fn(array $e): array => ['line' => $e['line'], 'column' => $e['column'], 'rule' => $e['rule']], $case['errors']);
+            $got = array_map(
+                static fn($d): array => ['line' => $d->line, 'column' => $d->column, 'rule' => $d->rule],
+                $format->diagnostics
+            );
+            $want = array_map(
+                static fn(array $e): array => ['line' => $e['line'], 'column' => $e['column'], 'rule' => $e['rule']],
+                $case['errors']
+            );
             $this->assertSame($want, $got, "format/$id: diagnostics differ");
         } else {
-            $want = $kind === 'canonical' ? implode("\n", $case['documents'][$case['main']]) . "\n" : implode("\n", $case['canonical']) . "\n";
+            $want = $kind === 'canonical' ? implode(
+                "\n",
+                $case['documents'][$case['main']]
+            ) . "\n" : implode("\n", $case['canonical']) . "\n";
             $this->assertSame([], $format->diagnostics, "format/$id: diagnostics");
             $this->assertSame($want, $format->text, "format/$id: text differs from the canonical text");
             $formatted = $texts;
@@ -118,6 +151,10 @@ final class DbspecAnalyzeTest extends TestCase
 
     public function test_syntax_cases_are_produced(): void
     {
-        $this->assertSame([], dbspec_syntax_unproduced(dirname(__DIR__, 3), dbspec_read_cases()), 'syntax.json has cases that the inputs do not produce');
+        $this->assertSame(
+            [],
+            dbspec_syntax_unproduced(dirname(__DIR__, 3), dbspec_read_cases()),
+            'syntax.json has cases that the inputs do not produce'
+        );
     }
 }

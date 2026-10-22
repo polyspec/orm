@@ -21,7 +21,8 @@ use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
-// APPLY_CLEANUP_RUN is the prefix of the SQLite file name the case uses. A process id and file number are appended after it.
+// APPLY_CLEANUP_RUN is the prefix of the SQLite file name the case uses. A process id and file number are appended
+// after it.
 const APPLY_CLEANUP_RUN = 'apply_cleanup_php';
 
 
@@ -36,8 +37,12 @@ final class FailingPdo extends PDO
      * @param array<string, string> $replace the query sent instead, for each query
      * @param list<string> $failClose the queries whose close fails
      */
-    public function __construct(string $path, private readonly array $fail, private readonly array $replace, array $failClose)
-    {
+    public function __construct(
+        string $path,
+        private readonly array $fail,
+        private readonly array $replace,
+        array $failClose
+    ) {
         parent::__construct("sqlite:$path", null, null, [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_STATEMENT_CLASS => [FailingStatement::class, [array_values($replace), $failClose]],
@@ -92,7 +97,9 @@ function apply_cleanup_plans(): array
     foreach (plan_vectors()['cases'] as $case) {
         if ($case['id'] === 'create-from-empty') {
             $parsed = Dbspec::parsePlan(implode("\n", $case['plan']) . "\n");
-            $plans[] = $parsed->plan ?? throw new RuntimeException('create-from-empty: ' . json_encode($parsed->diagnostics));
+            $plans[] = $parsed->plan ?? throw new RuntimeException(
+                'create-from-empty: ' . json_encode($parsed->diagnostics)
+            );
         }
     }
     if (count($plans) !== 1) {
@@ -138,8 +145,15 @@ function want_cleanup(Closure $operation, Closure $failure, array $cleanup): voi
     try {
         $operation();
     } catch (Throwable $e) {
-        Assert::assertInstanceOf(ApplyCleanupError::class, $e, get_class($e) . ' "' . $e->getMessage() . '" alone; want it with the cleanup errors');
-        Assert::assertTrue($failure($e->getPrevious()), 'cleanup error "' . $e->getMessage() . '" holds another failure');
+        Assert::assertInstanceOf(
+            ApplyCleanupError::class,
+            $e,
+            get_class($e) . ' "' . $e->getMessage() . '" alone; want it with the cleanup errors'
+        );
+        Assert::assertTrue(
+            $failure($e->getPrevious()),
+            'cleanup error "' . $e->getMessage() . '" holds another failure'
+        );
         Assert::assertSame($cleanup, $e->cleanup, 'cleanup error "' . $e->getMessage() . '" holds other errors');
         return;
     }
@@ -198,7 +212,11 @@ final class DbspecApplyCleanupTest extends TestCase
                 throw $stop;
             }
         };
-        want_cleanup(static fn() => Dbspec::apply($pdo, 'sqlite', $plans, $now, $events), static fn(?Throwable $e): bool => $e === $stop, [$release]);
+        want_cleanup(
+            static fn() => Dbspec::apply($pdo, 'sqlite', $plans, $now, $events),
+            static fn(?Throwable $e): bool => $e === $stop,
+            [$release]
+        );
     }
 
     // apply/cleanup-errors/begin-restore
@@ -211,7 +229,9 @@ final class DbspecApplyCleanupTest extends TestCase
         $pdo = failing_pdo(['BEGIN EXCLUSIVE' => $begin, 'PRAGMA foreign_keys = 0' => $restore]);
         want_cleanup(
             static fn() => Dbspec::apply($pdo, 'sqlite', $plans, $now, null),
-            static fn(?Throwable $e): bool => $e instanceof ApplyError && $e->code_ === 'locked' && $e->getPrevious() === $begin,
+            static fn(
+                ?Throwable $e
+            ): bool => $e instanceof ApplyError && $e->code_ === 'locked' && $e->getPrevious() === $begin,
             [$restore],
         );
     }
@@ -224,7 +244,10 @@ final class DbspecApplyCleanupTest extends TestCase
         $pdo = failing_pdo([]);
         Dbspec::apply($pdo, 'sqlite', $plans, $now, null);
         $pdo->exec('UPDATE "dbspec$plans" SET step = 99');
-        want_message(static fn() => Dbspec::rollback($pdo, 'sqlite', $plans, $now, null), "chain {$plans[0]->name}: the recorded step 99 is outside the plan's 4 steps");
+        want_message(
+            static fn() => Dbspec::rollback($pdo, 'sqlite', $plans, $now, null),
+            "chain {$plans[0]->name}: the recorded step 99 is outside the plan's 4 steps"
+        );
     }
 
     // apply/effect-row

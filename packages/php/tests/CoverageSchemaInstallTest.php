@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 // schema_install feature coverage: the bench manifest held by the generated model is
 // installed again on an installed bench database and changes nothing, and a database with only some tables
-// is not created: the install of a document set fails with CONFIG and creates no missing tables. The install of a set that uses external documents
-// checks the external tables in the database, and registration does not read the database.
+// is not created: the install of a document set fails with CONFIG and creates no missing tables. The install of a set
+// that uses external documents checks the external tables in the database, and registration does not read the database.
 
 require_once __DIR__ . '/coverage_cases.php';
 
@@ -105,20 +105,28 @@ final class CoverageSchemaInstallTest extends TestCase
             [, $dsn] = coverageItem();
             $db = coverageConnect($dsn);
             try {
-                Assert::assertTrue(!installedTable($db, 'coverage_install_missing'), 'coverage_install_missing exists before the case');
+                Assert::assertTrue(
+                    !installedTable($db, 'coverage_install_missing'),
+                    'coverage_install_missing exists before the case'
+                );
                 $partial = RuntimeModel::build(RuntimeModel::parse(['partial.dbs' => PARTIAL_DOCUMENT]));
-                $code = coverageCode(fn() => $db->utils()->schema()->install(new Schema($partial->manifestText, $partial->manifestHash)));
+                $code = coverageCode(
+                    fn() => $db->utils()->schema()->install(new Schema($partial->manifestText, $partial->manifestHash))
+                );
                 Assert::assertTrue($code === Code::CONFIG, "a partly installed document set is $code, want CONFIG");
-                Assert::assertTrue(!installedTable($db, 'coverage_install_missing'), 'the rejected install created coverage_install_missing');
+                Assert::assertTrue(
+                    !installedTable($db, 'coverage_install_missing'),
+                    'the rejected install created coverage_install_missing'
+                );
             } finally {
                 $db->close();
             }
         }
     }
 
-    // The install of a set that uses external documents checks the external tables in the database. If an external document's column
-    // is missing from the database, install is CONFIG and does not create the table it owns. Registration
-    // does not read the database, so it connects with that set too.
+    // The install of a set that uses external documents checks the external tables in the database. If an external
+    // document's column is missing from the database, install is CONFIG and does not create the table it owns.
+    // Registration does not read the database, so it connects with that set too.
     // Requirements: DBS-107, SCH-7.
     public function test_schema_install_external_documents(): void
     {
@@ -126,11 +134,22 @@ final class CoverageSchemaInstallTest extends TestCase
             selectCoverageItem($item);
             [, $dsn] = coverageItem();
             $schema = static function (string $external): Schema {
-                $m = RuntimeModel::build(RuntimeModel::parseSet(['coverage_external.dbs' => EXTERNAL_MEMBER], ['bench_user.dbs' => $external]));
+                $m = RuntimeModel::build(
+                    RuntimeModel::parseSet(
+                        ['coverage_external.dbs' => EXTERNAL_MEMBER],
+                        ['bench_user.dbs' => $external]
+                    )
+                );
                 return new Schema($m->manifestText, $m->manifestHash, $m->externalText);
             };
             Orm::connectSchema($dsn, $schema(EXTERNAL_USER), new Config())->close();
-            $drifted = $schema(str_replace("  name varchar(191)\n", "  name varchar(191)\n  coverage_missing varchar(8) null\n", EXTERNAL_USER));
+            $drifted = $schema(
+                str_replace(
+                    "  name varchar(191)\n",
+                    "  name varchar(191)\n  coverage_missing varchar(8) null\n",
+                    EXTERNAL_USER
+                )
+            );
             $want = 'the tables that the set uses from external documents differ from the database: column user.coverage_missing does not exist';
             $refused = static function (string $step, callable $f) use ($want): void {
                 try {
@@ -147,8 +166,14 @@ final class CoverageSchemaInstallTest extends TestCase
             Orm::connectSchema($dsn, $drifted, new Config())->close();
             $db = coverageConnect($dsn);
             try {
-                $refused('install with a drifted external table', static fn() => $db->utils()->schema()->install($drifted));
-                Assert::assertTrue(!installedTable($db, 'coverage_external_post'), 'the rejected install created coverage_external_post');
+                $refused(
+                    'install with a drifted external table',
+                    static fn() => $db->utils()->schema()->install($drifted)
+                );
+                Assert::assertTrue(
+                    !installedTable($db, 'coverage_external_post'),
+                    'the rejected install created coverage_external_post'
+                );
             } finally {
                 $db->close();
             }

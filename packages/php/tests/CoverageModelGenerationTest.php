@@ -16,7 +16,18 @@ use PHPUnit\Framework\TestCase;
 function generationCheck(string $root, string $out): array
 {
     [$status, $stdout, $stderr] = coverageProcess(
-        [PHP_BINARY, 'vendor-php/bin/orm-gen', 'gen', '--set', 'contracts/fixtures/bench/dbspec-set.json', '--out', $out, '--namespace', 'Polyspec\\Orm\\Tests\\Model', '--check'],
+        [
+            PHP_BINARY,
+            'vendor-php/bin/orm-gen',
+            'gen',
+            '--set',
+            'contracts/fixtures/bench/dbspec-set.json',
+            '--out',
+            $out,
+            '--namespace',
+            'Polyspec\\Orm\\Tests\\Model',
+            '--check'
+        ],
         $root,
     );
     return [$status, $stdout . $stderr];
@@ -54,7 +65,10 @@ final class CoverageModelGenerationTest extends TestCase
                 throw new RuntimeException("cannot write $changed");
             }
             [$status, $output] = generationCheck($root, $copy);
-            Assert::assertTrue($status === 1 && $output === "differs: $changed\n", "check of the changed copy exited $status: $output");
+            Assert::assertTrue(
+                $status === 1 && $output === "differs: $changed\n",
+                "check of the changed copy exited $status: $output"
+            );
         } finally {
             exec('rm -rf ' . escapeshellarg($copy), $removed, $code);
             if ($code !== 0) {

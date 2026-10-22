@@ -23,8 +23,14 @@ function transactionCase(Closure $body): void
     $db = coverageConnect($dsn);
     try {
         $existing = (new CompositeAccount())($db)->tenantId(TRANSACTION_TENANT)->getCount();
-        Assert::assertTrue($existing === 0, "composite_account holds $existing rows of tenant " . TRANSACTION_TENANT . ' before the case');
-        coverageRestoring(fn() => $body($db), fn() => (new CompositeAccount())($db)->tenantId(TRANSACTION_TENANT)->gets()->delete());
+        Assert::assertTrue(
+            $existing === 0,
+            "composite_account holds $existing rows of tenant " . TRANSACTION_TENANT . ' before the case'
+        );
+        coverageRestoring(
+            fn() => $body($db),
+            fn() => (new CompositeAccount())($db)->tenantId(TRANSACTION_TENANT)->gets()->delete()
+        );
     } finally {
         $db->close();
     }
@@ -48,13 +54,19 @@ final class CoverageTransactionsTest extends TestCase
                 $caught = null;
                 try {
                     $db->transaction(function () use ($boom): void {
-                        (new CompositeAccount())->setTenantId(TRANSACTION_TENANT)->setAccountId(1)->setName('rolled')->create();
+                        (new CompositeAccount())->setTenantId(TRANSACTION_TENANT)
+                            ->setAccountId(1)
+                            ->setName('rolled')
+                            ->create();
                         throw $boom;
                     }, retry: 0);
                 } catch (RuntimeException $e) {
                     $caught = $e;
                 }
-                Assert::assertTrue($caught === $boom, 'the callback error did not reach the caller: ' . ($caught?->getMessage() ?? 'no error'));
+                Assert::assertTrue(
+                    $caught === $boom,
+                    'the callback error did not reach the caller: ' . ($caught?->getMessage() ?? 'no error')
+                );
                 Assert::assertTrue(!accountExists($db, 1), 'the rolled back row exists');
             });
         }
@@ -69,10 +81,16 @@ final class CoverageTransactionsTest extends TestCase
                 $boom = new RuntimeException('inner failure');
                 $inner = null;
                 $db->transaction(function () use ($db, $boom, &$inner): void {
-                    (new CompositeAccount())->setTenantId(TRANSACTION_TENANT)->setAccountId(2)->setName('outer')->create();
+                    (new CompositeAccount())->setTenantId(TRANSACTION_TENANT)
+                        ->setAccountId(2)
+                        ->setName('outer')
+                        ->create();
                     try {
                         $db->transaction(function () use ($boom): void {
-                            (new CompositeAccount())->setTenantId(TRANSACTION_TENANT)->setAccountId(3)->setName('inner')->create();
+                            (new CompositeAccount())->setTenantId(TRANSACTION_TENANT)
+                                ->setAccountId(3)
+                                ->setName('inner')
+                                ->create();
                             throw $boom;
                         });
                     } catch (RuntimeException $e) {

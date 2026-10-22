@@ -29,21 +29,44 @@ function dbspec_set_keys(string $what, mixed $value, array $keys): void
  */
 function dbspec_set_cases(string $root): array
 {
-    $file = json_decode((string) file_get_contents("$root/tests/dbspec/set-files.json"), true, 512, JSON_THROW_ON_ERROR);
+    $file = json_decode(
+        (string) file_get_contents("$root/tests/dbspec/set-files.json"),
+        true,
+        512,
+        JSON_THROW_ON_ERROR
+    );
     dbspec_set_keys('set-files.json', $file, ['requirements', 'version', 'note', 'cases']);
-    if ($file['version'] !== 1 || !is_string($file['note']) || !is_array($file['cases']) || !array_is_list($file['cases']) || $file['cases'] === []) {
+    if (
+        $file['version'] !== 1 || !is_string($file['note']) || !is_array(
+            $file['cases']
+        ) || !array_is_list($file['cases']) || $file['cases'] === []
+    ) {
         throw new RuntimeException('set-files.json: version, note or cases is wrong');
     }
     $ids = [];
     foreach ($file['cases'] as $i => $case) {
         dbspec_set_keys("case $i", $case, ['id', 'tree', 'set', 'want']);
-        if (!is_string($case['id']) || isset($ids[$case['id']]) || !is_string($case['set']) || !is_array($case['tree']) || $case['tree'] === [] || array_is_list($case['tree'])) {
+        if (
+            !is_string($case['id']) || isset(
+                $ids[$case['id']]
+            ) || !is_string($case['set']) || !is_array(
+                $case['tree']
+            ) || $case['tree'] === [] || array_is_list($case['tree'])
+        ) {
             throw new RuntimeException("case $i: id, set or tree is wrong");
         }
         $ids[$case['id']] = true;
         foreach ($case['tree'] as $path => $entry) {
-            if (!is_array($entry) || count($entry) !== 1 || !in_array(array_key_first($entry), ['file', 'hex', 'symlink', 'hardlink'], true) || !is_string(reset($entry))) {
-                throw new RuntimeException("{$case['id']}: tree entry $path is not one of file, hex, symlink and hardlink");
+            if (
+                !is_array($entry) || count($entry) !== 1 || !in_array(
+                    array_key_first($entry),
+                    ['file', 'hex', 'symlink', 'hardlink'],
+                    true
+                ) || !is_string(reset($entry))
+            ) {
+                throw new RuntimeException(
+                    "{$case['id']}: tree entry $path is not one of file, hex, symlink and hardlink"
+                );
             }
         }
         $want = $case['want'];
@@ -61,7 +84,12 @@ function dbspec_set_cases(string $root): array
         } else {
             dbspec_set_keys("{$case['id']}: want", $want, ['documents', 'external']);
             foreach (['documents', 'external'] as $list) {
-                if (!is_array($want[$list]) || !array_is_list($want[$list]) || array_filter($want[$list], 'is_string') !== $want[$list]) {
+                if (
+                    !is_array($want[$list]) || !array_is_list($want[$list]) || array_filter(
+                        $want[$list],
+                        'is_string'
+                    ) !== $want[$list]
+                ) {
                     throw new RuntimeException("{$case['id']}: want $list is not a list of strings");
                 }
             }
@@ -101,7 +129,9 @@ function dbspec_set_tree(string $dir, array $tree): array
         match ($kind) {
             'file' => $bytes[$path] = $value,
             'hex' => $bytes[$path] = (string) hex2bin($value),
-            'hardlink' => $bytes[$path] = $bytes[$value] ?? throw new RuntimeException("hard link $path names no earlier file $value"),
+            'hardlink' => $bytes[$path] = $bytes[$value] ?? throw new RuntimeException(
+                "hard link $path names no earlier file $value"
+            ),
             'symlink' => $links[$path] = dbspec_set_resolve(dirname($path) . '/' . $value),
         };
     }
@@ -133,7 +163,10 @@ function dbspec_set_resolve(string $path): string
 /** A result of a set reader described for comparison: the files with their bytes, or the errors. */
 function dbspec_set_described(object $result): array
 {
-    $files = static fn(?array $list): ?array => $list === null ? null : array_map(static fn(object $f): array => [$f->path, $f->bytes], $list);
+    $files = static fn(?array $list): ?array => $list === null ? null : array_map(
+        static fn(object $f): array => [$f->path, $f->bytes],
+        $list
+    );
     return [
         'documents' => $files($result->documents),
         'external' => $files($result->external),
@@ -186,13 +219,48 @@ function dbspec_set_focused(): array
     $set = static fn(string $json): array => ['app/shop.dbs' => $shop, 'app/dbspec-set.json' => ['file' => $json]];
     $error = static fn(string $rule): array => ['errors' => [['rule' => $rule, 'path' => 'app/dbspec-set.json']]];
     return [
-        ['id' => 'nested-key-twice', 'tree' => $set('{"schema": {"a": 1, "a": 2}, "documents": ["shop.dbs"]}'), 'set' => 'app/dbspec-set.json', 'want' => $error('set.key')],
-        ['id' => 'documents-object', 'tree' => $set('{"schema": 1, "documents": {"0": "shop.dbs"}}'), 'set' => 'app/dbspec-set.json', 'want' => $error('set.key')],
-        ['id' => 'documents-empty-object', 'tree' => $set('{"schema": 1, "documents": {}}'), 'set' => 'app/dbspec-set.json', 'want' => $error('set.key')],
-        ['id' => 'escaped-key-twice', 'tree' => $set('{"schema": 1, "documents": ["shop.dbs"], "docum\\u0065nts": ["shop.dbs"]}'), 'set' => 'app/dbspec-set.json', 'want' => $error('set.key')],
-        ['id' => 'nested-strings-are-values', 'tree' => $set('{"schema": 1, "documents": ["shop.dbs"], "x": [{"a": ["a", "a"]}, {"a": 1}]}'), 'set' => 'app/dbspec-set.json', 'want' => $error('set.key')],
-        ['id' => 'schema-ten-tenths', 'tree' => $set('{"schema": 10E-1, "documents": ["shop.dbs"]}'), 'set' => 'app/dbspec-set.json', 'want' => ['documents' => ['app/shop.dbs'], 'external' => []]],
-        ['id' => 'top-level-string', 'tree' => $set('"x"'), 'set' => 'app/dbspec-set.json', 'want' => $error('set.json')],
+        [
+            'id' => 'nested-key-twice',
+            'tree' => $set('{"schema": {"a": 1, "a": 2}, "documents": ["shop.dbs"]}'),
+            'set' => 'app/dbspec-set.json',
+            'want' => $error('set.key')
+        ],
+        [
+            'id' => 'documents-object',
+            'tree' => $set('{"schema": 1, "documents": {"0": "shop.dbs"}}'),
+            'set' => 'app/dbspec-set.json',
+            'want' => $error('set.key')
+        ],
+        [
+            'id' => 'documents-empty-object',
+            'tree' => $set('{"schema": 1, "documents": {}}'),
+            'set' => 'app/dbspec-set.json',
+            'want' => $error('set.key')
+        ],
+        [
+            'id' => 'escaped-key-twice',
+            'tree' => $set('{"schema": 1, "documents": ["shop.dbs"], "docum\\u0065nts": ["shop.dbs"]}'),
+            'set' => 'app/dbspec-set.json',
+            'want' => $error('set.key')
+        ],
+        [
+            'id' => 'nested-strings-are-values',
+            'tree' => $set('{"schema": 1, "documents": ["shop.dbs"], "x": [{"a": ["a", "a"]}, {"a": 1}]}'),
+            'set' => 'app/dbspec-set.json',
+            'want' => $error('set.key')
+        ],
+        [
+            'id' => 'schema-ten-tenths',
+            'tree' => $set('{"schema": 10E-1, "documents": ["shop.dbs"]}'),
+            'set' => 'app/dbspec-set.json',
+            'want' => ['documents' => ['app/shop.dbs'], 'external' => []]
+        ],
+        [
+            'id' => 'top-level-string',
+            'tree' => $set('"x"'),
+            'set' => 'app/dbspec-set.json',
+            'want' => $error('set.json')
+        ],
         ['id' => 'empty-file', 'tree' => $set(''), 'set' => 'app/dbspec-set.json', 'want' => $error('set.json')],
     ];
 }
@@ -204,7 +272,9 @@ function dbspec_set_focused(): array
  */
 function dbspec_set_check(array $case, callable $read, ?callable $also = null): void
 {
-    $dir = sys_get_temp_dir() . '/orm-php-dbspec-set-' . getmypid() . '-' . md5($case['id'] . json_encode($case['tree']));
+    $dir = sys_get_temp_dir() . '/orm-php-dbspec-set-' . getmypid() . '-' . md5(
+        $case['id'] . json_encode($case['tree'])
+    );
     if (!mkdir($dir, 0o700, true)) {
         throw new RuntimeException("cannot create $dir");
     }
@@ -217,12 +287,18 @@ function dbspec_set_check(array $case, callable $read, ?callable $also = null): 
         if (isset($want['errors'])) {
             $expected = array_map(static fn(array $e): array => [$e['rule'], "$dir/{$e['path']}"], $want['errors']);
             $rules = array_map(static fn(array $e): array => [$e[0], $e[1]], $got['errors']);
-            $detail = 'want errors ' . json_encode($expected, JSON_UNESCAPED_SLASHES) . ', got ' . json_encode($got, JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+            $detail = 'want errors ' . json_encode($expected, JSON_UNESCAPED_SLASHES) . ', got ' . json_encode(
+                $got,
+                JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE
+            );
             Assert::assertNull($got['documents'], $detail);
             Assert::assertNull($got['external'], $detail);
             Assert::assertSame($expected, $rules, $detail);
             foreach ($got['errors'] as [, $errorPath, $message]) {
-                Assert::assertTrue(str_contains($message, $errorPath), "the message \"$message\" does not name $errorPath");
+                Assert::assertTrue(
+                    str_contains($message, $errorPath),
+                    "the message \"$message\" does not name $errorPath"
+                );
             }
         } else {
             $expected = [];
@@ -237,11 +313,23 @@ function dbspec_set_check(array $case, callable $read, ?callable $also = null): 
                             $parts[] = $segment;
                         }
                     }
-                    return ["$dir/$p", $bytes[implode('/', $parts)] ?? throw new RuntimeException("the vector lists $p, which is no tree file")];
+                    return [
+                        "$dir/$p",
+                        $bytes[implode('/', $parts)] ?? throw new RuntimeException(
+                            "the vector lists $p, which is no tree file"
+                        )
+                    ];
                 }, $want[$list]);
             }
             $expected['errors'] = [];
-            Assert::assertSame($expected, $got, 'want ' . json_encode($expected, JSON_UNESCAPED_SLASHES) . ', got ' . json_encode($got, JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE));
+            Assert::assertSame(
+                $expected,
+                $got,
+                'want ' . json_encode($expected, JSON_UNESCAPED_SLASHES) . ', got ' . json_encode(
+                    $got,
+                    JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE
+                )
+            );
         }
         if ($also !== null) {
             $also($result, $path);

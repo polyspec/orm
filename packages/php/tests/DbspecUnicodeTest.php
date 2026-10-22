@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-// Checks that the PHP UnicodeWord table (the table the tests/dbspec/unicode generator wrote from Go's Unicode data) matches its ranges at every code point.
-// Go's ranges are checked against Go by that generator's test.
+// Checks that the PHP UnicodeWord table (the table the tests/dbspec/unicode generator wrote from Go's Unicode data)
+// matches its ranges at every code point. Go's ranges are checked against Go by that generator's test.
 
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
@@ -30,6 +30,10 @@ final class DbspecUnicodeTest extends TestCase
                 }
             }
         }
-        $this->assertSame([], $disagree, 'UnicodeWord::contains differs from its ranges; run go run ./tests/dbspec/unicode -write');
+        $this->assertSame(
+            [],
+            $disagree,
+            'UnicodeWord::contains differs from its ranges; run go run ./tests/dbspec/unicode -write'
+        );
     }
 }

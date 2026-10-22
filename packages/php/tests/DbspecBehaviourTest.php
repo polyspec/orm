@@ -27,14 +27,28 @@ final class DbspecBehaviourTest extends TestCase
     public function test_case(string $name): void
     {
         $recorded = dbspec_behaviour_recorded();
-        Assert::assertArrayHasKey($name, $recorded, "$name is not recorded; run php packages/php/testing/dbspec/behaviour.php");
-        $got = json_decode(json_encode(dbspec_behaviour_cases()[$name](), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR), true);
+        Assert::assertArrayHasKey(
+            $name,
+            $recorded,
+            "$name is not recorded; run php packages/php/testing/dbspec/behaviour.php"
+        );
+        $got = json_decode(
+            json_encode(
+                dbspec_behaviour_cases()[$name](),
+                JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR
+            ),
+            true
+        );
         Assert::assertSame($recorded[$name], $got, $name);
     }
 
     // Every recorded case is still a case, so a removed case does not leave its record behind.
     public function test_records_are_cases(): void
     {
-        Assert::assertSame([], array_values(array_diff(array_keys(dbspec_behaviour_recorded()), array_keys(dbspec_behaviour_cases()))), 'recorded outcomes of no case');
+        Assert::assertSame(
+            [],
+            array_values(array_diff(array_keys(dbspec_behaviour_recorded()), array_keys(dbspec_behaviour_cases()))),
+            'recorded outcomes of no case'
+        );
     }
 }

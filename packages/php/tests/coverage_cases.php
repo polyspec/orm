@@ -10,9 +10,9 @@ use Polyspec\Orm\Db;
 use Polyspec\Orm\OrmException;
 
 /**
- * The coverage items of a test file from the feature resolver (scripts/features/coverage.mts --items, the form the Python
- * readers use): one [database, dsn] for each database the manifest lists for the file. A DSN variable that is unset fails
- * with its name, from the resolver.
+ * The coverage items of a test file from the feature resolver (scripts/features/coverage.mts --items, the form the
+ * Python readers use): one [database, dsn] for each database the manifest lists for the file. A DSN variable that is
+ * unset fails with its name, from the resolver.
  *
  * @return list<array{string, ?string}>
  */
@@ -20,7 +20,12 @@ function coverageItemsOf(string $testFile): array
 {
     $root = realpath(dirname(__DIR__, 3));
     $relative = substr((string) realpath($testFile), strlen((string) $root) + 1);
-    $process = proc_open(['node', "$root/scripts/features/coverage.mts", '--items', $relative], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, $root);
+    $process = proc_open(
+        ['node', "$root/scripts/features/coverage.mts", '--items', $relative],
+        [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+        $pipes,
+        $root
+    );
     if (!is_resource($process)) {
         throw new RuntimeException("cannot run the coverage resolver for $relative");
     }
@@ -50,7 +55,9 @@ function coverageItem(): array
 {
     $item = $GLOBALS['orm_coverage_item'] ?? null;
     if (!is_array($item)) {
-        throw new RuntimeException('no coverage item is selected; a test method runs each item of coverageItemsOf(__FILE__)');
+        throw new RuntimeException(
+            'no coverage item is selected; a test method runs each item of coverageItemsOf(__FILE__)'
+        );
     }
     return $item;
 }
@@ -60,7 +67,10 @@ require_once __DIR__ . '/../testing/required_dsn.php';
 /** Connects with the AES and blind index keys of the seeded bench database (scripts/bench-db.sh). */
 function coverageConnect(string $dsn): Db
 {
-    return \Polyspec\Orm\Tests\Model\connect($dsn, new Config(aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index'));
+    return \Polyspec\Orm\Tests\Model\connect(
+        $dsn,
+        new Config(aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index')
+    );
 }
 
 /** Reads the JSON of a repository file. Fails if it cannot be read or parsed. */
@@ -96,7 +106,11 @@ function coverageRestoring(Closure $body, Closure $restore): void
         try {
             $restore();
         } catch (Throwable $cleanup) {
-            throw new RuntimeException('case failed: ' . $failure->getMessage() . '; restore failed: ' . $cleanup->getMessage(), 0, $failure);
+            throw new RuntimeException(
+                'case failed: ' . $failure->getMessage() . '; restore failed: ' . $cleanup->getMessage(),
+                0,
+                $failure
+            );
         }
         throw $failure;
     }

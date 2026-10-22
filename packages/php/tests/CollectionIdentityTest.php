@@ -1,7 +1,9 @@
 <?php
 
-// The collection key identity of tests/collection/keys.json: every value type has its own key, and a NULL key is CODEC_DECODE.
-// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CollectionIdentityTest.php
+// The collection key identity of tests/collection/keys.json: every value type has its own key, and a NULL key is
+// CODEC_DECODE.
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist
+// packages/php/tests/CollectionIdentityTest.php
 declare(strict_types=1);
 
 use PHPUnit\Framework\Attributes\Small;
@@ -17,7 +19,10 @@ final class CollectionIdentityTest extends TestCase
     private static function fixture(): array
     {
         $src = file_get_contents(__DIR__ . '/../../../tests/collection/keys.json');
-        self::assertIsString($src, 'tests/collection/keys.json is unreadable; run make orm-check from the checkout root');
+        self::assertIsString(
+            $src,
+            'tests/collection/keys.json is unreadable; run make orm-check from the checkout root'
+        );
         $fixture = json_decode($src, true, 512, JSON_THROW_ON_ERROR);
         self::assertIsArray($fixture);
         return $fixture;
@@ -42,13 +47,25 @@ final class CollectionIdentityTest extends TestCase
         $seen = [];
         foreach (self::fixture()['keys'] as $entry) {
             $identity = Collection::identityOf(self::valueOf($entry));
-            self::assertSame($identity, Collection::identityOf(self::valueOf($entry)), "key {$entry['name']} has no stable identity");
+            self::assertSame(
+                $identity,
+                Collection::identityOf(self::valueOf($entry)),
+                "key {$entry['name']} has no stable identity"
+            );
             if (isset($entry['same_as'])) {
-                self::assertSame($seen[$entry['same_as']], $identity, "key {$entry['name']} differs from {$entry['same_as']}");
+                self::assertSame(
+                    $seen[$entry['same_as']],
+                    $identity,
+                    "key {$entry['name']} differs from {$entry['same_as']}"
+                );
                 continue;
             }
             foreach ($seen as $other => $otherIdentity) {
-                self::assertNotSame($otherIdentity, $identity, "keys $other and {$entry['name']} have the same identity");
+                self::assertNotSame(
+                    $otherIdentity,
+                    $identity,
+                    "keys $other and {$entry['name']} have the same identity"
+                );
             }
             $seen[$entry['name']] = $identity;
         }

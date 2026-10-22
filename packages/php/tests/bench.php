@@ -18,7 +18,9 @@ use Polyspec\Orm\Schema;
 /** The schema value of bench_shared.dbs, as the set that owns it would generate it. */
 function benchShared(): Schema
 {
-    $manifest = Dbspec::manifest(RuntimeModel::files([dirname(__DIR__, 3) . '/contracts/fixtures/bench/bench_shared.dbs']))->manifest
+    $manifest = Dbspec::manifest(
+        RuntimeModel::files([dirname(__DIR__, 3) . '/contracts/fixtures/bench/bench_shared.dbs'])
+    )->manifest
         ?? throw new OrmException(Code::SCHEMA_INVALID, 'contracts/fixtures/bench/bench_shared.dbs does not parse');
     return new Schema($manifest->manifestText, $manifest->manifestHash);
 }

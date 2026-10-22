@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 // audit_triggers feature coverage: installs contracts/fixtures/audit.dbs in the bench database
 // and writes it in an audit transaction in the same order as auditCase in packages/go/orm/audit_transaction_test.go,
-// checks the item_history and audit record left by the trigger, and removes the installed table and PostgreSQL function.
-// soft_delete_restore does the same with contracts/fixtures/restore.dbs. The fixture's model
+// checks the item_history and audit record left by the trigger, and removes the installed table and PostgreSQL
+// function. soft_delete_restore does the same with contracts/fixtures/restore.dbs. The fixture's model
 // is created per fixture in a temporary directory under its own namespace, and the bench model is not read.
 
 require_once __DIR__ . '/coverage_cases.php';
@@ -45,7 +45,9 @@ function auditTable(Db $db, string $table): bool
  */
 function dropFixture(Db $db, array $tables, array $audited): void
 {
-    $quote = $db->driver() === 'mysql' ? static fn(string $n): string => "`$n`" : static fn(string $n): string => "\"$n\"";
+    $quote = $db->driver() === 'mysql' ? static fn(
+        string $n
+    ): string => "`$n`" : static fn(string $n): string => "\"$n\"";
     foreach ($tables as $table) {
         $db->pdo()->exec('DROP TABLE IF EXISTS ' . $quote($table));
     }
@@ -60,7 +62,8 @@ function dropFixture(Db $db, array $tables, array $audited): void
 
 /**
  * Creates the model of contracts/fixtures/<fixture>.dbs once in $namespace in a temporary directory and
- * registers it with autoload. Several cases in one process use the same model. The directory is removed when the process ends.
+ * registers it with autoload. Several cases in one process use the same model. The directory is removed when the
+ * process ends.
  */
 function fixtureModels(string $fixture, string $namespace): void
 {
@@ -85,7 +88,11 @@ function fixtureModels(string $fixture, string $namespace): void
             exit(1);
         }
     });
-    Generator::generate(RuntimeModel::build(RuntimeModel::parse(["$fixture.dbs" => $document])), "$work/gen", $namespace);
+    Generator::generate(
+        RuntimeModel::build(RuntimeModel::parse(["$fixture.dbs" => $document])),
+        "$work/gen",
+        $namespace
+    );
     spl_autoload_register(static function (string $class) use ($work, $namespace): void {
         if (str_starts_with($class, "$namespace\\")) {
             require_once "$work/gen/" . substr($class, strlen("$namespace\\")) . '.php';
@@ -143,9 +150,9 @@ final class CoverageAuditTriggersTest extends TestCase
         }
     }
 
-    // Every transaction entry point takes the audit values: PHP's entry point is one Db::transaction on a connection with an audit source,
-    // and two transactions each insert one audit record, the audited write writes its key, and nested
-    // transactions take no audit.
+    // Every transaction entry point takes the audit values: PHP's entry point is one Db::transaction on a connection
+    // with an audit source, and two transactions each insert one audit record, the audited write writes its key, and
+    // nested transactions take no audit.
     // Requirements: CFG-8, DBS-87, DBS-88, DBS-93, DSL-126.
     public function test_audit_transaction_entry_points(): void
     {
@@ -153,25 +160,48 @@ final class CoverageAuditTriggersTest extends TestCase
             selectCoverageItem($item);
             withAudit(function (Db $db): void {
                 $adb = $db;
-                $seq = $adb->transaction(fn(): int => (new Item())->setTitle('first')->create()->getSeq(), audit: ['actor' => 'transaction'], retry: 0);
-                $adb->transaction(fn() => (new Item())($adb)->setSeq($seq)->setTitle('second')->update(), audit: ['actor' => 'connected'], retry: 0);
-                $nested = auditErrorCode(fn() => $adb->transaction(fn() => $adb->transaction(fn() => null, audit: ['actor' => 'nested']), audit: [], retry: 0));
-                Assert::assertTrue($nested === Code::CONFIG, "a nested transaction with an audit is $nested, want CONFIG");
+                $seq = $adb->transaction(
+                    fn(): int => (new Item())->setTitle('first')->create()->getSeq(),
+                    audit: ['actor' => 'transaction'],
+                    retry: 0
+                );
+                $adb->transaction(
+                    fn() => (new Item())($adb)->setSeq($seq)->setTitle('second')->update(),
+                    audit: ['actor' => 'connected'],
+                    retry: 0
+                );
+                $nested = auditErrorCode(
+                    fn() => $adb->transaction(
+                        fn() => $adb->transaction(fn() => null, audit: ['actor' => 'nested']),
+                        audit: [],
+                        retry: 0
+                    )
+                );
+                Assert::assertTrue(
+                    $nested === Code::CONFIG,
+                    "a nested transaction with an audit is $nested, want CONFIG"
+                );
                 $s = (string) $seq;
                 $history = auditItemHistory($db);
                 $want = [
                     ['insert', 'NULL', $s, 'first', '1', 'live'],
                     ['update', '1', $s, 'second', '2', 'live'],
                 ];
-                Assert::assertTrue($history === $want, 'history ' . json_encode($history) . ', want ' . json_encode($want));
+                Assert::assertTrue(
+                    $history === $want,
+                    'history ' . json_encode($history) . ', want ' . json_encode($want)
+                );
                 $records = auditTextRows($db, 'SELECT seq, actor FROM audit ORDER BY seq');
-                Assert::assertTrue($records === [['1', 'transaction'], ['2', 'connected']], 'audit records ' . json_encode($records));
+                Assert::assertTrue(
+                    $records === [['1', 'transaction'], ['2', 'connected']],
+                    'audit records ' . json_encode($records)
+                );
             });
         }
     }
 
-    // Restores a soft-deleted row with restore (restore_case.php): an audit table with a unique key and exclude list, and
-    // a table without audit. At the end it removes the installed tables and PostgreSQL trigger functions.
+    // Restores a soft-deleted row with restore (restore_case.php): an audit table with a unique key and exclude list,
+    // and a table without audit. At the end it removes the installed tables and PostgreSQL trigger functions.
     // Requirements: DBS-67, DBS-87, DBS-88, DBS-93, DBS-96, DBS-117, DIA-161, INT-38.
     public function test_soft_delete_restore(): void
     {

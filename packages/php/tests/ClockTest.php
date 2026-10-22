@@ -11,7 +11,8 @@ declare(strict_types=1);
 // runs in a case database of its own (case_database.php) created through
 // ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN; the test fails when either is
 // unset.
-// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ClockTest.php [--filter <case>]
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ClockTest.php
+// [--filter <case>]
 require_once __DIR__ . '/case_database.php';
 
 use Polyspec\Orm\Tests\ClockCase\ClockEvent;
@@ -40,7 +41,11 @@ final class ClockTest extends TestCase
         });
 
         self::$documents = [(string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/clock.dbs')];
-        Generator::generate(RuntimeModel::build(RuntimeModel::parse(['clock.dbs' => self::$documents[0]])), "$work/models", 'Polyspec\\Orm\\Tests\\ClockCase');
+        Generator::generate(
+            RuntimeModel::build(RuntimeModel::parse(['clock.dbs' => self::$documents[0]])),
+            "$work/models",
+            'Polyspec\\Orm\\Tests\\ClockCase'
+        );
         spl_autoload_register(static function (string $class) use ($work): void {
             if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\ClockCase\\')) {
                 require "$work/models/" . substr($class, strlen('Polyspec\\Orm\\Tests\\ClockCase\\')) . '.php';
@@ -48,7 +53,11 @@ final class ClockTest extends TestCase
         });
         require "$work/models/bootstrap.php";
         self::$markDocuments = [(string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/clock_mark.dbs')];
-        Generator::generate(RuntimeModel::build(RuntimeModel::parse(['clock_mark.dbs' => self::$markDocuments[0]])), "$work/mark-models", 'Polyspec\\Orm\\Tests\\ClockMarkCase');
+        Generator::generate(
+            RuntimeModel::build(RuntimeModel::parse(['clock_mark.dbs' => self::$markDocuments[0]])),
+            "$work/mark-models",
+            'Polyspec\\Orm\\Tests\\ClockMarkCase'
+        );
         spl_autoload_register(static function (string $class) use ($work): void {
             if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\ClockMarkCase\\')) {
                 require "$work/mark-models/" . substr($class, strlen('Polyspec\\Orm\\Tests\\ClockMarkCase\\')) . '.php';
@@ -83,11 +92,20 @@ final class ClockTest extends TestCase
             }
             self::check(count($stamps) === 16, 'rows ' . count($stamps));
             foreach ($stamps as $stamp) {
-                self::check(preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{6}$/', $stamp) === 1, "created_ts $stamp has six fraction digits");
+                self::check(
+                    preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{6}$/', $stamp) === 1,
+                    "created_ts $stamp has six fraction digits"
+                );
                 $at = (float) (new DateTimeImmutable($stamp, new DateTimeZone('UTC')))->format('U.u');
-                self::check($at >= $before - 0.001 && $at <= $after + 0.001, "created_ts $stamp lies between $before and $after");
+                self::check(
+                    $at >= $before - 0.001 && $at <= $after + 0.001,
+                    "created_ts $stamp lies between $before and $after"
+                );
             }
-            self::check(array_filter($stamps, static fn(string $s): bool => !str_ends_with($s, '000')) !== [], 'every created_ts ends in 000: ' . implode(', ', $stamps));
+            self::check(
+                array_filter($stamps, static fn(string $s): bool => !str_ends_with($s, '000')) !== [],
+                'every created_ts ends in 000: ' . implode(', ', $stamps)
+            );
         } finally {
             $db->close();
         }
@@ -126,9 +144,15 @@ final class ClockTest extends TestCase
         $stamps = $pdo->query("SELECT $column FROM clock_mark ORDER BY seq")->fetchAll(PDO::FETCH_COLUMN);
         self::check(count($stamps) === 16, 'rows ' . count($stamps));
         foreach ($stamps as $stamp) {
-            self::check(is_string($stamp) && preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{6}$/', $stamp) === 1, 'deleted_at ' . var_export($stamp, true) . ' has six fraction digits');
+            self::check(
+                is_string($stamp) && preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{6}$/', $stamp) === 1,
+                'deleted_at ' . var_export($stamp, true) . ' has six fraction digits'
+            );
         }
-        self::check(array_filter($stamps, static fn($s): bool => is_string($s) && !str_ends_with($s, '000')) !== [], 'every deleted_at ends in 000: ' . implode(', ', array_map('strval', $stamps)));
+        self::check(
+            array_filter($stamps, static fn($s): bool => is_string($s) && !str_ends_with($s, '000')) !== [],
+            'every deleted_at ends in 000: ' . implode(', ', array_map('strval', $stamps))
+        );
     }
 
     /**

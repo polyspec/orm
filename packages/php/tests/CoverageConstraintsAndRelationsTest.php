@@ -27,8 +27,14 @@ final class CoverageConstraintsAndRelationsTest extends TestCase
             try {
                 $before = (new Author())($db)->getBySeq(1)->toArray();
                 $code = coverageCode(fn() => (new User())($db)->setSeq(1)->delete());
-                Assert::assertTrue($code === Code::FOREIGN_KEY, "delete of a referenced user is $code, want FOREIGN_KEY");
-                Assert::assertTrue((new User())($db)->getBySeq(1)->getName() === 'user-1', 'the referenced user changed');
+                Assert::assertTrue(
+                    $code === Code::FOREIGN_KEY,
+                    "delete of a referenced user is $code, want FOREIGN_KEY"
+                );
+                Assert::assertTrue(
+                    (new User())($db)->getBySeq(1)->getName() === 'user-1',
+                    'the referenced user changed'
+                );
                 $code = coverageCode(fn() => (new Author())($db)->setSeq(1)->setLikeCount(-1)->update());
                 Assert::assertTrue($code === Code::CONSTRAINT, "a negative like_count is $code, want CONSTRAINT");
                 $uuid = (new Author())($db)->getBySeq(2)->getUuid();

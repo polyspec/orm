@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace Polyspec\Orm;
 
 /**
- * A LISTEN subscription (docs/spec/dialects.md DIA-194 and DIA-195) on a PDO connection of its own. PHP has no cancellation
- * primitive, so receive takes a deadline: a deadline that expires fails the receive with CANCELED and closes the subscription.
+ * A LISTEN subscription (docs/spec/dialects.md DIA-194 and DIA-195) on a PDO connection of its own. PHP has no
+ * cancellation primitive, so receive takes a deadline: a deadline that expires fails the receive with CANCELED and
+ * closes the subscription.
  */
 final class Subscription
 {

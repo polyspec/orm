@@ -61,7 +61,10 @@ final class DbspecSetTest extends TestCase
         } finally {
             chdir($previous);
         }
-        $this->assertSame(['documents' => [['shop.dbs', "dbspec 1 shop\n"]], 'external' => [], 'errors' => []], dbspec_set_described($result));
+        $this->assertSame(
+            ['documents' => [['shop.dbs', "dbspec 1 shop\n"]], 'external' => [], 'errors' => []],
+            dbspec_set_described($result)
+        );
     }
 
     public function test_a_set_path_with_a_NUL_byte_is_a_set_file_error(): void
@@ -69,6 +72,9 @@ final class DbspecSetTest extends TestCase
         $path = "{$this->work}/a\0b/dbspec-set.json";
         $result = Dbspec::readSet($path);
         $this->assertNull($result->documents);
-        $this->assertSame([['set.file', $path]], array_map(static fn(object $e): array => [$e->rule, $e->path], $result->errors));
+        $this->assertSame(
+            [['set.file', $path]],
+            array_map(static fn(object $e): array => [$e->rule, $e->path], $result->errors)
+        );
     }
 }

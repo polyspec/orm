@@ -12,7 +12,8 @@ declare(strict_types=1);
 // Each case runs in a case database of its own (case_database.php) created
 // through ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN; the test fails when
 // one of the three is unset.
-// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/StatementFaultTest.php [--filter <case>]
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/StatementFaultTest.php
+// [--filter <case>]
 require_once __DIR__ . '/case_database.php';
 
 use Polyspec\Orm\Code;
@@ -41,8 +42,19 @@ final class StatementFaultTest extends TestCase
         $faultsAutoloaded = class_exists(\Polyspec\Orm\Testing\Faults::class);
         require_once dirname(__DIR__) . '/testing/Faults.php';
 
-        $fixture = json_decode((string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/statement_fault.json'), true, 16, JSON_THROW_ON_ERROR);
-        if (!is_array($fixture) || ($fixture['schema'] ?? null) !== 1 || !is_string($fixture['code'] ?? null) || !is_string($fixture['message'] ?? null) || !is_array($fixture['cases'] ?? null)) {
+        $fixture = json_decode(
+            (string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/statement_fault.json'),
+            true,
+            16,
+            JSON_THROW_ON_ERROR
+        );
+        if (
+            !is_array($fixture) || (
+            $fixture['schema'] ?? null
+            ) !== 1 || !is_string($fixture['code'] ?? null) || !is_string(
+                $fixture['message'] ?? null
+            ) || !is_array($fixture['cases'] ?? null)
+        ) {
             throw new RuntimeException('contracts/fixtures/statement_fault.json does not have the schema 1 shape');
         }
         self::$fault = ['code' => $fixture['code'], 'message' => $fixture['message']];
@@ -54,7 +66,11 @@ final class StatementFaultTest extends TestCase
         });
 
         $schemaText = "dbspec 1 statement_fault\n\ntable statement_probe {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n";
-        Generator::generate(RuntimeModel::build(RuntimeModel::parse(['statement_fault.dbs' => $schemaText])), "$work/models", 'Polyspec\\Orm\\Tests\\StatementFaultCase');
+        Generator::generate(
+            RuntimeModel::build(RuntimeModel::parse(['statement_fault.dbs' => $schemaText])),
+            "$work/models",
+            'Polyspec\\Orm\\Tests\\StatementFaultCase'
+        );
         spl_autoload_register(static function (string $class) use ($work): void {
             if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\StatementFaultCase\\')) {
                 require "$work/models/" . substr($class, strlen('Polyspec\\Orm\\Tests\\StatementFaultCase\\')) . '.php';
@@ -90,12 +106,18 @@ final class StatementFaultTest extends TestCase
     /** Checks an OrmException with the armed code, whose message names the armed message. */
     private static function checkFault(?Throwable $e, string $subject, array $fault): void
     {
-        self::check($e instanceof OrmException, "$subject raises " . ($e === null ? 'nothing' : $e::class . ': ' . $e->getMessage()));
+        self::check(
+            $e instanceof OrmException,
+            "$subject raises " . ($e === null ? 'nothing' : $e::class . ': ' . $e->getMessage())
+        );
         if (!$e instanceof OrmException) {
             return;
         }
         self::check($e->code_ === $fault['code'], "$subject code {$e->code_}: {$e->getMessage()}");
-        self::check(str_contains($e->getMessage(), $fault['message']), "$subject message names the armed message: {$e->getMessage()}");
+        self::check(
+            str_contains($e->getMessage(), $fault['message']),
+            "$subject message names the armed message: {$e->getMessage()}"
+        );
     }
 
     /**
@@ -113,7 +135,10 @@ final class StatementFaultTest extends TestCase
         $e = self::raised(fn() => (new StatementProbe())($db)->setLabel('refused')->create());
         self::checkFault($e, 'insert', $fault);
         self::check((new StatementProbe())($db)->getCount() === 0, 'the refused insert leaves no row');
-        self::check(in_array(['insert', $fault['code']], $events, true), 'the statement event of the insert carries ' . $fault['code'] . ': ' . json_encode($events));
+        self::check(
+            in_array(['insert', $fault['code']], $events, true),
+            'the statement event of the insert carries ' . $fault['code'] . ': ' . json_encode($events)
+        );
         $db->close();
     }
 
@@ -125,7 +150,10 @@ final class StatementFaultTest extends TestCase
         $e = self::raised(fn() => (new StatementProbe())($db)->setLabel('refused')->create());
         self::checkFault($e, 'first insert', $fault);
         $second = self::raised(fn() => (new StatementProbe())($db)->setLabel('sent')->create());
-        self::check($second === null, 'the second insert runs after the consumed fault: ' . ($second === null ? '' : $second->getMessage()));
+        self::check(
+            $second === null,
+            'the second insert runs after the consumed fault: ' . ($second === null ? '' : $second->getMessage())
+        );
         self::check((new StatementProbe())($db)->getCount() === 1, 'only the second insert writes a row');
         $db->close();
     }
@@ -143,7 +171,10 @@ final class StatementFaultTest extends TestCase
             (new StatementProbe())($db)->setLabel('in transaction')->create();
         }, retry: 0));
         self::checkFault($e, 'transaction', $fault);
-        self::check((new StatementProbe())($db)->getCount() === 0, 'the transaction with the refused insert writes no row');
+        self::check(
+            (new StatementProbe())($db)->getCount() === 0,
+            'the transaction with the refused insert writes no row'
+        );
         $db->close();
     }
 
@@ -158,10 +189,18 @@ final class StatementFaultTest extends TestCase
         $empty = [['', $fault['message']], [$fault['code'], '']];
         foreach ($empty as [$code, $message]) {
             $e = self::raised(fn() => Faults::failNextStatement($db, $code, $message));
-            self::check($e instanceof \InvalidArgumentException, 'failNextStatement with code "' . $code . '" and message "' . $message . '" raises ' . ($e === null ? 'nothing' : $e::class . ': ' . $e->getMessage()));
+            self::check(
+                $e instanceof \InvalidArgumentException,
+                'failNextStatement with code "' . $code . '" and message "' . $message . '" raises ' . (
+                    $e === null ? 'nothing' : $e::class . ': ' . $e->getMessage()
+                )
+            );
         }
         $insert = self::raised(fn() => (new StatementProbe())($db)->setLabel('sent')->create());
-        self::check($insert === null, 'the insert runs because no fault was armed: ' . ($insert === null ? '' : $insert->getMessage()));
+        self::check(
+            $insert === null,
+            'the insert runs because no fault was armed: ' . ($insert === null ? '' : $insert->getMessage())
+        );
         self::check((new StatementProbe())($db)->getCount() === 1, 'the insert writes its row');
         $db->close();
     }
@@ -179,14 +218,19 @@ final class StatementFaultTest extends TestCase
     }
 
     /**
-     * The cases of contracts/fixtures/statement_fault.json, each a data set named by its id. The guard names every case of
-     * the fixture; a fixture case without a body fails here.
+     * The cases of contracts/fixtures/statement_fault.json, each a data set named by its id. The guard names every case
+     * of the fixture; a fixture case without a body fails here.
      *
      * @return iterable<string, array{string}>
      */
     public static function fixtureCases(): iterable
     {
-        $fixture = json_decode((string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/statement_fault.json'), true, 16, JSON_THROW_ON_ERROR);
+        $fixture = json_decode(
+            (string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/statement_fault.json'),
+            true,
+            16,
+            JSON_THROW_ON_ERROR
+        );
         foreach ($fixture['cases'] as $name) {
             if (!isset(self::CASES[$name])) {
                 throw new RuntimeException("fixture case $name has no body in StatementFaultTest.php");

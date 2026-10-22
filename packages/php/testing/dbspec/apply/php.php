@@ -6,10 +6,11 @@ declare(strict_types=1);
 // rename-table-and-column) to one database with the PHP client
 // (docs/spec/plans.md "Apply"). action is one of apply-first (first plan only), apply (whole chain),
 // stop (stop after statement 1 of the second plan runs), recover (continue an interrupted plan
-// to completion), or rollback (revert the last plan in history). It writes one result line to stdout: "ok", "stopped", or
-// "error <code>". Any other error is written to stderr and exits with 1.
+// to completion), or rollback (revert the last plan in history). It writes one result line to stdout: "ok", "stopped",
+// or "error <code>". Any other error is written to stderr and exits with 1.
 //
-// Usage: php packages/php/testing/dbspec/apply/php.php <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>
+// Usage: php packages/php/testing/dbspec/apply/php.php <apply-first|apply|stop|recover|rollback>
+// <mysql|postgres|sqlite> <uri> <plans.json>
 
 require __DIR__ . '/../../../../../vendor-php/autoload.php';
 require __DIR__ . '/../../../../../tests/dbspec/input.php';
@@ -20,10 +21,17 @@ use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Orm;
 
 // The statements every client runs on a new connection (packages/go/internal/dialects connectionRules).
-const CONNECTION_RULES = ['mysql' => ["SET time_zone = '+00:00'"], 'postgres' => ["SET TimeZone = 'UTC'"], 'sqlite' => ['PRAGMA foreign_keys = ON']];
+const CONNECTION_RULES = [
+    'mysql' => ["SET time_zone = '+00:00'"],
+    'postgres' => ["SET TimeZone = 'UTC'"],
+    'sqlite' => ['PRAGMA foreign_keys = ON']
+];
 
 if ($argc !== 5) {
-    fwrite(STDERR, "usage: php packages/php/testing/dbspec/apply/php.php <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>\n");
+    fwrite(
+        STDERR,
+        "usage: php packages/php/testing/dbspec/apply/php.php <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>\n"
+    );
     exit(2);
 }
 [, $action, $dialect, $uri, $vectorsPath] = $argv;
@@ -56,7 +64,12 @@ try {
         'apply' => Dbspec::apply($pdo, $dialect, $plans, $now, null),
         'recover' => Dbspec::recover($pdo, $dialect, $plans, $now, null),
         'rollback' => Dbspec::rollback($pdo, $dialect, $plans, $now, null),
-        'stop' => Dbspec::apply($pdo, $dialect, $plans, $now, static function (ApplyEvent $event) use ($plans, $stop): void {
+        'stop' => Dbspec::apply($pdo, $dialect, $plans, $now, static function (
+            ApplyEvent $event
+        ) use (
+            $plans,
+            $stop
+): void {
             if ($event->kind === 'applied' && $event->plan === $plans[1]->name && $event->step === 1) {
                 throw $stop;
             }

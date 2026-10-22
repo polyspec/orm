@@ -16,7 +16,12 @@ final class StyledValueTest extends TestCase
     /** @return array<string, mixed> contracts/fixtures/styled_column_states.json */
     private static function fixture(): array
     {
-        return json_decode(file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/styled_column_states.json'), true, 512, JSON_THROW_ON_ERROR);
+        return json_decode(
+            file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/styled_column_states.json'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
     }
 
     /** @return iterable<string, array{array<string, mixed>}> for each case of the fixture */
@@ -29,7 +34,10 @@ final class StyledValueTest extends TestCase
 
     public function test_class_exists(): void
     {
-        self::assertTrue(class_exists(StyledValue::class), 'the PHP client declares no class Polyspec\\Orm\\StyledValue');
+        self::assertTrue(
+            class_exists(StyledValue::class),
+            'the PHP client declares no class Polyspec\\Orm\\StyledValue'
+        );
     }
 
     /** @param array<string, mixed> $case */
@@ -49,7 +57,11 @@ final class StyledValueTest extends TestCase
                 $decoded = Codec::decode($styles, $case['stored_text']);
                 self::assertArrayNotHasKey('error', $case, "$id: decode accepted invalid storage");
                 self::assertInstanceOf(StyledValue::class, $decoded);
-                self::assertSame($case['getter'], json_decode(Model::jsonText($decoded), true, 512, JSON_THROW_ON_ERROR), "$id: decoded state differs from fixture");
+                self::assertSame(
+                    $case['getter'],
+                    json_decode(Model::jsonText($decoded), true, 512, JSON_THROW_ON_ERROR),
+                    "$id: decoded state differs from fixture"
+                );
             } catch (OrmException $error) {
                 self::assertSame($case['error'] ?? null, $error->code_, "$id: unexpected decode error {$error->code_}");
             }
@@ -58,7 +70,11 @@ final class StyledValueTest extends TestCase
             $state = $case['input']['kind'] === 'sql-null'
                 ? StyledValue::sqlNull()
                 : StyledValue::value($case['input']['value']);
-            self::assertSame($case['write_text'], Codec::encode($styles, $state), "$id: encoded cell differs from fixture");
+            self::assertSame(
+                $case['write_text'],
+                Codec::encode($styles, $state),
+                "$id: encoded cell differs from fixture"
+            );
         }
     }
 
@@ -98,6 +114,10 @@ final class StyledValueTest extends TestCase
             self::assertSame($cases['nonnull_sql_null']['error'], $error->code_);
         }
         $probe->setPayload(StyledValue::value(\Polyspec\OrderedJson\parse('null')));
-        self::assertSame($cases['nonnull_value_null']['getter'], json_decode(Model::jsonText($probe->getPayload()), true, 512, JSON_THROW_ON_ERROR), 'non-null column rejected JSON literal null');
+        self::assertSame(
+            $cases['nonnull_value_null']['getter'],
+            json_decode(Model::jsonText($probe->getPayload()), true, 512, JSON_THROW_ON_ERROR),
+            'non-null column rejected JSON literal null'
+        );
     }
 }

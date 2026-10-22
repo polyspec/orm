@@ -42,9 +42,23 @@ final class ModelMethodsTest extends TestCase
         @mkdir("$work/model", 0o700, true);
 
         file_put_contents("$work/methods.dbs", SCHEMA);
-        file_put_contents("$work/dbspec-set.json", json_encode(['schema' => 1, 'documents' => ['methods.dbs'], 'external' => []]));
+        file_put_contents(
+            "$work/dbspec-set.json",
+            json_encode(['schema' => 1, 'documents' => ['methods.dbs'], 'external' => []])
+        );
         ob_start();
-        $generated = OrmGen::run(['gen', '--set', "$work/dbspec-set.json", '--out', "$work/model", '--namespace', 'Polyspec\\Orm\\Tests\\Methods'], STDERR);
+        $generated = OrmGen::run(
+            [
+                'gen',
+                '--set',
+                "$work/dbspec-set.json",
+                '--out',
+                "$work/model",
+                '--namespace',
+                'Polyspec\\Orm\\Tests\\Methods'
+            ],
+            STDERR
+        );
         ob_end_clean();
         self::assertSame(0, $generated, 'orm-gen exit code');
         file_put_contents("$work/calls.php", MODEL_METHODS_CALLS);
@@ -53,8 +67,14 @@ final class ModelMethodsTest extends TestCase
         // runs on the package's autoloader (bootstrap.php) and loads the models' autoloader only.
         file_put_contents("$work/models.php", "<?php\nspl_autoload_register(static function (string \$class): void {\n"
             . "    \$prefix = 'Polyspec\\\\Orm\\\\Tests\\\\Methods\\\\';\n"
-            . "    if (str_starts_with(\$class, \$prefix)) {\n        require " . var_export("$work/model/", true) . " . substr(\$class, strlen(\$prefix)) . '.php';\n    }\n});\n");
-        file_put_contents("$work/autoload.php", "<?php\nrequire " . var_export("$root/packages/php/tests/autoload.php", true) . ";\n"
+            . "    if (str_starts_with(\$class, \$prefix)) {\n        require " . var_export(
+                "$work/model/",
+                true
+            ) . " . substr(\$class, strlen(\$prefix)) . '.php';\n    }\n});\n");
+        file_put_contents("$work/autoload.php", "<?php\nrequire " . var_export(
+            "$root/packages/php/tests/autoload.php",
+            true
+        ) . ";\n"
             . "require " . var_export("$work/models.php", true) . ";\n");
     }
 
@@ -78,8 +98,15 @@ final class ModelMethodsTest extends TestCase
         fclose($pipes[1]);
         fclose($pipes[2]);
         $code = proc_close($process);
-        $findings = array_values(array_filter(explode("\n", $out), static fn(string $line): bool => str_contains($line, '[identifier=')));
-        self::assertFalse($code !== 0 || $findings !== [], "phpstan exited $code with " . count($findings) . " findings:\n" . implode("\n", $findings) . ($findings === [] ? "\n$out$err" : ''));
+        $findings = array_values(
+            array_filter(explode("\n", $out), static fn(string $line): bool => str_contains($line, '[identifier='))
+        );
+        self::assertFalse(
+            $code !== 0 || $findings !== [],
+            "phpstan exited $code with " . count($findings) . " findings:\n" . implode("\n", $findings) . (
+                $findings === [] ? "\n$out$err" : ''
+            )
+        );
     }
 
     public function test_a_declared_method_builds_the_query_of_its_chain(): void
@@ -88,20 +115,44 @@ final class ModelMethodsTest extends TestCase
         require_once "$work/models.php";
         $class = 'Polyspec\\Orm\\Tests\\Methods\\Item';
         $reflection = new ReflectionClass($class);
-        foreach (['seq', 'tupleAccountSeqWithProjectSeq', 'orderByNameDesc', 'sumAmount', 'forceIndexIxItemAccount'] as $method) {
-            self::assertFalse(!$reflection->hasMethod($method) || $reflection->getMethod($method)->getDeclaringClass()->getName() !== $class, "$class does not declare $method");
+        foreach (
+            [
+            'seq',
+            'tupleAccountSeqWithProjectSeq',
+            'orderByNameDesc',
+            'sumAmount',
+            'forceIndexIxItemAccount'
+            ] as $method
+        ) {
+            self::assertFalse(
+                !$reflection->hasMethod($method) || $reflection
+                    ->getMethod($method)
+                    ->getDeclaringClass()
+                    ->getName() !== $class,
+                "$class does not declare $method"
+            );
         }
         foreach (['tupleSeq', 'tupleName', 'sumName', 'plusName'] as $method) {
-            self::assertFalse($reflection->hasMethod($method), "$class declares $method, which the schema does not enumerate");
+            self::assertFalse(
+                $reflection->hasMethod($method),
+                "$class declares $method, which the schema does not enumerate"
+            );
         }
         // Each declared method leaves the model in the state that the chain of its name leaves it in.
-        $calls = ['seq' => [1], 'accountSeq' => [[1, 2]], 'tupleAccountSeqWithProjectSeq' => [[[1, 2]]], 'addColumnName' => [],
+        $calls = ['seq' => [1], 'accountSeq' => [[1, 2]], 'tupleAccountSeqWithProjectSeq' => [
+            [[1, 2]]
+        ], 'addColumnName' => [],
             'removeColumnAmount' => [], 'groupByAccountSeq' => [], 'keyNameSeq' => [], 'orderBySeqAsc' => [], 'orderByNameDesc' => [],
-            'plusAmount' => ['1.00'], 'minusAccountSeq' => [1], 'sumAmount' => [], 'avgSeq' => [], 'forceIndexIxItemAccount' => []];
+            'plusAmount' => [
+                '1.00'
+            ], 'minusAccountSeq' => [1], 'sumAmount' => [], 'avgSeq' => [], 'forceIndexIxItemAccount' => []];
         foreach ($calls as $method => $args) {
             $declared = (new $class())->$method(...$args);
             $chained = (new $class())->__call($method, $args);
-            self::assertFalse(var_export((array) $declared, true) !== var_export((array) $chained, true), "$method builds another query than the chain of its name");
+            self::assertFalse(
+                var_export((array) $declared, true) !== var_export((array) $chained, true),
+                "$method builds another query than the chain of its name"
+            );
         }
     }
 

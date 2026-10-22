@@ -5,8 +5,9 @@ declare(strict_types=1);
 // SQLite locking: several processes commit read-then-write transactions on one file without
 // transaction retries, a second connection reads while a write transaction is open, and a write
 // that waits longer than busy_timeout returns CANCELED.
-// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/SqliteConcurrencyTest.php [--filter <case>]
-// The writer processes run sqlite_concurrency_writer.php <dsn> <name> <count>.
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist
+// packages/php/tests/SqliteConcurrencyTest.php [--filter <case>] The writer processes run sqlite_concurrency_writer.php
+// <dsn> <name> <count>.
 
 use Polyspec\Orm\Tests\Model\Service;
 use Polyspec\Orm\Code;
@@ -71,7 +72,11 @@ final class SqliteConcurrencyTest extends TestCase
         $dsn = self::database('processes');
         $children = [];
         for ($i = 0; $i < 6; $i++) {
-            $p = proc_open([PHP_BINARY, __DIR__ . '/sqlite_concurrency_writer.php', $dsn, "p$i", '40'], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+            $p = proc_open(
+                [PHP_BINARY, __DIR__ . '/sqlite_concurrency_writer.php', $dsn, "p$i", '40'],
+                [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+                $pipes
+            );
             $children[] = [$p, $pipes];
         }
         foreach ($children as $i => [$p, $pipes]) {

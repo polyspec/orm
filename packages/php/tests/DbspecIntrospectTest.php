@@ -35,7 +35,11 @@ final class CountingPdo extends PDO
 // The number of catalog queries per dialect, independent of the table count (docs/spec/dialects.md "Introspection").
 const QUERY_COUNTS = ['mysql' => 9, 'postgres' => 7, 'sqlite' => 3];
 // The statement that every client runs on a new connection.
-const INTROSPECT_CONNECTION_RULES = ['mysql' => ["SET time_zone = '+00:00'"], 'postgres' => ["SET TimeZone = 'UTC'"], 'sqlite' => ['PRAGMA foreign_keys = ON']];
+const INTROSPECT_CONNECTION_RULES = [
+    'mysql' => ["SET time_zone = '+00:00'"],
+    'postgres' => ["SET TimeZone = 'UTC'"],
+    'sqlite' => ['PRAGMA foreign_keys = ON']
+];
 
 /** The DSNs of the servers; the test fails when either is unset. */
 function introspect_dsns(): array
@@ -89,7 +93,11 @@ function open_database(string $dialect): array
             // A case that needs a second schema makes it as <schema>_b.
             $admin->exec("DROP SCHEMA IF EXISTS \"{$name}_b\" CASCADE");
         }
-        $admin->exec(($dialect === 'mysql' ? 'DROP DATABASE ' : 'DROP SCHEMA ') . $quoted . ($dialect === 'mysql' ? '' : ' CASCADE'));
+        $admin->exec(
+            (
+                $dialect === 'mysql' ? 'DROP DATABASE ' : 'DROP SCHEMA '
+            ) . $quoted . ($dialect === 'mysql' ? '' : ' CASCADE')
+        );
         $left = $dialect === 'mysql'
             ? $admin->prepare('SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME IN (?, ?)')
             : $admin->prepare('SELECT COUNT(*) FROM pg_namespace WHERE nspname IN (?, ?)');
@@ -115,7 +123,11 @@ function parse_set(string $id, array $texts): array
         unset($others[$name]);
         $result = Dbspec::parse($text, $others);
         if ($result->document === null) {
-            throw new RuntimeException("$id/$name: " . json_encode(array_map(static fn($d) => [$d->rule, $d->line, $d->message], $result->diagnostics)));
+            throw new RuntimeException(
+                "$id/$name: " . json_encode(
+                    array_map(static fn($d) => [$d->rule, $d->line, $d->message], $result->diagnostics)
+                )
+            );
         }
         $documents[] = $result->document;
     }
@@ -132,7 +144,11 @@ function lines_text(array $lines): string
 function render_statements(string $id, array $documents, string $dialect): array
 {
     $rendered = Dbspec::render($documents, $dialect);
-    return $rendered->statements ?? throw new RuntimeException("$id/$dialect: " . json_encode(array_map(static fn($d) => [$d->rule, $d->line, $d->message], $rendered->diagnostics)));
+    return $rendered->statements ?? throw new RuntimeException(
+        "$id/$dialect: " . json_encode(
+            array_map(static fn($d) => [$d->rule, $d->line, $d->message], $rendered->diagnostics)
+        )
+    );
 }
 
 /** The schema text of one document with all the tables of the set in name order. @param list<Document> $documents */
@@ -144,7 +160,9 @@ function expected_schema_text(array $documents): string
     }
     usort($combined->tables, static fn(Table $a, Table $b): int => strcmp($a->name, $b->name));
     $manifest = Dbspec::manifest([$combined]);
-    return $manifest->manifest?->schemaText ?? throw new RuntimeException('manifest: ' . json_encode(array_map(static fn($d) => [$d->rule, $d->message], $manifest->diagnostics)));
+    return $manifest->manifest?->schemaText ?? throw new RuntimeException(
+        'manifest: ' . json_encode(array_map(static fn($d) => [$d->rule, $d->message], $manifest->diagnostics))
+    );
 }
 
 /**
@@ -189,16 +207,22 @@ final class DbspecIntrospectTest extends TestCase
         foreach ($ddl['cases'] as $case) {
             $sets['ddl_' . str_replace('-', '_', $case['id'])] = array_map(lines_text(...), $case['documents']);
         }
-        // The same list as schemaDocumentPatterns in packages/go/internal/dialects. Each schema document is one set with the
-        // documents of its directory that it uses.
+        // The same list as schemaDocumentPatterns in packages/go/internal/dialects. Each schema document is one set
+        // with the documents of its directory that it uses.
         foreach (["$root/contracts/fixtures/bench/*.dbs", "$root/contracts/fixtures/*.dbs"] as $pattern) {
             $paths = [];
             foreach (glob($pattern) ?: throw new RuntimeException("no document matches $pattern") as $path) {
                 $paths[basename($path, '.dbs')] = $path;
             }
             foreach ($paths as $name => $path) {
-                $others = array_map(static fn(string $other): string => (string) file_get_contents($other), array_diff_key($paths, [$name => true]));
-                $document = Dbspec::parse((string) file_get_contents($path), $others)->document ?? throw new RuntimeException("$path does not parse");
+                $others = array_map(
+                    static fn(string $other): string => (string) file_get_contents($other),
+                    array_diff_key($paths, [$name => true])
+                );
+                $document = Dbspec::parse(
+                    (string) file_get_contents($path),
+                    $others
+                )->document ?? throw new RuntimeException("$path does not parse");
                 $set = [$name => $path];
                 foreach ($document->uses as $use) {
                     $set[$use->document] = $paths[$use->document];
@@ -229,7 +253,14 @@ final class DbspecIntrospectTest extends TestCase
         $documents = parse_set($setId, $texts);
         $want = expected_schema_text($documents);
         [$result, $queries] = introspect_applied($dialect, render_statements($id, $documents, $dialect));
-        $this->assertSame([], array_map(static fn(Unsupported $u): array => [$u->kind, $u->table, $u->name, $u->reason], $result->unsupported), "$id: unsupported");
+        $this->assertSame(
+            [],
+            array_map(
+                static fn(Unsupported $u): array => [$u->kind, $u->table, $u->name, $u->reason],
+                $result->unsupported
+            ),
+            "$id: unsupported"
+        );
         $this->assertSame($want, expected_schema_text([$result->document]), "$id: schema text differs");
         // The catalog query count per dialect, independent of the table count: it is the same for all sets.
         $this->assertSame(QUERY_COUNTS[$dialect], $queries, "$id: introspection query count");
@@ -238,7 +269,12 @@ final class DbspecIntrospectTest extends TestCase
     // Unsupported cases: tests/dbspec/introspect.json.
     public static function unsupportedCases(): iterable
     {
-        $vectors = json_decode(file_get_contents(dirname(__DIR__, 3) . '/tests/dbspec/introspect.json'), true, 512, JSON_THROW_ON_ERROR);
+        $vectors = json_decode(
+            file_get_contents(dirname(__DIR__, 3) . '/tests/dbspec/introspect.json'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
         if (($vectors['cases'] ?? []) === []) {
             throw new RuntimeException('Missing introspect vectors');
         }
@@ -255,11 +291,19 @@ final class DbspecIntrospectTest extends TestCase
         $statements = [...render_statements($id, $documents, $case['dialect']), ...$case['statements']];
         [$result] = introspect_applied($case['dialect'], $statements);
         $this->assertSame(lines_text($case['document']), Dbspec::emit($result->document), "$id: document differs");
-        $this->assertSame(array_map(static fn(array $w): array => array_slice($w, 0, 3), $case['unsupported']), unsupported_entries($result->unsupported), "$id: unsupported differs");
+        $this->assertSame(
+            array_map(static fn(array $w): array => array_slice($w, 0, 3), $case['unsupported']),
+            unsupported_entries($result->unsupported),
+            "$id: unsupported differs"
+        );
         // The fourth element is the rule the reason must contain. If absent, the reason is not compared.
         foreach ($case['unsupported'] as $i => $want) {
             if (isset($want[3])) {
-                $this->assertStringContainsString($want[3], $result->unsupported[$i]->reason, "$id: reason of " . implode(' ', array_slice($want, 0, 3)) . ' differs');
+                $this->assertStringContainsString(
+                    $want[3],
+                    $result->unsupported[$i]->reason,
+                    "$id: reason of " . implode(' ', array_slice($want, 0, 3)) . ' differs'
+                );
             }
         }
     }
@@ -283,6 +327,10 @@ final class DbspecIntrospectTest extends TestCase
     {
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('information_schema');
-        Dbspec::introspect(new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => $mode]), 'mysql', 'introspected');
+        Dbspec::introspect(
+            new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => $mode]),
+            'mysql',
+            'introspected'
+        );
     }
 }

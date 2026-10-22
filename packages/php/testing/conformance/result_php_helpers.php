@@ -8,7 +8,13 @@ function derivedInteger(mixed $value): int
     if (is_int($value)) {
         return $value;
     }
-    if (is_float($value) && is_finite($value) && floor($value) === $value && $value >= -9_223_372_036_854_775_808.0 && $value < 9_223_372_036_854_775_808.0) {
+    if (
+        is_float(
+            $value
+        ) && is_finite(
+            $value
+        ) && floor($value) === $value && $value >= -9_223_372_036_854_775_808.0 && $value < 9_223_372_036_854_775_808.0
+    ) {
         return (int) $value;
     }
     if (is_string($value) && preg_match('/^-?(?:0|[1-9][0-9]*)$/D', $value) === 1) {

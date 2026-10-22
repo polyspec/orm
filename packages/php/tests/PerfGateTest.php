@@ -35,11 +35,18 @@ final class PerfGateTest extends TestCase
     {
         $refused = perfGateRefusedExtensions(fn (string $name): bool => extension_loaded($name));
         if ($refused !== []) {
-            throw new RuntimeException('perf_gate: this PHP loads ' . implode(', ', $refused) . '; the gate measures PHP without a debugger or coverage driver (shivammathur/setup-php coverage: none)');
+            throw new RuntimeException(
+                'perf_gate: this PHP loads ' . implode(
+                    ', ',
+                    $refused
+                ) . '; the gate measures PHP without a debugger or coverage driver (shivammathur/setup-php coverage: none)'
+            );
         }
         $benchDsn = requiredDsn('ORM_BENCH_MYSQL_DSN');
         if ($benchDsn === false || $benchDsn === '') {
-            throw new RuntimeException('ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database, and the gate never skips; run it through make orm-check or make run-databases TARGETS=<target>, which create the bench database of the run');
+            throw new RuntimeException(
+                'ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database, and the gate never skips; run it through make orm-check or make run-databases TARGETS=<target>, which create the bench database of the run'
+            );
         }
         self::$db = \Polyspec\Orm\Tests\Model\connect($benchDsn, new Config(
             aesKey: 'bench-salt',
@@ -76,9 +83,30 @@ final class PerfGateTest extends TestCase
     {
         $native = self::native(self::$db, self::query($name));
         [$clientNs, $nativeNs, $ratio] = self::pairedRatio(static fn() => self::query($name)->gets(), $native);
-        fwrite(STDERR, sprintf("perf_gate %s: native %.1fµs client %.1fµs ratio %.2f (bound %.2f)\n", $name, $nativeNs / 1000, $clientNs / 1000, $ratio, $bound));
+        fwrite(
+            STDERR,
+            sprintf(
+                "perf_gate %s: native %.1fµs client %.1fµs ratio %.2f (bound %.2f)\n",
+                $name,
+                $nativeNs / 1000,
+                $clientNs / 1000,
+                $ratio,
+                $bound
+            )
+        );
         if ($ratio > $bound) {
-            fwrite(STDERR, sprintf("WARNING perf_gate %s: client/native ratio %.2f is above its reference %.2f (docs/operations/perf.md); machine %s %s, PHP %s\n", $name, $ratio, $bound, PHP_OS_FAMILY, php_uname('m'), PHP_VERSION));
+            fwrite(
+                STDERR,
+                sprintf(
+                    "WARNING perf_gate %s: client/native ratio %.2f is above its reference %.2f (docs/operations/perf.md); machine %s %s, PHP %s\n",
+                    $name,
+                    $ratio,
+                    $bound,
+                    PHP_OS_FAMILY,
+                    php_uname('m'),
+                    PHP_VERSION
+                )
+            );
         }
     }
 
@@ -152,10 +180,17 @@ final class PerfGateTest extends TestCase
     private static function native(Db $db, Author $query): Closure
     {
         $q = $query->getQuery();
-        $binds = array_map(static fn(mixed $v): mixed => $v === Db::SECRET ? 'bench-salt' : (is_bool($v) ? (int) $v : $v), $q['binds']);
+        $binds = array_map(
+            static fn(mixed $v): mixed => $v === Db::SECRET ? 'bench-salt' : (is_bool($v) ? (int) $v : $v),
+            $q['binds']
+        );
         $cells = [];
         $columns = null;
-        foreach ((new ReflectionProperty(\Polyspec\Orm\Engine::class, 'plans'))->getValue(\Polyspec\Orm\Engine::for(Author::meta()['manifest_hash'], $db->driver(), $db->config()->planCacheSize)) as $plan) {
+        foreach (
+            (new ReflectionProperty(\Polyspec\Orm\Engine::class, 'plans'))->getValue(
+                \Polyspec\Orm\Engine::for(Author::meta()['manifest_hash'], $db->driver(), $db->config()->planCacheSize)
+            ) as $plan
+        ) {
             if ($plan['steps'][0]['sql'] === $q['sql']) {
                 $cells = $plan['steps'][0]['decode'];
                 $columns = $plan['steps'][0]['assemble']['columns'];
@@ -208,7 +243,9 @@ final class PerfGateTest extends TestCase
                 }
                 foreach ($groups['string'] as [$index, $name]) {
                     $v = $vals[$index];
-                    $values[$name] = $v === null || is_string($v) ? $v : (is_resource($v) ? stream_get_contents($v) : (string) $v);
+                    $values[$name] = $v === null || is_string($v) ? $v : (
+                        is_resource($v) ? stream_get_contents($v) : (string) $v
+                    );
                 }
                 foreach ($groups['codec'] as [$index, $name]) {
                     $values[$name] = $vals[$index];
