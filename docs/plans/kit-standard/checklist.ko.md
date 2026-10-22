@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 3727f359e232fafc2f265667ac8bebeb726bf5eb01e075af90a8f39130c08c3b -->
+<!-- source-sha256: 4261e9f0336e121ac9bc148c4af63e9d54a4143d8d8c39fe4d4d571f810bf8e2 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -153,7 +153,7 @@
 | KSTD-10-2 | group-rows-db-typescript가 읽는 TypeScript build 출력을 보유한다(KSTD-10 하위). Cause: READ_TYPESCRIPT 없이 실행 | Makefile | `var/tools/bin/node --test --test-name-pattern='a target that runs code using the TypeScript build output holds it' scripts/repo/check.test.mts` | [o] |
 | KSTD-10-3 | group-rows-db-go가 go-test.mts를 거쳐 시한 없이 실행한다(KSTD-10 하위). Cause: go test를 직접 실행, 기본 10분 timeout | Makefile | `var/tools/bin/node --test --test-name-pattern='every go test runs through go-test.mts or run-long\|no check puts a deadline on a long operation' scripts/repo/check.test.mts` | [o] |
 | KSTD-10-4 | group_rows_db.mjs가 tests/testcase.mts로 사례를 보고한다(KSTD-10 하위). Cause: caseTest 없이 실행 | packages/ts/tests/group_rows_db.mjs | `var/tools/bin/node --test --test-name-pattern='every PHP and TypeScript test that a check runs reports its cases' scripts/repo/check.test.mts` | [o] |
-| KSTD-10-5 | scripts/php/vendor-autoload-check.test.mjs가 caseTest로 테스트를 선언한다(KSTD-10 하위). Cause: node:test 직접 사용 | scripts/php/vendor-autoload-check.test.mjs | `var/tools/bin/node --test --test-name-pattern='every JavaScript test declares its cases with caseTest' scripts/repo/check.test.mts` | [ ] |
+| KSTD-10-5 | scripts/php/vendor-autoload-check.test.mjs가 caseTest로 테스트를 선언한다(KSTD-10 하위). Cause: node:test 직접 사용 | scripts/php/vendor-autoload-check.test.mjs | `var/tools/bin/node --test --test-name-pattern='every JavaScript test declares its cases with caseTest' scripts/repo/check.test.mts` | [o] |
 | KSTD-10-5-1 | scripts/php의 autoload 검사 test가 다시 caseTest로 사례를 선언한다(KSTD-10-5 하위). Cause: c1f3aa7d9(KSTD-3-2)가 scripts/php/vendor-autoload-check.test.mjs를 node:test로 다시 썼다 | scripts/php/vendor-autoload-check.test.mjs | `var/tools/bin/node --test --test-name-pattern='every JavaScript test declares its cases with caseTest' scripts/repo/check.test.mts` | [o] |
 | KSTD-10-6 | packages/rust/orm의 mysql_lock_wait_timeout_is_canceled test가 testcase package로 case를 시작한다(KSTD-10 하위, KSTD-5-22). Cause: polyspec_orm_testcase 미사용 | packages/rust/orm/src/lib.rs | `var/tools/bin/node --test --test-name-pattern='every Rust test starts its case with the shared testcase package' scripts/repo/check.test.mts` | [o] |
 | KSTD-10-7 | gates.yml의 모든 CI 단계가 make target을 실행한다(KSTD-10 하위, KSTD-5-24). Cause: kit 복사본이라 kit 소유 | the kit copy .github/workflows/gates.yml | `var/tools/bin/node --test --test-name-pattern='every CI step runs a make target' scripts/repo/check.test.mts` | [-] 원인: KSTD-5-24과 중복 (모든 CI step이 make target을 실행); KSTD-5-24 유지 |

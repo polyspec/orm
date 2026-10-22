@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a05e52a212d9aa13c0175e398e82fdb33beea50418730843eca0b318cc9a0049 -->
+<!-- source-sha256: 54aecca0bec3740dbaac768cd2bfd9253fadc866743c90f1a82b85e70572f9b2 -->
 # 변경 이력
 
 ## Unreleased
+- KSTD-10-5를 main에서 다시 완료로 표시한다: autoload 검사 사례는 KSTD-3-2 commit이 node:test로 다시 쓴 뒤 KSTD-10-5-1이 복구한 대로 `caseTest`로 선언된다(KSTD-10-5). red: 규칙이 다시 쓰인 test에서 실패했다.
 
 - 테스트 서버의 startLogged는 더는 영원히 기다리지 않는다: 준비 줄이 오지 않으면 단계와 로그를 밝히며 실패하고, 로그도 주기적으로 읽는다 (KSTD-5-37).
 - `scripts/check/run.test.mts`의 가드 test는 로컬에서 CI group의 거부만 검사하고 CI identity를 설정하지 않는다. 수락 사례는 GitHub Actions 프로세스에서만 실행된다(KSTD-5-13). red: 부모의 test가 로컬 실행에서 CI identity를 설정해 bypass 검사가 실패했다.
