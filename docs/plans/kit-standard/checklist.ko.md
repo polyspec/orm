@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: df925d2ac669b27eb7ee73fe0e078b5decd8342d340a2b490a04a969ea76b32a -->
+<!-- source-sha256: d7bb390f4f62e344bec79d6e392215de544515e887bb4d9a7084798b498db476 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -213,6 +213,7 @@
 | KSTD-5-57-18c | sqlite_concurrency.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests/sqlite_concurrency.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-18d | lock_probe_order.rs의 미사용 import를 고친다 (KSTD-5-57 하위) | packages/rust/build/tests/lock_probe_order.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-18e | packages/rust/tests의 catch-check 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/tests/tests/integration/coverage_schema_install.rs, packages/rust/tests/tests/markdown_conformance.rs | `make lint-rust` reports no finding in these files | [ ] |
+| KSTD-5-57-24 | tests crate의 conformance.rs, integration.rs, decimal_physical.rs, coverage_schema_install.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/tests src conformance.rs, integration.rs; tests decimal_physical.rs, integration/coverage_schema_install.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-23 | build 테스트 table_page.rs와 orm identity_load, soft_delete, dbspec_probe의 catch-check 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/build/tests table_page.rs; packages/rust/orm/tests identity_load.rs, soft_delete.rs, common/dbspec_probe.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-22 | tests crate의 coverage 파일들과 common/mod.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/tests/tests common/mod.rs, coverage_catalog_connection.rs, coverage_conformance_verification.rs, coverage_model_generation.rs, coverage_performance_gate.rs, integration/coverage_env.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-21 | tests crate의 bench_set.rs, client_bench.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/tests/src bench_set.rs, client_bench.rs | `make lint-rust` reports no finding in these files | [ ] |
