@@ -23,8 +23,11 @@ use or_panic::OrPanic;
 fn remove_dir(path: &std::path::Path) {
     match std::fs::remove_dir_all(path) {
         Ok(()) => {}
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-        Err(error) => panic!("remove {}: {error}", path.display()),
+        Err(error) => {
+            if error.kind() != std::io::ErrorKind::NotFound {
+                panic!("remove {}: {error}", path.display());
+            }
+        }
     }
 }
 
