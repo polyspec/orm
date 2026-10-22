@@ -11,9 +11,6 @@ declare(strict_types=1);
 
 use Polyspec\Orm\Dbspec\Dbspec;
 
-require_once __DIR__ . '/dbspec_cases.php';
-require_once __DIR__ . '/dbspec_plan_cases.php';
-
 /** The repository root, which outcomes write as <root> so that a recorded message names no machine's path. */
 function behaviour_root(): string
 {

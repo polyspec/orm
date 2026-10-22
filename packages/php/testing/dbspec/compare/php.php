@@ -10,6 +10,9 @@ declare(strict_types=1);
 // <mermaid.json> <syntax.json>
 
 require __DIR__ . '/../../../../../vendor-php/autoload.php';
+require __DIR__ . '/../../../../../tests/dbspec/input.php';
+require __DIR__ . '/../../../../../tests/dbspec/vectors.php';
+require __DIR__ . '/../../../../../tests/dbspec/cases.php';
 require __DIR__ . '/php-interface.php';
 
 if ($argc !== 7) {

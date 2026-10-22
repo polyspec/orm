@@ -62,8 +62,6 @@ function coverageItem(): array
     return $item;
 }
 
-require_once __DIR__ . '/../testing/required_dsn.php';
-
 /** Connects with the AES and blind index keys of the seeded bench database (scripts/bench-db.sh). */
 function coverageConnect(string $dsn): Db
 {

@@ -17,6 +17,11 @@ if (extension_loaded('polyspec_orm')) {
 }
 $root = dirname(__DIR__, 4);
 require "$root/vendor-php/autoload.php";
+require "$root/packages/php/tests/case_clock.php";
+require "$root/tests/dbspec/vectors.php";
+require "$root/tests/dbspec/cases.php";
+require "$root/packages/php/tests/dbspec_cases.php";
+require "$root/packages/php/tests/dbspec_plan_cases.php";
 require "$root/packages/php/tests/dbspec_behaviour.php";
 
 $cases = [];

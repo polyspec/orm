@@ -8,8 +8,6 @@ declare(strict_types=1);
 // "<file>: <location> <problem>" line per refusal, where the location is the dotted path of the value
 // (`canonical[0].documents.shop`). Every refusal of a file is reported, as the other runners report them.
 
-require_once __DIR__ . '/../../vendor-php/autoload.php';
-
 use Opis\JsonSchema\Errors\ValidationError;
 use Opis\JsonSchema\Validator;
 

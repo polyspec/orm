@@ -8,8 +8,6 @@ declare(strict_types=1);
 // its documents; dbspec_check_cases checks it. A refusal is a RuntimeException whose message holds one
 // "<file>: <location> <problem>" line per problem.
 
-require_once __DIR__ . '/vectors.php';
-
 /** Checks $value, cases.json decoded with objects as stdClass; $name names the file in the errors. */
 function dbspec_check_cases(stdClass $value, string $name = 'tests/dbspec/cases.json'): void
 {

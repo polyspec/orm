@@ -2,9 +2,6 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/case_clock.php';
-require_once dirname(__DIR__, 3) . '/tests/dbspec/cases.php';
-
 use PHPUnit\Framework\Assert;
 
 // Checks dbspec cases in the shape of tests/dbspec/cases.json with the PHPUnit

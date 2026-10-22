@@ -16,8 +16,6 @@
 // PHPUnit assertion.
 declare(strict_types=1);
 
-require_once __DIR__ . '/case_database.php';
-
 use PHPUnit\Framework\Assert;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
