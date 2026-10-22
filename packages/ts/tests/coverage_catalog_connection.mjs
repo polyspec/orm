@@ -309,6 +309,7 @@ async function closedCase() {
     readOnlyGridQuery: () => catalog.readOnlyGridQuery('SELECT 1', []),
     insertRow: () => catalog.insertRow(meta, [{ name: 'seq', value: seq }]),
     updateRow: () => catalog.updateRow(snapshot, [{ name: 'seq', value: seq }]),
+    deleteRow: () => catalog.deleteRow(snapshot),
   };
   for (const [name, attempt] of Object.entries(attempts)) {
     await assert.rejects(
@@ -319,6 +320,15 @@ async function closedCase() {
       },
       `${driver}: ${name} after close did not fail`,
     );
+  }
+  // Nothing was destroyed: a reopened connection still reads the first author row, which deleteRow was given.
+  const reopened = await connectCatalog(process.env.ORM_FEATURE_DSN);
+  try {
+    const after = await reopened.tablePage(author, 1, 0);
+    assert.equal(after.result.rows.length, 1, `${driver}: author is empty after deleteRow on a closed connection`);
+    assert.equal(after.result.rows[0][0], seq, `${driver}: the first author row changed or is gone after deleteRow on a closed connection`);
+  } finally {
+    await reopened.close();
   }
 }
 

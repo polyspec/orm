@@ -426,9 +426,20 @@ func TestCoverageCatalogClosed(t *testing.T) {
 	_, checks["ReadOnlyGridQuery"] = c.ReadOnlyGridQuery(ctx, "SELECT 1", nil, orm.CatalogQueryLimits{})
 	_, checks["InsertRow"] = c.InsertRow(ctx, meta, []orm.CatalogAssignment{{Name: "seq", Value: page.Result.Rows[0][0]}})
 	_, checks["UpdateRow"] = c.UpdateRow(ctx, snapshot, []orm.CatalogAssignment{{Name: "seq", Value: page.Result.Rows[0][0]}})
+	_, checks["DeleteRow"] = c.DeleteRow(ctx, snapshot)
 	for name, err := range checks {
 		if got := orm.ErrorCode(err); got != orm.CodeCatalogClosed {
 			t.Errorf("%s: %s after Close: got code %q (%v), want %s", driver, name, got, err, orm.CodeCatalogClosed)
 		}
+	}
+	// Nothing was destroyed: a reopened connection still reads the first author row, which DeleteRow was given.
+	reopened, err := orm.ConnectCatalog(os.Getenv("ORM_FEATURE_DSN"))
+	if err != nil {
+		t.Fatalf("%s: reopen: %v", driver, err)
+	}
+	defer reopened.Close()
+	after, err := reopened.TablePage(ctx, author, 1, 0)
+	if err != nil || len(after.Result.Rows) != 1 || !reflect.DeepEqual(after.Result.Rows[0][0], page.Result.Rows[0][0]) {
+		t.Fatalf("%s: the first author row changed or is gone after DeleteRow on a closed connection: %v", driver, err)
 	}
 }
