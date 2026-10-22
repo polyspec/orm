@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The CI step rule of the repo check judges only orm's own workflows, so the kit copy gates.yml, which kit-check holds byte for byte, is not read for its make steps (KSTD-5-24). Red: the case found gates.yml steps that run rustup and shell commands directly.
 - The rebuild layout reads three repository tools that config/rebuild.json did not classify: `scripts/comments/tokens/python-comments.mts`, `scripts/php/vendor-autoload-check.mjs` and `scripts/typescript/models.mts` are `policy` tools, so `make rebuild-check` passes (KSTD-6). Red: `make rebuild-check` exited 2 with each of the three tools having no class.
 - The autoload check cases of `scripts/php/vendor-autoload-check.test.mjs` are declared with `caseTest` again, after a later fix had rewritten them with node:test (KSTD-10-5-1). Red: the rule named the file as declaring node:test tests directly.
 - Full-text search is implemented in every implementation: the IR ops fulltext and fulltext_boolean (PRT-75) over cols, MATCH for MySQL, to_tsvector for PostgreSQL, refused on SQLite, and the boolean text normalized by fulltext_boolean (DIA-6) (KSTD-2-10-2).
