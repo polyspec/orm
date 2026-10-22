@@ -46,7 +46,10 @@ fn require_dsn(var: &str) -> String {
 
 /// Changes the path of `dsn` to `/<name>`. The query is kept as is.
 fn with_database(dsn: &str, name: &str) -> String {
-    let mut url = url::Url::parse(dsn).unwrap_or_else(|e| panic!("case database {name}: the admin DSN is not a URL: {e}"));
+    let mut url = match url::Url::parse(dsn) {
+        Ok(url) => url,
+        Err(e) => panic!("case database {name}: the admin DSN is not a URL: {e}"),
+    };
     url.set_path(&format!("/{name}"));
     url.to_string()
 }
@@ -70,12 +73,15 @@ impl CaseDatabase {
             return CaseDatabase { driver, dsn: format!("sqlite://{name}"), name, admin: None, path: Some(path), dropped: false };
         };
         let admin = require_dsn(var);
-        let db = polyspec_orm::Db::connect(&admin, 1, polyspec_orm::Config::default())
-            .await
-            .unwrap_or_else(|e| panic!("case database {name}: admin connection: {e}"));
+        let db = match polyspec_orm::Db::connect(&admin, 1, polyspec_orm::Config::default()).await {
+            Ok(db) => db,
+            Err(e) => panic!("case database {name}: admin connection: {e}"),
+        };
         let created = execute(&db, &format!("CREATE DATABASE {name}")).await;
         db.close().await;
-        created.unwrap_or_else(|e| panic!("case database {name}: create: {e}"));
+        if let Err(e) = created {
+            panic!("case database {name}: create: {e}");
+        }
         polyspec_orm_testcase::step(format_args!("database {name} created"));
         CaseDatabase { driver, dsn: with_database(&admin, &name), name, admin: Some(admin), path: None, dropped: false }
     }
@@ -111,7 +117,9 @@ impl CaseDatabase {
     /// is closed first (`Db`).
     pub async fn drop(mut self) {
         self.dropped = true;
-        remove(self.admin.as_deref(), &self.name, self.path.as_deref()).await.unwrap_or_else(|e| panic!("case database {}: drop: {e}", self.name));
+        if let Err(e) = remove(self.admin.as_deref(), &self.name, self.path.as_deref()).await {
+            panic!("case database {}: drop: {e}", self.name);
+        }
         polyspec_orm_testcase::step(format_args!("database {} dropped", self.name));
     }
 }
@@ -119,12 +127,20 @@ impl CaseDatabase {
 /// Inside a running runtime it cannot wait, so `work` runs to completion
 /// on a thread that has its own runtime. Used by `Drop`.
 fn run_blocking<F: std::future::Future<Output = Result<(), String>> + Send + 'static>(work: F) -> Result<(), String> {
-    std::thread::spawn(move || {
+    let handle = std::thread::spawn(move || {
         let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|e| e.to_string())?;
         runtime.block_on(work)
-    })
-    .join()
-    .unwrap_or_else(|_| Err("the drop thread panicked".into()))
+    });
+    match handle.join() {
+        Ok(result) => result,
+        Err(payload) => {
+            let text = match payload.downcast_ref::<&str>() {
+                Some(text) => text.to_string(),
+                None => payload.downcast_ref::<String>().cloned().unwrap_or_else(|| "a panic without text".into()),
+            };
+            Err(format!("the drop thread panicked: {text}"))
+        }
+    }
 }
 
 /// Reports the result of dropping in `Drop`. If already panicking, a second panic would end the process, so
@@ -177,7 +193,9 @@ impl CaseTable {
     /// with the table name.
     pub async fn drop(mut self) {
         self.dropped = true;
-        drop_table(&self.dsn, &self.name).await.unwrap_or_else(|e| panic!("case table {}: drop: {e}", self.name));
+        if let Err(e) = drop_table(&self.dsn, &self.name).await {
+            panic!("case table {}: drop: {e}", self.name);
+        }
         polyspec_orm_testcase::step(format_args!("table {} dropped", self.name));
     }
 }
