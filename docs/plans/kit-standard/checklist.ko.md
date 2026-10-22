@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 64bf68f220d43d370403a5a43a2704abb45d88145d2aad95f3e48767c5581235 -->
+<!-- source-sha256: de5cb12fdfc2eb463b1b8017e9ff1a28f24abadb8b6067a7e659a725a0c32651 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -38,7 +38,7 @@
 | KSTD-2-10-6-1 | MySQL dialect probe가 connection마다 한 번만 닫는다 (KSTD-2-10-6 후속). Cause: packages/go/internal/dialects/probes_mysql.go:539-571이 e.Merge(other)에서 other.Conn을 닫고 지연된 closeDB()에서 또 닫아, TestDialectFacts/mysql.trigger.binlog_privilege_1419가 "sql: connection is already closed"로 실패한다 | packages/go/internal/dialects/probes_mysql.go | `make dialect-facts-check` | [o] |
 | KSTD-2-10-7 | TypeScript chain이 DSL-49대로 non-null column의 null 인자를 실행 시 거부한다 (KSTD-2-10-4 후속). Cause: packages/ts/src/core.ts:279가 조건 없음이나 ne에서 column 검사 없이 null을 IS NULL로 넘기는데, Python client가 가졌던 형태다 | packages/ts/src/core.ts, its tests, config/parity.json | `node --test packages/ts/tests/chain-null.mjs` | [o] |
 | KSTD-2-10-8 | tests/dbspec/syntax.json이 tests/dbspec/cases.json의 모든 case의 token을 담는다 (KSTD-2-10 후속). Cause: KSTD-2-10이 cases.json에 hashes case updated-setting-in-manifest-only와 updated-setting-absent를 더하고 syntax.json을 다시 생성하지 않아, TestSharedSyntaxVectors가 syntax.json has no tokens for this case로 실패한다 | tests/dbspec/syntax.json | `go test -count=1 -run TestSharedSyntaxVectors ./packages/go/engine/dbspec` | [o] |
-| KSTD-2-11 | config/parity.json의 모든 unit은 requirement를 인용하고, spec 규칙을 검사하지 않는 test의 unit은 parity unit이 아니다 (KSTD-2 후속). Cause: 영역 항목 뒤에도 702개 unit이 아무것도 인용하지 않는다; 대부분은 내부 동작(unicode table, reader, generator 기계 장치, 도구)의 단일 구현 feature unit이며 S6은 이를 parity unit으로 받지 않으므로, 각각 검사하는 규칙에 모든 구현으로 묶이거나 그 구현의 feature scope로 옮겨진다 | config/parity.json, contracts/features.json, tests of every implementation | `make parity-declarations-check` | [ ] |
+| KSTD-2-11 | config/parity.json의 모든 unit은 requirement를 인용하고, spec 규칙을 검사하지 않는 test의 unit은 parity unit이 아니다 (KSTD-2 후속). Cause: 영역 항목 뒤에도 702개 unit이 아무것도 인용하지 않는다; 대부분은 내부 동작(unicode table, reader, generator 기계 장치, 도구)의 단일 구현 feature unit이며 S6은 이를 parity unit으로 받지 않으므로, 각각 검사하는 규칙에 모든 구현으로 묶이거나 그 구현의 feature scope로 옮겨진다 | config/parity.json, contracts/features.json, tests of every implementation | `make parity-declarations-check` | [~] |
 | KSTD-2-11-1 | spec은 모든 구현이 errors.yaml의 모든 code를 native 상수로 노출하고 그 catalog가 errors.yaml과 같다고 규정한다 (KSTD-2-11 후속). Cause: error-code api unit 43개와 catalog unit 5개가 이를 검사하는데 이를 적은 requirement가 없다 | docs/spec and the Korean twins | `make docs-check` | [o] |
 | KSTD-2-11-2 | spec은 connection pool의 idle 크기와 수명을 CFG에 규정한다 (KSTD-2-11 후속). Cause: pool unit이 이를 검사하는데 CFG-4와 CFG-5는 pool 크기와 대기만 적는다 | docs/spec/config.md and its Korean twin | `make docs-check` | [-] 원인: CFG-5가 이미 poolIdleSize와 poolLifetimeMs를 규정하므로 빠진 규칙이 없다; pool unit은 KSTD-2-11-13에서 이를 인용한다 |
 | KSTD-2-11-3 | spec은 생성된 code가 그 언어의 표준 compiler와 linter를 억제 없이 통과한다고 규정한다 (KSTD-2-11 후속). Cause: generator unit이 allow attribute 없는 Rust code 같은 native 출력을 검사하는데 그것이 묶일 중립 규칙이 없다 | docs/spec and the Korean twins | `make docs-check` | [o] |

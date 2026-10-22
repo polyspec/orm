@@ -2619,8 +2619,6 @@
         }
       ],
       "parity": [
-        "go-internal-packages-go-orm-coverage-statement-events",
-        "php-internal-coverage-statement-events-statement-events",
         "py-cov-statement-events-statement-events",
         "statement-events"
       ],
@@ -3049,8 +3047,6 @@
         }
       ],
       "parity": [
-        "go-internal-packages-go-model-coverage-model-generation",
-        "php-internal-coverage-model-generation-model-generation-check",
         "py-cov-model-generation-model-generation-check",
         "rust-coverage-model-generation-check",
         "ts-coverage_model_generation"
@@ -6279,8 +6275,6 @@
         }
       ],
       "parity": [
-        "go-internal-packages-go-model-coverage-parameter-chunking",
-        "php-internal-coverage-parameter-chunking-root-in-chunking",
         "py-cov-parameter-chunking-root-in-chunking",
         "rust-integration-coverage-parameter-chunking-coverage-root-in-chunking",
         "ts-coverage_parameter_chunking"
@@ -6626,8 +6620,6 @@
         }
       ],
       "parity": [
-        "go-internal-packages-go-model-coverage-constraints-and-relations",
-        "php-internal-coverage-constraints-and-relations-constraint-errors",
         "py-cov-constraints-and-relations-constraint-errors",
         "rust-integration-coverage-constraints-and-relations-coverage-constraint-errors",
         "ts-coverage_constraints_and_relations"
@@ -7701,7 +7693,6 @@
         }
       ],
       "parity": [
-        "php-internal-coverage-performance-gate-hot-path-gate",
         "rust-coverage-hot-path-gate"
       ],
       "fixtures": [

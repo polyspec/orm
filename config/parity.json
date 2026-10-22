@@ -42,7 +42,161 @@
       "errors": {
         "file": "packages/go/orm/codes.go",
         "pattern": "^\\tCode\\w+\\s+= \"(\\w+)\""
-      }
+      },
+      "internal": [
+        {
+          "glob": "packages/go/engine/dialect/sqlite_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/engine/interface_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/engine/ir/fuzz_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/engine/ir/operators_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/engine/ir/params_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/engine/plan/plan_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/engine/planner/restore_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/engine/planner/soft_delete_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/generator/gen_go_check_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/generator/gen_go_output_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/internal/dialects/ddl_physical_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/internal/dialects/introspect_compare_physical_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/internal/dialects/schema_documents_physical_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/internal/dialects/sqlite_filename_physical_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/model/assignment_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/model/chunk_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/model/coverage_constraints_and_relations_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/model/coverage_model_generation_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/model/coverage_parameter_chunking_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/orm/assignment_propagation_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/orm/bind_check_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/orm/context_reset_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/orm/coverage_statement_events_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/orm/fuzz_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/orm/goexit_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/orm/keyword_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/orm/pg/pg_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/orm/refusal_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/orm/related_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/orm/request_hook_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/orm/rollback_fault_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/orm/sqlite/sqlite_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/orm/sqlite_file_name_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/orm/statement_fault_entry_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/orm/styled_state_physical_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/orm/transaction_end_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/orm/value_types_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/orm/write_set_test.go",
+          "reason": "an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
+        }
+      ]
     },
     {
       "name": "php",
@@ -84,7 +238,69 @@
       "errors": {
         "file": "packages/php/src/Code.php",
         "pattern": "^    public const (\\w+) = '\\w+';$"
-      }
+      },
+      "internal": [
+        {
+          "glob": "packages/php/tests/AutoloadTest.php",
+          "reason": "an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/ClientGenericsTest.php",
+          "reason": "an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/ConformanceResultTest.php",
+          "reason": "an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
+          "reason": "an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/CoverageModelGenerationTest.php",
+          "reason": "an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/CoverageParameterChunkingTest.php",
+          "reason": "an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/CoveragePerformanceGateTest.php",
+          "reason": "an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/CoverageStatementEventsTest.php",
+          "reason": "an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/DriverErrorTest.php",
+          "reason": "an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/OrmGenScanParityTest.php",
+          "reason": "an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/RelationKeysTest.php",
+          "reason": "an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/RequestHookTest.php",
+          "reason": "an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/SqliteWithoutMysqlTest.php",
+          "reason": "an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/UnselectedColumnDbTest.php",
+          "reason": "an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/UnselectedColumnTest.php",
+          "reason": "an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+        }
+      ]
     },
     {
       "name": "php-extension",
@@ -142,7 +358,21 @@
       "errors": {
         "file": "packages/ts/src/codes.ts",
         "pattern": "^export const (\\w+) = '\\w+';$"
-      }
+      },
+      "internal": [
+        {
+          "glob": "packages/ts/tests/bin-mode.mjs",
+          "reason": "an internal test of the TypeScript package that tests a helper or harness of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/ts/tests/clock.mjs",
+          "reason": "an internal test of the TypeScript package that tests a helper or harness of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/ts/tests/driver-error.mjs",
+          "reason": "an internal test of the TypeScript package that tests a helper or harness of the owner, not a behaviour of the contract (K313)"
+        }
+      ]
     },
     {
       "name": "python",
@@ -1126,17 +1356,6 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/add-tables-and-columns.mjs",
           "id": "add-tables-and-columns/add_tables_and_columns/sqlite"
-        }
-      ]
-    },
-    {
-      "id": "ts-clock",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/clock.mjs",
-          "id": "clock/clock_wall_micros_order"
         }
       ]
     },
@@ -2291,17 +2510,6 @@
       ]
     },
     {
-      "id": "ts-driver-error",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/driver-error.mjs",
-          "id": "driver-error/trigger_refused/sqlite"
-        }
-      ]
-    },
-    {
       "id": "ts-generate-scan",
       "kind": "feature",
       "requirements": [
@@ -2411,17 +2619,6 @@
       ]
     },
     {
-      "id": "ts-bin-mode",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/bin-mode.mjs",
-          "id": "bin-mode/executable"
-        }
-      ]
-    },
-    {
       "id": "ts-generate",
       "kind": "feature",
       "requirements": [
@@ -2438,6 +2635,9 @@
     {
       "id": "ts-group_rows",
       "kind": "feature",
+      "requirements": [
+        "INT-90"
+      ],
       "bindings": [
         {
           "implementation": "typescript",
@@ -2893,6 +3093,11 @@
     {
       "id": "ts-statement-fault-entry",
       "kind": "feature",
+      "requirements": [
+        "PRT-45",
+        "PRT-55",
+        "PRT-60"
+      ],
       "bindings": [
         {
           "implementation": "typescript",
@@ -3188,6 +3393,9 @@
     {
       "id": "ts-plan-cache-in-param-past-end",
       "kind": "feature",
+      "requirements": [
+        "CPX-4"
+      ],
       "bindings": [
         {
           "implementation": "typescript",
@@ -5039,6 +5247,9 @@
     {
       "id": "dbspec-show-create",
       "kind": "suite",
+      "requirements": [
+        "DIA-84"
+      ],
       "file": "tests/dbspec/show-create.json",
       "cases": "$.cases[*].id",
       "bindings": [
@@ -6019,17 +6230,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-engine-dialect-sqlite",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/dialect/sqlite_test.go",
-          "id": "TestSQLitePreservesQualifiedPhysicalTableNames"
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-engine-engine",
       "kind": "feature",
       "requirements": [
@@ -6077,72 +6277,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-engine-interface",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/interface_test.go",
-          "id": "TestRequestRejectsUnspecifiedStructure"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-engine-ir-fuzz",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/ir/fuzz_test.go",
-          "id": "FuzzDecodeRequest"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-engine-ir-operators",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/ir/operators_test.go",
-          "id": "TestStringAndTextSupportOrderedCursorPredicates"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-engine-ir-params",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/ir/params_test.go",
-          "id": "TestParamUses"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-engine-plan-plan",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/plan/plan_test.go",
-          "id": "TestRelationKeysUseOrderedReferences"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-engine-planner-restore",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/planner/restore_test.go",
-          "id": "TestRestorePlansGuardedUpdate"
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-engine-planner-runtime-model",
       "kind": "feature",
       "requirements": [
@@ -6153,17 +6287,6 @@
           "implementation": "go",
           "test": "packages/go/engine/planner/runtime_model_test.go",
           "id": "TestDefaultSelectSetLeavesOutOnlySelectExplicit"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-engine-planner-soft-delete",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/planner/soft_delete_test.go",
-          "id": "TestSoftDeleteFiltersReads"
         }
       ]
     },
@@ -6200,28 +6323,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-generator-gen-go-check",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_check_test.go",
-          "id": "TestGoGenerationCheckReportsDifferences"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-generator-gen-go-output",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_output_test.go",
-          "id": "TestGoGenerationKeepsOutputOnManifestError"
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-generator-gen-go-packages",
       "kind": "feature",
       "requirements": [
@@ -6238,6 +6339,14 @@
     {
       "id": "go-internal-packages-go-generator-gen-go-scan",
       "kind": "feature",
+      "requirements": [
+        "DBS-118",
+        "DBS-173",
+        "DSL-9",
+        "DSL-44",
+        "DSL-151",
+        "DSL-152"
+      ],
       "bindings": [
         {
           "implementation": "go",
@@ -6350,6 +6459,18 @@
     {
       "id": "go-internal-packages-go-generator-gen-go",
       "kind": "feature",
+      "requirements": [
+        "DSL-127",
+        "DSL-129",
+        "DSL-130",
+        "INT-2",
+        "INT-3",
+        "INT-5",
+        "INT-6",
+        "INT-8",
+        "INT-12",
+        "PLN-22"
+      ],
       "bindings": [
         {
           "implementation": "go",
@@ -6380,28 +6501,6 @@
           "implementation": "go",
           "test": "packages/go/markdownmodel/ir_answers_test.go",
           "id": "TestIRAnswers"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-model-assignment",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/assignment_test.go",
-          "id": "TestGeneratedAssignmentRejectsInvalidValues"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-model-chunk",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/chunk_test.go",
-          "id": "TestBindLimitSplitting"
         }
       ]
     },
@@ -6481,72 +6580,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-model-coverage-constraints-and-relations",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_constraints_and_relations_test.go",
-          "id": "TestCoverageConstraintErrors",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=mysql",
-            "FEATURE_DSN_ENV=BENCH_MYSQL_DSN",
-            "FEATURE_TEST=TestCoverageConstraintErrors",
-            "FEATURE_PACKAGE=./model"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-model-coverage-constraints-and-relations-postgres",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_constraints_and_relations_test.go",
-          "id": "TestCoverageConstraintErrors",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=postgres",
-            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
-            "FEATURE_TEST=TestCoverageConstraintErrors",
-            "FEATURE_PACKAGE=./model"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-model-coverage-constraints-and-relations-sqlite",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_constraints_and_relations_test.go",
-          "id": "TestCoverageConstraintErrors",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageConstraintErrors",
-            "FEATURE_PACKAGE=./model"
-          ]
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-model-coverage-dsn-postgres",
       "kind": "feature",
       "requirements": [
@@ -6597,19 +6630,18 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-model-coverage-model-generation",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_model_generation_test.go",
-          "id": "TestCoverageModelGenerationCheck"
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-model-coverage-model-queries-postgres",
       "kind": "feature",
+      "requirements": [
+        "DSL-57",
+        "DSL-58",
+        "DSL-60",
+        "DSL-62",
+        "DSL-80",
+        "DSL-82",
+        "DSL-99",
+        "PLN-11"
+      ],
       "bindings": [
         {
           "implementation": "go",
@@ -6632,6 +6664,16 @@
     {
       "id": "go-internal-packages-go-model-coverage-model-queries-sqlite",
       "kind": "feature",
+      "requirements": [
+        "DSL-57",
+        "DSL-58",
+        "DSL-60",
+        "DSL-62",
+        "DSL-80",
+        "DSL-82",
+        "DSL-99",
+        "PLN-11"
+      ],
       "bindings": [
         {
           "implementation": "go",
@@ -6654,6 +6696,17 @@
     {
       "id": "go-internal-packages-go-model-coverage-model-writes-postgres",
       "kind": "feature",
+      "requirements": [
+        "DSL-56",
+        "DSL-57",
+        "DSL-58",
+        "DSL-60",
+        "DSL-103",
+        "DSL-104",
+        "DSL-105",
+        "DSL-106",
+        "DSL-110"
+      ],
       "bindings": [
         {
           "implementation": "go",
@@ -6676,6 +6729,17 @@
     {
       "id": "go-internal-packages-go-model-coverage-model-writes-sqlite",
       "kind": "feature",
+      "requirements": [
+        "DSL-56",
+        "DSL-57",
+        "DSL-58",
+        "DSL-60",
+        "DSL-103",
+        "DSL-104",
+        "DSL-105",
+        "DSL-106",
+        "DSL-110"
+      ],
       "bindings": [
         {
           "implementation": "go",
@@ -6690,72 +6754,6 @@
             "FEATURE_DATABASE=sqlite",
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=TestCoverageModelWriteCycle",
-            "FEATURE_PACKAGE=./model"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-model-coverage-parameter-chunking",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_parameter_chunking_test.go",
-          "id": "TestCoverageRootInChunking",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=mysql",
-            "FEATURE_DSN_ENV=BENCH_MYSQL_DSN",
-            "FEATURE_TEST=TestCoverageRootInChunking",
-            "FEATURE_PACKAGE=./model"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-model-coverage-parameter-chunking-postgres",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_parameter_chunking_test.go",
-          "id": "TestCoverageRootInChunking",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=postgres",
-            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
-            "FEATURE_TEST=TestCoverageRootInChunking",
-            "FEATURE_PACKAGE=./model"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-model-coverage-parameter-chunking-sqlite",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_parameter_chunking_test.go",
-          "id": "TestCoverageRootInChunking",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRootInChunking",
             "FEATURE_PACKAGE=./model"
           ]
         }
@@ -7066,17 +7064,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-orm-assignment-propagation",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/assignment_propagation_test.go",
-          "id": "TestAssemblerReturnsAssignmentError"
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-orm-audit-transaction",
       "kind": "feature",
       "requirements": [
@@ -7087,17 +7074,6 @@
           "implementation": "go",
           "test": "packages/go/orm/audit_transaction_test.go",
           "id": "TestAuditRecordTransaction"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-orm-bind-check",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/bind_check_test.go",
-          "id": "TestBindVectors"
         }
       ]
     },
@@ -7146,22 +7122,14 @@
     {
       "id": "go-internal-packages-go-orm-collection-key",
       "kind": "feature",
+      "requirements": [
+        "DSL-153"
+      ],
       "bindings": [
         {
           "implementation": "go",
           "test": "packages/go/orm/collection_key_test.go",
           "id": "TestTypedKeyValuesCannotCollide"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-orm-context-reset",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/context_reset_test.go",
-          "id": "TestTransactionReportsFailedLocalReset"
         }
       ]
     },
@@ -7235,72 +7203,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-orm-coverage-statement-events",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_statement_events_test.go",
-          "id": "TestCoverageStatementEvents",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=mysql",
-            "FEATURE_DSN_ENV=BENCH_MYSQL_DSN",
-            "FEATURE_TEST=TestCoverageStatementEvents",
-            "FEATURE_PACKAGE=./orm"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-orm-coverage-statement-events-postgres",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_statement_events_test.go",
-          "id": "TestCoverageStatementEvents",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=postgres",
-            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
-            "FEATURE_TEST=TestCoverageStatementEvents",
-            "FEATURE_PACKAGE=./orm"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-orm-coverage-statement-events-sqlite",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_statement_events_test.go",
-          "id": "TestCoverageStatementEvents",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageStatementEvents",
-            "FEATURE_PACKAGE=./orm"
-          ]
-        }
-      ]
-    },
-    {
       "id": "mysql-lock-wait-canceled",
       "kind": "feature",
       "requirements": [
@@ -7338,6 +7240,9 @@
     {
       "id": "go-internal-packages-go-orm-driver-error",
       "kind": "feature",
+      "requirements": [
+        "CFG-6"
+      ],
       "bindings": [
         {
           "implementation": "go",
@@ -7385,30 +7290,11 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-orm-fuzz",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/fuzz_test.go",
-          "id": "FuzzDecodeCiphertext"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-orm-goexit",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/goexit_test.go",
-          "id": "TestTransactionRollsBackWhenTheCallbackLeaves"
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-orm-group-rows",
       "kind": "feature",
+      "requirements": [
+        "INT-90"
+      ],
       "bindings": [
         {
           "implementation": "go",
@@ -7784,17 +7670,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-orm-keyword",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/keyword_test.go",
-          "id": "TestSQLKeywordNames"
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-orm-markdown-param",
       "kind": "feature",
       "requirements": [
@@ -7867,28 +7742,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-orm-pg-pg",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/pg/pg_test.go",
-          "id": "TestMapErrClassifiesCheckConstraint"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-orm-refusal",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/refusal_test.go",
-          "id": "TestTriggerRefusedSQLite"
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-orm-register",
       "kind": "feature",
       "requirements": [
@@ -7899,28 +7752,6 @@
           "implementation": "go",
           "test": "packages/go/orm/register_test.go",
           "id": "TestRegisterSendsNoStatement"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-orm-related",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/related_test.go",
-          "id": "TestRelatedAsReportsMismatch"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-orm-request-hook",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/request_hook_test.go",
-          "id": "TestRequestHook"
         }
       ]
     },
@@ -7955,17 +7786,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-orm-rollback-fault",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/rollback_fault_test.go",
-          "id": "TestRollbackFaultSQLite"
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-orm-rollback",
       "kind": "feature",
       "requirements": [
@@ -7976,50 +7796,6 @@
           "implementation": "go",
           "test": "packages/go/orm/rollback_test.go",
           "id": "TestRollbackFailedSQLite"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-orm-sqlite-file-name",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/sqlite_file_name_test.go",
-          "id": "TestSQLiteFileNameIsThePath"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-orm-sqlite-sqlite",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/sqlite/sqlite_test.go",
-          "id": "TestMapErrPreservesSQLiteConstraintContract"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-orm-statement-fault-entry",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/statement_fault_entry_test.go",
-          "id": "TestStatementFaultEntry"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-orm-styled-state-physical",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/styled_state_physical_test.go",
-          "id": "TestStyledFixturePhysicalCells"
         }
       ]
     },
@@ -8059,39 +7835,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-orm-transaction-end",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/transaction_end_test.go",
-          "id": "TestTransactionReportsFailedLockRelease"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-orm-value-types",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/value_types_test.go",
-          "id": "TestRuntimeValueTypes"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-orm-write-set",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/write_set_test.go",
-          "id": "TestWasInsertedTracksGeneratedRows"
-        }
-      ]
-    },
-    {
       "id": "dbspec-apply-cross-client",
       "kind": "feature",
       "requirements": [
@@ -8124,17 +7867,6 @@
           "implementation": "go",
           "test": "packages/go/internal/dialects/apply_stress_physical_test.go",
           "id": "TestApplyStressPlan"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-dialects-ddl-physical",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/internal/dialects/ddl_physical_test.go",
-          "id": "TestDDLVectors"
         }
       ]
     },
@@ -8225,47 +7957,6 @@
           "implementation": "go",
           "test": "packages/go/internal/dialects/facts_physical_test.go",
           "id": "TestDialectFacts"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-dialects-introspect-compare-physical",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/internal/dialects/introspect_compare_physical_test.go",
-          "id": "TestIntrospectCompare",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "dbspec-introspect-compare-check",
-            "GO_TEST_FLAGS=-json"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "go-internal-dialects-schema-documents-physical",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/internal/dialects/schema_documents_physical_test.go",
-          "id": "TestSchemaDocumentsApply"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-dialects-sqlite-filename-physical",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/internal/dialects/sqlite_filename_physical_test.go",
-          "id": "TestSQLiteFileNameWithQuery"
         }
       ]
     },
@@ -8389,6 +8080,30 @@
     {
       "id": "rust-a-table-named-like-the-runtime-crate-gets-a-model-module-of-its-own",
       "kind": "feature",
+      "requirements": [
+        "DBS-4",
+        "DBS-19",
+        "DBS-25",
+        "DBS-27",
+        "DBS-100",
+        "DBS-101",
+        "DBS-104",
+        "DBS-110",
+        "DBS-112",
+        "DBS-114",
+        "DBS-116",
+        "DBS-118",
+        "DBS-155",
+        "DBS-173",
+        "DSL-37",
+        "DSL-38",
+        "DSL-41",
+        "DSL-44",
+        "DSL-117",
+        "DSL-151",
+        "DSL-152",
+        "SCH-1"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -8400,6 +8115,30 @@
     {
       "id": "rust-bound-setter-results-preserve-model-calls-after-extraction",
       "kind": "feature",
+      "requirements": [
+        "DBS-4",
+        "DBS-19",
+        "DBS-25",
+        "DBS-27",
+        "DBS-100",
+        "DBS-101",
+        "DBS-104",
+        "DBS-110",
+        "DBS-112",
+        "DBS-114",
+        "DBS-116",
+        "DBS-118",
+        "DBS-155",
+        "DBS-173",
+        "DSL-37",
+        "DSL-38",
+        "DSL-41",
+        "DSL-44",
+        "DSL-117",
+        "DSL-151",
+        "DSL-152",
+        "SCH-1"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -8411,6 +8150,30 @@
     {
       "id": "rust-column-function-order-takes-the-function",
       "kind": "feature",
+      "requirements": [
+        "DBS-4",
+        "DBS-19",
+        "DBS-25",
+        "DBS-27",
+        "DBS-100",
+        "DBS-101",
+        "DBS-104",
+        "DBS-110",
+        "DBS-112",
+        "DBS-114",
+        "DBS-116",
+        "DBS-118",
+        "DBS-155",
+        "DBS-173",
+        "DSL-37",
+        "DSL-38",
+        "DSL-41",
+        "DSL-44",
+        "DSL-117",
+        "DSL-151",
+        "DSL-152",
+        "SCH-1"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -8422,6 +8185,30 @@
     {
       "id": "rust-generated-code-carries-no-allow-attribute",
       "kind": "feature",
+      "requirements": [
+        "DBS-4",
+        "DBS-19",
+        "DBS-25",
+        "DBS-27",
+        "DBS-100",
+        "DBS-101",
+        "DBS-104",
+        "DBS-110",
+        "DBS-112",
+        "DBS-114",
+        "DBS-116",
+        "DBS-118",
+        "DBS-155",
+        "DBS-173",
+        "DSL-37",
+        "DSL-38",
+        "DSL-41",
+        "DSL-44",
+        "DSL-117",
+        "DSL-151",
+        "DSL-152",
+        "SCH-1"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -8493,6 +8280,30 @@
     {
       "id": "rust-ignores-calls-of-other-types",
       "kind": "feature",
+      "requirements": [
+        "DBS-4",
+        "DBS-19",
+        "DBS-25",
+        "DBS-27",
+        "DBS-100",
+        "DBS-101",
+        "DBS-104",
+        "DBS-110",
+        "DBS-112",
+        "DBS-114",
+        "DBS-116",
+        "DBS-118",
+        "DBS-155",
+        "DBS-173",
+        "DSL-37",
+        "DSL-38",
+        "DSL-41",
+        "DSL-44",
+        "DSL-117",
+        "DSL-151",
+        "DSL-152",
+        "SCH-1"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -8504,6 +8315,30 @@
     {
       "id": "rust-infallible-setter-does-not-accept-result-methods",
       "kind": "feature",
+      "requirements": [
+        "DBS-4",
+        "DBS-19",
+        "DBS-25",
+        "DBS-27",
+        "DBS-100",
+        "DBS-101",
+        "DBS-104",
+        "DBS-110",
+        "DBS-112",
+        "DBS-114",
+        "DBS-116",
+        "DBS-118",
+        "DBS-155",
+        "DBS-173",
+        "DSL-37",
+        "DSL-38",
+        "DSL-41",
+        "DSL-44",
+        "DSL-117",
+        "DSL-151",
+        "DSL-152",
+        "SCH-1"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -8605,6 +8440,30 @@
     {
       "id": "rust-relation-getters-report-a-mismatched-relation-value",
       "kind": "feature",
+      "requirements": [
+        "DBS-4",
+        "DBS-19",
+        "DBS-25",
+        "DBS-27",
+        "DBS-100",
+        "DBS-101",
+        "DBS-104",
+        "DBS-110",
+        "DBS-112",
+        "DBS-114",
+        "DBS-116",
+        "DBS-118",
+        "DBS-155",
+        "DBS-173",
+        "DSL-37",
+        "DSL-38",
+        "DSL-41",
+        "DSL-44",
+        "DSL-117",
+        "DSL-151",
+        "DSL-152",
+        "SCH-1"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -8734,6 +8593,30 @@
     {
       "id": "rust-styled-setter-result-handling-preserves-model-calls",
       "kind": "feature",
+      "requirements": [
+        "DBS-4",
+        "DBS-19",
+        "DBS-25",
+        "DBS-27",
+        "DBS-100",
+        "DBS-101",
+        "DBS-104",
+        "DBS-110",
+        "DBS-112",
+        "DBS-114",
+        "DBS-116",
+        "DBS-118",
+        "DBS-155",
+        "DBS-173",
+        "DSL-37",
+        "DSL-38",
+        "DSL-41",
+        "DSL-44",
+        "DSL-117",
+        "DSL-151",
+        "DSL-152",
+        "SCH-1"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -8745,6 +8628,30 @@
     {
       "id": "rust-styled-setter-result-transformations-are-not-column-calls",
       "kind": "feature",
+      "requirements": [
+        "DBS-4",
+        "DBS-19",
+        "DBS-25",
+        "DBS-27",
+        "DBS-100",
+        "DBS-101",
+        "DBS-104",
+        "DBS-110",
+        "DBS-112",
+        "DBS-114",
+        "DBS-116",
+        "DBS-118",
+        "DBS-155",
+        "DBS-173",
+        "DSL-37",
+        "DSL-38",
+        "DSL-41",
+        "DSL-44",
+        "DSL-117",
+        "DSL-151",
+        "DSL-152",
+        "SCH-1"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -8756,6 +8663,30 @@
     {
       "id": "rust-unknown-model-after-result-error-mapping-still-fails",
       "kind": "feature",
+      "requirements": [
+        "DBS-4",
+        "DBS-19",
+        "DBS-25",
+        "DBS-27",
+        "DBS-100",
+        "DBS-101",
+        "DBS-104",
+        "DBS-110",
+        "DBS-112",
+        "DBS-114",
+        "DBS-116",
+        "DBS-118",
+        "DBS-155",
+        "DBS-173",
+        "DSL-37",
+        "DSL-38",
+        "DSL-41",
+        "DSL-44",
+        "DSL-117",
+        "DSL-151",
+        "DSL-152",
+        "SCH-1"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -8767,6 +8698,30 @@
     {
       "id": "rust-unknown-model-call-after-setter-result-handling-still-fails",
       "kind": "feature",
+      "requirements": [
+        "DBS-4",
+        "DBS-19",
+        "DBS-25",
+        "DBS-27",
+        "DBS-100",
+        "DBS-101",
+        "DBS-104",
+        "DBS-110",
+        "DBS-112",
+        "DBS-114",
+        "DBS-116",
+        "DBS-118",
+        "DBS-155",
+        "DBS-173",
+        "DSL-37",
+        "DSL-38",
+        "DSL-41",
+        "DSL-44",
+        "DSL-117",
+        "DSL-151",
+        "DSL-152",
+        "SCH-1"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9290,6 +9245,10 @@
     {
       "id": "rust-engine-composite-relation-keys",
       "kind": "feature",
+      "requirements": [
+        "DIA-24",
+        "DIA-33"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9301,6 +9260,10 @@
     {
       "id": "rust-engine-key-columns-are-not-written",
       "kind": "feature",
+      "requirements": [
+        "DIA-24",
+        "DIA-33"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9312,6 +9275,10 @@
     {
       "id": "rust-engine-restore-plans-guarded-update",
       "kind": "feature",
+      "requirements": [
+        "DIA-24",
+        "DIA-33"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9323,6 +9290,10 @@
     {
       "id": "rust-engine-restore-rejects-other-requests",
       "kind": "feature",
+      "requirements": [
+        "DIA-24",
+        "DIA-33"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9348,6 +9319,9 @@
     {
       "id": "rust-row-declared-boolean-tests-selected-boolean-groups-keep-their-declared-type",
       "kind": "feature",
+      "requirements": [
+        "COD-44"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9407,6 +9381,9 @@
     {
       "id": "rust-tx-dropped-transaction-closes-its-connection",
       "kind": "feature",
+      "requirements": [
+        "INT-52"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9418,6 +9395,9 @@
     {
       "id": "rust-tx-every-failed-cleanup-step-is-reported",
       "kind": "feature",
+      "requirements": [
+        "INT-52"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9429,6 +9409,9 @@
     {
       "id": "rust-tx-failed-cleanup-discards-the-connection",
       "kind": "feature",
+      "requirements": [
+        "INT-52"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9440,6 +9423,9 @@
     {
       "id": "rust-tx-failed-local-reset-is-reported",
       "kind": "feature",
+      "requirements": [
+        "INT-52"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9451,6 +9437,9 @@
     {
       "id": "rust-tx-lock-not-held-at-transaction-end-is-reported",
       "kind": "feature",
+      "requirements": [
+        "INT-52"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9462,6 +9451,9 @@
     {
       "id": "rust-tx-one-shot-transaction-preserves-callback-error-and-rolls-back",
       "kind": "feature",
+      "requirements": [
+        "INT-52"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9473,6 +9465,9 @@
     {
       "id": "rust-tx-one-shot-transaction-reports-callback-and-rollback-errors",
       "kind": "feature",
+      "requirements": [
+        "INT-52"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9484,6 +9479,9 @@
     {
       "id": "rust-tx-panicking-callback-ends-its-transaction",
       "kind": "feature",
+      "requirements": [
+        "INT-52"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9495,6 +9493,9 @@
     {
       "id": "rust-tx-savepoint-end-failures-are-reported",
       "kind": "feature",
+      "requirements": [
+        "INT-52"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9506,6 +9507,9 @@
     {
       "id": "rust-tx-sqlite-transaction-end-failures-are-reported",
       "kind": "feature",
+      "requirements": [
+        "INT-52"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9517,6 +9521,9 @@
     {
       "id": "rust-tx-transaction-send-future-contract-is-checked",
       "kind": "feature",
+      "requirements": [
+        "INT-52"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9528,6 +9535,9 @@
     {
       "id": "rust-tx-transaction-timeout-is-the-postgres-statement-timeout",
       "kind": "feature",
+      "requirements": [
+        "INT-52"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9539,6 +9549,11 @@
     {
       "id": "rust-utils-keyring-tests-versions-lists-the-declared-versions-in-ascending-order",
       "kind": "feature",
+      "requirements": [
+        "COD-44",
+        "INT-52",
+        "INT-53"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9924,6 +9939,15 @@
     {
       "id": "rust-markdown-statement-timeout-refused",
       "kind": "feature",
+      "requirements": [
+        "DIA-183",
+        "DIA-184",
+        "DIA-185",
+        "DIA-188",
+        "DIA-189",
+        "PRT-63",
+        "PRT-64"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9978,6 +10002,9 @@
     {
       "id": "rust-session-sql-mode-is-the-declared-one",
       "kind": "feature",
+      "requirements": [
+        "CFG-16"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10097,6 +10124,21 @@
     {
       "id": "rust-creates-parts-order",
       "kind": "feature",
+      "requirements": [
+        "CFG-9",
+        "CFG-21",
+        "DIA-161",
+        "DSL-65",
+        "INT-36",
+        "INT-37",
+        "INT-38",
+        "PLN-16",
+        "PRT-2",
+        "PRT-4",
+        "PRT-5",
+        "PRT-41",
+        "PRT-65"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10108,6 +10150,21 @@
     {
       "id": "rust-creates-parts-rollback",
       "kind": "feature",
+      "requirements": [
+        "CFG-9",
+        "CFG-21",
+        "DIA-161",
+        "DSL-65",
+        "INT-36",
+        "INT-37",
+        "INT-38",
+        "PLN-16",
+        "PRT-2",
+        "PRT-4",
+        "PRT-5",
+        "PRT-41",
+        "PRT-65"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10119,6 +10176,21 @@
     {
       "id": "rust-creates-parts-shapes",
       "kind": "feature",
+      "requirements": [
+        "CFG-9",
+        "CFG-21",
+        "DIA-161",
+        "DSL-65",
+        "INT-36",
+        "INT-37",
+        "INT-38",
+        "PLN-16",
+        "PRT-2",
+        "PRT-4",
+        "PRT-5",
+        "PRT-41",
+        "PRT-65"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10130,6 +10202,21 @@
     {
       "id": "rust-insert-assign",
       "kind": "feature",
+      "requirements": [
+        "CFG-9",
+        "CFG-21",
+        "DIA-161",
+        "DSL-65",
+        "INT-36",
+        "INT-37",
+        "INT-38",
+        "PLN-16",
+        "PRT-2",
+        "PRT-4",
+        "PRT-5",
+        "PRT-41",
+        "PRT-65"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10141,6 +10228,21 @@
     {
       "id": "rust-invalid-param",
       "kind": "feature",
+      "requirements": [
+        "CFG-9",
+        "CFG-21",
+        "DIA-161",
+        "DSL-65",
+        "INT-36",
+        "INT-37",
+        "INT-38",
+        "PLN-16",
+        "PRT-2",
+        "PRT-4",
+        "PRT-5",
+        "PRT-41",
+        "PRT-65"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10152,6 +10254,21 @@
     {
       "id": "rust-loaded-row-writes",
       "kind": "feature",
+      "requirements": [
+        "CFG-9",
+        "CFG-21",
+        "DIA-161",
+        "DSL-65",
+        "INT-36",
+        "INT-37",
+        "INT-38",
+        "PLN-16",
+        "PRT-2",
+        "PRT-4",
+        "PRT-5",
+        "PRT-41",
+        "PRT-65"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10163,6 +10280,21 @@
     {
       "id": "rust-read-filter",
       "kind": "feature",
+      "requirements": [
+        "CFG-9",
+        "CFG-21",
+        "DIA-161",
+        "DSL-65",
+        "INT-36",
+        "INT-37",
+        "INT-38",
+        "PLN-16",
+        "PRT-2",
+        "PRT-4",
+        "PRT-5",
+        "PRT-41",
+        "PRT-65"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10174,6 +10306,21 @@
     {
       "id": "rust-reads-params",
       "kind": "feature",
+      "requirements": [
+        "CFG-9",
+        "CFG-21",
+        "DIA-161",
+        "DSL-65",
+        "INT-36",
+        "INT-37",
+        "INT-38",
+        "PLN-16",
+        "PRT-2",
+        "PRT-4",
+        "PRT-5",
+        "PRT-41",
+        "PRT-65"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10185,6 +10332,21 @@
     {
       "id": "rust-restore-condition",
       "kind": "feature",
+      "requirements": [
+        "CFG-9",
+        "CFG-21",
+        "DIA-161",
+        "DSL-65",
+        "INT-36",
+        "INT-37",
+        "INT-38",
+        "PLN-16",
+        "PRT-2",
+        "PRT-4",
+        "PRT-5",
+        "PRT-41",
+        "PRT-65"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10196,6 +10358,21 @@
     {
       "id": "rust-restore-hook-set-key",
       "kind": "feature",
+      "requirements": [
+        "CFG-9",
+        "CFG-21",
+        "DIA-161",
+        "DSL-65",
+        "INT-36",
+        "INT-37",
+        "INT-38",
+        "PLN-16",
+        "PRT-2",
+        "PRT-4",
+        "PRT-5",
+        "PRT-41",
+        "PRT-65"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10207,6 +10384,21 @@
     {
       "id": "rust-restore-key",
       "kind": "feature",
+      "requirements": [
+        "CFG-9",
+        "CFG-21",
+        "DIA-161",
+        "DSL-65",
+        "INT-36",
+        "INT-37",
+        "INT-38",
+        "PLN-16",
+        "PRT-2",
+        "PRT-4",
+        "PRT-5",
+        "PRT-41",
+        "PRT-65"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10218,6 +10410,21 @@
     {
       "id": "rust-restore-no-key",
       "kind": "feature",
+      "requirements": [
+        "CFG-9",
+        "CFG-21",
+        "DIA-161",
+        "DSL-65",
+        "INT-36",
+        "INT-37",
+        "INT-38",
+        "PLN-16",
+        "PRT-2",
+        "PRT-4",
+        "PRT-5",
+        "PRT-41",
+        "PRT-65"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10229,6 +10436,21 @@
     {
       "id": "rust-restore-rewritten-key",
       "kind": "feature",
+      "requirements": [
+        "CFG-9",
+        "CFG-21",
+        "DIA-161",
+        "DSL-65",
+        "INT-36",
+        "INT-37",
+        "INT-38",
+        "PLN-16",
+        "PRT-2",
+        "PRT-4",
+        "PRT-5",
+        "PRT-41",
+        "PRT-65"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10240,6 +10462,21 @@
     {
       "id": "rust-without-hook",
       "kind": "feature",
+      "requirements": [
+        "CFG-9",
+        "CFG-21",
+        "DIA-161",
+        "DSL-65",
+        "INT-36",
+        "INT-37",
+        "INT-38",
+        "PLN-16",
+        "PRT-2",
+        "PRT-4",
+        "PRT-5",
+        "PRT-41",
+        "PRT-65"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10320,6 +10557,12 @@
     {
       "id": "rust-rollback-fault-mysql",
       "kind": "feature",
+      "requirements": [
+        "CFG-15",
+        "PRT-44",
+        "PRT-54",
+        "PRT-59"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10331,6 +10574,12 @@
     {
       "id": "rust-rollback-fault-postgres",
       "kind": "feature",
+      "requirements": [
+        "CFG-15",
+        "PRT-44",
+        "PRT-54",
+        "PRT-59"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10342,6 +10591,12 @@
     {
       "id": "rust-rollback-fault-sqlite",
       "kind": "feature",
+      "requirements": [
+        "CFG-15",
+        "PRT-44",
+        "PRT-54",
+        "PRT-59"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10353,6 +10608,12 @@
     {
       "id": "rust-savepoint-rollback-failed-mysql",
       "kind": "feature",
+      "requirements": [
+        "CFG-15",
+        "PRT-44",
+        "PRT-54",
+        "PRT-59"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10364,6 +10625,12 @@
     {
       "id": "rust-savepoint-rollback-failed-postgres",
       "kind": "feature",
+      "requirements": [
+        "CFG-15",
+        "PRT-44",
+        "PRT-54",
+        "PRT-59"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10375,6 +10642,12 @@
     {
       "id": "rust-savepoint-rollback-failed-sqlite",
       "kind": "feature",
+      "requirements": [
+        "CFG-15",
+        "PRT-44",
+        "PRT-54",
+        "PRT-59"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10439,6 +10712,11 @@
     {
       "id": "rust-statement-timeout-bounds-sqlite-lock-wait",
       "kind": "feature",
+      "requirements": [
+        "CFG-12",
+        "CFG-13",
+        "CFG-19"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10450,6 +10728,11 @@
     {
       "id": "rust-writers-in-several-processes",
       "kind": "feature",
+      "requirements": [
+        "CFG-12",
+        "CFG-13",
+        "CFG-19"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10461,6 +10744,11 @@
     {
       "id": "rust-writers-on-several-connections",
       "kind": "feature",
+      "requirements": [
+        "CFG-12",
+        "CFG-13",
+        "CFG-19"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10472,6 +10760,9 @@
     {
       "id": "rust-markdown-bind-message-tests-control-vectors",
       "kind": "feature",
+      "requirements": [
+        "PRT-67"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10571,6 +10862,19 @@
     {
       "id": "rust-dropping-a-transaction-frees-a-single-connection",
       "kind": "feature",
+      "requirements": [
+        "CFG-2",
+        "CFG-4",
+        "CFG-5",
+        "CFG-6",
+        "CFG-9",
+        "CFG-20",
+        "CFG-27",
+        "CFG-29",
+        "CFG-32",
+        "DIA-57",
+        "DSL-141"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10582,6 +10886,19 @@
     {
       "id": "rust-mysql-install-inside-transaction",
       "kind": "feature",
+      "requirements": [
+        "CFG-2",
+        "CFG-4",
+        "CFG-5",
+        "CFG-6",
+        "CFG-9",
+        "CFG-20",
+        "CFG-27",
+        "CFG-29",
+        "CFG-32",
+        "DIA-57",
+        "DSL-141"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10593,6 +10910,19 @@
     {
       "id": "rust-non-utc-time-zones-are-rejected",
       "kind": "feature",
+      "requirements": [
+        "CFG-2",
+        "CFG-4",
+        "CFG-5",
+        "CFG-6",
+        "CFG-9",
+        "CFG-20",
+        "CFG-27",
+        "CFG-29",
+        "CFG-32",
+        "DIA-57",
+        "DSL-141"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -11003,6 +11333,11 @@
     {
       "id": "rust-integration-coverage-generated-model-connection-postgres",
       "kind": "feature",
+      "requirements": [
+        "CFG-1",
+        "COD-20",
+        "DBS-114"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -11026,6 +11361,11 @@
     {
       "id": "rust-integration-coverage-generated-model-connection-sqlite",
       "kind": "feature",
+      "requirements": [
+        "CFG-1",
+        "COD-20",
+        "DBS-114"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -11373,6 +11713,16 @@
     {
       "id": "rust-integration-coverage-model-queries-coverage-model-query-rows-postgres",
       "kind": "feature",
+      "requirements": [
+        "DSL-57",
+        "DSL-58",
+        "DSL-60",
+        "DSL-62",
+        "DSL-80",
+        "DSL-82",
+        "DSL-99",
+        "PLN-11"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -11396,6 +11746,16 @@
     {
       "id": "rust-integration-coverage-model-queries-coverage-model-query-rows-sqlite",
       "kind": "feature",
+      "requirements": [
+        "DSL-57",
+        "DSL-58",
+        "DSL-60",
+        "DSL-62",
+        "DSL-80",
+        "DSL-82",
+        "DSL-99",
+        "PLN-11"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -11419,6 +11779,17 @@
     {
       "id": "rust-integration-coverage-model-writes-coverage-model-write-cycle-postgres",
       "kind": "feature",
+      "requirements": [
+        "DSL-56",
+        "DSL-57",
+        "DSL-58",
+        "DSL-60",
+        "DSL-103",
+        "DSL-104",
+        "DSL-105",
+        "DSL-106",
+        "DSL-110"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -11442,6 +11813,17 @@
     {
       "id": "rust-integration-coverage-model-writes-coverage-model-write-cycle-sqlite",
       "kind": "feature",
+      "requirements": [
+        "DSL-56",
+        "DSL-57",
+        "DSL-58",
+        "DSL-60",
+        "DSL-103",
+        "DSL-104",
+        "DSL-105",
+        "DSL-106",
+        "DSL-110"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -12326,6 +12708,11 @@
     {
       "id": "py-test-rollback-fault",
       "kind": "feature",
+      "requirements": [
+        "PRT-47",
+        "PRT-57",
+        "PRT-62"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -12388,6 +12775,9 @@
     {
       "id": "py-test-schema-utils",
       "kind": "feature",
+      "requirements": [
+        "INT-54"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -12551,6 +12941,9 @@
     {
       "id": "py-plan-cache-out-of-range-in-param",
       "kind": "feature",
+      "requirements": [
+        "CPX-4"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -13020,50 +13413,6 @@
       ]
     },
     {
-      "id": "php-internal-autoload-bootstrap",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/AutoloadTest.php",
-          "id": "AutoloadTest::test_bootstrap"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-autoload-autoload",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/AutoloadTest.php",
-          "id": "AutoloadTest::test_autoload"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-client-generics-phpstan-types-the-transaction-result-and-the-rows-of-a-model",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ClientGenericsTest.php",
-          "id": "ClientGenericsTest::test_phpstan_types_the_transaction_result_and_the_rows_of_a_model"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-conformance-result-conformance-result-php",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ConformanceResultTest.php",
-          "id": "ConformanceResultTest::test_conformance_result_php"
-        }
-      ]
-    },
-    {
       "id": "php-internal-failing-pdo-cleanup-errors-release",
       "kind": "feature",
       "requirements": [
@@ -13085,6 +13434,9 @@
     {
       "id": "php-internal-failing-pdo-cleanup-errors-begin-restore",
       "kind": "feature",
+      "requirements": [
+        "PLN-98"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -13101,6 +13453,9 @@
     {
       "id": "php-internal-failing-pdo-rollback-step-outside",
       "kind": "feature",
+      "requirements": [
+        "PLN-98"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -13117,6 +13472,9 @@
     {
       "id": "php-internal-failing-pdo-effect-row",
       "kind": "feature",
+      "requirements": [
+        "PLN-98"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -13133,6 +13491,9 @@
     {
       "id": "php-internal-failing-pdo-effect-close",
       "kind": "feature",
+      "requirements": [
+        "PLN-98"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -13249,6 +13610,9 @@
     {
       "id": "php-internal-group-rows-owner",
       "kind": "feature",
+      "requirements": [
+        "INT-90"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -13313,6 +13677,12 @@
     {
       "id": "php-internal-markdown-rejected-surfaces",
       "kind": "feature",
+      "requirements": [
+        "PRT-63",
+        "PRT-64",
+        "PRT-66",
+        "PRT-67"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -13352,6 +13722,12 @@
     {
       "id": "php-internal-markdown-bind-vectors",
       "kind": "feature",
+      "requirements": [
+        "PRT-63",
+        "PRT-64",
+        "PRT-66",
+        "PRT-67"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -13363,6 +13739,12 @@
     {
       "id": "php-internal-markdown-param-uses",
       "kind": "feature",
+      "requirements": [
+        "PRT-63",
+        "PRT-64",
+        "PRT-66",
+        "PRT-67"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -13374,6 +13756,12 @@
     {
       "id": "php-internal-markdown-bind-offsetless-datetime-uses-the-connection-zone-under-dst",
       "kind": "feature",
+      "requirements": [
+        "PRT-63",
+        "PRT-64",
+        "PRT-66",
+        "PRT-67"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -13385,6 +13773,9 @@
     {
       "id": "php-internal-model-methods-phpstan-finds-every-query-method-of-a-generated-model",
       "kind": "feature",
+      "requirements": [
+        "DBS-121"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -13396,6 +13787,9 @@
     {
       "id": "php-internal-model-methods-a-declared-method-builds-the-query-of-its-chain",
       "kind": "feature",
+      "requirements": [
+        "DBS-121"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -13415,17 +13809,6 @@
           "implementation": "php",
           "test": "packages/php/tests/ModelMethodsTest.php",
           "id": "ModelMethodsTest::test_a_time_setter_takes_the_text_form"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-orm-gen-scan-parity-the-node-and-the-php-scan-agree",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenScanParityTest.php",
-          "id": "OrmGenScanParityTest::test_the_node_and_the_php_scan_agree"
         }
       ]
     },
@@ -13573,6 +13956,15 @@
     {
       "id": "php-internal-orm-gen-scan-check-compares-the-models-with-the-scan",
       "kind": "feature",
+      "requirements": [
+        "DBS-118",
+        "DBS-173",
+        "DSL-42",
+        "DSL-44",
+        "DSL-151",
+        "DSL-152",
+        "SCH-1"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -13598,6 +13990,23 @@
     {
       "id": "php-internal-orm-gen-gen-check-compares-the-models-without-writing",
       "kind": "feature",
+      "requirements": [
+        "DBS-4",
+        "DBS-5",
+        "DBS-19",
+        "DBS-25",
+        "DBS-27",
+        "DBS-98",
+        "DBS-104",
+        "DBS-105",
+        "DBS-110",
+        "DBS-155",
+        "DSL-127",
+        "ORES-21",
+        "ORES-36",
+        "PLN-22",
+        "SCH-1"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -13705,6 +14114,23 @@
     {
       "id": "php-internal-orm-gen-gen-writes-the-same-models-however-the-paths-are-written",
       "kind": "feature",
+      "requirements": [
+        "DBS-4",
+        "DBS-5",
+        "DBS-19",
+        "DBS-25",
+        "DBS-27",
+        "DBS-98",
+        "DBS-104",
+        "DBS-105",
+        "DBS-110",
+        "DBS-155",
+        "DSL-127",
+        "ORES-21",
+        "ORES-36",
+        "PLN-22",
+        "SCH-1"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -13716,6 +14142,23 @@
     {
       "id": "php-internal-orm-gen-gen-is-the-only-command",
       "kind": "feature",
+      "requirements": [
+        "DBS-4",
+        "DBS-5",
+        "DBS-19",
+        "DBS-25",
+        "DBS-27",
+        "DBS-98",
+        "DBS-104",
+        "DBS-105",
+        "DBS-110",
+        "DBS-155",
+        "DSL-127",
+        "ORES-21",
+        "ORES-36",
+        "PLN-22",
+        "SCH-1"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -13727,6 +14170,23 @@
     {
       "id": "php-internal-orm-gen-the-bin-composer-installs-loads-the-autoloader",
       "kind": "feature",
+      "requirements": [
+        "DBS-4",
+        "DBS-5",
+        "DBS-19",
+        "DBS-25",
+        "DBS-27",
+        "DBS-98",
+        "DBS-104",
+        "DBS-105",
+        "DBS-110",
+        "DBS-155",
+        "DSL-127",
+        "ORES-21",
+        "ORES-36",
+        "PLN-22",
+        "SCH-1"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -13738,33 +14198,28 @@
     {
       "id": "php-internal-orm-gen-the-bin-outside-composer-names-the-missing-autoloader",
       "kind": "feature",
+      "requirements": [
+        "DBS-4",
+        "DBS-5",
+        "DBS-19",
+        "DBS-25",
+        "DBS-27",
+        "DBS-98",
+        "DBS-104",
+        "DBS-105",
+        "DBS-110",
+        "DBS-155",
+        "DSL-127",
+        "ORES-21",
+        "ORES-36",
+        "PLN-22",
+        "SCH-1"
+      ],
       "bindings": [
         {
           "implementation": "php",
           "test": "packages/php/tests/OrmGenTest.php",
           "id": "OrmGenTest::test_the_bin_outside_Composer_names_the_missing_autoloader"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-relation-keys-relation-keys",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RelationKeysTest.php",
-          "id": "RelationKeysTest::test_relation_keys"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-request-hook-request-hook",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RequestHookTest.php",
-          "id": "RequestHookTest::test_request_hook"
         }
       ]
     },
@@ -13831,6 +14286,20 @@
     {
       "id": "php-internal-runtime-model-generated-files-are-current",
       "kind": "feature",
+      "requirements": [
+        "DBS-68",
+        "DBS-103",
+        "DBS-104",
+        "DBS-111",
+        "DBS-112",
+        "DBS-114",
+        "DBS-115",
+        "DBS-116",
+        "DBS-119",
+        "DBS-120",
+        "DIA-24",
+        "PRT-9"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -13913,6 +14382,10 @@
     {
       "id": "php-internal-sqlite-concurrency-writers-in-several-processes",
       "kind": "feature",
+      "requirements": [
+        "CFG-12",
+        "CFG-13"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -13946,28 +14419,6 @@
           "implementation": "php",
           "test": "packages/php/tests/SqliteConcurrencyTest.php",
           "id": "SqliteConcurrencyTest::test_lock_wait_expires"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-unselected-column-owner",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/UnselectedColumnTest.php",
-          "id": "UnselectedColumnTest::test_owner"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-sqlite-path-loads-no-mysql-dialect-class",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/SqliteWithoutMysqlTest.php",
-          "id": "SqliteWithoutMysqlTest::test_sqlite_path_loads_no_mysql_dialect_class"
         }
       ]
     },
@@ -14148,17 +14599,6 @@
       ]
     },
     {
-      "id": "php-internal-coverage-constraints-and-relations-constraint-errors",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
-          "id": "CoverageConstraintsAndRelationsTest::test_constraint_errors"
-        }
-      ]
-    },
-    {
       "id": "php-internal-coverage-interface-contract-interface-symbols",
       "kind": "feature",
       "requirements": [
@@ -14174,39 +14614,6 @@
           "implementation": "php",
           "test": "packages/php/tests/CoverageInterfaceContractTest.php",
           "id": "CoverageInterfaceContractTest::test_interface_symbols"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-coverage-model-generation-model-generation-check",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageModelGenerationTest.php",
-          "id": "CoverageModelGenerationTest::test_model_generation_check"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-coverage-parameter-chunking-root-in-chunking",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageParameterChunkingTest.php",
-          "id": "CoverageParameterChunkingTest::test_root_in_chunking"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-coverage-performance-gate-hot-path-gate",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoveragePerformanceGateTest.php",
-          "id": "CoveragePerformanceGateTest::test_hot_path_gate"
         }
       ]
     },
@@ -14256,19 +14663,14 @@
       ]
     },
     {
-      "id": "php-internal-coverage-statement-events-statement-events",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageStatementEventsTest.php",
-          "id": "CoverageStatementEventsTest::test_statement_events"
-        }
-      ]
-    },
-    {
       "id": "php-internal-dbspec-apply-runs",
       "kind": "feature",
+      "requirements": [
+        "PLN-93",
+        "PLN-95",
+        "PLN-96",
+        "PLN-105"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -14285,6 +14687,9 @@
     {
       "id": "php-internal-decimal-model-db-generate",
       "kind": "feature",
+      "requirements": [
+        "COD-2"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -14322,30 +14727,11 @@
       ]
     },
     {
-      "id": "php-internal-driver-error-trigger-refused",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DriverErrorTest.php",
-          "id": "DriverErrorTest::test_trigger_refused"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-driver-error-check-refused",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DriverErrorTest.php",
-          "id": "DriverErrorTest::test_check_refused"
-        }
-      ]
-    },
-    {
       "id": "php-internal-group-rows-db-group-rows",
       "kind": "feature",
+      "requirements": [
+        "INT-31"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -14357,6 +14743,58 @@
     {
       "id": "php-internal-model-schema-empty",
       "kind": "feature",
+      "requirements": [
+        "CFG-2",
+        "CFG-4",
+        "CFG-5",
+        "CFG-6",
+        "CFG-7",
+        "CFG-21",
+        "CFG-22",
+        "CFG-24",
+        "CFG-27",
+        "CFG-29",
+        "COD-8",
+        "CPX-1",
+        "DBS-118",
+        "DIA-57",
+        "DSL-49",
+        "DSL-50",
+        "DSL-107",
+        "DSL-116",
+        "DSL-118",
+        "DSL-119",
+        "DSL-123",
+        "DSL-124",
+        "DSL-125",
+        "DSL-126",
+        "DSL-141",
+        "PLN-6",
+        "PLN-7",
+        "PLN-8",
+        "PLN-9",
+        "PLN-10",
+        "PLN-12",
+        "PLN-13",
+        "PLN-14",
+        "PLN-16",
+        "PLN-17",
+        "PLN-20",
+        "PLN-21",
+        "PLN-23",
+        "PLN-24",
+        "PLN-27",
+        "PLN-28",
+        "PLN-29",
+        "PLN-36",
+        "PLN-37",
+        "PLN-38",
+        "PLN-39",
+        "PLN-41",
+        "PLN-42",
+        "PLN-43",
+        "SCH-7"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -14472,6 +14910,58 @@
     {
       "id": "php-internal-model-failed-local-reset",
       "kind": "feature",
+      "requirements": [
+        "CFG-2",
+        "CFG-4",
+        "CFG-5",
+        "CFG-6",
+        "CFG-7",
+        "CFG-21",
+        "CFG-22",
+        "CFG-24",
+        "CFG-27",
+        "CFG-29",
+        "COD-8",
+        "CPX-1",
+        "DBS-118",
+        "DIA-57",
+        "DSL-49",
+        "DSL-50",
+        "DSL-107",
+        "DSL-116",
+        "DSL-118",
+        "DSL-119",
+        "DSL-123",
+        "DSL-124",
+        "DSL-125",
+        "DSL-126",
+        "DSL-141",
+        "PLN-6",
+        "PLN-7",
+        "PLN-8",
+        "PLN-9",
+        "PLN-10",
+        "PLN-12",
+        "PLN-13",
+        "PLN-14",
+        "PLN-16",
+        "PLN-17",
+        "PLN-20",
+        "PLN-21",
+        "PLN-23",
+        "PLN-24",
+        "PLN-27",
+        "PLN-28",
+        "PLN-29",
+        "PLN-36",
+        "PLN-37",
+        "PLN-38",
+        "PLN-39",
+        "PLN-41",
+        "PLN-42",
+        "PLN-43",
+        "SCH-7"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -14483,6 +14973,58 @@
     {
       "id": "php-internal-model-failed-lock-release",
       "kind": "feature",
+      "requirements": [
+        "CFG-2",
+        "CFG-4",
+        "CFG-5",
+        "CFG-6",
+        "CFG-7",
+        "CFG-21",
+        "CFG-22",
+        "CFG-24",
+        "CFG-27",
+        "CFG-29",
+        "COD-8",
+        "CPX-1",
+        "DBS-118",
+        "DIA-57",
+        "DSL-49",
+        "DSL-50",
+        "DSL-107",
+        "DSL-116",
+        "DSL-118",
+        "DSL-119",
+        "DSL-123",
+        "DSL-124",
+        "DSL-125",
+        "DSL-126",
+        "DSL-141",
+        "PLN-6",
+        "PLN-7",
+        "PLN-8",
+        "PLN-9",
+        "PLN-10",
+        "PLN-12",
+        "PLN-13",
+        "PLN-14",
+        "PLN-16",
+        "PLN-17",
+        "PLN-20",
+        "PLN-21",
+        "PLN-23",
+        "PLN-24",
+        "PLN-27",
+        "PLN-28",
+        "PLN-29",
+        "PLN-36",
+        "PLN-37",
+        "PLN-38",
+        "PLN-39",
+        "PLN-41",
+        "PLN-42",
+        "PLN-43",
+        "SCH-7"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -14494,6 +15036,58 @@
     {
       "id": "php-internal-model-failed-rollback",
       "kind": "feature",
+      "requirements": [
+        "CFG-2",
+        "CFG-4",
+        "CFG-5",
+        "CFG-6",
+        "CFG-7",
+        "CFG-21",
+        "CFG-22",
+        "CFG-24",
+        "CFG-27",
+        "CFG-29",
+        "COD-8",
+        "CPX-1",
+        "DBS-118",
+        "DIA-57",
+        "DSL-49",
+        "DSL-50",
+        "DSL-107",
+        "DSL-116",
+        "DSL-118",
+        "DSL-119",
+        "DSL-123",
+        "DSL-124",
+        "DSL-125",
+        "DSL-126",
+        "DSL-141",
+        "PLN-6",
+        "PLN-7",
+        "PLN-8",
+        "PLN-9",
+        "PLN-10",
+        "PLN-12",
+        "PLN-13",
+        "PLN-14",
+        "PLN-16",
+        "PLN-17",
+        "PLN-20",
+        "PLN-21",
+        "PLN-23",
+        "PLN-24",
+        "PLN-27",
+        "PLN-28",
+        "PLN-29",
+        "PLN-36",
+        "PLN-37",
+        "PLN-38",
+        "PLN-39",
+        "PLN-41",
+        "PLN-42",
+        "PLN-43",
+        "SCH-7"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -14505,6 +15099,58 @@
     {
       "id": "php-internal-model-failed-savepoint-end",
       "kind": "feature",
+      "requirements": [
+        "CFG-2",
+        "CFG-4",
+        "CFG-5",
+        "CFG-6",
+        "CFG-7",
+        "CFG-21",
+        "CFG-22",
+        "CFG-24",
+        "CFG-27",
+        "CFG-29",
+        "COD-8",
+        "CPX-1",
+        "DBS-118",
+        "DIA-57",
+        "DSL-49",
+        "DSL-50",
+        "DSL-107",
+        "DSL-116",
+        "DSL-118",
+        "DSL-119",
+        "DSL-123",
+        "DSL-124",
+        "DSL-125",
+        "DSL-126",
+        "DSL-141",
+        "PLN-6",
+        "PLN-7",
+        "PLN-8",
+        "PLN-9",
+        "PLN-10",
+        "PLN-12",
+        "PLN-13",
+        "PLN-14",
+        "PLN-16",
+        "PLN-17",
+        "PLN-20",
+        "PLN-21",
+        "PLN-23",
+        "PLN-24",
+        "PLN-27",
+        "PLN-28",
+        "PLN-29",
+        "PLN-36",
+        "PLN-37",
+        "PLN-38",
+        "PLN-39",
+        "PLN-41",
+        "PLN-42",
+        "PLN-43",
+        "SCH-7"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -14593,6 +15239,58 @@
     {
       "id": "php-internal-model-styled-value-states",
       "kind": "feature",
+      "requirements": [
+        "CFG-2",
+        "CFG-4",
+        "CFG-5",
+        "CFG-6",
+        "CFG-7",
+        "CFG-21",
+        "CFG-22",
+        "CFG-24",
+        "CFG-27",
+        "CFG-29",
+        "COD-8",
+        "CPX-1",
+        "DBS-118",
+        "DIA-57",
+        "DSL-49",
+        "DSL-50",
+        "DSL-107",
+        "DSL-116",
+        "DSL-118",
+        "DSL-119",
+        "DSL-123",
+        "DSL-124",
+        "DSL-125",
+        "DSL-126",
+        "DSL-141",
+        "PLN-6",
+        "PLN-7",
+        "PLN-8",
+        "PLN-9",
+        "PLN-10",
+        "PLN-12",
+        "PLN-13",
+        "PLN-14",
+        "PLN-16",
+        "PLN-17",
+        "PLN-20",
+        "PLN-21",
+        "PLN-23",
+        "PLN-24",
+        "PLN-27",
+        "PLN-28",
+        "PLN-29",
+        "PLN-36",
+        "PLN-37",
+        "PLN-38",
+        "PLN-39",
+        "PLN-41",
+        "PLN-42",
+        "PLN-43",
+        "SCH-7"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -14604,6 +15302,58 @@
     {
       "id": "php-internal-model-codec-columns",
       "kind": "feature",
+      "requirements": [
+        "CFG-2",
+        "CFG-4",
+        "CFG-5",
+        "CFG-6",
+        "CFG-7",
+        "CFG-21",
+        "CFG-22",
+        "CFG-24",
+        "CFG-27",
+        "CFG-29",
+        "COD-8",
+        "CPX-1",
+        "DBS-118",
+        "DIA-57",
+        "DSL-49",
+        "DSL-50",
+        "DSL-107",
+        "DSL-116",
+        "DSL-118",
+        "DSL-119",
+        "DSL-123",
+        "DSL-124",
+        "DSL-125",
+        "DSL-126",
+        "DSL-141",
+        "PLN-6",
+        "PLN-7",
+        "PLN-8",
+        "PLN-9",
+        "PLN-10",
+        "PLN-12",
+        "PLN-13",
+        "PLN-14",
+        "PLN-16",
+        "PLN-17",
+        "PLN-20",
+        "PLN-21",
+        "PLN-23",
+        "PLN-24",
+        "PLN-27",
+        "PLN-28",
+        "PLN-29",
+        "PLN-36",
+        "PLN-37",
+        "PLN-38",
+        "PLN-39",
+        "PLN-41",
+        "PLN-42",
+        "PLN-43",
+        "SCH-7"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -14639,6 +15389,58 @@
     {
       "id": "php-internal-model-utilities",
       "kind": "feature",
+      "requirements": [
+        "CFG-2",
+        "CFG-4",
+        "CFG-5",
+        "CFG-6",
+        "CFG-7",
+        "CFG-21",
+        "CFG-22",
+        "CFG-24",
+        "CFG-27",
+        "CFG-29",
+        "COD-8",
+        "CPX-1",
+        "DBS-118",
+        "DIA-57",
+        "DSL-49",
+        "DSL-50",
+        "DSL-107",
+        "DSL-116",
+        "DSL-118",
+        "DSL-119",
+        "DSL-123",
+        "DSL-124",
+        "DSL-125",
+        "DSL-126",
+        "DSL-141",
+        "PLN-6",
+        "PLN-7",
+        "PLN-8",
+        "PLN-9",
+        "PLN-10",
+        "PLN-12",
+        "PLN-13",
+        "PLN-14",
+        "PLN-16",
+        "PLN-17",
+        "PLN-20",
+        "PLN-21",
+        "PLN-23",
+        "PLN-24",
+        "PLN-27",
+        "PLN-28",
+        "PLN-29",
+        "PLN-36",
+        "PLN-37",
+        "PLN-38",
+        "PLN-39",
+        "PLN-41",
+        "PLN-42",
+        "PLN-43",
+        "SCH-7"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -14678,6 +15480,58 @@
     {
       "id": "php-internal-model-bind-limit-splitting",
       "kind": "feature",
+      "requirements": [
+        "CFG-2",
+        "CFG-4",
+        "CFG-5",
+        "CFG-6",
+        "CFG-7",
+        "CFG-21",
+        "CFG-22",
+        "CFG-24",
+        "CFG-27",
+        "CFG-29",
+        "COD-8",
+        "CPX-1",
+        "DBS-118",
+        "DIA-57",
+        "DSL-49",
+        "DSL-50",
+        "DSL-107",
+        "DSL-116",
+        "DSL-118",
+        "DSL-119",
+        "DSL-123",
+        "DSL-124",
+        "DSL-125",
+        "DSL-126",
+        "DSL-141",
+        "PLN-6",
+        "PLN-7",
+        "PLN-8",
+        "PLN-9",
+        "PLN-10",
+        "PLN-12",
+        "PLN-13",
+        "PLN-14",
+        "PLN-16",
+        "PLN-17",
+        "PLN-20",
+        "PLN-21",
+        "PLN-23",
+        "PLN-24",
+        "PLN-27",
+        "PLN-28",
+        "PLN-29",
+        "PLN-36",
+        "PLN-37",
+        "PLN-38",
+        "PLN-39",
+        "PLN-41",
+        "PLN-42",
+        "PLN-43",
+        "SCH-7"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -14689,6 +15543,58 @@
     {
       "id": "php-internal-model-insert-parts",
       "kind": "feature",
+      "requirements": [
+        "CFG-2",
+        "CFG-4",
+        "CFG-5",
+        "CFG-6",
+        "CFG-7",
+        "CFG-21",
+        "CFG-22",
+        "CFG-24",
+        "CFG-27",
+        "CFG-29",
+        "COD-8",
+        "CPX-1",
+        "DBS-118",
+        "DIA-57",
+        "DSL-49",
+        "DSL-50",
+        "DSL-107",
+        "DSL-116",
+        "DSL-118",
+        "DSL-119",
+        "DSL-123",
+        "DSL-124",
+        "DSL-125",
+        "DSL-126",
+        "DSL-141",
+        "PLN-6",
+        "PLN-7",
+        "PLN-8",
+        "PLN-9",
+        "PLN-10",
+        "PLN-12",
+        "PLN-13",
+        "PLN-14",
+        "PLN-16",
+        "PLN-17",
+        "PLN-20",
+        "PLN-21",
+        "PLN-23",
+        "PLN-24",
+        "PLN-27",
+        "PLN-28",
+        "PLN-29",
+        "PLN-36",
+        "PLN-37",
+        "PLN-38",
+        "PLN-39",
+        "PLN-41",
+        "PLN-42",
+        "PLN-43",
+        "SCH-7"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -14744,6 +15650,12 @@
     {
       "id": "php-internal-rollback-rollback-failed",
       "kind": "feature",
+      "requirements": [
+        "CFG-15",
+        "PRT-46",
+        "PRT-56",
+        "PRT-61"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -14755,6 +15667,12 @@
     {
       "id": "php-internal-rollback-savepoint-rollback-failed",
       "kind": "feature",
+      "requirements": [
+        "CFG-15",
+        "PRT-46",
+        "PRT-56",
+        "PRT-61"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -14811,6 +15729,10 @@
     {
       "id": "php-internal-runtime-db-i16-values-and-defaults",
       "kind": "feature",
+      "requirements": [
+        "DBS-108",
+        "SCH-7"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -14822,6 +15744,10 @@
     {
       "id": "php-internal-runtime-db-audit-record-of-a-transaction",
       "kind": "feature",
+      "requirements": [
+        "DBS-108",
+        "SCH-7"
+      ],
       "bindings": [
         {
           "implementation": "php",
@@ -14833,22 +15759,15 @@
     {
       "id": "php-internal-runtime-db-restore-of-soft-deleted-rows",
       "kind": "feature",
+      "requirements": [
+        "DBS-108",
+        "SCH-7"
+      ],
       "bindings": [
         {
           "implementation": "php",
           "test": "packages/php/tests/RuntimeDbTest.php",
           "id": "RuntimeDbTest::test_restore_of_soft_deleted_rows"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-unselected-column-db-unselected-column",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/UnselectedColumnDbTest.php",
-          "id": "UnselectedColumnDbTest::test_unselected_column"
         }
       ]
     },
