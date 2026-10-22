@@ -232,3 +232,4 @@
 | KSTD-5-68 | Reject a negative or out-of-range fraction precision | packages/rust/orm/src/db.rs:1155,1167,1185 | `make rust-check` | [ ] |
 | KSTD-5-69 | Include the panic payload of the commit task | packages/rust/build/src/catalog/mutation_finish.rs:40 | `make rust-check` | [ ] |
 | KSTD-5-70 | Name the missing CARGO_MANIFEST_DIR instead of resolving against the current directory | packages/rust/build/src/lib.rs:146 | `make rust-check` | [ ] |
+| KSTD-5-71 | Keep the cause in the map_err(\|_\|) closures of the Rust codec, driver, markdown and build files | packages/rust/orm/src/codec.rs; packages/rust/orm/src/driver.rs (bad()); packages/rust/orm/src/markdown.rs:573,579; packages/rust/build/src/catalog/*; packages/rust/build/src/tool_db/* | `make rust-check` | [ ] |
