@@ -49,6 +49,25 @@ pub fn program(name: &str) -> String {
     std::env::var(&variable).unwrap_or_else(|_| panic!("{variable} is unset; run the test through tests/cargo-test.mts, which gives the copied program"))
 }
 
+/// Runs the program `program` with `args`, with the environment variable `var` set to `value`, or unset when `value` is `None`.
+/// The output is returned for `assert_env_required`.
+pub fn run_with_env(program: &str, args: &[&str], var: &str, value: Option<&str>) -> std::process::Output {
+    let mut command = std::process::Command::new(program);
+    command.args(args);
+    match value {
+        Some(v) => command.env(var, v),
+        None => command.env_remove(var),
+    };
+    command.output().expect("the program must start")
+}
+
+/// Asserts that the output of a program exits with status 1 and says on stderr that the variable `var` is required.
+pub fn assert_env_required(program: &str, output: std::process::Output, var: &str) {
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(output.status.code(), Some(1), "{program} without {var}: {stderr}");
+    assert!(stderr.contains(&format!("{var} is required")), "{program} stderr lacks the {var} requirement: {stderr}");
+}
+
 /// Uses the test function name as the case name and starts the case under deadline `$deadline`. The case is checked for failure
 /// when it leaves scope, so keep it bound with `let _case = polyspec_orm_testcase::case!(..);`.
 #[macro_export]
