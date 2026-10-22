@@ -260,6 +260,8 @@ final class Parser
         try {
             $parser->read($source);
         } catch (ParseStop) {
+            // A document that stops at an error still has the header read before it.
+            return isset($parser->document) ? $parser->document->name : '';
         }
         return isset($parser->document) ? $parser->document->name : '';
     }

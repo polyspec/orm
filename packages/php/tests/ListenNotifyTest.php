@@ -36,7 +36,8 @@ final class ListenNotifyTest extends TestCase
                         throw new \RuntimeException('roll back');
                     });
                     self::fail('the transaction that fails did not fail');
-                } catch (\RuntimeException) {
+                } catch (\RuntimeException $rolledBack) {
+                    self::assertInstanceOf(\RuntimeException::class, $rolledBack, 'the transaction rolled back');
                 }
                 $db->notify('t229_events', 'outside');
                 $second = $subscription->receive(5.0);

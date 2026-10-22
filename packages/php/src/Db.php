@@ -1585,7 +1585,8 @@ final class Db
         try {
             $st->closeCursor();
         } catch (\PDOException) {
-            // the reset reports the failed step again on some drivers
+            // The reset reports the failed step again on some drivers; the error of the statement is the one returned.
+            return $e;
         }
         return $e;
     }

@@ -36,8 +36,8 @@ final class ConformanceResultTest extends TestCase
             try {
                 derivedInteger($invalid);
                 self::fail('invalid derived integer was accepted: ' . var_export($invalid, true));
-            } catch (InvalidArgumentException) {
-                // The invalid value was rejected.
+            } catch (InvalidArgumentException $rejected) {
+                self::assertInstanceOf(InvalidArgumentException::class, $rejected, 'the invalid value was rejected');
             }
         }
         $cause = new DomainException('invalid row');

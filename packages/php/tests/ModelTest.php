@@ -601,7 +601,8 @@ final class ModelTest extends TestCase
                     (new User())->setName('inner')->create();
                     throw $boom;
                 });
-            } catch (RuntimeException) {
+            } catch (RuntimeException $rolledBack) {
+                self::check($rolledBack instanceof RuntimeException, 'the failing savepoint rolled back');
             }
             self::check((new User())->getCount() === 1, 'savepoint rollback');
             (new User())->name('outer')->forUpdate()->gets();

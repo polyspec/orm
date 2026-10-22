@@ -406,7 +406,8 @@ final class MarkdownConformanceTest extends TestCase
                         throw new Stop('stop');
                     });
                     throw new RuntimeException('the transaction ended without its callback\'s error');
-                } catch (Stop) {
+                } catch (Stop $stop) {
+                    self::assertInstanceOf(Stop::class, $stop, 'the transaction ended with its callback\'s error');
                 }
                 return (new Logs())->connect($s->db)->getCount();
             },
@@ -419,7 +420,8 @@ final class MarkdownConformanceTest extends TestCase
                             throw new Stop('stop');
                         });
                         throw new RuntimeException('the savepoint ended without its callback\'s error');
-                    } catch (Stop) {
+                    } catch (Stop $stop) {
+                        self::assertInstanceOf(Stop::class, $stop, 'the savepoint ended with its callback\'s error');
                     }
                 });
                 $notes = [];

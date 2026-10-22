@@ -124,7 +124,8 @@ final class WasInsertedTest extends TestCase
                         throw new \RuntimeException('roll back the nested savepoint');
                     }, retry: 0);
                     self::fail('the nested transaction unexpectedly committed');
-                } catch (\RuntimeException) {
+                } catch (\RuntimeException $rolledBack) {
+                    self::assertInstanceOf(\RuntimeException::class, $rolledBack, 'the nested savepoint rolled back');
                 }
                 self::assertFalse(
                     $db->utils()->wasInserted('clock_event', $nested),
