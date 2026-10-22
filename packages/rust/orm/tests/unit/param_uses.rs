@@ -1,6 +1,8 @@
 //! param_uses: for each parameter of the validated request, the type and column of the slot the parameter fills (docs/spec/protocol.md §5
 //! "Parameters"). The request and expected values are the same as Go engine/ir/params_test.go's TestParamUses. The engine's function is
 //! visible only inside the crate, so src/engine/mod.rs makes this file a unit test module.
+
+use super::or_panic::OrPanic;
 use super::{param_uses, validate, ParamUse};
 use crate::ir;
 use crate::schema::Manifest;
@@ -27,8 +29,8 @@ table notes {
 ";
 
 fn manifest() -> Manifest {
-    let document = crate::dbspec::parse(DOCUMENT, &Default::default()).map(|parsed| parsed.document).unwrap_or_else(|errors| panic!("{errors:?}"));
-    let set = crate::dbspec::manifest(&[&document]).unwrap_or_else(|errors| panic!("{errors:?}"));
+    let document = crate::dbspec::parse(DOCUMENT, &Default::default()).map(|parsed| parsed.document).or_panic(|errors| format!("{errors:?}"));
+    let set = crate::dbspec::manifest(&[&document]).or_panic(|errors| format!("{errors:?}"));
     Manifest::load(&set.manifest_text, &set.manifest_hash).unwrap()
 }
 

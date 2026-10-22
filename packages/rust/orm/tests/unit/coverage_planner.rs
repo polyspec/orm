@@ -2,6 +2,8 @@
 //! and compiles it for each dialect with this client's engine. A statement (role, sql, the params of the bind slots
 //! in order (the parent slot is -1), table) must equal `expected[dialect]`, or the error code must equal `expected.error`.
 //! The engine's compile is visible only inside the crate, so src/engine/mod.rs makes this file a unit test module.
+
+use super::or_panic::OrPanic;
 use super::ir_request::{members, repository, request, schema};
 use super::{compile, param_uses, validate, Dialect};
 use polyspec_orm_case_clock::CaseClock;
@@ -20,8 +22,8 @@ fn case(id: &str) -> (String, Value, Value) {
 
 fn case_of(id: &str, operation: &str) -> (String, Value, Value) {
     let path = repository().join("contracts/fixtures/planner.json");
-    let fixture: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display())))
-        .unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    let fixture: Value = serde_json::from_str(&std::fs::read_to_string(&path).or_panic(|e| format!("{}: {e}", path.display())))
+        .or_panic(|e| format!("{}: {e}", path.display()));
     assert_eq!(fixture["feature"], "planner", "{}: feature", path.display());
     let cases: Vec<&Value> = fixture["cases"].as_array().expect("fixture cases").iter().filter(|c| c["id"] == id).collect();
     let [case] = cases.as_slice() else { panic!("{}: case {id} appears {} times", path.display(), cases.len()) };
@@ -590,7 +592,7 @@ fn run_param_uses(id: &str) {
     let (at, input, expected) = case_of(id, "param_uses");
     let manifest = schema(&at);
     let request = request(&input, &manifest.manifest_hash);
-    validate(&manifest, &request).unwrap_or_else(|e| panic!("{id}: {e}"));
+    validate(&manifest, &request).or_panic(|e| format!("{id}: {e}"));
     let got: Vec<Vec<Value>> = param_uses(&manifest, &request)
         .iter()
         .map(|uses| {

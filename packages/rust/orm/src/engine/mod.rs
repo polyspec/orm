@@ -35,6 +35,10 @@ pub fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
 mod ir_request;
 
 #[cfg(test)]
+#[path = "../../tests/common/or_panic.rs"]
+mod or_panic;
+
+#[cfg(test)]
 #[path = "../../tests/unit/coverage_planner.rs"]
 mod coverage_planner;
 
