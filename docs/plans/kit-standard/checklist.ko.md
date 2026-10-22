@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 82e5f4b4a1981f577e770ed4629de905f2e5ffbfd8418acf2ce8c83d02f53b91 -->
+<!-- source-sha256: 0d8187d24755f4136479169392895992d511f54a124ff214bfb64585b4c13b9c -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -219,3 +219,4 @@
 | KSTD-5-57-21 | tests crate의 bench_set.rs, client_bench.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/tests/src bench_set.rs, client_bench.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-20 | orm 테스트 파일 value_decode.rs와 unit 파일 param_uses.rs, coverage_planner.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests value_decode.rs, unit/param_uses.rs, unit/coverage_planner.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-19 | orm 테스트 파일 zone.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests/zone.rs | `make lint-rust` reports no finding in these files | [ ] |
+| KSTD-5-58 | DbspecRulesTest::testLimitColumnsPeak가 limit과 columns 문서의 peak 메모리를 안정적으로 잰다: 그 bound는 앞서 실행된 test의 프로세스 상태에 따라 달라지지 않는다 | packages/php/tests/DbspecRulesTest.php | `vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter testLimitColumnsPeak packages/php/tests/DbspecRulesTest.php` | [ ] |
