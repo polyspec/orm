@@ -26,9 +26,11 @@ def _compare_ref(ref: dict) -> str:
 def diff_objects(d: dict, renamed_from: dict, renamed_column: dict) -> None:
     """Compares the unique keys, indexes, foreign keys, and checks of the matched tables by name and definition.
     The source definition is read with the rename applied."""
-    target_table = lambda s: renamed_or(renamed_from, s)  # noqa: E731
+    def target_table(s):
+        return renamed_or(renamed_from, s)
     # Source definition with the column renames applied
-    column = lambda target, c: renamed_or(renamed_column.get(target), c)  # noqa: E731
+    def column(target, c):
+        return renamed_or(renamed_column.get(target), c)
     altered_column: set = set()  # "table.column" target name
     renamed_col: set = set()
     for t, cols in d["altered"].items():
@@ -40,7 +42,8 @@ def diff_objects(d: dict, renamed_from: dict, renamed_column: dict) -> None:
     for name in d["matched"]:
         src = d["source"][d["table_of"][name]]
         tgt = d["target"][name]
-        col = lambda c, name=name: column(name, c)  # noqa: E731
+        def col(c, name=name):
+            return column(name, c)
         # A foreign key on an index or unique key being dropped is recreated with it, because MySQL
         # does not allow dropping that index otherwise.
         dropped_keys: set = set()

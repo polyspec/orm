@@ -185,12 +185,12 @@ def _finish(f, *ends) -> None:
     failure = None
     try:
         f()
-    except Exception as error:  # noqa: BLE001
+    except Exception as error:  # noqa: BLE001 - a failure of any type is kept, and the first one is the one reported
         failure = error
     for end in ends:
         try:
             end()
-        except Exception as error:  # noqa: BLE001
+        except Exception as error:  # noqa: BLE001 - a cleanup failure of any type is reported only when no earlier failure exists
             if failure is not None:
                 failure.add_note(f"cleanup failed: {error}")
             else:
@@ -377,7 +377,7 @@ class _Applier:
             self._exec("PRAGMA locking_mode = EXCLUSIVE")
             try:
                 self._exec("BEGIN EXCLUSIVE")
-            except Exception as error:  # noqa: BLE001
+            except Exception as error:  # noqa: BLE001 - any driver error of the exclusive lock is reported as the locked state
                 raise DbspecApplyError(
                     "locked",
                     "",
@@ -500,7 +500,7 @@ class _Applier:
             self.verify(want)
         except DbspecApplyError:
             raise
-        except Exception as error:  # noqa: BLE001
+        except Exception as error:  # noqa: BLE001 - any error of the verify after the settled state is reported as drift
             raise DbspecApplyError("drift", "", 0, _message_of(error)) from None
         return position
 
@@ -635,7 +635,7 @@ class _Applier:
             self.verify(p["to"])
         except DbspecApplyError:
             raise
-        except Exception as error:  # noqa: BLE001
+        except Exception as error:  # noqa: BLE001 - any error of the verify of a forward plan is reported as its verify error
             raise DbspecApplyError("verify", p["name"], 0, "", error) from None
         self._emit("verified", p["name"], 0, len(steps), "")
         self.record(p, APPLIED, end)
@@ -690,12 +690,12 @@ class _Applier:
             )
             try:
                 current = self._query_value(query)
-            except Exception as error:  # noqa: BLE001
+            except Exception as error:  # noqa: BLE001 - any error of reading a step's expected value is reported as the failed step
                 raise DbspecApplyError("failed", p["name"], i, query, error) from None
             self._same_session(p, i, current)
         try:
             self._exec(statement)
-        except Exception as error:  # noqa: BLE001
+        except Exception as error:  # noqa: BLE001 - any driver error of a step's statement is reported as the failed step
             raise DbspecApplyError("failed", p["name"], i, statement, error) from None
         self._emit("applied", p["name"], i, len(steps), statement)
 
@@ -780,7 +780,7 @@ class _Applier:
             return self.effect_holds(e)
         except DbspecApplyError:
             raise
-        except Exception as error:  # noqa: BLE001
+        except Exception as error:  # noqa: BLE001 - any error of the effect check is reported as the failed step
             raise DbspecApplyError("failed", p["name"], step, "", error) from None
 
     def effect_holds(self, e: dict) -> bool:
@@ -915,7 +915,7 @@ def rollback_plans(
                 a.verify(p["to"])
             except DbspecApplyError:
                 raise
-            except Exception as error:  # noqa: BLE001
+            except Exception as error:  # noqa: BLE001 - any error of the verify of the last plan is reported as drift
                 raise DbspecApplyError(
                     "drift", p["name"], 0, _message_of(error)
                 ) from None
@@ -941,7 +941,7 @@ def rollback_plans(
             a.verify(p["from"] or "")
         except DbspecApplyError:
             raise
-        except Exception as error:  # noqa: BLE001
+        except Exception as error:  # noqa: BLE001 - any error of the verify of the plan is reported as its verify error
             raise DbspecApplyError("verify", p["name"], 0, "", error) from None
         a._emit("verified", p["name"], 0, len(steps), "")
         a._exec(

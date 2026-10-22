@@ -461,7 +461,7 @@ def import_mermaid(text: str, name: str) -> dict:
                 )
     try:
         result = c.document(name)
-    except Exception as error:  # noqa: BLE001
+    except Exception as error:  # noqa: BLE001 - a catalog failure of any type becomes the line-1 diagnostic the comment below describes
         # If the catalog cannot build a document (for example, when the document name is not a dbspec name),
         # the diagnostic is at line 1.
         return fail(1, _message_of(error))
