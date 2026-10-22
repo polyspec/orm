@@ -31,20 +31,7 @@ var catalogWriteWords = map[string]bool{
 // has more than one statement fails with QUERY_READ_ONLY before it runs. Values come back as int64, float64, bool, string,
 // time.Time, a copy of binary bytes, decimal text or nil for NULL; any other native type fails.
 func (c *CatalogConnection) ReadOnlyQuery(ctx context.Context, query string, params []any, limits CatalogQueryLimits) (CatalogQueryResult, error) {
-	if err := catalogValidateReadOnly(query, c.dialect); err != nil {
-		return CatalogQueryResult{}, err
-	}
-	if limits.MaxRows < 0 || limits.MaxBytes < 0 {
-		return CatalogQueryResult{}, catalogErr("QUERY_LIMIT_INVALID", "limits must not be negative")
-	}
-	maxRows, maxBytes := limits.MaxRows, limits.MaxBytes
-	if maxRows == 0 {
-		maxRows = catalogDefaultRows
-	}
-	if maxBytes == 0 {
-		maxBytes = catalogDefaultBytes
-	}
-	args, err := catalogParams(params)
+	args, maxRows, maxBytes, err := c.readOnlyArgs(query, params, limits)
 	if err != nil {
 		return CatalogQueryResult{}, err
 	}
@@ -59,6 +46,29 @@ func (c *CatalogConnection) ReadOnlyQuery(ctx context.Context, query string, par
 		}
 		return CatalogQueryResult{Columns: raw.names, Rows: rows}, nil
 	})
+}
+
+// readOnlyArgs checks a read query, its limits and its parameters, and returns the parameters with the row and byte
+// budgets of the query, the defaults filled in for zero.
+func (c *CatalogConnection) readOnlyArgs(query string, params []any, limits CatalogQueryLimits) ([]any, int, int, error) {
+	if err := catalogValidateReadOnly(query, c.dialect); err != nil {
+		return nil, 0, 0, err
+	}
+	if limits.MaxRows < 0 || limits.MaxBytes < 0 {
+		return nil, 0, 0, catalogErr("QUERY_LIMIT_INVALID", "limits must not be negative")
+	}
+	maxRows, maxBytes := limits.MaxRows, limits.MaxBytes
+	if maxRows == 0 {
+		maxRows = catalogDefaultRows
+	}
+	if maxBytes == 0 {
+		maxBytes = catalogDefaultBytes
+	}
+	args, err := catalogParams(params)
+	if err != nil {
+		return nil, 0, 0, err
+	}
+	return args, maxRows, maxBytes, nil
 }
 
 // catalogValidateReadOnly accepts one read query of at most catalogSQLBytes. It tokenizes the query so that keywords inside

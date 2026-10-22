@@ -5,6 +5,7 @@ package orm_test
 import (
 	"context"
 	"os"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -179,4 +180,102 @@ func catalogFindTenantRow(t *testing.T, ctx context.Context, c *orm.CatalogConne
 		t.Fatalf("%s: row snapshot: %v", driver, err)
 	}
 	return snapshot
+}
+
+// catalogGridCells returns the query of one row of typed grid cells for the dialect and the cells it must read back
+// (docs/spec/interfaces.md, "Rust native grid query specification"): float cells hold their IEEE-754 bits, UNSIGNED
+// integers are unsigned cells, DECIMAL is plain text, and date, time and datetime cells hold dbspec text.
+func catalogGridCells(driver string) (string, []orm.CatalogGridCell) {
+	cell := func(kind orm.CatalogGridKind, value any) orm.CatalogGridCell {
+		return orm.CatalogGridCell{Kind: kind, Value: value}
+	}
+	switch driver {
+	case "mysql":
+		return "SELECT CAST(1.5 AS FLOAT) AS f, CAST(1.5 AS DOUBLE) AS d, CAST(18446744073709551615 AS UNSIGNED) AS u, " +
+				"CAST(-7 AS SIGNED) AS i, CAST(1.50 AS DECIMAL(10,2)) AS dv, CAST('ab' AS BINARY) AS b, CAST(NULL AS DATE) AS n, " +
+				"CAST('2024-02-29' AS DATE) AS dt, CAST('12:34:56.5' AS TIME(6)) AS tm, " +
+				"CAST('2024-02-29 01:02:03.5' AS DATETIME(6)) AS dtm",
+			[]orm.CatalogGridCell{
+				cell(orm.CatalogGridFloat32, uint32(0x3FC00000)),
+				cell(orm.CatalogGridFloat64, uint64(0x3FF8000000000000)),
+				cell(orm.CatalogGridUnsigned, uint64(1<<64-1)),
+				cell(orm.CatalogGridInteger, int64(-7)),
+				cell(orm.CatalogGridDecimal, "1.50"),
+				cell(orm.CatalogGridBinary, []byte("ab")),
+				cell(orm.CatalogGridNull, nil),
+				cell(orm.CatalogGridDate, "2024-02-29"),
+				cell(orm.CatalogGridTime, "12:34:56.500000"),
+				cell(orm.CatalogGridDateTime, "2024-02-29 01:02:03.500000"),
+			}
+	case "postgres":
+		return "SELECT 1.5::real AS f, 1.5::double precision AS d, 'NaN'::double precision AS nan, 'NaN'::real AS nanf, " +
+				"9223372036854775807::bigint AS i, 2.50::numeric(10,2) AS dec, '\\x6162'::bytea AS b, NULL::date AS n, " +
+				"'2024-02-29'::date AS dt, '12:34:56.5'::time AS tm, '2024-02-29 01:02:03.5'::timestamp AS dtm",
+			[]orm.CatalogGridCell{
+				cell(orm.CatalogGridFloat32, uint32(0x3FC00000)),
+				cell(orm.CatalogGridFloat64, uint64(0x3FF8000000000000)),
+				cell(orm.CatalogGridFloat64, uint64(0x7FF8000000000000)),
+				cell(orm.CatalogGridFloat32, uint32(0x7FC00000)),
+				cell(orm.CatalogGridInteger, int64(9223372036854775807)),
+				cell(orm.CatalogGridDecimal, "2.50"),
+				cell(orm.CatalogGridBinary, []byte("ab")),
+				cell(orm.CatalogGridNull, nil),
+				cell(orm.CatalogGridDate, "2024-02-29"),
+				cell(orm.CatalogGridTime, "12:34:56.500000"),
+				cell(orm.CatalogGridDateTime, "2024-02-29 01:02:03.500000"),
+			}
+	default:
+		return "SELECT 1.5 AS d, 7 AS i, 'x' AS t, X'6162' AS b, NULL AS n",
+			[]orm.CatalogGridCell{
+				cell(orm.CatalogGridFloat64, uint64(0x3FF8000000000000)),
+				cell(orm.CatalogGridInteger, int64(7)),
+				cell(orm.CatalogGridText, "x"),
+				cell(orm.CatalogGridBinary, []byte("ab")),
+				cell(orm.CatalogGridNull, nil),
+			}
+	}
+}
+
+// catalogGridRefused returns the queries that the grid refuses with CATALOG_VALUE in the dialect.
+func catalogGridRefused(driver string) []string {
+	switch driver {
+	case "mysql":
+		return []string{"SELECT CAST('-01:00:00' AS TIME(6)) AS t", "SELECT CAST('24:00:00' AS TIME(6)) AS t"}
+	case "postgres":
+		return []string{
+			"SELECT '2024-01-01 00:00:00+00'::timestamptz AS t",
+			"SELECT '00:00:00+00'::timetz AS t",
+			"SELECT '24:00:00'::time AS t",
+			"SELECT 'infinity'::date AS t",
+		}
+	default:
+		// A declared DATE column is decoded by the SQLite driver into a time value; the grid has no text of it to keep.
+		return []string{"SELECT start_dt FROM author LIMIT 1"}
+	}
+}
+
+// Requirements: SCH-6a.
+func TestCoverageCatalogGridCells(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	ctx := context.Background()
+	driver, c := catalogConnect(t)
+	defer c.Close()
+
+	sql, want := catalogGridCells(driver)
+	result, err := c.ReadOnlyGridQuery(ctx, sql, nil, orm.CatalogQueryLimits{})
+	if err != nil {
+		t.Fatalf("%s: grid query: %v", driver, err)
+	}
+	if len(result.Rows) != 1 {
+		t.Fatalf("%s: grid rows %d, want 1", driver, len(result.Rows))
+	}
+	if !reflect.DeepEqual(result.Rows[0], want) {
+		t.Fatalf("%s: grid cells\n got %#v\nwant %#v", driver, result.Rows[0], want)
+	}
+	for _, refused := range catalogGridRefused(driver) {
+		_, err := c.ReadOnlyGridQuery(ctx, refused, nil, orm.CatalogQueryLimits{})
+		if err == nil || !strings.Contains(err.Error(), "CATALOG_VALUE") {
+			t.Fatalf("%s: %s returned %v, want CATALOG_VALUE", driver, refused, err)
+		}
+	}
 }
