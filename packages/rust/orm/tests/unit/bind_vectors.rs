@@ -40,7 +40,7 @@ fn host_value(v: &Value) -> Option<Param> {
 
 /// The variants of `Param`, matched without a wildcard: a variant added for a native time fails this match at compile time, so the
 /// vectors that flag a native time with `"rust": "no-host-value"` have to change with it.
-#[allow(dead_code)]
+#[allow(dead_code, reason = "the match is a compile-time guard of the Param variants and is never called")]
 fn param_variant(p: &Param) -> u8 {
     match p {
         Param::Null => 0,
