@@ -1,9 +1,16 @@
+#[path = "common/grid_catalog.rs"]
+mod grid_catalog;
+use grid_catalog::fixture_path;
+
+#[path = "common/grid_open.rs"]
+mod grid_open;
+use grid_open::open_catalog;
+
 #[path = "common/dialect_dsn.rs"]
 mod dialect_dsn;
 use dialect_dsn::dsn_for;
 
 use polyspec_orm_build::{
-    catalog::CatalogConnection,
     tool_db::{GridCell, QueryLimits},
 };
 
@@ -15,15 +22,12 @@ async fn binary_grid_values_remain_distinct_from_text_and_null() {
 }
 
 async fn check() {
-    let path = std::env::temp_dir().join(format!("orm-grid-cells-{}.sqlite", std::process::id()));
-    assert!(!path.exists());
+    let path = fixture_path("grid-cells");
     let mut failures = Vec::new();
     for dialect in ["sqlite", "mysql", "postgres"] {
         polyspec_orm_testcase::step(format_args!("running {dialect}"));
         let dsn = dsn_for(dialect, &path);
-        let (database, seed, _) = polyspec_orm_build::tool_db::open(&dsn).await.expect("fixture connection");
-        drop(seed);
-        let mut catalog = CatalogConnection::connect(&dsn).await.expect("catalog connection");
+        let (database, mut catalog) = open_catalog(&dsn).await;
         let sql = if dialect == "postgres" {
             "SELECT decode('00ff','hex'), decode('6869','hex'), decode('','hex'), 'hi', NULL"
         } else {

@@ -1,10 +1,17 @@
+#[path = "common/grid_catalog.rs"]
+mod grid_catalog;
+use grid_catalog::fixture_path;
+
+#[path = "common/grid_open.rs"]
+mod grid_open;
+use grid_open::open_catalog;
+
 #[path = "common/dialect_dsn.rs"]
 mod dialect_dsn;
 use dialect_dsn::dsn_for;
 
 use polyspec_orm_build::{
-    catalog::CatalogConnection,
-    tool_db::{self, GridCell, QueryLimits},
+    tool_db::{GridCell, QueryLimits},
 };
 
 #[tokio::test]
@@ -14,15 +21,12 @@ async fn grid_numbers_preserve_native_bits_and_unsigned_range() {
     tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("grid numeric deadline");
 }
 async fn check() {
-    let path = std::env::temp_dir().join(format!("orm-grid-numbers-{}.sqlite", std::process::id()));
-    assert!(!path.exists());
+    let path = fixture_path("grid-numbers");
     let mut failures = Vec::new();
     for dialect in ["sqlite", "mysql", "postgres"] {
         polyspec_orm_testcase::step(format_args!("running {dialect}"));
         let dsn = dsn_for(dialect, &path);
-        let (database, seed, _) = tool_db::open(&dsn).await.expect("fixture connection");
-        drop(seed);
-        let mut catalog = CatalogConnection::connect(&dsn).await.expect("catalog connection");
+        let (database, mut catalog) = open_catalog(&dsn).await;
         let sql = match dialect {
             "postgres" => "SELECT 1.5::double precision",
             "mysql" => "SELECT CAST(1.5 AS DOUBLE)",

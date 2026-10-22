@@ -2,6 +2,10 @@
 //! and for a described table's read, the column precision p applies; a grid query uses six fractional digits.
 //! SQLite gives the same temporal cell for a described table and the stored text for a grid query. The tables each dialect made are dropped at the end.
 
+#[path = "common/grid_catalog.rs"]
+mod grid_catalog;
+use grid_catalog::fixture_path;
+
 #[path = "common/dialect_dsn.rs"]
 mod dialect_dsn;
 use dialect_dsn::dsn_for;
@@ -105,8 +109,7 @@ async fn writes(catalog: &mut CatalogConnection, namespace: &str, name: &str, fa
 }
 
 async fn check() {
-    let path = std::env::temp_dir().join(format!("orm-grid-temporal-{}.sqlite", std::process::id()));
-    assert!(!path.exists());
+    let path = fixture_path("grid-temporal");
     let mut failures = Vec::new();
     for dialect in ["sqlite", "mysql", "postgres"] {
         polyspec_orm_testcase::step(format_args!("running {dialect}"));

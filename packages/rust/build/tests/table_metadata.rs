@@ -1,3 +1,7 @@
+#[path = "common/grid_catalog.rs"]
+mod grid_catalog;
+use grid_catalog::fixture_path;
+
 #[path = "common/dialect_dsn.rs"]
 mod dialect_dsn;
 use dialect_dsn::dsn_for;
@@ -28,8 +32,7 @@ async fn mysql_system_views_are_described_without_row_identity() {
     }).await.expect("system view deadline");
 }
 async fn check() {
-    let path = std::env::temp_dir().join(format!("orm-table-metadata-{}.sqlite", std::process::id()));
-    assert!(!path.exists());
+    let path = fixture_path("table-metadata");
     let mut failures = Vec::new();
     for dialect in ["sqlite", "mysql", "postgres"] {
         polyspec_orm_testcase::step(format_args!("running {dialect}"));

@@ -1,3 +1,7 @@
+#[path = "common/grid_catalog.rs"]
+mod grid_catalog;
+use grid_catalog::fixture_path;
+
 #[path = "common/dialect_dsn.rs"]
 mod dialect_dsn;
 use dialect_dsn::dsn_for;
@@ -17,8 +21,7 @@ async fn qualified_table_pages_preserve_columns_key_order_and_bounds() {
     tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("table page deadline");
 }
 async fn check() {
-    let path = std::env::temp_dir().join(format!("orm-table-page-{}.sqlite", std::process::id()));
-    assert!(!path.exists());
+    let path = fixture_path("table-page");
     let mut failures = Vec::new();
     for dialect in ["sqlite", "mysql", "postgres"] {
         polyspec_orm_testcase::step(format_args!("running {dialect}"));

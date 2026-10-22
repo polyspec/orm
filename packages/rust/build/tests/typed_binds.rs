@@ -1,3 +1,7 @@
+#[path = "common/grid_catalog.rs"]
+mod grid_catalog;
+use grid_catalog::fixture_path;
+
 #[path = "common/dialect_dsn.rs"]
 mod dialect_dsn;
 use dialect_dsn::dsn_for;
@@ -8,8 +12,7 @@ use polyspec_orm_build::tool_db::{self, GridCell, ParamType, QueryLimits, P};
 async fn native_typed_binds_preserve_values_and_typed_nulls() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), async {
-        let path = std::env::temp_dir().join(format!("orm-typed-binds-{}.sqlite", std::process::id()));
-        assert!(!path.exists());
+        let path = fixture_path("typed-binds");
         let mut failures = Vec::new();
         for dialect in ["sqlite", "mysql", "postgres"] {
             polyspec_orm_testcase::step(format_args!("running {dialect}"));
@@ -49,8 +52,7 @@ async fn native_typed_binds_preserve_values_and_typed_nulls() {
 async fn native_typed_writes_roundtrip_reject_and_rollback() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), async {
-        let path = std::env::temp_dir().join(format!("orm-typed-writes-{}.sqlite", std::process::id()));
-        assert!(!path.exists());
+        let path = fixture_path("typed-writes");
         let mut failures = Vec::new();
         for dialect in ["sqlite", "mysql", "postgres"] {
             polyspec_orm_testcase::step(format_args!("running {dialect}"));
