@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: d0a8aaf8c1b0f4f914fa18288cbab0aef7a4cdb60ef8b3d6c4524eed237665a1 -->
+<!-- source-sha256: 44a5c4ea7fd48d85cd18b65dc82e1997547fdf061e593cf3b5f8d18963eea62a -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -234,3 +234,4 @@
 | KSTD-5-69 | commit task의 panic payload를 포함한다 | packages/rust/build/src/catalog/mutation_finish.rs:40 | `make rust-check` | [ ] |
 | KSTD-5-70 | CARGO_MANIFEST_DIR이 없을 때 현재 디렉터리 대신 변수 이름을 밝히는 오류를 낸다 | packages/rust/build/src/lib.rs:146 | `make rust-check` | [ ] |
 | KSTD-5-71 | Rust codec, driver, markdown와 build 파일의 map_err(\|_\|) 클로저가 원인을 유지하게 한다 | packages/rust/orm/src/codec.rs; packages/rust/orm/src/driver.rs (bad()); packages/rust/orm/src/markdown.rs:573,579; packages/rust/build/src/catalog/*; packages/rust/build/src/tool_db/* | `make rust-check` | [ ] |
+| KSTD-5-72 | 생성된 Go Value 접근자의 오류를 nil 대신 반환한다 | packages/go/orm/model.go:122 (read at model.go:1298) | `make go-vet-check` | [ ] |
