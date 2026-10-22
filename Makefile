@@ -737,8 +737,11 @@ dbspec-php-extension-check/silent-paths: dbspec-php-extension-check/prepare
 # dbspec-php-extension-check/statement-event runs StatementEventSurfaceTest with the extension loaded: the class is the extension's own (KSTD-7-1).
 dbspec-php-extension-check/statement-event: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_TESTS) packages/php-ext/tests/StatementEventSurfaceTest.php
+# ORM_PHP_DYNAMIC_MODULES lists the modules that php -n loads from extension_dir, comma separated. empty: the local PHP has pdo built in;
+# CI sets pdo for Ubuntu, where pdo is a shared module.
+ORM_PHP_DYNAMIC_MODULES ?=
 dbspec-php-extension-check/declarations: php-vendor-check dbspec-php-extension-check/prepare
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DeclarationsTest.php
+	env ORM_PHP_MODE=extension ORM_PHP_DYNAMIC_MODULES=$(ORM_PHP_DYNAMIC_MODULES) $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DeclarationsTest.php
 # dbspec-php-extension-check/vectors runs DbspecTest with the extension: the canonical, normalize, invalid, files, positions, bytes and arguments cases of tests/dbspec/cases.json, introspection and apply on SQLite.
 dbspec-php-extension-check/vectors: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecTest.php

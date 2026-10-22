@@ -36,6 +36,9 @@ jobs:
     # .github/runner declares the runner of every job; make repo-check
     # requires it.
     runs-on: ubuntu-26.04-arm
+    # pdo is a shared module on Ubuntu, so the php -n of the extension declarations loads it (ORM_PHP_DYNAMIC_MODULES).
+    env:
+      ORM_PHP_DYNAMIC_MODULES: pdo
     # One job per CI group of the Makefile (CI_GROUPS); make repo-check
     # requires that this list equals CI_GROUPS. A failed group does not cancel
     # the others: every group runs to its end.

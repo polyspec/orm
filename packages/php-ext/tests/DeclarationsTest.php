@@ -29,21 +29,34 @@ function requiredModules(): array
 }
 
 /**
+ * dynamicModules are the modules that php -n loads from extension_dir: ORM_PHP_DYNAMIC_MODULES, a comma list that the make
+ * variable declares. Empty when this PHP has them built in; CI declares pdo for Ubuntu, where pdo is a shared module.
+ * @return list<string>
+ */
+function dynamicModules(): array
+{
+    $declared = getenv('ORM_PHP_DYNAMIC_MODULES');
+    if ($declared === false) {
+        throw new RuntimeException('ORM_PHP_DYNAMIC_MODULES is not declared; the make variable declares it, empty by default');
+    }
+    return array_values(array_filter(explode(',', $declared), static fn(string $module): bool => $module !== ''));
+}
+
+/**
  * moduleArguments are the arguments that make the PHP run without php.ini (-n) have the module the extension requires.
  * -n also does not load shared modules (for example pdo, which the Ubuntu PHP package loads from conf.d), so a module
  * not in that PHP is loaded from this PHP's extension_dir. If a required module is missing, PHP does not load the
  * extension. $loaded (module name) is whether php -n has that module.
  */
-function moduleArguments(array $modules, callable $loaded, string $extensionDir): array
+function moduleArguments(array $modules, string $extensionDir): array
 {
-    $missing = array_values(array_filter($modules, static fn(string $module): bool => !$loaded($module)));
-    if ($missing === []) {
+    if ($modules === []) {
         return [];
     }
     return [
         '-d',
         "extension_dir=$extensionDir",
-        ...array_merge(...array_map(static fn(string $module): array => ['-d', "extension=$module"], $missing))
+        ...array_merge(...array_map(static fn(string $module): array => ['-d', "extension=$module"], $modules))
     ];
 }
 
@@ -74,14 +87,11 @@ function run(array $command, array $env = []): array
 function declared(string $mode): array
 {
     // -n does not read php.ini: if php.ini loads the extension, a class with the same name as the stub already exists.
-    // The module the extension requires is loaded by moduleArguments.
-    $loaded = static fn(string $module): bool => run(
-        [PHP_BINARY, '-n', '-r', 'exit(extension_loaded($argv[1]) ? 0 : 1);', $module]
-    )[0] === 0;
+    // The dynamic modules that the run declares are loaded by moduleArguments.
     $command = [
         PHP_BINARY,
         '-n',
-        ...moduleArguments(requiredModules(), $loaded, (string) ini_get('extension_dir')),
+        ...moduleArguments(dynamicModules(), (string) ini_get('extension_dir')),
         __DIR__ . '/declarations.php',
         $mode
     ];
@@ -130,11 +140,7 @@ final class DeclarationsTest extends TestCase
             in_array('pdo', $required, true),
             'src/polyspec_orm.c requires ' . implode(', ', $required) . ', without pdo'
         );
-        $shared = moduleArguments(
-            ['spl', 'hash', 'pdo'],
-            static fn(string $module): bool => $module !== 'pdo',
-            '/usr/lib/php/20250925'
-        );
+        $shared = moduleArguments(['pdo'], '/usr/lib/php/20250925');
         Assert::assertSame(
             ['-d', 'extension_dir=/usr/lib/php/20250925', '-d', 'extension=pdo'],
             $shared,
@@ -142,11 +148,7 @@ final class DeclarationsTest extends TestCase
                 $shared
             ) . ', not the shared pdo of its extension_dir'
         );
-        $builtIn = moduleArguments(
-            ['spl', 'hash', 'pdo'],
-            static fn(string $module): bool => true,
-            '/usr/lib/php/20250925'
-        );
+        $builtIn = moduleArguments([], '/usr/lib/php/20250925');
         Assert::assertSame(
             [],
             $builtIn,
