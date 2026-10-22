@@ -3,51 +3,12 @@
 //! such as the number 1e400, returns CODEC_ENCODE instead of stopping the
 //! process.
 
-use std::collections::BTreeMap;
 
-use polyspec_orm::{Core, Entity, Model, Schema, Val};
+use polyspec_orm::{Core, Model, Val};
 
-// secret_config { bigint seq PK "auto"; int aes_key_version; longblob config "json aes" }
-static SCHEMA: Schema =
-    Schema::new(include_str!("../../../../contracts/fixtures/secret_config.dbs"), "sha256:c50e5970f7edf30cb5aaa52d291e4ae19ebbdd28040084829ebada1932120f7b");
-static SECRET: Entity =
-    Entity { name: "secret_config", schema: &SCHEMA, new: polyspec_orm::model::new_boxed::<Secret>, collect: polyspec_orm::model::collect_boxed::<Secret> };
-const COLUMNS: [&str; 3] = ["seq", "aes_key_version", "config"];
-
-/// A secret_config row whose values are read and written by column name.
-#[derive(Clone)]
-struct Secret {
-    core: Core,
-    values: BTreeMap<String, Val>,
-}
-
-impl Model for Secret {
-    fn entity() -> &'static Entity {
-        &SECRET
-    }
-    fn core(&self) -> &Core {
-        &self.core
-    }
-    fn core_mut(&mut self) -> &mut Core {
-        &mut self.core
-    }
-    fn from_core(core: Core) -> Self {
-        Secret { core, values: BTreeMap::new() }
-    }
-    fn into_core(self) -> Core {
-        self.core
-    }
-    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
-        if !COLUMNS.contains(&name) {
-            return Ok(false);
-        }
-        self.values.insert(name.to_owned(), v);
-        Ok(true)
-    }
-    fn value(&self, name: &str) -> Option<Val> {
-        self.values.get(name).cloned()
-    }
-}
+#[path = "common/secret_config.rs"]
+mod secret_config;
+use secret_config::{Secret, SECRET};
 
 #[test]
 // The test of COD-27 (docs/spec).
