@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: dbd47a6a99817065c69cfe0d55d8fec96cca32020eb51a651202aa54289f09a8 -->
+<!-- source-sha256: e141834bdba1110438ec2dcc84155ff3b6f1bd4efc7f0728e19a5faf439e8214 -->
 # 변경 이력
 
 ## Unreleased
 
+- `testLimitColumnsPeak`는 limit/columns 문서를 PHP 기본 memory limit의 별도 process에서 parse하므로, 그 bound가 test run이 앞서 잡고 있는 메모리에 따라 달라지지 않는다(KSTD-5-58). red: parse 앞에서 88 MB를 잡고 있으면 bound가 음수가 되어 실패했다(`testLimitColumnsPeakAfterHeldMemory`).
 - `Collection` template이 base `Model`을 기본 bound로 갖지 않으므로, raw `Collection` 매개변수의 row에서 PHPStan이 거짓 `method.notFound`를 보고하지 않는다. 타입이 있는 `gets(): Collection<Model>` 경로는 그대로다. `make collection-raw-phpstan-check`는 그 fixture를 level 5 PHPStan으로 검사한다(KSTD-5-54). red: fixture가 `Call to an undefined method Polyspec\Orm\Model::getSeq()`를 보고했다.
 - `GroupRows::getIterator()`가 `GroupRow`를 내도록 문서화되어, 그 row를 쓰는 호출자는 mixed가 아닌 타입이 있는 row를 얻는다. `make group-rows-phpstan-check`는 각 row의 메서드를 호출하는 fixture를 level 9 PHPStan으로 검사한다(KSTD-5-53). red: fixture가 `Cannot call method toArray() on mixed`를 보고했다.
 - PHP 모델 getter가 `mixed` 대신 대상 타입을 선언한다. 관계 getter는 `?Model`(`get<Entity>Model`) 또는 `list<Model>`(`get<Entity>Models`)이고, alias, new, addColumn getter는 호출이 선언한 타입을 얻는다. new는 literal 또는 타입이 있는 매개변수, addColumn은 closure의 반환 타입, alias는 chain의 결과를 쓴다. 선언된 타입이 없는 호출은 그 호출을 이름으로 적은 CONFIG 오류로 거부한다(KSTD-5-52). red: tests/generator/php-scan-vectors.json의 getter-type vector가 `mixed`를 선언했다.

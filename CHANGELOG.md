@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `testLimitColumnsPeak` parses the limit/columns document in a process of its own with PHP's default memory limit, so its bound no longer depends on the memory that the test run holds before it (KSTD-5-58). Red: holding 88 MB before the same parse gave a negative bound and failed (`testLimitColumnsPeakAfterHeldMemory`).
 - The `Collection` template has no default bound to the base `Model`, so a raw `Collection` parameter no longer makes PHPStan report a false `method.notFound` on its rows; the typed `gets(): Collection<Model>` path is unchanged. `make collection-raw-phpstan-check` runs PHPStan at level 5 over that fixture (KSTD-5-54). Red: the fixture reported `Call to an undefined method Polyspec\Orm\Model::getSeq()`.
 - `GroupRows::getIterator()` is documented to yield `GroupRow`, so a caller of its rows gets typed rows and not mixed; `make group-rows-phpstan-check` runs PHPStan at level 9 over a fixture that calls a method on each row (KSTD-5-53). Red: the fixture reported `Cannot call method toArray() on mixed`.
 - PHP model getters declare the type of their target instead of `mixed`: a relation getter is `?Model` (`get<Entity>Model`) or `list<Model>` (`get<Entity>Models`); an alias, new or addColumn getter takes the type its call declares, a literal or a typed parameter for new and a closure's return type for addColumn, and an alias takes the chain's result. A call with no declared type is refused with a CONFIG error that names it (KSTD-5-52). Red: the getter-type vectors of tests/generator/php-scan-vectors.json declared `mixed`.
