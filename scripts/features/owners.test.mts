@@ -29,7 +29,8 @@ caseTest('a changed test selects only the commands that run it', 5000, async () 
 // selects that language's lint target by its glob, so land runs the lint of a branch that changes the language.
 caseTest('a changed path selects the lint target of its language', 5000, async () => {
   const text = await readFile(new URL('../../config/owner-checks.json', import.meta.url), 'utf8');
-  const declaration: { owners: { paths: string[]; targets?: string[] }[] } = JSON.parse(text);
+  const parsed: unknown = JSON.parse(text);
+  const declaration = parsed as { owners: { paths: string[]; targets?: string[] }[] };
   const targets = (path: string) => declaration.owners.filter(rule => rule.paths.some(glob => minimatch(path, glob))).flatMap(rule => rule.targets ?? []);
   const cases: [string, string][] = [
     ['packages/go/orm/errs.go', 'lint-go'],
