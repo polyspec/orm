@@ -7,6 +7,7 @@ DSN URI.
 
 from polyspec.orm import codes
 from polyspec.orm.aes import AesKeyring
+from polyspec.orm.catalog import CatalogConnection, connect_catalog
 from polyspec.orm.codec import (
     CodecError,
     blind_index,
@@ -33,6 +34,7 @@ from polyspec.orm.values import ColumnFunction, ValueFunction, orm
 
 __all__ = [
     "AesKeyring",
+    "CatalogConnection",
     "CodecError",
     "Collection",
     "ColumnFunction",
@@ -51,6 +53,7 @@ __all__ = [
     "blind_index",
     "codes",
     "connect",
+    "connect_catalog",
     "decode",
     "encode",
     "host_decode",
