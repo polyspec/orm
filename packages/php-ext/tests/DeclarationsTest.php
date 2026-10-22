@@ -48,9 +48,15 @@ function moduleArguments(array $modules, callable $loaded, string $extensionDir)
 }
 
 /** run executes the command and returns [exit code, stdout, stderr]. */
-function run(array $command): array
+function run(array $command, array $env = []): array
 {
-    $process = proc_open($command, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+    $process = proc_open(
+        $command,
+        [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+        $pipes,
+        null,
+        $env === [] ? null : $env + getenv()
+    );
     if ($process === false) {
         throw new RuntimeException('cannot start ' . implode(' ', $command));
     }
@@ -79,7 +85,8 @@ function declared(string $mode): array
         __DIR__ . '/declarations.php',
         $mode
     ];
-    [$code, $out, $err] = run($command);
+    // The child runs in a PHP without the extension, so the mode it declares is library, whatever the run declares.
+    [$code, $out, $err] = run($command, ['ORM_PHP_MODE' => 'library']);
     Assert::assertSame(
         0,
         $code,
