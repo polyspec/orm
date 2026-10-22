@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 478a669b63d369b053bf38fc045a1637ea5ec1c4ce1416160cc789ada741a6b8 -->
+<!-- source-sha256: ca3ee9602bbc5a8dca99f2f8e31e758fb3a5719bc88838468041ac0e130ef9e4 -->
 # 변경 이력
 
 ## Unreleased
 
+- owner 선택이 변경된 Go, Rust, Python, PHP, TypeScript 경로를 각 언어의 lint target(`lint-go`, `lint-rust`, `lint-python`, `lint-php`, `lint-ts`)으로 보내므로, `make land`는 그 언어를 바꾸는 branch의 lint를 실행하고 새 finding을 거부한다(KSTD-5-47). red: owners test의 case `a changed path selects the lint target of its language`가 이전 config에서 `packages/go/orm/errs.go selects feature-owner-check, not lint-go`로 실패했다. 실제 Go errcheck gate는 여기서 실행하지 않았다. golangci-lint가 이 환경에 설치되어 있지 않아, land에서 Go finding이 `lint-go`에 의해 거부되는 것은 확인하지 않았다.
 - Python schema install test가 bench set보다 먼저 외부 document(bench_shared.dbs)를 설치한다. set은 table shared_note가 존재하기를 요구하며, SQLite 연결도 닫는다. 그래서 assertion을 약화하지 않고 test_schema_install이 통과한다(KSTD-5-51). red: test_schema_install이 세 test를 CONFIG "table shared_note does not exist"로 실패시켰다.
 - `contracts/check-inputs.json`이 `docs-site-check`와 `docs-site-parse-check`의 scope를 선언하므로, main에서 `make feature-unit-check/owners`가 다시 통과한다(KSTD-5-48-1). red: owners test가 두 target에 scope가 없다고 보고했다.
 - 저장소의 모든 lint suppression이 이유를 적어 `make suppression-check`(P8)가 통과한다. Python test, dbspec, orm의 suppression과 Rust allow는 이유를 줄 안에 적었고, test와 dbspec 소스의 lambda 할당은 def로 바꿨다(KSTD-5-40). red: 6533e687d의 `make suppression-check`는 이유 없는 suppression 95개를 보고했다.
