@@ -234,3 +234,4 @@
 | KSTD-5-70 | Name the missing CARGO_MANIFEST_DIR instead of resolving against the current directory | packages/rust/build/src/lib.rs:146 | `make rust-check` | [ ] |
 | KSTD-5-71 | Keep the cause in the map_err(\|_\|) closures of the Rust codec, driver, markdown and build files | packages/rust/orm/src/codec.rs; packages/rust/orm/src/driver.rs (bad()); packages/rust/orm/src/markdown.rs:573,579; packages/rust/build/src/catalog/*; packages/rust/build/src/tool_db/* | `make rust-check` | [ ] |
 | KSTD-5-72 | Return the error of the generated Go Value accessor instead of nil | packages/go/orm/model.go:122 (read at model.go:1298) | `make go-vet-check` | [ ] |
+| KSTD-5-73 | Catch only the AES authentication failure in the TypeScript decipher | packages/ts/src/codec.ts:77 | `make ts-check` | [ ] |
