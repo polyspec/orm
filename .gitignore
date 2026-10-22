@@ -31,6 +31,7 @@
 /.mise/locks/*/*/.venv/
 /docs/.vitepress/cache/
 /docs/.vitepress/dist/
+/docs/.vitepress/.temp/
 /.runtime/
 /packages/python/.venv/
 # The metadata that pip install --editable writes beside the source (make orm-install-python).

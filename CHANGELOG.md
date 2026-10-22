@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The VitePress temporary folder `docs/.vitepress/.temp/` is ignored by git, so a build that leaves it no longer blocks a land (KSTD-5-39). Red: the probe of `git check-ignore` fails before the line is added.
 - The tool paths of the Makefile name KIT_TOOLS, so a linked worktree builds with the tools that the main checkout installed (KSTD-5-38). Red: the rebuild in a new worktree stops on a missing var/tools/mise/shims/go.
 - lint-php passes: the PHP takes the PSR-12 layout, camelCase test methods (with the 218 PHP bindings of config/parity.json and the Makefile filters), one class per file, a namespace for every test class, test helpers required by the PHPUnit bootstrap, no empty catch and no silenced call without its reason, and the tests load their generated models without an autoloader (KSTD-5-9). Red: phpcs and phpstan of the root, packages/php and packages/php-ext failed.
 - The hand-written PHP keeps the 120 character line length: long calls, chains, lists, strings and comments are wrapped PSR-12 style, token for token, and the Unicode word table generator writes its description in two lines (KSTD-5-9-1). Red: phpcs reported 1450 long lines.
