@@ -40,7 +40,11 @@ impl Drop for Database {
 #[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
 pub async fn database(prefix: &str, name: &str) -> Database {
     let dir = std::env::temp_dir().join(format!("orm-rust-{prefix}-{}-{name}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
+    if let Err(error) = std::fs::remove_dir_all(&dir) {
+        if error.kind() != std::io::ErrorKind::NotFound {
+            panic!("remove {}: {error}", dir.display());
+        }
+    }
     std::fs::create_dir_all(&dir).unwrap();
     let dsn = format!("sqlite://{}", dir.join(format!("{name}.sqlite")).display());
     let db = Db::connect(&dsn, 1, polyspec_orm::Config::default()).await.unwrap();

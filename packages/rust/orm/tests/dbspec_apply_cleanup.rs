@@ -7,6 +7,10 @@
 //! failure alone, or `ApplyError::Cleanup` with the first failure and the
 //! cleanup error.
 
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 use chrono::{DateTime, TimeZone, Utc};
 use polyspec_orm::dbspec::{
     apply, effect_holds, effect_query, parse_plan, rollback, ApplyConnection, ApplyError, ApplyEvent, ApplyEventKind, CatalogQuerier, CatalogValue, Dialect,
@@ -41,7 +45,7 @@ fn create_from_empty() -> Vec<Plan> {
     let vectors: Value = serde_json::from_str(&std::fs::read_to_string(path).expect("plans.json")).expect("plans.json");
     let case = vectors["cases"].as_array().expect("plan cases").iter().find(|c| c["id"] == "create-from-empty").expect("create-from-empty case");
     let text: String = case["plan"].as_array().expect("plan lines").iter().map(|l| format!("{}\n", l.as_str().expect("plan line"))).collect();
-    vec![parse_plan(&text).unwrap_or_else(|e| panic!("create-from-empty: {e:?}"))]
+    vec![parse_plan(&text).or_panic(|e| format!("create-from-empty: {e:?}"))]
 }
 
 /// tool clock: 2026-10-01T00:00:00.123456789Z. applied_at in history is truncated to six fractional digits.

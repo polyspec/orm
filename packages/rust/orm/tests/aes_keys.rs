@@ -2,6 +2,10 @@
 //! encrypts with `aes_keys[aes_version]`, and an `aes_key` that differs from
 //! that key is rejected.
 
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 use std::collections::BTreeMap;
 
 use polyspec_orm::db::Pool;
@@ -91,7 +95,7 @@ async fn aes_write_uses_key_of_current_version() {
     writer.utils().schema().install(&SCHEMA).await.unwrap();
     let mut row = connected(&writer);
     row.core_mut().set_ordered("config", polyspec_orm::ordered_json::parse(r#"{"b":1,"a":[]}"#).unwrap());
-    polyspec_orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("create with aes_keys and aes_version: {e}"));
+    polyspec_orm::model::create(&mut row).await.or_panic(|e| format!("create with aes_keys and aes_version: {e}"));
     let reader = Db::connect_schema(&dsn, &SCHEMA, 2, polyspec_orm::Config { aes_version: 2, aes_keys: keys(&[(2, "config-key-two")]), ..Default::default() })
         .await
         .unwrap();
@@ -310,7 +314,7 @@ async fn aes_rotate_leaves_null_aes_rows_unchanged() {
     core.connect(&db);
     let model = NullAesSecret::from_core(core);
     let keyring = polyspec_orm::utils::AesKeyring::new(keys(&[(1, "config-key-one"), (2, "config-key-two")]), 2).unwrap();
-    let rotated = db.utils().aes().rotate(&model, &keyring).await.unwrap_or_else(|e| panic!("rotate with NULL AES values: {e}"));
+    let rotated = db.utils().aes().rotate(&model, &keyring).await.or_panic(|e| format!("rotate with NULL AES values: {e}"));
     assert_eq!(rotated, 2, "rotated rows");
     let versions: Vec<i64> = sqlx::query_scalar::<_, i64>("SELECT aes_key_version FROM secret_config ORDER BY seq").fetch_all(p).await.unwrap();
     assert_eq!(versions, vec![2, 2], "stored versions after rotation");

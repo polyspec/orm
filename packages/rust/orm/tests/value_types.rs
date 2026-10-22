@@ -5,6 +5,10 @@
 //! case database (polyspec-orm-case-database), and it fails if ORM_TEST_MYSQL_DSN or
 //! ORM_TEST_POSTGRES_DSN is missing.
 
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 use std::collections::BTreeMap;
 
 use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
@@ -106,8 +110,8 @@ async fn runtime_value_types() {
     let day = chrono::NaiveDate::from_ymd_opt(2026, 1, 2).unwrap();
     for driver in ["sqlite", "mysql", "postgres"] {
         let database = CaseDatabase::create(driver).await;
-        let db = Db::connect(database.dsn(), 2, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
-        db.utils().schema().install(schema()).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
+        let db = Db::connect(database.dsn(), 2, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: {e}"));
+        db.utils().schema().install(schema()).await.or_panic(|e| format!("{driver}: install: {e}"));
 
         let mut row = connected(&db);
         row.core_mut().set("small", Param::from(i16::MIN));
@@ -115,9 +119,9 @@ async fn runtime_value_types() {
         row.core_mut().set("opens", Param::from("08:30:00.250"));
         row.core_mut().set("day", Param::Str(day.format("%Y-%m-%d").to_string()));
         row.core_mut().set("note", Param::from("hidden"));
-        polyspec_orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}"));
+        polyspec_orm::model::create(&mut row).await.or_panic(|e| format!("{driver}: create: {e}"));
 
-        let got = polyspec_orm::model::get(&connected(&db)).await.unwrap_or_else(|e| panic!("{driver}: get: {e}")).expect("the created row");
+        let got = polyspec_orm::model::get(&connected(&db)).await.or_panic(|e| format!("{driver}: get: {e}")).expect("the created row");
         assert_eq!(got.values["small"].as_i16().unwrap(), i16::MIN, "{driver}: i16");
         assert_eq!(got.values["rank"].as_i16().unwrap(), 3, "{driver}: an omitted column takes the database default");
         assert_eq!(got.values["code"].as_string().unwrap(), uuid, "{driver}: uuid text");
@@ -126,7 +130,7 @@ async fn runtime_value_types() {
         assert!(!got.values.contains_key("note"), "{driver}: select explicit leaves the column out of the default select set");
         let mut all = connected(&db);
         all.core_mut().add_column("note");
-        let got = polyspec_orm::model::get(&all).await.unwrap_or_else(|e| panic!("{driver}: get note: {e}")).expect("the created row");
+        let got = polyspec_orm::model::get(&all).await.or_panic(|e| format!("{driver}: get note: {e}")).expect("the created row");
         assert_eq!(got.values["note"].as_string().unwrap(), "hidden", "{driver}: an added select explicit column");
 
         let mut short = connected(&db);
