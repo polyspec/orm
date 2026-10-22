@@ -5,6 +5,7 @@
  * compares), Polyspec\Orm\Dialect::isValueFunction and the Dialect constants of the function tables. The request is read as PHP arrays.
  */
 #include "validator.h"
+#include "temps.h"
 #include "Zend/zend_exceptions.h"
 #include "Zend/zend_smart_str.h"
 #include "Zend/zend_interfaces.h"
@@ -19,11 +20,6 @@
 /* ---- engine helpers ---- */
 
 /* Values kept until the public call returns: they are released by release(). */
-typedef struct vtemp {
-    zval v;
-    struct vtemp *next;
-} vtemp;
-
 typedef struct {
     zval *self;           /* the Validator object, NULL in the static methods */
     HashTable *entities;  /* the entities of the RuntimeModel, borrowed from the model */
@@ -40,23 +36,12 @@ typedef struct {
 
 static zval *keep(vctx *c)
 {
-    vtemp *t = emalloc(sizeof(vtemp));
-    ZVAL_UNDEF(&t->v);
-    t->next = c->temps;
-    c->temps = t;
-    return &t->v;
+    return keep_temp(&c->temps);
 }
 
 static void release(vctx *c)
 {
-    vtemp *t = c->temps;
-    while (t != NULL) {
-        vtemp *next = t->next;
-        zval_ptr_dtor(&t->v);
-        efree(t);
-        t = next;
-    }
-    c->temps = NULL;
+    release_temps(&c->temps);
 }
 
 /* Throws an OrmException with the code and the formatted message; returns false for the caller to return. */

@@ -8,6 +8,7 @@
  * the dialect call runs.
  */
 #include "planner.h"
+#include "temps.h"
 #include "validator.h"
 #include "Zend/zend_exceptions.h"
 #include "Zend/zend_closures.h"
@@ -35,11 +36,6 @@
 
 /* ---- engine helpers ---- */
 
-typedef struct vtemp {
-    zval v;
-    struct vtemp *next;
-} vtemp;
-
 typedef struct mem {
     void *p;
     struct mem *next;
@@ -57,11 +53,7 @@ typedef struct pctx {
 /* A zval kept until release(). */
 static zval *keep(pctx *c)
 {
-    vtemp *t = emalloc(sizeof(vtemp));
-    ZVAL_UNDEF(&t->v);
-    t->next = c->temps;
-    c->temps = t;
-    return &t->v;
+    return keep_temp(&c->temps);
 }
 
 /* A zeroed C struct kept until release(). */
@@ -76,14 +68,7 @@ static void *arena(pctx *c, size_t n)
 
 static void release(pctx *c)
 {
-    vtemp *t = c->temps;
-    while (t != NULL) {
-        vtemp *next = t->next;
-        zval_ptr_dtor(&t->v);
-        efree(t);
-        t = next;
-    }
-    c->temps = NULL;
+    release_temps(&c->temps);
     mem *m = c->mems;
     while (m != NULL) {
         mem *next = m->next;
