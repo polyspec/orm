@@ -65,11 +65,7 @@ final class RollbackTest extends TestCase
             "$work/models",
             'Polyspec\\Orm\\Tests\\RollbackCase'
         );
-        spl_autoload_register(static function (string $class) use ($work): void {
-            if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\RollbackCase\\')) {
-                require "$work/models/" . substr($class, strlen('Polyspec\\Orm\\Tests\\RollbackCase\\')) . '.php';
-            }
-        });
+        requireGeneratedClasses("$work/models");
         require "$work/models/bootstrap.php";
     }
 

@@ -70,19 +70,10 @@ final class SchemaSetTest extends TestCase
             RuntimeModel::parse(['decimal_schema.dbs' => self::$decimalDocuments[0]])
         );
         Generator::generate(self::$decimalModel, self::$work . "/decimal", 'Polyspec\\Orm\\Tests\\SchemaSetDecimal');
-        self::autoload(self::$work . "/decimal", 'Polyspec\\Orm\\Tests\\SchemaSetDecimal');
+        requireGeneratedClasses(self::$work . "/decimal");
         require self::$work . "/decimal/bootstrap.php";
     }
 
-    /** Registers an autoloader that reads the classes of $namespace from the generated file in $dir. */
-    private static function autoload(string $dir, string $namespace): void
-    {
-        spl_autoload_register(static function (string $class) use ($dir, $namespace): void {
-            if (str_starts_with($class, "$namespace\\")) {
-                require "$dir/" . substr($class, strlen($namespace) + 1) . '.php';
-            }
-        });
-    }
 
     private static function check(bool $ok, string $message): void
     {
@@ -322,7 +313,7 @@ final class SchemaSetTest extends TestCase
             );
             $namespace = "Polyspec\\Orm\\Tests\\$prefix";
             Generator::generate($model, self::$work . "/$prefix", $namespace);
-            self::autoload(self::$work . "/$prefix", $namespace);
+            requireGeneratedClasses(self::$work . "/$prefix");
             require self::$work . "/$prefix/bootstrap.php";
             $built[$key] = ("$namespace\\schema")();
         }

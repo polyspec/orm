@@ -34,9 +34,13 @@ final class SqliteConcurrencyTest extends TestCase
         is_dir(self::$work) || mkdir(self::$work, 0o700, true);
         register_shutdown_function(static function (): void {
             foreach (glob(self::$work . "/*") ?: [] as $file) {
-                is_file($file) && unlink($file);
+                if (!unlink($file)) {
+                    throw new \RuntimeException("$file cannot be removed");
+                }
             }
-            is_dir(self::$work) && rmdir(self::$work);
+            if (!rmdir(self::$work)) {
+                throw new \RuntimeException(self::$work . ' cannot be removed');
+            }
         });
     }
 

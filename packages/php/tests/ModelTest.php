@@ -912,7 +912,7 @@ final class ModelTest extends TestCase
             dirname(__DIR__, 3) . '/vendor-php/autoload.php',
             true
         ) . '; require ' . var_export(__DIR__ . '/case_database.php', true) . ';'
-            . ' $pdo = case_admin(' . var_export($dsn, true) . '); $pdo->beginTransaction();'
+            . ' $pdo = \Polyspec\Orm\Tests\case_admin(' . var_export($dsn, true) . '); $pdo->beginTransaction();'
             . ' $pdo->exec(' . var_export(
                 'UPDATE "' . $table . '" SET "seq" = "seq"',
                 true
@@ -1143,14 +1143,7 @@ final class ModelTest extends TestCase
                 self::$work . "/pooler",
                 'Polyspec\\Orm\\Tests\\PoolerProbe'
             );
-            spl_autoload_register(static function (string $class): void {
-                if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\PoolerProbe\\')) {
-                    require self::$work . "/pooler/" . substr(
-                        $class,
-                        strlen('Polyspec\\Orm\\Tests\\PoolerProbe\\')
-                    ) . '.php';
-                }
-            });
+            requireGeneratedClasses(self::$work . "/pooler");
             require self::$work . "/pooler/bootstrap.php";
             $model = 'Polyspec\\Orm\\Tests\\PoolerProbe\\' . str_replace('_', '', ucwords($table, '_'));
             $probeSetup = \Polyspec\Orm\Tests\PoolerProbe\connect(self::$targets['postgres'], new Config());

@@ -71,11 +71,7 @@ final class RuntimeDbTest extends TestCase
         foreach ($sets as $namespace => $texts) {
             $dir = "$work/" . str_replace('\\', '_', $namespace);
             Generator::generate(RuntimeModel::build(RuntimeModel::parse($texts)), $dir, $namespace);
-            spl_autoload_register(static function (string $class) use ($dir, $namespace): void {
-                if (str_starts_with($class, "$namespace\\")) {
-                    require "$dir/" . substr($class, strlen("$namespace\\")) . '.php';
-                }
-            });
+            requireGeneratedClasses($dir);
             require "$dir/bootstrap.php";
         }
     }

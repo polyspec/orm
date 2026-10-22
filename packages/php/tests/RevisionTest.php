@@ -39,11 +39,7 @@ final class RevisionTest extends TestCase
             'Polyspec\\Orm\\Tests\\RevisionCase'
         );
         $work = self::$work;
-        spl_autoload_register(static function (string $class) use ($work): void {
-            if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\RevisionCase\\')) {
-                require_once "$work/models/" . substr($class, strlen('Polyspec\\Orm\\Tests\\RevisionCase\\')) . '.php';
-            }
-        });
+        requireGeneratedClasses("$work/models");
         require_once self::$work . '/models/bootstrap.php';
     }
 

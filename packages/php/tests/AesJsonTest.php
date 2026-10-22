@@ -54,11 +54,7 @@ final class AesJsonTest extends TestCase
             "$work/gen",
             'Polyspec\\Orm\\Tests\\AesJson'
         );
-        spl_autoload_register(static function (string $class) use ($work): void {
-            if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\AesJson\\')) {
-                require "$work/gen/" . substr($class, strlen('Polyspec\\Orm\\Tests\\AesJson\\')) . '.php';
-            }
-        });
+        requireGeneratedClasses("$work/gen");
         require "$work/gen/bootstrap.php";
     }
 

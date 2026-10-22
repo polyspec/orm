@@ -34,6 +34,19 @@ use function Polyspec\Orm\Tests\MarkdownModel\connect;
 #[Large]
 final class MarkdownConformanceTest extends TestCase
 {
+    /** The text of the stderr file of the server at $path for an error message; a file that is missing is named as missing. */
+    private static function stderrText(string $path): string
+    {
+        if (!is_file($path)) {
+            return "(the stderr file $path does not exist)";
+        }
+        $text = file_get_contents($path);
+        if ($text === false) {
+            throw new RuntimeException("the stderr file $path cannot be read");
+        }
+        return $text;
+    }
+
     // conformanceDir is the directory of the shared suite: cases.json, flowmark.version, corpus/.
     private const MARKDOWN_CONFORMANCE_DIR = __DIR__ . '/../../../tests/markdown';
     // The module path, which must be the main module of the build that FLOWMARK points at.
@@ -179,7 +192,7 @@ final class MarkdownConformanceTest extends TestCase
         if ($line === false || preg_match($listening, rtrim($line, "\n"), $m) !== 1 || $m[2] !== $s->corpus) {
             throw new RuntimeException(
                 'flowmark serve printed ' . json_encode($line) . ", not its listening line; stderr:\n"
-                    . (is_file($s->stderr) ? (string) file_get_contents($s->stderr) : '')
+                    . self::stderrText($s->stderr)
             );
         }
         $s->port = $m[1];
@@ -195,7 +208,7 @@ final class MarkdownConformanceTest extends TestCase
         } catch (OrmException $e) {
             throw new RuntimeException(
                 "connect: {$e->code_} {$e->getMessage()}; stderr:\n"
-                    . (is_file($s->stderr) ? (string) file_get_contents($s->stderr) : ''),
+                    . self::stderrText($s->stderr),
                 0,
                 $e
             );

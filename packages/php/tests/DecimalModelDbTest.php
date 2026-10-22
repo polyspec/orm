@@ -73,11 +73,7 @@ final class DecimalModelDbTest extends TestCase
             return;
         }
         $generated = self::$generated = self::generate();
-        spl_autoload_register(static function (string $class) use ($generated): void {
-            if (str_starts_with($class, 'DecimalFixture\\')) {
-                require $generated . '/' . substr($class, strlen('DecimalFixture\\')) . '.php';
-            }
-        });
+        requireGeneratedClasses($generated);
         require $generated . '/bootstrap.php';
     }
 

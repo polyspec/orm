@@ -57,12 +57,7 @@ final class AuditExternalSetsTest extends TestCase
             "$work/member",
             'Polyspec\\Orm\\Tests\\AuditExternalSets\\Member'
         );
-        spl_autoload_register(static function (string $class) use ($work): void {
-            $prefix = 'Polyspec\\Orm\\Tests\\AuditExternalSets\\Member\\';
-            if (str_starts_with($class, $prefix)) {
-                require "$work/member/" . substr($class, strlen($prefix)) . '.php';
-            }
-        });
+        requireGeneratedClasses("$work/member");
     }
 
     private static function want(bool $ok, string $message): void

@@ -43,11 +43,7 @@ final class WasInsertedTest extends TestCase
             "$work/models",
             'Polyspec\\Orm\\Tests\\WasInsertedCase'
         );
-        spl_autoload_register(static function (string $class) use ($work): void {
-            if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\WasInsertedCase\\')) {
-                require "$work/models/" . substr($class, strlen('Polyspec\\Orm\\Tests\\WasInsertedCase\\')) . '.php';
-            }
-        });
+        requireGeneratedClasses("$work/models");
         require "$work/models/bootstrap.php";
         self::$generated = true;
     }

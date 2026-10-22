@@ -50,11 +50,7 @@ final class ClockTest extends TestCase
             "$work/models",
             'Polyspec\\Orm\\Tests\\ClockCase'
         );
-        spl_autoload_register(static function (string $class) use ($work): void {
-            if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\ClockCase\\')) {
-                require "$work/models/" . substr($class, strlen('Polyspec\\Orm\\Tests\\ClockCase\\')) . '.php';
-            }
-        });
+        requireGeneratedClasses("$work/models");
         require "$work/models/bootstrap.php";
         self::$markDocuments = [(string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/clock_mark.dbs')];
         Generator::generate(
@@ -62,11 +58,7 @@ final class ClockTest extends TestCase
             "$work/mark-models",
             'Polyspec\\Orm\\Tests\\ClockMarkCase'
         );
-        spl_autoload_register(static function (string $class) use ($work): void {
-            if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\ClockMarkCase\\')) {
-                require "$work/mark-models/" . substr($class, strlen('Polyspec\\Orm\\Tests\\ClockMarkCase\\')) . '.php';
-            }
-        });
+        requireGeneratedClasses("$work/mark-models");
         require "$work/mark-models/bootstrap.php";
     }
 

@@ -95,11 +95,7 @@ function fixtureModels(string $fixture, string $namespace): void
         "$work/gen",
         $namespace
     );
-    spl_autoload_register(static function (string $class) use ($work, $namespace): void {
-        if (str_starts_with($class, "$namespace\\")) {
-            require_once "$work/gen/" . substr($class, strlen("$namespace\\")) . '.php';
-        }
-    });
+    requireGeneratedClasses("$work/gen");
     require_once "$work/gen/bootstrap.php";
 }
 

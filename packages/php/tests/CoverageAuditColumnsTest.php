@@ -86,11 +86,7 @@ function auditColumnsCase(string $dsn, string $document, string $work): void
         "$work/gen",
         'Polyspec\\Orm\\Tests\\CoverageAuditColumns'
     );
-    spl_autoload_register(static function (string $class) use ($work): void {
-        if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\CoverageAuditColumns\\')) {
-            require_once "$work/gen/" . substr($class, strlen('Polyspec\\Orm\\Tests\\CoverageAuditColumns\\')) . '.php';
-        }
-    });
+    requireGeneratedClasses("$work/gen");
     require_once "$work/gen/bootstrap.php";
     $db = Orm::connect($dsn, new Config(auditSource: static fn(): array => ['actor' => 'default']));
     try {

@@ -55,14 +55,7 @@ function statementEventsModels(): void
         "$work/models",
         'Polyspec\\Orm\\Tests\\StatementEventsCase'
     );
-    spl_autoload_register(static function (string $class) use ($work): void {
-        if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\StatementEventsCase\\')) {
-            require_once "$work/models/" . substr(
-                $class,
-                strlen('Polyspec\\Orm\\Tests\\StatementEventsCase\\')
-            ) . '.php';
-        }
-    });
+    requireGeneratedClasses("$work/models");
     require_once "$work/models/bootstrap.php";
 }
 

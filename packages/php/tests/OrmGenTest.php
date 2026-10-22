@@ -232,7 +232,8 @@ final class OrmGenTest extends TestCase
         // The text is written in pieces joined by the concatenation operator (Generator::text), so the pieces are
         // joined back first.
         $path = "$dir/model/schema_declarations.php";
-        $declarations = is_file($path) ? (string) file_get_contents($path) : '';
+        self::assertFileExists($path, 'the generation writes schema_declarations.php');
+        $declarations = (string) file_get_contents($path);
         $text = str_replace("'\n    . '", '', $declarations);
         self::assertTrue(
             str_contains(

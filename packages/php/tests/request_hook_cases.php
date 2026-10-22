@@ -46,11 +46,7 @@ function requestHookModels(): void
         "$work/models",
         'Polyspec\\Orm\\Tests\\RequestHookCase'
     );
-    spl_autoload_register(static function (string $class) use ($work): void {
-        if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\RequestHookCase\\')) {
-            require_once "$work/models/" . substr($class, strlen('Polyspec\\Orm\\Tests\\RequestHookCase\\')) . '.php';
-        }
-    });
+    requireGeneratedClasses("$work/models");
     require_once "$work/models/bootstrap.php";
 }
 
