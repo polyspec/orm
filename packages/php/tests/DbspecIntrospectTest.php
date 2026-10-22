@@ -20,18 +20,6 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
-/** Counts the catalog queries sent by introspection. */
-final class CountingPdo extends PDO
-{
-    public int $queries = 0;
-
-    public function query(string $query, ?int $fetchMode = null, mixed ...$fetchModeArgs): PDOStatement|false
-    {
-        $this->queries++;
-        return parent::query($query, $fetchMode, ...$fetchModeArgs);
-    }
-}
-
 // The number of catalog queries per dialect, independent of the table count (docs/spec/dialects.md "Introspection").
 const QUERY_COUNTS = ['mysql' => 9, 'postgres' => 7, 'sqlite' => 3];
 // The statement that every client runs on a new connection.

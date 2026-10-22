@@ -9,7 +9,6 @@ declare(strict_types=1);
 // outside the plan, an effect query that returns no row, and a result that
 // cannot be closed.
 
-
 use Polyspec\Orm\Dbspec\ApplyCleanupError;
 use Polyspec\Orm\Dbspec\ApplyError;
 use Polyspec\Orm\Dbspec\ApplyEvent;
@@ -23,71 +22,6 @@ use PHPUnit\Framework\TestCase;
 // APPLY_CLEANUP_RUN is the prefix of the SQLite file name the case uses. A process id and file number are appended
 // after it.
 const APPLY_CLEANUP_RUN = 'apply_cleanup_php';
-
-
-/**
- * A SQLite connection that injects an error into the chosen statement and replaces the chosen query with another query.
- * The replaced query runs without the parameters of the original query.
- */
-final class FailingPdo extends PDO
-{
-    /**
-     * @param array<string, PDOException> $fail the error exec throws for each statement
-     * @param array<string, string> $replace the query sent instead, for each query
-     * @param list<string> $failClose the queries whose close fails
-     */
-    public function __construct(
-        string $path,
-        private readonly array $fail,
-        private readonly array $replace,
-        array $failClose
-    ) {
-        parent::__construct("sqlite:$path", null, null, [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_STATEMENT_CLASS => [FailingStatement::class, [array_values($replace), $failClose]],
-        ]);
-    }
-
-    public function exec(string $statement): int|false
-    {
-        if (isset($this->fail[$statement])) {
-            throw $this->fail[$statement];
-        }
-        return parent::exec($statement);
-    }
-
-    public function query(string $query, ?int $fetchMode = null, mixed ...$fetchModeArgs): PDOStatement|false
-    {
-        return parent::query($this->replace[$query] ?? $query, $fetchMode, ...$fetchModeArgs);
-    }
-
-    public function prepare(string $query, array $options = []): PDOStatement|false
-    {
-        return parent::prepare($this->replace[$query] ?? $query, $options);
-    }
-}
-
-/** The statement that runs the replaced query without parameters, and whose result close fails for the chosen query. */
-final class FailingStatement extends PDOStatement
-{
-    /**
-     * @param list<string> $replacements the queries that were sent instead
-     * @param list<string> $failClose
-     */
-    protected function __construct(private readonly array $replacements, private readonly array $failClose)
-    {
-    }
-
-    public function execute(?array $params = null): bool
-    {
-        return parent::execute(in_array($this->queryString, $this->replacements, true) ? null : $params);
-    }
-
-    public function closeCursor(): bool
-    {
-        return in_array($this->queryString, $this->failClose, true) ? false : parent::closeCursor();
-    }
-}
 
 /** The create-from-empty plan of tests/dbspec/plans.json, the one plan the cases apply. */
 function apply_cleanup_plans(): array
