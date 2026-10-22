@@ -2,6 +2,8 @@
 # Changelog
 
 ## Unreleased
+
+- `group_rows_db.mjs` runs its case through `caseTest` with the database deadline, so it reports its PASS or FAIL line and its deadline like the other TypeScript cases (KSTD-10-4). Red: the case found the script reporting no case.
 - `group-rows-db-go` runs its Go test through `GO_TEST`, the go-test wrapper with `-timeout 0`, so the test gets a run line and no default 10 minute deadline (KSTD-10-3). Red: the case found the recipe running `go test` directly.
 - `group-rows-db-typescript` starts its recipe with `$(READ_TYPESCRIPT)`, so it holds the TypeScript build output it reads (KSTD-10-2). Red: the case found its recipe without the lease.
 - The group-rows-db targets (Go, TypeScript, Python, PHP, PHP extension and Rust) run in the CI groups, and generated-lint-check runs in the static group, so every target of CHECK_TARGETS runs once (KSTD-10-1). Red: the CI group case found seven group-rows-db targets and generated-lint-check in no group.
@@ -290,8 +292,6 @@
 - The features' `clients` flags are removed from contracts/features.json, the schema and scripts/features, and `tests.language-parity` in contracts/rules.json uses the parity check. (#T77-10-2)
 - The PHP conformance runner and its result helpers live in packages/php/testing/conformance, and the PHP result-helper test loads them from there. (#T77-9-2-1)
 - The Go conformance runner, the dbspec Go programs, the Go symbol extractor and the dialect physical tests live in packages/go/internal, and no Go adapter stays under tests/ except the cross-language tools. (#T77-9-1)
-
-
 - The error catalogs of TypeScript and Python are exported as `codes`, as Go, PHP and Rust export theirs. The public API of the clients is declared as units in config/parity.json, and interface-check checks the error catalog units of every client against docs/spec/errors.yaml. (#T77-8)
 - The Rust model generator checks its generated files with `Builder::check`, as the Go `orm-gen gen --check` does; the thin-slice demo has TypeScript and Python programs, whose stdout the output comparison checks against Go; and the styled value types of TypeScript and Python are in docs/spec/codec.md and docs/spec/dbspec.md. (#T148-3-7-5)
 - Every TypeScript and Python error site uses the generated catalog constants, and a drift test fails on a stale catalog. (#T148-3-7-3)
@@ -371,6 +371,7 @@
 - The repository checks read the Makefile through one reader that names every target with its prerequisites and recipe. (#T137-1-4-2-2)
 - The repository checks read the run texts of the workflows and the Makefile recipes as shell commands, not lines or patterns. (#T137-1-4-2-1)
 - The Rust show-create vectors run through the public catalog path, each case a trial named by its id. (#T148-2-1)
+
 ## 0.0.18
 
 - The Unicode table generator emits the TypeScript lookup as a checked read. (#T180-2)

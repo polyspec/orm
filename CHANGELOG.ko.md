@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 8d3f810f958d59c2141d62606d2a7117d50f319498953551af08e3f638737cd0 -->
+<!-- source-sha256: 2d9f8005759cbd8c7a98c38bb6696e87ff01d19410895998bd91d2fa406935dd -->
 # 변경 이력
 
 ## Unreleased
+
+- `group_rows_db.mjs`는 데이터베이스 deadline으로 `caseTest`에서 사례를 실행하므로 다른 TypeScript 사례처럼 PASS 또는 FAIL 줄과 deadline을 보고한다(KSTD-10-4). red: 사례가 보고하는 case가 없는 스크립트를 찾았다.
 - `group-rows-db-go`는 Go test를 `GO_TEST`(`-timeout 0`인 go-test wrapper)로 실행해 run 줄을 얻고 기본 10분 deadline을 받지 않는다(KSTD-10-3). red: 사례가 recipe가 `go test`를 직접 실행하는 것을 찾았다.
 - `group-rows-db-typescript`는 recipe를 `$(READ_TYPESCRIPT)`로 시작해 읽는 TypeScript build 출력을 보유한다(KSTD-10-2). red: 사례가 lease 없는 recipe를 찾았다.
 - group-rows-db 대상(Go, TypeScript, Python, PHP, PHP extension, Rust)은 CI group에서 실행되고, generated-lint-check는 static group에서 실행되어 CHECK_TARGETS의 모든 target이 한 번씩 실행된다(KSTD-10-1). red: CI group 사례가 group-rows-db 대상 일곱 개와 generated-lint-check를 어느 group에도 없는 것으로 찾았다.
@@ -291,8 +293,6 @@
 - features의 `clients` flag를 contracts/features.json, schema와 scripts/features에서 없앴고, contracts/rules.json의 `tests.language-parity`가 parity check를 쓴다. (#T77-10-2)
 - PHP conformance runner와 result helper가 packages/php/testing/conformance에 있으며, PHP result helper test가 거기서 불러온다. (#T77-9-2-1)
 - Go conformance runner, dbspec Go program, Go symbol extractor와 dialect physical test가 packages/go/internal에 있으며, Go adapter는 cross-language 도구를 제외하고 tests/ 아래에 남지 않는다. (#T77-9-1)
-
-
 - TypeScript와 Python의 오류 catalog가 `codes`로 export되며, Go, PHP, Rust가 export하는 방식과 같다. client의 공개 API는 config/parity.json의 단위로 선언되고, interface-check가 모든 client의 오류 catalog 단위를 docs/errors.yaml과 비교한다. (#T77-8)
 - Rust model generator가 `Builder::check`로 생성된 file을 검사한다. 이는 Go의 `orm-gen gen --check`와 같다. thin-slice 데모에 TypeScript와 Python 프로그램이 생겼고, 그 stdout은 출력 비교가 Go와 대조한다. TypeScript와 Python의 styled value type은 docs/codec.md와 docs/dbspec.md에 있다. (#T148-3-7-5)
 - TypeScript와 Python의 모든 오류 지점이 생성된 catalog 상수를 쓰며, 오래된 catalog에서 drift test가 실패한다. (#T148-3-7-3)
@@ -372,6 +372,7 @@
 - repository 검사가 Makefile을 모든 target을 prerequisite, recipe와 함께 이름 짓는 reader 하나로 읽는다. (#T137-1-4-2-2)
 - repository 검사가 workflow의 run text와 Makefile recipe를 줄이나 pattern이 아니라 shell 명령으로 읽는다. (#T137-1-4-2-1)
 - Rust show-create vector가 공개 catalog 경로로 실행되고, 각 case는 id로 이름 붙은 trial이다. (#T148-2-1)
+
 ## 0.0.18
 
 - Unicode 표 생성기가 TypeScript 조회를 검사한 읽기로 내보낸다. (#T180-2)
