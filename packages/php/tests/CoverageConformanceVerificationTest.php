@@ -19,14 +19,6 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Large;
 use PHPUnit\Framework\TestCase;
 
-// With the extension loaded (php-extension, S10) the client's entry classes are the extension's: a fallback to the PHP
-// classes would not test the extension, so each one is asserted internal.
-if (extension_loaded('polyspec_orm')) {
-    foreach (['Polyspec\\Orm\\Db', 'Polyspec\\Orm\\Planner'] as $entry) {
-        Assert::assertTrue((new \ReflectionClass($entry))->isInternal(), "$entry is the extension class");
-    }
-}
-
 /** Compares two JSON values: arrays in order, objects by key set and values, numbers by value. */
 function sameJson(mixed $a, mixed $b): bool
 {
@@ -154,8 +146,23 @@ final class CoverageConformanceVerificationTest extends TestCase
         self::check('sqlite', $name, $expect);
     }
 
+    /**
+     * With the extension loaded (php-extension, S10) the client's entry classes are the extension's: a fallback to the
+     * PHP classes would not test the extension, so each one is asserted internal.
+     */
+    private static function assertEntryClassesAreInternal(): void
+    {
+        if (!extension_loaded('polyspec_orm')) {
+            return;
+        }
+        foreach (['Polyspec\\Orm\\Db', 'Polyspec\\Orm\\Planner'] as $entry) {
+            Assert::assertTrue((new \ReflectionClass($entry))->isInternal(), "$entry is the extension class");
+        }
+    }
+
     public function testConformanceVector(): void
     {
+        self::assertEntryClassesAreInternal();
         foreach (coverageItemsOf(__FILE__) as $item) {
             selectCoverageItem($item);
             [$driver, $dsn] = coverageItem();

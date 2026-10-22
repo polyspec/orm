@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ad014f8bf8e176dc0d95e0967347d7414b89fadcef1481ac09ad694c50019ee8 -->
+<!-- source-sha256: c6ddd679738cd3f0e01a4458fb234dc8d2405a232f2b2ad455998fe218193c29 -->
 # 변경 이력
 
 ## Unreleased
 
+- lint-php가 PHP 소스에서 통과한다. packages/php-ext/tests/silent_paths.php의 긴 줄을 감쌌고, packages/php/tests의 Coverage test 3개 파일은 entry class 검사를 파일 로드 시점이 아니라 method 안에 둔다(KSTD-5-45). red: phpcs가 6개 finding을 보고했다.
 - 저장소의 TypeScript lint가 통과한다: lint-ts 단계가 oxlint 발견 사항과 사용되지 않는 export를 보고하지 않는다. 오류는 cause를 유지하고, DSN을 가리는 재throw는 catch 밖에서 수행하며, 사용되지 않는 byteSize를 제거하고 quoteIdent의 export를 해제한다 (KSTD-5-44). red: make lint-ts가 oxlint 발견 사항 34건과 knip의 사용되지 않는 export 1건을 보고한다.
 - VitePress의 임시 폴더 `docs/.vitepress/.temp/`는 git이 무시하므로, 그것을 남기는 build가 land를 막지 않는다(KSTD-5-39). red: 줄을 추가하기 전 `git check-ignore` probe가 실패했다.
 - Makefile의 도구 경로가 KIT_TOOLS를 써서, 연결된 worktree가 main checkout이 설치한 도구로 빌드된다(KSTD-5-38). red: 새 worktree의 rebuild가 없는 var/tools/mise/shims/go에서 멈췄다.

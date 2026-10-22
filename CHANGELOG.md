@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- lint-php passes on the PHP sources: the long lines of packages/php-ext/tests/silent_paths.php are wrapped, and the three Coverage test files of packages/php/tests keep their PSR-1 entry check inside a method, not at file load (KSTD-5-45). Red: phpcs reported 6 findings.
 - The TypeScript lint of the repository passes: the lint-ts steps report no oxlint finding and no unused export. The errors keep their cause, the redacted rethrows leave their catch blocks, and the unused byteSize and the unused export quoteIdent are removed or unexported (KSTD-5-44). Red: make lint-ts reports 34 oxlint findings and one knip unused export.
 - The VitePress temporary folder `docs/.vitepress/.temp/` is ignored by git, so a build that leaves it no longer blocks a land (KSTD-5-39). Red: the probe of `git check-ignore` fails before the line is added.
 - The tool paths of the Makefile name KIT_TOOLS, so a linked worktree builds with the tools that the main checkout installed (KSTD-5-38). Red: the rebuild in a new worktree stops on a missing var/tools/mise/shims/go.
