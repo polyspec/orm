@@ -1163,7 +1163,7 @@ group-rows-db-typescript: typescript-build
 	ORM_GROUP_DATABASE=sqlite ORM_GROUP_DSN="$$BENCH_SQLITE_DSN" node packages/ts/tests/group_rows_db.mjs
 # group-rows-db-go runs TestGroupRowsDatabase (packages/go/model/group_rows_db_test.go) on BENCH_SQLITE_DSN.
 group-rows-db-go:
-	cd packages/go && go test ./model -run '^TestGroupRowsDatabase$$' -count=1
+	$(GO_TEST) ./packages/go/model -run '^TestGroupRowsDatabase$$' -count=1
 # group-rows-db-php runs GroupRowsDbTest, which reads BENCH_MYSQL_DSN, BENCH_POSTGRES_DSN and BENCH_SQLITE_DSN.
 group-rows-db-php: php-vendor-check
 	$(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/GroupRowsDbTest.php

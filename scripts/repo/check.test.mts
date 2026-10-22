@@ -1291,6 +1291,9 @@ caseTest('a go generate that make orm-check runs twice fails', COMPUTE, () => {
 // The go test case checks the repository's Makefile (with variables resolved), verification commands, scripts and a minimal unit.
 caseTest('every go test runs through go-test.mts or run-long', COMPUTE, () => {
   const makefile = text('Makefile');
+  // group-rows-db-go runs its go test through go-test.mts, with its own run line and no deadline (KSTD-10-3).
+  const groupRowsGo = makefile.split('\n').indexOf('group-rows-db-go:');
+  assert.ok(makefile.split('\n')[groupRowsGo + 1]?.startsWith('\t$(GO_TEST) ./packages/go/model'), 'group-rows-db-go runs go test through GO_TEST');
   const variables = makeVariables(makefile);
   const { recipes, scripts } = runUnits();
   const expanded = recipes.map(unit => ({ ...unit, commands: unit.commands.map(command => expand(command, variables)) }));
