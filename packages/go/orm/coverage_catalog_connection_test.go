@@ -390,3 +390,45 @@ func TestCoverageCatalogGridTimestamp(t *testing.T) {
 		}
 	}
 }
+
+// Requirements: SCH-6a. An operation on a catalog connection after its Close fails with CATALOG_CLOSED and sends no
+// statement. The writes use a key that exists, so a missing check would report a conflict or write the same value back.
+func TestCoverageCatalogClosed(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	ctx := context.Background()
+	driver, c := catalogConnect(t)
+	namespace, err := c.CurrentNamespace(ctx)
+	if err != nil {
+		t.Fatalf("%s: current namespace: %v", driver, err)
+	}
+	author := orm.CatalogTableRef{Namespace: namespace, Name: "author"}
+	meta, err := c.DescribeTable(ctx, author)
+	if err != nil {
+		t.Fatalf("%s: describe author: %v", driver, err)
+	}
+	page, err := c.TablePage(ctx, author, 1, 0)
+	if err != nil {
+		t.Fatalf("%s: author page: %v", driver, err)
+	}
+	snapshot, err := orm.CatalogSnapshotFromPage(page, 0)
+	if err != nil {
+		t.Fatalf("%s: snapshot: %v", driver, err)
+	}
+	if err := c.Close(); err != nil {
+		t.Fatalf("%s: close: %v", driver, err)
+	}
+
+	checks := map[string]error{}
+	_, checks["CurrentNamespace"] = c.CurrentNamespace(ctx)
+	_, checks["DescribeTable"] = c.DescribeTable(ctx, author)
+	_, checks["TablePage"] = c.TablePage(ctx, author, 1, 0)
+	_, checks["ReadOnlyQuery"] = c.ReadOnlyQuery(ctx, "SELECT 1", nil, orm.CatalogQueryLimits{})
+	_, checks["ReadOnlyGridQuery"] = c.ReadOnlyGridQuery(ctx, "SELECT 1", nil, orm.CatalogQueryLimits{})
+	_, checks["InsertRow"] = c.InsertRow(ctx, meta, []orm.CatalogAssignment{{Name: "seq", Value: page.Result.Rows[0][0]}})
+	_, checks["UpdateRow"] = c.UpdateRow(ctx, snapshot, []orm.CatalogAssignment{{Name: "seq", Value: page.Result.Rows[0][0]}})
+	for name, err := range checks {
+		if got := orm.ErrorCode(err); got != orm.CodeCatalogClosed {
+			t.Errorf("%s: %s after Close: got code %q (%v), want %s", driver, name, got, err, orm.CodeCatalogClosed)
+		}
+	}
+}

@@ -290,6 +290,38 @@ async function floatCase() {
   }
 }
 
+// SCH-6a: an operation on a catalog connection after close fails with CATALOG_CLOSED and sends no statement. The writes use the
+// key of an existing author row, so a missing check would report a conflict or write the same value back.
+async function closedCase() {
+  const { driver, catalog } = await connect();
+  const namespace = await catalog.currentNamespace();
+  const author = { namespace, name: 'author' };
+  const meta = await catalog.describeTable(author);
+  const page = await catalog.tablePage(author, 1, 0);
+  const snapshot = catalog.rowSnapshotFromPage(page, 0);
+  const seq = page.result.rows[0][0];
+  await catalog.close();
+  const attempts = {
+    currentNamespace: () => catalog.currentNamespace(),
+    describeTable: () => catalog.describeTable(author),
+    tablePage: () => catalog.tablePage(author, 1, 0),
+    readOnlyQuery: () => catalog.readOnlyQuery('SELECT 1', []),
+    readOnlyGridQuery: () => catalog.readOnlyGridQuery('SELECT 1', []),
+    insertRow: () => catalog.insertRow(meta, [{ name: 'seq', value: seq }]),
+    updateRow: () => catalog.updateRow(snapshot, [{ name: 'seq', value: seq }]),
+  };
+  for (const [name, attempt] of Object.entries(attempts)) {
+    await assert.rejects(
+      attempt(),
+      error => {
+        assert.equal(error.code, 'CATALOG_CLOSED', `${driver}: ${name} after close: ${error.code}: ${error.message}`);
+        return true;
+      },
+      `${driver}: ${name} after close did not fail`,
+    );
+  }
+}
+
 await readCase();
 await mutationCase();
 await plainCase();
@@ -299,4 +331,5 @@ await precisionCase();
 await sqliteTemporalCase();
 await byteBudgetCase();
 await floatCase();
-console.log('catalog_connection: read, row mutation, columns, stream budgets, byte budgets, grid cells, float and temporal precision passed');
+await closedCase();
+console.log('catalog_connection: read, row mutation, columns, stream budgets, byte budgets, grid cells, float and temporal precision, closed connection passed');

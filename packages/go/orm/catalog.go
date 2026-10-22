@@ -11,6 +11,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 	"unicode/utf8"
 
@@ -53,6 +54,7 @@ const (
 type CatalogConnection struct {
 	db      *DB
 	dialect string
+	closed  atomic.Bool
 }
 
 // ConnectCatalog opens the catalog connection of a mysql, postgres or sqlite DSN. A markdown DSN is refused. A SQLite
@@ -92,7 +94,19 @@ func ConnectCatalog(dsn string) (*CatalogConnection, error) {
 func (c *CatalogConnection) Dialect() string { return c.dialect }
 
 // Close releases the connection pool.
-func (c *CatalogConnection) Close() error { return c.db.Close() }
+// Close releases the connection pool. An operation after Close fails with CATALOG_CLOSED and sends no statement.
+func (c *CatalogConnection) Close() error {
+	c.closed.Store(true)
+	return c.db.Close()
+}
+
+// ensureOpen fails with CATALOG_CLOSED once Close has run.
+func (c *CatalogConnection) ensureOpen() error {
+	if c.closed.Load() {
+		return catalogErr(CodeCatalogClosed, "the catalog connection is closed")
+	}
+	return nil
+}
 
 // catalogSession is one pooled connection inside one transaction. The connection is discarded when the session ends, so
 // a session setting such as the SQLite query_only pragma never returns to the pool.
@@ -104,6 +118,9 @@ type catalogSession struct {
 
 // begin opens a session with a read-only transaction or a writable one. A SQLite read-only session sets query_only first.
 func (c *CatalogConnection) begin(ctx context.Context, readOnly bool) (*catalogSession, error) {
+	if err := c.ensureOpen(); err != nil {
+		return nil, err
+	}
 	conn, err := c.db.sql.Conn(ctx)
 	if err != nil {
 		return nil, mapDriverErr(err)
@@ -196,6 +213,9 @@ func catalogWrite[T any](ctx context.Context, c *CatalogConnection, fn func(s *c
 // CurrentNamespace reports the namespace of the connection: the current schema of PostgreSQL, the current database of
 // MySQL and the main database of SQLite.
 func (c *CatalogConnection) CurrentNamespace(ctx context.Context) (string, error) {
+	if err := c.ensureOpen(); err != nil {
+		return "", err
+	}
 	if c.dialect == "sqlite" {
 		return "main", nil
 	}

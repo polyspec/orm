@@ -1097,15 +1097,24 @@ const BEGIN_SQL: Record<DriverName, { read: string; write: string }> = {
 
 /** A native catalog connection to a MySQL, PostgreSQL or SQLite database selected by its DSN. */
 export class CatalogConnection {
+  private closed = false;
+
   public constructor(public readonly dialect: DriverName, private readonly pool: DriverPool) {}
 
-  /** Releases the connection pool. */
+  /** Releases the connection pool. An operation after close fails with CATALOG_CLOSED and sends no statement. */
   public async close(): Promise<void> {
+    this.closed = true;
     await this.pool.close();
+  }
+
+  /** Fails with CATALOG_CLOSED once close has run. */
+  private ensureOpen(): void {
+    if (this.closed) throw err(codes.CATALOG_CLOSED, 'the catalog connection is closed');
   }
 
   /** Opens a session in a read-only transaction, or a writable one. */
   private async begin(readOnly: boolean): Promise<Session> {
+    this.ensureOpen();
     const session = new Session(this.dialect, await this.pool.reserve());
     try {
       // SQLite has one connection that every session shares, so each session sets query_only itself and does not inherit it.
@@ -1177,6 +1186,7 @@ export class CatalogConnection {
 
   /** The namespace of the connection: the current schema of PostgreSQL, the current database of MySQL, and main for SQLite. */
   public async currentNamespace(): Promise<string> {
+    this.ensureOpen();
     if (this.dialect === 'sqlite') return 'main';
     const query = this.dialect === 'postgres' ? 'SELECT current_schema()' : 'SELECT DATABASE()';
     return this.read(async session => {
