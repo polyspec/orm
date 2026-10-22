@@ -14,6 +14,7 @@ fn wrapped() -> Result<Option<Author>, std::io::Error> {
     Author::new().set_jsons_tags(StyledValue::Value(tags())).map_err(std::io::Error::other).map(Some)
 }
 
+// Requirements: COD-20, COD-25.
 #[test]
 fn generated_model_result_chains_preserve_assigned_values() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

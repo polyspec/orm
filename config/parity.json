@@ -11009,6 +11009,10 @@
     {
       "id": "rust-bind-check-bind-vectors-bind-vectors",
       "kind": "feature",
+      "requirements": [
+        "PRT-67",
+        "DIA-31"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -11020,6 +11024,9 @@
     {
       "id": "rust-engine-param-uses-tests-param-uses-name-each-slot",
       "kind": "feature",
+      "requirements": [
+        "DIA-31"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -12419,6 +12426,10 @@
     {
       "id": "rust-integration-result-chains-generated-model-result-chains-preserve-assigned-values",
       "kind": "feature",
+      "requirements": [
+        "COD-20",
+        "COD-25"
+      ],
       "bindings": [
         {
           "implementation": "rust",

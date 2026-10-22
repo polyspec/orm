@@ -54,6 +54,7 @@ fn param_variant(p: &Param) -> u8 {
     }
 }
 
+// Requirements: PRT-67, DIA-31.
 #[test]
 fn bind_vectors() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

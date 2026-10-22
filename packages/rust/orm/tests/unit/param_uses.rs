@@ -53,6 +53,7 @@ fn item(p: ir::Pred) -> ir::Item {
     ir::Item::Pred { pred: Box::new(p) }
 }
 
+// Requirements: DIA-31.
 #[test]
 fn param_uses_name_each_slot() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
