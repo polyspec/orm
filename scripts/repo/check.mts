@@ -76,7 +76,7 @@ failures.push(...ciMakeErrors(workflows));
 failures.push(...concurrencyErrors(workflows));
 // ci.yml, push-gate.yml and docs-pages.yml run only on the events they declare, and the other workflows
 // do not run on push, pull_request, merge_group.
-failures.push(...workflowTriggerErrors(allWorkflows));
+failures.push(...workflowTriggerErrors(workflows));
 // Every target of CHECK_TARGETS declares its scope in contracts/check-inputs.json, and owner targets make
 // also declare the inputs that owner-check selects.
 const checkInputs = readCheckInputs(root).targets;

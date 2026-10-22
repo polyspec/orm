@@ -1469,7 +1469,7 @@ caseTest('every workflow runs on its declared events only', COMPUTE, () => {
   const root = new URL('../..', import.meta.url).pathname;
   const directory = join(root, '.github/workflows');
   const actual = Object.fromEntries(readdirSync(directory).filter(name => /\.ya?ml$/.test(name)).map(name => [`.github/workflows/${name}`, readFileSync(join(directory, name), 'utf8')]));
-  assert.deepEqual(workflowTriggerErrors(actual), []);
+  assert.deepEqual(workflowTriggerErrors(ownWorkflows(actual, copies)), []);
   const text = (on: string[]) => `name: x\n${on.join('\n')}\n\njobs:\n  a:\n    runs-on: ubuntu\n`;
   const declared = Object.fromEntries(Object.entries(WORKFLOW_TRIGGERS).map(([path, on]) => [path, text([stringify({ on })])]));
   assert.deepEqual(workflowTriggerErrors(declared), []);
@@ -1482,13 +1482,13 @@ caseTest('every workflow runs on its declared events only', COMPUTE, () => {
   const { ['.github/workflows/push-gate.yml']: _, ...withoutGate } = declared;
   assert.deepEqual(workflowTriggerErrors({ ...withoutGate, '.github/workflows/review.yml': text(['on:', '  schedule:', "    - cron: '0 3 * * 1'", '  pull_request:']) }), [
     '.github/workflows/push-gate.yml is missing; it runs on {"push":{"branches":["**"]}}',
-    '.github/workflows/review.yml runs on pull_request; only ci.yml, push-gate.yml, docs-pages.yml and release.yml run on these events',
+    '.github/workflows/review.yml runs on pull_request; only ci.yml, push-gate.yml and docs-pages.yml run on these events',
   ]);
   assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/review.yml': text(['on:', '  schedule:', "    - cron: '0 3 * * 1'", '  workflow_dispatch:']) }), []);
-  // release.yml runs only on a push of a version tag (G5.113-3).
-  assert.deepEqual(WORKFLOW_TRIGGERS['.github/workflows/release.yml'], { push: { tags: ['v*', '**/v*'] } });
+  // release.yml is kit's copy, so the table holds no entry for it: a run on push of a copy is not judged here (KSTD-5-25).
+  assert.equal(Object.hasOwn(WORKFLOW_TRIGGERS, '.github/workflows/release.yml'), false);
   assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/release.yml': text(['on:', '  push:', '    branches: [main]']) }), [
-    '.github/workflows/release.yml has the triggers {"push":{"branches":["main"]}} instead of {"push":{"tags":["v*","**/v*"]}}',
+    '.github/workflows/release.yml runs on push; only ci.yml, push-gate.yml and docs-pages.yml run on these events',
   ]);
 });
 

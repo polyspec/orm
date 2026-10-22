@@ -675,13 +675,12 @@ export function ciMakeErrors(workflows: Record<string, string>): string[] {
 
 // WORKFLOW_TRIGGERS is the `on:` value of each workflow. ci.yml runs all check jobs on pushes to main and on manual runs,
 // push-gate.yml runs the push gate on every push,
-// docs-pages.yml builds and deploys the public site on pushes to main and on manual runs, and release.yml makes a GitHub Release on pushes of a version tag (`vX.Y.Z`,
-// `<dir>/vX.Y.Z`). No other workflow runs on push, pull_request, or merge_group.
+// docs-pages.yml builds and deploys the public site on pushes to main and on manual runs. The workflows that kit copies (release.yml
+// among them) are kit's and are not in this table. No other workflow of this repository runs on push, pull_request, or merge_group.
 export const WORKFLOW_TRIGGERS: Record<string, unknown> = {
   '.github/workflows/ci.yml': { push: { branches: ['main'] }, workflow_dispatch: null },
   '.github/workflows/push-gate.yml': { push: { branches: ['**'] } },
   '.github/workflows/docs-pages.yml': { push: { branches: ['main'] }, workflow_dispatch: null },
-  '.github/workflows/release.yml': { push: { tags: ['v*', '**/v*'] } },
 };
 
 // workflowTriggerErrors returns one error for each place where a workflow in WORKFLOW_TRIGGERS is missing or has a different `on:` value, and for each place where another workflow runs on push,
@@ -697,7 +696,7 @@ export function workflowTriggerErrors(workflows: Record<string, string>): string
   for (const [path, workflow] of Object.entries(workflows)) {
     if (Object.hasOwn(WORKFLOW_TRIGGERS, path)) continue;
     const ran = events(readWorkflow(workflow, path)).filter(event => ['push', 'pull_request', 'merge_group'].includes(event));
-    if (ran.length) errors.push(`${path} runs on ${ran.join(', ')}; only ci.yml, push-gate.yml, docs-pages.yml and release.yml run on these events`);
+    if (ran.length) errors.push(`${path} runs on ${ran.join(', ')}; only ci.yml, push-gate.yml and docs-pages.yml run on these events`);
   }
   return errors;
 }
