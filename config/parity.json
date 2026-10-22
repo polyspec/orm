@@ -3463,6 +3463,10 @@
           "test": "packages/php/tests/CoverageAuthenticatedEncryptionTest.php"
         },
         {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/CoverageAuthenticatedEncryptionTest.php"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_authenticated_encryption.mjs"
         },

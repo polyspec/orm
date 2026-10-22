@@ -1,5 +1,5 @@
 <!-- doc-id: features -->
-<!-- source-sha256: 5a06162a82830dcab5a62963a08938aafe6aa438514f8619a9ad20518fbc5002 -->
+<!-- source-sha256: 0d3f3cacc04a4c322db1f8e296e1283efb72fad3390650422aa226022d262b43 -->
 # 기능 정의
 
 실행 기준은 저장소의 기능 manifest이다. 먼저 manifest의 `source.read_order` 경로를 읽고 선택한 기능의 모든 참조 경로를 읽는다. 각 항목은 input, output, 상태 전이, 오류, parity unit, fixture, test, paired document, 실제 검증 명령을 정의한다.
@@ -16,7 +16,7 @@
 | schema_install | 스키마 설치 | partial | go, php, typescript, python, rust |
 | planner | 프로세스 내 planner | partial | go, php, php-extension, typescript, python, rust |
 | composite_keys | 복합 key | partial | go, php, typescript, python, rust |
-| authenticated_encryption | 인증 암호화 | partial | go, php, typescript, python, rust |
+| authenticated_encryption | 인증 암호화 | implemented | go, php, php-extension, typescript, python, rust |
 | parameter_chunking | 파라미터 분할 | partial | typescript, python, rust |
 | constraints_and_relations | 제약과 관계 | partial | typescript, python, rust |
 | audit_triggers | 감사 트리거 | partial | go, php, typescript, python, rust |

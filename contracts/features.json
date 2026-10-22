@@ -5858,7 +5858,7 @@
       "id": "authenticated_encryption",
       "title": "Authenticated encryption",
       "title_ko": "\uc778\uc99d \uc554\ud638\ud654",
-      "status": "partial",
+      "status": "implemented",
       "description": "Encode authenticated versioned AES values and blind indexes, read mixed key versions, and rotate every encrypted column of a table in batches.",
       "description_ko": "\uc778\uc99d\uacfc \ubc84\uc804\uc774 \uc788\ub294 AES \uac12\uacfc blind index\ub97c \uc778\ucf54\ub529\ud558\uace0, \uc11e\uc778 key version\uc744 \uc77d\uc73c\uba70, \ud14c\uc774\ube14\uc758 \ubaa8\ub4e0 \uc554\ud638\ud654 \uceec\ub7fc\uc744 \ubc30\uce58\ub85c \ud68c\uc804\ud55c\ub2e4.",
       "inputs": {

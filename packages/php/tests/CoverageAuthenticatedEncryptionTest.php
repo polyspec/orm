@@ -14,6 +14,11 @@ use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
+// With the extension loaded (php-extension, S10) the codec is the extension's class, not the PHP client's.
+if (extension_loaded('polyspec_orm')) {
+    Assert::assertTrue((new \ReflectionClass(Codec::class))->isInternal(), 'the Codec of the loaded extension is the extension class');
+}
+
 /** @return array<string, mixed> the case in the fixture with the same id and operation */
 function encryptionCase(array $fixture, string $id, string $operation): array
 {
