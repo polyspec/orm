@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 2468049c7e50c6e9178c8b78cc609cdf2a0c60c4e648d2f48e330de2febca841 -->
+<!-- source-sha256: b02dbe72144ce0c4272f0175982614c647ad71477cbbdb964604750276684314 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -228,3 +228,4 @@
 | KSTD-5-63 | 존재하지 않는 column의 scalar subquery에 대해 임의 타입 대신 내부 오류를 반환한다 | packages/rust/orm/src/engine/planner.rs:1060; packages/rust/orm/src/markdown.rs:532; packages/rust/orm/src/engine/params.rs:159; packages/ts/src/engine/planner.ts:734; packages/ts/src/markdown.ts:348 | `make rust-check` | [ ] |
 | KSTD-5-64 | 파싱할 수 없는 SQLite library version을 그 텍스트를 밝히는 오류로 보고한다 | packages/rust/orm/src/db.rs:495-496; packages/ts/src/driver.ts:972 | `make rust-check` | [ ] |
 | KSTD-5-65 | build scan에서 OUT_DIR이 없다는 오류를 전파한다 | packages/rust/build/src/lib.rs:166 | `make rust-check` | [ ] |
+| KSTD-5-66 | upsert planner의 conflict-key 오류를 전파한다 | packages/rust/orm/src/engine/planner.rs:313 | `make rust-check` | [ ] |
