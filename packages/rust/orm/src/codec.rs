@@ -888,7 +888,11 @@ mod tests {
             "a: \u{feff}x\n",
         ] {
             match decode(&yaml, &Val::Str(text.into())) {
-                Err(e) if e.code() == CODEC_DECODE => {}
+                Err(e) => {
+                    if e.code() != CODEC_DECODE {
+                        wrong.push(format!("{text:?}: got Err({e:?}), want CODEC_DECODE"));
+                    }
+                }
                 other => wrong.push(format!("{text:?}: got {other:?}, want CODEC_DECODE")),
             }
         }
