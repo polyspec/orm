@@ -85,7 +85,7 @@ mod tests {
     use super::{fraction, precision};
 
     #[test]
-    // Requirements: DIA-54, DIA-137.
+    // Requirements: INT-101.
     fn precision_follows_the_native_type_and_dialect_default() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         assert_eq!(precision("datetime(6)", "mysql"), Ok(6));

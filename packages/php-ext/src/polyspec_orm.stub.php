@@ -842,6 +842,14 @@ final class Code
     public const string TABLE_NOT_FOUND = 'TABLE_NOT_FOUND';
     /** executor */
     public const string TABLE_KIND_UNSUPPORTED = 'TABLE_KIND_UNSUPPORTED';
+    /** executor: a native bind of the Rust catalog tool is unsupported or invalid (a malformed decimal, a nonfinite MySQL float, a SQLite NaN, PostgreSQL text with NUL) and is refused before execution */
+    public const string TOOL_BIND_INVALID = 'TOOL_BIND_INVALID';
+    /** executor: a native bind of the Rust catalog tool exceeds its budget (more than 65535 parameters, or total value bytes beyond 16 MiB), refused before preparing or executing */
+    public const string TOOL_BIND_LIMIT = 'TOOL_BIND_LIMIT';
+    /** executor: a query result of the Rust catalog tool exceeds its column metadata budget (more than 2048 columns, or the column names and native types together beyond 64 KiB) */
+    public const string TOOL_QUERY_COLUMNS = 'TOOL_QUERY_COLUMNS';
+    /** executor: a bounded query of the Rust catalog tool does not split into exactly one statement */
+    public const string TOOL_QUERY_STATEMENT = 'TOOL_QUERY_STATEMENT';
     /** executor */
     public const string TABLE_NAMESPACE_UNSUPPORTED = 'TABLE_NAMESPACE_UNSUPPORTED';
     /** executor */

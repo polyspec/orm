@@ -8087,8 +8087,7 @@
       "id": "rust-catalog-temporal-precision-follows-the-native-type-and-dialect-default",
       "kind": "feature",
       "requirements": [
-        "DIA-54",
-        "DIA-137"
+        "INT-101"
       ],
       "bindings": [
         {
@@ -8839,7 +8838,7 @@
       "id": "rust-finite-grid-decimals-preserve-precision-and-scale",
       "kind": "feature",
       "requirements": [
-        "SCH-3"
+        "INT-97"
       ],
       "bindings": [
         {
@@ -10942,8 +10941,7 @@
       "id": "rust-invalid-database-cells-return-decode-errors",
       "kind": "feature",
       "requirements": [
-        "COD-37",
-        "PRT-36"
+        "INT-98"
       ],
       "bindings": [
         {
@@ -10957,7 +10955,7 @@
       "id": "rust-runtime-value-types",
       "kind": "feature",
       "requirements": [
-        "DIA-27",
+        "INT-99",
         "DBS-68"
       ],
       "bindings": [
@@ -11409,7 +11407,7 @@
       "id": "rust-coverage-model-generation-check",
       "kind": "feature",
       "requirements": [
-        "DBS-120"
+        "INT-100"
       ],
       "bindings": [
         {
@@ -11454,9 +11452,6 @@
     {
       "id": "rust-conformance-invalid-derived-integers-cannot-be-reported-as-zero",
       "kind": "feature",
-      "requirements": [
-        "SCH-4"
-      ],
       "bindings": [
         {
           "implementation": "rust",

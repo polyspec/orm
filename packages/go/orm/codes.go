@@ -49,6 +49,10 @@ const (
 	CodeTableReferenceInvalid     = "TABLE_REFERENCE_INVALID"     // executor
 	CodeTableNotFound             = "TABLE_NOT_FOUND"             // executor
 	CodeTableKindUnsupported      = "TABLE_KIND_UNSUPPORTED"      // executor
+	CodeToolBindInvalid           = "TOOL_BIND_INVALID"           // executor: a native bind of the Rust catalog tool is unsupported or invalid (a malformed decimal, a nonfinite MySQL float, a SQLite NaN, PostgreSQL text with NUL) and is refused before execution
+	CodeToolBindLimit             = "TOOL_BIND_LIMIT"             // executor: a native bind of the Rust catalog tool exceeds its budget (more than 65535 parameters, or total value bytes beyond 16 MiB), refused before preparing or executing
+	CodeToolQueryColumns          = "TOOL_QUERY_COLUMNS"          // executor: a query result of the Rust catalog tool exceeds its column metadata budget (more than 2048 columns, or the column names and native types together beyond 64 KiB)
+	CodeToolQueryStatement        = "TOOL_QUERY_STATEMENT"        // executor: a bounded query of the Rust catalog tool does not split into exactly one statement
 	CodeTableNamespaceUnsupported = "TABLE_NAMESPACE_UNSUPPORTED" // executor
 	CodeTableNamespaceUnavailable = "TABLE_NAMESPACE_UNAVAILABLE" // executor
 	CodeTablePageInvalid          = "TABLE_PAGE_INVALID"          // executor

@@ -522,3 +522,11 @@ Prepared column names must exactly match the descriptor, and changed metadata
 within the read scope fails. Preserve unsupported-type errors and rollback the
 scope on completion/failure. Independent offset pages can drift as data changes;
 metadata is not an atomic schema revision or authorization for row mutations.
+
+### Rust native tool rules
+
+- **INT-97** A finite grid decimal cell is the exact plain decimal string of the database's declared result scale, trailing zeros included; it is never a binary float or a fixed-precision model codec value.
+- **INT-98** A database cell that a typed read cannot represent in its declared type fails with `CODEC_DECODE`: a MySQL `UNSIGNED` value beyond the signed 64-bit range read as signed, the integer 2 read as a boolean, a PostgreSQL `NaN` read as a finite float, and an SQLite text read as an integer.
+- **INT-99** A typed read returns each column as its declared type in the same representation on every database: a 16-bit integer as an integer, a uuid as its text, a `time(3)` as text with three fraction digits, and a date as a date; a column that an insert omits takes its database default on every database.
+- **INT-100** Generating the models of one document set twice yields the same model, manifest and external text; the model that the crate builds from the same documents equals the generated one once the build's paths are replaced with the generation's paths.
+- **INT-101** A `time` or `datetime` column declared without a precision has the dialect's default precision: 0 on MySQL and 6 on PostgreSQL. MySQL refuses a precision above 6, and PostgreSQL reads a declared precision as declared.

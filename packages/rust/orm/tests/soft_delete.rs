@@ -8,6 +8,32 @@ use std::sync::{Arc, LazyLock, Mutex};
 use chrono::NaiveDateTime;
 use polyspec_orm::{Config, Core, Db, Entity, Model, Param, Schema, StatementEvent, Val};
 
+/// A database file of a test: it is removed before the test starts, so an old file of an earlier run is never read, and when the test
+/// ends, failed or not. A removal that fails fails the test, unless the test already panics, which then names the file on stderr.
+struct TempFile(std::path::PathBuf);
+
+impl TempFile {
+    fn fresh(path: std::path::PathBuf) -> Self {
+        match std::fs::remove_file(&path) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => panic!("remove the database file {}: {error}", path.display()),
+        }
+        TempFile(path)
+    }
+}
+
+impl Drop for TempFile {
+    fn drop(&mut self) {
+        match std::fs::remove_file(&self.0) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) if std::thread::panicking() => eprintln!("remove the database file {}: {error}", self.0.display()),
+            Err(error) => panic!("remove the database file {}: {error}", self.0.display()),
+        }
+    }
+}
+
 /// The manifest text of contracts/fixtures/bench/bench.dbs alone: the document carries comments, which its manifest text
 /// leaves out, so the document text itself is not the manifest text.
 static MANIFEST_TEXT: LazyLock<String> = LazyLock::new(|| {
@@ -82,7 +108,7 @@ fn record(db: &Db) -> SoftRecord {
 async fn soft_delete_filters_reads_and_rewrites_deletes() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let path = std::env::temp_dir().join(format!("orm-rust-soft-delete-{}.sqlite", std::process::id()));
-    let _ = std::fs::remove_file(&path);
+    let _file = TempFile::fresh(path.clone());
     let dsn = format!("sqlite://{}?_pragma=busy_timeout(5000)", path.display());
     let logged: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
     let hook = logged.clone();
@@ -117,5 +143,4 @@ async fn soft_delete_filters_reads_and_rewrites_deletes() {
         "every read filters soft-deleted rows: {statements:?}"
     );
     db.close().await;
-    let _ = std::fs::remove_file(&path);
 }

@@ -4,7 +4,7 @@ use polyspec_orm_build::{
 };
 
 #[tokio::test]
-// Requirements: SCH-3.
+// Requirements: INT-97.
 async fn finite_grid_decimals_preserve_precision_and_scale() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("grid decimal deadline");

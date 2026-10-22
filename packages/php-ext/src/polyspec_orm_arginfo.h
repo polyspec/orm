@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 35aff104282d2ec44c9cae6a94213160e173600b */
+ * Stub hash: fd6ac007d0ce48341ba7d2fde807613abc6037b6 */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Diagnostic___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, rule, IS_STRING, 0)
@@ -3376,6 +3376,34 @@ static zend_class_entry *register_class_Polyspec_Orm_Code(void)
 	zend_string *const_TABLE_KIND_UNSUPPORTED_name = zend_string_init_interned("TABLE_KIND_UNSUPPORTED", sizeof("TABLE_KIND_UNSUPPORTED") - 1, 1);
 	zend_declare_typed_class_constant(class_entry, const_TABLE_KIND_UNSUPPORTED_name, &const_TABLE_KIND_UNSUPPORTED_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
 	zend_string_release(const_TABLE_KIND_UNSUPPORTED_name);
+
+	zval const_TOOL_BIND_INVALID_value;
+	zend_string *const_TOOL_BIND_INVALID_value_str = zend_string_init("TOOL_BIND_INVALID", strlen("TOOL_BIND_INVALID"), 1);
+	ZVAL_STR(&const_TOOL_BIND_INVALID_value, const_TOOL_BIND_INVALID_value_str);
+	zend_string *const_TOOL_BIND_INVALID_name = zend_string_init_interned("TOOL_BIND_INVALID", sizeof("TOOL_BIND_INVALID") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_TOOL_BIND_INVALID_name, &const_TOOL_BIND_INVALID_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_TOOL_BIND_INVALID_name);
+
+	zval const_TOOL_BIND_LIMIT_value;
+	zend_string *const_TOOL_BIND_LIMIT_value_str = zend_string_init("TOOL_BIND_LIMIT", strlen("TOOL_BIND_LIMIT"), 1);
+	ZVAL_STR(&const_TOOL_BIND_LIMIT_value, const_TOOL_BIND_LIMIT_value_str);
+	zend_string *const_TOOL_BIND_LIMIT_name = zend_string_init_interned("TOOL_BIND_LIMIT", sizeof("TOOL_BIND_LIMIT") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_TOOL_BIND_LIMIT_name, &const_TOOL_BIND_LIMIT_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_TOOL_BIND_LIMIT_name);
+
+	zval const_TOOL_QUERY_COLUMNS_value;
+	zend_string *const_TOOL_QUERY_COLUMNS_value_str = zend_string_init("TOOL_QUERY_COLUMNS", strlen("TOOL_QUERY_COLUMNS"), 1);
+	ZVAL_STR(&const_TOOL_QUERY_COLUMNS_value, const_TOOL_QUERY_COLUMNS_value_str);
+	zend_string *const_TOOL_QUERY_COLUMNS_name = zend_string_init_interned("TOOL_QUERY_COLUMNS", sizeof("TOOL_QUERY_COLUMNS") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_TOOL_QUERY_COLUMNS_name, &const_TOOL_QUERY_COLUMNS_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_TOOL_QUERY_COLUMNS_name);
+
+	zval const_TOOL_QUERY_STATEMENT_value;
+	zend_string *const_TOOL_QUERY_STATEMENT_value_str = zend_string_init("TOOL_QUERY_STATEMENT", strlen("TOOL_QUERY_STATEMENT"), 1);
+	ZVAL_STR(&const_TOOL_QUERY_STATEMENT_value, const_TOOL_QUERY_STATEMENT_value_str);
+	zend_string *const_TOOL_QUERY_STATEMENT_name = zend_string_init_interned("TOOL_QUERY_STATEMENT", sizeof("TOOL_QUERY_STATEMENT") - 1, 1);
+	zend_declare_typed_class_constant(class_entry, const_TOOL_QUERY_STATEMENT_name, &const_TOOL_QUERY_STATEMENT_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(const_TOOL_QUERY_STATEMENT_name);
 
 	zval const_TABLE_NAMESPACE_UNSUPPORTED_value;
 	zend_string *const_TABLE_NAMESPACE_UNSUPPORTED_value_str = zend_string_init("TABLE_NAMESPACE_UNSUPPORTED", strlen("TABLE_NAMESPACE_UNSUPPORTED"), 1);

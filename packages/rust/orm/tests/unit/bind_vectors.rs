@@ -30,6 +30,30 @@ fn vector_value(v: &Value) -> Param {
     }
 }
 
+/// The host value of a case, or none when Rust has no value of that kind: `Param` has no time variant, so a native time is no host value.
+fn host_value(v: &Value) -> Option<Param> {
+    match v {
+        Value::Object(o) if o.get("native") == Some(&Value::from("time")) => None,
+        other => Some(vector_value(other)),
+    }
+}
+
+/// The variants of `Param`, matched without a wildcard: a variant added for a native time fails this match at compile time, so the
+/// vectors that flag a native time with `"rust": "no-host-value"` have to change with it.
+#[allow(dead_code)]
+fn param_variant(p: &Param) -> u8 {
+    match p {
+        Param::Null => 0,
+        Param::Bool(_) => 1,
+        Param::I64(_) => 2,
+        Param::F64(_) => 3,
+        Param::Str(_) => 4,
+        Param::Bytes(_) => 5,
+        Param::DateTime(_) => 6,
+        Param::Date(_) => 7,
+    }
+}
+
 #[test]
 fn bind_vectors() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -39,34 +63,42 @@ fn bind_vectors() {
     let cases = vectors["bind"].as_array().unwrap();
     assert!(!cases.is_empty(), "no bind cases");
     let mut failed = Vec::new();
+    let mut no_host = Vec::new();
     for c in cases {
         let name = c["name"].as_str().unwrap();
-        // Rust has no native time value (Param has no time variant): a native time case has no Rust form.
-        if c["value"].get("native") == Some(&Value::from("time")) {
-            continue;
+        match host_value(&c["value"]) {
+            None => no_host.push(name.to_owned()),
+            Some(value) => {
+                let s = &c["slot"];
+                let slot = ParamSlot {
+                    ty: s["type"].as_str().unwrap(),
+                    precision: s["precision"].as_i64().unwrap_or(0),
+                    scale: s["scale"].as_i64().unwrap_or(0),
+                    length: s["length"].as_i64().unwrap_or(0),
+                    not_null: s["not_null"].as_bool().unwrap_or(false),
+                    column: "column",
+                };
+                let got = match s["transform"].as_str() {
+                    Some(kind) => transform_param(kind, &value),
+                    None => check_assign(0, &value, &slot).and_then(|()| check_param(0, &value, &slot, &Zone)).map(|()| value.clone()),
+                };
+                let ok = match (&got, c.get("code")) {
+                    (Err(Error::Engine { code, .. }), Some(want)) => want == code.as_str(),
+                    (Ok(bound), None) => format!("{bound:?}") == format!("{:?}", vector_value(&c["bound"])),
+                    _ => false,
+                };
+                if !ok {
+                    failed.push(format!("{name}: check_param({value:?}) = {got:?}; want {}", c.get("code").unwrap_or(&c["bound"])));
+                }
+            }
         }
-        let s = &c["slot"];
-        let slot = ParamSlot {
-            ty: s["type"].as_str().unwrap(),
-            precision: s["precision"].as_i64().unwrap_or(0),
-            scale: s["scale"].as_i64().unwrap_or(0),
-            length: s["length"].as_i64().unwrap_or(0),
-            not_null: s["not_null"].as_bool().unwrap_or(false),
-            column: "column",
-        };
-        let value = vector_value(&c["value"]);
-        let got = match s["transform"].as_str() {
-            Some(kind) => transform_param(kind, &value),
-            None => check_assign(0, &value, &slot).and_then(|()| check_param(0, &value, &slot, &Zone)).map(|()| value.clone()),
-        };
-        let ok = match (&got, c.get("code")) {
-            (Err(Error::Engine { code, .. }), Some(want)) => want == code.as_str(),
-            (Ok(bound), None) => format!("{bound:?}") == format!("{:?}", vector_value(&c["bound"])),
-            _ => false,
-        };
-        if !ok {
-            failed.push(format!("{name}: check_param({value:?}) = {got:?}; want {}", c.get("code").unwrap_or(&c["bound"])));
-        }
+    }
+    // The cases without a Rust host value are exactly the vectors that flag it, and each of them states the refusal the spec requires.
+    let flagged: Vec<String> = cases.iter().filter(|c| c["rust"] == "no-host-value").map(|c| c["name"].as_str().unwrap().to_owned()).collect();
+    assert!(!flagged.is_empty(), "the native time vectors must flag that Rust has no host value");
+    assert_eq!(no_host, flagged, "the cases without a Rust host value are exactly the vectors that flag it");
+    for c in cases.iter().filter(|c| c["rust"] == "no-host-value") {
+        assert_eq!(c["code"], "CODEC_ENCODE", "{}: a native time is refused with CODEC_ENCODE", c["name"]);
     }
     assert!(failed.is_empty(), "{}", failed.join("\n"));
 }

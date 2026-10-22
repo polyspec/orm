@@ -91,6 +91,14 @@ pub const TABLE_REFERENCE_INVALID: &str = "TABLE_REFERENCE_INVALID";
 pub const TABLE_NOT_FOUND: &str = "TABLE_NOT_FOUND";
 /// executor
 pub const TABLE_KIND_UNSUPPORTED: &str = "TABLE_KIND_UNSUPPORTED";
+/// executor: a native bind of the Rust catalog tool is unsupported or invalid (a malformed decimal, a nonfinite MySQL float, a SQLite NaN, PostgreSQL text with NUL) and is refused before execution
+pub const TOOL_BIND_INVALID: &str = "TOOL_BIND_INVALID";
+/// executor: a native bind of the Rust catalog tool exceeds its budget (more than 65535 parameters, or total value bytes beyond 16 MiB), refused before preparing or executing
+pub const TOOL_BIND_LIMIT: &str = "TOOL_BIND_LIMIT";
+/// executor: a query result of the Rust catalog tool exceeds its column metadata budget (more than 2048 columns, or the column names and native types together beyond 64 KiB)
+pub const TOOL_QUERY_COLUMNS: &str = "TOOL_QUERY_COLUMNS";
+/// executor: a bounded query of the Rust catalog tool does not split into exactly one statement
+pub const TOOL_QUERY_STATEMENT: &str = "TOOL_QUERY_STATEMENT";
 /// executor
 pub const TABLE_NAMESPACE_UNSUPPORTED: &str = "TABLE_NAMESPACE_UNSUPPORTED";
 /// executor
