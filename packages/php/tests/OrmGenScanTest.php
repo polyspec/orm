@@ -389,7 +389,8 @@ use $ns\\ExtNote;
 
 \$rows = (new ExtNote())->connect(\$db)->get();
 PHP;
-        $owned = "dbspec 1 ext_note\n\nuse ext_core { ext_session }\n\ntable ext_note {\n  seq i64 identity\n  title varchar(191)\n  primary key (seq)\n}\n";
+        $owned = "dbspec 1 ext_note\n\nuse ext_core { ext_session }\n\ntable ext_note {\n  seq i64 identity\n  title "
+            . "varchar(191)\n  primary key (seq)\n}\n";
         [$code, $err, $dir] = self::generateExternal('external-unused-models', ['usage.php' => $source], $owned);
         self::assertSame(0, $code, $err);
         self::assertFileExists("$dir/model/ExtSession.php");
@@ -780,7 +781,8 @@ PHP;
         @mkdir("$dir/src", 0o700, true);
         file_put_contents(
             "$dir/set/shapes.dbs",
-            "dbspec 1 shapes\n\ntable alpha {\n  seq i64 identity\n  flag bool\n  primary key (seq)\n}\n\ntable beta {\n  seq i64 identity\n  flag datetime(6)\n  primary key (seq)\n}\n"
+            "dbspec 1 shapes\n\ntable alpha {\n  seq i64 identity\n  flag bool\n  primary key (seq)\n}\n\ntable beta "
+            . "{\n  seq i64 identity\n  flag datetime(6)\n  primary key (seq)\n}\n"
         );
         $set = "$dir/set/dbspec-set.json";
         file_put_contents($set, json_encode(['schema' => 1, 'documents' => ['shapes.dbs']], JSON_UNESCAPED_SLASHES));
@@ -1077,11 +1079,24 @@ PHP;
         // A call that the sources of the scan do not make is not declared: the control that makes the zero meaningful.
         file_put_contents(
             "$dir/control.php",
-            "<?php\ndeclare(strict_types=1);\n\nfunction control(\\$ns\\Author \$a): void\n{\n    \$a->ltReadCount(1);\n}\n"
+            "<?php\ndeclare(strict_types=1);\n\nfunction "
+            . "control(\\$ns\\Author \$a): void\n{\n    \$a->ltReadCount(1);\n}\n"
         );
         $analyse = function (string $file) use ($root, $dir): array {
-            $command = [PHP_BINARY, "$root/vendor-php/bin/phpstan", 'analyse', '--no-progress', '--no-ansi', '--error-format=json',
-                '--configuration', "$dir/phpstan.neon", '--level=9', '--memory-limit=512M', '--autoload-file', "$dir/autoload.php", $file];
+            $command = [
+                PHP_BINARY,
+                "$root/vendor-php/bin/phpstan",
+                'analyse',
+                '--no-progress',
+                '--no-ansi',
+                '--error-format=json',
+                '--configuration',
+                "$dir/phpstan.neon",
+                '--level=9',
+                '--memory-limit=512M',
+                '--autoload-file',
+                "$dir/autoload.php",
+                $file];
             $process = proc_open($command, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, $root);
             $out = (string) stream_get_contents($pipes[1]);
             $err = (string) stream_get_contents($pipes[2]);

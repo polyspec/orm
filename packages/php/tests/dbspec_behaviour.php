@@ -536,13 +536,15 @@ function dbspec_behaviour_cases(): array
     );
     $cases[
         'names/column/generator-stops-at-the-match'
-    ] = static fn(): array => behaviour_outcome(static fn() => Polyspec\Orm\Dbspec\Names::column('orders', $target(), (static function () use (
-        $long
-    ): Generator {
-        yield 'id';
-        yield $long;
-        throw new RuntimeException('read past the first match');
-    })()));
+    ] = static fn(): array => behaviour_outcome(
+        static fn() => Polyspec\Orm\Dbspec\Names::column('orders', $target(), (static function () use (
+            $long
+        ): Generator {
+            yield 'id';
+            yield $long;
+            throw new RuntimeException('read past the first match');
+        })())
+    );
     $cases['names/column/array-iterator'] = static fn(): array => behaviour_outcome(
         static fn() => Polyspec\Orm\Dbspec\Names::column('orders', $target(), new ArrayIterator(['id', $long]))
     );

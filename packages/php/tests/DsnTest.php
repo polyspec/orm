@@ -36,8 +36,18 @@ final class DsnTest extends TestCase
     public static function invalidDsns(): iterable
     {
         foreach (
-            ['mysqlx://localhost/orm_example', 'relative/path', '', 'sqlite://relative.sqlite', 'mysql://localhost/', 'postgres://localhost/orm_example?timezone=Nowhere', 'mysql://localhost/orm_example?timezone=%2B09:00', 'sqlite:///tmp/orm_example.sqlite?timezone=Asia%2FSeoul',
-            'sqlite:///tmp/orm_example.sqlite?_txlock=immediate', 'sqlite:///tmp/orm_example.sqlite?_txlock=deferred', 'sqlite:///tmp/orm_example.sqlite?_pragma=busy_timeout'] as $dsn
+            [
+                'mysqlx://localhost/orm_example',
+                'relative/path',
+                '',
+                'sqlite://relative.sqlite',
+                'mysql://localhost/',
+                'postgres://localhost/orm_example?timezone=Nowhere',
+                'mysql://localhost/orm_example?timezone=%2B09:00',
+                'sqlite:///tmp/orm_example.sqlite?timezone=Asia%2FSeoul',
+            'sqlite:///tmp/orm_example.sqlite?_txlock=immediate',
+            'sqlite:///tmp/orm_example.sqlite?_txlock=deferred',
+            'sqlite:///tmp/orm_example.sqlite?_pragma=busy_timeout'] as $dsn
         ) {
             yield ($dsn === '' ? 'empty' : $dsn) => [$dsn];
         }

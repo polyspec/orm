@@ -91,8 +91,20 @@ final class ModelMethodsTest extends TestCase
         // PHPStan keeps its cache in the system temporary directory unless a configuration names one; the
         // cache stays in the case's own folder, which tearDownAfterClass removes.
         file_put_contents("$work/phpstan.neon", "parameters:\n    tmpDir: $work/phpstan-cache\n");
-        $command = [PHP_BINARY, "$root/vendor-php/bin/phpstan", 'analyse', '--no-progress', '--no-ansi', '--error-format=raw',
-            '--configuration', "$work/phpstan.neon", '--level=9', '--memory-limit=512M', '--autoload-file', "$work/autoload.php", "$work/calls.php"];
+        $command = [
+            PHP_BINARY,
+            "$root/vendor-php/bin/phpstan",
+            'analyse',
+            '--no-progress',
+            '--no-ansi',
+            '--error-format=raw',
+            '--configuration',
+            "$work/phpstan.neon",
+            '--level=9',
+            '--memory-limit=512M',
+            '--autoload-file',
+            "$work/autoload.php",
+            "$work/calls.php"];
         $process = proc_open($command, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, $root);
         $out = (string) stream_get_contents($pipes[1]);
         $err = (string) stream_get_contents($pipes[2]);
@@ -143,7 +155,11 @@ final class ModelMethodsTest extends TestCase
         $calls = ['seq' => [1], 'accountSeq' => [[1, 2]], 'tupleAccountSeqWithProjectSeq' => [
             [[1, 2]]
         ], 'addColumnName' => [],
-            'removeColumnAmount' => [], 'groupByAccountSeq' => [], 'keyNameSeq' => [], 'orderBySeqAsc' => [], 'orderByNameDesc' => [],
+            'removeColumnAmount' => [],
+            'groupByAccountSeq' => [],
+            'keyNameSeq' => [],
+            'orderBySeqAsc' => [],
+            'orderByNameDesc' => [],
             'plusAmount' => [
                 '1.00'
             ], 'minusAccountSeq' => [1], 'sumAmount' => [], 'avgSeq' => [], 'forceIndexIxItemAccount' => []];

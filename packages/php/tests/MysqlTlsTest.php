@@ -62,7 +62,10 @@ final class MysqlTlsTest extends TestCase
         );
         self::assertTrue($parsed[0] === 'mysql' && $parsed[5] === '/tmp/ca.pem', 'parsed ' . json_encode($parsed));
         foreach (
-            ['postgres://orm@127.0.0.1/orm_example?sslmode=disable&timezone=UTC', 'postgres:///orm_example?host=/tmp', 'sqlite:///tmp/orm-tls.sqlite?_pragma=busy_timeout(5000)&timezone=UTC',
+            [
+                'postgres://orm@127.0.0.1/orm_example?sslmode=disable&timezone=UTC',
+                'postgres:///orm_example?host=/tmp',
+                'sqlite:///tmp/orm-tls.sqlite?_pragma=busy_timeout(5000)&timezone=UTC',
             'mysql://root@localhost/orm_example?socket=/tmp/mysql.sock&timezone=UTC'] as $dsn
         ) {
             try {

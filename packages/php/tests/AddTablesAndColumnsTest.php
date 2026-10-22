@@ -33,7 +33,10 @@ final class AddTablesAndColumnsTest extends TestCase
     private const ADDED = [
         'addcol_extra', 'addcol_extra_history',
         'addcol_item.note', 'addcol_item.priority', 'addcol_item.archived', 'addcol_item.status',
-        'addcol_item_history.note', 'addcol_item_history.priority', 'addcol_item_history.archived', 'addcol_item_history.status',
+        'addcol_item_history.note',
+        'addcol_item_history.priority',
+        'addcol_item_history.archived',
+        'addcol_item_history.status',
         'addcol_tag.color',
     ];
     private const DIFFERS = ['required', 'removed', 'changed', 'nullable', 'default', 'unique', 'reorder'];

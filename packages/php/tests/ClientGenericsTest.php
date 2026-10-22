@@ -89,7 +89,13 @@ final class ClientGenericsTest extends TestCase
         // autoloader of that root.
         // PHPStan keeps its cache in the case's own folder, which tearDownAfterClass removes.
         file_put_contents("$work/phpstan.neon", "parameters:\n    tmpDir: $work/phpstan-cache\n");
-        $command = [PHP_BINARY, "$root/vendor-php/bin/phpstan", 'analyse', '--no-progress', '--no-ansi', '--error-format=raw',
+        $command = [
+            PHP_BINARY,
+            "$root/vendor-php/bin/phpstan",
+            'analyse',
+            '--no-progress',
+            '--no-ansi',
+            '--error-format=raw',
             '--configuration', "$work/phpstan.neon", '--level=9', '--memory-limit=512M', '--autoload-file', __DIR__
                 . '/autoload.php', "$work/calls.php"];
         $process = proc_open($command, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, $root);

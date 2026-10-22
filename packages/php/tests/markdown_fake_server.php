@@ -3,9 +3,10 @@
 declare(strict_types=1);
 
 /*
- * The server MarkdownTest.php uses instead of the flowmark server. It accepts one connection on an empty port on 127.0.0.1
- * and writes the chosen answers in turn for each message line it receives. When it starts listening, it writes the port on one line; when the connection
- * ends or the answers run out, it closes the connection, writes the lines it received as one line of a JSON array, and ends.
+ * The server MarkdownTest.php uses instead of the flowmark server. It accepts one connection on an empty port on
+ * 127.0.0.1 and writes the chosen answers in turn for each message line it receives. When it starts listening, it
+ * writes the port on one line; when the connection ends or the answers run out, it closes the connection, writes the
+ * lines it received as one line of a JSON array, and ends.
  *
  *   php markdown_fake_server.php <answer>...
  *

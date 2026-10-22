@@ -3,13 +3,14 @@
 declare(strict_types=1);
 
 /*
- * Runs every case of tests/markdown/cases.json, in order, with the PHP client against the server of the flowmark build that FLOWMARK points at,
- * one at a time (tests/markdown/README.md). That build must be the one pinned by flowmark.version; if it is missing or a different build, the run fails (it does not skip). A case reads
- * the corpus that the earlier case wrote, so it stops at the first failure (the make target runs PHPUnit with --stop-on-defect).
- * Each case is
- * a data set named by its id in cases.json.
+ * Runs every case of tests/markdown/cases.json, in order, with the PHP client against the server of the flowmark build
+ * that FLOWMARK points at, one at a time (tests/markdown/README.md). That build must be the one pinned by
+ * flowmark.version; if it is missing or a different build, the run fails (it does not skip). A case reads the corpus
+ * that the earlier case wrote, so it stops at the first failure (the make target runs PHPUnit with --stop-on-defect).
+ * Each case is a data set named by its id in cases.json.
  *
- * Usage: FLOWMARK=<flowmark> vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --stop-on-defect packages/php/tests/MarkdownConformanceTest.php
+ * Usage: FLOWMARK=<flowmark> vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --stop-on-defect
+ * packages/php/tests/MarkdownConformanceTest.php
  */
 
 use Polyspec\Orm\Config;
@@ -89,7 +90,8 @@ final class MarkdownConformanceTest extends TestCase
         $bin = (string) getenv('FLOWMARK');
         if ($bin === '') {
             throw new RuntimeException(
-                "FLOWMARK is not set; run make markdown-conformance-check, which passes the path of the flowmark $pin pinned in tests/markdown/flowmark.version"
+                "FLOWMARK is not set; run make markdown-conformance-check, which passes the path of the "
+                . "flowmark $pin pinned in tests/markdown/flowmark.version"
             );
         }
         [$code, $out, $err] = self::runProcess(['go', 'version', '-m', $bin]);
@@ -105,7 +107,8 @@ final class MarkdownConformanceTest extends TestCase
             throw new RuntimeException(
                 "FLOWMARK $bin is no Go build (go version -m: " . trim(
                     $err . $out
-                ) . "); run make orm-install-flowmark, which installs the flowmark $pin pinned in tests/markdown/flowmark.version"
+                ) . "); run make orm-install-flowmark, which installs the "
+                    . "flowmark $pin pinned in tests/markdown/flowmark.version"
             );
         }
         if ($main[0] !== self::FLOWMARK_MODULE || $main[1] !== $pin) {

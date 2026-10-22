@@ -67,7 +67,8 @@ final class OrmGenTest extends TestCase
         @mkdir("$dir/model", 0o700, true);
         file_put_contents(
             "$dir/example.dbs",
-            "dbspec 1 example\n\ntable item {\n  seq i64\n  name varchar(32)\n  primary key (seq)\n}\n\ntable tag {\n  seq i64\n  primary key (seq)\n}\n"
+            "dbspec 1 example\n\ntable item {\n  seq i64\n  name varchar(32)\n  primary key (seq)\n}\n\ntable tag "
+            . "{\n  seq i64\n  primary key (seq)\n}\n"
         );
         $set = self::setFile($dir, ['example.dbs']);
         $args = [
@@ -117,7 +118,8 @@ final class OrmGenTest extends TestCase
         [$code, $out, $err] = self::tool(
             ['gen', '--set', $set, '--out', $dir, '--namespace', 'Polyspec\\Orm\\Tests\\Example']
         );
-        $want = "orm-gen: SCHEMA_INVALID: $work/signature/dbschema.dbs:1:1: signature: $work/signature/dbschema.dbs is not a dbspec document\n"
+        $want = "orm-gen: SCHEMA_INVALID: $work/signature/dbschema.dbs:1:1: "
+            . "signature: $work/signature/dbschema.dbs is not a dbspec document\n"
             . "$work/signature/empty.dbs:1:1: signature: $work/signature/empty.dbs is not a dbspec document\n";
         self::assertTrue($code === 1 && $out === '' && $err === $want, "$code $out $err");
         self::assertTrue(!file_exists($dir), "gen wrote $dir");
@@ -320,7 +322,8 @@ final class OrmGenTest extends TestCase
         self::assertTrue(
             $code === 2
                 && $out === ''
-                && $err === "orm-gen: no Composer autoloader at $missing; run the vendor/bin/orm-gen that Composer installs\n",
+                && $err === "orm-gen: no Composer autoloader "
+                    . "at $missing; run the vendor/bin/orm-gen that Composer installs\n",
             "$bin/orm-gen: $code $out $err"
         );
     }

@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 /*
  * markdown IR executor unit case (docs/spec/protocol.md §5): the markdown DSN, the connect the client sends,
- * the reading of control messages and error lines, the connect the server refuses, the SQL-only surface that a markdown connection refuses,
- * and Validator::paramUses, which reads the slot form for each parameter in the message encoder.
+ * the reading of control messages and error lines, the connect the server refuses, the SQL-only surface that a markdown
+ * connection refuses, and Validator::paramUses, which reads the slot form for each parameter in the message encoder.
  * The size of a class is Large, that of the largest case (a child process).
- * Instead of the flowmark server, markdown_fake_server.php records the messages of one connection and writes the chosen answers.
+ * Instead of the flowmark server, markdown_fake_server.php records the messages of one connection and writes the chosen
+ * answers.
  */
 
 

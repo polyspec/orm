@@ -47,7 +47,14 @@ function users(array $columns, array $rest = []): array
 function rules_vectors(): array
 {
     $core = ['core' => [
-        'dbspec 1 core', '', 'table accounts {', '  id i64 identity', '  code varchar(16)', '  primary key (id)', '  unique uq_accounts_code (code)', '}',
+        'dbspec 1 core',
+        '',
+        'table accounts {',
+        '  id i64 identity',
+        '  code varchar(16)',
+        '  primary key (id)',
+        '  unique uq_accounts_code (code)',
+        '}',
     ]];
 
     $invalid = [
@@ -296,7 +303,9 @@ function rules_vectors(): array
             ['dbspec 1 shop', '', 'table users {', '  id i64 null', '  primary key (id)', '}'],
             [['key', 5, 'id)']]
         ),
-        rules_case('foreign-key-rules', ['dbspec 1 shop', '', 'use core { accounts }', '', 'table orders {', '  id i64 identity',
+        rules_case(
+            'foreign-key-rules',
+            ['dbspec 1 shop', '', 'use core { accounts }', '', 'table orders {', '  id i64 identity',
             '  account_id i32', '  code varchar(16)', '  pair_a i64', '  pair_b i64',
             '  primary key (id)',
             '  index ix_orders_account (account_id, code)',
@@ -308,14 +317,17 @@ function rules_vectors(): array
             '  foreign key fk_orders_arity (pair_a, pair_b) references orders (id)',
             '  foreign key fk_orders_column (zzz) references orders (id)',
             '  foreign key fk_orders_target (pair_a) references orders (zzz)',
-            '}'], [
+            '}'],
+            [
                 ['foreign_key', 15, 'fk_orders_type'],
                 ['foreign_key', 16, 'fk_orders_nokey'],
                 ['foreign_key', 17, 'nowhere'],
                 ['foreign_key', 18, 'fk_orders_arity'],
                 ['foreign_key', 19, 'zzz'],
                 ['foreign_key', 20, 'zzz']
-            ], $core),
+            ],
+            $core
+        ),
         rules_case('check-rules', users(['  a i32', "  b varchar(8)"], [
             '  check ck_users_mod (a % 2 = 0)',
             '  check ck_users_unknown (zzz > 1)',
@@ -323,9 +335,21 @@ function rules_vectors(): array
             '  check ck_users_empty ()',
             '  check ck_users_upper (a > 1 AND a < 3)',
         ]), [['syntax', 8, '%'], ['check', 9, 'zzz'], ['check', 10, '< 2'], ['check', 11, ')'], ['check', 12, 'AND']]),
-        rules_case('check-set-null-column', ['dbspec 1 shop', '', 'table users {', '  id i64 identity', '  parent_id i64 null', '  primary key (id)', '  index ix_users_parent (parent_id)',
+        rules_case(
+            'check-set-null-column',
+            [
+                'dbspec 1 shop',
+                '',
+                'table users {',
+                '  id i64 identity',
+                '  parent_id i64 null',
+                '  primary key (id)',
+                '  index ix_users_parent (parent_id)',
             '  foreign key fk_users_parent (parent_id) references users (id) on delete restrict on update set_null',
-            '  check ck_users_parent (parent_id is null or parent_id <> id)', '}'], [['check', 9, 'parent_id is']]),
+            '  check ck_users_parent (parent_id is null or parent_id <> id)',
+            '}'],
+            [['check', 9, 'parent_id is']]
+        ),
         rules_case('check-typed-rules', users([
             '  qty i32',
             '  active bool',
@@ -401,19 +425,45 @@ function rules_vectors(): array
             users(['  secret bytes'], ['  settings {', '    codec secret aes', '  }']),
             [['setting', 8, 'codec']]
         ),
-        rules_case('setting-immutable-cascade-child', ['dbspec 1 shop', '', 'table users {', '  id i64 identity', '  parent_id i64 null', '  primary key (id)', '  index ix_users_parent (parent_id)',
+        rules_case(
+            'setting-immutable-cascade-child',
+            [
+                'dbspec 1 shop',
+                '',
+                'table users {',
+                '  id i64 identity',
+                '  parent_id i64 null',
+                '  primary key (id)',
+                '  index ix_users_parent (parent_id)',
             '  foreign key fk_users_parent (parent_id) references users (id) on delete cascade on update '
-            . 'restrict', '  settings {', '    immutable', '  }', '}'], [
+            . 'restrict', '  settings {', '    immutable', '  }', '}'],
+            [
                 ['setting', 10, 'immutable']
-            ]),
+                ]
+        ),
         rules_case(
             'setting-audit-shape',
-            ['dbspec 1 shop', '', 'table service {', '  id i64 identity', '  audit_seq i32', '  primary key (id)', '  index ix_service_audit (audit_seq)',
+            [
+                'dbspec 1 shop',
+                '',
+                'table service {',
+                '  id i64 identity',
+                '  audit_seq i32',
+                '  primary key (id)',
+                '  index ix_service_audit (audit_seq)',
             '  foreign key fk_service_audit (audit_seq) references audit (seq) on delete restrict on update '
             . 'restrict', '  settings {',
             '    audit into service_history column audit_seq references audit action change previous '
             . 'previous_audit_seq', '  }', '}', '',
-            'table service_history {', '  history_id i64', '  change varchar(16)', '  previous_audit_seq i64', '  id i64', '  extra i32', '  primary key (history_id)', '}', '',
+            'table service_history {',
+            '  history_id i64',
+            '  change varchar(16)',
+            '  previous_audit_seq i64',
+            '  id i64',
+            '  extra i32',
+            '  primary key (history_id)',
+            '}',
+            '',
             'table audit {', '  seq i32', '  primary key (seq)', '}'],
             [
                 ['setting', 10, 'service_history'],
@@ -479,7 +529,11 @@ function rules_vectors(): array
                 ],
                 ['  index ix_users_short (short_hash)', '  index ix_users_pair (pair_hash, '
                     . 'version)', '  index ix_users_null (null_hash)', '  settings {',
-                '    codec s1 aes', '    codec s2 aes', '    codec s3 aes', '    codec s4 aes', '    aes_version version',
+                '    codec s1 aes',
+                '    codec s2 aes',
+                '    codec s3 aes',
+                '    codec s4 aes',
+                '    aes_version version',
                 '    blind_index s1 short_hash',
                 '    blind_index s2 pair_hash',
                 '    blind_index s3 null_hash',
@@ -497,18 +551,43 @@ function rules_vectors(): array
         ),
         rules_case(
             'audit-action-nullable',
-            ['dbspec 1 shop', '', 'table service {', '  id i64 identity', '  audit_seq i64', '  deleted_at datetime(6) null', '  primary key (id)', '  index ix_service_audit (audit_seq)',
+            [
+                'dbspec 1 shop',
+                '',
+                'table service {',
+                '  id i64 identity',
+                '  audit_seq i64',
+                '  deleted_at datetime(6) null',
+                '  primary key (id)',
+                '  index ix_service_audit (audit_seq)',
             '  foreign key fk_service_audit (audit_seq) references audit (seq) on delete restrict on update '
             . 'restrict', '  settings {', '    soft_delete deleted_at',
             '    audit into service_history column audit_seq references audit action change previous '
             . 'previous_audit_seq', '  }', '}', '',
-            'table service_history {', '  history_id i64 identity', '  change varchar(8) null', '  previous_audit_seq i64 null', '  id i64', '  audit_seq i64', '  deleted_at datetime(6) null', '  primary key (history_id)', '}', '',
+            'table service_history {',
+            '  history_id i64 identity',
+            '  change varchar(8) null',
+            '  previous_audit_seq i64 null',
+            '  id i64',
+            '  audit_seq i64',
+            '  deleted_at datetime(6) null',
+            '  primary key (history_id)',
+            '}',
+            '',
             'table audit {', '  seq i64 identity', '  primary key (seq)', '}'],
             [['setting', 12, 'change']]
         ),
         rules_case(
             'audit-record-table-audited',
-            ['dbspec 1 shop', '', 'table service {', '  id i64 identity', '  audit_seq i64', '  deleted_at datetime(6) null', '  primary key (id)', '  index ix_service_audit (audit_seq)',
+            [
+                'dbspec 1 shop',
+                '',
+                'table service {',
+                '  id i64 identity',
+                '  audit_seq i64',
+                '  deleted_at datetime(6) null',
+                '  primary key (id)',
+                '  index ix_service_audit (audit_seq)',
             '  foreign key fk_service_audit (audit_seq) references service (id) on delete restrict on update '
             . 'restrict', '  settings {', '    soft_delete deleted_at',
             '    audit into service_history column audit_seq references service action change previous '

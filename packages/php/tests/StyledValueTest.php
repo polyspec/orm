@@ -86,8 +86,19 @@ final class StyledValueTest extends TestCase
             {
                 return [
                     'entity' => 'styled_probe', 'table' => 'styled_probe', 'pk' => [], 'identity' => '',
-                    'updated' => '', 'soft_delete' => '', 'aes_version' => '', 'audit' => '', 'unique' => [], 'indexes' => [],
-                    'columns' => ['payload' => ['name' => 'payload', 'type' => 'text', 'nullable' => false, 'default' => false, 'select' => true,
+                    'updated' => '',
+                    'soft_delete' => '',
+                    'aes_version' => '',
+                    'audit' => '',
+                    'unique' => [],
+                    'indexes' => [],
+                    'columns' => [
+                        'payload' => [
+                            'name' => 'payload',
+                            'type' => 'text',
+                            'nullable' => false,
+                            'default' => false,
+                            'select' => true,
                         'codec' => ['ordered_json'], 'blind_index' => '', 'pk' => false, 'foreign_key' => false]],
                 ];
             }
