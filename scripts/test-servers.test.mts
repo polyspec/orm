@@ -406,7 +406,7 @@ caseTest('startLogged fails loudly with its step and log path when the ready lin
   const log = join(dir, 'silent.log');
   try {
     await assert.rejects(
-      startLogged(dir, 'silent', 'line-never-printed', process.execPath, ['-e', 'setInterval(() => {}, 1000)']),
+      startLogged(dir, 'silent', 'line-never-printed', process.execPath, ['-e', 'setInterval(() => {}, 1000)'], undefined, 500),
       (error: Error) => error.message.includes('silent') && error.message.includes(log) && error.message.includes('line-never-printed'),
     );
   } finally {
@@ -418,7 +418,7 @@ caseTest('startLogged fails loudly with its step and log path when the ready lin
 caseTest('startLogged resolves when the ready line is written at once, before its watcher is attached', COMPUTE, async () => {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), 'orm-startlogged-')));
   try {
-    await startLogged(dir, 'early', 'ready-at-once', process.execPath, ['-e', "console.log('ready-at-once'); setInterval(() => {}, 1000)"]);
+    await startLogged(dir, 'early', 'ready-at-once', process.execPath, ['-e', "console.log('ready-at-once'); setInterval(() => {}, 1000)"], undefined, 10_000);
   } finally {
     process.kill(Number(readFileSync(join(dir, 'early.pid'), 'utf8')), 'SIGKILL');
   }

@@ -297,7 +297,11 @@ function mysqlTimezones(p: Paths, port: number): void {
 // it has no deadline, and its result is an observed event. The log is read on each change event of the file; each line
 // before the ready line is shown on stderr as "test-servers: <name>: <line>". It resolves when the server logs a line
 // that contains <line>, and fails when the server exits first, naming the server and the last lines of its log.
-export function startLogged(dir: string, name: string, line: string, command: string, args: string[], env?: NodeJS.ProcessEnv): Promise<void> {
+/** STARTUP_TIMEOUT_MS is how long a server may take to log its ready line; a start that takes longer is a failure, never a wait. */
+export const STARTUP_TIMEOUT_MS = 600_000;
+
+/** startLogged waits for the ready line of a server, at most timeoutMs: a start that never logs it fails with its step and log path. */
+export function startLogged(dir: string, name: string, line: string, command: string, args: string[], env?: NodeJS.ProcessEnv, timeoutMs = STARTUP_TIMEOUT_MS): Promise<void> {
   const log = join(dir, `${name}.log`);
   const fd = openSync(log, 'a');
   // The server's lines start at the size of the log before the server starts: read after the spawn, the size could
@@ -311,6 +315,8 @@ export function startLogged(dir: string, name: string, line: string, command: st
       if (done) return;
       done = true;
       watcher.close();
+      clearInterval(backstop);
+      clearTimeout(deadline);
       closeSync(reader);
       child.unref();
       if (error) rejectStart(error); else resolveStart();
@@ -328,6 +334,13 @@ export function startLogged(dir: string, name: string, line: string, command: st
       }
     };
     const watcher = watch(log, read);
+    // The watcher can miss an event, so the log is also read on a timer: a ready line already written is then never waited for.
+    const backstop = setInterval(read, 500);
+    // A start that does not log its ready line in time fails here, with the step and the log, and its server is stopped.
+    const deadline = setTimeout(() => {
+      if (child.pid !== undefined) { try { process.kill(-child.pid, 'SIGKILL'); } catch { /* the server already ended */ } }
+      finish(new TestServerError(`test-servers: ${name} did not log '${line}' within ${timeoutMs / 1000}s; its log is ${log}`));
+    }, timeoutMs);
     child.on('error', error => finish(new TestServerError(`test-servers: ${name}: ${error.message}`)));
     child.on('spawn', () => { writeFileSync(join(dir, `${name}.pid`), `${child.pid}\n`); read(); });
     child.on('exit', () => {
