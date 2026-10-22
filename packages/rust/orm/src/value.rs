@@ -83,7 +83,10 @@ mod aggregate_numeric {
         match (case["expected"]["bits"].as_str(), case["expected"]["error"].as_str()) {
             (Some(bits), None) => {
                 let expected = u64::from_str_radix(bits, 16).expect("binary64 bits");
-                let number = value.as_aggregate_f64().unwrap_or_else(|error| panic!("{id}: {error}"));
+                let number = match value.as_aggregate_f64() {
+                    Ok(number) => number,
+                    Err(error) => panic!("{id}: the value is not an aggregate number: {error}"),
+                };
                 assert!(number.is_finite(), "{id}");
                 assert_eq!(number.to_bits(), expected, "{id}");
             }
@@ -138,7 +141,7 @@ impl TryFrom<u64> for Param {
     fn try_from(x: u64) -> crate::Result<Self> {
         i64::try_from(x)
             .map(Param::I64)
-            .map_err(|_| crate::Error::Engine { code: crate::codes::CODEC_ENCODE.into(), msg: "unsigned integer exceeds i64 range".into() })
+            .map_err(|error| crate::Error::Engine { code: crate::codes::CODEC_ENCODE.into(), msg: format!("unsigned integer exceeds i64 range: {error}") })
     }
 }
 
@@ -224,17 +227,17 @@ impl Val {
             Val::I64(x) => Ok(*x),
             Val::F64(x) if x.is_finite() && x.fract() == 0.0 && *x >= i64::MIN as f64 && *x < 9_223_372_036_854_775_808.0 => Ok(*x as i64),
             Val::Bool(b) => Ok(i64::from(*b)),
-            Val::Str(s) => s.parse().map_err(|_| decode_value(format!("invalid i64: {s:?}"))),
+            Val::Str(s) => s.parse().map_err(|error| decode_value(format!("invalid i64: {s:?}: {error}"))),
             other => Err(decode_value(format!("expected i64, received {other:?}"))),
         }
     }
 
     pub fn as_i32(&self) -> crate::Result<i32> {
-        i32::try_from(self.as_i64()?).map_err(|_| decode_value("integer is outside i32 range"))
+        i32::try_from(self.as_i64()?).map_err(|error| decode_value(format!("integer is outside i32 range: {error}")))
     }
 
     pub fn as_i16(&self) -> crate::Result<i16> {
-        i16::try_from(self.as_i64()?).map_err(|_| decode_value("integer is outside i16 range"))
+        i16::try_from(self.as_i64()?).map_err(|error| decode_value(format!("integer is outside i16 range: {error}")))
     }
 
     pub fn as_f64(&self) -> crate::Result<f64> {
@@ -242,10 +245,13 @@ impl Val {
             Val::F64(x) if x.is_finite() => Ok(*x),
             Val::I64(x) if x.unsigned_abs() <= (1u64 << 53) => Ok(*x as f64),
             Val::Str(s) => {
-                let value = s.parse::<f64>().ok().filter(|x| x.is_finite()).ok_or_else(|| decode_value(format!("invalid finite f64: {s:?}")))?;
+                let value = s.parse::<f64>().map_err(|error| decode_value(format!("invalid finite f64: {s:?}: {error}")))?;
+                if !value.is_finite() {
+                    return Err(decode_value(format!("invalid finite f64: {s:?}")));
+                }
                 let exact =
                     if s.contains('e') || s.contains('E') { rust_decimal::Decimal::from_scientific(s) } else { rust_decimal::Decimal::from_str_exact(s) }
-                        .map_err(|_| decode_value(format!("decimal cannot be checked for exact f64 conversion: {s:?}")))?;
+                        .map_err(|error| decode_value(format!("decimal cannot be checked for exact f64 conversion: {s:?}: {error}")))?;
                 if rust_decimal::Decimal::from_f64_retain(value) != Some(exact) {
                     return Err(decode_value(format!("decimal loses precision as f64: {s:?}")));
                 }
@@ -262,7 +268,11 @@ impl Val {
             Val::F64(value) if value.is_finite() => Ok(*value),
             Val::I64(value) => Ok(*value as f64),
             Val::Str(text) => {
-                text.parse::<f64>().ok().filter(|value| value.is_finite()).ok_or_else(|| decode_value(format!("invalid finite aggregate number: {text:?}")))
+                let value = text.parse::<f64>().map_err(|error| decode_value(format!("invalid finite aggregate number: {text:?}: {error}")))?;
+                if !value.is_finite() {
+                    return Err(decode_value(format!("invalid finite aggregate number: {text:?}")));
+                }
+                Ok(value)
             }
             other => Err(decode_value(format!("expected a finite aggregate number, received {other:?}"))),
         }
@@ -331,7 +341,7 @@ impl Val {
     pub fn as_string(&self) -> crate::Result<String> {
         Ok(match self {
             Val::Str(s) => s.clone(),
-            Val::Bytes(b) => std::str::from_utf8(b).map_err(|_| decode_value("bytes are not UTF-8"))?.to_owned(),
+            Val::Bytes(b) => std::str::from_utf8(b).map_err(|error| decode_value(format!("bytes are not UTF-8: {error}")))?.to_owned(),
             Val::I64(x) => x.to_string(),
             Val::F64(x) if x.is_finite() => x.to_string(),
             Val::Bool(b) => (*b as i64).to_string(),
@@ -353,7 +363,7 @@ impl Val {
             Val::F64(x) if x.is_finite() => serde_json::json!(x),
             Val::F64(_) => return Err(decode_value("non-finite f64 cannot be JSON")),
             Val::Str(s) => serde_json::json!(s),
-            Val::Bytes(b) => serde_json::json!(std::str::from_utf8(b).map_err(|_| decode_value("bytes are not UTF-8"))?),
+            Val::Bytes(b) => serde_json::json!(std::str::from_utf8(b).map_err(|error| decode_value(format!("bytes are not UTF-8: {error}")))?),
             Val::DateTime(t) => serde_json::json!(t.format("%Y-%m-%d %H:%M:%S%.6f").to_string()),
             Val::Date(d) => serde_json::json!(d.to_string()),
             Val::Bool(b) => serde_json::json!(b),
@@ -365,9 +375,13 @@ impl Val {
     pub fn as_datetime(&self) -> crate::Result<NaiveDateTime> {
         match self {
             Val::DateTime(t) => Ok(*t),
-            Val::Str(s) => NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S%.f")
-                .or_else(|_| NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S"))
-                .map_err(|_| decode_value(format!("invalid datetime: {s:?}"))),
+            // The text is read with fractional seconds first; without them is the second shape the spec accepts. If both fail, the
+            // error of the second shape is reported with the text.
+            Val::Str(s) => match NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S%.f") {
+                Ok(value) => Ok(value),
+                Err(_) => NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S")
+                    .map_err(|error| decode_value(format!("invalid datetime: {s:?}: {error}"))),
+            },
             other => Err(decode_value(format!("expected datetime, received {other:?}"))),
         }
     }
@@ -375,7 +389,7 @@ impl Val {
     pub fn as_date(&self) -> crate::Result<NaiveDate> {
         match self {
             Val::Date(d) => Ok(*d),
-            Val::Str(s) => NaiveDate::parse_from_str(s, "%Y-%m-%d").map_err(|_| decode_value(format!("invalid date: {s:?}"))),
+            Val::Str(s) => NaiveDate::parse_from_str(s, "%Y-%m-%d").map_err(|error| decode_value(format!("invalid date: {s:?}: {error}"))),
             other => Err(decode_value(format!("expected date, received {other:?}"))),
         }
     }

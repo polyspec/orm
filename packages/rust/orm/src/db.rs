@@ -841,7 +841,7 @@ impl Db {
         parent_vals: Vec<Param>,
         audit: Option<&AuditKey>,
     ) -> Result<Vec<DriverRow>> {
-        let (sql, parent_vals) = statement(st, parent_vals, matches!(self.inner.pool, Pool::Postgres(_)));
+        let (sql, parent_vals) = statement(st, parent_vals, matches!(self.inner.pool, Pool::Postgres(_)))?;
         let args = self.args(st, params, &parent_vals, audit)?;
         // A configured statement fault ends this statement without sending it. The row lock statement is not sent either.
         #[cfg(feature = "test-faults")]

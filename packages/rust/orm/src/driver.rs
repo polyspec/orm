@@ -37,7 +37,7 @@ pub(crate) fn same_scalar(v: &Val, p: &Param) -> Result<bool> {
         Param::F64(x) => x.to_string(),
         Param::Str(s) => s.clone(),
         Param::Bytes(b) => std::str::from_utf8(b)
-            .map_err(|_| Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: "relation key bytes are not UTF-8".into() })?
+            .map_err(|error| Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("relation key bytes are not UTF-8: {error}") })?
             .to_owned(),
         Param::DateTime(t) => t.format("%Y-%m-%d %H:%M:%S%.6f").to_string(),
         Param::Date(d) => d.to_string(),
@@ -85,7 +85,7 @@ pub(crate) fn parent_values<'a>(pr: &ParentRef, parents: impl Iterator<Item = &'
 /// statement cache holds one statement per size class. On PostgreSQL the plan has one
 /// `$k` per slot in slot order: the parent slot becomes n placeholders and every later
 /// number shifts by n-1 (docs/spec/dialects.md).
-pub(crate) fn expand_in(st: &Step, mut vals: Vec<Param>, numbered: bool) -> (String, Vec<Param>) {
+pub(crate) fn expand_in(st: &Step, mut vals: Vec<Param>, numbered: bool) -> Result<(String, Vec<Param>)> {
     let width = st.parent.as_ref().map(|p| p.keys.len()).unwrap_or(0);
     assert!(width > 0 && vals.len().is_multiple_of(width), "invalid relation parent key values");
     let tuples = vals.len() / width;
@@ -114,7 +114,9 @@ pub(crate) fn expand_in(st: &Step, mut vals: Vec<Param>, numbered: bool) -> (Str
             while j < bytes.len() && bytes[j].is_ascii_digit() {
                 j += 1;
             }
-            let k: usize = st.sql[i + 1..j].parse().unwrap_or(0);
+            let k: usize = st.sql[i + 1..j]
+                .parse()
+                .map_err(|error| Error::Config(format!("placeholder {} is not a slot index: {error}", &st.sql[i..j])))?;
             if k == parent {
                 for m in 0..n * width {
                     if m > 0 {
@@ -133,7 +135,7 @@ pub(crate) fn expand_in(st: &Step, mut vals: Vec<Param>, numbered: bool) -> (Str
             }
             i = j;
         }
-        return (sql, vals);
+        return Ok((sql, vals));
     }
     let mut slot = 0;
     for c in st.sql.chars() {
@@ -155,7 +157,7 @@ pub(crate) fn expand_in(st: &Step, mut vals: Vec<Param>, numbered: bool) -> (Str
         }
         slot += 1;
     }
-    (sql, vals)
+    Ok((sql, vals))
 }
 
 /// The value a `param` slot binds: the request parameter, transformed when the slot says so.
@@ -238,7 +240,12 @@ impl PgUuid {
         }
         let mut out = [0u8; 16];
         for (i, byte) in out.iter_mut().enumerate() {
-            *byte = u8::from_str_radix(hex.get(2 * i..2 * i + 2)?, 16).ok()?;
+            // Text that is not two hex digits in a pair is not a UUID, which is the answer this function gives.
+            let pair = hex.get(2 * i..2 * i + 2)?;
+            let Ok(value) = u8::from_str_radix(pair, 16) else {
+                return None;
+            };
+            *byte = value;
         }
         Some(PgUuid(out))
     }
@@ -285,13 +292,22 @@ pub(crate) fn bind_sqlite<'q>(q: SqliteQuery<'q>, p: &'q Param) -> SqliteQuery<'
 }
 
 /// A datetime from the text forms a caller binds (the same layouts Go's AsTime accepts).
-pub(crate) fn parse_datetime(s: &str) -> Option<NaiveDateTime> {
+pub(crate) fn parse_datetime(s: &str) -> std::result::Result<NaiveDateTime, String> {
     let s = s.trim();
-    NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S%.f")
-        .or_else(|_| NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S%.f"))
-        .ok()
-        .or_else(|| chrono::DateTime::parse_from_rfc3339(s).ok().map(|t| t.naive_utc()))
-        .or_else(|| NaiveDate::parse_from_str(s, "%Y-%m-%d").ok().map(|d| d.and_hms_opt(0, 0, 0).unwrap()))
+    // The accepted forms, in order: a space or a T between date and time, then an RFC 3339 instant, then a date alone.
+    if let Ok(t) = NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S%.f") {
+        return Ok(t);
+    }
+    if let Ok(t) = NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S%.f") {
+        return Ok(t);
+    }
+    if let Ok(t) = chrono::DateTime::parse_from_rfc3339(s) {
+        return Ok(t.naive_utc());
+    }
+    match NaiveDate::parse_from_str(s, "%Y-%m-%d") {
+        Ok(d) => Ok(d.and_hms_opt(0, 0, 0).unwrap()),
+        Err(error) => Err(format!("{s:?} is not a datetime in an accepted form: {error}")),
+    }
 }
 
 /// Binds value `p` as the dbspec type `ty` the plan declared. sqlx declares the PostgreSQL type of that Rust type
@@ -299,14 +315,15 @@ pub(crate) fn parse_datetime(s: &str) -> Option<NaiveDateTime> {
 pub(crate) fn bind_pg<'q>(q: PgQuery<'q>, p: &'q Param, ty: &str, i: usize) -> Result<PgQuery<'q>> {
     let name = ty;
     let bad = || Error::Config(format!("postgres parameter ${} is {name}: cannot bind {p:?}", i + 1));
+    let bad_with = |error: &dyn std::fmt::Display| Error::Config(format!("postgres parameter ${} is {name}: cannot bind {p:?}: {error}", i + 1));
     macro_rules! int {
         ($t:ty) => {
             match p {
                 Param::Null => q.bind(Option::<$t>::None),
-                Param::I64(x) => q.bind(<$t>::try_from(*x).map_err(|_| bad())?),
+                Param::I64(x) => q.bind(<$t>::try_from(*x).map_err(|error| bad_with(&error))?),
                 Param::Bool(b) => q.bind(*b as $t),
-                Param::Str(s) => q.bind(s.trim().parse::<$t>().map_err(|_| bad())?),
-                Param::F64(x) if x.fract() == 0.0 => q.bind(<$t>::try_from(*x as i64).map_err(|_| bad())?),
+                Param::Str(s) => q.bind(s.trim().parse::<$t>().map_err(|error| bad_with(&error))?),
+                Param::F64(x) if x.fract() == 0.0 => q.bind(<$t>::try_from(*x as i64).map_err(|error| bad_with(&error))?),
                 _ => return Err(bad()),
             }
         };
@@ -317,7 +334,7 @@ pub(crate) fn bind_pg<'q>(q: PgQuery<'q>, p: &'q Param, ty: &str, i: usize) -> R
                 Param::Null => q.bind(Option::<$t>::None),
                 Param::F64(x) => q.bind(*x as $t),
                 Param::I64(x) => q.bind(*x as $t),
-                Param::Str(s) => q.bind(s.trim().parse::<$t>().map_err(|_| bad())?),
+                Param::Str(s) => q.bind(s.trim().parse::<$t>().map_err(|error| bad_with(&error))?),
                 _ => return Err(bad()),
             }
         };
@@ -329,9 +346,9 @@ pub(crate) fn bind_pg<'q>(q: PgQuery<'q>, p: &'q Param, ty: &str, i: usize) -> R
         "f64" => float!(f64),
         "decimal" => match p {
             Param::Null => q.bind(Option::<rust_decimal::Decimal>::None),
-            Param::F64(x) => q.bind(rust_decimal::Decimal::try_from(*x).map_err(|_| bad())?),
+            Param::F64(x) => q.bind(rust_decimal::Decimal::try_from(*x).map_err(|error| bad_with(&error))?),
             Param::I64(x) => q.bind(rust_decimal::Decimal::from(*x)),
-            Param::Str(s) => q.bind(rust_decimal::Decimal::from_str(s.trim()).map_err(|_| bad())?),
+            Param::Str(s) => q.bind(rust_decimal::Decimal::from_str(s.trim()).map_err(|error| bad_with(&error))?),
             _ => return Err(bad()),
         },
         "bool" => match p {
@@ -349,25 +366,25 @@ pub(crate) fn bind_pg<'q>(q: PgQuery<'q>, p: &'q Param, ty: &str, i: usize) -> R
             Param::Bool(b) => q.bind(b.to_string()),
             Param::DateTime(t) => q.bind(t.format("%Y-%m-%d %H:%M:%S%.6f").to_string()),
             Param::Date(d) => q.bind(d.to_string()),
-            Param::Bytes(b) => q.bind(std::str::from_utf8(b).map_err(|_| bad())?),
+            Param::Bytes(b) => q.bind(std::str::from_utf8(b).map_err(|error| bad_with(&error))?),
         },
         "datetime" => match p {
             Param::Null => q.bind(Option::<NaiveDateTime>::None),
             Param::DateTime(t) => q.bind(*t),
             Param::Date(d) => q.bind(d.and_hms_opt(0, 0, 0).unwrap()),
-            Param::Str(s) => q.bind(parse_datetime(s).ok_or_else(bad)?),
+            Param::Str(s) => q.bind(parse_datetime(s).map_err(|error| bad_with(&error))?),
             _ => return Err(bad()),
         },
         "date" => match p {
             Param::Null => q.bind(Option::<NaiveDate>::None),
             Param::Date(d) => q.bind(*d),
             Param::DateTime(t) => q.bind(t.date()),
-            Param::Str(s) => q.bind(parse_datetime(s).ok_or_else(bad)?.date()),
+            Param::Str(s) => q.bind(parse_datetime(s).map_err(|error| bad_with(&error))?.date()),
             _ => return Err(bad()),
         },
         "time" => match p {
             Param::Null => q.bind(Option::<chrono::NaiveTime>::None),
-            Param::Str(s) => q.bind(chrono::NaiveTime::parse_from_str(s.trim(), "%H:%M:%S%.f").map_err(|_| bad())?),
+            Param::Str(s) => q.bind(chrono::NaiveTime::parse_from_str(s.trim(), "%H:%M:%S%.f").map_err(|error| bad_with(&error))?),
             _ => return Err(bad()),
         },
         "bytes" => match p {
@@ -494,12 +511,12 @@ pub(crate) async fn exec_sqlite_pool(sql: &str, args: &[Param], pool: &SqlitePoo
 }
 
 /// The statement text of a step: the plan's SQL as is, or with its `parent` placeholder expanded.
-pub(crate) fn statement(st: &Step, parent_vals: Vec<Param>, numbered: bool) -> (Cow<'_, str>, Vec<Param>) {
+pub(crate) fn statement(st: &Step, parent_vals: Vec<Param>, numbered: bool) -> Result<(Cow<'_, str>, Vec<Param>)> {
     if parent_vals.is_empty() {
-        (Cow::Borrowed(st.sql.as_str()), parent_vals)
+        Ok((Cow::Borrowed(st.sql.as_str()), parent_vals))
     } else {
-        let (sql, vals) = expand_in(st, parent_vals, numbered);
-        (Cow::Owned(sql), vals)
+        let (sql, vals) = expand_in(st, parent_vals, numbered)?;
+        Ok((Cow::Owned(sql), vals))
     }
 }
 

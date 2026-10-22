@@ -42,7 +42,7 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
                 cur = out;
             }
             "base64" => {
-                let text = std::str::from_utf8(&cur).map_err(|_| err(CODEC_DECODE, "base64 input is not UTF-8"))?;
+                let text = std::str::from_utf8(&cur).map_err(|error| err(CODEC_DECODE, format!("base64 input is not UTF-8: {error}")))?;
                 // A stored cell is decoded only in the form the encoder writes (docs/spec/codec.md). STANDARD rejects whitespace, missing padding,
                 // and nonzero padding bits.
                 cur = base64::engine::general_purpose::STANDARD.decode(text).map_err(|e| err(CODEC_DECODE, format!("base64: {e}")))?;
@@ -271,12 +271,15 @@ fn yaml_core_scalar(text: String) -> std::result::Result<Value, String> {
                 (_, Some(digits)) => i64::from_str_radix(digits, 16),
                 _ => text.parse::<i64>(),
             };
-            Value::from(parsed.map_err(|_| format!("integer {text} is outside the i64 range"))?)
+            Value::from(parsed.map_err(|error| format!("integer {text} is outside the i64 range: {error}"))?)
         }
-        _ if YAML_CORE_FLOAT.is_match(&text) => match text.parse::<f64>().ok().filter(|float| float.is_finite()).and_then(serde_json::Number::from_f64) {
-            Some(number) => Value::Number(number),
-            None => return Err(format!("non-finite number {text} is not supported")),
-        },
+        _ if YAML_CORE_FLOAT.is_match(&text) => {
+            let float = text.parse::<f64>().map_err(|error| format!("float {text} is not a number: {error}"))?;
+            match serde_json::Number::from_f64(float) {
+                Some(number) => Value::Number(number),
+                None => return Err(format!("non-finite number {text} is not supported")),
+            }
+        }
         _ => Value::String(text),
     })
 }
@@ -378,7 +381,11 @@ fn php_int_key(k: &str) -> Option<i64> {
     if k.is_empty() || k == "-0" || (k.len() > 1 && k.starts_with('0')) || (k.len() > 2 && k.starts_with("-0")) {
         return None;
     }
-    k.parse::<i64>().ok()
+    // A canonical decimal that does not fit i64 stays a string key, as PHP keeps it.
+    let Ok(value) = k.parse::<i64>() else {
+        return None;
+    };
+    Some(value)
 }
 
 /// Like PHP's serialize_precision=-1: shortest round-trip, integral values
@@ -430,7 +437,7 @@ impl<'a> Parser<'a> {
     fn until(&mut self, c: u8) -> Result<&'a str> {
         let rest = &self.b[self.i..];
         let j = rest.iter().position(|&x| x == c).ok_or_else(|| self.fail(&format!("expected {}", c as char)))?;
-        let s = std::str::from_utf8(&rest[..j]).map_err(|_| self.fail("bad utf-8"))?;
+        let s = std::str::from_utf8(&rest[..j]).map_err(|error| self.fail(&format!("bad utf-8: {error}")))?;
         self.i += j + 1;
         Ok(s)
     }
@@ -452,13 +459,13 @@ impl<'a> Parser<'a> {
                         "1" => Ok(Value::Bool(true)),
                         _ => Err(self.fail("bad boolean")),
                     },
-                    b'i' => s.parse::<i64>().map(Value::from).map_err(|_| self.fail("bad int")),
+                    b'i' => s.parse::<i64>().map(Value::from).map_err(|error| self.fail(&format!("bad int: {error}"))),
                     _ => {
                         let f = match s {
                             "INF" => f64::INFINITY,
                             "-INF" => f64::NEG_INFINITY,
                             "NAN" => f64::NAN,
-                            _ => s.parse::<f64>().map_err(|_| self.fail("bad float"))?,
+                            _ => s.parse::<f64>().map_err(|error| self.fail(&format!("bad float: {error}")))?,
                         };
                         serde_json::Number::from_f64(f).map(Value::Number).ok_or_else(|| self.fail("non-finite float"))
                     }
@@ -466,12 +473,12 @@ impl<'a> Parser<'a> {
             }
             b's' => {
                 self.expect(b':')?;
-                let n: usize = self.until(b':')?.parse().map_err(|_| self.fail("bad string length"))?;
+                let n: usize = self.until(b':')?.parse().map_err(|error| self.fail(&format!("bad string length: {error}")))?;
                 self.expect(b'"')?;
                 if self.i + n > self.b.len() {
                     return Err(self.fail("string overruns input"));
                 }
-                let s = String::from_utf8(self.b[self.i..self.i + n].to_vec()).map_err(|_| self.fail("string is not utf-8"))?;
+                let s = String::from_utf8(self.b[self.i..self.i + n].to_vec()).map_err(|error| self.fail(&format!("string is not utf-8: {error}")))?;
                 self.i += n;
                 self.expect(b'"')?;
                 self.expect(b';')?;
@@ -479,7 +486,7 @@ impl<'a> Parser<'a> {
             }
             b'a' => {
                 self.expect(b':')?;
-                let n: usize = self.until(b':')?.parse().map_err(|_| self.fail("bad array length"))?;
+                let n: usize = self.until(b':')?.parse().map_err(|error| self.fail(&format!("bad array length: {error}")))?;
                 self.expect(b'{')?;
                 let mut keys: Vec<String> = Vec::with_capacity(n);
                 let mut vals: Vec<Value> = Vec::with_capacity(n);
@@ -580,7 +587,7 @@ pub fn blind_index(v: &Param, key: &str) -> Result<String> {
         Param::Bytes(b) => b.clone(),
         other => format!("{other:?}").into_bytes(),
     };
-    let mut mac = <Hmac<Sha256> as Mac>::new_from_slice(key.as_bytes()).map_err(|_| Error::Config("invalid blind_index key".into()))?;
+    let mut mac = <Hmac<Sha256> as Mac>::new_from_slice(key.as_bytes()).map_err(|error| Error::Config(format!("invalid blind_index key: {error}")))?;
     mac.update(&plain);
     Ok(hex_upper(&mac.finalize().into_bytes()).to_ascii_lowercase())
 }
@@ -613,7 +620,7 @@ pub fn aes_decrypt(cipher_text: &[u8], key: &str) -> Result<Vec<u8>> {
     let cipher = Aes256Gcm::new_from_slice(&aes_v2_key(key)).expect("AES-256 key");
     let nonce: [u8; 12] = cipher_text[offset..offset + 12].try_into().unwrap();
     let nonce = Nonce::from(nonce);
-    cipher.decrypt(&nonce, Payload { msg: &cipher_text[offset + 12..], aad: AES_V2_PREFIX }).map_err(|_| err(CODEC_DECODE, "aes: authentication failed"))
+    cipher.decrypt(&nonce, Payload { msg: &cipher_text[offset + 12..], aad: AES_V2_PREFIX }).map_err(|error| err(CODEC_DECODE, format!("aes: authentication failed: {error:?}")))
 }
 
 /// Upper-case hex text, the form every encoder writes.
@@ -708,7 +715,7 @@ pub fn host_decode(raw: &Val, styles: &[String], aes_key: &str) -> Result<Val> {
     };
     for st in styles.iter().rev() {
         cur = match st.as_str() {
-            "hex" => hex_decode(std::str::from_utf8(&cur).map_err(|_| err(CODEC_DECODE, "hex input is not UTF-8"))?)?,
+            "hex" => hex_decode(std::str::from_utf8(&cur).map_err(|error| err(CODEC_DECODE, format!("hex input is not UTF-8: {error}")))?)?,
             "aes" => {
                 if aes_key.is_empty() {
                     return Err(Error::Config("secret aes not configured".into()));
@@ -728,6 +735,17 @@ pub fn host_decode(raw: &Val, styles: &[String], aes_key: &str) -> Result<Val> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// PHP keeps a canonical decimal key that does not fit i64 as a string key, so the key is not changed to an int.
+    #[test]
+    fn php_int_key_keeps_out_of_range_decimal_as_string() {
+        assert_eq!(php_int_key("9223372036854775807"), Some(i64::MAX));
+        assert_eq!(php_int_key("-9223372036854775808"), Some(i64::MIN));
+        assert_eq!(php_int_key("9223372036854775808"), None);
+        assert_eq!(php_int_key("-9223372036854775809"), None);
+        assert_eq!(php_int_key("01"), None);
+        assert_eq!(php_int_key("-0"), None);
+    }
 
     /// AES v2 uses an authenticated envelope and rejects tampering.
     #[test]
