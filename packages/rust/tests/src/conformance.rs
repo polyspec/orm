@@ -4,6 +4,8 @@
 //!
 //! Usage: conformance --dsn URI [--vector NAME]...
 //! Each --vector selects one vector by name; without one every vector runs.
+use polyspec_orm_testcase::OrPanic;
+
 use std::collections::{BTreeMap, HashSet};
 use std::sync::{Arc, Mutex};
 
@@ -184,7 +186,7 @@ fn int(v: Option<Value>) -> i64 {
             assert!(f.is_finite() && f.fract() == 0.0 && f >= i64::MIN as f64 && f < 9_223_372_036_854_775_808.0, "non-integral or out-of-range number: {n}");
             f as i64
         }),
-        Some(Value::String(s)) => s.parse().unwrap_or_else(|_| panic!("invalid integer text: {s}")),
+        Some(Value::String(s)) => s.parse().or_panic(|error| format!("invalid integer text {s}: {error}")),
         other => panic!("missing or invalid integer value: {other:?}"),
     }
 }
@@ -269,8 +271,8 @@ fn every_vector_of_the_vector_files_is_declared() {
     let dir = polyspec_orm_testcase::manifest_dir().join("../../../tests/conformance");
     for file in ["vectors.json", "vectors.postgres.json", "vectors.sqlite.json"] {
         let path = dir.join(file);
-        let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
-        let recorded: Value = serde_json::from_str(&text).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+        let text = std::fs::read_to_string(&path).or_panic(|e| format!("{}: {e}", path.display()));
+        let recorded: Value = serde_json::from_str(&text).or_panic(|e| format!("{}: {e}", path.display()));
         let vectors = recorded["vectors"].as_array().unwrap_or_else(|| panic!("{}: no vectors array", path.display()));
         assert!(declared.len() >= vectors.len(), "{file}: the binding declares {} vectors for {} recorded", declared.len(), vectors.len());
         for vector in vectors {
@@ -282,10 +284,13 @@ fn every_vector_of_the_vector_files_is_declared() {
 
 #[tokio::main]
 async fn main() {
-    let args = Args::parse(&std::env::args().skip(1).collect::<Vec<_>>()).unwrap_or_else(|e| {
-        eprintln!("conformance: {e}");
-        std::process::exit(2);
-    });
+    let args = match Args::parse(&std::env::args().skip(1).collect::<Vec<_>>()) {
+        Ok(args) => args,
+        Err(e) => {
+            eprintln!("conformance: {e}");
+            std::process::exit(2);
+        }
+    };
     let shared: Shared = Arc::new(Mutex::new(Log::default()));
     let hook = shared.clone();
     let config = polyspec_orm::Config {
@@ -301,7 +306,7 @@ async fn main() {
     let _recording = db
         .subscribe(move |e: &polyspec_orm::StatementEvent<'_>| {
             let mut log = hook.lock().unwrap();
-            let binds: Vec<Value> = e.binds.iter().map(|b| norm(&param_json(b).unwrap_or_else(|e| panic!("invalid query bind: {e}")), &log)).collect();
+            let binds: Vec<Value> = e.binds.iter().map(|b| norm(&param_json(b).or_panic(|e| format!("invalid query bind: {e}")), &log)).collect();
             let transaction = e.transaction.map(|n| {
                 let next = log.transactions.len() as u64 + 1;
                 *log.transactions.entry(n).or_insert(next)
@@ -673,7 +678,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
     run!("get_query", async {
         let st = author().service_seq(7).and_lk_name("x").and_aes_hex_email("user7@example.com").order_by_seq_desc().limit(0, 5).get_query().await?;
         let log = Log::default();
-        let binds: Vec<Value> = st.binds.iter().map(|b| norm(&param_json(b).unwrap_or_else(|e| panic!("invalid query bind: {e}")), &log)).collect();
+        let binds: Vec<Value> = st.binds.iter().map(|b| norm(&param_json(b).or_panic(|e| format!("invalid query bind: {e}")), &log)).collect();
         Ok::<Value, polyspec_orm::Error>(json!({"sql": st.sql, "binds": binds}))
     });
     run!("aes_values", async {

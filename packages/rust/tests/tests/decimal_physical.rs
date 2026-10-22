@@ -1,6 +1,8 @@
 //! Exact decimal generated model cases on isolated databases, and the
 //! generated models of the bench and decimal document sets on one connection.
 
+use polyspec_orm_testcase::OrPanic;
+
 polyspec_orm::models!();
 
 #[path = "../src/bench_set.rs"]
@@ -20,7 +22,7 @@ async fn decimal_physical(env: &str) {
     use decimal_model::DecimalCase;
 
     let dsn = std::env::var(env)
-        .unwrap_or_else(|_| panic!("{env} is required; run the test through its make target, which reads the environment of make orm-test-servers"));
+        .or_panic(|error| format!("{env} is required ({error}); run the test through its make target, which reads the environment of make orm-test-servers"));
     assert!(!dsn.is_empty(), "{env} is empty");
     let db = decimal_model::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap();
     let result: polyspec_orm::Result<()> = db
@@ -77,9 +79,10 @@ async fn schema_set_database(driver: &str) -> (String, String) {
         return (format!("sqlite://{}/{name}.sqlite", std::env::temp_dir().display()), name);
     }
     let env = format!("ORM_TEST_{}_DSN", driver.to_uppercase());
-    let base = std::env::var(&env).unwrap_or_else(|_| {
-        panic!("{env} is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers")
-    });
+    let base = match std::env::var(&env) {
+        Ok(value) => value,
+        Err(error) => panic!("{env} is required ({error}); database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers"),
+    };
     schema_set_server(driver, &format!("CREATE DATABASE {name}")).await;
     let (head, query) = base.split_once('?').map_or((base.as_str(), ""), |(h, q)| (h, q));
     let (server, _) = head.rsplit_once('/').expect("DSN names a database");
@@ -89,9 +92,10 @@ async fn schema_set_database(driver: &str) -> (String, String) {
 
 async fn schema_set_server(driver: &str, statement: &str) {
     let env = format!("ORM_TEST_{}_SERVER_DSN", driver.to_uppercase());
-    let base = std::env::var(&env).unwrap_or_else(|_| {
-        panic!("{env} is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers")
-    });
+    let base = match std::env::var(&env) {
+        Ok(value) => value,
+        Err(error) => panic!("{env} is required ({error}); database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers"),
+    };
     let base = base.as_str();
     let sql = sqlx::SqlSafeStr::into_sql_str(sqlx::AssertSqlSafe(statement.to_owned()));
     if driver == "mysql" {
@@ -115,9 +119,9 @@ async fn schema_set(driver: &str) {
 
     let (dsn, name) = schema_set_database(driver).await;
     let db = model::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap();
-    bench_set::install(&db).await.unwrap_or_else(|e| panic!("{driver}: install of the bench set: {e}"));
+    bench_set::install(&db).await.or_panic(|e| format!("{driver}: install of the bench set: {e}"));
     for schema in [&decimal_model::SCHEMA, &decimal_model::SCHEMA] {
-        db.utils().schema().install(schema).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
+        db.utils().schema().install(schema).await.or_panic(|e| format!("{driver}: install: {e}"));
     }
     User::new().connect(&db).set_name("core").create().await.unwrap();
     DecimalCase::new().connect(&db).set_seq(1).set_amount("48.0450").unwrap().create().await.unwrap();
@@ -186,7 +190,7 @@ async fn schema_set_unregistered(driver: &str) {
     let core = model::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap();
     let _core_counted = counted(&core, &runs);
     let installer = decimal_model::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap();
-    installer.utils().schema().install(&decimal_model::SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
+    installer.utils().schema().install(&decimal_model::SCHEMA).await.or_panic(|e| format!("{driver}: install: {e}"));
     DecimalCase::new().connect(&installer).set_seq(1).set_amount("1.0000").unwrap().create().await.unwrap();
     installer.close().await;
     let error = DecimalCase::new().connect(&core).get_count().await.expect_err("a decimal read on the bench connection");
@@ -224,7 +228,7 @@ async fn schema_set_edited_manifest(driver: &str) {
     let error = db.utils().schema().install(schema).await.expect_err("an install of an edited manifest");
     assert_eq!(error.code(), "CONFIG", "{driver}: {error}");
     assert_eq!(runs.load(std::sync::atomic::Ordering::Relaxed), 0, "{driver}: statements of the edited install");
-    db.utils().schema().install(&decimal_model::SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
+    db.utils().schema().install(&decimal_model::SCHEMA).await.or_panic(|e| format!("{driver}: install: {e}"));
     DecimalCase::new().connect(&db).set_seq(1).set_amount("48.0450").unwrap().create().await.unwrap();
     // Plan the same request with the same hash first.
     assert_eq!(DecimalCase::new().connect(&db).get_count().await.unwrap(), 1, "{driver}: decimal rows");

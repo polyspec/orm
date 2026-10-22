@@ -1,5 +1,7 @@
 //! schema_install: reinstalling the installed bench manifest changes nothing, and
 //! installing a manifest where only some tables exist fails with CONFIG and does not create the missing tables.
+use polyspec_orm_testcase::OrPanic;
+
 use super::coverage_env::{code, connect, run};
 use polyspec_orm::db::Pool;
 use polyspec_orm::Db;
@@ -56,8 +58,8 @@ async fn coverage_schema_install_partial() {
     run("schema_install_partial", async {
         let document = polyspec_orm::dbspec::parse(PARTIAL, &Default::default())
             .map(|parsed| parsed.document)
-            .unwrap_or_else(|errors| panic!("partial document: {errors:?}"));
-        let manifest = polyspec_orm::dbspec::manifest(&[&document]).unwrap_or_else(|errors| panic!("partial manifest: {errors:?}"));
+            .or_panic(|errors| format!("partial document: {errors:?}"));
+        let manifest = polyspec_orm::dbspec::manifest(&[&document]).or_panic(|errors| format!("partial manifest: {errors:?}"));
         // Schema takes 'static text, as the generated model does.
         let schema = polyspec_orm::Schema::new(Box::leak(manifest.manifest_text.into_boxed_str()), Box::leak(manifest.manifest_hash.into_boxed_str()));
         let db = connect().await;
@@ -100,12 +102,12 @@ fn external_schema(external: &str) -> &'static polyspec_orm::Schema {
     let set = |name: &str, text: &str| std::collections::BTreeMap::from([(name.to_owned(), text.to_owned())]);
     let member = polyspec_orm::dbspec::parse(EXTERNAL_MEMBER, &set("bench_user", external))
         .map(|parsed| parsed.document)
-        .unwrap_or_else(|errors| panic!("member document: {errors:?}"));
+        .or_panic(|errors| format!("member document: {errors:?}"));
     let mut user = polyspec_orm::dbspec::parse(external, &set("coverage_external", EXTERNAL_MEMBER))
         .map(|parsed| parsed.document)
-        .unwrap_or_else(|errors| panic!("external document: {errors:?}"));
+        .or_panic(|errors| format!("external document: {errors:?}"));
     user.external = true;
-    let manifest = polyspec_orm::dbspec::manifest(&[&member, &user]).unwrap_or_else(|errors| panic!("manifest: {errors:?}"));
+    let manifest = polyspec_orm::dbspec::manifest(&[&member, &user]).or_panic(|errors| format!("manifest: {errors:?}"));
     let leak = |s: String| -> &'static str { Box::leak(s.into_boxed_str()) };
     Box::leak(Box::new(polyspec_orm::Schema::with_external(leak(manifest.manifest_text), leak(manifest.external_text), leak(manifest.manifest_hash))))
 }
@@ -122,7 +124,7 @@ async fn coverage_schema_install_external_documents() {
         let member = external_schema(EXTERNAL_USER);
         let connected = polyspec_orm::Db::connect_schema(&dsn, member, 2, polyspec_orm::Config::default())
             .await
-            .unwrap_or_else(|e| panic!("connect of a set whose external table user matches the database: {e}"));
+            .or_panic(|e| format!("connect of a set whose external table user matches the database: {e}"));
         connected.close().await;
         let drifted = external_schema(&EXTERNAL_USER.replace("  name varchar(191)\n", "  name varchar(191)\n  coverage_missing varchar(8) null\n"));
         let want = "the tables that the set uses from external documents differ from the database: column user.coverage_missing does not exist";
@@ -132,7 +134,7 @@ async fn coverage_schema_install_external_documents() {
         };
         polyspec_orm::Db::connect_schema(&dsn, drifted, 2, polyspec_orm::Config::default())
             .await
-            .unwrap_or_else(|e| panic!("connect of a set whose external table differs, which registering does not read: {e}"))
+            .or_panic(|e| format!("connect of a set whose external table differs, which registering does not read: {e}"))
             .close()
             .await;
         let db = connect().await;

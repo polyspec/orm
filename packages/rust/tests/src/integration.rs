@@ -4,6 +4,8 @@
 //! the case ends; the test fails when either is unset.
 //!
 //! Usage: integration <dbspec-set.json> [--case <case>]: the bench set (contracts/fixtures/bench/dbspec-set.json).
+use polyspec_orm_testcase::OrPanic;
+
 use std::cell::Cell;
 
 polyspec_orm::models!();
@@ -116,8 +118,8 @@ impl Target {
     /// changes nothing).
     async fn installed(driver: &str) -> Target {
         let t = Target::empty(driver).await;
-        bench_set::install(&t.db).await.unwrap_or_else(|e| panic!("{}: schema().install: {e}", t.driver));
-        bench_set::install(&t.db).await.unwrap_or_else(|e| panic!("{}: schema().install again: {e}", t.driver));
+        bench_set::install(&t.db).await.or_panic(|e| format!("{}: schema().install: {e}", t.driver));
+        bench_set::install(&t.db).await.or_panic(|e| format!("{}: schema().install again: {e}", t.driver));
         t
     }
 
@@ -125,7 +127,7 @@ impl Target {
     async fn empty(driver: &str) -> Target {
         let database = CaseDatabase::create(driver).await;
         let dsn = if driver == "sqlite" { format!("{}?_pragma=busy_timeout(5000)", database.dsn()) } else { database.dsn().to_owned() };
-        let db = model::connect(&dsn, 4, config()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
+        let db = model::connect(&dsn, 4, config()).await.or_panic(|e| format!("{driver}: {e}"));
         Target { driver: database.driver(), dsn, db, database }
     }
 
@@ -272,7 +274,7 @@ async fn joins_and_relations(t: &Target) {
     assert_eq!(code(Author::new().connect(db).name("a").or(&User::new()).gets().await), "CONFIG", "unjoined model placement");
     let array = b.to_array().unwrap();
     assert!(!array["writer"].is_null() && array["name"] == "alpha", "to_array: {array}");
-    let _ = (&f.member, &f.users);
+    let (_member, _users) = (&f.member, &f.users);
 }
 
 async fn columns_and_subqueries(t: &Target) {
@@ -709,10 +711,10 @@ async fn main() {
             std::process::exit(2);
         }
     };
-    let set = polyspec_orm::dbspec::read_set(std::path::Path::new(&args[1])).unwrap_or_else(|errors| panic!("{}: {errors:?}", args[1]));
+    let set = polyspec_orm::dbspec::read_set(std::path::Path::new(&args[1])).or_panic(|errors| format!("{}: {errors:?}", args[1]));
     let text = |file: &polyspec_orm::dbspec::SetFile| {
         polyspec_orm::dbspec::read_bytes(&file.path.display().to_string(), file.bytes.clone())
-            .unwrap_or_else(|errors| panic!("{}: {errors:?}", file.path.display()))
+            .or_panic(|errors| format!("{}: {errors:?}", file.path.display()))
     };
     let owned: Vec<String> = set.documents.iter().map(text).collect();
     let external: Vec<String> = set.external.iter().map(text).collect();
@@ -720,7 +722,7 @@ async fn main() {
         polyspec_orm::dbspec::parse_set(&owned.iter().map(String::as_str).collect::<Vec<_>>(), &external.iter().map(String::as_str).collect::<Vec<_>>());
     let documents: Vec<polyspec_orm::dbspec::Document> =
         parsed.into_iter().map(|d| d.document.unwrap_or_else(|| panic!("{}: {:?}", args[1], d.diagnostics))).collect();
-    let manifest = polyspec_orm::dbspec::manifest(&documents.iter().collect::<Vec<_>>()).unwrap_or_else(|errors| panic!("{}: {errors:?}", args[1]));
+    let manifest = polyspec_orm::dbspec::manifest(&documents.iter().collect::<Vec<_>>()).or_panic(|errors| format!("{}: {errors:?}", args[1]));
     assert_eq!(manifest.manifest_hash, model::MANIFEST_HASH, "the models were generated from another document set");
     const DRIVERS: [&str; 3] = ["sqlite", "mysql", "postgres"];
     if selected.is_none_or(|case| case == "schema_empty") {
@@ -764,11 +766,11 @@ async fn main() {
                 case.step("read_only_sqlite");
             } else {
                 let var = format!("ORM_TEST_{}_REPLICA_DSN", driver.to_uppercase());
-                let replica = std::env::var(&var).ok().filter(|v| !v.is_empty()).unwrap_or_else(|| {
-                    panic!(
-                        "{var} is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers"
-                    )
-                });
+                let replica = match std::env::var(&var) {
+                    Ok(v) if !v.is_empty() => v,
+                    Ok(_) => panic!("{var} is set but empty; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers"),
+                    Err(error) => panic!("{var} is required ({error}); database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers"),
+                };
                 primary_and_replica(&t, &replica).await;
             }
             t.finish().await;
