@@ -23,6 +23,7 @@ import (
 // instead writes {"ok": true} for connect and the case's answer for one request of the chain, and connects to a listener
 // and checks that the result of the chain equals expect (see Read in docs/spec/protocol.md §5). flowmark
 // is not needed.
+// Requirements: PRT-69, PRT-71, PRT-72.
 func TestIRAnswers(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	b, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "fixtures", "ir_answers.json"))

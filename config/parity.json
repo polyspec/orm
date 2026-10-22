@@ -6587,6 +6587,11 @@
     {
       "id": "go-internal-packages-go-markdownmodel-ir-answers",
       "kind": "feature",
+      "requirements": [
+        "PRT-69",
+        "PRT-71",
+        "PRT-72"
+      ],
       "bindings": [
         {
           "implementation": "go",
@@ -13916,6 +13921,11 @@
     {
       "id": "php-internal-ir-answers-ir-answer",
       "kind": "feature",
+      "requirements": [
+        "PRT-69",
+        "PRT-71",
+        "PRT-72"
+      ],
       "bindings": [
         {
           "implementation": "php",

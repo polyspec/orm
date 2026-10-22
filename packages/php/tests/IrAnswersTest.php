@@ -11,6 +11,8 @@ namespace Polyspec\Orm\Tests;
  * needed.
  *
  * Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/IrAnswersTest.php
+ *
+ * Requirements: PRT-69, PRT-71, PRT-72.
  */
 
 use Polyspec\Orm\Config;
