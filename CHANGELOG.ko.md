@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 23269c0e7ad3d6b092675111c996e5b4585ecb43931ba9c40f5379632a8b3795 -->
+<!-- source-sha256: ab6b742fa266517f0fd1253a7feee68656cbb65f816c4a181c4ce30a92fbea11 -->
 # 변경 이력
 
 ## Unreleased
+- group-rows-db 대상(Go, TypeScript, Python, PHP, PHP extension, Rust)은 CI group에서 실행되고, generated-lint-check는 static group에서 실행되어 CHECK_TARGETS의 모든 target이 한 번씩 실행된다(KSTD-10-1). red: CI group 사례가 group-rows-db 대상 일곱 개와 generated-lint-check를 어느 group에도 없는 것으로 찾았다.
 - KSTD-5-23 완료: 이 commit은 두 체크리스트에 그 완료 상태를 기록하고 한국어 stamp를 갱신한다(KSTD-5-23).
 - `dbspec-php-extension-check/planner` 대상은 클래스 검사 뒤에 세 PHPUnit 묶음을 부분으로 실행하고, `dbspec-plan-check`의 `TestPlanApply` 패턴 인용은 make용 `$$`로 쓰며, statement-fault와 install-register의 연결된 TypeScript 검증은 명령 하나씩으로 나뉜다(KSTD-5-23). red: 저장소 검사가 `$`를 make 변수로 읽어 명령을 거부했고, planner 사례는 한 recipe에서 세 묶음을 실행했다.
 - KSTD-5-22 완료: 이 commit은 두 체크리스트에 그 완료 상태를 기록하고 한국어 stamp를 갱신한다(KSTD-5-22).

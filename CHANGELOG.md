@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- The group-rows-db targets (Go, TypeScript, Python, PHP, PHP extension and Rust) run in the CI groups, and generated-lint-check runs in the static group, so every target of CHECK_TARGETS runs once (KSTD-10-1). Red: the CI group case found seven group-rows-db targets and generated-lint-check in no group.
 - KSTD-5-23 is done: this commit records its done state in both checklists and refreshes their Korean stamps (KSTD-5-23).
 - The `dbspec-php-extension-check/planner` target runs its three PHPUnit suites as parts after the class check, the `dbspec-plan-check` quoting of the `TestPlanApply` pattern is written `$$` for make, and the chained TypeScript verifications of statement-fault and install-register are split into one command each (KSTD-5-23). Red: the repo check read the `$` quoting as a make variable and rejected the command, and the planner test ran three suites in one recipe.
 - KSTD-5-22 is done: this commit records its done state in both checklists and refreshes their Korean stamps (KSTD-5-22).
