@@ -6,6 +6,7 @@
     { "target": "feature-owner-check", "reason": "it runs the owners of the changed paths, each a target of CHECK_TARGETS; the CI workflow runs make orm-check, which runs every target of CHECK_TARGETS, so a step of the selection would run them twice" }
   ],
   "owners": [
+    { "paths": ["docs/**"], "targets": ["docs-site-check"] },
     { "paths": ["**"], "targets": ["feature-owner-check"], "variable": "PATHS" }
   ]
 }

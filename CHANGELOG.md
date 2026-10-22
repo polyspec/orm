@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `make docs-check` runs the Markdown checks only, so a land no longer builds the VitePress site; the site build and the checks that read the built site run in `make docs-site-check`, which the owner rules select for changes under docs/ and CI runs (KSTD-5-48). Red: `tests/docs/split.test.mts` finds the site build in the expansion of docs-check.
 - `make clippy-crate CRATE=<package>` runs the lint-rust clippy flags on one package, so a sub-item of the clippy row can be checked alone (KSTD-5-41-0).
 - The PHP extension's parser reuses its line token buffer and formats the source of a generated name only for a diagnostic, so the limit/columns document peaks at 88 MB, under the 96 MB bound of its test (T182-0-2-1). Red: testLimitColumnsPeak measured 109.1 MB.
 - Unsubscribing in the PHP extension frees the function of its unsubscribe closure, so a process that subscribes and unsubscribes over and over keeps its memory flat (T182-5-4). Red: the leak test reported the resident set grew by 31248 KB over 200000 subscribe/unsubscribe cycles.
