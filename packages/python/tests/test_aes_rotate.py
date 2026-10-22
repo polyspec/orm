@@ -4,13 +4,12 @@
 import tempfile
 import unittest
 from pathlib import Path
+from polyspec.orm.aes import AesKeyring
 from . import testcase
 
 from .test_sqlite import generate
 
 ROOT = Path(__file__).resolve().parents[3]
-
-from polyspec.orm.aes import AesKeyring  # noqa: E402
 
 
 class AesRotateTest(unittest.TestCase):

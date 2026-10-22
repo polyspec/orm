@@ -4,12 +4,11 @@ import unittest
 from datetime import datetime
 from pathlib import Path
 
+from polyspec.orm.errors import OrmError
+from polyspec.orm.model import Collection
 from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
-
-from polyspec.orm.errors import OrmError  # noqa: E402
-from polyspec.orm.model import Collection  # noqa: E402
 
 
 def load_fixture():

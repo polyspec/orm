@@ -11,6 +11,8 @@ import tempfile
 import unittest
 import uuid
 from pathlib import Path
+from polyspec.orm.database import Db
+from polyspec.orm.errors import OrmError
 from . import testcase
 
 from .server_database import server_database
@@ -18,8 +20,6 @@ from .test_sqlite import generate_document
 
 ROOT = Path(__file__).resolve().parents[3]
 
-from polyspec.orm.database import Db  # noqa: E402
-from polyspec.orm.errors import OrmError  # noqa: E402
 
 FIXTURE = json.loads(
     (ROOT / "contracts" / "fixtures" / "statement_fault.json").read_text()
@@ -108,7 +108,7 @@ class StatementFaultTest(unittest.TestCase):
             try:
                 with fresh_db(dialect) as db:
                     body(db)
-            except Exception as error:  # noqa: BLE001
+            except Exception as error:  # noqa: BLE001 - the case reports every dialect's error
                 reasons.append(f"{dialect}: {type(error).__name__}: {error}")
         if reasons:
             self.fail("; ".join(reasons))
@@ -122,7 +122,7 @@ class StatementFaultTest(unittest.TestCase):
     def raised(self, run):
         try:
             run()
-        except BaseException as error:  # noqa: BLE001
+        except BaseException as error:  # noqa: BLE001 - the probe returns any exception the run raises
             return error
         return None
 

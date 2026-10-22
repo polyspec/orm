@@ -3,13 +3,12 @@
 import tempfile
 import unittest
 from pathlib import Path
+from polyspec.orm.values import orm
 from . import testcase
 
 from .test_sqlite import DDL, generate, run_script
 
 ROOT = Path(__file__).resolve().parents[3]
-
-from polyspec.orm.values import orm  # noqa: E402
 
 
 class AliasColumnsTest(unittest.TestCase):

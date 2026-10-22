@@ -63,7 +63,7 @@ class FakeServer:
 def raised(run):
     try:
         run()
-    except BaseException as error:  # noqa: BLE001
+    except BaseException as error:  # noqa: BLE001 - the probe returns any exception the run raises
         return error
     return None
 

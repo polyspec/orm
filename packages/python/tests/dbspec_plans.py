@@ -4,14 +4,13 @@
 import json
 import unittest
 from pathlib import Path
+from polyspec.orm.dbspec import parse_dbspec
+from polyspec.orm.dbspec.compare import compare_schemas
+from polyspec.orm.dbspec.plan import chain_plans, parse_plan
+from polyspec.orm.dbspec.plan_diff import diff_plan
+from polyspec.orm.dbspec.plan_steps import effect_text, plan_steps
 
 ROOT = Path(__file__).resolve().parents[3]
-
-from polyspec.orm.dbspec import parse_dbspec  # noqa: E402
-from polyspec.orm.dbspec.compare import compare_schemas  # noqa: E402
-from polyspec.orm.dbspec.plan import chain_plans, parse_plan  # noqa: E402
-from polyspec.orm.dbspec.plan_diff import diff_plan  # noqa: E402
-from polyspec.orm.dbspec.plan_steps import effect_text, plan_steps  # noqa: E402
 
 
 def _text(value) -> str:

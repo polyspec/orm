@@ -4,14 +4,14 @@
 import tempfile
 import unittest
 from pathlib import Path
+from polyspec.ordered_json import parse as parse_json, stringify as stringify_json
+from polyspec.orm.styled_value import StyledValue
 from . import testcase
 
 from .test_sqlite import DDL, generate, insert_service_and_author, run_script
 
 ROOT = Path(__file__).resolve().parents[3]
 
-from polyspec.ordered_json import parse as parse_json, stringify as stringify_json  # noqa: E402
-from polyspec.orm.styled_value import StyledValue  # noqa: E402
 
 SQL_NULL = {"kind": "sql-null"}
 

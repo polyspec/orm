@@ -76,7 +76,8 @@ class ConnectionUtcTest(unittest.TestCase):
             .set_end_dt("2026-01-03 00:00:00")
             .create()
         )
-        author = lambda: models.Author().connect(db)  # noqa: E731
+        def author():
+            return models.Author().connect(db)
         row = author().get_by_seq(created.get_seq())
         self.assertEqual(row.get_start_dt(), "2026-01-01 15:00:00.000000", "start_dt")
         wall = datetime.datetime.fromisoformat(row.get_created_ts()[:23])

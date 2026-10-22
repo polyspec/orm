@@ -10,15 +10,14 @@ import tempfile
 import threading
 import unittest
 from pathlib import Path
+from .test_sqlite import generate
+from .vector_case import VectorCase, vector_tests
+from polyspec.orm import Collection, Model, OrmError
+from polyspec.orm.values import orm
 from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
 
-from .test_sqlite import generate  # noqa: E402
-from .vector_case import VectorCase, vector_tests  # noqa: E402
-
-from polyspec.orm import Collection, Model, OrmError  # noqa: E402
-from polyspec.orm.values import orm  # noqa: E402
 
 CONFORMANCE_DIR = ROOT / "tests" / "markdown"
 FLOWMARK_MODULE = "github.com/polyspec/flowmark"
@@ -856,7 +855,7 @@ def run_case(s: Served, case: dict, run) -> str | None:
             cause = error
         else:
             cause = None
-    except Exception as error:  # noqa: BLE001
+    except Exception as error:  # noqa: BLE001 - the case reports any error that is not an orm code
         return f"failed without an orm code: {type(error).__name__}: {error}"
     finally:
         timer.cancel()

@@ -220,11 +220,11 @@ def with_cleanup(body, cleanup) -> None:
     failure = None
     try:
         body()
-    except BaseException as error:  # noqa: BLE001
+    except BaseException as error:  # noqa: BLE001 - the case's body and its cleanup report a failure of any type
         failure = error
     try:
         cleanup()
-    except BaseException as error:  # noqa: BLE001
+    except BaseException as error:  # noqa: BLE001 - the case's body and its cleanup report a failure of any type
         if failure is None:
             failure = error
         else:
@@ -248,7 +248,8 @@ def run_on_empty_tenant(models, item, tenant, run) -> None:
     db = models.connect(dsn)
     try:
         expect_equal(db.driver, driver, "the driver")
-        account = lambda: models.CompositeAccount().connect(db)  # noqa: E731
+        def account():
+            return models.CompositeAccount().connect(db)
         expect_equal(
             account().tenant_id(tenant).get_count(),
             0,

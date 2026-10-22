@@ -15,6 +15,11 @@ import unittest
 import uuid
 from pathlib import Path
 from urllib.parse import urlsplit
+from polyspec.orm.database import Db
+from polyspec.orm.engine import Engine, model_of_documents, parse_document_set
+from polyspec.orm.errors import OrmError
+from polyspec.orm.schema import Schema
+from .vector_case import VectorCase, vector_tests
 from . import testcase
 
 import psycopg
@@ -25,11 +30,6 @@ from .server_database import server_database
 ROOT = Path(__file__).resolve().parents[3]
 PACKAGE = Path(__file__).resolve().parents[1]
 
-from polyspec.orm.database import Db  # noqa: E402
-from polyspec.orm.engine import Engine, model_of_documents, parse_document_set  # noqa: E402
-from polyspec.orm.errors import OrmError  # noqa: E402
-from polyspec.orm.schema import Schema  # noqa: E402
-from .vector_case import VectorCase, vector_tests  # noqa: E402
 
 CASES = json.loads((ROOT / "contracts" / "fixtures" / "identity_load.json").read_text())
 MODEL = model_of_documents(parse_document_set([(ROOT / CASES["fixture"]).read_text()]))
@@ -208,7 +208,7 @@ def compile_case(case: dict) -> list:
         RAN.add((case["id"], dialect))
         try:
             plan = compile_request(dialect, case["input"])
-        except Exception as error:  # noqa: BLE001
+        except Exception as error:  # noqa: BLE001 - a compile failure of any type is a case result, compared with its expected error
             if "error" not in expected:
                 reasons.append(f"{dialect}: compile: {error!r}")
                 continue
@@ -240,7 +240,7 @@ def execute_case(case: dict) -> list:
         try:
             with deadline(CASE_SECONDS, f"{case['id']} on {dialect}"):
                 run_execute_case(dialect, case)
-        except Exception as error:  # noqa: BLE001
+        except Exception as error:  # noqa: BLE001 - a load failure of any type is a case result, compared with its expected error
             reasons.append(
                 f"{dialect}: {type(error).__name__}: {error} "
                 f"(elapsed={time.monotonic() - started:.3f}s)"

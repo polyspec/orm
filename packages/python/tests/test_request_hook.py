@@ -6,6 +6,8 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from polyspec.orm.database import Db
+from polyspec.orm.errors import OrmError
 from . import testcase
 
 from .test_sqlite import generate_document
@@ -13,8 +15,6 @@ from .test_sqlite import generate_document
 ROOT = Path(__file__).resolve().parents[3]
 PACKAGE = Path(__file__).resolve().parents[1]
 
-from polyspec.orm.database import Db  # noqa: E402
-from polyspec.orm.errors import OrmError  # noqa: E402
 
 READS = ("one", "all", "count", "paginate")
 

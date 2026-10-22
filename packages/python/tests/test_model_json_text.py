@@ -5,15 +5,15 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from polyspec.ordered_json import parse as parse_json
+from polyspec.orm.errors import OrmError
+from polyspec.orm.styled_value import StyledValue
 from . import testcase
 
 from .test_sqlite import DDL, generate, run_script
 
 ROOT = Path(__file__).resolve().parents[3]
 
-from polyspec.ordered_json import parse as parse_json  # noqa: E402
-from polyspec.orm.errors import OrmError  # noqa: E402
-from polyspec.orm.styled_value import StyledValue  # noqa: E402
 
 STORED = '{"b":1,"1":2,"a":1.50,"e":1E2,"s":"\\u00e9"}'
 # Key columns not selected are also read by the planner, so they enter the row order.

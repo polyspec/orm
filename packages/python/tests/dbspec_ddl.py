@@ -4,13 +4,12 @@
 import json
 import unittest
 from pathlib import Path
+from polyspec.orm.dbspec import parse_dbspec
+from polyspec.orm.dbspec.render import render_dbspec
+from .vector_case import VectorCase, vector_tests
 from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
-
-from polyspec.orm.dbspec import parse_dbspec  # noqa: E402
-from polyspec.orm.dbspec.render import render_dbspec  # noqa: E402
-from .vector_case import VectorCase, vector_tests  # noqa: E402
 
 
 def parse_set(documents: dict) -> list:

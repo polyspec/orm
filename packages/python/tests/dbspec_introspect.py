@@ -11,17 +11,16 @@ import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
+import psycopg
+from polyspec.orm.dbspec import emit_dbspec, parse_dbspec
+from polyspec.orm.dbspec.introspect import introspect_dbspec
+from polyspec.orm.dbspec.render import render_dbspec
+from .runner_connect import Adapter, mysql_connect
+from .vector_case import VectorCase, vector_tests
 from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
 
-import psycopg  # noqa: E402
-
-from polyspec.orm.dbspec import emit_dbspec, parse_dbspec  # noqa: E402
-from polyspec.orm.dbspec.introspect import introspect_dbspec  # noqa: E402
-from polyspec.orm.dbspec.render import render_dbspec  # noqa: E402
-from .runner_connect import Adapter, mysql_connect  # noqa: E402
-from .vector_case import VectorCase, vector_tests  # noqa: E402
 
 # Same connection rules as tests/dbspec/introspect (packages/ts/tests/dbspec-introspect.mjs).
 CONNECTION_RULES = {

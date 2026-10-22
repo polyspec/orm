@@ -4,14 +4,13 @@
 import json
 import unittest
 from pathlib import Path
+from polyspec.orm.engine import model_of_documents, parse_document_set
+from polyspec.orm.engine.validate import validate
+from polyspec.orm.errors import OrmError
+from .vector_case import VectorCase, vector_tests
 from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
-
-from polyspec.orm.engine import model_of_documents, parse_document_set  # noqa: E402
-from polyspec.orm.engine.validate import validate  # noqa: E402
-from polyspec.orm.errors import OrmError  # noqa: E402
-from .vector_case import VectorCase, vector_tests  # noqa: E402
 
 
 FILE = json.loads((ROOT / "tests" / "ir" / "validate.json").read_text())

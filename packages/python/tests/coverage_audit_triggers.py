@@ -127,7 +127,8 @@ def audit_history(item):
     m = models_of("audit.dbs")
 
     def body(db, driver, dsn):
-        item = lambda: m.Item().connect(db)  # noqa: E731
+        def item():
+            return m.Item().connect(db)
         expect_equal(
             code_of(lambda: item().set_title("outside").create()),
             "CONFIG",

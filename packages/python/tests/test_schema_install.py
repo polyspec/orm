@@ -6,13 +6,12 @@ import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
+from polyspec.orm.errors import OrmError
 from . import testcase
 
 from .test_sqlite import generate
 
 ROOT = Path(__file__).resolve().parents[3]
-
-from polyspec.orm.errors import OrmError  # noqa: E402
 
 
 def tables_of(path: str) -> list:

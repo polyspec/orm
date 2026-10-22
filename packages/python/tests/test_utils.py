@@ -3,14 +3,13 @@
 import tempfile
 import unittest
 from pathlib import Path
+from polyspec.orm.aes import AesKeyring
+from polyspec.orm.errors import OrmError
 from . import testcase
 
 from .test_sqlite import DDL, generate, run_script
 
 ROOT = Path(__file__).resolve().parents[3]
-
-from polyspec.orm.aes import AesKeyring  # noqa: E402
-from polyspec.orm.errors import OrmError  # noqa: E402
 
 
 class UtilsTest(unittest.TestCase):

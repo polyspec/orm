@@ -9,7 +9,8 @@ def model_query_rows(item):
     db = models.connect(dsn, aesKey="bench-salt", blindIndexKey="bench-blind-index")
     try:
         expect_equal(db.driver, driver, "the driver")
-        author = lambda: models.Author().connect(db)  # noqa: E731
+        def author():
+            return models.Author().connect(db)
         expect_equal(author().user_seq(1).get_count(), 20, "authors of user 1")
         rows = author().service_seq(7).order_by_seq_desc().limit(0, 3).gets()
         expect_equal(

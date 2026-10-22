@@ -9,6 +9,7 @@ import tempfile
 import tomllib
 import unittest
 from pathlib import Path
+from polyspec.orm.errors import OrmError
 from . import testcase
 
 from .entry_point_check import assert_import_does_not_load_testing
@@ -17,7 +18,6 @@ from .test_sqlite import generate_document, installed_sqlite
 ROOT = Path(__file__).resolve().parents[3]
 PACKAGE = Path(__file__).resolve().parents[1]
 
-from polyspec.orm.errors import OrmError  # noqa: E402
 
 FAULT_MESSAGE = (
     "test fault: the rollback of the transaction ran and is reported as failed"
@@ -55,7 +55,7 @@ class RollbackFaultTest(unittest.TestCase):
     def raised(self, run):
         try:
             run()
-        except BaseException as error:  # noqa: BLE001
+        except BaseException as error:  # noqa: BLE001 - the probe returns any exception the run raises
             return error
         return None
 

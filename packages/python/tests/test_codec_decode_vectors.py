@@ -4,12 +4,11 @@
 import json
 import unittest
 from pathlib import Path
+from polyspec.orm.codec import CodecError, decode, host_decode
+from .vector_case import VectorCase, vector_tests
 from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
-
-from polyspec.orm.codec import CodecError, decode, host_decode  # noqa: E402
-from .vector_case import VectorCase, vector_tests  # noqa: E402
 
 
 VECTORS = json.loads((ROOT / "tests" / "codec" / "decode-vectors.json").read_text())[

@@ -20,6 +20,8 @@ from polyspec.ordered_json import (
 
 from polyspec.orm import codes
 from polyspec.orm.styled_value import StyledValue
+import ruamel.yaml
+import ryml
 
 __all__ = [
     "CodecError",
@@ -479,8 +481,6 @@ def _common_value(value, style: str):
 # ), and since the tree keeps the scalar's style and tag, plain scalars are resolved with the core schema.
 # ruamel.yaml writes it.
 
-import ruamel.yaml  # noqa: E402
-import ryml  # noqa: E402
 
 _YAML_INT = re.compile(r"(?:[-+]?[0-9]+|0o[0-7]+|0x[0-9a-fA-F]+)\Z")
 _YAML_FLOAT = re.compile(
