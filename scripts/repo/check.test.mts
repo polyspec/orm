@@ -804,6 +804,10 @@ caseTest('commands outside the Makefile build into the shared Rust target direct
 caseTest('a target that runs code using the TypeScript build output holds it', COMPUTE, () => {
   const files = new Set(trackedFiles('*'));
   assert.deepEqual(typescriptReaderErrors(text('Makefile'), (path: string) => files.has(path) ? text(path) : undefined), []);
+  // group-rows-db-typescript reads the build output, so its recipe starts by holding it (KSTD-10-2).
+  const groupRowsLines = text('Makefile').split('\n');
+  const groupRowsAt = groupRowsLines.indexOf('group-rows-db-typescript: typescript-build');
+  assert.equal(groupRowsLines[groupRowsAt + 1], '\t$(READ_TYPESCRIPT)');
   const sources: Record<string, string> = {
     'scripts/reads.mjs': "const run = ['node', ['packages/ts/tests/db.mjs']];\n",
     'packages/ts/tests/db.mjs': "const { Db } = await import('../dist/index.js');\n",

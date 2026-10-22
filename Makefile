@@ -1159,6 +1159,7 @@ group-rows-db-python:
 	cd packages/python && $(PYTHON_VENV)/bin/python -m unittest tests.test_group_rows_db
 # group-rows-db-typescript runs packages/ts/tests/group_rows_db.mjs on the bench database of BENCH_SQLITE_DSN; the script throws on a failed check.
 group-rows-db-typescript: typescript-build
+	$(READ_TYPESCRIPT)
 	ORM_GROUP_DATABASE=sqlite ORM_GROUP_DSN="$$BENCH_SQLITE_DSN" node packages/ts/tests/group_rows_db.mjs
 # group-rows-db-go runs TestGroupRowsDatabase (packages/go/model/group_rows_db_test.go) on BENCH_SQLITE_DSN.
 group-rows-db-go:
