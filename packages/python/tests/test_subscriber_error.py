@@ -46,6 +46,7 @@ class SubscriberErrorTest(unittest.TestCase):
             stop()
         return raised.exception
 
+    # Requirements: INT-96.
     def test_an_orm_error_of_a_subscriber(self):
         cause = OrmError("CONFIG", "the subscriber refuses the statement")
         failure = self.fail_with(cause)

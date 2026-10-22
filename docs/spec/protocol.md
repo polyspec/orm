@@ -104,6 +104,7 @@ Sub   = {"query": Query, "column": "user_seq", "agg": "sum | avg | count"}
 - **PRT-23** `not` negates a nested group, which renders `NOT (…)`; a top-level `where` or `on` group with `not` fails with `IR_INVALID`.
 - **PRT-24** The request carries no SQL text: every condition, output, order, grouping and assignment is one of the forms above, and every bind slot of the plan has a dbspec type.
 - **PRT-25** `contains` and `contains_binary` bind the value between wildcards; `contains` compares the ASCII letters without regard to case and every other character by code point, and `contains_binary` compares by code point ([dialects](dialects.md)).
+- **PRT-77** **Value function.** A value function in a `Func` names its function in `name`, the snake_case name of the ORM value function (`seconds_ago`, `now`), and gives the request parameter indexes of its arguments in `ps`. A function without arguments has no `ps`: `now` is `{"name": "now"}`.
 
 ### 1.4 Order and assignments
 

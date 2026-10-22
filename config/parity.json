@@ -377,6 +377,28 @@
     {
       "name": "python",
       "runner": "python",
+      "internal": [
+        {
+          "glob": "packages/python/tests/test_install_lock.py",
+          "reason": "an internal test of the Python package that tests the install recipe of the Makefile, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/python/tests/test_no_path_change.py",
+          "reason": "an internal test of the Python package that tests the sys.path rule of the test folder (PRINCIPLES.md S3), not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/python/tests/test_packaging.py",
+          "reason": "an internal test of the Python package that tests the package data of the distribution, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/python/tests/test_requires_python.py",
+          "reason": "an internal test of the Python package that tests the requires-python pin against mise.toml, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/python/tests/conformance_result.py",
+          "reason": "an internal test of the Python conformance runner that tests the output encoder of the runner, not a behaviour of the contract (K313)"
+        }
+      ],
       "roots": [
         "packages/python"
       ],
@@ -12382,6 +12404,9 @@
     {
       "id": "py-dbspec-cases",
       "kind": "feature",
+      "requirements": [
+        "ORES-83"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -12573,6 +12598,9 @@
     {
       "id": "py-test-dbspec-render-dialect",
       "kind": "feature",
+      "requirements": [
+        "DBS-174"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -12634,17 +12662,6 @@
           "implementation": "python",
           "test": "packages/python/tests/test_event_placeholders.py",
           "id": "test_clock_and_secret_binds_are_shown_as_placeholders"
-        }
-      ]
-    },
-    {
-      "id": "py-test-install-lock",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_install_lock.py",
-          "id": "test_install_python_installs_the_lock_with_hashes"
         }
       ]
     },
@@ -12761,17 +12778,6 @@
       ]
     },
     {
-      "id": "py-test-no-path-change",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_no_path_change.py",
-          "id": "test_refuses_a_path_change"
-        }
-      ]
-    },
-    {
       "id": "py-test-orm-gen",
       "kind": "feature",
       "requirements": [
@@ -12787,19 +12793,11 @@
       ]
     },
     {
-      "id": "py-test-packaging",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_packaging.py",
-          "id": "test_every_package_data_key_names_a_package_under_src"
-        }
-      ]
-    },
-    {
       "id": "py-test-placeholders",
       "kind": "feature",
+      "requirements": [
+        "DIA-197"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -12811,6 +12809,9 @@
     {
       "id": "py-test-query-methods",
       "kind": "feature",
+      "requirements": [
+        "DSL-154"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -12859,17 +12860,6 @@
           "implementation": "python",
           "test": "packages/python/tests/test_request_hook.py",
           "id": "test_without_hook"
-        }
-      ]
-    },
-    {
-      "id": "py-test-requires-python",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_requires_python.py",
-          "id": "test_requires_python_is_the_minor_release_of_mise_python"
         }
       ]
     },
@@ -12979,7 +12969,8 @@
       "kind": "feature",
       "requirements": [
         "DSL-106",
-        "DSL-107"
+        "DSL-107",
+        "DSL-155"
       ],
       "bindings": [
         {
@@ -13034,6 +13025,9 @@
     {
       "id": "py-test-subscriber-error",
       "kind": "feature",
+      "requirements": [
+        "INT-96"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -13087,22 +13081,14 @@
     {
       "id": "py-test-values",
       "kind": "feature",
+      "requirements": [
+        "PRT-77"
+      ],
       "bindings": [
         {
           "implementation": "python",
           "test": "packages/python/tests/test_values.py",
           "id": "test_ir_carry_name_and_parameters"
-        }
-      ]
-    },
-    {
-      "id": "py-result-python",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/conformance_result.py",
-          "id": "test_encodes_the_go_layout"
         }
       ]
     },
@@ -13249,6 +13235,9 @@
     {
       "id": "py-cov-constraints-and-relations-constraint-errors",
       "kind": "feature",
+      "requirements": [
+        "CFG-33"
+      ],
       "bindings": [
         {
           "implementation": "python",
@@ -13279,6 +13268,9 @@
     {
       "id": "py-cov-model-generation-model-generation-check",
       "kind": "feature",
+      "requirements": [
+        "DBS-175"
+      ],
       "bindings": [
         {
           "implementation": "python",

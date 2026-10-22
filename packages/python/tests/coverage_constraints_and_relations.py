@@ -52,6 +52,7 @@ def constraint_errors(item):
 
 
 class CoverageTest(CoverageCase):
+    # Requirements: CFG-33.
     def test_constraint_errors(self):
         self.each_item("constraint_errors", constraint_errors)
 

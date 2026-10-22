@@ -284,6 +284,7 @@ text lives in T128's Cause and Acceptance, plus `docs/spec/editor.md`.
     in `docs/spec/dbspec.md` (+ko).
   - **ORES-72** Analysis tokens serve highlighting only. Tools locate declarations through these positions,
     never by scanning tokens or text.
+  - **ORES-83** The Python parse position is an immutable record: its `kind`, its `path` (a tuple of names, not a list) and its `line` and `column` are fixed when it is built, and assigning to one of them raises an error.
 - **T128-3 `analyze` and `format` in every runtime.**
   - TS `parse.ts`: classify `Tk` by context and record comment tokens.
   - Go `engine/dbspec`, PHP `Dbspec/Parser.php`, the PHP extension `parse.c`, Python

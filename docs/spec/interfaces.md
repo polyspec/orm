@@ -242,6 +242,7 @@ Errors use the codes in [errors.yaml](errors.yaml). Go callers use `orm.ErrorCod
 - **INT-93** The published TypeScript declarations of `@polyspec/orm` type-check in a project that has none of the driver types (`pg`, `@types/pg`, `mysql2`) installed; they import none of the driver modules, so an application needs only the types of the driver it uses.
 - **INT-94** The PHP extension `polyspec_orm` declares the `pdo` module as a required module, so PHP loads the extension only when pdo is present.
 - **INT-95** The extension package `packages/php-ext/composer.json` is of type `php-ext` and names the extension `polyspec_orm`, and its build-path holds the `config.m4` that builds that extension.
+- **INT-96** A statement event subscriber that raises an error fails its statement with `SUBSCRIBER`. The message of that failure is `SUBSCRIBER: statement event subscriber failed: ` followed by the text of the subscriber's error (for an ORM error, its code, a colon and its message), and the subscriber's error is the cause of the failure.
 
 Secrets and parameter values are excluded from logs.
 

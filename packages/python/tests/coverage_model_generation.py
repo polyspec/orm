@@ -60,6 +60,7 @@ def model_generation_check():
 
 
 class CoverageTest(CoverageCase):
+    # Requirements: DBS-175.
     def test_model_generation_check(self):
         self.each_item("model_generation_check", model_generation_check)
 

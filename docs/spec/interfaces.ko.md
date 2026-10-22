@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 8ce25769016915527ab256b33506eaa2e58b3906cd428beee38b1365fedc0bef -->
+<!-- source-sha256: 319212867106e8e775419468b4a42eee5cc44483d4284fa03533e668413d2c66 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -243,6 +243,7 @@ Go key 변환은 부호 있는 정수, 불리언, 문자열, 바이트, 유한 �
 - **INT-93** 공개된 TypeScript 선언 `@polyspec/orm`은 driver 타입(`pg`, `@types/pg`, `mysql2`)이 설치되지 않은 project에서 type-check된다. 선언은 driver module을 import하지 않으므로, 애플리케이션은 쓰는 driver의 타입만 필요하다.
 - **INT-94** PHP 확장 `polyspec_orm`은 `pdo` module을 필수 module로 선언하므로, PHP는 pdo가 있을 때에만 확장을 로드한다.
 - **INT-95** 확장 package `packages/php-ext/composer.json`은 type `php-ext`이고 확장 이름 `polyspec_orm`을 가지며, 그 build-path에는 그 확장을 빌드하는 `config.m4`가 있다.
+- **INT-96** statement event subscriber가 오류를 던지면 그 statement는 `SUBSCRIBER`로 실패한다. 실패 메시지는 `SUBSCRIBER: statement event subscriber failed: ` 뒤에 subscriber 오류의 텍스트(ORM 오류이면 `코드: 메시지`)가 붙고, subscriber의 오류가 그 실패의 원인(cause)이다.
 
 secret과 parameter 값은 log에서 제외한다.
 

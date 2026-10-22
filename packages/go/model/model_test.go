@@ -397,6 +397,7 @@ func TestWrites(t *testing.T) {
 		if again.GetName() != "renamed" || again.GetReadCount() != 5 {
 			t.Fatalf("update: %s %d", again.GetName(), again.GetReadCount())
 		}
+		// Requirements: DSL-155.
 		if _, err := b.SetName("stale").Update(true); orm.ErrorCode(err) != orm.CodeConfig {
 			t.Fatalf("optimistic update without a fresh version: %v", err)
 		}

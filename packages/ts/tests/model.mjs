@@ -335,6 +335,7 @@ async function writes(db) {
   await b.setName('renamed').plusReadCount(5).update(true);
   const again = await new Author().connect(db).getBySeq(b.getSeq());
   check(again.getName() === 'renamed' && again.getReadCount() === 5, `update: ${again.getName()} ${again.getReadCount()}`);
+  // Requirements: DSL-155.
   check(await code(b.setName('stale').update(true)) === 'CONFIG', 'optimistic update without a fresh version');
   await again.setName('again').update();
   await b.setName('x').update();

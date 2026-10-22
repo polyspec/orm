@@ -250,6 +250,7 @@ def check_files(test: unittest.TestCase, case) -> None:
 
 
 class DbspecPositionTest(unittest.TestCase):
+    # Requirements: ORES-83.
     def test_position_is_frozen_with_tuple_path(self):
         position = DbspecPosition("table", ("orders",), 5, 7)
         self.assertEqual(

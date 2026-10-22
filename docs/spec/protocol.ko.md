@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 1a2520202af863c31df7078da5908d1538d197cb78dbbe9e68c7786c15fa05e7 -->
+<!-- source-sha256: 01ca40951d400e9154cfa02a47fc204ef9d101f73df91f0f69beb026883df588 -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -105,6 +105,7 @@ Sub   = {"query": Query, "column": "user_seq", "agg": "sum | avg | count"}
 - **PRT-23** `not`은 하위 묶음을 부정하며 `NOT (…)`로 렌더링된다. `not`을 가진 top-level `where`나 `on` 묶음은 `IR_INVALID`다.
 - **PRT-24** 요청은 SQL text를 싣지 않는다. 모든 조건, 출력, 정렬, 그룹, 할당은 위 형식 중 하나이며 plan의 모든 bind slot은 dbspec type을 가진다.
 - **PRT-25** `contains`와 `contains_binary`는 값을 와일드카드 사이에 바인드한다. `contains`는 ASCII 글자를 대소문자 구분 없이, 다른 모든 문자를 code point로 비교하고, `contains_binary`는 code point로 비교한다([dialects](dialects.md)).
+- **PRT-77** **값 함수.** `Func`의 값 함수는 `name`에 함수 이름을 쓴다. ORM 값 함수의 snake_case 이름(`seconds_ago`, `now`)이다. 인자의 요청 매개변수 인덱스는 `ps`에 쓴다. 인자가 없는 함수에는 `ps`가 없다. `now`는 `{"name": "now"}`다.
 
 ### 1.4 정렬과 할당
 

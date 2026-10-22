@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: d96af97dda04b76ef1c277c8473d3804ea720bc3996d58ff33ea049a71ad62a6 -->
+<!-- source-sha256: f1b7e779ab16197dfcca5a0bc355d5abbabd1866d521f0050a9667decfd6010c -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -445,3 +445,4 @@ Audit context 선택지. Audit trigger는 클라이언트가 transaction 안에�
 - **DIA-194** **listen.** `listen(channel)`은 pool 밖의 자기 연결을 열고, channel을 인용된 식별자로 `LISTEN`을 실행하며, 알림마다 channel, payload, 보낸 프로세스의 pid를 준다. 받기 대기가 없을 때 도착한 알림은 도착 순서대로 보관한다. 연결이 끊기면 구독은 `CONNECTION_LOST`로 끝난다.
 - **DIA-195** **unlisten과 취소.** `unlisten(channel)`은 listen 연결에서 `UNLISTEN`을 실행하고 그 channel의 전달을 멈춘다. `close()`는 구독의 모든 channel에 `UNLISTEN`을 실행하고 연결을 클라이언트에 오류 없이 돌려준다. 대기 중인 받기는 [CFG-9](config.ko.md)가 정하는 대로 그 언어의 취소 수단으로 취소한다: Go는 `db.WithContext(ctx)`의 context를, TypeScript는 `db.withSignal(signal)`의 signal을 취소한다. Python, PHP, Rust에는 받기를 위한 그런 수단이 없으므로 그 받기는 기한을 받으며, 기한이 지나면 받기가 끝난다. 취소되었거나 기한이 지난 받기는 `CANCELED`로 실패하고 구독을 닫으며, 그 뒤의 호출은 `CONFIG`로 실패한다.
 - **DIA-196** **다른 데이터베이스.** MySQL, SQLite, markdown executor에서 `notify`, `listen`, `unlisten`은 문이나 연결을 쓰기 전에 `CAPABILITY_UNSUPPORTED`로 실패한다. 어느 것도 조용한 no-op이 아니다.
+- **DIA-197** **Python 드라이버 형식.** Python client는 엔진이 쓴 문장을 자기 드라이버 형식으로 바꿔 보낸다. MySQL의 `?` 표지는 `%s`가 되고 값을 순서대로 받는다. PostgreSQL의 `$n` 표지는 이름 `pn`을 가진 `%(pn)s`가 된다. 인용 문자열, 인용 식별자, 주석 안의 표지는 글자이므로 그대로 둔다. 드라이버가 문장 전체를 형식화하므로 문장의 모든 `%`는 `%%`로 쓴다. 값이 없는 문장은 인자 없이 그대로 드라이버에 넘긴다.

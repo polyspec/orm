@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: f3331bc1dbe1c9787e734981b6c6dee394af9f5a41bc6ecbf2a305b4671f9cd5 -->
+<!-- source-sha256: b9c9c792feddb7de931ff18ba7a109d83ee5813a372066556256457e7d332125 -->
 # dbspec
 
 [English](dbspec.md)
@@ -338,6 +338,7 @@ client는 문서 집합으로 runtime model 하나를 만들고, 생성 코드�
 - **DBS-118** **Relation.** 생성 코드는 이전처럼 column의 match method로 두 entity를 join한다. join 결과는 호출이 준 alias나 `<entity>_model`, `<entity>_models`로 얻는다.
 - **DBS-119** **Connection.** raw connection은 DSN URI와 설정을 받고 set을 등록하지 않으며, schema 경로는 받지 않는다. 생성 코드는 manifest text와 `manifestHash`를 담고, 그 connect helper가 connection을 열어 그 set을 등록한다. `utils().schema().register(schema)`는 열린 connection에 set을 등록하고, `install`은 자기가 설치한 set을 등록한다. 등록은 database를 읽지 않는다. schema 값으로 등록한 set은 manifest text와 external text에서 runtime model을 얻으므로 읽은 생성 코드가 필요 없다. PHP는 생성 class의 bootstrap이 실행된 뒤에는 그 array를 쓴다. request는 `manifestHash`를 담고 그 set이 등록된 connection에서만 실행된다([protocol](protocol.md)).
 - **DBS-120** **Generated metadata.** manifest가 runtime model의 원천이고, 생성 코드는 그것과 어긋나지 않는다. PHP를 뺀 모든 client는 생성 코드가 담은 manifest text와 external text에서 runtime model을 만들고 생성 entity는 이름과 set만 가지므로, 생성 코드에 어긋날 수 있는 metadata가 없다(Rust model은 build script가 다시 생성하기도 한다). PHP는 각 생성 class의 `meta()` array를 쓴다. runtime model을 만들 때 각 array를 `manifest_hash`를 뺀 채 manifest text와 external text가 주는 entity와 비교하고, 차이는 manifest에 없는 entity를 포함해 어떤 statement보다 먼저 `CONFIG`로 실패하며 class, entity, 처음 다른 field 경로(`columns.name.length`)와 재생성 명령 `orm-gen gen`을 밝힌다.
+- **DBS-175** `orm-gen gen --check`는 아무것도 쓰지 않는다. generator가 `--out` 아래에 쓸 파일을 그 자리의 파일과 비교한다. 모든 파일이 같으면 0으로 끝나고, 다른 파일마다 `differs: <path>`를 출력한 뒤 1로 끝난다.
 
 | dbspec | Go | PHP | TypeScript | Rust | Python |
 | --- | --- | --- | --- | --- | --- |

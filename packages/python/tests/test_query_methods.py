@@ -61,6 +61,7 @@ class QueryMethodsTest(unittest.TestCase):
         sys.modules.pop("query_methods_models", None)
         cls.tmp.cleanup()
 
+    # Requirements: DSL-154.
     def test_every_query_method_is_declared_and_typed(self):
         item = self.models.Item
         for name in [

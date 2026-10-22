@@ -1,5 +1,5 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: 205698aacb665ea8589f2ae8e3822ed6534dfdb0da42a769936d291ed8308ca4 -->
+<!-- source-sha256: b16b3a454952eb39da0232995d551663dd0cd03116ac7147acbf5d1ea06cd1da -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
@@ -93,6 +93,7 @@ Key   = [Operator] Column
   - **DSL-151** scan된 호출은 class를 import한 generated model이 속한 set의 호출이며, import binding은 그 언어의 checker가 해석하는 대로 해석한다. 다른 set의 generated model에서 import한 같은 이름의 class는 다른 class이므로, 그 호출은 이 set의 generation이 선언하지도 거부하지도 않는다. Go는 receiver type의 package를 따른다. TypeScript는 relative나 absolute specifier를 import하는 file 기준으로 해석한다: set의 `models.ts`는 그 set의 것이고, orm-gen이 다른 manifest(그 `MANIFEST_HASH`)로 생성한 module은 다른 set의 것이다; scan의 어떤 file도 가리키지 않는 bare specifier(package나 path alias)는 class 이름을 따른다. PHP는 `use`와 namespace가 class에 주는 fully qualified name을 따른다. Python은 relative import를 import하는 file에서 set의 `models.py`로 해석하고, absolute import는 dotted name이 그 file path의 꼬리일 때 그 file을 가리킨다. Rust는 path나 `use`가 class에 이르는 module을 따른다: set의 `orm_model.rs`를 `include!`하는 module(`OUT_DIR`이면 `polyspec_orm::models!()`)은 그 set의 것이고, 다른 `orm_model.rs`를 include하는 module은 다른 set의 것이다. 변수에 담긴 receiver는 변수 이름이 아니라 checker가 그 변수의 type을 정하는 대로, 변수의 initializer와 모든 재대입을 거쳐 그 class와 class의 import binding으로 해석한다: import한 class의 chain으로 초기화되고 conditional expression(`c ? a : b`, `a if c else b`, `if c { a } else { b }`)이나 branch에서 자기 chain으로 재대입된 변수는 그 class를 가지므로, 각 재대입 뒤의 호출은 그 class의 호출이다. 어떤 import도 가리키지 않는 class는 전처럼 이름을 따른다.
   - **DSL-152** orm-gen이 scan 중 parse하지 못하는 source file은 모든 generator에서 error다: parse되지 않은 file은 그 호출을 숨기므로, generation은 멈추고 아무것도 쓰지 않으며, error는 file과 parser의 position(line, parser가 주면 column)과 message를 밝힌다. 어떤 generator도 그 file을 건너뛰거나 warning으로만 보고하지 않는다.
   - **DSL-153** 숫자가 뒤따르지 않는 `$`는 자리표시자가 아니라 글자다. 그래서 parent 슬롯 확장은 그것을 그대로 쓴다. 번호를 붙이는 것은 `$n`뿐이며(DIA-2, DIA-19), literal이나 식별자 안의 `$`에는 번호가 붙지 않는다. 그런 `$`가 있는 statement는 `$`를 바꾸지 않은 같은 글자로 확장된다.
+  - **DSL-154** **선언된 query 메서드.** 생성된 model class는 chain 메서드를 스키마의 이름으로 선언한다: 각 column의 조건 메서드, 두 개 이상 column으로 된 key prefix마다의 tuple 메서드, 정렬 메서드(`orderBy<Col>Asc`), `addColumn<Name>` 메서드, `plus<Col>` 메서드, 각 index의 `forceIndex<Name>` 메서드. 선언된 메서드는 모두 model 자신을 돌려주도록 타입이 정해진다(Python은 `typing.Self`). 그래서 타입 검사기는 chain을 model로 읽는다.
 
 ### 2.3 값 형태
 
@@ -253,6 +254,7 @@ rows, err := model.Product().Connect(slave1).
 - **DSL-105** `duplication(model)`과 `create()` — 동작: `model`의 변경 값으로 중복 키 갱신을 포함한 삽입
 - **DSL-106** `update()` — 동작: 행의 변경 컬럼 갱신
 - **DSL-107** `update(true)` — 동작: 저장된 `updated_ts`가 조회 값과 같을 때만 갱신, 다르면 `OPTIMISTIC_LOCK`
+- **DSL-155** 새 갱신 시각이 없는 행의 `update(true)` — 결과: `CONFIG`. 갱신 시각 컬럼과 함께 읽지 않았거나, 같은 model의 앞선 `update`가 그 시각을 비운 행은 새 갱신 시각이 없다. 그런 행은 `update(true)` 전에 다시 읽어야 한다.
 - **DSL-108** `update()`나 `delete()`와 함께 쓴 `expectRevision(column, revision)` — 동작: 행의 `column`이 여전히 `revision`일 때만 쓴다. `update()`는 `revision + 1`도 저장한다. 아니면 `REVISION_CHANGED`이며 아무것도 바뀌지 않는다. 아래 규칙을 본다
 - **DSL-109** `save()` — 동작: 기본 키가 있으면 `update()`, 없으면 `create()`
 - **DSL-110** `delete()` — 동작: 행 또는 컬렉션의 모든 행 삭제

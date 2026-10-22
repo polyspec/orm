@@ -316,6 +316,7 @@ final class ModelTest extends TestCase
         $b->setName('renamed')->plusReadCount(5)->update(true);
         $again = (new Author())($db)->getBySeq($b->getSeq());
         self::check($again->getName() === 'renamed' && $again->getReadCount() === 5, 'update');
+        // Requirements: DSL-155.
         self::check(self::code(fn() => $b->setName('stale')->update(true)) === Code::CONFIG, 'optimistic update without a fresh version');
         $again->setName('again')->update();
         $b->setName('x')->update();
