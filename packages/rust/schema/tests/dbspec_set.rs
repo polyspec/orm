@@ -67,19 +67,14 @@ fn parent_dirs(path: &Path) {
     std::fs::create_dir_all(parent).unwrap_or_else(|e| panic!("{}: {e}", parent.display()));
 }
 
-#[cfg(unix)]
+/// Makes a symbolic link to `target`. The symlink crate holds the platform's link calls; a target that is a directory
+/// is linked as a directory, which Windows distinguishes. The tree's targets exist when the links are made.
 fn symlink(target: &str, link: &Path) -> std::io::Result<()> {
-    std::os::unix::fs::symlink(target, link)
-}
-
-#[cfg(windows)]
-fn symlink(target: &str, link: &Path) -> std::io::Result<()> {
-    // Windows distinguishes file and directory links; the tree's targets exist when links are made.
     let resolved = link.parent().expect("a link has a parent").join(target);
     if std::fs::metadata(&resolved).map(|m| m.is_dir()).unwrap_or(false) {
-        std::os::windows::fs::symlink_dir(target, link)
+        ::symlink::symlink_dir(target, link)
     } else {
-        std::os::windows::fs::symlink_file(target, link)
+        ::symlink::symlink_file(target, link)
     }
 }
 
