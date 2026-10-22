@@ -13,6 +13,7 @@ function dbspec_read_input(string $path): string
         fwrite(STDERR, "$path: is a directory\n");
         exit(1);
     }
+    // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged -- the warning text is the reason that the runner prints, read by error_get_last
     $text = @file_get_contents($path);
     if ($text === false) {
         $reason = error_get_last()['message'] ?? 'cannot be read';

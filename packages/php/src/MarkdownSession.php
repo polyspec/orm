@@ -22,6 +22,7 @@ final class MarkdownSession
     /** Connects to the server and sends the corpus and token in the first connect message. */
     public static function dial(string $address, string $corpus, string $token): self
     {
+        // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged -- a refused connect returns false with errno and errstr, reported as DRIVER below
         $conn = @stream_socket_client("tcp://$address", $errno, $errstr);
         if ($conn === false) {
             throw new OrmException(
@@ -69,6 +70,7 @@ final class MarkdownSession
             throw new OrmException(Code::INTERNAL, 'writing the message: ' . $e->getMessage(), $e);
         }
         for ($written = 0; $written < strlen($line); $written += $n) {
+            // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged -- a closed connection returns false or 0, reported as DRIVER below
             $n = @fwrite($this->conn, substr($line, $written));
             if ($n === false || $n === 0) {
                 $this->close();

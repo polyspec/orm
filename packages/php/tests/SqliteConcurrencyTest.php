@@ -29,12 +29,12 @@ final class SqliteConcurrencyTest extends TestCase
         self::$documents = [(string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/bench/bench.dbs')];
 
         self::$work = sys_get_temp_dir() . '/orm-php-sqlite-lock-' . getmypid();
-        @mkdir(self::$work, 0o700, true);
+        is_dir(self::$work) || mkdir(self::$work, 0o700, true);
         register_shutdown_function(static function (): void {
             foreach (glob(self::$work . "/*") ?: [] as $file) {
-                @unlink($file);
+                is_file($file) && unlink($file);
             }
-            @rmdir(self::$work);
+            is_dir(self::$work) && rmdir(self::$work);
         });
     }
 

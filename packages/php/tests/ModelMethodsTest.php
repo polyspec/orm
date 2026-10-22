@@ -40,7 +40,7 @@ final class ModelMethodsTest extends TestCase
     {
         $root = dirname(__DIR__, 3);
         self::$work = $work = sys_get_temp_dir() . '/orm-php-model-methods-' . getmypid();
-        @mkdir("$work/model", 0o700, true);
+        is_dir("$work/model") || mkdir("$work/model", 0o700, true);
 
         file_put_contents("$work/methods.dbs", SCHEMA);
         file_put_contents(

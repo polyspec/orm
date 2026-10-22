@@ -173,11 +173,8 @@ final class MarkdownConformanceTest extends TestCase
         $listening = '/^\[serve\] listening on 127\.0\.0\.1:([0-9]+) for the corpus (.+)$/';
         if ($line === false || preg_match($listening, rtrim($line, "\n"), $m) !== 1 || $m[2] !== $s->corpus) {
             throw new RuntimeException(
-                'flowmark serve printed ' . json_encode(
-                    $line
-                ) . ", not its listening line; stderr:\n" . (string) @file_get_contents(
-                    $s->stderr
-                )
+                'flowmark serve printed ' . json_encode($line) . ", not its listening line; stderr:\n"
+                    . (is_file($s->stderr) ? (string) file_get_contents($s->stderr) : '')
             );
         }
         $s->port = $m[1];
@@ -192,7 +189,8 @@ final class MarkdownConformanceTest extends TestCase
             $s->db = connect($s->dsn($s->corpus, $s->token), new Config());
         } catch (OrmException $e) {
             throw new RuntimeException(
-                "connect: {$e->code_} {$e->getMessage()}; stderr:\n" . (string) @file_get_contents($s->stderr),
+                "connect: {$e->code_} {$e->getMessage()}; stderr:\n"
+                    . (is_file($s->stderr) ? (string) file_get_contents($s->stderr) : ''),
                 0,
                 $e
             );

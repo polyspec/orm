@@ -58,6 +58,7 @@ final class Codec
         for ($i = count($styles) - 1; $i >= 0; $i--) {
             switch ($styles[$i]) {
                 case 'gz':
+                    // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged -- a bad stream returns false, reported as CODEC_DECODE below
                     $v = @gzuncompress($v);
                     if ($v === false) {
                         throw new OrmException(Code::CODEC_DECODE, 'gz: bad zlib stream');
@@ -81,6 +82,7 @@ final class Codec
                             'serialize: objects and references are not supported'
                         );
                     }
+                    // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged -- a bad format returns false, reported as CODEC_DECODE below
                     $v = @unserialize($v, ['allowed_classes' => false]);
                     if ($v === false && $raw !== serialize(false)) {
                         throw new OrmException(Code::CODEC_DECODE, 'serialize: bad format');
@@ -418,6 +420,7 @@ final class Codec
     {
         // The exact text only: white space around the address is CODEC_ENCODE (docs/spec/codec.md).
         // inet_pton throws a ValueError on a NUL byte, which is not an address either.
+        // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged -- a text that is no address returns false, reported as CODEC_ENCODE below
         $b = str_contains($s, "\0") ? false : @inet_pton($s);
         if ($b === false) {
             throw new OrmException(Code::CODEC_ENCODE, "ip: \"$s\" is not an address");

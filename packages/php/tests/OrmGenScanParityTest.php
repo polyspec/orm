@@ -21,7 +21,7 @@ final class OrmGenScanParityTest extends TestCase
     public static function setUpBeforeClass(): void
     {
         self::$work = sys_get_temp_dir() . '/orm-php-scan-parity-' . getmypid();
-        @mkdir(self::$work, 0o700, true);
+        is_dir(self::$work) || mkdir(self::$work, 0o700, true);
     }
 
     public static function tearDownAfterClass(): void
@@ -94,7 +94,7 @@ final class OrmGenScanParityTest extends TestCase
     public function testTheNodeAndThePhpScanAgree(array $case): void
     {
         $dir = self::$work . '/' . $case['id'];
-        @mkdir("$dir/src", 0o700, true);
+        is_dir("$dir/src") || mkdir("$dir/src", 0o700, true);
         $node = self::node($case, $dir);
         $receiver = str_replace(
             '{model}',

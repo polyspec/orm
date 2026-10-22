@@ -79,6 +79,7 @@ final class Dbspec
         if (is_dir($path)) {
             throw new \RuntimeException("cannot read $path: is a directory");
         }
+        // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged -- the warning text is the reason of the error below, read by error_get_last
         $bytes = @file_get_contents($path);
         if ($bytes === false) {
             $reason = error_get_last()['message'] ?? 'cannot be read';

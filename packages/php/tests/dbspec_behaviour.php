@@ -423,6 +423,7 @@ function dbspec_behaviour_cases(): array
         ] as $mode => $modeName
     ) {
         foreach (['mysql', 'postgres'] as $dialect) {
+            // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged -- PDO's warning mode reports the failed query as a warning, and the case records the outcome
             $cases["introspect/query-failure/$modeName/$dialect"] = static fn(): array => @behaviour_introspected(
                 new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => $mode]),
                 $dialect

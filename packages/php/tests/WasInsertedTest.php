@@ -31,7 +31,7 @@ final class WasInsertedTest extends TestCase
             return;
         }
         $work = sys_get_temp_dir() . '/orm-php-was-inserted-' . getmypid();
-        @mkdir($work, 0o700, true);
+        is_dir($work) || mkdir($work, 0o700, true);
         register_shutdown_function(static function () use ($work): void {
             exec('rm -rf ' . escapeshellarg($work));
         });

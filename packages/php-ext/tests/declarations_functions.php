@@ -1,7 +1,7 @@
 <?php
 
-// The functions of declarations.php, which requires this file, and of DeclarationsTest.php, whose bootstrap requires
-// it.
+// The functions of declarations.php, which requires this file, and of DeclarationsTest.php, whose
+// bootstrap requires it.
 declare(strict_types=1);
 
 // The namespace and the class outside it that the extension registers, which are those of the PHP client.

@@ -47,7 +47,7 @@ final class SchemaSetTest extends TestCase
     {
         self::$root = dirname(__DIR__, 3);
         self::$work = sys_get_temp_dir() . '/orm-php-schema-set-' . getmypid();
-        @mkdir(self::$work, 0o700, true);
+        is_dir(self::$work) || mkdir(self::$work, 0o700, true);
         register_shutdown_function(static function (): void {
             exec('rm -rf ' . escapeshellarg(self::$work));
         });

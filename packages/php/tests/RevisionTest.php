@@ -30,7 +30,7 @@ final class RevisionTest extends TestCase
     public static function setUpBeforeClass(): void
     {
         self::$work = sys_get_temp_dir() . '/orm-php-revision-' . getmypid();
-        @mkdir(self::$work, 0o700, true);
+        is_dir(self::$work) || mkdir(self::$work, 0o700, true);
         Generator::generate(
             RuntimeModel::build(RuntimeModel::parse(['revision.dbs' => self::DOCUMENT])),
             self::$work . '/models',

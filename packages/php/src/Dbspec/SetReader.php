@@ -161,6 +161,7 @@ final class SetReader
      */
     private function kind(string $path, bool $follow = false): ?string
     {
+        // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged -- a missing path returns false, which means no entry
         $stat = $follow ? @stat($path) : @lstat($path);
         if ($stat === false) {
             return null;
@@ -181,6 +182,7 @@ final class SetReader
     private function lists(string $dir, string $name): ?bool
     {
         if (!array_key_exists($dir, $this->listings)) {
+            // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged -- an unreadable folder returns false, which means no listing
             $this->listings[$dir] = @scandir($dir, SCANDIR_SORT_NONE);
         }
         $listing = $this->listings[$dir];
@@ -198,11 +200,13 @@ final class SetReader
     {
         $failed = static fn(): SetError => new SetError('set.file', $path, "cannot read $path: "
             . (error_get_last()['message'] ?? 'cannot be read'));
+        // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged -- the warning text is the reason of the failure, read by error_get_last
         $handle = @fopen($path, 'rb');
         if ($handle === false) {
             return $failed();
         }
         try {
+            // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged -- the warning text is the reason of the failure, read by error_get_last
             $stat = @fstat($handle);
             if ($stat === false) {
                 return $failed();
@@ -213,6 +217,7 @@ final class SetReader
             }
             // A failed read of a plain file is a notice and may still return the bytes read before it.
             error_clear_last();
+            // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged -- the warning text is the reason of the failure, read by error_get_last
             $bytes = @stream_get_contents($handle);
             if ($bytes === false || error_get_last() !== null) {
                 return $failed();

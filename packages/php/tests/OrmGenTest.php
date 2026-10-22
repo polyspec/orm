@@ -19,7 +19,7 @@ final class OrmGenTest extends TestCase
     public static function setUpBeforeClass(): void
     {
         self::$work = sys_get_temp_dir() . '/orm-php-orm-gen-' . getmypid();
-        @mkdir(self::$work, 0o700, true);
+        is_dir(self::$work) || mkdir(self::$work, 0o700, true);
     }
 
     public static function tearDownAfterClass(): void
@@ -30,7 +30,7 @@ final class OrmGenTest extends TestCase
     /** Writes the set file of $documents and $external into $dir. */
     private static function setFile(string $dir, array $documents, array $external = []): string
     {
-        @mkdir($dir, 0o700, true);
+        is_dir($dir) || mkdir($dir, 0o700, true);
         $path = "$dir/dbspec-set.json";
         file_put_contents(
             $path,
@@ -64,7 +64,7 @@ final class OrmGenTest extends TestCase
     {
         $work = self::$work;
         $dir = "$work/gen-check";
-        @mkdir("$dir/model", 0o700, true);
+        is_dir("$dir/model") || mkdir("$dir/model", 0o700, true);
         file_put_contents(
             "$dir/example.dbs",
             "dbspec 1 example\n\ntable item {\n  seq i64\n  name varchar(32)\n  primary key (seq)\n}\n\ntable tag "
@@ -180,7 +180,7 @@ final class OrmGenTest extends TestCase
         $work = self::$work;
         // restore() is a method of every model, so it overlaps with the condition method of a restore column.
         $dir = "$work/gen-reserved";
-        @mkdir("$dir/model", 0o700, true);
+        is_dir("$dir/model") || mkdir("$dir/model", 0o700, true);
         $set = self::setFile($dir, ['example.dbs']);
         foreach (['create', 'restore'] as $column) {
             file_put_contents(
@@ -207,7 +207,7 @@ final class OrmGenTest extends TestCase
         $root = dirname(__DIR__, 3);
         $dir = "$work/gen-use";
         $set = self::setFile("$dir/set/app", ['member.dbs'], ['../core/core.dbs']);
-        @mkdir("$dir/set/core", 0o700, true);
+        is_dir("$dir/set/core") || mkdir("$dir/set/core", 0o700, true);
         copy("$root/contracts/fixtures/external/member.dbs", "$dir/set/app/member.dbs");
         copy("$root/contracts/fixtures/external/core.dbs", "$dir/set/core/core.dbs");
         [$code, $out, $err] = self::tool(
@@ -229,7 +229,8 @@ final class OrmGenTest extends TestCase
         );
         // The text is written in pieces joined by the concatenation operator (Generator::text), so the pieces are
         // joined back first.
-        $declarations = (string) @file_get_contents("$dir/model/schema_declarations.php");
+        $path = "$dir/model/schema_declarations.php";
+        $declarations = is_file($path) ? (string) file_get_contents($path) : '';
         $text = str_replace("'\n    . '", '', $declarations);
         self::assertTrue(
             str_contains(
@@ -314,7 +315,7 @@ final class OrmGenTest extends TestCase
         // packages/php has its own vendor (its PHPUnit), so the bin runs from a copy of the package's bin folder
         // beside no vendor folder.
         $bin = self::$work . '/package/bin';
-        @mkdir($bin, 0o700, true);
+        is_dir($bin) || mkdir($bin, 0o700, true);
         // __DIR__ of the bin is the real path of its folder.
         $bin = realpath($bin);
         copy(dirname(__DIR__) . '/bin/orm-gen', "$bin/orm-gen");

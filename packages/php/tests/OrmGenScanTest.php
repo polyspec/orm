@@ -22,7 +22,7 @@ final class OrmGenScanTest extends TestCase
     public static function setUpBeforeClass(): void
     {
         self::$work = sys_get_temp_dir() . '/orm-php-orm-gen-scan-' . getmypid();
-        @mkdir(self::$work, 0o700, true);
+        is_dir(self::$work) || mkdir(self::$work, 0o700, true);
     }
 
     public static function tearDownAfterClass(): void
@@ -48,7 +48,7 @@ final class OrmGenScanTest extends TestCase
     private static function generate(string $name, array $sources, array $extra = []): array
     {
         $dir = self::$work . '/' . $name;
-        @mkdir("$dir/src", 0o700, true);
+        is_dir("$dir/src") || mkdir("$dir/src", 0o700, true);
         $scan = [];
         foreach ($sources as $file => $text) {
             file_put_contents("$dir/src/$file", $text);
@@ -84,9 +84,9 @@ final class OrmGenScanTest extends TestCase
     {
         $root = dirname(__DIR__, 3);
         $dir = self::$work . '/' . $name;
-        @mkdir("$dir/set/app", 0o700, true);
-        @mkdir("$dir/set/core", 0o700, true);
-        @mkdir("$dir/src", 0o700, true);
+        is_dir("$dir/set/app") || mkdir("$dir/set/app", 0o700, true);
+        is_dir("$dir/set/core") || mkdir("$dir/set/core", 0o700, true);
+        is_dir("$dir/src") || mkdir("$dir/src", 0o700, true);
         $document = $owned === null ? 'member.dbs' : 'note.dbs';
         if ($owned === null) {
             copy("$root/contracts/fixtures/external/member.dbs", "$dir/set/app/$document");
@@ -776,8 +776,8 @@ PHP;
     private static function generateShapes(string $name, string $source): array
     {
         $dir = self::$work . '/' . $name;
-        @mkdir("$dir/set", 0o700, true);
-        @mkdir("$dir/src", 0o700, true);
+        is_dir("$dir/set") || mkdir("$dir/set", 0o700, true);
+        is_dir("$dir/src") || mkdir("$dir/src", 0o700, true);
         file_put_contents(
             "$dir/set/shapes.dbs",
             "dbspec 1 shapes\n\ntable alpha {\n  seq i64 identity\n  flag bool\n  primary key (seq)\n}\n\ntable beta "
@@ -901,7 +901,7 @@ PHP;
     {
         // The test of DSL-42 (docs/spec).
         $dir = self::$work . '/directory';
-        @mkdir("$dir/src/nested", 0o700, true);
+        is_dir("$dir/src/nested") || mkdir("$dir/src/nested", 0o700, true);
         file_put_contents("$dir/src/nested/a.php", "<?php\n\$a = new " . self::NS . "\\Author();\n\$a->ltSeq(1);\n");
         file_put_contents("$dir/src/notes.txt", "ltIgnored(");
         $run = function (string $out) use ($dir): array {
@@ -938,7 +938,7 @@ PHP;
     {
         // Requirements: DSL-152.
         $dir = self::$work . '/unparsable';
-        @mkdir("$dir/src", 0o700, true);
+        is_dir("$dir/src") || mkdir("$dir/src", 0o700, true);
         file_put_contents("$dir/src/usage.php", "<?php\n\$x = 1;\n");
         file_put_contents("$dir/src/broken.php", "<?php\n\$a = new (;\n");
         $stderr = fopen('php://memory', 'w+');

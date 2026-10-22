@@ -50,7 +50,7 @@ final class ModelTest extends TestCase
         self::$root = dirname(__DIR__, 3);
         self::$documents = [(string) file_get_contents(self::$root . "/contracts/fixtures/bench/bench.dbs")];
         self::$work = sys_get_temp_dir() . '/orm-php-model-' . getmypid();
-        @mkdir(self::$work, 0o700, true);
+        is_dir(self::$work) || mkdir(self::$work, 0o700, true);
 
         self::$caseDatabases = [];
 

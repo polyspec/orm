@@ -71,7 +71,7 @@ final class ClientGenericsTest extends TestCase
     {
         $root = dirname(__DIR__, 3);
         self::$work = $work = sys_get_temp_dir() . '/orm-php-client-generics-' . getmypid();
-        @mkdir($work, 0o700, true);
+        is_dir($work) || mkdir($work, 0o700, true);
 
         file_put_contents("$work/calls.php", CALLS);
     }
