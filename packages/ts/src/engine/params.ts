@@ -88,6 +88,10 @@ class ParamUses {
       if (cols.length > 0) (p.ps ?? []).forEach((i, k) => this.column(i, fieldOf(ent, present(cols[k % cols.length], `tuple column ${k % cols.length + 1}`))));
       return;
     }
+    if (p.op === 'fulltext' || p.op === 'fulltext_boolean') {
+      if (p.p !== undefined) this.add(p.p, { type: 'text' });
+      return;
+    }
     const f = fieldOf(ent, p.column ?? '');
     if (p.value !== undefined) for (const i of p.value.ps ?? []) this.add(i, { type: intervalType(p.value.name) });
     if (p.op === 'contains' || p.op === 'contains_binary') {

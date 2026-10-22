@@ -77,6 +77,8 @@ class Builder {
     if (type === 'datetime' || type === 'time') s.precision = 6;
     return this.typed(s);
   }
+  /** The value Params[i] bound through the value transform kind, with the text type of a full-text search. */
+  public transformed(i: number, transform: string): string { return this.typed(slot({ from: 'param', param: i, transform, col_type: 'text' })); }
   /** The value Params[i] compared with or assigned to col: col's type, with the digits of a decimal, time or datetime and the length of a varchar. */
   public colParam(i: number, col: Column, transform = ''): string {
     const s = slot({ from: 'param', param: i, transform, col_type: col.type });
@@ -583,6 +585,12 @@ export class Planner {
         rows.push(cols.map((name, k) => this.renderValue(b, columnIn(s.ent, name), present(ps[i + k], `value ${i + k + 1} of ${op}`))));
       }
       return this.d.tupleIn(this.qualified(s, cols), rows, op === 'tuple_not_in');
+    }
+    if (op === 'fulltext' || op === 'fulltext_boolean') {
+      const cols = present(pr.cols, `the columns of ${op}`);
+      const sql = this.d.fulltext(this.qualified(s, cols), transform => b.transformed(present(pr.p, `the value of ${op}`), transform), op === 'fulltext_boolean');
+      if (sql === undefined) throw new OrmError(codes.OPERATOR_NOT_ALLOWED, `${op} on ${s.ent.name}`);
+      return sql;
     }
     const column = present(pr.column, `the column of ${op}`);
     const col = columnIn(s.ent, column);

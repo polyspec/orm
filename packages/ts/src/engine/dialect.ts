@@ -102,6 +102,8 @@ export interface Dialect {
   columnFunction(name: string, col: string, arg: (i: number) => string): string | undefined;
   valueFunction(name: string, arg: () => string, now: () => string): string | undefined;
   containsBinary(col: string, value: (transform: string) => string): string;
+  /** A full-text match of cols against value, in boolean mode when boolean is set; undefined when the dialect has no full-text search (DIA-187). */
+  fulltext(cols: readonly string[], value: (transform: string) => string, boolean: boolean): string | undefined;
   tupleIn(cols: readonly string[], rows: readonly (readonly string[])[], negate: boolean): string;
   random(): string;
   /** The clause that sorts NULL before every value ascending and after every value descending; PostgreSQL alone needs it. */
@@ -201,6 +203,7 @@ const mysql: Dialect = {
   },
   // utf8mb4_0900_bin compares code points under LIKE; LIKE BINARY is deprecated since MySQL 8.0.27.
   containsBinary: (col, value) => `${col} LIKE ${value('like_contains')}`,
+  fulltext: (cols, value, boolean) => `MATCH (${cols.join(', ')}) AGAINST (${boolean ? value('fulltext_boolean') + ' IN BOOLEAN MODE' : value('') + ' IN NATURAL LANGUAGE MODE'})`,
   tupleIn: (cols, rows, negate) => tupleIn(cols, rows, negate, false),
   random: () => 'RAND()',
   nullsOrder: () => '',
@@ -258,6 +261,7 @@ const postgres: Dialect = {
     });
   },
   containsBinary: (col, value) => `${col} LIKE ${value('like_contains')}`,
+  fulltext: (cols, value, boolean) => `to_tsvector('simple', ${cols.map(c => `coalesce(${c}, '')`).join(" || ' ' || ")}) @@ ${boolean ? 'websearch_to_tsquery' : 'plainto_tsquery'}('simple', ${value('')})`,
   tupleIn: (cols, rows, negate) => tupleIn(cols, rows, negate, false),
   random: () => 'random()',
   nullsOrder: desc => (desc ? ' NULLS LAST' : ' NULLS FIRST'),
@@ -321,6 +325,7 @@ const sqlite: Dialect = {
   },
   // SQLite LIKE ignores ASCII case.
   containsBinary: (col, value) => `instr(${col}, ${value('')}) > 0`,
+  fulltext: () => undefined,
   tupleIn: (cols, rows, negate) => tupleIn(cols, rows, negate, true),
   random: () => 'random()',
   nullsOrder: () => '',

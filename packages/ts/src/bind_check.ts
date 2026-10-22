@@ -126,5 +126,22 @@ export function transformParam(kind: string, value: unknown): unknown {
   if (kind === 'like_contains') return `%${escaped}%`;
   if (kind === 'like_starts') return `${escaped}%`;
   if (kind === 'like_ends') return `%${escaped}`;
+  if (kind === 'fulltext_boolean') {
+    const out = fulltextBoolean(value);
+    if (out === '') throw new OrmError(codes.IR_INVALID, 'fulltext search text has no term');
+    return out;
+  }
   return value;
+}
+
+/**
+ * The transform fulltext_boolean (DIA-6): the search text of a MySQL boolean-mode match. It splits the value on whitespace,
+ * removes the boolean operator characters from each term, drops the terms that are empty, prefixes every term with +,
+ * suffixes the last term with *, and joins the terms with single spaces. A value with no term is ''.
+ */
+export function fulltextBoolean(value: string): string {
+  const terms = value.split(/\s+/).map(t => t.replace(/[+\-<>()~*"@]/g, '')).filter(t => t !== '').map(t => `+${t}`);
+  if (terms.length === 0) return '';
+  terms[terms.length - 1] += '*';
+  return terms.join(' ');
 }

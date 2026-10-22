@@ -285,6 +285,15 @@ class Validator {
       if (ps.length % cols.length !== 0) fail(codes.IR_INVALID, `${p.op}: ${ps.length} values for ${cols.length} columns`);
       return;
     }
+    if (p.op === 'fulltext' || p.op === 'fulltext_boolean') {
+      const cols = p.cols ?? [];
+      if (cols.length === 0 || p.p === undefined || p.column !== undefined || ps.length > 0 || p.ref !== undefined || p.fn !== undefined || p.value !== undefined || p.sub !== undefined) fail(codes.IR_INVALID, `${p.op} takes cols and p only`);
+      for (const name of cols) {
+        const c = columnOf(ent, name) ?? fail(codes.COLUMN_UNKNOWN, `${ent.name}.${name}`);
+        if ((c.type !== 'varchar' && c.type !== 'text') || c.stages.length > 0) fail(codes.OPERATOR_NOT_ALLOWED, `${p.op} on ${ent.name}.${name}`);
+      }
+      return;
+    }
     if ((p.cols ?? []).length > 0) fail(codes.IR_INVALID, 'cols is only valid with tuple_in or tuple_not_in');
     const column = p.column ?? '';
     if (p.sub) {
