@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The lock timeout test of `packages/rust/orm` opens its case with `polyspec_orm_testcase::case!`, so it runs with its deadline and RUN line (KSTD-10-6). Red: the rule named the test as one without a case.
 - `group_rows_db.mjs` runs its case through `caseTest` with the database deadline, so it reports its PASS or FAIL line and its deadline like the other TypeScript cases (KSTD-10-4). Red: the case found the script reporting no case.
 - `group-rows-db-go` runs its Go test through `GO_TEST`, the go-test wrapper with `-timeout 0`, so the test gets a run line and no default 10 minute deadline (KSTD-10-3). Red: the case found the recipe running `go test` directly.
 - `group-rows-db-typescript` starts its recipe with `$(READ_TYPESCRIPT)`, so it holds the TypeScript build output it reads (KSTD-10-2). Red: the case found its recipe without the lease.

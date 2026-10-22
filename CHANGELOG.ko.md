@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2d9f8005759cbd8c7a98c38bb6696e87ff01d19410895998bd91d2fa406935dd -->
+<!-- source-sha256: 05d5ba21a14911c8a223e05c8bdddd8a3dfeacc8fb82eea54ddcd01b32ffec15 -->
 # 변경 이력
 
 ## Unreleased
 
+- `packages/rust/orm`의 lock timeout test는 `polyspec_orm_testcase::case!`로 case를 시작해 deadline과 RUN 줄을 가진다(KSTD-10-6). red: 규칙이 case가 없는 test로 지목했다.
 - `group_rows_db.mjs`는 데이터베이스 deadline으로 `caseTest`에서 사례를 실행하므로 다른 TypeScript 사례처럼 PASS 또는 FAIL 줄과 deadline을 보고한다(KSTD-10-4). red: 사례가 보고하는 case가 없는 스크립트를 찾았다.
 - `group-rows-db-go`는 Go test를 `GO_TEST`(`-timeout 0`인 go-test wrapper)로 실행해 run 줄을 얻고 기본 10분 deadline을 받지 않는다(KSTD-10-3). red: 사례가 recipe가 `go test`를 직접 실행하는 것을 찾았다.
 - `group-rows-db-typescript`는 recipe를 `$(READ_TYPESCRIPT)`로 시작해 읽는 TypeScript build 출력을 보유한다(KSTD-10-2). red: 사례가 lease 없는 recipe를 찾았다.
