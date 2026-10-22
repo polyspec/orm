@@ -5,6 +5,7 @@ use super::super::model::Type;
 use super::super::names::rendered_column;
 use super::super::render::{Dialect, UUID_PATTERN};
 use super::check::decode_check;
+use super::number;
 use super::trigger::ITrigger;
 use super::{action_name, group, Catalog, ICheck, IColumn, IForeignKey, IKey, ITable, Results};
 use regex::Regex;
@@ -81,7 +82,7 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
             c.report("column", &table, &name, "a generated column has no dbspec definition");
             continue;
         }
-        let Some((typ, needs_check)) = mysql_type(&column_type, &charset, &collation) else {
+        let Some((typ, needs_check)) = mysql_type(&column_type, &charset, &collation)? else {
             c.report("column", &table, &name, format!("type {column_type} {charset} {collation} has no dbspec type"));
             continue;
         };
@@ -175,21 +176,30 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
 /// Reads COLUMN_TYPE, character set, and collation as a dbspec type. The second value
 /// is the catalog type for the case where the type exists only with a renderer CHECK; otherwise it is an empty
 /// string.
-fn mysql_type(column_type: &str, charset: &str, collation: &str) -> Option<(Type, String)> {
-    let m = TYPE_PATTERN.captures(column_type)?;
+fn mysql_type(column_type: &str, charset: &str, collation: &str) -> Result<Option<(Type, String)>, String> {
+    let Some(m) = TYPE_PATTERN.captures(column_type) else {
+        return Ok(None);
+    };
     let text = charset == "utf8mb4" && collation == "utf8mb4_0900_bin";
     let plain = |typ: Type, ok: bool| ok.then_some((typ, String::new()));
     if group(&m, 3) == "decimal" {
-        let p = group(&m, 4).parse().ok()?;
-        let s = group(&m, 5).parse().ok()?;
-        return plain(Type::Decimal(p, s), charset.is_empty());
+        let p = number(group(&m, 4), "MySQL decimal precision")?;
+        let s = number(group(&m, 5), "MySQL decimal scale")?;
+        return Ok(plain(Type::Decimal(p, s), charset.is_empty()));
     }
     if group(&m, 6) == "varchar" {
-        return plain(Type::Varchar(group(&m, 7).parse().ok()?), text);
+        return Ok(plain(Type::Varchar(number(group(&m, 7), "MySQL varchar length")?), text));
     }
     let width = group(&m, 2);
-    let precision = || if width.is_empty() { Some(0) } else { width.parse().ok() };
-    match group(&m, 1) {
+    let precision = || -> Result<u8, String> {
+        if width.is_empty() {
+            Ok(0)
+        } else {
+            number(width, "MySQL fractional precision")
+        }
+    };
+    let fractional = precision();
+    Ok(match group(&m, 1) {
         "smallint" => plain(Type::I16, width.is_empty()),
         "int" => plain(Type::I32, width.is_empty()),
         "bigint" => plain(Type::I64, width.is_empty()),
@@ -199,10 +209,16 @@ fn mysql_type(column_type: &str, charset: &str, collation: &str) -> Option<(Type
         "longblob" => plain(Type::Bytes, true),
         "char(36)" => (charset == "ascii" && collation == "ascii_bin").then(|| (Type::Uuid, column_type.to_owned())),
         "date" => plain(Type::Date, width.is_empty()),
-        "time" => Some((Type::Time(precision()?), column_type.to_owned())),
-        "datetime" => plain(Type::DateTime(precision()?), true),
+        "time" => match &fractional {
+            Ok(precision) => Some((Type::Time(*precision), column_type.to_owned())),
+            Err(error) => return Err(error.clone()),
+        },
+        "datetime" => match &fractional {
+            Ok(precision) => plain(Type::DateTime(*precision), true),
+            Err(error) => return Err(error.clone()),
+        },
         _ => None,
-    }
+    })
 }
 
 static INTRODUCER: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"_[a-z0-9]+\\'").expect("MySQL introducer pattern"));

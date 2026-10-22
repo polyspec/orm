@@ -5,6 +5,7 @@ use super::super::model::Type;
 use super::super::names::rendered_column;
 use super::super::render::Dialect;
 use super::check::decode_check;
+use super::number;
 use super::trigger::ITrigger;
 use super::{group, Catalog, ICheck, IColumn, IForeignKey, IKey, ITable, Results};
 use regex::Regex;
@@ -96,7 +97,7 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
             c.report("column", &table, &name, "a generated column has no dbspec definition");
             continue;
         }
-        let Some(typ) = postgres_type(&formatted, &collation) else {
+        let Some(typ) = postgres_type(&formatted, &collation)? else {
             c.report("column", &table, &name, format!("type {formatted} with collation {collation:?} has no dbspec type"));
             continue;
         };
@@ -227,19 +228,21 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
 }
 
 /// Reads format_type and collation as a dbspec type.
-fn postgres_type(formatted: &str, collation: &str) -> Option<Type> {
-    let m = TYPE_PATTERN.captures(formatted)?;
+fn postgres_type(formatted: &str, collation: &str) -> Result<Option<Type>, String> {
+    let Some(m) = TYPE_PATTERN.captures(formatted) else {
+        return Ok(None);
+    };
     if !group(&m, 2).is_empty() {
-        return Some(Type::Decimal(group(&m, 2).parse().ok()?, group(&m, 3).parse().ok()?));
+        return Ok(Some(Type::Decimal(number(group(&m, 2), "PostgreSQL numeric precision")?, number(group(&m, 3), "PostgreSQL numeric scale")?)));
     }
     if !group(&m, 4).is_empty() {
-        return (collation == "C").then_some(Type::Varchar(group(&m, 4).parse().ok()?));
+        return Ok((collation == "C").then_some(Type::Varchar(number(group(&m, 4), "PostgreSQL varchar length")?)));
     }
     if !group(&m, 5).is_empty() {
-        let p = group(&m, 6).parse().ok()?;
-        return Some(if group(&m, 5) == "time" { Type::Time(p) } else { Type::DateTime(p) });
+        let p = number(group(&m, 6), "PostgreSQL time precision")?;
+        return Ok(Some(if group(&m, 5) == "time" { Type::Time(p) } else { Type::DateTime(p) }));
     }
-    match group(&m, 1) {
+    Ok(match group(&m, 1) {
         "smallint" => Some(Type::I16),
         "integer" => Some(Type::I32),
         "bigint" => Some(Type::I64),
@@ -250,7 +253,7 @@ fn postgres_type(formatted: &str, collation: &str) -> Option<Type> {
         "uuid" => Some(Type::Uuid),
         "date" => Some(Type::Date),
         _ => None,
-    }
+    })
 }
 
 /// Reads the default from pg_get_expr as a dbspec literal or now.

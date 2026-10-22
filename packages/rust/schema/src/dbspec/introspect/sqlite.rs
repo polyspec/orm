@@ -3,6 +3,7 @@
 
 use super::super::model::{Column, Name, Type};
 use super::super::names::renderer_name;
+use super::number;
 use super::super::render::{Dialect, Renderer};
 use super::check::{decode_check, unscaled_decimal};
 use super::trigger::ITrigger;
@@ -114,7 +115,7 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
         if st.identity == name {
             col.identity = true;
         } else {
-            let Some(typ) = sqlite_type(&r, &declared, &name, check.as_deref()) else {
+            let Some(typ) = sqlite_type(&r, &declared, &name, check.as_deref())? else {
                 c.report("column", &table, &name, format!("declared type {declared} with CHECK {:?} has no dbspec type", check.unwrap_or_default()));
                 continue;
             };
@@ -171,12 +172,14 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
 
 /// The dbspec type is determined from the declared type and the column's renderer CHECK. The CHECK must
 /// match the renderer output for the type exactly.
-fn sqlite_type(r: &Renderer, declared: &str, column: &str, check: Option<&str>) -> Option<Type> {
-    let m = DECLARED_PATTERN.captures(declared)?;
+fn sqlite_type(r: &Renderer, declared: &str, column: &str, check: Option<&str>) -> Result<Option<Type>, String> {
+    let Some(m) = DECLARED_PATTERN.captures(declared) else {
+        return Ok(None);
+    };
     let candidates: Vec<Type> = if !group(&m, 2).is_empty() {
-        vec![Type::Decimal(group(&m, 2).parse().ok()?, group(&m, 3).parse().ok()?)]
+        vec![Type::Decimal(number(group(&m, 2), "SQLite declared precision")?, number(group(&m, 3), "SQLite declared scale")?)]
     } else if !group(&m, 4).is_empty() {
-        vec![Type::Varchar(group(&m, 4).parse().ok()?)]
+        vec![Type::Varchar(number(group(&m, 4), "SQLite declared length")?)]
     } else {
         match group(&m, 1) {
             "smallint" => vec![Type::I16],
@@ -193,7 +196,7 @@ fn sqlite_type(r: &Renderer, declared: &str, column: &str, check: Option<&str>) 
             _ => Vec::new(),
         }
     };
-    candidates.into_iter().find(|typ| {
+    Ok(candidates.into_iter().find(|typ| {
         let want = r.type_check(&Column {
             comments: Vec::new(),
             name: Name { text: column.to_owned(), pos: Default::default() },
@@ -203,7 +206,7 @@ fn sqlite_type(r: &Renderer, declared: &str, column: &str, check: Option<&str>) 
             default: None,
         });
         want.as_deref() == check
-    })
+    }))
 }
 
 /// Reads dflt_value as a dbspec literal or now. A decimal is an integer multiplied by the scale, and

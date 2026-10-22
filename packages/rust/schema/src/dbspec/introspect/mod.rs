@@ -407,3 +407,11 @@ fn action_name(rule: &str) -> Option<&'static str> {
 fn group<'t>(captures: &regex::Captures<'t>, i: usize) -> &'t str {
     captures.get(i).map_or("", |m| m.as_str())
 }
+
+/// The number that a capture holds. A text that is not a number of `T` is an error that names what it was read as.
+fn number<T: std::str::FromStr>(text: &str, what: &str) -> Result<T, String>
+where
+    T::Err: std::fmt::Display,
+{
+    text.parse().map_err(|error| format!("{what} {text:?} is not a number: {error}"))
+}
