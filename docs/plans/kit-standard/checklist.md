@@ -226,3 +226,4 @@
 | KSTD-5-62 | Turn only the catalog's cannot-build error into a mermaid diagnostic | packages/ts/src/dbspec/mermaid.ts:336; packages/python/src/polyspec/orm/dbspec/mermaid.py:464; packages/php/src/Dbspec/Mermaid.php:416; packages/php-ext/src/mermaid.c:893-900; packages/go mermaid import | `make ts-check` | [ ] |
 | KSTD-5-63 | Return an internal error for a scalar subquery on an absent column, not an invented type | packages/rust/orm/src/engine/planner.rs:1060; packages/rust/orm/src/markdown.rs:532; packages/rust/orm/src/engine/params.rs:159; packages/ts/src/engine/planner.ts:734; packages/ts/src/markdown.ts:348 | `make rust-check` | [ ] |
 | KSTD-5-64 | Report an unparseable SQLite library version as an error that names it | packages/rust/orm/src/db.rs:495-496; packages/ts/src/driver.ts:972 | `make rust-check` | [ ] |
+| KSTD-5-65 | Propagate the missing OUT_DIR error in the build scan | packages/rust/build/src/lib.rs:166 | `make rust-check` | [ ] |
