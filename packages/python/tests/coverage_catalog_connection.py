@@ -4,7 +4,7 @@
 import os
 import unittest
 
-from polyspec_orm import connect_catalog
+from polyspec.orm import connect_catalog
 
 TENANT = 990005
 
