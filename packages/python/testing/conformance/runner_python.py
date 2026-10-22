@@ -386,6 +386,39 @@ def main():
     cols = ["seq", "name", "is_close", "is_display", "read_count"]
 
     # The vectors below follow packages/ts/testing/conformance/runner_typescript.mts, one function per vector.
+    # DSL-87 and DSL-111: a user with its authors loaded as has-many rows. Unlocked, delete(True) deletes the authors and the user;
+    # locked, the authors stay, so the user's delete fails on the foreign key, and the normalized code is recorded.
+    def delete_lock():
+        out = []
+        for locked in (False, True):
+            user = User().connect(db).set_name("delete-lock").create()
+            u_seq = user.get_seq()
+            author_row = (
+                Author().connect(db).set_name("delete-lock").set_user_seq(u_seq).set_service_seq(7)
+                .set_service_region_seq(7).set_service_member_seq(7)
+                .set_start_dt("2026-01-01 00:00:00").set_end_dt("2026-12-31 00:00:00").create()
+            )
+            a_seq = author_row.get_seq()
+            rel = Author().match_seq_with_user_seq()
+            if locked:
+                rel.delete_lock()
+            loaded = User().connect(db).relations(rel).get_by_seq(u_seq)
+            error = "none"
+            try:
+                loaded.delete(True)
+            except Exception as e:
+                if getattr(e, "code", None) in (None, ""):
+                    raise
+                error = e.code
+            authors = len(Author().connect(db).seq(a_seq).gets())
+            users = len(User().connect(db).seq(u_seq).gets())
+            out.append([authors, users, error])
+            if locked:
+                Author().connect(db).get_by_seq(a_seq).delete()
+                User().connect(db).get_by_seq(u_seq).delete()
+        return out
+
+    run("delete_lock", delete_lock)
     run(
         "conditions_connectors",
         lambda: picks(
