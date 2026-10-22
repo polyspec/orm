@@ -1167,6 +1167,20 @@ mod send_tests;
 
 #[cfg(test)]
 mod tests {
+    /// Returns the value of an Ok, and panics with the message the error gives otherwise.
+    trait OrPanic<T, E> {
+        fn or_panic(self, report: impl FnOnce(E) -> String) -> T;
+    }
+
+    impl<T, E> OrPanic<T, E> for Result<T, E> {
+        fn or_panic(self, report: impl FnOnce(E) -> String) -> T {
+            match self {
+                Ok(value) => value,
+                Err(error) => panic!("{}", report(error)),
+            }
+        }
+    }
+
     use super::*;
 
     /// A directory of its own for one test, removed when the value is dropped. A test that fails an assertion
@@ -1176,7 +1190,11 @@ mod tests {
     impl Scratch {
         fn new(prefix: &str) -> Self {
             let path = std::env::temp_dir().join(format!("{prefix}-{}", std::process::id()));
-            let _ = std::fs::remove_dir_all(&path);
+            if let Err(error) = std::fs::remove_dir_all(&path) {
+                if error.kind() != std::io::ErrorKind::NotFound {
+                    panic!("remove {}: {error}", path.display());
+                }
+            }
             std::fs::create_dir_all(&path).unwrap();
             Scratch(path)
         }
@@ -1261,7 +1279,7 @@ mod tests {
         let targets =
             [("sqlite", format!("sqlite://{}", tmp.join("once.sqlite").display())), ("mysql", mysql.dsn().to_owned()), ("postgres", postgres.dsn().to_owned())];
         for (driver, dsn) in targets {
-            let db = Db::connect(&dsn, 2, crate::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
+            let db = Db::connect(&dsn, 2, crate::Config::default()).await.or_panic(|e| format!("{driver}: {e}"));
             execute(&db, "DROP TABLE IF EXISTS orm_once_probe").await;
             execute(&db, "CREATE TABLE orm_once_probe (id INTEGER PRIMARY KEY)").await;
             let result = db
@@ -1283,7 +1301,7 @@ mod tests {
                 Ok::<_, DomainFailure>(())
             })
             .await
-            .unwrap_or_else(|e| panic!("{driver}: commit: {e:?}"));
+            .or_panic(|e| format!("{driver}: commit: {e:?}"));
             db.transaction(async || {
                 active_for(&db).expect("transaction active").raw(KIND_UTILITY, "INSERT INTO orm_once_probe (id) VALUES (3)").await?;
                 let nested = db
@@ -1297,7 +1315,7 @@ mod tests {
             })
             .retry(0)
             .await
-            .unwrap_or_else(|e| panic!("{driver}: nested transaction: {e}"));
+            .or_panic(|e| format!("{driver}: nested transaction: {e}"));
             let count = match db.pool() {
                 Pool::MySql(pool) => sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM orm_once_probe").fetch_one(pool).await.unwrap(),
                 Pool::Postgres(pool) => sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM orm_once_probe").fetch_one(pool).await.unwrap(),
@@ -1313,7 +1331,7 @@ mod tests {
     }
 
     fn required_dsn(name: &str) -> String {
-        std::env::var(name).ok().filter(|dsn| !dsn.is_empty()).unwrap_or_else(|| panic!("{name} is required; database tests never skip"))
+        std::env::var(name).ok().filter(|dsn| !dsn.is_empty()).or_panic(|| format!("{name} is required; database tests never skip"))
     }
 
     async fn execute(db: &Db, statement: &str) {
@@ -1354,7 +1372,7 @@ mod tests {
         ];
         let mut mismatches = Vec::new();
         for (driver, dsn) in targets {
-            let db = Db::connect(&dsn, 2, crate::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
+            let db = Db::connect(&dsn, 2, crate::Config::default()).await.or_panic(|e| format!("{driver}: {e}"));
             execute(&db, "DROP TABLE IF EXISTS orm_timeout_probe").await;
             execute(&db, "CREATE TABLE orm_timeout_probe (id INTEGER PRIMARY KEY)").await;
             let ran = std::cell::Cell::new(false);
@@ -1398,7 +1416,7 @@ mod tests {
             .timeout_ms(0)
             .retry(0)
             .await
-            .unwrap_or_else(|e| panic!("{driver}: zero timeout: {e}"));
+            .or_panic(|e| format!("{driver}: zero timeout: {e}"));
             assert_eq!(count(&db).await, 1, "{driver}: zero sets no timeout");
             execute(&db, "DROP TABLE orm_timeout_probe").await;
             db.close().await;
@@ -1547,7 +1565,7 @@ mod tests {
             ("postgres", required_dsn("ORM_TEST_POSTGRES_SERVER_DSN")),
         ];
         for (driver, dsn) in targets {
-            let db = Db::connect(&dsn, 2, crate::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
+            let db = Db::connect(&dsn, 2, crate::Config::default()).await.or_panic(|e| format!("{driver}: {e}"));
             match db.pool() {
                 Pool::MySql(pool) => {
                     let cipher: (String, String) = sqlx::query_as("SHOW SESSION STATUS LIKE 'Ssl_cipher'").fetch_one(pool).await.expect("Ssl_cipher");
@@ -1631,7 +1649,7 @@ mod tests {
         _: *const std::ffi::c_char,
     ) -> std::ffi::c_int {
         // SAFETY: SQLite passes a null or NUL-terminated string.
-        let text = |p: *const std::ffi::c_char| if p.is_null() { "" } else { unsafe { std::ffi::CStr::from_ptr(p) }.to_str().unwrap_or("") };
+        let text = |p: *const std::ffi::c_char| if p.is_null() { "" } else { unsafe { std::ffi::CStr::from_ptr(p) }.to_str().unwrap_or_else(|e| panic!("the SQLite text is not UTF-8: {e}")) };
         let denied = match SQLITE_DENIED.load(Ordering::Acquire) {
             DENY_ROLLBACK => action == libsqlite3_sys::SQLITE_TRANSACTION && text(first) == "ROLLBACK",
             DENY_QUERY_ONLY_ON => action == libsqlite3_sys::SQLITE_PRAGMA && text(first) == "query_only" && text(second) == "1",
