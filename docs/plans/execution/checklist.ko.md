@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: 2edfe8a07d7eb4e6d8f34d0fdacc55714bfa9bdc3349f9c1e8baaa5717ed3daf -->
+<!-- source-sha256: eeb2619e87fb76d46bfcb8b25d1e7eb65f6da4414437c2a9ad53b6afdd994643 -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1299,5 +1299,5 @@
 | T231 | errors.yaml이 DUPLICATE_KEY에 모든 database의 duplicate key를 적는다: 모든 client가 mapping하듯 MySQL 1062, PostgreSQL 23505, SQLite 2067과 1555. Cause: docs/spec/errors.yaml:87이 MySQL 1062 / SQLSTATE 23000만 적는다 | docs/spec/errors.yaml, config/parity.json | `make text-absent FILE=docs/spec/errors.yaml TEXT="DUPLICATE_KEY           # MySQL 1062 / SQLSTATE 23000"` | [o] |
 | T232 | docs/spec/dialects.md가 고정된 PHP 8.4 pdo_sqlite의 SQLite version을 select sqlite_version()으로 측정해 적는다 (소유자 판정: PHP 8.5는 8.4로). Cause: dialects.md:76과 dialects.ko.md:71이 PHP 8.5.10의 pdo_sqlite를 적는다 | docs/spec/dialects.md and its twin | `make text-absent FILE=docs/spec/dialects.md TEXT="PHP 8.5.10"` | [o] |
 | T233 | docs/operations/perf.md가 PHP 8.5 비율을 인용하지 않는다 (소유자 판정: PHP 8.5는 8.4로). Cause: perf.md:42와 perf.ko.md:43이 PHP 8.5.10에서 잰 비율을 인용한다; 이를 빼거나 최종 benchmark 단계에서 8.4로 다시 잰다 | docs/operations/perf.md and its twin | `make text-absent FILE=docs/operations/perf.md TEXT="PHP 8.5.10"` | [o] |
-| T235 | 취약한 markdown-it 잠금과 보안 검토를 갱신한다. 원인: package-lock.json이 수정 버전 14.3.3이 있는데도 high advisory 1242672가 있는 markdown-it 14.3.2를 고정한다. | package-lock.json, config/dependency-review.json | `make dependency-policy-check`; `make dependency-policy-mutation-check` | [~] |
+| T235 | 취약한 markdown-it 잠금과 보안 검토를 갱신한다. 원인: package-lock.json이 수정 버전 14.3.3이 있는데도 high advisory 1242672가 있는 markdown-it 14.3.2를 고정한다. | package-lock.json, config/dependency-review.json | `make dependency-policy-check`; `make dependency-policy-mutation-check` | [-] 원인: 사용자 2026-10-22: 개발 중 제3자 advisory 또는 pin 작업 없음 |
 | T234 | PHP client 문서의 prose가 제3자 YAML 제품 이름을 적지 않는다. 원인: T142-1-1과 T142-1의 CHANGELOG 항목과 packaging 문서가 upstream YAML 제품 이름을 적는다. 사실은 upstream 1.0.0 release가 YAML 1.2.2 core schema로 plain scalar를 읽지 않으며 fork release가 이를 고친다는 것뿐이다. 인수 조건: 네 파일이 의존성 package 이름, fork URL, 수정 사실을 남기고 prose에서 upstream 제품 이름을 쓰지 않는다. red: 지금 네 파일에 그 이름이 있다. | CHANGELOG.md, CHANGELOG.ko.md, docs/operations/packaging.md, docs/operations/packaging.ko.md | `make text-absent FILE=CHANGELOG.md TEXT="purrphp defect"` `make text-absent FILE=docs/operations/packaging.md TEXT="PurrPHP/yaml"` `make text-absent FILE=docs/operations/packaging.ko.md TEXT="PurrPHP/yaml"` | [o] |
