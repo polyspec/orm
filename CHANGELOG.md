@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- KSTD-5-22 is done: this commit records its done state in both checklists and refreshes their Korean stamps (KSTD-5-22).
 - Every Rust test of the repository starts its case with `polyspec_orm_testcase::case!`: the fixed-list test of packages/rust/build, the restore-or-create and external-relation tests and the AES key read tests (KSTD-5-22). Red: the rule named generate.rs and seven other Rust tests without a case.
 - The comments check reads Python through `scripts/comments/tokens/python-comments.mts`, a TypeScript port of the tokenize and ast reader, so the repository has no Python tool; the output matches the former reader on all 224 tracked Python files (KSTD-5-21). Red: `every tool of the repository is written in Go, PHP, Rust or TypeScript` failed on python-comments.py.
 - KSTD-5-20 is done: this commit records its done state and refreshes the Korean stamps of the checklist that the row commit left stale (KSTD-5-20).

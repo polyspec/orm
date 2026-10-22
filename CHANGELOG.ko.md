@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a4fad73a113545a6fcb98d748621b81cb0cbe1982612d75275a96bb7b56c3567 -->
+<!-- source-sha256: ad0efbf072ac791d3a9790d0980e8e88f72f9a5541616c739ea3e7cfbeb0d819 -->
 # 변경 이력
 
 ## Unreleased
+- KSTD-5-22 완료: 이 commit은 두 체크리스트에 그 완료 상태를 기록하고 한국어 stamp를 갱신한다(KSTD-5-22).
 - 모든 Rust test가 `polyspec_orm_testcase::case!`로 case를 시작한다. packages/rust/build의 고정 목록 test, restore-or-create와 외부 관계 test, AES 키 읽기 test다(KSTD-5-22). red: 규칙이 generate.rs와 case가 없는 Rust test 일곱 개를 보고했다.
 - comments check는 Python을 `scripts/comments/tokens/python-comments.mts`로 읽는다. tokenize와 ast 읽기기의 TypeScript 포팅이며, 저장소는 더 이상 Python 도구를 갖지 않는다. 출력은 추적되는 Python 파일 224개 모두에서 이전 읽기기와 같다(KSTD-5-21). red: `every tool of the repository is written in Go, PHP, Rust or TypeScript` 사례가 python-comments.py에서 실패했다.
 - KSTD-5-20 완료: 이 commit은 그 완료 상태를 기록하고, 행 commit이 남긴 체크리스트의 한국어 stamp를 갱신한다(KSTD-5-20).
