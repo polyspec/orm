@@ -104,13 +104,10 @@ final class PerfGateTest extends TestCase
                 STDERR,
                 sprintf(
                     "WARNING perf_gate %s: client/native ratio %.2f is above its reference %.2f "
-                    . "(docs/operations/perf.md); machine %s %s, PHP %s\n",
+                    . "(docs/operations/perf.md)\n",
                     $name,
                     $ratio,
-                    $bound,
-                    PHP_OS_FAMILY,
-                    php_uname('m'),
-                    PHP_VERSION
+                    $bound
                 )
             );
         }

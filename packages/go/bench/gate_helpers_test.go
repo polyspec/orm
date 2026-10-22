@@ -11,7 +11,6 @@ package bench
 import (
 	"context"
 	"fmt"
-	"runtime"
 	"sort"
 	"testing"
 	"time"
@@ -110,7 +109,7 @@ func hotPathGate(t *testing.T) {
 		fmt.Printf("%-8s native %6.1fµs  client %6.1fµs  ratio %.2f (bound %.2f)\n",
 			c.name, float64(na.Microseconds()), float64(cl.Microseconds()), ratio, c.bound)
 		if ratio > c.bound {
-			testcase.Warn("%s: client/native ratio %.2f is above its reference %.2f (docs/operations/perf.md); machine %s %s", c.name, ratio, c.bound, runtime.GOOS, runtime.GOARCH)
+			testcase.Warn("%s: client/native ratio %.2f is above its reference %.2f (docs/operations/perf.md)", c.name, ratio, c.bound)
 		}
 	}
 }

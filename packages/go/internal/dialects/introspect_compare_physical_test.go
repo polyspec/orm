@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -117,7 +116,7 @@ func TestIntrospectCompare(t *testing.T) {
 				}
 				c.Step("%s %s: %d bytes, introspected in %s", dialect, r.client, stdout.Len(), elapsed)
 				if elapsed > introspectReference {
-					testcase.Warn("%s %s: introspection took %s, above the %s reference (docs/spec/dialects.md, Introspection); machine %s %s", dialect, r.client, elapsed, introspectReference, runtime.GOOS, runtime.GOARCH)
+					testcase.Warn("%s %s: introspection took %s, above the %s reference (docs/spec/dialects.md, Introspection)", dialect, r.client, elapsed, introspectReference)
 				}
 				if reference == "" {
 					reference = stdout.String()

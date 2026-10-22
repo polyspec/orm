@@ -41,14 +41,14 @@ function cpuCaseEnd(string $id, array $clock): void
 }
 
 /**
- * Writes to stderr the line `WARNING <message>; machine ...` that the measurement exceeded the baseline. A warning is
+ * Writes to stderr the line `WARNING <message>` that the measurement exceeded the baseline. A warning is
  * not a failure.
  */
 function caseClockWarning(string $message): void
 {
     fwrite(
         STDERR,
-        sprintf("WARNING %s; machine %s %s, PHP %s\n", $message, PHP_OS_FAMILY, php_uname('m'), PHP_VERSION)
+        sprintf("WARNING %s\n", $message)
     );
 }
 

@@ -81,10 +81,9 @@ caseTest('dbspec stress document parses and emits canonically', TIMEOUT, async (
     assert.equal(first, text);
     assert.equal(second, first);
     const ratio = parseMs / referenceMs;
-    const machine = `${process.platform} ${process.arch}, Node ${process.version}`;
-    step(`parse ratio ${ratio.toFixed(2)} to the reference on ${machine} (reference ratio ${REFERENCE_RATIO})`);
+    step(`parse ratio ${ratio.toFixed(2)} to the reference (reference ratio ${REFERENCE_RATIO})`);
     if (ratio > REFERENCE_RATIO)
-      warning(`median parse CPU of ${parseMs.toFixed(3)} ms is ${ratio.toFixed(2)} times the reference CPU of ${referenceMs.toFixed(3)} ms, above the reference ratio ${REFERENCE_RATIO} (docs/spec/dbspec.md, Verification); machine ${machine}`);
+      warning(`median parse CPU of ${parseMs.toFixed(3)} ms is ${ratio.toFixed(2)} times the reference CPU of ${referenceMs.toFixed(3)} ms, above the reference ratio ${REFERENCE_RATIO} (docs/spec/dbspec.md, Verification)`);
 });
 
 // referenceScan is the baseline work for the stress document: for each byte in turn, it computes h = h*31 + b (mod 2^32).

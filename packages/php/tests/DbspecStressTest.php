@@ -121,25 +121,22 @@ final class DbspecStressTest extends TestCase
         // never fails the test.
         $referenceRatio = 11.0;
         $ratio = $parseMs / $references[2];
-        $machine = sprintf('%s %s, PHP %s', PHP_OS_FAMILY, php_uname('m'), PHP_VERSION);
         fwrite(
             STDERR,
             sprintf(
-                'parse ratio %.2f to the reference on %s (reference ratio %.1f)',
+                'parse ratio %.2f to the reference (reference ratio %.1f)',
                 $ratio,
-                $machine,
                 $referenceRatio
             ) . "\n"
         );
         if ($ratio > $referenceRatio) {
             fwrite(STDERR, 'WARNING ' . sprintf(
                 'dbspec_stress median parse CPU of %.3f ms is %.2f times the reference CPU of %.3f ms, above the '
-                . 'reference ratio %.1f (docs/spec/dbspec.md, Verification); machine %s',
+                . 'reference ratio %.1f (docs/spec/dbspec.md, Verification)',
                 $parseMs,
                 $ratio,
                 $references[2],
                 $referenceRatio,
-                $machine,
             ) . "\n");
         }
         fwrite(STDERR, "parseMs=$parseMs emitMs=$emitMs peakBytes=" . memory_get_peak_usage(true) . "\n");

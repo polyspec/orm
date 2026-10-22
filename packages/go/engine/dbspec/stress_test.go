@@ -92,10 +92,9 @@ func TestStressDocument(t *testing.T) {
 			return fmt.Errorf("two emissions of the stress document differ")
 		}
 		ratio := float64(parseElapsed) / float64(reference)
-		machine := runtime.GOOS + " " + runtime.GOARCH
-		t.Logf("stress parse ratio %.2f to the reference on %s (reference ratio %.0f)", ratio, machine, referenceRatio)
+		t.Logf("stress parse ratio %.2f to the reference (reference ratio %.0f)", ratio, referenceRatio)
 		if ratio > referenceRatio {
-			testcase.Warn("stress median parse CPU of %s is %.2f times the reference CPU of %s, above the reference ratio %.0f (docs/spec/dbspec.md, Verification); machine %s", parseElapsed, ratio, reference, referenceRatio, machine)
+			testcase.Warn("stress median parse CPU of %s is %.2f times the reference CPU of %s, above the reference ratio %.0f (docs/spec/dbspec.md, Verification)", parseElapsed, ratio, reference, referenceRatio)
 		}
 		return nil
 	})
