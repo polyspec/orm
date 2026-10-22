@@ -210,3 +210,4 @@
 | KSTD-5-57-18b | Fix the lint finding of the build test file read_only_query.rs (follows KSTD-5-57) | packages/rust/build/tests/read_only_query.rs | `make lint-rust` reports no finding in this file | [ ] |
 | KSTD-5-57-14c | Fix the lint findings of the orm test file dbspec_introspect.rs (follows KSTD-5-57) | packages/rust/orm/tests/dbspec_introspect.rs | `make lint-rust` reports no finding in this file | [ ] |
 | KSTD-5-57-18c | Fix the lint finding of the orm test file sqlite_concurrency.rs (follows KSTD-5-57) | packages/rust/orm/tests/sqlite_concurrency.rs | `make lint-rust` reports no finding in these files | [ ] |
+| KSTD-5-57-18d | Fix the unused import in build test lock_probe_order.rs (follows KSTD-5-57) | packages/rust/build/tests/lock_probe_order.rs | `make lint-rust` reports no finding in these files | [ ] |
