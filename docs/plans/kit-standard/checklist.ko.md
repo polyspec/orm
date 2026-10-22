@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: b3dfd2a271c2e4267bd27db33e1982e4f928a5b749fc617b7beacb0d2cacce25 -->
+<!-- source-sha256: 75e8d6d80cc19153d718fd8d2fcf4b90ddd6991253830890e22fcbb1993dea84 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -241,3 +241,4 @@
 | KSTD-5-76 | PHP set reader의 stat 또는 scandir 실패를 없음이 아닌 오류로 보고한다 | packages/php/src/Dbspec/SetReader.php:165,186 | `make lint-php` | [ ] |
 | KSTD-5-77 | PHP와 C에서 YAML 파서의 예외 클래스만 잡고 원인을 잇는다 | packages/php/src/Codec.php:96,149,104,156; packages/php/src/Model.php:2360; packages/php-ext/src/codec.c:194-203 | `make lint-php` | [ ] |
 | KSTD-5-78 | step과 test-server 스크립트에서 ESRCH만 종료된 process group으로 본다 | scripts/check/step.mts:63; scripts/test-servers.mts:203, :341 | `make scripts-typecheck` | [ ] |
+| KSTD-5-79 | fixture를 읽을 수 없을 때 ENOENT만 owner 없음으로 본다 | scripts/features/owners.mts:60; scripts/check/databases.mts:85-99 | `make scripts-typecheck` | [ ] |

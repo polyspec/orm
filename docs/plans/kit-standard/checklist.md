@@ -240,3 +240,4 @@
 | KSTD-5-76 | Report a stat or scandir failure in the PHP set reader as an error, not as a missing entry | packages/php/src/Dbspec/SetReader.php:165,186 | `make lint-php` | [ ] |
 | KSTD-5-77 | Catch only the YAML parser's exception class in PHP and C, and chain the cause | packages/php/src/Codec.php:96,149,104,156; packages/php/src/Model.php:2360; packages/php-ext/src/codec.c:194-203 | `make lint-php` | [ ] |
 | KSTD-5-78 | Treat only ESRCH as a gone process group in the step and test-server scripts | scripts/check/step.mts:63; scripts/test-servers.mts:203, :341 | `make scripts-typecheck` | [ ] |
+| KSTD-5-79 | Only ENOENT means no owners when a fixture cannot be read | scripts/features/owners.mts:60; scripts/check/databases.mts:85-99 | `make scripts-typecheck` | [ ] |
