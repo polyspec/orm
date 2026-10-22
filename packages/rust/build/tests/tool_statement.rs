@@ -1,6 +1,7 @@
 use polyspec_orm_build::tool_db::{Conn, QueryLimits};
 
 #[tokio::test]
+// Requirements: INT-125.
 async fn bounded_query_rejects_ambiguous_multiple_result_sets() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(5), async {

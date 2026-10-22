@@ -8851,6 +8851,9 @@
     {
       "id": "rust-grid-numbers-preserve-native-bits-and-unsigned-range",
       "kind": "feature",
+      "requirements": [
+        "INT-102"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -8862,6 +8865,9 @@
     {
       "id": "rust-temporal-grid-cells-follow-the-declared-precision",
       "kind": "feature",
+      "requirements": [
+        "INT-103"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -8873,6 +8879,9 @@
     {
       "id": "rust-actual-catalog-queries-enforce-read-only-scopes-on-three-databases",
       "kind": "feature",
+      "requirements": [
+        "INT-104"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -8884,6 +8893,9 @@
     {
       "id": "rust-rejected-commit-permits-rollback-all-native-mutations",
       "kind": "feature",
+      "requirements": [
+        "INT-105"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -8921,6 +8933,9 @@
     {
       "id": "rust-native-updates-lock-compare-verify-and-rollback",
       "kind": "feature",
+      "requirements": [
+        "INT-106"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -8932,6 +8947,9 @@
     {
       "id": "rust-row-baseline-compares-exact-bits-scale-and-binary",
       "kind": "feature",
+      "requirements": [
+        "INT-107"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -8943,6 +8961,9 @@
     {
       "id": "rust-row-baseline-preserves-immutable-values-and-key-order",
       "kind": "feature",
+      "requirements": [
+        "INT-108"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -8954,6 +8975,9 @@
     {
       "id": "rust-row-baseline-rejects-invalid-identity-and-distinguishes-conflicts",
       "kind": "feature",
+      "requirements": [
+        "INT-109"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -8965,6 +8989,10 @@
     {
       "id": "rust-row-update-verification-rejects-coercion-and-unrequested-changes",
       "kind": "feature",
+      "requirements": [
+        "INT-110",
+        "INT-111"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -8976,6 +9004,9 @@
     {
       "id": "rust-mysql-system-views-are-described-without-row-identity",
       "kind": "feature",
+      "requirements": [
+        "INT-112"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -8987,6 +9018,9 @@
     {
       "id": "rust-qualified-table-metadata-preserves-identity-and-generated-columns",
       "kind": "feature",
+      "requirements": [
+        "INT-113"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -8998,6 +9032,9 @@
     {
       "id": "rust-qualified-table-pages-preserve-columns-key-order-and-bounds",
       "kind": "feature",
+      "requirements": [
+        "INT-114"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9034,6 +9071,9 @@
     {
       "id": "rust-physical-tool-queries-reject-budgets-without-partial-success",
       "kind": "feature",
+      "requirements": [
+        "INT-115"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9056,6 +9096,9 @@
     {
       "id": "rust-bounded-query-rejects-ambiguous-multiple-result-sets",
       "kind": "feature",
+      "requirements": [
+        "INT-125"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9095,6 +9138,9 @@
     {
       "id": "rust-native-typed-binds-preserve-values-and-typed-nulls",
       "kind": "feature",
+      "requirements": [
+        "INT-116"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9106,6 +9152,9 @@
     {
       "id": "rust-native-typed-writes-roundtrip-reject-and-rollback",
       "kind": "feature",
+      "requirements": [
+        "INT-117"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9117,6 +9166,9 @@
     {
       "id": "rust-catalog-mutation-finish-broken-commit-acknowledgement-is-not-explicit-rejection",
       "kind": "feature",
+      "requirements": [
+        "INT-118"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9128,6 +9180,9 @@
     {
       "id": "rust-catalog-mutation-safety-tests-absent-trigger-privilege-is-not-proof-of-absent-triggers",
       "kind": "feature",
+      "requirements": [
+        "INT-119"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9139,6 +9194,9 @@
     {
       "id": "rust-catalog-mutation-safety-tests-borrowed-bind-validation-stops-at-its-count-budget",
       "kind": "feature",
+      "requirements": [
+        "INT-120"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9183,6 +9241,9 @@
     {
       "id": "rust-catalog-page-page-assembly-rejects-column-or-descriptor-changes",
       "kind": "feature",
+      "requirements": [
+        "INT-121"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9194,6 +9255,9 @@
     {
       "id": "rust-tool-db-result-metadata-budgets-reject-excess-and-preserve-exact-boundaries",
       "kind": "feature",
+      "requirements": [
+        "INT-124"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9205,6 +9269,9 @@
     {
       "id": "rust-tool-db-params-bind-validation-checks-exact-bounds-before-driver-encoding",
       "kind": "feature",
+      "requirements": [
+        "INT-122"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -11384,6 +11451,10 @@
     {
       "id": "rust-coverage-catalog-read",
       "kind": "feature",
+      "requirements": [
+        "INT-113",
+        "INT-114"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -11395,6 +11466,10 @@
     {
       "id": "rust-coverage-catalog-row-mutation",
       "kind": "feature",
+      "requirements": [
+        "INT-109",
+        "INT-123"
+      ],
       "bindings": [
         {
           "implementation": "rust",

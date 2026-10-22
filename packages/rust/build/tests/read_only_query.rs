@@ -4,6 +4,7 @@ use polyspec_orm_build::{
 };
 
 #[tokio::test]
+// Requirements: INT-104.
 async fn actual_catalog_queries_enforce_read_only_scopes_on_three_databases() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("read-only query deadline");

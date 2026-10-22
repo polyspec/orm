@@ -4,11 +4,13 @@ use polyspec_orm_build::{
 };
 
 #[tokio::test]
+// Requirements: INT-113.
 async fn qualified_table_metadata_preserves_identity_and_generated_columns() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("table metadata deadline");
 }
 #[tokio::test]
+// Requirements: INT-112.
 async fn mysql_system_views_are_described_without_row_identity() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(10),async{

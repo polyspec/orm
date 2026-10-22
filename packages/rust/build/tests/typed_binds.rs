@@ -1,5 +1,6 @@
 use polyspec_orm_build::tool_db::{self, GridCell, ParamType, QueryLimits, P};
 #[tokio::test]
+// Requirements: INT-116.
 async fn native_typed_binds_preserve_values_and_typed_nulls() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), async {
@@ -44,6 +45,7 @@ async fn native_typed_binds_preserve_values_and_typed_nulls() {
 }
 
 #[tokio::test]
+// Requirements: INT-117.
 async fn native_typed_writes_roundtrip_reject_and_rollback() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), async {

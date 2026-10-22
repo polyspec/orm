@@ -4,6 +4,7 @@ use polyspec_orm_build::{
 };
 
 #[tokio::test]
+// Requirements: INT-102.
 async fn grid_numbers_preserve_native_bits_and_unsigned_range() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("grid numeric deadline");

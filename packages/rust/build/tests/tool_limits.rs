@@ -1,6 +1,7 @@
 use polyspec_orm_build::tool_db::{self, QueryLimits, Val};
 
 #[tokio::test]
+// Requirements: INT-115.
 async fn physical_tool_queries_reject_budgets_without_partial_success() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), check_databases()).await.expect("tool query budget test deadline");

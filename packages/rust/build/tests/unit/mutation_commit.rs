@@ -1,6 +1,7 @@
 use super::*;
 
 #[tokio::test]
+// Requirements: INT-118.
 async fn broken_commit_acknowledgement_is_not_explicit_rejection() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     tokio::time::timeout(std::time::Duration::from_secs(5), async {

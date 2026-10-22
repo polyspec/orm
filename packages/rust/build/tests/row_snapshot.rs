@@ -41,6 +41,7 @@ fn fixture() -> TablePage {
     }
 }
 #[tokio::test]
+// Requirements: INT-110, INT-111.
 async fn row_update_verification_rejects_coercion_and_unrequested_changes() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     tokio::time::timeout(std::time::Duration::from_secs(5), async {
@@ -71,6 +72,7 @@ async fn row_update_verification_rejects_coercion_and_unrequested_changes() {
     .expect("row update verification deadline");
 }
 #[tokio::test]
+// Requirements: INT-108.
 async fn row_baseline_preserves_immutable_values_and_key_order() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     tokio::time::timeout(std::time::Duration::from_secs(5), async {
@@ -89,6 +91,7 @@ async fn row_baseline_preserves_immutable_values_and_key_order() {
     .expect("row snapshot deadline");
 }
 #[tokio::test]
+// Requirements: INT-109.
 async fn row_baseline_rejects_invalid_identity_and_distinguishes_conflicts() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     tokio::time::timeout(std::time::Duration::from_secs(5), async {
@@ -130,6 +133,7 @@ async fn row_baseline_rejects_invalid_identity_and_distinguishes_conflicts() {
     .expect("row snapshot validation deadline");
 }
 #[tokio::test]
+// Requirements: INT-107.
 async fn row_baseline_compares_exact_bits_scale_and_binary() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     tokio::time::timeout(std::time::Duration::from_secs(5), async {

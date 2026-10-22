@@ -4,6 +4,7 @@ use crate::{
     tool_db::QueryColumn,
 };
 #[test]
+// Requirements: INT-121.
 fn page_assembly_rejects_column_or_descriptor_changes() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let clock = polyspec_orm_case_clock::CaseClock::start();

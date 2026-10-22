@@ -1,6 +1,7 @@
 use super::*;
 
 #[tokio::test]
+// Requirements: INT-120.
 async fn borrowed_bind_validation_stops_at_its_count_budget() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     tokio::time::timeout(std::time::Duration::from_secs(5), async {
@@ -13,6 +14,7 @@ async fn borrowed_bind_validation_stops_at_its_count_budget() {
 }
 
 #[tokio::test]
+// Requirements: INT-119.
 async fn absent_trigger_privilege_is_not_proof_of_absent_triggers() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     tokio::time::timeout(std::time::Duration::from_secs(5), async {

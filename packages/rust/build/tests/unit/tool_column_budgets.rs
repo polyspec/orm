@@ -1,6 +1,7 @@
 use super::columns;
 
 #[test]
+// Requirements: INT-124.
 fn metadata_budgets_reject_excess_and_preserve_exact_boundaries() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     assert_eq!(columns(std::iter::repeat_n(("a", "INT"), 2048)).unwrap().len(), 2048);

@@ -45,6 +45,7 @@ fn column(page: &polyspec_orm_build::catalog::TablePage, column: &str) -> usize 
 }
 
 #[tokio::test]
+// Requirements: INT-113, INT-114.
 async fn coverage_catalog_read() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     within("catalog_read", async {
@@ -85,6 +86,7 @@ async fn coverage_catalog_read() {
 }
 
 #[tokio::test]
+// Requirements: INT-109, INT-123.
 async fn coverage_catalog_row_mutation() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     within("catalog_row_mutation", async {

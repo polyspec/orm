@@ -1,5 +1,6 @@
 use super::*;
 #[tokio::test]
+// Requirements: INT-122.
 async fn bind_validation_checks_exact_bounds_before_driver_encoding() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     tokio::time::timeout(std::time::Duration::from_secs(5), async {

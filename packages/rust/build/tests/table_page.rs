@@ -7,6 +7,7 @@ fn quote(value: &str, dialect: &str) -> String {
     format!("{mark}{}{mark}", value.replace(mark, &format!("{mark}{mark}")))
 }
 #[tokio::test]
+// Requirements: INT-114.
 async fn qualified_table_pages_preserve_columns_key_order_and_bounds() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("table page deadline");

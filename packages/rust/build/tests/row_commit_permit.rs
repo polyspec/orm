@@ -8,6 +8,7 @@ use std::sync::{
 };
 
 #[tokio::test]
+// Requirements: INT-105.
 async fn rejected_commit_permits_rollback_all_native_mutations() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), async {

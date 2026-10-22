@@ -8,6 +8,7 @@ use polyspec_orm_build::{
 use std::sync::{atomic::AtomicBool, Arc};
 
 #[tokio::test]
+// Requirements: INT-103.
 async fn temporal_grid_cells_follow_the_declared_precision() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(60), check()).await.expect("grid temporal deadline");

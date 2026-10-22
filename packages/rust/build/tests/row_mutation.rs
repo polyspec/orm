@@ -36,6 +36,7 @@ fn a_probe_inside_the_locked_publisher_sees_the_mutation_at_locked() {
 }
 
 #[tokio::test]
+// Requirements: INT-106.
 async fn native_updates_lock_compare_verify_and_rollback() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("native update deadline");
