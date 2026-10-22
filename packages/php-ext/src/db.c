@@ -2135,6 +2135,26 @@ static void with_ps(zval *ir, zend_long target, zval *ps, zval *out)
 
 /* Db::rootInParts: a root IN list over the bind limit is split into requests whose results together equal the original result.
  * out is the list of the requests; it is empty when the statement fits. */
+/* Adds one part of a split IN list to out: the request r with its IN list padded to the group, which is emptied for the next part. */
+static bool emit_part(zval *out, zval *r, zval *ir, zend_long target, zval *group, zval *unique)
+{
+    zval padded, ir_new, part;
+    if (!scall("Polyspec\\Orm\\Request::padIn", &padded, 1, group)) {
+        zval_ptr_dtor(group);
+        zval_ptr_dtor(unique);
+        zval_ptr_dtor(out);
+        return false;
+    }
+    with_ps(ir, target, &padded, &ir_new);
+    zval_ptr_dtor(&padded);
+    zend_object *clone = zend_objects_clone_obj(Z_OBJ_P(r));
+    ZVAL_OBJ(&part, clone);
+    wr(&part, "ir", &ir_new);
+    zval_ptr_dtor(&ir_new);
+    zend_hash_next_index_insert(Z_ARRVAL_P(out), &part);
+    return true;
+}
+
 static bool root_parts(zval *self, zval *r, zval *step, zval *out)
 {
     array_init(out);
@@ -2233,40 +2253,18 @@ static bool root_parts(zval *self, zval *r, zval *step, zval *out)
         push(&group, p);
         count++;
         if (count == chunk) {
-            zval padded, ir_new, part;
-            if (!scall("Polyspec\\Orm\\Request::padIn", &padded, 1, &group)) {
-                zval_ptr_dtor(&group);
-                zval_ptr_dtor(&unique);
-                zval_ptr_dtor(out);
+            if (!emit_part(out, r, ir, target, &group, &unique)) {
                 return false;
             }
-            with_ps(ir, target, &padded, &ir_new);
-            zval_ptr_dtor(&padded);
-            zend_object *clone = zend_objects_clone_obj(Z_OBJ_P(r));
-            ZVAL_OBJ(&part, clone);
-            wr(&part, "ir", &ir_new);
-            zval_ptr_dtor(&ir_new);
-            zend_hash_next_index_insert(Z_ARRVAL_P(out), &part);
             array_init(&group);
             count = 0;
         }
     }
     ZEND_HASH_FOREACH_END();
     if (count > 0) {
-        zval padded, ir_new, part;
-        if (!scall("Polyspec\\Orm\\Request::padIn", &padded, 1, &group)) {
-            zval_ptr_dtor(&group);
-            zval_ptr_dtor(&unique);
-            zval_ptr_dtor(out);
+        if (!emit_part(out, r, ir, target, &group, &unique)) {
             return false;
         }
-        with_ps(ir, target, &padded, &ir_new);
-        zval_ptr_dtor(&padded);
-        zend_object *clone = zend_objects_clone_obj(Z_OBJ_P(r));
-        ZVAL_OBJ(&part, clone);
-        wr(&part, "ir", &ir_new);
-        zval_ptr_dtor(&ir_new);
-        zend_hash_next_index_insert(Z_ARRVAL_P(out), &part);
     } else {
         zval_ptr_dtor(&group);
     }
