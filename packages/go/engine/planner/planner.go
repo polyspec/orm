@@ -823,6 +823,16 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 		}
 		return p.D.TupleIn(cols, rows, pr.Op == "tuple_not_in"), nil
 	}
+	if pr.Op == "fulltext" || pr.Op == "fulltext_boolean" {
+		value := func(transform string) string {
+			return b.slot(plan.BindSlot{From: "param", Param: *pr.P, Transform: transform, ColType: "text"})
+		}
+		sql, ok := p.D.Fulltext(p.qualified(s, pr.Cols), value, pr.Op == "fulltext_boolean")
+		if !ok {
+			return "", &ir.Error{Code: "OPERATOR_NOT_ALLOWED", Msg: pr.Op + " on " + s.ent.Name}
+		}
+		return sql, nil
+	}
 	col := s.ent.Field(pr.Column)
 	lhs := p.qcol(s, pr.Column)
 	if pr.Sub != nil {

@@ -981,6 +981,21 @@ func (v *validator) pred(s *scope, p *Pred) error {
 		}
 		return nil
 	}
+	if p.Op == "fulltext" || p.Op == "fulltext_boolean" {
+		if len(p.Cols) == 0 || p.P == nil || p.Column != "" || len(p.Ps) > 0 || p.Ref != nil || p.Fn != nil || p.Value != nil || p.Sub != nil {
+			return errf("IR_INVALID", "%s takes cols and p only", p.Op)
+		}
+		for _, name := range p.Cols {
+			c := ent.Field(name)
+			if c == nil {
+				return errf("COLUMN_UNKNOWN", "%s.%s", ent.Name, name)
+			}
+			if (c.Type != "varchar" && c.Type != "text") || len(c.Codec) > 0 {
+				return errf("OPERATOR_NOT_ALLOWED", "%s on %s.%s", p.Op, ent.Name, name)
+			}
+		}
+		return nil
+	}
 	if len(p.Cols) > 0 {
 		return errf("IR_INVALID", "cols is only valid with tuple_in or tuple_not_in")
 	}

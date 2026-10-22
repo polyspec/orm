@@ -289,6 +289,13 @@ func transformParam(kind string, v any) (any, error) {
 	if !ok {
 		return nil, codecErr(CodeCodecEncode, "%s requires a string value", kind)
 	}
+	if kind == "fulltext_boolean" {
+		out := plan.FulltextBoolean(s)
+		if out == "" {
+			return nil, codecErr(CodeIrInvalid, "fulltext search text has no term")
+		}
+		return out, nil
+	}
 	return Transform(kind, s), nil
 }
 
@@ -297,6 +304,8 @@ func Transform(kind, s string) string {
 	switch kind {
 	case "like_contains":
 		return "%" + strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s) + "%"
+	case "fulltext_boolean":
+		return plan.FulltextBoolean(s)
 	}
 	return s
 }

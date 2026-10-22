@@ -49,7 +49,7 @@ type IfParent struct {
 //   - now:    the executor's current UTC time as "YYYY-MM-DD HH:MM:SS.ffffff" truncated to Precision digits (dialects whose ORM clock is the executor clock, HostNow)
 //   - audit: the audit record key of the transaction. The inserts and updates of the audit table write it to the audit column. Name is the audit record table.
 //
-// Transform (executor-side, value-level): "" | "like_contains" (escape % _ \ then wrap in %).
+// Transform (executor-side, value-level): "" | "like_contains" (escape % _ \ then wrap in %) | "fulltext_boolean" (DIA-6).
 type BindSlot struct {
 	From      string `json:"from"`
 	Param     int    `json:"param"`

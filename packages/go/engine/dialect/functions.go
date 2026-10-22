@@ -219,6 +219,32 @@ func (SQLite) Random() string { return "random()" }
 
 func (SQLite) NullsOrder(bool) string { return "" }
 
+// Fulltext renders MATCH … AGAINST; the boolean mode binds the value through the transform fulltext_boolean (DIA-6).
+func (MySQL) Fulltext(cols []string, value func(string) string, boolean bool) (string, bool) {
+	if boolean {
+		return "MATCH (" + strings.Join(cols, ", ") + ") AGAINST (" + value("fulltext_boolean") + " IN BOOLEAN MODE)", true
+	}
+	return "MATCH (" + strings.Join(cols, ", ") + ") AGAINST (" + value("") + " IN NATURAL LANGUAGE MODE)", true
+}
+
+// Fulltext renders a simple-configuration tsvector match of the columns; the boolean mode uses websearch_to_tsquery (DIA-6).
+func (Postgres) Fulltext(cols []string, value func(string) string, boolean bool) (string, bool) {
+	parts := make([]string, len(cols))
+	for i, col := range cols {
+		parts[i] = "coalesce(" + col + ", '')"
+	}
+	doc := "to_tsvector('simple', " + strings.Join(parts, " || ' ' || ") + ")"
+	if boolean {
+		return doc + " @@ websearch_to_tsquery('simple', " + value("") + ")", true
+	}
+	return doc + " @@ plainto_tsquery('simple', " + value("") + ")", true
+}
+
+// Fulltext reports no full-text search: SQLite has no full-text index on a table (DIA-187).
+func (SQLite) Fulltext([]string, func(string) string, bool) (string, bool) {
+	return "", false
+}
+
 // ContainsBinary uses instr because SQLite LIKE ignores case for ASCII.
 func (SQLite) ContainsBinary(col string, value func(string) string) string {
 	return "instr(" + col + ", " + value("") + ") > 0"

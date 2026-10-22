@@ -128,6 +128,12 @@ func (u *paramUses) pred(p *Pred, ent *runtimemodel.Entity) {
 		}
 		return
 	}
+	if p.Op == "fulltext" || p.Op == "fulltext_boolean" {
+		if p.P != nil {
+			u.add(*p.P, ParamUse{Type: "text"})
+		}
+		return
+	}
 	f := ent.Field(p.Column)
 	if p.Value != nil {
 		for _, i := range p.Value.Ps {

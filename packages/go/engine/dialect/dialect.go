@@ -69,6 +69,9 @@ type Dialect interface {
 	// ContainsBinary renders a case-sensitive substring match; value returns a
 	// placeholder whose bound value gets the named transform.
 	ContainsBinary(col string, value func(transform string) string) string
+	// Fulltext renders a full-text match of the columns cols against value, in the boolean mode when boolean is set; value
+	// returns a placeholder whose bound value gets the named transform. ok is false when the dialect has no full-text search.
+	Fulltext(cols []string, value func(transform string) string, boolean bool) (sql string, ok bool)
 	// TupleIn renders a multi-column IN or NOT IN list.
 	TupleIn(cols []string, rows [][]string, negate bool) string
 	// Random renders the random ordering function.
