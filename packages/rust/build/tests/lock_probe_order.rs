@@ -1,6 +1,6 @@
 use polyspec_orm_build::catalog::MutationPhase;
 use std::sync::{
-    atomic::{AtomicU8, Ordering},
+    atomic::Ordering,
     Arc, Mutex,
 };
 
