@@ -2031,6 +2031,25 @@ static zend_string *select_list(pctx *c, pbinds *b, pscope *s, passm *ast, zend_
     return implode(c, ", ", Z_ARRVAL_P(parts));
 }
 
+/* Appends the WHERE clause of the query q to sql: its own conditions, rendered as the top group when top is set, and the
+ * conditions of its joins, collected into where. NULL with an exception set on failure. */
+static zend_string *with_where(pctx *c, pbinds *b, pscope *root, HashTable *q, bool top, zval *where, zend_string *sql)
+{
+    HashTable *qw = ga(q, "where");
+    if (count_of(lst(qw, "items")) > 0) {
+        zend_string *g = render_group(c, b, root, qw, top);
+        OKP(g);
+        lpushs(where, g);
+    }
+    if (!collect_join_where(c, b, root, where)) {
+        return NULL;
+    }
+    if (count_of(Z_ARRVAL_P(where)) > 0) {
+        sql = fmt(c, "%s WHERE %s", ZSTR_VAL(sql), ZSTR_VAL(implode(c, " AND ", Z_ARRVAL_P(where))));
+    }
+    return sql;
+}
+
 /* Planner::subSelect: a subquery for an IN list or a scalar column; ^ references resolve against outer. */
 static zend_string *sub_select(pctx *c, pbinds *b, pscope *outer, HashTable *sub)
 {
@@ -2072,17 +2091,9 @@ static zend_string *sub_select(pctx *c, pbinds *b, pscope *outer, HashTable *sub
         OKP(sq);
         lpushs(where, fmt(c, "%s IS NULL", ZSTR_VAL(sq)));
     }
-    HashTable *qw = ga(q, "where");
-    if (count_of(lst(qw, "items")) > 0) {
-        zend_string *g = render_group(c, b, root, qw, true);
-        OKP(g);
-        lpushs(where, g);
-    }
-    if (!collect_join_where(c, b, root, where)) {
+    sql = with_where(c, b, root, q, true, where, sql);
+    if (sql == NULL) {
         return NULL;
-    }
-    if (count_of(Z_ARRVAL_P(where)) > 0) {
-        sql = fmt(c, "%s WHERE %s", ZSTR_VAL(sql), ZSTR_VAL(implode(c, " AND ", Z_ARRVAL_P(where))));
     }
     if (ZSTR_LEN(agg) == 0 && isset_(q, "limit")) {
         zend_string *ord = render_order(c, b, root, q);
@@ -2229,17 +2240,9 @@ static pstep *select_step(pctx *c, zval *steps, HashTable *q, const char *kind, 
         OKP(sq);
         lpushs(where, fmt(c, "%s IS NULL", ZSTR_VAL(sq)));
     }
-    HashTable *qw = ga(q, "where");
-    if (count_of(lst(qw, "items")) > 0) {
-        zend_string *g = render_group(c, b, root, qw, rc == NULL);
-        OKP(g);
-        lpushs(where, g);
-    }
-    if (!collect_join_where(c, b, root, where)) {
+    sql = with_where(c, b, root, q, rc == NULL, where, sql);
+    if (sql == NULL) {
         return NULL;
-    }
-    if (count_of(Z_ARRVAL_P(where)) > 0) {
-        sql = fmt(c, "%s WHERE %s", ZSTR_VAL(sql), ZSTR_VAL(implode(c, " AND ", Z_ARRVAL_P(where))));
     }
     if (count_of(groupBy) > 0) {
         zval *gq = qualified(c, root, groupBy);
