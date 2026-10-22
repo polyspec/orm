@@ -43,35 +43,6 @@ DEFAULT_BYTES = 64 << 20
 SQL_BYTES = 256 << 10
 
 # Error codes that the Rust reference names; QUERY_READ_ONLY is the code that the owner tests check.
-READ_ONLY = "QUERY_READ_ONLY"
-VALUE = "CATALOG_VALUE"
-PARAM = "CATALOG_PARAM"
-METADATA = "TABLE_METADATA_INVALID"
-TABLE_REF = "TABLE_REFERENCE_INVALID"
-PAGE_CHANGED = "TABLE_PAGE_METADATA_CHANGED"
-ROW_CONFLICT = "ROW_CONFLICT"
-ROW_SCHEMA = "ROW_SCHEMA_CHANGED"
-ROW_WRITE = "ROW_WRITE_MISMATCH"
-ROW_SNAPSHOT = "ROW_SNAPSHOT_INVALID"
-ROW_AMBIGUOUS = "ROW_IDENTITY_AMBIGUOUS"
-ROW_UNSUPPORTED = "ROW_MUTATION_UNSUPPORTED"
-ROW_COMMIT_REJECTED = "ROW_COMMIT_REJECTED"
-ROW_COMMIT_INDETERMINATE = "ROW_COMMIT_INDETERMINATE"
-ROW_ROLLBACK_FAILED = "ROW_ROLLBACK_FAILED"
-ROW_INSERT_INVALID = "ROW_INSERT_INVALID"
-ROW_UPDATE_INVALID = "ROW_UPDATE_INVALID"
-ROW_UPDATE_LIMIT = "ROW_UPDATE_LIMIT"
-LIMIT = "CATALOG_LIMIT"
-LIMIT_INVALID = "QUERY_LIMIT_INVALID"
-NAMESPACE_UNAVAILABLE = "TABLE_NAMESPACE_UNAVAILABLE"
-NAMESPACE_UNSUPPORTED = "TABLE_NAMESPACE_UNSUPPORTED"
-NOT_FOUND = "TABLE_NOT_FOUND"
-KIND_UNSUPPORTED = "TABLE_KIND_UNSUPPORTED"
-PAGE_INVALID = "TABLE_PAGE_INVALID"
-PAGE_UNSUPPORTED = "TABLE_PAGE_UNSUPPORTED"
-DSN_NOT_CATALOG = "CATALOG_DSN"
-SQLITE_FILE = "CATALOG_SQLITE_FILE"
-CLOSED = "CATALOG_CLOSED"
 
 _COMMIT_REJECTED_CODES = (codes.DUPLICATE_KEY, codes.FOREIGN_KEY, codes.CONSTRAINT, codes.DEADLOCK)
 
@@ -104,14 +75,14 @@ def _error(code: str, message: str, cause=None) -> OrmError:
 def _check_name(name) -> str:
     """A namespace, table or column name of 1..1024 UTF-8 bytes without NUL."""
     if not isinstance(name, str) or name == "" or len(name.encode()) > 1024 or "\0" in name:
-        raise _error(TABLE_REF, "expected 1..1024 UTF-8 bytes without NUL")
+        raise _error(codes.TABLE_REFERENCE_INVALID, "expected 1..1024 UTF-8 bytes without NUL")
     return name
 
 
 def _table_ref(table) -> dict:
     """The explicitly qualified table of a call: a mapping with a namespace and a name."""
     if not isinstance(table, Mapping) or set(table) != {"namespace", "name"}:
-        raise _error(TABLE_REF, "a table is a mapping with a namespace and a name")
+        raise _error(codes.TABLE_REFERENCE_INVALID, "a table is a mapping with a namespace and a name")
     return {"namespace": _check_name(table["namespace"]), "name": _check_name(table["name"])}
 
 
@@ -137,18 +108,18 @@ def _bool(value) -> bool:
         return value
     if isinstance(value, int) and value in (0, 1):
         return value == 1
-    raise _error(METADATA, f"expected a boolean, got {value!r}")
+    raise _error(codes.TABLE_METADATA_INVALID, f"expected a boolean, got {value!r}")
 
 
 def _int(value) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
-        raise _error(METADATA, f"expected an integer, got {value!r}")
+        raise _error(codes.TABLE_METADATA_INVALID, f"expected an integer, got {value!r}")
     return value
 
 
 def _text(value) -> str:
     if not isinstance(value, str):
-        raise _error(METADATA, f"expected text, got {type(value).__name__}")
+        raise _error(codes.TABLE_METADATA_INVALID, f"expected text, got {type(value).__name__}")
     return value
 
 
@@ -159,9 +130,9 @@ def _check_value(value):
         return value
     if isinstance(value, float):
         if math.isnan(value) or math.isinf(value):
-            raise _error(VALUE, "non-finite float value")
+            raise _error(codes.CATALOG_VALUE, "non-finite float value")
         return value
-    raise _error(VALUE, f"unsupported native type {type(value).__name__}")
+    raise _error(codes.CATALOG_VALUE, f"unsupported native type {type(value).__name__}")
 
 
 def _params(values) -> list:
@@ -174,10 +145,10 @@ def _params(values) -> list:
             out.append(value)
         elif isinstance(value, float):
             if math.isnan(value) or math.isinf(value):
-                raise _error(PARAM, f"parameter {index} is not finite")
+                raise _error(codes.CATALOG_PARAM, f"parameter {index} is not finite")
             out.append(value)
         else:
-            raise _error(PARAM, f"parameter {index} has unsupported type {type(value).__name__}")
+            raise _error(codes.CATALOG_PARAM, f"parameter {index} has unsupported type {type(value).__name__}")
     return out
 
 
@@ -191,7 +162,7 @@ def _cell_key(cell) -> str:
         return f"i{cell}"
     if isinstance(cell, float):
         if math.isnan(cell) or math.isinf(cell):
-            raise _error(ROW_SNAPSHOT, "non-finite float cell")
+            raise _error(codes.ROW_SNAPSHOT_INVALID, "non-finite float cell")
         return "f" + struct.pack(">d", cell).hex()
     if isinstance(cell, str):
         return f"s{len(cell.encode())}:{cell}"
@@ -200,7 +171,7 @@ def _cell_key(cell) -> str:
     if isinstance(cell, datetime):
         instant = cell.replace(tzinfo=timezone.utc) if cell.tzinfo is None else cell.astimezone(timezone.utc)
         return "t" + instant.isoformat(timespec="microseconds")
-    raise _error(ROW_SNAPSHOT, f"unsupported cell type {type(cell).__name__}")
+    raise _error(codes.ROW_SNAPSHOT_INVALID, f"unsupported cell type {type(cell).__name__}")
 
 
 def _same_row(a, b) -> bool:
@@ -276,7 +247,7 @@ def _skip_quoted(query: str, start: int, quote: str, backslash: bool):
 
 def _validate_read_only(query, dialect: str) -> None:
     """Accepts one read query of at most SQL_BYTES that starts with SELECT, WITH or VALUES and holds no write keyword."""
-    refused = _error(READ_ONLY, "expected one supported non-locking read query")
+    refused = _error(codes.QUERY_READ_ONLY, "expected one supported non-locking read query")
     if not isinstance(query, str) or query == "" or len(query.encode()) > SQL_BYTES:
         raise refused
     words, ok = _words(query, dialect)
@@ -311,7 +282,7 @@ def _kind(dialect: str, native: str) -> str:
     }
     kind = table.get((dialect, native))
     if kind is None:
-        raise _error(KIND_UNSUPPORTED, f"relation kind {native!r} of {dialect}")
+        raise _error(codes.TABLE_KIND_UNSUPPORTED, f"relation kind {native!r} of {dialect}")
     return kind
 
 
@@ -413,7 +384,7 @@ def _descriptor(metadata: CatalogTableMetadata) -> list:
     """Checks that a descriptor has a reliable row identity and returns the column index of each primary-key column."""
 
     def invalid(reason: str):
-        return _error(ROW_SNAPSHOT, f"invalid original row or descriptor: {reason}")
+        return _error(codes.ROW_SNAPSHOT_INVALID, f"invalid original row or descriptor: {reason}")
 
     if metadata.kind not in ("table", "partitioned"):
         raise invalid("the relation is not a table")
@@ -440,10 +411,10 @@ def _descriptor(metadata: CatalogTableMetadata) -> list:
 
 def _check_cells(metadata: CatalogTableMetadata, cells: list) -> None:
     if len(cells) != len(metadata.columns):
-        raise _error(ROW_SNAPSHOT, f"row has {len(cells)} cells for {len(metadata.columns)} columns")
+        raise _error(codes.ROW_SNAPSHOT_INVALID, f"row has {len(cells)} cells for {len(metadata.columns)} columns")
     for column, cell in zip(metadata.columns, cells):
         if cell is None and not column.nullable:
-            raise _error(ROW_SNAPSHOT, f"NULL in non-null column {column.name!r}")
+            raise _error(codes.ROW_SNAPSHOT_INVALID, f"NULL in non-null column {column.name!r}")
         _cell_key(cell)
 
 
@@ -466,7 +437,7 @@ def _revision(metadata: CatalogTableMetadata, cells: list) -> str:
         key = _cell_key(cell)
         encoded += f"{len(key)}:{key}"
     if len(encoded.encode()) > SNAPSHOT_BYTES:
-        raise _error("ROW_SNAPSHOT_LIMIT", "original row encoding exceeds its budget")
+        raise _error(codes.ROW_SNAPSHOT_LIMIT, "original row encoding exceeds its budget")
     return hashlib.sha256(encoded.encode()).hexdigest()
 
 
@@ -502,16 +473,16 @@ def _key_predicate(metadata: CatalogTableMetadata, dialect: str, start: int) -> 
 
 def _same_names(names, columns) -> None:
     if list(names) != [column.name for column in columns]:
-        raise _error(PAGE_CHANGED, "prepared columns differ from descriptor")
+        raise _error(codes.TABLE_PAGE_METADATA_CHANGED, "prepared columns differ from descriptor")
 
 
 def _check_current(current: list, original: list) -> None:
     if len(current) == 0:
-        raise _error(ROW_CONFLICT, "original row is missing")
+        raise _error(codes.ROW_CONFLICT, "original row is missing")
     if len(current) > 1:
-        raise _error(ROW_AMBIGUOUS, "key selected multiple rows")
+        raise _error(codes.ROW_IDENTITY_AMBIGUOUS, "key selected multiple rows")
     if not _same_row(current[0], original):
-        raise _error(ROW_CONFLICT, "original values changed")
+        raise _error(codes.ROW_CONFLICT, "original values changed")
 
 
 @dataclass(frozen=True)
@@ -534,7 +505,7 @@ _TIME_TEXT = re.compile(r"(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?")
 
 
 def _refuse(message: str):
-    return _error(VALUE, f"unsupported grid value: {message}")
+    return _error(codes.CATALOG_VALUE, f"unsupported grid value: {message}")
 
 
 def _float32_bits(value: float) -> int:
@@ -685,11 +656,11 @@ class _Session:
                     if row is None:
                         break
                     if max_rows is not None and len(rows) == max_rows:
-                        raise _error(LIMIT, f"result has more than {max_rows} rows")
+                        raise _error(codes.CATALOG_LIMIT, f"result has more than {max_rows} rows")
                     for value in row:
                         budget += len(value) if isinstance(value, (str, bytes)) else 8
                     if max_bytes is not None and budget > max_bytes:
-                        raise _error(LIMIT, f"result has more than {max_bytes} bytes of values")
+                        raise _error(codes.CATALOG_LIMIT, f"result has more than {max_bytes} bytes of values")
                     rows.append(list(row) if grid else [_check_value(value) for value in row])
             affected = cursor.rowcount if cursor.rowcount is not None else 0
         except Exception as error:
@@ -707,12 +678,12 @@ class _Session:
     def describe(self, table: dict) -> CatalogTableMetadata:
         dialect = self.dialect
         if dialect == "sqlite" and table["namespace"] != "main":
-            raise _error(NAMESPACE_UNSUPPORTED, "SQLite requires main")
+            raise _error(codes.TABLE_NAMESPACE_UNSUPPORTED, "SQLite requires main")
         kind_rows = self.run(_KIND_SQL[dialect], [table["namespace"], table["name"]], 2, METADATA_BYTES).rows
         if not kind_rows:
-            raise _error(NOT_FOUND, f"{table['namespace']}.{table['name']}")
+            raise _error(codes.TABLE_NOT_FOUND, f"{table['namespace']}.{table['name']}")
         if len(kind_rows) != 1 or len(kind_rows[0]) != 1:
-            raise _error(METADATA, "ambiguous relation")
+            raise _error(codes.TABLE_METADATA_INVALID, "ambiguous relation")
         kind = _kind(dialect, _text(kind_rows[0][0]))
 
         # SQLite table-valued pragmas take the table name first and the schema second.
@@ -723,13 +694,13 @@ class _Session:
         keys: list = []
         for row in rows:
             if len(row) != 8:
-                raise _error(METADATA, f"column shape of {len(row)} values")
+                raise _error(codes.TABLE_METADATA_INVALID, f"column shape of {len(row)} values")
             name = _check_name(_text(row[0]))
             if any(existing.name == name for existing in columns):
-                raise _error(METADATA, f"duplicate column {name!r}")
+                raise _error(codes.TABLE_METADATA_INVALID, f"duplicate column {name!r}")
             default = row[6]
             if default is not None and not isinstance(default, str):
-                raise _error(METADATA, f"default expression of column {name!r} is {type(default).__name__}")
+                raise _error(codes.TABLE_METADATA_INVALID, f"default expression of column {name!r} is {type(default).__name__}")
             column = CatalogColumn(
                 name=name,
                 native_type=_text(row[1]),
@@ -741,14 +712,14 @@ class _Session:
             )
             ordinal = _int(row[4])
             if ordinal < 0:
-                raise _error(METADATA, "negative key ordinal")
+                raise _error(codes.TABLE_METADATA_INVALID, "negative key ordinal")
             if ordinal > 0:
                 keys.append((ordinal, len(columns)))
             columns.append(column)
         keys.sort(key=lambda item: item[0])
         for position, (ordinal, _) in enumerate(keys, start=1):
             if ordinal != position:
-                raise _error(METADATA, "key order")
+                raise _error(codes.TABLE_METADATA_INVALID, "key order")
 
         # A SQLite INTEGER primary key without a separate primary-key index is the rowid alias: never NULL, generated by the database.
         if dialect == "sqlite" and kind == "table" and len(keys) == 1 and columns[keys[0][1]].native_type.upper() == "INTEGER":
@@ -756,7 +727,7 @@ class _Session:
                 "SELECT count(*) FROM pragma_index_list(?,?) WHERE origin='pk'", args, 1, METADATA_BYTES
             ).rows
             if len(count_rows) != 1 or len(count_rows[0]) != 1:
-                raise _error(METADATA, "primary index count")
+                raise _error(codes.TABLE_METADATA_INVALID, "primary index count")
             if _int(count_rows[0][0]) == 0:
                 columns[keys[0][1]].nullable = False
                 columns[keys[0][1]].automatic_key = True
@@ -787,7 +758,7 @@ class _Session:
         account holds TRIGGER on the table, the table is InnoDB and it has no triggers (mutation.rs, mysql_safety)."""
 
         def unsupported(reason: str):
-            return _error(ROW_UNSUPPORTED, reason)
+            return _error(codes.ROW_MUTATION_UNSUPPORTED, reason)
 
         partial = self.run("SELECT CAST(@@GLOBAL.partial_revokes AS SIGNED)", [], 1, 4096).rows
         if len(partial) != 1 or partial[0][0] != 0:
@@ -849,7 +820,7 @@ class CatalogConnection:
 
     def _ensure_open(self) -> None:
         if self._closed:
-            raise _error(CLOSED, "the catalog connection is closed")
+            raise _error(codes.CONFIG, "the catalog connection is closed")
 
     def _open(self) -> _Session:
         self._ensure_open()
@@ -887,7 +858,7 @@ class CatalogConnection:
             session.run("ROLLBACK")
         except Exception as rollback_error:
             session.close()
-            raise _error(ROW_ROLLBACK_FAILED, f"rollback: {rollback_error}", error) from rollback_error
+            raise _error(codes.ROW_ROLLBACK_FAILED, f"rollback: {rollback_error}", error) from rollback_error
         session.close()
         if error is not None:
             raise error
@@ -911,10 +882,10 @@ class CatalogConnection:
             session.run("COMMIT")
         except Exception as commit_error:
             if isinstance(commit_error, OrmError) and commit_error.code in _COMMIT_REJECTED_CODES:
-                self._end(session, _error(ROW_COMMIT_REJECTED, f"native commit rejected: {commit_error}", commit_error))
+                self._end(session, _error(codes.ROW_COMMIT_REJECTED, f"native commit rejected: {commit_error}", commit_error))
             session.close()
             raise _error(
-                ROW_COMMIT_INDETERMINATE, f"commit outcome unknown; do not retry: {commit_error}", commit_error
+                codes.ROW_COMMIT_INDETERMINATE, f"commit outcome unknown; do not retry: {commit_error}", commit_error
             ) from commit_error
         session.close()
         return value
@@ -930,7 +901,7 @@ class CatalogConnection:
         def work(session: _Session) -> str:
             rows = session.run(query, [], 2, METADATA_BYTES).rows
             if len(rows) != 1 or len(rows[0]) != 1 or not isinstance(rows[0][0], str):
-                raise _error(NAMESPACE_UNAVAILABLE, "the connection reported no single text namespace")
+                raise _error(codes.TABLE_NAMESPACE_UNAVAILABLE, "the connection reported no single text namespace")
             return _check_name(rows[0][0])
 
         return self._read(work)
@@ -945,14 +916,14 @@ class CatalogConnection:
         descriptor must be the same before and after the read."""
         ref = _table_ref(table)
         if isinstance(limit, bool) or isinstance(offset, bool) or not isinstance(limit, int) or not isinstance(offset, int):
-            raise _error(PAGE_INVALID, "limit and offset are integers")
+            raise _error(codes.TABLE_PAGE_INVALID, "limit and offset are integers")
         if not 1 <= limit <= 1000 or not 0 <= offset <= 1000000:
-            raise _error(PAGE_INVALID, "limit requires 1..1000 and offset 0..1000000")
+            raise _error(codes.TABLE_PAGE_INVALID, "limit requires 1..1000 and offset 0..1000000")
 
         def work(session: _Session) -> CatalogTablePage:
             metadata = session.describe(ref)
             if not metadata.columns:
-                raise _error(PAGE_UNSUPPORTED, "relation has no selectable columns")
+                raise _error(codes.TABLE_PAGE_UNSUPPORTED, "relation has no selectable columns")
             columns = _quote_list([column.name for column in metadata.columns], self.dialect)
             query = f"SELECT {columns} FROM {_qualified(ref, self.dialect)}"
             if metadata.primary_key:
@@ -962,7 +933,7 @@ class CatalogConnection:
             raw = session.run(query, [], limit + 1, PAGE_BYTES)
             _same_names(raw.names, metadata.columns)
             if session.describe(ref) != metadata:
-                raise _error(PAGE_CHANGED, "descriptor changed during read")
+                raise _error(codes.TABLE_PAGE_METADATA_CHANGED, "descriptor changed during read")
             rows = raw.rows
             has_more = len(rows) > limit
             rows = rows[:limit]
@@ -983,17 +954,17 @@ class CatalogConnection:
         try:
             _table_ref(page.metadata.table)
         except OrmError as error:
-            raise _error(ROW_SNAPSHOT, f"invalid original row or descriptor: {error}") from error
+            raise _error(codes.ROW_SNAPSHOT_INVALID, f"invalid original row or descriptor: {error}") from error
         if page.limit < 1 or page.limit > 1000 or page.offset < 0 or page.offset > 1000000:
-            raise _error(ROW_SNAPSHOT, "invalid page bounds")
+            raise _error(codes.ROW_SNAPSHOT_INVALID, "invalid page bounds")
         rows = page.result.rows
         if len(rows) > page.limit or (page.has_more and len(rows) != page.limit) or list(page.order_by) != page.metadata.primary_key:
-            raise _error(ROW_SNAPSHOT, "page rows or order do not match its bounds")
+            raise _error(codes.ROW_SNAPSHOT_INVALID, "page rows or order do not match its bounds")
         key_indexes = _descriptor(page.metadata)
         if [column.name for column in page.result.columns] != [column.name for column in page.metadata.columns]:
-            raise _error(ROW_SNAPSHOT, "projection differs from descriptor")
+            raise _error(codes.ROW_SNAPSHOT_INVALID, "projection differs from descriptor")
         if index < 0 or index >= len(rows):
-            raise _error(ROW_SNAPSHOT, f"row index {index} outside the page")
+            raise _error(codes.ROW_SNAPSHOT_INVALID, f"row index {index} outside the page")
         cells = list(rows[index])
         _check_cells(page.metadata, cells)
         revision = _revision(page.metadata, cells)
@@ -1015,7 +986,7 @@ class CatalogConnection:
     def _query(self, query, params, max_rows: int, max_bytes: int, grid: bool) -> CatalogQueryResult:
         _validate_read_only(query, self._dialect)
         if max_rows < 0 or max_bytes < 0:
-            raise _error(LIMIT_INVALID, "limits must not be negative")
+            raise _error(codes.QUERY_LIMIT_INVALID, "limits must not be negative")
         rows_budget = max_rows or DEFAULT_ROWS
         bytes_budget = max_bytes or DEFAULT_BYTES
         values = _params(params)
@@ -1038,13 +1009,13 @@ class CatalogConnection:
         with bound parameters, requires exactly one affected row and re-reads the row by its key before it commits. Every
         supplied value must read back exactly. Automatic and expression-default keys are not supported."""
         key_indexes = _descriptor(declared)
-        changes = _changes(declared, values, ROW_INSERT_INVALID)
+        changes = _changes(declared, values, codes.ROW_INSERT_INVALID)
         provided = {index: value for index, value in changes}
         keys = []
         for index in key_indexes:
             if index not in provided:
                 raise _error(
-                    ROW_INSERT_INVALID, f"explicit primary-key value of {declared.columns[index].name!r} is required"
+                    codes.ROW_INSERT_INVALID, f"explicit primary-key value of {declared.columns[index].name!r} is required"
                 )
             keys.append(provided[index])
 
@@ -1053,10 +1024,10 @@ class CatalogConnection:
                 # The lock that an INSERT takes, held before the schema check so that no DDL changes the table in between.
                 session.run(f"LOCK TABLE {_qualified(declared.table, self._dialect)} IN ROW EXCLUSIVE MODE")
             if session.lookup(declared, keys, lock=True):
-                raise _error(ROW_CONFLICT, "insertion key already exists")
+                raise _error(codes.ROW_CONFLICT, "insertion key already exists")
             descriptor = session.describe(declared.table)
             if descriptor != declared:
-                raise _error(ROW_SCHEMA, "insertion descriptor changed")
+                raise _error(codes.ROW_SCHEMA_CHANGED, "insertion descriptor changed")
             if self._dialect == "mysql":
                 session.mysql_safety(descriptor)
             names = [_quote(descriptor.columns[index].name, self._dialect) for index, _ in changes]
@@ -1068,15 +1039,15 @@ class CatalogConnection:
             )
             affected = session.run(query, args).affected
             if affected != 1:
-                raise _error(ROW_WRITE, f"expected exactly one inserted row, got {affected}")
+                raise _error(codes.ROW_WRITE_MISMATCH, f"expected exactly one inserted row, got {affected}")
             after = session.lookup(descriptor, keys, lock=False)
             if len(after) != 1:
-                raise _error(ROW_WRITE, "expected exactly one inserted row")
+                raise _error(codes.ROW_WRITE_MISMATCH, "expected exactly one inserted row")
             if session.describe(declared.table) != descriptor:
-                raise _error(ROW_SCHEMA, "insertion descriptor changed")
+                raise _error(codes.ROW_SCHEMA_CHANGED, "insertion descriptor changed")
             for index, value in changes:
                 if not _same_row([after[0][index]], [value]):
-                    raise _error(ROW_WRITE, f"stored inserted values of {descriptor.columns[index].name!r} differ")
+                    raise _error(codes.ROW_WRITE_MISMATCH, f"stored inserted values of {descriptor.columns[index].name!r} differ")
             return CatalogMutationResult(columns=[c.name for c in descriptor.columns], rows=after)
 
         return self._write(work)
@@ -1085,25 +1056,25 @@ class CatalogConnection:
         """Updates the row of an original snapshot. Inside the transaction it re-reads the row by its original keys, locks
         it, compares it with the snapshot and then writes. After the write it re-reads the row by its resulting keys and
         requires every ordinary column to hold the value that was written."""
-        changes = _changes(original.metadata, values, ROW_UPDATE_INVALID)
+        changes = _changes(original.metadata, values, codes.ROW_UPDATE_INVALID)
         updated = list(original.cells)
         for index, value in changes:
             updated[index] = value
         try:
             _check_cells(original.metadata, updated)
         except OrmError as error:
-            raise _error(ROW_UPDATE_INVALID, f"invalid updated row: {error}") from error
+            raise _error(codes.ROW_UPDATE_INVALID, f"invalid updated row: {error}") from error
         try:
             _revision(original.metadata, updated)
         except OrmError as error:
-            raise _error(ROW_UPDATE_LIMIT, f"updated row budget exceeded: {error}") from error
+            raise _error(codes.ROW_UPDATE_LIMIT, f"updated row budget exceeded: {error}") from error
         keys = original.keys()
 
         def work(session: _Session) -> CatalogMutationResult:
             current = session.lookup(original.metadata, keys, lock=True)
             descriptor = session.describe(original.metadata.table)
             if descriptor != original.metadata:
-                raise _error(ROW_SCHEMA, "original descriptor changed")
+                raise _error(codes.ROW_SCHEMA_CHANGED, "original descriptor changed")
             _check_current(current, original.cells)
             if self._dialect == "mysql":
                 session.mysql_safety(descriptor)
@@ -1119,19 +1090,19 @@ class CatalogConnection:
             affected = session.run(query, args).affected
             # MySQL reports zero for an update that changes nothing; the re-read below is the authority there.
             if affected > 1 or (affected == 0 and self._dialect != "mysql"):
-                raise _error(ROW_WRITE, f"unexpected affected row count {affected}")
+                raise _error(codes.ROW_WRITE_MISMATCH, f"unexpected affected row count {affected}")
             new_keys = [updated[index] for index in original.key_indexes]
             after = session.lookup(descriptor, new_keys, lock=False)
             if len(after) != 1:
-                raise _error(ROW_WRITE, f"expected exactly one updated row, got {len(after)}")
+                raise _error(codes.ROW_WRITE_MISMATCH, f"expected exactly one updated row, got {len(after)}")
             if session.describe(original.metadata.table) != descriptor:
-                raise _error(ROW_SCHEMA, "original descriptor changed")
+                raise _error(codes.ROW_SCHEMA_CHANGED, "original descriptor changed")
             for index, column in enumerate(descriptor.columns):
                 if column.generated:
                     # A generated column may be recomputed by the database.
                     continue
                 if not _same_row([after[0][index]], [updated[index]]):
-                    raise _error(ROW_WRITE, f"stored ordinary values of {column.name!r} differ")
+                    raise _error(codes.ROW_WRITE_MISMATCH, f"stored ordinary values of {column.name!r} differ")
             return CatalogMutationResult(columns=[c.name for c in descriptor.columns], rows=after)
 
         return self._write(work)
@@ -1145,18 +1116,18 @@ class CatalogConnection:
             current = session.lookup(original.metadata, keys, lock=True)
             descriptor = session.describe(original.metadata.table)
             if descriptor != original.metadata:
-                raise _error(ROW_SCHEMA, "original descriptor changed")
+                raise _error(codes.ROW_SCHEMA_CHANGED, "original descriptor changed")
             _check_current(current, original.cells)
             if self._dialect == "mysql":
                 session.mysql_safety(descriptor)
             query = f"DELETE FROM {_qualified(descriptor.table, self._dialect)} WHERE {_key_predicate(descriptor, self._dialect, 1)}"
             affected = session.run(query, keys).affected
             if affected != 1:
-                raise _error(ROW_WRITE, f"expected exactly one deleted row, got {affected}")
+                raise _error(codes.ROW_WRITE_MISMATCH, f"expected exactly one deleted row, got {affected}")
             if session.lookup(descriptor, keys, lock=False):
-                raise _error(ROW_WRITE, "deleted row remains")
+                raise _error(codes.ROW_WRITE_MISMATCH, "deleted row remains")
             if session.describe(original.metadata.table) != descriptor:
-                raise _error(ROW_SCHEMA, "original descriptor changed")
+                raise _error(codes.ROW_SCHEMA_CHANGED, "original descriptor changed")
             return affected
 
         return self._write(work)
@@ -1167,16 +1138,16 @@ def connect_catalog(dsn: str) -> CatalogConnection:
     existing regular file, and the connection never creates one."""
     parsed = parse_dsn(dsn)
     if parsed.driver == "markdown":
-        raise _error(codes.CONFIG, f"{DSN_NOT_CATALOG}: a markdown corpus has no database catalog; give a mysql, postgres or sqlite DSN")
+        raise _error(codes.CONFIG, f"CATALOG_DSN: a markdown corpus has no database catalog; give a mysql, postgres or sqlite DSN")
     if parsed.driver == "sqlite":
         path = _sqlite_path(parsed.url)
         try:
             # lstat does not follow a symbolic link: a link is not a regular file.
             info = os.lstat(path)
         except OSError as error:
-            raise _error(codes.CONFIG, f"{SQLITE_FILE}: {error}") from error
+            raise _error(codes.CONFIG, f"CATALOG_SQLITE_FILE: {error}") from error
         if not stat.S_ISREG(info.st_mode):
-            raise _error(codes.CONFIG, f"{SQLITE_FILE}: expected an existing regular file")
+            raise _error(codes.CONFIG, f"CATALOG_SQLITE_FILE: expected an existing regular file")
     connection = CatalogConnection(parsed)
     # One read-only session proves that the database answers before the connection is returned.
     connection._read(lambda session: None)
