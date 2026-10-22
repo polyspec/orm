@@ -1172,7 +1172,7 @@ mod tests {
         fn or_panic(self, report: impl FnOnce(E) -> String) -> T;
     }
 
-    impl<T, E> OrPanic<T, E> for Result<T, E> {
+    impl<T, E> OrPanic<T, E> for std::result::Result<T, E> {
         fn or_panic(self, report: impl FnOnce(E) -> String) -> T {
             match self {
                 Ok(value) => value,
@@ -1331,7 +1331,11 @@ mod tests {
     }
 
     fn required_dsn(name: &str) -> String {
-        std::env::var(name).ok().filter(|dsn| !dsn.is_empty()).or_panic(|| format!("{name} is required; database tests never skip"))
+        match std::env::var(name) {
+            Ok(dsn) if !dsn.is_empty() => dsn,
+            Ok(_) => panic!("{name} is set but empty; database tests never skip"),
+            Err(error) => panic!("{name} is required ({error}); database tests never skip"),
+        }
     }
 
     async fn execute(db: &Db, statement: &str) {
