@@ -4455,6 +4455,25 @@ static bool savepoint_tx(zval *self, zval *frame, zval *fn, zval *out)
     return kept;
 }
 
+/* Makes the frame of a transaction that opens with the next transaction count of state, into out; false when the frame is not made. */
+static bool make_tx_frame(zval *self, zval *state, zval *out, bool read_only, const char *isolation)
+{
+    zval n;
+    zval *st = rd(state, "transactions");
+    ZVAL_LONG(&n, as_long(st) + 1);
+    wr(state, "transactions", &n);
+    zval ctor[4];
+    ZVAL_COPY(&ctor[0], self);
+    ZVAL_BOOL(&ctor[1], read_only);
+    str_zv(&ctor[2], isolation);
+    ZVAL_COPY(&ctor[3], &n);
+    bool made = newobj("Polyspec\\Orm\\TxFrame", out, 4, ctor);
+    for (int i = 0; i < 4; i++) {
+        zval_ptr_dtor(&ctor[i]);
+    }
+    return made;
+}
+
 /* Db::begin: the statements that open the transaction, by driver, and the frame that holds them. */
 static bool begin_tx(zval *self, const char *isolation, bool read_only, zend_long timeout, zval *out)
 {
@@ -4478,20 +4497,7 @@ static bool begin_tx(zval *self, const char *isolation, bool read_only, zend_lon
             zval_ptr_dtor(&arg);
             return false;
         }
-        zval n;
-        zval *st = rd(state, "transactions");
-        ZVAL_LONG(&n, as_long(st) + 1);
-        wr(state, "transactions", &n);
-        zval ctor[4];
-        ZVAL_COPY(&ctor[0], self);
-        ZVAL_BOOL(&ctor[1], read_only);
-        str_zv(&ctor[2], isolation);
-        ZVAL_COPY(&ctor[3], &n);
-        bool made = newobj("Polyspec\\Orm\\TxFrame", out, 4, ctor);
-        for (int i = 0; i < 4; i++) {
-            zval_ptr_dtor(&ctor[i]);
-        }
-        if (!made) {
+        if (!make_tx_frame(self, state, out, read_only, isolation)) {
             return false;
         }
         zval ro, bm, r;
@@ -4512,20 +4518,7 @@ static bool begin_tx(zval *self, const char *isolation, bool read_only, zend_lon
     if (is_str(rd(self, "driver"), "sqlite") && !ensure_row_lock_table(self)) {
         return false;
     }
-    zval *st = rd(state, "transactions");
-    zval n;
-    ZVAL_LONG(&n, as_long(st) + 1);
-    wr(state, "transactions", &n);
-    zval ctor[4];
-    ZVAL_COPY(&ctor[0], self);
-    ZVAL_BOOL(&ctor[1], read_only);
-    str_zv(&ctor[2], isolation);
-    ZVAL_COPY(&ctor[3], &n);
-    bool made = newobj("Polyspec\\Orm\\TxFrame", out, 4, ctor);
-    for (int i = 0; i < 4; i++) {
-        zval_ptr_dtor(&ctor[i]);
-    }
-    if (!made) {
+    if (!make_tx_frame(self, state, out, read_only, isolation)) {
         return false;
     }
     /* The statements that open the transaction. Each is [kind, sql] and is a control statement. */
