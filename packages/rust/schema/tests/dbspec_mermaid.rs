@@ -6,6 +6,10 @@
 //! exports its document and imports the export with exactly its dropped
 //! objects and gets back its tables, columns, primary keys and foreign keys.
 
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 use polyspec_orm_case_clock::CaseClock;
 use polyspec_orm_schema::dbspec::model::{DefaultValue, Document};
 use polyspec_orm_schema::dbspec::{self, export_mermaid, import_mermaid, Unsupported};
@@ -19,7 +23,7 @@ const DEADLINE: Duration = Duration::from_secs(5);
 
 fn vectors() -> Value {
     let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec/mermaid.json");
-    let vectors: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))).expect("mermaid.json");
+    let vectors: Value = serde_json::from_str(&std::fs::read_to_string(&path).or_panic(|e| format!("{}: {e}", path.display()))).expect("mermaid.json");
     assert_eq!(vectors["version"], 1, "tests/dbspec/mermaid.json version");
     vectors
 }

@@ -1,3 +1,7 @@
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 use polyspec_orm_case_clock::CaseClock;
 use polyspec_orm_schema::dbspec::{self, Document};
 use polyspec_orm_testcase::Trial;
@@ -21,8 +25,8 @@ fn cases_path() -> PathBuf {
 /// tests/dbspec/cases.json, read strictly: a missing or unknown section or field of any section panics with its place.
 fn read_cases() -> Value {
     let path = cases_path();
-    let value = serde_json::from_slice(&std::fs::read(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))).unwrap();
-    dbspec_cases::check_cases(&value, "tests/dbspec/cases.json").unwrap_or_else(|e| panic!("{e}"));
+    let value = serde_json::from_slice(&std::fs::read(&path).or_panic(|e| format!("{}: {e}", path.display()))).unwrap();
+    dbspec_cases::check_cases(&value, "tests/dbspec/cases.json").or_panic(|e| e.to_string());
     value
 }
 
@@ -241,7 +245,7 @@ fn vector_inputs(cases: &Value) -> Vec<(String, String, BTreeMap<String, String>
 /// tests/dbspec/syntax.json, read strictly: an unknown or missing key panics.
 fn syntax_file() -> Value {
     let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec/syntax.json");
-    let file: Value = serde_json::from_slice(&std::fs::read(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))).unwrap();
+    let file: Value = serde_json::from_slice(&std::fs::read(&path).or_panic(|e| format!("{}: {e}", path.display()))).unwrap();
     assert_keys(&file, &["requirements", "version", "note", "cases"], "syntax.json");
     assert_eq!(file["version"].as_u64(), Some(1));
     file
@@ -333,7 +337,7 @@ fn read_file_case(case: &Value, path: &std::path::Path) {
         .collect();
     let name = case["path"].as_str().unwrap();
     let shown = file_path.display().to_string();
-    let raw = std::fs::read(&file_path).unwrap_or_else(|e| panic!("{id}: {shown}: {e}"));
+    let raw = std::fs::read(&file_path).or_panic(|e| format!("{id}: {shown}: {e}"));
     let reads = [
         ("file", shown.as_str(), dbspec::read_file(&file_path)),
         ("bytes", name, dbspec::read_bytes(name, raw.clone()).map_err(dbspec::ReadError::Diagnostics)),

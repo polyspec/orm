@@ -5,6 +5,10 @@
 //! The vector file is read strictly: an unknown or missing field fails the test, and every case
 //! runs.
 
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 use polyspec_orm_case_clock::CaseClock;
 use polyspec_orm_schema::dbspec;
 use polyspec_orm_testcase::Trial;
@@ -41,7 +45,7 @@ fn strings(value: &Value, what: &str) -> Vec<String> {
 
 fn hex(text: &str, what: &str) -> Vec<u8> {
     assert!(text.len().is_multiple_of(2), "{what}: odd hex length");
-    (0..text.len()).step_by(2).map(|i| u8::from_str_radix(&text[i..i + 2], 16).unwrap_or_else(|e| panic!("{what}: {e}"))).collect()
+    (0..text.len()).step_by(2).map(|i| u8::from_str_radix(&text[i..i + 2], 16).or_panic(|e| format!("{what}: {e}"))).collect()
 }
 
 /// A fresh empty directory under the system temporary directory, removed on drop.
@@ -51,27 +55,31 @@ impl Tree {
     fn new(id: &str) -> Tree {
         static NEXT: AtomicUsize = AtomicUsize::new(0);
         let dir = std::env::temp_dir().join(format!("orm-set-{}-{}-{id}", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed)));
-        std::fs::create_dir(&dir).unwrap_or_else(|e| panic!("{}: {e}", dir.display()));
+        std::fs::create_dir(&dir).or_panic(|e| format!("{}: {e}", dir.display()));
         Tree(dir)
     }
 }
 
 impl Drop for Tree {
     fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.0);
+        if let Err(error) = std::fs::remove_dir_all(&self.0) {
+            if !std::thread::panicking() {
+                panic!("remove {}: {error}", self.0.display());
+            }
+        }
     }
 }
 
 fn parent_dirs(path: &Path) {
     let parent = path.parent().expect("a tree path has a parent");
-    std::fs::create_dir_all(parent).unwrap_or_else(|e| panic!("{}: {e}", parent.display()));
+    std::fs::create_dir_all(parent).or_panic(|e| format!("{}: {e}", parent.display()));
 }
 
 /// Makes a symbolic link to `target`. The symlink crate holds the platform's link calls; a target that is a directory
 /// is linked as a directory, which Windows distinguishes. The tree's targets exist when the links are made.
 fn symlink(target: &str, link: &Path) -> std::io::Result<()> {
     let resolved = link.parent().expect("a link has a parent").join(target);
-    if std::fs::metadata(&resolved).map(|m| m.is_dir()).unwrap_or(false) {
+    if std::fs::metadata(&resolved).is_ok_and(|m| m.is_dir()) {
         ::symlink::symlink_dir(target, link)
     } else {
         ::symlink::symlink_file(target, link)
@@ -93,7 +101,7 @@ fn build(root: &Path, tree: &Map<String, Value>, id: &str) {
             "file" | "hex" => {
                 let bytes = if kind == "file" { string(value, &what).as_bytes().to_vec() } else { hex(string(value, &what), &what) };
                 parent_dirs(&path);
-                std::fs::write(&path, bytes).unwrap_or_else(|e| panic!("{what}: {e}"));
+                std::fs::write(&path, bytes).or_panic(|e| format!("{what}: {e}"));
             }
             "hardlink" => hardlinks.push((path, root.join(string(value, &what)), what)),
             "symlink" => links.push((path, string(value, &what).to_owned(), what)),
@@ -102,11 +110,11 @@ fn build(root: &Path, tree: &Map<String, Value>, id: &str) {
     }
     for (path, original, what) in hardlinks {
         parent_dirs(&path);
-        std::fs::hard_link(&original, &path).unwrap_or_else(|e| panic!("{what}: {e}"));
+        std::fs::hard_link(&original, &path).or_panic(|e| format!("{what}: {e}"));
     }
     for (path, target, what) in links {
         parent_dirs(&path);
-        symlink(&target, &path).unwrap_or_else(|e| panic!("{what}: {e}"));
+        symlink(&target, &path).or_panic(|e| format!("{what}: {e}"));
     }
 }
 
@@ -145,13 +153,13 @@ fn run(case: &Value) {
         }
     } else {
         let want = object(&map["want"], &format!("{id}: want"), &["documents", "external"], &[]);
-        let set = got.unwrap_or_else(|errors| panic!("{id}: unexpected errors {errors:?}"));
+        let set = got.or_panic(|errors| format!("{id}: unexpected errors {errors:?}"));
         for (list, files) in [("documents", &set.documents), ("external", &set.external)] {
             let expected: Vec<String> = strings(&want[list], id).iter().map(|p| joined(p)).collect();
             let actual: Vec<String> = files.iter().map(|f| f.path.display().to_string()).collect();
             assert_eq!(actual, expected, "{id}: {list}");
             for file in files {
-                let bytes = std::fs::read(&file.path).unwrap_or_else(|e| panic!("{id}: {}: {e}", file.path.display()));
+                let bytes = std::fs::read(&file.path).or_panic(|e| format!("{id}: {}: {e}", file.path.display()));
                 assert_eq!(file.bytes, bytes, "{id}: the bytes of {}", file.path.display());
             }
         }
@@ -166,7 +174,7 @@ fn run(case: &Value) {
 /// trial `shared_set_file_vectors::<id>`.
 fn shared_set_file_vectors() -> Vec<Trial> {
     let path = vectors_path();
-    let file: Value = serde_json::from_slice(&std::fs::read(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))).unwrap();
+    let file: Value = serde_json::from_slice(&std::fs::read(&path).or_panic(|e| format!("{}: {e}", path.display()))).unwrap();
     let file = object(&file, "set-files.json", &["requirements", "version", "note", "cases"], &[]);
     assert_eq!(file["version"], 1, "set-files.json version");
     string(&file["note"], "note");

@@ -1,5 +1,9 @@
 //! dbspec rules that the shared vectors in tests/dbspec/cases.json do not cover yet.
 
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 use polyspec_orm_case_clock::CaseClock;
 use polyspec_orm_schema::dbspec;
 use std::collections::BTreeMap;
@@ -50,7 +54,7 @@ fn run(case: &Case) {
             let expected = text(lines);
             let emitted = dbspec::emit(&document);
             assert_eq!(emitted, expected, "{}: canonical emission", case.id);
-            let again = dbspec::parse(&emitted, &set).map(|parsed| parsed.document).unwrap_or_else(|e| panic!("{}: canonical text is invalid {e:?}", case.id));
+            let again = dbspec::parse(&emitted, &set).map(|parsed| parsed.document).or_panic(|e| format!("{}: canonical text is invalid {e:?}", case.id));
             assert_eq!(dbspec::emit(&again), expected, "{}: canonical emission is a fixed point", case.id);
         }
         (Expect::Canonical(_), Err(errors)) => panic!("{}: unexpected errors {errors:#?}", case.id),
@@ -1185,9 +1189,9 @@ fn dbspec_comment_attachment() {
         "  # empty",
         "}",
     ]);
-    let document = dbspec::parse(&source, &set).map(|parsed| parsed.document).unwrap_or_else(|e| panic!("{e:#?}"));
+    let document = dbspec::parse(&source, &set).map(|parsed| parsed.document).or_panic(|e| format!("{e:#?}"));
     assert_eq!(dbspec::emit(&document), expected);
-    let again = dbspec::parse(&expected, &set).map(|parsed| parsed.document).unwrap_or_else(|e| panic!("{e:#?}"));
+    let again = dbspec::parse(&expected, &set).map(|parsed| parsed.document).or_panic(|e| format!("{e:#?}"));
     assert_eq!(dbspec::emit(&again), expected);
     let (cpu, wall) = (clock.cpu(), clock.wall());
     if cpu >= CASE_DEADLINE {

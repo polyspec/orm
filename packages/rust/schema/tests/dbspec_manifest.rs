@@ -2,6 +2,10 @@
 //! name rule through `dbspec::manifest`, and the `sets` cases through
 //! `dbspec::manifest` and `dbspec::render`.
 
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 use polyspec_orm_case_clock::CaseClock;
 use polyspec_orm_schema::dbspec::{self, Diagnostic, Document};
 use polyspec_orm_testcase::Trial;
@@ -31,12 +35,12 @@ fn created_tables(statements: &[String]) -> Vec<&str> {
 }
 
 fn parsed(id: &str, text: &str, set: &BTreeMap<String, String>) -> Document {
-    dbspec::parse(text, set).map(|parsed| parsed.document).unwrap_or_else(|errors| panic!("{id}: {errors:?}"))
+    dbspec::parse(text, set).map(|parsed| parsed.document).or_panic(|errors| format!("{id}: {errors:?}"))
 }
 
 fn expect(case: &Value, documents: &[&Document]) {
     let id = case["id"].as_str().unwrap();
-    let manifest = dbspec::manifest(documents).unwrap_or_else(|errors| panic!("{id}: {errors:?}"));
+    let manifest = dbspec::manifest(documents).or_panic(|errors| format!("{id}: {errors:?}"));
     assert_eq!(manifest.manifest_text, text(&case["manifestText"]), "{id}: manifest text");
     assert_eq!(manifest.schema_text, text(&case["schemaText"]), "{id}: schema text");
     assert_eq!(manifest.manifest_hash, case["manifestHash"].as_str().unwrap(), "{id}: manifest hash");
@@ -47,7 +51,7 @@ fn expect(case: &Value, documents: &[&Document]) {
 fn cases() -> Value {
     let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec/cases.json");
     let value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
-    dbspec_cases::check_cases(&value, "tests/dbspec/cases.json").unwrap_or_else(|e| panic!("{e}"));
+    dbspec_cases::check_cases(&value, "tests/dbspec/cases.json").or_panic(|e| e.to_string());
     value
 }
 

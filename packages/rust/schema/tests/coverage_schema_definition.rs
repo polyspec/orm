@@ -1,5 +1,9 @@
 //! schema_definition: runs the cases of contracts/fixtures/schema_definition.json through dbspec parse, emit,
 //! manifest, and render. The values are read from the fixture.
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 use polyspec_orm_case_clock::CaseClock;
 use polyspec_orm_schema::dbspec::{self, Dialect, Document};
 use serde_json::Value;
@@ -18,8 +22,8 @@ fn repository() -> PathBuf {
 /// Finds the case with `id` in the fixture, checks that its operation is `operation`, and returns its input and expected.
 fn case(id: &str, operation: &str) -> (Value, Value) {
     let path = repository().join("contracts/fixtures/schema_definition.json");
-    let fixture: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display())))
-        .unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    let fixture: Value = serde_json::from_str(&std::fs::read_to_string(&path).or_panic(|e| format!("{}: {e}", path.display())))
+        .or_panic(|e| format!("{}: {e}", path.display()));
     assert_eq!(fixture["feature"], "schema_definition", "{}: feature", path.display());
     let cases: Vec<&Value> = fixture["cases"].as_array().expect("fixture cases").iter().filter(|c| c["id"] == id).collect();
     let [case] = cases.as_slice() else { panic!("{}: case {id} appears {} times", path.display(), cases.len()) };
@@ -36,14 +40,14 @@ fn sources(input: &Value) -> Vec<(String, String)> {
         .map(|path| {
             let path = path.as_str().expect("document path").to_owned();
             let file = repository().join(&path);
-            let text = std::fs::read_to_string(&file).unwrap_or_else(|e| panic!("{}: {e}", file.display()));
+            let text = std::fs::read_to_string(&file).or_panic(|e| format!("{}: {e}", file.display()));
             (path, text)
         })
         .collect()
 }
 
 fn parse(path: &str, text: &str) -> Document {
-    dbspec::parse(text, &Default::default()).map(|parsed| parsed.document).unwrap_or_else(|errors| panic!("{path}: {errors:?}"))
+    dbspec::parse(text, &Default::default()).map(|parsed| parsed.document).or_panic(|errors| format!("{path}: {errors:?}"))
 }
 
 /// Runs `body`, prints the start, success, and elapsed time, and checks the CPU time limit.
@@ -81,7 +85,7 @@ mod schema_definition {
             let (input, expected) = case("dbspec_manifest_hash", "manifest");
             let documents: Vec<Document> = sources(&input).iter().map(|(path, text)| parse(path, text)).collect();
             let refs: Vec<&Document> = documents.iter().collect();
-            let manifest = dbspec::manifest(&refs).unwrap_or_else(|errors| panic!("manifest: {errors:?}"));
+            let manifest = dbspec::manifest(&refs).or_panic(|errors| format!("manifest: {errors:?}"));
             assert_eq!(manifest.manifest_hash, expected["manifest_hash"].as_str().expect("expected.manifest_hash"));
         });
     }
@@ -118,7 +122,7 @@ mod schema_definition {
             assert!(!want.is_empty(), "the fixture lists tokens");
             for (path, text) in sources(&input) {
                 let analysis = dbspec::analyze(&text, &Default::default());
-                let parsed = dbspec::parse(&text, &Default::default()).unwrap_or_else(|errors| panic!("{path}: {errors:?}"));
+                let parsed = dbspec::parse(&text, &Default::default()).or_panic(|errors| format!("{path}: {errors:?}"));
                 assert!(analysis.diagnostics.is_empty(), "{path}: {:?}", analysis.diagnostics);
                 assert_eq!(
                     analysis.document.as_ref().map(dbspec::emit),
@@ -137,7 +141,7 @@ mod schema_definition {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         run("dbspec_format", || {
             let (input, expected) = case("dbspec_format", "format");
-            let formatted = dbspec::format(&text(&input), &Default::default()).unwrap_or_else(|errors| panic!("format: {errors:?}"));
+            let formatted = dbspec::format(&text(&input), &Default::default()).or_panic(|errors| format!("format: {errors:?}"));
             assert_eq!(formatted, text(&expected), "formatted text");
             assert_eq!(dbspec::format(&formatted, &Default::default()), Ok(formatted.clone()), "a formatted text is its own format");
         });
@@ -164,7 +168,7 @@ mod schema_definition {
             let want = expected["positions"].as_array().expect("expected.positions");
             assert!(!want.is_empty(), "the fixture lists positions");
             for (path, text) in sources(&input) {
-                let parsed = dbspec::parse(&text, &Default::default()).unwrap_or_else(|errors| panic!("{path}: {errors:?}"));
+                let parsed = dbspec::parse(&text, &Default::default()).or_panic(|errors| format!("{path}: {errors:?}"));
                 let got: Vec<Value> =
                     parsed.positions.iter().map(|p| serde_json::json!({"kind": p.kind, "path": p.path, "line": p.line, "column": p.column})).collect();
                 assert_eq!(&got, want, "{path} positions");

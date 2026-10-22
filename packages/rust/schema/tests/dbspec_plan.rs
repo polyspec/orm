@@ -7,6 +7,10 @@
 //! diagnostic; every comparison lists its differences or `compare`
 //! diagnostics.
 
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 use polyspec_orm_case_clock::CaseClock;
 use polyspec_orm_schema::dbspec::{self, chain, compare_schemas, diff, emit_plan, parse_plan, plan_steps, Dialect, Document, Plan, PlanStep};
 use polyspec_orm_testcase::Trial;
@@ -54,7 +58,7 @@ const DIALECTS: [(&str, Dialect); 3] = [("mysql", Dialect::MySql), ("postgres", 
 
 fn vectors() -> Value {
     let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec/plans.json");
-    let vectors: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))).expect("plans.json");
+    let vectors: Value = serde_json::from_str(&std::fs::read_to_string(&path).or_panic(|e| format!("{}: {e}", path.display()))).expect("plans.json");
     assert_eq!(vectors["version"], 1, "tests/dbspec/plans.json version");
     vectors
 }
@@ -72,7 +76,7 @@ fn source(id: &str, value: &Value) -> Option<Document> {
     if value.is_null() {
         return None;
     }
-    Some(dbspec::parse(&lines(value), &BTreeMap::new()).map(|parsed| parsed.document).unwrap_or_else(|e| panic!("{id}: source: {e:?}")))
+    Some(dbspec::parse(&lines(value), &BTreeMap::new()).map(|parsed| parsed.document).or_panic(|e| format!("{id}: source: {e:?}")))
 }
 
 /// Runs one case and writes its result and CPU time. A failed case panics with its reason.

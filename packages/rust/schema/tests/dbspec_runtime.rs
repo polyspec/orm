@@ -2,6 +2,10 @@
 //! (docs/spec/dbspec.md, "Runtime model"), using `dbspec::parse_manifest` on the manifest text,
 //! checks the documents read back.
 
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 use polyspec_orm_case_clock::CaseClock;
 use polyspec_orm_schema::dbspec::{self, Document, Type};
 use std::collections::BTreeMap;
@@ -12,11 +16,11 @@ use std::time::Duration;
 const DEADLINE: Duration = Duration::from_secs(10);
 
 fn source(path: &str) -> String {
-    dbspec::read_file(&polyspec_orm_testcase::manifest_dir().join("../../..").join(path)).unwrap_or_else(|e| panic!("{path}: {e}"))
+    dbspec::read_file(&polyspec_orm_testcase::manifest_dir().join("../../..").join(path)).or_panic(|e| format!("{path}: {e}"))
 }
 
 fn document(path: &str) -> Document {
-    dbspec::parse(&source(path), &BTreeMap::new()).map(|parsed| parsed.document).unwrap_or_else(|errors| panic!("{path}: {errors:?}"))
+    dbspec::parse(&source(path), &BTreeMap::new()).map(|parsed| parsed.document).or_panic(|errors| format!("{path}: {errors:?}"))
 }
 
 // Requirements: DBS-100, SCH-12.
@@ -27,7 +31,7 @@ fn manifest_text_reads_back_as_the_same_document_set() {
     let bench = document("contracts/fixtures/bench/bench.dbs");
     let audit = document("contracts/fixtures/audit.dbs");
     let manifest = dbspec::manifest(&[&bench, &audit]).unwrap();
-    let documents = dbspec::parse_manifest(&manifest.manifest_text).unwrap_or_else(|errors| panic!("{errors:?}"));
+    let documents = dbspec::parse_manifest(&manifest.manifest_text).or_panic(|errors| format!("{errors:?}"));
     let refs: Vec<&Document> = documents.iter().collect();
     let again = dbspec::manifest(&refs).unwrap();
     assert_eq!(again, manifest, "the documents of a manifest text have the same manifest");
@@ -158,7 +162,7 @@ fn runtime_model_names_entities_and_reads_settings() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(DEADLINE));
     let clock = CaseClock::start();
     let text = "dbspec 1 shop\n\ntable service_member {\n  id i64 identity\n  rank i16 default 3\n  key uuid\n  opens time(3) null\n  audit_seq i64\n  deleted_at datetime(6) null\n  primary key (id)\n  index ix_service_member_audit (audit_seq)\n  foreign key fk_service_member_audit (audit_seq) references member_audit (seq) on delete restrict on update restrict\n  settings {\n    entity member\n    soft_delete deleted_at\n    audit into member_history column audit_seq references member_audit action change previous previous_audit_seq\n  }\n}\n\ntable member_history {\n  history_id i64 identity\n  change varchar(8)\n  previous_audit_seq i64 null\n  id i64\n  rank i16\n  key uuid\n  opens time(3) null\n  audit_seq i64\n  deleted_at datetime(6) null\n  primary key (history_id)\n  settings {\n    immutable\n  }\n}\n\ntable member_audit {\n  seq i64 identity\n  actor varchar(64)\n  primary key (seq)\n  settings {\n    entity member_record\n  }\n}\n";
-    let shop = dbspec::parse(text, &BTreeMap::new()).map(|parsed| parsed.document).unwrap_or_else(|errors| panic!("{errors:?}"));
+    let shop = dbspec::parse(text, &BTreeMap::new()).map(|parsed| parsed.document).or_panic(|errors| format!("{errors:?}"));
     let audit = document("contracts/fixtures/audit.dbs");
     let model = dbspec::runtime_model(&[&shop, &audit]).unwrap();
     let names: Vec<&str> = model.entities.iter().map(|e| e.name.as_str()).collect();

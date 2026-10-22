@@ -5,6 +5,8 @@ use serde_json::Value;
 use std::collections::BTreeMap;
 use std::time::Duration;
 
+use crate::or_panic::OrPanic;
+
 // DEADLINE is the CPU time limit of the test; the wall-clock deadline that ends a hung test is ten times that.
 // (polyspec_orm_testcase::wall_for_cpu).
 pub const DEADLINE: Duration = Duration::from_secs(10);
@@ -22,7 +24,7 @@ pub fn case_documents(id: &str, case: &Value) -> Vec<Document> {
         .iter()
         .map(|(name, lines)| {
             let set: BTreeMap<String, String> = documents_value.iter().filter(|(other, _)| *other != name).map(|(other, l)| (other.clone(), text(l))).collect();
-            dbspec::parse(&text(lines), &set).map(|parsed| parsed.document).unwrap_or_else(|errors| panic!("{id}: {errors:?}"))
+            dbspec::parse(&text(lines), &set).map(|parsed| parsed.document).or_panic(|errors| format!("{id}: {errors:?}"))
         })
         .collect()
 }

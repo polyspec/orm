@@ -6,6 +6,10 @@
 //! or its error. The reader of SHOW CREATE TABLE stays private to the
 //! introspection; this public path states every case under its id (T148-2-1).
 
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 use polyspec_orm_schema::dbspec::{self, catalog_followups, catalog_queries, read_catalog, CatalogValue, Dialect};
 use polyspec_orm_testcase::Trial;
 use serde_json::Value;
@@ -102,7 +106,7 @@ fn run_case(catalog: &Value, case: &Value) -> Result<(), String> {
 
 fn show_create_vectors() -> Vec<Trial> {
     let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec/show-create.json");
-    let vectors: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))).expect("show-create.json");
+    let vectors: Value = serde_json::from_str(&std::fs::read_to_string(&path).or_panic(|e| format!("{}: {e}", path.display()))).expect("show-create.json");
     let cases = vectors["cases"].as_array().expect("show-create.json cases").clone();
     assert!(!cases.is_empty(), "tests/dbspec/show-create.json has no cases");
     cases

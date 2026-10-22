@@ -1,6 +1,9 @@
 //! The vectors of tests/dbspec/ddl.json through `dbspec::render`: every case
 //! renders the statements listed for MySQL, PostgreSQL and SQLite.
 
+#[path = "common/or_panic.rs"]
+mod or_panic;
+
 use polyspec_orm_schema::dbspec::{self, Document};
 use polyspec_orm_testcase::Trial;
 use serde_json::Value;

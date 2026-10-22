@@ -5,6 +5,10 @@
 //! diagnostics. A vector diagnostic without a message compares its
 //! rule, line and column only.
 
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 use polyspec_orm_schema::dbspec::{self, Diagnostic};
 use serde_json::Value;
 use std::path::PathBuf;
@@ -44,7 +48,7 @@ fn check_diagnostics(got: &[Diagnostic], want: &Value, what: &str) {
 /// diagnostics.
 fn shared_set_parse_vectors() -> Vec<polyspec_orm_testcase::Trial> {
     let path = vectors_path();
-    let file: Value = serde_json::from_slice(&std::fs::read(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))).unwrap();
+    let file: Value = serde_json::from_slice(&std::fs::read(&path).or_panic(|e| format!("{}: {e}", path.display()))).unwrap();
     assert_eq!(file["schema"], 1, "set-parse.json schema");
     let cases = file["cases"].as_array().expect("cases are listed");
     assert!(!cases.is_empty(), "cases are not empty");
